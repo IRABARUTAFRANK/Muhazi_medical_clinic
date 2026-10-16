@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clinic home page — PC</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F6F8B}a:hover{color:#185B72}
+.mmc{font-family:Inter,"Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.4;color:var(--text);background:var(--bg);box-sizing:border-box}
+.mmc *{box-sizing:border-box}
+.theme-light{--bg:#F4F6F8;--card:#FFFFFF;--border:#D9DEE3;--text:#1F2933;--text2:#52606D;--text3:#616E7C;--primary:#1F6F8B;--primary-hover:#185B72;--primary-tint:#E6F1F5;--onprimary:#FFFFFF;--red:#B42318;--red-bg:#FDECEA;--yellow:#7A5000;--yellow-bg:#FFF3C4;--green:#1E7B34;--green-bg:#E3F5E7;--blue:#1F6F8B;--blue-bg:#E6F1F5;--orange:#B5440F;--orange-bg:#FFE8D9;--hover:#EEF2F5;--shadow:0 8px 24px rgba(31,41,51,.14)}
+.theme-dim{--bg:#0F1720;--card:#182230;--border:#2B3747;--text:#E7ECF1;--text2:#B4BEC8;--text3:#95A1AD;--primary:#5CB3D0;--primary-hover:#7CC4DC;--primary-tint:#1A3340;--onprimary:#0B1B22;--red:#F49C94;--red-bg:#3A1F1E;--yellow:#F2C94C;--yellow-bg:#3A3015;--green:#8BD9A4;--green-bg:#173125;--blue:#5CB3D0;--blue-bg:#1A3340;--orange:#F5A26B;--orange-bg:#3C2615;--hover:#1F2B3A;--shadow:0 8px 24px rgba(0,0,0,.5)}
+.num{font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font:inherit;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--onprimary)}
+.btn.primary:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px}
+.btn.danger{color:var(--red);border-color:var(--border)}
+.btn.icon{width:44px;padding:0}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;min-height:0}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px}
+.badge{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.badge .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.b-green{background:var(--green-bg);color:var(--green)}.b-green .dot{background:#2EA043}
+.b-yellow{background:var(--yellow-bg);color:var(--yellow)}.b-yellow .dot{background:#E0A800}
+.b-red{background:var(--red-bg);color:var(--red)}.b-red .dot{background:#D92D20}
+.b-blue{background:var(--blue-bg);color:var(--blue)}.b-blue .dot{background:#1F6F8B}
+.b-orange{background:var(--orange-bg);color:var(--orange)}.b-orange .dot{background:#E8671B}
+.b-grey{background:var(--hover);color:var(--text2);border:1px solid var(--border)}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:500;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+.rail a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;color:var(--text2);text-decoration:none;font-weight:500}
+.rail a:hover{background:var(--hover);color:var(--text)}
+.rail a.active{background:var(--primary-tint);color:var(--primary);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:36px}
+.seg button{font:inherit;font-weight:600;font-size:12px;border:0;background:var(--card);color:var(--text2);min-width:44px;padding:0 10px;cursor:pointer}
+.seg button.on{background:var(--primary);color:var(--onprimary)}
+.qrow{display:grid;grid-template-columns:56px 1fr 60px 92px 64px 72px 84px;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);min-height:56px}
+.qrow:last-child{border-bottom:0}
+.qhead{font-size:12px;color:var(--text3);font-weight:600;min-height:32px;padding:4px 12px;text-transform:uppercase;letter-spacing:.02em}
+.row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);min-height:52px}
+.row:last-child{border-bottom:0}
+.muted{color:var(--text2)}.faint{color:var(--text3);font-size:12px}
+.input{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text3);font-size:14px}
+.input input{border:0;outline:0;background:transparent;font:inherit;color:var(--text);flex:1;min-width:0}
+.menu{position:absolute;top:52px;right:0;width:260px;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);padding:8px;z-index:5}
+.menu button,.menu a{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;padding:0 12px;border:0;background:transparent;border-radius:8px;font:inherit;color:var(--text);cursor:pointer;text-decoration:none;text-align:left}
+.menu button:hover,.menu a:hover{background:var(--hover)}
+.stat{display:flex;align-items:baseline;gap:6px}
+.stat b{font-size:20px;font-weight:700}
+</style>
+</helmet>
+
+<div class="mmc {{themeClass}}" style="width:1366px;height:768px;display:flex;flex-direction:column;overflow:hidden;position:relative">
+
+  <!-- TOP BAR -->
+  <header style="height:56px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--border);position:relative;z-index:6">
+    <a href="Landing.dc.html" aria-label="Muhazi Medical Clinic public site" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);min-width:220px">
+      <img src="/_blob/95ac6983d2cc80670c495523ee35aef3" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
+      <span style="display:flex;flex-direction:column;line-height:1.15"><span style="font-weight:700;font-size:14px">Muhazi Medical Clinic</span><span class="faint">Clinic System · Kayonza</span></span>
+    </a>
+    <label class="input" style="flex:1;max-width:420px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input type="search" placeholder="Search patient (name, ID, phone, file no.)" aria-label="Search patient">
+    </label>
+    <div style="flex:1"></div>
+    <sc-if value="{{isOffline}}" hint-placeholder-val="{{ false }}">
+      <span class="badge b-orange num"><span class="dot"></span>Offline since 14:20 · 3 pending</span>
+    </sc-if>
+    <sc-if value="{{isSynced}}" hint-placeholder-val="{{ true }}">
+      <span class="badge b-green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg>Synced</span>
+    </sc-if>
+    <div style="position:relative">
+      <button class="btn" style="min-height:40px;padding:0 10px 0 6px;gap:10px" onClick="{{toggleMenu}}" aria-label="Current user, tap to switch">
+        <span style="width:28px;height:28px;border-radius:50%;background:var(--primary-tint);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">{{userInitials}}</span>
+        <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.15"><span style="font-size:13px">{{userName}}</span><span class="faint" style="font-weight:500">{{roleLabel}}</span></span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+      </button>
+      <sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+        <div class="menu" role="menu">
+          <div class="faint" style="padding:6px 12px">Switch user</div>
+          <sc-for list="{{roleOptions}}" as="r" hint-placeholder-count="4">
+            <button onClick="{{r.pick}}"><span>{{r.user}}</span><span class="faint">{{r.label}}</span></button>
+          </sc-for>
+          <div style="border-top:1px solid var(--border);margin:6px 0"></div>
+          <a href="Dashboard.dc.html"><span>Mugabo Théogène</span><span class="faint">Manager · Dashboard</span></a>
+          <button onClick="{{toggleTheme}}"><span>{{themeLabel}}</span><span class="faint">Night use</span></button>
+          <a href="Landing.dc.html"><span>Sign out</span><span class="faint">Back to public site</span></a>
+        </div>
+      </sc-if>
+    </div>
+    <div class="seg" role="group" aria-label="Language">
+      <sc-for list="{{langs}}" as="l" hint-placeholder-count="3"><button class="{{l.cls}}" onClick="{{l.pick}}">{{l.code}}</button></sc-for>
+    </div>
+  </header>
+
+  <sc-if value="{{isOffline}}" hint-placeholder-val="{{ false }}">
+    <div style="flex:none;display:flex;align-items:center;gap:10px;padding:8px 16px;background:#FFF3C4;color:#5C3D00;font-weight:600;border-bottom:1px solid #E8D27A">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+      Working offline — changes will sync automatically
+    </div>
+  </sc-if>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <!-- LEFT RAIL -->
+    <nav class="rail" aria-label="Main" style="width:200px;flex:none;background:var(--card);border-right:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:4px">
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="{{n.href}}" class="{{n.cls}}"><span style="width:20px;height:20px;border-radius:6px;background:currentColor;opacity:.18;flex:none"></span>{{n.label}}</a>
+      </sc-for>
+      <div style="flex:1"></div>
+      <div class="faint num" style="padding:0 12px">Wed 14/10/2026 · {{clock}}</div>
+    </nav>
+
+    <!-- MAIN -->
+    <main style="flex:1;min-width:0;padding:16px;display:flex;flex-direction:column;gap:12px">
+      <!-- CLINIC NOW -->
+      <div style="display:flex;align-items:center;gap:24px;padding:8px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;flex:none">
+        <span class="faint" style="font-weight:600;text-transform:uppercase;letter-spacing:.04em">Clinic now</span>
+        <span class="stat num"><b>{{now.inClinic}}</b><span class="muted">patients in clinic</span></span>
+        <span class="stat num"><b>{{now.avgWait}}</b><span class="muted">min average waiting</span></span>
+        <span class="stat num"><b>{{now.beds}}</b><span class="muted">beds occupied</span></span>
+        <span style="flex:1"></span>
+        <span class="faint">{{roleLabel}} view</span>
+      </div>
+
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) 232px;gap:12px">
+
+        <!-- ZONE 1: MY QUEUE -->
+        <section class="card" aria-label="My queue" style="overflow:hidden">
+          <div class="card-h">
+            <span>{{queueTitle}}</span>
+            <span style="display:flex;gap:6px" class="num">
+              <span class="badge b-grey">Waiting {{counts.waiting}}</span>
+              <span class="badge b-blue"><span class="dot"></span>In progress {{counts.inProgress}}</span>
+              <span class="badge b-green"><span class="dot"></span>Done {{counts.done}}</span>
+            </span>
+          </div>
+          <sc-if value="{{hasQueue}}" hint-placeholder-val="{{ true }}">
+            <div class="qrow qhead"><span>Ticket</span><span>Patient</span><span>Age/sex</span><span>Triage</span><span>Waiting</span><span>Insurer</span><span></span></div>
+            <div style="overflow:auto;flex:1">
+              <sc-for list="{{queue}}" as="q" hint-placeholder-count="6">
+                <div class="qrow">
+                  <span class="num" style="font-weight:700;color:var(--primary)">{{q.ticket}}</span>
+                  <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{q.name}}</span>
+                  <span class="num muted">{{q.age}}</span>
+                  <span class="badge {{q.triageCls}}"><span class="dot"></span>{{q.triage}}</span>
+                  <span class="num muted">{{q.wait}}</span>
+                  <span class="chip">{{q.insurer}}</span>
+                  <a class="btn primary sm" href="Main.dc.html" style="min-width:76px">{{q.action}}</a>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;text-align:center">
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="var(--primary)" stroke-width="2" aria-hidden="true"><rect x="10" y="14" width="44" height="40" rx="6"></rect><path d="M10 26h44M22 10v8M42 10v8"></path><path d="m25 42 5 5 9-10" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <div style="font-size:16px;font-weight:600">No one is waiting yet</div>
+              <div class="muted" style="max-width:260px">Patients who arrive or take a walk-in ticket will appear here, ordered by triage colour.</div>
+              <button class="btn" style="margin-top:8px">Walk-in ticket</button>
+            </div>
+          </sc-if>
+        </section>
+
+        <!-- ZONE 2: TODAY -->
+        <section aria-label="Today" style="display:flex;flex-direction:column;gap:12px;min-height:0;overflow:hidden">
+
+          <!-- RECEPTIONIST -->
+          <sc-if value="{{isRec}}" hint-placeholder-val="{{ true }}">
+            <div class="card" style="flex:1;min-height:0;overflow:hidden">
+              <div class="card-h"><span>Today's appointments</span>
+                <span style="display:flex;gap:6px" class="num"><span class="badge b-green"><span class="dot"></span>Arrived {{appt.arrived}}</span><span class="badge b-blue"><span class="dot"></span>Due {{appt.due}}</span><span class="badge b-red"><span class="dot"></span>Late {{appt.late}}</span></span></div>
+              <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;text-align:center">
+                  <div style="font-size:16px;font-weight:600">A quiet morning</div>
+                  <div class="muted">No appointments are due before 09:00. First booked patient: Uwase Claudine at 09:00.</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{hasQueue}}" hint-placeholder-val="{{ true }}">
+                <div style="overflow:auto">
+                  <sc-for list="{{appts}}" as="a" hint-placeholder-count="4">
+                    <div class="row">
+                      <span class="num muted" style="width:44px">{{a.time}}</span>
+                      <span style="flex:1;min-width:0"><span style="font-weight:600">{{a.name}}</span><span class="faint" style="display:block">{{a.doctor}}</span></span>
+                      <span class="badge {{a.cls}}"><span class="dot"></span>{{a.status}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <div class="card" style="flex:none">
+              <div class="card-h"><span>Inquiries awaiting approval</span><span class="badge b-yellow num"><span class="dot"></span>2 pending</span></div>
+              <sc-for list="{{inquiries}}" as="i" hint-placeholder-count="2">
+                <div class="row" style="flex-wrap:wrap">
+                  <span style="flex:1;min-width:140px"><span style="font-weight:600">{{i.name}}</span><span class="faint" style="display:block">{{i.detail}}</span></span>
+                  <span style="display:flex;gap:8px"><button class="btn primary sm">Approve</button><button class="btn danger sm">Reject…</button></span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- NURSE -->
+          <sc-if value="{{isNurse}}" hint-placeholder-val="{{ false }}">
+            <div class="card" style="flex:1;min-height:0;overflow:hidden">
+              <div class="card-h"><span>Tasks due</span><span class="badge b-red num"><span class="dot"></span>1 overdue</span></div>
+              <div style="overflow:auto">
+                <sc-for list="{{tasks}}" as="t" hint-placeholder-count="5">
+                  <div class="row">
+                    <span class="num" style="width:44px;font-weight:600;color:{{t.color}}">{{t.time}}</span>
+                    <span style="flex:1;min-width:0"><span style="font-weight:600">{{t.task}}</span><span class="faint" style="display:block">{{t.patient}}</span></span>
+                    <button class="btn sm">Done</button>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div class="card" style="flex:none">
+              <div class="card-h"><span>Bed board</span><span class="num muted">Occupied 5 · Free 3</span></div>
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px 16px">
+                <sc-for list="{{beds}}" as="b" hint-placeholder-count="8">
+                  <div style="min-height:52px;border-radius:8px;border:1px solid var(--border);padding:6px 8px;background:{{b.bg}};color:{{b.fg}};font-size:12px"><span style="font-weight:700;display:block">Bed {{b.n}}</span><span>{{b.who}}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- DOCTOR -->
+          <sc-if value="{{isDoc}}" hint-placeholder-val="{{ false }}">
+            <div class="card" style="flex:1;min-height:0;overflow:hidden">
+              <div class="card-h"><span>Results inbox</span><span class="badge b-red num"><span class="dot"></span>1 critical</span></div>
+              <div style="overflow:auto">
+                <sc-for list="{{results}}" as="r" hint-placeholder-count="4">
+                  <div class="row">
+                    <span class="badge {{r.cls}}" style="width:88px;justify-content:flex-start"><span class="dot"></span>{{r.flag}}</span>
+                    <span style="flex:1;min-width:0"><span style="font-weight:600">{{r.test}} · {{r.name}}</span><span class="faint num" style="display:block">{{r.detail}}</span></span>
+                    <button class="btn sm">Open</button>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;flex:none">
+              <div class="card">
+                <div class="card-h"><span>Today's calendar</span></div>
+                <sc-for list="{{cal}}" as="c" hint-placeholder-count="3">
+                  <div class="row" style="min-height:40px;padding:6px 16px"><span class="num muted" style="width:44px">{{c.time}}</span><span style="font-weight:500">{{c.what}}</span></div>
+                </sc-for>
+              </div>
+              <div class="card">
+                <div class="card-h"><span>Inquiries to accept</span></div>
+                <div class="row" style="flex-direction:column;align-items:stretch;gap:8px">
+                  <span><span style="font-weight:600">Hakizimana Emmanuel</span><span class="faint" style="display:block">Follow-up hypertension · 16/10 10:30</span></span>
+                  <span style="display:flex;gap:8px"><button class="btn primary sm" style="flex:1">Accept</button><button class="btn danger sm" style="flex:1">Decline</button></span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- CASHIER -->
+          <sc-if value="{{isCash}}" hint-placeholder-val="{{ false }}">
+            <div class="card" style="flex:1;min-height:0;overflow:hidden">
+              <div class="card-h"><span>Open bills</span><span class="num muted">9 · RWF 268,900 due</span></div>
+              <div style="overflow:auto">
+                <sc-for list="{{bills}}" as="b" hint-placeholder-count="5">
+                  <div class="row">
+                    <span style="flex:1;min-width:0"><span style="font-weight:600">{{b.name}}</span><span class="faint" style="display:block">At {{b.station}}</span></span>
+                    <span class="num" style="font-weight:600;width:104px;text-align:right">{{b.amount}}</span>
+                    <button class="btn primary sm">Take payment</button>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div class="card" style="flex:none">
+              <div class="card-h"><span>Provisional receipts awaiting final numbers</span><span class="badge b-orange num"><span class="dot"></span>3 offline</span></div>
+              <sc-for list="{{provisional}}" as="p" hint-placeholder-count="3">
+                <div class="row" style="min-height:40px;padding:6px 16px"><span class="num" style="width:96px;color:var(--text2)">{{p.no}}</span><span style="flex:1;font-weight:500">{{p.name}}</span><span class="num muted">{{p.amount}}</span></div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </section>
+
+        <!-- ZONE 3: QUICK ACTIONS -->
+        <section class="card" aria-label="Quick actions" style="padding:12px;gap:8px">
+          <div style="font-weight:600;padding:4px 4px 8px">Quick actions</div>
+          <sc-for list="{{actions}}" as="a" hint-placeholder-count="4">
+            <a class="btn {{a.cls}}" href="{{a.href}}" style="min-height:56px;justify-content:flex-start;padding:0 14px;font-size:14px">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="{{a.icon}}"></path></svg>{{a.label}}
+            </a>
+          </sc-for>
+          <div style="flex:1"></div>
+          <div class="faint" style="padding:0 4px">Buttons stay ≥44 px and keep 30% spare width for Kinyarwanda / French labels.</div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"role":{"editor":"enum","options":["receptionist","nurse","doctor","cashier"],"default":"receptionist","section":"Variant"},"mode":{"editor":"enum","options":["normal","offline","empty"],"default":"normal","section":"Variant"},"theme":{"editor":"enum","options":["light","dim"],"default":"light","section":"Variant"},"$preview":{"width":1366,"height":768}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { role: null, theme: null, lang: 'EN', menu: false }; }
+  renderVals() {
+    const role = this.state.role || this.props.role || 'receptionist';
+    const mode = this.props.mode || 'normal';
+    const theme = this.state.theme || this.props.theme || 'light';
+    const isEmpty = mode === 'empty';
+    const isOffline = mode === 'offline';
+    const T = { red:'b-red', yellow:'b-yellow', green:'b-green' };
+    const q = (ticket,name,age,tri,wait,ins,action) => ({ ticket, name, age, triage: tri[0].toUpperCase()+tri.slice(1), triageCls: T[tri], wait, insurer: ins, action });
+    const R = {
+      receptionist: { user:'Uwimana Josiane', label:'Receptionist', queueTitle:'My queue · Reception',
+        nav:['Home','Patients','Appointments','Queue','Reports'],
+        queue:[ q('A-009','Niyonzima Jean Bosco','54 M','red','2 min','RSSB RAMA','Open'), q('A-012','Mukamana Alice','31 F','yellow','11 min','Mutuelle','Open'), q('A-014','Habimana Eric','8 M','yellow','9 min','Mutuelle','Open'), q('A-015','Ingabire Diane','27 F','green','18 min','MMI','Open'), q('A-016','Nshimiyimana Patrick','42 M','green','14 min','Cash','Open'), q('A-017','Umutoni Grace','63 F','green','6 min','Radiant','Open'), q('A-018','Bizimana Olivier','19 M','green','3 min','Prime','Open') ],
+        counts:{waiting:7,inProgress:3,done:28},
+        actions:[ ['Register patient','primary','M12 5v14M5 12h14'], ['Walk-in ticket','','M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4Z'], ['New appointment inquiry','','M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z'], ['Print card','','M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z'] ] },
+      nurse: { user:'Nyirahabimana Chantal', label:'Nurse', queueTitle:'My queue · Triage',
+        nav:['Home','Queue','Vitals','Beds','Tasks'],
+        queue:[ q('A-009','Niyonzima Jean Bosco','54 M','red','2 min','RSSB RAMA','Call'), q('A-012','Mukamana Alice','31 F','yellow','11 min','Mutuelle','Call'), q('A-014','Habimana Eric','8 M','yellow','9 min','Mutuelle','Call'), q('A-015','Ingabire Diane','27 F','green','18 min','MMI','Call'), q('A-016','Nshimiyimana Patrick','42 M','green','14 min','Cash','Call'), q('A-017','Umutoni Grace','63 F','green','6 min','Radiant','Call') ],
+        counts:{waiting:6,inProgress:1,done:31},
+        actions:[ ['Vitals','primary','M3 12h4l3-8 4 16 3-8h4'], ['Injection','','m18 2 4 4M14 4l6 6M10 8l6 6-8 8-6-6zM4 18l-2 2M8 12l2 2M11 9l2 2'], ['Dressing','','M4 4h16v16H4zM9 9h6v6H9z'], ['Admit to bed','','M2 18V9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v9M2 14h20M6 7V5h5v2'] ] },
+      doctor: { user:'Dr. Mukamana Béatrice', label:'Doctor · Consultation 1', queueTitle:'My queue · Consultation 1',
+        nav:['Home','Queue','Results','Prescriptions','Calendar'],
+        queue:[ q('A-009','Niyonzima Jean Bosco','54 M','red','4 min','RSSB RAMA','Call'), q('A-012','Mukamana Alice','31 F','yellow','19 min','Mutuelle','Call'), q('A-014','Habimana Eric','8 M','yellow','16 min','Mutuelle','Call'), q('A-015','Ingabire Diane','27 F','green','26 min','MMI','Call'), q('A-016','Nshimiyimana Patrick','42 M','green','22 min','Cash','Call') ],
+        counts:{waiting:5,inProgress:1,done:17},
+        actions:[ ['Open next patient','primary','M5 12h14m-6-6 6 6-6 6'], ['New prescription','','M12 5v14M5 12h14'], ['New order','','M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9'] ] },
+      cashier: { user:'Mugisha Samuel', label:'Cashier', queueTitle:'My queue · Cashier',
+        nav:['Home','Bills','Payments','Direct sales','Day close'],
+        queue:[ q('A-006','Iradukunda Sandrine','35 F','green','9 min','Cash','Open'), q('A-011','Rukundo Kevin','24 M','green','7 min','MTN MoMo','Open'), q('A-013','Uwase Claudine','48 F','yellow','5 min','Mutuelle','Open'), q('A-010','Hakizimana Emmanuel','58 M','green','3 min','RSSB RAMA','Open') ],
+        counts:{waiting:4,inProgress:1,done:36},
+        actions:[ ['Take payment','primary','M2 7h20v10H2zM12 12h.01M6 12h.01M18 12h.01'], ['Direct sale','','M6 6h15l-1.5 9h-12zM6 6 5 3H2M9 21h.01M18 21h.01'], ['Day close','','M12 8v4l3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'] ] }
+    };
+    const d = R[role];
+    const navHref = (l) => l === 'Reports' ? 'Dashboard.dc.html' : 'Main.dc.html';
+    const roleOptions = Object.keys(R).map(k => ({ key:k, user:R[k].user, label:R[k].label, pick: () => this.setState({ role:k, menu:false }) }));
+    const initials = d.user.replace('Dr. ','').split(' ').map(s=>s[0]).slice(0,2).join('');
+    const bed = (n, who, state) => ({ n, who, bg: state==='free' ? 'var(--green-bg)' : (state==='clean' ? 'var(--yellow-bg)' : 'var(--hover)'), fg: state==='free' ? 'var(--green)' : (state==='clean' ? 'var(--yellow)' : 'var(--text)') });
+    return {
+      themeClass: 'theme-' + theme, themeLabel: theme === 'light' ? 'Switch to dim theme' : 'Switch to light theme',
+      toggleTheme: () => this.setState({ theme: theme === 'light' ? 'dim' : 'light', menu:false }),
+      isOffline, isSynced: !isOffline, isEmpty, hasQueue: !isEmpty,
+      isRec: role==='receptionist', isNurse: role==='nurse', isDoc: role==='doctor', isCash: role==='cashier',
+      roleLabel: d.label, userName: d.user, userInitials: initials, menuOpen: this.state.menu,
+      toggleMenu: () => this.setState({ menu: !this.state.menu }), roleOptions,
+      langs: ['KIN','EN','FR'].map(c => ({ code:c, cls: c===this.state.lang ? 'on' : '', pick: () => this.setState({ lang:c }) })),
+      clock: isOffline ? '14:52' : (isEmpty ? '07:42' : '12:45'),
+      nav: d.nav.map((l,i) => ({ label:l, href: navHref(l), cls: i===0 ? 'active' : '' })),
+      now: isEmpty ? { inClinic:2, avgWait:0, beds:'3 / 8' } : { inClinic:23, avgWait:18, beds:'5 / 8' },
+      queueTitle: d.queueTitle, queue: d.queue, counts: isEmpty ? {waiting:0,inProgress:0,done:0} : d.counts,
+      actions: d.actions.map(a => ({ label:a[0], cls:a[1], icon:a[2], href: 'Main.dc.html' })),
+      appt: isEmpty ? {arrived:0,due:0,late:0} : {arrived:14,due:9,late:3},
+      appts: [ {time:'12:30',name:'Uwase Claudine',doctor:'Dr. Mukamana · Consultation 1',status:'Late',cls:'b-red'}, {time:'13:00',name:'Hakizimana Emmanuel',doctor:'Dr. Mukamana · Consultation 1',status:'Due',cls:'b-blue'}, {time:'13:00',name:'Rukundo Kevin',doctor:'Dr. Ndayisaba · Dental',status:'Arrived',cls:'b-green'}, {time:'13:30',name:'Iradukunda Sandrine',doctor:'Ultrasound',status:'Due',cls:'b-blue'}, {time:'14:00',name:'Umutoni Grace',doctor:'Dr. Mukamana · Consultation 1',status:'Due',cls:'b-blue'} ],
+      inquiries: [ {name:'Mukeshimana Aline', detail:'Dental · asks for Fri 16/10 14:00 · via WhatsApp'}, {name:'Nsengiyumva Claude', detail:'Ultrasound · asks for Sat 17/10 09:00 · via SMS'} ],
+      tasks: [ {time:'12:30',task:'Repeat vitals',patient:'Niyonzima Jean Bosco · Bed 2',color:'var(--red)'}, {time:'13:00',task:'Injection · Ceftriaxone 1 g IV',patient:'Umutoni Grace · Bed 4',color:'var(--text)'}, {time:'13:15',task:'Dressing change',patient:'Bizimana Olivier · Minor surgery',color:'var(--text)'}, {time:'14:00',task:'Repeat vitals',patient:'Habimana Eric · Bed 1',color:'var(--text)'}, {time:'15:00',task:'Injection · Oxytocin',patient:'Ingabire Diane · Bed 3',color:'var(--text)'} ],
+      beds: [ bed(1,'Habimana E.','occ'), bed(2,'Niyonzima J.','occ'), bed(3,'Ingabire D.','occ'), bed(4,'Umutoni G.','occ'), bed(5,'Uwase C.','occ'), bed(6,'Free','free'), bed(7,'Free','free'), bed(8,'Cleaning','clean') ],
+      results: [ {flag:'Critical',cls:'b-red',test:'Potassium',name:'Niyonzima Jean Bosco',detail:'6.4 mmol/L · ref 3.5–5.1 · 12:20'}, {flag:'Abnormal',cls:'b-yellow',test:'Haemoglobin',name:'Mukamana Alice',detail:'9.1 g/dL · ref 12–16 · 12:05'}, {flag:'Abnormal',cls:'b-yellow',test:'Glucose (fasting)',name:'Hakizimana Emmanuel',detail:'8.9 mmol/L · ref 3.9–5.6 · 11:40'}, {flag:'Normal',cls:'b-green',test:'Malaria RDT',name:'Habimana Eric',detail:'Negative · 11:30'}, {flag:'Normal',cls:'b-green',test:'Urinalysis',name:'Ingabire Diane',detail:'No abnormality · 11:10'} ],
+      cal: [ {time:'13:00',what:'Hakizimana Emmanuel · follow-up'}, {time:'14:00',what:'Umutoni Grace · review'}, {time:'16:00',what:'Staff meeting · Room 2'} ],
+      bills: [ {name:'Iradukunda Sandrine',station:'Pharmacy',amount:'RWF 18,300'}, {name:'Rukundo Kevin',station:'Dental',amount:'RWF 45,000'}, {name:'Uwase Claudine',station:'Laboratory',amount:'RWF 12,600'}, {name:'Hakizimana Emmanuel',station:'Consultation 1',amount:'RWF 8,000'}, {name:'Nshimiyimana Patrick',station:'Ultrasound',amount:'RWF 25,000'} ],
+      provisional: [ {no:'PR-2026-0412',name:'Bizimana Olivier',amount:'RWF 6,500'}, {no:'PR-2026-0413',name:'Umutoni Grace',amount:'RWF 21,400'}, {no:'PR-2026-0414',name:'Ingabire Diane',amount:'RWF 3,000'} ]
+    };
+  }
+}
+</script>
+</body>
+</html>

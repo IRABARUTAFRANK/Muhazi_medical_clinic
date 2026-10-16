@@ -1,0 +1,51 @@
+{
+  "name": "@mmc/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Muhazi Medical Clinic System — React + Vite PWA (public site and staff app)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "pnpm typecheck && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "@mmc/shared": "workspace:*",
+    "@supabase/supabase-js": "2.118.0",
+    "@tanstack/react-query": "5.104.3",
+    "@tanstack/react-router": "1.170.44",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "i18next": "26.4.5",
+    "lucide-react": "1.57.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-i18next": "17.0.17",
+    "tailwind-merge": "3.7.0",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@tanstack/router-plugin": "1.168.46",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "eslint": "10.12.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.13.0",
+    "jsdom": "30.1.3",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}

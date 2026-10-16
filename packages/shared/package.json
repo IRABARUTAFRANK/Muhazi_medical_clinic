@@ -1,0 +1,20 @@
+{
+  "name": "@mmc/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Types, formatters, booking rules, i18n resources and sample data shared by every Muhazi Medical Clinic app",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./i18n": "./src/i18n/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}

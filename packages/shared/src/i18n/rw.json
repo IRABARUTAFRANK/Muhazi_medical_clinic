@@ -1,0 +1,295 @@
+{
+  "_note": "Draft Kinyarwanda strings to be reviewed by the clinical champion. Missing keys fall back to English.",
+  "app": {
+    "clinicName": "Muhazi Medical Clinic",
+    "systemName": "Sisitemu y'ivuriro",
+    "place": "Kiramuruzi · Gatsibo · u Rwanda",
+    "shortPlace": "Sisitemu y'ivuriro · Gatsibo",
+    "tagline": "Ubuvuzi bwiza, ubuzima bwiza."
+  },
+  "lang": {
+    "label": "Ururimi"
+  },
+  "common": {
+    "staffSignIn": "Abakozi: injira",
+    "signIn": "Injira",
+    "signOut": "Sohoka",
+    "backToSite": "Subira ku rubuga rusange",
+    "findDoctor": "Shaka muganga",
+    "open": "Fungura",
+    "call": "Hamagara",
+    "done": "Byarangiye",
+    "approve": "Emeza",
+    "reject": "Hakana…",
+    "accept": "Emera",
+    "decline": "Anga",
+    "searchPatient": "Shakisha umurwayi (izina, indangamuntu, telefoni, nimero ya dosiye)",
+    "switchUser": "Hindura ukoresha",
+    "nightUse": "Gukoresha nijoro",
+    "toDim": "Hindura ibara ry'ijoro",
+    "toLight": "Hindura ibara ry'amanywa",
+    "more": "Ibindi",
+    "home": "Ahabanza",
+    "dashboard": "Imbonerahamwe",
+    "reports": "Raporo",
+    "settings": "Igenamiterere",
+    "manager": "Umuyobozi",
+    "min": "min",
+    "sendRequest": "Ohereza ubusabe",
+    "notConfirmed": "Ntiburemezwa",
+    "makeAnother": "Kora ubundi busabe",
+    "previousWeek": "Icyumweru gishize",
+    "nextWeek": "Icyumweru gitaha",
+    "quickActions": "Ibikorwa byihuse",
+    "close": "Funga",
+    "menu": "Ibikubiyemo",
+    "closeMenu": "Funga"
+  },
+  "days": {
+    "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],
+    "long": [
+      "Ku cyumweru",
+      "Kuwa mbere",
+      "Kuwa kabiri",
+      "Kuwa gatatu",
+      "Kuwa kane",
+      "Kuwa gatanu",
+      "Kuwa gatandatu"
+    ]
+  },
+  "nav": {
+    "services": "Serivisi",
+    "findDoctor": "Shaka muganga",
+    "book": "Fata gahunda",
+    "insurance": "Ubwishingizi",
+    "visit": "Amasaha n'aho duherereye",
+    "home": "Ahabanza",
+    "patients": "Abarwayi",
+    "appointments": "Gahunda",
+    "queue": "Umurongo",
+    "reports": "Raporo",
+    "vitals": "Ibipimo",
+    "beds": "Ibitanda",
+    "tasks": "Imirimo",
+    "results": "Ibisubizo",
+    "prescriptions": "Impapuro z'imiti",
+    "calendar": "Kalendari",
+    "bills": "Fagitire",
+    "payments": "Ubwishyu",
+    "directSales": "Kugurisha",
+    "dayClose": "Gufunga umunsi",
+    "dashboard": "Imbonerahamwe",
+    "stock": "Ububiko",
+    "settings": "Igenamiterere",
+    "staff": "Abakozi",
+    "changePin": "Hindura PIN"
+  },
+  "roles": {
+    "receptionist": "Umwakira",
+    "nurse": "Umuforomo",
+    "doctor": "Muganga",
+    "cashier": "Umucungamari",
+    "manager": "Umuyobozi / Nyir'ivuriro",
+    "headOf": "Umuyobozi wa {{station}}",
+    "headOfStation": "Umuyobozi w'ishami",
+    "view": "Ishusho ya {{role}}",
+    "withStation": "{{role}} · {{station}}"
+  },
+  "sync": {
+    "synced": "Byahujwe",
+    "syncing": "Birimo guhuzwa…",
+    "offline": "Nta murongo kuva {{time}} · {{count}} bitegereje",
+    "banner": "Ukora nta murongo — impinduka zizahuzwa zonyine"
+  },
+  "categories": {
+    "all": "Serivisi zose",
+    "consultation": "Gusuzuma",
+    "dental": "Kuvura amenyo",
+    "laboratory": "Ibizamini",
+    "ultrasound": "Guca mu cyuma",
+    "nursing": "Kwita ku barwayi",
+    "surgery": "Kubaga byoroheje",
+    "fp": "Kuboneza urubyaro",
+    "hiv": "Ipimwa rya SIDA n'inkingo",
+    "circ": "Gusiramura"
+  },
+  "services": {
+    "consultation": {
+      "name": "Gusuzuma"
+    },
+    "laboratory": {
+      "name": "Ibizamini"
+    },
+    "dental": {
+      "name": "Kuvura amenyo"
+    },
+    "ultrasound": {
+      "name": "Guca mu cyuma"
+    },
+    "nursing": {
+      "name": "Kwita ku barwayi"
+    },
+    "surgery": {
+      "name": "Kubaga byoroheje"
+    },
+    "circ": {
+      "name": "Gusiramura"
+    },
+    "fp": {
+      "name": "Kuboneza urubyaro"
+    },
+    "hiv": {
+      "name": "Ipimwa rya SIDA n'inkingo"
+    }
+  },
+  "price": {
+    "from": "Guhera kuri {{price}}",
+    "free": "Ubuntu",
+    "freeMutuelle": "Ubuntu kuri Mituweli",
+    "ask": "Baza ku bwakiriro"
+  },
+  "landing": {
+    "heroTitle1": "Ubuvuzi bwiza,",
+    "heroTitle2": "ubuzima bwiza.",
+    "ctaBook": "Shaka muganga ufate gahunda",
+    "ctaCall": "Hamagara {{phone}}",
+    "signin": {
+      "title": "Abakozi: injira",
+      "username": "Izina ukoresha cyangwa nimero y'umukozi",
+      "pin": "PIN",
+      "remember": "Ibuka iki gikoresho",
+      "forgot": "Wibagiwe PIN?",
+      "button": "Injira"
+    },
+    "services": {
+      "title": "Ibyo dutanga"
+    },
+    "book": {
+      "title": "Fata gahunda mu ntambwe eshatu",
+      "formTitle": "Saba gahunda yo kwa muganga"
+    },
+    "insurance": {
+      "title": "Ubwishingizi twakira"
+    },
+    "visit": {
+      "hours": "Amasaha dufungura",
+      "findUs": "Aho duherereye",
+      "allDay": "Amasaha 24",
+      "monSun": "Kuwa mbere – Ku cyumweru"
+    },
+    "footer": {
+      "services": "Serivisi",
+      "patients": "Ku barwayi",
+      "clinic": "Ivuriro",
+      "hours": "Amasaha dufungura",
+      "contact": "Twandikire",
+      "staffArea": "Abakozi"
+    },
+    "status": {
+      "open": "Turafunguye · dufunga {{closes}}",
+      "closed": "Turafunze · dufungura {{opens}}",
+      "wait": "gutegereza hafi iminota {{wait}}",
+      "open24": "Turafunguye · amasaha 24 ku munsi"
+    },
+    "badges": {
+      "days": "Dufungura amasaha 24, iminsi 7"
+    }
+  },
+  "booking": {
+    "title": "Shaka muganga uhitemo isaha",
+    "legendFree": "Harimo",
+    "legendBooked": "Byafashwe",
+    "legendChoice": "Icyo wahisemo",
+    "yourRequest": "Ubusabe bwawe"
+  },
+  "home": {
+    "clinicNow": "Ivuriro ubu",
+    "myQueue": "Umurongo wanjye · {{station}}",
+    "waiting": "Bategereje {{count}}",
+    "inProgress": "Birimo gukorwa {{count}}",
+    "done": "Byarangiye {{count}}",
+    "triage": {
+      "red": "Umutuku",
+      "yellow": "Umuhondo",
+      "green": "Icyatsi"
+    },
+    "flags": {
+      "critical": "Bikomeye",
+      "abnormal": "Bidasanzwe",
+      "normal": "Bisanzwe"
+    },
+    "apptStatus": {
+      "arrived": "Yageze",
+      "due": "Ategerejwe",
+      "late": "Yakerewe"
+    },
+    "emptyQueueTitle": "Nta muntu urategereza",
+    "todaysAppointments": "Gahunda z'uyu munsi",
+    "tasksDue": "Imirimo igomba gukorwa",
+    "bedBoard": "Ibitanda",
+    "bedFree": "Kirimo",
+    "bedCleaning": "Kirimo gusukurwa",
+    "resultsInbox": "Ibisubizo byaje",
+    "openBills": "Fagitire zitarishyurwa",
+    "takePayment": "Akira ubwishyu",
+    "actions": {
+      "registerPatient": "Andika umurwayi",
+      "walkInTicket": "Itike",
+      "printCard": "Sohora ikarita",
+      "vitals": "Ibipimo",
+      "injection": "Urushinge",
+      "dressing": "Gupfuka igikomere",
+      "admit": "Shyira ku gitanda",
+      "openNext": "Fungura umurwayi ukurikira",
+      "newPrescription": "Urupapuro rw'imiti rushya",
+      "takePayment": "Akira ubwishyu",
+      "directSale": "Kugurisha",
+      "dayClose": "Gufunga umunsi"
+    }
+  },
+  "dashboard": {
+    "title": "Imbonerahamwe y'ivuriro",
+    "ranges": {
+      "today": "Uyu munsi",
+      "week": "Iki cyumweru",
+      "month": "Uku kwezi",
+      "custom": "Hitamo"
+    },
+    "sections": {
+      "today": "Imibare y'uyu munsi",
+      "money": "Amafaranga",
+      "ops": "Imikorere",
+      "clinical": "Ubuvuzi n'ububiko",
+      "compliance": "Kubahiriza amategeko na sisitemu"
+    },
+    "tiles": {
+      "registered": "Abarwayi banditswe",
+      "waiting": "Abarwayi bategereje",
+      "avgWait": "Igihe cyo gutegereza",
+      "revenue": "Amafaranga yinjiye uyu munsi",
+      "openBills": "Fagitire zitarishyurwa",
+      "beds": "Ibitanda birimo abantu"
+    }
+  },
+  "staff": {
+    "title": "Abakozi",
+    "newEmployee": "Umukozi mushya",
+    "active": "Arakora",
+    "deactivated": "Yahagaritswe",
+    "resetPin": "Hindura PIN",
+    "deactivate": "Hagarika",
+    "reactivate": "Subizaho"
+  },
+  "pin": {
+    "changeTitle": "Hitamo PIN yawe bwite",
+    "new": "PIN nshya",
+    "confirm": "Subiramo PIN nshya",
+    "save": "Bika PIN"
+  },
+  "lock": {
+    "title": "Byafunzwe nyuma y'iminota 5",
+    "body": "Andika PIN yawe ukomeze nka {{name}}.",
+    "unlock": "Fungura",
+    "wrong": "PIN si yo."
+  }
+}

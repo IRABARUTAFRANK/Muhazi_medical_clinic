@@ -1,0 +1,301 @@
+/*
+ * Public-site brand layer, derived from the clinic logo:
+ * royal blue lettering, bright green hills, sky-blue lake, a sun of gold.
+ * Scoped to `.theme-public` so the staff app keeps the calmer design tokens.
+ */
+:root {
+  --brand-blue: #1d4fae;
+  --brand-blue-deep: #133a86;
+  --brand-blue-bright: #2f6fe0;
+  --brand-navy: #0f2f6e;
+  --brand-navy-deep: #0b2252;
+  --brand-green: #37a935;
+  --brand-green-deep: #2a8a2a;
+  --brand-green-light: #7bd36a;
+  --brand-sky: #39a9df;
+  --brand-gold: #f6c544;
+}
+
+/* Public pages: primary becomes the logo blue, everything else keeps the tokens. */
+.theme-public {
+  --mmc-primary: var(--brand-blue);
+  --mmc-primary-hover: #17428f;
+  --mmc-primary-tint: #e7eefb;
+  --mmc-blue: var(--brand-blue);
+  --mmc-blue-bg: #e7eefb;
+  --mmc-blue-dot: var(--brand-blue);
+}
+
+/* ---------- surfaces ---------- */
+.hero-gradient {
+  background:
+    radial-gradient(1100px 560px at 88% -12%, rgba(57, 169, 223, 0.6), transparent 62%),
+    radial-gradient(900px 520px at -8% 112%, rgba(55, 169, 53, 0.65), transparent 60%),
+    linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-blue) 52%, #1f7a3f 100%);
+}
+.dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 85%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 85%);
+}
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(64px);
+  opacity: 0.55;
+  pointer-events: none;
+  will-change: transform;
+}
+.glass {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.soft-gradient {
+  background: linear-gradient(180deg, #f5f9ff 0%, #f2fbf3 100%);
+}
+.band-gradient {
+  background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-blue) 60%, #1f6f3f 100%);
+}
+.footer-gradient {
+  background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-navy-deep) 100%);
+}
+.brand-bar {
+  background: linear-gradient(
+    90deg,
+    var(--brand-green) 0%,
+    var(--brand-sky) 50%,
+    var(--brand-blue) 100%
+  );
+}
+.icon-gradient {
+  background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-green) 100%);
+  box-shadow: 0 8px 20px rgba(29, 79, 174, 0.22);
+}
+.step-gradient {
+  background: linear-gradient(135deg, var(--brand-blue-bright) 0%, var(--brand-green) 100%);
+}
+.card-glow {
+  border: 1px solid var(--mmc-border);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+.card-glow:hover {
+  transform: translateY(-4px);
+  border-color: rgba(29, 79, 174, 0.35);
+  box-shadow: 0 18px 44px rgba(19, 58, 134, 0.14);
+}
+
+/* ---------- buttons on the hero ---------- */
+.btn-brand-green {
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-deep) 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(55, 169, 53, 0.35);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+.btn-brand-green:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 16px 34px rgba(55, 169, 53, 0.42);
+  color: #fff;
+}
+.btn-glass {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* ---------- text ---------- */
+.text-shine {
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-light) 0%,
+    #d7f7cf 25%,
+    var(--brand-green-light) 50%,
+    #9fd9f2 75%,
+    var(--brand-green-light) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: mmc-shimmer 7s linear infinite;
+}
+.eyebrow {
+  color: var(--brand-green-deep);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ---------- motion ---------- */
+@keyframes mmc-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+@keyframes mmc-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(34px, -22px) scale(1.06);
+  }
+  66% {
+    transform: translate(-22px, 18px) scale(0.96);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+@keyframes mmc-pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+@keyframes mmc-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+@keyframes mmc-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes mmc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anim-float {
+  animation: mmc-float 6s ease-in-out infinite;
+}
+.anim-float-slow {
+  animation: mmc-float 10s ease-in-out infinite;
+}
+.anim-drift {
+  animation: mmc-drift 20s ease-in-out infinite;
+}
+.anim-drift-2 {
+  animation: mmc-drift 26s ease-in-out infinite reverse;
+}
+.anim-rise {
+  animation: mmc-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.pulse-ring {
+  position: relative;
+}
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: mmc-pulse-ring 1.8s ease-out infinite;
+}
+
+/* Reveal on scroll (driven by useReveal) */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+[data-reveal][data-delay='1'] {
+  transition-delay: 0.08s;
+}
+[data-reveal][data-delay='2'] {
+  transition-delay: 0.16s;
+}
+[data-reveal][data-delay='3'] {
+  transition-delay: 0.24s;
+}
+
+/* Marquee (insurers) */
+.marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  animation: mmc-marquee 32s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-float,
+  .anim-float-slow,
+  .anim-drift,
+  .anim-drift-2,
+  .anim-rise,
+  .text-shine,
+  .marquee-track {
+    animation: none;
+  }
+  .pulse-ring::after {
+    display: none;
+  }
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .card-glow:hover,
+  .btn-brand-green:hover {
+    transform: none;
+  }
+}
+
+@media print {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,0 +1,72 @@
+/* Muhazi Medical Clinic System — design tokens
+   Source of truth for the UI. Import once at the app root. */
+
+:root {
+  /* Brand / primary */
+  --mmc-primary: #1F6F8B;
+  --mmc-primary-hover: #185B72;
+  --mmc-primary-tint: #E6F1F5;
+  --mmc-on-primary: #FFFFFF;
+
+  /* Surfaces & text (light theme) */
+  --mmc-bg: #F4F6F8;
+  --mmc-card: #FFFFFF;
+  --mmc-border: #D9DEE3;
+  --mmc-grid: #E6EAEE;
+  --mmc-hover: #EEF2F5;
+  --mmc-text: #1F2933;
+  --mmc-text-2: #52606D;
+  --mmc-text-3: #616E7C;   /* 5.3:1 on white — minimum for captions */
+
+  /* Semantic — ALWAYS paired with an icon, dot or word, never colour alone */
+  --mmc-red: #B42318;      --mmc-red-bg: #FDECEA;     --mmc-red-dot: #D92D20;   /* triage red, critical, sync failed */
+  --mmc-yellow: #7A5000;   --mmc-yellow-bg: #FFF3C4;  --mmc-yellow-dot: #E0A800;/* triage yellow, abnormal, needs attention */
+  --mmc-green: #1E7B34;    --mmc-green-bg: #E3F5E7;   --mmc-green-dot: #2EA043; /* triage green, normal, synced, arrived */
+  --mmc-blue: #1F6F8B;     --mmc-blue-bg: #E6F1F5;    --mmc-blue-dot: #1F6F8B;  /* syncing, due, in progress */
+  --mmc-orange: #B5440F;   --mmc-orange-bg: #FFE8D9;  --mmc-orange-dot: #E8671B;/* offline, provisional */
+
+  /* Charts — one colour per subject, everywhere */
+  --mmc-c-money: #1F6F8B;
+  --mmc-c-visits: #2F8F5B;
+  --mmc-c-time: #5B6E85;
+
+  /* Type */
+  --mmc-font: Inter, "Segoe UI", system-ui, sans-serif;
+  --mmc-fs-12: 12px; --mmc-fs-14: 14px; --mmc-fs-16: 16px;
+  --mmc-fs-20: 20px; --mmc-fs-24: 24px; --mmc-fs-32: 32px;
+
+  /* Spacing, radius, touch */
+  --mmc-sp-1: 4px; --mmc-sp-2: 8px; --mmc-sp-3: 12px;
+  --mmc-sp-4: 16px; --mmc-sp-6: 24px; --mmc-sp-8: 32px;
+  --mmc-radius: 8px;
+  --mmc-touch: 44px;
+  --mmc-shadow: 0 8px 24px rgba(31,41,51,.14); /* sheets and dialogs only */
+}
+
+/* Dim theme for night use: add data-theme="dim" on <html> */
+:root[data-theme="dim"] {
+  --mmc-bg: #0F1720;
+  --mmc-card: #182230;
+  --mmc-border: #2B3747;
+  --mmc-grid: #243040;
+  --mmc-hover: #1F2B3A;
+  --mmc-text: #E7ECF1;
+  --mmc-text-2: #B4BEC8;
+  --mmc-text-3: #95A1AD;
+  --mmc-primary: #5CB3D0;
+  --mmc-primary-hover: #7CC4DC;
+  --mmc-primary-tint: #1A3340;
+  --mmc-on-primary: #0B1B22;
+  --mmc-red: #F49C94;    --mmc-red-bg: #3A1F1E;
+  --mmc-yellow: #F2C94C; --mmc-yellow-bg: #3A3015;
+  --mmc-green: #8BD9A4;  --mmc-green-bg: #173125;
+  --mmc-blue: #5CB3D0;   --mmc-blue-bg: #1A3340;
+  --mmc-orange: #F5A26B; --mmc-orange-bg: #3C2615;
+  --mmc-c-money: #5CB3D0;
+  --mmc-c-visits: #6FCB95;
+  --mmc-c-time: #9DB0C6;
+  --mmc-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+
+/* Tabular numbers for money, vitals, times */
+.mmc-num { font-variant-numeric: tabular-nums; }

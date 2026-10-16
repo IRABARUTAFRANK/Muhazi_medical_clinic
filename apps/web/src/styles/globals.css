@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import './brand.css';
+
+/*
+ * Tailwind theme mapped onto the design tokens (tokens.css is the source of truth).
+ * Utilities read the --mmc-* variables at runtime, so the dim theme
+ * (`<html data-theme="dim">`) switches every colour without extra classes.
+ */
+@theme {
+  /* Drop Tailwind's default palette: every colour must come from tokens.css. */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Tablet layout at ≤ 900 px, PC layout from 901 px (design README).
+     Kept in rem like Tailwind's own breakpoints so the variants sort correctly. */
+  --breakpoint-pc: 56.3125rem; /* 901px */
+  --breakpoint-wide: 100rem; /* 1600px */
+
+  /* Type scale 12 / 14 / 16 / 20 / 24 / 32. */
+  --text-3xl: 32px;
+  --text-3xl--line-height: 1.1;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', var(--mmc-font);
+
+  --color-primary: var(--mmc-primary);
+  --color-primary-hover: var(--mmc-primary-hover);
+  --color-primary-tint: var(--mmc-primary-tint);
+  --color-on-primary: var(--mmc-on-primary);
+
+  --color-surface: var(--mmc-bg);
+  --color-card: var(--mmc-card);
+  --color-border: var(--mmc-border);
+  --color-grid: var(--mmc-grid);
+  --color-hover: var(--mmc-hover);
+  --color-ink: var(--mmc-text);
+  --color-ink-2: var(--mmc-text-2);
+  --color-ink-3: var(--mmc-text-3);
+
+  --color-red: var(--mmc-red);
+  --color-red-bg: var(--mmc-red-bg);
+  --color-red-dot: var(--mmc-red-dot);
+  --color-yellow: var(--mmc-yellow);
+  --color-yellow-bg: var(--mmc-yellow-bg);
+  --color-yellow-dot: var(--mmc-yellow-dot);
+  --color-green: var(--mmc-green);
+  --color-green-bg: var(--mmc-green-bg);
+  --color-green-dot: var(--mmc-green-dot);
+  --color-blue: var(--mmc-blue);
+  --color-blue-bg: var(--mmc-blue-bg);
+  --color-blue-dot: var(--mmc-blue-dot);
+  --color-orange: var(--mmc-orange);
+  --color-orange-bg: var(--mmc-orange-bg);
+  --color-orange-dot: var(--mmc-orange-dot);
+
+  --color-c-money: var(--mmc-c-money);
+  --color-c-visits: var(--mmc-c-visits);
+  --color-c-time: var(--mmc-c-time);
+
+  --shadow-sheet: var(--mmc-shadow);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background: var(--mmc-bg);
+    color: var(--mmc-text);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  a {
+    color: var(--mmc-primary);
+  }
+  button {
+    cursor: pointer;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--mmc-text-3);
+  }
+  svg {
+    flex: none;
+  }
+}
+
+@layer components {
+  /* Offline banner colours are fixed in the design (same in both themes). */
+  .offline-banner {
+    background: #fff3c4;
+    color: #5c3d00;
+    border-color: #e8d27a;
+  }
+}

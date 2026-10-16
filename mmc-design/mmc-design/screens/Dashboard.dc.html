@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clinic dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F6F8B}a:hover{color:#185B72}
+.mmc{font-family:Inter,"Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.4;color:var(--text);background:var(--bg);box-sizing:border-box}
+.mmc *{box-sizing:border-box}
+.theme-light{--bg:#F4F6F8;--card:#FFFFFF;--border:#D9DEE3;--grid:#E6EAEE;--text:#1F2933;--text2:#52606D;--text3:#616E7C;--primary:#1F6F8B;--primary-hover:#185B72;--primary-tint:#E6F1F5;--onprimary:#FFFFFF;--red:#B42318;--red-bg:#FDECEA;--yellow:#7A5000;--yellow-bg:#FFF3C4;--green:#1E7B34;--green-bg:#E3F5E7;--blue:#1F6F8B;--blue-bg:#E6F1F5;--orange:#B5440F;--orange-bg:#FFE8D9;--hover:#EEF2F5;--c-money:#1F6F8B;--c-visits:#2F8F5B;--c-time:#5B6E85;--shadow:0 8px 24px rgba(31,41,51,.14)}
+.theme-dim{--bg:#0F1720;--card:#182230;--border:#2B3747;--grid:#243040;--text:#E7ECF1;--text2:#B4BEC8;--text3:#95A1AD;--primary:#5CB3D0;--primary-hover:#7CC4DC;--primary-tint:#1A3340;--onprimary:#0B1B22;--red:#F49C94;--red-bg:#3A1F1E;--yellow:#F2C94C;--yellow-bg:#3A3015;--green:#8BD9A4;--green-bg:#173125;--blue:#5CB3D0;--blue-bg:#1A3340;--orange:#F5A26B;--orange-bg:#3C2615;--hover:#1F2B3A;--c-money:#5CB3D0;--c-visits:#6FCB95;--c-time:#9DB0C6;--shadow:0 8px 24px rgba(0,0,0,.5)}
+.num{font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font:inherit;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--onprimary)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;min-width:0}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px}
+.card-b{padding:12px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.badge{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.badge .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.b-green{background:var(--green-bg);color:var(--green)}.b-green .dot{background:#2EA043}
+.b-yellow{background:var(--yellow-bg);color:var(--yellow)}.b-yellow .dot{background:#E0A800}
+.b-red{background:var(--red-bg);color:var(--red)}.b-red .dot{background:#D92D20}
+.b-blue{background:var(--blue-bg);color:var(--blue)}.b-blue .dot{background:#1F6F8B}
+.b-orange{background:var(--orange-bg);color:var(--orange)}.b-orange .dot{background:#E8671B}
+.b-grey{background:var(--hover);color:var(--text2);border:1px solid var(--border)}
+.rail a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;color:var(--text2);text-decoration:none;font-weight:500}
+.rail a:hover{background:var(--hover);color:var(--text)}
+.rail a.active{background:var(--primary-tint);color:var(--primary);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:40px}
+.seg button{font:inherit;font-weight:600;font-size:13px;border:0;background:var(--card);color:var(--text2);min-width:44px;padding:0 12px;cursor:pointer}
+.seg button.on{background:var(--primary);color:var(--onprimary)}
+.seg.sm{height:36px}.seg.sm button{font-size:12px;padding:0 10px}
+.muted{color:var(--text2)}.faint{color:var(--text3);font-size:12px}
+.input{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text3);font-size:14px}
+.input input{border:0;outline:0;background:transparent;font:inherit;color:var(--text);flex:1;min-width:0}
+.select{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font:inherit;font-weight:500;color:var(--text);cursor:pointer}
+.tile{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile .lbl{font-size:12px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.tile .val{font-size:32px;font-weight:700;line-height:1.1;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.tile .val small{font-size:14px;font-weight:500;color:var(--text2)}
+.tile .chg{font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px}
+.hbar{display:grid;grid-template-columns:minmax(96px,120px) 1fr auto;align-items:center;gap:8px;min-height:24px}
+.hbar .lab{font-size:13px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbar .track{height:16px;background:var(--hover);border-radius:4px;overflow:hidden}
+.hbar .fill{height:100%;border-radius:4px}
+.hbar .v{font-size:13px;font-weight:600;white-space:nowrap}
+.rank{display:flex;align-items:center;gap:10px;min-height:28px;font-size:13px}
+.rank .n{width:20px;color:var(--text3);font-weight:600}
+.rank .bar{height:8px;border-radius:4px;background:var(--c-visits)}
+.section-t{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 -4px}
+.lrow{display:flex;align-items:center;gap:10px;min-height:36px;font-size:13px;border-bottom:1px solid var(--grid)}
+.lrow:last-child{border-bottom:0}
+.mini{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border:1px solid var(--border);border-radius:8px;flex:1}
+.mini b{font-size:24px}
+</style>
+</helmet>
+
+<div class="mmc {{themeClass}}" style="width:100%;min-width:1280px;display:flex;flex-direction:column;position:relative">
+
+  <!-- TOP BAR -->
+  <header style="height:56px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--border);position:relative;z-index:6">
+    <a href="Main.dc.html" aria-label="Muhazi Medical Clinic home" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);min-width:220px">
+      <img src="/_blob/95ac6983d2cc80670c495523ee35aef3" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
+      <span style="display:flex;flex-direction:column;line-height:1.15"><span style="font-weight:700;font-size:14px">Muhazi Medical Clinic</span><span class="faint">Clinic System · Kayonza</span></span>
+    </a>
+    <label class="input" style="flex:1;max-width:420px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input type="search" placeholder="Search patient (name, ID, phone, file no.)" aria-label="Search patient">
+    </label>
+    <div style="flex:1"></div>
+    <span class="badge b-blue"><span class="dot"></span>Syncing…</span>
+    <div style="position:relative">
+      <button class="btn" style="min-height:40px;padding:0 10px 0 6px;gap:10px" onClick="{{toggleMenu}}" aria-label="Current user, tap to switch">
+        <span style="width:28px;height:28px;border-radius:50%;background:var(--primary-tint);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">{{userInitials}}</span>
+        <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.15"><span style="font-size:13px">{{userName}}</span><span class="faint" style="font-weight:500">{{roleLabel}}</span></span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+      </button>
+      <sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:52px;right:0;width:260px;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);padding:8px;z-index:5;display:flex;flex-direction:column">
+          <div class="faint" style="padding:6px 12px">Switch user</div>
+          <button class="btn" style="justify-content:space-between;border:0;font-weight:500" onClick="{{pickManager}}"><span>Mugabo Théogène</span><span class="faint">Manager</span></button>
+          <button class="btn" style="justify-content:space-between;border:0;font-weight:500" onClick="{{pickHead}}"><span>Dr. Ndayisaba Félix</span><span class="faint">Head of Dental</span></button>
+          <a class="btn" href="Main.dc.html" style="justify-content:space-between;border:0;font-weight:500"><span>Uwimana Josiane</span><span class="faint">Receptionist · Home</span></a>
+          <div style="border-top:1px solid var(--border);margin:6px 0"></div>
+          <button class="btn" style="justify-content:space-between;border:0;font-weight:500" onClick="{{toggleTheme}}"><span>{{themeLabel}}</span><span class="faint">Night use</span></button>
+          <a class="btn" href="Landing.dc.html" style="justify-content:space-between;border:0;font-weight:500"><span>Sign out</span><span class="faint">Back to public site</span></a>
+        </div>
+      </sc-if>
+    </div>
+    <div class="seg sm" role="group" aria-label="Language">
+      <sc-for list="{{langs}}" as="l" hint-placeholder-count="3"><button class="{{l.cls}}" onClick="{{l.pick}}">{{l.code}}</button></sc-for>
+    </div>
+  </header>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <nav class="rail" aria-label="Main" style="width:200px;flex:none;background:var(--card);border-right:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:4px">
+      <a href="Main.dc.html"><span style="width:20px;height:20px;border-radius:6px;background:currentColor;opacity:.18"></span>Home</a>
+      <a href="Dashboard.dc.html" class="active"><span style="width:20px;height:20px;border-radius:6px;background:currentColor;opacity:.18"></span>Dashboard</a>
+      <a href="Dashboard.dc.html"><span style="width:20px;height:20px;border-radius:6px;background:currentColor;opacity:.18"></span>Reports</a>
+      <a href="Dashboard.dc.html"><span style="width:20px;height:20px;border-radius:6px;background:currentColor;opacity:.18"></span>Stock</a>
+      <a href="Dashboard.dc.html"><span style="width:20px;height:20px;border-radius:6px;background:currentColor;opacity:.18"></span>Settings</a>
+      <div style="flex:1"></div>
+      <div class="faint num" style="padding:0 12px">Wed 14/10/2026 · 12:45</div>
+    </nav>
+
+    <main style="flex:1;min-width:0;padding:16px 24px 24px;display:flex;flex-direction:column;gap:16px">
+      <!-- PAGE HEADER -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:240px"><h1 style="margin:0;font-size:24px;font-weight:700">Clinic dashboard</h1><div class="muted">Kayonza · {{rangeLabel}} · updated 12:45</div></div>
+        <div class="seg" role="group" aria-label="Date range">
+          <sc-for list="{{ranges}}" as="r" hint-placeholder-count="4"><button class="{{r.cls}}" onClick="{{r.pick}}">{{r.label}}</button></sc-for>
+        </div>
+        <button class="select" aria-label="Role filter" onClick="{{toggleRole}}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"></path></svg>
+          View as: {{roleFilter}}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <button class="btn primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 21h16"></path></svg>
+          Export PDF / Excel
+        </button>
+      </div>
+
+      <!-- ROW 1: TODAY'S NUMBERS -->
+      <div class="section-t">Today's numbers</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+        <sc-for list="{{tiles}}" as="t" hint-placeholder-count="6">
+          <div class="tile">
+            <span class="lbl">{{t.label}}</span>
+            <span class="val num">{{t.value}}<small>{{t.unit}}</small></span>
+            <span class="chg num" style="color:{{t.color}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="{{t.arrow}}"></path></svg>{{t.change}} vs yesterday</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- ROW 2: MONEY -->
+      <sc-if value="{{isManager}}" hint-placeholder-val="{{ true }}">
+        <div class="section-t">Money</div>
+        <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:12px">
+          <div class="card">
+            <div class="card-h"><span>Revenue by day · last 30 days</span><span class="faint num">RWF</span></div>
+            <div class="card-b" style="justify-content:center">
+              <svg viewBox="0 0 640 220" width="100%" role="img" aria-label="Revenue per day for the last 30 days, latest RWF 742,500" style="display:block;overflow:visible;font-family:inherit">
+                <sc-for list="{{gridY}}" as="g" hint-placeholder-count="4">
+                  <line x1="56" x2="600" y1="{{g.y}}" y2="{{g.y}}" style="stroke:var(--grid);stroke-width:1"></line>
+                  <text x="50" y="{{g.ty}}" text-anchor="end" font-size="11" style="fill:var(--text3)">{{g.label}}</text>
+                </sc-for>
+                <polyline points="{{linePts}}" fill="none" style="stroke:var(--c-money);stroke-width:2.5" stroke-linejoin="round"></polyline>
+                <sc-for list="{{xTicks}}" as="x" hint-placeholder-count="5">
+                  <text x="{{x.x}}" y="205" text-anchor="middle" font-size="11" style="fill:var(--text3)">{{x.label}}</text>
+                </sc-for>
+                <circle cx="{{lastX}}" cy="{{lastY}}" r="5" style="fill:var(--c-money)"></circle>
+                <text x="{{lastX}}" y="{{lastLabelY}}" text-anchor="end" font-size="13" font-weight="700" style="fill:var(--text)">RWF 742,500</text>
+                <circle cx="{{peakX}}" cy="{{peakY}}" r="3" style="fill:var(--c-money)"></circle>
+                <text x="{{peakX}}" y="{{peakLabelY}}" text-anchor="middle" font-size="11" style="fill:var(--text2)">RWF 1,184,000</text>
+              </svg>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span>Collections today by method</span><span class="faint num">RWF 742,500</span></div>
+            <div class="card-b" style="justify-content:center">
+              <sc-for list="{{methods}}" as="m" hint-placeholder-count="6">
+                <div class="hbar"><span class="lab">{{m.label}}</span><span class="track"><span class="fill" style="width:{{m.pct}}%;background:var(--c-money)"></span></span><span class="v num">{{m.value}}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span>Receivables by insurer</span><span class="faint num">RWF 9,770,000</span></div>
+            <div class="card-b" style="justify-content:center">
+              <sc-for list="{{insurers}}" as="i" hint-placeholder-count="6">
+                <div class="hbar"><span class="lab">{{i.label}}</span><span class="track"><span class="fill" style="width:{{i.pct}}%;background:var(--c-money)"></span></span><span class="v num">{{i.value}}</span></div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ROW 3: OPERATIONS -->
+      <div class="section-t">Operations</div>
+      <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:12px">
+        <div class="card">
+          <div class="card-h"><span>Visits by service line · this month</span><span class="faint num">1,133 visits</span></div>
+          <div class="card-b" style="justify-content:center">
+            <sc-for list="{{services}}" as="s" hint-placeholder-count="9">
+              <div class="hbar" style="grid-template-columns:minmax(120px,200px) 1fr auto"><span class="lab">{{s.label}}</span><span class="track"><span class="fill" style="width:{{s.pct}}%;background:var(--c-visits)"></span></span><span class="v num">{{s.value}}</span></div>
+            </sc-for>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span>Waiting time per station · today</span><span class="faint">min</span></div>
+          <div class="card-b" style="justify-content:center">
+            <sc-for list="{{stations}}" as="s" hint-placeholder-count="6">
+              <div class="hbar"><span class="lab">{{s.label}}</span><span class="track"><span class="fill" style="width:{{s.pct}}%;background:var(--c-time)"></span></span><span class="v num">{{s.value}} min</span></div>
+            </sc-for>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span>No-show rate · this month</span></div>
+          <div class="card-b" style="justify-content:center;align-items:flex-start;gap:4px">
+            <span class="num" style="font-size:32px;font-weight:700;line-height:1.1">7.4<small style="font-size:16px;font-weight:500;color:var(--text2)"> %</small></span>
+            <span class="num" style="color:var(--green);font-weight:600;font-size:13px;display:flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M12 5v14m-6-6 6 6 6-6"></path></svg>1.7 points lower than September (9.1 %)</span>
+            <span class="muted" style="font-size:13px">38 of 512 booked appointments missed</span>
+            <div style="display:flex;align-items:flex-end;gap:4px;height:48px;width:100%;margin-top:8px" aria-hidden="true">
+              <sc-for list="{{noShow}}" as="n" hint-placeholder-count="6"><span style="flex:1;height:{{n.h}}%;background:var(--c-time);border-radius:3px 3px 0 0"></span></sc-for>
+            </div>
+            <div style="display:flex;justify-content:space-between;width:100%" class="faint"><span>May</span><span>Oct</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 4: CLINICAL AND STOCK -->
+      <div class="section-t">Clinical and stock</div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+        <div class="card">
+          <div class="card-h"><span>Top 10 diagnoses · this month</span><span class="faint">cases</span></div>
+          <div class="card-b" style="gap:4px">
+            <sc-for list="{{diagnoses}}" as="d" hint-placeholder-count="10">
+              <div class="rank"><span class="n num">{{d.n}}</span><span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{d.label}}</span><span class="bar" style="width:{{d.pct}}%"></span></span><span class="num" style="font-weight:600;width:32px;text-align:right">{{d.value}}</span></div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="card">
+            <div class="card-h"><span>Expiring batches</span><span class="faint">from today</span></div>
+            <div class="card-b" style="flex-direction:row;gap:8px">
+              <div class="mini" style="background:var(--red-bg);border-color:transparent;color:var(--red)"><b class="num">4</b><span style="font-size:12px;font-weight:600">≤ 30 days</span></div>
+              <div class="mini" style="background:var(--yellow-bg);border-color:transparent;color:var(--yellow)"><b class="num">11</b><span style="font-size:12px;font-weight:600">≤ 60 days</span></div>
+              <div class="mini"><b class="num">23</b><span style="font-size:12px;font-weight:600;color:var(--text2)">≤ 90 days</span></div>
+            </div>
+          </div>
+          <div class="card" style="flex:1">
+            <div class="card-h"><span>Backup status</span><span class="badge b-green"><span class="dot"></span>Healthy</span></div>
+            <div class="card-b" style="gap:4px">
+              <span class="num" style="font-size:20px;font-weight:700">Today 02:00</span>
+              <span class="muted" style="font-size:13px">Last successful backup · 1.8 GB · off-site copy confirmed 02:14</span>
+              <span class="faint num">Next scheduled 15/10/2026 02:00</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span>Items below reorder level</span><span class="badge b-orange num"><span class="dot"></span>6 items</span></div>
+          <div class="card-b" style="gap:0">
+            <sc-for list="{{reorder}}" as="r" hint-placeholder-count="6">
+              <div class="lrow"><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{r.label}}</span><span class="num" style="font-weight:600;color:var(--orange)">{{r.qty}}</span><span class="faint num">/ {{r.min}}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 5: COMPLIANCE AND SYSTEM -->
+      <div class="section-t">Compliance and system</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+        <div class="card">
+          <div class="card-h"><span>Devices and last sync</span><span class="badge b-red num"><span class="dot"></span>1 failing</span></div>
+          <div class="card-b" style="gap:0">
+            <sc-for list="{{devices}}" as="d" hint-placeholder-count="5">
+              <div class="lrow"><span style="flex:1;min-width:0"><span style="font-weight:500;display:block">{{d.label}}</span><span class="faint num">{{d.detail}}</span></span><span class="badge {{d.cls}}"><span class="dot"></span>{{d.state}}</span></div>
+            </sc-for>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span>Break-glass accesses · today</span><span class="badge b-yellow num"><span class="dot"></span>1 to review</span></div>
+          <div class="card-b" style="gap:8px">
+            <div class="lrow" style="align-items:flex-start;flex-direction:column;gap:2px;padding:4px 0"><span style="font-weight:600">Dr. Mukamana Béatrice</span><span class="muted num">10:12 · file 00482 (Niyonzima J. B.)</span><span class="faint">Reason: emergency, patient not on my list</span></div>
+            <button class="btn" style="min-height:40px;align-self:flex-start">Review access log</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span>Messages today by channel</span><span class="faint">sent / failed</span></div>
+          <div class="card-b" style="justify-content:center">
+            <sc-for list="{{channels}}" as="c" hint-placeholder-count="3">
+              <div class="hbar" style="grid-template-columns:80px 1fr auto"><span class="lab">{{c.label}}</span><span class="track"><span class="fill" style="width:{{c.pct}}%;background:var(--c-time)"></span></span><span class="v num">{{c.sent}} <span style="color:{{c.failColor}}">· {{c.failed}} failed</span></span></div>
+            </sc-for>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span>Claims due this week</span><span class="faint">by insurer</span></div>
+          <div class="card-b" style="gap:0">
+            <sc-for list="{{claims}}" as="c" hint-placeholder-count="5">
+              <div class="lrow"><span style="flex:1">{{c.label}}</span><span class="num" style="font-weight:600">{{c.count}}</span><span class="faint num" style="width:110px;text-align:right">{{c.amount}}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dim"],"default":"light","section":"Variant"},"role":{"editor":"enum","options":["manager","head"],"default":"manager","section":"Variant"},"$preview":{"width":1366,"height":1760}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { theme:null, role:null, range:'Today', lang:'EN', menu:false }; }
+  renderVals() {
+    const theme = this.state.theme || this.props.theme || 'light';
+    const role = this.state.role || this.props.role || 'manager';
+    const isManager = role === 'manager';
+    const fmt = n => 'RWF ' + n.toLocaleString('en-US');
+    // revenue series: 30 days ending today (RWF)
+    const rev = [812000,876500,934000,1012000,688000,402000,790500,845000,901000,1184000,772000,655000,418000,805000,866000,920500,1033000,742000,610000,399000,828000,884000,957000,1102000,760000,640000,425000,838000,896000,742500];
+    const W=640,H=220,L=56,R=600,T=16,B=190, maxV=1250000;
+    const sx = i => L + (i/(rev.length-1))*(R-L);
+    const sy = v => B - (v/maxV)*(B-T);
+    const linePts = rev.map((v,i)=> sx(i).toFixed(1)+','+sy(v).toFixed(1)).join(' ');
+    const peakI = rev.indexOf(Math.max(...rev));
+    const gridY = [0,400000,800000,1200000].map(v => ({ y: sy(v).toFixed(1), ty: (sy(v)+4).toFixed(1), label: v===0 ? '0' : (v/1000)+'k' }));
+    const dayLabel = i => { const d = new Date(2026,9,14); d.setDate(d.getDate()-(29-i)); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'); };
+    const xTicks = [0,7,14,21,29].map(i => ({ x: sx(i).toFixed(1), label: dayLabel(i) }));
+    const bars = (arr, max) => arr.map(a => ({ label:a[0], raw:a[1], value: typeof a[1]==='number' && a[2]==='rwf' ? fmt(a[1]) : a[1], pct: Math.round(a[1]/max*100) }));
+    const tilesAll = [
+      {label:'Patients registered', value:'38', unit:'today', change:'+4', good:true, up:true},
+      {label:'Patients waiting', value:'11', unit:'now', change:'−2', good:true, up:false},
+      {label:'Average waiting time', value:'18', unit:'min', change:'+3 min', good:false, up:true},
+      {label:'Revenue today', value:'742,500', unit:'RWF', change:'+6 %', good:true, up:true, money:true},
+      {label:'Open bills', value:'9', unit:'bills', change:'−1', good:true, up:false, money:true},
+      {label:'Beds occupied', value:'5 / 8', unit:'beds', change:'no change', good:true, up:null}
+    ];
+    const tiles = tilesAll.filter(t => isManager || !t.money).map(t => ({ ...t, color: t.up===null ? 'var(--text3)' : (t.good ? 'var(--green)' : 'var(--red)'), arrow: t.up===null ? 'M5 12h14' : (t.up ? 'M12 19V5m-6 6 6-6 6 6' : 'M12 5v14m-6-6 6 6 6-6') }));
+    return {
+      themeClass:'theme-'+theme, themeLabel: theme==='light' ? 'Switch to dim theme' : 'Switch to light theme',
+      toggleTheme: () => this.setState({ theme: theme==='light' ? 'dim' : 'light', menu:false }),
+      isManager, roleFilter: isManager ? 'Manager' : 'Head of station',
+      toggleRole: () => this.setState({ role: isManager ? 'head' : 'manager' }),
+      pickManager: () => this.setState({ role:'manager', menu:false }), pickHead: () => this.setState({ role:'head', menu:false }),
+      userName: isManager ? 'Mugabo Théogène' : 'Dr. Ndayisaba Félix', roleLabel: isManager ? 'Manager / Owner' : 'Head of Dental', userInitials: isManager ? 'MT' : 'NF',
+      menuOpen: this.state.menu, toggleMenu: () => this.setState({ menu: !this.state.menu }),
+      langs: ['KIN','EN','FR'].map(c => ({ code:c, cls: c===this.state.lang ? 'on' : '', pick: () => this.setState({ lang:c }) })),
+      ranges: ['Today','This week','This month','Custom'].map(r => ({ label:r, cls: r===this.state.range ? 'on' : '', pick: () => this.setState({ range:r }) })),
+      rangeLabel: this.state.range==='Today' ? 'Wednesday 14/10/2026' : (this.state.range==='This week' ? '12/10 – 18/10/2026' : (this.state.range==='This month' ? '01/10 – 31/10/2026' : 'Custom range')),
+      tiles,
+      gridY, xTicks, linePts, lastX: sx(29).toFixed(1), lastY: sy(742500).toFixed(1), lastLabelY: (sy(742500)-12).toFixed(1),
+      peakX: sx(peakI).toFixed(1), peakY: sy(rev[peakI]).toFixed(1), peakLabelY: (sy(rev[peakI])-10).toFixed(1),
+      methods: bars([['Cash',318400,'rwf'],['MTN MoMo',254100,'rwf'],['Airtel Money',61000,'rwf'],['Card',22000,'rwf'],['Bank',0,'rwf'],['Insurer (billed)',87000,'rwf']], 330000),
+      insurers: bars([['RSSB RAMA',4860000,'rwf'],['Mutuelle',2315000,'rwf'],['MMI',1140000,'rwf'],['Radiant',760000,'rwf'],['Prime',410000,'rwf'],['Britam',285000,'rwf']], 5000000),
+      services: bars([['Consultation',412],['Laboratory',286],['Nursing',168],['Dental',74],['HIV testing & vaccination',63],['Ultrasound',58],['Family planning',41],['Minor surgery',19],['Circumcision',12]], 420),
+      stations: bars([['Reception',6],['Triage',9],['Consultation',24],['Laboratory',31],['Pharmacy',12],['Cashier',8]], 32),
+      noShow: [11.2,10.4,9.8,8.9,9.1,7.4].map(v => ({ h: Math.round(v/12*100) })),
+      diagnoses: [['Malaria',96],['Upper respiratory tract infection',84],['Urinary tract infection',61],['Hypertension',57],['Gastroenteritis',49],['Peptic ulcer disease',38],['Type 2 diabetes',33],['Skin infection',29],['Intestinal worms',26],['Dental caries',24]].map((d,i) => ({ n:i+1, label:d[0], value:d[1], pct: Math.round(d[1]/96*100) })),
+      reorder: [['Amoxicillin 500 mg caps',120,500],['Artemether-lumefantrine 20/120',36,150],['Paracetamol 500 mg tabs',410,1000],['Malaria RDT kits',18,100],['Examination gloves M (boxes)',2,10],['ORS sachets',45,200]].map(r => ({ label:r[0], qty:r[1], min:r[2] })),
+      devices: [ {label:'Reception PC-1',detail:'Synced 12:44',state:'Synced',cls:'b-green'}, {label:'Laboratory PC',detail:'Synced 12:43',state:'Synced',cls:'b-green'}, {label:'Cashier PC',detail:'Syncing · 2 pending',state:'Syncing',cls:'b-blue'}, {label:'Nurse tablet 2',detail:'Offline since 11:52 · 7 pending',state:'Offline',cls:'b-orange'}, {label:'Consultation PC-2',detail:'Sync failed 09:15 · needs attention',state:'Failed',cls:'b-red'} ],
+      channels: [ {label:'WhatsApp',sent:41,failed:2,pct:35}, {label:'SMS',sent:118,failed:5,pct:100}, {label:'Email',sent:9,failed:0,pct:8} ].map(c => ({ ...c, failColor: c.failed ? 'var(--red)' : 'var(--text3)' })),
+      claims: [ {label:'RSSB RAMA',count:'42 claims',amount:'RWF 1,860,000'}, {label:'Mutuelle',count:'118 claims',amount:'RWF 1,240,000'}, {label:'MMI',count:'9 claims',amount:'RWF 412,000'}, {label:'Radiant',count:'6 claims',amount:'RWF 298,000'}, {label:'Prime · Britam',count:'5 claims',amount:'RWF 171,000'} ]
+    };
+  }
+}
+</script>
+</body>
+</html>
