@@ -23,7 +23,8 @@
     "db:verify": "node scripts/verify-live.mjs",
     "sb:configure": "node scripts/supabase-configure.mjs",
     "sb:deploy": "node scripts/supabase-deploy.mjs",
-    "sb:set-email": "node scripts/set-staff-email.mjs"
+    "sb:set-email": "node scripts/set-staff-email.mjs",
+    "sb:create-staff": "node scripts/create-staff.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
