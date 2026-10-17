@@ -10,6 +10,7 @@ import {
   MessageCircle,
   Phone,
   ShieldCheck,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +19,7 @@ import {
   CLINIC,
   CLINIC_HOURS,
   CLINIC_PROFILE,
+  FEATURES,
   LANGS,
   formatPhone,
   formatRwf,
@@ -225,25 +227,39 @@ export function LandingPage() {
           className="blob anim-drift -bottom-40 left-[-4%] size-[360px] bg-[#6CCB5F]"
         />
         <Wrap className="relative flex flex-col gap-8">
-          <div data-reveal>
-            <span className="eyebrow !text-[#9FE39A]">{t('nav.insurance')}</span>
-            <h2 className={cn(h2, 'text-white')}>{t('landing.insurance.title')}</h2>
-            <p className={cn(lead, 'text-white/80')}>{t('landing.insurance.lead')}</p>
-          </div>
-          <div className="marquee" data-reveal data-delay="1">
-            <div className="marquee-track">
-              {[...payers, ...payers].map((name, i) => (
-                <span
-                  key={`${name}-${i}`}
-                  className="glass inline-flex min-h-12 items-center gap-2.5 rounded-full px-5 text-sm font-semibold whitespace-nowrap"
-                  aria-hidden={i >= payers.length}
-                >
-                  <ShieldCheck size={16} className="text-[#7BD36A]" aria-hidden="true" />
-                  {name}
-                </span>
-              ))}
+          {FEATURES.insurance && payers.length > 0 ? (
+            <>
+              <div data-reveal>
+                <span className="eyebrow !text-[#9FE39A]">{t('nav.insurance')}</span>
+                <h2 className={cn(h2, 'text-white')}>{t('landing.insurance.title')}</h2>
+                <p className={cn(lead, 'text-white/80')}>{t('landing.insurance.lead')}</p>
+              </div>
+              <div className="marquee" data-reveal data-delay="1">
+                <div className="marquee-track">
+                  {[...payers, ...payers].map((name, i) => (
+                    <span
+                      key={`${name}-${i}`}
+                      className="glass inline-flex min-h-12 items-center gap-2.5 rounded-full px-5 text-sm font-semibold whitespace-nowrap"
+                      aria-hidden={i >= payers.length}
+                    >
+                      <ShieldCheck size={16} className="text-[#7BD36A]" aria-hidden="true" />
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col gap-4" data-reveal>
+              <span className="eyebrow !text-[#9FE39A]">{t('nav.insurance')}</span>
+              <span className="glass inline-flex w-fit items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-semibold">
+                <ShieldCheck size={16} className="text-[#7BD36A]" aria-hidden="true" />
+                {t('landing.insurance.soonPill')}
+              </span>
+              <h2 className={cn(h2, 'text-white')}>{t('landing.insurance.soonTitle')}</h2>
+              <p className={cn(lead, 'text-white/80')}>{t('landing.insurance.soonLead')}</p>
             </div>
-          </div>
+          )}
         </Wrap>
       </section>
 
@@ -417,8 +433,8 @@ function Hero({
           <div className="flex flex-wrap gap-3 pt-1">
             <FloatBadge icon={FlaskConical} label={t('landing.badges.lab')} />
             <FloatBadge
-              icon={ShieldCheck}
-              label={t('landing.badges.insurance')}
+              icon={FEATURES.insurance ? ShieldCheck : Wallet}
+              label={t(FEATURES.insurance ? 'landing.badges.insurance' : 'landing.badges.payment')}
               className="[animation-delay:-2s]"
             />
             <FloatBadge
@@ -430,7 +446,9 @@ function Hero({
           <div className="mt-2 grid grid-cols-2 gap-x-8 gap-y-5 sm:flex sm:flex-wrap sm:gap-10">
             <CountStat to={serviceLines} label={t('landing.stats.serviceLines')} />
             <Stat value={hoursLabel} label={t('landing.stats.hours')} />
-            <CountStat to={insurers} label={t('landing.stats.insurers')} />
+            {FEATURES.insurance && insurers > 0 && (
+              <CountStat to={insurers} label={t('landing.stats.insurers')} />
+            )}
             <CountStat to={LANGS.length} label={t('landing.stats.languages')} />
           </div>
         </div>

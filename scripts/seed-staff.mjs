@@ -95,6 +95,10 @@ for (const s of STAFF) {
     console.log(`skip ${email}: ${error.message}`)
     continue
   }
-  console.log(`created ${email} (${data.user?.id}) role=${s.role}  username=${s.username}  PIN=${pin}`)
+  console.log(
+    `created ${email} (${data.user?.id}) role=${s.role}  username=${s.username}  PIN=${pin}`,
+  )
 }
-console.log('Done. Sign in on the landing page with the username and the PIN printed above (shown once).')
+console.log(
+  'Done. Sign in on the landing page with the username and the PIN printed above (shown once).',
+)

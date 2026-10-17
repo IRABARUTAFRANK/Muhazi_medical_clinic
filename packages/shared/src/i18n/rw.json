@@ -169,7 +169,10 @@
       "formTitle": "Saba gahunda yo kwa muganga"
     },
     "insurance": {
-      "title": "Ubwishingizi twakira"
+      "title": "Ubwishingizi twakira",
+      "soonPill": "Biraza vuba",
+      "soonTitle": "Ubufatanye n'ubwishingizi buraza",
+      "soonLead": "Ivuriro ntiriragirana amasezerano n'ubwishingizi. Kugeza ubu, buri ruzinduko rwishyurwa kuri kasiye — amafaranga, MTN MoMo cyangwa Airtel Money. Tuzatangaza hano ubwishingizi dufatanya na bwo amasezerano akimara gusinywa."
     },
     "visit": {
       "hours": "Amasaha dufungura",
@@ -192,6 +195,7 @@
       "open24": "Turafunguye · amasaha 24 ku munsi"
     },
     "badges": {
+      "payment": "Amafaranga, MTN MoMo na Airtel Money",
       "days": "Dufungura amasaha 24, iminsi 7"
     }
   },

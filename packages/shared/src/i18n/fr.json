@@ -158,7 +158,7 @@
     "openNow": "Ouvert · ferme à {{closes}} · attente actuelle environ {{wait}} min",
     "heroTitle1": "Des soins de qualité,",
     "heroTitle2": "une vie en santé.",
-    "heroLead": "Une polyclinique privée à Kiramuruzi, district de Gatsibo, ouverte 24 heures sur 24, sept jours sur sept : consultation, laboratoire, soins dentaires, échographie, soins infirmiers et planification familiale — RSSB RAMA, Mutuelle et assurances privées acceptées.",
+    "heroLead": "Une polyclinique privée à Kiramuruzi, district de Gatsibo, ouverte 24 heures sur 24, sept jours sur sept : consultation, laboratoire, soins dentaires, échographie, soins infirmiers et planification familiale.",
     "ctaBook": "Trouver un médecin et choisir une heure",
     "ctaCall": "Appeler le {{phone}}",
     "stats": {
@@ -199,7 +199,7 @@
     },
     "services": {
       "title": "Nos services",
-      "lead": "Neuf lignes de service sous un même toit, pour que la plupart des visites se terminent le jour même. Prix indicatifs ; la réception confirme le tarif de votre assurance."
+      "lead": "Neuf lignes de service sous un même toit, pour que la plupart des visites se terminent le jour même. Prix indicatifs ; la réception confirme le prix avant votre visite."
     },
     "book": {
       "title": "Prendre rendez-vous en trois étapes",
@@ -209,7 +209,7 @@
       "step2Title": "La réception confirme",
       "step2": "Dans l'heure, pendant les horaires d'ouverture, vous recevez une confirmation avec l'heure du rendez-vous et le médecin.",
       "step3Title": "Arrivez 10 minutes en avance",
-      "step3": "Apportez votre carte d'identité et votre carte d'assurance. Vous recevez un numéro de ticket et l'écran indique quand c'est votre tour.",
+      "step3": "Apportez votre carte d'identité. Vous recevez un numéro de ticket et l'écran indique quand c'est votre tour.",
       "formTitle": "Demander un rendez-vous",
       "fullName": "Nom complet",
       "fullNamePh": "Uwase Claudine",
@@ -233,7 +233,10 @@
     },
     "insurance": {
       "title": "Assurances acceptées",
-      "lead": "Apportez votre carte et votre pièce d'identité ; nous facturons directement votre assurance et vous ne payez que votre part à la caisse — espèces, MTN MoMo, Airtel Money, carte ou virement."
+      "lead": "Apportez votre carte et votre pièce d'identité ; nous facturons directement votre assurance et vous ne payez que votre part à la caisse — espèces, MTN MoMo, Airtel Money, carte ou virement.",
+      "soonPill": "Bientôt disponible",
+      "soonTitle": "Les partenariats d'assurance arrivent",
+      "soonLead": "La clinique n'a pas encore de partenaire d'assurance. Pour l'instant, chaque visite se règle à la caisse — espèces, MTN MoMo ou Airtel Money. Nous annoncerons ici nos assureurs partenaires dès la signature des accords."
     },
     "visit": {
       "hours": "Horaires d'ouverture",
@@ -280,6 +283,7 @@
     "badges": {
       "lab": "Résultats de laboratoire en moins d'une heure",
       "insurance": "RSSB RAMA, Mutuelle et assureurs privés",
+      "payment": "Espèces, MTN MoMo et Airtel Money",
       "days": "Ouvert 24 h/24, 7 j/7"
     },
     "status": {
@@ -313,7 +317,7 @@
     "insurancePh": "RSSB RAMA, Mutuelle…",
     "replyNote": "La réception répond dans l'heure pendant les horaires d'ouverture. Pas pour les urgences — appelez le <b>912</b>.",
     "sentTitle": "Demande envoyée · référence {{ref}}",
-    "sentBody": "{{doctor}} · {{when}}. La réception confirmera par WhatsApp ou SMS. Apportez votre pièce d'identité et votre carte d'assurance.",
+    "sentBody": "{{doctor}} · {{when}}. La réception confirmera par WhatsApp ou SMS. Apportez votre pièce d'identité.",
     "pickLabel": "{{day}} {{date}} à {{time}}",
     "slotAria": "{{state}} {{day}} {{date}} {{time}}",
     "slot": {

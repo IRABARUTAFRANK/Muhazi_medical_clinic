@@ -28,7 +28,9 @@ const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
 const domain = process.env.VITE_STAFF_EMAIL_DOMAIN ?? 'staff.muhaziclinic.rw'
 const pin = process.env.MANAGER_PIN
 if (!url || !key || !pin) {
-  console.error('Set VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY and MANAGER_PIN (root .env) first.')
+  console.error(
+    'Set VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY and MANAGER_PIN (root .env) first.',
+  )
   process.exit(1)
 }
 
@@ -55,11 +57,12 @@ check(
   le?.message ?? `${lines?.length} categories`,
 )
 
+// Empty is expected until the clinic signs its first insurer (payers are seeded inactive).
 const { data: payers, error: ye } = await sb.from('public_payers').select('name')
 check(
   'anon reads public_payers',
-  !ye && (payers?.length ?? 0) > 0,
-  ye?.message ?? `${payers?.length} insurers`,
+  !ye && Array.isArray(payers),
+  ye?.message ?? `${payers?.length} active insurers`,
 )
 
 const { data: status, error: se } = await sb.rpc('public_clinic_status')

@@ -39,8 +39,9 @@ export const CLINIC = {
   phone: CLINIC_PROFILE.phone,
   whatsapp: CLINIC_PROFILE.whatsapp,
   email: CLINIC_PROFILE.email,
-  mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Kiramuruzi%2C+Gatsibo%2C+Rwanda',
-  mapsEmbedUrl: 'https://www.google.com/maps?q=Kiramuruzi,+Gatsibo,+Rwanda&output=embed',
+  /** Google Maps pin of the clinic (shared link); the embed uses its coordinates. */
+  mapsUrl: 'https://maps.app.goo.gl/UEpB7oHnxb8fkxs18',
+  mapsEmbedUrl: 'https://www.google.com/maps?q=-1.797670,30.416055&z=16&output=embed',
   emergencyNumber: '912',
   /** Sample "clinic now" numbers used when no live status is available. */
   currentWaitMin: 18,
@@ -54,14 +55,17 @@ const intl = (p: string): string => p.replace(/\D/g, '').replace(/^0/, '').repla
 export const telHref = (p: string): string => `tel:+250${intl(p)}`
 export const whatsappHref = (p: string): string => `https://wa.me/250${intl(p)}`
 
-export const INSURERS: readonly string[] = [
-  'RSSB RAMA',
-  'Mutuelle de Santé (CBHI)',
-  'MMI',
-  'Radiant',
-  'Prime',
-  'Britam',
-]
+/**
+ * Features the clinic has not switched on yet. `insurance` stays off until the clinic signs its
+ * first insurer: the public site then shows a "coming soon" band instead of partner names, and
+ * the booking form hides the insurance field.
+ */
+export const FEATURES = {
+  insurance: false,
+} as const
+
+/** Sample insurer names; empty until the clinic has partners (live: `public_payers`). */
+export const INSURERS: readonly string[] = []
 
 export const CATEGORY_FILTERS: readonly CategoryFilter[] = [
   'all',

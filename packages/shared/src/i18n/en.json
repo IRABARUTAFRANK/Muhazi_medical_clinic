@@ -158,7 +158,7 @@
     "openNow": "Open now · closes {{closes}} · current wait about {{wait}} min",
     "heroTitle1": "Quality care,",
     "heroTitle2": "healthy life.",
-    "heroLead": "A private polyclinic in Kiramuruzi, Gatsibo District, open 24 hours a day, seven days a week: consultation, laboratory, dental, ultrasound, nursing and family-planning services — with RSSB RAMA, Mutuelle and private insurance accepted.",
+    "heroLead": "A private polyclinic in Kiramuruzi, Gatsibo District, open 24 hours a day, seven days a week: consultation, laboratory, dental, ultrasound, nursing and family-planning services.",
     "ctaBook": "Find a doctor & book a time",
     "ctaCall": "Call {{phone}}",
     "stats": {
@@ -199,7 +199,7 @@
     },
     "services": {
       "title": "What we offer",
-      "lead": "Nine service lines under one roof, so most visits are completed the same day. Sample prices shown; the receptionist confirms your insurer's rate."
+      "lead": "Nine service lines under one roof, so most visits are completed the same day. Sample prices shown; the receptionist confirms the price before your visit."
     },
     "book": {
       "title": "Book a visit in three steps",
@@ -209,7 +209,7 @@
       "step2Title": "Reception confirms",
       "step2": "Within the hour during opening times you receive a confirmation with your appointment time and doctor.",
       "step3Title": "Arrive 10 minutes early",
-      "step3": "Bring your national ID and insurance card. You get a ticket number and the screen shows when it is your turn.",
+      "step3": "Bring your national ID. You get a ticket number and the screen shows when it is your turn.",
       "formTitle": "Request an appointment",
       "fullName": "Full name",
       "fullNamePh": "Uwase Claudine",
@@ -233,7 +233,10 @@
     },
     "insurance": {
       "title": "Insurance we accept",
-      "lead": "Bring your card and ID; we bill your insurer directly and you pay only your share at the cashier — cash, MTN MoMo, Airtel Money, card or bank."
+      "lead": "Bring your card and ID; we bill your insurer directly and you pay only your share at the cashier — cash, MTN MoMo, Airtel Money, card or bank.",
+      "soonPill": "Coming soon",
+      "soonTitle": "Insurance partnerships are on the way",
+      "soonLead": "The clinic is not yet partnered with any insurer. For now, every visit is paid at the cashier — cash, MTN MoMo or Airtel Money. We will announce our insurance partners here as soon as agreements are signed."
     },
     "visit": {
       "hours": "Opening hours",
@@ -280,6 +283,7 @@
     "badges": {
       "lab": "Lab results within the hour",
       "insurance": "RSSB RAMA, Mutuelle & private insurers",
+      "payment": "Cash, MTN MoMo & Airtel Money",
       "days": "Open 24 hours, 7 days a week"
     },
     "status": {
@@ -313,7 +317,7 @@
     "insurancePh": "RSSB RAMA, Mutuelle…",
     "replyNote": "Reception replies within the hour during opening times. Not for emergencies — call <b>912</b>.",
     "sentTitle": "Request sent · reference {{ref}}",
-    "sentBody": "{{doctor}} · {{when}}. Reception will confirm by WhatsApp or SMS. Bring your ID and insurance card.",
+    "sentBody": "{{doctor}} · {{when}}. Reception will confirm by WhatsApp or SMS. Bring your national ID.",
     "pickLabel": "{{day}} {{date}} at {{time}}",
     "slotAria": "{{state}} {{day}} {{date}} {{time}}",
     "slot": {

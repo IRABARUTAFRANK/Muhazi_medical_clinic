@@ -3,6 +3,7 @@ import { Calendar, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 import {
   CATEGORY_FILTERS,
+  FEATURES,
   MAX_WEEKS_AHEAD,
   buildCalendar,
   formatDayMonth,
@@ -300,12 +301,14 @@ export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
                       onChange={(e) => setPhone(e.target.value)}
                       required
                     />
-                    <Field
-                      label={t('booking.insurance')}
-                      placeholder={t('booking.insurancePh')}
-                      value={insurer}
-                      onChange={(e) => setInsurer(e.target.value)}
-                    />
+                    {FEATURES.insurance && (
+                      <Field
+                        label={t('booking.insurance')}
+                        placeholder={t('booking.insurancePh')}
+                        value={insurer}
+                        onChange={(e) => setInsurer(e.target.value)}
+                      />
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <Button

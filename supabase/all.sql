@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-15T19:05:30.800Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-17T08:32:59.496Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -2172,14 +2172,16 @@ revoke execute on function record_sign_in(text), mark_pin_changed(), set_profile
 -- Staff accounts are created by scripts/seed-staff.mjs (they live in Supabase Auth).
 
 -- ---------------------------------------------------------------- payers and plans
-insert into payer (code, name, type, cycle_day) values
-  ('CASH',    'Cash',                    'cash',      null),
-  ('RAMA',    'RSSB RAMA',               'rssb_rama', 5),
-  ('CBHI',    'Mutuelle de Santé (CBHI)','cbhi',      5),
-  ('MMI',     'MMI',                     'mmi',       10),
-  ('RADIANT', 'Radiant',                 'private',   10),
-  ('PRIME',   'Prime',                   'private',   10),
-  ('BRITAM',  'Britam',                  'private',   10);
+-- The clinic has no insurance partners yet: insurers are seeded inactive so billing can be set up
+-- later without re-seeding. `public_payers` (and therefore the public site) lists active ones only.
+insert into payer (code, name, type, cycle_day, active) values
+  ('CASH',    'Cash',                    'cash',      null, true),
+  ('RAMA',    'RSSB RAMA',               'rssb_rama', 5,    false),
+  ('CBHI',    'Mutuelle de Santé (CBHI)','cbhi',      5,    false),
+  ('MMI',     'MMI',                     'mmi',       10,   false),
+  ('RADIANT', 'Radiant',                 'private',   10,   false),
+  ('PRIME',   'Prime',                   'private',   10,   false),
+  ('BRITAM',  'Britam',                  'private',   10,   false);
 
 insert into plan (payer_id, name, coverage_pct, pct_by_group)
 select id, 'Standard', pct, groups::jsonb
