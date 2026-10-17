@@ -254,62 +254,19 @@
 }
 
 /* ---------------------------------------------------------------- staff workspace (Figma: Manager Dashboard v2)
-   The rail and the top bar form one navy frame; the workspace is a soft gradient with two slow
-   ambient blobs instead of a flat white page. Cards sit on it with the card shadow. */
+   The rail and the top bar form one navy frame; the workspace is a calm, flat sky blue with a
+   faint dot texture so white cards read as cards. No gradient, no moving colour. */
 .topbar-gradient {
   background: linear-gradient(90deg, var(--mmc-navy) 0%, var(--mmc-navy-2) 55%, #15567a 100%);
 }
 .workspace {
-  background:
-    radial-gradient(900px 420px at 100% -10%, rgba(31, 111, 139, 0.14), transparent 60%),
-    radial-gradient(700px 380px at -10% 110%, rgba(46, 160, 67, 0.12), transparent 60%),
-    linear-gradient(
-      180deg,
-      var(--mmc-bg) 0%,
-      color-mix(in srgb, var(--mmc-bg) 92%, #1f6f8b 8%) 100%
-    );
-}
-.ws-blob {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(70px);
-  opacity: 0.35;
-  pointer-events: none;
-  will-change: transform;
-}
-.ws-blob-1 {
-  width: 520px;
-  height: 520px;
-  right: -140px;
-  top: -200px;
-  background: #39a9df;
-  animation: mmc-drift 26s ease-in-out infinite;
-}
-.ws-blob-2 {
-  width: 440px;
-  height: 440px;
-  left: -160px;
-  bottom: -220px;
-  background: #6ccb5f;
-  animation: mmc-drift 32s ease-in-out infinite reverse;
-}
-.ws-blob-3 {
-  width: 260px;
-  height: 260px;
-  left: 42%;
-  top: 30%;
-  background: #f6c544;
-  opacity: 0.16;
-  animation: mmc-float 14s ease-in-out infinite;
+  background-color: #e4f1fb; /* sky blue, 1.0 : 1.08 against white cards */
+  background-image: radial-gradient(rgba(31, 111, 139, 0.1) 1px, transparent 1px);
+  background-size: 22px 22px;
 }
 :root[data-theme='dim'] .workspace {
-  background:
-    radial-gradient(900px 420px at 100% -10%, rgba(92, 179, 208, 0.16), transparent 60%),
-    radial-gradient(700px 380px at -10% 110%, rgba(111, 203, 149, 0.1), transparent 60%),
-    linear-gradient(180deg, var(--mmc-bg) 0%, #0c1b2a 100%);
-}
-:root[data-theme='dim'] .ws-blob {
-  opacity: 0.22;
+  background-color: #0e1f33;
+  background-image: radial-gradient(rgba(92, 179, 208, 0.12) 1px, transparent 1px);
 }
 .glass-dark {
   background: rgba(255, 255, 255, 0.1);
@@ -319,11 +276,6 @@
 }
 .glass-dark:hover {
   background: rgba(255, 255, 255, 0.16);
-}
-@media (prefers-reduced-motion: reduce) {
-  .ws-blob {
-    animation: none;
-  }
 }
 
 /* ---------------------------------------------------------------- motion system (staff area)
