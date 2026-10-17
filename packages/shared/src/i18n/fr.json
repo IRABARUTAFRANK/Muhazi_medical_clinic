@@ -79,7 +79,7 @@
     "stock": "Stock",
     "settings": "Paramètres",
     "staff": "Employés",
-    "prices": "Soins et tarifs",
+    "prices": "Tarifs",
     "changePin": "Changer le PIN"
   },
   "roles": {
@@ -486,7 +486,7 @@
       "week": "cette semaine",
       "month": "ce mois"
     },
-    "vsPrevious": "{{change}} vs période précédente",
+    "vsPrevious": "{{change}} vs période préc.",
     "queueNow": "File actuelle · attente par poste",
     "waitingShort": "{{count}} en attente",
     "bookings": "Réservations · {{period}}",
@@ -546,8 +546,8 @@
     "noChange": "sans changement vs hier",
     "revenue30": "Recettes par jour · 30 derniers jours",
     "revenueAria": "Recettes par jour sur 30 jours, dernière valeur {{latest}}",
-    "collections": "Encaissements · {{period}} · par mode",
-    "receivables": "Créances par assureur",
+    "collections": "Encaissements · {{period}}",
+    "receivables": "Créances",
     "visitsByService": "Visites par groupe de service · {{period}}",
     "visitsCount": "{{count}} visites",
     "waitByStation": "Temps d'attente par poste · aujourd'hui",

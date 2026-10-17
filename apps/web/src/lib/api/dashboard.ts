@@ -116,7 +116,11 @@ function sample(range: DashboardRange, manager: boolean, now: Date): DashboardDa
     })),
     receivables: RECEIVABLES.map((r) => ({ payer: r.label, count: 10, amount: r.value })),
     visitsByGroup: VISITS_BY_SERVICE.map((v) => ({ group: v.label, count: v.value })),
-    waitByStation: WAIT_BY_STATION.map((w) => ({ station: w.label, minutes: w.value, waiting: 2 })),
+    waitByStation: WAIT_BY_STATION.map((w) => ({
+      station: w.label.toLowerCase(),
+      minutes: w.value,
+      waiting: 2,
+    })),
     topTreatments: TOP_DIAGNOSES.map((d) => ({ name: d.label, count: d.value, amount: null })),
     staff: [],
     reorder: REORDER.map((r) => ({ name: r.label, onHand: r.qty, min: r.min })),

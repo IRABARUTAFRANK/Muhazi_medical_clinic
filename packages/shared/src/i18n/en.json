@@ -79,7 +79,7 @@
     "stock": "Stock",
     "settings": "Settings",
     "staff": "Employees",
-    "prices": "Treatments & prices",
+    "prices": "Prices",
     "changePin": "Change PIN"
   },
   "roles": {
@@ -486,7 +486,7 @@
       "week": "this week",
       "month": "this month"
     },
-    "vsPrevious": "{{change}} vs previous period",
+    "vsPrevious": "{{change}} vs last period",
     "queueNow": "Queue now · waiting time per station",
     "waitingShort": "{{count}} waiting",
     "bookings": "Bookings · {{period}}",
@@ -546,8 +546,8 @@
     "noChange": "no change vs yesterday",
     "revenue30": "Revenue by day · last 30 days",
     "revenueAria": "Revenue per day for the last 30 days, latest {{latest}}",
-    "collections": "Collections · {{period}} · by method",
-    "receivables": "Receivables by insurer",
+    "collections": "Collections · {{period}}",
+    "receivables": "Receivables",
     "visitsByService": "Visits by service group · {{period}}",
     "visitsCount": "{{count}} visits",
     "waitByStation": "Waiting time per station · today",

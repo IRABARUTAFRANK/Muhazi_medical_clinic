@@ -118,7 +118,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
           </div>
           <StaffLink
             to="/app/register"
-            className="border-border bg-card text-ink-3 card-lift hidden h-11 w-[300px] items-center gap-2.5 rounded-xl border px-3.5 text-sm no-underline lg:flex"
+            className="border-border bg-card text-ink-3 card-lift wide:flex hidden h-11 w-[260px] items-center gap-2.5 rounded-xl border px-3.5 text-sm no-underline"
           >
             <Search size={16} aria-hidden="true" />
             {t('common.searchPatient')}
@@ -134,13 +134,13 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             ]}
           />
           <Button
-            size="md"
+            size="icon"
             onClick={() => void refetch()}
             loading={isFetching}
             aria-label={t('dashboard.refresh')}
+            title={t('dashboard.refresh')}
           >
             {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
-            <span className="pc:inline hidden">{t('dashboard.refresh')}</span>
           </Button>
           <Button size="md" onClick={() => window.print()}>
             <Printer size={16} aria-hidden="true" />
@@ -169,7 +169,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
         {data && (
           <div key={range} className="flex flex-col gap-5">
             {/* KPI ROW */}
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(168px,1fr))] gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
               <Kpi
                 i={0}
                 icon={UserPlus}
@@ -336,7 +336,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                           >
                             <span className="text-xl font-extrabold tabular-nums">{s.waiting}</span>
                             <span className="text-ink-2 text-xs font-semibold">
-                              {t(`register.stations.${s.station}`)}
+                              {stationLabel(s.station, t)}
                             </span>
                             <span
                               className={cn(
@@ -820,6 +820,12 @@ const niceStep = (peak: number) => {
   const mag = 10 ** Math.floor(Math.log10(Math.max(1, raw)))
   const n = raw / mag
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag
+}
+
+const stationLabel = (s: string, t: TFn) => {
+  const key = `register.stations.${s.toLowerCase()}`
+  const v = t(key)
+  return v === key ? s : v
 }
 
 const groupLabel = (g: string, t: TFn) => {
