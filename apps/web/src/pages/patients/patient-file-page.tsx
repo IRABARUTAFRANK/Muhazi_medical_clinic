@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
-import { ArrowLeft, Check, FolderOpen, Pencil, Stethoscope, Ticket } from 'lucide-react'
+import { ArrowLeft, Check, FolderOpen, Pencil, Plus, Stethoscope, Ticket, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +16,8 @@ import {
   usePatientFile,
   type PatientFile,
   type PatientRecord,
+  usePatientFields,
+  type PatientFieldDef,
 } from '@/lib/api/patients'
 import {
   TREATING_STATIONS,
@@ -322,6 +324,7 @@ function Overview({ file }: { file: PatientFile }) {
               {f('allergies')}
             </span>
             <span className="font-medium">{p.allergies ?? t('file.noAllergies')}</span>
+            <span className="text-ink-3 mt-1 block text-xs">{t('file.allergiesHint')}</span>
           </div>
           <Info
             label={f('emergency')}
@@ -330,7 +333,117 @@ function Overview({ file }: { file: PatientFile }) {
           <Info label={f('notes')} value={p.notes} />
         </CardBody>
       </Card>
+      <MoreInfo patient={p} />
     </div>
+  )
+}
+
+/**
+ * The customizable part of the file. Fields the manager defined in Settings appear for
+ * every patient; anyone with patient.write can also add a one-off field for this patient.
+ */
+function MoreInfo({ patient: p }: { patient: PatientRecord }) {
+  const { t } = useTranslation()
+  const { data: defs = [] } = usePatientFields()
+  const actions = usePatientActions(p.id)
+  const [adding, setAdding] = useState(false)
+  const [label, setLabel] = useState('')
+  const [value, setValue] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const extra = p.extra ?? {}
+  const defKeys = new Set(defs.flatMap((d) => [d.key, d.label]))
+  const adHoc = Object.entries(extra).filter(([k]) => !defKeys.has(k))
+  const valueOf = (d: PatientFieldDef) => extra[d.key] ?? extra[d.label]
+
+  const save = async (next: Record<string, string>) => {
+    setErr(null)
+    try {
+      await actions.update.mutateAsync({ extra: next })
+      setAdding(false)
+      setLabel('')
+      setValue('')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    }
+  }
+  const add = (e: FormEvent) => {
+    e.preventDefault()
+    const k = label.trim()
+    if (!k || !value.trim()) return
+    void save({ ...extra, [k]: value.trim() })
+  }
+  const remove = (k: string) => {
+    const next = { ...extra }
+    delete next[k]
+    void save(next)
+  }
+
+  return (
+    <Card className="pc:col-span-2 anim-enter" style={{ '--i': 2 } as CSSProperties}>
+      <CardHeader>
+        <span>{t('file.more')}</span>
+        <Button size="sm" onClick={() => setAdding((a) => !a)}>
+          <Plus size={14} aria-hidden="true" />
+          {t('file.addField')}
+        </Button>
+      </CardHeader>
+      <CardBody className="gap-3">
+        <p className="text-ink-3 m-0 text-xs">{t('file.moreLead')}</p>
+        {adding && (
+          <form onSubmit={add} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_2fr_auto]">
+            <Field
+              label={t('file.fieldName')}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder={t('file.fieldNamePh')}
+              required
+              autoFocus
+            />
+            <Field
+              label={t('file.fieldValue')}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              required
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              className="self-end"
+              loading={actions.update.isPending}
+            >
+              {t('file.saveField')}
+            </Button>
+          </form>
+        )}
+        {err && (
+          <p role="alert" className={errorBox}>
+            {err}
+          </p>
+        )}
+        {defs.length + adHoc.length === 0 && (
+          <p className="text-ink-3 m-0 text-[13px]">{t('file.noExtra')}</p>
+        )}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+          {defs.map((d) => (
+            <Info key={d.key} label={d.label} value={valueOf(d)} />
+          ))}
+          {adHoc.map(([k, v]) => (
+            <div key={k} className="flex items-start gap-1">
+              <Info label={k} value={v} />
+              <button
+                type="button"
+                onClick={() => remove(k)}
+                className="text-ink-3 hover:text-red rounded p-0.5"
+                aria-label={t('file.removeField', { name: k })}
+                title={t('file.removeField', { name: k })}
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </CardBody>
+    </Card>
   )
 }
 
@@ -345,6 +458,7 @@ function EditForm({
 }) {
   const { t } = useTranslation()
   const actions = usePatientActions(p.id)
+  const { data: defs = [] } = usePatientFields()
   const f = (k: string) => t(`file.fields.${k}`)
   const [v, setV] = useState<Record<string, string>>({
     surname: p.surname,
@@ -367,23 +481,35 @@ function EditForm({
     allergies: p.allergies ?? '',
     notes: p.notes ?? '',
   })
+  const [extra, setExtra] = useState<Record<string, string>>({ ...(p.extra ?? {}) })
   const set = (k: string, val: string) => setV((s) => ({ ...s, [k]: val }))
-  const text = (k: string, extra: Record<string, unknown> = {}) => (
+  const setX = (k: string, val: string) => setExtra((s) => ({ ...s, [k]: val }))
+  const text = (k: string, more: Record<string, unknown> = {}) => (
     <Field
       key={k}
       label={f(k)}
       value={v[k] ?? ''}
       onChange={(e) => set(k, e.target.value)}
-      {...extra}
+      {...more}
     />
   )
+  const defKeys = new Set(defs.flatMap((d) => [d.key, d.label]))
+  const adHocKeys = Object.keys(extra).filter((k) => !defKeys.has(k))
+  const valueOf = (d: PatientFieldDef) => extra[d.key] ?? extra[d.label] ?? ''
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     onError(null)
     try {
-      const fields: Record<string, string | number | null> = { ...v }
+      const fields: Record<string, string | number | null | Record<string, string>> = { ...v }
       if (!v.birth_date && v.age_years) fields.age_years = Number(v.age_years)
       else delete fields.age_years
+      const merged = { ...extra }
+      for (const d of defs) {
+        const byLabel = merged[d.label]
+        if (merged[d.key] === undefined && byLabel !== undefined) merged[d.key] = byLabel
+        if (d.key !== d.label) delete merged[d.label]
+      }
+      fields.extra = Object.fromEntries(Object.entries(merged).filter(([, val]) => val.trim()))
       await actions.update.mutateAsync(fields)
       onDone()
     } catch (err) {
@@ -435,8 +561,41 @@ function EditForm({
             {text('emergency_name')}
             {text('emergency_phone', { type: 'tel' })}
           </div>
-          {text('allergies', { placeholder: t('file.allergiesPh'), className: 'border-red/60' })}
+          <Field
+            label={f('allergies')}
+            value={v.allergies ?? ''}
+            onChange={(e) => set('allergies', e.target.value)}
+            placeholder={t('file.allergiesPh')}
+            className="border-red/60"
+          />
+          <p className="text-ink-3 m-0 -mt-2 text-xs">{t('file.allergiesHint')}</p>
           {text('notes')}
+
+          {defs.length + adHocKeys.length > 0 && (
+            <>
+              <h3 className="text-ink-2 m-0 mt-2 text-[13px] font-bold tracking-[.04em] uppercase">
+                {t('file.more')}
+              </h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {defs.map((d) => (
+                  <CustomInput
+                    key={d.key}
+                    def={d}
+                    value={valueOf(d)}
+                    onChange={(val) => setX(d.key, val)}
+                  />
+                ))}
+                {adHocKeys.map((k) => (
+                  <Field
+                    key={k}
+                    label={k}
+                    value={extra[k] ?? ''}
+                    onChange={(e) => setX(k, e.target.value)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
           <div className="flex gap-2">
             <Button type="submit" variant="primary" loading={actions.update.isPending}>
               <Check size={16} aria-hidden="true" />
@@ -446,6 +605,41 @@ function EditForm({
         </CardBody>
       </form>
     </Card>
+  )
+}
+
+/** One input for a manager-defined field, by its type. */
+function CustomInput({
+  def,
+  value,
+  onChange,
+}: {
+  def: PatientFieldDef
+  value: string
+  onChange: (v: string) => void
+}) {
+  const { t } = useTranslation()
+  if (def.type === 'choice' || def.type === 'yesno') {
+    const options = def.type === 'yesno' ? [t('common.yes'), t('common.no')] : (def.options ?? [])
+    return (
+      <Select label={def.label} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">—</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </Select>
+    )
+  }
+  return (
+    <Field
+      label={def.label}
+      type={def.type === 'date' ? 'date' : 'text'}
+      inputMode={def.type === 'number' ? 'decimal' : undefined}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
   )
 }
 

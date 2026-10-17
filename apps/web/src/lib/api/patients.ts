@@ -55,7 +55,17 @@ export interface PatientRecord {
   allergies: string | null
   notes: string | null
   flags: Record<string, unknown>
+  /** Values of the clinic's custom fields and one-off fields, label → value. */
+  extra: Record<string, string>
   created_at: string
+}
+
+/** A field the manager added to every patient file (setting `patient.fields`). */
+export interface PatientFieldDef {
+  key: string
+  label: string
+  type: 'text' | 'number' | 'date' | 'choice' | 'yesno'
+  options?: string[]
 }
 
 export interface PatientVisit {
@@ -167,7 +177,16 @@ const sampleRows: PatientRow[] = [
     hasAllergies: false,
   },
 ]
+/** Sample-mode files, kept so edits made in the UI survive a refetch. */
+const sampleFileCache = new Map<string, PatientFile>()
 const sampleFile = (id: string): PatientFile => {
+  const cached = sampleFileCache.get(id)
+  if (cached) return cached
+  const built = buildSampleFile(id)
+  sampleFileCache.set(id, built)
+  return built
+}
+const buildSampleFile = (id: string): PatientFile => {
   const r = sampleRows.find((x) => x.id === id) ?? sampleRows[0]!
   return {
     patient: {
@@ -195,6 +214,14 @@ const sampleFile = (id: string): PatientFile => {
       allergies: r.hasAllergies ? 'Penicillin (rash)' : null,
       notes: null,
       flags: r.flags,
+      extra:
+        r.id === 'p-1'
+          ? {
+              next_of_kin: 'Mukamana Jeanne (sister)',
+              church: 'ADEPR Kiramuruzi',
+              'Insurance card no.': 'RSSB 1234567',
+            }
+          : {},
       created_at: r.registeredAt,
     },
     visits: [
@@ -333,8 +360,12 @@ export function usePatientFile(id: string) {
 export function usePatientActions(id: string) {
   const qc = useQueryClient()
   const update = useMutation({
-    mutationFn: async (fields: Record<string, string | number | null>) => {
-      if (!supabase) return
+    mutationFn: async (fields: Record<string, string | number | null | Record<string, string>>) => {
+      if (!supabase) {
+        const f = sampleFileCache.get(id)
+        if (f && fields.extra && typeof fields.extra === 'object') f.patient.extra = fields.extra
+        return
+      }
       const { error } = await supabase.rpc('update_patient', { p_patient_id: id, p_fields: fields })
       if (error) throw new Error(error.message)
     },
@@ -642,6 +673,52 @@ export function useClinicalActions(encounterId: string) {
     onSuccess: refresh,
   })
   return { addDiagnosis, addNote, prescribe, orderTest, finishVisit }
+}
+
+// ---------------------------------------------------------------- custom fields of the file
+let sampleFields: PatientFieldDef[] = [
+  { key: 'next_of_kin', label: 'Next of kin', type: 'text' },
+  { key: 'church', label: 'Church / community', type: 'text' },
+  {
+    key: 'chronic',
+    label: 'Chronic condition',
+    type: 'choice',
+    options: ['None', 'Diabetes', 'Hypertension', 'HIV', 'Asthma', 'Epilepsy'],
+  },
+]
+const FIELDS_KEY = ['settings', 'patient.fields'] as const
+
+/** The fields the manager added to every patient file. */
+export function usePatientFields() {
+  return useQuery({
+    queryKey: FIELDS_KEY,
+    staleTime: 60_000,
+    queryFn: async (): Promise<PatientFieldDef[]> => {
+      if (!supabase) return sampleFields
+      const { data, error } = await supabase.rpc('patient_fields')
+      if (error) throw new Error(error.message)
+      return Array.isArray(data) ? (data as PatientFieldDef[]) : []
+    },
+  })
+}
+
+/** Manager only: replace the list of custom fields. */
+export function useSavePatientFields() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (fields: PatientFieldDef[]) => {
+      if (!supabase) {
+        sampleFields = fields
+        return
+      }
+      const { error } = await supabase.rpc('save_setting', {
+        p_key: 'patient.fields',
+        p_value: fields,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: FIELDS_KEY }),
+  })
 }
 
 /** "31 F", "8 M", "4m" for babies. */

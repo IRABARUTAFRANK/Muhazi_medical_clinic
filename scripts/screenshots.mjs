@@ -113,6 +113,14 @@ const SHOTS = [
     user: 'u-doc',
   },
   { name: 'register-1366', path: '/app/register', vp: [1366, 1000], user: 'u-mgr' },
+  { name: 'settings-fields', path: '/app/settings', vp: [1366, 1900], user: 'u-mgr' },
+  {
+    name: 'visit-rx-1366',
+    path: '/app/visit?encounter=e-1',
+    vp: [1366, 1300],
+    user: 'u-doc',
+    click: 'main .flex.flex-wrap.gap-2 > button:nth-child(3)',
+  },
   { name: 'dashboard-1920', path: '/app/dashboard', vp: [1920, 1320], user: 'u-mgr' },
   {
     name: 'dashboard-1920-dim',

@@ -48,7 +48,9 @@
     "quickActions": "Actions rapides",
     "close": "Fermer",
     "menu": "Menu",
-    "closeMenu": "Fermer le menu"
+    "closeMenu": "Fermer le menu",
+    "yes": "Oui",
+    "no": "Non"
   },
   "days": {
     "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
@@ -1002,7 +1004,34 @@
     "savedNote": "Enregistré. Le site public affiche les nouvelles valeurs.",
     "saveFailed": "Enregistrement impossible : {{message}}",
     "loadFailed": "Impossible de charger les paramètres : {{message}}",
-    "you": "Connecté en tant que {{name}} · {{id}}"
+    "you": "Connecté en tant que {{name}} · {{id}}",
+    "patientFields": {
+      "title": "Champs du dossier patient",
+      "lead": "Ajoutez les informations que la clinique veut sur chaque dossier au-delà des champs standard (religion, maladie chronique, proche à prévenir, n° de carte d’assurance…). Le personnel les remplit dans le dossier patient.",
+      "none": "Aucun champ supplémentaire.",
+      "add": "Ajouter un champ",
+      "label": "Nom du champ",
+      "labelPh": "ex. Maladie chronique",
+      "type": "Type",
+      "types": {
+        "text": "Texte",
+        "number": "Nombre",
+        "date": "Date",
+        "choice": "Liste de choix",
+        "yesno": "Oui / non"
+      },
+      "hints": {
+        "text": "Texte libre",
+        "number": "Un nombre",
+        "date": "Un sélecteur de date",
+        "yesno": "Oui ou non"
+      },
+      "options": "Choix (séparés par des virgules)",
+      "optionsPh": "Aucune, Diabète, Hypertension, VIH, Asthme",
+      "remove": "Supprimer le champ",
+      "save": "Enregistrer les champs",
+      "saved": "Champs enregistrés. Ils apparaissent maintenant sur chaque dossier patient."
+    }
   },
   "pin": {
     "changeTitle": "Choisissez votre propre PIN",
@@ -1104,7 +1133,17 @@
     "diagnoses": "Diagnostics",
     "noBills": "Aucune facture.",
     "draftBill": "Facture provisoire",
-    "save": "Enregistrer les modifications"
+    "save": "Enregistrer les modifications",
+    "more": "Informations complémentaires",
+    "moreLead": "Les champs ajoutés par le gestionnaire dans Paramètres apparaissent ici pour chaque patient. Vous pouvez aussi ajouter un champ ponctuel pour ce patient seulement.",
+    "addField": "Ajouter un champ",
+    "fieldName": "Nom du champ",
+    "fieldNamePh": "ex. Proche à prévenir, Religion, N° carte d’assurance",
+    "fieldValue": "Valeur",
+    "saveField": "Enregistrer le champ",
+    "removeField": "Supprimer « {{name}} »",
+    "noExtra": "Aucune information complémentaire. Utilisez « Ajouter un champ », ou laissez le gestionnaire définir des champs pour tous les patients dans Paramètres.",
+    "allergiesHint": "Uniquement les médicaments, aliments ou substances qui provoquent une réaction (éruption, gonflement, gêne respiratoire). Les autres remarques vont dans Notes."
   },
   "clinical": {
     "title": "Dossier clinique",
@@ -1135,8 +1174,6 @@
     "frequency": "Fréquence",
     "instructions": "Instructions",
     "instructionsPh": "après les repas…",
-    "saveRx": "Prescrire",
-    "rxSaved": "Ordonnance enregistrée. Le patient est en attente à la pharmacie.",
     "test": "Examen",
     "reason": "Motif clinique",
     "saveTest": "Demander",
@@ -1161,6 +1198,17 @@
       "rx": "Choisissez un médicament et une quantité supérieure à zéro.",
       "test": "Choisissez un examen.",
       "needPrimary": "Enregistrez un diagnostic principal avant de clôturer."
-    }
+    },
+    "dxHint": "Le diagnostic est la maladie ou le problème trouvé après l’examen du patient, ex. « Paludisme simple ». Principal = la raison principale de la visite ; secondaire = autres problèmes trouvés. Cochez « provisoire » si vous attendez encore des résultats.",
+    "rxHint": "Un bloc par médicament. Utilisez « Ajouter un médicament » pour une association (ex. un antipaludique plus du paracétamol). Tous partent ensemble à la pharmacie.",
+    "medicineN": "Médicament {{n}}",
+    "pickMedicine": "Choisir un médicament",
+    "addMedicine": "Ajouter un médicament",
+    "removeMedicine": "Retirer ce médicament",
+    "pickTest": "Choisir un examen",
+    "saveRx_one": "Prescrire",
+    "saveRx_other": "Prescrire {{count}} médicaments",
+    "rxSaved_one": "Ordonnance enregistrée. Le patient est en attente à la pharmacie.",
+    "rxSaved_other": "{{count}} médicaments prescrits. Le patient est en attente à la pharmacie."
   }
 }

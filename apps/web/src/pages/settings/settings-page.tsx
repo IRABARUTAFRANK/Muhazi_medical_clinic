@@ -12,6 +12,7 @@ import { useClinicSettings, useSaveClinicSettings, type ClinicSettings } from '@
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
+import { PatientFieldsCard } from './patient-fields-card'
 
 type DayMode = 'closed' | 'allDay' | 'custom'
 const modeOf = (span?: TimeSpan): DayMode =>
@@ -223,6 +224,8 @@ export function SettingsPage({ user }: { user: StaffUser }) {
             </div>
           </form>
         )}
+
+        <PatientFieldsCard />
       </main>
     </StaffShell>
   )

@@ -1,5 +1,13 @@
 import { useState, type FormEvent } from 'react'
-import { ClipboardList, FlaskConical, Pill, Stethoscope, CheckCircle2 } from 'lucide-react'
+import {
+  CheckCircle2,
+  ClipboardList,
+  FlaskConical,
+  Pill,
+  Plus,
+  Stethoscope,
+  Trash2,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
@@ -8,10 +16,29 @@ import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { useTreatments } from '@/lib/api/catalogue'
-import { useClinicalActions, useItems, useVisitClinical } from '@/lib/api/patients'
+import { useClinicalActions, useItems, useVisitClinical, type Item } from '@/lib/api/patients'
 import { cn } from '@/lib/utils'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
+const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other']
+interface RxLine {
+  item: string
+  quantity: string
+  dose: string
+  route: string
+  frequency: string
+  days: string
+  instructions: string
+}
+const emptyLine = (): RxLine => ({
+  item: '',
+  quantity: '',
+  dose: '',
+  route: 'oral',
+  frequency: '',
+  days: '',
+  instructions: '',
+})
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
 
 /**
@@ -47,15 +74,9 @@ export function ClinicalCard({
     type: 'primary' as 'primary' | 'secondary',
     provisional: false,
   })
-  const [rx, setRx] = useState({
-    item: '',
-    quantity: '',
-    dose: '',
-    route: 'oral',
-    frequency: '',
-    days: '',
-    instructions: '',
-  })
+  const [rx, setRx] = useState<RxLine[]>([emptyLine()])
+  const setLine = (i: number, patch: Partial<RxLine>) =>
+    setRx((lines) => lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const [order, setOrder] = useState({ service: '', reason: '' })
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -91,33 +112,32 @@ export function ClinicalCard({
   }
   const submitRx = (e: FormEvent) => {
     e.preventDefault()
-    const item = items.find((i) => i.id === rx.item)
-    const q = Number(rx.quantity)
-    if (!item || !Number.isFinite(q) || q <= 0) return setLocalError(t('clinical.errors.rx'))
+    const lines = rx.filter((l) => l.item || l.quantity)
+    if (lines.length === 0) return setLocalError(t('clinical.errors.rx'))
+    const prepared: { item: Item; line: RxLine; q: number }[] = []
+    for (const line of lines) {
+      const item = items.find((i) => i.id === line.item)
+      const q = Number(line.quantity)
+      if (!item || !Number.isFinite(q) || q <= 0) return setLocalError(t('clinical.errors.rx'))
+      prepared.push({ item, line, q })
+    }
     void run(
-      () =>
-        actions.prescribe
-          .mutateAsync({
+      async () => {
+        // One prescription per medicine, in the order written; the pharmacy sees them together.
+        for (const { item, line, q } of prepared) {
+          await actions.prescribe.mutateAsync({
             item,
             quantity: q,
-            dose: rx.dose,
-            route: rx.route,
-            frequency: rx.frequency,
-            days: rx.days ? Number(rx.days) : undefined,
-            instructions: rx.instructions,
+            dose: line.dose,
+            route: line.route,
+            frequency: line.frequency,
+            days: line.days ? Number(line.days) : undefined,
+            instructions: line.instructions,
           })
-          .then(() =>
-            setRx({
-              item: '',
-              quantity: '',
-              dose: '',
-              route: 'oral',
-              frequency: '',
-              days: '',
-              instructions: '',
-            }),
-          ),
-      t('clinical.rxSaved'),
+        }
+        setRx([emptyLine()])
+      },
+      t('clinical.rxSaved', { count: prepared.length }),
     )
   }
   const submitOrder = (e: FormEvent) => {
@@ -160,7 +180,7 @@ export function ClinicalCard({
         </span>
         {data?.patient?.bloodGroup && (
           <Badge tone="grey" dot={false}>
-            {data.patient.bloodGroup}
+            {t('file.fields.blood_group')} {data.patient.bloodGroup}
           </Badge>
         )}
       </CardHeader>
@@ -207,6 +227,7 @@ export function ClinicalCard({
             onSubmit={submitDx}
             className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr_auto]"
           >
+            <p className="text-ink-3 col-span-full m-0 text-xs">{t('clinical.dxHint')}</p>
             <Field
               label={t('clinical.dx')}
               value={dx.text}
@@ -246,74 +267,98 @@ export function ClinicalCard({
         )}
         {mode === 'rx' && (
           <form onSubmit={submitRx} className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Select
-                label={t('clinical.medicine')}
-                value={rx.item}
-                onChange={(e) => setRx({ ...rx, item: e.target.value })}
-                wrapperClassName="col-span-2"
-                required
+            <p className="text-ink-3 m-0 text-xs">{t('clinical.rxHint')}</p>
+            {rx.map((line, i) => (
+              <fieldset
+                key={i}
+                className="border-border bg-hover/40 m-0 flex flex-col gap-3 rounded-xl border p-3"
               >
-                <option value="">{t('visit.add.pick')}</option>
-                {items.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name} {i.strength ?? ''} {i.form ? `· ${i.form}` : ''}
-                  </option>
-                ))}
-              </Select>
-              <Field
-                label={t('clinical.quantity')}
-                inputMode="numeric"
-                value={rx.quantity}
-                onChange={(e) => setRx({ ...rx, quantity: e.target.value.replace(/[^\d]/g, '') })}
-                required
-              />
-              <Field
-                label={t('clinical.days')}
-                inputMode="numeric"
-                value={rx.days}
-                onChange={(e) => setRx({ ...rx, days: e.target.value.replace(/[^\d]/g, '') })}
-              />
+                <legend className="text-ink-2 px-1 text-xs font-bold">
+                  {t('clinical.medicineN', { n: i + 1 })}
+                </legend>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <Select
+                    label={t('clinical.medicine')}
+                    value={line.item}
+                    onChange={(e) => setLine(i, { item: e.target.value })}
+                    wrapperClassName="col-span-2"
+                    required
+                  >
+                    <option value="">{t('clinical.pickMedicine')}</option>
+                    {items.map((it) => (
+                      <option key={it.id} value={it.id}>
+                        {it.name} {it.strength ?? ''} {it.form ? `· ${it.form}` : ''}
+                      </option>
+                    ))}
+                  </Select>
+                  <Field
+                    label={t('clinical.quantity')}
+                    inputMode="numeric"
+                    value={line.quantity}
+                    onChange={(e) => setLine(i, { quantity: e.target.value.replace(/[^\d]/g, '') })}
+                    required
+                  />
+                  <Field
+                    label={t('clinical.days')}
+                    inputMode="numeric"
+                    value={line.days}
+                    onChange={(e) => setLine(i, { days: e.target.value.replace(/[^\d]/g, '') })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+                  <Field
+                    label={t('clinical.dose')}
+                    value={line.dose}
+                    onChange={(e) => setLine(i, { dose: e.target.value })}
+                    placeholder="1 tab"
+                  />
+                  <Select
+                    label={t('clinical.route')}
+                    value={line.route}
+                    onChange={(e) => setLine(i, { route: e.target.value })}
+                  >
+                    {ROUTES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </Select>
+                  <Field
+                    label={t('clinical.frequency')}
+                    value={line.frequency}
+                    onChange={(e) => setLine(i, { frequency: e.target.value })}
+                    placeholder="3 × / day"
+                  />
+                  <Field
+                    label={t('clinical.instructions')}
+                    value={line.instructions}
+                    onChange={(e) => setLine(i, { instructions: e.target.value })}
+                    placeholder={t('clinical.instructionsPh')}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="self-end"
+                    disabled={rx.length === 1}
+                    onClick={() => setRx((lines) => lines.filter((_, j) => j !== i))}
+                    aria-label={t('clinical.removeMedicine')}
+                    title={t('clinical.removeMedicine')}
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                  </Button>
+                </div>
+              </fieldset>
+            ))}
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => setRx((lines) => [...lines, emptyLine()])}>
+                <Plus size={16} aria-hidden="true" />
+                {t('clinical.addMedicine')}
+              </Button>
+              <Button type="submit" variant="primary" loading={actions.prescribe.isPending}>
+                <Pill size={16} aria-hidden="true" />
+                {t('clinical.saveRx', { count: rx.filter((l) => l.item).length || 1 })}
+              </Button>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field
-                label={t('clinical.dose')}
-                value={rx.dose}
-                onChange={(e) => setRx({ ...rx, dose: e.target.value })}
-                placeholder="1 tab"
-              />
-              <Select
-                label={t('clinical.route')}
-                value={rx.route}
-                onChange={(e) => setRx({ ...rx, route: e.target.value })}
-              >
-                {['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other'].map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </Select>
-              <Field
-                label={t('clinical.frequency')}
-                value={rx.frequency}
-                onChange={(e) => setRx({ ...rx, frequency: e.target.value })}
-                placeholder="3 × / day"
-              />
-              <Field
-                label={t('clinical.instructions')}
-                value={rx.instructions}
-                onChange={(e) => setRx({ ...rx, instructions: e.target.value })}
-                placeholder={t('clinical.instructionsPh')}
-              />
-            </div>
-            <Button
-              type="submit"
-              variant="primary"
-              className="self-start"
-              loading={actions.prescribe.isPending}
-            >
-              {t('clinical.saveRx')}
-            </Button>
           </form>
         )}
         {mode === 'test' && (
@@ -327,7 +372,7 @@ export function ClinicalCard({
               onChange={(e) => setOrder({ ...order, service: e.target.value })}
               required
             >
-              <option value="">{t('visit.add.pick')}</option>
+              <option value="">{t('clinical.pickTest')}</option>
               {tests.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nameEn} ·{' '}

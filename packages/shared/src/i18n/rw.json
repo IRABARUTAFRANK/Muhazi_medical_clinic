@@ -43,7 +43,9 @@
     "quickActions": "Ibikorwa byihuse",
     "close": "Funga",
     "menu": "Ibikubiyemo",
-    "closeMenu": "Funga"
+    "closeMenu": "Funga",
+    "yes": "Yes",
+    "no": "No"
   },
   "days": {
     "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],
@@ -408,7 +410,34 @@
     },
     "save": "Bika igenamiterere",
     "saving": "Birabikwa…",
-    "savedNote": "Byabitswe. Urubuga rugaragaza ibishya."
+    "savedNote": "Byabitswe. Urubuga rugaragaza ibishya.",
+    "patientFields": {
+      "title": "Patient file fields",
+      "lead": "Add the information your clinic wants on every patient file beyond the standard fields (religion, chronic condition, next of kin, insurance card number…). Staff fill them in on the patient file.",
+      "none": "No extra fields yet.",
+      "add": "Add field",
+      "label": "Field name",
+      "labelPh": "e.g. Chronic condition",
+      "type": "Type",
+      "types": {
+        "text": "Text",
+        "number": "Number",
+        "date": "Date",
+        "choice": "Choice list",
+        "yesno": "Yes / no"
+      },
+      "hints": {
+        "text": "Free text",
+        "number": "A number",
+        "date": "A date picker",
+        "yesno": "Yes or no"
+      },
+      "options": "Choices (comma-separated)",
+      "optionsPh": "None, Diabetes, Hypertension, HIV, Asthma",
+      "remove": "Remove field",
+      "save": "Save fields",
+      "saved": "Fields saved. They now appear on every patient file."
+    }
   },
   "pin": {
     "changeTitle": "Hitamo PIN yawe bwite",
@@ -504,7 +533,17 @@
     "diagnoses": "Diagnoses",
     "noBills": "No bills yet.",
     "draftBill": "Draft bill",
-    "save": "Save changes"
+    "save": "Save changes",
+    "more": "More information",
+    "moreLead": "Fields the manager added in Settings appear here for every patient. You can also add a one-off field for this patient only.",
+    "addField": "Add a field",
+    "fieldName": "Field name",
+    "fieldNamePh": "e.g. Next of kin, Religion, Insurance card no.",
+    "fieldValue": "Value",
+    "saveField": "Save field",
+    "removeField": "Remove “{{name}}”",
+    "noExtra": "No extra information yet. Use “Add a field”, or let the manager define fields for every patient in Settings.",
+    "allergiesHint": "Only medicines, foods or substances that cause a reaction (rash, swelling, breathing trouble). Other remarks go in Notes."
   },
   "clinical": {
     "title": "Clinical record",
@@ -535,8 +574,6 @@
     "frequency": "Frequency",
     "instructions": "Instructions",
     "instructionsPh": "after meals…",
-    "saveRx": "Prescribe",
-    "rxSaved": "Prescription saved. The patient is queued at the pharmacy.",
     "test": "Test",
     "reason": "Clinical reason",
     "saveTest": "Order",
@@ -561,6 +598,17 @@
       "rx": "Choose a medicine and a quantity above zero.",
       "test": "Choose a test.",
       "needPrimary": "Record a primary diagnosis before closing the visit."
-    }
+    },
+    "dxHint": "The diagnosis is the disease or problem you found after examining the patient, e.g. “Uncomplicated malaria”. Primary = the main reason for this visit; secondary = other problems found. Tick “provisional” when you are still waiting for results.",
+    "rxHint": "One block per medicine. Use “Add another medicine” for a combination (e.g. an antimalarial plus paracetamol). All of them go to the pharmacy together.",
+    "medicineN": "Medicine {{n}}",
+    "pickMedicine": "Choose a medicine",
+    "addMedicine": "Add another medicine",
+    "removeMedicine": "Remove this medicine",
+    "pickTest": "Choose a test",
+    "saveRx_one": "Prescribe",
+    "saveRx_other": "Prescribe {{count}} medicines",
+    "rxSaved_one": "Prescription saved. The patient is queued at the pharmacy.",
+    "rxSaved_other": "{{count}} medicines prescribed. The patient is queued at the pharmacy."
   }
 }
