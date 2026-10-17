@@ -14,6 +14,8 @@ interface UserMenuProps {
   user: StaffUser
   /** Tablet: open the bottom sheet instead of a dropdown. */
   onOpenSheet?: () => void
+  /** Rendered on the navy top bar: glass trigger with white text. */
+  onDark?: boolean
 }
 
 /**
@@ -21,7 +23,7 @@ interface UserMenuProps {
  * every action is recorded against the signed-in employee, so the next person signs in
  * with their own staff ID, username, PIN and code.
  */
-export function UserMenu({ user, onOpenSheet }: UserMenuProps) {
+export function UserMenu({ user, onOpenSheet, onDark = false }: UserMenuProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -51,12 +53,19 @@ export function UserMenu({ user, onOpenSheet }: UserMenuProps) {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => (onOpenSheet ? onOpenSheet() : setOpen((o) => !o))}
-        className="border-border bg-card hover:bg-hover flex min-h-10 items-center gap-2.5 rounded-lg border py-0 pr-2.5 pl-1.5"
+        className={cn(
+          'flex min-h-11 items-center gap-2.5 rounded-xl border py-0 pr-2.5 pl-1.5 transition-[background-color,transform] duration-150 focus-visible:ring-[3px] focus-visible:outline-none active:scale-[0.98]',
+          onDark
+            ? 'glass-dark text-white focus-visible:ring-white/30'
+            : 'border-border bg-card hover:bg-hover focus-visible:ring-primary/45',
+        )}
       >
         <Avatar name={user.name} size="sm" />
         <span className="flex flex-col items-start leading-[1.15]">
-          <span className="text-[13px]">{user.name}</span>
-          <span className="text-ink-3 text-xs font-medium">{roleLabel(user, t)}</span>
+          <span className="text-[13px] font-semibold">{user.name}</span>
+          <span className={cn('text-xs font-medium', onDark ? 'text-white/65' : 'text-ink-3')}>
+            {roleLabel(user, t)}
+          </span>
         </span>
         <ChevronDown size={16} aria-hidden="true" />
       </button>

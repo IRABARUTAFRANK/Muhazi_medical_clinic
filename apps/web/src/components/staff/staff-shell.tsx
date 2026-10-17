@@ -47,12 +47,20 @@ export function StaffShell({
       {sync.status === 'offline' && <OfflineBanner />}
       <div className="flex min-h-0 flex-1">
         <Rail nav={nav} activeId={activeId} clock={clock} />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+        {/* Workspace: soft gradient with slow ambient colour behind the page (Figma: Dashboard v2). */}
+        <div className="workspace relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+            <span className="ws-blob ws-blob-1" />
+            <span className="ws-blob ws-blob-2" />
+            <span className="ws-blob ws-blob-3" />
+          </div>
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+        </div>
       </div>
       {tabletActions && (
         <div
           aria-label={t('common.quickActions')}
-          className="border-border bg-card pc:hidden flex flex-none gap-2 border-t px-4 py-2"
+          className="border-border bg-card/90 pc:hidden flex flex-none gap-2 border-t px-4 py-2 backdrop-blur"
         >
           {tabletActions}
         </div>
