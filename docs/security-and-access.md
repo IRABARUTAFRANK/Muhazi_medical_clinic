@@ -103,6 +103,14 @@ PIN-gated request and is limited to one per 30 s in the app.
   with `triage_level = 'red'`, queue priority 1 and a reason recorded on the encounter.
 - Station screens read the `queue_board` view (security invoker, so RLS applies).
 
+### No user switching
+
+There is no "switch user" anywhere in the staff area. Every record (registration, vitals,
+charge, discount, payment, setting) carries the signed-in employee's id, so accountability
+needs each person to sign in themselves: staff ID, username, PIN, code. The manager has every
+permission (except HIV-sensitive data) but works under their own account like everyone else.
+The dashboard route refuses employees who are neither manager nor head of station.
+
 ### Idle lock
 
 No pointer, key, touch or wheel event for 5 minutes → the screen locks (session kept). Unlock

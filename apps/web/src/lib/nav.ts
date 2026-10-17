@@ -5,9 +5,9 @@ import { ROLE_HOME, type NavItem, type StaffUser } from '@mmc/shared'
  * whole clinic, so registration and the clinic settings sit next to the dashboard and staff.
  */
 export const MANAGER_NAV: NavItem[] = [
-  { id: 'home', labelKey: 'nav.home', icon: 'home', to: '/app' },
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'layout-dashboard', to: '/app/dashboard' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'user-plus', to: '/app/register' },
+  { id: 'prices', labelKey: 'nav.prices', icon: 'tag', to: '/app/prices' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'users', to: '/app/staff' },
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings', to: '/app/settings' },
 ]

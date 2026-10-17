@@ -106,6 +106,8 @@ export interface QueueRow {
   triage: Triage
   waitMin: number
   insurer: string
+  /** Live rows: the visit the row belongs to (opens the visit screen). */
+  encounterId?: string
 }
 export interface QueueCounts {
   waiting: number

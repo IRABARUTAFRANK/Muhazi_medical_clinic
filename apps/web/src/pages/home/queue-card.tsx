@@ -106,12 +106,28 @@ export function QueueCard({ title, rows, counts, rowAction, empty, className }: 
                   {q.waitMin} {t('common.min')}
                 </span>
                 <Chip className={cn('max-w-full truncate', wideOnly)}>{q.insurer}</Chip>
-                <StaffLink
-                  to="/app/queue"
-                  className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'min-w-0 px-2')}
-                >
-                  {t(rowAction === 'open' ? 'common.open' : 'common.call')}
-                </StaffLink>
+                {q.encounterId ? (
+                  <StaffLink
+                    to="/app/visit"
+                    search={{ encounter: q.encounterId }}
+                    className={cn(
+                      buttonVariants({ variant: 'primary', size: 'sm' }),
+                      'min-w-0 px-2',
+                    )}
+                  >
+                    {t(rowAction === 'open' ? 'common.open' : 'common.call')}
+                  </StaffLink>
+                ) : (
+                  <StaffLink
+                    to="/app/queue"
+                    className={cn(
+                      buttonVariants({ variant: 'primary', size: 'sm' }),
+                      'min-w-0 px-2',
+                    )}
+                  >
+                    {t(rowAction === 'open' ? 'common.open' : 'common.call')}
+                  </StaffLink>
+                )}
               </div>
             ))}
           </div>

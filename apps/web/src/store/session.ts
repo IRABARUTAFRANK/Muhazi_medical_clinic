@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import {
-  findStaffById,
   findStaffByStaffId,
   findStaffByUsername,
   normalizeStaffId,
@@ -144,8 +143,6 @@ interface SessionState {
   unlock: (pin: string) => Promise<boolean>
   /** Replace the PIN (verifies the current one first). */
   changePin: (current: string, next: string) => Promise<boolean>
-  /** One-tap switch on shared devices. In live mode it signs out (the next user types their PIN). */
-  switchTo: (userId: string) => Promise<'switched' | 'signed-out'>
   signOut: () => Promise<void>
 }
 
@@ -297,17 +294,6 @@ export const useSession = create<SessionState>()(
         await supabase.rpc('mark_pin_changed')
         set({ user: { ...user, mustChangePin: false } })
         return true
-      },
-
-      switchTo: async (userId) => {
-        if (supabase) {
-          await supabase.auth.signOut()
-          set({ user: null, locked: false, pending: null })
-          return 'signed-out'
-        }
-        const user = findStaffById(userId)
-        if (user) set({ user, locked: false })
-        return 'switched'
       },
 
       signOut: async () => {

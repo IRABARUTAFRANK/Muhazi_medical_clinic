@@ -17,9 +17,11 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppSectionRouteImport } from './routes/app/$section'
 import { Route as AppChangePinRouteImport } from './routes/app/change-pin'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppPricesRouteImport } from './routes/app/prices'
 import { Route as AppRegisterRouteImport } from './routes/app/register'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppStaffRouteImport } from './routes/app/staff'
+import { Route as AppVisitRouteImport } from './routes/app/visit'
 import { Route as AppVitalsRouteImport } from './routes/app/vitals'
 
 const IndexRoute = IndexRouteImport.update({
@@ -62,6 +64,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricesRoute = AppPricesRouteImport.update({
+  id: '/prices',
+  path: '/prices',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRegisterRoute = AppRegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -75,6 +82,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
 const AppStaffRoute = AppStaffRouteImport.update({
   id: '/staff',
   path: '/staff',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVisitRoute = AppVisitRouteImport.update({
+  id: '/visit',
+  path: '/visit',
   getParentRoute: () => AppRoute,
 } as any)
 const AppVitalsRoute = AppVitalsRouteImport.update({
@@ -91,9 +103,11 @@ export interface FileRoutesByFullPath {
   '/app/$section': typeof AppSectionRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/prices': typeof AppPricesRoute
   '/app/register': typeof AppRegisterRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
+  '/app/visit': typeof AppVisitRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
 }
@@ -104,9 +118,11 @@ export interface FileRoutesByTo {
   '/app/$section': typeof AppSectionRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/prices': typeof AppPricesRoute
   '/app/register': typeof AppRegisterRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
+  '/app/visit': typeof AppVisitRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app': typeof AppIndexRoute
 }
@@ -119,9 +135,11 @@ export interface FileRoutesById {
   '/app/$section': typeof AppSectionRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/prices': typeof AppPricesRoute
   '/app/register': typeof AppRegisterRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
+  '/app/visit': typeof AppVisitRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
 }
@@ -135,9 +153,11 @@ export interface FileRouteTypes {
     | '/app/$section'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/prices'
     | '/app/register'
     | '/app/settings'
     | '/app/staff'
+    | '/app/visit'
     | '/app/vitals'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
@@ -148,9 +168,11 @@ export interface FileRouteTypes {
     | '/app/$section'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/prices'
     | '/app/register'
     | '/app/settings'
     | '/app/staff'
+    | '/app/visit'
     | '/app/vitals'
     | '/app'
   id:
@@ -162,9 +184,11 @@ export interface FileRouteTypes {
     | '/app/$section'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/prices'
     | '/app/register'
     | '/app/settings'
     | '/app/staff'
+    | '/app/visit'
     | '/app/vitals'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -234,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/prices': {
+      id: '/app/prices'
+      path: '/prices'
+      fullPath: '/app/prices'
+      preLoaderRoute: typeof AppPricesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/register': {
       id: '/app/register'
       path: '/register'
@@ -255,6 +286,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStaffRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/visit': {
+      id: '/app/visit'
+      path: '/visit'
+      fullPath: '/app/visit'
+      preLoaderRoute: typeof AppVisitRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/vitals': {
       id: '/app/vitals'
       path: '/vitals'
@@ -269,9 +307,11 @@ interface AppRouteChildren {
   AppSectionRoute: typeof AppSectionRoute
   AppChangePinRoute: typeof AppChangePinRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppPricesRoute: typeof AppPricesRoute
   AppRegisterRoute: typeof AppRegisterRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStaffRoute: typeof AppStaffRoute
+  AppVisitRoute: typeof AppVisitRoute
   AppVitalsRoute: typeof AppVitalsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -280,9 +320,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppSectionRoute: AppSectionRoute,
   AppChangePinRoute: AppChangePinRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppPricesRoute: AppPricesRoute,
   AppRegisterRoute: AppRegisterRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStaffRoute: AppStaffRoute,
+  AppVisitRoute: AppVisitRoute,
   AppVitalsRoute: AppVitalsRoute,
   AppIndexRoute: AppIndexRoute,
 }

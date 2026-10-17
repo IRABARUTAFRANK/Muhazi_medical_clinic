@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { STAFF, type StaffUser } from '@mmc/shared'
-import { roleLabel } from '@/lib/roles'
+import type { StaffUser } from '@mmc/shared'
 import { useUserActions } from '@/lib/user-actions'
 import { StaffLink } from './staff-link'
 
@@ -12,10 +11,15 @@ interface MoreSheetProps {
 const item =
   'flex min-h-12 w-full items-center justify-between rounded-lg px-3 text-left text-ink no-underline hover:bg-hover'
 
-/** Tablet bottom sheet: switch user, dashboard / reports / settings, theme, sign out. */
+/**
+ * Tablet bottom sheet: dashboard (managers and heads of station only), settings (managers),
+ * theme, sign out. No user switching: the next person signs in with their own credentials.
+ */
 export function MoreSheet({ user, onClose }: MoreSheetProps) {
   const { t } = useTranslation()
   const actions = useUserActions()
+  const manager = user.role === 'manager'
+  const dashboard = manager || user.dashboard === 'head'
   return (
     <div
       className="absolute inset-0 z-20 flex flex-col justify-end bg-[rgba(15,23,32,.45)]"
@@ -29,33 +33,26 @@ export function MoreSheet({ user, onClose }: MoreSheetProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-border mx-auto mb-3 h-1 w-10 rounded-sm" />
-        <div className="text-ink-3 px-3 py-1.5 text-xs">{t('common.switchUser')}</div>
-        {STAFF.filter((u) => u.id !== user.id).map((u) => (
-          <button
-            key={u.id}
-            type="button"
-            className={item}
-            onClick={() => {
-              onClose()
-              actions.switchUser(u)
-            }}
-          >
-            <span>{u.name}</span>
-            <span className="text-ink-3 text-xs">{roleLabel(u, t)}</span>
-          </button>
-        ))}
+        <div className="px-3 py-1.5">
+          <span className="block text-[13px] font-semibold">{user.name}</span>
+          <span className="text-ink-3 text-xs tabular-nums">
+            {user.staffId ? `${user.staffId} · ` : ''}
+            {user.username}
+          </span>
+        </div>
         <div className="border-border my-2 border-t" />
         <div className="text-ink-3 px-3 py-1.5 text-xs">{t('common.more')}</div>
-        <StaffLink to="/app/dashboard" className={item} onClick={onClose}>
-          <span>{t('common.dashboard')}</span>
-          <span className="text-ink-3 text-xs">{t('common.manager')}</span>
-        </StaffLink>
-        <StaffLink to="/app/reports" className={item} onClick={onClose}>
-          <span>{t('common.reports')}</span>
-        </StaffLink>
-        <StaffLink to="/app/settings" className={item} onClick={onClose}>
-          <span>{t('common.settings')}</span>
-        </StaffLink>
+        {dashboard && (
+          <StaffLink to="/app/dashboard" className={item} onClick={onClose}>
+            <span>{t('common.dashboard')}</span>
+            <span className="text-ink-3 text-xs">{t('common.manager')}</span>
+          </StaffLink>
+        )}
+        {manager && (
+          <StaffLink to="/app/settings" className={item} onClick={onClose}>
+            <span>{t('common.settings')}</span>
+          </StaffLink>
+        )}
         <button
           type="button"
           className={item}

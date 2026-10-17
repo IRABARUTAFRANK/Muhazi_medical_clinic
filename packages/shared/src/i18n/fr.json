@@ -41,7 +41,7 @@
     "makeAnother": "Faire une autre demande",
     "previousWeek": "Semaine précédente",
     "nextWeek": "Semaine suivante",
-    "currentUser": "Utilisateur actuel, touchez pour changer",
+    "currentUser": "Utilisateur actuel",
     "mainNav": "Principal",
     "siteNav": "Site",
     "footerNav": "Pied de page",
@@ -79,6 +79,7 @@
     "stock": "Stock",
     "settings": "Paramètres",
     "staff": "Employés",
+    "prices": "Soins et tarifs",
     "changePin": "Changer le PIN"
   },
   "roles": {
@@ -713,6 +714,136 @@
     "errors": {
       "noVitals": "Saisissez au moins une mesure.",
       "generic": "Enregistrement impossible : {{message}}"
+    }
+  },
+  "prices": {
+    "title": "Soins, tarifs et assureurs",
+    "lead": "Tout ce que la clinique traite, avec son prix et la remise qu'un soignant peut accorder sans vous demander. Les assureurs partenaires ont leurs propres tarifs et leur couverture.",
+    "newTreatment": "Nouveau soin",
+    "edit": "Modifier",
+    "noPrice": "pas de prix",
+    "maxDiscount": "remise jusqu'à {{pct}} %",
+    "inactive": "Inactif",
+    "groups": {
+      "consultation": "Consultation et traitements",
+      "dental": "Dentaire",
+      "lab": "Laboratoire",
+      "imaging": "Échographie / imagerie",
+      "procedure": "Petite chirurgie et actes",
+      "nursing": "Soins infirmiers",
+      "bed": "Lits et observation",
+      "registration": "Enregistrement",
+      "pharmacy": "Pharmacie",
+      "other": "Autre"
+    },
+    "form": {
+      "editTitle": "Modifier {{name}}",
+      "nameEn": "Nom (anglais)",
+      "namePh": "Traitement du paludisme simple",
+      "nameKin": "Nom (kinyarwanda)",
+      "nameFr": "Nom (français)",
+      "group": "Groupe",
+      "category": "Catégorie de réservation publique",
+      "categoryNone": "Non affiché sur le site public",
+      "cashPrice": "Prix comptant (RWF)",
+      "maxDiscount": "Remise maximale accordée par un soignant (%)",
+      "insurerPrices": "Tarifs assureurs (vide = prix comptant)",
+      "sameAsCash": "comme le comptant",
+      "allowManual": "Le soignant peut saisir un autre prix (avec motif)",
+      "active": "Actif (facturable)",
+      "save": "Enregistrer"
+    },
+    "insurers": {
+      "title": "Assureurs et couverture",
+      "lead": "Les assureurs partenaires de la clinique et ce que chacun couvre. Les pourcentages par groupe remplacent le pourcentage global (ex. dentaire 50 %). Seuls les assureurs actifs peuvent être choisis sur une visite.",
+      "new": "Nouvel assureur",
+      "list": "Assureurs",
+      "activeCount": "{{count}} actif(s)",
+      "none": "Aucun assureur pour le moment.",
+      "covers": "couvre {{pct}} %",
+      "active": "Actif",
+      "inactive": "Inactif",
+      "editTitle": "Modifier {{name}}",
+      "types": {
+        "rssb_rama": "RSSB RAMA",
+        "cbhi": "Mutuelle de Santé (CBHI)",
+        "mmi": "MMI",
+        "private": "Assureur privé",
+        "employer": "Régime employeur"
+      },
+      "form": {
+        "name": "Nom",
+        "code": "Code court",
+        "type": "Type",
+        "coverage": "Couvre (% de la facture)",
+        "byGroup": "Couverture par groupe (optionnel, remplace le % global)",
+        "active": "Actif — la clinique travaille avec cet assureur",
+        "publicNote": "Le site public garde son bandeau « assurances bientôt » tant que FEATURES.insurance n'est pas activé dans le code."
+      }
+    },
+    "errors": {
+      "name": "Un nom est requis.",
+      "price": "Le prix est un nombre entier de francs, zéro ou plus.",
+      "discount": "La remise est un pourcentage entre 0 et 100.",
+      "coverage": "La couverture est un pourcentage entre 0 et 100.",
+      "generic": "Enregistrement impossible : {{message}}"
+    }
+  },
+  "visit": {
+    "back": "Retour à ma file",
+    "notFound": "Visite introuvable ou déjà clôturée.",
+    "sent": "Patient envoyé à {{station}}.",
+    "removeReason": "Pourquoi retirer ce frais ?",
+    "status": {
+      "posted": "Facture validée",
+      "credited": "Facture créditée"
+    },
+    "payer": {
+      "title": "Qui paie",
+      "label": "Payeur",
+      "cash": "Comptant / mobile money (sans assureur)",
+      "member": "Numéro de membre",
+      "memberPh": "sur la carte d'assurance",
+      "saveMember": "Enregistrer",
+      "hint": "Choisir un assureur répartit à nouveau chaque frais de cette facture selon sa couverture.",
+      "noInsurers": "Aucun assureur actif : le patient paie la totalité à la caisse."
+    },
+    "charges": {
+      "title": "Soins de cette visite",
+      "empty": "Aucun soin facturé pour l'instant.",
+      "discounted": "remise {{pct}} % : {{reason}}",
+      "split": "patient {{patient}} · assureur {{insurer}}",
+      "total": "Total",
+      "patientPays": "Le patient paie",
+      "insurerPays": "{{name}} paie",
+      "remove": "Retirer le frais"
+    },
+    "add": {
+      "title": "Ajouter un soin",
+      "search": "Rechercher",
+      "searchPh": "paludisme, extraction, TDR…",
+      "treatment": "Soin",
+      "pick": "Choisir un soin",
+      "quantity": "Quantité",
+      "discount": "Remise % (jusqu'à {{max}})",
+      "reason": "Motif de la remise",
+      "reasonPh": "ex. visite de suivi, indigence",
+      "preview": "{{unit}} l'unité · {{total}} au total",
+      "adding": "Ajout…",
+      "submit": "Ajouter à la facture",
+      "errors": {
+        "pick": "Choisissez d'abord un soin.",
+        "discount": "La remise est un pourcentage entre 0 et 100.",
+        "overMax": "Vous pouvez accorder jusqu'à {{pct}} % sur ce soin. Demandez au gestionnaire pour plus.",
+        "reason": "Indiquez le motif de la remise."
+      }
+    },
+    "next": {
+      "title": "Terminé à ce poste",
+      "lead": "Clôt l'entrée de file {{station}} et envoie le patient plus loin.",
+      "toCashier": "Envoyer à la caisse",
+      "other": "Ou envoyer à",
+      "send": "Envoyer"
     }
   },
   "settings": {

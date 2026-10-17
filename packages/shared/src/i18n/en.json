@@ -41,7 +41,7 @@
     "makeAnother": "Make another request",
     "previousWeek": "Previous week",
     "nextWeek": "Next week",
-    "currentUser": "Current user, tap to switch",
+    "currentUser": "Current user",
     "mainNav": "Main",
     "siteNav": "Site",
     "footerNav": "Footer",
@@ -79,6 +79,7 @@
     "stock": "Stock",
     "settings": "Settings",
     "staff": "Employees",
+    "prices": "Treatments & prices",
     "changePin": "Change PIN"
   },
   "roles": {
@@ -713,6 +714,136 @@
     "errors": {
       "noVitals": "Enter at least one measurement.",
       "generic": "Could not save: {{message}}"
+    }
+  },
+  "prices": {
+    "title": "Treatments, prices and insurers",
+    "lead": "Everything the clinic treats, with its price and the discount a clinician may give without asking you. Insurers you work with get their own prices and coverage.",
+    "newTreatment": "New treatment",
+    "edit": "Edit",
+    "noPrice": "no price",
+    "maxDiscount": "discount up to {{pct}}%",
+    "inactive": "Inactive",
+    "groups": {
+      "consultation": "Consultation & treatments",
+      "dental": "Dental",
+      "lab": "Laboratory",
+      "imaging": "Ultrasound / imaging",
+      "procedure": "Minor surgery & procedures",
+      "nursing": "Nursing care",
+      "bed": "Beds & observation",
+      "registration": "Registration",
+      "pharmacy": "Pharmacy",
+      "other": "Other"
+    },
+    "form": {
+      "editTitle": "Edit {{name}}",
+      "nameEn": "Name (English)",
+      "namePh": "Malaria treatment (uncomplicated)",
+      "nameKin": "Name (Kinyarwanda)",
+      "nameFr": "Name (French)",
+      "group": "Group",
+      "category": "Public booking category",
+      "categoryNone": "Not shown on the public site",
+      "cashPrice": "Cash price (RWF)",
+      "maxDiscount": "Max discount a clinician may give (%)",
+      "insurerPrices": "Insurer prices (leave empty to use the cash price)",
+      "sameAsCash": "same as cash",
+      "allowManual": "Clinician may type a different price (with a reason)",
+      "active": "Active (can be charged)",
+      "save": "Save"
+    },
+    "insurers": {
+      "title": "Insurers and coverage",
+      "lead": "The insurers the clinic works with and what each covers. Per-group percentages override the overall one (for example dental 50%). Only active insurers can be chosen on a visit.",
+      "new": "New insurer",
+      "list": "Insurers",
+      "activeCount": "{{count}} active",
+      "none": "No insurer yet.",
+      "covers": "covers {{pct}}%",
+      "active": "Active",
+      "inactive": "Not active",
+      "editTitle": "Edit {{name}}",
+      "types": {
+        "rssb_rama": "RSSB RAMA",
+        "cbhi": "Mutuelle de Santé (CBHI)",
+        "mmi": "MMI",
+        "private": "Private insurer",
+        "employer": "Employer scheme"
+      },
+      "form": {
+        "name": "Name",
+        "code": "Short code",
+        "type": "Type",
+        "coverage": "Covers (% of the bill)",
+        "byGroup": "Coverage per group (optional, overrides the overall %)",
+        "active": "Active — the clinic works with this insurer",
+        "publicNote": "The public site keeps its \"insurance coming soon\" band until FEATURES.insurance is switched on in the code."
+      }
+    },
+    "errors": {
+      "name": "A name is required.",
+      "price": "The price must be a whole number of francs, zero or more.",
+      "discount": "The discount is a percentage between 0 and 100.",
+      "coverage": "Coverage is a percentage between 0 and 100.",
+      "generic": "Could not save: {{message}}"
+    }
+  },
+  "visit": {
+    "back": "Back to my queue",
+    "notFound": "This visit was not found or is already closed.",
+    "sent": "Patient sent to {{station}}.",
+    "removeReason": "Why remove this charge?",
+    "status": {
+      "posted": "Bill posted",
+      "credited": "Bill credited"
+    },
+    "payer": {
+      "title": "Who pays",
+      "label": "Payer",
+      "cash": "Cash / mobile money (no insurer)",
+      "member": "Member number",
+      "memberPh": "on the insurance card",
+      "saveMember": "Save",
+      "hint": "Choosing an insurer re-splits every charge on this bill using its coverage.",
+      "noInsurers": "No insurer is active yet: the patient pays the full amount at the cashier."
+    },
+    "charges": {
+      "title": "Treatments on this visit",
+      "empty": "No treatment charged yet.",
+      "discounted": "{{pct}}% discount: {{reason}}",
+      "split": "patient {{patient}} · insurer {{insurer}}",
+      "total": "Total",
+      "patientPays": "Patient pays",
+      "insurerPays": "{{name}} pays",
+      "remove": "Remove charge"
+    },
+    "add": {
+      "title": "Add a treatment",
+      "search": "Search",
+      "searchPh": "malaria, extraction, RDT…",
+      "treatment": "Treatment",
+      "pick": "Choose a treatment",
+      "quantity": "Quantity",
+      "discount": "Discount % (up to {{max}})",
+      "reason": "Reason for the discount",
+      "reasonPh": "e.g. follow-up visit, hardship",
+      "preview": "{{unit}} each · {{total}} in total",
+      "adding": "Adding…",
+      "submit": "Add to the bill",
+      "errors": {
+        "pick": "Choose a treatment first.",
+        "discount": "The discount is a percentage between 0 and 100.",
+        "overMax": "You may give up to {{pct}}% on this treatment. Ask the manager for more.",
+        "reason": "Give the reason for the discount."
+      }
+    },
+    "next": {
+      "title": "Done at this station",
+      "lead": "Closes the {{station}} queue entry and sends the patient on.",
+      "toCashier": "Send to the cashier",
+      "other": "Or send to",
+      "send": "Send"
     }
   },
   "settings": {

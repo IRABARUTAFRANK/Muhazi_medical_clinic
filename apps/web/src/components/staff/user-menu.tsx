@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { STAFF, type StaffUser } from '@mmc/shared'
+import type { StaffUser } from '@mmc/shared'
 import { Avatar } from '@/components/ui/avatar'
 import { roleLabel } from '@/lib/roles'
 import { useUserActions } from '@/lib/user-actions'
@@ -16,7 +16,11 @@ interface UserMenuProps {
   onOpenSheet?: () => void
 }
 
-/** Current user button with one-tap switch, theme toggle and sign-out. */
+/**
+ * Current user button with theme toggle and sign-out. There is deliberately no "switch user":
+ * every action is recorded against the signed-in employee, so the next person signs in
+ * with their own staff ID, username, PIN and code.
+ */
 export function UserMenu({ user, onOpenSheet }: UserMenuProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -61,22 +65,13 @@ export function UserMenu({ user, onOpenSheet }: UserMenuProps) {
           role="menu"
           className="border-border bg-card shadow-sheet absolute top-[52px] right-0 z-[5] flex w-[280px] flex-col rounded-lg border p-2"
         >
-          <div className="text-ink-3 px-3 py-1.5 text-xs">{t('common.switchUser')}</div>
-          {STAFF.filter((u) => u.id !== user.id).map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              role="menuitem"
-              className={itemClass}
-              onClick={() => {
-                setOpen(false)
-                actions.switchUser(u)
-              }}
-            >
-              <span>{u.name}</span>
-              <span className="text-ink-3 text-xs">{roleLabel(u, t)}</span>
-            </button>
-          ))}
+          <div className="px-3 py-1.5">
+            <span className="block text-[13px] font-semibold">{user.name}</span>
+            <span className="text-ink-3 text-xs tabular-nums">
+              {user.staffId ? `${user.staffId} · ` : ''}
+              {user.username}
+            </span>
+          </div>
           <div className="border-border my-1.5 border-t" />
           <button
             type="button"
