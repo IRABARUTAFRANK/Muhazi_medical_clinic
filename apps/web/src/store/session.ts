@@ -52,8 +52,79 @@ export interface PendingSignIn {
   staffId: string
   username: string
   email: string
+  /** Kept in memory only, so "send a new code" can repeat the PIN-gated request. */
+  pin?: string
   /** Sample mode only: the user that will be signed in once a code is typed. */
   sampleUser?: StaffUser
+}
+
+type RequestOutcome =
+  | { ok: true; email: string }
+  | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'error' | 'unavailable' }
+
+/**
+ * Preferred path: the `staff-otp` Edge Function checks the PIN on the server, records the
+ * request and asks Supabase Auth to send the code (the `send-auth-email` hook refuses codes
+ * that were not preceded by a PIN check). Returns `unavailable` when the function is not
+ * deployed, so the caller can fall back to the client-side flow.
+ */
+async function requestCodeViaFunction(
+  staffId: string,
+  username: string,
+  pin: string,
+): Promise<RequestOutcome> {
+  const { data, error } = await supabase!.functions.invoke('staff-otp', {
+    body: { action: 'request', staff_id: staffId, username, pin },
+  })
+  if (error) {
+    const ctx = (error as { context?: Response }).context
+    if (!ctx || typeof ctx.status !== 'number') return { ok: false, reason: 'unavailable' }
+    if (ctx.status === 404) return { ok: false, reason: 'unavailable' }
+    const payload = (await ctx.json().catch(() => null)) as { error?: string } | null
+    switch (payload?.error) {
+      case 'invalid':
+        return { ok: false, reason: 'invalid' }
+      case 'inactive':
+        return { ok: false, reason: 'inactive' }
+      case 'too_many':
+      case 'otp_send_failed':
+        return { ok: false, reason: 'otp' }
+      default:
+        return { ok: false, reason: ctx.status >= 500 ? 'error' : 'invalid' }
+    }
+  }
+  const body = data as { ok?: boolean; email?: string } | null
+  if (!body?.ok || !body.email) return { ok: false, reason: 'error' }
+  return { ok: true, email: body.email }
+}
+
+/** Fallback when `staff-otp` is not deployed: PIN check and code request from the browser. */
+async function requestCodeDirect(
+  staffId: string,
+  username: string,
+  pin: string,
+): Promise<RequestOutcome> {
+  const { data: email, error: lookupError } = await supabase!.rpc('staff_login_email', {
+    p_staff_id: staffId,
+    p_username: username,
+  })
+  if (lookupError) return { ok: false, reason: 'error' }
+  if (!email) return { ok: false, reason: 'invalid' }
+  const { error } = await supabase!.auth.signInWithPassword({ email, password: pin })
+  if (error) {
+    return { ok: false, reason: /banned/i.test(error.message) ? 'inactive' : 'invalid' }
+  }
+  // PIN accepted. The session only counts once the e-mailed code is verified: until then
+  // the app holds no user, and the code exchange replaces this session.
+  const { error: otpError } = await supabase!.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false },
+  })
+  if (otpError) {
+    await supabase!.auth.signOut()
+    return { ok: false, reason: 'otp' }
+  }
+  return { ok: true, email }
 }
 
 interface SessionState {
@@ -116,28 +187,15 @@ export const useSession = create<SessionState>()(
           set({ pending: { staffId: id, username: name, email, sampleUser: user } })
           return { ok: true, step: 'otp', email }
         }
-        const { data: email, error: lookupError } = await supabase.rpc('staff_login_email', {
-          p_staff_id: id,
-          p_username: name,
-        })
-        if (lookupError) return { ok: false, reason: 'error' }
-        if (!email) return { ok: false, reason: 'invalid' }
-        const { error } = await supabase.auth.signInWithPassword({ email, password: pin })
-        if (error) {
-          return { ok: false, reason: /banned/i.test(error.message) ? 'inactive' : 'invalid' }
+        let outcome = await requestCodeViaFunction(id, name, pin)
+        if (!outcome.ok && outcome.reason === 'unavailable') {
+          outcome = await requestCodeDirect(id, name, pin)
         }
-        // PIN accepted. The session only counts once the e-mailed code is verified: until then
-        // the app holds no user, and the code exchange below replaces this session.
-        const { error: otpError } = await supabase.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: false },
-        })
-        if (otpError) {
-          await supabase.auth.signOut()
-          return { ok: false, reason: 'otp' }
+        if (!outcome.ok) {
+          return { ok: false, reason: outcome.reason === 'unavailable' ? 'error' : outcome.reason }
         }
-        set({ pending: { staffId: id, username: name, email } })
-        return { ok: true, step: 'otp', email }
+        set({ pending: { staffId: id, username: name, email: outcome.email, pin } })
+        return { ok: true, step: 'otp', email: outcome.email }
       },
 
       verifyOtp: async (code) => {
@@ -178,6 +236,18 @@ export const useSession = create<SessionState>()(
         const pending = get().pending
         if (!pending) return false
         if (!supabase) return true
+        // Same PIN-gated request as the first code (the hook drops codes without a PIN check).
+        if (pending.pin) {
+          let outcome = await requestCodeViaFunction(pending.staffId, pending.username, pending.pin)
+          if (!outcome.ok && outcome.reason === 'unavailable') {
+            const { error } = await supabase.auth.signInWithOtp({
+              email: pending.email,
+              options: { shouldCreateUser: false },
+            })
+            outcome = error ? { ok: false, reason: 'otp' } : { ok: true, email: pending.email }
+          }
+          return outcome.ok
+        }
         const { error } = await supabase.auth.signInWithOtp({
           email: pending.email,
           options: { shouldCreateUser: false },

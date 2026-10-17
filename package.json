@@ -20,7 +20,10 @@
     "db:bundle": "node scripts/db-bundle.mjs",
     "db:apply": "node scripts/db-apply.mjs",
     "db:seed-staff": "node scripts/seed-staff.mjs",
-    "db:verify": "node scripts/verify-live.mjs"
+    "db:verify": "node scripts/verify-live.mjs",
+    "sb:configure": "node scripts/supabase-configure.mjs",
+    "sb:deploy": "node scripts/supabase-deploy.mjs",
+    "sb:set-email": "node scripts/set-staff-email.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",

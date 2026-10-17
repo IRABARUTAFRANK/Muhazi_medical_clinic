@@ -78,9 +78,17 @@ shouldCreateUser:false)`: Supabase Auth e-mails a six-digit code. The app still 
    `mark_pin_changed()`).
 5. Otherwise the employee lands on their role's home (managers on the dashboard).
 
-The PIN step is enforced by the app, the code step by Supabase Auth (the final session comes
-from the code exchange). Codes expire per the project's Auth settings; "Send a new code" is
-rate-limited to one per 30 s in the app and by Supabase's e-mail limits.
+**PIN gating on the server.** Step 2 goes through the `staff-otp` Edge Function (public
+endpoint, 5 requests per account per 10 minutes): it resolves the e-mail, verifies the PIN with
+Supabase Auth, inserts a `login_request` row and only then calls `signInWithOtp`. The
+`send-auth-email` function is registered as the Auth **Send Email hook**: Supabase no longer
+sends mail itself; the hook sends the code (Resend or Brevo API) only when an unconsumed
+`login_request` for that user exists from the last three minutes, and logs an audit event
+otherwise. So a code cannot be obtained without the PIN, even by calling `signInWithOtp`
+directly. If the function is not deployed, the app falls back to the client-side flow (PIN
+check in the browser, code sent by Supabase's mailer, template must contain `{{ .Token }}`).
+The final session always comes from the code exchange. "Send a new code" repeats the same
+PIN-gated request and is limited to one per 30 s in the app.
 
 ### Patient journey (MoH workflow)
 
@@ -129,13 +137,17 @@ re-verifies the PIN with Supabase Auth. "Not you? Sign out" ends the session for
 ## 5. Setting it up (one time)
 
 1. Apply the migrations (`supabase/all.sql` or `pnpm db:apply --seed`).
-2. Deploy the function: `npx supabase login` → `npx supabase functions deploy manage-staff --project-ref wwxmdqdrdekpzcbijsqo`.
-3. Supabase dashboard → Authentication: disable sign-ups, disable email confirmation, minimum
-   password length 6. For the sign-in code: Authentication → Email Templates → **Magic Link**
-   must contain `{{ .Token }}` (e.g. "Your Muhazi Medical Clinic sign-in code is {{ .Token }}.
-   It expires in 10 minutes."), Authentication → Providers → Email: OTP length 6, expiry
-   600 s. Configure **custom SMTP** (Project settings → Authentication → SMTP): the built-in
-   sender is limited to a few e-mails per hour and would block daily sign-ins.
-4. Create the first manager with `pnpm db:seed-staff` (it creates the sample staff including
+2. Put a personal access token (dashboard → Account → Access Tokens) in the root `.env` as
+   `SUPABASE_ACCESS_TOKEN`, plus a mail provider key (`RESEND_API_KEY` or `BREVO_API_KEY`,
+   `MAIL_FROM`) and, optionally, `SMTP_*` values (see `.env.example`).
+3. `pnpm sb:deploy` deploys `manage-staff`, `staff-otp` and `send-auth-email`.
+4. `pnpm sb:configure` applies the Auth settings through the Management API: sign-ups off,
+   e-mail confirmation off, minimum password length 6, site URL, Magic Link template with
+   `{{ .Token }}`, code length 6 and expiry 600 s, custom SMTP when given, and (with a mail
+   provider key) the Send Email hook plus the function secrets. Without a provider key the
+   codes go through Supabase's built-in sender, which allows only a few e-mails per hour.
+5. `pnpm sb:set-email t.mugabo <address>` gives the first manager a real address; the manager
+   then sets the others from the Employees page.
+6. Create the first manager with `pnpm db:seed-staff` (it creates the sample staff including
    `t.mugabo`, PIN printed), sign in as that manager, change the PIN, then create the real
    employees from the Employees page and delete or deactivate the samples.

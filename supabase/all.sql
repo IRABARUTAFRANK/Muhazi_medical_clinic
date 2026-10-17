@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-17T09:24:44.874Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-17T10:02:34.521Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -2498,6 +2498,27 @@ grant execute on function find_patients(text, integer), start_visit(uuid, boolea
 revoke execute on function find_patients(text, integer), start_visit(uuid, boolean, station, encounter_type),
   register_patient(text, text, sex, date, integer, text, text, text, boolean, station, encounter_type),
   record_vitals(uuid, jsonb, triage_level, station, text), assign_staff_id(), sync_profile_email() from anon;
+
+
+-- ============================================================ 20261017150000_login_requests.sql
+-- Muhazi Medical Clinic System — 0012 PIN-gated sign-in codes
+-- The `staff-otp` Edge Function verifies the PIN on the server and records a login request;
+-- the `send-auth-email` hook only e-mails a code when a fresh, unconsumed request exists for
+-- that user. Service role only: no policies, so neither anon nor authenticated can read it.
+
+create table login_request (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles (id) on delete cascade,
+  email text not null,
+  requested_at timestamptz not null default now(),
+  consumed_at timestamptz,
+  client text
+);
+create index login_request_user_idx on login_request (user_id, requested_at desc);
+comment on table login_request is 'PIN verified → code may be sent. Written and read by Edge Functions with the service role only.';
+
+alter table login_request enable row level security;
+revoke all on login_request from anon, authenticated;
 
 
 -- ============================================================ seed.sql
