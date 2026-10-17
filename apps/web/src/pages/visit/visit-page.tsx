@@ -10,7 +10,13 @@ import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { useBillingActions, useVisitBill, useVisitHeader, useVisitVitals } from '@/lib/api/billing'
+import {
+  useBillingActions,
+  useVisitBill,
+  useVisitHeader,
+  useVisitVitals,
+  type VisitBill,
+} from '@/lib/api/billing'
 import { useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
 import { TREATING_STATIONS, stationFor, type Station } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
@@ -269,6 +275,25 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               </div>
 
               <div className="flex flex-col gap-4">
+                {(user.role === 'cashier' || user.role === 'manager') && bill && (
+                  <PaymentCard
+                    bill={bill}
+                    onPay={async (input) => {
+                      setActionError(null)
+                      try {
+                        const r = await actions.takePayment.mutateAsync(input)
+                        setDone(
+                          r.balance <= 0
+                            ? t('visit.payment.settled', { number: r.number ?? '' })
+                            : t('visit.payment.partial', { balance: formatRwf(r.balance) }),
+                        )
+                      } catch (e) {
+                        setActionError(describe(e))
+                        throw e
+                      }
+                    }}
+                  />
+                )}
                 <AddChargeCard
                   treatments={treatments}
                   office={myStation}
@@ -334,6 +359,140 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
         )}
       </main>
     </StaffShell>
+  )
+}
+
+/* ---------------------------------------------------------------- cashier: take a payment */
+
+const METHODS = ['cash', 'momo', 'airtel', 'card', 'bank'] as const
+type Method = (typeof METHODS)[number]
+
+function PaymentCard({
+  bill,
+  onPay,
+}: {
+  bill: VisitBill
+  onPay: (input: {
+    method: Method
+    amount: number
+    reference?: string
+    phone?: string
+  }) => Promise<void>
+}) {
+  const { t } = useTranslation()
+  const [method, setMethod] = useState<Method>('cash')
+  const [amount, setAmount] = useState('')
+  const [reference, setReference] = useState('')
+  const [phone, setPhone] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const settled = bill.balance <= 0 && bill.total > 0
+  const needsRef = method !== 'cash'
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    const n = Number(amount || bill.balance)
+    if (!Number.isFinite(n) || n <= 0) return setError(t('visit.payment.errors.amount'))
+    if (n > bill.balance + 0.5)
+      return setError(t('visit.payment.errors.tooMuch', { balance: formatRwf(bill.balance) }))
+    if (needsRef && !reference.trim()) return setError(t('visit.payment.errors.reference'))
+    setBusy(true)
+    try {
+      await onPay({ method, amount: Math.round(n), reference, phone })
+      setAmount('')
+      setReference('')
+    } catch {
+      /* shown by the page */
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className={cn(settled ? 'border-green' : 'border-primary')}>
+      <CardHeader>
+        <span>{t('visit.payment.title')}</span>
+        {settled ? (
+          <Badge tone="green">{t('visit.payment.paidBadge')}</Badge>
+        ) : (
+          <span className="text-ink-2 text-[13px] tabular-nums">
+            {t('visit.payment.due')} <b className="text-ink">{formatRwf(bill.balance)}</b>
+          </span>
+        )}
+      </CardHeader>
+      <form onSubmit={submit}>
+        <CardBody className="gap-3">
+          {bill.paid > 0 && (
+            <p className="text-ink-2 m-0 text-[13px]">
+              {t('visit.payment.alreadyPaid', { amount: formatRwf(bill.paid) })}
+            </p>
+          )}
+          {bill.total === 0 && (
+            <p className="text-ink-3 m-0 text-[13px]">{t('visit.payment.nothingYet')}</p>
+          )}
+          {!settled && bill.total > 0 && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Select
+                  label={t('visit.payment.method')}
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value as Method)}
+                >
+                  {METHODS.map((m) => (
+                    <option key={m} value={m}>
+                      {t(`visit.payment.methods.${m}`)}
+                    </option>
+                  ))}
+                </Select>
+                <Field
+                  label={t('visit.payment.amount')}
+                  inputMode="numeric"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))}
+                  placeholder={String(bill.balance)}
+                />
+              </div>
+              {needsRef && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field
+                    label={t('visit.payment.reference')}
+                    value={reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    required
+                  />
+                  <Field
+                    label={t('visit.payment.phone')}
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="07xx xxx xxx"
+                  />
+                </div>
+              )}
+              {error && (
+                <p role="alert" className={errorBox}>
+                  {error}
+                </p>
+              )}
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="self-start"
+                disabled={busy}
+              >
+                {busy
+                  ? t('visit.payment.taking')
+                  : t('visit.payment.take', {
+                      amount: formatRwf(Number(amount || bill.balance) || 0),
+                    })}
+              </Button>
+            </>
+          )}
+        </CardBody>
+      </form>
+    </Card>
   )
 }
 

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  CLINIC_HOURS,
   CLINIC_NOW,
   CLINIC_NOW_QUIET,
   ROLE_HOME,
@@ -14,6 +15,8 @@ import { Card } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { useHomeSummary } from '@/lib/api/home'
+import { useClinicStatus, useClinicInfo } from '@/lib/api/public'
 import { openItems, queueCounts, stationFor, useQueueBoard } from '@/lib/api/visits'
 import { roleLabel } from '@/lib/roles'
 import { isLive } from '@/lib/supabase'
@@ -40,7 +43,19 @@ export function HomePage({ user, mode }: HomePageProps) {
   const role: HomeRole = user.role === 'manager' ? 'receptionist' : user.role
   const home = ROLE_HOME[role]
   const empty = mode === 'empty'
-  const now = empty ? CLINIC_NOW_QUIET : CLINIC_NOW
+  // Clinic now: live from public_clinic_status() (waiting, average wait) and the bed board.
+  const { data: info } = useClinicInfo()
+  const { data: status } = useClinicStatus(info?.hours ?? CLINIC_HOURS)
+  const { data: summary } = useHomeSummary()
+  const sampleNow = empty ? CLINIC_NOW_QUIET : CLINIC_NOW
+  const now = isLive
+    ? {
+        inClinic: status?.waiting ?? 0,
+        avgWaitMin: status?.avgWaitMin ?? 0,
+        bedsOccupied: summary?.beds.filter((b) => b.state === 'occupied').length ?? 0,
+        bedsTotal: summary?.beds.filter((b) => b.state !== 'out_of_service').length ?? 0,
+      }
+    : sampleNow
   const station = user.role === 'doctor' && user.station ? user.station : home.station
   const setOverride = useSyncStore((s) => s.setOverride)
 

@@ -53,6 +53,9 @@ export interface VisitBill {
   total: number
   patientShare: number
   insurerShare: number
+  /** What the patient still owes (patient share minus payments). */
+  balance: number
+  paid: number
   charges: Charge[]
 }
 
@@ -64,6 +67,8 @@ const EMPTY_BILL: VisitBill = {
   total: 0,
   patientShare: 0,
   insurerShare: 0,
+  balance: 0,
+  paid: 0,
   charges: [],
 }
 
@@ -81,6 +86,7 @@ const recompute = (b: VisitBill) => {
   b.total = b.charges.reduce((s, c) => s + Math.round(c.unitPrice * c.quantity), 0)
   b.insurerShare = b.charges.reduce((s, c) => s + c.insurerShare, 0)
   b.patientShare = b.total - b.insurerShare
+  b.balance = b.patientShare - b.paid
 }
 
 // ---------------------------------------------------------------- header + vitals
@@ -191,6 +197,9 @@ interface BillRow {
   total: number | string
   patient_share: number | string
   insurer_share: number | string
+  balance: number | string | null
+  paid: number | string | null
+  number: string | null
 }
 interface ChargeRow {
   id: string
@@ -232,6 +241,8 @@ export function useVisitBill(encounterId: string) {
         total: Number(b?.total ?? 0),
         patientShare: Number(b?.patient_share ?? 0),
         insurerShare: Number(b?.insurer_share ?? 0),
+        balance: Number(b?.balance ?? b?.patient_share ?? 0),
+        paid: Number(b?.paid ?? 0),
         charges: ((lines ?? []) as ChargeRow[]).map((c) => ({
           id: c.id,
           description: c.description,
@@ -380,5 +391,46 @@ export function useBillingActions(encounterId: string) {
     onSuccess: refresh,
   })
 
-  return { addCharge, voidCharge, setPayer, finishStation }
+  const takePayment = useMutation({
+    mutationFn: async ({
+      method,
+      amount,
+      reference,
+      phone,
+    }: {
+      method: 'cash' | 'momo' | 'airtel' | 'card' | 'bank'
+      amount: number
+      reference?: string
+      phone?: string
+    }): Promise<{ balance: number; number: string | null; status: string }> => {
+      if (!supabase) {
+        const b = sampleBill(encounterId)
+        b.paid += amount
+        recompute(b)
+        if (b.balance <= 0) b.status = 'posted'
+        return {
+          balance: b.balance,
+          number: b.balance <= 0 ? 'INV-2026-000001' : null,
+          status: b.status ?? 'draft',
+        }
+      }
+      const { data, error } = await supabase.rpc('take_payment', {
+        p_encounter_id: encounterId,
+        p_method: method,
+        p_amount: amount,
+        p_reference: reference?.trim() || null,
+        p_payer_phone: phone?.trim() || null,
+      })
+      if (error) throw new Error(error.message)
+      const r = data as { balance: number | string; number: string | null; status: string }
+      return { balance: Number(r.balance), number: r.number, status: r.status }
+    },
+    onSuccess: () => {
+      refresh()
+      void qc.invalidateQueries({ queryKey: ['home'] })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+
+  return { addCharge, voidCharge, setPayer, finishStation, takePayment }
 }
