@@ -97,6 +97,22 @@ const SHOTS = [
     theme: 'dim',
   },
   { name: 'dashboard-head', path: '/app/dashboard', vp: [1366, 1300], user: 'u-head' },
+  { name: 'patients-1366', path: '/app/patients', vp: [1366, 900], user: 'u-mgr' },
+  { name: 'patient-file-1366', path: '/app/patient?id=p-1', vp: [1366, 1100], user: 'u-mgr' },
+  {
+    name: 'patient-file-edit',
+    path: '/app/patient?id=p-1',
+    vp: [1366, 1500],
+    user: 'u-mgr',
+    click: 'main button:nth-of-type(2)',
+  },
+  {
+    name: 'visit-clinical-1366',
+    path: '/app/visit?encounter=e-1',
+    vp: [1366, 1500],
+    user: 'u-doc',
+  },
+  { name: 'register-1366', path: '/app/register', vp: [1366, 1000], user: 'u-mgr' },
   { name: 'dashboard-1920', path: '/app/dashboard', vp: [1920, 1320], user: 'u-mgr' },
   {
     name: 'dashboard-1920-dim',

@@ -1,0 +1,469 @@
+import { useState, type FormEvent } from 'react'
+import { ClipboardList, FlaskConical, Pill, Stethoscope, CheckCircle2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
+import { Field } from '@/components/ui/field'
+import { Select } from '@/components/ui/select'
+import { useTreatments } from '@/lib/api/catalogue'
+import { useClinicalActions, useItems, useVisitClinical } from '@/lib/api/patients'
+import { cn } from '@/lib/utils'
+
+const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
+const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
+
+/**
+ * The clinical record of a visit, for clinicians (doctor, nurse, manager): allergies banner,
+ * complaint / examination notes, diagnoses (primary required to close), prescriptions
+ * (queue the patient at the pharmacy), lab and imaging orders (charged and queued), close.
+ */
+export function ClinicalCard({
+  encounterId,
+  user,
+  onDone,
+  onError,
+}: {
+  encounterId: string
+  user: StaffUser
+  onDone: (m: string) => void
+  onError: (m: string | null) => void
+}) {
+  const { t } = useTranslation()
+  const { data, error } = useVisitClinical(encounterId)
+  const actions = useClinicalActions(encounterId)
+  const { data: items = [] } = useItems()
+  const { data: treatments = [] } = useTreatments(true)
+  const tests = treatments.filter((x) => x.group === 'lab' || x.group === 'imaging')
+  const clinician = user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager'
+  const [mode, setMode] = useState<'note' | 'dx' | 'rx' | 'test' | null>(null)
+
+  // small forms
+  const [note, setNote] = useState('')
+  const [dx, setDx] = useState({
+    text: '',
+    icd10: '',
+    type: 'primary' as 'primary' | 'secondary',
+    provisional: false,
+  })
+  const [rx, setRx] = useState({
+    item: '',
+    quantity: '',
+    dose: '',
+    route: 'oral',
+    frequency: '',
+    days: '',
+    instructions: '',
+  })
+  const [order, setOrder] = useState({ service: '', reason: '' })
+  const [localError, setLocalError] = useState<string | null>(null)
+
+  const run = async (fn: () => Promise<unknown>, done: string) => {
+    setLocalError(null)
+    onError(null)
+    try {
+      await fn()
+      setMode(null)
+      onDone(done)
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : String(e))
+    }
+  }
+  const submitNote = (e: FormEvent) => {
+    e.preventDefault()
+    if (!note.trim()) return
+    void run(
+      () => actions.addNote.mutateAsync(note).then(() => setNote('')),
+      t('clinical.noteSaved'),
+    )
+  }
+  const submitDx = (e: FormEvent) => {
+    e.preventDefault()
+    if (!dx.text.trim()) return
+    void run(
+      () =>
+        actions.addDiagnosis
+          .mutateAsync(dx)
+          .then(() => setDx({ text: '', icd10: '', type: 'secondary', provisional: false })),
+      t('clinical.dxSaved'),
+    )
+  }
+  const submitRx = (e: FormEvent) => {
+    e.preventDefault()
+    const item = items.find((i) => i.id === rx.item)
+    const q = Number(rx.quantity)
+    if (!item || !Number.isFinite(q) || q <= 0) return setLocalError(t('clinical.errors.rx'))
+    void run(
+      () =>
+        actions.prescribe
+          .mutateAsync({
+            item,
+            quantity: q,
+            dose: rx.dose,
+            route: rx.route,
+            frequency: rx.frequency,
+            days: rx.days ? Number(rx.days) : undefined,
+            instructions: rx.instructions,
+          })
+          .then(() =>
+            setRx({
+              item: '',
+              quantity: '',
+              dose: '',
+              route: 'oral',
+              frequency: '',
+              days: '',
+              instructions: '',
+            }),
+          ),
+      t('clinical.rxSaved'),
+    )
+  }
+  const submitOrder = (e: FormEvent) => {
+    e.preventDefault()
+    const s = tests.find((x) => x.id === order.service)
+    if (!s) return setLocalError(t('clinical.errors.test'))
+    void run(
+      () =>
+        actions.orderTest
+          .mutateAsync({ serviceId: s.id, name: s.nameEn, group: s.group, reason: order.reason })
+          .then(() => setOrder({ service: '', reason: '' })),
+      t('clinical.testSaved'),
+    )
+  }
+  const finish = () => {
+    if (!data?.diagnoses.some((d) => d.type === 'primary'))
+      return setLocalError(t('clinical.errors.needPrimary'))
+    if (!window.confirm(t('clinical.finishConfirm'))) return
+    void run(() => actions.finishVisit.mutateAsync(), t('clinical.finished'))
+  }
+
+  const tabBtn = (k: NonNullable<typeof mode>, label: string, icon: React.ReactNode) => (
+    <Button
+      size="sm"
+      variant={mode === k ? 'primary' : 'default'}
+      onClick={() => setMode(mode === k ? null : k)}
+      disabled={!clinician}
+    >
+      {icon}
+      {label}
+    </Button>
+  )
+
+  return (
+    <Card>
+      <CardHeader>
+        <span className="inline-flex items-center gap-2">
+          <Stethoscope size={16} aria-hidden="true" />
+          {t('clinical.title')}
+        </span>
+        {data?.patient?.bloodGroup && (
+          <Badge tone="grey" dot={false}>
+            {data.patient.bloodGroup}
+          </Badge>
+        )}
+      </CardHeader>
+      {data?.patient?.allergies && (
+        <CardBody className="bg-red-bg text-red border-border border-b py-2 text-[13px] font-semibold">
+          ⚠ {t('file.allergiesLabel')}: {data.patient.allergies}
+        </CardBody>
+      )}
+      <CardBody className="gap-3">
+        {error && <p className={errorBox}>{error.message}</p>}
+        <div className="flex flex-wrap gap-2">
+          {tabBtn('note', t('clinical.addNote'), <ClipboardList size={14} aria-hidden="true" />)}
+          {tabBtn('dx', t('clinical.addDx'), <Stethoscope size={14} aria-hidden="true" />)}
+          {tabBtn('rx', t('clinical.addRx'), <Pill size={14} aria-hidden="true" />)}
+          {tabBtn('test', t('clinical.addTest'), <FlaskConical size={14} aria-hidden="true" />)}
+        </div>
+        {!clinician && <p className="text-ink-3 m-0 text-xs">{t('clinical.readOnly')}</p>}
+
+        {mode === 'note' && (
+          <form onSubmit={submitNote} className="flex flex-col gap-2">
+            <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-semibold">
+              {t('clinical.note')}
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={4}
+                placeholder={t('clinical.notePh')}
+                className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint rounded-lg border px-3 py-2 text-[15px] font-normal outline-none focus:ring-[3px]"
+                required
+              />
+            </label>
+            <Button
+              type="submit"
+              variant="primary"
+              className="self-start"
+              loading={actions.addNote.isPending}
+            >
+              {t('clinical.saveNote')}
+            </Button>
+          </form>
+        )}
+        {mode === 'dx' && (
+          <form
+            onSubmit={submitDx}
+            className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr_auto]"
+          >
+            <Field
+              label={t('clinical.dx')}
+              value={dx.text}
+              onChange={(e) => setDx({ ...dx, text: e.target.value })}
+              placeholder={t('clinical.dxPh')}
+              required
+            />
+            <Field
+              label="ICD-10"
+              value={dx.icd10}
+              onChange={(e) => setDx({ ...dx, icd10: e.target.value.toUpperCase() })}
+              placeholder="B54"
+            />
+            <Select
+              label={t('clinical.dxType')}
+              value={dx.type}
+              onChange={(e) => setDx({ ...dx, type: e.target.value as 'primary' | 'secondary' })}
+            >
+              <option value="primary">{t('clinical.type.primary')}</option>
+              <option value="secondary">{t('clinical.type.secondary')}</option>
+            </Select>
+            <div className="flex items-end gap-2">
+              <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
+                <input
+                  type="checkbox"
+                  className="accent-primary"
+                  checked={dx.provisional}
+                  onChange={(e) => setDx({ ...dx, provisional: e.target.checked })}
+                />
+                {t('clinical.provisional')}
+              </label>
+              <Button type="submit" variant="primary" loading={actions.addDiagnosis.isPending}>
+                {t('clinical.saveDx')}
+              </Button>
+            </div>
+          </form>
+        )}
+        {mode === 'rx' && (
+          <form onSubmit={submitRx} className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Select
+                label={t('clinical.medicine')}
+                value={rx.item}
+                onChange={(e) => setRx({ ...rx, item: e.target.value })}
+                wrapperClassName="col-span-2"
+                required
+              >
+                <option value="">{t('visit.add.pick')}</option>
+                {items.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} {i.strength ?? ''} {i.form ? `· ${i.form}` : ''}
+                  </option>
+                ))}
+              </Select>
+              <Field
+                label={t('clinical.quantity')}
+                inputMode="numeric"
+                value={rx.quantity}
+                onChange={(e) => setRx({ ...rx, quantity: e.target.value.replace(/[^\d]/g, '') })}
+                required
+              />
+              <Field
+                label={t('clinical.days')}
+                inputMode="numeric"
+                value={rx.days}
+                onChange={(e) => setRx({ ...rx, days: e.target.value.replace(/[^\d]/g, '') })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Field
+                label={t('clinical.dose')}
+                value={rx.dose}
+                onChange={(e) => setRx({ ...rx, dose: e.target.value })}
+                placeholder="1 tab"
+              />
+              <Select
+                label={t('clinical.route')}
+                value={rx.route}
+                onChange={(e) => setRx({ ...rx, route: e.target.value })}
+              >
+                {['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other'].map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </Select>
+              <Field
+                label={t('clinical.frequency')}
+                value={rx.frequency}
+                onChange={(e) => setRx({ ...rx, frequency: e.target.value })}
+                placeholder="3 × / day"
+              />
+              <Field
+                label={t('clinical.instructions')}
+                value={rx.instructions}
+                onChange={(e) => setRx({ ...rx, instructions: e.target.value })}
+                placeholder={t('clinical.instructionsPh')}
+              />
+            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              className="self-start"
+              loading={actions.prescribe.isPending}
+            >
+              {t('clinical.saveRx')}
+            </Button>
+          </form>
+        )}
+        {mode === 'test' && (
+          <form
+            onSubmit={submitOrder}
+            className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_2fr_auto]"
+          >
+            <Select
+              label={t('clinical.test')}
+              value={order.service}
+              onChange={(e) => setOrder({ ...order, service: e.target.value })}
+              required
+            >
+              <option value="">{t('visit.add.pick')}</option>
+              {tests.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nameEn} ·{' '}
+                  {s.group === 'imaging'
+                    ? t('register.stations.ultrasound')
+                    : t('register.stations.laboratory')}
+                </option>
+              ))}
+            </Select>
+            <Field
+              label={t('clinical.reason')}
+              value={order.reason}
+              onChange={(e) => setOrder({ ...order, reason: e.target.value })}
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              className="self-end"
+              loading={actions.orderTest.isPending}
+            >
+              {t('clinical.saveTest')}
+            </Button>
+          </form>
+        )}
+        {localError && (
+          <p role="alert" className={errorBox}>
+            {localError}
+          </p>
+        )}
+      </CardBody>
+
+      {/* Record */}
+      {data &&
+        data.notes.length +
+          data.diagnoses.length +
+          data.prescriptions.length +
+          data.orders.length ===
+          0 && (
+          <CardBody className="border-border border-t">
+            <p className="text-ink-3 m-0 text-[13px]">{t('clinical.empty')}</p>
+          </CardBody>
+        )}
+      {data &&
+        data.notes.map((n) => (
+          <Row key={n.id} className="items-start gap-3 py-2">
+            <Badge tone="grey" dot={false} className="mt-0.5">
+              {t('clinical.note')}
+            </Badge>
+            <span className="min-w-0 flex-1">
+              <span className="block whitespace-pre-wrap">{n.text}</span>
+              <span className="text-ink-3 block text-xs">
+                {[when(n.at), n.by].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+          </Row>
+        ))}
+      {data &&
+        data.diagnoses.map((d) => (
+          <Row key={d.id} className="gap-3 py-2">
+            <Badge tone={d.type === 'primary' ? 'blue' : 'grey'} dot={false}>
+              {t(`clinical.type.${d.type}`)}
+            </Badge>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">
+                {d.text}
+                {d.icd10 && <span className="text-ink-3 ml-2 text-xs">{d.icd10}</span>}
+                {d.provisional && (
+                  <span className="text-ink-3 ml-2 text-xs">({t('clinical.provisional')})</span>
+                )}
+              </span>
+              <span className="text-ink-3 block text-xs">
+                {[when(d.at), d.by].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+          </Row>
+        ))}
+      {data &&
+        data.prescriptions.map((r) => (
+          <Row key={r.id} className="gap-3 py-2">
+            <Badge tone={r.dispensed ? 'green' : 'yellow'} dot={false}>
+              {t(r.dispensed ? 'clinical.dispensed' : 'clinical.toDispense')}
+            </Badge>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">
+                {r.item} × {r.quantity}
+              </span>
+              <span className="text-ink-3 block text-xs">
+                {[
+                  r.dose,
+                  r.route,
+                  r.frequency,
+                  r.days ? t('clinical.forDays', { count: r.days }) : null,
+                  r.instructions,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+            </span>
+          </Row>
+        ))}
+      {data &&
+        data.orders.map((o) => (
+          <Row key={o.id} className="gap-3 py-2">
+            <Badge tone={o.result ? 'green' : 'blue'} dot={false}>
+              {o.category === 'imaging'
+                ? t('register.stations.ultrasound')
+                : t('register.stations.laboratory')}
+            </Badge>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">
+                {o.test}{' '}
+                <span className="text-ink-3 text-xs">· {t(`clinical.status.${o.status}`)}</span>
+              </span>
+              <span className="text-ink-3 block text-xs">
+                {[o.reason, o.result?.impression ?? o.result?.findings].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+          </Row>
+        ))}
+
+      {clinician && (
+        <CardBody className="border-border flex-row flex-wrap items-center gap-3 border-t">
+          <Button variant="primary" onClick={finish} loading={actions.finishVisit.isPending}>
+            <CheckCircle2 size={16} aria-hidden="true" />
+            {t('clinical.finish')}
+          </Button>
+          <span
+            className={cn(
+              'text-xs',
+              data?.diagnoses.some((d) => d.type === 'primary') ? 'text-ink-3' : 'text-red',
+            )}
+          >
+            {t('clinical.finishHint')}
+          </span>
+        </CardBody>
+      )}
+    </Card>
+  )
+}

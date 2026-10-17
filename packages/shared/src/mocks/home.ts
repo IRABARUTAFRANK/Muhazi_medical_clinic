@@ -67,7 +67,7 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
     station: 'Reception',
     nav: [
       nav('home', 'home', '/app'),
-      nav('patients', 'users', '/app/register'),
+      nav('patients', 'users', '/app/patients'),
       nav('appointments', 'calendar'),
       nav('queue', 'list-ordered'),
       nav('reports', 'bar-chart-3', '/app/dashboard'),

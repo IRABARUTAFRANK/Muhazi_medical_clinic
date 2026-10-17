@@ -3,7 +3,8 @@ import { AlertTriangle, Search, UserPlus, Check, Ticket } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { StaffLink } from '@/components/staff/staff-link'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
@@ -286,15 +287,21 @@ function NewPatientForm({
               label={t('register.birthDate')}
               type="date"
               value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
+              onChange={(e) => {
+                // A date of birth wins: it fills the age; typing an age clears the date.
+                setBirthDate(e.target.value)
+                setAge(e.target.value ? String(yearsSince(e.target.value)) : '')
+              }}
               max={new Date().toISOString().slice(0, 10)}
             />
             <Field
               label={t('register.ageYears')}
               inputMode="numeric"
               value={age}
-              disabled={birthDate !== ''}
-              onChange={(e) => setAge(e.target.value.replace(/\D/g, '').slice(0, 3))}
+              onChange={(e) => {
+                setAge(e.target.value.replace(/\D/g, '').slice(0, 3))
+                setBirthDate('')
+              }}
               placeholder={t('register.agePh')}
             />
           </div>
@@ -345,6 +352,15 @@ function NewPatientForm({
   )
 }
 
+/** Whole years between a YYYY-MM-DD date and today. */
+const yearsSince = (iso: string): number => {
+  const b = new Date(iso)
+  const n = new Date()
+  let y = n.getFullYear() - b.getFullYear()
+  if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) y -= 1
+  return Math.max(0, y)
+}
+
 function ResultCard({ result, onAnother }: { result: VisitResult; onAnother: () => void }) {
   const { t } = useTranslation()
   const triage = result.station === 'triage'
@@ -368,9 +384,29 @@ function ResultCard({ result, onAnother }: { result: VisitResult; onAnother: () 
             })}
           </span>
         </div>
-        <Button variant="primary" className="self-start" onClick={onAnother}>
-          {t('register.another')}
-        </Button>
+        <p className="text-ink-2 m-0 text-[13px]">{t('register.done.where')}</p>
+        <div className="flex flex-wrap gap-2">
+          <StaffLink
+            to="/app/patient"
+            search={{ id: result.patientId }}
+            className={buttonVariants({ variant: 'primary' })}
+          >
+            {t('register.done.openFile')}
+          </StaffLink>
+          <StaffLink
+            to="/app/visit"
+            search={{ encounter: result.encounterId }}
+            className={buttonVariants({ variant: 'default' })}
+          >
+            {t('register.done.openVisit')}
+          </StaffLink>
+          <StaffLink to="/app/patients" className={buttonVariants({ variant: 'default' })}>
+            {t('register.done.register')}
+          </StaffLink>
+          <Button variant="ghost" onClick={onAnother}>
+            {t('register.another')}
+          </Button>
+        </div>
       </CardBody>
     </Card>
   )

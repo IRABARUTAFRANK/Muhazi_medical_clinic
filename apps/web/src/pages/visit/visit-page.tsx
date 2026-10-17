@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, Plus, Receipt, Send, Trash2 } from 'lucide-react'
+import { ArrowLeft, FolderOpen, Plus, Receipt, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf, type StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { StaffLink } from '@/components/staff/staff-link'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
@@ -21,6 +22,7 @@ import { useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
 import { TREATING_STATIONS, stationFor, type Station } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
+import { ClinicalCard } from './clinical-card'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -120,6 +122,14 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                 {header.stations.map((s) => (
                   <Chip key={s}>{t(`register.stations.${s}`)}</Chip>
                 ))}
+                <StaffLink
+                  to="/app/patient"
+                  search={{ id: header.patientId }}
+                  className={buttonVariants({ size: 'sm' })}
+                >
+                  <FolderOpen size={14} aria-hidden="true" />
+                  {t('visit.patientFile')}
+                </StaffLink>
               </CardBody>
               {vitals.length > 0 && (
                 <CardBody className="border-border flex-row flex-wrap gap-2 border-t">
@@ -145,6 +155,16 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                 {actionError ?? done}
               </p>
             )}
+
+            <ClinicalCard
+              encounterId={encounterId}
+              user={user}
+              onDone={(m) => {
+                setActionError(null)
+                setDone(m)
+              }}
+              onError={setActionError}
+            />
 
             <div className="pc:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
               <div className="flex flex-col gap-4">

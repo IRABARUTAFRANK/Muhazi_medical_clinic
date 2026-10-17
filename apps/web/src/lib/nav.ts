@@ -6,9 +6,9 @@ import { ROLE_HOME, type NavItem, type StaffUser } from '@mmc/shared'
  */
 export const MANAGER_NAV: NavItem[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'layout-dashboard', to: '/app/dashboard' },
-  { id: 'patients', labelKey: 'nav.patients', icon: 'user-plus', to: '/app/register' },
+  { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
-  { id: 'staff', labelKey: 'nav.staff', icon: 'users', to: '/app/staff' },
+  { id: 'staff', labelKey: 'nav.staff', icon: 'user-plus', to: '/app/staff' },
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings', to: '/app/settings' },
 ]
 

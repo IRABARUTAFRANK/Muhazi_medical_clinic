@@ -17,6 +17,8 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppSectionRouteImport } from './routes/app/$section'
 import { Route as AppChangePinRouteImport } from './routes/app/change-pin'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppPatientRouteImport } from './routes/app/patient'
+import { Route as AppPatientsRouteImport } from './routes/app/patients'
 import { Route as AppPricesRouteImport } from './routes/app/prices'
 import { Route as AppRegisterRouteImport } from './routes/app/register'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
@@ -64,6 +66,16 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPatientRoute = AppPatientRouteImport.update({
+  id: '/patient',
+  path: '/patient',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientsRoute = AppPatientsRouteImport.update({
+  id: '/patients',
+  path: '/patients',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricesRoute = AppPricesRouteImport.update({
   id: '/prices',
   path: '/prices',
@@ -103,6 +115,8 @@ export interface FileRoutesByFullPath {
   '/app/$section': typeof AppSectionRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/patient': typeof AppPatientRoute
+  '/app/patients': typeof AppPatientsRoute
   '/app/prices': typeof AppPricesRoute
   '/app/register': typeof AppRegisterRoute
   '/app/settings': typeof AppSettingsRoute
@@ -118,6 +132,8 @@ export interface FileRoutesByTo {
   '/app/$section': typeof AppSectionRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/patient': typeof AppPatientRoute
+  '/app/patients': typeof AppPatientsRoute
   '/app/prices': typeof AppPricesRoute
   '/app/register': typeof AppRegisterRoute
   '/app/settings': typeof AppSettingsRoute
@@ -135,6 +151,8 @@ export interface FileRoutesById {
   '/app/$section': typeof AppSectionRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/patient': typeof AppPatientRoute
+  '/app/patients': typeof AppPatientsRoute
   '/app/prices': typeof AppPricesRoute
   '/app/register': typeof AppRegisterRoute
   '/app/settings': typeof AppSettingsRoute
@@ -153,6 +171,8 @@ export interface FileRouteTypes {
     | '/app/$section'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/patient'
+    | '/app/patients'
     | '/app/prices'
     | '/app/register'
     | '/app/settings'
@@ -168,6 +188,8 @@ export interface FileRouteTypes {
     | '/app/$section'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/patient'
+    | '/app/patients'
     | '/app/prices'
     | '/app/register'
     | '/app/settings'
@@ -184,6 +206,8 @@ export interface FileRouteTypes {
     | '/app/$section'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/patient'
+    | '/app/patients'
     | '/app/prices'
     | '/app/register'
     | '/app/settings'
@@ -258,6 +282,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/patient': {
+      id: '/app/patient'
+      path: '/patient'
+      fullPath: '/app/patient'
+      preLoaderRoute: typeof AppPatientRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/patients': {
+      id: '/app/patients'
+      path: '/patients'
+      fullPath: '/app/patients'
+      preLoaderRoute: typeof AppPatientsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/prices': {
       id: '/app/prices'
       path: '/prices'
@@ -307,6 +345,8 @@ interface AppRouteChildren {
   AppSectionRoute: typeof AppSectionRoute
   AppChangePinRoute: typeof AppChangePinRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppPatientRoute: typeof AppPatientRoute
+  AppPatientsRoute: typeof AppPatientsRoute
   AppPricesRoute: typeof AppPricesRoute
   AppRegisterRoute: typeof AppRegisterRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -320,6 +360,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppSectionRoute: AppSectionRoute,
   AppChangePinRoute: AppChangePinRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppPatientRoute: AppPatientRoute,
+  AppPatientsRoute: AppPatientsRoute,
   AppPricesRoute: AppPricesRoute,
   AppRegisterRoute: AppRegisterRoute,
   AppSettingsRoute: AppSettingsRoute,
