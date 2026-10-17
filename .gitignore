@@ -32,3 +32,6 @@ screenshots/
 
 # Vercel CLI link metadata
 .vercel
+
+# Supabase CLI scratch files
+supabase/.temp/

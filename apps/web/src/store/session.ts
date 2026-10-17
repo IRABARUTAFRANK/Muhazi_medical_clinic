@@ -329,19 +329,20 @@ const arrivedByMagicLink =
   typeof window !== 'undefined' && /type=magiclink/.test(window.location.hash)
 
 // Keep the store honest with Supabase Auth: a session that ended elsewhere ends here too.
-if (supabase) {
-  supabase.auth.onAuthStateChange((event, session) => {
+const sb = supabase
+if (sb) {
+  sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') useSession.setState({ user: null, locked: false })
     if (event === 'INITIAL_SESSION' && !session && useSession.getState().user) {
       useSession.setState({ user: null, locked: false })
     }
     if (event === 'SIGNED_IN' && session && arrivedByMagicLink && !useSession.getState().user) {
       void (async () => {
-        const { data: profile, error } = await supabase.rpc('record_sign_in', {
+        const { data: profile, error } = await sb.rpc('record_sign_in', {
           p_device: deviceLabel(),
         })
         if (error || !profile) {
-          await supabase.auth.signOut()
+          await sb.auth.signOut()
           return
         }
         useSession.setState({
