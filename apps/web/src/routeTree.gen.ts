@@ -18,6 +18,7 @@ import { Route as AppSectionRouteImport } from './routes/app/$section'
 import { Route as AppChangePinRouteImport } from './routes/app/change-pin'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 import { Route as AppRegisterRouteImport } from './routes/app/register'
+import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppStaffRouteImport } from './routes/app/staff'
 import { Route as AppVitalsRouteImport } from './routes/app/vitals'
 
@@ -66,6 +67,11 @@ const AppRegisterRoute = AppRegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStaffRoute = AppStaffRouteImport.update({
   id: '/staff',
   path: '/staff',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/register': typeof AppRegisterRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/register': typeof AppRegisterRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app': typeof AppIndexRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/register': typeof AppRegisterRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/app/change-pin'
     | '/app/dashboard'
     | '/app/register'
+    | '/app/settings'
     | '/app/staff'
     | '/app/vitals'
     | '/app/'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/app/change-pin'
     | '/app/dashboard'
     | '/app/register'
+    | '/app/settings'
     | '/app/staff'
     | '/app/vitals'
     | '/app'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/app/change-pin'
     | '/app/dashboard'
     | '/app/register'
+    | '/app/settings'
     | '/app/staff'
     | '/app/vitals'
     | '/app/'
@@ -229,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRegisterRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/staff': {
       id: '/app/staff'
       path: '/staff'
@@ -251,6 +270,7 @@ interface AppRouteChildren {
   AppChangePinRoute: typeof AppChangePinRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppRegisterRoute: typeof AppRegisterRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppStaffRoute: typeof AppStaffRoute
   AppVitalsRoute: typeof AppVitalsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -261,6 +281,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChangePinRoute: AppChangePinRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppRegisterRoute: AppRegisterRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppStaffRoute: AppStaffRoute,
   AppVitalsRoute: AppVitalsRoute,
   AppIndexRoute: AppIndexRoute,

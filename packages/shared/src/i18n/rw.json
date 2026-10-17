@@ -370,6 +370,41 @@
     "nextStation": "Ohereza kuri",
     "send": "Bika wohereze"
   },
+  "settings": {
+    "title": "Igenamiterere ry'ivuriro",
+    "lead": "Uyobora ivuriro ryose uhereye hano: umwirondoro n'aho twandikirwa bigaragara ku rubuga, amasaha dufungura, n'inzira zigana kuri buri gice.",
+    "manage": {
+      "title": "Kuyobora ivuriro"
+    },
+    "profile": {
+      "title": "Umwirondoro w'ivuriro",
+      "fields": {
+        "name": "Izina ry'ivuriro",
+        "tagline": "Interuro",
+        "phone": "Telefoni",
+        "whatsapp": "WhatsApp",
+        "email": "Imeyili",
+        "sector": "Umurenge",
+        "district": "Akarere",
+        "province": "Intara",
+        "country": "Igihugu"
+      }
+    },
+    "hours": {
+      "title": "Amasaha dufungura",
+      "all247": "Dufungura amasaha 24 / 7",
+      "lab": "Ibizamini",
+      "mode": "Gufungura",
+      "allDay": "Amasaha 24",
+      "custom": "Amasaha yihariye",
+      "closed": "Birafunze",
+      "open": "Dufungura",
+      "close": "Dufunga"
+    },
+    "save": "Bika igenamiterere",
+    "saving": "Birabikwa…",
+    "savedNote": "Byabitswe. Urubuga rugaragaza ibishya."
+  },
   "pin": {
     "changeTitle": "Hitamo PIN yawe bwite",
     "new": "PIN nshya",

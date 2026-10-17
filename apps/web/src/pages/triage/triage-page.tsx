@@ -111,7 +111,7 @@ export function TriagePage({ user }: { user: StaffUser }) {
             <VitalsForm
               key={selected.queueId}
               item={selected}
-              canRecord={user.role !== 'manager'}
+              canRecord
               onSent={(ticket, station) => {
                 setNotice(t('triage.sent', { ticket, station: t(`register.stations.${station}`) }))
                 setSelectedId(null)

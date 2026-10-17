@@ -714,6 +714,50 @@
       "generic": "Enregistrement impossible : {{message}}"
     }
   },
+  "settings": {
+    "title": "Paramètres de la clinique",
+    "lead": "Vous gérez toute la clinique d'ici : l'identité et les contacts publics, les horaires qui pilotent le statut « ouvert » et le calendrier de réservation, et des raccourcis vers chaque poste.",
+    "manage": {
+      "title": "Gérer la clinique"
+    },
+    "profile": {
+      "title": "Identité et contacts de la clinique",
+      "lead": "Affichés sur le site public, les reçus et les messages. Les changements sont visibles immédiatement.",
+      "fields": {
+        "name": "Nom de la clinique",
+        "tagline": "Slogan",
+        "phone": "Téléphone",
+        "whatsapp": "WhatsApp",
+        "email": "E-mail",
+        "sector": "Secteur",
+        "district": "District",
+        "province": "Province",
+        "country": "Pays",
+        "tin": "TIN",
+        "moh_licence": "Numéro de licence MoH",
+        "fda_licence": "Numéro de licence Rwanda FDA"
+      }
+    },
+    "hours": {
+      "title": "Horaires d'ouverture",
+      "lead": "Par jour : 24 heures, horaires personnalisés ou fermé. Le laboratoire a ses propres horaires.",
+      "all247": "Ouvert 24 h / 7 j",
+      "officeHours": "Lun–Sam 08:00–17:00, dimanche fermé",
+      "lab": "Laboratoire",
+      "mode": "Ouverture",
+      "allDay": "24 heures",
+      "custom": "Horaires personnalisés",
+      "closed": "Fermé",
+      "open": "Ouvre",
+      "close": "Ferme"
+    },
+    "save": "Enregistrer les paramètres",
+    "saving": "Enregistrement…",
+    "savedNote": "Enregistré. Le site public affiche les nouvelles valeurs.",
+    "saveFailed": "Enregistrement impossible : {{message}}",
+    "loadFailed": "Impossible de charger les paramètres : {{message}}",
+    "you": "Connecté en tant que {{name}} · {{id}}"
+  },
   "pin": {
     "changeTitle": "Choisissez votre propre PIN",
     "changeLead": "Vous vous êtes connecté avec le PIN remis par le gestionnaire. Remplacez-le par six chiffres que vous seul connaissez.",

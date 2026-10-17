@@ -714,6 +714,50 @@
       "generic": "Could not save: {{message}}"
     }
   },
+  "settings": {
+    "title": "Clinic settings",
+    "lead": "You run the whole clinic from here: the public identity and contacts, the opening hours that drive the \"open now\" status and the booking calendar, and shortcuts to every station.",
+    "manage": {
+      "title": "Manage the clinic"
+    },
+    "profile": {
+      "title": "Clinic identity and contacts",
+      "lead": "Shown on the public site, receipts and messages. Changes are visible immediately.",
+      "fields": {
+        "name": "Clinic name",
+        "tagline": "Tagline",
+        "phone": "Phone",
+        "whatsapp": "WhatsApp",
+        "email": "E-mail",
+        "sector": "Sector",
+        "district": "District",
+        "province": "Province",
+        "country": "Country",
+        "tin": "TIN",
+        "moh_licence": "MoH licence number",
+        "fda_licence": "Rwanda FDA licence number"
+      }
+    },
+    "hours": {
+      "title": "Opening hours",
+      "lead": "Per day: open 24 hours, custom hours or closed. The laboratory has its own hours.",
+      "all247": "Open 24 / 7",
+      "officeHours": "Mon–Sat 08:00–17:00, Sunday closed",
+      "lab": "Laboratory",
+      "mode": "Open",
+      "allDay": "24 hours",
+      "custom": "Custom hours",
+      "closed": "Closed",
+      "open": "Opens",
+      "close": "Closes"
+    },
+    "save": "Save settings",
+    "saving": "Saving…",
+    "savedNote": "Saved. The public site shows the new values.",
+    "saveFailed": "Could not save: {{message}}",
+    "loadFailed": "Could not load the settings: {{message}}",
+    "you": "Signed in as {{name}} · {{id}}"
+  },
   "pin": {
     "changeTitle": "Choose your own PIN",
     "changeLead": "You signed in with the PIN the manager gave you. Replace it with six digits only you know.",
