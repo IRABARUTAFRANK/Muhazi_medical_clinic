@@ -253,6 +253,127 @@
   transition-delay: 0.24s;
 }
 
+/* ---------------------------------------------------------------- motion system (staff area)
+   Figma: Manager Dashboard v2 → "Motion & interaction spec".
+   .anim-enter        fade + rise 8 px, 240 ms, staggered with --i (40 ms per step)
+   .card-lift         hover lift 2 px + deeper shadow, 150 ms
+   .skeleton          shimmer while loading
+   .bar-grow          bars grow from 0 to width, 400 ms, staggered with --i (30 ms)
+   .draw-line         SVG path draws over 800 ms (needs pathLength="1")
+   .fade-in-late      fades in after the line has drawn
+   .pulse-once        one scale pulse when a number changes */
+@keyframes mmc-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mmc-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes mmc-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes mmc-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes mmc-pulse-once {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes mmc-skeleton {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.anim-enter {
+  animation: mmc-enter 0.24s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.card-lift {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mmc-shadow-card-hover);
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--mmc-hover) 25%,
+    var(--mmc-card) 50%,
+    var(--mmc-hover) 75%
+  );
+  background-size: 200% 100%;
+  animation: mmc-skeleton 1.4s linear infinite;
+  border-radius: 8px;
+}
+.bar-grow {
+  transform-origin: left center;
+  animation: mmc-grow-x 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+.draw-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mmc-draw 0.8s ease-out forwards;
+}
+.fade-in-late {
+  animation: mmc-fade 0.4s ease-out 0.6s both;
+}
+.pulse-once {
+  animation: mmc-pulse-once 0.3s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-enter,
+  .bar-grow,
+  .draw-line,
+  .fade-in-late,
+  .pulse-once {
+    animation-duration: 0.01ms;
+    animation-delay: 0ms;
+  }
+  .card-lift,
+  .card-lift:hover {
+    transform: none;
+    transition: none;
+  }
+  .skeleton {
+    animation: none;
+  }
+}
+
 /* Marquee (insurers) */
 .marquee {
   overflow: hidden;

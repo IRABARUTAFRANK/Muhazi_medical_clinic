@@ -40,6 +40,17 @@
   --mmc-c-visits: #2f8f5b;
   --mmc-c-time: #5b6e85;
 
+  /* Dashboard v2 accents (Figma: Manager Dashboard v2) */
+  --mmc-navy: #0b2252;
+  --mmc-navy-2: #13306b;
+  --mmc-violet: #6b4fd8;
+  --mmc-violet-bg: #eeeafc;
+  --mmc-amber: #8a5a00;
+  --mmc-amber-bg: #fff4d6;
+  --mmc-shadow-card: 0 10px 30px rgba(11, 34, 82, 0.08);
+  --mmc-shadow-card-hover: 0 18px 40px rgba(11, 34, 82, 0.14);
+  --mmc-radius-lg: 16px;
+
   /* Type */
   --mmc-font: Inter, 'Segoe UI', system-ui, sans-serif;
   --mmc-fs-12: 12px;
@@ -89,6 +100,14 @@
   --mmc-c-visits: #6fcb95;
   --mmc-c-time: #9db0c6;
   --mmc-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --mmc-navy: #0a1a3d;
+  --mmc-navy-2: #10264f;
+  --mmc-violet: #b7a6ff;
+  --mmc-violet-bg: #2a2452;
+  --mmc-amber: #f2c94c;
+  --mmc-amber-bg: #3a3015;
+  --mmc-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --mmc-shadow-card-hover: 0 18px 40px rgba(0, 0, 0, 0.5);
 }
 
 /* Tabular numbers for money, vitals, times */

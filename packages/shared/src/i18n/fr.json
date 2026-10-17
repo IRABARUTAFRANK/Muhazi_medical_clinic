@@ -462,6 +462,23 @@
     "export": "Exporter PDF / Excel",
     "refresh": "Actualiser",
     "print": "Imprimer / PDF",
+    "greeting": {
+      "morning": "Bonjour, {{name}}",
+      "afternoon": "Bon après-midi, {{name}}",
+      "evening": "Bonsoir, {{name}}"
+    },
+    "clinicOpen": "Clinique ouverte",
+    "clinicClosed": "Clinique fermée",
+    "registerPatient": "Enregistrer un patient",
+    "queueLong": "long",
+    "avgShort": "moy. {{min}} min",
+    "noShowShort": "{{missed}} manqués",
+    "collectedTotal": "{{amount}} au total",
+    "loading": "Chargement des chiffres en direct…",
+    "subtitleUpdated": "mis à jour {{time}}",
+    "refreshNote": "actualisation 60 s",
+    "lowShort": "bas",
+    "expiringBatches": "{{count}} lots qui expirent",
     "sampleData": "données de démonstration (aucune base configurée)",
     "loadFailed": "Impossible de charger le tableau de bord : {{message}}",
     "period": {

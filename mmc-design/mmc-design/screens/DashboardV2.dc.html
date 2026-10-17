@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Manager dashboard v2 — Muhazi Medical Clinic</title>
+<meta name="viewport" content="width=1440" />
+<style>
+  /* Muhazi Medical Clinic — manager dashboard, redesign proposal.
+     Palette: deep navy + clinic teal, soft tinted KPI cards, one colour per subject in charts. */
+  :root {
+    --navy: #0b2252; --navy-2: #13306b; --teal: #1f6f8b; --teal-2: #2a8fb0; --teal-tint: #e6f3f7;
+    --mint: #2ea043; --mint-tint: #e5f7ea; --amber: #d99a00; --amber-tint: #fff4d6;
+    --coral: #d9442d; --coral-tint: #fde9e6; --violet: #6b4fd8; --violet-tint: #eeeafc;
+    --bg: #f3f6fa; --card: #ffffff; --line: #e3e9f0; --ink: #0f1c2e; --ink-2: #4a5a6e; --ink-3: #74839a;
+    --radius: 16px; --shadow: 0 10px 30px rgba(11, 34, 82, .08); --shadow-hover: 0 18px 40px rgba(11, 34, 82, .14);
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); width: 1440px; }
+  .app { display: grid; grid-template-columns: 92px 1fr; min-height: 1080px; }
+
+  /* Rail */
+  .rail { background: linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%); color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 8px; }
+  .logo { width: 44px; height: 44px; border-radius: 14px; background: #fff; display: grid; place-items: center; margin-bottom: 18px; color: var(--teal); font-weight: 800; font-size: 14px; }
+  .rail-item { width: 64px; height: 56px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 10px; font-weight: 600; color: rgba(255,255,255,.72); }
+  .rail-item.active { background: rgba(255,255,255,.14); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  .rail-item .ic { width: 20px; height: 20px; border-radius: 6px; background: currentColor; opacity: .9; }
+  .rail .spacer { flex: 1; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--teal-2), var(--mint)); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+
+  /* Main */
+  .main { padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px; }
+  .top { display: flex; align-items: center; gap: 16px; }
+  .greet h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+  .greet p { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
+  .top .grow { flex: 1; }
+  .search { width: 320px; height: 44px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); display: flex; align-items: center; padding: 0 14px; gap: 10px; color: var(--ink-3); font-size: 14px; }
+  .seg { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; gap: 4px; }
+  .seg span { padding: 8px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .seg span.on { background: var(--navy); color: #fff; }
+  .btn { height: 44px; padding: 0 18px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .btn.primary { background: linear-gradient(135deg, var(--teal) 0%, var(--teal-2) 100%); color: #fff; border: 0; box-shadow: 0 8px 20px rgba(31,111,139,.35); }
+  .btn.mint { background: linear-gradient(135deg, #2ea043, #45c461); color: #fff; border: 0; box-shadow: 0 8px 20px rgba(46,160,67,.3); }
+  .bell { width: 44px; height: 44px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); position: relative; }
+  .bell i { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--coral); }
+
+  /* KPI row */
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+  .kpi { background: var(--card); border-radius: var(--radius); padding: 18px 18px 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; }
+  .kpi .chip { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 16px; }
+  .kpi .label { font-size: 12px; font-weight: 700; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .value { font-size: 30px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .kpi .value small { font-size: 13px; color: var(--ink-3); font-weight: 600; margin-left: 6px; }
+  .kpi .delta { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; width: fit-content; }
+  .up { background: var(--mint-tint); color: #1e7b34; } .down { background: var(--coral-tint); color: #b42318; } .flat { background: #eef2f6; color: var(--ink-2); }
+  .kpi .spark { position: absolute; right: 12px; bottom: 12px; width: 84px; height: 34px; }
+  .t-teal { background: var(--teal-tint); color: var(--teal); } .t-mint { background: var(--mint-tint); color: #1e7b34; }
+  .t-amber { background: var(--amber-tint); color: #8a5a00; } .t-violet { background: var(--violet-tint); color: var(--violet); }
+  .t-coral { background: var(--coral-tint); color: #b42318; } .t-navy { background: #e8edf8; color: var(--navy); }
+
+  /* Cards */
+  .grid { display: grid; gap: 16px; }
+  .g-money { grid-template-columns: 2fr 1fr 1fr; }
+  .g-ops { grid-template-columns: 1.2fr 1fr 1.4fr; }
+  .g-bottom { grid-template-columns: 1fr 1fr 1fr; }
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .card h3 { margin: 0; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .card h3 span { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+  .section { font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--ink-3); text-transform: uppercase; margin: 4px 0 -6px; }
+
+  /* Charts (static representations) */
+  .area { height: 180px; position: relative; }
+  .area svg { width: 100%; height: 100%; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); }
+  .legend b { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .donut { display: grid; grid-template-columns: 120px 1fr; gap: 14px; align-items: center; }
+  .donut .ring { width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(var(--teal) 0 43%, var(--mint) 43% 77%, var(--amber) 77% 86%, var(--violet) 86% 92%, #cfd7e2 92% 100%); display: grid; place-items: center; }
+  .donut .ring div { width: 78px; height: 78px; border-radius: 50%; background: var(--card); display: grid; place-items: center; text-align: center; font-size: 11px; color: var(--ink-3); font-weight: 600; }
+  .donut .ring div b { display: block; font-size: 15px; color: var(--ink); }
+  .rows { display: flex; flex-direction: column; gap: 10px; }
+  .row { display: grid; grid-template-columns: 110px 1fr auto; align-items: center; gap: 10px; font-size: 13px; }
+  .row .bar { height: 10px; border-radius: 999px; background: #eef2f6; overflow: hidden; }
+  .row .bar i { display: block; height: 100%; border-radius: 999px; }
+  .row b { font-variant-numeric: tabular-nums; }
+  .stations { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .station { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .station .n { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .station .l { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .station .w { font-size: 11px; color: var(--ink-3); }
+  .station.hot { border-color: #f7c8c0; background: #fff6f4; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 0; border-bottom: 1px solid #f0f3f7; font-variant-numeric: tabular-nums; }
+  td.r, th.r { text-align: right; }
+  .who { display: flex; align-items: center; gap: 10px; }
+  .who .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+  .who small { display: block; color: var(--ink-3); font-size: 11px; }
+  .list { display: flex; flex-direction: column; }
+  .li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f0f3f7; font-size: 13px; }
+  .li:last-child { border-bottom: 0; }
+  .pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+  .num { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Spec panel */
+  .spec { margin-top: 12px; background: var(--navy); color: #fff; border-radius: var(--radius); padding: 22px 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+  .spec h4 { margin: 0 0 10px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #9fd6ea; }
+  .spec ul { margin: 0; padding-left: 16px; font-size: 13px; line-height: 1.6; color: rgba(255,255,255,.88); }
+  .spec code { background: rgba(255,255,255,.12); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+  .states { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .states .btn { height: 38px; font-size: 13px; }
+  .btn.hover { filter: brightness(1.06); transform: translateY(-1px); }
+  .btn.active { transform: scale(.98); }
+  .btn.disabled { opacity: .5; }
+  .btn.focus { outline: 3px solid rgba(42,143,176,.45); outline-offset: 2px; }
+  .btn.loading { opacity: .85; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="logo">MMC</div>
+    <div class="rail-item active"><span class="ic"></span>Dashboard</div>
+    <div class="rail-item"><span class="ic"></span>Patients</div>
+    <div class="rail-item"><span class="ic"></span>Prices</div>
+    <div class="rail-item"><span class="ic"></span>Employees</div>
+    <div class="rail-item"><span class="ic"></span>Settings</div>
+    <div class="spacer"></div>
+    <div class="avatar">TM</div>
+  </aside>
+
+  <main class="main">
+    <!-- Top bar -->
+    <div class="top">
+      <div class="greet">
+        <h1>Good morning, Théogène</h1>
+        <p>Friday 17 October 2026 · Kiramuruzi · updated 08:42 · <b style="color:#1e7b34">● Clinic open</b></p>
+      </div>
+      <div class="grow"></div>
+      <div class="search">🔍 Search patient, ticket, file number…</div>
+      <div class="seg"><span class="on">Today</span><span>Week</span><span>Month</span></div>
+      <div class="bell"><i></i></div>
+      <div class="btn">⎙ Print</div>
+      <div class="btn primary">＋ Register patient</div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpi"><div class="chip t-teal">👤</div><div class="label">Registered</div><div class="value">38<small>today</small></div><div class="delta up">▲ +4 vs yesterday</div>
+        <svg class="spark" viewBox="0 0 84 34"><path d="M0 28 L12 24 L24 26 L36 18 L48 20 L60 12 L72 14 L84 6" fill="none" stroke="#1f6f8b" stroke-width="2"/></svg></div>
+      <div class="kpi"><div class="chip t-mint">🩺</div><div class="label">Visits</div><div class="value">52<small>today</small></div><div class="delta up">▲ +5 (11 %)</div>
+        <svg class="spark" viewBox="0 0 84 34"><path d="M0 30 L12 26 L24 27 L36 20 L48 22 L60 14 L72 10 L84 8" fill="none" stroke="#2ea043" stroke-width="2"/></svg></div>
+      <div class="kpi"><div class="chip t-amber">⏱</div><div class="label">Waiting now</div><div class="value">11<small>patients</small></div><div class="delta flat">— stable</div></div>
+      <div class="kpi"><div class="chip t-coral">⌛</div><div class="label">Avg wait</div><div class="value">18<small>min</small></div><div class="delta down">▲ +3 min · watch lab</div></div>
+      <div class="kpi"><div class="chip t-violet">💳</div><div class="label">Revenue</div><div class="value">742,500<small>RWF</small></div><div class="delta up">▲ +6 % vs yesterday</div>
+        <svg class="spark" viewBox="0 0 84 34"><path d="M0 26 L12 22 L24 24 L36 16 L48 18 L60 10 L72 12 L84 4" fill="none" stroke="#6b4fd8" stroke-width="2"/></svg></div>
+      <div class="kpi"><div class="chip t-navy">🧾</div><div class="label">Open bills</div><div class="value">9<small>RWF 268,900</small></div><div class="delta down">● needs cashier</div></div>
+    </div>
+
+    <!-- Money -->
+    <div class="section">Money</div>
+    <div class="grid g-money">
+      <div class="card">
+        <h3>Revenue · last 30 days <span>RWF 24.6 M total</span></h3>
+        <div class="area">
+          <svg viewBox="0 0 640 180" preserveAspectRatio="none">
+            <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1f6f8b" stop-opacity=".35"/><stop offset="1" stop-color="#1f6f8b" stop-opacity="0"/></linearGradient></defs>
+            <g stroke="#e8edf3" stroke-width="1"><line x1="0" y1="45" x2="640" y2="45"/><line x1="0" y1="90" x2="640" y2="90"/><line x1="0" y1="135" x2="640" y2="135"/></g>
+            <path d="M0 120 L22 110 L44 98 L66 84 L88 130 L110 160 L132 112 L154 100 L176 92 L198 60 L220 118 L242 136 L264 162 L286 104 L308 96 L330 88 L352 70 L374 112 L396 128 L418 164 L440 100 L462 92 L484 84 L506 56 L528 108 L550 132 L572 160 L594 98 L616 90 L640 112 L640 180 L0 180 Z" fill="url(#g)"/>
+            <path d="M0 120 L22 110 L44 98 L66 84 L88 130 L110 160 L132 112 L154 100 L176 92 L198 60 L220 118 L242 136 L264 162 L286 104 L308 96 L330 88 L352 70 L374 112 L396 128 L418 164 L440 100 L462 92 L484 84 L506 56 L528 108 L550 132 L572 160 L594 98 L616 90 L640 112" fill="none" stroke="#1f6f8b" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="506" cy="56" r="5" fill="#fff" stroke="#1f6f8b" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <div class="legend"><span><b style="background:#1f6f8b"></b>Collected per day</span><span><b style="background:#cfd7e2"></b>Peak RWF 1,184,000 on 02/10</span></div>
+      </div>
+      <div class="card">
+        <h3>Collections today <span>RWF 742,500</span></h3>
+        <div class="donut">
+          <div class="ring"><div><b>742k</b>today</div></div>
+          <div class="rows">
+            <div class="row"><span>Cash</span><div class="bar"><i style="width:43%;background:#1f6f8b"></i></div><b>318,400</b></div>
+            <div class="row"><span>MTN MoMo</span><div class="bar"><i style="width:34%;background:#2ea043"></i></div><b>254,100</b></div>
+            <div class="row"><span>Airtel</span><div class="bar"><i style="width:9%;background:#d99a00"></i></div><b>61,000</b></div>
+            <div class="row"><span>Card</span><div class="bar"><i style="width:6%;background:#6b4fd8"></i></div><b>22,000</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Receivables <span>by insurer</span></h3>
+        <div class="rows">
+          <div class="row"><span>RSSB RAMA</span><div class="bar"><i style="width:100%;background:#1f6f8b"></i></div><b>4,860,000</b></div>
+          <div class="row"><span>Mutuelle</span><div class="bar"><i style="width:48%;background:#1f6f8b"></i></div><b>2,315,000</b></div>
+          <div class="row"><span>MMI</span><div class="bar"><i style="width:23%;background:#1f6f8b"></i></div><b>1,140,000</b></div>
+          <div class="row"><span>Radiant</span><div class="bar"><i style="width:16%;background:#1f6f8b"></i></div><b>760,000</b></div>
+        </div>
+        <div class="btn" style="align-self:flex-start;height:36px;font-size:13px">Prepare claim batch →</div>
+      </div>
+    </div>
+
+    <!-- Operations -->
+    <div class="section">Operations · live</div>
+    <div class="grid g-ops">
+      <div class="card">
+        <h3>Queue now <span>auto-refresh 15 s</span></h3>
+        <div class="stations">
+          <div class="station"><span class="n">3</span><span class="l">Triage</span><span class="w">avg 6 min</span></div>
+          <div class="station hot"><span class="n">5</span><span class="l">Consultation</span><span class="w">avg 24 min · ⚠ long</span></div>
+          <div class="station hot"><span class="n">4</span><span class="l">Laboratory</span><span class="w">avg 31 min · ⚠ long</span></div>
+          <div class="station"><span class="n">2</span><span class="l">Pharmacy</span><span class="w">avg 12 min</span></div>
+          <div class="station"><span class="n">1</span><span class="l">Dental</span><span class="w">avg 9 min</span></div>
+          <div class="station"><span class="n">2</span><span class="l">Cashier</span><span class="w">avg 8 min</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Visits by service <span>today · 52</span></h3>
+        <div class="rows">
+          <div class="row"><span>Consultation</span><div class="bar"><i style="width:100%;background:#2ea043"></i></div><b>24</b></div>
+          <div class="row"><span>Laboratory</span><div class="bar"><i style="width:62%;background:#2ea043"></i></div><b>15</b></div>
+          <div class="row"><span>Nursing</span><div class="bar"><i style="width:33%;background:#2ea043"></i></div><b>8</b></div>
+          <div class="row"><span>Dental</span><div class="bar"><i style="width:16%;background:#2ea043"></i></div><b>4</b></div>
+          <div class="row"><span>Ultrasound</span><div class="bar"><i style="width:4%;background:#2ea043"></i></div><b>1</b></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink-3)">Bookings: 14 booked · 1 missed · <span class="pill t-amber">2 inquiries pending</span></div>
+      </div>
+      <div class="card">
+        <h3>Who did what · today <span>accountability</span></h3>
+        <table>
+          <tr><th>Employee</th><th class="r">Registered</th><th class="r">Vitals</th><th class="r">Charges</th><th class="r">Collected</th></tr>
+          <tr><td><div class="who"><span class="av t-teal">JU</span><div>Uwimana Josiane<small>Receptionist · MMC-S-0001</small></div></div></td><td class="r">31</td><td class="r">0</td><td class="r">31</td><td class="r">—</td></tr>
+          <tr><td><div class="who"><span class="av t-mint">CN</span><div>Nyirahabimana Chantal<small>Nurse · MMC-S-0002</small></div></div></td><td class="r">4</td><td class="r">38</td><td class="r">12</td><td class="r">—</td></tr>
+          <tr><td><div class="who"><span class="av t-violet">BM</span><div>Dr. Mukamana Béatrice<small>Doctor · MMC-S-0003</small></div></div></td><td class="r">2</td><td class="r">1</td><td class="r">46</td><td class="r">—</td></tr>
+          <tr><td><div class="who"><span class="av t-amber">SM</span><div>Mugisha Samuel<small>Cashier · MMC-S-0004</small></div></div></td><td class="r">0</td><td class="r">0</td><td class="r">0</td><td class="r">742,500</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="section">Clinical · stock · security</div>
+    <div class="grid g-bottom">
+      <div class="card">
+        <h3>Top treatments · today <span>count · revenue</span></h3>
+        <div class="list">
+          <div class="li"><span class="pill t-teal">1</span>General consultation<span class="num">24 · 192,000</span></div>
+          <div class="li"><span class="pill t-teal">2</span>Malaria RDT<span class="num">15 · 37,500</span></div>
+          <div class="li"><span class="pill t-teal">3</span>Malaria treatment (uncomplicated)<span class="num">9 · 108,000</span></div>
+          <div class="li"><span class="pill t-teal">4</span>Injection<span class="num">8 · 8,000</span></div>
+          <div class="li"><span class="pill t-teal">5</span>Tooth extraction<span class="num">4 · 60,000</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Stock alerts <span>reorder · expiry</span></h3>
+        <div class="list">
+          <div class="li"><span class="pill t-coral">low</span>Artemether-lumefantrine 20/120<span class="num">36 / 150</span></div>
+          <div class="li"><span class="pill t-coral">low</span>Malaria RDT kits<span class="num">18 / 100</span></div>
+          <div class="li"><span class="pill t-amber">low</span>Amoxicillin 500 mg<span class="num">120 / 500</span></div>
+          <div class="li"><span class="pill t-amber">≤30 d</span>4 batches expiring<span class="num">11 ≤60 d · 23 ≤90 d</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Sign-ins · last 24 h <span>12 · 1 failed</span></h3>
+        <div class="list">
+          <div class="li"><span class="pill t-mint">ok</span>Mugabo Théogène · manager<span class="num">08:40</span></div>
+          <div class="li"><span class="pill t-mint">ok</span>Uwimana Josiane · reception<span class="num">07:58</span></div>
+          <div class="li"><span class="pill t-coral">failed</span>b.mukamana · wrong PIN<span class="num">07:51</span></div>
+          <div class="li"><span class="pill t-mint">ok</span>Dr. Mukamana Béatrice · doctor<span class="num">07:52</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Motion & interaction spec -->
+    <div class="spec">
+      <div>
+        <h4>Motion</h4>
+        <ul>
+          <li>Page enter: cards fade + rise 8 px, <code>240 ms</code> ease-out, <code>40 ms</code> stagger left→right, top→bottom.</li>
+          <li>Numbers count up from 0 over <code>600 ms</code>; deltas pop in after.</li>
+          <li>Revenue line draws over <code>800 ms</code>; area fades in after the line.</li>
+          <li>Bars grow from 0 to width, <code>400 ms</code>, staggered <code>30 ms</code>.</li>
+          <li>Range switch (Today / Week / Month): crossfade <code>200 ms</code>, skeleton shimmer while loading.</li>
+          <li>Queue tiles: a new or changed count pulses once (scale 1 → 1.06 → 1, <code>300 ms</code>).</li>
+          <li>Respect <code>prefers-reduced-motion</code>: no movement, only opacity.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Buttons</h4>
+        <ul>
+          <li>Hover: +6 % brightness and lift 1 px with a stronger shadow, <code>150 ms</code>.</li>
+          <li>Press: scale <code>0.98</code>, <code>90 ms</code>; release springs back.</li>
+          <li>Focus (keyboard): 3 px teal ring at 45 %, offset 2 px.</li>
+          <li>Loading: label dims to 85 %, spinner replaces the icon, width stays fixed.</li>
+          <li>Disabled: 50 % opacity, no hover, cursor not-allowed.</li>
+          <li>Destructive (danger) confirms with a sheet, never a native dialog.</li>
+        </ul>
+        <div class="states">
+          <div class="btn primary">Default</div><div class="btn primary hover">Hover</div><div class="btn primary active">Pressed</div>
+          <div class="btn primary focus">Focus</div><div class="btn primary loading">◌ Saving…</div><div class="btn primary disabled">Disabled</div>
+        </div>
+      </div>
+      <div>
+        <h4>Feedback &amp; flow</h4>
+        <ul>
+          <li>Every save shows a toast bottom-right (slide-in 200 ms, auto-hide 4 s, undo where safe).</li>
+          <li>Cards hover: lift 2 px, shadow deepens; click opens the detail (queue → station, bills → cashier).</li>
+          <li>Live data refreshes in the background every 15–60 s with a soft "updated 08:42" stamp; never a full reload.</li>
+          <li>Errors stay inline next to the action, red tint, with a retry.</li>
+          <li>Keyboard: <code>/</code> focuses search, <code>R</code> registers a patient, <code>Esc</code> closes sheets.</li>
+          <li>Dim theme: same layout, navy surfaces, teal accents lifted for contrast.</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -16,6 +16,10 @@ export interface LineChartProps {
   ariaLabel: string
   colorClass?: string
   className?: string
+  /** Soft gradient under the line (dashboard revenue chart). */
+  area?: boolean
+  /** Draw the line over 800 ms on mount (Figma motion spec). */
+  animate?: boolean
 }
 
 const W = 640
@@ -40,9 +44,12 @@ export function LineChart({
   ariaLabel,
   colorClass = 'text-c-money',
   className,
+  area = false,
+  animate = false,
 }: LineChartProps) {
   const [hover, setHover] = useState<number | null>(null)
   const id = useId()
+  const gradId = `${id}-area`
   const n = values.length
   const sx = (i: number) => L + (i / Math.max(1, n - 1)) * (R - L)
   const sy = (v: number) => B - (v / max) * (B - T)
@@ -83,12 +90,30 @@ export function LineChart({
           </text>
         </g>
       ))}
+      {area && n > 1 && (
+        <>
+          <defs>
+            <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stopColor="currentColor" stopOpacity={0.32} />
+              <stop offset="1" stopColor="currentColor" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <polygon
+            points={`${sx(0).toFixed(1)},${B} ${points} ${sx(last).toFixed(1)},${B}`}
+            fill={`url(#${gradId})`}
+            className={animate ? 'fade-in-late' : undefined}
+          />
+        </>
+      )}
       <polyline
         points={points}
         fill="none"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={2.5}
         strokeLinejoin="round"
+        strokeLinecap="round"
+        pathLength={animate ? 1 : undefined}
+        className={animate ? 'draw-line' : undefined}
       />
       {xTicks.map((i) => (
         <text key={i} x={sx(i)} y={H - 15} textAnchor="middle" fontSize={11} className="fill-ink-3">

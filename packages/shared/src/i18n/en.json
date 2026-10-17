@@ -462,6 +462,23 @@
     "export": "Export PDF / Excel",
     "refresh": "Refresh",
     "print": "Print / PDF",
+    "greeting": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}"
+    },
+    "clinicOpen": "Clinic open",
+    "clinicClosed": "Clinic closed",
+    "registerPatient": "Register patient",
+    "queueLong": "long",
+    "avgShort": "avg {{min}} min",
+    "noShowShort": "{{missed}} missed",
+    "collectedTotal": "{{amount}} total",
+    "loading": "Loading the live numbers…",
+    "subtitleUpdated": "updated {{time}}",
+    "refreshNote": "auto-refresh 60 s",
+    "lowShort": "low",
+    "expiringBatches": "{{count}} batches expiring",
     "sampleData": "sample data (no database configured)",
     "loadFailed": "Could not load the dashboard: {{message}}",
     "period": {

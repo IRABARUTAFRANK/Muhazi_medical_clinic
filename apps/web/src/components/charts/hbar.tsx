@@ -22,6 +22,8 @@ interface HBarListProps {
   /** Scale maximum; defaults to the largest value. */
   max?: number
   subject: ChartSubject
+  /** Explicit bar colour per row (overrides the subject colour), e.g. payment methods. */
+  colors?: readonly string[]
   /** Label column width when the list is wide enough for one row per bar. */
   labelWidth?: string
   className?: string
@@ -36,6 +38,7 @@ export function HBarList({
   rows,
   max,
   subject,
+  colors,
   labelWidth = 'minmax(96px,120px)',
   className,
 }: HBarListProps) {
@@ -43,7 +46,7 @@ export function HBarList({
   const style = { '--cols': `${labelWidth} 1fr auto` } as CSSProperties
   return (
     <div className={cn('@container flex flex-col gap-2', className)}>
-      {rows.map((r) => (
+      {rows.map((r, i) => (
         <div
           key={r.label}
           className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 @md:min-h-6 @md:grid-cols-(--cols) @md:gap-y-0"
@@ -54,10 +57,19 @@ export function HBarList({
           <span className="text-[13px] font-semibold whitespace-nowrap tabular-nums @md:order-3">
             {r.display ?? r.value}
           </span>
-          <span className="bg-hover col-span-2 h-4 overflow-hidden rounded @md:order-2 @md:col-span-1">
+          <span className="bg-hover col-span-2 h-2.5 overflow-hidden rounded-full @md:order-2 @md:col-span-1">
             <span
-              className={cn('block h-full rounded', fillClass[subject])}
-              style={{ width: `${Math.round((r.value / scale) * 100)}%` }}
+              className={cn(
+                'bar-grow block h-full rounded-full',
+                !colors?.[i] && fillClass[subject],
+              )}
+              style={
+                {
+                  width: `${Math.round((r.value / scale) * 100)}%`,
+                  background: colors?.[i],
+                  '--i': i,
+                } as CSSProperties
+              }
             />
           </span>
         </div>

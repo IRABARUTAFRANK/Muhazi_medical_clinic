@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import type { AriaAttributes, ReactNode } from 'react'
+import type { AriaAttributes, CSSProperties, ReactNode } from 'react'
 
 interface StaffLinkProps {
   /** `/app`, `/app/dashboard`, `/app/visit` (with `search`) or `/app/<section>`. */
@@ -7,6 +7,7 @@ interface StaffLinkProps {
   /** Search params for `/app/visit` (`{ encounter }`). */
   search?: { encounter: string }
   className?: string
+  style?: CSSProperties
   children: ReactNode
   'aria-current'?: AriaAttributes['aria-current']
   onClick?: () => void

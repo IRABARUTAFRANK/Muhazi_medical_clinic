@@ -60,7 +60,17 @@
   --color-c-visits: var(--mmc-c-visits);
   --color-c-time: var(--mmc-c-time);
 
+  --color-navy: var(--mmc-navy);
+  --color-navy-2: var(--mmc-navy-2);
+  --color-violet: var(--mmc-violet);
+  --color-violet-bg: var(--mmc-violet-bg);
+  --color-amber: var(--mmc-amber);
+  --color-amber-bg: var(--mmc-amber-bg);
+
   --shadow-sheet: var(--mmc-shadow);
+  --shadow-card: var(--mmc-shadow-card);
+  --shadow-card-hover: var(--mmc-shadow-card-hover);
+  --radius-lg2: var(--mmc-radius-lg);
 }
 
 @layer base {
