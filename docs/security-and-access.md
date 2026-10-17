@@ -45,27 +45,55 @@ flowchart LR
 
 ### Manager creates an employee
 
-1. Employees page → New employee: full name, username (suggested `j.uwimana`), role, station,
-   dashboard access (none / head of station / manager), language, phone; a six-digit PIN is
-   generated (CSPRNG) or typed.
+1. Employees page → New employee: full name, username (suggested `j.uwimana`), **e-mail
+   address** (where the sign-in code goes), role, station, dashboard access (none / head of
+   station / manager), language, phone; a six-digit PIN is generated (CSPRNG) or typed.
 2. The app calls `manage-staff` with `{action:"create"}` and the manager's session token.
 3. The function refuses unless the caller is an active manager, validates
-   (`^[a-z0-9._-]{3,32}$`, `^[0-9]{6}$`, known role), creates the Auth user with
-   `email_confirm: true` and metadata, and writes an audit event.
-4. The trigger creates the profile with `must_change_pin = true`.
-5. The app shows the username and PIN **once**; the manager hands them over in person.
+   (`^[a-z0-9._-]{3,32}$`, `^[0-9]{6}$`, e-mail syntax, e-mail not already used, known role),
+   creates the Auth user with that e-mail, `email_confirm: true` and metadata, and writes an
+   audit event.
+4. The trigger creates the profile with `must_change_pin = true` and assigns the **staff ID**
+   (`MMC-S-0001`, sequential, migration 0011).
+5. The app shows the staff ID, username, PIN and e-mail **once**; the manager hands them over in
+   person. The e-mail can be changed later with "Set e-mail" (`{action:"set_email"}`, which
+   updates the Auth user and the profile).
 
-### Employee signs in
+### Employee signs in (three steps)
 
-1. Username + PIN → `supabase.auth.signInWithPassword(email, pin)`.
-   Wrong PIN → "Wrong username or PIN". Banned (deactivated) user → "This account has been
-   deactivated".
-2. `record_sign_in(device)` stamps `last_sign_in_at`, writes the `login` audit event and raises
-   if `active = false` (the app signs the user out again).
-3. If `must_change_pin` the app goes to **Change PIN** and nothing else in `/app` is reachable
+1. **Landing page → staff ID.** `public_staff_check(staff_id)` (anonymous, security definer)
+   answers only true/false for an active ID. Unknown ID → "This staff ID is not known". A
+   known ID opens `/login?staff=MMC-S-0001`.
+2. **Login page → username + PIN.** `staff_login_email(staff_id, username)` returns the Auth
+   e-mail only if both match an active profile; then `supabase.auth.signInWithPassword(email,
+pin)`. Wrong PIN → "Wrong username or PIN". Banned (deactivated) user → "This account has
+   been deactivated". On success the app immediately requests `signInWithOtp(email,
+shouldCreateUser:false)`: Supabase Auth e-mails a six-digit code. The app still holds **no
+   user** at this point.
+3. **Code.** `verifyOtp(email, token, type:"email")` exchanges the code for the session that the
+   app actually uses; then `record_sign_in(device)` stamps `last_sign_in_at`, writes the `login`
+   audit event and raises if `active = false` (the app signs the user out again).
+4. If `must_change_pin` the app goes to **Change PIN** and nothing else in `/app` is reachable
    until the PIN is replaced (`auth.updateUser` after re-verifying the current PIN, then
    `mark_pin_changed()`).
-4. Otherwise the employee lands on their role's home (managers on the dashboard).
+5. Otherwise the employee lands on their role's home (managers on the dashboard).
+
+The PIN step is enforced by the app, the code step by Supabase Auth (the final session comes
+from the code exchange). Codes expire per the project's Auth settings; "Send a new code" is
+rate-limited to one per 30 s in the app and by Supabase's e-mail limits.
+
+### Patient journey (MoH workflow)
+
+- **Registration from any station.** `register_patient()` (new file + visit) and
+  `start_visit()` (returning patient) need `patient.write` / `queue.write`: receptionist,
+  nurse, doctor, lab technician, sonographer, pharmacist and manager all have them.
+- **Triage first.** A normal visit is queued at `triage`; the nurse records vitals with
+  `record_vitals()` (observations, triage colour, reason), which closes the triage entry and
+  queues the patient at the chosen station with priority red = 1, yellow = 2, green = 3.
+- **Emergency.** `register_patient(... p_emergency := true, p_station := …)` or
+  `start_visit(patient, true, station)` skips triage: the visit opens at the treating station
+  with `triage_level = 'red'`, queue priority 1 and a reason recorded on the encounter.
+- Station screens read the `queue_board` view (security invoker, so RLS applies).
 
 ### Idle lock
 
@@ -103,7 +131,11 @@ re-verifies the PIN with Supabase Auth. "Not you? Sign out" ends the session for
 1. Apply the migrations (`supabase/all.sql` or `pnpm db:apply --seed`).
 2. Deploy the function: `npx supabase login` → `npx supabase functions deploy manage-staff --project-ref wwxmdqdrdekpzcbijsqo`.
 3. Supabase dashboard → Authentication: disable sign-ups, disable email confirmation, minimum
-   password length 6.
+   password length 6. For the sign-in code: Authentication → Email Templates → **Magic Link**
+   must contain `{{ .Token }}` (e.g. "Your Muhazi Medical Clinic sign-in code is {{ .Token }}.
+   It expires in 10 minutes."), Authentication → Providers → Email: OTP length 6, expiry
+   600 s. Configure **custom SMTP** (Project settings → Authentication → SMTP): the built-in
+   sender is limited to a few e-mails per hour and would block daily sign-ins.
 4. Create the first manager with `pnpm db:seed-staff` (it creates the sample staff including
    `t.mugabo`, PIN printed), sign in as that manager, change the PIN, then create the real
    employees from the Employees page and delete or deactivate the samples.

@@ -3,8 +3,10 @@
 // create employee accounts, hand over or reset a PIN, and deactivate or reactivate an employee.
 //
 //   Deploy:  npx supabase functions deploy manage-staff --project-ref wwxmdqdrdekpzcbijsqo
-//   Secrets: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided automatically;
-//            optional STAFF_EMAIL_DOMAIN (default staff.muhaziclinic.rw).
+//   Secrets: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided automatically.
+//
+// Each employee has a real e-mail address (the sign-in code is sent there) and a staff ID that
+// the database assigns (MMC-S-0001). The manager sets the username, the first PIN and the e-mail.
 //
 // Every call must carry the caller's Supabase session token; the caller must be an active manager.
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -12,7 +14,6 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY =
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SECRET_KEY')!
-const DOMAIN = Deno.env.get('STAFF_EMAIL_DOMAIN') ?? 'staff.muhaziclinic.rw'
 
 const ROLES = [
   'receptionist',
@@ -26,6 +27,7 @@ const ROLES = [
 ]
 const USERNAME = /^[a-z0-9._-]{3,32}$/
 const PIN = /^[0-9]{6}$/
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const BAN_FOREVER = '876000h'
 
 const cors = {
@@ -46,6 +48,8 @@ type Body =
       full_name: string
       role: string
       pin: string
+      /** Where the sign-in code is sent. Required: the second sign-in step depends on it. */
+      email: string
       station?: string
       dashboard?: 'manager' | 'head' | null
       head_of?: string
@@ -54,6 +58,7 @@ type Body =
     }
   | { action: 'reset_pin'; user_id: string; pin: string }
   | { action: 'set_active'; user_id: string; active: boolean }
+  | { action: 'set_email'; user_id: string; email: string }
   | {
       action: 'update'
       user_id: string
@@ -113,6 +118,9 @@ Deno.serve(async (req) => {
       if (!PIN.test(body.pin ?? '')) return json(400, { error: 'PIN must be six digits' })
       if (!ROLES.includes(body.role)) return json(400, { error: 'unknown role' })
       if (!body.full_name?.trim()) return json(400, { error: 'full name is required' })
+      const email = body.email?.trim().toLowerCase()
+      if (!EMAIL.test(email ?? ''))
+        return json(400, { error: 'a valid e-mail address is required' })
       if (body.dashboard && !['manager', 'head'].includes(body.dashboard))
         return json(400, { error: 'dashboard must be manager or head' })
       const { data: taken } = await admin
@@ -121,8 +129,14 @@ Deno.serve(async (req) => {
         .eq('username', username)
         .maybeSingle()
       if (taken) return json(409, { error: 'username already exists' })
+      const { data: emailTaken } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle()
+      if (emailTaken) return json(409, { error: 'e-mail already used by another employee' })
       const { data, error } = await admin.auth.admin.createUser({
-        email: `${username}@${DOMAIN}`,
+        email,
         password: body.pin,
         email_confirm: true,
         user_metadata: {
@@ -139,8 +153,39 @@ Deno.serve(async (req) => {
         },
       })
       if (error) return json(400, { error: error.message })
-      await audit('create', data.user.id, { username, role: body.role })
-      return json(200, { id: data.user.id, username })
+      // The staff ID is assigned by the database when the profile row is created.
+      const { data: created } = await admin
+        .from('profiles')
+        .select('staff_id')
+        .eq('id', data.user.id)
+        .maybeSingle()
+      await audit('create', data.user.id, {
+        username,
+        role: body.role,
+        staff_id: created?.staff_id,
+      })
+      return json(200, { id: data.user.id, username, staff_id: created?.staff_id ?? null, email })
+    }
+
+    case 'set_email': {
+      const email = body.email?.trim().toLowerCase()
+      if (!EMAIL.test(email ?? ''))
+        return json(400, { error: 'a valid e-mail address is required' })
+      const { data: emailTaken } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .neq('id', body.user_id)
+        .maybeSingle()
+      if (emailTaken) return json(409, { error: 'e-mail already used by another employee' })
+      const { error } = await admin.auth.admin.updateUserById(body.user_id, {
+        email,
+        email_confirm: true,
+      })
+      if (error) return json(400, { error: error.message })
+      await admin.from('profiles').update({ email }).eq('id', body.user_id)
+      await audit('set_email', body.user_id, { email })
+      return json(200, { ok: true })
     }
 
     case 'reset_pin': {

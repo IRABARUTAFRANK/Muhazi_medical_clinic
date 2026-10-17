@@ -7,15 +7,16 @@ Gatsibo District, Eastern Province, Rwanda. The full specification is in
 
 ## Status (15 October 2026)
 
-| Part              | State                                                                                                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Public site `/`   | Redesigned around the logo palette (blue, green, sky, gold): gradient hero, reveal-on-scroll, insurance "coming soon" band (no partners yet), map embed, expanded footer |
-| Booking `/book`   | Category chips, doctor list, 7-day calendar, request panel; sends a real inquiry when Supabase is configured                                                             |
-| Staff home `/app` | Receptionist, nurse, doctor, cashier (PC rail, tablet tabs, offline and quiet variants, dim theme)                                                                       |
-| Dashboard         | Manager (five rows) and head-of-station variant                                                                                                                          |
-| Database          | Full schema in [supabase/](supabase/README.md): 71 tables, RLS per role, business rules as SQL functions, verified by `pnpm db:check`                                    |
-| Auth              | Supabase Auth (username → email, six-digit PIN) when configured; sample accounts otherwise                                                                               |
-| Employees         | Manager-only page `/app/staff`: create accounts, hand over and reset PINs, deactivate; forced PIN change at first sign-in; 5-minute idle lock                            |
+| Part              | State                                                                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Public site `/`   | Redesigned around the logo palette (blue, green, sky, gold): gradient hero, reveal-on-scroll, insurance "coming soon" band (no partners yet), map embed, expanded footer             |
+| Booking `/book`   | Category chips, doctor list, 7-day calendar, request panel; sends a real inquiry when Supabase is configured                                                                         |
+| Staff home `/app` | Receptionist, nurse, doctor, cashier (PC rail, tablet tabs, offline and quiet variants, dim theme)                                                                                   |
+| Dashboard         | Manager (five rows) and head-of-station variant                                                                                                                                      |
+| Database          | Full schema in [supabase/](supabase/README.md): 71 tables, RLS per role, business rules as SQL functions, verified by `pnpm db:check`                                                |
+| Auth              | Three steps: staff ID on the landing page → username + six-digit PIN → code e-mailed by Supabase Auth (`/login`); sample accounts otherwise                                          |
+| Employees         | Manager-only page `/app/staff`: create accounts (username, PIN, e-mail; staff ID assigned), set e-mail, reset PINs, deactivate; forced PIN change; 5-minute idle lock                |
+| Patient journey   | `/app/register` from any station (returning or new patient, emergency path skips triage) → `/app/vitals` triage screen (vitals, colour, next station) → live queue on the staff home |
 
 Design documents: [docs/database-design.md](docs/database-design.md) (schema, flows, permissions,
 function API) and [docs/security-and-access.md](docs/security-and-access.md) (accounts, sign-in,
@@ -69,7 +70,10 @@ for a new project or the clinic hub.
 
 ### Sample accounts
 
-Sample mode: any PIN. Live mode: the six-digit PINs printed by `seed-staff.mjs`.
+Sign-in is staff ID → username + PIN → e-mailed code. Sample mode: staff IDs `MMC-S-0001`…`0006`
+(in order below), any PIN and any six-digit code. Live mode: the staff IDs and six-digit PINs
+printed by `seed-staff.mjs`; the code goes to the account's e-mail, so set a real address for
+each employee from the Employees page (the seeded accounts carry placeholder addresses).
 
 | Username          | Who                                        | Lands on         |
 | ----------------- | ------------------------------------------ | ---------------- |

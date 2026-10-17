@@ -41,7 +41,8 @@ export const CLINIC = {
   email: CLINIC_PROFILE.email,
   /** Google Maps pin of the clinic (shared link); the embed uses its coordinates. */
   mapsUrl: 'https://maps.app.goo.gl/UEpB7oHnxb8fkxs18',
-  mapsEmbedUrl: 'https://www.google.com/maps?q=-1.797670,30.416055&z=16&output=embed',
+  // t=k = satellite imagery by default
+  mapsEmbedUrl: 'https://www.google.com/maps?q=-1.797670,30.416055&z=17&t=k&output=embed',
   emergencyNumber: '912',
   /** Sample "clinic now" numbers used when no live status is available. */
   currentWaitMin: 18,

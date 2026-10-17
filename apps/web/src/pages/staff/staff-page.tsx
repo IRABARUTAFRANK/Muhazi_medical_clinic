@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Copy, KeyRound, RefreshCw, UserPlus, UserX, UserCheck, Check } from 'lucide-react'
+import { Copy, KeyRound, Mail, RefreshCw, UserPlus, UserX, UserCheck, Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
 import { Avatar } from '@/components/ui/avatar'
@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
   DB_ROLES,
+  EMAIL_RE,
   PIN_RE,
   USERNAME_RE,
   generatePin,
@@ -29,6 +30,8 @@ import { cn } from '@/lib/utils'
 interface Credentials {
   title: string
   name: string
+  staffId: string
+  email: string
   username: string
   pin: string
 }
@@ -40,14 +43,17 @@ export function StaffPage({ user }: { user: StaffUser }) {
   const actions = useStaffActions()
   const [showNew, setShowNew] = useState(false)
   const [resetFor, setResetFor] = useState<Employee | null>(null)
+  const [emailFor, setEmailFor] = useState<Employee | null>(null)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const describeError = (e: unknown): string => {
     const m = e instanceof Error ? e.message : String(e)
+    if (/e-mail already/i.test(m)) return t('staff.errors.emailTaken')
     if (/taken|already exists/i.test(m)) return t('staff.errors.usernameTaken')
     if (m === 'username') return t('staff.errors.username')
     if (m === 'pin') return t('staff.errors.pin')
+    if (m === 'email' || /valid e-mail/i.test(m)) return t('staff.errors.email')
     return t('staff.errors.generic', { message: m })
   }
 
@@ -109,11 +115,21 @@ export function StaffPage({ user }: { user: StaffUser }) {
               setCredentials({
                 title: t('staff.reset.doneTitle', { name: resetFor.fullName }),
                 name: resetFor.fullName,
+                staffId: resetFor.staffId ?? '',
+                email: resetFor.email ?? '',
                 username: resetFor.username,
                 pin,
               })
               setResetFor(null)
             }}
+            describeError={describeError}
+          />
+        )}
+
+        {emailFor && (
+          <EmailCard
+            employee={emailFor}
+            onClose={() => setEmailFor(null)}
             describeError={describeError}
           />
         )}
@@ -134,7 +150,9 @@ export function StaffPage({ user }: { user: StaffUser }) {
                     {self && <span className="text-ink-3 ml-2 text-xs font-medium">(you)</span>}
                   </span>
                   <span className="text-ink-3 text-xs tabular-nums">
+                    {e.staffId ? `${e.staffId} · ` : ''}
                     {e.username}
+                    {e.email ? ` · ${e.email}` : ''}
                     {e.station ? ` · ${e.station}` : ''}
                     {e.lastSignInAt
                       ? ` · ${t('staff.lastSignIn', { when: `${formatDate(new Date(e.lastSignInAt))} ${formatTime(new Date(e.lastSignInAt))}` })}`
@@ -153,12 +171,18 @@ export function StaffPage({ user }: { user: StaffUser }) {
                 )}
                 {!e.active ? (
                   <Badge tone="red">{t('staff.deactivated')}</Badge>
+                ) : !e.email ? (
+                  <Badge tone="yellow">{t('staff.noEmail')}</Badge>
                 ) : e.mustChangePin ? (
                   <Badge tone="yellow">{t('staff.pinPending')}</Badge>
                 ) : (
                   <Badge tone="green">{t('staff.active')}</Badge>
                 )}
-                <span className="flex gap-2">
+                <span className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => setEmailFor(e)} disabled={!e.active}>
+                    <Mail size={16} aria-hidden="true" />
+                    {t('staff.setEmail')}
+                  </Button>
                   <Button size="sm" onClick={() => setResetFor(e)} disabled={!e.active}>
                     <KeyRound size={16} aria-hidden="true" />
                     {t('staff.resetPin')}
@@ -208,6 +232,7 @@ function NewEmployeeForm({
   const [headOf, setHeadOf] = useState('')
   const [language, setLanguage] = useState<DbLang>('kin')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [pin, setPin] = useState(generatePin)
   const [error, setError] = useState<string | null>(null)
 
@@ -220,14 +245,16 @@ function NewEmployeeForm({
     e.preventDefault()
     setError(null)
     if (!USERNAME_RE.test(username)) return setError(t('staff.errors.username'))
+    if (!EMAIL_RE.test(email.trim())) return setError(t('staff.errors.email'))
     if (!PIN_RE.test(pin)) return setError(t('staff.errors.pin'))
     try {
       const effectiveDashboard: DashboardRight = role === 'manager' ? 'manager' : dashboard
-      await actions.create.mutateAsync({
+      const created = await actions.create.mutateAsync({
         username,
         fullName: fullName.trim(),
         role,
         pin,
+        email: email.trim().toLowerCase(),
         station: station.trim() || undefined,
         dashboard: effectiveDashboard,
         headOf: effectiveDashboard === 'head' ? headOf.trim() || station.trim() : undefined,
@@ -237,6 +264,8 @@ function NewEmployeeForm({
       onCreated({
         title: t('staff.created.title', { name: fullName.trim() }),
         name: fullName.trim(),
+        staffId: created.staff_id ?? '',
+        email: email.trim().toLowerCase(),
         username,
         pin,
       })
@@ -272,6 +301,16 @@ function NewEmployeeForm({
             />
           </div>
           <span className="text-ink-3 -mt-1 text-xs">{t('staff.form.usernameHint')}</span>
+          <Field
+            label={t('staff.form.email')}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="off"
+            placeholder="name@example.com"
+            required
+          />
+          <span className="text-ink-3 -mt-1 text-xs">{t('staff.form.emailHint')}</span>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Select
               label={t('staff.form.role')}
@@ -431,6 +470,71 @@ function ResetPinCard({
   )
 }
 
+/* ---------------------------------------------------------------- e-mail */
+
+function EmailCard({
+  employee,
+  onClose,
+  describeError,
+}: {
+  employee: Employee
+  onClose: () => void
+  describeError: (e: unknown) => string
+}) {
+  const { t } = useTranslation()
+  const actions = useStaffActions()
+  const [email, setEmail] = useState(employee.email ?? '')
+  const [error, setError] = useState<string | null>(null)
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    if (!EMAIL_RE.test(email.trim())) return setError(t('staff.errors.email'))
+    try {
+      await actions.setEmail.mutateAsync({ id: employee.id, email: email.trim().toLowerCase() })
+      onClose()
+    } catch (err) {
+      setError(describeError(err))
+    }
+  }
+  return (
+    <Card className="border-primary">
+      <CardHeader>
+        <span>{t('staff.emailCard.title', { name: employee.fullName })}</span>
+      </CardHeader>
+      <form onSubmit={save}>
+        <CardBody className="gap-3">
+          <p className="text-ink-2 m-0">{t('staff.emailCard.body')}</p>
+          <Field
+            label={t('staff.form.email')}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoFocus
+            required
+            wrapperClassName="max-w-md"
+          />
+          {error && (
+            <p
+              role="alert"
+              className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            >
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button type="submit" variant="primary" disabled={actions.setEmail.isPending}>
+              {t('staff.emailCard.save')}
+            </Button>
+            <Button type="button" variant="ghost" onClick={onClose}>
+              {t('staff.form.cancel')}
+            </Button>
+          </div>
+        </CardBody>
+      </form>
+    </Card>
+  )
+}
+
 /* ---------------------------------------------------------------- credentials (shown once) */
 
 function CredentialsCard({
@@ -451,8 +555,14 @@ function CredentialsCard({
       </CardHeader>
       <CardBody className="gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {credentials.staffId && (
+            <CopyField label={t('staff.created.staffId')} value={credentials.staffId} />
+          )}
           <CopyField label={t('staff.created.username')} value={credentials.username} />
           <CopyField label={t('staff.created.pin')} value={credentials.pin} mono />
+          {credentials.email && (
+            <CopyField label={t('staff.created.email')} value={credentials.email} />
+          )}
         </div>
         <p className="text-ink-2 m-0 text-[13px]">{t('staff.created.note')}</p>
         <Button variant="primary" className="self-start" onClick={onDone}>

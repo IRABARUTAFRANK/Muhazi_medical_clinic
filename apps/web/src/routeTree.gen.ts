@@ -12,11 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as BookRouteImport } from './routes/book'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppSectionRouteImport } from './routes/app/$section'
 import { Route as AppChangePinRouteImport } from './routes/app/change-pin'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppRegisterRouteImport } from './routes/app/register'
 import { Route as AppStaffRouteImport } from './routes/app/staff'
+import { Route as AppVitalsRouteImport } from './routes/app/vitals'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,6 +34,11 @@ const AppRoute = AppRouteImport.update({
 const BookRoute = BookRouteImport.update({
   id: '/book',
   path: '/book',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -53,9 +61,19 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRegisterRoute = AppRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStaffRoute = AppStaffRouteImport.update({
   id: '/staff',
   path: '/staff',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVitalsRoute = AppVitalsRouteImport.update({
+  id: '/vitals',
+  path: '/vitals',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -63,19 +81,25 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/book': typeof BookRoute
+  '/login': typeof LoginRoute
   '/app/$section': typeof AppSectionRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/register': typeof AppRegisterRoute
   '/app/staff': typeof AppStaffRoute
+  '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/book': typeof BookRoute
+  '/login': typeof LoginRoute
   '/app/$section': typeof AppSectionRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/register': typeof AppRegisterRoute
   '/app/staff': typeof AppStaffRoute
+  '/app/vitals': typeof AppVitalsRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -83,10 +107,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/book': typeof BookRoute
+  '/login': typeof LoginRoute
   '/app/$section': typeof AppSectionRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/register': typeof AppRegisterRoute
   '/app/staff': typeof AppStaffRoute
+  '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -95,29 +122,38 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/book'
+    | '/login'
     | '/app/$section'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/register'
     | '/app/staff'
+    | '/app/vitals'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/book'
+    | '/login'
     | '/app/$section'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/register'
     | '/app/staff'
+    | '/app/vitals'
     | '/app'
   id:
     | '__root__'
     | '/'
     | '/app'
     | '/book'
+    | '/login'
     | '/app/$section'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/register'
     | '/app/staff'
+    | '/app/vitals'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -125,6 +161,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   BookRoute: typeof BookRoute
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -148,6 +185,13 @@ declare module '@tanstack/react-router' {
       path: '/book'
       fullPath: '/book'
       preLoaderRoute: typeof BookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/': {
@@ -178,11 +222,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/register': {
+      id: '/app/register'
+      path: '/register'
+      fullPath: '/app/register'
+      preLoaderRoute: typeof AppRegisterRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/staff': {
       id: '/app/staff'
       path: '/staff'
       fullPath: '/app/staff'
       preLoaderRoute: typeof AppStaffRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/vitals': {
+      id: '/app/vitals'
+      path: '/vitals'
+      fullPath: '/app/vitals'
+      preLoaderRoute: typeof AppVitalsRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -192,7 +250,9 @@ interface AppRouteChildren {
   AppSectionRoute: typeof AppSectionRoute
   AppChangePinRoute: typeof AppChangePinRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppRegisterRoute: typeof AppRegisterRoute
   AppStaffRoute: typeof AppStaffRoute
+  AppVitalsRoute: typeof AppVitalsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -200,7 +260,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppSectionRoute: AppSectionRoute,
   AppChangePinRoute: AppChangePinRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppRegisterRoute: AppRegisterRoute,
   AppStaffRoute: AppStaffRoute,
+  AppVitalsRoute: AppVitalsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
@@ -210,6 +272,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   BookRoute: BookRoute,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -67,7 +67,7 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
     station: 'Reception',
     nav: [
       nav('home', 'home', '/app'),
-      nav('patients', 'users'),
+      nav('patients', 'users', '/app/register'),
       nav('appointments', 'calendar'),
       nav('queue', 'list-ordered'),
       nav('reports', 'bar-chart-3', '/app/dashboard'),
@@ -83,8 +83,8 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
     ],
     counts: { waiting: 7, inProgress: 3, done: 28 },
     actions: [
-      act('registerPatient', 'user-plus', true, '/app/patients'),
-      act('walkInTicket', 'ticket', false, '/app/queue'),
+      act('registerPatient', 'user-plus', true, '/app/register'),
+      act('walkInTicket', 'ticket', false, '/app/register'),
       act('newInquiry', 'calendar-plus', false, '/app/appointments'),
       act('printCard', 'printer', false, '/app/patients'),
     ],
@@ -110,6 +110,7 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
     counts: { waiting: 6, inProgress: 1, done: 31 },
     actions: [
       act('vitals', 'activity', true, '/app/vitals'),
+      act('registerPatient', 'user-plus', false, '/app/register'),
       act('injection', 'syringe', false, '/app/tasks'),
       act('dressing', 'bandage', false, '/app/tasks'),
       act('admit', 'bed', false, '/app/beds'),
@@ -135,6 +136,7 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
     counts: { waiting: 5, inProgress: 1, done: 17 },
     actions: [
       act('openNext', 'arrow-right', true, '/app/queue'),
+      act('registerPatient', 'user-plus', false, '/app/register'),
       act('newPrescription', 'file-plus', false, '/app/prescriptions'),
       act('newOrder', 'clipboard-check', false, '/app/results'),
     ],

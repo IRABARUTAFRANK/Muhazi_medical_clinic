@@ -70,6 +70,10 @@ export interface StaffUser {
   username: string
   name: string
   role: Role
+  /** Public staff identifier typed on the landing page before signing in (MMC-S-0001). */
+  staffId?: string
+  /** Where the one-time sign-in code is sent. */
+  email?: string
   /** Station shown after the role, e.g. "Consultation 1". */
   station?: string
   /** Which dashboard variant the user may open; undefined = none. */

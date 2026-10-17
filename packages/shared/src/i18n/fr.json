@@ -170,6 +170,13 @@
     "signin": {
       "title": "Connexion du personnel",
       "sub": "Système de la clinique · réservé au personnel",
+      "staffId": "Votre identifiant du personnel",
+      "staffIdPh": "MMC-S-0001",
+      "staffIdHint": "L'identifiant remis par le gestionnaire. Ensuite : nom d'utilisateur et PIN, puis le code envoyé à votre e-mail.",
+      "checking": "Vérification…",
+      "continue": "Continuer",
+      "notStaff": "Cet identifiant est inconnu. Demandez au gestionnaire de la clinique.",
+      "checkFailed": "Impossible de vérifier l'identifiant. Réessayez.",
       "username": "Nom d'utilisateur ou matricule",
       "usernamePh": "ex. j.uwimana",
       "pin": "Code PIN",
@@ -507,7 +514,14 @@
   },
   "staff": {
     "title": "Employés",
-    "lead": "Chaque employé se connecte avec un nom d'utilisateur et un PIN à six chiffres que vous lui remettez. Il doit le changer à la première connexion.",
+    "lead": "Chaque employé reçoit un identifiant, un nom d'utilisateur, un premier PIN et une adresse e-mail. Pour se connecter : l'identifiant sur la page publique, puis nom d'utilisateur + PIN, puis le code envoyé par e-mail. Le PIN doit être changé à la première connexion.",
+    "setEmail": "Définir l'e-mail",
+    "noEmail": "Pas d'e-mail — les codes de connexion ne peuvent pas être envoyés",
+    "emailCard": {
+      "title": "E-mail de {{name}}",
+      "body": "Le code de connexion à six chiffres est envoyé à cette adresse à chaque connexion.",
+      "save": "Enregistrer l'e-mail"
+    },
     "newEmployee": "Nouvel employé",
     "count": "{{count}} employés",
     "active": "Actif",
@@ -541,6 +555,8 @@
       "phone": "Téléphone",
       "pin": "Premier PIN",
       "pinHint": "Six chiffres. Générez-le et remettez-le en main propre.",
+      "email": "Adresse e-mail",
+      "emailHint": "Le code de connexion y est envoyé à chaque connexion. Utilisez une adresse que seul cet employé consulte.",
       "generate": "Générer",
       "create": "Créer le compte",
       "creating": "Création…",
@@ -548,9 +564,11 @@
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
+      "staffId": "Identifiant",
+      "email": "E-mail",
       "username": "Nom d'utilisateur",
       "pin": "Premier PIN",
-      "note": "Le PIN n'est affiché qu'une fois. L'employé doit le changer à la première connexion.",
+      "note": "Le PIN n'est affiché qu'une fois. L'employé saisit l'identifiant sur la page publique, puis le nom d'utilisateur et ce PIN, puis le code envoyé par e-mail. Le PIN doit être changé à la première connexion.",
       "copy": "Copier",
       "copied": "Copié",
       "done": "Terminé"
@@ -565,6 +583,8 @@
       "username": "Nom d'utilisateur invalide.",
       "usernameTaken": "Ce nom d'utilisateur existe déjà.",
       "pin": "Le PIN doit comporter six chiffres.",
+      "email": "Saisissez une adresse e-mail valide.",
+      "emailTaken": "Cet e-mail est déjà utilisé par un autre employé.",
       "generic": "L'action a échoué : {{message}}"
     },
     "roles": {
@@ -576,6 +596,122 @@
       "lab_tech": "Technicien·ne de laboratoire",
       "pharmacist": "Pharmacien·ne",
       "manager": "Gestionnaire / propriétaire"
+    }
+  },
+  "login": {
+    "title": "Connexion du personnel",
+    "lead": "Saisissez votre nom d'utilisateur et votre PIN. Nous envoyons ensuite un code à six chiffres à votre e-mail.",
+    "staffId": "Identifiant",
+    "continue": "Envoyer le code",
+    "otherId": "Utiliser un autre identifiant",
+    "failed": "Nom d'utilisateur ou PIN incorrect. Réessayez ou demandez une réinitialisation au gestionnaire.",
+    "inactive": "Ce compte a été désactivé. Demandez au gestionnaire de la clinique.",
+    "error": "Une erreur est survenue. Vérifiez la connexion et réessayez.",
+    "otpSendFailed": "Le code n'a pas pu être envoyé. Demandez au gestionnaire de vérifier votre adresse e-mail.",
+    "codeTitle": "Saisissez le code reçu par e-mail",
+    "codeLead": "Nous avons envoyé un code à six chiffres à {{email}}. Il est valable quelques minutes.",
+    "codeSample": "Mode démo : six chiffres quelconques suffisent.",
+    "code": "Code à six chiffres",
+    "codeFormat": "Le code a six chiffres.",
+    "codeWrong": "Code incorrect. Vérifiez votre e-mail et réessayez.",
+    "codeExpired": "Ce code a expiré. Demandez-en un nouveau.",
+    "codeResent": "Un nouveau code est en route.",
+    "verify": "Se connecter",
+    "back": "Retour",
+    "resend": "Envoyer un nouveau code",
+    "resendIn": "Nouveau code dans {{s}} s"
+  },
+  "register": {
+    "title": "Enregistrer un patient",
+    "lead": "Première visite ou patient connu. Normalement le patient passe d'abord au triage pour les signes vitaux ; en urgence il reste avec vous et vous ouvrez le dossier ici.",
+    "emergency": "Urgence — le patient est pris en charge ici, pas au triage",
+    "emergencyHint": "Le patient est mis en file à votre poste avec la priorité rouge. Ouvrez le dossier maintenant ou dès que le patient est stable.",
+    "triageHint": "Le patient reçoit un ticket et passe au triage pour les premières mesures.",
+    "station": "Poste de prise en charge",
+    "search": "Patient connu",
+    "searchLabel": "Rechercher par nom, numéro de dossier, téléphone ou carte d'identité",
+    "searchPh": "Mukamana Alice, MMC-000124, 0788…",
+    "noMatch": "Aucun patient trouvé. Ouvrez un nouveau dossier à droite.",
+    "startVisit": "Ouvrir la visite",
+    "openVisit": "Visite en cours",
+    "newPatient": "Nouveau dossier patient",
+    "surname": "Nom",
+    "givenNames": "Prénoms",
+    "sex": "Sexe",
+    "sexes": {
+      "female": "Féminin",
+      "male": "Masculin",
+      "other": "Autre",
+      "unknown": "Inconnu"
+    },
+    "birthDate": "Date de naissance",
+    "ageYears": "ou âge (années)",
+    "agePh": "ex. 34",
+    "phone": "Téléphone",
+    "nationalId": "Carte d'identité (16 chiffres)",
+    "sector": "Secteur",
+    "submit": "Enregistrer et envoyer au triage",
+    "submitEmergency": "Enregistrer en urgence",
+    "submitting": "Enregistrement…",
+    "another": "Enregistrer un autre patient",
+    "stations": {
+      "triage": "Triage",
+      "consultation": "Consultation",
+      "dental": "Dentaire",
+      "laboratory": "Laboratoire",
+      "ultrasound": "Échographie",
+      "nursing": "Soins infirmiers",
+      "theatre": "Petite chirurgie",
+      "pharmacy": "Pharmacie",
+      "cashier": "Caisse",
+      "beds": "Lits",
+      "reception": "Réception"
+    },
+    "done": {
+      "title": "Patient enregistré",
+      "triageNote": "Ticket émis. Le patient passe au triage pour les signes vitaux, puis au bon poste.",
+      "emergencyNote": "Urgence : le patient est premier dans la file {{station}}."
+    },
+    "errors": {
+      "openVisit": "Ce patient a déjà une visite en cours.",
+      "nationalId": "{{message}}",
+      "nationalIdFormat": "La carte d'identité a 16 chiffres.",
+      "generic": "Échec de l'enregistrement : {{message}}"
+    }
+  },
+  "triage": {
+    "title": "Triage · premières mesures",
+    "lead": "Chaque patient passe ici en premier (circuit du ministère de la Santé). Prenez les signes vitaux, choisissez la couleur de triage et envoyez le patient au bon poste.",
+    "queueTitle": "En attente au triage",
+    "empty": "Personne n'attend au triage.",
+    "select": "Sélectionnez un patient à gauche pour saisir les signes vitaux.",
+    "vitals": {
+      "bp_sys": "TA systolique",
+      "bp_dia": "TA diastolique",
+      "pulse": "Pouls",
+      "temp": "Température",
+      "resp": "Respiration",
+      "spo2": "SpO₂",
+      "weight": "Poids",
+      "height": "Taille",
+      "muac": "PB (MUAC)"
+    },
+    "level": "Couleur de triage",
+    "levels": {
+      "red": "immédiat",
+      "yellow": "urgent",
+      "green": "routine"
+    },
+    "nextStation": "Envoyer à",
+    "reason": "Note",
+    "reasonPh": "Motif, allergie, grossesse…",
+    "send": "Enregistrer et envoyer",
+    "sending": "Enregistrement…",
+    "sent": "{{ticket}} envoyé à {{station}}.",
+    "readOnly": "Seuls les infirmiers et les médecins saisissent les signes vitaux.",
+    "errors": {
+      "noVitals": "Saisissez au moins une mesure.",
+      "generic": "Enregistrement impossible : {{message}}"
     }
   },
   "pin": {

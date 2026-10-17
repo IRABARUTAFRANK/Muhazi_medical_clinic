@@ -14,7 +14,9 @@ import { Card } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { openItems, queueCounts, stationFor, useQueueBoard } from '@/lib/api/visits'
 import { roleLabel } from '@/lib/roles'
+import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
 import { QueueCard } from './queue-card'
@@ -53,7 +55,17 @@ export function HomePage({ user, mode }: HomePageProps) {
     return () => setOverride(null)
   }, [mode, setOverride])
 
-  const counts = empty ? { waiting: 0, inProgress: 0, done: 0 } : home.counts
+  // Live: today's queue at this user's station (reception sees every station).
+  const myStation = role === 'receptionist' ? 'all' : stationFor(user)
+  const { data: live = [] } = useQueueBoard(myStation, user.role)
+  const liveRows = openItems(live)
+  const rows = isLive ? liveRows : home.queue
+  const counts = isLive
+    ? queueCounts(live)
+    : empty
+      ? { waiting: 0, inProgress: 0, done: 0 }
+      : home.counts
+  const queueEmpty = isLive ? liveRows.length === 0 : empty
 
   const tabletActions = home.actions.map((a) => (
     <StaffLink
@@ -107,10 +119,10 @@ export function HomePage({ user, mode }: HomePageProps) {
           {/* ZONE 1: MY QUEUE */}
           <QueueCard
             title={t('home.myQueue', { station })}
-            rows={home.queue}
+            rows={rows}
             counts={counts}
             rowAction={home.rowAction}
-            empty={empty}
+            empty={queueEmpty}
             className="pc:min-h-0 flex-none"
           />
 

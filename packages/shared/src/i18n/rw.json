@@ -159,7 +159,14 @@
       "pin": "PIN",
       "remember": "Ibuka iki gikoresho",
       "forgot": "Wibagiwe PIN?",
-      "button": "Injira"
+      "button": "Injira",
+      "staffId": "Nimero yawe y'umukozi",
+      "staffIdPh": "MMC-S-0001",
+      "staffIdHint": "Nimero wahawe n'umuyobozi. Hanyuma: izina ukoresha na PIN, nyuma kode yoherejwe kuri imeyili yawe.",
+      "checking": "Turagenzura…",
+      "continue": "Komeza",
+      "notStaff": "Iyi nimero ntizwi. Baza umuyobozi w'ivuriro.",
+      "checkFailed": "Ntibyakunze kugenzura nimero. Ongera ugerageze."
     },
     "services": {
       "title": "Ibyo dutanga"
@@ -283,6 +290,85 @@
     "resetPin": "Hindura PIN",
     "deactivate": "Hagarika",
     "reactivate": "Subizaho"
+  },
+  "login": {
+    "title": "Abakozi: injira",
+    "lead": "Andika izina ukoresha na PIN. Hanyuma twohereza kode y'imibare itandatu kuri imeyili yawe.",
+    "staffId": "Nimero y'umukozi",
+    "continue": "Nyoherereza kode",
+    "otherId": "Koresha indi nimero",
+    "failed": "Izina cyangwa PIN sibyo. Ongera ugerageze cyangwa usabe umuyobozi guhindura PIN.",
+    "inactive": "Iyi konti yahagaritswe. Baza umuyobozi w'ivuriro.",
+    "codeTitle": "Andika kode wakiriye kuri imeyili",
+    "codeLead": "Twohereje kode y'imibare itandatu kuri {{email}}. Ikora iminota mike.",
+    "code": "Kode y'imibare itandatu",
+    "codeWrong": "Kode sibyo. Reba imeyili yawe wongere ugerageze.",
+    "codeExpired": "Iyi kode yarangiye. Saba indi.",
+    "verify": "Injira",
+    "back": "Subira inyuma",
+    "resend": "Ohereza indi kode",
+    "resendIn": "Indi kode mu masegonda {{s}}"
+  },
+  "register": {
+    "title": "Kwandika umurwayi",
+    "lead": "Umurwayi mushya cyangwa uwari usanzwe. Mu buryo busanzwe umurwayi abanza kuri triage gupimwa; mu byihutirwa aguma aho uri maze ukamwandika hano.",
+    "emergency": "Ikibazo cyihutirwa — umurwayi avurirwa hano, ntajya kuri triage",
+    "triageHint": "Umurwayi ahabwa tike akajya kuri triage gupimwa bwa mbere.",
+    "search": "Umurwayi usanzwe",
+    "newPatient": "Dosiye nshya y'umurwayi",
+    "surname": "Izina ry'umuryango",
+    "givenNames": "Andi mazina",
+    "sex": "Igitsina",
+    "sexes": {
+      "female": "Gore",
+      "male": "Gabo",
+      "other": "Ikindi",
+      "unknown": "Ntibizwi"
+    },
+    "birthDate": "Itariki y'amavuko",
+    "ageYears": "cyangwa imyaka",
+    "phone": "Telefoni",
+    "nationalId": "Indangamuntu (imibare 16)",
+    "sector": "Umurenge",
+    "submit": "Andika wohereze kuri triage",
+    "submitEmergency": "Andika nk'ikibazo cyihutirwa",
+    "another": "Andika undi murwayi",
+    "stations": {
+      "triage": "Triage",
+      "consultation": "Gusuzuma",
+      "dental": "Amenyo",
+      "laboratory": "Ibizamini",
+      "ultrasound": "Guca mu cyuma",
+      "nursing": "Kwita ku barwayi",
+      "theatre": "Kubaga byoroheje",
+      "pharmacy": "Farumasi",
+      "cashier": "Kasiye",
+      "beds": "Ibitanda",
+      "reception": "Kwakira"
+    },
+    "done": {
+      "title": "Umurwayi yanditswe"
+    }
+  },
+  "triage": {
+    "title": "Triage · ibipimo bya mbere",
+    "lead": "Buri murwayi abanza hano. Fata ibipimo, hitamo ibara rya triage, wohereze umurwayi aho agomba kujya.",
+    "queueTitle": "Abategereje kuri triage",
+    "empty": "Nta muntu utegereje kuri triage.",
+    "vitals": {
+      "bp_sys": "Umuvuduko (hejuru)",
+      "bp_dia": "Umuvuduko (hasi)",
+      "pulse": "Umutima",
+      "temp": "Ubushyuhe",
+      "resp": "Guhumeka",
+      "spo2": "SpO₂",
+      "weight": "Ibiro",
+      "height": "Uburebure",
+      "muac": "MUAC"
+    },
+    "level": "Ibara rya triage",
+    "nextStation": "Ohereza kuri",
+    "send": "Bika wohereze"
   },
   "pin": {
     "changeTitle": "Hitamo PIN yawe bwite",

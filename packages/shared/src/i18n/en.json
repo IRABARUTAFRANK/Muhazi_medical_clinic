@@ -170,6 +170,13 @@
     "signin": {
       "title": "Staff sign in",
       "sub": "Clinic System · for clinic staff only",
+      "staffId": "Your staff ID",
+      "staffIdPh": "MMC-S-0001",
+      "staffIdHint": "The ID the manager gave you. Next: username and PIN, then the code sent to your e-mail.",
+      "checking": "Checking…",
+      "continue": "Continue",
+      "notStaff": "This staff ID is not known. Ask the clinic manager.",
+      "checkFailed": "Could not check the ID. Try again.",
       "username": "Username or staff ID",
       "usernamePh": "e.g. j.uwimana",
       "pin": "PIN",
@@ -507,7 +514,14 @@
   },
   "staff": {
     "title": "Employees",
-    "lead": "Every employee signs in with a username and a six-digit PIN that you hand over. They must change it at first sign-in.",
+    "lead": "Every employee gets a staff ID, a username, a first PIN and an e-mail address. To sign in they type the staff ID on the public page, then username + PIN, then the code sent to their e-mail. They must change the PIN at first sign-in.",
+    "setEmail": "Set e-mail",
+    "noEmail": "No e-mail yet — sign-in codes cannot be sent",
+    "emailCard": {
+      "title": "E-mail for {{name}}",
+      "body": "The six-digit sign-in code is sent to this address at every sign-in.",
+      "save": "Save e-mail"
+    },
     "newEmployee": "New employee",
     "count": "{{count}} employees",
     "active": "Active",
@@ -541,6 +555,8 @@
       "phone": "Phone",
       "pin": "First PIN",
       "pinHint": "Six digits. Generate one and hand it over in person.",
+      "email": "E-mail address",
+      "emailHint": "The sign-in code is sent here at every sign-in. Use an address only this employee reads.",
       "generate": "Generate",
       "create": "Create account",
       "creating": "Creating…",
@@ -548,9 +564,11 @@
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
+      "staffId": "Staff ID",
+      "email": "E-mail",
       "username": "Username",
       "pin": "First PIN",
-      "note": "The PIN is shown only once. The employee must change it at first sign-in.",
+      "note": "The PIN is shown only once. The employee types the staff ID on the public page, then the username and this PIN, then the code sent to the e-mail. The PIN must be changed at first sign-in.",
       "copy": "Copy",
       "copied": "Copied",
       "done": "Done"
@@ -565,6 +583,8 @@
       "username": "Invalid username.",
       "usernameTaken": "This username already exists.",
       "pin": "The PIN must be six digits.",
+      "email": "Enter a valid e-mail address.",
+      "emailTaken": "This e-mail is already used by another employee.",
       "generic": "The action failed: {{message}}"
     },
     "roles": {
@@ -576,6 +596,122 @@
       "lab_tech": "Lab technician",
       "pharmacist": "Pharmacist",
       "manager": "Manager / owner"
+    }
+  },
+  "login": {
+    "title": "Staff sign in",
+    "lead": "Enter your username and PIN. We then send a six-digit code to your e-mail.",
+    "staffId": "Staff ID",
+    "continue": "Send me the code",
+    "otherId": "Use another staff ID",
+    "failed": "Wrong username or PIN. Try again or ask the manager to reset your PIN.",
+    "inactive": "This account has been deactivated. Ask the clinic manager.",
+    "error": "Something went wrong. Check the connection and try again.",
+    "otpSendFailed": "The code could not be sent to your e-mail. Ask the manager to check your e-mail address.",
+    "codeTitle": "Enter the code from your e-mail",
+    "codeLead": "We sent a six-digit code to {{email}}. It is valid for a few minutes.",
+    "codeSample": "Sample mode: any six digits work.",
+    "code": "Six-digit code",
+    "codeFormat": "The code has six digits.",
+    "codeWrong": "Wrong code. Check your e-mail and try again.",
+    "codeExpired": "This code has expired. Send a new one.",
+    "codeResent": "A new code is on its way.",
+    "verify": "Sign in",
+    "back": "Back",
+    "resend": "Send a new code",
+    "resendIn": "New code in {{s}} s"
+  },
+  "register": {
+    "title": "Register a patient",
+    "lead": "First visit or returning patient. Normally the patient goes to triage first for vitals; in an emergency the patient stays with you and you register the file right here.",
+    "emergency": "Emergency — the patient is treated here, not at triage",
+    "emergencyHint": "The patient is queued at your station with red priority. Register the file now or as soon as the patient is stable.",
+    "triageHint": "The patient receives a ticket and goes to triage for the first measurements.",
+    "station": "Treating station",
+    "search": "Returning patient",
+    "searchLabel": "Find by name, file number, phone or national ID",
+    "searchPh": "Mukamana Alice, MMC-000124, 0788…",
+    "noMatch": "No patient found. Register a new file on the right.",
+    "startVisit": "Start visit",
+    "openVisit": "Visit open",
+    "newPatient": "New patient file",
+    "surname": "Surname",
+    "givenNames": "Given names",
+    "sex": "Sex",
+    "sexes": {
+      "female": "Female",
+      "male": "Male",
+      "other": "Other",
+      "unknown": "Unknown"
+    },
+    "birthDate": "Date of birth",
+    "ageYears": "or age (years)",
+    "agePh": "e.g. 34",
+    "phone": "Phone",
+    "nationalId": "National ID (16 digits)",
+    "sector": "Sector",
+    "submit": "Register and send to triage",
+    "submitEmergency": "Register as emergency",
+    "submitting": "Registering…",
+    "another": "Register another patient",
+    "stations": {
+      "triage": "Triage",
+      "consultation": "Consultation",
+      "dental": "Dental",
+      "laboratory": "Laboratory",
+      "ultrasound": "Ultrasound",
+      "nursing": "Nursing",
+      "theatre": "Minor surgery",
+      "pharmacy": "Pharmacy",
+      "cashier": "Cashier",
+      "beds": "Beds",
+      "reception": "Reception"
+    },
+    "done": {
+      "title": "Patient registered",
+      "triageNote": "Ticket issued. The patient goes to triage for vitals, then to the right station.",
+      "emergencyNote": "Emergency: the patient is first in the {{station}} queue."
+    },
+    "errors": {
+      "openVisit": "This patient already has an open visit.",
+      "nationalId": "{{message}}",
+      "nationalIdFormat": "The national ID has 16 digits.",
+      "generic": "Registration failed: {{message}}"
+    }
+  },
+  "triage": {
+    "title": "Triage · first measurements",
+    "lead": "Every patient passes here first (MoH workflow). Take the vitals, choose the triage colour and send the patient to the right station.",
+    "queueTitle": "Waiting at triage",
+    "empty": "Nobody is waiting at triage.",
+    "select": "Select a patient on the left to record the vitals.",
+    "vitals": {
+      "bp_sys": "BP systolic",
+      "bp_dia": "BP diastolic",
+      "pulse": "Pulse",
+      "temp": "Temperature",
+      "resp": "Respiration",
+      "spo2": "SpO₂",
+      "weight": "Weight",
+      "height": "Height",
+      "muac": "MUAC"
+    },
+    "level": "Triage colour",
+    "levels": {
+      "red": "immediate",
+      "yellow": "urgent",
+      "green": "routine"
+    },
+    "nextStation": "Send to",
+    "reason": "Note",
+    "reasonPh": "Chief complaint, allergy, pregnancy…",
+    "send": "Save and send",
+    "sending": "Saving…",
+    "sent": "{{ticket}} sent to {{station}}.",
+    "readOnly": "Only nurses and doctors record vitals.",
+    "errors": {
+      "noVitals": "Enter at least one measurement.",
+      "generic": "Could not save: {{message}}"
     }
   },
   "pin": {

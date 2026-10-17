@@ -57,6 +57,16 @@ check(
   le?.message ?? `${lines?.length} categories`,
 )
 
+// Sign-in step 1: the anonymous staff-ID check answers without revealing anything.
+const { data: unknownId, error: sce } = await sb.rpc('public_staff_check', {
+  p_staff_id: 'MMC-S-0000',
+})
+check(
+  'anon calls public_staff_check()',
+  !sce && unknownId === false,
+  sce?.message ?? 'unknown ID → false',
+)
+
 // Empty is expected until the clinic signs its first insurer (payers are seeded inactive).
 const { data: payers, error: ye } = await sb.from('public_payers').select('name')
 check(

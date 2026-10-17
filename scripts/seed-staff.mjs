@@ -95,8 +95,13 @@ for (const s of STAFF) {
     console.log(`skip ${email}: ${error.message}`)
     continue
   }
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('staff_id')
+    .eq('id', data.user?.id)
+    .maybeSingle()
   console.log(
-    `created ${email} (${data.user?.id}) role=${s.role}  username=${s.username}  PIN=${pin}`,
+    `created ${email} (${data.user?.id}) role=${s.role}  staffId=${profile?.staff_id ?? '?'}  username=${s.username}  PIN=${pin}`,
   )
 }
 console.log(

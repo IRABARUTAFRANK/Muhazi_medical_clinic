@@ -1,20 +1,22 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Lock } from 'lucide-react'
+import { ArrowRight, IdCard } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { normalizeStaffId } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
-import { homeRouteFor } from '@/lib/roles'
-import { isLive } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 
-/** Staff sign-in card on the landing hero. Live: Supabase Auth; sample: any PIN for a known username. */
+/**
+ * Step 1 of the staff sign-in, on the public landing page: the employee types the staff ID the
+ * manager gave them. Only a known, active ID opens the login page (username + PIN, then the
+ * e-mailed code). Nothing about the employee is shown here.
+ */
 export function SignInCard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const signIn = useSession((s) => s.signIn)
-  const [username, setUsername] = useState('')
-  const [pin, setPin] = useState('')
+  const checkStaffId = useSession((s) => s.checkStaffId)
+  const [staffId, setStaffId] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,24 +25,15 @@ export function SignInCard() {
     setBusy(true)
     setError(null)
     try {
-      const result = await signIn(username, pin)
-      if (!result.ok) {
-        setError(
-          t(
-            result.reason === 'inactive'
-              ? 'landing.signin.inactive'
-              : isLive
-                ? 'landing.signin.failed'
-                : 'landing.signin.unknown',
-          ),
-        )
+      const id = normalizeStaffId(staffId)
+      const ok = await checkStaffId(id)
+      if (!ok) {
+        setError(t('landing.signin.notStaff'))
         return
       }
-      void navigate({
-        to: result.user.mustChangePin ? '/app/change-pin' : homeRouteFor(result.user),
-      })
+      void navigate({ to: '/login', search: { staff: id } })
     } catch {
-      setError(t('landing.signin.failed'))
+      setError(t('landing.signin.checkFailed'))
     } finally {
       setBusy(false)
     }
@@ -55,7 +48,7 @@ export function SignInCard() {
     >
       <div className="flex items-center gap-3">
         <span className="icon-gradient inline-flex size-11 flex-none items-center justify-center rounded-xl text-white">
-          <Lock size={22} strokeWidth={2} aria-hidden="true" />
+          <IdCard size={22} strokeWidth={2} aria-hidden="true" />
         </span>
         <span>
           <span className="block text-lg font-bold">{t('landing.signin.title')}</span>
@@ -63,31 +56,16 @@ export function SignInCard() {
         </span>
       </div>
       <Field
-        label={t('landing.signin.username')}
-        placeholder={t('landing.signin.usernamePh')}
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        autoComplete="username"
-        autoCapitalize="none"
+        label={t('landing.signin.staffId')}
+        placeholder={t('landing.signin.staffIdPh')}
+        value={staffId}
+        onChange={(e) => setStaffId(e.target.value.toUpperCase())}
+        autoComplete="off"
+        autoCapitalize="characters"
+        className="font-semibold tracking-[.08em] uppercase"
         required
       />
-      <Field
-        label={t('landing.signin.pin')}
-        type="password"
-        inputMode="numeric"
-        placeholder={t('landing.signin.pinPh')}
-        value={pin}
-        onChange={(e) => setPin(e.target.value)}
-        autoComplete="current-password"
-        required
-      />
-      <div className="flex items-center justify-between text-[13px]">
-        <label className="text-ink-2 flex min-h-11 items-center gap-2">
-          <input type="checkbox" defaultChecked className="accent-primary size-[18px]" />
-          {t('landing.signin.remember')}
-        </label>
-        <a href="#signin">{t('landing.signin.forgot')}</a>
-      </div>
+      <p className="text-ink-3 m-0 text-xs">{t('landing.signin.staffIdHint')}</p>
       {error && (
         <p
           role="alert"
@@ -97,7 +75,8 @@ export function SignInCard() {
         </p>
       )}
       <Button type="submit" variant="primary" size="lg" disabled={busy}>
-        {busy ? t('landing.signin.signingIn') : t('landing.signin.button')}
+        {busy ? t('landing.signin.checking') : t('landing.signin.continue')}
+        <ArrowRight size={18} aria-hidden="true" />
       </Button>
       <p className="text-ink-3 m-0 text-center text-xs">{t('landing.signin.note')}</p>
     </form>

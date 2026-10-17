@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { QueueCounts, QueueRow, Triage } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Card, CardHeader } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -63,7 +63,12 @@ export function QueueCard({ title, rows, counts, rowAction, empty, className }: 
           </svg>
           <div className="text-base font-semibold">{t('home.emptyQueueTitle')}</div>
           <div className="text-ink-2 max-w-[260px]">{t('home.emptyQueueBody')}</div>
-          <Button className="mt-2">{t('home.walkIn')}</Button>
+          <StaffLink
+            to="/app/register"
+            className={cn(buttonVariants({ variant: 'default' }), 'mt-2')}
+          >
+            {t('home.walkIn')}
+          </StaffLink>
         </div>
       ) : (
         <>

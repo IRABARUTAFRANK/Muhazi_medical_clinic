@@ -1,6 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { findStaffById, findStaffByUsername, type Role, type StaffUser } from '@mmc/shared'
+import {
+  findStaffById,
+  findStaffByStaffId,
+  findStaffByUsername,
+  normalizeStaffId,
+  type Role,
+  type StaffUser,
+} from '@mmc/shared'
 import { staffEmail, supabase } from '@/lib/supabase'
 
 const HOME_ROLES: readonly string[] = ['receptionist', 'nurse', 'doctor', 'cashier', 'manager']
@@ -15,6 +22,8 @@ interface ProfileJson {
   dashboard: 'manager' | 'head' | null
   head_of: string | null
   must_change_pin: boolean
+  staff_id: string | null
+  email: string | null
 }
 
 const toStaffUser = (p: ProfileJson): StaffUser => ({
@@ -27,17 +36,39 @@ const toStaffUser = (p: ProfileJson): StaffUser => ({
   dashboard: p.dashboard ?? undefined,
   headOf: p.head_of ?? undefined,
   mustChangePin: p.must_change_pin,
+  staffId: p.staff_id ?? undefined,
+  email: p.email ?? undefined,
 })
 
 export type SignInResult =
-  { ok: true; user: StaffUser } | { ok: false; reason: 'invalid' | 'inactive' | 'error' }
+  | { ok: true; step: 'otp'; email: string }
+  | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'error' }
+export type VerifyResult =
+  | { ok: true; user: StaffUser }
+  | { ok: false; reason: 'invalid' | 'inactive' | 'expired' | 'error' }
+
+/** Sign-in in progress: the PIN was accepted, the e-mail code is still pending. Never persisted. */
+export interface PendingSignIn {
+  staffId: string
+  username: string
+  email: string
+  /** Sample mode only: the user that will be signed in once a code is typed. */
+  sampleUser?: StaffUser
+}
 
 interface SessionState {
   user: StaffUser | null
   /** Idle lock: the session stays valid but the screen asks for the PIN again. */
   locked: boolean
-  /** Username + PIN. Live: Supabase Auth + `record_sign_in()`; sample: any PIN for a known username. */
-  signIn: (username: string, pin: string) => Promise<SignInResult>
+  pending: PendingSignIn | null
+  /** Step 1 (landing page): is this an active staff ID? */
+  checkStaffId: (staffId: string) => Promise<boolean>
+  /** Step 2 (login page): staff ID + username + PIN. On success a one-time code is e-mailed. */
+  signIn: (staffId: string, username: string, pin: string) => Promise<SignInResult>
+  /** Step 3: the six-digit code from the e-mail. */
+  verifyOtp: (code: string) => Promise<VerifyResult>
+  resendOtp: () => Promise<boolean>
+  cancelSignIn: () => void
   lock: () => void
   unlock: (pin: string) => Promise<boolean>
   /** Replace the PIN (verifies the current one first). */
@@ -50,28 +81,81 @@ interface SessionState {
 const deviceLabel = (): string | null =>
   typeof navigator === 'undefined' ? null : navigator.userAgent.slice(0, 120)
 
+/** E-mail Supabase Auth knows for this user (legacy accounts: username@staff domain). */
+const authEmail = (user: StaffUser): string => user.email ?? staffEmail(user.username)
+
+/** Masks "josiane.uwimana@gmail.com" → "jo•••••@gmail.com" for the code screen. */
+export const maskEmail = (email: string): string => {
+  const [local = '', domain = ''] = email.split('@')
+  const shown = local.slice(0, 2)
+  return `${shown}${'•'.repeat(Math.max(3, local.length - 2))}@${domain}`
+}
+
 export const useSession = create<SessionState>()(
   persist(
     (set, get) => ({
       user: null,
       locked: false,
+      pending: null,
 
-      signIn: async (username, pin) => {
+      checkStaffId: async (staffId) => {
+        const id = normalizeStaffId(staffId)
+        if (!supabase) return findStaffByStaffId(id) !== undefined
+        const { data, error } = await supabase.rpc('public_staff_check', { p_staff_id: id })
+        if (error) throw new Error(error.message)
+        return data === true
+      },
+
+      signIn: async (staffId, username, pin) => {
+        const id = normalizeStaffId(staffId)
+        const name = username.trim().toLowerCase()
         if (!supabase) {
-          const user = findStaffByUsername(username) ?? null
-          if (!user) return { ok: false, reason: 'invalid' }
-          set({ user, locked: false })
-          return { ok: true, user }
+          const user = findStaffByUsername(name)
+          if (!user || user.staffId !== id) return { ok: false, reason: 'invalid' }
+          const email = user.email ?? staffEmail(name)
+          set({ pending: { staffId: id, username: name, email, sampleUser: user } })
+          return { ok: true, step: 'otp', email }
         }
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: staffEmail(username),
-          password: pin,
+        const { data: email, error: lookupError } = await supabase.rpc('staff_login_email', {
+          p_staff_id: id,
+          p_username: name,
         })
-        if (error || !data.user) {
-          return {
-            ok: false,
-            reason: /banned/i.test(error?.message ?? '') ? 'inactive' : 'invalid',
-          }
+        if (lookupError) return { ok: false, reason: 'error' }
+        if (!email) return { ok: false, reason: 'invalid' }
+        const { error } = await supabase.auth.signInWithPassword({ email, password: pin })
+        if (error) {
+          return { ok: false, reason: /banned/i.test(error.message) ? 'inactive' : 'invalid' }
+        }
+        // PIN accepted. The session only counts once the e-mailed code is verified: until then
+        // the app holds no user, and the code exchange below replaces this session.
+        const { error: otpError } = await supabase.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: false },
+        })
+        if (otpError) {
+          await supabase.auth.signOut()
+          return { ok: false, reason: 'otp' }
+        }
+        set({ pending: { staffId: id, username: name, email } })
+        return { ok: true, step: 'otp', email }
+      },
+
+      verifyOtp: async (code) => {
+        const pending = get().pending
+        if (!pending) return { ok: false, reason: 'expired' }
+        const token = code.replace(/\D/g, '')
+        if (!supabase) {
+          if (token.length !== 6 || !pending.sampleUser) return { ok: false, reason: 'invalid' }
+          set({ user: pending.sampleUser, locked: false, pending: null })
+          return { ok: true, user: pending.sampleUser }
+        }
+        const { error } = await supabase.auth.verifyOtp({
+          email: pending.email,
+          token,
+          type: 'email',
+        })
+        if (error) {
+          return { ok: false, reason: /expired/i.test(error.message) ? 'expired' : 'invalid' }
         }
         // Stamps last sign-in, writes the login audit event, refuses deactivated profiles.
         const { data: profile, error: rpcError } = await supabase.rpc('record_sign_in', {
@@ -79,14 +163,31 @@ export const useSession = create<SessionState>()(
         })
         if (rpcError || !profile) {
           await supabase.auth.signOut()
+          set({ pending: null })
           return {
             ok: false,
             reason: /deactivated/i.test(rpcError?.message ?? '') ? 'inactive' : 'error',
           }
         }
         const user = toStaffUser(profile as ProfileJson)
-        set({ user, locked: false })
+        set({ user, locked: false, pending: null })
         return { ok: true, user }
+      },
+
+      resendOtp: async () => {
+        const pending = get().pending
+        if (!pending) return false
+        if (!supabase) return true
+        const { error } = await supabase.auth.signInWithOtp({
+          email: pending.email,
+          options: { shouldCreateUser: false },
+        })
+        return !error
+      },
+
+      cancelSignIn: () => {
+        if (supabase && get().pending) void supabase.auth.signOut()
+        set({ pending: null })
       },
 
       lock: () => {
@@ -101,7 +202,7 @@ export const useSession = create<SessionState>()(
           return true
         }
         const { error } = await supabase.auth.signInWithPassword({
-          email: staffEmail(user.username),
+          email: authEmail(user),
           password: pin,
         })
         if (error) return false
@@ -117,7 +218,7 @@ export const useSession = create<SessionState>()(
           return true
         }
         const { error: verify } = await supabase.auth.signInWithPassword({
-          email: staffEmail(user.username),
+          email: authEmail(user),
           password: current,
         })
         if (verify) return false
@@ -131,7 +232,7 @@ export const useSession = create<SessionState>()(
       switchTo: async (userId) => {
         if (supabase) {
           await supabase.auth.signOut()
-          set({ user: null, locked: false })
+          set({ user: null, locked: false, pending: null })
           return 'signed-out'
         }
         const user = findStaffById(userId)
@@ -141,7 +242,7 @@ export const useSession = create<SessionState>()(
 
       signOut: async () => {
         if (supabase) await supabase.auth.signOut()
-        set({ user: null, locked: false })
+        set({ user: null, locked: false, pending: null })
       },
     }),
     { name: 'mmc.session', partialize: (s) => ({ user: s.user }) },

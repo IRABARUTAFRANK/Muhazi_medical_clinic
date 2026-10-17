@@ -19,6 +19,9 @@ export type DbLang = 'kin' | 'en' | 'fr'
 
 export interface Employee {
   id: string
+  /** MMC-S-0001, assigned by the database. */
+  staffId: string | null
+  email: string | null
   username: string
   fullName: string
   role: DbRole
@@ -38,6 +41,8 @@ export interface NewEmployee {
   fullName: string
   role: DbRole
   pin: string
+  /** Where the sign-in code is sent. */
+  email: string
   station?: string
   dashboard?: DashboardRight
   headOf?: string
@@ -47,6 +52,7 @@ export interface NewEmployee {
 
 export const USERNAME_RE = /^[a-z0-9._-]{3,32}$/
 export const PIN_RE = /^[0-9]{6}$/
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 /** Six random digits from the browser's CSPRNG. */
 export function generatePin(): string {
@@ -73,6 +79,8 @@ export function suggestUsername(fullName: string): string {
 // ---------------------------------------------------------------- sample mode (no Supabase)
 const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   id: u.id,
+  staffId: u.staffId ?? null,
+  email: u.email ?? null,
   username: u.username,
   fullName: u.name,
   role: u.role,
@@ -92,6 +100,8 @@ const KEY = ['staff', 'employees'] as const
 
 interface DirectoryRow {
   id: string
+  staff_id: string | null
+  email: string | null
   username: string
   full_name: string
   role: DbRole
@@ -115,6 +125,8 @@ export function useEmployees() {
       if (error) throw new Error(error.message)
       return (data as DirectoryRow[]).map((r) => ({
         id: r.id,
+        staffId: r.staff_id,
+        email: r.email,
         username: r.username,
         fullName: r.full_name,
         role: r.role,
@@ -154,15 +166,21 @@ export function useStaffActions() {
   const refresh = () => qc.invalidateQueries({ queryKey: KEY })
 
   const create = useMutation({
-    mutationFn: async (input: NewEmployee): Promise<{ id: string; username: string }> => {
+    mutationFn: async (
+      input: NewEmployee,
+    ): Promise<{ id: string; username: string; staff_id: string | null }> => {
       if (!USERNAME_RE.test(input.username)) throw new Error('username')
       if (!PIN_RE.test(input.pin)) throw new Error('pin')
+      if (!EMAIL_RE.test(input.email)) throw new Error('email')
       if (!supabase) {
         if (sampleEmployees.some((e) => e.username === input.username))
           throw new Error('username taken')
         const id = `u-${Math.random().toString(36).slice(2, 8)}`
+        const staffId = `MMC-S-${String(sampleEmployees.length + 1).padStart(4, '0')}`
         sampleEmployees.push({
           id,
+          staffId,
+          email: input.email,
           username: input.username,
           fullName: input.fullName,
           role: input.role,
@@ -176,7 +194,7 @@ export function useStaffActions() {
           lastSignInAt: null,
           createdAt: new Date().toISOString(),
         })
-        return { id, username: input.username }
+        return { id, username: input.username, staff_id: staffId }
       }
       return callManageStaff({
         action: 'create',
@@ -184,6 +202,7 @@ export function useStaffActions() {
         full_name: input.fullName,
         role: input.role,
         pin: input.pin,
+        email: input.email,
         station: input.station ?? null,
         dashboard: input.dashboard ?? null,
         head_of: input.headOf ?? null,
@@ -219,5 +238,18 @@ export function useStaffActions() {
     onSuccess: refresh,
   })
 
-  return { create, resetPin, setActive }
+  const setEmail = useMutation({
+    mutationFn: async ({ id, email }: { id: string; email: string }) => {
+      if (!EMAIL_RE.test(email)) throw new Error('email')
+      if (!supabase) {
+        const e = sampleEmployees.find((x) => x.id === id)
+        if (e) e.email = email
+        return
+      }
+      await callManageStaff({ action: 'set_email', user_id: id, email })
+    },
+    onSuccess: refresh,
+  })
+
+  return { create, resetPin, setActive, setEmail }
 }

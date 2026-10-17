@@ -102,7 +102,8 @@ await step(
     const status = await one(`select public_clinic_status() as j`)
     await asAdmin()
     if (lines.n !== 9) throw new Error(`${lines.n} service lines`)
-    if (payers.n !== 6) throw new Error(`${payers.n} insurers`)
+    // insurers are seeded inactive until the clinic signs its first partner
+    if (payers.n !== 0) throw new Error(`${payers.n} insurers (expected none active)`)
     if (info.j.profile.phone !== '0799476752') throw new Error('profile phone not seeded')
     if (typeof status.j.open !== 'boolean') throw new Error('status.open missing')
     return `${lines.n} lines · ${payers.n} insurers · open=${status.j.open}`
