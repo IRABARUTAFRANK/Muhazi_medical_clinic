@@ -611,6 +611,7 @@
     "codeTitle": "Enter the code from your e-mail",
     "codeLead": "We sent a six-digit code to {{email}}. It is valid for a few minutes.",
     "codeSample": "Sample mode: any six digits work.",
+    "codeOrLink": "If the e-mail shows a \"Log In\" link instead of a code, open the link: it signs you in on this device.",
     "code": "Six-digit code",
     "codeFormat": "The code has six digits.",
     "codeWrong": "Wrong code. Check your e-mail and try again.",

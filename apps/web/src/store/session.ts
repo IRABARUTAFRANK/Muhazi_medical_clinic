@@ -319,12 +319,38 @@ export const useSession = create<SessionState>()(
   ),
 )
 
+/**
+ * The sign-in e-mail can carry a link instead of a code (Supabase's default template, which
+ * the free plan only lets us change once a custom SMTP provider is set). Opening that link
+ * lands here with `#access_token…&type=magiclink`: supabase-js turns it into a session, and we
+ * finish the sign-in exactly as after a code (record_sign_in, then the staff area).
+ */
+const arrivedByMagicLink =
+  typeof window !== 'undefined' && /type=magiclink/.test(window.location.hash)
+
 // Keep the store honest with Supabase Auth: a session that ended elsewhere ends here too.
 if (supabase) {
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') useSession.setState({ user: null, locked: false })
     if (event === 'INITIAL_SESSION' && !session && useSession.getState().user) {
       useSession.setState({ user: null, locked: false })
+    }
+    if (event === 'SIGNED_IN' && session && arrivedByMagicLink && !useSession.getState().user) {
+      void (async () => {
+        const { data: profile, error } = await supabase.rpc('record_sign_in', {
+          p_device: deviceLabel(),
+        })
+        if (error || !profile) {
+          await supabase.auth.signOut()
+          return
+        }
+        useSession.setState({
+          user: toStaffUser(profile as ProfileJson),
+          locked: false,
+          pending: null,
+        })
+        window.location.replace('/app')
+      })()
     }
   })
 }

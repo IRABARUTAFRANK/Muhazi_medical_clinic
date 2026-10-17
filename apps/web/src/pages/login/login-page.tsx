@@ -188,6 +188,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
               {t('login.codeLead', { email: maskEmail(pending?.email ?? '') })}
             </p>
             {!isLive && <p className="text-ink-3 m-0 text-xs">{t('login.codeSample')}</p>}
+            {isLive && <p className="text-ink-3 m-0 text-xs">{t('login.codeOrLink')}</p>}
             <Field
               ref={codeRef}
               label={t('login.code')}

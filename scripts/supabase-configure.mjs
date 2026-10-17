@@ -84,32 +84,54 @@ allow.add(siteUrl)
 allow.add(`${siteUrl}/**`)
 allow.add('http://localhost:5173/**')
 
+// Base settings: allowed on every plan.
 const patch = {
   disable_signup: true,
   mailer_autoconfirm: true,
   password_min_length: 6,
   site_url: siteUrl,
   uri_allow_list: [...allow].join(','),
-  mailer_subjects_magic_link: '{{ .Token }} is your Muhazi Medical Clinic sign-in code',
-  mailer_templates_magic_link_content: magicLink,
   mailer_otp_length: 6,
   mailer_otp_exp: 600,
 }
 
-// Optional custom SMTP (used by Supabase's own mailer when the hook is off).
+// Custom SMTP: explicit SMTP_* values, or derived from a Resend key (Resend also speaks SMTP:
+// smtp.resend.com, user "resend", password = the API key). On the free plan Supabase only
+// lets us change the e-mail template once a custom SMTP provider is set.
+const fromAddress = (process.env.MAIL_FROM ?? '').match(/<([^>]+)>/)?.[1] ?? process.env.MAIL_FROM
+let smtp = null
 if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-  Object.assign(patch, {
+  smtp = {
     smtp_host: process.env.SMTP_HOST,
     smtp_port: process.env.SMTP_PORT || '587',
     smtp_user: process.env.SMTP_USER,
     smtp_pass: process.env.SMTP_PASS,
     smtp_sender_name: process.env.SMTP_SENDER || 'Muhazi Medical Clinic',
-    smtp_admin_email: process.env.SMTP_ADMIN_EMAIL || process.env.SMTP_USER,
+    smtp_admin_email: process.env.SMTP_ADMIN_EMAIL || fromAddress || process.env.SMTP_USER,
+  }
+} else if (process.env.RESEND_API_KEY) {
+  smtp = {
+    smtp_host: 'smtp.resend.com',
+    smtp_port: '465',
+    smtp_user: 'resend',
+    smtp_pass: process.env.RESEND_API_KEY,
+    smtp_sender_name: process.env.SMTP_SENDER || 'Muhazi Medical Clinic',
+    smtp_admin_email: process.env.SMTP_ADMIN_EMAIL || fromAddress || 'onboarding@resend.dev',
+  }
+}
+if (smtp) {
+  Object.assign(patch, smtp, {
     rate_limit_email_sent: 60,
+    mailer_subjects_magic_link: '{{ .Token }} is your Muhazi Medical Clinic sign-in code',
+    mailer_templates_magic_link_content: magicLink,
   })
-  console.log('smtp: will set custom SMTP', process.env.SMTP_HOST)
+  console.log(
+    `smtp: will set custom SMTP ${smtp.smtp_host} (sender ${smtp.smtp_admin_email}) and the code template`,
+  )
 } else {
-  console.log('smtp: no SMTP_* in .env — Supabase built-in sender stays (a few mails per hour)')
+  console.log(
+    'smtp: no SMTP_* or RESEND_API_KEY in .env — Supabase built-in sender stays (a few mails per hour, template cannot be changed on the free plan)',
+  )
 }
 
 // Send Email hook → our function, only when it can actually send mail.
@@ -138,8 +160,19 @@ if (dryRun) {
   process.exit(0)
 }
 
-await api('PATCH', '/config/auth', patch)
-console.log('auth config updated')
+try {
+  await api('PATCH', '/config/auth', patch)
+  console.log('auth config updated')
+} catch (e) {
+  // Free plan without custom SMTP: the template fields are refused; apply the rest.
+  if (/template|SMTP/i.test(String(e.message)) && patch.mailer_templates_magic_link_content) {
+    const { mailer_subjects_magic_link, mailer_templates_magic_link_content, ...rest } = patch
+    await api('PATCH', '/config/auth', rest)
+    console.log('auth config updated without the e-mail template:', e.message)
+  } else {
+    throw e
+  }
+}
 
 if (provider) {
   const secrets = [{ name: 'SEND_EMAIL_HOOK_SECRET', value: hookSecret }]

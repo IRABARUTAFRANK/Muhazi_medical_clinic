@@ -611,6 +611,7 @@
     "codeTitle": "Saisissez le code reçu par e-mail",
     "codeLead": "Nous avons envoyé un code à six chiffres à {{email}}. Il est valable quelques minutes.",
     "codeSample": "Mode démo : six chiffres quelconques suffisent.",
+    "codeOrLink": "Si l'e-mail contient un lien « Log In » au lieu d'un code, ouvrez le lien : il vous connecte sur cet appareil.",
     "code": "Code à six chiffres",
     "codeFormat": "Le code a six chiffres.",
     "codeWrong": "Code incorrect. Vérifiez votre e-mail et réessayez.",

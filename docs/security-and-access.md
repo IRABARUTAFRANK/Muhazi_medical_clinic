@@ -145,7 +145,10 @@ re-verifies the PIN with Supabase Auth. "Not you? Sign out" ends the session for
    e-mail confirmation off, minimum password length 6, site URL, Magic Link template with
    `{{ .Token }}`, code length 6 and expiry 600 s, custom SMTP when given, and (with a mail
    provider key) the Send Email hook plus the function secrets. Without a provider key the
-   codes go through Supabase's built-in sender, which allows only a few e-mails per hour.
+   codes go through Supabase's built-in sender, which allows only a few e-mails per hour, and
+   on the free plan the template cannot be changed: the e-mail then carries a **link**, which
+   the app also accepts (opening it completes the sign-in on that device). A `RESEND_API_KEY`
+   alone is enough: the script derives Resend's SMTP from it and enables the hook.
 5. `pnpm sb:set-email t.mugabo <address>` gives the first manager a real address; the manager
    then sets the others from the Employees page.
 6. Create the first manager with `pnpm db:seed-staff` (it creates the sample staff including
