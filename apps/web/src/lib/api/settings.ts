@@ -81,12 +81,17 @@ export function useStaffSettings() {
   return useQuery({
     queryKey: STAFF_KEY,
     staleTime: 5 * 60_000,
-    queryFn: async (): Promise<{ idleMinutes: number }> => {
-      if (!supabase) return { idleMinutes: sampleIdle }
+    queryFn: async (): Promise<{ idleMinutes: number; trustDays: number }> => {
+      if (!supabase) return { idleMinutes: sampleIdle, trustDays: sampleTrust }
       const { data, error } = await supabase.rpc('staff_settings')
       if (error) throw new Error(error.message)
-      const m = Number((data as { idle_minutes?: number } | null)?.idle_minutes)
-      return { idleMinutes: Number.isFinite(m) && m > 0 ? m : 120 }
+      const d = data as { idle_minutes?: number; trust_days?: number } | null
+      const m = Number(d?.idle_minutes)
+      const td = Number(d?.trust_days)
+      return {
+        idleMinutes: Number.isFinite(m) && m > 0 ? m : 120,
+        trustDays: Number.isFinite(td) && td >= 0 ? td : 30,
+      }
     },
   })
 }
@@ -106,5 +111,40 @@ export function useSaveLockSetting() {
       if (error) throw new Error(error.message)
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: STAFF_KEY }),
+  })
+}
+
+// ---------------------------------------------------------------- e-mailed sign-in code
+/** Days a device stays trusted after a correct code; 0 = a code at every sign-in. */
+export const TRUST_CHOICES = [0, 1, 7, 30, 90] as const
+let sampleTrust = 30
+
+export function useSaveTrustSetting() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (trustDays: number) => {
+      if (!supabase) {
+        sampleTrust = trustDays
+        return
+      }
+      const { error } = await supabase.rpc('save_setting', {
+        p_key: 'security.otp',
+        p_value: { trust_days: trustDays },
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: STAFF_KEY }),
+  })
+}
+
+/** Manager: every trusted device asks for the e-mailed code again at next sign-in. */
+export function useRevokeAllDevices() {
+  return useMutation({
+    mutationFn: async (): Promise<number> => {
+      if (!supabase) return 0
+      const { data, error } = await supabase.rpc('revoke_trusted_devices', { p_all: true })
+      if (error) throw new Error(error.message)
+      return Number(data)
+    },
   })
 }

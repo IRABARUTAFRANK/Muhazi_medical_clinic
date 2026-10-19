@@ -110,7 +110,7 @@ export function LandingPage() {
       />
 
       {/* FIND A DOCTOR */}
-      <section id="doctors" className="bg-card scroll-mt-24 py-[72px]">
+      <section id="doctors" className="bg-card scroll-mt-40 py-[72px]">
         <Wrap className="flex flex-col gap-6">
           <div className="flex flex-wrap items-end gap-6" data-reveal>
             <div className="min-w-[280px] flex-1">
@@ -151,7 +151,7 @@ export function LandingPage() {
       </section>
 
       {/* SERVICES */}
-      <section id="services" className="soft-gradient scroll-mt-24 py-[72px]">
+      <section id="services" className="soft-gradient scroll-mt-40 py-[72px]">
         <Wrap className="flex flex-col gap-8">
           <div data-reveal>
             <span className="eyebrow">{t('nav.services')}</span>
@@ -186,7 +186,7 @@ export function LandingPage() {
       </section>
 
       {/* HOW TO BOOK */}
-      <section id="book" className="bg-card scroll-mt-24 py-[72px]">
+      <section id="book" className="bg-card scroll-mt-40 py-[72px]">
         <Wrap className="pc:grid-cols-2 grid items-start gap-12">
           <div className="flex flex-col gap-6" data-reveal>
             <PhoneIllustration />
@@ -208,7 +208,7 @@ export function LandingPage() {
       {/* INSURANCE */}
       <section
         id="insurance"
-        className="band-gradient relative scroll-mt-24 overflow-hidden py-16 text-white"
+        className="band-gradient relative scroll-mt-40 overflow-hidden py-16 text-white"
       >
         <div
           aria-hidden="true"
@@ -256,7 +256,7 @@ export function LandingPage() {
       </section>
 
       {/* HOURS & LOCATION */}
-      <section id="visit" className="soft-gradient scroll-mt-24 py-[72px]">
+      <section id="visit" className="soft-gradient scroll-mt-40 py-[72px]">
         <Wrap className="flex flex-col gap-8">
           <div data-reveal>
             <span className="eyebrow">{t('nav.visit')}</span>
@@ -380,20 +380,16 @@ function Hero({
 }) {
   const { t } = useTranslation()
   return (
-    <section className="hero-gradient relative -mt-[76px] overflow-hidden pt-[76px] text-white">
-      <div aria-hidden="true" className="dot-grid absolute inset-0" />
-      <div
-        aria-hidden="true"
-        className="blob anim-drift -top-48 right-[6%] size-[560px] bg-[#39A9DF]"
-      />
-      <div
-        aria-hidden="true"
-        className="blob anim-drift-2 -bottom-48 left-[0%] size-[500px] bg-[#6CCB5F]"
-      />
-      <div
-        aria-hidden="true"
-        className="blob anim-float-slow top-[18%] left-[44%] size-[240px] bg-[#F6C544] opacity-30"
-      />
+    <section className="hero-photo relative overflow-hidden text-white">
+      {/* The clinic's photo behind the whole slogan area: slow zoom, navy tint from the left
+          so the text reads, the instruments visible on the right, a light sheen passing over. */}
+      <picture aria-hidden="true">
+        <source media="(max-width: 760px)" srcSet="/hero-small.jpg" />
+        <img src="/hero.jpg" alt="" className="hero-photo-img" fetchPriority="high" />
+      </picture>
+      <div aria-hidden="true" className="hero-photo-tint" />
+      <div aria-hidden="true" className="hero-photo-sheen" />
+      <div aria-hidden="true" className="dot-grid absolute inset-0 opacity-40" />
 
       <Wrap className="pc:grid-cols-[minmax(0,1.15fr)_420px] pc:pt-16 pc:pb-32 relative grid items-start gap-12 pt-14 pb-28">
         <div className="anim-rise flex flex-col gap-6">

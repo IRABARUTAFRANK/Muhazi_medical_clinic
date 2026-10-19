@@ -13,6 +13,7 @@ import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { LockCard } from './lock-card'
+import { OtpCard } from './otp-card'
 import { PatientFieldsCard } from './patient-fields-card'
 
 type DayMode = 'closed' | 'allDay' | 'custom'
@@ -227,6 +228,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
         )}
 
         <LockCard />
+        <OtpCard />
         <PatientFieldsCard />
       </main>
     </StaffShell>

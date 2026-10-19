@@ -711,7 +711,9 @@
     "back": "Back",
     "resend": "Send a new code",
     "resendIn": "New code in {{s}} s",
-    "linkMismatch": "That sign-in link belongs to {{got}}, not {{expected}}. Nobody was signed in. Open the newest e-mail sent to {{expected}}, or sign in again."
+    "linkMismatch": "That sign-in link belongs to {{got}}, not {{expected}}. Nobody was signed in. Open the newest e-mail sent to {{expected}}, or sign in again.",
+    "trust": "Trust this device",
+    "trustHint": "Next time on this browser, your staff ID, username and PIN are enough — no e-mailed code until the trust expires. Untick on a shared computer."
   },
   "register": {
     "title": "Register a patient",
@@ -1104,6 +1106,19 @@
       "hours_other": "{{count}} hours",
       "save": "Save",
       "saved": "Saved. Every staff screen uses it from now on."
+    },
+    "otp": {
+      "title": "E-mailed sign-in code",
+      "lead": "Codes are sent from the clinic’s Gmail, which allows about 500 e-mails a day. After one correct code a person can trust their device; on that device the staff ID, username and PIN are then enough until the trust expires.",
+      "ask": "Ask for the code",
+      "every": "At every sign-in",
+      "days_one": "Once per device, then trusted for {{count}} day",
+      "days_other": "Once per device, then trusted for {{count}} days",
+      "revokeAll": "Ask every device again",
+      "revoked_one": "{{count}} device will ask for a code at its next sign-in.",
+      "revoked_other": "{{count}} devices will ask for a code at their next sign-in.",
+      "saved": "Saved. It applies from the next sign-in.",
+      "hint": "Use \"Ask every device again\" after a phone or computer is lost, or when someone leaves the clinic."
     }
   },
   "pin": {

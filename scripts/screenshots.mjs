@@ -57,6 +57,9 @@ const TABLET = [800, 1280]
 /** name, path, viewport, user id, theme, full-page capture */
 const SHOTS = [
   { name: 'landing-1366', path: '/', vp: PC, full: true },
+  { name: 'home-top-1366', path: '/', vp: [1366, 860] },
+  { name: 'home-top-1920', path: '/', vp: [1920, 1000] },
+  { name: 'home-top-mobile', path: '/', vp: [390, 844] },
   { name: 'booking-1366', path: '/book', vp: PC, full: true },
   { name: 'landing-mobile', path: '/', vp: [390, 844], full: true },
   {

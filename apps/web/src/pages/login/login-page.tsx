@@ -43,6 +43,8 @@ export function LoginPage({ staffId }: { staffId: string }) {
   })
   const [notice, setNotice] = useState<string | null>(null)
   const [cooldown, setCooldown] = useState(0)
+  // On by default: the clinic's mail budget is limited and staff use their own devices.
+  const [trustDevice, setTrustDevice] = useState(true)
   const codeRef = useRef<HTMLInputElement>(null)
 
   const step: 'credentials' | 'otp' = pending && pending.staffId === staffId ? 'otp' : 'credentials'
@@ -79,6 +81,13 @@ export function LoginPage({ staffId }: { staffId: string }) {
         return
       }
       setPin('')
+      if (result.step === 'done') {
+        // Trusted device: no e-mailed code this time.
+        void navigate({
+          to: result.user.mustChangePin ? '/app/change-pin' : homeRouteFor(result.user),
+        })
+        return
+      }
       setCode('')
       setCooldown(30)
     } catch {
@@ -94,7 +103,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
     setBusy(true)
     setError(null)
     try {
-      const result = await verifyOtp(code)
+      const result = await verifyOtp(code, trustDevice)
       if (!result.ok) {
         setError(
           t(
@@ -162,7 +171,6 @@ export function LoginPage({ staffId }: { staffId: string }) {
             <p className="text-ink-2 m-0 text-[13px]">{t('login.lead')}</p>
             <Field
               label={t('landing.signin.username')}
-              placeholder={t('landing.signin.usernamePh')}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
@@ -174,7 +182,6 @@ export function LoginPage({ staffId }: { staffId: string }) {
               label={t('landing.signin.pin')}
               type="password"
               inputMode="numeric"
-              placeholder={t('landing.signin.pinPh')}
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               autoComplete="current-password"
@@ -205,12 +212,25 @@ export function LoginPage({ staffId }: { staffId: string }) {
               label={t('login.code')}
               inputMode="numeric"
               autoComplete="one-time-code"
-              placeholder="000000"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               className="text-center text-2xl font-bold tracking-[.4em] tabular-nums"
               required
             />
+            {isLive && (
+              <label className="border-border flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-[13px]">
+                <input
+                  type="checkbox"
+                  className="accent-primary mt-0.5 size-[18px] flex-none"
+                  checked={trustDevice}
+                  onChange={(e) => setTrustDevice(e.target.checked)}
+                />
+                <span>
+                  <span className="text-ink block font-semibold">{t('login.trust')}</span>
+                  <span className="text-ink-3 block text-xs">{t('login.trustHint')}</span>
+                </span>
+              </label>
+            )}
             {error && <Alert>{error}</Alert>}
             {notice && (
               <p className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">

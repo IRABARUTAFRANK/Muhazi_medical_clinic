@@ -711,7 +711,9 @@
     "back": "Retour",
     "resend": "Envoyer un nouveau code",
     "resendIn": "Nouveau code dans {{s}} s",
-    "linkMismatch": "Ce lien de connexion appartient à {{got}}, pas à {{expected}}. Personne n’a été connecté. Ouvrez le dernier e-mail envoyé à {{expected}}, ou reconnectez-vous."
+    "linkMismatch": "Ce lien de connexion appartient à {{got}}, pas à {{expected}}. Personne n’a été connecté. Ouvrez le dernier e-mail envoyé à {{expected}}, ou reconnectez-vous.",
+    "trust": "Faire confiance à cet appareil",
+    "trustHint": "La prochaine fois sur ce navigateur, votre ID, nom d’utilisateur et PIN suffisent — pas de code par e-mail jusqu’à expiration. Décochez sur un ordinateur partagé."
   },
   "register": {
     "title": "Enregistrer un patient",
@@ -1104,6 +1106,19 @@
       "hours_other": "{{count}} heures",
       "save": "Enregistrer",
       "saved": "Enregistré. Tous les écrans du personnel l’utilisent désormais."
+    },
+    "otp": {
+      "title": "Code de connexion par e-mail",
+      "lead": "Les codes partent du Gmail de la clinique, qui permet environ 500 e-mails par jour. Après un code correct, la personne peut faire confiance à son appareil ; l’ID, le nom d’utilisateur et le PIN suffisent ensuite jusqu’à expiration.",
+      "ask": "Demander le code",
+      "every": "À chaque connexion",
+      "days_one": "Une fois par appareil, puis confiance pendant {{count}} jour",
+      "days_other": "Une fois par appareil, puis confiance pendant {{count}} jours",
+      "revokeAll": "Redemander à tous les appareils",
+      "revoked_one": "{{count}} appareil demandera un code à sa prochaine connexion.",
+      "revoked_other": "{{count}} appareils demanderont un code à leur prochaine connexion.",
+      "saved": "Enregistré. Appliqué dès la prochaine connexion.",
+      "hint": "Utilisez « Redemander à tous les appareils » après la perte d’un téléphone ou d’un ordinateur, ou au départ d’un employé."
     }
   },
   "pin": {

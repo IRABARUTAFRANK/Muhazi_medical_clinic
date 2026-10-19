@@ -57,7 +57,6 @@ export function SignInCard() {
       </div>
       <Field
         label={t('landing.signin.staffId')}
-        placeholder={t('landing.signin.staffIdPh')}
         value={staffId}
         onChange={(e) => setStaffId(e.target.value.toUpperCase())}
         autoComplete="off"

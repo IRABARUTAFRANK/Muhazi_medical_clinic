@@ -41,6 +41,7 @@ const toStaffUser = (p: ProfileJson): StaffUser => ({
 
 export type SignInResult =
   | { ok: true; step: 'otp'; email: string }
+  | { ok: true; step: 'done'; user: StaffUser }
   | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'error' }
 export type VerifyResult =
   | { ok: true; user: StaffUser }
@@ -60,6 +61,69 @@ export interface PendingSignIn {
 type RequestOutcome =
   | { ok: true; email: string }
   | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'error' | 'unavailable' }
+
+/*
+ * Trusted devices (migration 0025). After a correct e-mailed code the browser may keep a random
+ * key per username (localStorage: shared by the tabs of this browser, gone with "clear data").
+ * The database stores only its fingerprint; the manager decides how long it is trusted.
+ */
+const TRUST_PREFIX = 'mmc.trust.'
+const trustKey = (username: string) => TRUST_PREFIX + username
+const readTrust = (username: string): string | null => {
+  try {
+    return localStorage.getItem(trustKey(username))
+  } catch {
+    return null
+  }
+}
+const writeTrust = (username: string, token: string | null) => {
+  try {
+    if (token) localStorage.setItem(trustKey(username), token)
+    else localStorage.removeItem(trustKey(username))
+  } catch {
+    /* storage blocked: the device is simply not remembered */
+  }
+}
+const newTrustToken = () => {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * A trusted device: check the PIN with Supabase Auth, then the device key with the database.
+ * Returns the signed-in profile, or null to fall back to the e-mailed code.
+ */
+async function signInTrusted(
+  staffId: string,
+  username: string,
+  pin: string,
+): Promise<{ profile: ProfileJson } | { reason: 'invalid' | 'inactive' } | null> {
+  const token = readTrust(username)
+  if (!token) return null
+  const { data: email } = await supabase!.rpc('staff_login_email', {
+    p_staff_id: staffId,
+    p_username: username,
+  })
+  if (!email) return { reason: 'invalid' }
+  const { error } = await supabase!.auth.signInWithPassword({ email, password: pin })
+  if (error) return { reason: /banned/i.test(error.message) ? 'inactive' : 'invalid' }
+  const { data: trusted } = await supabase!.rpc('use_trusted_device', { p_token: token })
+  if (!trusted) {
+    // Expired, revoked or switched off by the manager: forget the key, ask for a code.
+    writeTrust(username, null)
+    await supabase!.auth.signOut({ scope: 'local' })
+    return null
+  }
+  const { data: profile, error: rpcError } = await supabase!.rpc('record_sign_in', {
+    p_device: deviceLabel(),
+  })
+  if (rpcError || !profile) {
+    await supabase!.auth.signOut({ scope: 'local' })
+    return { reason: /deactivated/i.test(rpcError?.message ?? '') ? 'inactive' : 'invalid' }
+  }
+  return { profile: profile as ProfileJson }
+}
 
 /**
  * Preferred path: the `staff-otp` Edge Function checks the PIN on the server, records the
@@ -136,7 +200,7 @@ interface SessionState {
   /** Step 2 (login page): staff ID + username + PIN. On success a one-time code is e-mailed. */
   signIn: (staffId: string, username: string, pin: string) => Promise<SignInResult>
   /** Step 3: the six-digit code from the e-mail. */
-  verifyOtp: (code: string) => Promise<VerifyResult>
+  verifyOtp: (code: string, trustDevice?: boolean) => Promise<VerifyResult>
   resendOtp: () => Promise<boolean>
   cancelSignIn: () => void
   lock: () => void
@@ -184,6 +248,13 @@ export const useSession = create<SessionState>()(
           set({ pending: { staffId: id, username: name, email, sampleUser: user } })
           return { ok: true, step: 'otp', email }
         }
+        const trusted = await signInTrusted(id, name, pin)
+        if (trusted && 'profile' in trusted) {
+          const user = toStaffUser(trusted.profile)
+          set({ user, locked: false, pending: null })
+          return { ok: true, step: 'done', user }
+        }
+        if (trusted && 'reason' in trusted) return { ok: false, reason: trusted.reason }
         let outcome = await requestCodeViaFunction(id, name, pin)
         if (!outcome.ok && outcome.reason === 'unavailable') {
           outcome = await requestCodeDirect(id, name, pin)
@@ -196,7 +267,7 @@ export const useSession = create<SessionState>()(
         return { ok: true, step: 'otp', email: outcome.email }
       },
 
-      verifyOtp: async (code) => {
+      verifyOtp: async (code, trustDevice = false) => {
         const pending = get().pending
         if (!pending) return { ok: false, reason: 'expired' }
         const token = code.replace(/\D/g, '')
@@ -226,6 +297,14 @@ export const useSession = create<SessionState>()(
           }
         }
         const user = toStaffUser(profile as ProfileJson)
+        if (trustDevice) {
+          const token = newTrustToken()
+          const { data: until } = await supabase.rpc('trust_this_device', {
+            p_token: token,
+            p_label: deviceLabel(),
+          })
+          writeTrust(user.username, until ? token : null)
+        }
         set({ user, locked: false, pending: null })
         return { ok: true, user }
       },

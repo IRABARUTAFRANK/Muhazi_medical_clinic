@@ -715,7 +715,9 @@
     "otpSendFailed": "Kode ntiyashoboye koherezwa kuri imeyili yawe. Saba umuyobozi agenzure aderesi yawe ya imeyili.",
     "codeSample": "Uburyo bw'igerageza: imibare itandatu iyo ari yo yose irakora.",
     "codeFormat": "Kode ifite imibare itandatu.",
-    "codeResent": "Kode nshya iri mu nzira."
+    "codeResent": "Kode nshya iri mu nzira.",
+    "trust": "Wizere iki gikoresho",
+    "trustHint": "Ubutaha kuri iyi mashakisha, nimero y’umukozi, izina ukoresha na PIN birahagije — nta kode kuri imeyili kugeza igihe cyo kwizerwa kirangiye. Kuraho akamenyetso kuri mudasobwa ihuriweho."
   },
   "register": {
     "title": "Kwandika umurwayi",
@@ -895,7 +897,20 @@
     },
     "saveFailed": "Ntibyabitswe: {{message}}",
     "loadFailed": "Igenamiterere ntiryashoboye kuza: {{message}}",
-    "you": "Winjiye nka {{name}} · {{id}}"
+    "you": "Winjiye nka {{name}} · {{id}}",
+    "otp": {
+      "title": "Kode yo kwinjira kuri imeyili",
+      "lead": "Kode zoherezwa na Gmail y’ivuriro, yemera imeyili nka 500 ku munsi. Nyuma ya kode imwe nyayo umuntu ashobora kwizera igikoresho cye; kuri icyo gikoresho nimero y’umukozi, izina ukoresha na PIN biba bihagije kugeza igihe cyo kwizerwa kirangiye.",
+      "ask": "Saba kode",
+      "every": "Buri gihe yinjiye",
+      "days_one": "Rimwe kuri buri gikoresho, hanyuma cyizerwa umunsi {{count}}",
+      "days_other": "Rimwe kuri buri gikoresho, hanyuma cyizerwa iminsi {{count}}",
+      "revokeAll": "Ongera usabe kode ku bikoresho byose",
+      "revoked_one": "Igikoresho {{count}} kizasaba kode ubutaha cyinjiye.",
+      "revoked_other": "Ibikoresho {{count}} bizasaba kode ubutaha byinjiye.",
+      "saved": "Byabitswe. Birakurikizwa uhereye ku kwinjira gukurikira.",
+      "hint": "Koresha \"Ongera usabe kode ku bikoresho byose\" iyo telefoni cyangwa mudasobwa ibuze, cyangwa umukozi avuye mu ivuriro."
+    }
   },
   "pin": {
     "changeTitle": "Hitamo PIN yawe bwite",

@@ -600,6 +600,35 @@ await step('nurse registers with name/sex/age only → reception sees it to comp
   return `missing ${missing} → completed by reception`
 })
 
+// ---------------------------------------------------------------- trusted devices (0025)
+await step('a trusted device skips the code; revoked or foreign keys do not', async () => {
+  const key = 'k'.repeat(40)
+  await as(staff.nurse)
+  const until = (await one(`select trust_this_device($1, 'test browser') as u`, [key])).u
+  if (!until) throw new Error('not trusted')
+  if (!(await one(`select use_trusted_device($1) as ok`, [key])).ok)
+    throw new Error('own key refused')
+  await as(staff.receptionist)
+  if ((await one(`select use_trusted_device($1) as ok`, [key])).ok)
+    throw new Error('foreign key accepted')
+  await as(staff.manager)
+  await db.query(`select revoke_trusted_devices(true)`)
+  await as(staff.nurse)
+  if ((await one(`select use_trusted_device($1) as ok`, [key])).ok)
+    throw new Error('revoked key accepted')
+  return 'trusted → used → revoked'
+})
+await step('trust_days 0 means a code at every sign-in', async () => {
+  await as(staff.manager)
+  await db.query(`select save_setting('security.otp', '{"trust_days": 0}'::jsonb)`)
+  await as(staff.nurse)
+  const u = (await one(`select trust_this_device($1) as u`, ['z'.repeat(40)])).u
+  await as(staff.manager)
+  await db.query(`select save_setting('security.otp', '{"trust_days": 30}'::jsonb)`)
+  if (u) throw new Error('trusted although disabled')
+  return 'no trust when 0'
+})
+
 // ---------------------------------------------------------------- desk dashboards (0019)
 await step('nurse and receptionist read desk_summary', async () => {
   await as(staff.nurse)
