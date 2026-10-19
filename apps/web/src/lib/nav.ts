@@ -11,6 +11,7 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
   { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
+  { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'id-card', to: '/app/staff' },
@@ -24,6 +25,7 @@ export const RECEPTION_NAV: NavItem[] = [
   // Typing in the vitals a nurse wrote on paper when she had no device.
   { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
+  { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
 ]
 

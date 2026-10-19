@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import {
   findStaffByStaffId,
   findStaffByUsername,
@@ -120,7 +120,7 @@ async function requestCodeDirect(
     options: { shouldCreateUser: false },
   })
   if (otpError) {
-    await supabase!.auth.signOut()
+    await supabase!.auth.signOut({ scope: 'local' })
     return { ok: false, reason: 'otp' }
   }
   return { ok: true, email }
@@ -218,7 +218,7 @@ export const useSession = create<SessionState>()(
           p_device: deviceLabel(),
         })
         if (rpcError || !profile) {
-          await supabase.auth.signOut()
+          await supabase.auth.signOut({ scope: 'local' })
           set({ pending: null })
           return {
             ok: false,
@@ -254,7 +254,7 @@ export const useSession = create<SessionState>()(
       },
 
       cancelSignIn: () => {
-        if (supabase && get().pending) void supabase.auth.signOut()
+        if (supabase && get().pending) void supabase.auth.signOut({ scope: 'local' })
         set({ pending: null })
       },
 
@@ -298,11 +298,17 @@ export const useSession = create<SessionState>()(
       },
 
       signOut: async () => {
-        if (supabase) await supabase.auth.signOut()
+        // This tab only: the same person may be signed in on another device or tab.
+        if (supabase) await supabase.auth.signOut({ scope: 'local' })
         set({ user: null, locked: false, pending: null })
       },
     }),
-    { name: 'mmc.session', partialize: (s) => ({ user: s.user }) },
+    {
+      name: 'mmc.session',
+      // Per tab, like the Supabase session (see lib/supabase.ts).
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (s) => ({ user: s.user }),
+    },
   ),
 )
 
@@ -357,7 +363,7 @@ if (sb) {
           p_device: deviceLabel(),
         })
         if (error || !profile) {
-          await sb.auth.signOut()
+          await sb.auth.signOut({ scope: 'local' })
           return
         }
         const expected = expectedUsername()
@@ -368,7 +374,7 @@ if (sb) {
           /* ignore */
         }
         if (expected && expected !== got) {
-          await sb.auth.signOut()
+          await sb.auth.signOut({ scope: 'local' })
           try {
             localStorage.setItem(MISMATCH_KEY, JSON.stringify({ expected, got }))
           } catch {

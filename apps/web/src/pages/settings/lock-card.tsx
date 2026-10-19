@@ -13,7 +13,7 @@ export function LockCard() {
   const save = useSaveLockSetting()
   const [value, setValue] = useState<number | null>(null)
   const [saved, setSaved] = useState(false)
-  const current = value ?? data?.idleMinutes ?? 15
+  const current = value ?? data?.idleMinutes ?? 120
 
   const label = (m: number) =>
     m < 60 ? t('settings.lock.minutes', { count: m }) : t('settings.lock.hours', { count: m / 60 })

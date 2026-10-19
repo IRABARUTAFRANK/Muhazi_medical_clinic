@@ -14,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   CLINIC_HOURS,
+  FEATURES,
   formatDate,
   formatDayMonth,
   formatNumber,
@@ -304,12 +305,15 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                         }))}
                       />
                     )}
-                    <StaffLink
-                      to="/app/prices"
-                      className={cn(buttonVariants({ size: 'sm' }), 'self-start')}
-                    >
-                      {t('dashboard.claims')} →
-                    </StaffLink>
+                    {/* Claims only exist once the clinic works with insurers. */}
+                    {FEATURES.insurance && (
+                      <StaffLink
+                        to="/app/prices"
+                        className={cn(buttonVariants({ size: 'sm' }), 'self-start')}
+                      >
+                        {t('dashboard.claims')} →
+                      </StaffLink>
+                    )}
                   </Panel>
                 </div>
               </section>
@@ -375,9 +379,11 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     {t('dashboard.bookings', { period: periodWord })}: {data.bookings.booked}{' '}
                     {t('dashboard.booked')} ·{' '}
                     {t('dashboard.noShowShort', { missed: data.bookings.missed })}
-                    <Badge tone={data.bookings.pending > 0 ? 'yellow' : 'green'} dot={false}>
-                      {t('dashboard.pendingInquiries', { count: data.bookings.pending })}
-                    </Badge>
+                    <StaffLink to="/app/appointments" className="no-underline">
+                      <Badge tone={data.bookings.pending > 0 ? 'yellow' : 'green'} dot={false}>
+                        {t('dashboard.pendingInquiries', { count: data.bookings.pending })} →
+                      </Badge>
+                    </StaffLink>
                   </div>
                 </Panel>
                 <Panel

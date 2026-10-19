@@ -85,7 +85,8 @@
     "changePin": "Changer le PIN",
     "register": "Enregistrer",
     "triage": "Triage",
-    "inClinic": "À la clinique"
+    "inClinic": "À la clinique",
+    "bookings": "RDV"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -1416,6 +1417,65 @@
       "who": "Choisissez l'infirmière qui a pris les mesures.",
       "time": "Indiquez l'heure de la mesure.",
       "future": "L'heure de la mesure est dans le futur."
+    }
+  },
+  "ops": {
+    "appts": {
+      "title": "Rendez-vous",
+      "lead": "Les patients attendus ce jour et les demandes de rendez-vous à traiter.",
+      "section": "La journée",
+      "today": "Aujourd'hui",
+      "tomorrow": "Demain",
+      "yesterday": "Hier",
+      "prevDay": "Jour précédent",
+      "nextDay": "Jour suivant",
+      "all": "Tous les rendez-vous",
+      "toCome_one": "{{count}} encore attendu",
+      "toCome_other": "{{count}} encore attendus",
+      "late": "En retard",
+      "arrived": "Arrivé",
+      "arrivedHint": "Le patient est là : ouvre une visite et le place dans la file du triage pour l'infirmière.",
+      "registerFirst": "Enregistrez d'abord le patient : cette réservation n'a pas encore de dossier.",
+      "noShow": "Absent",
+      "cancel": "Annuler le rendez-vous",
+      "cancelReason": "Pourquoi le rendez-vous de {{name}} est-il annulé ?",
+      "status": {
+        "approved": "En attente du médecin",
+        "confirmed": "Confirmé",
+        "arrived": "Arrivé",
+        "in_progress": "Chez le médecin",
+        "completed": "Vu",
+        "no_show": "Non venu",
+        "cancelled": "Annulé"
+      },
+      "flow": "Comment tout s'enchaîne : une demande approuvée attend l'accord du médecin ; le jour venu, « Arrivé » ouvre la visite et le patient apparaît dans la file du triage ; après les constantes, l'infirmière l'envoie au médecin."
+    },
+    "inquiries": {
+      "reject": "Refuser",
+      "rejectReason": "Pourquoi la demande de {{name}} est-elle refusée ? (la personne est prévenue)",
+      "registerNow": "Enregistrer le patient maintenant",
+      "hint": "Approuver relie la demande au dossier du patient (par téléphone) et l’envoie au médecin pour accord."
+    },
+    "tasks": {
+      "count": "{{count}} ouvertes · {{overdue}} en retard",
+      "by": "demandé par {{name}}",
+      "forNurse": "Tâche pour l'infirmière",
+      "open_one": "{{count}} ouverte",
+      "open_other": "{{count}} ouvertes",
+      "what": "Ce qu’il faut faire",
+      "whatPh": "ex. Injection : ceftriaxone 1 g IM, reprendre les constantes",
+      "when": "À",
+      "send": "Envoyer aux infirmières",
+      "sent": "Envoyé. La tâche est sur le tableau de bord des infirmières.",
+      "waitingNurse": "en attente de l'infirmière"
+    },
+    "beds": {
+      "admit": "Installer un patient",
+      "pick": "Choisir le patient",
+      "nobody": "Aucun patient à installer",
+      "discharge": "Sortie",
+      "confirmDischarge": "Faire sortir {{name}} de ce lit ? Le lit passe en nettoyage.",
+      "ready": "Prêt"
     }
   }
 }

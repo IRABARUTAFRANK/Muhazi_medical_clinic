@@ -39,7 +39,7 @@ export function StaffShell({
   const locked = useSession((s) => s.locked)
   const [sheet, setSheet] = useState(false)
   const { data: staffSettings } = useStaffSettings()
-  const lockIn = useIdleLock(staffSettings?.idleMinutes ?? 15)
+  const lockIn = useIdleLock(staffSettings?.idleMinutes ?? 120)
   const now = appNow()
   const clock = `${dayNames.short[now.getDay()]} ${formatDate(now)} · ${time ?? formatTime(now)}`
 

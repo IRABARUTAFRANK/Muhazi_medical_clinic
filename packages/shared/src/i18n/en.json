@@ -85,7 +85,8 @@
     "changePin": "Change PIN",
     "register": "Register",
     "triage": "Triage",
-    "inClinic": "In clinic"
+    "inClinic": "In clinic",
+    "bookings": "Bookings"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -1416,6 +1417,65 @@
       "who": "Choose the nurse who took the measurements.",
       "time": "Enter the time of the measurement.",
       "future": "The measurement time is in the future."
+    }
+  },
+  "ops": {
+    "appts": {
+      "title": "Appointments",
+      "lead": "Booked patients for the day and booking requests to answer.",
+      "section": "The day",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "yesterday": "Yesterday",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "all": "All appointments",
+      "toCome_one": "{{count}} still to come",
+      "toCome_other": "{{count}} still to come",
+      "late": "Late",
+      "arrived": "Arrived",
+      "arrivedHint": "The patient is here: opens a visit and queues them at triage for the nurse.",
+      "registerFirst": "Register the patient first: this booking has no patient file yet.",
+      "noShow": "No-show",
+      "cancel": "Cancel the appointment",
+      "cancelReason": "Why is the appointment of {{name}} cancelled?",
+      "status": {
+        "approved": "Waiting for the doctor",
+        "confirmed": "Confirmed",
+        "arrived": "Arrived",
+        "in_progress": "With the doctor",
+        "completed": "Seen",
+        "no_show": "Did not come",
+        "cancelled": "Cancelled"
+      },
+      "flow": "How it links up: an approved request waits for the doctor to accept; on the day, \"Arrived\" opens the visit and the patient appears in the nurse’s triage queue; after the vitals the nurse sends the patient to the doctor."
+    },
+    "inquiries": {
+      "reject": "Reject",
+      "rejectReason": "Why is the request from {{name}} rejected? (the person is told)",
+      "registerNow": "Register the patient now",
+      "hint": "Approve links the request to the patient’s file (matched by phone) and sends it to the doctor to accept."
+    },
+    "tasks": {
+      "count": "{{count}} open · {{overdue}} late",
+      "by": "asked by {{name}}",
+      "forNurse": "Task for the nurse",
+      "open_one": "{{count}} open",
+      "open_other": "{{count}} open",
+      "what": "What must be done",
+      "whatPh": "e.g. Injection: ceftriaxone 1 g IM, repeat vitals",
+      "when": "At",
+      "send": "Send to the nurses",
+      "sent": "Sent. It is on the nurses’ dashboard now.",
+      "waitingNurse": "waiting for the nurse"
+    },
+    "beds": {
+      "admit": "Admit a patient",
+      "pick": "Choose the patient",
+      "nobody": "Nobody in the clinic to admit",
+      "discharge": "Discharge",
+      "confirmDischarge": "Discharge {{name}} from this bed? The bed goes to cleaning.",
+      "ready": "Ready"
     }
   }
 }

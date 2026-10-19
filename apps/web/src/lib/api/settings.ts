@@ -73,7 +73,7 @@ export function useSaveClinicSettings() {
 // ---------------------------------------------------------------- screen lock
 /** Minutes without input before a staff screen locks (setting `security.lock`). */
 export const LOCK_CHOICES = [5, 10, 15, 30, 60, 120, 240] as const
-let sampleIdle = 15
+let sampleIdle = 120
 const STAFF_KEY = ['settings', 'staff'] as const
 
 /** Settings every signed-in staff member needs (no settings.read required). */
@@ -86,7 +86,7 @@ export function useStaffSettings() {
       const { data, error } = await supabase.rpc('staff_settings')
       if (error) throw new Error(error.message)
       const m = Number((data as { idle_minutes?: number } | null)?.idle_minutes)
-      return { idleMinutes: Number.isFinite(m) && m > 0 ? m : 15 }
+      return { idleMinutes: Number.isFinite(m) && m > 0 ? m : 120 }
     },
   })
 }

@@ -116,6 +116,9 @@ const SHOTS = [
   { name: 'settings-fields', path: '/app/settings', vp: [1366, 1900], user: 'u-mgr' },
   { name: 'visits-1366', path: '/app/visits', vp: [1366, 900], user: 'u-mgr' },
   { name: 'triage-reception', path: '/app/vitals', vp: [1366, 1100], user: 'u-rec' },
+  { name: 'appointments-1366', path: '/app/appointments', vp: [1366, 900], user: 'u-rec' },
+  { name: 'home-receptionist-full', path: '/app', vp: [1366, 1400], user: 'u-rec' },
+  { name: 'home-nurse-full', path: '/app', vp: [1366, 1400], user: 'u-nur' },
   {
     name: 'visit-add-vitals',
     path: '/app/visit?encounter=e-1',
@@ -176,7 +179,7 @@ try {
     const prefs = { state: { lang: 'en', theme: shot.theme ?? 'light' }, version: 0 }
     await page.evaluateOnNewDocument(
       (s, p) => {
-        localStorage.setItem('mmc.session', s)
+        sessionStorage.setItem('mmc.session', s)
         localStorage.setItem('mmc.prefs', p)
       },
       JSON.stringify(session),

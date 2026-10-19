@@ -516,6 +516,59 @@ await step('doctor adds later vitals without moving the patient', async () => {
   return 'still one open queue entry'
 })
 
+// ---------------------------------------------------------------- linked desk operations (0022)
+await step('reception marks a booked patient arrived → linked to a visit', async () => {
+  await as(staff.receptionist)
+  const day = await one(
+    `select appointments_day((select (starts_at at time zone 'Africa/Kigali')::date from appointment where id = $1)) as d`,
+    [appointmentId],
+  )
+  if (!day.d.some((a) => a.id === appointmentId)) throw new Error('not in the day list')
+  const v = await one(`select appointment_arrived($1) as v`, [appointmentId])
+  await asAdmin()
+  const q = await one(
+    `select station from queue_entry where encounter_id = ($1::jsonb ->> 'encounter_id')::uuid and finished_at is null`,
+    [JSON.stringify(v.v)],
+  )
+  const a = await one(`select status from appointment where id = $1`, [appointmentId])
+  if (!q || a.status !== 'arrived') throw new Error(`${q?.station} ${a.status}`)
+  return v.v.existing
+    ? `arrived, kept the open visit (at ${q.station})`
+    : `arrived, queued at ${q.station}`
+})
+await step('doctor leaves the nurse a task; nurse sees and completes it', async () => {
+  await as(staff.doctor)
+  const id = (
+    await one(
+      `select create_task($1, 'Injection: ceftriaxone 1 g IM', now() + interval '1 hour') as id`,
+      [paperVisit],
+    )
+  ).id
+  await as(staff.nurse)
+  const list = (await one(`select open_tasks() as t`)).t
+  if (!list.some((x) => x.id === id)) throw new Error('nurse does not see the task')
+  await db.query(`select complete_task($1)`, [id])
+  const after = (await one(`select open_tasks() as t`)).t
+  if (after.some((x) => x.id === id)) throw new Error('still open')
+  return 'created, seen, done'
+})
+await step('nurse admits to a bed, discharges, marks it ready', async () => {
+  await asAdmin()
+  let bed = await one(`select id from bed where status = 'free' and deleted_at is null limit 1`)
+  if (!bed)
+    bed = await one(`insert into bed (name, sort_order) values ('Check bed', 99) returning id`)
+  await as(staff.nurse)
+  await db.query(`select admit_to_bed($1, $2)`, [paperVisit, bed.id])
+  const board = (await one(`select bed_board() as b`)).b
+  if (board.find((b) => b.id === bed.id)?.state !== 'occupied') throw new Error('not occupied')
+  await db.query(`select discharge_bed($1)`, [bed.id])
+  await db.query(`select bed_ready($1)`, [bed.id])
+  await asAdmin()
+  const s = await one(`select status from bed where id = $1`, [bed.id])
+  if (s.status !== 'free') throw new Error(s.status)
+  return 'occupied → cleaning → free'
+})
+
 // ---------------------------------------------------------------- desk dashboards (0019)
 await step('nurse and receptionist read desk_summary', async () => {
   await as(staff.nurse)

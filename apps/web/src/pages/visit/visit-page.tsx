@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Activity, ArrowLeft, FolderOpen, Plus, Receipt, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FEATURES, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
+import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -210,6 +211,11 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               }}
               onError={setActionError}
             />
+
+            {/* Doctor → nurse: tasks on this visit appear on the nurses' dashboard. */}
+            {(user.role === 'doctor' || user.role === 'manager') && (
+              <NurseTaskCard encounterId={encounterId} />
+            )}
 
             <div className="pc:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
               <div className="flex flex-col gap-4">

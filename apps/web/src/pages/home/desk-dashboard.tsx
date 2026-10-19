@@ -19,12 +19,11 @@ import { CLINIC_HOURS, formatDate, formatTime, type StaffUser } from '@mmc/share
 import { LineChart } from '@/components/charts/line-chart'
 import { Empty, Kpi, ListRows, Panel, Pill } from '@/components/dash/kit'
 import { delta, sectionTitle, stationLabel, type Tint } from '@/components/dash/kit-style'
-import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useDeskSummary, type DeskSummary } from '@/lib/api/desk'
-import { useHomeSummary } from '@/lib/api/home'
+import { AppointmentsPanel, BedsPanel, InquiriesPanel, TasksPanel } from './desk-panels'
 import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
 import { openItems, useQueueBoard, type QueueItem } from '@/lib/api/visits'
 import { useDayNames } from '@/lib/hooks'
@@ -47,7 +46,6 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   const dayNames = useDayNames()
   const now = new Date()
   const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary()
-  const { data: home } = useHomeSummary()
   const { data: info } = useClinicInfo()
   const { data: status } = useClinicStatus(info?.hours ?? CLINIC_HOURS)
   const { data: queue = [] } = useQueueBoard(role === 'nurse' ? 'triage' : 'all', user.role)
@@ -159,13 +157,24 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
               <div className="pc:grid-cols-3 grid grid-cols-1 gap-4">
                 {nurse ? (
                   <>
-                    <BedsPanel beds={home?.beds ?? []} />
-                    <TasksPanel tasks={home?.tasks ?? []} />
+                    <BedsPanel userRole={user.role} />
+                    <TasksPanel />
                   </>
                 ) : (
                   <>
-                    <AppointmentsPanel appts={home?.appointments ?? []} />
-                    <InquiriesPanel inquiries={home?.inquiries ?? []} />
+                    <AppointmentsPanel
+                      canAct
+                      limit={6}
+                      footer={
+                        <StaffLink
+                          to="/app/appointments"
+                          className={cn(buttonVariants({ size: 'sm' }), 'self-start')}
+                        >
+                          {t('ops.appts.all')} →
+                        </StaffLink>
+                      }
+                    />
+                    <InquiriesPanel canAct />
                   </>
                 )}
                 <MinePanel d={data} role={role} />
@@ -476,128 +485,6 @@ function ArrivalsPanel({ d }: { d: DeskSummary }) {
             count: busiest.count,
           })}
         </p>
-      )}
-    </Panel>
-  )
-}
-
-function AppointmentsPanel({
-  appts,
-}: {
-  appts: { id: string; time: string; name: string; doctor: string; status: string }[]
-}) {
-  const { t } = useTranslation()
-  return (
-    <Panel i={1} title={t('desk.receptionist.appointments')} right={String(appts.length)}>
-      {appts.length === 0 ? (
-        <Empty>{t('desk.receptionist.noAppointments')}</Empty>
-      ) : (
-        <ListRows
-          rows={appts.slice(0, 7).map((a) => ({
-            key: a.id,
-            pill: <Pill tint="violet">{a.time}</Pill>,
-            label: `${a.name}${a.doctor ? ` · ${a.doctor}` : ''}`,
-            value: t(`home.apptStatus.${a.status}`, { defaultValue: a.status }),
-          }))}
-        />
-      )}
-    </Panel>
-  )
-}
-
-function InquiriesPanel({
-  inquiries,
-}: {
-  inquiries: { id: string; name: string; phone: string | null; note: string | null }[]
-}) {
-  const { t } = useTranslation()
-  return (
-    <Panel i={2} title={t('desk.receptionist.inquiries')} right={String(inquiries.length)}>
-      {inquiries.length === 0 ? (
-        <Empty>{t('desk.receptionist.noInquiries')}</Empty>
-      ) : (
-        <ListRows
-          rows={inquiries.slice(0, 6).map((q) => ({
-            key: q.id,
-            pill: <Pill tint="teal">?</Pill>,
-            label: `${q.name}${q.note ? ` · ${q.note}` : ''}`,
-            value: q.phone ?? '',
-          }))}
-        />
-      )}
-      <p className="text-ink-3 m-0 text-xs">{t('desk.receptionist.inquiriesHint')}</p>
-    </Panel>
-  )
-}
-
-function BedsPanel({
-  beds,
-}: {
-  beds: { n: number; name: string; state: string; who: string | null }[]
-}) {
-  const { t } = useTranslation()
-  const tint: Record<string, string> = {
-    free: 'border-green-dot/40 bg-green-bg/50',
-    occupied: 'border-primary/30 bg-primary-tint/60',
-    cleaning: 'border-amber/30 bg-amber-bg/60',
-    out_of_service: 'border-border bg-hover opacity-60',
-  }
-  return (
-    <Panel
-      i={1}
-      title={t('desk.nurse.beds')}
-      right={t('desk.nurse.bedsFree', { count: beds.filter((b) => b.state === 'free').length })}
-    >
-      {beds.length === 0 ? (
-        <Empty>{t('desk.nurse.noBeds')}</Empty>
-      ) : (
-        <div className="grid grid-cols-2 gap-2">
-          {beds.map((b, i) => (
-            <div
-              key={b.n}
-              className={cn('anim-enter flex flex-col rounded-xl border px-3 py-2', tint[b.state])}
-              style={{ '--i': i } as CSSProperties}
-            >
-              <span className="text-xs font-bold">{b.name}</span>
-              <span className="text-ink-2 truncate text-[12px]">
-                {b.who ?? t(`desk.bedState.${b.state}`, { defaultValue: b.state })}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </Panel>
-  )
-}
-
-function TasksPanel({
-  tasks,
-}: {
-  tasks: { id: string; time: string | null; title: string; detail: string; overdue: boolean }[]
-}) {
-  const { t } = useTranslation()
-  const overdue = tasks.filter((x) => x.overdue).length
-  return (
-    <Panel
-      i={2}
-      title={t('desk.nurse.tasks')}
-      right={
-        <Badge tone={overdue ? 'red' : 'green'} dot={false}>
-          {t('home.overdue', { count: overdue })}
-        </Badge>
-      }
-    >
-      {tasks.length === 0 ? (
-        <Empty>{t('desk.nurse.noTasks')}</Empty>
-      ) : (
-        <ListRows
-          rows={tasks.slice(0, 7).map((x) => ({
-            key: x.id,
-            pill: <Pill tint={x.overdue ? 'coral' : 'teal'}>{x.time ?? '—'}</Pill>,
-            label: `${x.title}${x.detail ? ` · ${x.detail}` : ''}`,
-            value: '',
-          }))}
-        />
       )}
     </Panel>
   )
