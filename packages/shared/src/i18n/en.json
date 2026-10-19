@@ -1185,6 +1185,23 @@
       "revoked_other": "{{count}} devices will ask for a code at their next sign-in.",
       "saved": "Saved. It applies from the next sign-in.",
       "hint": "Use \"Ask every device again\" after a phone or computer is lost, or when someone leaves the clinic."
+    },
+    "beds": {
+      "title": "Beds and price per night",
+      "summary_one": "{{count}} bed · {{occupied}} occupied",
+      "summary_other": "{{count}} beds · {{occupied}} occupied",
+      "lead": "How many beds the clinic has and what one night costs. Staff see which beds are free, and a stay is billed as nights × this price (or a price agreed for the period).",
+      "count": "Number of beds",
+      "price": "Price of one night (RWF)",
+      "mixed": "The beds have different prices. Type a price to give every bed the same one, or change each bed below.",
+      "apply": "Apply",
+      "saved": "Saved",
+      "each": "Each bed",
+      "name": "Bed name",
+      "save": "Save",
+      "remove": "Remove",
+      "occupiedNoRemove": "An occupied bed cannot be removed",
+      "confirmRemove": "Remove {{name}}?"
     }
   },
   "pin": {
@@ -1556,7 +1573,23 @@
       "nobody": "Nobody in the clinic to admit",
       "discharge": "Discharge",
       "confirmDischarge": "Discharge {{name}} from this bed? The bed goes to cleaning.",
-      "ready": "Ready"
+      "ready": "Ready",
+      "perNight": "{{price}} a night",
+      "until_one": "{{count}} night · until {{date}}",
+      "until_other": "{{count}} nights · until {{date}}",
+      "extend": "Extend",
+      "patient": "Patient",
+      "nights": "Nights in the bed",
+      "moreNights": "More nights",
+      "agree": "Agree a price for this period",
+      "agreedPrice": "Price for the whole period (RWF)",
+      "total_one": "{{count}} night × {{price}} = {{total}} on the bill",
+      "total_other": "{{count}} nights × {{price}} = {{total}} on the bill",
+      "totalAgreed_one": "{{count}} night at the agreed price: {{total}} on the bill",
+      "totalAgreed_other": "{{count}} nights at the agreed price: {{total}} on the bill",
+      "admitBtn": "Put in bed",
+      "extendBtn": "Add the nights",
+      "hint": "The stay goes on the patient’s bill when the patient is put in the bed: nights × the bed’s price, or the price agreed for the period."
     }
   },
   "files": {

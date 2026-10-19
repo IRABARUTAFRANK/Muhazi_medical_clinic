@@ -976,6 +976,23 @@
       "revoked_other": "Ibikoresho {{count}} bizasaba kode ubutaha byinjiye.",
       "saved": "Byabitswe. Birakurikizwa uhereye ku kwinjira gukurikira.",
       "hint": "Koresha \"Ongera usabe kode ku bikoresho byose\" iyo telefoni cyangwa mudasobwa ibuze, cyangwa umukozi avuye mu ivuriro."
+    },
+    "beds": {
+      "title": "Ibitanda n’igiciro cy’ijoro",
+      "summary_one": "Igitanda {{count}} · {{occupied}} kiriho umurwayi",
+      "summary_other": "Ibitanda {{count}} · {{occupied}} biriho abarwayi",
+      "lead": "Umubare w’ibitanda ivuriro rifite n’igiciro cy’ijoro rimwe. Abakozi babona ibitanda biri ubusa, kandi kurara byishyurwa amajoro × iki giciro (cyangwa igiciro cyemeranyijweho).",
+      "count": "Umubare w’ibitanda",
+      "price": "Igiciro cy’ijoro rimwe (RWF)",
+      "mixed": "Ibitanda bifite ibiciro bitandukanye. Andika igiciro kugira ngo byose bigire kimwe, cyangwa uhindure buri gitanda hasi.",
+      "apply": "Emeza",
+      "saved": "Byabitswe",
+      "each": "Buri gitanda",
+      "name": "Izina ry’igitanda",
+      "save": "Bika",
+      "remove": "Kuraho",
+      "occupiedNoRemove": "Igitanda kiriho umurwayi ntigikurwaho",
+      "confirmRemove": "Gukuraho {{name}}?"
     }
   },
   "pin": {
@@ -1560,7 +1577,23 @@
       "nobody": "Nta murwayi uri mu ivuriro wo gushyira ku gitanda",
       "discharge": "Musezerere",
       "confirmDischarge": "Gusezerera {{name}} kuri iki gitanda? Igitanda kijya gusukurwa.",
-      "ready": "Cyiteguye"
+      "ready": "Cyiteguye",
+      "perNight": "{{price}} ku ijoro",
+      "until_one": "Ijoro {{count}} · kugeza {{date}}",
+      "until_other": "Amajoro {{count}} · kugeza {{date}}",
+      "extend": "Ongera igihe",
+      "patient": "Umurwayi",
+      "nights": "Amajoro ku gitanda",
+      "moreNights": "Amajoro yiyongera",
+      "agree": "Emeranya igiciro cy’iki gihe",
+      "agreedPrice": "Igiciro cy’igihe cyose (RWF)",
+      "total_one": "Ijoro {{count}} × {{price}} = {{total}} kuri fagitire",
+      "total_other": "Amajoro {{count}} × {{price}} = {{total}} kuri fagitire",
+      "totalAgreed_one": "Ijoro {{count}} ku giciro cyemeranyijweho: {{total}} kuri fagitire",
+      "totalAgreed_other": "Amajoro {{count}} ku giciro cyemeranyijweho: {{total}} kuri fagitire",
+      "admitBtn": "Shyira ku gitanda",
+      "extendBtn": "Ongeraho amajoro",
+      "hint": "Kurara bishyirwa kuri fagitire y’umurwayi akimara gushyirwa ku gitanda: amajoro × igiciro cy’igitanda, cyangwa igiciro cyemeranyijweho."
     }
   },
   "files": {

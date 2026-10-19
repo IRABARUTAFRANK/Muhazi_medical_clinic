@@ -588,6 +588,46 @@ await step('nurse admits to a bed, discharges, marks it ready', async () => {
   if (s.status !== 'free') throw new Error(s.status)
   return 'occupied → cleaning → free'
 })
+await expectError(
+  'only the manager sets the number of beds (0028)',
+  async () => {
+    await as(staff.nurse)
+    await db.query(`select set_bed_count(3, 5000)`)
+  },
+  /only the manager/i,
+)
+await step('manager sets 6 beds at 15,000 a night; a 2-night stay bills 30,000', async () => {
+  await as(staff.manager)
+  const r = (await one(`select set_bed_count(6, 15000) as r`)).r
+  if (r.beds !== 6) throw new Error(`beds ${r.beds}`)
+  await as(staff.nurse)
+  const bed = (await one(`select bed_board() as b`)).b.find((b) => b.state === 'free')
+  if (bed.nightlyPrice !== 15000) throw new Error(`price ${bed.nightlyPrice}`)
+  const a = (await one(`select admit_to_bed($1, $2, 2) as a`, [paperVisit, bed.id])).a
+  if (Number(a.total) !== 30000) throw new Error(`total ${a.total}`)
+  await asAdmin()
+  const line = await one(
+    `select l.description, l.unit_price from invoice_line l join invoice i on i.id = l.invoice_id
+     where i.encounter_id = $1 and l.source_type = 'bed_stay' order by l.created_at desc limit 1`,
+    [paperVisit],
+  )
+  if (Number(line.unit_price) !== 30000) throw new Error(`line ${line.unit_price}`)
+  await as(staff.nurse)
+  const x = (await one(`select extend_bed_stay($1, 3, 40000) as x`, [bed.id])).x
+  if (Number(x.total) !== 40000) throw new Error(`extend ${x.total}`)
+  await as(staff.manager)
+  let refused = false
+  try {
+    await db.query(`select remove_bed($1)`, [bed.id])
+  } catch {
+    refused = true
+  }
+  if (!refused) throw new Error('removed an occupied bed')
+  await as(staff.nurse)
+  await db.query(`select discharge_bed($1)`, [bed.id])
+  await db.query(`select bed_ready($1)`, [bed.id])
+  return `${line.description} = 30,000; +3 nights agreed 40,000; occupied bed kept`
+})
 
 // ---------------------------------------------------------------- nurse registers, reception completes (0023)
 await step('nurse registers with name/sex/age only → reception sees it to complete', async () => {

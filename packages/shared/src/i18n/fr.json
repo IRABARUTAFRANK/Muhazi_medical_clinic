@@ -1185,6 +1185,23 @@
       "revoked_other": "{{count}} appareils demanderont un code à leur prochaine connexion.",
       "saved": "Enregistré. Appliqué dès la prochaine connexion.",
       "hint": "Utilisez « Redemander à tous les appareils » après la perte d’un téléphone ou d’un ordinateur, ou au départ d’un employé."
+    },
+    "beds": {
+      "title": "Lits et prix de la nuit",
+      "summary_one": "{{count}} lit · {{occupied}} occupé(s)",
+      "summary_other": "{{count}} lits · {{occupied}} occupé(s)",
+      "lead": "Combien de lits la clinique possède et le prix d’une nuit. Le personnel voit les lits libres, et un séjour est facturé nuits × ce prix (ou un prix convenu pour la période).",
+      "count": "Nombre de lits",
+      "price": "Prix d’une nuit (RWF)",
+      "mixed": "Les lits ont des prix différents. Saisissez un prix pour les aligner tous, ou modifiez chaque lit ci-dessous.",
+      "apply": "Appliquer",
+      "saved": "Enregistré",
+      "each": "Chaque lit",
+      "name": "Nom du lit",
+      "save": "Enregistrer",
+      "remove": "Retirer",
+      "occupiedNoRemove": "Un lit occupé ne peut pas être retiré",
+      "confirmRemove": "Retirer {{name}} ?"
     }
   },
   "pin": {
@@ -1556,7 +1573,23 @@
       "nobody": "Aucun patient à installer",
       "discharge": "Sortie",
       "confirmDischarge": "Faire sortir {{name}} de ce lit ? Le lit passe en nettoyage.",
-      "ready": "Prêt"
+      "ready": "Prêt",
+      "perNight": "{{price}} la nuit",
+      "until_one": "{{count}} nuit · jusqu’au {{date}}",
+      "until_other": "{{count}} nuits · jusqu’au {{date}}",
+      "extend": "Prolonger",
+      "patient": "Patient",
+      "nights": "Nuits au lit",
+      "moreNights": "Nuits en plus",
+      "agree": "Convenir d’un prix pour cette période",
+      "agreedPrice": "Prix pour toute la période (RWF)",
+      "total_one": "{{count}} nuit × {{price}} = {{total}} sur la facture",
+      "total_other": "{{count}} nuits × {{price}} = {{total}} sur la facture",
+      "totalAgreed_one": "{{count}} nuit au prix convenu : {{total}} sur la facture",
+      "totalAgreed_other": "{{count}} nuits au prix convenu : {{total}} sur la facture",
+      "admitBtn": "Installer",
+      "extendBtn": "Ajouter les nuits",
+      "hint": "Le séjour est ajouté à la facture du patient dès son installation : nuits × prix du lit, ou le prix convenu pour la période."
     }
   },
   "files": {

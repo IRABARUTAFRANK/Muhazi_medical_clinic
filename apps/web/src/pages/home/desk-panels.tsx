@@ -4,16 +4,21 @@ import {
   AlarmClock,
   BedDouble,
   CalendarCheck,
+  CalendarClock,
+  CalendarPlus,
   Check,
   Clock,
   FilePen,
   ListTodo,
   MessageSquare,
+  Moon,
+  Receipt,
+  Sparkles,
   Ticket,
   X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatTime, type Role } from '@mmc/shared'
+import { formatDayMonth, formatRwf, formatTime, type Role } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -330,16 +335,25 @@ const bedTint: Record<BoardBed['state'], string> = {
 }
 
 /**
- * Short-stay beds: admit a patient who is in the clinic, discharge (the bed goes to
- * cleaning), mark it ready again.
+ * Short-stay beds: put a patient who is in the clinic in a bed for a number of nights (billed at
+ * once: nights × the bed's price, or a price agreed for the period), extend the stay, discharge
+ * (the bed goes to cleaning), mark it ready again.
  */
-export function BedsPanel({ i = 1, userRole }: { i?: number; userRole: Role }) {
+export function BedsPanel({
+  i = 1,
+  userRole,
+  className,
+}: {
+  i?: number
+  userRole: Role
+  className?: string
+}) {
   const { t } = useTranslation()
   const { data: beds = [] } = useBedBoard()
   const { data: queue = [] } = useQueueBoard('all', userRole)
   const ops = useDeskOps()
   const { error, run } = useRun()
-  const [admitting, setAdmitting] = useState<string | null>(null)
+  const [form, setForm] = useState<{ bedId: string; mode: 'admit' | 'extend' } | null>(null)
   const inBed = new Set(beds.map((b) => b.encounterId).filter(Boolean))
   // Patients in the clinic now who are not already in a bed (one row per visit).
   const candidates = [
@@ -356,100 +370,248 @@ export function BedsPanel({ i = 1, userRole }: { i?: number; userRole: Role }) {
       i={i}
       icon={BedDouble}
       tint="navy"
+      className={className}
       title={t('desk.nurse.beds')}
       right={t('desk.nurse.bedsFree', { count: free })}
     >
       {error && <p className={errorLine}>{error}</p>}
       {beds.length === 0 ? (
-        <Empty>{t('desk.nurse.noBeds')}</Empty>
+        <Empty icon={BedDouble}>{t('desk.nurse.noBeds')}</Empty>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          {beds.map((b, k) => (
-            <div
-              key={b.id}
-              className={cn(
-                'anim-enter flex flex-col gap-1 rounded-xl border px-3 py-2',
-                bedTint[b.state],
-              )}
-              style={{ '--i': k } as CSSProperties}
-            >
-              <span className="flex items-center justify-between gap-1">
-                <span className="inline-flex items-center gap-1.5 text-[13px] font-bold">
-                  <BedDouble size={15} aria-hidden="true" />
-                  {b.name}
+          {beds.map((b, k) => {
+            const open = form?.bedId === b.id
+            return (
+              <div
+                key={b.id}
+                className={cn(
+                  'anim-enter flex flex-col gap-1 rounded-xl border px-3 py-2',
+                  bedTint[b.state],
+                  open && 'col-span-2',
+                )}
+                style={{ '--i': k } as CSSProperties}
+              >
+                <span className="flex items-center justify-between gap-1">
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-bold">
+                    <BedDouble size={15} aria-hidden="true" />
+                    {b.name}
+                  </span>
+                  <span className="text-ink-3 text-[12px]">{t(`desk.bedState.${b.state}`)}</span>
                 </span>
-                <span className="text-ink-3 text-[12px]">
-                  {t(`desk.bedState.${b.state}`)}
-                  {b.since ? ` · ${formatTime(new Date(b.since))}` : ''}
+                <span className="text-ink-3 inline-flex items-center gap-1 text-[12px]">
+                  <Moon size={12} aria-hidden="true" />
+                  {t('ops.beds.perNight', { price: formatRwf(b.nightlyPrice) })}
                 </span>
-              </span>
-              {b.patient && <span className="truncate text-[13px] font-semibold">{b.patient}</span>}
-              {b.state === 'free' &&
-                (admitting === b.id ? (
-                  <select
-                    autoFocus
-                    className="border-border bg-card h-9 rounded-lg border px-2 text-[13px]"
-                    defaultValue=""
-                    onChange={(e) => {
-                      const q = candidates.find((c) => c.encounterId === e.target.value)
-                      if (!q) return
-                      setAdmitting(null)
-                      void run(() =>
-                        ops.admit.mutateAsync({
-                          bedId: b.id,
-                          encounterId: q.encounterId,
-                          patient: q.name,
-                        }),
-                      )
+                {b.patient && (
+                  <span className="truncate text-[13px] font-semibold">{b.patient}</span>
+                )}
+                {b.state === 'occupied' && b.nights != null && b.until && (
+                  <span className="text-ink-2 inline-flex items-center gap-1 text-[12px]">
+                    <CalendarClock size={12} aria-hidden="true" />
+                    {t('ops.beds.until', {
+                      count: b.nights,
+                      date: `${formatDayMonth(new Date(b.until))} ${formatTime(new Date(b.until))}`,
+                    })}
+                  </span>
+                )}
+                {open ? (
+                  <StayForm
+                    mode={form.mode}
+                    nightlyPrice={b.nightlyPrice}
+                    candidates={form.mode === 'admit' ? candidates : undefined}
+                    onCancel={() => setForm(null)}
+                    onSubmit={async (v) => {
+                      const ok = await run(async () => {
+                        if (form.mode === 'admit')
+                          await ops.admit.mutateAsync({
+                            bedId: b.id,
+                            encounterId: v.encounterId!,
+                            patient:
+                              candidates.find((c) => c.encounterId === v.encounterId)?.name ?? '',
+                            nights: v.nights,
+                            periodPrice: v.periodPrice,
+                          })
+                        else
+                          await ops.extend.mutateAsync({
+                            bedId: b.id,
+                            nights: v.nights,
+                            periodPrice: v.periodPrice,
+                          })
+                        return true
+                      })
+                      if (ok) setForm(null)
                     }}
-                    onBlur={() => setAdmitting(null)}
-                  >
-                    <option value="" disabled>
-                      {candidates.length ? t('ops.beds.pick') : t('ops.beds.nobody')}
-                    </option>
-                    {candidates.map((c) => (
-                      <option key={c.encounterId} value={c.encounterId}>
-                        {c.ticket} · {c.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 ) : (
-                  <Button size="sm" onClick={() => setAdmitting(b.id)}>
-                    {t('ops.beds.admit')}
-                  </Button>
-                ))}
-              {b.state === 'occupied' && (
-                <span className="flex flex-wrap gap-1">
-                  {b.encounterId && (
-                    <StaffLink
-                      to="/app/visit"
-                      search={{ encounter: b.encounterId }}
-                      className={buttonVariants({ size: 'sm', variant: 'ghost' })}
-                    >
-                      {t('visits.openVisit')}
-                    </StaffLink>
-                  )}
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      if (window.confirm(t('ops.beds.confirmDischarge', { name: b.patient ?? '' })))
-                        void run(() => ops.discharge.mutateAsync(b.id))
-                    }}
-                  >
-                    {t('ops.beds.discharge')}
-                  </Button>
-                </span>
-              )}
-              {(b.state === 'cleaning' || b.state === 'out_of_service') && (
-                <Button size="sm" onClick={() => void run(() => ops.ready.mutateAsync(b.id))}>
-                  {t('ops.beds.ready')}
-                </Button>
-              )}
-            </div>
-          ))}
+                  <>
+                    {b.state === 'free' && (
+                      <Button size="sm" onClick={() => setForm({ bedId: b.id, mode: 'admit' })}>
+                        <BedDouble size={14} aria-hidden="true" />
+                        {t('ops.beds.admit')}
+                      </Button>
+                    )}
+                    {b.state === 'occupied' && (
+                      <span className="flex flex-wrap gap-1">
+                        {b.encounterId && (
+                          <StaffLink
+                            to="/app/visit"
+                            search={{ encounter: b.encounterId }}
+                            className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                          >
+                            {t('visits.openVisit')}
+                          </StaffLink>
+                        )}
+                        <Button size="sm" onClick={() => setForm({ bedId: b.id, mode: 'extend' })}>
+                          <CalendarPlus size={14} aria-hidden="true" />
+                          {t('ops.beds.extend')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                t('ops.beds.confirmDischarge', { name: b.patient ?? '' }),
+                              )
+                            )
+                              void run(() => ops.discharge.mutateAsync(b.id))
+                          }}
+                        >
+                          {t('ops.beds.discharge')}
+                        </Button>
+                      </span>
+                    )}
+                    {(b.state === 'cleaning' || b.state === 'out_of_service') && (
+                      <Button size="sm" onClick={() => void run(() => ops.ready.mutateAsync(b.id))}>
+                        <Sparkles size={14} aria-hidden="true" />
+                        {t('ops.beds.ready')}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
+      <Hint>{t('ops.beds.hint')}</Hint>
     </Panel>
+  )
+}
+
+/** Nights and price of a stay (admission or extension); the total goes on the bill. */
+function StayForm({
+  mode,
+  nightlyPrice,
+  candidates,
+  onSubmit,
+  onCancel,
+}: {
+  mode: 'admit' | 'extend'
+  nightlyPrice: number
+  candidates?: { encounterId: string; ticket: string; name: string }[]
+  onSubmit: (v: {
+    encounterId?: string
+    nights: number
+    periodPrice: number | null
+  }) => Promise<void>
+  onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  const [encounterId, setEncounterId] = useState('')
+  const [nights, setNights] = useState(1)
+  const [agree, setAgree] = useState(false)
+  const [price, setPrice] = useState('')
+  const [busy, setBusy] = useState(false)
+  const agreed = agree && price !== '' ? Number(price) : null
+  const total = agreed ?? nights * nightlyPrice
+  const valid =
+    nights >= 1 && nights <= 365 && (mode === 'extend' || !!encounterId) && (!agree || price !== '')
+  const input = 'border-border bg-card h-10 w-full rounded-lg border px-2.5 text-[14px]'
+  return (
+    <form
+      className="mt-1 flex flex-col gap-2"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        if (!valid) return
+        setBusy(true)
+        await onSubmit({ encounterId: encounterId || undefined, nights, periodPrice: agreed })
+        setBusy(false)
+      }}
+    >
+      {mode === 'admit' && (
+        <label className="flex flex-col gap-1 text-[13px] font-semibold">
+          {t('ops.beds.patient')}
+          <select
+            autoFocus
+            className={input}
+            value={encounterId}
+            onChange={(e) => setEncounterId(e.target.value)}
+          >
+            <option value="" disabled>
+              {candidates?.length ? t('ops.beds.pick') : t('ops.beds.nobody')}
+            </option>
+            {candidates?.map((c) => (
+              <option key={c.encounterId} value={c.encounterId}>
+                {c.ticket} · {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label className="flex flex-col gap-1 text-[13px] font-semibold">
+        {t(mode === 'admit' ? 'ops.beds.nights' : 'ops.beds.moreNights')}
+        <input
+          type="number"
+          min={1}
+          max={365}
+          inputMode="numeric"
+          className={input}
+          value={nights}
+          onChange={(e) => setNights(Math.max(1, Math.min(365, Number(e.target.value) || 1)))}
+        />
+      </label>
+      <label className="flex items-center gap-2 text-[13px] font-semibold">
+        <input
+          type="checkbox"
+          className="accent-primary size-4"
+          checked={agree}
+          onChange={(e) => setAgree(e.target.checked)}
+        />
+        {t('ops.beds.agree')}
+      </label>
+      {agree && (
+        <label className="flex flex-col gap-1 text-[13px] font-semibold">
+          {t('ops.beds.agreedPrice')}
+          <input
+            inputMode="numeric"
+            className={input}
+            value={price}
+            onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ''))}
+          />
+        </label>
+      )}
+      <p className="bg-card m-0 flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px]">
+        <Receipt size={14} aria-hidden="true" className="text-primary flex-none" />
+        <span>
+          {agreed != null
+            ? t('ops.beds.totalAgreed', { count: nights, total: formatRwf(total) })
+            : t('ops.beds.total', {
+                count: nights,
+                price: formatRwf(nightlyPrice),
+                total: formatRwf(total),
+              })}
+        </span>
+      </p>
+      <span className="flex flex-wrap gap-1">
+        <Button type="submit" size="sm" variant="primary" loading={busy} disabled={!valid}>
+          <Check size={14} aria-hidden="true" />
+          {t(mode === 'admit' ? 'ops.beds.admitBtn' : 'ops.beds.extendBtn')}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+          {t('staff.form.cancel')}
+        </Button>
+      </span>
+    </form>
   )
 }
 

@@ -25,6 +25,7 @@ import { useClinicSettings, useSaveClinicSettings, type ClinicSettings } from '@
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
+import { BedsCard } from './beds-card'
 import { LockCard } from './lock-card'
 import { OtpCard } from './otp-card'
 import { PatientFieldsCard } from './patient-fields-card'
@@ -257,6 +258,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           </form>
         )}
 
+        <BedsCard />
         <LockCard />
         <OtpCard />
         <PatientFieldsCard />

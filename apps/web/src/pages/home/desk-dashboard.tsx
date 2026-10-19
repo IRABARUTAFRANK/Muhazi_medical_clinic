@@ -190,7 +190,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
               >
                 {nurse ? (
                   <>
-                    <BedsPanel userRole={user.role} />
+                    <BedsPanel userRole={user.role} className="pc:col-span-2" />
                     <TasksPanel />
                   </>
                 ) : (

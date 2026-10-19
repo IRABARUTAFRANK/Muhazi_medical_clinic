@@ -25,9 +25,14 @@ export interface BoardBed {
   id: string
   name: string
   state: 'free' | 'occupied' | 'cleaning' | 'out_of_service'
+  /** Price of one night in this bed (RWF), set by the manager. */
+  nightlyPrice: number
   encounterId: string | null
   patient: string | null
   since: string | null
+  /** Nights planned (and billed) for the current stay, and when they end. */
+  nights: number | null
+  until: string | null
 }
 export interface OpenTask {
   id: string
@@ -94,6 +99,10 @@ const sampleBeds: BoardBed[] = Array.from({ length: 6 }, (_, i) => ({
   encounterId: i === 0 || i === 3 ? `e-${i}` : null,
   patient: i === 0 ? 'Uwase Claudine' : i === 3 ? 'Mugisha Kevin' : null,
   since: i === 0 || i === 3 ? at(9, 15) : null,
+  nightlyPrice: 15000,
+  nights: i === 0 ? 1 : i === 3 ? 2 : null,
+  until:
+    i === 0 || i === 3 ? new Date(Date.now() + (i === 0 ? 1 : 2) * 86_400_000).toISOString() : null,
 }))
 const sampleTasks: OpenTask[] = [
   {
@@ -300,7 +309,14 @@ export function useDeskOps() {
     onSuccess: refresh,
   })
   const admit = useMutation({
-    mutationFn: async (i: { bedId: string; encounterId: string; patient: string }) => {
+    mutationFn: async (i: {
+      bedId: string
+      encounterId: string
+      patient: string
+      nights: number
+      /** Price agreed for the whole period; null = nights × the bed's price. */
+      periodPrice: number | null
+    }) => {
       if (!supabase) {
         const b = sampleBeds.find((x) => x.id === i.bedId)
         if (b)
@@ -309,10 +325,37 @@ export function useDeskOps() {
             encounterId: i.encounterId,
             patient: i.patient,
             since: new Date().toISOString(),
+            nights: i.nights,
+            until: new Date(Date.now() + i.nights * 86_400_000).toISOString(),
           })
         return
       }
-      await call('admit_to_bed', { p_encounter_id: i.encounterId, p_bed_id: i.bedId })
+      await call('admit_to_bed', {
+        p_encounter_id: i.encounterId,
+        p_bed_id: i.bedId,
+        p_nights: i.nights,
+        p_period_price: i.periodPrice,
+      })
+    },
+    onSuccess: refresh,
+  })
+  const extend = useMutation({
+    mutationFn: async (i: { bedId: string; nights: number; periodPrice: number | null }) => {
+      if (!supabase) {
+        const b = sampleBeds.find((x) => x.id === i.bedId)
+        if (b) {
+          b.nights = (b.nights ?? 0) + i.nights
+          b.until = new Date(
+            new Date(b.until ?? Date.now()).getTime() + i.nights * 86_400_000,
+          ).toISOString()
+        }
+        return
+      }
+      await call('extend_bed_stay', {
+        p_bed_id: i.bedId,
+        p_nights: i.nights,
+        p_period_price: i.periodPrice,
+      })
     },
     onSuccess: refresh,
   })
@@ -321,7 +364,14 @@ export function useDeskOps() {
       if (!supabase) {
         const b = sampleBeds.find((x) => x.id === bedId)
         if (b)
-          Object.assign(b, { state: 'cleaning', encounterId: null, patient: null, since: null })
+          Object.assign(b, {
+            state: 'cleaning',
+            encounterId: null,
+            patient: null,
+            since: null,
+            nights: null,
+            until: null,
+          })
         return
       }
       await call('discharge_bed', { p_bed_id: bedId })
@@ -355,5 +405,66 @@ export function useDeskOps() {
     },
     onSuccess: refresh,
   })
-  return { arrived, outcome, createTask, completeTask, admit, discharge, ready, sendOn }
+  return { arrived, outcome, createTask, completeTask, admit, extend, discharge, ready, sendOn }
+}
+
+/**
+ * Manager: how many beds the clinic has and what a night costs (migration 0028). Sample mode
+ * changes the in-memory board.
+ */
+export function useBedAdmin() {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: ['beds'] })
+  const rpc = async (fn: string, args: Record<string, unknown>) => {
+    const { error } = await supabase!.rpc(fn, args)
+    if (error) throw new Error(error.message)
+  }
+  const setCount = useMutation({
+    mutationFn: async (i: { count: number; nightlyPrice: number | null }) => {
+      if (!supabase) {
+        while (sampleBeds.length > i.count) sampleBeds.pop()
+        while (sampleBeds.length < i.count) {
+          const n = sampleBeds.length + 1
+          sampleBeds.push({
+            id: `b-${n}-${Date.now()}`,
+            name: `Bed ${n}`,
+            state: 'free',
+            nightlyPrice: i.nightlyPrice ?? 0,
+            encounterId: null,
+            patient: null,
+            since: null,
+            nights: null,
+            until: null,
+          })
+        }
+        if (i.nightlyPrice != null) sampleBeds.forEach((b) => (b.nightlyPrice = i.nightlyPrice!))
+        return
+      }
+      await rpc('set_bed_count', { p_count: i.count, p_nightly_price: i.nightlyPrice })
+    },
+    onSuccess: refresh,
+  })
+  const save = useMutation({
+    mutationFn: async (i: { id: string; name: string; nightlyPrice: number }) => {
+      if (!supabase) {
+        const b = sampleBeds.find((x) => x.id === i.id)
+        if (b) Object.assign(b, { name: i.name, nightlyPrice: i.nightlyPrice })
+        return
+      }
+      await rpc('save_bed', { p_id: i.id, p_name: i.name, p_nightly_price: i.nightlyPrice })
+    },
+    onSuccess: refresh,
+  })
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      if (!supabase) {
+        const k = sampleBeds.findIndex((x) => x.id === id)
+        if (k >= 0) sampleBeds.splice(k, 1)
+        return
+      }
+      await rpc('remove_bed', { p_id: id })
+    },
+    onSuccess: refresh,
+  })
+  return { setCount, save, remove }
 }
