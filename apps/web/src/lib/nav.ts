@@ -17,6 +17,29 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings', to: '/app/settings' },
 ]
 
-/** ≤ 5 navigation items for the user's role. */
+/** Front desk: the dashboard, then the patient's path from the door. */
+export const RECEPTION_NAV: NavItem[] = [
+  { id: 'home', labelKey: 'nav.home', icon: 'layout-dashboard', to: '/app' },
+  { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
+  { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
+  { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
+]
+
+/** Nursing: the dashboard, triage first, then everyone in the clinic and the files. */
+export const NURSE_NAV: NavItem[] = [
+  { id: 'home', labelKey: 'nav.home', icon: 'layout-dashboard', to: '/app' },
+  { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
+  { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
+  { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
+  { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
+]
+
+/** Navigation items for the user's role. */
 export const navForUser = (user: StaffUser): NavItem[] =>
-  user.dashboard === 'manager' || user.role === 'manager' ? MANAGER_NAV : ROLE_HOME[user.role].nav
+  user.dashboard === 'manager' || user.role === 'manager'
+    ? MANAGER_NAV
+    : user.role === 'receptionist'
+      ? RECEPTION_NAV
+      : user.role === 'nurse'
+        ? NURSE_NAV
+        : ROLE_HOME[user.role].nav

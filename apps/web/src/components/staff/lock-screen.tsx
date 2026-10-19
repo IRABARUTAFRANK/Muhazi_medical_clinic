@@ -16,7 +16,7 @@ const ACTIVITY_EVENTS = [
   'scroll',
 ] as const
 /** Seconds of warning before the screen locks. */
-export const LOCK_WARNING_S = 60
+const LOCK_WARNING_S = 60
 
 /**
  * Locks the staff screen after `minutes` without input. One minute before, it returns the

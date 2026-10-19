@@ -1320,5 +1320,78 @@
     "waiting_one": "attend depuis {{count}} min",
     "waiting_other": "attend depuis {{count}} min",
     "openVisit": "Ouvrir la visite"
+  },
+  "desk": {
+    "today": "Aujourd'hui",
+    "allInClinic": "Tous les patients à la clinique",
+    "sameAsYesterday": "comme hier",
+    "vsYesterday": "{{change}} par rapport à hier",
+    "answerSoon": "à traiter aujourd'hui",
+    "seeFirst": "à voir en premier",
+    "busyShort": "{{count}} en cours",
+    "arrivals": "Arrivées aujourd'hui",
+    "arrivalsTotal": "{{count}} visites",
+    "arrivalsAt_one": "{{count}} arrivée",
+    "arrivalsAt_other": "{{count}} arrivées",
+    "arrivalsAria": "Patients arrivés par heure aujourd'hui, {{count}} au total",
+    "busiest": "Heure la plus chargée : {{hour}} ({{count}} arrivées).",
+    "tiles": {
+      "inClinic": "À la clinique",
+      "appointments": "Rendez-vous",
+      "inquiries": "Demandes",
+      "triageWaiting": "En attente au triage",
+      "red": "Rouge (urgent)",
+      "yellow": "Jaune",
+      "vitals": "Constantes prises",
+      "triageWait": "Attente au triage"
+    },
+    "units": {
+      "toAnswer": "à traiter"
+    },
+    "urgency": {
+      "red": "Rouge : urgence, voir tout de suite",
+      "yellow": "Jaune : urgent, voir bientôt",
+      "green": "Vert : peut attendre son tour"
+    },
+    "bedState": {
+      "free": "Libre",
+      "occupied": "Occupé",
+      "cleaning": "En nettoyage",
+      "out_of_service": "Hors service"
+    },
+    "receptionist": {
+      "subtitle": "Accueil",
+      "section": "Accueil",
+      "queue": "Attendent depuis le plus longtemps",
+      "appointments": "Rendez-vous d'aujourd'hui",
+      "noAppointments": "Aucun rendez-vous aujourd'hui.",
+      "inquiries": "Demandes à traiter",
+      "noInquiries": "Aucune demande en attente.",
+      "inquiriesHint": "Demandes de rendez-vous du site ou du téléphone. Rappelez et confirmez une heure."
+    },
+    "nurse": {
+      "subtitle": "Soins infirmiers",
+      "section": "Triage",
+      "queue": "File du triage",
+      "queueEmpty": "Personne n'attend au triage.",
+      "takeVitals": "Prendre les constantes",
+      "vitalsShort": "Constantes",
+      "urgency": "Urgence maintenant",
+      "urgencyHint": "Les couleurs viennent du triage. Les patients rouges passent en premier partout.",
+      "beds": "Lits",
+      "bedsFree_one": "{{count}} libre",
+      "bedsFree_other": "{{count}} libres",
+      "noBeds": "Aucun lit configuré.",
+      "tasks": "Tâches infirmières",
+      "noTasks": "Aucune tâche pour le moment."
+    },
+    "mine": {
+      "title": "Mon travail aujourd'hui",
+      "note": "avec votre compte",
+      "registrations": "patients enregistrés",
+      "visits": "visites ouvertes",
+      "vitals": "constantes prises",
+      "charges": "soins facturés"
+    }
   }
 }

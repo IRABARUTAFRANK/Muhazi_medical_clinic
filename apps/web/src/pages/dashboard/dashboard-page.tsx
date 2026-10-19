@@ -1,9 +1,6 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useState, type CSSProperties } from 'react'
 import {
-  ArrowDown,
-  ArrowUp,
   BedDouble,
-  Minus,
   Printer,
   Receipt,
   RefreshCw,
@@ -13,7 +10,6 @@ import {
   UserPlus,
   Users,
   Wallet,
-  type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -27,6 +23,15 @@ import {
   type StaffUser,
 } from '@mmc/shared'
 import { HBarList } from '@/components/charts/hbar'
+import { Empty, Kpi, ListRows, Panel, Pill } from '@/components/dash/kit'
+import {
+  avatarTint,
+  delta,
+  groupLabel,
+  initials,
+  sectionTitle,
+  stationLabel,
+} from '@/components/dash/kit-style'
 import { LineChart } from '@/components/charts/line-chart'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -41,7 +46,6 @@ import {
 } from '@/lib/api/dashboard'
 import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
 import { useDayNames } from '@/lib/hooks'
-import { useCountUp } from '@/lib/motion'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -49,9 +53,6 @@ import { cn } from '@/lib/utils'
 /* Figma: "Muhazi Clinic — Manager Dashboard v2". Tinted KPI chips, 16 px cards with a soft
    shadow, one colour per subject, staggered entrance, count-up numbers, drawn revenue line. */
 
-const sectionTitle = 'text-[11px] font-extrabold tracking-[.08em] text-ink-3 uppercase'
-const card =
-  'card-lift bg-card shadow-card flex min-w-0 flex-col gap-3.5 rounded-[16px] px-5 py-[18px]'
 const METHOD_COLORS = [
   'var(--mmc-primary)',
   'var(--mmc-green-dot)',
@@ -544,192 +545,6 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
 /* ---------------------------------------------------------------- pieces */
 
-type TFn = (key: string, opts?: Record<string, unknown>) => string
-type Tint = 'teal' | 'mint' | 'amber' | 'coral' | 'violet' | 'navy'
-const tintClass: Record<Tint, string> = {
-  teal: 'bg-primary-tint text-primary',
-  mint: 'bg-green-bg text-green',
-  amber: 'bg-amber-bg text-amber',
-  coral: 'bg-red-bg text-red',
-  violet: 'bg-violet-bg text-violet',
-  navy: 'bg-blue-bg text-navy',
-}
-const avatarTint = (i: number) =>
-  tintClass[(['teal', 'mint', 'violet', 'amber', 'coral', 'navy'] as Tint[])[i % 6]!]
-const initials = (name: string) =>
-  name
-    .replace(/^Dr\.?\s+/i, '')
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? '')
-    .join('')
-
-function delta(now: number, prev: number, upIsGood: boolean, t: TFn) {
-  const diff = now - prev
-  if (diff === 0)
-    return {
-      text: t('dashboard.noChange'),
-      good: null as boolean | null,
-      up: null as boolean | null,
-    }
-  const pct = prev === 0 ? null : Math.round((diff / prev) * 100)
-  return {
-    text: t('dashboard.vsPrevious', {
-      change: `${diff > 0 ? '+' : '−'}${formatNumber(Math.abs(diff))}${pct != null ? ` (${pct > 0 ? '+' : ''}${pct} %)` : ''}`,
-    }),
-    good: upIsGood ? diff > 0 : diff < 0,
-    up: diff > 0,
-  }
-}
-
-function CountUp({ value }: { value: number }) {
-  const v = useCountUp(value, 600)
-  return <>{formatNumber(v)}</>
-}
-
-function Kpi({
-  i,
-  icon: IconC,
-  tint,
-  label,
-  value,
-  unit,
-  delta: d,
-  spark,
-}: {
-  i: number
-  icon: LucideIcon
-  tint: Tint
-  label: string
-  value: number
-  unit: string
-  delta?: { text: string; good: boolean | null; up: boolean | null }
-  spark?: number[]
-}) {
-  const Arrow = d ? (d.up === null ? Minus : d.up ? ArrowUp : ArrowDown) : Minus
-  const pill = d
-    ? d.good === null
-      ? 'bg-hover text-ink-2'
-      : d.good
-        ? 'bg-green-bg text-green'
-        : 'bg-red-bg text-red'
-    : ''
-  return (
-    <div
-      className={cn(card, 'anim-enter relative gap-2.5 overflow-hidden px-[18px] pt-[18px] pb-3.5')}
-      style={{ '--i': i } as CSSProperties}
-    >
-      <span
-        className={cn(
-          'inline-flex size-10 items-center justify-center rounded-xl',
-          tintClass[tint],
-        )}
-      >
-        <IconC size={18} aria-hidden="true" />
-      </span>
-      <span className="text-ink-2 text-[12px] font-bold tracking-[.04em] uppercase">{label}</span>
-      <span className="flex flex-wrap items-baseline gap-1.5 text-[30px] leading-none font-extrabold tracking-[-0.02em] tabular-nums">
-        <CountUp value={value} />
-        <small className="text-ink-3 text-[13px] font-semibold">{unit}</small>
-      </span>
-      {d && (
-        <span
-          className={cn(
-            'fade-in-late inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold tabular-nums',
-            pill,
-          )}
-        >
-          <Arrow size={12} strokeWidth={3} aria-hidden="true" />
-          {d.text}
-        </span>
-      )}
-      {spark && spark.length > 1 && <Sparkline values={spark} />}
-    </div>
-  )
-}
-
-function Sparkline({ values }: { values: number[] }) {
-  const max = Math.max(1, ...values)
-  const pts = values
-    .map((v, i) => `${(i / (values.length - 1)) * 84},${34 - (v / max) * 28}`)
-    .join(' ')
-  return (
-    <svg
-      viewBox="0 0 84 34"
-      className="text-violet pointer-events-none absolute right-3 bottom-3 h-[34px] w-[84px]"
-      aria-hidden="true"
-    >
-      <polyline
-        points={pts}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        pathLength={1}
-        className="draw-line"
-      />
-    </svg>
-  )
-}
-
-function Panel({
-  i,
-  title,
-  right,
-  children,
-  className,
-}: {
-  i: number
-  title: string
-  right?: ReactNode
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <section className={cn(card, 'anim-enter', className)} style={{ '--i': i } as CSSProperties}>
-      <h3 className="m-0 flex items-center justify-between gap-2 text-[15px] font-bold">
-        <span className="truncate">{title}</span>
-        {right && <span className="text-ink-3 truncate text-xs font-semibold">{right}</span>}
-      </h3>
-      {children}
-    </section>
-  )
-}
-
-function Pill({ tint, children }: { tint: Tint; children: ReactNode }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex min-w-6 justify-center rounded-full px-2 py-0.5 text-[11px] font-bold',
-        tintClass[tint],
-      )}
-    >
-      {children}
-    </span>
-  )
-}
-
-function ListRows({
-  rows,
-}: {
-  rows: { key: string; pill: ReactNode; label: string; value: string }[]
-}) {
-  return (
-    <div className="flex flex-col">
-      {rows.map((r, i) => (
-        <div
-          key={r.key}
-          className="border-grid anim-enter flex min-h-9 items-center gap-2.5 border-b py-1.5 text-[13px] last:border-b-0"
-          style={{ '--i': i } as CSSProperties}
-        >
-          {r.pill}
-          <span className="min-w-0 flex-1 truncate">{r.label}</span>
-          <span className="font-bold whitespace-nowrap tabular-nums">{r.value}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function Donut({
   values,
   colors,
@@ -820,22 +635,6 @@ const niceStep = (peak: number) => {
   const mag = 10 ** Math.floor(Math.log10(Math.max(1, raw)))
   const n = raw / mag
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag
-}
-
-const stationLabel = (s: string, t: TFn) => {
-  const key = `register.stations.${s.toLowerCase()}`
-  const v = t(key)
-  return v === key ? s : v
-}
-
-const groupLabel = (g: string, t: TFn) => {
-  const key = `prices.groups.${g}`
-  const v = t(key)
-  return v === key ? g : v
-}
-
-function Empty({ children }: { children: ReactNode }) {
-  return <p className="text-ink-3 m-0 py-2 text-[13px]">{children}</p>
 }
 
 function Skeleton({ isManager }: { isManager: boolean }) {

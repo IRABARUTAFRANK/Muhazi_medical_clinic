@@ -473,6 +473,25 @@ await step('manager deletes an insurer', async () => {
   return 'deleted'
 })
 
+// ---------------------------------------------------------------- desk dashboards (0019)
+await step('nurse and receptionist read desk_summary', async () => {
+  await as(staff.nurse)
+  const n = await one(`select desk_summary() as d`)
+  await as(staff.receptionist)
+  const r = await one(`select desk_summary() as d`)
+  const d = r.d
+  if (d.tiles == null || !Array.isArray(d.arrivals) || d.mine == null) throw new Error('shape')
+  return `visits today ${d.tiles.visitsToday}, vitals ${n.d.tiles.vitalsToday}`
+})
+await expectError(
+  'anonymous visitors may not read desk_summary',
+  async () => {
+    await as(null, 'anon')
+    await db.query(`select desk_summary()`)
+  },
+  /permission denied|not allowed/i,
+)
+
 finish()
 
 function finish() {

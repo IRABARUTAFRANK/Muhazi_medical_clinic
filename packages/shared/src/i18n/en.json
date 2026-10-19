@@ -1320,5 +1320,78 @@
     "waiting_one": "waiting {{count}} min",
     "waiting_other": "waiting {{count}} min",
     "openVisit": "Open visit"
+  },
+  "desk": {
+    "today": "Today",
+    "allInClinic": "Everyone in the clinic",
+    "sameAsYesterday": "same as yesterday",
+    "vsYesterday": "{{change}} vs yesterday",
+    "answerSoon": "answer today",
+    "seeFirst": "see first",
+    "busyShort": "{{count}} being seen",
+    "arrivals": "Arrivals today",
+    "arrivalsTotal": "{{count}} visits",
+    "arrivalsAt_one": "{{count}} arrival",
+    "arrivalsAt_other": "{{count}} arrivals",
+    "arrivalsAria": "Patients arriving per hour today, {{count}} in total",
+    "busiest": "Busiest hour so far: {{hour}} ({{count}} arrivals).",
+    "tiles": {
+      "inClinic": "In the clinic",
+      "appointments": "Appointments",
+      "inquiries": "Inquiries",
+      "triageWaiting": "Waiting at triage",
+      "red": "Red (urgent)",
+      "yellow": "Yellow",
+      "vitals": "Vitals taken",
+      "triageWait": "Wait at triage"
+    },
+    "units": {
+      "toAnswer": "to answer"
+    },
+    "urgency": {
+      "red": "Red: emergency, see immediately",
+      "yellow": "Yellow: urgent, see soon",
+      "green": "Green: can wait their turn"
+    },
+    "bedState": {
+      "free": "Free",
+      "occupied": "Occupied",
+      "cleaning": "Being cleaned",
+      "out_of_service": "Out of service"
+    },
+    "receptionist": {
+      "subtitle": "Front desk",
+      "section": "Front desk",
+      "queue": "Waiting longest",
+      "appointments": "Appointments today",
+      "noAppointments": "No appointments today.",
+      "inquiries": "Inquiries to answer",
+      "noInquiries": "No inquiries waiting.",
+      "inquiriesHint": "Booking requests from the website or phone. Call back and confirm a time."
+    },
+    "nurse": {
+      "subtitle": "Nursing",
+      "section": "Triage",
+      "queue": "Triage queue",
+      "queueEmpty": "Nobody is waiting at triage.",
+      "takeVitals": "Take vitals",
+      "vitalsShort": "Vitals",
+      "urgency": "Urgency now",
+      "urgencyHint": "Colours come from triage. Red patients are called first at every station.",
+      "beds": "Beds",
+      "bedsFree_one": "{{count}} free",
+      "bedsFree_other": "{{count}} free",
+      "noBeds": "No beds set up yet.",
+      "tasks": "Nursing tasks",
+      "noTasks": "No tasks for now."
+    },
+    "mine": {
+      "title": "My work today",
+      "note": "signed in as you",
+      "registrations": "patients registered",
+      "visits": "visits started",
+      "vitals": "vitals taken",
+      "charges": "treatments charged"
+    }
   }
 }

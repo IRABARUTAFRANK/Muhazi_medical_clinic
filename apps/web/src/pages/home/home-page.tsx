@@ -23,6 +23,7 @@ import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
 import { QueueCard } from './queue-card'
+import { DeskDashboard } from './desk-dashboard'
 import { RolePanels } from './role-panels'
 
 interface HomePageProps {
@@ -37,8 +38,17 @@ const timeForMode: Record<HomeMode, string | undefined> = {
   empty: '07:42',
 }
 
-/** Role-aware staff home: Clinic-now strip, my queue, today's panels, quick actions. */
+/**
+ * Staff home. Receptionists and nurses get their dashboard (manager design); the other roles
+ * keep the Clinic-now strip, my queue, today's panels and quick actions.
+ */
 export function HomePage({ user, mode }: HomePageProps) {
+  if (user.role === 'receptionist' || user.role === 'nurse')
+    return <DeskDashboard user={user} role={user.role} />
+  return <RoleHome user={user} mode={mode} />
+}
+
+function RoleHome({ user, mode }: HomePageProps) {
   const { t } = useTranslation()
   const role: HomeRole = user.role === 'manager' ? 'receptionist' : user.role
   const home = ROLE_HOME[role]
