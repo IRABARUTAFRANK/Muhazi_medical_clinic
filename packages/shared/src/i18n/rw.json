@@ -314,7 +314,8 @@
     "verify": "Injira",
     "back": "Subira inyuma",
     "resend": "Ohereza indi kode",
-    "resendIn": "Indi kode mu masegonda {{s}}"
+    "resendIn": "Indi kode mu masegonda {{s}}",
+    "linkMismatch": "That sign-in link belongs to {{got}}, not {{expected}}. Nobody was signed in. Open the newest e-mail sent to {{expected}}, or sign in again."
   },
   "register": {
     "title": "Kwandika umurwayi",

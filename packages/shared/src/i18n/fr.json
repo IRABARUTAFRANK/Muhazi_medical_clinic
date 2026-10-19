@@ -709,7 +709,8 @@
     "verify": "Se connecter",
     "back": "Retour",
     "resend": "Envoyer un nouveau code",
-    "resendIn": "Nouveau code dans {{s}} s"
+    "resendIn": "Nouveau code dans {{s}} s",
+    "linkMismatch": "Ce lien de connexion appartient à {{got}}, pas à {{expected}}. Personne n’a été connecté. Ouvrez le dernier e-mail envoyé à {{expected}}, ou reconnectez-vous."
   },
   "register": {
     "title": "Enregistrer un patient",

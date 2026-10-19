@@ -192,6 +192,7 @@ export const useSession = create<SessionState>()(
           return { ok: false, reason: outcome.reason === 'unavailable' ? 'error' : outcome.reason }
         }
         set({ pending: { staffId: id, username: name, email: outcome.email, pin } })
+        rememberExpected(name)
         return { ok: true, step: 'otp', email: outcome.email }
       },
 
@@ -311,6 +312,34 @@ export const useSession = create<SessionState>()(
  * lands here with `#access_token…&type=magiclink`: supabase-js turns it into a session, and we
  * finish the sign-in exactly as after a code (record_sign_in, then the staff area).
  */
+/*
+ * Which account the person just typed on the login page. The sign-in link opens in a new tab
+ * (no in-memory state), so it is kept in localStorage for 15 minutes. If the link belongs to a
+ * different account — several staff e-mails read in one inbox — the sign-in is refused instead
+ * of silently opening someone else's dashboard.
+ */
+const EXPECTED_KEY = 'mmc.expected-sign-in'
+export const MISMATCH_KEY = 'mmc.sign-in-mismatch'
+function rememberExpected(username: string) {
+  try {
+    localStorage.setItem(EXPECTED_KEY, JSON.stringify({ username, at: Date.now() }))
+  } catch {
+    /* storage blocked: the link still works, without the check */
+  }
+}
+function expectedUsername(): string | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(EXPECTED_KEY) ?? 'null') as {
+      username?: string
+      at?: number
+    } | null
+    if (!v?.username || !v.at || Date.now() - v.at > 15 * 60_000) return null
+    return v.username
+  } catch {
+    return null
+  }
+}
+
 const arrivedByMagicLink =
   typeof window !== 'undefined' && /type=magiclink/.test(window.location.hash)
 
@@ -329,6 +358,23 @@ if (sb) {
         })
         if (error || !profile) {
           await sb.auth.signOut()
+          return
+        }
+        const expected = expectedUsername()
+        const got = (profile as ProfileJson).username
+        try {
+          localStorage.removeItem(EXPECTED_KEY)
+        } catch {
+          /* ignore */
+        }
+        if (expected && expected !== got) {
+          await sb.auth.signOut()
+          try {
+            localStorage.setItem(MISMATCH_KEY, JSON.stringify({ expected, got }))
+          } catch {
+            /* ignore */
+          }
+          window.location.replace('/login')
           return
         }
         useSession.setState({

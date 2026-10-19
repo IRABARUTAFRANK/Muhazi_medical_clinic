@@ -709,7 +709,8 @@
     "verify": "Sign in",
     "back": "Back",
     "resend": "Send a new code",
-    "resendIn": "New code in {{s}} s"
+    "resendIn": "New code in {{s}} s",
+    "linkMismatch": "That sign-in link belongs to {{got}}, not {{expected}}. Nobody was signed in. Open the newest e-mail sent to {{expected}}, or sign in again."
   },
   "register": {
     "title": "Register a patient",

@@ -7,7 +7,7 @@ import { Field } from '@/components/ui/field'
 import { Logo } from '@/components/public/logo'
 import { homeRouteFor } from '@/lib/roles'
 import { isLive } from '@/lib/supabase'
-import { maskEmail, useSession } from '@/store/session'
+import { MISMATCH_KEY, maskEmail, useSession } from '@/store/session'
 
 const CODE_RE = /^[0-9]{6}$/
 
@@ -29,7 +29,18 @@ export function LoginPage({ staffId }: { staffId: string }) {
   const [pin, setPin] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // A sign-in link for another account was refused (see session.ts): say which one.
+  const [error, setError] = useState<string | null>(() => {
+    try {
+      const raw = localStorage.getItem(MISMATCH_KEY)
+      if (!raw) return null
+      localStorage.removeItem(MISMATCH_KEY)
+      const m = JSON.parse(raw) as { expected: string; got: string }
+      return t('login.linkMismatch', { expected: m.expected, got: m.got })
+    } catch {
+      return null
+    }
+  })
   const [notice, setNotice] = useState<string | null>(null)
   const [cooldown, setCooldown] = useState(0)
   const codeRef = useRef<HTMLInputElement>(null)
