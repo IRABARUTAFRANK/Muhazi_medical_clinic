@@ -183,6 +183,8 @@ export function useVisitActions() {
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ['queue'] })
     void qc.invalidateQueries({ queryKey: ['patients'] })
+    void qc.invalidateQueries({ queryKey: ['visit'] })
+    void qc.invalidateQueries({ queryKey: ['desk'] })
   }
 
   const register = useMutation({
@@ -258,16 +260,23 @@ export function useVisitActions() {
       triage,
       nextStation,
       reason,
+      measuredBy,
+      measuredAt,
     }: {
       encounterId: string
       vitals: Record<string, string>
-      triage: Triage
-      nextStation: Station
+      /** Omitted when vitals are added later (the patient stays where they are). */
+      triage?: Triage | null
+      nextStation?: Station | null
       reason?: string
+      /** Who measured (the nurse); omitted = the person typing. */
+      measuredBy?: string | null
+      /** When it was measured (from the paper sheet); omitted = now. */
+      measuredAt?: string | null
     }): Promise<string> => {
       if (!supabase) {
         const row = sampleQueue.find((r) => r.encounterId === encounterId)
-        if (row) row.station = nextStation
+        if (row && nextStation) row.station = nextStation
         return row?.ticket ?? 'A-000'
       }
       const clean: Record<string, number> = {}
@@ -278,9 +287,11 @@ export function useVisitActions() {
       const { data, error } = await supabase.rpc('record_vitals', {
         p_encounter_id: encounterId,
         p_vitals: clean,
-        p_triage: triage,
-        p_next_station: nextStation,
+        p_triage: triage ?? null,
+        p_next_station: nextStation ?? null,
         p_reason: reason?.trim() || null,
+        p_measured_by: measuredBy ?? null,
+        p_measured_at: measuredAt ?? null,
       })
       if (error) throw new Error(error.message)
       return String(data)
@@ -289,6 +300,33 @@ export function useVisitActions() {
   })
 
   return { register, startVisit, recordVitals }
+}
+
+// ---------------------------------------------------------------- who measures
+export interface VitalsTaker {
+  id: string
+  name: string
+  staffId: string | null
+  role: string
+}
+
+/** Nurses first, then doctors and managers: the "Measured by" list on every vitals form. */
+export function useVitalsTakers() {
+  return useQuery({
+    queryKey: ['staff', 'vitals-takers'],
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<VitalsTaker[]> => {
+      if (!supabase)
+        return [
+          { id: 'u-nur', name: 'Nyirahabimana Chantal', staffId: 'MMC-S-0002', role: 'nurse' },
+          { id: 'u-doc', name: 'Dr. Mukamana Béatrice', staffId: 'MMC-S-0003', role: 'doctor' },
+          { id: 'u-mgr', name: 'Mugabo Théogène', staffId: 'MMC-S-0007', role: 'manager' },
+        ]
+      const { data, error } = await supabase.rpc('vitals_takers')
+      if (error) throw new Error(error.message)
+      return (data as VitalsTaker[]) ?? []
+    },
+  })
 }
 
 // ---------------------------------------------------------------- queue board

@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, FolderOpen, Plus, Receipt, Send, Trash2 } from 'lucide-react'
+import { Activity, ArrowLeft, FolderOpen, Plus, Receipt, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FEATURES, formatRwf, type StaffUser } from '@mmc/shared'
+import { FEATURES, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
+import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -16,6 +17,7 @@ import {
   useVisitBill,
   useVisitHeader,
   useVisitVitals,
+  type Vital,
   type VisitBill,
 } from '@/lib/api/billing'
 import { useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
@@ -47,6 +49,17 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const [actionError, setActionError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
   const isManagerNav = user.role === 'manager' || user.dashboard === 'manager'
+  const [addingVitals, setAddingVitals] = useState(false)
+  /** "Measured by Chantal at 09:12 · typed by Josiane" for the nurse's paper sheet case. */
+  const vitalSource = (v: Vital) => {
+    const time = formatTime(new Date(v.at))
+    const base = v.measuredBy
+      ? t('vitalsForm.measuredLine', { name: v.measuredBy, time })
+      : t('vitalsForm.measuredAtLine', { time })
+    return v.enteredBy && v.measuredBy && v.enteredBy !== v.measuredBy
+      ? `${base} · ${t('vitalsForm.typedBy', { name: v.enteredBy })}`
+      : base
+  }
 
   const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
   const currentInsurer = insurers.find((i) => i.id === bill?.payerId)
@@ -135,17 +148,45 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                   {t('visit.patientFile')}
                 </StaffLink>
               </CardBody>
-              {vitals.length > 0 && (
-                <CardBody className="border-border flex-row flex-wrap gap-2 border-t">
-                  {vitals.map((v) => (
-                    <Chip key={v.code}>
-                      {t(`triage.vitals.${v.code}`)}: <b className="ml-1 tabular-nums">{v.value}</b>
-                      {v.unit ? ` ${v.unit}` : ''}
-                    </Chip>
-                  ))}
+              <CardBody className="border-border flex-row flex-wrap items-center gap-2 border-t">
+                {vitals.length === 0 && (
+                  <span className="text-ink-3 text-[13px]">{t('vitalsForm.none')}</span>
+                )}
+                {vitals.map((v) => (
+                  <Chip key={v.code} title={vitalSource(v)}>
+                    {t(`triage.vitals.${v.code}`)}: <b className="ml-1 tabular-nums">{v.value}</b>
+                    {v.unit ? ` ${v.unit}` : ''}
+                  </Chip>
+                ))}
+                <span className="flex-1" />
+                {!addingVitals && (
+                  <Button size="sm" onClick={() => setAddingVitals(true)}>
+                    <Activity size={14} aria-hidden="true" />
+                    {t(vitals.length ? 'vitalsForm.addMore' : 'vitalsForm.add')}
+                  </Button>
+                )}
+              </CardBody>
+              {vitals[0] && (
+                <CardBody className="text-ink-3 -mt-2 pt-0 text-xs">
+                  {vitalSource(vitals[0])}
                 </CardBody>
               )}
             </Card>
+
+            {addingVitals && (
+              <VitalsForm
+                user={user}
+                encounterId={encounterId}
+                title={t('vitalsForm.addTitle', { name: header.name })}
+                mode="add"
+                onCancel={() => setAddingVitals(false)}
+                onSaved={() => {
+                  setAddingVitals(false)
+                  setActionError(null)
+                  setDone(t('vitalsForm.saved'))
+                }}
+              />
+            )}
 
             {(actionError || done) && (
               <p

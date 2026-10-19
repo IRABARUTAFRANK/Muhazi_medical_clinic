@@ -765,7 +765,8 @@
       "where": "The patient is saved in the patient register. Their visit is open and queued at triage (nurse station), where vitals are taken before the doctor.",
       "openFile": "Open patient file",
       "openVisit": "Open the visit",
-      "register": "Patient register"
+      "register": "Patient register",
+      "takeVitals": "Take vitals now"
     },
     "errors": {
       "openVisit": "This patient already has an open visit.",
@@ -1393,6 +1394,28 @@
       "visits": "visits started",
       "vitals": "vitals taken",
       "charges": "treatments charged"
+    }
+  },
+  "vitalsForm": {
+    "measuredBy": "Measured by",
+    "measuredAt": "Measured at",
+    "me": "Me ({{name}})",
+    "pickNurse": "Choose the nurse who measured",
+    "selfHint": "You measured now. If you are typing a nurse’s paper sheet, choose her name and the time she wrote.",
+    "paperHint": "From the paper sheet: the measurements are saved as taken by this nurse at this time, and as typed in by you.",
+    "save": "Save vitals",
+    "saved": "Vitals saved.",
+    "add": "Add vitals",
+    "addMore": "Add or update vitals",
+    "addTitle": "Vitals for {{name}}",
+    "none": "No vitals yet.",
+    "measuredLine": "Measured by {{name}} at {{time}}",
+    "measuredAtLine": "Measured at {{time}}",
+    "typedBy": "typed by {{name}}",
+    "errors": {
+      "who": "Choose the nurse who took the measurements.",
+      "time": "Enter the time of the measurement.",
+      "future": "The measurement time is in the future."
     }
   }
 }

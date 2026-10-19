@@ -369,7 +369,7 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
               </span>
               <StaffLink
                 to={nurse ? '/app/vitals' : '/app/visit'}
-                search={nurse ? undefined : { encounter: r.encounterId }}
+                search={{ encounter: r.encounterId }}
                 className={buttonVariants({ size: 'sm', variant: i === 0 ? 'primary' : 'default' })}
               >
                 {t(nurse ? 'desk.nurse.vitalsShort' : 'visits.openVisit')}

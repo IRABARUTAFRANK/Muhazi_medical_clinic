@@ -765,7 +765,8 @@
       "where": "Le patient est enregistré dans le registre. Sa visite est ouverte et placée au triage (poste infirmier), où les constantes sont prises avant le médecin.",
       "openFile": "Ouvrir le dossier",
       "openVisit": "Ouvrir la visite",
-      "register": "Registre des patients"
+      "register": "Registre des patients",
+      "takeVitals": "Prendre les constantes maintenant"
     },
     "errors": {
       "openVisit": "Ce patient a déjà une visite en cours.",
@@ -1393,6 +1394,28 @@
       "visits": "visites ouvertes",
       "vitals": "constantes prises",
       "charges": "soins facturés"
+    }
+  },
+  "vitalsForm": {
+    "measuredBy": "Mesuré par",
+    "measuredAt": "Mesuré à",
+    "me": "Moi ({{name}})",
+    "pickNurse": "Choisir l'infirmière qui a mesuré",
+    "selfHint": "Vous venez de mesurer. Si vous saisissez la fiche papier d'une infirmière, choisissez son nom et l'heure notée.",
+    "paperHint": "Depuis la fiche papier : les mesures sont enregistrées comme prises par cette infirmière à cette heure, et saisies par vous.",
+    "save": "Enregistrer les constantes",
+    "saved": "Constantes enregistrées.",
+    "add": "Ajouter des constantes",
+    "addMore": "Ajouter ou mettre à jour",
+    "addTitle": "Constantes de {{name}}",
+    "none": "Aucune constante pour le moment.",
+    "measuredLine": "Mesuré par {{name}} à {{time}}",
+    "measuredAtLine": "Mesuré à {{time}}",
+    "typedBy": "saisi par {{name}}",
+    "errors": {
+      "who": "Choisissez l'infirmière qui a pris les mesures.",
+      "time": "Indiquez l'heure de la mesure.",
+      "future": "L'heure de la mesure est dans le futur."
     }
   }
 }

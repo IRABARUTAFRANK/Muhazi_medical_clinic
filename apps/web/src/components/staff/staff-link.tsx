@@ -21,6 +21,8 @@ export function StaffLink({ to, search, ...rest }: StaffLinkProps) {
   if (to === '/app/dashboard') return <Link to="/app/dashboard" {...rest} />
   if (to === '/app/visit' && search && 'encounter' in search)
     return <Link to="/app/visit" search={search} {...rest} />
+  if (to === '/app/vitals' && search && 'encounter' in search)
+    return <Link to="/app/vitals" search={search} {...rest} />
   if (to === '/app/patient' && search && 'id' in search)
     return <Link to="/app/patient" search={search} {...rest} />
   const section = to.replace(/^\/app\//, '')

@@ -115,6 +115,14 @@ const SHOTS = [
   { name: 'register-1366', path: '/app/register', vp: [1366, 1000], user: 'u-mgr' },
   { name: 'settings-fields', path: '/app/settings', vp: [1366, 1900], user: 'u-mgr' },
   { name: 'visits-1366', path: '/app/visits', vp: [1366, 900], user: 'u-mgr' },
+  { name: 'triage-reception', path: '/app/vitals', vp: [1366, 1100], user: 'u-rec' },
+  {
+    name: 'visit-add-vitals',
+    path: '/app/visit?encounter=e-1',
+    vp: [1366, 1300],
+    user: 'u-doc',
+    click: 'main section button, main div.border-t button',
+  },
   { name: 'prices-1366', path: '/app/prices', vp: [1366, 1300], user: 'u-mgr' },
   {
     name: 'prices-new',

@@ -386,10 +386,19 @@ function ResultCard({ result, onAnother }: { result: VisitResult; onAnother: () 
         </div>
         <p className="text-ink-2 m-0 text-[13px]">{t('register.done.where')}</p>
         <div className="flex flex-wrap gap-2">
+          {triage && (
+            <StaffLink
+              to="/app/vitals"
+              search={{ encounter: result.encounterId }}
+              className={buttonVariants({ variant: 'primary' })}
+            >
+              {t('register.done.takeVitals')}
+            </StaffLink>
+          )}
           <StaffLink
             to="/app/patient"
             search={{ id: result.patientId }}
-            className={buttonVariants({ variant: 'primary' })}
+            className={buttonVariants({ variant: triage ? 'default' : 'primary' })}
           >
             {t('register.done.openFile')}
           </StaffLink>

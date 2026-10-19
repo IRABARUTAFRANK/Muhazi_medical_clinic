@@ -473,6 +473,49 @@ await step('manager deletes an insurer', async () => {
   return 'deleted'
 })
 
+// ---------------------------------------------------------------- vitals on behalf (0020)
+let paperVisit = null
+await step('receptionist types the nurse’s paper vitals; patient moves on', async () => {
+  await as(staff.receptionist)
+  paperVisit = (await one(`select open_encounter($1, 'opd', 'triage', null) as id`, [patientId])).id
+  await db.query(
+    `select record_vitals($1, '{"bp_sys":"130","temp":"37.9"}'::jsonb, 'yellow', 'consultation', null, $2, now() - interval '20 minutes')`,
+    [paperVisit, staff.nurse],
+  )
+  await asAdmin()
+  const o = await one(
+    `select count(*)::int as n, bool_and(performer_id = $2) as by_nurse, bool_and(created_by = $3) as typed_by_rec
+     from observation where encounter_id = $1`,
+    [paperVisit, staff.nurse, staff.receptionist],
+  )
+  const q = await one(
+    `select station from queue_entry where encounter_id = $1 and finished_at is null`,
+    [paperVisit],
+  )
+  if (o.n !== 2 || !o.by_nurse || !o.typed_by_rec) throw new Error(JSON.stringify(o))
+  if (q.station !== 'consultation') throw new Error(q.station)
+  return 'measured by nurse, typed by receptionist, now at consultation'
+})
+await expectError(
+  'receptionist must name who measured',
+  async () => {
+    await as(staff.receptionist)
+    await db.query(`select record_vitals($1, '{"pulse":"80"}'::jsonb)`, [paperVisit])
+  },
+  /choose the nurse/i,
+)
+await step('doctor adds later vitals without moving the patient', async () => {
+  await as(staff.doctor)
+  await db.query(`select record_vitals($1, '{"weight":"64"}'::jsonb)`, [paperVisit])
+  await asAdmin()
+  const q = await one(
+    `select count(*)::int as n from queue_entry where encounter_id = $1 and finished_at is null`,
+    [paperVisit],
+  )
+  if (q.n !== 1) throw new Error(`${q.n} open queue entries`)
+  return 'still one open queue entry'
+})
+
 // ---------------------------------------------------------------- desk dashboards (0019)
 await step('nurse and receptionist read desk_summary', async () => {
   await as(staff.nurse)

@@ -26,7 +26,11 @@ export interface Vital {
   code: string
   value: number
   unit: string | null
+  /** When it was measured (may be earlier than when it was typed). */
   at: string
+  /** Who measured (the nurse) and who typed it in, when known. */
+  measuredBy?: string | null
+  enteredBy?: string | null
 }
 
 export interface Charge {
@@ -168,7 +172,7 @@ export function useVisitVitals(encounterId: string) {
       }
       const { data, error } = await supabase
         .from('visit_vitals')
-        .select('code, value_num, unit, effective_at')
+        .select('code, value_num, unit, effective_at, measured_by, entered_by')
         .eq('encounter_id', encounterId)
       if (error) throw new Error(error.message)
       return (
@@ -177,12 +181,16 @@ export function useVisitVitals(encounterId: string) {
           value_num: number | string
           unit: string | null
           effective_at: string
+          measured_by: string | null
+          entered_by: string | null
         }[]
       ).map((v) => ({
         code: v.code,
         value: Number(v.value_num),
         unit: v.unit,
         at: v.effective_at,
+        measuredBy: v.measured_by,
+        enteredBy: v.entered_by,
       }))
     },
   })
