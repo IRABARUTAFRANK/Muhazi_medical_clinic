@@ -118,7 +118,12 @@ const SHOTS = [
   { name: 'triage-reception', path: '/app/vitals', vp: [1366, 1100], user: 'u-rec' },
   { name: 'appointments-1366', path: '/app/appointments', vp: [1366, 900], user: 'u-rec' },
   { name: 'register-nurse', path: '/app/register', vp: [1366, 900], user: 'u-nur' },
-  { name: 'patient-complete', path: '/app/patient?id=p-2&tab=complete', vp: [1366, 1300], user: 'u-rec' },
+  {
+    name: 'patient-complete',
+    path: '/app/patient?id=p-2&tab=complete',
+    vp: [1366, 1300],
+    user: 'u-rec',
+  },
   { name: 'home-receptionist-full', path: '/app', vp: [1366, 1400], user: 'u-rec' },
   { name: 'home-nurse-full', path: '/app', vp: [1366, 1400], user: 'u-nur' },
   {
