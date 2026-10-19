@@ -86,7 +86,8 @@
     "register": "Register",
     "triage": "Triage",
     "inClinic": "In clinic",
-    "bookings": "Bookings"
+    "bookings": "Bookings",
+    "notifications": "Notices"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -448,7 +449,10 @@
       "directSale": "Direct sale",
       "dayClose": "Day close"
     },
-    "methodsHint": "Accepted payments: cash, MTN MoMo and Airtel Money."
+    "methodsHint": "Accepted payments: cash, MTN MoMo and Airtel Money.",
+    "sharedQueue": "first doctor free",
+    "takenBy": "taken by {{name}}",
+    "take": "Take"
   },
   "dashboard": {
     "title": "Clinic dashboard",
@@ -842,6 +846,14 @@
       "nationalId": "{{message}}",
       "nationalIdFormat": "The national ID has 16 digits.",
       "generic": "Registration failed: {{message}}"
+    },
+    "noId": {
+      "label": "National ID",
+      "has": "Has a national ID",
+      "child": "No ID: child",
+      "not_issued": "No ID: not issued yet",
+      "foreigner": "No ID: foreign national",
+      "childHint": "For a child, put the parent’s or guardian’s phone number and their name as the emergency contact in the file."
     }
   },
   "triage": {
@@ -1087,10 +1099,17 @@
       "lead": "Closes the {{station}} queue entry and sends the patient on.",
       "toCashier": "Send to the cashier",
       "other": "Or send to",
-      "send": "Send"
+      "send": "Send",
+      "anyDoctor": "Any available doctor",
+      "anyDoctorHint": "The patient waits at {{desks}} at once; the first doctor who is free takes the patient and the others no longer see them.",
+      "pick": "Or choose one or more desks",
+      "sendMany_one": "Send to {{count}} desk",
+      "sendMany_other": "Send to {{count}} desks",
+      "manyHint": "Several desks: the patient waits at each one and leaves the others as soon as one desk takes them."
     },
     "patientFile": "Patient file",
-    "backToClinic": "Back to In the clinic"
+    "backToClinic": "Back to In the clinic",
+    "sentMany": "Patient sent to {{station}}: the first one free takes the patient."
   },
   "settings": {
     "title": "Clinic settings",
@@ -1689,5 +1708,41 @@
       "toCollect": "to collect"
     },
     "reviewSoon": "review soon"
+  },
+  "notices": {
+    "title": "Notifications",
+    "lead": "Everything addressed to you: patients waiting at your desk, tasks, bookings and messages. Open what a notice is about, mark it read or remove it from your list.",
+    "leadManager": "Everything addressed to you, and the messages you send to the staff. Filter, open, mark read or remove; in \"Sent\" you see how many have read each message.",
+    "unreadCount_one": "{{count}} unread",
+    "unreadCount_other": "{{count}} unread",
+    "tabs": {
+      "inbox": "Inbox",
+      "sent": "Sent"
+    },
+    "inbox": "Inbox",
+    "shown_one": "{{count}} shown",
+    "shown_other": "{{count}} shown",
+    "filters": {
+      "all": "All",
+      "unread": "Unread",
+      "urgent": "Urgent",
+      "patients": "Patients and tasks",
+      "messages": "Messages"
+    },
+    "selectAll": "Select all",
+    "markSelected_one": "Mark {{count}} read",
+    "markSelected_other": "Mark {{count}} read",
+    "removeSelected_one": "Remove {{count}}",
+    "removeSelected_other": "Remove {{count}}",
+    "empty": "Nothing here.",
+    "markRead": "Mark read",
+    "remove": "Remove from my list",
+    "sentTitle": "Messages you sent",
+    "noneSent": "You have not sent a message yet.",
+    "readBy_one": "read by {{count}} person",
+    "readBy_other": "read by {{count}} people",
+    "confirmDelete": "Delete this message for everyone?",
+    "delete": "Delete",
+    "manage": "All notifications"
   }
 }

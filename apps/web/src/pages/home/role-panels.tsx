@@ -9,14 +9,17 @@ import {
   Clock,
   FileText,
   FlaskConical,
+  HandHelping,
   Hourglass,
   ListTodo,
   MessageSquare,
   Receipt,
+  Stethoscope,
   Users,
   Wallet,
   X,
 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import {
   formatRwf,
@@ -30,6 +33,7 @@ import { triageIcon, type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useHomeActions, type HomeBed, type HomeSummary } from '@/lib/api/home'
+import { useTakePatient } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
 
 /*
@@ -71,11 +75,24 @@ export function MyQueuePanel({
   rowAction,
 }: {
   title: string
-  rows: QueueRow[]
+  rows: (QueueRow & { queueId?: string; poolId?: string | null; takenBy?: string | null })[]
   counts: QueueCounts
   rowAction: 'open' | 'call'
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const take = useTakePatient()
+  const [error, setError] = useState<string | null>(null)
+  // "Take": claims the patient here (a shared patient leaves the other desks), then opens the visit.
+  const takeAndOpen = async (q: { queueId?: string; encounterId?: string }) => {
+    setError(null)
+    try {
+      if (q.queueId) await take.mutateAsync(q.queueId)
+      if (q.encounterId) await navigate({ to: '/app/visit', search: { encounter: q.encounterId } })
+    } catch (e) {
+      setError(describe(e))
+    }
+  }
   return (
     <Panel
       i={1}
@@ -84,6 +101,7 @@ export function MyQueuePanel({
       title={title}
       right={`${t('home.waiting', { count: counts.waiting })} · ${t('home.inProgress', { count: counts.inProgress })} · ${t('home.done', { count: counts.done })}`}
     >
+      {error && <ErrorBox>{error}</ErrorBox>}
       {rows.length === 0 ? (
         <Empty>{t('home.emptyQueueTitle')}</Empty>
       ) : (
@@ -107,15 +125,41 @@ export function MyQueuePanel({
                       {q.insurer}
                     </span>
                   )}
+                  {q.poolId && (
+                    <span className="text-violet inline-flex items-center gap-1 font-semibold">
+                      <Users size={12} aria-hidden="true" />
+                      {t('home.sharedQueue')}
+                    </span>
+                  )}
+                  {q.takenBy && (
+                    <span className="text-primary inline-flex items-center gap-1 font-semibold">
+                      <Stethoscope size={12} aria-hidden="true" />
+                      {t('home.takenBy', { name: q.takenBy })}
+                    </span>
+                  )}
                 </span>
               </span>
-              <StaffLink
-                to={q.encounterId ? '/app/visit' : '/app/queue'}
-                search={q.encounterId ? { encounter: q.encounterId } : undefined}
-                className={buttonVariants({ size: 'sm', variant: i === 0 ? 'primary' : 'default' })}
-              >
-                {t(rowAction === 'open' ? 'common.open' : 'common.call')}
-              </StaffLink>
+              {q.encounterId ? (
+                <Button
+                  size="sm"
+                  variant={i === 0 ? 'primary' : 'default'}
+                  loading={take.isPending && take.variables === q.queueId}
+                  onClick={() => void takeAndOpen(q)}
+                >
+                  <HandHelping size={14} aria-hidden="true" />
+                  {t(q.takenBy ? 'common.open' : 'home.take')}
+                </Button>
+              ) : (
+                <StaffLink
+                  to="/app/queue"
+                  className={buttonVariants({
+                    size: 'sm',
+                    variant: i === 0 ? 'primary' : 'default',
+                  })}
+                >
+                  {t(rowAction === 'open' ? 'common.open' : 'common.call')}
+                </StaffLink>
+              )}
             </div>
           ))}
         </div>

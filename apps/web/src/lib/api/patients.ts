@@ -39,6 +39,8 @@ export interface PatientRecord {
   birth_date: string | null
   age_estimated: boolean
   national_id: string | null
+  /** Why there is no national ID (child, not issued yet, foreign national), if so. */
+  no_national_id?: 'child' | 'not_issued' | 'foreigner' | null
   phone_1: string | null
   phone_2: string | null
   preferred_channel: string
@@ -355,6 +357,18 @@ export function usePatientFile(id: string) {
       }
     },
   })
+}
+
+export type NoIdReason = 'child' | 'not_issued' | 'foreigner'
+
+/** Records why a patient has no national ID (null clears it); the file stops asking for one. */
+export async function setNoNationalId(patientId: string, reason: NoIdReason | null) {
+  if (!supabase) return
+  const { error } = await supabase.rpc('set_no_national_id', {
+    p_patient_id: patientId,
+    p_reason: reason,
+  })
+  if (error) throw new Error(error.message)
 }
 
 export function usePatientActions(id: string) {

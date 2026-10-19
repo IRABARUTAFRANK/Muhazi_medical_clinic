@@ -1,6 +1,7 @@
 /** Sidebar and action icons by name (nav items store the name). */
 import {
   Activity,
+  Bell,
   ArrowDown,
   ArrowRight,
   ArrowUp,
@@ -92,6 +93,7 @@ export const icons = {
   settings: Settings,
   stethoscope: Stethoscope,
   'id-card': IdCard,
+  bell: Bell,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof icons

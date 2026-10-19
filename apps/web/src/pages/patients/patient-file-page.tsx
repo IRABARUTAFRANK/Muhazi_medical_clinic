@@ -18,6 +18,8 @@ import {
   type PatientRecord,
   usePatientFields,
   type PatientFieldDef,
+  setNoNationalId,
+  type NoIdReason,
 } from '@/lib/api/patients'
 import {
   TREATING_STATIONS,
@@ -322,7 +324,7 @@ const missingOf = (p: PatientRecord): string[] => {
   if (!p.phone_1?.trim()) out.push('phone')
   const adult =
     !p.birth_date || new Date(p.birth_date) <= new Date(Date.now() - 16 * 365.25 * 86_400_000)
-  if (!p.national_id && adult) out.push('national_id')
+  if (!p.national_id && !p.no_national_id && adult) out.push('national_id')
   if (!p.sector?.trim()) out.push('address')
   if (!p.birth_date) out.push('age')
   return out
@@ -355,7 +357,12 @@ function Overview({ file }: { file: PatientFile }) {
         </CardHeader>
         <CardBody className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
           <Info label={f('file_number')} value={p.file_number} />
-          <Info label={f('national_id')} value={p.national_id} />
+          <Info
+            label={f('national_id')}
+            value={
+              p.national_id ?? (p.no_national_id ? t(`register.noId.${p.no_national_id}`) : null)
+            }
+          />
           <Info label={f('sex')} value={t(`register.sexes.${p.sex}`)} />
           <Info
             label={f('birth_date')}
@@ -550,6 +557,7 @@ function EditForm({
     notes: p.notes ?? '',
   })
   const [extra, setExtra] = useState<Record<string, string>>({ ...(p.extra ?? {}) })
+  const [noId, setNoId] = useState<NoIdReason | ''>(p.no_national_id ?? '')
   const set = (k: string, val: string) => setV((s) => ({ ...s, [k]: val }))
   const setX = (k: string, val: string) => setExtra((s) => ({ ...s, [k]: val }))
   const text = (k: string, more: Record<string, unknown> = {}) => (
@@ -578,7 +586,9 @@ function EditForm({
         if (d.key !== d.label) delete merged[d.label]
       }
       fields.extra = Object.fromEntries(Object.entries(merged).filter(([, val]) => val.trim()))
+      if (noId) delete fields.national_id
       await actions.update.mutateAsync(fields)
+      if (noId !== (p.no_national_id ?? '')) await setNoNationalId(p.id, noId || null)
       onDone()
     } catch (err) {
       onError(err instanceof Error ? err.message : String(err))
@@ -616,7 +626,17 @@ function EditForm({
               }}
               placeholder={t('register.agePh')}
             />
-            {text('national_id', { inputMode: 'numeric' })}
+            {text('national_id', { inputMode: 'numeric', disabled: !!noId })}
+            <Select
+              label={t('register.noId.label')}
+              value={noId}
+              onChange={(e) => setNoId(e.target.value as NoIdReason | '')}
+            >
+              <option value="">{t('register.noId.has')}</option>
+              <option value="child">{t('register.noId.child')}</option>
+              <option value="not_issued">{t('register.noId.not_issued')}</option>
+              <option value="foreigner">{t('register.noId.foreigner')}</option>
+            </Select>
             {text('phone_1', { type: 'tel' })}
             {text('phone_2', { type: 'tel' })}
             {text('district')}

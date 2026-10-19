@@ -22,6 +22,7 @@ import {
   type Station,
   type VisitResult,
 } from '@/lib/api/visits'
+import { setNoNationalId, type NoIdReason } from '@/lib/api/patients'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 
@@ -219,6 +220,7 @@ function NewPatientForm({
   const [age, setAge] = useState('')
   const [phone, setPhone] = useState('')
   const [nationalId, setNationalId] = useState('')
+  const [noId, setNoId] = useState<NoIdReason | ''>('')
   const [sector, setSector] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -230,6 +232,7 @@ function NewPatientForm({
     setAge('')
     setPhone('')
     setNationalId('')
+    setNoId('')
     setSector('')
   }
 
@@ -247,11 +250,13 @@ function NewPatientForm({
           birthDate: birthDate || undefined,
           ageYears: !birthDate && age ? Number(age) : undefined,
           phone: phone || undefined,
-          nationalId: nationalId || undefined,
+          nationalId: noId ? undefined : nationalId || undefined,
           sector: sector || undefined,
         },
         visit: { emergency, station },
       })
+      // A child or someone without an ID: say why, so the file is not flagged as incomplete.
+      if (noId) await setNoNationalId(r.patientId, noId)
       reset()
       onDone(r)
     } catch (err) {
@@ -333,7 +338,8 @@ function NewPatientForm({
             <Field
               label={t('register.nationalId')}
               inputMode="numeric"
-              value={nationalId}
+              disabled={!!noId}
+              value={noId ? '' : nationalId}
               onChange={(e) => setNationalId(e.target.value.replace(/\D/g, '').slice(0, 16))}
               placeholder="1 1990 8 …"
             />
@@ -343,6 +349,24 @@ function NewPatientForm({
               onChange={(e) => setSector(e.target.value)}
               placeholder="Kiramuruzi"
             />
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <Select
+              label={t('register.noId.label')}
+              value={noId}
+              onChange={(e) => setNoId(e.target.value as NoIdReason | '')}
+              wrapperClassName="w-72"
+            >
+              <option value="">{t('register.noId.has')}</option>
+              <option value="child">{t('register.noId.child')}</option>
+              <option value="not_issued">{t('register.noId.not_issued')}</option>
+              <option value="foreigner">{t('register.noId.foreigner')}</option>
+            </Select>
+            {noId === 'child' && (
+              <p className="text-ink-3 m-0 max-w-[460px] pb-2 text-[13px]">
+                {t('register.noId.childHint')}
+              </p>
+            )}
           </div>
           {error && (
             <p

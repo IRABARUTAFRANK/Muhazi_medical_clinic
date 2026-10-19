@@ -1,5 +1,13 @@
 import { ROLE_HOME, type NavItem, type StaffUser } from '@mmc/shared'
 
+/** Every role's rail ends with the notifications page (inbox, filters; manager: sent). */
+const NOTICES: NavItem = {
+  id: 'notifications',
+  labelKey: 'nav.notifications',
+  icon: 'bell',
+  to: '/app/notifications',
+}
+
 /**
  * Manager rail (the dashboard is the manager's home page, doc §12.3). The manager runs the
  * whole clinic and can work at any station, so every operation has its own entry, in the
@@ -15,6 +23,7 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'id-card', to: '/app/staff' },
+  NOTICES,
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings', to: '/app/settings' },
 ]
 
@@ -27,6 +36,7 @@ export const RECEPTION_NAV: NavItem[] = [
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
+  NOTICES,
 ]
 
 /** Nursing: the dashboard, triage first, then everyone in the clinic and the files. */
@@ -36,6 +46,7 @@ export const NURSE_NAV: NavItem[] = [
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
+  NOTICES,
 ]
 
 /** Navigation items for the user's role. */
@@ -46,4 +57,4 @@ export const navForUser = (user: StaffUser): NavItem[] =>
       ? RECEPTION_NAV
       : user.role === 'nurse'
         ? NURSE_NAV
-        : ROLE_HOME[user.role].nav
+        : [...ROLE_HOME[user.role].nav, NOTICES]

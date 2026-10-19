@@ -404,6 +404,20 @@ export function useBillingActions(encounterId: string) {
     onSuccess: refresh,
   })
 
+  /** Several desks at once: the patient waits at each, the first doctor free takes them. */
+  const sendTo = useMutation({
+    mutationFn: async ({ station, next }: { station: Station; next: Station[] }) => {
+      if (!supabase) return
+      const { error } = await supabase.rpc('send_to_stations', {
+        p_encounter_id: encounterId,
+        p_station: station,
+        p_next: next,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+
   const takePayment = useMutation({
     mutationFn: async ({
       method,
@@ -445,5 +459,5 @@ export function useBillingActions(encounterId: string) {
     },
   })
 
-  return { addCharge, voidCharge, setPayer, finishStation, takePayment }
+  return { addCharge, voidCharge, setPayer, finishStation, sendTo, takePayment }
 }

@@ -86,7 +86,8 @@
     "register": "Enregistrer",
     "triage": "Triage",
     "inClinic": "À la clinique",
-    "bookings": "RDV"
+    "bookings": "RDV",
+    "notifications": "Alertes"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -448,7 +449,10 @@
       "directSale": "Vente directe",
       "dayClose": "Clôture du jour"
     },
-    "methodsHint": "Paiements acceptés : espèces, MTN MoMo et Airtel Money."
+    "methodsHint": "Paiements acceptés : espèces, MTN MoMo et Airtel Money.",
+    "sharedQueue": "premier médecin libre",
+    "takenBy": "pris par {{name}}",
+    "take": "Prendre"
   },
   "dashboard": {
     "title": "Tableau de bord de la clinique",
@@ -842,6 +846,14 @@
       "nationalId": "{{message}}",
       "nationalIdFormat": "La carte d'identité a 16 chiffres.",
       "generic": "Échec de l'enregistrement : {{message}}"
+    },
+    "noId": {
+      "label": "Carte d’identité",
+      "has": "A une carte d’identité",
+      "child": "Sans carte : enfant",
+      "not_issued": "Sans carte : pas encore délivrée",
+      "foreigner": "Sans carte : étranger",
+      "childHint": "Pour un enfant, indiquez le téléphone du parent ou tuteur et son nom comme contact d’urgence dans le dossier."
     }
   },
   "triage": {
@@ -1087,10 +1099,17 @@
       "lead": "Clôt l'entrée de file {{station}} et envoie le patient plus loin.",
       "toCashier": "Envoyer à la caisse",
       "other": "Ou envoyer à",
-      "send": "Envoyer"
+      "send": "Envoyer",
+      "anyDoctor": "Premier médecin disponible",
+      "anyDoctorHint": "Le patient attend à {{desks}} en même temps ; le premier médecin libre le prend et les autres ne le voient plus.",
+      "pick": "Ou choisissez un ou plusieurs postes",
+      "sendMany_one": "Envoyer à {{count}} poste",
+      "sendMany_other": "Envoyer à {{count}} postes",
+      "manyHint": "Plusieurs postes : le patient attend à chacun et quitte les autres dès qu’un poste le prend."
     },
     "patientFile": "Dossier patient",
-    "backToClinic": "Retour à « À la clinique »"
+    "backToClinic": "Retour à « À la clinique »",
+    "sentMany": "Patient envoyé à {{station}} : le premier libre le prend."
   },
   "settings": {
     "title": "Paramètres de la clinique",
@@ -1689,5 +1708,41 @@
       "toCollect": "à encaisser"
     },
     "reviewSoon": "à revoir vite"
+  },
+  "notices": {
+    "title": "Notifications",
+    "lead": "Tout ce qui vous est adressé : patients en attente à votre poste, tâches, réservations et messages. Ouvrez ce qui concerne une notification, marquez-la lue ou retirez-la de votre liste.",
+    "leadManager": "Tout ce qui vous est adressé, et les messages que vous envoyez au personnel. Filtrez, ouvrez, marquez lu ou retirez ; dans « Envoyés » vous voyez combien ont lu chaque message.",
+    "unreadCount_one": "{{count}} non lue",
+    "unreadCount_other": "{{count}} non lues",
+    "tabs": {
+      "inbox": "Reçus",
+      "sent": "Envoyés"
+    },
+    "inbox": "Reçus",
+    "shown_one": "{{count}} affichée",
+    "shown_other": "{{count}} affichées",
+    "filters": {
+      "all": "Toutes",
+      "unread": "Non lues",
+      "urgent": "Urgentes",
+      "patients": "Patients et tâches",
+      "messages": "Messages"
+    },
+    "selectAll": "Tout sélectionner",
+    "markSelected_one": "Marquer {{count}} lue",
+    "markSelected_other": "Marquer {{count}} lues",
+    "removeSelected_one": "Retirer {{count}}",
+    "removeSelected_other": "Retirer {{count}}",
+    "empty": "Rien ici.",
+    "markRead": "Marquer lue",
+    "remove": "Retirer de ma liste",
+    "sentTitle": "Messages envoyés",
+    "noneSent": "Vous n’avez encore envoyé aucun message.",
+    "readBy_one": "lu par {{count}} personne",
+    "readBy_other": "lu par {{count}} personnes",
+    "confirmDelete": "Supprimer ce message pour tout le monde ?",
+    "delete": "Supprimer",
+    "manage": "Toutes les notifications"
   }
 }

@@ -39,6 +39,7 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { useHomeSummary, type HomeSummary } from '@/lib/api/home'
 import { useClinicStatus, useClinicInfo } from '@/lib/api/public'
 import { openItems, queueCounts, stationFor, useQueueBoard } from '@/lib/api/visits'
+import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
@@ -125,7 +126,7 @@ function RoleHome({ user, mode }: HomePageProps) {
   return (
     <StaffShell
       user={user}
-      nav={home.nav}
+      nav={navForUser(user)}
       activeId="home"
       time={timeForMode[mode]}
       tabletActions={tabletActions}

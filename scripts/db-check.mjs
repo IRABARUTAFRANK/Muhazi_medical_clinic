@@ -760,6 +760,72 @@ await expectError(
   /permission denied|not allowed/i,
 )
 
+// ---------------------------------------------------------------- 0029: no ID, first free doctor, notices
+await step('adult without ID is flagged until the file says why there is none', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select register_patient('Noid', 'Adult Person', 'male', null, 30) as v`)
+  const pid = v.v.patient_id
+  await asAdmin()
+  const before = await one(`select patient_missing(p) as m from patient p where id = $1`, [pid])
+  if (!before.m.includes('national_id')) throw new Error('not flagged')
+  await as(staff.receptionist)
+  await db.query(`select set_no_national_id($1, 'not_issued')`, [pid])
+  await asAdmin()
+  const after = await one(`select patient_missing(p) as m from patient p where id = $1`, [pid])
+  if (after.m.includes('national_id')) throw new Error('still flagged')
+  return 'flagged → "not issued yet" → not flagged'
+})
+await step('sent to two doctor desks; the first doctor who takes removes the other', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select open_encounter($1, 'opd', 'reception', null) as id`, [patientId])
+  await db.query(
+    `select send_to_stations($1, 'reception', array['consultation','dental']::station[])`,
+    [v.id],
+  )
+  await asAdmin()
+  const rows = await db.query(
+    `select id, station from queue_entry where encounter_id = $1 and finished_at is null and pool_id is not null`,
+    [v.id],
+  )
+  if (rows.rows.length !== 2) throw new Error(`pooled ${rows.rows.length}`)
+  const cons = rows.rows.find((r) => r.station === 'consultation')
+  const dent = rows.rows.find((r) => r.station === 'dental')
+  await as(staff.doctor)
+  await db.query(`select take_patient($1)`, [cons.id])
+  let refused = ''
+  try {
+    await db.query(`select take_patient($1)`, [dent.id])
+  } catch (e) {
+    refused = e.message
+  }
+  if (!/already taken/i.test(refused)) throw new Error('second desk could still take: ' + refused)
+  await asAdmin()
+  const open = await db.query(
+    `select station from queue_entry where encounter_id = $1 and finished_at is null`,
+    [v.id],
+  )
+  if (open.rows.length !== 1 || open.rows[0].station !== 'consultation')
+    throw new Error('pool left open')
+  return `taken at consultation; dental refused (${refused})`
+})
+await step('a person hides a notice from their list; the sender sees it was read', async () => {
+  await as(staff.manager)
+  await db.query(`select send_notification('role', 'nurse', 'Check oxygen', null)`)
+  await as(staff.nurse)
+  let n = (await one(`select my_notifications(100) as n`)).n
+  const item = n.items.find((x) => x.title === 'Check oxygen')
+  if (!item) throw new Error('not received')
+  await db.query(`select hide_notifications(array[$1::uuid])`, [item.id])
+  n = (await one(`select my_notifications(100) as n`)).n
+  if (n.items.some((x) => x.id === item.id)) throw new Error('still listed')
+  await as(staff.manager)
+  const sent = (await one(`select my_sent_notifications(50) as s`)).s
+  const mine = sent.find((x) => x.id === item.id)
+  if (!mine || mine.readBy < 1) throw new Error('sent list / read count')
+  await db.query(`select delete_notification($1)`, [item.id])
+  return `hidden for the nurse; read by ${mine.readBy}; deleted by the sender`
+})
+
 finish()
 
 function finish() {

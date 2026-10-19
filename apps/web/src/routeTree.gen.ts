@@ -18,6 +18,7 @@ import { Route as AppSectionRouteImport } from './routes/app/$section'
 import { Route as AppAppointmentsRouteImport } from './routes/app/appointments'
 import { Route as AppChangePinRouteImport } from './routes/app/change-pin'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppNotificationsRouteImport } from './routes/app/notifications'
 import { Route as AppPatientRouteImport } from './routes/app/patient'
 import { Route as AppPatientsRouteImport } from './routes/app/patients'
 import { Route as AppPricesRouteImport } from './routes/app/prices'
@@ -71,6 +72,11 @@ const AppChangePinRoute = AppChangePinRouteImport.update({
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPatientRoute = AppPatientRouteImport.update({
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
   '/app/prices': typeof AppPricesRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
   '/app/prices': typeof AppPricesRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
   '/app/prices': typeof AppPricesRoute
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
     | '/app/appointments'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/notifications'
     | '/app/patient'
     | '/app/patients'
     | '/app/prices'
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/app/appointments'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/notifications'
     | '/app/patient'
     | '/app/patients'
     | '/app/prices'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/app/appointments'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/notifications'
     | '/app/patient'
     | '/app/patients'
     | '/app/prices'
@@ -313,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/notifications': {
+      id: '/app/notifications'
+      path: '/notifications'
+      fullPath: '/app/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/patient': {
       id: '/app/patient'
       path: '/patient'
@@ -384,6 +403,7 @@ interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
   AppChangePinRoute: typeof AppChangePinRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppPatientRoute: typeof AppPatientRoute
   AppPatientsRoute: typeof AppPatientsRoute
   AppPricesRoute: typeof AppPricesRoute
@@ -401,6 +421,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAppointmentsRoute: AppAppointmentsRoute,
   AppChangePinRoute: AppChangePinRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppPatientRoute: AppPatientRoute,
   AppPatientsRoute: AppPatientsRoute,
   AppPricesRoute: AppPricesRoute,

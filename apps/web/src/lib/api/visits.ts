@@ -347,6 +347,10 @@ export interface QueueItem extends QueueRow {
   queuedAt: string
   startedAt: string | null
   finishedAt: string | null
+  /** Set when the patient waits at several desks at once; the first doctor who takes them wins. */
+  poolId: string | null
+  /** Who took (started) the patient here, if anyone. */
+  takenBy: string | null
 }
 
 interface BoardRow {
@@ -366,6 +370,8 @@ interface BoardRow {
   given_names: string
   sex: Sex
   birth_date: string | null
+  pool_id?: string | null
+  taken_by_name?: string | null
 }
 
 const sexLetter: Record<Sex, string> = { female: 'F', male: 'M', other: '', unknown: '' }
@@ -392,6 +398,8 @@ const toItem = (r: BoardRow): QueueItem => ({
   queuedAt: r.queued_at,
   startedAt: r.started_at,
   finishedAt: r.finished_at,
+  poolId: r.pool_id ?? null,
+  takenBy: r.taken_by_name ?? null,
   ticket: r.ticket_no,
   name: `${r.surname} ${r.given_names}`,
   ageSex: `${ageOf(r.birth_date)} ${sexLetter[r.sex]}`.trim(),
@@ -413,6 +421,8 @@ const sampleQueue: QueueItem[] = ROLE_HOME.nurse.queue.map((q, i) => ({
   queuedAt: new Date(Date.now() - q.waitMin * 60_000).toISOString(),
   startedAt: null,
   finishedAt: null,
+  poolId: i === 1 ? 'pool-sample' : null,
+  takenBy: null,
 }))
 
 /** Today's queue at one station (or everywhere for reception), refreshed every 15 s. */
@@ -432,6 +442,8 @@ export function useQueueBoard(station: Station | 'all', role: Role) {
           patientId: `p-${station}-${i}`,
           fileNumber: `MMC-00013${i}`,
           station: station === 'all' ? ('consultation' as Station) : station,
+          poolId: i === 1 ? 'pool-sample' : null,
+          takenBy: null,
           priority: 3,
           queuedAt: new Date(Date.now() - q.waitMin * 60_000).toISOString(),
           startedAt: null,
@@ -462,3 +474,19 @@ export const queueCounts = (items: readonly QueueItem[]) => ({
 
 /** Rows still waiting or in progress, for the queue card. */
 export const openItems = (items: readonly QueueItem[]) => items.filter((i) => !i.finishedAt)
+
+/**
+ * "I take this patient": starts the patient at this desk; a patient shared between several desks
+ * leaves the other queues. Refused when another doctor was faster.
+ */
+export function useTakePatient() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (queueId: string) => {
+      if (!supabase) return
+      const { error } = await supabase.rpc('take_patient', { p_queue_id: queueId })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['queue'] }),
+  })
+}

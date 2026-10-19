@@ -1,61 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Bell, BellRing, CheckCheck, Megaphone, Send, X } from 'lucide-react'
+import { Bell, BellRing, CheckCheck, Inbox, Megaphone, Send, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
+import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { useNotificationActions, useNotifications, type Notice } from '@/lib/api/notifications'
+import { useAgo, useWording } from '@/lib/notice-wording'
 import { DB_ROLES, useDepartments, useEmployees } from '@/lib/api/staff'
 import { cn } from '@/lib/utils'
-
-/** "5 min ago", "2 h ago", or the date for older ones. */
-function useAgo() {
-  const { t } = useTranslation()
-  return (iso: string) => {
-    const min = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
-    if (min < 1) return t('notify.justNow')
-    if (min < 60) return t('notify.minAgo', { count: min })
-    if (min < 24 * 60) return t('notify.hAgo', { count: Math.round(min / 60) })
-    return `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
-  }
-}
-
-/** The notice in the reader's language (automatic kinds) or as written (messages). */
-function useWording() {
-  const { t } = useTranslation()
-  return (n: Notice): { title: string; body: string | null } => {
-    const p = n.params ?? {}
-    switch (n.kind) {
-      case 'queue':
-        return {
-          title: t(n.urgent ? 'notify.queueUrgent' : 'notify.queue', {
-            ticket: p.ticket ?? '',
-            name: p.name ?? '',
-            station: t(`register.stations.${p.station}`, { defaultValue: p.station ?? '' }),
-          }),
-          body: p.triage ? t('notify.triage', { colour: t(`home.triage.${p.triage}`) }) : null,
-        }
-      case 'task':
-        return {
-          title: t('notify.task', { title: p.title ?? '' }),
-          body: [p.name, p.due ? t('notify.due', { time: formatTime(new Date(p.due)) }) : null]
-            .filter(Boolean)
-            .join(' · '),
-        }
-      case 'inquiry':
-        return { title: t('notify.inquiry', { name: p.name ?? '' }), body: t('notify.inquiryBody') }
-      case 'to_accept':
-        return {
-          title: t('notify.toAccept', { name: p.name ?? '' }),
-          body: t('notify.toAcceptBody'),
-        }
-      default:
-        return { title: n.title ?? '', body: n.body }
-    }
-  }
-}
 
 /**
  * Bell in the staff top bar. Each person sees only what is for them (their name, role,
@@ -205,13 +159,24 @@ export function NotificationBell({ user }: { user: StaffUser }) {
               )
             })}
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              void navigate({ to: '/app/notifications' })
+            }}
+            className="border-border text-primary hover:bg-hover flex items-center justify-center gap-1.5 border-t px-4 py-2.5 text-[13px] font-semibold"
+          >
+            <Inbox size={14} aria-hidden="true" />
+            {t('notices.manage')}
+          </button>
         </div>
       )}
     </div>
   )
 }
 
-function Composer({ onClose }: { onClose: () => void }) {
+export function Composer({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const actions = useNotificationActions()
   const { data: departments = [] } = useDepartments()

@@ -95,7 +95,8 @@
     "register": "Andika",
     "triage": "Ibipimo",
     "inClinic": "Mu ivuriro",
-    "bookings": "Gahunda"
+    "bookings": "Gahunda",
+    "notifications": "Imenyesha"
   },
   "roles": {
     "receptionist": "Umwakira",
@@ -457,7 +458,10 @@
     "paymentsCount": "Ubwishyu {{count}}",
     "collectedToday": "Byakiriwe uyu munsi",
     "quickNote": "Utubuto dufite nibura 44 px kandi dusiga umwanya w'amagambo y'Ikinyarwanda / Igifaransa.",
-    "methodsHint": "Ubwishyu bwemewe: amafaranga mu ntoki, MTN MoMo na Airtel Money."
+    "methodsHint": "Ubwishyu bwemewe: amafaranga mu ntoki, MTN MoMo na Airtel Money.",
+    "sharedQueue": "muganga wa mbere ubonetse",
+    "takenBy": "yakiriwe na {{name}}",
+    "take": "Akira"
   },
   "dashboard": {
     "title": "Imbonerahamwe y'ivuriro",
@@ -846,7 +850,15 @@
       "nationalIdFormat": "Indangamuntu ifite imibare 16.",
       "generic": "Kwandika byanze: {{message}}"
     },
-    "agePh": "urugero: 34"
+    "agePh": "urugero: 34",
+    "noId": {
+      "label": "Indangamuntu",
+      "has": "Afite indangamuntu",
+      "child": "Nta ndangamuntu: ni umwana",
+      "not_issued": "Nta ndangamuntu: ntarayihabwa",
+      "foreigner": "Nta ndangamuntu: ni umunyamahanga",
+      "childHint": "Ku mwana, andika telefoni y’umubyeyi cyangwa umurera n’izina rye nk’uwo guhamagara mu gihe cyihutirwa muri dosiye."
+    }
   },
   "triage": {
     "title": "Triage · ibipimo bya mbere",
@@ -1107,8 +1119,15 @@
       "lead": "Bifunga umurongo wa {{station}} kandi bikohereza umurwayi aho akurikira.",
       "toCashier": "Ohereza kuri kasiye",
       "other": "Cyangwa ohereza kuri",
-      "send": "Ohereza"
-    }
+      "send": "Ohereza",
+      "anyDoctor": "Muganga wese uboneka",
+      "anyDoctorHint": "Umurwayi ategerereza icyarimwe kuri {{desks}}; muganga wa mbere ubonetse aramwakira, abandi ntibongera kumubona.",
+      "pick": "Cyangwa hitamo aho ajya hamwe cyangwa henshi",
+      "sendMany_one": "Ohereza ahantu {{count}}",
+      "sendMany_other": "Ohereza ahantu {{count}}",
+      "manyHint": "Ahantu henshi: umurwayi ategerereza kuri buri hamwe, akava ahandi hose iyo hamwe hamwakiriye."
+    },
+    "sentMany": "Umurwayi yoherejwe kuri {{station}}: uwa mbere ubonetse aramwakira."
   },
   "patients": {
     "title": "Abarwayi",
@@ -1698,5 +1717,41 @@
       "toCollect": "zo kwishyuza"
     },
     "reviewSoon": "reba vuba"
+  },
+  "notices": {
+    "title": "Imenyesha",
+    "lead": "Ibikugenewe byose: abarwayi bategereje aho ukorera, imirimo, gahunda n’ubutumwa. Fungura icyo imenyesha rivuga, ryemeze ko warisomye cyangwa urikure ku rutonde rwawe.",
+    "leadManager": "Ibikugenewe byose, n’ubutumwa woherereza abakozi. Shungura, fungura, emeza ko wasomye cyangwa ukureho; muri « Byoherejwe » ubona umubare w’abasomye buri butumwa.",
+    "unreadCount_one": "{{count}} ritarasomwa",
+    "unreadCount_other": "{{count}} atarasomwa",
+    "tabs": {
+      "inbox": "Byakiriwe",
+      "sent": "Byoherejwe"
+    },
+    "inbox": "Byakiriwe",
+    "shown_one": "{{count}} rigaragara",
+    "shown_other": "{{count}} agaragara",
+    "filters": {
+      "all": "Byose",
+      "unread": "Bitarasomwa",
+      "urgent": "Byihutirwa",
+      "patients": "Abarwayi n’imirimo",
+      "messages": "Ubutumwa"
+    },
+    "selectAll": "Hitamo byose",
+    "markSelected_one": "Emeza ko {{count}} ryasomwe",
+    "markSelected_other": "Emeza ko {{count}} yasomwe",
+    "removeSelected_one": "Kuraho {{count}}",
+    "removeSelected_other": "Kuraho {{count}}",
+    "empty": "Nta kintu kiri hano.",
+    "markRead": "Emeza ko wasomye",
+    "remove": "Kura ku rutonde rwanjye",
+    "sentTitle": "Ubutumwa wohereje",
+    "noneSent": "Ntabwo uraohereza ubutumwa.",
+    "readBy_one": "bwasomwe n’umuntu {{count}}",
+    "readBy_other": "bwasomwe n’abantu {{count}}",
+    "confirmDelete": "Gusiba ubu butumwa kuri bose?",
+    "delete": "Siba",
+    "manage": "Imenyesha ryose"
   }
 }

@@ -60,14 +60,14 @@ let sample: Notice[] = [
   },
 ]
 
-export function useNotifications() {
+export function useNotifications(limit = 40) {
   return useQuery({
-    queryKey: KEY,
+    queryKey: [...KEY, limit],
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<{ unread: number; items: Notice[] }> => {
       if (!supabase) return { unread: sample.filter((n) => !n.read).length, items: sample }
-      const { data, error } = await supabase.rpc('my_notifications', { p_limit: 40 })
+      const { data, error } = await supabase.rpc('my_notifications', { p_limit: limit })
       if (error) throw new Error(error.message)
       const d = data as { unread: number; items: Notice[] }
       return { unread: Number(d.unread), items: d.items ?? [] }
@@ -128,5 +128,73 @@ export function useNotificationActions() {
     },
     onSuccess: refresh,
   })
-  return { markRead, send }
+  /** Removes notices from this person's list only (others still see them). */
+  const hide = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!supabase) {
+        sample = sample.filter((n) => !ids.includes(n.id))
+        return
+      }
+      const { error } = await supabase.rpc('hide_notifications', { p_ids: ids })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+  /** The sender (or the manager) deletes a message for everyone. */
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      if (!supabase) {
+        sampleSent = sampleSent.filter((n) => n.id !== id)
+        return
+      }
+      const { error } = await supabase.rpc('delete_notification', { p_id: id })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      void refresh()
+      void qc.invalidateQueries({ queryKey: SENT_KEY })
+    },
+  })
+  return { markRead, send, hide, remove }
+}
+
+/** A message this person sent, with how many have read it. */
+export interface SentNotice {
+  id: string
+  at: string
+  title: string | null
+  body: string | null
+  urgent: boolean
+  to: 'all' | 'role' | 'department' | 'user'
+  target: string | null
+  headsOnly: boolean
+  readBy: number
+}
+const SENT_KEY = ['notifications-sent'] as const
+let sampleSent: SentNotice[] = [
+  {
+    id: 'n2',
+    at: new Date(Date.now() - 25 * 60_000).toISOString(),
+    title: 'Staff meeting at 16:00',
+    body: 'All heads of department, bring this week’s report.',
+    urgent: false,
+    to: 'all',
+    target: null,
+    headsOnly: true,
+    readBy: 3,
+  },
+]
+
+export function useSentNotifications(enabled: boolean) {
+  return useQuery({
+    queryKey: SENT_KEY,
+    enabled,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<SentNotice[]> => {
+      if (!supabase) return sampleSent
+      const { data, error } = await supabase.rpc('my_sent_notifications', { p_limit: 100 })
+      if (error) throw new Error(error.message)
+      return (data as SentNotice[]) ?? []
+    },
+  })
 }
