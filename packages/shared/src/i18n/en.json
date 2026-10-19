@@ -1612,5 +1612,8 @@
     "errors": {
       "target": "Choose who receives it."
     }
+  },
+  "identity": {
+    "aria": "Signed in: {{name}}"
   }
 }

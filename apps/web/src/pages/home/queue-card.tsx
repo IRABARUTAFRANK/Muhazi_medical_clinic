@@ -1,7 +1,9 @@
+import { Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { QueueCounts, QueueRow, Triage } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
+import { IconChip } from '@/components/dash/kit'
 import { Card, CardHeader } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -37,7 +39,10 @@ export function QueueCard({ title, rows, counts, rowAction, empty, className }: 
   return (
     <Card aria-label={title} className={cn('@container overflow-hidden', className)}>
       <CardHeader className="flex-wrap">
-        <span>{title}</span>
+        <span className="flex items-center gap-2.5">
+          <IconChip icon={Users} tint="amber" />
+          {title}
+        </span>
         <span className="flex gap-1.5 tabular-nums">
           <Badge tone="grey" dot={false}>
             {t('home.waiting', { count: counts.waiting })}

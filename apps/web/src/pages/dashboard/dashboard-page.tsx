@@ -1,7 +1,19 @@
 import { useState, type CSSProperties } from 'react'
 import {
   BedDouble,
+  Boxes,
+  CalendarCheck,
+  ChartLine,
+  Clock,
+  Coins,
+  Landmark,
+  ListOrdered,
+  LogIn,
+  MapPin,
+  PieChart,
   Printer,
+  ShieldCheck,
+  Workflow,
   Receipt,
   RefreshCw,
   Search,
@@ -13,7 +25,6 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
-  CLINIC_HOURS,
   FEATURES,
   formatDate,
   formatDayMonth,
@@ -24,13 +35,22 @@ import {
   type StaffUser,
 } from '@mmc/shared'
 import { HBarList } from '@/components/charts/hbar'
-import { Empty, Kpi, ListRows, Panel, Pill } from '@/components/dash/kit'
+import { IdentityBanner } from '@/components/dash/identity-banner'
+import {
+  Empty,
+  Kpi,
+  ListRows,
+  Panel,
+  Pill,
+  SectionTitle,
+  StationGlyph,
+} from '@/components/dash/kit'
 import {
   avatarTint,
   delta,
+  greetingFor,
   groupLabel,
   initials,
-  sectionTitle,
   stationLabel,
 } from '@/components/dash/kit-style'
 import { LineChart } from '@/components/charts/line-chart'
@@ -46,7 +66,7 @@ import {
   type DashboardData,
   type DashboardRange,
 } from '@/lib/api/dashboard'
-import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
+import { useClinicInfo } from '@/lib/api/public'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
@@ -79,7 +99,6 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   const isManager = canManage && role === 'manager'
   const { data, isFetching, error, refetch, dataUpdatedAt } = useDashboard(range, isManager)
   const { data: info } = useClinicInfo()
-  const { data: status } = useClinicStatus(info?.hours ?? CLINIC_HOURS)
 
   const nav = navForUser(user)
   const activeId = canManage ? 'dashboard' : 'reports'
@@ -89,35 +108,37 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
       ? `${dayNames.long[now.getDay()]} ${formatDate(now)}`
       : t('dashboard.rangeLabels.week', { from: formatDayMonth(from), to: formatDate(to) })
   const periodWord = t(`dashboard.period.${range}`)
-  const hour = now.getHours()
-  const greeting = t(
-    `dashboard.greeting.${hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'}`,
-    {
-      name: user.name
-        .replace(/^Dr\.?\s+/i, '')
-        .split(' ')
-        .pop(),
-    },
-  )
+  const greeting = greetingFor(user.name, t)
 
   return (
     <StaffShell user={user} nav={nav} activeId={activeId}>
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4 print:overflow-visible">
-        {/* HEADER */}
+        {/* WHO IS SIGNED IN */}
+        <IdentityBanner user={user} greeting={greeting} />
+
+        {/* TOOLBAR */}
         <div className="anim-enter flex flex-wrap items-center gap-4">
-          <div className="min-w-[240px] flex-1">
-            <h1 className="m-0 text-[26px] font-bold tracking-[-0.02em]">{greeting}</h1>
-            <div className="text-ink-2 mt-1 text-sm">
-              {rangeLabel} · {info?.profile.sector ?? ''} ·{' '}
+          <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            {/* Today's date is in the banner; a week or month shows its span here. */}
+            {range !== 'today' && (
+              <span className="inline-flex items-center gap-1.5 font-semibold">
+                <ChartLine size={16} aria-hidden="true" className="text-primary" />
+                {rangeLabel}
+              </span>
+            )}
+            {info?.profile.sector && (
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin size={15} aria-hidden="true" className="text-ink-3" />
+                {info.profile.sector}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5">
+              <Clock size={15} aria-hidden="true" className="text-ink-3" />
               {t('dashboard.subtitleUpdated', {
                 time: formatTime(dataUpdatedAt ? new Date(dataUpdatedAt) : now),
-              })}{' '}
-              ·{' '}
-              <b className={status?.open ? 'text-green' : 'text-red'}>
-                ● {t(status?.open ? 'dashboard.clinicOpen' : 'dashboard.clinicClosed')}
-              </b>
-              {!isLive && <span className="text-ink-3"> · {t('dashboard.sampleData')}</span>}
-            </div>
+              })}
+            </span>
+            {!isLive && <span className="text-ink-3">{t('dashboard.sampleData')}</span>}
           </div>
           <StaffLink
             to="/app/register"
@@ -252,10 +273,12 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             {/* MONEY */}
             {isManager && (
               <section className="flex flex-col gap-3">
-                <div className={sectionTitle}>{t('dashboard.sections.money')}</div>
+                <SectionTitle icon={Coins}>{t('dashboard.sections.money')}</SectionTitle>
                 <div className="pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
                   <Panel
                     i={1}
+                    icon={ChartLine}
+                    tint="violet"
                     title={t('dashboard.revenue30')}
                     right={t('dashboard.collectedTotal', {
                       amount: formatRwf(data.revenue30d.reduce((s, r) => s + r.amount, 0)),
@@ -265,6 +288,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   </Panel>
                   <Panel
                     i={2}
+                    icon={PieChart}
+                    tint="mint"
                     title={t('dashboard.collections', { period: periodWord })}
                     right={formatRwf(data.collections.reduce((s, c) => s + c.amount, 0))}
                   >
@@ -294,6 +319,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   </Panel>
                   <Panel
                     i={3}
+                    icon={Landmark}
+                    tint="navy"
                     title={t('dashboard.receivables')}
                     right={formatRwf(data.receivables.reduce((s, r) => s + r.amount, 0))}
                   >
@@ -325,9 +352,15 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
             {/* OPERATIONS */}
             <section className="flex flex-col gap-3">
-              <div className={sectionTitle}>{t('dashboard.sections.ops')}</div>
+              <SectionTitle icon={Workflow}>{t('dashboard.sections.ops')}</SectionTitle>
               <div className="pc:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.5fr)] grid grid-cols-1 gap-4">
-                <Panel i={1} title={t('dashboard.queueNow')} right={t('dashboard.refreshNote')}>
+                <Panel
+                  i={1}
+                  icon={Users}
+                  tint="amber"
+                  title={t('dashboard.queueNow')}
+                  right={t('dashboard.refreshNote')}
+                >
                   {data.waitByStation.length === 0 ? (
                     <Empty>{t('dashboard.noQueue')}</Empty>
                   ) : (
@@ -343,7 +376,15 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                             )}
                             style={{ '--i': i } as CSSProperties}
                           >
-                            <span className="text-xl font-extrabold tabular-nums">{s.waiting}</span>
+                            <span className="flex items-center justify-between">
+                              <span className="text-xl font-extrabold tabular-nums">
+                                {s.waiting}
+                              </span>
+                              <StationGlyph
+                                station={s.station}
+                                className={hot ? 'text-red' : 'text-primary'}
+                              />
+                            </span>
                             <span className="text-ink-2 text-xs font-semibold">
                               {stationLabel(s.station, t)}
                             </span>
@@ -364,6 +405,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 </Panel>
                 <Panel
                   i={2}
+                  icon={Stethoscope}
+                  tint="mint"
                   title={t('dashboard.visitsByService', { period: periodWord })}
                   right={t('dashboard.visitsCount', { count: data.tiles.visits })}
                 >
@@ -380,6 +423,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     />
                   )}
                   <div className="text-ink-3 flex flex-wrap items-center gap-2 text-xs">
+                    <CalendarCheck size={14} aria-hidden="true" />
                     {t('dashboard.bookings', { period: periodWord })}: {data.bookings.booked}{' '}
                     {t('dashboard.booked')} ·{' '}
                     {t('dashboard.noShowShort', { missed: data.bookings.missed })}
@@ -392,6 +436,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 </Panel>
                 <Panel
                   i={3}
+                  icon={Users}
+                  tint="teal"
                   title={t('dashboard.staffActivity', { period: periodWord })}
                   right={t('dashboard.staffActivityNote')}
                   className="overflow-x-auto"
@@ -466,12 +512,14 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
             {/* CLINICAL · STOCK · SECURITY */}
             <section className="flex flex-col gap-3">
-              <div className={sectionTitle}>
+              <SectionTitle icon={ShieldCheck}>
                 {t('dashboard.sections.clinical')} · {t('dashboard.logins')}
-              </div>
+              </SectionTitle>
               <div className="pc:grid-cols-3 grid grid-cols-1 gap-4">
                 <Panel
                   i={1}
+                  icon={ListOrdered}
+                  tint="teal"
                   title={t('dashboard.topTreatments', { period: periodWord })}
                   right={t('dashboard.cases')}
                 >
@@ -490,6 +538,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 </Panel>
                 <Panel
                   i={2}
+                  icon={Boxes}
+                  tint="amber"
                   title={t('dashboard.reorder')}
                   right={`${t('dashboard.expiring')} · ${t('dashboard.days30')}: ${data.expiring.d30}`}
                 >
@@ -524,6 +574,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 </Panel>
                 <Panel
                   i={3}
+                  icon={LogIn}
+                  tint="navy"
                   title={`${t('dashboard.logins')} · ${t('dashboard.last24h')}`}
                   right={`${data.logins.length}`}
                 >

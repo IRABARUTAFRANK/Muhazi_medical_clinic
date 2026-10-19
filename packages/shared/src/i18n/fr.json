@@ -1612,5 +1612,8 @@
     "errors": {
       "target": "Choisissez le destinataire."
     }
+  },
+  "identity": {
+    "aria": "Session ouverte : {{name}}"
   }
 }

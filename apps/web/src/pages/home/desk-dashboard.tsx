@@ -4,7 +4,12 @@ import {
   AlertTriangle,
   BedDouble,
   CalendarCheck,
+  ChartLine,
   ClipboardList,
+  Clock,
+  ClipboardCheck,
+  ListTodo,
+  Siren,
   HeartPulse,
   MessageSquare,
   RefreshCw,
@@ -13,12 +18,23 @@ import {
   Timer,
   UserPlus,
   Users,
+  Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { CLINIC_HOURS, formatDate, formatTime, type StaffUser } from '@mmc/shared'
+import { formatTime, type StaffUser } from '@mmc/shared'
 import { LineChart } from '@/components/charts/line-chart'
-import { Empty, Kpi, ListRows, Panel, Pill } from '@/components/dash/kit'
-import { delta, sectionTitle, stationLabel, type Tint } from '@/components/dash/kit-style'
+import { IdentityBanner } from '@/components/dash/identity-banner'
+import {
+  Empty,
+  IconChip,
+  Kpi,
+  ListRows,
+  Panel,
+  Pill,
+  SectionTitle,
+  StationGlyph,
+} from '@/components/dash/kit'
+import { delta, greetingFor, stationLabel, type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
@@ -30,9 +46,7 @@ import {
   InquiriesPanel,
   TasksPanel,
 } from './desk-panels'
-import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
 import { openItems, useQueueBoard, type QueueItem } from '@/lib/api/visits'
-import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -49,44 +63,34 @@ const triageTint: Record<string, Tint> = { red: 'coral', yellow: 'amber', green:
  */
 export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole }) {
   const { t } = useTranslation()
-  const dayNames = useDayNames()
   const now = new Date()
   const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary()
-  const { data: info } = useClinicInfo()
-  const { data: status } = useClinicStatus(info?.hours ?? CLINIC_HOURS)
   const { data: queue = [] } = useQueueBoard(role === 'nurse' ? 'triage' : 'all', user.role)
   const waiting = openItems(queue)
 
-  const hour = now.getHours()
-  const greeting = t(
-    `dashboard.greeting.${hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'}`,
-    {
-      name: user.name
-        .replace(/^Dr\.?\s+/i, '')
-        .split(' ')
-        .pop(),
-    },
-  )
+  const greeting = greetingFor(user.name, t)
   const nurse = role === 'nurse'
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
-        {/* HEADER */}
+        {/* WHO IS SIGNED IN */}
+        <IdentityBanner user={user} greeting={greeting} />
+
+        {/* TOOLBAR */}
         <div className="anim-enter flex flex-wrap items-center gap-4">
-          <div className="min-w-[240px] flex-1">
-            <h1 className="m-0 text-[26px] font-bold tracking-[-0.02em]">{greeting}</h1>
-            <div className="text-ink-2 mt-1 text-sm">
-              {dayNames.long[now.getDay()]} {formatDate(now)} · {t(`desk.${role}.subtitle`)} ·{' '}
+          <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="inline-flex items-center gap-1.5 font-semibold">
+              <ClipboardCheck size={16} aria-hidden="true" className="text-primary" />
+              {t(`desk.${role}.subtitle`)}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock size={15} aria-hidden="true" className="text-ink-3" />
               {t('dashboard.subtitleUpdated', {
                 time: formatTime(dataUpdatedAt ? new Date(dataUpdatedAt) : now),
-              })}{' '}
-              ·{' '}
-              <b className={status?.open ? 'text-green' : 'text-red'}>
-                ● {t(status?.open ? 'dashboard.clinicOpen' : 'dashboard.clinicClosed')}
-              </b>
-              {!isLive && <span className="text-ink-3"> · {t('dashboard.sampleData')}</span>}
-            </div>
+              })}
+            </span>
+            {!isLive && <span className="text-ink-3">{t('dashboard.sampleData')}</span>}
           </div>
           <StaffLink
             to="/app/patients"
@@ -149,7 +153,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
             {/* THE WORK OF THE DAY */}
             <section className="flex flex-col gap-3">
-              <div className={sectionTitle}>{t(`desk.${role}.section`)}</div>
+              <SectionTitle icon={Workflow}>{t(`desk.${role}.section`)}</SectionTitle>
               <div className="pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
                 {nurse ? (
                   <>
@@ -170,7 +174,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
             {/* TODAY */}
             <section className="flex flex-col gap-3">
-              <div className={sectionTitle}>{t('desk.today')}</div>
+              <SectionTitle icon={CalendarCheck}>{t('desk.today')}</SectionTitle>
               <div
                 className={cn(
                   'grid grid-cols-1 gap-4',
@@ -378,6 +382,8 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
   return (
     <Panel
       i={1}
+      icon={nurse ? Activity : Users}
+      tint={nurse ? 'coral' : 'amber'}
       title={t(nurse ? 'desk.nurse.queue' : 'desk.receptionist.queue')}
       right={t('visits.count', { count: rows.length })}
     >
@@ -394,7 +400,8 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
               <Pill tint={triageTint[r.triage] ?? 'teal'}>{r.ticket}</Pill>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{r.name}</span>
-                <span className="text-ink-3 block truncate text-xs">
+                <span className="text-ink-3 flex items-center gap-1 truncate text-xs">
+                  <StationGlyph station={r.station} size={12} className="flex-none" />
                   {r.ageSex} · {stationLabel(r.station, t)} ·{' '}
                   {r.startedAt ? t('visits.inProgress') : t('visits.waiting', { count: r.waitMin })}
                 </span>
@@ -421,7 +428,13 @@ function StationsPanel({ d }: { d: DeskSummary }) {
   const { t } = useTranslation()
   const rows = d.stations.filter((s) => s.waiting + s.busy > 0)
   return (
-    <Panel i={2} title={t('dashboard.queueNow')} right={t('dashboard.refreshNote')}>
+    <Panel
+      i={2}
+      icon={Workflow}
+      tint="teal"
+      title={t('dashboard.queueNow')}
+      right={t('dashboard.refreshNote')}
+    >
       {rows.length === 0 ? (
         <Empty>{t('dashboard.noQueue')}</Empty>
       ) : (
@@ -437,7 +450,10 @@ function StationsPanel({ d }: { d: DeskSummary }) {
                 )}
                 style={{ '--i': i } as CSSProperties}
               >
-                <span className="text-xl font-extrabold tabular-nums">{s.waiting}</span>
+                <span className="flex items-center justify-between">
+                  <span className="text-xl font-extrabold tabular-nums">{s.waiting}</span>
+                  <StationGlyph station={s.station} className={hot ? 'text-red' : 'text-primary'} />
+                </span>
                 <span className="text-ink-2 text-xs font-semibold">
                   {stationLabel(s.station, t)}
                 </span>
@@ -464,7 +480,13 @@ function UrgentPanel({ d }: { d: DeskSummary }) {
     { key: 'green', tint: 'mint' as Tint, label: t('desk.urgency.green'), n: green },
   ]
   return (
-    <Panel i={2} title={t('desk.nurse.urgency')} right={t('dashboard.refreshNote')}>
+    <Panel
+      i={2}
+      icon={Siren}
+      tint="coral"
+      title={t('desk.nurse.urgency')}
+      right={t('dashboard.refreshNote')}
+    >
       <ListRows
         rows={rows.map((r) => ({
           key: r.key,
@@ -488,7 +510,13 @@ function ArrivalsPanel({ d }: { d: DeskSummary }) {
   const busiest = d.arrivals.reduce((b, a) => (a.count > b.count ? a : b), { hour: 0, count: 0 })
   const last = values.length - 1
   return (
-    <Panel i={3} title={t('desk.arrivals')} right={t('desk.arrivalsTotal', { count: total })}>
+    <Panel
+      i={3}
+      icon={ChartLine}
+      tint="violet"
+      title={t('desk.arrivals')}
+      right={t('desk.arrivalsTotal', { count: total })}
+    >
       <LineChart
         values={values}
         labels={labels}
@@ -565,7 +593,13 @@ function MinePanel({ d, role }: { d: DeskSummary; role: DeskRole }) {
           },
         ]
   return (
-    <Panel i={3} title={t('desk.mine.title')} right={t('desk.mine.note')}>
+    <Panel
+      i={3}
+      icon={ListTodo}
+      tint="mint"
+      title={t('desk.mine.title')}
+      right={t('desk.mine.note')}
+    >
       <div className="grid grid-cols-3 gap-2.5">
         {rows.map((r, i) => (
           <div
@@ -573,7 +607,7 @@ function MinePanel({ d, role }: { d: DeskSummary; role: DeskRole }) {
             className="border-border anim-enter flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5"
             style={{ '--i': i } as CSSProperties}
           >
-            <r.icon size={16} aria-hidden="true" className="text-ink-3" />
+            <IconChip icon={r.icon} tint={r.tint} size="sm" />
             <span className="text-2xl font-extrabold tabular-nums">{r.n}</span>
             <span className="text-ink-2 text-[11px] leading-tight font-semibold">{r.label}</span>
           </div>

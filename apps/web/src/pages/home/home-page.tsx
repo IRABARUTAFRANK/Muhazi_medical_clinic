@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { BedDouble, Timer, Users, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   CLINIC_HOURS,
@@ -10,6 +11,8 @@ import {
   type HomeRole,
   type StaffUser,
 } from '@mmc/shared'
+import { IdentityBanner } from '@/components/dash/identity-banner'
+import { greetingFor } from '@/components/dash/kit-style'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
@@ -18,7 +21,6 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { useHomeSummary } from '@/lib/api/home'
 import { useClinicStatus, useClinicInfo } from '@/lib/api/public'
 import { openItems, queueCounts, stationFor, useQueueBoard } from '@/lib/api/visits'
-import { roleLabel } from '@/lib/roles'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
@@ -114,30 +116,32 @@ function RoleHome({ user, mode }: HomePageProps) {
       tabletActions={tabletActions}
     >
       <main className="pc:overflow-hidden pc:p-4 flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
+        {/* WHO IS SIGNED IN */}
+        <IdentityBanner user={user} greeting={greetingFor(user.name, t)} />
+
         {/* CLINIC NOW */}
         <div className="border-border bg-card flex flex-none flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border px-4 py-2">
           <span className="text-ink-3 text-xs font-semibold tracking-[.04em] uppercase">
             {t('home.clinicNow')}
           </span>
           <Stat
+            icon={Users}
             value={now.inClinic}
             label={t('home.inClinic')}
             shortLabel={t('home.inClinicShort')}
           />
           <Stat
+            icon={Timer}
             value={now.avgWaitMin}
             label={t('home.avgWait')}
             shortLabel={t('home.avgWaitShort')}
           />
           <Stat
+            icon={BedDouble}
             value={`${now.bedsOccupied} / ${now.bedsTotal}`}
             label={t('home.bedsOccupied')}
             shortLabel={t('home.bedsShort')}
           />
-          <span className="flex-1" />
-          <span className="text-ink-3 pc:inline hidden text-xs">
-            {t('roles.view', { role: roleLabel(user, t) })}
-          </span>
         </div>
 
         <div className="pc:grid pc:flex-1 pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_232px] flex min-h-0 flex-col gap-3">
@@ -185,16 +189,19 @@ function RoleHome({ user, mode }: HomePageProps) {
 }
 
 function Stat({
+  icon: IconC,
   value,
   label,
   shortLabel,
 }: {
+  icon: LucideIcon
   value: number | string
   label: string
   shortLabel: string
 }) {
   return (
     <span className="flex items-baseline gap-1.5 tabular-nums">
+      <IconC size={16} aria-hidden="true" className="text-primary self-center" />
       <b className="text-xl font-bold">{value}</b>
       <span className="text-ink-2 pc:inline hidden">{label}</span>
       <span className="text-ink-2 pc:hidden">{shortLabel}</span>

@@ -1,8 +1,19 @@
 import { useState } from 'react'
+import {
+  BedDouble,
+  CalendarCheck,
+  CalendarDays,
+  FlaskConical,
+  ListTodo,
+  MessageSquare,
+  Receipt,
+  Wallet,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf, type ApptStatus, type HomeRole, type Tone } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { IconChip } from '@/components/dash/kit'
 import { Card, CardHeader, Row } from '@/components/ui/card'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useHomeActions, useHomeSummary, type HomeBed, type HomeSummary } from '@/lib/api/home'
@@ -86,7 +97,10 @@ function ReceptionistPanels({ data, onError, empty }: PanelProps & { empty: bool
     <>
       <Card className={grow}>
         <CardHeader className="flex-wrap">
-          <span>{t('home.todaysAppointments')}</span>
+          <span className="flex items-center gap-2.5">
+            <IconChip icon={CalendarCheck} tint="violet" />
+            {t('home.todaysAppointments')}
+          </span>
           <span className="flex gap-1.5 tabular-nums">
             <Badge tone="green">{t('home.arrived', { count: counts.arrived })}</Badge>
             <Badge tone="blue">{t('home.due', { count: counts.due })}</Badge>
@@ -118,7 +132,10 @@ function ReceptionistPanels({ data, onError, empty }: PanelProps & { empty: bool
       </Card>
       <Card className="flex-none">
         <CardHeader>
-          <span>{t('home.inquiries')}</span>
+          <span className="flex items-center gap-2.5">
+            <IconChip icon={MessageSquare} tint="teal" />
+            {t('home.inquiries')}
+          </span>
           <Badge tone={data.inquiries.length ? 'yellow' : 'green'} className="tabular-nums">
             {t('home.pending', { count: data.inquiries.length })}
           </Badge>
@@ -180,7 +197,10 @@ function NursePanels({ data, onError }: PanelProps) {
     <>
       <Card className={grow}>
         <CardHeader>
-          <span>{t('home.tasksDue')}</span>
+          <span className="flex items-center gap-2.5">
+            <IconChip icon={ListTodo} tint="amber" />
+            {t('home.tasksDue')}
+          </span>
           <Badge
             tone={data.tasks.some((x) => x.overdue) ? 'red' : 'green'}
             className="tabular-nums"
@@ -219,7 +239,10 @@ function NursePanels({ data, onError }: PanelProps) {
       </Card>
       <Card className="flex-none">
         <CardHeader>
-          <span>{t('home.bedBoard')}</span>
+          <span className="flex items-center gap-2.5">
+            <IconChip icon={BedDouble} tint="navy" />
+            {t('home.bedBoard')}
+          </span>
           <span className="text-ink-2 tabular-nums">
             {t('home.bedSummary', { occupied, free })}
           </span>
@@ -269,7 +292,10 @@ function DoctorPanels({ data, onError }: PanelProps) {
     <>
       <Card className={grow}>
         <CardHeader>
-          <span>{t('home.resultsInbox')}</span>
+          <span className="flex items-center gap-2.5">
+            <IconChip icon={FlaskConical} tint="violet" />
+            {t('home.resultsInbox')}
+          </span>
           <Badge
             tone={data.results.some((r) => !r.verified) ? 'yellow' : 'green'}
             className="tabular-nums"
@@ -310,7 +336,10 @@ function DoctorPanels({ data, onError }: PanelProps) {
       <div className="grid flex-none grid-cols-1 gap-3 sm:grid-cols-2">
         <Card>
           <CardHeader>
-            <span>{t('home.todaysCalendar')}</span>
+            <span className="flex items-center gap-2.5">
+              <IconChip icon={CalendarDays} tint="teal" />
+              {t('home.todaysCalendar')}
+            </span>
           </CardHeader>
           {mine.length === 0 && (
             <Row className="min-h-10 py-1.5">
@@ -327,7 +356,10 @@ function DoctorPanels({ data, onError }: PanelProps) {
         </Card>
         <Card>
           <CardHeader>
-            <span>{t('home.inquiriesToAccept')}</span>
+            <span className="flex items-center gap-2.5">
+              <IconChip icon={MessageSquare} tint="amber" />
+              {t('home.inquiriesToAccept')}
+            </span>
           </CardHeader>
           {data.toAccept.length === 0 && (
             <Row className="min-h-10 py-1.5">
@@ -375,7 +407,10 @@ function CashierPanels({ data }: PanelProps) {
     <>
       <Card className={grow}>
         <CardHeader>
-          <span>{t('home.openBills')}</span>
+          <span className="flex items-center gap-2.5">
+            <IconChip icon={Receipt} tint="coral" />
+            {t('home.openBills')}
+          </span>
           <span className="text-ink-2 tabular-nums">
             {t('home.billsDue', { count: data.openBills.length, amount: formatRwf(due) })}
           </span>
@@ -416,7 +451,10 @@ function CashierPanels({ data }: PanelProps) {
       </Card>
       <Card className="flex-none">
         <CardHeader>
-          <span>{t('home.paidToday')}</span>
+          <span className="flex items-center gap-2.5">
+            <IconChip icon={Wallet} tint="mint" />
+            {t('home.paidToday')}
+          </span>
           <Badge tone="green" className="tabular-nums">
             {t('home.paymentsCount', { count: data.paidToday.count })}
           </Badge>

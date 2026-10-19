@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Check, X } from 'lucide-react'
+import { BedDouble, CalendarCheck, Check, FilePen, ListTodo, MessageSquare, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatTime, type Role } from '@mmc/shared'
 import { Empty, Panel, Pill } from '@/components/dash/kit'
@@ -93,6 +93,8 @@ export function AppointmentsPanel({
   return (
     <Panel
       i={i}
+      icon={CalendarCheck}
+      tint="violet"
       title={t('desk.receptionist.appointments')}
       right={t('ops.appts.toCome', { count: waiting.length })}
     >
@@ -187,7 +189,13 @@ export function InquiriesPanel({ i = 2, canAct }: { i?: number; canAct: boolean 
   }
 
   return (
-    <Panel i={i} title={t('desk.receptionist.inquiries')} right={String(inquiries.length)}>
+    <Panel
+      i={i}
+      icon={MessageSquare}
+      tint="teal"
+      title={t('desk.receptionist.inquiries')}
+      right={String(inquiries.length)}
+    >
       {error && (
         <p className={errorLine}>
           {error}
@@ -246,6 +254,8 @@ export function TasksPanel({ i = 2 }: { i?: number }) {
   return (
     <Panel
       i={i}
+      icon={ListTodo}
+      tint="amber"
       title={t('desk.nurse.tasks')}
       right={t('ops.tasks.count', { count: tasks.length, overdue })}
     >
@@ -324,7 +334,13 @@ export function BedsPanel({ i = 1, userRole }: { i?: number; userRole: Role }) {
   const free = beds.filter((b) => b.state === 'free').length
 
   return (
-    <Panel i={i} title={t('desk.nurse.beds')} right={t('desk.nurse.bedsFree', { count: free })}>
+    <Panel
+      i={i}
+      icon={BedDouble}
+      tint="navy"
+      title={t('desk.nurse.beds')}
+      right={t('desk.nurse.bedsFree', { count: free })}
+    >
       {error && <p className={errorLine}>{error}</p>}
       {beds.length === 0 ? (
         <Empty>{t('desk.nurse.noBeds')}</Empty>
@@ -429,6 +445,8 @@ export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
   return (
     <Panel
       i={i}
+      icon={FilePen}
+      tint="coral"
       title={t('files.title')}
       right={t('files.count', { count: files.length, here: atReception })}
     >

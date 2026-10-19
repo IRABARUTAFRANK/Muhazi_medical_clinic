@@ -1,5 +1,21 @@
-import type { CSSProperties, ReactNode } from 'react'
-import { ArrowDown, ArrowUp, Minus, type LucideIcon } from 'lucide-react'
+import { createElement, type CSSProperties, type ReactNode } from 'react'
+import {
+  Activity,
+  ArrowDown,
+  ArrowUp,
+  BedDouble,
+  ConciergeBell,
+  FlaskConical,
+  Minus,
+  Pill as PillIcon,
+  Scan,
+  Scissors,
+  Smile,
+  Stethoscope,
+  Syringe,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { formatNumber } from '@mmc/shared'
 import { useCountUp } from '@/lib/motion'
 import { cn } from '@/lib/utils'
@@ -11,7 +27,7 @@ import { cn } from '@/lib/utils'
  * they share one look and one motion system.
  */
 
-import { tintClass, type Tint, card } from './kit-style'
+import { tintClass, type Tint, card, sectionTitle } from './kit-style'
 export function CountUp({ value }: { value: number }) {
   const v = useCountUp(value, 600)
   return <>{formatNumber(v)}</>
@@ -101,15 +117,83 @@ export function Sparkline({ values }: { values: number[] }) {
   )
 }
 
+/** Small tinted square holding an icon, used before panel titles and in list rows. */
+export function IconChip({
+  icon: IconC,
+  tint = 'teal',
+  size = 'md',
+}: {
+  icon: LucideIcon
+  tint?: Tint
+  size?: 'sm' | 'md'
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex flex-none items-center justify-center',
+        size === 'sm' ? 'size-7 rounded-lg' : 'size-8 rounded-[10px]',
+        tintClass[tint],
+      )}
+    >
+      <IconC size={size === 'sm' ? 14 : 16} aria-hidden="true" />
+    </span>
+  )
+}
+
+/** Uppercase section label with its icon ("MONEY", "OPERATIONS"). */
+export function SectionTitle({ icon: IconC, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <div className={cn(sectionTitle, 'flex items-center gap-2')}>
+      <IconC size={14} strokeWidth={2.5} aria-hidden="true" />
+      {children}
+    </div>
+  )
+}
+
+const STATION_ICONS: Record<string, LucideIcon> = {
+  triage: Activity,
+  consultation: Stethoscope,
+  dental: Smile,
+  laboratory: FlaskConical,
+  ultrasound: Scan,
+  nursing: Syringe,
+  theatre: Scissors,
+  pharmacy: PillIcon,
+  cashier: Wallet,
+  beds: BedDouble,
+  reception: ConciergeBell,
+}
+/** Icon for a queue station (consultation → stethoscope); falls back to a stethoscope. */
+export function StationGlyph({
+  station,
+  size = 18,
+  className,
+}: {
+  station: string
+  size?: number
+  className?: string
+}) {
+  return createElement(STATION_ICONS[station.toLowerCase()] ?? Stethoscope, {
+    size,
+    className,
+    'aria-hidden': true,
+  })
+}
+
 export function Panel({
   i,
   title,
+  icon,
+  tint,
   right,
   children,
   className,
 }: {
   i: number
   title: string
+  /** Icon chip before the title, so each panel is recognisable at a glance. */
+  icon?: LucideIcon
+  tint?: Tint
   right?: ReactNode
   children: ReactNode
   className?: string
@@ -117,7 +201,10 @@ export function Panel({
   return (
     <section className={cn(card, 'anim-enter', className)} style={{ '--i': i } as CSSProperties}>
       <h3 className="m-0 flex items-center justify-between gap-2 text-[15px] font-bold">
-        <span className="truncate">{title}</span>
+        <span className="flex min-w-0 items-center gap-2.5">
+          {icon && <IconChip icon={icon} tint={tint} />}
+          <span className="truncate">{title}</span>
+        </span>
         {right && <span className="text-ink-3 truncate text-xs font-semibold">{right}</span>}
       </h3>
       {children}

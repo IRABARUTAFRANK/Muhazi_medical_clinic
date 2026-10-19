@@ -54,3 +54,14 @@ export const groupLabel = (g: string, t: TFn) => {
   const v = t(key)
   return v === key ? g : v
 }
+
+/** "Good morning, Théogène": by the hour, with the name the person is called by. */
+export const greetingFor = (name: string, t: TFn) => {
+  const hour = new Date().getHours()
+  return t(`dashboard.greeting.${hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'}`, {
+    name: name
+      .replace(/^Dr\.?\s+/i, '')
+      .split(' ')
+      .pop(),
+  })
+}
