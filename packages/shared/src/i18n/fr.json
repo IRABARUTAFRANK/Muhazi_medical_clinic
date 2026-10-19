@@ -447,7 +447,8 @@
       "takePayment": "Encaisser",
       "directSale": "Vente directe",
       "dayClose": "Clôture du jour"
-    }
+    },
+    "methodsHint": "Paiements acceptés : espèces, MTN MoMo et Airtel Money."
   },
   "dashboard": {
     "title": "Tableau de bord de la clinique",
@@ -696,7 +697,7 @@
       "pharmacist": "Pharmacien·ne",
       "manager": "Gestionnaire / propriétaire"
     },
-    "lead2": "Créez et modifiez les comptes, placez chaque employé dans un service comme chef, adjoint ou membre, réinitialisez les PIN et désactivez des comptes. Chaque changement est confirmé avec votre PIN.",
+    "lead2": "Créez et modifiez les comptes des employés, placez chacun dans un service comme chef, adjoint ou membre, réinitialisez les PIN et désactivez des comptes. Chaque changement est confirmé par un code envoyé à votre e-mail.",
     "tabs": {
       "people": "Employés · {{count}}",
       "departments": "Services · {{count}}"
@@ -715,17 +716,23 @@
       "member": "Membre"
     },
     "confirm": {
-      "title": "Confirmer avec votre PIN",
-      "pin": "Votre PIN",
-      "hint": "Votre PIN est vérifié sur le serveur et le changement est enregistré à votre nom.",
+      "title": "Confirmer avec un code",
+      "hint": "Le code est vérifié sur le serveur et le changement est enregistré à votre nom. Il ne sert qu’une fois et expire après 10 minutes.",
       "ok": "Confirmer",
-      "wrong": "Ce PIN est incorrect. Rien n’a été modifié.",
-      "required": "Votre PIN est requis pour enregistrer.",
+      "wrong": "Ce code est incorrect ou a expiré. Rien n’a été modifié.",
+      "required": "Saisissez le code reçu par e-mail pour enregistrer.",
       "create": "Créer le compte de {{name}}",
       "update": "Enregistrer les modifications de {{name}}",
       "reset": "Donner un nouveau PIN à {{name}}",
       "deactivate": "Désactiver {{name}} (ne pourra plus se connecter)",
-      "reactivate": "Réactiver {{name}}"
+      "reactivate": "Réactiver {{name}}",
+      "code": "Code reçu par e-mail",
+      "sending": "Envoi d’un code à votre e-mail…",
+      "sentTo": "Nous avons envoyé un code à {{to}}. Saisissez-le ici pour approuver ce changement.",
+      "notSent": "Le code n’a pas pu être envoyé. Essayez « Renvoyer ».",
+      "wait": "Un code a été envoyé il y a moins d’une minute. Patientez un instant, puis renvoyez.",
+      "resend": "Renvoyer",
+      "resendIn": "Renvoyer dans {{s}} s"
     },
     "dept": {
       "none": "Sans service",
@@ -1615,5 +1622,39 @@
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
+  },
+  "textSize": {
+    "title": "Taille du texte",
+    "lead": "Agrandit ou réduit le texte, les icônes et les boutons de tous les écrans du personnel sur cet ordinateur.",
+    "normal": "Normale",
+    "large": "Grande",
+    "xlarge": "Très grande"
+  },
+  "roleHome": {
+    "section": {
+      "doctor": "Mes patients",
+      "cashier": "Factures et paiements",
+      "receptionist": "Accueil",
+      "nurse": "Soins infirmiers"
+    },
+    "tiles": {
+      "waiting": "M’attendent",
+      "inProgress": "En consultation",
+      "seen": "Vus",
+      "results": "Résultats",
+      "myAppointments": "Mes rendez-vous",
+      "toAccept": "Réservations à accepter",
+      "openBills": "Factures ouvertes",
+      "amountDue": "Montant dû",
+      "payments": "Paiements",
+      "collected": "Encaissé aujourd’hui",
+      "inClinic": "Dans la clinique"
+    },
+    "units": {
+      "toReview": "à revoir",
+      "toAnswer": "à traiter",
+      "toCollect": "à encaisser"
+    },
+    "reviewSoon": "à revoir vite"
   }
 }

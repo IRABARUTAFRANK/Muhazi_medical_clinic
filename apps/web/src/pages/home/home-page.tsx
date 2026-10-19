@@ -1,5 +1,21 @@
-import { useEffect } from 'react'
-import { BedDouble, Timer, Users, type LucideIcon } from 'lucide-react'
+import { useEffect, type ReactNode } from 'react'
+import {
+  Banknote,
+  BedDouble,
+  CalendarDays,
+  CircleCheck,
+  ClipboardCheck,
+  Clock,
+  FlaskConical,
+  MessageSquare,
+  Receipt,
+  RefreshCw,
+  Stethoscope,
+  Timer,
+  Users,
+  Wallet,
+  Workflow,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   CLINIC_HOURS,
@@ -7,26 +23,27 @@ import {
   CLINIC_NOW_QUIET,
   ROLE_HOME,
   demoNow,
+  formatNumber,
+  formatTime,
   type HomeMode,
   type HomeRole,
   type StaffUser,
 } from '@mmc/shared'
 import { IdentityBanner } from '@/components/dash/identity-banner'
+import { Kpi, SectionTitle } from '@/components/dash/kit'
 import { greetingFor } from '@/components/dash/kit-style'
-import { buttonVariants } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { useHomeSummary } from '@/lib/api/home'
+import { useHomeSummary, type HomeSummary } from '@/lib/api/home'
 import { useClinicStatus, useClinicInfo } from '@/lib/api/public'
 import { openItems, queueCounts, stationFor, useQueueBoard } from '@/lib/api/visits'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
-import { QueueCard } from './queue-card'
 import { DeskDashboard } from './desk-dashboard'
-import { RolePanels } from './role-panels'
+import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
 
 interface HomePageProps {
   user: StaffUser
@@ -41,8 +58,9 @@ const timeForMode: Record<HomeMode, string | undefined> = {
 }
 
 /**
- * Staff home. Receptionists and nurses get their dashboard (manager design); the other roles
- * keep the Clinic-now strip, my queue, today's panels and quick actions.
+ * Staff home. Receptionists and nurses get their desk dashboard; doctors, cashiers and the lab,
+ * pharmacy and ultrasound desks get the same dashboard design: identity banner, toolbar with
+ * their quick actions, KPI tiles, then their queue and the work of the day.
  */
 export function HomePage({ user, mode }: HomePageProps) {
   if (user.role === 'receptionist' || user.role === 'nurse')
@@ -55,10 +73,9 @@ function RoleHome({ user, mode }: HomePageProps) {
   const role: HomeRole = user.role === 'manager' ? 'receptionist' : user.role
   const home = ROLE_HOME[role]
   const empty = mode === 'empty'
-  // Clinic now: live from public_clinic_status() (waiting, average wait) and the bed board.
   const { data: info } = useClinicInfo()
   const { data: status } = useClinicStatus(info?.hours ?? CLINIC_HOURS)
-  const { data: summary } = useHomeSummary()
+  const { data: summary, error, refetch, isFetching, dataUpdatedAt } = useHomeSummary()
   const sampleNow = empty ? CLINIC_NOW_QUIET : CLINIC_NOW
   const now = isLive
     ? {
@@ -85,14 +102,12 @@ function RoleHome({ user, mode }: HomePageProps) {
   // Live: today's queue at this user's station (reception sees every station).
   const myStation = role === 'receptionist' ? 'all' : stationFor(user)
   const { data: live = [] } = useQueueBoard(myStation, user.role)
-  const liveRows = openItems(live)
-  const rows = isLive ? liveRows : home.queue
+  const rows = isLive ? openItems(live) : empty ? [] : home.queue
   const counts = isLive
     ? queueCounts(live)
     : empty
       ? { waiting: 0, inProgress: 0, done: 0 }
       : home.counts
-  const queueEmpty = isLive ? liveRows.length === 0 : empty
 
   const tabletActions = home.actions.map((a) => (
     <StaffLink
@@ -115,96 +130,246 @@ function RoleHome({ user, mode }: HomePageProps) {
       time={timeForMode[mode]}
       tabletActions={tabletActions}
     >
-      <main className="pc:overflow-hidden pc:p-4 flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
+      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
         {/* WHO IS SIGNED IN */}
         <IdentityBanner user={user} greeting={greetingFor(user.name, t)} />
 
-        {/* CLINIC NOW */}
-        <div className="border-border bg-card flex flex-none flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border px-4 py-2">
-          <span className="text-ink-3 text-[13px] font-semibold tracking-[.04em] uppercase">
-            {t('home.clinicNow')}
-          </span>
-          <Stat
-            icon={Users}
-            value={now.inClinic}
-            label={t('home.inClinic')}
-            shortLabel={t('home.inClinicShort')}
-          />
-          <Stat
-            icon={Timer}
-            value={now.avgWaitMin}
-            label={t('home.avgWait')}
-            shortLabel={t('home.avgWaitShort')}
-          />
-          <Stat
-            icon={BedDouble}
-            value={`${now.bedsOccupied} / ${now.bedsTotal}`}
-            label={t('home.bedsOccupied')}
-            shortLabel={t('home.bedsShort')}
-          />
-        </div>
-
-        <div className="pc:grid pc:flex-1 pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_232px] flex min-h-0 flex-col gap-3">
-          {/* ZONE 1: MY QUEUE */}
-          <QueueCard
-            title={t('home.myQueue', { station })}
-            rows={rows}
-            counts={counts}
-            rowAction={home.rowAction}
-            empty={queueEmpty}
-            className="pc:min-h-0 flex-none"
-          />
-
-          {/* ZONE 2: TODAY */}
-          <section
-            aria-label={t('dashboard.ranges.today')}
-            className="pc:overflow-hidden flex min-h-0 flex-col gap-3"
+        {/* TOOLBAR: what this desk is, freshness, quick actions */}
+        <div className="anim-enter flex flex-wrap items-center gap-3">
+          <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="inline-flex items-center gap-1.5 font-semibold">
+              <ClipboardCheck size={16} aria-hidden="true" className="text-primary" />
+              {t('home.myQueue', { station })}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock size={15} aria-hidden="true" className="text-ink-3" />
+              {t('dashboard.subtitleUpdated', {
+                time: formatTime(dataUpdatedAt ? new Date(dataUpdatedAt) : new Date()),
+              })}
+            </span>
+            {!isLive && <span className="text-ink-3">{t('dashboard.sampleData')}</span>}
+          </div>
+          <Button
+            size="icon"
+            onClick={() => void refetch()}
+            loading={isFetching}
+            aria-label={t('dashboard.refresh')}
+            title={t('dashboard.refresh')}
           >
-            <RolePanels role={role} empty={empty} />
-          </section>
-
-          {/* ZONE 3: QUICK ACTIONS (PC) */}
-          <Card aria-label={t('common.quickActions')} className="pc:flex hidden gap-2 p-3">
-            <div className="px-1 pt-1 pb-2 font-semibold">{t('common.quickActions')}</div>
-            {home.actions.map((a) => (
-              <StaffLink
-                key={a.id}
-                to={a.to}
-                className={cn(
-                  buttonVariants({ variant: a.primary ? 'primary' : 'default' }),
-                  'min-h-14 justify-start px-3.5 text-sm',
-                )}
-              >
-                <Icon name={a.icon} size={20} />
-                {t(a.labelKey)}
-              </StaffLink>
-            ))}
-            <div className="flex-1" />
-            <div className="text-ink-3 px-1 text-[13px]">{t('home.quickNote')}</div>
-          </Card>
+            {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
+          </Button>
+          {home.actions.map((a) => (
+            <StaffLink
+              key={a.id}
+              to={a.to}
+              className={cn(
+                buttonVariants({ variant: a.primary ? 'primary' : 'default', size: 'md' }),
+                'pc:inline-flex hidden',
+              )}
+            >
+              <Icon name={a.icon} size={16} />
+              {t(a.labelKey)}
+            </StaffLink>
+          ))}
         </div>
+
+        {error && <ErrorBox>{t('dashboard.loadFailed', { message: error.message })}</ErrorBox>}
+
+        {/* KPI TILES */}
+        <RoleTiles role={role} summary={summary} counts={counts} now={now} />
+
+        {/* THE WORK OF THE DAY */}
+        <section className="flex flex-col gap-3">
+          <SectionTitle icon={Workflow}>{t(`roleHome.section.${role}`)}</SectionTitle>
+          <div className="pc:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
+            <MyQueuePanel
+              title={t('home.myQueue', { station })}
+              rows={rows}
+              counts={counts}
+              rowAction={home.rowAction}
+            />
+            {summary && (
+              <div className="flex min-w-0 flex-col gap-4">
+                <RolePanels role={role} data={summary} />
+              </div>
+            )}
+          </div>
+        </section>
       </main>
     </StaffShell>
   )
 }
 
-function Stat({
-  icon: IconC,
-  value,
-  label,
-  shortLabel,
+/* ---------------------------------------------------------------- tiles per role */
+
+function RoleTiles({
+  role,
+  summary,
+  counts,
+  now,
 }: {
-  icon: LucideIcon
-  value: number | string
-  label: string
-  shortLabel: string
+  role: HomeRole
+  summary: HomeSummary | undefined
+  counts: { waiting: number; inProgress: number; done: number }
+  now: { inClinic: number; avgWaitMin: number; bedsOccupied: number; bedsTotal: number }
 }) {
-  return (
-    <span className="flex items-baseline gap-1.5 tabular-nums">
-      <IconC size={16} aria-hidden="true" className="text-primary self-center" />
-      <b className="text-xl font-bold">{value}</b>
-      <span className="text-ink-2 pc:inline hidden">{label}</span>
-      <span className="text-ink-2 pc:hidden">{shortLabel}</span>
-    </span>
-  )
+  const { t } = useTranslation()
+  const unitNow = t('dashboard.units.now')
+  const unitToday = t('dashboard.period.today')
+  const unitMin = t('dashboard.units.min')
+  let tiles: ReactNode
+  if (role === 'doctor') {
+    const toReview = summary?.results.filter((r) => !r.verified).length ?? 0
+    const mine = summary?.appointments.filter((a) => a.mine).length ?? 0
+    const toAccept = summary?.toAccept.length ?? 0
+    tiles = (
+      <>
+        <Kpi
+          i={0}
+          icon={Users}
+          tint="amber"
+          label={t('roleHome.tiles.waiting')}
+          value={counts.waiting}
+          unit={unitNow}
+        />
+        <Kpi
+          i={1}
+          icon={Stethoscope}
+          tint="teal"
+          label={t('roleHome.tiles.inProgress')}
+          value={counts.inProgress}
+          unit={unitNow}
+        />
+        <Kpi
+          i={2}
+          icon={CircleCheck}
+          tint="mint"
+          label={t('roleHome.tiles.seen')}
+          value={counts.done}
+          unit={unitToday}
+        />
+        <Kpi
+          i={3}
+          icon={FlaskConical}
+          tint="violet"
+          label={t('roleHome.tiles.results')}
+          value={toReview}
+          unit={t('roleHome.units.toReview')}
+          delta={
+            toReview > 0 ? { text: t('roleHome.reviewSoon'), good: false, up: null } : undefined
+          }
+        />
+        <Kpi
+          i={4}
+          icon={CalendarDays}
+          tint="navy"
+          label={t('roleHome.tiles.myAppointments')}
+          value={mine}
+          unit={unitToday}
+        />
+        <Kpi
+          i={5}
+          icon={MessageSquare}
+          tint="coral"
+          label={t('roleHome.tiles.toAccept')}
+          value={toAccept}
+          unit={t('roleHome.units.toAnswer')}
+          delta={toAccept > 0 ? { text: t('desk.answerSoon'), good: false, up: null } : undefined}
+        />
+      </>
+    )
+  } else if (role === 'cashier') {
+    const bills = summary?.openBills ?? []
+    const due = bills.reduce((s, b) => s + b.balance, 0)
+    tiles = (
+      <>
+        <Kpi
+          i={0}
+          icon={Receipt}
+          tint="coral"
+          label={t('roleHome.tiles.openBills')}
+          value={bills.length}
+          unit={t('roleHome.units.toCollect')}
+        />
+        <Kpi
+          i={1}
+          icon={Wallet}
+          tint="amber"
+          label={t('roleHome.tiles.amountDue')}
+          value={due}
+          unit="RWF"
+        />
+        <Kpi
+          i={2}
+          icon={CircleCheck}
+          tint="mint"
+          label={t('roleHome.tiles.payments')}
+          value={summary?.paidToday.count ?? 0}
+          unit={unitToday}
+        />
+        <Kpi
+          i={3}
+          icon={Banknote}
+          tint="violet"
+          label={t('roleHome.tiles.collected')}
+          value={summary?.paidToday.amount ?? 0}
+          unit="RWF"
+        />
+        <Kpi
+          i={4}
+          icon={Users}
+          tint="navy"
+          label={t('roleHome.tiles.inClinic')}
+          value={now.inClinic}
+          unit={unitNow}
+        />
+        <Kpi
+          i={5}
+          icon={Timer}
+          tint="teal"
+          label={t('dashboard.tiles.avgWait')}
+          value={now.avgWaitMin}
+          unit={unitMin}
+        />
+      </>
+    )
+  } else {
+    tiles = (
+      <>
+        <Kpi
+          i={0}
+          icon={Users}
+          tint="amber"
+          label={t('roleHome.tiles.waiting')}
+          value={counts.waiting}
+          unit={unitNow}
+        />
+        <Kpi
+          i={1}
+          icon={Users}
+          tint="navy"
+          label={t('roleHome.tiles.inClinic')}
+          value={now.inClinic}
+          unit={unitNow}
+        />
+        <Kpi
+          i={2}
+          icon={Timer}
+          tint="coral"
+          label={t('dashboard.tiles.avgWait')}
+          value={now.avgWaitMin}
+          unit={unitMin}
+        />
+        <Kpi
+          i={3}
+          icon={BedDouble}
+          tint="teal"
+          label={t('dashboard.tiles.beds')}
+          value={now.bedsOccupied}
+          unit={`/ ${formatNumber(now.bedsTotal)} ${t('dashboard.units.beds')}`}
+        />
+      </>
+    )
+  }
+  return <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">{tiles}</div>
 }

@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { roleLabel } from '@/lib/roles'
 import { useUserActions } from '@/lib/user-actions'
 import { cn } from '@/lib/utils'
+import { TextSizeControl } from './text-size-control'
 
 const itemClass =
   'flex min-h-11 w-full items-center justify-between rounded-lg px-3 text-left font-normal text-ink hover:bg-hover'
@@ -82,6 +83,10 @@ export function UserMenu({ user, onOpenSheet, onDark = false }: UserMenuProps) {
             </span>
           </div>
           <div className="border-border my-1.5 border-t" />
+          <div className="flex flex-col gap-1.5 px-3 py-1.5">
+            <span className="text-ink-3 text-xs font-semibold">{t('textSize.title')}</span>
+            <TextSizeControl />
+          </div>
           <button
             type="button"
             role="menuitem"

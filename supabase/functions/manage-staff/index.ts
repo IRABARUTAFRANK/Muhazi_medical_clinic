@@ -7,8 +7,9 @@
 //   Secrets: SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided.
 //
 // Every call must carry the caller's Supabase session token; the caller must be an active
-// manager. Every change also carries `confirm_pin`: the manager's own PIN, checked here on the
-// server, so each change is knowingly approved by the person signed in (accountability).
+// manager. Every change also carries `confirm_code`: a one-time code e-mailed to the manager
+// (action `send_code`) and checked here on the server, so each change is knowingly approved by
+// the person who owns that inbox (accountability).
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -29,6 +30,7 @@ const ROLES = [
 const POSITIONS = ['head', 'assistant', 'member']
 const USERNAME = /^[a-z0-9._-]{3,32}$/
 const PIN = /^[0-9]{6}$/
+const CODE = /^[0-9]{6,10}$/
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const BAN_FOREVER = '876000h'
 
@@ -53,7 +55,8 @@ interface Assignment {
   /** Only for role manager: full dashboard. */
   dashboard?: 'manager' | 'head' | null
 }
-type Body = { confirm_pin?: string } & (
+type Body = { confirm_code?: string } & (
+  | { action: 'send_code' }
   | ({
       action: 'create'
       username: string
@@ -100,16 +103,35 @@ Deno.serve(async (req) => {
     return json(400, { error: 'invalid JSON' })
   }
 
-  // Re-authentication: the manager's own PIN, checked against Supabase Auth with a throw-away
-  // client (the browser session is untouched); the temporary session is closed right away.
-  if (!PIN.test(body.confirm_pin ?? '')) return json(401, { error: 'confirm_pin_required' })
-  {
-    const check = createClient(SUPABASE_URL, ANON_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
+  // Re-authentication by e-mail: `send_code` mails the manager a one-time code (the clinic's
+  // sign-in code e-mail); every change then carries it and it is verified here with a throw-away
+  // client (the browser session is untouched). The code must belong to the caller, and the
+  // temporary session it opens is closed right away.
+  const myEmail = caller.user.email ?? me.email
+  const check = createClient(SUPABASE_URL, ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  if (body.action === 'send_code') {
+    if (!myEmail) return json(400, { error: 'no e-mail on your account' })
+    const { error } = await check.auth.signInWithOtp({
+      email: myEmail,
+      options: { shouldCreateUser: false },
     })
-    const email = caller.user.email ?? me.email
-    const { error } = await check.auth.signInWithPassword({ email, password: body.confirm_pin! })
-    if (error) return json(401, { error: 'confirm_pin_wrong' })
+    if (error) {
+      const wait = /security purposes|rate limit|after d+ seconds/i.test(error.message)
+      return json(wait ? 429 : 502, { error: wait ? 'code_wait' : error.message })
+    }
+    const [name, domain] = myEmail.split('@')
+    return json(200, { sent: true, to: `${name!.slice(0, 2)}***@${domain}` })
+  }
+  if (!CODE.test(body.confirm_code ?? '')) return json(401, { error: 'confirm_code_required' })
+  {
+    const { data, error } = await check.auth.verifyOtp({
+      email: myEmail!,
+      token: body.confirm_code!,
+      type: 'email',
+    })
+    if (error || data.user?.id !== caller.user.id) return json(401, { error: 'confirm_code_wrong' })
     await check.auth.signOut({ scope: 'local' })
   }
 
@@ -121,7 +143,7 @@ Deno.serve(async (req) => {
       entity_id: entityId,
       after: {
         manage_staff: action,
-        confirmed_with_pin: true,
+        confirmed_with_code: true,
         ...(after as Record<string, unknown>),
       },
     })

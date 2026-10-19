@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-19T17:03:15.724Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-19T18:16:49.602Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -5005,6 +5005,16 @@ revoke execute on function upsert_department(uuid, text, text, role_key[]), dele
   my_notifications(integer), mark_notifications_read(uuid[]),
   send_notification(text, text, text, text, boolean, boolean) from anon;
 revoke execute on function notification_is_mine(notification, uuid) from anon, authenticated;
+
+
+-- ============================================================ 20261021090000_payment_methods.sql
+-- 0027 — Accepted payment methods: the clinic takes cash, MTN MoMo and Airtel Money only.
+-- Card and bank transfer stay in the payment_method enum so older rows remain readable, but no
+-- new payment may use them. NOT VALID: existing rows are not re-checked.
+alter table payment drop constraint if exists payment_method_accepted;
+alter table payment
+  add constraint payment_method_accepted
+  check (method not in ('card', 'bank')) not valid;
 
 
 -- ============================================================ seed.sql

@@ -456,7 +456,8 @@
     "paidToday": "Byishyuwe uyu munsi",
     "paymentsCount": "Ubwishyu {{count}}",
     "collectedToday": "Byakiriwe uyu munsi",
-    "quickNote": "Utubuto dufite nibura 44 px kandi dusiga umwanya w'amagambo y'Ikinyarwanda / Igifaransa."
+    "quickNote": "Utubuto dufite nibura 44 px kandi dusiga umwanya w'amagambo y'Ikinyarwanda / Igifaransa.",
+    "methodsHint": "Ubwishyu bwemewe: amafaranga mu ntoki, MTN MoMo na Airtel Money."
   },
   "dashboard": {
     "title": "Imbonerahamwe y'ivuriro",
@@ -700,7 +701,7 @@
       "pharmacist": "Umufarumasiye",
       "manager": "Umuyobozi / nyir'ivuriro"
     },
-    "lead2": "Fungura kandi uhindure konti z’abakozi, shyira buri wese mu ishami nk’umuyobozi, umwungirije cyangwa umunyamuryango, subiriza PIN kandi uhagarike konti. Buri mpinduka yemezwa na PIN yawe.",
+    "lead2": "Fungura no guhindura konti z’abakozi, shyira buri wese mu ishami nk’umuyobozi, umwungirije cyangwa umunyamuryango, subiramo PIN kandi uhagarike konti. Buri mpinduka yemezwa na kode yoherejwe kuri e-mail yawe.",
     "tabs": {
       "people": "Abakozi · {{count}}",
       "departments": "Amashami · {{count}}"
@@ -719,17 +720,23 @@
       "member": "Umunyamuryango"
     },
     "confirm": {
-      "title": "Emeza ukoresheje PIN yawe",
-      "pin": "PIN yawe",
-      "hint": "PIN yawe igenzurirwa kuri seriveri kandi impinduka yandikwa mu izina ryawe.",
+      "title": "Emeza ukoresheje kode",
+      "hint": "Kode igenzurirwa kuri seriveri kandi impinduka yandikwa mu izina ryawe. Ikora rimwe gusa kandi irangira nyuma y’iminota 10.",
       "ok": "Emeza",
-      "wrong": "Iyo PIN si yo. Nta cyahindutse.",
-      "required": "PIN yawe irakenewe kugira ngo ubike.",
+      "wrong": "Iyo kode si yo cyangwa yarangiye. Nta cyahindutse.",
+      "required": "Andika kode yaje kuri e-mail yawe kugira ngo ubike.",
       "create": "Fungura konti ya {{name}}",
       "update": "Bika impinduka za {{name}}",
       "reset": "Ha {{name}} PIN nshya",
       "deactivate": "Hagarika {{name}} (ntazongera kwinjira)",
-      "reactivate": "Ongera ukoreshe {{name}}"
+      "reactivate": "Ongera ukoreshe {{name}}",
+      "code": "Kode yaje kuri e-mail yawe",
+      "sending": "Kode iri koherezwa kuri e-mail yawe…",
+      "sentTo": "Twohereje kode kuri {{to}}. Yandike hano kugira ngo wemeze iyi mpinduka.",
+      "notSent": "Kode ntiyashoboye koherezwa. Kanda « Ohereza indi ».",
+      "wait": "Kode yoherejwe hashize umunota utarashira. Tegereza gato, hanyuma wohereze indi.",
+      "resend": "Ohereza indi",
+      "resendIn": "Ohereza indi mu masegonda {{s}}"
     },
     "dept": {
       "none": "Nta shami",
@@ -1624,5 +1631,39 @@
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
+  },
+  "textSize": {
+    "title": "Ingano y’inyandiko",
+    "lead": "Bituma inyandiko, utumenyetso n’utubuto twa buri paji y’abakozi biba binini cyangwa bito kuri iyi mudasobwa.",
+    "normal": "Isanzwe",
+    "large": "Nini",
+    "xlarge": "Nini cyane"
+  },
+  "roleHome": {
+    "section": {
+      "doctor": "Abarwayi banjye",
+      "cashier": "Inyemezabuguzi n’ubwishyu",
+      "receptionist": "Kwakira abantu",
+      "nurse": "Ubuforomo"
+    },
+    "tiles": {
+      "waiting": "Bantegereje",
+      "inProgress": "Bari kuvurwa",
+      "seen": "Abavuwe",
+      "results": "Ibisubizo",
+      "myAppointments": "Gahunda zanjye",
+      "toAccept": "Gahunda zo kwemeza",
+      "openBills": "Inyemezabuguzi zitarishyurwa",
+      "amountDue": "Amafaranga asigaye",
+      "payments": "Ubwishyu",
+      "collected": "Byishyuwe uyu munsi",
+      "inClinic": "Bari mu ivuriro"
+    },
+    "units": {
+      "toReview": "byo kureba",
+      "toAnswer": "byo gusubiza",
+      "toCollect": "zo kwishyuza"
+    },
+    "reviewSoon": "reba vuba"
   }
 }

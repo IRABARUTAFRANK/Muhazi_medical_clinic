@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import {
+  ALargeSmall,
   Activity,
   Building2,
   Check,
@@ -11,7 +12,9 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DAY_KEYS, type ClinicHours, type DayKey, type StaffUser, type TimeSpan } from '@mmc/shared'
+import { IconChip } from '@/components/dash/kit'
 import { PageBanner } from '@/components/dash/page-banner'
+import { TextSizeControl } from '@/components/staff/text-size-control'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
@@ -122,6 +125,22 @@ export function SettingsPage({ user }: { user: StaffUser }) {
             />
             <Shortcut to="/app/vitals" icon={<Activity size={18} />} label={t('triage.title')} />
             <Shortcut to="/app/staff" icon={<Users size={18} />} label={t('staff.title')} />
+          </CardBody>
+        </Card>
+
+        {/* Text size of the staff screens on this device */}
+        <Card>
+          <CardHeader>
+            <span className="flex items-center gap-2.5">
+              <IconChip icon={ALargeSmall} tint="violet" />
+              {t('textSize.title')}
+            </span>
+          </CardHeader>
+          <CardBody className="gap-3">
+            <p className="text-ink-2 m-0 text-[14px]">{t('textSize.lead')}</p>
+            <div className="max-w-[520px]">
+              <TextSizeControl full />
+            </div>
           </CardBody>
         </Card>
 

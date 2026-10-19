@@ -411,7 +411,7 @@ export function useBillingActions(encounterId: string) {
       reference,
       phone,
     }: {
-      method: 'cash' | 'momo' | 'airtel' | 'card' | 'bank'
+      method: 'cash' | 'momo' | 'airtel'
       amount: number
       reference?: string
       phone?: string

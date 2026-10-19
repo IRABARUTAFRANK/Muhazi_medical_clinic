@@ -4,6 +4,7 @@ import { formatDate, formatTime, type NavItem, type StaffUser } from '@mmc/share
 import { appNow } from '@/lib/clock'
 import { useDayNames } from '@/lib/hooks'
 import { useStaffSettings } from '@/lib/api/settings'
+import { TEXT_ZOOM, usePrefs } from '@/store/prefs'
 import { useSession } from '@/store/session'
 import { useSyncState } from '@/store/sync'
 import { IdleWarning, LockScreen, useIdleLock } from './lock-screen'
@@ -38,13 +39,19 @@ export function StaffShell({
   const dayNames = useDayNames()
   const locked = useSession((s) => s.locked)
   const [sheet, setSheet] = useState(false)
+  const zoom = TEXT_ZOOM[usePrefs((s) => s.textSize)] ?? 1
   const { data: staffSettings } = useStaffSettings()
   const lockIn = useIdleLock(staffSettings?.idleMinutes ?? 120)
   const now = appNow()
   const clock = `${dayNames.short[now.getDay()]} ${formatDate(now)} · ${time ?? formatTime(now)}`
 
   return (
-    <div className="bg-surface text-ink relative flex h-dvh flex-col overflow-hidden text-sm">
+    // Text size (Settings or the user menu) scales the whole staff screen; the height is divided
+    // by the zoom so the zoomed frame still fills exactly one screen.
+    <div
+      className="bg-surface text-ink relative flex flex-col overflow-hidden text-sm"
+      style={{ zoom, height: `calc(100dvh / ${zoom})` }}
+    >
       <TopBar user={user} sync={sync} onOpenSheet={() => setSheet(true)} />
       {sync.status === 'offline' && <OfflineBanner />}
       <div className="flex min-h-0 flex-1">

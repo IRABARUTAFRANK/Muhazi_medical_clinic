@@ -447,7 +447,8 @@
       "takePayment": "Take payment",
       "directSale": "Direct sale",
       "dayClose": "Day close"
-    }
+    },
+    "methodsHint": "Accepted payments: cash, MTN MoMo and Airtel Money."
   },
   "dashboard": {
     "title": "Clinic dashboard",
@@ -696,7 +697,7 @@
       "pharmacist": "Pharmacist",
       "manager": "Manager / owner"
     },
-    "lead2": "Create and edit employee accounts, place each one in a department as head, assistant head or member, reset PINs and deactivate accounts. Every change is confirmed with your own PIN.",
+    "lead2": "Create and edit employee accounts, place each one in a department as head, assistant head or member, reset PINs and deactivate accounts. Every change is confirmed with a code sent to your e-mail.",
     "tabs": {
       "people": "Employees · {{count}}",
       "departments": "Departments · {{count}}"
@@ -715,17 +716,23 @@
       "member": "Member"
     },
     "confirm": {
-      "title": "Confirm with your PIN",
-      "pin": "Your PIN",
-      "hint": "Your PIN is checked on the server and the change is recorded in your name.",
+      "title": "Confirm with a code",
+      "hint": "The code is checked on the server and the change is recorded in your name. It works once and expires after 10 minutes.",
       "ok": "Confirm",
-      "wrong": "That PIN is not right. Nothing was changed.",
-      "required": "Your PIN is required to save changes.",
+      "wrong": "That code is wrong or has expired. Nothing was changed.",
+      "required": "Type the code from your e-mail to save.",
       "create": "Create the account of {{name}}",
       "update": "Save the changes to {{name}}",
       "reset": "Give {{name}} a new PIN",
       "deactivate": "Deactivate {{name}} (they can no longer sign in)",
-      "reactivate": "Reactivate {{name}}"
+      "reactivate": "Reactivate {{name}}",
+      "code": "Code from your e-mail",
+      "sending": "Sending a code to your e-mail…",
+      "sentTo": "We sent a code to {{to}}. Type it here to approve this change.",
+      "notSent": "The code could not be sent. Try \"Send again\".",
+      "wait": "A code was sent less than a minute ago. Wait a moment, then send again.",
+      "resend": "Send again",
+      "resendIn": "Send again in {{s}} s"
     },
     "dept": {
       "none": "No department",
@@ -1615,5 +1622,39 @@
   },
   "identity": {
     "aria": "Signed in: {{name}}"
+  },
+  "textSize": {
+    "title": "Text size",
+    "lead": "Makes the text, icons and buttons of every staff screen bigger or smaller on this computer.",
+    "normal": "Normal",
+    "large": "Large",
+    "xlarge": "Extra large"
+  },
+  "roleHome": {
+    "section": {
+      "doctor": "My patients",
+      "cashier": "Bills and payments",
+      "receptionist": "Front desk",
+      "nurse": "Nursing"
+    },
+    "tiles": {
+      "waiting": "Waiting for me",
+      "inProgress": "Being seen",
+      "seen": "Seen",
+      "results": "Results",
+      "myAppointments": "My appointments",
+      "toAccept": "Bookings to accept",
+      "openBills": "Open bills",
+      "amountDue": "Amount due",
+      "payments": "Payments",
+      "collected": "Collected today",
+      "inClinic": "In the clinic"
+    },
+    "units": {
+      "toReview": "to review",
+      "toAnswer": "to answer",
+      "toCollect": "to collect"
+    },
+    "reviewSoon": "review soon"
   }
 }

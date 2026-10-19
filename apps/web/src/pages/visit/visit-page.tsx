@@ -439,7 +439,8 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
 
 /* ---------------------------------------------------------------- cashier: take a payment */
 
-const METHODS = ['cash', 'momo', 'airtel', 'card', 'bank'] as const
+/** The clinic takes cash, MTN MoMo and Airtel Money only (no card, no bank transfer). */
+const METHODS = ['cash', 'momo', 'airtel'] as const
 type Method = (typeof METHODS)[number]
 
 function PaymentCard({

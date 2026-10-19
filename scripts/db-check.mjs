@@ -311,6 +311,14 @@ await expectError(
   },
   /not allowed/i,
 )
+await expectError(
+  'card payments are refused (cash, MTN MoMo and Airtel Money only)',
+  async () => {
+    await as(staff.cashier)
+    await db.query(`select record_payment($1, 'card', 100, 'CARD-1', null)`, [invoiceId])
+  },
+  /payment_method_accepted/i,
+)
 await step('cashier records MoMo 2,745 with reference and posts → INV number + claim', async () => {
   await as(staff.cashier)
   await db.query(`select record_payment($1, 'momo', 2745, 'MP251015.1234.A12345', '0788123456')`, [

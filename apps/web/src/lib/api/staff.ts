@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { STAFF } from '@mmc/shared'
-import { supabase } from '@/lib/supabase'
+import { isLive, supabase } from '@/lib/supabase'
 
 /** All roles the database knows (doc §1.4); the UI has designed homes for five of them. */
 export const DB_ROLES = [
@@ -227,6 +227,12 @@ async function callManageStaff<T>(body: Record<string, unknown>): Promise<T> {
   return data as T
 }
 
+/** E-mails the signed-in manager a one-time code that confirms the next change. */
+export async function sendConfirmCode(): Promise<{ to: string }> {
+  if (!isLive) return { to: 'sample@example.com' }
+  return callManageStaff<{ to: string }>({ action: 'send_code' })
+}
+
 const toBody = (e: EmployeeInput) => ({
   full_name: e.fullName.trim(),
   username: e.username.trim().toLowerCase(),
@@ -241,30 +247,31 @@ const toBody = (e: EmployeeInput) => ({
 
 /**
  * Manager actions. Live: Edge Function `manage-staff` (service role), every one confirmed with
- * the manager's own PIN (`confirmPin`), checked on the server. Sample mode: in-memory list.
+ * a code e-mailed to the manager (`sendConfirmCode`, then `confirmCode`), checked on the server.
+ * Sample mode: in-memory list, any six digits pass.
  */
 export function useStaffActions() {
   const qc = useQueryClient()
   const refresh = () => qc.invalidateQueries({ queryKey: ['staff'] })
   const sampleCheck = (pin: string) => {
-    if (!PIN_RE.test(pin)) throw new Error('confirm_pin_wrong')
+    if (!/^[0-9]{6,10}$/.test(pin)) throw new Error('confirm_code_wrong')
   }
 
   const create = useMutation({
     mutationFn: async ({
       input,
       pin,
-      confirmPin,
+      confirmCode,
     }: {
       input: EmployeeInput
       pin: string
-      confirmPin: string
+      confirmCode: string
     }): Promise<{ id: string; username: string; staff_id: string | null }> => {
       if (!USERNAME_RE.test(input.username)) throw new Error('username')
       if (!PIN_RE.test(pin)) throw new Error('pin')
       if (!EMAIL_RE.test(input.email)) throw new Error('email')
       if (!supabase) {
-        sampleCheck(confirmPin)
+        sampleCheck(confirmCode)
         if (sampleEmployees.some((e) => e.username === input.username))
           throw new Error('username taken')
         const id = `u-${Math.random().toString(36).slice(2, 8)}`
@@ -293,7 +300,7 @@ export function useStaffActions() {
         })
         return { id, username: input.username, staff_id: staffId }
       }
-      return callManageStaff({ action: 'create', ...toBody(input), pin, confirm_pin: confirmPin })
+      return callManageStaff({ action: 'create', ...toBody(input), pin, confirm_code: confirmCode })
     },
     onSuccess: refresh,
   })
@@ -302,16 +309,16 @@ export function useStaffActions() {
     mutationFn: async ({
       id,
       input,
-      confirmPin,
+      confirmCode,
     }: {
       id: string
       input: EmployeeInput
-      confirmPin: string
+      confirmCode: string
     }) => {
       if (!USERNAME_RE.test(input.username)) throw new Error('username')
       if (!EMAIL_RE.test(input.email)) throw new Error('email')
       if (!supabase) {
-        sampleCheck(confirmPin)
+        sampleCheck(confirmCode)
         const e = sampleEmployees.find((x) => x.id === id)
         const dept = sampleDepartments.find((d) => d.id === input.departmentId)
         if (e)
@@ -333,7 +340,7 @@ export function useStaffActions() {
         action: 'update',
         user_id: id,
         ...toBody(input),
-        confirm_pin: confirmPin,
+        confirm_code: confirmCode,
       })
     },
     onSuccess: refresh,
@@ -343,20 +350,20 @@ export function useStaffActions() {
     mutationFn: async ({
       id,
       pin,
-      confirmPin,
+      confirmCode,
     }: {
       id: string
       pin: string
-      confirmPin: string
+      confirmCode: string
     }) => {
       if (!PIN_RE.test(pin)) throw new Error('pin')
       if (!supabase) {
-        sampleCheck(confirmPin)
+        sampleCheck(confirmCode)
         const e = sampleEmployees.find((x) => x.id === id)
         if (e) e.mustChangePin = true
         return
       }
-      await callManageStaff({ action: 'reset_pin', user_id: id, pin, confirm_pin: confirmPin })
+      await callManageStaff({ action: 'reset_pin', user_id: id, pin, confirm_code: confirmCode })
     },
     onSuccess: refresh,
   })
@@ -365,19 +372,24 @@ export function useStaffActions() {
     mutationFn: async ({
       id,
       active,
-      confirmPin,
+      confirmCode,
     }: {
       id: string
       active: boolean
-      confirmPin: string
+      confirmCode: string
     }) => {
       if (!supabase) {
-        sampleCheck(confirmPin)
+        sampleCheck(confirmCode)
         const e = sampleEmployees.find((x) => x.id === id)
         if (e) e.active = active
         return
       }
-      await callManageStaff({ action: 'set_active', user_id: id, active, confirm_pin: confirmPin })
+      await callManageStaff({
+        action: 'set_active',
+        user_id: id,
+        active,
+        confirm_code: confirmCode,
+      })
     },
     onSuccess: refresh,
   })

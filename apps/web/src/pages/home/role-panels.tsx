@@ -1,43 +1,146 @@
-import { useState } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import {
+  AlarmClock,
   BedDouble,
   CalendarCheck,
   CalendarDays,
+  Check,
+  CircleCheck,
+  Clock,
+  FileText,
   FlaskConical,
+  Hourglass,
   ListTodo,
   MessageSquare,
   Receipt,
+  Users,
   Wallet,
+  X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatRwf, type ApptStatus, type HomeRole, type Tone } from '@mmc/shared'
-import { Badge } from '@/components/ui/badge'
+import {
+  formatRwf,
+  type ApptStatus,
+  type HomeRole,
+  type QueueCounts,
+  type QueueRow,
+} from '@mmc/shared'
+import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
+import { triageIcon, type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { IconChip } from '@/components/dash/kit'
-import { Card, CardHeader, Row } from '@/components/ui/card'
 import { StaffLink } from '@/components/staff/staff-link'
-import { useHomeActions, useHomeSummary, type HomeBed, type HomeSummary } from '@/lib/api/home'
+import { useHomeActions, type HomeBed, type HomeSummary } from '@/lib/api/home'
 import { cn } from '@/lib/utils'
 
-const apptTone: Record<ApptStatus, Tone> = { arrived: 'green', due: 'blue', late: 'red' }
+/*
+ * Panels of the role homes (doctor, cashier, and the lab / pharmacy / sonography desks that
+ * share the doctor home) in the dashboard kit: icon-titled panels, rows with symbol pills,
+ * the same sizes as the manager, reception and nursing dashboards.
+ */
+
+const apptTint: Record<ApptStatus, Tint> = { arrived: 'mint', due: 'teal', late: 'coral' }
+const apptIcon = { arrived: CircleCheck, due: Clock, late: AlarmClock } as const
+const triageTint: Record<string, Tint> = { red: 'coral', yellow: 'amber', green: 'mint' }
 const bedClass: Record<HomeBed['state'], string> = {
-  occupied: 'bg-hover text-ink',
-  free: 'bg-green-bg text-green',
-  cleaning: 'bg-yellow-bg text-yellow',
-  out_of_service: 'bg-red-bg text-red',
+  occupied: 'bg-hover text-ink border-border',
+  free: 'bg-green-bg text-green border-green-dot/30',
+  cleaning: 'bg-yellow-bg text-yellow border-yellow-dot/30',
+  out_of_service: 'bg-red-bg text-red border-red-dot/30',
+}
+const rowClass =
+  'border-grid anim-enter flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0'
+const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+export function ErrorBox({ children }: { children: ReactNode }) {
+  return (
+    <p
+      role="alert"
+      className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+    >
+      {children}
+    </p>
+  )
 }
 
-/** Zone 2 of the home page: what this role must do next, live from `home_summary()`. */
-export function RolePanels({ role, empty }: { role: HomeRole; empty: boolean }) {
-  const { data, error } = useHomeSummary()
+/* ---------------------------------------------------------------- my queue */
+
+export function MyQueuePanel({
+  title,
+  rows,
+  counts,
+  rowAction,
+}: {
+  title: string
+  rows: QueueRow[]
+  counts: QueueCounts
+  rowAction: 'open' | 'call'
+}) {
+  const { t } = useTranslation()
+  return (
+    <Panel
+      i={1}
+      icon={Users}
+      tint="amber"
+      title={title}
+      right={`${t('home.waiting', { count: counts.waiting })} · ${t('home.inProgress', { count: counts.inProgress })} · ${t('home.done', { count: counts.done })}`}
+    >
+      {rows.length === 0 ? (
+        <Empty>{t('home.emptyQueueTitle')}</Empty>
+      ) : (
+        <div className="flex flex-col">
+          {rows.map((q, i) => (
+            <div key={q.ticket} className={rowClass} style={{ '--i': i } as CSSProperties}>
+              <Pill tint={triageTint[q.triage] ?? 'teal'} icon={triageIcon[q.triage]}>
+                {q.ticket}
+              </Pill>
+              <span className="min-w-[140px] flex-1">
+                <span className="block truncate font-semibold">{q.name}</span>
+                <span className="text-ink-3 flex flex-wrap items-center gap-x-2 text-[13px]">
+                  <span>{q.ageSex}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Hourglass size={12} aria-hidden="true" />
+                    {q.waitMin} {t('common.min')}
+                  </span>
+                  {q.insurer && (
+                    <span className="inline-flex items-center gap-1">
+                      <Wallet size={12} aria-hidden="true" />
+                      {q.insurer}
+                    </span>
+                  )}
+                </span>
+              </span>
+              <StaffLink
+                to={q.encounterId ? '/app/visit' : '/app/queue'}
+                search={q.encounterId ? { encounter: q.encounterId } : undefined}
+                className={buttonVariants({ size: 'sm', variant: i === 0 ? 'primary' : 'default' })}
+              >
+                {t(rowAction === 'open' ? 'common.open' : 'common.call')}
+              </StaffLink>
+            </div>
+          ))}
+        </div>
+      )}
+      <StaffLink to="/app/visits" className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
+        {t('desk.allInClinic')} →
+      </StaffLink>
+    </Panel>
+  )
+}
+
+/* ---------------------------------------------------------------- per role */
+
+/** What this role must do next, live from `home_summary()`. */
+export function RolePanels({ role, data }: { role: HomeRole; data: HomeSummary }) {
   const [actionError, setActionError] = useState<string | null>(null)
-  if (error) return <ErrorBox>{error.message}</ErrorBox>
-  if (!data) return null
   const common = { data, onError: setActionError }
   return (
     <>
-      {actionError && <ErrorBox>{actionError}</ErrorBox>}
-      {role === 'receptionist' && <ReceptionistPanels {...common} empty={empty} />}
+      {actionError && (
+        <div className="pc:col-span-2">
+          <ErrorBox>{actionError}</ErrorBox>
+        </div>
+      )}
+      {role === 'receptionist' && <ReceptionistPanels {...common} />}
       {role === 'nurse' && <NursePanels {...common} />}
       {role === 'doctor' && <DoctorPanels {...common} />}
       {role === 'cashier' && <CashierPanels {...common} />}
@@ -50,31 +153,10 @@ interface PanelProps {
   onError: (m: string | null) => void
 }
 
-/** First card grows and scrolls on PC; everything stacks and scrolls as a page on tablets. */
-const grow = 'pc:min-h-0 pc:flex-1 pc:overflow-hidden'
-const scroll = 'pc:overflow-auto'
-
-function ErrorBox({ children }: { children: string }) {
-  return (
-    <p
-      role="alert"
-      className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[14px] font-semibold"
-    >
-      {children}
-    </p>
-  )
-}
-const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
-
-function ReceptionistPanels({ data, onError, empty }: PanelProps & { empty: boolean }) {
+function ReceptionistPanels({ data, onError }: PanelProps) {
   const { t } = useTranslation()
   const actions = useHomeActions()
-  const appts = empty ? [] : data.appointments
-  const counts = {
-    arrived: appts.filter((a) => a.status === 'arrived').length,
-    due: appts.filter((a) => a.status === 'due').length,
-    late: appts.filter((a) => a.status === 'late').length,
-  }
+  const appts = data.appointments
   const approve = async (id: string) => {
     onError(null)
     try {
@@ -95,87 +177,82 @@ function ReceptionistPanels({ data, onError, empty }: PanelProps & { empty: bool
   }
   return (
     <>
-      <Card className={grow}>
-        <CardHeader className="flex-wrap">
-          <span className="flex items-center gap-2.5">
-            <IconChip icon={CalendarCheck} tint="violet" />
-            {t('home.todaysAppointments')}
-          </span>
-          <span className="flex gap-1.5 tabular-nums">
-            <Badge tone="green">{t('home.arrived', { count: counts.arrived })}</Badge>
-            <Badge tone="blue">{t('home.due', { count: counts.due })}</Badge>
-            <Badge tone="red">{t('home.late', { count: counts.late })}</Badge>
-          </span>
-        </CardHeader>
+      <Panel
+        i={2}
+        icon={CalendarCheck}
+        tint="violet"
+        title={t('home.todaysAppointments')}
+        right={t('home.arrived', { count: appts.filter((a) => a.status === 'arrived').length })}
+      >
         {appts.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-1.5 p-6 text-center">
-            <div className="text-base font-semibold">{t('home.noAppointmentsTitle')}</div>
-            <div className="text-ink-2">{t('home.noAppointmentsBody')}</div>
-          </div>
+          <Empty>{t('home.noAppointmentsTitle')}</Empty>
         ) : (
-          <div className={scroll}>
-            {appts.map((a) => (
-              <Row key={a.id}>
-                <span className="text-ink-2 w-11 tabular-nums">{a.time}</span>
+          <div className="flex flex-col">
+            {appts.map((a, i) => (
+              <div key={a.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
+                <Pill tint={apptTint[a.status]} icon={apptIcon[a.status]}>
+                  {a.time}
+                </Pill>
                 <span className="min-w-0 flex-1">
-                  <span className="font-semibold">{a.name}</span>
-                  <span className="text-ink-3 block text-[13px]">
+                  <span className="block truncate font-semibold">{a.name}</span>
+                  <span className="text-ink-3 block truncate text-[13px]">
                     {a.doctor}
                     {a.station ? ` · ${a.station}` : ''}
                   </span>
                 </span>
-                <Badge tone={apptTone[a.status]}>{t(`home.apptStatus.${a.status}`)}</Badge>
-              </Row>
+                <span className="text-ink-2 text-[13px] font-semibold">
+                  {t(`home.apptStatus.${a.status}`)}
+                </span>
+              </div>
             ))}
           </div>
         )}
-      </Card>
-      <Card className="flex-none">
-        <CardHeader>
-          <span className="flex items-center gap-2.5">
-            <IconChip icon={MessageSquare} tint="teal" />
-            {t('home.inquiries')}
-          </span>
-          <Badge tone={data.inquiries.length ? 'yellow' : 'green'} className="tabular-nums">
-            {t('home.pending', { count: data.inquiries.length })}
-          </Badge>
-        </CardHeader>
-        {data.inquiries.length === 0 && (
-          <Row>
-            <span className="text-ink-3 text-[14px]">{t('home.noInquiries')}</span>
-          </Row>
-        )}
-        {data.inquiries.map((i) => (
-          <Row key={i.id} className="flex-wrap">
-            <span className="min-w-[140px] flex-1">
-              <span className="font-semibold">{i.name}</span>
-              <span className="text-ink-3 block text-[13px]">
-                {[i.category && t(`categories.${i.category}`), i.doctor, i.when, i.phone, i.note]
-                  .filter(Boolean)
-                  .join(' · ')}
+      </Panel>
+      <Panel
+        i={3}
+        icon={MessageSquare}
+        tint="teal"
+        title={t('home.inquiries')}
+        right={t('home.pending', { count: data.inquiries.length })}
+      >
+        {data.inquiries.length === 0 && <Empty>{t('home.noInquiries')}</Empty>}
+        <div className="flex flex-col">
+          {data.inquiries.map((q, i) => (
+            <div key={q.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
+              <Pill tint="violet" icon={MessageSquare}>
+                {q.when ?? '?'}
+              </Pill>
+              <span className="min-w-[140px] flex-1">
+                <span className="block truncate font-semibold">{q.name}</span>
+                <span className="text-ink-3 block truncate text-[13px]">
+                  {[q.category && t(`categories.${q.category}`), q.doctor, q.phone, q.note]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
               </span>
-            </span>
-            <span className="flex gap-2">
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={actions.approveInquiry.isPending}
-                onClick={() => void approve(i.id)}
-              >
-                {t('common.approve')}
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                disabled={actions.rejectInquiry.isPending}
-                onClick={() => void reject(i.id)}
-              >
-                {t('common.reject')}
-              </Button>
-            </span>
-          </Row>
-        ))}
-      </Card>
+              <span className="flex gap-1">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={actions.approveInquiry.isPending}
+                  onClick={() => void approve(q.id)}
+                >
+                  <Check size={14} aria-hidden="true" />
+                  {t('common.approve')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={actions.rejectInquiry.isPending}
+                  onClick={() => void reject(q.id)}
+                >
+                  {t('common.reject')}
+                </Button>
+              </span>
+            </div>
+          ))}
+        </div>
+      </Panel>
     </>
   )
 }
@@ -195,73 +272,62 @@ function NursePanels({ data, onError }: PanelProps) {
   }
   return (
     <>
-      <Card className={grow}>
-        <CardHeader>
-          <span className="flex items-center gap-2.5">
-            <IconChip icon={ListTodo} tint="amber" />
-            {t('home.tasksDue')}
-          </span>
-          <Badge
-            tone={data.tasks.some((x) => x.overdue) ? 'red' : 'green'}
-            className="tabular-nums"
-          >
-            {t('home.overdue', { count: data.tasks.filter((x) => x.overdue).length })}
-          </Badge>
-        </CardHeader>
-        <div className={scroll}>
-          {data.tasks.length === 0 && (
-            <Row>
-              <span className="text-ink-3 text-[14px]">{t('home.noTasks')}</span>
-            </Row>
-          )}
-          {data.tasks.map((task) => (
-            <Row key={task.id}>
-              <span
-                className={cn(
-                  'w-11 font-semibold tabular-nums',
-                  task.overdue ? 'text-red' : 'text-ink',
-                )}
-              >
+      <Panel
+        i={2}
+        icon={ListTodo}
+        tint="amber"
+        title={t('home.tasksDue')}
+        right={t('home.overdue', { count: data.tasks.filter((x) => x.overdue).length })}
+      >
+        {data.tasks.length === 0 && <Empty>{t('home.noTasks')}</Empty>}
+        <div className="flex flex-col">
+          {data.tasks.map((task, i) => (
+            <div key={task.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
+              <Pill tint={task.overdue ? 'coral' : 'teal'} icon={task.overdue ? AlarmClock : Clock}>
                 {task.time ?? '—'}
-              </span>
+              </Pill>
               <span className="min-w-0 flex-1">
-                <span className="font-semibold">{task.title}</span>
-                <span className="text-ink-3 block text-[13px]">
+                <span className="block truncate font-semibold">{task.title}</span>
+                <span className="text-ink-3 block truncate text-[13px]">
                   {[task.patient, task.detail].filter(Boolean).join(' · ')}
                 </span>
               </span>
               <Button size="sm" onClick={() => void done(task.id)}>
+                <Check size={14} aria-hidden="true" />
                 {t('common.done')}
               </Button>
-            </Row>
-          ))}
-        </div>
-      </Card>
-      <Card className="flex-none">
-        <CardHeader>
-          <span className="flex items-center gap-2.5">
-            <IconChip icon={BedDouble} tint="navy" />
-            {t('home.bedBoard')}
-          </span>
-          <span className="text-ink-2 tabular-nums">
-            {t('home.bedSummary', { occupied, free })}
-          </span>
-        </CardHeader>
-        <div className="grid grid-cols-4 gap-2 px-4 py-3">
-          {data.beds.map((b) => (
-            <div
-              key={b.name}
-              className={cn(
-                'border-border min-h-[52px] rounded-lg border px-2 py-1.5 text-[13px]',
-                bedClass[b.state],
-              )}
-            >
-              <span className="block font-bold">{b.name}</span>
-              <span>{b.state === 'occupied' ? (b.who ?? '') : t(`home.bedState.${b.state}`)}</span>
             </div>
           ))}
         </div>
-      </Card>
+      </Panel>
+      <Panel
+        i={3}
+        icon={BedDouble}
+        tint="navy"
+        title={t('home.bedBoard')}
+        right={t('home.bedSummary', { occupied, free })}
+      >
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {data.beds.map((b, i) => (
+            <div
+              key={b.name}
+              className={cn(
+                'anim-enter flex min-h-14 flex-col gap-0.5 rounded-xl border px-3 py-2 text-[13px]',
+                bedClass[b.state],
+              )}
+              style={{ '--i': i } as CSSProperties}
+            >
+              <span className="inline-flex items-center gap-1.5 font-bold">
+                <BedDouble size={15} aria-hidden="true" />
+                {b.name}
+              </span>
+              <span className="truncate">
+                {b.state === 'occupied' ? (b.who ?? '') : t(`home.bedState.${b.state}`)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Panel>
     </>
   )
 }
@@ -290,32 +356,25 @@ function DoctorPanels({ data, onError }: PanelProps) {
   }
   return (
     <>
-      <Card className={grow}>
-        <CardHeader>
-          <span className="flex items-center gap-2.5">
-            <IconChip icon={FlaskConical} tint="violet" />
-            {t('home.resultsInbox')}
-          </span>
-          <Badge
-            tone={data.results.some((r) => !r.verified) ? 'yellow' : 'green'}
-            className="tabular-nums"
-          >
-            {t('home.resultsCount', { count: data.results.length })}
-          </Badge>
-        </CardHeader>
-        <div className={scroll}>
-          {data.results.length === 0 && (
-            <Row>
-              <span className="text-ink-3 text-[14px]">{t('home.noResults')}</span>
-            </Row>
-          )}
-          {data.results.map((r) => (
-            <Row key={r.id}>
-              <Badge tone={r.verified ? 'green' : 'yellow'} className="w-[88px] justify-start">
+      <Panel
+        i={2}
+        icon={FlaskConical}
+        tint="violet"
+        title={t('home.resultsInbox')}
+        right={t('home.resultsCount', { count: data.results.length })}
+      >
+        {data.results.length === 0 && <Empty>{t('home.noResults')}</Empty>}
+        <div className="flex flex-col">
+          {data.results.map((r, i) => (
+            <div key={r.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
+              <Pill
+                tint={r.verified ? 'mint' : 'amber'}
+                icon={r.verified ? CircleCheck : Hourglass}
+              >
                 {t(r.verified ? 'home.verified' : 'home.unverified')}
-              </Badge>
-              <span className="min-w-0 flex-1">
-                <span className="font-semibold">
+              </Pill>
+              <span className="min-w-[160px] flex-1">
+                <span className="block font-semibold">
                   {r.test} · {r.name}
                 </span>
                 <span className="text-ink-3 block text-[13px] tabular-nums">
@@ -327,74 +386,62 @@ function DoctorPanels({ data, onError }: PanelProps) {
                 search={{ encounter: r.encounterId }}
                 className={buttonVariants({ size: 'sm' })}
               >
+                <FileText size={14} aria-hidden="true" />
                 {t('common.open')}
               </StaffLink>
-            </Row>
+            </div>
           ))}
         </div>
-      </Card>
-      <div className="grid flex-none grid-cols-1 gap-3 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <span className="flex items-center gap-2.5">
-              <IconChip icon={CalendarDays} tint="teal" />
-              {t('home.todaysCalendar')}
-            </span>
-          </CardHeader>
-          {mine.length === 0 && (
-            <Row className="min-h-10 py-1.5">
-              <span className="text-ink-3 text-[14px]">{t('home.noCalendar')}</span>
-            </Row>
-          )}
-          {mine.map((c) => (
-            <Row key={c.id} className="min-h-10 py-1.5">
-              <span className="text-ink-2 w-11 tabular-nums">{c.time}</span>
-              <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
-              <Badge tone={apptTone[c.status]}>{t(`home.apptStatus.${c.status}`)}</Badge>
-            </Row>
-          ))}
-        </Card>
-        <Card>
-          <CardHeader>
-            <span className="flex items-center gap-2.5">
-              <IconChip icon={MessageSquare} tint="amber" />
-              {t('home.inquiriesToAccept')}
-            </span>
-          </CardHeader>
-          {data.toAccept.length === 0 && (
-            <Row className="min-h-10 py-1.5">
-              <span className="text-ink-3 text-[14px]">{t('home.nothingToAccept')}</span>
-            </Row>
-          )}
-          {data.toAccept.map((q) => (
-            <Row key={q.id} className="flex-col items-stretch gap-2">
-              <span>
-                <span className="font-semibold">{q.name}</span>
-                <span className="text-ink-3 block text-[13px]">
-                  {[q.when, q.note].filter(Boolean).join(' · ')}
+      </Panel>
+      <div className="flex min-w-0 flex-col gap-4">
+        <Panel i={3} icon={CalendarDays} tint="teal" title={t('home.todaysCalendar')}>
+          {mine.length === 0 && <Empty>{t('home.noCalendar')}</Empty>}
+          <div className="flex flex-col">
+            {mine.map((c, i) => (
+              <div key={c.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
+                <Pill tint={apptTint[c.status]} icon={apptIcon[c.status]}>
+                  {c.time}
+                </Pill>
+                <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
+                <span className="text-ink-2 text-[13px] font-semibold">
+                  {t(`home.apptStatus.${c.status}`)}
                 </span>
-              </span>
-              <span className="flex gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => void accept(q.id)}
-                >
-                  {t('common.accept')}
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => void decline(q.id)}
-                >
-                  {t('common.decline')}
-                </Button>
-              </span>
-            </Row>
-          ))}
-        </Card>
+              </div>
+            ))}
+          </div>
+        </Panel>
+        <Panel
+          i={4}
+          icon={MessageSquare}
+          tint="amber"
+          title={t('home.inquiriesToAccept')}
+          right={String(data.toAccept.length)}
+        >
+          {data.toAccept.length === 0 && <Empty>{t('home.nothingToAccept')}</Empty>}
+          <div className="flex flex-col">
+            {data.toAccept.map((q, i) => (
+              <div key={q.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
+                <Pill tint="violet" icon={CalendarCheck}>
+                  {q.when}
+                </Pill>
+                <span className="min-w-[140px] flex-1">
+                  <span className="block truncate font-semibold">{q.name}</span>
+                  {q.note && <span className="text-ink-3 block text-[13px]">{q.note}</span>}
+                </span>
+                <span className="flex gap-1">
+                  <Button variant="primary" size="sm" onClick={() => void accept(q.id)}>
+                    <Check size={14} aria-hidden="true" />
+                    {t('common.accept')}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => void decline(q.id)}>
+                    <X size={14} aria-hidden="true" />
+                    {t('common.decline')}
+                  </Button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </Panel>
       </div>
     </>
   )
@@ -405,67 +452,59 @@ function CashierPanels({ data }: PanelProps) {
   const due = data.openBills.reduce((s, b) => s + b.balance, 0)
   return (
     <>
-      <Card className={grow}>
-        <CardHeader>
-          <span className="flex items-center gap-2.5">
-            <IconChip icon={Receipt} tint="coral" />
-            {t('home.openBills')}
-          </span>
-          <span className="text-ink-2 tabular-nums">
-            {t('home.billsDue', { count: data.openBills.length, amount: formatRwf(due) })}
-          </span>
-        </CardHeader>
-        <div className={scroll}>
-          {data.openBills.length === 0 && (
-            <Row>
-              <span className="text-ink-3 text-[14px]">{t('home.noOpenBills')}</span>
-            </Row>
-          )}
-          {data.openBills.map((b) => (
-            <Row key={b.encounterId}>
+      <Panel
+        i={2}
+        icon={Receipt}
+        tint="coral"
+        title={t('home.openBills')}
+        right={t('home.billsDue', { count: data.openBills.length, amount: formatRwf(due) })}
+      >
+        {data.openBills.length === 0 && <Empty>{t('home.noOpenBills')}</Empty>}
+        <div className="flex flex-col">
+          {data.openBills.map((b, i) => (
+            <div key={b.encounterId} className={rowClass} style={{ '--i': i } as CSSProperties}>
+              <Pill tint="amber" icon={Receipt}>
+                {b.ticket ?? '—'}
+              </Pill>
               <span className="min-w-0 flex-1">
-                <span className="font-semibold">
-                  {b.ticket ? `${b.ticket} · ` : ''}
-                  {b.name}
-                </span>
-                <span className="text-ink-3 block text-[13px]">
+                <span className="block truncate font-semibold">{b.name}</span>
+                <span className="text-ink-3 block truncate text-[13px]">
                   {b.file}
                   {b.station
                     ? ` · ${t('home.atStation', { station: t(`register.stations.${b.station}`) })}`
                     : ''}
                 </span>
               </span>
-              <span className="w-[104px] text-right font-semibold tabular-nums">
+              <span className="font-bold whitespace-nowrap tabular-nums">
                 {formatRwf(b.balance)}
               </span>
               <StaffLink
                 to="/app/visit"
                 search={{ encounter: b.encounterId }}
-                className={buttonVariants({ variant: 'primary', size: 'sm' })}
+                className={buttonVariants({ variant: i === 0 ? 'primary' : 'default', size: 'sm' })}
               >
+                <Wallet size={14} aria-hidden="true" />
                 {t('home.takePayment')}
               </StaffLink>
-            </Row>
+            </div>
           ))}
         </div>
-      </Card>
-      <Card className="flex-none">
-        <CardHeader>
-          <span className="flex items-center gap-2.5">
-            <IconChip icon={Wallet} tint="mint" />
-            {t('home.paidToday')}
-          </span>
-          <Badge tone="green" className="tabular-nums">
-            {t('home.paymentsCount', { count: data.paidToday.count })}
-          </Badge>
-        </CardHeader>
-        <Row className="min-h-10 py-1.5">
-          <span className="flex-1 font-medium">{t('home.collectedToday')}</span>
-          <span className="text-ink text-lg font-bold tabular-nums">
+      </Panel>
+      <Panel
+        i={3}
+        icon={Wallet}
+        tint="mint"
+        title={t('home.paidToday')}
+        right={t('home.paymentsCount', { count: data.paidToday.count })}
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-ink-2 font-semibold">{t('home.collectedToday')}</span>
+          <span className="text-[26px] font-extrabold tabular-nums">
             {formatRwf(data.paidToday.amount)}
           </span>
-        </Row>
-      </Card>
+        </div>
+        <Hint>{t('home.methodsHint')}</Hint>
+      </Panel>
     </>
   )
 }

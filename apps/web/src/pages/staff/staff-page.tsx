@@ -1,10 +1,12 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   Building2,
   Check,
   Copy,
   IdCard,
   KeyRound,
+  Mail,
+  MailCheck,
   Pencil,
   Plus,
   RefreshCw,
@@ -33,6 +35,7 @@ import {
   POSITIONS,
   USERNAME_RE,
   generatePin,
+  sendConfirmCode,
   suggestUsername,
   useDepartmentActions,
   useDepartments,
@@ -56,10 +59,10 @@ interface Credentials {
   pin: string
 }
 
-/** What waits for the manager's PIN before it is sent. */
+/** What waits for the manager's e-mailed code before it is sent. */
 interface Pending {
   title: string
-  run: (confirmPin: string) => Promise<void>
+  run: (confirmCode: string) => Promise<void>
 }
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
@@ -67,7 +70,7 @@ const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-s
 /**
  * Manager-only: employees (create, edit everything, reset PIN, deactivate) and departments
  * (which roles belong; each employee is head, assistant head or member). Every change is
- * confirmed with the manager's own PIN, checked on the server (doc §5.11, §5.12).
+ * confirmed with a one-time code e-mailed to the manager, checked on the server (doc §5.11, §5.12).
  */
 export function StaffPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -84,8 +87,9 @@ export function StaffPage({ user }: { user: StaffUser }) {
 
   const describeError = (e: unknown): string => {
     const m = e instanceof Error ? e.message : String(e)
-    if (m === 'confirm_pin_wrong') return t('staff.confirm.wrong')
-    if (m === 'confirm_pin_required') return t('staff.confirm.required')
+    if (m === 'confirm_code_wrong') return t('staff.confirm.wrong')
+    if (m === 'confirm_code_required') return t('staff.confirm.required')
+    if (m === 'code_wait') return t('staff.confirm.wait')
     if (/e-mail already/i.test(m)) return t('staff.errors.emailTaken')
     if (/taken|already exists/i.test(m)) return t('staff.errors.usernameTaken')
     if (/does not belong/i.test(m)) return t('staff.errors.roleDept')
@@ -186,12 +190,12 @@ export function StaffPage({ user }: { user: StaffUser }) {
                       editing === 'new'
                         ? t('staff.confirm.create', { name: input.fullName })
                         : t('staff.confirm.update', { name: input.fullName }),
-                    run: async (confirmPin) => {
+                    run: async (confirmCode) => {
                       if (editing === 'new') {
                         const r = await actions.create.mutateAsync({
                           input,
                           pin: firstPin!,
-                          confirmPin,
+                          confirmCode,
                         })
                         setCredentials({
                           title: t('staff.created.title', { name: input.fullName }),
@@ -201,7 +205,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                           pin: firstPin!,
                         })
                       } else {
-                        await actions.update.mutateAsync({ id: editing.id, input, confirmPin })
+                        await actions.update.mutateAsync({ id: editing.id, input, confirmCode })
                         setNotice(t('staff.saved', { name: input.fullName }))
                       }
                       setEditing(null)
@@ -218,8 +222,8 @@ export function StaffPage({ user }: { user: StaffUser }) {
                 onSubmit={(pin) =>
                   setPending({
                     title: t('staff.confirm.reset', { name: resetFor.fullName }),
-                    run: async (confirmPin) => {
-                      await actions.resetPin.mutateAsync({ id: resetFor.id, pin, confirmPin })
+                    run: async (confirmCode) => {
+                      await actions.resetPin.mutateAsync({ id: resetFor.id, pin, confirmCode })
                       setCredentials({
                         title: t('staff.reset.doneTitle', { name: resetFor.fullName }),
                         staffId: resetFor.staffId ?? '',
@@ -327,11 +331,11 @@ export function StaffPage({ user }: { user: StaffUser }) {
                                     name: e.fullName,
                                   },
                                 ),
-                                run: async (confirmPin) => {
+                                run: async (confirmCode) => {
                                   await actions.setActive.mutateAsync({
                                     id: e.id,
                                     active: !e.active,
-                                    confirmPin,
+                                    confirmCode,
                                   })
                                   setNotice(
                                     t(
@@ -362,12 +366,12 @@ export function StaffPage({ user }: { user: StaffUser }) {
         )}
 
         {pending && (
-          <ConfirmPinDialog
+          <ConfirmCodeDialog
             title={pending.title}
             describeError={describeError}
             onCancel={() => setPending(null)}
-            onConfirm={async (pin) => {
-              await pending.run(pin)
+            onConfirm={async (code) => {
+              await pending.run(code)
               setPending(null)
             }}
           />
@@ -377,33 +381,64 @@ export function StaffPage({ user }: { user: StaffUser }) {
   )
 }
 
-/* ---------------------------------------------------------------- confirm with the manager's PIN */
+/* ---------------------------------------------------------------- confirm with an e-mailed code */
 
-function ConfirmPinDialog({
+function ConfirmCodeDialog({
   title,
   onConfirm,
   onCancel,
   describeError,
 }: {
   title: string
-  onConfirm: (pin: string) => Promise<void>
+  onConfirm: (code: string) => Promise<void>
   onCancel: () => void
   describeError: (e: unknown) => string
 }) {
   const { t } = useTranslation()
-  const [pin, setPin] = useState('')
+  const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
+  const [sending, setSending] = useState(true)
+  const [sentTo, setSentTo] = useState<string | null>(null)
+  const [wait, setWait] = useState(0)
   const [error, setError] = useState<string | null>(null)
+
+  const send = async () => {
+    setSending(true)
+    setError(null)
+    try {
+      const r = await sendConfirmCode()
+      setSentTo(r.to)
+      setWait(60)
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setSending(false)
+    }
+  }
+  // One code per dialog: sent when it opens, again only on request after the cool-down.
+  const sentOnce = useRef(false)
+  useEffect(() => {
+    if (sentOnce.current) return
+    sentOnce.current = true
+    void send()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (wait <= 0) return
+    const id = setTimeout(() => setWait((w) => w - 1), 1000)
+    return () => clearTimeout(id)
+  }, [wait])
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!PIN_RE.test(pin)) return setError(t('staff.errors.pin'))
+    if (!/^[0-9]{6,10}$/.test(code)) return setError(t('staff.confirm.required'))
     setBusy(true)
     setError(null)
     try {
-      await onConfirm(pin)
+      await onConfirm(code)
     } catch (err) {
       setError(describeError(err))
-      setPin('')
+      setCode('')
     } finally {
       setBusy(false)
     }
@@ -418,40 +453,57 @@ function ConfirmPinDialog({
     >
       <form
         onSubmit={submit}
-        className="bg-card shadow-sheet flex w-full max-w-[420px] flex-col gap-4 rounded-2xl p-6"
+        className="bg-card shadow-sheet flex w-full max-w-[440px] flex-col gap-4 rounded-2xl p-6"
       >
         <div className="flex items-center gap-3">
           <span className="icon-gradient inline-flex size-11 flex-none items-center justify-center rounded-xl text-white">
-            <ShieldCheck size={22} aria-hidden="true" />
+            <MailCheck size={22} aria-hidden="true" />
           </span>
           <span>
             <span className="block text-lg font-bold">{t('staff.confirm.title')}</span>
-            <span className="text-ink-2 text-[13px]">{title}</span>
+            <span className="text-ink-2 text-[14px]">{title}</span>
           </span>
         </div>
+        <p className="bg-surface text-ink-2 m-0 flex items-center gap-2 rounded-lg px-3 py-2 text-[14px]">
+          <Mail size={16} aria-hidden="true" className="text-primary flex-none" />
+          {sending
+            ? t('staff.confirm.sending')
+            : sentTo
+              ? t('staff.confirm.sentTo', { to: sentTo })
+              : t('staff.confirm.notSent')}
+        </p>
         <Field
-          label={t('staff.confirm.pin')}
-          type="password"
+          label={t('staff.confirm.code')}
           inputMode="numeric"
-          autoComplete="current-password"
+          autoComplete="one-time-code"
           autoFocus
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
           required
         />
-        <p className="text-ink-3 m-0 text-xs">{t('staff.confirm.hint')}</p>
+        <p className="text-ink-3 m-0 text-[13px]">{t('staff.confirm.hint')}</p>
         {error && (
           <p role="alert" className={errorBox}>
             {error}
           </p>
         )}
-        <div className="flex gap-2">
-          <Button type="submit" variant="primary" loading={busy}>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" variant="primary" loading={busy} disabled={sending && !sentTo}>
             <Check size={16} aria-hidden="true" />
             {t('staff.confirm.ok')}
           </Button>
           <Button type="button" variant="ghost" onClick={onCancel}>
             {t('staff.form.cancel')}
+          </Button>
+          <span className="flex-1" />
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={sending || wait > 0}
+            onClick={() => void send()}
+          >
+            <RefreshCw size={15} aria-hidden="true" />
+            {wait > 0 ? t('staff.confirm.resendIn', { s: wait }) : t('staff.confirm.resend')}
           </Button>
         </div>
       </form>

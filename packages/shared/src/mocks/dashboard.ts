@@ -50,11 +50,9 @@ export interface BarDatum {
   value: number
 }
 export const COLLECTIONS_TODAY: readonly BarDatum[] = [
-  { label: 'Cash', value: 318400 },
+  { label: 'Cash', value: 340400 },
   { label: 'MTN MoMo', value: 254100 },
   { label: 'Airtel Money', value: 61000 },
-  { label: 'Card', value: 22000 },
-  { label: 'Bank', value: 0 },
   { label: 'Insurer (billed)', value: 87000 },
 ]
 export const COLLECTIONS_TOTAL = 742500
