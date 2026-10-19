@@ -496,6 +496,18 @@ await step('receptionist types the nurse’s paper vitals; patient moves on', as
   if (q.station !== 'consultation') throw new Error(q.station)
   return 'measured by nurse, typed by receptionist, now at consultation'
 })
+await step('receptionist sees the vitals (not the clinical notes) of the visit', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select count(*)::int as n from visit_vitals where encounter_id = $1`, [
+    paperVisit,
+  ])
+  if (v.n < 2) throw new Error(`sees ${v.n} vitals`)
+  const notes = await one(`select count(*)::int as n from observation where encounter_id = $1`, [
+    paperVisit,
+  ])
+  if (notes.n !== 0) throw new Error('reads raw observations')
+  return `${v.n} vitals visible, raw clinical rows hidden`
+})
 await expectError(
   'receptionist must name who measured',
   async () => {

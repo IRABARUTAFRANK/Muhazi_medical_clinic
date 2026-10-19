@@ -227,7 +227,7 @@ function ReceptionTiles({ d }: { d: DeskSummary }) {
     }
   }
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(128px,1fr))] gap-3">
       <Kpi
         i={0}
         icon={UserPlus}
