@@ -350,5 +350,104 @@ export function useCatalogueActions() {
     onSuccess: refresh,
   })
 
-  return { saveTreatment, saveInsurer }
+  /** Removes a treatment from every list; bills that already used it keep their lines. */
+  const deleteTreatment = useMutation({
+    mutationFn: async (id: string) => {
+      if (!supabase) {
+        const i = sampleTreatments.findIndex((t) => t.id === id)
+        if (i >= 0) sampleTreatments.splice(i, 1)
+        return
+      }
+      const { error } = await supabase.rpc('delete_service', { p_id: id })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+
+  /** Shows or hides a treatment at the visit screen without opening the form. */
+  const setTreatmentActive = useMutation({
+    mutationFn: async ({ treatment, active }: { treatment: Treatment; active: boolean }) => {
+      if (!supabase) {
+        const x = sampleTreatments.find((t) => t.id === treatment.id)
+        if (x) x.active = active
+        return
+      }
+      const { error } = await supabase.rpc('upsert_service', {
+        p_id: treatment.id,
+        p_name_en: treatment.nameEn,
+        p_group: treatment.group,
+        p_cash_price: treatment.cashPrice ?? 0,
+        p_name_kin: treatment.nameKin,
+        p_name_fr: treatment.nameFr,
+        p_max_discount_pct: treatment.maxDiscountPct,
+        p_allow_manual: treatment.allowManualPrice,
+        p_active: active,
+        p_code: treatment.code,
+        p_booking_category: treatment.bookingCategory,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+
+  const deleteInsurer = useMutation({
+    mutationFn: async (id: string) => {
+      if (!supabase) {
+        const i = sampleInsurers.findIndex((x) => x.id === id)
+        if (i >= 0) sampleInsurers.splice(i, 1)
+        return
+      }
+      const { error } = await supabase.rpc('delete_payer', { p_id: id })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+
+  /** Raise or lower every cash price (or one group) at once. Returns how many changed. */
+  const adjustPrices = useMutation({
+    mutationFn: async (input: {
+      group: ServiceGroup | null
+      mode: 'multiply' | 'percent' | 'amount'
+      value: number
+      round: number
+    }): Promise<number> => {
+      if (!supabase) {
+        let n = 0
+        for (const t of sampleTreatments) {
+          if (t.cashPrice == null || t.cashPrice <= 0) continue
+          if (input.group && t.group !== input.group) continue
+          const raw =
+            input.mode === 'multiply'
+              ? t.cashPrice * input.value
+              : input.mode === 'percent'
+                ? (t.cashPrice * (100 + input.value)) / 100
+                : t.cashPrice + input.value
+          const next = Math.max(0, Math.round(raw / input.round) * input.round)
+          if (next !== t.cashPrice) {
+            t.cashPrice = next
+            n++
+          }
+        }
+        return n
+      }
+      const { data, error } = await supabase.rpc('adjust_prices', {
+        p_group: input.group,
+        p_mode: input.mode,
+        p_value: input.value,
+        p_round: input.round,
+      })
+      if (error) throw new Error(error.message)
+      return Number(data)
+    },
+    onSuccess: refresh,
+  })
+
+  return {
+    saveTreatment,
+    saveInsurer,
+    deleteTreatment,
+    setTreatmentActive,
+    deleteInsurer,
+    adjustPrices,
+  }
 }

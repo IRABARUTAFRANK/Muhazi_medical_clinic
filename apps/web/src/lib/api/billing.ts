@@ -274,6 +274,8 @@ export interface AddChargeInput {
   quantity: number
   discountPct: number
   discountReason?: string
+  /** A different price per unit (allowed when the treatment permits it, or for the manager). */
+  manualPrice?: number | null
   coveragePct?: number
 }
 
@@ -288,7 +290,10 @@ export function useBillingActions(encounterId: string) {
     mutationFn: async (input: AddChargeInput) => {
       if (!supabase) {
         const b = sampleBill(encounterId)
-        const unit = Math.round(((input.listPrice ?? 0) * (100 - input.discountPct)) / 100)
+        const unit =
+          input.manualPrice != null
+            ? input.manualPrice
+            : Math.round(((input.listPrice ?? 0) * (100 - input.discountPct)) / 100)
         const total = Math.round(unit * input.quantity)
         const insurer = Math.round((total * (input.coveragePct ?? 0)) / 100)
         b.charges.push({
@@ -315,14 +320,14 @@ export function useBillingActions(encounterId: string) {
         p_service_id: input.serviceId,
         p_item_id: null,
         p_quantity: input.quantity,
-        p_manual_price: null,
-        p_manual_reason: null,
+        p_manual_price: input.manualPrice ?? null,
+        p_manual_reason: input.manualPrice != null ? input.discountReason?.trim() || null : null,
         p_performed_by: null,
         p_entered_for: null,
         p_source_type: null,
         p_source_id: null,
-        p_discount_pct: input.discountPct,
-        p_discount_reason: input.discountReason?.trim() || null,
+        p_discount_pct: input.manualPrice != null ? 0 : input.discountPct,
+        p_discount_reason: input.manualPrice != null ? null : input.discountReason?.trim() || null,
       })
       if (error) throw new Error(error.message)
     },

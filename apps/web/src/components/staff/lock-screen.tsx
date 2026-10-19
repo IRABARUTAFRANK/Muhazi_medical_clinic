@@ -7,26 +7,70 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { useSession } from '@/store/session'
 
-const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'wheel'] as const
+const ACTIVITY_EVENTS = [
+  'pointerdown',
+  'pointermove',
+  'keydown',
+  'touchstart',
+  'wheel',
+  'scroll',
+] as const
+/** Seconds of warning before the screen locks. */
+export const LOCK_WARNING_S = 60
 
-/** Locks the staff screen after `minutes` without input (doc §14: auto-lock after 5 minutes). */
-export function useIdleLock(minutes = 5) {
+/**
+ * Locks the staff screen after `minutes` without input. One minute before, it returns the
+ * time left so the shell can show "Still there?"; any touch, key or mouse move resets it.
+ * The page underneath stays as it was, so unlocking with the PIN loses no work.
+ */
+export function useIdleLock(minutes = 15): number | null {
+  const [left, setLeft] = useState<number | null>(null)
   useEffect(() => {
-    let timer = 0
+    let lockAt = 0
+    let lastArm = 0
     const arm = () => {
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => useSession.getState().lock(), minutes * 60_000)
+      lockAt = Date.now() + minutes * 60_000
+      lastArm = Date.now()
+      setLeft(null)
     }
     const onActivity = () => {
-      if (!useSession.getState().locked) arm()
+      // pointermove fires constantly: re-arm at most once a second.
+      if (useSession.getState().locked || Date.now() - lastArm < 1000) return
+      arm()
     }
     arm()
+    const tick = window.setInterval(() => {
+      if (useSession.getState().locked) return
+      const remaining = Math.ceil((lockAt - Date.now()) / 1000)
+      if (remaining <= 0) {
+        setLeft(null)
+        useSession.getState().lock()
+      } else if (remaining <= LOCK_WARNING_S) setLeft(remaining)
+    }, 1000)
     for (const ev of ACTIVITY_EVENTS) window.addEventListener(ev, onActivity, { passive: true })
     return () => {
-      window.clearTimeout(timer)
+      window.clearInterval(tick)
       for (const ev of ACTIVITY_EVENTS) window.removeEventListener(ev, onActivity)
     }
   }, [minutes])
+  return left
+}
+
+/** Small bar shown during the last minute before the lock. */
+export function IdleWarning({ seconds }: { seconds: number }) {
+  const { t } = useTranslation()
+  return (
+    <div
+      role="status"
+      className="bg-amber-bg text-ink border-amber shadow-card fixed right-4 bottom-4 z-[90] flex max-w-[360px] items-center gap-3 rounded-xl border px-4 py-3"
+    >
+      <Lock size={18} aria-hidden="true" className="flex-none" />
+      <span className="flex-1 text-[13px] font-semibold">{t('lock.soon', { count: seconds })}</span>
+      <Button size="sm" variant="primary">
+        {t('lock.stay')}
+      </Button>
+    </div>
+  )
 }
 
 /** Full-screen PIN prompt shown while the session is locked. */

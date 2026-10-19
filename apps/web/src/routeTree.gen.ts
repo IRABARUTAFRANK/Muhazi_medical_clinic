@@ -24,6 +24,7 @@ import { Route as AppRegisterRouteImport } from './routes/app/register'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppStaffRouteImport } from './routes/app/staff'
 import { Route as AppVisitRouteImport } from './routes/app/visit'
+import { Route as AppVisitsRouteImport } from './routes/app/visits'
 import { Route as AppVitalsRouteImport } from './routes/app/vitals'
 
 const IndexRoute = IndexRouteImport.update({
@@ -101,6 +102,11 @@ const AppVisitRoute = AppVisitRouteImport.update({
   path: '/visit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppVisitsRoute = AppVisitsRouteImport.update({
+  id: '/visits',
+  path: '/visits',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVitalsRoute = AppVitalsRouteImport.update({
   id: '/vitals',
   path: '/vitals',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/visit': typeof AppVisitRoute
+  '/app/visits': typeof AppVisitsRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
 }
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/visit': typeof AppVisitRoute
+  '/app/visits': typeof AppVisitsRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app': typeof AppIndexRoute
 }
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/visit': typeof AppVisitRoute
+  '/app/visits': typeof AppVisitsRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
 }
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/staff'
     | '/app/visit'
+    | '/app/visits'
     | '/app/vitals'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/staff'
     | '/app/visit'
+    | '/app/visits'
     | '/app/vitals'
     | '/app'
   id:
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/staff'
     | '/app/visit'
+    | '/app/visits'
     | '/app/vitals'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -331,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppVisitRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/visits': {
+      id: '/app/visits'
+      path: '/visits'
+      fullPath: '/app/visits'
+      preLoaderRoute: typeof AppVisitsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/vitals': {
       id: '/app/vitals'
       path: '/vitals'
@@ -352,6 +371,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppStaffRoute: typeof AppStaffRoute
   AppVisitRoute: typeof AppVisitRoute
+  AppVisitsRoute: typeof AppVisitsRoute
   AppVitalsRoute: typeof AppVitalsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -367,6 +387,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppStaffRoute: AppStaffRoute,
   AppVisitRoute: AppVisitRoute,
+  AppVisitsRoute: AppVisitsRoute,
   AppVitalsRoute: AppVitalsRoute,
   AppIndexRoute: AppIndexRoute,
 }

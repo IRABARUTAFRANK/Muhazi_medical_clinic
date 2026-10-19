@@ -20,7 +20,7 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
   return (
     <nav
       aria-label={t('common.mainNav')}
-      className="topbar-gradient pc:hidden flex flex-none gap-1 px-2 py-1.5 text-white"
+      className="topbar-gradient pc:hidden flex flex-none gap-1 overflow-x-auto px-2 py-1.5 text-white"
     >
       {nav.map((n) => {
         const active = n.id === activeId

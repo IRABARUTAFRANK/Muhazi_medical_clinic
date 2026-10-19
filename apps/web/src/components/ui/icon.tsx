@@ -20,6 +20,7 @@ import {
   HeartHandshake,
   HeartPulse,
   Home,
+  IdCard,
   LayoutDashboard,
   ListOrdered,
   Lock,
@@ -36,6 +37,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Smile,
+  Stethoscope,
   Syringe,
   Ticket,
   UserPlus,
@@ -88,6 +90,8 @@ const icons = {
   'layout-dashboard': LayoutDashboard,
   package: Package,
   settings: Settings,
+  stethoscope: Stethoscope,
+  'id-card': IdCard,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof icons

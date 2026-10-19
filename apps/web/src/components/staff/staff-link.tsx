@@ -10,6 +10,8 @@ interface StaffLinkProps {
   style?: CSSProperties
   children: ReactNode
   'aria-current'?: AriaAttributes['aria-current']
+  'aria-label'?: string
+  title?: string
   onClick?: () => void
 }
 

@@ -12,6 +12,7 @@ import { useClinicSettings, useSaveClinicSettings, type ClinicSettings } from '@
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
+import { LockCard } from './lock-card'
 import { PatientFieldsCard } from './patient-fields-card'
 
 type DayMode = 'closed' | 'allDay' | 'custom'
@@ -225,6 +226,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           </form>
         )}
 
+        <LockCard />
         <PatientFieldsCard />
       </main>
     </StaffShell>
@@ -263,7 +265,11 @@ function HoursRow({
       <Select
         label={t('settings.hours.mode')}
         value={mode}
-        onChange={(e) => onChange(e.target.value as DayMode, span)}
+        onChange={(e) => {
+          const next = e.target.value as DayMode
+          // Keep real custom hours; coming from "24 hours" or "closed" start from office hours.
+          onChange(next, next === 'custom' && mode === 'custom' ? span : undefined)
+        }}
       >
         <option value="allDay">{t('settings.hours.allDay')}</option>
         <option value="custom">{t('settings.hours.custom')}</option>

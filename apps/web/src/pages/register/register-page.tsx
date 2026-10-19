@@ -60,7 +60,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
   }
 
   return (
-    <StaffShell user={user} nav={navForUser(user)} activeId="patients">
+    <StaffShell user={user} nav={navForUser(user)} activeId="register">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[260px] flex-1">

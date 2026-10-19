@@ -433,6 +433,46 @@ await step('nurse may write but manager may not read HIV tests (sensitive)', asy
   return 'manager sees 0 rows'
 })
 
+// ---------------------------------------------------------------- catalogue operations (0018)
+await step('manager saves lock time and patient fields; staff read lock time', async () => {
+  await as(staff.manager)
+  await db.query(`select save_setting('security.lock', '{"idle_minutes": 30}'::jsonb)`)
+  await db.query(
+    `select save_setting('patient.fields', '[{"key":"kin","label":"Next of kin","type":"text"}]'::jsonb)`,
+  )
+  await as(staff.nurse)
+  const r = await one(`select staff_settings() ->> 'idle_minutes' as m`)
+  if (r.m !== '30') throw new Error(r.m)
+  return 'idle 30 min'
+})
+await expectError(
+  'nurse may not change the lock time',
+  async () => {
+    await as(staff.nurse)
+    await db.query(`select save_setting('security.lock', '{"idle_minutes": 240}'::jsonb)`)
+  },
+  /not allowed/i,
+)
+await step('manager adjusts prices ×1.1, then deletes a treatment', async () => {
+  await as(staff.manager)
+  const id = (await one(`select upsert_service(null, 'Check test', 'consultation', 1000) as id`)).id
+  const n = (await one(`select adjust_prices('consultation', 'multiply', 1.1, 100) as n`)).n
+  const p = await one(`select cash_price from catalogue_services where id = $1`, [id])
+  if (Number(p.cash_price) !== 1100) throw new Error(`price ${p.cash_price}`)
+  await db.query(`select delete_service($1)`, [id])
+  const gone = await one(`select count(*)::int as n from catalogue_services where id = $1`, [id])
+  if (gone.n !== 0) throw new Error('still listed')
+  return `${n} prices changed, deleted`
+})
+await step('manager deletes an insurer', async () => {
+  await as(staff.manager)
+  const id = (await one(`select upsert_payer(null, 'Test Insurer', 'private', 80) as id`)).id
+  await db.query(`select delete_payer($1)`, [id])
+  const gone = await one(`select count(*)::int as n from insurer_plans where id = $1`, [id])
+  if (gone.n !== 0) throw new Error('still listed')
+  return 'deleted'
+})
+
 finish()
 
 function finish() {

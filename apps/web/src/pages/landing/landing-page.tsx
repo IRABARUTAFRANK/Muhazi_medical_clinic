@@ -22,14 +22,12 @@ import {
   FEATURES,
   LANGS,
   formatPhone,
-  formatRwf,
   hoursRows,
   isOpen247,
   startOfDay,
   telHref,
   whatsappHref,
   type Practitioner,
-  type ServiceLine,
 } from '@mmc/shared'
 import { buttonVariants } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
@@ -55,13 +53,6 @@ import { SignInCard } from './sign-in-card'
 
 const h2 = 'm-0 mb-2 text-3xl leading-[1.15] font-bold tracking-[-0.015em]'
 const lead = 'm-0 max-w-[640px] text-base text-ink-2'
-
-const priceLabel = (s: ServiceLine, t: (k: string, o?: Record<string, unknown>) => string) =>
-  s.priceFrom != null
-    ? t('price.from', { price: formatRwf(s.priceFrom) })
-    : s.hasFree
-      ? t('price.free')
-      : t('price.ask')
 
 /** One practitioner per category first, so the preview shows the breadth of the clinic. */
 function pickFeatured(practitioners: readonly Practitioner[], count = 3): Practitioner[] {
@@ -96,7 +87,7 @@ export function LandingPage() {
   const { data: status } = useClinicStatus(hours)
 
   const featured = pickFeatured(practitioners)
-  const activeLines = lines.filter((l) => l.priceFrom != null || l.hasFree)
+  const activeLines = lines
   const weekdaySpan = hours.days['1']
   const hoursLabel = isOpen247(hours)
     ? '24/7'
@@ -183,8 +174,9 @@ export function LandingPage() {
                 <span className="flex min-w-0 flex-col gap-1">
                   <h3 className="m-0 text-base font-bold">{t(`services.${s.id}.name`)}</h3>
                   <p className="text-ink-2 m-0 text-sm">{t(`services.${s.id}.desc`)}</p>
-                  <span className="text-primary text-[13px] font-semibold tabular-nums">
-                    {priceLabel(s, t)}
+                  {/* Prices are not published; the clinic gives them at reception. */}
+                  <span className="text-primary text-[13px] font-semibold">
+                    {t('landing.services.book')} →
                   </span>
                 </span>
               </Link>

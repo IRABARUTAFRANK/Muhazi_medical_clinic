@@ -69,3 +69,42 @@ export function useSaveClinicSettings() {
     },
   })
 }
+
+// ---------------------------------------------------------------- screen lock
+/** Minutes without input before a staff screen locks (setting `security.lock`). */
+export const LOCK_CHOICES = [5, 10, 15, 30, 60, 120, 240] as const
+let sampleIdle = 15
+const STAFF_KEY = ['settings', 'staff'] as const
+
+/** Settings every signed-in staff member needs (no settings.read required). */
+export function useStaffSettings() {
+  return useQuery({
+    queryKey: STAFF_KEY,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<{ idleMinutes: number }> => {
+      if (!supabase) return { idleMinutes: sampleIdle }
+      const { data, error } = await supabase.rpc('staff_settings')
+      if (error) throw new Error(error.message)
+      const m = Number((data as { idle_minutes?: number } | null)?.idle_minutes)
+      return { idleMinutes: Number.isFinite(m) && m > 0 ? m : 15 }
+    },
+  })
+}
+
+export function useSaveLockSetting() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (idleMinutes: number) => {
+      if (!supabase) {
+        sampleIdle = idleMinutes
+        return
+      }
+      const { error } = await supabase.rpc('save_setting', {
+        p_key: 'security.lock',
+        p_value: { idle_minutes: idleMinutes },
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: STAFF_KEY }),
+  })
+}

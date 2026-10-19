@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type NavItem, type StaffUser } from '@mmc/shared'
 import { appNow } from '@/lib/clock'
 import { useDayNames } from '@/lib/hooks'
+import { useStaffSettings } from '@/lib/api/settings'
 import { useSession } from '@/store/session'
 import { useSyncState } from '@/store/sync'
-import { LockScreen, useIdleLock } from './lock-screen'
+import { IdleWarning, LockScreen, useIdleLock } from './lock-screen'
 import { MoreSheet } from './more-sheet'
 import { OfflineBanner } from './offline-banner'
 import { Rail } from './rail'
@@ -37,7 +38,8 @@ export function StaffShell({
   const dayNames = useDayNames()
   const locked = useSession((s) => s.locked)
   const [sheet, setSheet] = useState(false)
-  useIdleLock(5)
+  const { data: staffSettings } = useStaffSettings()
+  const lockIn = useIdleLock(staffSettings?.idleMinutes ?? 15)
   const now = appNow()
   const clock = `${dayNames.short[now.getDay()]} ${formatDate(now)} · ${time ?? formatTime(now)}`
 
@@ -60,6 +62,7 @@ export function StaffShell({
       )}
       <TabletNav nav={nav} activeId={activeId} onMore={() => setSheet(true)} />
       {sheet && <MoreSheet user={user} onClose={() => setSheet(false)} />}
+      {!locked && lockIn != null && <IdleWarning seconds={lockIn} />}
       {locked && <LockScreen />}
     </div>
   )

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, FolderOpen, Plus, Receipt, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatRwf, type StaffUser } from '@mmc/shared'
+import { FEATURES, formatRwf, type StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -22,6 +22,8 @@ import { useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
 import { TREATING_STATIONS, stationFor, type Station } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
+import { resolveAdjust, type AdjustMode } from '@/lib/adjust'
+import { AdjustField } from '@/components/ui/adjust-field'
 import { ClinicalCard } from './clinical-card'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
@@ -44,6 +46,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const [next, setNext] = useState<Station>('cashier')
   const [actionError, setActionError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  const isManagerNav = user.role === 'manager' || user.dashboard === 'manager'
 
   const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
   const currentInsurer = insurers.find((i) => i.id === bill?.payerId)
@@ -85,14 +88,15 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   }
 
   return (
-    <StaffShell user={user} nav={navForUser(user)}>
+    <StaffShell user={user} nav={navForUser(user)} activeId="visits">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+        {/* Where am I: managers come here from "In the clinic", staff from their queue */}
         <Link
-          to="/app"
+          to={isManagerNav ? '/app/visits' : '/app'}
           className="text-ink-2 inline-flex items-center gap-1 text-[13px] no-underline"
         >
           <ArrowLeft size={14} aria-hidden="true" />
-          {t('visit.back')}
+          {t(isManagerNav ? 'visit.backToClinic' : 'visit.back')}
         </Link>
 
         {isLoading && <p className="text-ink-3 m-0">…</p>}
@@ -168,52 +172,56 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
 
             <div className="pc:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
               <div className="flex flex-col gap-4">
-                {/* Who pays */}
-                <Card>
-                  <CardHeader>
-                    <span>{t('visit.payer.title')}</span>
-                    {currentInsurer && (
-                      <Chip>
-                        {t('prices.insurers.covers', { pct: currentInsurer.coveragePct })}
-                      </Chip>
-                    )}
-                  </CardHeader>
-                  <CardBody className="gap-3">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                      <Select
-                        label={t('visit.payer.label')}
-                        value={bill?.payerId ?? ''}
-                        onChange={(e) => void choosePayer(e.target.value)}
-                        disabled={bill?.status !== 'draft' && bill?.status !== null}
-                      >
-                        <option value="">{t('visit.payer.cash')}</option>
-                        {insurers.map((i) => (
-                          <option key={i.id} value={i.id}>
-                            {i.name}
-                          </option>
-                        ))}
-                      </Select>
-                      <Field
-                        label={t('visit.payer.member')}
-                        value={member}
-                        onChange={(e) => setMember(e.target.value)}
-                        placeholder={t('visit.payer.memberPh')}
-                        disabled={!bill?.payerId}
-                      />
-                      <Button
-                        type="button"
-                        className="self-end"
-                        disabled={!bill?.payerId || actions.setPayer.isPending}
-                        onClick={() => void choosePayer(bill?.payerId ?? '')}
-                      >
-                        {t('visit.payer.saveMember')}
-                      </Button>
-                    </div>
-                    <p className="text-ink-3 m-0 text-xs">
-                      {insurers.length === 0 ? t('visit.payer.noInsurers') : t('visit.payer.hint')}
-                    </p>
-                  </CardBody>
-                </Card>
+                {/* Who pays: only once the clinic works with insurers */}
+                {FEATURES.insurance && (
+                  <Card>
+                    <CardHeader>
+                      <span>{t('visit.payer.title')}</span>
+                      {currentInsurer && (
+                        <Chip>
+                          {t('prices.insurers.covers', { pct: currentInsurer.coveragePct })}
+                        </Chip>
+                      )}
+                    </CardHeader>
+                    <CardBody className="gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                        <Select
+                          label={t('visit.payer.label')}
+                          value={bill?.payerId ?? ''}
+                          onChange={(e) => void choosePayer(e.target.value)}
+                          disabled={bill?.status !== 'draft' && bill?.status !== null}
+                        >
+                          <option value="">{t('visit.payer.cash')}</option>
+                          {insurers.map((i) => (
+                            <option key={i.id} value={i.id}>
+                              {i.name}
+                            </option>
+                          ))}
+                        </Select>
+                        <Field
+                          label={t('visit.payer.member')}
+                          value={member}
+                          onChange={(e) => setMember(e.target.value)}
+                          placeholder={t('visit.payer.memberPh')}
+                          disabled={!bill?.payerId}
+                        />
+                        <Button
+                          type="button"
+                          className="self-end"
+                          disabled={!bill?.payerId || actions.setPayer.isPending}
+                          onClick={() => void choosePayer(bill?.payerId ?? '')}
+                        >
+                          {t('visit.payer.saveMember')}
+                        </Button>
+                      </div>
+                      <p className="text-ink-3 m-0 text-xs">
+                        {insurers.length === 0
+                          ? t('visit.payer.noInsurers')
+                          : t('visit.payer.hint')}
+                      </p>
+                    </CardBody>
+                  </Card>
+                )}
 
                 {/* Charges */}
                 <Card>
@@ -542,13 +550,15 @@ function AddChargeCard({
     quantity: number
     discountPct: number
     discountReason?: string
+    manualPrice?: number | null
     coveragePct: number
   }) => Promise<void>
 }) {
   const { t } = useTranslation()
   const [serviceId, setServiceId] = useState('')
   const [quantity, setQuantity] = useState('1')
-  const [discount, setDiscount] = useState('0')
+  const [discount, setDiscount] = useState('')
+  const [mode, setMode] = useState<AdjustMode>('pct')
   const [reason, setReason] = useState('')
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -560,13 +570,19 @@ function AddChargeCard({
       ? selected.payerPrices[payerId]!
       : (selected.cashPrice ?? 0)
     : 0
-  const d = Number(discount) || 0
+  const adj = resolveAdjust(mode, discount, listPrice)
+  const d = adj.discountPct
+  const manual = adj.manualPrice
   const q = Number(quantity) || 1
-  const unit = Math.round((listPrice * (100 - d)) / 100)
+  const unit = adj.unit
   const total = Math.round(unit * q)
   const insurer = Math.round((total * coveragePct) / 100)
   const maxDiscount = selected?.maxDiscountPct ?? 0
   const overMax = d > maxDiscount && !isManager
+  const mayTypePrice = isManager || !!selected?.allowManualPrice
+  const manualRefused = manual != null && !mayTypePrice
+  const modes: AdjustMode[] = mayTypePrice ? ['pct', 'rwf', 'x', 'price'] : ['pct', 'rwf', 'x']
+  const changed = d > 0 || manual != null
   const filtered = treatments.filter((x) =>
     query.trim() === ''
       ? true
@@ -579,9 +595,10 @@ function AddChargeCard({
     e.preventDefault()
     setError(null)
     if (!selected) return setError(t('visit.add.errors.pick'))
-    if (d < 0 || d > 100) return setError(t('visit.add.errors.discount'))
+    if (adj.error) return setError(t(`adjust.errors.${adj.error}`))
+    if (manualRefused) return setError(t('visit.add.errors.noManual'))
     if (overMax) return setError(t('visit.add.errors.overMax', { pct: maxDiscount }))
-    if (d > 0 && !reason.trim()) return setError(t('visit.add.errors.reason'))
+    if (changed && !reason.trim()) return setError(t('visit.add.errors.reason'))
     setBusy(true)
     try {
       await onAdd({
@@ -593,10 +610,11 @@ function AddChargeCard({
         quantity: q,
         discountPct: d,
         discountReason: reason,
+        manualPrice: manual,
         coveragePct,
       })
       setServiceId('')
-      setDiscount('0')
+      setDiscount('')
       setReason('')
       setQuantity('1')
     } catch {
@@ -645,18 +663,29 @@ function AddChargeCard({
               onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
               disabled={disabled}
             />
-            <Field
-              label={t('visit.add.discount', { max: isManager ? 100 : maxDiscount })}
-              inputMode="numeric"
-              value={discount}
-              onChange={(e) => setDiscount(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
-              className={cn(overMax && 'border-red')}
-              disabled={disabled || !selected}
-            />
           </div>
-          {d > 0 && (
+          <AdjustField
+            label={t('visit.add.adjust', { max: isManager ? 100 : maxDiscount })}
+            mode={mode}
+            modes={modes}
+            value={discount}
+            onMode={setMode}
+            onChange={setDiscount}
+            disabled={disabled || !selected}
+            invalid={overMax || manualRefused || adj.error != null}
+            hint={
+              selected
+                ? manual != null
+                  ? t('visit.add.newPrice', { price: formatRwf(manual) })
+                  : d > 0
+                    ? t('visit.add.off', { pct: d, amount: formatRwf(listPrice - unit) })
+                    : t('visit.add.adjustHint')
+                : undefined
+            }
+          />
+          {changed && (
             <Field
-              label={t('visit.add.reason')}
+              label={manual != null ? t('visit.add.manualReason') : t('visit.add.reason')}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder={t('visit.add.reasonPh')}
@@ -666,6 +695,9 @@ function AddChargeCard({
           )}
           {selected && (
             <p className="text-ink-2 m-0 text-[13px]">
+              {changed && (
+                <span className="text-ink-3 mr-1 line-through">{formatRwf(listPrice)}</span>
+              )}
               {t('visit.add.preview', { unit: formatRwf(unit), total: formatRwf(total) })}
               {coveragePct > 0 &&
                 ` · ${t('visit.charges.split', { patient: formatRwf(total - insurer), insurer: formatRwf(insurer) })}`}

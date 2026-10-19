@@ -85,7 +85,10 @@
     "settings": "Igenamiterere",
     "staff": "Abakozi",
     "prices": "Ibiciro",
-    "changePin": "Hindura PIN"
+    "changePin": "Hindura PIN",
+    "register": "Register",
+    "triage": "Triage",
+    "inClinic": "In clinic"
   },
   "roles": {
     "receptionist": "Umwakira",
@@ -172,7 +175,8 @@
       "checkFailed": "Ntibyakunze kugenzura nimero. Ongera ugerageze."
     },
     "services": {
-      "title": "Ibyo dutanga"
+      "title": "Ibyo dutanga",
+      "book": "Book a visit"
     },
     "book": {
       "title": "Fata gahunda mu ntambwe eshatu",
@@ -437,6 +441,17 @@
       "remove": "Remove field",
       "save": "Save fields",
       "saved": "Fields saved. They now appear on every patient file."
+    },
+    "lock": {
+      "title": "Screen lock",
+      "lead": "When nobody touches a staff screen for this long, it locks and asks for the PIN. One minute before, a warning appears; any touch or key keeps it open. Locking keeps the page as it was, so no work is lost.",
+      "after": "Lock after",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "hours_one": "{{count}} hour",
+      "hours_other": "{{count}} hours",
+      "save": "Save",
+      "saved": "Saved. Every staff screen uses it from now on."
     }
   },
   "pin": {
@@ -449,10 +464,24 @@
     "title": "Byafunzwe nyuma y'iminota 5",
     "body": "Andika PIN yawe ukomeze nka {{name}}.",
     "unlock": "Fungura",
-    "wrong": "PIN si yo."
+    "wrong": "PIN si yo.",
+    "soon_one": "No activity: the screen locks in {{count}} second.",
+    "soon_other": "No activity: the screen locks in {{count}} seconds.",
+    "stay": "I'm here"
   },
   "visit": {
-    "patientFile": "Patient file"
+    "patientFile": "Patient file",
+    "backToClinic": "Back to In the clinic",
+    "add": {
+      "adjust": "Discount or price change (discount up to {{max}} %)",
+      "adjustHint": "Optional. Type 10 for 10 %, switch to RWF for an amount, or × for a multiplier.",
+      "off": "{{pct}} % off · {{amount}} less per unit",
+      "newPrice": "New price {{price}} per unit (needs a reason)",
+      "manualReason": "Reason for the different price",
+      "errors": {
+        "noManual": "This treatment does not allow a different price. Use a discount, or ask the manager to tick \"Clinician may type a different price\"."
+      }
+    }
   },
   "patients": {
     "title": "Patients",
@@ -543,7 +572,8 @@
     "saveField": "Save field",
     "removeField": "Remove “{{name}}”",
     "noExtra": "No extra information yet. Use “Add a field”, or let the manager define fields for every patient in Settings.",
-    "allergiesHint": "Only medicines, foods or substances that cause a reaction (rash, swelling, breathing trouble). Other remarks go in Notes."
+    "allergiesHint": "Only medicines, foods or substances that cause a reaction (rash, swelling, breathing trouble). Other remarks go in Notes.",
+    "inClinicNow": "This patient is in the clinic now, waiting at {{station}}. The blue button opens that visit: vitals, notes, diagnosis, treatments, prescriptions and payment are all recorded there."
   },
   "clinical": {
     "title": "Clinical record",
@@ -610,5 +640,102 @@
     "saveRx_other": "Prescribe {{count}} medicines",
     "rxSaved_one": "Prescription saved. The patient is queued at the pharmacy.",
     "rxSaved_other": "{{count}} medicines prescribed. The patient is queued at the pharmacy."
+  },
+  "adjust": {
+    "mode": "How to enter it",
+    "short": {
+      "pct": "%",
+      "rwf": "RWF",
+      "x": "×",
+      "price": "Price"
+    },
+    "titles": {
+      "pct": "Percentage off, e.g. 10",
+      "rwf": "Amount off in RWF, e.g. 2000",
+      "x": "Multiplier: 0.8 = pay 80 %, 1.4 = 40 % more",
+      "price": "Type a different price"
+    },
+    "ph": {
+      "pct": "e.g. 10",
+      "rwf": "e.g. 2000",
+      "x": "e.g. 0.8",
+      "price": "e.g. 6500"
+    },
+    "errors": {
+      "invalid": "That value does not work here. Check the number and the mode (%, RWF, ×).",
+      "tooMuch": "The discount is more than the price."
+    }
+  },
+  "visits": {
+    "title": "In the clinic",
+    "lead": "Every patient with an open visit today, grouped by where they are now. Open a visit to treat, charge or send the patient on; the folder opens the patient file.",
+    "count": "{{count}} patients",
+    "none": "Nobody is in the clinic right now. Register a patient to start a visit.",
+    "stationCount": "{{waiting}} waiting · {{busy}} being seen",
+    "inProgress": "being seen",
+    "waiting_one": "waiting {{count}} min",
+    "waiting_other": "waiting {{count}} min",
+    "openVisit": "Open visit"
+  },
+  "prices": {
+    "search": "Find a treatment",
+    "searchPh": "Name, code, Kinyarwanda or French…",
+    "allGroups": "All groups",
+    "showHidden": "Show hidden treatments",
+    "noMatch": "No treatment matches.",
+    "duplicate": "Duplicate",
+    "hide": "Hide from the visit screen",
+    "show": "Show at the visit screen again",
+    "delete": "Delete",
+    "confirmDelete": "Delete \"{{name}}\"? It disappears from every list. Bills that already used it keep it.",
+    "deleted": "\"{{name}}\" deleted.",
+    "hidden": "\"{{name}}\" is hidden: clinicians can no longer charge it.",
+    "shown": "\"{{name}}\" can be charged again.",
+    "copyOf": "{{name}} (copy)",
+    "typedPrice": "Typed price allowed",
+    "maxDiscountTitle": "The largest discount a clinician may give on this treatment",
+    "adjust": {
+      "open": "Adjust prices",
+      "title": "Adjust many prices at once",
+      "lead": "Raise or lower the cash price of every treatment, or of one group, in one step. Treatments that are free stay free.",
+      "which": "Which treatments",
+      "how": "How",
+      "modes": {
+        "multiply": "Multiply (× 1.1)",
+        "percent": "Percentage (+10 % or −5 %)",
+        "amount": "Amount (+500 or −200 RWF)"
+      },
+      "value": {
+        "multiply": "Multiplier",
+        "percent": "Percentage",
+        "amount": "Amount in RWF"
+      },
+      "round": "Round to",
+      "noRound": "No rounding",
+      "preview": "{{count}} treatments. Example: {{name}} {{from}} → {{to}}.",
+      "invalid": "Enter a valid number for this kind of change.",
+      "confirm": "Change the price of {{count}} treatments now?",
+      "apply": "Apply",
+      "done": "{{count}} prices changed."
+    },
+    "form": {
+      "suggested": "Kinyarwanda and French names were suggested from the English one. Correct them if they are not what you mean.",
+      "maxDiscount": "Largest discount a clinician may give",
+      "maxDiscountIs": "Up to {{pct}} % ({{amount}}) without the manager.",
+      "maxDiscountNone": "Only the manager can give a discount on this treatment.",
+      "allowManual": "Clinician may type a different price (with a reason)",
+      "allowManualHint": "For treatments whose cost varies, such as a surgery or a long dressing. At the visit screen the clinician can enter another price instead of the list price, and must say why. The manager can always do this.",
+      "active": "Active (can be charged)",
+      "activeHint": "Untick to hide the treatment from the visit screen without deleting it, e.g. while a machine is broken. Its history stays."
+    },
+    "insurers": {
+      "parked": "Insurers are switched off: the clinic does not work with an insurer yet, so all patients pay cash or mobile money. Insurer prices and coverage will appear here when the first partnership starts.",
+      "confirmDelete": "Delete the insurer \"{{name}}\"? Past bills keep it."
+    },
+    "errors": {
+      "discount": "The discount must be 0–100 %, at most the price in RWF, or a multiplier between 0 and 1."
+    },
+    "titleCash": "Treatments and prices",
+    "leadCash": "Everything the clinic treats, its price, and the discount a clinician may give without asking you. Search, duplicate, hide, delete, or change many prices at once."
   }
 }

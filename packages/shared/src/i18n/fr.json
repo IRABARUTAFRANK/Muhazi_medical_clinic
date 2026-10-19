@@ -82,7 +82,10 @@
     "settings": "Paramètres",
     "staff": "Employés",
     "prices": "Tarifs",
-    "changePin": "Changer le PIN"
+    "changePin": "Changer le PIN",
+    "register": "Enregistrer",
+    "triage": "Triage",
+    "inClinic": "À la clinique"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -209,7 +212,8 @@
     },
     "services": {
       "title": "Nos services",
-      "lead": "Neuf lignes de service sous un même toit, pour que la plupart des visites se terminent le jour même. Prix indicatifs ; la réception confirme le prix avant votre visite."
+      "lead": "Neuf lignes de service sous un même toit, pour que la plupart des visites se terminent le jour même. Prix indicatifs ; la réception confirme le prix avant votre visite.",
+      "book": "Prendre rendez-vous"
     },
     "book": {
       "title": "Prendre rendez-vous en trois étapes",
@@ -834,12 +838,17 @@
       "category": "Catégorie de réservation publique",
       "categoryNone": "Non affiché sur le site public",
       "cashPrice": "Prix comptant (RWF)",
-      "maxDiscount": "Remise maximale accordée par un soignant (%)",
+      "maxDiscount": "Remise maximale du clinicien",
       "insurerPrices": "Tarifs assureurs (vide = prix comptant)",
       "sameAsCash": "comme le comptant",
-      "allowManual": "Le soignant peut saisir un autre prix (avec motif)",
-      "active": "Actif (facturable)",
-      "save": "Enregistrer"
+      "allowManual": "Le clinicien peut saisir un autre prix (avec un motif)",
+      "active": "Actif (peut être facturé)",
+      "save": "Enregistrer",
+      "suggested": "Les noms en kinyarwanda et en français ont été proposés à partir de l’anglais. Corrigez-les si ce n’est pas ce que vous voulez dire.",
+      "maxDiscountIs": "Jusqu’à {{pct}} % ({{amount}}) sans le gestionnaire.",
+      "maxDiscountNone": "Seul le gestionnaire peut accorder une remise sur ce soin.",
+      "allowManualHint": "Pour les soins dont le coût varie, comme une chirurgie ou un long pansement. À l'écran de visite, le clinicien peut saisir un autre prix que le tarif et doit dire pourquoi. Le gestionnaire peut toujours le faire.",
+      "activeHint": "Décochez pour masquer le soin à l'écran de visite sans le supprimer, par exemple quand un appareil est en panne. Son historique reste."
     },
     "insurers": {
       "title": "Assureurs et couverture",
@@ -867,15 +876,59 @@
         "byGroup": "Couverture par groupe (optionnel, remplace le % global)",
         "active": "Actif — la clinique travaille avec cet assureur",
         "publicNote": "Le site public garde son bandeau « assurances bientôt » tant que FEATURES.insurance n'est pas activé dans le code."
-      }
+      },
+      "parked": "Les assurances sont désactivées : la clinique ne travaille pas encore avec un assureur, tous les patients paient comptant ou par mobile money. Les tarifs et couvertures apparaîtront ici au premier partenariat.",
+      "confirmDelete": "Supprimer l'assureur « {{name}} » ? Les factures passées le gardent."
     },
     "errors": {
       "name": "Un nom est requis.",
       "price": "Le prix est un nombre entier de francs, zéro ou plus.",
-      "discount": "La remise est un pourcentage entre 0 et 100.",
+      "discount": "La remise doit être de 0 à 100 %, au plus le prix en RWF, ou un multiplicateur entre 0 et 1.",
       "coverage": "La couverture est un pourcentage entre 0 et 100.",
       "generic": "Enregistrement impossible : {{message}}"
-    }
+    },
+    "search": "Rechercher un soin",
+    "searchPh": "Nom, code, kinyarwanda ou français…",
+    "allGroups": "Tous les groupes",
+    "showHidden": "Afficher les soins masqués",
+    "noMatch": "Aucun soin ne correspond.",
+    "duplicate": "Dupliquer",
+    "hide": "Masquer à l'écran de visite",
+    "show": "Réafficher à l'écran de visite",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer « {{name}} » ? Il disparaît de toutes les listes. Les factures qui l’ont utilisé le gardent.",
+    "deleted": "« {{name}} » supprimé.",
+    "hidden": "« {{name}} » est masqué : il ne peut plus être facturé.",
+    "shown": "« {{name}} » peut de nouveau être facturé.",
+    "copyOf": "{{name}} (copie)",
+    "typedPrice": "Autre prix autorisé",
+    "maxDiscountTitle": "La plus grande remise qu’un clinicien peut accorder sur ce soin",
+    "adjust": {
+      "open": "Ajuster les prix",
+      "title": "Ajuster plusieurs prix à la fois",
+      "lead": "Augmentez ou baissez le prix comptant de tous les soins, ou d’un groupe, en une fois. Les soins gratuits restent gratuits.",
+      "which": "Quels soins",
+      "how": "Comment",
+      "modes": {
+        "multiply": "Multiplier (× 1,1)",
+        "percent": "Pourcentage (+10 % ou −5 %)",
+        "amount": "Montant (+500 ou −200 RWF)"
+      },
+      "value": {
+        "multiply": "Multiplicateur",
+        "percent": "Pourcentage",
+        "amount": "Montant en RWF"
+      },
+      "round": "Arrondir à",
+      "noRound": "Sans arrondi",
+      "preview": "{{count}} soins. Exemple : {{name}} {{from}} → {{to}}.",
+      "invalid": "Saisissez un nombre valide pour ce type de changement.",
+      "confirm": "Changer le prix de {{count}} soins maintenant ?",
+      "apply": "Appliquer",
+      "done": "{{count}} prix modifiés."
+    },
+    "titleCash": "Soins et tarifs",
+    "leadCash": "Tout ce que la clinique soigne, son prix, et la remise qu'un clinicien peut accorder sans vous demander. Recherchez, dupliquez, masquez, supprimez ou changez plusieurs prix à la fois."
   },
   "visit": {
     "back": "Retour à ma file",
@@ -913,7 +966,6 @@
       "treatment": "Soin",
       "pick": "Choisir un soin",
       "quantity": "Quantité",
-      "discount": "Remise % (jusqu'à {{max}})",
       "reason": "Motif de la remise",
       "reasonPh": "ex. visite de suivi, indigence",
       "preview": "{{unit}} l'unité · {{total}} au total",
@@ -923,8 +975,14 @@
         "pick": "Choisissez d'abord un soin.",
         "discount": "La remise est un pourcentage entre 0 et 100.",
         "overMax": "Vous pouvez accorder jusqu'à {{pct}} % sur ce soin. Demandez au gestionnaire pour plus.",
-        "reason": "Indiquez le motif de la remise."
-      }
+        "reason": "Indiquez le motif de la remise.",
+        "noManual": "Ce soin n'accepte pas d'autre prix. Utilisez une remise, ou demandez au gestionnaire de cocher « Le clinicien peut saisir un autre prix »."
+      },
+      "adjust": "Remise ou changement de prix (remise jusqu’à {{max}} %)",
+      "adjustHint": "Facultatif. Tapez 10 pour 10 %, passez en RWF pour un montant, ou × pour un multiplicateur.",
+      "off": "{{pct}} % de remise · {{amount}} de moins par unité",
+      "newPrice": "Nouveau prix {{price}} par unité (motif obligatoire)",
+      "manualReason": "Motif du prix différent"
     },
     "payment": {
       "title": "Paiement",
@@ -960,7 +1018,8 @@
       "other": "Ou envoyer à",
       "send": "Envoyer"
     },
-    "patientFile": "Dossier patient"
+    "patientFile": "Dossier patient",
+    "backToClinic": "Retour à « À la clinique »"
   },
   "settings": {
     "title": "Paramètres de la clinique",
@@ -1031,6 +1090,17 @@
       "remove": "Supprimer le champ",
       "save": "Enregistrer les champs",
       "saved": "Champs enregistrés. Ils apparaissent maintenant sur chaque dossier patient."
+    },
+    "lock": {
+      "title": "Verrouillage de l'écran",
+      "lead": "Quand personne ne touche un écran pendant ce temps, il se verrouille et demande le PIN. Une minute avant, un avertissement apparaît ; un geste ou une touche le garde ouvert. La page reste telle quelle, aucun travail n'est perdu.",
+      "after": "Verrouiller après",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "hours_one": "{{count}} heure",
+      "hours_other": "{{count}} heures",
+      "save": "Enregistrer",
+      "saved": "Enregistré. Tous les écrans du personnel l’utilisent désormais."
     }
   },
   "pin": {
@@ -1052,7 +1122,10 @@
     "body": "Saisissez votre PIN pour continuer en tant que {{name}}.",
     "unlock": "Déverrouiller",
     "wrong": "PIN incorrect.",
-    "switch": "Ce n'est pas vous ? Se déconnecter"
+    "switch": "Ce n'est pas vous ? Se déconnecter",
+    "soon_one": "Aucune activité : l'écran se verrouille dans {{count}} seconde.",
+    "soon_other": "Aucune activité : l'écran se verrouille dans {{count}} secondes.",
+    "stay": "Je suis là"
   },
   "patients": {
     "title": "Patients",
@@ -1143,7 +1216,8 @@
     "saveField": "Enregistrer le champ",
     "removeField": "Supprimer « {{name}} »",
     "noExtra": "Aucune information complémentaire. Utilisez « Ajouter un champ », ou laissez le gestionnaire définir des champs pour tous les patients dans Paramètres.",
-    "allergiesHint": "Uniquement les médicaments, aliments ou substances qui provoquent une réaction (éruption, gonflement, gêne respiratoire). Les autres remarques vont dans Notes."
+    "allergiesHint": "Uniquement les médicaments, aliments ou substances qui provoquent une réaction (éruption, gonflement, gêne respiratoire). Les autres remarques vont dans Notes.",
+    "inClinicNow": "Ce patient est à la clinique, en attente au {{station}}. Le bouton bleu ouvre cette visite : constantes, notes, diagnostic, soins, ordonnances et paiement y sont enregistrés."
   },
   "clinical": {
     "title": "Dossier clinique",
@@ -1210,5 +1284,41 @@
     "saveRx_other": "Prescrire {{count}} médicaments",
     "rxSaved_one": "Ordonnance enregistrée. Le patient est en attente à la pharmacie.",
     "rxSaved_other": "{{count}} médicaments prescrits. Le patient est en attente à la pharmacie."
+  },
+  "adjust": {
+    "mode": "Comment le saisir",
+    "short": {
+      "pct": "%",
+      "rwf": "RWF",
+      "x": "×",
+      "price": "Prix"
+    },
+    "titles": {
+      "pct": "Pourcentage de remise, ex. 10",
+      "rwf": "Montant de remise en RWF, ex. 2000",
+      "x": "Multiplicateur : 0,8 = payer 80 %, 1,4 = 40 % de plus",
+      "price": "Saisir un autre prix"
+    },
+    "ph": {
+      "pct": "ex. 10",
+      "rwf": "ex. 2000",
+      "x": "ex. 0,8",
+      "price": "ex. 6500"
+    },
+    "errors": {
+      "invalid": "Cette valeur ne convient pas. Vérifiez le nombre et le mode (%, RWF, ×).",
+      "tooMuch": "La remise dépasse le prix."
+    }
+  },
+  "visits": {
+    "title": "À la clinique",
+    "lead": "Tous les patients avec une visite ouverte aujourd'hui, groupés selon l'endroit où ils se trouvent. Ouvrez une visite pour soigner, facturer ou orienter ; le dossier ouvre le dossier patient.",
+    "count": "{{count}} patients",
+    "none": "Personne à la clinique pour l'instant. Enregistrez un patient pour ouvrir une visite.",
+    "stationCount": "{{waiting}} en attente · {{busy}} en cours",
+    "inProgress": "en cours",
+    "waiting_one": "attend depuis {{count}} min",
+    "waiting_other": "attend depuis {{count}} min",
+    "openVisit": "Ouvrir la visite"
   }
 }

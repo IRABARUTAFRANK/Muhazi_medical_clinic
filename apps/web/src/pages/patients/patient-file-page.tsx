@@ -179,6 +179,15 @@ export function PatientFilePage({
                   ⚠ {t('file.allergiesLabel')}: {p.allergies}
                 </CardBody>
               )}
+              {openVisit && (
+                <CardBody className="bg-primary-tint/50 border-border border-t py-2 text-[13px]">
+                  {t('file.inClinicNow', {
+                    station: openVisit.currentStation
+                      ? t(`register.stations.${openVisit.currentStation}`)
+                      : '—',
+                  })}
+                </CardBody>
+              )}
               {!openVisit && (
                 <CardBody className="border-border flex-row flex-wrap items-end gap-3 border-t">
                   <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">

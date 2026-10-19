@@ -114,6 +114,24 @@ const SHOTS = [
   },
   { name: 'register-1366', path: '/app/register', vp: [1366, 1000], user: 'u-mgr' },
   { name: 'settings-fields', path: '/app/settings', vp: [1366, 1900], user: 'u-mgr' },
+  { name: 'visits-1366', path: '/app/visits', vp: [1366, 900], user: 'u-mgr' },
+  { name: 'prices-1366', path: '/app/prices', vp: [1366, 1300], user: 'u-mgr' },
+  {
+    name: 'prices-new',
+    path: '/app/prices',
+    vp: [1366, 1100],
+    user: 'u-mgr',
+    click: 'main > div:first-child button:last-of-type',
+    type: { selector: 'main form input', text: 'Malaria test' },
+  },
+  {
+    name: 'prices-adjust',
+    path: '/app/prices',
+    vp: [1366, 1000],
+    user: 'u-mgr',
+    click: 'main > div:first-child button:first-of-type',
+  },
+  { name: 'visit-mgr-1366', path: '/app/visit?encounter=e-1', vp: [1366, 1500], user: 'u-mgr' },
   {
     name: 'visit-rx-1366',
     path: '/app/visit?encounter=e-1',
@@ -166,6 +184,10 @@ try {
     if (shot.click) {
       await page.click(shot.click)
       await new Promise((r) => setTimeout(r, 400))
+    }
+    if (shot.type) {
+      await page.type(shot.type.selector, shot.type.text)
+      await new Promise((r) => setTimeout(r, 300))
     }
     if (shot.full) {
       // Walk down the page so reveal-on-scroll sections render, then return to the top.
