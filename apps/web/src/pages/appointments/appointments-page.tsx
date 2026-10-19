@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, UserPlus } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, type StaffUser } from '@mmc/shared'
+import { PageBanner } from '@/components/dash/page-banner'
 import { sectionTitle } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -34,11 +35,13 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="appointments">
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
-        <div className="anim-enter flex flex-wrap items-center gap-4">
-          <div className="min-w-[240px] flex-1">
-            <h1 className="m-0 text-[26px] font-bold tracking-[-0.02em]">{t('ops.appts.title')}</h1>
-            <div className="text-ink-2 mt-1 text-sm">{t('ops.appts.lead')}</div>
-          </div>
+        <PageBanner
+          icon={CalendarDays}
+          tint="violet"
+          title={t('ops.appts.title')}
+          lead={t('ops.appts.lead')}
+          user={user}
+        >
           <div className="bg-card shadow-card flex items-center gap-1 rounded-xl p-1">
             <Button
               size="icon"
@@ -72,7 +75,7 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
             <UserPlus size={16} aria-hidden="true" />
             {t('dashboard.registerPatient')}
           </StaffLink>
-        </div>
+        </PageBanner>
 
         <section className="flex flex-col gap-3">
           <div className={sectionTitle}>{t('ops.appts.section')}</div>

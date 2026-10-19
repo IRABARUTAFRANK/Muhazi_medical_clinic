@@ -3,6 +3,7 @@ import {
   Building2,
   Check,
   Copy,
+  IdCard,
   KeyRound,
   Pencil,
   Plus,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
+import { PageBanner } from '@/components/dash/page-banner'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -114,18 +116,20 @@ export function StaffPage({ user }: { user: StaffUser }) {
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="staff">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[260px] flex-1">
-            <h1 className="m-0 text-2xl font-bold">{t('staff.title')}</h1>
-            <p className="text-ink-2 m-0 mt-1 max-w-[680px]">{t('staff.lead2')}</p>
-          </div>
+        <PageBanner
+          icon={IdCard}
+          tint="violet"
+          title={t('staff.title')}
+          lead={t('staff.lead2')}
+          user={user}
+        >
           {tab === 'people' && (
             <Button variant="primary" onClick={() => setEditing('new')}>
               <UserPlus size={18} aria-hidden="true" />
               {t('staff.newEmployee')}
             </Button>
           )}
-        </div>
+        </PageBanner>
 
         <div className="flex flex-wrap gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
           {(['people', 'departments'] as const).map((k) => (

@@ -5,6 +5,7 @@ import {
   EyeOff,
   Pencil,
   Plus,
+  Receipt,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CATEGORY_IDS, FEATURES, formatRwf, type CategoryId, type StaffUser } from '@mmc/shared'
+import { PageBanner } from '@/components/dash/page-banner'
 import { AdjustField } from '@/components/ui/adjust-field'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -98,15 +100,13 @@ export function PricesPage({ user }: { user: StaffUser }) {
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="prices">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[260px] flex-1">
-            <h1 className="m-0 text-2xl font-bold">
-              {t(FEATURES.insurance ? 'prices.title' : 'prices.titleCash')}
-            </h1>
-            <p className="text-ink-2 m-0 mt-1 max-w-[720px]">
-              {t(FEATURES.insurance ? 'prices.lead' : 'prices.leadCash')}
-            </p>
-          </div>
+        <PageBanner
+          icon={Receipt}
+          tint="amber"
+          title={t(FEATURES.insurance ? 'prices.title' : 'prices.titleCash')}
+          lead={t(FEATURES.insurance ? 'prices.lead' : 'prices.leadCash')}
+          user={user}
+        >
           <Button onClick={() => setAdjusting((a) => !a)}>
             <SlidersHorizontal size={18} aria-hidden="true" />
             {t('prices.adjust.open')}
@@ -121,7 +121,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
             <Plus size={18} aria-hidden="true" />
             {t('prices.newTreatment')}
           </Button>
-        </div>
+        </PageBanner>
 
         {(tError || iError || actionError) && (
           <p role="alert" className={errorBox}>

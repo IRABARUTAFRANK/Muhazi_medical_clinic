@@ -1,6 +1,8 @@
+import { Activity } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
+import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
@@ -36,15 +38,16 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="vitals">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[260px] flex-1">
-            <h1 className="m-0 text-2xl font-bold">{t('triage.title')}</h1>
-            <p className="text-ink-2 m-0 mt-1 max-w-[680px]">{t('triage.lead')}</p>
-          </div>
-          <Badge tone="grey" dot={false}>
-            {t('home.waiting', { count: waiting.length })}
-          </Badge>
-        </div>
+        <PageBanner
+          icon={Activity}
+          tint="coral"
+          title={t('triage.title')}
+          lead={t('triage.lead')}
+          user={user}
+          meta={
+            <BannerChip icon={Activity}>{t('home.waiting', { count: waiting.length })}</BannerChip>
+          }
+        />
 
         {notice && (
           <p className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">

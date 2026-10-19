@@ -1,7 +1,8 @@
 import { useState, type CSSProperties } from 'react'
-import { ChevronLeft, ChevronRight, FolderOpen, Search, UserPlus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FolderOpen, Search, UserPlus, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, type StaffUser } from '@mmc/shared'
+import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
@@ -28,17 +29,19 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="patients">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        <div className="anim-enter flex flex-wrap items-end gap-3">
-          <div className="min-w-[260px] flex-1">
-            <h1 className="m-0 text-2xl font-bold">{t('patients.title')}</h1>
-            <p className="text-ink-2 m-0 mt-1 max-w-[720px]">{t('patients.lead')}</p>
-          </div>
-          <span className="text-ink-2 tabular-nums">{t('patients.count', { count: total })}</span>
+        <PageBanner
+          icon={Users}
+          tint="teal"
+          title={t('patients.title')}
+          lead={t('patients.lead')}
+          user={user}
+          meta={<BannerChip icon={Users}>{t('patients.count', { count: total })}</BannerChip>}
+        >
           <StaffLink to="/app/register" className={buttonVariants({ variant: 'primary' })}>
             <UserPlus size={18} aria-hidden="true" />
             {t('register.title')}
           </StaffLink>
-        </div>
+        </PageBanner>
 
         <Card className="anim-enter" style={{ '--i': 1 } as CSSProperties}>
           <CardBody>

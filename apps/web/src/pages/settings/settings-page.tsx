@@ -1,7 +1,17 @@
 import { useState, type FormEvent } from 'react'
-import { Activity, Building2, Check, Clock, LayoutDashboard, UserPlus, Users } from 'lucide-react'
+import {
+  Activity,
+  Building2,
+  Check,
+  Clock,
+  LayoutDashboard,
+  Settings,
+  UserPlus,
+  Users,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DAY_KEYS, type ClinicHours, type DayKey, type StaffUser, type TimeSpan } from '@mmc/shared'
+import { PageBanner } from '@/components/dash/page-banner'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
@@ -86,12 +96,13 @@ export function SettingsPage({ user }: { user: StaffUser }) {
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="settings">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[260px] flex-1">
-            <h1 className="m-0 text-2xl font-bold">{t('settings.title')}</h1>
-            <p className="text-ink-2 m-0 mt-1 max-w-[680px]">{t('settings.lead')}</p>
-          </div>
-        </div>
+        <PageBanner
+          icon={Settings}
+          tint="navy"
+          title={t('settings.title')}
+          lead={t('settings.lead')}
+          user={user}
+        />
 
         {/* Everything the manager runs */}
         <Card>

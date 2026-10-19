@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { FolderOpen, Stethoscope, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
+import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
@@ -24,19 +25,21 @@ export function VisitsPage({ user }: { user: StaffUser }) {
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="visits">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        <div className="anim-enter flex flex-wrap items-end gap-3">
-          <div className="min-w-[260px] flex-1">
-            <h1 className="m-0 text-2xl font-bold">{t('visits.title')}</h1>
-            <p className="text-ink-2 m-0 mt-1 max-w-[720px]">{t('visits.lead')}</p>
-          </div>
-          <span className="text-ink-2 tabular-nums">
-            {t('visits.count', { count: open.length })}
-          </span>
+        <PageBanner
+          icon={Stethoscope}
+          tint="mint"
+          title={t('visits.title')}
+          lead={t('visits.lead')}
+          user={user}
+          meta={
+            <BannerChip icon={Stethoscope}>{t('visits.count', { count: open.length })}</BannerChip>
+          }
+        >
           <StaffLink to="/app/register" className={buttonVariants({ variant: 'primary' })}>
             <UserPlus size={18} aria-hidden="true" />
             {t('register.title')}
           </StaffLink>
-        </div>
+        </PageBanner>
 
         {error && (
           <p

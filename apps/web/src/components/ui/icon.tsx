@@ -1,106 +1,13 @@
-import {
-  Activity,
-  ArrowDown,
-  ArrowRight,
-  ArrowUp,
-  Bandage,
-  Bed,
-  Calendar,
-  CalendarDays,
-  CalendarPlus,
-  ChartColumn,
-  Check,
-  CheckSquare,
-  Circle,
-  ClipboardCheck,
-  Clock,
-  CreditCard,
-  FilePlus,
-  FlaskConical,
-  HeartHandshake,
-  HeartPulse,
-  Home,
-  IdCard,
-  LayoutDashboard,
-  ListOrdered,
-  Lock,
-  Minus,
-  Package,
-  Pill,
-  Printer,
-  Radio,
-  Receipt,
-  Scissors,
-  Settings,
-  ShieldCheck,
-  ShieldPlus,
-  ShoppingBag,
-  ShoppingCart,
-  Smile,
-  Stethoscope,
-  Syringe,
-  Ticket,
-  UserPlus,
-  Users,
-  Wallet,
-  type LucideIcon,
-  type LucideProps,
-} from 'lucide-react'
+import { createElement } from 'react'
+import type { LucideProps } from 'lucide-react'
+import { iconFor, type IconName } from './icon-map'
 
-/** Icon names used by the shared sample data, resolved to lucide icons here. */
-const icons = {
-  home: Home,
-  users: Users,
-  calendar: Calendar,
-  'list-ordered': ListOrdered,
-  'bar-chart-3': ChartColumn,
-  activity: Activity,
-  bed: Bed,
-  'check-square': CheckSquare,
-  'flask-conical': FlaskConical,
-  pill: Pill,
-  'calendar-days': CalendarDays,
-  receipt: Receipt,
-  wallet: Wallet,
-  'shopping-bag': ShoppingBag,
-  lock: Lock,
-  'user-plus': UserPlus,
-  ticket: Ticket,
-  'calendar-plus': CalendarPlus,
-  printer: Printer,
-  syringe: Syringe,
-  bandage: Bandage,
-  'arrow-right': ArrowRight,
-  'arrow-up': ArrowUp,
-  'arrow-down': ArrowDown,
-  minus: Minus,
-  check: Check,
-  'file-plus': FilePlus,
-  'clipboard-check': ClipboardCheck,
-  'credit-card': CreditCard,
-  'shopping-cart': ShoppingCart,
-  clock: Clock,
-  'heart-pulse': HeartPulse,
-  smile: Smile,
-  radio: Radio,
-  scissors: Scissors,
-  'shield-plus': ShieldPlus,
-  'heart-handshake': HeartHandshake,
-  'shield-check': ShieldCheck,
-  'layout-dashboard': LayoutDashboard,
-  package: Package,
-  settings: Settings,
-  stethoscope: Stethoscope,
-  'id-card': IdCard,
-} satisfies Record<string, LucideIcon>
-
-export type IconName = keyof typeof icons
+export type { IconName }
 
 export interface IconProps extends LucideProps {
   name: IconName | string
 }
 
 export function Icon({ name, size = 20, ...props }: IconProps) {
-  const Component: LucideIcon = (icons as Record<string, LucideIcon>)[name] ?? Circle
-  return <Component size={size} aria-hidden="true" {...props} />
+  return createElement(iconFor(name), { size, 'aria-hidden': true, ...props })
 }

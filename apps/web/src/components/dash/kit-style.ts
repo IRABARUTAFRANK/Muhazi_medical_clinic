@@ -1,4 +1,12 @@
-import { formatNumber } from '@mmc/shared'
+import {
+  ConciergeBell,
+  Crown,
+  HeartPulse,
+  Stethoscope,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
+import { formatNumber, type Role } from '@mmc/shared'
 
 /** Style tokens and helpers shared by every dashboard (see kit.tsx for the components). */
 export const sectionTitle = 'text-[11px] font-extrabold tracking-[.08em] text-ink-3 uppercase'
@@ -64,4 +72,24 @@ export const greetingFor = (name: string, t: TFn) => {
       .split(' ')
       .pop(),
   })
+}
+
+/** Each role's icon and colour: banner stripe, avatar badge and role pill. */
+const ROLE_LOOK: Record<Role, { icon: LucideIcon; tint: Tint; stripe: string }> = {
+  manager: { icon: Crown, tint: 'navy', stripe: 'bg-navy' },
+  receptionist: { icon: ConciergeBell, tint: 'teal', stripe: 'bg-primary' },
+  nurse: { icon: HeartPulse, tint: 'mint', stripe: 'bg-green' },
+  doctor: { icon: Stethoscope, tint: 'violet', stripe: 'bg-violet' },
+  cashier: { icon: Wallet, tint: 'amber', stripe: 'bg-amber' },
+}
+export const lookFor = (role: Role) => ROLE_LOOK[role] ?? ROLE_LOOK.doctor
+
+/** Banner stripe colour for each tint. */
+export const stripeClass: Record<Tint, string> = {
+  teal: 'bg-primary',
+  mint: 'bg-green',
+  amber: 'bg-amber',
+  coral: 'bg-red',
+  violet: 'bg-violet',
+  navy: 'bg-navy',
 }

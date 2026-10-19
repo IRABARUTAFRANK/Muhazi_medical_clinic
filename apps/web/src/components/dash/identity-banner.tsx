@@ -1,41 +1,20 @@
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  Award,
-  Building2,
-  CalendarDays,
-  ConciergeBell,
-  Crown,
-  HeartPulse,
-  IdCard,
-  MapPin,
-  Stethoscope,
-  Wallet,
-  type LucideIcon,
-} from 'lucide-react'
+import { Award, Building2, CalendarDays, IdCard, MapPin, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { CLINIC_HOURS, formatDate, type Role, type StaffUser } from '@mmc/shared'
+import { CLINIC_HOURS, formatDate, type StaffUser } from '@mmc/shared'
 import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
 import { useDayNames } from '@/lib/hooks'
 import { roleLabel } from '@/lib/roles'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { initials, tintClass, type Tint } from './kit-style'
+import { initials, lookFor, tintClass } from './kit-style'
 
 /*
  * Identity banner, the first thing under the top bar on every dashboard: who is signed in
  * (large name), as what (role with its icon and colour), where (department, position,
  * station) and the staff ID, so a shared screen never leaves doubt about whose session it is.
  */
-
-const ROLE_LOOK: Record<Role, { icon: LucideIcon; tint: Tint; stripe: string }> = {
-  manager: { icon: Crown, tint: 'navy', stripe: 'bg-navy' },
-  receptionist: { icon: ConciergeBell, tint: 'teal', stripe: 'bg-primary' },
-  nurse: { icon: HeartPulse, tint: 'mint', stripe: 'bg-green' },
-  doctor: { icon: Stethoscope, tint: 'violet', stripe: 'bg-violet' },
-  cashier: { icon: Wallet, tint: 'amber', stripe: 'bg-amber' },
-}
-const lookFor = (role: Role) => ROLE_LOOK[role] ?? ROLE_LOOK.doctor
 
 type Position = 'head' | 'assistant' | 'member'
 

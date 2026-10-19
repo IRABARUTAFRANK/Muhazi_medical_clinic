@@ -3,6 +3,7 @@ import { AlertTriangle, Search, UserPlus, Check, Ticket } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
+import { PageBanner } from '@/components/dash/page-banner'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -70,12 +71,13 @@ export function RegisterPage({ user }: { user: StaffUser }) {
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="register">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[260px] flex-1">
-            <h1 className="m-0 text-2xl font-bold">{t('register.title')}</h1>
-            <p className="text-ink-2 m-0 mt-1 max-w-[680px]">{t('register.lead')}</p>
-          </div>
-        </div>
+        <PageBanner
+          icon={UserPlus}
+          tint="teal"
+          title={t('register.title')}
+          lead={t('register.lead')}
+          user={user}
+        />
 
         {/* Visit options apply to both an existing and a new patient */}
         <Card className={cn(emergency && 'border-red')}>
