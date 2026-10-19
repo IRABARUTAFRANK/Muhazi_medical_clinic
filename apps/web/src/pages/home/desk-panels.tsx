@@ -11,6 +11,7 @@ import {
   useAppointmentsDay,
   useBedBoard,
   useDeskOps,
+  useFilesToComplete,
   useOpenTasks,
   type BoardBed,
   type DayAppointment,
@@ -411,6 +412,59 @@ export function BedsPanel({ i = 1, userRole }: { i?: number; userRole: Role }) {
           ))}
         </div>
       )}
+    </Panel>
+  )
+}
+
+/* ---------------------------------------------------------------- files to complete */
+
+/**
+ * Patients the nurse registered with what she could (name, sex, age). Reception completes
+ * the rest (phone, national ID, address) and then sends the patient on to the doctor.
+ */
+export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
+  const { t } = useTranslation()
+  const { data: files = [] } = useFilesToComplete()
+  const atReception = files.filter((f) => f.station === 'reception').length
+  return (
+    <Panel
+      i={i}
+      title={t('files.title')}
+      right={t('files.count', { count: files.length, here: atReception })}
+    >
+      {files.length === 0 ? (
+        <Empty>{t('files.none')}</Empty>
+      ) : (
+        <div className="flex flex-col">
+          {files.slice(0, 7).map((f, k) => (
+            <div key={f.patientId} className={rowClass} style={{ '--i': k } as CSSProperties}>
+              <Pill tint={f.station === 'reception' ? 'amber' : 'teal'}>{f.ticket ?? '—'}</Pill>
+              <span className="min-w-[140px] flex-1">
+                <span className="block truncate font-semibold">{f.name}</span>
+                <span className="text-ink-3 block truncate text-xs">
+                  {t('files.lacks', {
+                    missing: f.missing.map((m) => t(`files.missing.${m}`)).join(', '),
+                  })}
+                  {f.station
+                    ? ` · ${t('files.now', { station: t(`register.stations.${f.station}`) })}`
+                    : ''}
+                </span>
+              </span>
+              <StaffLink
+                to="/app/patient"
+                search={{ id: f.patientId, tab: 'complete' }}
+                className={buttonVariants({
+                  size: 'sm',
+                  variant: f.station === 'reception' ? 'primary' : 'default',
+                })}
+              >
+                {t('files.complete')}
+              </StaffLink>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-ink-3 m-0 text-xs">{t('files.hint')}</p>
     </Panel>
   )
 }

@@ -157,10 +157,71 @@ export function useOpenTasks() {
   })
 }
 
+export type MissingKey = 'phone' | 'national_id' | 'address' | 'age'
+export interface FileToComplete {
+  patientId: string
+  fileNumber: string
+  name: string
+  missing: MissingKey[]
+  registeredBy: string | null
+  registeredAt: string
+  encounterId: string | null
+  ticket: string | null
+  station: string | null
+}
+const sampleFiles: FileToComplete[] = [
+  {
+    patientId: 'p-1',
+    fileNumber: 'MMC-000141',
+    name: 'Uwase Claudine',
+    missing: ['phone', 'national_id', 'address'],
+    registeredBy: 'Nyirahabimana Chantal',
+    registeredAt: at(9, 5),
+    encounterId: 'e-1',
+    ticket: 'A-019',
+    station: 'reception',
+  },
+  {
+    patientId: 'p-2',
+    fileNumber: 'MMC-000142',
+    name: 'Mugisha Kevin',
+    missing: ['national_id'],
+    registeredBy: 'Nyirahabimana Chantal',
+    registeredAt: at(9, 40),
+    encounterId: 'e-3',
+    ticket: 'A-020',
+    station: 'triage',
+  },
+]
+
+/** Files the nurse started (name, sex, age) that reception must complete. */
+export function useFilesToComplete() {
+  return useQuery({
+    queryKey: ['files-to-complete'],
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<FileToComplete[]> => {
+      if (!supabase) return sampleFiles
+      const { data, error } = await supabase.rpc('files_to_complete')
+      if (error) throw new Error(error.message)
+      return (data as FileToComplete[]) ?? []
+    },
+  })
+}
+
 export function useDeskOps() {
   const qc = useQueryClient()
   const refresh = () => {
-    for (const k of ['appointments', 'beds', 'tasks', 'queue', 'desk', 'home', 'visit', 'patients'])
+    for (const k of [
+      'appointments',
+      'beds',
+      'tasks',
+      'queue',
+      'desk',
+      'home',
+      'visit',
+      'patients',
+      'files-to-complete',
+    ])
       void qc.invalidateQueries({ queryKey: [k] })
   }
   const call = async <T = unknown>(fn: string, args: Record<string, unknown>): Promise<T> => {
@@ -278,5 +339,21 @@ export function useDeskOps() {
     },
     onSuccess: refresh,
   })
-  return { arrived, outcome, createTask, completeTask, admit, discharge, ready }
+  /** Reception is done with the patient (file completed): send them on, usually to the doctor. */
+  const sendOn = useMutation({
+    mutationFn: async (i: { encounterId: string; from: string; to: string }) => {
+      if (!supabase) {
+        const f = sampleFiles.find((x) => x.encounterId === i.encounterId)
+        if (f) f.station = i.to
+        return
+      }
+      await call('finish_station', {
+        p_encounter_id: i.encounterId,
+        p_station: i.from,
+        p_next: i.to,
+      })
+    },
+    onSuccess: refresh,
+  })
+  return { arrived, outcome, createTask, completeTask, admit, discharge, ready, sendOn }
 }

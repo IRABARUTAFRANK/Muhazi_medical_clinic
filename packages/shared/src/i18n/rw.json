@@ -308,7 +308,7 @@
     "failed": "Izina cyangwa PIN sibyo. Ongera ugerageze cyangwa usabe umuyobozi guhindura PIN.",
     "inactive": "Iyi konti yahagaritswe. Baza umuyobozi w'ivuriro.",
     "codeTitle": "Andika kode wakiriye kuri imeyili",
-    "codeLead": "Twohereje kode y'imibare itandatu kuri {{email}}. Ikora iminota mike.",
+    "codeLead": "Twohereje kode y'imibare itandatu kuri {{email}}. Ikora iminota 10.",
     "code": "Kode y'imibare itandatu",
     "codeWrong": "Kode sibyo. Reba imeyili yawe wongere ugerageze.",
     "codeExpired": "Iyi kode yarangiye. Saba indi.",
@@ -316,7 +316,8 @@
     "back": "Subira inyuma",
     "resend": "Ohereza indi kode",
     "resendIn": "Indi kode mu masegonda {{s}}",
-    "linkMismatch": "That sign-in link belongs to {{got}}, not {{expected}}. Nobody was signed in. Open the newest e-mail sent to {{expected}}, or sign in again."
+    "linkMismatch": "That sign-in link belongs to {{got}}, not {{expected}}. Nobody was signed in. Open the newest e-mail sent to {{expected}}, or sign in again.",
+    "codeOrLink": "The e-mail comes from Muhazi Medical Clinic Ltd with the subject \"… is your sign-in code\". It is valid for 10 minutes. Not there after a minute? Look in Spam or Promotions, or send a new code."
   },
   "register": {
     "title": "Kwandika umurwayi",
@@ -894,5 +895,28 @@
       "confirmDischarge": "Discharge {{name}} from this bed? The bed goes to cleaning.",
       "ready": "Ready"
     }
+  },
+  "files": {
+    "title": "Files to complete",
+    "count": "{{count}} files · {{here}} at reception",
+    "none": "Every file is complete.",
+    "lacks": "Still needs: {{missing}}",
+    "now": "now at {{station}}",
+    "complete": "Complete the file",
+    "completeNow": "The file is complete. Send the patient on to the doctor.",
+    "hint": "The nurse registered these patients with what she could. Take the phone, national ID and address, then send the patient to the doctor.",
+    "missing": {
+      "phone": "phone",
+      "national_id": "national ID",
+      "address": "address",
+      "age": "age or date of birth"
+    },
+    "sendToReception": "Reception will complete the file ({{missing}}) before the doctor.",
+    "stillMissing": "The file still needs {{missing}}: reception can complete it later.",
+    "sendToDoctor": "Send to the doctor",
+    "sentToDoctor": "Sent to consultation. The doctor sees the patient in the queue.",
+    "nurseHint": "Fill in what you know (name, sex, age). Reception completes the phone, national ID and address after your measurements.",
+    "receptionHint": "Fill in everything you can. If the nurse already registered the patient, find them on the left instead of creating a second file.",
+    "submitNurse": "Register and take vitals"
   }
 }

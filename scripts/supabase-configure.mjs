@@ -67,12 +67,11 @@ console.log('current:', {
   ),
 })
 
-const magicLink = `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#0b2252">
-  <h2 style="margin:0 0 8px">Muhazi Medical Clinic</h2>
-  <p style="margin:0 0 16px">Your sign-in code:</p>
-  <p style="font-size:32px;font-weight:800;letter-spacing:.3em;margin:0 0 16px">{{ .Token }}</p>
-  <p style="margin:0;color:#4b5a78">It expires in 10 minutes. If you did not try to sign in, tell the clinic manager.</p>
-</div>`
+// The branded code e-mail lives in supabase/templates/sign-in-code.html (logo, code, safety note).
+const magicLink = await readFile(
+  path.join(root, 'supabase', 'templates', 'sign-in-code.html'),
+  'utf8',
+)
 
 const allow = new Set(
   (current.uri_allow_list ?? '')
@@ -105,7 +104,8 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     smtp_host: process.env.SMTP_HOST,
     smtp_port: process.env.SMTP_PORT || '587',
     smtp_user: process.env.SMTP_USER,
-    smtp_pass: process.env.SMTP_PASS,
+    // Google shows app passwords in groups of four: the spaces are not part of the password.
+    smtp_pass: process.env.SMTP_PASS.replace(/s+/g, ''),
     smtp_sender_name: process.env.SMTP_SENDER || 'Muhazi Medical Clinic',
     smtp_admin_email: process.env.SMTP_ADMIN_EMAIL || fromAddress || process.env.SMTP_USER,
   }

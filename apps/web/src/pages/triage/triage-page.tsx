@@ -5,6 +5,7 @@ import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { useFilesToComplete } from '@/lib/api/desk-ops'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,11 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
     waiting[0] ??
     null
   const [notice, setNotice] = useState<string | null>(null)
+  // Files the nurse started that reception must complete: send those patients to reception.
+  const { data: files = [] } = useFilesToComplete()
+  const missing = selected
+    ? files.find((f) => f.encounterId === selected.encounterId)?.missing
+    : undefined
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="vitals">
@@ -91,6 +97,8 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
               title={`${selected.ticket} · ${selected.name}`}
               subtitle={`${selected.ageSex} · ${selected.fileNumber}`}
               mode="triage"
+              defaultNext={missing && missing.length > 0 ? 'reception' : 'consultation'}
+              missing={missing}
               onSaved={(ticket, station) => {
                 setNotice(
                   t('triage.sent', {

@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase'
 
 /** `station` enum of the database. */
 export const STATIONS = [
+  'reception',
   'triage',
   'consultation',
   'dental',
@@ -33,6 +34,12 @@ export const TREATING_STATIONS: readonly Station[] = [
   'theatre',
   'pharmacy',
 ]
+
+/**
+ * Where the nurse can send a patient after the first measurements: reception first when the
+ * file still lacks details only reception can take (phone, national ID, address).
+ */
+export const SEND_FROM_TRIAGE: readonly Station[] = ['reception', ...TREATING_STATIONS]
 
 export type Sex = 'female' | 'male' | 'other' | 'unknown'
 

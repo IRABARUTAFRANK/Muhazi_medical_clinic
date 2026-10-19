@@ -569,6 +569,25 @@ await step('nurse admits to a bed, discharges, marks it ready', async () => {
   return 'occupied → cleaning → free'
 })
 
+// ---------------------------------------------------------------- nurse registers, reception completes (0023)
+await step('nurse registers with name/sex/age only → reception sees it to complete', async () => {
+  await as(staff.nurse)
+  const v = await one(`select register_patient('Quick', 'Nurse Entry', 'female', null, 30) as v`)
+  const pid = v.v.patient_id
+  await as(staff.receptionist)
+  const list = (await one(`select files_to_complete() as l`)).l
+  const row = list.find((r) => r.patientId === pid)
+  if (!row) throw new Error('not listed')
+  const missing = row.missing.join(',')
+  await db.query(
+    `select update_patient($1, '{"phone_1":"0788000111","national_id":"1199680012345678","sector":"Kiramuruzi"}'::jsonb)`,
+    [pid],
+  )
+  const after = (await one(`select files_to_complete() as l`)).l
+  if (after.some((r) => r.patientId === pid)) throw new Error('still listed after completing')
+  return `missing ${missing} → completed by reception`
+})
+
 // ---------------------------------------------------------------- desk dashboards (0019)
 await step('nurse and receptionist read desk_summary', async () => {
   await as(staff.nurse)

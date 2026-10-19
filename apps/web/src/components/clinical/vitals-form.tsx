@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
-import { TREATING_STATIONS, useVisitActions, useVitalsTakers, type Station } from '@/lib/api/visits'
+import { SEND_FROM_TRIAGE, useVisitActions, useVitalsTakers, type Station } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
 
 /** Vital signs, in the order the nurse takes them. */
@@ -55,6 +55,8 @@ export function VitalsForm({
   title,
   subtitle,
   mode,
+  defaultNext = 'consultation',
+  missing,
   onSaved,
   onCancel,
 }: {
@@ -63,6 +65,10 @@ export function VitalsForm({
   title: string
   subtitle?: string
   mode: 'triage' | 'add'
+  /** Where the patient goes after triage: reception when the file is still incomplete. */
+  defaultNext?: Station
+  /** File details reception still has to take (shown next to "Send to"). */
+  missing?: string[]
   onSaved: (ticket: string, station: Station | null) => void
   onCancel?: () => void
 }) {
@@ -82,7 +88,7 @@ export function VitalsForm({
     muac: '',
   })
   const [level, setLevel] = useState<Triage>('green')
-  const [next, setNext] = useState<Station>('consultation')
+  const [next, setNext] = useState<Station>(defaultNext)
   const [reason, setReason] = useState('')
   // "Measured by": me when I measure; otherwise the nurse who wrote the paper sheet.
   const [measuredBy, setMeasuredBy] = useState<string>(measuresSelf ? 'me' : '')
@@ -216,7 +222,7 @@ export function VitalsForm({
                   value={next}
                   onChange={(e) => setNext(e.target.value as Station)}
                 >
-                  {TREATING_STATIONS.map((s) => (
+                  {SEND_FROM_TRIAGE.map((s) => (
                     <option key={s} value={s}>
                       {t(`register.stations.${s}`)}
                     </option>
@@ -228,6 +234,13 @@ export function VitalsForm({
                   onChange={(e) => setReason(e.target.value)}
                   placeholder={t('triage.reasonPh')}
                 />
+                {missing && missing.length > 0 && (
+                  <p className="text-amber bg-amber-bg col-span-full m-0 rounded-lg px-3 py-2 text-xs font-semibold">
+                    {t(next === 'reception' ? 'files.sendToReception' : 'files.stillMissing', {
+                      missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
+                    })}
+                  </p>
+                )}
               </div>
             </>
           )}

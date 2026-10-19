@@ -4,3 +4,6 @@ pnpm-lock.yaml
 apps/web/src/routeTree.gen.ts
 mmc-design
 assets
+
+# E-mail HTML: table layout and inline styles kept exactly as written for mail clients
+supabase/templates/

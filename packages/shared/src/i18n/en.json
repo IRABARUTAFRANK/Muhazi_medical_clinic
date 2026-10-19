@@ -699,9 +699,9 @@
     "error": "Something went wrong. Check the connection and try again.",
     "otpSendFailed": "The code could not be sent to your e-mail. Ask the manager to check your e-mail address.",
     "codeTitle": "Enter the code from your e-mail",
-    "codeLead": "We sent a six-digit code to {{email}}. It is valid for a few minutes.",
+    "codeLead": "We sent a six-digit code to {{email}}. It is valid for 10 minutes.",
     "codeSample": "Sample mode: any six digits work.",
-    "codeOrLink": "If the e-mail shows a \"Log In\" link instead of a code, open the link: it signs you in on this device.",
+    "codeOrLink": "The e-mail comes from Muhazi Medical Clinic Ltd with the subject \"… is your sign-in code\". It is valid for 10 minutes. Not there after a minute? Look in Spam or Promotions, or send a new code.",
     "code": "Six-digit code",
     "codeFormat": "The code has six digits.",
     "codeWrong": "Wrong code. Check your e-mail and try again.",
@@ -1477,5 +1477,28 @@
       "confirmDischarge": "Discharge {{name}} from this bed? The bed goes to cleaning.",
       "ready": "Ready"
     }
+  },
+  "files": {
+    "title": "Files to complete",
+    "count": "{{count}} files · {{here}} at reception",
+    "none": "Every file is complete.",
+    "lacks": "Still needs: {{missing}}",
+    "now": "now at {{station}}",
+    "complete": "Complete the file",
+    "completeNow": "The file is complete. Send the patient on to the doctor.",
+    "hint": "The nurse registered these patients with what she could. Take the phone, national ID and address, then send the patient to the doctor.",
+    "missing": {
+      "phone": "phone",
+      "national_id": "national ID",
+      "address": "address",
+      "age": "age or date of birth"
+    },
+    "sendToReception": "Reception will complete the file ({{missing}}) before the doctor.",
+    "stillMissing": "The file still needs {{missing}}: reception can complete it later.",
+    "sendToDoctor": "Send to the doctor",
+    "sentToDoctor": "Sent to consultation. The doctor sees the patient in the queue.",
+    "nurseHint": "Fill in what you know (name, sex, age). Reception completes the phone, national ID and address after your measurements.",
+    "receptionHint": "Fill in everything you can. If the nurse already registered the patient, find them on the left instead of creating a second file.",
+    "submitNurse": "Register and take vitals"
   }
 }

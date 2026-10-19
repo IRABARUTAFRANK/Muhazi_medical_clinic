@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { AlertTriangle, Search, UserPlus, Check, Ticket } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
@@ -39,7 +40,14 @@ export function RegisterPage({ user }: { user: StaffUser }) {
   const [station, setStation] = useState<Station>(
     TREATING_STATIONS.includes(myStation) ? myStation : 'consultation',
   )
-  const [result, setResult] = useState<VisitResult | null>(null)
+  const [result, setResultState] = useState<VisitResult | null>(null)
+  const navigate = useNavigate()
+  // The nurse sees the patient first: once registered, she goes straight to the measurements.
+  const setResult = (r: VisitResult | null) => {
+    if (r && user.role === 'nurse' && r.station === 'triage')
+      void navigate({ to: '/app/vitals', search: { encounter: r.encounterId } })
+    else setResultState(r)
+  }
   const [error, setError] = useState<string | null>(null)
   const { data: hits = [], isFetching } = useFindPatients(query)
 
@@ -178,6 +186,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
             station={station}
             onDone={setResult}
             describe={describe}
+            nurse={user.role === 'nurse'}
           />
         </div>
       </main>
@@ -190,11 +199,14 @@ function NewPatientForm({
   station,
   onDone,
   describe,
+  nurse = false,
 }: {
   emergency: boolean
   station: Station
   onDone: (r: VisitResult) => void
   describe: (e: unknown) => string
+  /** The nurse registers what she can; reception completes phone, ID and address later. */
+  nurse?: boolean
 }) {
   const { t } = useTranslation()
   const actions = useVisitActions()
@@ -255,6 +267,9 @@ function NewPatientForm({
       </CardHeader>
       <form onSubmit={submit}>
         <CardBody className="gap-3">
+          <p className="text-ink-2 bg-primary-tint/60 m-0 rounded-lg px-3 py-2 text-xs">
+            {t(nurse ? 'files.nurseHint' : 'files.receptionHint')}
+          </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label={t('register.surname')}
@@ -344,7 +359,13 @@ function NewPatientForm({
           >
             {actions.register.isPending
               ? t('register.submitting')
-              : t(emergency ? 'register.submitEmergency' : 'register.submit')}
+              : t(
+                  emergency
+                    ? 'register.submitEmergency'
+                    : nurse
+                      ? 'files.submitNurse'
+                      : 'register.submit',
+                )}
           </Button>
         </CardBody>
       </form>

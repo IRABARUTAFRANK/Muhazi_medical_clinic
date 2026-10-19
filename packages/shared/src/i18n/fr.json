@@ -701,7 +701,7 @@
     "codeTitle": "Saisissez le code reçu par e-mail",
     "codeLead": "Nous avons envoyé un code à six chiffres à {{email}}. Il est valable quelques minutes.",
     "codeSample": "Mode démo : six chiffres quelconques suffisent.",
-    "codeOrLink": "Si l'e-mail contient un lien « Log In » au lieu d'un code, ouvrez le lien : il vous connecte sur cet appareil.",
+    "codeOrLink": "L’e-mail vient de Muhazi Medical Clinic Ltd avec l’objet « … is your sign-in code ». Il est valable 10 minutes. Rien après une minute ? Regardez dans Spam ou Promotions, ou demandez un nouveau code.",
     "code": "Code à six chiffres",
     "codeFormat": "Le code a six chiffres.",
     "codeWrong": "Code incorrect. Vérifiez votre e-mail et réessayez.",
@@ -1477,5 +1477,28 @@
       "confirmDischarge": "Faire sortir {{name}} de ce lit ? Le lit passe en nettoyage.",
       "ready": "Prêt"
     }
+  },
+  "files": {
+    "title": "Dossiers à compléter",
+    "count": "{{count}} dossiers · {{here}} à l’accueil",
+    "none": "Tous les dossiers sont complets.",
+    "lacks": "Manque encore : {{missing}}",
+    "now": "maintenant au {{station}}",
+    "complete": "Compléter le dossier",
+    "completeNow": "Le dossier est complet. Envoyez le patient au médecin.",
+    "hint": "L'infirmière a enregistré ces patients avec ce qu'elle savait. Prenez le téléphone, la carte d'identité et l'adresse, puis envoyez le patient au médecin.",
+    "missing": {
+      "phone": "téléphone",
+      "national_id": "carte d'identité",
+      "address": "adresse",
+      "age": "âge ou date de naissance"
+    },
+    "sendToReception": "L'accueil complétera le dossier ({{missing}}) avant le médecin.",
+    "stillMissing": "Le dossier manque encore de {{missing}} : l'accueil pourra le compléter plus tard.",
+    "sendToDoctor": "Envoyer au médecin",
+    "sentToDoctor": "Envoyé en consultation. Le médecin voit le patient dans sa file.",
+    "nurseHint": "Remplissez ce que vous savez (nom, sexe, âge). L'accueil complète le téléphone, la carte d'identité et l'adresse après vos mesures.",
+    "receptionHint": "Remplissez tout ce que vous pouvez. Si l'infirmière a déjà enregistré le patient, cherchez-le à gauche au lieu de créer un deuxième dossier.",
+    "submitNurse": "Enregistrer et prendre les constantes"
   }
 }

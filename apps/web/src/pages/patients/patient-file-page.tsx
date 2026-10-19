@@ -26,6 +26,7 @@ import {
   type Sex,
   type Station,
 } from '@/lib/api/visits'
+import { useDeskOps } from '@/lib/api/desk-ops'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 
@@ -53,7 +54,9 @@ export function PatientFilePage({
   const [tab, setTab] = useState<Tab>(
     TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'overview',
   )
-  const [editing, setEditing] = useState(false)
+  // "complete" comes from reception's "Files to complete" list: open the form straight away.
+  const [editing, setEditing] = useState(initialTab === 'complete')
+  const deskOps = useDeskOps()
   const [notice, setNotice] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const visitActions = useVisitActions()
@@ -65,6 +68,23 @@ export function PatientFilePage({
 
   const openVisit = data?.visits.find((v) => v.status === 'open')
   const p = data?.patient
+  const missing = p ? missingOf(p) : []
+  const atReception = openVisit?.currentStation === 'reception'
+
+  const sendToDoctor = async () => {
+    if (!openVisit) return
+    setActionError(null)
+    try {
+      await deskOps.sendOn.mutateAsync({
+        encounterId: openVisit.id,
+        from: 'reception',
+        to: 'consultation',
+      })
+      setNotice(t('files.sentToDoctor'))
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e))
+    }
+  }
 
   const startVisit = async () => {
     if (!p) return
@@ -188,6 +208,33 @@ export function PatientFilePage({
                   })}
                 </CardBody>
               )}
+              {/* Nurse first, reception completes: what is still missing, and the hand-over. */}
+              {(missing.length > 0 || atReception) && (
+                <CardBody className="bg-amber-bg/60 border-border flex-row flex-wrap items-center gap-3 border-t py-2.5 text-[13px]">
+                  <span className="min-w-[220px] flex-1 font-semibold">
+                    {missing.length > 0
+                      ? t('files.lacks', {
+                          missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
+                        })
+                      : t('files.completeNow')}
+                  </span>
+                  {missing.length > 0 && !editing && (
+                    <Button size="sm" onClick={() => setEditing(true)}>
+                      {t('files.complete')}
+                    </Button>
+                  )}
+                  {atReception && (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      loading={deskOps.sendOn.isPending}
+                      onClick={() => void sendToDoctor()}
+                    >
+                      {t('files.sendToDoctor')}
+                    </Button>
+                  )}
+                </CardBody>
+              )}
               {!openVisit && (
                 <CardBody className="border-border flex-row flex-wrap items-end gap-3 border-t">
                   <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
@@ -267,6 +314,18 @@ export function PatientFilePage({
       </main>
     </StaffShell>
   )
+}
+
+/** Same rule as patient_missing() in the database (migration 0023). */
+const missingOf = (p: PatientRecord): string[] => {
+  const out: string[] = []
+  if (!p.phone_1?.trim()) out.push('phone')
+  const adult =
+    !p.birth_date || new Date(p.birth_date) <= new Date(Date.now() - 16 * 365.25 * 86_400_000)
+  if (!p.national_id && adult) out.push('national_id')
+  if (!p.sector?.trim()) out.push('address')
+  if (!p.birth_date) out.push('age')
+  return out
 }
 
 const initials = (p: PatientRecord) =>

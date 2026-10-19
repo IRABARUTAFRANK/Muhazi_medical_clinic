@@ -23,7 +23,13 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useDeskSummary, type DeskSummary } from '@/lib/api/desk'
-import { AppointmentsPanel, BedsPanel, InquiriesPanel, TasksPanel } from './desk-panels'
+import {
+  AppointmentsPanel,
+  BedsPanel,
+  FilesToCompletePanel,
+  InquiriesPanel,
+  TasksPanel,
+} from './desk-panels'
 import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
 import { openItems, useQueueBoard, type QueueItem } from '@/lib/api/visits'
 import { useDayNames } from '@/lib/hooks'
@@ -145,16 +151,32 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             <section className="flex flex-col gap-3">
               <div className={sectionTitle}>{t(`desk.${role}.section`)}</div>
               <div className="pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
-                <QueuePanel role={role} rows={waiting} />
-                {nurse ? <UrgentPanel d={data} /> : <StationsPanel d={data} />}
-                <ArrivalsPanel d={data} />
+                {nurse ? (
+                  <>
+                    <QueuePanel role={role} rows={waiting} />
+                    <UrgentPanel d={data} />
+                    <ArrivalsPanel d={data} />
+                  </>
+                ) : (
+                  <>
+                    {/* The nurse registered them first; reception completes the file. */}
+                    <FilesToCompletePanel i={1} />
+                    <QueuePanel role={role} rows={waiting} />
+                    <StationsPanel d={data} />
+                  </>
+                )}
               </div>
             </section>
 
             {/* TODAY */}
             <section className="flex flex-col gap-3">
               <div className={sectionTitle}>{t('desk.today')}</div>
-              <div className="pc:grid-cols-3 grid grid-cols-1 gap-4">
+              <div
+                className={cn(
+                  'grid grid-cols-1 gap-4',
+                  nurse ? 'pc:grid-cols-3' : 'pc:grid-cols-2',
+                )}
+              >
                 {nurse ? (
                   <>
                     <BedsPanel userRole={user.role} />
@@ -177,6 +199,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                     <InquiriesPanel canAct />
                   </>
                 )}
+                {!nurse && <ArrivalsPanel d={data} />}
                 <MinePanel d={data} role={role} />
               </div>
             </section>
