@@ -529,3 +529,29 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------- public header entrance */
+.site-header-in {
+  animation: site-header-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes site-header-in {
+  from {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+/* Anchors land below the condensed header (strip ≈ 54 px + breathing room). */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header-in {
+    animation: none;
+  }
+}

@@ -110,7 +110,7 @@ export function LandingPage() {
       />
 
       {/* FIND A DOCTOR */}
-      <section id="doctors" className="bg-card scroll-mt-40 py-[72px]">
+      <section id="doctors" className="bg-card scroll-mt-[56px] py-[72px]">
         <Wrap className="flex flex-col gap-6">
           <div className="flex flex-wrap items-end gap-6" data-reveal>
             <div className="min-w-[280px] flex-1">
@@ -151,7 +151,7 @@ export function LandingPage() {
       </section>
 
       {/* SERVICES */}
-      <section id="services" className="soft-gradient scroll-mt-40 py-[72px]">
+      <section id="services" className="soft-gradient scroll-mt-[56px] py-[72px]">
         <Wrap className="flex flex-col gap-8">
           <div data-reveal>
             <span className="eyebrow">{t('nav.services')}</span>
@@ -186,7 +186,7 @@ export function LandingPage() {
       </section>
 
       {/* HOW TO BOOK */}
-      <section id="book" className="bg-card scroll-mt-40 py-[72px]">
+      <section id="book" className="bg-card scroll-mt-[56px] py-[72px]">
         <Wrap className="pc:grid-cols-2 grid items-start gap-12">
           <div className="flex flex-col gap-6" data-reveal>
             <PhoneIllustration />
@@ -208,7 +208,7 @@ export function LandingPage() {
       {/* INSURANCE */}
       <section
         id="insurance"
-        className="band-gradient relative scroll-mt-40 overflow-hidden py-16 text-white"
+        className="band-gradient relative scroll-mt-[56px] overflow-hidden py-16 text-white"
       >
         <div
           aria-hidden="true"
@@ -256,7 +256,7 @@ export function LandingPage() {
       </section>
 
       {/* HOURS & LOCATION */}
-      <section id="visit" className="soft-gradient scroll-mt-40 py-[72px]">
+      <section id="visit" className="soft-gradient scroll-mt-[56px] py-[72px]">
         <Wrap className="flex flex-col gap-8">
           <div data-reveal>
             <span className="eyebrow">{t('nav.visit')}</span>

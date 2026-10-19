@@ -60,6 +60,7 @@ const SHOTS = [
   { name: 'home-top-1366', path: '/', vp: [1366, 860] },
   { name: 'home-top-1920', path: '/', vp: [1920, 1000] },
   { name: 'home-top-mobile', path: '/', vp: [390, 844] },
+  { name: 'booking-top', path: '/book', vp: [1366, 700] },
   { name: 'booking-1366', path: '/book', vp: PC, full: true },
   { name: 'landing-mobile', path: '/', vp: [390, 844], full: true },
   {
