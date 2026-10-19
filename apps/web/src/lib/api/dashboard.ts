@@ -166,7 +166,7 @@ export function useDashboard(range: DashboardRange, manager: boolean) {
         },
         revenue30d: d.revenue30d.map((r) => ({ day: r.day, amount: Number(r.amount) })),
         collections: d.collections.map((c) => ({
-          method: methodLabel(c.method),
+          method: c.method,
           amount: Number(c.amount),
         })),
         receivables: d.receivables.map((r) => ({

@@ -28,6 +28,7 @@ import {
   SERVICE_GROUPS,
   useCatalogueActions,
   useInsurers,
+  treatmentName,
   useTreatments,
   type Insurer,
   type PayerType,
@@ -46,7 +47,7 @@ const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-s
  * Insurers appear only once the clinic switches insurance on (FEATURES.insurance).
  */
 export function PricesPage({ user }: { user: StaffUser }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: treatments = [], error: tError } = useTreatments()
   const { data: insurers = [], error: iError } = useInsurers()
   const actions = useCatalogueActions()
@@ -223,7 +224,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                   className={cn('flex-wrap gap-x-3 gap-y-1 py-2', !x.active && 'opacity-60')}
                 >
                   <span className="min-w-[200px] flex-1">
-                    <span className="block font-semibold">{x.nameEn}</span>
+                    <span className="block font-semibold">{treatmentName(x, i18n.language)}</span>
                     <span className="text-ink-3 text-xs">
                       {x.code}
                       {x.nameKin ? ` · ${x.nameKin}` : ''}

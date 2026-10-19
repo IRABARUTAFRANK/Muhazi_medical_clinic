@@ -118,6 +118,16 @@ const SHOTS = [
   { name: 'triage-reception', path: '/app/vitals', vp: [1366, 1100], user: 'u-rec' },
   { name: 'appointments-1366', path: '/app/appointments', vp: [1366, 900], user: 'u-rec' },
   { name: 'register-nurse', path: '/app/register', vp: [1366, 900], user: 'u-nur' },
+  { name: 'rw-receptionist', path: '/app', vp: [1366, 1400], user: 'u-rec', lang: 'rw' },
+  { name: 'rw-nurse', path: '/app', vp: [1366, 1300], user: 'u-nur', lang: 'rw' },
+  { name: 'rw-manager', path: '/app/dashboard', vp: [1366, 1000], user: 'u-mgr', lang: 'rw' },
+  {
+    name: 'fr-visit',
+    path: '/app/visit?encounter=e-1',
+    vp: [1366, 1000],
+    user: 'u-doc',
+    lang: 'fr',
+  },
   {
     name: 'patient-complete',
     path: '/app/patient?id=p-2&tab=complete',
@@ -183,7 +193,7 @@ try {
     const session = shot.user
       ? { state: { user: USERS[shot.user] }, version: 0 }
       : { state: { user: null }, version: 0 }
-    const prefs = { state: { lang: 'en', theme: shot.theme ?? 'light' }, version: 0 }
+    const prefs = { state: { lang: shot.lang ?? 'en', theme: shot.theme ?? 'light' }, version: 0 }
     await page.evaluateOnNewDocument(
       (s, p) => {
         sessionStorage.setItem('mmc.session', s)

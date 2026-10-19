@@ -40,6 +40,7 @@ import { Seg } from '@/components/ui/seg'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
+  methodLabel,
   rangeDates,
   useDashboard,
   type DashboardData,
@@ -280,7 +281,10 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                           colors={METHOD_COLORS}
                           labelWidth="minmax(72px,96px)"
                           rows={data.collections.map((m) => ({
-                            label: m.method,
+                            // cash, momo, airtel, card, bank → the interface language
+                            label: t(`visit.payment.methods.${m.method}`, {
+                              defaultValue: methodLabel(m.method),
+                            }),
                             value: m.amount,
                             display: formatNumber(m.amount),
                           }))}

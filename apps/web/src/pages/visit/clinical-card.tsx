@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
-import { useTreatments } from '@/lib/api/catalogue'
+import { treatmentName, useTreatments } from '@/lib/api/catalogue'
 import { useClinicalActions, useItems, useVisitClinical, type Item } from '@/lib/api/patients'
 import { cn } from '@/lib/utils'
 
@@ -57,7 +57,7 @@ export function ClinicalCard({
   onDone: (m: string) => void
   onError: (m: string | null) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data, error } = useVisitClinical(encounterId)
   const actions = useClinicalActions(encounterId)
   const { data: items = [] } = useItems()
@@ -375,7 +375,7 @@ export function ClinicalCard({
               <option value="">{t('clinical.pickTest')}</option>
               {tests.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.nameEn} ·{' '}
+                  {treatmentName(s, i18n.language)} ·{' '}
                   {s.group === 'imaging'
                     ? t('register.stations.ultrasound')
                     : t('register.stations.laboratory')}

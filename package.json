@@ -24,7 +24,8 @@
     "sb:configure": "node scripts/supabase-configure.mjs",
     "sb:deploy": "node scripts/supabase-deploy.mjs",
     "sb:set-email": "node scripts/set-staff-email.mjs",
-    "sb:create-staff": "node scripts/create-staff.mjs"
+    "sb:create-staff": "node scripts/create-staff.mjs",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",

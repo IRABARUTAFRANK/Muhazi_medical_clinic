@@ -477,7 +477,7 @@
     "clinicOpen": "Clinique ouverte",
     "clinicClosed": "Clinique fermée",
     "registerPatient": "Enregistrer un patient",
-    "queueLong": "long",
+    "queueLong": "longue",
     "avgShort": "moy. {{min}} min",
     "noShowShort": "{{missed}} manqués",
     "collectedTotal": "{{amount}} au total",
@@ -595,7 +595,7 @@
     "byInsurer": "par assureur",
     "claimsCount": "{{count}} factures",
     "may": "Mai",
-    "oct": "Oct"
+    "oct": "oct."
   },
   "placeholder": {
     "title": "{{screen}}",

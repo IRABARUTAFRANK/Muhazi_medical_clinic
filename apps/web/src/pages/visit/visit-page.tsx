@@ -21,7 +21,7 @@ import {
   type Vital,
   type VisitBill,
 } from '@/lib/api/billing'
-import { useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
+import { treatmentName, useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
 import { TREATING_STATIONS, stationFor, type Station } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -601,7 +601,7 @@ function AddChargeCard({
     coveragePct: number
   }) => Promise<void>
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [serviceId, setServiceId] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [discount, setDiscount] = useState('')
@@ -698,7 +698,8 @@ function AddChargeCard({
             <option value="">{t('visit.add.pick')}</option>
             {filtered.map((x) => (
               <option key={x.id} value={x.id}>
-                {x.nameEn} · {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
+                {treatmentName(x, i18n.language)} ·{' '}
+                {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
               </option>
             ))}
           </Select>

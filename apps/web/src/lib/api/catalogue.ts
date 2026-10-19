@@ -451,3 +451,13 @@ export function useCatalogueActions() {
     adjustPrices,
   }
 }
+
+/**
+ * A treatment's name in the interface language: Kinyarwanda or French when the manager entered
+ * one, otherwise the English name (which is always there).
+ */
+export function treatmentName(x: Pick<Treatment, 'nameEn' | 'nameKin' | 'nameFr'>, lang: string) {
+  if (lang.startsWith('rw') || lang.startsWith('kin')) return x.nameKin || x.nameEn
+  if (lang.startsWith('fr')) return x.nameFr || x.nameEn
+  return x.nameEn
+}
