@@ -555,3 +555,33 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------- notification bell */
+.bell-ring {
+  transform-origin: 50% 10%;
+  animation: bell-ring 2.4s ease-in-out infinite;
+}
+@keyframes bell-ring {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0);
+  }
+  74% {
+    transform: rotate(14deg);
+  }
+  80% {
+    transform: rotate(-12deg);
+  }
+  86% {
+    transform: rotate(8deg);
+  }
+  92% {
+    transform: rotate(-5deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bell-ring {
+    animation: none;
+  }
+}

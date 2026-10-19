@@ -1,5 +1,19 @@
 import { useState, type FormEvent } from 'react'
-import { Copy, KeyRound, Mail, RefreshCw, UserPlus, UserX, UserCheck, Check } from 'lucide-react'
+import {
+  Building2,
+  Check,
+  Copy,
+  KeyRound,
+  Pencil,
+  Plus,
+  RefreshCw,
+  ShieldCheck,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  UserX,
+  Wand2,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
 import { Avatar } from '@/components/ui/avatar'
@@ -14,57 +28,88 @@ import {
   DB_ROLES,
   EMAIL_RE,
   PIN_RE,
+  POSITIONS,
   USERNAME_RE,
   generatePin,
   suggestUsername,
+  useDepartmentActions,
+  useDepartments,
   useEmployees,
   useStaffActions,
-  type DashboardRight,
   type DbLang,
   type DbRole,
+  type Department,
   type Employee,
+  type EmployeeInput,
+  type Position,
 } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 
 interface Credentials {
   title: string
-  name: string
   staffId: string
   email: string
   username: string
   pin: string
 }
 
-/** Manager-only: employee accounts, first PINs, resets, deactivation (doc §5.11, §5.12). */
+/** What waits for the manager's PIN before it is sent. */
+interface Pending {
+  title: string
+  run: (confirmPin: string) => Promise<void>
+}
+
+const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+
+/**
+ * Manager-only: employees (create, edit everything, reset PIN, deactivate) and departments
+ * (which roles belong; each employee is head, assistant head or member). Every change is
+ * confirmed with the manager's own PIN, checked on the server (doc §5.11, §5.12).
+ */
 export function StaffPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
+  const [tab, setTab] = useState<'people' | 'departments'>('people')
   const { data: employees = [], isLoading, error } = useEmployees()
+  const { data: departments = [] } = useDepartments()
   const actions = useStaffActions()
-  const [showNew, setShowNew] = useState(false)
+  const [editing, setEditing] = useState<Employee | 'new' | null>(null)
   const [resetFor, setResetFor] = useState<Employee | null>(null)
-  const [emailFor, setEmailFor] = useState<Employee | null>(null)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
+  const [pending, setPending] = useState<Pending | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [showInactive, setShowInactive] = useState(false)
 
   const describeError = (e: unknown): string => {
     const m = e instanceof Error ? e.message : String(e)
+    if (m === 'confirm_pin_wrong') return t('staff.confirm.wrong')
+    if (m === 'confirm_pin_required') return t('staff.confirm.required')
     if (/e-mail already/i.test(m)) return t('staff.errors.emailTaken')
     if (/taken|already exists/i.test(m)) return t('staff.errors.usernameTaken')
+    if (/does not belong/i.test(m)) return t('staff.errors.roleDept')
+    if (/choose a department/i.test(m)) return t('staff.errors.needDept')
     if (m === 'username') return t('staff.errors.username')
     if (m === 'pin') return t('staff.errors.pin')
     if (m === 'email' || /valid e-mail/i.test(m)) return t('staff.errors.email')
     return t('staff.errors.generic', { message: m })
   }
 
-  const toggleActive = async (e: Employee) => {
-    setActionError(null)
-    try {
-      await actions.setActive.mutateAsync({ id: e.id, active: !e.active })
-    } catch (err) {
-      setActionError(describeError(err))
-    }
-  }
+  const visible = employees.filter((e) => showInactive || e.active)
+  const groups: { key: string; name: string; people: Employee[] }[] = [
+    ...departments.map((d) => ({
+      key: d.id,
+      name: d.name,
+      people: visible.filter((e) => e.departmentId === d.id),
+    })),
+    {
+      key: 'none',
+      name: t('staff.dept.none'),
+      people: visible.filter(
+        (e) => !e.departmentId || !departments.some((d) => d.id === e.departmentId),
+      ),
+    },
+  ].filter((g) => g.people.length > 0)
+  const rank: Record<Position, number> = { head: 0, assistant: 1, member: 2 }
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="staff">
@@ -72,250 +117,479 @@ export function StaffPage({ user }: { user: StaffUser }) {
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[260px] flex-1">
             <h1 className="m-0 text-2xl font-bold">{t('staff.title')}</h1>
-            <p className="text-ink-2 m-0 mt-1 max-w-[640px]">{t('staff.lead')}</p>
+            <p className="text-ink-2 m-0 mt-1 max-w-[680px]">{t('staff.lead2')}</p>
           </div>
-          <span className="text-ink-2 tabular-nums">
-            {t('staff.count', { count: employees.length })}
-          </span>
-          <Button variant="primary" onClick={() => setShowNew(true)}>
-            <UserPlus size={18} aria-hidden="true" />
-            {t('staff.newEmployee')}
-          </Button>
+          {tab === 'people' && (
+            <Button variant="primary" onClick={() => setEditing('new')}>
+              <UserPlus size={18} aria-hidden="true" />
+              {t('staff.newEmployee')}
+            </Button>
+          )}
         </div>
 
-        {(error || actionError) && (
-          <p
-            role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-          >
-            {actionError ?? describeError(error)}
+        <div className="flex flex-wrap gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
+          {(['people', 'departments'] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={tab === k}
+              onClick={() => setTab(k)}
+              className={cn(
+                'min-h-10 rounded-lg px-4 text-[13px] font-semibold transition-colors',
+                tab === k ? 'bg-navy shadow-card text-white' : 'text-ink-2 hover:bg-hover',
+              )}
+            >
+              {k === 'people'
+                ? t('staff.tabs.people', { count: employees.filter((e) => e.active).length })
+                : t('staff.tabs.departments', { count: departments.length })}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <p role="alert" className={errorBox}>
+            {describeError(error)}
           </p>
         )}
-
+        {notice && (
+          <p
+            role="status"
+            className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+          >
+            {notice}
+          </p>
+        )}
         {credentials && (
           <CredentialsCard credentials={credentials} onDone={() => setCredentials(null)} />
         )}
 
-        {showNew && (
-          <NewEmployeeForm
-            onCancel={() => setShowNew(false)}
-            onCreated={(c) => {
-              setShowNew(false)
-              setCredentials(c)
-            }}
-            describeError={describeError}
-          />
-        )}
+        {tab === 'departments' ? (
+          <DepartmentsPanel departments={departments} employees={employees} />
+        ) : (
+          <>
+            {editing && (
+              <EmployeeForm
+                key={editing === 'new' ? 'new' : editing.id}
+                employee={editing === 'new' ? null : editing}
+                departments={departments}
+                takenUsernames={new Set(employees.map((e) => e.username))}
+                self={editing !== 'new' && editing.id === user.id}
+                onCancel={() => setEditing(null)}
+                onSubmit={(input, firstPin) =>
+                  setPending({
+                    title:
+                      editing === 'new'
+                        ? t('staff.confirm.create', { name: input.fullName })
+                        : t('staff.confirm.update', { name: input.fullName }),
+                    run: async (confirmPin) => {
+                      if (editing === 'new') {
+                        const r = await actions.create.mutateAsync({
+                          input,
+                          pin: firstPin!,
+                          confirmPin,
+                        })
+                        setCredentials({
+                          title: t('staff.created.title', { name: input.fullName }),
+                          staffId: r.staff_id ?? '',
+                          email: input.email,
+                          username: r.username,
+                          pin: firstPin!,
+                        })
+                      } else {
+                        await actions.update.mutateAsync({ id: editing.id, input, confirmPin })
+                        setNotice(t('staff.saved', { name: input.fullName }))
+                      }
+                      setEditing(null)
+                    },
+                  })
+                }
+              />
+            )}
 
-        {resetFor && (
-          <ResetPinCard
-            employee={resetFor}
-            onClose={() => setResetFor(null)}
-            onDone={(pin) => {
-              setCredentials({
-                title: t('staff.reset.doneTitle', { name: resetFor.fullName }),
-                name: resetFor.fullName,
-                staffId: resetFor.staffId ?? '',
-                email: resetFor.email ?? '',
-                username: resetFor.username,
-                pin,
-              })
-              setResetFor(null)
-            }}
-            describeError={describeError}
-          />
-        )}
+            {resetFor && (
+              <ResetPinCard
+                employee={resetFor}
+                onClose={() => setResetFor(null)}
+                onSubmit={(pin) =>
+                  setPending({
+                    title: t('staff.confirm.reset', { name: resetFor.fullName }),
+                    run: async (confirmPin) => {
+                      await actions.resetPin.mutateAsync({ id: resetFor.id, pin, confirmPin })
+                      setCredentials({
+                        title: t('staff.reset.doneTitle', { name: resetFor.fullName }),
+                        staffId: resetFor.staffId ?? '',
+                        email: resetFor.email ?? '',
+                        username: resetFor.username,
+                        pin,
+                      })
+                      setResetFor(null)
+                    },
+                  })
+                }
+              />
+            )}
 
-        {emailFor && (
-          <EmailCard
-            employee={emailFor}
-            onClose={() => setEmailFor(null)}
-            describeError={describeError}
-          />
-        )}
+            <label className="flex items-center gap-2 self-start text-[13px] font-semibold">
+              <input
+                type="checkbox"
+                className="accent-primary size-[18px]"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+              />
+              {t('staff.showInactive', { count: employees.filter((e) => !e.active).length })}
+            </label>
 
-        <Card>
-          <CardHeader>
-            <span>{t('staff.cols.employee')}</span>
-            <span className="text-ink-3 text-xs">{isLoading ? '…' : ''}</span>
-          </CardHeader>
-          {employees.map((e) => {
-            const self = e.id === user.id
-            return (
-              <Row key={e.id} className="flex-wrap gap-x-4 gap-y-2 py-3">
-                <Avatar name={e.fullName} size="md" />
-                <span className="min-w-[180px] flex-1">
-                  <span className="block font-semibold">
-                    {e.fullName}
-                    {self && <span className="text-ink-3 ml-2 text-xs font-medium">(you)</span>}
+            {isLoading && <p className="text-ink-3 m-0">…</p>}
+            {groups.map((g) => (
+              <Card key={g.key}>
+                <CardHeader>
+                  <span className="inline-flex items-center gap-2">
+                    <Building2 size={16} aria-hidden="true" />
+                    {g.name}
                   </span>
-                  <span className="text-ink-3 text-xs tabular-nums">
-                    {e.staffId ? `${e.staffId} · ` : ''}
-                    {e.username}
-                    {e.email ? ` · ${e.email}` : ''}
-                    {e.station ? ` · ${e.station}` : ''}
-                    {e.lastSignInAt
-                      ? ` · ${t('staff.lastSignIn', { when: `${formatDate(new Date(e.lastSignInAt))} ${formatTime(new Date(e.lastSignInAt))}` })}`
-                      : ` · ${t('staff.neverSignedIn')}`}
-                  </span>
-                </span>
-                <Chip>{t(`staff.roles.${e.role}`)}</Chip>
-                {e.dashboard && (
-                  <Chip>
-                    {t(
-                      e.dashboard === 'manager'
-                        ? 'staff.form.dashboardManager'
-                        : 'staff.form.dashboardHead',
-                    )}
-                  </Chip>
-                )}
-                {!e.active ? (
-                  <Badge tone="red">{t('staff.deactivated')}</Badge>
-                ) : !e.email ? (
-                  <Badge tone="yellow">{t('staff.noEmail')}</Badge>
-                ) : e.mustChangePin ? (
-                  <Badge tone="yellow">{t('staff.pinPending')}</Badge>
-                ) : (
-                  <Badge tone="green">{t('staff.active')}</Badge>
-                )}
-                <span className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => setEmailFor(e)} disabled={!e.active}>
-                    <Mail size={16} aria-hidden="true" />
-                    {t('staff.setEmail')}
-                  </Button>
-                  <Button size="sm" onClick={() => setResetFor(e)} disabled={!e.active}>
-                    <KeyRound size={16} aria-hidden="true" />
-                    {t('staff.resetPin')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={e.active ? 'danger' : 'default'}
-                    disabled={self || actions.setActive.isPending}
-                    onClick={() => void toggleActive(e)}
-                  >
-                    {e.active ? (
-                      <UserX size={16} aria-hidden="true" />
-                    ) : (
-                      <UserCheck size={16} aria-hidden="true" />
-                    )}
-                    {t(e.active ? 'staff.deactivate' : 'staff.reactivate')}
-                  </Button>
-                </span>
-              </Row>
-            )
-          })}
-        </Card>
+                  <span className="text-ink-3 text-xs">{g.people.length}</span>
+                </CardHeader>
+                {[...g.people]
+                  .sort(
+                    (a, b) =>
+                      rank[a.position] - rank[b.position] || a.fullName.localeCompare(b.fullName),
+                  )
+                  .map((e) => {
+                    const self = e.id === user.id
+                    return (
+                      <Row
+                        key={e.id}
+                        className={cn('flex-wrap gap-x-4 gap-y-2 py-3', !e.active && 'opacity-60')}
+                      >
+                        <Avatar name={e.fullName} size="md" />
+                        <span className="min-w-[200px] flex-1">
+                          <span className="block font-semibold">
+                            {e.fullName}
+                            {self && (
+                              <span className="text-ink-3 ml-2 text-xs font-medium">
+                                ({t('staff.you')})
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-ink-3 text-xs tabular-nums">
+                            {[
+                              e.staffId,
+                              e.username,
+                              e.email,
+                              e.lastSignInAt
+                                ? t('staff.lastSignIn', {
+                                    when: `${formatDate(new Date(e.lastSignInAt))} ${formatTime(new Date(e.lastSignInAt))}`,
+                                  })
+                                : t('staff.neverSignedIn'),
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        </span>
+                        <Chip>{t(`staff.roles.${e.role}`)}</Chip>
+                        {e.position !== 'member' && (
+                          <Badge tone={e.position === 'head' ? 'blue' : 'grey'} dot={false}>
+                            {t(`staff.positions.${e.position}`)}
+                          </Badge>
+                        )}
+                        {!e.active ? (
+                          <Badge tone="red">{t('staff.deactivated')}</Badge>
+                        ) : e.mustChangePin ? (
+                          <Badge tone="yellow">{t('staff.pinPending')}</Badge>
+                        ) : (
+                          <Badge tone="green">{t('staff.active')}</Badge>
+                        )}
+                        <span className="flex flex-wrap gap-2">
+                          <Button size="sm" onClick={() => setEditing(e)} disabled={!e.active}>
+                            <Pencil size={15} aria-hidden="true" />
+                            {t('staff.edit')}
+                          </Button>
+                          <Button size="sm" onClick={() => setResetFor(e)} disabled={!e.active}>
+                            <KeyRound size={15} aria-hidden="true" />
+                            {t('staff.resetPin')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={e.active ? 'danger' : 'default'}
+                            disabled={self}
+                            onClick={() =>
+                              setPending({
+                                title: t(
+                                  e.active
+                                    ? 'staff.confirm.deactivate'
+                                    : 'staff.confirm.reactivate',
+                                  {
+                                    name: e.fullName,
+                                  },
+                                ),
+                                run: async (confirmPin) => {
+                                  await actions.setActive.mutateAsync({
+                                    id: e.id,
+                                    active: !e.active,
+                                    confirmPin,
+                                  })
+                                  setNotice(
+                                    t(
+                                      e.active
+                                        ? 'staff.deactivatedNotice'
+                                        : 'staff.reactivatedNotice',
+                                      { name: e.fullName },
+                                    ),
+                                  )
+                                },
+                              })
+                            }
+                          >
+                            {e.active ? (
+                              <UserX size={15} aria-hidden="true" />
+                            ) : (
+                              <UserCheck size={15} aria-hidden="true" />
+                            )}
+                            {t(e.active ? 'staff.deactivate' : 'staff.reactivate')}
+                          </Button>
+                        </span>
+                      </Row>
+                    )
+                  })}
+              </Card>
+            ))}
+          </>
+        )}
+
+        {pending && (
+          <ConfirmPinDialog
+            title={pending.title}
+            describeError={describeError}
+            onCancel={() => setPending(null)}
+            onConfirm={async (pin) => {
+              await pending.run(pin)
+              setPending(null)
+            }}
+          />
+        )}
       </main>
     </StaffShell>
   )
 }
 
-/* ---------------------------------------------------------------- new employee */
+/* ---------------------------------------------------------------- confirm with the manager's PIN */
 
-function NewEmployeeForm({
+function ConfirmPinDialog({
+  title,
+  onConfirm,
   onCancel,
-  onCreated,
   describeError,
 }: {
+  title: string
+  onConfirm: (pin: string) => Promise<void>
   onCancel: () => void
-  onCreated: (c: Credentials) => void
   describeError: (e: unknown) => string
 }) {
   const { t } = useTranslation()
-  const actions = useStaffActions()
-  const [fullName, setFullName] = useState('')
-  const [username, setUsername] = useState('')
-  const [usernameTouched, setUsernameTouched] = useState(false)
-  const [role, setRole] = useState<DbRole>('receptionist')
-  const [station, setStation] = useState('')
-  const [dashboard, setDashboard] = useState<DashboardRight>(null)
-  const [headOf, setHeadOf] = useState('')
-  const [language, setLanguage] = useState<DbLang>('kin')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
+  const [pin, setPin] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!PIN_RE.test(pin)) return setError(t('staff.errors.pin'))
+    setBusy(true)
+    setError(null)
+    try {
+      await onConfirm(pin)
+    } catch (err) {
+      setError(describeError(err))
+      setPin('')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('staff.confirm.title')}
+      className="anim-enter fixed inset-0 z-[90] flex items-center justify-center bg-[#0b2252]/45 p-4 backdrop-blur-[2px]"
+      onKeyDown={(e) => e.key === 'Escape' && onCancel()}
+    >
+      <form
+        onSubmit={submit}
+        className="bg-card shadow-sheet flex w-full max-w-[420px] flex-col gap-4 rounded-2xl p-6"
+      >
+        <div className="flex items-center gap-3">
+          <span className="icon-gradient inline-flex size-11 flex-none items-center justify-center rounded-xl text-white">
+            <ShieldCheck size={22} aria-hidden="true" />
+          </span>
+          <span>
+            <span className="block text-lg font-bold">{t('staff.confirm.title')}</span>
+            <span className="text-ink-2 text-[13px]">{title}</span>
+          </span>
+        </div>
+        <Field
+          label={t('staff.confirm.pin')}
+          type="password"
+          inputMode="numeric"
+          autoComplete="current-password"
+          autoFocus
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          required
+        />
+        <p className="text-ink-3 m-0 text-xs">{t('staff.confirm.hint')}</p>
+        {error && (
+          <p role="alert" className={errorBox}>
+            {error}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Button type="submit" variant="primary" loading={busy}>
+            <Check size={16} aria-hidden="true" />
+            {t('staff.confirm.ok')}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t('staff.form.cancel')}
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------- employee form (new / edit) */
+
+function EmployeeForm({
+  employee,
+  departments,
+  takenUsernames,
+  self,
+  onSubmit,
+  onCancel,
+}: {
+  employee: Employee | null
+  departments: Department[]
+  takenUsernames: ReadonlySet<string>
+  self: boolean
+  onSubmit: (input: EmployeeInput, firstPin?: string) => void
+  onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  const isNew = !employee
+  const [fullName, setFullName] = useState(employee?.fullName ?? '')
+  const [username, setUsername] = useState(employee?.username ?? '')
+  const [usernameTouched, setUsernameTouched] = useState(!isNew)
+  const [email, setEmail] = useState(employee?.email ?? '')
+  const [phone, setPhone] = useState(employee?.phone ?? '')
+  const [role, setRole] = useState<DbRole>(employee?.role ?? 'receptionist')
+  const [departmentId, setDepartmentId] = useState<string>(employee?.departmentId ?? '')
+  const [position, setPosition] = useState<Position>(employee?.position ?? 'member')
+  const [station, setStation] = useState(employee?.station ?? '')
+  const [language, setLanguage] = useState<DbLang>(employee?.language ?? 'kin')
   const [pin, setPin] = useState(generatePin)
   const [error, setError] = useState<string | null>(null)
 
-  const onName = (v: string) => {
-    setFullName(v)
-    if (!usernameTouched) setUsername(suggestUsername(v))
-  }
+  // Only departments this role belongs to (a department with no roles listed accepts all).
+  const fitting = departments.filter((d) => d.roles.length === 0 || d.roles.includes(role))
+  const others = new Set([...takenUsernames].filter((u) => u !== employee?.username))
 
-  const submit = async (e: FormEvent) => {
+  const submit = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (!fullName.trim()) return setError(t('staff.errors.name'))
     if (!USERNAME_RE.test(username)) return setError(t('staff.errors.username'))
+    if (others.has(username)) return setError(t('staff.errors.usernameTaken'))
     if (!EMAIL_RE.test(email.trim())) return setError(t('staff.errors.email'))
-    if (!PIN_RE.test(pin)) return setError(t('staff.errors.pin'))
-    try {
-      const effectiveDashboard: DashboardRight = role === 'manager' ? 'manager' : dashboard
-      const created = await actions.create.mutateAsync({
+    if (position !== 'member' && !departmentId) return setError(t('staff.errors.needDept'))
+    if (isNew && !PIN_RE.test(pin)) return setError(t('staff.errors.pin'))
+    onSubmit(
+      {
+        fullName,
         username,
-        fullName: fullName.trim(),
+        email,
         role,
-        pin,
-        email: email.trim().toLowerCase(),
-        station: station.trim() || undefined,
-        dashboard: effectiveDashboard,
-        headOf: effectiveDashboard === 'head' ? headOf.trim() || station.trim() : undefined,
+        departmentId: departmentId || null,
+        position: departmentId ? position : 'member',
+        station,
         language,
-        phone: phone.trim() || undefined,
-      })
-      onCreated({
-        title: t('staff.created.title', { name: fullName.trim() }),
-        name: fullName.trim(),
-        staffId: created.staff_id ?? '',
-        email: email.trim().toLowerCase(),
-        username,
-        pin,
-      })
-    } catch (err) {
-      setError(describeError(err))
-    }
+        phone,
+      },
+      isNew ? pin : undefined,
+    )
   }
 
   return (
-    <Card>
+    <Card className="border-primary anim-enter">
       <CardHeader>
-        <span>{t('staff.newEmployee')}</span>
+        <span>
+          {isNew ? t('staff.newEmployee') : t('staff.editTitle', { name: employee.fullName })}
+        </span>
+        {employee?.staffId && (
+          <span className="text-ink-3 text-xs tabular-nums">{employee.staffId}</span>
+        )}
       </CardHeader>
       <form onSubmit={submit}>
-        <CardBody className="gap-3">
+        <CardBody className="gap-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label={t('staff.form.fullName')}
-              placeholder={t('staff.form.fullNamePh')}
               value={fullName}
-              onChange={(e) => onName(e.target.value)}
+              onChange={(e) => {
+                setFullName(e.target.value)
+                if (!usernameTouched) setUsername(suggestUsername(e.target.value, others))
+              }}
+              required
+              autoFocus
+            />
+            <div className="flex items-end gap-2">
+              <Field
+                label={t('staff.form.username')}
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))
+                  setUsernameTouched(true)
+                }}
+                wrapperClassName="flex-1"
+                required
+              />
+              <Button
+                type="button"
+                onClick={() => {
+                  setUsername(suggestUsername(fullName, others))
+                  setUsernameTouched(true)
+                }}
+                disabled={!fullName.trim()}
+                title={t('staff.form.suggest')}
+              >
+                <Wand2 size={16} aria-hidden="true" />
+                {t('staff.form.suggest')}
+              </Button>
+            </div>
+            <Field
+              label={t('staff.form.email')}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
             <Field
-              label={t('staff.form.username')}
-              value={username}
-              onChange={(e) => {
-                setUsernameTouched(true)
-                setUsername(e.target.value.toLowerCase())
-              }}
-              autoCapitalize="none"
-              required
+              label={t('staff.form.phone')}
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
           </div>
-          <span className="text-ink-3 -mt-1 text-xs">{t('staff.form.usernameHint')}</span>
-          <Field
-            label={t('staff.form.email')}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="off"
-            placeholder="name@example.com"
-            required
-          />
-          <span className="text-ink-3 -mt-1 text-xs">{t('staff.form.emailHint')}</span>
+          <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.usernameHint2')}</p>
+
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Select
               label={t('staff.form.role')}
               value={role}
-              onChange={(e) => setRole(e.target.value as DbRole)}
+              onChange={(e) => {
+                const r = e.target.value as DbRole
+                setRole(r)
+                const d = departments.find((x) => x.id === departmentId)
+                if (d && d.roles.length && !d.roles.includes(r)) setDepartmentId('')
+              }}
+              disabled={self}
             >
               {DB_ROLES.map((r) => (
                 <option key={r} value={r}>
@@ -323,32 +597,41 @@ function NewEmployeeForm({
                 </option>
               ))}
             </Select>
+            <Select
+              label={t('staff.form.department')}
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+            >
+              <option value="">{t('staff.dept.none')}</option>
+              {fitting.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label={t('staff.form.position')}
+              value={departmentId ? position : 'member'}
+              onChange={(e) => setPosition(e.target.value as Position)}
+              disabled={!departmentId}
+            >
+              {POSITIONS.map((p) => (
+                <option key={p} value={p}>
+                  {t(`staff.positions.${p}`)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {departments.length === 0 && (
+            <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.noDepartments')}</p>
+          )}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field
               label={t('staff.form.station')}
-              placeholder={t('staff.form.stationPh')}
               value={station}
               onChange={(e) => setStation(e.target.value)}
             />
-            <Select
-              label={t('staff.form.dashboard')}
-              value={role === 'manager' ? 'manager' : (dashboard ?? '')}
-              disabled={role === 'manager'}
-              onChange={(e) => setDashboard((e.target.value || null) as DashboardRight)}
-            >
-              <option value="">{t('staff.form.dashboardNone')}</option>
-              <option value="head">{t('staff.form.dashboardHead')}</option>
-              <option value="manager">{t('staff.form.dashboardManager')}</option>
-            </Select>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {dashboard === 'head' && role !== 'manager' && (
-              <Field
-                label={t('staff.form.headOf')}
-                value={headOf}
-                onChange={(e) => setHeadOf(e.target.value)}
-                placeholder={station}
-              />
-            )}
             <Select
               label={t('staff.form.language')}
               value={language}
@@ -358,40 +641,38 @@ function NewEmployeeForm({
               <option value="en">English</option>
               <option value="fr">Français</option>
             </Select>
-            <Field
-              label={t('staff.form.phone')}
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="07xx xxx xxx"
-            />
+            {isNew && (
+              <div className="flex items-end gap-2">
+                <Field
+                  label={t('staff.form.pin')}
+                  inputMode="numeric"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="tracking-[.3em] tabular-nums"
+                  wrapperClassName="flex-1"
+                  required
+                />
+                <Button
+                  type="button"
+                  onClick={() => setPin(generatePin())}
+                  aria-label={t('staff.form.generate')}
+                >
+                  <RefreshCw size={16} aria-hidden="true" />
+                </Button>
+              </div>
+            )}
           </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <Field
-              label={t('staff.form.pin')}
-              value={pin}
-              inputMode="numeric"
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="w-40 text-xl font-bold tracking-[.3em] tabular-nums"
-              required
-            />
-            <Button type="button" onClick={() => setPin(generatePin())}>
-              <RefreshCw size={16} aria-hidden="true" />
-              {t('staff.form.generate')}
-            </Button>
-            <span className="text-ink-3 text-xs">{t('staff.form.pinHint')}</span>
-          </div>
+          {isNew && <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.pinHint')}</p>}
+
           {error && (
-            <p
-              role="alert"
-              className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-            >
+            <p role="alert" className={errorBox}>
               {error}
             </p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" disabled={actions.create.isPending}>
-              {actions.create.isPending ? t('staff.form.creating') : t('staff.form.create')}
+            <Button type="submit" variant="primary">
+              <ShieldCheck size={16} aria-hidden="true" />
+              {isNew ? t('staff.form.create') : t('staff.form.saveChanges')}
             </Button>
             <Button type="button" variant="ghost" onClick={onCancel}>
               {t('staff.form.cancel')}
@@ -407,58 +688,40 @@ function NewEmployeeForm({
 
 function ResetPinCard({
   employee,
+  onSubmit,
   onClose,
-  onDone,
-  describeError,
 }: {
   employee: Employee
+  onSubmit: (pin: string) => void
   onClose: () => void
-  onDone: (pin: string) => void
-  describeError: (e: unknown) => string
 }) {
   const { t } = useTranslation()
-  const actions = useStaffActions()
   const [pin, setPin] = useState(generatePin)
-  const [error, setError] = useState<string | null>(null)
-  const confirm = async () => {
-    setError(null)
-    try {
-      await actions.resetPin.mutateAsync({ id: employee.id, pin })
-      onDone(pin)
-    } catch (err) {
-      setError(describeError(err))
-    }
-  }
   return (
-    <Card className="border-primary">
+    <Card className="border-primary anim-enter">
       <CardHeader>
         <span>{t('staff.reset.title', { name: employee.fullName })}</span>
       </CardHeader>
       <CardBody className="gap-3">
-        <p className="text-ink-2 m-0">{t('staff.reset.body')}</p>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="border-border bg-surface rounded-lg border px-4 py-2 text-2xl font-bold tracking-[.3em] tabular-nums">
-            {pin}
-          </span>
-          <Button onClick={() => setPin(generatePin())}>
-            <RefreshCw size={16} aria-hidden="true" />
-            {t('staff.form.generate')}
-          </Button>
-        </div>
-        {error && (
-          <p
-            role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-          >
-            {error}
-          </p>
-        )}
-        <div className="flex gap-2">
+        <p className="text-ink-2 m-0 text-[13px]">{t('staff.reset.body')}</p>
+        <div className="flex flex-wrap items-end gap-2">
+          <Field
+            label={t('staff.form.pin')}
+            inputMode="numeric"
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            className="tracking-[.3em] tabular-nums"
+            wrapperClassName="w-48"
+          />
           <Button
-            variant="primary"
-            onClick={() => void confirm()}
-            disabled={actions.resetPin.isPending}
+            type="button"
+            onClick={() => setPin(generatePin())}
+            aria-label={t('staff.form.generate')}
           >
+            <RefreshCw size={16} aria-hidden="true" />
+          </Button>
+          <Button variant="primary" disabled={!PIN_RE.test(pin)} onClick={() => onSubmit(pin)}>
+            <ShieldCheck size={16} aria-hidden="true" />
             {t('staff.reset.confirm')}
           </Button>
           <Button variant="ghost" onClick={onClose}>
@@ -470,62 +733,209 @@ function ResetPinCard({
   )
 }
 
-/* ---------------------------------------------------------------- e-mail */
+/* ---------------------------------------------------------------- departments */
 
-function EmailCard({
-  employee,
-  onClose,
-  describeError,
+function DepartmentsPanel({
+  departments,
+  employees,
 }: {
-  employee: Employee
-  onClose: () => void
-  describeError: (e: unknown) => string
+  departments: Department[]
+  employees: Employee[]
 }) {
   const { t } = useTranslation()
-  const actions = useStaffActions()
-  const [email, setEmail] = useState(employee.email ?? '')
+  const actions = useDepartmentActions()
+  const [editing, setEditing] = useState<Department | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const save = async (e: FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    if (!EMAIL_RE.test(email.trim())) return setError(t('staff.errors.email'))
-    try {
-      await actions.setEmail.mutateAsync({ id: employee.id, email: email.trim().toLowerCase() })
-      onClose()
-    } catch (err) {
-      setError(describeError(err))
-    }
-  }
+
   return (
-    <Card className="border-primary">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <p className="text-ink-2 m-0 max-w-[680px] flex-1 text-[13px]">{t('staff.dept.lead')}</p>
+        <Button variant="primary" onClick={() => setEditing('new')}>
+          <Plus size={18} aria-hidden="true" />
+          {t('staff.dept.new')}
+        </Button>
+      </div>
+      {error && (
+        <p role="alert" className={errorBox}>
+          {error}
+        </p>
+      )}
+      {editing && (
+        <DepartmentForm
+          key={editing === 'new' ? 'new' : editing.id}
+          department={editing === 'new' ? null : editing}
+          onCancel={() => setEditing(null)}
+          onSave={async (d) => {
+            setError(null)
+            try {
+              await actions.save.mutateAsync(d)
+              setEditing(null)
+            } catch (e) {
+              setError(e instanceof Error ? e.message : String(e))
+            }
+          }}
+          saving={actions.save.isPending}
+        />
+      )}
+      {departments.length === 0 && !editing && (
+        <Card>
+          <CardBody>
+            <p className="text-ink-3 m-0 text-[13px]">{t('staff.dept.empty')}</p>
+          </CardBody>
+        </Card>
+      )}
+      <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
+        {departments.map((d, i) => {
+          const people = employees.filter((e) => e.departmentId === d.id && e.active)
+          const head = people.find((e) => e.position === 'head')
+          const assistants = people.filter((e) => e.position === 'assistant')
+          return (
+            <Card key={d.id} className="anim-enter" style={{ '--i': i } as React.CSSProperties}>
+              <CardHeader>
+                <span className="inline-flex items-center gap-2">
+                  <Building2 size={16} aria-hidden="true" />
+                  {d.name}
+                </span>
+                <span className="flex gap-1">
+                  <Button size="sm" onClick={() => setEditing(d)}>
+                    <Pencil size={14} aria-hidden="true" />
+                    {t('staff.edit')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="hover:text-red"
+                    aria-label={t('staff.dept.delete')}
+                    title={t('staff.dept.delete')}
+                    onClick={async () => {
+                      if (
+                        !window.confirm(
+                          t('staff.dept.confirmDelete', { name: d.name, count: people.length }),
+                        )
+                      )
+                        return
+                      setError(null)
+                      try {
+                        await actions.remove.mutateAsync(d.id)
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : String(e))
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                  </Button>
+                </span>
+              </CardHeader>
+              <CardBody className="gap-2.5">
+                {d.description && <p className="text-ink-2 m-0 text-[13px]">{d.description}</p>}
+                <div className="flex flex-wrap gap-1.5">
+                  {d.roles.length === 0 ? (
+                    <Chip>{t('staff.dept.allRoles')}</Chip>
+                  ) : (
+                    d.roles.map((r) => <Chip key={r}>{t(`staff.roles.${r}`)}</Chip>)
+                  )}
+                </div>
+                <p className="m-0 text-[13px]">
+                  <b>{t('staff.positions.head')}:</b>{' '}
+                  {head?.fullName ?? <span className="text-ink-3">{t('staff.dept.noHead')}</span>}
+                  {assistants.length > 0 && (
+                    <>
+                      {' · '}
+                      <b>{t('staff.positions.assistant')}:</b>{' '}
+                      {assistants.map((a) => a.fullName).join(', ')}
+                    </>
+                  )}
+                </p>
+                <p className="text-ink-3 m-0 text-xs">
+                  {t('staff.dept.members', { count: people.length })}
+                </p>
+              </CardBody>
+            </Card>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function DepartmentForm({
+  department,
+  onSave,
+  onCancel,
+  saving,
+}: {
+  department: Department | null
+  onSave: (d: { id?: string; name: string; description: string; roles: DbRole[] }) => void
+  onCancel: () => void
+  saving: boolean
+}) {
+  const { t } = useTranslation()
+  const [name, setName] = useState(department?.name ?? '')
+  const [description, setDescription] = useState(department?.description ?? '')
+  const [roles, setRoles] = useState<DbRole[]>(department?.roles ?? [])
+  const toggle = (r: DbRole) =>
+    setRoles((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]))
+  return (
+    <Card className="border-primary anim-enter">
       <CardHeader>
-        <span>{t('staff.emailCard.title', { name: employee.fullName })}</span>
+        <span>
+          {department ? t('staff.dept.editTitle', { name: department.name }) : t('staff.dept.new')}
+        </span>
       </CardHeader>
-      <form onSubmit={save}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (name.trim().length < 2) return
+          onSave({ id: department?.id, name, description, roles })
+        }}
+      >
         <CardBody className="gap-3">
-          <p className="text-ink-2 m-0">{t('staff.emailCard.body')}</p>
-          <Field
-            label={t('staff.form.email')}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoFocus
-            required
-            wrapperClassName="max-w-md"
-          />
-          {error && (
-            <p
-              role="alert"
-              className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-            >
-              {error}
-            </p>
-          )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field
+              label={t('staff.dept.name')}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoFocus
+            />
+            <Field
+              label={t('staff.dept.description')}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <fieldset className="m-0 border-0 p-0">
+            <legend className="text-ink-2 mb-2 text-[13px] font-semibold">
+              {t('staff.dept.roles')}
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {DB_ROLES.filter((r) => r !== 'manager').map((r) => (
+                <label
+                  key={r}
+                  className={cn(
+                    'border-border flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-[13px] font-semibold transition-colors',
+                    roles.includes(r) && 'border-primary bg-primary-tint text-primary',
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-primary"
+                    checked={roles.includes(r)}
+                    onChange={() => toggle(r)}
+                  />
+                  {t(`staff.roles.${r}`)}
+                </label>
+              ))}
+            </div>
+            <p className="text-ink-3 m-0 mt-2 text-xs">{t('staff.dept.rolesHint')}</p>
+          </fieldset>
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" disabled={actions.setEmail.isPending}>
-              {t('staff.emailCard.save')}
+            <Button type="submit" variant="primary" loading={saving}>
+              <Check size={16} aria-hidden="true" />
+              {t('staff.dept.save')}
             </Button>
-            <Button type="button" variant="ghost" onClick={onClose}>
+            <Button type="button" variant="ghost" onClick={onCancel}>
               {t('staff.form.cancel')}
             </Button>
           </div>
@@ -535,7 +945,7 @@ function EmailCard({
   )
 }
 
-/* ---------------------------------------------------------------- credentials (shown once) */
+/* ---------------------------------------------------------------- credentials to hand over */
 
 function CredentialsCard({
   credentials,
@@ -546,7 +956,7 @@ function CredentialsCard({
 }) {
   const { t } = useTranslation()
   return (
-    <Card className="border-green">
+    <Card className="border-green anim-enter">
       <CardHeader>
         <span>{credentials.title}</span>
         <Badge tone="green" icon={<Check size={12} strokeWidth={3} aria-hidden="true" />}>

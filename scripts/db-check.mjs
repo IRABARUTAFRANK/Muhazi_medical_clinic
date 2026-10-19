@@ -629,6 +629,70 @@ await step('trust_days 0 means a code at every sign-in', async () => {
   return 'no trust when 0'
 })
 
+// ---------------------------------------------------------------- departments + notifications (0026)
+let deptId = null
+await step('manager creates a department; staff can read it; nurse cannot create', async () => {
+  await as(staff.manager)
+  deptId = (
+    await one(`select upsert_department(null, 'Nursing care', 'Triage and wards', '{nurse}') as id`)
+  ).id
+  await asAdmin()
+  await db.query(`update profiles set department_id = $1, position = 'head' where id = $2`, [
+    deptId,
+    staff.nurse,
+  ])
+  await as(staff.receptionist)
+  const d = await one(`select count(*)::int as n from department where id = $1`, [deptId])
+  if (d.n !== 1) throw new Error('not readable')
+  return 'created and readable'
+})
+await expectError(
+  'nurse may not create a department',
+  async () => {
+    await as(staff.nurse)
+    await db.query(`select upsert_department(null, 'Shadow', null, '{nurse}')`)
+  },
+  /not allowed/i,
+)
+await step('queue arrival notifies the station role; read state is per person', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select open_encounter($1, 'opd', 'triage', null) as id`, [patientId])
+  await as(staff.nurse)
+  const n = (await one(`select my_notifications(50) as n`)).n
+  const item = n.items.find((x) => x.kind === 'queue' && x.link?.includes(v.id))
+  if (!item) throw new Error('nurse not notified')
+  await db.query(`select mark_notifications_read(array[$1::uuid])`, [item.id])
+  const after = (await one(`select my_notifications(50) as n`)).n
+  if (after.items.find((x) => x.id === item.id)?.read !== true) throw new Error('not marked read')
+  await as(staff.cashier)
+  const c = (await one(`select my_notifications(50) as n`)).n
+  if (c.items.some((x) => x.id === item.id)) throw new Error('cashier sees a triage notification')
+  return 'nurse notified, cashier not'
+})
+await step('manager message to department heads reaches the head only', async () => {
+  await as(staff.manager)
+  await db.query(
+    `select send_notification('department', $1, 'Staff meeting 16:00', 'Bring the week report', true)`,
+    [deptId],
+  )
+  await as(staff.nurse)
+  const n = (await one(`select my_notifications(50) as n`)).n
+  if (!n.items.some((x) => x.title === 'Staff meeting 16:00')) throw new Error('head not reached')
+  await as(staff.doctor)
+  const d = (await one(`select my_notifications(50) as n`)).n
+  if (d.items.some((x) => x.title === 'Staff meeting 16:00'))
+    throw new Error('reached a non-member')
+  return 'head reached, others not'
+})
+await expectError(
+  'a receptionist may not broadcast messages',
+  async () => {
+    await as(staff.receptionist)
+    await db.query(`select send_notification('all', null, 'Hello all', null)`)
+  },
+  /only the manager/i,
+)
+
 // ---------------------------------------------------------------- desk dashboards (0019)
 await step('nurse and receptionist read desk_summary', async () => {
   await as(staff.nurse)

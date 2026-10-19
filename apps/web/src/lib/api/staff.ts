@@ -16,6 +16,8 @@ export const DB_ROLES = [
 export type DbRole = (typeof DB_ROLES)[number]
 export type DashboardRight = 'manager' | 'head' | null
 export type DbLang = 'kin' | 'en' | 'fr'
+export const POSITIONS = ['member', 'assistant', 'head'] as const
+export type Position = (typeof POSITIONS)[number]
 
 export interface Employee {
   id: string
@@ -34,18 +36,27 @@ export interface Employee {
   mustChangePin: boolean
   lastSignInAt: string | null
   createdAt: string
+  departmentId: string | null
+  departmentName: string | null
+  position: Position
 }
 
-export interface NewEmployee {
-  username: string
+export interface Department {
+  id: string
+  name: string
+  description: string | null
+  roles: DbRole[]
+}
+
+/** What the manager fills in for an employee (new or edited). */
+export interface EmployeeInput {
   fullName: string
-  role: DbRole
-  pin: string
-  /** Where the sign-in code is sent. */
+  username: string
   email: string
+  role: DbRole
+  departmentId: string | null
+  position: Position
   station?: string
-  dashboard?: DashboardRight
-  headOf?: string
   language?: DbLang
   phone?: string
 }
@@ -54,29 +65,59 @@ export const USERNAME_RE = /^[a-z0-9._-]{3,32}$/
 export const PIN_RE = /^[0-9]{6}$/
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-/** Six random digits from the browser's CSPRNG. */
-export function generatePin(): string {
-  const bytes = new Uint32Array(6)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes, (b) => String(b % 10)).join('')
+const rand = (n: number) => {
+  const b = new Uint32Array(1)
+  crypto.getRandomValues(b)
+  return b[0]! % n
 }
 
-/** "Uwimana Josiane" → "j.uwimana" (first initial of the given name + surname). */
-export function suggestUsername(fullName: string): string {
-  const parts = fullName
+/** Six random digits from the browser's CSPRNG. */
+export function generatePin(): string {
+  return Array.from({ length: 6 }, () => String(rand(10))).join('')
+}
+
+const words = (fullName: string) =>
+  fullName
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/^dr\.?\s+/, '')
     .split(/\s+/)
+    .map((w) => w.replace(/[^a-z0-9]/g, ''))
     .filter(Boolean)
-  if (parts.length === 0) return ''
-  if (parts.length === 1) return parts[0]!.replace(/[^a-z0-9]/g, '')
-  const [surname, ...given] = parts
-  return `${given[0]!.charAt(0)}.${surname}`.replace(/[^a-z0-9._-]/g, '')
+
+/**
+ * A username that still reads like the person's name but does not follow one fixed rule,
+ * so it cannot be guessed from the name alone: the name parts, their order, how much of each
+ * is kept, the separator and a two-digit number all vary. "John Doe" may give john.d42,
+ * doej17, jo.doe58, doe_john09 or jdoe.73. Avoids names already in `taken`.
+ */
+export function suggestUsername(fullName: string, taken: ReadonlySet<string> = new Set()): string {
+  const w = words(fullName)
+  if (w.length === 0) return ''
+  const a = w[0]!
+  const b = w[1] ?? w[0]!
+  const patterns: ((x: string, y: string) => string)[] = [
+    (x, y) => `${x}.${y.charAt(0)}`,
+    (x, y) => `${y}${x.charAt(0)}`,
+    (x, y) => `${x.slice(0, 2)}.${y}`,
+    (x, y) => `${y}_${x}`,
+    (x, y) => `${x.charAt(0)}${y}.`,
+    (x, y) => `${x.slice(0, 3)}${y.slice(0, 3)}`,
+    (x, y) => `${y.slice(0, 4)}.${x.charAt(0)}`,
+    (x, y) => `${x}-${y.slice(0, 2)}`,
+  ]
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const [x, y] = rand(2) ? [a, b] : [b, a]
+    const base = patterns[rand(patterns.length)]!(x, y).slice(0, 26)
+    const u = `${base}${String(rand(100)).padStart(2, '0')}`.replace(/\.\./g, '.')
+    if (USERNAME_RE.test(u) && !taken.has(u)) return u
+  }
+  return `${a.slice(0, 20)}${String(rand(10000)).padStart(4, '0')}`
 }
 
 // ---------------------------------------------------------------- sample mode (no Supabase)
+const sampleDepartments: Department[] = []
 const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   id: u.id,
   staffId: u.staffId ?? null,
@@ -93,10 +134,14 @@ const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   mustChangePin: i === 3,
   lastSignInAt: i < 4 ? new Date(2026, 9, 15, 7 + i, 12).toISOString() : null,
   createdAt: new Date(2026, 8, 1).toISOString(),
+  departmentId: null,
+  departmentName: null,
+  position: 'member',
 }))
 
 // ---------------------------------------------------------------- queries
 const KEY = ['staff', 'employees'] as const
+const DEPT_KEY = ['staff', 'departments'] as const
 
 interface DirectoryRow {
   id: string
@@ -114,6 +159,9 @@ interface DirectoryRow {
   must_change_pin: boolean
   last_sign_in_at: string | null
   created_at: string
+  department_id: string | null
+  department_name: string | null
+  position: Position | null
 }
 
 export function useEmployees() {
@@ -139,7 +187,26 @@ export function useEmployees() {
         mustChangePin: r.must_change_pin,
         lastSignInAt: r.last_sign_in_at,
         createdAt: r.created_at,
+        departmentId: r.department_id,
+        departmentName: r.department_name,
+        position: r.position ?? 'member',
       }))
+    },
+  })
+}
+
+export function useDepartments() {
+  return useQuery({
+    queryKey: DEPT_KEY,
+    queryFn: async (): Promise<Department[]> => {
+      if (!supabase) return [...sampleDepartments]
+      const { data, error } = await supabase
+        .from('department')
+        .select('id, name, description, roles')
+        .order('sort_order')
+        .order('name')
+      if (error) throw new Error(error.message)
+      return (data as Department[]).map((d) => ({ ...d, roles: d.roles ?? [] }))
     },
   })
 }
@@ -160,23 +227,49 @@ async function callManageStaff<T>(body: Record<string, unknown>): Promise<T> {
   return data as T
 }
 
-/** Manager actions. Live: Edge Function `manage-staff` (service role); sample: in-memory list. */
+const toBody = (e: EmployeeInput) => ({
+  full_name: e.fullName.trim(),
+  username: e.username.trim().toLowerCase(),
+  email: e.email.trim().toLowerCase(),
+  role: e.role,
+  department_id: e.departmentId,
+  position: e.position,
+  station: e.station?.trim() || null,
+  language: e.language ?? 'kin',
+  phone: e.phone?.trim() || null,
+})
+
+/**
+ * Manager actions. Live: Edge Function `manage-staff` (service role), every one confirmed with
+ * the manager's own PIN (`confirmPin`), checked on the server. Sample mode: in-memory list.
+ */
 export function useStaffActions() {
   const qc = useQueryClient()
-  const refresh = () => qc.invalidateQueries({ queryKey: KEY })
+  const refresh = () => qc.invalidateQueries({ queryKey: ['staff'] })
+  const sampleCheck = (pin: string) => {
+    if (!PIN_RE.test(pin)) throw new Error('confirm_pin_wrong')
+  }
 
   const create = useMutation({
-    mutationFn: async (
-      input: NewEmployee,
-    ): Promise<{ id: string; username: string; staff_id: string | null }> => {
+    mutationFn: async ({
+      input,
+      pin,
+      confirmPin,
+    }: {
+      input: EmployeeInput
+      pin: string
+      confirmPin: string
+    }): Promise<{ id: string; username: string; staff_id: string | null }> => {
       if (!USERNAME_RE.test(input.username)) throw new Error('username')
-      if (!PIN_RE.test(input.pin)) throw new Error('pin')
+      if (!PIN_RE.test(pin)) throw new Error('pin')
       if (!EMAIL_RE.test(input.email)) throw new Error('email')
       if (!supabase) {
+        sampleCheck(confirmPin)
         if (sampleEmployees.some((e) => e.username === input.username))
           throw new Error('username taken')
         const id = `u-${Math.random().toString(36).slice(2, 8)}`
         const staffId = `MMC-S-${String(sampleEmployees.length + 1).padStart(4, '0')}`
+        const dept = sampleDepartments.find((d) => d.id === input.departmentId)
         sampleEmployees.push({
           id,
           staffId,
@@ -185,71 +278,153 @@ export function useStaffActions() {
           fullName: input.fullName,
           role: input.role,
           station: input.station ?? null,
-          dashboard: input.dashboard ?? null,
-          headOf: input.headOf ?? null,
+          dashboard:
+            input.role === 'manager' ? 'manager' : input.position === 'head' ? 'head' : null,
+          headOf: input.position === 'head' ? (dept?.name ?? null) : null,
           language: input.language ?? 'kin',
           phone: input.phone ?? null,
           active: true,
           mustChangePin: true,
           lastSignInAt: null,
           createdAt: new Date().toISOString(),
+          departmentId: input.departmentId,
+          departmentName: dept?.name ?? null,
+          position: input.position,
         })
         return { id, username: input.username, staff_id: staffId }
       }
-      return callManageStaff({
-        action: 'create',
-        username: input.username,
-        full_name: input.fullName,
-        role: input.role,
-        pin: input.pin,
-        email: input.email,
-        station: input.station ?? null,
-        dashboard: input.dashboard ?? null,
-        head_of: input.headOf ?? null,
-        language: input.language ?? 'kin',
-        phone: input.phone ?? null,
+      return callManageStaff({ action: 'create', ...toBody(input), pin, confirm_pin: confirmPin })
+    },
+    onSuccess: refresh,
+  })
+
+  const update = useMutation({
+    mutationFn: async ({
+      id,
+      input,
+      confirmPin,
+    }: {
+      id: string
+      input: EmployeeInput
+      confirmPin: string
+    }) => {
+      if (!USERNAME_RE.test(input.username)) throw new Error('username')
+      if (!EMAIL_RE.test(input.email)) throw new Error('email')
+      if (!supabase) {
+        sampleCheck(confirmPin)
+        const e = sampleEmployees.find((x) => x.id === id)
+        const dept = sampleDepartments.find((d) => d.id === input.departmentId)
+        if (e)
+          Object.assign(e, {
+            fullName: input.fullName,
+            username: input.username,
+            email: input.email,
+            role: input.role,
+            departmentId: input.departmentId,
+            departmentName: dept?.name ?? null,
+            position: input.position,
+            station: input.station ?? null,
+            language: input.language ?? 'kin',
+            phone: input.phone ?? null,
+          })
+        return
+      }
+      await callManageStaff({
+        action: 'update',
+        user_id: id,
+        ...toBody(input),
+        confirm_pin: confirmPin,
       })
     },
     onSuccess: refresh,
   })
 
   const resetPin = useMutation({
-    mutationFn: async ({ id, pin }: { id: string; pin: string }) => {
+    mutationFn: async ({
+      id,
+      pin,
+      confirmPin,
+    }: {
+      id: string
+      pin: string
+      confirmPin: string
+    }) => {
       if (!PIN_RE.test(pin)) throw new Error('pin')
       if (!supabase) {
+        sampleCheck(confirmPin)
         const e = sampleEmployees.find((x) => x.id === id)
         if (e) e.mustChangePin = true
         return
       }
-      await callManageStaff({ action: 'reset_pin', user_id: id, pin })
+      await callManageStaff({ action: 'reset_pin', user_id: id, pin, confirm_pin: confirmPin })
     },
     onSuccess: refresh,
   })
 
   const setActive = useMutation({
-    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+    mutationFn: async ({
+      id,
+      active,
+      confirmPin,
+    }: {
+      id: string
+      active: boolean
+      confirmPin: string
+    }) => {
       if (!supabase) {
+        sampleCheck(confirmPin)
         const e = sampleEmployees.find((x) => x.id === id)
         if (e) e.active = active
         return
       }
-      await callManageStaff({ action: 'set_active', user_id: id, active })
+      await callManageStaff({ action: 'set_active', user_id: id, active, confirm_pin: confirmPin })
     },
     onSuccess: refresh,
   })
 
-  const setEmail = useMutation({
-    mutationFn: async ({ id, email }: { id: string; email: string }) => {
-      if (!EMAIL_RE.test(email)) throw new Error('email')
+  return { create, update, resetPin, setActive }
+}
+
+/** Manager: departments (name, description, which roles belong). */
+export function useDepartmentActions() {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: ['staff'] })
+  const save = useMutation({
+    mutationFn: async (d: { id?: string; name: string; description: string; roles: DbRole[] }) => {
       if (!supabase) {
-        const e = sampleEmployees.find((x) => x.id === id)
-        if (e) e.email = email
+        const existing = d.id ? sampleDepartments.find((x) => x.id === d.id) : undefined
+        if (existing)
+          Object.assign(existing, { name: d.name, description: d.description, roles: d.roles })
+        else
+          sampleDepartments.push({
+            id: `d-${Math.random().toString(36).slice(2, 8)}`,
+            name: d.name,
+            description: d.description || null,
+            roles: d.roles,
+          })
         return
       }
-      await callManageStaff({ action: 'set_email', user_id: id, email })
+      const { error } = await supabase.rpc('upsert_department', {
+        p_id: d.id ?? null,
+        p_name: d.name,
+        p_description: d.description,
+        p_roles: d.roles,
+      })
+      if (error) throw new Error(error.message)
     },
     onSuccess: refresh,
   })
-
-  return { create, resetPin, setActive, setEmail }
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      if (!supabase) {
+        const i = sampleDepartments.findIndex((x) => x.id === id)
+        if (i >= 0) sampleDepartments.splice(i, 1)
+        return
+      }
+      const { error } = await supabase.rpc('delete_department', { p_id: id })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+  return { save, remove }
 }

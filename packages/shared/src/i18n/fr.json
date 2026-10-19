@@ -650,7 +650,13 @@
       "generate": "Générer",
       "create": "Créer le compte",
       "creating": "Création…",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "suggest": "Proposer",
+      "usernameHint2": "Proposé à partir du nom mais mélangé (ordre, lettres, un nombre), pour ne pas être deviné. Cliquez sur Proposer pour un autre, ou saisissez le vôtre.",
+      "department": "Service",
+      "position": "Poste",
+      "noDepartments": "Aucun service : créez-les dans l’onglet Services, puis placez-y les employés.",
+      "saveChanges": "Enregistrer"
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -675,7 +681,10 @@
       "pin": "Le PIN doit comporter six chiffres.",
       "email": "Saisissez une adresse e-mail valide.",
       "emailTaken": "Cet e-mail est déjà utilisé par un autre employé.",
-      "generic": "L'action a échoué : {{message}}"
+      "generic": "L'action a échoué : {{message}}",
+      "roleDept": "Ce rôle n’appartient pas à ce service. Choisissez un autre service ou ajoutez-y le rôle.",
+      "needDept": "Choisissez un service pour un chef ou un chef adjoint.",
+      "name": "Saisissez le nom complet."
     },
     "roles": {
       "receptionist": "Réceptionniste",
@@ -686,6 +695,56 @@
       "lab_tech": "Technicien·ne de laboratoire",
       "pharmacist": "Pharmacien·ne",
       "manager": "Gestionnaire / propriétaire"
+    },
+    "lead2": "Créez et modifiez les comptes, placez chaque employé dans un service comme chef, adjoint ou membre, réinitialisez les PIN et désactivez des comptes. Chaque changement est confirmé avec votre PIN.",
+    "tabs": {
+      "people": "Employés · {{count}}",
+      "departments": "Services · {{count}}"
+    },
+    "saved": "Modifications de {{name}} enregistrées.",
+    "showInactive_one": "Afficher {{count}} compte désactivé",
+    "showInactive_other": "Afficher {{count}} comptes désactivés",
+    "you": "vous",
+    "edit": "Modifier",
+    "editTitle": "Modifier {{name}}",
+    "deactivatedNotice": "{{name}} ne peut plus se connecter.",
+    "reactivatedNotice": "{{name}} peut de nouveau se connecter.",
+    "positions": {
+      "head": "Chef de service",
+      "assistant": "Chef adjoint",
+      "member": "Membre"
+    },
+    "confirm": {
+      "title": "Confirmer avec votre PIN",
+      "pin": "Votre PIN",
+      "hint": "Votre PIN est vérifié sur le serveur et le changement est enregistré à votre nom.",
+      "ok": "Confirmer",
+      "wrong": "Ce PIN est incorrect. Rien n’a été modifié.",
+      "required": "Votre PIN est requis pour enregistrer.",
+      "create": "Créer le compte de {{name}}",
+      "update": "Enregistrer les modifications de {{name}}",
+      "reset": "Donner un nouveau PIN à {{name}}",
+      "deactivate": "Désactiver {{name}} (ne pourra plus se connecter)",
+      "reactivate": "Réactiver {{name}}"
+    },
+    "dept": {
+      "none": "Sans service",
+      "lead": "Créez les services de la clinique et indiquez quels rôles en font partie. Les employés y sont placés comme chef, adjoint ou membre ; le chef a le tableau de bord du service.",
+      "new": "Nouveau service",
+      "empty": "Aucun service pour l’instant.",
+      "delete": "Supprimer le service",
+      "confirmDelete_one": "Supprimer « {{name}} » ? Son {{count}} employé reste employé, sans service.",
+      "confirmDelete_other": "Supprimer « {{name}} » ? Ses {{count}} employés restent employés, sans service.",
+      "allRoles": "Tous les rôles",
+      "noHead": "pas encore choisi",
+      "members_one": "{{count}} employé",
+      "members_other": "{{count}} employés",
+      "editTitle": "Modifier {{name}}",
+      "name": "Nom du service",
+      "description": "Description",
+      "roles": "Rôles de ce service",
+      "rolesHint": "Seuls les employés ayant ces rôles peuvent y être placés. Ne cochez rien pour accepter tous les rôles.",
+      "save": "Enregistrer le service"
     }
   },
   "login": {
@@ -1515,5 +1574,43 @@
     "nurseHint": "Remplissez ce que vous savez (nom, sexe, âge). L'accueil complète le téléphone, la carte d'identité et l'adresse après vos mesures.",
     "receptionHint": "Remplissez tout ce que vous pouvez. Si l'infirmière a déjà enregistré le patient, cherchez-le à gauche au lieu de créer un deuxième dossier.",
     "submitNurse": "Enregistrer et prendre les constantes"
+  },
+  "notify": {
+    "title": "Notifications",
+    "open_one": "Notifications, {{count}} non lue",
+    "open_other": "Notifications, {{count}} non lues",
+    "markAll": "Tout marquer comme lu",
+    "compose": "Envoyer un message",
+    "empty": "Rien pour vous pour le moment.",
+    "justNow": "à l’instant",
+    "minAgo_one": "il y a {{count}} min",
+    "minAgo_other": "il y a {{count}} min",
+    "hAgo_one": "il y a {{count}} h",
+    "hAgo_other": "il y a {{count}} h",
+    "from": "de {{name}}",
+    "queue": "{{ticket}} {{name}} attend au {{station}}",
+    "queueUrgent": "Urgent : {{ticket}} {{name}} attend au {{station}}",
+    "triage": "Couleur de triage : {{colour}}",
+    "task": "Nouvelle tâche : {{title}}",
+    "due": "à {{time}}",
+    "inquiry": "Nouvelle demande de rendez-vous de {{name}}",
+    "inquiryBody": "Approuvez ou refusez-la dans Rendez-vous.",
+    "toAccept": "Rendez-vous à accepter : {{name}}",
+    "toAcceptBody": "L’accueil l’a approuvé ; acceptez ou refusez sur votre page d’accueil.",
+    "to": "À",
+    "toAll": "Tout le monde",
+    "toRole": "Un rôle",
+    "toDept": "Un service",
+    "toUser": "Une personne",
+    "person": "Personne",
+    "headsOnly": "Chefs et adjoints seulement",
+    "subject": "Titre",
+    "message": "Message",
+    "urgent": "Urgent",
+    "send": "Envoyer",
+    "sent": "Envoyé.",
+    "errors": {
+      "target": "Choisissez le destinataire."
+    }
   }
 }

@@ -654,7 +654,13 @@
       "generate": "Kora PIN",
       "create": "Fungura konti",
       "creating": "Birimo gufungurwa…",
-      "cancel": "Reka"
+      "cancel": "Reka",
+      "suggest": "Tanga igitekerezo",
+      "usernameHint2": "Rikomoka ku izina ariko rivanze (uko rikurikirana, inyuguti, umubare), ku buryo ridashobora gukekwa. Kanda \"Tanga igitekerezo\" ubone irindi, cyangwa wandike iryawe.",
+      "department": "Ishami",
+      "position": "Umwanya",
+      "noDepartments": "Nta mashami ariho: yafungure mu gice cy’Amashami, hanyuma ushyiremo abakozi.",
+      "saveChanges": "Bika impinduka"
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -679,7 +685,10 @@
       "pin": "PIN igomba kuba imibare itandatu.",
       "email": "Andika aderesi ya imeyili nyayo.",
       "emailTaken": "Iyi imeyili isanzwe ikoreshwa n'undi mukozi.",
-      "generic": "Igikorwa cyanze: {{message}}"
+      "generic": "Igikorwa cyanze: {{message}}",
+      "roleDept": "Uru ruhare ntirubarizwa muri iryo shami. Hitamo irindi shami cyangwa urwongere muri iryo shami.",
+      "needDept": "Hitamo ishami ku muyobozi cyangwa umwungirije.",
+      "name": "Andika amazina yombi."
     },
     "roles": {
       "receptionist": "Umwakira",
@@ -690,6 +699,56 @@
       "lab_tech": "Umutekinisiye wa laboratwari",
       "pharmacist": "Umufarumasiye",
       "manager": "Umuyobozi / nyir'ivuriro"
+    },
+    "lead2": "Fungura kandi uhindure konti z’abakozi, shyira buri wese mu ishami nk’umuyobozi, umwungirije cyangwa umunyamuryango, subiriza PIN kandi uhagarike konti. Buri mpinduka yemezwa na PIN yawe.",
+    "tabs": {
+      "people": "Abakozi · {{count}}",
+      "departments": "Amashami · {{count}}"
+    },
+    "saved": "Impinduka za {{name}} zabitswe.",
+    "showInactive_one": "Erekana konti {{count}} yahagaritswe",
+    "showInactive_other": "Erekana konti {{count}} zahagaritswe",
+    "you": "wowe",
+    "edit": "Hindura",
+    "editTitle": "Hindura {{name}}",
+    "deactivatedNotice": "{{name}} ntagishobora kwinjira.",
+    "reactivatedNotice": "{{name}} yongeye gushobora kwinjira.",
+    "positions": {
+      "head": "Umuyobozi w’ishami",
+      "assistant": "Umuyobozi wungirije",
+      "member": "Umunyamuryango"
+    },
+    "confirm": {
+      "title": "Emeza ukoresheje PIN yawe",
+      "pin": "PIN yawe",
+      "hint": "PIN yawe igenzurirwa kuri seriveri kandi impinduka yandikwa mu izina ryawe.",
+      "ok": "Emeza",
+      "wrong": "Iyo PIN si yo. Nta cyahindutse.",
+      "required": "PIN yawe irakenewe kugira ngo ubike.",
+      "create": "Fungura konti ya {{name}}",
+      "update": "Bika impinduka za {{name}}",
+      "reset": "Ha {{name}} PIN nshya",
+      "deactivate": "Hagarika {{name}} (ntazongera kwinjira)",
+      "reactivate": "Ongera ukoreshe {{name}}"
+    },
+    "dept": {
+      "none": "Nta shami",
+      "lead": "Fungura amashami y’ivuriro kandi uvuge inshingano zibarizwamo. Abakozi bashyirwa mu ishami nk’umuyobozi, umwungirije cyangwa umunyamuryango; umuyobozi abona imbonerahamwe y’ishami.",
+      "new": "Ishami rishya",
+      "empty": "Nta mashami araba.",
+      "delete": "Siba ishami",
+      "confirmDelete_one": "Gusiba \"{{name}}\"? Umukozi waryo {{count}} akomeza akazi, nta shami.",
+      "confirmDelete_other": "Gusiba \"{{name}}\"? Abakozi baryo {{count}} bakomeza akazi, nta shami.",
+      "allRoles": "Inshingano zose",
+      "noHead": "ntarashyirwaho",
+      "members_one": "Umukozi {{count}}",
+      "members_other": "Abakozi {{count}}",
+      "editTitle": "Hindura {{name}}",
+      "name": "Izina ry’ishami",
+      "description": "Ibisobanuro",
+      "roles": "Inshingano zibarizwa muri iri shami",
+      "rolesHint": "Abakozi bafite izi nshingano ni bo bonyine bashobora gushyirwamo. Ntuhitemo na kimwe niba inshingano zose zemewe.",
+      "save": "Bika ishami"
     }
   },
   "login": {
@@ -1524,5 +1583,43 @@
     "title": "{{screen}}",
     "body": "Uru rupapuro ntiruratunganywa. Ruteganyijwe mu nyandiko y'umushinga kandi ruzakorwa mu cyiciro cyarwo.",
     "back": "Subira ahabanza"
+  },
+  "notify": {
+    "title": "Imenyesha",
+    "open_one": "Imenyesha, {{count}} ritarasomwa",
+    "open_other": "Imenyesha, {{count}} atarasomwa",
+    "markAll": "Byose byasomwe",
+    "compose": "Ohereza ubutumwa",
+    "empty": "Nta kintu kikugenewe ubu.",
+    "justNow": "ubu nyine",
+    "minAgo_one": "hashize umunota {{count}}",
+    "minAgo_other": "hashize iminota {{count}}",
+    "hAgo_one": "hashize isaha {{count}}",
+    "hAgo_other": "hashize amasaha {{count}}",
+    "from": "kuva kuri {{name}}",
+    "queue": "{{ticket}} {{name}} ategereje kuri {{station}}",
+    "queueUrgent": "Byihutirwa: {{ticket}} {{name}} ategereje kuri {{station}}",
+    "triage": "Ibara: {{colour}}",
+    "task": "Umurimo mushya: {{title}}",
+    "due": "saa {{time}}",
+    "inquiry": "Ubusabe bushya bwa gahunda bwa {{name}}",
+    "inquiryBody": "Bwemeze cyangwa ubuhakane muri Gahunda.",
+    "toAccept": "Gahunda yo kwemera: {{name}}",
+    "toAcceptBody": "Ubwakiriro bwayemeje; yemere cyangwa uyange ku rupapuro rwawe rw’ibanze.",
+    "to": "Ku",
+    "toAll": "Bose",
+    "toRole": "Uruhare",
+    "toDept": "Ishami",
+    "toUser": "Umuntu umwe",
+    "person": "Umuntu",
+    "headsOnly": "Abayobozi n’ababungirije gusa",
+    "subject": "Umutwe",
+    "message": "Ubutumwa",
+    "urgent": "Byihutirwa",
+    "send": "Ohereza",
+    "sent": "Byoherejwe.",
+    "errors": {
+      "target": "Hitamo uwo bugenewe."
+    }
   }
 }

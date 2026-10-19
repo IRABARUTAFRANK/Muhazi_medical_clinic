@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { StaffUser, SyncState } from '@mmc/shared'
 import { LangSwitch } from '@/components/public/lang-switch'
 import { Logo } from '@/components/public/logo'
+import { NotificationBell } from './notification-bell'
 import { SyncBadge } from './sync-badge'
 import { UserMenu } from './user-menu'
 
@@ -54,6 +55,7 @@ export function TopBar({ user, sync, onOpenSheet }: TopBarProps) {
         <PatientSearch className="max-w-[440px] flex-1" />
         <div className="flex-1" />
         <SyncBadge state={sync} />
+        <NotificationBell user={user} />
         <UserMenu user={user} onDark />
         <LangSwitch size="sm" />
       </div>
@@ -69,6 +71,7 @@ export function TopBar({ user, sync, onOpenSheet }: TopBarProps) {
           />
           <span className="flex-1" />
           <SyncBadge state={sync} />
+          <NotificationBell user={user} />
           <LangSwitch />
         </div>
         <div className="flex items-center gap-3">

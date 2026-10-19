@@ -650,7 +650,13 @@
       "generate": "Generate",
       "create": "Create account",
       "creating": "Creating…",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "suggest": "Suggest",
+      "usernameHint2": "Suggested from the name but mixed (order, letters, a number), so it cannot be guessed. Press Suggest for another one, or type your own.",
+      "department": "Department",
+      "position": "Position",
+      "noDepartments": "No departments yet: create them in the Departments tab, then place employees in them.",
+      "saveChanges": "Save changes"
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -675,7 +681,10 @@
       "pin": "The PIN must be six digits.",
       "email": "Enter a valid e-mail address.",
       "emailTaken": "This e-mail is already used by another employee.",
-      "generic": "The action failed: {{message}}"
+      "generic": "The action failed: {{message}}",
+      "roleDept": "This role does not belong to that department. Choose another department, or add the role to it.",
+      "needDept": "Choose a department for a head or an assistant head.",
+      "name": "Enter the full name."
     },
     "roles": {
       "receptionist": "Receptionist",
@@ -686,6 +695,56 @@
       "lab_tech": "Lab technician",
       "pharmacist": "Pharmacist",
       "manager": "Manager / owner"
+    },
+    "lead2": "Create and edit employee accounts, place each one in a department as head, assistant head or member, reset PINs and deactivate accounts. Every change is confirmed with your own PIN.",
+    "tabs": {
+      "people": "Employees · {{count}}",
+      "departments": "Departments · {{count}}"
+    },
+    "saved": "Changes to {{name}} saved.",
+    "showInactive_one": "Show {{count}} deactivated account",
+    "showInactive_other": "Show {{count}} deactivated accounts",
+    "you": "you",
+    "edit": "Edit",
+    "editTitle": "Edit {{name}}",
+    "deactivatedNotice": "{{name}} can no longer sign in.",
+    "reactivatedNotice": "{{name}} can sign in again.",
+    "positions": {
+      "head": "Head of department",
+      "assistant": "Assistant head",
+      "member": "Member"
+    },
+    "confirm": {
+      "title": "Confirm with your PIN",
+      "pin": "Your PIN",
+      "hint": "Your PIN is checked on the server and the change is recorded in your name.",
+      "ok": "Confirm",
+      "wrong": "That PIN is not right. Nothing was changed.",
+      "required": "Your PIN is required to save changes.",
+      "create": "Create the account of {{name}}",
+      "update": "Save the changes to {{name}}",
+      "reset": "Give {{name}} a new PIN",
+      "deactivate": "Deactivate {{name}} (they can no longer sign in)",
+      "reactivate": "Reactivate {{name}}"
+    },
+    "dept": {
+      "none": "No department",
+      "lead": "Create the clinic’s departments and say which roles belong to each. Employees are then placed in a department as head, assistant head or member; the head gets the department dashboard.",
+      "new": "New department",
+      "empty": "No departments yet.",
+      "delete": "Delete department",
+      "confirmDelete_one": "Delete \"{{name}}\"? Its {{count}} employee stays employed, without a department.",
+      "confirmDelete_other": "Delete \"{{name}}\"? Its {{count}} employees stay employed, without a department.",
+      "allRoles": "All roles",
+      "noHead": "not chosen yet",
+      "members_one": "{{count}} employee",
+      "members_other": "{{count}} employees",
+      "editTitle": "Edit {{name}}",
+      "name": "Department name",
+      "description": "Description",
+      "roles": "Roles that belong to this department",
+      "rolesHint": "Only employees with these roles can be placed here. Tick none to allow every role.",
+      "save": "Save department"
     }
   },
   "login": {
@@ -1515,5 +1574,43 @@
     "nurseHint": "Fill in what you know (name, sex, age). Reception completes the phone, national ID and address after your measurements.",
     "receptionHint": "Fill in everything you can. If the nurse already registered the patient, find them on the left instead of creating a second file.",
     "submitNurse": "Register and take vitals"
+  },
+  "notify": {
+    "title": "Notifications",
+    "open_one": "Notifications, {{count}} unread",
+    "open_other": "Notifications, {{count}} unread",
+    "markAll": "Mark all read",
+    "compose": "Send a message",
+    "empty": "Nothing for you right now.",
+    "justNow": "just now",
+    "minAgo_one": "{{count}} min ago",
+    "minAgo_other": "{{count}} min ago",
+    "hAgo_one": "{{count}} h ago",
+    "hAgo_other": "{{count}} h ago",
+    "from": "from {{name}}",
+    "queue": "{{ticket}} {{name}} is waiting at {{station}}",
+    "queueUrgent": "Urgent: {{ticket}} {{name}} is waiting at {{station}}",
+    "triage": "Triage colour: {{colour}}",
+    "task": "New task: {{title}}",
+    "due": "at {{time}}",
+    "inquiry": "New booking request from {{name}}",
+    "inquiryBody": "Approve or reject it in Bookings.",
+    "toAccept": "Booking to accept: {{name}}",
+    "toAcceptBody": "Reception approved it; accept or decline on your home page.",
+    "to": "To",
+    "toAll": "Everyone",
+    "toRole": "A role",
+    "toDept": "A department",
+    "toUser": "One person",
+    "person": "Person",
+    "headsOnly": "Heads and assistant heads only",
+    "subject": "Title",
+    "message": "Message",
+    "urgent": "Urgent",
+    "send": "Send",
+    "sent": "Sent.",
+    "errors": {
+      "target": "Choose who receives it."
+    }
   }
 }
