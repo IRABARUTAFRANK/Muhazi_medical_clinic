@@ -58,7 +58,7 @@ function ErrorBox({ children }: { children: string }) {
   return (
     <p
       role="alert"
-      className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+      className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[14px] font-semibold"
     >
       {children}
     </p>
@@ -119,7 +119,7 @@ function ReceptionistPanels({ data, onError, empty }: PanelProps & { empty: bool
                 <span className="text-ink-2 w-11 tabular-nums">{a.time}</span>
                 <span className="min-w-0 flex-1">
                   <span className="font-semibold">{a.name}</span>
-                  <span className="text-ink-3 block text-xs">
+                  <span className="text-ink-3 block text-[13px]">
                     {a.doctor}
                     {a.station ? ` · ${a.station}` : ''}
                   </span>
@@ -142,14 +142,14 @@ function ReceptionistPanels({ data, onError, empty }: PanelProps & { empty: bool
         </CardHeader>
         {data.inquiries.length === 0 && (
           <Row>
-            <span className="text-ink-3 text-[13px]">{t('home.noInquiries')}</span>
+            <span className="text-ink-3 text-[14px]">{t('home.noInquiries')}</span>
           </Row>
         )}
         {data.inquiries.map((i) => (
           <Row key={i.id} className="flex-wrap">
             <span className="min-w-[140px] flex-1">
               <span className="font-semibold">{i.name}</span>
-              <span className="text-ink-3 block text-xs">
+              <span className="text-ink-3 block text-[13px]">
                 {[i.category && t(`categories.${i.category}`), i.doctor, i.when, i.phone, i.note]
                   .filter(Boolean)
                   .join(' · ')}
@@ -211,7 +211,7 @@ function NursePanels({ data, onError }: PanelProps) {
         <div className={scroll}>
           {data.tasks.length === 0 && (
             <Row>
-              <span className="text-ink-3 text-[13px]">{t('home.noTasks')}</span>
+              <span className="text-ink-3 text-[14px]">{t('home.noTasks')}</span>
             </Row>
           )}
           {data.tasks.map((task) => (
@@ -226,7 +226,7 @@ function NursePanels({ data, onError }: PanelProps) {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="font-semibold">{task.title}</span>
-                <span className="text-ink-3 block text-xs">
+                <span className="text-ink-3 block text-[13px]">
                   {[task.patient, task.detail].filter(Boolean).join(' · ')}
                 </span>
               </span>
@@ -252,7 +252,7 @@ function NursePanels({ data, onError }: PanelProps) {
             <div
               key={b.name}
               className={cn(
-                'border-border min-h-[52px] rounded-lg border px-2 py-1.5 text-xs',
+                'border-border min-h-[52px] rounded-lg border px-2 py-1.5 text-[13px]',
                 bedClass[b.state],
               )}
             >
@@ -306,7 +306,7 @@ function DoctorPanels({ data, onError }: PanelProps) {
         <div className={scroll}>
           {data.results.length === 0 && (
             <Row>
-              <span className="text-ink-3 text-[13px]">{t('home.noResults')}</span>
+              <span className="text-ink-3 text-[14px]">{t('home.noResults')}</span>
             </Row>
           )}
           {data.results.map((r) => (
@@ -318,7 +318,7 @@ function DoctorPanels({ data, onError }: PanelProps) {
                 <span className="font-semibold">
                   {r.test} · {r.name}
                 </span>
-                <span className="text-ink-3 block text-xs tabular-nums">
+                <span className="text-ink-3 block text-[13px] tabular-nums">
                   {r.impression} · {r.at}
                 </span>
               </span>
@@ -343,7 +343,7 @@ function DoctorPanels({ data, onError }: PanelProps) {
           </CardHeader>
           {mine.length === 0 && (
             <Row className="min-h-10 py-1.5">
-              <span className="text-ink-3 text-[13px]">{t('home.noCalendar')}</span>
+              <span className="text-ink-3 text-[14px]">{t('home.noCalendar')}</span>
             </Row>
           )}
           {mine.map((c) => (
@@ -363,14 +363,14 @@ function DoctorPanels({ data, onError }: PanelProps) {
           </CardHeader>
           {data.toAccept.length === 0 && (
             <Row className="min-h-10 py-1.5">
-              <span className="text-ink-3 text-[13px]">{t('home.nothingToAccept')}</span>
+              <span className="text-ink-3 text-[14px]">{t('home.nothingToAccept')}</span>
             </Row>
           )}
           {data.toAccept.map((q) => (
             <Row key={q.id} className="flex-col items-stretch gap-2">
               <span>
                 <span className="font-semibold">{q.name}</span>
-                <span className="text-ink-3 block text-xs">
+                <span className="text-ink-3 block text-[13px]">
                   {[q.when, q.note].filter(Boolean).join(' · ')}
                 </span>
               </span>
@@ -418,7 +418,7 @@ function CashierPanels({ data }: PanelProps) {
         <div className={scroll}>
           {data.openBills.length === 0 && (
             <Row>
-              <span className="text-ink-3 text-[13px]">{t('home.noOpenBills')}</span>
+              <span className="text-ink-3 text-[14px]">{t('home.noOpenBills')}</span>
             </Row>
           )}
           {data.openBills.map((b) => (
@@ -428,7 +428,7 @@ function CashierPanels({ data }: PanelProps) {
                   {b.ticket ? `${b.ticket} · ` : ''}
                   {b.name}
                 </span>
-                <span className="text-ink-3 block text-xs">
+                <span className="text-ink-3 block text-[13px]">
                   {b.file}
                   {b.station
                     ? ` · ${t('home.atStation', { station: t(`register.stations.${b.station}`) })}`

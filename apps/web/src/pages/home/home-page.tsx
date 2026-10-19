@@ -100,7 +100,7 @@ function RoleHome({ user, mode }: HomePageProps) {
       to={a.to}
       className={cn(
         buttonVariants({ variant: a.primary ? 'primary' : 'default' }),
-        'min-h-[52px] flex-1 px-2 text-center text-[13px] leading-tight whitespace-normal',
+        'min-h-[52px] flex-1 px-2 text-center text-[14px] leading-tight whitespace-normal',
       )}
     >
       {t(a.labelKey)}
@@ -121,7 +121,7 @@ function RoleHome({ user, mode }: HomePageProps) {
 
         {/* CLINIC NOW */}
         <div className="border-border bg-card flex flex-none flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border px-4 py-2">
-          <span className="text-ink-3 text-xs font-semibold tracking-[.04em] uppercase">
+          <span className="text-ink-3 text-[13px] font-semibold tracking-[.04em] uppercase">
             {t('home.clinicNow')}
           </span>
           <Stat
@@ -180,7 +180,7 @@ function RoleHome({ user, mode }: HomePageProps) {
               </StaffLink>
             ))}
             <div className="flex-1" />
-            <div className="text-ink-3 px-1 text-xs">{t('home.quickNote')}</div>
+            <div className="text-ink-3 px-1 text-[13px]">{t('home.quickNote')}</div>
           </Card>
         </div>
       </main>

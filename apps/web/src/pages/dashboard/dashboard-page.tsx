@@ -1,27 +1,37 @@
 import { useState, type CSSProperties } from 'react'
 import {
+  Banknote,
   BedDouble,
   Boxes,
   CalendarCheck,
+  CalendarClock,
   ChartLine,
   Clock,
   Coins,
+  CreditCard,
+  HeartPulse,
   Landmark,
   ListOrdered,
   LogIn,
+  type LucideIcon,
   MapPin,
+  Medal,
+  PackageX,
   PieChart,
   Printer,
-  ShieldCheck,
-  Workflow,
   Receipt,
   RefreshCw,
   Search,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldPlus,
+  Smartphone,
   Stethoscope,
   Timer,
   UserPlus,
   Users,
   Wallet,
+  Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -50,6 +60,7 @@ import {
   delta,
   greetingFor,
   groupLabel,
+  stationIconFor,
   initials,
   stationLabel,
 } from '@/components/dash/kit-style'
@@ -74,6 +85,17 @@ import { cn } from '@/lib/utils'
 
 /* Figma: "Muhazi Clinic — Manager Dashboard v2". Tinted KPI chips, 16 px cards with a soft
    shadow, one colour per subject, staggered entrance, count-up numbers, drawn revenue line. */
+
+/** Payment method symbol from its key or name ("cash", "MTN MoMo", "Bank transfer"). */
+const methodIcon = (method: string): LucideIcon => {
+  const m = method.toLowerCase()
+  if (m.includes('cash')) return Banknote
+  if (m.includes('momo') || m.includes('mtn') || m.includes('airtel') || m.includes('mobile'))
+    return Smartphone
+  if (m.includes('card')) return CreditCard
+  if (m.includes('bank')) return Landmark
+  return Wallet
+}
 
 const METHOD_COLORS = [
   'var(--mmc-primary)',
@@ -182,7 +204,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold"
+            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
           >
             {t('dashboard.loadFailed', { message: error.message })}
           </p>
@@ -307,6 +329,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                           labelWidth="minmax(72px,96px)"
                           rows={data.collections.map((m) => ({
                             // cash, momo, airtel, card, bank → the interface language
+                            icon: methodIcon(m.method),
                             label: t(`visit.payment.methods.${m.method}`, {
                               defaultValue: methodLabel(m.method),
                             }),
@@ -330,6 +353,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       <HBarList
                         subject="money"
                         rows={data.receivables.map((m) => ({
+                          icon: ShieldPlus,
                           label: m.payer,
                           value: m.amount,
                           display: formatNumber(m.amount),
@@ -385,15 +409,20 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                                 className={hot ? 'text-red' : 'text-primary'}
                               />
                             </span>
-                            <span className="text-ink-2 text-xs font-semibold">
+                            <span className="text-ink-2 text-[13px] font-semibold">
                               {stationLabel(s.station, t)}
                             </span>
                             <span
                               className={cn(
-                                'text-[11px]',
+                                'text-[12px]',
                                 hot ? 'text-red font-semibold' : 'text-ink-3',
                               )}
                             >
+                              <Timer
+                                size={11}
+                                aria-hidden="true"
+                                className="mr-0.5 inline align-[-1px]"
+                              />
                               {t('dashboard.avgShort', { min: s.minutes })}
                               {hot ? ` · ⚠ ${t('dashboard.queueLong')}` : ''}
                             </span>
@@ -417,12 +446,13 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       subject="visits"
                       labelWidth="minmax(96px,140px)"
                       rows={data.visitsByGroup.map((v) => ({
+                        icon: stationIconFor(v.group),
                         label: groupLabel(v.group, t),
                         value: v.count,
                       }))}
                     />
                   )}
-                  <div className="text-ink-3 flex flex-wrap items-center gap-2 text-xs">
+                  <div className="text-ink-3 flex flex-wrap items-center gap-2 text-[13px]">
                     <CalendarCheck size={14} aria-hidden="true" />
                     {t('dashboard.bookings', { period: periodWord })}: {data.bookings.booked}{' '}
                     {t('dashboard.booked')} ·{' '}
@@ -445,24 +475,39 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   {data.staff.length === 0 ? (
                     <Empty>{t('dashboard.noStaffActivity')}</Empty>
                   ) : (
-                    <table className="w-full border-collapse text-[13px]">
+                    <table className="w-full border-collapse text-[14px]">
                       <thead>
-                        <tr className="text-ink-3 text-left text-[11px] tracking-[.04em] uppercase">
+                        <tr className="text-ink-3 text-left text-[12px] tracking-[.04em] uppercase">
                           <th className="border-border border-b py-1.5 pr-2 font-semibold">
-                            {t('dashboard.cols.employee')}
+                            <span className="inline-flex items-center gap-1">
+                              <Users size={13} aria-hidden="true" />
+                              {t('dashboard.cols.employee')}
+                            </span>
                           </th>
                           <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
-                            {t('dashboard.cols.registrations')}
+                            <span className="inline-flex items-center gap-1">
+                              <UserPlus size={13} aria-hidden="true" />
+                              {t('dashboard.cols.registrations')}
+                            </span>
                           </th>
                           <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
-                            {t('dashboard.cols.vitals')}
+                            <span className="inline-flex items-center gap-1">
+                              <HeartPulse size={13} aria-hidden="true" />
+                              {t('dashboard.cols.vitals')}
+                            </span>
                           </th>
                           <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
-                            {t('dashboard.cols.charges')}
+                            <span className="inline-flex items-center gap-1">
+                              <Receipt size={13} aria-hidden="true" />
+                              {t('dashboard.cols.charges')}
+                            </span>
                           </th>
                           {isManager && (
                             <th className="border-border border-b py-1.5 text-right font-semibold">
-                              {t('dashboard.cols.collected')}
+                              <span className="inline-flex items-center gap-1">
+                                <Wallet size={13} aria-hidden="true" />
+                                {t('dashboard.cols.collected')}
+                              </span>
                             </th>
                           )}
                         </tr>
@@ -478,7 +523,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                               <span className="flex items-center gap-2.5">
                                 <span
                                   className={cn(
-                                    'inline-flex size-[30px] flex-none items-center justify-center rounded-full text-[11px] font-extrabold',
+                                    'inline-flex size-[30px] flex-none items-center justify-center rounded-full text-[12px] font-extrabold',
                                     avatarTint(i),
                                   )}
                                 >
@@ -486,7 +531,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                                 </span>
                                 <span className="min-w-0">
                                   <span className="block truncate font-semibold">{s.name}</span>
-                                  <span className="text-ink-3 block truncate text-[11px]">
+                                  <span className="text-ink-3 block truncate text-[12px]">
                                     {t(`staff.roles.${s.role}`)}
                                     {s.staffId ? ` · ${s.staffId}` : ''}
                                   </span>
@@ -527,7 +572,11 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   <ListRows
                     rows={data.topTreatments.map((d, i) => ({
                       key: d.name,
-                      pill: <Pill tint="teal">{i + 1}</Pill>,
+                      pill: (
+                        <Pill tint={i === 0 ? 'amber' : 'teal'} icon={i < 3 ? Medal : undefined}>
+                          {i + 1}
+                        </Pill>
+                      ),
                       label: d.name,
                       value:
                         isManager && d.amount != null
@@ -552,7 +601,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       ...data.reorder.map((r) => ({
                         key: r.name,
                         pill: (
-                          <Pill tint={r.onHand < r.min / 2 ? 'coral' : 'amber'}>
+                          <Pill tint={r.onHand < r.min / 2 ? 'coral' : 'amber'} icon={PackageX}>
                             {t('dashboard.lowShort')}
                           </Pill>
                         ),
@@ -563,7 +612,11 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                         ? [
                             {
                               key: 'exp',
-                              pill: <Pill tint="amber">{t('dashboard.days30')}</Pill>,
+                              pill: (
+                                <Pill tint="amber" icon={CalendarClock}>
+                                  {t('dashboard.days30')}
+                                </Pill>
+                              ),
                               label: t('dashboard.expiringBatches', { count: data.expiring.d30 }),
                               value: `${data.expiring.d60} ${t('dashboard.days60')} · ${data.expiring.d90} ${t('dashboard.days90')}`,
                             },
@@ -586,7 +639,10 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       return {
                         key: `${l.name}-${i}`,
                         pill: (
-                          <Pill tint={failed ? 'coral' : 'mint'}>
+                          <Pill
+                            tint={failed ? 'coral' : 'mint'}
+                            icon={failed ? ShieldAlert : ShieldCheck}
+                          >
                             {failed ? t('dashboard.failedLogin') : 'ok'}
                           </Pill>
                         ),

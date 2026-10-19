@@ -80,7 +80,7 @@ export function QueueCard({ title, rows, counts, rowAction, empty, className }: 
           <div
             className={cn(
               rowGrid,
-              'text-ink-3 pc:grid hidden min-h-8 py-1 text-xs font-semibold tracking-[.02em] uppercase [&>span]:truncate',
+              'text-ink-3 pc:grid hidden min-h-8 py-1 text-[13px] font-semibold tracking-[.02em] uppercase [&>span]:truncate',
             )}
           >
             <span>{t('home.cols.ticket')}</span>

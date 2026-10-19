@@ -1,21 +1,5 @@
 import { createElement, type CSSProperties, type ReactNode } from 'react'
-import {
-  Activity,
-  ArrowDown,
-  ArrowUp,
-  BedDouble,
-  ConciergeBell,
-  FlaskConical,
-  Minus,
-  Pill as PillIcon,
-  Scan,
-  Scissors,
-  Smile,
-  Stethoscope,
-  Syringe,
-  Wallet,
-  type LucideIcon,
-} from 'lucide-react'
+import { ArrowDown, ArrowUp, CircleCheck, Info, Minus, type LucideIcon } from 'lucide-react'
 import { formatNumber } from '@mmc/shared'
 import { useCountUp } from '@/lib/motion'
 import { cn } from '@/lib/utils'
@@ -27,7 +11,7 @@ import { cn } from '@/lib/utils'
  * they share one look and one motion system.
  */
 
-import { tintClass, type Tint, card, sectionTitle } from './kit-style'
+import { tintClass, type Tint, card, sectionTitle, stationIconFor } from './kit-style'
 export function CountUp({ value }: { value: number }) {
   const v = useCountUp(value, 600)
   return <>{formatNumber(v)}</>
@@ -73,15 +57,15 @@ export function Kpi({
       >
         <IconC size={18} aria-hidden="true" />
       </span>
-      <span className="text-ink-2 text-[12px] font-bold tracking-[.04em] uppercase">{label}</span>
-      <span className="flex flex-wrap items-baseline gap-1.5 text-[30px] leading-none font-extrabold tracking-[-0.02em] tabular-nums">
+      <span className="text-ink-2 text-[13px] font-bold tracking-[.04em] uppercase">{label}</span>
+      <span className="flex flex-wrap items-baseline gap-1.5 text-[32px] leading-none font-extrabold tracking-[-0.02em] tabular-nums">
         <CountUp value={value} />
-        <small className="text-ink-3 text-[13px] font-semibold">{unit}</small>
+        <small className="text-ink-3 text-[14px] font-semibold">{unit}</small>
       </span>
       {d && (
         <span
           className={cn(
-            'fade-in-late inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold tabular-nums',
+            'fade-in-late inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-bold tabular-nums',
             pill,
           )}
         >
@@ -150,19 +134,6 @@ export function SectionTitle({ icon: IconC, children }: { icon: LucideIcon; chil
   )
 }
 
-const STATION_ICONS: Record<string, LucideIcon> = {
-  triage: Activity,
-  consultation: Stethoscope,
-  dental: Smile,
-  laboratory: FlaskConical,
-  ultrasound: Scan,
-  nursing: Syringe,
-  theatre: Scissors,
-  pharmacy: PillIcon,
-  cashier: Wallet,
-  beds: BedDouble,
-  reception: ConciergeBell,
-}
 /** Icon for a queue station (consultation → stethoscope); falls back to a stethoscope. */
 export function StationGlyph({
   station,
@@ -173,7 +144,7 @@ export function StationGlyph({
   size?: number
   className?: string
 }) {
-  return createElement(STATION_ICONS[station.toLowerCase()] ?? Stethoscope, {
+  return createElement(stationIconFor(station), {
     size,
     className,
     'aria-hidden': true,
@@ -200,26 +171,36 @@ export function Panel({
 }) {
   return (
     <section className={cn(card, 'anim-enter', className)} style={{ '--i': i } as CSSProperties}>
-      <h3 className="m-0 flex items-center justify-between gap-2 text-[15px] font-bold">
+      <h3 className="m-0 flex items-center justify-between gap-2 text-[16px] font-bold">
         <span className="flex min-w-0 items-center gap-2.5">
           {icon && <IconChip icon={icon} tint={tint} />}
           <span className="truncate">{title}</span>
         </span>
-        {right && <span className="text-ink-3 truncate text-xs font-semibold">{right}</span>}
+        {right && <span className="text-ink-3 truncate text-[13px] font-semibold">{right}</span>}
       </h3>
       {children}
     </section>
   )
 }
 
-export function Pill({ tint, children }: { tint: Tint; children: ReactNode }) {
+export function Pill({
+  tint,
+  icon,
+  children,
+}: {
+  tint: Tint
+  /** Small symbol before the text (clock for a time, siren for red). */
+  icon?: LucideIcon
+  children: ReactNode
+}) {
   return (
     <span
       className={cn(
-        'inline-flex min-w-6 justify-center rounded-full px-2 py-0.5 text-[11px] font-bold',
+        'inline-flex min-w-6 flex-none items-center justify-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-bold whitespace-nowrap',
         tintClass[tint],
       )}
     >
+      {icon && createElement(icon, { size: 12, strokeWidth: 2.5, 'aria-hidden': true })}
       {children}
     </span>
   )
@@ -228,16 +209,25 @@ export function Pill({ tint, children }: { tint: Tint; children: ReactNode }) {
 export function ListRows({
   rows,
 }: {
-  rows: { key: string; pill: ReactNode; label: string; value: string }[]
+  rows: {
+    key: string
+    pill?: ReactNode
+    /** Icon chip at the start of the row. */
+    icon?: LucideIcon
+    tint?: Tint
+    label: string
+    value: string
+  }[]
 }) {
   return (
     <div className="flex flex-col">
       {rows.map((r, i) => (
         <div
           key={r.key}
-          className="border-grid anim-enter flex min-h-9 items-center gap-2.5 border-b py-1.5 text-[13px] last:border-b-0"
+          className="border-grid anim-enter flex min-h-10 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
           style={{ '--i': i } as CSSProperties}
         >
+          {r.icon && <IconChip icon={r.icon} tint={r.tint} size="sm" />}
           {r.pill}
           <span className="min-w-0 flex-1 truncate">{r.label}</span>
           <span className="font-bold whitespace-nowrap tabular-nums">{r.value}</span>
@@ -247,6 +237,27 @@ export function ListRows({
   )
 }
 
-export function Empty({ children }: { children: ReactNode }) {
-  return <p className="text-ink-3 m-0 py-2 text-[13px]">{children}</p>
+export function Empty({
+  children,
+  icon = CircleCheck,
+}: {
+  children: ReactNode
+  icon?: LucideIcon
+}) {
+  return (
+    <p className="text-ink-3 m-0 flex items-center gap-2 py-2 text-[14px]">
+      {createElement(icon, { size: 18, className: 'text-green flex-none', 'aria-hidden': true })}
+      {children}
+    </p>
+  )
+}
+
+/** Explanatory line under a panel, with an info symbol. */
+export function Hint({ children }: { children: ReactNode }) {
+  return (
+    <p className="text-ink-3 m-0 flex items-start gap-1.5 text-[13px]">
+      <Info size={14} aria-hidden="true" className="mt-0.5 flex-none" />
+      <span>{children}</span>
+    </p>
+  )
 }

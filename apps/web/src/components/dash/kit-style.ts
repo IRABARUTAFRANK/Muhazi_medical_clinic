@@ -1,15 +1,29 @@
 import {
+  Activity,
+  AlertTriangle,
+  BedDouble,
+  CircleCheck,
   ConciergeBell,
   Crown,
+  FlaskConical,
+  HeartHandshake,
   HeartPulse,
+  ClipboardList,
+  Pill,
+  Ribbon,
+  Scan,
+  Scissors,
+  Siren,
+  Smile,
   Stethoscope,
+  Syringe,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { formatNumber, type Role } from '@mmc/shared'
 
 /** Style tokens and helpers shared by every dashboard (see kit.tsx for the components). */
-export const sectionTitle = 'text-[11px] font-extrabold tracking-[.08em] text-ink-3 uppercase'
+export const sectionTitle = 'text-[12px] font-extrabold tracking-[.08em] text-ink-3 uppercase'
 export const card =
   'card-lift bg-card shadow-card flex min-w-0 flex-col gap-3.5 rounded-[16px] px-5 py-[18px]'
 
@@ -92,4 +106,45 @@ export const stripeClass: Record<Tint, string> = {
   coral: 'bg-red',
   violet: 'bg-violet',
   navy: 'bg-navy',
+}
+
+const STATION_ICONS: Record<string, LucideIcon> = {
+  triage: Activity,
+  consultation: Stethoscope,
+  dental: Smile,
+  laboratory: FlaskConical,
+  lab: FlaskConical,
+  ultrasound: Scan,
+  imaging: Scan,
+  nursing: Syringe,
+  procedures: Syringe,
+  procedure: Scissors,
+  bed: BedDouble,
+  registration: ClipboardList,
+  theatre: Scissors,
+  surgery: Scissors,
+  pharmacy: Pill,
+  medicines: Pill,
+  cashier: Wallet,
+  beds: BedDouble,
+  reception: ConciergeBell,
+}
+/** Icon for a station or service group (consultation → stethoscope); stethoscope when unknown. */
+export const stationIconFor = (station: string): LucideIcon => {
+  const s = station.toLowerCase()
+  if (STATION_ICONS[s]) return STATION_ICONS[s]
+  // Named service groups ("HIV testing & vaccination", "Family planning", …)
+  if (s.includes('hiv')) return Ribbon
+  if (s.includes('vaccin') || s.includes('inject')) return Syringe
+  if (s.includes('family')) return HeartHandshake
+  if (s.includes('surg') || s.includes('circum')) return Scissors
+  const hit = Object.keys(STATION_ICONS).find((k) => s.includes(k))
+  return hit ? STATION_ICONS[hit]! : Stethoscope
+}
+
+/** Triage colour symbols: siren for red, warning for yellow, check for green. */
+export const triageIcon: Record<string, LucideIcon> = {
+  red: Siren,
+  yellow: AlertTriangle,
+  green: CircleCheck,
 }

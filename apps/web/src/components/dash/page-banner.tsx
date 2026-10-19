@@ -35,33 +35,32 @@ export function PageBanner({
   const look = lookFor(user.role)
   const RoleIcon = look.icon
   return (
-    <section className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-6 gap-y-4 overflow-hidden rounded-[20px] py-5 pr-6 pl-7">
+    <section className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-5 gap-y-3 overflow-hidden rounded-[18px] py-3.5 pr-5 pl-6">
       <span
         className={cn('absolute inset-y-0 left-0 w-1.5', stripeClass[tint])}
         aria-hidden="true"
       />
       <IconC
-        size={150}
+        size={104}
         strokeWidth={1.2}
         aria-hidden="true"
-        className="text-ink pointer-events-none absolute -right-4 -bottom-8 opacity-[0.045]"
+        className="text-ink pointer-events-none absolute -right-3 -bottom-6 opacity-[0.045]"
       />
 
       <span
         className={cn(
-          'relative inline-flex size-[68px] flex-none items-center justify-center rounded-[20px]',
+          'relative inline-flex size-[52px] flex-none items-center justify-center rounded-2xl',
           tintClass[tint],
         )}
       >
-        <IconC size={32} strokeWidth={2} aria-hidden="true" />
+        <IconC size={26} strokeWidth={2} aria-hidden="true" />
       </span>
 
       <div className="relative min-w-[220px] flex-1">
-        <h1 className="m-0 text-[28px] leading-[1.15] font-extrabold tracking-[-0.02em]">
-          {title}
-        </h1>
-        {lead && <p className="text-ink-2 m-0 mt-1 max-w-[760px] text-sm">{lead}</p>}
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <h1 className="m-0 text-[24px] leading-[1.15] font-extrabold tracking-[-0.02em]">
+            {title}
+          </h1>
           <span className="border-border bg-surface text-ink-2 inline-flex items-center gap-2 rounded-full border py-0.5 pr-3 pl-0.5 text-[13px] font-semibold">
             <span
               className={cn(
@@ -79,6 +78,7 @@ export function PageBanner({
           </span>
           {meta}
         </div>
+        {lead && <p className="text-ink-2 m-0 mt-1 max-w-[820px] text-[14px]">{lead}</p>}
       </div>
 
       {children && <div className="relative flex flex-wrap items-center gap-2.5">{children}</div>}

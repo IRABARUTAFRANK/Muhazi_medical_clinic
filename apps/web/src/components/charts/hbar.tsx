@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { createElement, type CSSProperties, type ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type ChartSubject = 'money' | 'visits' | 'time'
@@ -13,6 +14,8 @@ export interface HBarRow {
   value: number
   /** Printed value (defaults to the number). */
   display?: ReactNode
+  /** Symbol before the label (payment method, service group). */
+  icon?: LucideIcon
   /** Tooltip text for the row (defaults to label: display). */
   title?: string
 }
@@ -53,8 +56,16 @@ export function HBarList({
           style={style}
           title={r.title ?? `${r.label}: ${typeof r.display === 'string' ? r.display : r.value}`}
         >
-          <span className="text-ink-2 truncate text-[13px] @md:order-1">{r.label}</span>
-          <span className="text-[13px] font-semibold whitespace-nowrap tabular-nums @md:order-3">
+          <span className="text-ink-2 flex min-w-0 items-center gap-1.5 text-[14px] @md:order-1">
+            {r.icon &&
+              createElement(r.icon, {
+                size: 15,
+                className: 'text-ink-3 flex-none',
+                'aria-hidden': true,
+              })}
+            <span className="truncate">{r.label}</span>
+          </span>
+          <span className="text-[14px] font-semibold whitespace-nowrap tabular-nums @md:order-3">
             {r.display ?? r.value}
           </span>
           <span className="bg-hover col-span-2 h-2.5 overflow-hidden rounded-full @md:order-2 @md:col-span-1">

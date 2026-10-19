@@ -5,15 +5,15 @@ import {
   BedDouble,
   CalendarCheck,
   ChartLine,
+  ClipboardCheck,
   ClipboardList,
   Clock,
-  ClipboardCheck,
-  ListTodo,
-  Siren,
   HeartPulse,
+  ListTodo,
   MessageSquare,
   RefreshCw,
   Search,
+  Siren,
   Stethoscope,
   Timer,
   UserPlus,
@@ -26,6 +26,7 @@ import { LineChart } from '@/components/charts/line-chart'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import {
   Empty,
+  Hint,
   IconChip,
   Kpi,
   ListRows,
@@ -34,7 +35,13 @@ import {
   SectionTitle,
   StationGlyph,
 } from '@/components/dash/kit'
-import { delta, greetingFor, stationLabel, type Tint } from '@/components/dash/kit-style'
+import {
+  delta,
+  greetingFor,
+  stationLabel,
+  triageIcon,
+  type Tint,
+} from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
@@ -130,7 +137,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold"
+            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
           >
             {t('dashboard.loadFailed', { message: error.message })}
           </p>
@@ -394,13 +401,15 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
           {list.slice(0, 7).map((r, i) => (
             <div
               key={r.queueId}
-              className="border-grid anim-enter flex min-h-11 items-center gap-2.5 border-b py-1.5 text-[13px] last:border-b-0"
+              className="border-grid anim-enter flex min-h-11 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
               style={{ '--i': i } as CSSProperties}
             >
-              <Pill tint={triageTint[r.triage] ?? 'teal'}>{r.ticket}</Pill>
+              <Pill tint={triageTint[r.triage] ?? 'teal'} icon={triageIcon[r.triage]}>
+                {r.ticket}
+              </Pill>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{r.name}</span>
-                <span className="text-ink-3 flex items-center gap-1 truncate text-xs">
+                <span className="text-ink-3 flex items-center gap-1 truncate text-[13px]">
                   <StationGlyph station={r.station} size={12} className="flex-none" />
                   {r.ageSex} · {stationLabel(r.station, t)} ·{' '}
                   {r.startedAt ? t('visits.inProgress') : t('visits.waiting', { count: r.waitMin })}
@@ -454,10 +463,10 @@ function StationsPanel({ d }: { d: DeskSummary }) {
                   <span className="text-xl font-extrabold tabular-nums">{s.waiting}</span>
                   <StationGlyph station={s.station} className={hot ? 'text-red' : 'text-primary'} />
                 </span>
-                <span className="text-ink-2 text-xs font-semibold">
+                <span className="text-ink-2 text-[13px] font-semibold">
                   {stationLabel(s.station, t)}
                 </span>
-                <span className={cn('text-[11px]', hot ? 'text-red font-semibold' : 'text-ink-3')}>
+                <span className={cn('text-[12px]', hot ? 'text-red font-semibold' : 'text-ink-3')}>
                   {t('desk.busyShort', { count: s.busy })} ·{' '}
                   {t('dashboard.avgShort', { min: s.minutes })}
                 </span>
@@ -490,12 +499,14 @@ function UrgentPanel({ d }: { d: DeskSummary }) {
       <ListRows
         rows={rows.map((r) => ({
           key: r.key,
+          icon: triageIcon[r.key],
+          tint: r.tint,
           pill: <Pill tint={r.tint}>{r.n}</Pill>,
           label: r.label,
           value: '',
         }))}
       />
-      <p className="text-ink-3 m-0 text-xs">{t('desk.nurse.urgencyHint')}</p>
+      <Hint>{t('desk.nurse.urgencyHint')}</Hint>
     </Panel>
   )
 }
@@ -530,7 +541,7 @@ function ArrivalsPanel({ d }: { d: DeskSummary }) {
         ariaLabel={t('desk.arrivalsAria', { count: total })}
       />
       {busiest.count > 0 && (
-        <p className="text-ink-3 m-0 text-xs">
+        <p className="text-ink-3 m-0 text-[13px]">
           {t('desk.busiest', {
             hour: `${String(busiest.hour).padStart(2, '0')}:00`,
             count: busiest.count,
@@ -609,7 +620,7 @@ function MinePanel({ d, role }: { d: DeskSummary; role: DeskRole }) {
           >
             <IconChip icon={r.icon} tint={r.tint} size="sm" />
             <span className="text-2xl font-extrabold tabular-nums">{r.n}</span>
-            <span className="text-ink-2 text-[11px] leading-tight font-semibold">{r.label}</span>
+            <span className="text-ink-2 text-[12px] leading-tight font-semibold">{r.label}</span>
           </div>
         ))}
       </div>

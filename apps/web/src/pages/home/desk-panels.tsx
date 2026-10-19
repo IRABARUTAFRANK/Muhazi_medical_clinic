@@ -1,9 +1,20 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { BedDouble, CalendarCheck, Check, FilePen, ListTodo, MessageSquare, X } from 'lucide-react'
+import {
+  AlarmClock,
+  BedDouble,
+  CalendarCheck,
+  Check,
+  Clock,
+  FilePen,
+  ListTodo,
+  MessageSquare,
+  Ticket,
+  X,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatTime, type Role } from '@mmc/shared'
-import { Empty, Panel, Pill } from '@/components/dash/kit'
+import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -21,9 +32,9 @@ import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
 
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
-const errorLine = 'bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold'
+const errorLine = 'bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold'
 const rowClass =
-  'border-grid anim-enter flex min-h-11 flex-wrap items-center gap-2 border-b py-1.5 text-[13px] last:border-b-0'
+  'border-grid anim-enter flex min-h-11 flex-wrap items-center gap-2 border-b py-1.5 text-[14px] last:border-b-0'
 
 /** Runs an action and keeps its error next to the panel that caused it. */
 function useRun() {
@@ -107,16 +118,21 @@ export function AppointmentsPanel({
             const open = a.status === 'approved' || a.status === 'confirmed'
             return (
               <div key={a.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
-                <Pill tint={a.late ? 'coral' : (apptTint[a.status] ?? 'teal')}>{a.time}</Pill>
+                <Pill
+                  tint={a.late ? 'coral' : (apptTint[a.status] ?? 'teal')}
+                  icon={a.late ? AlarmClock : Clock}
+                >
+                  {a.time}
+                </Pill>
                 <span className="min-w-[140px] flex-1">
                   <span className="block truncate font-semibold">{a.name}</span>
-                  <span className="text-ink-3 block truncate text-xs">
+                  <span className="text-ink-3 block truncate text-[13px]">
                     {[a.doctor, a.reason, a.phone].filter(Boolean).join(' · ')}
                   </span>
                 </span>
                 <span
                   className={cn(
-                    'text-xs font-semibold',
+                    'text-[13px] font-semibold',
                     a.late ? 'text-red' : open ? 'text-ink-2' : 'text-ink-3',
                   )}
                 >
@@ -215,10 +231,12 @@ export function InquiriesPanel({ i = 2, canAct }: { i?: number; canAct: boolean 
         <div className="flex flex-col">
           {inquiries.slice(0, 8).map((q, k) => (
             <div key={q.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
-              <Pill tint="violet">{q.when ?? '?'}</Pill>
+              <Pill tint="violet" icon={MessageSquare}>
+                {q.when ?? '?'}
+              </Pill>
               <span className="min-w-[140px] flex-1">
                 <span className="block truncate font-semibold">{q.name}</span>
-                <span className="text-ink-3 block truncate text-xs">
+                <span className="text-ink-3 block truncate text-[13px]">
                   {[q.phone, q.doctor, q.note].filter(Boolean).join(' · ')}
                 </span>
               </span>
@@ -237,7 +255,7 @@ export function InquiriesPanel({ i = 2, canAct }: { i?: number; canAct: boolean 
           ))}
         </div>
       )}
-      <p className="text-ink-3 m-0 text-xs">{t('ops.inquiries.hint')}</p>
+      <Hint>{t('ops.inquiries.hint')}</Hint>
     </Panel>
   )
 }
@@ -266,12 +284,12 @@ export function TasksPanel({ i = 2 }: { i?: number }) {
         <div className="flex flex-col">
           {tasks.slice(0, 8).map((x, k) => (
             <div key={x.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
-              <Pill tint={x.overdue ? 'coral' : 'teal'}>
+              <Pill tint={x.overdue ? 'coral' : 'teal'} icon={x.overdue ? AlarmClock : Clock}>
                 {x.dueAt ? formatTime(new Date(x.dueAt)) : '—'}
               </Pill>
               <span className="min-w-[140px] flex-1">
                 <span className="block truncate font-semibold">{x.title}</span>
-                <span className="text-ink-3 block truncate text-xs">
+                <span className="text-ink-3 block truncate text-[13px]">
                   {[x.patient, x.detail, x.by && t('ops.tasks.by', { name: x.by })]
                     .filter(Boolean)
                     .join(' · ')}
@@ -356,18 +374,21 @@ export function BedsPanel({ i = 1, userRole }: { i?: number; userRole: Role }) {
               style={{ '--i': k } as CSSProperties}
             >
               <span className="flex items-center justify-between gap-1">
-                <span className="text-xs font-bold">{b.name}</span>
-                <span className="text-ink-3 text-[11px]">
+                <span className="inline-flex items-center gap-1.5 text-[13px] font-bold">
+                  <BedDouble size={15} aria-hidden="true" />
+                  {b.name}
+                </span>
+                <span className="text-ink-3 text-[12px]">
                   {t(`desk.bedState.${b.state}`)}
                   {b.since ? ` · ${formatTime(new Date(b.since))}` : ''}
                 </span>
               </span>
-              {b.patient && <span className="truncate text-[12px] font-semibold">{b.patient}</span>}
+              {b.patient && <span className="truncate text-[13px] font-semibold">{b.patient}</span>}
               {b.state === 'free' &&
                 (admitting === b.id ? (
                   <select
                     autoFocus
-                    className="border-border bg-card h-9 rounded-lg border px-2 text-[12px]"
+                    className="border-border bg-card h-9 rounded-lg border px-2 text-[13px]"
                     defaultValue=""
                     onChange={(e) => {
                       const q = candidates.find((c) => c.encounterId === e.target.value)
@@ -456,10 +477,12 @@ export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
         <div className="flex flex-col">
           {files.slice(0, 7).map((f, k) => (
             <div key={f.patientId} className={rowClass} style={{ '--i': k } as CSSProperties}>
-              <Pill tint={f.station === 'reception' ? 'amber' : 'teal'}>{f.ticket ?? '—'}</Pill>
+              <Pill tint={f.station === 'reception' ? 'amber' : 'teal'} icon={Ticket}>
+                {f.ticket ?? '—'}
+              </Pill>
               <span className="min-w-[140px] flex-1">
                 <span className="block truncate font-semibold">{f.name}</span>
-                <span className="text-ink-3 block truncate text-xs">
+                <span className="text-ink-3 block truncate text-[13px]">
                   {t('files.lacks', {
                     missing: f.missing.map((m) => t(`files.missing.${m}`)).join(', '),
                   })}
@@ -482,7 +505,7 @@ export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
           ))}
         </div>
       )}
-      <p className="text-ink-3 m-0 text-xs">{t('files.hint')}</p>
+      <Hint>{t('files.hint')}</Hint>
     </Panel>
   )
 }
