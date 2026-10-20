@@ -43,6 +43,7 @@ import { useClinicStatus, useClinicInfo } from '@/lib/api/public'
 import { openItems, queueCounts, stationFor, useQueueBoard } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
+import { formatDuration } from '@/lib/duration'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
 import { CashierDashboard } from './cashier-dashboard'
@@ -227,7 +228,6 @@ function RoleTiles({
   const { t } = useTranslation()
   const unitNow = t('dashboard.units.now')
   const unitToday = t('dashboard.period.today')
-  const unitMin = t('dashboard.units.min')
   let tiles: ReactNode
   if (role === 'doctor') {
     const toReview = summary?.results.filter((r) => !r.verified).length ?? 0
@@ -340,7 +340,8 @@ function RoleTiles({
           tint="teal"
           label={t('dashboard.tiles.avgWait')}
           value={now.avgWaitMin}
-          unit={unitMin}
+          text={formatDuration(now.avgWaitMin, t)}
+          unit=""
         />
       </>
     )
@@ -369,7 +370,8 @@ function RoleTiles({
           tint="coral"
           label={t('dashboard.tiles.avgWait')}
           value={now.avgWaitMin}
-          unit={unitMin}
+          text={formatDuration(now.avgWaitMin, t)}
+          unit=""
         />
         <Kpi
           i={3}

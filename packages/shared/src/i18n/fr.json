@@ -309,7 +309,7 @@
     "status": {
       "open": "Ouvert · ferme à {{closes}}",
       "closed": "Fermé · ouvre à {{opens}}",
-      "wait": "attente actuelle environ {{wait}} min",
+      "wait": "attente actuelle environ {{time}}",
       "waiting": "{{count}} en attente",
       "open24": "Ouvert · 24 heures sur 24"
     }
@@ -491,7 +491,7 @@
     "clinicClosed": "Clinique fermée",
     "registerPatient": "Enregistrer un patient",
     "queueLong": "longue",
-    "avgShort": "moy. {{min}} min",
+    "avgShort": "moy. {{time}}",
     "noShowShort": "{{missed}} manqués",
     "collectedTotal": "{{amount}} au total",
     "loading": "Chargement des chiffres en direct…",
@@ -2438,8 +2438,6 @@
     "resultsGiven": "Résultats rendus aujourd’hui",
     "noneDone": "Aucun résultat rendu aujourd’hui.",
     "orderedBy": "demandé par {{name}}",
-    "waitingFor_one": "attend depuis {{count}} min",
-    "waitingFor_other": "attend depuis {{count}} min",
     "status": {
       "ordered": "En attente de prélèvement",
       "collected": "Prélevé",
@@ -2462,7 +2460,8 @@
       "ordered": "En attente de prélèvement",
       "process": "En cours",
       "resulted": "À valider"
-    }
+    },
+    "waitingFor": "attend depuis {{time}}"
   },
   "finance": {
     "desk": "Caisse",
@@ -2820,5 +2819,10 @@
       "valueAtCost": "Valeur au coût",
       "by": "Par"
     }
+  },
+  "duration": {
+    "m": "{{m}} min",
+    "h": "{{h}} h",
+    "hm": "{{h}} h {{m}} min"
   }
 }

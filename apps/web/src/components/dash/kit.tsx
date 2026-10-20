@@ -36,6 +36,7 @@ export function Kpi({
   unit,
   delta: d,
   spark,
+  text,
 }: {
   i: number
   icon: LucideIcon
@@ -43,6 +44,8 @@ export function Kpi({
   label: string
   value: number
   unit: string
+  /** Shown instead of the number (e.g. "2 h 05 min"). */
+  text?: string
   delta?: { text: string; good: boolean | null; up: boolean | null }
   spark?: number[]
 }) {
@@ -84,7 +87,7 @@ export function Kpi({
         {label}
       </span>
       <span className="flex flex-wrap items-baseline gap-1.5 text-[26px] leading-none font-extrabold tracking-[-0.02em] tabular-nums sm:text-[32px]">
-        <CountUp value={value} />
+        {text ?? <CountUp value={value} />}
         <small className="text-ink-3 text-[14px] font-semibold">{unit}</small>
       </span>
       {d && (

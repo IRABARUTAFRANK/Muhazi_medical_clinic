@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { formatDuration } from '@/lib/duration'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Pill } from '@/components/dash/kit'
 import type { Tint } from '@/components/dash/kit-style'
@@ -97,7 +98,7 @@ export function LabOrderRow({
               o.orderedBy ? t('lab.orderedBy', { name: o.orderedBy }) : null,
               o.status === 'verified' || o.status === 'resulted'
                 ? null
-                : t('lab.waitingFor', { count: minutesSince(o.orderedAt, now) }),
+                : t('lab.waitingFor', { time: formatDuration(minutesSince(o.orderedAt, now), t) }),
             ]
               .filter(Boolean)
               .join(' · ')}

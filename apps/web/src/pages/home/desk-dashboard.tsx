@@ -60,6 +60,7 @@ import {
 import { onePerPool, openItems, useQueueBoard, type QueueItem } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
+import { formatDuration } from '@/lib/duration'
 import { cn } from '@/lib/utils'
 
 export type DeskRole = 'receptionist' | 'nurse'
@@ -288,7 +289,8 @@ function ReceptionTiles({ d }: { d: DeskSummary }) {
         tint="coral"
         label={t('dashboard.tiles.avgWait')}
         value={x.avgWaitMin}
-        unit={t('dashboard.units.min')}
+        text={formatDuration(x.avgWaitMin, t)}
+        unit=""
         delta={
           x.avgWaitMin > 30 ? { text: t('dashboard.queueLong'), good: false, up: true } : undefined
         }
@@ -369,7 +371,8 @@ function NurseTiles({ d }: { d: DeskSummary }) {
         tint="violet"
         label={t('desk.tiles.triageWait')}
         value={x.triageAvgWaitMin}
-        unit={t('dashboard.units.min')}
+        text={formatDuration(x.triageAvgWaitMin, t)}
+        unit=""
         delta={
           x.triageAvgWaitMin > 15
             ? { text: t('dashboard.queueLong'), good: false, up: true }
@@ -486,7 +489,7 @@ function StationsPanel({ d }: { d: DeskSummary }) {
                 </span>
                 <span className={cn('text-[12px]', hot ? 'text-red font-semibold' : 'text-ink-3')}>
                   {t('desk.busyShort', { count: s.busy })} ·{' '}
-                  {t('dashboard.avgShort', { min: s.minutes })}
+                  {t('dashboard.avgShort', { time: formatDuration(s.minutes, t) })}
                 </span>
               </div>
             )

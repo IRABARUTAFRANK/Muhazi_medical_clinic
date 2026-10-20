@@ -1,6 +1,7 @@
 import { Activity } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { formatDuration } from '@/lib/duration'
 import type { StaffUser } from '@mmc/shared'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { VitalsForm } from '@/components/clinical/vitals-form'
@@ -121,7 +122,7 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
                   )}
                   {q.priority === 1 && <Badge tone="red">{t('home.triage.red')}</Badge>}
                   <span className="text-ink-2 text-xs tabular-nums">
-                    {q.waitMin} {t('common.min')}
+                    {formatDuration(q.waitMin, t)}
                   </span>
                 </button>
               ))

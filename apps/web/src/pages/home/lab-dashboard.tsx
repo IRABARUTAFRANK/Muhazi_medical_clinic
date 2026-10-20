@@ -13,6 +13,7 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { formatDuration } from '@/lib/duration'
 import { formatTime, type StaffUser } from '@mmc/shared'
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { IdentityBanner } from '@/components/dash/identity-banner'
@@ -134,7 +135,8 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               tint="violet"
               label={t('lab.tiles.turnaround')}
               value={s.turnaroundMin}
-              unit={t('dashboard.units.min')}
+              text={formatDuration(s.turnaroundMin, t)}
+              unit=""
             />
           </div>
         )}

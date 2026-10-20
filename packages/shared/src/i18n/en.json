@@ -309,7 +309,7 @@
     "status": {
       "open": "Open now · closes {{closes}}",
       "closed": "Closed now · opens {{opens}}",
-      "wait": "current wait about {{wait}} min",
+      "wait": "current wait about {{time}}",
       "waiting": "{{count}} waiting now",
       "open24": "Open now · 24 hours a day"
     }
@@ -491,7 +491,7 @@
     "clinicClosed": "Clinic closed",
     "registerPatient": "Register patient",
     "queueLong": "long",
-    "avgShort": "avg {{min}} min",
+    "avgShort": "avg {{time}}",
     "noShowShort": "{{missed}} missed",
     "collectedTotal": "{{amount}} total",
     "loading": "Loading the live numbers…",
@@ -2438,8 +2438,6 @@
     "resultsGiven": "Results given today",
     "noneDone": "No result given yet today.",
     "orderedBy": "ordered by {{name}}",
-    "waitingFor_one": "waiting {{count}} min",
-    "waitingFor_other": "waiting {{count}} min",
     "status": {
       "ordered": "Waiting for sample",
       "collected": "Sample taken",
@@ -2462,7 +2460,8 @@
       "ordered": "Waiting for sample",
       "process": "In process",
       "resulted": "To verify"
-    }
+    },
+    "waitingFor": "waiting {{time}}"
   },
   "finance": {
     "desk": "Cash desk",
@@ -2820,5 +2819,10 @@
       "valueAtCost": "Value at cost",
       "by": "By"
     }
+  },
+  "duration": {
+    "m": "{{m}} min",
+    "h": "{{h}} h",
+    "hm": "{{h}} h {{m}} min"
   }
 }

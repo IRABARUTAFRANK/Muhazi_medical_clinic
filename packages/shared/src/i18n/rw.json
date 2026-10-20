@@ -297,7 +297,7 @@
     "status": {
       "open": "Turafunguye · dufunga {{closes}}",
       "closed": "Turafunze · dufungura {{opens}}",
-      "wait": "gutegereza hafi iminota {{wait}}",
+      "wait": "gutegereza hafi {{time}}",
       "open24": "Turafunguye · amasaha 24 ku munsi",
       "waiting": "{{count}} bategereje ubu"
     },
@@ -517,7 +517,7 @@
     "clinicClosed": "Ivuriro rirafunze",
     "registerPatient": "Andika umurwayi",
     "queueLong": "birebire",
-    "avgShort": "ugereranyije umun. {{min}}",
+    "avgShort": "ugereranyije {{time}}",
     "noShowShort": "{{missed}} ntibaje",
     "collectedTotal": "{{amount}} byose hamwe",
     "loading": "Imibare iri kuza…",
@@ -2447,8 +2447,6 @@
     "resultsGiven": "Ibisubizo byatanzwe uyu munsi",
     "noneDone": "Nta gisubizo cyatanzwe uyu munsi.",
     "orderedBy": "cyasabwe na {{name}}",
-    "waitingFor_one": "ategereje iminota {{count}}",
-    "waitingFor_other": "ategereje iminota {{count}}",
     "status": {
       "ordered": "Bategereje gufatwa",
       "collected": "Byafashwe",
@@ -2471,7 +2469,8 @@
       "ordered": "Bategereje gufatwa",
       "process": "Biri gukorwa",
       "resulted": "Byo kwemeza"
-    }
+    },
+    "waitingFor": "ategereje {{time}}"
   },
   "finance": {
     "desk": "Isanduku",
@@ -2829,5 +2828,10 @@
       "valueAtCost": "Agaciro ku giciro cyo kugura",
       "by": "Na"
     }
+  },
+  "duration": {
+    "m": "iminota {{m}}",
+    "h": "amasaha {{h}}",
+    "hm": "amasaha {{h}} n’iminota {{m}}"
   }
 }

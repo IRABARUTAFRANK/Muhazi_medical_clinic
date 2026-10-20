@@ -88,6 +88,7 @@ import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { useShowMore } from '@/lib/paging'
+import { formatDuration } from '@/lib/duration'
 import { cn } from '@/lib/utils'
 
 /* Figma: "Muhazi Clinic — Manager Dashboard v2". Tinted KPI chips, 16 px cards with a soft
@@ -262,7 +263,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 tint="coral"
                 label={t('dashboard.tiles.avgWait')}
                 value={data.tiles.avgWaitMin}
-                unit={t('dashboard.units.min')}
+                text={formatDuration(data.tiles.avgWaitMin, t)}
+                unit=""
                 delta={
                   data.tiles.avgWaitMin > 30
                     ? { text: t('dashboard.queueLong'), good: false, up: true }
@@ -440,7 +442,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                                 aria-hidden="true"
                                 className="mr-0.5 inline align-[-1px]"
                               />
-                              {t('dashboard.avgShort', { min: s.minutes })}
+                              {t('dashboard.avgShort', { time: formatDuration(s.minutes, t) })}
                               {hot ? ` · ⚠ ${t('dashboard.queueLong')}` : ''}
                             </span>
                           </div>

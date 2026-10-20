@@ -76,6 +76,8 @@ const SHOTS = [
   ['lab', '/app/lab', 'lab'],
   ['bills', '/app/bills', 'cash'],
   ['payments', '/app/payments', 'cash'],
+  ['stock', '/app/stock', 'mgr'],
+  ['patient-visits', '/app/patient?id=p-1&tab=visits', 'mgr'],
 ]
 
 await mkdir(OUT, { recursive: true })

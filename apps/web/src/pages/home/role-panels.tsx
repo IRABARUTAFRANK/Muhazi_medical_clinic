@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
+import { formatDuration } from '@/lib/duration'
 import {
   formatRwf,
   type ApptStatus,
@@ -130,7 +131,7 @@ export function MyQueuePanel({
                       <span>{q.ageSex}</span>
                       <span className="inline-flex items-center gap-1">
                         <Hourglass size={12} aria-hidden="true" />
-                        {q.waitMin} {t('common.min')}
+                        {formatDuration(q.waitMin, t)}
                       </span>
                       {q.insurer && (
                         <span className="inline-flex items-center gap-1">

@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { formatDuration } from '@/lib/duration'
 import {
   CATEGORY_FILTERS,
   CLINIC,
@@ -458,7 +459,7 @@ function StatusPill({
     : t('landing.status.closed', { opens: status.opensAt ?? '' })
   const wait =
     status.open && status.avgWaitMin > 0
-      ? ` · ${t('landing.status.wait', { wait: status.avgWaitMin })}`
+      ? ` · ${t('landing.status.wait', { time: formatDuration(status.avgWaitMin, t) })}`
       : ''
   return (
     <span
