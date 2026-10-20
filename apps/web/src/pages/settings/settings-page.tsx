@@ -2,23 +2,27 @@ import { useState, type FormEvent } from 'react'
 import {
   ALargeSmall,
   Activity,
+  BedDouble,
   Building2,
   Check,
+  ClipboardList,
   Clock,
   LayoutDashboard,
   Settings,
+  ShieldCheck,
   UserPlus,
   Users,
+  type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DAY_KEYS, type ClinicHours, type DayKey, type StaffUser, type TimeSpan } from '@mmc/shared'
 import { IconChip } from '@/components/dash/kit'
+import { tintClass, type Tint } from '@/components/dash/kit-style'
 import { PageBanner } from '@/components/dash/page-banner'
 import { TextSizeControl } from '@/components/staff/text-size-control'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
-import { Select } from '@/components/ui/select'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useClinicSettings, useSaveClinicSettings, type ClinicSettings } from '@/lib/api/settings'
@@ -29,6 +33,26 @@ import { BedsCard } from './beds-card'
 import { LockCard } from './lock-card'
 import { OtpCard } from './otp-card'
 import { PatientFieldsCard } from './patient-fields-card'
+
+/** The settings are split into sections; one is shown at a time (remembered on this device). */
+type SectionId = 'clinic' | 'hours' | 'beds' | 'security' | 'patient' | 'display'
+const SECTIONS: { id: SectionId; icon: LucideIcon; tint: Tint }[] = [
+  { id: 'clinic', icon: Building2, tint: 'teal' },
+  { id: 'hours', icon: Clock, tint: 'amber' },
+  { id: 'beds', icon: BedDouble, tint: 'navy' },
+  { id: 'security', icon: ShieldCheck, tint: 'coral' },
+  { id: 'patient', icon: ClipboardList, tint: 'violet' },
+  { id: 'display', icon: ALargeSmall, tint: 'mint' },
+]
+const SECTION_KEY = 'mmc.settings.section'
+const readSection = (): SectionId => {
+  try {
+    const v = localStorage.getItem(SECTION_KEY) as SectionId | null
+    return v && SECTIONS.some((x) => x.id === v) ? v : 'clinic'
+  } catch {
+    return 'clinic'
+  }
+}
 
 type DayMode = 'closed' | 'allDay' | 'custom'
 const modeOf = (span?: TimeSpan): DayMode =>
@@ -51,8 +75,9 @@ const PROFILE_FIELDS = [
 type ProfileField = (typeof PROFILE_FIELDS)[number]
 
 /**
- * Clinic settings (manager): identity and contacts shown on the public site, opening hours
- * that drive "open now" and the booking calendar, and shortcuts to every part of the clinic.
+ * Clinic settings (manager), in sections chosen from a menu so the page stays short: identity
+ * and contacts, opening hours, beds and the price of a night, security (screen lock, sign-in
+ * code), patient file fields, and display (text size) with shortcuts.
  */
 export function SettingsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -62,6 +87,16 @@ export function SettingsPage({ user }: { user: StaffUser }) {
   const [draft, setDraft] = useState<ClinicSettings | null>(null)
   const [seededFrom, setSeededFrom] = useState<ClinicSettings | null>(null)
   const [saved, setSaved] = useState(false)
+  const [section, setSection] = useState<SectionId>(readSection)
+  const choose = (id: SectionId) => {
+    setSection(id)
+    setSaved(false)
+    try {
+      localStorage.setItem(SECTION_KEY, id)
+    } catch {
+      /* private window: not remembered */
+    }
+  }
 
   // Seed the editable draft from the loaded settings (state derived during render, no effect).
   if (data && seededFrom !== data && draft === null) {
@@ -97,53 +132,41 @@ export function SettingsPage({ user }: { user: StaffUser }) {
 
   const dayLabel = (k: DayKey) => dayNames.long[Number(k)] ?? k
 
+  const saveBar = (
+    <>
+      {save.error && (
+        <p
+          role="alert"
+          className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+        >
+          {t('settings.saveFailed', { message: save.error.message })}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" variant="primary" disabled={save.isPending}>
+          <Check size={16} aria-hidden="true" />
+          {save.isPending ? t('settings.saving') : t('settings.save')}
+        </Button>
+        {saved && !save.isPending && (
+          <span className="text-green inline-flex items-center gap-1 text-[13px] font-semibold">
+            <Check size={16} aria-hidden="true" />
+            {t('settings.savedNote')}
+          </span>
+        )}
+      </div>
+    </>
+  )
+
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="settings">
-      <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
         <PageBanner
           icon={Settings}
           tint="navy"
           title={t('settings.title')}
-          lead={t('settings.lead')}
+          lead={t('settings.leadShort')}
           user={user}
         />
-
-        {/* Everything the manager runs */}
-        <Card>
-          <CardHeader>
-            <span>{t('settings.manage.title')}</span>
-          </CardHeader>
-          <CardBody className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Shortcut
-              to="/app/dashboard"
-              icon={<LayoutDashboard size={18} />}
-              label={t('nav.dashboard')}
-            />
-            <Shortcut
-              to="/app/register"
-              icon={<UserPlus size={18} />}
-              label={t('register.title')}
-            />
-            <Shortcut to="/app/vitals" icon={<Activity size={18} />} label={t('triage.title')} />
-            <Shortcut to="/app/staff" icon={<Users size={18} />} label={t('staff.title')} />
-          </CardBody>
-        </Card>
-
-        {/* Text size of the staff screens on this device */}
-        <Card>
-          <CardHeader>
-            <span className="flex items-center gap-2.5">
-              <IconChip icon={ALargeSmall} tint="violet" />
-              {t('textSize.title')}
-            </span>
-          </CardHeader>
-          <CardBody className="gap-3">
-            <p className="text-ink-2 m-0 text-[14px]">{t('textSize.lead')}</p>
-            <div className="max-w-[520px]">
-              <TextSizeControl full />
-            </div>
-          </CardBody>
-        </Card>
 
         {error && (
           <p
@@ -154,114 +177,210 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           </p>
         )}
 
-        {draft && (
-          <form onSubmit={submit} className="flex flex-col gap-4">
-            <Card>
-              <CardHeader>
-                <span className="inline-flex items-center gap-2">
-                  <Building2 size={16} aria-hidden="true" />
-                  {t('settings.profile.title')}
-                </span>
-                <span className="text-ink-3 text-xs">{isLoading ? '…' : ''}</span>
-              </CardHeader>
-              <CardBody className="gap-3">
-                <p className="text-ink-2 m-0 text-[13px]">{t('settings.profile.lead')}</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {PROFILE_FIELDS.map((k) => (
-                    <Field
-                      key={k}
-                      label={t(`settings.profile.fields.${k}`)}
-                      value={String(draft.profile[k] ?? '')}
-                      onChange={(e) => setProfile(k, e.target.value)}
-                      type={
-                        k === 'email' ? 'email' : k === 'phone' || k === 'whatsapp' ? 'tel' : 'text'
-                      }
-                      required={k === 'name' || k === 'phone'}
-                    />
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <span className="inline-flex items-center gap-2">
-                  <Clock size={16} aria-hidden="true" />
-                  {t('settings.hours.title')}
-                </span>
-              </CardHeader>
-              <CardBody className="gap-3">
-                <p className="text-ink-2 m-0 text-[13px]">{t('settings.hours.lead')}</p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      for (const k of DAY_KEYS) setDay(k, 'allDay')
-                      setDay('lab', 'allDay')
-                    }}
+        <div className="pc:grid-cols-[280px_minmax(0,1fr)] grid grid-cols-1 items-start gap-5">
+          {/* Section menu: a column on PC, a scrolling row of tabs on tablets */}
+          <nav
+            aria-label={t('settings.title')}
+            className="bg-card shadow-card pc:sticky pc:top-0 pc:flex-col flex gap-1 overflow-x-auto rounded-[16px] p-2"
+          >
+            {SECTIONS.map((sec) => {
+              const on = section === sec.id
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  aria-current={on ? 'page' : undefined}
+                  onClick={() => choose(sec.id)}
+                  className={cn(
+                    'flex flex-none items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
+                    on ? 'bg-navy text-white' : 'text-ink hover:bg-hover',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'inline-flex size-9 flex-none items-center justify-center rounded-[10px]',
+                      on ? 'bg-white/15 text-white' : tintClass[sec.tint],
+                    )}
                   >
-                    {t('settings.hours.all247')}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      for (const k of DAY_KEYS)
-                        setDay(k, k === '0' ? 'closed' : 'custom', ['08:00', '17:00'])
-                      setDay('lab', 'custom', ['08:00', '17:00'])
-                    }}
-                  >
-                    {t('settings.hours.officeHours')}
-                  </Button>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {(['1', '2', '3', '4', '5', '6', '0'] as DayKey[]).map((k) => (
-                    <HoursRow
-                      key={k}
-                      label={dayLabel(k)}
-                      span={draft.hours.days[k]}
-                      onChange={(mode, span) => setDay(k, mode, span)}
-                    />
-                  ))}
-                  <HoursRow
-                    label={t('settings.hours.lab')}
-                    span={draft.hours.lab}
-                    onChange={(mode, span) => setDay('lab', mode, span)}
-                  />
-                </div>
-              </CardBody>
-            </Card>
+                    <sec.icon size={18} aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[14px] font-semibold whitespace-nowrap">
+                      {t(`settings.sections.${sec.id}.title`)}
+                    </span>
+                    <span
+                      className={cn(
+                        'pc:block hidden text-[12px] leading-snug',
+                        on ? 'text-white/75' : 'text-ink-3',
+                      )}
+                    >
+                      {t(`settings.sections.${sec.id}.hint`)}
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+          </nav>
 
-            {save.error && (
-              <p
-                role="alert"
-                className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-              >
-                {t('settings.saveFailed', { message: save.error.message })}
-              </p>
+          <div className="flex min-w-0 flex-col gap-4">
+            {section === 'clinic' && draft && (
+              <form onSubmit={submit} className="flex flex-col gap-4">
+                <Card className="anim-enter">
+                  <CardHeader>
+                    <span className="flex items-center gap-2.5">
+                      <IconChip icon={Building2} tint="teal" />
+                      {t('settings.profile.title')}
+                    </span>
+                    <span className="text-ink-3 text-xs">{isLoading ? '…' : ''}</span>
+                  </CardHeader>
+                  <CardBody className="gap-3">
+                    <p className="text-ink-2 m-0 text-[13px]">{t('settings.profile.lead')}</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {PROFILE_FIELDS.map((k) => (
+                        <Field
+                          key={k}
+                          label={t(`settings.profile.fields.${k}`)}
+                          value={String(draft.profile[k] ?? '')}
+                          onChange={(e) => setProfile(k, e.target.value)}
+                          type={
+                            k === 'email'
+                              ? 'email'
+                              : k === 'phone' || k === 'whatsapp'
+                                ? 'tel'
+                                : 'text'
+                          }
+                          required={k === 'name' || k === 'phone'}
+                        />
+                      ))}
+                    </div>
+                    {saveBar}
+                  </CardBody>
+                </Card>
+              </form>
             )}
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" variant="primary" size="lg" disabled={save.isPending}>
-                {save.isPending ? t('settings.saving') : t('settings.save')}
-              </Button>
-              {saved && !save.isPending && (
-                <span className="text-green inline-flex items-center gap-1 text-[13px] font-semibold">
-                  <Check size={16} aria-hidden="true" />
-                  {t('settings.savedNote')}
-                </span>
-              )}
-              <span className="text-ink-3 text-xs">
-                {t('settings.you', { id: user.staffId ?? '—', name: user.name })}
-              </span>
-            </div>
-          </form>
-        )}
 
-        <BedsCard />
-        <LockCard />
-        <OtpCard />
-        <PatientFieldsCard />
+            {section === 'hours' && draft && (
+              <form onSubmit={submit} className="flex flex-col gap-4">
+                <Card className="anim-enter">
+                  <CardHeader>
+                    <span className="flex items-center gap-2.5">
+                      <IconChip icon={Clock} tint="amber" />
+                      {t('settings.hours.title')}
+                    </span>
+                    <span className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          for (const k of DAY_KEYS) setDay(k, 'allDay')
+                          setDay('lab', 'allDay')
+                        }}
+                      >
+                        {t('settings.hours.all247')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          for (const k of DAY_KEYS)
+                            setDay(k, k === '0' ? 'closed' : 'custom', ['08:00', '17:00'])
+                          setDay('lab', 'custom', ['08:00', '17:00'])
+                        }}
+                      >
+                        {t('settings.hours.officeHours')}
+                      </Button>
+                    </span>
+                  </CardHeader>
+                  <CardBody className="gap-3">
+                    <p className="text-ink-2 m-0 text-[13px]">{t('settings.hours.lead')}</p>
+                    <div className="flex flex-col">
+                      <div className="text-ink-3 hidden grid-cols-[130px_180px_120px_120px] gap-2 pb-1 text-[12px] font-bold tracking-[.06em] uppercase sm:grid">
+                        <span>{t('settings.hours.day')}</span>
+                        <span>{t('settings.hours.mode')}</span>
+                        <span>{t('settings.hours.open')}</span>
+                        <span>{t('settings.hours.close')}</span>
+                      </div>
+                      {(['1', '2', '3', '4', '5', '6', '0'] as DayKey[]).map((k) => (
+                        <HoursRow
+                          key={k}
+                          label={dayLabel(k)}
+                          span={draft.hours.days[k]}
+                          onChange={(mode, span) => setDay(k, mode, span)}
+                        />
+                      ))}
+                      <HoursRow
+                        label={t('settings.hours.lab')}
+                        span={draft.hours.lab}
+                        onChange={(mode, span) => setDay('lab', mode, span)}
+                      />
+                    </div>
+                    {saveBar}
+                  </CardBody>
+                </Card>
+              </form>
+            )}
+
+            {section === 'beds' && <BedsCard />}
+
+            {section === 'security' && (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <LockCard />
+                <OtpCard />
+              </div>
+            )}
+
+            {section === 'patient' && <PatientFieldsCard />}
+
+            {section === 'display' && (
+              <>
+                <Card className="anim-enter">
+                  <CardHeader>
+                    <span className="flex items-center gap-2.5">
+                      <IconChip icon={ALargeSmall} tint="violet" />
+                      {t('textSize.title')}
+                    </span>
+                  </CardHeader>
+                  <CardBody className="gap-3">
+                    <p className="text-ink-2 m-0 text-[14px]">{t('textSize.leadSynced')}</p>
+                    <div className="max-w-[520px]">
+                      <TextSizeControl full />
+                    </div>
+                  </CardBody>
+                </Card>
+                <Card className="anim-enter">
+                  <CardHeader>
+                    <span className="flex items-center gap-2.5">
+                      <IconChip icon={LayoutDashboard} tint="teal" />
+                      {t('settings.manage.title')}
+                    </span>
+                  </CardHeader>
+                  <CardBody className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <Shortcut
+                      to="/app/dashboard"
+                      icon={<LayoutDashboard size={18} />}
+                      label={t('nav.dashboard')}
+                    />
+                    <Shortcut
+                      to="/app/register"
+                      icon={<UserPlus size={18} />}
+                      label={t('register.title')}
+                    />
+                    <Shortcut
+                      to="/app/vitals"
+                      icon={<Activity size={18} />}
+                      label={t('triage.title')}
+                    />
+                    <Shortcut to="/app/staff" icon={<Users size={18} />} label={t('staff.title')} />
+                  </CardBody>
+                </Card>
+              </>
+            )}
+
+            <p className="text-ink-3 m-0 text-xs">
+              {t('settings.you', { id: user.staffId ?? '—', name: user.name })}
+            </p>
+          </div>
+        </div>
       </main>
     </StaffShell>
   )
@@ -282,6 +401,10 @@ function Shortcut({ to, icon, label }: { to: string; icon: React.ReactNode; labe
   )
 }
 
+const control =
+  'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-lg border px-2.5 text-[14px] outline-none'
+
+/** One compact row per day: name, mode, and the hours when they are custom. */
 function HoursRow({
   label,
   span,
@@ -294,10 +417,11 @@ function HoursRow({
   const { t } = useTranslation()
   const mode = modeOf(span)
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 sm:grid-cols-[160px_180px_1fr]">
-      <span className="text-ink-2 pb-3 text-[13px] font-semibold">{label}</span>
-      <Select
-        label={t('settings.hours.mode')}
+    <div className="border-grid grid grid-cols-[110px_minmax(0,1fr)] items-center gap-2 border-b py-1.5 last:border-b-0 sm:grid-cols-[130px_180px_120px_120px]">
+      <span className="text-[14px] font-semibold">{label}</span>
+      <select
+        aria-label={`${label} · ${t('settings.hours.mode')}`}
+        className={control}
         value={mode}
         onChange={(e) => {
           const next = e.target.value as DayMode
@@ -308,22 +432,28 @@ function HoursRow({
         <option value="allDay">{t('settings.hours.allDay')}</option>
         <option value="custom">{t('settings.hours.custom')}</option>
         <option value="closed">{t('settings.hours.closed')}</option>
-      </Select>
-      {mode === 'custom' && span && (
-        <div className="col-span-2 flex gap-2 sm:col-span-1">
-          <Field
-            label={t('settings.hours.open')}
+      </select>
+      {mode === 'custom' && span ? (
+        <>
+          <input
             type="time"
+            aria-label={`${label} · ${t('settings.hours.open')}`}
+            className={cn(control, 'col-start-2 sm:col-start-auto')}
             value={span[0]}
             onChange={(e) => onChange('custom', [e.target.value, span[1]])}
           />
-          <Field
-            label={t('settings.hours.close')}
+          <input
             type="time"
+            aria-label={`${label} · ${t('settings.hours.close')}`}
+            className={cn(control, 'col-start-2 sm:col-start-auto')}
             value={span[1]}
             onChange={(e) => onChange('custom', [span[0], e.target.value])}
           />
-        </div>
+        </>
+      ) : (
+        <span className="text-ink-3 hidden text-[13px] sm:col-span-2 sm:block">
+          {mode === 'allDay' ? '00:00 – 24:00' : '—'}
+        </span>
       )}
     </div>
   )

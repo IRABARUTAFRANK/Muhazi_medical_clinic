@@ -8,6 +8,14 @@ const NOTICES: NavItem = {
   to: '/app/notifications',
 }
 
+/** Activity history: the manager's covers everyone, everybody else's their own work. */
+const HISTORY: NavItem = {
+  id: 'history',
+  labelKey: 'nav.history',
+  icon: 'history',
+  to: '/app/history',
+}
+
 /**
  * Manager rail (the dashboard is the manager's home page, doc §12.3). The manager runs the
  * whole clinic and can work at any station, so every operation has its own entry, in the
@@ -23,7 +31,7 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'id-card', to: '/app/staff' },
-  { id: 'history', labelKey: 'nav.history', icon: 'history', to: '/app/history' },
+  HISTORY,
   NOTICES,
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings', to: '/app/settings' },
 ]
@@ -37,6 +45,7 @@ export const RECEPTION_NAV: NavItem[] = [
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
+  HISTORY,
   NOTICES,
 ]
 
@@ -47,6 +56,7 @@ export const NURSE_NAV: NavItem[] = [
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
+  HISTORY,
   NOTICES,
 ]
 
@@ -58,4 +68,4 @@ export const navForUser = (user: StaffUser): NavItem[] =>
       ? RECEPTION_NAV
       : user.role === 'nurse'
         ? NURSE_NAV
-        : [...ROLE_HOME[user.role].nav, NOTICES]
+        : [...ROLE_HOME[user.role].nav, HISTORY, NOTICES]

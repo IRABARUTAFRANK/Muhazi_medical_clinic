@@ -87,7 +87,7 @@
     "triage": "Triage",
     "inClinic": "In clinic",
     "bookings": "Bookings",
-    "notifications": "Notices",
+    "notifications": "Notifications",
     "history": "History"
   },
   "roles": {
@@ -1155,7 +1155,8 @@
       "custom": "Custom hours",
       "closed": "Closed",
       "open": "Opens",
-      "close": "Closes"
+      "close": "Closes",
+      "day": "Day"
     },
     "save": "Save settings",
     "saving": "Saving…",
@@ -1230,6 +1231,33 @@
       "remove": "Remove",
       "occupiedNoRemove": "An occupied bed cannot be removed",
       "confirmRemove": "Remove {{name}}?"
+    },
+    "leadShort": "Everything you set for the clinic, in sections. Choose one on the left.",
+    "sections": {
+      "clinic": {
+        "title": "Clinic and contacts",
+        "hint": "Name, phones, address, licences"
+      },
+      "hours": {
+        "title": "Opening hours",
+        "hint": "Days, hours and the laboratory"
+      },
+      "beds": {
+        "title": "Beds and nightly price",
+        "hint": "How many beds, price of a night"
+      },
+      "security": {
+        "title": "Security",
+        "hint": "Screen lock, e-mailed sign-in code"
+      },
+      "patient": {
+        "title": "Patient file fields",
+        "hint": "Extra information to record"
+      },
+      "display": {
+        "title": "Display and shortcuts",
+        "hint": "Text size, quick links"
+      }
     }
   },
   "pin": {
@@ -1692,7 +1720,8 @@
     "lead": "Makes the text, icons and buttons of every staff screen bigger or smaller on this computer.",
     "normal": "Normal",
     "large": "Large",
-    "xlarge": "Extra large"
+    "xlarge": "Extra large",
+    "leadSynced": "Makes the text, icons and buttons bigger or smaller. Saved on your account, so every computer you sign in on looks the same."
   },
   "roleHome": {
     "section": {
@@ -1823,6 +1852,7 @@
       "diagnostic_report": "result",
       "internal_task": "task",
       "message": "message"
-    }
+    },
+    "leadOwn": "Everything you did, newest first: patients registered, vital signs, queue moves, treatments, payments, beds and your sign-ins."
   }
 }

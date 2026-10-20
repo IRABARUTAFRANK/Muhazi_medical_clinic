@@ -887,24 +887,28 @@ await step('temporary PIN readable by the manager only, deleted when the PIN cha
   if (left.rows.length !== 0) throw new Error('not deleted')
   return 'manager reads, receptionist not, gone after change'
 })
-await step('manager reads the activity history; preferences follow the person', async () => {
-  await as(staff.manager)
-  const h = (await one(`select activity_history(null, null, null, null, 50, 0) as h`)).h
-  if (!(h.total > 0) || !h.items[0].actor) throw new Error(`history ${h.total}`)
-  const groups = new Set(h.items.map((x) => x.group))
-  await as(staff.nurse)
-  await db.query(`select save_my_prefs('{"textSize":"xlarge","theme":"dim"}'::jsonb)`)
-  const p = (await one(`select my_prefs() as p`)).p
-  if (p.textSize !== 'xlarge') throw new Error('prefs')
-  let refused = false
-  try {
-    await db.query(`select activity_history()`)
-  } catch {
-    refused = true
-  }
-  if (!refused) throw new Error('nurse read the history')
-  return `${h.total} events (${[...groups].join(', ')}); nurse refused; prefs saved`
-})
+await step(
+  'history: manager sees all, a nurse only her own; preferences follow the person',
+  async () => {
+    await as(staff.manager)
+    const h = (await one(`select activity_history(null, null, null, null, 50, 0) as h`)).h
+    if (!(h.total > 0) || !h.items[0].actor) throw new Error(`history ${h.total}`)
+    const groups = new Set(h.items.map((x) => x.group))
+    await as(staff.nurse)
+    await db.query(`select save_my_prefs('{"textSize":"xlarge","theme":"dim"}'::jsonb)`)
+    const p = (await one(`select my_prefs() as p`)).p
+    if (p.textSize !== 'xlarge') throw new Error('prefs')
+    // 0033: a nurse sees her own activity only, even when asking for someone else's.
+    const own = (
+      await one(`select activity_history(null, null, $1, null, 200, 0) as h`, [staff.manager])
+    ).h
+    await asAdmin()
+    const nurseName = (await one(`select full_name from profiles where id = $1`, [staff.nurse]))
+      .full_name
+    if (own.items.some((x) => x.actor !== nurseName)) throw new Error('nurse saw others')
+    return `${h.total} events (${[...groups].join(', ')}); nurse sees own ${own.total}; prefs saved`
+  },
+)
 
 finish()
 

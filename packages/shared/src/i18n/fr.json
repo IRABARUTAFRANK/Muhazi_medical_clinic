@@ -87,7 +87,7 @@
     "triage": "Triage",
     "inClinic": "À la clinique",
     "bookings": "RDV",
-    "notifications": "Alertes",
+    "notifications": "Notifications",
     "history": "Historique"
   },
   "roles": {
@@ -1155,7 +1155,8 @@
       "custom": "Horaires personnalisés",
       "closed": "Fermé",
       "open": "Ouvre",
-      "close": "Ferme"
+      "close": "Ferme",
+      "day": "Jour"
     },
     "save": "Enregistrer les paramètres",
     "saving": "Enregistrement…",
@@ -1230,6 +1231,33 @@
       "remove": "Retirer",
       "occupiedNoRemove": "Un lit occupé ne peut pas être retiré",
       "confirmRemove": "Retirer {{name}} ?"
+    },
+    "leadShort": "Tout ce que vous réglez pour la clinique, par sections. Choisissez-en une à gauche.",
+    "sections": {
+      "clinic": {
+        "title": "Clinique et contacts",
+        "hint": "Nom, téléphones, adresse, licences"
+      },
+      "hours": {
+        "title": "Heures d’ouverture",
+        "hint": "Jours, heures et laboratoire"
+      },
+      "beds": {
+        "title": "Lits et prix de la nuit",
+        "hint": "Nombre de lits, prix d’une nuit"
+      },
+      "security": {
+        "title": "Sécurité",
+        "hint": "Verrouillage, code de connexion par e-mail"
+      },
+      "patient": {
+        "title": "Champs du dossier",
+        "hint": "Informations en plus à noter"
+      },
+      "display": {
+        "title": "Affichage et raccourcis",
+        "hint": "Taille du texte, liens rapides"
+      }
     }
   },
   "pin": {
@@ -1692,7 +1720,8 @@
     "lead": "Agrandit ou réduit le texte, les icônes et les boutons de tous les écrans du personnel sur cet ordinateur.",
     "normal": "Normale",
     "large": "Grande",
-    "xlarge": "Très grande"
+    "xlarge": "Très grande",
+    "leadSynced": "Agrandit ou réduit le texte, les icônes et les boutons. Enregistré sur votre compte : chaque ordinateur où vous vous connectez s’affiche pareil."
   },
   "roleHome": {
     "section": {
@@ -1823,6 +1852,7 @@
       "diagnostic_report": "résultat",
       "internal_task": "tâche",
       "message": "message"
-    }
+    },
+    "leadOwn": "Tout ce que vous avez fait, le plus récent d’abord : patients inscrits, signes vitaux, files d’attente, soins, paiements, lits et vos connexions."
   }
 }

@@ -59,6 +59,8 @@ const iso = (d: Date) => d.toISOString().slice(0, 10)
  */
 export function HistoryPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
+  // The manager sees everyone's work and can pick a person; everyone else sees their own.
+  const isManager = user.role === 'manager'
   const { data: employees = [] } = useEmployees()
   // "Now" is taken when the page opens; the list covers everything up to the end of today.
   const [nowMs] = useState(() => Date.now())
@@ -102,7 +104,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
           icon={History}
           tint="violet"
           title={t('history.title')}
-          lead={t('history.lead')}
+          lead={t(isManager ? 'history.lead' : 'history.leadOwn')}
           user={user}
           meta={
             <BannerChip icon={CalendarRange}>{t('history.count', { count: total })}</BannerChip>
@@ -150,19 +152,21 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                 />
               </>
             )}
-            <Select
-              label={t('history.person')}
-              value={actor}
-              onChange={(e) => setActor(e.target.value)}
-              wrapperClassName="w-64"
-            >
-              <option value="">{t('history.everyone')}</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.fullName} · {t(`staff.roles.${e.role}`)}
-                </option>
-              ))}
-            </Select>
+            {isManager && (
+              <Select
+                label={t('history.person')}
+                value={actor}
+                onChange={(e) => setActor(e.target.value)}
+                wrapperClassName="w-64"
+              >
+                <option value="">{t('history.everyone')}</option>
+                {employees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.fullName} · {t(`staff.roles.${e.role}`)}
+                  </option>
+                ))}
+              </Select>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {(['', ...HISTORY_GROUPS] as const).map((g) => {

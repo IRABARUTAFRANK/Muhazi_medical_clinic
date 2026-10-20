@@ -20,7 +20,7 @@ export function Rail({ nav, activeId, clock }: RailProps) {
   return (
     <nav
       aria-label={t('common.mainNav')}
-      className="pc:flex hidden w-[92px] flex-none flex-col items-center gap-2 bg-[linear-gradient(180deg,var(--mmc-navy),var(--mmc-navy-2))] px-3 py-4 text-white"
+      className="pc:flex hidden w-[120px] flex-none flex-col items-center gap-1.5 overflow-y-auto bg-[linear-gradient(180deg,var(--mmc-navy),var(--mmc-navy-2))] px-2.5 py-4 text-white"
     >
       {nav.map((n, i) => {
         const active = n.id === activeId
@@ -30,18 +30,18 @@ export function Rail({ nav, activeId, clock }: RailProps) {
             to={n.to}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'anim-enter flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-[14px] text-[10px] font-semibold text-white/70 no-underline transition-[background-color,color,transform] duration-150 hover:bg-white/10 hover:text-white focus-visible:ring-[3px] focus-visible:ring-white/40 focus-visible:outline-none active:scale-[0.97]',
+              'anim-enter flex min-h-[60px] w-[100px] flex-none flex-col items-center justify-center gap-1 rounded-[14px] px-1 py-1.5 text-[12px] leading-tight font-semibold text-white/70 no-underline transition-[background-color,color,transform] duration-150 hover:bg-white/10 hover:text-white focus-visible:ring-[3px] focus-visible:ring-white/40 focus-visible:outline-none active:scale-[0.97]',
               active && 'bg-white/15 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]',
             )}
             style={{ '--i': i } as React.CSSProperties}
           >
-            <Icon name={n.icon} size={20} />
-            <span className="max-w-full truncate px-1">{t(n.labelKey)}</span>
+            <Icon name={n.icon} size={22} />
+            <span className="max-w-full text-center break-words">{t(n.labelKey)}</span>
           </StaffLink>
         )
       })}
       <div className="flex-1" />
-      <div className="px-1 text-center text-[10px] leading-tight text-white/60 tabular-nums">
+      <div className="px-1 pt-2 text-center text-[11px] leading-tight text-white/60 tabular-nums">
         {clock}
       </div>
     </nav>

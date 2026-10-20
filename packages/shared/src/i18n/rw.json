@@ -939,7 +939,8 @@
       "open": "Dufungura",
       "close": "Dufunga",
       "lead": "Kuri buri munsi: amasaha 24, amasaha wihitiyemo cyangwa rirafunze. Laboratwari ifite amasaha yayo.",
-      "officeHours": "Mbe–Gnd 08:00–17:00, ku cyumweru harafunze"
+      "officeHours": "Mbe–Gnd 08:00–17:00, ku cyumweru harafunze",
+      "day": "Umunsi"
     },
     "save": "Bika igenamiterere",
     "saving": "Birabikwa…",
@@ -1014,6 +1015,33 @@
       "remove": "Kuraho",
       "occupiedNoRemove": "Igitanda kiriho umurwayi ntigikurwaho",
       "confirmRemove": "Gukuraho {{name}}?"
+    },
+    "leadShort": "Ibyo ugena byose ku ivuriro, mu bice. Hitamo kimwe ibumoso.",
+    "sections": {
+      "clinic": {
+        "title": "Ivuriro n’aho riboneka",
+        "hint": "Izina, telefoni, aderesi, impushya"
+      },
+      "hours": {
+        "title": "Amasaha y’akazi",
+        "hint": "Iminsi, amasaha na laboratwari"
+      },
+      "beds": {
+        "title": "Ibitanda n’igiciro cy’ijoro",
+        "hint": "Umubare w’ibitanda, igiciro cy’ijoro"
+      },
+      "security": {
+        "title": "Umutekano",
+        "hint": "Gufunga paji, kode yo kwinjira kuri e-mail"
+      },
+      "patient": {
+        "title": "Ibice bya dosiye",
+        "hint": "Andi makuru yo kwandika"
+      },
+      "display": {
+        "title": "Imigaragarire n’inzira ngufi",
+        "hint": "Ingano y’inyandiko, amahuza yihuse"
+      }
     }
   },
   "pin": {
@@ -1701,7 +1729,8 @@
     "lead": "Bituma inyandiko, utumenyetso n’utubuto twa buri paji y’abakozi biba binini cyangwa bito kuri iyi mudasobwa.",
     "normal": "Isanzwe",
     "large": "Nini",
-    "xlarge": "Nini cyane"
+    "xlarge": "Nini cyane",
+    "leadSynced": "Bituma inyandiko, utumenyetso n’utubuto biba binini cyangwa bito. Bibikwa kuri konti yawe, bityo buri mudasobwa winjiriraho igaragara kimwe."
   },
   "roleHome": {
     "section": {
@@ -1832,6 +1861,7 @@
       "diagnostic_report": "igisubizo",
       "internal_task": "umurimo",
       "message": "ubutumwa"
-    }
+    },
+    "leadOwn": "Ibyo wakoze byose, ibya vuba mbere: abarwayi wanditse, ibipimo, imirongo, ubuvuzi, ubwishyu, ibitanda no kwinjira kwawe."
   }
 }
