@@ -232,7 +232,11 @@ Deno.serve(async (req) => {
         // The profile row is created by a trigger; add the department placement.
         await admin
           .from('profiles')
-          .update({ department_id: a.department_id, position: a.position })
+          .update({
+            department_id: a.department_id,
+            position: a.position,
+            specialty: body.specialty?.trim() || null,
+          })
           .eq('id', data.user.id)
         const { data: created } = await admin
           .from('profiles')
@@ -289,7 +293,13 @@ Deno.serve(async (req) => {
         }
         const { error } = await admin
           .from('profiles')
-          .update({ ...a, full_name: body.full_name.trim(), username, email })
+          .update({
+            ...a,
+            full_name: body.full_name.trim(),
+            username,
+            email,
+            specialty: body.specialty?.trim() || null,
+          })
           .eq('id', body.user_id)
         if (error) return json(400, { error: error.message })
         await admin.auth.admin.updateUserById(body.user_id, {

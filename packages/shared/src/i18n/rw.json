@@ -673,7 +673,9 @@
       "department": "Ishami",
       "position": "Umwanya",
       "noDepartments": "Nta mashami ariho: yafungure mu gice cy’Amashami, hanyuma ushyiremo abakozi.",
-      "saveChanges": "Bika impinduka"
+      "saveChanges": "Bika impinduka",
+      "specialty": "Ubuhanga cyangwa umwanya",
+      "specialtyPh": "urugero: Kubaga bito, Abana, Umubyaza"
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -1225,7 +1227,8 @@
     "openFile": "Fungura dosiye",
     "page": "Urupapuro {{page}} kuri {{pages}}",
     "prev": "Urupapuro rubanza",
-    "next": "Urupapuro rukurikira"
+    "next": "Urupapuro rukurikira",
+    "forMe": "Abarwayi bagutegereje kuri {{station}}"
   },
   "file": {
     "back": "Subira ku barwayi",
@@ -1234,7 +1237,7 @@
     "editTitle": "Vugurura amakuru y'umurwayi",
     "saved": "Amakuru y'umurwayi yabitswe.",
     "startVisit": "Tangira uruzinduko",
-    "openVisit": "Fungura uruzinduko ruriho · {{station}}",
+    "openVisit": "Uruzinduko rw’uyu munsi · ubu ari kuri {{station}}",
     "visitStarted": "Uruzinduko rwatangiye. Nimero {{ticket}}, ari ku murongo wa {{station}}.",
     "allergiesLabel": "Allergies (ibyo umubiri wanga)",
     "allergiesPh": "urugero: Penisiline (uduheri), nta zizwi",
@@ -1610,6 +1613,31 @@
       "errors": {
         "name": "Ha umuti izina."
       }
+    },
+    "tools": {
+      "open": "Ibikoresho by’urutonde",
+      "title": "Ibikoresho by’urutonde",
+      "bulkTitle": "Ongera serivisi nyinshi mu ishami",
+      "bulkLead": "Imwe kuri buri murongo: izina, hanyuma igiciro nyuma ya “|” (urugero “Gukura iryinyo | 15000”). Amazina mu Kinyarwanda no mu Gifaransa aratangwa iyo azwi; uyahindure nyuma.",
+      "lines": "Serivisi (imwe kuri buri murongo)",
+      "linesPh": "Gusuzuma rusange | 8000\nGukura iryinyo | 15000\nIkizamini cya malariya | 2500",
+      "more_one": "indi {{count}}",
+      "more_other": "izindi {{count}}",
+      "bulkAdd_one": "Ongeraho serivisi {{count}}",
+      "bulkAdd_other": "Ongeraho serivisi {{count}}",
+      "bulkDone_one": "Serivisi {{count}} yongewe.",
+      "bulkDone_other": "Serivisi {{count}} zongewe.",
+      "moveTitle": "Imurira ubwoko bwose mu ishami",
+      "moveLead": "Buri serivisi y’ubu bwoko ijya mu ishami wahisemo.",
+      "move": "Imura",
+      "moveDone_one": "Serivisi {{count}} yimuwe.",
+      "moveDone_other": "Serivisi {{count}} zimuwe.",
+      "resetTitle": "Tangira bushya urutonde",
+      "resetLead": "Ikuraho serivisi zose n’ibiciro byazo kugira ngo wongere urutonde ukurikije amashami. Fagitire zamaze gukorwa zigumana imirongo yazo; imiti ntigirwaho.",
+      "typeDelete": "Andika DELETE wemeze",
+      "reset": "Siba serivisi zose",
+      "resetDone_one": "Serivisi {{count}} yasibwe. Urutonde ni ubusa.",
+      "resetDone_other": "Serivisi {{count}} zasibwe. Urutonde ni ubusa."
     }
   },
   "desk": {
@@ -2570,5 +2598,29 @@
     "addBreak": "Ongeraho ikiruhuko",
     "breakBetween": "Ikiruhuko {{from}}–{{to}}",
     "breakHint": "Ongeraho ikiruhuko kugira ngo umunsi ugabanywemo kabiri (urugero 12:00–14:00); nta gahunda ifatwa mu kiruhuko. Igihe cya gatatu gishoboka ku masaha y’umugoroba."
+  },
+  "journey": {
+    "show": "Reba ibyakozwe",
+    "hide": "Hisha ibisobanuro",
+    "arrived": "Yageze {{time}}",
+    "queuedAt": "ku murongo {{time}}",
+    "takenBy": "yakiriwe na {{name}} saa {{time}}",
+    "for": "kwa {{name}}",
+    "finishedAt": "byarangiye {{time}}",
+    "stillHere": "aracyari hano",
+    "referredBy": "Yoherejwe na {{name}}",
+    "closed": "Uruzinduko rwafunzwe {{time}}",
+    "vitals": "Ibipimo",
+    "diagnoses": "Indwara",
+    "medicines": "Imiti",
+    "noMedicines": "Nta muti wandikiwe.",
+    "givenInRoom": "yahawe mu cyumba na {{name}}",
+    "dispensed": "yafatiwe muri farumasi",
+    "toCollect": "izafatirwa muri farumasi",
+    "tests": "Ibizamini",
+    "noTests": "Nta kizamini cyasabwe.",
+    "charges": "Ibyishyujwe",
+    "total": "Igiteranyo {{amount}}",
+    "payments": "Ubwishyu"
   }
 }

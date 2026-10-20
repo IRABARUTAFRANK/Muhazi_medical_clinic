@@ -1247,6 +1247,60 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0041: journey, specialty, catalogue tools
+await step(
+  '0041: the journey of a visit lists desks, vitals, charges and payments in order',
+  async () => {
+    await asAdmin()
+    const enc = await one(
+      `select i.encounter_id as id from invoice i join payment p on p.invoice_id = i.id limit 1`,
+    )
+    await as(staff.receptionist)
+    const j = (await one(`select visit_journey($1) as j`, [enc.id])).j
+    await asAdmin()
+    if (!j.steps.length || !j.payments.length || !j.bill) throw new Error('journey incomplete')
+    return `${j.steps.length} desk step(s), ${j.vitals.length} vitals, ${j.charges.length} charge(s), ${j.payments.length} payment(s), bill ${j.bill.status}`
+  },
+)
+await step('0041: a specialty on the doctor shows on the calendar title', async () => {
+  await asAdmin()
+  await db.query(`update profiles set specialty = 'Minor surgery' where id = $1`, [staff.doctor])
+  const pr = await one(`select title from practitioner where user_id = $1`, [staff.doctor])
+  const dir = await one(`select specialty from staff_directory where id = $1`, [staff.doctor])
+  if (pr.title !== 'Minor surgery' || dir.specialty !== 'Minor surgery')
+    throw new Error('not synced')
+  return 'profile → calendar title synced'
+})
+await step('0041: bulk add into a department, move a type, then start over', async () => {
+  await as(staff.manager)
+  const n = (
+    await one(`select bulk_add_services($1, $2::jsonb) as n`, [
+      deptId,
+      JSON.stringify([
+        {
+          name_en: 'Wound dressing',
+          name_kin: 'Gupfuka igikomere',
+          name_fr: 'Pansement',
+          price: 2000,
+          group: 'nursing',
+        },
+        { name_en: 'Injection', price: 1000, group: 'nursing' },
+      ]),
+    ])
+  ).n
+  const moved = (await one(`select move_group_to_department('lab', $1) as n`, [deptId])).n
+  const before = await one(
+    `select count(*)::int as n from catalogue_services where department_id = $1`,
+    [deptId],
+  )
+  const gone = (await one(`select delete_all_services() as n`)).n
+  const after = await one(`select count(*)::int as n from catalogue_services`)
+  await asAdmin()
+  if (n !== 2 || before.n < 2 || after.n !== 0 || gone < 2)
+    throw new Error(`n=${n} before=${before.n} after=${after.n}`)
+  return `added 2, moved ${moved} lab tests, then deleted all ${gone}; catalogue empty`
+})
+
 finish()
 
 function finish() {

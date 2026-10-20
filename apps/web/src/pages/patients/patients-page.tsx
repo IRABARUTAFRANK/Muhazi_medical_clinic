@@ -12,6 +12,8 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { PATIENTS_PAGE_SIZE, ageSexOf, usePatientsList } from '@/lib/api/patients'
 import { navForUser } from '@/lib/nav'
+import { openItems, stationFor, useQueueBoard } from '@/lib/api/visits'
+import { MyQueuePanel } from '@/pages/home/role-panels'
 import { cn } from '@/lib/utils'
 
 /**
@@ -25,6 +27,9 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
   const { data, isFetching, error } = usePatientsList(query, page)
   const total = data?.total ?? 0
   const pages = Math.max(1, Math.ceil(total / PATIENTS_PAGE_SIZE))
+  // Patients sent to my desk: what needs my attention first.
+  const { data: queue = [] } = useQueueBoard(stationFor(user), user.role)
+  const mine = openItems(queue)
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="patients">
@@ -42,6 +47,19 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
             {t('register.title')}
           </StaffLink>
         </PageBanner>
+
+        {!['manager', 'receptionist'].includes(user.role) && (
+          <MyQueuePanel
+            title={t('patients.forMe', { station: t(`register.stations.${stationFor(user)}`) })}
+            rows={mine}
+            counts={{
+              waiting: mine.filter((r) => !r.startedAt).length,
+              inProgress: mine.filter((r) => r.startedAt).length,
+              done: 0,
+            }}
+            rowAction="open"
+          />
+        )}
 
         <Card className="anim-enter" style={{ '--i': 1 } as CSSProperties}>
           <CardBody>

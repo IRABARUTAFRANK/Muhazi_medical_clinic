@@ -258,6 +258,89 @@ export function useServiceBilling(from: string, to: string) {
   })
 }
 
+// ---------------------------------------------------------------- manager tools
+export function useCatalogueTools() {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: ['catalogue'] })
+  const bulkAdd = useMutation({
+    mutationFn: async (input: {
+      departmentId: string | null
+      items: {
+        name_en: string
+        name_kin?: string
+        name_fr?: string
+        price: number
+        group: ServiceGroup
+      }[]
+    }): Promise<number> => {
+      if (!supabase) {
+        for (const x of input.items)
+          sampleTreatments.push({
+            id: `t-${Math.random().toString(36).slice(2, 8)}`,
+            code: `TRT-${String(sampleTreatments.length + 1).padStart(4, '0')}`,
+            nameEn: x.name_en,
+            nameKin: x.name_kin || null,
+            nameFr: x.name_fr || null,
+            group: x.group,
+            bookingCategory: null,
+            cashPrice: x.price,
+            payerPrices: {},
+            maxDiscountPct: 0,
+            allowManualPrice: false,
+            active: true,
+            departmentId: input.departmentId,
+            departmentName: null,
+          })
+        return input.items.length
+      }
+      const { data, error } = await supabase.rpc('bulk_add_services', {
+        p_department_id: input.departmentId,
+        p_items: input.items,
+      })
+      if (error) throw new Error(error.message)
+      return Number(data)
+    },
+    onSuccess: refresh,
+  })
+  const moveGroup = useMutation({
+    mutationFn: async (input: {
+      group: ServiceGroup
+      departmentId: string | null
+    }): Promise<number> => {
+      if (!supabase) {
+        let n = 0
+        for (const t of sampleTreatments)
+          if (t.group === input.group) {
+            t.departmentId = input.departmentId
+            n++
+          }
+        return n
+      }
+      const { data, error } = await supabase.rpc('move_group_to_department', {
+        p_group: input.group,
+        p_department_id: input.departmentId,
+      })
+      if (error) throw new Error(error.message)
+      return Number(data)
+    },
+    onSuccess: refresh,
+  })
+  const deleteAll = useMutation({
+    mutationFn: async (): Promise<number> => {
+      if (!supabase) {
+        const n = sampleTreatments.length
+        sampleTreatments.splice(0, n)
+        return n
+      }
+      const { data, error } = await supabase.rpc('delete_all_services')
+      if (error) throw new Error(error.message)
+      return Number(data)
+    },
+    onSuccess: refresh,
+  })
+  return { bulkAdd, moveGroup, deleteAll }
+}
+
 // ---------------------------------------------------------------- medicines and supplies
 export interface Medicine {
   id: string

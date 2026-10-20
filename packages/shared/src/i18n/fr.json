@@ -669,7 +669,9 @@
       "department": "Service",
       "position": "Poste",
       "noDepartments": "Aucun service : créez-les dans l’onglet Services, puis placez-y les employés.",
-      "saveChanges": "Enregistrer"
+      "saveChanges": "Enregistrer",
+      "specialty": "Spécialité ou titre",
+      "specialtyPh": "ex. Petite chirurgie, Pédiatrie, Sage-femme"
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -1081,6 +1083,31 @@
       "errors": {
         "name": "Donnez un nom au médicament."
       }
+    },
+    "tools": {
+      "open": "Outils du catalogue",
+      "title": "Outils du catalogue",
+      "bulkTitle": "Ajouter plusieurs soins à un département",
+      "bulkLead": "Un par ligne : le nom, puis le prix après « | » (par exemple « Extraction dentaire | 15000 »). Les noms en kinyarwanda et en français sont proposés quand ils sont connus ; modifiez-les ensuite.",
+      "lines": "Soins (un par ligne)",
+      "linesPh": "Consultation générale | 8000\nExtraction dentaire | 15000\nTDR paludisme | 2500",
+      "more_one": "{{count}} de plus",
+      "more_other": "{{count}} de plus",
+      "bulkAdd_one": "Ajouter {{count}} soin",
+      "bulkAdd_other": "Ajouter {{count}} soins",
+      "bulkDone_one": "{{count}} soin ajouté.",
+      "bulkDone_other": "{{count}} soins ajoutés.",
+      "moveTitle": "Déplacer tout un type dans un département",
+      "moveLead": "Chaque soin de ce type passe dans le département choisi.",
+      "move": "Déplacer",
+      "moveDone_one": "{{count}} soin déplacé.",
+      "moveDone_other": "{{count}} soins déplacés.",
+      "resetTitle": "Repartir de zéro",
+      "resetLead": "Supprime tous les soins et leurs prix pour reconstruire la liste par département. Les factures déjà faites gardent leurs lignes ; les médicaments ne sont pas touchés.",
+      "typeDelete": "Tapez DELETE pour confirmer",
+      "reset": "Supprimer tous les soins",
+      "resetDone_one": "{{count}} soin supprimé. Le catalogue est vide.",
+      "resetDone_other": "{{count}} soins supprimés. Le catalogue est vide."
     }
   },
   "visit": {
@@ -1392,7 +1419,8 @@
     "openFile": "Ouvrir",
     "page": "Page {{page}} sur {{pages}}",
     "prev": "Page précédente",
-    "next": "Page suivante"
+    "next": "Page suivante",
+    "forMe": "Patients qui vous attendent à {{station}}"
   },
   "file": {
     "back": "Retour aux patients",
@@ -1401,7 +1429,7 @@
     "editTitle": "Modifier les détails du patient",
     "saved": "Détails enregistrés.",
     "startVisit": "Démarrer une visite",
-    "openVisit": "Visite en cours · {{station}}",
+    "openVisit": "Visite du jour · maintenant à {{station}}",
     "visitStarted": "Visite démarrée. Ticket {{ticket}}, en attente au {{station}}.",
     "allergiesLabel": "Allergies",
     "allergiesPh": "ex. Pénicilline (éruption), aucune connue",
@@ -2561,5 +2589,29 @@
     "addBreak": "Ajouter une pause",
     "breakBetween": "Pause {{from}}–{{to}}",
     "breakHint": "Ajoutez une pause pour couper la journée (par exemple 12:00–14:00) ; aucun rendez-vous pendant la pause. Une troisième période est possible pour le soir."
+  },
+  "journey": {
+    "show": "Voir ce qui a été fait",
+    "hide": "Masquer le détail",
+    "arrived": "Arrivé {{time}}",
+    "queuedAt": "en file {{time}}",
+    "takenBy": "pris par {{name}} à {{time}}",
+    "for": "pour {{name}}",
+    "finishedAt": "terminé {{time}}",
+    "stillHere": "encore ici",
+    "referredBy": "Référé par {{name}}",
+    "closed": "Visite clôturée {{time}}",
+    "vitals": "Constantes",
+    "diagnoses": "Diagnostics",
+    "medicines": "Médicaments",
+    "noMedicines": "Aucun médicament prescrit.",
+    "givenInRoom": "donné en salle par {{name}}",
+    "dispensed": "retiré à la pharmacie",
+    "toCollect": "à retirer à la pharmacie",
+    "tests": "Examens",
+    "noTests": "Aucun examen demandé.",
+    "charges": "Facturé",
+    "total": "Total {{amount}}",
+    "payments": "Paiements"
   }
 }

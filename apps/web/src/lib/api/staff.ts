@@ -39,6 +39,8 @@ export interface Employee {
   departmentId: string | null
   departmentName: string | null
   position: Position
+  /** Specialty or title shown with the role ("Minor surgery", "Midwife"). */
+  specialty: string | null
   /** The temporary PIN the manager handed over, until the employee replaces it (managers only). */
   tempPin?: string | null
 }
@@ -61,6 +63,7 @@ export interface EmployeeInput {
   station?: string
   language?: DbLang
   phone?: string
+  specialty?: string
 }
 
 export const USERNAME_RE = /^[a-z0-9._-]{3,32}$/
@@ -122,6 +125,7 @@ export function suggestUsername(fullName: string, taken: ReadonlySet<string> = n
 const sampleDepartments: Department[] = []
 const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   id: u.id,
+  specialty: u.role === 'doctor' ? 'General practitioner' : null,
   staffId: u.staffId ?? null,
   email: u.email ?? null,
   username: u.username,
@@ -165,6 +169,7 @@ interface DirectoryRow {
   department_id: string | null
   department_name: string | null
   position: Position | null
+  specialty?: string | null
 }
 
 export function useEmployees() {
@@ -199,6 +204,7 @@ export function useEmployees() {
         departmentId: r.department_id,
         departmentName: r.department_name,
         position: r.position ?? 'member',
+        specialty: r.specialty ?? null,
       }))
     },
   })
@@ -252,6 +258,7 @@ const toBody = (e: EmployeeInput) => ({
   station: e.station?.trim() || null,
   language: e.language ?? 'kin',
   phone: e.phone?.trim() || null,
+  specialty: e.specialty?.trim() || null,
 })
 
 /**
@@ -289,6 +296,7 @@ export function useStaffActions() {
         sampleEmployees.push({
           id,
           staffId,
+          specialty: input.specialty?.trim() || null,
           email: input.email,
           username: input.username,
           fullName: input.fullName,
@@ -340,6 +348,7 @@ export function useStaffActions() {
             departmentId: input.departmentId,
             departmentName: dept?.name ?? null,
             position: input.position,
+            specialty: input.specialty?.trim() || null,
             station: input.station ?? null,
             language: input.language ?? 'kin',
             phone: input.phone ?? null,

@@ -15,6 +15,7 @@ import {
   Sparkles,
   Tag,
   Trash2,
+  Wrench,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -52,6 +53,7 @@ import {
   type Treatment,
 } from '@/lib/api/catalogue'
 import { suggestNames } from '@/lib/medical-glossary'
+import { CatalogueTools } from './catalogue-tools'
 import { MedicinesSection } from './medicines-section'
 import { useDepartmentActions, useDepartments, type Department } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
@@ -101,6 +103,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const [view, setView] = useState<'dept' | 'group'>('dept')
   const [presetDept, setPresetDept] = useState<string | null>(null)
   const [newDept, setNewDept] = useState<string | null>(null)
+  const [tools, setTools] = useState(false)
   const { data: departments = [] } = useDepartments()
   const deptActions = useDepartmentActions()
   const today = new Date()
@@ -291,11 +294,26 @@ export function PricesPage({ user }: { user: StaffUser }) {
             <FolderPlus size={18} aria-hidden="true" />
             {t('prices.dept.new')}
           </Button>
+          <Button onClick={() => setTools((v) => !v)}>
+            <Wrench size={18} aria-hidden="true" />
+            {t('prices.tools.open')}
+          </Button>
           <Button variant="primary" onClick={() => addTo(null)}>
             <Plus size={18} aria-hidden="true" />
             {t('prices.newTreatment')}
           </Button>
         </PageBanner>
+
+        {tools && (
+          <CatalogueTools
+            departments={departments}
+            onDone={(text) => {
+              setNotice(text)
+              setActionError(null)
+            }}
+            onClose={() => setTools(false)}
+          />
+        )}
 
         {newDept !== null && (
           <Card>

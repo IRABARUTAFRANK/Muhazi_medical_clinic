@@ -25,16 +25,17 @@ function usePlacement(user: StaffUser) {
     enabled: !!supabase,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase!
-        .from('profiles')
-        .select('position, department:department_id(name)')
-        .eq('id', user.id)
-        .maybeSingle()
+      const { data, error } = await supabase!.rpc('my_placement')
       if (error) throw error
-      const dept = data?.department as { name: string } | { name: string }[] | null | undefined
+      const d = (data ?? {}) as {
+        position?: Position
+        department?: string | null
+        specialty?: string | null
+      }
       return {
-        position: (data?.position ?? 'member') as Position,
-        department: (Array.isArray(dept) ? dept[0]?.name : dept?.name) ?? null,
+        position: (d.position ?? 'member') as Position,
+        department: d.department ?? null,
+        specialty: d.specialty ?? null,
       }
     },
   })
@@ -102,6 +103,7 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
             <RoleIcon size={14} aria-hidden="true" />
             {roleLabel(user, t)}
           </span>
+          {placement?.specialty && <Chip icon={Award}>{placement.specialty}</Chip>}
           {department && <Chip icon={Building2}>{department}</Chip>}
           {placement && position !== 'member' && (
             <Chip icon={Award}>{t(`staff.positions.${position}`)}</Chip>

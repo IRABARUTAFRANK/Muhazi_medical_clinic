@@ -307,6 +307,11 @@ export function StaffPage({ user }: { user: StaffUser }) {
                             <span className="min-w-[200px] flex-1">
                               <span className="block font-semibold">
                                 {e.fullName}
+                                {e.specialty && (
+                                  <span className="text-violet ml-2 text-xs font-semibold">
+                                    {e.specialty}
+                                  </span>
+                                )}
                                 {self && (
                                   <span className="text-ink-3 ml-2 text-xs font-medium">
                                     ({t('staff.you')})
@@ -576,6 +581,7 @@ function EmployeeForm({
   const [departmentId, setDepartmentId] = useState<string>(employee?.departmentId ?? '')
   const [position, setPosition] = useState<Position>(employee?.position ?? 'member')
   const [station, setStation] = useState(employee?.station ?? '')
+  const [specialty, setSpecialty] = useState(employee?.specialty ?? '')
   const [language, setLanguage] = useState<DbLang>(employee?.language ?? 'kin')
   const [pin, setPin] = useState(generatePin)
   const [error, setError] = useState<string | null>(null)
@@ -604,6 +610,7 @@ function EmployeeForm({
         station,
         language,
         phone,
+        specialty,
       },
       isNew ? pin : undefined,
     )
@@ -720,6 +727,13 @@ function EmployeeForm({
           )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Field
+              label={t('staff.form.specialty')}
+              value={specialty}
+              placeholder={t('staff.form.specialtyPh')}
+              onChange={(e) => setSpecialty(e.target.value)}
+              wrapperClassName="sm:col-span-3"
+            />
             <Field
               label={t('staff.form.station')}
               value={station}

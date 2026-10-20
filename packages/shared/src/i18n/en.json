@@ -669,7 +669,9 @@
       "department": "Department",
       "position": "Position",
       "noDepartments": "No departments yet: create them in the Departments tab, then place employees in them.",
-      "saveChanges": "Save changes"
+      "saveChanges": "Save changes",
+      "specialty": "Specialty or title",
+      "specialtyPh": "e.g. Minor surgery, Paediatrics, Midwife"
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -1081,6 +1083,31 @@
       "errors": {
         "name": "Give the medicine a name."
       }
+    },
+    "tools": {
+      "open": "Catalogue tools",
+      "title": "Catalogue tools",
+      "bulkTitle": "Add many treatments to a department",
+      "bulkLead": "One per line: the name, then the price after a “|” (for example “Tooth extraction | 15000”). Kinyarwanda and French names are suggested automatically where known; edit them afterwards.",
+      "lines": "Treatments (one per line)",
+      "linesPh": "General consultation | 8000\nTooth extraction | 15000\nMalaria RDT | 2500",
+      "more_one": "{{count}} more",
+      "more_other": "{{count}} more",
+      "bulkAdd_one": "Add {{count}} treatment",
+      "bulkAdd_other": "Add {{count}} treatments",
+      "bulkDone_one": "{{count}} treatment added.",
+      "bulkDone_other": "{{count}} treatments added.",
+      "moveTitle": "Move a whole type into a department",
+      "moveLead": "Every treatment of this type goes into the chosen department.",
+      "move": "Move",
+      "moveDone_one": "{{count}} treatment moved.",
+      "moveDone_other": "{{count}} treatments moved.",
+      "resetTitle": "Start the catalogue over",
+      "resetLead": "Removes every treatment and its prices so you can rebuild the list by department. Bills already made keep their lines; medicines are not touched.",
+      "typeDelete": "Type DELETE to confirm",
+      "reset": "Delete all treatments",
+      "resetDone_one": "{{count}} treatment deleted. The catalogue is empty.",
+      "resetDone_other": "{{count}} treatments deleted. The catalogue is empty."
     }
   },
   "visit": {
@@ -1392,7 +1419,8 @@
     "openFile": "Open file",
     "page": "Page {{page}} of {{pages}}",
     "prev": "Previous page",
-    "next": "Next page"
+    "next": "Next page",
+    "forMe": "Patients waiting for you at {{station}}"
   },
   "file": {
     "back": "Back to patients",
@@ -1401,7 +1429,7 @@
     "editTitle": "Update patient details",
     "saved": "Patient details saved.",
     "startVisit": "Start a visit",
-    "openVisit": "Open current visit · {{station}}",
+    "openVisit": "Today’s visit · now at {{station}}",
     "visitStarted": "Visit started. Ticket {{ticket}}, queued at {{station}}.",
     "allergiesLabel": "Allergies",
     "allergiesPh": "e.g. Penicillin (rash), none known",
@@ -2561,5 +2589,29 @@
     "addBreak": "Add a break",
     "breakBetween": "Break {{from}}–{{to}}",
     "breakHint": "Add a break to split the day (for example 12:00–14:00); patients cannot book during the break. A third period is possible for evening hours."
+  },
+  "journey": {
+    "show": "Show what was done",
+    "hide": "Hide the details",
+    "arrived": "Arrived {{time}}",
+    "queuedAt": "queued {{time}}",
+    "takenBy": "taken by {{name}} at {{time}}",
+    "for": "for {{name}}",
+    "finishedAt": "done {{time}}",
+    "stillHere": "still here",
+    "referredBy": "Referred by {{name}}",
+    "closed": "Visit closed {{time}}",
+    "vitals": "Vitals",
+    "diagnoses": "Diagnoses",
+    "medicines": "Medicines",
+    "noMedicines": "No medicine prescribed.",
+    "givenInRoom": "given in the room by {{name}}",
+    "dispensed": "collected at the pharmacy",
+    "toCollect": "to collect at the pharmacy",
+    "tests": "Tests",
+    "noTests": "No test ordered.",
+    "charges": "Charged",
+    "total": "Total {{amount}}",
+    "payments": "Payments"
   }
 }
