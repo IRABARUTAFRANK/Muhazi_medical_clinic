@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Activity, ArrowLeft, CheckCircle2, FolderOpen, Plus, Receipt, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FEATURES, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
+import { LeftButton } from '@/components/clinical/left-button'
 import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
@@ -157,6 +158,17 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                   <FolderOpen size={14} aria-hidden="true" />
                   {t('visit.patientFile')}
                 </StaffLink>
+                {!closed && (
+                  <LeftButton
+                    encounterId={encounterId}
+                    name={header.name}
+                    user={user}
+                    onDone={(m) => {
+                      setActionError(null)
+                      setDone(m)
+                    }}
+                  />
+                )}
               </CardBody>
               <CardBody className="border-border flex-row flex-wrap items-center gap-2 border-t">
                 {vitals.length === 0 ? (

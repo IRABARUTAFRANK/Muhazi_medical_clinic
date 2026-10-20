@@ -1530,6 +1530,63 @@ await step('0044: the doctor is told when the nurse has done the task', async ()
   return `doctor told: done by ${done.params.by}`
 })
 
+// ---------------------------------------------------------------- 0045: paid patients leave; "the patient has left"
+await step(
+  '0045: doctor finishes, cashier is paid → off the cashier and the visit closes',
+  async () => {
+    await as(staff.receptionist)
+    const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+    await as(staff.doctor)
+    const svc = await one(
+      `select id from service s where name_en = 'Check test A' and deleted_at is null`,
+    )
+    await db.query(`select add_charge($1, 'consultation', $2)`, [v.id, svc.id])
+    await db.query(`select add_diagnosis($1, 'Malaria', 'B54', 'primary', false)`, [v.id])
+    await db.query(`select finish_visit($1)`, [v.id])
+    await asAdmin()
+    const due = await one(`select invoice_balance(id) as b from invoice where encounter_id = $1`, [
+      v.id,
+    ])
+    await as(staff.cashier)
+    const r = (await one(`select take_payment($1, 'cash', $2) as r`, [v.id, due.b])).r
+    await asAdmin()
+    const e = await one(`select status from encounter where id = $1`, [v.id])
+    const q = await one(
+      `select count(*)::int as n from queue_entry where encounter_id = $1 and finished_at is null`,
+      [v.id],
+    )
+    if (!r.closed || e.status !== 'closed' || q.n !== 0)
+      throw new Error(JSON.stringify({ r, e, q }))
+    return `paid ${due.b} RWF → visit closed, nobody waiting`
+  },
+)
+await step(
+  '0045: "patient has left": refused while money is due, manager with a reason',
+  async () => {
+    await as(staff.receptionist)
+    const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+    await as(staff.doctor)
+    const svc = await one(
+      `select id from service s where name_en = 'Check test A' and deleted_at is null`,
+    )
+    await db.query(`select add_charge($1, 'consultation', $2)`, [v.id, svc.id])
+    await as(staff.receptionist)
+    let refused = false
+    try {
+      await db.query(`select end_visit($1)`, [v.id])
+    } catch (e) {
+      refused = /still due/.test(e.message)
+    }
+    await as(staff.manager)
+    await db.query(`select end_visit($1, 'left without paying, family will come')`, [v.id])
+    await asAdmin()
+    const e = await one(`select status, left_reason from encounter where id = $1`, [v.id])
+    if (!refused || e.status !== 'closed' || !e.left_reason)
+      throw new Error(JSON.stringify({ refused, e }))
+    return 'reception refused (money due); manager closed it with a reason'
+  },
+)
+
 finish()
 
 function finish() {

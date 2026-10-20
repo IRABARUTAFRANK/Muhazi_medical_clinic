@@ -10,6 +10,7 @@ import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { ListBar, ShowMore } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { LeftButton } from '@/components/clinical/left-button'
 import {
   STATIONS,
   openItems,
@@ -102,7 +103,9 @@ export function VisitsPage({ user }: { user: StaffUser }) {
             </CardHeader>
             <ShownRows
               items={pools}
-              render={(p) => <VisitRow key={p.item.poolId} item={p.item} desks={p.desks} />}
+              render={(p) => (
+                <VisitRow key={p.item.poolId} item={p.item} desks={p.desks} user={user} />
+              )}
             />
           </Card>
         )}
@@ -125,7 +128,10 @@ export function VisitsPage({ user }: { user: StaffUser }) {
                     })}
                   </span>
                 </CardHeader>
-                <ShownRows items={rows} render={(r) => <VisitRow key={r.queueId} item={r} />} />
+                <ShownRows
+                  items={rows}
+                  render={(r) => <VisitRow key={r.queueId} item={r} user={user} />}
+                />
               </Card>
             )
           })}
@@ -150,7 +156,15 @@ function ShownRows<T>({ items, render }: { items: T[]; render: (item: T) => Reac
   )
 }
 
-function VisitRow({ item: r, desks }: { item: QueueItem; desks?: Station[] }) {
+function VisitRow({
+  item: r,
+  desks,
+  user,
+}: {
+  item: QueueItem
+  desks?: Station[]
+  user: StaffUser
+}) {
   const { t } = useTranslation()
   return (
     <Row className="flex-wrap gap-x-3 gap-y-1 py-2">
@@ -205,6 +219,7 @@ function VisitRow({ item: r, desks }: { item: QueueItem; desks?: Station[] }) {
       >
         <FolderOpen size={14} aria-hidden="true" />
       </StaffLink>
+      <LeftButton encounterId={r.encounterId} name={r.name} user={user} compact />
     </Row>
   )
 }

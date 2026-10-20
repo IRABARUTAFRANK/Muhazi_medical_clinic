@@ -866,7 +866,7 @@
       "emergencyNote": "Emergency: the patient is first in the {{station}} queue.",
       "where": "The patient is saved in the patient register. Their visit is open and queued at triage (nurse station), where vitals are taken before the doctor.",
       "openFile": "Open patient file",
-      "openVisit": "Go to today’s visit",
+      "openVisit": "Work on this patient",
       "register": "Patient register",
       "takeVitals": "Take vitals now",
       "deskNote": "Ticket issued. The patient is queued at {{station}}.",
@@ -1440,7 +1440,7 @@
     "editTitle": "Update patient details",
     "saved": "Patient details saved.",
     "startVisit": "Start a visit",
-    "openVisit": "Today’s visit · now at {{station}}",
+    "openVisit": "Work on · now at {{station}}",
     "visitStarted": "Visit started. Ticket {{ticket}}, queued at {{station}}.",
     "allergiesLabel": "Allergies",
     "allergiesPh": "e.g. Penicillin (rash), none known",
@@ -1502,7 +1502,8 @@
     "noResults": "No test ordered for this patient yet.",
     "awaitingResult": "Waiting for result",
     "orderedBy": "ordered by {{name}}, {{when}}",
-    "resultBy": "result by {{name}}, {{when}}"
+    "resultBy": "result by {{name}}, {{when}}",
+    "seeVisit": "See the visit"
   },
   "clinical": {
     "title": "Clinical record",
@@ -1653,10 +1654,18 @@
     "none": "Nobody is in the clinic right now. Register a patient to start a visit.",
     "stationCount": "{{waiting}} waiting · {{busy}} being seen",
     "inProgress": "being seen",
-    "openVisit": "Today’s visit",
+    "openVisit": "Work on",
     "pooled": "Waiting for the first free doctor",
     "pooledHint": "shown once; any of these desks may take the patient",
-    "waiting": "waiting {{time}}"
+    "waiting": "waiting {{time}}",
+    "left": {
+      "button": "Patient has left",
+      "hint": "Closes the visit and takes the patient off every queue.",
+      "confirm": "{{name}} has left the clinic? The visit closes and the patient leaves every queue.",
+      "done": "{{name}} has left: the visit is closed.",
+      "due": "{{amount}} RWF is still due: take the payment first, or ask the manager.",
+      "reasonPrompt": "{{amount}} RWF is still due. Why does the patient leave without paying?"
+    }
   },
   "desk": {
     "today": "Today",

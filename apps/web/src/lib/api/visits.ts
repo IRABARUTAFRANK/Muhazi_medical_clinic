@@ -336,7 +336,21 @@ export function useVisitActions() {
     onSuccess: refresh,
   })
 
-  return { register, startVisit, recordVitals, sendFromTriage }
+  /** The patient has left: closes the visit and every queue entry (end_visit). With money
+   *  still due only the manager may do it, with a reason. */
+  const endVisit = useMutation({
+    mutationFn: async ({ encounterId, reason }: { encounterId: string; reason?: string }) => {
+      if (!supabase) return
+      const { error } = await supabase.rpc('end_visit', {
+        p_encounter_id: encounterId,
+        p_reason: reason || null,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+
+  return { register, startVisit, recordVitals, sendFromTriage, endVisit }
 }
 
 // ---------------------------------------------------------------- who measures

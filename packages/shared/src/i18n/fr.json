@@ -866,7 +866,7 @@
       "emergencyNote": "Urgence : le patient est premier dans la file {{station}}.",
       "where": "Le patient est enregistré dans le registre. Sa visite est ouverte et placée au triage (poste infirmier), où les constantes sont prises avant le médecin.",
       "openFile": "Ouvrir le dossier",
-      "openVisit": "Aller à la visite du jour",
+      "openVisit": "Traiter ce patient",
       "register": "Registre des patients",
       "takeVitals": "Prendre les constantes maintenant",
       "deskNote": "Ticket délivré. Le patient est dans la file {{station}}.",
@@ -1440,7 +1440,7 @@
     "editTitle": "Modifier les détails du patient",
     "saved": "Détails enregistrés.",
     "startVisit": "Démarrer une visite",
-    "openVisit": "Visite du jour · maintenant à {{station}}",
+    "openVisit": "Traiter · maintenant à {{station}}",
     "visitStarted": "Visite démarrée. Ticket {{ticket}}, en attente au {{station}}.",
     "allergiesLabel": "Allergies",
     "allergiesPh": "ex. Pénicilline (éruption), aucune connue",
@@ -1502,7 +1502,8 @@
     "noResults": "Aucun examen demandé pour ce patient.",
     "awaitingResult": "En attente du résultat",
     "orderedBy": "demandé par {{name}}, {{when}}",
-    "resultBy": "résultat par {{name}}, {{when}}"
+    "resultBy": "résultat par {{name}}, {{when}}",
+    "seeVisit": "Voir la visite"
   },
   "clinical": {
     "title": "Dossier clinique",
@@ -1653,10 +1654,18 @@
     "none": "Personne à la clinique pour l'instant. Enregistrez un patient pour ouvrir une visite.",
     "stationCount": "{{waiting}} en attente · {{busy}} en cours",
     "inProgress": "en cours",
-    "openVisit": "Visite du jour",
+    "openVisit": "Traiter",
     "pooled": "En attente du premier médecin libre",
     "pooledHint": "affiché une fois ; n’importe lequel de ces postes peut le prendre",
-    "waiting": "attend depuis {{time}}"
+    "waiting": "attend depuis {{time}}",
+    "left": {
+      "button": "Le patient est parti",
+      "hint": "Clôt la visite et retire le patient de toutes les files.",
+      "confirm": "{{name}} a quitté la clinique ? La visite se clôt et le patient sort de toutes les files.",
+      "done": "{{name}} est parti : la visite est clôturée.",
+      "due": "{{amount}} RWF restent dus : encaissez d’abord, ou demandez au gérant.",
+      "reasonPrompt": "{{amount}} RWF restent dus. Pourquoi le patient part-il sans payer ?"
+    }
   },
   "desk": {
     "today": "Aujourd'hui",

@@ -859,7 +859,7 @@
       "title": "Umurwayi yanditswe",
       "where": "Umurwayi yabitswe mu gitabo cy'abarwayi. Uruzinduko rwe rurafunguye kandi ari ku murongo wo gufatirwa ibipimo (ku muforomo), mbere yo kujya kwa muganga.",
       "openFile": "Fungura dosiye y'umurwayi",
-      "openVisit": "Jya ku ruzinduko rw’uyu munsi",
+      "openVisit": "Kwita kuri uyu murwayi",
       "register": "Igitabo cy'abarwayi",
       "takeVitals": "Fata ibipimo ubu",
       "triageNote": "Nimero yatanzwe. Umurwayi ajya gufatirwa ibipimo, hanyuma akajya aho agomba kuvurirwa.",
@@ -1248,7 +1248,7 @@
     "editTitle": "Vugurura amakuru y'umurwayi",
     "saved": "Amakuru y'umurwayi yabitswe.",
     "startVisit": "Tangira uruzinduko",
-    "openVisit": "Uruzinduko rw’uyu munsi · ubu ari kuri {{station}}",
+    "openVisit": "Mwiteho · ubu ari kuri {{station}}",
     "visitStarted": "Uruzinduko rwatangiye. Nimero {{ticket}}, ari ku murongo wa {{station}}.",
     "allergiesLabel": "Allergies (ibyo umubiri wanga)",
     "allergiesPh": "urugero: Penisiline (uduheri), nta zizwi",
@@ -1310,7 +1310,8 @@
     "noResults": "Nta suzuma ryasabiwe uyu murwayi.",
     "awaitingResult": "Bategereje igisubizo",
     "orderedBy": "byasabwe na {{name}}, {{when}}",
-    "resultBy": "igisubizo cyatanzwe na {{name}}, {{when}}"
+    "resultBy": "igisubizo cyatanzwe na {{name}}, {{when}}",
+    "seeVisit": "Reba uruzinduko"
   },
   "clinical": {
     "title": "Inyandiko z'ubuvuzi",
@@ -1461,10 +1462,18 @@
     "none": "Nta murwayi uri mu ivuriro ubu. Andika umurwayi kugira ngo utangire uruzinduko.",
     "stationCount": "{{waiting}} bategereje · {{busy}} bari kwakirwa",
     "inProgress": "ari kwakirwa",
-    "openVisit": "Uruzinduko rw’uyu munsi",
+    "openVisit": "Mwiteho",
     "pooled": "Bategereje muganga wa mbere ubonetse",
     "pooledHint": "agaragara rimwe; aho ari ho hose muri aha hashobora kumwakira",
-    "waiting": "amaze gutegereza {{time}}"
+    "waiting": "amaze gutegereza {{time}}",
+    "left": {
+      "button": "Umurwayi yagiye",
+      "hint": "Bifunga uruzinduko kandi bikura umurwayi ku mirongo yose.",
+      "confirm": "{{name}} yavuye mu ivuriro? Uruzinduko rurafungwa kandi umurwayi akurwa ku mirongo yose.",
+      "done": "{{name}} yagiye: uruzinduko rwafunzwe.",
+      "due": "Hasigaye kwishyurwa {{amount}} RWF: banza wakire ubwishyu, cyangwa ubaze umuyobozi.",
+      "reasonPrompt": "Hasigaye kwishyurwa {{amount}} RWF. Kuki umurwayi agiye atishyuye?"
+    }
   },
   "prices": {
     "search": "Shakisha ubuvuzi",

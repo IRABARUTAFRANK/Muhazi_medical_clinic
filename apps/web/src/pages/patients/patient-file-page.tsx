@@ -993,7 +993,7 @@ function ResultsCard({ patientId }: { patientId: string }) {
                   search={{ encounter: r.encounterId }}
                   className={buttonVariants({ size: 'sm' })}
                 >
-                  {t('visits.openVisit')}
+                  {t('file.seeVisit')}
                 </StaffLink>
               </Row>
             ))
