@@ -470,12 +470,14 @@
       "today": "Aujourd'hui",
       "week": "Cette semaine",
       "month": "Ce mois",
-      "custom": "Personnalisé"
+      "custom": "Personnalisé",
+      "all": "Depuis le début"
     },
     "rangeLabels": {
       "week": "{{from}} – {{to}}",
       "month": "{{from}} – {{to}}",
-      "custom": "Période personnalisée"
+      "custom": "Période personnalisée",
+      "all": "Depuis le début · jusqu’au {{to}}"
     },
     "viewAs": "Voir comme : {{role}}",
     "roleFilter": "Filtre de rôle",
@@ -504,7 +506,9 @@
     "period": {
       "today": "aujourd'hui",
       "week": "cette semaine",
-      "month": "ce mois"
+      "month": "ce mois",
+      "all": "depuis le début",
+      "custom": "sur cette période"
     },
     "vsPrevious": "{{change}} vs période préc.",
     "queueNow": "File actuelle · attente par poste",
@@ -552,7 +556,8 @@
       "avgWait": "Temps d'attente moyen",
       "revenue": "Recettes du jour",
       "openBills": "Factures ouvertes",
-      "beds": "Lits occupés"
+      "beds": "Lits occupés",
+      "revenuePeriod": "Recettes"
     },
     "units": {
       "today": "aujourd'hui",
@@ -608,7 +613,11 @@
     "byInsurer": "par assureur",
     "claimsCount": "{{count}} factures",
     "may": "Mai",
-    "oct": "oct."
+    "oct": "oct.",
+    "custom": {
+      "month": "Un mois",
+      "or": "ou des dates"
+    }
   },
   "placeholder": {
     "title": "{{screen}}",

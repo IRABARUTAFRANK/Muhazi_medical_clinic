@@ -470,12 +470,14 @@
       "today": "Today",
       "week": "This week",
       "month": "This month",
-      "custom": "Custom"
+      "custom": "Custom",
+      "all": "All time"
     },
     "rangeLabels": {
       "week": "{{from}} – {{to}}",
       "month": "{{from}} – {{to}}",
-      "custom": "Custom range"
+      "custom": "Custom range",
+      "all": "Since the start · up to {{to}}"
     },
     "viewAs": "View as: {{role}}",
     "roleFilter": "Role filter",
@@ -504,7 +506,9 @@
     "period": {
       "today": "today",
       "week": "this week",
-      "month": "this month"
+      "month": "this month",
+      "all": "all time",
+      "custom": "in this period"
     },
     "vsPrevious": "{{change}} vs last period",
     "queueNow": "Queue now · waiting time per station",
@@ -552,7 +556,8 @@
       "avgWait": "Average waiting time",
       "revenue": "Revenue today",
       "openBills": "Open bills",
-      "beds": "Beds occupied"
+      "beds": "Beds occupied",
+      "revenuePeriod": "Revenue"
     },
     "units": {
       "today": "today",
@@ -608,7 +613,11 @@
     "byInsurer": "by insurer",
     "claimsCount": "{{count}} claims",
     "may": "May",
-    "oct": "Oct"
+    "oct": "Oct",
+    "custom": {
+      "month": "A month",
+      "or": "or dates"
+    }
   },
   "placeholder": {
     "title": "{{screen}}",

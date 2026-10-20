@@ -19,7 +19,14 @@ import { supabase } from '@/lib/supabase'
  * Manager dashboard numbers, computed by `dashboard_summary(from, to)` in the database.
  * Money fields are null for heads of station. Sample mode uses the design's figures.
  */
-export type DashboardRange = 'today' | 'week' | 'month'
+export type DashboardRange = 'today' | 'week' | 'month' | 'all' | 'custom'
+/** A chosen period (custom range): ISO dates, both included. */
+export interface CustomRange {
+  from: string
+  to: string
+}
+/** "All time" starts here (before the clinic's first record). */
+export const ALL_TIME_FROM = '2020-01-01'
 
 export interface DashboardData {
   from: string
@@ -68,8 +75,19 @@ export interface DashboardData {
 const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-export function rangeDates(range: DashboardRange, now = new Date()): { from: Date; to: Date } {
+const parseDay = (s: string) => {
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y!, (m ?? 1) - 1, d ?? 1)
+}
+
+export function rangeDates(
+  range: DashboardRange,
+  now = new Date(),
+  custom?: CustomRange | null,
+): { from: Date; to: Date } {
   if (range === 'today') return { from: now, to: now }
+  if (range === 'all') return { from: parseDay(ALL_TIME_FROM), to: now }
+  if (range === 'custom' && custom) return { from: parseDay(custom.from), to: parseDay(custom.to) }
   if (range === 'week') {
     const monday = addDays(now, -((now.getDay() + 6) % 7))
     return { from: monday, to: addDays(monday, 6) }
@@ -89,8 +107,13 @@ const METHOD_LABEL: Record<string, string> = {
 }
 export const methodLabel = (m: string) => METHOD_LABEL[m] ?? m
 
-function sample(range: DashboardRange, manager: boolean, now: Date): DashboardData {
-  const { from, to } = rangeDates(range, now)
+function sample(
+  range: DashboardRange,
+  manager: boolean,
+  now: Date,
+  custom?: CustomRange | null,
+): DashboardData {
+  const { from, to } = rangeDates(range, now, custom)
   return {
     from: iso(from),
     to: iso(to),
@@ -133,14 +156,14 @@ function sample(range: DashboardRange, manager: boolean, now: Date): DashboardDa
   }
 }
 
-export function useDashboard(range: DashboardRange, manager: boolean) {
+export function useDashboard(range: DashboardRange, manager: boolean, custom?: CustomRange | null) {
   return useQuery({
-    queryKey: ['dashboard', range],
+    queryKey: ['dashboard', range, range === 'custom' ? custom : null],
     refetchInterval: 60_000,
     queryFn: async (): Promise<DashboardData> => {
       const now = new Date()
-      if (!supabase) return sample(range, manager, now)
-      const { from, to } = rangeDates(range, now)
+      if (!supabase) return sample(range, manager, now, custom)
+      const { from, to } = rangeDates(range, now, custom)
       const { data, error } = await supabase.rpc('dashboard_summary', {
         p_from: iso(from),
         p_to: iso(to),

@@ -477,7 +477,8 @@
       "today": "Uyu munsi",
       "week": "Iki cyumweru",
       "month": "Uku kwezi",
-      "custom": "Hitamo"
+      "custom": "Hitamo igihe",
+      "all": "Kuva mu ntangiriro"
     },
     "sections": {
       "today": "Imibare y'uyu munsi",
@@ -494,14 +495,16 @@
       "revenue": "Amafaranga yinjiye uyu munsi",
       "openBills": "Fagitire zitarishyurwa",
       "beds": "Ibitanda birimo abantu",
-      "visits": "Ingendo"
+      "visits": "Ingendo",
+      "revenuePeriod": "Amafaranga yinjiye"
     },
     "subtitle": "{{town}} · {{range}} · byavuguruwe {{time}}",
     "dateRange": "Igihe",
     "rangeLabels": {
       "week": "{{from}} – {{to}}",
       "month": "{{from}} – {{to}}",
-      "custom": "Igihe wihitiyemo"
+      "custom": "Igihe wihitiyemo",
+      "all": "Kuva mu ntangiriro · kugeza ku wa {{to}}"
     },
     "viewAs": "Reba nka: {{role}}",
     "roleFilter": "Hitamo uruhare",
@@ -530,7 +533,9 @@
     "period": {
       "today": "uyu munsi",
       "week": "iki cyumweru",
-      "month": "uku kwezi"
+      "month": "uku kwezi",
+      "all": "kuva mu ntangiriro",
+      "custom": "muri iki gihe"
     },
     "vsPrevious": "{{change}} ugereranyije n'igihe gishize",
     "queueNow": "Umurongo ubu · igihe cyo gutegereza kuri buri serivisi",
@@ -617,7 +622,11 @@
     "byInsurer": "ku bwishingizi",
     "claimsCount": "Ubusabe {{count}}",
     "may": "Gicurasi",
-    "oct": "Ukwakira"
+    "oct": "Ukwakira",
+    "custom": {
+      "month": "Ukwezi",
+      "or": "cyangwa amatariki"
+    }
   },
   "staff": {
     "title": "Abakozi",
