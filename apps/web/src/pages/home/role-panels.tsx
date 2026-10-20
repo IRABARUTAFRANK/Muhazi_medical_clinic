@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import {
   AlarmClock,
+  ArrowRightLeft,
   BedDouble,
   CalendarCheck,
   CalendarDays,
@@ -76,7 +77,14 @@ export function MyQueuePanel({
   rowAction,
 }: {
   title: string
-  rows: (QueueRow & { queueId?: string; poolId?: string | null; takenBy?: string | null })[]
+  rows: (QueueRow & {
+    queueId?: string
+    poolId?: string | null
+    takenBy?: string | null
+    referredBy?: string | null
+    referralNote?: string | null
+    assignedName?: string | null
+  })[]
   counts: QueueCounts
   rowAction: 'open' | 'call'
 }) {
@@ -132,6 +140,16 @@ export function MyQueuePanel({
                         <span className="text-violet inline-flex items-center gap-1 font-semibold">
                           <Users size={12} aria-hidden="true" />
                           {t('home.sharedQueue')}
+                        </span>
+                      )}
+                      {q.referredBy && (
+                        <span
+                          className="text-violet inline-flex items-center gap-1 font-semibold"
+                          title={q.referralNote ?? undefined}
+                        >
+                          <ArrowRightLeft size={12} aria-hidden="true" />
+                          {t('refer.from', { name: q.referredBy })}
+                          {q.assignedName ? ` → ${q.assignedName}` : ''}
                         </span>
                       )}
                       {q.takenBy && (

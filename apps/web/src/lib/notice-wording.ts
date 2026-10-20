@@ -37,6 +37,25 @@ export function useWording() {
           body: desks.map((d) => t(`register.stations.${d}`, { defaultValue: d })).join(', '),
         }
       }
+      case 'referral': {
+        // A colleague handed the patient over: who, why, and whether they want the patient back.
+        const desk = t(`register.stations.${p.station}`, { defaultValue: p.station ?? '' })
+        return {
+          title: t('notify.referral', {
+            ticket: p.ticket ?? '',
+            name: p.name ?? '',
+            by: p.by ?? '',
+            desk,
+          }),
+          body:
+            [
+              p.note ? `“${p.note}”` : null,
+              (p.back as unknown) === true ? t('notify.referralBack') : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || null,
+        }
+      }
       case 'task':
         return {
           title: t('notify.task', { title: p.title ?? '' }),

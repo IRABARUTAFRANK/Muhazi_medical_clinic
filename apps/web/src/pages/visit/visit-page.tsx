@@ -1,20 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
-import {
-  Activity,
-  ArrowLeft,
-  FolderOpen,
-  Plus,
-  Receipt,
-  Send,
-  Stethoscope,
-  Trash2,
-  Wallet,
-} from 'lucide-react'
+import { Activity, ArrowLeft, FolderOpen, Plus, Receipt, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FEATURES, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
-import { StationGlyph } from '@/components/dash/kit'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -33,15 +22,13 @@ import {
   type VisitBill,
 } from '@/lib/api/billing'
 import { treatmentName, useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
-import { TREATING_STATIONS, stationFor, type Station } from '@/lib/api/visits'
+import { stationFor, type Station } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { resolveAdjust, type AdjustMode } from '@/lib/adjust'
 import { AdjustField } from '@/components/ui/adjust-field'
 import { ClinicalCard } from './clinical-card'
-
-/** Desks where doctors see patients: "any available doctor" puts the patient in all of them. */
-const DOCTOR_DESKS: Station[] = ['consultation', 'dental', 'theatre']
+import { WhereNextCard } from './where-next-card'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -60,7 +47,6 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const { data: insurers = [] } = useInsurers(true)
   const actions = useBillingActions(encounterId)
   const [member, setMember] = useState('')
-  const [picked, setPicked] = useState<Station[]>([])
   const [actionError, setActionError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
   const isManagerNav = user.role === 'manager' || user.dashboard === 'manager'
@@ -106,25 +92,6 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
       setActionError(describe(e))
     }
   }
-
-  const sendOn = async (targets: Station[]) => {
-    if (targets.length === 0) return
-    setActionError(null)
-    try {
-      if (targets.length === 1)
-        await actions.finishStation.mutateAsync({ station: myStation, next: targets[0]! })
-      else await actions.sendTo.mutateAsync({ station: myStation, next: targets })
-      setPicked([])
-      setDone(
-        t(targets.length === 1 ? 'visit.sent' : 'visit.sentMany', {
-          station: targets.map((x) => t(`register.stations.${x}`)).join(', '),
-        }),
-      )
-    } catch (e) {
-      setActionError(describe(e))
-    }
-  }
-  const sending = actions.finishStation.isPending || actions.sendTo.isPending
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="visits">
@@ -384,6 +351,16 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                       )}
                     </CardBody>
                   </Card>
+                  <WhereNextCard
+                    encounterId={encounterId}
+                    myStation={myStation}
+                    isReception={isReception}
+                    onDone={(m) => {
+                      setActionError(null)
+                      setDone(m)
+                    }}
+                    onError={setActionError}
+                  />
                 </div>
               )}
 
@@ -427,85 +404,18 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                   />
                 )}
 
-                {/* Send on */}
-                <Card>
-                  <CardHeader>
-                    <span className="inline-flex items-center gap-2">
-                      <Send size={16} aria-hidden="true" />
-                      {t('visit.next.title')}
-                    </span>
-                  </CardHeader>
-                  <CardBody className="gap-3">
-                    <p className="text-ink-2 m-0 text-[14px]">
-                      {t('visit.next.lead', { station: t(`register.stations.${myStation}`) })}
-                    </p>
-                    {/* First free doctor: the patient waits at every doctor desk at once. */}
-                    <Button
-                      variant="primary"
-                      disabled={sending}
-                      onClick={() => void sendOn(DOCTOR_DESKS)}
-                      className="justify-start"
-                    >
-                      <Stethoscope size={18} aria-hidden="true" />
-                      {t('visit.next.anyDoctor')}
-                    </Button>
-                    <p className="text-ink-3 m-0 text-[13px]">
-                      {t('visit.next.anyDoctorHint', {
-                        desks: DOCTOR_DESKS.map((x) => t(`register.stations.${x}`)).join(', '),
-                      })}
-                    </p>
-                    {!isReception && (
-                      <Button
-                        disabled={sending}
-                        onClick={() => void sendOn(['cashier'])}
-                        className="justify-start"
-                      >
-                        <Wallet size={18} aria-hidden="true" />
-                        {t('visit.next.toCashier')}
-                      </Button>
-                    )}
-                    <div className="border-border flex flex-col gap-2 border-t pt-3">
-                      <span className="text-[14px] font-semibold">{t('visit.next.pick')}</span>
-                      <div className="flex flex-wrap gap-2">
-                        {[...TREATING_STATIONS, 'cashier' as Station].map((x) => {
-                          const on = picked.includes(x)
-                          return (
-                            <button
-                              key={x}
-                              type="button"
-                              aria-pressed={on}
-                              onClick={() =>
-                                setPicked((p) => (on ? p.filter((y) => y !== x) : [...p, x]))
-                              }
-                              className={cn(
-                                'inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-[14px] font-semibold transition-colors',
-                                on
-                                  ? 'border-primary bg-primary text-white'
-                                  : 'border-border bg-card text-ink-2 hover:bg-hover',
-                              )}
-                            >
-                              <StationGlyph station={x} size={15} />
-                              {t(`register.stations.${x}`)}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <Button
-                        disabled={sending || picked.length === 0}
-                        onClick={() => void sendOn(picked)}
-                        className="self-start"
-                      >
-                        <Send size={16} aria-hidden="true" />
-                        {picked.length > 1
-                          ? t('visit.next.sendMany', { count: picked.length })
-                          : t('visit.next.send')}
-                      </Button>
-                      {picked.length > 1 && (
-                        <p className="text-ink-3 m-0 text-[13px]">{t('visit.next.manyHint')}</p>
-                      )}
-                    </div>
-                  </CardBody>
-                </Card>
+                {isReception && (
+                  <WhereNextCard
+                    encounterId={encounterId}
+                    myStation={myStation}
+                    isReception={isReception}
+                    onDone={(m) => {
+                      setActionError(null)
+                      setDone(m)
+                    }}
+                    onError={setActionError}
+                  />
+                )}
               </div>
             </div>
           </>

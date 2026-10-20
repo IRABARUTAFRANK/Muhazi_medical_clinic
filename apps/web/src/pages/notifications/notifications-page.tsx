@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
+  ArrowRightLeft,
   Bell,
   CalendarCheck,
   CheckCheck,
@@ -39,6 +40,7 @@ type Filter = 'all' | 'unread' | 'urgent' | 'patients' | 'messages'
 
 const KIND_LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   queue: { icon: Users, tint: 'amber' },
+  referral: { icon: ArrowRightLeft, tint: 'violet' },
   task: { icon: ListTodo, tint: 'teal' },
   inquiry: { icon: MessageSquare, tint: 'violet' },
   to_accept: { icon: CalendarCheck, tint: 'navy' },

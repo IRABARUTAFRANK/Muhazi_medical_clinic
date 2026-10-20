@@ -910,6 +910,38 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0034 referrals
+await step('doctor refers to another desk with "come back to me"; it is sent back', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+  await as(staff.doctor)
+  await db.query(
+    `select refer_patient($1, 'consultation', 'pharmacy', null, 'Check stock of amoxicillin', true)`,
+    [v.id],
+  )
+  await as(staff.pharmacist)
+  const n = (await one(`select my_notifications(200) as n`)).n
+  const notice = n.items.find((x) => x.kind === 'referral' && x.link?.includes(v.id))
+  if (!notice || notice.params.note !== 'Check stock of amoxicillin')
+    throw new Error('not told why')
+  const route = (await one(`select visit_routing($1) as r`, [v.id])).r
+  const here = route.find((r) => r.station === 'pharmacy')
+  if (!here || here.returnTo !== staff.doctor || here.returnStation !== 'consultation')
+    throw new Error('no way back')
+  await db.query(
+    `select refer_patient($1, 'pharmacy', 'consultation', $2, 'Stock checked', false)`,
+    [v.id, staff.doctor],
+  )
+  await as(staff.doctor)
+  const d = (await one(`select my_notifications(200) as n`)).n
+  if (!d.items.some((x) => x.kind === 'referral' && x.params.note === 'Stock checked'))
+    throw new Error('doctor not told it came back')
+  await as(staff.pharmacist)
+  const left = (await one(`select my_notifications(200) as n`)).n
+  if (left.items.some((x) => x.id === notice.id)) throw new Error('old notice not cleared')
+  return 'consultation → pharmacy (why + way back) → back to the same doctor'
+})
+
 finish()
 
 function finish() {

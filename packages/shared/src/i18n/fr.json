@@ -846,7 +846,7 @@
       "emergencyNote": "Urgence : le patient est premier dans la file {{station}}.",
       "where": "Le patient est enregistré dans le registre. Sa visite est ouverte et placée au triage (poste infirmier), où les constantes sont prises avant le médecin.",
       "openFile": "Ouvrir le dossier",
-      "openVisit": "Ouvrir la visite",
+      "openVisit": "Aller à la visite du jour",
       "register": "Registre des patients",
       "takeVitals": "Prendre les constantes maintenant"
     },
@@ -1440,7 +1440,29 @@
     "saveRx_one": "Prescrire",
     "saveRx_other": "Prescrire {{count}} médicaments",
     "rxSaved_one": "Ordonnance enregistrée. Le patient est en attente à la pharmacie.",
-    "rxSaved_other": "{{count}} médicaments prescrits. Le patient est en attente à la pharmacie."
+    "rxSaved_other": "{{count}} médicaments prescrits. Le patient est en attente à la pharmacie.",
+    "pickFrequency": "Choisir la fréquence",
+    "frequencies": {
+      "OD": "Une fois par jour (OD)",
+      "BD": "Deux fois par jour (BD)",
+      "TDS": "Trois fois par jour (TDS)",
+      "QID": "Quatre fois par jour (QID)",
+      "Q8H": "Toutes les 8 heures",
+      "Q6H": "Toutes les 6 heures",
+      "NOCTE": "Le soir (nocte)",
+      "PRN": "Si besoin (PRN)",
+      "STAT": "Une fois, tout de suite (STAT)"
+    },
+    "routes": {
+      "oral": "Par la bouche (orale)",
+      "IV": "Dans la veine (IV)",
+      "IM": "Dans le muscle (IM)",
+      "SC": "Sous la peau (SC)",
+      "topical": "Sur la peau (locale)",
+      "rectal": "Rectale",
+      "inhaled": "Inhalée",
+      "other": "Autre"
+    }
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -1469,14 +1491,14 @@
   },
   "visits": {
     "title": "À la clinique",
-    "lead": "Tous les patients avec une visite ouverte aujourd'hui, groupés selon l'endroit où ils se trouvent. Ouvrez une visite pour soigner, facturer ou orienter ; le dossier ouvre le dossier patient.",
+    "lead": "Chaque patient avec une visite ouverte, groupé selon l’endroit où il se trouve. La « visite du jour » sert à soigner, facturer et orienter ; le dossier ouvre le dossier patient permanent.",
     "count": "{{count}} patients",
     "none": "Personne à la clinique pour l'instant. Enregistrez un patient pour ouvrir une visite.",
     "stationCount": "{{waiting}} en attente · {{busy}} en cours",
     "inProgress": "en cours",
     "waiting_one": "attend depuis {{count}} min",
     "waiting_other": "attend depuis {{count}} min",
-    "openVisit": "Ouvrir la visite",
+    "openVisit": "Visite du jour",
     "pooled": "En attente du premier médecin libre",
     "pooledHint": "affiché une fois ; n’importe lequel de ces postes peut le prendre"
   },
@@ -1710,7 +1732,9 @@
     "errors": {
       "target": "Choisissez le destinataire."
     },
-    "queuePool": "{{ticket}} {{name}} attend le premier médecin libre"
+    "queuePool": "{{ticket}} {{name}} attend le premier médecin libre",
+    "referral": "{{ticket}} {{name}} adressé à {{desk}} par {{by}}",
+    "referralBack": "souhaite revoir le patient ensuite"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -1875,5 +1899,22 @@
       "oldest": "Plus anciens",
       "name": "Nom A–Z"
     }
+  },
+  "refer": {
+    "open": "Adresser à un autre médecin, service ou au laboratoire",
+    "title": "Orientation",
+    "desk": "Poste / service",
+    "person": "Collègue (facultatif)",
+    "anyone": "La personne libre à ce poste",
+    "why": "Motif (le collègue le lit)",
+    "comeBack": "Me renvoyer le patient ensuite",
+    "comeBackHint": "Pour un examen ou un second avis : le collègue vous renvoie le patient d’un seul bouton.",
+    "send": "Adresser le patient",
+    "done": "Patient adressé à {{to}}.",
+    "cameFrom": "Adressé par {{name}}",
+    "sendBack": "Renvoyer à {{name}} ({{desk}})",
+    "sentBack": "Patient renvoyé à {{name}}.",
+    "backNote": "Terminé à {{desk}}",
+    "from": "de {{name}}"
   }
 }

@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { FolderOpen, Stethoscope, UserPlus, Users } from 'lucide-react'
+import { ArrowRightLeft, FolderOpen, Stethoscope, UserPlus, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { StationGlyph } from '@/components/dash/kit'
@@ -161,6 +161,17 @@ function VisitRow({ item: r, desks }: { item: QueueItem; desks?: Station[] }) {
           {r.fileNumber} · {r.ageSex} ·{' '}
           {r.startedAt ? t('visits.inProgress') : t('visits.waiting', { count: r.waitMin })}
         </span>
+        {r.referredBy && (
+          <span
+            className="text-violet mt-0.5 flex items-center gap-1 text-[13px] font-semibold"
+            title={r.referralNote ?? undefined}
+          >
+            <ArrowRightLeft size={13} aria-hidden="true" />
+            {t('refer.from', { name: r.referredBy })}
+            {r.assignedName ? ` → ${r.assignedName}` : ''}
+            {r.referralNote ? ` · “${r.referralNote}”` : ''}
+          </span>
+        )}
         {desks && (
           <span className="mt-1 flex flex-wrap gap-1">
             {desks.map((d) => (

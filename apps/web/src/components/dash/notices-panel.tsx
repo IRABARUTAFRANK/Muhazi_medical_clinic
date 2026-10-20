@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
+  ArrowRightLeft,
   Bell,
   CalendarCheck,
   CheckCheck,
@@ -23,6 +24,7 @@ import type { Tint } from './kit-style'
 const LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   queue: { icon: Users, tint: 'amber' },
   queue_pool: { icon: Users, tint: 'violet' },
+  referral: { icon: ArrowRightLeft, tint: 'violet' },
   task: { icon: ListTodo, tint: 'teal' },
   inquiry: { icon: MessageSquare, tint: 'violet' },
   to_accept: { icon: CalendarCheck, tint: 'navy' },

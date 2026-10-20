@@ -351,6 +351,11 @@ export interface QueueItem extends QueueRow {
   poolId: string | null
   /** Who took (started) the patient here, if anyone. */
   takenBy: string | null
+  /** Referral: sent to this colleague by someone, with a reason (migration 0034). */
+  assignedTo?: string | null
+  assignedName?: string | null
+  referredBy?: string | null
+  referralNote?: string | null
 }
 
 interface BoardRow {
@@ -372,6 +377,10 @@ interface BoardRow {
   birth_date: string | null
   pool_id?: string | null
   taken_by_name?: string | null
+  assigned_to?: string | null
+  assigned_name?: string | null
+  referred_by_name?: string | null
+  referral_note?: string | null
 }
 
 const sexLetter: Record<Sex, string> = { female: 'F', male: 'M', other: '', unknown: '' }
@@ -400,6 +409,10 @@ const toItem = (r: BoardRow): QueueItem => ({
   finishedAt: r.finished_at,
   poolId: r.pool_id ?? null,
   takenBy: r.taken_by_name ?? null,
+  assignedTo: r.assigned_to ?? null,
+  assignedName: r.assigned_name ?? null,
+  referredBy: r.referred_by_name ?? null,
+  referralNote: r.referral_note ?? null,
   ticket: r.ticket_no,
   name: `${r.surname} ${r.given_names}`,
   ageSex: `${ageOf(r.birth_date)} ${sexLetter[r.sex]}`.trim(),

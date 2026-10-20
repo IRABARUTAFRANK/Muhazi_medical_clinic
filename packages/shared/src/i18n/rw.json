@@ -839,7 +839,7 @@
       "title": "Umurwayi yanditswe",
       "where": "Umurwayi yabitswe mu gitabo cy'abarwayi. Uruzinduko rwe rurafunguye kandi ari ku murongo wo gufatirwa ibipimo (ku muforomo), mbere yo kujya kwa muganga.",
       "openFile": "Fungura dosiye y'umurwayi",
-      "openVisit": "Fungura uruzinduko",
+      "openVisit": "Jya ku ruzinduko rw’uyu munsi",
       "register": "Igitabo cy'abarwayi",
       "takeVitals": "Fata ibipimo ubu",
       "triageNote": "Nimero yatanzwe. Umurwayi ajya gufatirwa ibipimo, hanyuma akajya aho agomba kuvurirwa.",
@@ -1322,7 +1322,29 @@
     "saveRx_one": "Andika umuti",
     "saveRx_other": "Andika imiti {{count}}",
     "rxSaved_one": "Umuti wanditswe. Umurwayi ari ku murongo wa farumasi.",
-    "rxSaved_other": "Imiti {{count}} yanditswe. Umurwayi ari ku murongo wa farumasi."
+    "rxSaved_other": "Imiti {{count}} yanditswe. Umurwayi ari ku murongo wa farumasi.",
+    "pickFrequency": "Hitamo inshuro",
+    "frequencies": {
+      "OD": "Rimwe ku munsi (OD)",
+      "BD": "Kabiri ku munsi (BD)",
+      "TDS": "Gatatu ku munsi (TDS)",
+      "QID": "Kane ku munsi (QID)",
+      "Q8H": "Buri masaha 8",
+      "Q6H": "Buri masaha 6",
+      "NOCTE": "Nijoro (nocte)",
+      "PRN": "Igihe bikenewe (PRN)",
+      "STAT": "Rimwe, ubu (STAT)"
+    },
+    "routes": {
+      "oral": "Mu kanwa",
+      "IV": "Mu mutsi (IV)",
+      "IM": "Mu mukaya (IM)",
+      "SC": "Munsi y’uruhu (SC)",
+      "topical": "Ku ruhu",
+      "rectal": "Mu kibuno",
+      "inhaled": "Guhumeka",
+      "other": "Ikindi"
+    }
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -1351,14 +1373,14 @@
   },
   "visits": {
     "title": "Mu ivuriro",
-    "lead": "Abarwayi bose bafite uruzinduko rufunguye uyu munsi, bakurikijwe aho bari ubu. Fungura uruzinduko uvure, wishyuze cyangwa wohereze umurwayi; agashushanyo ka dosiye gafungura dosiye y'umurwayi.",
+    "lead": "Buri murwayi ufite uruzinduko rufunguye, bashyizwe hamwe bakurikije aho bari ubu. « Uruzinduko rw’uyu munsi » ni ho avurirwa, yishyurizwa kandi yoherezwa; ububiko bufungura dosiye ihoraho y’umurwayi.",
     "count": "Abarwayi {{count}}",
     "none": "Nta murwayi uri mu ivuriro ubu. Andika umurwayi kugira ngo utangire uruzinduko.",
     "stationCount": "{{waiting}} bategereje · {{busy}} bari kwakirwa",
     "inProgress": "ari kwakirwa",
     "waiting_one": "amaze umunota {{count}} ategereje",
     "waiting_other": "amaze iminota {{count}} ategereje",
-    "openVisit": "Fungura uruzinduko",
+    "openVisit": "Uruzinduko rw’uyu munsi",
     "pooled": "Bategereje muganga wa mbere ubonetse",
     "pooledHint": "agaragara rimwe; aho ari ho hose muri aha hashobora kumwakira"
   },
@@ -1719,7 +1741,9 @@
     "errors": {
       "target": "Hitamo uwo bugenewe."
     },
-    "queuePool": "{{ticket}} {{name}} ategereje muganga wa mbere ubonetse"
+    "queuePool": "{{ticket}} {{name}} ategereje muganga wa mbere ubonetse",
+    "referral": "{{ticket}} {{name}} yoherejwe kuri {{desk}} na {{by}}",
+    "referralBack": "arashaka kongera kubona umurwayi nyuma"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -1884,5 +1908,22 @@
       "oldest": "Ibya kera mbere",
       "name": "Izina A–Z"
     }
+  },
+  "refer": {
+    "open": "Ohereza ku yindi muganga, ishami cyangwa laboratwari",
+    "title": "Kohereza umurwayi",
+    "desk": "Aho ajya / ishami",
+    "person": "Mugenzi wawe (si ngombwa)",
+    "anyone": "Ubonetse aho hantu",
+    "why": "Impamvu (mugenzi wawe arayisoma)",
+    "comeBack": "Nyuma, umurwayi azagaruke kuri njye",
+    "comeBackHint": "Ku isuzuma cyangwa ikindi gitekerezo: mugenzi wawe akugarurira umurwayi akoresheje akabuto kamwe.",
+    "send": "Ohereza umurwayi",
+    "done": "Umurwayi yoherejwe kuri {{to}}.",
+    "cameFrom": "Yoherejwe na {{name}}",
+    "sendBack": "Mugarure kuri {{name}} ({{desk}})",
+    "sentBack": "Umurwayi yagaruwe kuri {{name}}.",
+    "backNote": "Byarangiye kuri {{desk}}",
+    "from": "avuye kuri {{name}}"
   }
 }

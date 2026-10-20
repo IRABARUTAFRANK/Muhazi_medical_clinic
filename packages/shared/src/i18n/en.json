@@ -846,7 +846,7 @@
       "emergencyNote": "Emergency: the patient is first in the {{station}} queue.",
       "where": "The patient is saved in the patient register. Their visit is open and queued at triage (nurse station), where vitals are taken before the doctor.",
       "openFile": "Open patient file",
-      "openVisit": "Open the visit",
+      "openVisit": "Go to today’s visit",
       "register": "Patient register",
       "takeVitals": "Take vitals now"
     },
@@ -1440,7 +1440,29 @@
     "saveRx_one": "Prescribe",
     "saveRx_other": "Prescribe {{count}} medicines",
     "rxSaved_one": "Prescription saved. The patient is queued at the pharmacy.",
-    "rxSaved_other": "{{count}} medicines prescribed. The patient is queued at the pharmacy."
+    "rxSaved_other": "{{count}} medicines prescribed. The patient is queued at the pharmacy.",
+    "pickFrequency": "Choose how often",
+    "frequencies": {
+      "OD": "Once a day (OD)",
+      "BD": "Twice a day (BD)",
+      "TDS": "Three times a day (TDS)",
+      "QID": "Four times a day (QID)",
+      "Q8H": "Every 8 hours",
+      "Q6H": "Every 6 hours",
+      "NOCTE": "At night (nocte)",
+      "PRN": "When needed (PRN)",
+      "STAT": "Once, now (STAT)"
+    },
+    "routes": {
+      "oral": "By mouth (oral)",
+      "IV": "Into a vein (IV)",
+      "IM": "Into a muscle (IM)",
+      "SC": "Under the skin (SC)",
+      "topical": "On the skin (topical)",
+      "rectal": "Rectal",
+      "inhaled": "Inhaled",
+      "other": "Other"
+    }
   },
   "adjust": {
     "mode": "How to enter it",
@@ -1469,14 +1491,14 @@
   },
   "visits": {
     "title": "In the clinic",
-    "lead": "Every patient with an open visit today, grouped by where they are now. Open a visit to treat, charge or send the patient on; the folder opens the patient file.",
+    "lead": "Every patient with an open visit, grouped by where they are now. “Today’s visit” is where they are treated, charged and sent on; the folder opens the permanent patient file.",
     "count": "{{count}} patients",
     "none": "Nobody is in the clinic right now. Register a patient to start a visit.",
     "stationCount": "{{waiting}} waiting · {{busy}} being seen",
     "inProgress": "being seen",
     "waiting_one": "waiting {{count}} min",
     "waiting_other": "waiting {{count}} min",
-    "openVisit": "Open visit",
+    "openVisit": "Today’s visit",
     "pooled": "Waiting for the first free doctor",
     "pooledHint": "shown once; any of these desks may take the patient"
   },
@@ -1710,7 +1732,9 @@
     "errors": {
       "target": "Choose who receives it."
     },
-    "queuePool": "{{ticket}} {{name}} is waiting for the first free doctor"
+    "queuePool": "{{ticket}} {{name}} is waiting for the first free doctor",
+    "referral": "{{ticket}} {{name}} referred to {{desk}} by {{by}}",
+    "referralBack": "asks to see the patient again afterwards"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -1875,5 +1899,22 @@
       "oldest": "Oldest first",
       "name": "Name A–Z"
     }
+  },
+  "refer": {
+    "open": "Refer to another doctor, department or the lab",
+    "title": "Referral",
+    "desk": "Desk / department",
+    "person": "Colleague (optional)",
+    "anyone": "Whoever is free at that desk",
+    "why": "Reason (the colleague reads it)",
+    "comeBack": "Send the patient back to me afterwards",
+    "comeBackHint": "For a test or a second opinion: the colleague sends the patient back to you with one button.",
+    "send": "Refer the patient",
+    "done": "Patient referred to {{to}}.",
+    "cameFrom": "Referred by {{name}}",
+    "sendBack": "Send back to {{name}} ({{desk}})",
+    "sentBack": "Patient sent back to {{name}}.",
+    "backNote": "Done at {{desk}}",
+    "from": "from {{name}}"
   }
 }

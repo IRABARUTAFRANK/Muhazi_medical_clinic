@@ -21,6 +21,8 @@ import { cn } from '@/lib/utils'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
 const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other']
+/** Standard prescription frequencies (stored as the usual code: OD, BD, TDS…). */
+const FREQUENCIES = ['OD', 'BD', 'TDS', 'QID', 'Q8H', 'Q6H', 'NOCTE', 'PRN', 'STAT'] as const
 interface RxLine {
   item: string
   quantity: string
@@ -319,16 +321,22 @@ export function ClinicalCard({
                   >
                     {ROUTES.map((r) => (
                       <option key={r} value={r}>
-                        {r}
+                        {t(`clinical.routes.${r}`, { defaultValue: r })}
                       </option>
                     ))}
                   </Select>
-                  <Field
+                  <Select
                     label={t('clinical.frequency')}
                     value={line.frequency}
                     onChange={(e) => setLine(i, { frequency: e.target.value })}
-                    placeholder="3 × / day"
-                  />
+                  >
+                    <option value="">{t('clinical.pickFrequency')}</option>
+                    {FREQUENCIES.map((f) => (
+                      <option key={f} value={f}>
+                        {t(`clinical.frequencies.${f}`)}
+                      </option>
+                    ))}
+                  </Select>
                   <Field
                     label={t('clinical.instructions')}
                     value={line.instructions}
