@@ -434,6 +434,63 @@ await step('receptionist approves, doctor accepts â†’ confirmed', async () 
   if (a.status !== 'confirmed') throw new Error(a.status)
   return 'confirmed'
 })
+// ---------------------------------------------------------------- 0039: website request → reception books a doctor → doctor answers
+let homeInquiryId
+await step(
+  'website request with a preferred time (no doctor); reception sees the file match',
+  async () => {
+    await as(null, 'anon')
+    const r = await one(
+      `select create_appointment_inquiry(null, null, 'Nadia Uwase', '0788 000 111', null, null, 'Needs consultation', 'whatsapp', $1::timestamptz) as ref`,
+      [slot],
+    )
+    await as(staff.receptionist)
+    const open = (await one(`select inquiries_open() as j`)).j
+    const q = open.find((x) => x.reference === r.ref)
+    await asAdmin()
+    if (!q || !q.preferredAt || q.doctor) throw new Error('not listed as a free request')
+    homeInquiryId = q.id
+    return `${r.ref} prefers ${q.preferredAt.slice(0, 16)}; phone matches ${q.matches} file(s)`
+  },
+)
+await expectError(
+  'a request cannot be approved without a doctor and a time',
+  async () => {
+    await as(staff.receptionist)
+    await db.query(`select approve_inquiry($1, $2)`, [homeInquiryId, patientId])
+  },
+  /choose the doctor/,
+)
+await step(
+  'reception books it with a doctor who has no calendar yet; doctor accepts; reception is told',
+  async () => {
+    await as(staff.receptionist)
+    const docs = (await one(`select bookable_doctors() as j`)).j
+    if (!docs.some((d) => d.userId === staff.doctor)) throw new Error('doctor not bookable')
+    await db.query(
+      `select approve_inquiry_auto($1, $2, $3, ($4::timestamptz + interval '1 day'))`,
+      [homeInquiryId, patientId, staff.doctor, slot],
+    )
+    await asAdmin()
+    const a = await one(
+      `select a.status, pr.user_id from appointment a join practitioner pr on pr.id = a.practitioner_id where a.id = $1`,
+      [homeInquiryId],
+    )
+    if (a.status !== 'approved' || a.user_id !== staff.doctor)
+      throw new Error('not booked with the doctor')
+    await as(staff.doctor)
+    const mine = (await one(`select home_summary() as j`)).j
+    if (!mine.toAccept.some((x) => x.id === homeInquiryId))
+      throw new Error('doctor does not see it to accept')
+    await db.query(`select accept_appointment($1)`, [homeInquiryId])
+    await as(staff.receptionist)
+    const notes = (await one(`select my_notifications(50) as j`)).j
+    await asAdmin()
+    const told = (notes.items ?? notes).some((n) => n.kind === 'appt_confirmed')
+    if (!told) throw new Error('reception not told')
+    return 'approved with the doctor → confirmed → reception notified'
+  },
+)
 await step('nurse may write but manager may not read HIV tests (sensitive)', async () => {
   await as(staff.nurse)
   await db.query(

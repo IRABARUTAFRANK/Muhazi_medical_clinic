@@ -231,9 +231,7 @@
       "service": "Service",
       "servicePh": "Consultation, dentaire, échographie…",
       "day": "Jour souhaité",
-      "dayPh": "16/10/2026",
       "time": "Heure souhaitée",
-      "timePh": "09:00",
       "confirmBy": "Confirmer par :",
       "whatsapp": "WhatsApp",
       "sms": "SMS",
@@ -242,7 +240,16 @@
       "sent": "Demande envoyée. La réception confirmera par {{channel}} dans l'heure pendant les horaires d'ouverture.",
       "sending": "Envoi…",
       "sentRef": "Demande {{ref}} envoyée. La réception confirmera par {{channel}} dans l'heure pendant les horaires d'ouverture.",
-      "sendFailed": "La demande n'a pas pu être envoyée. Vérifiez votre connexion ou appelez la réception."
+      "sendFailed": "La demande n'a pas pu être envoyée. Vérifiez votre connexion ou appelez la réception.",
+      "errors": {
+        "name": "Indiquez votre nom complet.",
+        "phone": "Indiquez un numéro de mobile rwandais, par exemple 078 123 4567.",
+        "tooMany": "Trop de demandes depuis ce numéro aujourd’hui. Appelez l’accueil.",
+        "taken": "Cette heure vient d’être prise ; choisissez-en une autre.",
+        "past": "Ce jour ou cette heure est déjà passé.",
+        "notWorking": "Le médecin ne travaille pas à cette heure ; choisissez-en une autre.",
+        "generic": "La demande n’a pas pu être envoyée. Vérifiez votre connexion ou appelez l’accueil."
+      }
     },
     "insurance": {
       "title": "Assurances acceptées",
@@ -896,7 +903,8 @@
     "errors": {
       "noVitals": "Saisissez au moins une mesure.",
       "generic": "Enregistrement impossible : {{message}}"
-    }
+    },
+    "takenBadge": "Constantes prises"
   },
   "prices": {
     "title": "Soins, tarifs et assureurs",
@@ -1042,6 +1050,31 @@
       "byType": "Par type",
       "field": "Département",
       "addTo": "Nouveau service dans {{name}}"
+    },
+    "meds": {
+      "title": "Médicaments et fournitures",
+      "lead": "Chacun avec son prix unitaire : facturé à tout poste et lorsqu’il est donné en salle.",
+      "new": "Nouveau médicament",
+      "editTitle": "Modifier {{name}}",
+      "name": "Nom",
+      "namePh": "Amoxicilline",
+      "strength": "Dosage",
+      "form": "Forme",
+      "formPh": "comprimé, gélule, sirop, injection…",
+      "unit": "Vendu par",
+      "unitPh": "cp, flacon, ampoule…",
+      "price": "Prix unitaire (RWF)",
+      "active": "En usage",
+      "activeHint": "Un médicament masqué ne peut pas être facturé.",
+      "search": "Trouver un médicament",
+      "searchPh": "Nom, dosage ou code…",
+      "empty": "Aucun médicament. Ajoutez ceux que la clinique donne et vend, avec leur prix.",
+      "perUnit": "par {{unit}}",
+      "confirmDelete": "Supprimer « {{name}} » de la liste ? Les factures déjà faites gardent leurs lignes.",
+      "saved": "« {{name}} » enregistré.",
+      "errors": {
+        "name": "Donnez un nom au médicament."
+      }
     }
   },
   "visit": {
@@ -1090,13 +1123,20 @@
         "discount": "La remise est un pourcentage entre 0 et 100.",
         "overMax": "Vous pouvez accorder jusqu'à {{pct}} % sur ce soin. Demandez au gestionnaire pour plus.",
         "reason": "Indiquez le motif de la remise.",
-        "noManual": "Ce soin n'accepte pas d'autre prix. Utilisez une remise, ou demandez au gestionnaire de cocher « Le clinicien peut saisir un autre prix »."
+        "noManual": "Ce soin n'accepte pas d'autre prix. Utilisez une remise, ou demandez au gestionnaire de cocher « Le clinicien peut saisir un autre prix ».",
+        "pickItem": "Choisissez d’abord un médicament ou une fourniture."
       },
       "adjust": "Remise ou changement de prix (remise jusqu’à {{max}} %)",
       "adjustHint": "Facultatif. Tapez 10 pour 10 %, passez en RWF pour un montant, ou × pour un multiplicateur.",
       "off": "{{pct}} % de remise · {{amount}} de moins par unité",
       "newPrice": "Nouveau prix {{price}} par unité (motif obligatoire)",
-      "manualReason": "Motif du prix différent"
+      "manualReason": "Motif du prix différent",
+      "kind": "Quoi ajouter",
+      "kindTreatment": "Soin",
+      "kindMedicine": "Médicament / fourniture",
+      "medicine": "Médicament ou fourniture",
+      "pickItem": "Choisissez un médicament ou une fourniture",
+      "searchItemPh": "amoxicilline, gants, SRO…"
     },
     "payment": {
       "title": "Paiement",
@@ -1639,8 +1679,15 @@
     "errors": {
       "who": "Choisissez l'infirmière qui a pris les mesures.",
       "time": "Indiquez l'heure de la mesure.",
-      "future": "L'heure de la mesure est dans le futur."
-    }
+      "future": "L'heure de la mesure est dans le futur.",
+      "nothingChanged": "Rien n’a changé. Corrigez une valeur ou annulez."
+    },
+    "takenShort": "Constantes prises",
+    "taken": "Constantes prises par {{name}} à {{time}}",
+    "takenAt": "Constantes prises à {{time}}",
+    "takenHint": "Ne modifiez une valeur que pour la corriger ; les autres sont conservées.",
+    "edit": "Modifier les constantes",
+    "sendOn": "Envoyer (constantes déjà prises)"
   },
   "ops": {
     "appts": {
@@ -1677,7 +1724,33 @@
       "reject": "Refuser",
       "rejectReason": "Pourquoi la demande de {{name}} est-elle refusée ? (la personne est prévenue)",
       "registerNow": "Enregistrer le patient maintenant",
-      "hint": "Approuver relie la demande au dossier du patient (par téléphone) et l’envoie au médecin pour accord."
+      "hint": "Réservez chaque demande avec le dossier du patient, le médecin et l’heure. Le médecin accepte ou décline sur sa page d’accueil et vous recevez la réponse ici et dans les notifications.",
+      "asksFor": "Demande : {{text}}",
+      "wants": "Souhaite {{doctor}} le {{when}}",
+      "prefers": "Préfère le {{when}}",
+      "anyTime": "N’importe quel jour ou heure",
+      "fileFound": "Dossier {{file}} · {{name}}",
+      "manyFiles": "{{count}} dossiers ont ce numéro — choisissez le bon",
+      "noFile": "Aucun dossier patient avec ce numéro",
+      "book": "Réserver",
+      "confirmBook": "Réserver et demander au médecin d’accepter",
+      "patient": "Dossier patient",
+      "otherFile": "Choisir un autre dossier",
+      "searchFile": "Trouver le dossier patient",
+      "searchPh": "Nom, numéro de dossier ou téléphone",
+      "noFileHint": "Nouveau patient ?",
+      "doctor": "Médecin",
+      "pickDoctor": "Choisissez le médecin",
+      "noHours": "pas encore d’agenda",
+      "noHoursHint": "Ce médecin n’a pas encore fixé ses heures : toute heure peut être réservée ; il accepte ou décline.",
+      "day": "Jour",
+      "time": "Heure",
+      "booked": "{{name}} réservé avec {{doctor}} le {{when}}. Le médecin est invité à accepter ; vous recevrez la réponse.",
+      "errors": {
+        "patient": "Choisissez le dossier patient (ou enregistrez d’abord le patient).",
+        "doctor": "Choisissez le médecin.",
+        "when": "Choisissez le jour et l’heure."
+      }
     },
     "tasks": {
       "count": "{{count}} ouvertes · {{overdue}} en retard",
@@ -1781,7 +1854,12 @@
     "referral": "{{ticket}} {{name}} adressé à {{desk}} par {{by}}",
     "referralBack": "souhaite revoir le patient ensuite",
     "result": "Résultat prêt : {{test}} · {{name}}",
-    "cover": "Vous remplacez {{doctor}} jusqu’à {{until}}"
+    "cover": "Vous remplacez {{doctor}} jusqu’à {{until}}",
+    "apptConfirmed": "{{doctor}} a accepté le rendez-vous de {{name}}",
+    "apptDeclined": "{{doctor}} a décliné le rendez-vous de {{name}}",
+    "apptWhen": "pour le {{when}}",
+    "apptReason": "Motif : {{reason}}",
+    "apptRebook": "Réservez un autre médecin ou une autre heure et prévenez le patient."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"

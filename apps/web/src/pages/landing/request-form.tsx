@@ -2,7 +2,13 @@ import { useState, type FormEvent } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
-import { sendInquiry, type InquiryChannel } from '@/lib/api/inquiries'
+import {
+  RW_PHONE,
+  cleanPhone,
+  inquiryErrorKey,
+  sendInquiry,
+  type InquiryChannel,
+} from '@/lib/api/inquiries'
 import { cn } from '@/lib/utils'
 
 const channelKey: Record<InquiryChannel, string> = {
@@ -26,20 +32,26 @@ export function RequestForm() {
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setBusy(true)
     setError(null)
+    if (fullName.trim().length < 3) return setError(t('landing.book.errors.name'))
+    if (!RW_PHONE.test(cleanPhone(phone))) return setError(t('landing.book.errors.phone'))
+    const preferredAt = day ? new Date(`${day}T${time || '08:00'}:00`) : null
+    if (preferredAt && preferredAt.getTime() < Date.now())
+      return setError(t('landing.book.errors.past'))
+    setBusy(true)
     try {
       const result = await sendInquiry({
         practitionerCode: null,
         startsAt: null,
         fullName,
-        phone,
-        note: [service, day, time].filter(Boolean).join(' · '),
+        phone: cleanPhone(phone),
+        note: service,
         channel,
+        preferredAt,
       })
       setSentRef(result.reference)
-    } catch {
-      setError(t('landing.book.sendFailed'))
+    } catch (err) {
+      setError(t(`landing.book.errors.${inquiryErrorKey(err instanceof Error ? err.message : '')}`))
     } finally {
       setBusy(false)
     }
@@ -78,13 +90,15 @@ export function RequestForm() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field
           label={t('landing.book.day')}
-          placeholder={t('landing.book.dayPh')}
+          type="date"
+          min={new Date().toISOString().slice(0, 10)}
           value={day}
           onChange={(e) => setDay(e.target.value)}
         />
         <Field
           label={t('landing.book.time')}
-          placeholder={t('landing.book.timePh')}
+          type="time"
+          step={900}
           value={time}
           onChange={(e) => setTime(e.target.value)}
         />

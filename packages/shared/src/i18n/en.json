@@ -231,9 +231,7 @@
       "service": "Service",
       "servicePh": "Consultation, dental, ultrasound…",
       "day": "Preferred day",
-      "dayPh": "16/10/2026",
       "time": "Preferred time",
-      "timePh": "09:00",
       "confirmBy": "Confirm by:",
       "whatsapp": "WhatsApp",
       "sms": "SMS",
@@ -242,7 +240,16 @@
       "sent": "Request sent. Reception will confirm by {{channel}} within the hour during opening times.",
       "sending": "Sending…",
       "sentRef": "Request {{ref}} sent. Reception will confirm by {{channel}} within the hour during opening times.",
-      "sendFailed": "The request could not be sent. Check your connection or call reception."
+      "sendFailed": "The request could not be sent. Check your connection or call reception.",
+      "errors": {
+        "name": "Please give your full name.",
+        "phone": "Please give a Rwandan mobile number, for example 078 123 4567.",
+        "tooMany": "Too many requests from this phone today. Please call reception.",
+        "taken": "That time has just been taken; please pick another.",
+        "past": "That day or time has already passed.",
+        "notWorking": "The doctor does not work at that time; please pick another.",
+        "generic": "The request could not be sent. Check your connection or call reception."
+      }
     },
     "insurance": {
       "title": "Insurance we accept",
@@ -896,7 +903,8 @@
     "errors": {
       "noVitals": "Enter at least one measurement.",
       "generic": "Could not save: {{message}}"
-    }
+    },
+    "takenBadge": "Vitals taken"
   },
   "prices": {
     "title": "Treatments, prices and insurers",
@@ -1042,6 +1050,31 @@
       "byType": "By type",
       "field": "Department",
       "addTo": "New service in {{name}}"
+    },
+    "meds": {
+      "title": "Medicines and supplies",
+      "lead": "Each with its price per unit: charged at any desk, and when given in the room.",
+      "new": "New medicine",
+      "editTitle": "Edit {{name}}",
+      "name": "Name",
+      "namePh": "Amoxicillin",
+      "strength": "Strength",
+      "form": "Form",
+      "formPh": "tablet, capsule, syrup, injection…",
+      "unit": "Sold per",
+      "unitPh": "tab, bottle, vial…",
+      "price": "Price per unit (RWF)",
+      "active": "In use",
+      "activeHint": "Hidden medicines cannot be charged.",
+      "search": "Find a medicine",
+      "searchPh": "Name, strength or code…",
+      "empty": "No medicine yet. Add the ones the clinic gives and sells, with their price.",
+      "perUnit": "per {{unit}}",
+      "confirmDelete": "Delete “{{name}}” from the list? Bills already made keep their lines.",
+      "saved": "Saved “{{name}}”.",
+      "errors": {
+        "name": "Give the medicine a name."
+      }
     }
   },
   "visit": {
@@ -1090,13 +1123,20 @@
         "discount": "The discount is a percentage between 0 and 100.",
         "overMax": "You may give up to {{pct}}% on this treatment. Ask the manager for more.",
         "reason": "Give the reason for the discount.",
-        "noManual": "This treatment does not allow a different price. Use a discount, or ask the manager to tick \"Clinician may type a different price\"."
+        "noManual": "This treatment does not allow a different price. Use a discount, or ask the manager to tick \"Clinician may type a different price\".",
+        "pickItem": "Choose a medicine or supply first."
       },
       "adjust": "Discount or price change (discount up to {{max}} %)",
       "adjustHint": "Optional. Type 10 for 10 %, switch to RWF for an amount, or × for a multiplier.",
       "off": "{{pct}} % off · {{amount}} less per unit",
       "newPrice": "New price {{price}} per unit (needs a reason)",
-      "manualReason": "Reason for the different price"
+      "manualReason": "Reason for the different price",
+      "kind": "What to add",
+      "kindTreatment": "Treatment",
+      "kindMedicine": "Medicine / supply",
+      "medicine": "Medicine or supply",
+      "pickItem": "Choose a medicine or supply",
+      "searchItemPh": "amoxicillin, gloves, ORS…"
     },
     "payment": {
       "title": "Payment",
@@ -1639,8 +1679,15 @@
     "errors": {
       "who": "Choose the nurse who took the measurements.",
       "time": "Enter the time of the measurement.",
-      "future": "The measurement time is in the future."
-    }
+      "future": "The measurement time is in the future.",
+      "nothingChanged": "Nothing changed. Correct a value, or cancel."
+    },
+    "takenShort": "Vitals taken",
+    "taken": "Vitals taken by {{name}} at {{time}}",
+    "takenAt": "Vitals taken at {{time}}",
+    "takenHint": "Change a value only to correct it; the others are kept as they are.",
+    "edit": "Edit vitals",
+    "sendOn": "Send on (vitals already taken)"
   },
   "ops": {
     "appts": {
@@ -1677,7 +1724,33 @@
       "reject": "Reject",
       "rejectReason": "Why is the request from {{name}} rejected? (the person is told)",
       "registerNow": "Register the patient now",
-      "hint": "Approve links the request to the patient’s file (matched by phone) and sends it to the doctor to accept."
+      "hint": "Book each request with the patient file, the doctor and the time. The doctor accepts or declines on their home page and you receive the answer here and in notifications.",
+      "asksFor": "Asks for: {{text}}",
+      "wants": "Wants {{doctor}} on {{when}}",
+      "prefers": "Prefers {{when}}",
+      "anyTime": "Any day or time",
+      "fileFound": "File {{file}} · {{name}}",
+      "manyFiles": "{{count}} files share this phone — choose the right one",
+      "noFile": "No patient file with this phone yet",
+      "book": "Book",
+      "confirmBook": "Book and ask the doctor to accept",
+      "patient": "Patient file",
+      "otherFile": "Choose another file",
+      "searchFile": "Find the patient file",
+      "searchPh": "Name, file number or phone",
+      "noFileHint": "New patient?",
+      "doctor": "Doctor",
+      "pickDoctor": "Choose the doctor",
+      "noHours": "no calendar yet",
+      "noHoursHint": "This doctor has not set working hours yet, so any time can be booked; they accept or decline.",
+      "day": "Day",
+      "time": "Time",
+      "booked": "Booked {{name}} with {{doctor}} on {{when}}. The doctor is asked to accept; you are told of the answer.",
+      "errors": {
+        "patient": "Choose the patient file (or register the patient first).",
+        "doctor": "Choose the doctor.",
+        "when": "Choose the day and the time."
+      }
     },
     "tasks": {
       "count": "{{count}} open · {{overdue}} late",
@@ -1781,7 +1854,12 @@
     "referral": "{{ticket}} {{name}} referred to {{desk}} by {{by}}",
     "referralBack": "asks to see the patient again afterwards",
     "result": "Result ready: {{test}} · {{name}}",
-    "cover": "You are covering for {{doctor}} until {{until}}"
+    "cover": "You are covering for {{doctor}} until {{until}}",
+    "apptConfirmed": "{{doctor}} accepted the booking of {{name}}",
+    "apptDeclined": "{{doctor}} declined the booking of {{name}}",
+    "apptWhen": "for {{when}}",
+    "apptReason": "Reason: {{reason}}",
+    "apptRebook": "Book another doctor or time and tell the patient."
   },
   "identity": {
     "aria": "Signed in: {{name}}"

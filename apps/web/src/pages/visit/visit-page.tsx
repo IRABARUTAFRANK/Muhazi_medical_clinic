@@ -11,6 +11,7 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
+import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
@@ -23,6 +24,7 @@ import {
 } from '@/lib/api/billing'
 import { treatmentName, useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
 import { stationFor, type Station } from '@/lib/api/visits'
+import { useItems, type Item } from '@/lib/api/patients'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { resolveAdjust, type AdjustMode } from '@/lib/adjust'
@@ -54,6 +56,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const myStation = assigned?.station ?? stationFor(user)
   const { data: header, isLoading, error } = useVisitHeader(encounterId)
   const { data: vitals = [] } = useVisitVitals(encounterId)
+  const { data: items = [] } = useItems()
   const { data: bill } = useVisitBill(encounterId)
   const { data: treatments = [] } = useTreatments(true)
   const { data: insurers = [] } = useInsurers(true)
@@ -156,8 +159,12 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                 </StaffLink>
               </CardBody>
               <CardBody className="border-border flex-row flex-wrap items-center gap-2 border-t">
-                {vitals.length === 0 && (
+                {vitals.length === 0 ? (
                   <span className="text-ink-3 text-[13px]">{t('vitalsForm.none')}</span>
+                ) : (
+                  <Badge tone="green" icon={<CheckCircle2 size={12} strokeWidth={3} />}>
+                    {t('vitalsForm.takenShort')}
+                  </Badge>
                 )}
                 {vitals.map((v) => (
                   <Chip key={v.code} title={vitalSource(v)}>
@@ -169,7 +176,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                 {!addingVitals && !closed && (
                   <Button size="sm" onClick={() => setAddingVitals(true)}>
                     <Activity size={14} aria-hidden="true" />
-                    {t(vitals.length ? 'vitalsForm.addMore' : 'vitalsForm.add')}
+                    {t(vitals.length ? 'vitalsForm.edit' : 'vitalsForm.add')}
                   </Button>
                 )}
               </CardBody>
@@ -414,6 +421,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                 {!isReception && !closed && (
                   <AddChargeCard
                     treatments={treatments}
+                    items={items}
                     office={myStation}
                     payerId={bill?.payerId ?? null}
                     coveragePct={currentInsurer?.coveragePct ?? 0}
@@ -592,6 +600,7 @@ function PaymentCard({
 
 function AddChargeCard({
   treatments,
+  items,
   office,
   payerId,
   coveragePct,
@@ -600,6 +609,7 @@ function AddChargeCard({
   onAdd,
 }: {
   treatments: Treatment[]
+  items: Item[]
   office: Station
   payerId: string | null
   coveragePct: number
@@ -608,7 +618,8 @@ function AddChargeCard({
   onAdd: (input: {
     encounterId: string
     office: Station
-    serviceId: string
+    serviceId?: string
+    itemId?: string
     description: string
     listPrice: number
     quantity: number
@@ -619,7 +630,9 @@ function AddChargeCard({
   }) => Promise<void>
 }) {
   const { t, i18n } = useTranslation()
+  const [kind, setKind] = useState<'service' | 'item'>('service')
   const [serviceId, setServiceId] = useState('')
+  const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [discount, setDiscount] = useState('')
   const [mode, setMode] = useState<AdjustMode>('pct')
@@ -628,12 +641,14 @@ function AddChargeCard({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const selected = treatments.find((x) => x.id === serviceId)
+  const selected = kind === 'service' ? treatments.find((x) => x.id === serviceId) : undefined
+  const selectedItem = kind === 'item' ? items.find((x) => x.id === itemId) : undefined
+  const picked = selected ?? selectedItem
   const listPrice = selected
     ? payerId && selected.payerPrices[payerId] != null
       ? selected.payerPrices[payerId]!
       : (selected.cashPrice ?? 0)
-    : 0
+    : (selectedItem?.cashPrice ?? 0)
   const adj = resolveAdjust(mode, discount, listPrice)
   const d = adj.discountPct
   const manual = adj.manualPrice
@@ -654,11 +669,19 @@ function AddChargeCard({
           .toLowerCase()
           .includes(query.toLowerCase()),
   )
+  const filteredItems = items.filter((x) =>
+    query.trim() === ''
+      ? true
+      : `${x.name} ${x.strength ?? ''} ${x.form ?? ''} ${x.code}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+  )
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!selected) return setError(t('visit.add.errors.pick'))
+    if (!picked)
+      return setError(t(kind === 'item' ? 'visit.add.errors.pickItem' : 'visit.add.errors.pick'))
     if (adj.error) return setError(t(`adjust.errors.${adj.error}`))
     if (manualRefused) return setError(t('visit.add.errors.noManual'))
     if (overMax) return setError(t('visit.add.errors.overMax', { pct: maxDiscount }))
@@ -668,8 +691,11 @@ function AddChargeCard({
       await onAdd({
         encounterId: '',
         office,
-        serviceId: selected.id,
-        description: selected.nameEn,
+        serviceId: selected?.id,
+        itemId: selectedItem?.id,
+        description: selected
+          ? selected.nameEn
+          : `${selectedItem?.name ?? ''}${selectedItem?.strength ? ` ${selectedItem.strength}` : ''}`,
         listPrice,
         quantity: q,
         discountPct: d,
@@ -678,6 +704,7 @@ function AddChargeCard({
         coveragePct,
       })
       setServiceId('')
+      setItemId('')
       setDiscount('')
       setReason('')
       setQuantity('1')
@@ -698,28 +725,62 @@ function AddChargeCard({
       </CardHeader>
       <form onSubmit={submit}>
         <CardBody className="gap-3">
+          <Seg
+            label={t('visit.add.kind')}
+            value={kind}
+            onChange={(k) => {
+              setKind(k)
+              setServiceId('')
+              setItemId('')
+              setDiscount('')
+            }}
+            options={[
+              { value: 'service', label: t('visit.add.kindTreatment') },
+              { value: 'item', label: t('visit.add.kindMedicine') },
+            ]}
+          />
           <Field
             label={t('visit.add.search')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('visit.add.searchPh')}
+            placeholder={t(kind === 'item' ? 'visit.add.searchItemPh' : 'visit.add.searchPh')}
             disabled={disabled}
           />
-          <Select
-            label={t('visit.add.treatment')}
-            value={serviceId}
-            onChange={(e) => setServiceId(e.target.value)}
-            disabled={disabled}
-            required
-          >
-            <option value="">{t('visit.add.pick')}</option>
-            {filtered.map((x) => (
-              <option key={x.id} value={x.id}>
-                {treatmentName(x, i18n.language)} ·{' '}
-                {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
-              </option>
-            ))}
-          </Select>
+          {kind === 'service' ? (
+            <Select
+              label={t('visit.add.treatment')}
+              value={serviceId}
+              onChange={(e) => setServiceId(e.target.value)}
+              disabled={disabled}
+              required
+            >
+              <option value="">{t('visit.add.pick')}</option>
+              {filtered.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {treatmentName(x, i18n.language)} ·{' '}
+                  {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <Select
+              label={t('visit.add.medicine')}
+              value={itemId}
+              onChange={(e) => setItemId(e.target.value)}
+              disabled={disabled}
+              required
+            >
+              <option value="">{t('visit.add.pickItem')}</option>
+              {filteredItems.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                  {x.strength ? ` ${x.strength}` : ''} ·{' '}
+                  {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
+                  {x.unit ? ` / ${x.unit}` : ''}
+                </option>
+              ))}
+            </Select>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Field
               label={t('visit.add.quantity')}
@@ -736,10 +797,10 @@ function AddChargeCard({
             value={discount}
             onMode={setMode}
             onChange={setDiscount}
-            disabled={disabled || !selected}
+            disabled={disabled || !picked}
             invalid={overMax || manualRefused || adj.error != null}
             hint={
-              selected
+              picked
                 ? manual != null
                   ? t('visit.add.newPrice', { price: formatRwf(manual) })
                   : d > 0
@@ -758,7 +819,7 @@ function AddChargeCard({
               required
             />
           )}
-          {selected && (
+          {picked && (
             <p className="text-ink-2 m-0 text-[13px]">
               {changed && (
                 <span className="text-ink-3 mr-1 line-through">{formatRwf(listPrice)}</span>
@@ -773,7 +834,7 @@ function AddChargeCard({
               {error}
             </p>
           )}
-          <Button type="submit" variant="primary" disabled={disabled || busy || !selected}>
+          <Button type="submit" variant="primary" disabled={disabled || busy || !picked}>
             <Plus size={16} aria-hidden="true" />
             {busy ? t('visit.add.adding') : t('visit.add.submit')}
           </Button>

@@ -202,6 +202,7 @@ export function useVisitHeader(encounterId: string) {
 export function useVisitVitals(encounterId: string) {
   return useQuery({
     queryKey: ['visit', encounterId, 'vitals'],
+    enabled: encounterId !== '',
     queryFn: async (): Promise<Vital[]> => {
       if (!supabase) {
         return [
@@ -316,7 +317,9 @@ export function useVisitBill(encounterId: string) {
 export interface AddChargeInput {
   encounterId: string
   office: Station
-  serviceId: string
+  /** A treatment, or a medicine / supply (one of the two). */
+  serviceId?: string
+  itemId?: string
   /** Sample mode needs the description and price; live mode resolves them in the database. */
   description?: string
   listPrice?: number
@@ -347,7 +350,7 @@ export function useBillingActions(encounterId: string) {
         const insurer = Math.round((total * (input.coveragePct ?? 0)) / 100)
         b.charges.push({
           id: `c-${Math.random().toString(36).slice(2, 8)}`,
-          description: input.description ?? input.serviceId,
+          description: input.description ?? input.serviceId ?? input.itemId ?? '',
           quantity: input.quantity,
           unitPrice: unit,
           listPrice: input.listPrice ?? 0,
@@ -366,8 +369,8 @@ export function useBillingActions(encounterId: string) {
       const { error } = await supabase.rpc('add_charge', {
         p_encounter_id: encounterId,
         p_office: input.office,
-        p_service_id: input.serviceId,
-        p_item_id: null,
+        p_service_id: input.serviceId ?? null,
+        p_item_id: input.itemId ?? null,
         p_quantity: input.quantity,
         p_manual_price: input.manualPrice ?? null,
         p_manual_reason: input.manualPrice != null ? input.discountReason?.trim() || null : null,

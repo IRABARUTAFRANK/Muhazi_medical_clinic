@@ -306,7 +306,37 @@ export function useVisitActions() {
     onSuccess: refresh,
   })
 
-  return { register, startVisit, recordVitals }
+  /** Triage when the vitals were already taken: colour and next station, nothing measured again. */
+  const sendFromTriage = useMutation({
+    mutationFn: async ({
+      encounterId,
+      triage,
+      nextStation,
+      reason,
+    }: {
+      encounterId: string
+      triage: Triage
+      nextStation: Station
+      reason?: string
+    }): Promise<string> => {
+      if (!supabase) {
+        const row = sampleQueue.find((r) => r.encounterId === encounterId)
+        if (row) row.station = nextStation
+        return row?.ticket ?? 'A-000'
+      }
+      const { data, error } = await supabase.rpc('send_from_triage', {
+        p_encounter_id: encounterId,
+        p_triage: triage,
+        p_next_station: nextStation,
+        p_reason: reason?.trim() || null,
+      })
+      if (error) throw new Error(error.message)
+      return String(data)
+    },
+    onSuccess: refresh,
+  })
+
+  return { register, startVisit, recordVitals, sendFromTriage }
 }
 
 // ---------------------------------------------------------------- who measures
@@ -356,6 +386,9 @@ export interface QueueItem extends QueueRow {
   assignedName?: string | null
   referredBy?: string | null
   referralNote?: string | null
+  /** Vitals already measured for this visit: when and by whom (migration 0039). */
+  vitalsAt?: string | null
+  vitalsBy?: string | null
 }
 
 interface BoardRow {
@@ -381,6 +414,8 @@ interface BoardRow {
   assigned_name?: string | null
   referred_by_name?: string | null
   referral_note?: string | null
+  vitals_at?: string | null
+  vitals_by?: string | null
 }
 
 const sexLetter: Record<Sex, string> = { female: 'F', male: 'M', other: '', unknown: '' }
@@ -413,6 +448,8 @@ const toItem = (r: BoardRow): QueueItem => ({
   assignedName: r.assigned_name ?? null,
   referredBy: r.referred_by_name ?? null,
   referralNote: r.referral_note ?? null,
+  vitalsAt: r.vitals_at ?? null,
+  vitalsBy: r.vitals_by ?? null,
   ticket: r.ticket_no,
   name: `${r.surname} ${r.given_names}`,
   ageSex: `${ageOf(r.birth_date)} ${sexLetter[r.sex]}`.trim(),

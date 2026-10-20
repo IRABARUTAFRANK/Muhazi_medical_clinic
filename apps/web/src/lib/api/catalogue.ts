@@ -258,6 +258,146 @@ export function useServiceBilling(from: string, to: string) {
   })
 }
 
+// ---------------------------------------------------------------- medicines and supplies
+export interface Medicine {
+  id: string
+  code: string
+  name: string
+  strength: string | null
+  form: string | null
+  unit: string | null
+  cashPrice: number | null
+  active: boolean
+}
+const sampleMedicines: Medicine[] = [
+  {
+    id: 'it-1',
+    code: 'AMOX500',
+    name: 'Amoxicillin',
+    strength: '500 mg',
+    form: 'capsule',
+    unit: 'cap',
+    cashPrice: 300,
+    active: true,
+  },
+  {
+    id: 'it-2',
+    code: 'PARA500',
+    name: 'Paracetamol',
+    strength: '500 mg',
+    form: 'tablet',
+    unit: 'tab',
+    cashPrice: 50,
+    active: true,
+  },
+  {
+    id: 'it-3',
+    code: 'AL20120',
+    name: 'Artemether-lumefantrine',
+    strength: '20/120 mg',
+    form: 'tablet',
+    unit: 'tab',
+    cashPrice: 500,
+    active: true,
+  },
+]
+const MEDS = ['catalogue', 'medicines'] as const
+
+/** Every medicine and supply (also the hidden ones), with the cash price. */
+export function useMedicines() {
+  return useQuery({
+    queryKey: MEDS,
+    queryFn: async (): Promise<Medicine[]> => {
+      if (!supabase) return sampleMedicines
+      const { data, error } = await supabase
+        .from('items_catalogue')
+        .select('id, code, name_generic, strength, form, unit, cash_price, active')
+        .order('name_generic')
+      if (error) throw new Error(error.message)
+      return (
+        data as {
+          id: string
+          code: string
+          name_generic: string
+          strength: string | null
+          form: string | null
+          unit: string | null
+          cash_price: number | string | null
+          active: boolean
+        }[]
+      ).map((r) => ({
+        id: r.id,
+        code: r.code,
+        name: r.name_generic,
+        strength: r.strength,
+        form: r.form,
+        unit: r.unit,
+        cashPrice: r.cash_price == null ? null : Number(r.cash_price),
+        active: r.active,
+      }))
+    },
+  })
+}
+
+export function useMedicineActions() {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: ['catalogue'] })
+  const save = useMutation({
+    mutationFn: async (m: {
+      id?: string
+      name: string
+      strength: string
+      form: string
+      unit: string
+      price: number
+      active: boolean
+    }): Promise<string> => {
+      if (!supabase) {
+        const existing = m.id ? sampleMedicines.find((x) => x.id === m.id) : undefined
+        const row: Medicine = {
+          id: existing?.id ?? `it-${Math.random().toString(36).slice(2, 8)}`,
+          code: existing?.code ?? `MED-${String(sampleMedicines.length + 1).padStart(4, '0')}`,
+          name: m.name.trim(),
+          strength: m.strength.trim() || null,
+          form: m.form.trim() || null,
+          unit: m.unit.trim() || null,
+          cashPrice: m.price,
+          active: m.active,
+        }
+        if (existing) Object.assign(existing, row)
+        else sampleMedicines.push(row)
+        return row.id
+      }
+      const { data, error } = await supabase.rpc('upsert_item', {
+        p_id: m.id ?? null,
+        p_name: m.name.trim(),
+        p_price: m.price,
+        p_strength: m.strength.trim() || null,
+        p_form: m.form.trim() || null,
+        p_unit: m.unit.trim() || null,
+        p_active: m.active,
+        p_code: null,
+      })
+      if (error) throw new Error(error.message)
+      return String(data)
+    },
+    onSuccess: refresh,
+  })
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      if (!supabase) {
+        const i = sampleMedicines.findIndex((x) => x.id === id)
+        if (i >= 0) sampleMedicines.splice(i, 1)
+        return
+      }
+      const { error } = await supabase.rpc('delete_item', { p_id: id })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+  return { save, remove }
+}
+
 // ---------------------------------------------------------------- insurers
 interface InsurerRow {
   id: string

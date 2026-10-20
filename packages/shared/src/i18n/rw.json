@@ -235,8 +235,15 @@
       "sending": "Birimo koherezwa…",
       "sentRef": "Ubusabe {{ref}} bwoherejwe. Ubwakiriro buzakwemerera kuri {{channel}} mu isaha imwe mu masaha y'akazi.",
       "sendFailed": "Ubusabe ntibwoherejwe. Reba umurongo wa interineti cyangwa uhamagare ubwakiriro.",
-      "dayPh": "16/10/2026",
-      "timePh": "09:00"
+      "errors": {
+        "name": "Andika amazina yawe yose.",
+        "phone": "Andika nimero ya telefoni yo mu Rwanda, urugero 078 123 4567.",
+        "tooMany": "Hasabwe kenshi kuri iyi telefoni uyu munsi. Hamagara kwakira abarwayi.",
+        "taken": "Iyo saha imaze gufatwa; hitamo indi.",
+        "past": "Uwo munsi cyangwa iyo saha byarashize.",
+        "notWorking": "Umuganga ntakora kuri iyo saha; hitamo indi.",
+        "generic": "Ubusabe ntibwoherejwe. Reba umurongo wa internet cyangwa uhamagare kwakira abarwayi."
+      }
     },
     "insurance": {
       "title": "Ubwishingizi twakira",
@@ -900,7 +907,8 @@
     "errors": {
       "noVitals": "Andika nibura igipimo kimwe.",
       "generic": "Ntibyabitswe: {{message}}"
-    }
+    },
+    "takenBadge": "Ibipimo byafashwe"
   },
   "settings": {
     "title": "Igenamiterere ry'ivuriro",
@@ -1080,7 +1088,8 @@
         "pick": "Banza uhitemo ubuvuzi.",
         "discount": "Igabanywa ni ijanisha riri hagati ya 0 na 100.",
         "overMax": "Ushobora gutanga kugeza kuri {{pct}}% kuri ubu buvuzi. Saba umuyobozi kurenzaho.",
-        "reason": "Tanga impamvu y'igabanywa."
+        "reason": "Tanga impamvu y'igabanywa.",
+        "pickItem": "Banza uhitemo umuti cyangwa igikoresho."
       },
       "title": "Ongeraho ubuvuzi",
       "search": "Shakisha",
@@ -1092,7 +1101,13 @@
       "reasonPh": "urugero: gusubira kwa muganga, ubukene",
       "preview": "{{unit}} kimwe · {{total}} byose hamwe",
       "adding": "Birimo kongerwaho…",
-      "submit": "Shyira kuri fagitire"
+      "submit": "Shyira kuri fagitire",
+      "kind": "Icyo wongeraho",
+      "kindTreatment": "Ubuvuzi",
+      "kindMedicine": "Umuti / igikoresho",
+      "medicine": "Umuti cyangwa igikoresho",
+      "pickItem": "Hitamo umuti cyangwa igikoresho",
+      "searchItemPh": "amoxicillin, gants, ORS…"
     },
     "back": "Subira ku murongo wanjye",
     "notFound": "Uru ruzinduko ntirwabonetse cyangwa rwafunzwe.",
@@ -1549,6 +1564,31 @@
       "byType": "Ubwoko",
       "field": "Ishami",
       "addTo": "Serivisi nshya muri {{name}}"
+    },
+    "meds": {
+      "title": "Imiti n’ibikoresho",
+      "lead": "Buri kimwe n’igiciro cyacyo: cyishyuzwa aho ari ho hose, no mu gihe gihawe umurwayi mu cyumba.",
+      "new": "Umuti mushya",
+      "editTitle": "Hindura {{name}}",
+      "name": "Izina",
+      "namePh": "Amoksisiline",
+      "strength": "Ingano",
+      "form": "Ubwoko",
+      "formPh": "ikinini, kapsule, sirupo, urushinge…",
+      "unit": "Kigurishwa kuri",
+      "unitPh": "ikinini, icupa, ampoule…",
+      "price": "Igiciro kimwe (RWF)",
+      "active": "Urakoreshwa",
+      "activeHint": "Umuti uhishwe ntushobora kwishyuzwa.",
+      "search": "Shaka umuti",
+      "searchPh": "Izina, ingano cyangwa kode…",
+      "empty": "Nta muti urahari. Ongeraho iyo ivuriro ritanga kandi rigurisha, n’ibiciro byayo.",
+      "perUnit": "kuri {{unit}}",
+      "confirmDelete": "Gukura “{{name}}” ku rutonde? Fagitire zamaze gukorwa zigumana imirongo yazo.",
+      "saved": "“{{name}}” yabitswe.",
+      "errors": {
+        "name": "Ha umuti izina."
+      }
     }
   },
   "desk": {
@@ -1643,8 +1683,15 @@
     "errors": {
       "who": "Hitamo umuforomo wafashe ibipimo.",
       "time": "Andika isaha byapimiwe.",
-      "future": "Isaha byapimiwe iri mu gihe kizaza."
-    }
+      "future": "Isaha byapimiwe iri mu gihe kizaza.",
+      "nothingChanged": "Nta cyahindutse. Kosora agaciro cyangwa uhagarike."
+    },
+    "takenShort": "Ibipimo byafashwe",
+    "taken": "Ibipimo byafashwe na {{name}} saa {{time}}",
+    "takenAt": "Ibipimo byafashwe saa {{time}}",
+    "takenHint": "Hindura agaciro gusa igihe ugakosora; ibindi biguma uko biri.",
+    "edit": "Hindura ibipimo",
+    "sendOn": "Mwohereze (ibipimo byamaze gufatwa)"
   },
   "ops": {
     "appts": {
@@ -1681,7 +1728,33 @@
       "reject": "Hakana",
       "rejectReason": "Kuki ubusabe bwa {{name}} buhakanwe? (azabimenyeshwa)",
       "registerNow": "Andika umurwayi ubu",
-      "hint": "Kwemeza bihuza ubusabe na dosiye y'umurwayi (hakoreshejwe telefoni) bikabwoherereza muganga ngo abwemere."
+      "hint": "Fatira buri busabe gahunda ukoresheje idosiye y’umurwayi, umuganga n’isaha. Umuganga aremera cyangwa akanga ku rupapuro rwe rw’ibanze, igisubizo ukakibona hano no mu butumwa.",
+      "asksFor": "Asaba: {{text}}",
+      "wants": "Ashaka {{doctor}} ku wa {{when}}",
+      "prefers": "Yifuza ku wa {{when}}",
+      "anyTime": "Umunsi cyangwa isaha iyo ari yo yose",
+      "fileFound": "Idosiye {{file}} · {{name}}",
+      "manyFiles": "Amadosiye {{count}} afite iyi telefoni — hitamo iyo ari yo",
+      "noFile": "Nta dosiye y’umurwayi ifite iyi telefoni",
+      "book": "Fata gahunda",
+      "confirmBook": "Fata gahunda usabe umuganga kuyemera",
+      "patient": "Idosiye y’umurwayi",
+      "otherFile": "Hitamo indi dosiye",
+      "searchFile": "Shaka idosiye y’umurwayi",
+      "searchPh": "Izina, nimero y’idosiye cyangwa telefoni",
+      "noFileHint": "Umurwayi mushya?",
+      "doctor": "Umuganga",
+      "pickDoctor": "Hitamo umuganga",
+      "noHours": "ntaragira ingengabihe",
+      "noHoursHint": "Uyu muganga ntarashyiraho amasaha y’akazi, bityo isaha iyo ari yo yose ishobora gufatwa; aremera cyangwa akanga.",
+      "day": "Umunsi",
+      "time": "Isaha",
+      "booked": "{{name}} yafatiwe gahunda kwa {{doctor}} ku wa {{when}}. Umuganga asabwe kuyemera; uzamenyeshwa igisubizo.",
+      "errors": {
+        "patient": "Hitamo idosiye y’umurwayi (cyangwa ubanze umwandike).",
+        "doctor": "Hitamo umuganga.",
+        "when": "Hitamo umunsi n’isaha."
+      }
     },
     "tasks": {
       "count": "{{count}} bitarakorwa · {{overdue}} byakererewe",
@@ -1790,7 +1863,12 @@
     "referral": "{{ticket}} {{name}} yoherejwe kuri {{desk}} na {{by}}",
     "referralBack": "arashaka kongera kubona umurwayi nyuma",
     "result": "Igisubizo cyabonetse: {{test}} · {{name}}",
-    "cover": "Usimbuye {{doctor}} kugeza {{until}}"
+    "cover": "Usimbuye {{doctor}} kugeza {{until}}",
+    "apptConfirmed": "{{doctor}} yemeye gahunda ya {{name}}",
+    "apptDeclined": "{{doctor}} yanze gahunda ya {{name}}",
+    "apptWhen": "yo ku wa {{when}}",
+    "apptReason": "Impamvu: {{reason}}",
+    "apptRebook": "Fata gahunda kwa undi muganga cyangwa ku yindi saha umenyeshe umurwayi."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"

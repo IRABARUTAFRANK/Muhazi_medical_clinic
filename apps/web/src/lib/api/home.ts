@@ -7,6 +7,7 @@ import {
   LAB_RESULTS,
   NURSE_TASKS,
   OPEN_BILLS,
+  STAFF,
   type ApptStatus,
 } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
@@ -165,6 +166,94 @@ export function useHomeSummary() {
   })
 }
 
+/** A booking request waiting for reception, with the patient file its phone matches. */
+export interface OpenInquiry {
+  id: string
+  name: string
+  phone: string | null
+  reference: string | null
+  category: string | null
+  channel: string | null
+  note: string | null
+  doctor: string | null
+  doctorUserId: string | null
+  startsAt: string | null
+  preferredAt: string | null
+  createdAt: string
+  insurer: string | null
+  patientId: string | null
+  patientFile: string | null
+  patientName: string | null
+  matches: number
+}
+const SAMPLE_OPEN: OpenInquiry[] = INQUIRIES.map((q, i) => ({
+  id: `inq-${i}`,
+  name: q.name,
+  phone: '0788000000',
+  reference: `MMC-2026-00${10 + i}`,
+  category: null,
+  channel: 'whatsapp',
+  note: q.detail,
+  doctor: null,
+  doctorUserId: null,
+  startsAt: null,
+  preferredAt: new Date(Date.now() + (i + 1) * 86_400_000).toISOString(),
+  createdAt: new Date().toISOString(),
+  insurer: null,
+  patientId: i === 0 ? 'p-1' : null,
+  patientFile: i === 0 ? 'MMC-000124' : null,
+  patientName: i === 0 ? 'Mukamana Alice' : null,
+  matches: i === 0 ? 1 : 0,
+}))
+
+export function useOpenInquiries() {
+  return useQuery({
+    queryKey: [...KEY, 'inquiries'],
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<OpenInquiry[]> => {
+      if (!supabase) return SAMPLE_OPEN
+      const { data, error } = await supabase.rpc('inquiries_open')
+      if (error) throw new Error(error.message)
+      return ((data ?? []) as Omit<OpenInquiry, 'matches'>[] & { matches?: number }[]).map((r) => ({
+        ...r,
+        matches: Number((r as { matches?: number }).matches ?? 0),
+      })) as OpenInquiry[]
+    },
+  })
+}
+
+/** Doctors and sonographers reception can book (their calendar is created when first booked). */
+export interface BookableDoctor {
+  userId: string
+  name: string
+  role: string
+  staffId: string | null
+  hasHours: boolean
+  slotMinutes: number
+  title: string | null
+}
+export function useBookableDoctors() {
+  return useQuery({
+    queryKey: [...KEY, 'doctors'],
+    staleTime: 60_000,
+    queryFn: async (): Promise<BookableDoctor[]> => {
+      if (!supabase)
+        return STAFF.filter((s) => s.role === 'doctor').map((s) => ({
+          userId: s.id,
+          name: s.name,
+          role: s.role,
+          staffId: s.staffId ?? null,
+          hasHours: true,
+          slotMinutes: 30,
+          title: null,
+        }))
+      const { data, error } = await supabase.rpc('bookable_doctors')
+      if (error) throw new Error(error.message)
+      return (data ?? []) as BookableDoctor[]
+    },
+  })
+}
+
 export function useHomeActions() {
   const qc = useQueryClient()
   const refresh = () => {
@@ -177,8 +266,24 @@ export function useHomeActions() {
     if (error) throw new Error(error.message)
   }
   const approveInquiry = useMutation({
-    mutationFn: ({ id, patientId }: { id: string; patientId?: string }) =>
-      call('approve_inquiry_auto', { p_appointment_id: id, p_patient_id: patientId ?? null }),
+    mutationFn: ({
+      id,
+      patientId,
+      doctorUserId,
+      startsAt,
+    }: {
+      id: string
+      patientId?: string
+      /** Reception books the request with this doctor at this time (website requests). */
+      doctorUserId?: string
+      startsAt?: string
+    }) =>
+      call('approve_inquiry_auto', {
+        p_appointment_id: id,
+        p_patient_id: patientId ?? null,
+        p_practitioner_user: doctorUserId ?? null,
+        p_starts_at: startsAt ?? null,
+      }),
     onSuccess: refresh,
   })
   const rejectInquiry = useMutation({

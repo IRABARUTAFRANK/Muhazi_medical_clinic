@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
+import type { Vital } from '@/lib/api/billing'
 import { SEND_FROM_TRIAGE, useVisitActions, useVitalsTakers, type Station } from '@/lib/api/visits'
+import { formatTime } from '@mmc/shared'
 import { cn } from '@/lib/utils'
 
 /** Vital signs, in the order the nurse takes them. */
@@ -57,10 +59,13 @@ export function VitalsForm({
   mode,
   defaultNext = 'consultation',
   missing,
+  existing = [],
   onSaved,
   onCancel,
 }: {
   user: StaffUser
+  /** Vitals already measured for this visit: shown as taken, changed only to correct them. */
+  existing?: Vital[]
   encounterId: string
   title: string
   subtitle?: string
@@ -76,17 +81,16 @@ export function VitalsForm({
   const actions = useVisitActions()
   const { data: takers = [] } = useVitalsTakers()
   const measuresSelf = MEASURERS.includes(user.role)
-  const [values, setValues] = useState<Record<VitalKey, string>>({
-    bp_sys: '',
-    bp_dia: '',
-    pulse: '',
-    temp: '',
-    resp: '',
-    spo2: '',
-    weight: '',
-    height: '',
-    muac: '',
-  })
+  const initial = Object.fromEntries(
+    VITALS.map((v) => [v.key, String(existing.find((e) => e.code === v.key)?.value ?? '')]),
+  ) as Record<VitalKey, string>
+  const [values, setValues] = useState<Record<VitalKey, string>>(initial)
+  const taken = existing.length > 0
+  const latest = existing.reduce<Vital | null>((a, v) => (!a || v.at > a.at ? v : a), null)
+  const changedKeys = (Object.keys(values) as VitalKey[]).filter(
+    (k) => values[k].trim() !== initial[k].trim(),
+  )
+  const sendOnOnly = mode === 'triage' && taken && changedKeys.length === 0
   const [level, setLevel] = useState<Triage>('green')
   const [next, setNext] = useState<Station>(defaultNext)
   const [reason, setReason] = useState('')
@@ -100,6 +104,21 @@ export function VitalsForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (sendOnOnly) {
+      try {
+        const ticket = await actions.sendFromTriage.mutateAsync({
+          encounterId,
+          triage: level,
+          nextStation: next,
+          reason,
+        })
+        onSaved(ticket, next)
+      } catch (err) {
+        setError(t('triage.errors.generic', { message: err instanceof Error ? err.message : '' }))
+      }
+      return
+    }
+    if (taken && changedKeys.length === 0) return setError(t('vitalsForm.errors.nothingChanged'))
     if (!Object.values(values).some((v) => v.trim() !== ''))
       return setError(t('triage.errors.noVitals'))
     if (!measuredBy) return setError(t('vitalsForm.errors.who'))
@@ -110,7 +129,10 @@ export function VitalsForm({
     try {
       const ticket = await actions.recordVitals.mutateAsync({
         encounterId,
-        vitals: values,
+        // Once taken, only the corrected values are saved again.
+        vitals: taken
+          ? (Object.fromEntries(changedKeys.map((k) => [k, values[k]])) as Record<string, string>)
+          : values,
         triage: mode === 'triage' ? level : null,
         nextStation: mode === 'triage' ? next : null,
         reason,
@@ -134,6 +156,18 @@ export function VitalsForm({
       </CardHeader>
       <form onSubmit={submit}>
         <CardBody className="gap-4">
+          {taken && (
+            <p className="bg-green-bg text-green m-0 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl px-3 py-2 text-[13px] font-semibold">
+              <Activity size={16} aria-hidden="true" />
+              {latest?.measuredBy
+                ? t('vitalsForm.taken', {
+                    name: latest.measuredBy,
+                    time: formatTime(new Date(latest.at)),
+                  })
+                : t('vitalsForm.takenAt', { time: latest ? formatTime(new Date(latest.at)) : '' })}
+              <span className="text-ink-2 basis-full font-normal">{t('vitalsForm.takenHint')}</span>
+            </p>
+          )}
           {/* Who measured and when (the paper sheet case) */}
           <div
             className={cn(
@@ -263,10 +297,16 @@ export function VitalsForm({
               type="submit"
               variant="primary"
               size="lg"
-              loading={actions.recordVitals.isPending}
+              loading={actions.recordVitals.isPending || actions.sendFromTriage.isPending}
             >
               <Send size={18} aria-hidden="true" />
-              {t(mode === 'triage' ? 'triage.send' : 'vitalsForm.save')}
+              {t(
+                sendOnOnly
+                  ? 'vitalsForm.sendOn'
+                  : mode === 'triage'
+                    ? 'triage.send'
+                    : 'vitalsForm.save',
+              )}
             </Button>
             {onCancel && (
               <Button type="button" variant="ghost" size="lg" onClick={onCancel}>

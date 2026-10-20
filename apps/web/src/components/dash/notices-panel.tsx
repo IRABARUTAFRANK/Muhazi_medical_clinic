@@ -6,6 +6,7 @@ import {
   FlaskConical,
   HeartHandshake,
   CalendarCheck,
+  CalendarX,
   CheckCheck,
   ListTodo,
   Megaphone,
@@ -32,6 +33,8 @@ const LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   task: { icon: ListTodo, tint: 'teal' },
   inquiry: { icon: MessageSquare, tint: 'violet' },
   to_accept: { icon: CalendarCheck, tint: 'navy' },
+  appt_confirmed: { icon: CalendarCheck, tint: 'mint' },
+  appt_declined: { icon: CalendarX, tint: 'coral' },
   message: { icon: Megaphone, tint: 'coral' },
 }
 

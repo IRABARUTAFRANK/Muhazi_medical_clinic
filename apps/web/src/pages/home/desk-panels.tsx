@@ -10,7 +10,6 @@ import {
   Clock,
   FilePen,
   ListTodo,
-  MessageSquare,
   Moon,
   Receipt,
   Sparkles,
@@ -33,7 +32,6 @@ import {
   type BoardBed,
   type DayAppointment,
 } from '@/lib/api/desk-ops'
-import { useHomeActions, useHomeSummary } from '@/lib/api/home'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
 
@@ -192,86 +190,6 @@ export function AppointmentsPanel({
         </ShownList>
       )}
       {footer}
-    </Panel>
-  )
-}
-
-/* ---------------------------------------------------------------- inquiries */
-
-/**
- * Booking requests from the website or phone. Approve links them to the patient's file
- * (matched by phone); the doctor then accepts. Reject asks for a reason.
- */
-export function InquiriesPanel({ i = 2, canAct }: { i?: number; canAct: boolean }) {
-  const { t } = useTranslation()
-  const { data } = useHomeSummary()
-  const actions = useHomeActions()
-  const { error, run } = useRun()
-  const inquiries = data?.inquiries ?? []
-
-  const approve = (id: string) => void run(() => actions.approveInquiry.mutateAsync({ id }))
-  const reject = (id: string, name: string) => {
-    const reason = window.prompt(t('ops.inquiries.rejectReason', { name }))
-    if (!reason) return
-    void run(() => actions.rejectInquiry.mutateAsync({ id, reason }))
-  }
-
-  return (
-    <Panel
-      i={i}
-      icon={MessageSquare}
-      tint="teal"
-      title={t('desk.receptionist.inquiries')}
-      right={String(inquiries.length)}
-    >
-      {error && (
-        <p className={errorLine}>
-          {error}
-          {/register the patient first/i.test(error) && (
-            <>
-              {' '}
-              <StaffLink to="/app/register" className="underline">
-                {t('ops.inquiries.registerNow')}
-              </StaffLink>
-            </>
-          )}
-        </p>
-      )}
-      {inquiries.length === 0 ? (
-        <Empty>{t('desk.receptionist.noInquiries')}</Empty>
-      ) : (
-        <ShownList items={inquiries} step={5}>
-          {(shown) => (
-            <div className="flex flex-col">
-              {shown.map((q, k) => (
-                <div key={q.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
-                  <Pill tint="violet" icon={MessageSquare}>
-                    {q.when ?? '?'}
-                  </Pill>
-                  <span className="min-w-[140px] flex-1">
-                    <span className="block truncate font-semibold">{q.name}</span>
-                    <span className="text-ink-3 block truncate text-[13px]">
-                      {[q.phone, q.doctor, q.note].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
-                  {canAct && (
-                    <span className="flex gap-1">
-                      <Button size="sm" variant="primary" onClick={() => approve(q.id)}>
-                        <Check size={14} aria-hidden="true" />
-                        {t('common.approve')}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => reject(q.id, q.name)}>
-                        {t('ops.inquiries.reject')}
-                      </Button>
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </ShownList>
-      )}
-      <Hint>{t('ops.inquiries.hint')}</Hint>
     </Panel>
   )
 }
@@ -690,3 +608,5 @@ export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
     </Panel>
   )
 }
+
+export { InquiriesPanel } from './inquiries-panel'

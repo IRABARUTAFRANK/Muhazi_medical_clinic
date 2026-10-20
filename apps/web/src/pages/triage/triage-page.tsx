@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { useVisitVitals } from '@/lib/api/billing'
 import { useFilesToComplete } from '@/lib/api/desk-ops'
 import { openItems, sortQueue, useQueueBoard } from '@/lib/api/visits'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
@@ -44,6 +45,8 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
   const missing = selected
     ? files.find((f) => f.encounterId === selected.encounterId)?.missing
     : undefined
+  // Vitals already measured (at registration, by another nurse, from a paper sheet).
+  const { data: existing = [] } = useVisitVitals(selected?.encounterId ?? '')
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="vitals">
@@ -105,6 +108,7 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
                       {q.ageSex} · {q.fileNumber}
                     </span>
                   </span>
+                  {q.vitalsAt && <Badge tone="green">{t('triage.takenBadge')}</Badge>}
                   {q.priority === 1 && <Badge tone="red">{t('home.triage.red')}</Badge>}
                   <span className="text-ink-2 text-xs tabular-nums">
                     {q.waitMin} {t('common.min')}
@@ -121,12 +125,13 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
 
           {selected ? (
             <VitalsForm
-              key={selected.queueId}
+              key={`${selected.queueId}|${existing.length}`}
               user={user}
               encounterId={selected.encounterId}
               title={`${selected.ticket} · ${selected.name}`}
               subtitle={`${selected.ageSex} · ${selected.fileNumber}`}
               mode="triage"
+              existing={existing}
               defaultNext={missing && missing.length > 0 ? 'reception' : 'consultation'}
               missing={missing}
               onSaved={(ticket, station) => {

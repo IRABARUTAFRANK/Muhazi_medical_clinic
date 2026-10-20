@@ -22,7 +22,7 @@ import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { SiteFooter } from '@/components/public/site-footer'
 import { SiteNav, Wrap } from '@/components/public/site-nav'
-import { sendInquiry } from '@/lib/api/inquiries'
+import { inquiryErrorKey, sendInquiry } from '@/lib/api/inquiries'
 import { bookedFor, useBookedSlots, usePractitioners } from '@/lib/api/public'
 import { appNow } from '@/lib/clock'
 import { useDayNames } from '@/lib/hooks'
@@ -120,8 +120,9 @@ export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
         category,
       })
       setSentRef(result.reference)
-    } catch {
-      setError(t('booking.sendFailed'))
+    } catch (err) {
+      const key = inquiryErrorKey(err instanceof Error ? err.message : '')
+      setError(key === 'generic' ? t('booking.sendFailed') : t(`landing.book.errors.${key}`))
     } finally {
       setBusy(false)
     }

@@ -52,6 +52,7 @@ import {
   type Treatment,
 } from '@/lib/api/catalogue'
 import { suggestNames } from '@/lib/medical-glossary'
+import { MedicinesSection } from './medicines-section'
 import { useDepartmentActions, useDepartments, type Department } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -510,6 +511,9 @@ export function PricesPage({ user }: { user: StaffUser }) {
               {renderRows(visible.filter((x) => x.group === g))}
             </Card>
           ))}
+
+        {/* Medicines and supplies with their price */}
+        <MedicinesSection onNotice={setNotice} />
 
         {/* Insurers: only once the clinic works with insurers */}
         {FEATURES.insurance ? (

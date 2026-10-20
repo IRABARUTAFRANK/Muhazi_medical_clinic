@@ -83,6 +83,30 @@ export function useWording() {
           title: t('notify.toAccept', { name: p.name ?? '' }),
           body: t('notify.toAcceptBody'),
         }
+      case 'appt_confirmed':
+        return {
+          title: t('notify.apptConfirmed', { name: p.name ?? '', doctor: p.doctor ?? '' }),
+          body: p.when
+            ? t('notify.apptWhen', {
+                when: `${formatDate(new Date(p.when))} ${formatTime(new Date(p.when))}`,
+              })
+            : null,
+        }
+      case 'appt_declined':
+        return {
+          title: t('notify.apptDeclined', { name: p.name ?? '', doctor: p.doctor ?? '' }),
+          body: [
+            p.when
+              ? t('notify.apptWhen', {
+                  when: `${formatDate(new Date(p.when))} ${formatTime(new Date(p.when))}`,
+                })
+              : null,
+            p.reason ? t('notify.apptReason', { reason: p.reason }) : null,
+            t('notify.apptRebook'),
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        }
       default:
         return { title: n.title ?? '', body: n.body }
     }
