@@ -83,24 +83,39 @@ export function NotificationBell({ user }: { user: StaffUser }) {
         <div
           role="dialog"
           aria-label={t('notify.title')}
-          className="anim-enter text-ink bg-card shadow-sheet absolute top-[calc(100%+8px)] right-0 z-50 flex max-h-[min(560px,75vh)] w-[min(400px,92vw)] flex-col overflow-hidden rounded-2xl"
+          className="anim-enter text-ink bg-card shadow-sheet fixed inset-x-2 top-[112px] z-50 flex max-h-[min(560px,70dvh)] flex-col overflow-hidden rounded-2xl sm:absolute sm:inset-x-auto sm:top-[calc(100%+8px)] sm:right-0 sm:w-[min(400px,92vw)]"
         >
           <div className="border-border flex items-center gap-2 border-b px-4 py-3">
             <span className="flex-1 text-[15px] font-bold">{t('notify.title')}</span>
+            <button
+              type="button"
+              aria-label={t('common.close')}
+              onClick={() => setOpen(false)}
+              className="text-ink-3 hover:bg-hover hover:text-ink order-last inline-flex size-9 items-center justify-center rounded-lg sm:hidden"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
             {unread > 0 && (
               <button
                 type="button"
-                className="text-primary inline-flex items-center gap-1 text-xs font-semibold"
+                className="text-primary inline-flex min-h-9 items-center gap-1 rounded-lg px-1.5 text-xs font-semibold whitespace-nowrap"
+                aria-label={t('notify.markAll')}
+                title={t('notify.markAll')}
                 onClick={() => actions.markRead.mutate(null)}
               >
-                <CheckCheck size={14} aria-hidden="true" />
-                {t('notify.markAll')}
+                <CheckCheck size={16} aria-hidden="true" />
+                <span className="hidden sm:inline">{t('notify.markAll')}</span>
               </button>
             )}
             {canSend && !composing && (
-              <Button size="sm" onClick={() => setComposing(true)}>
+              <Button
+                size="sm"
+                aria-label={t('notify.compose')}
+                title={t('notify.compose')}
+                onClick={() => setComposing(true)}
+              >
                 <Megaphone size={14} aria-hidden="true" />
-                {t('notify.compose')}
+                <span className="hidden sm:inline">{t('notify.compose')}</span>
               </Button>
             )}
           </div>

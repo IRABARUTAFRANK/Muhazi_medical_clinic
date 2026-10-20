@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { NavItem, StaffUser, SyncState } from '@mmc/shared'
 import { LangSwitch } from '@/components/public/lang-switch'
@@ -29,6 +31,13 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
   const actions = useUserActions()
   const manager = user.role === 'manager'
   const dashboard = manager || user.dashboard === 'head'
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
   return (
     <div
       className="absolute inset-0 z-20 flex flex-col justify-end bg-[rgba(15,23,32,.45)]"
@@ -43,6 +52,14 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
       >
         <div className="bg-border mx-auto mb-3 h-1 w-10 rounded-sm" />
         <div className="flex flex-wrap items-center gap-2 px-3 py-1.5">
+          <button
+            type="button"
+            aria-label={t('common.close')}
+            onClick={onClose}
+            className="text-ink-3 hover:bg-hover hover:text-ink order-last inline-flex size-10 items-center justify-center rounded-lg"
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
           <span className="min-w-0 flex-1">
             <span className="block text-[13px] font-semibold">{user.name}</span>
             <span className="text-ink-3 text-xs tabular-nums">
@@ -111,6 +128,15 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
         <button type="button" className={item} onClick={actions.signOut}>
           <span>{t('common.signOut')}</span>
           <span className="text-ink-3 text-xs">{t('common.backToSite')}</span>
+        </button>
+        <div className="border-border my-2 border-t" />
+        <button
+          type="button"
+          className="border-border text-ink hover:bg-hover flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border font-semibold"
+          onClick={onClose}
+        >
+          <X size={18} aria-hidden="true" />
+          {t('common.close')}
         </button>
       </div>
     </div>
