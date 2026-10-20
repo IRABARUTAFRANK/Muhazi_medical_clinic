@@ -20,6 +20,8 @@ export function VisitsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const { data: items = [], isLoading, error } = useQueueBoard('all', user.role)
   const open = openItems(items)
+  // A patient shared by several desks ("first free doctor") is listed at each desk, counted once.
+  const people = new Set(open.map((q) => q.encounterId)).size
   const stations = STATIONS.filter((s) => open.some((i) => i.station === s))
 
   return (
@@ -31,9 +33,7 @@ export function VisitsPage({ user }: { user: StaffUser }) {
           title={t('visits.title')}
           lead={t('visits.lead')}
           user={user}
-          meta={
-            <BannerChip icon={Stethoscope}>{t('visits.count', { count: open.length })}</BannerChip>
-          }
+          meta={<BannerChip icon={Stethoscope}>{t('visits.count', { count: people })}</BannerChip>}
         >
           <StaffLink to="/app/register" className={buttonVariants({ variant: 'primary' })}>
             <UserPlus size={18} aria-hidden="true" />

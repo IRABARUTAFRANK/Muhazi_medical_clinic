@@ -450,12 +450,14 @@ export function useQueueBoard(station: Station | 'all', role: Role) {
           finishedAt: null,
         }))
       }
+      // Everyone still waiting or being seen, whatever day they arrived (a visit left open
+      // overnight must not vanish at midnight), plus today's finished rows for the counts.
       const since = new Date()
       since.setHours(0, 0, 0, 0)
       let query = supabase
         .from('queue_board')
         .select('*')
-        .gte('queued_at', since.toISOString())
+        .or(`finished_at.is.null,queued_at.gte.${since.toISOString()}`)
         .order('priority')
         .order('queued_at')
       if (station !== 'all') query = query.eq('station', station)

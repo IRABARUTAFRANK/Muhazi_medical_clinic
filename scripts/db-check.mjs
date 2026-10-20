@@ -825,6 +825,25 @@ await step('a person hides a notice from their list; the sender sees it was read
   await db.query(`select delete_notification($1)`, [item.id])
   return `hidden for the nurse; read by ${mine.readBy}; deleted by the sender`
 })
+await step('a patient waiting since yesterday still counts (0030)', async () => {
+  await asAdmin()
+  const q = await one(
+    `select q.id, q.station from queue_entry q join encounter e on e.id = q.encounter_id
+     where q.finished_at is null and q.deleted_at is null and e.status = 'open' limit 1`,
+  )
+  await db.query(`update queue_entry set created_at = now() - interval '1 day' where id = $1`, [
+    q.id,
+  ])
+  const status = (await one(`select public_clinic_status() as s`)).s
+  await as(staff.receptionist)
+  const desk = (await one(`select desk_summary() as d`)).d
+  await asAdmin()
+  await db.query(`update queue_entry set created_at = now() where id = $1`, [q.id])
+  const tile = desk.stations.find((s) => s.station === q.station)
+  if (!status.waiting) throw new Error('public waiting is 0')
+  if (!tile || tile.waiting + tile.busy < 1) throw new Error(`station ${q.station} missing`)
+  return `waiting ${status.waiting}; ${q.station} tile ${tile.waiting} waiting`
+})
 
 finish()
 
