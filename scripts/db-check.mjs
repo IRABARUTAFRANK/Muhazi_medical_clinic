@@ -1203,6 +1203,50 @@ await step('history explains: names behind ids, changed fields, no secrets', asy
   return `charge for ${charge.patient}; payment bill ${pay.names.invoice}; ${upd.entity} changed ${upd.changes.map((c) => c.f).join(', ')}`
 })
 
+// ---------------------------------------------------------------- 0040: cashier-only payments, bookings detail, flow setting
+await step(
+  '0040: the manager may not record a payment; the cashier may; the bill says who settled it',
+  async () => {
+    await asAdmin()
+    const enc = await one(
+      `select i.encounter_id as id from invoice i where i.status = 'draft' and invoice_balance(i.id) > 0 limit 1`,
+    )
+    let refused = false
+    try {
+      await as(staff.manager)
+      await db.query(`select take_payment($1, 'cash', 100)`, [enc.id])
+    } catch (e) {
+      refused = /only the cashier/.test(String(e.message))
+    }
+    await as(staff.cashier)
+    await db.query(`select take_payment($1, 'cash', 100)`, [enc.id])
+    const b = await one(`select settled_by, settled_at from visit_bill where encounter_id = $1`, [
+      enc.id,
+    ])
+    await asAdmin()
+    if (!refused || !b.settled_by) throw new Error(`refused=${refused} by=${b.settled_by}`)
+    return `manager refused; cashier paid; settled by ${b.settled_by}`
+  },
+)
+await step(
+  '0040: appointment detail carries the reason and who approved; flow setting toggles triage',
+  async () => {
+    await as(staff.receptionist)
+    const d = (await one(`select appointment_detail($1) as j`, [homeInquiryId])).j
+    if (!d || d.reason !== 'Needs consultation' || !d.approvedBy || !d.acceptedBy)
+      throw new Error(JSON.stringify(d).slice(0, 200))
+    await as(staff.manager)
+    await db.query(`select save_setting('flow', '{"triage_first": true}'::jsonb)`)
+    const s1 = (await one(`select staff_settings() as j`)).j
+    await db.query(`select save_setting('flow', '{"triage_first": false}'::jsonb)`)
+    const s2 = (await one(`select staff_settings() as j`)).j
+    await asAdmin()
+    if (s1.triage_first !== true || s2.triage_first !== false)
+      throw new Error('setting not read back')
+    return `reason "${d.reason}", approved by ${d.approvedBy}, accepted by ${d.acceptedBy}; triage_first toggles`
+  },
+)
+
 finish()
 
 function finish() {

@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import {
+  Activity,
   AlarmClock,
   ArrowRightLeft,
   BedDouble,
@@ -84,6 +85,7 @@ export function MyQueuePanel({
     referredBy?: string | null
     referralNote?: string | null
     assignedName?: string | null
+    vitalsAt?: string | null
   })[]
   counts: QueueCounts
   rowAction: 'open' | 'call'
@@ -134,6 +136,12 @@ export function MyQueuePanel({
                         <span className="inline-flex items-center gap-1">
                           <Wallet size={12} aria-hidden="true" />
                           {q.insurer}
+                        </span>
+                      )}
+                      {'vitalsAt' in q && !q.vitalsAt && (
+                        <span className="text-amber inline-flex items-center gap-1 font-semibold">
+                          <Activity size={12} aria-hidden="true" />
+                          {t('vitalsForm.noneShort')}
                         </span>
                       )}
                       {q.poolId && (

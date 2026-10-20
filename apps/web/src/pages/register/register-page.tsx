@@ -22,6 +22,7 @@ import {
   type Station,
   type VisitResult,
 } from '@/lib/api/visits'
+import { useStaffSettings } from '@/lib/api/settings'
 import { setNoNationalId, type NoIdReason } from '@/lib/api/patients'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -52,6 +53,8 @@ export function RegisterPage({ user }: { user: StaffUser }) {
   }
   const [error, setError] = useState<string | null>(null)
   const { data: hits = [], isFetching } = useFindPatients(query)
+  const { data: staffSettings } = useStaffSettings()
+  const triageFirst = staffSettings?.triageFirst ?? false
 
   const describe = (e: unknown): string => {
     const m = e instanceof Error ? e.message : String(e)
@@ -94,9 +97,15 @@ export function RegisterPage({ user }: { user: StaffUser }) {
               {t('register.emergency')}
             </label>
             <p className="text-ink-2 m-0 text-[13px]">
-              {t(emergency ? 'register.emergencyHint' : 'register.triageHint')}
+              {t(
+                emergency
+                  ? 'register.emergencyHint'
+                  : triageFirst
+                    ? 'register.triageHint'
+                    : 'register.deskHint',
+              )}
             </p>
-            {emergency && (
+            {(emergency || !triageFirst) && (
               <Select
                 label={t('register.station')}
                 value={station}
@@ -125,6 +134,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
         {result && (
           <ResultCard
             result={result}
+            emergency={emergency}
             onAnother={() => {
               setResult(null)
               setQuery('')
@@ -187,6 +197,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
           <NewPatientForm
             emergency={emergency}
             station={station}
+            triageFirst={triageFirst}
             onDone={setResult}
             describe={describe}
             nurse={user.role === 'nurse'}
@@ -200,12 +211,14 @@ export function RegisterPage({ user }: { user: StaffUser }) {
 function NewPatientForm({
   emergency,
   station,
+  triageFirst,
   onDone,
   describe,
   nurse = false,
 }: {
   emergency: boolean
   station: Station
+  triageFirst: boolean
   onDone: (r: VisitResult) => void
   describe: (e: unknown) => string
   /** The nurse registers what she can; reception completes phone, ID and address later. */
@@ -390,7 +403,10 @@ function NewPatientForm({
                     ? 'register.submitEmergency'
                     : nurse
                       ? 'files.submitNurse'
-                      : 'register.submit',
+                      : triageFirst
+                        ? 'register.submit'
+                        : 'register.submitDesk',
+                  { station: t(`register.stations.${station}`) },
                 )}
           </Button>
         </CardBody>
@@ -408,14 +424,23 @@ const yearsSince = (iso: string): number => {
   return Math.max(0, y)
 }
 
-function ResultCard({ result, onAnother }: { result: VisitResult; onAnother: () => void }) {
+function ResultCard({
+  result,
+  emergency,
+  onAnother,
+}: {
+  result: VisitResult
+  emergency: boolean
+  onAnother: () => void
+}) {
   const { t } = useTranslation()
   const triage = result.station === 'triage'
+  const station = t(`register.stations.${result.station}`)
   return (
-    <Card className={triage ? 'border-green' : 'border-red'}>
+    <Card className={emergency ? 'border-red' : 'border-green'}>
       <CardHeader>
         <span>{t('register.done.title')}</span>
-        <Badge tone={triage ? 'green' : 'red'} icon={<Check size={12} strokeWidth={3} />}>
+        <Badge tone={emergency ? 'red' : 'green'} icon={<Check size={12} strokeWidth={3} />}>
           {t(`register.stations.${result.station}`)}
         </Badge>
       </CardHeader>
@@ -426,12 +451,19 @@ function ResultCard({ result, onAnother }: { result: VisitResult; onAnother: () 
           </span>
           <Chip>{result.fileNumber}</Chip>
           <span className="text-ink-2 text-[13px]">
-            {t(triage ? 'register.done.triageNote' : 'register.done.emergencyNote', {
-              station: t(`register.stations.${result.station}`),
-            })}
+            {t(
+              emergency
+                ? 'register.done.emergencyNote'
+                : triage
+                  ? 'register.done.triageNote'
+                  : 'register.done.deskNote',
+              { station },
+            )}
           </span>
         </div>
-        <p className="text-ink-2 m-0 text-[13px]">{t('register.done.where')}</p>
+        <p className="text-ink-2 m-0 text-[13px]">
+          {t(triage ? 'register.done.where' : 'register.done.whereDesk', { station })}
+        </p>
         <div className="flex flex-wrap gap-2">
           {triage && (
             <StaffLink

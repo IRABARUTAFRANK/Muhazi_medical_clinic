@@ -314,12 +314,41 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                         >
                           <X size={14} aria-hidden="true" />
                         </Button>
-                        {n === spans.length - 1 && spans.length < 3 && (
+                        {n < spans.length - 1 && (
+                          <span className="text-amber bg-amber-bg rounded-full px-2 py-0.5 text-[12px] font-semibold">
+                            {t('calendar.breakBetween', { from: b, to: spans[n + 1]![0] })}
+                          </span>
+                        )}
+                        {n === spans.length - 1 && spans.length === 1 && (
                           <Button
                             type="button"
                             size="sm"
                             variant="ghost"
-                            onClick={() => setDay(k, [...spans, ['14:00', '17:00']])}
+                            onClick={() => {
+                              // Split the day around a midday break when the hours allow it.
+                              const [start, end] = spans[0]!
+                              const midday = toMinutes(start) < 12 * 60 && toMinutes(end) > 14 * 60
+                              setDay(
+                                k,
+                                midday
+                                  ? [
+                                      [start, '12:00'],
+                                      ['14:00', end],
+                                    ]
+                                  : [...spans, ['14:00', '17:00']],
+                              )
+                            }}
+                          >
+                            <Plus size={14} aria-hidden="true" />
+                            {t('calendar.addBreak')}
+                          </Button>
+                        )}
+                        {n === spans.length - 1 && spans.length === 2 && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setDay(k, [...spans, ['16:00', '18:00']])}
                           >
                             <Plus size={14} aria-hidden="true" />
                             {t('calendar.addPeriod')}
@@ -350,7 +379,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
               {t('calendar.copyMonday')}
             </Button>
           </div>
-          <Hint>{t('calendar.weeklyHint')}</Hint>
+          <Hint>{t('calendar.breakHint')}</Hint>
         </Panel>
 
         <div className="flex min-w-0 flex-col gap-5">

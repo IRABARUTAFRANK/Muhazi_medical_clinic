@@ -21,7 +21,8 @@ import { formatDayMonth, formatRwf, formatTime, type Role } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { ShownList } from '@/components/ui/list-tools'
+import { Pager, ShownList } from '@/components/ui/list-tools'
+import { usePaged } from '@/lib/paging'
 import { StaffLink } from '@/components/staff/staff-link'
 import {
   useAppointmentsDay,
@@ -77,12 +78,15 @@ export function AppointmentsPanel({
   limit,
   canAct,
   footer,
+  onSelect,
 }: {
   i?: number
   day?: Date
   limit?: number
   canAct: boolean
   footer?: ReactNode
+  /** Opens the booking's details (appointments page). */
+  onSelect?: (id: string) => void
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -91,6 +95,7 @@ export function AppointmentsPanel({
   const { error, run } = useRun()
   const waiting = appts.filter((a) => a.status === 'approved' || a.status === 'confirmed')
   const rows = limit ? appts.slice(0, limit) : appts
+  const paged = usePaged(rows, limit ? rows.length || 1 : 10, String(day.getTime()))
 
   const arrive = (a: DayAppointment) =>
     void run(async () => {
@@ -117,7 +122,7 @@ export function AppointmentsPanel({
       {!isLoading && rows.length === 0 ? (
         <Empty>{t('desk.receptionist.noAppointments')}</Empty>
       ) : (
-        <ShownList items={rows} step={5}>
+        <ShownList items={limit ? rows : paged.slice} step={limit ?? 10}>
           {(shown) => (
             <div className="flex flex-col">
               {shown.map((a, k) => {
@@ -131,7 +136,17 @@ export function AppointmentsPanel({
                       {a.time}
                     </Pill>
                     <span className="min-w-[140px] flex-1">
-                      <span className="block truncate font-semibold">{a.name}</span>
+                      {onSelect ? (
+                        <button
+                          type="button"
+                          onClick={() => onSelect(a.id)}
+                          className="text-primary block max-w-full truncate text-left font-semibold underline-offset-2 hover:underline"
+                        >
+                          {a.name}
+                        </button>
+                      ) : (
+                        <span className="block truncate font-semibold">{a.name}</span>
+                      )}
                       <span className="text-ink-3 block truncate text-[13px]">
                         {[a.doctor, a.reason, a.phone].filter(Boolean).join(' · ')}
                       </span>
@@ -189,6 +204,7 @@ export function AppointmentsPanel({
           )}
         </ShownList>
       )}
+      {!limit && <Pager {...paged} onPage={paged.setPage} />}
       {footer}
     </Panel>
   )

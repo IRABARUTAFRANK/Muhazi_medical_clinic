@@ -358,7 +358,9 @@
     "sending": "Birimo koherezwa…",
     "sendFailed": "Ubusabe ntibwoherejwe. Reba umurongo wa interineti cyangwa uhamagare ubwakiriro.",
     "liveNote": "Byoherejwe ku bwakiriro.",
-    "noneYet": "Nta muganga urashyira ahagaragara ingengabihe ye kuri iyi serivisi. Hamagara cyangwa wandikire kwakira abarwayi kuri WhatsApp tugushakire isaha."
+    "noneYet": "Nta muganga urashyira ahagaragara ingengabihe ye kuri iyi serivisi. Hamagara cyangwa wandikire kwakira abarwayi kuri WhatsApp tugushakire isaha.",
+    "reason": "Impamvu yo kuza",
+    "reasonPh": "urugero: umuriro w’iminsi 3, gusuzumwa amenyo"
   },
   "home": {
     "clinicNow": "Ivuriro ubu",
@@ -805,7 +807,7 @@
   },
   "register": {
     "title": "Kwandika umurwayi",
-    "lead": "Umurwayi mushya cyangwa uwari usanzwe. Mu buryo busanzwe umurwayi abanza kuri triage gupimwa; mu byihutirwa aguma aho uri maze ukamwandika hano.",
+    "lead": "Uruzinduko rwa mbere cyangwa umurwayi uzwi. Umurwayi ashyirwa ku murongo w’aho wahisemo (umuganga ku buryo busanzwe); ibipimo bifatirwa aho cyangwa n’umuforomo.",
     "emergency": "Ikibazo cyihutirwa — umurwayi avurirwa hano, ntajya kuri triage",
     "triageHint": "Umurwayi ahabwa tike akajya kuri triage gupimwa bwa mbere.",
     "search": "Umurwayi usanzwe",
@@ -848,7 +850,9 @@
       "register": "Igitabo cy'abarwayi",
       "takeVitals": "Fata ibipimo ubu",
       "triageNote": "Nimero yatanzwe. Umurwayi ajya gufatirwa ibipimo, hanyuma akajya aho agomba kuvurirwa.",
-      "emergencyNote": "Ibyihutirwa: umurwayi ni we wa mbere ku murongo wa {{station}}."
+      "emergencyNote": "Ibyihutirwa: umurwayi ni we wa mbere ku murongo wa {{station}}.",
+      "deskNote": "Itike yatanzwe. Umurwayi ari ku murongo wa {{station}}.",
+      "whereDesk": "Umurwayi yanditswe; uruzinduko rwe rufunguye kandi ari ku murongo wa {{station}}. Fata ibipimo ukoresheje ecran y’uruzinduko cyangwa urupapuro rw’Ibipimo."
     },
     "emergencyHint": "Umurwayi ashyizwe ku murongo w'aho ukorera ari mu ibara ritukura. Andika dosiye ubu cyangwa igihe umurwayi amaze gutekana.",
     "station": "Aho avurirwa",
@@ -872,13 +876,15 @@
       "not_issued": "Nta ndangamuntu: ntarayihabwa",
       "foreigner": "Nta ndangamuntu: ni umunyamahanga",
       "childHint": "Ku mwana, andika telefoni y’umubyeyi cyangwa umurera n’izina rye nk’uwo guhamagara mu gihe cyihutirwa muri dosiye."
-    }
+    },
+    "deskHint": "Umurwayi ahabwa itike akajya aho wahisemo. Ibipimo bishobora gufatirwa aho, cyangwa mbere n’umuforomo.",
+    "submitDesk": "Andika wohereze kuri {{station}}"
   },
   "triage": {
-    "title": "Triage · ibipimo bya mbere",
-    "lead": "Buri murwayi abanza hano. Fata ibipimo, hitamo ibara rya triage, wohereze umurwayi aho agomba kujya.",
-    "queueTitle": "Abategereje kuri triage",
-    "empty": "Nta muntu utegereje kuri triage.",
+    "title": "Ibipimo",
+    "lead": "Abarwayi bataragira ibipimo, n’abategereje kuri triage. Fata ibipimo hano cyangwa ku ecran y’uruzinduko.",
+    "queueTitle": "Abarwayi bakeneye ibipimo",
+    "empty": "Abarwayi bose bari mu ivuriro bafite ibipimo.",
     "vitals": {
       "bp_sys": "Umuvuduko (hejuru)",
       "bp_dia": "Umuvuduko (hasi)",
@@ -1048,6 +1054,16 @@
         "title": "Imigaragarire n’inzira ngufi",
         "hint": "Ingano y’inyandiko, amahuza yihuse"
       }
+    },
+    "flow": {
+      "title": "Inzira y’umurwayi",
+      "lead": "Aho umurwayi wandikishijwe ajya.",
+      "deskFirst": "Ajya ako kanya aho yahisemo",
+      "deskFirstHint": "Kwakira abarwayi bohereza umurwayi kwa muganga (cyangwa ahandi). Ibipimo bifatirwa aho cyangwa n’umuforomo ku rupapuro rw’Ibipimo.",
+      "triageFirst": "Triage mbere",
+      "triageFirstHint": "Buri murwayi anyura kuri triage: umuforomo afata ibipimo, ahitamo ibara, akohereza umurwayi.",
+      "saved": "Byabitswe. Abandikishwa bashya bakurikiza iyi nzira.",
+      "vitalsNote": "Uko byagenda kose, buri ecran yerekana niba ibipimo byafashwe."
     }
   },
   "pin": {
@@ -1165,8 +1181,8 @@
       }
     },
     "next": {
-      "title": "Byarangiye kuri iyi serivisi",
-      "lead": "Bifunga umurongo wa {{station}} kandi bikohereza umurwayi aho akurikira.",
+      "title": "Intambwe ikurikira y’uyu murwayi",
+      "lead": "Iyo urangije hano, ohereza umurwayi aho akurikiraho. Bifunga umwanya we ku murongo wa {{station}}; umurwayi agaragara ku murongo w’aho wahisemo.",
       "toCashier": "Ohereza kuri kasiye",
       "other": "Cyangwa ohereza kuri",
       "send": "Ohereza",
@@ -1178,7 +1194,12 @@
       "manyHint": "Ahantu henshi: umurwayi ategerereza kuri buri hamwe, akava ahandi hose iyo hamwe hamwakiriye."
     },
     "sentMany": "Umurwayi yoherejwe kuri {{station}}: uwa mbere ubonetse aramwakira.",
-    "closedBanner": "Uruzinduko rwarangiye {{when}}. Ibyanditswe byose bigumye muri dosiye y’umurwayi."
+    "closedBanner": "Uruzinduko rwarangiye {{when}}. Ibyanditswe byose bigumye muri dosiye y’umurwayi.",
+    "pay": {
+      "pending": "Kwishyura bitegereje · {{amount}} asigaye",
+      "paid": "Yishyuye",
+      "paidBy": "Yishyuye · byanditswe na {{name}} saa {{time}}"
+    }
   },
   "patients": {
     "title": "Abarwayi",
@@ -1691,7 +1712,9 @@
     "takenAt": "Ibipimo byafashwe saa {{time}}",
     "takenHint": "Hindura agaciro gusa igihe ugakosora; ibindi biguma uko biri.",
     "edit": "Hindura ibipimo",
-    "sendOn": "Mwohereze (ibipimo byamaze gufatwa)"
+    "sendOn": "Mwohereze (ibipimo byamaze gufatwa)",
+    "notTakenBanner": "Ibipimo ntibirafatwa kuri uru ruzinduko. Bifate mbere yo gusuzuma.",
+    "noneShort": "Nta bipimo"
   },
   "ops": {
     "appts": {
@@ -1722,7 +1745,8 @@
         "no_show": "Ntiyaje",
         "cancelled": "Yahagaritswe"
       },
-      "flow": "Uko bihuzwa: ubusabe bwemejwe butegereza ko muganga abwemera; ku munsi nyirizina, \"Yaje\" ifungura uruzinduko maze umurwayi akagaragara ku murongo w'ibipimo ku muforomo; nyuma y'ibipimo umuforomo amwohereza kwa muganga."
+      "flow": "Uko bikurikirana: gahunda yafashwe itegereza ko umuganga ayemera; ku munsi, “Yageze” ifungura uruzinduko umurwayi akajya ku murongo w’umuganga (cyangwa kuri triage mbere, niba ivuriro ryabihisemo mu igenamiterere).",
+      "pickDay": "Hitamo umunsi"
     },
     "inquiries": {
       "reject": "Hakana",
@@ -1792,6 +1816,35 @@
       "admitBtn": "Shyira ku gitanda",
       "extendBtn": "Ongeraho amajoro",
       "hint": "Kurara bishyirwa kuri fagitire y’umurwayi akimara gushyirwa ku gitanda: amajoro × igiciro cy’igitanda, cyangwa igiciro cyemeranyijweho."
+    },
+    "detail": {
+      "title": "Amakuru ya gahunda",
+      "back": "Subira ku rutonde",
+      "when": "Ryari",
+      "doctor": "Umuganga",
+      "reason": "Impamvu yo kuza",
+      "patient": "Umurwayi",
+      "phone": "Telefoni",
+      "channel": "Kwemeza hakoreshejwe",
+      "source": "Yaturutse",
+      "reference": "Nimero",
+      "requestedAt": "Yasabwe ku wa",
+      "preferred": "Isaha yifuzwa",
+      "approved": "Yafashwe na",
+      "accepted": "Yemejwe na",
+      "cancelReason": "Impamvu yo guhagarika",
+      "insurer": "Ubwishingizi",
+      "channels": {
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "none": "Guhamagara"
+      },
+      "sources": {
+        "online": "Urubuga",
+        "reception": "Kwakira abarwayi",
+        "phone": "Telefoni",
+        "walk_in": "Yaje atabanje gufata gahunda"
+      }
     }
   },
   "files": {
@@ -1868,7 +1921,8 @@
     "apptDeclined": "{{doctor}} yanze gahunda ya {{name}}",
     "apptWhen": "yo ku wa {{when}}",
     "apptReason": "Impamvu: {{reason}}",
-    "apptRebook": "Fata gahunda kwa undi muganga cyangwa ku yindi saha umenyeshe umurwayi."
+    "apptRebook": "Fata gahunda kwa undi muganga cyangwa ku yindi saha umenyeshe umurwayi.",
+    "noVitals": "ibipimo ntibirafatwa"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -2512,6 +2566,9 @@
       "edit": "Hindura",
       "manage": "Cunga ingengabihe",
       "mine": "Ingengabihe yanjye"
-    }
+    },
+    "addBreak": "Ongeraho ikiruhuko",
+    "breakBetween": "Ikiruhuko {{from}}–{{to}}",
+    "breakHint": "Ongeraho ikiruhuko kugira ngo umunsi ugabanywemo kabiri (urugero 12:00–14:00); nta gahunda ifatwa mu kiruhuko. Igihe cya gatatu gishoboka ku masaha y’umugoroba."
   }
 }

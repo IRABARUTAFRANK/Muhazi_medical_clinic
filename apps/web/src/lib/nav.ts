@@ -25,7 +25,6 @@ const HISTORY: NavItem = {
 export const MANAGER_NAV: NavItem[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'layout-dashboard', to: '/app/dashboard' },
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
-  { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
   { id: 'calendar', labelKey: 'nav.doctorCalendars', icon: 'calendar-days', to: '/app/calendar' },
@@ -41,8 +40,6 @@ export const MANAGER_NAV: NavItem[] = [
 export const RECEPTION_NAV: NavItem[] = [
   { id: 'home', labelKey: 'nav.home', icon: 'layout-dashboard', to: '/app' },
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
-  // Typing in the vitals a nurse wrote on paper when she had no device.
-  { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },

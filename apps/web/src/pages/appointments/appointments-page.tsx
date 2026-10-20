@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDate, type StaffUser } from '@mmc/shared'
+import { formatDate, isoDate, type StaffUser } from '@mmc/shared'
+import { AppointmentDetail } from './appointment-detail'
 import { PageBanner } from '@/components/dash/page-banner'
 import { sectionTitle } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -20,8 +21,18 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const dayNames = useDayNames()
   const [offset, setOffset] = useState(0)
+  const [selected, setSelected] = useState<string | null>(null)
   const day = new Date()
   day.setDate(day.getDate() + offset)
+  const pickDay = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number)
+    if (!y || !m || !d) return
+    const chosen = new Date(y, m - 1, d)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    setOffset(Math.round((chosen.getTime() - today.getTime()) / 86_400_000))
+    setSelected(null)
+  }
   const canAct = ['receptionist', 'manager'].includes(user.role)
   const label =
     offset === 0
@@ -63,6 +74,15 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
               <ChevronRight size={16} aria-hidden="true" />
             </Button>
           </div>
+          <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">
+            <span className="sr-only">{t('ops.appts.pickDay')}</span>
+            <input
+              type="date"
+              value={isoDate(day)}
+              onChange={(e) => e.target.value && pickDay(e.target.value)}
+              className="bg-transparent outline-none"
+            />
+          </label>
           {offset !== 0 && (
             <Button size="md" onClick={() => setOffset(0)}>
               {t('ops.appts.today')}
@@ -80,7 +100,16 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
         <section className="flex flex-col gap-3">
           <div className={sectionTitle}>{t('ops.appts.section')}</div>
           <div className="pc:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
-            <AppointmentsPanel key={offset} day={day} canAct={canAct && offset === 0} />
+            {selected ? (
+              <AppointmentDetail id={selected} onBack={() => setSelected(null)} />
+            ) : (
+              <AppointmentsPanel
+                key={offset}
+                day={day}
+                canAct={canAct && offset === 0}
+                onSelect={setSelected}
+              />
+            )}
             <InquiriesPanel canAct={canAct} />
           </div>
           <p className="text-ink-3 m-0 text-xs">{t('ops.appts.flow')}</p>

@@ -54,6 +54,7 @@ export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [insurer, setInsurer] = useState('')
+  const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [sentRef, setSentRef] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -118,6 +119,7 @@ export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
         phone,
         insurer,
         category,
+        note: reason,
       })
       setSentRef(result.reference)
     } catch (err) {
@@ -307,6 +309,13 @@ export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       required
+                    />
+                    <Field
+                      label={t('booking.reason')}
+                      placeholder={t('booking.reasonPh')}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      wrapperClassName={FEATURES.insurance ? undefined : 'sm:col-span-1'}
                     />
                     {FEATURES.insurance && (
                       <Field

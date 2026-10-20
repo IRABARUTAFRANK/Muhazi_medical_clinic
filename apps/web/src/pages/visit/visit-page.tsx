@@ -187,6 +187,15 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               )}
             </Card>
 
+            {!closed && vitals.length === 0 && !addingVitals && (
+              <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+                <Activity size={18} aria-hidden="true" />
+                <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
+                <Button size="sm" variant="primary" onClick={() => setAddingVitals(true)}>
+                  {t('vitalsForm.add')}
+                </Button>
+              </p>
+            )}
             {closed && (
               <p className="bg-green-bg text-green m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
                 <CheckCircle2 size={18} aria-hidden="true" />
@@ -310,9 +319,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                         <Receipt size={16} aria-hidden="true" />
                         {t('visit.charges.title')}
                       </span>
-                      {bill?.status && bill.status !== 'draft' && (
-                        <Badge tone="blue">{t(`visit.status.${bill.status}`)}</Badge>
-                      )}
+                      {bill && bill.total > 0 && <PaidMark bill={bill} />}
                     </CardHeader>
                     {(bill?.charges.length ?? 0) === 0 ? (
                       <CardBody>
@@ -399,7 +406,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               )}
 
               <div className="flex flex-col gap-4">
-                {(user.role === 'cashier' || user.role === 'manager') && bill && !closed && (
+                {(user.role === 'cashier' || user.role === 'receptionist') && bill && !closed && (
                   <PaymentCard
                     bill={bill}
                     onPay={async (input) => {
@@ -467,6 +474,26 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
 const METHODS = ['cash', 'momo', 'airtel'] as const
 type Method = (typeof METHODS)[number]
 
+/** Yellow while money is due; green with a tick once paid, saying who recorded it and when. */
+function PaidMark({ bill }: { bill: VisitBill }) {
+  const { t } = useTranslation()
+  if (bill.status === 'credited') return <Badge tone="grey">{t('visit.status.credited')}</Badge>
+  if (bill.balance > 0)
+    return (
+      <Badge tone="yellow">{t('visit.pay.pending', { amount: formatRwf(bill.balance) })}</Badge>
+    )
+  return (
+    <Badge tone="green" icon={<CheckCircle2 size={12} strokeWidth={3} />}>
+      {bill.settledBy
+        ? t('visit.pay.paidBy', {
+            name: bill.settledBy,
+            time: bill.settledAt ? formatTime(new Date(bill.settledAt)) : '',
+          })
+        : t('visit.pay.paid')}
+    </Badge>
+  )
+}
+
 function PaymentCard({
   bill,
   onPay,
@@ -514,7 +541,7 @@ function PaymentCard({
       <CardHeader>
         <span>{t('visit.payment.title')}</span>
         {settled ? (
-          <Badge tone="green">{t('visit.payment.paidBadge')}</Badge>
+          <PaidMark bill={bill} />
         ) : (
           <span className="text-ink-2 text-[13px] tabular-nums">
             {t('visit.payment.due')} <b className="text-ink">{formatRwf(bill.balance)}</b>

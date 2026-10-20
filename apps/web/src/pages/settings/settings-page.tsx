@@ -30,6 +30,7 @@ import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { BedsCard } from './beds-card'
+import { FlowCard } from './flow-card'
 import { LockCard } from './lock-card'
 import { OtpCard } from './otp-card'
 import { PatientFieldsCard } from './patient-fields-card'
@@ -321,6 +322,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
             )}
 
             {section === 'beds' && <BedsCard />}
+            {section === 'hours' && <FlowCard />}
 
             {section === 'security' && (
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

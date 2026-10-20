@@ -81,18 +81,48 @@ export function useStaffSettings() {
   return useQuery({
     queryKey: STAFF_KEY,
     staleTime: 5 * 60_000,
-    queryFn: async (): Promise<{ idleMinutes: number; trustDays: number }> => {
-      if (!supabase) return { idleMinutes: sampleIdle, trustDays: sampleTrust }
+    queryFn: async (): Promise<{
+      idleMinutes: number
+      trustDays: number
+      triageFirst: boolean
+    }> => {
+      if (!supabase)
+        return { idleMinutes: sampleIdle, trustDays: sampleTrust, triageFirst: sampleTriageFirst }
       const { data, error } = await supabase.rpc('staff_settings')
       if (error) throw new Error(error.message)
-      const d = data as { idle_minutes?: number; trust_days?: number } | null
+      const d = data as {
+        idle_minutes?: number
+        trust_days?: number
+        triage_first?: boolean
+      } | null
       const m = Number(d?.idle_minutes)
       const td = Number(d?.trust_days)
       return {
         idleMinutes: Number.isFinite(m) && m > 0 ? m : 120,
         trustDays: Number.isFinite(td) && td >= 0 ? td : 30,
+        triageFirst: d?.triage_first === true,
       }
     },
+  })
+}
+
+let sampleTriageFirst = false
+/** Patient flow: do new visits go to triage first, or straight to the chosen desk? */
+export function useSaveFlowSetting() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (triageFirst: boolean) => {
+      if (!supabase) {
+        sampleTriageFirst = triageFirst
+        return
+      }
+      const { error } = await supabase.rpc('save_setting', {
+        p_key: 'flow',
+        p_value: { triage_first: triageFirst },
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: STAFF_KEY }),
   })
 }
 

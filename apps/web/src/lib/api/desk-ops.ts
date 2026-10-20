@@ -19,7 +19,86 @@ export interface DayAppointment {
   phone: string | null
   doctor: string | null
   reason: string | null
+  reference?: string | null
+  source?: string | null
+  channel?: string | null
   late: boolean
+}
+
+/** One booking in full (appointment_detail). */
+export interface AppointmentDetail {
+  id: string
+  status: string
+  source: string | null
+  reference: string | null
+  startsAt: string | null
+  endsAt: string | null
+  preferredAt: string | null
+  createdAt: string
+  reason: string | null
+  cancelReason: string | null
+  category: string | null
+  insurer: string | null
+  channel: string | null
+  contactName: string | null
+  contactPhone: string | null
+  patientId: string | null
+  patientFile: string | null
+  patientName: string | null
+  patientPhone: string | null
+  doctor: string | null
+  doctorUserId: string | null
+  approvedBy: string | null
+  approvedAt: string | null
+  acceptedBy: string | null
+  acceptedAt: string | null
+  encounterId: string | null
+  late: boolean
+}
+export function useAppointmentDetail(id: string | null) {
+  return useQuery({
+    queryKey: ['appointments', 'detail', id],
+    enabled: !!id,
+    queryFn: async (): Promise<AppointmentDetail | null> => {
+      if (!supabase) {
+        const a = sampleAppts.find((x) => x.id === id)
+        if (!a) return null
+        return {
+          id: a.id,
+          status: a.status,
+          source: 'online',
+          reference: 'MMC-2026-0007',
+          startsAt: a.startsAt,
+          endsAt: null,
+          preferredAt: null,
+          createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+          reason: a.reason,
+          cancelReason: null,
+          category: null,
+          insurer: null,
+          channel: 'whatsapp',
+          contactName: a.name,
+          contactPhone: a.phone,
+          patientId: a.patientId,
+          patientFile: a.fileNumber,
+          patientName: a.name,
+          patientPhone: a.phone,
+          doctor: a.doctor,
+          doctorUserId: null,
+          approvedBy: 'Uwimana Josiane',
+          approvedAt: new Date(Date.now() - 86_400_000).toISOString(),
+          acceptedBy: a.status === 'approved' ? null : a.doctor,
+          acceptedAt:
+            a.status === 'approved' ? null : new Date(Date.now() - 80_000_000).toISOString(),
+          encounterId: a.status === 'arrived' || a.status === 'in_progress' ? 'e-1' : null,
+          late: a.late,
+        }
+      }
+      const { data, error } = await supabase.rpc('appointment_detail', { p_id: id })
+      if (error) throw new Error(error.message)
+      return (data ?? null) as AppointmentDetail | null
+    },
+  })
 }
 export interface BoardBed {
   id: string

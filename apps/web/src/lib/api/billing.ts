@@ -63,6 +63,9 @@ export interface VisitBill {
   /** What the patient still owes (patient share minus payments). */
   balance: number
   paid: number
+  /** Last payment: when and by whom (the green "paid" mark). */
+  settledAt?: string | null
+  settledBy?: string | null
   charges: Charge[]
 }
 
@@ -250,6 +253,8 @@ interface BillRow {
   balance: number | string | null
   paid: number | string | null
   number: string | null
+  settled_at?: string | null
+  settled_by?: string | null
 }
 interface ChargeRow {
   id: string
@@ -293,6 +298,8 @@ export function useVisitBill(encounterId: string) {
         insurerShare: Number(b?.insurer_share ?? 0),
         balance: Number(b?.balance ?? b?.patient_share ?? 0),
         paid: Number(b?.paid ?? 0),
+        settledAt: b?.settled_at ?? null,
+        settledBy: b?.settled_by ?? null,
         charges: ((lines ?? []) as ChargeRow[]).map((c) => ({
           id: c.id,
           description: c.description,

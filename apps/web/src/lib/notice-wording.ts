@@ -27,7 +27,13 @@ export function useWording() {
             name: p.name ?? '',
             station: t(`register.stations.${p.station}`, { defaultValue: p.station ?? '' }),
           }),
-          body: p.triage ? t('notify.triage', { colour: t(`home.triage.${p.triage}`) }) : null,
+          body:
+            [
+              p.triage ? t('notify.triage', { colour: t(`home.triage.${p.triage}`) }) : null,
+              String(p.vitals) === 'false' ? t('notify.noVitals') : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || null,
         }
       case 'queue_pool': {
         // One notice for a patient sent to several desks; the first one free takes them.

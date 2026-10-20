@@ -84,7 +84,7 @@
     "prices": "Prices",
     "changePin": "Change PIN",
     "register": "Register",
-    "triage": "Triage",
+    "triage": "Vitals",
     "inClinic": "In clinic",
     "bookings": "Bookings",
     "notifications": "Notifications",
@@ -349,7 +349,9 @@
     "sending": "Sending…",
     "sendFailed": "The request could not be sent. Check your connection or call reception.",
     "liveNote": "Sent to reception.",
-    "noneYet": "No doctor has published a calendar for this service yet. Call or WhatsApp reception and we find you a time."
+    "noneYet": "No doctor has published a calendar for this service yet. Call or WhatsApp reception and we find you a time.",
+    "reason": "Reason for the visit",
+    "reasonPh": "e.g. fever for 3 days, dental check-up"
   },
   "home": {
     "clinicNow": "Clinic now",
@@ -801,7 +803,7 @@
   },
   "register": {
     "title": "Register a patient",
-    "lead": "First visit or returning patient. Normally the patient goes to triage first for vitals; in an emergency the patient stays with you and you register the file right here.",
+    "lead": "First visit or returning patient. The patient is queued at the desk you choose (the doctor by default); vitals are recorded at that desk or by a nurse.",
     "emergency": "Emergency — the patient is treated here, not at triage",
     "emergencyHint": "The patient is queued at your station with red priority. Register the file now or as soon as the patient is stable.",
     "triageHint": "The patient receives a ticket and goes to triage for the first measurements.",
@@ -853,7 +855,9 @@
       "openFile": "Open patient file",
       "openVisit": "Go to today’s visit",
       "register": "Patient register",
-      "takeVitals": "Take vitals now"
+      "takeVitals": "Take vitals now",
+      "deskNote": "Ticket issued. The patient is queued at {{station}}.",
+      "whereDesk": "The patient is saved in the register; their visit is open and queued at {{station}}. Record the vitals from the visit screen or the Vitals page."
     },
     "errors": {
       "openVisit": "This patient already has an open visit.",
@@ -868,13 +872,15 @@
       "not_issued": "No ID: not issued yet",
       "foreigner": "No ID: foreign national",
       "childHint": "For a child, put the parent’s or guardian’s phone number and their name as the emergency contact in the file."
-    }
+    },
+    "deskHint": "The patient receives a ticket and goes to the chosen desk. Vitals can be taken there, or by a nurse before.",
+    "submitDesk": "Register and send to {{station}}"
   },
   "triage": {
-    "title": "Triage · first measurements",
-    "lead": "Every patient passes here first (MoH workflow). Take the vitals, choose the triage colour and send the patient to the right station.",
-    "queueTitle": "Waiting at triage",
-    "empty": "Nobody is waiting at triage.",
+    "title": "Vitals",
+    "lead": "Patients still without vitals, and those waiting at triage. Record the measurements here or from the visit screen.",
+    "queueTitle": "Patients needing vitals",
+    "empty": "Everyone in the clinic has their vitals.",
     "select": "Select a patient on the left to record the vitals.",
     "vitals": {
       "bp_sys": "BP systolic",
@@ -1166,8 +1172,8 @@
       }
     },
     "next": {
-      "title": "Done at this station",
-      "lead": "Closes the {{station}} queue entry and sends the patient on.",
+      "title": "Next step for this patient",
+      "lead": "When you have finished here, send the patient to the next desk. This closes your {{station}} queue entry; the patient appears in the queue of the desk you choose.",
       "toCashier": "Send to the cashier",
       "other": "Or send to",
       "send": "Send",
@@ -1181,7 +1187,12 @@
     "patientFile": "Patient file",
     "backToClinic": "Back to In the clinic",
     "sentMany": "Patient sent to {{station}}: the first one free takes the patient.",
-    "closedBanner": "Visit finished {{when}}. Everything recorded stays in the patient file."
+    "closedBanner": "Visit finished {{when}}. Everything recorded stays in the patient file.",
+    "pay": {
+      "pending": "Pending payment · {{amount}} due",
+      "paid": "Paid",
+      "paidBy": "Paid · recorded by {{name}} at {{time}}"
+    }
   },
   "settings": {
     "title": "Clinic settings",
@@ -1321,6 +1332,16 @@
         "title": "Display and shortcuts",
         "hint": "Text size, quick links"
       }
+    },
+    "flow": {
+      "title": "Patient flow",
+      "lead": "Where a newly registered patient goes.",
+      "deskFirst": "Straight to the chosen desk",
+      "deskFirstHint": "Reception sends the patient to the doctor (or another desk). Vitals are recorded at the desk or by a nurse from the Vitals page.",
+      "triageFirst": "Triage first",
+      "triageFirstHint": "Every patient passes at triage: a nurse takes the vitals, chooses the colour and sends the patient on.",
+      "saved": "Saved. New registrations follow this flow.",
+      "vitalsNote": "Either way, every screen shows whether the vitals were taken."
     }
   },
   "pin": {
@@ -1687,7 +1708,9 @@
     "takenAt": "Vitals taken at {{time}}",
     "takenHint": "Change a value only to correct it; the others are kept as they are.",
     "edit": "Edit vitals",
-    "sendOn": "Send on (vitals already taken)"
+    "sendOn": "Send on (vitals already taken)",
+    "notTakenBanner": "Vitals not taken yet for this visit. Record them before the consultation.",
+    "noneShort": "No vitals yet"
   },
   "ops": {
     "appts": {
@@ -1718,7 +1741,8 @@
         "no_show": "Did not come",
         "cancelled": "Cancelled"
       },
-      "flow": "How it links up: an approved request waits for the doctor to accept; on the day, \"Arrived\" opens the visit and the patient appears in the nurse’s triage queue; after the vitals the nurse sends the patient to the doctor."
+      "flow": "How it links up: a booked request waits for the doctor to accept; on the day, “Arrived” opens the visit and the patient goes to the doctor’s queue (or to triage first, if the clinic chose that in Settings).",
+      "pickDay": "Choose a day"
     },
     "inquiries": {
       "reject": "Reject",
@@ -1788,6 +1812,35 @@
       "admitBtn": "Put in bed",
       "extendBtn": "Add the nights",
       "hint": "The stay goes on the patient’s bill when the patient is put in the bed: nights × the bed’s price, or the price agreed for the period."
+    },
+    "detail": {
+      "title": "Booking details",
+      "back": "Back to the list",
+      "when": "When",
+      "doctor": "Doctor",
+      "reason": "Reason for the visit",
+      "patient": "Patient",
+      "phone": "Phone",
+      "channel": "Confirm by",
+      "source": "Came from",
+      "reference": "Reference",
+      "requestedAt": "Requested on",
+      "preferred": "Preferred time",
+      "approved": "Booked by",
+      "accepted": "Accepted by",
+      "cancelReason": "Reason for cancelling",
+      "insurer": "Insurance",
+      "channels": {
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "none": "Phone call"
+      },
+      "sources": {
+        "online": "Website",
+        "reception": "Reception",
+        "phone": "Phone call",
+        "walk_in": "Walk-in"
+      }
     }
   },
   "files": {
@@ -1859,7 +1912,8 @@
     "apptDeclined": "{{doctor}} declined the booking of {{name}}",
     "apptWhen": "for {{when}}",
     "apptReason": "Reason: {{reason}}",
-    "apptRebook": "Book another doctor or time and tell the patient."
+    "apptRebook": "Book another doctor or time and tell the patient.",
+    "noVitals": "vitals not taken yet"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -2503,6 +2557,9 @@
       "edit": "Edit",
       "manage": "Manage the calendars",
       "mine": "My calendar"
-    }
+    },
+    "addBreak": "Add a break",
+    "breakBetween": "Break {{from}}–{{to}}",
+    "breakHint": "Add a break to split the day (for example 12:00–14:00); patients cannot book during the break. A third period is possible for evening hours."
   }
 }

@@ -84,7 +84,7 @@
     "prices": "Tarifs",
     "changePin": "Changer le PIN",
     "register": "Enregistrer",
-    "triage": "Triage",
+    "triage": "Constantes",
     "inClinic": "À la clinique",
     "bookings": "RDV",
     "notifications": "Notifications",
@@ -349,7 +349,9 @@
     "sending": "Envoi…",
     "sendFailed": "La demande n'a pas pu être envoyée. Vérifiez votre connexion ou appelez la réception.",
     "liveNote": "Envoyée à la réception.",
-    "noneYet": "Aucun médecin n’a encore publié d’agenda pour ce service. Appelez ou écrivez sur WhatsApp à l’accueil et nous vous trouvons une heure."
+    "noneYet": "Aucun médecin n’a encore publié d’agenda pour ce service. Appelez ou écrivez sur WhatsApp à l’accueil et nous vous trouvons une heure.",
+    "reason": "Motif de la visite",
+    "reasonPh": "ex. fièvre depuis 3 jours, contrôle dentaire"
   },
   "home": {
     "clinicNow": "Clinique maintenant",
@@ -801,7 +803,7 @@
   },
   "register": {
     "title": "Enregistrer un patient",
-    "lead": "Première visite ou patient connu. Normalement le patient passe d'abord au triage pour les signes vitaux ; en urgence il reste avec vous et vous ouvrez le dossier ici.",
+    "lead": "Première visite ou patient connu. Le patient est mis dans la file du poste choisi (le médecin par défaut) ; les constantes sont prises à ce poste ou par une infirmière.",
     "emergency": "Urgence — le patient est pris en charge ici, pas au triage",
     "emergencyHint": "Le patient est mis en file à votre poste avec la priorité rouge. Ouvrez le dossier maintenant ou dès que le patient est stable.",
     "triageHint": "Le patient reçoit un ticket et passe au triage pour les premières mesures.",
@@ -853,7 +855,9 @@
       "openFile": "Ouvrir le dossier",
       "openVisit": "Aller à la visite du jour",
       "register": "Registre des patients",
-      "takeVitals": "Prendre les constantes maintenant"
+      "takeVitals": "Prendre les constantes maintenant",
+      "deskNote": "Ticket délivré. Le patient est dans la file {{station}}.",
+      "whereDesk": "Le patient est enregistré ; sa visite est ouverte et dans la file {{station}}. Prenez les constantes depuis l’écran de visite ou la page Constantes."
     },
     "errors": {
       "openVisit": "Ce patient a déjà une visite en cours.",
@@ -868,13 +872,15 @@
       "not_issued": "Sans carte : pas encore délivrée",
       "foreigner": "Sans carte : étranger",
       "childHint": "Pour un enfant, indiquez le téléphone du parent ou tuteur et son nom comme contact d’urgence dans le dossier."
-    }
+    },
+    "deskHint": "Le patient reçoit un ticket et va au poste choisi. Les constantes peuvent y être prises, ou avant par une infirmière.",
+    "submitDesk": "Enregistrer et envoyer à {{station}}"
   },
   "triage": {
-    "title": "Triage · premières mesures",
-    "lead": "Chaque patient passe ici en premier (circuit du ministère de la Santé). Prenez les signes vitaux, choisissez la couleur de triage et envoyez le patient au bon poste.",
-    "queueTitle": "En attente au triage",
-    "empty": "Personne n'attend au triage.",
+    "title": "Constantes",
+    "lead": "Patients sans constantes, et ceux qui attendent au triage. Prenez les mesures ici ou depuis l’écran de visite.",
+    "queueTitle": "Patients sans constantes",
+    "empty": "Tous les patients présents ont leurs constantes.",
     "select": "Sélectionnez un patient à gauche pour saisir les signes vitaux.",
     "vitals": {
       "bp_sys": "TA systolique",
@@ -1166,8 +1172,8 @@
       }
     },
     "next": {
-      "title": "Terminé à ce poste",
-      "lead": "Clôt l'entrée de file {{station}} et envoie le patient plus loin.",
+      "title": "Prochaine étape pour ce patient",
+      "lead": "Quand vous avez terminé ici, envoyez le patient au poste suivant. Cela ferme votre entrée de file {{station}} ; le patient apparaît dans la file du poste choisi.",
       "toCashier": "Envoyer à la caisse",
       "other": "Ou envoyer à",
       "send": "Envoyer",
@@ -1181,7 +1187,12 @@
     "patientFile": "Dossier patient",
     "backToClinic": "Retour à « À la clinique »",
     "sentMany": "Patient envoyé à {{station}} : le premier libre le prend.",
-    "closedBanner": "Visite terminée le {{when}}. Tout reste dans le dossier patient."
+    "closedBanner": "Visite terminée le {{when}}. Tout reste dans le dossier patient.",
+    "pay": {
+      "pending": "Paiement en attente · {{amount}} dus",
+      "paid": "Payé",
+      "paidBy": "Payé · enregistré par {{name}} à {{time}}"
+    }
   },
   "settings": {
     "title": "Paramètres de la clinique",
@@ -1321,6 +1332,16 @@
         "title": "Affichage et raccourcis",
         "hint": "Taille du texte, liens rapides"
       }
+    },
+    "flow": {
+      "title": "Parcours du patient",
+      "lead": "Où va un patient nouvellement enregistré.",
+      "deskFirst": "Directement au poste choisi",
+      "deskFirstHint": "L’accueil envoie le patient au médecin (ou à un autre poste). Les constantes sont prises au poste ou par une infirmière depuis la page Constantes.",
+      "triageFirst": "Triage d’abord",
+      "triageFirstHint": "Chaque patient passe au triage : une infirmière prend les constantes, choisit la couleur et envoie le patient.",
+      "saved": "Enregistré. Les nouvelles inscriptions suivent ce parcours.",
+      "vitalsNote": "Dans les deux cas, chaque écran indique si les constantes ont été prises."
     }
   },
   "pin": {
@@ -1687,7 +1708,9 @@
     "takenAt": "Constantes prises à {{time}}",
     "takenHint": "Ne modifiez une valeur que pour la corriger ; les autres sont conservées.",
     "edit": "Modifier les constantes",
-    "sendOn": "Envoyer (constantes déjà prises)"
+    "sendOn": "Envoyer (constantes déjà prises)",
+    "notTakenBanner": "Constantes pas encore prises pour cette visite. Prenez-les avant la consultation.",
+    "noneShort": "Pas de constantes"
   },
   "ops": {
     "appts": {
@@ -1718,7 +1741,8 @@
         "no_show": "Non venu",
         "cancelled": "Annulé"
       },
-      "flow": "Comment tout s'enchaîne : une demande approuvée attend l'accord du médecin ; le jour venu, « Arrivé » ouvre la visite et le patient apparaît dans la file du triage ; après les constantes, l'infirmière l'envoie au médecin."
+      "flow": "Enchaînement : une demande réservée attend l’accord du médecin ; le jour venu, « Arrivé » ouvre la visite et le patient rejoint la file du médecin (ou le triage d’abord, si la clinique l’a choisi dans les réglages).",
+      "pickDay": "Choisir un jour"
     },
     "inquiries": {
       "reject": "Refuser",
@@ -1788,6 +1812,35 @@
       "admitBtn": "Installer",
       "extendBtn": "Ajouter les nuits",
       "hint": "Le séjour est ajouté à la facture du patient dès son installation : nuits × prix du lit, ou le prix convenu pour la période."
+    },
+    "detail": {
+      "title": "Détail du rendez-vous",
+      "back": "Retour à la liste",
+      "when": "Quand",
+      "doctor": "Médecin",
+      "reason": "Motif de la visite",
+      "patient": "Patient",
+      "phone": "Téléphone",
+      "channel": "Confirmer par",
+      "source": "Origine",
+      "reference": "Référence",
+      "requestedAt": "Demandé le",
+      "preferred": "Heure souhaitée",
+      "approved": "Réservé par",
+      "accepted": "Accepté par",
+      "cancelReason": "Motif d’annulation",
+      "insurer": "Assurance",
+      "channels": {
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "none": "Appel"
+      },
+      "sources": {
+        "online": "Site web",
+        "reception": "Accueil",
+        "phone": "Appel",
+        "walk_in": "Sans rendez-vous"
+      }
     }
   },
   "files": {
@@ -1859,7 +1912,8 @@
     "apptDeclined": "{{doctor}} a décliné le rendez-vous de {{name}}",
     "apptWhen": "pour le {{when}}",
     "apptReason": "Motif : {{reason}}",
-    "apptRebook": "Réservez un autre médecin ou une autre heure et prévenez le patient."
+    "apptRebook": "Réservez un autre médecin ou une autre heure et prévenez le patient.",
+    "noVitals": "constantes pas encore prises"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -2503,6 +2557,9 @@
       "edit": "Modifier",
       "manage": "Gérer les agendas",
       "mine": "Mon agenda"
-    }
+    },
+    "addBreak": "Ajouter une pause",
+    "breakBetween": "Pause {{from}}–{{to}}",
+    "breakHint": "Ajoutez une pause pour couper la journée (par exemple 12:00–14:00) ; aucun rendez-vous pendant la pause. Une troisième période est possible pour le soir."
   }
 }

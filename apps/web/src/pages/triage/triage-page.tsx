@@ -23,8 +23,9 @@ import { cn } from '@/lib/utils'
  */
 export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: string }) {
   const { t } = useTranslation()
-  const { data: items = [], isLoading } = useQueueBoard('triage', user.role)
-  const waiting = openItems(items)
+  const { data: items = [], isLoading } = useQueueBoard('all', user.role)
+  // At triage, or anywhere in the clinic without vitals yet.
+  const waiting = openItems(items).filter((q) => q.station === 'triage' || !q.vitalsAt)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected =
     waiting.find((i) => i.queueId === selectedId) ??
@@ -108,7 +109,16 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
                       {q.ageSex} · {q.fileNumber}
                     </span>
                   </span>
-                  {q.vitalsAt && <Badge tone="green">{t('triage.takenBadge')}</Badge>}
+                  {q.vitalsAt ? (
+                    <Badge tone="green">{t('triage.takenBadge')}</Badge>
+                  ) : (
+                    <Badge tone="yellow">{t('vitalsForm.noneShort')}</Badge>
+                  )}
+                  {q.station !== 'triage' && (
+                    <span className="text-ink-3 text-xs">
+                      {t(`register.stations.${q.station}`, { defaultValue: q.station })}
+                    </span>
+                  )}
                   {q.priority === 1 && <Badge tone="red">{t('home.triage.red')}</Badge>}
                   <span className="text-ink-2 text-xs tabular-nums">
                     {q.waitMin} {t('common.min')}
@@ -130,7 +140,7 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
               encounterId={selected.encounterId}
               title={`${selected.ticket} · ${selected.name}`}
               subtitle={`${selected.ageSex} · ${selected.fileNumber}`}
-              mode="triage"
+              mode={selected.station === 'triage' ? 'triage' : 'add'}
               existing={existing}
               defaultNext={missing && missing.length > 0 ? 'reception' : 'consultation'}
               missing={missing}
