@@ -142,15 +142,21 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
     ],
     rowAction: 'call',
   },
+  lab_tech: {
+    station: 'Laboratory',
+    nav: [nav('home', 'home', '/app'), nav('worklist', 'flask-conical', '/app/lab')],
+    queue: [
+      q('A-012', 'Mukamana Alice', '31 F', 'yellow', 12, 'Mutuelle'),
+      q('A-014', 'Habimana Eric', '8 M', 'yellow', 9, 'Mutuelle'),
+      q('A-015', 'Ingabire Diane', '27 F', 'green', 20, 'MMI'),
+    ],
+    counts: { waiting: 3, inProgress: 1, done: 14 },
+    actions: [act('worklist', 'flask-conical', true, '/app/lab')],
+    rowAction: 'call',
+  },
   cashier: {
     station: 'Cashier',
-    nav: [
-      nav('home', 'home', '/app'),
-      nav('bills', 'receipt'),
-      nav('payments', 'wallet'),
-      nav('directSales', 'shopping-bag', '/app/direct-sales'),
-      nav('dayClose', 'lock', '/app/day-close'),
-    ],
+    nav: [nav('home', 'home', '/app'), nav('bills', 'receipt'), nav('payments', 'wallet')],
     queue: [
       q('A-006', 'Iradukunda Sandrine', '35 F', 'green', 9, 'Cash'),
       q('A-011', 'Rukundo Kevin', '24 M', 'green', 7, 'MTN MoMo'),
@@ -159,9 +165,8 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
     ],
     counts: { waiting: 4, inProgress: 1, done: 36 },
     actions: [
-      act('takePayment', 'credit-card', true, '/app/payments'),
-      act('directSale', 'shopping-cart', false, '/app/direct-sales'),
-      act('dayClose', 'clock', false, '/app/day-close'),
+      act('takePayment', 'credit-card', true, '/app/bills'),
+      act('dayClose', 'clock', false, '/app/payments'),
     ],
     rowAction: 'open',
   },

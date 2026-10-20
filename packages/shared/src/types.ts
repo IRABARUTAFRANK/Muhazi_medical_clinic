@@ -10,7 +10,7 @@ export const LANG_DB_CODE: Record<Lang, 'kin' | 'en' | 'fr'> = { rw: 'kin', en: 
 export type Theme = 'light' | 'dim'
 
 /** Roles from doc §1.4 that have a home page in the current design. */
-export type Role = 'receptionist' | 'nurse' | 'doctor' | 'cashier' | 'manager'
+export type Role = 'receptionist' | 'nurse' | 'doctor' | 'cashier' | 'lab_tech' | 'manager'
 export type HomeRole = Exclude<Role, 'manager'>
 export type DashboardRole = 'manager' | 'head'
 

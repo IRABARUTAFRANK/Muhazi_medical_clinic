@@ -97,7 +97,8 @@
     "inClinic": "Mu ivuriro",
     "bookings": "Gahunda",
     "notifications": "Imenyesha",
-    "history": "Amateka"
+    "history": "Amateka",
+    "worklist": "Urutonde rw’akazi"
   },
   "roles": {
     "receptionist": "Umwakira",
@@ -108,7 +109,8 @@
     "headOf": "Umuyobozi wa {{station}}",
     "headOfStation": "Umuyobozi w'ishami",
     "view": "Ishusho ya {{role}}",
-    "withStation": "{{role}} · {{station}}"
+    "withStation": "{{role}} · {{station}}",
+    "lab_tech": "Laboratwari"
   },
   "sync": {
     "synced": "Byahujwe",
@@ -400,7 +402,8 @@
       "directSale": "Kugurisha",
       "dayClose": "Gufunga umunsi",
       "newInquiry": "Ubusabe bushya bwa gahunda",
-      "newOrder": "Itegeko rishya"
+      "newOrder": "Itegeko rishya",
+      "worklist": "Fungura urutonde rw’akazi"
     },
     "inClinic": "abarwayi bari mu ivuriro",
     "inClinicShort": "mu ivuriro",
@@ -1965,5 +1968,98 @@
     "covering": "Usimbuye {{name}} kugeza {{until}}",
     "coveringHint": "Abarwayi be bari hasi: bakire, ubavure kandi urangize inzinduko zabo nk’uko muganga yabikora. Byose byandikwa mu izina ryawe.",
     "queue": "Umurongo wa {{name}}"
+  },
+  "lab": {
+    "bench": "Ameza ya laboratwari",
+    "openWorklist": "Fungura urutonde rw’akazi",
+    "tiles": {
+      "waiting": "Bategereje gufatwa ibizamini",
+      "inProcess": "Byafashwe / biri gukorwa",
+      "toVerify": "Ibisubizo byo kwemeza",
+      "done": "Ibisubizo byatanzwe",
+      "urgent": "Byihutirwa",
+      "turnaround": "Igihe gisanzwe"
+    },
+    "units": {
+      "sample": "byo gufata",
+      "results": "byo kureba"
+    },
+    "verifySoon": "byemeze vuba",
+    "section": "Ameza y’akazi",
+    "worklist": "Ibizamini byo gukora",
+    "openCount_one": "{{count}} gitegereje",
+    "openCount_other": "{{count}} bitegereje",
+    "search": "Shakisha umurwayi, ikizamini, tike cyangwa dosiye",
+    "empty": "Nta kizamini gitegereje. Ibisabwa bishya n’abaganga bigaragara hano.",
+    "queue": "Abarwayi bari kuri laboratwari",
+    "mostOrdered": "Ibisabwa cyane uyu munsi",
+    "orderedToday_one": "{{count}} cyasabwe uyu munsi",
+    "orderedToday_other": "{{count}} byasabwe uyu munsi",
+    "nothingToday": "Nta kizamini cyasabwe uyu munsi.",
+    "doneToday": "Byakozwe uyu munsi",
+    "resultsGiven": "Ibisubizo byatanzwe uyu munsi",
+    "noneDone": "Nta gisubizo cyatanzwe uyu munsi.",
+    "orderedBy": "cyasabwe na {{name}}",
+    "waitingFor_one": "ategereje iminota {{count}}",
+    "waitingFor_other": "ategereje iminota {{count}}",
+    "status": {
+      "ordered": "Bategereje gufatwa",
+      "collected": "Byafashwe",
+      "in_process": "Biri gukorwa",
+      "resulted": "Byo kwemeza",
+      "verified": "Byemejwe",
+      "cancelled": "Byahagaritswe"
+    },
+    "sampleTaken": "Ikizamini cyafashwe",
+    "verify": "Reba kandi wemeze",
+    "enterResult": "Andika igisubizo",
+    "worklistTitle": "Urutonde rw’akazi rwa laboratwari",
+    "worklistLead": "Buri kizamini cyasabwe kuri aha hantu: fata ikizamini, andika igisubizo, ucyemeze. Muganga wagisabye aramenyeshwa kandi igisubizo kijya muri dosiye y’umurwayi.",
+    "tabs": {
+      "open": "Byo gukora",
+      "done": "Byakozwe uyu munsi"
+    },
+    "filters": {
+      "all": "Byose",
+      "ordered": "Bategereje gufatwa",
+      "process": "Biri gukorwa",
+      "resulted": "Byo kwemeza"
+    }
+  },
+  "finance": {
+    "desk": "Isanduku",
+    "dayClose": "Ubwishyu no gufunga umunsi",
+    "openBillsBtn": "Fagitire zitarishyurwa",
+    "tiles": {
+      "collected": "Byishyuwe uyu munsi",
+      "openBills": "Fagitire zo kwishyuza",
+      "mine": "Nakiriye"
+    },
+    "toCollect": "zo kwishyuza",
+    "section": "Fagitire n’ubwishyu",
+    "byMethod": "Uko abarwayi bishyuye uyu munsi",
+    "nothingYet": "Nta bwishyu buraboneka.",
+    "todaysPayments": "Ubwishyu bw’uyu munsi",
+    "payments": "Ubwishyu",
+    "billsTitle": "Fagitire zitarishyurwa",
+    "billsLead": "Buri murwayi ugifite amafaranga yo kwishyura ku ruzinduko rufunguye. Fungura uruzinduko wakire ubwishyu (amafaranga mu ntoki, MTN MoMo cyangwa Airtel Money); nimero y’inyemezabwishyu itangwa iyo fagitire yishyuwe yose.",
+    "billTotal": "fagitire {{amount}}",
+    "paymentsTitle": "Ubwishyu no gufunga umunsi",
+    "paymentsLead": "Ubwishyu bwose bw’umunsi wahisemo n’inyemezabwishyu na nimero ya mobile money, igiteranyo ku buryo bwo kwishyura no ku mukozi wakiriye. Bisohore kugira ngo ufunge umunsi.",
+    "day": "Umunsi",
+    "printDay": "Sohora gufunga umunsi",
+    "paymentsCount_one": "ubwishyu {{count}}",
+    "paymentsCount_other": "ubwishyu {{count}}",
+    "dayTotal": "Igiteranyo cya {{day}}",
+    "byCashier": "Ku mukozi wakiriye",
+    "searchPayments": "Shakisha umurwayi, inyemezabwishyu, nimero cyangwa umukozi",
+    "cols": {
+      "time": "Isaha",
+      "patient": "Umurwayi",
+      "method": "Uburyo",
+      "receipt": "Inyemezabwishyu",
+      "cashier": "Uwakiriye",
+      "amount": "Amafaranga"
+    }
   }
 }

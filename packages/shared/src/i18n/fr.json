@@ -88,7 +88,8 @@
     "inClinic": "À la clinique",
     "bookings": "RDV",
     "notifications": "Notifications",
-    "history": "Historique"
+    "history": "Historique",
+    "worklist": "Liste de travail"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -99,7 +100,8 @@
     "headOf": "Responsable {{station}}",
     "headOfStation": "Responsable de poste",
     "view": "Vue {{role}}",
-    "withStation": "{{role}} · {{station}}"
+    "withStation": "{{role}} · {{station}}",
+    "lab_tech": "Laboratoire"
   },
   "sync": {
     "synced": "Synchronisé",
@@ -448,7 +450,8 @@
       "newOrder": "Nouvelle demande",
       "takePayment": "Encaisser",
       "directSale": "Vente directe",
-      "dayClose": "Clôture du jour"
+      "dayClose": "Clôture du jour",
+      "worklist": "Ouvrir la liste de travail"
     },
     "methodsHint": "Paiements acceptés : espèces, MTN MoMo et Airtel Money.",
     "sharedQueue": "premier médecin libre",
@@ -1956,5 +1959,98 @@
     "covering": "Vous remplacez {{name}} jusqu’à {{until}}",
     "coveringHint": "Ses patients sont ci-dessous : prenez-les, soignez-les et terminez leur visite comme le médecin. Tout est enregistré à votre nom.",
     "queue": "File de {{name}}"
+  },
+  "lab": {
+    "bench": "Paillasse du laboratoire",
+    "openWorklist": "Ouvrir la liste de travail",
+    "tiles": {
+      "waiting": "En attente de prélèvement",
+      "inProcess": "Prélevé / en cours",
+      "toVerify": "Résultats à valider",
+      "done": "Résultats rendus",
+      "urgent": "Urgents",
+      "turnaround": "Délai moyen"
+    },
+    "units": {
+      "sample": "à prélever",
+      "results": "à contrôler"
+    },
+    "verifySoon": "à valider vite",
+    "section": "La paillasse",
+    "worklist": "Examens à faire",
+    "openCount_one": "{{count}} en cours",
+    "openCount_other": "{{count}} en cours",
+    "search": "Patient, examen, ticket ou numéro de dossier",
+    "empty": "Aucun examen en attente. Les nouvelles demandes des médecins apparaissent ici.",
+    "queue": "Patients au laboratoire",
+    "mostOrdered": "Les plus demandés aujourd’hui",
+    "orderedToday_one": "{{count}} demandé aujourd’hui",
+    "orderedToday_other": "{{count}} demandés aujourd’hui",
+    "nothingToday": "Aucun examen demandé aujourd’hui.",
+    "doneToday": "Faits aujourd’hui",
+    "resultsGiven": "Résultats rendus aujourd’hui",
+    "noneDone": "Aucun résultat rendu aujourd’hui.",
+    "orderedBy": "demandé par {{name}}",
+    "waitingFor_one": "attend depuis {{count}} min",
+    "waitingFor_other": "attend depuis {{count}} min",
+    "status": {
+      "ordered": "En attente de prélèvement",
+      "collected": "Prélevé",
+      "in_process": "En cours",
+      "resulted": "À valider",
+      "verified": "Validé",
+      "cancelled": "Annulé"
+    },
+    "sampleTaken": "Prélèvement fait",
+    "verify": "Contrôler et valider",
+    "enterResult": "Saisir le résultat",
+    "worklistTitle": "Liste de travail du laboratoire",
+    "worklistLead": "Chaque examen demandé pour ce poste : faire le prélèvement, saisir le résultat, le valider. Le médecin prescripteur est prévenu et le résultat va dans le dossier patient.",
+    "tabs": {
+      "open": "À faire",
+      "done": "Faits aujourd’hui"
+    },
+    "filters": {
+      "all": "Tous",
+      "ordered": "En attente de prélèvement",
+      "process": "En cours",
+      "resulted": "À valider"
+    }
+  },
+  "finance": {
+    "desk": "Caisse",
+    "dayClose": "Paiements et clôture du jour",
+    "openBillsBtn": "Factures ouvertes",
+    "tiles": {
+      "collected": "Encaissé aujourd’hui",
+      "openBills": "Factures à encaisser",
+      "mine": "Encaissé par moi"
+    },
+    "toCollect": "à encaisser",
+    "section": "Factures et paiements",
+    "byMethod": "Comment les patients ont payé",
+    "nothingYet": "Aucun paiement pour l’instant.",
+    "todaysPayments": "Paiements du jour",
+    "payments": "Paiements",
+    "billsTitle": "Factures ouvertes",
+    "billsLead": "Chaque patient qui doit encore payer pour une visite ouverte. Ouvrez la visite pour encaisser (espèces, MTN MoMo ou Airtel Money) ; le numéro de reçu est donné quand la facture est soldée.",
+    "billTotal": "facture {{amount}}",
+    "paymentsTitle": "Paiements et clôture du jour",
+    "paymentsLead": "Tous les paiements du jour choisi avec le reçu et la référence mobile money, les totaux par mode et par caissier. Imprimez-le pour clôturer la journée.",
+    "day": "Jour",
+    "printDay": "Imprimer la clôture du jour",
+    "paymentsCount_one": "{{count}} paiement",
+    "paymentsCount_other": "{{count}} paiements",
+    "dayTotal": "Total du {{day}}",
+    "byCashier": "Par caissier",
+    "searchPayments": "Patient, reçu, référence ou caissier",
+    "cols": {
+      "time": "Heure",
+      "patient": "Patient",
+      "method": "Mode",
+      "receipt": "Reçu",
+      "cashier": "Caissier",
+      "amount": "Montant"
+    }
   }
 }

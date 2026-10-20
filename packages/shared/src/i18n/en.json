@@ -88,7 +88,8 @@
     "inClinic": "In clinic",
     "bookings": "Bookings",
     "notifications": "Notifications",
-    "history": "History"
+    "history": "History",
+    "worklist": "Worklist"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -99,7 +100,8 @@
     "headOf": "Head of {{station}}",
     "headOfStation": "Head of station",
     "view": "{{role}} view",
-    "withStation": "{{role}} · {{station}}"
+    "withStation": "{{role}} · {{station}}",
+    "lab_tech": "Laboratory"
   },
   "sync": {
     "synced": "Synced",
@@ -448,7 +450,8 @@
       "newOrder": "New order",
       "takePayment": "Take payment",
       "directSale": "Direct sale",
-      "dayClose": "Day close"
+      "dayClose": "Day close",
+      "worklist": "Open the worklist"
     },
     "methodsHint": "Accepted payments: cash, MTN MoMo and Airtel Money.",
     "sharedQueue": "first doctor free",
@@ -1956,5 +1959,98 @@
     "covering": "You are covering for {{name}} until {{until}}",
     "coveringHint": "Their patients are below: take, treat and finish them as the doctor would. Everything is recorded in your name.",
     "queue": "Queue of {{name}}"
+  },
+  "lab": {
+    "bench": "Laboratory bench",
+    "openWorklist": "Open the worklist",
+    "tiles": {
+      "waiting": "Waiting for sample",
+      "inProcess": "Sample taken / in process",
+      "toVerify": "Results to verify",
+      "done": "Results given",
+      "urgent": "Urgent",
+      "turnaround": "Average turnaround"
+    },
+    "units": {
+      "sample": "to take",
+      "results": "to check"
+    },
+    "verifySoon": "verify soon",
+    "section": "The bench",
+    "worklist": "Tests to do",
+    "openCount_one": "{{count}} open",
+    "openCount_other": "{{count}} open",
+    "search": "Search patient, test, ticket or file number",
+    "empty": "No test waiting. New orders from the doctors appear here.",
+    "queue": "Patients at the laboratory",
+    "mostOrdered": "Most ordered today",
+    "orderedToday_one": "{{count}} ordered today",
+    "orderedToday_other": "{{count}} ordered today",
+    "nothingToday": "No test ordered today yet.",
+    "doneToday": "Done today",
+    "resultsGiven": "Results given today",
+    "noneDone": "No result given yet today.",
+    "orderedBy": "ordered by {{name}}",
+    "waitingFor_one": "waiting {{count}} min",
+    "waitingFor_other": "waiting {{count}} min",
+    "status": {
+      "ordered": "Waiting for sample",
+      "collected": "Sample taken",
+      "in_process": "In process",
+      "resulted": "To verify",
+      "verified": "Verified",
+      "cancelled": "Cancelled"
+    },
+    "sampleTaken": "Sample taken",
+    "verify": "Check and verify",
+    "enterResult": "Enter result",
+    "worklistTitle": "Laboratory worklist",
+    "worklistLead": "Every test ordered for this bench: take the sample, enter the result, verify it. The doctor who ordered it is told and the result goes into the patient file.",
+    "tabs": {
+      "open": "To do",
+      "done": "Done today"
+    },
+    "filters": {
+      "all": "All",
+      "ordered": "Waiting for sample",
+      "process": "In process",
+      "resulted": "To verify"
+    }
+  },
+  "finance": {
+    "desk": "Cash desk",
+    "dayClose": "Payments and day close",
+    "openBillsBtn": "Open bills",
+    "tiles": {
+      "collected": "Collected today",
+      "openBills": "Bills to collect",
+      "mine": "Collected by me"
+    },
+    "toCollect": "to collect",
+    "section": "Bills and payments",
+    "byMethod": "How patients paid today",
+    "nothingYet": "No payment yet.",
+    "todaysPayments": "Today’s payments",
+    "payments": "Payments",
+    "billsTitle": "Open bills",
+    "billsLead": "Every patient who still owes money for an open visit. Open the visit to take the payment (cash, MTN MoMo or Airtel Money); the receipt number is given when the bill is settled.",
+    "billTotal": "bill {{amount}}",
+    "paymentsTitle": "Payments and day close",
+    "paymentsLead": "All payments of the chosen day with the receipt and the mobile money reference, totals by method and by cashier. Print it to close the day.",
+    "day": "Day",
+    "printDay": "Print the day close",
+    "paymentsCount_one": "{{count}} payment",
+    "paymentsCount_other": "{{count}} payments",
+    "dayTotal": "Total for {{day}}",
+    "byCashier": "By cashier",
+    "searchPayments": "Search patient, receipt, reference or cashier",
+    "cols": {
+      "time": "Time",
+      "patient": "Patient",
+      "method": "Method",
+      "receipt": "Receipt",
+      "cashier": "Cashier",
+      "amount": "Amount"
+    }
   }
 }

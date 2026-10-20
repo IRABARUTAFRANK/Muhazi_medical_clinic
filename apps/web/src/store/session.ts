@@ -9,7 +9,14 @@ import {
 } from '@mmc/shared'
 import { staffEmail, supabase } from '@/lib/supabase'
 
-const HOME_ROLES: readonly string[] = ['receptionist', 'nurse', 'doctor', 'cashier', 'manager']
+const HOME_ROLES: readonly string[] = [
+  'receptionist',
+  'nurse',
+  'doctor',
+  'cashier',
+  'lab_tech',
+  'manager',
+]
 
 /** Shape returned by the `record_sign_in()` database function. */
 interface ProfileJson {
@@ -29,8 +36,13 @@ const toStaffUser = (p: ProfileJson): StaffUser => ({
   id: p.id,
   username: p.username,
   name: p.full_name,
-  // Roles without a designed home yet (lab, pharmacy, sonographer) use the doctor home for now.
-  role: HOME_ROLES.includes(p.role) ? (p.role as Role) : 'doctor',
+  // Lab technicians and sonographers share the laboratory dashboard (lab vs imaging tests);
+  // the pharmacy has no home of its own yet and uses the doctor home.
+  role: HOME_ROLES.includes(p.role)
+    ? (p.role as Role)
+    : p.role === 'sonographer'
+      ? 'lab_tech'
+      : 'doctor',
   station: p.station ?? undefined,
   dashboard: p.dashboard ?? undefined,
   headOf: p.head_of ?? undefined,

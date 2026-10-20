@@ -16,12 +16,15 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppSectionRouteImport } from './routes/app/$section'
 import { Route as AppAppointmentsRouteImport } from './routes/app/appointments'
+import { Route as AppBillsRouteImport } from './routes/app/bills'
 import { Route as AppChangePinRouteImport } from './routes/app/change-pin'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 import { Route as AppHistoryRouteImport } from './routes/app/history'
+import { Route as AppLabRouteImport } from './routes/app/lab'
 import { Route as AppNotificationsRouteImport } from './routes/app/notifications'
 import { Route as AppPatientRouteImport } from './routes/app/patient'
 import { Route as AppPatientsRouteImport } from './routes/app/patients'
+import { Route as AppPaymentsRouteImport } from './routes/app/payments'
 import { Route as AppPricesRouteImport } from './routes/app/prices'
 import { Route as AppRegisterRouteImport } from './routes/app/register'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
@@ -65,6 +68,11 @@ const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   path: '/appointments',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBillsRoute = AppBillsRouteImport.update({
+  id: '/bills',
+  path: '/bills',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppChangePinRoute = AppChangePinRouteImport.update({
   id: '/change-pin',
   path: '/change-pin',
@@ -80,6 +88,11 @@ const AppHistoryRoute = AppHistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLabRoute = AppLabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -93,6 +106,11 @@ const AppPatientRoute = AppPatientRouteImport.update({
 const AppPatientsRoute = AppPatientsRouteImport.update({
   id: '/patients',
   path: '/patients',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPaymentsRoute = AppPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPricesRoute = AppPricesRouteImport.update({
@@ -138,12 +156,15 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/app/$section': typeof AppSectionRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/bills': typeof AppBillsRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/history': typeof AppHistoryRoute
+  '/app/lab': typeof AppLabRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
+  '/app/payments': typeof AppPaymentsRoute
   '/app/prices': typeof AppPricesRoute
   '/app/register': typeof AppRegisterRoute
   '/app/settings': typeof AppSettingsRoute
@@ -159,12 +180,15 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/app/$section': typeof AppSectionRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/bills': typeof AppBillsRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/history': typeof AppHistoryRoute
+  '/app/lab': typeof AppLabRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
+  '/app/payments': typeof AppPaymentsRoute
   '/app/prices': typeof AppPricesRoute
   '/app/register': typeof AppRegisterRoute
   '/app/settings': typeof AppSettingsRoute
@@ -182,12 +206,15 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/app/$section': typeof AppSectionRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/bills': typeof AppBillsRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/history': typeof AppHistoryRoute
+  '/app/lab': typeof AppLabRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
+  '/app/payments': typeof AppPaymentsRoute
   '/app/prices': typeof AppPricesRoute
   '/app/register': typeof AppRegisterRoute
   '/app/settings': typeof AppSettingsRoute
@@ -206,12 +233,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/app/$section'
     | '/app/appointments'
+    | '/app/bills'
     | '/app/change-pin'
     | '/app/dashboard'
     | '/app/history'
+    | '/app/lab'
     | '/app/notifications'
     | '/app/patient'
     | '/app/patients'
+    | '/app/payments'
     | '/app/prices'
     | '/app/register'
     | '/app/settings'
@@ -227,12 +257,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/app/$section'
     | '/app/appointments'
+    | '/app/bills'
     | '/app/change-pin'
     | '/app/dashboard'
     | '/app/history'
+    | '/app/lab'
     | '/app/notifications'
     | '/app/patient'
     | '/app/patients'
+    | '/app/payments'
     | '/app/prices'
     | '/app/register'
     | '/app/settings'
@@ -249,12 +282,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/app/$section'
     | '/app/appointments'
+    | '/app/bills'
     | '/app/change-pin'
     | '/app/dashboard'
     | '/app/history'
+    | '/app/lab'
     | '/app/notifications'
     | '/app/patient'
     | '/app/patients'
+    | '/app/payments'
     | '/app/prices'
     | '/app/register'
     | '/app/settings'
@@ -323,6 +359,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppointmentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/bills': {
+      id: '/app/bills'
+      path: '/bills'
+      fullPath: '/app/bills'
+      preLoaderRoute: typeof AppBillsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/change-pin': {
       id: '/app/change-pin'
       path: '/change-pin'
@@ -344,6 +387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHistoryRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/lab': {
+      id: '/app/lab'
+      path: '/lab'
+      fullPath: '/app/lab'
+      preLoaderRoute: typeof AppLabRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/notifications': {
       id: '/app/notifications'
       path: '/notifications'
@@ -363,6 +413,13 @@ declare module '@tanstack/react-router' {
       path: '/patients'
       fullPath: '/app/patients'
       preLoaderRoute: typeof AppPatientsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/payments': {
+      id: '/app/payments'
+      path: '/payments'
+      fullPath: '/app/payments'
+      preLoaderRoute: typeof AppPaymentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/prices': {
@@ -420,12 +477,15 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppSectionRoute: typeof AppSectionRoute
   AppAppointmentsRoute: typeof AppAppointmentsRoute
+  AppBillsRoute: typeof AppBillsRoute
   AppChangePinRoute: typeof AppChangePinRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppHistoryRoute: typeof AppHistoryRoute
+  AppLabRoute: typeof AppLabRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPatientRoute: typeof AppPatientRoute
   AppPatientsRoute: typeof AppPatientsRoute
+  AppPaymentsRoute: typeof AppPaymentsRoute
   AppPricesRoute: typeof AppPricesRoute
   AppRegisterRoute: typeof AppRegisterRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -439,12 +499,15 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppSectionRoute: AppSectionRoute,
   AppAppointmentsRoute: AppAppointmentsRoute,
+  AppBillsRoute: AppBillsRoute,
   AppChangePinRoute: AppChangePinRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppHistoryRoute: AppHistoryRoute,
+  AppLabRoute: AppLabRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPatientRoute: AppPatientRoute,
   AppPatientsRoute: AppPatientsRoute,
+  AppPaymentsRoute: AppPaymentsRoute,
   AppPricesRoute: AppPricesRoute,
   AppRegisterRoute: AppRegisterRoute,
   AppSettingsRoute: AppSettingsRoute,

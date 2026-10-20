@@ -44,8 +44,10 @@ import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
+import { CashierDashboard } from './cashier-dashboard'
 import { CoverMePanel } from './cover-panels'
 import { DeskDashboard } from './desk-dashboard'
+import { LabDashboard } from './lab-dashboard'
 import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
 
 interface HomePageProps {
@@ -68,6 +70,8 @@ const timeForMode: Record<HomeMode, string | undefined> = {
 export function HomePage({ user, mode }: HomePageProps) {
   if (user.role === 'receptionist' || user.role === 'nurse')
     return <DeskDashboard user={user} role={user.role} />
+  if (user.role === 'lab_tech') return <LabDashboard user={user} />
+  if (user.role === 'cashier') return <CashierDashboard user={user} />
   return <RoleHome user={user} mode={mode} />
 }
 

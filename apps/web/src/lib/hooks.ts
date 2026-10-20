@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export function useMediaQuery(query: string): boolean {
@@ -23,4 +23,14 @@ export function useDayNames(): { short: string[]; long: string[] } {
     short: t('days.short', { returnObjects: true }) as string[],
     long: t('days.long', { returnObjects: true }) as string[],
   }
+}
+
+/** The current time in ms, refreshed every `everyMs` (for "waiting 12 min" labels). */
+export function useNow(everyMs = 30_000): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), everyMs)
+    return () => window.clearInterval(id)
+  }, [everyMs])
+  return now
 }

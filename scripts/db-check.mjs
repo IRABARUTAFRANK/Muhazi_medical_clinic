@@ -1026,6 +1026,42 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0036 lab and finance dashboards
+await step('lab worklist: ordered → sample taken → result → done today', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+  await asAdmin()
+  const svc = await one(`select id from service where service_group = 'lab' and active limit 1`)
+  await as(staff.doctor)
+  const req = (await one(`select order_test($1, $2, 'check', 2) as id`, [v.id, svc.id])).id
+  await as(staff.lab_tech)
+  const open = (await one(`select lab_worklist('open') as w`)).w
+  if (!open.some((x) => x.id === req)) throw new Error('not on the worklist')
+  await db.query(`select set_request_status($1, 'collected')`, [req])
+  const s1 = (await one(`select lab_summary() as s`)).s
+  await db.query(`select record_result($1, 'Hb 12.1 g/dL', 'Normal', true)`, [req])
+  const done = (await one(`select lab_worklist('done') as w`)).w
+  const s2 = (await one(`select lab_summary() as s`)).s
+  if (!done.some((x) => x.id === req)) throw new Error('not in done today')
+  if (!(s1.inProcess >= 1) || !(s2.doneToday >= 1)) throw new Error('summary')
+  return `in process ${s1.inProcess} → done today ${s2.doneToday}, urgent ${s1.urgent}`
+})
+await step('cashier summary: today by method, mine, payments, open bills', async () => {
+  await as(staff.cashier)
+  const s = (await one(`select cashier_summary() as s`)).s
+  if (typeof s.total !== 'number' || !Array.isArray(s.payments) || !Array.isArray(s.byMethod))
+    throw new Error('shape')
+  let refused = false
+  try {
+    await as(staff.lab_tech)
+    await db.query(`select cashier_summary()`)
+  } catch {
+    refused = true
+  }
+  if (!refused) throw new Error('lab tech read the money')
+  return `RWF ${s.total} in ${s.count} payment(s); open bills ${s.openBills}; lab refused`
+})
+
 finish()
 
 function finish() {

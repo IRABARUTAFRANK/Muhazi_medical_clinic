@@ -95,6 +95,7 @@ const ROLE_LOOK: Record<Role, { icon: LucideIcon; tint: Tint; stripe: string }> 
   nurse: { icon: HeartPulse, tint: 'mint', stripe: 'bg-green' },
   doctor: { icon: Stethoscope, tint: 'violet', stripe: 'bg-violet' },
   cashier: { icon: Wallet, tint: 'amber', stripe: 'bg-amber' },
+  lab_tech: { icon: FlaskConical, tint: 'coral', stripe: 'bg-red' },
 }
 export const lookFor = (role: Role) => ROLE_LOOK[role] ?? ROLE_LOOK.doctor
 
