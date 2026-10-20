@@ -51,6 +51,8 @@ interface PractitionerRow {
   languages: string | null
   working_hours: WeeklyHours | null
   slot_minutes: number | null
+  days_off?: string[] | null
+  calendar_note?: string | null
 }
 
 const toPractitioner = (r: PractitionerRow): Practitioner => ({
@@ -63,6 +65,8 @@ const toPractitioner = (r: PractitionerRow): Practitioner => ({
   hours: r.working_hours ?? {},
   slotMinutes: r.slot_minutes ?? 60,
   seed: 0,
+  daysOff: r.days_off ?? [],
+  note: r.calendar_note ?? '',
 })
 
 export function usePractitioners() {
@@ -73,7 +77,9 @@ export function usePractitioners() {
         async () => {
           const { data, error } = await supabase!
             .from('public_practitioners')
-            .select('id, code, names, title, categories, languages, working_hours, slot_minutes')
+            .select(
+              'id, code, names, title, categories, languages, working_hours, slot_minutes, days_off, calendar_note',
+            )
             .order('names')
           if (error) throw error
           return (data as PractitionerRow[]).map(toPractitioner)

@@ -12,7 +12,16 @@ import { cn } from '@/lib/utils'
  */
 
 import { ShownList } from '@/components/ui/list-tools'
-import { tintClass, type Tint, card, sectionTitle, stationIconFor } from './kit-style'
+import {
+  tintBorder,
+  tintClass,
+  tintText,
+  tintWash,
+  type Tint,
+  card,
+  sectionTitle,
+  stationIconFor,
+} from './kit-style'
 export function CountUp({ value }: { value: number }) {
   const v = useCountUp(value, 600)
   return <>{formatNumber(v)}</>
@@ -48,7 +57,12 @@ export function Kpi({
   return (
     <div
       className={cn(card, 'anim-enter relative gap-2.5 overflow-hidden px-[18px] pt-[18px] pb-3.5')}
-      style={{ '--i': i } as CSSProperties}
+      style={
+        {
+          '--i': i,
+          backgroundImage: `linear-gradient(150deg, ${tintWash[tint]} 0%, var(--mmc-card) 62%)`,
+        } as CSSProperties
+      }
     >
       <span
         className={cn(
@@ -58,7 +72,9 @@ export function Kpi({
       >
         <IconC size={18} aria-hidden="true" />
       </span>
-      <span className="text-ink-2 text-[13px] font-bold tracking-[.04em] uppercase">{label}</span>
+      <span className={cn('text-[13px] font-bold tracking-[.04em] uppercase', tintText[tint])}>
+        {label}
+      </span>
       <span className="flex flex-wrap items-baseline gap-1.5 text-[32px] leading-none font-extrabold tracking-[-0.02em] tabular-nums">
         <CountUp value={value} />
         <small className="text-ink-3 text-[14px] font-semibold">{unit}</small>
@@ -129,8 +145,14 @@ export function IconChip({
 export function SectionTitle({ icon: IconC, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
     <div className={cn(sectionTitle, 'flex items-center gap-2')}>
-      <IconC size={14} strokeWidth={2.5} aria-hidden="true" />
+      <span className="bg-primary inline-flex size-6 items-center justify-center rounded-md text-white">
+        <IconC size={13} strokeWidth={2.5} aria-hidden="true" />
+      </span>
       {children}
+      <span
+        aria-hidden="true"
+        className="from-primary/40 h-px flex-1 bg-linear-to-r to-transparent"
+      />
     </div>
   )
 }
@@ -156,7 +178,7 @@ export function Panel({
   i,
   title,
   icon,
-  tint,
+  tint = 'teal',
   right,
   children,
   className,
@@ -171,11 +193,19 @@ export function Panel({
   className?: string
 }) {
   return (
-    <section className={cn(card, 'anim-enter', className)} style={{ '--i': i } as CSSProperties}>
+    <section
+      className={cn(card, 'anim-enter border-t-[3px]', tintBorder[tint], className)}
+      style={
+        {
+          '--i': i,
+          backgroundImage: `linear-gradient(180deg, ${tintWash[tint]} 0, var(--mmc-card) 88px)`,
+        } as CSSProperties
+      }
+    >
       <h3 className="m-0 flex items-center justify-between gap-2 text-[16px] font-bold">
         <span className="flex min-w-0 items-center gap-2.5">
           {icon && <IconChip icon={icon} tint={tint} />}
-          <span className="truncate">{title}</span>
+          <span className={cn('truncate', tintText[tint])}>{title}</span>
         </span>
         {right && <span className="text-ink-3 truncate text-[13px] font-semibold">{right}</span>}
       </h3>

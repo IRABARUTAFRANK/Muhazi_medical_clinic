@@ -21,7 +21,7 @@ export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElemen
   return (
     <div
       className={cn(
-        'border-border flex items-center justify-between gap-2 border-b px-4 py-3 text-[15px] font-bold',
+        'border-border bg-primary-tint/70 text-navy-ink flex items-center justify-between gap-2 rounded-t-[16px] border-b px-4 py-3 text-[15px] font-bold',
         className,
       )}
       {...props}

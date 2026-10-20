@@ -1062,6 +1062,68 @@ await step('cashier summary: today by method, mine, payments, open bills', async
   return `RWF ${s.total} in ${s.count} payment(s); open bills ${s.openBills}; lab refused`
 })
 
+// ---------------------------------------------------------------- calendars + departments (0037)
+await step('doctor keeps a calendar; staff see it, the public only once public', async () => {
+  await as(staff.doctor)
+  const hours = JSON.stringify({ 1: [['08:00', '12:00']], 3: [['14:00', '17:00']] })
+  await one(
+    `select save_calendar(null, $1::jsonb, 30, 'staff', '{2026-12-25}', 'Theatre on Fridays') as id`,
+    [hours],
+  )
+  await as(staff.nurse)
+  const seen = (await one(`select staff_doctor_calendars() as j`)).j
+  const mine = seen.find((c) => c.name === 'Dr. Mukamana BÃ©atrice')
+  if (!mine || mine.slotMinutes !== 30 || mine.daysOff[0] !== '2026-12-25')
+    throw new Error('staff do not see it')
+  await as(null, 'anon')
+  const pub1 = await one(
+    `select count(*)::int as n from public_practitioners where names like 'Dr. Mukamana%'`,
+  )
+  await as(staff.doctor)
+  await db.query(`select save_calendar(null, $1::jsonb, 30, 'public')`, [hours])
+  await as(null, 'anon')
+  const pub2 = await one(
+    `select count(*)::int as n from public_practitioners where names like 'Dr. Mukamana%'`,
+  )
+  await asAdmin()
+  if (pub1.n !== 0 || pub2.n !== 1) throw new Error(`public ${pub1.n} → ${pub2.n}`)
+  return `staff ${seen.length} calendar(s); public ${pub1.n} → ${pub2.n}`
+})
+await expectError(
+  'a cashier may not keep a calendar, nor edit a doctor’s',
+  async () => {
+    await as(staff.cashier)
+    await db.query(`select save_calendar($1, '{}'::jsonb, 30, 'staff')`, [staff.doctor])
+  },
+  /not allowed/,
+)
+await expectError(
+  'working periods must start before they end',
+  async () => {
+    await as(staff.doctor)
+    await db.query(`select save_calendar(null, '{"1":[["12:00","08:00"]]}'::jsonb, 30, 'staff')`)
+  },
+  /start before it ends/,
+)
+await step('treatment placed in a department; billing by treatment for the manager', async () => {
+  await as(staff.manager)
+  const sid = (await one(`select upsert_service(null, 'Dept test', 'consultation', 1500) as id`)).id
+  await db.query(`select set_service_department($1, $2)`, [sid, deptId])
+  const r = await one(`select department_name from catalogue_services where id = $1`, [sid])
+  const bill = (await one(`select service_billing(current_date - 30, current_date) as j`)).j
+  await as(staff.nurse)
+  let refused = false
+  try {
+    await db.query(`select set_service_department($1, null)`, [sid])
+  } catch {
+    refused = true
+  }
+  await asAdmin()
+  if (r.department_name !== 'Nursing care' || !refused)
+    throw new Error('department not set or nurse allowed')
+  return `in "${r.department_name}"; ${Object.keys(bill).length} treatment(s) billed this month`
+})
+
 finish()
 
 function finish() {

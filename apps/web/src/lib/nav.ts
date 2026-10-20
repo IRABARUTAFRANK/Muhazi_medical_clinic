@@ -28,6 +28,7 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
+  { id: 'calendar', labelKey: 'nav.doctorCalendars', icon: 'calendar-days', to: '/app/calendar' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'id-card', to: '/app/staff' },

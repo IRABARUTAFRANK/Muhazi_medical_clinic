@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatTime, type StaffUser } from '@mmc/shared'
+import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Empty, Kpi, ListRows, Panel, Pill, SectionTitle } from '@/components/dash/kit'
 import { greetingFor } from '@/components/dash/kit-style'
@@ -222,6 +223,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             )}
           </Panel>
         </section>
+        <DoctorCalendarsSection user={user} />
       </main>
     </StaffShell>
   )

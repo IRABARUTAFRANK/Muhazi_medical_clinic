@@ -44,6 +44,7 @@ import {
   type DashboardRole,
   type StaffUser,
 } from '@mmc/shared'
+import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import {
@@ -673,6 +674,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             </section>
           </div>
         )}
+        <DoctorCalendarsSection user={user} />
       </main>
     </StaffShell>
   )

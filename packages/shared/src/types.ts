@@ -97,6 +97,10 @@ export interface Practitioner {
   slotMinutes: number
   /** Seed for deterministic sample bookings (sample data only). */
   seed: number
+  /** Dates off (YYYY-MM-DD): leave, training; the weekly hours do not apply. */
+  daysOff?: string[]
+  /** Short note the doctor shows with the calendar ("Theatre on Fridays"). */
+  note?: string
 }
 
 export interface QueueRow {

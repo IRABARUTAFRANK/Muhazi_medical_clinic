@@ -4,7 +4,15 @@ import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { roleLabel } from '@/lib/roles'
 import { cn } from '@/lib/utils'
-import { initials, lookFor, stripeClass, tintClass, type Tint } from './kit-style'
+import {
+  initials,
+  lookFor,
+  stripeClass,
+  tintClass,
+  tintText,
+  tintWash,
+  type Tint,
+} from './kit-style'
 
 /*
  * Page banner: the title of every screen opened from the sidebar, in the identity banner's
@@ -35,7 +43,12 @@ export function PageBanner({
   const look = lookFor(user.role)
   const RoleIcon = look.icon
   return (
-    <section className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-5 gap-y-3 overflow-hidden rounded-[18px] py-3.5 pr-5 pl-6">
+    <section
+      className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-5 gap-y-3 overflow-hidden rounded-[18px] py-3.5 pr-5 pl-6"
+      style={{
+        backgroundImage: `linear-gradient(100deg, ${tintWash[tint]} 0%, var(--mmc-card) 58%)`,
+      }}
+    >
       <span
         className={cn('absolute inset-y-0 left-0 w-1.5', stripeClass[tint])}
         aria-hidden="true"
@@ -58,7 +71,12 @@ export function PageBanner({
 
       <div className="relative min-w-[220px] flex-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <h1 className="m-0 text-[24px] leading-[1.15] font-extrabold tracking-[-0.02em]">
+          <h1
+            className={cn(
+              'm-0 text-[24px] leading-[1.15] font-extrabold tracking-[-0.02em]',
+              tintText[tint],
+            )}
+          >
             {title}
           </h1>
           <span className="border-border bg-surface text-ink-2 inline-flex items-center gap-2 rounded-full border py-0.5 pr-3 pl-0.5 text-[13px] font-semibold">

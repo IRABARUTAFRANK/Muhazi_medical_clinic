@@ -31,8 +31,20 @@ export function bookedSetFrom(startsAt: Iterable<string | Date>): Set<string> {
   return set
 }
 
-/** The whole slot must fall inside one working span of that weekday. */
+/** A date the practitioner marked as a day off (leave, training, …). */
+export const isDayOff = (p: Practitioner, date: Date): boolean =>
+  !!p.daysOff?.includes(isoDate(date))
+
+/** Working at this minute: inside one of the day's periods and not a day off. */
+export const workingAt = (p: Practitioner, at: Date): boolean => {
+  if (isDayOff(p, at)) return false
+  const m = at.getHours() * 60 + at.getMinutes()
+  return spansFor(p.hours, at).some(([a, b]) => m >= toMinutes(a) && m < toMinutes(b))
+}
+
+/** The whole slot must fall inside one working span of that weekday, unless it is a day off. */
 export const isWorking = (p: Practitioner, date: Date, hour: number): boolean => {
+  if (isDayOff(p, date)) return false
   const start = hour * 60
   const end = start + Math.min(60, p.slotMinutes || 60)
   return spansFor(p.hours, date).some(([a, b]) => start >= toMinutes(a) && end <= toMinutes(b))
@@ -75,7 +87,7 @@ export function weekAvailability(
   return Array.from({ length: 7 }, (_, i) => {
     const dayIdx = weekOffset * 7 + i
     const date = addDays(startOfDay(now), dayIdx)
-    if (!workdays.includes(date.getDay())) return { date, free: null }
+    if (!workdays.includes(date.getDay()) || isDayOff(p, date)) return { date, free: null }
     let free = 0
     for (const h of bookingHours()) if (slotState(p, now, dayIdx, h, booked) === 'free') free++
     return { date, free }

@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import {
+  Building2,
   Copy,
+  FolderPlus,
+  Layers,
   Eye,
   EyeOff,
   Pencil,
@@ -14,7 +17,16 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { CATEGORY_IDS, FEATURES, formatRwf, type CategoryId, type StaffUser } from '@mmc/shared'
+import {
+  CATEGORY_IDS,
+  FEATURES,
+  formatNumber,
+  formatRwf,
+  isoDate,
+  type CategoryId,
+  type StaffUser,
+} from '@mmc/shared'
+import { tintClass, type Tint } from '@/components/dash/kit-style'
 import { PageBanner } from '@/components/dash/page-banner'
 import { AdjustField } from '@/components/ui/adjust-field'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +34,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
+import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { allowanceAsPct, type AdjustMode } from '@/lib/adjust'
@@ -31,6 +44,7 @@ import {
   useCatalogueActions,
   useInsurers,
   treatmentName,
+  useServiceBilling,
   useTreatments,
   type Insurer,
   type PayerType,
@@ -38,11 +52,31 @@ import {
   type Treatment,
 } from '@/lib/api/catalogue'
 import { suggestNames } from '@/lib/medical-glossary'
+import { useDepartmentActions, useDepartments, type Department } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { ShownList } from '@/components/ui/list-tools'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+
+/** Each department card gets its own colour, in this order. */
+const DEPT_TINTS: Tint[] = ['teal', 'violet', 'mint', 'amber', 'coral', 'navy']
+const DEPT_HEAD: Record<Tint, string> = {
+  teal: 'bg-primary-tint',
+  violet: 'bg-violet-bg',
+  mint: 'bg-green-bg',
+  amber: 'bg-amber-bg',
+  coral: 'bg-red-bg',
+  navy: 'bg-blue-bg',
+}
+const DEPT_TEXT: Record<Tint, string> = {
+  teal: 'text-primary',
+  violet: 'text-violet',
+  mint: 'text-green',
+  amber: 'text-amber',
+  coral: 'text-red',
+  navy: 'text-navy-ink',
+}
 
 /**
  * Manager: the treatment catalogue (what the clinic treats, the price, the discount a
@@ -63,6 +97,14 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const [adjusting, setAdjusting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [view, setView] = useState<'dept' | 'group'>('dept')
+  const [presetDept, setPresetDept] = useState<string | null>(null)
+  const [newDept, setNewDept] = useState<string | null>(null)
+  const { data: departments = [] } = useDepartments()
+  const deptActions = useDepartmentActions()
+  const today = new Date()
+  const monthStart = isoDate(new Date(today.getFullYear(), today.getMonth(), 1))
+  const { data: billing = {} } = useServiceBilling(monthStart, isoDate(today))
 
   const activeInsurers = FEATURES.insurance ? insurers.filter((i) => i.active) : []
   const q = query.trim().toLowerCase()
@@ -74,6 +116,138 @@ export function PricesPage({ user }: { user: StaffUser }) {
         `${x.nameEn} ${x.nameKin ?? ''} ${x.nameFr ?? ''} ${x.code}`.toLowerCase().includes(q)),
   )
   const groups = SERVICE_GROUPS.filter((g) => visible.some((x) => x.group === g))
+  const known = new Set(departments.map((d) => d.id))
+  const deptOf = (x: Treatment) =>
+    x.departmentId && known.has(x.departmentId) ? x.departmentId : ''
+  const filtering = !!q || !!groupFilter
+  const deptCards: { id: string; dept: Department | null; items: Treatment[] }[] = [
+    ...departments.map((d) => ({
+      id: d.id,
+      dept: d,
+      items: visible.filter((x) => deptOf(x) === d.id),
+    })),
+    { id: '', dept: null, items: visible.filter((x) => deptOf(x) === '') },
+  ].filter((c) => c.items.length > 0 || (!filtering && c.dept !== null))
+
+  const addTo = (deptId: string | null) => {
+    setCopyFrom(null)
+    setPresetDept(deptId)
+    setEditing('new')
+  }
+  const createDept = () => {
+    const name = (newDept ?? '').trim()
+    if (name.length < 2) return
+    void run(
+      async () => {
+        await deptActions.save.mutateAsync({ name, description: '', roles: [] })
+        setNewDept(null)
+      },
+      t('prices.dept.created', { name }),
+    )
+  }
+
+  const renderRows = (items: Treatment[]) => (
+    <ShownList step={10} footerClassName="px-4 py-2" items={items}>
+      {(rows) =>
+        rows.map((x) => {
+          const used = billing[x.id]
+          return (
+            <Row
+              key={x.id}
+              className={cn('flex-wrap gap-x-3 gap-y-1 py-2', !x.active && 'opacity-60')}
+            >
+              <span className="min-w-[200px] flex-1">
+                <span className="text-ink block font-semibold">
+                  {treatmentName(x, i18n.language)}
+                </span>
+                <span className="text-ink-3 text-xs">
+                  {x.code}
+                  {view === 'dept' ? ` · ${t(`prices.groups.${x.group}`)}` : ''}
+                  {view === 'group' && x.departmentName ? ` · ${x.departmentName}` : ''}
+                  {x.nameKin ? ` · ${x.nameKin}` : ''}
+                  {x.nameFr ? ` · ${x.nameFr}` : ''}
+                </span>
+              </span>
+              <span className="text-primary text-[15px] font-extrabold tabular-nums">
+                {x.cashPrice == null
+                  ? t('prices.noPrice')
+                  : x.cashPrice === 0
+                    ? t('price.free')
+                    : formatRwf(x.cashPrice)}
+              </span>
+              {used && used.count > 0 && (
+                <Chip
+                  className="bg-violet-bg text-violet border-transparent"
+                  title={t('prices.dept.billedTitle')}
+                >
+                  {t('prices.dept.billed', {
+                    count: used.count,
+                    amount: formatNumber(used.amount),
+                  })}
+                </Chip>
+              )}
+              {activeInsurers.map((i) =>
+                x.payerPrices[i.id] != null ? (
+                  <Chip key={i.id}>
+                    {i.code}: {formatRwf(x.payerPrices[i.id]!)}
+                  </Chip>
+                ) : null,
+              )}
+              <Chip title={t('prices.maxDiscountTitle')}>
+                {t('prices.maxDiscount', { pct: x.maxDiscountPct })}
+              </Chip>
+              {x.allowManualPrice && (
+                <Chip title={t('prices.form.allowManualHint')}>{t('prices.typedPrice')}</Chip>
+              )}
+              {!x.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
+              <span className="flex flex-wrap gap-1">
+                <Button size="sm" onClick={() => setEditing(x)}>
+                  <Pencil size={14} aria-hidden="true" />
+                  {t('prices.edit')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title={t('prices.duplicate')}
+                  aria-label={t('prices.duplicate')}
+                  onClick={() => {
+                    setCopyFrom(x)
+                    setPresetDept(deptOf(x) || null)
+                    setEditing('new')
+                  }}
+                >
+                  <Copy size={14} aria-hidden="true" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title={t(x.active ? 'prices.hide' : 'prices.show')}
+                  aria-label={t(x.active ? 'prices.hide' : 'prices.show')}
+                  onClick={() => toggle(x)}
+                >
+                  {x.active ? (
+                    <EyeOff size={14} aria-hidden="true" />
+                  ) : (
+                    <Eye size={14} aria-hidden="true" />
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="hover:text-red"
+                  title={t('prices.delete')}
+                  aria-label={t('prices.delete')}
+                  onClick={() => remove(x)}
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                </Button>
+              </span>
+            </Row>
+          )
+        })
+      }
+    </ShownList>
+  )
 
   const run = async (fn: () => Promise<unknown>, done: string) => {
     setActionError(null)
@@ -112,17 +286,42 @@ export function PricesPage({ user }: { user: StaffUser }) {
             <SlidersHorizontal size={18} aria-hidden="true" />
             {t('prices.adjust.open')}
           </Button>
-          <Button
-            variant="primary"
-            onClick={() => {
-              setCopyFrom(null)
-              setEditing('new')
-            }}
-          >
+          <Button onClick={() => setNewDept((v) => (v === null ? '' : null))}>
+            <FolderPlus size={18} aria-hidden="true" />
+            {t('prices.dept.new')}
+          </Button>
+          <Button variant="primary" onClick={() => addTo(null)}>
             <Plus size={18} aria-hidden="true" />
             {t('prices.newTreatment')}
           </Button>
         </PageBanner>
+
+        {newDept !== null && (
+          <Card>
+            <CardBody className="flex-row flex-wrap items-end gap-3">
+              <Field
+                label={t('prices.dept.name')}
+                value={newDept}
+                autoFocus
+                placeholder={t('prices.dept.namePh')}
+                onChange={(e) => setNewDept(e.target.value)}
+                wrapperClassName="min-w-[240px] flex-1"
+              />
+              <Button
+                variant="primary"
+                disabled={newDept.trim().length < 2 || deptActions.save.isPending}
+                onClick={createDept}
+              >
+                <FolderPlus size={16} aria-hidden="true" />
+                {t('prices.dept.create')}
+              </Button>
+              <Button variant="ghost" onClick={() => setNewDept(null)}>
+                {t('staff.form.cancel')}
+              </Button>
+              <p className="text-ink-3 m-0 basis-full text-[13px]">{t('prices.dept.newHint')}</p>
+            </CardBody>
+          </Card>
+        )}
 
         {(tError || iError || actionError) && (
           <p role="alert" className={errorBox}>
@@ -150,20 +349,23 @@ export function PricesPage({ user }: { user: StaffUser }) {
 
         {editing && (
           <TreatmentForm
-            key={editing === 'new' ? `new-${copyFrom?.id ?? ''}` : editing.id}
+            key={editing === 'new' ? `new-${copyFrom?.id ?? ''}-${presetDept ?? ''}` : editing.id}
             treatment={editing === 'new' ? null : editing}
             copyFrom={editing === 'new' ? copyFrom : null}
             insurers={activeInsurers}
+            departments={departments}
+            presetDepartment={editing === 'new' ? presetDept : null}
             onClose={() => {
               setEditing(null)
               setCopyFrom(null)
+              setPresetDept(null)
             }}
           />
         )}
 
         {/* Search and filter */}
         <Card>
-          <CardBody className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[2fr_1fr_auto]">
+          <CardBody className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[2fr_1fr_auto] lg:grid-cols-[2fr_1fr_auto_auto]">
             <Field
               label={t('prices.search')}
               value={query}
@@ -191,6 +393,15 @@ export function PricesPage({ user }: { user: StaffUser }) {
               />
               {t('prices.showHidden')}
             </label>
+            <Seg
+              label={t('prices.dept.viewBy')}
+              value={view}
+              onChange={setView}
+              options={[
+                { value: 'dept', label: t('prices.dept.byDept') },
+                { value: 'group', label: t('prices.dept.byType') },
+              ]}
+            />
           </CardBody>
         </Card>
 
@@ -205,105 +416,100 @@ export function PricesPage({ user }: { user: StaffUser }) {
           </Card>
         )}
 
-        {/* Treatments by group */}
-        {groups.map((g) => (
-          <Card key={g}>
-            <CardHeader>
-              <span className="inline-flex items-center gap-2">
-                <Tag size={16} aria-hidden="true" />
-                {t(`prices.groups.${g}`)}
-              </span>
-              <span className="text-ink-3 text-xs">
-                {visible.filter((x) => x.group === g).length}
-              </span>
-            </CardHeader>
-            <ShownList
-              step={10}
-              footerClassName="px-4 py-2"
-              items={visible.filter((x) => x.group === g)}
-            >
-              {(rows) =>
-                rows.map((x) => (
-                  <Row
-                    key={x.id}
-                    className={cn('flex-wrap gap-x-3 gap-y-1 py-2', !x.active && 'opacity-60')}
+        {/* By department: every department with its services and prices, then those without one */}
+        {view === 'dept' &&
+          deptCards.map((c, n) => {
+            const tint = DEPT_TINTS[n % DEPT_TINTS.length]!
+            const prices = c.items
+              .map((x) => x.cashPrice)
+              .filter((v): v is number => v != null && v > 0)
+            const billed = c.items.reduce(
+              (acc, x) => ({
+                count: acc.count + (billing[x.id]?.count ?? 0),
+                amount: acc.amount + (billing[x.id]?.amount ?? 0),
+              }),
+              { count: 0, amount: 0 },
+            )
+            return (
+              <Card key={c.id || 'none'} className="overflow-hidden">
+                <div className={cn('flex flex-wrap items-center gap-3 px-4 py-3', DEPT_HEAD[tint])}>
+                  <span
+                    className={cn(
+                      'inline-flex size-10 flex-none items-center justify-center rounded-xl',
+                      tintClass[tint],
+                      'bg-card',
+                    )}
                   >
-                    <span className="min-w-[200px] flex-1">
-                      <span className="block font-semibold">{treatmentName(x, i18n.language)}</span>
-                      <span className="text-ink-3 text-xs">
-                        {x.code}
-                        {x.nameKin ? ` · ${x.nameKin}` : ''}
-                        {x.nameFr ? ` · ${x.nameFr}` : ''}
-                      </span>
-                    </span>
-                    <span className="font-bold tabular-nums">
-                      {x.cashPrice == null
-                        ? t('prices.noPrice')
-                        : x.cashPrice === 0
-                          ? t('price.free')
-                          : formatRwf(x.cashPrice)}
-                    </span>
-                    {activeInsurers.map((i) =>
-                      x.payerPrices[i.id] != null ? (
-                        <Chip key={i.id}>
-                          {i.code}: {formatRwf(x.payerPrices[i.id]!)}
-                        </Chip>
-                      ) : null,
+                    {c.dept ? (
+                      <Building2 size={20} aria-hidden="true" />
+                    ) : (
+                      <Layers size={20} aria-hidden="true" />
                     )}
-                    <Chip title={t('prices.maxDiscountTitle')}>
-                      {t('prices.maxDiscount', { pct: x.maxDiscountPct })}
+                  </span>
+                  <span className="min-w-[180px] flex-1">
+                    <span className={cn('block text-[17px] font-extrabold', DEPT_TEXT[tint])}>
+                      {c.dept?.name ?? t('prices.dept.none')}
+                    </span>
+                    <span className="text-ink-2 block text-[13px]">
+                      {c.dept
+                        ? c.dept.description ||
+                          t('prices.dept.servicesCount', { count: c.items.length })
+                        : t('prices.dept.noneHint')}
+                    </span>
+                  </span>
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <Chip className="bg-card">
+                      {t('prices.dept.servicesCount', { count: c.items.length })}
                     </Chip>
-                    {x.allowManualPrice && (
-                      <Chip title={t('prices.form.allowManualHint')}>{t('prices.typedPrice')}</Chip>
+                    {prices.length > 0 && (
+                      <Chip className="bg-card">
+                        {Math.min(...prices) === Math.max(...prices)
+                          ? formatRwf(prices[0]!)
+                          : `${formatRwf(Math.min(...prices))} – ${formatNumber(Math.max(...prices))}`}
+                      </Chip>
                     )}
-                    {!x.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
-                    <span className="flex flex-wrap gap-1">
-                      <Button size="sm" onClick={() => setEditing(x)}>
-                        <Pencil size={14} aria-hidden="true" />
-                        {t('prices.edit')}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        title={t('prices.duplicate')}
-                        aria-label={t('prices.duplicate')}
-                        onClick={() => {
-                          setCopyFrom(x)
-                          setEditing('new')
-                        }}
-                      >
-                        <Copy size={14} aria-hidden="true" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        title={t(x.active ? 'prices.hide' : 'prices.show')}
-                        aria-label={t(x.active ? 'prices.hide' : 'prices.show')}
-                        onClick={() => toggle(x)}
-                      >
-                        {x.active ? (
-                          <EyeOff size={14} aria-hidden="true" />
-                        ) : (
-                          <Eye size={14} aria-hidden="true" />
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="hover:text-red"
-                        title={t('prices.delete')}
-                        aria-label={t('prices.delete')}
-                        onClick={() => remove(x)}
-                      >
-                        <Trash2 size={14} aria-hidden="true" />
-                      </Button>
-                    </span>
-                  </Row>
-                ))
-              }
-            </ShownList>
+                    <Chip className="bg-card" title={t('prices.dept.billedTitle')}>
+                      {t('prices.dept.month', { amount: formatRwf(billed.amount) })}
+                    </Chip>
+                  </span>
+                  <Button size="sm" variant="primary" onClick={() => addTo(c.dept?.id ?? null)}>
+                    <Plus size={14} aria-hidden="true" />
+                    {t('prices.dept.add')}
+                  </Button>
+                </div>
+                {c.items.length === 0 ? (
+                  <p className="text-ink-3 m-0 px-4 py-3 text-[13px]">{t('prices.dept.empty')}</p>
+                ) : (
+                  renderRows(c.items)
+                )}
+              </Card>
+            )
+          })}
+        {view === 'dept' && departments.length === 0 && (
+          <Card>
+            <CardBody className="flex-row items-center gap-3">
+              <Building2 size={18} aria-hidden="true" className="text-violet flex-none" />
+              <p className="text-ink-2 m-0 text-[13px]">{t('prices.dept.noDepartments')}</p>
+            </CardBody>
           </Card>
-        ))}
+        )}
+
+        {/* By type of treatment */}
+        {view === 'group' &&
+          groups.map((g) => (
+            <Card key={g}>
+              <CardHeader>
+                <span className="inline-flex items-center gap-2">
+                  <Tag size={16} aria-hidden="true" />
+                  {t(`prices.groups.${g}`)}
+                </span>
+                <span className="text-ink-3 text-xs">
+                  {visible.filter((x) => x.group === g).length}
+                </span>
+              </CardHeader>
+              {renderRows(visible.filter((x) => x.group === g))}
+            </Card>
+          ))}
 
         {/* Insurers: only once the clinic works with insurers */}
         {FEATURES.insurance ? (
@@ -566,11 +772,16 @@ function TreatmentForm({
   treatment,
   copyFrom,
   insurers,
+  departments,
+  presetDepartment,
   onClose,
 }: {
   treatment: Treatment | null
   copyFrom: Treatment | null
   insurers: Insurer[]
+  departments: Department[]
+  /** "Add a service" from a department card places the new service there. */
+  presetDepartment: string | null
   onClose: () => void
 }) {
   const { t } = useTranslation()
@@ -592,6 +803,9 @@ function TreatmentForm({
   const [maxDiscount, setMaxDiscount] = useState(String(base?.maxDiscountPct ?? 0))
   const [allowManual, setAllowManual] = useState(base?.allowManualPrice ?? false)
   const [active, setActive] = useState(base?.active ?? true)
+  const [dept, setDept] = useState<string>(
+    treatment?.departmentId ?? presetDepartment ?? copyFrom?.departmentId ?? '',
+  )
   const [payerPrices, setPayerPrices] = useState<Record<string, string>>(
     Object.fromEntries(
       insurers.map((i) => [
@@ -632,6 +846,7 @@ function TreatmentForm({
         allowManualPrice: allowManual,
         active,
         payerPrices,
+        departmentId: dept || null,
       })
       onClose()
     } catch (err) {
@@ -645,7 +860,11 @@ function TreatmentForm({
         <span>
           {treatment
             ? t('prices.form.editTitle', { name: treatment.nameEn })
-            : t('prices.newTreatment')}
+            : presetDepartment
+              ? t('prices.dept.addTo', {
+                  name: departments.find((d) => d.id === presetDepartment)?.name ?? '',
+                })
+              : t('prices.newTreatment')}
         </span>
       </CardHeader>
       <form onSubmit={submit}>
@@ -681,6 +900,18 @@ function TreatmentForm({
               {t('prices.form.suggested')}
             </p>
           )}
+          <Select
+            label={t('prices.dept.field')}
+            value={dept}
+            onChange={(e) => setDept(e.target.value)}
+          >
+            <option value="">{t('prices.dept.none')}</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </Select>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <Select
               label={t('prices.form.group')}

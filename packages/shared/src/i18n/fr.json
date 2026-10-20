@@ -89,7 +89,8 @@
     "bookings": "RDV",
     "notifications": "Notifications",
     "history": "Historique",
-    "worklist": "Liste de travail"
+    "worklist": "Liste de travail",
+    "doctorCalendars": "Agendas des médecins"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -202,18 +203,11 @@
       "inactive": "Ce compte a été désactivé. Adressez-vous au gestionnaire de la clinique."
     },
     "doctors": {
-      "title": "Trouvez un médecin et voyez quand il est disponible",
-      "lead": "L'agenda de chaque médecin est public pour les sept prochains jours, dans chaque catégorie de service. Choisissez un créneau libre et la réception le confirme avec vous.",
+      "title": "L’horaire de nos médecins cette semaine",
+      "lead": "Les vraies heures de travail de chaque médecin qui partage son agenda : qui est là aujourd’hui, les jours de congé et les heures encore libres. Choisissez un médecin pour réserver ; l’accueil vous confirme.",
       "openCalendar": "Ouvrir l'agenda complet",
-      "next7": "7 prochains jours",
-      "legend": "Les chiffres sont les créneaux libres du jour ·",
-      "free": "libre",
-      "few": "peu",
-      "off": "absent",
-      "nextFree": "Prochain créneau : {{when}}",
-      "freeTimes": "{{day}} · {{count}} créneaux libres",
-      "askReception": "demander à la réception",
-      "seeCalendar": "Voir l'agenda et réserver"
+      "noneYet": "Les agendas des médecins apparaissent ici dès qu’ils les publient. En attendant, appelez l’accueil au {{phone}} pour réserver.",
+      "book": "Réserver"
     },
     "services": {
       "title": "Nos services",
@@ -347,7 +341,8 @@
     },
     "sending": "Envoi…",
     "sendFailed": "La demande n'a pas pu être envoyée. Vérifiez votre connexion ou appelez la réception.",
-    "liveNote": "Envoyée à la réception."
+    "liveNote": "Envoyée à la réception.",
+    "noneYet": "Aucun médecin n’a encore publié d’agenda pour ce service. Appelez ou écrivez sur WhatsApp à l’accueil et nous vous trouvons une heure."
   },
   "home": {
     "clinicNow": "Clinique maintenant",
@@ -1023,7 +1018,31 @@
       "done": "{{count}} prix modifiés."
     },
     "titleCash": "Soins et tarifs",
-    "leadCash": "Tout ce que la clinique soigne, son prix, et la remise qu'un clinicien peut accorder sans vous demander. Recherchez, dupliquez, masquez, supprimez ou changez plusieurs prix à la fois."
+    "leadCash": "Tout ce que la clinique soigne, son prix, et la remise qu'un clinicien peut accorder sans vous demander. Recherchez, dupliquez, masquez, supprimez ou changez plusieurs prix à la fois.",
+    "dept": {
+      "created": "Département « {{name}} » créé.",
+      "billedTitle": "Facturé ce mois-ci",
+      "billed_one": "{{count}}× ce mois · {{amount}} RWF",
+      "billed_other": "{{count}}× ce mois · {{amount}} RWF",
+      "none": "Sans département",
+      "noneHint": "Services pas encore placés dans un département. Modifiez-en un pour choisir son département.",
+      "servicesCount_one": "{{count}} service",
+      "servicesCount_other": "{{count}} services",
+      "month": "Ce mois : {{amount}}",
+      "add": "Ajouter un service",
+      "empty": "Aucun service dans ce département. Ajoutez ses services et leurs prix.",
+      "noDepartments": "La clinique n’a pas encore de département. Créez-en un avec « Nouveau département » (par exemple Consultation, Laboratoire, Dentaire, Maternité), puis ajoutez ses services et leurs prix.",
+      "new": "Nouveau département",
+      "name": "Nom du département",
+      "namePh": "Soins dentaires",
+      "create": "Créer le département",
+      "newHint": "Les employés sont placés dans les départements depuis Employés ; ici vous ajoutez les services et les prix de chaque département.",
+      "viewBy": "Afficher par",
+      "byDept": "Par département",
+      "byType": "Par type",
+      "field": "Département",
+      "addTo": "Nouveau service dans {{name}}"
+    }
   },
   "visit": {
     "back": "Retour à ma file",
@@ -2051,6 +2070,93 @@
       "receipt": "Reçu",
       "cashier": "Caissier",
       "amount": "Montant"
+    }
+  },
+  "calendar": {
+    "title": "Mon agenda",
+    "titleManager": "Agendas des médecins",
+    "lead": "Vos heures de travail pour chaque jour de la semaine, vos jours de congé et la durée d’un rendez-vous. Choisissez qui le voit : vous seul, le personnel, ou le personnel et le public sur le site de la clinique.",
+    "leadManager": "Tenez l’agenda de chaque médecin et échographiste : heures de travail, congés et qui peut le voir.",
+    "whose": "Agenda de",
+    "notSet": "pas encore rempli",
+    "noDoctors": "Aucun compte médecin pour l’instant",
+    "noDoctorsHint": "Créez les médecins dans Employés (rôle Médecin ou Échographiste) ; chacun pourra ensuite tenir son agenda ici.",
+    "cannotKeep": "Seuls les médecins et échographistes ont un agenda",
+    "cannotKeepHint": "Votre rôle n’a pas d’agenda de rendez-vous. Demandez au gérant si cela doit changer.",
+    "badPeriod": "Chaque période de travail doit commencer avant de finir.",
+    "whoSees": "Qui peut voir cet agenda",
+    "visibility": {
+      "private": {
+        "title": "Moi seul",
+        "short": "Privé",
+        "desc": "Personne d’autre ne le voit et personne ne peut réserver avec vous en ligne."
+      },
+      "staff": {
+        "title": "Le personnel",
+        "short": "Personnel",
+        "desc": "Affiché sur la page d’accueil de chaque employé, pour que l’accueil sache quand vous travaillez."
+      },
+      "public": {
+        "title": "Personnel et public",
+        "short": "Public",
+        "desc": "Aussi affiché sur le site de la clinique, où les patients peuvent demander une heure avec vous."
+      }
+    },
+    "weekly": "Heures de travail chaque semaine",
+    "workdays_one": "{{count}} jour de travail",
+    "workdays_other": "{{count}} jours de travail",
+    "from": "De",
+    "to": "À",
+    "removePeriod": "Retirer cette période",
+    "addPeriod": "Ajouter une période",
+    "copyMonday": "Copier lundi sur mardi–vendredi",
+    "weeklyHint": "Ajoutez une deuxième période pour une pause (par exemple 08:00–12:00 et 14:00–17:00).",
+    "details": "Affiché avec votre agenda",
+    "titleField": "Titre",
+    "titlePh": "Médecin généraliste",
+    "languages": "Langues",
+    "slot": "Durée d’un rendez-vous",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes",
+    "services": "Services que les patients peuvent réserver avec vous",
+    "note": "Courte note",
+    "notePh": "Bloc opératoire le vendredi matin",
+    "daysOff": "Jours de congé",
+    "addDayOff": "Jour de congé (congé, formation)",
+    "add": "Ajouter",
+    "noDaysOff": "Aucun jour de congé prévu.",
+    "removeDayOff": "Retirer ce jour de congé",
+    "preview": "Aperçu",
+    "saved": {
+      "private": "Enregistré. Vous seul voyez cet agenda.",
+      "staff": "Enregistré. Le personnel voit maintenant votre agenda sur sa page d’accueil.",
+      "public": "Enregistré. Votre agenda est sur les pages d’accueil du personnel et sur le site de la clinique."
+    },
+    "save": "Enregistrer l’agenda",
+    "saveHint": "Les changements apparaissent tout de suite sur les pages d’accueil.",
+    "board": {
+      "prev": "Semaine précédente",
+      "next": "Semaine suivante",
+      "thisWeek": "Cette semaine",
+      "weekOf": "Semaine du {{day}}",
+      "working": "Au travail",
+      "dayOff": "Congé",
+      "off": "Repos",
+      "doctor": "Médecin",
+      "today": "Auj.",
+      "you": "vous",
+      "inNow": "Au travail maintenant",
+      "notNow": "Pas en service",
+      "full": "Complet",
+      "free_one": "{{count}} libre",
+      "free_other": "{{count}} libres",
+      "section": "Agendas des médecins",
+      "title": "Qui travaille quand",
+      "inNowCount": "{{count}} sur {{total}} au travail",
+      "emptyStaff": "Aucun médecin ne partage encore son agenda avec le personnel. Les médecins le remplissent dans « Agenda ».",
+      "edit": "Modifier",
+      "manage": "Gérer les agendas",
+      "mine": "Mon agenda"
     }
   }
 }

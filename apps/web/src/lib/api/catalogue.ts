@@ -42,6 +42,9 @@ export interface Treatment {
   maxDiscountPct: number
   allowManualPrice: boolean
   active: boolean
+  /** Department the service belongs to (null = none yet). */
+  departmentId: string | null
+  departmentName: string | null
 }
 
 export interface TreatmentInput {
@@ -58,6 +61,8 @@ export interface TreatmentInput {
   active: boolean
   /** Insurer prices to set with the treatment; empty string = use the cash price. */
   payerPrices?: Record<string, string>
+  /** Department to place it in; undefined = leave as it is. */
+  departmentId?: string | null
 }
 
 export interface Insurer {
@@ -97,6 +102,8 @@ const sampleTreatments: Treatment[] = [
     maxDiscountPct: 10,
     allowManualPrice: false,
     active: true,
+    departmentId: null,
+    departmentName: null,
   },
   {
     id: 't-2',
@@ -111,6 +118,8 @@ const sampleTreatments: Treatment[] = [
     maxDiscountPct: 20,
     allowManualPrice: false,
     active: true,
+    departmentId: null,
+    departmentName: null,
   },
   {
     id: 't-3',
@@ -125,6 +134,8 @@ const sampleTreatments: Treatment[] = [
     maxDiscountPct: 0,
     allowManualPrice: false,
     active: true,
+    departmentId: null,
+    departmentName: null,
   },
   {
     id: 't-4',
@@ -139,6 +150,8 @@ const sampleTreatments: Treatment[] = [
     maxDiscountPct: 10,
     allowManualPrice: false,
     active: true,
+    departmentId: null,
+    departmentName: null,
   },
 ]
 const sampleInsurers: Insurer[] = [
@@ -178,6 +191,8 @@ interface ServiceRow {
   active: boolean
   cash_price: number | string | null
   payer_prices: Record<string, number | string> | null
+  department_id?: string | null
+  department_name?: string | null
 }
 
 const TREATMENTS = ['catalogue', 'treatments'] as const
@@ -210,8 +225,36 @@ export function useTreatments(onlyActive = false) {
         maxDiscountPct: Number(r.max_discount_pct),
         allowManualPrice: r.allow_manual_price,
         active: r.active,
+        departmentId: r.department_id ?? null,
+        departmentName: r.department_name ?? null,
       }))
     },
+  })
+}
+
+/** What each treatment was billed between two days: count and amount, by service id. */
+export type ServiceBilling = Record<string, { count: number; amount: number }>
+
+export function useServiceBilling(from: string, to: string) {
+  return useQuery({
+    queryKey: ['catalogue', 'billing', from, to],
+    queryFn: async (): Promise<ServiceBilling> => {
+      if (!supabase)
+        return Object.fromEntries(
+          sampleTreatments.map((t, i) => [
+            t.id,
+            { count: 3 + i * 4, amount: (3 + i * 4) * (t.cashPrice ?? 0) },
+          ]),
+        )
+      const { data, error } = await supabase.rpc('service_billing', { p_from: from, p_to: to })
+      if (error) throw new Error(error.message)
+      return Object.fromEntries(
+        Object.entries(
+          (data ?? {}) as Record<string, { count: number; amount: number | string }>,
+        ).map(([k, v]) => [k, { count: Number(v.count), amount: Number(v.amount) }]),
+      )
+    },
+    staleTime: 60_000,
   })
 }
 
@@ -283,6 +326,11 @@ export function useCatalogueActions() {
           maxDiscountPct: input.maxDiscountPct,
           allowManualPrice: input.allowManualPrice,
           active: input.active,
+          departmentId:
+            input.departmentId !== undefined
+              ? input.departmentId
+              : (existing?.departmentId ?? null),
+          departmentName: null,
         }
         if (existing) Object.assign(existing, t)
         else sampleTreatments.push(t)
@@ -310,6 +358,13 @@ export function useCatalogueActions() {
           p_price: price.trim() === '' ? null : Number(price),
         })
         if (pe) throw new Error(pe.message)
+      }
+      if (input.departmentId !== undefined) {
+        const { error: de } = await supabase.rpc('set_service_department', {
+          p_service_id: id,
+          p_department_id: input.departmentId,
+        })
+        if (de) throw new Error(de.message)
       }
       return id
     },

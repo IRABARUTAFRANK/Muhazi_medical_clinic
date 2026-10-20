@@ -27,8 +27,8 @@ import {
   startOfDay,
   telHref,
   whatsappHref,
-  type Practitioner,
 } from '@mmc/shared'
+import { ScheduleBoard } from '@/components/calendar/schedule-board'
 import { buttonVariants } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
 import { SiteFooter } from '@/components/public/site-footer'
@@ -46,31 +46,12 @@ import {
 import { appNow } from '@/lib/clock'
 import { useCountUp, useReveal } from '@/lib/motion'
 import { cn } from '@/lib/utils'
-import { DoctorPreviewCard } from './doctor-preview-card'
 import { HeroWave, PhoneIllustration } from './hero-art'
 import { RequestForm } from './request-form'
 import { SignInCard } from './sign-in-card'
 
-const h2 = 'm-0 mb-2 text-3xl leading-[1.15] font-bold tracking-[-0.015em]'
+const h2 = 'm-0 mb-2 text-3xl leading-[1.15] font-bold tracking-[-0.015em] text-[var(--brand-navy)]'
 const lead = 'm-0 max-w-[640px] text-base text-ink-2'
-
-/** One practitioner per category first, so the preview shows the breadth of the clinic. */
-function pickFeatured(practitioners: readonly Practitioner[], count = 3): Practitioner[] {
-  const out: Practitioner[] = []
-  const seen = new Set<string>()
-  for (const p of practitioners) {
-    const c = p.cats[0]
-    if (!c || seen.has(c)) continue
-    seen.add(c)
-    out.push(p)
-    if (out.length === count) return out
-  }
-  for (const p of practitioners) {
-    if (out.length === count) break
-    if (!out.includes(p)) out.push(p)
-  }
-  return out
-}
 
 export function LandingPage() {
   const { t } = useTranslation()
@@ -86,7 +67,6 @@ export function LandingPage() {
   const { data: booked } = useBookedSlots(startOfDay(now), 14)
   const { data: status } = useClinicStatus(hours)
 
-  const featured = pickFeatured(practitioners)
   const activeLines = lines
   const weekdaySpan = hours.days['1']
   const hoursLabel = isOpen247(hours)
@@ -110,7 +90,7 @@ export function LandingPage() {
       />
 
       {/* FIND A DOCTOR */}
-      <section id="doctors" className="bg-card scroll-mt-[56px] py-[72px]">
+      <section id="doctors" className="doctors-gradient scroll-mt-[56px] py-[72px]">
         <Wrap className="flex flex-col gap-6">
           <div className="flex flex-wrap items-end gap-6" data-reveal>
             <div className="min-w-[280px] flex-1">
@@ -135,17 +115,29 @@ export function LandingPage() {
               </Link>
             ))}
           </div>
-          <div className="pc:grid-cols-3 grid grid-cols-1 gap-4">
-            {featured.map((d, i) => (
-              <div key={d.code} data-reveal data-delay={String(i % 4)} className="flex">
-                <DoctorPreviewCard
-                  doctor={d}
-                  now={now}
-                  booked={bookedFor(booked, d)}
-                  className="flex-1"
-                />
-              </div>
-            ))}
+          <div className="card-glow bg-card rounded-2xl p-4 sm:p-5" data-reveal data-delay="2">
+            {practitioners.length === 0 ? (
+              <p className="text-ink-2 m-0 flex items-center gap-3 py-4 text-[15px]">
+                <CalendarDays size={22} aria-hidden="true" className="text-primary flex-none" />
+                {t('landing.doctors.noneYet', { phone: profile.phone })}
+              </p>
+            ) : (
+              <ScheduleBoard
+                variant="public"
+                now={now}
+                bookedFor={(p) => bookedFor(booked, p)}
+                doctors={practitioners.map((p) => ({ p }))}
+                action={({ p }) => (
+                  <Link
+                    to="/book"
+                    search={{ category: p.cats[0] }}
+                    className={buttonVariants({ variant: 'primary', size: 'sm' })}
+                  >
+                    {t('landing.doctors.book')}
+                  </Link>
+                )}
+              />
+            )}
           </div>
         </Wrap>
       </section>

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatTime, type StaffUser } from '@mmc/shared'
+import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { LineChart } from '@/components/charts/line-chart'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import {
@@ -223,6 +224,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             </section>
           </div>
         )}
+        <DoctorCalendarsSection user={user} />
       </main>
     </StaffShell>
   )

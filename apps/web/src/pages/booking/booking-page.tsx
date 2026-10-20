@@ -203,12 +203,18 @@ export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
                     {p.langs && <Chip>{p.langs}</Chip>}
                     <Chip>{workdaysLabel(p)}</Chip>
                   </span>
+                  {p.note && <span className="text-violet text-xs italic">{p.note}</span>}
                   <span className="text-green text-xs font-semibold">
                     {t('booking.nextFree', { when: nextFreeLabel(p) })}
                   </span>
                 </span>
               </button>
             ))}
+            {filtered.length === 0 && (
+              <div className="bg-amber-bg text-amber rounded-lg p-4 text-sm font-semibold">
+                {t('booking.noneYet')}
+              </div>
+            )}
             {category === 'laboratory' && (
               <div className="bg-primary-tint flex flex-col gap-1.5 rounded-lg p-4">
                 <b>{t('booking.labTitle')}</b>

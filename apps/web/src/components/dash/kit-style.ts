@@ -23,7 +23,7 @@ import {
 import { formatNumber, type Role } from '@mmc/shared'
 
 /** Style tokens and helpers shared by every dashboard (see kit.tsx for the components). */
-export const sectionTitle = 'text-[12px] font-extrabold tracking-[.08em] text-ink-3 uppercase'
+export const sectionTitle = 'text-[13px] font-extrabold tracking-[.08em] text-primary uppercase'
 export const card =
   'card-lift bg-card shadow-card flex min-w-0 flex-col gap-3.5 rounded-[16px] px-5 py-[18px]'
 
@@ -36,6 +36,33 @@ export const tintClass: Record<Tint, string> = {
   coral: 'bg-red-bg text-red',
   violet: 'bg-violet-bg text-violet',
   navy: 'bg-blue-bg text-navy',
+}
+/** Strong text colour of each tint (panel titles, KPI labels). */
+export const tintText: Record<Tint, string> = {
+  teal: 'text-primary',
+  mint: 'text-green',
+  amber: 'text-amber',
+  coral: 'text-red',
+  violet: 'text-violet',
+  navy: 'text-navy-ink',
+}
+/** Coloured top edge of a panel. */
+export const tintBorder: Record<Tint, string> = {
+  teal: 'border-t-primary',
+  mint: 'border-t-green-dot',
+  amber: 'border-t-yellow-dot',
+  coral: 'border-t-red-dot',
+  violet: 'border-t-violet',
+  navy: 'border-t-navy',
+}
+/** Soft wash of a tint fading into the card (top of panels, KPI tiles, banners). */
+export const tintWash: Record<Tint, string> = {
+  teal: 'var(--mmc-primary-tint)',
+  mint: 'var(--mmc-green-bg)',
+  amber: 'var(--mmc-amber-bg)',
+  coral: 'var(--mmc-red-bg)',
+  violet: 'var(--mmc-violet-bg)',
+  navy: 'var(--mmc-blue-bg)',
 }
 export const avatarTint = (i: number) =>
   tintClass[(['teal', 'mint', 'violet', 'amber', 'coral', 'navy'] as Tint[])[i % 6]!]

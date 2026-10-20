@@ -98,7 +98,8 @@
     "bookings": "Gahunda",
     "notifications": "Imenyesha",
     "history": "Amateka",
-    "worklist": "Urutonde rw’akazi"
+    "worklist": "Urutonde rw’akazi",
+    "doctorCalendars": "Ingengabihe z’abaganga"
   },
   "roles": {
     "receptionist": "Umwakira",
@@ -308,18 +309,11 @@
       "languages": "indimi: Ikinyarwanda · Icyongereza · Igifaransa"
     },
     "doctors": {
-      "title": "Shaka muganga urebe igihe ari ku kazi",
-      "lead": "Gahunda ya buri muganga igaragara ku minsi irindwi iri imbere, muri buri serivisi. Hitamo igihe kiboneka, ubwakiriro bukakwemerera.",
+      "title": "Ingengabihe y’abaganga bacu muri iki cyumweru",
+      "lead": "Amasaha nyayo y’akazi ya buri muganga usangiza ingengabihe ye: uri ku kazi uyu munsi, iminsi y’ikiruhuko n’amasaha agihari. Hitamo umuganga ufate gahunda; kwakira abarwayi bazakwemeza.",
       "openCalendar": "Fungura kalendari yose",
-      "next7": "Iminsi 7 iri imbere",
-      "legend": "Imibare ni ibihe biboneka uwo munsi ·",
-      "free": "birahari",
-      "few": "bike",
-      "off": "ntakora",
-      "nextFree": "Ikiboneka gikurikira: {{when}}",
-      "freeTimes": "{{day}} · ibihe {{count}} biboneka",
-      "askReception": "baza ku bwakiriro",
-      "seeCalendar": "Reba kalendari ufate gahunda"
+      "noneYet": "Ingengabihe z’abaganga zizagaragara hano bakimara kuzishyira ahagaragara. Hagati aho hamagara kwakira abarwayi kuri {{phone}} ufate gahunda.",
+      "book": "Fata gahunda"
     }
   },
   "booking": {
@@ -356,7 +350,8 @@
     },
     "sending": "Birimo koherezwa…",
     "sendFailed": "Ubusabe ntibwoherejwe. Reba umurongo wa interineti cyangwa uhamagare ubwakiriro.",
-    "liveNote": "Byoherejwe ku bwakiriro."
+    "liveNote": "Byoherejwe ku bwakiriro.",
+    "noneYet": "Nta muganga urashyira ahagaragara ingengabihe ye kuri iyi serivisi. Hamagara cyangwa wandikire kwakira abarwayi kuri WhatsApp tugushakire isaha."
   },
   "home": {
     "clinicNow": "Ivuriro ubu",
@@ -1530,6 +1525,30 @@
       "registration": "Kwandikwa",
       "pharmacy": "Farumasi",
       "other": "Ibindi"
+    },
+    "dept": {
+      "created": "Ishami “{{name}}” ryashyizweho.",
+      "billedTitle": "Ibyishyuzwa uku kwezi",
+      "billed_one": "inshuro {{count}} uku kwezi · RWF {{amount}}",
+      "billed_other": "inshuro {{count}} uku kwezi · RWF {{amount}}",
+      "none": "Nta shami",
+      "noneHint": "Serivisi zitarashyirwa mu ishami. Hindura imwe uhitemo ishami ryayo.",
+      "servicesCount_one": "serivisi {{count}}",
+      "servicesCount_other": "serivisi {{count}}",
+      "month": "Uku kwezi: {{amount}}",
+      "add": "Ongeraho serivisi",
+      "empty": "Nta serivisi iri muri iri shami. Ongeraho serivisi zaryo n’ibiciro byazo.",
+      "noDepartments": "Ivuriro nta shami ririmo. Rishyireho ukoresheje “Ishami rishya” (urugero Gusuzuma, Laboratwari, Amenyo, Kubyaza), hanyuma wongereho serivisi zaryo n’ibiciro byazo.",
+      "new": "Ishami rishya",
+      "name": "Izina ry’ishami",
+      "namePh": "Kuvura amenyo",
+      "create": "Shyiraho ishami",
+      "newHint": "Abakozi bashyirwa mu mashami muri Abakozi; hano wongeraho serivisi n’ibiciro bya buri shami.",
+      "viewBy": "Erekana ukurikije",
+      "byDept": "Ishami",
+      "byType": "Ubwoko",
+      "field": "Ishami",
+      "addTo": "Serivisi nshya muri {{name}}"
     }
   },
   "desk": {
@@ -2060,6 +2079,93 @@
       "receipt": "Inyemezabwishyu",
       "cashier": "Uwakiriye",
       "amount": "Amafaranga"
+    }
+  },
+  "calendar": {
+    "title": "Ingengabihe yanjye",
+    "titleManager": "Ingengabihe z’abaganga",
+    "lead": "Amasaha yawe y’akazi kuri buri munsi w’icyumweru, iminsi y’ikiruhuko n’igihe gahunda imwe imara. Hitamo uyibona: wowe wenyine, abakozi, cyangwa abakozi n’abaturage ku rubuga rw’ivuriro.",
+    "leadManager": "Bika ingengabihe ya buri muganga n’ukora echographie: amasaha y’akazi, iminsi y’ikiruhuko n’uwemerewe kuyibona.",
+    "whose": "Ingengabihe ya",
+    "notSet": "ntiruzuzwa",
+    "noDoctors": "Nta konti y’umuganga irahari",
+    "noDoctorsHint": "Andika abaganga mu Bakozi (inshingano Umuganga cyangwa Ukora echographie); buri wese azashobora kubika ingengabihe ye hano.",
+    "cannotKeep": "Abaganga n’abakora echographie ni bo bonyine bagira ingengabihe",
+    "cannotKeepHint": "Inshingano zawe nta ngengabihe ya gahunda zigira. Baza umuyobozi niba bikwiye guhinduka.",
+    "badPeriod": "Buri gihe cy’akazi kigomba gutangira mbere y’uko kirangira.",
+    "whoSees": "Ushobora kubona iyi ngengabihe",
+    "visibility": {
+      "private": {
+        "title": "Njye wenyine",
+        "short": "Ibanga",
+        "desc": "Nta wundi uyibona, kandi nta wushobora gufata gahunda nawe kuri internet."
+      },
+      "staff": {
+        "title": "Abakozi",
+        "short": "Abakozi",
+        "desc": "Igaragara ku rupapuro rw’ibanze rwa buri mukozi, kugira ngo kwakira abarwayi bamenye igihe ukora."
+      },
+      "public": {
+        "title": "Abakozi n’abaturage",
+        "short": "Rusange",
+        "desc": "Igaragara kandi ku rubuga rw’ivuriro, aho abarwayi bashobora gusaba isaha nawe."
+      }
+    },
+    "weekly": "Amasaha y’akazi buri cyumweru",
+    "workdays_one": "umunsi {{count}} w’akazi",
+    "workdays_other": "iminsi {{count}} y’akazi",
+    "from": "Kuva",
+    "to": "Kugeza",
+    "removePeriod": "Kuraho iki gihe",
+    "addPeriod": "Ongeraho igihe",
+    "copyMonday": "Koporora Kuwa mbere kuri Kuwa kabiri–Kuwa gatanu",
+    "weeklyHint": "Ongeraho igihe cya kabiri ku kiruhuko (urugero 08:00–12:00 na 14:00–17:00).",
+    "details": "Bigaragara hamwe n’ingengabihe yawe",
+    "titleField": "Umwanya",
+    "titlePh": "Umuganga rusange",
+    "languages": "Indimi",
+    "slot": "Igihe gahunda imwe imara",
+    "minutes_one": "umunota {{count}}",
+    "minutes_other": "iminota {{count}}",
+    "services": "Serivisi abarwayi bashobora gufatira gahunda nawe",
+    "note": "Icyitonderwa gito",
+    "notePh": "Mu cyumba cyo kubaga kuwa gatanu mu gitondo",
+    "daysOff": "Iminsi y’ikiruhuko",
+    "addDayOff": "Umunsi w’ikiruhuko (konji, amahugurwa)",
+    "add": "Ongeraho",
+    "noDaysOff": "Nta munsi w’ikiruhuko uteganyijwe.",
+    "removeDayOff": "Kuraho uyu munsi w’ikiruhuko",
+    "preview": "Uko izagaragara",
+    "saved": {
+      "private": "Byabitswe. Ni wowe wenyine ubona iyi ngengabihe.",
+      "staff": "Byabitswe. Abakozi ubu babona ingengabihe yawe ku rupapuro rwabo rw’ibanze.",
+      "public": "Byabitswe. Ingengabihe yawe iri ku mpapuro z’ibanze z’abakozi no ku rubuga rw’ivuriro."
+    },
+    "save": "Bika ingengabihe",
+    "saveHint": "Impinduka zigaragara ako kanya ku mpapuro z’ibanze.",
+    "board": {
+      "prev": "Icyumweru gishize",
+      "next": "Icyumweru gitaha",
+      "thisWeek": "Iki cyumweru",
+      "weekOf": "Icyumweru cya {{day}}",
+      "working": "Ari ku kazi",
+      "dayOff": "Ikiruhuko",
+      "off": "Ntakora",
+      "doctor": "Umuganga",
+      "today": "Uyu munsi",
+      "you": "wowe",
+      "inNow": "Ari ku kazi ubu",
+      "notNow": "Ntari ku kazi ubu",
+      "full": "Byuzuye",
+      "free_one": "{{count}} iraboneka",
+      "free_other": "{{count}} ziraboneka",
+      "section": "Ingengabihe z’abaganga",
+      "title": "Ukora ryari",
+      "inNowCount": "{{count}} kuri {{total}} bari ku kazi",
+      "emptyStaff": "Nta muganga urasangiza abakozi ingengabihe ye. Abaganga bayuzuza muri “Ingengabihe”.",
+      "edit": "Hindura",
+      "manage": "Cunga ingengabihe",
+      "mine": "Ingengabihe yanjye"
     }
   }
 }

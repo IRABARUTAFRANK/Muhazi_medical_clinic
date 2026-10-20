@@ -29,6 +29,7 @@ import {
   type HomeRole,
   type StaffUser,
 } from '@mmc/shared'
+import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Kpi, SectionTitle } from '@/components/dash/kit'
 import { NoticesPanel } from '@/components/dash/notices-panel'
@@ -204,6 +205,7 @@ function RoleHome({ user, mode }: HomePageProps) {
             )}
           </div>
         </section>
+        <DoctorCalendarsSection user={user} />
       </main>
     </StaffShell>
   )

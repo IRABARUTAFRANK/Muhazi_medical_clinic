@@ -43,6 +43,7 @@
   /* Dashboard v2 accents (Figma: Manager Dashboard v2) */
   --mmc-navy: #0b2252;
   --mmc-navy-2: #13306b;
+  --mmc-navy-ink: #0b2252; /* headings in navy, readable in both themes */
   --mmc-violet: #6b4fd8;
   --mmc-violet-bg: #eeeafc;
   --mmc-amber: #8a5a00;
@@ -102,6 +103,7 @@
   --mmc-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   --mmc-navy: #0a1a3d;
   --mmc-navy-2: #10264f;
+  --mmc-navy-ink: #a9c1f5;
   --mmc-violet: #b7a6ff;
   --mmc-violet-bg: #2a2452;
   --mmc-amber: #f2c94c;

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
+import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Empty, Kpi, Panel, Pill, SectionTitle } from '@/components/dash/kit'
@@ -297,6 +298,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             <NoticesPanel limit={4} />
           </div>
         </section>
+        <DoctorCalendarsSection user={user} />
       </main>
     </StaffShell>
   )

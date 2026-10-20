@@ -89,7 +89,8 @@
     "bookings": "Bookings",
     "notifications": "Notifications",
     "history": "History",
-    "worklist": "Worklist"
+    "worklist": "Worklist",
+    "doctorCalendars": "Doctors’ calendars"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -202,18 +203,11 @@
       "inactive": "This account has been deactivated. Ask the clinic manager."
     },
     "doctors": {
-      "title": "Find a doctor and see when they are free",
-      "lead": "Every doctor's calendar is public for the next seven days, in every service category. Pick a free time and reception confirms it with you.",
+      "title": "Our doctors’ schedule this week",
+      "lead": "The real working hours of every doctor who shares the calendar: who is in today, days off, and how many times are still free. Pick a doctor to book; reception confirms it with you.",
       "openCalendar": "Open the full calendar",
-      "next7": "Next 7 days",
-      "legend": "Numbers are free slots that day ·",
-      "free": "free",
-      "few": "few",
-      "off": "off",
-      "nextFree": "Next free: {{when}}",
-      "freeTimes": "{{day}} · {{count}} free times",
-      "askReception": "ask reception",
-      "seeCalendar": "See calendar & book"
+      "noneYet": "The doctors’ calendars appear here as soon as they publish them. Meanwhile call reception on {{phone}} to book.",
+      "book": "Book"
     },
     "services": {
       "title": "What we offer",
@@ -347,7 +341,8 @@
     },
     "sending": "Sending…",
     "sendFailed": "The request could not be sent. Check your connection or call reception.",
-    "liveNote": "Sent to reception."
+    "liveNote": "Sent to reception.",
+    "noneYet": "No doctor has published a calendar for this service yet. Call or WhatsApp reception and we find you a time."
   },
   "home": {
     "clinicNow": "Clinic now",
@@ -1023,7 +1018,31 @@
       "done": "{{count}} prices changed."
     },
     "titleCash": "Treatments and prices",
-    "leadCash": "Everything the clinic treats, its price, and the discount a clinician may give without asking you. Search, duplicate, hide, delete, or change many prices at once."
+    "leadCash": "Everything the clinic treats, its price, and the discount a clinician may give without asking you. Search, duplicate, hide, delete, or change many prices at once.",
+    "dept": {
+      "created": "Department “{{name}}” created.",
+      "billedTitle": "Billed this month",
+      "billed_one": "{{count}}× this month · RWF {{amount}}",
+      "billed_other": "{{count}}× this month · RWF {{amount}}",
+      "none": "No department",
+      "noneHint": "Services not placed in a department yet. Edit one to choose its department.",
+      "servicesCount_one": "{{count}} service",
+      "servicesCount_other": "{{count}} services",
+      "month": "This month: {{amount}}",
+      "add": "Add a service",
+      "empty": "No service in this department yet. Add its services and their prices.",
+      "noDepartments": "The clinic has no department yet. Create one with “New department” (for example Consultation, Laboratory, Dental, Maternity), then add its services and their prices.",
+      "new": "New department",
+      "name": "Department name",
+      "namePh": "Dental care",
+      "create": "Create the department",
+      "newHint": "Employees are placed in departments under Employees; here you add each department’s services and prices.",
+      "viewBy": "Show by",
+      "byDept": "By department",
+      "byType": "By type",
+      "field": "Department",
+      "addTo": "New service in {{name}}"
+    }
   },
   "visit": {
     "back": "Back to my queue",
@@ -2051,6 +2070,93 @@
       "receipt": "Receipt",
       "cashier": "Cashier",
       "amount": "Amount"
+    }
+  },
+  "calendar": {
+    "title": "My calendar",
+    "titleManager": "Doctors’ calendars",
+    "lead": "Your working hours for each day of the week, days off and the length of a booking. Choose who sees it: only you, the staff, or the staff and the public on the clinic website.",
+    "leadManager": "Keep the calendar of each doctor and sonographer: working hours, days off and who may see it.",
+    "whose": "Calendar of",
+    "notSet": "not set yet",
+    "noDoctors": "No doctor account yet",
+    "noDoctorsHint": "Create the doctors under Employees (role Doctor or Sonographer); each can then keep a calendar here.",
+    "cannotKeep": "Only doctors and sonographers keep a calendar",
+    "cannotKeepHint": "Your role has no booking calendar. Ask the manager if this should change.",
+    "badPeriod": "Each working period must start before it ends.",
+    "whoSees": "Who can see this calendar",
+    "visibility": {
+      "private": {
+        "title": "Only me",
+        "short": "Private",
+        "desc": "Nobody else sees it, and no one can book you online."
+      },
+      "staff": {
+        "title": "The staff",
+        "short": "Staff",
+        "desc": "Shown on the home page of every employee, so the desk knows when you work."
+      },
+      "public": {
+        "title": "Staff and the public",
+        "short": "Public",
+        "desc": "Also shown on the clinic website, where patients can ask for a time with you."
+      }
+    },
+    "weekly": "Working hours each week",
+    "workdays_one": "{{count}} working day",
+    "workdays_other": "{{count}} working days",
+    "from": "From",
+    "to": "To",
+    "removePeriod": "Remove this period",
+    "addPeriod": "Add a period",
+    "copyMonday": "Copy Monday to Tuesday–Friday",
+    "weeklyHint": "Add a second period for a break (for example 08:00–12:00 and 14:00–17:00).",
+    "details": "Shown with your calendar",
+    "titleField": "Title",
+    "titlePh": "General practitioner",
+    "languages": "Languages",
+    "slot": "Length of a booking",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes",
+    "services": "Services patients can book with you",
+    "note": "Short note",
+    "notePh": "Theatre on Friday mornings",
+    "daysOff": "Days off",
+    "addDayOff": "Day off (leave, training)",
+    "add": "Add",
+    "noDaysOff": "No day off planned.",
+    "removeDayOff": "Remove this day off",
+    "preview": "How it will look",
+    "saved": {
+      "private": "Saved. Only you see this calendar.",
+      "staff": "Saved. The staff now see your calendar on their home page.",
+      "public": "Saved. Your calendar is on the staff home pages and on the clinic website."
+    },
+    "save": "Save the calendar",
+    "saveHint": "Changes show at once on the home pages.",
+    "board": {
+      "prev": "Previous week",
+      "next": "Next week",
+      "thisWeek": "This week",
+      "weekOf": "Week of {{day}}",
+      "working": "Working",
+      "dayOff": "Day off",
+      "off": "Off",
+      "doctor": "Doctor",
+      "today": "Today",
+      "you": "you",
+      "inNow": "Working now",
+      "notNow": "Not working now",
+      "full": "Fully booked",
+      "free_one": "{{count}} free",
+      "free_other": "{{count}} free",
+      "section": "Doctors’ calendars",
+      "title": "Who works when",
+      "inNowCount": "{{count}} of {{total}} working now",
+      "emptyStaff": "No doctor shares a calendar with the staff yet. Doctors set theirs under “Calendar”.",
+      "edit": "Edit",
+      "manage": "Manage the calendars",
+      "mine": "My calendar"
     }
   }
 }
