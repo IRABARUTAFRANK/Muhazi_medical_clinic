@@ -1,14 +1,15 @@
 import type { CSSProperties } from 'react'
-import { FolderOpen, Stethoscope, UserPlus } from 'lucide-react'
+import { FolderOpen, Stethoscope, UserPlus, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
+import { StationGlyph } from '@/components/dash/kit'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { STATIONS, openItems, useQueueBoard, type QueueItem } from '@/lib/api/visits'
+import { STATIONS, openItems, useQueueBoard, type QueueItem, type Station } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 
 /**
@@ -22,7 +23,15 @@ export function VisitsPage({ user }: { user: StaffUser }) {
   const open = openItems(items)
   // A patient shared by several desks ("first free doctor") is listed at each desk, counted once.
   const people = new Set(open.map((q) => q.encounterId)).size
-  const stations = STATIONS.filter((s) => open.some((i) => i.station === s))
+  // Shared patients are shown once, in their own card, with the desks they wait at.
+  const single = open.filter((i) => !i.poolId)
+  const pools = [...new Map(open.filter((i) => i.poolId).map((i) => [i.poolId!, i])).values()].map(
+    (first) => ({
+      item: first,
+      desks: open.filter((i) => i.poolId === first.poolId).map((i) => i.station),
+    }),
+  )
+  const stations = STATIONS.filter((s) => single.some((i) => i.station === s))
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="visits">
@@ -57,10 +66,25 @@ export function VisitsPage({ user }: { user: StaffUser }) {
           </Card>
         )}
 
+        {pools.length > 0 && (
+          <Card className="anim-enter border-violet/30">
+            <CardHeader>
+              <span className="inline-flex items-center gap-2">
+                <Users size={16} aria-hidden="true" className="text-violet" />
+                {t('visits.pooled')}
+              </span>
+              <span className="text-ink-3 text-xs">{t('visits.pooledHint')}</span>
+            </CardHeader>
+            {pools.map((p) => (
+              <VisitRow key={p.item.poolId} item={p.item} desks={p.desks} />
+            ))}
+          </Card>
+        )}
+
         {/* Stations in the order a patient moves through the clinic */}
         <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
           {stations.map((s, gi) => {
-            const rows = open.filter((i) => i.station === s)
+            const rows = single.filter((i) => i.station === s)
             return (
               <Card key={s} className="anim-enter" style={{ '--i': gi } as CSSProperties}>
                 <CardHeader>
@@ -87,7 +111,7 @@ export function VisitsPage({ user }: { user: StaffUser }) {
   )
 }
 
-function VisitRow({ item: r }: { item: QueueItem }) {
+function VisitRow({ item: r, desks }: { item: QueueItem; desks?: Station[] }) {
   const { t } = useTranslation()
   return (
     <Row className="flex-wrap gap-x-3 gap-y-1 py-2">
@@ -98,6 +122,19 @@ function VisitRow({ item: r }: { item: QueueItem }) {
           {r.fileNumber} · {r.ageSex} ·{' '}
           {r.startedAt ? t('visits.inProgress') : t('visits.waiting', { count: r.waitMin })}
         </span>
+        {desks && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            {desks.map((d) => (
+              <span
+                key={d}
+                className="bg-violet-bg text-violet inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold"
+              >
+                <StationGlyph station={d} size={12} />
+                {t(`register.stations.${d}`)}
+              </span>
+            ))}
+          </span>
+        )}
       </span>
       <Badge tone={r.triage}>{t(`home.triage.${r.triage}`)}</Badge>
       <StaffLink

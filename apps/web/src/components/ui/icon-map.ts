@@ -2,6 +2,7 @@
 import {
   Activity,
   Bell,
+  History,
   ArrowDown,
   ArrowRight,
   ArrowUp,
@@ -94,6 +95,7 @@ export const icons = {
   stethoscope: Stethoscope,
   'id-card': IdCard,
   bell: Bell,
+  history: History,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof icons

@@ -23,6 +23,7 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'id-card', to: '/app/staff' },
+  { id: 'history', labelKey: 'nav.history', icon: 'history', to: '/app/history' },
   NOTICES,
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings', to: '/app/settings' },
 ]

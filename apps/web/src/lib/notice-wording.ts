@@ -29,6 +29,14 @@ export function useWording() {
           }),
           body: p.triage ? t('notify.triage', { colour: t(`home.triage.${p.triage}`) }) : null,
         }
+      case 'queue_pool': {
+        // One notice for a patient sent to several desks; the first one free takes them.
+        const desks = (n.params?.stations as unknown as string[] | null) ?? []
+        return {
+          title: t('notify.queuePool', { ticket: p.ticket ?? '', name: p.name ?? '' }),
+          body: desks.map((d) => t(`register.stations.${d}`, { defaultValue: d })).join(', '),
+        }
+      }
       case 'task':
         return {
           title: t('notify.task', { title: p.title ?? '' }),

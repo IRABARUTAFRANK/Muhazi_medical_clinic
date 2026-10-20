@@ -4,6 +4,7 @@ import { formatDate, formatTime, type NavItem, type StaffUser } from '@mmc/share
 import { appNow } from '@/lib/clock'
 import { useDayNames } from '@/lib/hooks'
 import { useStaffSettings } from '@/lib/api/settings'
+import { usePrefsSync } from '@/lib/prefs-sync'
 import { TEXT_ZOOM, usePrefs } from '@/store/prefs'
 import { useSession } from '@/store/session'
 import { useSyncState } from '@/store/sync'
@@ -40,6 +41,8 @@ export function StaffShell({
   const locked = useSession((s) => s.locked)
   const [sheet, setSheet] = useState(false)
   const zoom = TEXT_ZOOM[usePrefs((s) => s.textSize)] ?? 1
+  // Text size, theme and language follow the person to every device.
+  usePrefsSync(user.id)
   const { data: staffSettings } = useStaffSettings()
   const lockIn = useIdleLock(staffSettings?.idleMinutes ?? 120)
   const now = appNow()

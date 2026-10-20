@@ -844,6 +844,67 @@ await step('a patient waiting since yesterday still counts (0030)', async () => 
   if (!tile || tile.waiting + tile.busy < 1) throw new Error(`station ${q.station} missing`)
   return `waiting ${status.waiting}; ${q.station} tile ${tile.waiting} waiting`
 })
+// ---------------------------------------------------------------- 0031
+await step('shared patient → one notice per role, gone once a doctor takes them', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select open_encounter($1, 'opd', 'reception', null) as id`, [patientId])
+  await db.query(
+    `select send_to_stations($1, 'reception', array['consultation','dental','theatre']::station[])`,
+    [v.id],
+  )
+  await as(staff.doctor)
+  let n = (await one(`select my_notifications(200) as n`)).n
+  const mine = n.items.filter((x) => x.link?.includes(v.id))
+  if (mine.length !== 1 || mine[0].kind !== 'queue_pool') throw new Error(`notices ${mine.length}`)
+  await asAdmin()
+  const q = await one(
+    `select id from queue_entry where encounter_id = $1 and station = 'dental' and finished_at is null`,
+    [v.id],
+  )
+  await as(staff.doctor)
+  await db.query(`select take_patient($1)`, [q.id])
+  n = (await one(`select my_notifications(200) as n`)).n
+  if (n.items.some((x) => x.link?.includes(v.id))) throw new Error('notice still listed')
+  return '1 notice for 3 desks; removed after Take'
+})
+await step('temporary PIN readable by the manager only, deleted when the PIN changes', async () => {
+  await asAdmin()
+  await db.query(
+    `insert into staff_temp_pin (user_id, pin) values ($1, '482915')
+     on conflict (user_id) do update set pin = excluded.pin`,
+    [staff.nurse],
+  )
+  await as(staff.manager)
+  const m = await db.query(`select pin from staff_temp_pin where user_id = $1`, [staff.nurse])
+  await as(staff.receptionist)
+  const r = await db.query(`select pin from staff_temp_pin`)
+  await as(staff.nurse)
+  await db.query(`select mark_pin_changed()`)
+  await asAdmin()
+  const left = await db.query(`select 1 from staff_temp_pin where user_id = $1`, [staff.nurse])
+  if (m.rows.length !== 1) throw new Error('manager cannot read')
+  if (r.rows.length !== 0) throw new Error('receptionist can read')
+  if (left.rows.length !== 0) throw new Error('not deleted')
+  return 'manager reads, receptionist not, gone after change'
+})
+await step('manager reads the activity history; preferences follow the person', async () => {
+  await as(staff.manager)
+  const h = (await one(`select activity_history(null, null, null, null, 50, 0) as h`)).h
+  if (!(h.total > 0) || !h.items[0].actor) throw new Error(`history ${h.total}`)
+  const groups = new Set(h.items.map((x) => x.group))
+  await as(staff.nurse)
+  await db.query(`select save_my_prefs('{"textSize":"xlarge","theme":"dim"}'::jsonb)`)
+  const p = (await one(`select my_prefs() as p`)).p
+  if (p.textSize !== 'xlarge') throw new Error('prefs')
+  let refused = false
+  try {
+    await db.query(`select activity_history()`)
+  } catch {
+    refused = true
+  }
+  if (!refused) throw new Error('nurse read the history')
+  return `${h.total} events (${[...groups].join(', ')}); nurse refused; prefs saved`
+})
 
 finish()
 

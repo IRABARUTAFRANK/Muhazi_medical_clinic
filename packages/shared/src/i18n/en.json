@@ -87,7 +87,8 @@
     "triage": "Triage",
     "inClinic": "In clinic",
     "bookings": "Bookings",
-    "notifications": "Notices"
+    "notifications": "Notices",
+    "history": "History"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -701,7 +702,7 @@
       "pharmacist": "Pharmacist",
       "manager": "Manager / owner"
     },
-    "lead2": "Create and edit employee accounts, place each one in a department as head, assistant head or member, reset PINs and deactivate accounts. Every change is confirmed with a code sent to your e-mail.",
+    "lead2": "Create and edit employee accounts, place each one in a department as head, assistant head or member, reset PINs and deactivate accounts. Every change is confirmed with a code sent to your e-mail. A PIN reset needs no code: the new PIN is temporary and shows on the employee’s row until they replace it.",
     "tabs": {
       "people": "Employees · {{count}}",
       "departments": "Departments · {{count}}"
@@ -756,7 +757,12 @@
       "roles": "Roles that belong to this department",
       "rolesHint": "Only employees with these roles can be placed here. Tick none to allow every role.",
       "save": "Save department"
-    }
+    },
+    "tempPin": "Temporary PIN",
+    "showPin": "Show the PIN",
+    "hidePin": "Hide the PIN",
+    "copyPin": "Copy the PIN",
+    "copied": "Copied"
   },
   "login": {
     "title": "Staff sign in",
@@ -783,7 +789,10 @@
     "resendIn": "New code in {{s}} s",
     "linkMismatch": "That sign-in link belongs to {{got}}, not {{expected}}. Nobody was signed in. Open the newest e-mail sent to {{expected}}, or sign in again.",
     "trust": "Trust this device",
-    "trustHint": "Next time on this browser, your staff ID, username and PIN are enough — no e-mailed code until the trust expires. Untick on a shared computer."
+    "trustHint": "Next time on this browser, your staff ID, username and PIN are enough — no e-mailed code until the trust expires. Untick on a shared computer.",
+    "firstPinLead": "This is your first sign-in with the PIN the manager gave you. Choose six digits only you know; then a code is sent to your e-mail to approve it.",
+    "firstPinSave": "Save my PIN and send the code",
+    "firstPinSaved": "Your PIN is saved. Type the code we just e-mailed you."
   },
   "register": {
     "title": "Register a patient",
@@ -1439,7 +1448,9 @@
     "inProgress": "being seen",
     "waiting_one": "waiting {{count}} min",
     "waiting_other": "waiting {{count}} min",
-    "openVisit": "Open visit"
+    "openVisit": "Open visit",
+    "pooled": "Waiting for the first free doctor",
+    "pooledHint": "shown once; any of these desks may take the patient"
   },
   "desk": {
     "today": "Today",
@@ -1670,7 +1681,8 @@
     "sent": "Sent.",
     "errors": {
       "target": "Choose who receives it."
-    }
+    },
+    "queuePool": "{{ticket}} {{name}} is waiting for the first free doctor"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -1744,5 +1756,73 @@
     "confirmDelete": "Delete this message for everyone?",
     "delete": "Delete",
     "manage": "All notifications"
+  },
+  "history": {
+    "title": "Activity history",
+    "lead": "Who did what and when on every dashboard: registrations, vital signs, queue moves, treatments, payments, beds, sign-ins and changes to employees and settings. Every record is kept.",
+    "count_one": "{{count}} event",
+    "count_other": "{{count}} events",
+    "periods": {
+      "today": "Today",
+      "week": "7 days",
+      "month": "30 days",
+      "custom": "Choose dates"
+    },
+    "from": "From",
+    "to": "To",
+    "person": "Person",
+    "everyone": "Everyone",
+    "groups": {
+      "all": "All",
+      "signin": "Sign-ins",
+      "patients": "Patients and visits",
+      "vitals": "Vital signs",
+      "queue": "Queue",
+      "clinical": "Clinical",
+      "billing": "Bills and payments",
+      "beds": "Beds",
+      "admin": "Employees and settings"
+    },
+    "list": "What happened",
+    "shown": "{{count}} of {{total}}",
+    "empty": "Nothing recorded for this choice.",
+    "system": "System",
+    "more": "Show more",
+    "verbs": {
+      "create": "New",
+      "update": "Changed",
+      "delete": "Removed",
+      "login": "Signed in",
+      "settings": "Changed",
+      "break_glass": "Emergency access"
+    },
+    "entities": {
+      "patient": "patient file",
+      "encounter": "visit",
+      "queue_entry": "queue",
+      "observation": "vital sign",
+      "invoice": "bill",
+      "invoice_line": "treatment charged",
+      "payment": "payment",
+      "credit_note": "credit note",
+      "day_close": "day close",
+      "bed": "bed",
+      "bed_stay": "bed stay",
+      "profiles": "employee account",
+      "setting": "setting",
+      "department": "department",
+      "service": "treatment / price",
+      "payer": "insurer",
+      "price_list_item": "price",
+      "practitioner": "doctor profile",
+      "appointment": "appointment",
+      "condition": "diagnosis",
+      "medication_request": "prescription",
+      "service_request": "test order",
+      "procedure": "procedure",
+      "diagnostic_report": "result",
+      "internal_task": "task",
+      "message": "message"
+    }
   }
 }

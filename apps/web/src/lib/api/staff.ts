@@ -39,6 +39,8 @@ export interface Employee {
   departmentId: string | null
   departmentName: string | null
   position: Position
+  /** The temporary PIN the manager handed over, until the employee replaces it (managers only). */
+  tempPin?: string | null
 }
 
 export interface Department {
@@ -132,6 +134,7 @@ const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   phone: null,
   active: true,
   mustChangePin: i === 3,
+  tempPin: i === 3 ? '482915' : null,
   lastSignInAt: i < 4 ? new Date(2026, 9, 15, 7 + i, 12).toISOString() : null,
   createdAt: new Date(2026, 8, 1).toISOString(),
   departmentId: null,
@@ -171,7 +174,13 @@ export function useEmployees() {
       if (!supabase) return [...sampleEmployees]
       const { data, error } = await supabase.from('staff_directory').select('*').order('full_name')
       if (error) throw new Error(error.message)
+      // Managers can read the temporary PINs not yet replaced (empty for everyone else).
+      const { data: temps } = await supabase.from('staff_temp_pin').select('user_id, pin')
+      const tempOf = new Map(
+        (temps ?? []).map((x: { user_id: string; pin: string }) => [x.user_id, x.pin]),
+      )
       return (data as DirectoryRow[]).map((r) => ({
+        tempPin: tempOf.get(r.id) ?? null,
         id: r.id,
         staffId: r.staff_id,
         email: r.email,
@@ -297,6 +306,7 @@ export function useStaffActions() {
           departmentId: input.departmentId,
           departmentName: dept?.name ?? null,
           position: input.position,
+          tempPin: pin,
         })
         return { id, username: input.username, staff_id: staffId }
       }
@@ -346,24 +356,16 @@ export function useStaffActions() {
     onSuccess: refresh,
   })
 
+  // No e-mailed code for a reset: the PIN is temporary and must be replaced at the next sign-in.
   const resetPin = useMutation({
-    mutationFn: async ({
-      id,
-      pin,
-      confirmCode,
-    }: {
-      id: string
-      pin: string
-      confirmCode: string
-    }) => {
+    mutationFn: async ({ id, pin }: { id: string; pin: string }) => {
       if (!PIN_RE.test(pin)) throw new Error('pin')
       if (!supabase) {
-        sampleCheck(confirmCode)
         const e = sampleEmployees.find((x) => x.id === id)
-        if (e) e.mustChangePin = true
+        if (e) Object.assign(e, { mustChangePin: true, tempPin: pin })
         return
       }
-      await callManageStaff({ action: 'reset_pin', user_id: id, pin, confirm_code: confirmCode })
+      await callManageStaff({ action: 'reset_pin', user_id: id, pin })
     },
     onSuccess: refresh,
   })

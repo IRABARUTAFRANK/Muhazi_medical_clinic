@@ -7,7 +7,7 @@
 //   Secrets: SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided.
 //
 // Every call must carry the caller's Supabase session token; the caller must be an active
-// manager. Every change also carries `confirm_code`: a one-time code e-mailed to the manager
+// manager. Every change except a PIN reset also carries `confirm_code`: a one-time code e-mailed to the manager
 // (action `send_code`) and checked here on the server, so each change is knowingly approved by
 // the person who owns that inbox (accountability).
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -118,14 +118,18 @@ Deno.serve(async (req) => {
       options: { shouldCreateUser: false },
     })
     if (error) {
-      const wait = /security purposes|rate limit|after d+ seconds/i.test(error.message)
+      const wait = /security purposes|rate limit|after \d+ seconds/i.test(error.message)
       return json(wait ? 429 : 502, { error: wait ? 'code_wait' : error.message })
     }
     const [name, domain] = myEmail.split('@')
     return json(200, { sent: true, to: `${name!.slice(0, 2)}***@${domain}` })
   }
-  if (!CODE.test(body.confirm_code ?? '')) return json(401, { error: 'confirm_code_required' })
-  {
+  // Resetting a PIN needs no e-mailed code (Frank, 2026-10-20): the new PIN is temporary, the
+  // employee must replace it at the next sign-in, and the reset is still recorded in the history.
+  const needsCode = body.action !== 'reset_pin'
+  if (needsCode && !CODE.test(body.confirm_code ?? ''))
+    return json(401, { error: 'confirm_code_required' })
+  if (needsCode) {
     const { data, error } = await check.auth.verifyOtp({
       email: myEmail!,
       token: body.confirm_code!,
@@ -143,7 +147,7 @@ Deno.serve(async (req) => {
       entity_id: entityId,
       after: {
         manage_staff: action,
-        confirmed_with_code: true,
+        confirmed_with_code: needsCode,
         ...(after as Record<string, unknown>),
       },
     })
@@ -235,6 +239,10 @@ Deno.serve(async (req) => {
           .select('staff_id')
           .eq('id', data.user.id)
           .maybeSingle()
+        // The first PIN stays visible to managers until the employee replaces it.
+        await admin
+          .from('staff_temp_pin')
+          .upsert({ user_id: data.user.id, pin: body.pin, set_by: caller.user.id })
         await audit('create', data.user.id, { username, role: a.role, staff_id: created?.staff_id })
         return json(200, { id: data.user.id, username, staff_id: created?.staff_id ?? null, email })
       }
@@ -331,6 +339,12 @@ Deno.serve(async (req) => {
         })
         if (error) return json(400, { error: error.message })
         await admin.from('profiles').update({ must_change_pin: true }).eq('id', body.user_id)
+        await admin.from('staff_temp_pin').upsert({
+          user_id: body.user_id,
+          pin: body.pin,
+          set_by: caller.user.id,
+          set_at: new Date().toISOString(),
+        })
         // A new PIN also forgets the employee's trusted devices.
         await admin
           .from('trusted_device')

@@ -96,7 +96,8 @@
     "triage": "Ibipimo",
     "inClinic": "Mu ivuriro",
     "bookings": "Gahunda",
-    "notifications": "Imenyesha"
+    "notifications": "Imenyesha",
+    "history": "Amateka"
   },
   "roles": {
     "receptionist": "Umwakira",
@@ -705,7 +706,7 @@
       "pharmacist": "Umufarumasiye",
       "manager": "Umuyobozi / nyir'ivuriro"
     },
-    "lead2": "Fungura no guhindura konti z’abakozi, shyira buri wese mu ishami nk’umuyobozi, umwungirije cyangwa umunyamuryango, subiramo PIN kandi uhagarike konti. Buri mpinduka yemezwa na kode yoherejwe kuri e-mail yawe.",
+    "lead2": "Fungura no guhindura konti z’abakozi, shyira buri wese mu ishami nk’umuyobozi, umwungirije cyangwa umunyamuryango, subiramo PIN kandi uhagarike konti. Buri mpinduka yemezwa na kode yoherejwe kuri e-mail yawe. Gusubiramo PIN ntibisaba kode: PIN nshya ni iy’agateganyo kandi igaragara ku murongo w’umukozi kugeza ayisimbuje.",
     "tabs": {
       "people": "Abakozi · {{count}}",
       "departments": "Amashami · {{count}}"
@@ -760,7 +761,12 @@
       "roles": "Inshingano zibarizwa muri iri shami",
       "rolesHint": "Abakozi bafite izi nshingano ni bo bonyine bashobora gushyirwamo. Ntuhitemo na kimwe niba inshingano zose zemewe.",
       "save": "Bika ishami"
-    }
+    },
+    "tempPin": "PIN y’agateganyo",
+    "showPin": "Erekana PIN",
+    "hidePin": "Hisha PIN",
+    "copyPin": "Koporora PIN",
+    "copied": "Byakoporowe"
   },
   "login": {
     "title": "Abakozi: injira",
@@ -787,7 +793,10 @@
     "codeFormat": "Kode ifite imibare itandatu.",
     "codeResent": "Kode nshya iri mu nzira.",
     "trust": "Wizere iki gikoresho",
-    "trustHint": "Ubutaha kuri iyi mashakisha, nimero y’umukozi, izina ukoresha na PIN birahagije — nta kode kuri imeyili kugeza igihe cyo kwizerwa kirangiye. Kuraho akamenyetso kuri mudasobwa ihuriweho."
+    "trustHint": "Ubutaha kuri iyi mashakisha, nimero y’umukozi, izina ukoresha na PIN birahagije — nta kode kuri imeyili kugeza igihe cyo kwizerwa kirangiye. Kuraho akamenyetso kuri mudasobwa ihuriweho.",
+    "firstPinLead": "Ni ubwa mbere winjira ukoresheje PIN wahawe n’umuyobozi. Hitamo imibare itandatu uzi wenyine; hanyuma kode yoherezwa kuri e-mail yawe kugira ngo wemeze.",
+    "firstPinSave": "Bika PIN yanjye wohereze kode",
+    "firstPinSaved": "PIN yawe yabitswe. Andika kode tumaze kukoherereza."
   },
   "register": {
     "title": "Kwandika umurwayi",
@@ -1321,7 +1330,9 @@
     "inProgress": "ari kwakirwa",
     "waiting_one": "amaze umunota {{count}} ategereje",
     "waiting_other": "amaze iminota {{count}} ategereje",
-    "openVisit": "Fungura uruzinduko"
+    "openVisit": "Fungura uruzinduko",
+    "pooled": "Bategereje muganga wa mbere ubonetse",
+    "pooledHint": "agaragara rimwe; aho ari ho hose muri aha hashobora kumwakira"
   },
   "prices": {
     "search": "Shakisha ubuvuzi",
@@ -1679,7 +1690,8 @@
     "sent": "Byoherejwe.",
     "errors": {
       "target": "Hitamo uwo bugenewe."
-    }
+    },
+    "queuePool": "{{ticket}} {{name}} ategereje muganga wa mbere ubonetse"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -1753,5 +1765,73 @@
     "confirmDelete": "Gusiba ubu butumwa kuri bose?",
     "delete": "Siba",
     "manage": "Imenyesha ryose"
+  },
+  "history": {
+    "title": "Amateka y’ibikorwa",
+    "lead": "Uwakoze iki n’igihe yabikoreye kuri buri paji: kwandika abarwayi, ibipimo, imirongo, ubuvuzi, ubwishyu, ibitanda, kwinjira n’impinduka ku bakozi n’igenamiterere. Byose birabikwa.",
+    "count_one": "igikorwa {{count}}",
+    "count_other": "ibikorwa {{count}}",
+    "periods": {
+      "today": "Uyu munsi",
+      "week": "Iminsi 7",
+      "month": "Iminsi 30",
+      "custom": "Hitamo amatariki"
+    },
+    "from": "Kuva",
+    "to": "Kugeza",
+    "person": "Umuntu",
+    "everyone": "Bose",
+    "groups": {
+      "all": "Byose",
+      "signin": "Kwinjira",
+      "patients": "Abarwayi n’inzinduko",
+      "vitals": "Ibipimo",
+      "queue": "Umurongo",
+      "clinical": "Ubuvuzi",
+      "billing": "Fagitire n’ubwishyu",
+      "beds": "Ibitanda",
+      "admin": "Abakozi n’igenamiterere"
+    },
+    "list": "Ibyabaye",
+    "shown": "{{count}} kuri {{total}}",
+    "empty": "Nta cyanditswe kuri aya mahitamo.",
+    "system": "Sisitemu",
+    "more": "Erekana ibindi",
+    "verbs": {
+      "create": "Gishya",
+      "update": "Byahinduwe",
+      "delete": "Byakuweho",
+      "login": "Yinjiye",
+      "settings": "Byahinduwe",
+      "break_glass": "Kwinjira byihutirwa"
+    },
+    "entities": {
+      "patient": "dosiye y’umurwayi",
+      "encounter": "uruzinduko",
+      "queue_entry": "umurongo",
+      "observation": "ibipimo",
+      "invoice": "fagitire",
+      "invoice_line": "ubuvuzi bwishyuzwa",
+      "payment": "ubwishyu",
+      "credit_note": "inyemezabwishyu yo gusubiza",
+      "day_close": "gufunga umunsi",
+      "bed": "igitanda",
+      "bed_stay": "kurara ku gitanda",
+      "profiles": "konti y’umukozi",
+      "setting": "igenamiterere",
+      "department": "ishami",
+      "service": "ubuvuzi / igiciro",
+      "payer": "ubwishingizi",
+      "price_list_item": "igiciro",
+      "practitioner": "umwirondoro wa muganga",
+      "appointment": "gahunda",
+      "condition": "isuzuma",
+      "medication_request": "urupapuro rw’imiti",
+      "service_request": "gusaba isuzuma",
+      "procedure": "igikorwa",
+      "diagnostic_report": "igisubizo",
+      "internal_task": "umurimo",
+      "message": "ubutumwa"
+    }
   }
 }

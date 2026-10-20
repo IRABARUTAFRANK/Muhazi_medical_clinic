@@ -31,6 +31,7 @@ import {
 } from '@mmc/shared'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Kpi, SectionTitle } from '@/components/dash/kit'
+import { NoticesPanel } from '@/components/dash/notices-panel'
 import { greetingFor } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
@@ -191,6 +192,7 @@ function RoleHome({ user, mode }: HomePageProps) {
             />
             {summary && (
               <div className="flex min-w-0 flex-col gap-4">
+                <NoticesPanel limit={4} />
                 <RolePanels role={role} data={summary} />
               </div>
             )}

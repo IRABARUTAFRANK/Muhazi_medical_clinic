@@ -41,6 +41,8 @@ const toStaffUser = (p: ProfileJson): StaffUser => ({
 
 export type SignInResult =
   | { ok: true; step: 'otp'; email: string }
+  /** First sign-in with the temporary PIN: choose a new PIN first, then the e-mailed code. */
+  | { ok: true; step: 'new-pin' }
   | { ok: true; step: 'done'; user: StaffUser }
   | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'error' }
 export type VerifyResult =
@@ -56,6 +58,8 @@ export interface PendingSignIn {
   pin?: string
   /** Sample mode only: the user that will be signed in once a code is typed. */
   sampleUser?: StaffUser
+  /** Signed in with the temporary PIN: a new PIN must be chosen before the code is sent. */
+  needsNewPin?: boolean
 }
 
 type RequestOutcome =
@@ -190,6 +194,36 @@ async function requestCodeDirect(
   return { ok: true, email }
 }
 
+/**
+ * First sign-in after the manager created the account (or reset the PIN): the temporary PIN is
+ * accepted, and the person chooses their own PIN before the e-mailed code approves the sign-in.
+ * Returns the e-mail when the account still has its temporary PIN; null otherwise (normal path).
+ */
+async function checkTemporaryPin(
+  staffId: string,
+  username: string,
+  pin: string,
+): Promise<{ email: string } | { reason: 'invalid' | 'inactive' } | null> {
+  const { data: email } = await supabase!.rpc('staff_login_email', {
+    p_staff_id: staffId,
+    p_username: username,
+  })
+  if (!email) return { reason: 'invalid' }
+  const { data: auth, error } = await supabase!.auth.signInWithPassword({ email, password: pin })
+  // Wrong PIN or blocked account: let the usual path answer, so the server keeps counting
+  // failed attempts and gives the same messages as before.
+  if (error || !auth.user) return null
+  const { data: me } = await supabase!
+    .from('profiles')
+    .select('must_change_pin')
+    .eq('id', auth.user.id)
+    .maybeSingle()
+  if (me?.must_change_pin) return { email: email as string }
+  // Not a temporary PIN: drop this session, the usual trusted-device / e-mailed-code path follows.
+  await supabase!.auth.signOut({ scope: 'local' })
+  return null
+}
+
 interface SessionState {
   user: StaffUser | null
   /** Idle lock: the session stays valid but the screen asks for the PIN again. */
@@ -199,6 +233,8 @@ interface SessionState {
   checkStaffId: (staffId: string) => Promise<boolean>
   /** Step 2 (login page): staff ID + username + PIN. On success a one-time code is e-mailed. */
   signIn: (staffId: string, username: string, pin: string) => Promise<SignInResult>
+  /** First sign-in only: the person's own PIN, then the e-mailed code is sent. */
+  setFirstPin: (next: string) => Promise<'ok' | 'same' | 'otp' | 'error'>
   /** Step 3: the six-digit code from the e-mail. */
   verifyOtp: (code: string, trustDevice?: boolean) => Promise<VerifyResult>
   resendOtp: () => Promise<boolean>
@@ -248,6 +284,15 @@ export const useSession = create<SessionState>()(
           set({ pending: { staffId: id, username: name, email, sampleUser: user } })
           return { ok: true, step: 'otp', email }
         }
+        const first = await checkTemporaryPin(id, name, pin)
+        if (first && 'reason' in first) return { ok: false, reason: first.reason }
+        if (first) {
+          set({
+            pending: { staffId: id, username: name, email: first.email, pin, needsNewPin: true },
+          })
+          rememberExpected(name)
+          return { ok: true, step: 'new-pin' }
+        }
         const trusted = await signInTrusted(id, name, pin)
         if (trusted && 'profile' in trusted) {
           const user = toStaffUser(trusted.profile)
@@ -265,6 +310,26 @@ export const useSession = create<SessionState>()(
         set({ pending: { staffId: id, username: name, email: outcome.email, pin } })
         rememberExpected(name)
         return { ok: true, step: 'otp', email: outcome.email }
+      },
+
+      setFirstPin: async (next) => {
+        const pending = get().pending
+        if (!pending?.needsNewPin || !supabase) return 'error'
+        if (next === pending.pin) return 'same'
+        const { error } = await supabase.auth.updateUser({ password: next })
+        if (error) return /same|different/i.test(error.message) ? 'same' : 'error'
+        await supabase.rpc('mark_pin_changed')
+        // The new PIN is set; the e-mailed code now approves this first sign-in.
+        let outcome = await requestCodeViaFunction(pending.staffId, pending.username, next)
+        if (!outcome.ok && outcome.reason === 'unavailable') {
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            email: pending.email,
+            options: { shouldCreateUser: false },
+          })
+          outcome = otpError ? { ok: false, reason: 'otp' } : { ok: true, email: pending.email }
+        }
+        set({ pending: { ...pending, pin: next, needsNewPin: false } })
+        return outcome.ok ? 'ok' : 'otp'
       },
 
       verifyOtp: async (code, trustDevice = false) => {

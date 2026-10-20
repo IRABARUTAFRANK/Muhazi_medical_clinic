@@ -3,6 +3,8 @@ import {
   Building2,
   Check,
   Copy,
+  Eye,
+  EyeOff,
   IdCard,
   KeyRound,
   Mail,
@@ -84,6 +86,13 @@ export function StaffPage({ user }: { user: StaffUser }) {
   const [pending, setPending] = useState<Pending | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [showInactive, setShowInactive] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const formRef = useRef<HTMLDivElement>(null)
+  // Bring the form the manager just opened into view, wherever the button was on the page.
+  useEffect(() => {
+    if (editing || resetFor || credentials)
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [editing, resetFor, credentials])
 
   const describeError = (e: unknown): string => {
     const m = e instanceof Error ? e.message : String(e)
@@ -168,9 +177,17 @@ export function StaffPage({ user }: { user: StaffUser }) {
             {notice}
           </p>
         )}
-        {credentials && (
-          <CredentialsCard credentials={credentials} onDone={() => setCredentials(null)} />
-        )}
+        {/* Forms open here; the page scrolls to them (Reset PIN, Edit, New employee). */}
+        <div ref={formRef} className="flex scroll-mt-4 flex-col gap-4">
+          {formError && (
+            <p role="alert" className={errorBox}>
+              {formError}
+            </p>
+          )}
+          {credentials && (
+            <CredentialsCard credentials={credentials} onDone={() => setCredentials(null)} />
+          )}
+        </div>
 
         {tab === 'departments' ? (
           <DepartmentsPanel departments={departments} employees={employees} />
@@ -219,22 +236,23 @@ export function StaffPage({ user }: { user: StaffUser }) {
               <ResetPinCard
                 employee={resetFor}
                 onClose={() => setResetFor(null)}
-                onSubmit={(pin) =>
-                  setPending({
-                    title: t('staff.confirm.reset', { name: resetFor.fullName }),
-                    run: async (confirmCode) => {
-                      await actions.resetPin.mutateAsync({ id: resetFor.id, pin, confirmCode })
-                      setCredentials({
-                        title: t('staff.reset.doneTitle', { name: resetFor.fullName }),
-                        staffId: resetFor.staffId ?? '',
-                        email: resetFor.email ?? '',
-                        username: resetFor.username,
-                        pin,
-                      })
-                      setResetFor(null)
-                    },
-                  })
-                }
+                onSubmit={async (pin) => {
+                  // No e-mailed code: the new PIN is temporary and is recorded in the history.
+                  setFormError(null)
+                  try {
+                    await actions.resetPin.mutateAsync({ id: resetFor.id, pin })
+                    setCredentials({
+                      title: t('staff.reset.doneTitle', { name: resetFor.fullName }),
+                      staffId: resetFor.staffId ?? '',
+                      email: resetFor.email ?? '',
+                      username: resetFor.username,
+                      pin,
+                    })
+                    setResetFor(null)
+                  } catch (err) {
+                    setFormError(describeError(err))
+                  }
+                }}
               />
             )}
 
@@ -301,6 +319,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                             {t(`staff.positions.${e.position}`)}
                           </Badge>
                         )}
+                        {e.active && e.tempPin && <TempPin pin={e.tempPin} />}
                         {!e.active ? (
                           <Badge tone="red">{t('staff.deactivated')}</Badge>
                         ) : e.mustChangePin ? (
@@ -741,6 +760,42 @@ function EmployeeForm({
 }
 
 /* ---------------------------------------------------------------- reset PIN */
+
+/** The temporary PIN still to be replaced: hidden until the manager shows it, with a copy button. */
+function TempPin({ pin }: { pin: string }) {
+  const { t } = useTranslation()
+  const [shown, setShown] = useState(false)
+  const [copied, setCopied] = useState(false)
+  return (
+    <span className="border-amber/40 bg-amber-bg text-ink inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-1 pl-3 text-[13px]">
+      <KeyRound size={13} aria-hidden="true" className="text-amber" />
+      <span className="text-ink-2 font-semibold">{t('staff.tempPin')}</span>
+      <b className="tracking-[.2em] tabular-nums">{shown ? pin : '••••••'}</b>
+      <button
+        type="button"
+        className="hover:bg-card inline-flex size-7 items-center justify-center rounded-full"
+        aria-label={t(shown ? 'staff.hidePin' : 'staff.showPin')}
+        title={t(shown ? 'staff.hidePin' : 'staff.showPin')}
+        onClick={() => setShown((v) => !v)}
+      >
+        {shown ? <EyeOff size={14} aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}
+      </button>
+      <button
+        type="button"
+        className="hover:bg-card inline-flex size-7 items-center justify-center rounded-full"
+        aria-label={t('staff.copyPin')}
+        title={copied ? t('staff.copied') : t('staff.copyPin')}
+        onClick={() => {
+          void navigator.clipboard?.writeText(pin)
+          setCopied(true)
+          window.setTimeout(() => setCopied(false), 1500)
+        }}
+      >
+        {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+      </button>
+    </span>
+  )
+}
 
 function ResetPinCard({
   employee,

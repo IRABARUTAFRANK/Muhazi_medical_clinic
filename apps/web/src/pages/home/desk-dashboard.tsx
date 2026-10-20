@@ -35,6 +35,7 @@ import {
   SectionTitle,
   StationGlyph,
 } from '@/components/dash/kit'
+import { NoticesPanel } from '@/components/dash/notices-panel'
 import {
   delta,
   greetingFor,
@@ -53,7 +54,7 @@ import {
   InquiriesPanel,
   TasksPanel,
 } from './desk-panels'
-import { openItems, useQueueBoard, type QueueItem } from '@/lib/api/visits'
+import { onePerPool, openItems, useQueueBoard, type QueueItem } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -73,7 +74,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   const now = new Date()
   const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary()
   const { data: queue = [] } = useQueueBoard(role === 'nurse' ? 'triage' : 'all', user.role)
-  const waiting = openItems(queue)
+  const waiting = onePerPool(openItems(queue))
 
   const greeting = greetingFor(user.name, t)
   const nurse = role === 'nurse'
@@ -212,6 +213,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                 )}
                 {!nurse && <ArrivalsPanel d={data} />}
                 <MinePanel d={data} role={role} />
+                <NoticesPanel />
               </div>
             </section>
           </div>

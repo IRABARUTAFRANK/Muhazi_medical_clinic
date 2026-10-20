@@ -55,6 +55,7 @@ import {
   SectionTitle,
   StationGlyph,
 } from '@/components/dash/kit'
+import { NoticesPanel } from '@/components/dash/notices-panel'
 import {
   avatarTint,
   delta,
@@ -292,6 +293,9 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
               />
             </div>
 
+            {/* NOTIFICATIONS: what is addressed to the manager right now */}
+            <NoticesPanel limit={4} />
+
             {/* MONEY */}
             {isManager && (
               <section className="flex flex-col gap-3">
@@ -315,14 +319,14 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     title={t('dashboard.collections', { period: periodWord })}
                     right={formatRwf(data.collections.reduce((s, c) => s + c.amount, 0))}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center justify-center gap-4">
                       <Donut
                         values={data.collections.map((c) => c.amount)}
                         colors={METHOD_COLORS}
                         label={periodWord}
                         total={data.collections.reduce((s, c) => s + c.amount, 0)}
                       />
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-[190px] flex-1">
                         <HBarList
                           subject="money"
                           colors={METHOD_COLORS}

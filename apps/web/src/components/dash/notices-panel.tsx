@@ -1,0 +1,124 @@
+import type { CSSProperties } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import {
+  Bell,
+  CalendarCheck,
+  CheckCheck,
+  ListTodo,
+  Megaphone,
+  MessageSquare,
+  Siren,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { StaffLink } from '@/components/staff/staff-link'
+import { useNotificationActions, useNotifications, type Notice } from '@/lib/api/notifications'
+import { useAgo, useWording } from '@/lib/notice-wording'
+import { cn } from '@/lib/utils'
+import { Empty, IconChip, Panel } from './kit'
+import type { Tint } from './kit-style'
+
+const LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
+  queue: { icon: Users, tint: 'amber' },
+  queue_pool: { icon: Users, tint: 'violet' },
+  task: { icon: ListTodo, tint: 'teal' },
+  inquiry: { icon: MessageSquare, tint: 'violet' },
+  to_accept: { icon: CalendarCheck, tint: 'navy' },
+  message: { icon: Megaphone, tint: 'coral' },
+}
+
+/**
+ * Notifications on every dashboard: the latest notices for this person (unread first), open what
+ * one is about, mark all read, or go to the full Notifications page.
+ */
+export function NoticesPanel({
+  i = 1,
+  limit = 5,
+  className,
+}: {
+  i?: number
+  limit?: number
+  className?: string
+}) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { data } = useNotifications()
+  const actions = useNotificationActions()
+  const ago = useAgo()
+  const word = useWording()
+  const items = [...(data?.items ?? [])]
+    .sort((a, b) => Number(a.read) - Number(b.read))
+    .slice(0, limit)
+  const unread = data?.unread ?? 0
+  const open = (n: Notice) => {
+    if (!n.read) actions.markRead.mutate([n.id])
+    if (n.link) {
+      const [path, query] = n.link.split('?')
+      void navigate({ href: query ? `${path}?${query}` : path! })
+    }
+  }
+  return (
+    <Panel
+      i={i}
+      icon={Bell}
+      tint="amber"
+      title={t('notify.title')}
+      right={t('notices.unreadCount', { count: unread })}
+      className={className}
+    >
+      {items.length === 0 ? (
+        <Empty icon={Bell}>{t('notify.empty')}</Empty>
+      ) : (
+        <div className="flex flex-col">
+          {items.map((n, k) => {
+            const w = word(n)
+            const look = n.urgent
+              ? { icon: Siren, tint: 'coral' as Tint }
+              : (LOOK[n.kind] ?? LOOK.message!)
+            return (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => open(n)}
+                className={cn(
+                  'border-grid anim-enter hover:bg-hover/60 flex w-full items-start gap-3 border-b py-2.5 text-left last:border-b-0',
+                  !n.read && 'bg-primary-tint/30 -mx-2 rounded-lg px-2',
+                )}
+                style={{ '--i': k } as CSSProperties}
+              >
+                <IconChip icon={look.icon} tint={look.tint} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span
+                    className={cn('block text-[14px] leading-snug', !n.read && 'font-semibold')}
+                  >
+                    {w.title}
+                  </span>
+                  {w.body && (
+                    <span className="text-ink-2 block truncate text-[13px]">{w.body}</span>
+                  )}
+                  <span className="text-ink-3 block text-[12px]">{ago(n.at)}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <span className="flex flex-wrap gap-2">
+        <StaffLink
+          to="/app/notifications"
+          className={cn(buttonVariants({ size: 'sm' }), 'self-start')}
+        >
+          {t('notices.manage')} →
+        </StaffLink>
+        {unread > 0 && (
+          <Button size="sm" variant="ghost" onClick={() => actions.markRead.mutate(null)}>
+            <CheckCheck size={14} aria-hidden="true" />
+            {t('notify.markAll')}
+          </Button>
+        )}
+      </span>
+    </Panel>
+  )
+}

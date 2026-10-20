@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, Lock, MailCheck } from 'lucide-react'
+import { ArrowLeft, KeyRound, Lock, MailCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Logo } from '@/components/public/logo'
+import { PIN_RE } from '@/lib/api/staff'
 import { homeRouteFor } from '@/lib/roles'
 import { isLive } from '@/lib/supabase'
 import { MISMATCH_KEY, maskEmail, useSession } from '@/store/session'
@@ -15,6 +16,8 @@ const CODE_RE = /^[0-9]{6}$/
  * Staff login after the staff-ID check on the landing page.
  * Step 2: username + PIN (Supabase Auth checks the PIN and e-mails a six-digit code).
  * Step 3: the code. Only then does the session exist in the app.
+ * First sign-in with the manager's temporary PIN: the person chooses their own PIN between
+ * steps 2 and 3, so the e-mailed code approves the account with the PIN they will keep.
  */
 export function LoginPage({ staffId }: { staffId: string }) {
   const { t } = useTranslation()
@@ -23,6 +26,9 @@ export function LoginPage({ staffId }: { staffId: string }) {
   const signIn = useSession((s) => s.signIn)
   const verifyOtp = useSession((s) => s.verifyOtp)
   const resendOtp = useSession((s) => s.resendOtp)
+  const setFirstPin = useSession((s) => s.setFirstPin)
+  const [newPin, setNewPin] = useState('')
+  const [newPin2, setNewPin2] = useState('')
   const cancelSignIn = useSession((s) => s.cancelSignIn)
 
   const [username, setUsername] = useState('')
@@ -47,7 +53,12 @@ export function LoginPage({ staffId }: { staffId: string }) {
   const [trustDevice, setTrustDevice] = useState(true)
   const codeRef = useRef<HTMLInputElement>(null)
 
-  const step: 'credentials' | 'otp' = pending && pending.staffId === staffId ? 'otp' : 'credentials'
+  const step: 'credentials' | 'new-pin' | 'otp' =
+    pending && pending.staffId === staffId
+      ? pending.needsNewPin
+        ? 'new-pin'
+        : 'otp'
+      : 'credentials'
 
   useEffect(() => {
     if (step === 'otp') codeRef.current?.focus()
@@ -81,6 +92,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
         return
       }
       setPin('')
+      if (result.step === 'new-pin') return
       if (result.step === 'done') {
         // Trusted device: no e-mailed code this time.
         void navigate({
@@ -90,6 +102,29 @@ export function LoginPage({ staffId }: { staffId: string }) {
       }
       setCode('')
       setCooldown(30)
+    } catch {
+      setError(t('login.error'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submitNewPin = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    if (!PIN_RE.test(newPin)) return setError(t('pin.format'))
+    if (newPin !== newPin2) return setError(t('pin.mismatch'))
+    setBusy(true)
+    try {
+      const r = await setFirstPin(newPin)
+      if (r === 'same') return setError(t('pin.same'))
+      if (r === 'error') return setError(t('pin.failed'))
+      setNewPin('')
+      setNewPin2('')
+      setCode('')
+      setCooldown(30)
+      if (r === 'otp') setError(t('login.otpSendFailed'))
+      else setNotice(t('login.firstPinSaved'))
     } catch {
       setError(t('login.error'))
     } finally {
@@ -152,13 +187,21 @@ export function LoginPage({ staffId }: { staffId: string }) {
           <span className="icon-gradient inline-flex size-11 flex-none items-center justify-center rounded-xl text-white">
             {step === 'otp' ? (
               <MailCheck size={22} aria-hidden="true" />
+            ) : step === 'new-pin' ? (
+              <KeyRound size={22} aria-hidden="true" />
             ) : (
               <Lock size={22} aria-hidden="true" />
             )}
           </span>
           <span className="min-w-0">
             <span className="block text-lg font-bold">
-              {t(step === 'otp' ? 'login.codeTitle' : 'login.title')}
+              {t(
+                step === 'otp'
+                  ? 'login.codeTitle'
+                  : step === 'new-pin'
+                    ? 'pin.changeTitle'
+                    : 'login.title',
+              )}
             </span>
             <span className="text-ink-3 block text-[13px]">
               {t('login.staffId')} <b className="text-ink tabular-nums">{staffId}</b>
@@ -199,6 +242,41 @@ export function LoginPage({ staffId }: { staffId: string }) {
               <ArrowLeft size={14} aria-hidden="true" />
               {t('login.otherId')}
             </Link>
+          </form>
+        ) : step === 'new-pin' ? (
+          <form onSubmit={submitNewPin} className="flex flex-col gap-3.5">
+            <p className="text-ink-2 m-0 text-[13px]">{t('login.firstPinLead')}</p>
+            <Field
+              label={t('pin.new')}
+              type="password"
+              inputMode="numeric"
+              autoComplete="new-password"
+              autoFocus
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              required
+            />
+            <Field
+              label={t('pin.confirm')}
+              type="password"
+              inputMode="numeric"
+              autoComplete="new-password"
+              value={newPin2}
+              onChange={(e) => setNewPin2(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              required
+            />
+            {error && <Alert>{error}</Alert>}
+            <Button type="submit" variant="primary" size="lg" disabled={busy}>
+              {busy ? t('pin.saving') : t('login.firstPinSave')}
+            </Button>
+            <button
+              type="button"
+              className="text-ink-2 inline-flex items-center justify-center gap-1 text-[13px]"
+              onClick={back}
+            >
+              <ArrowLeft size={14} aria-hidden="true" />
+              {t('login.back')}
+            </button>
           </form>
         ) : (
           <form onSubmit={submitCode} className="flex flex-col gap-3.5">

@@ -477,6 +477,17 @@ export const queueCounts = (items: readonly QueueItem[]) => ({
 /** Rows still waiting or in progress, for the queue card. */
 export const openItems = (items: readonly QueueItem[]) => items.filter((i) => !i.finishedAt)
 
+/** One row per shared patient (sent to several desks at once); other rows unchanged. */
+export const onePerPool = (items: readonly QueueItem[]) => {
+  const seen = new Set<string>()
+  return items.filter((i) => {
+    if (!i.poolId) return true
+    if (seen.has(i.poolId)) return false
+    seen.add(i.poolId)
+    return true
+  })
+}
+
 /**
  * "I take this patient": starts the patient at this desk; a patient shared between several desks
  * leaves the other queues. Refused when another doctor was faster.

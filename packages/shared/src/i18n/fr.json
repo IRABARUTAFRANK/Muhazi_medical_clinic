@@ -87,7 +87,8 @@
     "triage": "Triage",
     "inClinic": "À la clinique",
     "bookings": "RDV",
-    "notifications": "Alertes"
+    "notifications": "Alertes",
+    "history": "Historique"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -701,7 +702,7 @@
       "pharmacist": "Pharmacien·ne",
       "manager": "Gestionnaire / propriétaire"
     },
-    "lead2": "Créez et modifiez les comptes des employés, placez chacun dans un service comme chef, adjoint ou membre, réinitialisez les PIN et désactivez des comptes. Chaque changement est confirmé par un code envoyé à votre e-mail.",
+    "lead2": "Créez et modifiez les comptes des employés, placez chacun dans un service comme chef, adjoint ou membre, réinitialisez les PIN et désactivez des comptes. Chaque changement est confirmé par un code envoyé à votre e-mail. Une réinitialisation de PIN n’en demande pas : le nouveau PIN est temporaire et reste visible sur la ligne de l’employé jusqu’à ce qu’il le remplace.",
     "tabs": {
       "people": "Employés · {{count}}",
       "departments": "Services · {{count}}"
@@ -756,7 +757,12 @@
       "roles": "Rôles de ce service",
       "rolesHint": "Seuls les employés ayant ces rôles peuvent y être placés. Ne cochez rien pour accepter tous les rôles.",
       "save": "Enregistrer le service"
-    }
+    },
+    "tempPin": "PIN temporaire",
+    "showPin": "Afficher le PIN",
+    "hidePin": "Masquer le PIN",
+    "copyPin": "Copier le PIN",
+    "copied": "Copié"
   },
   "login": {
     "title": "Connexion du personnel",
@@ -783,7 +789,10 @@
     "resendIn": "Nouveau code dans {{s}} s",
     "linkMismatch": "Ce lien de connexion appartient à {{got}}, pas à {{expected}}. Personne n’a été connecté. Ouvrez le dernier e-mail envoyé à {{expected}}, ou reconnectez-vous.",
     "trust": "Faire confiance à cet appareil",
-    "trustHint": "La prochaine fois sur ce navigateur, votre ID, nom d’utilisateur et PIN suffisent — pas de code par e-mail jusqu’à expiration. Décochez sur un ordinateur partagé."
+    "trustHint": "La prochaine fois sur ce navigateur, votre ID, nom d’utilisateur et PIN suffisent — pas de code par e-mail jusqu’à expiration. Décochez sur un ordinateur partagé.",
+    "firstPinLead": "C’est votre première connexion avec le PIN donné par le gérant. Choisissez six chiffres que vous seul connaissez ; un code est ensuite envoyé à votre e-mail pour l’approuver.",
+    "firstPinSave": "Enregistrer mon PIN et envoyer le code",
+    "firstPinSaved": "Votre PIN est enregistré. Saisissez le code que nous venons d’envoyer."
   },
   "register": {
     "title": "Enregistrer un patient",
@@ -1439,7 +1448,9 @@
     "inProgress": "en cours",
     "waiting_one": "attend depuis {{count}} min",
     "waiting_other": "attend depuis {{count}} min",
-    "openVisit": "Ouvrir la visite"
+    "openVisit": "Ouvrir la visite",
+    "pooled": "En attente du premier médecin libre",
+    "pooledHint": "affiché une fois ; n’importe lequel de ces postes peut le prendre"
   },
   "desk": {
     "today": "Aujourd'hui",
@@ -1670,7 +1681,8 @@
     "sent": "Envoyé.",
     "errors": {
       "target": "Choisissez le destinataire."
-    }
+    },
+    "queuePool": "{{ticket}} {{name}} attend le premier médecin libre"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -1744,5 +1756,73 @@
     "confirmDelete": "Supprimer ce message pour tout le monde ?",
     "delete": "Supprimer",
     "manage": "Toutes les notifications"
+  },
+  "history": {
+    "title": "Historique des activités",
+    "lead": "Qui a fait quoi et quand sur chaque tableau de bord : inscriptions, signes vitaux, files d’attente, soins, paiements, lits, connexions et changements des employés et réglages. Tout est conservé.",
+    "count_one": "{{count}} événement",
+    "count_other": "{{count}} événements",
+    "periods": {
+      "today": "Aujourd’hui",
+      "week": "7 jours",
+      "month": "30 jours",
+      "custom": "Choisir les dates"
+    },
+    "from": "Du",
+    "to": "Au",
+    "person": "Personne",
+    "everyone": "Tout le monde",
+    "groups": {
+      "all": "Tout",
+      "signin": "Connexions",
+      "patients": "Patients et visites",
+      "vitals": "Signes vitaux",
+      "queue": "File d’attente",
+      "clinical": "Clinique",
+      "billing": "Factures et paiements",
+      "beds": "Lits",
+      "admin": "Employés et réglages"
+    },
+    "list": "Ce qui s’est passé",
+    "shown": "{{count}} sur {{total}}",
+    "empty": "Rien d’enregistré pour ce choix.",
+    "system": "Système",
+    "more": "Voir plus",
+    "verbs": {
+      "create": "Nouveau",
+      "update": "Modifié",
+      "delete": "Supprimé",
+      "login": "Connexion",
+      "settings": "Modifié",
+      "break_glass": "Accès d’urgence"
+    },
+    "entities": {
+      "patient": "dossier patient",
+      "encounter": "visite",
+      "queue_entry": "file d’attente",
+      "observation": "signe vital",
+      "invoice": "facture",
+      "invoice_line": "soin facturé",
+      "payment": "paiement",
+      "credit_note": "avoir",
+      "day_close": "clôture du jour",
+      "bed": "lit",
+      "bed_stay": "séjour au lit",
+      "profiles": "compte employé",
+      "setting": "réglage",
+      "department": "service",
+      "service": "soin / prix",
+      "payer": "assureur",
+      "price_list_item": "prix",
+      "practitioner": "profil médecin",
+      "appointment": "rendez-vous",
+      "condition": "diagnostic",
+      "medication_request": "ordonnance",
+      "service_request": "demande d’examen",
+      "procedure": "acte",
+      "diagnostic_report": "résultat",
+      "internal_task": "tâche",
+      "message": "message"
+    }
   }
 }
