@@ -30,6 +30,28 @@ export interface HistoryItem {
   patient: string | null
   detail: string | null
   reason: string | null
+  /** The record as saved (no secrets, no bookkeeping columns). */
+  row?: Record<string, unknown>
+  /** Updates: each changed field with its old and new value. */
+  changes?: { f: string; from: unknown; to: unknown }[]
+  /** Names behind the ids: patient file, treatment, medicine, employee, bed, bill… */
+  names?: Partial<
+    Record<
+      | 'file'
+      | 'target'
+      | 'service'
+      | 'item'
+      | 'staff'
+      | 'referredBy'
+      | 'returnTo'
+      | 'performer'
+      | 'practitioner'
+      | 'bed'
+      | 'invoice'
+      | 'department',
+      string
+    >
+  >
 }
 export interface HistoryFilter {
   from: string
@@ -53,8 +75,11 @@ const sample = (): HistoryItem[] => {
       actorRole: 'doctor',
       actorStaffId: 'MMC-S-0013',
       patient: 'Baby Benitah',
-      detail: 'A-002 · consultation · taken',
+      detail: null,
       reason: null,
+      row: { station: 'consultation', ticket_no: 'A-002' },
+      changes: [{ f: 'taken_by', from: null, to: 'u-doc' }],
+      names: { file: 'MMC-000014', staff: 'Dr. Habimana Eric' },
     },
     {
       id: 8,
@@ -66,8 +91,15 @@ const sample = (): HistoryItem[] => {
       actorRole: 'cashier',
       actorStaffId: 'MMC-S-0004',
       patient: 'Uwase Claudine',
-      detail: 'momo · 18300',
+      detail: null,
       reason: null,
+      row: {
+        method: 'momo',
+        amount: 18300,
+        reference: 'MP261020.1412.A77341',
+        payer_phone: '0788123456',
+      },
+      names: { file: 'MMC-000009', invoice: 'INV-2026-000031' },
     },
     {
       id: 7,
@@ -79,8 +111,17 @@ const sample = (): HistoryItem[] => {
       actorRole: 'doctor',
       actorStaffId: 'MMC-S-0013',
       patient: 'Uwase Claudine',
-      detail: 'Consultation · 5000',
+      detail: null,
       reason: null,
+      row: {
+        description: 'General consultation',
+        quantity: 1,
+        unit_price: 5000,
+        discount_pct: 10,
+        discount_reason: 'Returning patient',
+        office: 'consultation',
+      },
+      names: { file: 'MMC-000009' },
     },
     {
       id: 6,
@@ -92,8 +133,10 @@ const sample = (): HistoryItem[] => {
       actorRole: 'nurse',
       actorStaffId: 'MMC-S-0012',
       patient: 'Baby Benitah',
-      detail: 'temp 37.8',
+      detail: null,
       reason: null,
+      row: { code: 'temp', value_num: 37.8, unit: '°C' },
+      names: { file: 'MMC-000014', performer: 'Test Nurse' },
     },
     {
       id: 5,
@@ -107,6 +150,8 @@ const sample = (): HistoryItem[] => {
       patient: 'Baby Benitah',
       detail: null,
       reason: null,
+      row: { file_number: 'MMC-000014', sex: 'female', phone_1: '0788000111' },
+      names: { file: 'MMC-000014' },
     },
     {
       id: 4,
@@ -122,6 +167,25 @@ const sample = (): HistoryItem[] => {
       reason: 'code',
     },
     {
+      id: 2,
+      at: at(70),
+      action: 'update',
+      entity: 'service',
+      group: 'admin',
+      actor: 'Mugabo Théogène',
+      actorRole: 'manager',
+      actorStaffId: 'MMC-S-0007',
+      patient: null,
+      detail: null,
+      reason: null,
+      row: { name_en: 'Tooth extraction', max_discount_pct: 15, active: true },
+      changes: [
+        { f: 'max_discount_pct', from: 10, to: 15 },
+        { f: 'name_fr', from: null, to: 'Extraction dentaire' },
+      ],
+      names: { target: 'Tooth extraction' },
+    },
+    {
       id: 3,
       at: at(55),
       action: 'settings',
@@ -131,8 +195,10 @@ const sample = (): HistoryItem[] => {
       actorRole: 'manager',
       actorStaffId: 'MMC-S-0007',
       patient: null,
-      detail: 'reset_pin',
+      detail: null,
       reason: null,
+      row: { manage_staff: 'reset_pin', confirmed_with_code: false },
+      names: { target: 'Test Nurse (MMC-S-0012)' },
     },
   ]
 }

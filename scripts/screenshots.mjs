@@ -122,6 +122,7 @@ const SHOTS = [
   { name: 'triage-reception', path: '/app/vitals', vp: [1366, 1100], user: 'u-rec' },
   { name: 'appointments-1366', path: '/app/appointments', vp: [1366, 900], user: 'u-rec' },
   { name: 'register-nurse', path: '/app/register', vp: [1366, 900], user: 'u-nur' },
+  { name: 'history-1366', path: '/app/history', vp: [1366, 1300], user: 'u-mgr' },
   { name: 'calendar-doctor', path: '/app/calendar', vp: [1366, 1500], user: 'u-doc' },
   { name: 'calendar-mobile', path: '/app/calendar', vp: [390, 844], user: 'u-doc', full: true },
   { name: 'home-doctor-full', path: '/app', vp: [1366, 2000], user: 'u-doc' },

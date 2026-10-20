@@ -1124,6 +1124,28 @@ await step('treatment placed in a department; billing by treatment for the manag
   return `in "${r.department_name}"; ${Object.keys(bill).length} treatment(s) billed this month`
 })
 
+await step('history explains: names behind ids, changed fields, no secrets', async () => {
+  await as(staff.manager)
+  const h = (
+    await one(
+      `select activity_history(now() - interval '1 day', now() + interval '1 minute', null, null, 500, 0) as j`,
+    )
+  ).j
+  await asAdmin()
+  const charge = h.items.find((x) => x.entity === 'invoice_line' && x.action === 'create')
+  const pay = h.items.find((x) => x.entity === 'payment')
+  const upd = h.items.find((x) => x.action === 'update' && x.changes.length > 0)
+  const leak = h.items.some((x) =>
+    Object.keys(x.row ?? {}).some((k) => /pin|password|hash/i.test(k) && !/mapping/.test(k)),
+  )
+  if (!charge?.patient || !charge.row?.description)
+    throw new Error('charge has no patient or description')
+  if (!pay?.patient || !pay.names?.invoice) throw new Error('payment has no patient or bill')
+  if (!upd) throw new Error('no change list on updates')
+  if (leak) throw new Error('secret field in history')
+  return `charge for ${charge.patient}; payment bill ${pay.names.invoice}; ${upd.entity} changed ${upd.changes.map((c) => c.f).join(', ')}`
+})
+
 finish()
 
 function finish() {

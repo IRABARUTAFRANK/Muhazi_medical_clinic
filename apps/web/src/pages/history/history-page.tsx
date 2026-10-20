@@ -22,13 +22,9 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
-import {
-  HISTORY_GROUPS,
-  useActivityHistory,
-  type HistoryGroup,
-  type HistoryItem,
-} from '@/lib/api/history'
+import { HISTORY_GROUPS, useActivityHistory, type HistoryGroup } from '@/lib/api/history'
 import { useEmployees } from '@/lib/api/staff'
+import { explain } from '@/lib/history-explain'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 
@@ -91,11 +87,6 @@ export function HistoryPage({ user }: { user: StaffUser }) {
   })
   const items = q.data?.pages.flatMap((p) => p.items) ?? []
   const total = q.data?.pages[0]?.total ?? 0
-
-  const verb = (h: HistoryItem) =>
-    t(`history.verbs.${h.action}`, { defaultValue: h.action }) +
-    ' · ' +
-    t(`history.entities.${h.entity}`, { defaultValue: h.entity })
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="history">
@@ -210,41 +201,68 @@ export function HistoryPage({ user }: { user: StaffUser }) {
             {items.map((h, i) => {
               const look = GROUP_LOOK[h.group] ?? GROUP_LOOK.other
               const at = new Date(h.at)
+              const x = explain(h, t)
               return (
-                <div
+                <article
                   key={h.id}
-                  className="border-grid anim-enter flex items-start gap-3 border-b py-2.5 last:border-b-0"
+                  className="border-grid anim-enter flex items-start gap-3 border-b py-3 last:border-b-0"
                   style={{ '--i': Math.min(i, 12) } as CSSProperties}
                 >
                   <span className="text-ink-3 w-[92px] flex-none pt-1.5 text-[13px] tabular-nums">
-                    {formatTime(at)}
+                    <b className="text-ink block text-[14px]">{formatTime(at)}</b>
                     <span className="block text-[12px]">{formatDate(at)}</span>
                   </span>
                   <IconChip icon={look.icon} tint={look.tint} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-semibold">
-                      {verb(h)}
-                      {h.patient ? ` · ${h.patient}` : ''}
-                    </span>
-                    {(h.detail || h.reason) && (
-                      <span className="text-ink-2 block truncate text-[13px]">
-                        {[h.detail, h.reason].filter(Boolean).join(' · ')}
-                      </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-ink m-0 text-[15px] leading-snug font-semibold">
+                      {x.sentence}
+                    </p>
+                    {x.lines.length > 0 && (
+                      <ul className="text-ink-2 m-0 mt-1 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+                        {x.lines.map((l) => (
+                          <li key={l} className="flex gap-1.5">
+                            <span className="text-ink-3" aria-hidden="true">
+                              •
+                            </span>
+                            <span className="min-w-0 break-words">{l}</span>
+                          </li>
+                        ))}
+                      </ul>
                     )}
-                  </span>
-                  <span className="flex flex-none items-center gap-2 text-[13px]">
-                    <span className="bg-primary-tint text-primary inline-flex size-7 items-center justify-center rounded-full text-[11px] font-extrabold">
-                      {initials(h.actor ?? '?')}
+                    {x.changes.length > 0 && (
+                      <div className="bg-surface border-border mt-1.5 rounded-lg border px-3 py-2">
+                        <span className="text-ink-3 block text-[11px] font-bold tracking-[.06em] uppercase">
+                          {t('history.whatChanged')}
+                        </span>
+                        <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+                          {x.changes.map((c) => (
+                            <li key={c.label} className="flex flex-wrap items-baseline gap-x-1.5">
+                              <span className="text-ink-2 font-semibold">{c.label}:</span>
+                              <span className="text-red line-through decoration-1">{c.from}</span>
+                              <span className="text-ink-3" aria-label={t('history.becomes')}>
+                                →
+                              </span>
+                              <span className="text-green font-semibold">{c.to}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <span className="text-ink-3 mt-1 block text-[12px]">
+                      {t('history.doneBy', {
+                        name: h.actor ?? t('history.system'),
+                        role: h.actorRole ? t(`staff.roles.${h.actorRole}`) : '',
+                      })}
+                      {h.actorStaffId ? ` · ${h.actorStaffId}` : ''}
                     </span>
-                    <span className="pc:block hidden">
-                      <span className="block font-semibold">{h.actor ?? t('history.system')}</span>
-                      <span className="text-ink-3 block text-[12px]">
-                        {h.actorRole ? t(`staff.roles.${h.actorRole}`) : ''}
-                        {h.actorStaffId ? ` · ${h.actorStaffId}` : ''}
-                      </span>
-                    </span>
+                  </div>
+                  <span
+                    className="bg-primary-tint text-primary pc:inline-flex hidden size-8 flex-none items-center justify-center rounded-full text-[11px] font-extrabold"
+                    title={h.actor ?? ''}
+                  >
+                    {initials(h.actor ?? '?')}
                   </span>
-                </div>
+                </article>
               )
             })}
           </div>
