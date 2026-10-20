@@ -24,12 +24,15 @@ export function WhereNextCard({
   encounterId,
   myStation,
   isReception,
+  closed = false,
   onDone,
   onError,
 }: {
   encounterId: string
   myStation: Station
   isReception: boolean
+  /** Finished visit: nothing left to send on. */
+  closed?: boolean
   onDone: (message: string) => void
   onError: (message: string | null) => void
 }) {
@@ -88,6 +91,7 @@ export function WhereNextCard({
   }
 
   const person = colleagues.find((c) => c.id === toUser)
+  if (closed) return null
 
   return (
     <Card className="anim-enter">

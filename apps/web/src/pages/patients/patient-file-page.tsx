@@ -1,5 +1,15 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
-import { ArrowLeft, Check, FolderOpen, Pencil, Plus, Stethoscope, Ticket, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  Check,
+  FlaskConical,
+  FolderOpen,
+  Pencil,
+  Plus,
+  Stethoscope,
+  Ticket,
+  X,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +30,7 @@ import {
   type PatientFieldDef,
   setNoNationalId,
   type NoIdReason,
+  usePatientResults,
 } from '@/lib/api/patients'
 import {
   TREATING_STATIONS,
@@ -798,6 +809,7 @@ function Clinical({ file }: { file: PatientFile }) {
   for (const v of file.vitals) if (!latest.has(v.code)) latest.set(v.code, v)
   return (
     <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
+      <ResultsCard patientId={file.patient.id} />
       <Card className="anim-enter">
         <CardHeader>
           <span>{t('file.latestVitals')}</span>
@@ -896,6 +908,73 @@ function Bills({ file }: { file: PatientFile }) {
           </StaffLink>
         </Row>
       ))}
+    </Card>
+  )
+}
+
+/** Every lab and imaging result of the patient, newest first, so any doctor can read them. */
+function ResultsCard({ patientId }: { patientId: string }) {
+  const { t } = useTranslation()
+  const { data: results = [] } = usePatientResults(patientId)
+  return (
+    <Card className="anim-enter pc:col-span-2">
+      <CardHeader>
+        <span className="inline-flex items-center gap-2">
+          <FlaskConical size={16} aria-hidden="true" />
+          {t('file.results')}
+        </span>
+        <span className="text-ink-3 text-xs">{results.length}</span>
+      </CardHeader>
+      {results.length === 0 ? (
+        <CardBody>
+          <p className="text-ink-3 m-0 text-[13px]">{t('file.noResults')}</p>
+        </CardBody>
+      ) : (
+        <ShownList items={results} step={5} footerClassName="px-4 py-2">
+          {(shown) =>
+            shown.map((r) => (
+              <Row key={r.id} className="items-start gap-3 py-2.5">
+                <Badge
+                  tone={r.verified ? 'green' : r.findings || r.impression ? 'yellow' : 'blue'}
+                  dot={false}
+                  className="mt-0.5"
+                >
+                  {r.verified
+                    ? t('clinical.verified')
+                    : r.findings || r.impression
+                      ? t('clinical.notVerified')
+                      : t('file.awaitingResult')}
+                </Badge>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{r.test}</span>
+                  {r.findings && <span className="block text-[14px]">{r.findings}</span>}
+                  {r.impression && (
+                    <span className="block text-[14px] font-semibold">{r.impression}</span>
+                  )}
+                  <span className="text-ink-3 block text-xs">
+                    {[
+                      t('file.orderedBy', { name: r.orderedBy ?? '—', when: when(r.orderedAt) }),
+                      r.resultBy && r.resultAt
+                        ? t('file.resultBy', { name: r.resultBy, when: when(r.resultAt) })
+                        : null,
+                      r.reason,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                </span>
+                <StaffLink
+                  to="/app/visit"
+                  search={{ encounter: r.encounterId }}
+                  className={buttonVariants({ size: 'sm' })}
+                >
+                  {t('visits.openVisit')}
+                </StaffLink>
+              </Row>
+            ))
+          }
+        </ShownList>
+      )}
     </Card>
   )
 }

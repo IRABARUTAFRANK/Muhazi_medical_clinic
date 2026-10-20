@@ -20,6 +20,9 @@ export interface VisitHeader {
   ticket: string
   /** Open queue entries (stations the patient is currently expected at). */
   stations: Station[]
+  /** A finished visit, shown read-only (when and by whom it was closed). */
+  closed?: boolean
+  closedAt?: string | null
 }
 
 export interface Vital {
@@ -143,7 +146,45 @@ export function useVisitHeader(encounterId: string) {
       if (error) throw new Error(error.message)
       const rows = data as BoardRow[]
       const r = rows[0]
-      if (!r) return null
+      if (!r) {
+        // Not in the queue board: the visit is finished. Load it directly, read-only.
+        const { data: e, error: e2 } = await supabase
+          .from('encounter')
+          .select(
+            'id, status, closed_at, triage_level, patient:patient_id(id, file_number, surname, given_names, sex, birth_date)',
+          )
+          .eq('id', encounterId)
+          .maybeSingle()
+        if (e2) throw new Error(e2.message)
+        if (!e) return null
+        const p = (Array.isArray(e.patient) ? e.patient[0] : e.patient) as {
+          id: string
+          file_number: string
+          surname: string
+          given_names: string
+          sex: BoardRow['sex']
+          birth_date: string | null
+        } | null
+        if (!p) return null
+        const { data: first } = await supabase
+          .from('queue_entry')
+          .select('ticket_no')
+          .eq('encounter_id', encounterId)
+          .order('created_at')
+          .limit(1)
+        return {
+          encounterId,
+          patientId: p.id,
+          fileNumber: p.file_number,
+          name: `${p.surname} ${p.given_names}`,
+          ageSex: `${ageOf(p.birth_date)} ${sexLetter[p.sex]}`.trim(),
+          triage: (e.triage_level as Triage | null) ?? null,
+          ticket: (first?.[0] as { ticket_no: string } | undefined)?.ticket_no ?? '—',
+          stations: [],
+          closed: e.status !== 'open',
+          closedAt: e.closed_at as string | null,
+        }
+      }
       return {
         encounterId,
         patientId: r.patient_id,

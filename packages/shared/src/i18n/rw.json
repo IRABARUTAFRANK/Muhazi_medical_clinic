@@ -1164,7 +1164,8 @@
       "sendMany_other": "Ohereza ahantu {{count}}",
       "manyHint": "Ahantu henshi: umurwayi ategerereza kuri buri hamwe, akava ahandi hose iyo hamwe hamwakiriye."
     },
-    "sentMany": "Umurwayi yoherejwe kuri {{station}}: uwa mbere ubonetse aramwakira."
+    "sentMany": "Umurwayi yoherejwe kuri {{station}}: uwa mbere ubonetse aramwakira.",
+    "closedBanner": "Uruzinduko rwarangiye {{when}}. Ibyanditswe byose bigumye muri dosiye y’umurwayi."
   },
   "patients": {
     "title": "Abarwayi",
@@ -1256,7 +1257,12 @@
     "removeField": "Kuraho “{{name}}”",
     "noExtra": "Nta yandi makuru araba. Koresha “Ongeraho igice”, cyangwa umuyobozi ashyireho ibice bya buri murwayi mu Igenamiterere.",
     "allergiesHint": "Imiti, ibiryo cyangwa ibindi bitera umubiri kwivumbura (uduheri, kubyimba, guhumeka nabi) gusa. Ibindi bivugwa bijya mu Byitonderwa.",
-    "inClinicNow": "Uyu murwayi ari mu ivuriro ubu, ategereje kuri {{station}}. Akabuto k'ubururu gafungura urwo ruzinduko: ibipimo, ibyanditswe, indwara, ubuvuzi, imiti n'ubwishyu byose byandikwa aho."
+    "inClinicNow": "Uyu murwayi ari mu ivuriro ubu, ategereje kuri {{station}}. Akabuto k'ubururu gafungura urwo ruzinduko: ibipimo, ibyanditswe, indwara, ubuvuzi, imiti n'ubwishyu byose byandikwa aho.",
+    "results": "Ibisubizo bya laboratwari n’amashusho",
+    "noResults": "Nta suzuma ryasabiwe uyu murwayi.",
+    "awaitingResult": "Bategereje igisubizo",
+    "orderedBy": "byasabwe na {{name}}, {{when}}",
+    "resultBy": "igisubizo cyatanzwe na {{name}}, {{when}}"
   },
   "clinical": {
     "title": "Inyandiko z'ubuvuzi",
@@ -1344,7 +1350,24 @@
       "rectal": "Mu kibuno",
       "inhaled": "Guhumeka",
       "other": "Ikindi"
-    }
+    },
+    "closedNote": "Uru ruzinduko rwarangiye: ibyanditswe hasi ni ibyo gusoma gusa kandi bigumye muri dosiye y’umurwayi.",
+    "supplyLabel": "Umurwayi abubona:",
+    "supply": {
+      "pharmacy": "Kuri farumasi",
+      "room": "Ndamuha hano"
+    },
+    "givenHere": "Yahawe hano",
+    "givenBy": "yatanzwe na {{name}}",
+    "verified": "Byemejwe",
+    "notVerified": "Ntibiremezwa",
+    "findings": "Ibyagaragaye",
+    "impression": "Umwanzuro",
+    "verifyNow": "Byemejwe (igisubizo cya nyuma)",
+    "saveResult": "Bika igisubizo",
+    "enterResult": "Andika igisubizo",
+    "editResult": "Kosora igisubizo",
+    "resultSaved": "Igisubizo cyabitswe; muganga wagisabye yamenyeshejwe."
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -1743,7 +1766,9 @@
     },
     "queuePool": "{{ticket}} {{name}} ategereje muganga wa mbere ubonetse",
     "referral": "{{ticket}} {{name}} yoherejwe kuri {{desk}} na {{by}}",
-    "referralBack": "arashaka kongera kubona umurwayi nyuma"
+    "referralBack": "arashaka kongera kubona umurwayi nyuma",
+    "result": "Igisubizo cyabonetse: {{test}} · {{name}}",
+    "cover": "Usimbuye {{doctor}} kugeza {{until}}"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -1925,5 +1950,20 @@
     "sentBack": "Umurwayi yagaruwe kuri {{name}}.",
     "backNote": "Byarangiye kuri {{desk}}",
     "from": "avuye kuri {{name}}"
+  },
+  "cover": {
+    "title": "Nsimbura",
+    "ask": "Saba umuforomo kunsimbura",
+    "nurse": "Umuforomo",
+    "pickNurse": "Hitamo umuforomo",
+    "until": "Kugeza",
+    "note": "Ubutumwa ku muforomo (si ngombwa)",
+    "start": "Tangira gusimbura",
+    "end": "Hagarika",
+    "coveredBy": "{{name}} arakusimbura kugeza {{until}}",
+    "hint": "Igihe agusimbuye, umuforomo abona umurongo wawe, yakira abarwayi bakoherejweho kandi ashobora kubavura no kurangiza inzinduko zabo mu mwanya wawe. Byose byandikwa mu izina rye.",
+    "covering": "Usimbuye {{name}} kugeza {{until}}",
+    "coveringHint": "Abarwayi be bari hasi: bakire, ubavure kandi urangize inzinduko zabo nk’uko muganga yabikora. Byose byandikwa mu izina ryawe.",
+    "queue": "Umurongo wa {{name}}"
   }
 }

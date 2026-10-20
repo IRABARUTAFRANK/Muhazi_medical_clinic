@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import {
   CheckCircle2,
+  HandHeart,
   ClipboardList,
   FlaskConical,
   Pill,
@@ -17,6 +18,7 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { treatmentName, useTreatments } from '@/lib/api/catalogue'
 import { useClinicalActions, useItems, useVisitClinical, type Item } from '@/lib/api/patients'
+import { stationFor } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
@@ -31,6 +33,8 @@ interface RxLine {
   frequency: string
   days: string
   instructions: string
+  /** Patient collects it at the pharmacy, or the prescriber gives it here from the room. */
+  supply: 'pharmacy' | 'room'
 }
 const emptyLine = (): RxLine => ({
   item: '',
@@ -40,6 +44,7 @@ const emptyLine = (): RxLine => ({
   frequency: '',
   days: '',
   instructions: '',
+  supply: 'pharmacy',
 })
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
 
@@ -51,11 +56,14 @@ const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Dat
 export function ClinicalCard({
   encounterId,
   user,
+  closed = false,
   onDone,
   onError,
 }: {
   encounterId: string
   user: StaffUser
+  /** A finished visit: shown read-only (everything stays in the patient file). */
+  closed?: boolean
   onDone: (m: string) => void
   onError: (m: string | null) => void
 }) {
@@ -65,7 +73,12 @@ export function ClinicalCard({
   const { data: items = [] } = useItems()
   const { data: treatments = [] } = useTreatments(true)
   const tests = treatments.filter((x) => x.group === 'lab' || x.group === 'imaging')
-  const clinician = user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager'
+  const clinician =
+    (user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager') && !closed
+  // Lab / ultrasound staff (and clinicians) record results; reception and the cashier do not.
+  const canResult = !closed && user.role !== 'receptionist' && user.role !== 'cashier'
+  const [resultFor, setResultFor] = useState<string | null>(null)
+  const [result, setResult] = useState({ findings: '', impression: '', verify: true })
   const [mode, setMode] = useState<'note' | 'dx' | 'rx' | 'test' | null>(null)
 
   // small forms
@@ -135,6 +148,8 @@ export function ClinicalCard({
             frequency: line.frequency,
             days: line.days ? Number(line.days) : undefined,
             instructions: line.instructions,
+            supply: line.supply,
+            station: stationFor(user),
           })
         }
         setRx([emptyLine()])
@@ -193,13 +208,22 @@ export function ClinicalCard({
       )}
       <CardBody className="gap-3">
         {error && <p className={errorBox}>{error.message}</p>}
-        <div className="flex flex-wrap gap-2">
-          {tabBtn('note', t('clinical.addNote'), <ClipboardList size={14} aria-hidden="true" />)}
-          {tabBtn('dx', t('clinical.addDx'), <Stethoscope size={14} aria-hidden="true" />)}
-          {tabBtn('rx', t('clinical.addRx'), <Pill size={14} aria-hidden="true" />)}
-          {tabBtn('test', t('clinical.addTest'), <FlaskConical size={14} aria-hidden="true" />)}
-        </div>
-        {!clinician && <p className="text-ink-3 m-0 text-xs">{t('clinical.readOnly')}</p>}
+        {closed && (
+          <p className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+            {t('clinical.closedNote')}
+          </p>
+        )}
+        {!closed && (
+          <div className="flex flex-wrap gap-2">
+            {tabBtn('note', t('clinical.addNote'), <ClipboardList size={14} aria-hidden="true" />)}
+            {tabBtn('dx', t('clinical.addDx'), <Stethoscope size={14} aria-hidden="true" />)}
+            {tabBtn('rx', t('clinical.addRx'), <Pill size={14} aria-hidden="true" />)}
+            {tabBtn('test', t('clinical.addTest'), <FlaskConical size={14} aria-hidden="true" />)}
+          </div>
+        )}
+        {!clinician && !closed && (
+          <p className="text-ink-3 m-0 text-xs">{t('clinical.readOnly')}</p>
+        )}
 
         {mode === 'note' && (
           <form onSubmit={submitNote} className="flex flex-col gap-2">
@@ -355,6 +379,33 @@ export function ClinicalCard({
                     <Trash2 size={16} aria-hidden="true" />
                   </Button>
                 </div>
+                <div className="flex flex-wrap items-center gap-2 pt-1" role="radiogroup">
+                  <span className="text-ink-2 text-[13px] font-semibold">
+                    {t('clinical.supplyLabel')}
+                  </span>
+                  {(['pharmacy', 'room'] as const).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      role="radio"
+                      aria-checked={line.supply === k}
+                      onClick={() => setLine(i, { supply: k })}
+                      className={cn(
+                        'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                        line.supply === k
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-border bg-card text-ink-2 hover:bg-hover',
+                      )}
+                    >
+                      {k === 'pharmacy' ? (
+                        <Pill size={14} aria-hidden="true" />
+                      ) : (
+                        <HandHeart size={14} aria-hidden="true" />
+                      )}
+                      {t(`clinical.supply.${k}`)}
+                    </button>
+                  ))}
+                </div>
               </fieldset>
             ))}
             <div className="flex flex-wrap gap-2">
@@ -460,8 +511,13 @@ export function ClinicalCard({
       {data &&
         data.prescriptions.map((r) => (
           <Row key={r.id} className="gap-3 py-2">
-            <Badge tone={r.dispensed ? 'green' : 'yellow'} dot={false}>
-              {t(r.dispensed ? 'clinical.dispensed' : 'clinical.toDispense')}
+            <Badge
+              tone={r.supply === 'room' ? 'blue' : r.dispensed ? 'green' : 'yellow'}
+              dot={false}
+            >
+              {r.supply === 'room'
+                ? t('clinical.givenHere')
+                : t(r.dispensed ? 'clinical.dispensed' : 'clinical.toDispense')}
             </Badge>
             <span className="min-w-0 flex-1">
               <span className="block font-semibold">
@@ -474,6 +530,9 @@ export function ClinicalCard({
                   r.frequency,
                   r.days ? t('clinical.forDays', { count: r.days }) : null,
                   r.instructions,
+                  r.supply === 'room' && r.givenBy
+                    ? t('clinical.givenBy', { name: r.givenBy })
+                    : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -494,10 +553,101 @@ export function ClinicalCard({
                 {o.test}{' '}
                 <span className="text-ink-3 text-xs">· {t(`clinical.status.${o.status}`)}</span>
               </span>
-              <span className="text-ink-3 block text-xs">
-                {[o.reason, o.result?.impression ?? o.result?.findings].filter(Boolean).join(' · ')}
-              </span>
+              {o.reason && <span className="text-ink-3 block text-xs">{o.reason}</span>}
+              {o.result && (
+                <span className="bg-green-bg/60 mt-1 block rounded-lg px-2.5 py-1.5 text-[13px]">
+                  {o.result.findings && <span className="block">{o.result.findings}</span>}
+                  {o.result.impression && (
+                    <span className="block font-semibold">{o.result.impression}</span>
+                  )}
+                  <span className="text-ink-3 block text-xs">
+                    {[
+                      o.result.verified ? t('clinical.verified') : t('clinical.notVerified'),
+                      o.result.by,
+                      o.result.at ? when(o.result.at) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                </span>
+              )}
+              {resultFor === o.id && (
+                <form
+                  className="mt-2 flex flex-col gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void run(
+                      () =>
+                        actions.recordResult
+                          .mutateAsync({ requestId: o.id, ...result })
+                          .then(() => setResultFor(null)),
+                      t('clinical.resultSaved'),
+                    )
+                  }}
+                >
+                  <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+                    {t('clinical.findings')}
+                    <textarea
+                      rows={2}
+                      className="border-border bg-card rounded-lg border px-2.5 py-2 text-[14px] font-normal"
+                      value={result.findings}
+                      onChange={(e) => setResult({ ...result, findings: e.target.value })}
+                    />
+                  </label>
+                  <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+                    {t('clinical.impression')}
+                    <input
+                      className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px] font-normal"
+                      value={result.impression}
+                      onChange={(e) => setResult({ ...result, impression: e.target.value })}
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-[13px] font-semibold">
+                    <input
+                      type="checkbox"
+                      className="accent-primary size-4"
+                      checked={result.verify}
+                      onChange={(e) => setResult({ ...result, verify: e.target.checked })}
+                    />
+                    {t('clinical.verifyNow')}
+                  </label>
+                  <span className="flex gap-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      variant="primary"
+                      loading={actions.recordResult.isPending}
+                    >
+                      {t('clinical.saveResult')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setResultFor(null)}
+                    >
+                      {t('staff.form.cancel')}
+                    </Button>
+                  </span>
+                </form>
+              )}
             </span>
+            {canResult && resultFor !== o.id && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setResultFor(o.id)
+                  setResult({
+                    findings: o.result?.findings ?? '',
+                    impression: o.result?.impression ?? '',
+                    verify: true,
+                  })
+                }}
+              >
+                <FlaskConical size={14} aria-hidden="true" />
+                {t(o.result ? 'clinical.editResult' : 'clinical.enterResult')}
+              </Button>
+            )}
           </Row>
         ))}
 

@@ -44,6 +44,7 @@ import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
+import { CoverMePanel } from './cover-panels'
 import { DeskDashboard } from './desk-dashboard'
 import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
 
@@ -192,6 +193,7 @@ function RoleHome({ user, mode }: HomePageProps) {
             />
             {summary && (
               <div className="flex min-w-0 flex-col gap-4">
+                {role === 'doctor' && user.role === 'doctor' && <CoverMePanel />}
                 <NoticesPanel limit={4} />
                 <RolePanels role={role} data={summary} />
               </div>

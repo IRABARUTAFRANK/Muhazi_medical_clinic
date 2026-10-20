@@ -1118,7 +1118,8 @@
     },
     "patientFile": "Patient file",
     "backToClinic": "Back to In the clinic",
-    "sentMany": "Patient sent to {{station}}: the first one free takes the patient."
+    "sentMany": "Patient sent to {{station}}: the first one free takes the patient.",
+    "closedBanner": "Visit finished {{when}}. Everything recorded stays in the patient file."
   },
   "settings": {
     "title": "Clinic settings",
@@ -1374,7 +1375,12 @@
     "removeField": "Remove “{{name}}”",
     "noExtra": "No extra information yet. Use “Add a field”, or let the manager define fields for every patient in Settings.",
     "allergiesHint": "Only medicines, foods or substances that cause a reaction (rash, swelling, breathing trouble). Other remarks go in Notes.",
-    "inClinicNow": "This patient is in the clinic now, waiting at {{station}}. The blue button opens that visit: vitals, notes, diagnosis, treatments, prescriptions and payment are all recorded there."
+    "inClinicNow": "This patient is in the clinic now, waiting at {{station}}. The blue button opens that visit: vitals, notes, diagnosis, treatments, prescriptions and payment are all recorded there.",
+    "results": "Lab and imaging results",
+    "noResults": "No test ordered for this patient yet.",
+    "awaitingResult": "Waiting for result",
+    "orderedBy": "ordered by {{name}}, {{when}}",
+    "resultBy": "result by {{name}}, {{when}}"
   },
   "clinical": {
     "title": "Clinical record",
@@ -1462,7 +1468,24 @@
       "rectal": "Rectal",
       "inhaled": "Inhaled",
       "other": "Other"
-    }
+    },
+    "closedNote": "This visit is finished: the record below is read-only and stays in the patient file.",
+    "supplyLabel": "The patient gets it:",
+    "supply": {
+      "pharmacy": "At the pharmacy",
+      "room": "I give it here"
+    },
+    "givenHere": "Given here",
+    "givenBy": "given by {{name}}",
+    "verified": "Verified",
+    "notVerified": "Not verified yet",
+    "findings": "Findings",
+    "impression": "Conclusion",
+    "verifyNow": "Verified (final result)",
+    "saveResult": "Save the result",
+    "enterResult": "Enter result",
+    "editResult": "Correct result",
+    "resultSaved": "Result saved; the doctor who ordered it is told."
   },
   "adjust": {
     "mode": "How to enter it",
@@ -1734,7 +1757,9 @@
     },
     "queuePool": "{{ticket}} {{name}} is waiting for the first free doctor",
     "referral": "{{ticket}} {{name}} referred to {{desk}} by {{by}}",
-    "referralBack": "asks to see the patient again afterwards"
+    "referralBack": "asks to see the patient again afterwards",
+    "result": "Result ready: {{test}} · {{name}}",
+    "cover": "You are covering for {{doctor}} until {{until}}"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -1916,5 +1941,20 @@
     "sentBack": "Patient sent back to {{name}}.",
     "backNote": "Done at {{desk}}",
     "from": "from {{name}}"
+  },
+  "cover": {
+    "title": "Cover for me",
+    "ask": "Ask a nurse to cover for me",
+    "nurse": "Nurse",
+    "pickNurse": "Choose the nurse",
+    "until": "Until",
+    "note": "Note for the nurse (optional)",
+    "start": "Start the cover",
+    "end": "End",
+    "coveredBy": "{{name}} is covering for you until {{until}}",
+    "hint": "While covering, the nurse sees your queue, receives the patients sent to you and may treat and finish their visits in your place. Everything is recorded in the nurse’s name.",
+    "covering": "You are covering for {{name}} until {{until}}",
+    "coveringHint": "Their patients are below: take, treat and finish them as the doctor would. Everything is recorded in your name.",
+    "queue": "Queue of {{name}}"
   }
 }

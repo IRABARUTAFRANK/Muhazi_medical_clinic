@@ -56,6 +56,19 @@ export function useWording() {
               .join(' · ') || null,
         }
       }
+      case 'result':
+        return {
+          title: t('notify.result', { test: p.test ?? '', name: p.name ?? '' }),
+          body: p.impression ?? null,
+        }
+      case 'cover':
+        return {
+          title: t('notify.cover', {
+            doctor: p.doctor ?? '',
+            until: p.until ? formatTime(new Date(p.until)) : '',
+          }),
+          body: p.note ?? null,
+        }
       case 'task':
         return {
           title: t('notify.task', { title: p.title ?? '' }),

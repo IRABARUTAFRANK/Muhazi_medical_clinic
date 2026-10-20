@@ -1118,7 +1118,8 @@
     },
     "patientFile": "Dossier patient",
     "backToClinic": "Retour à « À la clinique »",
-    "sentMany": "Patient envoyé à {{station}} : le premier libre le prend."
+    "sentMany": "Patient envoyé à {{station}} : le premier libre le prend.",
+    "closedBanner": "Visite terminée le {{when}}. Tout reste dans le dossier patient."
   },
   "settings": {
     "title": "Paramètres de la clinique",
@@ -1374,7 +1375,12 @@
     "removeField": "Supprimer « {{name}} »",
     "noExtra": "Aucune information complémentaire. Utilisez « Ajouter un champ », ou laissez le gestionnaire définir des champs pour tous les patients dans Paramètres.",
     "allergiesHint": "Uniquement les médicaments, aliments ou substances qui provoquent une réaction (éruption, gonflement, gêne respiratoire). Les autres remarques vont dans Notes.",
-    "inClinicNow": "Ce patient est à la clinique, en attente au {{station}}. Le bouton bleu ouvre cette visite : constantes, notes, diagnostic, soins, ordonnances et paiement y sont enregistrés."
+    "inClinicNow": "Ce patient est à la clinique, en attente au {{station}}. Le bouton bleu ouvre cette visite : constantes, notes, diagnostic, soins, ordonnances et paiement y sont enregistrés.",
+    "results": "Résultats de laboratoire et d’imagerie",
+    "noResults": "Aucun examen demandé pour ce patient.",
+    "awaitingResult": "En attente du résultat",
+    "orderedBy": "demandé par {{name}}, {{when}}",
+    "resultBy": "résultat par {{name}}, {{when}}"
   },
   "clinical": {
     "title": "Dossier clinique",
@@ -1462,7 +1468,24 @@
       "rectal": "Rectale",
       "inhaled": "Inhalée",
       "other": "Autre"
-    }
+    },
+    "closedNote": "Cette visite est terminée : le dossier ci-dessous est en lecture seule et reste dans le dossier patient.",
+    "supplyLabel": "Le patient le reçoit :",
+    "supply": {
+      "pharmacy": "À la pharmacie",
+      "room": "Je le donne ici"
+    },
+    "givenHere": "Donné ici",
+    "givenBy": "donné par {{name}}",
+    "verified": "Validé",
+    "notVerified": "Pas encore validé",
+    "findings": "Observations",
+    "impression": "Conclusion",
+    "verifyNow": "Validé (résultat final)",
+    "saveResult": "Enregistrer le résultat",
+    "enterResult": "Saisir le résultat",
+    "editResult": "Corriger le résultat",
+    "resultSaved": "Résultat enregistré ; le médecin prescripteur est prévenu."
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -1734,7 +1757,9 @@
     },
     "queuePool": "{{ticket}} {{name}} attend le premier médecin libre",
     "referral": "{{ticket}} {{name}} adressé à {{desk}} par {{by}}",
-    "referralBack": "souhaite revoir le patient ensuite"
+    "referralBack": "souhaite revoir le patient ensuite",
+    "result": "Résultat prêt : {{test}} · {{name}}",
+    "cover": "Vous remplacez {{doctor}} jusqu’à {{until}}"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -1916,5 +1941,20 @@
     "sentBack": "Patient renvoyé à {{name}}.",
     "backNote": "Terminé à {{desk}}",
     "from": "de {{name}}"
+  },
+  "cover": {
+    "title": "Me faire remplacer",
+    "ask": "Demander à un infirmier de me remplacer",
+    "nurse": "Infirmier / infirmière",
+    "pickNurse": "Choisir l’infirmier",
+    "until": "Jusqu’à",
+    "note": "Note pour l’infirmier (facultatif)",
+    "start": "Commencer le remplacement",
+    "end": "Terminer",
+    "coveredBy": "{{name}} vous remplace jusqu’à {{until}}",
+    "hint": "Pendant le remplacement, l’infirmier voit votre file, reçoit les patients qui vous sont adressés et peut les soigner et terminer leur visite à votre place. Tout est enregistré à son nom.",
+    "covering": "Vous remplacez {{name}} jusqu’à {{until}}",
+    "coveringHint": "Ses patients sont ci-dessous : prenez-les, soignez-les et terminez leur visite comme le médecin. Tout est enregistré à votre nom.",
+    "queue": "File de {{name}}"
   }
 }

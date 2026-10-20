@@ -3,6 +3,8 @@ import { useNavigate } from '@tanstack/react-router'
 import {
   ArrowRightLeft,
   Bell,
+  FlaskConical,
+  HeartHandshake,
   CalendarCheck,
   CheckCheck,
   EyeOff,
@@ -41,6 +43,8 @@ type Filter = 'all' | 'unread' | 'urgent' | 'patients' | 'messages'
 const KIND_LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   queue: { icon: Users, tint: 'amber' },
   referral: { icon: ArrowRightLeft, tint: 'violet' },
+  result: { icon: FlaskConical, tint: 'mint' },
+  cover: { icon: HeartHandshake, tint: 'mint' },
   task: { icon: ListTodo, tint: 'teal' },
   inquiry: { icon: MessageSquare, tint: 'violet' },
   to_accept: { icon: CalendarCheck, tint: 'navy' },

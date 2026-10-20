@@ -36,6 +36,7 @@ import {
   StationGlyph,
 } from '@/components/dash/kit'
 import { NoticesPanel } from '@/components/dash/notices-panel'
+import { CoveringPanels } from './cover-panels'
 import {
   delta,
   greetingFor,
@@ -159,6 +160,9 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
         {data && (
           <div className="flex flex-col gap-5">
             {nurse ? <NurseTiles d={data} /> : <ReceptionTiles d={data} />}
+
+            {/* Covering for a doctor: their queue comes first */}
+            {nurse && <CoveringPanels user={user} />}
 
             {/* THE WORK OF THE DAY */}
             <section className="flex flex-col gap-3">

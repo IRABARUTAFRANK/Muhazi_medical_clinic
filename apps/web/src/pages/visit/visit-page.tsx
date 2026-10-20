@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, ArrowLeft, FolderOpen, Plus, Receipt, Trash2 } from 'lucide-react'
+import { Activity, ArrowLeft, CheckCircle2, FolderOpen, Plus, Receipt, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FEATURES, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
+import { FEATURES, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
@@ -27,6 +27,8 @@ import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { resolveAdjust, type AdjustMode } from '@/lib/adjust'
 import { AdjustField } from '@/components/ui/adjust-field'
+import { useMyCover } from '@/lib/api/cover'
+import { useVisitRouting } from '@/lib/api/referrals'
 import { ClinicalCard } from './clinical-card'
 import { WhereNextCard } from './where-next-card'
 
@@ -39,7 +41,17 @@ const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-s
  */
 export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId: string }) {
   const { t } = useTranslation()
-  const myStation = stationFor(user)
+  // The desk this person works at for this patient: the one the patient was referred to them at,
+  // or the covered doctor's desk while covering; otherwise their own station.
+  const { data: routing = [] } = useVisitRouting(encounterId)
+  const { data: cover } = useMyCover()
+  const coverDesks = (cover?.covering ?? []).map((c) =>
+    stationFor({ ...user, role: 'doctor', station: c.station ?? undefined }),
+  )
+  const assigned =
+    routing.find((r) => r.assignedTo === user.id) ??
+    routing.find((r) => coverDesks.includes(r.station))
+  const myStation = assigned?.station ?? stationFor(user)
   const { data: header, isLoading, error } = useVisitHeader(encounterId)
   const { data: vitals = [] } = useVisitVitals(encounterId)
   const { data: bill } = useVisitBill(encounterId)
@@ -52,6 +64,8 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const isManagerNav = user.role === 'manager' || user.dashboard === 'manager'
   // Reception sends patients on and completes files; treatments and the bill are not theirs.
   const isReception = user.role === 'receptionist'
+  // A finished visit opens read-only (it stays in the patient file).
+  const closed = !!header?.closed
   const [addingVitals, setAddingVitals] = useState(false)
   /** "Measured by Chantal at 09:12 · typed by Josiane" for the nurse's paper sheet case. */
   const vitalSource = (v: Vital) => {
@@ -152,7 +166,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                   </Chip>
                 ))}
                 <span className="flex-1" />
-                {!addingVitals && (
+                {!addingVitals && !closed && (
                   <Button size="sm" onClick={() => setAddingVitals(true)}>
                     <Activity size={14} aria-hidden="true" />
                     {t(vitals.length ? 'vitalsForm.addMore' : 'vitalsForm.add')}
@@ -165,6 +179,17 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                 </CardBody>
               )}
             </Card>
+
+            {closed && (
+              <p className="bg-green-bg text-green m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+                <CheckCircle2 size={18} aria-hidden="true" />
+                {t('visit.closedBanner', {
+                  when: header.closedAt
+                    ? `${formatDate(new Date(header.closedAt))} ${formatTime(new Date(header.closedAt))}`
+                    : '',
+                })}
+              </p>
+            )}
 
             {addingVitals && (
               <VitalsForm
@@ -198,6 +223,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               <ClinicalCard
                 encounterId={encounterId}
                 user={user}
+                closed={closed}
                 onDone={(m) => {
                   setActionError(null)
                   setDone(m)
@@ -355,6 +381,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                     encounterId={encounterId}
                     myStation={myStation}
                     isReception={isReception}
+                    closed={closed}
                     onDone={(m) => {
                       setActionError(null)
                       setDone(m)
@@ -365,7 +392,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               )}
 
               <div className="flex flex-col gap-4">
-                {(user.role === 'cashier' || user.role === 'manager') && bill && (
+                {(user.role === 'cashier' || user.role === 'manager') && bill && !closed && (
                   <PaymentCard
                     bill={bill}
                     onPay={async (input) => {
@@ -384,7 +411,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                     }}
                   />
                 )}
-                {!isReception && (
+                {!isReception && !closed && (
                   <AddChargeCard
                     treatments={treatments}
                     office={myStation}
@@ -409,6 +436,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                     encounterId={encounterId}
                     myStation={myStation}
                     isReception={isReception}
+                    closed={closed}
                     onDone={(m) => {
                       setActionError(null)
                       setDone(m)

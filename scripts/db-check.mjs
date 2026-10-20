@@ -1,6 +1,6 @@
 /**
  * Runs every migration and the seed against an in-memory Postgres (PGlite), then walks the
- * patient journey of doc §3 / §4.5 to prove the business rules work before touching Supabase.
+ * patient journey of doc Â§3 / Â§4.5 to prove the business rules work before touching Supabase.
  *
  *   pnpm db:check
  *
@@ -106,7 +106,7 @@ await step(
     if (payers.n !== 0) throw new Error(`${payers.n} insurers (expected none active)`)
     if (info.j.profile.phone !== '0799476752') throw new Error('profile phone not seeded')
     if (typeof status.j.open !== 'boolean') throw new Error('status.open missing')
-    return `${lines.n} lines · ${payers.n} insurers · open=${status.j.open}`
+    return `${lines.n} lines Â· ${payers.n} insurers Â· open=${status.j.open}`
   },
 )
 
@@ -120,13 +120,14 @@ const mkUser = async (username, full_name, role, extra = {}) => {
   staff[role] = r.id
   return r.id
 }
-await step('auth users → profiles trigger', async () => {
+await step('auth users â†’ profiles trigger', async () => {
   await mkUser('j.uwimana', 'Uwimana Josiane', 'receptionist')
   await mkUser('c.nyirahabimana', 'Nyirahabimana Chantal', 'nurse', { station: 'Triage' })
-  await mkUser('b.mukamana', 'Dr. Mukamana Béatrice', 'doctor', { station: 'Consultation 1' })
+  await mkUser('b.mukamana', 'Dr. Mukamana BÃ©atrice', 'doctor', { station: 'Consultation 1' })
   await mkUser('s.mugisha', 'Mugisha Samuel', 'cashier')
   await mkUser('p.kalisa', 'Kalisa Pascal', 'pharmacist')
-  await mkUser('t.mugabo', 'Mugabo Théogène', 'manager', { dashboard: 'manager' })
+  await mkUser('u.lab', 'Uwera Diane', 'lab_tech')
+  await mkUser('t.mugabo', 'Mugabo ThÃ©ogÃ¨ne', 'manager', { dashboard: 'manager' })
   const r = await one(`select count(*)::int as n, bool_and(active) as active from profiles`)
   return `${r.n} profiles`
 })
@@ -153,9 +154,9 @@ await step(
     await asAdmin()
     const logins = await one(`select count(*)::int as n from audit_event where action = 'login'`)
     if (!refused) throw new Error('deactivated cashier could sign in')
-    if (dir.n !== 6) throw new Error(`directory ${dir.n}`)
+    if (dir.n !== 7) throw new Error(`directory ${dir.n}`)
     if (logins.n < 1) throw new Error('login not audited')
-    return `stamped · ${logins.n} login event(s) · deactivation enforced · directory ${dir.n}`
+    return `stamped Â· ${logins.n} login event(s) Â· deactivation enforced Â· directory ${dir.n}`
   },
 )
 await expectError(
@@ -183,9 +184,9 @@ await step('mark_pin_changed clears the first-PIN flag for the caller only', asy
   if (r.must_change_pin !== false || other.must_change_pin !== true) throw new Error('flags wrong')
 })
 
-// ---------------------------------------------------------------- the patient journey (doc §3, §4.5 worked example)
+// ---------------------------------------------------------------- the patient journey (doc Â§3, Â§4.5 worked example)
 let patientId, coverageId, encounterId, invoiceId
-await step('receptionist registers a patient → hub file number', async () => {
+await step('receptionist registers a patient â†’ hub file number', async () => {
   await as(staff.receptionist)
   const r = await one(
     `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
@@ -211,7 +212,7 @@ await step('coverage: RSSB RAMA member', async () => {
   )
   coverageId = r.id
 })
-await step('walk-in: open_encounter → ticket + draft invoice', async () => {
+await step('walk-in: open_encounter â†’ ticket + draft invoice', async () => {
   const r = await one(`select open_encounter($1, 'opd', 'triage', $2) as id`, [
     patientId,
     coverageId,
@@ -284,7 +285,7 @@ await step('nurse types the injection price with a reason (1,000)', async () => 
     [encounterId],
   )
 })
-await step('pharmacist dispenses FEFO 21 × amoxicillin and charges 6,300', async () => {
+await step('pharmacist dispenses FEFO 21 Ã— amoxicillin and charges 6,300', async () => {
   await as(staff.pharmacist)
   const loc = await one(`select id from stock_location where name = 'Pharmacy'`)
   const item = await one(`select id from item where code = 'AMOX500'`)
@@ -319,18 +320,22 @@ await expectError(
   },
   /payment_method_accepted/i,
 )
-await step('cashier records MoMo 2,745 with reference and posts → INV number + claim', async () => {
-  await as(staff.cashier)
-  await db.query(`select record_payment($1, 'momo', 2745, 'MP251015.1234.A12345', '0788123456')`, [
-    invoiceId,
-  ])
-  const n = await one(`select post_invoice($1) as number`, [invoiceId])
-  const bal = await one(`select invoice_balance($1) as balance`, [invoiceId])
-  await asAdmin()
-  const claim = await one(`select status, amount from claim where invoice_id = $1`, [invoiceId])
-  if (Number(bal.balance) !== 0) throw new Error(`balance ${bal.balance}`)
-  return `${n.number}, balance 0, claim ${claim.status} ${claim.amount}`
-})
+await step(
+  'cashier records MoMo 2,745 with reference and posts â†’ INV number + claim',
+  async () => {
+    await as(staff.cashier)
+    await db.query(
+      `select record_payment($1, 'momo', 2745, 'MP251015.1234.A12345', '0788123456')`,
+      [invoiceId],
+    )
+    const n = await one(`select post_invoice($1) as number`, [invoiceId])
+    const bal = await one(`select invoice_balance($1) as balance`, [invoiceId])
+    await asAdmin()
+    const claim = await one(`select status, amount from claim where invoice_id = $1`, [invoiceId])
+    if (Number(bal.balance) !== 0) throw new Error(`balance ${bal.balance}`)
+    return `${n.number}, balance 0, claim ${claim.status} ${claim.amount}`
+  },
+)
 await expectError(
   'posted invoice is immutable',
   async () => {
@@ -354,7 +359,7 @@ await step('manager creates the monthly RSSB claim batch', async () => {
     `select create_claim_batch((select id from payer where code = 'RAMA'), date_trunc('month', now())::date, (date_trunc('month', now()) + interval '1 month - 1 day')::date) as id`,
   )
   const b = await one(`select number, total_claimed from claim_batch where id = $1`, [r.id])
-  return `${b.number} · ${b.total_claimed}`
+  return `${b.number} Â· ${b.total_claimed}`
 })
 await step('audit log has entries for every write', async () => {
   await asAdmin()
@@ -374,7 +379,7 @@ const nextMondayTen = () => {
 }
 const slot = nextMondayTen()
 let appointmentId
-await step('anonymous inquiry for Dr. Mukamana next Monday 10:00 → reference', async () => {
+await step('anonymous inquiry for Dr. Mukamana next Monday 10:00 â†’ reference', async () => {
   await as(null, 'anon')
   const r = await one(
     `select create_appointment_inquiry('mb', $1::timestamptz, 'Uwase Claudine', '0788 000 111', 'RSSB RAMA', 'consultation', null, 'whatsapp') as ref`,
@@ -419,7 +424,7 @@ await expectError(
     ),
   /does not work at that time/i,
 )
-await step('receptionist approves, doctor accepts → confirmed', async () => {
+await step('receptionist approves, doctor accepts â†’ confirmed', async () => {
   await as(staff.receptionist)
   await db.query(`select approve_inquiry($1, $2)`, [appointmentId, patientId])
   await as(staff.doctor)
@@ -461,7 +466,7 @@ await expectError(
   },
   /not allowed/i,
 )
-await step('manager adjusts prices ×1.1, then deletes a treatment', async () => {
+await step('manager adjusts prices Ã—1.1, then deletes a treatment', async () => {
   await as(staff.manager)
   const id = (await one(`select upsert_service(null, 'Check test', 'consultation', 1000) as id`)).id
   const n = (await one(`select adjust_prices('consultation', 'multiply', 1.1, 100) as n`)).n
@@ -483,7 +488,7 @@ await step('manager deletes an insurer', async () => {
 
 // ---------------------------------------------------------------- vitals on behalf (0020)
 let paperVisit = null
-await step('receptionist types the nurse’s paper vitals; patient moves on', async () => {
+await step('receptionist types the nurseâ€™s paper vitals; patient moves on', async () => {
   await as(staff.receptionist)
   paperVisit = (await one(`select open_encounter($1, 'opd', 'triage', null) as id`, [patientId])).id
   await db.query(
@@ -537,7 +542,7 @@ await step('doctor adds later vitals without moving the patient', async () => {
 })
 
 // ---------------------------------------------------------------- linked desk operations (0022)
-await step('reception marks a booked patient arrived → linked to a visit', async () => {
+await step('reception marks a booked patient arrived â†’ linked to a visit', async () => {
   await as(staff.receptionist)
   const day = await one(
     `select appointments_day((select (starts_at at time zone 'Africa/Kigali')::date from appointment where id = $1)) as d`,
@@ -586,7 +591,7 @@ await step('nurse admits to a bed, discharges, marks it ready', async () => {
   await asAdmin()
   const s = await one(`select status from bed where id = $1`, [bed.id])
   if (s.status !== 'free') throw new Error(s.status)
-  return 'occupied → cleaning → free'
+  return 'occupied â†’ cleaning â†’ free'
 })
 await expectError(
   'only the manager sets the number of beds (0028)',
@@ -630,7 +635,7 @@ await step('manager sets 6 beds at 15,000 a night; a 2-night stay bills 30,000',
 })
 
 // ---------------------------------------------------------------- nurse registers, reception completes (0023)
-await step('nurse registers with name/sex/age only → reception sees it to complete', async () => {
+await step('nurse registers with name/sex/age only â†’ reception sees it to complete', async () => {
   await as(staff.nurse)
   const v = await one(`select register_patient('Quick', 'Nurse Entry', 'female', null, 30) as v`)
   const pid = v.v.patient_id
@@ -645,7 +650,7 @@ await step('nurse registers with name/sex/age only → reception sees it to comp
   )
   const after = (await one(`select files_to_complete() as l`)).l
   if (after.some((r) => r.patientId === pid)) throw new Error('still listed after completing')
-  return `missing ${missing} → completed by reception`
+  return `missing ${missing} â†’ completed by reception`
 })
 
 // ---------------------------------------------------------------- trusted devices (0025)
@@ -664,7 +669,7 @@ await step('a trusted device skips the code; revoked or foreign keys do not', as
   await as(staff.nurse)
   if ((await one(`select use_trusted_device($1) as ok`, [key])).ok)
     throw new Error('revoked key accepted')
-  return 'trusted → used → revoked'
+  return 'trusted â†’ used â†’ revoked'
 })
 await step('trust_days 0 means a code at every sign-in', async () => {
   await as(staff.manager)
@@ -773,7 +778,7 @@ await step('adult without ID is flagged until the file says why there is none', 
   await asAdmin()
   const after = await one(`select patient_missing(p) as m from patient p where id = $1`, [pid])
   if (after.m.includes('national_id')) throw new Error('still flagged')
-  return 'flagged → "not issued yet" → not flagged'
+  return 'flagged â†’ "not issued yet" â†’ not flagged'
 })
 await step('sent to two doctor desks; the first doctor who takes removes the other', async () => {
   await as(staff.receptionist)
@@ -845,7 +850,7 @@ await step('a patient waiting since yesterday still counts (0030)', async () => 
   return `waiting ${status.waiting}; ${q.station} tile ${tile.waiting} waiting`
 })
 // ---------------------------------------------------------------- 0031
-await step('shared patient → one notice per role, gone once a doctor takes them', async () => {
+await step('shared patient â†’ one notice per role, gone once a doctor takes them', async () => {
   await as(staff.receptionist)
   const v = await one(`select open_encounter($1, 'opd', 'reception', null) as id`, [patientId])
   await db.query(
@@ -939,8 +944,87 @@ await step('doctor refers to another desk with "come back to me"; it is sent bac
   await as(staff.pharmacist)
   const left = (await one(`select my_notifications(200) as n`)).n
   if (left.items.some((x) => x.id === notice.id)) throw new Error('old notice not cleared')
-  return 'consultation → pharmacy (why + way back) → back to the same doctor'
+  return 'consultation â†’ pharmacy (why + way back) â†’ back to the same doctor'
 })
+
+// ---------------------------------------------------------------- 0035 results, room medicines, cover
+await step('lab result: recorded by the lab, doctor told, listed in the patient file', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+  await asAdmin()
+  const svc = await one(`select id from service where service_group = 'lab' and active limit 1`)
+  await as(staff.doctor)
+  const req = (await one(`select order_test($1, $2, 'fever') as id`, [v.id, svc.id])).id
+  await as(staff.lab_tech)
+  await db.query(`select record_result($1, 'Plasmodium seen', 'Malaria positive', true)`, [req])
+  await as(staff.doctor)
+  const n = (await one(`select my_notifications(200) as n`)).n
+  if (!n.items.some((x) => x.kind === 'result' && x.params.impression === 'Malaria positive'))
+    throw new Error('doctor not told')
+  const r = (await one(`select patient_results($1) as r`, [patientId])).r
+  const mine = r.find((x) => x.id === req)
+  if (!mine || !mine.verified || mine.impression !== 'Malaria positive')
+    throw new Error('not in file')
+  return `${mine.test}: ${mine.impression} (verified by ${mine.resultBy})`
+})
+await step('medicine given in the room: recorded as given, no pharmacy queue', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+  await asAdmin()
+  const item = await one(`select id from item where active limit 1`)
+  await as(staff.doctor)
+  const r = (
+    await one(
+      `select prescribe($1, $2, 2, '1 tab', 'oral', 'BD', 1, null, 'room', 'consultation') as r`,
+      [v.id, item.id],
+    )
+  ).r
+  await asAdmin()
+  const m = await one(`select supply, given_at from medication_request where id = $1`, [r.id])
+  const q = await db.query(
+    `select 1 from queue_entry where encounter_id = $1 and station = 'pharmacy' and finished_at is null`,
+    [v.id],
+  )
+  if (m.supply !== 'room' || !m.given_at) throw new Error('not recorded as given')
+  if (q.rows.length) throw new Error('sent to the pharmacy anyway')
+  return `given in the room; charged: ${r.charged}`
+})
+await step(
+  'nurse covers for the doctor: gets his rights and patients, loses them after',
+  async () => {
+    const can = async () => (await one(`select has_perm('orders.write') as ok`)).ok
+    await as(staff.nurse)
+    const before = await can()
+    await as(staff.doctor)
+    const cover = (
+      await one(`select start_cover($1, now() + interval '4 hours', 'Theatre all day') as id`, [
+        staff.nurse,
+      ])
+    ).id
+    await as(staff.nurse)
+    const during = await can()
+    const mine = (await one(`select my_cover() as c`)).c
+    await as(staff.receptionist)
+    const v = await one(`select open_encounter($1, 'opd', 'reception', null) as id`, [patientId])
+    await db.query(
+      `select refer_patient($1, 'reception', 'consultation', $2, 'for the doctor', false)`,
+      [v.id, staff.doctor],
+    )
+    await asAdmin()
+    const q = await one(
+      `select assigned_to from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [v.id],
+    )
+    await as(staff.doctor)
+    await db.query(`select end_cover($1)`, [cover])
+    await as(staff.nurse)
+    const after = await can()
+    if (before || !during || after) throw new Error(`rights ${before}/${during}/${after}`)
+    if (q.assigned_to !== staff.nurse) throw new Error('patient not routed to the nurse')
+    if (!mine.covering.length) throw new Error('my_cover empty')
+    return 'orders.write only during cover; patient for the doctor went to the nurse'
+  },
+)
 
 finish()
 

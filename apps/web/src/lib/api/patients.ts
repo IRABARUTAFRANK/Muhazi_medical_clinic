@@ -415,6 +415,10 @@ export interface Prescription {
   instructions: string | null
   at: string
   dispensed: boolean
+  /** Collected at the pharmacy, or given in the room by the prescriber (migration 0035). */
+  supply?: 'pharmacy' | 'room'
+  givenAt?: string | null
+  givenBy?: string | null
 }
 export interface TestOrder {
   id: string
@@ -423,7 +427,42 @@ export interface TestOrder {
   status: string
   reason: string | null
   at: string
-  result: { findings: string | null; impression: string | null; verified: boolean } | null
+  result: {
+    findings: string | null
+    impression: string | null
+    verified: boolean
+    at?: string | null
+    by?: string | null
+  } | null
+}
+
+/** A test result in the patient file (all visits). */
+export interface PatientResult {
+  id: string
+  encounterId: string
+  test: string
+  category: 'lab' | 'imaging'
+  status: string
+  reason: string | null
+  orderedAt: string
+  orderedBy: string | null
+  findings: string | null
+  impression: string | null
+  verified: boolean
+  resultAt: string | null
+  resultBy: string | null
+}
+
+export function usePatientResults(patientId: string) {
+  return useQuery({
+    queryKey: ['patients', patientId, 'results'],
+    queryFn: async (): Promise<PatientResult[]> => {
+      if (!supabase) return []
+      const { data, error } = await supabase.rpc('patient_results', { p_patient_id: patientId })
+      if (error) throw new Error(error.message)
+      return (data as PatientResult[]) ?? []
+    },
+  })
 }
 export interface VisitClinical {
   diagnoses: Diagnosis[]
@@ -627,9 +666,14 @@ export function useClinicalActions(encounterId: string) {
       frequency?: string
       days?: number
       instructions?: string
+      supply?: 'pharmacy' | 'room'
+      station?: string
     }) => {
       if (!supabase) {
         local().prescriptions.push({
+          supply: i.supply ?? 'pharmacy',
+          givenAt: i.supply === 'room' ? now() : null,
+          givenBy: null,
           id: `rx-${Date.now()}`,
           item: `${i.item.name} ${i.item.strength ?? ''}`.trim(),
           dose: i.dose ?? null,
@@ -639,11 +683,13 @@ export function useClinicalActions(encounterId: string) {
           quantity: i.quantity,
           instructions: i.instructions ?? null,
           at: now(),
-          dispensed: false,
+          dispensed: i.supply === 'room',
         })
         return
       }
       await call('prescribe', {
+        p_supply: i.supply ?? 'pharmacy',
+        p_station: i.station ?? null,
         p_encounter_id: encounterId,
         p_item_id: i.item.id,
         p_quantity: i.quantity,
@@ -686,7 +732,39 @@ export function useClinicalActions(encounterId: string) {
     },
     onSuccess: refresh,
   })
-  return { addDiagnosis, addNote, prescribe, orderTest, finishVisit }
+  /** The lab or ultrasound records the result of a test (the ordering doctor is told). */
+  const recordResult = useMutation({
+    mutationFn: async (i: {
+      requestId: string
+      findings: string
+      impression: string
+      verify: boolean
+    }) => {
+      if (!supabase) {
+        const o = local().orders.find((x) => x.id === i.requestId)
+        if (o)
+          Object.assign(o, {
+            status: i.verify ? 'verified' : 'resulted',
+            result: {
+              findings: i.findings || null,
+              impression: i.impression || null,
+              verified: i.verify,
+              at: now(),
+              by: null,
+            },
+          })
+        return
+      }
+      await call('record_result', {
+        p_request_id: i.requestId,
+        p_findings: i.findings || null,
+        p_impression: i.impression || null,
+        p_verify: i.verify,
+      })
+    },
+    onSuccess: refresh,
+  })
+  return { addDiagnosis, addNote, prescribe, orderTest, finishVisit, recordResult }
 }
 
 // ---------------------------------------------------------------- custom fields of the file
