@@ -253,7 +253,7 @@
     },
     "insurance": {
       "title": "Assurances acceptées",
-      "lead": "Apportez votre carte et votre pièce d'identité ; nous facturons directement votre assurance et vous ne payez que votre part à la caisse — espèces, MTN MoMo, Airtel Money, carte ou virement.",
+      "lead": "Apportez votre carte et votre pièce d'identité ; nous facturons directement votre assurance et vous ne payez que votre part à la caisse — espèces, MTN MoMo ou Airtel Money.",
       "soonPill": "Bientôt disponible",
       "soonTitle": "Les partenariats d'assurance arrivent",
       "soonLead": "La clinique n'a pas encore de partenaire d'assurance. Pour l'instant, chaque visite se règle à la caisse — espèces, MTN MoMo ou Airtel Money. Nous annoncerons ici nos assureurs partenaires dès la signature des accords."
@@ -1180,7 +1180,8 @@
       "kindMedicine": "Médicament / fourniture",
       "medicine": "Médicament ou fourniture",
       "pickItem": "Choisissez un médicament ou une fourniture",
-      "searchItemPh": "amoxicilline, gants, SRO…"
+      "searchItemPh": "amoxicilline, gants, SRO…",
+      "medicinesElsewhere": "Les médicaments se prescrivent dans le dossier clinique (Ordonnance) ; ici vous ajoutez les soins et services."
     },
     "payment": {
       "title": "Paiement",
@@ -1192,9 +1193,7 @@
       "methods": {
         "cash": "Espèces",
         "momo": "MTN MoMo",
-        "airtel": "Airtel Money",
-        "card": "Carte",
-        "bank": "Virement bancaire"
+        "airtel": "Airtel Money"
       },
       "amount": "Montant (RWF)",
       "reference": "Référence de la transaction",
@@ -1230,7 +1229,8 @@
       "pending": "Paiement en attente · {{amount}} dus",
       "paid": "Payé",
       "paidBy": "Payé · enregistré par {{name}} à {{time}}"
-    }
+    },
+    "cashierNote": "Les signes vitaux, soins et médicaments sont ajoutés par les médecins et infirmiers. Ici, vous encaissez le paiement."
   },
   "settings": {
     "title": "Paramètres de la clinique",
@@ -1607,7 +1607,19 @@
     "saveResult": "Enregistrer le résultat",
     "enterResult": "Saisir le résultat",
     "editResult": "Corriger le résultat",
-    "resultSaved": "Résultat enregistré ; le médecin prescripteur est prévenu."
+    "resultSaved": "Résultat enregistré ; le médecin prescripteur est prévenu.",
+    "icdHint": "La CIM-10 est le code international de la maladie (B54 = paludisme, A01.0 = typhoïde). Facultatif ; avec lui, les rapports comptent les maladies comme le Ministère de la Santé.",
+    "provisionalHint": "Cochez « Provisoire » quand vous soupçonnez la maladie sans l’avoir confirmée (par exemple en attendant un examen). Laissez décoché quand le diagnostic est confirmé.",
+    "testHint": "Aucun diagnostic n’est nécessaire : demandez les examens pour trouver la cause. Choisissez-en un ou plusieurs ; les résultats vont dans le dossier du patient.",
+    "noTests": "Aucun examen de laboratoire ou d’échographie dans le catalogue pour l’instant.",
+    "reasonPh": "ex. fièvre depuis 5 jours, cause non trouvée",
+    "sendNow": "Envoyer le patient maintenant, et me le renvoyer quand les résultats sont prêts",
+    "saveTests_one": "Demander l’examen",
+    "saveTests_other": "Demander {{count}} examens",
+    "testsSaved_one": "Examen demandé.",
+    "testsSaved_other": "{{count}} examens demandés.",
+    "testsSent_one": "Examen demandé. Le patient va au poste d’examen et vous revient avec le résultat.",
+    "testsSent_other": "{{count}} examens demandés. Le patient va au poste d’examen et vous revient avec les résultats."
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -1951,7 +1963,8 @@
     "apptWhen": "pour le {{when}}",
     "apptReason": "Motif : {{reason}}",
     "apptRebook": "Réservez un autre médecin ou une autre heure et prévenez le patient.",
-    "noVitals": "constantes pas encore prises"
+    "noVitals": "constantes pas encore prises",
+    "taskDone": "{{by}} a fait : {{title}}"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -2835,5 +2848,28 @@
     "m": "{{m}} min",
     "h": "{{h}} h",
     "hm": "{{h}} h {{m}} min"
+  },
+  "rxDoc": {
+    "title": "Ordonnance",
+    "number": "N°",
+    "date": "Date",
+    "patient": "Patient",
+    "file": "Dossier",
+    "ageSex": "Âge / sexe",
+    "weight": "Poids",
+    "allergies": "Allergies",
+    "none": "aucune connue",
+    "diagnosis": "Diagnostic",
+    "medicines": "Médicaments",
+    "quantity": "Qté",
+    "givenHere": "Déjà donnés à la clinique",
+    "prescriber": "Prescrit par",
+    "signature": "Signature",
+    "stamp": "Cachet de la clinique",
+    "validity": "Valable 7 jours à partir de la date ci-dessus.",
+    "asWritten": "Délivrer tel que prescrit ; tout changement doit être convenu avec le prescripteur.",
+    "print": "Imprimer l’ordonnance",
+    "printHint": "Une ordonnance que le patient peut porter à n’importe quelle pharmacie (imprimer ou enregistrer en PDF).",
+    "moh": "Licence MINISANTE"
   }
 }

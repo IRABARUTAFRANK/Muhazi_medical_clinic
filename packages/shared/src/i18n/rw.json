@@ -250,7 +250,7 @@
       "soonPill": "Biraza vuba",
       "soonTitle": "Ubufatanye n'ubwishingizi buraza",
       "soonLead": "Ivuriro ntiriragirana amasezerano n'ubwishingizi. Kugeza ubu, buri ruzinduko rwishyurwa kuri kasiye — amafaranga, MTN MoMo cyangwa Airtel Money. Tuzatangaza hano ubwishingizi dufatanya na bwo amasezerano akimara gusinywa.",
-      "lead": "Zana ikarita yawe n'indangamuntu; twishyuza ubwishingizi bwawe, wowe ukishyura umugabane wawe gusa kuri kasiye — amafaranga, MTN MoMo, Airtel Money, ikarita cyangwa banki."
+      "lead": "Zana ikarita yawe n'indangamuntu; twishyuza ubwishingizi bwawe, wowe ukishyura umugabane wawe gusa kuri kasiye — amafaranga, MTN MoMo cyangwa Airtel Money."
     },
     "visit": {
       "hours": "Amasaha dufungura",
@@ -1136,7 +1136,8 @@
       "kindMedicine": "Umuti / igikoresho",
       "medicine": "Umuti cyangwa igikoresho",
       "pickItem": "Hitamo umuti cyangwa igikoresho",
-      "searchItemPh": "amoxicillin, gants, ORS…"
+      "searchItemPh": "amoxicillin, gants, ORS…",
+      "medicinesElsewhere": "Imiti yandikirwa mu nyandiko y’ubuvuzi (Andika umuti); hano wongeramo ubuvuzi na serivisi."
     },
     "back": "Subira ku murongo wanjye",
     "notFound": "Uru ruzinduko ntirwabonetse cyangwa rwafunzwe.",
@@ -1176,9 +1177,7 @@
       "methods": {
         "cash": "Amafaranga mu ntoki",
         "momo": "MTN MoMo",
-        "airtel": "Airtel Money",
-        "card": "Ikarita",
-        "bank": "Kohereza kuri banki"
+        "airtel": "Airtel Money"
       },
       "amount": "Amafaranga (RWF)",
       "reference": "Nimero y'igikorwa",
@@ -1212,7 +1211,8 @@
       "pending": "Kwishyura bitegereje · {{amount}} asigaye",
       "paid": "Yishyuye",
       "paidBy": "Yishyuye · byanditswe na {{name}} saa {{time}}"
-    }
+    },
+    "cashierNote": "Ibipimo, ubuvuzi n’imiti byongerwamo n’abaganga n’abaforomo. Hano wakira ubwishyu."
   },
   "patients": {
     "title": "Abarwayi",
@@ -1415,7 +1415,19 @@
     "saveResult": "Bika igisubizo",
     "enterResult": "Andika igisubizo",
     "editResult": "Kosora igisubizo",
-    "resultSaved": "Igisubizo cyabitswe; muganga wagisabye yamenyeshejwe."
+    "resultSaved": "Igisubizo cyabitswe; muganga wagisabye yamenyeshejwe.",
+    "icdHint": "ICD-10 ni kode mpuzamahanga y’indwara (B54 = malariya, A01.0 = tifoyide). Si ngombwa; iyo ishyizwemo, raporo zibara indwara nk’uko Minisiteri y’Ubuzima ibikora.",
+    "provisionalHint": "Kanda “By’agateganyo” iyo ukeka indwara ariko utarayemeza (urugero utegereje ikizamini). Ntukande iyo indwara yemejwe.",
+    "testHint": "Nta ndwara isabwa kubanza kumenywa: saba ibizamini kugira ngo umenye impamvu. Hitamo kimwe cyangwa byinshi; ibisubizo bijya muri dosiye y’umurwayi.",
+    "noTests": "Nta kizamini cya laboratwari cyangwa echographie kiri mu rutonde.",
+    "reasonPh": "urugero: umuriro iminsi 5, impamvu ntiramenyekana",
+    "sendNow": "Ohereza umurwayi ubu, agaruke kuri njye ibisubizo nibimara kuboneka",
+    "saveTests_one": "Saba ikizamini",
+    "saveTests_other": "Saba ibizamini {{count}}",
+    "testsSaved_one": "Ikizamini cyasabwe.",
+    "testsSaved_other": "Ibizamini {{count}} byasabwe.",
+    "testsSent_one": "Ikizamini cyasabwe. Umurwayi agiye aho bapimira, azagaruka iwawe afite igisubizo.",
+    "testsSent_other": "Ibizamini {{count}} byasabwe. Umurwayi agiye aho bapimira, azagaruka iwawe afite ibisubizo."
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -1960,7 +1972,8 @@
     "apptWhen": "yo ku wa {{when}}",
     "apptReason": "Impamvu: {{reason}}",
     "apptRebook": "Fata gahunda kwa undi muganga cyangwa ku yindi saha umenyeshe umurwayi.",
-    "noVitals": "ibipimo ntibirafatwa"
+    "noVitals": "ibipimo ntibirafatwa",
+    "taskDone": "{{by}} yakoze: {{title}}"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -2844,5 +2857,28 @@
     "m": "iminota {{m}}",
     "h": "amasaha {{h}}",
     "hm": "amasaha {{h}} n’iminota {{m}}"
+  },
+  "rxDoc": {
+    "title": "Urupapuro rw’imiti",
+    "number": "Nimero",
+    "date": "Itariki",
+    "patient": "Umurwayi",
+    "file": "Dosiye",
+    "ageSex": "Imyaka / igitsina",
+    "weight": "Ibiro",
+    "allergies": "Allergies (ibyo umubiri wanga)",
+    "none": "nta zizwi",
+    "diagnosis": "Indwara",
+    "medicines": "Imiti",
+    "quantity": "Umubare",
+    "givenHere": "Yahawe mu ivuriro",
+    "prescriber": "Yanditswe na",
+    "signature": "Umukono",
+    "stamp": "Kashe y’ivuriro",
+    "validity": "Rukora iminsi 7 uhereye ku itariki iri hejuru.",
+    "asWritten": "Tanga uko byanditswe; impinduka zose zumvikanwaho n’uwanditse imiti.",
+    "print": "Sohora urupapuro rw’imiti",
+    "printHint": "Urupapuro umurwayi ashobora kujyana kuri farumasi iyo ari yo yose (sohora cyangwa ubike nka PDF).",
+    "moh": "Uruhushya rwa MINISANTE"
   }
 }

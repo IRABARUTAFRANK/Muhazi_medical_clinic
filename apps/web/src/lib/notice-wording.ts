@@ -82,6 +82,11 @@ export function useWording() {
             .filter(Boolean)
             .join(' · '),
         }
+      case 'task_done':
+        return {
+          title: t('notify.taskDone', { by: p.by ?? '', title: p.title ?? '' }),
+          body: p.name ?? null,
+        }
       case 'inquiry':
         return { title: t('notify.inquiry', { name: p.name ?? '' }), body: t('notify.inquiryBody') }
       case 'to_accept':

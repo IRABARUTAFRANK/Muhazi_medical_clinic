@@ -253,7 +253,7 @@
     },
     "insurance": {
       "title": "Insurance we accept",
-      "lead": "Bring your card and ID; we bill your insurer directly and you pay only your share at the cashier — cash, MTN MoMo, Airtel Money, card or bank.",
+      "lead": "Bring your card and ID; we bill your insurer directly and you pay only your share at the cashier — cash, MTN MoMo or Airtel Money.",
       "soonPill": "Coming soon",
       "soonTitle": "Insurance partnerships are on the way",
       "soonLead": "The clinic is not yet partnered with any insurer. For now, every visit is paid at the cashier — cash, MTN MoMo or Airtel Money. We will announce our insurance partners here as soon as agreements are signed."
@@ -1180,7 +1180,8 @@
       "kindMedicine": "Medicine / supply",
       "medicine": "Medicine or supply",
       "pickItem": "Choose a medicine or supply",
-      "searchItemPh": "amoxicillin, gloves, ORS…"
+      "searchItemPh": "amoxicillin, gloves, ORS…",
+      "medicinesElsewhere": "Medicines are prescribed in the clinical record (Prescription); here you add treatments and services."
     },
     "payment": {
       "title": "Payment",
@@ -1192,9 +1193,7 @@
       "methods": {
         "cash": "Cash",
         "momo": "MTN MoMo",
-        "airtel": "Airtel Money",
-        "card": "Card",
-        "bank": "Bank transfer"
+        "airtel": "Airtel Money"
       },
       "amount": "Amount (RWF)",
       "reference": "Transaction reference",
@@ -1230,7 +1229,8 @@
       "pending": "Pending payment · {{amount}} due",
       "paid": "Paid",
       "paidBy": "Paid · recorded by {{name}} at {{time}}"
-    }
+    },
+    "cashierNote": "Vitals, treatments and medicines are added by the doctors and nurses. Here you take the payment."
   },
   "settings": {
     "title": "Clinic settings",
@@ -1607,7 +1607,19 @@
     "saveResult": "Save the result",
     "enterResult": "Enter result",
     "editResult": "Correct result",
-    "resultSaved": "Result saved; the doctor who ordered it is told."
+    "resultSaved": "Result saved; the doctor who ordered it is told.",
+    "icdHint": "ICD-10 is the international code of the disease (B54 = malaria, A01.0 = typhoid). It is optional; with it, reports count diseases the same way as the Ministry of Health.",
+    "provisionalHint": "Tick “Provisional” when you suspect the disease but have not confirmed it yet (for example while waiting for a test). Leave it unticked when the diagnosis is confirmed.",
+    "testHint": "No diagnosis is needed: order the tests to find the cause. Choose one or several; the results are written into the patient file.",
+    "noTests": "No laboratory or ultrasound test is in the catalogue yet.",
+    "reasonPh": "e.g. fever for 5 days, cause not found yet",
+    "sendNow": "Send the patient now, and back to me when the results are ready",
+    "saveTests_one": "Order the test",
+    "saveTests_other": "Order {{count}} tests",
+    "testsSaved_one": "Test ordered.",
+    "testsSaved_other": "{{count}} tests ordered.",
+    "testsSent_one": "Test ordered. The patient goes to the test desk and comes back to you with the result.",
+    "testsSent_other": "{{count}} tests ordered. The patient goes to the test desk and comes back to you with the results."
   },
   "adjust": {
     "mode": "How to enter it",
@@ -1951,7 +1963,8 @@
     "apptWhen": "for {{when}}",
     "apptReason": "Reason: {{reason}}",
     "apptRebook": "Book another doctor or time and tell the patient.",
-    "noVitals": "vitals not taken yet"
+    "noVitals": "vitals not taken yet",
+    "taskDone": "{{by}} has done: {{title}}"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -2835,5 +2848,28 @@
     "m": "{{m}} min",
     "h": "{{h}} h",
     "hm": "{{h}} h {{m}} min"
+  },
+  "rxDoc": {
+    "title": "Prescription",
+    "number": "No.",
+    "date": "Date",
+    "patient": "Patient",
+    "file": "File",
+    "ageSex": "Age / sex",
+    "weight": "Weight",
+    "allergies": "Allergies",
+    "none": "none known",
+    "diagnosis": "Diagnosis",
+    "medicines": "Medicines",
+    "quantity": "Qty",
+    "givenHere": "Already given at the clinic",
+    "prescriber": "Prescribed by",
+    "signature": "Signature",
+    "stamp": "Clinic stamp",
+    "validity": "Valid 7 days from the date above.",
+    "asWritten": "Dispense as written; any change must be agreed with the prescriber.",
+    "print": "Print prescription",
+    "printHint": "A prescription the patient can take to any pharmacy (print or save as PDF).",
+    "moh": "MoH licence"
   }
 }

@@ -11,7 +11,6 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
-import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
@@ -24,7 +23,6 @@ import {
 } from '@/lib/api/billing'
 import { treatmentName, useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
 import { stationFor, type Station } from '@/lib/api/visits'
-import { useItems, type Item } from '@/lib/api/patients'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { resolveAdjust, type AdjustMode } from '@/lib/adjust'
@@ -56,7 +54,6 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const myStation = assigned?.station ?? stationFor(user)
   const { data: header, isLoading, error } = useVisitHeader(encounterId)
   const { data: vitals = [] } = useVisitVitals(encounterId)
-  const { data: items = [] } = useItems()
   const { data: bill } = useVisitBill(encounterId)
   const { data: treatments = [] } = useTreatments(true)
   const { data: insurers = [] } = useInsurers(true)
@@ -67,6 +64,9 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const isManagerNav = user.role === 'manager' || user.dashboard === 'manager'
   // Reception sends patients on and completes files; treatments and the bill are not theirs.
   const isReception = user.role === 'receptionist'
+  // The cashier takes the payment; vitals, treatments and the clinical record are not theirs.
+  const isCashier = user.role === 'cashier'
+  const weight = vitals.find((v) => v.code === 'weight')
   // A finished visit opens read-only (it stays in the patient file).
   const closed = !!header?.closed
   const [addingVitals, setAddingVitals] = useState(false)
@@ -173,7 +173,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                   </Chip>
                 ))}
                 <span className="flex-1" />
-                {!addingVitals && !closed && (
+                {!addingVitals && !closed && !isCashier && (
                   <Button size="sm" onClick={() => setAddingVitals(true)}>
                     <Activity size={14} aria-hidden="true" />
                     {t(vitals.length ? 'vitalsForm.edit' : 'vitalsForm.add')}
@@ -187,7 +187,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               )}
             </Card>
 
-            {!closed && vitals.length === 0 && !addingVitals && (
+            {!closed && vitals.length === 0 && !addingVitals && !isCashier && (
               <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
                 <Activity size={18} aria-hidden="true" />
                 <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
@@ -235,10 +235,17 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               </p>
             )}
 
-            {!isReception && (
+            {!isReception && !isCashier && (
               <ClinicalCard
                 encounterId={encounterId}
                 user={user}
+                station={myStation}
+                patient={{
+                  name: header.name,
+                  fileNumber: header.fileNumber,
+                  ageSex: header.ageSex,
+                  weight: weight ? `${weight.value}${weight.unit ? ` ${weight.unit}` : ''}` : null,
+                }}
                 closed={closed}
                 onDone={(m) => {
                   setActionError(null)
@@ -355,7 +362,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                               })}
                             </Chip>
                           )}
-                          {bill?.status === 'draft' && (
+                          {bill?.status === 'draft' && !isCashier && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -425,10 +432,12 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                     }}
                   />
                 )}
-                {!isReception && !closed && (
+                {isCashier && !closed && (
+                  <p className="text-ink-3 m-0 text-[13px]">{t('visit.cashierNote')}</p>
+                )}
+                {!isReception && !isCashier && !closed && (
                   <AddChargeCard
                     treatments={treatments}
-                    items={items}
                     office={myStation}
                     payerId={bill?.payerId ?? null}
                     coveragePct={currentInsurer?.coveragePct ?? 0}
@@ -627,7 +636,6 @@ function PaymentCard({
 
 function AddChargeCard({
   treatments,
-  items,
   office,
   payerId,
   coveragePct,
@@ -636,7 +644,6 @@ function AddChargeCard({
   onAdd,
 }: {
   treatments: Treatment[]
-  items: Item[]
   office: Station
   payerId: string | null
   coveragePct: number
@@ -657,9 +664,7 @@ function AddChargeCard({
   }) => Promise<void>
 }) {
   const { t, i18n } = useTranslation()
-  const [kind, setKind] = useState<'service' | 'item'>('service')
   const [serviceId, setServiceId] = useState('')
-  const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [discount, setDiscount] = useState('')
   const [mode, setMode] = useState<AdjustMode>('pct')
@@ -668,14 +673,13 @@ function AddChargeCard({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const selected = kind === 'service' ? treatments.find((x) => x.id === serviceId) : undefined
-  const selectedItem = kind === 'item' ? items.find((x) => x.id === itemId) : undefined
-  const picked = selected ?? selectedItem
+  const selected = treatments.find((x) => x.id === serviceId)
+  const picked = selected
   const listPrice = selected
     ? payerId && selected.payerPrices[payerId] != null
       ? selected.payerPrices[payerId]!
       : (selected.cashPrice ?? 0)
-    : (selectedItem?.cashPrice ?? 0)
+    : 0
   const adj = resolveAdjust(mode, discount, listPrice)
   const d = adj.discountPct
   const manual = adj.manualPrice
@@ -696,19 +700,11 @@ function AddChargeCard({
           .toLowerCase()
           .includes(query.toLowerCase()),
   )
-  const filteredItems = items.filter((x) =>
-    query.trim() === ''
-      ? true
-      : `${x.name} ${x.strength ?? ''} ${x.form ?? ''} ${x.code}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
-  )
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!picked)
-      return setError(t(kind === 'item' ? 'visit.add.errors.pickItem' : 'visit.add.errors.pick'))
+    if (!picked) return setError(t('visit.add.errors.pick'))
     if (adj.error) return setError(t(`adjust.errors.${adj.error}`))
     if (manualRefused) return setError(t('visit.add.errors.noManual'))
     if (overMax) return setError(t('visit.add.errors.overMax', { pct: maxDiscount }))
@@ -719,10 +715,7 @@ function AddChargeCard({
         encounterId: '',
         office,
         serviceId: selected?.id,
-        itemId: selectedItem?.id,
-        description: selected
-          ? selected.nameEn
-          : `${selectedItem?.name ?? ''}${selectedItem?.strength ? ` ${selectedItem.strength}` : ''}`,
+        description: selected?.nameEn ?? '',
         listPrice,
         quantity: q,
         discountPct: d,
@@ -731,7 +724,6 @@ function AddChargeCard({
         coveragePct,
       })
       setServiceId('')
-      setItemId('')
       setDiscount('')
       setReason('')
       setQuantity('1')
@@ -752,62 +744,29 @@ function AddChargeCard({
       </CardHeader>
       <form onSubmit={submit}>
         <CardBody className="gap-3">
-          <Seg
-            label={t('visit.add.kind')}
-            value={kind}
-            onChange={(k) => {
-              setKind(k)
-              setServiceId('')
-              setItemId('')
-              setDiscount('')
-            }}
-            options={[
-              { value: 'service', label: t('visit.add.kindTreatment') },
-              { value: 'item', label: t('visit.add.kindMedicine') },
-            ]}
-          />
+          <p className="text-ink-3 m-0 text-xs">{t('visit.add.medicinesElsewhere')}</p>
           <Field
             label={t('visit.add.search')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t(kind === 'item' ? 'visit.add.searchItemPh' : 'visit.add.searchPh')}
+            placeholder={t('visit.add.searchPh')}
             disabled={disabled}
           />
-          {kind === 'service' ? (
-            <Select
-              label={t('visit.add.treatment')}
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
-              disabled={disabled}
-              required
-            >
-              <option value="">{t('visit.add.pick')}</option>
-              {filtered.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {treatmentName(x, i18n.language)} ·{' '}
-                  {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
-                </option>
-              ))}
-            </Select>
-          ) : (
-            <Select
-              label={t('visit.add.medicine')}
-              value={itemId}
-              onChange={(e) => setItemId(e.target.value)}
-              disabled={disabled}
-              required
-            >
-              <option value="">{t('visit.add.pickItem')}</option>
-              {filteredItems.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
-                  {x.strength ? ` ${x.strength}` : ''} ·{' '}
-                  {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
-                  {x.unit ? ` / ${x.unit}` : ''}
-                </option>
-              ))}
-            </Select>
-          )}
+          <Select
+            label={t('visit.add.treatment')}
+            value={serviceId}
+            onChange={(e) => setServiceId(e.target.value)}
+            disabled={disabled}
+            required
+          >
+            <option value="">{t('visit.add.pick')}</option>
+            {filtered.map((x) => (
+              <option key={x.id} value={x.id}>
+                {treatmentName(x, i18n.language)} ·{' '}
+                {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
+              </option>
+            ))}
+          </Select>
           <div className="grid grid-cols-2 gap-3">
             <Field
               label={t('visit.add.quantity')}

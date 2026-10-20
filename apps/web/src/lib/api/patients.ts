@@ -702,26 +702,44 @@ export function useClinicalActions(encounterId: string) {
     },
     onSuccess: refresh,
   })
-  const orderTest = useMutation({
-    mutationFn: async (i: { serviceId: string; name: string; group: string; reason?: string }) => {
+  /** One or several tests; with `from`, the patient goes to the test desk now and comes back to
+   *  that desk (and this clinician) once the last result is written. */
+  const orderTests = useMutation({
+    mutationFn: async (i: {
+      tests: { serviceId: string; name: string; group: string }[]
+      reason?: string
+      from?: string | null
+    }) => {
       if (!supabase) {
-        local().orders.push({
-          id: `o-${Date.now()}`,
-          test: i.name,
-          category: i.group === 'imaging' ? 'imaging' : 'lab',
-          status: 'ordered',
-          reason: i.reason ?? null,
-          at: now(),
-          result: null,
-        })
+        i.tests.forEach((x, k) =>
+          local().orders.push({
+            id: `o-${Date.now()}-${k}`,
+            test: x.name,
+            category: x.group === 'imaging' ? 'imaging' : 'lab',
+            status: 'ordered',
+            reason: i.reason ?? null,
+            at: now(),
+            result: null,
+          }),
+        )
         return
       }
-      await call('order_test', {
+      const { error } = await supabase.rpc('order_tests', {
         p_encounter_id: encounterId,
-        p_service_id: i.serviceId,
+        p_service_ids: i.tests.map((x) => x.serviceId),
         p_reason: i.reason || null,
-        p_priority: 3,
+        p_from: i.from ?? null,
       })
+      if (!error) return
+      // Database without migration 0044 yet: order one by one (the patient is not sent back).
+      if (!/order_tests/.test(error.message)) throw new Error(error.message)
+      for (const x of i.tests)
+        await call('order_test', {
+          p_encounter_id: encounterId,
+          p_service_id: x.serviceId,
+          p_reason: i.reason || null,
+          p_priority: 3,
+        })
     },
     onSuccess: refresh,
   })
@@ -764,7 +782,7 @@ export function useClinicalActions(encounterId: string) {
     },
     onSuccess: refresh,
   })
-  return { addDiagnosis, addNote, prescribe, orderTest, finishVisit, recordResult }
+  return { addDiagnosis, addNote, prescribe, orderTests, finishVisit, recordResult }
 }
 
 // ---------------------------------------------------------------- custom fields of the file

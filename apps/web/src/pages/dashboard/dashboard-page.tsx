@@ -8,7 +8,6 @@ import {
   ChartLine,
   Clock,
   Coins,
-  CreditCard,
   HeartPulse,
   Landmark,
   ListOrdered,
@@ -89,14 +88,15 @@ import { cn } from '@/lib/utils'
 /* Figma: "Muhazi Clinic — Manager Dashboard v2". Tinted KPI chips, 16 px cards with a soft
    shadow, one colour per subject, staggered entrance, count-up numbers, drawn revenue line. */
 
-/** Payment method symbol from its key or name ("cash", "MTN MoMo", "Bank transfer"). */
+/** The clinic takes cash, MTN MoMo and Airtel Money only. */
+const ACCEPTED_METHODS = ['cash', 'momo', 'airtel']
+
+/** Payment method symbol from its key or name ("cash", "MTN MoMo", "Airtel Money"). */
 const methodIcon = (method: string): LucideIcon => {
   const m = method.toLowerCase()
   if (m.includes('cash')) return Banknote
   if (m.includes('momo') || m.includes('mtn') || m.includes('airtel') || m.includes('mobile'))
     return Smartphone
-  if (m.includes('card')) return CreditCard
-  if (m.includes('bank')) return Landmark
   return Wallet
 }
 
@@ -142,6 +142,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
         ? t('dashboard.rangeLabels.all', { to: formatDate(to) })
         : t('dashboard.rangeLabels.week', { from: formatDate(from), to: formatDate(to) })
   const periodWord = t(`dashboard.period.${range}`)
+  const collections = (data?.collections ?? []).filter((c) => ACCEPTED_METHODS.includes(c.method))
   // A month picked in the custom range fills both dates.
   const pickMonth = (ym: string) => {
     const [y, m] = ym.split('-').map(Number)
@@ -363,7 +364,14 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             {isManager && (
               <section className="flex flex-col gap-3">
                 <SectionTitle icon={Coins}>{t('dashboard.sections.money')}</SectionTitle>
-                <div className="pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
+                <div
+                  className={cn(
+                    'grid grid-cols-1 gap-4',
+                    FEATURES.insurance
+                      ? 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]'
+                      : 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]',
+                  )}
+                >
                   <Panel
                     i={1}
                     icon={ChartLine}
@@ -380,22 +388,22 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     icon={PieChart}
                     tint="mint"
                     title={t('dashboard.collections', { period: periodWord })}
-                    right={formatRwf(data.collections.reduce((s, c) => s + c.amount, 0))}
+                    right={formatRwf(collections.reduce((s, c) => s + c.amount, 0))}
                   >
                     <div className="flex flex-wrap items-center justify-center gap-4">
                       <Donut
-                        values={data.collections.map((c) => c.amount)}
+                        values={collections.map((c) => c.amount)}
                         colors={METHOD_COLORS}
                         label={periodWord}
-                        total={data.collections.reduce((s, c) => s + c.amount, 0)}
+                        total={collections.reduce((s, c) => s + c.amount, 0)}
                       />
                       <div className="min-w-[190px] flex-1">
                         <HBarList
                           subject="money"
                           colors={METHOD_COLORS}
                           labelWidth="minmax(72px,96px)"
-                          rows={data.collections.map((m) => ({
-                            // cash, momo, airtel, card, bank → the interface language
+                          rows={collections.map((m) => ({
+                            // cash, momo, airtel → the interface language
                             icon: methodIcon(m.method),
                             label: t(`visit.payment.methods.${m.method}`, {
                               defaultValue: methodLabel(m.method),
@@ -407,36 +415,36 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       </div>
                     </div>
                   </Panel>
-                  <Panel
-                    i={3}
-                    icon={Landmark}
-                    tint="navy"
-                    title={t('dashboard.receivables')}
-                    right={formatRwf(data.receivables.reduce((s, r) => s + r.amount, 0))}
-                  >
-                    {data.receivables.length === 0 ? (
-                      <Empty>{t('dashboard.noReceivables')}</Empty>
-                    ) : (
-                      <HBarList
-                        subject="money"
-                        rows={data.receivables.map((m) => ({
-                          icon: ShieldPlus,
-                          label: m.payer,
-                          value: m.amount,
-                          display: formatNumber(m.amount),
-                        }))}
-                      />
-                    )}
-                    {/* Claims only exist once the clinic works with insurers. */}
-                    {FEATURES.insurance && (
+                  {/* What insurers owe: only once the clinic works with insurers. */}
+                  {FEATURES.insurance && (
+                    <Panel
+                      i={3}
+                      icon={Landmark}
+                      tint="navy"
+                      title={t('dashboard.receivables')}
+                      right={formatRwf(data.receivables.reduce((s, r) => s + r.amount, 0))}
+                    >
+                      {data.receivables.length === 0 ? (
+                        <Empty>{t('dashboard.noReceivables')}</Empty>
+                      ) : (
+                        <HBarList
+                          subject="money"
+                          rows={data.receivables.map((m) => ({
+                            icon: ShieldPlus,
+                            label: m.payer,
+                            value: m.amount,
+                            display: formatNumber(m.amount),
+                          }))}
+                        />
+                      )}
                       <StaffLink
                         to="/app/prices"
                         className={cn(buttonVariants({ size: 'sm' }), 'self-start')}
                       >
                         {t('dashboard.claims')} →
                       </StaffLink>
-                    )}
-                  </Panel>
+                    </Panel>
+                  )}
                 </div>
               </section>
             )}

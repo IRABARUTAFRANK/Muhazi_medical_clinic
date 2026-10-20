@@ -6,6 +6,7 @@ import {
   FlaskConical,
   Pill,
   Plus,
+  Printer,
   Stethoscope,
   Trash2,
 } from 'lucide-react'
@@ -18,7 +19,10 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { treatmentName, useTreatments } from '@/lib/api/catalogue'
 import { useClinicalActions, useItems, useVisitClinical, type Item } from '@/lib/api/patients'
-import { stationFor } from '@/lib/api/visits'
+import { useClinicInfo } from '@/lib/api/public'
+import { stationFor, type Station } from '@/lib/api/visits'
+import { openPrescription, type RxDocMedicine } from '@/lib/prescription-doc'
+import { roleLabel } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
@@ -57,11 +61,17 @@ export function ClinicalCard({
   encounterId,
   user,
   closed = false,
+  station,
+  patient,
   onDone,
   onError,
 }: {
   encounterId: string
   user: StaffUser
+  /** The desk this person works at for this patient (tests send the patient back here). */
+  station?: Station
+  /** For the printed prescription. */
+  patient?: { name: string; fileNumber: string; ageSex: string; weight?: string | null }
   /** A finished visit: shown read-only (everything stays in the patient file). */
   closed?: boolean
   onDone: (m: string) => void
@@ -92,8 +102,84 @@ export function ClinicalCard({
   const [rx, setRx] = useState<RxLine[]>([emptyLine()])
   const setLine = (i: number, patch: Partial<RxLine>) =>
     setRx((lines) => lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
-  const [order, setOrder] = useState({ service: '', reason: '' })
+  const [order, setOrder] = useState({ services: [] as string[], reason: '', send: true })
   const [localError, setLocalError] = useState<string | null>(null)
+  const { data: info } = useClinicInfo()
+
+  const printRx = () => {
+    if (!data || !patient) return
+    const toDoc = (r: (typeof data.prescriptions)[number]): RxDocMedicine => ({
+      name: r.item,
+      quantity: r.quantity,
+      dose: r.dose,
+      route: r.route ? t(`clinical.routes.${r.route}`, { defaultValue: r.route }) : null,
+      frequency: r.frequency
+        ? t(`clinical.frequencies.${r.frequency}`, { defaultValue: r.frequency })
+        : null,
+      days: r.days,
+      instructions: r.instructions,
+    })
+    const profile = (info?.profile ?? {}) as Record<string, unknown> & {
+      name?: string
+      sector?: string
+      district?: string
+      province?: string
+      country?: string
+      phone?: string
+      email?: string
+    }
+    const dx = data.diagnoses.find((d) => d.type === 'primary') ?? data.diagnoses[0]
+    const at = data.prescriptions[0]?.at
+    const ok = openPrescription(
+      {
+        number: `${patient.fileNumber}-${(at ?? new Date().toISOString()).slice(0, 10).replace(/-/g, '')}`,
+        date: at ? new Date(at) : new Date(),
+        clinic: {
+          name: profile.name ?? 'Muhazi Medical Clinic',
+          address: [profile.sector, profile.district, profile.province, profile.country]
+            .filter(Boolean)
+            .join(' · '),
+          contacts: [profile.phone, profile.email].filter(Boolean).join(' · '),
+          licences: [
+            profile.moh_licence ? `${t('rxDoc.moh')} ${String(profile.moh_licence)}` : null,
+            profile.tin ? `TIN ${String(profile.tin)}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · '),
+          logoUrl: `${window.location.origin}/logo.jpg`,
+        },
+        patient: { ...patient, allergies: data.patient?.allergies ?? null },
+        diagnosis: dx
+          ? `${dx.text}${dx.icd10 ? ` (${dx.icd10})` : ''}${dx.provisional ? ` · ${t('clinical.provisional')}` : ''}`
+          : null,
+        medicines: data.prescriptions.filter((r) => r.supply !== 'room').map(toDoc),
+        givenHere: data.prescriptions.filter((r) => r.supply === 'room').map(toDoc),
+        prescriber: { name: user.name, title: roleLabel(user, t) },
+      },
+      {
+        title: t('rxDoc.title'),
+        number: t('rxDoc.number'),
+        date: t('rxDoc.date'),
+        patient: t('rxDoc.patient'),
+        file: t('rxDoc.file'),
+        ageSex: t('rxDoc.ageSex'),
+        weight: t('rxDoc.weight'),
+        allergies: t('rxDoc.allergies'),
+        none: t('rxDoc.none'),
+        diagnosis: t('rxDoc.diagnosis'),
+        medicines: t('rxDoc.medicines'),
+        quantity: t('rxDoc.quantity'),
+        forDays: (n) => t('clinical.forDays', { count: n }),
+        givenHere: t('rxDoc.givenHere'),
+        prescriber: t('rxDoc.prescriber'),
+        signature: t('rxDoc.signature'),
+        stamp: t('rxDoc.stamp'),
+        validity: t('rxDoc.validity'),
+        asWritten: t('rxDoc.asWritten'),
+      },
+    )
+    if (!ok) setLocalError(t('report.popupBlocked'))
+  }
 
   const run = async (fn: () => Promise<unknown>, done: string) => {
     setLocalError(null)
@@ -159,16 +245,25 @@ export function ClinicalCard({
   }
   const submitOrder = (e: FormEvent) => {
     e.preventDefault()
-    const s = tests.find((x) => x.id === order.service)
-    if (!s) return setLocalError(t('clinical.errors.test'))
+    const chosen = tests.filter((x) => order.services.includes(x.id))
+    if (chosen.length === 0) return setLocalError(t('clinical.errors.test'))
     void run(
       () =>
-        actions.orderTest
-          .mutateAsync({ serviceId: s.id, name: s.nameEn, group: s.group, reason: order.reason })
-          .then(() => setOrder({ service: '', reason: '' })),
-      t('clinical.testSaved'),
+        actions.orderTests
+          .mutateAsync({
+            tests: chosen.map((s) => ({ serviceId: s.id, name: s.nameEn, group: s.group })),
+            reason: order.reason,
+            from: order.send ? (station ?? stationFor(user)) : null,
+          })
+          .then(() => setOrder({ services: [], reason: '', send: true })),
+      t(order.send ? 'clinical.testsSent' : 'clinical.testsSaved', { count: chosen.length }),
     )
   }
+  const toggleTest = (id: string) =>
+    setOrder((o) => ({
+      ...o,
+      services: o.services.includes(id) ? o.services.filter((x) => x !== id) : [...o.services, id],
+    }))
   const finish = () => {
     if (!data?.diagnoses.some((d) => d.type === 'primary'))
       return setLocalError(t('clinical.errors.needPrimary'))
@@ -195,11 +290,19 @@ export function ClinicalCard({
           <Stethoscope size={16} aria-hidden="true" />
           {t('clinical.title')}
         </span>
-        {data?.patient?.bloodGroup && (
-          <Badge tone="grey" dot={false}>
-            {t('file.fields.blood_group')} {data.patient.bloodGroup}
-          </Badge>
-        )}
+        <span className="inline-flex flex-wrap items-center gap-2">
+          {data?.patient?.bloodGroup && (
+            <Badge tone="grey" dot={false}>
+              {t('file.fields.blood_group')} {data.patient.bloodGroup}
+            </Badge>
+          )}
+          {patient && (data?.prescriptions.length ?? 0) > 0 && (
+            <Button size="sm" onClick={printRx} title={t('rxDoc.printHint')}>
+              <Printer size={14} aria-hidden="true" />
+              {t('rxDoc.print')}
+            </Button>
+          )}
+        </span>
       </CardHeader>
       {data?.patient?.allergies && (
         <CardBody className="bg-red-bg text-red border-border border-b py-2 text-[13px] font-semibold">
@@ -289,6 +392,10 @@ export function ClinicalCard({
                 {t('clinical.saveDx')}
               </Button>
             </div>
+            <ul className="text-ink-3 col-span-full m-0 flex flex-col gap-0.5 pl-4 text-xs">
+              <li>{t('clinical.icdHint')}</li>
+              <li>{t('clinical.provisionalHint')}</li>
+            </ul>
           </form>
         )}
         {mode === 'rx' && (
@@ -297,12 +404,12 @@ export function ClinicalCard({
             {rx.map((line, i) => (
               <fieldset
                 key={i}
-                className="border-border bg-hover/40 m-0 flex flex-col gap-3 rounded-xl border p-3"
+                className="border-border bg-hover/40 m-0 flex min-w-0 flex-col gap-3 rounded-xl border p-3"
               >
                 <legend className="text-ink-2 px-1 text-xs font-bold">
                   {t('clinical.medicineN', { n: i + 1 })}
                 </legend>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                   <Select
                     label={t('clinical.medicine')}
                     value={line.item}
@@ -331,7 +438,7 @@ export function ClinicalCard({
                     onChange={(e) => setLine(i, { days: e.target.value.replace(/[^\d]/g, '') })}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                   <Field
                     label={t('clinical.dose')}
                     value={line.dose}
@@ -367,44 +474,46 @@ export function ClinicalCard({
                     onChange={(e) => setLine(i, { instructions: e.target.value })}
                     placeholder={t('clinical.instructionsPh')}
                   />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="self-end"
-                    disabled={rx.length === 1}
-                    onClick={() => setRx((lines) => lines.filter((_, j) => j !== i))}
-                    aria-label={t('clinical.removeMedicine')}
-                    title={t('clinical.removeMedicine')}
-                  >
-                    <Trash2 size={16} aria-hidden="true" />
-                  </Button>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 pt-1" role="radiogroup">
-                  <span className="text-ink-2 text-[13px] font-semibold">
-                    {t('clinical.supplyLabel')}
-                  </span>
-                  {(['pharmacy', 'room'] as const).map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      role="radio"
-                      aria-checked={line.supply === k}
-                      onClick={() => setLine(i, { supply: k })}
-                      className={cn(
-                        'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
-                        line.supply === k
-                          ? 'border-primary bg-primary text-white'
-                          : 'border-border bg-card text-ink-2 hover:bg-hover',
-                      )}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2" role="radiogroup">
+                    <span className="text-ink-2 text-[13px] font-semibold">
+                      {t('clinical.supplyLabel')}
+                    </span>
+                    {(['pharmacy', 'room'] as const).map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        role="radio"
+                        aria-checked={line.supply === k}
+                        onClick={() => setLine(i, { supply: k })}
+                        className={cn(
+                          'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                          line.supply === k
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-border bg-card text-ink-2 hover:bg-hover',
+                        )}
+                      >
+                        {k === 'pharmacy' ? (
+                          <Pill size={14} aria-hidden="true" />
+                        ) : (
+                          <HandHeart size={14} aria-hidden="true" />
+                        )}
+                        {t(`clinical.supply.${k}`)}
+                      </button>
+                    ))}
+                  </div>
+                  {rx.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="ml-auto"
+                      onClick={() => setRx((lines) => lines.filter((_, j) => j !== i))}
                     >
-                      {k === 'pharmacy' ? (
-                        <Pill size={14} aria-hidden="true" />
-                      ) : (
-                        <HandHeart size={14} aria-hidden="true" />
-                      )}
-                      {t(`clinical.supply.${k}`)}
-                    </button>
-                  ))}
+                      <Trash2 size={16} aria-hidden="true" />
+                      {t('clinical.removeMedicine')}
+                    </Button>
+                  )}
                 </div>
               </fieldset>
             ))}
@@ -421,38 +530,77 @@ export function ClinicalCard({
           </form>
         )}
         {mode === 'test' && (
-          <form
-            onSubmit={submitOrder}
-            className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_2fr_auto]"
-          >
-            <Select
-              label={t('clinical.test')}
-              value={order.service}
-              onChange={(e) => setOrder({ ...order, service: e.target.value })}
-              required
-            >
-              <option value="">{t('clinical.pickTest')}</option>
-              {tests.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {treatmentName(s, i18n.language)} ·{' '}
-                  {s.group === 'imaging'
-                    ? t('register.stations.ultrasound')
-                    : t('register.stations.laboratory')}
-                </option>
-              ))}
-            </Select>
+          <form onSubmit={submitOrder} className="flex flex-col gap-3">
+            <p className="text-ink-3 m-0 text-xs">{t('clinical.testHint')}</p>
+            {(['lab', 'imaging'] as const).map((g) => {
+              const list = tests.filter((s) => (g === 'imaging') === (s.group === 'imaging'))
+              if (list.length === 0) return null
+              return (
+                <fieldset key={g} className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+                  <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
+                    {t(
+                      g === 'imaging'
+                        ? 'register.stations.ultrasound'
+                        : 'register.stations.laboratory',
+                    )}
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    {list.map((s) => {
+                      const on = order.services.includes(s.id)
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          role="checkbox"
+                          aria-checked={on}
+                          onClick={() => toggleTest(s.id)}
+                          className={cn(
+                            'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                            on
+                              ? 'border-primary bg-primary text-white'
+                              : 'border-border bg-card text-ink-2 hover:bg-hover',
+                          )}
+                        >
+                          {on ? (
+                            <CheckCircle2 size={14} aria-hidden="true" />
+                          ) : (
+                            <FlaskConical size={14} aria-hidden="true" />
+                          )}
+                          {treatmentName(s, i18n.language)}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+              )
+            })}
+            {tests.length === 0 && (
+              <p className="text-ink-3 m-0 text-[13px]">{t('clinical.noTests')}</p>
+            )}
             <Field
               label={t('clinical.reason')}
               value={order.reason}
               onChange={(e) => setOrder({ ...order, reason: e.target.value })}
+              placeholder={t('clinical.reasonPh')}
             />
+            <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
+              <input
+                type="checkbox"
+                className="accent-primary size-[18px]"
+                checked={order.send}
+                onChange={(e) => setOrder({ ...order, send: e.target.checked })}
+              />
+              {t('clinical.sendNow')}
+            </label>
             <Button
               type="submit"
               variant="primary"
-              className="self-end"
-              loading={actions.orderTest.isPending}
+              className="self-start"
+              disabled={order.services.length === 0}
+              loading={actions.orderTests.isPending}
             >
-              {t('clinical.saveTest')}
+              <FlaskConical size={16} aria-hidden="true" />
+              {t('clinical.saveTests', { count: order.services.length || 1 })}
             </Button>
           </form>
         )}

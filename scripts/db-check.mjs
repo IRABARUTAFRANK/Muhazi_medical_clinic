@@ -1416,6 +1416,120 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0044: cashier, tests that come back, task done
+await step(
+  '0044: the cashier cannot add a treatment, and only cash / MoMo / Airtel are accepted',
+  async () => {
+    await asAdmin()
+    // 0041 deleted the whole catalogue; bring it back for these checks.
+    await db.query(
+      `update service set deleted_at = null, active = true where deleted_at is not null`,
+    )
+    const enc = await one(`select id from encounter where status = 'open' limit 1`)
+    const svc = await one(`select id from service where active and deleted_at is null limit 1`)
+    await as(staff.cashier)
+    let charge = false
+    try {
+      await db.query(`select add_charge($1, 'cashier', $2)`, [enc.id, svc.id])
+    } catch (e) {
+      charge = /not allowed/.test(e.message)
+    }
+    await asAdmin()
+    let card = false
+    try {
+      await db.query(
+        `insert into payment (invoice_id, method, amount) select id, 'card', 100 from invoice limit 1`,
+      )
+    } catch (e) {
+      card = /payment_method_accepted/.test(e.message)
+    }
+    if (!charge || !card) throw new Error(`charge refused ${charge}, card refused ${card}`)
+    return 'cashier add refused; card refused'
+  },
+)
+await step(
+  '0044: tests without a diagnosis send the patient to the lab and back to the doctor',
+  async () => {
+    await as(staff.receptionist)
+    const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+    await asAdmin()
+    await as(staff.manager)
+    await db.query(`select bulk_add_services($1, $2::jsonb)`, [
+      deptId,
+      JSON.stringify([
+        { name_en: 'Check test A', price: 1500, group: 'lab' },
+        { name_en: 'Check test B', price: 2500, group: 'lab' },
+      ]),
+    ])
+    await asAdmin()
+    const tests = (
+      await one(
+        `select array_agg(id) as ids from service where name_en like 'Check test _' and deleted_at is null`,
+      )
+    ).ids
+    await as(staff.doctor)
+    const n = (
+      await one(`select order_tests($1, $2, 'fever, cause not found yet', 'consultation') as n`, [
+        v.id,
+        tests,
+      ])
+    ).n
+    await asAdmin()
+    const atLab = await one(
+      `select return_station, return_to from queue_entry where encounter_id = $1 and station = 'laboratory' and finished_at is null`,
+      [v.id],
+    )
+    const atDoc = await one(
+      `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [v.id],
+    )
+    if (n !== tests.length || atLab?.return_station !== 'consultation' || atDoc.n !== 0)
+      throw new Error(`n ${n} lab ${JSON.stringify(atLab)} doc ${atDoc.n}`)
+    const reqs = (
+      await db.query(`select id from service_request where encounter_id = $1 order by created_at`, [
+        v.id,
+      ])
+    ).rows
+    await as(staff.lab_tech)
+    await db.query(`select record_result($1, 'Hb 12', 'Normal', true)`, [reqs[0].id])
+    await asAdmin()
+    const half = await one(
+      `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [v.id],
+    )
+    await as(staff.lab_tech)
+    await db.query(`select record_result($1, 'No parasites', 'Negative', true)`, [reqs[1].id])
+    await asAdmin()
+    const back = await one(
+      `select assigned_to, referral_note from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [v.id],
+    )
+    const lab = await one(
+      `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'laboratory' and finished_at is null`,
+      [v.id],
+    )
+    if (half.n !== 0 || !back || back.assigned_to !== staff.doctor || lab.n !== 0)
+      throw new Error(`half ${half.n} back ${JSON.stringify(back)} lab ${lab.n}`)
+    return `${n} tests; after the last result: back to the doctor (${back.referral_note})`
+  },
+)
+await step('0044: the doctor is told when the nurse has done the task', async () => {
+  await as(staff.receptionist)
+  const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+  await as(staff.doctor)
+  const id = (await one(`select create_task($1, 'Repeat vitals in 1 hour') as id`, [v.id])).id
+  await as(staff.nurse)
+  await db.query(`select complete_task($1)`, [id])
+  await as(staff.doctor)
+  const n = (await one(`select my_notifications(200) as n`)).n
+  await asAdmin()
+  const done = n.items.find(
+    (x) => x.kind === 'task_done' && x.params.title === 'Repeat vitals in 1 hour',
+  )
+  if (!done) throw new Error('doctor not told')
+  return `doctor told: done by ${done.params.by}`
+})
+
 finish()
 
 function finish() {
