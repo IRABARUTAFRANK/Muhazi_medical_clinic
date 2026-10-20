@@ -35,6 +35,14 @@ export function useWording() {
               .filter(Boolean)
               .join(' · ') || null,
         }
+      case 'no_vitals':
+        // Sent to the nurses; removed as soon as anyone records the vitals.
+        return {
+          title: t('notify.noVitalsTitle', { ticket: p.ticket ?? '', name: p.name ?? '' }),
+          body: t('notify.noVitalsBody', {
+            station: t(`register.stations.${p.station}`, { defaultValue: p.station ?? '' }),
+          }),
+        }
       case 'queue_pool': {
         // One notice for a patient sent to several desks; the first one free takes them.
         const desks = (n.params?.stations as unknown as string[] | null) ?? []

@@ -1973,7 +1973,9 @@
     "apptReason": "Motif : {{reason}}",
     "apptRebook": "Réservez un autre médecin ou une autre heure et prévenez le patient.",
     "noVitals": "constantes pas encore prises",
-    "taskDone": "{{by}} a fait : {{title}}"
+    "taskDone": "{{by}} a fait : {{title}}",
+    "noVitalsTitle": "{{ticket}} {{name}} : signes vitaux pas encore pris",
+    "noVitalsBody": "Attend à {{station}}. Prenez les signes vitaux si un collègue ne l’a pas déjà fait."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"

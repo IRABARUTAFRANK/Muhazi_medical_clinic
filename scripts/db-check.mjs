@@ -1587,6 +1587,31 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0046: nurses told about missing vitals
+await step(
+  '0046: reception sends a patient to the doctor → nurses told "no vitals"; gone once taken',
+  async () => {
+    await as(staff.receptionist)
+    const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+    await as(staff.nurse)
+    const before = (await one(`select my_notifications(200) as n`)).n.items.filter(
+      (x) => x.kind === 'no_vitals' && x.params.encounter === v.id,
+    )
+    await db.query(`select record_vitals($1, '{"pulse":"80","temp":"36.8"}'::jsonb)`, [v.id])
+    const after = (await one(`select my_notifications(200) as n`)).n.items.filter(
+      (x) => x.kind === 'no_vitals' && x.params.encounter === v.id,
+    )
+    await as(staff.doctor)
+    const doc = (await one(`select my_notifications(200) as n`)).n.items.some(
+      (x) => x.kind === 'no_vitals',
+    )
+    await asAdmin()
+    if (before.length !== 1 || after.length !== 0 || doc)
+      throw new Error(`before ${before.length} after ${after.length} doctor sees ${doc}`)
+    return `nurse notice 1 → 0 after vitals (${before[0].params.ticket} ${before[0].params.name})`
+  },
+)
+
 finish()
 
 function finish() {

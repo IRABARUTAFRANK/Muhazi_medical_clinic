@@ -1973,7 +1973,9 @@
     "apptReason": "Reason: {{reason}}",
     "apptRebook": "Book another doctor or time and tell the patient.",
     "noVitals": "vitals not taken yet",
-    "taskDone": "{{by}} has done: {{title}}"
+    "taskDone": "{{by}} has done: {{title}}",
+    "noVitalsTitle": "{{ticket}} {{name}}: vitals not taken yet",
+    "noVitalsBody": "Waiting at {{station}}. Take the vitals unless a colleague already did."
   },
   "identity": {
     "aria": "Signed in: {{name}}"

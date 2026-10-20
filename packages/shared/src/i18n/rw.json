@@ -1982,7 +1982,9 @@
     "apptReason": "Impamvu: {{reason}}",
     "apptRebook": "Fata gahunda kwa undi muganga cyangwa ku yindi saha umenyeshe umurwayi.",
     "noVitals": "ibipimo ntibirafatwa",
-    "taskDone": "{{by}} yakoze: {{title}}"
+    "taskDone": "{{by}} yakoze: {{title}}",
+    "noVitalsTitle": "{{ticket}} {{name}}: ibipimo ntibirafatwa",
+    "noVitalsBody": "Ategereje kuri {{station}}. Mufate ibipimo niba nta mugenzi wawe wabikoze."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
