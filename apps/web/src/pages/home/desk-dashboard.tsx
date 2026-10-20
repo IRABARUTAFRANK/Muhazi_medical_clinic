@@ -44,6 +44,7 @@ import {
   type Tint,
 } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useDeskSummary, type DeskSummary } from '@/lib/api/desk'
@@ -399,34 +400,43 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
       {list.length === 0 ? (
         <Empty>{t(nurse ? 'desk.nurse.queueEmpty' : 'visits.none')}</Empty>
       ) : (
-        <div className="flex flex-col">
-          {list.slice(0, 7).map((r, i) => (
-            <div
-              key={r.queueId}
-              className="border-grid anim-enter flex min-h-11 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
-              style={{ '--i': i } as CSSProperties}
-            >
-              <Pill tint={triageTint[r.triage] ?? 'teal'} icon={triageIcon[r.triage]}>
-                {r.ticket}
-              </Pill>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{r.name}</span>
-                <span className="text-ink-3 flex items-center gap-1 truncate text-[13px]">
-                  <StationGlyph station={r.station} size={12} className="flex-none" />
-                  {r.ageSex} · {stationLabel(r.station, t)} ·{' '}
-                  {r.startedAt ? t('visits.inProgress') : t('visits.waiting', { count: r.waitMin })}
-                </span>
-              </span>
-              <StaffLink
-                to={nurse ? '/app/vitals' : '/app/visit'}
-                search={{ encounter: r.encounterId }}
-                className={buttonVariants({ size: 'sm', variant: i === 0 ? 'primary' : 'default' })}
-              >
-                {t(nurse ? 'desk.nurse.vitalsShort' : 'visits.openVisit')}
-              </StaffLink>
+        <ShownList items={list} step={5}>
+          {(shown) => (
+            <div className="flex flex-col">
+              {shown.map((r, i) => (
+                <div
+                  key={r.queueId}
+                  className="border-grid anim-enter flex min-h-11 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
+                  style={{ '--i': i } as CSSProperties}
+                >
+                  <Pill tint={triageTint[r.triage] ?? 'teal'} icon={triageIcon[r.triage]}>
+                    {r.ticket}
+                  </Pill>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{r.name}</span>
+                    <span className="text-ink-3 flex items-center gap-1 truncate text-[13px]">
+                      <StationGlyph station={r.station} size={12} className="flex-none" />
+                      {r.ageSex} · {stationLabel(r.station, t)} ·{' '}
+                      {r.startedAt
+                        ? t('visits.inProgress')
+                        : t('visits.waiting', { count: r.waitMin })}
+                    </span>
+                  </span>
+                  <StaffLink
+                    to={nurse ? '/app/vitals' : '/app/visit'}
+                    search={{ encounter: r.encounterId }}
+                    className={buttonVariants({
+                      size: 'sm',
+                      variant: i === 0 ? 'primary' : 'default',
+                    })}
+                  >
+                    {t(nurse ? 'desk.nurse.vitalsShort' : 'visits.openVisit')}
+                  </StaffLink>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </ShownList>
       )}
       <StaffLink to="/app/visits" className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
         {t('desk.allInClinic')} →

@@ -68,6 +68,7 @@ import {
 import { LineChart } from '@/components/charts/line-chart'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { ShowMore } from '@/components/ui/list-tools'
 import { Seg } from '@/components/ui/seg'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
@@ -82,6 +83,7 @@ import { useClinicInfo } from '@/lib/api/public'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
+import { useShowMore } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 
 /* Figma: "Muhazi Clinic — Manager Dashboard v2". Tinted KPI chips, 16 px cards with a soft
@@ -121,6 +123,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   const [range, setRange] = useState<DashboardRange>('today')
   const isManager = canManage && role === 'manager'
   const { data, isFetching, error, refetch, dataUpdatedAt } = useDashboard(range, isManager)
+  // "Who did what": eight people at a time.
+  const staffRows = useShowMore(data?.staff ?? [], 8)
   const { data: info } = useClinicInfo()
 
   const nav = navForUser(user)
@@ -517,7 +521,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                         </tr>
                       </thead>
                       <tbody>
-                        {data.staff.map((s, i) => (
+                        {staffRows.visible.map((s, i) => (
                           <tr
                             key={s.name}
                             className="border-grid anim-enter border-b last:border-b-0"
@@ -554,6 +558,15 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                         ))}
                       </tbody>
                     </table>
+                  )}
+                  {data.staff.length > 0 && (
+                    <ShowMore
+                      rest={staffRows.rest}
+                      expanded={staffRows.expanded}
+                      onMore={staffRows.more}
+                      onLess={staffRows.less}
+                      step={8}
+                    />
                   )}
                 </Panel>
               </div>

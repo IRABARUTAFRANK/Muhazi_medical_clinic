@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
  * they share one look and one motion system.
  */
 
+import { ShownList } from '@/components/ui/list-tools'
 import { tintClass, type Tint, card, sectionTitle, stationIconFor } from './kit-style'
 export function CountUp({ value }: { value: number }) {
   const v = useCountUp(value, 600)
@@ -208,7 +209,10 @@ export function Pill({
 
 export function ListRows({
   rows,
+  step = 6,
 }: {
+  /** Rows shown before "Show more" (long lists stay short on dashboards). */
+  step?: number
   rows: {
     key: string
     pill?: ReactNode
@@ -220,20 +224,24 @@ export function ListRows({
   }[]
 }) {
   return (
-    <div className="flex flex-col">
-      {rows.map((r, i) => (
-        <div
-          key={r.key}
-          className="border-grid anim-enter flex min-h-10 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
-          style={{ '--i': i } as CSSProperties}
-        >
-          {r.icon && <IconChip icon={r.icon} tint={r.tint} size="sm" />}
-          {r.pill}
-          <span className="min-w-0 flex-1 truncate">{r.label}</span>
-          <span className="font-bold whitespace-nowrap tabular-nums">{r.value}</span>
+    <ShownList items={rows} step={step}>
+      {(shown) => (
+        <div className="flex flex-col">
+          {shown.map((r, i) => (
+            <div
+              key={r.key}
+              className="border-grid anim-enter flex min-h-10 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
+              style={{ '--i': i } as CSSProperties}
+            >
+              {r.icon && <IconChip icon={r.icon} tint={r.tint} size="sm" />}
+              {r.pill}
+              <span className="min-w-0 flex-1 truncate">{r.label}</span>
+              <span className="font-bold whitespace-nowrap tabular-nums">{r.value}</span>
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+    </ShownList>
   )
 }
 

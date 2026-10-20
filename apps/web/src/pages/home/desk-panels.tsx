@@ -22,6 +22,7 @@ import { formatDayMonth, formatRwf, formatTime, type Role } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import {
   useAppointmentsDay,
@@ -118,71 +119,77 @@ export function AppointmentsPanel({
       {!isLoading && rows.length === 0 ? (
         <Empty>{t('desk.receptionist.noAppointments')}</Empty>
       ) : (
-        <div className="flex flex-col">
-          {rows.map((a, k) => {
-            const open = a.status === 'approved' || a.status === 'confirmed'
-            return (
-              <div key={a.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
-                <Pill
-                  tint={a.late ? 'coral' : (apptTint[a.status] ?? 'teal')}
-                  icon={a.late ? AlarmClock : Clock}
-                >
-                  {a.time}
-                </Pill>
-                <span className="min-w-[140px] flex-1">
-                  <span className="block truncate font-semibold">{a.name}</span>
-                  <span className="text-ink-3 block truncate text-[13px]">
-                    {[a.doctor, a.reason, a.phone].filter(Boolean).join(' · ')}
-                  </span>
-                </span>
-                <span
-                  className={cn(
-                    'text-[13px] font-semibold',
-                    a.late ? 'text-red' : open ? 'text-ink-2' : 'text-ink-3',
-                  )}
-                >
-                  {a.late ? t('ops.appts.late') : t(`ops.appts.status.${a.status}`)}
-                </span>
-                {canAct && open && (
-                  <span className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => arrive(a)}
-                      disabled={!a.patientId}
-                      title={
-                        a.patientId ? t('ops.appts.arrivedHint') : t('ops.appts.registerFirst')
-                      }
+        <ShownList items={rows} step={5}>
+          {(shown) => (
+            <div className="flex flex-col">
+              {shown.map((a, k) => {
+                const open = a.status === 'approved' || a.status === 'confirmed'
+                return (
+                  <div key={a.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
+                    <Pill
+                      tint={a.late ? 'coral' : (apptTint[a.status] ?? 'teal')}
+                      icon={a.late ? AlarmClock : Clock}
                     >
-                      {t('ops.appts.arrived')}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => noShow(a)}>
-                      {t('ops.appts.noShow')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={t('ops.appts.cancel')}
-                      title={t('ops.appts.cancel')}
-                      onClick={() => cancel(a)}
+                      {a.time}
+                    </Pill>
+                    <span className="min-w-[140px] flex-1">
+                      <span className="block truncate font-semibold">{a.name}</span>
+                      <span className="text-ink-3 block truncate text-[13px]">
+                        {[a.doctor, a.reason, a.phone].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[13px] font-semibold',
+                        a.late ? 'text-red' : open ? 'text-ink-2' : 'text-ink-3',
+                      )}
                     >
-                      <X size={14} aria-hidden="true" />
-                    </Button>
-                  </span>
-                )}
-                {!open && a.patientId && (a.status === 'arrived' || a.status === 'in_progress') && (
-                  <StaffLink
-                    to="/app/patient"
-                    search={{ id: a.patientId }}
-                    className={buttonVariants({ size: 'sm' })}
-                  >
-                    {t('patients.openFile')}
-                  </StaffLink>
-                )}
-              </div>
-            )
-          })}
-        </div>
+                      {a.late ? t('ops.appts.late') : t(`ops.appts.status.${a.status}`)}
+                    </span>
+                    {canAct && open && (
+                      <span className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() => arrive(a)}
+                          disabled={!a.patientId}
+                          title={
+                            a.patientId ? t('ops.appts.arrivedHint') : t('ops.appts.registerFirst')
+                          }
+                        >
+                          {t('ops.appts.arrived')}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => noShow(a)}>
+                          {t('ops.appts.noShow')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={t('ops.appts.cancel')}
+                          title={t('ops.appts.cancel')}
+                          onClick={() => cancel(a)}
+                        >
+                          <X size={14} aria-hidden="true" />
+                        </Button>
+                      </span>
+                    )}
+                    {!open &&
+                      a.patientId &&
+                      (a.status === 'arrived' || a.status === 'in_progress') && (
+                        <StaffLink
+                          to="/app/patient"
+                          search={{ id: a.patientId }}
+                          className={buttonVariants({ size: 'sm' })}
+                        >
+                          {t('patients.openFile')}
+                        </StaffLink>
+                      )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </ShownList>
       )}
       {footer}
     </Panel>
@@ -233,32 +240,36 @@ export function InquiriesPanel({ i = 2, canAct }: { i?: number; canAct: boolean 
       {inquiries.length === 0 ? (
         <Empty>{t('desk.receptionist.noInquiries')}</Empty>
       ) : (
-        <div className="flex flex-col">
-          {inquiries.slice(0, 8).map((q, k) => (
-            <div key={q.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
-              <Pill tint="violet" icon={MessageSquare}>
-                {q.when ?? '?'}
-              </Pill>
-              <span className="min-w-[140px] flex-1">
-                <span className="block truncate font-semibold">{q.name}</span>
-                <span className="text-ink-3 block truncate text-[13px]">
-                  {[q.phone, q.doctor, q.note].filter(Boolean).join(' · ')}
-                </span>
-              </span>
-              {canAct && (
-                <span className="flex gap-1">
-                  <Button size="sm" variant="primary" onClick={() => approve(q.id)}>
-                    <Check size={14} aria-hidden="true" />
-                    {t('common.approve')}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => reject(q.id, q.name)}>
-                    {t('ops.inquiries.reject')}
-                  </Button>
-                </span>
-              )}
+        <ShownList items={inquiries} step={5}>
+          {(shown) => (
+            <div className="flex flex-col">
+              {shown.map((q, k) => (
+                <div key={q.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
+                  <Pill tint="violet" icon={MessageSquare}>
+                    {q.when ?? '?'}
+                  </Pill>
+                  <span className="min-w-[140px] flex-1">
+                    <span className="block truncate font-semibold">{q.name}</span>
+                    <span className="text-ink-3 block truncate text-[13px]">
+                      {[q.phone, q.doctor, q.note].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  {canAct && (
+                    <span className="flex gap-1">
+                      <Button size="sm" variant="primary" onClick={() => approve(q.id)}>
+                        <Check size={14} aria-hidden="true" />
+                        {t('common.approve')}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => reject(q.id, q.name)}>
+                        {t('ops.inquiries.reject')}
+                      </Button>
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </ShownList>
       )}
       <Hint>{t('ops.inquiries.hint')}</Hint>
     </Panel>
@@ -286,40 +297,44 @@ export function TasksPanel({ i = 2 }: { i?: number }) {
       {tasks.length === 0 ? (
         <Empty>{t('desk.nurse.noTasks')}</Empty>
       ) : (
-        <div className="flex flex-col">
-          {tasks.slice(0, 8).map((x, k) => (
-            <div key={x.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
-              <Pill tint={x.overdue ? 'coral' : 'teal'} icon={x.overdue ? AlarmClock : Clock}>
-                {x.dueAt ? formatTime(new Date(x.dueAt)) : '—'}
-              </Pill>
-              <span className="min-w-[140px] flex-1">
-                <span className="block truncate font-semibold">{x.title}</span>
-                <span className="text-ink-3 block truncate text-[13px]">
-                  {[x.patient, x.detail, x.by && t('ops.tasks.by', { name: x.by })]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-              </span>
-              {x.encounterId && (
-                <StaffLink
-                  to="/app/visit"
-                  search={{ encounter: x.encounterId }}
-                  className={buttonVariants({ size: 'sm', variant: 'ghost' })}
-                >
-                  {t('visits.openVisit')}
-                </StaffLink>
-              )}
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => void run(() => ops.completeTask.mutateAsync(x.id))}
-              >
-                <Check size={14} aria-hidden="true" />
-                {t('common.done')}
-              </Button>
+        <ShownList items={tasks} step={5}>
+          {(shown) => (
+            <div className="flex flex-col">
+              {shown.map((x, k) => (
+                <div key={x.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
+                  <Pill tint={x.overdue ? 'coral' : 'teal'} icon={x.overdue ? AlarmClock : Clock}>
+                    {x.dueAt ? formatTime(new Date(x.dueAt)) : '—'}
+                  </Pill>
+                  <span className="min-w-[140px] flex-1">
+                    <span className="block truncate font-semibold">{x.title}</span>
+                    <span className="text-ink-3 block truncate text-[13px]">
+                      {[x.patient, x.detail, x.by && t('ops.tasks.by', { name: x.by })]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </span>
+                  {x.encounterId && (
+                    <StaffLink
+                      to="/app/visit"
+                      search={{ encounter: x.encounterId }}
+                      className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                    >
+                      {t('visits.openVisit')}
+                    </StaffLink>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => void run(() => ops.completeTask.mutateAsync(x.id))}
+                  >
+                    <Check size={14} aria-hidden="true" />
+                    {t('common.done')}
+                  </Button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </ShownList>
       )}
     </Panel>
   )
@@ -636,36 +651,40 @@ export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
       {files.length === 0 ? (
         <Empty>{t('files.none')}</Empty>
       ) : (
-        <div className="flex flex-col">
-          {files.slice(0, 7).map((f, k) => (
-            <div key={f.patientId} className={rowClass} style={{ '--i': k } as CSSProperties}>
-              <Pill tint={f.station === 'reception' ? 'amber' : 'teal'} icon={Ticket}>
-                {f.ticket ?? '—'}
-              </Pill>
-              <span className="min-w-[140px] flex-1">
-                <span className="block truncate font-semibold">{f.name}</span>
-                <span className="text-ink-3 block truncate text-[13px]">
-                  {t('files.lacks', {
-                    missing: f.missing.map((m) => t(`files.missing.${m}`)).join(', '),
-                  })}
-                  {f.station
-                    ? ` · ${t('files.now', { station: t(`register.stations.${f.station}`) })}`
-                    : ''}
-                </span>
-              </span>
-              <StaffLink
-                to="/app/patient"
-                search={{ id: f.patientId, tab: 'complete' }}
-                className={buttonVariants({
-                  size: 'sm',
-                  variant: f.station === 'reception' ? 'primary' : 'default',
-                })}
-              >
-                {t('files.complete')}
-              </StaffLink>
+        <ShownList items={files} step={5}>
+          {(shown) => (
+            <div className="flex flex-col">
+              {shown.map((f, k) => (
+                <div key={f.patientId} className={rowClass} style={{ '--i': k } as CSSProperties}>
+                  <Pill tint={f.station === 'reception' ? 'amber' : 'teal'} icon={Ticket}>
+                    {f.ticket ?? '—'}
+                  </Pill>
+                  <span className="min-w-[140px] flex-1">
+                    <span className="block truncate font-semibold">{f.name}</span>
+                    <span className="text-ink-3 block truncate text-[13px]">
+                      {t('files.lacks', {
+                        missing: f.missing.map((m) => t(`files.missing.${m}`)).join(', '),
+                      })}
+                      {f.station
+                        ? ` · ${t('files.now', { station: t(`register.stations.${f.station}`) })}`
+                        : ''}
+                    </span>
+                  </span>
+                  <StaffLink
+                    to="/app/patient"
+                    search={{ id: f.patientId, tab: 'complete' }}
+                    className={buttonVariants({
+                      size: 'sm',
+                      variant: f.station === 'reception' ? 'primary' : 'default',
+                    })}
+                  >
+                    {t('files.complete')}
+                  </StaffLink>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </ShownList>
       )}
       <Hint>{t('files.hint')}</Hint>
     </Panel>

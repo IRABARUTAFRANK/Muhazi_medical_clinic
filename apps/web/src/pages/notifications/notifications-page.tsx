@@ -21,6 +21,7 @@ import { Empty, IconChip, Panel } from '@/components/dash/kit'
 import { type Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Button } from '@/components/ui/button'
+import { ListBar, Pager, ShownList } from '@/components/ui/list-tools'
 import { Composer } from '@/components/staff/notification-bell'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
@@ -31,6 +32,7 @@ import {
 } from '@/lib/api/notifications'
 import { navForUser } from '@/lib/nav'
 import { useAgo, useWording } from '@/lib/notice-wording'
+import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 
 type Filter = 'all' | 'unread' | 'urgent' | 'patients' | 'messages'
@@ -61,13 +63,14 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
   const word = useWording()
   const [tab, setTab] = useState<'inbox' | 'sent'>('inbox')
   const [filter, setFilter] = useState<Filter>('all')
+  const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [composing, setComposing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const items = data?.items ?? []
   const unread = data?.unread ?? 0
 
-  const shown = items.filter((n) =>
+  const filtered = items.filter((n) =>
     filter === 'unread'
       ? !n.read
       : filter === 'urgent'
@@ -78,6 +81,12 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
             ? n.kind !== 'message'
             : true,
   )
+  // Search the wording, then 20 per page.
+  const shown = filtered.filter((n) => {
+    const w = word(n)
+    return matches(query, w.title, w.body, n.sender)
+  })
+  const paged = usePaged(shown, 20, `${filter}|${query}`)
   const allPicked = shown.length > 0 && shown.every((n) => selected.includes(n.id))
   const run = async (fn: () => Promise<unknown>) => {
     setError(null)
@@ -176,6 +185,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
             title={t('notices.inbox')}
             right={t('notices.shown', { count: shown.length })}
           >
+            <ListBar query={query} onQuery={setQuery} placeholderKey="list.searchNotices" />
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
               {(['all', 'unread', 'urgent', 'patients', 'messages'] as const).map((f) => (
@@ -254,7 +264,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
               <Empty icon={Inbox}>{t('notices.empty')}</Empty>
             ) : (
               <div className="flex flex-col">
-                {shown.map((n, i) => {
+                {paged.slice.map((n, i) => {
                   const w = word(n)
                   const look = lookOf(n)
                   return (
@@ -329,6 +339,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                 })}
               </div>
             )}
+            <Pager {...paged} onPage={paged.setPage} />
           </Panel>
         )}
 
@@ -343,51 +354,55 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
             {sent.length === 0 ? (
               <Empty icon={Send}>{t('notices.noneSent')}</Empty>
             ) : (
-              <div className="flex flex-col">
-                {sent.map((m, i) => (
-                  <div
-                    key={m.id}
-                    className="border-grid anim-enter flex items-start gap-3 border-b py-3 last:border-b-0"
-                    style={{ '--i': Math.min(i, 12) } as CSSProperties}
-                  >
-                    <IconChip
-                      icon={m.urgent ? Siren : Megaphone}
-                      tint={m.urgent ? 'coral' : 'violet'}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold">{m.title}</span>
-                      {m.body && <span className="text-ink-2 block text-[14px]">{m.body}</span>}
-                      <span className="text-ink-3 mt-1 flex flex-wrap items-center gap-x-3 text-[13px]">
-                        <span>{ago(m.at)}</span>
-                        <span className="inline-flex items-center gap-1">
-                          <Users size={12} aria-hidden="true" />
-                          {m.to === 'all'
-                            ? t('notify.toAll')
-                            : m.to === 'role'
-                              ? t(`staff.roles.${m.target}`, { defaultValue: m.target ?? '' })
-                              : (m.target ?? '')}
-                          {m.headsOnly ? ` · ${t('notify.headsOnly')}` : ''}
+              <ShownList items={sent} step={10}>
+                {(shown) => (
+                  <div className="flex flex-col">
+                    {shown.map((m, i) => (
+                      <div
+                        key={m.id}
+                        className="border-grid anim-enter flex items-start gap-3 border-b py-3 last:border-b-0"
+                        style={{ '--i': Math.min(i, 12) } as CSSProperties}
+                      >
+                        <IconChip
+                          icon={m.urgent ? Siren : Megaphone}
+                          tint={m.urgent ? 'coral' : 'violet'}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[15px] font-semibold">{m.title}</span>
+                          {m.body && <span className="text-ink-2 block text-[14px]">{m.body}</span>}
+                          <span className="text-ink-3 mt-1 flex flex-wrap items-center gap-x-3 text-[13px]">
+                            <span>{ago(m.at)}</span>
+                            <span className="inline-flex items-center gap-1">
+                              <Users size={12} aria-hidden="true" />
+                              {m.to === 'all'
+                                ? t('notify.toAll')
+                                : m.to === 'role'
+                                  ? t(`staff.roles.${m.target}`, { defaultValue: m.target ?? '' })
+                                  : (m.target ?? '')}
+                              {m.headsOnly ? ` · ${t('notify.headsOnly')}` : ''}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <CheckCheck size={12} aria-hidden="true" />
+                              {t('notices.readBy', { count: m.readBy })}
+                            </span>
+                          </span>
                         </span>
-                        <span className="inline-flex items-center gap-1">
-                          <CheckCheck size={12} aria-hidden="true" />
-                          {t('notices.readBy', { count: m.readBy })}
-                        </span>
-                      </span>
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        if (window.confirm(t('notices.confirmDelete')))
-                          void run(() => actions.remove.mutateAsync(m.id))
-                      }}
-                    >
-                      <Trash2 size={14} aria-hidden="true" />
-                      {t('notices.delete')}
-                    </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            if (window.confirm(t('notices.confirmDelete')))
+                              void run(() => actions.remove.mutateAsync(m.id))
+                          }}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                          {t('notices.delete')}
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+              </ShownList>
             )}
           </Panel>
         )}

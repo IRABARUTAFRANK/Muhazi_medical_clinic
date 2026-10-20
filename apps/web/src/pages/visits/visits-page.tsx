@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { FolderOpen, Stethoscope, UserPlus, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
@@ -7,10 +7,19 @@ import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
+import { ListBar, ShowMore } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { STATIONS, openItems, useQueueBoard, type QueueItem, type Station } from '@/lib/api/visits'
+import {
+  STATIONS,
+  openItems,
+  sortQueue,
+  useQueueBoard,
+  type QueueItem,
+  type Station,
+} from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
+import { matches, useShowMore, type SortKey } from '@/lib/paging'
 
 /**
  * "In the clinic": every patient with an open visit today, grouped by the station where they
@@ -20,7 +29,13 @@ import { navForUser } from '@/lib/nav'
 export function VisitsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const { data: items = [], isLoading, error } = useQueueBoard('all', user.role)
-  const open = openItems(items)
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<SortKey>('urgent')
+  // Search and order apply to every desk; each desk card then shows a few at a time.
+  const open = sortQueue(
+    openItems(items).filter((q) => matches(query, q.name, q.ticket, q.fileNumber)),
+    sort,
+  )
   // A patient shared by several desks ("first free doctor") is listed at each desk, counted once.
   const people = new Set(open.map((q) => q.encounterId)).size
   // Shared patients are shown once, in their own card, with the desks they wait at.
@@ -58,6 +73,16 @@ export function VisitsPage({ user }: { user: StaffUser }) {
             {error.message}
           </p>
         )}
+        {items.length > 0 && (
+          <ListBar
+            query={query}
+            onQuery={setQuery}
+            sort={sort}
+            onSort={setSort}
+            sorts={['urgent', 'longest', 'latest', 'name']}
+            placeholderKey="list.searchPatient"
+          />
+        )}
         {!isLoading && open.length === 0 && (
           <Card>
             <CardBody>
@@ -75,9 +100,10 @@ export function VisitsPage({ user }: { user: StaffUser }) {
               </span>
               <span className="text-ink-3 text-xs">{t('visits.pooledHint')}</span>
             </CardHeader>
-            {pools.map((p) => (
-              <VisitRow key={p.item.poolId} item={p.item} desks={p.desks} />
-            ))}
+            <ShownRows
+              items={pools}
+              render={(p) => <VisitRow key={p.item.poolId} item={p.item} desks={p.desks} />}
+            />
           </Card>
         )}
 
@@ -99,15 +125,28 @@ export function VisitsPage({ user }: { user: StaffUser }) {
                     })}
                   </span>
                 </CardHeader>
-                {rows.map((r) => (
-                  <VisitRow key={r.queueId} item={r} />
-                ))}
+                <ShownRows items={rows} render={(r) => <VisitRow key={r.queueId} item={r} />} />
               </Card>
             )
           })}
         </div>
       </main>
     </StaffShell>
+  )
+}
+
+/** A desk's rows, six at a time with "Show more". */
+function ShownRows<T>({ items, render }: { items: T[]; render: (item: T) => ReactNode }) {
+  const m = useShowMore(items, 6)
+  return (
+    <>
+      {m.visible.map(render)}
+      {(m.rest > 0 || m.expanded) && (
+        <div className="px-4 py-2">
+          <ShowMore rest={m.rest} expanded={m.expanded} onMore={m.more} onLess={m.less} step={6} />
+        </div>
+      )}
+    </>
   )
 }
 

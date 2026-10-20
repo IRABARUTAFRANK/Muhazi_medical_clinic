@@ -1863,5 +1863,26 @@
       "message": "ubutumwa"
     },
     "leadOwn": "Ibyo wakoze byose, ibya vuba mbere: abarwayi wanditse, ibipimo, imirongo, ubuvuzi, ubwishyu, ibitanda no kwinjira kwawe."
+  },
+  "list": {
+    "showMore_one": "Erekana {{count}} kindi ({{rest}} gisigaye)",
+    "showMore_other": "Erekana {{count}} ibindi ({{rest}} bisigaye)",
+    "showLess": "Erekana bike",
+    "pages": "Amapaji",
+    "showing": "{{from}}–{{to}} kuri {{total}}",
+    "prev": "Ipaji ibanza",
+    "next": "Ipaji ikurikira",
+    "search": "Shakisha",
+    "searchPatient": "Shakisha izina, tike cyangwa nimero ya dosiye",
+    "searchNotices": "Shakisha mu menyesha",
+    "searchStaff": "Shakisha izina, username, nimero y’umukozi cyangwa e-mail",
+    "sortBy": "Uko bikurikirana",
+    "sorts": {
+      "urgent": "Ibyihutirwa mbere",
+      "longest": "Abategereje igihe kirekire",
+      "latest": "Ibya vuba mbere",
+      "oldest": "Ibya kera mbere",
+      "name": "Izina A–Z"
+    }
   }
 }

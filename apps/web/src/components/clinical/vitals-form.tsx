@@ -137,7 +137,8 @@ export function VitalsForm({
           {/* Who measured and when (the paper sheet case) */}
           <div
             className={cn(
-              'grid grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-[2fr_1fr]',
+              // minmax(0, …): long nurse names must not push "Measured at" past the card edge.
+              'grid min-w-0 grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-[minmax(0,2fr)_minmax(140px,1fr)]',
               fromPaper ? 'border-amber/40 bg-amber-bg/50' : 'border-border',
             )}
           >
@@ -145,6 +146,8 @@ export function VitalsForm({
               label={t('vitalsForm.measuredBy')}
               value={measuredBy}
               onChange={(e) => setMeasuredBy(e.target.value)}
+              wrapperClassName="min-w-0"
+              className="w-full min-w-0 truncate"
               required
             >
               {!measuresSelf && <option value="">{t('vitalsForm.pickNurse')}</option>}
@@ -164,6 +167,8 @@ export function VitalsForm({
               type="time"
               value={measuredAt}
               onChange={(e) => setMeasuredAt(e.target.value)}
+              wrapperClassName="min-w-0"
+              className="w-full min-w-0"
               required
             />
             <p className="text-ink-2 col-span-full m-0 inline-flex items-start gap-1.5 text-xs">
@@ -172,7 +177,7 @@ export function VitalsForm({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
             {VITALS.map((v) => (
               <Field
                 key={v.key}

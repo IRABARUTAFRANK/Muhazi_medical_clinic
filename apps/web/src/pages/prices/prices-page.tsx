@@ -40,6 +40,7 @@ import {
 import { suggestNames } from '@/lib/medical-glossary'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
+import { ShownList } from '@/components/ui/list-tools'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -216,85 +217,91 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 {visible.filter((x) => x.group === g).length}
               </span>
             </CardHeader>
-            {visible
-              .filter((x) => x.group === g)
-              .map((x) => (
-                <Row
-                  key={x.id}
-                  className={cn('flex-wrap gap-x-3 gap-y-1 py-2', !x.active && 'opacity-60')}
-                >
-                  <span className="min-w-[200px] flex-1">
-                    <span className="block font-semibold">{treatmentName(x, i18n.language)}</span>
-                    <span className="text-ink-3 text-xs">
-                      {x.code}
-                      {x.nameKin ? ` · ${x.nameKin}` : ''}
-                      {x.nameFr ? ` · ${x.nameFr}` : ''}
+            <ShownList
+              step={10}
+              footerClassName="px-4 py-2"
+              items={visible.filter((x) => x.group === g)}
+            >
+              {(rows) =>
+                rows.map((x) => (
+                  <Row
+                    key={x.id}
+                    className={cn('flex-wrap gap-x-3 gap-y-1 py-2', !x.active && 'opacity-60')}
+                  >
+                    <span className="min-w-[200px] flex-1">
+                      <span className="block font-semibold">{treatmentName(x, i18n.language)}</span>
+                      <span className="text-ink-3 text-xs">
+                        {x.code}
+                        {x.nameKin ? ` · ${x.nameKin}` : ''}
+                        {x.nameFr ? ` · ${x.nameFr}` : ''}
+                      </span>
                     </span>
-                  </span>
-                  <span className="font-bold tabular-nums">
-                    {x.cashPrice == null
-                      ? t('prices.noPrice')
-                      : x.cashPrice === 0
-                        ? t('price.free')
-                        : formatRwf(x.cashPrice)}
-                  </span>
-                  {activeInsurers.map((i) =>
-                    x.payerPrices[i.id] != null ? (
-                      <Chip key={i.id}>
-                        {i.code}: {formatRwf(x.payerPrices[i.id]!)}
-                      </Chip>
-                    ) : null,
-                  )}
-                  <Chip title={t('prices.maxDiscountTitle')}>
-                    {t('prices.maxDiscount', { pct: x.maxDiscountPct })}
-                  </Chip>
-                  {x.allowManualPrice && (
-                    <Chip title={t('prices.form.allowManualHint')}>{t('prices.typedPrice')}</Chip>
-                  )}
-                  {!x.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
-                  <span className="flex flex-wrap gap-1">
-                    <Button size="sm" onClick={() => setEditing(x)}>
-                      <Pencil size={14} aria-hidden="true" />
-                      {t('prices.edit')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      title={t('prices.duplicate')}
-                      aria-label={t('prices.duplicate')}
-                      onClick={() => {
-                        setCopyFrom(x)
-                        setEditing('new')
-                      }}
-                    >
-                      <Copy size={14} aria-hidden="true" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      title={t(x.active ? 'prices.hide' : 'prices.show')}
-                      aria-label={t(x.active ? 'prices.hide' : 'prices.show')}
-                      onClick={() => toggle(x)}
-                    >
-                      {x.active ? (
-                        <EyeOff size={14} aria-hidden="true" />
-                      ) : (
-                        <Eye size={14} aria-hidden="true" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="hover:text-red"
-                      title={t('prices.delete')}
-                      aria-label={t('prices.delete')}
-                      onClick={() => remove(x)}
-                    >
-                      <Trash2 size={14} aria-hidden="true" />
-                    </Button>
-                  </span>
-                </Row>
-              ))}
+                    <span className="font-bold tabular-nums">
+                      {x.cashPrice == null
+                        ? t('prices.noPrice')
+                        : x.cashPrice === 0
+                          ? t('price.free')
+                          : formatRwf(x.cashPrice)}
+                    </span>
+                    {activeInsurers.map((i) =>
+                      x.payerPrices[i.id] != null ? (
+                        <Chip key={i.id}>
+                          {i.code}: {formatRwf(x.payerPrices[i.id]!)}
+                        </Chip>
+                      ) : null,
+                    )}
+                    <Chip title={t('prices.maxDiscountTitle')}>
+                      {t('prices.maxDiscount', { pct: x.maxDiscountPct })}
+                    </Chip>
+                    {x.allowManualPrice && (
+                      <Chip title={t('prices.form.allowManualHint')}>{t('prices.typedPrice')}</Chip>
+                    )}
+                    {!x.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
+                    <span className="flex flex-wrap gap-1">
+                      <Button size="sm" onClick={() => setEditing(x)}>
+                        <Pencil size={14} aria-hidden="true" />
+                        {t('prices.edit')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title={t('prices.duplicate')}
+                        aria-label={t('prices.duplicate')}
+                        onClick={() => {
+                          setCopyFrom(x)
+                          setEditing('new')
+                        }}
+                      >
+                        <Copy size={14} aria-hidden="true" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title={t(x.active ? 'prices.hide' : 'prices.show')}
+                        aria-label={t(x.active ? 'prices.hide' : 'prices.show')}
+                        onClick={() => toggle(x)}
+                      >
+                        {x.active ? (
+                          <EyeOff size={14} aria-hidden="true" />
+                        ) : (
+                          <Eye size={14} aria-hidden="true" />
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="hover:text-red"
+                        title={t('prices.delete')}
+                        aria-label={t('prices.delete')}
+                        onClick={() => remove(x)}
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </Button>
+                    </span>
+                  </Row>
+                ))
+              }
+            </ShownList>
           </Card>
         ))}
 

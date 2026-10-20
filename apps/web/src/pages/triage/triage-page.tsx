@@ -6,9 +6,11 @@ import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
+import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useFilesToComplete } from '@/lib/api/desk-ops'
-import { openItems, useQueueBoard } from '@/lib/api/visits'
+import { openItems, sortQueue, useQueueBoard } from '@/lib/api/visits'
+import { matches, usePaged, type SortKey } from '@/lib/paging'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +31,14 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
     waiting[0] ??
     null
   const [notice, setNotice] = useState<string | null>(null)
+  // A long triage queue: search, choose the order, ten at a time.
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<SortKey>('urgent')
+  const shown = sortQueue(
+    waiting.filter((q) => matches(query, q.name, q.ticket, q.fileNumber)),
+    sort,
+  )
+  const paged = usePaged(shown, 10, `${query}|${sort}`)
   // Files the nurse started that reception must complete: send those patients to reception.
   const { data: files = [] } = useFilesToComplete()
   const missing = selected
@@ -61,12 +71,24 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
               <span>{t('triage.queueTitle')}</span>
               <span className="text-ink-3 text-xs">{isLoading ? '…' : ''}</span>
             </CardHeader>
+            {waiting.length > 0 && (
+              <CardBody className="border-border flex-none border-b py-2.5">
+                <ListBar
+                  query={query}
+                  onQuery={setQuery}
+                  sort={sort}
+                  onSort={setSort}
+                  sorts={['urgent', 'longest', 'latest', 'name']}
+                  placeholderKey="list.searchPatient"
+                />
+              </CardBody>
+            )}
             {waiting.length === 0 ? (
               <CardBody>
                 <p className="text-ink-3 m-0 text-[13px]">{t('triage.empty')}</p>
               </CardBody>
             ) : (
-              waiting.map((q) => (
+              paged.slice.map((q) => (
                 <button
                   key={q.queueId}
                   type="button"
@@ -89,6 +111,11 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
                   </span>
                 </button>
               ))
+            )}
+            {waiting.length > 0 && (
+              <CardBody className="flex-none py-2">
+                <Pager {...paged} onPage={paged.setPage} />
+              </CardBody>
             )}
           </Card>
 

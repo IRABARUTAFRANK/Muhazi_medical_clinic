@@ -1854,5 +1854,26 @@
       "message": "message"
     },
     "leadOwn": "Everything you did, newest first: patients registered, vital signs, queue moves, treatments, payments, beds and your sign-ins."
+  },
+  "list": {
+    "showMore_one": "Show {{count}} more ({{rest}} left)",
+    "showMore_other": "Show {{count}} more ({{rest}} left)",
+    "showLess": "Show fewer",
+    "pages": "Pages",
+    "showing": "Showing {{from}}–{{to}} of {{total}}",
+    "prev": "Previous page",
+    "next": "Next page",
+    "search": "Search",
+    "searchPatient": "Search by name, ticket or file number",
+    "searchNotices": "Search notifications",
+    "searchStaff": "Search by name, username, staff ID or e-mail",
+    "sortBy": "Order",
+    "sorts": {
+      "urgent": "Urgent first",
+      "longest": "Waiting longest",
+      "latest": "Latest first",
+      "oldest": "Oldest first",
+      "name": "Name A–Z"
+    }
   }
 }

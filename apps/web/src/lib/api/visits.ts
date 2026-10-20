@@ -477,6 +477,23 @@ export const queueCounts = (items: readonly QueueItem[]) => ({
 /** Rows still waiting or in progress, for the queue card. */
 export const openItems = (items: readonly QueueItem[]) => items.filter((i) => !i.finishedAt)
 
+const TRIAGE_RANK: Record<string, number> = { red: 0, yellow: 1, green: 2 }
+/** Queue order chosen by the user: urgent first, longest waiting, latest arrival, or by name. */
+export const sortQueue = (
+  items: readonly QueueItem[],
+  sort: 'urgent' | 'longest' | 'latest' | 'oldest' | 'name',
+) =>
+  [...items].sort((a, b) => {
+    if (sort === 'name') return a.name.localeCompare(b.name)
+    if (sort === 'latest') return b.queuedAt.localeCompare(a.queuedAt)
+    if (sort === 'longest' || sort === 'oldest') return a.queuedAt.localeCompare(b.queuedAt)
+    return (
+      a.priority - b.priority ||
+      (TRIAGE_RANK[a.triage] ?? 3) - (TRIAGE_RANK[b.triage] ?? 3) ||
+      a.queuedAt.localeCompare(b.queuedAt)
+    )
+  })
+
 /** One row per shared patient (sent to several desks at once); other rows unchanged. */
 export const onePerPool = (items: readonly QueueItem[]) => {
   const seen = new Set<string>()

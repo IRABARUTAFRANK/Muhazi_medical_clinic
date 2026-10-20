@@ -30,6 +30,7 @@ import {
 } from '@/lib/api/visits'
 import { useDeskOps } from '@/lib/api/desk-ops'
 import { navForUser } from '@/lib/nav'
+import { ShownList } from '@/components/ui/list-tools'
 import { cn } from '@/lib/utils'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'bills'
@@ -743,46 +744,50 @@ function Visits({ file }: { file: PatientFile }) {
     )
   return (
     <Card className="anim-enter">
-      {file.visits.map((v, i) => (
-        <Row
-          key={v.id}
-          className="flex-wrap gap-x-4 gap-y-1 py-3"
-          style={{ '--i': i } as CSSProperties}
-        >
-          <span className="min-w-[200px] flex-1">
-            <span className="block font-semibold tabular-nums">{when(v.arrivedAt)}</span>
-            <span className="text-ink-3 block text-xs">
-              {[v.practitioner, v.stations.map((s) => t(`register.stations.${s}`)).join(' → ')]
-                .filter(Boolean)
-                .join(' · ')}
-            </span>
-          </span>
-          {v.triage && <Badge tone={v.triage}>{t(`home.triage.${v.triage}`)}</Badge>}
-          <span className="min-w-[160px] text-[13px]">
-            {v.diagnosis ?? <span className="text-ink-3">{t('file.noDiagnosis')}</span>}
-          </span>
-          <span className="font-semibold tabular-nums">
-            {v.total != null ? formatRwf(v.total) : '—'}
-          </span>
-          {v.status === 'open' ? (
-            <Badge tone="blue">
-              {t('file.visitOpen', {
-                station: v.currentStation ? t(`register.stations.${v.currentStation}`) : '',
-              })}
-            </Badge>
-          ) : (
-            <Badge tone="green">{t('file.visitClosed')}</Badge>
-          )}
-          <StaffLink
-            to="/app/visit"
-            search={{ encounter: v.id }}
-            className={buttonVariants({ size: 'sm' })}
-          >
-            <FolderOpen size={14} aria-hidden="true" />
-            {t('common.open')}
-          </StaffLink>
-        </Row>
-      ))}
+      <ShownList items={file.visits} step={8} footerClassName="px-4 py-2">
+        {(visits) =>
+          visits.map((v, i) => (
+            <Row
+              key={v.id}
+              className="flex-wrap gap-x-4 gap-y-1 py-3"
+              style={{ '--i': i } as CSSProperties}
+            >
+              <span className="min-w-[200px] flex-1">
+                <span className="block font-semibold tabular-nums">{when(v.arrivedAt)}</span>
+                <span className="text-ink-3 block text-xs">
+                  {[v.practitioner, v.stations.map((s) => t(`register.stations.${s}`)).join(' → ')]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </span>
+              {v.triage && <Badge tone={v.triage}>{t(`home.triage.${v.triage}`)}</Badge>}
+              <span className="min-w-[160px] text-[13px]">
+                {v.diagnosis ?? <span className="text-ink-3">{t('file.noDiagnosis')}</span>}
+              </span>
+              <span className="font-semibold tabular-nums">
+                {v.total != null ? formatRwf(v.total) : '—'}
+              </span>
+              {v.status === 'open' ? (
+                <Badge tone="blue">
+                  {t('file.visitOpen', {
+                    station: v.currentStation ? t(`register.stations.${v.currentStation}`) : '',
+                  })}
+                </Badge>
+              ) : (
+                <Badge tone="green">{t('file.visitClosed')}</Badge>
+              )}
+              <StaffLink
+                to="/app/visit"
+                search={{ encounter: v.id }}
+                className={buttonVariants({ size: 'sm' })}
+              >
+                <FolderOpen size={14} aria-hidden="true" />
+                {t('common.open')}
+              </StaffLink>
+            </Row>
+          ))
+        }
+      </ShownList>
     </Card>
   )
 }

@@ -1854,5 +1854,26 @@
       "message": "message"
     },
     "leadOwn": "Tout ce que vous avez fait, le plus récent d’abord : patients inscrits, signes vitaux, files d’attente, soins, paiements, lits et vos connexions."
+  },
+  "list": {
+    "showMore_one": "Voir {{count}} de plus ({{rest}} restant)",
+    "showMore_other": "Voir {{count}} de plus ({{rest}} restants)",
+    "showLess": "Voir moins",
+    "pages": "Pages",
+    "showing": "{{from}}–{{to}} sur {{total}}",
+    "prev": "Page précédente",
+    "next": "Page suivante",
+    "search": "Rechercher",
+    "searchPatient": "Nom, ticket ou numéro de dossier",
+    "searchNotices": "Rechercher dans les notifications",
+    "searchStaff": "Nom, identifiant, ID employé ou e-mail",
+    "sortBy": "Ordre",
+    "sorts": {
+      "urgent": "Urgents d’abord",
+      "longest": "Attente la plus longue",
+      "latest": "Plus récents",
+      "oldest": "Plus anciens",
+      "name": "Nom A–Z"
+    }
   }
 }

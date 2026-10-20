@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
+import { ListBar, ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
@@ -51,6 +52,7 @@ import {
   type Position,
 } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
+import { matches } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 
 interface Credentials {
@@ -87,6 +89,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
   const [notice, setNotice] = useState<string | null>(null)
   const [showInactive, setShowInactive] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [staffQuery, setStaffQuery] = useState('')
   const formRef = useRef<HTMLDivElement>(null)
   // Bring the form the manager just opened into view, wherever the button was on the page.
   useEffect(() => {
@@ -109,7 +112,10 @@ export function StaffPage({ user }: { user: StaffUser }) {
     return t('staff.errors.generic', { message: m })
   }
 
-  const visible = employees.filter((e) => showInactive || e.active)
+  const visible = employees.filter(
+    (e) =>
+      (showInactive || e.active) && matches(staffQuery, e.fullName, e.username, e.staffId, e.email),
+  )
   const groups: { key: string; name: string; people: Employee[] }[] = [
     ...departments.map((d) => ({
       key: d.id,
@@ -256,6 +262,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
               />
             )}
 
+            <ListBar query={staffQuery} onQuery={setStaffQuery} placeholderKey="list.searchStaff" />
             <label className="flex items-center gap-2 self-start text-[13px] font-semibold">
               <input
                 type="checkbox"
@@ -276,109 +283,120 @@ export function StaffPage({ user }: { user: StaffUser }) {
                   </span>
                   <span className="text-ink-3 text-xs">{g.people.length}</span>
                 </CardHeader>
-                {[...g.people]
-                  .sort(
+                <ShownList
+                  step={8}
+                  footerClassName="px-4 py-2"
+                  items={[...g.people].sort(
                     (a, b) =>
                       rank[a.position] - rank[b.position] || a.fullName.localeCompare(b.fullName),
-                  )
-                  .map((e) => {
-                    const self = e.id === user.id
-                    return (
-                      <Row
-                        key={e.id}
-                        className={cn('flex-wrap gap-x-4 gap-y-2 py-3', !e.active && 'opacity-60')}
-                      >
-                        <Avatar name={e.fullName} size="md" />
-                        <span className="min-w-[200px] flex-1">
-                          <span className="block font-semibold">
-                            {e.fullName}
-                            {self && (
-                              <span className="text-ink-3 ml-2 text-xs font-medium">
-                                ({t('staff.you')})
-                              </span>
+                  )}
+                >
+                  {(shownPeople) => (
+                    <>
+                      {shownPeople.map((e) => {
+                        const self = e.id === user.id
+                        return (
+                          <Row
+                            key={e.id}
+                            className={cn(
+                              'flex-wrap gap-x-4 gap-y-2 py-3',
+                              !e.active && 'opacity-60',
                             )}
-                          </span>
-                          <span className="text-ink-3 text-xs tabular-nums">
-                            {[
-                              e.staffId,
-                              e.username,
-                              e.email,
-                              e.lastSignInAt
-                                ? t('staff.lastSignIn', {
-                                    when: `${formatDate(new Date(e.lastSignInAt))} ${formatTime(new Date(e.lastSignInAt))}`,
-                                  })
-                                : t('staff.neverSignedIn'),
-                            ]
-                              .filter(Boolean)
-                              .join(' · ')}
-                          </span>
-                        </span>
-                        <Chip>{t(`staff.roles.${e.role}`)}</Chip>
-                        {e.position !== 'member' && (
-                          <Badge tone={e.position === 'head' ? 'blue' : 'grey'} dot={false}>
-                            {t(`staff.positions.${e.position}`)}
-                          </Badge>
-                        )}
-                        {e.active && e.tempPin && <TempPin pin={e.tempPin} />}
-                        {!e.active ? (
-                          <Badge tone="red">{t('staff.deactivated')}</Badge>
-                        ) : e.mustChangePin ? (
-                          <Badge tone="yellow">{t('staff.pinPending')}</Badge>
-                        ) : (
-                          <Badge tone="green">{t('staff.active')}</Badge>
-                        )}
-                        <span className="flex flex-wrap gap-2">
-                          <Button size="sm" onClick={() => setEditing(e)} disabled={!e.active}>
-                            <Pencil size={15} aria-hidden="true" />
-                            {t('staff.edit')}
-                          </Button>
-                          <Button size="sm" onClick={() => setResetFor(e)} disabled={!e.active}>
-                            <KeyRound size={15} aria-hidden="true" />
-                            {t('staff.resetPin')}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={e.active ? 'danger' : 'default'}
-                            disabled={self}
-                            onClick={() =>
-                              setPending({
-                                title: t(
-                                  e.active
-                                    ? 'staff.confirm.deactivate'
-                                    : 'staff.confirm.reactivate',
-                                  {
-                                    name: e.fullName,
-                                  },
-                                ),
-                                run: async (confirmCode) => {
-                                  await actions.setActive.mutateAsync({
-                                    id: e.id,
-                                    active: !e.active,
-                                    confirmCode,
-                                  })
-                                  setNotice(
-                                    t(
-                                      e.active
-                                        ? 'staff.deactivatedNotice'
-                                        : 'staff.reactivatedNotice',
-                                      { name: e.fullName },
-                                    ),
-                                  )
-                                },
-                              })
-                            }
                           >
-                            {e.active ? (
-                              <UserX size={15} aria-hidden="true" />
-                            ) : (
-                              <UserCheck size={15} aria-hidden="true" />
+                            <Avatar name={e.fullName} size="md" />
+                            <span className="min-w-[200px] flex-1">
+                              <span className="block font-semibold">
+                                {e.fullName}
+                                {self && (
+                                  <span className="text-ink-3 ml-2 text-xs font-medium">
+                                    ({t('staff.you')})
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-ink-3 text-xs tabular-nums">
+                                {[
+                                  e.staffId,
+                                  e.username,
+                                  e.email,
+                                  e.lastSignInAt
+                                    ? t('staff.lastSignIn', {
+                                        when: `${formatDate(new Date(e.lastSignInAt))} ${formatTime(new Date(e.lastSignInAt))}`,
+                                      })
+                                    : t('staff.neverSignedIn'),
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </span>
+                            </span>
+                            <Chip>{t(`staff.roles.${e.role}`)}</Chip>
+                            {e.position !== 'member' && (
+                              <Badge tone={e.position === 'head' ? 'blue' : 'grey'} dot={false}>
+                                {t(`staff.positions.${e.position}`)}
+                              </Badge>
                             )}
-                            {t(e.active ? 'staff.deactivate' : 'staff.reactivate')}
-                          </Button>
-                        </span>
-                      </Row>
-                    )
-                  })}
+                            {e.active && e.tempPin && <TempPin pin={e.tempPin} />}
+                            {!e.active ? (
+                              <Badge tone="red">{t('staff.deactivated')}</Badge>
+                            ) : e.mustChangePin ? (
+                              <Badge tone="yellow">{t('staff.pinPending')}</Badge>
+                            ) : (
+                              <Badge tone="green">{t('staff.active')}</Badge>
+                            )}
+                            <span className="flex flex-wrap gap-2">
+                              <Button size="sm" onClick={() => setEditing(e)} disabled={!e.active}>
+                                <Pencil size={15} aria-hidden="true" />
+                                {t('staff.edit')}
+                              </Button>
+                              <Button size="sm" onClick={() => setResetFor(e)} disabled={!e.active}>
+                                <KeyRound size={15} aria-hidden="true" />
+                                {t('staff.resetPin')}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={e.active ? 'danger' : 'default'}
+                                disabled={self}
+                                onClick={() =>
+                                  setPending({
+                                    title: t(
+                                      e.active
+                                        ? 'staff.confirm.deactivate'
+                                        : 'staff.confirm.reactivate',
+                                      {
+                                        name: e.fullName,
+                                      },
+                                    ),
+                                    run: async (confirmCode) => {
+                                      await actions.setActive.mutateAsync({
+                                        id: e.id,
+                                        active: !e.active,
+                                        confirmCode,
+                                      })
+                                      setNotice(
+                                        t(
+                                          e.active
+                                            ? 'staff.deactivatedNotice'
+                                            : 'staff.reactivatedNotice',
+                                          { name: e.fullName },
+                                        ),
+                                      )
+                                    },
+                                  })
+                                }
+                              >
+                                {e.active ? (
+                                  <UserX size={15} aria-hidden="true" />
+                                ) : (
+                                  <UserCheck size={15} aria-hidden="true" />
+                                )}
+                                {t(e.active ? 'staff.deactivate' : 'staff.reactivate')}
+                              </Button>
+                            </span>
+                          </Row>
+                        )
+                      })}
+                    </>
+                  )}
+                </ShownList>
               </Card>
             ))}
           </>
