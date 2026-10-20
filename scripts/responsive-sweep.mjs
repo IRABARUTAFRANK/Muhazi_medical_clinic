@@ -60,6 +60,7 @@ const SHOTS = [
   ['home-lab', '/app', 'lab'],
   ['dashboard', '/app/dashboard', 'mgr'],
   ['register', '/app/register', 'mgr'],
+  ['register-rec', '/app/register', 'rec'],
   ['vitals', '/app/vitals', 'nur'],
   ['visits', '/app/visits', 'mgr'],
   ['visit', '/app/visit?encounter=e-1', 'doc'],

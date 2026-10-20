@@ -135,13 +135,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="staff">
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        <PageBanner
-          icon={IdCard}
-          tint="violet"
-          title={t('staff.title')}
-          lead={t('staff.lead2')}
-          user={user}
-        >
+        <PageBanner icon={IdCard} tint="violet" title={t('staff.title')} lead={t('staff.lead2')}>
           {tab === 'people' && (
             <Button variant="primary" onClick={() => setEditing('new')}>
               <UserPlus size={18} aria-hidden="true" />

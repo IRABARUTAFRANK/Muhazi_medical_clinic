@@ -520,7 +520,7 @@
     "clinicClosed": "Ivuriro rirafunze",
     "registerPatient": "Andika umurwayi",
     "queueLong": "birebire",
-    "avgShort": "ugereranyije {{time}}",
+    "avgShort": "igihe cyo gutegereza ugereranyije {{time}}",
     "noShowShort": "{{missed}} ntibaje",
     "collectedTotal": "{{amount}} byose hamwe",
     "loading": "Imibare iri kuza…",
@@ -626,7 +626,9 @@
     "custom": {
       "month": "Ukwezi",
       "or": "cyangwa amatariki"
-    }
+    },
+    "longestShort": "uwa mbere amaze gutegereza {{time}}",
+    "noneTaken": "nta we urakirwa uyu munsi"
   },
   "staff": {
     "title": "Abakozi",
@@ -724,7 +726,7 @@
       "pharmacist": "Umufarumasiye",
       "manager": "Umuyobozi / nyir'ivuriro"
     },
-    "lead2": "Fungura no guhindura konti z’abakozi, shyira buri wese mu ishami nk’umuyobozi, umwungirije cyangwa umunyamuryango, subiramo PIN kandi uhagarike konti. Buri mpinduka yemezwa na kode yoherejwe kuri e-mail yawe. Gusubiramo PIN ntibisaba kode: PIN nshya ni iy’agateganyo kandi igaragara ku murongo w’umukozi kugeza ayisimbuje.",
+    "lead2": "Konti z’abakozi, amashami yabo n’imibare y’ibanga (PIN).",
     "tabs": {
       "people": "Abakozi · {{count}}",
       "departments": "Amashami · {{count}}"
@@ -818,7 +820,7 @@
   },
   "register": {
     "title": "Kwandika umurwayi",
-    "lead": "Uruzinduko rwa mbere cyangwa umurwayi uzwi. Umurwayi ashyirwa ku murongo w’aho wahisemo (umuganga ku buryo busanzwe); ibipimo bifatirwa aho cyangwa n’umuforomo.",
+    "lead": "Andika umurwayi mushya cyangwa ugarutse, umwohereze aho agomba kujya.",
     "emergency": "Ikibazo cyihutirwa — umurwayi avurirwa hano, ntajya kuri triage",
     "triageHint": "Umurwayi ahabwa tike akajya kuri triage gupimwa bwa mbere.",
     "search": "Umurwayi usanzwe",
@@ -893,7 +895,7 @@
   },
   "triage": {
     "title": "Ibipimo",
-    "lead": "Abarwayi bataragira ibipimo, n’abategereje kuri triage. Fata ibipimo hano cyangwa ku ecran y’uruzinduko.",
+    "lead": "Abarwayi bagitegereje gupimwa ibipimo by’ibanze.",
     "queueTitle": "Abarwayi bakeneye ibipimo",
     "empty": "Abarwayi bose bari mu ivuriro bafite ibipimo.",
     "vitals": {
@@ -1039,7 +1041,7 @@
       "occupiedNoRemove": "Igitanda kiriho umurwayi ntigikurwaho",
       "confirmRemove": "Gukuraho {{name}}?"
     },
-    "leadShort": "Ibyo ugena byose ku ivuriro, mu bice. Hitamo kimwe ibumoso.",
+    "leadShort": "Ibyo ushyiraho byose ku ivuriro, igice ku kindi.",
     "sections": {
       "clinic": {
         "title": "Ivuriro n’aho riboneka",
@@ -1214,7 +1216,7 @@
   },
   "patients": {
     "title": "Abarwayi",
-    "lead": "Abarwayi bose ivuriro ryanditse. Fungura dosiye urebe ingendo, ibipimo, indwara na fagitire, uhindure amakuru cyangwa utangire uruzinduko rushya.",
+    "lead": "Buri murwayi ivuriro ryanditse, n’idosiye ye yose.",
     "count": "Abarwayi {{count}}",
     "search": "Shakisha umurwayi",
     "results": "Ibisubizo bya “{{query}}”",
@@ -1442,16 +1444,15 @@
   },
   "visits": {
     "title": "Mu ivuriro",
-    "lead": "Buri murwayi ufite uruzinduko rufunguye, bashyizwe hamwe bakurikije aho bari ubu. « Uruzinduko rw’uyu munsi » ni ho avurirwa, yishyurizwa kandi yoherezwa; ububiko bufungura dosiye ihoraho y’umurwayi.",
+    "lead": "Buri murwayi uri mu ivuriro ubu, bakurikiranye aho bategereje.",
     "count": "Abarwayi {{count}}",
     "none": "Nta murwayi uri mu ivuriro ubu. Andika umurwayi kugira ngo utangire uruzinduko.",
     "stationCount": "{{waiting}} bategereje · {{busy}} bari kwakirwa",
     "inProgress": "ari kwakirwa",
-    "waiting_one": "amaze umunota {{count}} ategereje",
-    "waiting_other": "amaze iminota {{count}} ategereje",
     "openVisit": "Uruzinduko rw’uyu munsi",
     "pooled": "Bategereje muganga wa mbere ubonetse",
-    "pooledHint": "agaragara rimwe; aho ari ho hose muri aha hashobora kumwakira"
+    "pooledHint": "agaragara rimwe; aho ari ho hose muri aha hashobora kumwakira",
+    "waiting": "amaze gutegereza {{time}}"
   },
   "prices": {
     "search": "Shakisha ubuvuzi",
@@ -1554,9 +1555,9 @@
       "generic": "Ntibyabitswe: {{message}}"
     },
     "titleCash": "Ubuvuzi n'ibiciro",
-    "leadCash": "Ibyo ivuriro rivura byose, igiciro cyabyo n'igabanywa muganga ashobora gutanga atakubajije. Shakisha, koporora, hisha, siba cyangwa uhindure ibiciro byinshi icyarimwe.",
+    "leadCash": "Buri buvuzi na serivisi ku ishami, n’igiciro cyabyo.",
     "title": "Ubuvuzi, ibiciro n'ubwishingizi",
-    "lead": "Ibyo ivuriro rivura byose, igiciro cyabyo n'igabanywa muganga ashobora gutanga atakubajije. Ubwishingizi mukorana bugira ibiciro byabwo n'ibyo bwishyura.",
+    "lead": "Buri buvuzi na serivisi ku ishami, n’igiciro cyabyo n’ubwishingizi.",
     "newTreatment": "Ubuvuzi bushya",
     "edit": "Hindura",
     "noPrice": "nta giciro",
@@ -1756,7 +1757,7 @@
   "ops": {
     "appts": {
       "title": "Gahunda",
-      "lead": "Abarwayi bafashe gahunda z'uyu munsi n'ubusabe bwa gahunda bwo gusubiza.",
+      "lead": "Abarwayi bafite gahunda uyu munsi n’ubusabe bwa gahunda bwo gusubiza.",
       "section": "Umunsi",
       "today": "Uyu munsi",
       "tomorrow": "Ejo",
@@ -2001,8 +2002,8 @@
   },
   "notices": {
     "title": "Imenyesha",
-    "lead": "Ibikugenewe byose: abarwayi bategereje aho ukorera, imirimo, gahunda n’ubutumwa. Fungura icyo imenyesha rivuga, ryemeze ko warisomye cyangwa urikure ku rutonde rwawe.",
-    "leadManager": "Ibikugenewe byose, n’ubutumwa woherereza abakozi. Shungura, fungura, emeza ko wasomye cyangwa ukureho; muri « Byoherejwe » ubona umubare w’abasomye buri butumwa.",
+    "lead": "Ibikugenewe byose: abarwayi, imirimo, gahunda n’ubutumwa.",
+    "leadManager": "Ibikugenewe byose, n’ubutumwa woherereza abakozi.",
     "unreadCount_one": "{{count}} ritarasomwa",
     "unreadCount_other": "{{count}} atarasomwa",
     "tabs": {
@@ -2037,7 +2038,7 @@
   },
   "history": {
     "title": "Amateka y’ibikorwa",
-    "lead": "Uwakoze iki n’igihe yabikoreye kuri buri paji: kwandika abarwayi, ibipimo, imirongo, ubuvuzi, ubwishyu, ibitanda, kwinjira n’impinduka ku bakozi n’igenamiterere. Byose birabikwa.",
+    "lead": "Uwakoze iki n’igihe yagikoreye, mu ivuriro hose.",
     "count_one": "igikorwa {{count}}",
     "count_other": "ibikorwa {{count}}",
     "periods": {
@@ -2102,7 +2103,7 @@
       "internal_task": "umurimo",
       "message": "ubutumwa"
     },
-    "leadOwn": "Ibyo wakoze byose, ibya vuba mbere: abarwayi wanditse, ibipimo, imirongo, ubuvuzi, ubwishyu, ibitanda no kwinjira kwawe.",
+    "leadOwn": "Ibyo wakoze byose, ibya vuba biza mbere.",
     "whatChanged": "Ibyahindutse",
     "becomes": "bibaye",
     "doneBy": "Byakozwe na {{name}} · {{role}}",
@@ -2468,7 +2469,7 @@
     "verify": "Reba kandi wemeze",
     "enterResult": "Andika igisubizo",
     "worklistTitle": "Urutonde rw’akazi rwa laboratwari",
-    "worklistLead": "Buri kizamini cyasabwe kuri aha hantu: fata ikizamini, andika igisubizo, ucyemeze. Muganga wagisabye aramenyeshwa kandi igisubizo kijya muri dosiye y’umurwayi.",
+    "worklistLead": "Buri kizamini cyasabwe aha, kuva ku gufata icyitegererezo kugeza ku gisubizo cyemejwe.",
     "tabs": {
       "open": "Byo gukora",
       "done": "Byakozwe uyu munsi"
@@ -2497,10 +2498,10 @@
     "todaysPayments": "Ubwishyu bw’uyu munsi",
     "payments": "Ubwishyu",
     "billsTitle": "Fagitire zitarishyurwa",
-    "billsLead": "Buri murwayi ugifite amafaranga yo kwishyura ku ruzinduko rufunguye. Fungura uruzinduko wakire ubwishyu (amafaranga mu ntoki, MTN MoMo cyangwa Airtel Money); nimero y’inyemezabwishyu itangwa iyo fagitire yishyuwe yose.",
+    "billsLead": "Abarwayi bakibereyemo amafaranga ku isura itararangira.",
     "billTotal": "fagitire {{amount}}",
     "paymentsTitle": "Ubwishyu no gufunga umunsi",
-    "paymentsLead": "Ubwishyu bwose bw’umunsi wahisemo n’inyemezabwishyu na nimero ya mobile money, igiteranyo ku buryo bwo kwishyura no ku mukozi wakiriye. Bisohore kugira ngo ufunge umunsi.",
+    "paymentsLead": "Ubwishyu bwose bw’umunsi wahisemo, n’igiteranyo ku buryo no ku mubitsi.",
     "day": "Umunsi",
     "printDay": "Sohora gufunga umunsi",
     "paymentsCount_one": "ubwishyu {{count}}",
@@ -2520,8 +2521,8 @@
   "calendar": {
     "title": "Ingengabihe yanjye",
     "titleManager": "Ingengabihe z’abaganga",
-    "lead": "Amasaha yawe y’akazi kuri buri munsi w’icyumweru, iminsi y’ikiruhuko n’igihe gahunda imwe imara. Hitamo uyibona: wowe wenyine, abakozi, cyangwa abakozi n’abaturage ku rubuga rw’ivuriro.",
-    "leadManager": "Bika ingengabihe ya buri muganga n’ukora echographie: amasaha y’akazi, iminsi y’ikiruhuko n’uwemerewe kuyibona.",
+    "lead": "Amasaha yawe y’akazi, ikiruhuko n’iminsi y’ikiruhuko, n’ababibona.",
+    "leadManager": "Amasaha y’akazi n’iminsi y’ikiruhuko bya buri muganga n’ukora echographie.",
     "whose": "Ingengabihe ya",
     "notSet": "ntiruzuzwa",
     "noDoctors": "Nta konti y’umuganga irahari",
@@ -2633,7 +2634,7 @@
   },
   "stock": {
     "title": "Ububiko bw’imiti",
-    "lead": "Ibiri mu bubiko bwa buri hantu n’igiciro byaguzwe n’icyo bigurishwa, ibyinjiye, ibyoherejwe mu ishami cyangwa mu biro by’umuganga, ibyo farumasi itanga, n’ibyagurishijwe.",
+    "lead": "Imiti iri muri buri bubiko, iyinjira, isohoka n’igurishwa.",
     "valueChip": "Ububiko bufite agaciro ka {{amount}}",
     "tiles": {
       "items": "Imiti iri mu bubiko",
@@ -2835,7 +2836,8 @@
       "code": "Kode",
       "when": "Ryari",
       "valueAtCost": "Agaciro ku giciro cyo kugura",
-      "by": "Na"
+      "by": "Na",
+      "longestMin": "Utegereje igihe kirekire ubu (iminota)"
     }
   },
   "duration": {

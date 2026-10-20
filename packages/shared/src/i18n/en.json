@@ -493,7 +493,7 @@
     "clinicClosed": "Clinic closed",
     "registerPatient": "Register patient",
     "queueLong": "long",
-    "avgShort": "avg {{time}}",
+    "avgShort": "average wait {{time}}",
     "noShowShort": "{{missed}} missed",
     "collectedTotal": "{{amount}} total",
     "loading": "Loading the live numbers…",
@@ -617,7 +617,9 @@
     "custom": {
       "month": "A month",
       "or": "or dates"
-    }
+    },
+    "longestShort": "first in line waiting {{time}}",
+    "noneTaken": "nobody taken yet today"
   },
   "placeholder": {
     "title": "{{screen}}",
@@ -720,7 +722,7 @@
       "pharmacist": "Pharmacist",
       "manager": "Manager / owner"
     },
-    "lead2": "Create and edit employee accounts, place each one in a department as head, assistant head or member, reset PINs and deactivate accounts. Every change is confirmed with a code sent to your e-mail. A PIN reset needs no code: the new PIN is temporary and shows on the employee’s row until they replace it.",
+    "lead2": "Employee accounts, their departments and their PINs.",
     "tabs": {
       "people": "Employees · {{count}}",
       "departments": "Departments · {{count}}"
@@ -814,7 +816,7 @@
   },
   "register": {
     "title": "Register a patient",
-    "lead": "First visit or returning patient. The patient is queued at the desk you choose (the doctor by default); vitals are recorded at that desk or by a nurse.",
+    "lead": "Register a new or returning patient and send them to the right desk.",
     "emergency": "Emergency — the patient is treated here, not at triage",
     "emergencyHint": "The patient is queued at your station with red priority. Register the file now or as soon as the patient is stable.",
     "triageHint": "The patient receives a ticket and goes to triage for the first measurements.",
@@ -889,7 +891,7 @@
   },
   "triage": {
     "title": "Vitals",
-    "lead": "Patients still without vitals, and those waiting at triage. Record the measurements here or from the visit screen.",
+    "lead": "Patients still waiting for their vital signs.",
     "queueTitle": "Patients needing vitals",
     "empty": "Everyone in the clinic has their vitals.",
     "select": "Select a patient on the left to record the vitals.",
@@ -925,7 +927,7 @@
   },
   "prices": {
     "title": "Treatments, prices and insurers",
-    "lead": "Everything the clinic treats, with its price and the discount a clinician may give without asking you. Insurers you work with get their own prices and coverage.",
+    "lead": "Every treatment and service by department, with its price and insurer coverage.",
     "newTreatment": "New treatment",
     "edit": "Edit",
     "noPrice": "no price",
@@ -1043,7 +1045,7 @@
       "done": "{{count}} prices changed."
     },
     "titleCash": "Treatments and prices",
-    "leadCash": "Everything the clinic treats, its price, and the discount a clinician may give without asking you. Search, duplicate, hide, delete, or change many prices at once.",
+    "leadCash": "Every treatment and service by department, with its price.",
     "dept": {
       "created": "Department “{{name}}” created.",
       "billedTitle": "Billed this month",
@@ -1342,7 +1344,7 @@
       "occupiedNoRemove": "An occupied bed cannot be removed",
       "confirmRemove": "Remove {{name}}?"
     },
-    "leadShort": "Everything you set for the clinic, in sections. Choose one on the left.",
+    "leadShort": "Everything you set for the clinic, one section at a time.",
     "sections": {
       "clinic": {
         "title": "Clinic and contacts",
@@ -1406,7 +1408,7 @@
   },
   "patients": {
     "title": "Patients",
-    "lead": "Every patient the clinic has registered. Open a file to see visits, vitals, diagnoses and bills, update details or start a new visit.",
+    "lead": "Every patient the clinic has registered, with their full file.",
     "count": "{{count}} patients",
     "search": "Find a patient",
     "results": "Results for “{{query}}”",
@@ -1634,16 +1636,15 @@
   },
   "visits": {
     "title": "In the clinic",
-    "lead": "Every patient with an open visit, grouped by where they are now. “Today’s visit” is where they are treated, charged and sent on; the folder opens the permanent patient file.",
+    "lead": "Every patient in the clinic now, grouped by where they are waiting.",
     "count": "{{count}} patients",
     "none": "Nobody is in the clinic right now. Register a patient to start a visit.",
     "stationCount": "{{waiting}} waiting · {{busy}} being seen",
     "inProgress": "being seen",
-    "waiting_one": "waiting {{count}} min",
-    "waiting_other": "waiting {{count}} min",
     "openVisit": "Today’s visit",
     "pooled": "Waiting for the first free doctor",
-    "pooledHint": "shown once; any of these desks may take the patient"
+    "pooledHint": "shown once; any of these desks may take the patient",
+    "waiting": "waiting {{time}}"
   },
   "desk": {
     "today": "Today",
@@ -1992,8 +1993,8 @@
   },
   "notices": {
     "title": "Notifications",
-    "lead": "Everything addressed to you: patients waiting at your desk, tasks, bookings and messages. Open what a notice is about, mark it read or remove it from your list.",
-    "leadManager": "Everything addressed to you, and the messages you send to the staff. Filter, open, mark read or remove; in \"Sent\" you see how many have read each message.",
+    "lead": "Everything addressed to you: patients, tasks, bookings and messages.",
+    "leadManager": "Everything addressed to you, and the messages you send to the staff.",
     "unreadCount_one": "{{count}} unread",
     "unreadCount_other": "{{count}} unread",
     "tabs": {
@@ -2028,7 +2029,7 @@
   },
   "history": {
     "title": "Activity history",
-    "lead": "Who did what and when on every dashboard: registrations, vital signs, queue moves, treatments, payments, beds, sign-ins and changes to employees and settings. Every record is kept.",
+    "lead": "Who did what and when, across the whole clinic.",
     "count_one": "{{count}} event",
     "count_other": "{{count}} events",
     "periods": {
@@ -2093,7 +2094,7 @@
       "internal_task": "task",
       "message": "message"
     },
-    "leadOwn": "Everything you did, newest first: patients registered, vital signs, queue moves, treatments, payments, beds and your sign-ins.",
+    "leadOwn": "Everything you did, newest first.",
     "whatChanged": "What changed",
     "becomes": "becomes",
     "doneBy": "Done by {{name}} · {{role}}",
@@ -2459,7 +2460,7 @@
     "verify": "Check and verify",
     "enterResult": "Enter result",
     "worklistTitle": "Laboratory worklist",
-    "worklistLead": "Every test ordered for this bench: take the sample, enter the result, verify it. The doctor who ordered it is told and the result goes into the patient file.",
+    "worklistLead": "Every test ordered for this bench, from sample to verified result.",
     "tabs": {
       "open": "To do",
       "done": "Done today"
@@ -2488,10 +2489,10 @@
     "todaysPayments": "Today’s payments",
     "payments": "Payments",
     "billsTitle": "Open bills",
-    "billsLead": "Every patient who still owes money for an open visit. Open the visit to take the payment (cash, MTN MoMo or Airtel Money); the receipt number is given when the bill is settled.",
+    "billsLead": "Patients who still owe money for an open visit.",
     "billTotal": "bill {{amount}}",
     "paymentsTitle": "Payments and day close",
-    "paymentsLead": "All payments of the chosen day with the receipt and the mobile money reference, totals by method and by cashier. Print it to close the day.",
+    "paymentsLead": "All payments of the chosen day, with totals by method and by cashier.",
     "day": "Day",
     "printDay": "Print the day close",
     "paymentsCount_one": "{{count}} payment",
@@ -2511,8 +2512,8 @@
   "calendar": {
     "title": "My calendar",
     "titleManager": "Doctors’ calendars",
-    "lead": "Your working hours for each day of the week, days off and the length of a booking. Choose who sees it: only you, the staff, or the staff and the public on the clinic website.",
-    "leadManager": "Keep the calendar of each doctor and sonographer: working hours, days off and who may see it.",
+    "lead": "Your working hours, breaks and days off, and who may see them.",
+    "leadManager": "The working hours and days off of each doctor and sonographer.",
     "whose": "Calendar of",
     "notSet": "not set yet",
     "noDoctors": "No doctor account yet",
@@ -2624,7 +2625,7 @@
   },
   "stock": {
     "title": "Medicine stock",
-    "lead": "What is on hand in each store with its cost and selling price, what you receive, what you send to a department or a doctor’s office, what the pharmacy hands over, and what was sold.",
+    "lead": "Medicines on hand in each store, what comes in, goes out and is sold.",
     "valueChip": "Stock worth {{amount}}",
     "tiles": {
       "items": "Medicines in stock",
@@ -2826,7 +2827,8 @@
       "code": "Code",
       "when": "When",
       "valueAtCost": "Value at cost",
-      "by": "By"
+      "by": "By",
+      "longestMin": "Longest waiting now (min)"
     }
   },
   "duration": {

@@ -50,7 +50,14 @@ export interface DashboardData {
   collections: { method: string; amount: number }[]
   receivables: { payer: string; count: number; amount: number }[]
   visitsByGroup: { group: string; count: number }[]
-  waitByStation: { station: string; minutes: number; waiting: number }[]
+  /** minutes: average wait today of those already taken (null: nobody yet); longest: the
+   *  first patient still in line (null: nobody waiting). */
+  waitByStation: {
+    station: string
+    minutes: number | null
+    waiting: number
+    longest: number | null
+  }[]
   topTreatments: { name: string; count: number; amount: number | null }[]
   staff: {
     name: string
@@ -143,6 +150,7 @@ function sample(
       station: w.label.toLowerCase(),
       minutes: w.value,
       waiting: 2,
+      longest: w.value + 6,
     })),
     topTreatments: TOP_DIAGNOSES.map((d) => ({ name: d.label, count: d.value, amount: null })),
     staff: [],
@@ -200,8 +208,9 @@ export function useDashboard(range: DashboardRange, manager: boolean, custom?: C
         visitsByGroup: d.visitsByGroup.map((v) => ({ ...v, count: Number(v.count) })),
         waitByStation: d.waitByStation.map((w) => ({
           ...w,
-          minutes: Number(w.minutes),
+          minutes: w.minutes == null ? null : Number(w.minutes),
           waiting: Number(w.waiting),
+          longest: w.longest == null ? null : Number(w.longest),
         })),
         topTreatments: d.topTreatments.map((x) => ({
           ...x,

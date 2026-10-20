@@ -18,6 +18,7 @@ import {
   type QueueItem,
   type Station,
 } from '@/lib/api/visits'
+import { formatDuration } from '@/lib/duration'
 import { navForUser } from '@/lib/nav'
 import { matches, useShowMore, type SortKey } from '@/lib/paging'
 
@@ -56,7 +57,6 @@ export function VisitsPage({ user }: { user: StaffUser }) {
           tint="mint"
           title={t('visits.title')}
           lead={t('visits.lead')}
-          user={user}
           meta={<BannerChip icon={Stethoscope}>{t('visits.count', { count: people })}</BannerChip>}
         >
           <StaffLink to="/app/register" className={buttonVariants({ variant: 'primary' })}>
@@ -159,7 +159,9 @@ function VisitRow({ item: r, desks }: { item: QueueItem; desks?: Station[] }) {
         <span className="block font-semibold">{r.name}</span>
         <span className="text-ink-3 block text-xs tabular-nums">
           {r.fileNumber} · {r.ageSex} ·{' '}
-          {r.startedAt ? t('visits.inProgress') : t('visits.waiting', { count: r.waitMin })}
+          {r.startedAt
+            ? t('visits.inProgress')
+            : t('visits.waiting', { time: formatDuration(r.waitMin, t) })}
         </span>
         {r.referredBy && (
           <span

@@ -493,7 +493,7 @@
     "clinicClosed": "Clinique fermée",
     "registerPatient": "Enregistrer un patient",
     "queueLong": "longue",
-    "avgShort": "moy. {{time}}",
+    "avgShort": "attente moyenne {{time}}",
     "noShowShort": "{{missed}} manqués",
     "collectedTotal": "{{amount}} au total",
     "loading": "Chargement des chiffres en direct…",
@@ -617,7 +617,9 @@
     "custom": {
       "month": "Un mois",
       "or": "ou des dates"
-    }
+    },
+    "longestShort": "le premier attend depuis {{time}}",
+    "noneTaken": "personne encore pris en charge aujourd’hui"
   },
   "placeholder": {
     "title": "{{screen}}",
@@ -720,7 +722,7 @@
       "pharmacist": "Pharmacien·ne",
       "manager": "Gestionnaire / propriétaire"
     },
-    "lead2": "Créez et modifiez les comptes des employés, placez chacun dans un service comme chef, adjoint ou membre, réinitialisez les PIN et désactivez des comptes. Chaque changement est confirmé par un code envoyé à votre e-mail. Une réinitialisation de PIN n’en demande pas : le nouveau PIN est temporaire et reste visible sur la ligne de l’employé jusqu’à ce qu’il le remplace.",
+    "lead2": "Les comptes des employés, leurs départements et leurs codes PIN.",
     "tabs": {
       "people": "Employés · {{count}}",
       "departments": "Services · {{count}}"
@@ -814,7 +816,7 @@
   },
   "register": {
     "title": "Enregistrer un patient",
-    "lead": "Première visite ou patient connu. Le patient est mis dans la file du poste choisi (le médecin par défaut) ; les constantes sont prises à ce poste ou par une infirmière.",
+    "lead": "Enregistrez un patient, nouveau ou connu, et envoyez-le au bon poste.",
     "emergency": "Urgence — le patient est pris en charge ici, pas au triage",
     "emergencyHint": "Le patient est mis en file à votre poste avec la priorité rouge. Ouvrez le dossier maintenant ou dès que le patient est stable.",
     "triageHint": "Le patient reçoit un ticket et passe au triage pour les premières mesures.",
@@ -889,7 +891,7 @@
   },
   "triage": {
     "title": "Constantes",
-    "lead": "Patients sans constantes, et ceux qui attendent au triage. Prenez les mesures ici ou depuis l’écran de visite.",
+    "lead": "Les patients qui attendent encore leurs signes vitaux.",
     "queueTitle": "Patients sans constantes",
     "empty": "Tous les patients présents ont leurs constantes.",
     "select": "Sélectionnez un patient à gauche pour saisir les signes vitaux.",
@@ -925,7 +927,7 @@
   },
   "prices": {
     "title": "Soins, tarifs et assureurs",
-    "lead": "Tout ce que la clinique traite, avec son prix et la remise qu'un soignant peut accorder sans vous demander. Les assureurs partenaires ont leurs propres tarifs et leur couverture.",
+    "lead": "Chaque soin et service par département, avec son prix et la couverture des assureurs.",
     "newTreatment": "Nouveau soin",
     "edit": "Modifier",
     "noPrice": "pas de prix",
@@ -1043,7 +1045,7 @@
       "done": "{{count}} prix modifiés."
     },
     "titleCash": "Soins et tarifs",
-    "leadCash": "Tout ce que la clinique soigne, son prix, et la remise qu'un clinicien peut accorder sans vous demander. Recherchez, dupliquez, masquez, supprimez ou changez plusieurs prix à la fois.",
+    "leadCash": "Chaque soin et service par département, avec son prix.",
     "dept": {
       "created": "Département « {{name}} » créé.",
       "billedTitle": "Facturé ce mois-ci",
@@ -1342,7 +1344,7 @@
       "occupiedNoRemove": "Un lit occupé ne peut pas être retiré",
       "confirmRemove": "Retirer {{name}} ?"
     },
-    "leadShort": "Tout ce que vous réglez pour la clinique, par sections. Choisissez-en une à gauche.",
+    "leadShort": "Tous les réglages de la clinique, section par section.",
     "sections": {
       "clinic": {
         "title": "Clinique et contacts",
@@ -1406,7 +1408,7 @@
   },
   "patients": {
     "title": "Patients",
-    "lead": "Tous les patients enregistrés par la clinique. Ouvrez un dossier pour voir visites, constantes, diagnostics et factures, modifier les détails ou démarrer une visite.",
+    "lead": "Chaque patient enregistré par la clinique, avec son dossier complet.",
     "count": "{{count}} patients",
     "search": "Rechercher un patient",
     "results": "Résultats pour « {{query}} »",
@@ -1634,16 +1636,15 @@
   },
   "visits": {
     "title": "À la clinique",
-    "lead": "Chaque patient avec une visite ouverte, groupé selon l’endroit où il se trouve. La « visite du jour » sert à soigner, facturer et orienter ; le dossier ouvre le dossier patient permanent.",
+    "lead": "Chaque patient présent à la clinique, regroupé selon l’endroit où il attend.",
     "count": "{{count}} patients",
     "none": "Personne à la clinique pour l'instant. Enregistrez un patient pour ouvrir une visite.",
     "stationCount": "{{waiting}} en attente · {{busy}} en cours",
     "inProgress": "en cours",
-    "waiting_one": "attend depuis {{count}} min",
-    "waiting_other": "attend depuis {{count}} min",
     "openVisit": "Visite du jour",
     "pooled": "En attente du premier médecin libre",
-    "pooledHint": "affiché une fois ; n’importe lequel de ces postes peut le prendre"
+    "pooledHint": "affiché une fois ; n’importe lequel de ces postes peut le prendre",
+    "waiting": "attend depuis {{time}}"
   },
   "desk": {
     "today": "Aujourd'hui",
@@ -1992,8 +1993,8 @@
   },
   "notices": {
     "title": "Notifications",
-    "lead": "Tout ce qui vous est adressé : patients en attente à votre poste, tâches, réservations et messages. Ouvrez ce qui concerne une notification, marquez-la lue ou retirez-la de votre liste.",
-    "leadManager": "Tout ce qui vous est adressé, et les messages que vous envoyez au personnel. Filtrez, ouvrez, marquez lu ou retirez ; dans « Envoyés » vous voyez combien ont lu chaque message.",
+    "lead": "Tout ce qui vous est adressé : patients, tâches, rendez-vous et messages.",
+    "leadManager": "Tout ce qui vous est adressé, et les messages que vous envoyez au personnel.",
     "unreadCount_one": "{{count}} non lue",
     "unreadCount_other": "{{count}} non lues",
     "tabs": {
@@ -2028,7 +2029,7 @@
   },
   "history": {
     "title": "Historique des activités",
-    "lead": "Qui a fait quoi et quand sur chaque tableau de bord : inscriptions, signes vitaux, files d’attente, soins, paiements, lits, connexions et changements des employés et réglages. Tout est conservé.",
+    "lead": "Qui a fait quoi et quand, dans toute la clinique.",
     "count_one": "{{count}} événement",
     "count_other": "{{count}} événements",
     "periods": {
@@ -2093,7 +2094,7 @@
       "internal_task": "tâche",
       "message": "message"
     },
-    "leadOwn": "Tout ce que vous avez fait, le plus récent d’abord : patients inscrits, signes vitaux, files d’attente, soins, paiements, lits et vos connexions.",
+    "leadOwn": "Tout ce que vous avez fait, le plus récent en premier.",
     "whatChanged": "Ce qui a changé",
     "becomes": "devient",
     "doneBy": "Fait par {{name}} · {{role}}",
@@ -2459,7 +2460,7 @@
     "verify": "Contrôler et valider",
     "enterResult": "Saisir le résultat",
     "worklistTitle": "Liste de travail du laboratoire",
-    "worklistLead": "Chaque examen demandé pour ce poste : faire le prélèvement, saisir le résultat, le valider. Le médecin prescripteur est prévenu et le résultat va dans le dossier patient.",
+    "worklistLead": "Chaque examen demandé à ce poste, du prélèvement au résultat validé.",
     "tabs": {
       "open": "À faire",
       "done": "Faits aujourd’hui"
@@ -2488,10 +2489,10 @@
     "todaysPayments": "Paiements du jour",
     "payments": "Paiements",
     "billsTitle": "Factures ouvertes",
-    "billsLead": "Chaque patient qui doit encore payer pour une visite ouverte. Ouvrez la visite pour encaisser (espèces, MTN MoMo ou Airtel Money) ; le numéro de reçu est donné quand la facture est soldée.",
+    "billsLead": "Les patients qui doivent encore de l’argent pour une visite ouverte.",
     "billTotal": "facture {{amount}}",
     "paymentsTitle": "Paiements et clôture du jour",
-    "paymentsLead": "Tous les paiements du jour choisi avec le reçu et la référence mobile money, les totaux par mode et par caissier. Imprimez-le pour clôturer la journée.",
+    "paymentsLead": "Tous les paiements du jour choisi, avec les totaux par moyen et par caissier.",
     "day": "Jour",
     "printDay": "Imprimer la clôture du jour",
     "paymentsCount_one": "{{count}} paiement",
@@ -2511,8 +2512,8 @@
   "calendar": {
     "title": "Mon agenda",
     "titleManager": "Agendas des médecins",
-    "lead": "Vos heures de travail pour chaque jour de la semaine, vos jours de congé et la durée d’un rendez-vous. Choisissez qui le voit : vous seul, le personnel, ou le personnel et le public sur le site de la clinique.",
-    "leadManager": "Tenez l’agenda de chaque médecin et échographiste : heures de travail, congés et qui peut le voir.",
+    "lead": "Vos heures de travail, pauses et jours de congé, et qui peut les voir.",
+    "leadManager": "Les heures de travail et jours de congé de chaque médecin et échographiste.",
     "whose": "Agenda de",
     "notSet": "pas encore rempli",
     "noDoctors": "Aucun compte médecin pour l’instant",
@@ -2624,7 +2625,7 @@
   },
   "stock": {
     "title": "Stock de médicaments",
-    "lead": "Ce qui est en stock dans chaque magasin avec son coût et son prix de vente, ce que vous recevez, ce que vous envoyez à un département ou au bureau d’un médecin, ce que la pharmacie remet, et ce qui a été vendu.",
+    "lead": "Les médicaments en stock dans chaque magasin, ce qui entre, sort et est vendu.",
     "valueChip": "Stock d’une valeur de {{amount}}",
     "tiles": {
       "items": "Médicaments en stock",
@@ -2826,7 +2827,8 @@
       "code": "Code",
       "when": "Quand",
       "valueAtCost": "Valeur au coût",
-      "by": "Par"
+      "by": "Par",
+      "longestMin": "Plus longue attente en cours (min)"
     }
   },
   "duration": {

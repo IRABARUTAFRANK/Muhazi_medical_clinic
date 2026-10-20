@@ -61,8 +61,9 @@ export function dashboardReport(
             { label: t('report.cols.station'), width: 24 },
             { label: t('report.cols.waiting'), kind: 'number' },
             { label: t('report.cols.avgMin'), kind: 'number' },
+            { label: t('report.cols.longestMin'), kind: 'number' },
           ],
-          rows: d.waitByStation.map((x) => [station(x.station), x.waiting, x.minutes]),
+          rows: d.waitByStation.map((x) => [station(x.station), x.waiting, x.minutes, x.longest]),
         },
         {
           title: t('report.t.bookings'),

@@ -25,6 +25,7 @@ import {
 import { useStaffSettings } from '@/lib/api/settings'
 import { setNoNationalId, type NoIdReason } from '@/lib/api/patients'
 import { navForUser } from '@/lib/nav'
+import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
 const SEXES: readonly Sex[] = ['female', 'male', 'other', 'unknown']
@@ -80,22 +81,23 @@ export function RegisterPage({ user }: { user: StaffUser }) {
           tint="teal"
           title={t('register.title')}
           lead={t('register.lead')}
-          user={user}
         />
 
         {/* Visit options apply to both an existing and a new patient */}
         <Card className={cn(emergency && 'border-red')}>
           <CardBody className="gap-3">
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 font-semibold">
-              <input
-                type="checkbox"
-                className="accent-red size-5"
-                checked={emergency}
-                onChange={(e) => setEmergency(e.target.checked)}
-              />
-              <AlertTriangle size={18} className={emergency ? 'text-red' : 'text-ink-3'} />
-              {t('register.emergency')}
-            </label>
+            {canRegisterEmergency(user) && (
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 font-semibold">
+                <input
+                  type="checkbox"
+                  className="accent-red size-5"
+                  checked={emergency}
+                  onChange={(e) => setEmergency(e.target.checked)}
+                />
+                <AlertTriangle size={18} className={emergency ? 'text-red' : 'text-ink-3'} />
+                {t('register.emergency')}
+              </label>
+            )}
             <p className="text-ink-2 m-0 text-[13px]">
               {t(
                 emergency

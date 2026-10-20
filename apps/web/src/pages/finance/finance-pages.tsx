@@ -56,7 +56,6 @@ export function BillsPage({ user }: { user: StaffUser }) {
           tint="coral"
           title={t('finance.billsTitle')}
           lead={t('finance.billsLead')}
-          user={user}
           meta={
             <BannerChip icon={Receipt}>
               {t('home.billsDue', { count: bills.length, amount: formatRwf(due) })}
@@ -141,7 +140,6 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           tint="violet"
           title={t('finance.paymentsTitle')}
           lead={t('finance.paymentsLead')}
-          user={user}
           meta={<BannerChip icon={HandCoins}>{formatRwf(s?.total ?? 0)}</BannerChip>}
         >
           <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">

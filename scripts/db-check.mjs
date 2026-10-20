@@ -1362,6 +1362,60 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0043: booking notice goes away; wait = until taken
+await step('0043: the booking-request notice disappears once reception books it', async () => {
+  await as(null, 'anon')
+  const ref = (
+    await one(
+      `select create_appointment_inquiry(null, null, 'Notice Test', '0788 000 999', null, null, 'Check-up', 'sms', now() + interval '3 days') as ref`,
+    )
+  ).ref
+  await asAdmin()
+  const a = await one(`select id from appointment where reference = $1`, [ref])
+  const before = await one(
+    `select count(*)::int as n from notification where kind = 'inquiry' and params ->> 'appointment' = $1`,
+    [a.id],
+  )
+  await as(staff.receptionist)
+  await db.query(`select approve_inquiry($1, $2, $3, ($4::timestamptz + interval '7 days'))`, [
+    a.id,
+    patientId,
+    staff.doctor,
+    slot,
+  ])
+  await asAdmin()
+  const after = await one(
+    `select count(*)::int as n from notification where kind = 'inquiry' and params ->> 'appointment' = $1`,
+    [a.id],
+  )
+  if (before.n !== 1 || after.n !== 0) throw new Error(`before ${before.n} after ${after.n}`)
+  return 'request notice 1 → 0 after booking'
+})
+await step('0043: reception cannot register an emergency', async () => {
+  await as(staff.receptionist)
+  let refused = false
+  try {
+    await db.query(`select start_visit($1, true, 'consultation')`, [patientId])
+  } catch (e) {
+    refused = /treating staff/.test(e.message)
+  }
+  await asAdmin()
+  if (!refused) throw new Error('receptionist registered an emergency')
+  return 'receptionist refused'
+})
+await step(
+  '0043: average wait counts only patients already taken today; longest waiting shown apart',
+  async () => {
+    await as(staff.receptionist)
+    const d = (await one(`select desk_summary() as j`)).j
+    await asAdmin()
+    const s = d.stations.find((x) => x.waiting > 0)
+    if (typeof d.tiles.avgWaitMin !== 'number' || (s && s.longest == null))
+      throw new Error(JSON.stringify(s))
+    return `avg ${d.tiles.avgWaitMin} min; ${s ? `${s.station} longest waiting ${s.longest} min` : 'nobody waiting'}`
+  },
+)
+
 finish()
 
 function finish() {

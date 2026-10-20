@@ -39,7 +39,6 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
           tint="teal"
           title={t('patients.title')}
           lead={t('patients.lead')}
-          user={user}
           meta={<BannerChip icon={Users}>{t('patients.count', { count: total })}</BannerChip>}
         >
           <StaffLink to="/app/register" className={buttonVariants({ variant: 'primary' })}>

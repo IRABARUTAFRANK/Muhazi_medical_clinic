@@ -44,6 +44,7 @@ import { useDeskOps } from '@/lib/api/desk-ops'
 import { VisitJourney } from '@/components/clinical/visit-journey'
 import { navForUser } from '@/lib/nav'
 import { ShownList } from '@/components/ui/list-tools'
+import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'bills'
@@ -253,15 +254,17 @@ export function PatientFilePage({
               )}
               {!openVisit && (
                 <CardBody className="border-border flex-row flex-wrap items-end gap-3 border-t">
-                  <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
-                    <input
-                      type="checkbox"
-                      className="accent-red size-[18px]"
-                      checked={emergency}
-                      onChange={(e) => setEmergency(e.target.checked)}
-                    />
-                    {t('register.emergency')}
-                  </label>
+                  {canRegisterEmergency(user) && (
+                    <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
+                      <input
+                        type="checkbox"
+                        className="accent-red size-[18px]"
+                        checked={emergency}
+                        onChange={(e) => setEmergency(e.target.checked)}
+                      />
+                      {t('register.emergency')}
+                    </label>
+                  )}
                   {emergency && (
                     <Select
                       label={t('register.station')}

@@ -1,47 +1,32 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import type { StaffUser } from '@mmc/shared'
-import { roleLabel } from '@/lib/roles'
 import { cn } from '@/lib/utils'
-import {
-  initials,
-  lookFor,
-  stripeClass,
-  tintClass,
-  tintText,
-  tintWash,
-  type Tint,
-} from './kit-style'
+import { stripeClass, tintClass, tintText, tintWash, type Tint } from './kit-style'
 
 /*
  * Page banner: the title of every screen opened from the sidebar, in the identity banner's
  * design (colour stripe, large icon tile, big title, faint watermark icon). The feature's
- * icon matches its sidebar entry; a small chip keeps whose session it is in view, and the
- * page's own buttons sit on the right.
+ * icon matches its sidebar entry; the coloured title is followed by one sentence saying what
+ * the page is for, and the page's own buttons sit on the right.
  */
 export function PageBanner({
   icon: IconC,
   tint,
   title,
   lead,
-  user,
   meta,
   children,
 }: {
   icon: LucideIcon
   tint: Tint
   title: string
+  /** One sentence: what this page is for. */
   lead?: ReactNode
-  user: StaffUser
-  /** Extra chips after the person chip (counts, status). */
+  /** Chips after the title (counts, status). */
   meta?: ReactNode
   /** Actions on the right (buttons, links). */
   children?: ReactNode
 }) {
-  const { t } = useTranslation()
-  const look = lookFor(user.role)
-  const RoleIcon = look.icon
   return (
     <section
       className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-4 gap-y-3 overflow-hidden rounded-[18px] py-3 pr-4 pl-5 sm:gap-x-5 sm:py-3.5 sm:pr-5 sm:pl-6"
@@ -79,24 +64,11 @@ export function PageBanner({
           >
             {title}
           </h1>
-          <span className="border-border bg-surface text-ink-2 hidden items-center gap-2 rounded-full border py-0.5 pr-3 pl-0.5 text-[13px] font-semibold sm:inline-flex">
-            <span
-              className={cn(
-                'inline-flex size-6 items-center justify-center rounded-full text-[10px] font-extrabold',
-                tintClass[look.tint],
-              )}
-            >
-              {initials(user.name)}
-            </span>
-            {user.name}
-            <span className="text-ink-3 inline-flex items-center gap-1 font-medium">
-              <RoleIcon size={13} aria-hidden="true" />
-              {roleLabel(user, t)}
-            </span>
-          </span>
           {meta}
         </div>
-        {lead && <p className="text-ink-2 m-0 mt-1 max-w-[820px] text-[14px]">{lead}</p>}
+        {lead && (
+          <p className="text-ink-2 m-0 mt-1 max-w-[720px] text-[14px] leading-snug">{lead}</p>
+        )}
       </div>
 
       {children && <div className="relative flex flex-wrap items-center gap-2.5">{children}</div>}

@@ -97,7 +97,6 @@ export function StockPage({ user }: { user: StaffUser }) {
           tint="mint"
           title={t('stock.title')}
           lead={t('stock.lead')}
-          user={user}
           meta={
             <BannerChip icon={Coins}>
               {t('stock.valueChip', { amount: formatRwf(value) })}

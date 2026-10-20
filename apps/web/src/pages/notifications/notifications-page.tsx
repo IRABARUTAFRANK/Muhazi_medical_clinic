@@ -128,7 +128,6 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
           tint="amber"
           title={t('notices.title')}
           lead={t(canSend ? 'notices.leadManager' : 'notices.lead')}
-          user={user}
           meta={<BannerChip icon={Inbox}>{t('notices.unreadCount', { count: unread })}</BannerChip>}
         >
           <Button

@@ -49,6 +49,7 @@ import {
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
+import { StationTile } from '@/components/dash/station-tile'
 import {
   Empty,
   Kpi,
@@ -56,7 +57,6 @@ import {
   Panel,
   Pill,
   SectionTitle,
-  StationGlyph,
 } from '@/components/dash/kit'
 import { NoticesPanel } from '@/components/dash/notices-panel'
 import {
@@ -66,7 +66,6 @@ import {
   groupLabel,
   stationIconFor,
   initials,
-  stationLabel,
 } from '@/components/dash/kit-style'
 import { LineChart } from '@/components/charts/line-chart'
 import { Badge } from '@/components/ui/badge'
@@ -464,46 +463,9 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     <Empty>{t('dashboard.noQueue')}</Empty>
                   ) : (
                     <div className="grid grid-cols-2 gap-2.5">
-                      {data.waitByStation.map((s, i) => {
-                        const hot = s.minutes > 20
-                        return (
-                          <div
-                            key={s.station}
-                            className={cn(
-                              'anim-enter flex flex-col gap-0.5 rounded-xl border px-3 py-2.5',
-                              hot ? 'border-red-dot/30 bg-red-bg/40' : 'border-border',
-                            )}
-                            style={{ '--i': i } as CSSProperties}
-                          >
-                            <span className="flex items-center justify-between">
-                              <span className="text-xl font-extrabold tabular-nums">
-                                {s.waiting}
-                              </span>
-                              <StationGlyph
-                                station={s.station}
-                                className={hot ? 'text-red' : 'text-primary'}
-                              />
-                            </span>
-                            <span className="text-ink-2 text-[13px] font-semibold">
-                              {stationLabel(s.station, t)}
-                            </span>
-                            <span
-                              className={cn(
-                                'text-[12px]',
-                                hot ? 'text-red font-semibold' : 'text-ink-3',
-                              )}
-                            >
-                              <Timer
-                                size={11}
-                                aria-hidden="true"
-                                className="mr-0.5 inline align-[-1px]"
-                              />
-                              {t('dashboard.avgShort', { time: formatDuration(s.minutes, t) })}
-                              {hot ? ` · ⚠ ${t('dashboard.queueLong')}` : ''}
-                            </span>
-                          </div>
-                        )
-                      })}
+                      {data.waitByStation.map((s, i) => (
+                        <StationTile key={s.station} i={i} {...s} />
+                      ))}
                     </div>
                   )}
                 </Panel>

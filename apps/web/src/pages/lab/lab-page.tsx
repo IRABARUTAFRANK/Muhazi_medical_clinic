@@ -62,7 +62,6 @@ export function LabPage({ user }: { user: StaffUser }) {
           tint="coral"
           title={t('lab.worklistTitle')}
           lead={t('lab.worklistLead')}
-          user={user}
           meta={
             <BannerChip icon={Hourglass}>{t('lab.openCount', { count: orders.length })}</BannerChip>
           }

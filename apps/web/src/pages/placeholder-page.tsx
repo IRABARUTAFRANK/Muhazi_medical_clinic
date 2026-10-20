@@ -21,12 +21,7 @@ export function PlaceholderPage({ user, section }: { user: StaffUser; section: s
   return (
     <StaffShell user={user} nav={nav} activeId={activeId}>
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
-        <PageBanner
-          icon={item ? iconFor(item.icon) : Wrench}
-          tint="teal"
-          title={title}
-          user={user}
-        />
+        <PageBanner icon={item ? iconFor(item.icon) : Wrench} tint="teal" title={title} />
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <span className="bg-primary-tint text-primary inline-flex size-14 items-center justify-center rounded-full">
             <Wrench size={28} aria-hidden="true" />

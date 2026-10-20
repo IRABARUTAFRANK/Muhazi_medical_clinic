@@ -2,6 +2,10 @@ import type { TFunction } from 'i18next'
 import type { StaffUser } from '@mmc/shared'
 
 /** "Doctor · Consultation 1", "Head of Dental", "Manager / Owner", "Nurse". */
+/** Emergency registration queues the patient for treatment on the spot: treating staff only. */
+export const canRegisterEmergency = (user: StaffUser) =>
+  user.role !== 'receptionist' && user.role !== 'cashier'
+
 export function roleLabel(user: StaffUser, t: TFunction): string {
   if (user.dashboard === 'head' && user.headOf) return t('roles.headOf', { station: user.headOf })
   const base = t(`roles.${user.role}`)

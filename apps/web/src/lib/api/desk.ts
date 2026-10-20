@@ -25,7 +25,15 @@ export interface DeskSummary {
     bedsOccupied: number
     bedsTotal: number
   }
-  stations: { station: string; waiting: number; busy: number; minutes: number }[]
+  /** minutes: average wait today of those already taken (null: nobody yet); longest: the
+   *  first patient still in line (null: nobody waiting). */
+  stations: {
+    station: string
+    waiting: number
+    busy: number
+    minutes: number | null
+    longest: number | null
+  }[]
   arrivals: { hour: number; count: number }[]
   mine: { registrations: number; visitsStarted: number; vitals: number; charges: number }
 }
@@ -54,11 +62,11 @@ const sample = (): DeskSummary => {
       bedsTotal: 8,
     },
     stations: [
-      { station: 'triage', waiting: 5, busy: 1, minutes: 9 },
-      { station: 'consultation', waiting: 4, busy: 2, minutes: 22 },
-      { station: 'laboratory', waiting: 2, busy: 1, minutes: 14 },
-      { station: 'pharmacy', waiting: 1, busy: 0, minutes: 6 },
-      { station: 'cashier', waiting: 2, busy: 1, minutes: 5 },
+      { station: 'triage', waiting: 5, busy: 1, minutes: 9, longest: 14 },
+      { station: 'consultation', waiting: 4, busy: 2, minutes: 22, longest: 41 },
+      { station: 'laboratory', waiting: 2, busy: 1, minutes: 14, longest: 18 },
+      { station: 'pharmacy', waiting: 1, busy: 0, minutes: 6, longest: 4 },
+      { station: 'cashier', waiting: 2, busy: 1, minutes: 5, longest: 7 },
     ],
     arrivals: curve.map((c, i) => ({ hour: 6 + i, count: 6 + i <= hour ? c : 0 })),
     mine: { registrations: 6, visitsStarted: 9, vitals: 12, charges: 3 },
@@ -83,7 +91,8 @@ export function useDeskSummary() {
           station: s.station,
           waiting: n(s.waiting),
           busy: n(s.busy),
-          minutes: n(s.minutes),
+          minutes: s.minutes == null ? null : Number(s.minutes),
+          longest: s.longest == null ? null : Number(s.longest),
         })),
         arrivals: d.arrivals.map((a) => ({ hour: n(a.hour), count: n(a.count) })),
         mine: {

@@ -58,7 +58,6 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
           tint="coral"
           title={t('triage.title')}
           lead={t('triage.lead')}
-          user={user}
           meta={
             <BannerChip icon={Activity}>{t('home.waiting', { count: waiting.length })}</BannerChip>
           }

@@ -284,7 +284,6 @@ export function PricesPage({ user }: { user: StaffUser }) {
           tint="amber"
           title={t(FEATURES.insurance ? 'prices.title' : 'prices.titleCash')}
           lead={t(FEATURES.insurance ? 'prices.lead' : 'prices.leadCash')}
-          user={user}
         >
           <Button onClick={() => setAdjusting((a) => !a)}>
             <SlidersHorizontal size={18} aria-hidden="true" />

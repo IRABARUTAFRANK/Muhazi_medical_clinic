@@ -73,7 +73,6 @@ export function CalendarPage({ user }: { user: StaffUser }) {
           tint="violet"
           title={t(isManager ? 'calendar.titleManager' : 'calendar.title')}
           lead={t(isManager ? 'calendar.leadManager' : 'calendar.lead')}
-          user={user}
           meta={
             cal?.saved ? (
               <BannerChip icon={VIS_ICON[cal.visibility]}>

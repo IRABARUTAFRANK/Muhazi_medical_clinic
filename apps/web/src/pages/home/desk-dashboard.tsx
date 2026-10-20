@@ -37,6 +37,7 @@ import {
   StationGlyph,
 } from '@/components/dash/kit'
 import { NoticesPanel } from '@/components/dash/notices-panel'
+import { StationTile } from '@/components/dash/station-tile'
 import { CoveringPanels } from './cover-panels'
 import {
   delta,
@@ -428,7 +429,7 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
                       {r.ageSex} · {stationLabel(r.station, t)} ·{' '}
                       {r.startedAt
                         ? t('visits.inProgress')
-                        : t('visits.waiting', { count: r.waitMin })}
+                        : t('visits.waiting', { time: formatDuration(r.waitMin, t) })}
                     </span>
                   </span>
                   <StaffLink
@@ -469,31 +470,9 @@ function StationsPanel({ d }: { d: DeskSummary }) {
         <Empty>{t('dashboard.noQueue')}</Empty>
       ) : (
         <div className="grid grid-cols-2 gap-2.5">
-          {rows.map((s, i) => {
-            const hot = s.minutes > 20
-            return (
-              <div
-                key={s.station}
-                className={cn(
-                  'anim-enter flex flex-col gap-0.5 rounded-xl border px-3 py-2.5',
-                  hot ? 'border-red-dot/30 bg-red-bg/40' : 'border-border',
-                )}
-                style={{ '--i': i } as CSSProperties}
-              >
-                <span className="flex items-center justify-between">
-                  <span className="text-xl font-extrabold tabular-nums">{s.waiting}</span>
-                  <StationGlyph station={s.station} className={hot ? 'text-red' : 'text-primary'} />
-                </span>
-                <span className="text-ink-2 text-[13px] font-semibold">
-                  {stationLabel(s.station, t)}
-                </span>
-                <span className={cn('text-[12px]', hot ? 'text-red font-semibold' : 'text-ink-3')}>
-                  {t('desk.busyShort', { count: s.busy })} ·{' '}
-                  {t('dashboard.avgShort', { time: formatDuration(s.minutes, t) })}
-                </span>
-              </div>
-            )
-          })}
+          {rows.map((s, i) => (
+            <StationTile key={s.station} i={i} {...s} />
+          ))}
         </div>
       )}
     </Panel>

@@ -96,7 +96,6 @@ export function HistoryPage({ user }: { user: StaffUser }) {
           tint="violet"
           title={t('history.title')}
           lead={t(isManager ? 'history.lead' : 'history.leadOwn')}
-          user={user}
           meta={
             <BannerChip icon={CalendarRange}>{t('history.count', { count: total })}</BannerChip>
           }

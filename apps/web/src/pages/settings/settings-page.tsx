@@ -166,7 +166,6 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           tint="navy"
           title={t('settings.title')}
           lead={t('settings.leadShort')}
-          user={user}
         />
 
         {error && (

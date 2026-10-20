@@ -51,7 +51,6 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
           tint="violet"
           title={t('ops.appts.title')}
           lead={t('ops.appts.lead')}
-          user={user}
         >
           <div className="bg-card shadow-card flex items-center gap-1 rounded-xl p-1">
             <Button
