@@ -1301,6 +1301,67 @@ await step('0041: bulk add into a department, move a type, then start over', asy
   return `added 2, moved ${moved} lab tests, then deleted all ${gone}; catalogue empty`
 })
 
+// ---------------------------------------------------------------- 0042: stock receive → send to a desk → hand over at the pharmacy
+await step(
+  '0042: receive, send to an office, pharmacy hands over a prescription and charges it',
+  async () => {
+    await as(staff.manager)
+    const itemId = (
+      await one(`select upsert_item(null, 'Ciprofloxacin', 200, '500 mg', 'tablet', 'tab') as id`)
+    ).id
+    const main = (await one(`select id from stock_location where type = 'main_store' limit 1`)).id
+    const pharm = (await one(`select id from stock_location where type = 'pharmacy' limit 1`)).id
+    const office = (
+      await one(`select save_location(null, 'Consultation office', 'nursing', $1) as id`, [deptId])
+    ).id
+    await db.query(
+      `select receive_stock($1, $2, 100, 80, 'CIP-001', '2028-01-31', 'Kigali Pharma Wholesale Ltd')`,
+      [itemId, main],
+    )
+    await db.query(`select transfer_stock($1, $2, $3, 60)`, [itemId, main, pharm])
+    await db.query(`select transfer_stock($1, $2, $3, 10, 'weekly supply')`, [itemId, main, office])
+    const ov = (await one(`select stock_overview() as j`)).j
+    const it = ov.items.find((x) => x.id === itemId)
+    if (!it || it.onHand !== 100 || Number(it.costValue) !== 8000 || it.byLocation[office] !== 10)
+      throw new Error(JSON.stringify(it))
+    let refused = false
+    try {
+      await db.query(`select transfer_stock($1, $2, $3, 500)`, [itemId, main, pharm])
+    } catch (e) {
+      refused = /not enough stock/.test(String(e.message))
+    }
+    // a prescription for an open visit, then the pharmacist hands it over
+    await asAdmin()
+    const enc = await one(
+      `select e.id from encounter e join invoice i on i.encounter_id = e.id where e.status = 'open' and i.status = 'draft' limit 1`,
+    )
+    await as(staff.doctor)
+    const rx = (
+      await one(
+        `select prescribe($1, $2, 10, '1 tab', 'oral', 'twice a day', 5, null, 'pharmacy') as j`,
+        [enc.id, itemId],
+      )
+    ).j
+    await as(staff.pharmacist)
+    const q = (await one(`select pharmacy_queue() as j`)).j
+    if (!q.some((x) => x.requestId === rx.id)) throw new Error('not in the pharmacy queue')
+    const d = (await one(`select dispense_prescription($1) as j`, [rx.id])).j
+    const after = (await one(`select stock_overview() as j`)).j.items.find((x) => x.id === itemId)
+    const sales = (await one(`select stock_sales(current_date, current_date) as j`)).j
+    await asAdmin()
+    const line = await one(
+      `select unit_price, quantity from invoice_line where item_id = $1 order by created_at desc limit 1`,
+      [itemId],
+    )
+    if (!d.charged || after.byLocation[pharm] !== 50 || Number(line.unit_price) !== 200)
+      throw new Error(`charged=${d.charged} pharm=${after.byLocation[pharm]}`)
+    const sold = sales.items.find((x) => /Ciprofloxacin/.test(x.item))
+    if (!sold || Number(sold.units) !== 10 || Number(sold.revenue) !== 2000)
+      throw new Error('sales wrong ' + JSON.stringify(sold))
+    return `100 received (RWF 8,000), 60 → pharmacy, 10 → office; over-transfer refused: ${refused}; 10 handed over at RWF 200 = revenue 2,000, cost ${sold.cost}`
+  },
+)
+
 finish()
 
 function finish() {

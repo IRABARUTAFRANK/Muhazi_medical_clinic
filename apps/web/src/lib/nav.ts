@@ -30,6 +30,7 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'calendar', labelKey: 'nav.doctorCalendars', icon: 'calendar-days', to: '/app/calendar' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
+  { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'id-card', to: '/app/staff' },
   HISTORY,
   NOTICES,
@@ -58,6 +59,10 @@ export const NURSE_NAV: NavItem[] = [
   NOTICES,
 ]
 
+/** The pharmacy desk (a doctor-home account at the Pharmacy station) gets the stock page. */
+const STOCK: NavItem = { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' }
+const atPharmacy = (user: StaffUser) => /pharm|farum/i.test(user.station ?? '')
+
 /** Navigation items for the user's role. */
 export const navForUser = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
@@ -66,4 +71,4 @@ export const navForUser = (user: StaffUser): NavItem[] =>
       ? RECEPTION_NAV
       : user.role === 'nurse'
         ? NURSE_NAV
-        : [...ROLE_HOME[user.role].nav, HISTORY, NOTICES]
+        : [...ROLE_HOME[user.role].nav, ...(atPharmacy(user) ? [STOCK] : []), HISTORY, NOTICES]
