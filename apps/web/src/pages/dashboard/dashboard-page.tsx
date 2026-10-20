@@ -50,14 +50,7 @@ import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-s
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { StationTile } from '@/components/dash/station-tile'
-import {
-  Empty,
-  Kpi,
-  ListRows,
-  Panel,
-  Pill,
-  SectionTitle,
-} from '@/components/dash/kit'
+import { Empty, Kpi, ListRows, Panel, Pill, SectionTitle } from '@/components/dash/kit'
 import { NoticesPanel } from '@/components/dash/notices-panel'
 import {
   avatarTint,
