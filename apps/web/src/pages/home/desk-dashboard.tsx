@@ -149,7 +149,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
         {!data && !error && (
           <div
-            className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4"
+            className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] sm:gap-4"
             aria-busy="true"
           >
             {Array.from({ length: 6 }, (_, i) => (
@@ -247,7 +247,7 @@ function ReceptionTiles({ d }: { d: DeskSummary }) {
     }
   }
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(128px,1fr))] gap-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(128px,1fr))] sm:gap-3">
       <Kpi
         i={0}
         icon={UserPlus}
@@ -321,7 +321,7 @@ function NurseTiles({ d }: { d: DeskSummary }) {
   const x = d.tiles
   const diff = x.vitalsToday - x.vitalsYesterday
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] sm:gap-4">
       <Kpi
         i={0}
         icon={Activity}

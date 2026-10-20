@@ -25,7 +25,7 @@ import { formatNumber, type Role } from '@mmc/shared'
 /** Style tokens and helpers shared by every dashboard (see kit.tsx for the components). */
 export const sectionTitle = 'text-[13px] font-extrabold tracking-[.08em] text-primary uppercase'
 export const card =
-  'card-lift bg-card shadow-card flex min-w-0 flex-col gap-3.5 rounded-[16px] px-5 py-[18px]'
+  'card-lift bg-card shadow-card flex min-w-0 flex-col gap-3 rounded-[16px] px-4 py-4 sm:gap-3.5 sm:px-5 sm:py-[18px]'
 
 export type TFn = (key: string, opts?: Record<string, unknown>) => string
 export type Tint = 'teal' | 'mint' | 'amber' | 'coral' | 'violet' | 'navy'

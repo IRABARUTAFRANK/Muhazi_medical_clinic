@@ -2,6 +2,7 @@ import { Ellipsis } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { NavItem } from '@mmc/shared'
 import { Icon } from '@/components/ui/icon'
+import { splitNav, useBarCount } from '@/lib/bottom-bar'
 import { cn } from '@/lib/utils'
 import { StaffLink } from './staff-link'
 
@@ -12,17 +13,19 @@ interface TabletNavProps {
 }
 
 const tab =
-  'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-0 bg-transparent text-xs font-semibold text-white/70 no-underline transition-[background-color,color,transform] duration-150 hover:bg-white/10 hover:text-white active:scale-[0.97]'
+  'flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-0 bg-transparent px-1 text-[11px] font-semibold text-white/70 no-underline transition-[background-color,color,transform] duration-150 hover:bg-white/10 hover:text-white active:scale-[0.97] sm:text-xs'
 
 /** Tablet bottom bar (navy like the rail): the same ≤ 5 items plus "More". */
 export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
   const { t } = useTranslation()
+  const { shown, rest } = splitNav(nav, useBarCount(), activeId)
+  const moreActive = rest.some((n) => n.id === activeId)
   return (
     <nav
       aria-label={t('common.mainNav')}
-      className="topbar-gradient pc:hidden flex flex-none gap-1 overflow-x-auto px-2 py-1.5 text-white"
+      className="topbar-gradient pc:hidden flex flex-none gap-1 px-2 py-1.5 pb-[max(6px,env(safe-area-inset-bottom))] text-white"
     >
-      {nav.map((n) => {
+      {shown.map((n) => {
         const active = n.id === activeId
         return (
           <StaffLink
@@ -35,11 +38,15 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
             )}
           >
             <Icon name={n.icon} size={22} />
-            {t(n.labelKey)}
+            <span className="max-w-full truncate">{t(n.labelKey)}</span>
           </StaffLink>
         )
       })}
-      <button type="button" className={tab} onClick={onMore}>
+      <button
+        type="button"
+        className={cn(tab, moreActive && 'bg-white/15 text-white')}
+        onClick={onMore}
+      >
         <Ellipsis size={22} aria-hidden="true" />
         {t('common.more')}
       </button>

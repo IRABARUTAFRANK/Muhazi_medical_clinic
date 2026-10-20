@@ -56,7 +56,10 @@ export function Kpi({
     : ''
   return (
     <div
-      className={cn(card, 'anim-enter relative gap-2.5 overflow-hidden px-[18px] pt-[18px] pb-3.5')}
+      className={cn(
+        card,
+        'anim-enter relative gap-2 overflow-hidden px-3.5 pt-3.5 pb-3 sm:gap-2.5 sm:px-[18px] sm:pt-[18px] sm:pb-3.5',
+      )}
       style={
         {
           '--i': i,
@@ -72,10 +75,15 @@ export function Kpi({
       >
         <IconC size={18} aria-hidden="true" />
       </span>
-      <span className={cn('text-[13px] font-bold tracking-[.04em] uppercase', tintText[tint])}>
+      <span
+        className={cn(
+          'text-[11px] font-bold tracking-[.04em] uppercase sm:text-[13px]',
+          tintText[tint],
+        )}
+      >
         {label}
       </span>
-      <span className="flex flex-wrap items-baseline gap-1.5 text-[32px] leading-none font-extrabold tracking-[-0.02em] tabular-nums">
+      <span className="flex flex-wrap items-baseline gap-1.5 text-[26px] leading-none font-extrabold tracking-[-0.02em] tabular-nums sm:text-[32px]">
         <CountUp value={value} />
         <small className="text-ink-3 text-[14px] font-semibold">{unit}</small>
       </span>
@@ -103,7 +111,7 @@ export function Sparkline({ values }: { values: number[] }) {
   return (
     <svg
       viewBox="0 0 84 34"
-      className="text-violet pointer-events-none absolute right-3 bottom-3 h-[34px] w-[84px]"
+      className="text-violet pointer-events-none absolute right-3 bottom-3 hidden h-[34px] w-[84px] sm:block"
       aria-hidden="true"
     >
       <polyline
@@ -202,12 +210,14 @@ export function Panel({
         } as CSSProperties
       }
     >
-      <h3 className="m-0 flex items-center justify-between gap-2 text-[16px] font-bold">
-        <span className="flex min-w-0 items-center gap-2.5">
+      <h3 className="m-0 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[16px] font-bold">
+        <span className="flex min-w-0 flex-[1_1_180px] items-center gap-2.5">
           {icon && <IconChip icon={icon} tint={tint} />}
-          <span className={cn('truncate', tintText[tint])}>{title}</span>
+          <span className={cn('min-w-0 break-words', tintText[tint])}>{title}</span>
         </span>
-        {right && <span className="text-ink-3 truncate text-[13px] font-semibold">{right}</span>}
+        {right && (
+          <span className="text-ink-3 ml-auto max-w-full text-[13px] font-semibold">{right}</span>
+        )}
       </h3>
       {children}
     </section>

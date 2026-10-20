@@ -85,25 +85,25 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr className="text-ink-3 text-left text-[11px] tracking-[.04em] uppercase">
-                  <th className="border-border border-b px-4 py-2 font-semibold">
+                  <th className="border-border hidden border-b px-4 py-2 font-semibold sm:table-cell">
                     {t('patients.cols.file')}
                   </th>
                   <th className="border-border border-b px-2 py-2 font-semibold">
                     {t('patients.cols.patient')}
                   </th>
-                  <th className="border-border border-b px-2 py-2 font-semibold">
+                  <th className="border-border hidden border-b px-2 py-2 font-semibold sm:table-cell">
                     {t('patients.cols.ageSex')}
                   </th>
-                  <th className="border-border border-b px-2 py-2 font-semibold">
+                  <th className="border-border hidden border-b px-2 py-2 font-semibold lg:table-cell">
                     {t('patients.cols.phone')}
                   </th>
-                  <th className="border-border border-b px-2 py-2 font-semibold">
+                  <th className="border-border hidden border-b px-2 py-2 font-semibold lg:table-cell">
                     {t('patients.cols.lastVisit')}
                   </th>
-                  <th className="border-border border-b px-2 py-2 text-right font-semibold">
+                  <th className="border-border hidden border-b px-2 py-2 text-right font-semibold lg:table-cell">
                     {t('patients.cols.visits')}
                   </th>
-                  <th className="border-border border-b px-2 py-2 font-semibold">
+                  <th className="border-border hidden border-b px-2 py-2 font-semibold sm:table-cell">
                     {t('patients.cols.status')}
                   </th>
                   <th className="border-border border-b px-4 py-2" />
@@ -116,14 +116,21 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
                     className="border-grid anim-enter hover:bg-hover/60 border-b transition-colors last:border-b-0"
                     style={{ '--i': i } as CSSProperties}
                   >
-                    <td className="text-primary px-4 py-2.5 font-bold tabular-nums">
+                    <td className="text-primary hidden px-4 py-2.5 font-bold tabular-nums sm:table-cell">
                       {r.fileNumber}
                     </td>
-                    <td className="px-2 py-2.5">
+                    <td className="px-3 py-2.5 sm:px-2">
                       <span className="block font-semibold">
                         {r.surname} {r.givenNames}
                       </span>
                       <span className="text-ink-3 block text-xs">
+                        <span className="sm:hidden">
+                          <span className="text-primary font-bold tabular-nums">
+                            {r.fileNumber}
+                          </span>
+                          {' · '}
+                          {ageSexOf(r.birthDate, r.sex)} ·{' '}
+                        </span>
                         {[
                           r.sector,
                           t('patients.registered', { date: formatDate(new Date(r.registeredAt)) }),
@@ -131,14 +138,35 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
                           .filter(Boolean)
                           .join(' · ')}
                       </span>
+                      {(r.openEncounterId ||
+                        r.balanceDue > 0 ||
+                        r.hasAllergies ||
+                        !!r.flags.vip) && (
+                        <span className="mt-1 flex flex-wrap gap-1.5 sm:hidden">
+                          {r.openEncounterId && <Badge tone="blue">{t('patients.inClinic')}</Badge>}
+                          {r.balanceDue > 0 && (
+                            <Badge tone="orange">
+                              {t('patients.owes', { amount: formatRwf(r.balanceDue) })}
+                            </Badge>
+                          )}
+                          {r.hasAllergies && <Badge tone="red">{t('patients.allergies')}</Badge>}
+                          {!!r.flags.vip && <Chip>VIP</Chip>}
+                        </span>
+                      )}
                     </td>
-                    <td className="px-2 py-2.5 tabular-nums">{ageSexOf(r.birthDate, r.sex)}</td>
-                    <td className="px-2 py-2.5 tabular-nums">{r.phone ?? '—'}</td>
-                    <td className="px-2 py-2.5 tabular-nums">
+                    <td className="hidden px-2 py-2.5 tabular-nums sm:table-cell">
+                      {ageSexOf(r.birthDate, r.sex)}
+                    </td>
+                    <td className="hidden px-2 py-2.5 tabular-nums lg:table-cell">
+                      {r.phone ?? '—'}
+                    </td>
+                    <td className="hidden px-2 py-2.5 tabular-nums lg:table-cell">
                       {r.lastVisitAt ? formatDate(new Date(r.lastVisitAt)) : '—'}
                     </td>
-                    <td className="px-2 py-2.5 text-right tabular-nums">{r.visits}</td>
-                    <td className="px-2 py-2.5">
+                    <td className="hidden px-2 py-2.5 text-right tabular-nums lg:table-cell">
+                      {r.visits}
+                    </td>
+                    <td className="hidden px-2 py-2.5 sm:table-cell">
                       <span className="flex flex-wrap gap-1.5">
                         {r.openEncounterId && <Badge tone="blue">{t('patients.inClinic')}</Badge>}
                         {r.balanceDue > 0 && (
@@ -150,17 +178,19 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
                         {!!r.flags.vip && <Chip>VIP</Chip>}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-3 py-2.5 text-right sm:px-4">
                       <StaffLink
                         to="/app/patient"
                         search={{ id: r.id }}
+                        aria-label={t('patients.openFile')}
+                        title={t('patients.openFile')}
                         className={cn(
                           buttonVariants({ size: 'sm', variant: 'primary' }),
                           'whitespace-nowrap',
                         )}
                       >
                         <FolderOpen size={14} aria-hidden="true" />
-                        {t('patients.openFile')}
+                        <span className="hidden sm:inline">{t('patients.openFile')}</span>
                       </StaffLink>
                     </td>
                   </tr>

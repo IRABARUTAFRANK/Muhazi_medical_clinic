@@ -221,7 +221,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
         {data && (
           <div key={range} className="flex flex-col gap-5">
             {/* KPI ROW */}
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] sm:gap-4">
               <Kpi
                 i={0}
                 icon={UserPlus}
@@ -778,7 +778,7 @@ function Skeleton({ isManager }: { isManager: boolean }) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col gap-5" aria-busy="true" aria-label={t('dashboard.loading')}>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(168px,1fr))] gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(168px,1fr))] sm:gap-4">
         {Array.from({ length: isManager ? 7 : 5 }, (_, i) => (
           <div key={i} className="skeleton h-[150px] rounded-[16px]" />
         ))}

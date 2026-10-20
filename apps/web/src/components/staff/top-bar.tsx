@@ -44,40 +44,47 @@ export function TopBar({ user, sync, onOpenSheet }: TopBarProps) {
   return (
     <header className="topbar-gradient relative z-[6] flex-none text-white shadow-[0_6px_24px_rgba(11,34,82,0.25)]">
       {/* PC: one 64 px row */}
-      <div className="pc:flex hidden h-16 items-center gap-4 px-4">
+      <div className="pc:flex hidden h-16 items-center gap-3 px-4 xl:gap-4">
         <Logo
           to="/app"
           size="md"
+          compact
           subtitle={t('app.shortPlace')}
           ariaLabel={t('app.staffHome')}
-          className={`min-w-[220px] ${logoClass}`}
+          className={`flex-none ${logoClass}`}
         />
-        <PatientSearch className="max-w-[440px] flex-1" />
-        <div className="flex-1" />
+        <PatientSearch className="min-w-[150px] flex-1 xl:max-w-[440px]" />
+        <div className="hidden flex-1 xl:block" />
         <SyncBadge state={sync} />
         <NotificationBell user={user} />
         <UserMenu user={user} onDark />
-        <LangSwitch size="sm" />
+        <span className="hidden xl:inline-flex">
+          <LangSwitch size="sm" />
+        </span>
       </div>
-      {/* Tablet: two rows */}
-      <div className="pc:hidden flex flex-col gap-2 px-4 py-2">
-        <div className="flex items-center gap-3">
+      {/* Tablet and phone: two rows. Phones keep only the logo, bell and person on the first
+          row (sync state and language live in the "More" sheet) and the search on the second. */}
+      <div className="pc:hidden flex flex-col gap-2 px-3 py-2 sm:px-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Logo
             to="/app"
             size="md"
+            compact
             subtitle={t('app.shortPlace')}
             ariaLabel={t('app.staffHome')}
-            className={logoClass}
+            className={`min-w-0 ${logoClass}`}
           />
           <span className="flex-1" />
-          <SyncBadge state={sync} />
+          <span className="hidden md:inline-flex">
+            <SyncBadge state={sync} />
+          </span>
           <NotificationBell user={user} />
-          <LangSwitch />
-        </div>
-        <div className="flex items-center gap-3">
-          <PatientSearch className="h-11 flex-1" />
+          <span className="hidden lg:inline-flex">
+            <LangSwitch />
+          </span>
           <UserMenu user={user} onOpenSheet={onOpenSheet} onDark />
         </div>
+        <PatientSearch className="h-11" />
       </div>
     </header>
   )

@@ -204,7 +204,10 @@ export function WhereNextCard({
         {/* Referral: a desk or a named colleague, with the reason and the way back */}
         <div className="border-border flex flex-col gap-2 border-t pt-3">
           {!referring ? (
-            <Button className="self-start" onClick={() => setReferring(true)}>
+            <Button
+              className="h-auto min-h-11 self-start text-left whitespace-normal"
+              onClick={() => setReferring(true)}
+            >
               <ArrowRightLeft size={16} aria-hidden="true" />
               {t('refer.open')}
             </Button>

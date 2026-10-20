@@ -105,7 +105,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
         {/* Filters */}
         <section className="bg-card shadow-card anim-enter flex flex-col gap-3 rounded-[16px] px-5 py-4">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="flex gap-1 rounded-xl bg-white/70 p-1" role="tablist">
+            <div className="flex flex-wrap gap-1 rounded-xl bg-white/70 p-1" role="tablist">
               {(['today', 'week', 'month', 'custom'] as const).map((p) => (
                 <button
                   key={p}
@@ -114,7 +114,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                   aria-selected={period === p}
                   onClick={() => setPeriod(p)}
                   className={cn(
-                    'min-h-10 rounded-lg px-3.5 text-[14px] font-semibold',
+                    'min-h-10 rounded-lg px-3.5 text-[14px] font-semibold whitespace-nowrap',
                     period === p ? 'bg-navy text-white' : 'text-ink-2 hover:bg-hover',
                   )}
                 >
@@ -208,7 +208,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                   className="border-grid anim-enter flex items-start gap-3 border-b py-3 last:border-b-0"
                   style={{ '--i': Math.min(i, 12) } as CSSProperties}
                 >
-                  <span className="text-ink-3 w-[92px] flex-none pt-1.5 text-[13px] tabular-nums">
+                  <span className="text-ink-3 w-[64px] flex-none pt-1.5 text-[13px] tabular-nums sm:w-[92px]">
                     <b className="text-ink block text-[14px]">{formatTime(at)}</b>
                     <span className="block text-[12px]">{formatDate(at)}</span>
                   </span>

@@ -386,7 +386,7 @@ function Hero({
       <Wrap className="pc:grid-cols-[minmax(0,1.15fr)_420px] pc:pt-16 pc:pb-32 relative grid items-start gap-12 pt-14 pb-28">
         <div className="anim-rise flex flex-col gap-6">
           <StatusPill status={status} variant="glass" />
-          <h1 className="m-0 text-[42px] leading-[1.05] font-extrabold tracking-[-0.025em] sm:text-[56px]">
+          <h1 className="m-0 text-[38px] leading-[1.05] font-extrabold tracking-[-0.025em] sm:text-[56px]">
             {t('landing.heroTitle1')}
             <br />
             <span className="text-shine">{t('landing.heroTitle2')}</span>

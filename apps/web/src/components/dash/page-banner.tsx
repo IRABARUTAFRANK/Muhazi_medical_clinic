@@ -44,7 +44,7 @@ export function PageBanner({
   const RoleIcon = look.icon
   return (
     <section
-      className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-5 gap-y-3 overflow-hidden rounded-[18px] py-3.5 pr-5 pl-6"
+      className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-4 gap-y-3 overflow-hidden rounded-[18px] py-3 pr-4 pl-5 sm:gap-x-5 sm:py-3.5 sm:pr-5 sm:pl-6"
       style={{
         backgroundImage: `linear-gradient(100deg, ${tintWash[tint]} 0%, var(--mmc-card) 58%)`,
       }}
@@ -62,24 +62,24 @@ export function PageBanner({
 
       <span
         className={cn(
-          'relative inline-flex size-[52px] flex-none items-center justify-center rounded-2xl',
+          'relative inline-flex size-11 flex-none items-center justify-center rounded-2xl sm:size-[52px]',
           tintClass[tint],
         )}
       >
-        <IconC size={26} strokeWidth={2} aria-hidden="true" />
+        <IconC size={24} strokeWidth={2} aria-hidden="true" />
       </span>
 
-      <div className="relative min-w-[220px] flex-1">
+      <div className="relative min-w-[200px] flex-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <h1
             className={cn(
-              'm-0 text-[24px] leading-[1.15] font-extrabold tracking-[-0.02em]',
+              'm-0 text-[21px] leading-[1.15] font-extrabold tracking-[-0.02em] sm:text-[24px]',
               tintText[tint],
             )}
           >
             {title}
           </h1>
-          <span className="border-border bg-surface text-ink-2 inline-flex items-center gap-2 rounded-full border py-0.5 pr-3 pl-0.5 text-[13px] font-semibold">
+          <span className="border-border bg-surface text-ink-2 hidden items-center gap-2 rounded-full border py-0.5 pr-3 pl-0.5 text-[13px] font-semibold sm:inline-flex">
             <span
               className={cn(
                 'inline-flex size-6 items-center justify-center rounded-full text-[10px] font-extrabold',

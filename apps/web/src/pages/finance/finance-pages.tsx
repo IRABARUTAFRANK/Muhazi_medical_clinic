@@ -255,10 +255,10 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                     <th className="border-border border-b py-2 pr-2 font-semibold">
                       {t('finance.cols.method')}
                     </th>
-                    <th className="border-border border-b py-2 pr-2 font-semibold">
+                    <th className="border-border hidden border-b py-2 pr-2 font-semibold sm:table-cell">
                       {t('finance.cols.receipt')}
                     </th>
-                    <th className="border-border border-b py-2 pr-2 font-semibold">
+                    <th className="border-border hidden border-b py-2 pr-2 font-semibold md:table-cell">
                       {t('finance.cols.cashier')}
                     </th>
                     <th className="border-border border-b py-2 text-right font-semibold">
@@ -287,8 +287,12 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                             <span className="text-ink-3 block text-[12px]">{p.reference}</span>
                           )}
                         </td>
-                        <td className="py-2 pr-2 tabular-nums">{p.invoice ?? '—'}</td>
-                        <td className="text-ink-2 py-2 pr-2">{p.cashier ?? '—'}</td>
+                        <td className="hidden py-2 pr-2 tabular-nums sm:table-cell">
+                          {p.invoice ?? '—'}
+                        </td>
+                        <td className="text-ink-2 hidden py-2 pr-2 md:table-cell">
+                          {p.cashier ?? '—'}
+                        </td>
                         <td className="py-2 text-right font-bold tabular-nums">
                           {formatRwf(p.amount)}
                         </td>

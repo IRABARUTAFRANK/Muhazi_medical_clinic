@@ -14,6 +14,7 @@ import { OfflineBanner } from './offline-banner'
 import { Rail } from './rail'
 import { TabletNav } from './tablet-nav'
 import { TopBar } from './top-bar'
+import { splitNav, useBarCount } from '@/lib/bottom-bar'
 
 interface StaffShellProps {
   user: StaffUser
@@ -40,6 +41,7 @@ export function StaffShell({
   const dayNames = useDayNames()
   const locked = useSession((s) => s.locked)
   const [sheet, setSheet] = useState(false)
+  const barCount = useBarCount()
   const zoom = TEXT_ZOOM[usePrefs((s) => s.textSize)] ?? 1
   // Text size, theme and language follow the person to every device.
   usePrefsSync(user.id)
@@ -65,13 +67,21 @@ export function StaffShell({
       {tabletActions && (
         <div
           aria-label={t('common.quickActions')}
-          className="border-border bg-card/90 pc:hidden flex flex-none gap-2 border-t px-4 py-2 backdrop-blur"
+          className="border-border bg-card/90 pc:hidden grid flex-none grid-cols-2 gap-2 border-t px-3 py-2 backdrop-blur sm:flex sm:px-4 sm:[&>*]:flex-1"
         >
           {tabletActions}
         </div>
       )}
       <TabletNav nav={nav} activeId={activeId} onMore={() => setSheet(true)} />
-      {sheet && <MoreSheet user={user} onClose={() => setSheet(false)} />}
+      {sheet && (
+        <MoreSheet
+          user={user}
+          nav={splitNav(nav, barCount, activeId).rest}
+          activeId={activeId}
+          sync={sync}
+          onClose={() => setSheet(false)}
+        />
+      )}
       {!locked && lockIn != null && <IdleWarning seconds={lockIn} />}
       {locked && <LockScreen />}
     </div>

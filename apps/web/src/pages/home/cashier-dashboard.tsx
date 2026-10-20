@@ -92,7 +92,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
         </div>
 
         {s && (
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] sm:gap-4">
             <Kpi
               i={0}
               icon={HandCoins}
@@ -172,7 +172,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                       {shown.map((b, i) => (
                         <div
                           key={b.encounterId}
-                          className="border-grid anim-enter flex min-h-12 items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
+                          className="border-grid anim-enter flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
                           style={{ '--i': i } as CSSProperties}
                         >
                           <Pill tint="amber" icon={Receipt}>
@@ -269,7 +269,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                         return (
                           <div
                             key={p.id}
-                            className="border-grid anim-enter flex min-h-11 items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
+                            className="border-grid anim-enter flex min-h-11 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
                             style={{ '--i': i } as CSSProperties}
                           >
                             <span className="text-ink-3 w-12 tabular-nums">

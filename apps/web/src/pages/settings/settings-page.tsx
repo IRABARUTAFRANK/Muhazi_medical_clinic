@@ -181,7 +181,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           {/* Section menu: a column on PC, a scrolling row of tabs on tablets */}
           <nav
             aria-label={t('settings.title')}
-            className="bg-card shadow-card pc:sticky pc:top-0 pc:flex-col flex gap-1 overflow-x-auto rounded-[16px] p-2"
+            className="bg-card shadow-card pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap flex flex-wrap gap-1 rounded-[16px] p-2"
           >
             {SECTIONS.map((sec) => {
               const on = section === sec.id
@@ -192,7 +192,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   aria-current={on ? 'page' : undefined}
                   onClick={() => choose(sec.id)}
                   className={cn(
-                    'flex flex-none items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
+                    'pc:flex-none flex flex-[1_1_150px] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
                     on ? 'bg-navy text-white' : 'text-ink hover:bg-hover',
                   )}
                 >

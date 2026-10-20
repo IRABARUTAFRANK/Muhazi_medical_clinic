@@ -17,17 +17,17 @@ export function CalendarGrid({ days, rows, todayIndex, selectedId, onPick }: Cal
   const { t } = useTranslation()
   const dayNames = useDayNames()
   return (
-    <div className="grid grid-cols-[48px_repeat(7,minmax(0,1fr))] items-stretch gap-1 sm:grid-cols-[64px_repeat(7,minmax(0,1fr))]">
+    <div className="grid grid-cols-[38px_repeat(7,minmax(0,1fr))] items-stretch gap-0.5 sm:grid-cols-[64px_repeat(7,minmax(0,1fr))] sm:gap-1">
       <span />
       {days.map((d, i) => (
         <span
           key={d.toISOString()}
-          className="border-border text-ink-2 border-b py-1.5 text-center text-xs font-semibold"
+          className="border-border text-ink-2 border-b py-1.5 text-center text-[11px] leading-tight font-semibold sm:text-xs"
         >
           {dayNames.short[d.getDay()]}
           <b
             className={cn(
-              'block text-base tabular-nums',
+              'block text-[11px] tabular-nums sm:text-base',
               i === todayIndex ? 'text-primary' : 'text-ink',
             )}
           >
@@ -66,7 +66,7 @@ function HourRow({
 }) {
   return (
     <>
-      <span className="text-ink-3 flex items-center justify-end pr-2 text-xs tabular-nums">
+      <span className="text-ink-3 flex items-center justify-end pr-1 text-[11px] tabular-nums sm:pr-2 sm:text-xs">
         {formatHour(row.hour)}
       </span>
       {row.cells.map((cell) => {
@@ -93,7 +93,7 @@ function HourRow({
               time: formatHour(cell.hour),
             })}
             className={cn(
-              'flex min-h-11 items-center justify-center gap-1 rounded-md border text-xs font-semibold',
+              'flex min-h-11 items-center justify-center gap-1 rounded-md border px-0 text-[10px] font-semibold sm:text-xs',
               selected && 'border-primary bg-primary text-on-primary',
               !selected &&
                 cell.state === 'free' &&

@@ -277,7 +277,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                     <div
                       key={n.id}
                       className={cn(
-                        'border-grid anim-enter flex items-start gap-3 border-b py-3 last:border-b-0',
+                        'border-grid anim-enter flex flex-wrap items-start gap-3 border-b py-3 last:border-b-0',
                         !n.read && 'bg-primary-tint/30 -mx-2 rounded-lg px-2',
                       )}
                       style={{ '--i': Math.min(i, 12) } as CSSProperties}
@@ -294,7 +294,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                         }
                       />
                       <IconChip icon={look.icon} tint={look.tint} />
-                      <span className="min-w-0 flex-1">
+                      <span className="min-w-0 flex-[1_1_200px]">
                         <span
                           className={cn(
                             'flex items-center gap-2 text-[15px]',
@@ -314,7 +314,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                           {n.sender ? ` · ${t('notify.from', { name: n.sender })}` : ''}
                         </span>
                       </span>
-                      <span className="flex flex-none flex-wrap justify-end gap-1">
+                      <span className="ml-auto flex flex-none flex-wrap justify-end gap-1 pl-7 sm:pl-0">
                         {n.link && (
                           <Button size="sm" variant="primary" onClick={() => open(n)}>
                             {t('common.open')}

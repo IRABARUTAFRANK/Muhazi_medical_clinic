@@ -12,6 +12,7 @@ import {
   weekAvailability,
   workingAt,
   type Practitioner,
+  type TimeSpan,
 } from '@mmc/shared'
 import { avatarTint, initials } from '@/components/dash/kit-style'
 import { useDayNames } from '@/lib/hooks'
@@ -26,11 +27,17 @@ export interface BoardDoctor {
 }
 
 const VIS_ICON = { private: Lock, staff: Users, public: Globe } as const
+type TFn = (key: string, opts?: Record<string, unknown>) => string
+
+/** "08:00–17:00" from 1024 px; "08–17" on phones and tablets when the minutes are 00. */
+const shortSpan = ([a, b]: TimeSpan) =>
+  a.endsWith(':00') && b.endsWith(':00') ? `${a.slice(0, 2)}–${b.slice(0, 2)}` : `${a}–${b}`
 
 /**
  * The doctors' week: one row per doctor, one column per day (today first), with the working
  * hours of each day, days off, and how many booking slots are still free. Used on the public
  * home page (public calendars) and on the staff home pages (calendars shared with the staff).
+ * Phones get one card per doctor with the seven days underneath instead of a wide table.
  */
 export function ScheduleBoard({
   doctors,
@@ -51,6 +58,11 @@ export function ScheduleBoard({
   const names = useDayNames()
   const [week, setWeek] = useState(0)
   const days = Array.from({ length: 7 }, (_, i) => addDays(startOfDay(now), week * 7 + i))
+  const rows = doctors.map((doc, i) => ({
+    doc,
+    i,
+    avail: weekAvailability(doc.p, now, week, bookedFor?.(doc.p)),
+  }))
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -64,7 +76,7 @@ export function ScheduleBoard({
         >
           <ChevronLeft size={16} aria-hidden="true" />
         </button>
-        <span className="text-primary min-w-[150px] text-center text-[14px] font-bold">
+        <span className="text-primary min-w-[130px] flex-1 text-center text-[14px] font-bold sm:flex-none">
           {week === 0
             ? t('calendar.board.thisWeek')
             : t('calendar.board.weekOf', { day: formatDayMonth(days[0]!) })}
@@ -78,18 +90,56 @@ export function ScheduleBoard({
         >
           <ChevronRight size={16} aria-hidden="true" />
         </button>
-        <span className="text-ink-3 ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
+        <span className="text-ink-3 flex basis-full flex-wrap items-center gap-x-3 gap-y-1 text-[12px] sm:ml-auto sm:basis-auto">
           <Legend className="bg-green-bg border-green-dot/40" label={t('calendar.board.working')} />
           <Legend className="bg-amber-bg border-yellow-dot/50" label={t('calendar.board.dayOff')} />
           <Legend className="bg-surface border-border" label={t('calendar.board.off')} />
         </span>
       </div>
 
-      <div className="border-border overflow-x-auto rounded-xl border">
-        <table className="w-full min-w-[820px] border-collapse text-[13px]">
+      {/* Phones: a card per doctor, the seven days in a small grid under the name. */}
+      <div className="flex flex-col gap-3 sm:hidden">
+        {rows.map(({ doc, i, avail }) => (
+          <div key={doc.p.id} className="border-border bg-card rounded-xl border p-3">
+            <DoctorHead doc={doc} i={i} now={now} variant={variant} action={action} t={t} />
+            <div className="mt-2.5 grid grid-cols-7 gap-1">
+              {days.map((d, k) => {
+                const today = sameDay(d, now)
+                return (
+                  <div key={d.toISOString()} className="flex min-w-0 flex-col gap-1">
+                    <span
+                      className={cn(
+                        'block truncate text-center text-[10px] font-bold uppercase',
+                        today ? 'text-primary' : 'text-ink-3',
+                      )}
+                    >
+                      {names.short[d.getDay()]}
+                      <span className="block text-[9px] font-semibold normal-case tabular-nums">
+                        {formatDayMonth(d)}
+                      </span>
+                    </span>
+                    <DayCell
+                      p={doc.p}
+                      d={d}
+                      free={avail[k]?.free ?? null}
+                      today={today}
+                      compact
+                      t={t}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tablets and PCs: the week as a table. */}
+      <div className="border-border hidden overflow-x-auto rounded-xl border sm:block">
+        <table className="w-full min-w-[600px] border-collapse text-[12px] md:text-[13px]">
           <thead>
             <tr className="bg-primary-tint">
-              <th className="text-primary w-[230px] px-3 py-2.5 text-left text-[12px] font-extrabold tracking-[.06em] uppercase">
+              <th className="text-primary w-[160px] px-3 py-2.5 text-left text-[12px] font-extrabold tracking-[.06em] uppercase md:w-[230px]">
                 {t('calendar.board.doctor')}
               </th>
               {days.map((d) => {
@@ -119,123 +169,184 @@ export function ScheduleBoard({
             </tr>
           </thead>
           <tbody>
-            {doctors.map((doc, i) => {
-              const { p } = doc
-              const avail = weekAvailability(p, now, week, bookedFor?.(p))
-              const on = workingAt(p, now)
-              const VisIcon = doc.visibility ? VIS_ICON[doc.visibility] : null
-              return (
-                <tr key={p.id} className="border-grid border-t">
-                  <td className="bg-card px-3 py-2.5 align-top">
-                    <div className="flex items-start gap-2.5">
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'inline-flex size-9 flex-none items-center justify-center rounded-full text-[12px] font-extrabold',
-                          avatarTint(i),
-                        )}
-                      >
-                        {initials(p.name)}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="text-ink block truncate text-[14px] font-bold">
-                          {p.name}
-                          {doc.mine && (
-                            <span className="text-primary ml-1 text-[12px] font-semibold">
-                              ({t('calendar.board.you')})
-                            </span>
-                          )}
-                        </span>
-                        <span className="text-ink-3 block truncate text-[12px]">
-                          {[p.title, doc.department].filter(Boolean).join(' · ') || '—'}
-                        </span>
-                        <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <span
-                            className={cn(
-                              'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold',
-                              on ? 'bg-green-bg text-green' : 'bg-hover text-ink-3',
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                'size-1.5 rounded-full',
-                                on ? 'bg-green-dot' : 'bg-ink-3',
-                              )}
-                            />
-                            {on ? t('calendar.board.inNow') : t('calendar.board.notNow')}
-                          </span>
-                          {variant === 'staff' && VisIcon && doc.visibility && (
-                            <span
-                              className="text-ink-3 inline-flex items-center gap-1 text-[11px] font-semibold"
-                              title={t(`calendar.visibility.${doc.visibility}.title`)}
-                            >
-                              <VisIcon size={11} aria-hidden="true" />
-                              {t(`calendar.visibility.${doc.visibility}.short`)}
-                            </span>
-                          )}
-                        </span>
-                        {p.note && (
-                          <span className="text-violet mt-1 block text-[12px] font-medium italic">
-                            {p.note}
-                          </span>
-                        )}
-                        {action && <span className="mt-1.5 block">{action(doc)}</span>}
-                      </span>
-                    </div>
-                  </td>
-                  {days.map((d, k) => {
-                    const off = isDayOff(p, d)
-                    const spans = off ? [] : spansFor(p.hours, d)
-                    const free = avail[k]?.free ?? null
-                    const today = sameDay(d, now)
-                    return (
-                      <td
-                        key={d.toISOString()}
-                        className={cn('px-1 py-1.5 align-top', today && 'bg-primary-tint/50')}
-                      >
-                        {off ? (
-                          <span className="bg-amber-bg text-amber border-yellow-dot/50 flex h-full min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-lg border text-[11px] font-bold">
-                            <CalendarOff size={14} aria-hidden="true" />
-                            {t('calendar.board.dayOff')}
-                          </span>
-                        ) : spans.length === 0 ? (
-                          <span className="bg-surface text-ink-3 border-border flex min-h-[52px] items-center justify-center rounded-lg border border-dashed text-[11px] font-semibold">
-                            {t('calendar.board.off')}
-                          </span>
-                        ) : (
-                          <span className="bg-green-bg border-green-dot/40 flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1 text-center">
-                            {spans.map(([a, b]) => (
-                              <span
-                                key={a}
-                                className="text-green text-[12px] font-bold whitespace-nowrap tabular-nums"
-                              >
-                                {a}–{b}
-                              </span>
-                            ))}
-                            {free !== null && (
-                              <span
-                                className={cn(
-                                  'text-[11px] font-semibold',
-                                  free === 0 ? 'text-red' : 'text-ink-2',
-                                )}
-                              >
-                                {free === 0
-                                  ? t('calendar.board.full')
-                                  : t('calendar.board.free', { count: free })}
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </td>
-                    )
-                  })}
-                </tr>
-              )
-            })}
+            {rows.map(({ doc, i, avail }) => (
+              <tr key={doc.p.id} className="border-grid border-t">
+                <td className="bg-card px-3 py-2.5 align-top">
+                  <DoctorHead doc={doc} i={i} now={now} variant={variant} action={action} t={t} />
+                </td>
+                {days.map((d, k) => {
+                  const today = sameDay(d, now)
+                  return (
+                    <td
+                      key={d.toISOString()}
+                      className={cn('px-1 py-1.5 align-top', today && 'bg-primary-tint/50')}
+                    >
+                      <DayCell p={doc.p} d={d} free={avail[k]?.free ?? null} today={today} t={t} />
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
     </div>
+  )
+}
+
+/** Avatar, name, title, "working now", visibility, note and the action button. */
+function DoctorHead({
+  doc,
+  i,
+  now,
+  variant,
+  action,
+  t,
+}: {
+  doc: BoardDoctor
+  i: number
+  now: Date
+  variant: 'public' | 'staff'
+  action?: (d: BoardDoctor) => ReactNode
+  t: TFn
+}) {
+  const { p } = doc
+  const on = workingAt(p, now)
+  const VisIcon = doc.visibility ? VIS_ICON[doc.visibility] : null
+  return (
+    <div className="flex items-start gap-2.5">
+      <span
+        aria-hidden="true"
+        className={cn(
+          'inline-flex size-9 flex-none items-center justify-center rounded-full text-[12px] font-extrabold',
+          avatarTint(i),
+        )}
+      >
+        {initials(p.name)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-ink block text-[14px] font-bold">
+          {p.name}
+          {doc.mine && (
+            <span className="text-primary ml-1 text-[12px] font-semibold">
+              ({t('calendar.board.you')})
+            </span>
+          )}
+        </span>
+        <span className="text-ink-3 block text-[12px]">
+          {[p.title, doc.department].filter(Boolean).join(' · ') || '—'}
+        </span>
+        <span className="mt-1 flex flex-wrap items-center gap-1.5">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold',
+              on ? 'bg-green-bg text-green' : 'bg-hover text-ink-3',
+            )}
+          >
+            <span className={cn('size-1.5 rounded-full', on ? 'bg-green-dot' : 'bg-ink-3')} />
+            {on ? t('calendar.board.inNow') : t('calendar.board.notNow')}
+          </span>
+          {variant === 'staff' && VisIcon && doc.visibility && (
+            <span
+              className="text-ink-3 inline-flex items-center gap-1 text-[11px] font-semibold"
+              title={t(`calendar.visibility.${doc.visibility}.title`)}
+            >
+              <VisIcon size={11} aria-hidden="true" />
+              {t(`calendar.visibility.${doc.visibility}.short`)}
+            </span>
+          )}
+        </span>
+        {p.note && (
+          <span className="text-violet mt-1 block text-[12px] font-medium italic">{p.note}</span>
+        )}
+        {action && <span className="mt-1.5 block">{action(doc)}</span>}
+      </span>
+    </div>
+  )
+}
+
+/** One day: the working periods and free count, a day off, or off. */
+function DayCell({
+  p,
+  d,
+  free,
+  today,
+  compact = false,
+  t,
+}: {
+  p: Practitioner
+  d: Date
+  free: number | null
+  today: boolean
+  compact?: boolean
+  t: TFn
+}) {
+  const off = isDayOff(p, d)
+  const spans = off ? [] : spansFor(p.hours, d)
+  const base = cn(
+    'flex flex-col items-center justify-center gap-0.5 rounded-lg border text-center',
+    compact ? 'min-h-[44px] px-0.5 py-1' : 'min-h-[52px] px-1 py-1',
+    today && compact && 'ring-primary/40 ring-2',
+  )
+  if (off)
+    return (
+      <span className={cn(base, 'bg-amber-bg text-amber border-yellow-dot/50 font-bold')}>
+        <CalendarOff size={compact ? 12 : 14} aria-hidden="true" />
+        {!compact && <span className="text-[11px]">{t('calendar.board.dayOff')}</span>}
+      </span>
+    )
+  if (spans.length === 0)
+    return (
+      <span
+        className={cn(
+          base,
+          'bg-surface text-ink-3 border-border border-dashed font-semibold',
+          compact ? 'text-[9px]' : 'text-[11px]',
+        )}
+      >
+        {t('calendar.board.off')}
+      </span>
+    )
+  return (
+    <span className={cn(base, 'bg-green-bg border-green-dot/40')}>
+      {spans.map((s) => (
+        <span
+          key={s[0]}
+          className={cn(
+            'text-green font-bold whitespace-nowrap tabular-nums',
+            compact ? 'text-[9px] leading-tight' : 'text-[11px] md:text-[12px]',
+          )}
+        >
+          {compact ? (
+            shortSpan(s)
+          ) : (
+            <>
+              <span className="lg:hidden">{shortSpan(s)}</span>
+              <span className="hidden lg:inline">
+                {s[0]}–{s[1]}
+              </span>
+            </>
+          )}
+        </span>
+      ))}
+      {free !== null && (
+        <span
+          className={cn(
+            'font-semibold',
+            compact ? 'text-[9px] leading-tight' : 'text-[11px]',
+            free === 0 ? 'text-red' : 'text-ink-2',
+          )}
+        >
+          {free === 0
+            ? compact
+              ? '0'
+              : t('calendar.board.full')
+            : compact
+              ? String(free)
+              : t('calendar.board.free', { count: free })}
+        </span>
+      )}
+    </span>
   )
 }
 

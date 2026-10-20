@@ -57,7 +57,7 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
   return (
     <section
       aria-label={t('identity.aria', { name: user.name })}
-      className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-6 gap-y-4 overflow-hidden rounded-[20px] py-5 pr-6 pl-7"
+      className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-4 gap-y-3 overflow-hidden rounded-[20px] py-4 pr-5 pl-6 sm:gap-x-6 sm:gap-y-4 sm:py-5 sm:pr-6 sm:pl-7"
     >
       {/* Role colour stripe and a large faint role icon, for recognition from across the room. */}
       <span className={cn('absolute inset-y-0 left-0 w-1.5', look.stripe)} aria-hidden="true" />
@@ -71,7 +71,7 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
       <span className="relative flex-none">
         <span
           className={cn(
-            'inline-flex size-[76px] items-center justify-center rounded-[22px] text-[26px] font-extrabold tracking-[-0.02em]',
+            'inline-flex size-16 items-center justify-center rounded-[20px] text-[22px] font-extrabold tracking-[-0.02em] sm:size-[76px] sm:rounded-[22px] sm:text-[26px]',
             tintClass[look.tint],
           )}
         >
@@ -87,9 +87,9 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
         </span>
       </span>
 
-      <div className="relative min-w-[220px] flex-1">
+      <div className="relative min-w-[180px] flex-1">
         <div className="text-ink-2 text-sm font-semibold">{greeting}</div>
-        <h1 className="m-0 mt-0.5 text-[30px] leading-[1.15] font-extrabold tracking-[-0.02em] break-words">
+        <h1 className="m-0 mt-0.5 text-[24px] leading-[1.15] font-extrabold tracking-[-0.02em] break-words sm:text-[30px]">
           {user.name}
         </h1>
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -115,7 +115,7 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
         </div>
       </div>
 
-      <div className="relative flex flex-col items-start gap-2 text-sm">
+      <div className="relative flex flex-row flex-wrap items-center gap-2 text-sm sm:flex-col sm:items-start">
         <span className="text-ink-2 inline-flex items-center gap-2 font-semibold">
           <CalendarDays size={16} aria-hidden="true" className="text-ink-3" />
           {dayNames.long[now.getDay()]} {formatDate(now)}

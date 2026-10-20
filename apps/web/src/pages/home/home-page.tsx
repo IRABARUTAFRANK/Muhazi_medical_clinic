@@ -123,7 +123,7 @@ function RoleHome({ user, mode }: HomePageProps) {
       to={a.to}
       className={cn(
         buttonVariants({ variant: a.primary ? 'primary' : 'default' }),
-        'min-h-[52px] flex-1 px-2 text-center text-[14px] leading-tight whitespace-normal',
+        'min-h-[48px] px-2 text-center text-[14px] leading-tight whitespace-normal sm:min-h-[52px]',
       )}
     >
       {t(a.labelKey)}
@@ -382,5 +382,9 @@ function RoleTiles({
       </>
     )
   }
-  return <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">{tiles}</div>
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] sm:gap-4">
+      {tiles}
+    </div>
+  )
 }
