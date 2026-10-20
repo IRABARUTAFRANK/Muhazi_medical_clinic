@@ -26,7 +26,7 @@ const flat = (o, p = '') =>
 
 /** Texts that are rightly identical in every language: names, codes, units, formats. */
 const SAME_OK =
-  /^(\{\{[^}]+\}\}[\s·–-]*)+$|^[\d\s/:.x…-]+$|Muhazi Medical Clinic|MMC-|WhatsApp|SMS|RSSB|RAMA|MMI|MoMo|Airtel|TIN|RWF|PIN|SpO₂|Kiramuruzi|Mutuelle de Santé|Uwase Claudine|Uwimana Josiane|Mukamana Alice|07xx/
+  /^(\{\{[^}]+\}\}[\s·–-]*)+$|^[\d\s/:.x…-]+$|Muhazi Medical Clinic|MMC-|Excel|PDF|WhatsApp|SMS|RSSB|RAMA|MMI|MoMo|Airtel|TIN|RWF|PIN|SpO₂|Kiramuruzi|Mutuelle de Santé|Uwase Claudine|Uwimana Josiane|Mukamana Alice|07xx/
 
 const en = Object.fromEntries(flat(load('en')).filter(([k]) => !k.startsWith('_')))
 let failed = false

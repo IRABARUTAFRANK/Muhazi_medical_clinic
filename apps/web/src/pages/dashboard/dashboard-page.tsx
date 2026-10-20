@@ -43,6 +43,7 @@ import {
   formatTime,
   type DashboardRole,
   type StaffUser,
+  CLINIC_PROFILE,
 } from '@mmc/shared'
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { HBarList } from '@/components/charts/hbar'
@@ -81,6 +82,8 @@ import {
   type DashboardRange,
 } from '@/lib/api/dashboard'
 import { useClinicInfo } from '@/lib/api/public'
+import { ReportButtons } from '@/components/dash/report-buttons'
+import { dashboardReport } from '@/lib/reports/build'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
@@ -194,6 +197,11 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
           >
             {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
           </Button>
+          <ReportButtons
+            build={() =>
+              data ? dashboardReport(data, info?.profile ?? CLINIC_PROFILE, user, t) : null
+            }
+          />
           <Button size="md" onClick={() => window.print()}>
             <Printer size={16} aria-hidden="true" />
             {t('dashboard.print')}

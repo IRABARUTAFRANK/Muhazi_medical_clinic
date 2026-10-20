@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { CircleCheck, FlaskConical, Hourglass } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { StaffUser } from '@mmc/shared'
+import { CLINIC_PROFILE, type StaffUser } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { useLabWorklist, type LabOrder } from '@/lib/api/lab'
+import { useLabSummary, useLabWorklist, type LabOrder } from '@/lib/api/lab'
+import { useClinicInfo } from '@/lib/api/public'
+import { ReportButtons } from '@/components/dash/report-buttons'
+import { labReport } from '@/lib/reports/build'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
@@ -32,6 +35,10 @@ export function LabPage({ user }: { user: StaffUser }) {
   const now = useNow()
   const [tab, setTab] = useState<'open' | 'done'>('open')
   const { data: orders = [] } = useLabWorklist(tab)
+  const { data: openAll = [] } = useLabWorklist('open')
+  const { data: doneAll = [] } = useLabWorklist('done')
+  const { data: summary } = useLabSummary()
+  const { data: info } = useClinicInfo()
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('urgent')
   const [filter, setFilter] = useState<Filter>('all')
@@ -59,7 +66,13 @@ export function LabPage({ user }: { user: StaffUser }) {
           meta={
             <BannerChip icon={Hourglass}>{t('lab.openCount', { count: orders.length })}</BannerChip>
           }
-        />
+        >
+          <ReportButtons
+            build={() =>
+              labReport(summary, openAll, doneAll, info?.profile ?? CLINIC_PROFILE, user, t)
+            }
+          />
+        </PageBanner>
 
         <div className="flex gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
           {(['open', 'done'] as const).map((k) => (

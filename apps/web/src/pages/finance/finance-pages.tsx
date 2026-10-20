@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
+import { CLINIC_PROFILE, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { Empty, IconChip, Panel, Pill } from '@/components/dash/kit'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -19,6 +19,9 @@ import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useCashierSummary } from '@/lib/api/finance'
+import { useClinicInfo } from '@/lib/api/public'
+import { ReportButtons } from '@/components/dash/report-buttons'
+import { cashierReport } from '@/lib/reports/build'
 import { useHomeSummary } from '@/lib/api/home'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
@@ -117,6 +120,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const [day, setDay] = useState(today)
   const { data: s } = useCashierSummary(day)
+  const { data: info } = useClinicInfo()
   const [method, setMethod] = useState<string>('all')
   const [query, setQuery] = useState('')
   const payments = (s?.payments ?? []).filter(
@@ -151,6 +155,9 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
               className="bg-transparent outline-none"
             />
           </label>
+          <ReportButtons
+            build={() => (s ? cashierReport(s, info?.profile ?? CLINIC_PROFILE, user, t) : null)}
+          />
           <Button onClick={() => window.print()}>
             <Printer size={16} aria-hidden="true" />
             {t('finance.printDay')}

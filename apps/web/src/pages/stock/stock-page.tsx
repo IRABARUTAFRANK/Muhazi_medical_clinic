@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
+  CLINIC_PROFILE,
   formatDate,
   formatNumber,
   formatRwf,
@@ -38,6 +39,9 @@ import {
   type StockLocation,
 } from '@/lib/api/stock'
 import { useDepartments } from '@/lib/api/staff'
+import { useClinicInfo } from '@/lib/api/public'
+import { ReportButtons } from '@/components/dash/report-buttons'
+import { stockReport } from '@/lib/reports/build'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
@@ -72,6 +76,11 @@ export function StockPage({ user }: { user: StaffUser }) {
   const { data: queue = [] } = usePharmacyQueue()
   const now = useNow(60_000)
   const items = data?.items ?? []
+  const { data: info } = useClinicInfo()
+  const reportFrom = monthStart()
+  const reportTo = isoDate(new Date(now))
+  const { data: reportMoves = [] } = useStockMovements(reportFrom, reportTo, null)
+  const { data: reportSales } = useStockSales(reportFrom, reportTo)
   const locations = data?.locations ?? []
   const value = items.reduce((s, i) => s + i.costValue, 0)
   const low = items.filter((i) => i.active && i.onHand <= i.reorderLevel).length
@@ -94,7 +103,22 @@ export function StockPage({ user }: { user: StaffUser }) {
               {t('stock.valueChip', { amount: formatRwf(value) })}
             </BannerChip>
           }
-        />
+        >
+          <ReportButtons
+            build={() =>
+              stockReport(
+                items,
+                reportMoves,
+                reportSales,
+                reportFrom,
+                reportTo,
+                info?.profile ?? CLINIC_PROFILE,
+                user,
+                t,
+              )
+            }
+          />
+        </PageBanner>
         {error && <p className={errorBox}>{error.message}</p>}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] sm:gap-4">
