@@ -3068,5 +3068,41 @@
         "hint": "Recevoir médicaments et fournitures et les envoyer aux postes."
       }
     }
+  },
+  "medReport": {
+    "open": "Rapport médical",
+    "hint": "Un rapport de cette visite que le patient peut emporter (imprimer ou enregistrer en PDF).",
+    "panelTitle": "Rapport médical de cette visite",
+    "panelLead": "Il reprend les signes vitaux, notes, diagnostics, examens et résultats, soins et médicaments de cette visite, avec votre nom et une ligne de signature.",
+    "commentLabel": "Votre commentaire ou recommandations (facultatif)",
+    "commentPh": "ex. Repos 3 jours ; revenir si la fièvre continue.",
+    "print": "Imprimer le rapport",
+    "history": "Rapport médical complet",
+    "historyHint": "Toutes les visites du patient avec signes vitaux, diagnostics et résultats (imprimer ou enregistrer en PDF).",
+    "visitButton": "Rapport",
+    "title": "Rapport médical",
+    "titleHistory": "Historique médical",
+    "produced": "Établi le",
+    "phone": "Téléphone",
+    "bloodGroup": "Groupe sanguin",
+    "visitOf": "Visite du {{date}}",
+    "seenBy": "Vu par",
+    "desks": "Postes",
+    "vitals": "Signes vitaux",
+    "notes": "Notes",
+    "diagnoses": "Diagnostics",
+    "primary": "principal",
+    "provisional": "provisoire",
+    "tests": "Examens et résultats",
+    "conclusion": "Conclusion",
+    "notVerified": "pas encore validé",
+    "treatments": "Soins",
+    "medicines": "Médicaments",
+    "comment": "Commentaire et recommandations",
+    "nothing": "Rien n’a été enregistré pour cette visite.",
+    "author": "Rapport établi par",
+    "confidential": "Informations médicales confidentielles, pour le patient et les soignants qui le suivent.",
+    "visitsCount_one": "{{count}} visite",
+    "visitsCount_other": "{{count}} visites"
   }
 }

@@ -1,10 +1,11 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
 import {
-  Footprints,
   ArrowLeft,
   Check,
+  FileText,
   FlaskConical,
   FolderOpen,
+  Footprints,
   Pencil,
   Plus,
   Stethoscope,
@@ -50,6 +51,9 @@ import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
 import { useCan } from '@/lib/api/permissions'
+import { openMedicalReport } from '@/lib/medical-report'
+import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
+import { roleLabel } from '@/lib/roles'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'bills'
 const TABS: Tab[] = ['overview', 'visits', 'clinical', 'bills']
@@ -61,6 +65,15 @@ const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-s
  * Starting a visit from here follows the same rule as registration: triage first, unless
  * it is an emergency.
  */
+/** Whole years since a YYYY-MM-DD date. */
+const ageOf = (iso: string) => {
+  const b = new Date(iso)
+  const n = new Date()
+  let y = n.getFullYear() - b.getFullYear()
+  if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) y -= 1
+  return Math.max(0, y)
+}
+
 export function PatientFilePage({
   user,
   patientId,
@@ -90,6 +103,72 @@ export function PatientFilePage({
   const openVisit = data?.visits.find((v) => v.status === 'open')
   const [confirming, setConfirming] = useState(false)
   const mayStart = useCan(user)('visit.start')
+  // The medical report holds diagnoses: clinicians and the manager only.
+  const mayReport = user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager'
+  const letterhead = useLetterhead()
+  const reportLabels = useMedicalReportLabels()
+  const { data: allResults = [] } = usePatientResults(patientId)
+  const printHistory = () => {
+    if (!data) return
+    const p = data.patient
+    const visits = [...data.visits].sort((a, b) => b.arrivedAt.localeCompare(a.arrivedAt))
+    const ok = openMedicalReport(
+      {
+        kind: 'history',
+        clinic: letterhead,
+        patient: {
+          name: `${p.surname} ${p.given_names}`,
+          fileNumber: p.file_number,
+          ageSex: [p.birth_date ? `${ageOf(p.birth_date)}` : null, t(`register.sexes.${p.sex}`)]
+            .filter(Boolean)
+            .join(' · '),
+          phone: p.phone_1,
+          allergies: p.allergies,
+          bloodGroup: p.blood_group,
+        },
+        visits: visits.map((v) => {
+          // the latest value of each vital sign of that visit
+          const seen = new Set<string>()
+          const vitals = data.vitals
+            .filter((x) => x.encounterId === v.id)
+            .sort((a, b) => b.at.localeCompare(a.at))
+            .filter((x) => !seen.has(x.code) && seen.add(x.code))
+            .map((x) => ({
+              label: t(`triage.vitals.${x.code}`, { defaultValue: x.code }),
+              value: `${x.value ?? x.text ?? ''}${x.unit ? ` ${x.unit}` : ''}`,
+            }))
+          return {
+            date: formatDate(new Date(v.arrivedAt)),
+            doctor: v.practitioner,
+            desks: v.stations.map((s) => t(`register.stations.${s}`, { defaultValue: s })),
+            vitals,
+            notes: [],
+            diagnoses: data.conditions
+              .filter((c) => c.encounterId === v.id)
+              .map((c) => ({
+                text: c.text,
+                icd10: c.icd10,
+                primary: c.type === 'primary',
+                provisional: c.provisional,
+              })),
+            tests: allResults
+              .filter((r) => r.encounterId === v.id)
+              .map((r) => ({
+                name: r.test,
+                findings: r.findings,
+                impression: r.impression,
+                verified: r.verified,
+              })),
+            treatments: [],
+            medicines: [],
+          }
+        }),
+        author: { name: user.name, title: roleLabel(user, t) },
+      },
+      reportLabels,
+    )
+    if (!ok) setActionError(t('report.popupBlocked'))
+  }
   const { data: staffSettings } = useStaffSettings()
   // Where a new visit sends the patient (as start_visit decides).
   const nextDesk: Station = emergency ? station : staffSettings?.triageFirst ? 'triage' : station
@@ -215,6 +294,12 @@ export function PatientFilePage({
                   >
                     <Ticket size={16} aria-hidden="true" />
                     {t(emergency ? 'register.submitEmergency' : 'file.startVisit')}
+                  </Button>
+                )}
+                {mayReport && data.visits.length > 0 && (
+                  <Button onClick={printHistory} title={t('medReport.historyHint')}>
+                    <FileText size={16} aria-hidden="true" />
+                    {t('medReport.history')}
                   </Button>
                 )}
                 <Button onClick={() => setEditing((e) => !e)}>
@@ -360,7 +445,9 @@ export function PatientFilePage({
 
             <div key={tab} className="flex flex-col gap-4">
               {tab === 'overview' && <Overview file={data} />}
-              {tab === 'visits' && <Visits file={data} openId={openVisit?.id ?? null} />}
+              {tab === 'visits' && (
+                <Visits file={data} openId={openVisit?.id ?? null} canReport={mayReport} />
+              )}
               {tab === 'clinical' && <Clinical file={data} />}
               {tab === 'bills' && <Bills file={data} />}
             </div>
@@ -784,7 +871,15 @@ function CustomInput({
   )
 }
 
-function Visits({ file, openId }: { file: PatientFile; openId: string | null }) {
+function Visits({
+  file,
+  openId,
+  canReport = false,
+}: {
+  file: PatientFile
+  openId: string | null
+  canReport?: boolean
+}) {
   const { t } = useTranslation()
   const [shown, setShown] = useState<string | null>(openId)
   if (file.visits.length === 0)
@@ -840,6 +935,17 @@ function Visits({ file, openId }: { file: PatientFile; openId: string | null }) 
                   <FolderOpen size={14} aria-hidden="true" />
                   {t('common.open')}
                 </StaffLink>
+                {canReport && (
+                  <StaffLink
+                    to="/app/visit"
+                    search={{ encounter: v.id, report: true }}
+                    className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                    title={t('medReport.hint')}
+                  >
+                    <FileText size={14} aria-hidden="true" />
+                    {t('medReport.visitButton')}
+                  </StaffLink>
+                )}
               </Row>
               <div className="px-4 pb-3">
                 <Button

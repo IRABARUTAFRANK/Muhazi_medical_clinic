@@ -43,7 +43,16 @@ const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-s
  * discount the clinician may grant) and the patient / insurer split, then send the patient
  * to the cashier or another station. Every charge is recorded against the signed-in employee.
  */
-export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId: string }) {
+export function VisitPage({
+  user,
+  encounterId,
+  openReport = false,
+}: {
+  user: StaffUser
+  encounterId: string
+  /** Open the medical report panel (from the patient file's "Report"). */
+  openReport?: boolean
+}) {
   const { t } = useTranslation()
   // The desk this person works at for this patient: the one the patient was referred to them at,
   // or the covered doctor's desk while covering; otherwise their own station.
@@ -266,6 +275,18 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                   ageSex: header.ageSex,
                   weight: weight ? `${weight.value}${weight.unit ? ` ${weight.unit}` : ''}` : null,
                 }}
+                report={{
+                  // the visit's date: its first vital sign when nothing clinical is written yet
+                  since: vitals.map((v) => v.at).sort()[0],
+                  vitals: vitals.map((v) => ({
+                    label: t(`triage.vitals.${v.code}`),
+                    value: `${v.value}${v.unit ? ` ${v.unit}` : ''}`,
+                  })),
+                  treatments: (bill?.charges ?? []).map(
+                    (c) => `${c.description}${c.quantity > 1 ? ` × ${c.quantity}` : ''}`,
+                  ),
+                }}
+                openReport={openReport}
                 closed={closed}
                 onDone={(m) => {
                   setActionError(null)

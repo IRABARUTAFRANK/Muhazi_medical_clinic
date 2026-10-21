@@ -3068,5 +3068,41 @@
         "hint": "Receive medicines and supplies and send them to the desks."
       }
     }
+  },
+  "medReport": {
+    "open": "Medical report",
+    "hint": "A report of this visit the patient can take away (print or save as PDF).",
+    "panelTitle": "Medical report of this visit",
+    "panelLead": "It lists the vital signs, notes, diagnoses, tests and results, treatments and medicines of this visit, with your name and signature line.",
+    "commentLabel": "Your comment or recommendations (optional)",
+    "commentPh": "e.g. Rest for 3 days; come back if the fever continues.",
+    "print": "Print the report",
+    "history": "Full medical report",
+    "historyHint": "Every visit of the patient with vital signs, diagnoses and test results (print or save as PDF).",
+    "visitButton": "Report",
+    "title": "Medical report",
+    "titleHistory": "Medical history",
+    "produced": "Produced",
+    "phone": "Phone",
+    "bloodGroup": "Blood group",
+    "visitOf": "Visit of {{date}}",
+    "seenBy": "Seen by",
+    "desks": "Desks",
+    "vitals": "Vital signs",
+    "notes": "Notes",
+    "diagnoses": "Diagnoses",
+    "primary": "main",
+    "provisional": "provisional",
+    "tests": "Tests and results",
+    "conclusion": "Conclusion",
+    "notVerified": "not yet verified",
+    "treatments": "Treatments",
+    "medicines": "Medicines",
+    "comment": "Comment and recommendations",
+    "nothing": "Nothing was recorded for this visit.",
+    "author": "Report by",
+    "confidential": "Confidential medical information, for the patient and the clinicians treating them.",
+    "visitsCount_one": "{{count}} visit",
+    "visitsCount_other": "{{count}} visits"
   }
 }

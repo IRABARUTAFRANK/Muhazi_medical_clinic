@@ -3077,5 +3077,41 @@
         "hint": "Kwakira imiti n’ibikoresho no kubyohereza aho bikenewe."
       }
     }
+  },
+  "medReport": {
+    "open": "Raporo y’ubuvuzi",
+    "hint": "Raporo y’uru ruzinduko umurwayi ashobora gutwara (sohora cyangwa ubike nka PDF).",
+    "panelTitle": "Raporo y’ubuvuzi y’uru ruzinduko",
+    "panelLead": "Irimo ibipimo, inyandiko, indwara, ibizamini n’ibisubizo, ubuvuzi n’imiti by’uru ruzinduko, n’izina ryawe n’umurongo w’umukono.",
+    "commentLabel": "Icyo uvuga cyangwa inama (si ngombwa)",
+    "commentPh": "urugero: Ruhuka iminsi 3; garuka niba umuriro ukomeje.",
+    "print": "Sohora raporo",
+    "history": "Raporo yuzuye y’ubuvuzi",
+    "historyHint": "Inzinduko zose z’umurwayi n’ibipimo, indwara n’ibisubizo by’ibizamini (sohora cyangwa ubike nka PDF).",
+    "visitButton": "Raporo",
+    "title": "Raporo y’ubuvuzi",
+    "titleHistory": "Amateka y’ubuvuzi",
+    "produced": "Yakozwe",
+    "phone": "Telefone",
+    "bloodGroup": "Ubwoko bw’amaraso",
+    "visitOf": "Uruzinduko rwo ku wa {{date}}",
+    "seenBy": "Yasuzumwe na",
+    "desks": "Aho yanyuze",
+    "vitals": "Ibipimo",
+    "notes": "Inyandiko",
+    "diagnoses": "Indwara",
+    "primary": "nyamukuru",
+    "provisional": "by’agateganyo",
+    "tests": "Ibizamini n’ibisubizo",
+    "conclusion": "Umwanzuro",
+    "notVerified": "ntiremezwa",
+    "treatments": "Ubuvuzi",
+    "medicines": "Imiti",
+    "comment": "Icyo muganga avuga n’inama",
+    "nothing": "Nta cyanditswe kuri uru ruzinduko.",
+    "author": "Raporo yakozwe na",
+    "confidential": "Amakuru y’ubuvuzi y’ibanga, agenewe umurwayi n’abamuvura.",
+    "visitsCount_one": "Uruzinduko {{count}}",
+    "visitsCount_other": "Inzinduko {{count}}"
   }
 }

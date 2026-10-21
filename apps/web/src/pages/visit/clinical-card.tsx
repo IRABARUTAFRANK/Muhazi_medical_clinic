@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import {
   CheckCircle2,
-  HandHeart,
   ClipboardList,
+  FileText,
   FlaskConical,
+  HandHeart,
   Pill,
   Plus,
   Printer,
@@ -25,6 +26,8 @@ import { openPrescription, type RxDocMedicine } from '@/lib/prescription-doc'
 import { roleLabel } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { useCan } from '@/lib/api/permissions'
+import { openMedicalReport } from '@/lib/medical-report'
+import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
 const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other']
@@ -64,6 +67,8 @@ export function ClinicalCard({
   closed = false,
   station,
   patient,
+  report,
+  openReport = false,
   onDone,
   onError,
 }: {
@@ -73,6 +78,10 @@ export function ClinicalCard({
   station?: Station
   /** For the printed prescription. */
   patient?: { name: string; fileNumber: string; ageSex: string; weight?: string | null }
+  /** For the medical report: the visit's vital signs and what was charged. */
+  report?: { vitals: { label: string; value: string }[]; treatments: string[]; since?: string }
+  /** Open the medical report panel at once. */
+  openReport?: boolean
   /** A finished visit: shown read-only (everything stays in the patient file). */
   closed?: boolean
   onDone: (m: string) => void
@@ -111,6 +120,71 @@ export function ClinicalCard({
   const [order, setOrder] = useState({ services: [] as string[], reason: '', send: true })
   const [localError, setLocalError] = useState<string | null>(null)
   const { data: info } = useClinicInfo()
+
+  const letterhead = useLetterhead()
+  const reportLabels = useMedicalReportLabels()
+  const [reporting, setReporting] = useState(openReport)
+  const [comment, setComment] = useState('')
+  const printReport = () => {
+    if (!data || !patient) return
+    const ats = [
+      ...[...data.notes, ...data.diagnoses, ...data.prescriptions, ...data.orders].map((x) => x.at),
+      ...(report?.since ? [report.since] : []),
+    ]
+    const first = ats.sort()[0]
+    const ok = openMedicalReport(
+      {
+        kind: 'visit',
+        clinic: letterhead,
+        patient: {
+          name: patient.name,
+          fileNumber: patient.fileNumber,
+          ageSex: patient.ageSex,
+          allergies: data.patient?.allergies ?? null,
+          bloodGroup: data.patient?.bloodGroup ?? null,
+        },
+        visits: [
+          {
+            date: formatDate(first ? new Date(first) : new Date()),
+            doctor: data.diagnoses[0]?.by ?? data.notes[0]?.by ?? null,
+            vitals: report?.vitals ?? [],
+            notes: data.notes.map((n) => n.text),
+            diagnoses: data.diagnoses.map((d) => ({
+              text: d.text,
+              icd10: d.icd10,
+              primary: d.type === 'primary',
+              provisional: d.provisional,
+            })),
+            tests: data.orders.map((o) => ({
+              name: o.test,
+              findings: o.result?.findings ?? null,
+              impression: o.result?.impression ?? null,
+              verified: !!o.result?.verified,
+            })),
+            treatments: report?.treatments ?? [],
+            medicines: data.prescriptions.map((r) => ({
+              name: `${r.item} × ${r.quantity}`,
+              how: [
+                r.dose,
+                r.route ? t(`clinical.routes.${r.route}`, { defaultValue: r.route }) : null,
+                r.frequency
+                  ? t(`clinical.frequencies.${r.frequency}`, { defaultValue: r.frequency })
+                  : null,
+                r.days ? t('clinical.forDays', { count: r.days }) : null,
+                r.instructions,
+              ]
+                .filter(Boolean)
+                .join(' · '),
+            })),
+          },
+        ],
+        comment: comment.trim() || null,
+        author: { name: user.name, title: roleLabel(user, t) },
+      },
+      reportLabels,
+    )
+    if (!ok) setLocalError(t('report.popupBlocked'))
+  }
 
   const printRx = () => {
     if (!data || !patient) return
@@ -302,6 +376,17 @@ export function ClinicalCard({
               {t('file.fields.blood_group')} {data.patient.bloodGroup}
             </Badge>
           )}
+          {patient && data && (
+            <Button
+              size="sm"
+              variant={reporting ? 'primary' : 'default'}
+              onClick={() => setReporting((r) => !r)}
+              title={t('medReport.hint')}
+            >
+              <FileText size={14} aria-hidden="true" />
+              {t('medReport.open')}
+            </Button>
+          )}
           {patient && (data?.prescriptions.length ?? 0) > 0 && (
             <Button size="sm" onClick={printRx} title={t('rxDoc.printHint')}>
               <Printer size={14} aria-hidden="true" />
@@ -310,6 +395,31 @@ export function ClinicalCard({
           )}
         </span>
       </CardHeader>
+      {reporting && patient && data && (
+        <CardBody className="bg-primary-tint/40 border-border anim-enter gap-2 border-b">
+          <p className="m-0 text-[14px] font-bold">{t('medReport.panelTitle')}</p>
+          <p className="text-ink-2 m-0 text-[13px]">{t('medReport.panelLead')}</p>
+          <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-semibold">
+            {t('medReport.commentLabel')}
+            <textarea
+              rows={3}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder={t('medReport.commentPh')}
+              className="border-border bg-card text-ink focus:border-primary rounded-lg border px-3 py-2 text-[14px] font-normal outline-none"
+            />
+          </label>
+          <span className="flex flex-wrap gap-2">
+            <Button variant="primary" onClick={printReport}>
+              <Printer size={16} aria-hidden="true" />
+              {t('medReport.print')}
+            </Button>
+            <Button variant="ghost" onClick={() => setReporting(false)}>
+              {t('common.close')}
+            </Button>
+          </span>
+        </CardBody>
+      )}
       {data?.patient?.allergies && (
         <CardBody className="bg-red-bg text-red border-border border-b py-2 text-[13px] font-semibold">
           ⚠ {t('file.allergiesLabel')}: {data.patient.allergies}

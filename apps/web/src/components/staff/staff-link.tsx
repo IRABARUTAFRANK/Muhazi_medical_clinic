@@ -5,7 +5,7 @@ interface StaffLinkProps {
   /** `/app`, `/app/dashboard`, `/app/visit` or `/app/patient` (with `search`) or `/app/<section>`. */
   to: string
   /** Search params: `{ encounter }` for the visit screen, `{ id }` for a patient file. */
-  search?: { encounter: string } | { id: string; tab?: string }
+  search?: { encounter: string; report?: boolean } | { id: string; tab?: string }
   className?: string
   style?: CSSProperties
   children: ReactNode
