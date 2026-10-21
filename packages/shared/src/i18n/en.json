@@ -1589,7 +1589,16 @@
     "awaitingResult": "Waiting for result",
     "orderedBy": "ordered by {{name}}, {{when}}",
     "resultBy": "result by {{name}}, {{when}}",
-    "seeVisit": "See the visit"
+    "seeVisit": "See the visit",
+    "confirmVisit": {
+      "title": "Start a new visit for {{name}}?",
+      "titleEmergency": "Start an EMERGENCY visit for {{name}}?",
+      "what": "A new ticket is issued, a new bill is opened and the patient is queued at {{desk}}.",
+      "last_one": "Last visit: {{date}} ({{count}} visit so far).",
+      "last_other": "Last visit: {{date}} ({{count}} visits so far).",
+      "first": "This is the patient’s first visit.",
+      "yes": "Yes, start the visit"
+    }
   },
   "clinical": {
     "title": "Clinical record",

@@ -41,6 +41,7 @@ import {
   type Station,
 } from '@/lib/api/visits'
 import { useDeskOps } from '@/lib/api/desk-ops'
+import { useStaffSettings } from '@/lib/api/settings'
 import { VisitJourney } from '@/components/clinical/visit-journey'
 import { navForUser } from '@/lib/nav'
 import { ShownList } from '@/components/ui/list-tools'
@@ -85,6 +86,13 @@ export function PatientFilePage({
   )
 
   const openVisit = data?.visits.find((v) => v.status === 'open')
+  const [confirming, setConfirming] = useState(false)
+  const { data: staffSettings } = useStaffSettings()
+  // Where a new visit sends the patient (as start_visit decides).
+  const nextDesk: Station = emergency ? station : staffSettings?.triageFirst ? 'triage' : station
+  const lastVisit = [...(data?.visits ?? [])].sort((a, b) =>
+    b.arrivedAt.localeCompare(a.arrivedAt),
+  )[0]
   const p = data?.patient
   const missing = p ? missingOf(p) : []
   const atReception = openVisit?.currentStation === 'reception'
@@ -198,8 +206,8 @@ export function PatientFilePage({
                 ) : (
                   <Button
                     variant="primary"
-                    onClick={() => void startVisit()}
-                    loading={visitActions.startVisit.isPending}
+                    onClick={() => setConfirming(true)}
+                    disabled={confirming}
                   >
                     <Ticket size={16} aria-hidden="true" />
                     {t(emergency ? 'register.submitEmergency' : 'file.startVisit')}
@@ -210,6 +218,49 @@ export function PatientFilePage({
                   {t(editing ? 'staff.form.cancel' : 'file.edit')}
                 </Button>
               </CardBody>
+              {/* A new visit (ticket, queue, a new bill) only after the person confirms it. */}
+              {confirming && !openVisit && (
+                <CardBody
+                  role="alertdialog"
+                  aria-label={t('file.confirmVisit.title', {
+                    name: `${p.surname} ${p.given_names}`,
+                  })}
+                  className={cn(
+                    'anim-enter border-border gap-3 border-t',
+                    emergency ? 'bg-red-bg/60' : 'bg-primary/5',
+                  )}
+                >
+                  <p className="m-0 text-[15px] font-bold">
+                    {t(emergency ? 'file.confirmVisit.titleEmergency' : 'file.confirmVisit.title', {
+                      name: `${p.surname} ${p.given_names}`,
+                    })}
+                  </p>
+                  <p className="text-ink-2 m-0 text-[13px]">
+                    {t('file.confirmVisit.what', {
+                      desk: t(`register.stations.${nextDesk}`),
+                    })}{' '}
+                    {lastVisit
+                      ? t('file.confirmVisit.last', {
+                          date: formatDate(new Date(lastVisit.arrivedAt)),
+                          count: data?.visits.length ?? 0,
+                        })
+                      : t('file.confirmVisit.first')}
+                  </p>
+                  <span className="flex flex-wrap gap-2">
+                    <Button
+                      variant={emergency ? 'danger' : 'primary'}
+                      loading={visitActions.startVisit.isPending}
+                      onClick={() => void startVisit().then(() => setConfirming(false))}
+                    >
+                      <Ticket size={16} aria-hidden="true" />
+                      {t('file.confirmVisit.yes')}
+                    </Button>
+                    <Button variant="ghost" onClick={() => setConfirming(false)}>
+                      {t('staff.form.cancel')}
+                    </Button>
+                  </span>
+                </CardBody>
+              )}
               {p.allergies && (
                 <CardBody className="bg-red-bg text-red border-border rounded-b-[16px] border-t py-2 text-[13px] font-semibold">
                   ⚠ {t('file.allergiesLabel')}: {p.allergies}
@@ -279,7 +330,13 @@ export function PatientFilePage({
                     </Select>
                   )}
                   <span className="text-ink-3 text-xs">
-                    {t(emergency ? 'register.emergencyHint' : 'register.triageHint')}
+                    {t(
+                      emergency
+                        ? 'register.emergencyHint'
+                        : staffSettings?.triageFirst
+                          ? 'register.triageHint'
+                          : 'register.deskHint',
+                    )}
                   </span>
                 </CardBody>
               )}

@@ -1330,7 +1330,16 @@
     "awaitingResult": "Bategereje igisubizo",
     "orderedBy": "byasabwe na {{name}}, {{when}}",
     "resultBy": "igisubizo cyatanzwe na {{name}}, {{when}}",
-    "seeVisit": "Reba uruzinduko"
+    "seeVisit": "Reba uruzinduko",
+    "confirmVisit": {
+      "title": "Gutangira uruzinduko rushya rwa {{name}}?",
+      "titleEmergency": "Gutangira uruzinduko rw’UBUTABAZI rwa {{name}}?",
+      "what": "Hatangwa itike nshya, hafungurwa fagitire nshya, umurwayi ashyirwa ku murongo wa {{desk}}.",
+      "last_one": "Uruzinduko ruheruka: {{date}} (uruzinduko {{count}} kugeza ubu).",
+      "last_other": "Uruzinduko ruheruka: {{date}} (inzinduko {{count}} kugeza ubu).",
+      "first": "Ni uruzinduko rwa mbere rw’umurwayi.",
+      "yes": "Yego, tangira uruzinduko"
+    }
   },
   "clinical": {
     "title": "Inyandiko z'ubuvuzi",

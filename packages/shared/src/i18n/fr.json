@@ -1589,7 +1589,16 @@
     "awaitingResult": "En attente du résultat",
     "orderedBy": "demandé par {{name}}, {{when}}",
     "resultBy": "résultat par {{name}}, {{when}}",
-    "seeVisit": "Voir la visite"
+    "seeVisit": "Voir la visite",
+    "confirmVisit": {
+      "title": "Commencer une nouvelle visite pour {{name}} ?",
+      "titleEmergency": "Commencer une visite D’URGENCE pour {{name}} ?",
+      "what": "Un nouveau ticket est émis, une nouvelle facture est ouverte et le patient est mis en file à {{desk}}.",
+      "last_one": "Dernière visite : {{date}} ({{count}} visite jusqu’ici).",
+      "last_other": "Dernière visite : {{date}} ({{count}} visites jusqu’ici).",
+      "first": "C’est la première visite du patient.",
+      "yes": "Oui, commencer la visite"
+    }
   },
   "clinical": {
     "title": "Dossier clinique",
