@@ -2072,7 +2072,11 @@
     "noVitalsTitle": "{{ticket}} {{name}} : signes vitaux pas encore pris",
     "noVitalsBody": "Attend à {{station}}. Prenez les signes vitaux si un collègue ne l’a pas déjà fait.",
     "unreadCount_one": "{{count}} notification non lue",
-    "unreadCount_other": "{{count}} notifications non lues"
+    "unreadCount_other": "{{count}} notifications non lues",
+    "callNext": "{{by}} appelle le patient suivant ({{station}})",
+    "help": "{{by}} demande votre aide pour {{name}}",
+    "helpAccepted": "{{by}} a accepté d’aider pour {{name}}",
+    "helpDeclined": "{{by}} ne peut pas aider pour {{name}} maintenant"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -2529,7 +2533,10 @@
     "sendBack": "Renvoyer à {{name}} ({{desk}})",
     "sentBack": "Patient renvoyé à {{name}}.",
     "backNote": "Terminé à {{desk}}",
-    "from": "de {{name}}"
+    "from": "de {{name}}",
+    "department": "Département (facultatif)",
+    "anyDepartment": "Tout département",
+    "departmentHint": "Seul le personnel de ce département pourra prendre le patient."
   },
   "cover": {
     "title": "Me faire remplacer",
@@ -3104,5 +3111,71 @@
     "confidential": "Informations médicales confidentielles, pour le patient et les soignants qui le suivent.",
     "visitsCount_one": "{{count}} visite",
     "visitsCount_other": "{{count}} visites"
+  },
+  "access": {
+    "view": "Voir",
+    "notYours": "Avec {{holder}} : vous pouvez lire la visite, pas la traiter",
+    "lockedTitle": "Ce patient est avec {{holder}}",
+    "lockedHint": "Vous pouvez lire la visite mais pas la traiter. Demandez-lui de vous envoyer le patient, ou de demander votre aide.",
+    "lockedShort": "Lecture seule : le patient est avec {{holder}}.",
+    "helpingBanner": "Un collègue a demandé votre aide pour ce patient : vous pouvez travailler sur la visite jusqu’à la fin de l’aide."
+  },
+  "calls": {
+    "title": "Appels et aide",
+    "next": {
+      "title": "Appeler le patient suivant",
+      "lead": "Fini avec un patient ? Demandez le suivant ; le collègue appelé vous l’envoie.",
+      "from": {
+        "reception": "La réception",
+        "nurse": "Les infirmiers",
+        "person": "Un collègue"
+      },
+      "colleague": "Choisir le collègue",
+      "notePh": "Un mot (facultatif), ex. la salle 2 est libre",
+      "call": "Appeler le patient suivant",
+      "called": "Votre appel est envoyé. Vous serez prévenu quand un patient vous est envoyé.",
+      "waiting": {
+        "reception": "En attente : la réception va vous envoyer le patient suivant",
+        "nurse": "En attente : les infirmiers vont vous envoyer le patient suivant",
+        "person": "En attente : {{name}} va vous envoyer le patient suivant"
+      },
+      "cancel": "Annuler l’appel",
+      "cancelled": "Appel annulé.",
+      "answered": "{{name}} vous a envoyé {{patient}}",
+      "incoming": "{{name}} appelle le patient suivant · {{desk}}",
+      "noneWaiting": "Personne n’attend pour le moment.",
+      "pick": "Patient à envoyer",
+      "send": "Envoyer à {{name}}",
+      "sent": "{{patient}} a été envoyé à {{name}}."
+    },
+    "help": {
+      "title": "Aide d’un collègue",
+      "lead": "Le collègue qui accepte peut travailler sur ce patient avec vous.",
+      "ask": "Demander l’aide d’un collègue",
+      "who": "Qui",
+      "anyDoctor": "N’importe quel médecin",
+      "what": "De quoi avez-vous besoin ?",
+      "whatPh": "ex. deuxième avis sur l’éruption ; pouvez-vous regarder la radio ?",
+      "send": "Envoyer la demande",
+      "sent": "Demande envoyée à {{who}}.",
+      "waiting": "En attente de {{helper}}",
+      "helping": "{{helper}} aide {{asker}}",
+      "status": {
+        "open": "en attente",
+        "accepted": "aide en cours"
+      },
+      "withdraw": "Retirer",
+      "withdrawn": "Demande retirée.",
+      "end": "Terminer l’aide",
+      "endMine": "Terminer mon aide",
+      "ended": "L’aide est terminée.",
+      "incoming": "{{name}} demande votre aide pour {{patient}}",
+      "look": "Voir le patient",
+      "accept": "Accepter",
+      "accepted": "Vous aidez {{name}} : vous pouvez maintenant travailler sur le patient.",
+      "decline": "Refuser",
+      "declined": "{{name}} est informé que vous ne pouvez pas aider maintenant.",
+      "youHelp": "Vous aidez {{name}} pour {{patient}}"
+    }
   }
 }

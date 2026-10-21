@@ -4,6 +4,7 @@ import {
   AlarmClock,
   ArrowRightLeft,
   BedDouble,
+  Building2,
   CalendarCheck,
   CalendarDays,
   Check,
@@ -14,6 +15,7 @@ import {
   HandHelping,
   Hourglass,
   ListTodo,
+  Lock,
   MessageSquare,
   Receipt,
   Stethoscope,
@@ -87,6 +89,8 @@ export function MyQueuePanel({
     referralNote?: string | null
     assignedName?: string | null
     vitalsAt?: string | null
+    departmentName?: string | null
+    canWork?: boolean
   })[]
   counts: QueueCounts
   rowAction: 'open' | 'call'
@@ -161,6 +165,12 @@ export function MyQueuePanel({
                           {q.assignedName ? ` → ${q.assignedName}` : ''}
                         </span>
                       )}
+                      {q.departmentName && !q.assignedName && (
+                        <span className="text-violet inline-flex items-center gap-1 font-semibold">
+                          <Building2 size={12} aria-hidden="true" />
+                          {q.departmentName}
+                        </span>
+                      )}
                       {q.takenBy && (
                         <span className="text-primary inline-flex items-center gap-1 font-semibold">
                           <Stethoscope size={12} aria-hidden="true" />
@@ -169,7 +179,22 @@ export function MyQueuePanel({
                       )}
                     </span>
                   </span>
-                  {q.encounterId ? (
+                  {q.encounterId && q.canWork === false ? (
+                    // sent to someone else: in the clinic, but not ours to work on
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title={t('access.notYours', {
+                        holder: q.takenBy ?? q.assignedName ?? q.departmentName ?? '',
+                      })}
+                      onClick={() =>
+                        void navigate({ to: '/app/visit', search: { encounter: q.encounterId! } })
+                      }
+                    >
+                      <Lock size={14} aria-hidden="true" />
+                      {t('access.view')}
+                    </Button>
+                  ) : q.encounterId ? (
                     <Button
                       size="sm"
                       variant={i === 0 ? 'primary' : 'default'}

@@ -1,6 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, ArrowLeft, CheckCircle2, FolderOpen, Plus, Receipt, Trash2 } from 'lucide-react'
+import {
+  Activity,
+  ArrowLeft,
+  CheckCircle2,
+  FolderOpen,
+  HandHelping,
+  Lock,
+  Plus,
+  Receipt,
+  Trash2,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FEATURES, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { LeftButton } from '@/components/clinical/left-button'
@@ -35,6 +45,8 @@ import { useVisitRouting } from '@/lib/api/referrals'
 import { ClinicalCard } from './clinical-card'
 import { WhereNextCard } from './where-next-card'
 import { useCan } from '@/lib/api/permissions'
+import { useVisitAccess } from '@/lib/api/calls'
+import { HelpCard } from './help-card'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -85,6 +97,11 @@ export function VisitPage({
   const weight = vitals.find((v) => v.code === 'weight')
   // A finished visit opens read-only (it stays in the patient file).
   const closed = !!header?.closed
+  // The patient belongs to the desk, department or colleague they were sent to (migration 0055):
+  // others see the visit read only.
+  const { data: access } = useVisitAccess(encounterId)
+  const locked = !closed && access?.canWork === false
+  const routeLocked = !closed && access?.canRoute === false
   const [addingVitals, setAddingVitals] = useState(false)
   /** "Measured by Chantal at 09:12 · typed by Josiane" for the nurse's paper sheet case. */
   const vitalSource = (v: Vital) => {
@@ -238,6 +255,24 @@ export function VisitPage({
               </p>
             )}
 
+            {locked && (
+              <p className="bg-violet-bg text-violet m-0 flex flex-wrap items-start gap-2 rounded-xl px-3 py-2.5 text-[14px]">
+                <Lock size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
+                <span className="min-w-0 flex-1">
+                  <b className="block">
+                    {t('access.lockedTitle', { holder: access?.holder ?? '' })}
+                  </b>
+                  {t('access.lockedHint')}
+                </span>
+              </p>
+            )}
+            {!closed && access?.helping && (
+              <p className="bg-primary-tint text-primary m-0 flex items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+                <HandHelping size={18} aria-hidden="true" />
+                {t('access.helpingBanner')}
+              </p>
+            )}
+
             {addingVitals && (
               <VitalsForm
                 user={user}
@@ -287,6 +322,9 @@ export function VisitPage({
                   ),
                 }}
                 openReport={openReport}
+                lockedNote={
+                  locked ? t('access.lockedShort', { holder: access?.holder ?? '' }) : null
+                }
                 closed={closed}
                 onDone={(m) => {
                   setActionError(null)
@@ -297,8 +335,13 @@ export function VisitPage({
             )}
 
             {/* Doctor → nurse: tasks on this visit appear on the nurses' dashboard. */}
-            {(user.role === 'doctor' || user.role === 'manager') && (
+            {(user.role === 'doctor' || user.role === 'manager') && !locked && (
               <NurseTaskCard encounterId={encounterId} />
+            )}
+
+            {/* Ask a colleague for help on this patient (or end the help) */}
+            {!closed && !locked && access && !isReception && !isCashier && (
+              <HelpCard encounterId={encounterId} user={user} access={access} />
             )}
 
             <div
@@ -443,7 +486,7 @@ export function VisitPage({
                     encounterId={encounterId}
                     myStation={myStation}
                     isReception={isReception}
-                    closed={closed}
+                    closed={closed || locked}
                     onDone={(m) => {
                       setActionError(null)
                       setDone(m)
@@ -476,7 +519,7 @@ export function VisitPage({
                 {isCashier && !closed && (
                   <p className="text-ink-3 m-0 text-[13px]">{t('visit.cashierNote')}</p>
                 )}
-                {!isReception && !isCashier && !closed && can('charge.write') && (
+                {!isReception && !isCashier && !closed && !locked && can('charge.write') && (
                   <AddChargeCard
                     treatments={treatments}
                     myDepartments={isManagerNav ? [] : myDepartments}
@@ -502,7 +545,7 @@ export function VisitPage({
                     encounterId={encounterId}
                     myStation={myStation}
                     isReception={isReception}
-                    closed={closed}
+                    closed={closed || routeLocked}
                     onDone={(m) => {
                       setActionError(null)
                       setDone(m)

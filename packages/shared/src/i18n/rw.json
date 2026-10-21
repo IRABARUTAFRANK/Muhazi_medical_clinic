@@ -2081,7 +2081,11 @@
     "noVitalsTitle": "{{ticket}} {{name}}: ibipimo ntibirafatwa",
     "noVitalsBody": "Ategereje kuri {{station}}. Mufate ibipimo niba nta mugenzi wawe wabikoze.",
     "unreadCount_one": "Ubutumwa {{count}} butarasomwa",
-    "unreadCount_other": "Ubutumwa {{count}} butarasomwa"
+    "unreadCount_other": "Ubutumwa {{count}} butarasomwa",
+    "callNext": "{{by}} arahamagara umurwayi ukurikira ({{station}})",
+    "help": "{{by}} agusabye ubufasha kuri {{name}}",
+    "helpAccepted": "{{by}} yemeye gufasha kuri {{name}}",
+    "helpDeclined": "{{by}} ntashobora gufasha kuri {{name}} ubu"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -2538,7 +2542,10 @@
     "sendBack": "Mugarure kuri {{name}} ({{desk}})",
     "sentBack": "Umurwayi yagaruwe kuri {{name}}.",
     "backNote": "Byarangiye kuri {{desk}}",
-    "from": "avuye kuri {{name}}"
+    "from": "avuye kuri {{name}}",
+    "department": "Ishami (si ngombwa)",
+    "anyDepartment": "Ishami iryo ari ryo ryose",
+    "departmentHint": "Abakozi b’iri shami gusa ni bo bazashobora gufata umurwayi."
   },
   "cover": {
     "title": "Nsimbura",
@@ -3113,5 +3120,71 @@
     "confidential": "Amakuru y’ubuvuzi y’ibanga, agenewe umurwayi n’abamuvura.",
     "visitsCount_one": "Uruzinduko {{count}}",
     "visitsCount_other": "Inzinduko {{count}}"
+  },
+  "access": {
+    "view": "Reba",
+    "notYours": "Ari kwa {{holder}}: ushobora gusoma uruzinduko, ntushobora kumuvura",
+    "lockedTitle": "Uyu murwayi ari kwa {{holder}}",
+    "lockedHint": "Ushobora gusoma uruzinduko ariko ntushobora kumuvura. Musabe akoherereze umurwayi, cyangwa agusabe ubufasha.",
+    "lockedShort": "Gusoma gusa: umurwayi ari kwa {{holder}}.",
+    "helpingBanner": "Mugenzi wawe yagusabye ubufasha kuri uyu murwayi: ushobora gukora ku ruzinduko kugeza ubufasha burangiye."
+  },
+  "calls": {
+    "title": "Guhamagara n’ubufasha",
+    "next": {
+      "title": "Hamagara umurwayi ukurikira",
+      "lead": "Warangije n’umurwayi? Saba ukurikira; uwo uhamagaye arakohereza.",
+      "from": {
+        "reception": "Kwakira abarwayi",
+        "nurse": "Abaforomo",
+        "person": "Mugenzi wawe"
+      },
+      "colleague": "Hitamo mugenzi wawe",
+      "notePh": "Ijambo (si ngombwa), urugero: icyumba 2 kirimo ubusa",
+      "call": "Hamagara umurwayi ukurikira",
+      "called": "Ubutumwa bwoherejwe. Uzamenyeshwa igihe umurwayi akoherejwe.",
+      "waiting": {
+        "reception": "Utegereje ko kwakira abarwayi bakoherereza ukurikira",
+        "nurse": "Utegereje ko abaforomo bakoherereza ukurikira",
+        "person": "Utegereje ko {{name}} akoherereza ukurikira"
+      },
+      "cancel": "Hagarika guhamagara",
+      "cancelled": "Guhamagara byahagaritswe.",
+      "answered": "{{name}} yakoherereje {{patient}}",
+      "incoming": "{{name}} arahamagara umurwayi ukurikira · {{desk}}",
+      "noneWaiting": "Nta murwayi utegereje ubu.",
+      "pick": "Umurwayi wohereza",
+      "send": "Ohereza kwa {{name}}",
+      "sent": "{{patient}} yoherejwe kwa {{name}}."
+    },
+    "help": {
+      "title": "Ubufasha bwa mugenzi wawe",
+      "lead": "Mugenzi wawe wemeye ashobora gukorana nawe kuri uyu murwayi.",
+      "ask": "Saba mugenzi wawe ubufasha",
+      "who": "Nde",
+      "anyDoctor": "Muganga uwo ari we wese",
+      "what": "Ukeneye iki?",
+      "whatPh": "urugero: igitekerezo cya kabiri ku buheri; wareba radiyo?",
+      "send": "Ohereza ubusabe",
+      "sent": "Ubusabe bwoherejwe kwa {{who}}.",
+      "waiting": "Utegereje {{helper}}",
+      "helping": "{{helper}} arafasha {{asker}}",
+      "status": {
+        "open": "birategerejwe",
+        "accepted": "arafasha"
+      },
+      "withdraw": "Kuraho",
+      "withdrawn": "Ubusabe bwakuweho.",
+      "end": "Soza ubufasha",
+      "endMine": "Soza ubufasha bwanjye",
+      "ended": "Ubufasha bwarangiye.",
+      "incoming": "{{name}} agusabye ubufasha kuri {{patient}}",
+      "look": "Reba umurwayi",
+      "accept": "Emera",
+      "accepted": "Urafasha {{name}}: ubu ushobora gukora ku murwayi.",
+      "decline": "Anga",
+      "declined": "{{name}} yamenyeshejwe ko udashobora gufasha ubu.",
+      "youHelp": "Urafasha {{name}} kuri {{patient}}"
+    }
   }
 }

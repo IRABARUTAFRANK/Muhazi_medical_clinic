@@ -69,6 +69,7 @@ export function ClinicalCard({
   patient,
   report,
   openReport = false,
+  lockedNote = null,
   onDone,
   onError,
 }: {
@@ -82,6 +83,8 @@ export function ClinicalCard({
   report?: { vitals: { label: string; value: string }[]; treatments: string[]; since?: string }
   /** Open the medical report panel at once. */
   openReport?: boolean
+  /** The patient is with someone else: read only, with who holds them. */
+  lockedNote?: string | null
   /** A finished visit: shown read-only (everything stays in the patient file). */
   closed?: boolean
   onDone: (m: string) => void
@@ -96,9 +99,10 @@ export function ClinicalCard({
   const tests = treatments.filter((x) => x.orderStation)
   const desks = [...new Set(tests.map((x) => x.orderStation!))]
   const can = useCan(user)
+  const readOnly = closed || !!lockedNote
   const clinician =
     (user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager') &&
-    !closed &&
+    !readOnly &&
     can('clinical.write')
   // Lab / ultrasound staff (and clinicians) record results; reception and the cashier do not.
   const canResult = !closed && user.role !== 'receptionist' && user.role !== 'cashier'
@@ -432,7 +436,12 @@ export function ClinicalCard({
             {t('clinical.closedNote')}
           </p>
         )}
-        {!closed && (
+        {lockedNote && !closed && (
+          <p className="bg-violet-bg text-violet m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+            {lockedNote}
+          </p>
+        )}
+        {!readOnly && (
           <div className="flex flex-wrap gap-2">
             {tabBtn('note', t('clinical.addNote'), <ClipboardList size={14} aria-hidden="true" />)}
             {tabBtn('dx', t('clinical.addDx'), <Stethoscope size={14} aria-hidden="true" />)}
@@ -440,7 +449,7 @@ export function ClinicalCard({
             {tabBtn('test', t('clinical.addTest'), <FlaskConical size={14} aria-hidden="true" />)}
           </div>
         )}
-        {!clinician && !closed && (
+        {!clinician && !readOnly && (
           <p className="text-ink-3 m-0 text-xs">{t('clinical.readOnly')}</p>
         )}
 

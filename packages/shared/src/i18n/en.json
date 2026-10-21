@@ -2072,7 +2072,11 @@
     "noVitalsTitle": "{{ticket}} {{name}}: vitals not taken yet",
     "noVitalsBody": "Waiting at {{station}}. Take the vitals unless a colleague already did.",
     "unreadCount_one": "{{count}} unread notification",
-    "unreadCount_other": "{{count}} unread notifications"
+    "unreadCount_other": "{{count}} unread notifications",
+    "callNext": "{{by}} calls the next patient ({{station}})",
+    "help": "{{by}} asks for your help on {{name}}",
+    "helpAccepted": "{{by}} accepted to help on {{name}}",
+    "helpDeclined": "{{by}} cannot help on {{name}} now"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -2529,7 +2533,10 @@
     "sendBack": "Send back to {{name}} ({{desk}})",
     "sentBack": "Patient sent back to {{name}}.",
     "backNote": "Done at {{desk}}",
-    "from": "from {{name}}"
+    "from": "from {{name}}",
+    "department": "Department (optional)",
+    "anyDepartment": "Any department",
+    "departmentHint": "Only the staff of this department will be able to take the patient."
   },
   "cover": {
     "title": "Cover for me",
@@ -3104,5 +3111,71 @@
     "confidential": "Confidential medical information, for the patient and the clinicians treating them.",
     "visitsCount_one": "{{count}} visit",
     "visitsCount_other": "{{count}} visits"
+  },
+  "access": {
+    "view": "View",
+    "notYours": "With {{holder}}: you can read the visit, not work on it",
+    "lockedTitle": "This patient is with {{holder}}",
+    "lockedHint": "You can read the visit but not work on it. Ask them to send the patient to you, or to ask for your help.",
+    "lockedShort": "Read only: the patient is with {{holder}}.",
+    "helpingBanner": "A colleague asked for your help on this patient: you may work on the visit until the help ends."
+  },
+  "calls": {
+    "title": "Calls and help",
+    "next": {
+      "title": "Call the next patient",
+      "lead": "Finished with a patient? Ask for the next one; the colleague you call sends them to you.",
+      "from": {
+        "reception": "Reception",
+        "nurse": "The nurses",
+        "person": "A colleague"
+      },
+      "colleague": "Choose the colleague",
+      "notePh": "A word for them (optional), e.g. room 2 is free",
+      "call": "Call the next patient",
+      "called": "Your call was sent. You will be told when a patient is sent to you.",
+      "waiting": {
+        "reception": "Waiting for reception to send you the next patient",
+        "nurse": "Waiting for the nurses to send you the next patient",
+        "person": "Waiting for {{name}} to send you the next patient"
+      },
+      "cancel": "Cancel the call",
+      "cancelled": "Call cancelled.",
+      "answered": "{{name}} sent you {{patient}}",
+      "incoming": "{{name}} calls the next patient · {{desk}}",
+      "noneWaiting": "Nobody is waiting right now.",
+      "pick": "Patient to send",
+      "send": "Send to {{name}}",
+      "sent": "{{patient}} was sent to {{name}}."
+    },
+    "help": {
+      "title": "Help from a colleague",
+      "lead": "A colleague who accepts may work on this patient with you.",
+      "ask": "Ask a colleague for help",
+      "who": "Who",
+      "anyDoctor": "Any doctor",
+      "what": "What do you need?",
+      "whatPh": "e.g. second opinion on the rash; can you look at the X-ray?",
+      "send": "Send the request",
+      "sent": "Request sent to {{who}}.",
+      "waiting": "Waiting for {{helper}}",
+      "helping": "{{helper}} is helping {{asker}}",
+      "status": {
+        "open": "waiting",
+        "accepted": "helping"
+      },
+      "withdraw": "Withdraw",
+      "withdrawn": "Request withdrawn.",
+      "end": "End the help",
+      "endMine": "Finish helping",
+      "ended": "The help has ended.",
+      "incoming": "{{name}} asks for your help on {{patient}}",
+      "look": "Look at the patient",
+      "accept": "Accept",
+      "accepted": "You are helping {{name}}: you may now work on the patient.",
+      "decline": "Decline",
+      "declined": "{{name}} was told you cannot help now.",
+      "youHelp": "You help {{name}} on {{patient}}"
+    }
   }
 }

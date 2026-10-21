@@ -51,6 +51,7 @@ import { CoverMePanel } from './cover-panels'
 import { DeskDashboard } from './desk-dashboard'
 import { LabDashboard } from './lab-dashboard'
 import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
+import { CallsPanel } from './calls-panel'
 
 interface HomePageProps {
   user: StaffUser
@@ -199,6 +200,7 @@ function RoleHome({ user, mode }: HomePageProps) {
             />
             {summary && (
               <div className="flex min-w-0 flex-col gap-4">
+                <CallsPanel user={user} />
                 {role === 'doctor' && user.role === 'doctor' && <CoverMePanel />}
                 <NoticesPanel limit={4} />
                 <RolePanels role={role} data={summary} />

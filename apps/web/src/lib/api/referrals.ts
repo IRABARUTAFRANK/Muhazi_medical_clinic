@@ -91,6 +91,8 @@ export function useRefer(encounterId: string) {
       toUser?: string | null
       note?: string
       comeBack?: boolean
+      /** Only this department's staff may take the patient (migration 0055). */
+      department?: string | null
     }) => {
       if (!supabase) return
       const { error } = await supabase.rpc('refer_patient', {
@@ -100,6 +102,8 @@ export function useRefer(encounterId: string) {
         p_to_user: i.toUser ?? null,
         p_note: i.note?.trim() || null,
         p_return: !!i.comeBack,
+        // only when chosen, so a database without migration 0055 still takes referrals
+        ...(i.department ? { p_department: i.department } : {}),
       })
       if (error) throw new Error(error.message)
     },
@@ -107,6 +111,7 @@ export function useRefer(encounterId: string) {
       void qc.invalidateQueries({ queryKey: ['routing', encounterId] })
       void qc.invalidateQueries({ queryKey: ['queue'] })
       void qc.invalidateQueries({ queryKey: ['visit'] })
+      void qc.invalidateQueries({ queryKey: ['access'] })
     },
   })
 }

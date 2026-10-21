@@ -438,6 +438,10 @@ export interface QueueItem extends QueueRow {
   /** Vitals already measured for this visit: when and by whom (migration 0039). */
   vitalsAt?: string | null
   vitalsBy?: string | null
+  /** Sent to a department: only its members work on the patient (migration 0055). */
+  departmentName?: string | null
+  /** False when the patient was sent to someone else: seen in the clinic, read only. */
+  canWork?: boolean
 }
 
 interface BoardRow {
@@ -465,6 +469,8 @@ interface BoardRow {
   referral_note?: string | null
   vitals_at?: string | null
   vitals_by?: string | null
+  department_name?: string | null
+  can_work?: boolean | null
 }
 
 const sexLetter: Record<Sex, string> = { female: 'F', male: 'M', other: '', unknown: '' }
@@ -499,6 +505,8 @@ const toItem = (r: BoardRow): QueueItem => ({
   referralNote: r.referral_note ?? null,
   vitalsAt: r.vitals_at ?? null,
   vitalsBy: r.vitals_by ?? null,
+  departmentName: r.department_name ?? null,
+  canWork: r.can_work ?? true,
   ticket: r.ticket_no,
   name: `${r.surname} ${r.given_names}`,
   ageSex: `${ageOf(r.birth_date)} ${sexLetter[r.sex]}`.trim(),

@@ -8,9 +8,22 @@ import { useBillingActions } from '@/lib/api/billing'
 import { useColleagues, useRefer, useVisitRouting } from '@/lib/api/referrals'
 import { TREATING_STATIONS, type Station } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
+import { useDepartments } from '@/lib/api/staff'
 
 /** Desks where doctors see patients: "any available doctor" puts the patient in all of them. */
 const DOCTOR_DESKS: Station[] = ['consultation', 'dental', 'theatre']
+/** Who works at each desk, to offer the departments of that role. */
+const DESK_ROLE: Partial<Record<Station, string>> = {
+  consultation: 'doctor',
+  dental: 'doctor',
+  theatre: 'doctor',
+  triage: 'nurse',
+  nursing: 'nurse',
+  beds: 'nurse',
+  laboratory: 'lab_tech',
+  ultrasound: 'sonographer',
+  pharmacy: 'pharmacist',
+}
 
 const control =
   'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-lg border px-2.5 text-[14px] outline-none'
@@ -41,6 +54,8 @@ export function WhereNextCard({
   const refer = useRefer(encounterId)
   const { data: routing = [] } = useVisitRouting(encounterId)
   const { data: colleagues = [] } = useColleagues()
+  const { data: departments = [] } = useDepartments()
+  const [toDept, setToDept] = useState('')
   const [picked, setPicked] = useState<Station[]>([])
   const [referring, setReferring] = useState(false)
   const [toDesk, setToDesk] = useState<Station>('consultation')
@@ -74,6 +89,7 @@ export function WhereNextCard({
   const doRefer = async (i: {
     to: Station
     toUser: string | null
+    department?: string | null
     note: string
     comeBack: boolean
     message: string
@@ -84,6 +100,7 @@ export function WhereNextCard({
       setReferring(false)
       setNote('')
       setToUser('')
+      setToDept('')
       onDone(i.message)
     } catch (e) {
       onError(describe(e))
@@ -91,6 +108,10 @@ export function WhereNextCard({
   }
 
   const person = colleagues.find((c) => c.id === toUser)
+  const deskDepts = departments.filter((d) =>
+    (d.roles as string[]).includes(DESK_ROLE[toDesk] ?? ''),
+  )
+  const dept = deskDepts.find((d) => d.id === toDept)
   if (closed) return null
 
   return (
@@ -223,7 +244,10 @@ export function WhereNextCard({
                   <select
                     className={control}
                     value={toDesk}
-                    onChange={(e) => setToDesk(e.target.value as Station)}
+                    onChange={(e) => {
+                      setToDesk(e.target.value as Station)
+                      setToDept('')
+                    }}
                   >
                     {TREATING_STATIONS.filter((s) => s !== myStation).map((s) => (
                       <option key={s} value={s}>
@@ -249,6 +273,24 @@ export function WhereNextCard({
                   </select>
                 </label>
               </div>
+              {!person && deskDepts.length > 0 && (
+                <label className="flex flex-col gap-1.5 text-[13px] font-semibold">
+                  {t('refer.department')}
+                  <select
+                    className={control}
+                    value={toDept}
+                    onChange={(e) => setToDept(e.target.value)}
+                  >
+                    <option value="">{t('refer.anyDepartment')}</option>
+                    {deskDepts.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-ink-3 font-normal">{t('refer.departmentHint')}</span>
+                </label>
+              )}
               <label className="flex flex-col gap-1.5 text-[13px] font-semibold">
                 {t('refer.why')}
                 <textarea
@@ -278,10 +320,15 @@ export function WhereNextCard({
                     void doRefer({
                       to: toDesk,
                       toUser: toUser || null,
+                      department: person ? null : (dept?.id ?? null),
                       note,
                       comeBack,
                       message: t('refer.done', {
-                        to: person ? `${person.name} (${deskName(toDesk)})` : deskName(toDesk),
+                        to: person
+                          ? `${person.name} (${deskName(toDesk)})`
+                          : dept
+                            ? `${dept.name} (${deskName(toDesk)})`
+                            : deskName(toDesk),
                       }),
                     })
                   }

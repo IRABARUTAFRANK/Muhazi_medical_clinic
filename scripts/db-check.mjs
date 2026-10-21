@@ -243,7 +243,8 @@ await step('nurse records vitals and triage', async () => {
   await db.query(
     `update encounter set triage_level = 'yellow', triage_reason = 'fever 3 days' where id = $1`,
     [encounterId],
-  )
+  ) // the nurse sends the patient on to the doctors
+  await db.query(`select finish_station($1, 'triage', 'consultation')`, [encounterId])
 })
 await step('doctor charges consultation (RSSB preset 5,000)', async () => {
   await as(staff.doctor)
@@ -271,6 +272,13 @@ await step('doctor records the primary diagnosis', async () => {
 await expectError(
   'typed price without a reason is refused',
   async () => {
+    // the doctor also sends the patient to Nursing (injection) and Pharmacy
+    await asAdmin()
+    await db.query(
+      `insert into queue_entry (encounter_id, station, ticket_no)
+       select $1, s, 'A-001' from unnest(array['nursing', 'pharmacy']::station[]) s`,
+      [encounterId],
+    )
     await as(staff.nurse)
     await db.query(
       `select add_charge($1, 'nursing', (select id from service where code = 'NUR-INJ'), null, 1, 1000)`,
@@ -1889,6 +1897,148 @@ await step(
     return 'reception: yes → locked → one receptionist allowed; one cashier locked; manager cannot be locked'
   },
 )
+
+// ---------------------------------------------------------------- 0055: patients belong where they were sent
+const d1 = staff.doctor
+let d2, d3, paed
+const visitAt = async (given) => {
+  await as(staff.receptionist)
+  const r = (
+    await one(`select register_patient_file('Mutoni', $1, 'female', null, 6, null) as r`, [given])
+  ).r
+  const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [
+    r.patient_id,
+  ])
+  await asAdmin()
+  const q = await one(
+    `select id from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+    [v.id],
+  )
+  return { enc: v.id, queue: q.id }
+}
+const tryAs = async (who, sql, params) => {
+  await as(who)
+  try {
+    await db.query(sql, params)
+    return 'ok'
+  } catch (e) {
+    return String(e.message).split('\n')[0]
+  } finally {
+    await asAdmin()
+  }
+}
+await step(
+  '0055: a taken patient is the doctor’s; sent to Paediatrics, only its doctors may work',
+  async () => {
+    d2 = await mkUser('d.two', 'Dr. Two', 'doctor')
+    d3 = await mkUser('d.three', 'Dr. Three', 'doctor')
+    staff.doctor = d1
+    await asAdmin()
+    paed = (
+      await one(
+        `insert into department (name, roles) values ('Paediatrics', '{doctor}') returning id`,
+      )
+    ).id
+    await db.query(`insert into staff_department (profile_id, department_id) values ($1, $2)`, [
+      d2,
+      paed,
+    ])
+    const p = await visitAt('Aline')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    const note = `select add_clinical_note($1, 'seen')`
+    const otherNote = await tryAs(d2, note, [p.enc])
+    const otherTake = await tryAs(d2, `select take_patient($1)`, [p.queue])
+    await as(d1)
+    await db.query(
+      `select refer_patient($1, 'consultation', 'consultation', null, 'child, 6 years', false, $2)`,
+      [p.enc, paed],
+    )
+    const member = await tryAs(d2, note, [p.enc])
+    const notMember = await tryAs(d3, note, [p.enc])
+    const sender = await tryAs(d1, note, [p.enc])
+    const access = await (async () => {
+      await as(d3)
+      const a = (await one(`select visit_access($1) as a`, [p.enc])).a
+      await asAdmin()
+      return a
+    })()
+    if (
+      !/is with Dr\. One|is with/.test(otherNote) ||
+      !/already taken|sent to/.test(otherTake) ||
+      member !== 'ok' ||
+      !/is with/.test(notMember) ||
+      !/is with/.test(sender) ||
+      access.canWork !== false ||
+      !/Paediatrics/.test(access.holder)
+    )
+      throw new Error(JSON.stringify({ otherNote, otherTake, member, notMember, sender, access }))
+    return `other doctor refused; Paediatrics member ok, others refused (${access.holder})`
+  },
+)
+await step('0055: a doctor calls the next patient; reception sends one to them', async () => {
+  const p = await visitAt('Bella')
+  await as(d3)
+  const call = (
+    await one(`select call_next('consultation', 'reception', null, 'room 2 free') as id`)
+  ).id
+  await as(staff.receptionist)
+  const inbox = (await one(`select my_calls() as c`)).c
+  const sees = inbox.incoming.some((x) => x.id === call)
+  const wrong = await tryAs(staff.nurse, `select answer_call($1, $2)`, [call, p.queue])
+  await as(staff.receptionist)
+  await db.query(`select answer_call($1, $2)`, [call, p.queue])
+  await asAdmin()
+  const q = await one(`select assigned_to from queue_entry where id = $1`, [p.queue])
+  const st = await one(`select status from staff_call where id = $1`, [call])
+  const note = `select add_clinical_note($1, 'seen')`
+  const caller = await tryAs(d3, note, [p.enc])
+  const other = await tryAs(d2, note, [p.enc])
+  const again = await tryAs(staff.receptionist, `select answer_call($1, $2)`, [call, p.queue])
+  if (
+    !sees ||
+    !/not for you/.test(wrong) ||
+    q.assigned_to !== d3 ||
+    st.status !== 'answered' ||
+    caller !== 'ok' ||
+    !/is with/.test(other) ||
+    !/already answered/.test(again)
+  )
+    throw new Error(JSON.stringify({ sees, wrong, q, st, caller, other, again }))
+  return 'reception saw the call, sent the patient; only the caller may work on them'
+})
+await step('0055: asking a colleague for help gives them the patient until it ends', async () => {
+  await asAdmin()
+  const enc = (
+    await one(
+      `select q.encounter_id as id from queue_entry q where q.assigned_to = $1 and q.finished_at is null limit 1`,
+      [d3],
+    )
+  ).id
+  const note = `select add_clinical_note($1, 'second look')`
+  const before = await tryAs(d1, note, [enc])
+  await as(d3)
+  const help = (await one(`select ask_help($1, $2, 'rash, what do you think?') as id`, [enc, d1]))
+    .id
+  await as(d1)
+  const inbox = (await one(`select my_calls() as c`)).c
+  await db.query(`select respond_help($1, true)`, [help])
+  const during = await tryAs(d1, note, [enc])
+  await as(d3)
+  await db.query(`select cancel_call($1)`, [help])
+  const after = await tryAs(d1, note, [enc])
+  await asAdmin()
+  const st = await one(`select status from staff_call where id = $1`, [help])
+  if (
+    !/is with/.test(before) ||
+    !inbox.incoming.some((x) => x.id === help) ||
+    during !== 'ok' ||
+    !/is with/.test(after) ||
+    st.status !== 'done'
+  )
+    throw new Error(JSON.stringify({ before, during, after, st }))
+  return 'refused → help accepted → may work → help ended → refused'
+})
 
 finish()
 

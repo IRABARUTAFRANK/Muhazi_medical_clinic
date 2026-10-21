@@ -63,6 +63,7 @@ import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { formatDuration } from '@/lib/duration'
 import { cn } from '@/lib/utils'
+import { CallsPanel } from './calls-panel'
 
 export type DeskRole = 'receptionist' | 'nurse'
 
@@ -166,6 +167,9 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
             {/* Covering for a doctor: their queue comes first */}
             {nurse && <CoveringPanels user={user} />}
+
+            {/* Colleagues calling for the next patient, help requests */}
+            <CallsPanel user={user} />
 
             {/* THE WORK OF THE DAY */}
             <section className="flex flex-col gap-3">
