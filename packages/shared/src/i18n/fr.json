@@ -1048,13 +1048,25 @@
         "percent": "Pourcentage",
         "amount": "Montant en RWF"
       },
-      "round": "Arrondir à",
-      "noRound": "Sans arrondi",
+      "round": "Arrondir le nouveau prix",
+      "noRound": "Sans arrondi (exact)",
       "preview": "{{count}} soins. Exemple : {{name}} {{from}} → {{to}}.",
       "invalid": "Saisissez un nombre valide pour ce type de changement.",
       "confirm": "Changer le prix de {{count}} soins maintenant ?",
       "apply": "Appliquer",
-      "done": "{{count}} prix modifiés."
+      "done": "{{count}} prix modifiés.",
+      "nearest": "Aux {{step}} RWF les plus proches",
+      "cols": {
+        "treatment": "Soin",
+        "now": "Prix actuel",
+        "changed": "Après le changement",
+        "rounded": "Nouveau prix (arrondi à {{step}})",
+        "new": "Nouveau prix"
+      },
+      "more": "… et {{count}} autres soins, changés de la même façon.",
+      "explain": "Comment l’arrondi fonctionne : {{exact}} se trouve entre {{low}} et {{high}} (les multiples de {{step}} autour). Il est à {{dLow}} de {{low}} et à {{dHigh}} de {{high}} ; il devient donc le plus proche : {{to}}.",
+      "unchanged_one": "1 soin garde son prix : l’arrondi annule un changement aussi petit. Choisissez un arrondi plus petit.",
+      "unchanged_other": "{{count}} soins gardent leur prix : l’arrondi annule un changement aussi petit. Choisissez un arrondi plus petit."
     },
     "titleCash": "Soins et tarifs",
     "leadCash": "Chaque soin et service par département, avec son prix.",

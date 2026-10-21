@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
+import { Flash } from '@/components/ui/flash'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
   usePharmacyQueue,
@@ -58,7 +59,6 @@ const TABS: { id: Tab; icon: typeof Package }[] = [
   { id: 'stores', icon: Store },
 ]
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
-const okBox = 'bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 const monthStart = () => {
   const d = new Date()
   return isoDate(new Date(d.getFullYear(), d.getMonth(), 1))
@@ -353,7 +353,11 @@ function PharmacyDesk({ canDispense }: { canDispense: boolean }) {
       title={t('stock.pharmacyTitle')}
       right={t('stock.toHandOver', { count: queue.length })}
     >
-      {msg && <p className={msg.ok ? okBox : errorBox}>{msg.text}</p>}
+      {msg && (
+        <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
+          {msg.text}
+        </Flash>
+      )}
       {queue.length === 0 ? (
         <Empty>{t('stock.pharmacyEmpty')}</Empty>
       ) : (
@@ -545,7 +549,11 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
             })}
           </p>
         )}
-        {msg && <p className={msg.ok ? okBox : errorBox}>{msg.text}</p>}
+        {msg && (
+          <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
+            {msg.text}
+          </Flash>
+        )}
         <Button
           type="submit"
           variant="primary"
@@ -661,7 +669,11 @@ function SendForm({ items, locations }: { items: StockItem[]; locations: StockLo
           onChange={(e) => setReason(e.target.value)}
           wrapperClassName="sm:max-w-md"
         />
-        {msg && <p className={msg.ok ? okBox : errorBox}>{msg.text}</p>}
+        {msg && (
+          <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
+            {msg.text}
+          </Flash>
+        )}
         <Button
           type="submit"
           variant="primary"
@@ -971,7 +983,11 @@ function Stores({ locations }: { locations: StockLocation[] }) {
           {t('stock.addStore')}
         </Button>
       </form>
-      {msg && <p className={msg.ok ? okBox : errorBox}>{msg.text}</p>}
+      {msg && (
+        <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
+          {msg.text}
+        </Flash>
+      )}
     </Panel>
   )
 }

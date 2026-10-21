@@ -31,6 +31,7 @@ import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
+import { Flash } from '@/components/ui/flash'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
   VISIBILITIES,
@@ -511,14 +512,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
           {err}
         </p>
       )}
-      {done && (
-        <p
-          role="status"
-          className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-        >
-          {t(`calendar.saved.${visibility}`)}
-        </p>
-      )}
+      {done && <Flash onClose={() => setDone(false)}>{t(`calendar.saved.${visibility}`)}</Flash>}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" variant="primary" size="lg" loading={save.isPending}>
           {!save.isPending && <Save size={18} aria-hidden="true" />}

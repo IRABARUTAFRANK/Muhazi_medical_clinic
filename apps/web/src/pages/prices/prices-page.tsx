@@ -65,6 +65,7 @@ import { useDepartmentActions, useDepartments, type Department } from '@/lib/api
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { ShownList } from '@/components/ui/list-tools'
+import { Flash } from '@/components/ui/flash'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -407,17 +408,14 @@ export function PricesPage({ user }: { user: StaffUser }) {
         )}
 
         {(tError || iError || actionError) && (
-          <p role="alert" className={errorBox}>
+          <Flash key={actionError ?? 'load'} tone="error" onClose={() => setActionError(null)}>
             {actionError ?? (tError ?? iError)?.message}
-          </p>
+          </Flash>
         )}
         {notice && (
-          <p
-            role="status"
-            className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-          >
+          <Flash key={notice} onClose={() => setNotice(null)}>
             {notice}
-          </p>
+          </Flash>
         )}
 
         {adjusting && (
@@ -748,11 +746,30 @@ function AdjustPricesCard({
   const affected = treatments.filter(
     (x) => (!category || x.categoryId === category) && x.cashPrice != null && x.cashPrice > 0,
   )
-  const apply = (p: number) => {
-    const raw = mode === 'multiply' ? p * v : mode === 'percent' ? (p * (100 + v)) / 100 : p + v
-    return Math.max(0, Math.round(raw / round) * round)
-  }
-  const example = affected[0]
+  // The price after the change, before rounding; then rounded to the nearest step.
+  const changed = (p: number) =>
+    Math.max(0, mode === 'multiply' ? p * v : mode === 'percent' ? (p * (100 + v)) / 100 : p + v)
+  const apply = (p: number) => Math.max(0, Math.round(changed(p) / round) * round)
+  const rows = affected.slice(0, 5)
+  const unchanged = valid ? affected.filter((x) => apply(x.cashPrice!) === x.cashPrice) : []
+  // The first treatment whose price the rounding moves: explained in words.
+  const shown = rows.find((x) => apply(x.cashPrice!) !== Math.round(changed(x.cashPrice!)))
+  const explain = (() => {
+    if (!shown || round === 1) return null
+    const exact = changed(shown.cashPrice!)
+    const low = Math.floor(exact / round) * round
+    const high = low + round
+    const to = apply(shown.cashPrice!)
+    return t('prices.adjust.explain', {
+      exact: formatNumber(Math.round(exact * 10) / 10),
+      low: formatNumber(low),
+      high: formatNumber(high),
+      dLow: formatNumber(Math.round((exact - low) * 10) / 10),
+      dHigh: formatNumber(Math.round((high - exact) * 10) / 10),
+      to: formatNumber(to),
+      step: formatNumber(round),
+    })
+  })()
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -820,19 +837,72 @@ function AdjustPricesCard({
             >
               {[1, 10, 50, 100, 500].map((r) => (
                 <option key={r} value={r}>
-                  {r === 1 ? t('prices.adjust.noRound') : `${r} RWF`}
+                  {r === 1
+                    ? t('prices.adjust.noRound')
+                    : t('prices.adjust.nearest', { step: formatNumber(r) })}
                 </option>
               ))}
             </Select>
           </div>
-          {valid && example && example.cashPrice != null && (
-            <p className="text-ink-2 m-0 text-[13px]">
-              {t('prices.adjust.preview', {
-                count: affected.length,
-                name: example.nameEn,
-                from: formatRwf(example.cashPrice),
-                to: formatRwf(apply(example.cashPrice)),
-              })}
+          {valid && rows.length > 0 && (
+            <div className="border-border overflow-x-auto rounded-xl border">
+              <table className="w-full text-[13px] tabular-nums">
+                <thead className="bg-hover/60 text-ink-2 text-left">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">{t('prices.adjust.cols.treatment')}</th>
+                    <th className="px-3 py-2 text-right font-semibold">
+                      {t('prices.adjust.cols.now')}
+                    </th>
+                    {round > 1 && (
+                      <th className="px-3 py-2 text-right font-semibold">
+                        {t('prices.adjust.cols.changed')}
+                      </th>
+                    )}
+                    <th className="px-3 py-2 text-right font-semibold">
+                      {round > 1
+                        ? t('prices.adjust.cols.rounded', { step: formatNumber(round) })
+                        : t('prices.adjust.cols.new')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((x) => {
+                    const to = apply(x.cashPrice!)
+                    return (
+                      <tr key={x.id} className="border-border border-t">
+                        <td className="px-3 py-1.5">{treatmentName(x, i18n.language)}</td>
+                        <td className="text-ink-3 px-3 py-1.5 text-right">
+                          {formatNumber(x.cashPrice!)}
+                        </td>
+                        {round > 1 && (
+                          <td className="text-ink-2 px-3 py-1.5 text-right">
+                            {formatNumber(Math.round(changed(x.cashPrice!) * 10) / 10)}
+                          </td>
+                        )}
+                        <td
+                          className={cn(
+                            'px-3 py-1.5 text-right font-bold',
+                            to === x.cashPrice ? 'text-amber' : 'text-primary',
+                          )}
+                        >
+                          {formatNumber(to)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {affected.length > rows.length && (
+                <p className="text-ink-3 m-0 px-3 py-1.5 text-xs">
+                  {t('prices.adjust.more', { count: affected.length - rows.length })}
+                </p>
+              )}
+            </div>
+          )}
+          {valid && explain && <p className="text-ink-2 m-0 text-[13px]">{explain}</p>}
+          {valid && unchanged.length > 0 && (
+            <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+              {t('prices.adjust.unchanged', { count: unchanged.length })}
             </p>
           )}
           {error && (

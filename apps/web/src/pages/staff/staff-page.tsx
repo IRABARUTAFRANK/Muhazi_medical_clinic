@@ -30,6 +30,7 @@ import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { ListBar, ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
+import { Flash } from '@/components/ui/flash'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useTreatments } from '@/lib/api/catalogue'
 import {
@@ -172,19 +173,16 @@ export function StaffPage({ user }: { user: StaffUser }) {
           </p>
         )}
         {notice && (
-          <p
-            role="status"
-            className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-          >
+          <Flash key={notice} onClose={() => setNotice(null)}>
             {notice}
-          </p>
+          </Flash>
         )}
         {/* Forms open here; the page scrolls to them (Reset PIN, Edit, New employee). */}
         <div ref={formRef} className="flex scroll-mt-4 flex-col gap-4">
           {formError && (
-            <p role="alert" className={errorBox}>
+            <Flash key={formError} tone="error" onClose={() => setFormError(null)}>
               {formError}
-            </p>
+            </Flash>
           )}
           {credentials && (
             <CredentialsCard credentials={credentials} onDone={() => setCredentials(null)} />

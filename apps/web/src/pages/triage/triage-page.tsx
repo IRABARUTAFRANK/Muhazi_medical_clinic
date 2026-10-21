@@ -8,6 +8,7 @@ import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { ListBar, Pager } from '@/components/ui/list-tools'
+import { Flash } from '@/components/ui/flash'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useVisitVitals } from '@/lib/api/billing'
 import { useFilesToComplete } from '@/lib/api/desk-ops'
@@ -64,9 +65,9 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
         />
 
         {notice && (
-          <p className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <Flash key={notice} onClose={() => setNotice(null)}>
             {notice}
-          </p>
+          </Flash>
         )}
 
         <div className="pc:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] grid grid-cols-1 gap-4">

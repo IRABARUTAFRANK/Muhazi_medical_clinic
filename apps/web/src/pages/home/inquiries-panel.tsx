@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
+import { Flash } from '@/components/ui/flash'
 import { StaffLink } from '@/components/staff/staff-link'
 import {
   useBookableDoctors,
@@ -66,9 +67,9 @@ export function InquiriesPanel({ i = 2, canAct }: { i?: number; canAct: boolean 
     >
       {error && <p className={errorLine}>{error}</p>}
       {done && (
-        <p className="bg-green-bg text-green m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold">
+        <Flash key={done} onClose={() => setDone(null)}>
           {done}
-        </p>
+        </Flash>
       )}
       {inquiries.length === 0 ? (
         <Empty>{t('desk.receptionist.noInquiries')}</Empty>

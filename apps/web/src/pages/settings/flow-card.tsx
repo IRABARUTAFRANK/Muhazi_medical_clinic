@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { IconChip } from '@/components/dash/kit'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
+import { Flash } from '@/components/ui/flash'
 import { useSaveFlowSetting, useStaffSettings } from '@/lib/api/settings'
 import { cn } from '@/lib/utils'
 
@@ -73,11 +74,7 @@ export function FlowCard() {
             {error}
           </p>
         )}
-        {done && (
-          <p role="status" className="text-green m-0 text-[13px] font-semibold">
-            {t('settings.flow.saved')}
-          </p>
-        )}
+        {done && <Flash onClose={() => setDone(false)}>{t('settings.flow.saved')}</Flash>}
         <Button type="button" size="sm" variant="ghost" className="self-start" disabled>
           {t('settings.flow.vitalsNote')}
         </Button>

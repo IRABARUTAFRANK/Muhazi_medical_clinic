@@ -1048,13 +1048,25 @@
         "percent": "Percentage",
         "amount": "Amount in RWF"
       },
-      "round": "Round to",
-      "noRound": "No rounding",
+      "round": "Round the new price",
+      "noRound": "No rounding (exact)",
       "preview": "{{count}} treatments. Example: {{name}} {{from}} → {{to}}.",
       "invalid": "Enter a valid number for this kind of change.",
       "confirm": "Change the price of {{count}} treatments now?",
       "apply": "Apply",
-      "done": "{{count}} prices changed."
+      "done": "{{count}} prices changed.",
+      "nearest": "To the nearest {{step}} RWF",
+      "cols": {
+        "treatment": "Treatment",
+        "now": "Price now",
+        "changed": "After the change",
+        "rounded": "New price (nearest {{step}})",
+        "new": "New price"
+      },
+      "more": "… and {{count}} more treatments, changed the same way.",
+      "explain": "How rounding works: {{exact}} lies between {{low}} and {{high}} (the multiples of {{step}} around it). It is {{dLow}} from {{low}} and {{dHigh}} from {{high}}, so it becomes the closer one: {{to}}.",
+      "unchanged_one": "1 treatment keeps its price: the rounding cancels a change this small. Choose a smaller rounding.",
+      "unchanged_other": "{{count}} treatments keep their price: the rounding cancels a change this small. Choose a smaller rounding."
     },
     "titleCash": "Treatments and prices",
     "leadCash": "Every treatment and service by department, with its price.",

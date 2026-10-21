@@ -29,6 +29,7 @@ import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { resolveAdjust, type AdjustMode } from '@/lib/adjust'
 import { AdjustField } from '@/components/ui/adjust-field'
+import { Flash } from '@/components/ui/flash'
 import { useMyCover } from '@/lib/api/cover'
 import { useVisitRouting } from '@/lib/api/referrals'
 import { ClinicalCard } from './clinical-card'
@@ -236,17 +237,15 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               />
             )}
 
-            {(actionError || done) && (
-              <p
-                role={actionError ? 'alert' : 'status'}
-                className={
-                  actionError
-                    ? errorBox
-                    : 'bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
-                }
-              >
-                {actionError ?? done}
-              </p>
+            {actionError && (
+              <Flash key={actionError} tone="error" onClose={() => setActionError(null)}>
+                {actionError}
+              </Flash>
+            )}
+            {!actionError && done && (
+              <Flash key={done} onClose={() => setDone(null)}>
+                {done}
+              </Flash>
             )}
 
             {!isReception && !isCashier && (

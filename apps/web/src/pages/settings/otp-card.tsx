@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
+import { Flash } from '@/components/ui/flash'
 import {
   TRUST_CHOICES,
   useRevokeAllDevices,
@@ -79,7 +80,11 @@ export function OtpCard() {
           </Button>
         </div>
         <p className="text-ink-3 m-0 text-xs">{t('settings.otp.hint')}</p>
-        {notice && <p className="text-green m-0 text-[13px] font-semibold">{notice}</p>}
+        {notice && (
+          <Flash key={notice} onClose={() => setNotice(null)}>
+            {notice}
+          </Flash>
+        )}
         {(save.error || revoke.error) && (
           <p
             role="alert"

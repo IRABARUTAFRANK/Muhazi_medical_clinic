@@ -44,6 +44,7 @@ import { useDeskOps } from '@/lib/api/desk-ops'
 import { VisitJourney } from '@/components/clinical/visit-journey'
 import { navForUser } from '@/lib/nav'
 import { ShownList } from '@/components/ui/list-tools'
+import { Flash } from '@/components/ui/flash'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
@@ -147,17 +148,15 @@ export function PatientFilePage({
             {error.message}
           </p>
         )}
-        {(actionError || notice) && (
-          <p
-            role={actionError ? 'alert' : 'status'}
-            className={
-              actionError
-                ? errorBox
-                : 'bg-green-bg text-green m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
-            }
-          >
-            {actionError ?? notice}
-          </p>
+        {actionError && (
+          <Flash key={actionError} tone="error" onClose={() => setActionError(null)}>
+            {actionError}
+          </Flash>
+        )}
+        {!actionError && notice && (
+          <Flash key={notice} onClose={() => setNotice(null)}>
+            {notice}
+          </Flash>
         )}
 
         {data && p && (

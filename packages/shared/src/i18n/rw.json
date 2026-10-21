@@ -1527,13 +1527,25 @@
         "percent": "Ijanisha",
         "amount": "Amafaranga (RWF)"
       },
-      "round": "Zengurutsa kuri",
-      "noRound": "Ntuzengurutse",
+      "round": "Zengurutsa igiciro gishya",
+      "noRound": "Nta kuzengurutsa (uko kiri)",
       "preview": "Ubuvuzi {{count}}. Urugero: {{name}} {{from}} → {{to}}.",
       "invalid": "Andika umubare ukwiye kuri ubu buryo bwo guhindura.",
       "confirm": "Uhindure igiciro cy'ubuvuzi {{count}} ubu?",
       "apply": "Emeza",
-      "done": "Ibiciro {{count}} byahinduwe."
+      "done": "Ibiciro {{count}} byahinduwe.",
+      "nearest": "Ku {{step}} RWF ziri hafi",
+      "cols": {
+        "treatment": "Ubuvuzi",
+        "now": "Igiciro ubu",
+        "changed": "Nyuma y’impinduka",
+        "rounded": "Igiciro gishya (ku {{step}} ziri hafi)",
+        "new": "Igiciro gishya"
+      },
+      "more": "… n’ubundi buvuzi {{count}}, buhinduwe kimwe.",
+      "explain": "Uko kuzengurutsa bikora: {{exact}} kiri hagati ya {{low}} na {{high}} (inshuro za {{step}} zigikikije). Gitandukanye na {{low}} ho {{dLow}}, na {{high}} ho {{dHigh}}, bityo gihinduka icyo kiri hafi: {{to}}.",
+      "unchanged_one": "Ubuvuzi 1 bugumana igiciro cyabwo: kuzengurutsa bivanaho impinduka nto itya. Hitamo kuzengurutsa guto.",
+      "unchanged_other": "Ubuvuzi {{count}} bugumana ibiciro byabwo: kuzengurutsa bivanaho impinduka nto itya. Hitamo kuzengurutsa guto."
     },
     "form": {
       "suggested": "Amazina mu Kinyarwanda no mu Gifaransa yasabwe hashingiwe ku Cyongereza. Yakosore niba atari byo ushaka kuvuga.",
