@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-20T18:58:36.495Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-21T07:22:40.891Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -9481,6 +9481,37 @@ create trigger observation_clear_no_vitals after insert on observation
 drop trigger if exists encounter_clear_no_vitals on encounter;
 create trigger encounter_clear_no_vitals after update of status on encounter
   for each row execute function clear_no_vitals();
+
+
+-- ============================================================ 20261031090000_keep_bed_stay.sql
+-- 0047 · "Delete all treatments" keeps the built-in Bed stay line.
+--
+-- Bed billing (admit_to_bed / extend_bed_stay) charges every stay under the service BED-STAY;
+-- deleting it made bed admissions fail ("unknown or inactive service"). The catalogue reset now
+-- spares it, and it comes back if it was deleted.
+
+create or replace function delete_all_services()
+returns integer
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_n integer;
+begin
+  if not is_manager() then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  update price_list_item set deleted_at = now()
+  where deleted_at is null
+    and service_id in (select id from service where deleted_at is null and code <> 'BED-STAY');
+  update service set deleted_at = now(), active = false where deleted_at is null and code <> 'BED-STAY';
+  get diagnostics v_n = row_count;
+  insert into audit_event (actor_id, action, entity, entity_id, after)
+  values (auth.uid(), 'delete', 'service', null, jsonb_build_object('all', true, 'count', v_n));
+  return v_n;
+end
+$$;
+
+update service set deleted_at = null, active = true where code = 'BED-STAY';
 
 
 -- ============================================================ seed.sql

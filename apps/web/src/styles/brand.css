@@ -271,6 +271,11 @@
   background-color: #0e1f33;
   background-image: radial-gradient(rgba(92, 179, 208, 0.12) 1px, transparent 1px);
 }
+/* A page scrolls inside its <main> column: the cards in it keep their full height. Without this
+   a card with overflow-hidden may shrink to a thin strip when the page is long. */
+.workspace main.overflow-auto > * {
+  flex-shrink: 0;
+}
 .glass-dark {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.18);

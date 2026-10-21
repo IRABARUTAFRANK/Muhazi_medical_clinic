@@ -1294,9 +1294,12 @@ await step('0041: bulk add into a department, move a type, then start over', asy
     [deptId],
   )
   const gone = (await one(`select delete_all_services() as n`)).n
-  const after = await one(`select count(*)::int as n from catalogue_services`)
+  const after = await one(
+    `select count(*)::int as n from catalogue_services where code <> 'BED-STAY'`,
+  )
   await asAdmin()
-  if (n !== 2 || before.n < 2 || after.n !== 0 || gone < 2)
+  const bed = await one(`select active from service where code = 'BED-STAY' and deleted_at is null`)
+  if (n !== 2 || before.n < 2 || after.n !== 0 || gone < 2 || !bed?.active)
     throw new Error(`n=${n} before=${before.n} after=${after.n}`)
   return `added 2, moved ${moved} lab tests, then deleted all ${gone}; catalogue empty`
 })
