@@ -49,6 +49,7 @@ import { Flash } from '@/components/ui/flash'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
+import { useCan } from '@/lib/api/permissions'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'bills'
 const TABS: Tab[] = ['overview', 'visits', 'clinical', 'bills']
@@ -88,6 +89,7 @@ export function PatientFilePage({
 
   const openVisit = data?.visits.find((v) => v.status === 'open')
   const [confirming, setConfirming] = useState(false)
+  const mayStart = useCan(user)('visit.start')
   const { data: staffSettings } = useStaffSettings()
   // Where a new visit sends the patient (as start_visit decides).
   const nextDesk: Station = emergency ? station : staffSettings?.triageFirst ? 'triage' : station
@@ -208,7 +210,8 @@ export function PatientFilePage({
                   <Button
                     variant="primary"
                     onClick={() => setConfirming(true)}
-                    disabled={confirming}
+                    disabled={confirming || !mayStart}
+                    title={mayStart ? undefined : t('perms.blocked.visit')}
                   >
                     <Ticket size={16} aria-hidden="true" />
                     {t(emergency ? 'register.submitEmergency' : 'file.startVisit')}

@@ -1,18 +1,19 @@
 import { useState, type FormEvent } from 'react'
 import {
-  ALargeSmall,
   Activity,
+  ALargeSmall,
   BedDouble,
   Building2,
   Check,
   ClipboardList,
   Clock,
+  KeyRound,
   LayoutDashboard,
   Settings,
   ShieldCheck,
+  type LucideIcon,
   UserPlus,
   Users,
-  type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DAY_KEYS, type ClinicHours, type DayKey, type StaffUser, type TimeSpan } from '@mmc/shared'
@@ -34,14 +35,16 @@ import { FlowCard } from './flow-card'
 import { LockCard } from './lock-card'
 import { OtpCard } from './otp-card'
 import { PatientFieldsCard } from './patient-fields-card'
+import { PermissionsCard } from './permissions-card'
 
 /** The settings are split into sections; one is shown at a time (remembered on this device). */
-type SectionId = 'clinic' | 'hours' | 'beds' | 'security' | 'patient' | 'display'
+type SectionId = 'clinic' | 'hours' | 'beds' | 'security' | 'access' | 'patient' | 'display'
 const SECTIONS: { id: SectionId; icon: LucideIcon; tint: Tint }[] = [
   { id: 'clinic', icon: Building2, tint: 'teal' },
   { id: 'hours', icon: Clock, tint: 'amber' },
   { id: 'beds', icon: BedDouble, tint: 'navy' },
   { id: 'security', icon: ShieldCheck, tint: 'coral' },
+  { id: 'access', icon: KeyRound, tint: 'violet' },
   { id: 'patient', icon: ClipboardList, tint: 'violet' },
   { id: 'display', icon: ALargeSmall, tint: 'mint' },
 ]
@@ -330,6 +333,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
               </div>
             )}
 
+            {section === 'access' && <PermissionsCard />}
             {section === 'patient' && <PatientFieldsCard />}
 
             {section === 'display' && (

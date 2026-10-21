@@ -1460,6 +1460,10 @@
       "display": {
         "title": "Affichage et raccourcis",
         "hint": "Taille du texte, liens rapides"
+      },
+      "access": {
+        "title": "Qui peut faire quoi",
+        "hint": "Fonctions par rôle et par employé"
       }
     },
     "flow": {
@@ -3001,5 +3005,68 @@
     "yesRegister": "Oui, créer le dossier et commencer",
     "yesArrival": "Oui, le patient est là",
     "no": "Non, revenir"
+  },
+  "perms": {
+    "title": "Qui peut faire quoi",
+    "lead": "Activez ou désactivez chaque fonction pour chaque rôle. Le système suit aussitôt : les boutons disparaissent pour ceux qui ne peuvent pas, et la base de données refuse.",
+    "feature": "Fonction",
+    "managerNote": "Le gérant garde toujours toutes les fonctions.",
+    "roleOn": "{{feature}} : désormais permis pour {{role}}.",
+    "roleOff": "{{feature}} : n’est plus permis pour {{role}}.",
+    "oneTitle": "Une exception pour un employé",
+    "oneLead": "Par exemple une réceptionniste qui encaisse en l’absence du caissier, ou un infirmier qui n’est pas de service aujourd’hui. L’exception passe avant le rôle.",
+    "employee": "Employé",
+    "pickEmployee": "Choisissez un employé",
+    "roleYes": "Son rôle ({{role}}) le permet.",
+    "roleNo": "Son rôle ({{role}}) ne le permet pas.",
+    "allowed": "Permis",
+    "notAllowed": "Non permis",
+    "current": "Exceptions en vigueur",
+    "one": {
+      "role": "Comme son rôle",
+      "yes": "Permettre",
+      "no": "Ne pas permettre",
+      "roleDone": "{{feature}} : {{name}} suit à nouveau son rôle.",
+      "yesDone": "{{feature}} : désormais permis pour {{name}}.",
+      "noDone": "{{feature}} : n’est plus permis pour {{name}}."
+    },
+    "blocked": {
+      "visit": "Le gérant ne vous a pas permis de commencer des visites.",
+      "visitBanner": "Le gérant ne vous a pas permis de commencer des visites. Vous pouvez toujours chercher des patients et ouvrir leurs dossiers."
+    },
+    "f": {
+      "payment.take": {
+        "name": "Encaisser",
+        "hint": "Enregistrer les paiements en espèces, MTN MoMo et Airtel Money et solder les factures."
+      },
+      "visit.start": {
+        "name": "Commencer des visites",
+        "hint": "Enregistrer les patients et commencer une visite (ticket et file), marquer l’arrivée d’un patient attendu."
+      },
+      "vitals.write": {
+        "name": "Prendre les signes vitaux",
+        "hint": "Saisir ou corriger tension, température, poids… d’une visite."
+      },
+      "charge.write": {
+        "name": "Ajouter des soins à la facture",
+        "hint": "Facturer soins et médicaments sur une visite."
+      },
+      "clinical.write": {
+        "name": "Dossier clinique",
+        "hint": "Écrire notes et diagnostics, prescrire, donner des tâches aux infirmiers."
+      },
+      "orders.write": {
+        "name": "Demander des examens et écrire les résultats",
+        "hint": "Demander des examens de labo / échographie et saisir leurs résultats."
+      },
+      "appointment.approve": {
+        "name": "Répondre aux demandes de rendez-vous",
+        "hint": "Réserver ou refuser les demandes faites sur le site."
+      },
+      "stock.write": {
+        "name": "Gérer le stock",
+        "hint": "Recevoir médicaments et fournitures et les envoyer aux postes."
+      }
+    }
   }
 }

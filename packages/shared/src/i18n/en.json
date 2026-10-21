@@ -1460,6 +1460,10 @@
       "display": {
         "title": "Display and shortcuts",
         "hint": "Text size, quick links"
+      },
+      "access": {
+        "title": "Who may do what",
+        "hint": "Features per role and per employee"
       }
     },
     "flow": {
@@ -3001,5 +3005,68 @@
     "yesRegister": "Yes, create the file and start",
     "yesArrival": "Yes, the patient is here",
     "no": "No, go back"
+  },
+  "perms": {
+    "title": "Who may do what",
+    "lead": "Switch each feature on or off for each role. The system follows it at once: the buttons disappear for those who may not, and the database refuses them.",
+    "feature": "Feature",
+    "managerNote": "The manager always keeps every feature.",
+    "roleOn": "{{feature}}: now allowed for {{role}}.",
+    "roleOff": "{{feature}}: no longer allowed for {{role}}.",
+    "oneTitle": "An exception for one employee",
+    "oneLead": "For example a receptionist who takes payments while the cashier is away, or a nurse who is not in charge today. The exception wins over the role.",
+    "employee": "Employee",
+    "pickEmployee": "Choose an employee",
+    "roleYes": "Their role ({{role}}) may do it.",
+    "roleNo": "Their role ({{role}}) may not do it.",
+    "allowed": "Allowed",
+    "notAllowed": "Not allowed",
+    "current": "Exceptions now in force",
+    "one": {
+      "role": "As their role",
+      "yes": "Allow",
+      "no": "Do not allow",
+      "roleDone": "{{feature}}: {{name}} now follows their role.",
+      "yesDone": "{{feature}}: now allowed for {{name}}.",
+      "noDone": "{{feature}}: no longer allowed for {{name}}."
+    },
+    "blocked": {
+      "visit": "The manager has not allowed you to start visits.",
+      "visitBanner": "The manager has not allowed you to start visits. You can still find patients and open their files."
+    },
+    "f": {
+      "payment.take": {
+        "name": "Take payments",
+        "hint": "Record cash, MTN MoMo and Airtel Money payments and settle bills."
+      },
+      "visit.start": {
+        "name": "Start visits",
+        "hint": "Register patients and start a visit (ticket and queue), mark a booked patient as arrived."
+      },
+      "vitals.write": {
+        "name": "Record vital signs",
+        "hint": "Enter or correct blood pressure, temperature, weight… on a visit."
+      },
+      "charge.write": {
+        "name": "Add treatments to a bill",
+        "hint": "Charge treatments and medicines on a visit."
+      },
+      "clinical.write": {
+        "name": "Clinical record",
+        "hint": "Write notes and diagnoses, prescribe, give tasks to nurses."
+      },
+      "orders.write": {
+        "name": "Order tests and write results",
+        "hint": "Order laboratory / ultrasound tests and enter their results."
+      },
+      "appointment.approve": {
+        "name": "Answer booking requests",
+        "hint": "Book or reject the requests made from the website."
+      },
+      "stock.write": {
+        "name": "Manage stock",
+        "hint": "Receive medicines and supplies and send them to the desks."
+      }
+    }
   }
 }

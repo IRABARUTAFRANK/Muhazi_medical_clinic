@@ -1083,6 +1083,10 @@
       "display": {
         "title": "Imigaragarire n’inzira ngufi",
         "hint": "Ingano y’inyandiko, amahuza yihuse"
+      },
+      "access": {
+        "title": "Ukora iki",
+        "hint": "Ibikorwa kuri buri mwanya na buri mukozi"
       }
     },
     "flow": {
@@ -3010,5 +3014,68 @@
     "yesRegister": "Yego, fungura dosiye utangire",
     "yesArrival": "Yego, umurwayi arahari",
     "no": "Oya, subira inyuma"
+  },
+  "perms": {
+    "title": "Ukora iki",
+    "lead": "Fungura cyangwa ufunge buri gikorwa kuri buri mwanya. Sisitemu ihita ibikurikiza: utemerewe ntabona buto, kandi ububiko bw’amakuru buranga.",
+    "feature": "Igikorwa",
+    "managerNote": "Umuyobozi ahorana ibikorwa byose.",
+    "roleOn": "{{feature}}: ubu byemewe kuri {{role}}.",
+    "roleOff": "{{feature}}: ntibyemewe kuri {{role}}.",
+    "oneTitle": "Irengayobora ku mukozi umwe",
+    "oneLead": "Urugero umwakiranyi wakira ubwishyu umubitsi adahari, cyangwa umuforomo udakora uyu munsi. Irengayobora riruta umwanya.",
+    "employee": "Umukozi",
+    "pickEmployee": "Hitamo umukozi",
+    "roleYes": "Umwanya we ({{role}}) urabyemerewe.",
+    "roleNo": "Umwanya we ({{role}}) ntubyemerewe.",
+    "allowed": "Byemewe",
+    "notAllowed": "Ntibyemewe",
+    "current": "Irengayobora ririho",
+    "one": {
+      "role": "Nk’umwanya we",
+      "yes": "Emera",
+      "no": "Ntuyemere",
+      "roleDone": "{{feature}}: {{name}} yongeye gukurikiza umwanya we.",
+      "yesDone": "{{feature}}: ubu byemewe kuri {{name}}.",
+      "noDone": "{{feature}}: ntibyemewe kuri {{name}}."
+    },
+    "blocked": {
+      "visit": "Umuyobozi ntiyakwemereye gutangira inzinduko.",
+      "visitBanner": "Umuyobozi ntiyakwemereye gutangira inzinduko. Ushobora gushaka abarwayi no gufungura dosiye zabo."
+    },
+    "f": {
+      "payment.take": {
+        "name": "Kwakira ubwishyu",
+        "hint": "Kwandika ubwishyu bw’amafaranga, MTN MoMo na Airtel Money no kurangiza fagitire."
+      },
+      "visit.start": {
+        "name": "Gutangira inzinduko",
+        "hint": "Kwandika abarwayi no gutangira uruzinduko (itike n’umurongo), kwemeza ko umurwayi ufite gahunda yahageze."
+      },
+      "vitals.write": {
+        "name": "Gufata ibipimo",
+        "hint": "Kwandika cyangwa gukosora umuvuduko w’amaraso, umuriro, ibiro… ku ruzinduko."
+      },
+      "charge.write": {
+        "name": "Kongera ubuvuzi kuri fagitire",
+        "hint": "Kwishyuza ubuvuzi n’imiti ku ruzinduko."
+      },
+      "clinical.write": {
+        "name": "Inyandiko y’ubuvuzi",
+        "hint": "Kwandika inyandiko n’indwara, kwandika imiti, guha imirimo abaforomo."
+      },
+      "orders.write": {
+        "name": "Gusaba ibizamini no kwandika ibisubizo",
+        "hint": "Gusaba ibizamini bya labo / ekografi no kwandika ibisubizo byabyo."
+      },
+      "appointment.approve": {
+        "name": "Gusubiza ubusabe bwa gahunda",
+        "hint": "Kwemera cyangwa kwanga ubusabe bwakorewe ku rubuga."
+      },
+      "stock.write": {
+        "name": "Gucunga ububiko",
+        "hint": "Kwakira imiti n’ibikoresho no kubyohereza aho bikenewe."
+      }
+    }
   }
 }

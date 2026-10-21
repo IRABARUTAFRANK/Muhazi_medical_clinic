@@ -25,6 +25,7 @@ export function NewPatientForm({
   nurse = false,
   fileOnly,
   initial,
+  blocked = false,
 }: {
   emergency?: boolean
   station?: Station
@@ -40,6 +41,8 @@ export function NewPatientForm({
   }
   /** Prefilled from a booking request (name and phone the person gave). */
   initial?: { surname?: string; givenNames?: string; phone?: string }
+  /** Starting visits is not allowed for this person (the file-only mode stays available). */
+  blocked?: boolean
 }) {
   const { t } = useTranslation()
   const actions = useVisitActions()
@@ -241,7 +244,11 @@ export function NewPatientForm({
               type="submit"
               variant={emergency ? 'danger' : 'primary'}
               size="lg"
-              disabled={actions.register.isPending || actions.registerFile.isPending}
+              disabled={
+                actions.register.isPending ||
+                actions.registerFile.isPending ||
+                (blocked && !fileOnly)
+              }
             >
               {actions.register.isPending || actions.registerFile.isPending
                 ? t('register.submitting')

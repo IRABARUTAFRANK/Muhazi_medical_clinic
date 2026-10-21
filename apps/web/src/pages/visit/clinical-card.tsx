@@ -24,6 +24,7 @@ import { stationFor, type Station } from '@/lib/api/visits'
 import { openPrescription, type RxDocMedicine } from '@/lib/prescription-doc'
 import { roleLabel } from '@/lib/roles'
 import { cn } from '@/lib/utils'
+import { useCan } from '@/lib/api/permissions'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
 const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other']
@@ -85,8 +86,11 @@ export function ClinicalCard({
   // Orderable treatments, grouped by the desk that carries them out.
   const tests = treatments.filter((x) => x.orderStation)
   const desks = [...new Set(tests.map((x) => x.orderStation!))]
+  const can = useCan(user)
   const clinician =
-    (user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager') && !closed
+    (user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager') &&
+    !closed &&
+    can('clinical.write')
   // Lab / ultrasound staff (and clinicians) record results; reception and the cashier do not.
   const canResult = !closed && user.role !== 'receptionist' && user.role !== 'cashier'
   const [resultFor, setResultFor] = useState<string | null>(null)
@@ -278,7 +282,7 @@ export function ClinicalCard({
       size="sm"
       variant={mode === k ? 'primary' : 'default'}
       onClick={() => setMode(mode === k ? null : k)}
-      disabled={!clinician}
+      disabled={!clinician || (k === 'test' && !can('orders.write'))}
     >
       {icon}
       {label}

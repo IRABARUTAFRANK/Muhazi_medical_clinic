@@ -1216,7 +1216,7 @@ await step(
       await as(staff.manager)
       await db.query(`select take_payment($1, 'cash', 100)`, [enc.id])
     } catch (e) {
-      refused = /only the cashier/.test(String(e.message))
+      refused = /only the cashier|may not take payments/.test(String(e.message))
     }
     await as(staff.cashier)
     await db.query(`select take_payment($1, 'cash', 100)`, [enc.id])
@@ -1842,6 +1842,42 @@ await step('0053: reception registers a file for a booking; no visit, no queue',
   ])
   if (!r.file_number || visits.n !== 0) throw new Error(JSON.stringify({ r, visits }))
   return `file ${r.file_number}, no visit opened`
+})
+
+// ---------------------------------------------------------------- 0054: who may do what
+await step('0054: the manager locks payments for reception, allows one receptionist, locks one cashier', async () => {
+  const mine = async (who) => {
+    await as(who)
+    const r = (await one(`select my_permissions() as p`)).p
+    await asAdmin()
+    return r.includes('payment.take')
+  }
+  const before = await mine(staff.receptionist)
+  await as(staff.manager)
+  await db.query(`select set_role_permission('receptionist', 'payment.take', false)`)
+  const locked = await mine(staff.receptionist)
+  await as(staff.manager)
+  await db.query(`select set_staff_permission($1, 'payment.take', true)`, [staff.receptionist])
+  const exception = await mine(staff.receptionist)
+  await as(staff.manager)
+  await db.query(`select set_staff_permission($1, 'payment.take', false)`, [staff.cashier])
+  const cashierLocked = await mine(staff.cashier)
+  let managerRefused = false
+  await as(staff.manager)
+  try {
+    await db.query(`select set_role_permission('manager', 'payment.take', false)`)
+  } catch (e) {
+    managerRefused = /keeps every feature/.test(e.message)
+  }
+  // back to the defaults
+  await db.query(`select set_staff_permission($1, 'payment.take', null)`, [staff.receptionist])
+  await db.query(`select set_staff_permission($1, 'payment.take', null)`, [staff.cashier])
+  await db.query(`select set_role_permission('receptionist', 'payment.take', true)`)
+  const m = (await one(`select permission_matrix() as m`)).m
+  await asAdmin()
+  if (!before || locked || !exception || cashierLocked || !managerRefused || !m.roles.receptionist.includes('payment.take'))
+    throw new Error(JSON.stringify({ before, locked, exception, cashierLocked, managerRefused }))
+  return 'reception: yes → locked → one receptionist allowed; one cashier locked; manager cannot be locked'
 })
 
 finish()

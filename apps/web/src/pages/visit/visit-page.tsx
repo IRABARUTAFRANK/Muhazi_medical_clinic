@@ -34,6 +34,7 @@ import { useMyCover } from '@/lib/api/cover'
 import { useVisitRouting } from '@/lib/api/referrals'
 import { ClinicalCard } from './clinical-card'
 import { WhereNextCard } from './where-next-card'
+import { useCan } from '@/lib/api/permissions'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -70,6 +71,8 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const isReception = user.role === 'receptionist'
   // The cashier takes the payment; vitals, treatments and the clinical record are not theirs.
   const isCashier = user.role === 'cashier'
+  // What the manager allows this person (Settings → Who may do what).
+  const can = useCan(user)
   const weight = vitals.find((v) => v.code === 'weight')
   // A finished visit opens read-only (it stays in the patient file).
   const closed = !!header?.closed
@@ -188,7 +191,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                   </Chip>
                 ))}
                 <span className="flex-1" />
-                {!addingVitals && !closed && !isCashier && (
+                {!addingVitals && !closed && !isCashier && can('vitals.write') && (
                   <Button size="sm" onClick={() => setAddingVitals(true)}>
                     <Activity size={14} aria-hidden="true" />
                     {t(vitals.length ? 'vitalsForm.edit' : 'vitalsForm.add')}
@@ -202,15 +205,19 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               )}
             </Card>
 
-            {!closed && vitals.length === 0 && !addingVitals && !isCashier && (
-              <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
-                <Activity size={18} aria-hidden="true" />
-                <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
-                <Button size="sm" variant="primary" onClick={() => setAddingVitals(true)}>
-                  {t('vitalsForm.add')}
-                </Button>
-              </p>
-            )}
+            {!closed &&
+              vitals.length === 0 &&
+              !addingVitals &&
+              !isCashier &&
+              can('vitals.write') && (
+                <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+                  <Activity size={18} aria-hidden="true" />
+                  <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
+                  <Button size="sm" variant="primary" onClick={() => setAddingVitals(true)}>
+                    {t('vitalsForm.add')}
+                  </Button>
+                </p>
+              )}
             {closed && (
               <p className="bg-green-bg text-green m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
                 <CheckCircle2 size={18} aria-hidden="true" />
@@ -426,7 +433,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
               )}
 
               <div className="flex flex-col gap-4">
-                {(user.role === 'cashier' || user.role === 'receptionist') && bill && !closed && (
+                {can('payment.take') && bill && !closed && (
                   <PaymentCard
                     bill={bill}
                     onPay={async (input) => {
@@ -448,7 +455,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                 {isCashier && !closed && (
                   <p className="text-ink-3 m-0 text-[13px]">{t('visit.cashierNote')}</p>
                 )}
-                {!isReception && !isCashier && !closed && (
+                {!isReception && !isCashier && !closed && can('charge.write') && (
                   <AddChargeCard
                     treatments={treatments}
                     myDepartments={isManagerNav ? [] : myDepartments}

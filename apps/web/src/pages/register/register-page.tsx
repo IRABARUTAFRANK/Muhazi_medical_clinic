@@ -27,6 +27,7 @@ import { navForUser } from '@/lib/nav'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
+import { useCan } from '@/lib/api/permissions'
 
 /**
  * Registration from any station (MoH workflow). Normal path: the patient is queued at triage
@@ -65,6 +66,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
   // The returning patient whose visit waits for "Yes" (a ticket, a queue, a new bill).
   const [confirmFor, setConfirmFor] = useState<PatientHit | null>(null)
   const nextDesk: Station = emergency ? station : triageFirst ? 'triage' : station
+  const mayStart = useCan(user)('visit.start')
 
   const startVisit = async (p: PatientHit) => {
     setError(null)
@@ -86,6 +88,11 @@ export function RegisterPage({ user }: { user: StaffUser }) {
           lead={t('register.lead')}
         />
 
+        {!mayStart && (
+          <p className="bg-amber-bg text-amber m-0 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+            {t('perms.blocked.visitBanner')}
+          </p>
+        )}
         {/* Visit options apply to both an existing and a new patient */}
         <Card className={cn(emergency && 'border-red')}>
           <CardBody className="gap-3">
@@ -186,7 +193,10 @@ export function RegisterPage({ user }: { user: StaffUser }) {
                     <Button
                       size="sm"
                       variant={emergency ? 'danger' : 'primary'}
-                      disabled={actions.startVisit.isPending || confirmFor?.id === p.id}
+                      disabled={
+                        actions.startVisit.isPending || confirmFor?.id === p.id || !mayStart
+                      }
+                      title={mayStart ? undefined : t('perms.blocked.visit')}
                       onClick={() => setConfirmFor(p)}
                     >
                       <Ticket size={16} aria-hidden="true" />
@@ -218,6 +228,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
             onDone={setResult}
             describe={describe}
             nurse={user.role === 'nurse'}
+            blocked={!mayStart}
           />
         </div>
       </main>
