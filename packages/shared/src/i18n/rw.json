@@ -1338,7 +1338,7 @@
     "addNote": "Icyitonderwa",
     "addDx": "Indwara",
     "addRx": "Imiti",
-    "addTest": "Ibizamini / ekografi",
+    "addTest": "Ubusabe",
     "note": "Icyitonderwa",
     "notePh": "Icyamuzanye, amateka, ibyagaragaye mu isuzuma, gahunda…",
     "saveNote": "Bika icyitonderwa",
@@ -1438,7 +1438,7 @@
     "resultSaved": "Igisubizo cyabitswe; muganga wagisabye yamenyeshejwe.",
     "icdHint": "ICD-10 ni kode mpuzamahanga y’indwara (B54 = malariya, A01.0 = tifoyide). Si ngombwa; iyo ishyizwemo, raporo zibara indwara nk’uko Minisiteri y’Ubuzima ibikora.",
     "provisionalHint": "Kanda “By’agateganyo” iyo ukeka indwara ariko utarayemeza (urugero utegereje ikizamini). Ntukande iyo indwara yemejwe.",
-    "testHint": "Nta ndwara isabwa kubanza kumenywa: saba ibizamini kugira ngo umenye impamvu. Hitamo kimwe cyangwa byinshi; ibisubizo bijya muri dosiye y’umurwayi.",
+    "testHint": "Nta ndwara isabwa kubanza kumenywa: saba ibikenewe kugira ngo umenye impamvu. Umurwayi ajya aho bikorerwa; ibisubizo bijya muri dosiye.",
     "noTests": "Nta kizamini cya laboratwari cyangwa echographie kiri mu rutonde.",
     "reasonPh": "urugero: umuriro iminsi 5, impamvu ntiramenyekana",
     "sendNow": "Ohereza umurwayi ubu, agaruke kuri njye ibisubizo nibimara kuboneka",
@@ -1707,7 +1707,7 @@
     "cat": {
       "open": "Ibyiciro",
       "title": "Ibyiciro by’ubuvuzi",
-      "lead": "Ibyiciro byanyu bwite (Kubyara, Amaso, Ibizamini by’amaraso…). “Ubwoko bwa serivisi” bubwira sisitemu icyo ikora ku buvuzi bwabyo: kubwishyuza ku ruzinduko, cyangwa kohereza umurwayi muri laboratwari cyangwa kuri ekografi gukorerwa ikizamini gifite igisubizo.",
+      "lead": "Ibyiciro byanyu bwite (Kubyara, Amaso, Ibizamini by’amaraso…). Kuri buri cyiciro, hitamo uko ubuvuzi bwacyo bukorwa: bwishyurwa ku ruzinduko, cyangwa busabwa na muganga bugakorerwa aho uhitamo (Laboratwari, Ekografi, Abaforomo, Amenyo…).",
       "new": "Icyiciro gishya",
       "nameEn": "Izina (Icyongereza)",
       "nameKin": "Izina (Ikinyarwanda)",
@@ -1737,7 +1737,7 @@
       "confirmDelete": "Gusiba icyiciro “{{name}}”?",
       "saved": "Icyiciro “{{name}}” cyabitswe.",
       "deleted": "Icyiciro “{{name}}” cyasibwe.",
-      "kindChange": "Guhindura ubwoko bwa serivisi bihindura uko ubuvuzi {{count}} bwacyo bukora (urugero buhinduka ibizamini byoherezwa muri labo, cyangwa bikareka kuba byo).",
+      "kindChange": "Guhindura uko bukorwa bihindura ubuvuzi {{count}} bwacyo icyarimwe (urugero buhinduka ubusabe bwoherezwa aho, cyangwa bikareka kuba bwo).",
       "errors": {
         "name": "Ha icyiciro izina (nibura inyuguti 2)."
       },
@@ -1746,7 +1746,15 @@
         "lab": "Ikizamini cya laboratwari (umurwayi yoherezwa muri labo, hakaboneka igisubizo)",
         "imaging": "Ekografi (umurwayi yoherezwa kuri ekografi, hakaboneka igisubizo)",
         "bed": "Kurara ku buriri"
-      }
+      },
+      "how": "Ubuvuzi bwacyo bukorwa bute?",
+      "charged": "Bwishyurwa ku ruzinduko",
+      "chargedHint": "Muganga cyangwa umuforomo abwongera kuri fagitire (Ongeramo ubuvuzi).",
+      "ordered": "Busabwa, bugakorerwa ahandi",
+      "orderedHint": "Muganga arabusaba; umurwayi yoherezwa aho wahisemo, bakandika igisubizo; hanyuma umurwayi agasubira kwa muganga.",
+      "desk": "Bukorerwa",
+      "deskHint": "Ubusabe bujya kuri {{desk}}: umurwayi ashyirwa ku murongo waho, abakozi baho bakandika igisubizo muri dosiye.",
+      "orderedAt": "Busabwa · bukorerwa kuri {{desk}}"
     }
   },
   "desk": {

@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import {
+  BedDouble,
   FlaskConical,
   Lock,
   Pencil,
   Plus,
-  ScanLine,
-  Stethoscope,
+  Receipt,
+  Send,
   Tags,
   Trash2,
-  BedDouble,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -17,24 +17,25 @@ import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import {
+  ORDER_DESKS,
   categoryName,
+  handlingLabel,
   useCategories,
   useCategoryActions,
   type Category,
-  type CategoryKind,
+  type OrderDesk,
   type Treatment,
 } from '@/lib/api/catalogue'
 import { suggestNames } from '@/lib/medical-glossary'
+import { cn } from '@/lib/utils'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
-const KIND_ICON = { treatment: Stethoscope, lab: FlaskConical, imaging: ScanLine, bed: BedDouble }
-/** Kinds the manager may choose; bed stays have their own built-in category. */
-const CHOOSABLE: CategoryKind[] = ['treatment', 'lab', 'imaging']
 
-/**
- * The clinic's own categories of treatments (Prices → Categories): create, rename, change the
- * kind, delete when empty. The kind decides how the treatments work: charged on the visit, or
- * ordered as a laboratory / ultrasound test with a result. The bed category is built in.
+/*
+ * The clinic's own categories of treatments (Prices → Categories): create, rename, delete when
+ * empty, and say how their treatments are handled — charged on the visit, or ordered by the
+ * doctor and done at a desk the manager chooses (the patient is sent there, the desk writes the
+ * result, the patient comes back to the doctor). The bed category is built in.
  */
 export function CategoriesCard({
   treatments,
@@ -103,7 +104,7 @@ export function CategoriesCard({
       </CardBody>
       {categories.map((c) => {
         const n = count(c)
-        const Icon = KIND_ICON[c.kind]
+        const Icon = c.kind === 'bed' ? BedDouble : c.orderStation ? FlaskConical : Receipt
         if (editing !== 'new' && editing?.id === c.id)
           return (
             <CardBody key={c.id} className="border-border border-t">
@@ -121,19 +122,15 @@ export function CategoriesCard({
         return (
           <Row key={c.id} className="flex-wrap gap-x-3 gap-y-1 py-2">
             <Icon size={16} aria-hidden="true" className="text-primary flex-none" />
-            <span className="min-w-[180px] flex-1">
+            <span className="min-w-45 flex-1">
               <span className="block font-semibold">{categoryName(c, i18n.language)}</span>
               <span className="text-ink-3 text-xs">
-                {[
-                  c.kind === 'treatment' ? t('prices.cat.kinds.treatment') : null,
-                  t('prices.cat.count', { count: n }),
-                  c.baseGroup ? t('prices.cat.builtIn') : null,
-                ]
+                {[t('prices.cat.count', { count: n }), c.baseGroup ? t('prices.cat.builtIn') : null]
                   .filter(Boolean)
                   .join(' · ')}
               </span>
             </span>
-            {c.kind !== 'treatment' && <Chip>{t(`prices.cat.kinds.${c.kind}`)}</Chip>}
+            <Chip>{handlingLabel(c, t)}</Chip>
             {c.kind === 'bed' ? (
               <span
                 className="text-ink-3 inline-flex items-center gap-1 text-xs"
@@ -174,7 +171,7 @@ function CategoryForm({
   onSaved,
 }: {
   category: Category | null
-  /** Treatments in it (a kind change affects them). */
+  /** Treatments in it (a change of handling affects them). */
   used: number
   onCancel: () => void
   onSaved: (name: string) => void
@@ -185,8 +182,13 @@ function CategoryForm({
   const [nameKin, setNameKin] = useState(category?.nameKin ?? '')
   const [nameFr, setNameFr] = useState(category?.nameFr ?? '')
   const [touched, setTouched] = useState({ kin: !!category, fr: !!category })
-  const [kind, setKind] = useState<CategoryKind>(category?.kind ?? 'treatment')
+  const [ordered, setOrdered] = useState(!!category?.orderStation)
+  const [desk, setDesk] = useState<OrderDesk>(
+    (category?.orderStation as OrderDesk | null) ?? 'laboratory',
+  )
   const [error, setError] = useState<string | null>(null)
+  const changed =
+    !!category && (ordered ? desk : null) !== (category.orderStation ?? null) && used > 0
 
   const onEnglish = (v: string) => {
     setNameEn(v)
@@ -199,16 +201,47 @@ function CategoryForm({
     setError(null)
     if (nameEn.trim().length < 2) return setError(t('prices.cat.errors.name'))
     try {
-      await actions.save.mutateAsync({ id: category?.id, nameEn, nameKin, nameFr, kind })
+      await actions.save.mutateAsync({
+        id: category?.id,
+        nameEn,
+        nameKin,
+        nameFr,
+        orderStation: ordered ? desk : null,
+      })
       onSaved(nameEn.trim())
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
   }
 
+  const choice = (
+    on: boolean,
+    value: boolean,
+    icon: React.ReactNode,
+    title: string,
+    hint: string,
+  ) => (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={on}
+      onClick={() => setOrdered(value)}
+      className={cn(
+        'flex min-w-0 flex-1 items-start gap-2.5 rounded-xl border p-3 text-left',
+        on ? 'border-primary bg-primary/5 ring-primary/30 ring-2' : 'border-border hover:bg-hover',
+      )}
+    >
+      <span className={cn('mt-0.5 flex-none', on ? 'text-primary' : 'text-ink-3')}>{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-[14px] font-bold">{title}</span>
+        <span className="text-ink-2 block text-[13px]">{hint}</span>
+      </span>
+    </button>
+  )
+
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field
           label={t('prices.cat.nameEn')}
           value={nameEn}
@@ -232,20 +265,46 @@ function CategoryForm({
             setNameFr(e.target.value)
           }}
         />
-        <Select
-          label={t('prices.cat.kind')}
-          value={kind}
-          onChange={(e) => setKind(e.target.value as CategoryKind)}
-        >
-          {CHOOSABLE.map((k) => (
-            <option key={k} value={k}>
-              {t(`prices.cat.kindsLong.${k}`)}
-            </option>
-          ))}
-        </Select>
       </div>
-      <p className="text-ink-3 m-0 text-xs">{t(`prices.cat.kindHint.${kind}`)}</p>
-      {category && kind !== category.kind && used > 0 && (
+      <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+        <legend className="text-ink-2 mb-1 text-[13px] font-semibold">{t('prices.cat.how')}</legend>
+        <div className="flex flex-col gap-2 sm:flex-row" role="radiogroup">
+          {choice(
+            !ordered,
+            false,
+            <Receipt size={18} aria-hidden="true" />,
+            t('prices.cat.charged'),
+            t('prices.cat.chargedHint'),
+          )}
+          {choice(
+            ordered,
+            true,
+            <Send size={18} aria-hidden="true" />,
+            t('prices.cat.ordered'),
+            t('prices.cat.orderedHint'),
+          )}
+        </div>
+        {ordered && (
+          <Select
+            label={t('prices.cat.desk')}
+            value={desk}
+            onChange={(e) => setDesk(e.target.value as OrderDesk)}
+            wrapperClassName="sm:max-w-sm"
+          >
+            {ORDER_DESKS.map((d) => (
+              <option key={d} value={d}>
+                {t(`register.stations.${d}`)}
+              </option>
+            ))}
+          </Select>
+        )}
+        {ordered && (
+          <p className="text-ink-3 m-0 text-xs">
+            {t('prices.cat.deskHint', { desk: t(`register.stations.${desk}`) })}
+          </p>
+        )}
+      </fieldset>
+      {changed && (
         <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
           {t('prices.cat.kindChange', { count: used })}
         </p>

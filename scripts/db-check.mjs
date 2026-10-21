@@ -1777,6 +1777,57 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0052: the clinic chooses the desk
+await step(
+  '0052: a category done at Nursing: ordered, sent to Nursing, not on the lab list, back to the doctor',
+  async () => {
+    await as(staff.manager)
+    const cat = (
+      await one(
+        `select save_category(null, 'Physiotherapy', null, null, 'treatment', 'nursing') as id`,
+      )
+    ).id
+    const svc = (await one(`select upsert_service(null, 'Physio session', 'other', 4000) as id`)).id
+    await db.query(`select set_service_category($1, $2)`, [svc, cat])
+    const row = await one(`select order_station from catalogue_services where id = $1`, [svc])
+    await as(staff.receptionist)
+    const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+    await as(staff.doctor)
+    await db.query(`select order_tests($1, $2, 'back pain', 'consultation')`, [v.id, [svc]])
+    await asAdmin()
+    const atNursing = await one(
+      `select return_station from queue_entry where encounter_id = $1 and station = 'nursing' and finished_at is null`,
+      [v.id],
+    )
+    const req = await one(
+      `select id, station from service_request where encounter_id = $1 and service_id = $2`,
+      [v.id, svc],
+    )
+    await as(staff.lab_tech)
+    const lab = (await one(`select lab_worklist('open') as w`)).w
+    const onLabList = JSON.stringify(lab).includes(req.id)
+    await as(staff.nurse)
+    await db.query(
+      `select record_result($1, 'Session done, mobility better', 'Continue at home', true)`,
+      [req.id],
+    )
+    await asAdmin()
+    const back = await one(
+      `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [v.id],
+    )
+    if (
+      row.order_station !== 'nursing' ||
+      req.station !== 'nursing' ||
+      atNursing?.return_station !== 'consultation' ||
+      onLabList ||
+      back.n !== 1
+    )
+      throw new Error(JSON.stringify({ row, req, atNursing, onLabList, back }))
+    return 'Physiotherapy → Nursing; not on the lab list; result by the nurse → back to the doctor'
+  },
+)
+
 finish()
 
 function finish() {

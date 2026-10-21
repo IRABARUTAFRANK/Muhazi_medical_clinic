@@ -1150,7 +1150,7 @@
     "cat": {
       "open": "Categories",
       "title": "Categories of treatments",
-      "lead": "Your own categories (Maternity, Eye care, Blood tests…). “Service type” tells the system what to do with their treatments: charge them on the visit, or send the patient to the laboratory or ultrasound for a test with a result.",
+      "lead": "Your own categories (Maternity, Eye care, Blood tests…). For each, choose how its treatments are handled: charged on the visit, or ordered by the doctor and done at a desk you choose (Laboratory, Ultrasound, Nursing, Dental…).",
       "new": "New category",
       "nameEn": "Name (English)",
       "nameKin": "Name (Kinyarwanda)",
@@ -1180,7 +1180,7 @@
       "confirmDelete": "Delete the category “{{name}}”?",
       "saved": "Category “{{name}}” saved.",
       "deleted": "Category “{{name}}” deleted.",
-      "kindChange": "Changing the service type changes how its {{count}} treatment(s) work (for example they become tests sent to the lab, or stop being).",
+      "kindChange": "Changing how they are handled changes its {{count}} treatment(s) at once (for example they become orders sent to that desk, or stop being).",
       "errors": {
         "name": "Give the category a name (at least 2 letters)."
       },
@@ -1189,7 +1189,15 @@
         "lab": "Laboratory test (sent to the lab, with a result)",
         "imaging": "Ultrasound test (sent to ultrasound, with a result)",
         "bed": "Bed stay"
-      }
+      },
+      "how": "How are its treatments handled?",
+      "charged": "Charged on the visit",
+      "chargedHint": "The doctor or nurse adds it to the bill (Add a treatment).",
+      "ordered": "Ordered, done at another desk",
+      "orderedHint": "The doctor orders it; the patient is sent to the desk you choose, which writes the result; then the patient returns to the doctor.",
+      "desk": "Done at",
+      "deskHint": "Orders go to {{desk}}: the patient is queued there and its staff write the result into the file.",
+      "orderedAt": "Ordered · done at {{desk}}"
     }
   },
   "visit": {
@@ -1589,7 +1597,7 @@
     "addNote": "Note",
     "addDx": "Diagnosis",
     "addRx": "Prescription",
-    "addTest": "Lab / imaging",
+    "addTest": "Orders",
     "note": "Note",
     "notePh": "Complaint, history, examination findings, plan…",
     "saveNote": "Save note",
@@ -1689,7 +1697,7 @@
     "resultSaved": "Result saved; the doctor who ordered it is told.",
     "icdHint": "ICD-10 is the international code of the disease (B54 = malaria, A01.0 = typhoid). It is optional; with it, reports count diseases the same way as the Ministry of Health.",
     "provisionalHint": "Tick “Provisional” when you suspect the disease but have not confirmed it yet (for example while waiting for a test). Leave it unticked when the diagnosis is confirmed.",
-    "testHint": "No diagnosis is needed: order the tests to find the cause. Choose one or several; the results are written into the patient file.",
+    "testHint": "No diagnosis is needed: order what you need to find the cause. The patient goes to the desk that does it; the results are written into the file.",
     "noTests": "No laboratory or ultrasound test is in the catalogue yet.",
     "reasonPh": "e.g. fever for 5 days, cause not found yet",
     "sendNow": "Send the patient now, and back to me when the results are ready",

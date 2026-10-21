@@ -1150,7 +1150,7 @@
     "cat": {
       "open": "Catégories",
       "title": "Catégories de soins",
-      "lead": "Vos propres catégories (Maternité, Soins des yeux, Analyses de sang…). « Type de service » indique au système quoi faire de leurs soins : les facturer sur la visite, ou envoyer le patient au laboratoire ou à l’échographie pour un examen avec un résultat.",
+      "lead": "Vos propres catégories (Maternité, Soins des yeux, Analyses de sang…). Pour chacune, choisissez comment ses soins sont gérés : facturés sur la visite, ou demandés par le médecin et faits à un poste que vous choisissez (Laboratoire, Échographie, Soins infirmiers, Dentaire…).",
       "new": "Nouvelle catégorie",
       "nameEn": "Nom (anglais)",
       "nameKin": "Nom (kinyarwanda)",
@@ -1180,7 +1180,7 @@
       "confirmDelete": "Supprimer la catégorie « {{name}} » ?",
       "saved": "Catégorie « {{name}} » enregistrée.",
       "deleted": "Catégorie « {{name}} » supprimée.",
-      "kindChange": "Changer le type de service change le fonctionnement de ses {{count}} soin(s) (par exemple ils deviennent des examens envoyés au labo, ou ne le sont plus).",
+      "kindChange": "Changer la gestion change ses {{count}} soin(s) d’un coup (par exemple ils deviennent des demandes envoyées à ce poste, ou ne le sont plus).",
       "errors": {
         "name": "Donnez un nom à la catégorie (au moins 2 lettres)."
       },
@@ -1189,7 +1189,15 @@
         "lab": "Examen de laboratoire (envoyé au labo, avec un résultat)",
         "imaging": "Échographie (envoyé à l’échographie, avec un résultat)",
         "bed": "Séjour au lit"
-      }
+      },
+      "how": "Comment ses soins sont-ils gérés ?",
+      "charged": "Facturé sur la visite",
+      "chargedHint": "Le médecin ou l’infirmier l’ajoute à la facture (Ajouter un soin).",
+      "ordered": "Demandé, fait à un autre poste",
+      "orderedHint": "Le médecin le demande ; le patient est envoyé au poste choisi, qui écrit le résultat ; puis le patient revient chez le médecin.",
+      "desk": "Fait à",
+      "deskHint": "Les demandes vont à {{desk}} : le patient y est mis en file et son personnel écrit le résultat dans le dossier.",
+      "orderedAt": "Demandé · fait à {{desk}}"
     }
   },
   "visit": {
@@ -1589,7 +1597,7 @@
     "addNote": "Note",
     "addDx": "Diagnostic",
     "addRx": "Ordonnance",
-    "addTest": "Labo / imagerie",
+    "addTest": "Demandes",
     "note": "Note",
     "notePh": "Plainte, antécédents, examen, plan…",
     "saveNote": "Enregistrer la note",
@@ -1689,7 +1697,7 @@
     "resultSaved": "Résultat enregistré ; le médecin prescripteur est prévenu.",
     "icdHint": "La CIM-10 est le code international de la maladie (B54 = paludisme, A01.0 = typhoïde). Facultatif ; avec lui, les rapports comptent les maladies comme le Ministère de la Santé.",
     "provisionalHint": "Cochez « Provisoire » quand vous soupçonnez la maladie sans l’avoir confirmée (par exemple en attendant un examen). Laissez décoché quand le diagnostic est confirmé.",
-    "testHint": "Aucun diagnostic n’est nécessaire : demandez les examens pour trouver la cause. Choisissez-en un ou plusieurs ; les résultats vont dans le dossier du patient.",
+    "testHint": "Aucun diagnostic n’est nécessaire : demandez ce qu’il faut pour trouver la cause. Le patient va au poste qui le fait ; les résultats vont dans le dossier.",
     "noTests": "Aucun examen de laboratoire ou d’échographie dans le catalogue pour l’instant.",
     "reasonPh": "ex. fièvre depuis 5 jours, cause non trouvée",
     "sendNow": "Envoyer le patient maintenant, et me le renvoyer quand les résultats sont prêts",

@@ -424,6 +424,8 @@ export interface TestOrder {
   id: string
   test: string
   category: 'lab' | 'imaging'
+  /** The desk that carries it out (migration 0052). */
+  station?: string | null
   status: string
   reason: string | null
   at: string

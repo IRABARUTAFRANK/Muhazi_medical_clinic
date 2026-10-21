@@ -82,7 +82,9 @@ export function ClinicalCard({
   const actions = useClinicalActions(encounterId)
   const { data: items = [] } = useItems()
   const { data: treatments = [] } = useTreatments(true)
-  const tests = treatments.filter((x) => x.group === 'lab' || x.group === 'imaging')
+  // Orderable treatments, grouped by the desk that carries them out.
+  const tests = treatments.filter((x) => x.orderStation)
+  const desks = [...new Set(tests.map((x) => x.orderStation!))]
   const clinician =
     (user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager') && !closed
   // Lab / ultrasound staff (and clinicians) record results; reception and the cashier do not.
@@ -532,17 +534,13 @@ export function ClinicalCard({
         {mode === 'test' && (
           <form onSubmit={submitOrder} className="flex flex-col gap-3">
             <p className="text-ink-3 m-0 text-xs">{t('clinical.testHint')}</p>
-            {(['lab', 'imaging'] as const).map((g) => {
-              const list = tests.filter((s) => (g === 'imaging') === (s.group === 'imaging'))
+            {desks.map((g) => {
+              const list = tests.filter((s) => s.orderStation === g)
               if (list.length === 0) return null
               return (
                 <fieldset key={g} className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
                   <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
-                    {t(
-                      g === 'imaging'
-                        ? 'register.stations.ultrasound'
-                        : 'register.stations.laboratory',
-                    )}
+                    {t(`register.stations.${g}`, { defaultValue: g })}
                   </legend>
                   <div className="flex flex-wrap gap-2">
                     {list.map((s) => {
@@ -692,9 +690,11 @@ export function ClinicalCard({
         data.orders.map((o) => (
           <Row key={o.id} className="gap-3 py-2">
             <Badge tone={o.result ? 'green' : 'blue'} dot={false}>
-              {o.category === 'imaging'
-                ? t('register.stations.ultrasound')
-                : t('register.stations.laboratory')}
+              {o.station
+                ? t(`register.stations.${o.station}`, { defaultValue: o.station })
+                : o.category === 'imaging'
+                  ? t('register.stations.ultrasound')
+                  : t('register.stations.laboratory')}
             </Badge>
             <span className="min-w-0 flex-1">
               <span className="block font-semibold">

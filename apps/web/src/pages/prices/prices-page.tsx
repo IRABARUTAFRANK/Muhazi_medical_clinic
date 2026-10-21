@@ -54,6 +54,7 @@ import {
   type ServiceGroup,
   categoryName,
   groupOfCategory,
+  handlingLabel,
   useCategories,
   type Treatment,
 } from '@/lib/api/catalogue'
@@ -583,7 +584,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 <span className="inline-flex items-center gap-2">
                   <Tag size={16} aria-hidden="true" />
                   {categoryName(c, i18n.language)}
-                  {c.kind !== 'treatment' && <Chip>{t(`prices.cat.kinds.${c.kind}`)}</Chip>}
+                  <Chip>{handlingLabel(c, t)}</Chip>
                 </span>
                 <span className="text-ink-3 text-xs">
                   {visible.filter((x) => x.categoryId === c.id).length}
@@ -1115,7 +1116,7 @@ function TreatmentForm({
                 .map((c) => (
                   <option key={c.id} value={c.id}>
                     {categoryName(c, i18n.language)}
-                    {c.kind !== 'treatment' ? ` · ${t(`prices.cat.kinds.${c.kind}`)}` : ''}
+                    {c.orderStation || c.kind === 'bed' ? ` · ${handlingLabel(c, t)}` : ''}
                   </option>
                 ))}
             </Select>

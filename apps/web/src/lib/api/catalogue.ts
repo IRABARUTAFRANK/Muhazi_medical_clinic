@@ -38,7 +38,35 @@ export interface Category {
   kind: CategoryKind
   /** The former fixed group it started as (null = one the clinic created). */
   baseGroup: ServiceGroup | null
+  /** Ordered by the doctor and done at this desk; null = charged on the visit. */
+  orderStation: OrderDesk | null
 }
+
+/** Desks that can carry out an order (the patient is sent there, the desk writes the result). */
+export const ORDER_DESKS = [
+  'laboratory',
+  'ultrasound',
+  'nursing',
+  'dental',
+  'theatre',
+  'consultation',
+] as const
+export type OrderDesk = (typeof ORDER_DESKS)[number]
+
+/** "Charged on the visit", "Ordered · done at Nursing", "Bed stay". */
+export function handlingLabel(
+  c: Pick<Category, 'kind' | 'orderStation'>,
+  t: (k: string, o?: Record<string, unknown>) => string,
+) {
+  if (c.kind === 'bed') return t('prices.cat.kinds.bed')
+  if (c.orderStation)
+    return t('prices.cat.orderedAt', { desk: t(`register.stations.${c.orderStation}`) })
+  return t('prices.cat.charged')
+}
+
+/** The kind the database keeps for a desk (lab / imaging stay recognisable). */
+const kindForDesk = (desk: OrderDesk | null): CategoryKind =>
+  desk === 'laboratory' ? 'lab' : desk === 'ultrasound' ? 'imaging' : 'treatment'
 
 /** The internal group of a category's treatments, derived the same way as in the database. */
 export function groupOfCategory(c: Pick<Category, 'kind' | 'baseGroup'>): ServiceGroup {
@@ -85,6 +113,7 @@ const builtInCategories = (): Category[] =>
     nameFr,
     kind,
     baseGroup: g,
+    orderStation: kind === 'lab' ? 'laboratory' : kind === 'imaging' ? 'ultrasound' : null,
   }))
 /** "group:lab" → "lab"; a real category id → null. */
 export const builtInGroup = (categoryId: string): ServiceGroup | null =>
@@ -98,21 +127,28 @@ export function useCategories() {
     queryKey: CATEGORIES,
     queryFn: async (): Promise<Category[]> => {
       if (!supabase) return [...sampleCategories]
-      const { data, error } = await supabase
-        .from('service_category')
-        .select('id, name_en, name_kin, name_fr, kind, base_group')
-        .is('deleted_at', null)
-        .order('sort')
-        .order('name_en')
+      const query = (cols: string) =>
+        supabase!
+          .from('service_category')
+          .select(cols)
+          .is('deleted_at', null)
+          .order('sort')
+          .order('name_en')
+      let { data, error } = await query(
+        'id, name_en, name_kin, name_fr, kind, base_group, order_station',
+      )
+      // before migration 0052 there is no order_station: the kind says lab / ultrasound
+      if (error) ({ data, error } = await query('id, name_en, name_kin, name_fr, kind, base_group'))
       if (error) return builtInCategories()
       return (
-        data as {
+        data as unknown as {
           id: string
           name_en: string
           name_kin: string | null
           name_fr: string | null
           kind: CategoryKind
           base_group: ServiceGroup | null
+          order_station?: OrderDesk | null
         }[]
       ).map((r) => ({
         id: r.id,
@@ -121,6 +157,14 @@ export function useCategories() {
         nameFr: r.name_fr,
         kind: r.kind,
         baseGroup: r.base_group,
+        orderStation:
+          r.order_station !== undefined
+            ? r.order_station
+            : r.kind === 'lab'
+              ? 'laboratory'
+              : r.kind === 'imaging'
+                ? 'ultrasound'
+                : null,
       }))
     },
   })
@@ -135,8 +179,11 @@ export function useCategoryActions() {
       nameEn: string
       nameKin?: string
       nameFr?: string
-      kind: CategoryKind
+      /** The desk that carries out its orders; null = charged on the visit. */
+      orderStation: OrderDesk | null
     }): Promise<string> => {
+      const existingKind = sampleCategories.find((c) => c.id === input.id)?.kind
+      const kind = existingKind === 'bed' ? 'bed' : kindForDesk(input.orderStation)
       if (!supabase) {
         const existing = input.id ? sampleCategories.find((c) => c.id === input.id) : undefined
         if (
@@ -151,21 +198,33 @@ export function useCategoryActions() {
           nameEn: input.nameEn.trim(),
           nameKin: input.nameKin?.trim() || null,
           nameFr: input.nameFr?.trim() || null,
-          kind: input.kind,
+          kind,
           baseGroup: existing?.baseGroup ?? null,
+          orderStation: kind === 'bed' ? null : input.orderStation,
         }
         if (existing) Object.assign(existing, c)
         else sampleCategories.push(c)
-        for (const t of sampleTreatments) if (t.categoryId === c.id) t.group = groupOfCategory(c)
+        for (const t of sampleTreatments)
+          if (t.categoryId === c.id) {
+            t.group = groupOfCategory(c)
+            t.orderStation = c.orderStation
+          }
         return c.id
       }
-      const { data, error } = await supabase.rpc('save_category', {
+      const args = {
         p_id: input.id ?? null,
         p_name_en: input.nameEn.trim(),
         p_name_kin: input.nameKin?.trim() || null,
         p_name_fr: input.nameFr?.trim() || null,
-        p_kind: input.kind,
+        p_kind: kindForDesk(input.orderStation),
+      }
+      let { data, error } = await supabase.rpc('save_category', {
+        ...args,
+        p_order_station: input.orderStation,
       })
+      // before migration 0052 only the laboratory / ultrasound desks exist (by kind)
+      if (error && /save_category/.test(error.message))
+        ({ data, error } = await supabase.rpc('save_category', args))
       if (error) throw new Error(error.message)
       return String(data)
     },
@@ -202,6 +261,8 @@ export interface Treatment {
   group: ServiceGroup
   /** The clinic's category ("group:lab" for a starting category before migration 0049). */
   categoryId: string
+  /** Orderable: the desk that carries it out (null = charged on the visit). */
+  orderStation: string | null
   bookingCategory: CategoryId | null
   cashPrice: number | null
   /** Insurer-specific prices by payer id. */
@@ -269,6 +330,7 @@ const sampleTreatments: Treatment[] = [
     nameFr: 'Consultation générale',
     group: 'consultation',
     categoryId: 'group:consultation',
+    orderStation: null,
     bookingCategory: 'consultation',
     cashPrice: 8000,
     payerPrices: {},
@@ -288,6 +350,7 @@ const sampleTreatments: Treatment[] = [
     nameFr: 'Traitement du paludisme simple',
     group: 'consultation',
     categoryId: 'group:consultation',
+    orderStation: null,
     bookingCategory: null,
     cashPrice: 12000,
     payerPrices: {},
@@ -307,6 +370,7 @@ const sampleTreatments: Treatment[] = [
     nameFr: 'TDR paludisme',
     group: 'lab',
     categoryId: 'group:lab',
+    orderStation: 'laboratory',
     bookingCategory: 'laboratory',
     cashPrice: 2500,
     payerPrices: {},
@@ -326,6 +390,7 @@ const sampleTreatments: Treatment[] = [
     nameFr: 'Extraction dentaire',
     group: 'dental',
     categoryId: 'group:dental',
+    orderStation: null,
     bookingCategory: 'dental',
     cashPrice: 15000,
     payerPrices: {},
@@ -380,6 +445,7 @@ interface ServiceRow {
   department_ids?: string[] | null
   department_names?: string[] | null
   category_id?: string | null
+  order_station?: string | null
 }
 
 const TREATMENTS = ['catalogue', 'treatments'] as const
@@ -405,6 +471,14 @@ export function useTreatments(onlyActive = false) {
         nameFr: r.name_fr,
         group: r.service_group,
         categoryId: r.category_id ?? `group:${r.service_group}`,
+        orderStation:
+          r.order_station !== undefined
+            ? r.order_station
+            : r.service_group === 'lab'
+              ? 'laboratory'
+              : r.service_group === 'imaging'
+                ? 'ultrasound'
+                : null,
         bookingCategory: r.booking_category,
         cashPrice: r.cash_price == null ? null : Number(r.cash_price),
         payerPrices: Object.fromEntries(
@@ -476,6 +550,9 @@ export function useCatalogueTools() {
             nameFr: x.name_fr || null,
             group: x.group,
             categoryId: x.category ?? `group:${x.group}`,
+            orderStation:
+              sampleCategories.find((c) => c.id === (x.category ?? `group:${x.group}`))
+                ?.orderStation ?? null,
             bookingCategory: null,
             cashPrice: x.price,
             payerPrices: {},
@@ -766,6 +843,9 @@ export function useCatalogueActions() {
           nameFr: input.nameFr || null,
           group: input.group,
           categoryId: input.categoryId ?? `group:${input.group}`,
+          orderStation:
+            sampleCategories.find((c) => c.id === (input.categoryId ?? `group:${input.group}`))
+              ?.orderStation ?? null,
           bookingCategory: input.bookingCategory ?? null,
           cashPrice: input.cashPrice,
           payerPrices: Object.fromEntries(
