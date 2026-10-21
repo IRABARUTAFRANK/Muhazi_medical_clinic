@@ -81,8 +81,9 @@ export function CallsPanel({ user }: { user: StaffUser }) {
           !q.startedAt &&
           !q.takenBy &&
           (!q.assignedTo || q.assignedTo === c.fromId) &&
-          q.station !== 'cashier' &&
-          q.station !== 'pharmacy',
+          // waiting for a doctor, at triage or reception (not in the middle of a test or care)
+          (q.station === c.station ||
+            ['triage', 'reception', 'consultation', 'dental'].includes(q.station)),
       )
       .sort(
         (a, b) =>

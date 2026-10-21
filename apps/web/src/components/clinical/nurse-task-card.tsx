@@ -5,7 +5,7 @@ import { formatTime } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
-import { useDeskOps, useOpenTasks } from '@/lib/api/desk-ops'
+import { useDeskOps, useVisitTasks } from '@/lib/api/desk-ops'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const inAnHour = () => {
@@ -20,8 +20,8 @@ const inAnHour = () => {
 export function NurseTaskCard({ encounterId }: { encounterId: string }) {
   const { t } = useTranslation()
   const ops = useDeskOps()
-  const { data: tasks = [] } = useOpenTasks()
-  const mine = tasks.filter((x) => x.encounterId === encounterId)
+  // every open task of this visit, including the ones for the nurses
+  const { data: mine = [] } = useVisitTasks(encounterId)
   const [title, setTitle] = useState('')
   const [time, setTime] = useState(inAnHour)
   const [error, setError] = useState<string | null>(null)

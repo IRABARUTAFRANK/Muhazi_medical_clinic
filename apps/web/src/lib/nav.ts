@@ -66,6 +66,13 @@ export const NURSE_NAV: NavItem[] = [
 /** Stock: the pharmacy, the laboratory (reagents, supplies) and a doctor at the pharmacy desk. */
 const STOCK: NavItem = { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' }
 const atPharmacy = (user: StaffUser) => /pharm|farum/i.test(user.station ?? '')
+/** The person's own calendar (hours, days off, bookings). */
+const CALENDAR: NavItem = {
+  id: 'calendar',
+  labelKey: 'nav.calendar',
+  icon: 'calendar-days',
+  to: '/app/calendar',
+}
 /** Everyone in the clinic now, by desk. */
 const IN_CLINIC: NavItem = {
   id: 'visits',
@@ -107,7 +114,10 @@ const navForStaff = (user: StaffUser): NavItem[] =>
         : user.role === 'pharmacist'
           ? [...ROLE_HOME.pharmacist.nav, PATIENTS, HISTORY, NOTICES]
           : user.role === 'lab_tech'
-            ? [...ROLE_HOME.lab_tech.nav, STOCK, PATIENTS, HISTORY, NOTICES]
+            ? // sonographers keep their own calendar and have no stock to manage
+              user.dbRole === 'sonographer'
+              ? [...ROLE_HOME.lab_tech.nav, CALENDAR, PATIENTS, HISTORY, NOTICES]
+              : [...ROLE_HOME.lab_tech.nav, STOCK, PATIENTS, HISTORY, NOTICES]
             : user.role === 'doctor'
               ? [
                   ...ROLE_HOME.doctor.nav,

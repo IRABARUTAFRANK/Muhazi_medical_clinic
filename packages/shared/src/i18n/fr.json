@@ -1333,7 +1333,10 @@
       "paid": "Payé",
       "paidBy": "Payé · enregistré par {{name}} à {{time}}"
     },
-    "cashierNote": "Les signes vitaux, soins et médicaments sont ajoutés par les médecins et infirmiers. Ici, vous encaissez le paiement."
+    "cashierNote": "Les signes vitaux, soins et médicaments sont ajoutés par les médecins et infirmiers. Ici, vous encaissez le paiement.",
+    "taken": "Vous avez pris ce patient.",
+    "take": "Prendre ce patient",
+    "takeHint": "Vous vous occupez de ce patient : les collègues du poste voient que vous l’avez pris."
   },
   "settings": {
     "title": "Paramètres de la clinique",
@@ -1654,7 +1657,8 @@
       "in_progress": "en cours",
       "resulted": "résultat disponible",
       "verified": "validé",
-      "cancelled": "annulé"
+      "cancelled": "annulé",
+      "in_process": "en analyse"
     },
     "empty": "Rien d’enregistré pour cette visite.",
     "finish": "Clôturer la visite",
@@ -1729,7 +1733,8 @@
     "testsSent_one": "Examen demandé. Le patient va au poste d’examen et vous revient avec le résultat.",
     "testsSent_other": "{{count}} examens demandés. Le patient va au poste d’examen et vous revient avec les résultats.",
     "notGiven": "Non remis",
-    "notGivenWhy": "Pharmacie : {{reason}}"
+    "notGivenWhy": "Pharmacie : {{reason}}",
+    "urgentOrder": "Urgent : en tête de liste"
   },
   "adjust": {
     "mode": "Comment le saisir",

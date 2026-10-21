@@ -1250,7 +1250,10 @@
       "paid": "Yishyuye",
       "paidBy": "Yishyuye · byanditswe na {{name}} saa {{time}}"
     },
-    "cashierNote": "Ibipimo, ubuvuzi n’imiti byongerwamo n’abaganga n’abaforomo. Hano wakira ubwishyu."
+    "cashierNote": "Ibipimo, ubuvuzi n’imiti byongerwamo n’abaganga n’abaforomo. Hano wakira ubwishyu.",
+    "taken": "Wafashe uyu murwayi.",
+    "take": "Fata uyu murwayi",
+    "takeHint": "Ni wowe umwitaho ubu: abo mukorana babona ko ari wowe."
   },
   "patients": {
     "title": "Abarwayi",
@@ -1393,7 +1396,8 @@
       "in_progress": "kirimo gukorwa",
       "resulted": "igisubizo cyabonetse",
       "verified": "cyemejwe",
-      "cancelled": "cyahagaritswe"
+      "cancelled": "cyahagaritswe",
+      "in_process": "birasuzumwa"
     },
     "empty": "Nta kiranditswe kuri uru ruzinduko.",
     "finish": "Soza uruzinduko",
@@ -1468,7 +1472,8 @@
     "testsSent_one": "Ikizamini cyasabwe. Umurwayi agiye aho bapimira, azagaruka iwawe afite igisubizo.",
     "testsSent_other": "Ibizamini {{count}} byasabwe. Umurwayi agiye aho bapimira, azagaruka iwawe afite ibisubizo.",
     "notGiven": "Ntiyatanzwe",
-    "notGivenWhy": "Farumasi: {{reason}}"
+    "notGivenWhy": "Farumasi: {{reason}}",
+    "urgentOrder": "Byihutirwa: imbere ku rutonde"
   },
   "adjust": {
     "mode": "Uko ubyandika",

@@ -2514,6 +2514,93 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0060: desks polished
+await step(
+  '0060: an order line is removed only by the manager; taking records the doctor; urgent orders; lab reads the record',
+  async () => {
+    const p = await visitAt('Lina')
+    await as(staff.manager)
+    const labCat = (
+      await one(`select save_category(null, 'Lab tests 60', null, null, 'lab') as id`)
+    ).id
+    const test = (await one(`select upsert_service(null, 'CRP 60', 'other', 2500) as id`)).id
+    await db.query(`select set_service_category($1, $2)`, [test, labCat])
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    await db.query(`select order_tests($1, $2, 'sepsis?', null, 1)`, [p.enc, [test]])
+    await asAdmin()
+    const req = await one(`select id, priority from service_request where encounter_id = $1`, [
+      p.enc,
+    ])
+    const line = await one(
+      `select l.id from invoice_line l join invoice i on i.id = l.invoice_id where i.encounter_id = $1 and l.source_id = $2`,
+      [p.enc, req.id],
+    )
+    const doctorOf = await one(
+      `select pr.user_id from encounter e join practitioner pr on pr.id = e.practitioner_id where e.id = $1`,
+      [p.enc],
+    )
+    let doctorRemove = 'ok'
+    await as(d1)
+    try {
+      await db.query(`select void_charge($1, 'mistake')`, [line.id])
+    } catch (e) {
+      doctorRemove = String(e.message).split('\n')[0]
+    }
+    await as(staff.lab_tech)
+    const record = (await one(`select visit_clinical($1) as v`, [p.enc])).v
+    await db.query(`select set_request_status($1, 'cancelled', 'no reagent')`, [req.id])
+    let resultOnCancelled = 'ok'
+    try {
+      await db.query(`select record_result($1, 'x', 'y', true)`, [req.id])
+    } catch (e) {
+      resultOnCancelled = String(e.message).split('\n')[0]
+    }
+    await asAdmin()
+    if (
+      req.priority !== 1 ||
+      doctorOf?.user_id !== d1 ||
+      !/comes from a test or order/.test(doctorRemove) ||
+      !record?.orders?.length ||
+      !/not done/.test(resultOnCancelled)
+    )
+      throw new Error(
+        JSON.stringify({
+          req,
+          doctorOf,
+          doctorRemove,
+          orders: record?.orders?.length,
+          resultOnCancelled,
+        }),
+      )
+    return 'urgent (1); treating doctor recorded; line kept from the doctor; lab reads the record; no result on not done'
+  },
+)
+await step('0060: answering a call does not pull a patient out of the lab', async () => {
+  const p = await visitAt('Mireille')
+  await as(staff.receptionist)
+  await db.query(`select finish_station($1, 'reception', 'laboratory')`, [p.enc])
+  await asAdmin()
+  const lab = await one(
+    `select id from queue_entry where encounter_id = $1 and station = 'laboratory' and finished_at is null`,
+    [p.enc],
+  )
+  await as(d3)
+  const call = (await one(`select call_next('consultation', 'reception', null, null) as id`)).id
+  let refused = ''
+  await as(staff.receptionist)
+  try {
+    await db.query(`select answer_call($1, $2)`, [call, lab.id])
+  } catch (e) {
+    refused = String(e.message).split('\n')[0]
+  }
+  await as(d3)
+  await db.query(`select cancel_call($1)`, [call])
+  await asAdmin()
+  if (!/not waiting for a doctor/.test(refused)) throw new Error(refused || 'not refused')
+  return 'refused: the patient is at the laboratory'
+})
+
 finish()
 
 function finish() {

@@ -92,7 +92,8 @@ export function useMyPermissions(user: StaffUser) {
 /** can('payment.take'): true while loading if the role has it by default (no flicker). */
 export function useCan(user: StaffUser) {
   const { data } = useMyPermissions(user)
-  return (f: Feature) => (data ? data.has(f) : DEFAULTS[f].includes(user.role))
+  // while loading: the defaults of the person's database role (a sonographer is not a lab tech)
+  return (f: Feature) => (data ? data.has(f) : DEFAULTS[f].includes(user.dbRole ?? user.role))
 }
 
 export function usePermissionMatrix() {

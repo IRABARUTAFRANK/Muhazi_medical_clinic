@@ -409,6 +409,8 @@ export interface ClinicalNote {
 }
 export interface Prescription {
   id: string
+  /** Who prescribed it (migration 0060). */
+  by?: string | null
   item: string
   dose: string | null
   route: string | null
@@ -723,6 +725,8 @@ export function useClinicalActions(encounterId: string) {
       tests: { serviceId: string; name: string; group: string }[]
       reason?: string
       from?: string | null
+      /** Urgent: to the top of the lab's list (migration 0060). */
+      urgent?: boolean
     }) => {
       if (!supabase) {
         i.tests.forEach((x, k) =>
@@ -743,6 +747,8 @@ export function useClinicalActions(encounterId: string) {
         p_service_ids: i.tests.map((x) => x.serviceId),
         p_reason: i.reason || null,
         p_from: i.from ?? null,
+        // only when urgent, so a database without migration 0060 still takes the order
+        ...(i.urgent ? { p_priority: 2 } : {}),
       })
       if (!error) return
       // Database without migration 0044 yet: order one by one (the patient is not sent back).

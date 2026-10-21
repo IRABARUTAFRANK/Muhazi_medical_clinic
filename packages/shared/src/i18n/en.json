@@ -1333,7 +1333,10 @@
       "paid": "Paid",
       "paidBy": "Paid · recorded by {{name}} at {{time}}"
     },
-    "cashierNote": "Vitals, treatments and medicines are added by the doctors and nurses. Here you take the payment."
+    "cashierNote": "Vitals, treatments and medicines are added by the doctors and nurses. Here you take the payment.",
+    "taken": "You took this patient.",
+    "take": "Take this patient",
+    "takeHint": "You work on this patient now: the other colleagues of the desk see that you have them."
   },
   "settings": {
     "title": "Clinic settings",
@@ -1654,7 +1657,8 @@
       "in_progress": "in progress",
       "resulted": "resulted",
       "verified": "verified",
-      "cancelled": "cancelled"
+      "cancelled": "cancelled",
+      "in_process": "analysing"
     },
     "empty": "Nothing recorded for this visit yet.",
     "finish": "Finish visit",
@@ -1729,7 +1733,8 @@
     "testsSent_one": "Test ordered. The patient goes to the test desk and comes back to you with the result.",
     "testsSent_other": "{{count}} tests ordered. The patient goes to the test desk and comes back to you with the results.",
     "notGiven": "Not given",
-    "notGivenWhy": "Pharmacy: {{reason}}"
+    "notGivenWhy": "Pharmacy: {{reason}}",
+    "urgentOrder": "Urgent: to the top of the list"
   },
   "adjust": {
     "mode": "How to enter it",

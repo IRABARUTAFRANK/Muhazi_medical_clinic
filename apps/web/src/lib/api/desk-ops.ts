@@ -245,6 +245,23 @@ export function useOpenTasks() {
   })
 }
 
+/** The open tasks of one visit, whoever they are for (the doctor's card; migration 0060). */
+export function useVisitTasks(encounterId: string) {
+  return useQuery({
+    queryKey: ['tasks', 'visit', encounterId],
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<OpenTask[]> => {
+      if (!supabase) return sampleTasks.filter((x) => x.encounterId === encounterId)
+      const { data, error } = await supabase.rpc('visit_tasks', { p_encounter_id: encounterId })
+      if (!error) return (data as OpenTask[]) ?? []
+      // a database without migration 0060: the tasks of my role only
+      const r = await supabase.rpc('open_tasks')
+      if (r.error) throw new Error(error.message)
+      return ((r.data as OpenTask[]) ?? []).filter((x) => x.encounterId === encounterId)
+    },
+  })
+}
+
 export type MissingKey = 'phone' | 'national_id' | 'address' | 'age'
 export interface FileToComplete {
   patientId: string

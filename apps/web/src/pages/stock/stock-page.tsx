@@ -97,7 +97,17 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
   const expiring = items.filter(
     (i) => i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 90 * 86_400_000,
   ).length
-  const canWrite = ['manager', 'doctor', 'nurse', 'lab_tech', 'pharmacist'].includes(user.role)
+  // what each role may do here (the database refuses the rest): the pharmacy and the manager
+  // run everything; the lab keeps its reagents; nurses and doctors use and look up stock
+  const fullStock = user.role === 'manager' || user.role === 'pharmacist'
+  const keepsStore = fullStock || user.role === 'lab_tech'
+  const tabs = TABS.filter((x) =>
+    x.id === 'pharmacy' || x.id === 'medicines' || x.id === 'sales'
+      ? fullStock
+      : x.id === 'receive' || x.id === 'send' || x.id === 'stores'
+        ? keepsStore
+        : true,
+  )
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="stock">
@@ -175,7 +185,7 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
         </div>
 
         <div className="flex flex-wrap gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
-          {TABS.map((x) => (
+          {tabs.map((x) => (
             <button
               key={x.id}
               type="button"
@@ -204,7 +214,7 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
         </div>
 
         {tab === 'stock' && <StockTable items={items} locations={locations} />}
-        {tab === 'pharmacy' && <PharmacyDesk canDispense={canWrite} />}
+        {tab === 'pharmacy' && <PharmacyDesk canDispense={fullStock} />}
         {tab === 'receive' && <ReceiveForm items={items} locations={locations} />}
         {tab === 'send' && <SendForm items={items} locations={locations} />}
         {tab === 'use' && <UseForm items={items} locations={locations} />}

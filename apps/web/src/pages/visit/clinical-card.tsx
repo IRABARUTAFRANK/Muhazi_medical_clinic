@@ -124,7 +124,12 @@ export function ClinicalCard({
   const [rx, setRx] = useState<RxLine[]>([emptyLine()])
   const setLine = (i: number, patch: Partial<RxLine>) =>
     setRx((lines) => lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
-  const [order, setOrder] = useState({ services: [] as string[], reason: '', send: true })
+  const [order, setOrder] = useState({
+    services: [] as string[],
+    reason: '',
+    send: true,
+    urgent: false,
+  })
   const [localError, setLocalError] = useState<string | null>(null)
   const { data: info } = useClinicInfo()
 
@@ -241,7 +246,13 @@ export function ClinicalCard({
           : null,
         medicines: data.prescriptions.filter((r) => r.supply !== 'room').map(toDoc),
         givenHere: data.prescriptions.filter((r) => r.supply === 'room').map(toDoc),
-        prescriber: { name: user.name, title: roleLabel(user, t) },
+        // the doctor who wrote it, not whoever prints it
+        prescriber: (() => {
+          const by = data?.prescriptions.find((r) => r.supply !== 'room')?.by
+          return by && by !== user.name
+            ? { name: by, title: t('staff.roles.doctor') }
+            : { name: user.name, title: roleLabel(user, t) }
+        })(),
       },
       {
         title: t('rxDoc.title'),
@@ -342,8 +353,9 @@ export function ClinicalCard({
             reason: order.reason,
             // the lab registering its own test: the patient is already there
             from: order.send && !deskStaff ? (station ?? stationFor(user)) : null,
+            urgent: order.urgent,
           })
-          .then(() => setOrder({ services: [], reason: '', send: true })),
+          .then(() => setOrder({ services: [], reason: '', send: true, urgent: false })),
       t(order.send ? 'clinical.testsSent' : 'clinical.testsSaved', { count: chosen.length }),
     )
   }
@@ -719,6 +731,15 @@ export function ClinicalCard({
               />
               {t('clinical.sendNow')}
             </label>
+            <label className="flex items-center gap-2 text-[13px] font-semibold">
+              <input
+                type="checkbox"
+                className="accent-red size-[18px]"
+                checked={order.urgent}
+                onChange={(e) => setOrder({ ...order, urgent: e.target.checked })}
+              />
+              {t('clinical.urgentOrder')}
+            </label>
             <Button
               type="submit"
               variant="primary"
@@ -920,22 +941,27 @@ export function ClinicalCard({
                 </form>
               )}
             </span>
-            {canResult && resultFor !== o.id && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  setResultFor(o.id)
-                  setResult({
-                    findings: o.result?.findings ?? '',
-                    impression: o.result?.impression ?? '',
-                    verify: true,
-                  })
-                }}
-              >
-                <FlaskConical size={14} aria-hidden="true" />
-                {t(o.result ? 'clinical.editResult' : 'clinical.enterResult')}
-              </Button>
-            )}
+            {canResult &&
+              resultFor !== o.id &&
+              o.status !== 'cancelled' &&
+              // a nurse writes the result of a desk order (Nursing…), the lab its own tests
+              (user.role !== 'nurse' ||
+                !['laboratory', 'ultrasound'].includes(o.station ?? 'laboratory')) && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setResultFor(o.id)
+                    setResult({
+                      findings: o.result?.findings ?? '',
+                      impression: o.result?.impression ?? '',
+                      verify: true,
+                    })
+                  }}
+                >
+                  <FlaskConical size={14} aria-hidden="true" />
+                  {t(o.result ? 'clinical.editResult' : 'clinical.enterResult')}
+                </Button>
+              )}
           </Row>
         ))}
 

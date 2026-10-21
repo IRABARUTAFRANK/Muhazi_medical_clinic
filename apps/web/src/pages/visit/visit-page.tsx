@@ -34,7 +34,7 @@ import {
   type VisitBill,
 } from '@/lib/api/billing'
 import { treatmentName, useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
-import { stationFor, type Station } from '@/lib/api/visits'
+import { stationFor, useTakePatient, type Station } from '@/lib/api/visits'
 import { useMyDepartments } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -99,6 +99,18 @@ export function VisitPage({
         (user.role === 'manager' ? routing.find((r) => r.station !== 'cashier') : undefined))
       : undefined)
   const myStation = assigned?.station ?? stationFor(user)
+  // a patient waiting at my desk that nobody has taken yet (opened from a notice or the list)
+  const take = useTakePatient()
+  const takeable =
+    user.role === 'receptionist' || user.role === 'cashier'
+      ? undefined
+      : routing.find(
+          (r) =>
+            r.station === myStation &&
+            !r.takenBy &&
+            r.canWork !== false &&
+            (!r.assignedTo || r.assignedTo === user.id),
+        )
   const { data: header, isLoading, error } = useVisitHeader(encounterId)
   const { data: vitals = [] } = useVisitVitals(encounterId)
   const { data: bill } = useVisitBill(encounterId)
@@ -220,6 +232,26 @@ export function VisitPage({
                   <FolderOpen size={14} aria-hidden="true" />
                   {t('visit.patientFile')}
                 </StaffLink>
+                {takeable && (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    loading={take.isPending}
+                    onClick={() =>
+                      void take
+                        .mutateAsync(takeable.queueId)
+                        .then(() => {
+                          setActionError(null)
+                          setDone(t('visit.taken'))
+                        })
+                        .catch((e: unknown) => setActionError(describe(e)))
+                    }
+                    title={t('visit.takeHint')}
+                  >
+                    <HandHelping size={14} aria-hidden="true" />
+                    {t('visit.take')}
+                  </Button>
+                )}
                 {!closed && (
                   <LeftButton
                     encounterId={encounterId}
@@ -370,9 +402,13 @@ export function VisitPage({
             )}
 
             {/* Ask a colleague for help on this patient (or end the help) */}
-            {!closed && !locked && access && !isReception && !isCashier && (
-              <HelpCard encounterId={encounterId} user={user} access={access} />
-            )}
+            {!closed &&
+              !locked &&
+              access &&
+              can('clinical.write') &&
+              ['doctor', 'nurse', 'manager'].includes(user.role) && (
+                <HelpCard encounterId={encounterId} user={user} access={access} />
+              )}
 
             <div
               className={cn(

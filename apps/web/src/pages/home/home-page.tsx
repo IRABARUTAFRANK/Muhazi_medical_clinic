@@ -98,7 +98,13 @@ function RoleHome({ user, mode }: HomePageProps) {
         bedsTotal: summary?.beds.filter((b) => b.state !== 'out_of_service').length ?? 0,
       }
     : sampleNow
-  const station = user.role === 'doctor' && user.station ? user.station : home.station
+  // the desk's own name (live: from the profile; no sample "Consultation 1")
+  const station =
+    user.role === 'doctor' && user.station
+      ? user.station
+      : isLive
+        ? t(`register.stations.${stationFor(user)}`)
+        : home.station
   const setOverride = useSyncStore((s) => s.setOverride)
 
   useEffect(() => {
@@ -115,9 +121,19 @@ function RoleHome({ user, mode }: HomePageProps) {
   // Live: today's queue at this user's station (reception sees every station).
   const myStation = role === 'receptionist' ? 'all' : stationFor(user)
   const { data: live = [] } = useQueueBoard(myStation, user.role)
-  const rows = isLive ? openItems(live) : empty ? [] : home.queue
+  // a doctor also gets the patients sent to them by name at another desk (ultrasound, theatre…)
+  const { data: everyone = [] } = useQueueBoard(
+    user.role === 'doctor' ? 'all' : myStation,
+    user.role,
+  )
+  const elsewhere =
+    user.role === 'doctor'
+      ? openItems(everyone).filter((r) => r.assignedTo === user.id && r.station !== myStation)
+      : []
+  const rows = isLive ? [...openItems(live), ...elsewhere] : empty ? [] : home.queue
+  // the tiles count the patients this person may work on (not those sent to a colleague)
   const counts = isLive
-    ? queueCounts(live)
+    ? queueCounts([...live, ...elsewhere].filter((r) => r.canWork !== false))
     : empty
       ? { waiting: 0, inProgress: 0, done: 0 }
       : home.counts

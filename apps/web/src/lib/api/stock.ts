@@ -227,6 +227,9 @@ const KEY = ['stock'] as const
 
 export function useStockOverview() {
   return useQuery({
+    // another desk receives or hands over stock: keep the figures fresh
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
     queryKey: [...KEY, 'overview'],
     queryFn: async (): Promise<StockOverview> => {
       if (!supabase) return { locations: sampleLocations, items: sampleItems }
