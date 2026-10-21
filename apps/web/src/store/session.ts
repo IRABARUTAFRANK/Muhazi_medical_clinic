@@ -50,6 +50,7 @@ const toStaffUser = (p: ProfileJson): StaffUser => ({
   mustChangePin: p.must_change_pin,
   staffId: p.staff_id ?? undefined,
   email: p.email ?? undefined,
+  dbRole: p.role,
 })
 
 export type SignInResult =

@@ -8,6 +8,7 @@ import {
   HandHelping,
   Lock,
   Plus,
+  Printer,
   Receipt,
   Trash2,
 } from 'lucide-react'
@@ -47,6 +48,8 @@ import { WhereNextCard } from './where-next-card'
 import { useCan } from '@/lib/api/permissions'
 import { useVisitAccess } from '@/lib/api/calls'
 import { HelpCard } from './help-card'
+import { openReceipt } from '@/lib/receipt-doc'
+import { useLetterhead } from '@/lib/report-parts'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -55,6 +58,17 @@ const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-s
  * discount the clinician may grant) and the patient / insurer split, then send the patient
  * to the cashier or another station. Every charge is recorded against the signed-in employee.
  */
+/** The desks each role works at (to find where this person meets the patient). */
+const DESKS_OF: Record<string, Station[]> = {
+  doctor: ['consultation', 'dental', 'theatre'],
+  nurse: ['triage', 'nursing', 'beds'],
+  lab_tech: ['laboratory'],
+  sonographer: ['ultrasound'],
+  pharmacist: ['pharmacy'],
+  cashier: ['cashier'],
+  receptionist: ['reception'],
+}
+
 export function VisitPage({
   user,
   encounterId,
@@ -73,9 +87,17 @@ export function VisitPage({
   const coverDesks = (cover?.covering ?? []).map((c) =>
     stationFor({ ...user, role: 'doctor', station: c.station ?? undefined }),
   )
+  // the desks of my role (database role: a sonographer works at Ultrasound)
+  const myDesks = DESKS_OF[user.dbRole ?? user.role] ?? []
   const assigned =
-    routing.find((r) => r.assignedTo === user.id) ??
-    routing.find((r) => coverDesks.includes(r.station))
+    routing.find((r) => r.assignedTo === user.id || r.takenBy === user.id) ??
+    routing.find((r) => coverDesks.includes(r.station)) ??
+    routing.find((r) => r.canWork !== false && myDesks.includes(r.station)) ??
+    // reception and the manager send on a patient wherever they wait
+    (user.role === 'receptionist' || user.role === 'manager'
+      ? (routing.find((r) => !r.assignedTo && !r.takenBy && r.station !== 'cashier') ??
+        (user.role === 'manager' ? routing.find((r) => r.station !== 'cashier') : undefined))
+      : undefined)
   const myStation = assigned?.station ?? stationFor(user)
   const { data: header, isLoading, error } = useVisitHeader(encounterId)
   const { data: vitals = [] } = useVisitVitals(encounterId)
@@ -87,6 +109,14 @@ export function VisitPage({
   const [member, setMember] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  // the payment just taken, for its receipt
+  const [lastPayment, setLastPayment] = useState<{
+    receipt: string | null
+    method: string
+    amount: number
+    reference: string | null
+  } | null>(null)
+  const letterhead = useLetterhead()
   const isManagerNav = user.role === 'manager' || user.dashboard === 'manager'
   // Reception sends patients on and completes files; treatments and the bill are not theirs.
   const isReception = user.role === 'receptionist'
@@ -497,17 +527,26 @@ export function VisitPage({
               )}
 
               <div className="flex flex-col gap-4">
-                {can('payment.take') && bill && !closed && (
+                {/* a finished visit still owing money can be paid later (debt) */}
+                {can('payment.take') && bill && (!closed || bill.balance > 0) && (
                   <PaymentCard
                     bill={bill}
                     onPay={async (input) => {
                       setActionError(null)
                       try {
                         const r = await actions.takePayment.mutateAsync(input)
+                        setLastPayment({
+                          receipt: r.receipt,
+                          method: t(`visit.payment.methods.${input.method}`),
+                          amount: input.amount,
+                          reference: input.reference?.trim() || null,
+                        })
                         setDone(
-                          r.balance <= 0
-                            ? t('visit.payment.settled', { number: r.number ?? '' })
-                            : t('visit.payment.partial', { balance: formatRwf(r.balance) }),
+                          r.balance > 0
+                            ? t('visit.payment.partial', { balance: formatRwf(r.balance) })
+                            : r.closed
+                              ? t('visit.payment.settledClosed', { receipt: r.receipt ?? '' })
+                              : t('visit.payment.settledOpen', { receipt: r.receipt ?? '' }),
                         )
                       } catch (e) {
                         setActionError(describe(e))
@@ -515,6 +554,67 @@ export function VisitPage({
                       }
                     }}
                   />
+                )}
+                {bill && header && (bill.paid > 0 || lastPayment) && (
+                  <Button
+                    className="self-start"
+                    onClick={() => {
+                      const ok = openReceipt(
+                        {
+                          receiptNo: lastPayment?.receipt ?? null,
+                          invoiceNo: null,
+                          at: new Date(),
+                          clinic: letterhead,
+                          patient: { name: header.name, fileNumber: header.fileNumber },
+                          lines: bill.charges.map((c) => ({
+                            description: c.description,
+                            quantity: c.quantity,
+                            amount: c.patientShare,
+                          })),
+                          total: bill.patientShare,
+                          insurer:
+                            bill.insurerShare > 0
+                              ? { name: bill.payerName ?? '', amount: bill.insurerShare }
+                              : null,
+                          payment: lastPayment
+                            ? {
+                                method: lastPayment.method,
+                                amount: lastPayment.amount,
+                                reference: lastPayment.reference,
+                              }
+                            : null,
+                          paid: bill.paid,
+                          balance: bill.balance,
+                          cashier: user.name,
+                        },
+                        {
+                          title: t('receipt.title'),
+                          statement: t('receipt.statement'),
+                          receiptNo: t('receipt.receiptNo'),
+                          invoiceNo: t('receipt.invoiceNo'),
+                          patient: t('rxDoc.patient'),
+                          file: t('rxDoc.file'),
+                          item: t('receipt.item'),
+                          amount: t('receipt.amount'),
+                          total: t('receipt.total'),
+                          insurerPays: (name) => t('receipt.insurerPays', { name }),
+                          patientPays: t('receipt.patientPays'),
+                          paidNow: t('receipt.paidNow'),
+                          reference: t('visit.payment.reference'),
+                          paidSoFar: t('receipt.paidSoFar'),
+                          balance: t('receipt.balance'),
+                          settled: t('receipt.settled'),
+                          cashier: t('receipt.cashier'),
+                          thanks: t('receipt.thanks'),
+                        },
+                      )
+                      if (!ok) setActionError(t('report.popupBlocked'))
+                    }}
+                    title={t('receipt.hint')}
+                  >
+                    <Printer size={16} aria-hidden="true" />
+                    {t(lastPayment ? 'receipt.print' : 'receipt.printStatement')}
+                  </Button>
                 )}
                 {isCashier && !closed && (
                   <p className="text-ink-3 m-0 text-[13px]">{t('visit.cashierNote')}</p>

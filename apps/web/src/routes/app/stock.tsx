@@ -2,7 +2,17 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { StockPage, type Tab } from '@/pages/stock/stock-page'
 import { useSession } from '@/store/session'
 
-const TABS: Tab[] = ['stock', 'pharmacy', 'receive', 'send', 'moves', 'sales', 'stores']
+const TABS: Tab[] = [
+  'stock',
+  'pharmacy',
+  'receive',
+  'send',
+  'use',
+  'medicines',
+  'moves',
+  'sales',
+  'stores',
+]
 
 /** Medicine stock: the pharmacist, nurses, the lab, doctors with an office store, the manager. */
 export const Route = createFileRoute('/app/stock')({

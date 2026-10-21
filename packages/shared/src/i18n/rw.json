@@ -74,13 +74,13 @@
     "home": "Ahabanza",
     "patients": "Abarwayi",
     "appointments": "Gahunda",
-    "queue": "Umurongo",
+    "queue": "Umurongo wanjye",
     "reports": "Raporo",
     "vitals": "Ibipimo",
     "beds": "Ibitanda",
     "tasks": "Imirimo",
-    "results": "Ibisubizo",
-    "prescriptions": "Impapuro z'imiti",
+    "results": "Ibizamini n’ibisubizo",
+    "prescriptions": "Imiti nanditse",
     "calendar": "Kalendari",
     "bills": "Fagitire",
     "payments": "Ubwishyu",
@@ -409,7 +409,9 @@
       "newInquiry": "Ubusabe bushya bwa gahunda",
       "newOrder": "Itegeko rishya",
       "worklist": "Fungura urutonde rw’akazi",
-      "stock": "Ububiko"
+      "stock": "Ububiko",
+      "myResults": "Ibizamini n’ibisubizo",
+      "myPrescriptions": "Imiti nanditse"
     },
     "inClinic": "abarwayi bari mu ivuriro",
     "inClinicShort": "mu ivuriro",
@@ -1220,7 +1222,9 @@
         "amount": "Andika amafaranga arenze zeru.",
         "tooMuch": "Amafaranga arenze ayo agomba kwishyurwa ({{balance}}).",
         "reference": "Ubu buryo busaba nimero y'igikorwa."
-      }
+      },
+      "settledClosed": "Byose byishyuwe. Inyemezabwishyu {{receipt}}. Uruzinduko rwarangiye.",
+      "settledOpen": "Ibyishyuwe kugeza ubu. Inyemezabwishyu {{receipt}}. Uruzinduko rurakomeje: ibyongerwaho bizishyurwa ku iherezo."
     },
     "next": {
       "title": "Intambwe ikurikira y’uyu murwayi",
@@ -2639,7 +2643,8 @@
       "refused": "Umurwayi yanze"
     },
     "cannotPh": "Cyangwa wandike impamvu",
-    "cannotConfirm": "Emeza: ntikizakorwa"
+    "cannotConfirm": "Emeza: ntikizakorwa",
+    "queueUltrasound": "Abarwayi bategereje ecographie"
   },
   "finance": {
     "desk": "Isanduku",
@@ -2816,7 +2821,9 @@
       "send": "Kohereza ahandi",
       "moves": "Imigendekere",
       "sales": "Ibyagurishijwe n’agaciro",
-      "stores": "Ububiko"
+      "stores": "Ububiko",
+      "use": "Gukoresha / kuvanamo",
+      "medicines": "Imiti n’ibiciro"
     },
     "onHand": "Ibiri mu bubiko",
     "itemCount_one": "umuti {{count}}",
@@ -2910,7 +2917,20 @@
       "cost": "Andika igiciro cya kimwe (0 iremewe).",
       "short": "Hari {{count}} gusa muri ubwo bubiko.",
       "storeName": "Ha ububiko izina."
-    }
+    },
+    "useTitle": "Gukoresha cyangwa kuvana mu bubiko",
+    "useLead": "Ibisohoka bitagurishijwe: byarengeje igihe, byangiritse, byakoreshejwe ku kazi, cyangwa gukosora ibarura. Byandikwa mu ngendo n’impamvu.",
+    "useWhy": "Impamvu",
+    "useReasons": {
+      "expired": "Byarengeje igihe",
+      "damaged": "Byangiritse cyangwa byabuze",
+      "usedAtDesk": "Byakoreshejwe ku kazi",
+      "countCorrection": "Gukosora ibarura"
+    },
+    "useNotePh": "urugero: lot B12, amacupa yamenetse",
+    "useSave": "Vana mu bubiko",
+    "used": "{{count}} × {{item}} byavanywe mu bubiko.",
+    "medicinesNotYours": "Farumasi n’umuyobozi ni bo bonyine bahindura imiti n’ibiciro byayo."
   },
   "report": {
     "excel": "Excel",
@@ -3255,6 +3275,76 @@
     "mostGiven": "Imiti yatanzwe cyane uyu munsi",
     "givenCount_one": "Umuti {{count}}",
     "givenCount_other": "Imiti {{count}}",
-    "nothingYet": "Nta muti uratangwa uyu munsi."
+    "nothingYet": "Nta muti uratangwa uyu munsi.",
+    "withDoctor": "Aracyari kwa muganga: tanga ubu, umurwayi asubira kwa muganga",
+    "expiredHere_one": "Igice {{count}} cyarengeje igihe hano: kivane mu bubiko",
+    "expiredHere_other": "Ibice {{count}} byarengeje igihe hano: bivane mu bubiko",
+    "sellTitle": "Gurisha umuti",
+    "sellLead": "Ku murwayi uri mu ivuriro, nta rupapuro rwa muganga (cyangwa umuti muganga yibagiwe). Ujya kuri fagitire y’uruzinduko.",
+    "sellPatient": "Umurwayi",
+    "pickPatient": "Hitamo umurwayi",
+    "sellHow": "Uko awufata (si ngombwa)",
+    "sellHowPh": "urugero: ikinini 1 inshuro 3 ku munsi iminsi 5",
+    "sellNoPrice": "Uyu muti nta giciro ufite: uzatangwa ku buntu. Shyiraho igiciro muri Ububiko → Imiti n’ibiciro.",
+    "sellTotal": "Ayo kwishyura: {{amount}}",
+    "sell": "Gurisha kandi utange"
+  },
+  "queuePage": {
+    "title": "Umurongo wanjye · {{desk}}",
+    "lead": "Abategereje bose aho ukorera, abihutirwa mbere; fata ukurikira cyangwa umurwayi uwo ari we wese.",
+    "nobody": "Nta murwayi ugutegereje ubu."
+  },
+  "doctorLists": {
+    "period": "Erekana",
+    "lastDays_one": "uyu munsi",
+    "lastDays_other": "iminsi {{count}} ishize",
+    "resultsTitle": "Ibizamini n’ibisubizo",
+    "resultsLead": "Ibizamini wasabye: biracyari muri laboratwari, ibisubizo byabonetse, cyangwa bitakozwe n’impamvu.",
+    "readyCount_one": "Igisubizo {{count}} kiriteguye",
+    "readyCount_other": "Ibisubizo {{count}} biriteguye",
+    "resultsPanel": "Ibizamini nasabye",
+    "orderTabs": {
+      "ready": "Ibisubizo byabonetse",
+      "waiting": "Birategerejwe",
+      "cancelled": "Bitakozwe",
+      "all": "Byose"
+    },
+    "noOrders": "Nta kizamini muri iki gihe.",
+    "orderedAt": "cyasabwe {{when}}",
+    "rxTitle": "Imiti nanditse",
+    "rxLead": "Imiti wanditse n’icyo farumasi yakoze: yatanzwe, irategerejwe, cyangwa ntiyatanzwe n’impamvu.",
+    "notGivenCount_one": "{{count}} ntiwatanzwe",
+    "notGivenCount_other": "{{count}} ntiyatanzwe",
+    "rxPanel": "Imiti nanditse",
+    "rxTabs": {
+      "all": "Yose",
+      "waiting": "Muri farumasi",
+      "given": "Yatanzwe",
+      "not_given": "Ntiyatanzwe",
+      "room": "Yatangiwe hano"
+    },
+    "rxSearch": "Shaka umurwayi, umuti cyangwa dosiye",
+    "noRx": "Nta muti wanditswe muri iki gihe.",
+    "loading": "Biraza…"
+  },
+  "receipt": {
+    "title": "Inyemezabwishyu",
+    "statement": "Fagitire",
+    "receiptNo": "Inyemezabwishyu",
+    "invoiceNo": "Fagitire",
+    "item": "Ikintu",
+    "amount": "Amafaranga",
+    "total": "Igiteranyo cy’umurwayi",
+    "insurerPays": "{{name}} yishyura",
+    "patientPays": "Umurwayi yishyura",
+    "paidNow": "Yishyuwe ubu",
+    "paidSoFar": "Ayishyuwe kugeza ubu",
+    "balance": "Asigaye",
+    "settled": "BYISHYUWE",
+    "cashier": "Yakiriwe na",
+    "thanks": "Murakoze. Mubike iyi nyemezabwishyu.",
+    "hint": "Inyemezabwishyu y’umurwayi (sohora cyangwa PDF)",
+    "print": "Sohora inyemezabwishyu",
+    "printStatement": "Sohora fagitire"
   }
 }

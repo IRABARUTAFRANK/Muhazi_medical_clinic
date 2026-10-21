@@ -499,17 +499,27 @@ export function useMyDepartments(userId: string) {
   return useQuery({
     queryKey: ['my-departments', userId],
     staleTime: 5 * 60_000,
-    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+    queryFn: async (): Promise<{ id: string; name: string; position?: string | null }[]> => {
       if (!supabase) return []
       const { data, error } = await supabase.rpc('my_placement')
       if (error) throw new Error(error.message)
       const d = (data ?? {}) as {
         departmentId?: string | null
         department?: string | null
-        departments?: { id: string; name: string }[]
+        position?: string | null
+        departments?: { id: string; name: string; position?: string | null }[]
       }
-      if (d.departments) return d.departments.map((x) => ({ id: x.id, name: x.name }))
-      return d.departmentId ? [{ id: d.departmentId, name: d.department ?? '' }] : []
+      if (d.departments)
+        return d.departments.map((x) => ({ id: x.id, name: x.name, position: x.position ?? null }))
+      return d.departmentId
+        ? [{ id: d.departmentId, name: d.department ?? '', position: d.position ?? null }]
+        : []
     },
   })
+}
+
+/** The departments this person leads (head or assistant): where a non-manager may write. */
+export function useLeadDepartments(user: { id: string }) {
+  const { data = [] } = useMyDepartments(user.id)
+  return data.filter((d) => d.position === 'head' || d.position === 'assistant')
 }

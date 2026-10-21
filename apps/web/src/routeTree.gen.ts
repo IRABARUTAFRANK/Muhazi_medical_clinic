@@ -26,8 +26,11 @@ import { Route as AppNotificationsRouteImport } from './routes/app/notifications
 import { Route as AppPatientRouteImport } from './routes/app/patient'
 import { Route as AppPatientsRouteImport } from './routes/app/patients'
 import { Route as AppPaymentsRouteImport } from './routes/app/payments'
+import { Route as AppPrescriptionsRouteImport } from './routes/app/prescriptions'
 import { Route as AppPricesRouteImport } from './routes/app/prices'
+import { Route as AppQueueRouteImport } from './routes/app/queue'
 import { Route as AppRegisterRouteImport } from './routes/app/register'
+import { Route as AppResultsRouteImport } from './routes/app/results'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppStaffRouteImport } from './routes/app/staff'
 import { Route as AppStockRouteImport } from './routes/app/stock'
@@ -120,14 +123,29 @@ const AppPaymentsRoute = AppPaymentsRouteImport.update({
   path: '/payments',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPrescriptionsRoute = AppPrescriptionsRouteImport.update({
+  id: '/prescriptions',
+  path: '/prescriptions',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricesRoute = AppPricesRouteImport.update({
   id: '/prices',
   path: '/prices',
   getParentRoute: () => AppRoute,
 } as any)
+const AppQueueRoute = AppQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRegisterRoute = AppRegisterRouteImport.update({
   id: '/register',
   path: '/register',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResultsRoute = AppResultsRouteImport.update({
+  id: '/results',
+  path: '/results',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
@@ -178,8 +196,11 @@ export interface FileRoutesByFullPath {
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
   '/app/payments': typeof AppPaymentsRoute
+  '/app/prescriptions': typeof AppPrescriptionsRoute
   '/app/prices': typeof AppPricesRoute
+  '/app/queue': typeof AppQueueRoute
   '/app/register': typeof AppRegisterRoute
+  '/app/results': typeof AppResultsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/stock': typeof AppStockRoute
@@ -204,8 +225,11 @@ export interface FileRoutesByTo {
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
   '/app/payments': typeof AppPaymentsRoute
+  '/app/prescriptions': typeof AppPrescriptionsRoute
   '/app/prices': typeof AppPricesRoute
+  '/app/queue': typeof AppQueueRoute
   '/app/register': typeof AppRegisterRoute
+  '/app/results': typeof AppResultsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/stock': typeof AppStockRoute
@@ -232,8 +256,11 @@ export interface FileRoutesById {
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
   '/app/payments': typeof AppPaymentsRoute
+  '/app/prescriptions': typeof AppPrescriptionsRoute
   '/app/prices': typeof AppPricesRoute
+  '/app/queue': typeof AppQueueRoute
   '/app/register': typeof AppRegisterRoute
+  '/app/results': typeof AppResultsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/stock': typeof AppStockRoute
@@ -261,8 +288,11 @@ export interface FileRouteTypes {
     | '/app/patient'
     | '/app/patients'
     | '/app/payments'
+    | '/app/prescriptions'
     | '/app/prices'
+    | '/app/queue'
     | '/app/register'
+    | '/app/results'
     | '/app/settings'
     | '/app/staff'
     | '/app/stock'
@@ -287,8 +317,11 @@ export interface FileRouteTypes {
     | '/app/patient'
     | '/app/patients'
     | '/app/payments'
+    | '/app/prescriptions'
     | '/app/prices'
+    | '/app/queue'
     | '/app/register'
+    | '/app/results'
     | '/app/settings'
     | '/app/staff'
     | '/app/stock'
@@ -314,8 +347,11 @@ export interface FileRouteTypes {
     | '/app/patient'
     | '/app/patients'
     | '/app/payments'
+    | '/app/prescriptions'
     | '/app/prices'
+    | '/app/queue'
     | '/app/register'
+    | '/app/results'
     | '/app/settings'
     | '/app/staff'
     | '/app/stock'
@@ -453,6 +489,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPaymentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/prescriptions': {
+      id: '/app/prescriptions'
+      path: '/prescriptions'
+      fullPath: '/app/prescriptions'
+      preLoaderRoute: typeof AppPrescriptionsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/prices': {
       id: '/app/prices'
       path: '/prices'
@@ -460,11 +503,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/queue': {
+      id: '/app/queue'
+      path: '/queue'
+      fullPath: '/app/queue'
+      preLoaderRoute: typeof AppQueueRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/register': {
       id: '/app/register'
       path: '/register'
       fullPath: '/app/register'
       preLoaderRoute: typeof AppRegisterRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/results': {
+      id: '/app/results'
+      path: '/results'
+      fullPath: '/app/results'
+      preLoaderRoute: typeof AppResultsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/settings': {
@@ -525,8 +582,11 @@ interface AppRouteChildren {
   AppPatientRoute: typeof AppPatientRoute
   AppPatientsRoute: typeof AppPatientsRoute
   AppPaymentsRoute: typeof AppPaymentsRoute
+  AppPrescriptionsRoute: typeof AppPrescriptionsRoute
   AppPricesRoute: typeof AppPricesRoute
+  AppQueueRoute: typeof AppQueueRoute
   AppRegisterRoute: typeof AppRegisterRoute
+  AppResultsRoute: typeof AppResultsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStaffRoute: typeof AppStaffRoute
   AppStockRoute: typeof AppStockRoute
@@ -549,8 +609,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppPatientRoute: AppPatientRoute,
   AppPatientsRoute: AppPatientsRoute,
   AppPaymentsRoute: AppPaymentsRoute,
+  AppPrescriptionsRoute: AppPrescriptionsRoute,
   AppPricesRoute: AppPricesRoute,
+  AppQueueRoute: AppQueueRoute,
   AppRegisterRoute: AppRegisterRoute,
+  AppResultsRoute: AppResultsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStaffRoute: AppStaffRoute,
   AppStockRoute: AppStockRoute,

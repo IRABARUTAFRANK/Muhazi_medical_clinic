@@ -313,9 +313,9 @@ await step('running bill = 18,300 split 2,745 / 15,555 at 85 %', async () => {
   return got
 })
 await expectError(
-  'cashier cannot post an invoice the receptionist could (billing.write)',
+  'a nurse (no billing.write, no payment.take) cannot post an invoice',
   async () => {
-    await as(staff.receptionist)
+    await as(staff.nurse)
     await db.query(`select post_invoice($1)`, [invoiceId])
   },
   /not allowed/i,
@@ -1080,14 +1080,19 @@ await step(
       `select assigned_to from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
       [v.id],
     )
+    await as(staff.nurse)
+    const nurseDuring = (await one(`select may_work_on($1) as ok`, [v.id])).ok
     await as(staff.doctor)
     await db.query(`select end_cover($1)`, [cover])
     await as(staff.nurse)
     const after = await can()
+    const nurseAfter = (await one(`select may_work_on($1) as ok`, [v.id])).ok
     if (before || !during || after) throw new Error(`rights ${before}/${during}/${after}`)
-    if (q.assigned_to !== staff.nurse) throw new Error('patient not routed to the nurse')
+    // 0057: the patient stays the doctor's; the covering nurse may work on it only during the cover
+    if (q.assigned_to !== staff.doctor) throw new Error('patient moved away from the doctor')
+    if (!nurseDuring || nurseAfter) throw new Error(`nurse may work ${nurseDuring}/${nurseAfter}`)
     if (!mine.covering.length) throw new Error('my_cover empty')
-    return 'orders.write only during cover; patient for the doctor went to the nurse'
+    return 'orders.write and the doctor patient only during cover; the patient stays with the doctor'
   },
 )
 
@@ -2189,6 +2194,150 @@ await step(
     )
       throw new Error(JSON.stringify({ back1, labOpen1, charged, stillCharged, told }))
     return 'result → back to Dr. One; cancelled test off the bill, doctor told'
+  },
+)
+
+// ---------------------------------------------------------------- 0057: the desks connected
+await step(
+  '0057: reception takes a payment (receipt); the bill stays open for a pending test; paid and done → closed',
+  async () => {
+    const p = await visitAt('Esther')
+    await as(staff.manager)
+    const cons = (
+      await one(`select upsert_service(null, 'Consultation 57', 'consultation', 5000) as id`)
+    ).id
+    const labCat = (
+      await one(`select save_category(null, 'Lab tests 57', null, null, 'lab') as id`)
+    ).id
+    const test = (await one(`select upsert_service(null, 'Malaria RDT 57', 'other', 2000) as id`))
+      .id
+    await db.query(`select set_service_category($1, $2)`, [test, labCat])
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    await db.query(`select add_charge($1, 'consultation', $2)`, [p.enc, cons])
+    await db.query(`select order_test($1, $2, 'fever')`, [p.enc, test])
+    await as(staff.receptionist)
+    const first = (await one(`select take_payment($1, 'cash', 7000) as r`, [p.enc])).r
+    await asAdmin()
+    const inv1 = await one(`select status::text from invoice where encounter_id = $1`, [p.enc])
+    // still open: the doctor can charge more
+    await as(d1)
+    await db.query(`select add_charge($1, 'consultation', $2)`, [p.enc, cons])
+    // the result goes back to the doctor, who sends the patient to the cashier
+    await asAdmin()
+    const req = (await one(`select id from service_request where encounter_id = $1`, [p.enc])).id
+    await db.query(`update encounter set triage_level = 'red' where id = $1`, [p.enc])
+    await as(staff.lab_tech)
+    await db.query(`select record_result($1, 'Negative', 'No malaria', true)`, [req])
+    await as(d1)
+    await db.query(`select finish_station($1, 'consultation', 'cashier')`, [p.enc])
+    await asAdmin()
+    const atCashier = await one(
+      `select priority from queue_entry where encounter_id = $1 and station = 'cashier' and finished_at is null`,
+      [p.enc],
+    )
+    await as(staff.receptionist)
+    const last = (await one(`select take_payment($1, 'cash', 5000) as r`, [p.enc])).r
+    await asAdmin()
+    const enc = await one(`select status::text from encounter where id = $1`, [p.enc])
+    const inv2 = await one(`select status::text, number from invoice where encounter_id = $1`, [
+      p.enc,
+    ])
+    if (
+      !/^RCT-/.test(first.receipt ?? '') ||
+      first.closed ||
+      inv1.status !== 'draft' ||
+      atCashier?.priority !== 1 ||
+      !last.closed ||
+      enc.status !== 'closed' ||
+      inv2.status !== 'posted'
+    )
+      throw new Error(JSON.stringify({ first, inv1, atCashier, last, enc, inv2 }))
+    return `paid early (${first.receipt}, bill open) → more charged → red at the cashier → paid → closed ${inv2.number}`
+  },
+)
+await step(
+  '0057: reception sends on a patient waiting at another desk; the old place ends',
+  async () => {
+    const p = await visitAt('Fiona')
+    await as(staff.receptionist)
+    await db.query(`select finish_station($1, 'reception', 'laboratory')`, [p.enc])
+    await asAdmin()
+    const open = (
+      await db.query(
+        `select station::text from queue_entry where encounter_id = $1 and finished_at is null order by station`,
+        [p.enc],
+      )
+    ).rows.map((r) => r.station)
+    if (JSON.stringify(open) !== '["laboratory"]') throw new Error(JSON.stringify(open))
+    return 'consultation place ended, now at the laboratory'
+  },
+)
+await step(
+  '0057: a booked patient waits for the booked doctor; the booking completes with the visit',
+  async () => {
+    await as(staff.receptionist)
+    const r = (
+      await one(`select register_patient_file('Ishimwe', 'Gloria', 'female', null, 28, null) as r`)
+    ).r
+    await asAdmin()
+    const pr = (await one(`select ensure_practitioner($1) as id`, [d2])).id
+    const appt = (
+      await one(
+        `insert into appointment (patient_id, practitioner_id, starts_at, status, source)
+       values ($1, $2, now() + interval '30 minutes', 'confirmed', 'reception') returning id`,
+        [r.patient_id, pr],
+      )
+    ).id
+    await as(staff.receptionist)
+    const v = (await one(`select appointment_arrived($1) as v`, [appt])).v
+    const enc = v.encounter_id
+    await as(staff.nurse)
+    await db.query(`select record_vitals($1, 'temp', 37.2, 'C')`, [enc]).catch(async () => {
+      await asAdmin()
+      await db.query(
+        `insert into observation (encounter_id, code, value_num, unit) values ($1, 'temp', 37.2, 'C')`,
+        [enc],
+      )
+    })
+    await as(staff.nurse)
+    await db.query(`select send_from_triage($1, 'green', 'consultation', null)`, [enc])
+    await asAdmin()
+    const q = await one(
+      `select assigned_to from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [enc],
+    )
+    const linked = await one(`select appointment_id from encounter where id = $1`, [enc])
+    await as(staff.manager)
+    await db.query(`select end_visit($1, 'test over')`, [enc]).catch(() => null)
+    await asAdmin()
+    const a = await one(`select status::text from appointment where id = $1`, [appt])
+    if (q?.assigned_to !== d2 || linked.appointment_id !== appt || a.status !== 'completed')
+      throw new Error(JSON.stringify({ q, linked, a }))
+    return 'triage → consultation with the booked doctor → visit ends → booking completed'
+  },
+)
+await step(
+  '0057: the pharmacy sells without a prescription; the doctor lists tests and prescriptions',
+  async () => {
+    const p = await visitAt('Grace')
+    await asAdmin()
+    const amox = (await one(`select id from item where code = 'AMOX500'`)).id
+    await as(staff.pharmacist)
+    const sold = (await one(`select sell_medicine($1, $2, 3, null) as r`, [p.enc, amox])).r
+    await asAdmin()
+    const line = await one(`select prescriber_id, given_at from medication_request where id = $1`, [
+      sold.requestId,
+    ])
+    await as(d1)
+    const orders = (await one(`select my_orders(30) as j`)).j
+    const rx = (await one(`select my_prescriptions(30) as j`)).j
+    await asAdmin()
+    if (!sold.dispenseId || line.prescriber_id !== staff.pharmacist || !line.given_at)
+      throw new Error(JSON.stringify({ sold, line }))
+    if (!orders.length || !rx.length || !rx.every((x) => x.state))
+      throw new Error(JSON.stringify({ orders: orders.length, rx: rx.length }))
+    return `sold and handed over; doctor lists ${orders.length} tests, ${rx.length} prescriptions`
   },
 )
 

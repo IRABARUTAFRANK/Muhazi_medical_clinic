@@ -14,5 +14,6 @@ function PatientsRoute() {
   const user = useSession((s) => s.user)
   const { q } = Route.useSearch()
   if (!user) return null
-  return <PatientsPage user={user} initialQuery={q ?? ''} />
+  // a new search from the top bar starts the page again with it
+  return <PatientsPage key={q ?? ''} user={user} initialQuery={q ?? ''} />
 }

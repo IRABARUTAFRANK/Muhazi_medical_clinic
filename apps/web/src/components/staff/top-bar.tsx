@@ -6,6 +6,8 @@ import { Logo } from '@/components/public/logo'
 import { NotificationBell } from './notification-bell'
 import { SyncBadge } from './sync-badge'
 import { UserMenu } from './user-menu'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 
 interface TopBarProps {
   user: StaffUser
@@ -13,15 +15,49 @@ interface TopBarProps {
   onOpenSheet: () => void
 }
 
+/**
+ * Search any patient from every screen: Enter opens the patient register with the matches
+ * (name, file number, phone, national ID). "/" anywhere puts the cursor here.
+ */
 function PatientSearch({ className }: { className?: string }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      const typing =
+        el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.tagName === 'SELECT' ||
+          el.isContentEditable)
+      // the visible search box only (PC and tablet rows both render one)
+      if (e.key === '/' && !typing && input.current && input.current.offsetParent !== null) {
+        e.preventDefault()
+        input.current.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
   return (
-    <label
+    <form
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault()
+        const text = q.trim()
+        void navigate({ to: '/app/patients', search: text ? { q: text } : {} })
+      }}
       className={`glass-dark flex h-11 items-center gap-2.5 rounded-xl px-3.5 text-sm text-white/70 transition-[background-color,box-shadow] duration-150 focus-within:bg-white/15 focus-within:ring-[3px] focus-within:ring-white/25 ${className ?? ''}`}
     >
       <Search size={18} aria-hidden="true" />
       <input
+        ref={input}
         type="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
         placeholder={t('common.searchPatient')}
         aria-label={t('common.searchPatient')}
         className="min-w-0 flex-1 border-0 bg-transparent text-white outline-none placeholder:text-white/60"
@@ -29,7 +65,7 @@ function PatientSearch({ className }: { className?: string }) {
       <kbd className="hidden rounded-md border border-white/20 px-1.5 text-[11px] text-white/60 lg:inline">
         /
       </kbd>
-    </label>
+    </form>
   )
 }
 

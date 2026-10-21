@@ -53,6 +53,10 @@ export interface PharmacyLine {
   at: string
   price: number | null
   onHandPharmacy: number
+  /** Expired units in the pharmacy store: never handed over, to write off (migration 0057). */
+  expiredInPharmacy?: number
+  /** A doctor still has the patient at their desk. */
+  doctorHolds?: boolean
 }
 export interface StockMovement {
   id: string
@@ -257,6 +261,7 @@ export function usePharmacyQueue() {
         quantity: Number(l.quantity),
         price: l.price == null ? null : Number(l.price),
         onHandPharmacy: Number(l.onHandPharmacy ?? 0),
+        expiredInPharmacy: Number(l.expiredInPharmacy ?? 0),
       }))
     },
   })
@@ -459,7 +464,26 @@ export function useStockActions() {
     },
     onSuccess: refresh,
   })
-  return { receive, transfer, use, dispense, notGiven, saveLocation }
+  // The pharmacy sells a medicine to a patient in the clinic without a prescription.
+  const sell = useMutation({
+    mutationFn: async (i: {
+      encounterId: string
+      itemId: string
+      quantity: number
+      instructions?: string
+    }) => {
+      if (!supabase) return { charged: true }
+      const d = (await call('sell_medicine', {
+        p_encounter_id: i.encounterId,
+        p_item_id: i.itemId,
+        p_quantity: i.quantity,
+        p_instructions: i.instructions?.trim() || null,
+      })) as { charged?: boolean }
+      return { charged: !!d?.charged }
+    },
+    onSuccess: refresh,
+  })
+  return { receive, transfer, use, dispense, notGiven, sell, saveLocation }
 }
 
 /** The pharmacy desk's figures (migration 0056). */

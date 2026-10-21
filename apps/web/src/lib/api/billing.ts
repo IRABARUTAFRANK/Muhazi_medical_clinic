@@ -128,6 +128,9 @@ const sexLetter = { female: 'F', male: 'M', other: '', unknown: '' } as const
 export function useVisitHeader(encounterId: string) {
   return useQuery({
     queryKey: ['visit', encounterId, 'header'],
+    // another desk works on the same visit: keep it fresh while open
+    refetchInterval: 20_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<VisitHeader | null> => {
       if (!supabase) {
         return {
@@ -205,6 +208,9 @@ export function useVisitHeader(encounterId: string) {
 export function useVisitVitals(encounterId: string) {
   return useQuery({
     queryKey: ['visit', encounterId, 'vitals'],
+    // another desk works on the same visit: keep it fresh while open
+    refetchInterval: 20_000,
+    refetchOnWindowFocus: true,
     enabled: encounterId !== '',
     queryFn: async (): Promise<Vital[]> => {
       if (!supabase) {
@@ -275,6 +281,9 @@ interface ChargeRow {
 export function useVisitBill(encounterId: string) {
   return useQuery({
     queryKey: ['visit', encounterId, 'bill'],
+    // another desk works on the same visit: keep it fresh while open
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<VisitBill> => {
       if (!supabase) return { ...sampleBill(encounterId) }
       const [{ data: bill, error: be }, { data: lines, error: le }] = await Promise.all([
@@ -480,7 +489,14 @@ export function useBillingActions(encounterId: string) {
       amount: number
       reference?: string
       phone?: string
-    }): Promise<{ balance: number; number: string | null; status: string }> => {
+    }): Promise<{
+      balance: number
+      number: string | null
+      status: string
+      /** The visit ended with this payment (nothing else left to do). */
+      closed: boolean
+      receipt: string | null
+    }> => {
       if (!supabase) {
         const b = sampleBill(encounterId)
         b.paid += amount
@@ -490,6 +506,8 @@ export function useBillingActions(encounterId: string) {
           balance: b.balance,
           number: b.balance <= 0 ? 'INV-2026-000001' : null,
           status: b.status ?? 'draft',
+          closed: b.balance <= 0,
+          receipt: 'RCT-2026-000001',
         }
       }
       const { data, error } = await supabase.rpc('take_payment', {
@@ -500,8 +518,20 @@ export function useBillingActions(encounterId: string) {
         p_payer_phone: phone?.trim() || null,
       })
       if (error) throw new Error(error.message)
-      const r = data as { balance: number | string; number: string | null; status: string }
-      return { balance: Number(r.balance), number: r.number, status: r.status }
+      const r = data as {
+        balance: number | string
+        number: string | null
+        status: string
+        closed?: boolean
+        receipt?: string | null
+      }
+      return {
+        balance: Number(r.balance),
+        number: r.number,
+        status: r.status,
+        closed: !!r.closed,
+        receipt: r.receipt ?? null,
+      }
     },
     onSuccess: () => {
       refresh()

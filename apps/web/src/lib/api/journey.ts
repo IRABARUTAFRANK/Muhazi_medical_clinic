@@ -229,6 +229,9 @@ const SAMPLE: Journey = {
 export function useVisitJourney(encounterId: string | null) {
   return useQuery({
     queryKey: ['visit', encounterId, 'journey'],
+    // another desk works on the same visit: keep it fresh while open
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     enabled: !!encounterId,
     queryFn: async (): Promise<Journey> => {
       if (!supabase) return { ...SAMPLE, encounterId: encounterId ?? 'e-1' }

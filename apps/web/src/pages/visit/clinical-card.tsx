@@ -104,6 +104,9 @@ export function ClinicalCard({
     (user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager') &&
     !readOnly &&
     can('clinical.write')
+  // The lab / ultrasound may register the tests of their own desk (a patient who came straight
+  // to them); notes, diagnoses and prescriptions stay with the clinicians.
+  const deskStaff = user.role === 'lab_tech' && !readOnly && can('orders.write')
   // Lab / ultrasound staff (and clinicians) record results; reception and the cashier do not.
   const canResult = !closed && user.role !== 'receptionist' && user.role !== 'cashier'
   const [resultFor, setResultFor] = useState<string | null>(null)
@@ -337,7 +340,8 @@ export function ClinicalCard({
           .mutateAsync({
             tests: chosen.map((s) => ({ serviceId: s.id, name: s.nameEn, group: s.group })),
             reason: order.reason,
-            from: order.send ? (station ?? stationFor(user)) : null,
+            // the lab registering its own test: the patient is already there
+            from: order.send && !deskStaff ? (station ?? stationFor(user)) : null,
           })
           .then(() => setOrder({ services: [], reason: '', send: true })),
       t(order.send ? 'clinical.testsSent' : 'clinical.testsSaved', { count: chosen.length }),
@@ -360,7 +364,7 @@ export function ClinicalCard({
       size="sm"
       variant={mode === k ? 'primary' : 'default'}
       onClick={() => setMode(mode === k ? null : k)}
-      disabled={!clinician || (k === 'test' && !can('orders.write'))}
+      disabled={k === 'test' ? !((clinician || deskStaff) && can('orders.write')) : !clinician}
     >
       {icon}
       {label}
@@ -657,44 +661,46 @@ export function ClinicalCard({
         {mode === 'test' && (
           <form onSubmit={submitOrder} className="flex flex-col gap-3">
             <p className="text-ink-3 m-0 text-xs">{t('clinical.testHint')}</p>
-            {desks.map((g) => {
-              const list = tests.filter((s) => s.orderStation === g)
-              if (list.length === 0) return null
-              return (
-                <fieldset key={g} className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-                  <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
-                    {t(`register.stations.${g}`, { defaultValue: g })}
-                  </legend>
-                  <div className="flex flex-wrap gap-2">
-                    {list.map((s) => {
-                      const on = order.services.includes(s.id)
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          role="checkbox"
-                          aria-checked={on}
-                          onClick={() => toggleTest(s.id)}
-                          className={cn(
-                            'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
-                            on
-                              ? 'border-primary bg-primary text-white'
-                              : 'border-border bg-card text-ink-2 hover:bg-hover',
-                          )}
-                        >
-                          {on ? (
-                            <CheckCircle2 size={14} aria-hidden="true" />
-                          ) : (
-                            <FlaskConical size={14} aria-hidden="true" />
-                          )}
-                          {treatmentName(s, i18n.language)}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </fieldset>
-              )
-            })}
+            {desks
+              .filter((g) => !deskStaff || clinician || g === station)
+              .map((g) => {
+                const list = tests.filter((s) => s.orderStation === g)
+                if (list.length === 0) return null
+                return (
+                  <fieldset key={g} className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+                    <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
+                      {t(`register.stations.${g}`, { defaultValue: g })}
+                    </legend>
+                    <div className="flex flex-wrap gap-2">
+                      {list.map((s) => {
+                        const on = order.services.includes(s.id)
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            role="checkbox"
+                            aria-checked={on}
+                            onClick={() => toggleTest(s.id)}
+                            className={cn(
+                              'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                              on
+                                ? 'border-primary bg-primary text-white'
+                                : 'border-border bg-card text-ink-2 hover:bg-hover',
+                            )}
+                          >
+                            {on ? (
+                              <CheckCircle2 size={14} aria-hidden="true" />
+                            ) : (
+                              <FlaskConical size={14} aria-hidden="true" />
+                            )}
+                            {treatmentName(s, i18n.language)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </fieldset>
+                )
+              })}
             {tests.length === 0 && (
               <p className="text-ink-3 m-0 text-[13px]">{t('clinical.noTests')}</p>
             )}

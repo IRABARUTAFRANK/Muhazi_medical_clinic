@@ -25,7 +25,7 @@ import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
-import { PharmacyDesk } from '../stock/pharmacy-desk'
+import { PharmacyDesk, SellMedicineCard } from '../stock/pharmacy-desk'
 import { CallsPanel } from './calls-panel'
 import { MyQueuePanel } from './role-panels'
 
@@ -42,6 +42,14 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const { data: lines = [] } = usePharmacyQueue()
   const { data: stock } = useStockOverview()
   const { data: board = [] } = useQueueBoard('pharmacy', user.role)
+  const { data: everyone = [] } = useQueueBoard('all', user.role)
+  // every patient in the clinic now (one per visit), for a sale without a prescription
+  const inClinic = [...new Map(openItems(everyone).map((q) => [q.encounterId, q])).values()].map(
+    (q) => ({
+      encounterId: q.encounterId,
+      label: `${q.ticket} · ${q.name} · ${q.fileNumber}`,
+    }),
+  )
   // At the pharmacy desk without a medicine to hand over (sent to buy something, to ask…).
   const withRx = new Set(lines.map((l) => l.encounterId))
   const others = openItems(board).filter((q) => !withRx.has(q.encounterId))
@@ -160,6 +168,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
           <div className="pc:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
             <div className="flex min-w-0 flex-col gap-4">
               <PharmacyDesk canDispense />
+              <SellMedicineCard patients={inClinic} />
               {others.length > 0 && (
                 <MyQueuePanel
                   title={t('pharmacy.atDesk')}

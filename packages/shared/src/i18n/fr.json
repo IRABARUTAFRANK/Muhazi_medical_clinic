@@ -65,13 +65,13 @@
     "home": "Accueil",
     "patients": "Patients",
     "appointments": "Rendez-vous",
-    "queue": "File d'attente",
+    "queue": "Ma file",
     "reports": "Rapports",
     "vitals": "Constantes",
     "beds": "Lits",
     "tasks": "Tâches",
-    "results": "Résultats",
-    "prescriptions": "Ordonnances",
+    "results": "Examens et résultats",
+    "prescriptions": "Mes ordonnances",
     "calendar": "Agenda",
     "bills": "Factures",
     "payments": "Paiements",
@@ -457,7 +457,9 @@
       "directSale": "Vente directe",
       "dayClose": "Clôture du jour",
       "worklist": "Ouvrir la liste de travail",
-      "stock": "Stock"
+      "stock": "Stock",
+      "myResults": "Examens et résultats",
+      "myPrescriptions": "Mes ordonnances"
     },
     "methodsHint": "Paiements acceptés : espèces, MTN MoMo et Airtel Money.",
     "sharedQueue": "premier médecin libre",
@@ -1299,7 +1301,9 @@
         "amount": "Saisissez un montant supérieur à zéro.",
         "tooMuch": "Le montant dépasse le solde dû ({{balance}}).",
         "reference": "Une référence de transaction est requise pour ce mode."
-      }
+      },
+      "settledClosed": "Tout est payé. Reçu {{receipt}}. La visite est terminée.",
+      "settledOpen": "Payé à ce jour. Reçu {{receipt}}. La visite continue : ce qui sera ajouté sera payé à la fin."
     },
     "next": {
       "title": "Prochaine étape pour ce patient",
@@ -2630,7 +2634,8 @@
       "refused": "Le patient a refusé"
     },
     "cannotPh": "Ou écrivez la raison",
-    "cannotConfirm": "Confirmer : non fait"
+    "cannotConfirm": "Confirmer : non fait",
+    "queueUltrasound": "Patients à l’échographie"
   },
   "finance": {
     "desk": "Caisse",
@@ -2807,7 +2812,9 @@
       "send": "Envoyer à un poste",
       "moves": "Mouvements",
       "sales": "Ventes & valeur",
-      "stores": "Magasins"
+      "stores": "Magasins",
+      "use": "Utiliser / sortir",
+      "medicines": "Médicaments et prix"
     },
     "onHand": "Stock disponible",
     "itemCount_one": "{{count}} médicament",
@@ -2901,7 +2908,20 @@
       "cost": "Entrez le coût unitaire (0 accepté).",
       "short": "Seulement {{count}} disponibles dans ce magasin.",
       "storeName": "Donnez un nom au magasin."
-    }
+    },
+    "useTitle": "Utiliser ou sortir du stock",
+    "useLead": "Ce qui sort sans vente : périmé, abîmé, utilisé à un poste, ou une correction d’inventaire. C’est noté dans les mouvements avec la raison.",
+    "useWhy": "Pourquoi",
+    "useReasons": {
+      "expired": "Périmé",
+      "damaged": "Abîmé ou perdu",
+      "usedAtDesk": "Utilisé à un poste",
+      "countCorrection": "Correction d’inventaire"
+    },
+    "useNotePh": "ex. lot B12, flacons cassés",
+    "useSave": "Sortir du stock",
+    "used": "{{count}} × {{item}} sortis du stock.",
+    "medicinesNotYours": "Seuls la pharmacie et le gérant modifient les médicaments et leurs prix."
   },
   "report": {
     "excel": "Excel",
@@ -3246,6 +3266,76 @@
     "mostGiven": "Les plus remis aujourd’hui",
     "givenCount_one": "{{count}} médicament",
     "givenCount_other": "{{count}} médicaments",
-    "nothingYet": "Rien de remis aujourd’hui."
+    "nothingYet": "Rien de remis aujourd’hui.",
+    "withDoctor": "Encore chez le médecin : remettez maintenant, le patient retourne chez lui",
+    "expiredHere_one": "{{count}} unité périmée ici : à sortir du stock",
+    "expiredHere_other": "{{count}} unités périmées ici : à sortir du stock",
+    "sellTitle": "Vendre un médicament",
+    "sellLead": "Pour un patient dans la clinique, sans ordonnance (ou oublié par le médecin). Il va sur la facture de la visite.",
+    "sellPatient": "Patient",
+    "pickPatient": "Choisir le patient",
+    "sellHow": "Comment le prendre (facultatif)",
+    "sellHowPh": "ex. 1 comprimé 3 fois par jour pendant 5 jours",
+    "sellNoPrice": "Ce médicament n’a pas de prix : il sera remis gratuitement. Fixez son prix dans Stock → Médicaments et prix.",
+    "sellTotal": "À payer : {{amount}}",
+    "sell": "Vendre et remettre"
+  },
+  "queuePage": {
+    "title": "Ma file · {{desk}}",
+    "lead": "Tous ceux qui attendent à votre poste, les plus urgents d’abord ; prenez le suivant ou un patient.",
+    "nobody": "Personne ne vous attend pour le moment."
+  },
+  "doctorLists": {
+    "period": "Afficher",
+    "lastDays_one": "aujourd’hui",
+    "lastDays_other": "{{count}} derniers jours",
+    "resultsTitle": "Examens et résultats",
+    "resultsLead": "Les examens que vous avez demandés : encore au labo, résultats prêts à lire, ou non faits et pourquoi.",
+    "readyCount_one": "{{count}} résultat prêt",
+    "readyCount_other": "{{count}} résultats prêts",
+    "resultsPanel": "Examens que j’ai demandés",
+    "orderTabs": {
+      "ready": "Résultats prêts",
+      "waiting": "En attente",
+      "cancelled": "Non faits",
+      "all": "Tous"
+    },
+    "noOrders": "Aucun examen sur cette période.",
+    "orderedAt": "demandé {{when}}",
+    "rxTitle": "Mes ordonnances",
+    "rxLead": "Les médicaments prescrits et ce qu’a fait la pharmacie : remis, en attente, ou non remis et pourquoi.",
+    "notGivenCount_one": "{{count}} non remis",
+    "notGivenCount_other": "{{count}} non remis",
+    "rxPanel": "Ordonnances que j’ai écrites",
+    "rxTabs": {
+      "all": "Toutes",
+      "waiting": "À la pharmacie",
+      "given": "Remis",
+      "not_given": "Non remis",
+      "room": "Donné ici"
+    },
+    "rxSearch": "Chercher un patient, un médicament ou un dossier",
+    "noRx": "Aucune ordonnance sur cette période.",
+    "loading": "Chargement…"
+  },
+  "receipt": {
+    "title": "Reçu",
+    "statement": "Relevé",
+    "receiptNo": "Reçu",
+    "invoiceNo": "Facture",
+    "item": "Article",
+    "amount": "Montant",
+    "total": "Total pour le patient",
+    "insurerPays": "{{name}} paie",
+    "patientPays": "Le patient paie",
+    "paidNow": "Payé maintenant",
+    "paidSoFar": "Payé à ce jour",
+    "balance": "Reste à payer",
+    "settled": "PAYÉ",
+    "cashier": "Reçu par",
+    "thanks": "Merci. Gardez ce reçu.",
+    "hint": "Un reçu pour le patient (imprimer ou PDF)",
+    "print": "Imprimer le reçu",
+    "printStatement": "Imprimer la facture"
   }
 }

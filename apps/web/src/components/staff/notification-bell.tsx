@@ -8,7 +8,7 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { useNotificationActions, useNotifications, type Notice } from '@/lib/api/notifications'
 import { useAgo, useWording } from '@/lib/notice-wording'
-import { DB_ROLES, useDepartments, useEmployees } from '@/lib/api/staff'
+import { DB_ROLES, useDepartments, useEmployees, useLeadDepartments } from '@/lib/api/staff'
 import { cn } from '@/lib/utils'
 
 /**
@@ -29,7 +29,9 @@ export function NotificationBell({ user }: { user: StaffUser }) {
   const word = useWording()
   const unread = data?.unread ?? 0
   const items = data?.items ?? []
-  const canSend = user.role === 'manager'
+  // the manager writes to anyone; a head or assistant head to their own department(s)
+  const leads = useLeadDepartments(user)
+  const canSend = user.role === 'manager' || leads.length > 0
 
   useEffect(() => {
     if (!open) return
@@ -120,7 +122,12 @@ export function NotificationBell({ user }: { user: StaffUser }) {
             )}
           </div>
 
-          {composing && <Composer onClose={() => setComposing(false)} />}
+          {composing && (
+            <Composer
+              onClose={() => setComposing(false)}
+              leads={user.role === 'manager' ? undefined : leads}
+            />
+          )}
 
           <div className="min-h-0 flex-1 overflow-auto">
             {items.length === 0 && (
@@ -191,13 +198,21 @@ export function NotificationBell({ user }: { user: StaffUser }) {
   )
 }
 
-export function Composer({ onClose }: { onClose: () => void }) {
+export function Composer({
+  onClose,
+  leads,
+}: {
+  onClose: () => void
+  /** For a head of department: only their department(s). */
+  leads?: { id: string; name: string }[]
+}) {
   const { t } = useTranslation()
   const actions = useNotificationActions()
-  const { data: departments = [] } = useDepartments()
+  const { data: allDepartments = [] } = useDepartments()
   const { data: employees = [] } = useEmployees()
-  const [to, setTo] = useState<'all' | 'role' | 'department' | 'user'>('all')
-  const [target, setTarget] = useState('')
+  const departments = leads ?? allDepartments
+  const [to, setTo] = useState<'all' | 'role' | 'department' | 'user'>(leads ? 'department' : 'all')
+  const [target, setTarget] = useState(leads?.length === 1 ? leads[0]!.id : '')
   const [headsOnly, setHeadsOnly] = useState(false)
   const [urgent, setUrgent] = useState(false)
   const [title, setTitle] = useState('')
@@ -252,10 +267,10 @@ export function Composer({ onClose }: { onClose: () => void }) {
             setTarget('')
           }}
         >
-          <option value="all">{t('notify.toAll')}</option>
-          <option value="role">{t('notify.toRole')}</option>
+          {!leads && <option value="all">{t('notify.toAll')}</option>}
+          {!leads && <option value="role">{t('notify.toRole')}</option>}
           <option value="department">{t('notify.toDept')}</option>
-          <option value="user">{t('notify.toUser')}</option>
+          {!leads && <option value="user">{t('notify.toUser')}</option>}
         </Select>
         {to === 'role' && (
           <Select

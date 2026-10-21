@@ -334,6 +334,9 @@ export const PATIENTS_PAGE_SIZE = PAGE
 export function usePatientFile(id: string) {
   return useQuery({
     queryKey: ['patients', 'file', id],
+    // another desk works on the same visit: keep it fresh while open
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<PatientFile> => {
       if (!supabase) return sampleFile(id)
       const { data, error } = await supabase.rpc('patient_file', { p_patient_id: id })
@@ -461,6 +464,9 @@ export interface PatientResult {
 export function usePatientResults(patientId: string) {
   return useQuery({
     queryKey: ['patients', patientId, 'results'],
+    // another desk works on the same visit: keep it fresh while open
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<PatientResult[]> => {
       if (!supabase) return []
       const { data, error } = await supabase.rpc('patient_results', { p_patient_id: patientId })
@@ -494,6 +500,9 @@ const sampleClinical = new Map<string, VisitClinical>()
 export function useVisitClinical(encounterId: string) {
   return useQuery({
     queryKey: ['visit', encounterId, 'clinical'],
+    // another desk works on the same visit: keep it fresh while open
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<VisitClinical> => {
       if (!supabase)
         return (

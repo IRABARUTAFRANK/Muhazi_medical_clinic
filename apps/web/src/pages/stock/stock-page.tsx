@@ -6,9 +6,11 @@ import {
   Coins,
   ListOrdered,
   Package,
+  PackageMinus,
   PackagePlus,
   Pill,
   Store,
+  Tags,
   Warehouse,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -48,13 +50,17 @@ import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 import { PharmacyDesk } from './pharmacy-desk'
+import { MedicinesSection } from '../prices/medicines-section'
 
-export type Tab = 'stock' | 'pharmacy' | 'receive' | 'send' | 'moves' | 'sales' | 'stores'
+export type Tab =
+  'stock' | 'pharmacy' | 'receive' | 'send' | 'use' | 'medicines' | 'moves' | 'sales' | 'stores'
 const TABS: { id: Tab; icon: typeof Package }[] = [
   { id: 'stock', icon: Boxes },
   { id: 'pharmacy', icon: Pill },
   { id: 'receive', icon: PackagePlus },
   { id: 'send', icon: ArrowRightLeft },
+  { id: 'use', icon: PackageMinus },
+  { id: 'medicines', icon: Tags },
   { id: 'moves', icon: ListOrdered },
   { id: 'sales', icon: Coins },
   { id: 'stores', icon: Store },
@@ -201,6 +207,10 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
         {tab === 'pharmacy' && <PharmacyDesk canDispense={canWrite} />}
         {tab === 'receive' && <ReceiveForm items={items} locations={locations} />}
         {tab === 'send' && <SendForm items={items} locations={locations} />}
+        {tab === 'use' && <UseForm items={items} locations={locations} />}
+        {tab === 'medicines' && (
+          <MedicinesTab canEdit={user.role === 'manager' || user.role === 'pharmacist'} />
+        )}
         {tab === 'moves' && <Movements items={items} />}
         {tab === 'sales' && <Sales />}
         {tab === 'stores' && <Stores locations={locations} />}
@@ -592,6 +602,152 @@ function SendForm({ items, locations }: { items: StockItem[]; locations: StockLo
         </Button>
       </form>
     </Panel>
+  )
+}
+
+/* ---------------------------------------------------------------- use / write off */
+const USE_REASONS = ['expired', 'damaged', 'usedAtDesk', 'countCorrection'] as const
+/**
+ * Stock that leaves without a sale: expired, damaged, used at a desk (dressings, gloves, reagents)
+ * or a count correction. Recorded in the ledger as used, with the reason.
+ */
+function UseForm({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
+  const { t } = useTranslation()
+  const actions = useStockActions()
+  const [itemId, setItemId] = useState('')
+  const [from, setFrom] = useState(
+    locations.find((l) => l.type === 'pharmacy')?.id ?? locations[0]?.id ?? '',
+  )
+  const [quantity, setQuantity] = useState('')
+  const [why, setWhy] = useState<(typeof USE_REASONS)[number]>('expired')
+  const [note, setNote] = useState('')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const item = items.find((i) => i.id === itemId)
+  const available = item ? (item.byLocation[from] ?? 0) : 0
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setMsg(null)
+    const q = Number(quantity)
+    if (!itemId) return setMsg({ ok: false, text: t('stock.errors.item') })
+    if (!from) return setMsg({ ok: false, text: t('stock.errors.store') })
+    if (!Number.isFinite(q) || q <= 0)
+      return setMsg({ ok: false, text: t('stock.errors.quantity') })
+    if (q > available)
+      return setMsg({ ok: false, text: t('stock.errors.short', { count: available }) })
+    try {
+      await actions.use.mutateAsync({
+        itemId,
+        locationId: from,
+        quantity: q,
+        reason: [t(`stock.useReasons.${why}`), note.trim()].filter(Boolean).join(': '),
+      })
+      setMsg({ ok: true, text: t('stock.used', { count: q, item: item?.name ?? '' }) })
+      setQuantity('')
+      setNote('')
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) })
+    }
+  }
+  return (
+    <Panel i={1} icon={PackageMinus} tint="coral" title={t('stock.useTitle')}>
+      <p className="text-ink-2 m-0 text-[13px]">{t('stock.useLead')}</p>
+      <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
+        <Select
+          label={t('stock.cols.item')}
+          value={itemId}
+          onChange={(e) => setItemId(e.target.value)}
+          required
+        >
+          <option value="">{t('visit.add.pickItem')}</option>
+          {items
+            .filter((i) => i.active && i.onHand > 0)
+            .map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+                {i.strength ? ` ${i.strength}` : ''} · {t('stock.onHandShort', { count: i.onHand })}
+                {i.expiredUnits > 0 ? ` · ${t('stock.expired', { count: i.expiredUnits })}` : ''}
+              </option>
+            ))}
+        </Select>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Select
+            label={t('stock.fromStore')}
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            required
+          >
+            {locations.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+                {item ? ` · ${item.byLocation[l.id] ?? 0}` : ''}
+              </option>
+            ))}
+          </Select>
+          <Select
+            label={t('stock.useWhy')}
+            value={why}
+            onChange={(e) => setWhy(e.target.value as typeof why)}
+          >
+            {USE_REASONS.map((r) => (
+              <option key={r} value={r}>
+                {t(`stock.useReasons.${r}`)}
+              </option>
+            ))}
+          </Select>
+          <Field
+            label={t('stock.quantity')}
+            inputMode="numeric"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ''))}
+            required
+          />
+        </div>
+        {item && (
+          <p className="text-ink-3 m-0 text-[13px]">
+            {t('stock.availableHere', { count: available })}
+          </p>
+        )}
+        <Field
+          label={t('stock.reason')}
+          value={note}
+          placeholder={t('stock.useNotePh')}
+          onChange={(e) => setNote(e.target.value)}
+          wrapperClassName="sm:max-w-md"
+        />
+        {msg && (
+          <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
+            {msg.text}
+          </Flash>
+        )}
+        <Button
+          type="submit"
+          variant="primary"
+          className="self-start"
+          loading={actions.use.isPending}
+        >
+          <PackageMinus size={16} aria-hidden="true" />
+          {t('stock.useSave')}
+        </Button>
+      </form>
+    </Panel>
+  )
+}
+
+/* ---------------------------------------------------------------- medicines and prices */
+/** The medicines list with prices: the pharmacist and the manager add medicines and set prices. */
+function MedicinesTab({ canEdit }: { canEdit: boolean }) {
+  const { t } = useTranslation()
+  const [notice, setNotice] = useState<string | null>(null)
+  if (!canEdit) return <p className={errorBox}>{t('stock.medicinesNotYours')}</p>
+  return (
+    <div className="flex flex-col gap-3">
+      {notice && (
+        <Flash key={notice} onClose={() => setNotice(null)}>
+          {notice}
+        </Flash>
+      )}
+      <MedicinesSection onNotice={setNotice} />
+    </div>
   )
 }
 

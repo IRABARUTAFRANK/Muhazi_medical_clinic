@@ -65,13 +65,13 @@
     "home": "Home",
     "patients": "Patients",
     "appointments": "Appointments",
-    "queue": "Queue",
+    "queue": "My queue",
     "reports": "Reports",
     "vitals": "Vitals",
     "beds": "Beds",
     "tasks": "Tasks",
-    "results": "Results",
-    "prescriptions": "Prescriptions",
+    "results": "Tests & results",
+    "prescriptions": "My prescriptions",
     "calendar": "Calendar",
     "bills": "Bills",
     "payments": "Payments",
@@ -457,7 +457,9 @@
       "directSale": "Direct sale",
       "dayClose": "Day close",
       "worklist": "Open the worklist",
-      "stock": "Stock"
+      "stock": "Stock",
+      "myResults": "Tests & results",
+      "myPrescriptions": "My prescriptions"
     },
     "methodsHint": "Accepted payments: cash, MTN MoMo and Airtel Money.",
     "sharedQueue": "first doctor free",
@@ -1299,7 +1301,9 @@
         "amount": "Enter an amount above zero.",
         "tooMuch": "The amount exceeds the balance due ({{balance}}).",
         "reference": "A transaction reference is required for this method."
-      }
+      },
+      "settledClosed": "Paid in full. Receipt {{receipt}}. The visit is finished.",
+      "settledOpen": "Paid so far. Receipt {{receipt}}. The visit goes on: anything added later is charged and paid at the end."
     },
     "next": {
       "title": "Next step for this patient",
@@ -2630,7 +2634,8 @@
       "refused": "The patient refused"
     },
     "cannotPh": "Or write the reason",
-    "cannotConfirm": "Confirm: not done"
+    "cannotConfirm": "Confirm: not done",
+    "queueUltrasound": "Patients at ultrasound"
   },
   "finance": {
     "desk": "Cash desk",
@@ -2807,7 +2812,9 @@
       "send": "Send to a desk",
       "moves": "Movements",
       "sales": "Sales & value",
-      "stores": "Stores"
+      "stores": "Stores",
+      "use": "Use / write off",
+      "medicines": "Medicines & prices"
     },
     "onHand": "Stock on hand",
     "itemCount_one": "{{count}} medicine",
@@ -2901,7 +2908,20 @@
       "cost": "Enter the cost per unit (0 is allowed).",
       "short": "Only {{count}} available in that store.",
       "storeName": "Give the store a name."
-    }
+    },
+    "useTitle": "Use or write off stock",
+    "useLead": "Stock leaving without a sale: expired, damaged, used at a desk, or a count correction. It is recorded in the movements with the reason.",
+    "useWhy": "Why",
+    "useReasons": {
+      "expired": "Expired",
+      "damaged": "Damaged or lost",
+      "usedAtDesk": "Used at a desk",
+      "countCorrection": "Count correction"
+    },
+    "useNotePh": "e.g. batch B12, broken bottles",
+    "useSave": "Take out of stock",
+    "used": "{{count}} × {{item}} taken out of stock.",
+    "medicinesNotYours": "Only the pharmacy and the manager change medicines and their prices."
   },
   "report": {
     "excel": "Excel",
@@ -3246,6 +3266,76 @@
     "mostGiven": "Most handed over today",
     "givenCount_one": "{{count}} medicine",
     "givenCount_other": "{{count}} medicines",
-    "nothingYet": "Nothing handed over yet today."
+    "nothingYet": "Nothing handed over yet today.",
+    "withDoctor": "Still with the doctor: hand over now, the patient goes back to them",
+    "expiredHere_one": "{{count}} expired unit here: write it off",
+    "expiredHere_other": "{{count}} expired units here: write them off",
+    "sellTitle": "Sell a medicine",
+    "sellLead": "For a patient in the clinic, without a prescription (or one the doctor forgot). It goes on the visit bill.",
+    "sellPatient": "Patient",
+    "pickPatient": "Choose the patient",
+    "sellHow": "How to take it (optional)",
+    "sellHowPh": "e.g. 1 tablet 3 times a day for 5 days",
+    "sellNoPrice": "This medicine has no price: it will be handed over free. Set its price under Stock → Medicines & prices.",
+    "sellTotal": "To pay: {{amount}}",
+    "sell": "Sell and hand over"
+  },
+  "queuePage": {
+    "title": "My queue · {{desk}}",
+    "lead": "Everyone waiting at your desk, most urgent first; take the next one or any patient.",
+    "nobody": "Nobody is waiting for you right now."
+  },
+  "doctorLists": {
+    "period": "Show",
+    "lastDays_one": "today",
+    "lastDays_other": "last {{count}} days",
+    "resultsTitle": "Tests & results",
+    "resultsLead": "The tests you ordered: still at the lab, results ready to read, or not done and why.",
+    "readyCount_one": "{{count}} result ready",
+    "readyCount_other": "{{count}} results ready",
+    "resultsPanel": "Tests I ordered",
+    "orderTabs": {
+      "ready": "Results ready",
+      "waiting": "Waiting",
+      "cancelled": "Not done",
+      "all": "All"
+    },
+    "noOrders": "No test in this period.",
+    "orderedAt": "ordered {{when}}",
+    "rxTitle": "My prescriptions",
+    "rxLead": "The medicines you prescribed and what the pharmacy did: handed over, waiting, or not given and why.",
+    "notGivenCount_one": "{{count}} not given",
+    "notGivenCount_other": "{{count}} not given",
+    "rxPanel": "Prescriptions I wrote",
+    "rxTabs": {
+      "all": "All",
+      "waiting": "At the pharmacy",
+      "given": "Handed over",
+      "not_given": "Not given",
+      "room": "Given here"
+    },
+    "rxSearch": "Search patient, medicine or file number",
+    "noRx": "No prescription in this period.",
+    "loading": "Loading…"
+  },
+  "receipt": {
+    "title": "Receipt",
+    "statement": "Statement",
+    "receiptNo": "Receipt",
+    "invoiceNo": "Invoice",
+    "item": "Item",
+    "amount": "Amount",
+    "total": "Total for the patient",
+    "insurerPays": "{{name}} pays",
+    "patientPays": "The patient pays",
+    "paidNow": "Paid now",
+    "paidSoFar": "Paid so far",
+    "balance": "Still due",
+    "settled": "PAID",
+    "cashier": "Received by",
+    "thanks": "Thank you. Keep this receipt.",
+    "hint": "A receipt for the patient (print or save as PDF)",
+    "print": "Print receipt",
+    "printStatement": "Print the bill"
   }
 }

@@ -26,7 +26,7 @@ import { ListBar, ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useLabSummary, useLabWorklist } from '@/lib/api/lab'
-import { openItems, useQueueBoard } from '@/lib/api/visits'
+import { openItems, stationFor, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
@@ -46,7 +46,9 @@ export function LabDashboard({ user }: { user: StaffUser }) {
   const { data: s, refetch, isFetching, dataUpdatedAt } = useLabSummary()
   const { data: open = [] } = useLabWorklist('open')
   const { data: done = [] } = useLabWorklist('done')
-  const { data: queue = [] } = useQueueBoard('laboratory', user.role)
+  // the lab's queue, or the ultrasound queue for sonographers
+  const desk = stationFor(user)
+  const { data: queue = [] } = useQueueBoard(desk, user.role)
   const rows = openItems(queue)
   const [query, setQuery] = useState('')
   const bench = open.filter((o) => matches(query, o.patient, o.test, o.fileNumber, o.ticket))
@@ -177,7 +179,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             </Panel>
             <div className="flex min-w-0 flex-col gap-4">
               <MyQueuePanel
-                title={t('lab.queue')}
+                title={desk === 'ultrasound' ? t('lab.queueUltrasound') : t('lab.queue')}
                 rows={rows}
                 counts={{
                   waiting: rows.filter((r) => !r.startedAt).length,

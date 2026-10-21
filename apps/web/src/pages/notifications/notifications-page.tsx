@@ -27,6 +27,7 @@ import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Button } from '@/components/ui/button'
 import { ListBar, Pager, ShownList } from '@/components/ui/list-tools'
 import { Composer } from '@/components/staff/notification-bell'
+import { useLeadDepartments } from '@/lib/api/staff'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
   useNotificationActions,
@@ -66,7 +67,9 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
   const navigate = useNavigate()
   const { data } = useNotifications(200)
   const actions = useNotificationActions()
-  const canSend = user.role === 'manager'
+  // the manager, and heads / assistant heads for their own department
+  const leads = useLeadDepartments(user)
+  const canSend = user.role === 'manager' || leads.length > 0
   const { data: sent = [] } = useSentNotifications(canSend)
   const ago = useAgo()
   const word = useWording()
@@ -147,7 +150,10 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
 
         {composing && canSend && (
           <div className="bg-card shadow-card anim-enter overflow-hidden rounded-[16px]">
-            <Composer onClose={() => setComposing(false)} />
+            <Composer
+              onClose={() => setComposing(false)}
+              leads={user.role === 'manager' ? undefined : leads}
+            />
           </div>
         )}
 

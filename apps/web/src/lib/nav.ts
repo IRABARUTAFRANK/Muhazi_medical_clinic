@@ -25,10 +25,14 @@ const HISTORY: NavItem = {
 export const MANAGER_NAV: NavItem[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'layout-dashboard', to: '/app/dashboard' },
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
+  { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
   { id: 'calendar', labelKey: 'nav.doctorCalendars', icon: 'calendar-days', to: '/app/calendar' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
+  { id: 'lab', labelKey: 'nav.worklist', icon: 'flask-conical', to: '/app/lab' },
+  { id: 'bills', labelKey: 'nav.bills', icon: 'wallet', to: '/app/bills' },
+  { id: 'payments', labelKey: 'nav.payments', icon: 'banknote', to: '/app/payments' },
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
   { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'id-card', to: '/app/staff' },
@@ -62,6 +66,13 @@ export const NURSE_NAV: NavItem[] = [
 /** Stock: the pharmacy, the laboratory (reagents, supplies) and a doctor at the pharmacy desk. */
 const STOCK: NavItem = { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' }
 const atPharmacy = (user: StaffUser) => /pharm|farum/i.test(user.station ?? '')
+/** Everyone in the clinic now, by desk. */
+const IN_CLINIC: NavItem = {
+  id: 'visits',
+  labelKey: 'nav.inClinic',
+  icon: 'stethoscope',
+  to: '/app/visits',
+}
 /** Patient files: the pharmacy and the laboratory look a patient up too. */
 const PATIENTS: NavItem = {
   id: 'patients',
@@ -70,8 +81,23 @@ const PATIENTS: NavItem = {
   to: '/app/patients',
 }
 
+/** A head of department also opens the dashboard (their department's figures). */
+const HEAD_DASHBOARD: NavItem = {
+  id: 'dashboard',
+  labelKey: 'nav.dashboard',
+  icon: 'layout-dashboard',
+  to: '/app/dashboard',
+}
+const withHeadDashboard = (user: StaffUser, items: NavItem[]): NavItem[] =>
+  user.dashboard === 'head' ? [items[0]!, HEAD_DASHBOARD, ...items.slice(1)] : items
+
 /** Navigation items for the user's role. */
 export const navForUser = (user: StaffUser): NavItem[] =>
+  user.dashboard === 'manager' || user.role === 'manager'
+    ? MANAGER_NAV
+    : withHeadDashboard(user, navForStaff(user))
+
+const navForStaff = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
     ? MANAGER_NAV
     : user.role === 'receptionist'
@@ -82,4 +108,13 @@ export const navForUser = (user: StaffUser): NavItem[] =>
           ? [...ROLE_HOME.pharmacist.nav, PATIENTS, HISTORY, NOTICES]
           : user.role === 'lab_tech'
             ? [...ROLE_HOME.lab_tech.nav, STOCK, PATIENTS, HISTORY, NOTICES]
-            : [...ROLE_HOME[user.role].nav, ...(atPharmacy(user) ? [STOCK] : []), HISTORY, NOTICES]
+            : user.role === 'doctor'
+              ? [
+                  ...ROLE_HOME.doctor.nav,
+                  IN_CLINIC,
+                  PATIENTS,
+                  ...(atPharmacy(user) ? [STOCK] : []),
+                  HISTORY,
+                  NOTICES,
+                ]
+              : [...ROLE_HOME[user.role].nav, HISTORY, NOTICES]

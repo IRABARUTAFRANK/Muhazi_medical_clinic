@@ -53,6 +53,7 @@ import { LabDashboard } from './lab-dashboard'
 import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
 import { CallsPanel } from './calls-panel'
 import { PharmacyDashboard } from './pharmacy-dashboard'
+import { OpenNextButton } from './open-next'
 
 interface HomePageProps {
   user: StaffUser
@@ -121,18 +122,28 @@ function RoleHome({ user, mode }: HomePageProps) {
       ? { waiting: 0, inProgress: 0, done: 0 }
       : home.counts
 
-  const tabletActions = home.actions.map((a) => (
-    <StaffLink
-      key={a.id}
-      to={a.to}
-      className={cn(
-        buttonVariants({ variant: a.primary ? 'primary' : 'default' }),
-        'min-h-[48px] px-2 text-center text-[14px] leading-tight whitespace-normal sm:min-h-[52px]',
-      )}
-    >
-      {t(a.labelKey)}
-    </StaffLink>
-  ))
+  // "Open next patient" takes the next patient of the desk and opens the visit.
+  const takesNext = (id: string) => id === 'openNext' && user.role === 'doctor'
+  const tabletActions = home.actions.map((a) =>
+    takesNext(a.id) ? (
+      <OpenNextButton
+        key={a.id}
+        user={user}
+        className="[&>button]:min-h-[48px] [&>button]:w-full"
+      />
+    ) : (
+      <StaffLink
+        key={a.id}
+        to={a.to}
+        className={cn(
+          buttonVariants({ variant: a.primary ? 'primary' : 'default' }),
+          'min-h-[48px] px-2 text-center text-[14px] leading-tight whitespace-normal sm:min-h-[52px]',
+        )}
+      >
+        {t(a.labelKey)}
+      </StaffLink>
+    ),
+  )
 
   return (
     <StaffShell
@@ -170,19 +181,23 @@ function RoleHome({ user, mode }: HomePageProps) {
           >
             {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
           </Button>
-          {home.actions.map((a) => (
-            <StaffLink
-              key={a.id}
-              to={a.to}
-              className={cn(
-                buttonVariants({ variant: a.primary ? 'primary' : 'default', size: 'md' }),
-                'pc:inline-flex hidden',
-              )}
-            >
-              <Icon name={a.icon} size={16} />
-              {t(a.labelKey)}
-            </StaffLink>
-          ))}
+          {home.actions.map((a) =>
+            takesNext(a.id) ? (
+              <OpenNextButton key={a.id} user={user} className="pc:inline-flex hidden" />
+            ) : (
+              <StaffLink
+                key={a.id}
+                to={a.to}
+                className={cn(
+                  buttonVariants({ variant: a.primary ? 'primary' : 'default', size: 'md' }),
+                  'pc:inline-flex hidden',
+                )}
+              >
+                <Icon name={a.icon} size={16} />
+                {t(a.labelKey)}
+              </StaffLink>
+            ),
+          )}
         </div>
 
         {error && <ErrorBox>{t('dashboard.loadFailed', { message: error.message })}</ErrorBox>}

@@ -58,7 +58,10 @@ export function WhereNextCard({
   const [toDept, setToDept] = useState('')
   const [picked, setPicked] = useState<Station[]>([])
   const [referring, setReferring] = useState(false)
-  const [toDesk, setToDesk] = useState<Station>('consultation')
+  // the first desk the list offers (the list leaves out the desk I am at)
+  const [toDesk, setToDesk] = useState<Station>(
+    () => TREATING_STATIONS.find((s) => s !== myStation) ?? 'consultation',
+  )
   const [toUser, setToUser] = useState('')
   const [note, setNote] = useState('')
   const [comeBack, setComeBack] = useState(true)

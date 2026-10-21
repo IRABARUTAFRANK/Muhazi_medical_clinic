@@ -136,9 +136,9 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
     counts: { waiting: 5, inProgress: 1, done: 17 },
     actions: [
       act('openNext', 'arrow-right', true, '/app/queue'),
+      act('myResults', 'flask-conical', false, '/app/results'),
+      act('myPrescriptions', 'pill', false, '/app/prescriptions'),
       act('registerPatient', 'user-plus', false, '/app/register'),
-      act('newPrescription', 'file-plus', false, '/app/prescriptions'),
-      act('newOrder', 'clipboard-check', false, '/app/results'),
     ],
     rowAction: 'call',
   },

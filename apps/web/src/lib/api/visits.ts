@@ -53,7 +53,13 @@ export function stationFor(user: StaffUser): Station {
   if (s.includes('theat') || s.includes('surg')) return 'theatre'
   if (s.includes('triage')) return 'triage'
   if (s.includes('nurs')) return 'nursing'
+  if (s.includes('recep')) return 'reception'
+  if (s.includes('cash') || s.includes('caiss')) return 'cashier'
+  // sonographers share the lab dashboard but work at the ultrasound desk
+  if (user.dbRole === 'sonographer') return 'ultrasound'
   switch (user.role) {
+    case 'receptionist':
+      return 'reception'
     case 'nurse':
       return 'triage'
     case 'doctor':
@@ -630,4 +636,13 @@ export function useTakePatient() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['queue'] }),
   })
+}
+
+/** The next patient this person may take at their desk: urgent first, then longest waiting. */
+export function useNextPatient(user: StaffUser): QueueItem | undefined {
+  const { data = [] } = useQueueBoard(stationFor(user), user.role)
+  const free = openItems(data).filter(
+    (q) => q.canWork !== false && !q.takenBy && !q.startedAt && !q.finishedAt,
+  )
+  return sortQueue(free, 'urgent')[0]
 }

@@ -1,5 +1,5 @@
-import { useState, type CSSProperties } from 'react'
-import { Ban, FolderOpen, PackageCheck, Pill } from 'lucide-react'
+import { useState, type CSSProperties, type FormEvent } from 'react'
+import { Ban, FolderOpen, PackageCheck, Pill, ShoppingBag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
@@ -8,8 +8,16 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Flash } from '@/components/ui/flash'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
-import { usePharmacyQueue, useStockActions, type PharmacyLine } from '@/lib/api/stock'
+import {
+  usePharmacyQueue,
+  useStockActions,
+  useStockOverview,
+  type PharmacyLine,
+  type StockItem,
+} from '@/lib/api/stock'
 import { cn } from '@/lib/utils'
+import { Field } from '@/components/ui/field'
+import { Select } from '@/components/ui/select'
 
 /** Usual reasons a medicine is not handed over; the pharmacist may also type their own. */
 const REASONS = ['outOfStock', 'boughtElsewhere', 'refused'] as const
@@ -90,6 +98,7 @@ export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; 
                 const first = lines[0]!
                 const total = lines.reduce((s, q) => s + (q.price ?? 0) * q.quantity, 0)
                 const anyShort = lines.some((q) => q.onHandPharmacy < q.quantity)
+                const withDoctor = lines.some((q) => q.doctorHolds)
                 return (
                   <div
                     key={first.encounterId}
@@ -112,6 +121,11 @@ export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; 
                             .filter(Boolean)
                             .join(' · ')}
                         </span>
+                        {withDoctor && (
+                          <span className="text-amber block text-[12px] font-semibold">
+                            {t('pharmacy.withDoctor')}
+                          </span>
+                        )}
                       </span>
                       <span className="text-[14px] font-bold tabular-nums">{formatRwf(total)}</span>
                       <StaffLink
@@ -173,6 +187,11 @@ export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; 
                               >
                                 {t('stock.inPharmacy', { count: q.onHandPharmacy })}
                               </span>
+                              {(q.expiredInPharmacy ?? 0) > 0 && (
+                                <span className="text-red block text-[12px] font-semibold">
+                                  {t('pharmacy.expiredHere', { count: q.expiredInPharmacy })}
+                                </span>
+                              )}
                             </span>
                             {canDispense && (
                               <span className="flex flex-wrap gap-1">
@@ -260,6 +279,125 @@ export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; 
         </ShownList>
       )}
       <p className="text-ink-3 m-0 text-[13px]">{t('pharmacy.hint')}</p>
+    </Panel>
+  )
+}
+
+/**
+ * "Sell a medicine": to a patient in the clinic without a prescription (or one the doctor
+ * forgot). Taken from the pharmacy store, charged on the visit's bill; the patient then goes to
+ * the cashier like after any hand-over.
+ */
+export function SellMedicineCard({
+  patients,
+}: {
+  patients: { encounterId: string; label: string }[]
+}) {
+  const { t } = useTranslation()
+  const { data: stock } = useStockOverview()
+  const actions = useStockActions()
+  const [encounterId, setEncounterId] = useState('')
+  const [itemId, setItemId] = useState('')
+  const [quantity, setQuantity] = useState('')
+  const [instructions, setInstructions] = useState('')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const pharmacyIds = (stock?.locations ?? []).filter((l) => l.type === 'pharmacy').map((l) => l.id)
+  const inPharmacy = (i: StockItem) => pharmacyIds.reduce((s, id) => s + (i.byLocation[id] ?? 0), 0)
+  const items = (stock?.items ?? []).filter((i) => i.active && inPharmacy(i) > 0)
+  const item = items.find((i) => i.id === itemId)
+  const q = Number(quantity)
+  const sell = async (e: FormEvent) => {
+    e.preventDefault()
+    setMsg(null)
+    if (!encounterId || !item || !Number.isFinite(q) || q <= 0) return
+    try {
+      const r = await actions.sell.mutateAsync({ encounterId, itemId, quantity: q, instructions })
+      const who = patients.find((p) => p.encounterId === encounterId)?.label ?? ''
+      setMsg({
+        ok: true,
+        text: t(r.charged ? 'stock.dispensedCharged' : 'stock.dispensedNoPrice', {
+          patient: who,
+          item: `${item.name}${item.strength ? ` ${item.strength}` : ''}`,
+        }),
+      })
+      setItemId('')
+      setQuantity('')
+      setInstructions('')
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) })
+    }
+  }
+  return (
+    <Panel i={2} icon={ShoppingBag} tint="teal" title={t('pharmacy.sellTitle')}>
+      <p className="text-ink-2 m-0 text-[13px]">{t('pharmacy.sellLead')}</p>
+      <form onSubmit={(e) => void sell(e)} className="flex flex-col gap-3">
+        <Select
+          label={t('pharmacy.sellPatient')}
+          value={encounterId}
+          onChange={(e) => setEncounterId(e.target.value)}
+          required
+        >
+          <option value="">{t('pharmacy.pickPatient')}</option>
+          {patients.map((p) => (
+            <option key={p.encounterId} value={p.encounterId}>
+              {p.label}
+            </option>
+          ))}
+        </Select>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
+          <Select
+            label={t('stock.cols.item')}
+            value={itemId}
+            onChange={(e) => setItemId(e.target.value)}
+            required
+          >
+            <option value="">{t('visit.add.pickItem')}</option>
+            {items.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+                {i.strength ? ` ${i.strength}` : ''} ·{' '}
+                {i.sellingPrice == null ? t('prices.noPrice') : formatRwf(i.sellingPrice)} ·{' '}
+                {t('stock.inPharmacy', { count: inPharmacy(i) })}
+              </option>
+            ))}
+          </Select>
+          <Field
+            label={t('stock.quantity')}
+            inputMode="numeric"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ''))}
+            required
+          />
+        </div>
+        <Field
+          label={t('pharmacy.sellHow')}
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          placeholder={t('pharmacy.sellHowPh')}
+        />
+        {item && q > 0 && (
+          <p className="text-ink-2 m-0 text-[13px] font-semibold">
+            {item.sellingPrice == null
+              ? t('pharmacy.sellNoPrice')
+              : t('pharmacy.sellTotal', { amount: formatRwf(item.sellingPrice * q) })}
+          </p>
+        )}
+        {msg && (
+          <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
+            {msg.text}
+          </Flash>
+        )}
+        <Button
+          type="submit"
+          variant="primary"
+          className="self-start"
+          loading={actions.sell.isPending}
+          disabled={patients.length === 0}
+        >
+          <ShoppingBag size={16} aria-hidden="true" />
+          {t('pharmacy.sell')}
+        </Button>
+      </form>
     </Panel>
   )
 }

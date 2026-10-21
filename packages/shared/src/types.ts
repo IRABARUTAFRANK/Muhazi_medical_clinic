@@ -83,6 +83,8 @@ export interface StaffUser {
   headOf?: string
   /** True until the employee replaced the PIN the manager handed over. */
   mustChangePin?: boolean
+  /** The role in the database when it differs in detail from the UI role (e.g. 'sonographer'). */
+  dbRole?: string
 }
 
 export interface Practitioner {

@@ -27,6 +27,10 @@ export interface RoutingEntry {
   returnStation: Station | null
   returnTo: string | null
   returnName: string | null
+  /** Who took the patient at that desk, and whether I may work there (migration 0057). */
+  takenBy?: string | null
+  takenName?: string | null
+  canWork?: boolean
 }
 
 const sampleColleagues: Colleague[] = [
