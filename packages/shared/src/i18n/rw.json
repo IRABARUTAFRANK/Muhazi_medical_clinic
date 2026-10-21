@@ -903,7 +903,12 @@
       "childHint": "Ku mwana, andika telefoni y’umubyeyi cyangwa umurera n’izina rye nk’uwo guhamagara mu gihe cyihutirwa muri dosiye."
     },
     "deskHint": "Umurwayi ahabwa itike akajya aho wahisemo. Ibipimo bishobora gufatirwa aho, cyangwa mbere n’umuforomo.",
-    "submitDesk": "Andika wohereze kuri {{station}}"
+    "submitDesk": "Andika wohereze kuri {{station}}",
+    "fileOnly": {
+      "title": "Dosiye nshya y’umurwayi",
+      "hint": "Hafungurwa dosiye gusa ubu; uruzinduko rutangira umurwayi ageze kuri gahunda. Dosiye nshya ihita ihitwamo kuri gahunda.",
+      "submit": "Bika dosiye uyikoreshe kuri gahunda"
+    }
   },
   "triage": {
     "title": "Ibipimo",

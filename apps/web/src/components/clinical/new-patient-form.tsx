@@ -1,0 +1,263 @@
+import { useState, type FormEvent } from 'react'
+import { UserPlus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
+import { Card, CardBody, CardHeader } from '@/components/ui/card'
+import { Field } from '@/components/ui/field'
+import { Select } from '@/components/ui/select'
+import { setNoNationalId, type NoIdReason } from '@/lib/api/patients'
+import { useVisitActions, type Sex, type Station, type VisitResult } from '@/lib/api/visits'
+
+const SEXES: readonly Sex[] = ['female', 'male', 'other', 'unknown']
+
+/*
+ * A new patient file: on the Register page it also starts the visit (ticket, queue); with
+ * `fileOnly` (a booking for a later day) it only creates the file and hands it back.
+ */
+export function NewPatientForm({
+  emergency = false,
+  station = 'consultation',
+  triageFirst = false,
+  onDone,
+  describe = (e) => (e instanceof Error ? e.message : String(e)),
+  nurse = false,
+  fileOnly,
+  initial,
+}: {
+  emergency?: boolean
+  station?: Station
+  triageFirst?: boolean
+  onDone?: (r: VisitResult) => void
+  describe?: (e: unknown) => string
+  /** The nurse registers what she can; reception completes phone, ID and address later. */
+  nurse?: boolean
+  /** Only the file, no visit (a booking): the new file is handed back; Cancel closes the form. */
+  fileOnly?: {
+    onSaved: (r: { patientId: string; fileNumber: string; name: string }) => void
+    onCancel: () => void
+  }
+  /** Prefilled from a booking request (name and phone the person gave). */
+  initial?: { surname?: string; givenNames?: string; phone?: string }
+}) {
+  const { t } = useTranslation()
+  const actions = useVisitActions()
+  const [surname, setSurname] = useState(initial?.surname ?? '')
+  const [givenNames, setGivenNames] = useState(initial?.givenNames ?? '')
+  const [sex, setSex] = useState<Sex>('unknown')
+  const [birthDate, setBirthDate] = useState('')
+  const [age, setAge] = useState('')
+  const [phone, setPhone] = useState(initial?.phone ?? '')
+  const [nationalId, setNationalId] = useState('')
+  const [noId, setNoId] = useState<NoIdReason | ''>('')
+  const [sector, setSector] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const reset = () => {
+    setSurname('')
+    setGivenNames('')
+    setSex('unknown')
+    setBirthDate('')
+    setAge('')
+    setPhone('')
+    setNationalId('')
+    setNoId('')
+    setSector('')
+  }
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    if (nationalId && nationalId.replace(/\D/g, '').length !== 16)
+      return setError(t('register.errors.nationalIdFormat'))
+    const patient = {
+      surname,
+      givenNames,
+      sex,
+      birthDate: birthDate || undefined,
+      ageYears: !birthDate && age ? Number(age) : undefined,
+      phone: phone || undefined,
+      nationalId: noId ? undefined : nationalId || undefined,
+      sector: sector || undefined,
+    }
+    try {
+      if (fileOnly) {
+        const f = await actions.registerFile.mutateAsync(patient)
+        if (noId) await setNoNationalId(f.patientId, noId)
+        fileOnly.onSaved({ ...f, name: `${surname.trim()} ${givenNames.trim()}` })
+        return
+      }
+      const r = await actions.register.mutateAsync({ patient, visit: { emergency, station } })
+      // A child or someone without an ID: say why, so the file is not flagged as incomplete.
+      if (noId) await setNoNationalId(r.patientId, noId)
+      reset()
+      onDone?.(r)
+    } catch (err) {
+      setError(describe(err))
+    }
+  }
+
+  return (
+    <Card className={fileOnly ? 'border-primary anim-enter' : undefined}>
+      <CardHeader>
+        <span className="inline-flex items-center gap-2">
+          <UserPlus size={16} aria-hidden="true" />
+          {t(fileOnly ? 'register.fileOnly.title' : 'register.newPatient')}
+        </span>
+        {fileOnly && (
+          <Button size="sm" variant="ghost" onClick={fileOnly.onCancel}>
+            {t('common.close')}
+          </Button>
+        )}
+      </CardHeader>
+      <form onSubmit={submit}>
+        <CardBody className="gap-3">
+          <p className="text-ink-2 bg-primary-tint/60 m-0 rounded-lg px-3 py-2 text-xs">
+            {t(
+              fileOnly
+                ? 'register.fileOnly.hint'
+                : nurse
+                  ? 'files.nurseHint'
+                  : 'files.receptionHint',
+            )}
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field
+              label={t('register.surname')}
+              value={surname}
+              onChange={(e) => setSurname(e.target.value)}
+              autoComplete="off"
+              required
+            />
+            <Field
+              label={t('register.givenNames')}
+              value={givenNames}
+              onChange={(e) => setGivenNames(e.target.value)}
+              autoComplete="off"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Select
+              label={t('register.sex')}
+              value={sex}
+              onChange={(e) => setSex(e.target.value as Sex)}
+            >
+              {SEXES.map((s) => (
+                <option key={s} value={s}>
+                  {t(`register.sexes.${s}`)}
+                </option>
+              ))}
+            </Select>
+            <Field
+              label={t('register.birthDate')}
+              type="date"
+              value={birthDate}
+              onChange={(e) => {
+                // A date of birth wins: it fills the age; typing an age clears the date.
+                setBirthDate(e.target.value)
+                setAge(e.target.value ? String(yearsSince(e.target.value)) : '')
+              }}
+              max={new Date().toISOString().slice(0, 10)}
+            />
+            <Field
+              label={t('register.ageYears')}
+              inputMode="numeric"
+              value={age}
+              onChange={(e) => {
+                setAge(e.target.value.replace(/\D/g, '').slice(0, 3))
+                setBirthDate('')
+              }}
+              placeholder={t('register.agePh')}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Field
+              label={t('register.phone')}
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="07xx xxx xxx"
+            />
+            <Field
+              label={t('register.nationalId')}
+              inputMode="numeric"
+              disabled={!!noId}
+              value={noId ? '' : nationalId}
+              onChange={(e) => setNationalId(e.target.value.replace(/\D/g, '').slice(0, 16))}
+              placeholder="1 1990 8 …"
+            />
+            <Field
+              label={t('register.sector')}
+              value={sector}
+              onChange={(e) => setSector(e.target.value)}
+              placeholder="Kiramuruzi"
+            />
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <Select
+              label={t('register.noId.label')}
+              value={noId}
+              onChange={(e) => setNoId(e.target.value as NoIdReason | '')}
+              wrapperClassName="w-72"
+            >
+              <option value="">{t('register.noId.has')}</option>
+              <option value="child">{t('register.noId.child')}</option>
+              <option value="not_issued">{t('register.noId.not_issued')}</option>
+              <option value="foreigner">{t('register.noId.foreigner')}</option>
+            </Select>
+            {noId === 'child' && (
+              <p className="text-ink-3 m-0 max-w-[460px] pb-2 text-[13px]">
+                {t('register.noId.childHint')}
+              </p>
+            )}
+          </div>
+          {error && (
+            <p
+              role="alert"
+              className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            >
+              {error}
+            </p>
+          )}
+          <span className="flex flex-wrap gap-2">
+            <Button
+              type="submit"
+              variant={emergency ? 'danger' : 'primary'}
+              size="lg"
+              disabled={actions.register.isPending || actions.registerFile.isPending}
+            >
+              {actions.register.isPending || actions.registerFile.isPending
+                ? t('register.submitting')
+                : t(
+                    fileOnly
+                      ? 'register.fileOnly.submit'
+                      : emergency
+                        ? 'register.submitEmergency'
+                        : nurse
+                          ? 'files.submitNurse'
+                          : triageFirst
+                            ? 'register.submit'
+                            : 'register.submitDesk',
+                    { station: t(`register.stations.${station}`) },
+                  )}
+            </Button>
+            {fileOnly && (
+              <Button type="button" variant="ghost" size="lg" onClick={fileOnly.onCancel}>
+                {t('staff.form.cancel')}
+              </Button>
+            )}
+          </span>
+        </CardBody>
+      </form>
+    </Card>
+  )
+}
+
+/** Whole years between a YYYY-MM-DD date and today. */
+const yearsSince = (iso: string): number => {
+  const b = new Date(iso)
+  const n = new Date()
+  let y = n.getFullYear() - b.getFullYear()
+  if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) y -= 1
+  return Math.max(0, y)
+}

@@ -8,7 +8,6 @@ import { Field } from '@/components/ui/field'
 import { ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
 import { Flash } from '@/components/ui/flash'
-import { StaffLink } from '@/components/staff/staff-link'
 import {
   useBookableDoctors,
   useHomeActions,
@@ -17,6 +16,7 @@ import {
 } from '@/lib/api/home'
 import { useFindPatients } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
+import { NewPatientForm } from '@/components/clinical/new-patient-form'
 
 const errorLine = 'bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold'
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -32,7 +32,22 @@ const whenOf = (iso: string | null) => {
  * (matched by phone, searched, or registered now), the doctor and the time. The doctor is then
  * asked to accept; their answer comes back as a notification. Reject asks for a reason.
  */
-export function InquiriesPanel({ i = 2, canAct }: { i?: number; canAct: boolean }) {
+/** Prefill for a new file from a booking request ("Uwase Claudine", phone). */
+export interface RegisterRequest {
+  initial: { surname: string; givenNames: string; phone: string }
+  onSaved: (r: { patientId: string; fileNumber: string; name: string }) => void
+}
+
+export function InquiriesPanel({
+  i = 2,
+  canAct,
+  onRegister,
+}: {
+  i?: number
+  canAct: boolean
+  /** Open the new-file form beside the panel (Bookings page); without it the form opens inline. */
+  onRegister?: (r: RegisterRequest) => void
+}) {
   const { t } = useTranslation()
   const { data: inquiries = [] } = useOpenInquiries()
   const actions = useHomeActions()
@@ -151,6 +166,7 @@ export function InquiriesPanel({ i = 2, canAct }: { i?: number; canAct: boolean 
                   {open === q.id && (
                     <BookForm
                       q={q}
+                      onRegister={onRegister}
                       onDone={(msg) => {
                         setOpen(null)
                         setDone(msg)
@@ -169,7 +185,15 @@ export function InquiriesPanel({ i = 2, canAct }: { i?: number; canAct: boolean 
 }
 
 /** Patient file, doctor, day and time; then the doctor is asked to accept. */
-function BookForm({ q, onDone }: { q: OpenInquiry; onDone: (msg: string) => void }) {
+function BookForm({
+  q,
+  onDone,
+  onRegister,
+}: {
+  q: OpenInquiry
+  onDone: (msg: string) => void
+  onRegister?: (r: RegisterRequest) => void
+}) {
   const { t } = useTranslation()
   const actions = useHomeActions()
   const { data: doctors = [] } = useBookableDoctors()
@@ -186,7 +210,18 @@ function BookForm({ q, onDone }: { q: OpenInquiry; onDone: (msg: string) => void
     start ? `${pad(new Date(start).getHours())}:${pad(new Date(start).getMinutes())}` : '09:00',
   )
   const [error, setError] = useState<string | null>(null)
+  const [registering, setRegistering] = useState(false)
   const doctor = doctors.find((d) => d.userId === doctorUserId)
+  // "Uwase Claudine" → surname Uwase, given names Claudine (corrected in the form if needed).
+  const [first, ...rest] = q.name.trim().split(/\s+/)
+  const register: RegisterRequest = {
+    initial: { surname: first ?? '', givenNames: rest.join(' '), phone: q.phone ?? '' },
+    onSaved: (r) => {
+      setPatientId(r.patientId)
+      setPatientLabel(`${r.fileNumber} · ${r.name}`)
+      setRegistering(false)
+    },
+  }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -271,10 +306,20 @@ function BookForm({ q, onDone }: { q: OpenInquiry; onDone: (msg: string) => void
             )}
             <span className="text-ink-3 text-[12px]">
               {t('ops.inquiries.noFileHint')}{' '}
-              <StaffLink to="/app/register" className="text-primary font-semibold underline">
+              <button
+                type="button"
+                className="text-primary font-semibold underline"
+                onClick={() => (onRegister ? onRegister(register) : setRegistering(true))}
+              >
                 {t('ops.inquiries.registerNow')}
-              </StaffLink>
+              </button>
             </span>
+            {registering && !onRegister && (
+              <NewPatientForm
+                fileOnly={{ onSaved: register.onSaved, onCancel: () => setRegistering(false) }}
+                initial={register.initial}
+              />
+            )}
           </>
         )}
       </div>

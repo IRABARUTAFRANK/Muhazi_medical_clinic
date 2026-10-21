@@ -350,7 +350,42 @@ export function useVisitActions() {
     onSuccess: refresh,
   })
 
-  return { register, startVisit, recordVitals, sendFromTriage, endVisit }
+  /** A patient file only, no visit (a booking for a later day; the visit starts on arrival). */
+  const registerFile = useMutation({
+    mutationFn: async (patient: NewPatient): Promise<{ patientId: string; fileNumber: string }> => {
+      if (!supabase) {
+        const id = `p-${Math.random().toString(36).slice(2, 8)}`
+        const fileNumber = `MMC-${String(140 + samplePatients.length).padStart(6, '0')}`
+        samplePatients.push({
+          id,
+          fileNumber,
+          surname: patient.surname,
+          givenNames: patient.givenNames,
+          sex: patient.sex,
+          birthDate: patient.birthDate ?? null,
+          phone: patient.phone ?? null,
+          hasOpenVisit: false,
+        })
+        return { patientId: id, fileNumber }
+      }
+      const { data, error } = await supabase.rpc('register_patient_file', {
+        p_surname: patient.surname.trim(),
+        p_given_names: patient.givenNames.trim(),
+        p_sex: patient.sex,
+        p_birth_date: patient.birthDate || null,
+        p_age_years: patient.ageYears ?? null,
+        p_phone: patient.phone?.trim() || null,
+        p_national_id: patient.nationalId?.trim() || null,
+        p_sector: patient.sector?.trim() || null,
+      })
+      if (error) throw new Error(error.message)
+      const r = data as { patient_id: string; file_number: string }
+      return { patientId: r.patient_id, fileNumber: r.file_number }
+    },
+    onSuccess: refresh,
+  })
+
+  return { register, registerFile, startVisit, recordVitals, sendFromTriage, endVisit }
 }
 
 // ---------------------------------------------------------------- who measures

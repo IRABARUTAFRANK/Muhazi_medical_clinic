@@ -11,6 +11,8 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { AppointmentsPanel, InquiriesPanel } from '@/pages/home/desk-panels'
+import { NewPatientForm } from '@/components/clinical/new-patient-form'
+import type { RegisterRequest } from '@/pages/home/inquiries-panel'
 
 /**
  * Appointments and inquiries (doc §5.2). Reception approves booking requests, then on the day
@@ -22,6 +24,8 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
   const dayNames = useDayNames()
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
+  // "Register the patient now" from a booking request: the new-file form opens on the left.
+  const [registering, setRegistering] = useState<RegisterRequest | null>(null)
   const day = new Date()
   day.setDate(day.getDate() + offset)
   const pickDay = (iso: string) => {
@@ -99,7 +103,19 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
         <section className="flex flex-col gap-3">
           <div className={sectionTitle}>{t('ops.appts.section')}</div>
           <div className="pc:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
-            {selected ? (
+            {registering ? (
+              <NewPatientForm
+                key={registering.initial.surname + registering.initial.phone}
+                initial={registering.initial}
+                fileOnly={{
+                  onSaved: (r) => {
+                    registering.onSaved(r)
+                    setRegistering(null)
+                  },
+                  onCancel: () => setRegistering(null),
+                }}
+              />
+            ) : selected ? (
               <AppointmentDetail id={selected} onBack={() => setSelected(null)} />
             ) : (
               <AppointmentsPanel
@@ -109,7 +125,7 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
                 onSelect={setSelected}
               />
             )}
-            <InquiriesPanel canAct={canAct} />
+            <InquiriesPanel canAct={canAct} onRegister={setRegistering} />
           </div>
           <p className="text-ink-3 m-0 text-xs">{t('ops.appts.flow')}</p>
         </section>

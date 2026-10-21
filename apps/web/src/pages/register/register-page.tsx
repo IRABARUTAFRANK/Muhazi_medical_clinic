@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { AlertTriangle, Search, UserPlus, Check, Ticket } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
@@ -12,23 +12,21 @@ import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { NewPatientForm } from '@/components/clinical/new-patient-form'
 import {
   TREATING_STATIONS,
   stationFor,
   useFindPatients,
   useVisitActions,
   type PatientHit,
-  type Sex,
   type Station,
   type VisitResult,
 } from '@/lib/api/visits'
 import { useStaffSettings } from '@/lib/api/settings'
-import { setNoNationalId, type NoIdReason } from '@/lib/api/patients'
 import { navForUser } from '@/lib/nav'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
-const SEXES: readonly Sex[] = ['female', 'male', 'other', 'unknown']
 
 /**
  * Registration from any station (MoH workflow). Normal path: the patient is queued at triage
@@ -208,222 +206,6 @@ export function RegisterPage({ user }: { user: StaffUser }) {
       </main>
     </StaffShell>
   )
-}
-
-function NewPatientForm({
-  emergency,
-  station,
-  triageFirst,
-  onDone,
-  describe,
-  nurse = false,
-}: {
-  emergency: boolean
-  station: Station
-  triageFirst: boolean
-  onDone: (r: VisitResult) => void
-  describe: (e: unknown) => string
-  /** The nurse registers what she can; reception completes phone, ID and address later. */
-  nurse?: boolean
-}) {
-  const { t } = useTranslation()
-  const actions = useVisitActions()
-  const [surname, setSurname] = useState('')
-  const [givenNames, setGivenNames] = useState('')
-  const [sex, setSex] = useState<Sex>('unknown')
-  const [birthDate, setBirthDate] = useState('')
-  const [age, setAge] = useState('')
-  const [phone, setPhone] = useState('')
-  const [nationalId, setNationalId] = useState('')
-  const [noId, setNoId] = useState<NoIdReason | ''>('')
-  const [sector, setSector] = useState('')
-  const [error, setError] = useState<string | null>(null)
-
-  const reset = () => {
-    setSurname('')
-    setGivenNames('')
-    setSex('unknown')
-    setBirthDate('')
-    setAge('')
-    setPhone('')
-    setNationalId('')
-    setNoId('')
-    setSector('')
-  }
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    if (nationalId && nationalId.replace(/\D/g, '').length !== 16)
-      return setError(t('register.errors.nationalIdFormat'))
-    try {
-      const r = await actions.register.mutateAsync({
-        patient: {
-          surname,
-          givenNames,
-          sex,
-          birthDate: birthDate || undefined,
-          ageYears: !birthDate && age ? Number(age) : undefined,
-          phone: phone || undefined,
-          nationalId: noId ? undefined : nationalId || undefined,
-          sector: sector || undefined,
-        },
-        visit: { emergency, station },
-      })
-      // A child or someone without an ID: say why, so the file is not flagged as incomplete.
-      if (noId) await setNoNationalId(r.patientId, noId)
-      reset()
-      onDone(r)
-    } catch (err) {
-      setError(describe(err))
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <span className="inline-flex items-center gap-2">
-          <UserPlus size={16} aria-hidden="true" />
-          {t('register.newPatient')}
-        </span>
-      </CardHeader>
-      <form onSubmit={submit}>
-        <CardBody className="gap-3">
-          <p className="text-ink-2 bg-primary-tint/60 m-0 rounded-lg px-3 py-2 text-xs">
-            {t(nurse ? 'files.nurseHint' : 'files.receptionHint')}
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field
-              label={t('register.surname')}
-              value={surname}
-              onChange={(e) => setSurname(e.target.value)}
-              autoComplete="off"
-              required
-            />
-            <Field
-              label={t('register.givenNames')}
-              value={givenNames}
-              onChange={(e) => setGivenNames(e.target.value)}
-              autoComplete="off"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Select
-              label={t('register.sex')}
-              value={sex}
-              onChange={(e) => setSex(e.target.value as Sex)}
-            >
-              {SEXES.map((s) => (
-                <option key={s} value={s}>
-                  {t(`register.sexes.${s}`)}
-                </option>
-              ))}
-            </Select>
-            <Field
-              label={t('register.birthDate')}
-              type="date"
-              value={birthDate}
-              onChange={(e) => {
-                // A date of birth wins: it fills the age; typing an age clears the date.
-                setBirthDate(e.target.value)
-                setAge(e.target.value ? String(yearsSince(e.target.value)) : '')
-              }}
-              max={new Date().toISOString().slice(0, 10)}
-            />
-            <Field
-              label={t('register.ageYears')}
-              inputMode="numeric"
-              value={age}
-              onChange={(e) => {
-                setAge(e.target.value.replace(/\D/g, '').slice(0, 3))
-                setBirthDate('')
-              }}
-              placeholder={t('register.agePh')}
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field
-              label={t('register.phone')}
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="07xx xxx xxx"
-            />
-            <Field
-              label={t('register.nationalId')}
-              inputMode="numeric"
-              disabled={!!noId}
-              value={noId ? '' : nationalId}
-              onChange={(e) => setNationalId(e.target.value.replace(/\D/g, '').slice(0, 16))}
-              placeholder="1 1990 8 …"
-            />
-            <Field
-              label={t('register.sector')}
-              value={sector}
-              onChange={(e) => setSector(e.target.value)}
-              placeholder="Kiramuruzi"
-            />
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <Select
-              label={t('register.noId.label')}
-              value={noId}
-              onChange={(e) => setNoId(e.target.value as NoIdReason | '')}
-              wrapperClassName="w-72"
-            >
-              <option value="">{t('register.noId.has')}</option>
-              <option value="child">{t('register.noId.child')}</option>
-              <option value="not_issued">{t('register.noId.not_issued')}</option>
-              <option value="foreigner">{t('register.noId.foreigner')}</option>
-            </Select>
-            {noId === 'child' && (
-              <p className="text-ink-3 m-0 max-w-[460px] pb-2 text-[13px]">
-                {t('register.noId.childHint')}
-              </p>
-            )}
-          </div>
-          {error && (
-            <p
-              role="alert"
-              className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-            >
-              {error}
-            </p>
-          )}
-          <Button
-            type="submit"
-            variant={emergency ? 'danger' : 'primary'}
-            size="lg"
-            className="self-start"
-            disabled={actions.register.isPending}
-          >
-            {actions.register.isPending
-              ? t('register.submitting')
-              : t(
-                  emergency
-                    ? 'register.submitEmergency'
-                    : nurse
-                      ? 'files.submitNurse'
-                      : triageFirst
-                        ? 'register.submit'
-                        : 'register.submitDesk',
-                  { station: t(`register.stations.${station}`) },
-                )}
-          </Button>
-        </CardBody>
-      </form>
-    </Card>
-  )
-}
-
-/** Whole years between a YYYY-MM-DD date and today. */
-const yearsSince = (iso: string): number => {
-  const b = new Date(iso)
-  const n = new Date()
-  let y = n.getFullYear() - b.getFullYear()
-  if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) y -= 1
-  return Math.max(0, y)
 }
 
 function ResultCard({

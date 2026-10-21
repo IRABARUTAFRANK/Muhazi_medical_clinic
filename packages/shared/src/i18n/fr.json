@@ -899,7 +899,12 @@
       "childHint": "Pour un enfant, indiquez le téléphone du parent ou tuteur et son nom comme contact d’urgence dans le dossier."
     },
     "deskHint": "Le patient reçoit un ticket et va au poste choisi. Les constantes peuvent y être prises, ou avant par une infirmière.",
-    "submitDesk": "Enregistrer et envoyer à {{station}}"
+    "submitDesk": "Enregistrer et envoyer à {{station}}",
+    "fileOnly": {
+      "title": "Nouveau dossier patient",
+      "hint": "Seul le dossier est créé maintenant ; la visite commence quand le patient arrive au rendez-vous. Le nouveau dossier est choisi automatiquement pour le rendez-vous.",
+      "submit": "Enregistrer le dossier et l’utiliser pour le rendez-vous"
+    }
   },
   "triage": {
     "title": "Constantes",

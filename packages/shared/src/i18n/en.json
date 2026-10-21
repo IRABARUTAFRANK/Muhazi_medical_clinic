@@ -899,7 +899,12 @@
       "childHint": "For a child, put the parent’s or guardian’s phone number and their name as the emergency contact in the file."
     },
     "deskHint": "The patient receives a ticket and goes to the chosen desk. Vitals can be taken there, or by a nurse before.",
-    "submitDesk": "Register and send to {{station}}"
+    "submitDesk": "Register and send to {{station}}",
+    "fileOnly": {
+      "title": "New patient file",
+      "hint": "Only the file is created now; the visit starts when the patient arrives for the booking. The new file is chosen in the booking automatically.",
+      "submit": "Save the file and use it for the booking"
+    }
   },
   "triage": {
     "title": "Vitals",
