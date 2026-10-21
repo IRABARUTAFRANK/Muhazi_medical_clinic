@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { ArrowRightLeft, FolderOpen, Stethoscope, UserPlus, Users } from 'lucide-react'
+import { ArrowRightLeft, FolderOpen, Lock, Stethoscope, UserPlus, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { StationGlyph } from '@/components/dash/kit'
@@ -203,13 +203,28 @@ function VisitRow({
         )}
       </span>
       <Badge tone={r.triage}>{t(`home.triage.${r.triage}`)}</Badge>
-      <StaffLink
-        to="/app/visit"
-        search={{ encounter: r.encounterId }}
-        className={buttonVariants({ size: 'sm', variant: 'primary' })}
-      >
-        {t('visits.openVisit')}
-      </StaffLink>
+      {r.canWork === false ? (
+        // sent to someone else: in the clinic, read only for me
+        <StaffLink
+          to="/app/visit"
+          search={{ encounter: r.encounterId }}
+          className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+          title={t('access.notYours', {
+            holder: r.takenBy ?? r.assignedName ?? r.departmentName ?? '',
+          })}
+        >
+          <Lock size={14} aria-hidden="true" />
+          {t('access.view')}
+        </StaffLink>
+      ) : (
+        <StaffLink
+          to="/app/visit"
+          search={{ encounter: r.encounterId }}
+          className={buttonVariants({ size: 'sm', variant: 'primary' })}
+        >
+          {t('visits.openVisit')}
+        </StaffLink>
+      )}
       <StaffLink
         to="/app/patient"
         search={{ id: r.patientId }}

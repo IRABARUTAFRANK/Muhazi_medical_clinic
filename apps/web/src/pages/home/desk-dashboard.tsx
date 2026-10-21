@@ -441,10 +441,14 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
                     search={{ encounter: r.encounterId }}
                     className={buttonVariants({
                       size: 'sm',
-                      variant: i === 0 ? 'primary' : 'default',
+                      variant:
+                        !nurse && r.canWork === false ? 'ghost' : i === 0 ? 'primary' : 'default',
                     })}
                   >
-                    {t(nurse ? 'desk.nurse.vitalsShort' : 'visits.openVisit')}
+                    {/* sent to someone else: reception may look, not work on the patient */}
+                    {!nurse && r.canWork === false
+                      ? t('access.view')
+                      : t(nurse ? 'desk.nurse.vitalsShort' : 'visits.openVisit')}
                   </StaffLink>
                 </div>
               ))}

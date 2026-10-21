@@ -95,7 +95,8 @@ export function CallsPanel({ user }: { user: StaffUser }) {
   const answered = myNext.filter((c) => c.status === 'answered')
   const nothing =
     !caller && incomingNext.length === 0 && incomingHelp.length === 0 && helping.length === 0
-  if (nothing) return null
+  // keep the panel while its last message shows (e.g. "sent to Dr X" after the only call)
+  if (nothing && !notice && !error) return null
 
   return (
     <Panel i={1} icon={BellRing} tint="violet" title={t('calls.title')}>
