@@ -54,7 +54,15 @@
     "footerNav": "Hasi y'urupapuro"
   },
   "days": {
-    "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],
+    "short": [
+      "Cyu",
+      "Mbe",
+      "Kab",
+      "Gat",
+      "Kan",
+      "Gnu",
+      "Gnd"
+    ],
     "long": [
       "Ku cyumweru",
       "Kuwa mbere",
@@ -1550,7 +1558,7 @@
       "nameKin": "Izina (Ikinyarwanda)",
       "nameFr": "Izina (Igifaransa)",
       "group": "Icyiciro",
-      "category": "Icyiciro ku rubuga rusange",
+      "category": "Icyiciro ku rubuga rusange (si ngombwa)",
       "categoryNone": "Ntigaragara ku rubuga rusange",
       "cashPrice": "Igiciro mu mafaranga (RWF)",
       "insurerPrices": "Ibiciro by'ubwishingizi (siga ubusa ukoreshe igiciro gisanzwe)",

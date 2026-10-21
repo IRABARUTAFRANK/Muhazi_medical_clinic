@@ -964,7 +964,7 @@
       "nameKin": "Name (Kinyarwanda)",
       "nameFr": "Name (French)",
       "group": "Category",
-      "category": "Public booking category",
+      "category": "Public booking category (optional)",
       "categoryNone": "Not shown on the public site",
       "cashPrice": "Cash price (RWF)",
       "maxDiscount": "Largest discount a clinician may give",

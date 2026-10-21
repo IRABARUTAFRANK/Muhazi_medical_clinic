@@ -964,7 +964,7 @@
       "nameKin": "Nom (kinyarwanda)",
       "nameFr": "Nom (français)",
       "group": "Catégorie",
-      "category": "Catégorie de réservation publique",
+      "category": "Catégorie de réservation publique (facultatif)",
       "categoryNone": "Non affiché sur le site public",
       "cashPrice": "Prix comptant (RWF)",
       "maxDiscount": "Remise maximale du clinicien",
