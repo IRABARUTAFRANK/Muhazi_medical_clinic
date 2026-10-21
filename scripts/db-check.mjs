@@ -1710,6 +1710,20 @@ await step('0049: a category in use cannot be deleted; the bed category never', 
   return 'in use refused, deleted once empty, bed refused; dashboard counts by category name'
 })
 
+// ---------------------------------------------------------------- 0050: departments in the history
+await step('0050: creating and deleting a department shows in the activity history', async () => {
+  await as(staff.manager)
+  const id = (await one(`select upsert_department(null, 'Eye clinic', '', '{doctor}') as id`)).id
+  await db.query(`select delete_department($1)`, [id])
+  const h = (await one(`select activity_history(null, null, null, 'admin', 200) as h`)).h
+  await asAdmin()
+  const items = h.items.filter((x) => x.entity === 'department' && x.row?.name === 'Eye clinic')
+  const actions = items.map((x) => x.action)
+  if (!actions.includes('create') || items.length < 2)
+    throw new Error(JSON.stringify(items.map((x) => x.action)))
+  return `history: ${actions.join(', ')} of department "Eye clinic"`
+})
+
 finish()
 
 function finish() {

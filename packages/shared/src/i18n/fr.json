@@ -2172,7 +2172,8 @@
       "procedure": "acte",
       "diagnostic_report": "résultat",
       "internal_task": "tâche",
-      "message": "message"
+      "message": "message",
+      "service_category": "catégorie de soins"
     },
     "leadOwn": "Tout ce que vous avez fait, le plus récent en premier.",
     "whatChanged": "Ce qui a changé",
@@ -2262,7 +2263,13 @@
       "insurerNew": "A ajouté l’assureur {{name}}.",
       "insurerEdit": "A modifié l’assureur {{name}}.",
       "insurerDel": "A supprimé l’assureur {{name}}.",
-      "generic": "{{verb}} : {{what}} {{name}}"
+      "generic": "{{verb}} : {{what}} {{name}}",
+      "deptNew": "A créé le département « {{name}} ».",
+      "deptEdit": "A modifié le département « {{name}} ».",
+      "deptDel": "A supprimé le département « {{name}} ».",
+      "catNew": "A créé la catégorie de soins « {{name}} » ({{kind}}).",
+      "catEdit": "A modifié la catégorie de soins « {{name}} » ({{kind}}).",
+      "catDel": "A supprimé la catégorie de soins « {{name}} »."
     },
     "line": {
       "reason": "Motif : {{value}}",
@@ -2287,7 +2294,8 @@
       "role": "Rôle : {{value}}",
       "confirmed": "Confirmé avec le code envoyé au gérant par e-mail",
       "nightly": "Prix par nuit : {{value}}",
-      "department": "Département : {{value}}"
+      "department": "Département : {{value}}",
+      "deptStaff": "Ses employés restent en poste, désormais sans département."
     },
     "fields": {
       "surname": "Nom",

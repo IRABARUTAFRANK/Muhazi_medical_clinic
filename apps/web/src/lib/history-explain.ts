@@ -386,6 +386,18 @@ export function explain(h: HistoryItem, t: TFn): Explained {
       })
       if (names.department) line('department', names.department)
       break
+    case 'department':
+      sentence = say(deleted ? 'deptDel' : h.action === 'create' ? 'deptNew' : 'deptEdit', {
+        name: r('name'),
+      })
+      if (deleted) lines.push(t('history.line.deptStaff'))
+      break
+    case 'service_category':
+      sentence = say(deleted ? 'catDel' : h.action === 'create' ? 'catNew' : 'catEdit', {
+        name: r('name_en'),
+        kind: t(`prices.cat.kinds.${r('kind')}`, { defaultValue: r('kind') }),
+      })
+      break
     case 'price_list_item':
       sentence = say(h.action === 'create' ? 'priceSet' : 'priceChanged', {
         name: names.service ?? names.item ?? '—',

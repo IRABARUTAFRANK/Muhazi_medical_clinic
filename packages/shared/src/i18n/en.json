@@ -2172,7 +2172,8 @@
       "procedure": "procedure",
       "diagnostic_report": "result",
       "internal_task": "task",
-      "message": "message"
+      "message": "message",
+      "service_category": "treatment category"
     },
     "leadOwn": "Everything you did, newest first.",
     "whatChanged": "What changed",
@@ -2262,7 +2263,13 @@
       "insurerNew": "Added the insurer {{name}}.",
       "insurerEdit": "Changed the insurer {{name}}.",
       "insurerDel": "Deleted the insurer {{name}}.",
-      "generic": "{{verb}}: {{what}} {{name}}"
+      "generic": "{{verb}}: {{what}} {{name}}",
+      "deptNew": "Created the department “{{name}}”.",
+      "deptEdit": "Changed the department “{{name}}”.",
+      "deptDel": "Deleted the department “{{name}}”.",
+      "catNew": "Created the treatment category “{{name}}” ({{kind}}).",
+      "catEdit": "Changed the treatment category “{{name}}” ({{kind}}).",
+      "catDel": "Deleted the treatment category “{{name}}”."
     },
     "line": {
       "reason": "Reason: {{value}}",
@@ -2287,7 +2294,8 @@
       "role": "Role: {{value}}",
       "confirmed": "Confirmed with the code sent to the manager by e-mail",
       "nightly": "Price per night: {{value}}",
-      "department": "Department: {{value}}"
+      "department": "Department: {{value}}",
+      "deptStaff": "Its employees stay employed, now without a department."
     },
     "fields": {
       "surname": "Surname",

@@ -2181,7 +2181,8 @@
       "procedure": "igikorwa",
       "diagnostic_report": "igisubizo",
       "internal_task": "umurimo",
-      "message": "ubutumwa"
+      "message": "ubutumwa",
+      "service_category": "icyiciro cy’ubuvuzi"
     },
     "leadOwn": "Ibyo wakoze byose, ibya vuba biza mbere.",
     "whatChanged": "Ibyahindutse",
@@ -2271,7 +2272,13 @@
       "insurerNew": "Yongeyeho ubwishingizi {{name}}.",
       "insurerEdit": "Yahinduye ubwishingizi {{name}}.",
       "insurerDel": "Yakuyeho ubwishingizi {{name}}.",
-      "generic": "{{verb}} · {{what}} {{name}}"
+      "generic": "{{verb}} · {{what}} {{name}}",
+      "deptNew": "Yashyizeho ishami “{{name}}”.",
+      "deptEdit": "Yahinduye ishami “{{name}}”.",
+      "deptDel": "Yasibye ishami “{{name}}”.",
+      "catNew": "Yashyizeho icyiciro cy’ubuvuzi “{{name}}” ({{kind}}).",
+      "catEdit": "Yahinduye icyiciro cy’ubuvuzi “{{name}}” ({{kind}}).",
+      "catDel": "Yasibye icyiciro cy’ubuvuzi “{{name}}”."
     },
     "line": {
       "reason": "Impamvu: {{value}}",
@@ -2296,7 +2303,8 @@
       "role": "Inshingano: {{value}}",
       "confirmed": "Byemejwe na kode yoherejwe umuyobozi kuri e-mail",
       "nightly": "Igiciro cy’ijoro: {{value}}",
-      "department": "Ishami: {{value}}"
+      "department": "Ishami: {{value}}",
+      "deptStaff": "Abakozi baryo bakomeza akazi, ubu nta shami bafite."
     },
     "fields": {
       "surname": "Izina ry’umuryango",
