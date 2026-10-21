@@ -24,6 +24,7 @@ import {
 } from '@/lib/api/billing'
 import { treatmentName, useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
 import { stationFor, type Station } from '@/lib/api/visits'
+import { useMyDepartment } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { resolveAdjust, type AdjustMode } from '@/lib/adjust'
@@ -57,6 +58,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const { data: vitals = [] } = useVisitVitals(encounterId)
   const { data: bill } = useVisitBill(encounterId)
   const { data: treatments = [] } = useTreatments(true)
+  const { data: myDepartment } = useMyDepartment(user.id)
   const { data: insurers = [] } = useInsurers(true)
   const actions = useBillingActions(encounterId)
   const [member, setMember] = useState('')
@@ -450,6 +452,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                 {!isReception && !isCashier && !closed && (
                   <AddChargeCard
                     treatments={treatments}
+                    myDepartment={isManagerNav ? null : (myDepartment ?? null)}
                     office={myStation}
                     payerId={bill?.payerId ?? null}
                     coveragePct={currentInsurer?.coveragePct ?? 0}
@@ -648,6 +651,7 @@ function PaymentCard({
 
 function AddChargeCard({
   treatments,
+  myDepartment,
   office,
   payerId,
   coveragePct,
@@ -656,6 +660,9 @@ function AddChargeCard({
   onAdd,
 }: {
   treatments: Treatment[]
+  /** The employee's department: its treatments (and those of no department) come first; the
+   *  others only after "Show other departments". Null = everything (manager, no department). */
+  myDepartment: { id: string; name: string } | null
   office: Station
   payerId: string | null
   coveragePct: number
@@ -677,6 +684,9 @@ function AddChargeCard({
 }) {
   const { t, i18n } = useTranslation()
   const [serviceId, setServiceId] = useState('')
+  const [showOthers, setShowOthers] = useState(false)
+  const isMine = (x: Treatment) =>
+    !myDepartment || x.departmentIds.length === 0 || x.departmentIds.includes(myDepartment.id)
   const [quantity, setQuantity] = useState('1')
   const [discount, setDiscount] = useState('')
   const [mode, setMode] = useState<AdjustMode>('pct')
@@ -705,12 +715,19 @@ function AddChargeCard({
   const manualRefused = manual != null && !mayTypePrice
   const modes: AdjustMode[] = mayTypePrice ? ['pct', 'rwf', 'x', 'price'] : ['pct', 'rwf', 'x']
   const changed = d > 0 || manual != null
-  const filtered = treatments.filter((x) =>
+  const matching = treatments.filter((x) =>
     query.trim() === ''
       ? true
       : `${x.nameEn} ${x.nameKin ?? ''} ${x.nameFr ?? ''} ${x.code}`
           .toLowerCase()
           .includes(query.toLowerCase()),
+  )
+  const mine = matching.filter(isMine)
+  const others = myDepartment ? matching.filter((x) => !isMine(x)) : []
+  const option = (x: Treatment) => (
+    <option key={x.id} value={x.id}>
+      {treatmentName(x, i18n.language)} · {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
+    </option>
   )
 
   const submit = async (e: FormEvent) => {
@@ -772,13 +789,43 @@ function AddChargeCard({
             required
           >
             <option value="">{t('visit.add.pick')}</option>
-            {filtered.map((x) => (
-              <option key={x.id} value={x.id}>
-                {treatmentName(x, i18n.language)} ·{' '}
-                {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
-              </option>
-            ))}
+            {showOthers && others.length > 0 ? (
+              <>
+                <optgroup label={t('visit.add.myDept', { name: myDepartment?.name ?? '' })}>
+                  {mine.map(option)}
+                </optgroup>
+                <optgroup label={t('visit.add.otherDepts')}>{others.map(option)}</optgroup>
+              </>
+            ) : (
+              mine.map(option)
+            )}
           </Select>
+          {myDepartment && others.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-ink-3 text-xs">
+                {showOthers
+                  ? t('visit.add.allShown')
+                  : t('visit.add.onlyMine', { name: myDepartment.name })}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  if (showOthers && others.some((x) => x.id === serviceId)) setServiceId('')
+                  setShowOthers(!showOthers)
+                }}
+              >
+                {showOthers
+                  ? t('visit.add.hideOthers')
+                  : t('visit.add.showOthers', { count: others.length })}
+              </Button>
+            </div>
+          )}
+          {myDepartment && showOthers && others.some((x) => x.id === serviceId) && (
+            <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+              {t('visit.add.otherWarning')}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Field
               label={t('visit.add.quantity')}

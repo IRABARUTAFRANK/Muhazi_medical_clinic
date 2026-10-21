@@ -776,7 +776,9 @@
       "description": "Description",
       "roles": "Rôles de ce service",
       "rolesHint": "Seuls les employés ayant ces rôles peuvent y être placés. Ne cochez rien pour accepter tous les rôles.",
-      "save": "Enregistrer le service"
+      "save": "Enregistrer le service",
+      "treatments_one": "{{count}} soin",
+      "treatments_other": "{{count}} soins"
     },
     "tempPin": "PIN temporaire",
     "showPin": "Afficher le PIN",
@@ -1068,7 +1070,10 @@
       "byDept": "Par département",
       "byType": "Par type",
       "field": "Département",
-      "addTo": "Nouveau service dans {{name}}"
+      "addTo": "Nouveau service dans {{name}}",
+      "fieldMany": "Départements qui le donnent",
+      "fieldHint": "Cochez chaque département dont les employés donnent ce soin. Leur personnel le voit en premier en ajoutant un soin à une visite ; les autres le trouvent sous « Voir les autres départements ».",
+      "alsoIn": "dans {{count}} départements"
     },
     "meds": {
       "title": "Médicaments et fournitures",
@@ -1181,7 +1186,14 @@
       "medicine": "Médicament ou fourniture",
       "pickItem": "Choisissez un médicament ou une fourniture",
       "searchItemPh": "amoxicilline, gants, SRO…",
-      "medicinesElsewhere": "Les médicaments se prescrivent dans le dossier clinique (Ordonnance) ; ici vous ajoutez les soins et services."
+      "medicinesElsewhere": "Les médicaments se prescrivent dans le dossier clinique (Ordonnance) ; ici vous ajoutez les soins et services.",
+      "myDept": "Votre département : {{name}}",
+      "otherDepts": "Autres départements",
+      "onlyMine": "Soins de {{name}} et ceux sans département.",
+      "allShown": "Tous les départements sont affichés.",
+      "showOthers": "Voir les autres départements ({{count}})",
+      "hideOthers": "Seulement mon département",
+      "otherWarning": "Ce soin appartient à un autre département. Ajoutez-le seulement si vous le donnez vraiment ici (par exemple quand personne de ce département n’est libre)."
     },
     "payment": {
       "title": "Paiement",

@@ -42,9 +42,12 @@ export interface Treatment {
   maxDiscountPct: number
   allowManualPrice: boolean
   active: boolean
-  /** Department the service belongs to (null = none yet). */
+  /** Main department (the first of departmentIds; null = none yet). */
   departmentId: string | null
   departmentName: string | null
+  /** Every department that gives this treatment (empty = none yet). */
+  departmentIds: string[]
+  departmentNames: string[]
 }
 
 export interface TreatmentInput {
@@ -61,8 +64,8 @@ export interface TreatmentInput {
   active: boolean
   /** Insurer prices to set with the treatment; empty string = use the cash price. */
   payerPrices?: Record<string, string>
-  /** Department to place it in; undefined = leave as it is. */
-  departmentId?: string | null
+  /** Departments that give it (first = main); undefined = leave as they are. */
+  departmentIds?: string[]
 }
 
 export interface Insurer {
@@ -104,6 +107,8 @@ const sampleTreatments: Treatment[] = [
     active: true,
     departmentId: null,
     departmentName: null,
+    departmentIds: [],
+    departmentNames: [],
   },
   {
     id: 't-2',
@@ -120,6 +125,8 @@ const sampleTreatments: Treatment[] = [
     active: true,
     departmentId: null,
     departmentName: null,
+    departmentIds: [],
+    departmentNames: [],
   },
   {
     id: 't-3',
@@ -136,6 +143,8 @@ const sampleTreatments: Treatment[] = [
     active: true,
     departmentId: null,
     departmentName: null,
+    departmentIds: [],
+    departmentNames: [],
   },
   {
     id: 't-4',
@@ -152,6 +161,8 @@ const sampleTreatments: Treatment[] = [
     active: true,
     departmentId: null,
     departmentName: null,
+    departmentIds: [],
+    departmentNames: [],
   },
 ]
 const sampleInsurers: Insurer[] = [
@@ -193,6 +204,8 @@ interface ServiceRow {
   payer_prices: Record<string, number | string> | null
   department_id?: string | null
   department_name?: string | null
+  department_ids?: string[] | null
+  department_names?: string[] | null
 }
 
 const TREATMENTS = ['catalogue', 'treatments'] as const
@@ -227,6 +240,9 @@ export function useTreatments(onlyActive = false) {
         active: r.active,
         departmentId: r.department_id ?? null,
         departmentName: r.department_name ?? null,
+        // Before migration 0048 only the main department exists.
+        departmentIds: r.department_ids ?? (r.department_id ? [r.department_id] : []),
+        departmentNames: r.department_names ?? (r.department_name ? [r.department_name] : []),
       }))
     },
   })
@@ -290,6 +306,8 @@ export function useCatalogueTools() {
             active: true,
             departmentId: input.departmentId,
             departmentName: null,
+            departmentIds: input.departmentId ? [input.departmentId] : [],
+            departmentNames: [],
           })
         return input.items.length
       }
@@ -312,6 +330,7 @@ export function useCatalogueTools() {
         for (const t of sampleTreatments)
           if (t.group === input.group) {
             t.departmentId = input.departmentId
+            t.departmentIds = input.departmentId ? [input.departmentId] : []
             n++
           }
         return n
@@ -550,10 +569,12 @@ export function useCatalogueActions() {
           allowManualPrice: input.allowManualPrice,
           active: input.active,
           departmentId:
-            input.departmentId !== undefined
-              ? input.departmentId
+            input.departmentIds !== undefined
+              ? (input.departmentIds[0] ?? null)
               : (existing?.departmentId ?? null),
           departmentName: null,
+          departmentIds: input.departmentIds ?? existing?.departmentIds ?? [],
+          departmentNames: [],
         }
         if (existing) Object.assign(existing, t)
         else sampleTreatments.push(t)
@@ -582,12 +603,19 @@ export function useCatalogueActions() {
         })
         if (pe) throw new Error(pe.message)
       }
-      if (input.departmentId !== undefined) {
-        const { error: de } = await supabase.rpc('set_service_department', {
+      if (input.departmentIds !== undefined) {
+        const { error: de } = await supabase.rpc('set_service_departments', {
           p_service_id: id,
-          p_department_id: input.departmentId,
+          p_department_ids: input.departmentIds,
         })
-        if (de) throw new Error(de.message)
+        if (de && /set_service_departments/.test(de.message)) {
+          // Database without migration 0048 yet: only the main department can be kept.
+          const { error: one } = await supabase.rpc('set_service_department', {
+            p_service_id: id,
+            p_department_id: input.departmentIds[0] ?? null,
+          })
+          if (one) throw new Error(one.message)
+        } else if (de) throw new Error(de.message)
       }
       return id
     },

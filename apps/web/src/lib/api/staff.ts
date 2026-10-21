@@ -451,3 +451,18 @@ export function useDepartmentActions() {
   })
   return { save, remove }
 }
+
+/** The signed-in employee's department (null = none: they see every treatment). */
+export function useMyDepartment(userId: string) {
+  return useQuery({
+    queryKey: ['my-department', userId],
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<{ id: string; name: string } | null> => {
+      if (!supabase) return null
+      const { data, error } = await supabase.rpc('my_placement')
+      if (error) throw new Error(error.message)
+      const d = (data ?? {}) as { departmentId?: string | null; department?: string | null }
+      return d.departmentId ? { id: d.departmentId, name: d.department ?? '' } : null
+    },
+  })
+}

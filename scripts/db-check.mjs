@@ -1615,6 +1615,40 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0048: a treatment in several departments
+await step(
+  '0048: one treatment given by two departments; the nurse knows her department',
+  async () => {
+    await as(staff.manager)
+    const surgery = (
+      await one(`select upsert_department(null, 'Minor surgery', '', '{doctor,nurse}') as id`)
+    ).id
+    const svc = (await one(`select upsert_service(null, 'Wound dressing', 'nursing', 3000) as id`))
+      .id
+    await db.query(`select set_service_departments($1, $2)`, [svc, [deptId, surgery]])
+    const two = await one(
+      `select department_ids, department_names from catalogue_services where id = $1`,
+      [svc],
+    )
+    await db.query(`select set_service_departments($1, $2)`, [svc, [surgery]])
+    const one1 = await one(
+      `select department_ids, department_id from catalogue_services where id = $1`,
+      [svc],
+    )
+    await as(staff.nurse)
+    const me = (await one(`select my_placement() as p`)).p
+    await asAdmin()
+    if (
+      two.department_ids.length !== 2 ||
+      one1.department_ids.length !== 1 ||
+      one1.department_id !== surgery ||
+      me.departmentId !== deptId
+    )
+      throw new Error(JSON.stringify({ two, one1, me }))
+    return `${two.department_names.join(' + ')} → Minor surgery only; nurse's department: ${me.department}`
+  },
+)
+
 finish()
 
 function finish() {

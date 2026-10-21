@@ -776,7 +776,9 @@
       "description": "Description",
       "roles": "Roles that belong to this department",
       "rolesHint": "Only employees with these roles can be placed here. Tick none to allow every role.",
-      "save": "Save department"
+      "save": "Save department",
+      "treatments_one": "{{count}} treatment",
+      "treatments_other": "{{count}} treatments"
     },
     "tempPin": "Temporary PIN",
     "showPin": "Show the PIN",
@@ -1068,7 +1070,10 @@
       "byDept": "By department",
       "byType": "By type",
       "field": "Department",
-      "addTo": "New service in {{name}}"
+      "addTo": "New service in {{name}}",
+      "fieldMany": "Departments that give it",
+      "fieldHint": "Tick every department whose employees give this treatment. Their staff see it first when they add a treatment to a visit; the others find it under “Show other departments”.",
+      "alsoIn": "in {{count}} departments"
     },
     "meds": {
       "title": "Medicines and supplies",
@@ -1181,7 +1186,14 @@
       "medicine": "Medicine or supply",
       "pickItem": "Choose a medicine or supply",
       "searchItemPh": "amoxicillin, gloves, ORS…",
-      "medicinesElsewhere": "Medicines are prescribed in the clinical record (Prescription); here you add treatments and services."
+      "medicinesElsewhere": "Medicines are prescribed in the clinical record (Prescription); here you add treatments and services.",
+      "myDept": "Your department: {{name}}",
+      "otherDepts": "Other departments",
+      "onlyMine": "Treatments of {{name}} and those of no department.",
+      "allShown": "All departments are shown.",
+      "showOthers": "Show other departments ({{count}})",
+      "hideOthers": "Only my department",
+      "otherWarning": "This treatment belongs to another department. Add it only if you really give it here (for example when nobody from that department is free)."
     },
     "payment": {
       "title": "Payment",

@@ -31,6 +31,7 @@ import { Field } from '@/components/ui/field'
 import { ListBar, ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { useTreatments } from '@/lib/api/catalogue'
 import {
   DB_ROLES,
   EMAIL_RE,
@@ -881,6 +882,8 @@ function DepartmentsPanel({
 }) {
   const { t } = useTranslation()
   const actions = useDepartmentActions()
+  // A department holds its employees and the treatments they give (Treatments and prices).
+  const { data: treatments = [] } = useTreatments()
   const [editing, setEditing] = useState<Department | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -985,7 +988,10 @@ function DepartmentsPanel({
                   )}
                 </p>
                 <p className="text-ink-3 m-0 text-xs">
-                  {t('staff.dept.members', { count: people.length })}
+                  {t('staff.dept.members', { count: people.length })} ·{' '}
+                  {t('staff.dept.treatments', {
+                    count: treatments.filter((x) => x.departmentIds.includes(d.id)).length,
+                  })}
                 </p>
               </CardBody>
             </Card>

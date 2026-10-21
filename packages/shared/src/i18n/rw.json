@@ -780,7 +780,9 @@
       "description": "Ibisobanuro",
       "roles": "Inshingano zibarizwa muri iri shami",
       "rolesHint": "Abakozi bafite izi nshingano ni bo bonyine bashobora gushyirwamo. Ntuhitemo na kimwe niba inshingano zose zemewe.",
-      "save": "Bika ishami"
+      "save": "Bika ishami",
+      "treatments_one": "ubuvuzi {{count}}",
+      "treatments_other": "ubuvuzi {{count}}"
     },
     "tempPin": "PIN y’agateganyo",
     "showPin": "Erekana PIN",
@@ -1137,7 +1139,14 @@
       "medicine": "Umuti cyangwa igikoresho",
       "pickItem": "Hitamo umuti cyangwa igikoresho",
       "searchItemPh": "amoxicillin, gants, ORS…",
-      "medicinesElsewhere": "Imiti yandikirwa mu nyandiko y’ubuvuzi (Andika umuti); hano wongeramo ubuvuzi na serivisi."
+      "medicinesElsewhere": "Imiti yandikirwa mu nyandiko y’ubuvuzi (Andika umuti); hano wongeramo ubuvuzi na serivisi.",
+      "myDept": "Ishami ryawe: {{name}}",
+      "otherDepts": "Andi mashami",
+      "onlyMine": "Ubuvuzi bwa {{name}} n’ubutari mu ishami.",
+      "allShown": "Amashami yose aragaragara.",
+      "showOthers": "Erekana andi mashami ({{count}})",
+      "hideOthers": "Ishami ryanjye gusa",
+      "otherWarning": "Ubu buvuzi ni ubw’irindi shami. Bwongeremo gusa niba koko ari wowe ubutanze hano (urugero iyo nta mukozi w’iryo shami uhari)."
     },
     "back": "Subira ku murongo wanjye",
     "notFound": "Uru ruzinduko ntirwabonetse cyangwa rwafunzwe.",
@@ -1618,7 +1627,10 @@
       "byDept": "Ishami",
       "byType": "Ubwoko",
       "field": "Ishami",
-      "addTo": "Serivisi nshya muri {{name}}"
+      "addTo": "Serivisi nshya muri {{name}}",
+      "fieldMany": "Amashami abutanga",
+      "fieldHint": "Hitamo buri shami rifite abakozi batanga ubu buvuzi. Abakozi baryo babubona mbere bongera ubuvuzi ku ruzinduko; abandi babusanga muri “Erekana andi mashami”.",
+      "alsoIn": "mu mashami {{count}}"
     },
     "meds": {
       "title": "Imiti n’ibikoresho",

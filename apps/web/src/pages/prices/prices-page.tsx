@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import {
   Building2,
+  Check,
   Copy,
-  FolderPlus,
-  Layers,
   Eye,
   EyeOff,
+  FolderPlus,
+  Layers,
   Pencil,
   Plus,
   Receipt,
@@ -121,16 +122,16 @@ export function PricesPage({ user }: { user: StaffUser }) {
   )
   const groups = SERVICE_GROUPS.filter((g) => visible.some((x) => x.group === g))
   const known = new Set(departments.map((d) => d.id))
-  const deptOf = (x: Treatment) =>
-    x.departmentId && known.has(x.departmentId) ? x.departmentId : ''
+  // A treatment shows in the card of every department that gives it.
+  const deptsOf = (x: Treatment) => x.departmentIds.filter((id) => known.has(id))
   const filtering = !!q || !!groupFilter
   const deptCards: { id: string; dept: Department | null; items: Treatment[] }[] = [
     ...departments.map((d) => ({
       id: d.id,
       dept: d,
-      items: visible.filter((x) => deptOf(x) === d.id),
+      items: visible.filter((x) => deptsOf(x).includes(d.id)),
     })),
-    { id: '', dept: null, items: visible.filter((x) => deptOf(x) === '') },
+    { id: '', dept: null, items: visible.filter((x) => deptsOf(x).length === 0) },
   ].filter((c) => c.items.length > 0 || (!filtering && c.dept !== null))
 
   const addTo = (deptId: string | null) => {
@@ -167,7 +168,12 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 <span className="text-ink-3 text-xs">
                   {x.code}
                   {view === 'dept' ? ` · ${t(`prices.groups.${x.group}`)}` : ''}
-                  {view === 'group' && x.departmentName ? ` · ${x.departmentName}` : ''}
+                  {view === 'group' && x.departmentNames.length > 0
+                    ? ` · ${x.departmentNames.join(', ')}`
+                    : ''}
+                  {view === 'dept' && x.departmentNames.length > 1
+                    ? ` · ${t('prices.dept.alsoIn', { count: x.departmentNames.length })}`
+                    : ''}
                   {x.nameKin ? ` · ${x.nameKin}` : ''}
                   {x.nameFr ? ` · ${x.nameFr}` : ''}
                 </span>
@@ -216,7 +222,8 @@ export function PricesPage({ user }: { user: StaffUser }) {
                   aria-label={t('prices.duplicate')}
                   onClick={() => {
                     setCopyFrom(x)
-                    setPresetDept(deptOf(x) || null)
+                    // the copy keeps every department of the original
+                    setPresetDept(null)
                     setEditing('new')
                   }}
                 >
@@ -824,9 +831,12 @@ function TreatmentForm({
   const [maxDiscount, setMaxDiscount] = useState(String(base?.maxDiscountPct ?? 0))
   const [allowManual, setAllowManual] = useState(base?.allowManualPrice ?? false)
   const [active, setActive] = useState(base?.active ?? true)
-  const [dept, setDept] = useState<string>(
-    treatment?.departmentId ?? presetDepartment ?? copyFrom?.departmentId ?? '',
+  const [depts, setDepts] = useState<string[]>(
+    treatment?.departmentIds ??
+      (presetDepartment ? [presetDepartment] : (copyFrom?.departmentIds ?? [])),
   )
+  const toggleDept = (id: string) =>
+    setDepts((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))
   const [payerPrices, setPayerPrices] = useState<Record<string, string>>(
     Object.fromEntries(
       insurers.map((i) => [
@@ -867,7 +877,7 @@ function TreatmentForm({
         allowManualPrice: allowManual,
         active,
         payerPrices,
-        departmentId: dept || null,
+        departmentIds: depts,
       })
       onClose()
     } catch (err) {
@@ -921,18 +931,43 @@ function TreatmentForm({
               {t('prices.form.suggested')}
             </p>
           )}
-          <Select
-            label={t('prices.dept.field')}
-            value={dept}
-            onChange={(e) => setDept(e.target.value)}
-          >
-            <option value="">{t('prices.dept.none')}</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </Select>
+          <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+            <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
+              {t('prices.dept.fieldMany')}
+            </legend>
+            {departments.length === 0 ? (
+              <p className="text-ink-3 m-0 text-xs">{t('prices.dept.noDepartments')}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {departments.map((d) => {
+                  const on = depts.includes(d.id)
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={on}
+                      onClick={() => toggleDept(d.id)}
+                      className={cn(
+                        'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                        on
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-border bg-card text-ink-2 hover:bg-hover',
+                      )}
+                    >
+                      {on ? (
+                        <Check size={14} aria-hidden="true" />
+                      ) : (
+                        <Building2 size={14} aria-hidden="true" />
+                      )}
+                      {d.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            <p className="text-ink-3 m-0 text-xs">{t('prices.dept.fieldHint')}</p>
+          </fieldset>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <Select
               label={t('prices.form.group')}
