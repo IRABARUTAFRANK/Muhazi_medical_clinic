@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   Building2,
   Check,
@@ -116,6 +116,29 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const [presetDept, setPresetDept] = useState<string | null>(null)
   const [newDept, setNewDept] = useState<string | null>(null)
   const [tools, setTools] = useState(false)
+  // One panel at a time under the banner (they used to stack, so a second one opened out of
+  // sight below the first); the page scrolls to the one opened.
+  const panelsTop = useRef<HTMLDivElement>(null)
+  const closePanels = () => {
+    setAdjusting(false)
+    setNewDept(null)
+    setManagingCats(false)
+    setTools(false)
+  }
+  const openPanel = (which: 'adjust' | 'dept' | 'cats' | 'tools', isOpen: boolean) => {
+    closePanels()
+    setEditing(null)
+    if (isOpen) return
+    if (which === 'adjust') setAdjusting(true)
+    else if (which === 'dept') setNewDept('')
+    else if (which === 'cats') setManagingCats(true)
+    else setTools(true)
+  }
+  const deptOpen = newDept !== null
+  const anyPanel = adjusting || deptOpen || managingCats || tools || editing !== null
+  useEffect(() => {
+    if (anyPanel) panelsTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [anyPanel, adjusting, deptOpen, managingCats, tools, editing])
   const { data: departments = [] } = useDepartments()
   const deptActions = useDepartmentActions()
   const today = new Date()
@@ -148,6 +171,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const addTo = (deptId: string | null) => {
     setCopyFrom(null)
     setPresetDept(deptId)
+    closePanels()
     setEditing('new')
   }
   const createDept = () => {
@@ -222,7 +246,13 @@ export function PricesPage({ user }: { user: StaffUser }) {
               )}
               {!x.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
               <span className="flex flex-wrap gap-1">
-                <Button size="sm" onClick={() => setEditing(x)}>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    closePanels()
+                    setEditing(x)
+                  }}
+                >
                   <Pencil size={14} aria-hidden="true" />
                   {t('prices.edit')}
                 </Button>
@@ -235,6 +265,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                     setCopyFrom(x)
                     // the copy keeps every department of the original
                     setPresetDept(null)
+                    closePanels()
                     setEditing('new')
                   }}
                 >
@@ -303,19 +334,19 @@ export function PricesPage({ user }: { user: StaffUser }) {
           title={t(FEATURES.insurance ? 'prices.title' : 'prices.titleCash')}
           lead={t(FEATURES.insurance ? 'prices.lead' : 'prices.leadCash')}
         >
-          <Button onClick={() => setAdjusting((a) => !a)}>
+          <Button onClick={() => openPanel('adjust', adjusting)}>
             <SlidersHorizontal size={18} aria-hidden="true" />
             {t('prices.adjust.open')}
           </Button>
-          <Button onClick={() => setNewDept((v) => (v === null ? '' : null))}>
+          <Button onClick={() => openPanel('dept', newDept !== null)}>
             <FolderPlus size={18} aria-hidden="true" />
             {t('prices.dept.new')}
           </Button>
-          <Button onClick={() => setManagingCats((v) => !v)}>
+          <Button onClick={() => openPanel('cats', managingCats)}>
             <Tags size={18} aria-hidden="true" />
             {t('prices.cat.open')}
           </Button>
-          <Button onClick={() => setTools((v) => !v)}>
+          <Button onClick={() => openPanel('tools', tools)}>
             <Wrench size={18} aria-hidden="true" />
             {t('prices.tools.open')}
           </Button>
@@ -325,6 +356,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
           </Button>
         </PageBanner>
 
+        <div ref={panelsTop} className="-mt-2 scroll-mt-4" aria-hidden="true" />
         {managingCats && (
           <CategoriesCard
             treatments={treatments}
