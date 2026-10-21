@@ -1035,7 +1035,7 @@
     "adjust": {
       "open": "Ajuster les prix",
       "title": "Ajuster plusieurs prix à la fois",
-      "lead": "Augmentez ou baissez le prix comptant de tous les soins, ou d’un groupe, en une fois. Les soins gratuits restent gratuits.",
+      "lead": "Augmentez ou baissez en une fois le prix comptant de tous les soins, ou d’une seule catégorie. Les soins gratuits restent gratuits.",
       "which": "Quels soins",
       "how": "Comment",
       "modes": {

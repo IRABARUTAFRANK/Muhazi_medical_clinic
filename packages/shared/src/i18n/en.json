@@ -1035,7 +1035,7 @@
     "adjust": {
       "open": "Adjust prices",
       "title": "Adjust many prices at once",
-      "lead": "Raise or lower the cash price of every treatment, or of one group, in one step. Treatments that are free stay free.",
+      "lead": "Raise or lower the cash price of every treatment, or of one category, in one step. Treatments that are free stay free.",
       "which": "Which treatments",
       "how": "How",
       "modes": {
