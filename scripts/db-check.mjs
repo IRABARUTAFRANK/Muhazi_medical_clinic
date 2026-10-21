@@ -1831,9 +1831,15 @@ await step(
 // ---------------------------------------------------------------- 0053: a file without a visit
 await step('0053: reception registers a file for a booking; no visit, no queue', async () => {
   await as(staff.receptionist)
-  const r = (await one(`select register_patient_file('Uwase', 'Claudine', 'female', null, 30, '0788 111 222') as r`)).r
+  const r = (
+    await one(
+      `select register_patient_file('Uwase', 'Claudine', 'female', null, 30, '0788 111 222') as r`,
+    )
+  ).r
   await asAdmin()
-  const visits = await one(`select count(*)::int as n from encounter where patient_id = $1`, [r.patient_id])
+  const visits = await one(`select count(*)::int as n from encounter where patient_id = $1`, [
+    r.patient_id,
+  ])
   if (!r.file_number || visits.n !== 0) throw new Error(JSON.stringify({ r, visits }))
   return `file ${r.file_number}, no visit opened`
 })

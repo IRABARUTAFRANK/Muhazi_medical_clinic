@@ -27,7 +27,6 @@ import { navForUser } from '@/lib/nav'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 
-
 /**
  * Registration from any station (MoH workflow). Normal path: the patient is queued at triage
  * for vitals first. Emergency: the staff member registering keeps the patient at their own
