@@ -1724,6 +1724,59 @@ await step('0050: creating and deleting a department shows in the activity histo
   return `history: ${actions.join(', ')} of department "Eye clinic"`
 })
 
+// ---------------------------------------------------------------- 0051: an employee in several departments
+await step(
+  '0051: a nurse heads one department and is a member of another; messages and rights follow',
+  async () => {
+    await as(staff.manager)
+    const wards = (await one(`select upsert_department(null, 'Wards', '', '{}') as id`)).id
+    const maternity = (await one(`select upsert_department(null, 'Maternity', '', '{}') as id`)).id
+    await asAdmin()
+    // what manage-staff does after the manager's e-mailed code
+    await db.query(`select set_staff_departments($1, $2::jsonb)`, [
+      staff.nurse,
+      JSON.stringify([
+        { department_id: wards, position: 'head' },
+        { department_id: maternity, position: 'member' },
+      ]),
+    ])
+    await as(staff.nurse)
+    const me = (await one(`select my_placement() as p`)).p
+    await db.query(`select send_notification('department', $1, 'Ward round at 10', null)`, [wards])
+    let refused = false
+    try {
+      await db.query(`select send_notification('department', $1, 'Not mine to send', null)`, [
+        maternity,
+      ])
+    } catch (e) {
+      refused = /only the manager/.test(e.message)
+    }
+    await as(staff.manager)
+    await db.query(`select send_notification('department', $1, 'Maternity meeting', null)`, [
+      maternity,
+    ])
+    await as(staff.nurse)
+    const got = (await one(`select my_notifications(200) as n`)).n.items.some(
+      (x) => x.title === 'Maternity meeting',
+    )
+    await as(staff.manager)
+    await db.query(`select delete_department($1)`, [wards])
+    await asAdmin()
+    const after = await one(`select department_id, position from profiles where id = $1`, [
+      staff.nurse,
+    ])
+    if (
+      me.departments.length !== 2 ||
+      !refused ||
+      !got ||
+      after.department_id !== maternity ||
+      after.position !== 'member'
+    )
+      throw new Error(JSON.stringify({ me: me.departments, refused, got, after }))
+    return 'Wards (head) + Maternity (member); sends to Wards only; gets Maternity messages; Wards deleted → Maternity is main'
+  },
+)
+
 finish()
 
 function finish() {

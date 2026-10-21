@@ -50,6 +50,9 @@ interface Assignment {
   station?: string | null
   department_id?: string | null
   position?: 'head' | 'assistant' | 'member'
+  /** Every department of the employee with the position held there (main first). When absent,
+   *  department_id / position above are the only one. */
+  departments?: { department_id: string; position?: 'head' | 'assistant' | 'member' }[]
   language?: 'kin' | 'en' | 'fr'
   phone?: string | null
   /** Only for role manager: full dashboard. */
@@ -153,36 +156,58 @@ Deno.serve(async (req) => {
     })
   }
 
-  // Department + position → the columns the app already understands (dashboard / head_of).
+  // Departments + positions → the memberships and the columns the app already understands
+  // (main department, dashboard / head_of). An employee may belong to several departments.
   const assignment = async (a: Assignment) => {
     if (!ROLES.includes(a.role)) throw new Error('unknown role')
-    const position = a.position ?? 'member'
-    if (!POSITIONS.includes(position)) throw new Error('unknown position')
-    let deptName: string | null = null
-    if (a.department_id) {
+    const list = (
+      a.departments ??
+      (a.department_id ? [{ department_id: a.department_id, position: a.position }] : [])
+    ).map((m) => ({ department_id: m.department_id, position: m.position ?? 'member' }))
+    if (!a.departments?.length && !a.department_id && (a.position ?? 'member') !== 'member')
+      throw new Error('choose a department for a head or an assistant')
+    const seen = new Set<string>()
+    let headOf: string | null = null
+    for (const m of list) {
+      if (!POSITIONS.includes(m.position)) throw new Error('unknown position')
+      if (seen.has(m.department_id)) throw new Error('the same department is listed twice')
+      seen.add(m.department_id)
       const { data: d } = await admin
         .from('department')
         .select('name, roles, deleted_at')
-        .eq('id', a.department_id)
+        .eq('id', m.department_id)
         .maybeSingle()
       if (!d || d.deleted_at) throw new Error('department not found')
       if (Array.isArray(d.roles) && d.roles.length && !d.roles.includes(a.role))
-        throw new Error('this role does not belong to that department')
-      deptName = d.name
-    } else if (position !== 'member') {
-      throw new Error('choose a department for a head or an assistant')
+        throw new Error(`this role does not belong to the department ${d.name}`)
+      if (m.position === 'head' && !headOf) headOf = d.name
     }
-    const dashboard = a.role === 'manager' ? 'manager' : position === 'head' ? 'head' : null
+    const main = list[0]
+    const dashboard = a.role === 'manager' ? 'manager' : headOf ? 'head' : null
     return {
-      role: a.role,
-      station: a.station || null,
-      department_id: a.department_id || null,
-      position,
-      dashboard,
-      head_of: position === 'head' ? deptName : null,
-      language: a.language ?? 'kin',
-      phone: a.phone || null,
+      memberships: list,
+      row: {
+        role: a.role,
+        station: a.station || null,
+        department_id: main?.department_id ?? null,
+        position: main?.position ?? 'member',
+        dashboard,
+        head_of: headOf,
+        language: a.language ?? 'kin',
+        phone: a.phone || null,
+      },
     }
+  }
+  const saveMemberships = async (
+    userId: string,
+    list: { department_id: string; position: string }[],
+  ) => {
+    const { error } = await admin.rpc('set_staff_departments', {
+      p_profile_id: userId,
+      p_items: list,
+    })
+    // A database without migration 0051 keeps the main department only (set with the profile).
+    if (error && !/set_staff_departments/.test(error.message)) throw new Error(error.message)
   }
 
   try {
@@ -198,7 +223,7 @@ Deno.serve(async (req) => {
         const email = body.email?.trim().toLowerCase()
         if (!EMAIL.test(email ?? ''))
           return json(400, { error: 'a valid e-mail address is required' })
-        const a = await assignment(body)
+        const { row: a, memberships } = await assignment(body)
         const { data: taken } = await admin
           .from('profiles')
           .select('id')
@@ -238,6 +263,7 @@ Deno.serve(async (req) => {
             specialty: body.specialty?.trim() || null,
           })
           .eq('id', data.user.id)
+        await saveMemberships(data.user.id, memberships)
         const { data: created } = await admin
           .from('profiles')
           .select('staff_id')
@@ -263,7 +289,7 @@ Deno.serve(async (req) => {
           return json(400, { error: 'a valid e-mail address is required' })
         if (body.user_id === caller.user.id && body.role !== 'manager')
           return json(400, { error: 'you cannot remove your own manager role' })
-        const a = await assignment(body)
+        const { row: a, memberships } = await assignment(body)
         const { data: taken } = await admin
           .from('profiles')
           .select('id')
@@ -302,6 +328,7 @@ Deno.serve(async (req) => {
           })
           .eq('id', body.user_id)
         if (error) return json(400, { error: error.message })
+        await saveMemberships(body.user_id, memberships)
         await admin.auth.admin.updateUserById(body.user_id, {
           user_metadata: {
             username,
@@ -317,6 +344,7 @@ Deno.serve(async (req) => {
           role: a.role,
           department_id: a.department_id,
           position: a.position,
+          departments: memberships,
         })
         return json(200, { ok: true })
       }

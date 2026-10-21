@@ -24,7 +24,7 @@ import {
 } from '@/lib/api/billing'
 import { treatmentName, useInsurers, useTreatments, type Treatment } from '@/lib/api/catalogue'
 import { stationFor, type Station } from '@/lib/api/visits'
-import { useMyDepartment } from '@/lib/api/staff'
+import { useMyDepartments } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { resolveAdjust, type AdjustMode } from '@/lib/adjust'
@@ -58,7 +58,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
   const { data: vitals = [] } = useVisitVitals(encounterId)
   const { data: bill } = useVisitBill(encounterId)
   const { data: treatments = [] } = useTreatments(true)
-  const { data: myDepartment } = useMyDepartment(user.id)
+  const { data: myDepartments = [] } = useMyDepartments(user.id)
   const { data: insurers = [] } = useInsurers(true)
   const actions = useBillingActions(encounterId)
   const [member, setMember] = useState('')
@@ -452,7 +452,7 @@ export function VisitPage({ user, encounterId }: { user: StaffUser; encounterId:
                 {!isReception && !isCashier && !closed && (
                   <AddChargeCard
                     treatments={treatments}
-                    myDepartment={isManagerNav ? null : (myDepartment ?? null)}
+                    myDepartments={isManagerNav ? [] : myDepartments}
                     office={myStation}
                     payerId={bill?.payerId ?? null}
                     coveragePct={currentInsurer?.coveragePct ?? 0}
@@ -651,7 +651,7 @@ function PaymentCard({
 
 function AddChargeCard({
   treatments,
-  myDepartment,
+  myDepartments,
   office,
   payerId,
   coveragePct,
@@ -660,9 +660,9 @@ function AddChargeCard({
   onAdd,
 }: {
   treatments: Treatment[]
-  /** The employee's department: its treatments (and those of no department) come first; the
-   *  others only after "Show other departments". Null = everything (manager, no department). */
-  myDepartment: { id: string; name: string } | null
+  /** The employee's departments: their treatments (and those of no department) come first; the
+   *  others only after "Show other departments". Empty = everything (manager, no department). */
+  myDepartments: { id: string; name: string }[]
   office: Station
   payerId: string | null
   coveragePct: number
@@ -685,8 +685,12 @@ function AddChargeCard({
   const { t, i18n } = useTranslation()
   const [serviceId, setServiceId] = useState('')
   const [showOthers, setShowOthers] = useState(false)
+  const myIds = myDepartments.map((d) => d.id)
+  const myNames = myDepartments.map((d) => d.name).join(', ')
   const isMine = (x: Treatment) =>
-    !myDepartment || x.departmentIds.length === 0 || x.departmentIds.includes(myDepartment.id)
+    myIds.length === 0 ||
+    x.departmentIds.length === 0 ||
+    x.departmentIds.some((id) => myIds.includes(id))
   const [quantity, setQuantity] = useState('1')
   const [discount, setDiscount] = useState('')
   const [mode, setMode] = useState<AdjustMode>('pct')
@@ -723,7 +727,7 @@ function AddChargeCard({
           .includes(query.toLowerCase()),
   )
   const mine = matching.filter(isMine)
-  const others = myDepartment ? matching.filter((x) => !isMine(x)) : []
+  const others = myIds.length ? matching.filter((x) => !isMine(x)) : []
   const option = (x: Treatment) => (
     <option key={x.id} value={x.id}>
       {treatmentName(x, i18n.language)} · {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
@@ -791,7 +795,7 @@ function AddChargeCard({
             <option value="">{t('visit.add.pick')}</option>
             {showOthers && others.length > 0 ? (
               <>
-                <optgroup label={t('visit.add.myDept', { name: myDepartment?.name ?? '' })}>
+                <optgroup label={t('visit.add.myDept', { name: myNames })}>
                   {mine.map(option)}
                 </optgroup>
                 <optgroup label={t('visit.add.otherDepts')}>{others.map(option)}</optgroup>
@@ -800,12 +804,10 @@ function AddChargeCard({
               mine.map(option)
             )}
           </Select>
-          {myDepartment && others.length > 0 && (
+          {myIds.length > 0 && others.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-ink-3 text-xs">
-                {showOthers
-                  ? t('visit.add.allShown')
-                  : t('visit.add.onlyMine', { name: myDepartment.name })}
+                {showOthers ? t('visit.add.allShown') : t('visit.add.onlyMine', { name: myNames })}
               </span>
               <Button
                 size="sm"
@@ -821,7 +823,7 @@ function AddChargeCard({
               </Button>
             </div>
           )}
-          {myDepartment && showOthers && others.some((x) => x.id === serviceId) && (
+          {myIds.length > 0 && showOthers && others.some((x) => x.id === serviceId) && (
             <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
               {t('visit.add.otherWarning')}
             </p>

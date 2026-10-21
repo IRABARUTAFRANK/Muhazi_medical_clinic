@@ -36,14 +36,28 @@ export interface Employee {
   mustChangePin: boolean
   lastSignInAt: string | null
   createdAt: string
+  /** Main department (the first of `departments`). */
   departmentId: string | null
   departmentName: string | null
   position: Position
+  /** Every department of the employee with the position held there, main first. */
+  departments: Membership[]
   /** Specialty or title shown with the role ("Minor surgery", "Midwife"). */
   specialty: string | null
   /** The temporary PIN the manager handed over, until the employee replaces it (managers only). */
   tempPin?: string | null
 }
+
+/** One department of an employee and the position held there (head of one, member of another). */
+export interface Membership {
+  departmentId: string
+  departmentName: string
+  position: Position
+}
+
+/** The position an employee holds in one department ('member' when not in it). */
+export const positionIn = (e: Pick<Employee, 'departments'>, departmentId: string): Position =>
+  e.departments.find((m) => m.departmentId === departmentId)?.position ?? 'member'
 
 export interface Department {
   id: string
@@ -58,8 +72,8 @@ export interface EmployeeInput {
   username: string
   email: string
   role: DbRole
-  departmentId: string | null
-  position: Position
+  /** Every department with the position held there; the first is the main one. */
+  departments: { departmentId: string; position: Position }[]
   station?: string
   language?: DbLang
   phone?: string
@@ -144,6 +158,7 @@ const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   departmentId: null,
   departmentName: null,
   position: 'member',
+  departments: [],
 }))
 
 // ---------------------------------------------------------------- queries
@@ -170,6 +185,7 @@ interface DirectoryRow {
   department_name: string | null
   position: Position | null
   specialty?: string | null
+  departments?: { id: string; name: string; position: Position }[] | null
 }
 
 export function useEmployees() {
@@ -205,6 +221,22 @@ export function useEmployees() {
         departmentName: r.department_name,
         position: r.position ?? 'member',
         specialty: r.specialty ?? null,
+        // Before migration 0051 only the main department exists.
+        departments: r.departments
+          ? r.departments.map((m) => ({
+              departmentId: m.id,
+              departmentName: m.name,
+              position: m.position,
+            }))
+          : r.department_id
+            ? [
+                {
+                  departmentId: r.department_id,
+                  departmentName: r.department_name ?? '',
+                  position: r.position ?? 'member',
+                },
+              ]
+            : [],
       }))
     },
   })
@@ -253,8 +285,10 @@ const toBody = (e: EmployeeInput) => ({
   username: e.username.trim().toLowerCase(),
   email: e.email.trim().toLowerCase(),
   role: e.role,
-  department_id: e.departmentId,
-  position: e.position,
+  // main department (older function) and every department with its position
+  department_id: e.departments[0]?.departmentId ?? null,
+  position: e.departments[0]?.position ?? 'member',
+  departments: e.departments.map((m) => ({ department_id: m.departmentId, position: m.position })),
   station: e.station?.trim() || null,
   language: e.language ?? 'kin',
   phone: e.phone?.trim() || null,
@@ -266,6 +300,12 @@ const toBody = (e: EmployeeInput) => ({
  * a code e-mailed to the manager (`sendConfirmCode`, then `confirmCode`), checked on the server.
  * Sample mode: in-memory list, any six digits pass.
  */
+const sampleMembers = (input: EmployeeInput): Membership[] =>
+  input.departments.map((m) => ({
+    ...m,
+    departmentName: sampleDepartments.find((d) => d.id === m.departmentId)?.name ?? '',
+  }))
+
 export function useStaffActions() {
   const qc = useQueryClient()
   const refresh = () => qc.invalidateQueries({ queryKey: ['staff'] })
@@ -292,7 +332,8 @@ export function useStaffActions() {
           throw new Error('username taken')
         const id = `u-${Math.random().toString(36).slice(2, 8)}`
         const staffId = `MMC-S-${String(sampleEmployees.length + 1).padStart(4, '0')}`
-        const dept = sampleDepartments.find((d) => d.id === input.departmentId)
+        const members = sampleMembers(input)
+        const head = members.find((m) => m.position === 'head')
         sampleEmployees.push({
           id,
           staffId,
@@ -302,18 +343,18 @@ export function useStaffActions() {
           fullName: input.fullName,
           role: input.role,
           station: input.station ?? null,
-          dashboard:
-            input.role === 'manager' ? 'manager' : input.position === 'head' ? 'head' : null,
-          headOf: input.position === 'head' ? (dept?.name ?? null) : null,
+          dashboard: input.role === 'manager' ? 'manager' : head ? 'head' : null,
+          headOf: head?.departmentName ?? null,
           language: input.language ?? 'kin',
           phone: input.phone ?? null,
           active: true,
           mustChangePin: true,
           lastSignInAt: null,
           createdAt: new Date().toISOString(),
-          departmentId: input.departmentId,
-          departmentName: dept?.name ?? null,
-          position: input.position,
+          departmentId: members[0]?.departmentId ?? null,
+          departmentName: members[0]?.departmentName ?? null,
+          position: members[0]?.position ?? 'member',
+          departments: members,
           tempPin: pin,
         })
         return { id, username: input.username, staff_id: staffId }
@@ -338,16 +379,17 @@ export function useStaffActions() {
       if (!supabase) {
         sampleCheck(confirmCode)
         const e = sampleEmployees.find((x) => x.id === id)
-        const dept = sampleDepartments.find((d) => d.id === input.departmentId)
+        const members = sampleMembers(input)
         if (e)
           Object.assign(e, {
             fullName: input.fullName,
             username: input.username,
             email: input.email,
             role: input.role,
-            departmentId: input.departmentId,
-            departmentName: dept?.name ?? null,
-            position: input.position,
+            departmentId: members[0]?.departmentId ?? null,
+            departmentName: members[0]?.departmentName ?? null,
+            position: members[0]?.position ?? 'member',
+            departments: members,
             specialty: input.specialty?.trim() || null,
             station: input.station ?? null,
             language: input.language ?? 'kin',
@@ -452,17 +494,22 @@ export function useDepartmentActions() {
   return { save, remove }
 }
 
-/** The signed-in employee's department (null = none: they see every treatment). */
-export function useMyDepartment(userId: string) {
+/** The signed-in employee's departments (empty = none: they see every treatment). */
+export function useMyDepartments(userId: string) {
   return useQuery({
-    queryKey: ['my-department', userId],
+    queryKey: ['my-departments', userId],
     staleTime: 5 * 60_000,
-    queryFn: async (): Promise<{ id: string; name: string } | null> => {
-      if (!supabase) return null
+    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+      if (!supabase) return []
       const { data, error } = await supabase.rpc('my_placement')
       if (error) throw new Error(error.message)
-      const d = (data ?? {}) as { departmentId?: string | null; department?: string | null }
-      return d.departmentId ? { id: d.departmentId, name: d.department ?? '' } : null
+      const d = (data ?? {}) as {
+        departmentId?: string | null
+        department?: string | null
+        departments?: { id: string; name: string }[]
+      }
+      if (d.departments) return d.departments.map((x) => ({ id: x.id, name: x.name }))
+      return d.departmentId ? [{ id: d.departmentId, name: d.department ?? '' }] : []
     },
   })
 }

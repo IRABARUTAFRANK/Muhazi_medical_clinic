@@ -682,7 +682,15 @@
       "noDepartments": "No departments yet: create them in the Departments tab, then place employees in them.",
       "saveChanges": "Save changes",
       "specialty": "Specialty or title",
-      "specialtyPh": "e.g. Minor surgery, Paediatrics, Midwife"
+      "specialtyPh": "e.g. Minor surgery, Paediatrics, Midwife",
+      "departments": "Departments",
+      "mainDepartment": "Main department",
+      "pickDepartment": "Choose a department",
+      "addDepartment": "Add a department",
+      "addAnotherDepartment": "Add another department",
+      "removeDepartment": "Remove this department",
+      "noDepartmentYet": "Not in any department yet.",
+      "manyHint": "The employee works in each of these departments, with the position held there. The first is the main one (shown on their home page)."
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -710,7 +718,8 @@
       "generic": "The action failed: {{message}}",
       "roleDept": "This role does not belong to that department. Choose another department, or add the role to it.",
       "needDept": "Choose a department for a head or an assistant head.",
-      "name": "Enter the full name."
+      "name": "Enter the full name.",
+      "deptTwice": "The same department is chosen twice."
     },
     "roles": {
       "receptionist": "Receptionist",
@@ -784,7 +793,8 @@
     "showPin": "Show the PIN",
     "hidePin": "Hide the PIN",
     "copyPin": "Copy the PIN",
-    "copied": "Copied"
+    "copied": "Copied",
+    "alsoIn": "also in {{names}}"
   },
   "login": {
     "title": "Staff sign in",

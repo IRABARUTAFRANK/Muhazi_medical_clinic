@@ -686,7 +686,15 @@
       "noDepartments": "Nta mashami ariho: yafungure mu gice cy’Amashami, hanyuma ushyiremo abakozi.",
       "saveChanges": "Bika impinduka",
       "specialty": "Ubuhanga cyangwa umwanya",
-      "specialtyPh": "urugero: Kubaga bito, Abana, Umubyaza"
+      "specialtyPh": "urugero: Kubaga bito, Abana, Umubyaza",
+      "departments": "Amashami",
+      "mainDepartment": "Ishami rikuru",
+      "pickDepartment": "Hitamo ishami",
+      "addDepartment": "Ongeramo ishami",
+      "addAnotherDepartment": "Ongeramo irindi shami",
+      "removeDepartment": "Kuramo iri shami",
+      "noDepartmentYet": "Ntaraba mu ishami na rimwe.",
+      "manyHint": "Umukozi akora muri buri shami muri aya, afite umwanya afitemo. Irya mbere ni ryo rikuru (rigaragara ku rupapuro rwe rw’itangiriro)."
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -714,7 +722,8 @@
       "generic": "Igikorwa cyanze: {{message}}",
       "roleDept": "Uru ruhare ntirubarizwa muri iryo shami. Hitamo irindi shami cyangwa urwongere muri iryo shami.",
       "needDept": "Hitamo ishami ku muyobozi cyangwa umwungirije.",
-      "name": "Andika amazina yombi."
+      "name": "Andika amazina yombi.",
+      "deptTwice": "Ishami rimwe ryahiswemo kabiri."
     },
     "roles": {
       "receptionist": "Umwakira",
@@ -788,7 +797,8 @@
     "showPin": "Erekana PIN",
     "hidePin": "Hisha PIN",
     "copyPin": "Koporora PIN",
-    "copied": "Byakoporowe"
+    "copied": "Byakoporowe",
+    "alsoIn": "ari no muri {{names}}"
   },
   "login": {
     "title": "Abakozi: injira",

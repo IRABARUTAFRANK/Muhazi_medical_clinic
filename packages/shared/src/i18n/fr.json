@@ -682,7 +682,15 @@
       "noDepartments": "Aucun service : créez-les dans l’onglet Services, puis placez-y les employés.",
       "saveChanges": "Enregistrer",
       "specialty": "Spécialité ou titre",
-      "specialtyPh": "ex. Petite chirurgie, Pédiatrie, Sage-femme"
+      "specialtyPh": "ex. Petite chirurgie, Pédiatrie, Sage-femme",
+      "departments": "Départements",
+      "mainDepartment": "Département principal",
+      "pickDepartment": "Choisissez un département",
+      "addDepartment": "Ajouter un département",
+      "addAnotherDepartment": "Ajouter un autre département",
+      "removeDepartment": "Retirer ce département",
+      "noDepartmentYet": "Dans aucun département pour l’instant.",
+      "manyHint": "L’employé travaille dans chacun de ces départements, avec le poste qu’il y occupe. Le premier est le principal (affiché sur sa page d’accueil)."
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -710,7 +718,8 @@
       "generic": "L'action a échoué : {{message}}",
       "roleDept": "Ce rôle n’appartient pas à ce service. Choisissez un autre service ou ajoutez-y le rôle.",
       "needDept": "Choisissez un service pour un chef ou un chef adjoint.",
-      "name": "Saisissez le nom complet."
+      "name": "Saisissez le nom complet.",
+      "deptTwice": "Le même département est choisi deux fois."
     },
     "roles": {
       "receptionist": "Réceptionniste",
@@ -784,7 +793,8 @@
     "showPin": "Afficher le PIN",
     "hidePin": "Masquer le PIN",
     "copyPin": "Copier le PIN",
-    "copied": "Copié"
+    "copied": "Copié",
+    "alsoIn": "aussi dans {{names}}"
   },
   "login": {
     "title": "Connexion du personnel",

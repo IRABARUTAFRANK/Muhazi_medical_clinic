@@ -51,6 +51,7 @@ import {
   type Employee,
   type EmployeeInput,
   type Position,
+  positionIn,
 } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
@@ -121,13 +122,13 @@ export function StaffPage({ user }: { user: StaffUser }) {
     ...departments.map((d) => ({
       key: d.id,
       name: d.name,
-      people: visible.filter((e) => e.departmentId === d.id),
+      people: visible.filter((e) => e.departments.some((m) => m.departmentId === d.id)),
     })),
     {
       key: 'none',
       name: t('staff.dept.none'),
       people: visible.filter(
-        (e) => !e.departmentId || !departments.some((d) => d.id === e.departmentId),
+        (e) => !e.departments.some((m) => departments.some((d) => d.id === m.departmentId)),
       ),
     },
   ].filter((g) => g.people.length > 0)
@@ -283,7 +284,8 @@ export function StaffPage({ user }: { user: StaffUser }) {
                   footerClassName="px-4 py-2"
                   items={[...g.people].sort(
                     (a, b) =>
-                      rank[a.position] - rank[b.position] || a.fullName.localeCompare(b.fullName),
+                      rank[positionIn(a, g.key)] - rank[positionIn(b, g.key)] ||
+                      a.fullName.localeCompare(b.fullName),
                   )}
                 >
                   {(shownPeople) => (
@@ -329,10 +331,23 @@ export function StaffPage({ user }: { user: StaffUser }) {
                               </span>
                             </span>
                             <Chip>{t(`staff.roles.${e.role}`)}</Chip>
-                            {e.position !== 'member' && (
-                              <Badge tone={e.position === 'head' ? 'blue' : 'grey'} dot={false}>
-                                {t(`staff.positions.${e.position}`)}
+                            {positionIn(e, g.key) !== 'member' && (
+                              <Badge
+                                tone={positionIn(e, g.key) === 'head' ? 'blue' : 'grey'}
+                                dot={false}
+                              >
+                                {t(`staff.positions.${positionIn(e, g.key)}`)}
                               </Badge>
+                            )}
+                            {e.departments.length > 1 && (
+                              <span className="text-violet text-xs font-semibold">
+                                {t('staff.alsoIn', {
+                                  names: e.departments
+                                    .filter((m) => m.departmentId !== g.key)
+                                    .map((m) => m.departmentName)
+                                    .join(', '),
+                                })}
+                              </span>
                             )}
                             {e.active && e.tempPin && <TempPin pin={e.tempPin} />}
                             {!e.active ? (
@@ -573,8 +588,16 @@ function EmployeeForm({
   const [email, setEmail] = useState(employee?.email ?? '')
   const [phone, setPhone] = useState(employee?.phone ?? '')
   const [role, setRole] = useState<DbRole>(employee?.role ?? 'receptionist')
-  const [departmentId, setDepartmentId] = useState<string>(employee?.departmentId ?? '')
-  const [position, setPosition] = useState<Position>(employee?.position ?? 'member')
+  // Every department of the employee with the position held there; the first is the main one.
+  const [memberships, setMemberships] = useState<{ departmentId: string; position: Position }[]>(
+    () =>
+      (employee?.departments ?? []).map((m) => ({
+        departmentId: m.departmentId,
+        position: m.position,
+      })),
+  )
+  const setMembership = (i: number, patch: Partial<{ departmentId: string; position: Position }>) =>
+    setMemberships((list) => list.map((m, j) => (j === i ? { ...m, ...patch } : m)))
   const [station, setStation] = useState(employee?.station ?? '')
   const [specialty, setSpecialty] = useState(employee?.specialty ?? '')
   const [language, setLanguage] = useState<DbLang>(employee?.language ?? 'kin')
@@ -592,7 +615,9 @@ function EmployeeForm({
     if (!USERNAME_RE.test(username)) return setError(t('staff.errors.username'))
     if (others.has(username)) return setError(t('staff.errors.usernameTaken'))
     if (!EMAIL_RE.test(email.trim())) return setError(t('staff.errors.email'))
-    if (position !== 'member' && !departmentId) return setError(t('staff.errors.needDept'))
+    const chosen = memberships.filter((m) => m.departmentId)
+    if (new Set(chosen.map((m) => m.departmentId)).size !== chosen.length)
+      return setError(t('staff.errors.deptTwice'))
     if (isNew && !PIN_RE.test(pin)) return setError(t('staff.errors.pin'))
     onSubmit(
       {
@@ -600,8 +625,7 @@ function EmployeeForm({
         username,
         email,
         role,
-        departmentId: departmentId || null,
-        position: departmentId ? position : 'member',
+        departments: chosen,
         station,
         language,
         phone,
@@ -681,8 +705,13 @@ function EmployeeForm({
               onChange={(e) => {
                 const r = e.target.value as DbRole
                 setRole(r)
-                const d = departments.find((x) => x.id === departmentId)
-                if (d && d.roles.length && !d.roles.includes(r)) setDepartmentId('')
+                // departments that do not take this role are dropped
+                setMemberships((list) =>
+                  list.filter((m) => {
+                    const d = departments.find((x) => x.id === m.departmentId)
+                    return !d || d.roles.length === 0 || d.roles.includes(r)
+                  }),
+                )
               }}
               disabled={self}
             >
@@ -692,31 +721,80 @@ function EmployeeForm({
                 </option>
               ))}
             </Select>
-            <Select
-              label={t('staff.form.department')}
-              value={departmentId}
-              onChange={(e) => setDepartmentId(e.target.value)}
-            >
-              <option value="">{t('staff.dept.none')}</option>
-              {fitting.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </Select>
-            <Select
-              label={t('staff.form.position')}
-              value={departmentId ? position : 'member'}
-              onChange={(e) => setPosition(e.target.value as Position)}
-              disabled={!departmentId}
-            >
-              {POSITIONS.map((p) => (
-                <option key={p} value={p}>
-                  {t(`staff.positions.${p}`)}
-                </option>
-              ))}
-            </Select>
           </div>
+          <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+            <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
+              {t('staff.form.departments')}
+            </legend>
+            {memberships.length === 0 && (
+              <p className="text-ink-3 m-0 text-xs">{t('staff.form.noDepartmentYet')}</p>
+            )}
+            {memberships.map((m, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
+              >
+                <Select
+                  label={i === 0 ? t('staff.form.mainDepartment') : t('staff.form.department')}
+                  value={m.departmentId}
+                  onChange={(e) => setMembership(i, { departmentId: e.target.value })}
+                >
+                  <option value="">{t('staff.form.pickDepartment')}</option>
+                  {fitting
+                    .filter(
+                      (d) =>
+                        d.id === m.departmentId ||
+                        !memberships.some((x) => x.departmentId === d.id),
+                    )
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                </Select>
+                <Select
+                  label={t('staff.form.position')}
+                  value={m.position}
+                  onChange={(e) => setMembership(i, { position: e.target.value as Position })}
+                  disabled={!m.departmentId}
+                >
+                  {POSITIONS.map((p) => (
+                    <option key={p} value={p}>
+                      {t(`staff.positions.${p}`)}
+                    </option>
+                  ))}
+                </Select>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setMemberships((list) => list.filter((_, j) => j !== i))}
+                  aria-label={t('staff.form.removeDepartment')}
+                  title={t('staff.form.removeDepartment')}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                </Button>
+              </div>
+            ))}
+            {fitting.some((d) => !memberships.some((x) => x.departmentId === d.id)) && (
+              <Button
+                type="button"
+                className="self-start"
+                onClick={() =>
+                  setMemberships((list) => [...list, { departmentId: '', position: 'member' }])
+                }
+              >
+                <Plus size={16} aria-hidden="true" />
+                {t(
+                  memberships.length
+                    ? 'staff.form.addAnotherDepartment'
+                    : 'staff.form.addDepartment',
+                )}
+              </Button>
+            )}
+            {memberships.length > 1 && (
+              <p className="text-ink-3 m-0 text-xs">{t('staff.form.manyHint')}</p>
+            )}
+          </fieldset>
           {departments.length === 0 && (
             <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.noDepartments')}</p>
           )}
@@ -927,9 +1005,11 @@ function DepartmentsPanel({
       )}
       <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
         {departments.map((d, i) => {
-          const people = employees.filter((e) => e.departmentId === d.id && e.active)
-          const head = people.find((e) => e.position === 'head')
-          const assistants = people.filter((e) => e.position === 'assistant')
+          const people = employees.filter(
+            (e) => e.active && e.departments.some((m) => m.departmentId === d.id),
+          )
+          const head = people.find((e) => positionIn(e, d.id) === 'head')
+          const assistants = people.filter((e) => positionIn(e, d.id) === 'assistant')
           return (
             <Card key={d.id} className="anim-enter" style={{ '--i': i } as React.CSSProperties}>
               <CardHeader>

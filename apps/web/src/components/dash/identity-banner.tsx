@@ -31,10 +31,13 @@ function usePlacement(user: StaffUser) {
         position?: Position
         department?: string | null
         specialty?: string | null
+        departments?: { name: string; position: Position }[]
       }
       return {
         position: (d.position ?? 'member') as Position,
         department: d.department ?? null,
+        // every department (an employee may work in several), with the position held there
+        departments: d.departments ?? [],
         specialty: d.specialty ?? null,
       }
     },
@@ -104,9 +107,20 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
             {roleLabel(user, t)}
           </span>
           {placement?.specialty && <Chip icon={Award}>{placement.specialty}</Chip>}
-          {department && <Chip icon={Building2}>{department}</Chip>}
-          {placement && position !== 'member' && (
-            <Chip icon={Award}>{t(`staff.positions.${position}`)}</Chip>
+          {placement && placement.departments.length > 1 ? (
+            placement.departments.map((x) => (
+              <Chip key={x.name} icon={Building2}>
+                {x.name}
+                {x.position !== 'member' ? ` · ${t(`staff.positions.${x.position}`)}` : ''}
+              </Chip>
+            ))
+          ) : (
+            <>
+              {department && <Chip icon={Building2}>{department}</Chip>}
+              {placement && position !== 'member' && (
+                <Chip icon={Award}>{t(`staff.positions.${position}`)}</Chip>
+              )}
+            </>
           )}
           {user.station && user.role !== 'doctor' && <Chip icon={MapPin}>{user.station}</Chip>}
           {user.staffId && (
