@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import {
   Banknote,
   CalendarDays,
@@ -193,6 +193,18 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
       matches(query, p.patient, p.fileNumber, p.invoice, p.reference, p.cashier),
   )
   const paged = usePaged(payments, 20, `${day}|${method}|${query}`)
+  // printing the day close lists every payment, not only the page on screen
+  const [printing, setPrinting] = useState(false)
+  useEffect(() => {
+    if (!printing) return
+    const done = () => setPrinting(false)
+    window.addEventListener('afterprint', done, { once: true })
+    const id = window.setTimeout(() => window.print(), 50)
+    return () => {
+      window.clearTimeout(id)
+      window.removeEventListener('afterprint', done)
+    }
+  }, [printing])
   const methodName = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
   const amountOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.amount ?? 0
   const countOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.count ?? 0
@@ -221,7 +233,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           <ReportButtons
             build={() => (s ? cashierReport(s, info?.profile ?? CLINIC_PROFILE, user, t) : null)}
           />
-          <Button onClick={() => window.print()}>
+          <Button onClick={() => setPrinting(true)}>
             <Printer size={16} aria-hidden="true" />
             {t('finance.printDay')}
           </Button>
@@ -337,7 +349,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {paged.slice.map((p) => {
+                  {(printing ? payments : paged.slice).map((p) => {
                     const Icon = METHOD_ICON[p.method] ?? Wallet
                     return (
                       <tr key={p.id} className="border-grid border-b last:border-b-0">

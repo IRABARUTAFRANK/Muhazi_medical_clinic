@@ -2601,6 +2601,37 @@ await step('0060: answering a call does not pull a patient out of the lab', asyn
   return 'refused: the patient is at the laboratory'
 })
 
+// ---------------------------------------------------------------- 0061: loose ends
+await step(
+  '0061: a head sees the dashboard without the money; a task opens the visit to the nurse',
+  async () => {
+    await asAdmin()
+    await db.query(`update profiles set dashboard = 'head' where id = $1`, [d2])
+    await as(d2)
+    const head = (await one(`select dashboard_summary(current_date - 7, current_date) as d`)).d
+    await asAdmin()
+    await db.query(`update profiles set dashboard = null where id = $1`, [d2])
+    const p = await visitAt('Nadine')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    await as(staff.nurse)
+    const before = (await one(`select may_work_on($1) as ok`, [p.enc])).ok
+    await as(d1)
+    const task = (
+      await one(`select create_task($1, 'Injection: ceftriaxone 1 g IM') as id`, [p.enc])
+    ).id
+    await as(staff.nurse)
+    const during = (await one(`select may_work_on($1) as ok`, [p.enc])).ok
+    await db.query(`select complete_task($1)`, [task])
+    const after = (await one(`select may_work_on($1) as ok`, [p.enc])).ok
+    await asAdmin()
+    const money = head.revenue30d.length + head.collections.length + (head.receivables ? 1 : 0)
+    if (money !== 0 || before || !during || after)
+      throw new Error(JSON.stringify({ money, before, during, after }))
+    return 'head: no money; nurse may work only while the task is open'
+  },
+)
+
 finish()
 
 function finish() {
