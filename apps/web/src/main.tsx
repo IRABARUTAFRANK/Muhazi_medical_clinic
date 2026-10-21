@@ -3,8 +3,9 @@ import './styles/globals.css'
 import './i18n'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { queryClient } from './lib/query-client'
 import { routeTree } from './routeTree.gen'
 
 const router = createRouter({
@@ -18,10 +19,6 @@ declare module '@tanstack/react-router' {
     router: typeof router
   }
 }
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
-})
 
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Missing #root element')

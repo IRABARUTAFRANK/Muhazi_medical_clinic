@@ -109,6 +109,30 @@ export function UserMenu({ user, onOpenSheet, onDark = false }: UserMenuProps) {
             <span>{t(actions.theme === 'light' ? 'common.toDim' : 'common.toLight')}</span>
             <span className="text-ink-3 text-xs">{t('common.nightUse')}</span>
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => {
+              setOpen(false)
+              actions.lock()
+            }}
+          >
+            <span>{t('common.lockNow')}</span>
+            <span className="text-ink-3 text-xs">{t('common.lockNowHint')}</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => {
+              setOpen(false)
+              actions.changePin()
+            }}
+          >
+            <span>{t('common.changePin')}</span>
+            <span className="text-ink-3 text-xs">{t('common.changePinHint')}</span>
+          </button>
           <button type="button" role="menuitem" className={cn(itemClass)} onClick={actions.signOut}>
             <span>{t('common.signOut')}</span>
             <span className="text-ink-3 text-xs">{t('common.backToSite')}</span>

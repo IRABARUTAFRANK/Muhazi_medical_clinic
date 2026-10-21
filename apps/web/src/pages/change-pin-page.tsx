@@ -89,6 +89,17 @@ export function ChangePinPage({ user }: { user: StaffUser }) {
         <Button type="submit" variant="primary" size="lg" disabled={busy}>
           {busy ? t('pin.saving') : t('pin.save')}
         </Button>
+        {/* a change the person chose (not the first-sign-in one) can be abandoned */}
+        {!user.mustChangePin && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            onClick={() => void navigate({ to: homeRouteFor(user) })}
+          >
+            {t('staff.form.cancel')}
+          </Button>
+        )}
       </form>
     </div>
   )

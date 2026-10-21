@@ -2341,6 +2341,32 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0058: staff rows locked
+await expectError(
+  '0058: an employee cannot make themselves manager by writing their own staff row',
+  async () => {
+    await as(staff.nurse)
+    await db.query(`update profiles set role = 'manager' where id = auth.uid()`)
+  },
+  /permission denied|staff accounts are changed by the manager only/i,
+)
+await step('0058: the nurse is still a nurse; switches cannot be written directly', async () => {
+  await asAdmin()
+  const r = await one(`select role::text from profiles where id = $1`, [staff.nurse])
+  let blocked = false
+  await as(staff.nurse)
+  try {
+    await db.query(
+      `insert into role_permissions (role, permission) values ('nurse', 'billing.write')`,
+    )
+  } catch (e) {
+    blocked = /permission denied/i.test(e.message)
+  }
+  await asAdmin()
+  if (r.role !== 'nurse' || !blocked) throw new Error(JSON.stringify({ r, blocked }))
+  return 'role unchanged; role_permissions write refused'
+})
+
 finish()
 
 function finish() {

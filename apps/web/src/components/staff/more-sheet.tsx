@@ -125,6 +125,28 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
           <span>{t(actions.theme === 'light' ? 'common.toDim' : 'common.toLight')}</span>
           <span className="text-ink-3 text-xs">{t('common.nightUse')}</span>
         </button>
+        <button
+          type="button"
+          className={item}
+          onClick={() => {
+            onClose()
+            actions.lock()
+          }}
+        >
+          <span>{t('common.lockNow')}</span>
+          <span className="text-ink-3 text-xs">{t('common.lockNowHint')}</span>
+        </button>
+        <button
+          type="button"
+          className={item}
+          onClick={() => {
+            onClose()
+            actions.changePin()
+          }}
+        >
+          <span>{t('common.changePin')}</span>
+          <span className="text-ink-3 text-xs">{t('common.changePinHint')}</span>
+        </button>
         <button type="button" className={item} onClick={actions.signOut}>
           <span>{t('common.signOut')}</span>
           <span className="text-ink-3 text-xs">{t('common.backToSite')}</span>

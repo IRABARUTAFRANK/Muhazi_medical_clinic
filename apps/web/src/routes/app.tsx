@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
+import { useProfileRefresh } from '@/lib/profile-refresh'
 import { usePrefs } from '@/store/prefs'
 import { useSession } from '@/store/session'
 
@@ -20,6 +21,8 @@ export const Route = createFileRoute('/app')({
 
 function StaffLayout() {
   const theme = usePrefs((s) => s.theme)
+  // a role, desk or dashboard changed by the manager reaches this tab within a minute
+  useProfileRefresh()
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     return () => {

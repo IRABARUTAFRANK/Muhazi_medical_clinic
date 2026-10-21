@@ -51,7 +51,11 @@
     "currentUser": "Ukoresha ubu",
     "mainNav": "Ibikubiyemo by'ingenzi",
     "siteNav": "Urubuga",
-    "footerNav": "Hasi y'urupapuro"
+    "footerNav": "Hasi y'urupapuro",
+    "lockNow": "Funga ecran ubu",
+    "lockNowHint": "Ugiye kure y’aho ukorera: PIN yawe ni yo iyifungura",
+    "changePin": "Hindura PIN yanjye",
+    "changePinHint": "Hitamo PIN nshya"
   },
   "days": {
     "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],

@@ -50,7 +50,11 @@
     "menu": "Menu",
     "closeMenu": "Close menu",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "lockNow": "Lock the screen now",
+    "lockNowHint": "Away from the desk: your PIN opens it again",
+    "changePin": "Change my PIN",
+    "changePinHint": "Choose a new PIN"
   },
   "days": {
     "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],

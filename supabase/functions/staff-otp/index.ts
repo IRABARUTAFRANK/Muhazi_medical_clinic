@@ -20,6 +20,9 @@ const USERNAME = /^[a-z0-9._-]{3,32}$/
 const PIN = /^[0-9]{6}$/
 const MAX_PER_WINDOW = 5
 const WINDOW_MS = 10 * 60_000
+/** Wrong PINs allowed for one account before it must wait (guessing protection). */
+const MAX_WRONG_PINS = 5
+const WRONG_PIN_WINDOW_MS = 15 * 60_000
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -83,6 +86,15 @@ Deno.serve(async (req) => {
     .gte('requested_at', since)
   if ((count ?? 0) >= MAX_PER_WINDOW) return json(429, { error: 'too_many' })
 
+  // Too many wrong PINs lately: refuse before checking, so a PIN cannot be guessed.
+  const { count: wrong } = await admin
+    .from('audit_event')
+    .select('id', { count: 'exact', head: true })
+    .eq('actor_id', profile.id)
+    .eq('reason', 'wrong PIN (staff-otp)')
+    .gte('at', new Date(Date.now() - WRONG_PIN_WINDOW_MS).toISOString())
+  if ((wrong ?? 0) >= MAX_WRONG_PINS) return json(429, { error: 'too_many' })
+
   // The PIN is checked by Supabase Auth; the session it returns is discarded.
   const verifier = createClient(SUPABASE_URL, ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -103,7 +115,8 @@ Deno.serve(async (req) => {
       error: /banned/i.test(pinError.message) ? 'inactive' : 'invalid',
     })
   }
-  await verifier.auth.signOut()
+  // Only this check session: the person stays signed in on their other tabs and devices.
+  await verifier.auth.signOut({ scope: 'local' })
 
   // PIN accepted: record the request, then ask Auth to send the code.
   const { error: reqError } = await admin.from('login_request').insert({

@@ -8,6 +8,7 @@ import {
   type StaffUser,
 } from '@mmc/shared'
 import { staffEmail, supabase } from '@/lib/supabase'
+import { queryClient } from '@/lib/query-client'
 
 const HOME_ROLES: readonly string[] = [
   'receptionist',
@@ -20,7 +21,7 @@ const HOME_ROLES: readonly string[] = [
 ]
 
 /** Shape returned by the `record_sign_in()` database function. */
-interface ProfileJson {
+export interface ProfileJson {
   id: string
   username: string
   full_name: string
@@ -33,7 +34,7 @@ interface ProfileJson {
   email: string | null
 }
 
-const toStaffUser = (p: ProfileJson): StaffUser => ({
+export const toStaffUser = (p: ProfileJson): StaffUser => ({
   id: p.id,
   username: p.username,
   name: p.full_name,
@@ -242,6 +243,12 @@ interface SessionState {
   user: StaffUser | null
   /** Idle lock: the session stays valid but the screen asks for the PIN again. */
   locked: boolean
+  /** Last time the person used this tab (kept with the tab: a reload after a pause locks). */
+  lastActiveAt: number | null
+  /** Activity seen (the idle timer calls it, at most every few seconds). */
+  touch: () => void
+  /** Wrong PINs on the lock screen since the last unlock (5 = signed out). */
+  unlockFailures: number
   pending: PendingSignIn | null
   /** Step 1 (landing page): is this an active staff ID? */
   checkStaffId: (staffId: string) => Promise<boolean>
@@ -273,12 +280,21 @@ export const maskEmail = (email: string): string => {
   return `${shown}${'•'.repeat(Math.max(3, local.length - 2))}@${domain}`
 }
 
+/** A tab reloaded within this time of the last activity stays open; later it asks for the PIN. */
+const RELOAD_GRACE_MS = 60_000
+/** Wrong PINs allowed on the lock screen before the tab signs out. */
+const MAX_UNLOCK_FAILURES = 5
+
 export const useSession = create<SessionState>()(
   persist(
     (set, get) => ({
       user: null,
       locked: false,
+      lastActiveAt: null,
+      unlockFailures: 0,
       pending: null,
+
+      touch: () => set({ lastActiveAt: Date.now() }),
 
       checkStaffId: async (staffId) => {
         const id = normalizeStaffId(staffId)
@@ -310,7 +326,8 @@ export const useSession = create<SessionState>()(
         const trusted = await signInTrusted(id, name, pin)
         if (trusted && 'profile' in trusted) {
           const user = toStaffUser(trusted.profile)
-          set({ user, locked: false, pending: null })
+          queryClient.clear()
+          set({ user, locked: false, pending: null, lastActiveAt: Date.now() })
           return { ok: true, step: 'done', user }
         }
         if (trusted && 'reason' in trusted) return { ok: false, reason: trusted.reason }
@@ -352,7 +369,8 @@ export const useSession = create<SessionState>()(
         const token = code.replace(/\D/g, '')
         if (!supabase) {
           if (token.length !== 6 || !pending.sampleUser) return { ok: false, reason: 'invalid' }
-          set({ user: pending.sampleUser, locked: false, pending: null })
+          queryClient.clear()
+          set({ user: pending.sampleUser, locked: false, pending: null, lastActiveAt: Date.now() })
           return { ok: true, user: pending.sampleUser }
         }
         const { error } = await supabase.auth.verifyOtp({
@@ -384,7 +402,8 @@ export const useSession = create<SessionState>()(
           })
           writeTrust(user.username, until ? token : null)
         }
-        set({ user, locked: false, pending: null })
+        queryClient.clear()
+        set({ user, locked: false, pending: null, lastActiveAt: Date.now() })
         return { ok: true, user }
       },
 
@@ -431,8 +450,15 @@ export const useSession = create<SessionState>()(
           email: authEmail(user),
           password: pin,
         })
-        if (error) return false
-        set({ locked: false })
+        if (error) {
+          // A PIN cannot be guessed at a locked screen: after 5 wrong tries the tab signs out
+          // and the full sign-in (with the e-mailed code) is needed.
+          const failures = get().unlockFailures + 1
+          set({ unlockFailures: failures })
+          if (failures >= MAX_UNLOCK_FAILURES) await get().signOut()
+          return false
+        }
+        set({ locked: false, lastActiveAt: Date.now(), unlockFailures: 0 })
         return true
       },
 
@@ -458,14 +484,27 @@ export const useSession = create<SessionState>()(
       signOut: async () => {
         // This tab only: the same person may be signed in on another device or tab.
         if (supabase) await supabase.auth.signOut({ scope: 'local' })
-        set({ user: null, locked: false, pending: null })
+        queryClient.clear()
+        set({ user: null, locked: false, pending: null, unlockFailures: 0 })
       },
     }),
     {
       name: 'mmc.session',
       // Per tab, like the Supabase session (see lib/supabase.ts).
       storage: createJSONStorage(() => sessionStorage),
-      partialize: (s) => ({ user: s.user }),
+      // The lock state goes with the tab: a reload, a duplicated tab or a reopened tab must not
+      // remove the lock screen.
+      partialize: (s) => ({
+        user: s.user,
+        locked: s.locked,
+        lastActiveAt: s.lastActiveAt,
+        unlockFailures: s.unlockFailures,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (!state?.user || !supabase) return
+        const idle = !state.lastActiveAt || Date.now() - state.lastActiveAt > RELOAD_GRACE_MS
+        if (state.locked || idle) state.lock()
+      },
     },
   ),
 )
@@ -511,8 +550,12 @@ const arrivedByMagicLink =
 const sb = supabase
 if (sb) {
   sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT') useSession.setState({ user: null, locked: false })
+    if (event === 'SIGNED_OUT') {
+      queryClient.clear()
+      useSession.setState({ user: null, locked: false })
+    }
     if (event === 'INITIAL_SESSION' && !session && useSession.getState().user) {
+      queryClient.clear()
       useSession.setState({ user: null, locked: false })
     }
     if (event === 'SIGNED_IN' && session && arrivedByMagicLink && !useSession.getState().user) {
@@ -541,10 +584,13 @@ if (sb) {
           window.location.replace('/login')
           return
         }
+        queryClient.clear()
         useSession.setState({
           user: toStaffUser(profile as ProfileJson),
           locked: false,
           pending: null,
+          lastActiveAt: Date.now(),
+          unlockFailures: 0,
         })
         window.location.replace('/app')
       })()

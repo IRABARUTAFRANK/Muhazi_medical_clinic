@@ -18,5 +18,8 @@ export function useUserActions() {
       await signOut()
       void navigate({ to: '/' })
     },
+    /** Away from the desk: the screen locks now; the PIN opens it again. */
+    lock: () => useSession.getState().lock(),
+    changePin: () => void navigate({ to: '/app/change-pin' }),
   }
 }

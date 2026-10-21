@@ -32,10 +32,12 @@ export function useIdleLock(minutes = 15): number | null {
       lockAt = Date.now() + minutes * 60_000
       lastArm = Date.now()
       setLeft(null)
+      // remembered with the tab, so a reload after a long pause asks for the PIN
+      useSession.getState().touch()
     }
     const onActivity = () => {
-      // pointermove fires constantly: re-arm at most once a second.
-      if (useSession.getState().locked || Date.now() - lastArm < 1000) return
+      // pointermove fires constantly: re-arm at most every 5 seconds.
+      if (useSession.getState().locked || Date.now() - lastArm < 5000) return
       arm()
     }
     arm()
