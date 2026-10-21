@@ -1128,12 +1128,12 @@
     "cat": {
       "open": "Catégories",
       "title": "Catégories de soins",
-      "lead": "Vos propres catégories (Maternité, Soins des yeux, Analyses de sang…). « Utilisé comme » indique au système quoi faire de leurs soins : les facturer sur la visite, ou envoyer le patient au laboratoire ou à l’échographie pour un examen avec un résultat.",
+      "lead": "Vos propres catégories (Maternité, Soins des yeux, Analyses de sang…). « Type de service » indique au système quoi faire de leurs soins : les facturer sur la visite, ou envoyer le patient au laboratoire ou à l’échographie pour un examen avec un résultat.",
       "new": "Nouvelle catégorie",
       "nameEn": "Nom (anglais)",
       "nameKin": "Nom (kinyarwanda)",
       "nameFr": "Nom (français)",
-      "kind": "Utilisé comme",
+      "kind": "Type de service",
       "kinds": {
         "treatment": "Service",
         "lab": "Examen de labo",
@@ -1158,7 +1158,7 @@
       "confirmDelete": "Supprimer la catégorie « {{name}} » ?",
       "saved": "Catégorie « {{name}} » enregistrée.",
       "deleted": "Catégorie « {{name}} » supprimée.",
-      "kindChange": "Changer « Utilisé comme » change le fonctionnement de ses {{count}} soin(s) (par exemple ils deviennent des examens envoyés au labo, ou ne le sont plus).",
+      "kindChange": "Changer le type de service change le fonctionnement de ses {{count}} soin(s) (par exemple ils deviennent des examens envoyés au labo, ou ne le sont plus).",
       "errors": {
         "name": "Donnez un nom à la catégorie (au moins 2 lettres)."
       },

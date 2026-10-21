@@ -1128,12 +1128,12 @@
     "cat": {
       "open": "Categories",
       "title": "Categories of treatments",
-      "lead": "Your own categories (Maternity, Eye care, Blood tests…). “Used as” tells the system what to do with their treatments: charge them on the visit, or send the patient to the laboratory or ultrasound for a test with a result.",
+      "lead": "Your own categories (Maternity, Eye care, Blood tests…). “Service type” tells the system what to do with their treatments: charge them on the visit, or send the patient to the laboratory or ultrasound for a test with a result.",
       "new": "New category",
       "nameEn": "Name (English)",
       "nameKin": "Name (Kinyarwanda)",
       "nameFr": "Name (French)",
-      "kind": "Used as",
+      "kind": "Service type",
       "kinds": {
         "treatment": "Service",
         "lab": "Lab test",
@@ -1158,7 +1158,7 @@
       "confirmDelete": "Delete the category “{{name}}”?",
       "saved": "Category “{{name}}” saved.",
       "deleted": "Category “{{name}}” deleted.",
-      "kindChange": "Changing “Used as” changes how its {{count}} treatment(s) work (for example they become tests sent to the lab, or stop being).",
+      "kindChange": "Changing the service type changes how its {{count}} treatment(s) work (for example they become tests sent to the lab, or stop being).",
       "errors": {
         "name": "Give the category a name (at least 2 letters)."
       },
