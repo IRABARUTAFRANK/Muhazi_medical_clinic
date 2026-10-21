@@ -51,6 +51,18 @@ export function useWording() {
           body: desks.map((d) => t(`register.stations.${d}`, { defaultValue: d })).join(', '),
         }
       }
+      case 'rx_not_given':
+        // The pharmacy could not hand a medicine over.
+        return {
+          title: t('notify.rxNotGiven', { item: p.item ?? '', name: p.name ?? '' }),
+          body: p.reason ? `“${p.reason}”` : null,
+        }
+      case 'test_cancelled':
+        // The laboratory could not do a test; it left the bill.
+        return {
+          title: t('notify.testCancelled', { test: p.test ?? '', name: p.name ?? '' }),
+          body: p.reason ? `“${p.reason}”` : null,
+        }
       case 'call_next':
         // A colleague finished with a patient and asks for the next one.
         return {

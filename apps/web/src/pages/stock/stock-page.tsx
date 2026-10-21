@@ -47,8 +47,9 @@ import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
+import { PharmacyDesk } from './pharmacy-desk'
 
-type Tab = 'stock' | 'pharmacy' | 'receive' | 'send' | 'moves' | 'sales' | 'stores'
+export type Tab = 'stock' | 'pharmacy' | 'receive' | 'send' | 'moves' | 'sales' | 'stores'
 const TABS: { id: Tab; icon: typeof Package }[] = [
   { id: 'stock', icon: Boxes },
   { id: 'pharmacy', icon: Pill },
@@ -69,9 +70,12 @@ const monthStart = () => {
  * and the value of the stock; receiving; sending a quantity to a department or a doctor's
  * office; the pharmacy hand-over queue; the ledger; what was sold and the margin.
  */
-export function StockPage({ user }: { user: StaffUser }) {
+export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: Tab }) {
   const { t } = useTranslation()
-  const [tab, setTab] = useState<Tab>('stock')
+  // the pharmacist starts at the hand-over desk
+  const [tab, setTab] = useState<Tab>(
+    initialTab ?? (user.role === 'pharmacist' ? 'pharmacy' : 'stock'),
+  )
   const { data, error } = useStockOverview()
   const { data: queue = [] } = usePharmacyQueue()
   const now = useNow(60_000)
@@ -87,7 +91,7 @@ export function StockPage({ user }: { user: StaffUser }) {
   const expiring = items.filter(
     (i) => i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 90 * 86_400_000,
   ).length
-  const canWrite = ['manager', 'doctor', 'nurse', 'lab_tech'].includes(user.role)
+  const canWrite = ['manager', 'doctor', 'nurse', 'lab_tech', 'pharmacist'].includes(user.role)
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="stock">
@@ -323,103 +327,6 @@ function StockTable({ items, locations }: { items: StockItem[]; locations: Stock
         </div>
       )}
       <Pager {...paged} onPage={paged.setPage} />
-    </Panel>
-  )
-}
-
-/* ---------------------------------------------------------------- pharmacy hand-over */
-function PharmacyDesk({ canDispense }: { canDispense: boolean }) {
-  const { t } = useTranslation()
-  const { data: queue = [] } = usePharmacyQueue()
-  const actions = useStockActions()
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const give = async (requestId: string, patient: string, item: string) => {
-    setMsg(null)
-    try {
-      const r = await actions.dispense.mutateAsync(requestId)
-      setMsg({
-        ok: true,
-        text: t(r.charged ? 'stock.dispensedCharged' : 'stock.dispensedNoPrice', { patient, item }),
-      })
-    } catch (e) {
-      setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) })
-    }
-  }
-  return (
-    <Panel
-      i={1}
-      icon={Pill}
-      tint="violet"
-      title={t('stock.pharmacyTitle')}
-      right={t('stock.toHandOver', { count: queue.length })}
-    >
-      {msg && (
-        <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
-          {msg.text}
-        </Flash>
-      )}
-      {queue.length === 0 ? (
-        <Empty>{t('stock.pharmacyEmpty')}</Empty>
-      ) : (
-        <div className="flex flex-col">
-          {queue.map((q) => {
-            const short = q.onHandPharmacy < q.quantity
-            return (
-              <div
-                key={q.requestId}
-                className="border-grid flex flex-wrap items-center gap-3 border-b py-2.5 last:border-b-0"
-              >
-                <Badge tone="blue">{q.ticket ?? '—'}</Badge>
-                <span className="min-w-[200px] flex-1">
-                  <span className="block font-semibold">
-                    {q.patient} <span className="text-ink-3 font-normal">· {q.file}</span>
-                  </span>
-                  <span className="text-ink block text-[13px]">
-                    <b>{q.item}</b> × {q.quantity}
-                    {q.unit ? ` ${q.unit}` : ''}
-                    {q.dose ? ` · ${q.dose}` : ''}
-                    {q.frequency ? ` · ${q.frequency}` : ''}
-                    {q.days ? ` · ${t('history.days', { count: q.days })}` : ''}
-                  </span>
-                  <span className="text-ink-3 block text-[12px]">
-                    {[q.prescriber, formatTime(new Date(q.at)), q.instructions]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
-                </span>
-                <span className="text-right text-[13px]">
-                  <span className="block font-bold tabular-nums">
-                    {q.price == null ? t('prices.noPrice') : formatRwf(q.price * q.quantity)}
-                  </span>
-                  <span
-                    className={cn(
-                      'block text-[12px]',
-                      short ? 'text-red font-semibold' : 'text-ink-3',
-                    )}
-                  >
-                    {t('stock.inPharmacy', { count: q.onHandPharmacy })}
-                  </span>
-                </span>
-                {canDispense && (
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    disabled={short}
-                    loading={
-                      actions.dispense.isPending && actions.dispense.variables === q.requestId
-                    }
-                    onClick={() => void give(q.requestId, q.patient, q.item)}
-                  >
-                    <Pill size={14} aria-hidden="true" />
-                    {t('stock.handOver')}
-                  </Button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-      <p className="text-ink-3 m-0 text-[13px]">{t('stock.pharmacyHint')}</p>
     </Panel>
   )
 }

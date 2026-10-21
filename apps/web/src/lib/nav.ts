@@ -59,9 +59,16 @@ export const NURSE_NAV: NavItem[] = [
   NOTICES,
 ]
 
-/** The pharmacy desk (a doctor-home account at the Pharmacy station) gets the stock page. */
+/** Stock: the pharmacy, the laboratory (reagents, supplies) and a doctor at the pharmacy desk. */
 const STOCK: NavItem = { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' }
 const atPharmacy = (user: StaffUser) => /pharm|farum/i.test(user.station ?? '')
+/** Patient files: the pharmacy and the laboratory look a patient up too. */
+const PATIENTS: NavItem = {
+  id: 'patients',
+  labelKey: 'nav.patients',
+  icon: 'users',
+  to: '/app/patients',
+}
 
 /** Navigation items for the user's role. */
 export const navForUser = (user: StaffUser): NavItem[] =>
@@ -71,4 +78,8 @@ export const navForUser = (user: StaffUser): NavItem[] =>
       ? RECEPTION_NAV
       : user.role === 'nurse'
         ? NURSE_NAV
-        : [...ROLE_HOME[user.role].nav, ...(atPharmacy(user) ? [STOCK] : []), HISTORY, NOTICES]
+        : user.role === 'pharmacist'
+          ? [...ROLE_HOME.pharmacist.nav, PATIENTS, HISTORY, NOTICES]
+          : user.role === 'lab_tech'
+            ? [...ROLE_HOME.lab_tech.nav, STOCK, PATIENTS, HISTORY, NOTICES]
+            : [...ROLE_HOME[user.role].nav, ...(atPharmacy(user) ? [STOCK] : []), HISTORY, NOTICES]

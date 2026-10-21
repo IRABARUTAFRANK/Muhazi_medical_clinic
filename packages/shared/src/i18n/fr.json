@@ -102,7 +102,8 @@
     "headOfStation": "Responsable de poste",
     "view": "Vue {{role}}",
     "withStation": "{{role}} · {{station}}",
-    "lab_tech": "Laboratoire"
+    "lab_tech": "Laboratoire",
+    "pharmacist": "Pharmacien"
   },
   "sync": {
     "synced": "Synchronisé",
@@ -455,7 +456,8 @@
       "takePayment": "Encaisser",
       "directSale": "Vente directe",
       "dayClose": "Clôture du jour",
-      "worklist": "Ouvrir la liste de travail"
+      "worklist": "Ouvrir la liste de travail",
+      "stock": "Stock"
     },
     "methodsHint": "Paiements acceptés : espèces, MTN MoMo et Airtel Money.",
     "sharedQueue": "premier médecin libre",
@@ -1715,7 +1717,9 @@
     "testsSaved_one": "Examen demandé.",
     "testsSaved_other": "{{count}} examens demandés.",
     "testsSent_one": "Examen demandé. Le patient va au poste d’examen et vous revient avec le résultat.",
-    "testsSent_other": "{{count}} examens demandés. Le patient va au poste d’examen et vous revient avec les résultats."
+    "testsSent_other": "{{count}} examens demandés. Le patient va au poste d’examen et vous revient avec les résultats.",
+    "notGiven": "Non remis",
+    "notGivenWhy": "Pharmacie : {{reason}}"
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -2076,7 +2080,9 @@
     "callNext": "{{by}} appelle le patient suivant ({{station}})",
     "help": "{{by}} demande votre aide pour {{name}}",
     "helpAccepted": "{{by}} a accepté d’aider pour {{name}}",
-    "helpDeclined": "{{by}} ne peut pas aider pour {{name}} maintenant"
+    "helpDeclined": "{{by}} ne peut pas aider pour {{name}} maintenant",
+    "rxNotGiven": "Pharmacie : {{item}} non remis à {{name}}",
+    "testCancelled": "Laboratoire : {{test}} non fait pour {{name}}"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -2607,7 +2613,24 @@
       "process": "En cours",
       "resulted": "À valider"
     },
-    "waitingFor": "attend depuis {{time}}"
+    "waitingFor": "attend depuis {{time}}",
+    "stock": "Stock du labo",
+    "analysing": "Analyse en cours",
+    "analysingHint": "L’échantillon est en cours d’analyse",
+    "printSlip": "Imprimer le résultat",
+    "slipHint": "Le bulletin de résultat pour le patient ou le médecin (imprimer ou PDF)",
+    "slipTitle": "Résultat de laboratoire",
+    "cannot": "Impossible",
+    "cannotHint": "L’examen ne peut pas être fait : il sort de la facture et le médecin est prévenu",
+    "cannotWhy": "Pourquoi cet examen ne peut-il pas être fait ? {{doctor}} sera prévenu et il sort de la facture.",
+    "cannotReasons": {
+      "reagent": "Pas de réactif",
+      "sample": "Échantillon non conforme",
+      "machine": "Appareil en panne",
+      "refused": "Le patient a refusé"
+    },
+    "cannotPh": "Ou écrivez la raison",
+    "cannotConfirm": "Confirmer : non fait"
   },
   "finance": {
     "desk": "Caisse",
@@ -3177,5 +3200,52 @@
       "declined": "{{name}} est informé que vous ne pouvez pas aider maintenant.",
       "youHelp": "Vous aidez {{name}} pour {{patient}}"
     }
+  },
+  "pharmacy": {
+    "desk": "Pharmacie",
+    "section": "Médicaments à remettre",
+    "receive": "Recevoir du stock",
+    "openStock": "Ouvrir le stock",
+    "serveSoon": "patients en attente",
+    "tiles": {
+      "toHandOver": "À remettre",
+      "given": "Remis",
+      "sales": "Ventes de médicaments",
+      "notGiven": "Non remis"
+    },
+    "units": {
+      "forPatients_one": "pour {{count}} patient",
+      "forPatients_other": "pour {{count}} patients",
+      "patientsServed_one": "{{count}} patient aujourd’hui",
+      "patientsServed_other": "{{count}} patients aujourd’hui"
+    },
+    "waitingCount": "{{lines}} médicaments · {{patients}} patients",
+    "prescribedBy": "Prescrit par {{name}}",
+    "openVisit": "Ouvrir la visite",
+    "giveAll": "Tout remettre",
+    "allGiven": "Tous les médicaments ont été remis à {{patient}}.",
+    "someShort": "Pas assez en pharmacie pour l’un de ces médicaments",
+    "shortHint": "Pas assez en pharmacie : recevez du stock ou marquez-le non remis",
+    "notGiven": "Non remis",
+    "whyNot": "Pourquoi n’est-il pas remis ? {{doctor}} sera prévenu.",
+    "reasons": {
+      "outOfStock": "Rupture de stock",
+      "boughtElsewhere": "Le patient l’achète ailleurs",
+      "refused": "Le patient l’a refusé"
+    },
+    "reasonPh": "Ou écrivez la raison",
+    "confirmNotGiven": "Confirmer : non remis",
+    "notGivenDone": "{{item}} marqué non remis ; {{doctor}} est prévenu.",
+    "hint": "Remettre prend le médicament du stock de la pharmacie et l’ajoute à la facture. Quand le dernier médicament d’un patient est fait, il va à la caisse s’il reste à payer.",
+    "atDesk": "À la pharmacie sans ordonnance",
+    "stockAlerts": "Stock à surveiller",
+    "stockFine": "Rien à recommander et rien n’expire dans les 90 prochains jours.",
+    "leftOf": "{{count}} restants (commander à {{level}})",
+    "expires": "expire",
+    "notGivenToday": "Non remis aujourd’hui",
+    "mostGiven": "Les plus remis aujourd’hui",
+    "givenCount_one": "{{count}} médicament",
+    "givenCount_other": "{{count}} médicaments",
+    "nothingYet": "Rien de remis aujourd’hui."
   }
 }

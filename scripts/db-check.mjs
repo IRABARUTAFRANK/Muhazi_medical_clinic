@@ -2040,6 +2040,158 @@ await step('0055: asking a colleague for help gives them the patient until it en
   return 'refused → help accepted → may work → help ended → refused'
 })
 
+// ---------------------------------------------------------------- 0056: laboratory and pharmacy desks
+await step(
+  '0056: finishing keeps the medicines; pharmacy hands over → cashier; a line not given tells the doctor',
+  async () => {
+    const p = await visitAt('Chloe')
+    await asAdmin()
+    const amox = (await one(`select id from item where code = 'AMOX500'`)).id
+    const para = (await one(`select id from item where code <> 'AMOX500' order by code limit 1`)).id
+    await as(staff.manager)
+    const cons = (
+      await one(`select upsert_service(null, 'Consultation 56', 'consultation', 5000) as id`)
+    ).id
+    await as(d1)
+    await db.query(`select add_diagnosis($1, 'Malaria', 'B54', 'primary')`, [p.enc])
+    await db.query(`select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => 10)`, [
+      p.enc,
+      amox,
+    ])
+    await db.query(`select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => 6)`, [
+      p.enc,
+      para,
+    ])
+    await db.query(`select add_charge($1, 'consultation', $2)`, [p.enc, cons])
+    await db.query(`select finish_visit($1)`, [p.enc])
+    await asAdmin()
+    const open = async () =>
+      (
+        await db.query(
+          `select station::text from queue_entry where encounter_id = $1 and finished_at is null and deleted_at is null order by station`,
+          [p.enc],
+        )
+      ).rows.map((r) => r.station)
+    const afterFinish = await open()
+    const enc1 = await one(`select status::text from encounter where id = $1`, [p.enc])
+    const lines = (
+      await db.query(`select id, item_id from medication_request where encounter_id = $1`, [p.enc])
+    ).rows
+    await as(staff.pharmacist)
+    const sum1 = (await one(`select pharmacy_summary() as s`)).s
+    await db.query(`select dispense_prescription($1)`, [lines.find((l) => l.item_id === amox).id])
+    const midway = await (async () => {
+      await asAdmin()
+      return open()
+    })()
+    await as(staff.pharmacist)
+    await db.query(`select rx_not_given($1, 'out of stock, bought outside')`, [
+      lines.find((l) => l.item_id === para).id,
+    ])
+    const sum2 = (await one(`select pharmacy_summary() as s`)).s
+    await asAdmin()
+    const afterAll = await open()
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'rx_not_given' and recipient_user = $1`,
+      [d1],
+    )
+    await as(d1)
+    const vc = (await one(`select visit_clinical($1) as v`, [p.enc])).v
+    await asAdmin()
+    const notGiven = vc.prescriptions.find((r) => r.notGivenReason)
+    if (
+      JSON.stringify(afterFinish) !== '["pharmacy"]' ||
+      enc1.status !== 'open' ||
+      sum1.lines < 2 ||
+      JSON.stringify(midway) !== '["pharmacy"]' ||
+      JSON.stringify(afterAll) !== '["cashier"]' ||
+      told.n !== 1 ||
+      !notGiven ||
+      sum2.dispensedToday < 1 ||
+      sum2.notGivenToday < 1
+    )
+      throw new Error(JSON.stringify({ afterFinish, enc1, sum1, midway, afterAll, told, sum2 }))
+    return 'finish → pharmacy; 1 handed over, 1 not given (doctor told) → cashier'
+  },
+)
+await step(
+  '0056: a result goes back to the ordering doctor; a test not done leaves the bill and tells them',
+  async () => {
+    const p = await visitAt('Delphine')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    await as(staff.manager)
+    const blood = (await one(`select save_category(null, 'Lab tests 56', null, null, 'lab') as id`))
+      .id
+    const mrdt = (await one(`select upsert_service(null, 'Malaria RDT 56', 'other', 2000) as id`))
+      .id
+    const fbc = (
+      await one(`select upsert_service(null, 'Full blood count 56', 'other', 4000) as id`)
+    ).id
+    await db.query(`select set_service_category($1, $2)`, [mrdt, blood])
+    await db.query(`select set_service_category($1, $2)`, [fbc, blood])
+    await as(d1)
+    await db.query(`select order_test($1, $2, 'fever')`, [p.enc, mrdt])
+    await asAdmin()
+    // the doctor sent the patient to the lab without asking them back
+    await db.query(
+      `update queue_entry set finished_at = now() where encounter_id = $1 and station = 'consultation'`,
+      [p.enc],
+    )
+    const req1 = (
+      await one(`select id from service_request where encounter_id = $1 and service_id = $2`, [
+        p.enc,
+        mrdt,
+      ])
+    ).id
+    await as(staff.lab_tech)
+    await db.query(`select record_result($1, 'Negative', 'No malaria', true)`, [req1])
+    await asAdmin()
+    const back1 = await one(
+      `select assigned_to, referral_note from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [p.enc],
+    )
+    const labOpen1 = await one(
+      `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'laboratory' and finished_at is null`,
+      [p.enc],
+    )
+    await as(d1)
+    await db.query(`select order_test($1, $2, 'pallor')`, [p.enc, fbc])
+    await asAdmin()
+    const req2 = (
+      await one(`select id from service_request where encounter_id = $1 and service_id = $2`, [
+        p.enc,
+        fbc,
+      ])
+    ).id
+    const charged = await one(
+      `select count(*)::int as n from invoice_line where source_type = 'service_request' and source_id = $1 and deleted_at is null`,
+      [req2],
+    )
+    await as(staff.lab_tech)
+    await db.query(`select set_request_status($1, 'cancelled', 'reagent finished')`, [req2])
+    await asAdmin()
+    const stillCharged = await one(
+      `select count(*)::int as n from invoice_line where source_type = 'service_request' and source_id = $1 and deleted_at is null`,
+      [req2],
+    )
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'test_cancelled' and recipient_user = $1`,
+      [d1],
+    )
+    if (
+      back1?.assigned_to !== d1 ||
+      !/Results ready/.test(back1?.referral_note ?? '') ||
+      labOpen1.n !== 0 ||
+      charged.n !== 1 ||
+      stillCharged.n !== 0 ||
+      told.n !== 1
+    )
+      throw new Error(JSON.stringify({ back1, labOpen1, charged, stillCharged, told }))
+    return 'result → back to Dr. One; cancelled test off the bill, doctor told'
+  },
+)
+
 finish()
 
 function finish() {

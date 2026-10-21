@@ -1,9 +1,11 @@
 import { useState, type CSSProperties } from 'react'
 import {
+  Ban,
   CircleCheck,
   Clock,
   FlaskConical,
   Hourglass,
+  Printer,
   Siren,
   TestTube,
   type LucideIcon,
@@ -17,6 +19,8 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useLabActions, type LabOrder, type TestStatus } from '@/lib/api/lab'
 import { cn } from '@/lib/utils'
+import { openMedicalReport } from '@/lib/medical-report'
+import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 
 const STATUS_LOOK: Record<TestStatus, { tint: Tint; icon: LucideIcon }> = {
   ordered: { tint: 'amber', icon: Hourglass },
@@ -61,6 +65,49 @@ export function LabOrderRow({
     verify: true,
   })
   const [error, setError] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [why, setWhy] = useState('')
+  const letterhead = useLetterhead()
+  const labels = useMedicalReportLabels()
+  // The result slip the patient (or the doctor) takes away: the medical report with this test only.
+  const printSlip = () => {
+    const ok = openMedicalReport(
+      {
+        kind: 'visit',
+        title: t('lab.slipTitle'),
+        clinic: letterhead,
+        patient: {
+          name: o.patient,
+          fileNumber: o.fileNumber,
+          ageSex: [ageOf(o.birthDate), o.sex === 'female' ? 'F' : o.sex === 'male' ? 'M' : '']
+            .filter(Boolean)
+            .join(' '),
+        },
+        visits: [
+          {
+            date: formatDate(new Date(o.orderedAt)),
+            doctor: o.orderedBy,
+            vitals: [],
+            notes: o.reason ? [o.reason] : [],
+            diagnoses: [],
+            tests: [
+              {
+                name: o.test,
+                findings: o.findings,
+                impression: o.impression,
+                verified: o.verified,
+              },
+            ],
+            treatments: [],
+            medicines: [],
+          },
+        ],
+        author: { name: o.resultBy ?? '', title: t('roles.lab_tech') },
+      },
+      labels,
+    )
+    if (!ok) setError(t('report.popupBlocked'))
+  }
   const look = STATUS_LOOK[o.status]
   const urgent = o.priority <= 2
   const run = async (fn: () => Promise<unknown>) => {
@@ -121,6 +168,19 @@ export function LabOrderRow({
               {t('lab.sampleTaken')}
             </Button>
           )}
+          {o.status === 'collected' && (
+            <Button
+              size="sm"
+              loading={actions.setStatus.isPending && actions.setStatus.variables?.id === o.id}
+              onClick={() =>
+                void run(() => actions.setStatus.mutateAsync({ id: o.id, status: 'in_process' }))
+              }
+              title={t('lab.analysingHint')}
+            >
+              <FlaskConical size={14} aria-hidden="true" />
+              {t('lab.analysing')}
+            </Button>
+          )}
           {o.status !== 'verified' && o.status !== 'cancelled' && !open && (
             <Button
               size="sm"
@@ -131,6 +191,24 @@ export function LabOrderRow({
               {t(o.status === 'resulted' ? 'lab.verify' : 'lab.enterResult')}
             </Button>
           )}
+          {(o.status === 'verified' || o.status === 'resulted') && (
+            <Button size="sm" variant="ghost" onClick={printSlip} title={t('lab.slipHint')}>
+              <Printer size={14} aria-hidden="true" />
+              {t('lab.printSlip')}
+            </Button>
+          )}
+          {(o.status === 'ordered' || o.status === 'collected' || o.status === 'in_process') &&
+            !cancelling && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setCancelling(true)}
+                title={t('lab.cannotHint')}
+              >
+                <Ban size={14} aria-hidden="true" />
+                {t('lab.cannot')}
+              </Button>
+            )}
           <StaffLink
             to="/app/visit"
             search={{ encounter: o.encounterId }}
@@ -140,6 +218,60 @@ export function LabOrderRow({
           </StaffLink>
         </span>
       </div>
+      {cancelling && (
+        <div className="bg-surface flex flex-col gap-2 rounded-xl p-3">
+          <span className="text-[13px] font-semibold">
+            {t('lab.cannotWhy', { doctor: o.orderedBy ?? '' })}
+          </span>
+          <span className="flex flex-wrap gap-1.5">
+            {(['reagent', 'sample', 'machine', 'refused'] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setWhy(t(`lab.cannotReasons.${r}`))}
+                className={cn(
+                  'rounded-full border px-2.5 py-1 text-[12px] font-semibold',
+                  why === t(`lab.cannotReasons.${r}`)
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-border text-ink-2 hover:bg-hover',
+                )}
+              >
+                {t(`lab.cannotReasons.${r}`)}
+              </button>
+            ))}
+          </span>
+          <input
+            className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px]"
+            value={why}
+            onChange={(e) => setWhy(e.target.value)}
+            placeholder={t('lab.cannotPh')}
+            aria-label={t('lab.cannotPh')}
+          />
+          <span className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={why.trim().length < 2}
+              loading={actions.setStatus.isPending}
+              onClick={() =>
+                void run(async () => {
+                  await actions.setStatus.mutateAsync({
+                    id: o.id,
+                    status: 'cancelled',
+                    reason: why.trim(),
+                  })
+                  setCancelling(false)
+                })
+              }
+            >
+              {t('lab.cannotConfirm')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setCancelling(false)}>
+              {t('staff.form.cancel')}
+            </Button>
+          </span>
+        </div>
+      )}
       {(o.findings || o.impression) && !open && (
         <span className="bg-green-bg/60 block rounded-lg px-3 py-2 text-[13px]">
           {o.findings && <span className="block">{o.findings}</span>}

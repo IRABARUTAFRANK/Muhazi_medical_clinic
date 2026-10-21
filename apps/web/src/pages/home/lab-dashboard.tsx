@@ -10,6 +10,7 @@ import {
   Siren,
   TestTube,
   Timer,
+  Warehouse,
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -32,6 +33,7 @@ import { matches } from '@/lib/paging'
 import { isLive } from '@/lib/supabase'
 import { LabOrderRow } from '../lab/lab-parts'
 import { MyQueuePanel } from './role-panels'
+import { CallsPanel } from './calls-panel'
 
 /**
  * Laboratory dashboard (lab technicians; sonographers for imaging): the bench in the manager
@@ -77,6 +79,10 @@ export function LabDashboard({ user }: { user: StaffUser }) {
           >
             {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
           </Button>
+          <StaffLink to="/app/stock" className={buttonVariants({ size: 'md' })}>
+            <Warehouse size={16} aria-hidden="true" />
+            {t('lab.stock')}
+          </StaffLink>
           <StaffLink to="/app/lab" className={buttonVariants({ variant: 'primary', size: 'md' })}>
             <ClipboardList size={16} aria-hidden="true" />
             {t('lab.openWorklist')}
@@ -140,6 +146,9 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             />
           </div>
         )}
+
+        {/* Calling the next patient, help requests */}
+        <CallsPanel user={user} />
 
         <section className="flex flex-col gap-3">
           <SectionTitle icon={Workflow}>{t('lab.section')}</SectionTitle>

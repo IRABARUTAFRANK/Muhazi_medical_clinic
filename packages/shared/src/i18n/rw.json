@@ -111,7 +111,8 @@
     "headOfStation": "Umuyobozi w'ishami",
     "view": "Ishusho ya {{role}}",
     "withStation": "{{role}} · {{station}}",
-    "lab_tech": "Laboratwari"
+    "lab_tech": "Laboratwari",
+    "pharmacist": "Umufarumasiye"
   },
   "sync": {
     "synced": "Byahujwe",
@@ -407,7 +408,8 @@
       "dayClose": "Gufunga umunsi",
       "newInquiry": "Ubusabe bushya bwa gahunda",
       "newOrder": "Itegeko rishya",
-      "worklist": "Fungura urutonde rw’akazi"
+      "worklist": "Fungura urutonde rw’akazi",
+      "stock": "Ububiko"
     },
     "inClinic": "abarwayi bari mu ivuriro",
     "inClinicShort": "mu ivuriro",
@@ -1456,7 +1458,9 @@
     "testsSaved_one": "Ikizamini cyasabwe.",
     "testsSaved_other": "Ibizamini {{count}} byasabwe.",
     "testsSent_one": "Ikizamini cyasabwe. Umurwayi agiye aho bapimira, azagaruka iwawe afite igisubizo.",
-    "testsSent_other": "Ibizamini {{count}} byasabwe. Umurwayi agiye aho bapimira, azagaruka iwawe afite ibisubizo."
+    "testsSent_other": "Ibizamini {{count}} byasabwe. Umurwayi agiye aho bapimira, azagaruka iwawe afite ibisubizo.",
+    "notGiven": "Ntiyatanzwe",
+    "notGivenWhy": "Farumasi: {{reason}}"
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -2085,7 +2089,9 @@
     "callNext": "{{by}} arahamagara umurwayi ukurikira ({{station}})",
     "help": "{{by}} agusabye ubufasha kuri {{name}}",
     "helpAccepted": "{{by}} yemeye gufasha kuri {{name}}",
-    "helpDeclined": "{{by}} ntashobora gufasha kuri {{name}} ubu"
+    "helpDeclined": "{{by}} ntashobora gufasha kuri {{name}} ubu",
+    "rxNotGiven": "Farumasi: {{item}} ntiyahawe {{name}}",
+    "testCancelled": "Laboratwari: {{test}} ntiyakorewe {{name}}"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -2616,7 +2622,24 @@
       "process": "Biri gukorwa",
       "resulted": "Byo kwemeza"
     },
-    "waitingFor": "ategereje {{time}}"
+    "waitingFor": "ategereje {{time}}",
+    "stock": "Ububiko bwa laboratwari",
+    "analysing": "Kirasuzumwa",
+    "analysingHint": "Igipimo kirimo gusuzumwa",
+    "printSlip": "Sohora igisubizo",
+    "slipHint": "Urupapuro rw’igisubizo cy’umurwayi cyangwa muganga (sohora cyangwa PDF)",
+    "slipTitle": "Igisubizo cya laboratwari",
+    "cannot": "Ntibishoboka",
+    "cannotHint": "Ikizamini ntigishobora gukorwa: kivanwa kuri fagitire kandi muganga akabimenyeshwa",
+    "cannotWhy": "Kuki iki kizamini kidashobora gukorwa? {{doctor}} azabimenyeshwa kandi kivanwe kuri fagitire.",
+    "cannotReasons": {
+      "reagent": "Nta muti w’ikizamini",
+      "sample": "Igipimo ntikiboneye",
+      "machine": "Imashini yapfuye",
+      "refused": "Umurwayi yanze"
+    },
+    "cannotPh": "Cyangwa wandike impamvu",
+    "cannotConfirm": "Emeza: ntikizakorwa"
   },
   "finance": {
     "desk": "Isanduku",
@@ -3186,5 +3209,52 @@
       "declined": "{{name}} yamenyeshejwe ko udashobora gufasha ubu.",
       "youHelp": "Urafasha {{name}} kuri {{patient}}"
     }
+  },
+  "pharmacy": {
+    "desk": "Farumasi",
+    "section": "Imiti yo gutanga",
+    "receive": "Kwakira imiti",
+    "openStock": "Fungura ububiko",
+    "serveSoon": "abarwayi bategereje",
+    "tiles": {
+      "toHandOver": "Yo gutanga",
+      "given": "Yatanzwe",
+      "sales": "Igurishwa ry’imiti",
+      "notGiven": "Ntiyatanzwe"
+    },
+    "units": {
+      "forPatients_one": "ku murwayi {{count}}",
+      "forPatients_other": "ku barwayi {{count}}",
+      "patientsServed_one": "Umurwayi {{count}} uyu munsi",
+      "patientsServed_other": "Abarwayi {{count}} uyu munsi"
+    },
+    "waitingCount": "Imiti {{lines}} · abarwayi {{patients}}",
+    "prescribedBy": "Yandikiwe na {{name}}",
+    "openVisit": "Fungura uruzinduko",
+    "giveAll": "Tanga yose",
+    "allGiven": "Imiti yose yahawe {{patient}}.",
+    "someShort": "Muri farumasi nta miti ihagije kuri umwe muri iyi",
+    "shortHint": "Nta miti ihagije muri farumasi: akira imiti cyangwa uvuge ko itatanzwe",
+    "notGiven": "Ntiyatanzwe",
+    "whyNot": "Kuki itatanzwe? {{doctor}} azabimenyeshwa.",
+    "reasons": {
+      "outOfStock": "Yashize",
+      "boughtElsewhere": "Umurwayi azayigura ahandi",
+      "refused": "Umurwayi yayanze"
+    },
+    "reasonPh": "Cyangwa wandike impamvu",
+    "confirmNotGiven": "Emeza: ntiyatanzwe",
+    "notGivenDone": "{{item}} yanditswe ko itatanzwe; {{doctor}} yabimenyeshejwe.",
+    "hint": "Gutanga bikura umuti mu bubiko bwa farumasi bikawongera kuri fagitire. Umuti wa nyuma w’umurwayi urangiye, ajya kwishyura niba hari amafaranga asigaye.",
+    "atDesk": "Muri farumasi nta rupapuro rw’imiti",
+    "stockAlerts": "Ububiko bwo gukurikirana",
+    "stockFine": "Nta byo gutumiza kandi nta bizarangira igihe mu minsi 90 iri imbere.",
+    "leftOf": "Hasigaye {{count}} (tumiza kuri {{level}})",
+    "expires": "irarangira",
+    "notGivenToday": "Itatanzwe uyu munsi",
+    "mostGiven": "Imiti yatanzwe cyane uyu munsi",
+    "givenCount_one": "Umuti {{count}}",
+    "givenCount_other": "Imiti {{count}}",
+    "nothingYet": "Nta muti uratangwa uyu munsi."
   }
 }

@@ -22,6 +22,8 @@ export interface ReportVisit {
 
 export interface MedicalReportDoc {
   kind: 'visit' | 'history'
+  /** Another title than "Medical report" (e.g. the laboratory result slip). */
+  title?: string
   clinic: { name: string; address: string; contacts: string; licences?: string; logoUrl: string }
   patient: {
     name: string
@@ -117,7 +119,7 @@ function visitBlock(v: ReportVisit, l: MedicalReportLabels, one: boolean) {
 export function openMedicalReport(d: MedicalReportDoc, l: MedicalReportLabels): boolean {
   const now = new Date()
   const one = d.kind === 'visit'
-  const title = one ? l.title : l.titleHistory
+  const title = d.title ?? (one ? l.title : l.titleHistory)
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} · ${esc(d.patient.name)}</title>
 <style>
   @page { size: A4 portrait; margin: 14mm 13mm 16mm; }

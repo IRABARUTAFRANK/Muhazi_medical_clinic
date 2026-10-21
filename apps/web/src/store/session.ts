@@ -15,6 +15,7 @@ const HOME_ROLES: readonly string[] = [
   'doctor',
   'cashier',
   'lab_tech',
+  'pharmacist',
   'manager',
 ]
 
@@ -37,7 +38,7 @@ const toStaffUser = (p: ProfileJson): StaffUser => ({
   username: p.username,
   name: p.full_name,
   // Lab technicians and sonographers share the laboratory dashboard (lab vs imaging tests);
-  // the pharmacy has no home of its own yet and uses the doctor home.
+  // pharmacists have the pharmacy dashboard.
   role: HOME_ROLES.includes(p.role)
     ? (p.role as Role)
     : p.role === 'sonographer'

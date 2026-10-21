@@ -5,7 +5,7 @@ interface StaffLinkProps {
   /** `/app`, `/app/dashboard`, `/app/visit` or `/app/patient` (with `search`) or `/app/<section>`. */
   to: string
   /** Search params: `{ encounter }` for the visit screen, `{ id }` for a patient file. */
-  search?: { encounter: string; report?: boolean } | { id: string; tab?: string }
+  search?: { encounter: string; report?: boolean } | { id: string; tab?: string } | { tab?: string }
   className?: string
   style?: CSSProperties
   children: ReactNode
@@ -25,6 +25,11 @@ export function StaffLink({ to, search, ...rest }: StaffLinkProps) {
     return <Link to="/app/vitals" search={search} {...rest} />
   if (to === '/app/patient' && search && 'id' in search)
     return <Link to="/app/patient" search={search} {...rest} />
+  if (to === '/app/stock') {
+    // `{ tab }` opens a tab of the stock page (e.g. the pharmacy's "Receive stock")
+    const tab = search && 'tab' in search && !('id' in search) ? search.tab : undefined
+    return <Link to="/app/stock" search={(tab ? { tab } : {}) as { tab?: 'stock' }} {...rest} />
+  }
   const section = to.replace(/^\/app\//, '')
   return <Link to="/app/$section" params={{ section }} {...rest} />
 }

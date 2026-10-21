@@ -3,12 +3,12 @@ import {
   AlertTriangle,
   BedDouble,
   CircleCheck,
+  ClipboardList,
   ConciergeBell,
   Crown,
   FlaskConical,
   HeartHandshake,
   HeartPulse,
-  ClipboardList,
   Pill,
   Ribbon,
   Scan,
@@ -17,8 +17,8 @@ import {
   Smile,
   Stethoscope,
   Syringe,
-  Wallet,
   type LucideIcon,
+  Wallet,
 } from 'lucide-react'
 import { formatNumber, type Role } from '@mmc/shared'
 
@@ -123,6 +123,7 @@ const ROLE_LOOK: Record<Role, { icon: LucideIcon; tint: Tint; stripe: string }> 
   doctor: { icon: Stethoscope, tint: 'violet', stripe: 'bg-violet' },
   cashier: { icon: Wallet, tint: 'amber', stripe: 'bg-amber' },
   lab_tech: { icon: FlaskConical, tint: 'coral', stripe: 'bg-red' },
+  pharmacist: { icon: Pill, tint: 'mint', stripe: 'bg-green' },
 }
 export const lookFor = (role: Role) => ROLE_LOOK[role] ?? ROLE_LOOK.doctor
 

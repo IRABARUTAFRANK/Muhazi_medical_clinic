@@ -781,12 +781,22 @@ export function ClinicalCard({
         data.prescriptions.map((r) => (
           <Row key={r.id} className="gap-3 py-2">
             <Badge
-              tone={r.supply === 'room' ? 'blue' : r.dispensed ? 'green' : 'yellow'}
+              tone={
+                r.supply === 'room'
+                  ? 'blue'
+                  : r.notGivenAt
+                    ? 'red'
+                    : r.dispensed
+                      ? 'green'
+                      : 'yellow'
+              }
               dot={false}
             >
               {r.supply === 'room'
                 ? t('clinical.givenHere')
-                : t(r.dispensed ? 'clinical.dispensed' : 'clinical.toDispense')}
+                : r.notGivenAt
+                  ? t('clinical.notGiven')
+                  : t(r.dispensed ? 'clinical.dispensed' : 'clinical.toDispense')}
             </Badge>
             <span className="min-w-0 flex-1">
               <span className="block font-semibold">
@@ -802,6 +812,7 @@ export function ClinicalCard({
                   r.supply === 'room' && r.givenBy
                     ? t('clinical.givenBy', { name: r.givenBy })
                     : null,
+                  r.notGivenReason ? t('clinical.notGivenWhy', { reason: r.notGivenReason }) : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}

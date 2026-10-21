@@ -419,6 +419,9 @@ export interface Prescription {
   supply?: 'pharmacy' | 'room'
   givenAt?: string | null
   givenBy?: string | null
+  /** The pharmacy could not hand it over, and why (migration 0056). */
+  notGivenAt?: string | null
+  notGivenReason?: string | null
 }
 export interface TestOrder {
   id: string

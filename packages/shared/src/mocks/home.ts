@@ -154,6 +154,17 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
     actions: [act('worklist', 'flask-conical', true, '/app/lab')],
     rowAction: 'call',
   },
+  pharmacist: {
+    station: 'Pharmacy',
+    nav: [nav('home', 'home', '/app'), nav('stock', 'package', '/app/stock')],
+    queue: [
+      q('A-012', 'Mukamana Alice', '31 F', 'yellow', 6, 'Mutuelle'),
+      q('A-015', 'Ingabire Diane', '27 F', 'green', 11, 'MMI'),
+    ],
+    counts: { waiting: 2, inProgress: 0, done: 18 },
+    actions: [act('stock', 'package', true, '/app/stock')],
+    rowAction: 'open',
+  },
   cashier: {
     station: 'Cashier',
     nav: [nav('home', 'home', '/app'), nav('bills', 'receipt'), nav('payments', 'wallet')],

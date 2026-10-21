@@ -52,6 +52,7 @@ import { DeskDashboard } from './desk-dashboard'
 import { LabDashboard } from './lab-dashboard'
 import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
 import { CallsPanel } from './calls-panel'
+import { PharmacyDashboard } from './pharmacy-dashboard'
 
 interface HomePageProps {
   user: StaffUser
@@ -74,6 +75,7 @@ export function HomePage({ user, mode }: HomePageProps) {
   if (user.role === 'receptionist' || user.role === 'nurse')
     return <DeskDashboard user={user} role={user.role} />
   if (user.role === 'lab_tech') return <LabDashboard user={user} />
+  if (user.role === 'pharmacist') return <PharmacyDashboard user={user} />
   if (user.role === 'cashier') return <CashierDashboard user={user} />
   return <RoleHome user={user} mode={mode} />
 }

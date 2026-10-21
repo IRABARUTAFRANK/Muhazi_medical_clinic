@@ -60,6 +60,10 @@ export function stationFor(user: StaffUser): Station {
       return 'consultation'
     case 'cashier':
       return 'cashier'
+    case 'pharmacist':
+      return 'pharmacy'
+    case 'lab_tech':
+      return 'laboratory'
     default:
       return 'consultation'
   }

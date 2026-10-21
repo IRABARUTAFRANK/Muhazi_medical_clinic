@@ -102,7 +102,8 @@
     "headOfStation": "Head of station",
     "view": "{{role}} view",
     "withStation": "{{role}} · {{station}}",
-    "lab_tech": "Laboratory"
+    "lab_tech": "Laboratory",
+    "pharmacist": "Pharmacist"
   },
   "sync": {
     "synced": "Synced",
@@ -455,7 +456,8 @@
       "takePayment": "Take payment",
       "directSale": "Direct sale",
       "dayClose": "Day close",
-      "worklist": "Open the worklist"
+      "worklist": "Open the worklist",
+      "stock": "Stock"
     },
     "methodsHint": "Accepted payments: cash, MTN MoMo and Airtel Money.",
     "sharedQueue": "first doctor free",
@@ -1715,7 +1717,9 @@
     "testsSaved_one": "Test ordered.",
     "testsSaved_other": "{{count}} tests ordered.",
     "testsSent_one": "Test ordered. The patient goes to the test desk and comes back to you with the result.",
-    "testsSent_other": "{{count}} tests ordered. The patient goes to the test desk and comes back to you with the results."
+    "testsSent_other": "{{count}} tests ordered. The patient goes to the test desk and comes back to you with the results.",
+    "notGiven": "Not given",
+    "notGivenWhy": "Pharmacy: {{reason}}"
   },
   "adjust": {
     "mode": "How to enter it",
@@ -2076,7 +2080,9 @@
     "callNext": "{{by}} calls the next patient ({{station}})",
     "help": "{{by}} asks for your help on {{name}}",
     "helpAccepted": "{{by}} accepted to help on {{name}}",
-    "helpDeclined": "{{by}} cannot help on {{name}} now"
+    "helpDeclined": "{{by}} cannot help on {{name}} now",
+    "rxNotGiven": "Pharmacy: {{item}} not given to {{name}}",
+    "testCancelled": "Laboratory: {{test}} not done for {{name}}"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -2607,7 +2613,24 @@
       "process": "In process",
       "resulted": "To verify"
     },
-    "waitingFor": "waiting {{time}}"
+    "waitingFor": "waiting {{time}}",
+    "stock": "Lab stock",
+    "analysing": "Analysing",
+    "analysingHint": "The sample is being analysed",
+    "printSlip": "Print result",
+    "slipHint": "The result slip for the patient or the doctor (print or save as PDF)",
+    "slipTitle": "Laboratory result",
+    "cannot": "Cannot do",
+    "cannotHint": "The test cannot be done: it leaves the bill and the doctor is told",
+    "cannotWhy": "Why can this test not be done? {{doctor}} will be told and it leaves the bill.",
+    "cannotReasons": {
+      "reagent": "No reagent",
+      "sample": "Sample not suitable",
+      "machine": "Machine out of order",
+      "refused": "The patient refused"
+    },
+    "cannotPh": "Or write the reason",
+    "cannotConfirm": "Confirm: not done"
   },
   "finance": {
     "desk": "Cash desk",
@@ -3177,5 +3200,52 @@
       "declined": "{{name}} was told you cannot help now.",
       "youHelp": "You help {{name}} on {{patient}}"
     }
+  },
+  "pharmacy": {
+    "desk": "Pharmacy desk",
+    "section": "Medicines to hand over",
+    "receive": "Receive stock",
+    "openStock": "Open the stock",
+    "serveSoon": "patients waiting",
+    "tiles": {
+      "toHandOver": "To hand over",
+      "given": "Handed over",
+      "sales": "Medicine sales",
+      "notGiven": "Not given"
+    },
+    "units": {
+      "forPatients_one": "for {{count}} patient",
+      "forPatients_other": "for {{count}} patients",
+      "patientsServed_one": "{{count}} patient today",
+      "patientsServed_other": "{{count}} patients today"
+    },
+    "waitingCount": "{{lines}} medicines · {{patients}} patients",
+    "prescribedBy": "Prescribed by {{name}}",
+    "openVisit": "Open the visit",
+    "giveAll": "Hand over all",
+    "allGiven": "Every medicine was handed over to {{patient}}.",
+    "someShort": "Not enough in the pharmacy for one of these medicines",
+    "shortHint": "Not enough in the pharmacy store: receive stock or mark it not given",
+    "notGiven": "Not given",
+    "whyNot": "Why is it not given? {{doctor}} will be told.",
+    "reasons": {
+      "outOfStock": "Out of stock",
+      "boughtElsewhere": "The patient buys it elsewhere",
+      "refused": "The patient refused it"
+    },
+    "reasonPh": "Or write the reason",
+    "confirmNotGiven": "Confirm: not given",
+    "notGivenDone": "{{item}} marked not given; {{doctor}} is told.",
+    "hint": "Handing over takes the medicine from the pharmacy store and adds it to the bill. When the last medicine of a patient is done, the patient goes to the cashier if money is due.",
+    "atDesk": "At the pharmacy without a prescription",
+    "stockAlerts": "Stock to watch",
+    "stockFine": "Nothing to reorder and nothing expiring in the next 90 days.",
+    "leftOf": "{{count}} left (reorder at {{level}})",
+    "expires": "expires",
+    "notGivenToday": "Not given today",
+    "mostGiven": "Most handed over today",
+    "givenCount_one": "{{count}} medicine",
+    "givenCount_other": "{{count}} medicines",
+    "nothingYet": "Nothing handed over yet today."
   }
 }

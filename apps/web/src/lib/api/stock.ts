@@ -447,5 +447,69 @@ export function useStockActions() {
     },
     onSuccess: refresh,
   })
-  return { receive, transfer, use, dispense, saveLocation }
+  // The pharmacy cannot hand it over (out of stock, bought elsewhere…): the doctor is told.
+  const notGiven = useMutation({
+    mutationFn: async (i: { requestId: string; reason: string }) => {
+      if (!supabase) {
+        const at = sampleQueue.findIndex((x) => x.requestId === i.requestId)
+        if (at >= 0) sampleQueue.splice(at, 1)
+        return
+      }
+      await call('rx_not_given', { p_medication_request_id: i.requestId, p_reason: i.reason })
+    },
+    onSuccess: refresh,
+  })
+  return { receive, transfer, use, dispense, notGiven, saveLocation }
+}
+
+/** The pharmacy desk's figures (migration 0056). */
+export interface PharmacySummary {
+  lines: number
+  patients: number
+  dispensedToday: number
+  patientsServedToday: number
+  notGivenToday: number
+  salesToday: number
+  topToday: { item: string; count: number }[]
+  notGiven: { item: string; patient: string; reason: string | null; at: string }[]
+}
+
+export function usePharmacySummary() {
+  return useQuery({
+    queryKey: [...KEY, 'pharmacy-summary'],
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<PharmacySummary> => {
+      if (!supabase)
+        return {
+          lines: sampleQueue.length,
+          patients: new Set(sampleQueue.map((q) => q.encounterId)).size,
+          dispensedToday: 23,
+          patientsServedToday: 14,
+          notGivenToday: 1,
+          salesToday: 41600,
+          topToday: [
+            { item: 'Amoxicillin 500 mg', count: 6 },
+            { item: 'Paracetamol 500 mg', count: 5 },
+            { item: 'Artemether-lumefantrine 20/120 mg', count: 4 },
+          ],
+          notGiven: [
+            {
+              item: 'Ciprofloxacin 500 mg',
+              patient: 'Habimana Eric',
+              reason: 'Out of stock',
+              at: new Date(Date.now() - 50 * 60_000).toISOString(),
+            },
+          ],
+        }
+      const { data, error } = await supabase.rpc('pharmacy_summary')
+      if (error) throw new Error(error.message)
+      const d = (data ?? {}) as PharmacySummary
+      return {
+        ...d,
+        salesToday: Number(d.salesToday ?? 0),
+        topToday: d.topToday ?? [],
+        notGiven: d.notGiven ?? [],
+      }
+    },
+  })
 }
