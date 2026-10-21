@@ -1211,7 +1211,9 @@
       "desk": "Done at",
       "deskHint": "Orders go to {{desk}}: the patient is queued there and its staff write the result into the file.",
       "orderedAt": "Ordered · done at {{desk}}"
-    }
+    },
+    "builtIn": "Built in",
+    "builtInBedHint": "Bed nights are billed under this line: change its name or price, it cannot be hidden or deleted."
   },
   "visit": {
     "back": "Back to my queue",
@@ -1836,7 +1838,11 @@
       "bedsFree_other": "{{count}} free",
       "noBeds": "No beds set up yet.",
       "tasks": "Nursing tasks",
-      "noTasks": "No tasks for now."
+      "noTasks": "No tasks for now.",
+      "careSection": "Nursing care",
+      "care": "Patients sent to the nurses",
+      "orders": "Orders to do at Nursing",
+      "ordersEmpty": "No order waiting at Nursing."
     },
     "mine": {
       "title": "My work today",
@@ -2007,6 +2013,16 @@
         "phone": "Phone call",
         "walk_in": "Walk-in"
       }
+    },
+    "booking": {
+      "open": "New booking",
+      "title": "New booking",
+      "lead": "A patient who calls or asks at the desk: choose the file, the doctor, the day and the time. The doctor is asked to accept, as for every booking.",
+      "reason": "Reason (optional)",
+      "reasonPh": "e.g. follow-up of hypertension",
+      "source": "Asked",
+      "byPhone": "by phone",
+      "atDesk": "at the desk"
     }
   },
   "files": {
@@ -2675,7 +2691,13 @@
       "receipt": "Receipt",
       "cashier": "Cashier",
       "amount": "Amount"
-    }
+    },
+    "debtsTitle": "Still owed from finished visits",
+    "debtsTotal_one": "{{count}} patient · {{amount}}",
+    "debtsTotal_other": "{{count}} patients · {{amount}}",
+    "noDebts": "Nothing is owed on a finished visit.",
+    "debtBy": "let go by {{name}}",
+    "openVisit": "Open the visit"
   },
   "calendar": {
     "title": "My calendar",

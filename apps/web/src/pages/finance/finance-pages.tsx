@@ -18,7 +18,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { useCashierSummary } from '@/lib/api/finance'
+import { useCashierSummary, useUnpaidDebts } from '@/lib/api/finance'
 import { useClinicInfo } from '@/lib/api/public'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { cashierReport } from '@/lib/reports/build'
@@ -26,6 +26,7 @@ import { useHomeSummary } from '@/lib/api/home'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
+import { useCan } from '@/lib/api/permissions'
 
 const METHOD_ICON: Record<string, LucideIcon> = {
   cash: Banknote,
@@ -42,6 +43,8 @@ const today = () => {
 /** Every open bill, searchable, 15 per page, each with "Take payment". */
 export function BillsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
+  // the manager sees every bill but takes payments only when allowed (Who may do what)
+  const canTake = useCan(user)('payment.take')
   const { data: home } = useHomeSummary()
   const bills = home?.openBills ?? []
   const [query, setQuery] = useState('')
@@ -95,10 +98,13 @@ export function BillsPage({ user }: { user: StaffUser }) {
                   <StaffLink
                     to="/app/visit"
                     search={{ encounter: b.encounterId }}
-                    className={buttonVariants({ variant: 'primary', size: 'sm' })}
+                    className={buttonVariants({
+                      variant: canTake ? 'primary' : 'default',
+                      size: 'sm',
+                    })}
                   >
                     <Wallet size={14} aria-hidden="true" />
-                    {t('home.takePayment')}
+                    {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
                   </StaffLink>
                 </div>
               ))}
@@ -106,8 +112,67 @@ export function BillsPage({ user }: { user: StaffUser }) {
           )}
           <Pager {...paged} onPage={paged.setPage} />
         </Panel>
+        <DebtsPanel canTake={canTake} />
       </main>
     </StaffShell>
+  )
+}
+
+/**
+ * Money still owed on finished visits (the patient left without paying, with the manager's
+ * reason): it can be paid when the patient comes back, from the visit's payment card.
+ */
+function DebtsPanel({ canTake }: { canTake: boolean }) {
+  const { t } = useTranslation()
+  const { data: debts = [] } = useUnpaidDebts()
+  const total = debts.reduce((s, d) => s + d.amount, 0)
+  return (
+    <Panel
+      i={2}
+      icon={Wallet}
+      tint="amber"
+      title={t('finance.debtsTitle')}
+      right={t('finance.debtsTotal', { count: debts.length, amount: formatRwf(total) })}
+    >
+      {debts.length === 0 ? (
+        <Empty>{t('finance.noDebts')}</Empty>
+      ) : (
+        <div className="flex flex-col">
+          {debts.map((d) => (
+            <div
+              key={d.encounterId}
+              className="border-grid flex min-h-12 flex-wrap items-center gap-3 border-b py-2.5 text-[14px] last:border-b-0"
+            >
+              <span className="min-w-[180px] flex-1">
+                <span className="block font-semibold">{d.patient}</span>
+                <span className="text-ink-3 block text-[13px]">
+                  {[
+                    d.fileNumber,
+                    d.phone,
+                    d.closedAt && formatDate(new Date(d.closedAt)),
+                    d.reason && `“${d.reason}”`,
+                    d.closedBy && t('finance.debtBy', { name: d.closedBy }),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </span>
+              <span className="font-bold whitespace-nowrap tabular-nums">
+                {formatRwf(d.amount)}
+              </span>
+              <StaffLink
+                to="/app/visit"
+                search={{ encounter: d.encounterId }}
+                className={buttonVariants({ variant: canTake ? 'primary' : 'default', size: 'sm' })}
+              >
+                <Wallet size={14} aria-hidden="true" />
+                {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
+              </StaffLink>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
   )
 }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react'
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, isoDate, type StaffUser } from '@mmc/shared'
 import { AppointmentDetail } from './appointment-detail'
@@ -13,6 +13,8 @@ import { navForUser } from '@/lib/nav'
 import { AppointmentsPanel, InquiriesPanel } from '@/pages/home/desk-panels'
 import { NewPatientForm } from '@/components/clinical/new-patient-form'
 import type { RegisterRequest } from '@/pages/home/inquiries-panel'
+import { NewBookingCard } from '@/pages/home/inquiries-panel'
+import { Flash } from '@/components/ui/flash'
 
 /**
  * Appointments and inquiries (doc §5.2). Reception approves booking requests, then on the day
@@ -26,6 +28,9 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
   const [selected, setSelected] = useState<string | null>(null)
   // "Register the patient now" from a booking request: the new-file form opens on the left.
   const [registering, setRegistering] = useState<RegisterRequest | null>(null)
+  // "New booking": a phone caller or a patient at the desk
+  const [booking, setBooking] = useState(false)
+  const [booked, setBooked] = useState<string | null>(null)
   const day = new Date()
   day.setDate(day.getDate() + offset)
   const pickDay = (iso: string) => {
@@ -91,6 +96,12 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
               {t('ops.appts.today')}
             </Button>
           )}
+          {canAct && (
+            <Button size="md" onClick={() => setBooking(true)}>
+              <CalendarPlus size={16} aria-hidden="true" />
+              {t('ops.booking.open')}
+            </Button>
+          )}
           <StaffLink
             to="/app/register"
             className={buttonVariants({ variant: 'primary', size: 'md' })}
@@ -125,11 +136,28 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
                 onSelect={setSelected}
               />
             )}
-            <InquiriesPanel
-              canAct={canAct}
-              onRegister={setRegistering}
-              onBookingClosed={() => setRegistering(null)}
-            />
+            <div className="flex min-w-0 flex-col gap-4">
+              {booked && (
+                <Flash key={booked} onClose={() => setBooked(null)}>
+                  {booked}
+                </Flash>
+              )}
+              {booking && canAct && (
+                <NewBookingCard
+                  onDone={(msg) => {
+                    setBooked(msg)
+                    setBooking(false)
+                  }}
+                  onCancel={() => setBooking(false)}
+                  onRegister={setRegistering}
+                />
+              )}
+              <InquiriesPanel
+                canAct={canAct}
+                onRegister={setRegistering}
+                onBookingClosed={() => setRegistering(null)}
+              />
+            </div>
           </div>
           <p className="text-ink-3 m-0 text-xs">{t('ops.appts.flow')}</p>
         </section>

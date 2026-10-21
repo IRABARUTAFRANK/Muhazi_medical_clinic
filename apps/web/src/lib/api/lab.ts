@@ -113,6 +113,20 @@ export function useLabWorklist(scope: 'open' | 'done') {
   })
 }
 
+/** Orders waiting at a desk other than the lab (Nursing, Dental…), for that desk (migration 0059). */
+export function useDeskOrders(station: string) {
+  return useQuery({
+    queryKey: ['lab', 'desk', station],
+    refetchInterval: 20_000,
+    queryFn: async (): Promise<LabOrder[]> => {
+      if (!supabase) return []
+      const { data, error } = await supabase.rpc('desk_orders', { p_station: station })
+      if (error) throw new Error(error.message)
+      return (data as LabOrder[]) ?? []
+    },
+  })
+}
+
 export function useLabSummary() {
   return useQuery({
     queryKey: ['lab', 'summary'],

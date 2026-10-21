@@ -64,6 +64,10 @@ import { isLive } from '@/lib/supabase'
 import { formatDuration } from '@/lib/duration'
 import { cn } from '@/lib/utils'
 import { CallsPanel } from './calls-panel'
+import { useDeskOrders } from '@/lib/api/lab'
+import { LabOrderRow } from '../lab/lab-parts'
+import { MyQueuePanel } from './role-panels'
+import { useNow } from '@/lib/hooks'
 
 export type DeskRole = 'receptionist' | 'nurse'
 
@@ -79,8 +83,21 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   const { t } = useTranslation()
   const now = new Date()
   const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary()
-  const { data: queue = [] } = useQueueBoard(role === 'nurse' ? 'triage' : 'all', user.role)
-  const waiting = onePerPool(openItems(queue))
+  const { data: queue = [] } = useQueueBoard('all', user.role)
+  const open = onePerPool(openItems(queue))
+  // The nurse: everyone at triage and everyone still without vitals (whatever the desk, so the
+  // list is not empty when patients go straight to the doctor); reception: everyone.
+  const waiting =
+    role === 'nurse'
+      ? open.filter(
+          (r) =>
+            r.station === 'triage' ||
+            (!r.vitalsAt &&
+              !['cashier', 'pharmacy', 'laboratory', 'ultrasound'].includes(r.station)),
+        )
+      : open
+  // patients sent to the nurses for care (Nursing, Beds)
+  const care = openItems(queue).filter((r) => r.station === 'nursing' || r.station === 'beds')
 
   const greeting = greetingFor(user.name, t)
   const nurse = role === 'nurse'
@@ -191,6 +208,26 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                 )}
               </div>
             </section>
+
+            {/* NURSING CARE: patients sent to the nurses, and the orders done at Nursing */}
+            {nurse && (
+              <section className="flex flex-col gap-3">
+                <SectionTitle icon={HeartPulse}>{t('desk.nurse.careSection')}</SectionTitle>
+                <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
+                  <MyQueuePanel
+                    title={t('desk.nurse.care')}
+                    rows={care}
+                    counts={{
+                      waiting: care.filter((r) => !r.startedAt).length,
+                      inProgress: care.filter((r) => r.startedAt).length,
+                      done: 0,
+                    }}
+                    rowAction="open"
+                  />
+                  <NursingOrdersPanel />
+                </div>
+              </section>
+            )}
 
             {/* TODAY */}
             <section className="flex flex-col gap-3">
@@ -632,6 +669,37 @@ function MinePanel({ d, role }: { d: DeskSummary; role: DeskRole }) {
           </div>
         ))}
       </div>
+    </Panel>
+  )
+}
+
+/* ---------------------------------------------------------------- nursing orders */
+/** Orders done at Nursing (a dressing, an injection course…): what was done, or "Cannot do". */
+function NursingOrdersPanel() {
+  const { t } = useTranslation()
+  const now = useNow()
+  const { data: orders = [] } = useDeskOrders('nursing')
+  return (
+    <Panel
+      i={2}
+      icon={ClipboardList}
+      tint="violet"
+      title={t('desk.nurse.orders')}
+      right={t('lab.openCount', { count: orders.length })}
+    >
+      {orders.length === 0 ? (
+        <Empty>{t('desk.nurse.ordersEmpty')}</Empty>
+      ) : (
+        <ShownList items={orders} step={5}>
+          {(shown) => (
+            <div className="flex flex-col">
+              {shown.map((o, i) => (
+                <LabOrderRow key={o.id} order={o} i={i} now={now} desk />
+              ))}
+            </div>
+          )}
+        </ShownList>
+      )}
     </Panel>
   )
 }

@@ -57,8 +57,24 @@
     "changePinHint": "Choisir un nouveau PIN"
   },
   "days": {
-    "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
-    "long": ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+    "short": [
+      "Dim",
+      "Lun",
+      "Mar",
+      "Mer",
+      "Jeu",
+      "Ven",
+      "Sam"
+    ],
+    "long": [
+      "Dimanche",
+      "Lundi",
+      "Mardi",
+      "Mercredi",
+      "Jeudi",
+      "Vendredi",
+      "Samedi"
+    ]
   },
   "nav": {
     "services": "Services",
@@ -1211,7 +1227,9 @@
       "desk": "Fait à",
       "deskHint": "Les demandes vont à {{desk}} : le patient y est mis en file et son personnel écrit le résultat dans le dossier.",
       "orderedAt": "Demandé · fait à {{desk}}"
-    }
+    },
+    "builtIn": "Intégré",
+    "builtInBedHint": "Les nuits d’hospitalisation sont facturées sous cette ligne : changez son nom ou son prix, elle ne peut être ni masquée ni supprimée."
   },
   "visit": {
     "back": "Retour à ma file",
@@ -1836,7 +1854,11 @@
       "bedsFree_other": "{{count}} libres",
       "noBeds": "Aucun lit configuré.",
       "tasks": "Tâches infirmières",
-      "noTasks": "Aucune tâche pour le moment."
+      "noTasks": "Aucune tâche pour le moment.",
+      "careSection": "Soins infirmiers",
+      "care": "Patients envoyés aux infirmiers",
+      "orders": "Demandes à faire aux soins",
+      "ordersEmpty": "Aucune demande en attente aux soins."
     },
     "mine": {
       "title": "Mon travail aujourd'hui",
@@ -2007,6 +2029,16 @@
         "phone": "Appel",
         "walk_in": "Sans rendez-vous"
       }
+    },
+    "booking": {
+      "open": "Nouveau rendez-vous",
+      "title": "Nouveau rendez-vous",
+      "lead": "Un patient qui appelle ou demande à l’accueil : choisissez le dossier, le médecin, le jour et l’heure. Le médecin doit accepter, comme pour tout rendez-vous.",
+      "reason": "Motif (facultatif)",
+      "reasonPh": "ex. suivi de l’hypertension",
+      "source": "Demandé",
+      "byPhone": "par téléphone",
+      "atDesk": "à l’accueil"
     }
   },
   "files": {
@@ -2675,7 +2707,13 @@
       "receipt": "Reçu",
       "cashier": "Caissier",
       "amount": "Montant"
-    }
+    },
+    "debtsTitle": "Reste dû sur des visites terminées",
+    "debtsTotal_one": "{{amount}} pour {{count}} patient",
+    "debtsTotal_other": "{{amount}} pour {{count}} patients",
+    "noDebts": "Rien n’est dû sur une visite terminée.",
+    "debtBy": "laissé partir par {{name}}",
+    "openVisit": "Ouvrir la visite"
   },
   "calendar": {
     "title": "Mon agenda",

@@ -23,21 +23,31 @@ import { appNow } from '@/lib/clock'
 import { supabase } from '@/lib/supabase'
 
 /**
- * Public (anonymous) reads for the landing and booking pages. Each query uses Supabase when it
- * is configured and reachable, and the shared sample data otherwise, so the site always renders.
+ * Public (anonymous) reads for the landing and booking pages. Without a database (sample mode)
+ * they use the shared sample data. With the live database they never show sample doctors, fake
+ * busy times or a fake wait: a failed read is retried and the page shows what is really known
+ * (only the clinic's own contact details fall back to the built-in ones, which are real).
  */
 
 const STALE = 60_000
 
-async function withFallback<T>(live: () => Promise<T>, sample: () => T): Promise<T> {
+async function withFallback<T>(
+  live: () => Promise<T>,
+  sample: () => T,
+  /** Live read failed: use this instead of throwing (only for data that is real anyway). */
+  liveFallback?: () => T,
+): Promise<T> {
   if (!supabase) return sample()
+  if (!liveFallback) return live()
   try {
     return await live()
   } catch (e) {
-    console.warn('[mmc] live data unavailable, showing sample data:', e)
-    return sample()
+    console.warn('[mmc] live data unavailable:', e)
+    return liveFallback()
   }
 }
+/** Sample data while loading only in sample mode; live pages wait for the real data. */
+const samplePlaceholder = <T>(v: T): T | undefined => (supabase ? undefined : v)
 
 const isCategory = (v: string): v is CategoryId => (CATEGORY_IDS as readonly string[]).includes(v)
 
@@ -87,7 +97,7 @@ export function usePractitioners() {
         () => [...PRACTITIONERS],
       ),
     staleTime: STALE,
-    placeholderData: [...PRACTITIONERS],
+    placeholderData: samplePlaceholder([...PRACTITIONERS]),
   })
 }
 
@@ -137,7 +147,12 @@ export const bookedFor = (
   slots: BookedSlots | undefined,
   p: Practitioner,
 ): ReadonlySet<string> | undefined =>
-  slots?.live ? (slots.byPractitioner.get(p.id) ?? EMPTY) : undefined
+  slots?.live
+    ? (slots.byPractitioner.get(p.id) ?? EMPTY)
+    : // live but not loaded (or failed): no fake pattern on real doctors; the booking checks the slot
+      supabase
+      ? EMPTY
+      : undefined
 
 // ---------------------------------------------------------------- service lines, insurers
 export function useServiceLines() {
@@ -169,7 +184,7 @@ export function useServiceLines() {
         () => [...SERVICES],
       ),
     staleTime: STALE,
-    placeholderData: [...SERVICES],
+    placeholderData: samplePlaceholder([...SERVICES]),
   })
 }
 
@@ -186,7 +201,7 @@ export function usePayers() {
         () => [...INSURERS],
       ),
     staleTime: STALE,
-    placeholderData: [...INSURERS],
+    placeholderData: samplePlaceholder([...INSURERS]),
   })
 }
 
@@ -212,6 +227,8 @@ export function useClinicInfo() {
           }
         },
         () => SAMPLE_INFO,
+        // the built-in profile and hours are the clinic's own: fine while the database is away
+        () => SAMPLE_INFO,
       ),
     staleTime: 5 * 60_000,
     placeholderData: SAMPLE_INFO,
@@ -231,6 +248,13 @@ const sampleStatus = (hours: ClinicHours): ClinicStatus => ({
   ...openStatus(hours, appNow()),
   waiting: CLINIC.currentWaiting,
   avgWaitMin: CLINIC.currentWaitMin,
+  live: false,
+})
+/** Live mode without the queue figures: open or closed from the hours, no invented wait. */
+const hoursStatus = (hours: ClinicHours): ClinicStatus => ({
+  ...openStatus(hours, appNow()),
+  waiting: 0,
+  avgWaitMin: 0,
   live: false,
 })
 
@@ -260,8 +284,9 @@ export function useClinicStatus(hours: ClinicHours) {
           }
         },
         () => sampleStatus(hours),
+        () => hoursStatus(hours),
       ),
     refetchInterval: 60_000,
-    placeholderData: sampleStatus(hours),
+    placeholderData: supabase ? hoursStatus(hours) : sampleStatus(hours),
   })
 }

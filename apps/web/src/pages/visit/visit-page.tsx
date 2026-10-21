@@ -621,7 +621,8 @@ export function VisitPage({
                 )}
                 {!isReception && !isCashier && !closed && !locked && can('charge.write') && (
                   <AddChargeCard
-                    treatments={treatments}
+                    // tests and desk work are ordered (Orders), bed nights come from the beds board
+                    treatments={treatments.filter((x) => !x.orderStation && x.code !== 'BED-STAY')}
                     myDepartments={isManagerNav ? [] : myDepartments}
                     office={myStation}
                     payerId={bill?.payerId ?? null}

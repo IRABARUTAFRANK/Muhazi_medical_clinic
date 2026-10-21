@@ -51,10 +51,13 @@ export function LabOrderRow({
   order: o,
   i = 0,
   now,
+  desk = false,
 }: {
   order: LabOrder
   i?: number
   now: number
+  /** An order done at another desk (Nursing…): no sample steps. */
+  desk?: boolean
 }) {
   const { t } = useTranslation()
   const actions = useLabActions()
@@ -155,7 +158,7 @@ export function LabOrderRow({
           {t(`lab.status.${o.status}`)}
         </Pill>
         <span className="flex flex-wrap gap-1">
-          {o.status === 'ordered' && (
+          {o.status === 'ordered' && !desk && (
             <Button
               size="sm"
               variant="primary"
@@ -168,7 +171,7 @@ export function LabOrderRow({
               {t('lab.sampleTaken')}
             </Button>
           )}
-          {o.status === 'collected' && (
+          {o.status === 'collected' && !desk && (
             <Button
               size="sm"
               loading={actions.setStatus.isPending && actions.setStatus.variables?.id === o.id}

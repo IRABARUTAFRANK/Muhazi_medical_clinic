@@ -254,14 +254,17 @@ await step('doctor charges consultation (RSSB preset 5,000)', async () => {
   )
 })
 await step('doctor orders lab (preset 2,000 + 4,000)', async () => {
+  // 0059: ordered tests are charged by the order itself; this journey only needs the two lines
+  await asAdmin()
   await db.query(
-    `select add_charge($1, 'laboratory', (select id from service where code = 'LAB-MRDT'))`,
+    `select add_charge_internal($1, 'laboratory', (select id from service where code = 'LAB-MRDT'))`,
     [encounterId],
   )
   await db.query(
-    `select add_charge($1, 'laboratory', (select id from service where code = 'LAB-FBC'))`,
+    `select add_charge_internal($1, 'laboratory', (select id from service where code = 'LAB-FBC'))`,
     [encounterId],
   )
+  await as(staff.doctor)
 })
 await step('doctor records the primary diagnosis', async () => {
   await db.query(
@@ -1556,7 +1559,10 @@ await step(
     const svc = await one(
       `select id from service s where name_en = 'Check test A' and deleted_at is null`,
     )
-    await db.query(`select add_charge($1, 'consultation', $2)`, [v.id, svc.id])
+    // a charge on the bill (the test may be an ordered one since 0052)
+    await asAdmin()
+    await db.query(`select add_charge_internal($1, 'consultation', $2)`, [v.id, svc.id])
+    await as(staff.doctor)
     await db.query(`select add_diagnosis($1, 'Malaria', 'B54', 'primary', false)`, [v.id])
     await db.query(`select finish_visit($1)`, [v.id])
     await asAdmin()
@@ -1585,7 +1591,10 @@ await step(
     const svc = await one(
       `select id from service s where name_en = 'Check test A' and deleted_at is null`,
     )
-    await db.query(`select add_charge($1, 'consultation', $2)`, [v.id, svc.id])
+    // a charge on the bill (the test may be an ordered one since 0052)
+    await asAdmin()
+    await db.query(`select add_charge_internal($1, 'consultation', $2)`, [v.id, svc.id])
+    await as(staff.doctor)
     await as(staff.receptionist)
     let refused = false
     try {
@@ -2366,6 +2375,144 @@ await step('0058: the nurse is still a nurse; switches cannot be written directl
   if (r.role !== 'nurse' || !blocked) throw new Error(JSON.stringify({ r, blocked }))
   return 'role unchanged; role_permissions write refused'
 })
+
+// ---------------------------------------------------------------- 0059: desks complete
+await step(
+  '0059: Add a treatment refuses ordered tests, the bed line and fake sources; orders work without charge.write',
+  async () => {
+    const p = await visitAt('Hope')
+    await as(staff.manager)
+    const labCat = (
+      await one(`select save_category(null, 'Lab tests 59', null, null, 'lab') as id`)
+    ).id
+    const test = (await one(`select upsert_service(null, 'Widal 59', 'other', 3000) as id`)).id
+    await db.query(`select set_service_category($1, $2)`, [test, labCat])
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    const tryCharge = async (sql, params) => {
+      try {
+        await db.query(sql, params)
+        return 'ok'
+      } catch (e) {
+        return String(e.message).split('\n')[0]
+      }
+    }
+    const ordered = await tryCharge(`select add_charge($1, 'consultation', $2)`, [p.enc, test])
+    const bed = await tryCharge(
+      `select add_charge($1, 'beds', (select id from service where code = 'BED-STAY'), null, 1, 1000, 'x')`,
+      [p.enc],
+    )
+    const spoof = await tryCharge(
+      `select add_charge($1, 'consultation', $2, null, 1, null, null, null, null, 'bed_stay', null)`,
+      [p.enc, test],
+    )
+    // the manager switches 'Add treatments' off for doctors: ordering a test still works
+    await as(staff.manager)
+    await db.query(`select set_role_permission('doctor', 'charge.write', false)`)
+    await as(d1)
+    const order = await tryCharge(`select order_test($1, $2, 'fever')`, [p.enc, test])
+    await as(staff.manager)
+    await db.query(`select set_role_permission('doctor', 'charge.write', true)`)
+    await asAdmin()
+    const charged = await one(
+      `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id
+       where i.encounter_id = $1 and l.source_type = 'service_request' and l.deleted_at is null`,
+      [p.enc],
+    )
+    if (
+      !/ordered, not added/.test(ordered) ||
+      !/beds board/.test(bed) ||
+      !/automatic charges/.test(spoof) ||
+      order !== 'ok' ||
+      charged.n !== 1
+    )
+      throw new Error(JSON.stringify({ ordered, bed, spoof, order, charged }))
+    return 'ordered test, bed line and fake source refused; the order charges by itself'
+  },
+)
+await step('0059: Bed stay cannot be deleted nor hidden', async () => {
+  await as(staff.manager)
+  const bed = (await one(`select id from service where code = 'BED-STAY'`)).id
+  let refused = false
+  try {
+    await db.query(`select delete_service($1)`, [bed])
+  } catch (e) {
+    refused = /built in/.test(e.message)
+  }
+  await asAdmin()
+  await db.query(`update service set active = false where id = $1`, [bed])
+  const s = await one(`select active, deleted_at from service where id = $1`, [bed])
+  if (!refused || !s.active || s.deleted_at) throw new Error(JSON.stringify({ refused, s }))
+  return 'delete refused; hiding has no effect'
+})
+await step(
+  "0059: a nursing order is on the nurses' worklist and the nurse can mark it not done",
+  async () => {
+    const p = await visitAt('Ines')
+    await as(staff.manager)
+    const cat = (
+      await one(
+        `select save_category(null, 'Nursing care 59', null, null, 'treatment', 'nursing') as id`,
+      )
+    ).id
+    const svc = (await one(`select upsert_service(null, 'Wound care 59', 'other', 1500) as id`)).id
+    await db.query(`select set_service_category($1, $2)`, [svc, cat])
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    await db.query(`select order_tests($1, $2, 'leg wound', 'consultation')`, [p.enc, [svc]])
+    await as(staff.nurse)
+    const list = (await one(`select desk_orders('nursing') as j`)).j
+    const mine = list.find((x) => x.encounterId === p.enc)
+    await db.query(`select set_request_status($1, 'cancelled', 'patient refused the dressing')`, [
+      mine.id,
+    ])
+    await asAdmin()
+    const r = await one(`select status::text from service_request where id = $1`, [mine.id])
+    if (!mine || r.status !== 'cancelled') throw new Error(JSON.stringify({ mine, r }))
+    return 'listed for Nursing; cancelled by the nurse'
+  },
+)
+await step('0059: the triage colour reorders the waiting places', async () => {
+  const p = await visitAt('Jeanne')
+  await as(staff.nurse)
+  await db.query(`select record_vitals($1, '{"temp": 39.8}'::jsonb, 'red')`, [p.enc])
+  await asAdmin()
+  const q = await one(`select priority from queue_entry where id = $1`, [p.queue])
+  if (q.priority !== 1) throw new Error(JSON.stringify(q))
+  return 'red → priority 1 at Consultation'
+})
+await step(
+  '0059: a debt left by the manager is listed; reception books a phone caller',
+  async () => {
+    const p = await visitAt('Kevine')
+    await as(staff.manager)
+    const cons = (
+      await one(`select upsert_service(null, 'Consultation 59', 'consultation', 4000) as id`)
+    ).id
+    await asAdmin()
+    await db.query(`select add_charge_internal($1, 'consultation', $2)`, [p.enc, cons])
+    await as(staff.manager)
+    await db.query(`select end_visit($1, 'left without paying, will come back')`, [p.enc])
+    await as(staff.cashier)
+    const debts = (await one(`select unpaid_debts() as j`)).j
+    const debt = debts.find((x) => x.encounterId === p.enc)
+    await asAdmin()
+    const patient = (await one(`select patient_id from encounter where id = $1`, [p.enc]))
+      .patient_id
+    await as(staff.receptionist)
+    const appt = (
+      await one(
+        `select book_appointment($1, $2, date_trunc('hour', now()) + interval '3 days 2 hours', 'follow-up', 'phone') as id`,
+        [patient, d3],
+      )
+    ).id
+    await asAdmin()
+    const a = await one(`select status::text, source::text from appointment where id = $1`, [appt])
+    if (!debt || Number(debt.amount) !== 4000 || a.status !== 'approved' || a.source !== 'phone')
+      throw new Error(JSON.stringify({ debt, a }))
+    return `debt ${debt.amount} listed; phone booking approved, doctor asked to accept`
+  },
+)
 
 finish()
 

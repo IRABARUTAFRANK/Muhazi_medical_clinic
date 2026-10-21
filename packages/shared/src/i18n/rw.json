@@ -1776,7 +1776,9 @@
       "desk": "Bukorerwa",
       "deskHint": "Ubusabe bujya kuri {{desk}}: umurwayi ashyirwa ku murongo waho, abakozi baho bakandika igisubizo muri dosiye.",
       "orderedAt": "Busabwa · bukorerwa kuri {{desk}}"
-    }
+    },
+    "builtIn": "Biri muri sisitemu",
+    "builtInBedHint": "Amajoro yo mu bitaro yishyuzwa kuri uyu murongo: hindura izina cyangwa igiciro, ntushobora kuwuhisha cyangwa kuwusiba."
   },
   "desk": {
     "today": "Uyu munsi",
@@ -1840,7 +1842,11 @@
       "bedsFree_other": "{{count}} biri ubusa",
       "noBeds": "Nta bitanda birashyirwamo.",
       "tasks": "Imirimo y'abaforomo",
-      "noTasks": "Nta murimo uhari ubu."
+      "noTasks": "Nta murimo uhari ubu.",
+      "careSection": "Ubuvuzi bw’abaforomo",
+      "care": "Abarwayi boherejwe ku baforomo",
+      "orders": "Ibyo gukora ku baforomo",
+      "ordersEmpty": "Nta cyasabwe gitegereje ku baforomo."
     },
     "mine": {
       "title": "Akazi kanjye uyu munsi",
@@ -2011,6 +2017,16 @@
         "phone": "Telefoni",
         "walk_in": "Yaje atabanje gufata gahunda"
       }
+    },
+    "booking": {
+      "open": "Gahunda nshya",
+      "title": "Gahunda nshya",
+      "lead": "Umurwayi uhamagaye cyangwa usabye ku kwakira: hitamo dosiye, muganga, umunsi n’isaha. Muganga asabwa kwemeza, nk’uko bigenda kuri gahunda zose.",
+      "reason": "Impamvu (si ngombwa)",
+      "reasonPh": "urugero: gukurikirana umuvuduko w’amaraso",
+      "source": "Yasabye",
+      "byPhone": "kuri telefone",
+      "atDesk": "ku kwakira"
     }
   },
   "files": {
@@ -2684,7 +2700,13 @@
       "receipt": "Inyemezabwishyu",
       "cashier": "Uwakiriye",
       "amount": "Amafaranga"
-    }
+    },
+    "debtsTitle": "Amafaranga asigaye ku nzinduko zarangiye",
+    "debtsTotal_one": "Umurwayi {{count}} · {{amount}}",
+    "debtsTotal_other": "Abarwayi {{count}} · {{amount}}",
+    "noDebts": "Nta mafaranga asigaye ku ruzinduko rwarangiye.",
+    "debtBy": "yarekuwe na {{name}}",
+    "openVisit": "Fungura uruzinduko"
   },
   "calendar": {
     "title": "Ingengabihe yanjye",

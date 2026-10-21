@@ -86,3 +86,29 @@ export function useCashierSummary(day: string | null) {
     },
   })
 }
+
+/** What finished visits still owe (the patient left without paying; migration 0059). */
+export interface Debt {
+  encounterId: string
+  patientId: string
+  patient: string
+  fileNumber: string
+  phone: string | null
+  amount: number
+  closedAt: string | null
+  reason: string | null
+  closedBy: string | null
+}
+
+export function useUnpaidDebts() {
+  return useQuery({
+    queryKey: ['finance', 'debts'],
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<Debt[]> => {
+      if (!supabase) return []
+      const { data, error } = await supabase.rpc('unpaid_debts')
+      if (error) throw new Error(error.message)
+      return ((data as Debt[]) ?? []).map((d) => ({ ...d, amount: Number(d.amount) }))
+    },
+  })
+}

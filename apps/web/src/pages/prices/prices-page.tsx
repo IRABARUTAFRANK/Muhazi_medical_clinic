@@ -247,6 +247,11 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 <Chip title={t('prices.form.allowManualHint')}>{t('prices.typedPrice')}</Chip>
               )}
               {!x.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
+              {x.code === 'BED-STAY' && (
+                <Badge tone="blue" title={t('prices.builtInBedHint')}>
+                  {t('prices.builtIn')}
+                </Badge>
+              )}
               <span className="flex flex-wrap gap-1">
                 <Button
                   size="sm"
@@ -273,29 +278,34 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 >
                   <Copy size={14} aria-hidden="true" />
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  title={t(x.active ? 'prices.hide' : 'prices.show')}
-                  aria-label={t(x.active ? 'prices.hide' : 'prices.show')}
-                  onClick={() => toggle(x)}
-                >
-                  {x.active ? (
-                    <EyeOff size={14} aria-hidden="true" />
-                  ) : (
-                    <Eye size={14} aria-hidden="true" />
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="hover:text-red"
-                  title={t('prices.delete')}
-                  aria-label={t('prices.delete')}
-                  onClick={() => remove(x)}
-                >
-                  <Trash2 size={14} aria-hidden="true" />
-                </Button>
+                {/* the built-in bed line cannot be hidden or deleted (bed nights are billed under it) */}
+                {x.code !== 'BED-STAY' && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title={t(x.active ? 'prices.hide' : 'prices.show')}
+                      aria-label={t(x.active ? 'prices.hide' : 'prices.show')}
+                      onClick={() => toggle(x)}
+                    >
+                      {x.active ? (
+                        <EyeOff size={14} aria-hidden="true" />
+                      ) : (
+                        <Eye size={14} aria-hidden="true" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="hover:text-red"
+                      title={t('prices.delete')}
+                      aria-label={t('prices.delete')}
+                      onClick={() => remove(x)}
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
+                    </Button>
+                  </>
+                )}
               </span>
             </Row>
           )

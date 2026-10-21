@@ -1,5 +1,13 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
-import { CalendarCheck, Check, MessageSquare, Phone, UserRound, X } from 'lucide-react'
+import {
+  CalendarCheck,
+  CalendarPlus,
+  Check,
+  MessageSquare,
+  Phone,
+  UserRound,
+  X,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, isoDate } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
@@ -194,27 +202,62 @@ export function InquiriesPanel({
   )
 }
 
+/**
+ * "New booking" (reception): a phone caller or a patient at the desk, with a doctor at a time.
+ * The same form as for a website request, plus the reason and how the patient asked.
+ */
+export function NewBookingCard({
+  onDone,
+  onCancel,
+  onRegister,
+}: {
+  onDone: (msg: string) => void
+  onCancel: () => void
+  onRegister?: (r: RegisterRequest) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <Panel
+      i={1}
+      icon={CalendarPlus}
+      tint="violet"
+      title={t('ops.booking.title')}
+      right={
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          {t('staff.form.cancel')}
+        </Button>
+      }
+    >
+      <p className="text-ink-2 m-0 text-[13px]">{t('ops.booking.lead')}</p>
+      <BookForm onDone={onDone} onRegister={onRegister} />
+    </Panel>
+  )
+}
+
 /** Patient file, doctor, day and time; then the doctor is asked to accept. */
 function BookForm({
   q,
   onDone,
   onRegister,
 }: {
-  q: OpenInquiry
+  /** A website request being booked; none for a new booking made at the desk. */
+  q?: OpenInquiry
   onDone: (msg: string) => void
   onRegister?: (r: RegisterRequest) => void
 }) {
   const { t } = useTranslation()
   const actions = useHomeActions()
   const { data: doctors = [] } = useBookableDoctors()
-  const start = q.startsAt ?? q.preferredAt
-  const [patientId, setPatientId] = useState(q.patientId ?? '')
+  const start = q ? (q.startsAt ?? q.preferredAt) : null
+  const [patientId, setPatientId] = useState(q?.patientId ?? '')
   const [patientLabel, setPatientLabel] = useState(
-    q.patientId ? `${q.patientFile ?? ''} · ${q.patientName ?? ''}` : '',
+    q?.patientId ? `${q.patientFile ?? ''} · ${q.patientName ?? ''}` : '',
   )
   const [search, setSearch] = useState('')
   const { data: hits = [] } = useFindPatients(search)
-  const [doctorUserId, setDoctorUserId] = useState(q.doctorUserId ?? '')
+  const [doctorUserId, setDoctorUserId] = useState(q?.doctorUserId ?? '')
+  const [reason, setReason] = useState('')
+  const [source, setSource] = useState<'reception' | 'phone'>('phone')
   const [day, setDay] = useState(start ? isoDate(new Date(start)) : '')
   const [time, setTime] = useState(
     start ? `${pad(new Date(start).getHours())}:${pad(new Date(start).getMinutes())}` : '09:00',
@@ -223,9 +266,9 @@ function BookForm({
   const [registering, setRegistering] = useState(false)
   const doctor = doctors.find((d) => d.userId === doctorUserId)
   // "Uwase Claudine" → surname Uwase, given names Claudine (corrected in the form if needed).
-  const [first, ...rest] = q.name.trim().split(/\s+/)
+  const [first, ...rest] = (q?.name ?? search).trim().split(/\s+/)
   const register: RegisterRequest = {
-    initial: { surname: first ?? '', givenNames: rest.join(' '), phone: q.phone ?? '' },
+    initial: { surname: first ?? '', givenNames: rest.join(' '), phone: q?.phone ?? '' },
     onSaved: (r) => {
       setPatientId(r.patientId)
       setPatientLabel(`${r.fileNumber} · ${r.name}`)
@@ -242,15 +285,24 @@ function BookForm({
     const at = new Date(`${day}T${time}:00`)
     if (Number.isNaN(at.getTime())) return setError(t('ops.inquiries.errors.when'))
     try {
-      await actions.approveInquiry.mutateAsync({
-        id: q.id,
-        patientId,
-        doctorUserId,
-        startsAt: at.toISOString(),
-      })
+      if (q)
+        await actions.approveInquiry.mutateAsync({
+          id: q.id,
+          patientId,
+          doctorUserId,
+          startsAt: at.toISOString(),
+        })
+      else
+        await actions.bookAppointment.mutateAsync({
+          patientId,
+          doctorUserId,
+          startsAt: at.toISOString(),
+          reason,
+          source,
+        })
       onDone(
         t('ops.inquiries.booked', {
-          name: q.name,
+          name: q?.name ?? patientLabel.split(' · ').slice(1).join(' · '),
           doctor: doctor?.name ?? '',
           when: `${formatDate(at)} ${formatTime(at)}`,
         }),
@@ -370,6 +422,24 @@ function BookForm({
       {doctor && !doctor.hasHours && (
         <p className="text-ink-3 m-0 text-[12px]">{t('ops.inquiries.noHoursHint')}</p>
       )}
+      {!q && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <Field
+            label={t('ops.booking.reason')}
+            value={reason}
+            placeholder={t('ops.booking.reasonPh')}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <Select
+            label={t('ops.booking.source')}
+            value={source}
+            onChange={(e) => setSource(e.target.value as 'reception' | 'phone')}
+          >
+            <option value="phone">{t('ops.booking.byPhone')}</option>
+            <option value="reception">{t('ops.booking.atDesk')}</option>
+          </Select>
+        </div>
+      )}
       {error && (
         <p role="alert" className={errorLine}>
           {error}
@@ -379,9 +449,11 @@ function BookForm({
         type="submit"
         variant="primary"
         className="self-start"
-        loading={actions.approveInquiry.isPending}
+        loading={actions.approveInquiry.isPending || actions.bookAppointment.isPending}
       >
-        {!actions.approveInquiry.isPending && <CalendarCheck size={16} aria-hidden="true" />}
+        {!actions.approveInquiry.isPending && !actions.bookAppointment.isPending && (
+          <CalendarCheck size={16} aria-hidden="true" />
+        )}
         {t('ops.inquiries.confirmBook')}
       </Button>
     </form>

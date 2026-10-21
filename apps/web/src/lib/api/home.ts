@@ -286,6 +286,24 @@ export function useHomeActions() {
       }),
     onSuccess: refresh,
   })
+  // Reception books a phone caller or a patient at the desk (migration 0059).
+  const bookAppointment = useMutation({
+    mutationFn: (i: {
+      patientId: string
+      doctorUserId: string
+      startsAt: string
+      reason?: string
+      source: 'reception' | 'phone'
+    }) =>
+      call('book_appointment', {
+        p_patient_id: i.patientId,
+        p_practitioner_user: i.doctorUserId,
+        p_starts_at: i.startsAt,
+        p_reason: i.reason?.trim() || null,
+        p_source: i.source,
+      }),
+    onSuccess: refresh,
+  })
   const rejectInquiry = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       call('reject_inquiry', { p_appointment_id: id, p_reason: reason }),
@@ -314,5 +332,12 @@ export function useHomeActions() {
     },
     onSuccess: refresh,
   })
-  return { approveInquiry, rejectInquiry, acceptAppointment, declineAppointment, completeTask }
+  return {
+    approveInquiry,
+    bookAppointment,
+    rejectInquiry,
+    acceptAppointment,
+    declineAppointment,
+    completeTask,
+  }
 }
