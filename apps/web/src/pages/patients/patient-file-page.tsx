@@ -48,6 +48,7 @@ import { ShownList } from '@/components/ui/list-tools'
 import { Flash } from '@/components/ui/flash'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
+import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'bills'
 const TABS: Tab[] = ['overview', 'visits', 'clinical', 'bills']
@@ -220,45 +221,21 @@ export function PatientFilePage({
               </CardBody>
               {/* A new visit (ticket, queue, a new bill) only after the person confirms it. */}
               {confirming && !openVisit && (
-                <CardBody
-                  role="alertdialog"
-                  aria-label={t('file.confirmVisit.title', {
-                    name: `${p.surname} ${p.given_names}`,
-                  })}
-                  className={cn(
-                    'anim-enter border-border gap-3 border-t',
-                    emergency ? 'bg-red-bg/60' : 'bg-primary/5',
-                  )}
-                >
-                  <p className="m-0 text-[15px] font-bold">
-                    {t(emergency ? 'file.confirmVisit.titleEmergency' : 'file.confirmVisit.title', {
-                      name: `${p.surname} ${p.given_names}`,
-                    })}
-                  </p>
-                  <p className="text-ink-2 m-0 text-[13px]">
-                    {t('file.confirmVisit.what', {
-                      desk: t(`register.stations.${nextDesk}`),
-                    })}{' '}
-                    {lastVisit
-                      ? t('file.confirmVisit.last', {
-                          date: formatDate(new Date(lastVisit.arrivedAt)),
-                          count: data?.visits.length ?? 0,
-                        })
-                      : t('file.confirmVisit.first')}
-                  </p>
-                  <span className="flex flex-wrap gap-2">
-                    <Button
-                      variant={emergency ? 'danger' : 'primary'}
-                      loading={visitActions.startVisit.isPending}
-                      onClick={() => void startVisit().then(() => setConfirming(false))}
-                    >
-                      <Ticket size={16} aria-hidden="true" />
-                      {t('file.confirmVisit.yes')}
-                    </Button>
-                    <Button variant="ghost" onClick={() => setConfirming(false)}>
-                      {t('staff.form.cancel')}
-                    </Button>
-                  </span>
+                <CardBody className="border-border border-t">
+                  <StartVisitConfirm
+                    name={`${p.surname} ${p.given_names}`}
+                    fileNumber={p.file_number}
+                    desk={nextDesk}
+                    emergency={emergency}
+                    lastVisit={
+                      lastVisit
+                        ? { at: lastVisit.arrivedAt, count: data?.visits.length ?? 0 }
+                        : null
+                    }
+                    busy={visitActions.startVisit.isPending}
+                    onConfirm={() => void startVisit().then(() => setConfirming(false))}
+                    onCancel={() => setConfirming(false)}
+                  />
                 </CardBody>
               )}
               {p.allergies && (

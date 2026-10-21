@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import type { NavItem } from '@mmc/shared'
-import { Icon } from '@/components/ui/icon'
 import { cn } from '@/lib/utils'
 import { StaffLink } from './staff-link'
+import { NavIcon } from './nav-icon'
 
 interface RailProps {
   nav: NavItem[]
@@ -35,7 +35,7 @@ export function Rail({ nav, activeId, clock }: RailProps) {
             )}
             style={{ '--i': i } as React.CSSProperties}
           >
-            <Icon name={n.icon} size={22} />
+            <NavIcon id={n.id} name={n.icon} />
             <span className="max-w-full text-center break-words">{t(n.labelKey)}</span>
           </StaffLink>
         )

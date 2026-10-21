@@ -26,6 +26,7 @@ import { useStaffSettings } from '@/lib/api/settings'
 import { navForUser } from '@/lib/nav'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
+import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
 
 /**
  * Registration from any station (MoH workflow). Normal path: the patient is queued at triage
@@ -61,10 +62,15 @@ export function RegisterPage({ user }: { user: StaffUser }) {
     return t('register.errors.generic', { message: m })
   }
 
+  // The returning patient whose visit waits for "Yes" (a ticket, a queue, a new bill).
+  const [confirmFor, setConfirmFor] = useState<PatientHit | null>(null)
+  const nextDesk: Station = emergency ? station : triageFirst ? 'triage' : station
+
   const startVisit = async (p: PatientHit) => {
     setError(null)
     try {
       setResult(await actions.startVisit.mutateAsync({ patient: p, visit: { emergency, station } }))
+      setConfirmFor(null)
     } catch (e) {
       setError(describe(e))
     }
@@ -180,12 +186,24 @@ export function RegisterPage({ user }: { user: StaffUser }) {
                     <Button
                       size="sm"
                       variant={emergency ? 'danger' : 'primary'}
-                      disabled={actions.startVisit.isPending}
-                      onClick={() => void startVisit(p)}
+                      disabled={actions.startVisit.isPending || confirmFor?.id === p.id}
+                      onClick={() => setConfirmFor(p)}
                     >
                       <Ticket size={16} aria-hidden="true" />
                       {t('register.startVisit')}
                     </Button>
+                  )}
+                  {confirmFor?.id === p.id && (
+                    <StartVisitConfirm
+                      className="basis-full"
+                      name={`${p.surname} ${p.givenNames}`}
+                      fileNumber={p.fileNumber}
+                      desk={nextDesk}
+                      emergency={emergency}
+                      busy={actions.startVisit.isPending}
+                      onConfirm={() => void startVisit(p)}
+                      onCancel={() => setConfirmFor(null)}
+                    />
                   )}
                 </Row>
               ))}

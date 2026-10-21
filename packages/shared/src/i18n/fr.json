@@ -1594,16 +1594,7 @@
     "awaitingResult": "En attente du résultat",
     "orderedBy": "demandé par {{name}}, {{when}}",
     "resultBy": "résultat par {{name}}, {{when}}",
-    "seeVisit": "Voir la visite",
-    "confirmVisit": {
-      "title": "Commencer une nouvelle visite pour {{name}} ?",
-      "titleEmergency": "Commencer une visite D’URGENCE pour {{name}} ?",
-      "what": "Un nouveau ticket est émis, une nouvelle facture est ouverte et le patient est mis en file à {{desk}}.",
-      "last_one": "Dernière visite : {{date}} ({{count}} visite jusqu’ici).",
-      "last_other": "Dernière visite : {{date}} ({{count}} visites jusqu’ici).",
-      "first": "C’est la première visite du patient.",
-      "yes": "Oui, commencer la visite"
-    }
+    "seeVisit": "Voir la visite"
   },
   "clinical": {
     "title": "Dossier clinique",
@@ -2075,7 +2066,9 @@
     "noVitals": "constantes pas encore prises",
     "taskDone": "{{by}} a fait : {{title}}",
     "noVitalsTitle": "{{ticket}} {{name}} : signes vitaux pas encore pris",
-    "noVitalsBody": "Attend à {{station}}. Prenez les signes vitaux si un collègue ne l’a pas déjà fait."
+    "noVitalsBody": "Attend à {{station}}. Prenez les signes vitaux si un collègue ne l’a pas déjà fait.",
+    "unreadCount_one": "{{count}} notification non lue",
+    "unreadCount_other": "{{count}} notifications non lues"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -2990,5 +2983,23 @@
     "print": "Imprimer l’ordonnance",
     "printHint": "Une ordonnance que le patient peut porter à n’importe quelle pharmacie (imprimer ou enregistrer en PDF).",
     "moh": "Licence MINISANTE"
+  },
+  "visitConfirm": {
+    "title": "Commencer une visite pour {{name}} ?",
+    "titleEmergency": "Commencer une visite D’URGENCE pour {{name}} ?",
+    "titleRegister": "Créer le dossier de {{name}} et commencer la visite ?",
+    "titleArrival": "{{name}} est arrivé(e) : commencer la visite ?",
+    "newFile": "Un nouveau dossier patient est créé ; son numéro est donné à l’enregistrement.",
+    "arrived": "Le rendez-vous est marqué comme arrivé.",
+    "queue": "Un ticket est remis et le patient rejoint la file à {{desk}}.",
+    "queueEmergency": "URGENCE : le patient passe en tête de la file à {{desk}}, avant tous ceux qui attendent.",
+    "bill": "Une nouvelle facture est ouverte : tout ce qui est fait pendant cette visite y est facturé.",
+    "last_one": "Dernière visite : {{date}} · {{count}} visite jusqu’ici.",
+    "last_other": "Dernière visite : {{date}} · {{count}} visites jusqu’ici.",
+    "first": "C’est la première visite du patient à la clinique.",
+    "yes": "Oui, commencer la visite",
+    "yesRegister": "Oui, créer le dossier et commencer",
+    "yesArrival": "Oui, le patient est là",
+    "no": "Non, revenir"
   }
 }

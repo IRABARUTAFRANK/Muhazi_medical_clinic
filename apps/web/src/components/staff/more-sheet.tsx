@@ -3,12 +3,12 @@ import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { NavItem, StaffUser, SyncState } from '@mmc/shared'
 import { LangSwitch } from '@/components/public/lang-switch'
-import { Icon } from '@/components/ui/icon'
 import { useUserActions } from '@/lib/user-actions'
 import { cn } from '@/lib/utils'
 import { StaffLink } from './staff-link'
 import { SyncBadge } from './sync-badge'
 import { TextSizeControl } from './text-size-control'
+import { NavIcon } from './nav-icon'
 
 interface MoreSheetProps {
   user: StaffUser
@@ -86,7 +86,7 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
                       : 'bg-surface hover:bg-hover',
                   )}
                 >
-                  <Icon name={n.icon} size={22} />
+                  <NavIcon id={n.id} name={n.icon} ring="ring-white" />
                   <span className="max-w-full leading-tight">{t(n.labelKey)}</span>
                 </StaffLink>
               ))}

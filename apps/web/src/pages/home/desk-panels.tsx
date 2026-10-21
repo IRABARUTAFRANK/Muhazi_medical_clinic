@@ -35,6 +35,7 @@ import {
 } from '@/lib/api/desk-ops'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
+import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
 
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const errorLine = 'bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold'
@@ -97,9 +98,12 @@ export function AppointmentsPanel({
   const rows = limit ? appts.slice(0, limit) : appts
   const paged = usePaged(rows, limit ? rows.length || 1 : 10, String(day.getTime()))
 
+  // "Arrived" starts the visit (ticket, triage queue, a new bill): asked first.
+  const [arriving, setArriving] = useState<DayAppointment | null>(null)
   const arrive = (a: DayAppointment) =>
     void run(async () => {
       const v = await ops.arrived.mutateAsync(a.id)
+      setArriving(null)
       if (v.existing) void navigate({ to: '/app/visit', search: { encounter: v.encounterId } })
     })
   const noShow = (a: DayAppointment) =>
@@ -164,8 +168,8 @@ export function AppointmentsPanel({
                         <Button
                           size="sm"
                           variant="primary"
-                          onClick={() => arrive(a)}
-                          disabled={!a.patientId}
+                          onClick={() => setArriving(a)}
+                          disabled={!a.patientId || arriving?.id === a.id}
                           title={
                             a.patientId ? t('ops.appts.arrivedHint') : t('ops.appts.registerFirst')
                           }
@@ -197,6 +201,17 @@ export function AppointmentsPanel({
                           {t('patients.openFile')}
                         </StaffLink>
                       )}
+                    {arriving?.id === a.id && (
+                      <StartVisitConfirm
+                        mode="arrival"
+                        className="basis-full"
+                        name={a.name}
+                        desk="triage"
+                        busy={ops.arrived.isPending}
+                        onConfirm={() => arrive(a)}
+                        onCancel={() => setArriving(null)}
+                      />
+                    )}
                   </div>
                 )
               })}

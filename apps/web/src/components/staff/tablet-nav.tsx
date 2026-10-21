@@ -1,10 +1,10 @@
 import { Ellipsis } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { NavItem } from '@mmc/shared'
-import { Icon } from '@/components/ui/icon'
 import { splitNav, useBarCount } from '@/lib/bottom-bar'
 import { cn } from '@/lib/utils'
 import { StaffLink } from './staff-link'
+import { NavIcon, UnreadBadge } from './nav-icon'
 
 interface TabletNavProps {
   nav: NavItem[]
@@ -37,7 +37,7 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
               active && 'bg-white/15 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]',
             )}
           >
-            <Icon name={n.icon} size={22} />
+            <NavIcon id={n.id} name={n.icon} />
             <span className="max-w-full truncate">{t(n.labelKey)}</span>
           </StaffLink>
         )
@@ -47,7 +47,10 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
         className={cn(tab, moreActive && 'bg-white/15 text-white')}
         onClick={onMore}
       >
-        <Ellipsis size={22} aria-hidden="true" />
+        <span className="relative inline-flex">
+          <Ellipsis size={22} aria-hidden="true" />
+          {rest.some((n) => n.id === 'notifications') && <UnreadBadge />}
+        </span>
         {t('common.more')}
       </button>
     </nav>

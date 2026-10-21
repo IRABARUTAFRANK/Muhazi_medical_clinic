@@ -1335,16 +1335,7 @@
     "awaitingResult": "Bategereje igisubizo",
     "orderedBy": "byasabwe na {{name}}, {{when}}",
     "resultBy": "igisubizo cyatanzwe na {{name}}, {{when}}",
-    "seeVisit": "Reba uruzinduko",
-    "confirmVisit": {
-      "title": "Gutangira uruzinduko rushya rwa {{name}}?",
-      "titleEmergency": "Gutangira uruzinduko rw’UBUTABAZI rwa {{name}}?",
-      "what": "Hatangwa itike nshya, hafungurwa fagitire nshya, umurwayi ashyirwa ku murongo wa {{desk}}.",
-      "last_one": "Uruzinduko ruheruka: {{date}} (uruzinduko {{count}} kugeza ubu).",
-      "last_other": "Uruzinduko ruheruka: {{date}} (inzinduko {{count}} kugeza ubu).",
-      "first": "Ni uruzinduko rwa mbere rw’umurwayi.",
-      "yes": "Yego, tangira uruzinduko"
-    }
+    "seeVisit": "Reba uruzinduko"
   },
   "clinical": {
     "title": "Inyandiko z'ubuvuzi",
@@ -2084,7 +2075,9 @@
     "noVitals": "ibipimo ntibirafatwa",
     "taskDone": "{{by}} yakoze: {{title}}",
     "noVitalsTitle": "{{ticket}} {{name}}: ibipimo ntibirafatwa",
-    "noVitalsBody": "Ategereje kuri {{station}}. Mufate ibipimo niba nta mugenzi wawe wabikoze."
+    "noVitalsBody": "Ategereje kuri {{station}}. Mufate ibipimo niba nta mugenzi wawe wabikoze.",
+    "unreadCount_one": "Ubutumwa {{count}} butarasomwa",
+    "unreadCount_other": "Ubutumwa {{count}} butarasomwa"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -2999,5 +2992,23 @@
     "print": "Sohora urupapuro rw’imiti",
     "printHint": "Urupapuro umurwayi ashobora kujyana kuri farumasi iyo ari yo yose (sohora cyangwa ubike nka PDF).",
     "moh": "Uruhushya rwa MINISANTE"
+  },
+  "visitConfirm": {
+    "title": "Gutangira uruzinduko rwa {{name}}?",
+    "titleEmergency": "Gutangira uruzinduko rw’UBUTABAZI rwa {{name}}?",
+    "titleRegister": "Gufungura dosiye ya {{name}} no gutangira uruzinduko?",
+    "titleArrival": "{{name}} yahageze: gutangira uruzinduko?",
+    "newFile": "Hafungurwa dosiye nshya y’umurwayi; nimero yayo itangwa ibitswe.",
+    "arrived": "Gahunda yandikwa ko umurwayi yahageze.",
+    "queue": "Hatangwa itike, umurwayi ajya ku murongo wa {{desk}}.",
+    "queueEmergency": "UBUTABAZI: umurwayi ajya imbere ku murongo wa {{desk}}, mbere y’abategereje bose.",
+    "bill": "Hafungurwa fagitire nshya: ibikorwa byose by’uru ruzinduko byishyurwa kuri yo.",
+    "last_one": "Uruzinduko ruheruka: {{date}} · uruzinduko {{count}} kugeza ubu.",
+    "last_other": "Uruzinduko ruheruka: {{date}} · inzinduko {{count}} kugeza ubu.",
+    "first": "Ni uruzinduko rwa mbere rw’umurwayi mu ivuriro.",
+    "yes": "Yego, tangira uruzinduko",
+    "yesRegister": "Yego, fungura dosiye utangire",
+    "yesArrival": "Yego, umurwayi arahari",
+    "no": "Oya, subira inyuma"
   }
 }

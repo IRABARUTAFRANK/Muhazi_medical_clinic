@@ -7,6 +7,8 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { setNoNationalId, type NoIdReason } from '@/lib/api/patients'
 import { useVisitActions, type Sex, type Station, type VisitResult } from '@/lib/api/visits'
+import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
+import { cn } from '@/lib/utils'
 
 const SEXES: readonly Sex[] = ['female', 'male', 'other', 'unknown']
 
@@ -51,6 +53,8 @@ export function NewPatientForm({
   const [noId, setNoId] = useState<NoIdReason | ''>('')
   const [sector, setSector] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // A new file and its visit start only after "Yes" (not for a file only).
+  const [confirming, setConfirming] = useState(false)
 
   const reset = () => {
     setSurname('')
@@ -69,6 +73,7 @@ export function NewPatientForm({
     setError(null)
     if (nationalId && nationalId.replace(/\D/g, '').length !== 16)
       return setError(t('register.errors.nationalIdFormat'))
+    if (!fileOnly && !confirming) return setConfirming(true)
     const patient = {
       surname,
       givenNames,
@@ -90,6 +95,7 @@ export function NewPatientForm({
       // A child or someone without an ID: say why, so the file is not flagged as incomplete.
       if (noId) await setNoNationalId(r.patientId, noId)
       reset()
+      setConfirming(false)
       onDone?.(r)
     } catch (err) {
       setError(describe(err))
@@ -219,7 +225,18 @@ export function NewPatientForm({
               {error}
             </p>
           )}
-          <span className="flex flex-wrap gap-2">
+          {confirming && !fileOnly && (
+            <StartVisitConfirm
+              mode="register"
+              name={`${surname.trim()} ${givenNames.trim()}`}
+              desk={triageFirst && !emergency ? 'triage' : station}
+              emergency={emergency}
+              busy={actions.register.isPending}
+              onConfirm={() => void submit({ preventDefault() {} } as FormEvent)}
+              onCancel={() => setConfirming(false)}
+            />
+          )}
+          <span className={cn('flex flex-wrap gap-2', confirming && !fileOnly && 'hidden')}>
             <Button
               type="submit"
               variant={emergency ? 'danger' : 'primary'}

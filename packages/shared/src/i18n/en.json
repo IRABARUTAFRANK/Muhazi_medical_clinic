@@ -1594,16 +1594,7 @@
     "awaitingResult": "Waiting for result",
     "orderedBy": "ordered by {{name}}, {{when}}",
     "resultBy": "result by {{name}}, {{when}}",
-    "seeVisit": "See the visit",
-    "confirmVisit": {
-      "title": "Start a new visit for {{name}}?",
-      "titleEmergency": "Start an EMERGENCY visit for {{name}}?",
-      "what": "A new ticket is issued, a new bill is opened and the patient is queued at {{desk}}.",
-      "last_one": "Last visit: {{date}} ({{count}} visit so far).",
-      "last_other": "Last visit: {{date}} ({{count}} visits so far).",
-      "first": "This is the patient’s first visit.",
-      "yes": "Yes, start the visit"
-    }
+    "seeVisit": "See the visit"
   },
   "clinical": {
     "title": "Clinical record",
@@ -2075,7 +2066,9 @@
     "noVitals": "vitals not taken yet",
     "taskDone": "{{by}} has done: {{title}}",
     "noVitalsTitle": "{{ticket}} {{name}}: vitals not taken yet",
-    "noVitalsBody": "Waiting at {{station}}. Take the vitals unless a colleague already did."
+    "noVitalsBody": "Waiting at {{station}}. Take the vitals unless a colleague already did.",
+    "unreadCount_one": "{{count}} unread notification",
+    "unreadCount_other": "{{count}} unread notifications"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -2990,5 +2983,23 @@
     "print": "Print prescription",
     "printHint": "A prescription the patient can take to any pharmacy (print or save as PDF).",
     "moh": "MoH licence"
+  },
+  "visitConfirm": {
+    "title": "Start a visit for {{name}}?",
+    "titleEmergency": "Start an EMERGENCY visit for {{name}}?",
+    "titleRegister": "Create the file of {{name}} and start the visit?",
+    "titleArrival": "{{name}} has arrived: start the visit?",
+    "newFile": "A new patient file is created; its number is given on saving.",
+    "arrived": "The booking is marked as arrived.",
+    "queue": "A ticket is given and the patient joins the queue at {{desk}}.",
+    "queueEmergency": "EMERGENCY: the patient goes to the front of the queue at {{desk}}, before everyone waiting.",
+    "bill": "A new bill is opened: everything done during this visit is charged to it.",
+    "last_one": "Last visit: {{date}} · {{count}} visit so far.",
+    "last_other": "Last visit: {{date}} · {{count}} visits so far.",
+    "first": "This is the patient’s first visit to the clinic.",
+    "yes": "Yes, start the visit",
+    "yesRegister": "Yes, create the file and start",
+    "yesArrival": "Yes, the patient is here",
+    "no": "No, go back"
   }
 }
