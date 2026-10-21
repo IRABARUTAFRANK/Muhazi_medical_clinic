@@ -1128,16 +1128,16 @@
     "cat": {
       "open": "Categories",
       "title": "Categories of treatments",
-      "lead": "Your own categories (Maternity, Eye care, Blood tests…). The kind tells the system how their treatments work: charged on the visit, or ordered as a laboratory or ultrasound test with a result.",
+      "lead": "Your own categories (Maternity, Eye care, Blood tests…). “Used as” tells the system what to do with their treatments: charge them on the visit, or send the patient to the laboratory or ultrasound for a test with a result.",
       "new": "New category",
       "nameEn": "Name (English)",
       "nameKin": "Name (Kinyarwanda)",
       "nameFr": "Name (French)",
-      "kind": "Kind",
+      "kind": "Used as",
       "kinds": {
-        "treatment": "Treatment",
+        "treatment": "Service",
         "lab": "Lab test",
-        "imaging": "Imaging test",
+        "imaging": "Ultrasound test",
         "bed": "Bed stay"
       },
       "kindHint": {
@@ -1158,9 +1158,15 @@
       "confirmDelete": "Delete the category “{{name}}”?",
       "saved": "Category “{{name}}” saved.",
       "deleted": "Category “{{name}}” deleted.",
-      "kindChange": "Changing the kind changes how its {{count}} treatment(s) work (for example they become orderable tests, or stop being).",
+      "kindChange": "Changing “Used as” changes how its {{count}} treatment(s) work (for example they become tests sent to the lab, or stop being).",
       "errors": {
         "name": "Give the category a name (at least 2 letters)."
+      },
+      "kindsLong": {
+        "treatment": "Service charged on the visit",
+        "lab": "Laboratory test (sent to the lab, with a result)",
+        "imaging": "Ultrasound test (sent to ultrasound, with a result)",
+        "bed": "Bed stay"
       }
     }
   },

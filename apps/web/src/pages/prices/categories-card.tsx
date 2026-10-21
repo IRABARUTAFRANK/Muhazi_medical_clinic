@@ -239,7 +239,7 @@ function CategoryForm({
         >
           {CHOOSABLE.map((k) => (
             <option key={k} value={k}>
-              {t(`prices.cat.kinds.${k}`)}
+              {t(`prices.cat.kindsLong.${k}`)}
             </option>
           ))}
         </Select>

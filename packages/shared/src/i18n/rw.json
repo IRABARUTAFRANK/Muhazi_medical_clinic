@@ -1685,16 +1685,16 @@
     "cat": {
       "open": "Ibyiciro",
       "title": "Ibyiciro by’ubuvuzi",
-      "lead": "Ibyiciro byanyu bwite (Kubyara, Amaso, Ibizamini by’amaraso…). Ubwoko bubwira sisitemu uko ubuvuzi bwabyo bukora: bwishyurwa ku ruzinduko, cyangwa busabwa nk’ikizamini cya laboratwari cyangwa ekografi gifite igisubizo.",
+      "lead": "Ibyiciro byanyu bwite (Kubyara, Amaso, Ibizamini by’amaraso…). “Gikoreshwa nka” ibwira sisitemu icyo ikora ku buvuzi bwabyo: kubwishyuza ku ruzinduko, cyangwa kohereza umurwayi muri laboratwari cyangwa kuri ekografi gukorerwa ikizamini gifite igisubizo.",
       "new": "Icyiciro gishya",
       "nameEn": "Izina (Icyongereza)",
       "nameKin": "Izina (Ikinyarwanda)",
       "nameFr": "Izina (Igifaransa)",
-      "kind": "Ubwoko",
+      "kind": "Gikoreshwa nka",
       "kinds": {
-        "treatment": "Ubuvuzi",
+        "treatment": "Serivisi",
         "lab": "Ikizamini cya labo",
-        "imaging": "Ikizamini cy’amafoto",
+        "imaging": "Ekografi",
         "bed": "Kurara ku buriri"
       },
       "kindHint": {
@@ -1715,9 +1715,15 @@
       "confirmDelete": "Gusiba icyiciro “{{name}}”?",
       "saved": "Icyiciro “{{name}}” cyabitswe.",
       "deleted": "Icyiciro “{{name}}” cyasibwe.",
-      "kindChange": "Guhindura ubwoko bihindura uko ubuvuzi {{count}} bwacyo bukora (urugero buhinduka ibizamini bisabwa, cyangwa bikareka kuba byo).",
+      "kindChange": "Guhindura “Gikoreshwa nka” bihindura uko ubuvuzi {{count}} bwacyo bukora (urugero buhinduka ibizamini byoherezwa muri labo, cyangwa bikareka kuba byo).",
       "errors": {
         "name": "Ha icyiciro izina (nibura inyuguti 2)."
+      },
+      "kindsLong": {
+        "treatment": "Serivisi yishyurwa ku ruzinduko",
+        "lab": "Ikizamini cya laboratwari (umurwayi yoherezwa muri labo, hakaboneka igisubizo)",
+        "imaging": "Ekografi (umurwayi yoherezwa kuri ekografi, hakaboneka igisubizo)",
+        "bed": "Kurara ku buriri"
       }
     }
   },
