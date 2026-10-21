@@ -125,7 +125,11 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
                 onSelect={setSelected}
               />
             )}
-            <InquiriesPanel canAct={canAct} onRegister={setRegistering} />
+            <InquiriesPanel
+              canAct={canAct}
+              onRegister={setRegistering}
+              onBookingClosed={() => setRegistering(null)}
+            />
           </div>
           <p className="text-ink-3 m-0 text-xs">{t('ops.appts.flow')}</p>
         </section>

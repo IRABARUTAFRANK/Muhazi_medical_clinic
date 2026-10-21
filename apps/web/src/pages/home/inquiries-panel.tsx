@@ -42,16 +42,24 @@ export function InquiriesPanel({
   i = 2,
   canAct,
   onRegister,
+  onBookingClosed,
 }: {
   i?: number
   canAct: boolean
   /** Open the new-file form beside the panel (Bookings page); without it the form opens inline. */
   onRegister?: (r: RegisterRequest) => void
+  /** The booking being made was cancelled, rejected, finished or replaced: close what belongs to it. */
+  onBookingClosed?: () => void
 }) {
   const { t } = useTranslation()
   const { data: inquiries = [] } = useOpenInquiries()
   const actions = useHomeActions()
-  const [open, setOpen] = useState<string | null>(null)
+  const [open, setOpenState] = useState<string | null>(null)
+  // Leaving a booking (Cancel, another Book, booked, rejected) also closes its new-file form.
+  const setOpen = (id: string | null) => {
+    if (id !== open) onBookingClosed?.()
+    setOpenState(id)
+  }
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
 
@@ -61,6 +69,8 @@ export function InquiriesPanel({
     setError(null)
     try {
       await actions.rejectInquiry.mutateAsync({ id: q.id, reason })
+      // the rejected request was the one being booked: its new-file form closes too
+      if (open === q.id) setOpen(null)
     } catch (e) {
       setError(describe(e))
     }
