@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Tag,
+  Tags,
   Trash2,
   Wrench,
 } from 'lucide-react'
@@ -51,10 +52,14 @@ import {
   type Insurer,
   type PayerType,
   type ServiceGroup,
+  categoryName,
+  groupOfCategory,
+  useCategories,
   type Treatment,
 } from '@/lib/api/catalogue'
 import { suggestNames } from '@/lib/medical-glossary'
 import { CatalogueTools } from './catalogue-tools'
+import { CategoriesCard } from './categories-card'
 import { MedicinesSection } from './medicines-section'
 import { useDepartmentActions, useDepartments, type Department } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
@@ -96,7 +101,13 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const [copyFrom, setCopyFrom] = useState<Treatment | null>(null)
   const [editingInsurer, setEditingInsurer] = useState<Insurer | 'new' | null>(null)
   const [query, setQuery] = useState('')
-  const [groupFilter, setGroupFilter] = useState<ServiceGroup | ''>('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [managingCats, setManagingCats] = useState(false)
+  const { data: categories = [] } = useCategories()
+  const catLabel = (x: Treatment) => {
+    const c = categories.find((k) => k.id === x.categoryId)
+    return c ? categoryName(c, i18n.language) : t(`prices.groups.${x.group}`)
+  }
   const [showHidden, setShowHidden] = useState(true)
   const [adjusting, setAdjusting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -115,16 +126,16 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const q = query.trim().toLowerCase()
   const visible = treatments.filter(
     (x) =>
-      (!groupFilter || x.group === groupFilter) &&
+      (!categoryFilter || x.categoryId === categoryFilter) &&
       (showHidden || x.active) &&
       (!q ||
         `${x.nameEn} ${x.nameKin ?? ''} ${x.nameFr ?? ''} ${x.code}`.toLowerCase().includes(q)),
   )
-  const groups = SERVICE_GROUPS.filter((g) => visible.some((x) => x.group === g))
+  const shownCategories = categories.filter((c) => visible.some((x) => x.categoryId === c.id))
   const known = new Set(departments.map((d) => d.id))
   // A treatment shows in the card of every department that gives it.
   const deptsOf = (x: Treatment) => x.departmentIds.filter((id) => known.has(id))
-  const filtering = !!q || !!groupFilter
+  const filtering = !!q || !!categoryFilter
   const deptCards: { id: string; dept: Department | null; items: Treatment[] }[] = [
     ...departments.map((d) => ({
       id: d.id,
@@ -167,7 +178,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 </span>
                 <span className="text-ink-3 text-xs">
                   {x.code}
-                  {view === 'dept' ? ` · ${t(`prices.groups.${x.group}`)}` : ''}
+                  {view === 'dept' ? ` · ${catLabel(x)}` : ''}
                   {view === 'group' && x.departmentNames.length > 0
                     ? ` · ${x.departmentNames.join(', ')}`
                     : ''}
@@ -300,6 +311,10 @@ export function PricesPage({ user }: { user: StaffUser }) {
             <FolderPlus size={18} aria-hidden="true" />
             {t('prices.dept.new')}
           </Button>
+          <Button onClick={() => setManagingCats((v) => !v)}>
+            <Tags size={18} aria-hidden="true" />
+            {t('prices.cat.open')}
+          </Button>
           <Button onClick={() => setTools((v) => !v)}>
             <Wrench size={18} aria-hidden="true" />
             {t('prices.tools.open')}
@@ -309,6 +324,17 @@ export function PricesPage({ user }: { user: StaffUser }) {
             {t('prices.newTreatment')}
           </Button>
         </PageBanner>
+
+        {managingCats && (
+          <CategoriesCard
+            treatments={treatments}
+            onDone={(text) => {
+              setNotice(text)
+              setActionError(null)
+            }}
+            onClose={() => setManagingCats(false)}
+          />
+        )}
 
         {tools && (
           <CatalogueTools
@@ -399,13 +425,13 @@ export function PricesPage({ user }: { user: StaffUser }) {
             />
             <Select
               label={t('prices.form.group')}
-              value={groupFilter}
-              onChange={(e) => setGroupFilter(e.target.value as ServiceGroup | '')}
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
             >
               <option value="">{t('prices.allGroups')}</option>
-              {SERVICE_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {t(`prices.groups.${g}`)}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {categoryName(c, i18n.language)}
                 </option>
               ))}
             </Select>
@@ -521,18 +547,19 @@ export function PricesPage({ user }: { user: StaffUser }) {
 
         {/* By type of treatment */}
         {view === 'group' &&
-          groups.map((g) => (
-            <Card key={g}>
+          shownCategories.map((c) => (
+            <Card key={c.id}>
               <CardHeader>
                 <span className="inline-flex items-center gap-2">
                   <Tag size={16} aria-hidden="true" />
-                  {t(`prices.groups.${g}`)}
+                  {categoryName(c, i18n.language)}
+                  {c.kind !== 'treatment' && <Chip>{t(`prices.cat.kinds.${c.kind}`)}</Chip>}
                 </span>
                 <span className="text-ink-3 text-xs">
-                  {visible.filter((x) => x.group === g).length}
+                  {visible.filter((x) => x.categoryId === c.id).length}
                 </span>
               </CardHeader>
-              {renderRows(visible.filter((x) => x.group === g))}
+              {renderRows(visible.filter((x) => x.categoryId === c.id))}
             </Card>
           ))}
 
@@ -671,10 +698,11 @@ function AdjustPricesCard({
   onClose: () => void
   onDone: (changed: number) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const actions = useCatalogueActions()
   const { data: treatments = [] } = useTreatments()
-  const [group, setGroup] = useState<ServiceGroup | ''>('')
+  const { data: categories = [] } = useCategories()
+  const [category, setCategory] = useState('')
   const [mode, setMode] = useState<'multiply' | 'percent' | 'amount'>('multiply')
   const [value, setValue] = useState('')
   const [round, setRound] = useState(100)
@@ -686,7 +714,7 @@ function AdjustPricesCard({
     Number.isFinite(v) &&
     (mode === 'multiply' ? v > 0 && v <= 10 : mode === 'percent' ? v > -100 && v <= 900 : true)
   const affected = treatments.filter(
-    (x) => (!group || x.group === group) && x.cashPrice != null && x.cashPrice > 0,
+    (x) => (!category || x.categoryId === category) && x.cashPrice != null && x.cashPrice > 0,
   )
   const apply = (p: number) => {
     const raw = mode === 'multiply' ? p * v : mode === 'percent' ? (p * (100 + v)) / 100 : p + v
@@ -701,7 +729,7 @@ function AdjustPricesCard({
     if (!window.confirm(t('prices.adjust.confirm', { count: affected.length }))) return
     try {
       const n = await actions.adjustPrices.mutateAsync({
-        group: group || null,
+        category: category || null,
         mode,
         value: v,
         round,
@@ -726,13 +754,13 @@ function AdjustPricesCard({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <Select
               label={t('prices.adjust.which')}
-              value={group}
-              onChange={(e) => setGroup(e.target.value as ServiceGroup | '')}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
             >
               <option value="">{t('prices.allGroups')}</option>
-              {SERVICE_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {t(`prices.groups.${g}`)}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {categoryName(c, i18n.language)}
                 </option>
               ))}
             </Select>
@@ -812,7 +840,7 @@ function TreatmentForm({
   presetDepartment: string | null
   onClose: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const actions = useCatalogueActions()
   const base = treatment ?? copyFrom
   const [nameEn, setNameEn] = useState(
@@ -824,7 +852,12 @@ function TreatmentForm({
   const [kinTouched, setKinTouched] = useState(!!base?.nameKin)
   const [frTouched, setFrTouched] = useState(!!base?.nameFr)
   const [suggested, setSuggested] = useState(false)
-  const [group, setGroup] = useState<ServiceGroup>(base?.group ?? 'consultation')
+  const { data: categories = [] } = useCategories()
+  const [categoryId, setCategoryId] = useState<string>(
+    base?.categoryId ?? categories.find((c) => c.baseGroup === 'consultation')?.id ?? '',
+  )
+  const chosenCategory =
+    categories.find((c) => c.id === categoryId) ?? categories.find((c) => c.kind === 'treatment')
   const [category, setCategory] = useState<CategoryId | ''>(base?.bookingCategory ?? '')
   const [price, setPrice] = useState(base?.cashPrice != null ? String(base.cashPrice) : '')
   const [discountMode, setDiscountMode] = useState<AdjustMode>('pct')
@@ -870,7 +903,8 @@ function TreatmentForm({
         nameEn,
         nameKin,
         nameFr,
-        group,
+        group: chosenCategory ? groupOfCategory(chosenCategory) : 'other',
+        categoryId: chosenCategory?.id,
         bookingCategory: category || null,
         cashPrice: Math.round(p),
         maxDiscountPct: pct,
@@ -971,14 +1005,17 @@ function TreatmentForm({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <Select
               label={t('prices.form.group')}
-              value={group}
-              onChange={(e) => setGroup(e.target.value as ServiceGroup)}
+              value={chosenCategory?.id ?? ''}
+              onChange={(e) => setCategoryId(e.target.value)}
             >
-              {SERVICE_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {t(`prices.groups.${g}`)}
-                </option>
-              ))}
+              {categories
+                .filter((c) => c.kind !== 'bed' || c.id === base?.categoryId)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {categoryName(c, i18n.language)}
+                    {c.kind !== 'treatment' ? ` · ${t(`prices.cat.kinds.${c.kind}`)}` : ''}
+                  </option>
+                ))}
             </Select>
             <Select
               label={t('prices.form.category')}

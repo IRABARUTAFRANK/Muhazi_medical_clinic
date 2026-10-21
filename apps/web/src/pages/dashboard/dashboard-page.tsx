@@ -75,6 +75,7 @@ import {
   type CustomRange,
   type DashboardRange,
 } from '@/lib/api/dashboard'
+import { categoryName } from '@/lib/api/catalogue'
 import { useClinicInfo } from '@/lib/api/public'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { dashboardReport } from '@/lib/reports/build'
@@ -115,7 +116,7 @@ interface DashboardPageProps {
 }
 
 export function DashboardPage({ user, view }: DashboardPageProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const dayNames = useDayNames()
   const now = new Date()
   const canManage = user.dashboard === 'manager' || user.role === 'manager'
@@ -485,7 +486,16 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       labelWidth="minmax(96px,140px)"
                       rows={data.visitsByGroup.map((v) => ({
                         icon: stationIconFor(v.group),
-                        label: groupLabel(v.group, t),
+                        label: v.name
+                          ? categoryName(
+                              {
+                                nameEn: v.name,
+                                nameKin: v.nameKin ?? null,
+                                nameFr: v.nameFr ?? null,
+                              },
+                              i18n.language,
+                            )
+                          : groupLabel(v.group, t),
                         value: v.count,
                       }))}
                     />

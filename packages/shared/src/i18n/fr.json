@@ -953,7 +953,7 @@
       "namePh": "Traitement du paludisme simple",
       "nameKin": "Nom (kinyarwanda)",
       "nameFr": "Nom (français)",
-      "group": "Groupe",
+      "group": "Catégorie",
       "category": "Catégorie de réservation publique",
       "categoryNone": "Non affiché sur le site public",
       "cashPrice": "Prix comptant (RWF)",
@@ -1008,7 +1008,7 @@
     },
     "search": "Rechercher un soin",
     "searchPh": "Nom, code, kinyarwanda ou français…",
-    "allGroups": "Tous les groupes",
+    "allGroups": "Toutes les catégories",
     "showHidden": "Afficher les soins masqués",
     "noMatch": "Aucun soin ne correspond.",
     "duplicate": "Dupliquer",
@@ -1068,7 +1068,7 @@
       "newHint": "Les employés sont placés dans les départements depuis Employés ; ici vous ajoutez les services et les prix de chaque département.",
       "viewBy": "Afficher par",
       "byDept": "Par département",
-      "byType": "Par type",
+      "byType": "Par catégorie",
       "field": "Département",
       "addTo": "Nouveau service dans {{name}}",
       "fieldMany": "Départements qui le donnent",
@@ -1113,8 +1113,8 @@
       "bulkAdd_other": "Ajouter {{count}} soins",
       "bulkDone_one": "{{count}} soin ajouté.",
       "bulkDone_other": "{{count}} soins ajoutés.",
-      "moveTitle": "Déplacer tout un type dans un département",
-      "moveLead": "Chaque soin de ce type passe dans le département choisi.",
+      "moveTitle": "Déplacer toute une catégorie dans un département",
+      "moveLead": "Chaque soin de cette catégorie va dans le département choisi.",
       "move": "Déplacer",
       "moveDone_one": "{{count}} soin déplacé.",
       "moveDone_other": "{{count}} soins déplacés.",
@@ -1124,6 +1124,44 @@
       "reset": "Supprimer tous les soins",
       "resetDone_one": "{{count}} soin supprimé. Le catalogue est vide.",
       "resetDone_other": "{{count}} soins supprimés. Le catalogue est vide."
+    },
+    "cat": {
+      "open": "Catégories",
+      "title": "Catégories de soins",
+      "lead": "Vos propres catégories (Maternité, Soins des yeux, Analyses de sang…). Le type indique au système comment fonctionnent leurs soins : facturés sur la visite, ou demandés comme examen de laboratoire ou d’échographie avec un résultat.",
+      "new": "Nouvelle catégorie",
+      "nameEn": "Nom (anglais)",
+      "nameKin": "Nom (kinyarwanda)",
+      "nameFr": "Nom (français)",
+      "kind": "Type",
+      "kinds": {
+        "treatment": "Soin",
+        "lab": "Examen de labo",
+        "imaging": "Examen d’imagerie",
+        "bed": "Séjour au lit"
+      },
+      "kindHint": {
+        "treatment": "Facturé sur la visite (Ajouter un soin).",
+        "lab": "Examen à demander : le patient va au laboratoire et le résultat va dans le dossier.",
+        "imaging": "Examen à demander : le patient va à l’échographie et le résultat va dans le dossier.",
+        "bed": "Utilisé par l’écran des lits pour les séjours."
+      },
+      "count_one": "{{count}} soin",
+      "count_other": "{{count}} soins",
+      "builtIn": "catégorie de départ",
+      "bedLocked": "Intégrée : les séjours au lit sont facturés sous elle.",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "deleteBlocked": "Déplacez d’abord ses soins dans une autre catégorie.",
+      "confirmDelete": "Supprimer la catégorie « {{name}} » ?",
+      "saved": "Catégorie « {{name}} » enregistrée.",
+      "deleted": "Catégorie « {{name}} » supprimée.",
+      "kindChange": "Changer le type change le fonctionnement de ses {{count}} soin(s) (par exemple ils deviennent des examens à demander, ou ne le sont plus).",
+      "errors": {
+        "name": "Donnez un nom à la catégorie (au moins 2 lettres)."
+      }
     }
   },
   "visit": {

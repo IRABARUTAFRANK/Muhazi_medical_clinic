@@ -1649,6 +1649,67 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0049: the clinic's own categories
+await step(
+  '0049: a new "lab test" category makes its treatments orderable tests; kind can change',
+  async () => {
+    await as(staff.manager)
+    const cat = (
+      await one(
+        `select save_category(null, 'Blood tests', 'Ibizamini by''amaraso', 'Analyses de sang', 'lab') as id`,
+      )
+    ).id
+    const svc = (await one(`select upsert_service(null, 'Haemoglobin', 'other', 2000) as id`)).id
+    await db.query(`select set_service_category($1, $2)`, [svc, cat])
+    const asLab = await one(
+      `select service_group, category_id from catalogue_services where id = $1`,
+      [svc],
+    )
+    await as(staff.receptionist)
+    const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
+    await as(staff.doctor)
+    await db.query(`select order_test($1, $2, 'pale')`, [v.id, svc])
+    await as(staff.manager)
+    await db.query(`select save_category($1, 'Blood work', null, null, 'treatment')`, [cat])
+    const asTreatment = await one(`select service_group from service where id = $1`, [svc])
+    await asAdmin()
+    if (
+      asLab.service_group !== 'lab' ||
+      asLab.category_id !== cat ||
+      asTreatment.service_group !== 'other'
+    )
+      throw new Error(JSON.stringify({ asLab, asTreatment }))
+    return 'Blood tests (lab) → Haemoglobin orderable; kind → treatment: no longer a test'
+  },
+)
+await step('0049: a category in use cannot be deleted; the bed category never', async () => {
+  await as(staff.manager)
+  const cat = (await one(`select id from service_category where name_en = 'Blood work'`)).id
+  let inUse = false
+  try {
+    await db.query(`select delete_category($1)`, [cat])
+  } catch (e) {
+    inUse = /still has/.test(e.message)
+  }
+  const other = (await one(`select id from service_category where base_group = 'other'`)).id
+  await asAdmin()
+  await db.query(`update service set category_id = $2 where category_id = $1`, [cat, other])
+  await as(staff.manager)
+  await db.query(`select delete_category($1)`, [cat])
+  const bed = (await one(`select id from service_category where kind = 'bed'`)).id
+  let bedRefused = false
+  try {
+    await db.query(`select delete_category($1)`, [bed])
+  } catch (e) {
+    bedRefused = /bed category/.test(e.message)
+  }
+  const d = (await one(`select dashboard_summary(current_date - 30, current_date) as d`)).d
+  await asAdmin()
+  const named = d.visitsByGroup.some((x) => typeof x.name === 'string')
+  if (!inUse || !bedRefused || !named) throw new Error(JSON.stringify({ inUse, bedRefused, named }))
+  return 'in use refused, deleted once empty, bed refused; dashboard counts by category name'
+})
+
 finish()
 
 function finish() {

@@ -1487,7 +1487,7 @@
   "prices": {
     "search": "Shakisha ubuvuzi",
     "searchPh": "Izina, kode, Ikinyarwanda cyangwa Igifaransa…",
-    "allGroups": "Amatsinda yose",
+    "allGroups": "Ibyiciro byose",
     "showHidden": "Erekana ubuvuzi bwahishwe",
     "noMatch": "Nta buvuzi buhuye n'ubushakashatsi.",
     "duplicate": "Koporora",
@@ -1539,7 +1539,7 @@
       "namePh": "Kuvura malariya (yoroheje)",
       "nameKin": "Izina (Ikinyarwanda)",
       "nameFr": "Izina (Igifaransa)",
-      "group": "Itsinda",
+      "group": "Icyiciro",
       "category": "Icyiciro ku rubuga rusange",
       "categoryNone": "Ntigaragara ku rubuga rusange",
       "cashPrice": "Igiciro mu mafaranga (RWF)",
@@ -1625,7 +1625,7 @@
       "newHint": "Abakozi bashyirwa mu mashami muri Abakozi; hano wongeraho serivisi n’ibiciro bya buri shami.",
       "viewBy": "Erekana ukurikije",
       "byDept": "Ishami",
-      "byType": "Ubwoko",
+      "byType": "Ku cyiciro",
       "field": "Ishami",
       "addTo": "Serivisi nshya muri {{name}}",
       "fieldMany": "Amashami abutanga",
@@ -1670,8 +1670,8 @@
       "bulkAdd_other": "Ongeraho serivisi {{count}}",
       "bulkDone_one": "Serivisi {{count}} yongewe.",
       "bulkDone_other": "Serivisi {{count}} zongewe.",
-      "moveTitle": "Imurira ubwoko bwose mu ishami",
-      "moveLead": "Buri serivisi y’ubu bwoko ijya mu ishami wahisemo.",
+      "moveTitle": "Imura icyiciro cyose ugishyire mu ishami",
+      "moveLead": "Buri buvuzi bw’iki cyiciro bujya mu ishami wahisemo.",
       "move": "Imura",
       "moveDone_one": "Serivisi {{count}} yimuwe.",
       "moveDone_other": "Serivisi {{count}} zimuwe.",
@@ -1681,6 +1681,44 @@
       "reset": "Siba serivisi zose",
       "resetDone_one": "Serivisi {{count}} yasibwe. Urutonde ni ubusa.",
       "resetDone_other": "Serivisi {{count}} zasibwe. Urutonde ni ubusa."
+    },
+    "cat": {
+      "open": "Ibyiciro",
+      "title": "Ibyiciro by’ubuvuzi",
+      "lead": "Ibyiciro byanyu bwite (Kubyara, Amaso, Ibizamini by’amaraso…). Ubwoko bubwira sisitemu uko ubuvuzi bwabyo bukora: bwishyurwa ku ruzinduko, cyangwa busabwa nk’ikizamini cya laboratwari cyangwa ekografi gifite igisubizo.",
+      "new": "Icyiciro gishya",
+      "nameEn": "Izina (Icyongereza)",
+      "nameKin": "Izina (Ikinyarwanda)",
+      "nameFr": "Izina (Igifaransa)",
+      "kind": "Ubwoko",
+      "kinds": {
+        "treatment": "Ubuvuzi",
+        "lab": "Ikizamini cya labo",
+        "imaging": "Ikizamini cy’amafoto",
+        "bed": "Kurara ku buriri"
+      },
+      "kindHint": {
+        "treatment": "Bwishyurwa ku ruzinduko (Ongeramo ubuvuzi).",
+        "lab": "Ikizamini gisabwa: umurwayi ajya muri laboratwari, igisubizo kijya muri dosiye.",
+        "imaging": "Ikizamini gisabwa: umurwayi ajya kuri ekografi, igisubizo kijya muri dosiye.",
+        "bed": "Gikoreshwa n’urupapuro rw’ibitanda."
+      },
+      "count_one": "ubuvuzi {{count}}",
+      "count_other": "ubuvuzi {{count}}",
+      "builtIn": "icyiciro cy’ibanze",
+      "bedLocked": "Cyubatswemo: kurara ku buriri byishyurwa muri cyo.",
+      "save": "Bika",
+      "cancel": "Reka",
+      "edit": "Hindura",
+      "delete": "Siba",
+      "deleteBlocked": "Banza wimure ubuvuzi bwacyo mu kindi cyiciro.",
+      "confirmDelete": "Gusiba icyiciro “{{name}}”?",
+      "saved": "Icyiciro “{{name}}” cyabitswe.",
+      "deleted": "Icyiciro “{{name}}” cyasibwe.",
+      "kindChange": "Guhindura ubwoko bihindura uko ubuvuzi {{count}} bwacyo bukora (urugero buhinduka ibizamini bisabwa, cyangwa bikareka kuba byo).",
+      "errors": {
+        "name": "Ha icyiciro izina (nibura inyuguti 2)."
+      }
     }
   },
   "desk": {

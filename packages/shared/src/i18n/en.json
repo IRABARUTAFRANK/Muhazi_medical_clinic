@@ -953,7 +953,7 @@
       "namePh": "Malaria treatment (uncomplicated)",
       "nameKin": "Name (Kinyarwanda)",
       "nameFr": "Name (French)",
-      "group": "Group",
+      "group": "Category",
       "category": "Public booking category",
       "categoryNone": "Not shown on the public site",
       "cashPrice": "Cash price (RWF)",
@@ -1008,7 +1008,7 @@
     },
     "search": "Find a treatment",
     "searchPh": "Name, code, Kinyarwanda or French…",
-    "allGroups": "All groups",
+    "allGroups": "All categories",
     "showHidden": "Show hidden treatments",
     "noMatch": "No treatment matches.",
     "duplicate": "Duplicate",
@@ -1068,7 +1068,7 @@
       "newHint": "Employees are placed in departments under Employees; here you add each department’s services and prices.",
       "viewBy": "Show by",
       "byDept": "By department",
-      "byType": "By type",
+      "byType": "By category",
       "field": "Department",
       "addTo": "New service in {{name}}",
       "fieldMany": "Departments that give it",
@@ -1113,8 +1113,8 @@
       "bulkAdd_other": "Add {{count}} treatments",
       "bulkDone_one": "{{count}} treatment added.",
       "bulkDone_other": "{{count}} treatments added.",
-      "moveTitle": "Move a whole type into a department",
-      "moveLead": "Every treatment of this type goes into the chosen department.",
+      "moveTitle": "Move a whole category into a department",
+      "moveLead": "Every treatment of this category goes into the chosen department.",
       "move": "Move",
       "moveDone_one": "{{count}} treatment moved.",
       "moveDone_other": "{{count}} treatments moved.",
@@ -1124,6 +1124,44 @@
       "reset": "Delete all treatments",
       "resetDone_one": "{{count}} treatment deleted. The catalogue is empty.",
       "resetDone_other": "{{count}} treatments deleted. The catalogue is empty."
+    },
+    "cat": {
+      "open": "Categories",
+      "title": "Categories of treatments",
+      "lead": "Your own categories (Maternity, Eye care, Blood tests…). The kind tells the system how their treatments work: charged on the visit, or ordered as a laboratory or ultrasound test with a result.",
+      "new": "New category",
+      "nameEn": "Name (English)",
+      "nameKin": "Name (Kinyarwanda)",
+      "nameFr": "Name (French)",
+      "kind": "Kind",
+      "kinds": {
+        "treatment": "Treatment",
+        "lab": "Lab test",
+        "imaging": "Imaging test",
+        "bed": "Bed stay"
+      },
+      "kindHint": {
+        "treatment": "Charged on the visit (Add a treatment).",
+        "lab": "Orderable test: the patient goes to the Laboratory and the result goes into the file.",
+        "imaging": "Orderable test: the patient goes to Ultrasound and the result goes into the file.",
+        "bed": "Used by the bed screen for bed stays."
+      },
+      "count_one": "{{count}} treatment",
+      "count_other": "{{count}} treatments",
+      "builtIn": "starting category",
+      "bedLocked": "Built in: bed stays are billed under it.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteBlocked": "Move its treatments to another category first.",
+      "confirmDelete": "Delete the category “{{name}}”?",
+      "saved": "Category “{{name}}” saved.",
+      "deleted": "Category “{{name}}” deleted.",
+      "kindChange": "Changing the kind changes how its {{count}} treatment(s) work (for example they become orderable tests, or stop being).",
+      "errors": {
+        "name": "Give the category a name (at least 2 letters)."
+      }
     }
   },
   "visit": {

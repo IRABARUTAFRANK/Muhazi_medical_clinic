@@ -5,7 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
-import { SERVICE_GROUPS, useCatalogueTools, type ServiceGroup } from '@/lib/api/catalogue'
+import {
+  builtInGroup,
+  categoryName,
+  groupOfCategory,
+  useCatalogueTools,
+  useCategories,
+} from '@/lib/api/catalogue'
 import type { Department } from '@/lib/api/staff'
 import { suggestNames } from '@/lib/medical-glossary'
 
@@ -24,12 +30,18 @@ export function CatalogueTools({
   onDone: (text: string) => void
   onClose: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const tools = useCatalogueTools()
   const [dept, setDept] = useState(departments[0]?.id ?? '')
-  const [group, setGroup] = useState<ServiceGroup>('consultation')
+  const { data: categories = [] } = useCategories()
+  const [categoryId, setCategoryId] = useState('')
+  const category =
+    categories.find((c) => c.id === categoryId) ??
+    categories.find((c) => c.baseGroup === 'consultation') ??
+    categories[0]
   const [lines, setLines] = useState('')
-  const [moveGroup, setMoveGroup] = useState<ServiceGroup>('lab')
+  const [moveCat, setMoveCat] = useState('')
+  const moveCategory = categories.find((c) => c.id === moveCat) ?? categories[0]
   const [moveDept, setMoveDept] = useState(departments[0]?.id ?? '')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +58,8 @@ export function CatalogueTools({
         name_kin: s?.rw ?? '',
         name_fr: s?.fr ?? '',
         price: Number(String(price ?? '').replace(/[^\d]/g, '')) || 0,
-        group,
+        group: category ? groupOfCategory(category) : ('other' as const),
+        category: category && !builtInGroup(category.id) ? category.id : undefined,
       }
     })
     .filter((x) => x.name_en.length >= 2)
@@ -94,14 +107,16 @@ export function CatalogueTools({
             </Select>
             <Select
               label={t('prices.form.group')}
-              value={group}
-              onChange={(e) => setGroup(e.target.value as ServiceGroup)}
+              value={category?.id ?? ''}
+              onChange={(e) => setCategoryId(e.target.value)}
             >
-              {SERVICE_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {t(`prices.groups.${g}`)}
-                </option>
-              ))}
+              {categories
+                .filter((c) => c.kind !== 'bed')
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {categoryName(c, i18n.language)}
+                  </option>
+                ))}
             </Select>
           </div>
           <label className="flex flex-col gap-1.5 text-[13px] font-semibold">
@@ -159,12 +174,12 @@ export function CatalogueTools({
           <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
             <Select
               label={t('prices.form.group')}
-              value={moveGroup}
-              onChange={(e) => setMoveGroup(e.target.value as ServiceGroup)}
+              value={moveCategory?.id ?? ''}
+              onChange={(e) => setMoveCat(e.target.value)}
             >
-              {SERVICE_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {t(`prices.groups.${g}`)}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {categoryName(c, i18n.language)}
                 </option>
               ))}
             </Select>
@@ -181,11 +196,12 @@ export function CatalogueTools({
               ))}
             </Select>
             <Button
-              loading={tools.moveGroup.isPending}
+              loading={tools.moveCategory.isPending}
+              disabled={!moveCategory}
               onClick={() =>
                 void run(async () => {
-                  const n = await tools.moveGroup.mutateAsync({
-                    group: moveGroup,
+                  const n = await tools.moveCategory.mutateAsync({
+                    categoryId: moveCategory!.id,
                     departmentId: moveDept || null,
                   })
                   return t('prices.tools.moveDone', { count: n })

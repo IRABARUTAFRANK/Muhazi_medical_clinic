@@ -24,6 +24,170 @@ export const SERVICE_GROUPS = [
 ] as const
 export type ServiceGroup = (typeof SERVICE_GROUPS)[number]
 
+/** How the treatments of a category behave (fixed): charged on the visit, orderable lab test,
+ *  orderable imaging test, or bed stay (built in). */
+export const CATEGORY_KINDS = ['treatment', 'lab', 'imaging', 'bed'] as const
+export type CategoryKind = (typeof CATEGORY_KINDS)[number]
+
+/** A treatment category the clinic manages itself (Prices → Categories). */
+export interface Category {
+  id: string
+  nameEn: string
+  nameKin: string | null
+  nameFr: string | null
+  kind: CategoryKind
+  /** The former fixed group it started as (null = one the clinic created). */
+  baseGroup: ServiceGroup | null
+}
+
+/** The internal group of a category's treatments, derived the same way as in the database. */
+export function groupOfCategory(c: Pick<Category, 'kind' | 'baseGroup'>): ServiceGroup {
+  if (c.kind !== 'treatment') return c.kind
+  return c.baseGroup && !['lab', 'imaging', 'bed'].includes(c.baseGroup) ? c.baseGroup : 'other'
+}
+
+/** The category's name in the interface language (English when not given). */
+export function categoryName(c: Pick<Category, 'nameEn' | 'nameKin' | 'nameFr'>, lang: string) {
+  return (lang === 'rw' ? c.nameKin : lang === 'fr' ? c.nameFr : null) || c.nameEn
+}
+
+const BUILT_IN: [ServiceGroup, string, string, string, CategoryKind][] = [
+  [
+    'consultation',
+    'Consultation & treatments',
+    'Gusuzuma no kuvura',
+    'Consultation et traitements',
+    'treatment',
+  ],
+  ['dental', 'Dental', 'Amenyo', 'Dentaire', 'treatment'],
+  ['lab', 'Laboratory', 'Ibizamini', 'Laboratoire', 'lab'],
+  ['imaging', 'Ultrasound / imaging', 'Ekografi / amafoto', 'Échographie / imagerie', 'imaging'],
+  [
+    'procedure',
+    'Minor surgery & procedures',
+    "Kubaga byoroheje n'ibindi bikorwa",
+    'Petite chirurgie et actes',
+    'treatment',
+  ],
+  ['nursing', 'Nursing care', 'Kwita ku barwayi', 'Soins infirmiers', 'treatment'],
+  ['bed', 'Beds & observation', 'Ibitanda no gukurikiranwa', 'Lits et observation', 'bed'],
+  ['registration', 'Registration', 'Kwandikwa', 'Enregistrement', 'treatment'],
+  ['pharmacy', 'Pharmacy', 'Farumasi', 'Pharmacie', 'treatment'],
+  ['other', 'Other', 'Ibindi', 'Autre', 'treatment'],
+]
+/** The ten starting categories: sample mode, and a database before migration 0049. Their ids
+ *  carry the group ("group:lab") so nothing is sent to functions that do not exist yet. */
+const builtInCategories = (): Category[] =>
+  BUILT_IN.map(([g, nameEn, nameKin, nameFr, kind]) => ({
+    id: `group:${g}`,
+    nameEn,
+    nameKin,
+    nameFr,
+    kind,
+    baseGroup: g,
+  }))
+/** "group:lab" → "lab"; a real category id → null. */
+export const builtInGroup = (categoryId: string): ServiceGroup | null =>
+  categoryId.startsWith('group:') ? (categoryId.slice(6) as ServiceGroup) : null
+
+const sampleCategories: Category[] = builtInCategories()
+const CATEGORIES = ['catalogue', 'categories'] as const
+
+export function useCategories() {
+  return useQuery({
+    queryKey: CATEGORIES,
+    queryFn: async (): Promise<Category[]> => {
+      if (!supabase) return [...sampleCategories]
+      const { data, error } = await supabase
+        .from('service_category')
+        .select('id, name_en, name_kin, name_fr, kind, base_group')
+        .is('deleted_at', null)
+        .order('sort')
+        .order('name_en')
+      if (error) return builtInCategories()
+      return (
+        data as {
+          id: string
+          name_en: string
+          name_kin: string | null
+          name_fr: string | null
+          kind: CategoryKind
+          base_group: ServiceGroup | null
+        }[]
+      ).map((r) => ({
+        id: r.id,
+        nameEn: r.name_en,
+        nameKin: r.name_kin,
+        nameFr: r.name_fr,
+        kind: r.kind,
+        baseGroup: r.base_group,
+      }))
+    },
+  })
+}
+
+export function useCategoryActions() {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: ['catalogue'] })
+  const save = useMutation({
+    mutationFn: async (input: {
+      id?: string
+      nameEn: string
+      nameKin?: string
+      nameFr?: string
+      kind: CategoryKind
+    }): Promise<string> => {
+      if (!supabase) {
+        const existing = input.id ? sampleCategories.find((c) => c.id === input.id) : undefined
+        if (
+          sampleCategories.some(
+            (c) =>
+              c.id !== input.id && c.nameEn.toLowerCase() === input.nameEn.trim().toLowerCase(),
+          )
+        )
+          throw new Error('a category with this name already exists')
+        const c: Category = {
+          id: existing?.id ?? `cat-${Math.random().toString(36).slice(2, 8)}`,
+          nameEn: input.nameEn.trim(),
+          nameKin: input.nameKin?.trim() || null,
+          nameFr: input.nameFr?.trim() || null,
+          kind: input.kind,
+          baseGroup: existing?.baseGroup ?? null,
+        }
+        if (existing) Object.assign(existing, c)
+        else sampleCategories.push(c)
+        for (const t of sampleTreatments) if (t.categoryId === c.id) t.group = groupOfCategory(c)
+        return c.id
+      }
+      const { data, error } = await supabase.rpc('save_category', {
+        p_id: input.id ?? null,
+        p_name_en: input.nameEn.trim(),
+        p_name_kin: input.nameKin?.trim() || null,
+        p_name_fr: input.nameFr?.trim() || null,
+        p_kind: input.kind,
+      })
+      if (error) throw new Error(error.message)
+      return String(data)
+    },
+    onSuccess: refresh,
+  })
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      if (!supabase) {
+        const n = sampleTreatments.filter((t) => t.categoryId === id).length
+        if (n > 0) throw new Error(`this category still has ${n} treatment(s)`)
+        const i = sampleCategories.findIndex((c) => c.id === id)
+        if (i >= 0) sampleCategories.splice(i, 1)
+        return
+      }
+      const { error } = await supabase.rpc('delete_category', { p_id: id })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+  return { save, remove }
+}
+
 /** `payer_type` enum, without cash. */
 export const PAYER_TYPES = ['rssb_rama', 'cbhi', 'mmi', 'private', 'employer'] as const
 export type PayerType = (typeof PAYER_TYPES)[number]
@@ -34,7 +198,10 @@ export interface Treatment {
   nameEn: string
   nameKin: string | null
   nameFr: string | null
+  /** Internal group, derived from the category (tests, beds, insurers rely on it). */
   group: ServiceGroup
+  /** The clinic's category ("group:lab" for a starting category before migration 0049). */
+  categoryId: string
   bookingCategory: CategoryId | null
   cashPrice: number | null
   /** Insurer-specific prices by payer id. */
@@ -57,6 +224,8 @@ export interface TreatmentInput {
   nameKin?: string
   nameFr?: string
   group: ServiceGroup
+  /** The category chosen (its group is passed as `group`). */
+  categoryId?: string
   bookingCategory?: CategoryId | null
   cashPrice: number
   maxDiscountPct: number
@@ -99,6 +268,7 @@ const sampleTreatments: Treatment[] = [
     nameKin: 'Gusuzuma',
     nameFr: 'Consultation générale',
     group: 'consultation',
+    categoryId: 'group:consultation',
     bookingCategory: 'consultation',
     cashPrice: 8000,
     payerPrices: {},
@@ -117,6 +287,7 @@ const sampleTreatments: Treatment[] = [
     nameKin: 'Kuvura malariya',
     nameFr: 'Traitement du paludisme simple',
     group: 'consultation',
+    categoryId: 'group:consultation',
     bookingCategory: null,
     cashPrice: 12000,
     payerPrices: {},
@@ -135,6 +306,7 @@ const sampleTreatments: Treatment[] = [
     nameKin: null,
     nameFr: 'TDR paludisme',
     group: 'lab',
+    categoryId: 'group:lab',
     bookingCategory: 'laboratory',
     cashPrice: 2500,
     payerPrices: {},
@@ -153,6 +325,7 @@ const sampleTreatments: Treatment[] = [
     nameKin: 'Gukura iryinyo',
     nameFr: 'Extraction dentaire',
     group: 'dental',
+    categoryId: 'group:dental',
     bookingCategory: 'dental',
     cashPrice: 15000,
     payerPrices: {},
@@ -206,6 +379,7 @@ interface ServiceRow {
   department_name?: string | null
   department_ids?: string[] | null
   department_names?: string[] | null
+  category_id?: string | null
 }
 
 const TREATMENTS = ['catalogue', 'treatments'] as const
@@ -230,6 +404,7 @@ export function useTreatments(onlyActive = false) {
         nameKin: r.name_kin,
         nameFr: r.name_fr,
         group: r.service_group,
+        categoryId: r.category_id ?? `group:${r.service_group}`,
         bookingCategory: r.booking_category,
         cashPrice: r.cash_price == null ? null : Number(r.cash_price),
         payerPrices: Object.fromEntries(
@@ -287,6 +462,8 @@ export function useCatalogueTools() {
         name_fr?: string
         price: number
         group: ServiceGroup
+        /** A category the clinic created (omit for a starting one). */
+        category?: string
       }[]
     }): Promise<number> => {
       if (!supabase) {
@@ -298,6 +475,7 @@ export function useCatalogueTools() {
             nameKin: x.name_kin || null,
             nameFr: x.name_fr || null,
             group: x.group,
+            categoryId: x.category ?? `group:${x.group}`,
             bookingCategory: null,
             cashPrice: x.price,
             payerPrices: {},
@@ -357,7 +535,36 @@ export function useCatalogueTools() {
     },
     onSuccess: refresh,
   })
-  return { bulkAdd, moveGroup, deleteAll }
+  /** Every treatment of a category into a department. */
+  const moveCategory = useMutation({
+    mutationFn: async (input: {
+      categoryId: string
+      departmentId: string | null
+    }): Promise<number> => {
+      const group = builtInGroup(input.categoryId)
+      if (!supabase || group) {
+        if (!supabase) {
+          let n = 0
+          for (const t of sampleTreatments)
+            if (t.categoryId === input.categoryId) {
+              t.departmentId = input.departmentId
+              t.departmentIds = input.departmentId ? [input.departmentId] : []
+              n++
+            }
+          return n
+        }
+        return moveGroup.mutateAsync({ group: group!, departmentId: input.departmentId })
+      }
+      const { data, error } = await supabase.rpc('move_category_to_department', {
+        p_category_id: input.categoryId,
+        p_department_id: input.departmentId,
+      })
+      if (error) throw new Error(error.message)
+      return Number(data)
+    },
+    onSuccess: refresh,
+  })
+  return { bulkAdd, moveGroup, moveCategory, deleteAll }
 }
 
 // ---------------------------------------------------------------- medicines and supplies
@@ -558,6 +765,7 @@ export function useCatalogueActions() {
           nameKin: input.nameKin || null,
           nameFr: input.nameFr || null,
           group: input.group,
+          categoryId: input.categoryId ?? `group:${input.group}`,
           bookingCategory: input.bookingCategory ?? null,
           cashPrice: input.cashPrice,
           payerPrices: Object.fromEntries(
@@ -602,6 +810,13 @@ export function useCatalogueActions() {
           p_price: price.trim() === '' ? null : Number(price),
         })
         if (pe) throw new Error(pe.message)
+      }
+      if (input.categoryId && !builtInGroup(input.categoryId)) {
+        const { error: ce } = await supabase.rpc('set_service_category', {
+          p_service_id: id,
+          p_category_id: input.categoryId,
+        })
+        if (ce) throw new Error(ce.message)
       }
       if (input.departmentIds !== undefined) {
         const { error: de } = await supabase.rpc('set_service_departments', {
@@ -712,7 +927,8 @@ export function useCatalogueActions() {
   /** Raise or lower every cash price (or one group) at once. Returns how many changed. */
   const adjustPrices = useMutation({
     mutationFn: async (input: {
-      group: ServiceGroup | null
+      /** A category id ("group:x" for a starting one before migration 0049); null = all. */
+      category: string | null
       mode: 'multiply' | 'percent' | 'amount'
       value: number
       round: number
@@ -721,7 +937,7 @@ export function useCatalogueActions() {
         let n = 0
         for (const t of sampleTreatments) {
           if (t.cashPrice == null || t.cashPrice <= 0) continue
-          if (input.group && t.group !== input.group) continue
+          if (input.category && t.categoryId !== input.category) continue
           const raw =
             input.mode === 'multiply'
               ? t.cashPrice * input.value
@@ -736,11 +952,13 @@ export function useCatalogueActions() {
         }
         return n
       }
+      const group = input.category ? builtInGroup(input.category) : null
       const { data, error } = await supabase.rpc('adjust_prices', {
-        p_group: input.group,
+        p_group: group,
         p_mode: input.mode,
         p_value: input.value,
         p_round: input.round,
+        ...(input.category && !group ? { p_category_id: input.category } : {}),
       })
       if (error) throw new Error(error.message)
       return Number(data)

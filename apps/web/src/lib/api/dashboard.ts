@@ -49,7 +49,14 @@ export interface DashboardData {
   revenue30d: { day: string; amount: number }[]
   collections: { method: string; amount: number }[]
   receivables: { payer: string; count: number; amount: number }[]
-  visitsByGroup: { group: string; count: number }[]
+  /** By category: group = its former group (icon), name* = the clinic's category names. */
+  visitsByGroup: {
+    group: string
+    name?: string | null
+    nameKin?: string | null
+    nameFr?: string | null
+    count: number
+  }[]
   /** minutes: average wait today of those already taken (null: nobody yet); longest: the
    *  first patient still in line (null: nobody waiting). */
   waitByStation: {

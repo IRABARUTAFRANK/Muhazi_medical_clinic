@@ -1,4 +1,6 @@
 import { formatDate, type ClinicProfile, type StaffUser } from '@mmc/shared'
+import i18n from '@/i18n'
+import { categoryName } from '@/lib/api/catalogue'
 import type { DashboardData } from '@/lib/api/dashboard'
 import type { CashierSummary } from '@/lib/api/finance'
 import type { LabOrder, LabSummary } from '@/lib/api/lab'
@@ -52,7 +54,15 @@ export function dashboardReport(
             { label: t('report.cols.type'), width: 28 },
             { label: t('report.cols.visits'), kind: 'number' },
           ],
-          rows: d.visitsByGroup.map((x) => [group(x.group), x.count]),
+          rows: d.visitsByGroup.map((x) => [
+            x.name
+              ? categoryName(
+                  { nameEn: x.name, nameKin: x.nameKin ?? null, nameFr: x.nameFr ?? null },
+                  i18n.language,
+                )
+              : group(x.group),
+            x.count,
+          ]),
           totals: [1],
         },
         {
