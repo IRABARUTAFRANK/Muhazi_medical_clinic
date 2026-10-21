@@ -8,6 +8,7 @@
  * The URL comes from Supabase → Project settings → Database → Connection string (session pooler,
  * IPv4). It can also live in the root .env. Nothing here needs Docker or the Supabase CLI.
  */
+import dns from 'node:dns/promises'
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -32,7 +33,30 @@ if (!url) {
 const withSeed = process.argv.includes('--seed')
 const dryRun = process.argv.includes('--dry-run')
 
-const sql = postgres(url, { max: 1, ssl: 'require', prepare: false, onnotice: () => {} })
+/** Some networks' DNS forgets the pooler's name for a while; then ask public resolvers. */
+async function publicAddress(u) {
+  let host
+  try {
+    host = new URL(u).hostname
+    await dns.lookup(host)
+    return null
+  } catch {
+    if (!host) return null
+  }
+  const r = new dns.Resolver()
+  r.setServers(['1.1.1.1', '8.8.8.8'])
+  const [ip] = await r.resolve4(host)
+  console.log(`${host} not found by this network's DNS; connecting to ${ip} (public DNS)`)
+  return ip
+}
+const ip = await publicAddress(url)
+const sql = postgres(url, {
+  max: 1,
+  ssl: 'require',
+  prepare: false,
+  onnotice: () => {},
+  ...(ip ? { host: ip } : {}),
+})
 const dir = path.join(root, 'supabase', 'migrations')
 const files = (await readdir(dir)).filter((f) => f.endsWith('.sql')).sort()
 
