@@ -54,15 +54,7 @@
     "footerNav": "Hasi y'urupapuro"
   },
   "days": {
-    "short": [
-      "Cyu",
-      "Mbe",
-      "Kab",
-      "Gat",
-      "Kan",
-      "Gnu",
-      "Gnd"
-    ],
+    "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],
     "long": [
       "Ku cyumweru",
       "Kuwa mbere",
