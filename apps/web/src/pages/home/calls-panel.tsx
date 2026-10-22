@@ -31,6 +31,9 @@ const minutesSince = (iso: string) =>
 /** Desks that receive patients and may call the next one. */
 const CALLERS = ['doctor', 'nurse', 'sonographer', 'lab_tech']
 
+/** Desks that work on orders: a call there brings only a patient already sent to them. */
+const ORDER_DESKS = ['laboratory', 'ultrasound', 'pharmacy', 'cashier', 'nursing', 'beds']
+
 /**
  * Calls between colleagues, on the home page:
  *  - a doctor (or any desk) finished with a patient calls the next one, from reception, from the
@@ -81,9 +84,11 @@ export function CallsPanel({ user }: { user: StaffUser }) {
           !q.startedAt &&
           !q.takenBy &&
           (!q.assignedTo || q.assignedTo === c.fromId) &&
-          // waiting for a doctor, at triage or reception (not in the middle of a test or care)
+          // waiting for a doctor, at triage or reception (not in the middle of a test or care);
+          // a desk working on orders (lab, ultrasound, pharmacy…) receives only its own patients
           (q.station === c.station ||
-            ['triage', 'reception', 'consultation', 'dental'].includes(q.station)),
+            (!ORDER_DESKS.includes(c.station ?? '') &&
+              ['triage', 'reception', 'consultation', 'dental'].includes(q.station))),
       )
       .sort(
         (a, b) =>

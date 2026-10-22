@@ -1257,7 +1257,21 @@
     "cashierNote": "Ibipimo, ubuvuzi n’imiti byongerwamo n’abaganga n’abaforomo. Hano wakira ubwishyu.",
     "taken": "Wafashe uyu murwayi.",
     "take": "Fata uyu murwayi",
-    "takeHint": "Ni wowe umwitaho ubu: abo mukorana babona ko ari wowe."
+    "takeHint": "Ni wowe umwitaho ubu: abo mukorana babona ko ari wowe.",
+    "refund": {
+      "done": "{{amount}} yasubijwe. Fagitire nta kindi isaba.",
+      "title": "Subiza amafaranga",
+      "owed": "ayo gusubiza",
+      "lead": "Hari igikorwa cyavanyweho nyuma yo kwishyurwa: umurwayi yishyuye arenze fagitire. Subiza ikinyuranyo kandi uvuge impamvu.",
+      "method": "Asubijwe hakoreshejwe",
+      "reason": "Impamvu",
+      "reasonPh": "urugero: ikizamini kitakozwe, umuti utatanzwe",
+      "give": "Subiza {{amount}}",
+      "errors": {
+        "amount": "Subiza atarenze {{amount}}.",
+        "reason": "Vuga impamvu amafaranga asubizwa."
+      }
+    }
   },
   "patients": {
     "title": "Abarwayi",
@@ -1482,7 +1496,12 @@
     "correctionWhy": "Kuki igisubizo gikosowe?",
     "correctionPh": "urugero: ikirango kitari cyo, ikosa ryo kwandika",
     "saveCorrection": "Bika ikosora",
-    "correctResult": "Kosora igisubizo"
+    "correctResult": "Kosora igisubizo",
+    "roomUnpriced": "Nta giciro cya {{names}}: ntibiri kuri fagitire.",
+    "roomNoStock": "{{names}}: ntibyabonetse mu bubiko bwa hano, ntibyakuwe mu bubiko.",
+    "returnWhy": "Kuki {{item}} igarutse? (umuti utari wo, utafunguwe…)",
+    "returned": "{{item}} yasubiye mu bubiko kandi yavanywe kuri fagitire.",
+    "returnMedicine": "Wagaruwe"
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -2689,7 +2708,12 @@
     },
     "cannotPh": "Cyangwa wandike impamvu",
     "cannotConfirm": "Emeza: ntikizakorwa",
-    "queueUltrasound": "Abarwayi bategereje ecographie"
+    "queueUltrasound": "Abarwayi bategereje ecographie",
+    "stockWatch": "Ibikoresho bya laboratwari byo gukurikirana",
+    "stockFine": "Nta kintu kigiye gushira cyangwa kurangira muri laboratwari.",
+    "expiresOn": "kirangira {{date}}",
+    "notDoneToday": "Ibizamini bitakozwe uyu munsi",
+    "slipTitleImaging": "Igisubizo cya echographie"
   },
   "finance": {
     "desk": "Isanduku",
@@ -2749,7 +2773,9 @@
     "difference": "Ikinyuranyo {{amount}}",
     "countSaved": "Ibarura ryabitswe. Ikinyuranyo: {{diff}}.",
     "countsOfDay": "Amabarura y’uyu munsi",
-    "expectedCounted": "ategerejwe {{expected}} · yabazwe {{counted}}"
+    "expectedCounted": "ategerejwe {{expected}} · yabazwe {{counted}}",
+    "refundsTitle": "Amafaranga yasubijwe uyu munsi",
+    "reprint": "Fungura uruzinduko wongere usohore inyemezabwishyu"
   },
   "calendar": {
     "title": "Ingengabihe yanjye",
@@ -2985,7 +3011,9 @@
       "quantity": "Andika ingano irenze zeru.",
       "cost": "Andika igiciro cya kimwe (0 iremewe).",
       "short": "Hari {{count}} gusa muri ubwo bubiko.",
-      "storeName": "Ha ububiko izina."
+      "storeName": "Ha ububiko izina.",
+      "expiry": "Andika itariki yo kurangira iri ku gasanduku.",
+      "countWhy": "Vuga impamvu ibarura rihindutse."
     },
     "useTitle": "Gukoresha cyangwa kuvana mu bubiko",
     "useLead": "Ibisohoka bitagurishijwe: byarengeje igihe, byangiritse, byakoreshejwe ku kazi, cyangwa gukosora ibarura. Byandikwa mu ngendo n’impamvu.",
@@ -3003,7 +3031,18 @@
     "reorderAsk": "Erekana ko {{name}} igiye gushira iyo ububiko bugeze kuri (0 = nta na rimwe):",
     "reorderBad": "Andika umubare wuzuye, 0 cyangwa urenga.",
     "reorderEdit": "Hindura igihe uyu muti ugaragazwa ko ugiye gushira",
-    "reorderNone": "nta rugero rwo gutumiza"
+    "reorderNone": "nta rugero rwo gutumiza",
+    "storeOpen": "ongera ufungure",
+    "storeClose": "funga",
+    "counted": "Byabazwe",
+    "countWhy": "Impamvu bitandukanye",
+    "countWhyPh": "urugero: ibarura rya buri kwezi, icupa ryamenetse",
+    "countSave": "Kosora ibarura",
+    "countSaved": "{{item}}: {{before}} → {{after}} muri ubu bubiko.",
+    "countNow": "Sisitemu ivuga {{count}} muri ubu bubiko.",
+    "countTitle": "Kosora ibarura",
+    "countLead": "Umaze kubara ibiri ku gipangu, andika ibihari koko. Ikinyuranyo kibikwa n’impamvu yacyo.",
+    "reportMonth": "Ukwezi kwa raporo"
   },
   "report": {
     "excel": "Excel",
@@ -3360,7 +3399,11 @@
     "sellHowPh": "urugero: ikinini 1 inshuro 3 ku munsi iminsi 5",
     "sellNoPrice": "Uyu muti nta giciro ufite: uzatangwa ku buntu. Shyiraho igiciro muri Ububiko → Imiti n’ibiciro.",
     "sellTotal": "Ayo kwishyura: {{amount}}",
-    "sell": "Gurisha kandi utange"
+    "sell": "Gurisha kandi utange",
+    "printLabels": "Sohora ibirango",
+    "labelTitle": "Farumasi",
+    "labelDays_one": "mu munsi {{count}}",
+    "labelDays_other": "mu minsi {{count}}"
   },
   "queuePage": {
     "title": "Umurongo wanjye · {{desk}}",

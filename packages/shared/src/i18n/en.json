@@ -1340,7 +1340,21 @@
     "cashierNote": "Vitals, treatments and medicines are added by the doctors and nurses. Here you take the payment.",
     "taken": "You took this patient.",
     "take": "Take this patient",
-    "takeHint": "You work on this patient now: the other colleagues of the desk see that you have them."
+    "takeHint": "You work on this patient now: the other colleagues of the desk see that you have them.",
+    "refund": {
+      "done": "{{amount}} given back. The bill owes nothing more.",
+      "title": "Give money back",
+      "owed": "to give back",
+      "lead": "A charge was removed after it was paid: the patient paid more than the bill. Give the difference back and say why.",
+      "method": "Given back by",
+      "reason": "Why",
+      "reasonPh": "e.g. test not done, medicine not given",
+      "give": "Give back {{amount}}",
+      "errors": {
+        "amount": "Give back at most {{amount}}.",
+        "reason": "Say why the money is given back."
+      }
+    }
   },
   "settings": {
     "title": "Clinic settings",
@@ -1743,7 +1757,12 @@
     "correctionWhy": "Why is the result corrected?",
     "correctionPh": "e.g. wrong sample label, typing error",
     "saveCorrection": "Save the correction",
-    "correctResult": "Correct result"
+    "correctResult": "Correct result",
+    "roomUnpriced": "No price for {{names}}: not on the bill.",
+    "roomNoStock": "{{names}}: not found in a store here, so not taken out of the stock.",
+    "returnWhy": "Why does {{item}} come back? (wrong medicine, unopened…)",
+    "returned": "{{item}} is back in the store and off the bill.",
+    "returnMedicine": "Brought back"
   },
   "adjust": {
     "mode": "How to enter it",
@@ -2680,7 +2699,12 @@
     },
     "cannotPh": "Or write the reason",
     "cannotConfirm": "Confirm: not done",
-    "queueUltrasound": "Patients at ultrasound"
+    "queueUltrasound": "Patients at ultrasound",
+    "stockWatch": "Lab stock to watch",
+    "stockFine": "Nothing low or expiring in the lab.",
+    "expiresOn": "expires {{date}}",
+    "notDoneToday": "Tests not done today",
+    "slipTitleImaging": "Ultrasound result"
   },
   "finance": {
     "desk": "Cash desk",
@@ -2740,7 +2764,9 @@
     "difference": "Difference {{amount}}",
     "countSaved": "Count saved. Difference: {{diff}}.",
     "countsOfDay": "Counts of the day",
-    "expectedCounted": "expected {{expected}} · counted {{counted}}"
+    "expectedCounted": "expected {{expected}} · counted {{counted}}",
+    "refundsTitle": "Money given back this day",
+    "reprint": "Open the visit to print the receipt again"
   },
   "calendar": {
     "title": "My calendar",
@@ -2976,7 +3002,9 @@
       "quantity": "Enter a quantity above zero.",
       "cost": "Enter the cost per unit (0 is allowed).",
       "short": "Only {{count}} available in that store.",
-      "storeName": "Give the store a name."
+      "storeName": "Give the store a name.",
+      "expiry": "Give the expiry date written on the box.",
+      "countWhy": "Say why the count changes."
     },
     "useTitle": "Use or write off stock",
     "useLead": "Stock leaving without a sale: expired, damaged, used at a desk, or a count correction. It is recorded in the movements with the reason.",
@@ -2994,7 +3022,18 @@
     "reorderAsk": "Show {{name}} as low when the stock reaches (0 = never):",
     "reorderBad": "Type a whole number, 0 or more.",
     "reorderEdit": "Change when this medicine shows as low",
-    "reorderNone": "no reorder level"
+    "reorderNone": "no reorder level",
+    "storeOpen": "open again",
+    "storeClose": "close",
+    "counted": "Counted",
+    "countWhy": "Why it differs",
+    "countWhyPh": "e.g. monthly count, broken bottle found",
+    "countSave": "Correct the count",
+    "countSaved": "{{item}}: {{before}} → {{after}} in this store.",
+    "countNow": "The system says {{count}} in this store.",
+    "countTitle": "Correct a count",
+    "countLead": "After counting a shelf, type what is really there. The difference is kept with its reason.",
+    "reportMonth": "Report month"
   },
   "report": {
     "excel": "Excel",
@@ -3351,7 +3390,11 @@
     "sellHowPh": "e.g. 1 tablet 3 times a day for 5 days",
     "sellNoPrice": "This medicine has no price: it will be handed over free. Set its price under Stock → Medicines & prices.",
     "sellTotal": "To pay: {{amount}}",
-    "sell": "Sell and hand over"
+    "sell": "Sell and hand over",
+    "printLabels": "Print the labels",
+    "labelTitle": "Pharmacy",
+    "labelDays_one": "for {{count}} day",
+    "labelDays_other": "for {{count}} days"
   },
   "queuePage": {
     "title": "My queue · {{desk}}",

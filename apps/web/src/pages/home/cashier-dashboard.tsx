@@ -30,6 +30,7 @@ import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { MyQueuePanel } from './role-panels'
+import { DebtsPanel } from '@/pages/finance/finance-pages'
 
 const METHOD_ICON: Record<string, LucideIcon> = {
   cash: Banknote,
@@ -45,7 +46,7 @@ const METHOD_COLORS = ['var(--mmc-green-dot)', 'var(--mmc-yellow-dot)', 'var(--m
  */
 export function CashierDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
-  const { data: s, refetch, isFetching, dataUpdatedAt } = useCashierSummary(null)
+  const { data: s, error, refetch, isFetching, dataUpdatedAt } = useCashierSummary(null)
   const { data: home } = useHomeSummary()
   const { data: queue = [] } = useQueueBoard('cashier', user.role)
   const rows = openItems(queue)
@@ -90,6 +91,15 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             {t('finance.openBillsBtn')}
           </StaffLink>
         </div>
+
+        {error && (
+          <p
+            role="alert"
+            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+          >
+            {t('dashboard.loadFailed', { message: error.message })}
+          </p>
+        )}
 
         {s && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4">
@@ -240,7 +250,8 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                 counts={{
                   waiting: rows.filter((r) => !r.startedAt).length,
                   inProgress: rows.filter((r) => r.startedAt).length,
-                  done: s?.count ?? 0,
+                  // patients finished at this desk today (not the number of payments)
+                  done: s?.served ?? s?.count ?? 0,
                 }}
                 rowAction="open"
               />
@@ -297,6 +308,8 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             </Panel>
             <NoticesPanel limit={4} />
           </div>
+          {/* money still owed on visits already over: collected here when the patient comes back */}
+          {(s?.debts ?? 0) > 0 && <DebtsPanel canTake />}
         </section>
         <DoctorCalendarsSection user={user} />
       </main>

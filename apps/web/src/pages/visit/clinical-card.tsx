@@ -20,6 +20,7 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { treatmentName, useTreatments } from '@/lib/api/catalogue'
 import { useClinicalActions, useItems, useVisitClinical, type Item } from '@/lib/api/patients'
+import { useStockActions } from '@/lib/api/stock'
 import { useClinicInfo } from '@/lib/api/public'
 import { stationFor, type Station } from '@/lib/api/visits'
 import { openPrescription, type RxDocMedicine } from '@/lib/prescription-doc'
@@ -99,6 +100,7 @@ export function ClinicalCard({
   const tests = treatments.filter((x) => x.orderStation)
   const desks = [...new Set(tests.map((x) => x.orderStation!))]
   const can = useCan(user)
+  const stock = useStockActions()
   const readOnly = closed || !!lockedNote
   const clinician =
     (user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager') &&
@@ -295,13 +297,13 @@ export function ClinicalCard({
     if (!ok) setLocalError(t('report.popupBlocked'))
   }
 
-  const run = async (fn: () => Promise<unknown>, done: string) => {
+  const run = async (fn: () => Promise<unknown>, done: string | (() => string)) => {
     setLocalError(null)
     onError(null)
     try {
       await fn()
       setMode(null)
-      onDone(done)
+      onDone(typeof done === 'function' ? done() : done)
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : String(e))
     }
@@ -336,11 +338,14 @@ export function ClinicalCard({
       if (!item || !Number.isFinite(q) || q <= 0) return setLocalError(t('clinical.errors.rx'))
       prepared.push({ item, line, q })
     }
+    // medicines given in the room without a price, or found in no store, are said
+    const unpriced: string[] = []
+    const noStock: string[] = []
     void run(
       async () => {
         // One prescription per medicine, in the order written; the pharmacy sees them together.
         for (const { item, line, q } of prepared) {
-          await actions.prescribe.mutateAsync({
+          const r = await actions.prescribe.mutateAsync({
             item,
             quantity: q,
             dose: line.dose,
@@ -351,10 +356,21 @@ export function ClinicalCard({
             supply: line.supply,
             station: stationFor(user),
           })
+          if (line.supply === 'room' && r) {
+            if (!r.charged) unpriced.push(item.name)
+            if (!r.stockTaken) noStock.push(item.name)
+          }
         }
         setRx([emptyLine()])
       },
-      t('clinical.rxSaved', { count: prepared.length }),
+      () =>
+        [
+          t('clinical.rxSaved', { count: prepared.length }),
+          unpriced.length ? t('clinical.roomUnpriced', { names: unpriced.join(', ') }) : '',
+          noStock.length ? t('clinical.roomNoStock', { names: noStock.join(', ') }) : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
     )
   }
   const submitOrder = (e: FormEvent) => {
@@ -861,6 +877,25 @@ export function ClinicalCard({
                   .join(' · ')}
               </span>
             </span>
+            {/* the pharmacy undoes a hand-over (wrong medicine, brought back unopened) */}
+            {r.dispensed &&
+              r.supply !== 'room' &&
+              (user.role === 'pharmacist' || user.role === 'manager') && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const reason = window.prompt(t('clinical.returnWhy', { item: r.item }))
+                    if (!reason) return
+                    void run(
+                      () => stock.returnMedicine.mutateAsync({ requestId: r.id, reason }),
+                      t('clinical.returned', { item: r.item }),
+                    )
+                  }}
+                >
+                  {t('clinical.returnMedicine')}
+                </Button>
+              )}
           </Row>
         ))}
       {data &&

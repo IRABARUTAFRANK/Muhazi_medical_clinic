@@ -54,8 +54,27 @@ export interface CashierSummary {
   openDue: number
   voided?: VoidedPayment[]
   closes?: CashClose[]
-  /** What I should hold per method (my payments of the day). */
+  /** What I should hold per method (my payments of the day less money I gave back). */
   myExpected?: Record<string, number>
+  /** Patients the cashier desk finished with that day (0064). */
+  served?: number
+  /** Money given back that day (an overpaid bill). */
+  refunded?: number
+  refunds?: Refund[]
+  /** Money still owed on visits already over. */
+  debts?: number
+  debtsDue?: number
+}
+export interface Refund {
+  id: string
+  at: string
+  method: string
+  amount: number
+  reference: string | null
+  reason: string
+  patient: string
+  cashier: string | null
+  mine: boolean
 }
 
 const at = (h: number, m: number) => {

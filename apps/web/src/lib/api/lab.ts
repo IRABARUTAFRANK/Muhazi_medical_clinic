@@ -43,6 +43,17 @@ export interface LabSummary {
   orderedToday: number
   turnaroundMin: number
   byTest: { test: string; count: number }[]
+  /** Tests the bench could not do today, with the reason (0064). */
+  notDone?: {
+    id: string
+    test: string
+    at: string
+    encounterId: string
+    patient: string
+    reason: string | null
+  }[]
+  /** Patients the lab / ultrasound desk finished with today. */
+  served?: number
 }
 
 const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString()

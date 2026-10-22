@@ -45,34 +45,24 @@ export type Sex = 'female' | 'male' | 'other' | 'unknown'
 
 /** Where this staff member works, for the emergency path and for "my queue". */
 export function stationFor(user: StaffUser): Station {
+  // the desk roles work at their own desk, whatever the station text says
+  // ("Pharmacy cashier" is a cashier)
+  if (user.role === 'cashier') return 'cashier'
+  if (user.role === 'receptionist') return 'reception'
+  if (user.role === 'pharmacist') return 'pharmacy'
+  if (user.dbRole === 'sonographer') return 'ultrasound'
+  if (user.role === 'lab_tech') return 'laboratory'
   const s = (user.station ?? '').toLowerCase()
   if (s.includes('dent')) return 'dental'
   if (s.includes('lab')) return 'laboratory'
   if (s.includes('ultra') || s.includes('echo')) return 'ultrasound'
-  if (s.includes('pharm')) return 'pharmacy'
+  if (s.includes('pharm') || s.includes('farum')) return 'pharmacy'
   if (s.includes('theat') || s.includes('surg')) return 'theatre'
   if (s.includes('triage')) return 'triage'
   if (s.includes('nurs')) return 'nursing'
   if (s.includes('recep')) return 'reception'
   if (s.includes('cash') || s.includes('caiss')) return 'cashier'
-  // sonographers share the lab dashboard but work at the ultrasound desk
-  if (user.dbRole === 'sonographer') return 'ultrasound'
-  switch (user.role) {
-    case 'receptionist':
-      return 'reception'
-    case 'nurse':
-      return 'triage'
-    case 'doctor':
-      return 'consultation'
-    case 'cashier':
-      return 'cashier'
-    case 'pharmacist':
-      return 'pharmacy'
-    case 'lab_tech':
-      return 'laboratory'
-    default:
-      return 'consultation'
-  }
+  return user.role === 'nurse' ? 'triage' : 'consultation'
 }
 
 // ---------------------------------------------------------------- patient search

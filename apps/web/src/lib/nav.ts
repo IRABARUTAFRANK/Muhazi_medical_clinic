@@ -65,9 +65,8 @@ export const NURSE_NAV: NavItem[] = [
   NOTICES,
 ]
 
-/** Stock: the pharmacy, the laboratory (reagents, supplies) and a doctor at the pharmacy desk. */
+/** Stock: the pharmacy and the laboratory (reagents, supplies). */
 const STOCK: NavItem = { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' }
-const atPharmacy = (user: StaffUser) => /pharm|farum/i.test(user.station ?? '')
 /** The person's own calendar (hours, days off, bookings). */
 const CALENDAR: NavItem = {
   id: 'calendar',
@@ -121,12 +120,6 @@ const navForStaff = (user: StaffUser): NavItem[] =>
               ? [...ROLE_HOME.lab_tech.nav, CALENDAR, PATIENTS, HISTORY, NOTICES]
               : [...ROLE_HOME.lab_tech.nav, STOCK, PATIENTS, HISTORY, NOTICES]
             : user.role === 'doctor'
-              ? [
-                  ...ROLE_HOME.doctor.nav,
-                  IN_CLINIC,
-                  PATIENTS,
-                  ...(atPharmacy(user) ? [STOCK] : []),
-                  HISTORY,
-                  NOTICES,
-                ]
-              : [...ROLE_HOME[user.role].nav, HISTORY, NOTICES]
+              ? [...ROLE_HOME.doctor.nav, IN_CLINIC, PATIENTS, HISTORY, NOTICES]
+              : // the cashier looks a patient up to collect what a past visit still owes
+                [...ROLE_HOME.cashier.nav, PATIENTS, HISTORY, NOTICES]

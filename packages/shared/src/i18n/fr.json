@@ -1340,7 +1340,21 @@
     "cashierNote": "Les signes vitaux, soins et médicaments sont ajoutés par les médecins et infirmiers. Ici, vous encaissez le paiement.",
     "taken": "Vous avez pris ce patient.",
     "take": "Prendre ce patient",
-    "takeHint": "Vous vous occupez de ce patient : les collègues du poste voient que vous l’avez pris."
+    "takeHint": "Vous vous occupez de ce patient : les collègues du poste voient que vous l’avez pris.",
+    "refund": {
+      "done": "{{amount}} rendus. La facture ne doit plus rien.",
+      "title": "Rendre de l’argent",
+      "owed": "à rendre",
+      "lead": "Un acte a été retiré après paiement : le patient a payé plus que la facture. Rendez la différence et dites pourquoi.",
+      "method": "Rendu par",
+      "reason": "Pourquoi",
+      "reasonPh": "ex. examen non fait, médicament non remis",
+      "give": "Rendre {{amount}}",
+      "errors": {
+        "amount": "Rendez au plus {{amount}}.",
+        "reason": "Dites pourquoi l’argent est rendu."
+      }
+    }
   },
   "settings": {
     "title": "Paramètres de la clinique",
@@ -1743,7 +1757,12 @@
     "correctionWhy": "Pourquoi le résultat est-il corrigé ?",
     "correctionPh": "ex. mauvaise étiquette, faute de frappe",
     "saveCorrection": "Enregistrer la correction",
-    "correctResult": "Corriger le résultat"
+    "correctResult": "Corriger le résultat",
+    "roomUnpriced": "Pas de prix pour {{names}} : pas sur la facture.",
+    "roomNoStock": "{{names}} : introuvable dans un magasin ici, donc non sorti du stock.",
+    "returnWhy": "Pourquoi {{item}} revient-il ? (mauvais médicament, non ouvert…)",
+    "returned": "{{item}} est de retour en stock et retiré de la facture.",
+    "returnMedicine": "Rapporté"
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -2680,7 +2699,12 @@
     },
     "cannotPh": "Ou écrivez la raison",
     "cannotConfirm": "Confirmer : non fait",
-    "queueUltrasound": "Patients à l’échographie"
+    "queueUltrasound": "Patients à l’échographie",
+    "stockWatch": "Stock du labo à surveiller",
+    "stockFine": "Rien de bas ni de périmé au labo.",
+    "expiresOn": "périme le {{date}}",
+    "notDoneToday": "Examens non faits aujourd’hui",
+    "slipTitleImaging": "Résultat d’échographie"
   },
   "finance": {
     "desk": "Caisse",
@@ -2740,7 +2764,9 @@
     "difference": "Écart {{amount}}",
     "countSaved": "Comptage enregistré. Écart : {{diff}}.",
     "countsOfDay": "Comptages du jour",
-    "expectedCounted": "attendu {{expected}} · compté {{counted}}"
+    "expectedCounted": "attendu {{expected}} · compté {{counted}}",
+    "refundsTitle": "Argent rendu ce jour",
+    "reprint": "Ouvrir la visite pour réimprimer le reçu"
   },
   "calendar": {
     "title": "Mon agenda",
@@ -2976,7 +3002,9 @@
       "quantity": "Entrez une quantité supérieure à zéro.",
       "cost": "Entrez le coût unitaire (0 accepté).",
       "short": "Seulement {{count}} disponibles dans ce magasin.",
-      "storeName": "Donnez un nom au magasin."
+      "storeName": "Donnez un nom au magasin.",
+      "expiry": "Donnez la date de péremption écrite sur la boîte.",
+      "countWhy": "Dites pourquoi le comptage change."
     },
     "useTitle": "Utiliser ou sortir du stock",
     "useLead": "Ce qui sort sans vente : périmé, abîmé, utilisé à un poste, ou une correction d’inventaire. C’est noté dans les mouvements avec la raison.",
@@ -2994,7 +3022,18 @@
     "reorderAsk": "Signaler {{name}} en rupture quand le stock atteint (0 = jamais) :",
     "reorderBad": "Tapez un nombre entier, 0 ou plus.",
     "reorderEdit": "Changer le seuil de ce médicament",
-    "reorderNone": "pas de seuil"
+    "reorderNone": "pas de seuil",
+    "storeOpen": "rouvrir",
+    "storeClose": "fermer",
+    "counted": "Compté",
+    "countWhy": "Pourquoi l’écart",
+    "countWhyPh": "ex. inventaire mensuel, flacon cassé trouvé",
+    "countSave": "Corriger le comptage",
+    "countSaved": "{{item}} : {{before}} → {{after}} dans ce magasin.",
+    "countNow": "Le système indique {{count}} dans ce magasin.",
+    "countTitle": "Corriger un comptage",
+    "countLead": "Après avoir compté une étagère, tapez ce qui s’y trouve vraiment. L’écart est gardé avec sa raison.",
+    "reportMonth": "Mois du rapport"
   },
   "report": {
     "excel": "Excel",
@@ -3351,7 +3390,11 @@
     "sellHowPh": "ex. 1 comprimé 3 fois par jour pendant 5 jours",
     "sellNoPrice": "Ce médicament n’a pas de prix : il sera remis gratuitement. Fixez son prix dans Stock → Médicaments et prix.",
     "sellTotal": "À payer : {{amount}}",
-    "sell": "Vendre et remettre"
+    "sell": "Vendre et remettre",
+    "printLabels": "Imprimer les étiquettes",
+    "labelTitle": "Pharmacie",
+    "labelDays_one": "pendant {{count}} jour",
+    "labelDays_other": "pendant {{count}} jours"
   },
   "queuePage": {
     "title": "Ma file · {{desk}}",

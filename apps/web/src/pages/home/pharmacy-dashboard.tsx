@@ -21,6 +21,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { isLowStock, usePharmacyQueue, usePharmacySummary, useStockOverview } from '@/lib/api/stock'
+import { useCan } from '@/lib/api/permissions'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
@@ -38,9 +39,10 @@ import { MyQueuePanel } from './role-panels'
 export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const now = useNow(60_000)
+  const can = useCan(user)
   const { data: s, refetch, isFetching, dataUpdatedAt } = usePharmacySummary()
-  const { data: lines = [] } = usePharmacyQueue()
-  const { data: stock } = useStockOverview()
+  const { data: lines = [], refetch: refetchLines } = usePharmacyQueue()
+  const { data: stock, refetch: refetchStock } = useStockOverview()
   const { data: board = [] } = useQueueBoard('pharmacy', user.role)
   const { data: everyone = [] } = useQueueBoard('all', user.role)
   // every patient in the clinic now (one per visit), for a sale without a prescription
@@ -80,22 +82,33 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
           </div>
           <Button
             size="icon"
-            onClick={() => void refetch()}
+            onClick={() => {
+              // the figures, the hand-over list and the stock together
+              void refetch()
+              void refetchLines()
+              void refetchStock()
+            }}
             loading={isFetching}
             aria-label={t('dashboard.refresh')}
             title={t('dashboard.refresh')}
           >
             {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
           </Button>
+          {can('stock.write') && (
+            <StaffLink
+              to="/app/stock"
+              search={{ tab: 'receive' }}
+              className={buttonVariants({ size: 'md' })}
+            >
+              <PackagePlus size={16} aria-hidden="true" />
+              {t('pharmacy.receive')}
+            </StaffLink>
+          )}
           <StaffLink
             to="/app/stock"
-            search={{ tab: 'receive' }}
-            className={buttonVariants({ size: 'md' })}
+            search={{ tab: 'stock' }}
+            className={buttonVariants({ variant: 'primary', size: 'md' })}
           >
-            <PackagePlus size={16} aria-hidden="true" />
-            {t('pharmacy.receive')}
-          </StaffLink>
-          <StaffLink to="/app/stock" className={buttonVariants({ variant: 'primary', size: 'md' })}>
             <Warehouse size={16} aria-hidden="true" />
             {t('pharmacy.openStock')}
           </StaffLink>
@@ -210,7 +223,11 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                     ]}
                   />
                 )}
-                <StaffLink to="/app/stock" className={buttonVariants({ size: 'sm' })}>
+                <StaffLink
+                  to="/app/stock"
+                  search={{ tab: 'stock' }}
+                  className={buttonVariants({ size: 'sm' })}
+                >
                   {t('pharmacy.openStock')} →
                 </StaffLink>
               </Panel>

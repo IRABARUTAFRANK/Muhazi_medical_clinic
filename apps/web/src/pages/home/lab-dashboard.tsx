@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  Ban,
   CircleCheck,
   ClipboardList,
   Clock,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
-import { formatTime, type StaffUser } from '@mmc/shared'
+import { formatDate, formatNumber, formatTime, type StaffUser } from '@mmc/shared'
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Empty, Kpi, ListRows, Panel, Pill, SectionTitle } from '@/components/dash/kit'
@@ -26,13 +27,15 @@ import { ListBar, ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useLabSummary, useLabWorklist } from '@/lib/api/lab'
+import { isLowStock, useStockOverview } from '@/lib/api/stock'
 import { openItems, stationFor, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
 import { isLive } from '@/lib/supabase'
 import { LabOrderRow } from '../lab/lab-parts'
-import { MyQueuePanel } from './role-panels'
+import { ErrorBox, MyQueuePanel, ToAcceptPanel } from './role-panels'
+import { useHomeSummary } from '@/lib/api/home'
 import { CallsPanel } from './calls-panel'
 
 /**
@@ -51,7 +54,20 @@ export function LabDashboard({ user }: { user: StaffUser }) {
   const { data: queue = [] } = useQueueBoard(desk, user.role)
   const rows = openItems(queue)
   const [query, setQuery] = useState('')
+  // a sonographer keeps a calendar: the bookings made with them wait for their answer
+  const { data: home } = useHomeSummary()
+  const [bookingError, setBookingError] = useState<string | null>(null)
   const bench = open.filter((o) => matches(query, o.patient, o.test, o.fileNumber, o.ticket))
+  // the laboratory's own shelves (reagents, supplies): low or expiring soon
+  const { data: stock } = useStockOverview()
+  const labStores = (stock?.locations ?? []).filter((l) => l.type === 'lab').map((l) => l.id)
+  const watch = (stock?.items ?? [])
+    .filter((i) => i.active && labStores.some((id) => (i.byLocation[id] ?? 0) > 0))
+    .filter(
+      (i) =>
+        isLowStock(i) ||
+        (i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 60 * 86_400_000),
+    )
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
@@ -186,7 +202,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
                 counts={{
                   waiting: rows.filter((r) => !r.startedAt).length,
                   inProgress: rows.filter((r) => r.startedAt).length,
-                  done: 0,
+                  done: s?.served ?? 0,
                 }}
                 rowAction="call"
               />
@@ -209,10 +225,64 @@ export function LabDashboard({ user }: { user: StaffUser }) {
                   />
                 </Panel>
               )}
+              {user.dbRole === 'sonographer' && home && (
+                <>
+                  {bookingError && <ErrorBox>{bookingError}</ErrorBox>}
+                  <ToAcceptPanel items={home.toAccept} onError={setBookingError} />
+                </>
+              )}
+              {user.dbRole !== 'sonographer' && labStores.length > 0 && (
+                <Panel
+                  i={4}
+                  icon={Warehouse}
+                  tint="amber"
+                  title={t('lab.stockWatch')}
+                  right={String(watch.length)}
+                >
+                  {watch.length === 0 ? (
+                    <Empty>{t('lab.stockFine')}</Empty>
+                  ) : (
+                    <ListRows
+                      rows={watch.map((i) => ({
+                        key: i.id,
+                        pill: (
+                          <Pill tint={isLowStock(i) ? 'coral' : 'amber'}>
+                            {formatNumber(
+                              labStores.reduce((n, id) => n + (i.byLocation[id] ?? 0), 0),
+                            )}
+                          </Pill>
+                        ),
+                        label: i.name,
+                        value: isLowStock(i)
+                          ? t('stock.low')
+                          : t('lab.expiresOn', { date: formatDate(new Date(i.earliestExpiry!)) }),
+                      }))}
+                    />
+                  )}
+                </Panel>
+              )}
               <NoticesPanel limit={4} />
             </div>
           </div>
         </section>
+
+        {(s?.notDone ?? []).length > 0 && (
+          <Panel
+            i={2}
+            icon={Ban}
+            tint="coral"
+            title={t('lab.notDoneToday')}
+            right={String(s!.notDone!.length)}
+          >
+            <ListRows
+              rows={s!.notDone!.map((x) => ({
+                key: x.id,
+                label: `${x.test} · ${x.patient}`,
+                value: [formatTime(new Date(x.at)), x.reason].filter(Boolean).join(' · '),
+              }))}
+            />
+          </Panel>
+        )}
 
         <section className="flex flex-col gap-3">
           <SectionTitle icon={CircleCheck}>{t('lab.doneToday')}</SectionTitle>

@@ -705,7 +705,8 @@ export function useClinicalActions(encounterId: string) {
         })
         return
       }
-      await call('prescribe', {
+      // a medicine given in the room: was it billed, did it leave a store?
+      const r = (await call('prescribe', {
         p_supply: i.supply ?? 'pharmacy',
         p_station: i.station ?? null,
         p_encounter_id: encounterId,
@@ -716,7 +717,8 @@ export function useClinicalActions(encounterId: string) {
         p_frequency: i.frequency || null,
         p_duration_days: i.days ?? null,
         p_instructions: i.instructions || null,
-      })
+      })) as { charged?: boolean; stockTaken?: boolean } | null
+      return { charged: r?.charged ?? true, stockTaken: r?.stockTaken ?? true }
     },
     onSuccess: refresh,
   })

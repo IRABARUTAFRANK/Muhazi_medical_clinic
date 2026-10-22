@@ -49,6 +49,7 @@ import { stockReport } from '@/lib/reports/build'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
+import { useCan } from '@/lib/api/permissions'
 import { cn } from '@/lib/utils'
 import { PharmacyDesk } from './pharmacy-desk'
 import { MedicinesSection } from '../prices/medicines-section'
@@ -88,8 +89,12 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
   const now = useNow(60_000)
   const items = data?.items ?? []
   const { data: info } = useClinicInfo()
-  const reportFrom = monthStart()
-  const reportTo = isoDate(new Date(now))
+  // the report covers a chosen month (this month: up to today)
+  const [reportMonth, setReportMonth] = useState(() => isoDate(new Date()).slice(0, 7))
+  const [ry, rm] = reportMonth.split('-').map(Number)
+  const reportFrom = isoDate(new Date(ry!, rm! - 1, 1))
+  const monthEnd = isoDate(new Date(ry!, rm!, 0))
+  const reportTo = monthEnd < isoDate(new Date(now)) ? monthEnd : isoDate(new Date(now))
   const { data: reportMoves = [] } = useStockMovements(reportFrom, reportTo, null)
   const { data: reportSales } = useStockSales(reportFrom, reportTo)
   const locations = data?.locations ?? []
@@ -100,8 +105,10 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
   ).length
   // what each role may do here (the database refuses the rest): the pharmacy and the manager
   // run everything; the lab keeps its reagents; nurses and doctors use and look up stock
+  const can = useCan(user)
   const fullStock = user.role === 'manager' || user.role === 'pharmacist'
-  const keepsStore = fullStock || user.role === 'lab_tech'
+  // receiving, sending, counting: whoever keeps a store (Who may do what decides)
+  const keepsStore = can('stock.write')
   const tabs = TABS.filter((x) =>
     x.id === 'pharmacy' || x.id === 'medicines' || x.id === 'sales'
       ? fullStock
@@ -124,6 +131,16 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
             </BannerChip>
           }
         >
+          <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">
+            <span className="text-ink-3 text-[13px]">{t('stock.reportMonth')}</span>
+            <input
+              type="month"
+              value={reportMonth}
+              max={isoDate(new Date()).slice(0, 7)}
+              onChange={(e) => e.target.value && setReportMonth(e.target.value)}
+              className="bg-transparent outline-none"
+            />
+          </label>
           <ReportButtons
             build={() =>
               stockReport(
@@ -226,7 +243,12 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
         )}
         {tab === 'moves' && <Movements items={items} />}
         {tab === 'sales' && <Sales />}
-        {tab === 'stores' && <Stores locations={locations} />}
+        {tab === 'stores' && (
+          <>
+            <Stores locations={locations} />
+            <CountForm items={items} locations={locations} />
+          </>
+        )}
       </main>
     </StaffShell>
   )
@@ -400,9 +422,10 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
   const { t } = useTranslation()
   const actions = useStockActions()
   const [itemId, setItemId] = useState('')
-  const [locationId, setLocationId] = useState(
-    locations.find((l) => l.type === 'main_store')?.id ?? locations[0]?.id ?? '',
-  )
+  const [chosenLocation, setLocationId] = useState('')
+  // the main store until another is chosen (the stores may load after the form)
+  const locationId =
+    chosenLocation || (locations.find((l) => l.type === 'main_store')?.id ?? locations[0]?.id ?? '')
   const [quantity, setQuantity] = useState('')
   const [unitCost, setUnitCost] = useState('')
   const [batchNo, setBatchNo] = useState('')
@@ -421,6 +444,7 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
       return setMsg({ ok: false, text: t('stock.errors.quantity') })
     if (!Number.isFinite(c) || c < 0 || unitCost === '')
       return setMsg({ ok: false, text: t('stock.errors.cost') })
+    if (!expiry) return setMsg({ ok: false, text: t('stock.errors.expiry') })
     try {
       await actions.receive.mutateAsync({
         itemId,
@@ -501,6 +525,7 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
             label={t('stock.expiry')}
             type="date"
             value={expiry}
+            required
             onChange={(e) => setExpiry(e.target.value)}
           />
         </div>
@@ -544,7 +569,8 @@ function SendForm({ items, locations }: { items: StockItem[]; locations: StockLo
   const { t } = useTranslation()
   const actions = useStockActions()
   const [itemId, setItemId] = useState('')
-  const [from, setFrom] = useState(locations.find((l) => l.type === 'main_store')?.id ?? '')
+  const [chosenFrom, setFrom] = useState('')
+  const from = chosenFrom || (locations.find((l) => l.type === 'main_store')?.id ?? '')
   const [to, setTo] = useState('')
   const [quantity, setQuantity] = useState('')
   const [reason, setReason] = useState('')
@@ -669,9 +695,9 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
   const { t } = useTranslation()
   const actions = useStockActions()
   const [itemId, setItemId] = useState('')
-  const [from, setFrom] = useState(
-    locations.find((l) => l.type === 'pharmacy')?.id ?? locations[0]?.id ?? '',
-  )
+  const [chosenFrom, setFrom] = useState('')
+  const from =
+    chosenFrom || (locations.find((l) => l.type === 'pharmacy')?.id ?? locations[0]?.id ?? '')
   const [quantity, setQuantity] = useState('')
   const [why, setWhy] = useState<(typeof USE_REASONS)[number]>('expired')
   const [note, setNote] = useState('')
@@ -1057,9 +1083,23 @@ function Stores({ locations }: { locations: StockLocation[] }) {
             className="border-border bg-surface inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px]"
           >
             <Store size={14} aria-hidden="true" className="text-ink-3" />
-            <b>{l.name}</b>
+            <b className={cn(l.active === false && 'text-ink-3 line-through')}>{l.name}</b>
             <span className="text-ink-3">{t(`stock.storeTypes.${l.type}`)}</span>
             {l.department && <span className="text-violet">{l.department}</span>}
+            <button
+              type="button"
+              className="text-primary text-[12px] font-semibold underline-offset-2 hover:underline"
+              onClick={() => {
+                setMsg(null)
+                actions.setLocationActive
+                  .mutateAsync({ id: l.id, active: l.active === false })
+                  .catch((e: unknown) =>
+                    setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) }),
+                  )
+              }}
+            >
+              {l.active === false ? t('stock.storeOpen') : t('stock.storeClose')}
+            </button>
           </span>
         ))}
       </div>
@@ -1100,6 +1140,102 @@ function Stores({ locations }: { locations: StockLocation[] }) {
           {t('stock.addStore')}
         </Button>
       </form>
+      {msg && (
+        <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
+          {msg.text}
+        </Flash>
+      )}
+    </Panel>
+  )
+}
+
+/** The shelf was counted: the store's stock becomes the count; the difference keeps its reason. */
+function CountForm({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
+  const { t } = useTranslation()
+  const actions = useStockActions()
+  const [itemId, setItemId] = useState('')
+  const [chosen, setLocationId] = useState('')
+  const locationId = chosen || (locations[0]?.id ?? '')
+  const [counted, setCounted] = useState('')
+  const [reason, setReason] = useState('')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const item = items.find((i) => i.id === itemId)
+  const current = item ? (item.byLocation[locationId] ?? 0) : 0
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setMsg(null)
+    const n = Number(counted)
+    if (!itemId) return setMsg({ ok: false, text: t('stock.errors.item') })
+    if (!locationId) return setMsg({ ok: false, text: t('stock.errors.store') })
+    if (counted === '' || !Number.isInteger(n) || n < 0)
+      return setMsg({ ok: false, text: t('stock.reorderBad') })
+    if (reason.trim().length < 3) return setMsg({ ok: false, text: t('stock.errors.countWhy') })
+    try {
+      await actions.adjust.mutateAsync({ itemId, locationId, counted: n, reason })
+      setMsg({
+        ok: true,
+        text: t('stock.countSaved', { item: item?.name ?? '', before: current, after: n }),
+      })
+      setCounted('')
+      setReason('')
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) })
+    }
+  }
+  return (
+    <Panel i={2} icon={Boxes} tint="teal" title={t('stock.countTitle')}>
+      <p className="text-ink-2 m-0 text-[13px]">{t('stock.countLead')}</p>
+      <form
+        onSubmit={(e) => void submit(e)}
+        className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_120px]"
+      >
+        <Select
+          label={t('stock.cols.item')}
+          value={itemId}
+          onChange={(e) => setItemId(e.target.value)}
+        >
+          <option value="">{t('visit.add.pickItem')}</option>
+          {items
+            .filter((i) => i.active)
+            .map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+                {i.strength ? ` ${i.strength}` : ''}
+              </option>
+            ))}
+        </Select>
+        <Select
+          label={t('stock.store')}
+          value={locationId}
+          onChange={(e) => setLocationId(e.target.value)}
+        >
+          {locations.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </Select>
+        <Field
+          label={t('stock.counted')}
+          inputMode="numeric"
+          value={counted}
+          placeholder={String(current)}
+          onChange={(e) => setCounted(e.target.value.replace(/[^\d]/g, ''))}
+        />
+        <Field
+          label={t('stock.countWhy')}
+          value={reason}
+          placeholder={t('stock.countWhyPh')}
+          onChange={(e) => setReason(e.target.value)}
+          wrapperClassName="sm:col-span-2"
+        />
+        <Button type="submit" variant="primary" loading={actions.adjust.isPending}>
+          {t('stock.countSave')}
+        </Button>
+      </form>
+      {item && (
+        <p className="text-ink-3 m-0 text-[13px]">{t('stock.countNow', { count: current })}</p>
+      )}
       {msg && (
         <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
           {msg.text}

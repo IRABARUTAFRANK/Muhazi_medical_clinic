@@ -63,6 +63,8 @@ export interface VisitBill {
   /** What the patient still owes (patient share minus payments). */
   balance: number
   paid: number
+  /** Money given back (an overpaid bill, 0064). */
+  refunded?: number
   /** Last payment: when and by whom (the green "paid" mark). */
   settledAt?: string | null
   settledBy?: string | null
@@ -258,6 +260,7 @@ interface BillRow {
   insurer_share: number | string
   balance: number | string | null
   paid: number | string | null
+  refunded?: number | string | null
   number: string | null
   settled_at?: string | null
   settled_by?: string | null
@@ -307,6 +310,7 @@ export function useVisitBill(encounterId: string) {
         insurerShare: Number(b?.insurer_share ?? 0),
         balance: Number(b?.balance ?? b?.patient_share ?? 0),
         paid: Number(b?.paid ?? 0),
+        refunded: Number(b?.refunded ?? 0),
         settledAt: b?.settled_at ?? null,
         settledBy: b?.settled_by ?? null,
         charges: ((lines ?? []) as ChargeRow[]).map((c) => ({
@@ -540,5 +544,30 @@ export function useBillingActions(encounterId: string) {
     },
   })
 
-  return { addCharge, voidCharge, setPayer, finishStation, sendTo, takePayment }
+  /** Give back what an overpaid bill holds (a charge removed after payment). */
+  const refund = useMutation({
+    mutationFn: async (i: {
+      method: 'cash' | 'momo' | 'airtel'
+      amount: number
+      reason: string
+      reference?: string
+    }) => {
+      if (!supabase) {
+        const b = sampleBill(encounterId)
+        b.paid -= i.amount
+        recompute(b)
+        return
+      }
+      const { error } = await supabase.rpc('refund_payment', {
+        p_encounter_id: encounterId,
+        p_amount: i.amount,
+        p_method: i.method,
+        p_reason: i.reason,
+        p_reference: i.reference?.trim() || null,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: refresh,
+  })
+  return { addCharge, voidCharge, setPayer, finishStation, sendTo, takePayment, refund }
 }

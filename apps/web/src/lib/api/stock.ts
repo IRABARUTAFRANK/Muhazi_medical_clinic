@@ -13,6 +13,8 @@ export interface StockLocation {
   name: string
   type: 'main_store' | 'pharmacy' | 'nursing' | 'lab' | 'theatre'
   department: string | null
+  /** false: closed (no longer used). */
+  active?: boolean
 }
 export interface StockItem {
   id: string
@@ -496,7 +498,42 @@ export function useStockActions() {
       call('set_reorder_level', { p_item_id: i.itemId, p_level: i.level }),
     onSuccess: refresh,
   })
-  return { receive, transfer, use, dispense, notGiven, sell, saveLocation, setReorderLevel }
+  /** The shelf was counted: the store's stock becomes that count (difference kept with its reason). */
+  const adjust = useMutation({
+    mutationFn: (i: { itemId: string; locationId: string; counted: number; reason: string }) =>
+      call('adjust_stock', {
+        p_item_id: i.itemId,
+        p_location_id: i.locationId,
+        p_counted: i.counted,
+        p_reason: i.reason.trim(),
+      }),
+    onSuccess: refresh,
+  })
+  /** A store no longer used is closed (once empty); it can be opened again. */
+  const setLocationActive = useMutation({
+    mutationFn: (i: { id: string; active: boolean }) =>
+      call('set_location_active', { p_id: i.id, p_active: i.active }),
+    onSuccess: refresh,
+  })
+  /** A hand-over undone: back to the store, off the bill, waiting at the pharmacy again. */
+  const returnMedicine = useMutation({
+    mutationFn: (i: { requestId: string; reason: string }) =>
+      call('return_medicine', { p_medication_request_id: i.requestId, p_reason: i.reason.trim() }),
+    onSuccess: refresh,
+  })
+  return {
+    returnMedicine,
+    receive,
+    transfer,
+    use,
+    dispense,
+    notGiven,
+    sell,
+    saveLocation,
+    setReorderLevel,
+    adjust,
+    setLocationActive,
+  }
 }
 
 /** The pharmacy desk's figures (migration 0056). */

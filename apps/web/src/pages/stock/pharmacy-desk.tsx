@@ -1,6 +1,8 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
-import { Ban, FolderOpen, PackageCheck, Pill, ShoppingBag } from 'lucide-react'
+import { Ban, FolderOpen, PackageCheck, Pill, Printer, ShoppingBag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { openDispenseLabels } from '@/lib/dispense-label'
+import { useLetterhead } from '@/lib/report-parts'
 import { formatRwf, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +32,7 @@ const REASONS = ['outOfStock', 'boughtElsewhere', 'refused'] as const
  */
 export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; step?: number }) {
   const { t } = useTranslation()
+  const letterhead = useLetterhead()
   const { data: queue = [] } = usePharmacyQueue()
   const actions = useStockActions()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -136,6 +139,37 @@ export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; 
                       >
                         <FolderOpen size={14} aria-hidden="true" />
                       </StaffLink>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title={t('pharmacy.printLabels')}
+                        aria-label={t('pharmacy.printLabels')}
+                        onClick={() => {
+                          const ok = openDispenseLabels(
+                            {
+                              clinic: { name: letterhead.name, contacts: letterhead.contacts },
+                              patient: { name: first.patient, fileNumber: first.file },
+                              date: new Date(),
+                              lines: lines.map((q) => ({
+                                item: q.item,
+                                quantity: q.quantity,
+                                unit: q.unit,
+                                dose: q.dose,
+                                frequency: q.frequency,
+                                days: q.days,
+                                instructions: q.instructions,
+                              })),
+                            },
+                            {
+                              title: t('pharmacy.labelTitle'),
+                              days: (n) => t('pharmacy.labelDays', { count: n }),
+                            },
+                          )
+                          if (!ok) setMsg({ ok: false, text: t('report.popupBlocked') })
+                        }}
+                      >
+                        <Printer size={14} aria-hidden="true" />
+                      </Button>
                       {canDispense && lines.length > 1 && (
                         <Button
                           size="sm"

@@ -6,6 +6,7 @@ import {
   CalendarDays,
   HandCoins,
   Printer,
+  Undo2,
   Receipt,
   Smartphone,
   type LucideIcon,
@@ -53,7 +54,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   // the manager sees every bill but takes payments only when allowed (Who may do what)
   const canTake = useCan(user)('payment.take')
-  const { data: home } = useHomeSummary()
+  const { data: home, error: loadError } = useHomeSummary()
   const bills = home?.openBills ?? []
   const [query, setQuery] = useState('')
   const shown = bills.filter((b) => matches(query, b.name, b.file, b.ticket))
@@ -73,6 +74,14 @@ export function BillsPage({ user }: { user: StaffUser }) {
             </BannerChip>
           }
         />
+        {loadError && (
+          <p
+            role="alert"
+            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+          >
+            {t('dashboard.loadFailed', { message: loadError.message })}
+          </p>
+        )}
         <Panel i={1} icon={Receipt} tint="coral" title={t('home.openBills')}>
           <ListBar query={query} onQuery={setQuery} placeholderKey="list.searchPatient" />
           {paged.total === 0 ? (
@@ -130,7 +139,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
  * Money still owed on finished visits (the patient left without paying, with the manager's
  * reason): it can be paid when the patient comes back, from the visit's payment card.
  */
-function DebtsPanel({ canTake }: { canTake: boolean }) {
+export function DebtsPanel({ canTake }: { canTake: boolean }) {
   const { t } = useTranslation()
   const { data: debts = [] } = useUnpaidDebts()
   const total = debts.reduce((s, d) => s + d.amount, 0)
@@ -191,7 +200,7 @@ function DebtsPanel({ canTake }: { canTake: boolean }) {
 export function PaymentsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const [day, setDay] = useState(today)
-  const { data: s } = useCashierSummary(day)
+  const { data: s, error: loadError } = useCashierSummary(day)
   const { data: info } = useClinicInfo()
   const [method, setMethod] = useState<string>('all')
   const [query, setQuery] = useState('')
@@ -252,6 +261,15 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
             {t('finance.printDay')}
           </Button>
         </PageBanner>
+
+        {loadError && (
+          <p
+            role="alert"
+            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+          >
+            {t('dashboard.loadFailed', { message: loadError.message })}
+          </p>
+        )}
 
         {/* Day close: totals by method and by cashier */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -395,7 +413,19 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                         <td className="py-2 text-right font-bold tabular-nums">
                           {formatRwf(p.amount)}
                         </td>
-                        <td className="py-2 pl-2 text-right print:hidden">
+                        <td className="py-2 pl-2 text-right whitespace-nowrap print:hidden">
+                          {/* the visit prints the receipt again (all its payments) */}
+                          {p.encounterId && (
+                            <StaffLink
+                              to="/app/visit"
+                              search={{ encounter: p.encounterId }}
+                              className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                              title={t('finance.reprint')}
+                              aria-label={t('finance.reprint')}
+                            >
+                              <Printer size={14} aria-hidden="true" />
+                            </StaffLink>
+                          )}
                           {(isManager || (p.mine && !p.counted && day === today())) && (
                             <Button
                               size="sm"
@@ -476,6 +506,35 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                   <span className="text-ink-3 font-bold tabular-nums line-through">
                     {formatRwf(v.amount)}
                   </span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
+        {s && (s.refunds ?? []).length > 0 && (
+          <Panel
+            i={5}
+            icon={Undo2}
+            tint="amber"
+            title={t('finance.refundsTitle')}
+            right={formatRwf(s.refunded ?? 0)}
+          >
+            <div className="flex flex-col">
+              {s.refunds!.map((r) => (
+                <div
+                  key={r.id}
+                  className="border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[14px] last:border-b-0"
+                >
+                  <span className="text-ink-2 w-12 tabular-nums">{formatTime(new Date(r.at))}</span>
+                  <span className="min-w-[180px] flex-1">
+                    <span className="block font-semibold">
+                      {r.patient} · {methodName(r.method)}
+                    </span>
+                    <span className="text-ink-3 block text-[13px]">
+                      {[r.reference, `“${r.reason}”`, r.cashier].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  <span className="text-amber font-bold tabular-nums">−{formatRwf(r.amount)}</span>
                 </div>
               ))}
             </div>

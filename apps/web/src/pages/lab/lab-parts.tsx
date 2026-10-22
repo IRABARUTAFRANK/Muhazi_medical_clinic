@@ -77,7 +77,7 @@ export function LabOrderRow({
     const ok = openMedicalReport(
       {
         kind: 'visit',
-        title: t('lab.slipTitle'),
+        title: o.category === 'imaging' ? t('lab.slipTitleImaging') : t('lab.slipTitle'),
         clinic: letterhead,
         patient: {
           name: o.patient,
@@ -105,7 +105,11 @@ export function LabOrderRow({
             medicines: [],
           },
         ],
-        author: { name: o.resultBy ?? '', title: t('roles.lab_tech') },
+        author: {
+          name: o.resultBy ?? '',
+          title:
+            o.category === 'imaging' ? t('staff.roles.sonographer') : t('staff.roles.lab_tech'),
+        },
       },
       labels,
     )

@@ -2800,6 +2800,104 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0064: cashier, lab, pharmacy desks
+await step(
+  '0064: a hand-over undone comes off the bill; the overpaid money is given back; counts corrected; a lab call takes no doctor patient',
+  async () => {
+    const p = await visitAt('Rosine')
+    await as(staff.manager)
+    const item = (
+      await one(`select upsert_item(null, 'Ibuprofen 64', 100, '400 mg', 'tablet', 'tab') as id`)
+    ).id
+    const main = (await one(`select id from stock_location where type = 'main_store' limit 1`)).id
+    const pharm = (
+      await one(`select id from stock_location where type = 'pharmacy' and active limit 1`)
+    ).id
+    let noExpiry = 'ok'
+    try {
+      await db.query(`select receive_stock($1, $2, 10, 50)`, [item, main])
+    } catch (e) {
+      noExpiry = String(e.message).split('\n')[0]
+    }
+    await db.query(`select receive_stock($1, $2, 40, 50, 'IBU-64', '2029-06-30')`, [item, main])
+    await db.query(`select transfer_stock($1, $2, $3, 20)`, [item, main, pharm])
+    // the main store holds 18, not 20: the count is corrected with its reason
+    const diff = (await one(`select adjust_stock($1, $2, 18, 'monthly count') as d`, [item, main]))
+      .d
+    // prescribed, handed over, paid, then brought back: off the bill, money given back
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    const rx = (
+      await one(
+        `select prescribe($1, $2, 5, '1 tab', 'oral', 'three times a day', 2, null, 'pharmacy') as j`,
+        [p.enc, item],
+      )
+    ).j
+    await as(staff.pharmacist)
+    await db.query(`select dispense_prescription($1)`, [rx.id])
+    await as(staff.cashier)
+    await db.query(`select take_payment($1, 'cash', 500)`, [p.enc])
+    await as(staff.pharmacist)
+    const back = (await one(`select return_medicine($1, 'wrong strength') as r`, [rx.id])).r
+    const inPharm = Number(
+      (
+        await one(
+          `select coalesce(sum(quantity), 0) as n from stock_on_hand where item_id = $1 and location_id = $2`,
+          [item, pharm],
+        )
+      ).n,
+    )
+    await as(staff.cashier)
+    let tooMuch = 'ok'
+    try {
+      await db.query(`select refund_payment($1, 900, 'cash', 'returned medicine')`, [p.enc])
+    } catch (e) {
+      tooMuch = String(e.message).split('\n')[0]
+    }
+    const refunded = (
+      await one(`select refund_payment($1, 500, 'cash', 'returned medicine') as r`, [p.enc])
+    ).r
+    const day = (await one(`select cashier_summary() as s`)).s
+    // a lab call never pulls a patient waiting for the doctor
+    const q2 = await visitAt('Divine')
+    await as(staff.lab_tech)
+    const call = (await one(`select call_next('laboratory', 'reception', null, null) as id`)).id
+    let labPull = 'ok'
+    await as(staff.receptionist)
+    try {
+      await db.query(`select answer_call($1, $2)`, [call, q2.queue])
+    } catch (e) {
+      labPull = String(e.message).split('\n')[0]
+    }
+    await as(staff.lab_tech)
+    await db.query(`select cancel_call($1)`, [call]).catch(() => {})
+    await asAdmin()
+    if (
+      !/expiry/.test(noExpiry) ||
+      Number(diff) !== -2 ||
+      Number(back.balance) !== -500 ||
+      inPharm !== 20 ||
+      !/at most/.test(tooMuch) ||
+      Number(refunded.balance) !== 0 ||
+      Number(day.refunded) < 500 ||
+      !/only a patient already sent/.test(labPull)
+    )
+      throw new Error(
+        JSON.stringify({
+          noExpiry,
+          diff,
+          back,
+          inPharm,
+          tooMuch,
+          refunded,
+          refundedDay: day.refunded,
+          labPull,
+        }),
+      )
+    return 'count -2 kept; returned to the shelf; 500 given back (not 900); lab call refused a doctor patient'
+  },
+)
+
 finish()
 
 function finish() {

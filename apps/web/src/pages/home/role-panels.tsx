@@ -459,26 +459,7 @@ function NursePanels({ data, onError }: PanelProps) {
 
 function DoctorPanels({ data, onError }: PanelProps) {
   const { t } = useTranslation()
-  const actions = useHomeActions()
   const mine = data.appointments.filter((a) => a.mine)
-  const accept = async (id: string) => {
-    onError(null)
-    try {
-      await actions.acceptAppointment.mutateAsync({ id })
-    } catch (e) {
-      onError(describe(e))
-    }
-  }
-  const decline = async (id: string) => {
-    const reason = window.prompt(t('home.declineReason'))
-    if (!reason) return
-    onError(null)
-    try {
-      await actions.declineAppointment.mutateAsync({ id, reason })
-    } catch (e) {
-      onError(describe(e))
-    }
-  }
   return (
     <>
       <Panel
@@ -543,44 +524,78 @@ function DoctorPanels({ data, onError }: PanelProps) {
             )}
           </ShownList>
         </Panel>
-        <Panel
-          i={4}
-          icon={MessageSquare}
-          tint="amber"
-          title={t('home.inquiriesToAccept')}
-          right={String(data.toAccept.length)}
-        >
-          {data.toAccept.length === 0 && <Empty>{t('home.nothingToAccept')}</Empty>}
-          <ShownList items={data.toAccept} step={5}>
-            {(shown) => (
-              <div className="flex flex-col">
-                {shown.map((q, i) => (
-                  <div key={q.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
-                    <Pill tint="violet" icon={CalendarCheck}>
-                      {q.when}
-                    </Pill>
-                    <span className="min-w-[140px] flex-1">
-                      <span className="block truncate font-semibold">{q.name}</span>
-                      {q.note && <span className="text-ink-3 block text-[13px]">{q.note}</span>}
-                    </span>
-                    <span className="flex gap-1">
-                      <Button variant="primary" size="sm" onClick={() => void accept(q.id)}>
-                        <Check size={14} aria-hidden="true" />
-                        {t('common.accept')}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => void decline(q.id)}>
-                        <X size={14} aria-hidden="true" />
-                        {t('common.decline')}
-                      </Button>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ShownList>
-        </Panel>
+        <ToAcceptPanel items={data.toAccept} onError={onError} />
       </div>
     </>
+  )
+}
+
+/** Bookings approved by reception that this practitioner (doctor, sonographer) accepts or declines. */
+export function ToAcceptPanel({
+  items,
+  onError,
+}: {
+  items: HomeSummary['toAccept']
+  onError: (message: string | null) => void
+}) {
+  const { t } = useTranslation()
+  const actions = useHomeActions()
+  const accept = async (id: string) => {
+    onError(null)
+    try {
+      await actions.acceptAppointment.mutateAsync({ id })
+    } catch (e) {
+      onError(describe(e))
+    }
+  }
+  const decline = async (id: string) => {
+    const reason = window.prompt(t('home.declineReason'))
+    if (!reason) return
+    onError(null)
+    try {
+      await actions.declineAppointment.mutateAsync({ id, reason })
+    } catch (e) {
+      onError(describe(e))
+    }
+  }
+  const data = { toAccept: items }
+  return (
+    <Panel
+      i={4}
+      icon={MessageSquare}
+      tint="amber"
+      title={t('home.inquiriesToAccept')}
+      right={String(data.toAccept.length)}
+    >
+      {data.toAccept.length === 0 && <Empty>{t('home.nothingToAccept')}</Empty>}
+      <ShownList items={data.toAccept} step={5}>
+        {(shown) => (
+          <div className="flex flex-col">
+            {shown.map((q, i) => (
+              <div key={q.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
+                <Pill tint="violet" icon={CalendarCheck}>
+                  {q.when}
+                </Pill>
+                <span className="min-w-[140px] flex-1">
+                  <span className="block truncate font-semibold">{q.name}</span>
+                  {q.note && <span className="text-ink-3 block text-[13px]">{q.note}</span>}
+                </span>
+                <span className="flex gap-1">
+                  <Button variant="primary" size="sm" onClick={() => void accept(q.id)}>
+                    <Check size={14} aria-hidden="true" />
+                    {t('common.accept')}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => void decline(q.id)}>
+                    <X size={14} aria-hidden="true" />
+                    {t('common.decline')}
+                  </Button>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </ShownList>
+    </Panel>
   )
 }
 

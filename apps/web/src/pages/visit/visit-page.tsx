@@ -565,9 +565,19 @@ export function VisitPage({
 
               <div className="flex flex-col gap-4">
                 {/* a finished visit still owing money can be paid later (debt) */}
-                {can('payment.take') && bill && (!closed || bill.balance > 0) && (
+                {can('payment.take') && bill && (!closed || bill.balance !== 0) && (
                   <PaymentCard
                     bill={bill}
+                    onRefund={async (input) => {
+                      setActionError(null)
+                      try {
+                        await actions.refund.mutateAsync(input)
+                        setDone(t('visit.refund.done', { amount: formatRwf(input.amount) }))
+                      } catch (e) {
+                        setActionError(describe(e))
+                        throw e
+                      }
+                    }}
                     onPay={async (input) => {
                       setActionError(null)
                       try {
@@ -729,6 +739,7 @@ function PaidMark({ bill }: { bill: VisitBill }) {
 function PaymentCard({
   bill,
   onPay,
+  onRefund,
 }: {
   bill: VisitBill
   onPay: (input: {
@@ -736,6 +747,13 @@ function PaymentCard({
     amount: number
     reference?: string
     phone?: string
+  }) => Promise<void>
+  /** An overpaid bill (a paid charge removed): give the difference back. */
+  onRefund: (input: {
+    method: Method
+    amount: number
+    reason: string
+    reference?: string
   }) => Promise<void>
 }) {
   const { t } = useTranslation()
@@ -747,6 +765,89 @@ function PaymentCard({
   const [error, setError] = useState<string | null>(null)
   const settled = bill.balance <= 0 && bill.total > 0
   const needsRef = method !== 'cash'
+  const overpaid = bill.balance < 0 ? -bill.balance : 0
+  const [reason, setReason] = useState('')
+
+  const giveBack = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    const n = Number(amount || overpaid)
+    if (!Number.isFinite(n) || n <= 0 || n > overpaid + 0.5)
+      return setError(t('visit.refund.errors.amount', { amount: formatRwf(overpaid) }))
+    if (reason.trim().length < 3) return setError(t('visit.refund.errors.reason'))
+    if (needsRef && !reference.trim()) return setError(t('visit.payment.errors.reference'))
+    setBusy(true)
+    try {
+      await onRefund({ method, amount: Math.round(n), reason: reason.trim(), reference })
+      setAmount('')
+      setReason('')
+      setReference('')
+    } catch {
+      /* shown by the page */
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (overpaid > 0)
+    return (
+      <Card className="border-amber">
+        <CardHeader>
+          <span>{t('visit.refund.title')}</span>
+          <span className="text-ink-2 text-[13px] tabular-nums">
+            {t('visit.refund.owed')} <b className="text-ink">{formatRwf(overpaid)}</b>
+          </span>
+        </CardHeader>
+        <form onSubmit={giveBack}>
+          <CardBody className="gap-3">
+            <p className="text-ink-2 m-0 text-[13px]">{t('visit.refund.lead')}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Select
+                label={t('visit.refund.method')}
+                value={method}
+                onChange={(e) => setMethod(e.target.value as Method)}
+              >
+                {METHODS.map((m) => (
+                  <option key={m} value={m}>
+                    {t(`visit.payment.methods.${m}`)}
+                  </option>
+                ))}
+              </Select>
+              <Field
+                label={t('visit.payment.amount')}
+                inputMode="numeric"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/[^d]/g, ''))}
+                placeholder={String(overpaid)}
+              />
+            </div>
+            <Field
+              label={t('visit.refund.reason')}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={t('visit.refund.reasonPh')}
+              required
+            />
+            {needsRef && (
+              <Field
+                label={t('visit.payment.reference')}
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                required
+              />
+            )}
+            {error && (
+              <p role="alert" className={errorBox}>
+                {error}
+              </p>
+            )}
+            <Button type="submit" variant="primary" className="self-start" disabled={busy}>
+              {t('visit.refund.give', { amount: formatRwf(Number(amount || overpaid) || 0) })}
+            </Button>
+          </CardBody>
+        </form>
+      </Card>
+    )
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
