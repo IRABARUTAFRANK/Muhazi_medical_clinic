@@ -8,6 +8,11 @@ export interface Journey {
   status: 'open' | 'closed'
   closedAt: string | null
   closedBy: string | null
+  /** When the doctor finished the treatment (0070); why the patient left without paying. */
+  treatmentDoneAt?: string | null
+  leftReason?: string | null
+  /** What the patient came for (consultation, dental, circ…). */
+  service?: string | null
   triage: string | null
   triageReason: string | null
   steps: {
@@ -21,6 +26,8 @@ export interface Journey {
     referredBy: string | null
     note: string | null
     enteredBy: string | null
+    service?: string | null
+    department?: string | null
   }[]
   vitals: {
     code: string

@@ -58,15 +58,7 @@
     "changePinHint": "Hitamo PIN nshya"
   },
   "days": {
-    "short": [
-      "Cyu",
-      "Mbe",
-      "Kab",
-      "Gat",
-      "Kan",
-      "Gnu",
-      "Gnd"
-    ],
+    "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],
     "long": [
       "Ku cyumweru",
       "Kuwa mbere",
@@ -3601,6 +3593,27 @@
     "load": "{{waiting}} bategereje · {{seeing}} ari kumwe na bo",
     "goViaTriage": "Mwohereze gupimwa, hanyuma kuri {{service}}",
     "goToPerson": "Mwohereze kuri {{name}}",
-    "triageFirstThen": "“Gupimwa mbere” birakora (Igenamiterere): umuforomo abanza gupima, hanyuma akohereza umurwayi kuri serivisi n’umuntu wahisemo hano."
+    "triageFirstThen": "“Gupimwa mbere” birakora (Igenamiterere): umuforomo abanza gupima, hanyuma akohereza umurwayi kuri serivisi n’umuntu wahisemo hano.",
+    "noNurse": "Nta muforomo urakora ku gupima. Umurwayi ategereza ku gupima umuforomo uwo ari we wese.",
+    "whoMeasures": "Ni uwuhe muforomo ubanza gupima?"
+  },
+  "track": {
+    "title": "Aho umurwayi ageze mu ruzinduko",
+    "started": "Rwatangiye {{time}}",
+    "until": "kugeza {{time}}",
+    "with": "ari kumwe na {{name}} kuva {{time}}",
+    "for": "agenewe {{name}}",
+    "anyone": "agenewe uwo ari we wese",
+    "waiting_one": "amaze iminota {{count}} ategereje",
+    "waiting_other": "amaze iminota {{count}} ategereje",
+    "treated": "Ubuvuzi bwarangiye",
+    "notYet": "ntibirarangira",
+    "payment": "Kwishyura",
+    "nothingToPay": "nta cyo kwishyura",
+    "pending": "Ategerejwe kwishyura",
+    "paid": "Yishyuye",
+    "left": "Yagiye",
+    "inClinic": "aracyari mu ivuriro",
+    "followOnly": "Umurwayi yavuye ku kwakira: ufite umurwayi ubu ni we umwohereza ahandi. Ukurikirana uruzinduko ku murongo uri hejuru."
   }
 }

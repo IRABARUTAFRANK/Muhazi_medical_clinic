@@ -40,6 +40,7 @@ import { type Sex, type VisitResult } from '@/lib/api/visits'
 import { useDeskOps } from '@/lib/api/desk-ops'
 import { useStaffSettings } from '@/lib/api/settings'
 import { VisitJourney } from '@/components/clinical/visit-journey'
+import { VisitTrack } from '@/components/clinical/visit-track'
 import { navForUser } from '@/lib/nav'
 import { ShownList } from '@/components/ui/list-tools'
 import { Flash } from '@/components/ui/flash'
@@ -926,6 +927,10 @@ function Visits({
                 )}
               </Row>
               <div className="px-4 pb-3">
+                {/* the visit's track: always for the visit in progress, else with the details */}
+                {(v.status === 'open' || shown === v.id) && (
+                  <VisitTrack encounterId={v.id} className="mb-2.5" />
+                )}
                 <Button
                   size="sm"
                   variant={shown === v.id ? 'default' : 'ghost'}

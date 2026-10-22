@@ -57,24 +57,8 @@
     "changePinHint": "Choose a new PIN"
   },
   "days": {
-    "short": [
-      "Sun",
-      "Mon",
-      "Tue",
-      "Wed",
-      "Thu",
-      "Fri",
-      "Sat"
-    ],
-    "long": [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday"
-    ]
+    "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "long": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   },
   "nav": {
     "services": "Services",
@@ -3600,6 +3584,27 @@
     "load": "{{waiting}} waiting · {{seeing}} with them",
     "goViaTriage": "Send to Triage, then {{service}}",
     "goToPerson": "Send to {{name}}",
-    "triageFirstThen": "“Triage first” is on (Settings): the nurse measures first, then sends the patient to the service and the person chosen here."
+    "triageFirstThen": "“Triage first” is on (Settings): the nurse measures first, then sends the patient to the service and the person chosen here.",
+    "noNurse": "No nurse works at triage yet. The patient waits at triage for any nurse.",
+    "whoMeasures": "Which nurse measures first?"
+  },
+  "track": {
+    "title": "Where the patient is in the visit",
+    "started": "Started {{time}}",
+    "until": "until {{time}}",
+    "with": "with {{name}} since {{time}}",
+    "for": "for {{name}}",
+    "anyone": "for anyone",
+    "waiting_one": "waiting {{count}} min",
+    "waiting_other": "waiting {{count}} min",
+    "treated": "Treatment finished",
+    "notYet": "not yet",
+    "payment": "Payment",
+    "nothingToPay": "nothing to pay",
+    "pending": "Payment pending",
+    "paid": "Paid",
+    "left": "Left",
+    "inClinic": "still in the clinic",
+    "followOnly": "The patient has left reception: the person who has the patient now sends them on. You follow the visit on the track above."
   }
 }

@@ -2279,11 +2279,18 @@ await step(
   },
 )
 await step(
-  '0057: reception sends on a patient waiting at another desk; the old place ends',
+  // 0070: once the patient has left reception, reception follows the visit and no longer sends on
+  '0057/0070: reception does not send on a patient already sent to another desk; it follows the visit',
   async () => {
     const p = await visitAt('Fiona')
+    let refused = ''
     await as(staff.receptionist)
-    await db.query(`select finish_station($1, 'reception', 'laboratory')`, [p.enc])
+    try {
+      await db.query(`select finish_station($1, 'reception', 'laboratory')`, [p.enc])
+    } catch (e) {
+      refused = String(e.message).split('\n')[0]
+    }
+    const access = (await one(`select visit_access($1) as a`, [p.enc])).a
     await asAdmin()
     const open = (
       await db.query(
@@ -2291,8 +2298,9 @@ await step(
         [p.enc],
       )
     ).rows.map((r) => r.station)
-    if (JSON.stringify(open) !== '["laboratory"]') throw new Error(JSON.stringify(open))
-    return 'consultation place ended, now at the laboratory'
+    if (!refused || access.canRoute !== false || JSON.stringify(open) !== '["consultation"]')
+      throw new Error(JSON.stringify({ refused, access, open }))
+    return 'refused; still at consultation; reception follows (canRoute false)'
   },
 )
 await step(
@@ -2587,9 +2595,16 @@ await step(
 )
 await step('0060: answering a call does not pull a patient out of the lab', async () => {
   const p = await visitAt('Mireille')
-  await as(staff.receptionist)
-  await db.query(`select finish_station($1, 'reception', 'laboratory')`, [p.enc])
+  // the patient is at the laboratory (moved directly for the test)
   await asAdmin()
+  await db.query(
+    `update queue_entry set finished_at = now() where encounter_id = $1 and finished_at is null`,
+    [p.enc],
+  )
+  await db.query(
+    `insert into queue_entry (encounter_id, station, ticket_no) select $1, 'laboratory', ticket_no from queue_entry where encounter_id = $1 limit 1`,
+    [p.enc],
+  )
   const lab = await one(
     `select id from queue_entry where encounter_id = $1 and station = 'laboratory' and finished_at is null`,
     [p.enc],
@@ -3322,6 +3337,65 @@ await step(
         JSON.stringify({ circ: circ.staff.length, wrong, q1, told, load, v2: v2.station, q2 }),
       )
     return 'circ lists the dentist; wrong person refused; sent to the dentist at Minor surgery (told, load 1); after triage at Dental with the dentist'
+  },
+)
+
+// ---------------------------------------------------------------- 0070: a named triage nurse; the visit's track
+await step(
+  '0070: triage to one named nurse (the other nurses do not get the patient); the track has the treatment and the bill',
+  async () => {
+    await asAdmin()
+    const nurse2 = (
+      await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+        'a.umutoni@staff.muhaziclinic.rw',
+        JSON.stringify({
+          username: 'a.umutoni',
+          full_name: 'Umutoni Aline',
+          role: 'nurse',
+          station: 'Triage',
+        }),
+      ])
+    ).id
+    await as(staff.receptionist)
+    const tri = (await one(`select service_staff('triage') as s`)).s
+    const r = (
+      await one(`select register_patient_file('Gasana', 'Yves 70', 'male', null, 33, null) as r`)
+    ).r
+    const v = (
+      await one(
+        `select begin_visit(p_patient_id => $1, p_station => 'triage', p_triage_to => $2) as v`,
+        [r.patient_id, staff.nurse],
+      )
+    ).v
+    await asAdmin()
+    const q = await one(
+      `select id, station::text, assigned_to from queue_entry where encounter_id = $1`,
+      [v.encounter_id],
+    )
+    await as(nurse2)
+    const other = (await one(`select queue_entry_for_me($1) as ok`, [q.id])).ok
+    await as(staff.nurse)
+    const mine = (await one(`select queue_entry_for_me($1) as ok`, [q.id])).ok
+    // reception now only follows this patient
+    await as(staff.receptionist)
+    const access = (await one(`select visit_access($1) as a`, [v.encounter_id])).a
+    const track = (await one(`select visit_journey($1) as j`, [v.encounter_id])).j
+    await asAdmin()
+    if (
+      !tri.staff.some((p) => p.id === staff.nurse) ||
+      !tri.staff.some((p) => p.id === nurse2) ||
+      q.station !== 'triage' ||
+      q.assigned_to !== staff.nurse ||
+      other ||
+      !mine ||
+      access.canRoute !== false ||
+      !('treatmentDoneAt' in track) ||
+      track.steps.length !== 1
+    )
+      throw new Error(
+        JSON.stringify({ tri: tri.staff.length, q, other, mine, access, keys: Object.keys(track) }),
+      )
+    return 'both nurses listed; sent to one; the other cannot take; reception follows; track fields'
   },
 )
 

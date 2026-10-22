@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   FolderOpen,
+  Footprints,
   HandHelping,
   Lock,
   Plus,
@@ -45,6 +46,7 @@ import { useMyCover } from '@/lib/api/cover'
 import { useVisitRouting } from '@/lib/api/referrals'
 import { ClinicalCard } from './clinical-card'
 import { WhereNextCard } from './where-next-card'
+import { VisitTrack } from '@/components/clinical/visit-track'
 import { useCan } from '@/lib/api/permissions'
 import { useVisitAccess } from '@/lib/api/calls'
 import { HelpCard } from './help-card'
@@ -306,6 +308,8 @@ export function VisitPage({
                   </Button>
                 </p>
               )}
+            {/* where the patient is in the visit: start → each desk → treatment → payment → left */}
+            <VisitTrack encounterId={encounterId} />
             {closed && (
               <p className="bg-green-bg text-green m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
                 <CheckCircle2 size={18} aria-hidden="true" />
@@ -695,12 +699,20 @@ export function VisitPage({
                   />
                 )}
 
-                {isReception && (
+                {/* reception sends the patient on while the patient is with reception; once
+                    sent to a desk, reception follows the visit (the track above) */}
+                {isReception && !closed && routeLocked && (
+                  <p className="bg-primary-tint text-primary m-0 flex items-start gap-2 rounded-xl px-3 py-2.5 text-[14px]">
+                    <Footprints size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
+                    {t('track.followOnly')}
+                  </p>
+                )}
+                {isReception && !routeLocked && (
                   <WhereNextCard
                     encounterId={encounterId}
                     myStation={myStation}
                     isReception={isReception}
-                    closed={closed || routeLocked}
+                    closed={closed}
                     onDone={(m) => {
                       setActionError(null)
                       setDone(m)

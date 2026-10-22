@@ -71,14 +71,50 @@ const sampleStaff = (service: ServiceId): ServiceStaff => ({
   ),
 })
 
-/** Who gives this service now (send the patient to the section or to one of them). */
-export function useServiceStaff(service: ServiceId | null) {
+/**
+ * Who gives this service now (send the patient to the section or to one of them); `triage`:
+ * the nurses at triage.
+ */
+export function useServiceStaff(service: ServiceId | 'triage' | null) {
   return useQuery({
     queryKey: ['service-staff', service],
     enabled: !!service,
     refetchInterval: 30_000,
     queryFn: async (): Promise<ServiceStaff> => {
-      if (!supabase) return sampleStaff(service!)
+      if (!supabase)
+        return service === 'triage'
+          ? {
+              service: 'nursing',
+              station: 'triage',
+              sectionWaiting: 1,
+              staff: [
+                {
+                  id: 'u-n1',
+                  name: 'Nyirahabimana Chantal',
+                  role: 'nurse',
+                  station: 'Triage',
+                  departments: null,
+                  specialty: null,
+                  workingNow: null,
+                  onDuty: true,
+                  waiting: 1,
+                  seeing: 0,
+                },
+                {
+                  id: 'u-n2',
+                  name: 'Umutoni Aline',
+                  role: 'nurse',
+                  station: 'Triage',
+                  departments: null,
+                  specialty: null,
+                  workingNow: null,
+                  onDuty: false,
+                  waiting: 0,
+                  seeing: 0,
+                },
+              ],
+            }
+          : sampleStaff(service!)
       const { data, error } = await supabase.rpc('service_staff', { p_service: service })
       if (error) throw new Error(error.message)
       const d = data as ServiceStaff

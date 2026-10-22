@@ -175,6 +175,8 @@ export interface SendChoice {
   service?: string | null
   /** One person of that service (else anyone in the section). */
   assignedTo?: string | null
+  /** The nurse who measures, when the visit starts at triage (else any nurse there). */
+  triageTo?: string | null
   /** What the patient comes for (shown to the desk). */
   note?: string
   /** The person registering treats the patient: the visit starts at their desk, taken by them. */
@@ -312,6 +314,7 @@ export function useVisitActions() {
         p_emergency: i.emergency,
         p_service: i.service ?? null,
         p_assigned_to: i.assignedTo ?? null,
+        p_triage_to: i.triageTo ?? null,
       })
       if (error) throw new Error(error.message)
       const v = data as VisitJson & { myself?: boolean }

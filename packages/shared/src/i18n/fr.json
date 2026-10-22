@@ -57,24 +57,8 @@
     "changePinHint": "Choisir un nouveau PIN"
   },
   "days": {
-    "short": [
-      "Dim",
-      "Lun",
-      "Mar",
-      "Mer",
-      "Jeu",
-      "Ven",
-      "Sam"
-    ],
-    "long": [
-      "Dimanche",
-      "Lundi",
-      "Mardi",
-      "Mercredi",
-      "Jeudi",
-      "Vendredi",
-      "Samedi"
-    ]
+    "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
+    "long": ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
   },
   "nav": {
     "services": "Services",
@@ -3600,6 +3584,27 @@
     "load": "{{waiting}} en attente · {{seeing}} avec lui",
     "goViaTriage": "Envoyer au tri, puis {{service}}",
     "goToPerson": "Envoyer à {{name}}",
-    "triageFirstThen": "« Tri d’abord » est activé (Paramètres) : l’infirmier mesure d’abord, puis envoie le patient au service et à la personne choisis ici."
+    "triageFirstThen": "« Tri d’abord » est activé (Paramètres) : l’infirmier mesure d’abord, puis envoie le patient au service et à la personne choisis ici.",
+    "noNurse": "Aucun infirmier ne travaille encore au tri. Le patient attend au tri n’importe quel infirmier.",
+    "whoMeasures": "Quel infirmier mesure d’abord ?"
+  },
+  "track": {
+    "title": "Où en est le patient dans la visite",
+    "started": "Commencée à {{time}}",
+    "until": "jusqu’à {{time}}",
+    "with": "avec {{name}} depuis {{time}}",
+    "for": "pour {{name}}",
+    "anyone": "pour n’importe qui",
+    "waiting_one": "attend depuis {{count}} min",
+    "waiting_other": "attend depuis {{count}} min",
+    "treated": "Traitement terminé",
+    "notYet": "pas encore",
+    "payment": "Paiement",
+    "nothingToPay": "rien à payer",
+    "pending": "Paiement en attente",
+    "paid": "Payé",
+    "left": "Parti",
+    "inClinic": "encore à la clinique",
+    "followOnly": "Le patient a quitté la réception : la personne qui a le patient l’envoie plus loin. Vous suivez la visite sur le parcours ci-dessus."
   }
 }

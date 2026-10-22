@@ -29,6 +29,7 @@ import {
   useServiceStaff,
   type ServiceId,
   type ServicePerson,
+  type ServiceStaff,
 } from '@/lib/api/services'
 import { stationFor, useVisitActions, type Station, type VisitResult } from '@/lib/api/visits'
 import { useReveal } from '@/lib/hooks'
@@ -102,9 +103,13 @@ export function SendPatientCard({
   )
   const service = target === 'myself' || target === 'triage' ? null : target
   const [person, setPerson] = useState<string>('') // '' = anyone in the section
+  // the visit starts at triage (chosen, or "triage first" before a service): which nurse
+  const atTriage = target === 'triage' || (viaTriage && !!service)
+  const [nurse, setNurse] = useState<string>('') // '' = any nurse at triage
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
   const { data: staff, isLoading: staffLoading } = useServiceStaff(service)
+  const { data: nurses, isLoading: nursesLoading } = useServiceStaff(atTriage ? 'triage' : null)
   // it opens at the top of the page while the button pressed is lower: bring it into view, the
   // cursor on the chosen option (arrow keys change it)
   const ref = useReveal<HTMLElement>({ focus: true })
@@ -122,6 +127,7 @@ export function SendPatientCard({
   const serviceName = (s: ServiceId) =>
     s === 'pharmacy' ? t('register.stations.pharmacy') : t(`categories.${s}`)
   const chosen = staff?.staff.find((p) => p.id === person)
+  const chosenNurse = nurses?.staff.find((p) => p.id === nurse)
 
   const start = async () => {
     setError(null)
@@ -132,6 +138,7 @@ export function SendPatientCard({
         station,
         service,
         assignedTo: service && person ? person : null,
+        triageTo: atTriage && nurse ? nurse : null,
         note,
         myself: target === 'myself',
         emergency,
@@ -158,6 +165,7 @@ export function SendPatientCard({
         onChange={() => {
           setTarget(key)
           setPerson('')
+          setNurse('')
         }}
       />
       <span className="text-primary mt-0.5 shrink-0">{icon}</span>
@@ -173,7 +181,9 @@ export function SendPatientCard({
     target === 'myself'
       ? t('sendPatient.goMyself')
       : target === 'triage'
-        ? t('sendPatient.goTo', { desk: t('register.stations.triage') })
+        ? chosenNurse
+          ? t('sendPatient.goToPerson', { name: chosenNurse.name })
+          : t('sendPatient.goTo', { desk: t('register.stations.triage') })
         : viaTriage
           ? t('sendPatient.goViaTriage', { service: serviceName(target) })
           : chosen
@@ -236,6 +246,20 @@ export function SendPatientCard({
           )}
         </div>
 
+        {/* triage chosen: the nurses at triage, so the patient goes to the one meant */}
+        {target === 'triage' && (
+          <WhoPicker
+            name={`nurse-${patient.id}`}
+            title={t('sendPatient.whoTitle', { service: t('register.stations.triage') })}
+            anyone={t('sendPatient.anyoneIn', { service: t('register.stations.triage') })}
+            data={nurses}
+            loading={nursesLoading}
+            value={nurse}
+            onChange={setNurse}
+            empty={t('sendPatient.noNurse')}
+          />
+        )}
+
         <span className="text-ink-2 text-[13px] font-semibold">{t('sendPatient.byService')}</span>
         {viaTriage && (
           <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px]">
@@ -260,44 +284,29 @@ export function SendPatientCard({
 
         {/* the chosen service is the section: anyone in it, or one person of it */}
         {service && (
-          <div
-            className="border-border flex flex-col gap-1.5 rounded-xl border p-2.5"
-            role="radiogroup"
-            aria-label={t('sendPatient.whoTitle', { service: serviceName(service) })}
-          >
-            <span className="text-ink-2 px-1 text-[13px] font-semibold">
-              {t('sendPatient.whoTitle', { service: serviceName(service) })}
-            </span>
-            <PersonRow
-              name={`who-${patient.id}`}
-              checked={person === ''}
-              onPick={() => setPerson('')}
-              title={t('sendPatient.anyoneIn', { service: serviceName(service) })}
-              detail={t('sendPatient.anyoneHint', { count: staff?.sectionWaiting ?? 0 })}
-              icon={<Users size={16} aria-hidden="true" />}
-            />
-            {staff?.staff.map((p) => (
-              <PersonRow
-                key={p.id}
-                name={`who-${patient.id}`}
-                checked={person === p.id}
-                onPick={() => setPerson(p.id)}
-                title={p.name}
-                detail={[
-                  p.specialty || t(`staff.roles.${p.role}`, { defaultValue: p.role }),
-                  p.departments,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-                person={p}
-              />
-            ))}
-            {!staffLoading && staff && staff.staff.length === 0 && (
-              <p className="text-ink-3 m-0 px-1 text-[13px]">
-                {t('sendPatient.nobody', { service: serviceName(service) })}
-              </p>
-            )}
-          </div>
+          <WhoPicker
+            name={`who-${patient.id}`}
+            title={t('sendPatient.whoTitle', { service: serviceName(service) })}
+            anyone={t('sendPatient.anyoneIn', { service: serviceName(service) })}
+            data={staff}
+            loading={staffLoading}
+            value={person}
+            onChange={setPerson}
+            empty={t('sendPatient.nobody', { service: serviceName(service) })}
+          />
+        )}
+        {/* "triage first": the nurse who measures before the service */}
+        {service && viaTriage && (
+          <WhoPicker
+            name={`nurse-${patient.id}`}
+            title={t('sendPatient.whoMeasures')}
+            anyone={t('sendPatient.anyoneIn', { service: t('register.stations.triage') })}
+            data={nurses}
+            loading={nursesLoading}
+            value={nurse}
+            onChange={setNurse}
+            empty={t('sendPatient.noNurse')}
+          />
         )}
 
         <Field
@@ -330,6 +339,65 @@ export function SendPatientCard({
         </div>
       </CardBody>
     </Card>
+  )
+}
+
+/** "Who in …?": anyone in the section, or one person of it with what they do now. */
+function WhoPicker({
+  name,
+  title,
+  anyone,
+  data,
+  loading,
+  value,
+  onChange,
+  empty,
+}: {
+  name: string
+  title: string
+  anyone: string
+  data: ServiceStaff | undefined
+  loading: boolean
+  value: string
+  onChange: (id: string) => void
+  empty: string
+}) {
+  const { t } = useTranslation()
+  return (
+    <div
+      className="border-border flex flex-col gap-1.5 rounded-xl border p-2.5"
+      role="radiogroup"
+      aria-label={title}
+    >
+      <span className="text-ink-2 px-1 text-[13px] font-semibold">{title}</span>
+      <PersonRow
+        name={name}
+        checked={value === ''}
+        onPick={() => onChange('')}
+        title={anyone}
+        detail={t('sendPatient.anyoneHint', { count: data?.sectionWaiting ?? 0 })}
+        icon={<Users size={16} aria-hidden="true" />}
+      />
+      {data?.staff.map((p) => (
+        <PersonRow
+          key={p.id}
+          name={name}
+          checked={value === p.id}
+          onPick={() => onChange(p.id)}
+          title={p.name}
+          detail={[
+            p.specialty || t(`staff.roles.${p.role}`, { defaultValue: p.role }),
+            p.departments,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          person={p}
+        />
+      ))}
+      {!loading && data && data.staff.length === 0 && (
+        <p className="text-ink-3 m-0 px-1 text-[13px]">{empty}</p>
+      )}
+    </div>
   )
 }
 
