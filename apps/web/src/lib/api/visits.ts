@@ -171,6 +171,10 @@ export interface VisitResult {
 export interface SendChoice {
   station: Station
   departmentId?: string | null
+  /** The service the patient comes for (consultation, dental, circ…); it sets the desk. */
+  service?: string | null
+  /** One person of that service (else anyone in the section). */
+  assignedTo?: string | null
   /** What the patient comes for (shown to the desk). */
   note?: string
   /** The person registering treats the patient: the visit starts at their desk, taken by them. */
@@ -306,6 +310,8 @@ export function useVisitActions() {
         p_note: i.note?.trim() || null,
         p_myself: i.myself,
         p_emergency: i.emergency,
+        p_service: i.service ?? null,
+        p_assigned_to: i.assignedTo ?? null,
       })
       if (error) throw new Error(error.message)
       const v = data as VisitJson & { myself?: boolean }
@@ -498,6 +504,8 @@ export interface QueueItem extends QueueRow {
   assignedName?: string | null
   referredBy?: string | null
   referralNote?: string | null
+  /** The service the patient comes for (0069). */
+  service?: string | null
   /** Vitals already measured for this visit: when and by whom (migration 0039). */
   vitalsAt?: string | null
   vitalsBy?: string | null
@@ -531,6 +539,7 @@ interface BoardRow {
   assigned_name?: string | null
   referred_by_name?: string | null
   referral_note?: string | null
+  service?: string | null
   vitals_at?: string | null
   vitals_by?: string | null
   department_name?: string | null
@@ -568,6 +577,7 @@ const toItem = (r: BoardRow): QueueItem => ({
   assignedName: r.assigned_name ?? null,
   referredBy: r.referred_by_name ?? null,
   referralNote: r.referral_note ?? null,
+  service: r.service ?? null,
   vitalsAt: r.vitals_at ?? null,
   vitalsBy: r.vitals_by ?? null,
   departmentName: r.department_name ?? null,

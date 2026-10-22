@@ -3230,6 +3230,101 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0069: send by service, to the section or one person
+await step(
+  '0069: a service is its section; its people with their load; send to one of them; after triage the patient reaches them',
+  async () => {
+    // the dentist does circumcision too (written in the calendar's services)
+    await asAdmin()
+    await db.query(`update practitioner set categories = '{dental,circ}' where user_id = $1`, [
+      dentist,
+    ])
+    await as(staff.receptionist)
+    const circ = (await one(`select service_staff('circ') as s`)).s
+    const consult = (await one(`select service_staff('consultation') as s`)).s
+    const reg = async (given) =>
+      (
+        await one(`select register_patient_file('Habineza', $1, 'male', null, 9, null) as r`, [
+          given,
+        ])
+      ).r
+    const a = await reg('Eric 69')
+    // a person who does not give the service is refused
+    let wrong = 'ok'
+    try {
+      await db.query(
+        `select begin_visit(p_patient_id => $1, p_service => 'circ', p_assigned_to => $2)`,
+        [a.patient_id, d1],
+      )
+    } catch (e) {
+      wrong = String(e.message).split('\n')[0]
+    }
+    const v1 = (
+      await one(
+        `select begin_visit(p_patient_id => $1, p_service => 'circ', p_assigned_to => $2, p_note => 'circumcision 9 years') as v`,
+        [a.patient_id, dentist],
+      )
+    ).v
+    await asAdmin()
+    const q1 = await one(
+      `select station::text, assigned_to, service from queue_entry where encounter_id = $1`,
+      [v1.encounter_id],
+    )
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'referral' and recipient_user = $1 and params ->> 'queue' = (select id::text from queue_entry where encounter_id = $2)`,
+      [dentist, v1.encounter_id],
+    )
+    await as(staff.receptionist)
+    const load = (await one(`select service_staff('circ') as s`)).s.staff.find(
+      (p) => p.id === dentist,
+    )
+    // triage first: the nurse measures, then the patient reaches the dentist at Dental
+    await asAdmin()
+    await db.query(
+      `insert into setting (key, value) values ('flow', '{"triage_first": true}') on conflict (key) do update set value = excluded.value`,
+    )
+    const b = await (async () => {
+      await as(staff.receptionist)
+      return reg('Fils 69')
+    })()
+    await as(staff.receptionist)
+    const v2 = (
+      await one(
+        `select begin_visit(p_patient_id => $1, p_service => 'dental', p_assigned_to => $2) as v`,
+        [b.patient_id, dentist],
+      )
+    ).v
+    await as(staff.nurse)
+    await db.query(`select record_vitals($1, '{"temp": 36.8}'::jsonb, 'green', 'dental')`, [
+      v2.encounter_id,
+    ])
+    await asAdmin()
+    await db.query(`update setting set value = '{"triage_first": false}' where key = 'flow'`)
+    const q2 = await one(
+      `select station::text, assigned_to, service from queue_entry where encounter_id = $1 and station = 'dental' and finished_at is null`,
+      [v2.encounter_id],
+    )
+    if (
+      !circ.staff.some((p) => p.id === dentist) ||
+      consult.staff.some((p) => p.id === dentist) ||
+      !/does not give this service/.test(wrong) ||
+      q1.station !== 'theatre' ||
+      q1.assigned_to !== dentist ||
+      q1.service !== 'circ' ||
+      told.n < 1 ||
+      !load ||
+      Number(load.waiting) < 1 ||
+      v2.station !== 'triage' ||
+      q2?.assigned_to !== dentist ||
+      q2?.service !== 'dental'
+    )
+      throw new Error(
+        JSON.stringify({ circ: circ.staff.length, wrong, q1, told, load, v2: v2.station, q2 }),
+      )
+    return 'circ lists the dentist; wrong person refused; sent to the dentist at Minor surgery (told, load 1); after triage at Dental with the dentist'
+  },
+)
+
 finish()
 
 function finish() {

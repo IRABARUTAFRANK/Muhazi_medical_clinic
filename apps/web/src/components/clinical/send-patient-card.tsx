@@ -1,21 +1,36 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Activity, Building2, FilePlus2, History, Send, Siren, UserRoundCheck } from 'lucide-react'
+import {
+  Activity,
+  Baby,
+  FilePlus2,
+  FlaskConical,
+  History,
+  Pill,
+  Ribbon,
+  Scan,
+  Scissors,
+  Send,
+  Siren,
+  Smile,
+  Stethoscope,
+  Syringe,
+  UserRoundCheck,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, type StaffUser } from '@mmc/shared'
-import { stationIconFor } from '@/components/dash/kit-style'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
-import { Select } from '@/components/ui/select'
-import { useDepartments } from '@/lib/api/staff'
 import {
-  DESK_ROLE,
-  TREATING_STATIONS,
-  stationFor,
-  useVisitActions,
-  type Station,
-  type VisitResult,
-} from '@/lib/api/visits'
+  SERVICES,
+  SERVICE_DESK,
+  useServiceStaff,
+  type ServiceId,
+  type ServicePerson,
+} from '@/lib/api/services'
+import { stationFor, useVisitActions, type Station, type VisitResult } from '@/lib/api/visits'
 import { useReveal } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 
@@ -28,15 +43,28 @@ const MY_DESKS: Record<string, Station[]> = {
   pharmacist: ['pharmacy'],
 }
 
-type Target = 'myself' | 'triage' | Station
+const SERVICE_ICON: Record<ServiceId, LucideIcon> = {
+  consultation: Stethoscope,
+  dental: Smile,
+  laboratory: FlaskConical,
+  ultrasound: Scan,
+  nursing: Syringe,
+  surgery: Scissors,
+  circ: Scissors,
+  fp: Baby,
+  hiv: Ribbon,
+  pharmacy: Pill,
+}
+
+type Target = 'myself' | 'triage' | ServiceId
 
 /**
  * Register first, then send. Once the patient is found or registered, whoever registered
  * decides where the visit starts from what the patient comes for: "I see this patient myself"
- * (the person who treats: the visit starts at their desk, already theirs), the triage nurse, a
- * desk by service, and one of that desk's departments; with what the patient comes for. With
- * "triage first" on (Settings), the visit starts at triage unless it is an emergency or the
- * person treating sees the patient themselves.
+ * (the person who treats), the triage nurse, or one of the clinic's services, which is its
+ * section; then anyone in that section or one person of it, seeing who works now and how many
+ * patients each already has. With "triage first" on (Settings), the nurse measures first and
+ * the patient then goes to the service and person chosen.
  */
 export function SendPatientCard({
   user,
@@ -64,18 +92,19 @@ export function SendPatientCard({
 }) {
   const { t } = useTranslation()
   const actions = useVisitActions()
-  const { data: departments = [] } = useDepartments()
   const role = user.dbRole ?? user.role
   const myDesk = stationFor(user)
   const mayMyself = (MY_DESKS[role] ?? []).includes(myDesk)
-  const deskOnly = triageFirst && !emergency
+  const viaTriage = triageFirst && !emergency
   const [target, setTarget] = useState<Target>(
     // the person who treats sees the patient first; otherwise the nurse measures first
     mayMyself ? 'myself' : 'triage',
   )
-  const [departmentId, setDepartmentId] = useState('')
+  const service = target === 'myself' || target === 'triage' ? null : target
+  const [person, setPerson] = useState<string>('') // '' = anyone in the section
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const { data: staff, isLoading: staffLoading } = useServiceStaff(service)
   // it opens at the top of the page while the button pressed is lower: bring it into view, the
   // cursor on the chosen option (arrow keys change it)
   const ref = useReveal<HTMLElement>({ focus: true })
@@ -88,13 +117,11 @@ export function SendPatientCard({
     return () => window.removeEventListener('keydown', onKey)
   }, [onLater])
 
-  const station: Station = target === 'myself' ? myDesk : target === 'triage' ? 'triage' : target
-  // the departments that work at the chosen desk (a department belongs to a desk by its roles)
-  const deskDepartments =
-    target === 'myself' || target === 'triage'
-      ? []
-      : departments.filter((d) => (d.roles as string[]).includes(DESK_ROLE[station]))
-  const deskName = (s: Station) => t(`register.stations.${s}`)
+  const station: Station =
+    target === 'myself' ? myDesk : target === 'triage' ? 'triage' : SERVICE_DESK[target]
+  const serviceName = (s: ServiceId) =>
+    s === 'pharmacy' ? t('register.stations.pharmacy') : t(`categories.${s}`)
+  const chosen = staff?.staff.find((p) => p.id === person)
 
   const start = async () => {
     setError(null)
@@ -103,7 +130,8 @@ export function SendPatientCard({
         patientId: patient.id,
         fileNumber: patient.fileNumber,
         station,
-        departmentId: departmentId || null,
+        service,
+        assignedTo: service && person ? person : null,
         note,
         myself: target === 'myself',
         emergency,
@@ -114,13 +142,12 @@ export function SendPatientCard({
     }
   }
 
-  const option = (key: Target, icon: ReactNode, title: string, hint: string, disabled = false) => (
+  const option = (key: Target, icon: ReactNode, title: string, hint: string) => (
     <label
       key={key}
       className={cn(
         'border-border flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5',
         target === key && 'border-primary bg-primary-tint',
-        disabled && 'cursor-not-allowed opacity-50',
       )}
     >
       <input
@@ -128,10 +155,9 @@ export function SendPatientCard({
         name={`send-${patient.id}`}
         className="accent-primary mt-1"
         checked={target === key}
-        disabled={disabled}
         onChange={() => {
           setTarget(key)
-          setDepartmentId('')
+          setPerson('')
         }}
       />
       <span className="text-primary mt-0.5 shrink-0">{icon}</span>
@@ -142,13 +168,17 @@ export function SendPatientCard({
     </label>
   )
 
-  // the visit's destination in the button: what will happen when it is pressed
+  // the button says what will happen
   const where =
     target === 'myself'
       ? t('sendPatient.goMyself')
-      : deskOnly && target !== 'triage'
-        ? t('sendPatient.goTo', { desk: deskName('triage') })
-        : t('sendPatient.goTo', { desk: deskName(station) })
+      : target === 'triage'
+        ? t('sendPatient.goTo', { desk: t('register.stations.triage') })
+        : viaTriage
+          ? t('sendPatient.goViaTriage', { service: serviceName(target) })
+          : chosen
+            ? t('sendPatient.goToPerson', { name: chosen.name })
+            : t('sendPatient.goTo', { desk: serviceName(target) })
 
   return (
     <Card
@@ -196,7 +226,7 @@ export function SendPatientCard({
               'myself',
               <UserRoundCheck size={18} aria-hidden="true" />,
               t('sendPatient.myself'),
-              t('sendPatient.myselfHint', { desk: deskName(myDesk) }),
+              t('sendPatient.myselfHint', { desk: t(`register.stations.${myDesk}`) }),
             )}
           {option(
             'triage',
@@ -207,44 +237,67 @@ export function SendPatientCard({
         </div>
 
         <span className="text-ink-2 text-[13px] font-semibold">{t('sendPatient.byService')}</span>
-        {deskOnly && (
+        {viaTriage && (
           <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px]">
-            {t('sendPatient.triageFirstOn')}
+            {t('sendPatient.triageFirstThen')}
           </p>
         )}
-        <div className="pc:grid-cols-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {TREATING_STATIONS.map((s) => {
-            const Icon = stationIconFor(s)
+        <div
+          className="pc:grid-cols-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+          role="radiogroup"
+          aria-label={t('sendPatient.byService')}
+        >
+          {SERVICES.map((s) => {
+            const Icon = SERVICE_ICON[s]
             return option(
               s,
               <Icon size={18} aria-hidden="true" />,
-              deskName(s),
-              t(`sendPatient.for.${s}`),
-              deskOnly,
+              serviceName(s),
+              t(`sendPatient.svc.${s}`),
             )
           })}
         </div>
 
-        {deskDepartments.length > 0 && (
-          <Select
-            label={t('sendPatient.department')}
-            value={departmentId}
-            onChange={(e) => setDepartmentId(e.target.value)}
-            wrapperClassName="max-w-md"
+        {/* the chosen service is the section: anyone in it, or one person of it */}
+        {service && (
+          <div
+            className="border-border flex flex-col gap-1.5 rounded-xl border p-2.5"
+            role="radiogroup"
+            aria-label={t('sendPatient.whoTitle', { service: serviceName(service) })}
           >
-            <option value="">{t('sendPatient.anyone', { desk: deskName(station) })}</option>
-            {deskDepartments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
+            <span className="text-ink-2 px-1 text-[13px] font-semibold">
+              {t('sendPatient.whoTitle', { service: serviceName(service) })}
+            </span>
+            <PersonRow
+              name={`who-${patient.id}`}
+              checked={person === ''}
+              onPick={() => setPerson('')}
+              title={t('sendPatient.anyoneIn', { service: serviceName(service) })}
+              detail={t('sendPatient.anyoneHint', { count: staff?.sectionWaiting ?? 0 })}
+              icon={<Users size={16} aria-hidden="true" />}
+            />
+            {staff?.staff.map((p) => (
+              <PersonRow
+                key={p.id}
+                name={`who-${patient.id}`}
+                checked={person === p.id}
+                onPick={() => setPerson(p.id)}
+                title={p.name}
+                detail={[
+                  p.specialty || t(`staff.roles.${p.role}`, { defaultValue: p.role }),
+                  p.departments,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+                person={p}
+              />
             ))}
-          </Select>
-        )}
-        {departmentId && (
-          <p className="text-ink-3 m-0 inline-flex items-center gap-1.5 text-[13px]">
-            <Building2 size={14} aria-hidden="true" />
-            {t('sendPatient.departmentHint')}
-          </p>
+            {!staffLoading && staff && staff.staff.length === 0 && (
+              <p className="text-ink-3 m-0 px-1 text-[13px]">
+                {t('sendPatient.nobody', { service: serviceName(service) })}
+              </p>
+            )}
+          </div>
         )}
 
         <Field
@@ -277,5 +330,84 @@ export function SendPatientCard({
         </div>
       </CardBody>
     </Card>
+  )
+}
+
+/** One choice of "send to whom?": anyone in the section, or a person with what they do now. */
+function PersonRow({
+  name,
+  checked,
+  onPick,
+  title,
+  detail,
+  icon,
+  person,
+}: {
+  name: string
+  checked: boolean
+  onPick: () => void
+  title: string
+  detail: string
+  icon?: ReactNode
+  person?: ServicePerson
+}) {
+  const { t } = useTranslation()
+  const busy = person ? person.waiting + person.seeing : 0
+  return (
+    <label
+      className={cn(
+        'flex min-h-12 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 rounded-lg px-2.5 py-2',
+        checked ? 'bg-primary-tint' : 'hover:bg-hover',
+      )}
+    >
+      <input
+        type="radio"
+        name={name}
+        className="accent-primary"
+        checked={checked}
+        onChange={onPick}
+      />
+      {icon && <span className="text-primary shrink-0">{icon}</span>}
+      <span className="min-w-[160px] flex-1">
+        <span className="block font-semibold">{title}</span>
+        {detail && <span className="text-ink-3 block text-[13px]">{detail}</span>}
+      </span>
+      {person && (
+        <span className="flex flex-wrap items-center gap-1.5 text-[12px] font-semibold">
+          {/* working now by the calendar; else signed in today */}
+          {person.workingNow === true ? (
+            <span className="bg-green-bg text-green rounded-full px-2 py-0.5">
+              {t('sendPatient.workingNow')}
+            </span>
+          ) : person.workingNow === false ? (
+            <span className="bg-hover text-ink-3 rounded-full px-2 py-0.5">
+              {t('sendPatient.notWorkingNow')}
+            </span>
+          ) : person.onDuty ? (
+            <span className="bg-green-bg text-green rounded-full px-2 py-0.5">
+              {t('sendPatient.onDuty')}
+            </span>
+          ) : (
+            <span className="bg-hover text-ink-3 rounded-full px-2 py-0.5">
+              {t('sendPatient.notSignedIn')}
+            </span>
+          )}
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 tabular-nums',
+              busy === 0
+                ? 'bg-green-bg text-green'
+                : busy >= 5
+                  ? 'bg-red-bg text-red'
+                  : 'bg-amber-bg text-amber',
+            )}
+          >
+            {busy === 0
+              ? t('sendPatient.free')
+              : t('sendPatient.load', { waiting: person.waiting, seeing: person.seeing })}
+          </span>
+        </span>
+      )}
+    </label>
   )
 }

@@ -58,7 +58,15 @@
     "changePinHint": "Hitamo PIN nshya"
   },
   "days": {
-    "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],
+    "short": [
+      "Cyu",
+      "Mbe",
+      "Kab",
+      "Gat",
+      "Kan",
+      "Gnu",
+      "Gnd"
+    ],
     "long": [
       "Ku cyumweru",
       "Kuwa mbere",
@@ -3563,23 +3571,36 @@
     "triage": "Abanza gupimwa",
     "triageHint": "Umuforomo amupima, hanyuma akamwohereza aho akwiye.",
     "byService": "Cyangwa umwohereze ukurikije serivisi akeneye",
-    "triageFirstOn": "“Gupimwa mbere” birakora (Igenamiterere): umurwayi abanza kubona umuforomo, hanyuma akamwohereza ku mwanya ukwiye.",
-    "for": {
-      "consultation": "uburwayi, isuzuma, muganga",
-      "dental": "amenyo n’akanwa",
-      "laboratory": "ikizamini gusa",
-      "ultrasound": "echographie",
-      "nursing": "urushinge, gupfuka igisebe, kwitabwaho",
-      "theatre": "kubagwa gato, igikorwa",
-      "pharmacy": "kugura imiti"
-    },
-    "department": "Ishami",
-    "anyone": "Uwo ari we wese kuri {{desk}}",
-    "departmentHint": "Iryo shami gusa ni ryo ribona umurwayi kandi rikabimenyeshwa.",
     "why": "Umurwayi aje gukora iki? (si ngombwa)",
     "whyPh": "urugero: kuribwa iryinyo, ikizamini cya malariya, gupfuka igisebe",
     "goMyself": "Tangira kandi ufungure uruzinduko",
     "goTo": "Mwohereze kuri {{desk}}",
-    "later": "Dosiye gusa ubu"
+    "later": "Dosiye gusa ubu",
+    "svc": {
+      "consultation": "uburwayi, isuzuma: muganga",
+      "dental": "amenyo n’akanwa",
+      "laboratory": "ibizamini",
+      "ultrasound": "echographie",
+      "nursing": "urushinge, gupfuka igisebe, kwitabwaho",
+      "surgery": "kubagwa gato, igikorwa",
+      "circ": "abahungu n’abagabo",
+      "fp": "uburyo bwo kuboneza urubyaro",
+      "hiv": "gupima SIDA, inkingo",
+      "pharmacy": "kugura imiti"
+    },
+    "whoTitle": "Nde muri {{service}}?",
+    "anyoneIn": "Uwo ari we wese muri {{service}}",
+    "anyoneHint_one": "Ubanza kuboneka ni we umwakira · {{count}} ategereje ubu",
+    "anyoneHint_other": "Ubanza kuboneka ni we umwakira · {{count}} bategereje ubu",
+    "nobody": "Nta muntu urashyirirwaho {{service}} (muganga ayongera kuri kalendari ye). Umurwayi ategerereza mu gice.",
+    "workingNow": "ari mu kazi ubu",
+    "notWorkingNow": "ntari mu kazi ubu",
+    "onDuty": "yinjiye uyu munsi",
+    "notSignedIn": "ntiyinjiye uyu munsi",
+    "free": "arahari",
+    "load": "{{waiting}} bategereje · {{seeing}} ari kumwe na bo",
+    "goViaTriage": "Mwohereze gupimwa, hanyuma kuri {{service}}",
+    "goToPerson": "Mwohereze kuri {{name}}",
+    "triageFirstThen": "“Gupimwa mbere” birakora (Igenamiterere): umuforomo abanza gupima, hanyuma akohereza umurwayi kuri serivisi n’umuntu wahisemo hano."
   }
 }

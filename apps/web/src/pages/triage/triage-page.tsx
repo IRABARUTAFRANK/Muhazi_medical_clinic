@@ -14,6 +14,7 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { useVisitVitals } from '@/lib/api/billing'
 import { useFilesToComplete } from '@/lib/api/desk-ops'
 import { openItems, sortQueue, useQueueBoard } from '@/lib/api/visits'
+import { SERVICE_DESK, type ServiceId } from '@/lib/api/services'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -146,7 +147,14 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
                 subtitle={`${selected.ageSex} · ${selected.fileNumber}`}
                 mode={selected.station === 'triage' ? 'triage' : 'add'}
                 existing={existing}
-                defaultNext={missing && missing.length > 0 ? 'reception' : 'consultation'}
+                // the service chosen at registration (else consultation)
+                defaultNext={
+                  missing && missing.length > 0
+                    ? 'reception'
+                    : selected.service && selected.service in SERVICE_DESK
+                      ? SERVICE_DESK[selected.service as ServiceId]
+                      : 'consultation'
+                }
                 missing={missing}
                 onSaved={(ticket, station) => {
                   setNotice(

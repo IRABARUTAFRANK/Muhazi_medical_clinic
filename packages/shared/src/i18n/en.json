@@ -57,8 +57,24 @@
     "changePinHint": "Choose a new PIN"
   },
   "days": {
-    "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    "long": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    "short": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "long": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ]
   },
   "nav": {
     "services": "Services",
@@ -3554,23 +3570,36 @@
     "triage": "Triage first",
     "triageHint": "The nurse takes the measurements, then sends the patient on.",
     "byService": "Or send by the service needed",
-    "triageFirstOn": "“Triage first” is on (Settings): the patient sees the nurse first, who then sends them to the right desk.",
-    "for": {
-      "consultation": "illness, check-up, a doctor",
-      "dental": "teeth and mouth",
-      "laboratory": "a test only (walk-in)",
-      "ultrasound": "a scan",
-      "nursing": "injection, dressing, care",
-      "theatre": "minor surgery, procedure",
-      "pharmacy": "buy medicines"
-    },
-    "department": "Department",
-    "anyone": "Anyone at {{desk}}",
-    "departmentHint": "Only that department sees the patient and is told.",
     "why": "What does the patient come for? (optional)",
     "whyPh": "e.g. toothache, malaria test, wound dressing",
     "goMyself": "Start and open the visit",
     "goTo": "Send to {{desk}}",
-    "later": "Only the file for now"
+    "later": "Only the file for now",
+    "svc": {
+      "consultation": "illness, check-up: a doctor",
+      "dental": "teeth and mouth",
+      "laboratory": "tests (walk-in)",
+      "ultrasound": "a scan",
+      "nursing": "injection, dressing, care",
+      "surgery": "small operation, procedure",
+      "circ": "boys and men",
+      "fp": "family planning methods",
+      "hiv": "HIV test, vaccines",
+      "pharmacy": "buy medicines"
+    },
+    "whoTitle": "Who in {{service}}?",
+    "anyoneIn": "Anyone in {{service}}",
+    "anyoneHint_one": "The first one free takes the patient · {{count}} waiting for anyone now",
+    "anyoneHint_other": "The first one free takes the patient · {{count}} waiting for anyone now",
+    "nobody": "Nobody is set up for {{service}} yet (a doctor adds the service to their calendar). The patient waits in the section.",
+    "workingNow": "working now",
+    "notWorkingNow": "not working now",
+    "onDuty": "signed in today",
+    "notSignedIn": "not signed in today",
+    "free": "free now",
+    "load": "{{waiting}} waiting · {{seeing}} with them",
+    "goViaTriage": "Send to Triage, then {{service}}",
+    "goToPerson": "Send to {{name}}",
+    "triageFirstThen": "“Triage first” is on (Settings): the nurse measures first, then sends the patient to the service and the person chosen here."
   }
 }

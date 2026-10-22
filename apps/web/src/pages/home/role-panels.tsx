@@ -92,6 +92,7 @@ export function MyQueuePanel({
     vitalsAt?: string | null
     departmentName?: string | null
     canWork?: boolean
+    service?: string | null
   })[]
   counts: QueueCounts
   rowAction: 'open' | 'call'
@@ -143,6 +144,14 @@ export function MyQueuePanel({
                     <span className="block truncate font-semibold">{q.name}</span>
                     <span className="text-ink-3 flex flex-wrap items-center gap-x-2 text-[13px]">
                       <span>{q.ageSex}</span>
+                      {/* what the patient comes for (chosen at registration) */}
+                      {q.service && (
+                        <span className="text-primary font-semibold">
+                          {q.service === 'pharmacy'
+                            ? t('register.stations.pharmacy')
+                            : t('categories.' + q.service, { defaultValue: q.service })}
+                        </span>
+                      )}
                       <span className="inline-flex items-center gap-1">
                         <Hourglass size={12} aria-hidden="true" />
                         {formatDuration(q.waitMin, t)}

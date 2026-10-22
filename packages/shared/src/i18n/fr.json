@@ -57,8 +57,24 @@
     "changePinHint": "Choisir un nouveau PIN"
   },
   "days": {
-    "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
-    "long": ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+    "short": [
+      "Dim",
+      "Lun",
+      "Mar",
+      "Mer",
+      "Jeu",
+      "Ven",
+      "Sam"
+    ],
+    "long": [
+      "Dimanche",
+      "Lundi",
+      "Mardi",
+      "Mercredi",
+      "Jeudi",
+      "Vendredi",
+      "Samedi"
+    ]
   },
   "nav": {
     "services": "Services",
@@ -3554,23 +3570,36 @@
     "triage": "D’abord le tri",
     "triageHint": "L’infirmier prend les mesures, puis envoie le patient plus loin.",
     "byService": "Ou envoyer selon le service demandé",
-    "triageFirstOn": "« Tri d’abord » est activé (Paramètres) : le patient voit d’abord l’infirmier, qui l’envoie ensuite au bon poste.",
-    "for": {
-      "consultation": "maladie, contrôle, un médecin",
-      "dental": "dents et bouche",
-      "laboratory": "un examen seulement (sans rendez-vous)",
-      "ultrasound": "une échographie",
-      "nursing": "injection, pansement, soins",
-      "theatre": "petite chirurgie, acte",
-      "pharmacy": "acheter des médicaments"
-    },
-    "department": "Service",
-    "anyone": "N’importe qui à {{desk}}",
-    "departmentHint": "Seul ce service voit le patient et est prévenu.",
     "why": "Pour quoi le patient vient-il ? (facultatif)",
     "whyPh": "ex. mal de dents, test paludisme, pansement",
     "goMyself": "Commencer et ouvrir la visite",
     "goTo": "Envoyer à {{desk}}",
-    "later": "Seulement le dossier pour l’instant"
+    "later": "Seulement le dossier pour l’instant",
+    "svc": {
+      "consultation": "maladie, contrôle : un médecin",
+      "dental": "dents et bouche",
+      "laboratory": "examens (sans rendez-vous)",
+      "ultrasound": "une échographie",
+      "nursing": "injection, pansement, soins",
+      "surgery": "petite opération, acte",
+      "circ": "garçons et hommes",
+      "fp": "méthodes de planification familiale",
+      "hiv": "test VIH, vaccins",
+      "pharmacy": "acheter des médicaments"
+    },
+    "whoTitle": "Qui en {{service}} ?",
+    "anyoneIn": "N’importe qui en {{service}}",
+    "anyoneHint_one": "Le premier libre prend le patient · {{count}} en attente pour n’importe qui",
+    "anyoneHint_other": "Le premier libre prend le patient · {{count}} en attente pour n’importe qui",
+    "nobody": "Personne n’est encore configuré pour {{service}} (un médecin ajoute le service à son agenda). Le patient attend dans la section.",
+    "workingNow": "travaille maintenant",
+    "notWorkingNow": "ne travaille pas maintenant",
+    "onDuty": "connecté aujourd’hui",
+    "notSignedIn": "pas connecté aujourd’hui",
+    "free": "libre",
+    "load": "{{waiting}} en attente · {{seeing}} avec lui",
+    "goViaTriage": "Envoyer au tri, puis {{service}}",
+    "goToPerson": "Envoyer à {{name}}",
+    "triageFirstThen": "« Tri d’abord » est activé (Paramètres) : l’infirmier mesure d’abord, puis envoie le patient au service et à la personne choisis ici."
   }
 }
