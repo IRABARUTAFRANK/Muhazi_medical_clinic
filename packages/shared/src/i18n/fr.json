@@ -57,24 +57,8 @@
     "changePinHint": "Choisir un nouveau PIN"
   },
   "days": {
-    "short": [
-      "Dim",
-      "Lun",
-      "Mar",
-      "Mer",
-      "Jeu",
-      "Ven",
-      "Sam"
-    ],
-    "long": [
-      "Dimanche",
-      "Lundi",
-      "Mardi",
-      "Mercredi",
-      "Jeudi",
-      "Vendredi",
-      "Samedi"
-    ]
+    "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
+    "long": ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
   },
   "nav": {
     "services": "Services",

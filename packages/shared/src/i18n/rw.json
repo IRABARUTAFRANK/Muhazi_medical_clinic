@@ -58,15 +58,7 @@
     "changePinHint": "Hitamo PIN nshya"
   },
   "days": {
-    "short": [
-      "Cyu",
-      "Mbe",
-      "Kab",
-      "Gat",
-      "Kan",
-      "Gnu",
-      "Gnd"
-    ],
+    "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],
     "long": [
       "Ku cyumweru",
       "Kuwa mbere",
