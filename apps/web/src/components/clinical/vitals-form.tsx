@@ -92,6 +92,10 @@ export function VitalsForm({
   )
   const sendOnOnly = mode === 'triage' && taken && changedKeys.length === 0
   const [level, setLevel] = useState<Triage>('green')
+  // First measurements of a patient who skipped the triage desk: the colour is still given
+  // (it orders every queue); the patient stays at their desk.
+  const colourOnly = mode === 'add' && !taken
+  const [colourSet, setColourSet] = useState(false)
   const [next, setNext] = useState<Station>(defaultNext)
   const [reason, setReason] = useState('')
   // "Measured by": me when I measure; otherwise the nurse who wrote the paper sheet.
@@ -133,7 +137,7 @@ export function VitalsForm({
         vitals: taken
           ? (Object.fromEntries(changedKeys.map((k) => [k, values[k]])) as Record<string, string>)
           : values,
-        triage: mode === 'triage' ? level : null,
+        triage: mode === 'triage' || (colourOnly && colourSet) ? level : null,
         nextStation: mode === 'triage' ? next : null,
         reason,
         measuredBy: fromPaper ? measuredBy : null,
@@ -223,6 +227,37 @@ export function VitalsForm({
               />
             ))}
           </div>
+
+          {colourOnly && (
+            <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+              <legend className="text-ink-2 mb-1.5 text-[13px] font-semibold">
+                {t('triage.levelOptional')}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {LEVELS.map((l) => (
+                  <label
+                    key={l}
+                    className={cn(
+                      'border-border flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 font-semibold',
+                      colourSet && level === l && 'border-primary bg-primary-tint',
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="triage"
+                      className="accent-primary"
+                      checked={colourSet && level === l}
+                      onChange={() => {
+                        setLevel(l)
+                        setColourSet(true)
+                      }}
+                    />
+                    <Badge tone={l}>{t(`home.triage.${l}`)}</Badge>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
 
           {mode === 'triage' && (
             <>

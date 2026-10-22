@@ -570,7 +570,10 @@
       "vitals": "Ibipimo",
       "charges": "Ibyishyurwa",
       "collected": "Yakiriye",
-      "lastSignIn": "Aheruka kwinjira"
+      "lastSignIn": "Aheruka kwinjira",
+      "patients": "Abarwayi",
+      "results": "Ibisubizo",
+      "dispensed": "Imiti yatanzwe"
     },
     "logins": "Kwinjira",
     "last24h": "amasaha 24 ashize",
@@ -952,7 +955,8 @@
       "noVitals": "Andika nibura igipimo kimwe.",
       "generic": "Ntibyabitswe: {{message}}"
     },
-    "takenBadge": "Ibipimo byafashwe"
+    "takenBadge": "Ibipimo byafashwe",
+    "levelOptional": "Ibara ry’ubukana (niba urihaye ubu)"
   },
   "settings": {
     "title": "Igenamiterere ry'ivuriro",
@@ -1473,7 +1477,12 @@
     "testsSent_other": "Ibizamini {{count}} byasabwe. Umurwayi agiye aho bapimira, azagaruka iwawe afite ibisubizo.",
     "notGiven": "Ntiyatanzwe",
     "notGivenWhy": "Farumasi: {{reason}}",
-    "urgentOrder": "Byihutirwa: imbere ku rutonde"
+    "urgentOrder": "Byihutirwa: imbere ku rutonde",
+    "correctedWhy": "byakosowe: {{reason}}",
+    "correctionWhy": "Kuki igisubizo gikosowe?",
+    "correctionPh": "urugero: ikirango kitari cyo, ikosa ryo kwandika",
+    "saveCorrection": "Bika ikosora",
+    "correctResult": "Kosora igisubizo"
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -1807,7 +1816,8 @@
       "red": "Umutuku (byihutirwa)",
       "yellow": "Umuhondo",
       "vitals": "Ibipimo byafashwe",
-      "triageWait": "Gutegereza ibipimo"
+      "triageWait": "Gutegereza ibipimo",
+      "toMeasure": "Bategereje gupimwa"
     },
     "units": {
       "toAnswer": "byo gusubiza"
@@ -1815,7 +1825,8 @@
     "urgency": {
       "red": "Umutuku: ibyihutirwa, yakirwe ako kanya",
       "yellow": "Umuhondo: byihutirwa, yakirwe vuba",
-      "green": "Icyatsi: ashobora gutegereza igihe cye"
+      "green": "Icyatsi: ashobora gutegereza igihe cye",
+      "none": "Ntibarashyirwa mu byiciro"
     },
     "bedState": {
       "free": "Kiri ubusa",
@@ -1923,7 +1934,10 @@
         "cancelled": "Yahagaritswe"
       },
       "flow": "Uko bikurikirana: gahunda yafashwe itegereza ko umuganga ayemera; ku munsi, “Yageze” ifungura uruzinduko umurwayi akajya ku murongo w’umuganga (cyangwa kuri triage mbere, niba ivuriro ryabihisemo mu igenamiterere).",
-      "pickDay": "Hitamo umunsi"
+      "pickDay": "Hitamo umunsi",
+      "declinedWhy": "{{doctor}} yanze: {{reason}}",
+      "rebooked": "yongeye guhabwa gahunda",
+      "bookAgain": "Ongera uhe gahunda"
     },
     "inquiries": {
       "reject": "Hakana",
@@ -1968,7 +1982,11 @@
       "when": "At",
       "send": "Ohereza ku baforomo",
       "sent": "Byoherejwe. Biri ku mbonerahamwe y'abaforomo ubu.",
-      "waitingNurse": "bitegereje umuforomo"
+      "waitingNurse": "bitegereje umuforomo",
+      "notDone": "Ntibyakozwe",
+      "notDoneWhy": "Kuki umurimo utashobotse?",
+      "withdraw": "Kuraho",
+      "withdrawWhy": "Kuki umurimo ukuweho?"
     },
     "beds": {
       "admit": "Shyira umurwayi ku gitanda",
@@ -2120,7 +2138,9 @@
     "helpAccepted": "{{by}} yemeye gufasha kuri {{name}}",
     "helpDeclined": "{{by}} ntashobora gufasha kuri {{name}} ubu",
     "rxNotGiven": "Farumasi: {{item}} ntiyahawe {{name}}",
-    "testCancelled": "Laboratwari: {{test}} ntiyakorewe {{name}}"
+    "testCancelled": "Laboratwari: {{test}} ntiyakorewe {{name}}",
+    "resultCorrected": "Igisubizo cyakosowe: {{test}} · {{name}}",
+    "taskNotDone": "{{by}} ntiyashoboye gukora: {{title}}"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -2979,7 +2999,11 @@
     "useNotePh": "urugero: lot B12, amacupa yamenetse",
     "useSave": "Vana mu bubiko",
     "used": "{{count}} × {{item}} byavanywe mu bubiko.",
-    "medicinesNotYours": "Farumasi n’umuyobozi ni bo bonyine bahindura imiti n’ibiciro byayo."
+    "medicinesNotYours": "Farumasi n’umuyobozi ni bo bonyine bahindura imiti n’ibiciro byayo.",
+    "reorderAsk": "Erekana ko {{name}} igiye gushira iyo ububiko bugeze kuri (0 = nta na rimwe):",
+    "reorderBad": "Andika umubare wuzuye, 0 cyangwa urenga.",
+    "reorderEdit": "Hindura igihe uyu muti ugaragazwa ko ugiye gushira",
+    "reorderNone": "nta rugero rwo gutumiza"
   },
   "report": {
     "excel": "Excel",
@@ -3395,5 +3419,50 @@
     "hint": "Inyemezabwishyu y’umurwayi (sohora cyangwa PDF)",
     "print": "Sohora inyemezabwishyu",
     "printStatement": "Sohora fagitire"
+  },
+  "dept": {
+    "title": "Ishami ryanjye · {{name}}",
+    "pick": "Ishami",
+    "tiles": {
+      "patients": "Abarwayi bakiriwe",
+      "waiting": "Bategereje ku myanya yacu",
+      "orders": "Ibisabwa byo gukora",
+      "tasks": "Imirimo itarakorwa",
+      "signedIn": "Binjiye uyu munsi"
+    },
+    "vsPrev": "{{change}} ugereranyije n’igihe cyabanje",
+    "notDone_one": "{{count}} kitakozwe",
+    "notDone_other": "{{count}} bitakozwe",
+    "ofMembers_one": "kuri {{count}} umuntu",
+    "ofMembers_other": "kuri {{count}} abantu",
+    "people": "Abakozi bacu · {{period}}",
+    "peopleNote": "icyo buri wese yakoze, nta mafaranga",
+    "noPeople": "Nta muntu uri muri iri shami.",
+    "cols": {
+      "work": "Akazi",
+      "now": "Ubu",
+      "lastSeen": "Yinjiye bwa nyuma"
+    },
+    "work": {
+      "patients_one": "umurwayi {{count}}",
+      "patients_other": "abarwayi {{count}}",
+      "registrations_one": "iyandikwa {{count}}",
+      "registrations_other": "iyandikwa {{count}}",
+      "vitals_one": "ipima {{count}}",
+      "vitals_other": "ipima {{count}}",
+      "results_one": "igisubizo {{count}}",
+      "results_other": "ibisubizo {{count}}",
+      "dispensed_one": "itanga {{count}}",
+      "dispensed_other": "amatanga {{count}}",
+      "payments_one": "ubwishyu {{count}}",
+      "payments_other": "ubwishyu {{count}}",
+      "tasksDone_one": "umurimo {{count}}",
+      "tasksDone_other": "imirimo {{count}}"
+    },
+    "busy_one": "umurwayi {{count}}",
+    "busy_other": "abarwayi {{count}}",
+    "queue": "Imyanya yacu ubu",
+    "services": "Ibikorwa byacu · {{period}}",
+    "noServices": "Nta gikorwa cy’iri shami muri iki gihe."
   }
 }

@@ -99,12 +99,17 @@ export function MyQueuePanel({
   const navigate = useNavigate()
   const take = useTakePatient()
   const [error, setError] = useState<string | null>(null)
-  // "Take": claims the patient here (a shared patient leaves the other desks), then opens the visit.
-  const takeAndOpen = async (q: { queueId?: string; encounterId?: string }) => {
+  // "Take": claims the patient here (a shared patient leaves the other desks), then opens the visit
+  // (a patient at triage opens on the triage form).
+  const takeAndOpen = async (q: { queueId?: string; encounterId?: string; station?: string }) => {
     setError(null)
     try {
       if (q.queueId) await take.mutateAsync(q.queueId)
-      if (q.encounterId) await navigate({ to: '/app/visit', search: { encounter: q.encounterId } })
+      if (q.encounterId)
+        await navigate({
+          to: q.station === 'triage' ? '/app/vitals' : '/app/visit',
+          search: { encounter: q.encounterId },
+        })
     } catch (e) {
       setError(describe(e))
     }
@@ -125,7 +130,11 @@ export function MyQueuePanel({
           {(shown) => (
             <div className="flex flex-col">
               {shown.map((q, i) => (
-                <div key={q.ticket} className={rowClass} style={{ '--i': i } as CSSProperties}>
+                <div
+                  key={q.queueId ?? q.ticket}
+                  className={rowClass}
+                  style={{ '--i': i } as CSSProperties}
+                >
                   <Pill tint={triageTint[q.triage] ?? 'teal'} icon={triageIcon[q.triage]}>
                     {q.ticket}
                   </Pill>

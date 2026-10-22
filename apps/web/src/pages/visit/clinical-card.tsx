@@ -108,9 +108,25 @@ export function ClinicalCard({
   // to them); notes, diagnoses and prescriptions stay with the clinicians.
   const deskStaff = user.role === 'lab_tech' && !readOnly && can('orders.write')
   // Lab / ultrasound staff (and clinicians) record results; reception and the cashier do not.
-  const canResult = !closed && user.role !== 'receptionist' && user.role !== 'cashier'
+  // (a doctor or nurse locked out of this patient does not write results on it)
+  const canResult =
+    !closed &&
+    user.role !== 'receptionist' &&
+    user.role !== 'cashier' &&
+    user.role !== 'pharmacist' &&
+    !(lockedNote && (user.role === 'doctor' || user.role === 'nurse'))
+  // A verified result is corrected with a reason, also after the visit ended.
+  const canCorrect =
+    user.role === 'lab_tech' ||
+    user.role === 'manager' ||
+    ((user.role === 'doctor' || user.role === 'nurse') && !lockedNote)
   const [resultFor, setResultFor] = useState<string | null>(null)
-  const [result, setResult] = useState({ findings: '', impression: '', verify: true })
+  const [result, setResult] = useState({
+    findings: '',
+    impression: '',
+    verify: true,
+    correction: null as string | null,
+  })
   const [mode, setMode] = useState<'note' | 'dx' | 'rx' | 'test' | null>(null)
 
   // small forms
@@ -872,6 +888,9 @@ export function ClinicalCard({
                   <span className="text-ink-3 block text-xs">
                     {[
                       o.result.verified ? t('clinical.verified') : t('clinical.notVerified'),
+                      o.result.corrected
+                        ? t('clinical.correctedWhy', { reason: o.result.correctionReason ?? '' })
+                        : null,
                       o.result.by,
                       o.result.at ? when(o.result.at) : null,
                     ]
@@ -911,15 +930,29 @@ export function ClinicalCard({
                       onChange={(e) => setResult({ ...result, impression: e.target.value })}
                     />
                   </label>
-                  <label className="flex items-center gap-2 text-[13px] font-semibold">
-                    <input
-                      type="checkbox"
-                      className="accent-primary size-4"
-                      checked={result.verify}
-                      onChange={(e) => setResult({ ...result, verify: e.target.checked })}
-                    />
-                    {t('clinical.verifyNow')}
-                  </label>
+                  {result.correction === null ? (
+                    <label className="flex items-center gap-2 text-[13px] font-semibold">
+                      <input
+                        type="checkbox"
+                        className="accent-primary size-4"
+                        checked={result.verify}
+                        onChange={(e) => setResult({ ...result, verify: e.target.checked })}
+                      />
+                      {t('clinical.verifyNow')}
+                    </label>
+                  ) : (
+                    <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+                      {t('clinical.correctionWhy')}
+                      <input
+                        required
+                        minLength={3}
+                        className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px] font-normal"
+                        placeholder={t('clinical.correctionPh')}
+                        value={result.correction}
+                        onChange={(e) => setResult({ ...result, correction: e.target.value })}
+                      />
+                    </label>
+                  )}
                   <span className="flex gap-2">
                     <Button
                       type="submit"
@@ -927,7 +960,9 @@ export function ClinicalCard({
                       variant="primary"
                       loading={actions.recordResult.isPending}
                     >
-                      {t('clinical.saveResult')}
+                      {result.correction === null
+                        ? t('clinical.saveResult')
+                        : t('clinical.saveCorrection')}
                     </Button>
                     <Button
                       type="button"
@@ -941,7 +976,7 @@ export function ClinicalCard({
                 </form>
               )}
             </span>
-            {canResult &&
+            {(o.result?.verified ? canCorrect : canResult) &&
               resultFor !== o.id &&
               o.status !== 'cancelled' &&
               // a nurse writes the result of a desk order (Nursing…), the lab its own tests
@@ -955,11 +990,18 @@ export function ClinicalCard({
                       findings: o.result?.findings ?? '',
                       impression: o.result?.impression ?? '',
                       verify: true,
+                      correction: o.result?.verified ? '' : null,
                     })
                   }}
                 >
                   <FlaskConical size={14} aria-hidden="true" />
-                  {t(o.result ? 'clinical.editResult' : 'clinical.enterResult')}
+                  {t(
+                    o.result?.verified
+                      ? 'clinical.correctResult'
+                      : o.result
+                        ? 'clinical.editResult'
+                        : 'clinical.enterResult',
+                  )}
                 </Button>
               )}
           </Row>

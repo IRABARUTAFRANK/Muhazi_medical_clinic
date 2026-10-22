@@ -2679,6 +2679,127 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0063: the desks' last items
+await step(
+  '0063: a verified result is corrected with its reason; an emptied bill comes to 0; tasks withdrawn; heads see their department',
+  async () => {
+    const p = await visitAt('Gloria')
+    await as(staff.manager)
+    const labCat = (
+      await one(`select save_category(null, 'Lab tests 63', null, null, 'lab') as id`)
+    ).id
+    const test = (await one(`select upsert_service(null, 'Malaria RDT 63', 'other', 1500) as id`))
+      .id
+    await db.query(`select set_service_category($1, $2)`, [test, labCat])
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    await db.query(`select order_tests($1, $2, 'fever', null)`, [p.enc, [test]])
+    await asAdmin()
+    const req = (await one(`select id from service_request where encounter_id = $1`, [p.enc])).id
+    await as(staff.lab_tech)
+    await db.query(`select record_result($1, 'negative', 'no malaria', true)`, [req])
+    let rewrite = 'ok'
+    try {
+      await db.query(`select record_result($1, 'positive', 'malaria', false)`, [req])
+    } catch (e) {
+      rewrite = String(e.message).split('\n')[0]
+    }
+    await db.query(`select correct_result($1, 'positive', 'P. falciparum', 'wrong sample label')`, [
+      req,
+    ])
+    // the lab sees the vitals stamp on its queue (no clinical rights)
+    await as(d1)
+    await db.query(`select record_vitals($1, '{"temp": 38.4}'::jsonb, 'yellow')`, [p.enc])
+    await as(staff.lab_tech)
+    const stamp = await one(
+      `select count(*)::int as n from queue_board where encounter_id = $1 and vitals_at is not null`,
+      [p.enc],
+    )
+    await asAdmin()
+    const rep = await one(
+      `select d.impression, d.verified_at is not null as verified, d.corrected_at is not null as corrected,
+              (select count(*)::int from report_correction rc where rc.report_id = d.id) as kept
+       from diagnostic_report d where d.service_request_id = $1`,
+      [req],
+    )
+    const notice = await one(
+      `select count(*)::int as n from notification where kind = 'result' and (params ->> 'corrected')::boolean`,
+    )
+    // a bill whose only line is removed comes back to 0
+    const inv = await one(`select id from invoice where encounter_id = $1`, [p.enc])
+    await db.query(`update invoice_line set deleted_at = now() where invoice_id = $1`, [inv.id])
+    await db.query(`select recompute_invoice($1)`, [inv.id])
+    const total = Number((await one(`select total from invoice where id = $1`, [inv.id])).total)
+    // a doctor's task: the nurse says it could not be done; the doctor is told
+    await as(d1)
+    const task = (await one(`select create_task($1, 'Wound dressing') as id`, [p.enc])).id
+    await as(staff.nurse)
+    await db.query(`select cancel_task($1, 'patient refused')`, [task])
+    await asAdmin()
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'task_done' and (params ->> 'notDone')::boolean`,
+    )
+    // the head of a department sees it; a member does not
+    await as(staff.manager)
+    const dept = (
+      await one(`select upsert_department(null, 'Laboratory 63', '', '{lab_tech}') as id`)
+    ).id
+    await asAdmin()
+    await db.query(
+      `insert into staff_department (profile_id, department_id, position) values ($1, $2, 'head'), ($3, $2, 'member')`,
+      [staff.lab_tech, dept, staff.cashier],
+    )
+    await as(staff.lab_tech)
+    const ds = (
+      await one(`select department_summary($1, current_date - 1, current_date) as d`, [dept])
+    ).d
+    let member = 'ok'
+    await as(staff.cashier)
+    try {
+      await db.query(`select department_summary($1, current_date, current_date)`, [dept])
+    } catch (e) {
+      member = String(e.message).split('\n')[0]
+    }
+    // the reorder level: one rule (a level set and reached)
+    await as(staff.pharmacist)
+    const item = (await one(`select upsert_item(null, 'Paracetamol 63', 50) as id`)).id
+    await db.query(`select set_reorder_level($1, 10)`, [item])
+    await asAdmin()
+    const low = await one(`select count(*)::int as n from items_below_reorder where item_id = $1`, [
+      item,
+    ])
+    await db.query(`delete from staff_department where department_id = $1`, [dept])
+    if (
+      !/verified/.test(rewrite) ||
+      rep.impression !== 'P. falciparum' ||
+      !rep.verified ||
+      !rep.corrected ||
+      rep.kept !== 1 ||
+      notice.n < 1 ||
+      total !== 0 ||
+      told.n < 1 ||
+      stamp.n < 1 ||
+      !ds.members.length ||
+      !/not allowed/.test(member) ||
+      low.n !== 1
+    )
+      throw new Error(
+        JSON.stringify({
+          rewrite,
+          rep,
+          notice,
+          total,
+          told,
+          stamp,
+          members: ds.members.length,
+          member,
+          low,
+        }),
+      )
+    return 'correction kept with reason; empty bill 0; not-done told; department head only; reorder at 10'
+  },
+)
+
 finish()
 
 function finish() {

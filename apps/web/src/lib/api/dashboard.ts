@@ -73,6 +73,10 @@ export interface DashboardData {
     registrations: number
     vitals: number
     charges: number
+    /** Patients taken, results written, medicines handed over (0063). */
+    patients?: number
+    results?: number
+    dispensed?: number
     payments: number | null
     collected: number | null
     lastSignIn: string | null
@@ -229,6 +233,9 @@ export function useDashboard(range: DashboardRange, manager: boolean, custom?: C
           registrations: Number(s.registrations),
           vitals: Number(s.vitals),
           charges: Number(s.charges),
+          patients: Number(s.patients ?? 0),
+          results: Number(s.results ?? 0),
+          dispensed: Number(s.dispensed ?? 0),
           payments: num(s.payments),
           collected: num(s.collected),
         })),
@@ -247,6 +254,69 @@ export function useDashboard(range: DashboardRange, manager: boolean, custom?: C
         claims: d.claims.map((c) => ({ ...c, count: Number(c.count), amount: num(c.amount) })),
         services: { active: Number(d.services.active), total: Number(d.services.total) },
       }
+    },
+  })
+}
+
+/** One department as its head sees it (department_summary, 0063): no money. */
+export interface DepartmentSummary {
+  department: { id: string; name: string; roles: string[] }
+  stations: string[]
+  tiles: {
+    patients: number
+    patientsPrev: number
+    waitingNow: number
+    ordersOpen: number
+    ordersNotDone: number
+    tasksOpen: number
+    members: number
+    signedInToday: number
+  }
+  members: {
+    id: string
+    name: string
+    role: string
+    position: 'head' | 'assistant' | 'member'
+    station: string | null
+    lastSignIn: string | null
+    active: boolean
+    patients: number
+    registrations: number
+    vitals: number
+    results: number
+    dispensed: number
+    payments: number
+    tasksDone: number
+    busyNow: number
+  }[]
+  queue: {
+    station: string
+    waiting: number
+    busy: number
+    minutes: number | null
+    longest: number | null
+  }[]
+  services: { name: string; count: number }[]
+}
+
+export function useDepartmentSummary(
+  departmentId: string | null,
+  range: DashboardRange,
+  custom?: CustomRange | null,
+) {
+  return useQuery({
+    queryKey: ['department-summary', departmentId, range, range === 'custom' ? custom : null],
+    enabled: !!departmentId && !!supabase,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<DepartmentSummary> => {
+      const { from, to } = rangeDates(range, new Date(), custom)
+      const { data, error } = await supabase!.rpc('department_summary', {
+        p_department_id: departmentId,
+        p_from: iso(from),
+        p_to: iso(to),
+      })
+      if (error) throw new Error(error.message)
+      return data as DepartmentSummary
     },
   })
 }

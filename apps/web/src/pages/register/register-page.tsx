@@ -45,9 +45,10 @@ export function RegisterPage({ user }: { user: StaffUser }) {
   )
   const [result, setResultState] = useState<VisitResult | null>(null)
   const navigate = useNavigate()
-  // The nurse sees the patient first: once registered, she goes straight to the measurements.
+  // The nurse sees the patient first: once registered, she goes straight to the measurements
+  // (whatever desk the visit starts at; an emergency is treated first).
   const setResult = (r: VisitResult | null) => {
-    if (r && user.role === 'nurse' && r.station === 'triage')
+    if (r && user.role === 'nurse' && (r.station === 'triage' || !emergency))
       void navigate({ to: '/app/vitals', search: { encounter: r.encounterId } })
     else setResultState(r)
   }

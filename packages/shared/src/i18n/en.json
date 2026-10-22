@@ -543,7 +543,10 @@
       "vitals": "Vitals",
       "charges": "Charges",
       "collected": "Collected",
-      "lastSignIn": "Last sign-in"
+      "lastSignIn": "Last sign-in",
+      "patients": "Patients",
+      "results": "Results",
+      "dispensed": "Medicines given"
     },
     "logins": "Sign-ins",
     "last24h": "last 24 h",
@@ -948,7 +951,8 @@
       "noVitals": "Enter at least one measurement.",
       "generic": "Could not save: {{message}}"
     },
-    "takenBadge": "Vitals taken"
+    "takenBadge": "Vitals taken",
+    "levelOptional": "Triage colour (if you give one now)"
   },
   "prices": {
     "title": "Treatments, prices and insurers",
@@ -1734,7 +1738,12 @@
     "testsSent_other": "{{count}} tests ordered. The patient goes to the test desk and comes back to you with the results.",
     "notGiven": "Not given",
     "notGivenWhy": "Pharmacy: {{reason}}",
-    "urgentOrder": "Urgent: to the top of the list"
+    "urgentOrder": "Urgent: to the top of the list",
+    "correctedWhy": "corrected: {{reason}}",
+    "correctionWhy": "Why is the result corrected?",
+    "correctionPh": "e.g. wrong sample label, typing error",
+    "saveCorrection": "Save the correction",
+    "correctResult": "Correct result"
   },
   "adjust": {
     "mode": "How to enter it",
@@ -1803,7 +1812,8 @@
       "red": "Red (urgent)",
       "yellow": "Yellow",
       "vitals": "Vitals taken",
-      "triageWait": "Wait at triage"
+      "triageWait": "Wait at triage",
+      "toMeasure": "Waiting for vitals"
     },
     "units": {
       "toAnswer": "to answer"
@@ -1811,7 +1821,8 @@
     "urgency": {
       "red": "Red: emergency, see immediately",
       "yellow": "Yellow: urgent, see soon",
-      "green": "Green: can wait their turn"
+      "green": "Green: can wait their turn",
+      "none": "Not triaged yet"
     },
     "bedState": {
       "free": "Free",
@@ -1919,7 +1930,10 @@
         "cancelled": "Cancelled"
       },
       "flow": "How it links up: a booked request waits for the doctor to accept; on the day, “Arrived” opens the visit and the patient goes to the doctor’s queue (or to triage first, if the clinic chose that in Settings).",
-      "pickDay": "Choose a day"
+      "pickDay": "Choose a day",
+      "declinedWhy": "{{doctor}} declined: {{reason}}",
+      "rebooked": "booked again",
+      "bookAgain": "Book again"
     },
     "inquiries": {
       "reject": "Reject",
@@ -1964,7 +1978,11 @@
       "when": "At",
       "send": "Send to the nurses",
       "sent": "Sent. It is on the nurses’ dashboard now.",
-      "waitingNurse": "waiting for the nurse"
+      "waitingNurse": "waiting for the nurse",
+      "notDone": "Not done",
+      "notDoneWhy": "Why could the task not be done?",
+      "withdraw": "Withdraw",
+      "withdrawWhy": "Why is the task withdrawn?"
     },
     "beds": {
       "admit": "Admit a patient",
@@ -2111,7 +2129,9 @@
     "helpAccepted": "{{by}} accepted to help on {{name}}",
     "helpDeclined": "{{by}} cannot help on {{name}} now",
     "rxNotGiven": "Pharmacy: {{item}} not given to {{name}}",
-    "testCancelled": "Laboratory: {{test}} not done for {{name}}"
+    "testCancelled": "Laboratory: {{test}} not done for {{name}}",
+    "resultCorrected": "Corrected result: {{test}} · {{name}}",
+    "taskNotDone": "{{by}} could not do: {{title}}"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -2970,7 +2990,11 @@
     "useNotePh": "e.g. batch B12, broken bottles",
     "useSave": "Take out of stock",
     "used": "{{count}} × {{item}} taken out of stock.",
-    "medicinesNotYours": "Only the pharmacy and the manager change medicines and their prices."
+    "medicinesNotYours": "Only the pharmacy and the manager change medicines and their prices.",
+    "reorderAsk": "Show {{name}} as low when the stock reaches (0 = never):",
+    "reorderBad": "Type a whole number, 0 or more.",
+    "reorderEdit": "Change when this medicine shows as low",
+    "reorderNone": "no reorder level"
   },
   "report": {
     "excel": "Excel",
@@ -3386,5 +3410,50 @@
     "hint": "A receipt for the patient (print or save as PDF)",
     "print": "Print receipt",
     "printStatement": "Print the bill"
+  },
+  "dept": {
+    "title": "My department · {{name}}",
+    "pick": "Department",
+    "tiles": {
+      "patients": "Patients handled",
+      "waiting": "Waiting at our desks",
+      "orders": "Orders to do",
+      "tasks": "Open tasks",
+      "signedIn": "Signed in today"
+    },
+    "vsPrev": "{{change}} vs previous period",
+    "notDone_one": "{{count}} not done",
+    "notDone_other": "{{count}} not done",
+    "ofMembers_one": "of {{count}} person",
+    "ofMembers_other": "of {{count}} people",
+    "people": "Our people · {{period}}",
+    "peopleNote": "what each did, no money",
+    "noPeople": "Nobody is in this department yet.",
+    "cols": {
+      "work": "Work",
+      "now": "Now",
+      "lastSeen": "Last sign-in"
+    },
+    "work": {
+      "patients_one": "{{count}} patient",
+      "patients_other": "{{count}} patients",
+      "registrations_one": "{{count}} registration",
+      "registrations_other": "{{count}} registrations",
+      "vitals_one": "{{count}} vitals",
+      "vitals_other": "{{count}} vitals",
+      "results_one": "{{count}} result",
+      "results_other": "{{count}} results",
+      "dispensed_one": "{{count}} hand-over",
+      "dispensed_other": "{{count}} hand-overs",
+      "payments_one": "{{count}} payment",
+      "payments_other": "{{count}} payments",
+      "tasksDone_one": "{{count}} task",
+      "tasksDone_other": "{{count}} tasks"
+    },
+    "busy_one": "{{count}} patient",
+    "busy_other": "{{count}} patients",
+    "queue": "Our desks now",
+    "services": "Our treatments · {{period}}",
+    "noServices": "No treatment of this department in the period."
   }
 }

@@ -317,7 +317,8 @@ export function Composer({
           </Select>
         )}
       </div>
-      {to === 'department' && (
+      {/* to a department: its heads only; to everyone (the manager): every head of department */}
+      {(to === 'department' || to === 'all') && (
         <label className="flex items-center gap-2 text-xs font-semibold">
           <input
             type="checkbox"

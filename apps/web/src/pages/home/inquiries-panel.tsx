@@ -206,14 +206,24 @@ export function InquiriesPanel({
  * "New booking" (reception): a phone caller or a patient at the desk, with a doctor at a time.
  * The same form as for a website request, plus the reason and how the patient asked.
  */
+/** A booking started from another one (a booking the doctor declined, booked again). */
+export interface BookingPrefill {
+  patientId: string
+  patientLabel: string
+  doctorUserId?: string | null
+  reason?: string | null
+}
+
 export function NewBookingCard({
   onDone,
   onCancel,
   onRegister,
+  prefill,
 }: {
   onDone: (msg: string) => void
   onCancel: () => void
   onRegister?: (r: RegisterRequest) => void
+  prefill?: BookingPrefill
 }) {
   const { t } = useTranslation()
   return (
@@ -229,7 +239,7 @@ export function NewBookingCard({
       }
     >
       <p className="text-ink-2 m-0 text-[13px]">{t('ops.booking.lead')}</p>
-      <BookForm onDone={onDone} onRegister={onRegister} />
+      <BookForm onDone={onDone} onRegister={onRegister} prefill={prefill} />
     </Panel>
   )
 }
@@ -239,24 +249,28 @@ function BookForm({
   q,
   onDone,
   onRegister,
+  prefill,
 }: {
   /** A website request being booked; none for a new booking made at the desk. */
   q?: OpenInquiry
   onDone: (msg: string) => void
   onRegister?: (r: RegisterRequest) => void
+  prefill?: BookingPrefill
 }) {
   const { t } = useTranslation()
   const actions = useHomeActions()
   const { data: doctors = [] } = useBookableDoctors()
   const start = q ? (q.startsAt ?? q.preferredAt) : null
-  const [patientId, setPatientId] = useState(q?.patientId ?? '')
+  const [patientId, setPatientId] = useState(q?.patientId ?? prefill?.patientId ?? '')
   const [patientLabel, setPatientLabel] = useState(
-    q?.patientId ? `${q.patientFile ?? ''} · ${q.patientName ?? ''}` : '',
+    q?.patientId
+      ? `${q.patientFile ?? ''} · ${q.patientName ?? ''}`
+      : (prefill?.patientLabel ?? ''),
   )
   const [search, setSearch] = useState('')
   const { data: hits = [] } = useFindPatients(search)
-  const [doctorUserId, setDoctorUserId] = useState(q?.doctorUserId ?? '')
-  const [reason, setReason] = useState('')
+  const [doctorUserId, setDoctorUserId] = useState(q?.doctorUserId ?? prefill?.doctorUserId ?? '')
+  const [reason, setReason] = useState(prefill?.reason ?? '')
   const [source, setSource] = useState<'reception' | 'phone'>('phone')
   const [day, setDay] = useState(start ? isoDate(new Date(start)) : '')
   const [time, setTime] = useState(

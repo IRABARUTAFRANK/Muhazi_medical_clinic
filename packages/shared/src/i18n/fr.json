@@ -543,7 +543,10 @@
       "vitals": "Signes vitaux",
       "charges": "Frais",
       "collected": "Encaissé",
-      "lastSignIn": "Dernière connexion"
+      "lastSignIn": "Dernière connexion",
+      "patients": "Patients",
+      "results": "Résultats",
+      "dispensed": "Médicaments remis"
     },
     "logins": "Connexions",
     "last24h": "dernières 24 h",
@@ -948,7 +951,8 @@
       "noVitals": "Saisissez au moins une mesure.",
       "generic": "Enregistrement impossible : {{message}}"
     },
-    "takenBadge": "Constantes prises"
+    "takenBadge": "Constantes prises",
+    "levelOptional": "Couleur de tri (si vous la donnez maintenant)"
   },
   "prices": {
     "title": "Soins, tarifs et assureurs",
@@ -1734,7 +1738,12 @@
     "testsSent_other": "{{count}} examens demandés. Le patient va au poste d’examen et vous revient avec les résultats.",
     "notGiven": "Non remis",
     "notGivenWhy": "Pharmacie : {{reason}}",
-    "urgentOrder": "Urgent : en tête de liste"
+    "urgentOrder": "Urgent : en tête de liste",
+    "correctedWhy": "corrigé : {{reason}}",
+    "correctionWhy": "Pourquoi le résultat est-il corrigé ?",
+    "correctionPh": "ex. mauvaise étiquette, faute de frappe",
+    "saveCorrection": "Enregistrer la correction",
+    "correctResult": "Corriger le résultat"
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -1803,7 +1812,8 @@
       "red": "Rouge (urgent)",
       "yellow": "Jaune",
       "vitals": "Constantes prises",
-      "triageWait": "Attente au triage"
+      "triageWait": "Attente au triage",
+      "toMeasure": "En attente des signes vitaux"
     },
     "units": {
       "toAnswer": "à traiter"
@@ -1811,7 +1821,8 @@
     "urgency": {
       "red": "Rouge : urgence, voir tout de suite",
       "yellow": "Jaune : urgent, voir bientôt",
-      "green": "Vert : peut attendre son tour"
+      "green": "Vert : peut attendre son tour",
+      "none": "Pas encore trié"
     },
     "bedState": {
       "free": "Libre",
@@ -1919,7 +1930,10 @@
         "cancelled": "Annulé"
       },
       "flow": "Enchaînement : une demande réservée attend l’accord du médecin ; le jour venu, « Arrivé » ouvre la visite et le patient rejoint la file du médecin (ou le triage d’abord, si la clinique l’a choisi dans les réglages).",
-      "pickDay": "Choisir un jour"
+      "pickDay": "Choisir un jour",
+      "declinedWhy": "{{doctor}} a refusé : {{reason}}",
+      "rebooked": "reprogrammé",
+      "bookAgain": "Reprogrammer"
     },
     "inquiries": {
       "reject": "Refuser",
@@ -1964,7 +1978,11 @@
       "when": "À",
       "send": "Envoyer aux infirmières",
       "sent": "Envoyé. La tâche est sur le tableau de bord des infirmières.",
-      "waitingNurse": "en attente de l'infirmière"
+      "waitingNurse": "en attente de l'infirmière",
+      "notDone": "Non fait",
+      "notDoneWhy": "Pourquoi la tâche n’a-t-elle pas pu être faite ?",
+      "withdraw": "Retirer",
+      "withdrawWhy": "Pourquoi la tâche est-elle retirée ?"
     },
     "beds": {
       "admit": "Installer un patient",
@@ -2111,7 +2129,9 @@
     "helpAccepted": "{{by}} a accepté d’aider pour {{name}}",
     "helpDeclined": "{{by}} ne peut pas aider pour {{name}} maintenant",
     "rxNotGiven": "Pharmacie : {{item}} non remis à {{name}}",
-    "testCancelled": "Laboratoire : {{test}} non fait pour {{name}}"
+    "testCancelled": "Laboratoire : {{test}} non fait pour {{name}}",
+    "resultCorrected": "Résultat corrigé : {{test}} · {{name}}",
+    "taskNotDone": "{{by}} n’a pas pu faire : {{title}}"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -2970,7 +2990,11 @@
     "useNotePh": "ex. lot B12, flacons cassés",
     "useSave": "Sortir du stock",
     "used": "{{count}} × {{item}} sortis du stock.",
-    "medicinesNotYours": "Seuls la pharmacie et le gérant modifient les médicaments et leurs prix."
+    "medicinesNotYours": "Seuls la pharmacie et le gérant modifient les médicaments et leurs prix.",
+    "reorderAsk": "Signaler {{name}} en rupture quand le stock atteint (0 = jamais) :",
+    "reorderBad": "Tapez un nombre entier, 0 ou plus.",
+    "reorderEdit": "Changer le seuil de ce médicament",
+    "reorderNone": "pas de seuil"
   },
   "report": {
     "excel": "Excel",
@@ -3386,5 +3410,50 @@
     "hint": "Un reçu pour le patient (imprimer ou PDF)",
     "print": "Imprimer le reçu",
     "printStatement": "Imprimer la facture"
+  },
+  "dept": {
+    "title": "Mon service · {{name}}",
+    "pick": "Service",
+    "tiles": {
+      "patients": "Patients pris en charge",
+      "waiting": "En attente à nos postes",
+      "orders": "Demandes à faire",
+      "tasks": "Tâches ouvertes",
+      "signedIn": "Connectés aujourd’hui"
+    },
+    "vsPrev": "{{change}} par rapport à la période précédente",
+    "notDone_one": "{{count}} non faite",
+    "notDone_other": "{{count}} non faites",
+    "ofMembers_one": "sur {{count}} personne",
+    "ofMembers_other": "sur {{count}} personnes",
+    "people": "Notre équipe · {{period}}",
+    "peopleNote": "le travail de chacun, sans argent",
+    "noPeople": "Personne n’est encore dans ce service.",
+    "cols": {
+      "work": "Travail",
+      "now": "Maintenant",
+      "lastSeen": "Dernière connexion"
+    },
+    "work": {
+      "patients_one": "{{count}} patient",
+      "patients_other": "{{count}} patients",
+      "registrations_one": "{{count}} inscription",
+      "registrations_other": "{{count}} inscriptions",
+      "vitals_one": "{{count}} prise de constantes",
+      "vitals_other": "{{count}} prises de constantes",
+      "results_one": "{{count}} résultat",
+      "results_other": "{{count}} résultats",
+      "dispensed_one": "{{count}} remise",
+      "dispensed_other": "{{count}} remises",
+      "payments_one": "{{count}} paiement",
+      "payments_other": "{{count}} paiements",
+      "tasksDone_one": "{{count}} tâche",
+      "tasksDone_other": "{{count}} tâches"
+    },
+    "busy_one": "{{count}} patient",
+    "busy_other": "{{count}} patients",
+    "queue": "Nos postes maintenant",
+    "services": "Nos actes · {{period}}",
+    "noServices": "Aucun acte de ce service sur la période."
   }
 }

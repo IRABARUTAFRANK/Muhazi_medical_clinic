@@ -17,6 +17,11 @@ export interface DeskSummary {
     triageWaiting: number
     triageRed: number
     triageYellow: number
+    /** Open visits by colour (0063); older databases send only red and yellow. */
+    triageGreen?: number
+    triageNone?: number
+    /** Open visits still without any measurement. */
+    needVitals?: number
     triageAvgWaitMin: number
     vitalsToday: number
     vitalsYesterday: number
@@ -53,6 +58,9 @@ const sample = (): DeskSummary => {
       triageWaiting: 5,
       triageRed: 1,
       triageYellow: 2,
+      triageGreen: 6,
+      triageNone: 3,
+      needVitals: 4,
       triageAvgWaitMin: 9,
       vitalsToday: 29,
       vitalsYesterday: 33,

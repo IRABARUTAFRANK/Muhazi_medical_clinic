@@ -106,8 +106,13 @@ export function useWording() {
       }
       case 'result':
         return {
-          title: t('notify.result', { test: p.test ?? '', name: p.name ?? '' }),
-          body: p.impression ?? null,
+          title: t(p.corrected ? 'notify.resultCorrected' : 'notify.result', {
+            test: p.test ?? '',
+            name: p.name ?? '',
+          }),
+          body: p.corrected
+            ? [p.reason, p.impression].filter(Boolean).join(' · ') || null
+            : (p.impression ?? null),
         }
       case 'cover':
         return {
@@ -126,8 +131,11 @@ export function useWording() {
         }
       case 'task_done':
         return {
-          title: t('notify.taskDone', { by: p.by ?? '', title: p.title ?? '' }),
-          body: p.name ?? null,
+          title: t(p.notDone ? 'notify.taskNotDone' : 'notify.taskDone', {
+            by: p.by ?? '',
+            title: p.title ?? '',
+          }),
+          body: [p.name, p.reason].filter(Boolean).join(' · ') || null,
         }
       case 'inquiry':
         return { title: t('notify.inquiry', { name: p.name ?? '' }), body: t('notify.inquiryBody') }

@@ -62,6 +62,7 @@ import { onePerPool, openItems, useQueueBoard, type QueueItem } from '@/lib/api/
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { formatDuration } from '@/lib/duration'
+import { useCan } from '@/lib/api/permissions'
 import { cn } from '@/lib/utils'
 import { CallsPanel } from './calls-panel'
 import { useDeskOrders } from '@/lib/api/lab'
@@ -83,6 +84,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   const { t } = useTranslation()
   const now = new Date()
   const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary()
+  const can = useCan(user)
   const { data: queue = [] } = useQueueBoard('all', user.role)
   const open = onePerPool(openItems(queue))
   // The nurse: everyone at triage and everyone still without vitals (whatever the desk, so the
@@ -240,8 +242,12 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
               >
                 {nurse ? (
                   <>
-                    <BedsPanel userRole={user.role} className="pc:col-span-2" />
-                    <TasksPanel />
+                    <BedsPanel
+                      userRole={user.role}
+                      className="pc:col-span-2"
+                      canAct={can('clinical.write')}
+                    />
+                    <TasksPanel canAct={can('clinical.write')} />
                   </>
                 ) : (
                   <>
@@ -370,8 +376,8 @@ function NurseTiles({ d }: { d: DeskSummary }) {
         i={0}
         icon={Activity}
         tint="teal"
-        label={t('desk.tiles.triageWaiting')}
-        value={x.triageWaiting}
+        label={t(x.needVitals == null ? 'desk.tiles.triageWaiting' : 'desk.tiles.toMeasure')}
+        value={x.needVitals ?? x.triageWaiting}
         unit={t('dashboard.units.now')}
       />
       <Kpi
@@ -527,11 +533,15 @@ function StationsPanel({ d }: { d: DeskSummary }) {
 function UrgentPanel({ d }: { d: DeskSummary }) {
   const { t } = useTranslation()
   const x = d.tiles
-  const green = Math.max(0, x.triageWaiting - x.triageRed - x.triageYellow)
+  // one population: every open visit by its colour, and those not triaged yet
+  const green = x.triageGreen ?? Math.max(0, x.triageWaiting - x.triageRed - x.triageYellow)
   const rows = [
     { key: 'red', tint: 'coral' as Tint, label: t('desk.urgency.red'), n: x.triageRed },
     { key: 'yellow', tint: 'amber' as Tint, label: t('desk.urgency.yellow'), n: x.triageYellow },
     { key: 'green', tint: 'mint' as Tint, label: t('desk.urgency.green'), n: green },
+    ...(x.triageNone == null
+      ? []
+      : [{ key: 'none', tint: 'navy' as Tint, label: t('desk.urgency.none'), n: x.triageNone }]),
   ]
   return (
     <Panel

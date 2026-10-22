@@ -8,6 +8,7 @@ import {
   ChartLine,
   Clock,
   Coins,
+  FlaskConical,
   HeartPulse,
   Landmark,
   ListOrdered,
@@ -26,6 +27,7 @@ import {
   ShieldPlus,
   Smartphone,
   Stethoscope,
+  Tablets,
   Timer,
   UserPlus,
   Users,
@@ -46,6 +48,7 @@ import {
   isoDate,
 } from '@mmc/shared'
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
+import { DepartmentSection } from './department-section'
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { StationTile } from '@/components/dash/station-tile'
@@ -134,7 +137,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   const { data: info } = useClinicInfo()
 
   const nav = navForUser(user)
-  const activeId = canManage ? 'dashboard' : 'reports'
+  const activeId = 'dashboard'
   const { from, to } = rangeDates(range, now, custom)
   const rangeLabel =
     range === 'today'
@@ -188,7 +191,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             {!isLive && <span className="text-ink-3">{t('dashboard.sampleData')}</span>}
           </div>
           <StaffLink
-            to="/app/register"
+            to="/app/patients"
             className="border-border bg-card text-ink-3 card-lift wide:flex hidden h-11 w-[260px] items-center gap-2.5 rounded-xl border px-3.5 text-sm no-underline"
           >
             <Search size={16} aria-hidden="true" />
@@ -271,6 +274,11 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
           >
             {t('dashboard.loadFailed', { message: error.message })}
           </p>
+        )}
+
+        {/* A head of department: their own department first (people, desks, work). */}
+        {!isManager && (
+          <DepartmentSection user={user} range={range} custom={custom} periodWord={periodWord} />
         )}
 
         {!data && !error && <Skeleton isManager={isManager} />}
@@ -546,6 +554,24 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                           </th>
                           <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
                             <span className="inline-flex items-center gap-1">
+                              <Stethoscope size={13} aria-hidden="true" />
+                              {t('dashboard.cols.patients')}
+                            </span>
+                          </th>
+                          <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                            <span className="inline-flex items-center gap-1">
+                              <FlaskConical size={13} aria-hidden="true" />
+                              {t('dashboard.cols.results')}
+                            </span>
+                          </th>
+                          <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                            <span className="inline-flex items-center gap-1">
+                              <Tablets size={13} aria-hidden="true" />
+                              {t('dashboard.cols.dispensed')}
+                            </span>
+                          </th>
+                          <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
+                            <span className="inline-flex items-center gap-1">
                               <Receipt size={13} aria-hidden="true" />
                               {t('dashboard.cols.charges')}
                             </span>
@@ -588,6 +614,13 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                             </td>
                             <td className="py-2 pr-2 text-right tabular-nums">{s.registrations}</td>
                             <td className="py-2 pr-2 text-right tabular-nums">{s.vitals}</td>
+                            <td className="py-2 pr-2 text-right tabular-nums">{s.patients ?? 0}</td>
+                            <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
+                              {s.results ?? 0}
+                            </td>
+                            <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
+                              {s.dispensed ?? 0}
+                            </td>
                             <td className="py-2 pr-2 text-right tabular-nums">{s.charges}</td>
                             {isManager && (
                               <td className="py-2 text-right tabular-nums">

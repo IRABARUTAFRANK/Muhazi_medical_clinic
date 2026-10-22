@@ -34,6 +34,7 @@ import { Flash } from '@/components/ui/flash'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
   usePharmacyQueue,
+  isLowStock,
   useStockActions,
   useStockMovements,
   useStockOverview,
@@ -93,7 +94,7 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
   const { data: reportSales } = useStockSales(reportFrom, reportTo)
   const locations = data?.locations ?? []
   const value = items.reduce((s, i) => s + i.costValue, 0)
-  const low = items.filter((i) => i.active && i.onHand <= i.reorderLevel).length
+  const low = items.filter((i) => i.active && isLowStock(i)).length
   const expiring = items.filter(
     (i) => i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 90 * 86_400_000,
   ).length
@@ -213,7 +214,9 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
           ))}
         </div>
 
-        {tab === 'stock' && <StockTable items={items} locations={locations} />}
+        {tab === 'stock' && (
+          <StockTable items={items} locations={locations} canSetLevel={fullStock} />
+        )}
         {tab === 'pharmacy' && <PharmacyDesk canDispense={fullStock} />}
         {tab === 'receive' && <ReceiveForm items={items} locations={locations} />}
         {tab === 'send' && <SendForm items={items} locations={locations} />}
@@ -230,8 +233,29 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
 }
 
 /* ---------------------------------------------------------------- on hand */
-function StockTable({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
+function StockTable({
+  items,
+  locations,
+  canSetLevel,
+}: {
+  items: StockItem[]
+  locations: StockLocation[]
+  /** The pharmacy and the manager set when a medicine shows as low. */
+  canSetLevel: boolean
+}) {
   const { t } = useTranslation()
+  const actions = useStockActions()
+  const [levelError, setLevelError] = useState<string | null>(null)
+  const editLevel = (i: StockItem) => {
+    const raw = window.prompt(t('stock.reorderAsk', { name: i.name }), String(i.reorderLevel))
+    if (raw === null) return
+    const level = Number(raw.trim())
+    if (!Number.isInteger(level) || level < 0) return setLevelError(t('stock.reorderBad'))
+    setLevelError(null)
+    actions.setReorderLevel
+      .mutateAsync({ itemId: i.id, level })
+      .catch((e: unknown) => setLevelError(e instanceof Error ? e.message : String(e)))
+  }
   const [query, setQuery] = useState('')
   const now = useNow(60_000)
   const shown = items.filter((i) => i.active && matches(query, i.name, i.strength ?? '', i.code))
@@ -245,6 +269,11 @@ function StockTable({ items, locations }: { items: StockItem[]; locations: Stock
       right={t('stock.itemCount', { count: shown.length })}
     >
       <ListBar query={query} onQuery={setQuery} placeholderKey="stock.search" />
+      {levelError && (
+        <p className="bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold">
+          {levelError}
+        </p>
+      )}
       {paged.total === 0 ? (
         <Empty icon={Package}>{t('stock.empty')}</Empty>
       ) : (
@@ -282,7 +311,7 @@ function StockTable({ items, locations }: { items: StockItem[]; locations: Stock
             </thead>
             <tbody>
               {paged.slice.map((i) => {
-                const lowStock = i.onHand <= i.reorderLevel
+                const lowStock = isLowStock(i)
                 const soon =
                   i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 90 * 86_400_000
                 return (
@@ -296,7 +325,22 @@ function StockTable({ items, locations }: { items: StockItem[]; locations: Stock
                         {i.code}
                         {i.unit ? ` · ${t('prices.meds.perUnit', { unit: i.unit })}` : ''}
                         {' · '}
-                        {t('stock.reorderAt', { count: i.reorderLevel })}
+                        {canSetLevel ? (
+                          <button
+                            type="button"
+                            className="text-primary underline-offset-2 hover:underline"
+                            title={t('stock.reorderEdit')}
+                            onClick={() => editLevel(i)}
+                          >
+                            {i.reorderLevel > 0
+                              ? t('stock.reorderAt', { count: i.reorderLevel })
+                              : t('stock.reorderNone')}
+                          </button>
+                        ) : i.reorderLevel > 0 ? (
+                          t('stock.reorderAt', { count: i.reorderLevel })
+                        ) : (
+                          t('stock.reorderNone')
+                        )}
                       </span>
                     </td>
                     <td

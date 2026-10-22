@@ -12,7 +12,14 @@ export interface DayAppointment {
   time: string
   startsAt: string
   status:
-    'approved' | 'confirmed' | 'arrived' | 'in_progress' | 'completed' | 'no_show' | 'cancelled'
+    | 'approved'
+    | 'confirmed'
+    | 'arrived'
+    | 'in_progress'
+    | 'completed'
+    | 'no_show'
+    | 'cancelled'
+    | 'declined'
   patientId: string | null
   fileNumber: string | null
   name: string
@@ -23,6 +30,11 @@ export interface DayAppointment {
   source?: string | null
   channel?: string | null
   late: boolean
+  doctorUserId?: string | null
+  /** The doctor's reason when they declined the booking. */
+  declineReason?: string | null
+  /** A declined booking already booked again. */
+  rebooked?: boolean
 }
 
 /** One booking in full (appointment_detail). */
@@ -122,6 +134,8 @@ export interface OpenTask {
   encounterId: string | null
   patient: string | null
   by: string | null
+  /** I gave this task (visit_tasks, 0063). */
+  mine?: boolean
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
@@ -404,6 +418,18 @@ export function useDeskOps() {
     },
     onSuccess: refresh,
   })
+  /** The giver withdraws a task, or the nurse says it could not be done (with the reason). */
+  const cancelTask = useMutation({
+    mutationFn: async (i: { id: string; reason: string }) => {
+      if (!supabase) {
+        const k = sampleTasks.findIndex((x) => x.id === i.id)
+        if (k >= 0) sampleTasks.splice(k, 1)
+        return
+      }
+      await call('cancel_task', { p_task_id: i.id, p_reason: i.reason })
+    },
+    onSuccess: refresh,
+  })
   const admit = useMutation({
     mutationFn: async (i: {
       bedId: string
@@ -501,7 +527,18 @@ export function useDeskOps() {
     },
     onSuccess: refresh,
   })
-  return { arrived, outcome, createTask, completeTask, admit, extend, discharge, ready, sendOn }
+  return {
+    arrived,
+    outcome,
+    createTask,
+    completeTask,
+    cancelTask,
+    admit,
+    extend,
+    discharge,
+    ready,
+    sendOn,
+  }
 }
 
 /**

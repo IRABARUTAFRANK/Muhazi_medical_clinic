@@ -441,6 +441,8 @@ export interface TestOrder {
     findings: string | null
     impression: string | null
     verified: boolean
+    corrected?: boolean
+    correctionReason?: string | null
     at?: string | null
     by?: string | null
   } | null
@@ -777,6 +779,8 @@ export function useClinicalActions(encounterId: string) {
       findings: string
       impression: string
       verify: boolean
+      /** The reason, when a verified result is corrected. */
+      correction?: string | null
     }) => {
       if (!supabase) {
         const o = local().orders.find((x) => x.id === i.requestId)
@@ -791,6 +795,15 @@ export function useClinicalActions(encounterId: string) {
               by: null,
             },
           })
+        return
+      }
+      if (i.correction != null) {
+        await call('correct_result', {
+          p_request_id: i.requestId,
+          p_findings: i.findings || null,
+          p_impression: i.impression || null,
+          p_reason: i.correction,
+        })
         return
       }
       await call('record_result', {

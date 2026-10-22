@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   BedDouble,
   CircleCheck,
+  CircleDashed,
   ClipboardList,
   ConciergeBell,
   Crown,
@@ -176,4 +177,5 @@ export const triageIcon: Record<string, LucideIcon> = {
   red: Siren,
   yellow: AlertTriangle,
   green: CircleCheck,
+  none: CircleDashed,
 }

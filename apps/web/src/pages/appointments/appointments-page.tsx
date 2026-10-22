@@ -13,7 +13,7 @@ import { navForUser } from '@/lib/nav'
 import { AppointmentsPanel, InquiriesPanel } from '@/pages/home/desk-panels'
 import { NewPatientForm } from '@/components/clinical/new-patient-form'
 import type { RegisterRequest } from '@/pages/home/inquiries-panel'
-import { NewBookingCard } from '@/pages/home/inquiries-panel'
+import { NewBookingCard, type BookingPrefill } from '@/pages/home/inquiries-panel'
 import { Flash } from '@/components/ui/flash'
 
 /**
@@ -21,25 +21,31 @@ import { Flash } from '@/components/ui/flash'
  * marks each booked patient as arrived: a visit opens and the patient is queued at triage,
  * where the nurse takes the first measurements. No-show and cancel close a booking.
  */
-export function AppointmentsPage({ user }: { user: StaffUser }) {
+/** Days from today to an ISO day (yyyy-mm-dd), on the local calendar; null when not a day. */
+function offsetOf(iso?: string): number | null {
+  const [y, m, d] = (iso ?? '').split('-').map(Number)
+  if (!y || !m || !d) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.round((new Date(y, m - 1, d).getTime() - today.getTime()) / 86_400_000)
+}
+
+export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initialDay?: string }) {
   const { t } = useTranslation()
   const dayNames = useDayNames()
-  const [offset, setOffset] = useState(0)
+  const [offset, setOffset] = useState(() => offsetOf(initialDay) ?? 0)
   const [selected, setSelected] = useState<string | null>(null)
   // "Register the patient now" from a booking request: the new-file form opens on the left.
   const [registering, setRegistering] = useState<RegisterRequest | null>(null)
   // "New booking": a phone caller or a patient at the desk
-  const [booking, setBooking] = useState(false)
+  const [booking, setBooking] = useState<false | { prefill?: BookingPrefill }>(false)
   const [booked, setBooked] = useState<string | null>(null)
   const day = new Date()
   day.setDate(day.getDate() + offset)
   const pickDay = (iso: string) => {
-    const [y, m, d] = iso.split('-').map(Number)
-    if (!y || !m || !d) return
-    const chosen = new Date(y, m - 1, d)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    setOffset(Math.round((chosen.getTime() - today.getTime()) / 86_400_000))
+    const o = offsetOf(iso)
+    if (o === null) return
+    setOffset(o)
     setSelected(null)
   }
   const canAct = ['receptionist', 'manager'].includes(user.role)
@@ -97,7 +103,7 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
             </Button>
           )}
           {canAct && (
-            <Button size="md" onClick={() => setBooking(true)}>
+            <Button size="md" onClick={() => setBooking({})}>
               <CalendarPlus size={16} aria-hidden="true" />
               {t('ops.booking.open')}
             </Button>
@@ -132,8 +138,19 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
               <AppointmentsPanel
                 key={offset}
                 day={day}
-                canAct={canAct && offset === 0}
+                canAct={canAct}
                 onSelect={setSelected}
+                onRebook={(a) =>
+                  a.patientId &&
+                  setBooking({
+                    prefill: {
+                      patientId: a.patientId,
+                      patientLabel: `${a.fileNumber ?? ''} · ${a.name}`,
+                      doctorUserId: a.doctorUserId,
+                      reason: a.reason,
+                    },
+                  })
+                }
               />
             )}
             <div className="flex min-w-0 flex-col gap-4">
@@ -144,6 +161,8 @@ export function AppointmentsPage({ user }: { user: StaffUser }) {
               )}
               {booking && canAct && (
                 <NewBookingCard
+                  key={booking.prefill?.patientId ?? 'new'}
+                  prefill={booking.prefill}
                   onDone={(msg) => {
                     setBooked(msg)
                     setBooking(false)

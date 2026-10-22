@@ -155,7 +155,10 @@ function CoveringPanel({ cover, user }: { cover: CoverCovering; user: StaffUser 
   // The doctor's desk ("Consultation 1" → consultation).
   const station = stationFor({ ...user, role: 'doctor', station: cover.station ?? undefined })
   const { data: queue = [] } = useQueueBoard(station, 'doctor')
-  const rows = openItems(queue)
+  // only the covered doctor's patients (those this nurse may now work on), not the whole desk
+  const theirs = queue.filter((r) => r.canWork !== false)
+  const rows = openItems(theirs)
+  const [error, setError] = useState<string | null>(null)
   return (
     <div className="flex flex-col gap-3">
       <div className="border-green/30 bg-green-bg flex flex-wrap items-center gap-3 rounded-[16px] border px-4 py-3">
@@ -165,18 +168,32 @@ function CoveringPanel({ cover, user }: { cover: CoverCovering; user: StaffUser 
           {cover.note && <span className="text-ink-2 block text-[13px]">{cover.note}</span>}
           <span className="text-ink-2 block text-[13px]">{t('cover.coveringHint')}</span>
         </span>
-        <Button size="sm" variant="ghost" onClick={() => void actions.end.mutateAsync(cover.id)}>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setError(null)
+            actions.end
+              .mutateAsync(cover.id)
+              .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+          }}
+        >
           <X size={14} aria-hidden="true" />
           {t('cover.end')}
         </Button>
       </div>
+      {error && (
+        <p className="bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold">
+          {error}
+        </p>
+      )}
       <MyQueuePanel
         title={t('cover.queue', { name: cover.doctor })}
         rows={rows}
         counts={{
           waiting: rows.filter((r) => !r.startedAt).length,
           inProgress: rows.filter((r) => r.startedAt).length,
-          done: 0,
+          done: theirs.filter((r) => r.finishedAt).length,
         }}
         rowAction="call"
       />

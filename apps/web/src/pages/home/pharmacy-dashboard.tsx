@@ -20,7 +20,7 @@ import { NoticesPanel } from '@/components/dash/notices-panel'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { usePharmacyQueue, usePharmacySummary, useStockOverview } from '@/lib/api/stock'
+import { isLowStock, usePharmacyQueue, usePharmacySummary, useStockOverview } from '@/lib/api/stock'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
@@ -54,7 +54,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const withRx = new Set(lines.map((l) => l.encounterId))
   const others = openItems(board).filter((q) => !withRx.has(q.encounterId))
   const items = (stock?.items ?? []).filter((i) => i.active)
-  const low = items.filter((i) => i.onHand <= i.reorderLevel)
+  const low = items.filter(isLowStock)
   const expiring = items.filter(
     (i) => i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 90 * 86_400_000,
   )

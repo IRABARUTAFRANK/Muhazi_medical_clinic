@@ -397,9 +397,10 @@ export function VisitPage({
             )}
 
             {/* Doctor → nurse: tasks on this visit appear on the nurses' dashboard. */}
-            {(user.role === 'doctor' || user.role === 'manager') && !locked && (
+            {(user.role === 'doctor' || user.role === 'manager') && !locked && !closed && (
               <NurseTaskCard encounterId={encounterId} />
             )}
+            {user.role === 'nurse' && !closed && <NurseTaskCard encounterId={encounterId} nurse />}
 
             {/* Ask a colleague for help on this patient (or end the help) */}
             {!closed &&

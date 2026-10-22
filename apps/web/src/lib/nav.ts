@@ -52,13 +52,15 @@ export const RECEPTION_NAV: NavItem[] = [
   NOTICES,
 ]
 
-/** Nursing: the dashboard, triage first, then everyone in the clinic and the files. */
+/** Nursing: the dashboard, triage first, then everyone in the clinic, the files and the stock
+ *  the nurses use (dressings, injections: "Use" on the stock page). */
 export const NURSE_NAV: NavItem[] = [
   { id: 'home', labelKey: 'nav.home', icon: 'layout-dashboard', to: '/app' },
   { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
+  { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' },
   HISTORY,
   NOTICES,
 ]

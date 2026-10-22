@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDayMonth, formatRwf, formatTime, type Role } from '@mmc/shared'
+import { formatDayMonth, formatRwf, formatTime, isoDate, type Role } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -65,6 +65,7 @@ const apptTint: Record<string, Tint> = {
   completed: 'mint',
   no_show: 'coral',
   cancelled: 'coral',
+  declined: 'coral',
 }
 
 /* ---------------------------------------------------------------- appointments */
@@ -80,6 +81,7 @@ export function AppointmentsPanel({
   canAct,
   footer,
   onSelect,
+  onRebook,
 }: {
   i?: number
   day?: Date
@@ -88,6 +90,8 @@ export function AppointmentsPanel({
   footer?: ReactNode
   /** Opens the booking's details (appointments page). */
   onSelect?: (id: string) => void
+  /** "Book again" on a booking the doctor declined. */
+  onRebook?: (a: DayAppointment) => void
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -95,6 +99,11 @@ export function AppointmentsPanel({
   const ops = useDeskOps()
   const { error, run } = useRun()
   const waiting = appts.filter((a) => a.status === 'approved' || a.status === 'confirmed')
+  // Arrived only on the day itself; no-show once the day has come; cancel until the day is over.
+  const dayKey = isoDate(day)
+  const todayKey = isoDate(new Date())
+  const isToday = dayKey === todayKey
+  const isPast = dayKey < todayKey
   const rows = limit ? appts.slice(0, limit) : appts
   const paged = usePaged(rows, limit ? rows.length || 1 : 10, String(day.getTime()))
 
@@ -165,30 +174,53 @@ export function AppointmentsPanel({
                     </span>
                     {canAct && open && (
                       <span className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => setArriving(a)}
-                          disabled={!a.patientId || arriving?.id === a.id}
-                          title={
-                            a.patientId ? t('ops.appts.arrivedHint') : t('ops.appts.registerFirst')
-                          }
-                        >
-                          {t('ops.appts.arrived')}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => noShow(a)}>
-                          {t('ops.appts.noShow')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          aria-label={t('ops.appts.cancel')}
-                          title={t('ops.appts.cancel')}
-                          onClick={() => cancel(a)}
-                        >
-                          <X size={14} aria-hidden="true" />
-                        </Button>
+                        {isToday && (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => setArriving(a)}
+                            disabled={!a.patientId || arriving?.id === a.id}
+                            title={
+                              a.patientId
+                                ? t('ops.appts.arrivedHint')
+                                : t('ops.appts.registerFirst')
+                            }
+                          >
+                            {t('ops.appts.arrived')}
+                          </Button>
+                        )}
+                        {(isToday || isPast) && (
+                          <Button size="sm" variant="ghost" onClick={() => noShow(a)}>
+                            {t('ops.appts.noShow')}
+                          </Button>
+                        )}
+                        {!isPast && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={t('ops.appts.cancel')}
+                            title={t('ops.appts.cancel')}
+                            onClick={() => cancel(a)}
+                          >
+                            <X size={14} aria-hidden="true" />
+                          </Button>
+                        )}
                       </span>
+                    )}
+                    {a.status === 'declined' && (
+                      <span className="text-ink-3 basis-full text-[13px]">
+                        {t('ops.appts.declinedWhy', {
+                          doctor: a.doctor ?? '',
+                          reason: a.declineReason || '—',
+                        })}
+                        {a.rebooked && <> · {t('ops.appts.rebooked')}</>}
+                      </span>
+                    )}
+                    {a.status === 'declined' && !a.rebooked && canAct && onRebook && (
+                      <Button size="sm" variant="primary" onClick={() => onRebook(a)}>
+                        <CalendarPlus size={14} aria-hidden="true" />
+                        {t('ops.appts.bookAgain')}
+                      </Button>
                     )}
                     {!open &&
                       a.patientId &&
@@ -228,11 +260,15 @@ export function AppointmentsPanel({
 /* ---------------------------------------------------------------- tasks */
 
 /** What doctors asked the nurses to do, with times; "Done" ticks it off (recorded with you). */
-export function TasksPanel({ i = 2 }: { i?: number }) {
+export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: boolean }) {
   const { t } = useTranslation()
   const { data: tasks = [] } = useOpenTasks()
   const ops = useDeskOps()
   const { error, run } = useRun()
+  const notDone = (id: string) => {
+    const reason = window.prompt(t('ops.tasks.notDoneWhy'))
+    if (reason) void run(() => ops.cancelTask.mutateAsync({ id, reason }))
+  }
   const overdue = tasks.filter((x) => x.overdue).length
   return (
     <Panel
@@ -271,14 +307,21 @@ export function TasksPanel({ i = 2 }: { i?: number }) {
                       {t('visits.openVisit')}
                     </StaffLink>
                   )}
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => void run(() => ops.completeTask.mutateAsync(x.id))}
-                  >
-                    <Check size={14} aria-hidden="true" />
-                    {t('common.done')}
-                  </Button>
+                  {canAct && (
+                    <>
+                      <Button size="sm" variant="ghost" onClick={() => notDone(x.id)}>
+                        {t('ops.tasks.notDone')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => void run(() => ops.completeTask.mutateAsync(x.id))}
+                      >
+                        <Check size={14} aria-hidden="true" />
+                        {t('common.done')}
+                      </Button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -307,10 +350,13 @@ export function BedsPanel({
   i = 1,
   userRole,
   className,
+  canAct = true,
 }: {
   i?: number
   userRole: Role
   className?: string
+  /** Admit, extend, discharge (clinical work, switched in Who may do what). */
+  canAct?: boolean
 }) {
   const { t } = useTranslation()
   const { data: beds = [] } = useBedBoard()
@@ -408,7 +454,7 @@ export function BedsPanel({
                   />
                 ) : (
                   <>
-                    {b.state === 'free' && (
+                    {b.state === 'free' && canAct && (
                       <Button size="sm" onClick={() => setForm({ bedId: b.id, mode: 'admit' })}>
                         <BedDouble size={14} aria-hidden="true" />
                         {t('ops.beds.admit')}
@@ -425,23 +471,30 @@ export function BedsPanel({
                             {t('visits.openVisit')}
                           </StaffLink>
                         )}
-                        <Button size="sm" onClick={() => setForm({ bedId: b.id, mode: 'extend' })}>
-                          <CalendarPlus size={14} aria-hidden="true" />
-                          {t('ops.beds.extend')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                t('ops.beds.confirmDischarge', { name: b.patient ?? '' }),
+                        {canAct && (
+                          <Button
+                            size="sm"
+                            onClick={() => setForm({ bedId: b.id, mode: 'extend' })}
+                          >
+                            <CalendarPlus size={14} aria-hidden="true" />
+                            {t('ops.beds.extend')}
+                          </Button>
+                        )}
+                        {canAct && (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  t('ops.beds.confirmDischarge', { name: b.patient ?? '' }),
+                                )
                               )
-                            )
-                              void run(() => ops.discharge.mutateAsync(b.id))
-                          }}
-                        >
-                          {t('ops.beds.discharge')}
-                        </Button>
+                                void run(() => ops.discharge.mutateAsync(b.id))
+                            }}
+                          >
+                            {t('ops.beds.discharge')}
+                          </Button>
+                        )}
                       </span>
                     )}
                     {(b.state === 'cleaning' || b.state === 'out_of_service') && (

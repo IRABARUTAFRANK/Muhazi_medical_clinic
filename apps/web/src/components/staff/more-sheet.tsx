@@ -106,7 +106,9 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
         {dashboard && (
           <StaffLink to="/app/dashboard" className={item} onClick={onClose}>
             <span>{t('common.dashboard')}</span>
-            <span className="text-ink-3 text-xs">{t('common.manager')}</span>
+            <span className="text-ink-3 text-xs">
+              {manager ? t('common.manager') : t('staff.positions.head')}
+            </span>
           </StaffLink>
         )}
         {manager && (

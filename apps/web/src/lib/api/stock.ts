@@ -225,6 +225,10 @@ const sampleMoves: StockMovement[] = [
 
 const KEY = ['stock'] as const
 
+/** One rule everywhere (stock page, pharmacy, manager dashboard): a level is set and reached. */
+export const isLowStock = (i: Pick<StockItem, 'onHand' | 'reorderLevel'>) =>
+  i.reorderLevel > 0 && i.onHand <= i.reorderLevel
+
 export function useStockOverview() {
   return useQuery({
     // another desk receives or hands over stock: keep the figures fresh
@@ -486,7 +490,13 @@ export function useStockActions() {
     },
     onSuccess: refresh,
   })
-  return { receive, transfer, use, dispense, notGiven, sell, saveLocation }
+  /** The quantity at which the medicine shows as low (0: never). */
+  const setReorderLevel = useMutation({
+    mutationFn: (i: { itemId: string; level: number }) =>
+      call('set_reorder_level', { p_item_id: i.itemId, p_level: i.level }),
+    onSuccess: refresh,
+  })
+  return { receive, transfer, use, dispense, notGiven, sell, saveLocation, setReorderLevel }
 }
 
 /** The pharmacy desk's figures (migration 0056). */
