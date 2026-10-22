@@ -126,6 +126,13 @@ export function InquiriesPanel({
                         <Phone size={12} aria-hidden="true" className="mr-1 inline" />
                         {q.phone} · {channel(q.channel)}
                       </span>
+                      {/* the time asked for is already past: book another one with the person */}
+                      {(q.startsAt ?? q.preferredAt) &&
+                        new Date((q.startsAt ?? q.preferredAt)!).getTime() < Date.now() && (
+                          <span className="text-amber block text-[13px] font-semibold">
+                            {t('ops.inquiries.timePassed')}
+                          </span>
+                        )}
                       {q.category && (
                         <span className="text-ink-2 block text-[13px]">
                           {t('ops.inquiries.service', { name: q.category })}

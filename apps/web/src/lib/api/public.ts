@@ -18,8 +18,9 @@ import {
   type Practitioner,
   type ServiceLine,
   type WeeklyHours,
+  formatDayMonth,
 } from '@mmc/shared'
-import { appNow } from '@/lib/clock'
+import { appNow, kigaliToday } from '@/lib/clock'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -271,13 +272,20 @@ export function useClinicStatus(hours: ClinicHours) {
             open: boolean
             closes_at: string | null
             opens_at: string | null
+            /** The next open day when it is not today (0066). */
+            opens_on?: string | null
             waiting: number
             avg_wait_min: number | string
           }
           return {
             open: d.open,
             closesAt: d.closes_at ?? undefined,
-            opensAt: d.opens_at ?? undefined,
+            // a later day says which day ("25/10 08:00")
+            opensAt: d.opens_at
+              ? d.opens_on && d.opens_on !== kigaliToday()
+                ? `${formatDayMonth(new Date(`${d.opens_on}T12:00:00`))} ${d.opens_at}`
+                : d.opens_at
+              : undefined,
             waiting: Number(d.waiting),
             avgWaitMin: Number(d.avg_wait_min),
             live: true,

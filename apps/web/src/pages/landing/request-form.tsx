@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { kigaliTime, kigaliToday } from '@/lib/clock'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import {
@@ -35,7 +36,15 @@ export function RequestForm() {
     setError(null)
     if (fullName.trim().length < 3) return setError(t('landing.book.errors.name'))
     if (!RW_PHONE.test(cleanPhone(phone))) return setError(t('landing.book.errors.phone'))
-    const preferredAt = day ? new Date(`${day}T${time || '08:00'}:00`) : null
+    // the clinic's time; today without a time means "today, as soon as possible"
+    const [y, m, d] = day.split('-').map(Number)
+    const [hh, mm] = (time || (day === kigaliToday() ? '' : '08:00')).split(':').map(Number)
+    const preferredAt =
+      day && y && m && d
+        ? time || day !== kigaliToday()
+          ? kigaliTime(y, m - 1, d, hh ?? 8, mm ?? 0)
+          : new Date(Date.now() + 60 * 60_000)
+        : null
     if (preferredAt && preferredAt.getTime() < Date.now())
       return setError(t('landing.book.errors.past'))
     setBusy(true)
@@ -91,7 +100,7 @@ export function RequestForm() {
         <Field
           label={t('landing.book.day')}
           type="date"
-          min={new Date().toISOString().slice(0, 10)}
+          min={kigaliToday()}
           value={day}
           onChange={(e) => setDay(e.target.value)}
         />

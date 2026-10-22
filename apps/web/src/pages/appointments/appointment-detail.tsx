@@ -32,6 +32,7 @@ export function AppointmentDetail({ id, onBack }: { id: string; onBack: () => vo
         [t('ops.detail.when'), when(a.startsAt)],
         [t('ops.detail.doctor'), a.doctor],
         [t('ops.detail.reason'), a.reason],
+        [t('ops.detail.service'), a.category],
         [
           t('ops.detail.patient'),
           a.patientName ? `${a.patientFile ?? ''} · ${a.patientName}` : a.contactName,

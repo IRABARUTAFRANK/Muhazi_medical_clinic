@@ -14,6 +14,7 @@ export function ChangePinPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const changePin = useSession((s) => s.changePin)
+  const signOut = useSession((s) => s.signOut)
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -98,6 +99,21 @@ export function ChangePinPage({ user }: { user: StaffUser }) {
             onClick={() => void navigate({ to: homeRouteFor(user) })}
           >
             {t('staff.form.cancel')}
+          </Button>
+        )}
+        {/* the first-sign-in change cannot be skipped, but the person can leave (wrong account) */}
+        {user.mustChangePin && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            onClick={() =>
+              void signOut().then(() => {
+                window.location.assign('/#signin')
+              })
+            }
+          >
+            {t('common.signOut')}
           </Button>
         )}
       </form>

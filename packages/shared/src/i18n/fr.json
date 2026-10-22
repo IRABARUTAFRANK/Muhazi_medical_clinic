@@ -2010,7 +2010,8 @@
       },
       "service": "Service : {{name}}",
       "call": "Appeler",
-      "message": "Bonjour {{name}}, ici Muhazi Medical Clinic au sujet de votre demande de rendez-vous."
+      "message": "Bonjour {{name}}, ici Muhazi Medical Clinic au sujet de votre demande de rendez-vous.",
+      "timePassed": "L’heure demandée est passée : convenez d’une autre avec la personne."
     },
     "tasks": {
       "count": "{{count}} ouvertes · {{overdue}} en retard",
@@ -2080,7 +2081,8 @@
         "reception": "Accueil",
         "phone": "Appel",
         "walk_in": "Sans rendez-vous"
-      }
+      },
+      "service": "Service"
     },
     "booking": {
       "open": "Nouveau rendez-vous",
@@ -2886,7 +2888,9 @@
     },
     "addBreak": "Ajouter une pause",
     "breakBetween": "Pause {{from}}–{{to}}",
-    "breakHint": "Ajoutez une pause pour couper la journée (par exemple 12:00–14:00) ; aucun rendez-vous pendant la pause. Une troisième période est possible pour le soir."
+    "breakHint": "Ajoutez une pause pour couper la journée (par exemple 12:00–14:00) ; aucun rendez-vous pendant la pause. Une troisième période est possible pour le soir.",
+    "publicNoHours": "Un agenda public a besoin d’au moins un jour de travail, sinon le site ne peut pas l’afficher.",
+    "publicNoService": "Choisissez au moins un service, sinon les patients ne trouvent pas cet agenda sur le site."
   },
   "journey": {
     "show": "Voir ce qui a été fait",

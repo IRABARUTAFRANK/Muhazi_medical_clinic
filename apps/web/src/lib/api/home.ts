@@ -44,6 +44,8 @@ export interface HomeToAccept {
   name: string
   when: string
   note: string | null
+  /** The service asked for (0065). */
+  category?: string | null
 }
 export interface HomeBill {
   encounterId: string

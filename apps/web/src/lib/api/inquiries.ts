@@ -25,9 +25,10 @@ export const cleanPhone = (phone: string) => phone.replace(/[^0-9+]/g, '')
 /** The reason a request was refused, as a translation key under `landing.book.errors`. */
 export function inquiryErrorKey(message: string): string {
   const m = message.toLowerCase()
+  // "too many requests for this phone" mentions the phone too: checked first
+  if (m.includes('too many')) return 'tooMany'
   if (m.includes('phone')) return 'phone'
   if (m.includes('full name')) return 'name'
-  if (m.includes('too many')) return 'tooMany'
   if (m.includes('just been taken')) return 'taken'
   if (m.includes('in the past')) return 'past'
   if (m.includes('does not work')) return 'notWorking'

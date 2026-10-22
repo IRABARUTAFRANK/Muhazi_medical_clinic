@@ -65,7 +65,7 @@ export function LandingPage() {
   const { data: info } = useClinicInfo()
   const profile = info?.profile ?? CLINIC_PROFILE
   const hours = info?.hours ?? CLINIC_HOURS
-  const { data: booked } = useBookedSlots(startOfDay(now), 14)
+  const { data: booked } = useBookedSlots(startOfDay(now), 21)
   const { data: status } = useClinicStatus(hours)
 
   const activeLines = lines
@@ -131,7 +131,7 @@ export function LandingPage() {
                 action={({ p }) => (
                   <Link
                     to="/book"
-                    search={{ category: p.cats[0] }}
+                    search={{ category: p.cats[0], doctor: p.code }}
                     className={buttonVariants({ variant: 'primary', size: 'sm' })}
                   >
                     {t('landing.doctors.book')}

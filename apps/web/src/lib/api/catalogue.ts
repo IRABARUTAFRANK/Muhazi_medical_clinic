@@ -453,6 +453,9 @@ const TREATMENTS = ['catalogue', 'treatments'] as const
 export function useTreatments(onlyActive = false) {
   return useQuery({
     queryKey: [...TREATMENTS, onlyActive],
+    // the manager changes prices or hides a treatment: an open visit screen follows
+    refetchInterval: 120_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<Treatment[]> => {
       if (!supabase) return sampleTreatments.filter((t) => !onlyActive || t.active)
       let q = supabase

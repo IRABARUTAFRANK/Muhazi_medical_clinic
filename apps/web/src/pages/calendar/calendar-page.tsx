@@ -159,6 +159,11 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
       setErr(t('calendar.badPeriod'))
       return
     }
+    // a public calendar the site cannot show: no working day, or under no service
+    if (visibility === 'public' && (workdays === 0 || cats.length === 0)) {
+      setErr(t(workdays === 0 ? 'calendar.publicNoHours' : 'calendar.publicNoService'))
+      return
+    }
     try {
       await save.mutateAsync({
         userId,

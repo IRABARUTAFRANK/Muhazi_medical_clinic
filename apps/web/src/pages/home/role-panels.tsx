@@ -605,7 +605,11 @@ export function ToAcceptPanel({
                 </Pill>
                 <span className="min-w-[140px] flex-1">
                   <span className="block truncate font-semibold">{q.name}</span>
-                  {q.note && <span className="text-ink-3 block text-[13px]">{q.note}</span>}
+                  {(q.note || q.category) && (
+                    <span className="text-ink-3 block text-[13px]">
+                      {[q.category, q.note].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
                 </span>
                 <span className="flex gap-1">
                   <Button variant="primary" size="sm" onClick={() => void accept(q.id)}>

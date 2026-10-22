@@ -24,7 +24,7 @@ import { SiteFooter } from '@/components/public/site-footer'
 import { SiteNav, Wrap } from '@/components/public/site-nav'
 import { inquiryErrorKey, sendInquiry } from '@/lib/api/inquiries'
 import { bookedFor, useBookedSlots, usePractitioners } from '@/lib/api/public'
-import { appNow } from '@/lib/clock'
+import { appNow, kigaliTime } from '@/lib/clock'
 import { useDayNames } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 import { CalendarGrid } from './calendar-grid'
@@ -32,6 +32,8 @@ import { CalendarGrid } from './calendar-grid'
 interface BookingPageProps {
   category: CategoryFilter
   onCategoryChange: (category: CategoryFilter) => void
+  /** A doctor chosen on the home page ("Book" next to that doctor). */
+  doctor?: string
 }
 
 /**
@@ -39,7 +41,7 @@ interface BookingPageProps {
  * Free/booked comes from each practitioner's working hours and the live booked slots; the
  * database re-checks both when the inquiry is created.
  */
-export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
+export function BookingPage({ category, onCategoryChange, doctor }: BookingPageProps) {
   const { t } = useTranslation()
   const dayNames = useDayNames()
   const now = appNow()
@@ -48,7 +50,7 @@ export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
   const { data: booked } = useBookedSlots(startOfDay(now), (MAX_WEEKS_AHEAD + 1) * 7)
   const filtered = practitioners.filter((p) => category === 'all' || p.cats.includes(category))
 
-  const [docCode, setDocCode] = useState<string | null>(null)
+  const [docCode, setDocCode] = useState<string | null>(doctor ?? null)
   const [week, setWeek] = useState(0)
   const [pick, setPick] = useState<string | null>(null)
   const [fullName, setFullName] = useState('')
@@ -106,7 +108,8 @@ export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
     setBusy(true)
     setError(null)
     try {
-      const startsAt = new Date(
+      // the clinic's time, whatever the visitor's clock says
+      const startsAt = kigaliTime(
         picked.date.getFullYear(),
         picked.date.getMonth(),
         picked.date.getDate(),
@@ -266,6 +269,8 @@ export function BookingPage({ category, onCategoryChange }: BookingPageProps) {
                 todayIndex={week === 0 ? 0 : -1}
                 selectedId={pick}
                 onPick={(id) => {
+                  // the time belongs to this doctor: the doctor stays chosen with it
+                  setDocCode(selected?.code ?? null)
                   setPick(id)
                   setSentRef(null)
                   setError(null)

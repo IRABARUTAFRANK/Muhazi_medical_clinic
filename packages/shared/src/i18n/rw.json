@@ -2014,7 +2014,8 @@
       },
       "service": "Serivisi: {{name}}",
       "call": "Hamagara",
-      "message": "Muraho {{name}}, ni Muhazi Medical Clinic ku byerekeye gahunda mwasabye."
+      "message": "Muraho {{name}}, ni Muhazi Medical Clinic ku byerekeye gahunda mwasabye.",
+      "timePassed": "Igihe cyasabwe cyarenze: mwumvikane ikindi n’umuntu."
     },
     "tasks": {
       "count": "{{count}} bitarakorwa · {{overdue}} byakererewe",
@@ -2084,7 +2085,8 @@
         "reception": "Kwakira abarwayi",
         "phone": "Telefoni",
         "walk_in": "Yaje atabanje gufata gahunda"
-      }
+      },
+      "service": "Serivisi"
     },
     "booking": {
       "open": "Gahunda nshya",
@@ -2895,7 +2897,9 @@
     },
     "addBreak": "Ongeraho ikiruhuko",
     "breakBetween": "Ikiruhuko {{from}}–{{to}}",
-    "breakHint": "Ongeraho ikiruhuko kugira ngo umunsi ugabanywemo kabiri (urugero 12:00–14:00); nta gahunda ifatwa mu kiruhuko. Igihe cya gatatu gishoboka ku masaha y’umugoroba."
+    "breakHint": "Ongeraho ikiruhuko kugira ngo umunsi ugabanywemo kabiri (urugero 12:00–14:00); nta gahunda ifatwa mu kiruhuko. Igihe cya gatatu gishoboka ku masaha y’umugoroba.",
+    "publicNoHours": "Kalendari ya rubanda ikeneye nibura umunsi umwe w’akazi, bitabaye ibyo urubuga ntirushobora kuyerekana.",
+    "publicNoService": "Hitamo nibura serivisi imwe, bitabaye ibyo abarwayi ntibabona iyi kalendari ku rubuga."
   },
   "journey": {
     "show": "Reba ibyakozwe",

@@ -390,10 +390,25 @@ const nextMondayTen = () => {
 }
 const slot = nextMondayTen()
 let appointmentId
-await step('anonymous inquiry for Dr. Mukamana next Monday 10:00 â†’ reference', async () => {
+// The site books real accounts with a public calendar only (0066): the sample dentist gets an
+// account so the public booking can be tried.
+await asAdmin()
+const dentist = (
+  await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+    'f.ndayisaba@staff.muhaziclinic.rw',
+    JSON.stringify({
+      username: 'f.ndayisaba',
+      full_name: 'Dr. Ndayisaba Felix',
+      role: 'doctor',
+      station: 'Dental',
+    }),
+  ])
+).id
+await db.query(`update practitioner set user_id = $1 where code = 'nf'`, [dentist])
+await step('anonymous inquiry for Dr. Ndayisaba next Monday 10:00 â†’ reference', async () => {
   await as(null, 'anon')
   const r = await one(
-    `select create_appointment_inquiry('mb', $1::timestamptz, 'Uwase Claudine', '0788 000 111', 'RSSB RAMA', 'consultation', null, 'whatsapp') as ref`,
+    `select create_appointment_inquiry('nf', $1::timestamptz, 'Uwase Claudine', '0788 000 111', 'RSSB RAMA', 'consultation', null, 'whatsapp') as ref`,
     [slot],
   )
   if (!/^MMC-\d{4}-\d{4}$/.test(r.ref)) throw new Error(r.ref)
@@ -421,7 +436,7 @@ await expectError(
   'second inquiry for the same slot is refused',
   async () =>
     db.query(
-      `select create_appointment_inquiry('mb', $1::timestamptz, 'Other Person', '0788 000 222', null, null, null, 'sms')`,
+      `select create_appointment_inquiry('nf', $1::timestamptz, 'Other Person', '0788 000 222', null, null, null, 'sms')`,
       [slot],
     ),
   /just been taken/i,
@@ -438,7 +453,7 @@ await expectError(
 await step('receptionist approves, doctor accepts â†’ confirmed', async () => {
   await as(staff.receptionist)
   await db.query(`select approve_inquiry($1, $2)`, [appointmentId, patientId])
-  await as(staff.doctor)
+  await as(dentist)
   await db.query(`select accept_appointment($1)`, [appointmentId])
   await asAdmin()
   const a = await one(`select status from appointment where id = $1`, [appointmentId])
@@ -1407,7 +1422,8 @@ await step('0043: the booking-request notice disappears once reception books it'
     `select count(*)::int as n from notification where kind = 'inquiry' and params ->> 'appointment' = $1`,
     [a.id],
   )
-  if (before.n !== 1 || after.n !== 0) throw new Error(`before ${before.n} after ${after.n}`)
+  // reception and the manager are told (0066)
+  if (before.n < 1 || after.n !== 0) throw new Error(`before ${before.n} after ${after.n}`)
   return 'request notice 1 → 0 after booking'
 })
 await step('0043: reception cannot register an emergency', async () => {
@@ -2980,6 +2996,67 @@ await step(
     )
       throw new Error(JSON.stringify({ same, notManager, moved, alias, m, owed, before, after }))
     return 'merged (visit moved, old number kept); owed 4000 said; result marked seen'
+  },
+)
+
+// ---------------------------------------------------------------- 0066: public site, sign-in, catalogue
+await step(
+  '0066: sample calendars cannot be booked; overlapping times are taken; lock-screen wrong PINs are counted; a moved category leaves its other departments',
+  async () => {
+    // a sample doctor with no account is not on the site, so not bookable
+    await as(null, 'anon')
+    let sample = 'ok'
+    try {
+      await db.query(
+        `select create_appointment_inquiry('hj', now() + interval '2 days', 'Sample Test', '0788 066 001')`,
+      )
+    } catch (e) {
+      sample = String(e.message).split('\n')[0]
+    }
+    // half an hour into a 60-minute booking of the dentist: taken
+    let overlap = 'ok'
+    try {
+      await db.query(
+        `select create_appointment_inquiry('nf', ($1::timestamptz + interval '30 minutes'), 'Overlap Test', '0788 066 002')`,
+        [slot],
+      )
+    } catch (e) {
+      overlap = String(e.message).split('\n')[0]
+    }
+    // wrong PINs at the lock screen
+    await as(staff.cashier)
+    await db.query(`select record_wrong_pin('lock screen')`)
+    const n = (await one(`select record_wrong_pin('lock screen') as n`)).n
+    // a category moved into one department leaves the others
+    await as(staff.manager)
+    const a = (await one(`select upsert_department(null, 'Dept A 66', '', '{doctor}') as id`)).id
+    const b = (await one(`select upsert_department(null, 'Dept B 66', '', '{doctor}') as id`)).id
+    const cat = (
+      await one(`select save_category(null, 'Category 66', null, null, 'treatment') as id`)
+    ).id
+    const svc = (await one(`select upsert_service(null, 'Service 66', 'consultation', 1000) as id`))
+      .id
+    await db.query(`select set_service_category($1, $2)`, [svc, cat])
+    await asAdmin()
+    await db.query(`insert into service_department (service_id, department_id) values ($1, $2)`, [
+      svc,
+      a,
+    ])
+    await as(staff.manager)
+    await db.query(`select move_category_to_department($1, $2)`, [cat, b])
+    await asAdmin()
+    const depts = (
+      await db.query(`select department_id from service_department where service_id = $1`, [svc])
+    ).rows.map((r) => r.department_id)
+    if (
+      !/unknown practitioner/.test(sample) ||
+      !/just been taken/.test(overlap) ||
+      Number(n) < 2 ||
+      depts.length !== 1 ||
+      depts[0] !== b
+    )
+      throw new Error(JSON.stringify({ sample, overlap, n, depts }))
+    return 'sample refused; overlap refused; 2 wrong PINs counted; category only in its new department'
   },
 )
 

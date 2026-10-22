@@ -64,7 +64,8 @@ export type VerifyResult =
   | { ok: true; user: StaffUser }
   | { ok: false; reason: 'invalid' | 'inactive' | 'expired' | 'error' }
 
-/** Sign-in in progress: the PIN was accepted, the e-mail code is still pending. Never persisted. */
+/** Sign-in in progress: the PIN was accepted, the e-mail code is still pending. Kept for this tab
+ *  only, so a reload does not lose the code step; the PIN itself is never stored. */
 export interface PendingSignIn {
   staffId: string
   username: string
@@ -349,7 +350,8 @@ export const useSession = create<SessionState>()(
         if (next === pending.pin) return 'same'
         const { error } = await supabase.auth.updateUser({ password: next })
         if (error) return /same|different/i.test(error.message) ? 'same' : 'error'
-        await supabase.rpc('mark_pin_changed')
+        const { error: markError } = await supabase.rpc('mark_pin_changed')
+        if (markError) return 'error'
         // The new PIN is set; the e-mailed code now approves this first sign-in.
         let outcome = await requestCodeViaFunction(pending.staffId, pending.username, next)
         if (!outcome.ok && outcome.reason === 'unavailable') {
@@ -453,7 +455,11 @@ export const useSession = create<SessionState>()(
         if (error) {
           // A PIN cannot be guessed at a locked screen: after 5 wrong tries the tab signs out
           // and the full sign-in (with the e-mailed code) is needed.
-          const failures = get().unlockFailures + 1
+          // the server keeps it too (the manager sees it; sign-in counts it)
+          const { data: recent } = await supabase.rpc('record_wrong_pin', {
+            p_where: 'lock screen',
+          })
+          const failures = Math.max(get().unlockFailures + 1, Number(recent ?? 0))
           set({ unlockFailures: failures })
           if (failures >= MAX_UNLOCK_FAILURES) await get().signOut()
           return false
@@ -499,6 +505,15 @@ export const useSession = create<SessionState>()(
         locked: s.locked,
         lastActiveAt: s.lastActiveAt,
         unlockFailures: s.unlockFailures,
+        // the code step survives a reload; the PIN and the sample user stay in memory only
+        pending: s.pending
+          ? {
+              staffId: s.pending.staffId,
+              username: s.pending.username,
+              email: s.pending.email,
+              needsNewPin: s.pending.needsNewPin,
+            }
+          : null,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state?.user || !supabase) return
@@ -551,8 +566,11 @@ const sb = supabase
 if (sb) {
   sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
+      const wasIn = !!useSession.getState().user
       queryClient.clear()
       useSession.setState({ user: null, locked: false })
+      // signed out from another tab or by the manager: back to the sign-in, not a blank page
+      if (wasIn && window.location.pathname.startsWith('/app')) window.location.assign('/#signin')
     }
     if (event === 'INITIAL_SESSION' && !session && useSession.getState().user) {
       queryClient.clear()

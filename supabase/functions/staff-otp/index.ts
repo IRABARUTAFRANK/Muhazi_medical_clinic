@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
     .from('audit_event')
     .select('id', { count: 'exact', head: true })
     .eq('actor_id', profile.id)
-    .eq('reason', 'wrong PIN (staff-otp)')
+    .like('reason', 'wrong PIN%') // at sign-in and at the lock screen
     .gte('at', new Date(Date.now() - WRONG_PIN_WINDOW_MS).toISOString())
   if ((wrong ?? 0) >= MAX_WRONG_PINS) return json(429, { error: 'too_many' })
 

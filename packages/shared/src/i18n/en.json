@@ -2010,7 +2010,8 @@
       },
       "service": "Service: {{name}}",
       "call": "Call",
-      "message": "Hello {{name}}, this is Muhazi Medical Clinic about your appointment request."
+      "message": "Hello {{name}}, this is Muhazi Medical Clinic about your appointment request.",
+      "timePassed": "The time asked for has passed: agree a new one with the person."
     },
     "tasks": {
       "count": "{{count}} open · {{overdue}} late",
@@ -2080,7 +2081,8 @@
         "reception": "Reception",
         "phone": "Phone call",
         "walk_in": "Walk-in"
-      }
+      },
+      "service": "Service"
     },
     "booking": {
       "open": "New booking",
@@ -2886,7 +2888,9 @@
     },
     "addBreak": "Add a break",
     "breakBetween": "Break {{from}}–{{to}}",
-    "breakHint": "Add a break to split the day (for example 12:00–14:00); patients cannot book during the break. A third period is possible for evening hours."
+    "breakHint": "Add a break to split the day (for example 12:00–14:00); patients cannot book during the break. A third period is possible for evening hours.",
+    "publicNoHours": "A public calendar needs at least one working day, or the site cannot show it.",
+    "publicNoService": "Choose at least one service, or patients cannot find this calendar on the site."
   },
   "journey": {
     "show": "Show what was done",
