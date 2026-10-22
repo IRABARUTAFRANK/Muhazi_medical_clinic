@@ -97,7 +97,8 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             (!r.vitalsAt &&
               !['cashier', 'pharmacy', 'laboratory', 'ultrasound'].includes(r.station)),
         )
-      : open
+      : // reception: those still waiting (not those already being seen)
+        open.filter((r) => !r.startedAt)
   // patients sent to the nurses for care (Nursing, Beds)
   const care = openItems(queue).filter((r) => r.station === 'nursing' || r.station === 'beds')
 
@@ -252,7 +253,8 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                 ) : (
                   <>
                     <AppointmentsPanel
-                      canAct
+                      canAct={can('appointment.approve')}
+                      canArrive={can('visit.start')}
                       limit={6}
                       footer={
                         <StaffLink
@@ -263,7 +265,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                         </StaffLink>
                       }
                     />
-                    <InquiriesPanel canAct />
+                    <InquiriesPanel canAct={can('appointment.approve')} />
                   </>
                 )}
                 {!nurse && <ArrivalsPanel d={data} />}

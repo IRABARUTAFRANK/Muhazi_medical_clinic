@@ -468,7 +468,10 @@
     "methodsHint": "Paiements acceptés : espèces, MTN MoMo et Airtel Money.",
     "sharedQueue": "premier médecin libre",
     "takenBy": "pris par {{name}}",
-    "take": "Prendre"
+    "take": "Prendre",
+    "seen": "vu",
+    "correctedResult": "corrigé",
+    "markSeen": "Vu"
   },
   "dashboard": {
     "title": "Tableau de bord de la clinique",
@@ -568,7 +571,8 @@
       "revenue": "Recettes du jour",
       "openBills": "Factures ouvertes",
       "beds": "Lits occupés",
-      "revenuePeriod": "Recettes"
+      "revenuePeriod": "Recettes",
+      "debts": "Dû sur des visites terminées"
     },
     "units": {
       "today": "aujourd'hui",
@@ -630,7 +634,15 @@
       "or": "ou des dates"
     },
     "longestShort": "le premier attend depuis {{time}}",
-    "noneTaken": "personne encore pris en charge aujourd’hui"
+    "noneTaken": "personne encore pris en charge aujourd’hui",
+    "toCollect": "à encaisser à la caisse",
+    "debtsHint": "à encaisser au retour du patient",
+    "expiredShort": "périmé",
+    "expiredItems_one": "{{count}} médicament périmé",
+    "expiredItems_other": "{{count}} médicaments périmés",
+    "writeOff": "à sortir du stock (Stock › Utiliser)",
+    "expiringItems_one": "{{count}} médicament périme dans les 30 jours",
+    "expiringItems_other": "{{count}} médicaments périment dans les 30 jours"
   },
   "placeholder": {
     "title": "{{screen}}",
@@ -1354,7 +1366,8 @@
         "amount": "Rendez au plus {{amount}}.",
         "reason": "Dites pourquoi l’argent est rendu."
       }
-    }
+    },
+    "leftWhy": "Parti sans payer : {{reason}}"
   },
   "settings": {
     "title": "Paramètres de la clinique",
@@ -1559,7 +1572,16 @@
     "page": "Page {{page}} sur {{pages}}",
     "prev": "Page précédente",
     "next": "Page suivante",
-    "forMe": "Patients qui vous attendent à {{station}}"
+    "forMe": "Patients qui vous attendent à {{station}}",
+    "merge": {
+      "title": "Fusionner un dossier en double",
+      "lead": "La même personne inscrite deux fois ? Trouvez l’autre dossier : ses visites, rendez-vous, documents et assurances viennent dans ce dossier, et son numéro retrouve toujours le patient.",
+      "find": "Trouver le dossier en double",
+      "button": "Fusionner dans ce dossier",
+      "confirm": "Fusionner {{dup}} dans {{keep}} ? Impossible à annuler.",
+      "done_one": "{{dup}} fusionné : {{count}} élément déplacé dans ce dossier.",
+      "done_other": "{{dup}} fusionné : {{count}} éléments déplacés dans ce dossier."
+    }
   },
   "file": {
     "back": "Retour aux patients",
@@ -1886,7 +1908,8 @@
       "visits": "visites ouvertes",
       "vitals": "constantes prises",
       "charges": "soins facturés"
-    }
+    },
+    "ordersAt": "Demandes à faire à {{desk}}"
   },
   "vitalsForm": {
     "measuredBy": "Mesuré par",
@@ -1956,7 +1979,7 @@
     },
     "inquiries": {
       "reject": "Refuser",
-      "rejectReason": "Pourquoi la demande de {{name}} est-elle refusée ? (la personne est prévenue)",
+      "rejectReason": "Pourquoi la demande de {{name}} est-elle refusée ? (puis prévenez la personne : Appeler, WhatsApp ou SMS)",
       "registerNow": "Enregistrer le patient maintenant",
       "hint": "Réservez chaque demande avec le dossier du patient, le médecin et l’heure. Le médecin accepte ou décline sur sa page d’accueil et vous recevez la réponse ici et dans les notifications.",
       "asksFor": "Demande : {{text}}",
@@ -1984,7 +2007,10 @@
         "patient": "Choisissez le dossier patient (ou enregistrez d’abord le patient).",
         "doctor": "Choisissez le médecin.",
         "when": "Choisissez le jour et l’heure."
-      }
+      },
+      "service": "Service : {{name}}",
+      "call": "Appeler",
+      "message": "Bonjour {{name}}, ici Muhazi Medical Clinic au sujet de votre demande de rendez-vous."
     },
     "tasks": {
       "count": "{{count}} ouvertes · {{overdue}} en retard",
@@ -2150,7 +2176,10 @@
     "rxNotGiven": "Pharmacie : {{item}} non remis à {{name}}",
     "testCancelled": "Laboratoire : {{test}} non fait pour {{name}}",
     "resultCorrected": "Résultat corrigé : {{test}} · {{name}}",
-    "taskNotDone": "{{by}} n’a pas pu faire : {{title}}"
+    "taskNotDone": "{{by}} n’a pas pu faire : {{title}}",
+    "bookedArrived": "Votre patient sur rendez-vous {{name}} est arrivé",
+    "bookedArrivedTriage": "D’abord au tri, puis envoyé chez vous.",
+    "bookedArrivedDesk": "Vous attend à votre poste."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -2569,7 +2598,8 @@
         "lock": "Verrouillage de l’écran",
         "otp": "Code de connexion par e-mail"
       }
-    }
+    },
+    "openVisit": "Ouvrir la visite"
   },
   "list": {
     "showMore_one": "Voir {{count}} de plus ({{rest}} restant)",

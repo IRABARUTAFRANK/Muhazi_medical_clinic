@@ -188,6 +188,14 @@ export function RegisterPage({ user }: { user: StaffUser }) {
                       {p.phone ? ` · ${p.phone}` : ''}
                     </span>
                   </span>
+                  {/* the file opens from here (an open visit is reached from the file) */}
+                  <StaffLink
+                    to="/app/patient"
+                    search={{ id: p.id }}
+                    className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                  >
+                    {t('patients.openFile')}
+                  </StaffLink>
                   {p.hasOpenVisit ? (
                     <Badge tone="blue">{t('register.openVisit')}</Badge>
                   ) : (

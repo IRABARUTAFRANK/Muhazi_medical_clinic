@@ -175,6 +175,8 @@ export function useLabActions() {
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ['lab'] })
     void qc.invalidateQueries({ queryKey: ['visit'] })
+    void qc.invalidateQueries({ queryKey: ['access'] })
+    void qc.invalidateQueries({ queryKey: ['routing'] })
   }
   const setStatus = useMutation({
     mutationFn: async (i: {

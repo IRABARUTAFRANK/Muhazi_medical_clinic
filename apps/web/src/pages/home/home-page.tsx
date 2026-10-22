@@ -52,6 +52,7 @@ import { DeskDashboard } from './desk-dashboard'
 import { LabDashboard } from './lab-dashboard'
 import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
 import { CallsPanel } from './calls-panel'
+import { DeskOrdersPanel } from './desk-orders-panel'
 import { PharmacyDashboard } from './pharmacy-dashboard'
 import { OpenNextButton } from './open-next'
 
@@ -133,7 +134,15 @@ function RoleHome({ user, mode }: HomePageProps) {
   const rows = isLive ? [...openItems(live), ...elsewhere] : empty ? [] : home.queue
   // the tiles count the patients this person may work on (not those sent to a colleague)
   const counts = isLive
-    ? queueCounts([...live, ...elsewhere].filter((r) => r.canWork !== false))
+    ? (() => {
+        const c = queueCounts([...live, ...elsewhere].filter((r) => r.canWork !== false))
+        // a doctor's "Seen": the patients this doctor took and finished, not the desk's
+        if (user.role === 'doctor')
+          c.done =
+            summary?.seenToday ??
+            everyone.filter((r) => r.finishedAt && r.takenById === user.id).length
+        return c
+      })()
     : empty
       ? { waiting: 0, inProgress: 0, done: 0 }
       : home.counts
@@ -235,6 +244,14 @@ function RoleHome({ user, mode }: HomePageProps) {
               <div className="flex min-w-0 flex-col gap-4">
                 <CallsPanel user={user} />
                 {role === 'doctor' && user.role === 'doctor' && <CoverMePanel />}
+                {/* orders sent to this doctor's desk (dental, minor surgery, consultation…) */}
+                {user.role === 'doctor' && (
+                  <DeskOrdersPanel
+                    station={stationFor(user)}
+                    title={t('desk.ordersAt', { desk: station })}
+                    hideEmpty
+                  />
+                )}
                 <NoticesPanel limit={4} />
                 <RolePanels role={role} data={summary} />
               </div>
@@ -265,7 +282,8 @@ function RoleTiles({
   const unitToday = t('dashboard.period.today')
   let tiles: ReactNode
   if (role === 'doctor') {
-    const toReview = summary?.results.filter((r) => !r.verified).length ?? 0
+    // verified results the doctor has not seen yet
+    const toReview = summary?.results.filter((r) => r.verified && !r.reviewed).length ?? 0
     const mine = summary?.appointments.filter((a) => a.mine).length ?? 0
     const toAccept = summary?.toAccept.length ?? 0
     tiles = (

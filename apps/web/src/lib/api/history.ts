@@ -28,6 +28,9 @@ export interface HistoryItem {
   actorRole: string | null
   actorStaffId: string | null
   patient: string | null
+  /** The visit or the patient file the entry describes (0065). */
+  encounterId?: string | null
+  patientId?: string | null
   detail: string | null
   reason: string | null
   /** The record as saved (no secrets, no bookkeeping columns). */

@@ -314,6 +314,11 @@ export function VisitPage({
                     ? `${formatDate(new Date(header.closedAt))} ${formatTime(new Date(header.closedAt))}`
                     : '',
                 })}
+                {header.leftReason && (
+                  <span className="text-ink-2 basis-full text-[13px] font-normal">
+                    {t('visit.leftWhy', { reason: header.leftReason })}
+                  </span>
+                )}
               </p>
             )}
 
@@ -513,7 +518,9 @@ export function VisitPage({
                               })}
                             </Chip>
                           )}
-                          {bill?.status === 'draft' && !isCashier && (
+                          {/* not on a visit held by someone else or already over (the
+                              database refuses it; lines from orders: the manager) */}
+                          {bill?.status === 'draft' && !isCashier && !locked && !closed && (
                             <Button
                               size="sm"
                               variant="ghost"

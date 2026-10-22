@@ -43,6 +43,9 @@ export interface DashboardData {
     revenuePrev: number | null
     openBills: number | null
     openBillsDue: number | null
+    /** Money still owed on finished visits (the manager, 0065). */
+    debts?: number | null
+    debtsDue?: number | null
     bedsOccupied: number
     bedsTotal: number
   }
@@ -82,7 +85,8 @@ export interface DashboardData {
     lastSignIn: string | null
   }[]
   reorder: { name: string; onHand: number; min: number }[]
-  expiring: { d30: number; d60: number; d90: number }
+  /** Medicines (not batches) expiring; `expired` already past their date (0065). */
+  expiring: { d30: number; d60: number; d90: number; expired?: number }
   bookings: { booked: number; missed: number; pending: number }
   messages: { channel: string; sent: number; failed: number }[]
   claims: { payer: string; count: number; amount: number | null }[]
@@ -106,13 +110,14 @@ export function rangeDates(
   if (range === 'today') return { from: now, to: now }
   if (range === 'all') return { from: parseDay(ALL_TIME_FROM), to: now }
   if (range === 'custom' && custom) return { from: parseDay(custom.from), to: parseDay(custom.to) }
+  // this week / this month run up to today, so the previous period compared has as many days
   if (range === 'week') {
     const monday = addDays(now, -((now.getDay() + 6) % 7))
-    return { from: monday, to: addDays(monday, 6) }
+    return { from: monday, to: now }
   }
   return {
     from: new Date(now.getFullYear(), now.getMonth(), 1),
-    to: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+    to: now,
   }
 }
 
@@ -203,6 +208,8 @@ export function useDashboard(range: DashboardRange, manager: boolean, custom?: C
           revenuePrev: num(d.tiles.revenuePrev),
           openBills: num(d.tiles.openBills),
           openBillsDue: num(d.tiles.openBillsDue),
+          debts: num(d.tiles.debts),
+          debtsDue: num(d.tiles.debtsDue),
           bedsOccupied: Number(d.tiles.bedsOccupied),
           bedsTotal: Number(d.tiles.bedsTotal),
         },
@@ -244,6 +251,7 @@ export function useDashboard(range: DashboardRange, manager: boolean, custom?: C
           d30: Number(d.expiring.d30),
           d60: Number(d.expiring.d60),
           d90: Number(d.expiring.d90),
+          expired: Number(d.expiring.expired ?? 0),
         },
         bookings: {
           booked: Number(d.bookings.booked),

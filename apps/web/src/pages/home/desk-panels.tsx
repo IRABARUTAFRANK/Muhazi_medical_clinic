@@ -82,6 +82,7 @@ export function AppointmentsPanel({
   footer,
   onSelect,
   onRebook,
+  canArrive,
 }: {
   i?: number
   day?: Date
@@ -92,6 +93,8 @@ export function AppointmentsPanel({
   onSelect?: (id: string) => void
   /** "Book again" on a booking the doctor declined. */
   onRebook?: (a: DayAppointment) => void
+  /** "Arrived" starts a visit (Who may do what: start visits); default: canAct. */
+  canArrive?: boolean
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -174,7 +177,7 @@ export function AppointmentsPanel({
                     </span>
                     {canAct && open && (
                       <span className="flex gap-1">
-                        {isToday && (
+                        {isToday && (canArrive ?? canAct) && (
                           <Button
                             size="sm"
                             variant="primary"
@@ -223,16 +226,26 @@ export function AppointmentsPanel({
                       </Button>
                     )}
                     {!open &&
-                      a.patientId &&
-                      (a.status === 'arrived' || a.status === 'in_progress') && (
+                      (a.status === 'arrived' || a.status === 'in_progress') &&
+                      (a.encounterId ? (
                         <StaffLink
-                          to="/app/patient"
-                          search={{ id: a.patientId }}
+                          to="/app/visit"
+                          search={{ encounter: a.encounterId }}
                           className={buttonVariants({ size: 'sm' })}
                         >
-                          {t('patients.openFile')}
+                          {t('visits.openVisit')}
                         </StaffLink>
-                      )}
+                      ) : (
+                        a.patientId && (
+                          <StaffLink
+                            to="/app/patient"
+                            search={{ id: a.patientId }}
+                            className={buttonVariants({ size: 'sm' })}
+                          >
+                            {t('patients.openFile')}
+                          </StaffLink>
+                        )
+                      ))}
                     {arriving?.id === a.id && (
                       <StartVisitConfirm
                         mode="arrival"

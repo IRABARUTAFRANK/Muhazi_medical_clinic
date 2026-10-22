@@ -30,6 +30,7 @@ import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { MyQueuePanel } from './role-panels'
+import { CallsPanel } from './calls-panel'
 import { DebtsPanel } from '@/pages/finance/finance-pages'
 
 const METHOD_ICON: Record<string, LucideIcon> = {
@@ -159,6 +160,9 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             />
           </div>
         )}
+
+        {/* calls and help requests addressed to the cash desk */}
+        <CallsPanel user={user} />
 
         <section className="flex flex-col gap-3">
           <SectionTitle icon={Workflow}>{t('finance.section')}</SectionTitle>

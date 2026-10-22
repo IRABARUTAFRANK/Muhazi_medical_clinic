@@ -51,6 +51,7 @@ const KIND_LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   inquiry: { icon: MessageSquare, tint: 'violet' },
   to_accept: { icon: CalendarCheck, tint: 'navy' },
   appt_confirmed: { icon: CalendarCheck, tint: 'mint' },
+  booked_arrived: { icon: CalendarCheck, tint: 'teal' },
   appt_declined: { icon: CalendarX, tint: 'coral' },
   message: { icon: Megaphone, tint: 'coral' },
 }

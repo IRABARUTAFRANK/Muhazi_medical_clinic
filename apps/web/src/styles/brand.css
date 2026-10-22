@@ -452,6 +452,26 @@
     opacity: 1;
     transform: none;
   }
+  /* A staff page prints whole: no top bar, rail or tablet bar, and the page grows past one
+     screen instead of being cut at the window's height. */
+  [data-shell] {
+    height: auto !important;
+    overflow: visible !important;
+    zoom: 1 !important;
+    display: block !important;
+  }
+  [data-shell] > div > header,
+  [data-shell] nav,
+  [data-shell] [aria-label][class*='pc:hidden'] {
+    display: none !important;
+  }
+  [data-shell] .workspace,
+  [data-shell] .workspace > main,
+  [data-shell-body] {
+    display: block !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+  }
 }
 
 /* ---------------------------------------------------------------- home hero with photo

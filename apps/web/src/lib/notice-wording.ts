@@ -144,6 +144,11 @@ export function useWording() {
           title: t('notify.toAccept', { name: p.name ?? '' }),
           body: t('notify.toAcceptBody'),
         }
+      case 'booked_arrived':
+        return {
+          title: t('notify.bookedArrived', { name: p.name ?? '' }),
+          body: t(p.triage ? 'notify.bookedArrivedTriage' : 'notify.bookedArrivedDesk'),
+        }
       case 'appt_confirmed':
         return {
           title: t('notify.apptConfirmed', { name: p.name ?? '', doctor: p.doctor ?? '' }),

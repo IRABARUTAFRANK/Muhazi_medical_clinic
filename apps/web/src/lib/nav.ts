@@ -45,6 +45,8 @@ export const MANAGER_NAV: NavItem[] = [
 export const RECEPTION_NAV: NavItem[] = [
   { id: 'home', labelKey: 'nav.home', icon: 'layout-dashboard', to: '/app' },
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
+  // reception types the nurse's paper sheet on the triage screen and sends the patient on
+  { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },

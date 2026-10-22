@@ -477,7 +477,10 @@
     "methodsHint": "Ubwishyu bwemewe: amafaranga mu ntoki, MTN MoMo na Airtel Money.",
     "sharedQueue": "muganga wa mbere ubonetse",
     "takenBy": "yakiriwe na {{name}}",
-    "take": "Akira"
+    "take": "Akira",
+    "seen": "byarebwe",
+    "correctedResult": "byakosowe",
+    "markSeen": "Byarebwe"
   },
   "dashboard": {
     "title": "Imbonerahamwe y'ivuriro",
@@ -504,7 +507,8 @@
       "openBills": "Fagitire zitarishyurwa",
       "beds": "Ibitanda birimo abantu",
       "visits": "Ingendo",
-      "revenuePeriod": "Amafaranga yinjiye"
+      "revenuePeriod": "Amafaranga yinjiye",
+      "debts": "Ayasigaye ku nzinduko zarangiye"
     },
     "subtitle": "{{town}} · {{range}} · byavuguruwe {{time}}",
     "dateRange": "Igihe",
@@ -639,7 +643,15 @@
       "or": "cyangwa amatariki"
     },
     "longestShort": "uwa mbere amaze gutegereza {{time}}",
-    "noneTaken": "nta we urakirwa uyu munsi"
+    "noneTaken": "nta we urakirwa uyu munsi",
+    "toCollect": "ayo kwakirwa kuri kesi",
+    "debtsHint": "akirwa umurwayi agarutse",
+    "expiredShort": "warangiye",
+    "expiredItems_one": "umuti {{count}} warangije igihe",
+    "expiredItems_other": "imiti {{count}} yarangije igihe",
+    "writeOff": "vana mu bubiko (Ububiko › Gukoresha)",
+    "expiringItems_one": "umuti {{count}} urangira mu minsi 30",
+    "expiringItems_other": "imiti {{count}} irangira mu minsi 30"
   },
   "staff": {
     "title": "Abakozi",
@@ -1271,7 +1283,8 @@
         "amount": "Subiza atarenze {{amount}}.",
         "reason": "Vuga impamvu amafaranga asubizwa."
       }
-    }
+    },
+    "leftWhy": "Yagiye atishyuye: {{reason}}"
   },
   "patients": {
     "title": "Abarwayi",
@@ -1298,7 +1311,16 @@
     "page": "Urupapuro {{page}} kuri {{pages}}",
     "prev": "Urupapuro rubanza",
     "next": "Urupapuro rukurikira",
-    "forMe": "Abarwayi bagutegereje kuri {{station}}"
+    "forMe": "Abarwayi bagutegereje kuri {{station}}",
+    "merge": {
+      "title": "Huza dosiye yanditswe kabiri",
+      "lead": "Umuntu umwe yanditswe kabiri? Shaka indi dosiye: inzinduko zayo, gahunda, inyandiko n’ubwishingizi biza muri iyi dosiye, kandi nimero yayo ikomeza kubona umurwayi.",
+      "find": "Shaka dosiye yanditswe kabiri",
+      "button": "Yihuze n’iyi dosiye",
+      "confirm": "Guhuza {{dup}} na {{keep}}? Ntibishobora gusubizwa inyuma.",
+      "done_one": "{{dup}} yahujwe: ikintu {{count}} cyimuriwe muri iyi dosiye.",
+      "done_other": "{{dup}} yahujwe: ibintu {{count}} byimuriwe muri iyi dosiye."
+    }
   },
   "file": {
     "back": "Subira ku barwayi",
@@ -1890,7 +1912,8 @@
       "visits": "ingendo watangije",
       "vitals": "ibipimo wafashe",
       "charges": "ubuvuzi wishyuje"
-    }
+    },
+    "ordersAt": "Ibisabwa byo gukora kuri {{desk}}"
   },
   "vitalsForm": {
     "measuredBy": "Byapimwe na",
@@ -1960,7 +1983,7 @@
     },
     "inquiries": {
       "reject": "Hakana",
-      "rejectReason": "Kuki ubusabe bwa {{name}} buhakanwe? (azabimenyeshwa)",
+      "rejectReason": "Kuki gahunda yasabwe na {{name}} yanzwe? (hanyuma ubimenyeshe umuntu: Hamagara, WhatsApp cyangwa SMS)",
       "registerNow": "Andika umurwayi ubu",
       "hint": "Fatira buri busabe gahunda ukoresheje idosiye y’umurwayi, umuganga n’isaha. Umuganga aremera cyangwa akanga ku rupapuro rwe rw’ibanze, igisubizo ukakibona hano no mu butumwa.",
       "asksFor": "Asaba: {{text}}",
@@ -1988,7 +2011,10 @@
         "patient": "Hitamo idosiye y’umurwayi (cyangwa ubanze umwandike).",
         "doctor": "Hitamo umuganga.",
         "when": "Hitamo umunsi n’isaha."
-      }
+      },
+      "service": "Serivisi: {{name}}",
+      "call": "Hamagara",
+      "message": "Muraho {{name}}, ni Muhazi Medical Clinic ku byerekeye gahunda mwasabye."
     },
     "tasks": {
       "count": "{{count}} bitarakorwa · {{overdue}} byakererewe",
@@ -2159,7 +2185,10 @@
     "rxNotGiven": "Farumasi: {{item}} ntiyahawe {{name}}",
     "testCancelled": "Laboratwari: {{test}} ntiyakorewe {{name}}",
     "resultCorrected": "Igisubizo cyakosowe: {{test}} · {{name}}",
-    "taskNotDone": "{{by}} ntiyashoboye gukora: {{title}}"
+    "taskNotDone": "{{by}} ntiyashoboye gukora: {{title}}",
+    "bookedArrived": "Umurwayi wawe ufite gahunda {{name}} yageze",
+    "bookedArrivedTriage": "Abanza gupimwa, hanyuma akoherezwa.",
+    "bookedArrivedDesk": "Agutegereje ku mwanya wawe."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -2578,7 +2607,8 @@
         "lock": "Gufunga ecran",
         "otp": "Kode yo kwinjira ya e-mail"
       }
-    }
+    },
+    "openVisit": "Fungura uruzinduko"
   },
   "list": {
     "showMore_one": "Erekana {{count}} kindi ({{rest}} gisigaye)",

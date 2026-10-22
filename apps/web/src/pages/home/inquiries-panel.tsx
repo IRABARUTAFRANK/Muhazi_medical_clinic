@@ -126,6 +126,36 @@ export function InquiriesPanel({
                         <Phone size={12} aria-hidden="true" className="mr-1 inline" />
                         {q.phone} · {channel(q.channel)}
                       </span>
+                      {q.category && (
+                        <span className="text-ink-2 block text-[13px]">
+                          {t('ops.inquiries.service', { name: q.category })}
+                        </span>
+                      )}
+                      {/* reception tells the person (call, WhatsApp or SMS from this device) */}
+                      {q.phone && (
+                        <span className="mt-0.5 flex flex-wrap gap-3 text-[13px]">
+                          <a
+                            className="text-primary font-semibold underline-offset-2 hover:underline"
+                            href={`tel:${intl(q.phone)}`}
+                          >
+                            {t('ops.inquiries.call')}
+                          </a>
+                          <a
+                            className="text-primary font-semibold underline-offset-2 hover:underline"
+                            href={`https://wa.me/${intl(q.phone).replace('+', '')}?text=${encodeURIComponent(t('ops.inquiries.message', { name: q.name }))}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            WhatsApp
+                          </a>
+                          <a
+                            className="text-primary font-semibold underline-offset-2 hover:underline"
+                            href={`sms:${intl(q.phone)}?body=${encodeURIComponent(t('ops.inquiries.message', { name: q.name }))}`}
+                          >
+                            SMS
+                          </a>
+                        </span>
+                      )}
                       {q.note && (
                         <span className="text-ink-2 block text-[13px]">
                           {t('ops.inquiries.asksFor', { text: q.note })}
@@ -202,10 +232,6 @@ export function InquiriesPanel({
   )
 }
 
-/**
- * "New booking" (reception): a phone caller or a patient at the desk, with a doctor at a time.
- * The same form as for a website request, plus the reason and how the patient asked.
- */
 /** A booking started from another one (a booking the doctor declined, booked again). */
 export interface BookingPrefill {
   patientId: string
@@ -214,6 +240,18 @@ export interface BookingPrefill {
   reason?: string | null
 }
 
+/** A Rwandan number written 07…, 2507… or +2507… as +2507… (for call, WhatsApp and SMS links). */
+const intl = (phone: string) => {
+  const d = phone.replace(/[^\d]/g, '')
+  if (d.startsWith('250')) return `+${d}`
+  if (d.startsWith('0')) return `+250${d.slice(1)}`
+  return `+250${d}`
+}
+
+/**
+ * "New booking" (reception): a phone caller or a patient at the desk, with a doctor at a time.
+ * The same form as for a website request, plus the reason and how the patient asked.
+ */
 export function NewBookingCard({
   onDone,
   onCancel,

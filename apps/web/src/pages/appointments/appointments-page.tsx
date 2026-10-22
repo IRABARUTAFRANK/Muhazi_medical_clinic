@@ -15,6 +15,7 @@ import { NewPatientForm } from '@/components/clinical/new-patient-form'
 import type { RegisterRequest } from '@/pages/home/inquiries-panel'
 import { NewBookingCard, type BookingPrefill } from '@/pages/home/inquiries-panel'
 import { Flash } from '@/components/ui/flash'
+import { useCan } from '@/lib/api/permissions'
 
 /**
  * Appointments and inquiries (doc §5.2). Reception approves booking requests, then on the day
@@ -48,7 +49,9 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
     setOffset(o)
     setSelected(null)
   }
-  const canAct = ['receptionist', 'manager'].includes(user.role)
+  // booking, cancelling and the arrival follow Who may do what (the manager's switches)
+  const can = useCan(user)
+  const canAct = can('appointment.approve')
   const label =
     offset === 0
       ? t('ops.appts.today')
@@ -139,6 +142,7 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
                 key={offset}
                 day={day}
                 canAct={canAct}
+                canArrive={can('visit.start')}
                 onSelect={setSelected}
                 onRebook={(a) =>
                   a.patientId &&

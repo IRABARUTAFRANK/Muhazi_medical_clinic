@@ -25,6 +25,8 @@ export interface HomeAppointment {
   station: string
   status: ApptStatus
   mine: boolean
+  /** The visit opened by the arrival (0065). */
+  encounterId?: string | null
 }
 export interface HomeInquiry {
   id: string
@@ -75,8 +77,13 @@ export interface HomeResult {
   impression: string
   verified: boolean
   at: string
+  /** The doctor has seen it (0065); corrected after verification. */
+  reviewed?: boolean
+  corrected?: boolean
 }
 export interface HomeSummary {
+  /** The patients this person took and finished today (0065). */
+  seenToday?: number
   appointments: HomeAppointment[]
   inquiries: HomeInquiry[]
   toAccept: HomeToAccept[]
@@ -259,6 +266,10 @@ export function useHomeActions() {
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: KEY })
     void qc.invalidateQueries({ queryKey: ['public'] })
+    // a booking made or answered: the day's list and the desk counters follow
+    void qc.invalidateQueries({ queryKey: ['appointments'] })
+    void qc.invalidateQueries({ queryKey: ['desk'] })
+    void qc.invalidateQueries({ queryKey: ['inquiries'] })
   }
   const call = async (fn: string, args: Record<string, unknown>) => {
     if (!supabase) return
@@ -309,6 +320,11 @@ export function useHomeActions() {
       call('reject_inquiry', { p_appointment_id: id, p_reason: reason }),
     onSuccess: refresh,
   })
+  /** The doctor has seen this result: it leaves "Results to review". */
+  const markReviewed = useMutation({
+    mutationFn: (id: string) => call('mark_result_reviewed', { p_report_id: id }),
+    onSuccess: refresh,
+  })
   const acceptAppointment = useMutation({
     mutationFn: ({ id }: { id: string }) => call('accept_appointment', { p_appointment_id: id }),
     onSuccess: refresh,
@@ -333,6 +349,7 @@ export function useHomeActions() {
     onSuccess: refresh,
   })
   return {
+    markReviewed,
     approveInquiry,
     bookAppointment,
     rejectInquiry,

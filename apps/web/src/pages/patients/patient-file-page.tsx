@@ -54,6 +54,7 @@ import { useCan } from '@/lib/api/permissions'
 import { openMedicalReport } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { roleLabel } from '@/lib/roles'
+import { MergeCard } from './merge-card'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'bills'
 const TABS: Tab[] = ['overview', 'visits', 'clinical', 'bills']
@@ -445,6 +446,12 @@ export function PatientFilePage({
 
             <div key={tab} className="flex flex-col gap-4">
               {tab === 'overview' && <Overview file={data} />}
+              {tab === 'overview' && user.role === 'manager' && (
+                <MergeCard
+                  keepId={patientId}
+                  keepLabel={`${data.patient.file_number} · ${data.patient.surname} ${data.patient.given_names}`}
+                />
+              )}
               {tab === 'visits' && (
                 <Visits file={data} openId={openVisit?.id ?? null} canReport={mayReport} />
               )}

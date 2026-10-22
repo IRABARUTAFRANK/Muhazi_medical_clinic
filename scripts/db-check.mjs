@@ -2301,17 +2301,13 @@ await step(
     await as(staff.receptionist)
     const v = (await one(`select appointment_arrived($1) as v`, [appt])).v
     const enc = v.encounter_id
-    await as(staff.nurse)
-    await db.query(`select record_vitals($1, 'temp', 37.2, 'C')`, [enc]).catch(async () => {
-      await asAdmin()
-      await db.query(
-        `insert into observation (encounter_id, code, value_num, unit) values ($1, 'temp', 37.2, 'C')`,
-        [enc],
-      )
-    })
-    await as(staff.nurse)
-    await db.query(`select send_from_triage($1, 'green', 'consultation', null)`, [enc])
+    // triage first is off: straight to the booked doctor's desk, and the doctor is told (0065)
     await asAdmin()
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'booked_arrived' and recipient_user = $1`,
+      [d2],
+    )
+    if (told.n < 1) throw new Error('the booked doctor was not told')
     const q = await one(
       `select assigned_to from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
       [enc],
@@ -2323,7 +2319,7 @@ await step(
     const a = await one(`select status::text from appointment where id = $1`, [appt])
     if (q?.assigned_to !== d2 || linked.appointment_id !== appt || a.status !== 'completed')
       throw new Error(JSON.stringify({ q, linked, a }))
-    return 'triage → consultation with the booked doctor → visit ends → booking completed'
+    return 'straight to the booked doctor (told) → visit ends → booking completed'
   },
 )
 await step(
@@ -2895,6 +2891,95 @@ await step(
         }),
       )
     return 'count -2 kept; returned to the shelf; 500 given back (not 900); lab call refused a doctor patient'
+  },
+)
+
+// ---------------------------------------------------------------- 0065: manager, reception, doctor
+await step(
+  '0065: duplicate files merged; phones match however written; the manager is told what is owed; a result is marked seen',
+  async () => {
+    // the same person twice: the duplicate's visit moves, its number still finds the patient
+    await as(staff.receptionist)
+    const keep = (
+      await one(
+        `select register_patient_file('Habimana', 'Jean 65', 'male', null, 40, '0788650001') as r`,
+      )
+    ).r
+    const dup = (
+      await one(
+        `select register_patient_file('Habimana', 'Jean Bosco 65', 'male', null, 40, '+250788650001') as r`,
+      )
+    ).r
+    const v = (
+      await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [dup.patient_id])
+    ).id
+    await asAdmin()
+    const same = (await one(`select phone_key('+250 788 650 001') = phone_key('0788650001') as ok`))
+      .ok
+    let notManager = 'ok'
+    await as(staff.receptionist)
+    try {
+      await db.query(`select merge_patients($1, $2)`, [keep.patient_id, dup.patient_id])
+    } catch (e) {
+      notManager = String(e.message).split('\n')[0]
+    }
+    await as(staff.manager)
+    const m = (await one(`select merge_patients($1, $2) as m`, [keep.patient_id, dup.patient_id])).m
+    await asAdmin()
+    const moved = (await one(`select patient_id from encounter where id = $1`, [v])).patient_id
+    const alias = await one(`select patient_id from patient_alias where file_number = $1`, [
+      dup.file_number,
+    ])
+    // leaving with money owed: the manager is told how much
+    await as(staff.manager)
+    const cons = (
+      await one(`select upsert_service(null, 'Consultation 65', 'consultation', 4000) as id`)
+    ).id
+    await asAdmin()
+    await db.query(`select add_charge_internal($1, 'consultation', $2)`, [v, cons])
+    let owed = ''
+    await as(staff.manager)
+    try {
+      await db.query(`select end_visit($1)`, [v])
+    } catch (e) {
+      owed = String(e.message).split('\n')[0]
+    }
+    await db.query(`select end_visit($1, 'went home, will pay tomorrow')`, [v])
+    // a result the doctor has seen leaves "to review"
+    const p = await visitAt('Seen65')
+    await as(staff.manager)
+    const cat = (await one(`select save_category(null, 'Lab tests 65', null, null, 'lab') as id`))
+      .id
+    const test = (await one(`select upsert_service(null, 'Glucose 65', 'other', 1000) as id`)).id
+    await db.query(`select set_service_category($1, $2)`, [test, cat])
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    await db.query(`select order_tests($1, $2, 'thirst', null)`, [p.enc, [test]])
+    await asAdmin()
+    const req = (await one(`select id from service_request where encounter_id = $1`, [p.enc])).id
+    await as(staff.lab_tech)
+    await db.query(`select record_result($1, '5.4 mmol/L', 'normal', true)`, [req])
+    await as(d1)
+    const before = (await one(`select home_summary() as s`)).s.results.find(
+      (r) => r.encounterId === p.enc,
+    )
+    await db.query(`select mark_result_reviewed($1)`, [before.id])
+    const after = (await one(`select home_summary() as s`)).s.results.find(
+      (r) => r.encounterId === p.enc,
+    )
+    await asAdmin()
+    if (
+      !same ||
+      !/only the manager/.test(notManager) ||
+      moved !== keep.patient_id ||
+      alias?.patient_id !== keep.patient_id ||
+      Number(m.moved) < 1 ||
+      !/still due \(4000/.test(owed) ||
+      before.reviewed ||
+      !after.reviewed
+    )
+      throw new Error(JSON.stringify({ same, notManager, moved, alias, m, owed, before, after }))
+    return 'merged (visit moved, old number kept); owed 4000 said; result marked seen'
   },
 )
 

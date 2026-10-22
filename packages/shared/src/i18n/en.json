@@ -468,7 +468,10 @@
     "methodsHint": "Accepted payments: cash, MTN MoMo and Airtel Money.",
     "sharedQueue": "first doctor free",
     "takenBy": "taken by {{name}}",
-    "take": "Take"
+    "take": "Take",
+    "seen": "seen",
+    "correctedResult": "corrected",
+    "markSeen": "Seen"
   },
   "dashboard": {
     "title": "Clinic dashboard",
@@ -568,7 +571,8 @@
       "revenue": "Revenue today",
       "openBills": "Open bills",
       "beds": "Beds occupied",
-      "revenuePeriod": "Revenue"
+      "revenuePeriod": "Revenue",
+      "debts": "Owed on finished visits"
     },
     "units": {
       "today": "today",
@@ -630,7 +634,15 @@
       "or": "or dates"
     },
     "longestShort": "first in line waiting {{time}}",
-    "noneTaken": "nobody taken yet today"
+    "noneTaken": "nobody taken yet today",
+    "toCollect": "to collect at the cashier",
+    "debtsHint": "collect when the patient comes back",
+    "expiredShort": "expired",
+    "expiredItems_one": "{{count}} medicine past its date",
+    "expiredItems_other": "{{count}} medicines past their date",
+    "writeOff": "write off (Stock › Use)",
+    "expiringItems_one": "{{count}} medicine expires within 30 days",
+    "expiringItems_other": "{{count}} medicines expire within 30 days"
   },
   "placeholder": {
     "title": "{{screen}}",
@@ -1354,7 +1366,8 @@
         "amount": "Give back at most {{amount}}.",
         "reason": "Say why the money is given back."
       }
-    }
+    },
+    "leftWhy": "Left without paying: {{reason}}"
   },
   "settings": {
     "title": "Clinic settings",
@@ -1559,7 +1572,16 @@
     "page": "Page {{page}} of {{pages}}",
     "prev": "Previous page",
     "next": "Next page",
-    "forMe": "Patients waiting for you at {{station}}"
+    "forMe": "Patients waiting for you at {{station}}",
+    "merge": {
+      "title": "Merge a duplicate file",
+      "lead": "The same person registered twice? Find the other file: its visits, bookings, documents and insurance come to this file, and its number still finds the patient.",
+      "find": "Find the duplicate file",
+      "button": "Merge into this file",
+      "confirm": "Merge {{dup}} into {{keep}}? This cannot be undone.",
+      "done_one": "{{dup}} merged: {{count}} record moved to this file.",
+      "done_other": "{{dup}} merged: {{count}} records moved to this file."
+    }
   },
   "file": {
     "back": "Back to patients",
@@ -1886,7 +1908,8 @@
       "visits": "visits started",
       "vitals": "vitals taken",
       "charges": "treatments charged"
-    }
+    },
+    "ordersAt": "Orders to do at {{desk}}"
   },
   "vitalsForm": {
     "measuredBy": "Measured by",
@@ -1956,7 +1979,7 @@
     },
     "inquiries": {
       "reject": "Reject",
-      "rejectReason": "Why is the request from {{name}} rejected? (the person is told)",
+      "rejectReason": "Why is the request from {{name}} rejected? (then tell the person: Call, WhatsApp or SMS)",
       "registerNow": "Register the patient now",
       "hint": "Book each request with the patient file, the doctor and the time. The doctor accepts or declines on their home page and you receive the answer here and in notifications.",
       "asksFor": "Asks for: {{text}}",
@@ -1984,7 +2007,10 @@
         "patient": "Choose the patient file (or register the patient first).",
         "doctor": "Choose the doctor.",
         "when": "Choose the day and the time."
-      }
+      },
+      "service": "Service: {{name}}",
+      "call": "Call",
+      "message": "Hello {{name}}, this is Muhazi Medical Clinic about your appointment request."
     },
     "tasks": {
       "count": "{{count}} open · {{overdue}} late",
@@ -2150,7 +2176,10 @@
     "rxNotGiven": "Pharmacy: {{item}} not given to {{name}}",
     "testCancelled": "Laboratory: {{test}} not done for {{name}}",
     "resultCorrected": "Corrected result: {{test}} · {{name}}",
-    "taskNotDone": "{{by}} could not do: {{title}}"
+    "taskNotDone": "{{by}} could not do: {{title}}",
+    "bookedArrived": "Your booked patient {{name}} has arrived",
+    "bookedArrivedTriage": "At triage first, then sent to you.",
+    "bookedArrivedDesk": "Waiting for you at your desk."
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -2569,7 +2598,8 @@
         "lock": "Screen lock",
         "otp": "E-mailed sign-in code"
       }
-    }
+    },
+    "openVisit": "Open the visit"
   },
   "list": {
     "showMore_one": "Show {{count}} more ({{rest}} left)",

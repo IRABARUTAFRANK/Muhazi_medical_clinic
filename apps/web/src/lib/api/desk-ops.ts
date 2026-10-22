@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -35,6 +36,8 @@ export interface DayAppointment {
   declineReason?: string | null
   /** A declined booking already booked again. */
   rebooked?: boolean
+  /** The visit opened by the arrival (0065). */
+  encounterId?: string | null
 }
 
 /** One booking in full (appointment_detail). */
@@ -138,7 +141,8 @@ export interface OpenTask {
   mine?: boolean
 }
 
-const iso = (d: Date) => d.toISOString().slice(0, 10)
+// the local calendar day (toISOString is UTC: between midnight and 02:00 it gave yesterday)
+const iso = (d: Date) => isoDate(d)
 const at = (h: number, m = 0) => {
   const d = new Date()
   d.setHours(h, m, 0, 0)

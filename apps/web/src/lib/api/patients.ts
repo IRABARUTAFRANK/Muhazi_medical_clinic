@@ -610,6 +610,8 @@ export function useClinicalActions(encounterId: string) {
     void qc.invalidateQueries({ queryKey: ['visit', encounterId] })
     void qc.invalidateQueries({ queryKey: ['queue'] })
     void qc.invalidateQueries({ queryKey: ['patients'] })
+    void qc.invalidateQueries({ queryKey: ['access', encounterId] })
+    void qc.invalidateQueries({ queryKey: ['routing', encounterId] })
   }
   const local = () => {
     const c = sampleClinical.get(encounterId) ?? {

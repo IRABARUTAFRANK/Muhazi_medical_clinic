@@ -49,6 +49,7 @@ import {
 } from '@mmc/shared'
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { DepartmentSection } from './department-section'
+import { CallsPanel } from '@/pages/home/calls-panel'
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { StationTile } from '@/components/dash/station-tile'
@@ -320,7 +321,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 label={t('dashboard.tiles.avgWait')}
                 value={data.tiles.avgWaitMin}
                 text={formatDuration(data.tiles.avgWaitMin, t)}
-                unit=""
+                unit={t('dashboard.period.today')}
                 delta={
                   data.tiles.avgWaitMin > 30
                     ? { text: t('dashboard.queueLong'), good: false, up: true }
@@ -328,33 +329,55 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 }
               />
               {isManager && data.tiles.revenue != null && (
-                <Kpi
-                  i={4}
-                  icon={Wallet}
-                  tint="violet"
-                  label={t(
-                    range === 'today' ? 'dashboard.tiles.revenue' : 'dashboard.tiles.revenuePeriod',
-                  )}
-                  value={data.tiles.revenue}
-                  unit="RWF"
-                  delta={delta(data.tiles.revenue, data.tiles.revenuePrev ?? 0, true, t)}
-                  spark={data.revenue30d.slice(-10).map((r) => r.amount)}
-                />
+                <StaffLink
+                  to="/app/payments"
+                  className="flex text-inherit no-underline [&>*]:flex-1"
+                >
+                  <Kpi
+                    i={4}
+                    icon={Wallet}
+                    tint="violet"
+                    label={t(
+                      range === 'today'
+                        ? 'dashboard.tiles.revenue'
+                        : 'dashboard.tiles.revenuePeriod',
+                    )}
+                    value={data.tiles.revenue}
+                    unit="RWF"
+                    delta={delta(data.tiles.revenue, data.tiles.revenuePrev ?? 0, true, t)}
+                    spark={data.revenue30d.slice(-10).map((r) => r.amount)}
+                  />
+                </StaffLink>
               )}
               {isManager && data.tiles.openBills != null && (
-                <Kpi
-                  i={5}
-                  icon={Receipt}
-                  tint="navy"
-                  label={t('dashboard.tiles.openBills')}
-                  value={data.tiles.openBills}
-                  unit={formatRwf(data.tiles.openBillsDue ?? 0)}
-                  delta={
-                    data.tiles.openBills > 0
-                      ? { text: t('visit.next.toCashier'), good: false, up: null }
-                      : undefined
-                  }
-                />
+                <StaffLink to="/app/bills" className="flex text-inherit no-underline [&>*]:flex-1">
+                  <Kpi
+                    i={5}
+                    icon={Receipt}
+                    tint="navy"
+                    label={t('dashboard.tiles.openBills')}
+                    value={data.tiles.openBills}
+                    unit={formatRwf(data.tiles.openBillsDue ?? 0)}
+                    delta={
+                      data.tiles.openBills > 0
+                        ? { text: t('dashboard.toCollect'), good: false, up: null }
+                        : undefined
+                    }
+                  />
+                </StaffLink>
+              )}
+              {isManager && (data.tiles.debts ?? 0) > 0 && (
+                <StaffLink to="/app/bills" className="flex text-inherit no-underline [&>*]:flex-1">
+                  <Kpi
+                    i={5}
+                    icon={Wallet}
+                    tint="coral"
+                    label={t('dashboard.tiles.debts')}
+                    value={data.tiles.debts ?? 0}
+                    unit={formatRwf(data.tiles.debtsDue ?? 0)}
+                    delta={{ text: t('dashboard.debtsHint'), good: false, up: null }}
+                  />
+                </StaffLink>
               )}
               <Kpi
                 i={6}
@@ -368,6 +391,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
             {/* NOTIFICATIONS: what is addressed to the manager right now */}
             <NoticesPanel limit={4} />
+            {/* calls and help requests addressed to the manager */}
+            <CallsPanel user={user} />
 
             {/* MONEY */}
             {isManager && (
@@ -698,6 +723,22 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                         label: r.name,
                         value: `${formatNumber(r.onHand)} / ${formatNumber(r.min)}`,
                       })),
+                      ...((data.expiring.expired ?? 0) > 0
+                        ? [
+                            {
+                              key: 'expired',
+                              pill: (
+                                <Pill tint="coral" icon={PackageX}>
+                                  {t('dashboard.expiredShort')}
+                                </Pill>
+                              ),
+                              label: t('dashboard.expiredItems', {
+                                count: data.expiring.expired ?? 0,
+                              }),
+                              value: t('dashboard.writeOff'),
+                            },
+                          ]
+                        : []),
                       ...(data.expiring.d30 + data.expiring.d60 + data.expiring.d90 > 0
                         ? [
                             {
@@ -707,7 +748,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                                   {t('dashboard.days30')}
                                 </Pill>
                               ),
-                              label: t('dashboard.expiringBatches', { count: data.expiring.d30 }),
+                              label: t('dashboard.expiringItems', { count: data.expiring.d30 }),
                               value: `${data.expiring.d60} ${t('dashboard.days60')} · ${data.expiring.d90} ${t('dashboard.days90')}`,
                             },
                           ]

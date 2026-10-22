@@ -54,6 +54,7 @@ export function StaffShell({
     // Text size (Settings or the user menu) scales the whole staff screen; the height is divided
     // by the zoom so the zoomed frame still fills exactly one screen.
     <div
+      data-shell
       className="bg-surface text-ink relative flex flex-col overflow-hidden text-sm"
       style={{ zoom, height: `calc(100dvh / ${zoom})` }}
     >
@@ -61,7 +62,7 @@ export function StaffShell({
       <div className="contents" inert={locked} aria-hidden={locked || undefined}>
         <TopBar user={user} sync={sync} onOpenSheet={() => setSheet(true)} />
         {sync.status === 'offline' && <OfflineBanner />}
-        <div className="flex min-h-0 flex-1">
+        <div data-shell-body className="flex min-h-0 flex-1">
           <Rail nav={nav} activeId={activeId} clock={clock} />
           {/* Workspace: calm sky-blue surface with a faint dot texture behind the page. */}
           <div className="workspace flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>

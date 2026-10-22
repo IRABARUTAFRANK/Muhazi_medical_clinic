@@ -460,6 +460,7 @@ function NursePanels({ data, onError }: PanelProps) {
 function DoctorPanels({ data, onError }: PanelProps) {
   const { t } = useTranslation()
   const mine = data.appointments.filter((a) => a.mine)
+  const actions = useHomeActions()
   return (
     <>
       <Panel
@@ -476,10 +477,12 @@ function DoctorPanels({ data, onError }: PanelProps) {
               {shown.map((r, i) => (
                 <div key={r.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
                   <Pill
-                    tint={r.verified ? 'mint' : 'amber'}
+                    tint={!r.verified ? 'amber' : r.reviewed ? 'teal' : 'mint'}
                     icon={r.verified ? CircleCheck : Hourglass}
                   >
-                    {t(r.verified ? 'home.verified' : 'home.unverified')}
+                    {t(
+                      !r.verified ? 'home.unverified' : r.reviewed ? 'home.seen' : 'home.verified',
+                    )}
                   </Pill>
                   <span className="min-w-[160px] flex-1">
                     <span className="block font-semibold">
@@ -487,8 +490,23 @@ function DoctorPanels({ data, onError }: PanelProps) {
                     </span>
                     <span className="text-ink-3 block text-[13px] tabular-nums">
                       {r.impression} · {r.at}
+                      {r.corrected ? ` · ${t('home.correctedResult')}` : ''}
                     </span>
                   </span>
+                  {r.verified && !r.reviewed && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        void actions.markReviewed
+                          .mutateAsync(r.id)
+                          .catch((e: unknown) => onError(describe(e)))
+                      }
+                    >
+                      <Check size={14} aria-hidden="true" />
+                      {t('home.markSeen')}
+                    </Button>
+                  )}
                   <StaffLink
                     to="/app/visit"
                     search={{ encounter: r.encounterId }}
@@ -518,6 +536,15 @@ function DoctorPanels({ data, onError }: PanelProps) {
                     <span className="text-ink-2 text-[13px] font-semibold">
                       {t(`home.apptStatus.${c.status}`)}
                     </span>
+                    {c.encounterId && (
+                      <StaffLink
+                        to="/app/visit"
+                        search={{ encounter: c.encounterId }}
+                        className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                      >
+                        {t('common.open')}
+                      </StaffLink>
+                    )}
                   </div>
                 ))}
               </div>

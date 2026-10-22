@@ -23,6 +23,8 @@ export interface VisitHeader {
   /** A finished visit, shown read-only (when and by whom it was closed). */
   closed?: boolean
   closedAt?: string | null
+  /** Why the patient left without paying (the manager's reason). */
+  leftReason?: string | null
 }
 
 export interface Vital {
@@ -159,7 +161,7 @@ export function useVisitHeader(encounterId: string) {
         const { data: e, error: e2 } = await supabase
           .from('encounter')
           .select(
-            'id, status, closed_at, triage_level, patient:patient_id(id, file_number, surname, given_names, sex, birth_date)',
+            'id, status, closed_at, left_reason, triage_level, patient:patient_id(id, file_number, surname, given_names, sex, birth_date)',
           )
           .eq('id', encounterId)
           .maybeSingle()
@@ -191,6 +193,7 @@ export function useVisitHeader(encounterId: string) {
           stations: [],
           closed: e.status !== 'open',
           closedAt: e.closed_at as string | null,
+          leftReason: (e.left_reason as string | null) ?? null,
         }
       }
       return {
@@ -356,6 +359,9 @@ export function useBillingActions(encounterId: string) {
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ['visit', encounterId] })
     void qc.invalidateQueries({ queryKey: ['queue'] })
+    // who may work on the visit and where it goes change with it
+    void qc.invalidateQueries({ queryKey: ['access', encounterId] })
+    void qc.invalidateQueries({ queryKey: ['routing', encounterId] })
   }
 
   const addCharge = useMutation({

@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { StaffLink } from '@/components/staff/staff-link'
 import { HISTORY_GROUPS, useActivityHistory, type HistoryGroup } from '@/lib/api/history'
 import { useEmployees } from '@/lib/api/staff'
 import { explain } from '@/lib/history-explain'
@@ -254,6 +255,28 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                       })}
                       {h.actorStaffId ? ` · ${h.actorStaffId}` : ''}
                     </span>
+                    {(h.encounterId || h.patientId) && (
+                      <span className="mt-1 flex flex-wrap gap-3 text-[13px]">
+                        {h.encounterId && (
+                          <StaffLink
+                            to="/app/visit"
+                            search={{ encounter: h.encounterId }}
+                            className="text-primary font-semibold underline-offset-2 hover:underline"
+                          >
+                            {t('history.openVisit')}
+                          </StaffLink>
+                        )}
+                        {h.patientId && (
+                          <StaffLink
+                            to="/app/patient"
+                            search={{ id: h.patientId }}
+                            className="text-primary font-semibold underline-offset-2 hover:underline"
+                          >
+                            {t('patients.openFile')}
+                          </StaffLink>
+                        )}
+                      </span>
+                    )}
                   </div>
                   <span
                     className="bg-primary-tint text-primary pc:inline-flex hidden size-8 flex-none items-center justify-center rounded-full text-[11px] font-extrabold"
