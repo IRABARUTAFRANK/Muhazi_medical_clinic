@@ -24,6 +24,8 @@ export interface BoardDoctor {
   department?: string | null
   visibility?: Visibility
   mine?: boolean
+  /** The calendar's owner (the manager opens it from the board). */
+  userId?: string | null
 }
 
 const VIS_ICON = { private: Lock, staff: Users, public: Globe } as const

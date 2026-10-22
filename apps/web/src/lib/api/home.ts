@@ -46,6 +46,8 @@ export interface HomeToAccept {
   note: string | null
   /** The service asked for (0065). */
   category?: string | null
+  /** The booked time (0068), for the doctor to move it. */
+  startsAt?: string | null
 }
 export interface HomeBill {
   encounterId: string
@@ -328,7 +330,9 @@ export function useHomeActions() {
     onSuccess: refresh,
   })
   const acceptAppointment = useMutation({
-    mutationFn: ({ id }: { id: string }) => call('accept_appointment', { p_appointment_id: id }),
+    // the doctor may move the time to arrange the day (startsAt), or keep reception's
+    mutationFn: ({ id, startsAt }: { id: string; startsAt?: string | null }) =>
+      call('accept_appointment', { p_appointment_id: id, p_starts_at: startsAt ?? null }),
     onSuccess: refresh,
   })
   const declineAppointment = useMutation({

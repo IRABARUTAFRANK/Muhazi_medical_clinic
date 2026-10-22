@@ -356,7 +356,8 @@
     "liveNote": "Envoyée à la réception.",
     "noneYet": "Aucun médecin n’a encore publié d’agenda pour ce service. Appelez ou écrivez sur WhatsApp à l’accueil et nous vous trouvons une heure.",
     "reason": "Motif de la visite",
-    "reasonPh": "ex. fièvre depuis 3 jours, contrôle dentaire"
+    "reasonPh": "ex. fièvre depuis 3 jours, contrôle dentaire",
+    "exactTime": "Heure exacte"
   },
   "home": {
     "clinicNow": "Clinique maintenant",
@@ -471,7 +472,10 @@
     "take": "Prendre",
     "seen": "vu",
     "correctedResult": "corrigé",
-    "markSeen": "Vu"
+    "markSeen": "Vu",
+    "otherTime": "Autre heure",
+    "newTime": "Nouvelle heure",
+    "acceptAt": "Accepter à cette heure"
   },
   "dashboard": {
     "title": "Tableau de bord de la clinique",
@@ -1979,7 +1983,8 @@
       "pickDay": "Choisir un jour",
       "declinedWhy": "{{doctor}} a refusé : {{reason}}",
       "rebooked": "reprogrammé",
-      "bookAgain": "Reprogrammer"
+      "bookAgain": "Reprogrammer",
+      "managerOversees": "Vous supervisez les rendez-vous : la réception traite les demandes et chaque médecin accepte les rendez-vous de son propre agenda."
     },
     "inquiries": {
       "reject": "Refuser",
@@ -2185,7 +2190,8 @@
     "taskNotDone": "{{by}} n’a pas pu faire : {{title}}",
     "bookedArrived": "Votre patient sur rendez-vous {{name}} est arrivé",
     "bookedArrivedTriage": "D’abord au tri, puis envoyé chez vous.",
-    "bookedArrivedDesk": "Vous attend à votre poste."
+    "bookedArrivedDesk": "Vous attend à votre poste.",
+    "inquiryDoctor": "Pour votre agenda. La réception le programme ; vous l’acceptez ensuite ou changez l’heure."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -3210,7 +3216,7 @@
     "title": "Qui peut faire quoi",
     "lead": "Activez ou désactivez chaque fonction pour chaque rôle. Le système suit aussitôt : les boutons disparaissent pour ceux qui ne peuvent pas, et la base de données refuse.",
     "feature": "Fonction",
-    "managerNote": "Le gérant garde toujours toutes les fonctions.",
+    "managerNote": "Le gérant garde toutes les fonctions, sauf répondre aux demandes de rendez-vous (la réception les programme, chaque médecin accepte les siens).",
     "roleOn": "{{feature}} : désormais permis pour {{role}}.",
     "roleOff": "{{feature}} : n’est plus permis pour {{role}}.",
     "oneTitle": "Une exception pour un employé",

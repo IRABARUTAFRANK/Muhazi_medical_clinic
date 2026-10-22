@@ -1,4 +1,5 @@
 import { CalendarDays, Pencil } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { startOfDay, workingAt, type StaffUser } from '@mmc/shared'
 import { Empty, Panel, SectionTitle } from '@/components/dash/kit'
@@ -44,13 +45,18 @@ export function DoctorCalendarsSection({ user, i = 4 }: { user: StaffUser; i?: n
               department: c.department,
               visibility: c.visibility,
               mine: c.mine,
+              userId: c.userId,
             }))}
             action={(d) =>
-              d.mine ? (
-                <StaffLink to="/app/calendar" className={buttonVariants({ size: 'sm' })}>
+              d.mine || user.role === 'manager' ? (
+                <Link
+                  to="/app/calendar"
+                  search={d.mine || !d.userId ? {} : { user: d.userId }}
+                  className={buttonVariants({ size: 'sm' })}
+                >
                   <Pencil size={13} aria-hidden="true" />
                   {t('calendar.board.edit')}
-                </StaffLink>
+                </Link>
               ) : null
             }
           />

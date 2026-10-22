@@ -120,6 +120,12 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
           </StaffLink>
         </PageBanner>
 
+        {/* the manager oversees the bookings; reception books them and the doctor accepts */}
+        {!canAct && user.role === 'manager' && (
+          <p className="bg-primary-tint text-primary m-0 rounded-xl px-3 py-2.5 text-[14px]">
+            {t('ops.appts.managerOversees')}
+          </p>
+        )}
         <section className="flex flex-col gap-3">
           <div className={sectionTitle}>{t('ops.appts.section')}</div>
           <div className="pc:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">

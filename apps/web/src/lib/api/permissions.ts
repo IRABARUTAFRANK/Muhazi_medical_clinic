@@ -40,7 +40,8 @@ const DEFAULTS: Record<Feature, string[]> = {
   'charge.write': ['nurse', 'doctor', 'sonographer', 'lab_tech', 'pharmacist', 'manager'],
   'clinical.write': ['nurse', 'doctor', 'manager'],
   'orders.write': ['doctor', 'sonographer', 'lab_tech', 'manager'],
-  'appointment.approve': ['receptionist', 'manager'],
+  // booking requests are reception's work; the manager oversees them (0068)
+  'appointment.approve': ['receptionist'],
   'stock.write': ['lab_tech', 'pharmacist', 'manager'],
 }
 const defaultsFor = (role: string) => MANAGED_FEATURES.filter((f) => DEFAULTS[f].includes(role))

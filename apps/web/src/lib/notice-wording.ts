@@ -138,7 +138,11 @@ export function useWording() {
           body: [p.name, p.reason].filter(Boolean).join(' · ') || null,
         }
       case 'inquiry':
-        return { title: t('notify.inquiry', { name: p.name ?? '' }), body: t('notify.inquiryBody') }
+        // the doctor named in the request is told too: reception books it, the doctor then accepts
+        return {
+          title: t('notify.inquiry', { name: p.name ?? '' }),
+          body: t(p.forDoctor ? 'notify.inquiryDoctor' : 'notify.inquiryBody'),
+        }
       case 'to_accept':
         return {
           title: t('notify.toAccept', { name: p.name ?? '' }),

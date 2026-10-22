@@ -3,6 +3,9 @@ import type { Practitioner } from '../types'
 import { hoursFromRange, openStatus } from '../hours'
 import {
   bookedSetFrom,
+  freeMinutesIn,
+  markBooked,
+  slotMinutesIn,
   buildCalendar,
   nextFreeSlot,
   parseSlotId,
@@ -121,5 +124,23 @@ describe('openStatus', () => {
       open: false,
       opensAt: '07:00',
     })
+  })
+})
+
+describe('slots shorter than an hour', () => {
+  const half: Practitioner = { ...doc, slotMinutes: 30 }
+  it('offers each slot of the hour, and a booking takes only its own minutes', () => {
+    const friday = new Date(2026, 9, 16) // dayIdx 1 from Thursday
+    expect(slotMinutesIn(half, friday, 9)).toEqual([0, 30])
+    const booked = new Set<string>()
+    markBooked(booked, new Date(2026, 9, 16, 9, 0), new Date(2026, 9, 16, 9, 30))
+    expect(freeMinutesIn(half, now, 1, 9, booked)).toEqual([30])
+    expect(slotState(half, now, 1, 9, booked)).toBe('free')
+    markBooked(booked, new Date(2026, 9, 16, 9, 30), new Date(2026, 9, 16, 10, 0))
+    expect(slotState(half, now, 1, 9, booked)).toBe('booked')
+  })
+  it('a slot that has passed today is not offered', () => {
+    expect(freeMinutesIn(half, now, 0, 12, new Set())).toEqual([])
+    expect(freeMinutesIn(half, now, 0, 13, new Set())).toEqual([0, 30])
   })
 })

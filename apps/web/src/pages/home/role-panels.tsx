@@ -567,10 +567,23 @@ export function ToAcceptPanel({
 }) {
   const { t } = useTranslation()
   const actions = useHomeActions()
-  const accept = async (id: string) => {
+  // "Another time": the doctor arranges the day by priority before accepting
+  const [moving, setMoving] = useState<string | null>(null)
+  const [newTime, setNewTime] = useState('')
+  const localInput = (iso?: string | null) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  const accept = async (id: string, startsAt?: string) => {
     onError(null)
     try {
-      await actions.acceptAppointment.mutateAsync({ id })
+      await actions.acceptAppointment.mutateAsync({
+        id,
+        startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+      })
+      setMoving(null)
     } catch (e) {
       onError(describe(e))
     }
@@ -611,16 +624,48 @@ export function ToAcceptPanel({
                     </span>
                   )}
                 </span>
-                <span className="flex gap-1">
+                <span className="flex flex-wrap gap-1">
                   <Button variant="primary" size="sm" onClick={() => void accept(q.id)}>
                     <Check size={14} aria-hidden="true" />
                     {t('common.accept')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setMoving(moving === q.id ? null : q.id)
+                      setNewTime(localInput(q.startsAt))
+                    }}
+                  >
+                    <Clock size={14} aria-hidden="true" />
+                    {t('home.otherTime')}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => void decline(q.id)}>
                     <X size={14} aria-hidden="true" />
                     {t('common.decline')}
                   </Button>
                 </span>
+                {moving === q.id && (
+                  <span className="flex basis-full flex-wrap items-end gap-2">
+                    <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+                      {t('home.newTime')}
+                      <input
+                        type="datetime-local"
+                        step={300}
+                        value={newTime}
+                        onChange={(e) => setNewTime(e.target.value)}
+                        className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px] font-normal"
+                      />
+                    </label>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={!newTime}
+                      onClick={() => void accept(q.id, newTime)}
+                    >
+                      {t('home.acceptAt')}
+                    </Button>
+                  </span>
+                )}
               </div>
             ))}
           </div>

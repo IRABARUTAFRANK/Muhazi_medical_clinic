@@ -365,7 +365,8 @@
     "liveNote": "Byoherejwe ku bwakiriro.",
     "noneYet": "Nta muganga urashyira ahagaragara ingengabihe ye kuri iyi serivisi. Hamagara cyangwa wandikire kwakira abarwayi kuri WhatsApp tugushakire isaha.",
     "reason": "Impamvu yo kuza",
-    "reasonPh": "urugero: umuriro w’iminsi 3, gusuzumwa amenyo"
+    "reasonPh": "urugero: umuriro w’iminsi 3, gusuzumwa amenyo",
+    "exactTime": "Isaha nyayo"
   },
   "home": {
     "clinicNow": "Ivuriro ubu",
@@ -480,7 +481,10 @@
     "take": "Akira",
     "seen": "byarebwe",
     "correctedResult": "byakosowe",
-    "markSeen": "Byarebwe"
+    "markSeen": "Byarebwe",
+    "otherTime": "Ikindi gihe",
+    "newTime": "Igihe gishya",
+    "acceptAt": "Emera kuri iki gihe"
   },
   "dashboard": {
     "title": "Imbonerahamwe y'ivuriro",
@@ -1983,7 +1987,8 @@
       "pickDay": "Hitamo umunsi",
       "declinedWhy": "{{doctor}} yanze: {{reason}}",
       "rebooked": "yongeye guhabwa gahunda",
-      "bookAgain": "Ongera uhe gahunda"
+      "bookAgain": "Ongera uhe gahunda",
+      "managerOversees": "Ugenzura gahunda: abakira abantu ni bo bategura ibisabwa, buri muganga yemera gahunda zo kuri kalendari ye."
     },
     "inquiries": {
       "reject": "Hakana",
@@ -2194,7 +2199,8 @@
     "taskNotDone": "{{by}} ntiyashoboye gukora: {{title}}",
     "bookedArrived": "Umurwayi wawe ufite gahunda {{name}} yageze",
     "bookedArrivedTriage": "Abanza gupimwa, hanyuma akoherezwa.",
-    "bookedArrivedDesk": "Agutegereje ku mwanya wawe."
+    "bookedArrivedDesk": "Agutegereje ku mwanya wawe.",
+    "inquiryDoctor": "Ni iya kalendari yawe. Abakira abantu barayitegura; hanyuma uyemere cyangwa uhindure igihe."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -3219,7 +3225,7 @@
     "title": "Ukora iki",
     "lead": "Fungura cyangwa ufunge buri gikorwa kuri buri mwanya. Sisitemu ihita ibikurikiza: utemerewe ntabona buto, kandi ububiko bw’amakuru buranga.",
     "feature": "Igikorwa",
-    "managerNote": "Umuyobozi ahorana ibikorwa byose.",
+    "managerNote": "Umuyobozi agumana ibikorwa byose, uretse gusubiza ibisabwa bya gahunda (abakira abantu barabitegura, buri muganga yemera ize).",
     "roleOn": "{{feature}}: ubu byemewe kuri {{role}}.",
     "roleOff": "{{feature}}: ntibyemewe kuri {{role}}.",
     "oneTitle": "Irengayobora ku mukozi umwe",

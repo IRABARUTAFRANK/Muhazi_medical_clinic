@@ -57,11 +57,11 @@ const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-s
  * who may see it (only me, the staff, or the staff and the public). The manager keeps the
  * calendar of any doctor or sonographer from the same page.
  */
-export function CalendarPage({ user }: { user: StaffUser }) {
+export function CalendarPage({ user, initialUser }: { user: StaffUser; initialUser?: string }) {
   const { t } = useTranslation()
   const isManager = user.role === 'manager' || user.dashboard === 'manager'
   const { data: people = [] } = useCalendarPeople(isManager)
-  const [picked, setPicked] = useState<string | null>(null)
+  const [picked, setPicked] = useState<string | null>(initialUser ?? null)
   const target = isManager ? (picked ?? people[0]?.userId ?? null) : null
   const { data: cal, error } = useMyCalendar(target)
   const waiting = isManager && people.length === 0

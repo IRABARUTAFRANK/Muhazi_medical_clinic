@@ -425,22 +425,19 @@ await expectError(
   },
   /permission denied/i,
 )
-await step('anonymous sees the slot as busy in public_booked_slots', async () => {
+// a request does not hold its time (0068): another person may ask for it too
+await step('a request leaves the time free; a second request for it is accepted', async () => {
   const r = await one(
     `select count(*)::int as n from public_booked_slots where starts_at = $1::timestamptz`,
     [slot],
   )
-  if (r.n !== 1) throw new Error(`${r.n} rows`)
+  if (r.n !== 0) throw new Error(`${r.n} rows`)
+  const second = await one(
+    `select create_appointment_inquiry('nf', $1::timestamptz, 'Other Person', '0788 000 222', null, null, null, 'sms') as ref`,
+    [slot],
+  )
+  return `still free; second request ${second.ref}`
 })
-await expectError(
-  'second inquiry for the same slot is refused',
-  async () =>
-    db.query(
-      `select create_appointment_inquiry('nf', $1::timestamptz, 'Other Person', '0788 000 222', null, null, null, 'sms')`,
-      [slot],
-    ),
-  /just been taken/i,
-)
 await expectError(
   'inquiry outside working hours is refused',
   async () =>
@@ -2637,7 +2634,7 @@ await step(
     await db.query(`select complete_task($1)`, [task])
     const after = (await one(`select may_work_on($1) as ok`, [p.enc])).ok
     await asAdmin()
-    const money = head.revenue30d.length + head.collections.length + (head.receivables ? 1 : 0)
+    const money = head.revenue30d.length + head.collections.length + (head.receivables ?? []).length
     if (money !== 0 || before || !during || after)
       throw new Error(JSON.stringify({ money, before, during, after }))
     return 'head: no money; nurse may work only while the task is open'
@@ -3144,6 +3141,92 @@ await step(
     )
       throw new Error(JSON.stringify({ q1, notMine, q2, v3: v3.station, v4: v4.station }))
     return 'dental + department + note; reception not "myself"; doctor takes at once; triage first respected'
+  },
+)
+
+// ---------------------------------------------------------------- 0068: bookings and calendars by role
+await step(
+  "0068: reception books, the calendar's doctor accepts (and may move the time); the manager oversees; calendars by role",
+  async () => {
+    // a request for the dentist; the manager may not book it, reception does
+    await as(null, 'anon')
+    const when = new Date(Date.parse(slot) + 14 * 86_400_000).toISOString()
+    const ref = (
+      await one(
+        `select create_appointment_inquiry('nf', $1::timestamptz, 'Role Test', '0788 068 001') as ref`,
+        [when],
+      )
+    ).ref
+    await asAdmin()
+    const appt = (await one(`select id from appointment where reference = $1`, [ref])).id
+    const toDoctor = await one(
+      `select count(*)::int as n from notification where kind = 'inquiry' and recipient_user = $1 and params ->> 'appointment' = $2`,
+      [dentist, appt],
+    )
+    const toManager = await one(
+      `select count(*)::int as n from notification where kind = 'inquiry' and recipient_role = 'manager' and params ->> 'appointment' = $1`,
+      [appt],
+    )
+    let manager = 'ok'
+    await as(staff.manager)
+    try {
+      await db.query(`select approve_inquiry($1, $2)`, [appt, patientId])
+    } catch (e) {
+      manager = String(e.message).split('\n')[0]
+    }
+    await as(staff.receptionist)
+    await db.query(`select approve_inquiry($1, $2)`, [appt, patientId])
+    // another doctor cannot accept it; the dentist accepts it one hour later
+    let other = 'ok'
+    await as(d1)
+    try {
+      await db.query(`select accept_appointment($1)`, [appt])
+    } catch (e) {
+      other = String(e.message).split('\n')[0]
+    }
+    await as(dentist)
+    const moved = (
+      await one(`select accept_appointment($1, $2::timestamptz + interval '1 hour') as r`, [
+        appt,
+        when,
+      ])
+    ).r
+    await asAdmin()
+    const a = await one(`select status::text, starts_at from appointment where id = $1`, [appt])
+    // calendars: reception sees the dentist's shared calendar; a doctor of another department does not
+    await db.query(`update practitioner set calendar_visibility = 'staff' where user_id = $1`, [
+      dentist,
+    ])
+    await as(staff.receptionist)
+    const desk = (await one(`select staff_doctor_calendars() as c`)).c
+    await as(d1)
+    const doctor = (await one(`select staff_doctor_calendars() as c`)).c
+    await asAdmin()
+    const has = (list) => list.some((x) => x.userId === dentist)
+    if (
+      toDoctor.n !== 1 ||
+      toManager.n !== 0 ||
+      !/not allowed/.test(manager) ||
+      !/only the doctor of this calendar/.test(other) ||
+      !moved.moved ||
+      a.status !== 'confirmed' ||
+      new Date(a.starts_at).getTime() !== Date.parse(when) + 3_600_000 ||
+      !has(desk) ||
+      has(doctor)
+    )
+      throw new Error(
+        JSON.stringify({
+          toDoctor,
+          toManager,
+          manager,
+          other,
+          moved,
+          a,
+          desk: has(desk),
+          doctor: has(doctor),
+        }),
+      )
+    return 'doctor told, manager not; manager refused; other doctor refused; moved +1 h; calendars by role'
   },
 )
 

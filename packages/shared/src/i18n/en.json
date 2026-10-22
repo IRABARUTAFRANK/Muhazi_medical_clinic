@@ -356,7 +356,8 @@
     "liveNote": "Sent to reception.",
     "noneYet": "No doctor has published a calendar for this service yet. Call or WhatsApp reception and we find you a time.",
     "reason": "Reason for the visit",
-    "reasonPh": "e.g. fever for 3 days, dental check-up"
+    "reasonPh": "e.g. fever for 3 days, dental check-up",
+    "exactTime": "Exact time"
   },
   "home": {
     "clinicNow": "Clinic now",
@@ -471,7 +472,10 @@
     "take": "Take",
     "seen": "seen",
     "correctedResult": "corrected",
-    "markSeen": "Seen"
+    "markSeen": "Seen",
+    "otherTime": "Another time",
+    "newTime": "New time",
+    "acceptAt": "Accept at this time"
   },
   "dashboard": {
     "title": "Clinic dashboard",
@@ -1979,7 +1983,8 @@
       "pickDay": "Choose a day",
       "declinedWhy": "{{doctor}} declined: {{reason}}",
       "rebooked": "booked again",
-      "bookAgain": "Book again"
+      "bookAgain": "Book again",
+      "managerOversees": "You oversee the bookings: reception books the requests and each doctor accepts the bookings on their own calendar."
     },
     "inquiries": {
       "reject": "Reject",
@@ -2185,7 +2190,8 @@
     "taskNotDone": "{{by}} could not do: {{title}}",
     "bookedArrived": "Your booked patient {{name}} has arrived",
     "bookedArrivedTriage": "At triage first, then sent to you.",
-    "bookedArrivedDesk": "Waiting for you at your desk."
+    "bookedArrivedDesk": "Waiting for you at your desk.",
+    "inquiryDoctor": "For your calendar. Reception books it; you then accept it or move the time."
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -3210,7 +3216,7 @@
     "title": "Who may do what",
     "lead": "Switch each feature on or off for each role. The system follows it at once: the buttons disappear for those who may not, and the database refuses them.",
     "feature": "Feature",
-    "managerNote": "The manager always keeps every feature.",
+    "managerNote": "The manager keeps every feature, except answering booking requests (reception books them, each doctor accepts their own).",
     "roleOn": "{{feature}}: now allowed for {{role}}.",
     "roleOff": "{{feature}}: no longer allowed for {{role}}.",
     "oneTitle": "An exception for one employee",

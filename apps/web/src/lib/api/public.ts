@@ -11,7 +11,7 @@ import {
   addDays,
   isoDate,
   openStatus,
-  slotKey,
+  markBooked,
   type CategoryId,
   type ClinicHours,
   type ClinicProfile,
@@ -120,19 +120,24 @@ export function useBookedSlots(from: Date, days: number) {
         async () => {
           const { data, error } = await supabase!
             .from('public_booked_slots')
-            .select('practitioner_id, starts_at')
+            .select('practitioner_id, starts_at, ends_at')
             .gte('starts_at', from.toISOString())
             .lt('starts_at', to.toISOString())
           if (error) throw error
           const byPractitioner = new Map<string, Set<string>>()
-          for (const r of data as { practitioner_id: string; starts_at: string }[]) {
+          for (const r of data as {
+            practitioner_id: string
+            starts_at: string
+            ends_at: string | null
+          }[]) {
             const d = new Date(r.starts_at)
             let set = byPractitioner.get(r.practitioner_id)
             if (!set) {
               set = new Set()
               byPractitioner.set(r.practitioner_id, set)
             }
-            set.add(slotKey(d, d.getHours()))
+            // the minutes the booking covers (a 30-minute booking leaves the half hour free)
+            markBooked(set, d, r.ends_at ? new Date(r.ends_at) : null)
           }
           return { live: true, byPractitioner }
         },

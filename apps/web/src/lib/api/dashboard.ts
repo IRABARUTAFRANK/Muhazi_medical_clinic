@@ -213,29 +213,29 @@ export function useDashboard(range: DashboardRange, manager: boolean, custom?: C
           bedsOccupied: Number(d.tiles.bedsOccupied),
           bedsTotal: Number(d.tiles.bedsTotal),
         },
-        revenue30d: d.revenue30d.map((r) => ({ day: r.day, amount: Number(r.amount) })),
-        collections: d.collections.map((c) => ({
+        revenue30d: (d.revenue30d ?? []).map((r) => ({ day: r.day, amount: Number(r.amount) })),
+        collections: (d.collections ?? []).map((c) => ({
           method: c.method,
           amount: Number(c.amount),
         })),
-        receivables: d.receivables.map((r) => ({
+        receivables: (d.receivables ?? []).map((r) => ({
           ...r,
           amount: Number(r.amount),
           count: Number(r.count),
         })),
-        visitsByGroup: d.visitsByGroup.map((v) => ({ ...v, count: Number(v.count) })),
-        waitByStation: d.waitByStation.map((w) => ({
+        visitsByGroup: (d.visitsByGroup ?? []).map((v) => ({ ...v, count: Number(v.count) })),
+        waitByStation: (d.waitByStation ?? []).map((w) => ({
           ...w,
           minutes: w.minutes == null ? null : Number(w.minutes),
           waiting: Number(w.waiting),
           longest: w.longest == null ? null : Number(w.longest),
         })),
-        topTreatments: d.topTreatments.map((x) => ({
+        topTreatments: (d.topTreatments ?? []).map((x) => ({
           ...x,
           count: Number(x.count),
           amount: num(x.amount),
         })),
-        staff: d.staff.map((s) => ({
+        staff: (d.staff ?? []).map((s) => ({
           ...s,
           registrations: Number(s.registrations),
           vitals: Number(s.vitals),
@@ -246,7 +246,11 @@ export function useDashboard(range: DashboardRange, manager: boolean, custom?: C
           payments: num(s.payments),
           collected: num(s.collected),
         })),
-        reorder: d.reorder.map((r) => ({ ...r, onHand: Number(r.onHand), min: Number(r.min) })),
+        reorder: (d.reorder ?? []).map((r) => ({
+          ...r,
+          onHand: Number(r.onHand),
+          min: Number(r.min),
+        })),
         expiring: {
           d30: Number(d.expiring.d30),
           d60: Number(d.expiring.d60),

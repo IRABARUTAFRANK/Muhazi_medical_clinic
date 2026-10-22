@@ -8,6 +8,7 @@ import {
   buildCalendar,
   formatDayMonth,
   formatHour,
+  freeMinutesIn,
   hoursRange,
   nextFreeSlot,
   parseSlotId,
@@ -53,6 +54,8 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
   const [docCode, setDocCode] = useState<string | null>(doctor ?? null)
   const [week, setWeek] = useState(0)
   const [pick, setPick] = useState<string | null>(null)
+  // the slot inside the chosen hour (09:00, 09:30… by the doctor's slot length)
+  const [minute, setMinute] = useState(0)
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [insurer, setInsurer] = useState('')
@@ -80,11 +83,25 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
   }
 
   const picked = pick ? parseSlotId(pick) : null
+  // the free slots of the chosen hour (a confirmed booking takes only its own minutes)
+  const minutes =
+    picked && selected
+      ? freeMinutesIn(
+          selected,
+          now,
+          Math.round((startOfDay(picked.date).getTime() - startOfDay(now).getTime()) / 86_400_000),
+          picked.hour,
+          bookedFor(booked, selected),
+        )
+      : []
+  const atMinute = minutes.includes(minute) ? minute : (minutes[0] ?? 0)
+  const hhmm = (h: number, m: number) =>
+    `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   const pickLabel = picked
     ? t('booking.pickLabel', {
         day: dayNames.short[picked.date.getDay()],
         date: `${formatDayMonth(picked.date)}/${picked.date.getFullYear()}`,
-        time: formatHour(picked.hour),
+        time: hhmm(picked.hour, atMinute),
       })
     : ''
   const nextFreeLabel = (p: Practitioner) => {
@@ -114,6 +131,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
         picked.date.getMonth(),
         picked.date.getDate(),
         picked.hour,
+        atMinute,
       )
       const result = await sendInquiry({
         practitionerCode: selected.code,
@@ -272,6 +290,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                   // the time belongs to this doctor: the doctor stays chosen with it
                   setDocCode(selected?.code ?? null)
                   setPick(id)
+                  setMinute(0)
                   setSentRef(null)
                   setError(null)
                 }}
@@ -299,6 +318,30 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                   <Chip className="h-7 text-xs">{t('common.notConfirmed')}</Chip>
                 </div>
                 <form className="contents" onSubmit={onSend}>
+                  {/* several slots in the hour (30-minute slots…): choose the exact time */}
+                  {minutes.length > 1 && (
+                    <div className="flex flex-wrap items-center gap-2" role="radiogroup">
+                      <span className="text-ink-2 text-[13px] font-semibold">
+                        {t('booking.exactTime')}
+                      </span>
+                      {minutes.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          aria-pressed={atMinute === m}
+                          onClick={() => setMinute(m)}
+                          className={cn(
+                            'inline-flex min-h-9 items-center rounded-full border px-3.5 text-sm font-semibold tabular-nums',
+                            atMinute === m
+                              ? 'border-primary bg-primary-tint text-primary'
+                              : 'border-border bg-card text-ink hover:bg-hover',
+                          )}
+                        >
+                          {hhmm(picked!.hour, m)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <Field
                       label={t('booking.fullName')}

@@ -21,14 +21,68 @@ export const isSampleBooked = (seed: number, dayIdx: number, hour: number): bool
 export const slotKey = (date: Date, hour: number): string =>
   `${isoDate(date)}T${String(hour).padStart(2, '0')}`
 
+/** Key of a five-minute step taken by a booking: local date + time, e.g. `2026-10-19T10:35`. */
+export const minuteKey = (date: Date, minuteOfDay: number): string =>
+  `${isoDate(date)}T${String(Math.floor(minuteOfDay / 60)).padStart(2, '0')}:${String(minuteOfDay % 60).padStart(2, '0')}`
+
+/**
+ * Mark a booking in a booked set: its hour (kept for older callers) and every five-minute step
+ * it covers, so a 30-minute booking at 09:00 leaves 09:30 free.
+ */
+export function markBooked(set: Set<string>, start: Date, end?: Date | null): void {
+  set.add(slotKey(start, start.getHours()))
+  const from = start.getHours() * 60 + start.getMinutes()
+  const minutes = end ? Math.max(5, Math.round((end.getTime() - start.getTime()) / 60_000)) : 30
+  for (let m = from; m < from + minutes && m < 24 * 60; m += 5)
+    set.add(minuteKey(start, m - (m % 5)))
+}
+
 /** Build a booked set from `public_booked_slots.starts_at` values (ISO strings or Dates). */
 export function bookedSetFrom(startsAt: Iterable<string | Date>): Set<string> {
   const set = new Set<string>()
-  for (const s of startsAt) {
-    const d = typeof s === 'string' ? new Date(s) : s
-    set.add(slotKey(d, d.getHours()))
-  }
+  for (const s of startsAt) markBooked(set, typeof s === 'string' ? new Date(s) : s)
   return set
+}
+
+/** The doctor's slot length used on the grid (5 to 60 minutes). */
+const stepOf = (p: Practitioner) => Math.min(60, Math.max(5, p.slotMinutes || 60))
+
+/**
+ * The start minutes (0–59) of the slots inside this hour that fit a working period: every slot
+ * of the doctor's length, e.g. 0 and 30 for 30-minute slots.
+ */
+export function slotMinutesIn(p: Practitioner, date: Date, hour: number): number[] {
+  if (isDayOff(p, date)) return []
+  const step = stepOf(p)
+  const spans = spansFor(p.hours, date)
+  const out: number[] = []
+  for (let m = 0; m < 60; m += step) {
+    const start = hour * 60 + m
+    const end = start + step
+    if (spans.some(([a, b]) => start >= toMinutes(a) && end <= toMinutes(b))) out.push(m)
+  }
+  return out
+}
+
+/** Free slot starts in this hour: not past, not covered by a confirmed booking. */
+export function freeMinutesIn(
+  p: Practitioner,
+  now: Date,
+  dayIdx: number,
+  hour: number,
+  booked?: ReadonlySet<string>,
+): number[] {
+  const date = addDays(startOfDay(now), dayIdx)
+  const step = stepOf(p)
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  return slotMinutesIn(p, date, hour).filter((m) => {
+    const start = hour * 60 + m
+    if (dayIdx === 0 && start <= nowMin) return false
+    if (!booked) return true
+    for (let t = start - (start % 5); t < start + step; t += 5)
+      if (booked.has(minuteKey(date, t))) return false
+    return true
+  })
 }
 
 /** A date the practitioner marked as a day off (leave, training, …). */
@@ -42,13 +96,9 @@ export const workingAt = (p: Practitioner, at: Date): boolean => {
   return spansFor(p.hours, at).some(([a, b]) => m >= toMinutes(a) && m < toMinutes(b))
 }
 
-/** The whole slot must fall inside one working span of that weekday, unless it is a day off. */
-export const isWorking = (p: Practitioner, date: Date, hour: number): boolean => {
-  if (isDayOff(p, date)) return false
-  const start = hour * 60
-  const end = start + Math.min(60, p.slotMinutes || 60)
-  return spansFor(p.hours, date).some(([a, b]) => start >= toMinutes(a) && end <= toMinutes(b))
-}
+/** At least one whole slot of that hour falls inside a working span, unless it is a day off. */
+export const isWorking = (p: Practitioner, date: Date, hour: number): boolean =>
+  slotMinutesIn(p, date, hour).length > 0
 
 export type SlotState = 'free' | 'booked' | 'off'
 
@@ -65,9 +115,10 @@ export function slotState(
 ): SlotState {
   const date = addDays(startOfDay(now), dayIdx)
   if (!isWorking(p, date, hour)) return 'off'
+  // live: free while one slot of the hour is still free; sample: the deterministic pattern
+  if (booked) return freeMinutesIn(p, now, dayIdx, hour, booked).length > 0 ? 'free' : 'booked'
   const past = dayIdx === 0 && hour <= now.getHours()
-  const taken = booked ? booked.has(slotKey(date, hour)) : isSampleBooked(p.seed, dayIdx, hour)
-  return past || taken ? 'booked' : 'free'
+  return past || isSampleBooked(p.seed, dayIdx, hour) ? 'booked' : 'free'
 }
 
 export interface DayAvailability {
