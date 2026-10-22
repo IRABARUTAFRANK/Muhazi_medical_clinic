@@ -28,7 +28,14 @@ import {
   type RxState,
 } from '@/lib/api/doctor'
 import type { TestStatus } from '@/lib/api/lab'
-import { openItems, queueCounts, sortQueue, stationFor, useQueueBoard } from '@/lib/api/visits'
+import {
+  mineElsewhere,
+  openItems,
+  queueCounts,
+  sortQueue,
+  stationFor,
+  useQueueBoard,
+} from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
 import { cn } from '@/lib/utils'
@@ -136,7 +143,9 @@ function VisitLink({
 export function QueuePage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const station = stationFor(user)
-  const { data: live = [] } = useQueueBoard(station, user.role)
+  const { data: board = [] } = useQueueBoard('all', user.role)
+  // the desk's queue, and the patients of the other sections this person works in
+  const live = [...board.filter((r) => r.station === station), ...mineElsewhere(board, station)]
   const [sort, setSort] = useState<SortKey>('urgent')
   const [query, setQuery] = useState('')
   const rows = sortQueue(

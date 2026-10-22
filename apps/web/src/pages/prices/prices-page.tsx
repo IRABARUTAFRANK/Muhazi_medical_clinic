@@ -182,7 +182,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
     if (name.length < 2) return
     void run(
       async () => {
-        await deptActions.save.mutateAsync({ name, description: '', roles: [] })
+        await deptActions.save.mutateAsync({ name, description: '', roles: [], services: [] })
         setNewDept(null)
       },
       t('prices.dept.created', { name }),

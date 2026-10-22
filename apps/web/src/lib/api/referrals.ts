@@ -97,9 +97,11 @@ export function useRefer(encounterId: string) {
       comeBack?: boolean
       /** Only this department's staff may take the patient (migration 0055). */
       department?: string | null
+      /** The service at that desk (Family planning at Nursing): its people take (migration 0071). */
+      service?: string | null
     }) => {
       if (!supabase) return
-      const { error } = await supabase.rpc('refer_patient', {
+      const args = {
         p_encounter_id: encounterId,
         p_from: i.from,
         p_to: i.to,
@@ -108,7 +110,14 @@ export function useRefer(encounterId: string) {
         p_return: !!i.comeBack,
         // only when chosen, so a database without migration 0055 still takes referrals
         ...(i.department ? { p_department: i.department } : {}),
+      }
+      let { error } = await supabase.rpc('refer_patient', {
+        ...args,
+        ...(i.service ? { p_service: i.service } : {}),
       })
+      // before migration 0071 the desk is enough
+      if (error && i.service && /function|schema cache/i.test(error.message))
+        ({ error } = await supabase.rpc('refer_patient', args))
       if (error) throw new Error(error.message)
     },
     onSuccess: () => {

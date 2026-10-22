@@ -814,7 +814,11 @@
       "rolesHint": "Only employees with these roles can be placed here. Tick none to allow every role.",
       "save": "Save department",
       "treatments_one": "{{count}} treatment",
-      "treatments_other": "{{count}} treatments"
+      "treatments_other": "{{count}} treatments",
+      "services": "Services given in this department",
+      "servicesHint": "Its people take the patients sent to these services, whatever their role (a nurse in Consultation, a doctor in Nursing). A doctor may also list services in their calendar.",
+      "servicesShort": "Services",
+      "noServices": "none chosen: its people work at the usual desk of their role"
     },
     "tempPin": "Temporary PIN",
     "showPin": "Show the PIN",
@@ -1339,18 +1343,11 @@
       "title": "Next step for this patient",
       "lead": "When you have finished here, send the patient to the next desk. This closes your {{station}} queue entry; the patient appears in the queue of the desk you choose.",
       "toCashier": "Send to the cashier",
-      "other": "Or send to",
-      "send": "Send",
-      "anyDoctor": "Any available doctor",
-      "anyDoctorHint": "The patient waits at {{desks}} at once; the first doctor who is free takes the patient and the others no longer see them.",
-      "pick": "Or choose one or more desks",
-      "sendMany_one": "Send to {{count}} desk",
-      "sendMany_other": "Send to {{count}} desks",
-      "manyHint": "Several desks: the patient waits at each one and leaves the others as soon as one desk takes them."
+      "section": "Send to a section",
+      "sectionLead": "When you have finished here, choose what the patient needs next. Anyone who works in that section may take the patient, doctor or nurse alike (the first one free), or choose one person."
     },
     "patientFile": "Patient file",
     "backToClinic": "Back to In the clinic",
-    "sentMany": "Patient sent to {{station}}: the first one free takes the patient.",
     "closedBanner": "Visit finished {{when}}. Everything recorded stays in the patient file.",
     "pay": {
       "pending": "Pending payment · {{amount}} due",
@@ -1905,7 +1902,7 @@
       "tasks": "Nursing tasks",
       "noTasks": "No tasks for now.",
       "careSection": "Nursing care",
-      "care": "Patients sent to the nurses",
+      "care": "Patients sent to the nurses and to my sections",
       "orders": "Orders to do at Nursing",
       "ordersEmpty": "No order waiting at Nursing."
     },
@@ -2635,24 +2632,15 @@
     }
   },
   "refer": {
-    "open": "Refer to another doctor, department or the lab",
-    "title": "Referral",
-    "desk": "Desk / department",
-    "person": "Colleague (optional)",
-    "anyone": "Whoever is free at that desk",
     "why": "Reason (the colleague reads it)",
     "comeBack": "Send the patient back to me afterwards",
     "comeBackHint": "For a test or a second opinion: the colleague sends the patient back to you with one button.",
-    "send": "Refer the patient",
     "done": "Patient referred to {{to}}.",
     "cameFrom": "Referred by {{name}}",
     "sendBack": "Send back to {{name}} ({{desk}})",
     "sentBack": "Patient sent back to {{name}}.",
     "backNote": "Done at {{desk}}",
-    "from": "from {{name}}",
-    "department": "Department (optional)",
-    "anyDepartment": "Any department",
-    "departmentHint": "Only the staff of this department will be able to take the patient."
+    "from": "from {{name}}"
   },
   "cover": {
     "title": "Cover for me",
@@ -3575,7 +3563,7 @@
     "anyoneIn": "Anyone in {{service}}",
     "anyoneHint_one": "The first one free takes the patient · {{count}} waiting for anyone now",
     "anyoneHint_other": "The first one free takes the patient · {{count}} waiting for anyone now",
-    "nobody": "Nobody is set up for {{service}} yet (a doctor adds the service to their calendar). The patient waits in the section.",
+    "nobody": "Nobody is set up for {{service}} yet (Employees → Departments: the services each department gives). The patient waits in the section.",
     "workingNow": "working now",
     "notWorkingNow": "not working now",
     "onDuty": "signed in today",

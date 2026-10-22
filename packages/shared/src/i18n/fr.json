@@ -814,7 +814,11 @@
       "rolesHint": "Seuls les employés ayant ces rôles peuvent y être placés. Ne cochez rien pour accepter tous les rôles.",
       "save": "Enregistrer le service",
       "treatments_one": "{{count}} soin",
-      "treatments_other": "{{count}} soins"
+      "treatments_other": "{{count}} soins",
+      "services": "Services donnés dans ce département",
+      "servicesHint": "Ses membres prennent les patients envoyés vers ces services, quel que soit leur rôle (un infirmier en consultation, un médecin aux soins). Un médecin peut aussi inscrire des services dans son agenda.",
+      "servicesShort": "Services",
+      "noServices": "aucun choisi : ses membres travaillent au poste habituel de leur rôle"
     },
     "tempPin": "PIN temporaire",
     "showPin": "Afficher le PIN",
@@ -1339,18 +1343,11 @@
       "title": "Prochaine étape pour ce patient",
       "lead": "Quand vous avez terminé ici, envoyez le patient au poste suivant. Cela ferme votre entrée de file {{station}} ; le patient apparaît dans la file du poste choisi.",
       "toCashier": "Envoyer à la caisse",
-      "other": "Ou envoyer à",
-      "send": "Envoyer",
-      "anyDoctor": "Premier médecin disponible",
-      "anyDoctorHint": "Le patient attend à {{desks}} en même temps ; le premier médecin libre le prend et les autres ne le voient plus.",
-      "pick": "Ou choisissez un ou plusieurs postes",
-      "sendMany_one": "Envoyer à {{count}} poste",
-      "sendMany_other": "Envoyer à {{count}} postes",
-      "manyHint": "Plusieurs postes : le patient attend à chacun et quitte les autres dès qu’un poste le prend."
+      "section": "Envoyer vers une section",
+      "sectionLead": "Quand vous avez fini ici, choisissez ce dont le patient a besoin ensuite. Toute personne qui travaille dans cette section peut prendre le patient, médecin ou infirmier (le premier libre), ou choisissez une personne."
     },
     "patientFile": "Dossier patient",
     "backToClinic": "Retour à « À la clinique »",
-    "sentMany": "Patient envoyé à {{station}} : le premier libre le prend.",
     "closedBanner": "Visite terminée le {{when}}. Tout reste dans le dossier patient.",
     "pay": {
       "pending": "Paiement en attente · {{amount}} dus",
@@ -1905,7 +1902,7 @@
       "tasks": "Tâches infirmières",
       "noTasks": "Aucune tâche pour le moment.",
       "careSection": "Soins infirmiers",
-      "care": "Patients envoyés aux infirmiers",
+      "care": "Patients envoyés aux infirmiers et à mes sections",
       "orders": "Demandes à faire aux soins",
       "ordersEmpty": "Aucune demande en attente aux soins."
     },
@@ -2635,24 +2632,15 @@
     }
   },
   "refer": {
-    "open": "Adresser à un autre médecin, service ou au laboratoire",
-    "title": "Orientation",
-    "desk": "Poste / service",
-    "person": "Collègue (facultatif)",
-    "anyone": "La personne libre à ce poste",
     "why": "Motif (le collègue le lit)",
     "comeBack": "Me renvoyer le patient ensuite",
     "comeBackHint": "Pour un examen ou un second avis : le collègue vous renvoie le patient d’un seul bouton.",
-    "send": "Adresser le patient",
     "done": "Patient adressé à {{to}}.",
     "cameFrom": "Adressé par {{name}}",
     "sendBack": "Renvoyer à {{name}} ({{desk}})",
     "sentBack": "Patient renvoyé à {{name}}.",
     "backNote": "Terminé à {{desk}}",
-    "from": "de {{name}}",
-    "department": "Département (facultatif)",
-    "anyDepartment": "Tout département",
-    "departmentHint": "Seul le personnel de ce département pourra prendre le patient."
+    "from": "de {{name}}"
   },
   "cover": {
     "title": "Me faire remplacer",
@@ -3575,7 +3563,7 @@
     "anyoneIn": "N’importe qui en {{service}}",
     "anyoneHint_one": "Le premier libre prend le patient · {{count}} en attente pour n’importe qui",
     "anyoneHint_other": "Le premier libre prend le patient · {{count}} en attente pour n’importe qui",
-    "nobody": "Personne n’est encore configuré pour {{service}} (un médecin ajoute le service à son agenda). Le patient attend dans la section.",
+    "nobody": "Personne n’est encore affecté à {{service}} (Employés → Départements : les services de chaque département). Le patient attend dans la section.",
     "workingNow": "travaille maintenant",
     "notWorkingNow": "ne travaille pas maintenant",
     "onDuty": "connecté aujourd’hui",

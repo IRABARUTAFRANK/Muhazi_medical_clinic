@@ -818,7 +818,11 @@
       "rolesHint": "Abakozi bafite izi nshingano ni bo bonyine bashobora gushyirwamo. Ntuhitemo na kimwe niba inshingano zose zemewe.",
       "save": "Bika ishami",
       "treatments_one": "ubuvuzi {{count}}",
-      "treatments_other": "ubuvuzi {{count}}"
+      "treatments_other": "ubuvuzi {{count}}",
+      "services": "Serivisi zitangirwa muri iri shami",
+      "servicesHint": "Abarikoramo bakira abarwayi boherejwe kuri izi serivisi, uko akazi kabo kaba kameze kose (umuforomo mu isuzuma, muganga mu buforomo). Muganga ashobora no kwandika serivisi muri kalendari ye.",
+      "servicesShort": "Serivisi",
+      "noServices": "nta yatoranyijwe: abarikoramo bakora aho akazi kabo gasanzwe gakorerwa"
     },
     "tempPin": "PIN y’agateganyo",
     "showPin": "Erekana PIN",
@@ -1258,16 +1262,9 @@
       "title": "Intambwe ikurikira y’uyu murwayi",
       "lead": "Iyo urangije hano, ohereza umurwayi aho akurikiraho. Bifunga umwanya we ku murongo wa {{station}}; umurwayi agaragara ku murongo w’aho wahisemo.",
       "toCashier": "Ohereza kuri kasiye",
-      "other": "Cyangwa ohereza kuri",
-      "send": "Ohereza",
-      "anyDoctor": "Muganga wese uboneka",
-      "anyDoctorHint": "Umurwayi ategerereza icyarimwe kuri {{desks}}; muganga wa mbere ubonetse aramwakira, abandi ntibongera kumubona.",
-      "pick": "Cyangwa hitamo aho ajya hamwe cyangwa henshi",
-      "sendMany_one": "Ohereza ahantu {{count}}",
-      "sendMany_other": "Ohereza ahantu {{count}}",
-      "manyHint": "Ahantu henshi: umurwayi ategerereza kuri buri hamwe, akava ahandi hose iyo hamwe hamwakiriye."
+      "section": "Ohereza mu gice",
+      "sectionLead": "Urangije hano, hitamo icyo umurwayi akeneye gukurikiraho. Umuntu wese ukora muri icyo gice ashobora kumwakira, yaba muganga cyangwa umuforomo (uwa mbere ubonetse), cyangwa uhitemo umuntu umwe."
     },
-    "sentMany": "Umurwayi yoherejwe kuri {{station}}: uwa mbere ubonetse aramwakira.",
     "closedBanner": "Uruzinduko rwarangiye {{when}}. Ibyanditswe byose bigumye muri dosiye y’umurwayi.",
     "pay": {
       "pending": "Kwishyura bitegereje · {{amount}} asigaye",
@@ -1909,7 +1906,7 @@
       "tasks": "Imirimo y'abaforomo",
       "noTasks": "Nta murimo uhari ubu.",
       "careSection": "Ubuvuzi bw’abaforomo",
-      "care": "Abarwayi boherejwe ku baforomo",
+      "care": "Abarwayi boherejwe ku baforomo no mu bice nkoramo",
       "orders": "Ibyo gukora ku baforomo",
       "ordersEmpty": "Nta cyasabwe gitegereje ku baforomo."
     },
@@ -2644,24 +2641,15 @@
     }
   },
   "refer": {
-    "open": "Ohereza ku yindi muganga, ishami cyangwa laboratwari",
-    "title": "Kohereza umurwayi",
-    "desk": "Aho ajya / ishami",
-    "person": "Mugenzi wawe (si ngombwa)",
-    "anyone": "Ubonetse aho hantu",
     "why": "Impamvu (mugenzi wawe arayisoma)",
     "comeBack": "Nyuma, umurwayi azagaruke kuri njye",
     "comeBackHint": "Ku isuzuma cyangwa ikindi gitekerezo: mugenzi wawe akugarurira umurwayi akoresheje akabuto kamwe.",
-    "send": "Ohereza umurwayi",
     "done": "Umurwayi yoherejwe kuri {{to}}.",
     "cameFrom": "Yoherejwe na {{name}}",
     "sendBack": "Mugarure kuri {{name}} ({{desk}})",
     "sentBack": "Umurwayi yagaruwe kuri {{name}}.",
     "backNote": "Byarangiye kuri {{desk}}",
-    "from": "avuye kuri {{name}}",
-    "department": "Ishami (si ngombwa)",
-    "anyDepartment": "Ishami iryo ari ryo ryose",
-    "departmentHint": "Abakozi b’iri shami gusa ni bo bazashobora gufata umurwayi."
+    "from": "avuye kuri {{name}}"
   },
   "cover": {
     "title": "Nsimbura",
@@ -3584,7 +3572,7 @@
     "anyoneIn": "Uwo ari we wese muri {{service}}",
     "anyoneHint_one": "Ubanza kuboneka ni we umwakira · {{count}} ategereje ubu",
     "anyoneHint_other": "Ubanza kuboneka ni we umwakira · {{count}} bategereje ubu",
-    "nobody": "Nta muntu urashyirirwaho {{service}} (muganga ayongera kuri kalendari ye). Umurwayi ategerereza mu gice.",
+    "nobody": "Nta muntu urashyirwa muri {{service}} (Abakozi → Amashami: serivisi buri shami ritanga). Umurwayi ategereza mu gice.",
     "workingNow": "ari mu kazi ubu",
     "notWorkingNow": "ntari mu kazi ubu",
     "onDuty": "yinjiye uyu munsi",

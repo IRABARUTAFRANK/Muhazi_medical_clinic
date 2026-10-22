@@ -40,7 +40,7 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useHomeSummary, type HomeSummary } from '@/lib/api/home'
 import { useClinicStatus, useClinicInfo } from '@/lib/api/public'
-import { openItems, queueCounts, stationFor, useQueueBoard } from '@/lib/api/visits'
+import { mineElsewhere, openItems, queueCounts, stationFor, useQueueBoard } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { formatDuration } from '@/lib/duration'
@@ -122,15 +122,10 @@ function RoleHome({ user, mode }: HomePageProps) {
   // Live: today's queue at this user's station (reception sees every station).
   const myStation = role === 'receptionist' ? 'all' : stationFor(user)
   const { data: live = [] } = useQueueBoard(myStation, user.role)
-  // a doctor also gets the patients sent to them by name at another desk (ultrasound, theatre…)
-  const { data: everyone = [] } = useQueueBoard(
-    user.role === 'doctor' ? 'all' : myStation,
-    user.role,
-  )
-  const elsewhere =
-    user.role === 'doctor'
-      ? openItems(everyone).filter((r) => r.assignedTo === user.id && r.station !== myStation)
-      : []
+  // also the patients at other desks that are theirs: sent to them by name, or to a section they
+  // work in (a doctor of Nursing, a nurse of Consultation)
+  const { data: everyone = [] } = useQueueBoard('all', user.role)
+  const elsewhere = myStation === 'all' ? [] : mineElsewhere(everyone, myStation)
   const rows = isLive ? [...openItems(live), ...elsewhere] : empty ? [] : home.queue
   // the tiles count the patients this person may work on (not those sent to a colleague)
   const counts = isLive

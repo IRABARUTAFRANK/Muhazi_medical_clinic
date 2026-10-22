@@ -55,6 +55,7 @@ import {
   type Position,
   positionIn,
 } from '@/lib/api/staff'
+import { SECTIONS, sectionName } from '@/lib/api/services'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
 import { cn } from '@/lib/utils'
@@ -1060,6 +1061,14 @@ function DepartmentsPanel({
                   )}
                 </div>
                 <p className="m-0 text-[13px]">
+                  <b>{t('staff.dept.servicesShort')}:</b>{' '}
+                  {d.services.length > 0 ? (
+                    d.services.map((s) => sectionName(s, t)).join(', ')
+                  ) : (
+                    <span className="text-ink-3">{t('staff.dept.noServices')}</span>
+                  )}
+                </p>
+                <p className="m-0 text-[13px]">
                   <b>{t('staff.positions.head')}:</b>{' '}
                   {head?.fullName ?? <span className="text-ink-3">{t('staff.dept.noHead')}</span>}
                   {assistants.length > 0 && (
@@ -1092,7 +1101,13 @@ function DepartmentForm({
   saving,
 }: {
   department: Department | null
-  onSave: (d: { id?: string; name: string; description: string; roles: DbRole[] }) => void
+  onSave: (d: {
+    id?: string
+    name: string
+    description: string
+    roles: DbRole[]
+    services: string[]
+  }) => void
   onCancel: () => void
   saving: boolean
 }) {
@@ -1100,8 +1115,11 @@ function DepartmentForm({
   const [name, setName] = useState(department?.name ?? '')
   const [description, setDescription] = useState(department?.description ?? '')
   const [roles, setRoles] = useState<DbRole[]>(department?.roles ?? [])
+  const [services, setServices] = useState<string[]>(department?.services ?? [])
   const toggle = (r: DbRole) =>
     setRoles((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]))
+  const toggleService = (s: string) =>
+    setServices((ss) => (ss.includes(s) ? ss.filter((x) => x !== s) : [...ss, s]))
   return (
     <Card className="border-primary anim-enter">
       <CardHeader>
@@ -1113,7 +1131,7 @@ function DepartmentForm({
         onSubmit={(e) => {
           e.preventDefault()
           if (name.trim().length < 2) return
-          onSave({ id: department?.id, name, description, roles })
+          onSave({ id: department?.id, name, description, roles, services })
         }}
       >
         <CardBody className="gap-3">
@@ -1155,6 +1173,32 @@ function DepartmentForm({
               ))}
             </div>
             <p className="text-ink-3 m-0 mt-2 text-xs">{t('staff.dept.rolesHint')}</p>
+          </fieldset>
+          {/* the sections this department works in: its people take the patients sent there */}
+          <fieldset className="m-0 border-0 p-0">
+            <legend className="text-ink-2 mb-2 text-[13px] font-semibold">
+              {t('staff.dept.services')}
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {SECTIONS.map((s) => (
+                <label
+                  key={s}
+                  className={cn(
+                    'border-border flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-[13px] font-semibold transition-colors',
+                    services.includes(s) && 'border-primary bg-primary-tint text-primary',
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-primary"
+                    checked={services.includes(s)}
+                    onChange={() => toggleService(s)}
+                  />
+                  {sectionName(s, t)}
+                </label>
+              ))}
+            </div>
+            <p className="text-ink-3 m-0 mt-2 text-xs">{t('staff.dept.servicesHint')}</p>
           </fieldset>
           <div className="flex gap-2">
             <Button type="submit" variant="primary" loading={saving}>

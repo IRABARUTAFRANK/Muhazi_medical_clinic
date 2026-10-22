@@ -1,23 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import {
-  Activity,
-  Baby,
-  FilePlus2,
-  FlaskConical,
-  History,
-  Pill,
-  Ribbon,
-  Scan,
-  Scissors,
-  Send,
-  Siren,
-  Smile,
-  Stethoscope,
-  Syringe,
-  UserRoundCheck,
-  Users,
-  type LucideIcon,
-} from 'lucide-react'
+import { Activity, FilePlus2, History, Send, Siren, UserRoundCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, type StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
@@ -33,6 +15,7 @@ import {
 } from '@/lib/api/services'
 import { stationFor, useVisitActions, type Station, type VisitResult } from '@/lib/api/visits'
 import { useReveal } from '@/lib/hooks'
+import { SECTION_ICON } from './service-icons'
 import { cn } from '@/lib/utils'
 
 /** The desks a person may start a visit with "I see this patient myself" (the database agrees). */
@@ -42,19 +25,6 @@ const MY_DESKS: Record<string, Station[]> = {
   lab_tech: ['laboratory'],
   sonographer: ['ultrasound'],
   pharmacist: ['pharmacy'],
-}
-
-const SERVICE_ICON: Record<ServiceId, LucideIcon> = {
-  consultation: Stethoscope,
-  dental: Smile,
-  laboratory: FlaskConical,
-  ultrasound: Scan,
-  nursing: Syringe,
-  surgery: Scissors,
-  circ: Scissors,
-  fp: Baby,
-  hiv: Ribbon,
-  pharmacy: Pill,
 }
 
 type Target = 'myself' | 'triage' | ServiceId
@@ -272,7 +242,7 @@ export function SendPatientCard({
           aria-label={t('sendPatient.byService')}
         >
           {SERVICES.map((s) => {
-            const Icon = SERVICE_ICON[s]
+            const Icon = SECTION_ICON[s]
             return option(
               s,
               <Icon size={18} aria-hidden="true" />,
@@ -343,7 +313,7 @@ export function SendPatientCard({
 }
 
 /** "Who in …?": anyone in the section, or one person of it with what they do now. */
-function WhoPicker({
+export function WhoPicker({
   name,
   title,
   anyone,

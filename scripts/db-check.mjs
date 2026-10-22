@@ -943,7 +943,7 @@ await step('shared patient â†’ one notice per role, gone once a doctor take
   if (mine.length !== 1 || mine[0].kind !== 'queue_pool') throw new Error(`notices ${mine.length}`)
   await asAdmin()
   const q = await one(
-    `select id from queue_entry where encounter_id = $1 and station = 'dental' and finished_at is null`,
+    `select id from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
     [v.id],
   )
   await as(staff.doctor)
@@ -3396,6 +3396,85 @@ await step(
         JSON.stringify({ tri: tri.staff.length, q, other, mine, access, keys: Object.keys(track) }),
       )
     return 'both nurses listed; sent to one; the other cannot take; reception follows; track fields'
+  },
+)
+
+await step(
+  '0071: a section is its people, not a role: a nurse set in Consultation takes and is told',
+  async () => {
+    await asAdmin()
+    const nurse2 = (await one(`select id from profiles where username = 'a.umutoni'`)).id
+    await as(staff.manager)
+    const dep = (
+      await one(
+        `select upsert_department(null, 'Consultation 71', null, '{}', array['consultation']) as id`,
+      )
+    ).id
+    await asAdmin()
+    await db.query(
+      `insert into staff_department (profile_id, department_id, position) values ($1, $2, 'member')`,
+      [nurse2, dep],
+    )
+    await as(staff.receptionist)
+    const list = (await one(`select service_staff('consultation') as s`)).s
+    const r = (
+      await one(`select register_patient_file('Mutesi', 'Grace 71', 'female', null, 29, null) as r`)
+    ).r
+    const v = (
+      await one(
+        `select begin_visit(p_patient_id => $1, p_station => 'consultation', p_service => 'consultation') as v`,
+        [r.patient_id],
+      )
+    ).v
+    await asAdmin()
+    const q = await one(
+      `select id from queue_entry where encounter_id = $1 and station = 'consultation'`,
+      [v.encounter_id],
+    )
+    const may = {}
+    const told = {}
+    for (const [k, id] of [
+      ['nurse2', nurse2],
+      ['nurse', staff.nurse],
+      ['doctor', staff.doctor],
+    ]) {
+      await as(id)
+      may[k] = (await one(`select queue_entry_for_me($1) as ok`, [q.id])).ok
+      const n = (await one(`select my_notifications(200) as n`)).n
+      told[k] = n.items.some(
+        (x) => x.link?.includes(v.encounter_id) && ['queue', 'referral'].includes(x.kind),
+      )
+    }
+    // the nurse of Consultation takes; then sends on to Family planning (at Nursing)
+    await as(nurse2)
+    await db.query(`select take_patient($1)`, [q.id])
+    await db.query(
+      `select refer_patient($1, 'consultation', 'nursing', null, 'family planning', false, null, 'fp')`,
+      [v.encounter_id],
+    )
+    await asAdmin()
+    const fp = await one(
+      `select id, service from queue_entry where encounter_id = $1 and station = 'nursing' and finished_at is null`,
+      [v.encounter_id],
+    )
+    await as(staff.nurse)
+    const nurseFp = (await one(`select queue_entry_for_me($1) as ok`, [fp.id])).ok
+    await as(staff.doctor)
+    const doctorFp = (await one(`select queue_entry_for_me($1) as ok`, [fp.id])).ok
+    await asAdmin()
+    if (
+      !list.staff.some((p) => p.id === nurse2) ||
+      !may.nurse2 ||
+      may.nurse ||
+      !may.doctor ||
+      !told.nurse2 ||
+      told.nurse ||
+      fp.service !== 'fp' ||
+      !nurseFp ||
+      doctorFp
+    )
+      throw new Error(JSON.stringify({ may, told, fp, nurseFp, doctorFp, n: list.staff.length }))
+    return 'nurse of Consultation listed, may take, told (other nurse not); FP at Nursing for nurses'
   },
 )
 

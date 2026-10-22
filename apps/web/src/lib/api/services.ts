@@ -25,6 +25,19 @@ export const SERVICE_DESK: Record<ServiceId, Station> = {
   pharmacy: 'pharmacy',
 }
 
+/** The sections a person or department works in: triage and the services. */
+export type SectionId = ServiceId | 'triage'
+export const SECTIONS: readonly SectionId[] = ['triage', ...SERVICES]
+
+/** A section's name in the reader's language. */
+export const sectionName = (
+  s: string,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string =>
+  s === 'triage' || s === 'pharmacy'
+    ? t(`register.stations.${s}`)
+    : t(`categories.${s}`, { defaultValue: s })
+
 /** One person who gives a service, and what they do now. */
 export interface ServicePerson {
   id: string

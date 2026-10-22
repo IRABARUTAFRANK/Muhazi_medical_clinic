@@ -58,7 +58,13 @@ import {
   InquiriesPanel,
   TasksPanel,
 } from './desk-panels'
-import { onePerPool, openItems, useQueueBoard, type QueueItem } from '@/lib/api/visits'
+import {
+  mineElsewhere,
+  onePerPool,
+  openItems,
+  useQueueBoard,
+  type QueueItem,
+} from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { formatDuration } from '@/lib/duration'
@@ -99,8 +105,14 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
         )
       : // reception: those still waiting (not those already being seen)
         open.filter((r) => !r.startedAt)
-  // patients sent to the nurses for care (Nursing, Beds)
-  const care = openItems(queue).filter((r) => r.station === 'nursing' || r.station === 'beds')
+  // patients sent to the nurses for care (Nursing, Beds), and those of the other sections this
+  // nurse works in (Consultation…)
+  const care = [
+    ...openItems(queue).filter((r) => r.station === 'nursing' || r.station === 'beds'),
+    ...mineElsewhere(queue, 'triage').filter(
+      (r) => r.station !== 'nursing' && r.station !== 'beds',
+    ),
+  ]
 
   const greeting = greetingFor(user.name, t)
   const nurse = role === 'nurse'

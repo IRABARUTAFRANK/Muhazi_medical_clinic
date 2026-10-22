@@ -64,6 +64,8 @@ export interface Department {
   name: string
   description: string | null
   roles: DbRole[]
+  /** The clinic's services given here (and 'triage'): its people take the patients sent there. */
+  services: string[]
 }
 
 /** What the manager fills in for an employee (new or edited). */
@@ -247,13 +249,17 @@ export function useDepartments() {
     queryKey: DEPT_KEY,
     queryFn: async (): Promise<Department[]> => {
       if (!supabase) return [...sampleDepartments]
-      const { data, error } = await supabase
-        .from('department')
-        .select('id, name, description, roles')
-        .order('sort_order')
-        .order('name')
+      const read = (cols: string) =>
+        supabase!.from('department').select(cols).order('sort_order').order('name')
+      let { data, error } = await read('id, name, description, roles, services')
+      // before migration 0071 departments have no services
+      if (error) ({ data, error } = await read('id, name, description, roles'))
       if (error) throw new Error(error.message)
-      return (data as Department[]).map((d) => ({ ...d, roles: d.roles ?? [] }))
+      return (data as unknown as Department[]).map((d) => ({
+        ...d,
+        roles: d.roles ?? [],
+        services: d.services ?? [],
+      }))
     },
   })
 }
@@ -455,26 +461,42 @@ export function useDepartmentActions() {
   const qc = useQueryClient()
   const refresh = () => qc.invalidateQueries({ queryKey: ['staff'] })
   const save = useMutation({
-    mutationFn: async (d: { id?: string; name: string; description: string; roles: DbRole[] }) => {
+    mutationFn: async (d: {
+      id?: string
+      name: string
+      description: string
+      roles: DbRole[]
+      services: string[]
+    }) => {
       if (!supabase) {
         const existing = d.id ? sampleDepartments.find((x) => x.id === d.id) : undefined
         if (existing)
-          Object.assign(existing, { name: d.name, description: d.description, roles: d.roles })
+          Object.assign(existing, {
+            name: d.name,
+            description: d.description,
+            roles: d.roles,
+            services: d.services,
+          })
         else
           sampleDepartments.push({
             id: `d-${Math.random().toString(36).slice(2, 8)}`,
             name: d.name,
             description: d.description || null,
             roles: d.roles,
+            services: d.services,
           })
         return
       }
-      const { error } = await supabase.rpc('upsert_department', {
+      const args = {
         p_id: d.id ?? null,
         p_name: d.name,
         p_description: d.description,
         p_roles: d.roles,
-      })
+      }
+      let { error } = await supabase.rpc('upsert_department', { ...args, p_services: d.services })
+      // before migration 0071 the department has no services
+      if (error && /function|schema cache/i.test(error.message))
+        ({ error } = await supabase.rpc('upsert_department', args))
       if (error) throw new Error(error.message)
     },
     onSuccess: refresh,

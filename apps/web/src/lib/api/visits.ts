@@ -516,6 +516,11 @@ export interface QueueItem extends QueueRow {
   departmentName?: string | null
   /** False when the patient was sent to someone else: seen in the clinic, read only. */
   canWork?: boolean
+  /**
+   * Sent to me by name, taken by me, or waiting for anyone in a section I work in (migration
+   * 0071): my home queue shows it whatever the desk.
+   */
+  forMe?: boolean
 }
 
 interface BoardRow {
@@ -547,6 +552,7 @@ interface BoardRow {
   vitals_by?: string | null
   department_name?: string | null
   can_work?: boolean | null
+  for_me?: boolean | null
 }
 
 const sexLetter: Record<Sex, string> = { female: 'F', male: 'M', other: '', unknown: '' }
@@ -585,6 +591,7 @@ const toItem = (r: BoardRow): QueueItem => ({
   vitalsBy: r.vitals_by ?? null,
   departmentName: r.department_name ?? null,
   canWork: r.can_work ?? true,
+  forMe: r.for_me ?? false,
   ticket: r.ticket_no,
   name: `${r.surname} ${r.given_names}`,
   ageSex: `${ageOf(r.birth_date)} ${sexLetter[r.sex]}`.trim(),
@@ -653,6 +660,21 @@ export function useQueueBoard(station: Station | 'all', role: Role) {
   })
 }
 
+/**
+ * Patients at other desks that are this person's to take: sent to them by name, or to a section
+ * they work in (a nurse of Consultation, a doctor of Nursing). Not reception nor the cashier.
+ */
+export const mineElsewhere = (items: readonly QueueItem[], desk: Station) =>
+  items.filter(
+    (r) =>
+      !r.finishedAt &&
+      r.station !== desk &&
+      r.forMe === true &&
+      r.canWork !== false &&
+      r.station !== 'reception' &&
+      r.station !== 'cashier',
+  )
+
 export const queueCounts = (items: readonly QueueItem[]) => ({
   waiting: items.filter((i) => !i.startedAt && !i.finishedAt).length,
   inProgress: items.filter((i) => i.startedAt && !i.finishedAt).length,
@@ -708,8 +730,10 @@ export function useTakePatient() {
 
 /** The next patient this person may take at their desk: urgent first, then longest waiting. */
 export function useNextPatient(user: StaffUser): QueueItem | undefined {
-  const { data = [] } = useQueueBoard(stationFor(user), user.role)
-  const free = openItems(data).filter(
+  const desk = stationFor(user)
+  const { data = [] } = useQueueBoard('all', user.role)
+  const mine = [...data.filter((r) => r.station === desk), ...mineElsewhere(data, desk)]
+  const free = openItems(mine).filter(
     (q) => q.canWork !== false && !q.takenBy && !q.startedAt && !q.finishedAt,
   )
   return sortQueue(free, 'urgent')[0]
