@@ -18,10 +18,10 @@ interface Stop {
 const at = (iso: string | null | undefined) => (iso ? formatTime(new Date(iso)) : '')
 
 /**
- * The visit's track, one line from the start to the end:
- * started → at triage → at the doctor → … → treatment finished → payment → left.
- * Each stop says who and when; the current one is highlighted. Reception follows a patient it has
- * sent on here; every desk sees where the patient is now and what is left.
+ * The visit's track: one line in the order things happened, e.g. started → vitals → consultation
+ * → laboratory → consultation → treatment finished → pharmacy → paid → left. Done stops in time
+ * order, then where the patient is now (highlighted), then what is still to come. Each stop says
+ * who and when. Reception follows a patient it has sent on here; every desk sees the same line.
  */
 export function VisitTrack({
   encounterId,
@@ -101,83 +101,130 @@ export function VisitTrack({
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string
 
-/** The stops of a visit, from visit_journey. */
+/**
+ * The stops of a visit, from visit_journey, in the order they happened: what is done (by time),
+ * then where the patient is now, then what is still to come. A visit has no fixed route: the
+ * patient may go to the lab and back, finish the treatment, then the pharmacy, then pay.
+ */
 function trackOf(j: Journey, now: number, t: TFn): Stop[] {
   const closed = j.status !== 'open'
   const station = (s: string) => t(`register.stations.${s}`, { defaultValue: s })
   const service = (s?: string | null) =>
     !s ? '' : s === 'pharmacy' ? station('pharmacy') : t(`categories.${s}`, { defaultValue: s })
   const mins = (from: string) => Math.max(0, Math.round((now - new Date(from).getTime()) / 60_000))
-  const stops: Stop[] = [
-    {
-      key: 'start',
+  const ms = (iso: string) => new Date(iso).getTime()
+  type Ev = Stop & { at: number }
+  const done: Ev[] = []
+  const current: Ev[] = []
+  const next: Stop[] = []
+
+  done.push({
+    key: 'start',
+    state: 'done',
+    at: ms(j.arrivedAt),
+    title: t('track.started', { time: at(j.arrivedAt) }),
+    detail: service(j.service),
+  })
+  // the first measurements
+  const firstVitals = [...(j.vitals ?? [])].sort((x, y) => x.at.localeCompare(y.at))[0]
+  if (firstVitals)
+    done.push({
+      key: 'vitals',
       state: 'done',
-      title: t('track.started', { time: at(j.arrivedAt) }),
-      detail: service(j.service),
-    },
-  ]
-  // each desk the patient went through (copies closed when a colleague took the patient left out)
-  const steps = j.steps.filter((s) => s.startedAt || !s.finishedAt)
+      at: ms(firstVitals.at),
+      title: t('track.vitals'),
+      detail: [firstVitals.by, at(firstVitals.at)].filter(Boolean).join(' · '),
+    })
+  // each desk: copies of "several desks at once" that another desk took are left out (finished
+  // without anyone starting, at the same moment as a desk that did)
+  const steps = j.steps.filter(
+    (s) =>
+      s.startedAt ||
+      !s.finishedAt ||
+      !j.steps.some(
+        (o) => o !== s && o.startedAt && Math.abs(ms(o.queuedAt) - ms(s.queuedAt)) < 5000,
+      ),
+  )
   steps.forEach((s, i) => {
     const who = s.takenBy ?? s.assignedTo ?? s.department ?? null
-    const state: State = s.finishedAt ? 'done' : 'now'
-    const detail = s.finishedAt
-      ? [who, t('track.until', { time: at(s.finishedAt) })].filter(Boolean).join(' · ')
-      : s.startedAt
-        ? t('track.with', { name: who ?? '', time: at(s.startedAt) })
-        : [
-            who ? t('track.for', { name: who }) : t('track.anyone'),
-            t('track.waiting', { count: mins(s.queuedAt) }),
-          ].join(' · ')
-    stops.push({
-      key: `step-${i}`,
-      state,
-      title: [station(s.station), service(s.service && s.station !== 'triage' ? s.service : null)]
-        .filter(Boolean)
-        .join(' · '),
-      detail,
-    })
+    const title = [
+      station(s.station),
+      service(s.service && s.station !== 'triage' ? s.service : null),
+    ]
+      .filter(Boolean)
+      .join(' · ')
+    if (s.finishedAt)
+      done.push({
+        key: `step-${i}`,
+        state: 'done',
+        at: ms(s.startedAt ?? s.queuedAt), // in the order the desks saw the patient
+        title,
+        detail: [who, `${at(s.startedAt ?? s.queuedAt)}–${at(s.finishedAt)}`]
+          .filter(Boolean)
+          .join(' · '),
+      })
+    else
+      current.push({
+        key: `step-${i}`,
+        state: 'now',
+        at: ms(s.queuedAt),
+        title,
+        detail: s.startedAt
+          ? t('track.with', { name: who ?? '', time: at(s.startedAt) })
+          : [
+              who ? t('track.for', { name: who }) : t('track.anyone'),
+              t('track.waiting', { count: mins(s.queuedAt) }),
+            ].join(' · '),
+      })
   })
   // treatment finished: the doctor's "Finish visit", or the visit's end
   const treated = j.treatmentDoneAt ?? (closed ? j.closedAt : null)
-  stops.push({
-    key: 'treated',
-    state: treated ? 'done' : 'next',
-    title: t('track.treated'),
-    detail: treated ? at(treated) : t('track.notYet'),
-  })
-  // the bill: nothing to pay, still owed, or paid
+  if (treated)
+    done.push({
+      key: 'treated',
+      state: 'done',
+      at: ms(treated),
+      title: t('track.treated'),
+      detail: at(treated),
+    })
+  else
+    next.push({
+      key: 'treated',
+      state: 'next',
+      title: t('track.treated'),
+      detail: t('track.notYet'),
+    })
+  // each payment when it was made, then what is still owed
+  ;(j.payments ?? []).forEach((p, i) =>
+    done.push({
+      key: `pay-${i}`,
+      state: 'done',
+      at: ms(p.at),
+      title: t('track.paid'),
+      detail: [formatRwf(Number(p.amount)), at(p.at)].filter(Boolean).join(' · '),
+    }),
+  )
   const total = Number(j.bill?.total ?? 0)
   const balance = Number(j.bill?.balance ?? 0)
-  stops.push(
-    total === 0
-      ? {
-          key: 'pay',
-          state: closed || treated ? 'done' : 'next',
-          title: t('track.payment'),
-          detail: t('track.nothingToPay'),
-        }
-      : balance > 0
-        ? {
-            key: 'pay',
-            state: treated || closed ? 'now' : 'next',
-            title: t('track.pending'),
-            detail: formatRwf(balance),
-          }
-        : {
-            key: 'pay',
-            state: 'done',
-            title: t('track.paid'),
-            detail: [formatRwf(total), at(j.bill?.settledAt ?? null)].filter(Boolean).join(' · '),
-          },
-  )
-  stops.push({
+  if (balance > 0)
+    next.push({ key: 'owed', state: 'next', title: t('track.pending'), detail: formatRwf(balance) })
+  else if (total === 0 && !(j.payments ?? []).length && !closed)
+    next.push({
+      key: 'owed',
+      state: 'next',
+      title: t('track.payment'),
+      detail: t('track.nothingToPay'),
+    })
+  // the end of the visit: always last
+  const left: Stop = {
     key: 'left',
     state: closed ? 'done' : 'next',
     title: t('track.left'),
     detail: closed
       ? [at(j.closedAt), j.leftReason ? `“${j.leftReason}”` : null].filter(Boolean).join(' · ')
       : t('track.inClinic'),
-  })
-  return stops
+  }
+  const byTime = (x: Ev, y: Ev) => x.at - y.at
+  const plain = ({ key, state, title, detail }: Ev): Stop => ({ key, state, title, detail })
+  return [...done.sort(byTime).map(plain), ...current.sort(byTime).map(plain), ...next, left]
 }

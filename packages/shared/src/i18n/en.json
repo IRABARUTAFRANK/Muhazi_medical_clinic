@@ -3598,6 +3598,7 @@
     "paid": "Paid",
     "left": "Left",
     "inClinic": "still in the clinic",
-    "followOnly": "The patient has left reception: the person who has the patient now sends them on. You follow the visit on the track above."
+    "followOnly": "The patient has left reception: the person who has the patient now sends them on. You follow the visit on the track above.",
+    "vitals": "Vitals taken"
   }
 }

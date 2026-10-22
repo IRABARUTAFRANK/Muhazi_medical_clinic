@@ -3598,6 +3598,7 @@
     "paid": "Payé",
     "left": "Parti",
     "inClinic": "encore à la clinique",
-    "followOnly": "Le patient a quitté la réception : la personne qui a le patient l’envoie plus loin. Vous suivez la visite sur le parcours ci-dessus."
+    "followOnly": "Le patient a quitté la réception : la personne qui a le patient l’envoie plus loin. Vous suivez la visite sur le parcours ci-dessus.",
+    "vitals": "Constantes prises"
   }
 }
