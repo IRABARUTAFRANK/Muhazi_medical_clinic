@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { CheckCircle2, TriangleAlert, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useReveal } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 
 /** How long a success message stays on screen. */
@@ -25,6 +26,8 @@ export function Flash({
 }) {
   const { t } = useTranslation()
   const [shown, setShown] = useState(true)
+  // a message that appears out of view (at the top while the button is lower) comes into view
+  const ref = useReveal<HTMLParagraphElement>({ block: 'nearest' })
   const close = () => {
     setShown(false)
     onClose?.()
@@ -43,9 +46,10 @@ export function Flash({
   const Icon = tone === 'success' ? CheckCircle2 : TriangleAlert
   return (
     <p
+      ref={ref}
       role={tone === 'success' ? 'status' : 'alert'}
       className={cn(
-        'anim-enter m-0 flex items-start gap-2 rounded-lg py-2 pr-1.5 pl-3 text-[13px] font-semibold',
+        'anim-enter m-0 flex scroll-mt-4 scroll-mb-4 items-start gap-2 rounded-lg py-2 pr-1.5 pl-3 text-[13px] font-semibold',
         tone === 'success' ? 'bg-green-bg text-green' : 'bg-red-bg text-red',
         className,
       )}

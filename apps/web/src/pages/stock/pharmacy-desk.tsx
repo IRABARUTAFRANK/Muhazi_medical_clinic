@@ -6,6 +6,7 @@ import { useLetterhead } from '@/lib/report-parts'
 import { formatRwf, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
 import { Badge } from '@/components/ui/badge'
+import { Reveal } from '@/components/ui/reveal'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Flash } from '@/components/ui/flash'
 import { ShownList } from '@/components/ui/list-tools'
@@ -259,48 +260,54 @@ export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; 
                             )}
                           </div>
                           {refusing === q.requestId && (
-                            <div className="border-border bg-card flex flex-col gap-2 rounded-lg border p-2.5">
-                              <span className="text-[13px] font-semibold">
-                                {t('pharmacy.whyNot', { doctor: q.prescriber ?? '' })}
-                              </span>
-                              <span className="flex flex-wrap gap-1.5">
-                                {REASONS.map((r) => (
-                                  <button
-                                    key={r}
-                                    type="button"
-                                    onClick={() => setReason(t(`pharmacy.reasons.${r}`))}
-                                    className={cn(
-                                      'rounded-full border px-2.5 py-1 text-[12px] font-semibold',
-                                      reason === t(`pharmacy.reasons.${r}`)
-                                        ? 'border-primary bg-primary text-white'
-                                        : 'border-border text-ink-2 hover:bg-hover',
-                                    )}
+                            <Reveal focus block="nearest">
+                              <div className="border-border bg-card flex flex-col gap-2 rounded-lg border p-2.5">
+                                <span className="text-[13px] font-semibold">
+                                  {t('pharmacy.whyNot', { doctor: q.prescriber ?? '' })}
+                                </span>
+                                <span className="flex flex-wrap gap-1.5">
+                                  {REASONS.map((r) => (
+                                    <button
+                                      key={r}
+                                      type="button"
+                                      onClick={() => setReason(t(`pharmacy.reasons.${r}`))}
+                                      className={cn(
+                                        'rounded-full border px-2.5 py-1 text-[12px] font-semibold',
+                                        reason === t(`pharmacy.reasons.${r}`)
+                                          ? 'border-primary bg-primary text-white'
+                                          : 'border-border text-ink-2 hover:bg-hover',
+                                      )}
+                                    >
+                                      {t(`pharmacy.reasons.${r}`)}
+                                    </button>
+                                  ))}
+                                </span>
+                                <input
+                                  className="border-border bg-card focus:border-primary h-10 rounded-lg border px-2.5 text-[14px] outline-none"
+                                  value={reason}
+                                  onChange={(e) => setReason(e.target.value)}
+                                  placeholder={t('pharmacy.reasonPh')}
+                                  aria-label={t('pharmacy.reasonPh')}
+                                />
+                                <span className="flex flex-wrap gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="primary"
+                                    disabled={reason.trim().length < 2 || busy}
+                                    onClick={() => void notGiven(q)}
                                   >
-                                    {t(`pharmacy.reasons.${r}`)}
-                                  </button>
-                                ))}
-                              </span>
-                              <input
-                                className="border-border bg-card focus:border-primary h-10 rounded-lg border px-2.5 text-[14px] outline-none"
-                                value={reason}
-                                onChange={(e) => setReason(e.target.value)}
-                                placeholder={t('pharmacy.reasonPh')}
-                                aria-label={t('pharmacy.reasonPh')}
-                              />
-                              <span className="flex flex-wrap gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  disabled={reason.trim().length < 2 || busy}
-                                  onClick={() => void notGiven(q)}
-                                >
-                                  {t('pharmacy.confirmNotGiven')}
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => setRefusing(null)}>
-                                  {t('staff.form.cancel')}
-                                </Button>
-                              </span>
-                            </div>
+                                    {t('pharmacy.confirmNotGiven')}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setRefusing(null)}
+                                  >
+                                    {t('staff.form.cancel')}
+                                  </Button>
+                                </span>
+                              </div>
+                            </Reveal>
                           )}
                         </div>
                       )

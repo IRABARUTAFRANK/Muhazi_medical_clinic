@@ -19,6 +19,8 @@ import { navForUser } from '@/lib/nav'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { useCan } from '@/lib/api/permissions'
+import { Flash } from '@/components/ui/flash'
+import { useReveal } from '@/lib/hooks'
 
 /**
  * Registration from any desk: register first, then send. The patient is found (returning) or
@@ -115,19 +117,17 @@ export function RegisterPage({ user }: { user: StaffUser }) {
           </CardBody>
         </Card>
 
+        {/* messages come into view when they appear (the button pressed may be lower down) */}
         {error && (
-          <p
-            role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
-          >
+          <Flash key={error} tone="error" onClose={() => setError(null)}>
             {error}
-          </p>
+          </Flash>
         )}
 
         {savedOnly && (
-          <p className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <Flash key={savedOnly} onClose={() => setSavedOnly(null)}>
             {savedOnly}
-          </p>
+          </Flash>
         )}
 
         {/* Register first, then send: where the visit starts */}
@@ -256,10 +256,12 @@ function ResultCard({
   onAnother: () => void
 }) {
   const { t } = useTranslation()
+  // the ticket shows at the top of the page: bring it into view
+  const ref = useReveal<HTMLElement>()
   const triage = result.station === 'triage'
   const station = t(`register.stations.${result.station}`)
   return (
-    <Card className={emergency ? 'border-red' : 'border-green'}>
+    <Card ref={ref} className={emergency ? 'border-red' : 'border-green'}>
       <CardHeader>
         <span>{t('register.done.title')}</span>
         <Badge tone={emergency ? 'red' : 'green'} icon={<Check size={12} strokeWidth={3} />}>

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, isoDate } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { Button } from '@/components/ui/button'
+import { Reveal } from '@/components/ui/reveal'
 import { Field } from '@/components/ui/field'
 import { ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
@@ -219,14 +220,16 @@ export function InquiriesPanel({
                     )}
                   </div>
                   {open === q.id && (
-                    <BookForm
-                      q={q}
-                      onRegister={onRegister}
-                      onDone={(msg) => {
-                        setOpen(null)
-                        setDone(msg)
-                      }}
-                    />
+                    <Reveal focus block="nearest">
+                      <BookForm
+                        q={q}
+                        onRegister={onRegister}
+                        onDone={(msg) => {
+                          setOpen(null)
+                          setDone(msg)
+                        }}
+                      />
+                    </Reveal>
                   )}
                 </div>
               ))}

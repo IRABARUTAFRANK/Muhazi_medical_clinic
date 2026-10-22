@@ -3,6 +3,7 @@ import { Pencil, Pill, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
+import { Reveal } from '@/components/ui/reveal'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
@@ -63,15 +64,17 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
         </p>
       )}
       {editing && (
-        <MedicineForm
-          key={editing === 'new' ? 'new' : editing.id}
-          medicine={editing === 'new' ? null : editing}
-          onClose={() => setEditing(null)}
-          onSaved={(name) => {
-            setEditing(null)
-            onNotice(t('prices.meds.saved', { name }))
-          }}
-        />
+        <Reveal focus>
+          <MedicineForm
+            key={editing === 'new' ? 'new' : editing.id}
+            medicine={editing === 'new' ? null : editing}
+            onClose={() => setEditing(null)}
+            onSaved={(name) => {
+              setEditing(null)
+              onNotice(t('prices.meds.saved', { name }))
+            }}
+          />
+        </Reveal>
       )}
       <CardBody className="border-border border-b py-2.5">
         <Field

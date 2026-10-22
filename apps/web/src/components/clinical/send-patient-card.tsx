@@ -16,6 +16,7 @@ import {
   type Station,
   type VisitResult,
 } from '@/lib/api/visits'
+import { useReveal } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 
 /** The desks a person may start a visit with "I see this patient myself" (the database agrees). */
@@ -75,6 +76,9 @@ export function SendPatientCard({
   const [departmentId, setDepartmentId] = useState('')
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // it opens at the top of the page while the button pressed is lower: bring it into view, the
+  // cursor on the chosen option (arrow keys change it)
+  const ref = useReveal<HTMLElement>({ focus: true })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -147,7 +151,10 @@ export function SendPatientCard({
         : t('sendPatient.goTo', { desk: deskName(station) })
 
   return (
-    <Card className={cn(emergency ? 'border-red' : 'border-primary', 'anim-enter', className)}>
+    <Card
+      ref={ref}
+      className={cn(emergency ? 'border-red' : 'border-primary', 'anim-enter', className)}
+    >
       <CardHeader>
         <span className="inline-flex items-center gap-2">
           {mode === 'register' ? (

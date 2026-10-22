@@ -32,6 +32,7 @@ import {
 import { tintClass, type Tint } from '@/components/dash/kit-style'
 import { PageBanner } from '@/components/dash/page-banner'
 import { AdjustField } from '@/components/ui/adjust-field'
+import { Reveal } from '@/components/ui/reveal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
@@ -440,19 +441,21 @@ export function PricesPage({ user }: { user: StaffUser }) {
         )}
 
         {editing && (
-          <TreatmentForm
-            key={editing === 'new' ? `new-${copyFrom?.id ?? ''}-${presetDept ?? ''}` : editing.id}
-            treatment={editing === 'new' ? null : editing}
-            copyFrom={editing === 'new' ? copyFrom : null}
-            insurers={activeInsurers}
-            departments={departments}
-            presetDepartment={editing === 'new' ? presetDept : null}
-            onClose={() => {
-              setEditing(null)
-              setCopyFrom(null)
-              setPresetDept(null)
-            }}
-          />
+          <Reveal focus>
+            <TreatmentForm
+              key={editing === 'new' ? `new-${copyFrom?.id ?? ''}-${presetDept ?? ''}` : editing.id}
+              treatment={editing === 'new' ? null : editing}
+              copyFrom={editing === 'new' ? copyFrom : null}
+              insurers={activeInsurers}
+              departments={departments}
+              presetDepartment={editing === 'new' ? presetDept : null}
+              onClose={() => {
+                setEditing(null)
+                setCopyFrom(null)
+                setPresetDept(null)
+              }}
+            />
+          </Reveal>
         )}
 
         {/* Search and filter */}

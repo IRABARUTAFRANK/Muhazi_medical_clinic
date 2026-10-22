@@ -6,6 +6,7 @@ import type { StaffUser } from '@mmc/shared'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
+import { Reveal } from '@/components/ui/reveal'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { Flash } from '@/components/ui/flash'
@@ -135,26 +136,29 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
           </Card>
 
           {selected ? (
-            <VitalsForm
-              key={`${selected.queueId}|${existing.length}`}
-              user={user}
-              encounterId={selected.encounterId}
-              title={`${selected.ticket} · ${selected.name}`}
-              subtitle={`${selected.ageSex} · ${selected.fileNumber}`}
-              mode={selected.station === 'triage' ? 'triage' : 'add'}
-              existing={existing}
-              defaultNext={missing && missing.length > 0 ? 'reception' : 'consultation'}
-              missing={missing}
-              onSaved={(ticket, station) => {
-                setNotice(
-                  t('triage.sent', {
-                    ticket,
-                    station: station ? t(`register.stations.${station}`) : '',
-                  }),
-                )
-                setSelectedId(null)
-              }}
-            />
+            // choosing a patient (on a tablet the form is below the list): bring the form into view
+            <Reveal key={selected.queueId} block="nearest">
+              <VitalsForm
+                key={`${selected.queueId}|${existing.length}`}
+                user={user}
+                encounterId={selected.encounterId}
+                title={`${selected.ticket} · ${selected.name}`}
+                subtitle={`${selected.ageSex} · ${selected.fileNumber}`}
+                mode={selected.station === 'triage' ? 'triage' : 'add'}
+                existing={existing}
+                defaultNext={missing && missing.length > 0 ? 'reception' : 'consultation'}
+                missing={missing}
+                onSaved={(ticket, station) => {
+                  setNotice(
+                    t('triage.sent', {
+                      ticket,
+                      station: station ? t(`register.stations.${station}`) : '',
+                    }),
+                  )
+                  setSelectedId(null)
+                }}
+              />
+            </Reveal>
           ) : (
             <Card>
               <CardBody>

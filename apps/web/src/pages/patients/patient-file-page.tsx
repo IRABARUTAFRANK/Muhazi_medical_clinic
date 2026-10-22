@@ -16,6 +16,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
+import { Reveal } from '@/components/ui/reveal'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
@@ -377,14 +378,16 @@ export function PatientFilePage({
             </Card>
 
             {editing && (
-              <EditForm
-                patient={p}
-                onDone={() => {
-                  setEditing(false)
-                  setNotice(t('file.saved'))
-                }}
-                onError={setActionError}
-              />
+              <Reveal focus>
+                <EditForm
+                  patient={p}
+                  onDone={() => {
+                    setEditing(false)
+                    setNotice(t('file.saved'))
+                  }}
+                  onError={setActionError}
+                />
+              </Reveal>
             )}
 
             {/* Tabs */}

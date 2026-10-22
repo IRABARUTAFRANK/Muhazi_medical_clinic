@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export function useMediaQuery(query: string): boolean {
@@ -33,4 +33,34 @@ export function useNow(everyMs = 30_000): number {
     return () => window.clearInterval(id)
   }, [everyMs])
   return now
+}
+
+/**
+ * Something that opens after an action (the "Where does the patient go?" step, a form, a
+ * message) may open far from the button pressed: bring it into view when it appears and,
+ * with `focus`, put the cursor in its first field (the chosen option first). `block: 'nearest'`
+ * moves the page only when it is out of view. Smooth unless the person asks for less motion.
+ */
+export function useReveal<T extends HTMLElement>({
+  focus = false,
+  block = 'start',
+}: { focus?: boolean; block?: ScrollLogicalPosition } = {}) {
+  const ref = useRef<T>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block })
+    if (focus) {
+      const target =
+        el.querySelector<HTMLElement>('input[type=radio]:checked') ??
+        el.querySelector<HTMLElement>(
+          'input:not([type=hidden]):not([type=radio]):not([type=checkbox]):not([disabled]), select:not([disabled]), textarea:not([disabled])',
+        )
+      target?.focus({ preventScroll: true })
+    }
+    // once, when it appears
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return ref
 }

@@ -36,6 +36,7 @@ import {
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { triageIcon, type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Reveal } from '@/components/ui/reveal'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useHomeActions, type HomeBed, type HomeSummary } from '@/lib/api/home'
@@ -645,26 +646,28 @@ export function ToAcceptPanel({
                   </Button>
                 </span>
                 {moving === q.id && (
-                  <span className="flex basis-full flex-wrap items-end gap-2">
-                    <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
-                      {t('home.newTime')}
-                      <input
-                        type="datetime-local"
-                        step={300}
-                        value={newTime}
-                        onChange={(e) => setNewTime(e.target.value)}
-                        className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px] font-normal"
-                      />
-                    </label>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={!newTime}
-                      onClick={() => void accept(q.id, newTime)}
-                    >
-                      {t('home.acceptAt')}
-                    </Button>
-                  </span>
+                  <Reveal focus block="nearest">
+                    <span className="flex basis-full flex-wrap items-end gap-2">
+                      <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+                        {t('home.newTime')}
+                        <input
+                          type="datetime-local"
+                          step={300}
+                          value={newTime}
+                          onChange={(e) => setNewTime(e.target.value)}
+                          className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px] font-normal"
+                        />
+                      </label>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={!newTime}
+                        onClick={() => void accept(q.id, newTime)}
+                      >
+                        {t('home.acceptAt')}
+                      </Button>
+                    </span>
+                  </Reveal>
                 )}
               </div>
             ))}

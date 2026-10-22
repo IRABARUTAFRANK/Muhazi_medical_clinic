@@ -6,6 +6,7 @@ import { AppointmentDetail } from './appointment-detail'
 import { PageBanner } from '@/components/dash/page-banner'
 import { sectionTitle } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Reveal } from '@/components/ui/reveal'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useDayNames } from '@/lib/hooks'
@@ -130,19 +131,23 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
           <div className={sectionTitle}>{t('ops.appts.section')}</div>
           <div className="pc:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
             {registering ? (
-              <NewPatientForm
-                key={registering.initial.surname + registering.initial.phone}
-                initial={registering.initial}
-                fileOnly={{
-                  onSaved: (r) => {
-                    registering.onSaved(r)
-                    setRegistering(null)
-                  },
-                  onCancel: () => setRegistering(null),
-                }}
-              />
+              <Reveal focus>
+                <NewPatientForm
+                  key={registering.initial.surname + registering.initial.phone}
+                  initial={registering.initial}
+                  fileOnly={{
+                    onSaved: (r) => {
+                      registering.onSaved(r)
+                      setRegistering(null)
+                    },
+                    onCancel: () => setRegistering(null),
+                  }}
+                />
+              </Reveal>
             ) : selected ? (
-              <AppointmentDetail id={selected} onBack={() => setSelected(null)} />
+              <Reveal>
+                <AppointmentDetail id={selected} onBack={() => setSelected(null)} />
+              </Reveal>
             ) : (
               <AppointmentsPanel
                 key={offset}
@@ -170,16 +175,18 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
                 </Flash>
               )}
               {booking && canAct && (
-                <NewBookingCard
-                  key={booking.prefill?.patientId ?? 'new'}
-                  prefill={booking.prefill}
-                  onDone={(msg) => {
-                    setBooked(msg)
-                    setBooking(false)
-                  }}
-                  onCancel={() => setBooking(false)}
-                  onRegister={setRegistering}
-                />
+                <Reveal focus>
+                  <NewBookingCard
+                    key={booking.prefill?.patientId ?? 'new'}
+                    prefill={booking.prefill}
+                    onDone={(msg) => {
+                      setBooked(msg)
+                      setBooking(false)
+                    }}
+                    onCancel={() => setBooking(false)}
+                    onRegister={setRegistering}
+                  />
+                </Reveal>
               )}
               <InquiriesPanel
                 canAct={canAct}

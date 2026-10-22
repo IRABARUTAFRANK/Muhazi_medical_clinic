@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
 import { PageBanner } from '@/components/dash/page-banner'
 import { Avatar } from '@/components/ui/avatar'
+import { Reveal } from '@/components/ui/reveal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
@@ -194,42 +195,44 @@ export function StaffPage({ user }: { user: StaffUser }) {
         ) : (
           <>
             {editing && (
-              <EmployeeForm
-                key={editing === 'new' ? 'new' : editing.id}
-                employee={editing === 'new' ? null : editing}
-                departments={departments}
-                takenUsernames={new Set(employees.map((e) => e.username))}
-                self={editing !== 'new' && editing.id === user.id}
-                onCancel={() => setEditing(null)}
-                onSubmit={(input, firstPin) =>
-                  setPending({
-                    title:
-                      editing === 'new'
-                        ? t('staff.confirm.create', { name: input.fullName })
-                        : t('staff.confirm.update', { name: input.fullName }),
-                    run: async (confirmCode) => {
-                      if (editing === 'new') {
-                        const r = await actions.create.mutateAsync({
-                          input,
-                          pin: firstPin!,
-                          confirmCode,
-                        })
-                        setCredentials({
-                          title: t('staff.created.title', { name: input.fullName }),
-                          staffId: r.staff_id ?? '',
-                          email: input.email,
-                          username: r.username,
-                          pin: firstPin!,
-                        })
-                      } else {
-                        await actions.update.mutateAsync({ id: editing.id, input, confirmCode })
-                        setNotice(t('staff.saved', { name: input.fullName }))
-                      }
-                      setEditing(null)
-                    },
-                  })
-                }
-              />
+              <Reveal focus>
+                <EmployeeForm
+                  key={editing === 'new' ? 'new' : editing.id}
+                  employee={editing === 'new' ? null : editing}
+                  departments={departments}
+                  takenUsernames={new Set(employees.map((e) => e.username))}
+                  self={editing !== 'new' && editing.id === user.id}
+                  onCancel={() => setEditing(null)}
+                  onSubmit={(input, firstPin) =>
+                    setPending({
+                      title:
+                        editing === 'new'
+                          ? t('staff.confirm.create', { name: input.fullName })
+                          : t('staff.confirm.update', { name: input.fullName }),
+                      run: async (confirmCode) => {
+                        if (editing === 'new') {
+                          const r = await actions.create.mutateAsync({
+                            input,
+                            pin: firstPin!,
+                            confirmCode,
+                          })
+                          setCredentials({
+                            title: t('staff.created.title', { name: input.fullName }),
+                            staffId: r.staff_id ?? '',
+                            email: input.email,
+                            username: r.username,
+                            pin: firstPin!,
+                          })
+                        } else {
+                          await actions.update.mutateAsync({ id: editing.id, input, confirmCode })
+                          setNotice(t('staff.saved', { name: input.fullName }))
+                        }
+                        setEditing(null)
+                      },
+                    })
+                  }
+                />
+              </Reveal>
             )}
 
             {resetFor && (
@@ -978,21 +981,23 @@ function DepartmentsPanel({
         </p>
       )}
       {editing && (
-        <DepartmentForm
-          key={editing === 'new' ? 'new' : editing.id}
-          department={editing === 'new' ? null : editing}
-          onCancel={() => setEditing(null)}
-          onSave={async (d) => {
-            setError(null)
-            try {
-              await actions.save.mutateAsync(d)
-              setEditing(null)
-            } catch (e) {
-              setError(e instanceof Error ? e.message : String(e))
-            }
-          }}
-          saving={actions.save.isPending}
-        />
+        <Reveal focus>
+          <DepartmentForm
+            key={editing === 'new' ? 'new' : editing.id}
+            department={editing === 'new' ? null : editing}
+            onCancel={() => setEditing(null)}
+            onSave={async (d) => {
+              setError(null)
+              try {
+                await actions.save.mutateAsync(d)
+                setEditing(null)
+              } catch (e) {
+                setError(e instanceof Error ? e.message : String(e))
+              }
+            }}
+            saving={actions.save.isPending}
+          />
+        </Reveal>
       )}
       {departments.length === 0 && !editing && (
         <Card>

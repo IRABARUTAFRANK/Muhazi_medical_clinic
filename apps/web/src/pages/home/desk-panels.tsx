@@ -21,6 +21,7 @@ import { formatDayMonth, formatRwf, formatTime, isoDate, type Role } from '@mmc/
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Reveal } from '@/components/ui/reveal'
 import { Pager, ShownList } from '@/components/ui/list-tools'
 import { usePaged } from '@/lib/paging'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -247,15 +248,17 @@ export function AppointmentsPanel({
                         )
                       ))}
                     {arriving?.id === a.id && (
-                      <StartVisitConfirm
-                        mode="arrival"
-                        className="basis-full"
-                        name={a.name}
-                        desk="triage"
-                        busy={ops.arrived.isPending}
-                        onConfirm={() => arrive(a)}
-                        onCancel={() => setArriving(null)}
-                      />
+                      <Reveal block="nearest">
+                        <StartVisitConfirm
+                          mode="arrival"
+                          className="basis-full"
+                          name={a.name}
+                          desk="triage"
+                          busy={ops.arrived.isPending}
+                          onConfirm={() => arrive(a)}
+                          onCancel={() => setArriving(null)}
+                        />
+                      </Reveal>
                     )}
                   </div>
                 )
@@ -569,24 +572,26 @@ function StayForm({
       }}
     >
       {mode === 'admit' && (
-        <label className="flex flex-col gap-1 text-[13px] font-semibold">
-          {t('ops.beds.patient')}
-          <select
-            autoFocus
-            className={input}
-            value={encounterId}
-            onChange={(e) => setEncounterId(e.target.value)}
-          >
-            <option value="" disabled>
-              {candidates?.length ? t('ops.beds.pick') : t('ops.beds.nobody')}
-            </option>
-            {candidates?.map((c) => (
-              <option key={c.encounterId} value={c.encounterId}>
-                {c.ticket} · {c.name}
+        <Reveal focus block="nearest">
+          <label className="flex flex-col gap-1 text-[13px] font-semibold">
+            {t('ops.beds.patient')}
+            <select
+              autoFocus
+              className={input}
+              value={encounterId}
+              onChange={(e) => setEncounterId(e.target.value)}
+            >
+              <option value="" disabled>
+                {candidates?.length ? t('ops.beds.pick') : t('ops.beds.nobody')}
               </option>
-            ))}
-          </select>
-        </label>
+              {candidates?.map((c) => (
+                <option key={c.encounterId} value={c.encounterId}>
+                  {c.ticket} · {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </Reveal>
       )}
       <label className="flex flex-col gap-1 text-[13px] font-semibold">
         {t(mode === 'admit' ? 'ops.beds.nights' : 'ops.beds.moreNights')}
