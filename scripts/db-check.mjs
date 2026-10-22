@@ -2632,6 +2632,53 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0062: the cash desk
+await step(
+  '0062: a wrong payment is cancelled by its cashier only; the cash count keeps the difference',
+  async () => {
+    const p = await visitAt('Olive')
+    await as(staff.manager)
+    const cons = (
+      await one("select upsert_service(null, 'Consultation 62', 'consultation', 3000) as id")
+    ).id
+    await asAdmin()
+    await db.query("select add_charge_internal($1, 'consultation', $2)", [p.enc, cons])
+    await as(staff.cashier)
+    const r = (await one("select take_payment($1, 'cash', 3000) as r", [p.enc])).r
+    await asAdmin()
+    const pay = (await one('select id from payment where receipt_no = $1', [r.receipt])).id
+    let other = ''
+    await as(staff.receptionist)
+    try {
+      await db.query("select void_payment($1, 'wrong patient')", [pay])
+    } catch (e) {
+      other = String(e.message).split('\n')[0]
+    }
+    await as(staff.cashier)
+    const v = (await one("select void_payment($1, 'wrong patient') as v", [pay])).v
+    await db.query("select take_payment($1, 'cash', 1000)", [p.enc])
+    const close = (
+      await one('select close_cash_day(null, $1::jsonb, $2) as c', [
+        JSON.stringify({ cash: 900 }),
+        'short 100',
+      ])
+    ).c
+    const s = (await one('select cashier_summary() as s')).s
+    await asAdmin()
+    if (
+      !/only the person who took/.test(other) ||
+      Number(v.balance) !== 3000 ||
+      Number(close.variance) >= 0 ||
+      !s.voided.length ||
+      !s.closes.length
+    )
+      throw new Error(
+        JSON.stringify({ other, v, close, voided: s.voided.length, closes: s.closes.length }),
+      )
+    return `cancelled (owed again ${v.balance}); count difference ${close.variance}`
+  },
+)
+
 finish()
 
 function finish() {

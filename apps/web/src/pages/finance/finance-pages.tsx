@@ -1,14 +1,16 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import {
+  Ban,
   Banknote,
+  Calculator,
   CalendarDays,
   HandCoins,
   Printer,
   Receipt,
   Smartphone,
+  type LucideIcon,
   UserRound,
   Wallet,
-  type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CLINIC_PROFILE, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
@@ -18,7 +20,12 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { useCashierSummary, useUnpaidDebts } from '@/lib/api/finance'
+import {
+  useCashActions,
+  useCashierSummary,
+  useUnpaidDebts,
+  type CashierSummary,
+} from '@/lib/api/finance'
 import { useClinicInfo } from '@/lib/api/public'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { cashierReport } from '@/lib/reports/build'
@@ -27,6 +34,7 @@ import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 import { useCan } from '@/lib/api/permissions'
+import { Flash } from '@/components/ui/flash'
 
 const METHOD_ICON: Record<string, LucideIcon> = {
   cash: Banknote,
@@ -206,6 +214,12 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
     }
   }, [printing])
   const methodName = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
+  // cancelling a wrong payment, counting the cash (migration 0062)
+  const cash = useCashActions()
+  const isManager = user.role === 'manager'
+  const canCount = useCan(user)('payment.take') || user.role === 'cashier'
+  const [cashNotice, setCashNotice] = useState<string | null>(null)
+  const [cashError, setCashError] = useState<string | null>(null)
   const amountOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.amount ?? 0
   const countOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.count ?? 0
 
@@ -346,6 +360,9 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                     <th className="border-border border-b py-2 text-right font-semibold">
                       {t('finance.cols.amount')}
                     </th>
+                    <th className="border-border w-0 border-b py-2 print:hidden">
+                      <span className="sr-only">{t('finance.cancelPayment')}</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -378,6 +395,34 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                         <td className="py-2 text-right font-bold tabular-nums">
                           {formatRwf(p.amount)}
                         </td>
+                        <td className="py-2 pl-2 text-right print:hidden">
+                          {(isManager || (p.mine && !p.counted && day === today())) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="hover:text-red"
+                              title={t('finance.cancelPaymentHint')}
+                              aria-label={t('finance.cancelPayment')}
+                              onClick={() => {
+                                const reason = window.prompt(t('finance.cancelWhy'))
+                                if (!reason) return
+                                setCashError(null)
+                                cash.voidPayment
+                                  .mutateAsync({ id: p.id, reason })
+                                  .then(() =>
+                                    setCashNotice(
+                                      t('finance.cancelled', { amount: formatRwf(p.amount) }),
+                                    ),
+                                  )
+                                  .catch((e: unknown) =>
+                                    setCashError(e instanceof Error ? e.message : String(e)),
+                                  )
+                              }}
+                            >
+                              <Ban size={14} aria-hidden="true" />
+                            </Button>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
@@ -387,7 +432,188 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           )}
           <Pager {...paged} onPage={paged.setPage} />
         </Panel>
+        {(cashNotice || cashError) && (
+          <Flash
+            key={cashNotice ?? cashError ?? ''}
+            tone={cashError ? 'error' : 'success'}
+            onClose={() => {
+              setCashNotice(null)
+              setCashError(null)
+            }}
+          >
+            {cashError ?? cashNotice}
+          </Flash>
+        )}
+        {s && <CountCashPanel day={day} summary={s} canCount={canCount} />}
+        {s && (s.voided ?? []).length > 0 && (
+          <Panel
+            i={4}
+            icon={Ban}
+            tint="coral"
+            title={t('finance.voidedTitle')}
+            right={String(s.voided!.length)}
+          >
+            <div className="flex flex-col">
+              {s.voided!.map((v) => (
+                <div
+                  key={v.id}
+                  className="border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[14px] last:border-b-0"
+                >
+                  <span className="min-w-[180px] flex-1">
+                    <span className="block font-semibold">
+                      {v.patient} · {methodName(v.method)}
+                    </span>
+                    <span className="text-ink-3 block text-[13px]">
+                      {[
+                        v.receipt,
+                        v.reason && `“${v.reason}”`,
+                        v.by && t('finance.cancelledBy', { name: v.by }),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </span>
+                  <span className="text-ink-3 font-bold tabular-nums line-through">
+                    {formatRwf(v.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
       </main>
     </StaffShell>
+  )
+}
+
+/**
+ * Count the cash: at the end of the day each person who took payments says what they hold per
+ * method; the difference with what the payments say is kept (the manager sees everyone's).
+ */
+function CountCashPanel({
+  day,
+  summary,
+  canCount,
+}: {
+  day: string
+  summary: CashierSummary
+  canCount: boolean
+}) {
+  const { t } = useTranslation()
+  const cash = useCashActions()
+  const expected = summary.myExpected ?? {}
+  const mineClose = (summary.closes ?? []).find((c) => c.mine)
+  const [counted, setCounted] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      ['cash', 'momo', 'airtel'].map((m) => [
+        m,
+        mineClose?.counted?.[m] != null ? String(mineClose.counted[m]) : '',
+      ]),
+    ),
+  )
+  const [note, setNote] = useState(mineClose?.note ?? '')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const methods = ['cash', 'momo', 'airtel']
+  const total = (o: Record<string, number | string>) =>
+    methods.reduce((sum, m) => sum + (Number(o[m]) || 0), 0)
+  const diff = total(counted) - total(expected)
+  const save = async () => {
+    setMsg(null)
+    try {
+      const r = await cash.closeDay.mutateAsync({
+        day,
+        counted: Object.fromEntries(methods.map((m) => [m, Number(counted[m]) || 0])),
+        note,
+      })
+      setMsg({
+        ok: true,
+        text: t('finance.countSaved', { diff: formatRwf(Number(r?.variance ?? diff)) }),
+      })
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) })
+    }
+  }
+  return (
+    <Panel i={3} icon={Calculator} tint="navy" title={t('finance.countTitle')}>
+      {canCount && (
+        <>
+          <p className="text-ink-2 m-0 text-[13px]">{t('finance.countLead')}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {methods.map((m) => (
+              <label key={m} className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+                {t(`visit.payment.methods.${m}`)} ·{' '}
+                {t('finance.expected', { amount: formatRwf(Number(expected[m] ?? 0)) })}
+                <input
+                  inputMode="numeric"
+                  className="border-border bg-card focus:border-primary h-10 rounded-lg border px-2.5 text-[14px] font-normal outline-none"
+                  value={counted[m] ?? ''}
+                  onChange={(e) =>
+                    setCounted((c) => ({ ...c, [m]: e.target.value.replace(/[^\d]/g, '') }))
+                  }
+                  aria-label={t('finance.countedOf', { method: t(`visit.payment.methods.${m}`) })}
+                />
+              </label>
+            ))}
+          </div>
+          <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+            {t('finance.countNote')}
+            <input
+              className="border-border bg-card focus:border-primary h-10 rounded-lg border px-2.5 text-[14px] font-normal outline-none"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t('finance.countNotePh')}
+            />
+          </label>
+          <span className="flex flex-wrap items-center gap-3">
+            <Button variant="primary" onClick={() => void save()} loading={cash.closeDay.isPending}>
+              <Calculator size={16} aria-hidden="true" />
+              {t(mineClose ? 'finance.countUpdate' : 'finance.countSave')}
+            </Button>
+            <span
+              className={cn(
+                'text-[14px] font-bold tabular-nums',
+                diff === 0 ? 'text-green' : 'text-red',
+              )}
+            >
+              {t('finance.difference', { amount: `${diff > 0 ? '+' : ''}${formatRwf(diff)}` })}
+            </span>
+          </span>
+          {msg && (
+            <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
+              {msg.text}
+            </Flash>
+          )}
+        </>
+      )}
+      {(summary.closes ?? []).length > 0 && (
+        <div className="flex flex-col">
+          <span className="text-ink-2 text-[13px] font-semibold">{t('finance.countsOfDay')}</span>
+          {(summary.closes ?? []).map((c, i) => (
+            <div
+              key={i}
+              className="border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[14px] last:border-b-0"
+            >
+              <span className="min-w-[160px] flex-1 font-semibold">{c.cashier ?? '—'}</span>
+              <span className="text-ink-3 text-[13px] tabular-nums">
+                {t('finance.expectedCounted', {
+                  expected: formatRwf(total(c.expected ?? {})),
+                  counted: formatRwf(total(c.counted ?? {})),
+                })}
+              </span>
+              <span
+                className={cn(
+                  'font-bold tabular-nums',
+                  Number(c.variance) === 0 ? 'text-green' : 'text-red',
+                )}
+              >
+                {Number(c.variance) > 0 ? '+' : ''}
+                {formatRwf(Number(c.variance))}
+              </span>
+              {c.note && <span className="text-ink-3 w-full text-[13px]">“{c.note}”</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
   )
 }

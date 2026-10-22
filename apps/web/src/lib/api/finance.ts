@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -16,6 +16,30 @@ export interface CashPayment {
   patient: string
   fileNumber: string
   cashier: string | null
+  /** Receipt number, taken by me, and already counted in a day close (migration 0062). */
+  receipt?: string | null
+  mine?: boolean
+  counted?: boolean
+}
+export interface VoidedPayment {
+  id: string
+  at: string
+  method: string
+  amount: number
+  receipt: string | null
+  patient: string
+  reason: string | null
+  by: string | null
+  voidedAt: string | null
+}
+export interface CashClose {
+  cashier: string | null
+  mine: boolean
+  expected: Record<string, number>
+  counted: Record<string, number>
+  variance: number
+  note: string | null
+  at: string
 }
 export interface CashierSummary {
   day: string
@@ -28,6 +52,10 @@ export interface CashierSummary {
   payments: CashPayment[]
   openBills: number
   openDue: number
+  voided?: VoidedPayment[]
+  closes?: CashClose[]
+  /** What I should hold per method (my payments of the day). */
+  myExpected?: Record<string, number>
 }
 
 const at = (h: number, m: number) => {
@@ -111,4 +139,40 @@ export function useUnpaidDebts() {
       return ((data as Debt[]) ?? []).map((d) => ({ ...d, amount: Number(d.amount) }))
     },
   })
+}
+
+/** Cancel a wrong payment; count the cash at the end of the day (migration 0062). */
+export function useCashActions() {
+  const qc = useQueryClient()
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ['finance'] })
+    void qc.invalidateQueries({ queryKey: ['visit'] })
+    void qc.invalidateQueries({ queryKey: ['home'] })
+  }
+  return {
+    voidPayment: useMutation({
+      mutationFn: async (i: { id: string; reason: string }) => {
+        if (!supabase) return
+        const { error } = await supabase.rpc('void_payment', {
+          p_payment_id: i.id,
+          p_reason: i.reason,
+        })
+        if (error) throw new Error(error.message)
+      },
+      onSuccess: refresh,
+    }),
+    closeDay: useMutation({
+      mutationFn: async (i: { day: string; counted: Record<string, number>; note?: string }) => {
+        if (!supabase) return { variance: 0 }
+        const { data, error } = await supabase.rpc('close_cash_day', {
+          p_day: i.day,
+          p_counted: i.counted,
+          p_note: i.note?.trim() || null,
+        })
+        if (error) throw new Error(error.message)
+        return data as { variance: number }
+      },
+      onSuccess: refresh,
+    }),
+  }
 }
