@@ -163,6 +163,34 @@ export interface VisitResult {
   encounterId: string
   ticketNo: string
   station: Station
+  /** Started by "I see this patient myself": already taken by the person who registered. */
+  myself?: boolean
+}
+
+/** Where a new visit starts: chosen after the patient is found or registered. */
+export interface SendChoice {
+  station: Station
+  departmentId?: string | null
+  /** What the patient comes for (shown to the desk). */
+  note?: string
+  /** The person registering treats the patient: the visit starts at their desk, taken by them. */
+  myself: boolean
+  emergency: boolean
+}
+
+/** The role that works at each desk (a department belongs to a desk through its roles). */
+export const DESK_ROLE: Record<Station, string> = {
+  reception: 'receptionist',
+  triage: 'nurse',
+  nursing: 'nurse',
+  beds: 'nurse',
+  consultation: 'doctor',
+  dental: 'doctor',
+  theatre: 'doctor',
+  laboratory: 'lab_tech',
+  ultrasound: 'sonographer',
+  pharmacy: 'pharmacist',
+  cashier: 'cashier',
 }
 
 interface VisitJson {
@@ -256,6 +284,39 @@ export function useVisitActions() {
         ticketNo: v.ticket_no,
         station: v.station,
       } satisfies VisitResult
+    },
+    onSuccess: refresh,
+  })
+
+  /** Register first, then send: the visit starts where the patient's need is (or with me). */
+  const beginVisit = useMutation({
+    mutationFn: async (i: SendChoice & { patientId: string; fileNumber: string }) => {
+      if (!supabase) {
+        const hit = samplePatients.find((p) => p.id === i.patientId)
+        if (hit) hit.hasOpenVisit = true
+        return {
+          ...sampleVisit(i.patientId, i.fileNumber, { emergency: true, station: i.station }),
+          myself: i.myself,
+        }
+      }
+      const { data, error } = await supabase.rpc('begin_visit', {
+        p_patient_id: i.patientId,
+        p_station: i.station,
+        p_department_id: i.departmentId ?? null,
+        p_note: i.note?.trim() || null,
+        p_myself: i.myself,
+        p_emergency: i.emergency,
+      })
+      if (error) throw new Error(error.message)
+      const v = data as VisitJson & { myself?: boolean }
+      return {
+        patientId: i.patientId,
+        fileNumber: i.fileNumber,
+        encounterId: v.encounter_id,
+        ticketNo: v.ticket_no,
+        station: v.station,
+        myself: !!v.myself,
+      }
     },
     onSuccess: refresh,
   })
@@ -385,7 +446,7 @@ export function useVisitActions() {
     onSuccess: refresh,
   })
 
-  return { register, registerFile, startVisit, recordVitals, sendFromTriage, endVisit }
+  return { register, registerFile, startVisit, beginVisit, recordVitals, sendFromTriage, endVisit }
 }
 
 // ---------------------------------------------------------------- who measures

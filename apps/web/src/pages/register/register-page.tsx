@@ -10,46 +10,42 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
-import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { NewPatientForm } from '@/components/clinical/new-patient-form'
-import {
-  TREATING_STATIONS,
-  stationFor,
-  useFindPatients,
-  useVisitActions,
-  type PatientHit,
-  type Station,
-  type VisitResult,
-} from '@/lib/api/visits'
+import { useFindPatients, type PatientHit, type VisitResult } from '@/lib/api/visits'
+import { SendPatientCard } from '@/components/clinical/send-patient-card'
 import { useStaffSettings } from '@/lib/api/settings'
 import { navForUser } from '@/lib/nav'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
-import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
 import { useCan } from '@/lib/api/permissions'
 
 /**
- * Registration from any station (MoH workflow). Normal path: the patient is queued at triage
- * for vitals first. Emergency: the staff member registering keeps the patient at their own
- * station (red triage, top of the queue) and can register the file afterwards.
+ * Registration from any desk: register first, then send. The patient is found (returning) or
+ * registered (a new file); then whoever registers chooses where the visit starts from what the
+ * patient comes for: "I see this patient myself" (the person who treats), the triage nurse, a
+ * desk by service and its department, or only the file for now. Emergency: red priority at the
+ * chosen desk, first in line.
  */
 export function RegisterPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
-  const actions = useVisitActions()
-  const myStation = stationFor(user)
   const [query, setQuery] = useState('')
   const [emergency, setEmergency] = useState(false)
-  const [station, setStation] = useState<Station>(
-    TREATING_STATIONS.includes(myStation) ? myStation : 'consultation',
-  )
   const [result, setResultState] = useState<VisitResult | null>(null)
+  // The patient whose visit is being started (found or just registered): "Where does the patient go?"
+  const [sending, setSending] = useState<{
+    id: string
+    name: string
+    fileNumber: string
+    isNew: boolean
+  } | null>(null)
+  const [savedOnly, setSavedOnly] = useState<string | null>(null)
   const navigate = useNavigate()
-  // The nurse sees the patient first: once registered, she goes straight to the measurements
-  // (whatever desk the visit starts at; an emergency is treated first).
+  // Seen by me: straight to the work (the visit; a nurse at triage to the measurements).
   const setResult = (r: VisitResult | null) => {
-    if (r && user.role === 'nurse' && (r.station === 'triage' || !emergency))
+    if (r?.myself && r.station === 'triage')
       void navigate({ to: '/app/vitals', search: { encounter: r.encounterId } })
+    else if (r?.myself) void navigate({ to: '/app/visit', search: { encounter: r.encounterId } })
     else setResultState(r)
   }
   const [error, setError] = useState<string | null>(null)
@@ -64,19 +60,17 @@ export function RegisterPage({ user }: { user: StaffUser }) {
     return t('register.errors.generic', { message: m })
   }
 
-  // The returning patient whose visit waits for "Yes" (a ticket, a queue, a new bill).
-  const [confirmFor, setConfirmFor] = useState<PatientHit | null>(null)
-  const nextDesk: Station = emergency ? station : triageFirst ? 'triage' : station
   const mayStart = useCan(user)('visit.start')
-
-  const startVisit = async (p: PatientHit) => {
+  const send = (p: PatientHit) => {
     setError(null)
-    try {
-      setResult(await actions.startVisit.mutateAsync({ patient: p, visit: { emergency, station } }))
-      setConfirmFor(null)
-    } catch (e) {
-      setError(describe(e))
-    }
+    setResultState(null)
+    setSavedOnly(null)
+    setSending({
+      id: p.id,
+      name: `${p.surname} ${p.givenNames}`,
+      fileNumber: p.fileNumber,
+      isNew: false,
+    })
   }
 
   return (
@@ -114,24 +108,10 @@ export function RegisterPage({ user }: { user: StaffUser }) {
                 emergency
                   ? 'register.emergencyHint'
                   : triageFirst
-                    ? 'register.triageHint'
-                    : 'register.deskHint',
+                    ? 'register.flowTriageFirst'
+                    : 'register.flow',
               )}
             </p>
-            {(emergency || !triageFirst) && (
-              <Select
-                label={t('register.station')}
-                value={station}
-                onChange={(e) => setStation(e.target.value as Station)}
-                wrapperClassName="max-w-xs"
-              >
-                {TREATING_STATIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {t(`register.stations.${s}`)}
-                  </option>
-                ))}
-              </Select>
-            )}
           </CardBody>
         </Card>
 
@@ -142,6 +122,35 @@ export function RegisterPage({ user }: { user: StaffUser }) {
           >
             {error}
           </p>
+        )}
+
+        {savedOnly && (
+          <p className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+            {savedOnly}
+          </p>
+        )}
+
+        {/* Register first, then send: where the visit starts */}
+        {sending && (
+          <SendPatientCard
+            key={sending.id}
+            user={user}
+            patient={sending}
+            mode={sending.isNew ? 'register' : 'visit'}
+            emergency={emergency}
+            triageFirst={triageFirst}
+            onStarted={(r) => {
+              setSending(null)
+              setResult(r)
+            }}
+            onLater={() => {
+              if (sending.isNew)
+                setSavedOnly(
+                  t('register.savedOnly', { name: sending.name, file: sending.fileNumber }),
+                )
+              setSending(null)
+            }}
+          />
         )}
 
         {result && (
@@ -202,27 +211,13 @@ export function RegisterPage({ user }: { user: StaffUser }) {
                     <Button
                       size="sm"
                       variant={emergency ? 'danger' : 'primary'}
-                      disabled={
-                        actions.startVisit.isPending || confirmFor?.id === p.id || !mayStart
-                      }
+                      disabled={sending?.id === p.id || !mayStart}
                       title={mayStart ? undefined : t('perms.blocked.visit')}
-                      onClick={() => setConfirmFor(p)}
+                      onClick={() => send(p)}
                     >
                       <Ticket size={16} aria-hidden="true" />
                       {t('register.startVisit')}
                     </Button>
-                  )}
-                  {confirmFor?.id === p.id && (
-                    <StartVisitConfirm
-                      className="basis-full"
-                      name={`${p.surname} ${p.givenNames}`}
-                      fileNumber={p.fileNumber}
-                      desk={nextDesk}
-                      emergency={emergency}
-                      busy={actions.startVisit.isPending}
-                      onConfirm={() => void startVisit(p)}
-                      onCancel={() => setConfirmFor(null)}
-                    />
                   )}
                 </Row>
               ))}
@@ -232,12 +227,18 @@ export function RegisterPage({ user }: { user: StaffUser }) {
           {/* New patient */}
           <NewPatientForm
             emergency={emergency}
-            station={station}
-            triageFirst={triageFirst}
-            onDone={setResult}
             describe={describe}
             nurse={user.role === 'nurse'}
-            blocked={!mayStart}
+            onRegistered={(f) => {
+              setError(null)
+              setResultState(null)
+              setSavedOnly(null)
+              // a person not allowed to start visits keeps the file only
+              if (!mayStart)
+                setSavedOnly(t('register.savedOnly', { name: f.name, file: f.fileNumber }))
+              else
+                setSending({ id: f.patientId, name: f.name, fileNumber: f.fileNumber, isNew: true })
+            }}
           />
         </div>
       </main>

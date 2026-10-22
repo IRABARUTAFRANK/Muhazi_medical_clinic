@@ -852,8 +852,8 @@
   "register": {
     "title": "Register a patient",
     "lead": "Register a new or returning patient and send them to the right desk.",
-    "emergency": "Emergency — the patient is treated here, not at triage",
-    "emergencyHint": "The patient is queued at your station with red priority. Register the file now or as soon as the patient is stable.",
+    "emergency": "Emergency: red priority, first in line at the desk you choose next",
+    "emergencyHint": "Then choose the desk (your own to treat the patient yourself). Register the file now or as soon as the patient is stable.",
     "triageHint": "The patient receives a ticket and goes to triage for the first measurements.",
     "station": "Treating station",
     "search": "Returning patient",
@@ -927,7 +927,11 @@
       "title": "New patient file",
       "hint": "Only the file is created now; the visit starts when the patient arrives for the booking. The new file is chosen in the booking automatically.",
       "submit": "Save the file and use it for the booking"
-    }
+    },
+    "flow": "Find the patient or register a new file, then choose where the patient goes.",
+    "flowTriageFirst": "Find the patient or register a new file. “Triage first” is on: the patient sees the nurse first, unless you see them yourself.",
+    "savedOnly": "File of {{name}} saved ({{file}}). No visit started: use “Start visit” when the patient is ready.",
+    "submitFirst": "Register the patient"
   },
   "triage": {
     "title": "Vitals",
@@ -3532,5 +3536,35 @@
     "queue": "Our desks now",
     "services": "Our treatments · {{period}}",
     "noServices": "No treatment of this department in the period."
+  },
+  "sendPatient": {
+    "title": "Where does {{name}} go?",
+    "titleNew": "File saved. Where does {{name}} go now?",
+    "lead": "Choose from what the patient comes for. A ticket is given and a new bill opens.",
+    "leadNew": "The file is saved. Choose where the visit starts from what the patient comes for, or keep only the file for now.",
+    "emergency": "Emergency: the patient goes first in line at the chosen desk, with red priority.",
+    "myself": "I see this patient myself",
+    "myselfHint": "The visit starts at {{desk}}, already yours: it opens now.",
+    "triage": "Triage first",
+    "triageHint": "The nurse takes the measurements, then sends the patient on.",
+    "byService": "Or send by the service needed",
+    "triageFirstOn": "“Triage first” is on (Settings): the patient sees the nurse first, who then sends them to the right desk.",
+    "for": {
+      "consultation": "illness, check-up, a doctor",
+      "dental": "teeth and mouth",
+      "laboratory": "a test only (walk-in)",
+      "ultrasound": "a scan",
+      "nursing": "injection, dressing, care",
+      "theatre": "minor surgery, procedure",
+      "pharmacy": "buy medicines"
+    },
+    "department": "Department",
+    "anyone": "Anyone at {{desk}}",
+    "departmentHint": "Only that department sees the patient and is told.",
+    "why": "What does the patient come for? (optional)",
+    "whyPh": "e.g. toothache, malaria test, wound dressing",
+    "goMyself": "Start and open the visit",
+    "goTo": "Send to {{desk}}",
+    "later": "Only the file for now"
   }
 }

@@ -856,7 +856,7 @@
   "register": {
     "title": "Kwandika umurwayi",
     "lead": "Andika umurwayi mushya cyangwa ugarutse, umwohereze aho agomba kujya.",
-    "emergency": "Ikibazo cyihutirwa — umurwayi avurirwa hano, ntajya kuri triage",
+    "emergency": "Ibyihutirwa: ibara ritukura, aba uwa mbere ku mwanya uhitamo ukurikiraho",
     "triageHint": "Umurwayi ahabwa tike akajya kuri triage gupimwa bwa mbere.",
     "search": "Umurwayi usanzwe",
     "newPatient": "Dosiye nshya y'umurwayi",
@@ -902,7 +902,7 @@
       "deskNote": "Itike yatanzwe. Umurwayi ari ku murongo wa {{station}}.",
       "whereDesk": "Umurwayi yanditswe; uruzinduko rwe rufunguye kandi ari ku murongo wa {{station}}. Fata ibipimo ukoresheje ecran y’uruzinduko cyangwa urupapuro rw’Ibipimo."
     },
-    "emergencyHint": "Umurwayi ashyizwe ku murongo w'aho ukorera ari mu ibara ritukura. Andika dosiye ubu cyangwa igihe umurwayi amaze gutekana.",
+    "emergencyHint": "Hanyuma uhitemo umwanya (uwawe niba umwakira ubwawe). Andika dosiye ubu cyangwa umurwayi nakomera.",
     "station": "Aho avurirwa",
     "searchLabel": "Shakisha ukoresheje izina, nimero ya dosiye, telefoni cyangwa indangamuntu",
     "searchPh": "Mukamana Alice, MMC-000124, 0788…",
@@ -931,7 +931,11 @@
       "title": "Dosiye nshya y’umurwayi",
       "hint": "Hafungurwa dosiye gusa ubu; uruzinduko rutangira umurwayi ageze kuri gahunda. Dosiye nshya ihita ihitwamo kuri gahunda.",
       "submit": "Bika dosiye uyikoreshe kuri gahunda"
-    }
+    },
+    "flow": "Shaka umurwayi cyangwa wandike dosiye nshya, hanyuma uhitemo aho ajya.",
+    "flowTriageFirst": "Shaka umurwayi cyangwa wandike dosiye nshya. “Gupimwa mbere” birakora: umurwayi abanza kubona umuforomo, keretse umwakiriye ubwawe.",
+    "savedOnly": "Dosiye ya {{name}} yabitswe ({{file}}). Nta ruzinduko rwatangiye: koresha “Tangira uruzinduko” umurwayi niteguye.",
+    "submitFirst": "Andika umurwayi"
   },
   "triage": {
     "title": "Ibipimo",
@@ -3541,5 +3545,35 @@
     "queue": "Imyanya yacu ubu",
     "services": "Ibikorwa byacu · {{period}}",
     "noServices": "Nta gikorwa cy’iri shami muri iki gihe."
+  },
+  "sendPatient": {
+    "title": "{{name}} ajya he?",
+    "titleNew": "Dosiye yabitswe. {{name}} ajya he ubu?",
+    "lead": "Hitamo ukurikije icyo umurwayi aje gukora. Ahabwa itike kandi fagitire nshya irafungurwa.",
+    "leadNew": "Dosiye yabitswe. Hitamo aho uruzinduko rutangirira ukurikije icyo umurwayi aje gukora, cyangwa ugumane dosiye gusa ubu.",
+    "emergency": "Ibyihutirwa: umurwayi aba uwa mbere ku mwanya wahisemo, afite ibara ritukura.",
+    "myself": "Ndamwakira ubwanjye",
+    "myselfHint": "Uruzinduko rutangirira kuri {{desk}}, ruba urwawe: ruhita rufunguka.",
+    "triage": "Abanza gupimwa",
+    "triageHint": "Umuforomo amupima, hanyuma akamwohereza aho akwiye.",
+    "byService": "Cyangwa umwohereze ukurikije serivisi akeneye",
+    "triageFirstOn": "“Gupimwa mbere” birakora (Igenamiterere): umurwayi abanza kubona umuforomo, hanyuma akamwohereza ku mwanya ukwiye.",
+    "for": {
+      "consultation": "uburwayi, isuzuma, muganga",
+      "dental": "amenyo n’akanwa",
+      "laboratory": "ikizamini gusa",
+      "ultrasound": "echographie",
+      "nursing": "urushinge, gupfuka igisebe, kwitabwaho",
+      "theatre": "kubagwa gato, igikorwa",
+      "pharmacy": "kugura imiti"
+    },
+    "department": "Ishami",
+    "anyone": "Uwo ari we wese kuri {{desk}}",
+    "departmentHint": "Iryo shami gusa ni ryo ribona umurwayi kandi rikabimenyeshwa.",
+    "why": "Umurwayi aje gukora iki? (si ngombwa)",
+    "whyPh": "urugero: kuribwa iryinyo, ikizamini cya malariya, gupfuka igisebe",
+    "goMyself": "Tangira kandi ufungure uruzinduko",
+    "goTo": "Mwohereze kuri {{desk}}",
+    "later": "Dosiye gusa ubu"
   }
 }

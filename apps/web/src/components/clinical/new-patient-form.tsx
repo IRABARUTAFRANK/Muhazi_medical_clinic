@@ -6,31 +6,27 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { setNoNationalId, type NoIdReason } from '@/lib/api/patients'
-import { useVisitActions, type Sex, type Station, type VisitResult } from '@/lib/api/visits'
-import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
-import { cn } from '@/lib/utils'
+import { useVisitActions, type Sex } from '@/lib/api/visits'
 
 const SEXES: readonly Sex[] = ['female', 'male', 'other', 'unknown']
 
 /*
- * A new patient file: on the Register page it also starts the visit (ticket, queue); with
- * `fileOnly` (a booking for a later day) it only creates the file and hands it back.
+ * A new patient file. Register first, then send: on the Register page the file is made and
+ * handed to `onRegistered`, and the page then asks where the patient goes (or "only the file
+ * for now"). With `fileOnly` (a booking for a later day) the file is handed back and Cancel
+ * closes the form.
  */
 export function NewPatientForm({
   emergency = false,
-  station = 'consultation',
-  triageFirst = false,
-  onDone,
+  onRegistered,
   describe = (e) => (e instanceof Error ? e.message : String(e)),
   nurse = false,
   fileOnly,
   initial,
-  blocked = false,
 }: {
   emergency?: boolean
-  station?: Station
-  triageFirst?: boolean
-  onDone?: (r: VisitResult) => void
+  /** Register page: the file is made; where the patient goes is chosen next. */
+  onRegistered?: (r: { patientId: string; fileNumber: string; name: string }) => void
   describe?: (e: unknown) => string
   /** The nurse registers what she can; reception completes phone, ID and address later. */
   nurse?: boolean
@@ -41,8 +37,6 @@ export function NewPatientForm({
   }
   /** Prefilled from a booking request (name and phone the person gave). */
   initial?: { surname?: string; givenNames?: string; phone?: string }
-  /** Starting visits is not allowed for this person (the file-only mode stays available). */
-  blocked?: boolean
 }) {
   const { t } = useTranslation()
   const actions = useVisitActions()
@@ -56,8 +50,6 @@ export function NewPatientForm({
   const [noId, setNoId] = useState<NoIdReason | ''>('')
   const [sector, setSector] = useState('')
   const [error, setError] = useState<string | null>(null)
-  // A new file and its visit start only after "Yes" (not for a file only).
-  const [confirming, setConfirming] = useState(false)
 
   const reset = () => {
     setSurname('')
@@ -76,7 +68,6 @@ export function NewPatientForm({
     setError(null)
     if (nationalId && nationalId.replace(/\D/g, '').length !== 16)
       return setError(t('register.errors.nationalIdFormat'))
-    if (!fileOnly && !confirming) return setConfirming(true)
     const patient = {
       surname,
       givenNames,
@@ -88,18 +79,13 @@ export function NewPatientForm({
       sector: sector || undefined,
     }
     try {
-      if (fileOnly) {
-        const f = await actions.registerFile.mutateAsync(patient)
-        if (noId) await setNoNationalId(f.patientId, noId)
-        fileOnly.onSaved({ ...f, name: `${surname.trim()} ${givenNames.trim()}` })
-        return
-      }
-      const r = await actions.register.mutateAsync({ patient, visit: { emergency, station } })
+      const f = await actions.registerFile.mutateAsync(patient)
       // A child or someone without an ID: say why, so the file is not flagged as incomplete.
-      if (noId) await setNoNationalId(r.patientId, noId)
+      if (noId) await setNoNationalId(f.patientId, noId)
+      const saved = { ...f, name: `${surname.trim()} ${givenNames.trim()}` }
+      if (fileOnly) return fileOnly.onSaved(saved)
       reset()
-      setConfirming(false)
-      onDone?.(r)
+      onRegistered?.(saved)
     } catch (err) {
       setError(describe(err))
     }
@@ -228,42 +214,16 @@ export function NewPatientForm({
               {error}
             </p>
           )}
-          {confirming && !fileOnly && (
-            <StartVisitConfirm
-              mode="register"
-              name={`${surname.trim()} ${givenNames.trim()}`}
-              desk={triageFirst && !emergency ? 'triage' : station}
-              emergency={emergency}
-              busy={actions.register.isPending}
-              onConfirm={() => void submit({ preventDefault() {} } as FormEvent)}
-              onCancel={() => setConfirming(false)}
-            />
-          )}
-          <span className={cn('flex flex-wrap gap-2', confirming && !fileOnly && 'hidden')}>
+          <span className="flex flex-wrap gap-2">
             <Button
               type="submit"
               variant={emergency ? 'danger' : 'primary'}
               size="lg"
-              disabled={
-                actions.register.isPending ||
-                actions.registerFile.isPending ||
-                (blocked && !fileOnly)
-              }
+              disabled={actions.registerFile.isPending}
             >
-              {actions.register.isPending || actions.registerFile.isPending
+              {actions.registerFile.isPending
                 ? t('register.submitting')
-                : t(
-                    fileOnly
-                      ? 'register.fileOnly.submit'
-                      : emergency
-                        ? 'register.submitEmergency'
-                        : nurse
-                          ? 'files.submitNurse'
-                          : triageFirst
-                            ? 'register.submit'
-                            : 'register.submitDesk',
-                    { station: t(`register.stations.${station}`) },
-                  )}
+                : t(fileOnly ? 'register.fileOnly.submit' : 'register.submitFirst')}
             </Button>
             {fileOnly && (
               <Button type="button" variant="ghost" size="lg" onClick={fileOnly.onCancel}>

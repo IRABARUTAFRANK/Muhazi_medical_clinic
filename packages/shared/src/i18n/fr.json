@@ -852,8 +852,8 @@
   "register": {
     "title": "Enregistrer un patient",
     "lead": "Enregistrez un patient, nouveau ou connu, et envoyez-le au bon poste.",
-    "emergency": "Urgence — le patient est pris en charge ici, pas au triage",
-    "emergencyHint": "Le patient est mis en file à votre poste avec la priorité rouge. Ouvrez le dossier maintenant ou dès que le patient est stable.",
+    "emergency": "Urgence : priorité rouge, en tête de file au poste que vous choisissez ensuite",
+    "emergencyHint": "Choisissez ensuite le poste (le vôtre pour vous en occuper vous-même). Enregistrez le dossier maintenant ou dès que le patient est stable.",
     "triageHint": "Le patient reçoit un ticket et passe au triage pour les premières mesures.",
     "station": "Poste de prise en charge",
     "search": "Patient connu",
@@ -927,7 +927,11 @@
       "title": "Nouveau dossier patient",
       "hint": "Seul le dossier est créé maintenant ; la visite commence quand le patient arrive au rendez-vous. Le nouveau dossier est choisi automatiquement pour le rendez-vous.",
       "submit": "Enregistrer le dossier et l’utiliser pour le rendez-vous"
-    }
+    },
+    "flow": "Trouvez le patient ou créez un nouveau dossier, puis choisissez où va le patient.",
+    "flowTriageFirst": "Trouvez le patient ou créez un nouveau dossier. « Tri d’abord » est activé : le patient voit d’abord l’infirmier, sauf si vous vous en occupez vous-même.",
+    "savedOnly": "Dossier de {{name}} enregistré ({{file}}). Aucune visite commencée : utilisez « Commencer la visite » quand le patient est prêt.",
+    "submitFirst": "Enregistrer le patient"
   },
   "triage": {
     "title": "Constantes",
@@ -3532,5 +3536,35 @@
     "queue": "Nos postes maintenant",
     "services": "Nos actes · {{period}}",
     "noServices": "Aucun acte de ce service sur la période."
+  },
+  "sendPatient": {
+    "title": "Où va {{name}} ?",
+    "titleNew": "Dossier enregistré. Où va {{name}} maintenant ?",
+    "lead": "Choisissez selon ce pour quoi le patient vient. Un ticket est donné et une nouvelle facture s’ouvre.",
+    "leadNew": "Le dossier est enregistré. Choisissez où commence la visite selon ce pour quoi le patient vient, ou gardez seulement le dossier pour l’instant.",
+    "emergency": "Urgence : le patient passe en premier au poste choisi, en priorité rouge.",
+    "myself": "Je m’occupe moi-même de ce patient",
+    "myselfHint": "La visite commence à {{desk}}, déjà à vous : elle s’ouvre maintenant.",
+    "triage": "D’abord le tri",
+    "triageHint": "L’infirmier prend les mesures, puis envoie le patient plus loin.",
+    "byService": "Ou envoyer selon le service demandé",
+    "triageFirstOn": "« Tri d’abord » est activé (Paramètres) : le patient voit d’abord l’infirmier, qui l’envoie ensuite au bon poste.",
+    "for": {
+      "consultation": "maladie, contrôle, un médecin",
+      "dental": "dents et bouche",
+      "laboratory": "un examen seulement (sans rendez-vous)",
+      "ultrasound": "une échographie",
+      "nursing": "injection, pansement, soins",
+      "theatre": "petite chirurgie, acte",
+      "pharmacy": "acheter des médicaments"
+    },
+    "department": "Service",
+    "anyone": "N’importe qui à {{desk}}",
+    "departmentHint": "Seul ce service voit le patient et est prévenu.",
+    "why": "Pour quoi le patient vient-il ? (facultatif)",
+    "whyPh": "ex. mal de dents, test paludisme, pansement",
+    "goMyself": "Commencer et ouvrir la visite",
+    "goTo": "Envoyer à {{desk}}",
+    "later": "Seulement le dossier pour l’instant"
   }
 }

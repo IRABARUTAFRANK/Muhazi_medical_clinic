@@ -3060,6 +3060,93 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0067: register first, then send
+await step(
+  '0067: the file first, then where the visit starts: a desk by service and its department, or "I see this patient myself"',
+  async () => {
+    const reg = async (given) => {
+      await as(staff.receptionist)
+      return (
+        await one(`select register_patient_file('Kamanzi', $1, 'female', null, 30, null) as r`, [
+          given,
+        ])
+      ).r
+    }
+    // reception sends a patient to Dental, the dental department, with what she comes for
+    await as(staff.manager)
+    const dept = (
+      await one(`select upsert_department(null, 'Dental care 67', '', '{doctor}') as id`)
+    ).id
+    const a = await reg('Aline 67')
+    await as(staff.receptionist)
+    const v1 = (
+      await one(`select begin_visit($1, 'dental', $2, 'toothache', false, false) as v`, [
+        a.patient_id,
+        dept,
+      ])
+    ).v
+    await asAdmin()
+    const q1 = await one(
+      `select station::text, department_id, referral_note, taken_by from queue_entry where encounter_id = $1`,
+      [v1.encounter_id],
+    )
+    // reception cannot "see the patient myself"
+    const b = await reg('Belise 67')
+    let notMine = 'ok'
+    await as(staff.receptionist)
+    try {
+      await db.query(`select begin_visit($1, 'consultation', null, null, true, false)`, [
+        b.patient_id,
+      ])
+    } catch (e) {
+      notMine = String(e.message).split('\n')[0]
+    }
+    // the doctor registers and treats: the visit is theirs at once
+    await as(d1)
+    const v2 = (
+      await one(`select begin_visit($1, 'consultation', null, 'fever', true, false) as v`, [
+        b.patient_id,
+      ])
+    ).v
+    await asAdmin()
+    const q2 = await one(
+      `select taken_by, started_at is not null as started from queue_entry where encounter_id = $1`,
+      [v2.encounter_id],
+    )
+    // with "triage first" on, a desk choice starts at triage; "myself" still starts at the desk
+    await db.query(
+      `insert into setting (key, value) values ('flow', '{"triage_first": true}') on conflict (key) do update set value = excluded.value`,
+    )
+    const c = await reg('Claire 67')
+    await as(staff.receptionist)
+    const v3 = (
+      await one(`select begin_visit($1, 'dental', null, null, false, false) as v`, [c.patient_id])
+    ).v
+    const d = await reg('Diane 67')
+    await as(d1)
+    const v4 = (
+      await one(`select begin_visit($1, 'consultation', null, null, true, false) as v`, [
+        d.patient_id,
+      ])
+    ).v
+    await asAdmin()
+    await db.query(`update setting set value = '{"triage_first": false}' where key = 'flow'`)
+    if (
+      q1.station !== 'dental' ||
+      q1.department_id !== dept ||
+      q1.referral_note !== 'toothache' ||
+      q1.taken_by ||
+      !/do not work at/.test(notMine) ||
+      q2.taken_by !== d1 ||
+      !q2.started ||
+      v3.station !== 'triage' ||
+      v4.station !== 'consultation'
+    )
+      throw new Error(JSON.stringify({ q1, notMine, q2, v3: v3.station, v4: v4.station }))
+    return 'dental + department + note; reception not "myself"; doctor takes at once; triage first respected'
+  },
+)
+
 finish()
 
 function finish() {

@@ -12,6 +12,7 @@ import {
   Ticket,
   X,
 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
@@ -34,13 +35,7 @@ import {
   type NoIdReason,
   usePatientResults,
 } from '@/lib/api/patients'
-import {
-  TREATING_STATIONS,
-  stationFor,
-  useVisitActions,
-  type Sex,
-  type Station,
-} from '@/lib/api/visits'
+import { type Sex, type VisitResult } from '@/lib/api/visits'
 import { useDeskOps } from '@/lib/api/desk-ops'
 import { useStaffSettings } from '@/lib/api/settings'
 import { VisitJourney } from '@/components/clinical/visit-journey'
@@ -49,7 +44,7 @@ import { ShownList } from '@/components/ui/list-tools'
 import { Flash } from '@/components/ui/flash'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
-import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
+import { SendPatientCard } from '@/components/clinical/send-patient-card'
 import { useCan } from '@/lib/api/permissions'
 import { openMedicalReport } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
@@ -94,12 +89,8 @@ export function PatientFilePage({
   const deskOps = useDeskOps()
   const [notice, setNotice] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const visitActions = useVisitActions()
   const [emergency, setEmergency] = useState(false)
-  const myStation = stationFor(user)
-  const [station, setStation] = useState<Station>(
-    TREATING_STATIONS.includes(myStation) ? myStation : 'consultation',
-  )
+  const navigate = useNavigate()
 
   const openVisit = data?.visits.find((v) => v.status === 'open')
   const [confirming, setConfirming] = useState(false)
@@ -171,8 +162,6 @@ export function PatientFilePage({
     if (!ok) setActionError(t('report.popupBlocked'))
   }
   const { data: staffSettings } = useStaffSettings()
-  // Where a new visit sends the patient (as start_visit decides).
-  const nextDesk: Station = emergency ? station : staffSettings?.triageFirst ? 'triage' : station
   const lastVisit = [...(data?.visits ?? [])].sort((a, b) =>
     b.arrivedAt.localeCompare(a.arrivedAt),
   )[0]
@@ -195,32 +184,21 @@ export function PatientFilePage({
     }
   }
 
-  const startVisit = async () => {
-    if (!p) return
-    setActionError(null)
-    try {
-      const r = await visitActions.startVisit.mutateAsync({
-        patient: {
-          id: p.id,
-          fileNumber: p.file_number,
-          surname: p.surname,
-          givenNames: p.given_names,
-          sex: p.sex,
-          birthDate: p.birth_date,
-          phone: p.phone_1,
-          hasOpenVisit: false,
-        },
-        visit: { emergency, station },
+  // Register first, then send: the visit starts where the patient's need is (or with me).
+  const started = (r: VisitResult) => {
+    setConfirming(false)
+    if (r.myself)
+      void navigate({
+        to: r.station === 'triage' ? '/app/vitals' : '/app/visit',
+        search: { encounter: r.encounterId },
       })
+    else
       setNotice(
         t('file.visitStarted', {
           ticket: r.ticketNo,
           station: t(`register.stations.${r.station}`),
         }),
       )
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e))
-    }
   }
 
   return (
@@ -311,19 +289,23 @@ export function PatientFilePage({
               {/* A new visit (ticket, queue, a new bill) only after the person confirms it. */}
               {confirming && !openVisit && (
                 <CardBody className="border-border border-t">
-                  <StartVisitConfirm
-                    name={`${p.surname} ${p.given_names}`}
-                    fileNumber={p.file_number}
-                    desk={nextDesk}
+                  <SendPatientCard
+                    user={user}
+                    patient={{
+                      id: p.id,
+                      name: `${p.surname} ${p.given_names}`,
+                      fileNumber: p.file_number,
+                    }}
+                    mode="visit"
                     emergency={emergency}
+                    triageFirst={staffSettings?.triageFirst ?? false}
                     lastVisit={
                       lastVisit
                         ? { at: lastVisit.arrivedAt, count: data?.visits.length ?? 0 }
                         : null
                     }
-                    busy={visitActions.startVisit.isPending}
-                    onConfirm={() => void startVisit().then(() => setConfirming(false))}
-                    onCancel={() => setConfirming(false)}
+                    onStarted={started}
+                    onLater={() => setConfirming(false)}
                   />
                 </CardBody>
               )}
@@ -381,27 +363,13 @@ export function PatientFilePage({
                       {t('register.emergency')}
                     </label>
                   )}
-                  {emergency && (
-                    <Select
-                      label={t('register.station')}
-                      value={station}
-                      onChange={(e) => setStation(e.target.value as Station)}
-                      wrapperClassName="w-56"
-                    >
-                      {TREATING_STATIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {t(`register.stations.${s}`)}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
                   <span className="text-ink-3 text-xs">
                     {t(
                       emergency
                         ? 'register.emergencyHint'
                         : staffSettings?.triageFirst
-                          ? 'register.triageHint'
-                          : 'register.deskHint',
+                          ? 'register.flowTriageFirst'
+                          : 'register.flow',
                     )}
                   </span>
                 </CardBody>
