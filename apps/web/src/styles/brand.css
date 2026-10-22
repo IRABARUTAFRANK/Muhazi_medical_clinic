@@ -87,8 +87,9 @@
     box-shadow 0.25s ease,
     border-color 0.25s ease;
 }
+/* hover never moves an element: moved away from the pointer it loses the hover, drops back under
+   it and shakes */
 .card-glow:hover {
-  transform: translateY(-4px);
   border-color: rgba(29, 79, 174, 0.35);
   box-shadow: 0 18px 44px rgba(19, 58, 134, 0.14);
 }
@@ -106,7 +107,6 @@
 }
 .btn-brand-green:hover {
   filter: brightness(1.06);
-  transform: translateY(-1px);
   box-shadow: 0 16px 34px rgba(55, 169, 53, 0.42);
   color: #fff;
 }
@@ -289,7 +289,7 @@
 /* ---------------------------------------------------------------- motion system (staff area)
    Figma: Manager Dashboard v2 → "Motion & interaction spec".
    .anim-enter        fade + rise 8 px, 240 ms, staggered with --i (40 ms per step)
-   .card-lift         hover lift 2 px + deeper shadow, 150 ms
+   .card-lift         hover: deeper shadow, 150 ms (no movement: a moving card shakes under the pointer)
    .skeleton          shimmer while loading
    .bar-grow          bars grow from 0 to width, 400 ms, staggered with --i (30 ms)
    .draw-line         SVG path draws over 800 ms (needs pathLength="1")
@@ -353,12 +353,9 @@
   animation-delay: calc(var(--i, 0) * 40ms);
 }
 .card-lift {
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease;
 }
 .card-lift:hover {
-  transform: translateY(-2px);
   box-shadow: var(--mmc-shadow-card-hover);
 }
 .skeleton {

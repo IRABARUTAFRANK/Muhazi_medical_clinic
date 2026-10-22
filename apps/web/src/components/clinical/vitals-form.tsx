@@ -12,17 +12,21 @@ import { SEND_FROM_TRIAGE, useVisitActions, useVitalsTakers, type Station } from
 import { formatTime } from '@mmc/shared'
 import { cn } from '@/lib/utils'
 
-/** Vital signs, in the order the nurse takes them. */
+/**
+ * Vital signs, in the order the nurse takes them, with the values a living patient can have
+ * (newborn to adult, critically ill included): outside them it is a typing mistake (450 mmHg,
+ * 67 °C) and the form refuses it.
+ */
 const VITALS = [
-  { key: 'bp_sys', unit: 'mmHg', placeholder: '120' },
-  { key: 'bp_dia', unit: 'mmHg', placeholder: '80' },
-  { key: 'pulse', unit: 'bpm', placeholder: '72' },
-  { key: 'temp', unit: '°C', placeholder: '36.8' },
-  { key: 'resp', unit: '/min', placeholder: '16' },
-  { key: 'spo2', unit: '%', placeholder: '98' },
-  { key: 'weight', unit: 'kg', placeholder: '65' },
-  { key: 'height', unit: 'cm', placeholder: '170' },
-  { key: 'muac', unit: 'cm', placeholder: '' },
+  { key: 'bp_sys', unit: 'mmHg', placeholder: '120', min: 40, max: 300 },
+  { key: 'bp_dia', unit: 'mmHg', placeholder: '80', min: 20, max: 200 },
+  { key: 'pulse', unit: 'bpm', placeholder: '72', min: 20, max: 250 },
+  { key: 'temp', unit: '°C', placeholder: '36.8', min: 30, max: 44 },
+  { key: 'resp', unit: '/min', placeholder: '16', min: 4, max: 100 },
+  { key: 'spo2', unit: '%', placeholder: '98', min: 40, max: 100 },
+  { key: 'weight', unit: 'kg', placeholder: '65', min: 0.3, max: 350 },
+  { key: 'height', unit: 'cm', placeholder: '170', min: 20, max: 250 },
+  { key: 'muac', unit: 'cm', placeholder: '', min: 5, max: 60 },
 ] as const
 type VitalKey = (typeof VITALS)[number]['key']
 const LEVELS: readonly Triage[] = ['red', 'yellow', 'green']
@@ -125,6 +129,28 @@ export function VitalsForm({
     if (taken && changedKeys.length === 0) return setError(t('vitalsForm.errors.nothingChanged'))
     if (!Object.values(values).some((v) => v.trim() !== ''))
       return setError(t('triage.errors.noVitals'))
+    // a number that no patient can have is a typing mistake
+    for (const v of VITALS) {
+      const raw = values[v.key].trim().replace(',', '.')
+      if (raw === '') continue
+      const n = Number(raw)
+      if (!Number.isFinite(n) || n < v.min || n > v.max)
+        return setError(
+          t('vitalsForm.errors.range', {
+            name: t(`triage.vitals.${v.key}`),
+            value: values[v.key].trim(),
+            unit: v.unit,
+            min: v.min,
+            max: v.max,
+          }),
+        )
+    }
+    if (
+      values.bp_sys.trim() &&
+      values.bp_dia.trim() &&
+      Number(values.bp_dia.replace(',', '.')) >= Number(values.bp_sys.replace(',', '.'))
+    )
+      return setError(t('vitalsForm.errors.bpOrder'))
     if (!measuredBy) return setError(t('vitalsForm.errors.who'))
     const at = todayAt(measuredAt)
     if (!at) return setError(t('vitalsForm.errors.time'))

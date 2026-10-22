@@ -58,7 +58,15 @@
     "changePinHint": "Hitamo PIN nshya"
   },
   "days": {
-    "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],
+    "short": [
+      "Cyu",
+      "Mbe",
+      "Kab",
+      "Gat",
+      "Kan",
+      "Gnu",
+      "Gnd"
+    ],
     "long": [
       "Ku cyumweru",
       "Kuwa mbere",
@@ -1452,7 +1460,8 @@
     "errors": {
       "rx": "Hitamo umuti n'umubare urenze zeru.",
       "test": "Hitamo ikizamini.",
-      "needPrimary": "Andika indwara y'ingenzi mbere yo gusoza uruzinduko."
+      "needPrimary": "Andika indwara y'ingenzi mbere yo gusoza uruzinduko.",
+      "rxTwice": "{{names}} cyanditswe kabiri. Kuramo umurongo urenze, cyangwa wongere ukande Andika imiti kugira ngo byombi bitangwe (buri kimwe kirishyurwa)."
     },
     "dxHint": "Indwara ni icyo wabonye nyuma yo gusuzuma umurwayi, urugero “Malariya yoroheje”. Iy'ingenzi = impamvu nyamukuru y'uru ruzinduko; iyindi = ibindi bibazo byabonetse. Kanda “By'agateganyo” igihe ugitegereje ibisubizo.",
     "rxHint": "Igice kimwe kuri buri muti. Koresha “Ongeraho undi muti” ku miti ifatanywa (urugero umuti wa malariya na parasetamoli). Yose yoherezwa muri farumasi icyarimwe.",
@@ -1940,7 +1949,9 @@
       "who": "Hitamo umuforomo wafashe ibipimo.",
       "time": "Andika isaha byapimiwe.",
       "future": "Isaha byapimiwe iri mu gihe kizaza.",
-      "nothingChanged": "Nta cyahindutse. Kosora agaciro cyangwa uhagarike."
+      "nothingChanged": "Nta cyahindutse. Kosora agaciro cyangwa uhagarike.",
+      "range": "{{name}} {{value}} {{unit}} ntibishoboka: reba neza umubare (hagati ya {{min}} na {{max}} {{unit}}).",
+      "bpOrder": "Umuvuduko wo hasi (diastolic) ugomba kuba muto ku wo hejuru (systolic)."
     },
     "takenShort": "Ibipimo byafashwe",
     "taken": "Ibipimo byafashwe na {{name}} saa {{time}}",

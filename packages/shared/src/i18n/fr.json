@@ -57,8 +57,24 @@
     "changePinHint": "Choisir un nouveau PIN"
   },
   "days": {
-    "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
-    "long": ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+    "short": [
+      "Dim",
+      "Lun",
+      "Mar",
+      "Mer",
+      "Jeu",
+      "Ven",
+      "Sam"
+    ],
+    "long": [
+      "Dimanche",
+      "Lundi",
+      "Mardi",
+      "Mercredi",
+      "Jeudi",
+      "Vendredi",
+      "Samedi"
+    ]
   },
   "nav": {
     "services": "Services",
@@ -1713,7 +1729,8 @@
     "errors": {
       "rx": "Choisissez un médicament et une quantité supérieure à zéro.",
       "test": "Choisissez un examen.",
-      "needPrimary": "Enregistrez un diagnostic principal avant de clôturer."
+      "needPrimary": "Enregistrez un diagnostic principal avant de clôturer.",
+      "rxTwice": "{{names}} est écrit deux fois. Retirez la ligne en trop, ou appuyez à nouveau sur Prescrire pour donner les deux (chacune est facturée)."
     },
     "dxHint": "Le diagnostic est la maladie ou le problème trouvé après l’examen du patient, ex. « Paludisme simple ». Principal = la raison principale de la visite ; secondaire = autres problèmes trouvés. Cochez « provisoire » si vous attendez encore des résultats.",
     "rxHint": "Un bloc par médicament. Utilisez « Ajouter un médicament » pour une association (ex. un antipaludique plus du paracétamol). Tous partent ensemble à la pharmacie.",
@@ -1936,7 +1953,9 @@
       "who": "Choisissez l'infirmière qui a pris les mesures.",
       "time": "Indiquez l'heure de la mesure.",
       "future": "L'heure de la mesure est dans le futur.",
-      "nothingChanged": "Rien n’a changé. Corrigez une valeur ou annulez."
+      "nothingChanged": "Rien n’a changé. Corrigez une valeur ou annulez.",
+      "range": "{{name}} {{value}} {{unit}} est impossible : vérifiez le chiffre (entre {{min}} et {{max}} {{unit}}).",
+      "bpOrder": "La pression diastolique (chiffre du bas) doit être plus petite que la systolique (chiffre du haut)."
     },
     "takenShort": "Constantes prises",
     "taken": "Constantes prises par {{name}} à {{time}}",

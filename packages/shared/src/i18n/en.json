@@ -57,8 +57,24 @@
     "changePinHint": "Choose a new PIN"
   },
   "days": {
-    "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    "long": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    "short": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "long": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ]
   },
   "nav": {
     "services": "Services",
@@ -1713,7 +1729,8 @@
     "errors": {
       "rx": "Choose a medicine and a quantity above zero.",
       "test": "Choose a test.",
-      "needPrimary": "Record a primary diagnosis before closing the visit."
+      "needPrimary": "Record a primary diagnosis before closing the visit.",
+      "rxTwice": "{{names}} is written twice. Remove the extra line, or press Prescribe again to give both (each is charged)."
     },
     "dxHint": "The diagnosis is the disease or problem you found after examining the patient, e.g. “Uncomplicated malaria”. Primary = the main reason for this visit; secondary = other problems found. Tick “provisional” when you are still waiting for results.",
     "rxHint": "One block per medicine. Use “Add another medicine” for a combination (e.g. an antimalarial plus paracetamol). All of them go to the pharmacy together.",
@@ -1936,7 +1953,9 @@
       "who": "Choose the nurse who took the measurements.",
       "time": "Enter the time of the measurement.",
       "future": "The measurement time is in the future.",
-      "nothingChanged": "Nothing changed. Correct a value, or cancel."
+      "nothingChanged": "Nothing changed. Correct a value, or cancel.",
+      "range": "{{name}} {{value}} {{unit}} is not possible: check the number (between {{min}} and {{max}} {{unit}}).",
+      "bpOrder": "The diastolic pressure (lower number) must be smaller than the systolic (upper number)."
     },
     "takenShort": "Vitals taken",
     "taken": "Vitals taken by {{name}} at {{time}}",

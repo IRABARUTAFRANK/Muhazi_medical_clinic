@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
  * disabled is 50 % and inert. `buttonVariants` is exported so links can look like buttons.
  */
 export const buttonVariants = cva(
-  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border font-semibold whitespace-nowrap select-none transition-[color,background-color,border-color,box-shadow,transform,filter] duration-150 ease-out hover:-translate-y-px hover:brightness-[1.06] active:translate-y-0 active:scale-[0.98] active:duration-[90ms] focus-visible:ring-[3px] focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-busy:pointer-events-none aria-busy:opacity-85 motion-reduce:transition-none motion-reduce:hover:transform-none motion-reduce:active:transform-none',
+  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border font-semibold whitespace-nowrap select-none transition-[color,background-color,border-color,box-shadow,transform,filter] duration-150 ease-out hover:brightness-[1.06] active:scale-[0.98] active:duration-[90ms] focus-visible:ring-[3px] focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-busy:pointer-events-none aria-busy:opacity-85 motion-reduce:transition-none motion-reduce:hover:transform-none motion-reduce:active:transform-none',
   {
     variants: {
       variant: {

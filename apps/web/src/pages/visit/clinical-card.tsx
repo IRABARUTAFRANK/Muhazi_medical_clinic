@@ -141,6 +141,8 @@ export function ClinicalCard({
     provisional: false,
   })
   const [rx, setRx] = useState<RxLine[]>([emptyLine()])
+  // the same medicine written twice: said once, kept on the second press
+  const [twiceOk, setTwiceOk] = useState('')
   const setLine = (i: number, patch: Partial<RxLine>) =>
     setRx((lines) => lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const [order, setOrder] = useState({
@@ -338,6 +340,18 @@ export function ClinicalCard({
       const q = Number(line.quantity)
       if (!item || !Number.isFinite(q) || q <= 0) return setLocalError(t('clinical.errors.rx'))
       prepared.push({ item, line, q })
+    }
+    const ids = prepared.map((p) => p.item.id)
+    const twice = [
+      ...new Set(
+        prepared
+          .filter((p, i) => ids.indexOf(p.item.id) !== i)
+          .map((p) => `${p.item.name} ${p.item.strength ?? ''}`.trim()),
+      ),
+    ]
+    if (twice.length > 0 && twiceOk !== ids.join(',')) {
+      setTwiceOk(ids.join(','))
+      return setLocalError(t('clinical.errors.rxTwice', { names: twice.join(', ') }))
     }
     // medicines given in the room without a price, or found in no store, are said
     const unpriced: string[] = []

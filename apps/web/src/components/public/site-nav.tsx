@@ -211,7 +211,7 @@ export function SiteNav({ current }: SiteNavProps) {
                   hashScrollIntoView={smooth()}
                   className={cn(
                     buttonVariants({ variant: 'default', size: 'md' }),
-                    'hidden transition-transform hover:-translate-y-px md:inline-flex',
+                    'hidden md:inline-flex',
                   )}
                 >
                   <LogIn size={16} aria-hidden="true" />
@@ -279,7 +279,7 @@ export function SiteNav({ current }: SiteNavProps) {
               </Link>
               <Link
                 to="/book"
-                className="group inline-flex min-h-9 items-center gap-2 rounded-full bg-[#37a935] px-4 text-[14px] font-bold text-white no-underline shadow-[0_6px_16px_rgba(55,169,53,.35)] transition-[transform,background-color,box-shadow] hover:-translate-y-px hover:bg-[#2f9a2e] hover:shadow-[0_10px_22px_rgba(55,169,53,.45)] active:translate-y-0"
+                className="group inline-flex min-h-9 items-center gap-2 rounded-full bg-[#37a935] px-4 text-[14px] font-bold text-white no-underline shadow-[0_6px_16px_rgba(55,169,53,.35)] transition-[transform,background-color,box-shadow] hover:bg-[#2f9a2e] hover:shadow-[0_10px_22px_rgba(55,169,53,.45)]"
               >
                 <CalendarDays size={16} aria-hidden="true" />
                 {t('common.findDoctor')}
