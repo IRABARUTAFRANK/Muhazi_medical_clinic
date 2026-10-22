@@ -3478,6 +3478,43 @@ await step(
   },
 )
 
+await step('0072: every role reads every view the app reads (the bill loads for all)', async () => {
+  const views = [
+    'catalogue_services',
+    'items_catalogue',
+    'items_below_reorder',
+    'queue_board',
+    'staff_directory',
+    'visit_bill',
+    'visit_charges',
+    'visit_vitals',
+    'public_practitioners',
+    'public_booked_slots',
+  ]
+  const bad = []
+  for (const role of [
+    'manager',
+    'receptionist',
+    'nurse',
+    'doctor',
+    'cashier',
+    'lab_tech',
+    'pharmacist',
+  ]) {
+    await as(staff[role])
+    for (const v of views) {
+      try {
+        await db.query(`select * from ${v} limit 3`)
+      } catch (e) {
+        bad.push(`${role} ${v}: ${e.message}`)
+      }
+    }
+  }
+  await asAdmin()
+  if (bad.length) throw new Error(bad.join(' | '))
+  return `${views.length} views read by 7 roles`
+})
+
 finish()
 
 function finish() {

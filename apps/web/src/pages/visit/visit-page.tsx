@@ -686,7 +686,8 @@ export function VisitPage({
                     payerId={bill?.payerId ?? null}
                     coveragePct={currentInsurer?.coveragePct ?? 0}
                     isManager={user.role === 'manager'}
-                    disabled={bill?.status !== null && bill?.status !== 'draft'}
+                    // only a finished bill closes the form (not one still loading or unreadable)
+                    disabled={!!bill && bill.status !== null && bill.status !== 'draft'}
                     onAdd={async (input) => {
                       setActionError(null)
                       try {

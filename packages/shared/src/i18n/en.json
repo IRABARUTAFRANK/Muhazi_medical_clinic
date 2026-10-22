@@ -457,7 +457,7 @@
       "admit": "Admit to bed",
       "openNext": "Open next patient",
       "newPrescription": "New prescription",
-      "newOrder": "New order",
+      "newOrder": "Request a test",
       "takePayment": "Take payment",
       "directSale": "Direct sale",
       "dayClose": "Day close",
@@ -1191,7 +1191,7 @@
     "cat": {
       "open": "Categories",
       "title": "Categories of treatments",
-      "lead": "Your own categories (Maternity, Eye care, Blood tests…). For each, choose how its treatments are handled: charged on the visit, or ordered by the doctor and done at a desk you choose (Laboratory, Ultrasound, Nursing, Dental…).",
+      "lead": "Your own categories (Maternity, Eye care, Blood tests…). For each, choose how its treatments are handled: charged on the visit, or requested by the doctor and done at a desk you choose (Laboratory, Ultrasound, Nursing, Dental…).",
       "new": "New category",
       "nameEn": "Name (English)",
       "nameKin": "Name (Kinyarwanda)",
@@ -1205,8 +1205,8 @@
       },
       "kindHint": {
         "treatment": "Charged on the visit (Add a treatment).",
-        "lab": "Orderable test: the patient goes to the Laboratory and the result goes into the file.",
-        "imaging": "Orderable test: the patient goes to Ultrasound and the result goes into the file.",
+        "lab": "Test to request: the patient goes to the Laboratory and the result goes into the file.",
+        "imaging": "Exam to request: the patient goes to Ultrasound and the result goes into the file.",
         "bed": "Used by the bed screen for bed stays."
       },
       "count_one": "{{count}} treatment",
@@ -1221,7 +1221,7 @@
       "confirmDelete": "Delete the category “{{name}}”?",
       "saved": "Category “{{name}}” saved.",
       "deleted": "Category “{{name}}” deleted.",
-      "kindChange": "Changing how they are handled changes its {{count}} treatment(s) at once (for example they become orders sent to that desk, or stop being).",
+      "kindChange": "Changing how they are handled changes its {{count}} treatment(s) at once (for example they become requests sent to that desk, or stop being).",
       "errors": {
         "name": "Give the category a name (at least 2 letters)."
       },
@@ -1234,11 +1234,11 @@
       "how": "How are its treatments handled?",
       "charged": "Charged on the visit",
       "chargedHint": "The doctor or nurse adds it to the bill (Add a treatment).",
-      "ordered": "Ordered, done at another desk",
-      "orderedHint": "The doctor orders it; the patient is sent to the desk you choose, which writes the result; then the patient returns to the doctor.",
+      "ordered": "Requested, done at another desk",
+      "orderedHint": "The doctor requests it; the patient is sent to the desk you choose, which writes the result; then the patient returns to the doctor.",
       "desk": "Done at",
-      "deskHint": "Orders go to {{desk}}: the patient is queued there and its staff write the result into the file.",
-      "orderedAt": "Ordered · done at {{desk}}"
+      "deskHint": "Requests go to {{desk}}: the patient is queued there and its staff write the result into the file.",
+      "orderedAt": "Requested · done at {{desk}}"
     },
     "builtIn": "Built in",
     "builtInBedHint": "Bed nights are billed under this line: change its name or price, it cannot be hidden or deleted."
@@ -1654,9 +1654,9 @@
     "allergiesHint": "Only medicines, foods or substances that cause a reaction (rash, swelling, breathing trouble). Other remarks go in Notes.",
     "inClinicNow": "This patient is in the clinic now, waiting at {{station}}. The blue button opens that visit: vitals, notes, diagnosis, treatments, prescriptions and payment are all recorded there.",
     "results": "Lab and imaging results",
-    "noResults": "No test ordered for this patient yet.",
+    "noResults": "No test requested for this patient yet.",
     "awaitingResult": "Waiting for result",
-    "orderedBy": "ordered by {{name}}, {{when}}",
+    "orderedBy": "requested by {{name}}, {{when}}",
     "resultBy": "result by {{name}}, {{when}}",
     "seeVisit": "See the visit"
   },
@@ -1666,7 +1666,7 @@
     "addNote": "Note",
     "addDx": "Diagnosis",
     "addRx": "Prescription",
-    "addTest": "Orders",
+    "addTest": "Tests & exams",
     "note": "Note",
     "notePh": "Complaint, history, examination findings, plan…",
     "saveNote": "Save note",
@@ -1691,13 +1691,13 @@
     "instructionsPh": "after meals…",
     "test": "Test",
     "reason": "Clinical reason",
-    "saveTest": "Order",
-    "testSaved": "Test ordered, charged and queued.",
+    "saveTest": "Request",
+    "testSaved": "Test requested, charged and queued.",
     "dispensed": "Dispensed",
     "toDispense": "To dispense",
     "forDays": "{{count}} days",
     "status": {
-      "ordered": "ordered",
+      "ordered": "requested",
       "collected": "collected",
       "in_progress": "in progress",
       "resulted": "resulted",
@@ -1708,7 +1708,7 @@
     "empty": "Nothing recorded for this visit yet.",
     "finish": "Finish visit",
     "finishHint": "A primary diagnosis is required. If money is still due the patient is sent to the cashier.",
-    "finishConfirm": "Close this visit? Open orders stay open; an unpaid bill sends the patient to the cashier.",
+    "finishConfirm": "Close this visit? Open test requests stay open; an unpaid bill sends the patient to the cashier.",
     "finished": "Visit closed.",
     "errors": {
       "rx": "Choose a medicine and a quantity above zero.",
@@ -1764,19 +1764,19 @@
     "saveResult": "Save the result",
     "enterResult": "Enter result",
     "editResult": "Correct result",
-    "resultSaved": "Result saved; the doctor who ordered it is told.",
+    "resultSaved": "Result saved; the person who requested it is told.",
     "icdHint": "ICD-10 is the international code of the disease (B54 = malaria, A01.0 = typhoid). It is optional; with it, reports count diseases the same way as the Ministry of Health.",
     "provisionalHint": "Tick “Provisional” when you suspect the disease but have not confirmed it yet (for example while waiting for a test). Leave it unticked when the diagnosis is confirmed.",
-    "testHint": "No diagnosis is needed: order what you need to find the cause. The patient goes to the desk that does it; the results are written into the file.",
+    "testHint": "No diagnosis is needed: request what you need to find the cause. The patient goes to the desk that does it; the results are written into the file.",
     "noTests": "No laboratory or ultrasound test is in the catalogue yet.",
     "reasonPh": "e.g. fever for 5 days, cause not found yet",
     "sendNow": "Send the patient now, and back to me when the results are ready",
-    "saveTests_one": "Order the test",
-    "saveTests_other": "Order {{count}} tests",
-    "testsSaved_one": "Test ordered.",
-    "testsSaved_other": "{{count}} tests ordered.",
-    "testsSent_one": "Test ordered. The patient goes to the test desk and comes back to you with the result.",
-    "testsSent_other": "{{count}} tests ordered. The patient goes to the test desk and comes back to you with the results.",
+    "saveTests_one": "Request the test",
+    "saveTests_other": "Request {{count}} tests",
+    "testsSaved_one": "Test requested.",
+    "testsSaved_other": "{{count}} tests requested.",
+    "testsSent_one": "Test requested. The patient goes to the test desk and comes back to you with the result.",
+    "testsSent_other": "{{count}} tests requested. The patient goes to the test desk and comes back to you with the results.",
     "notGiven": "Not given",
     "notGivenWhy": "Pharmacy: {{reason}}",
     "urgentOrder": "Urgent: to the top of the list",
@@ -1903,8 +1903,8 @@
       "noTasks": "No tasks for now.",
       "careSection": "Nursing care",
       "care": "Patients sent to the nurses and to my sections",
-      "orders": "Orders to do at Nursing",
-      "ordersEmpty": "No order waiting at Nursing."
+      "orders": "Requests to do at Nursing",
+      "ordersEmpty": "No request waiting at Nursing."
     },
     "mine": {
       "title": "My work today",
@@ -1914,7 +1914,7 @@
       "vitals": "vitals taken",
       "charges": "treatments charged"
     },
-    "ordersAt": "Orders to do at {{desk}}"
+    "ordersAt": "Requests to do at {{desk}}"
   },
   "vitalsForm": {
     "measuredBy": "Measured by",
@@ -2325,7 +2325,7 @@
       "appointment": "appointment",
       "condition": "diagnosis",
       "medication_request": "prescription",
-      "service_request": "test order",
+      "service_request": "test request",
       "procedure": "procedure",
       "diagnostic_report": "result",
       "internal_task": "task",
@@ -2393,10 +2393,10 @@
       "rxDel": "Cancelled the prescription of {{item}} for {{patient}}.",
       "medGiven": "Gave {{item}} to {{patient}} in the room.",
       "dispense": "Dispensed {{item}} to {{patient}} at the pharmacy.",
-      "order": "Ordered the test {{test}} for {{patient}}.",
-      "orderUrgent": "Ordered the test {{test}} for {{patient}} as URGENT.",
+      "order": "Requested the test {{test}} for {{patient}}.",
+      "orderUrgent": "Requested the test {{test}} for {{patient}} as URGENT.",
       "orderStatus": "Test {{test}} of {{patient}} moved from “{{from}}” to “{{to}}”.",
-      "orderEdit": "Changed the test order {{test}} of {{patient}}.",
+      "orderEdit": "Changed the test request {{test}} of {{patient}}.",
       "result": "Entered the result of {{test}} for {{patient}}.",
       "resultVerified": "Checked and verified the result of {{test}} for {{patient}}; the doctor was told.",
       "task": "Asked {{to}} to do: “{{title}}” for {{patient}}.",
@@ -2622,7 +2622,7 @@
     "searchPatient": "Search by name, ticket or file number",
     "searchNotices": "Search notifications",
     "searchStaff": "Search by name, username, staff ID or e-mail",
-    "sortBy": "Order",
+    "sortBy": "Sort by",
     "sorts": {
       "urgent": "Urgent first",
       "longest": "Waiting longest",
@@ -2678,16 +2678,16 @@
     "openCount_one": "{{count}} open",
     "openCount_other": "{{count}} open",
     "search": "Search patient, test, ticket or file number",
-    "empty": "No test waiting. New orders from the doctors appear here.",
+    "empty": "No test waiting. New requests from the doctors appear here.",
     "queue": "Patients at the laboratory",
-    "mostOrdered": "Most ordered today",
-    "orderedToday_one": "{{count}} ordered today",
-    "orderedToday_other": "{{count}} ordered today",
-    "nothingToday": "No test ordered today yet.",
+    "mostOrdered": "Most requested today",
+    "orderedToday_one": "{{count}} requested today",
+    "orderedToday_other": "{{count}} requested today",
+    "nothingToday": "No test requested today yet.",
     "doneToday": "Done today",
     "resultsGiven": "Results given today",
     "noneDone": "No result given yet today.",
-    "orderedBy": "ordered by {{name}}",
+    "orderedBy": "requested by {{name}}",
     "status": {
       "ordered": "Waiting for sample",
       "collected": "Sample taken",
@@ -2700,7 +2700,7 @@
     "verify": "Check and verify",
     "enterResult": "Enter result",
     "worklistTitle": "Laboratory worklist",
-    "worklistLead": "Every test ordered for this bench, from sample to verified result.",
+    "worklistLead": "Every test requested for this bench, from sample to verified result.",
     "tabs": {
       "open": "To do",
       "done": "Done today"
@@ -2909,7 +2909,7 @@
     "dispensed": "collected at the pharmacy",
     "toCollect": "to collect at the pharmacy",
     "tests": "Tests",
-    "noTests": "No test ordered.",
+    "noTests": "No test requested.",
     "charges": "Charged",
     "total": "Total {{amount}}",
     "payments": "Payments"
@@ -3141,10 +3141,10 @@
       "cashier": "Cashier",
       "file": "File no.",
       "reference": "Reference",
-      "ordered": "Ordered",
+      "ordered": "Requested",
       "test": "Test",
       "status": "Status",
-      "orderedBy": "Ordered by",
+      "orderedBy": "Requested by",
       "result": "Result",
       "resultAt": "Result at",
       "code": "Code",
@@ -3250,8 +3250,8 @@
         "hint": "Write notes and diagnoses, prescribe, give tasks to nurses."
       },
       "orders.write": {
-        "name": "Order tests and write results",
-        "hint": "Order laboratory / ultrasound tests and enter their results."
+        "name": "Request tests and write results",
+        "hint": "Request laboratory / ultrasound tests (and other desk work) and enter their results."
       },
       "appointment.approve": {
         "name": "Answer booking requests",
@@ -3438,10 +3438,10 @@
     "lastDays_one": "today",
     "lastDays_other": "last {{count}} days",
     "resultsTitle": "Tests & results",
-    "resultsLead": "The tests you ordered: still at the lab, results ready to read, or not done and why.",
+    "resultsLead": "The tests you requested: still at the lab, results ready to read, or not done and why.",
     "readyCount_one": "{{count}} result ready",
     "readyCount_other": "{{count}} results ready",
-    "resultsPanel": "Tests I ordered",
+    "resultsPanel": "Tests I requested",
     "orderTabs": {
       "ready": "Results ready",
       "waiting": "Waiting",
@@ -3449,7 +3449,7 @@
       "all": "All"
     },
     "noOrders": "No test in this period.",
-    "orderedAt": "ordered {{when}}",
+    "orderedAt": "requested {{when}}",
     "rxTitle": "My prescriptions",
     "rxLead": "The medicines you prescribed and what the pharmacy did: handed over, waiting, or not given and why.",
     "notGivenCount_one": "{{count}} not given",
@@ -3492,7 +3492,7 @@
     "tiles": {
       "patients": "Patients handled",
       "waiting": "Waiting at our desks",
-      "orders": "Orders to do",
+      "orders": "Requests to do",
       "tasks": "Open tasks",
       "signedIn": "Signed in today"
     },
