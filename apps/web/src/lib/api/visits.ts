@@ -703,13 +703,14 @@ export const sortQueue = (
 
 /** One row per shared patient (sent to several desks at once); other rows unchanged. */
 export const onePerPool = (items: readonly QueueItem[]) => {
-  const seen = new Set<string>()
-  return items.filter((i) => {
-    if (!i.poolId) return true
-    if (seen.has(i.poolId)) return false
-    seen.add(i.poolId)
-    return true
-  })
+  // the row that tells the most: the desk that took the patient, else one I may take
+  const rank = (r: QueueItem) =>
+    r.startedAt ? 0 : r.finishedAt ? 3 : r.forMe && r.canWork !== false ? 1 : 2
+  const best = new Map<string, QueueItem>()
+  for (const r of items)
+    if (r.poolId && (!best.has(r.poolId) || rank(r) < rank(best.get(r.poolId)!)))
+      best.set(r.poolId, r)
+  return items.filter((r) => !r.poolId || best.get(r.poolId) === r)
 }
 
 /**
@@ -732,7 +733,7 @@ export function useTakePatient() {
 export function useNextPatient(user: StaffUser): QueueItem | undefined {
   const desk = stationFor(user)
   const { data = [] } = useQueueBoard('all', user.role)
-  const mine = [...data.filter((r) => r.station === desk), ...mineElsewhere(data, desk)]
+  const mine = onePerPool([...data.filter((r) => r.station === desk), ...mineElsewhere(data, desk)])
   const free = openItems(mine).filter(
     (q) => q.canWork !== false && !q.takenBy && !q.startedAt && !q.finishedAt,
   )

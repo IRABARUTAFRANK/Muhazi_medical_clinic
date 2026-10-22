@@ -474,7 +474,15 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
             {cashError ?? cashNotice}
           </Flash>
         )}
-        {s && <CountCashPanel day={day} summary={s} canCount={canCount} />}
+        {s && (
+          <CountCashPanel
+            // the day's figures arrive after the page opens: start again from the saved count
+            key={JSON.stringify((s.closes ?? []).find((c) => c.mine)?.counted ?? {})}
+            day={day}
+            summary={s}
+            canCount={canCount}
+          />
+        )}
         {s && (s.voided ?? []).length > 0 && (
           <Panel
             i={4}
@@ -575,9 +583,12 @@ function CountCashPanel({
   const methods = ['cash', 'momo', 'airtel']
   const total = (o: Record<string, number | string>) =>
     methods.reduce((sum, m) => sum + (Number(o[m]) || 0), 0)
+  // nothing typed yet: no difference to show (an empty box is not a count of 0)
+  const typed = methods.some((m) => (counted[m] ?? '').trim() !== '')
   const diff = total(counted) - total(expected)
   const save = async () => {
     setMsg(null)
+    if (!typed) return setMsg({ ok: false, text: t('finance.countEmpty') })
     try {
       const r = await cash.closeDay.mutateAsync({
         day,
@@ -628,14 +639,18 @@ function CountCashPanel({
               <Calculator size={16} aria-hidden="true" />
               {t(mineClose ? 'finance.countUpdate' : 'finance.countSave')}
             </Button>
-            <span
-              className={cn(
-                'text-[14px] font-bold tabular-nums',
-                diff === 0 ? 'text-green' : 'text-red',
-              )}
-            >
-              {t('finance.difference', { amount: `${diff > 0 ? '+' : ''}${formatRwf(diff)}` })}
-            </span>
+            {typed ? (
+              <span
+                className={cn(
+                  'text-[14px] font-bold tabular-nums',
+                  diff === 0 ? 'text-green' : 'text-red',
+                )}
+              >
+                {t('finance.difference', { amount: `${diff > 0 ? '+' : ''}${formatRwf(diff)}` })}
+              </span>
+            ) : (
+              <span className="text-ink-3 text-[13px]">{t('finance.countHint')}</span>
+            )}
           </span>
           {msg && (
             <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>

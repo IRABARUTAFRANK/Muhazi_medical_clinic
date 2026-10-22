@@ -2808,7 +2808,9 @@
     "countsOfDay": "Amabarura y’uyu munsi",
     "expectedCounted": "ategerejwe {{expected}} · yabazwe {{counted}}",
     "refundsTitle": "Amafaranga yasubijwe uyu munsi",
-    "reprint": "Fungura uruzinduko wongere usohore inyemezabwishyu"
+    "reprint": "Fungura uruzinduko wongere usohore inyemezabwishyu",
+    "countEmpty": "Andika ayo wabaze nibura ku buryo bumwe bwo kwishyura (andika 0 niba nta yo ufite).",
+    "countHint": "Andika ayo ufite; ikinyuranyo kigaragara uko wandika."
   },
   "calendar": {
     "title": "Ingengabihe yanjye",

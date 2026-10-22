@@ -30,6 +30,7 @@ import {
 import type { TestStatus } from '@/lib/api/lab'
 import {
   mineElsewhere,
+  onePerPool,
   openItems,
   queueCounts,
   sortQueue,
@@ -145,7 +146,11 @@ export function QueuePage({ user }: { user: StaffUser }) {
   const station = stationFor(user)
   const { data: board = [] } = useQueueBoard('all', user.role)
   // the desk's queue, and the patients of the other sections this person works in
-  const live = [...board.filter((r) => r.station === station), ...mineElsewhere(board, station)]
+  // a patient sent to several of my desks at once is one row
+  const live = onePerPool([
+    ...board.filter((r) => r.station === station),
+    ...mineElsewhere(board, station),
+  ])
   const [sort, setSort] = useState<SortKey>('urgent')
   const [query, setQuery] = useState('')
   const rows = sortQueue(

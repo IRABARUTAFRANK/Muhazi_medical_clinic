@@ -40,7 +40,14 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useHomeSummary, type HomeSummary } from '@/lib/api/home'
 import { useClinicStatus, useClinicInfo } from '@/lib/api/public'
-import { mineElsewhere, openItems, queueCounts, stationFor, useQueueBoard } from '@/lib/api/visits'
+import {
+  mineElsewhere,
+  onePerPool,
+  openItems,
+  queueCounts,
+  stationFor,
+  useQueueBoard,
+} from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { formatDuration } from '@/lib/duration'
@@ -126,11 +133,14 @@ function RoleHome({ user, mode }: HomePageProps) {
   // work in (a doctor of Nursing, a nurse of Consultation)
   const { data: everyone = [] } = useQueueBoard('all', user.role)
   const elsewhere = myStation === 'all' ? [] : mineElsewhere(everyone, myStation)
-  const rows = isLive ? [...openItems(live), ...elsewhere] : empty ? [] : home.queue
+  // a patient sent to several desks at once (all mine) is one row
+  const rows = isLive ? onePerPool([...openItems(live), ...elsewhere]) : empty ? [] : home.queue
   // the tiles count the patients this person may work on (not those sent to a colleague)
   const counts = isLive
     ? (() => {
-        const c = queueCounts([...live, ...elsewhere].filter((r) => r.canWork !== false))
+        const c = queueCounts(
+          onePerPool([...live, ...elsewhere]).filter((r) => r.canWork !== false),
+        )
         // a doctor's "Seen": the patients this doctor took and finished, not the desk's
         if (user.role === 'doctor')
           c.done =

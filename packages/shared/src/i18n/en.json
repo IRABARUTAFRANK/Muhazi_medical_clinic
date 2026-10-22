@@ -2799,7 +2799,9 @@
     "countsOfDay": "Counts of the day",
     "expectedCounted": "expected {{expected}} · counted {{counted}}",
     "refundsTitle": "Money given back this day",
-    "reprint": "Open the visit to print the receipt again"
+    "reprint": "Open the visit to print the receipt again",
+    "countEmpty": "Type what you counted for at least one way of paying (type 0 if you hold none).",
+    "countHint": "Type what you hold; the difference appears as you type."
   },
   "calendar": {
     "title": "My calendar",

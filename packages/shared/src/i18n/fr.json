@@ -2799,7 +2799,9 @@
     "countsOfDay": "Comptages du jour",
     "expectedCounted": "attendu {{expected}} · compté {{counted}}",
     "refundsTitle": "Argent rendu ce jour",
-    "reprint": "Ouvrir la visite pour réimprimer le reçu"
+    "reprint": "Ouvrir la visite pour réimprimer le reçu",
+    "countEmpty": "Saisissez ce que vous avez compté pour au moins un mode de paiement (0 si vous n’avez rien).",
+    "countHint": "Saisissez ce que vous avez ; la différence s’affiche pendant la saisie."
   },
   "calendar": {
     "title": "Mon agenda",

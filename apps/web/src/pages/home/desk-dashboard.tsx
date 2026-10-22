@@ -107,12 +107,12 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
         open.filter((r) => !r.startedAt)
   // patients sent to the nurses for care (Nursing, Beds), and those of the other sections this
   // nurse works in (Consultation…)
-  const care = [
+  const care = onePerPool([
     ...openItems(queue).filter((r) => r.station === 'nursing' || r.station === 'beds'),
     ...mineElsewhere(queue, 'triage').filter(
       (r) => r.station !== 'nursing' && r.station !== 'beds',
     ),
-  ]
+  ])
 
   const greeting = greetingFor(user.name, t)
   const nurse = role === 'nurse'
