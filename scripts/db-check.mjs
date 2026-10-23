@@ -3515,6 +3515,69 @@ await step('0072: every role reads every view the app reads (the bill loads for 
   return `${views.length} views read by 7 roles`
 })
 
+await step(
+  '0073: one head per department; the previous head becomes assistant head (a deputy with the dashboard)',
+  async () => {
+    await as(staff.manager)
+    const dep = (await one(`select upsert_department(null, 'Ward 73', null, '{}', null) as id`)).id
+    await asAdmin()
+    await db.query(
+      `insert into staff_department (profile_id, department_id, position) values ($1, $2, 'head')`,
+      [staff.nurse, dep],
+    )
+    await db.query(
+      `insert into staff_department (profile_id, department_id, position) values ($1, $2, 'head')`,
+      [staff.doctor, dep],
+    )
+    const rows = (
+      await db.query(`select profile_id, position from staff_department where department_id = $1`, [
+        dep,
+      ])
+    ).rows
+    const pos = Object.fromEntries(rows.map((r) => [r.profile_id, r.position]))
+    const nurse = await one(`select dashboard, head_of from profiles where id = $1`, [staff.nurse])
+    const doctor = await one(`select dashboard, head_of from profiles where id = $1`, [
+      staff.doctor,
+    ])
+    // the assistant head reads the department's figures
+    await as(staff.nurse)
+    const summary = (
+      await one(`select department_summary($1, current_date, current_date) as s`, [dep])
+    ).s
+    // made a plain member again: the department dashboard goes (unless head or assistant elsewhere)
+    await asAdmin()
+    await db.query(
+      `update staff_department set position = 'member' where profile_id = $1 and department_id = $2`,
+      [staff.nurse, dep],
+    )
+    const lead = (
+      await one(
+        `select exists (select 1 from staff_department where profile_id = $1 and position in ('head','assistant')) as l`,
+        [staff.nurse],
+      )
+    ).l
+    const after = await one(`select dashboard from profiles where id = $1`, [staff.nurse])
+    const heads = (
+      await one(
+        `select count(*)::int as n from staff_department where department_id = $1 and position = 'head'`,
+        [dep],
+      )
+    ).n
+    if (
+      pos[staff.doctor] !== 'head' ||
+      pos[staff.nurse] !== 'assistant' ||
+      heads !== 1 ||
+      doctor.dashboard !== 'head' ||
+      doctor.head_of !== 'Ward 73' ||
+      nurse.dashboard !== 'head' ||
+      !summary ||
+      after.dashboard !== (lead ? 'head' : null)
+    )
+      throw new Error(JSON.stringify({ pos, heads, nurse, doctor, after, lead }))
+    return 'doctor head, nurse moved to assistant (dashboard kept), member again → no dashboard'
+  },
+)
+
 finish()
 
 function finish() {

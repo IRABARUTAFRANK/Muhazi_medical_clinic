@@ -717,7 +717,9 @@
       "addAnotherDepartment": "Add another department",
       "removeDepartment": "Remove this department",
       "noDepartmentYet": "Not in any department yet.",
-      "manyHint": "The employee works in each of these departments, with the position held there. The first is the main one (shown on their home page)."
+      "manyHint": "The employee works in each of these departments, with the position held there. The first is the main one (shown on their home page).",
+      "replacesHead": "{{name}} is head of {{dept}} now. A department has one head: saving makes {{name}} assistant head.",
+      "positionsHint": "Head: one per department, gets the department dashboard and writes to the department. Assistant head: the head’s deputy, the same dashboard and messages. Member: works in the department’s sections."
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",

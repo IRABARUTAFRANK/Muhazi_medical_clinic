@@ -202,6 +202,15 @@ export function StaffPage({ user }: { user: StaffUser }) {
                   employee={editing === 'new' ? null : editing}
                   departments={departments}
                   takenUsernames={new Set(employees.map((e) => e.username))}
+                  heads={Object.fromEntries(
+                    employees.flatMap((e) =>
+                      e.active
+                        ? e.departments
+                            .filter((m) => m.position === 'head')
+                            .map((m) => [m.departmentId, { id: e.id, name: e.fullName }])
+                        : [],
+                    ),
+                  )}
                   self={editing !== 'new' && editing.id === user.id}
                   onCancel={() => setEditing(null)}
                   onSubmit={(input, firstPin) =>
@@ -571,6 +580,7 @@ function EmployeeForm({
   employee,
   departments,
   takenUsernames,
+  heads,
   self,
   onSubmit,
   onCancel,
@@ -578,6 +588,8 @@ function EmployeeForm({
   employee: Employee | null
   departments: Department[]
   takenUsernames: ReadonlySet<string>
+  /** The head of each department now: one head per department (migration 0073). */
+  heads: Record<string, { id: string; name: string }>
   self: boolean
   onSubmit: (input: EmployeeInput, firstPin?: string) => void
   onCancel: () => void
@@ -775,6 +787,17 @@ function EmployeeForm({
                 >
                   <Trash2 size={16} aria-hidden="true" />
                 </Button>
+                {/* one head per department: the head now becomes assistant head */}
+                {m.position === 'head' &&
+                  heads[m.departmentId] &&
+                  heads[m.departmentId]!.id !== employee?.id && (
+                    <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold sm:col-span-3">
+                      {t('staff.form.replacesHead', {
+                        name: heads[m.departmentId]!.name,
+                        dept: departments.find((d) => d.id === m.departmentId)?.name ?? '',
+                      })}
+                    </p>
+                  )}
               </div>
             ))}
             {fitting.some((d) => !memberships.some((x) => x.departmentId === d.id)) && (
@@ -795,6 +818,9 @@ function EmployeeForm({
             )}
             {memberships.length > 1 && (
               <p className="text-ink-3 m-0 text-xs">{t('staff.form.manyHint')}</p>
+            )}
+            {memberships.length > 0 && (
+              <p className="text-ink-3 m-0 text-xs">{t('staff.form.positionsHint')}</p>
             )}
           </fieldset>
           {departments.length === 0 && (

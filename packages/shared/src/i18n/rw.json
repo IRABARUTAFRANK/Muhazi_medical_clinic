@@ -721,7 +721,9 @@
       "addAnotherDepartment": "Ongeramo irindi shami",
       "removeDepartment": "Kuramo iri shami",
       "noDepartmentYet": "Ntaraba mu ishami na rimwe.",
-      "manyHint": "Umukozi akora muri buri shami muri aya, afite umwanya afitemo. Irya mbere ni ryo rikuru (rigaragara ku rupapuro rwe rw’itangiriro)."
+      "manyHint": "Umukozi akora muri buri shami muri aya, afite umwanya afitemo. Irya mbere ni ryo rikuru (rigaragara ku rupapuro rwe rw’itangiriro).",
+      "replacesHead": "{{name}} ni we uyobora {{dept}} ubu. Ishami rigira umuyobozi umwe: kubika bigira {{name}} umwungiriza.",
+      "positionsHint": "Umuyobozi: umwe kuri buri shami, abona imbonerahamwe y’ishami kandi yandikira ishami. Umwungiriza: asimbura umuyobozi, imbonerahamwe n’ubutumwa bimwe. Umunyamuryango: akora mu bice by’ishami."
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",

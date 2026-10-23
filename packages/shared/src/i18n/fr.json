@@ -717,7 +717,9 @@
       "addAnotherDepartment": "Ajouter un autre département",
       "removeDepartment": "Retirer ce département",
       "noDepartmentYet": "Dans aucun département pour l’instant.",
-      "manyHint": "L’employé travaille dans chacun de ces départements, avec le poste qu’il y occupe. Le premier est le principal (affiché sur sa page d’accueil)."
+      "manyHint": "L’employé travaille dans chacun de ces départements, avec le poste qu’il y occupe. Le premier est le principal (affiché sur sa page d’accueil).",
+      "replacesHead": "{{name}} est responsable de {{dept}}. Un département a un seul responsable : enregistrer fait de {{name}} un adjoint.",
+      "positionsHint": "Responsable : un par département, a le tableau de bord du département et écrit au département. Adjoint : remplace le responsable, même tableau de bord et messages. Membre : travaille dans les sections du département."
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",

@@ -55,7 +55,8 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
   const RoleIcon = look.icon
   const position: Position =
     placement?.position ??
-    (user.dashboard === 'head' && user.role !== 'manager' ? 'head' : 'member')
+    // an assistant head also has the department dashboard; only the head has head_of
+    (user.dashboard === 'head' && user.headOf && user.role !== 'manager' ? 'head' : 'member')
   const department = placement?.department ?? (position === 'head' ? user.headOf : undefined)
 
   return (
