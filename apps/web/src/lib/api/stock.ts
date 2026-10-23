@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { DayRange } from './lab'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -548,9 +549,9 @@ export interface PharmacySummary {
   notGiven: { item: string; patient: string; reason: string | null; at: string }[]
 }
 
-export function usePharmacySummary() {
+export function usePharmacySummary(period?: DayRange | null) {
   return useQuery({
-    queryKey: [...KEY, 'pharmacy-summary'],
+    queryKey: [...KEY, 'pharmacy-summary', period?.from, period?.to],
     refetchInterval: 30_000,
     queryFn: async (): Promise<PharmacySummary> => {
       if (!supabase)
@@ -575,7 +576,10 @@ export function usePharmacySummary() {
             },
           ],
         }
-      const { data, error } = await supabase.rpc('pharmacy_summary')
+      const { data, error } = await supabase.rpc(
+        'pharmacy_summary',
+        period ? { p_from: period.from, p_to: period.to } : undefined,
+      )
       if (error) throw new Error(error.message)
       const d = (data ?? {}) as PharmacySummary
       return {

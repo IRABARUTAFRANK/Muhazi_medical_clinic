@@ -50,6 +50,7 @@ import { VisitTrack } from '@/components/clinical/visit-track'
 import { useCan } from '@/lib/api/permissions'
 import { useVisitAccess } from '@/lib/api/calls'
 import { HelpCard } from './help-card'
+import { PharmacyDesk } from '@/pages/stock/pharmacy-desk'
 import { openReceipt } from '@/lib/receipt-doc'
 import { useLetterhead } from '@/lib/report-parts'
 
@@ -370,6 +371,13 @@ export function VisitPage({
               </Flash>
             )}
 
+            {/* the pharmacist hands this patient's medicines over here */}
+            {!closed && (user.role === 'pharmacist' || myStation === 'pharmacy') && (
+              <PharmacyDesk
+                canDispense={user.role === 'pharmacist' || user.role === 'manager'}
+                encounterId={encounterId}
+              />
+            )}
             {!isReception && !isCashier && (
               <ClinicalCard
                 encounterId={encounterId}

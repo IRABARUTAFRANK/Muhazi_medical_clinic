@@ -1,5 +1,13 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
-import { Ban, FolderOpen, PackageCheck, Pill, Printer, ShoppingBag } from 'lucide-react'
+import {
+  Ban,
+  FolderOpen,
+  PackageCheck,
+  PackagePlus,
+  Pill,
+  Printer,
+  ShoppingBag,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { openDispenseLabels } from '@/lib/dispense-label'
 import { useLetterhead } from '@/lib/report-parts'
@@ -21,6 +29,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
+import { SearchSelect } from '@/components/ui/search-select'
 
 /** Usual reasons a medicine is not handed over; the pharmacist may also type their own. */
 const REASONS = ['outOfStock', 'boughtElsewhere', 'refused'] as const
@@ -31,10 +40,20 @@ const REASONS = ['outOfStock', 'boughtElsewhere', 'refused'] as const
  * and charged on the bill) or marked "not given" with the reason, which the doctor is told.
  * When the last medicine of a patient is done the patient goes on to the cashier.
  */
-export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; step?: number }) {
+export function PharmacyDesk({
+  canDispense,
+  step = 6,
+  encounterId,
+}: {
+  canDispense: boolean
+  step?: number
+  /** Only this visit's medicines (the visit screen of a pharmacist). */
+  encounterId?: string
+}) {
   const { t } = useTranslation()
   const letterhead = useLetterhead()
-  const { data: queue = [] } = usePharmacyQueue()
+  const { data: all = [] } = usePharmacyQueue()
+  const queue = encounterId ? all.filter((q) => q.encounterId === encounterId) : all
   const actions = useStockActions()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [refusing, setRefusing] = useState<string | null>(null)
@@ -84,8 +103,12 @@ export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; 
       i={1}
       icon={Pill}
       tint="violet"
-      title={t('stock.pharmacyTitle')}
-      right={t('pharmacy.waitingCount', { lines: queue.length, patients: groups.length })}
+      title={encounterId ? t('pharmacy.forThisPatient') : t('stock.pharmacyTitle')}
+      right={
+        encounterId
+          ? undefined
+          : t('pharmacy.waitingCount', { lines: queue.length, patients: groups.length })
+      }
     >
       {msg && (
         <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
@@ -259,6 +282,26 @@ export function PharmacyDesk({ canDispense, step = 6 }: { canDispense: boolean; 
                               </span>
                             )}
                           </div>
+                          {/* not enough in the pharmacy store: say it plainly, and where to fix it */}
+                          {short && canDispense && (
+                            <p className="bg-red-bg text-red m-0 flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold">
+                              <span className="min-w-0 flex-1">
+                                {t('pharmacy.shortExplain', {
+                                  item: q.item,
+                                  have: q.onHandPharmacy,
+                                  need: q.quantity,
+                                })}
+                              </span>
+                              <StaffLink
+                                to="/app/stock"
+                                search={{ tab: 'receive' }}
+                                className={buttonVariants({ size: 'sm' })}
+                              >
+                                <PackagePlus size={14} aria-hidden="true" />
+                                {t('pharmacy.receiveIt')}
+                              </StaffLink>
+                            </p>
+                          )}
                           {refusing === q.requestId && (
                             <Reveal focus block="nearest">
                               <div className="border-border bg-card flex flex-col gap-2 rounded-lg border p-2.5">
@@ -386,22 +429,17 @@ export function SellMedicineCard({
           ))}
         </Select>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
-          <Select
+          <SearchSelect
             label={t('stock.cols.item')}
             value={itemId}
-            onChange={(e) => setItemId(e.target.value)}
+            onChange={setItemId}
             required
-          >
-            <option value="">{t('visit.add.pickItem')}</option>
-            {items.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-                {i.strength ? ` ${i.strength}` : ''} ·{' '}
-                {i.sellingPrice == null ? t('prices.noPrice') : formatRwf(i.sellingPrice)} ·{' '}
-                {t('stock.inPharmacy', { count: inPharmacy(i) })}
-              </option>
-            ))}
-          </Select>
+            emptyLabel={t('visit.add.pickItem')}
+            options={items.map((i) => ({
+              value: i.id,
+              label: `${i.name}${i.strength ? ` ${i.strength}` : ''} · ${i.sellingPrice == null ? t('prices.noPrice') : formatRwf(i.sellingPrice)} · ${t('stock.inPharmacy', { count: inPharmacy(i) })}`,
+            }))}
+          />
           <Field
             label={t('stock.quantity')}
             inputMode="numeric"

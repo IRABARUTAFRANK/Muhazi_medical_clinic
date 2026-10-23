@@ -137,22 +137,22 @@ function trackOf(j: Journey, now: number, t: TFn): Stop[] {
     })
   // each desk: copies of "several desks at once" that another desk took are left out (finished
   // without anyone starting, at the same moment as a desk that did)
+  const near = (a: string | null, b: string | null) => !!a && !!b && Math.abs(ms(a) - ms(b)) < 5000
   const steps = j.steps.filter(
     (s) =>
       s.startedAt ||
       !s.finishedAt ||
-      !j.steps.some(
-        (o) => o !== s && o.startedAt && Math.abs(ms(o.queuedAt) - ms(s.queuedAt)) < 5000,
-      ),
+      // not the copy of "several desks at once" that another desk took …
+      (!j.steps.some((o) => o !== s && o.startedAt && near(o.queuedAt, s.queuedAt)) &&
+        // … nor a place closed and opened again at the same desk at once (one stay, shown once)
+        !j.steps.some((o) => o !== s && o.station === s.station && near(o.queuedAt, s.finishedAt))),
   )
   steps.forEach((s, i) => {
     const who = s.takenBy ?? s.assignedTo ?? s.department ?? null
-    const title = [
-      station(s.station),
-      service(s.service && s.station !== 'triage' ? s.service : null),
-    ]
-      .filter(Boolean)
-      .join(' · ')
+    const desk = station(s.station)
+    const what = service(s.service && s.station !== 'triage' ? s.service : null)
+    // "Minor surgery · Minor surgery": the service is named only when it says more than the desk
+    const title = [desk, what && what !== desk ? what : null].filter(Boolean).join(' · ')
     if (s.finishedAt)
       done.push({
         key: `step-${i}`,

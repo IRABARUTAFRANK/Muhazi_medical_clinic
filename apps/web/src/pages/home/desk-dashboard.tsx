@@ -21,6 +21,9 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { usePeriod } from '@/lib/period'
+import type { DashboardRange } from '@/lib/api/dashboard'
+import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { formatTime, type StaffUser } from '@mmc/shared'
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { LineChart } from '@/components/charts/line-chart'
@@ -89,7 +92,10 @@ const triageTint: Record<string, Tint> = { red: 'coral', yellow: 'amber', green:
 export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole }) {
   const { t } = useTranslation()
   const now = new Date()
-  const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary()
+  // the figures of the chosen period (today by default; lists of what waits now stay "now")
+  const period = usePeriod('today')
+  const days = period.range === 'today' ? null : { from: period.from, to: period.to }
+  const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary(days)
   const can = useCan(user)
   const { data: queue = [] } = useQueueBoard('all', user.role)
   const open = onePerPool(openItems(queue))
@@ -145,6 +151,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             <Search size={16} aria-hidden="true" />
             {t('common.searchPatient')}
           </StaffLink>
+          <PeriodSeg period={period} />
           <Button
             size="icon"
             onClick={() => void refetch()}
@@ -171,6 +178,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             )}
             {t(nurse ? 'desk.nurse.takeVitals' : 'dashboard.registerPatient')}
           </StaffLink>
+          <PeriodCustom period={period} className="basis-full" />
         </div>
 
         {error && (
@@ -195,7 +203,11 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
         {data && (
           <div className="flex flex-col gap-5">
-            {nurse ? <NurseTiles d={data} /> : <ReceptionTiles d={data} />}
+            {nurse ? (
+              <NurseTiles d={data} range={period.range} />
+            ) : (
+              <ReceptionTiles d={data} range={period.range} />
+            )}
 
             {/* Covering for a doctor: their queue comes first */}
             {nurse && <CoveringPanels user={user} />}
@@ -246,7 +258,9 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
             {/* TODAY */}
             <section className="flex flex-col gap-3">
-              <SectionTitle icon={CalendarCheck}>{t('desk.today')}</SectionTitle>
+              <SectionTitle icon={CalendarCheck}>
+                {period.range === 'today' ? t('desk.today') : period.label}
+              </SectionTitle>
               <div
                 className={cn(
                   'grid grid-cols-1 gap-4',
@@ -295,18 +309,19 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
 /* ---------------------------------------------------------------- tiles */
 
-function ReceptionTiles({ d }: { d: DeskSummary }) {
+function ReceptionTiles({ d, range }: { d: DeskSummary; range: DashboardRange }) {
   const { t } = useTranslation()
   const x = d.tiles
-  const today = t('dashboard.period.today')
+  const today = t(`dashboard.period.${range}`)
+  const before = range === 'today' ? 'Yesterday' : 'Before'
   const vsYesterday = (a: number, b: number) => {
     const r = delta(a, b, true, t)
     return {
       ...r,
       text:
         r.up === null
-          ? t('desk.sameAsYesterday')
-          : t('desk.vsYesterday', { change: `${a - b > 0 ? '+' : '−'}${Math.abs(a - b)}` }),
+          ? t(`desk.sameAs${before}`)
+          : t(`desk.vs${before}`, { change: `${a - b > 0 ? '+' : '−'}${Math.abs(a - b)}` }),
     }
   }
   return (
@@ -380,7 +395,8 @@ function ReceptionTiles({ d }: { d: DeskSummary }) {
   )
 }
 
-function NurseTiles({ d }: { d: DeskSummary }) {
+function NurseTiles({ d, range }: { d: DeskSummary; range: DashboardRange }) {
+  const before = range === 'today' ? 'Yesterday' : 'Before'
   const { t } = useTranslation()
   const x = d.tiles
   const diff = x.vitalsToday - x.vitalsYesterday
@@ -417,12 +433,12 @@ function NurseTiles({ d }: { d: DeskSummary }) {
         tint="mint"
         label={t('desk.tiles.vitals')}
         value={x.vitalsToday}
-        unit={t('dashboard.period.today')}
+        unit={t(`dashboard.period.${range}`)}
         delta={{
           text:
             diff === 0
-              ? t('desk.sameAsYesterday')
-              : t('desk.vsYesterday', { change: `${diff > 0 ? '+' : '−'}${Math.abs(diff)}` }),
+              ? t(`desk.sameAs${before}`)
+              : t(`desk.vs${before}`, { change: `${diff > 0 ? '+' : '−'}${Math.abs(diff)}` }),
           good: null,
           up: diff === 0 ? null : diff > 0,
         }}

@@ -15,6 +15,8 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { usePeriod } from '@/lib/period'
+import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { formatDuration } from '@/lib/duration'
 import { formatDate, formatNumber, formatTime, type StaffUser } from '@mmc/shared'
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
@@ -46,7 +48,11 @@ import { CallsPanel } from './calls-panel'
 export function LabDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const now = useNow()
-  const { data: s, refetch, isFetching, dataUpdatedAt } = useLabSummary()
+  // the figures of the chosen period (today by default; lists of what waits now stay "now")
+  const period = usePeriod('today')
+  const days = period.range === 'today' ? null : { from: period.from, to: period.to }
+  const periodWord = t(`dashboard.period.${period.range}`)
+  const { data: s, refetch, isFetching, dataUpdatedAt } = useLabSummary(days)
   const { data: open = [] } = useLabWorklist('open')
   const { data: done = [] } = useLabWorklist('done')
   // the lab's queue, or the ultrasound queue for sonographers
@@ -88,6 +94,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             </span>
             {!isLive && <span className="text-ink-3">{t('dashboard.sampleData')}</span>}
           </div>
+          <PeriodSeg period={period} />
           <Button
             size="icon"
             onClick={() => void refetch()}
@@ -107,6 +114,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             <ClipboardList size={16} aria-hidden="true" />
             {t('lab.openWorklist')}
           </StaffLink>
+          <PeriodCustom period={period} className="basis-full" />
         </div>
 
         {s && (
@@ -144,7 +152,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               tint="mint"
               label={t('lab.tiles.done')}
               value={s.doneToday}
-              unit={t('dashboard.period.today')}
+              unit={periodWord}
             />
             <Kpi
               i={4}
@@ -212,9 +220,11 @@ export function LabDashboard({ user }: { user: StaffUser }) {
                   icon={ListOrdered}
                   tint="violet"
                   title={t('lab.mostOrdered')}
-                  right={t('lab.orderedToday', { count: s.orderedToday })}
+                  right={t('lab.orderedToday', { count: s.orderedToday, period: periodWord })}
                 >
-                  {s.byTest.length === 0 && <Empty>{t('lab.nothingToday')}</Empty>}
+                  {s.byTest.length === 0 && (
+                    <Empty>{t('lab.nothingToday', { period: periodWord })}</Empty>
+                  )}
                   <ListRows
                     rows={s.byTest.map((b, i) => ({
                       key: b.test,
@@ -271,7 +281,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             i={2}
             icon={Ban}
             tint="coral"
-            title={t('lab.notDoneToday')}
+            title={t('lab.notDoneToday', { period: periodWord })}
             right={String(s!.notDone!.length)}
           >
             <ListRows

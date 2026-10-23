@@ -12,6 +12,8 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { usePeriod } from '@/lib/period'
+import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Empty, Kpi, ListRows, Panel, Pill as Tag, SectionTitle } from '@/components/dash/kit'
@@ -40,7 +42,11 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const now = useNow(60_000)
   const can = useCan(user)
-  const { data: s, refetch, isFetching, dataUpdatedAt } = usePharmacySummary()
+  // the figures of the chosen period (today by default; lists of what waits now stay "now")
+  const period = usePeriod('today')
+  const days = period.range === 'today' ? null : { from: period.from, to: period.to }
+  const periodWord = t(`dashboard.period.${period.range}`)
+  const { data: s, refetch, isFetching, dataUpdatedAt } = usePharmacySummary(days)
   const { data: lines = [], refetch: refetchLines } = usePharmacyQueue()
   const { data: stock, refetch: refetchStock } = useStockOverview()
   const { data: board = [] } = useQueueBoard('pharmacy', user.role)
@@ -80,6 +86,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
             </span>
             {!isLive && <span className="text-ink-3">{t('dashboard.sampleData')}</span>}
           </div>
+          <PeriodSeg period={period} />
           <Button
             size="icon"
             onClick={() => {
@@ -112,6 +119,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
             <Warehouse size={16} aria-hidden="true" />
             {t('pharmacy.openStock')}
           </StaffLink>
+          <PeriodCustom period={period} className="basis-full" />
         </div>
 
         {s && (
@@ -133,7 +141,10 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               tint="mint"
               label={t('pharmacy.tiles.given')}
               value={s.dispensedToday}
-              unit={t('pharmacy.units.patientsServed', { count: s.patientsServedToday })}
+              unit={t('pharmacy.units.patientsServed', {
+                count: s.patientsServedToday,
+                period: periodWord,
+              })}
             />
             <Kpi
               i={2}
@@ -142,7 +153,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               label={t('pharmacy.tiles.sales')}
               value={s.salesToday}
               text={formatRwf(s.salesToday)}
-              unit={t('dashboard.period.today')}
+              unit={periodWord}
             />
             <Kpi
               i={3}
@@ -150,7 +161,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               tint="coral"
               label={t('pharmacy.tiles.notGiven')}
               value={s.notGivenToday}
-              unit={t('dashboard.period.today')}
+              unit={periodWord}
             />
             <Kpi
               i={4}
@@ -236,7 +247,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                   i={3}
                   icon={Ban}
                   tint="coral"
-                  title={t('pharmacy.notGivenToday')}
+                  title={t('pharmacy.notGivenToday', { period: periodWord })}
                   right={String(s.notGiven.length)}
                 >
                   <ListRows

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { SearchSelect } from '@/components/ui/search-select'
 import {
   CheckCircle2,
   ClipboardList,
@@ -603,20 +604,20 @@ export function ClinicalCard({
                     {t('clinical.medicineN', { n: i + 1 })}
                   </legend>
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <Select
+                    <SearchSelect
                       label={t('clinical.medicine')}
                       value={line.item}
-                      onChange={(e) => setLine(i, { item: e.target.value })}
+                      onChange={(v) => setLine(i, { item: v })}
                       wrapperClassName="col-span-2"
                       required
-                    >
-                      <option value="">{t('clinical.pickMedicine')}</option>
-                      {items.map((it) => (
-                        <option key={it.id} value={it.id}>
-                          {it.name} {it.strength ?? ''} {it.form ? `· ${it.form}` : ''}
-                        </option>
-                      ))}
-                    </Select>
+                      emptyLabel={t('clinical.pickMedicine')}
+                      options={items.map((it) => ({
+                        value: it.id,
+                        label: [it.name, it.strength, it.form ? `· ${it.form}` : null]
+                          .filter(Boolean)
+                          .join(' '),
+                      }))}
+                    />
                     <Field
                       label={t('clinical.quantity')}
                       inputMode="numeric"

@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react'
+import { PeriodFilter } from '@/components/dash/period-filter'
+import { usePeriod } from '@/lib/period'
 import {
   AlertTriangle,
   ArrowRightLeft,
@@ -30,6 +32,7 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
+import { SearchSelect } from '@/components/ui/search-select'
 import { Flash } from '@/components/ui/flash'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
@@ -68,10 +71,6 @@ const TABS: { id: Tab; icon: typeof Package }[] = [
   { id: 'stores', icon: Store },
 ]
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
-const monthStart = () => {
-  const d = new Date()
-  return isoDate(new Date(d.getFullYear(), d.getMonth(), 1))
-}
 
 /**
  * Medicine stock (pharmacist, manager): what is on hand and where, with cost and selling price
@@ -470,23 +469,19 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
       <p className="text-ink-2 m-0 text-[13px]">{t('stock.receiveLead')}</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Select
+          <SearchSelect
             label={t('stock.cols.item')}
             value={itemId}
-            onChange={(e) => setItemId(e.target.value)}
+            onChange={setItemId}
             required
-          >
-            <option value="">{t('visit.add.pickItem')}</option>
-            {items
+            emptyLabel={t('visit.add.pickItem')}
+            options={items
               .filter((i) => i.active)
-              .map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.name}
-                  {i.strength ? ` ${i.strength}` : ''}
-                  {i.unit ? ` (${i.unit})` : ''}
-                </option>
-              ))}
-          </Select>
+              .map((i) => ({
+                value: i.id,
+                label: `${i.name}${i.strength ? ` ${i.strength}` : ''}${i.unit ? ` (${i.unit})` : ''}`,
+              }))}
+          />
           <Select
             label={t('stock.store')}
             value={locationId}
@@ -600,22 +595,19 @@ function SendForm({ items, locations }: { items: StockItem[]; locations: StockLo
     <Panel i={1} icon={ArrowRightLeft} tint="teal" title={t('stock.sendTitle')}>
       <p className="text-ink-2 m-0 text-[13px]">{t('stock.sendLead')}</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
-        <Select
+        <SearchSelect
           label={t('stock.cols.item')}
           value={itemId}
-          onChange={(e) => setItemId(e.target.value)}
+          onChange={setItemId}
           required
-        >
-          <option value="">{t('visit.add.pickItem')}</option>
-          {items
+          emptyLabel={t('visit.add.pickItem')}
+          options={items
             .filter((i) => i.active && i.onHand > 0)
-            .map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-                {i.strength ? ` ${i.strength}` : ''} · {t('stock.onHandShort', { count: i.onHand })}
-              </option>
-            ))}
-        </Select>
+            .map((i) => ({
+              value: i.id,
+              label: `${i.name}${i.strength ? ` ${i.strength}` : ''} · ${t('stock.onHandShort', { count: i.onHand })}`,
+            }))}
+        />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select
             label={t('stock.fromStore')}
@@ -732,23 +724,19 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
     <Panel i={1} icon={PackageMinus} tint="coral" title={t('stock.useTitle')}>
       <p className="text-ink-2 m-0 text-[13px]">{t('stock.useLead')}</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
-        <Select
+        <SearchSelect
           label={t('stock.cols.item')}
           value={itemId}
-          onChange={(e) => setItemId(e.target.value)}
+          onChange={setItemId}
           required
-        >
-          <option value="">{t('visit.add.pickItem')}</option>
-          {items
+          emptyLabel={t('visit.add.pickItem')}
+          options={items
             .filter((i) => i.active && i.onHand > 0)
-            .map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-                {i.strength ? ` ${i.strength}` : ''} · {t('stock.onHandShort', { count: i.onHand })}
-                {i.expiredUnits > 0 ? ` · ${t('stock.expired', { count: i.expiredUnits })}` : ''}
-              </option>
-            ))}
-        </Select>
+            .map((i) => ({
+              value: i.id,
+              label: `${i.name}${i.strength ? ` ${i.strength}` : ''} · ${t('stock.onHandShort', { count: i.onHand })}${i.expiredUnits > 0 ? ` · ${t('stock.expired', { count: i.expiredUnits })}` : ''}`,
+            }))}
+        />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select
             label={t('stock.fromStore')}
@@ -834,8 +822,8 @@ function MedicinesTab({ canEdit }: { canEdit: boolean }) {
 /* ---------------------------------------------------------------- ledger */
 function Movements({ items }: { items: StockItem[] }) {
   const { t } = useTranslation()
-  const [from, setFrom] = useState(monthStart)
-  const [to, setTo] = useState(() => isoDate(new Date()))
+  const period = usePeriod('month')
+  const { from, to } = period
   const [itemId, setItemId] = useState('')
   const { data: moves = [] } = useStockMovements(from, to, itemId || null)
   const paged = usePaged(moves, 20, `${from}|${to}|${itemId}`)
@@ -847,35 +835,18 @@ function Movements({ items }: { items: StockItem[] }) {
       title={t('stock.movesTitle')}
       right={String(moves.length)}
     >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto_minmax(0,1fr)]">
-        <Field
-          label={t('history.from')}
-          type="date"
-          value={from}
-          max={to}
-          onChange={(e) => setFrom(e.target.value)}
-        />
-        <Field
-          label={t('history.to')}
-          type="date"
-          value={to}
-          min={from}
-          onChange={(e) => setTo(e.target.value)}
-        />
-        <Select
+      <PeriodFilter period={period} />
+      <div className="grid grid-cols-1 gap-3 sm:max-w-xl">
+        <SearchSelect
           label={t('stock.cols.item')}
           value={itemId}
-          onChange={(e) => setItemId(e.target.value)}
-          wrapperClassName="col-span-2 sm:col-span-1"
-        >
-          <option value="">{t('notices.filters.all')}</option>
-          {items.map((i) => (
-            <option key={i.id} value={i.id}>
-              {i.name}
-              {i.strength ? ` ${i.strength}` : ''}
-            </option>
-          ))}
-        </Select>
+          onChange={setItemId}
+          emptyLabel={t('notices.filters.all')}
+          options={items.map((i) => ({
+            value: i.id,
+            label: `${i.name}${i.strength ? ` ${i.strength}` : ''}`,
+          }))}
+        />
       </div>
       {paged.total === 0 ? (
         <Empty>{t('stock.noMoves')}</Empty>
@@ -934,29 +905,13 @@ function Movements({ items }: { items: StockItem[] }) {
 /* ---------------------------------------------------------------- sales and value */
 function Sales() {
   const { t } = useTranslation()
-  const [from, setFrom] = useState(monthStart)
-  const [to, setTo] = useState(() => isoDate(new Date()))
-  const { data } = useStockSales(from, to)
+  const period = usePeriod('month')
+  const { data } = useStockSales(period.from, period.to)
   const revenue = data?.items.reduce((s, x) => s + x.revenue, 0) ?? 0
   const cost = data?.items.reduce((s, x) => s + x.cost, 0) ?? 0
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-        <Field
-          label={t('history.from')}
-          type="date"
-          value={from}
-          max={to}
-          onChange={(e) => setFrom(e.target.value)}
-        />
-        <Field
-          label={t('history.to')}
-          type="date"
-          value={to}
-          min={from}
-          onChange={(e) => setTo(e.target.value)}
-        />
-      </div>
+      <PeriodFilter period={period} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         <Kpi
           i={0}
@@ -1189,21 +1144,15 @@ function CountForm({ items, locations }: { items: StockItem[]; locations: StockL
         onSubmit={(e) => void submit(e)}
         className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_120px]"
       >
-        <Select
+        <SearchSelect
           label={t('stock.cols.item')}
           value={itemId}
-          onChange={(e) => setItemId(e.target.value)}
-        >
-          <option value="">{t('visit.add.pickItem')}</option>
-          {items
+          onChange={setItemId}
+          emptyLabel={t('visit.add.pickItem')}
+          options={items
             .filter((i) => i.active)
-            .map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-                {i.strength ? ` ${i.strength}` : ''}
-              </option>
-            ))}
-        </Select>
+            .map((i) => ({ value: i.id, label: `${i.name}${i.strength ? ` ${i.strength}` : ''}` }))}
+        />
         <Select
           label={t('stock.store')}
           value={locationId}

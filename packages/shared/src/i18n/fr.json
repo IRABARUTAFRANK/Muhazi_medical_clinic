@@ -1917,7 +1917,9 @@
       "vitals": "constantes prises",
       "charges": "soins facturés"
     },
-    "ordersAt": "Demandes à faire à {{desk}}"
+    "ordersAt": "Demandes à faire à {{desk}}",
+    "vsBefore": "{{change}} par rapport à la période d’avant",
+    "sameAsBefore": "Comme la période d’avant"
   },
   "vitalsForm": {
     "measuredBy": "Mesuré par",
@@ -2686,9 +2688,9 @@
     "empty": "Aucun examen en attente. Les nouvelles demandes des médecins apparaissent ici.",
     "queue": "Patients au laboratoire",
     "mostOrdered": "Les plus demandés aujourd’hui",
-    "orderedToday_one": "{{count}} demandé aujourd’hui",
-    "orderedToday_other": "{{count}} demandés aujourd’hui",
-    "nothingToday": "Aucun examen demandé aujourd’hui.",
+    "orderedToday_one": "{{count}} demandé {{period}}",
+    "orderedToday_other": "{{count}} demandés {{period}}",
+    "nothingToday": "Aucun examen demandé {{period}}.",
     "doneToday": "Faits aujourd’hui",
     "resultsGiven": "Résultats rendus aujourd’hui",
     "noneDone": "Aucun résultat rendu aujourd’hui.",
@@ -2738,7 +2740,7 @@
     "stockWatch": "Stock du labo à surveiller",
     "stockFine": "Rien de bas ni de périmé au labo.",
     "expiresOn": "périme le {{date}}",
-    "notDoneToday": "Examens non faits aujourd’hui",
+    "notDoneToday": "Examens non faits {{period}}",
     "slipTitleImaging": "Résultat d’échographie"
   },
   "finance": {
@@ -3387,8 +3389,8 @@
     "units": {
       "forPatients_one": "pour {{count}} patient",
       "forPatients_other": "pour {{count}} patients",
-      "patientsServed_one": "{{count}} patient aujourd’hui",
-      "patientsServed_other": "{{count}} patients aujourd’hui"
+      "patientsServed_one": "{{count}} patient servi {{period}}",
+      "patientsServed_other": "{{count}} patients servis {{period}}"
     },
     "waitingCount": "{{lines}} médicaments · {{patients}} patients",
     "prescribedBy": "Prescrit par {{name}}",
@@ -3413,7 +3415,7 @@
     "stockFine": "Rien à recommander et rien n’expire dans les 90 prochains jours.",
     "leftOf": "{{count}} restants (commander à {{level}})",
     "expires": "expire",
-    "notGivenToday": "Non remis aujourd’hui",
+    "notGivenToday": "Non remis {{period}}",
     "mostGiven": "Les plus remis aujourd’hui",
     "givenCount_one": "{{count}} médicament",
     "givenCount_other": "{{count}} médicaments",
@@ -3433,7 +3435,10 @@
     "printLabels": "Imprimer les étiquettes",
     "labelTitle": "Pharmacie",
     "labelDays_one": "pendant {{count}} jour",
-    "labelDays_other": "pendant {{count}} jours"
+    "labelDays_other": "pendant {{count}} jours",
+    "forThisPatient": "Médicaments à remettre à ce patient",
+    "shortExplain": "{{item}} : la pharmacie en a {{have}}, {{need}} prescrit(s). Réceptionnez-le d’abord, ou marquez-le non donné.",
+    "receiveIt": "Réceptionner"
   },
   "queuePage": {
     "title": "Ma file · {{desk}}",
@@ -3602,5 +3607,12 @@
     "inClinic": "encore à la clinique",
     "followOnly": "Le patient a quitté la réception : la personne qui a le patient l’envoie plus loin. Vous suivez la visite sur le parcours ci-dessus.",
     "vitals": "Constantes prises"
+  },
+  "picker": {
+    "search": "Tapez pour chercher parmi {{count}}…",
+    "searchAria": "Chercher dans la liste",
+    "matches_one": "{{count}} résultat : choisissez-le",
+    "matches_other": "{{count}} résultats : choisissez",
+    "more": "… {{count}} de plus : tapez d’autres lettres"
   }
 }

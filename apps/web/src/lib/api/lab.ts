@@ -138,9 +138,14 @@ export function useDeskOrders(station: string) {
   })
 }
 
-export function useLabSummary() {
+/** The days counted (both included); nothing = today (migration 0075). */
+export interface DayRange {
+  from: string
+  to: string
+}
+export function useLabSummary(period?: DayRange | null) {
   return useQuery({
-    queryKey: ['lab', 'summary'],
+    queryKey: ['lab', 'summary', period?.from, period?.to],
     refetchInterval: 30_000,
     queryFn: async (): Promise<LabSummary> => {
       if (!supabase) {
@@ -163,7 +168,10 @@ export function useLabSummary() {
           ],
         }
       }
-      const { data, error } = await supabase.rpc('lab_summary')
+      const { data, error } = await supabase.rpc(
+        'lab_summary',
+        period ? { p_from: period.from, p_to: period.to } : undefined,
+      )
       if (error) throw new Error(error.message)
       return data as LabSummary
     },

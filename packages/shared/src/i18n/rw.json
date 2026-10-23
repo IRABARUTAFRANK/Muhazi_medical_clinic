@@ -1921,7 +1921,9 @@
       "vitals": "ibipimo wafashe",
       "charges": "ubuvuzi wishyuje"
     },
-    "ordersAt": "Ibisabwa byo gukora kuri {{desk}}"
+    "ordersAt": "Ibisabwa byo gukora kuri {{desk}}",
+    "vsBefore": "{{change}} ugereranyije n’igihe cyabanje",
+    "sameAsBefore": "Kimwe n’igihe cyabanje"
   },
   "vitalsForm": {
     "measuredBy": "Byapimwe na",
@@ -2695,9 +2697,9 @@
     "empty": "Nta kizamini gitegereje. Ibisabwa bishya n’abaganga bigaragara hano.",
     "queue": "Abarwayi bari kuri laboratwari",
     "mostOrdered": "Ibisabwa cyane uyu munsi",
-    "orderedToday_one": "{{count}} cyasabwe uyu munsi",
-    "orderedToday_other": "{{count}} byasabwe uyu munsi",
-    "nothingToday": "Nta kizamini cyasabwe uyu munsi.",
+    "orderedToday_one": "{{count}} cyasabwe {{period}}",
+    "orderedToday_other": "{{count}} byasabwe {{period}}",
+    "nothingToday": "Nta kizamini cyasabwe {{period}}.",
     "doneToday": "Byakozwe uyu munsi",
     "resultsGiven": "Ibisubizo byatanzwe uyu munsi",
     "noneDone": "Nta gisubizo cyatanzwe uyu munsi.",
@@ -2747,7 +2749,7 @@
     "stockWatch": "Ibikoresho bya laboratwari byo gukurikirana",
     "stockFine": "Nta kintu kigiye gushira cyangwa kurangira muri laboratwari.",
     "expiresOn": "kirangira {{date}}",
-    "notDoneToday": "Ibizamini bitakozwe uyu munsi",
+    "notDoneToday": "Ibizamini bitakozwe {{period}}",
     "slipTitleImaging": "Igisubizo cya echographie"
   },
   "finance": {
@@ -3396,8 +3398,8 @@
     "units": {
       "forPatients_one": "ku murwayi {{count}}",
       "forPatients_other": "ku barwayi {{count}}",
-      "patientsServed_one": "Umurwayi {{count}} uyu munsi",
-      "patientsServed_other": "Abarwayi {{count}} uyu munsi"
+      "patientsServed_one": "Umurwayi {{count}} {{period}}",
+      "patientsServed_other": "Abarwayi {{count}} {{period}}"
     },
     "waitingCount": "Imiti {{lines}} · abarwayi {{patients}}",
     "prescribedBy": "Yandikiwe na {{name}}",
@@ -3422,7 +3424,7 @@
     "stockFine": "Nta byo gutumiza kandi nta bizarangira igihe mu minsi 90 iri imbere.",
     "leftOf": "Hasigaye {{count}} (tumiza kuri {{level}})",
     "expires": "irarangira",
-    "notGivenToday": "Itatanzwe uyu munsi",
+    "notGivenToday": "Itatanzwe {{period}}",
     "mostGiven": "Imiti yatanzwe cyane uyu munsi",
     "givenCount_one": "Umuti {{count}}",
     "givenCount_other": "Imiti {{count}}",
@@ -3442,7 +3444,10 @@
     "printLabels": "Sohora ibirango",
     "labelTitle": "Farumasi",
     "labelDays_one": "mu munsi {{count}}",
-    "labelDays_other": "mu minsi {{count}}"
+    "labelDays_other": "mu minsi {{count}}",
+    "forThisPatient": "Imiti yo guha uyu murwayi",
+    "shortExplain": "{{item}}: farumasi ifite {{have}}, handitswe {{need}}. Banza uwakire, cyangwa werekane ko utatanzwe.",
+    "receiveIt": "Kwakira imiti"
   },
   "queuePage": {
     "title": "Umurongo wanjye · {{desk}}",
@@ -3611,5 +3616,12 @@
     "inClinic": "aracyari mu ivuriro",
     "followOnly": "Umurwayi yavuye ku kwakira: ufite umurwayi ubu ni we umwohereza ahandi. Ukurikirana uruzinduko ku murongo uri hejuru.",
     "vitals": "Ibipimo byafashwe"
+  },
+  "picker": {
+    "search": "Andika ushakishe muri {{count}}…",
+    "searchAria": "Shakisha mu rutonde",
+    "matches_one": "Habonetse {{count}}: gihitemo",
+    "matches_other": "Habonetse {{count}}: hitamo kimwe",
+    "more": "… n’ibindi {{count}}: ongeraho inyuguti"
   }
 }

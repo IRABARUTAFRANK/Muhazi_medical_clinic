@@ -1,4 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
+import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
+import { usePeriod } from '@/lib/period'
 import {
   Activity,
   BedDouble,
@@ -19,7 +21,6 @@ import { Empty, IconChip, Panel } from '@/components/dash/kit'
 import { initials, type Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Button } from '@/components/ui/button'
-import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -41,13 +42,11 @@ const GROUP_LOOK: Record<HistoryGroup, { icon: LucideIcon; tint: Tint }> = {
   other: { icon: FileText, tint: 'teal' },
 }
 
-type Period = 'today' | 'week' | 'month' | 'custom'
 const dayStart = (d: Date) => {
   const x = new Date(d)
   x.setHours(0, 0, 0, 0)
   return x
 }
-const iso = (d: Date) => d.toISOString().slice(0, 10)
 
 /**
  * Activity history (manager): who did what and when on every dashboard, from the audit log that
@@ -59,26 +58,16 @@ export function HistoryPage({ user }: { user: StaffUser }) {
   // The manager sees everyone's work and can pick a person; everyone else sees their own.
   const isManager = user.role === 'manager'
   const { data: employees = [] } = useEmployees()
-  // "Now" is taken when the page opens; the list covers everything up to the end of today.
-  const [nowMs] = useState(() => Date.now())
-  const [period, setPeriod] = useState<Period>('today')
-  const [from, setFrom] = useState(() => iso(new Date(nowMs - 7 * 86_400_000)))
-  const [to, setTo] = useState(() => iso(new Date(nowMs)))
+  const period = usePeriod('today')
   const [actor, setActor] = useState('')
   const [group, setGroup] = useState<HistoryGroup | ''>('')
 
+  // the chosen days, from the start of the first to the end of the last
   const range = useMemo(() => {
-    const endOfToday = new Date(nowMs)
-    endOfToday.setHours(23, 59, 59, 999)
-    if (period === 'today') return { from: dayStart(new Date(nowMs)), to: endOfToday }
-    if (period === 'week')
-      return { from: dayStart(new Date(nowMs - 6 * 86_400_000)), to: endOfToday }
-    if (period === 'month')
-      return { from: dayStart(new Date(nowMs - 29 * 86_400_000)), to: endOfToday }
-    const end = new Date(to)
+    const end = dayStart(new Date(`${period.to}T00:00:00`))
     end.setHours(23, 59, 59, 999)
-    return { from: dayStart(new Date(from)), to: end }
-  }, [nowMs, period, from, to])
+    return { from: dayStart(new Date(`${period.from}T00:00:00`)), to: end }
+  }, [period.from, period.to])
 
   const q = useActivityHistory({
     from: range.from.toISOString(),
@@ -104,45 +93,9 @@ export function HistoryPage({ user }: { user: StaffUser }) {
 
         {/* Filters */}
         <section className="bg-card shadow-card anim-enter flex flex-col gap-3 rounded-[16px] px-5 py-4">
+          <PeriodCustom period={period} />
           <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-wrap gap-1 rounded-xl bg-white/70 p-1" role="tablist">
-              {(['today', 'week', 'month', 'custom'] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  role="tab"
-                  aria-selected={period === p}
-                  onClick={() => setPeriod(p)}
-                  className={cn(
-                    'min-h-10 rounded-lg px-3.5 text-[14px] font-semibold whitespace-nowrap',
-                    period === p ? 'bg-navy text-white' : 'text-ink-2 hover:bg-hover',
-                  )}
-                >
-                  {t(`history.periods.${p}`)}
-                </button>
-              ))}
-            </div>
-            {period === 'custom' && (
-              <>
-                <Field
-                  label={t('history.from')}
-                  type="date"
-                  value={from}
-                  max={to}
-                  onChange={(e) => setFrom(e.target.value)}
-                  wrapperClassName="w-44"
-                />
-                <Field
-                  label={t('history.to')}
-                  type="date"
-                  value={to}
-                  min={from}
-                  max={iso(new Date(nowMs))}
-                  onChange={(e) => setTo(e.target.value)}
-                  wrapperClassName="w-44"
-                />
-              </>
-            )}
+            <PeriodSeg period={period} />
             {isManager && (
               <Select
                 label={t('history.person')}

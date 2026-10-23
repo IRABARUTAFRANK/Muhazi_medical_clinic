@@ -1917,7 +1917,9 @@
       "vitals": "vitals taken",
       "charges": "treatments charged"
     },
-    "ordersAt": "Requests to do at {{desk}}"
+    "ordersAt": "Requests to do at {{desk}}",
+    "vsBefore": "{{change}} vs the period before",
+    "sameAsBefore": "Same as the period before"
   },
   "vitalsForm": {
     "measuredBy": "Measured by",
@@ -2686,9 +2688,9 @@
     "empty": "No test waiting. New requests from the doctors appear here.",
     "queue": "Patients at the laboratory",
     "mostOrdered": "Most requested today",
-    "orderedToday_one": "{{count}} requested today",
-    "orderedToday_other": "{{count}} requested today",
-    "nothingToday": "No test requested today yet.",
+    "orderedToday_one": "{{count}} requested {{period}}",
+    "orderedToday_other": "{{count}} requested {{period}}",
+    "nothingToday": "No test requested {{period}} yet.",
     "doneToday": "Done today",
     "resultsGiven": "Results given today",
     "noneDone": "No result given yet today.",
@@ -2738,7 +2740,7 @@
     "stockWatch": "Lab stock to watch",
     "stockFine": "Nothing low or expiring in the lab.",
     "expiresOn": "expires {{date}}",
-    "notDoneToday": "Tests not done today",
+    "notDoneToday": "Tests not done {{period}}",
     "slipTitleImaging": "Ultrasound result"
   },
   "finance": {
@@ -3387,8 +3389,8 @@
     "units": {
       "forPatients_one": "for {{count}} patient",
       "forPatients_other": "for {{count}} patients",
-      "patientsServed_one": "{{count}} patient today",
-      "patientsServed_other": "{{count}} patients today"
+      "patientsServed_one": "{{count}} patient {{period}}",
+      "patientsServed_other": "{{count}} patients {{period}}"
     },
     "waitingCount": "{{lines}} medicines · {{patients}} patients",
     "prescribedBy": "Prescribed by {{name}}",
@@ -3413,7 +3415,7 @@
     "stockFine": "Nothing to reorder and nothing expiring in the next 90 days.",
     "leftOf": "{{count}} left (reorder at {{level}})",
     "expires": "expires",
-    "notGivenToday": "Not given today",
+    "notGivenToday": "Not given {{period}}",
     "mostGiven": "Most handed over today",
     "givenCount_one": "{{count}} medicine",
     "givenCount_other": "{{count}} medicines",
@@ -3433,7 +3435,10 @@
     "printLabels": "Print the labels",
     "labelTitle": "Pharmacy",
     "labelDays_one": "for {{count}} day",
-    "labelDays_other": "for {{count}} days"
+    "labelDays_other": "for {{count}} days",
+    "forThisPatient": "Medicines to hand over to this patient",
+    "shortExplain": "{{item}}: the pharmacy has {{have}}, {{need}} prescribed. Receive it first, or mark it not given.",
+    "receiveIt": "Receive stock"
   },
   "queuePage": {
     "title": "My queue · {{desk}}",
@@ -3602,5 +3607,12 @@
     "inClinic": "still in the clinic",
     "followOnly": "The patient has left reception: the person who has the patient now sends them on. You follow the visit on the track above.",
     "vitals": "Vitals taken"
+  },
+  "picker": {
+    "search": "Type to search {{count}}…",
+    "searchAria": "Search the list",
+    "matches_one": "{{count}} match: choose it",
+    "matches_other": "{{count}} matches: choose one",
+    "more": "… {{count}} more: type more letters"
   }
 }

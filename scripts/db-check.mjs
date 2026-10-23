@@ -3578,6 +3578,55 @@ await step(
   },
 )
 
+await step(
+  '0074: the RHIA medicines list with prices; finishing after sending to the pharmacy keeps one pharmacy place',
+  async () => {
+    await asAdmin()
+    const rhia = await one(
+      `select count(*)::int as n, count(*) filter (where c.cash_price > 0)::int as priced
+     from items_catalogue c join item i on i.id = c.id where i.source = 'RHIA June 2026'`,
+    )
+    const p = await visitAt('Loren 74')
+    const amox = (await one(`select id from item where code = 'AMOX500'`)).id
+    await as(staff.doctor)
+    await db.query(`select take_patient($1)`, [p.queue])
+    await db.query(`select add_diagnosis($1, 'Malaria', 'B54', 'primary')`, [p.enc])
+    await db.query(`select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => 2)`, [
+      p.enc,
+      amox,
+    ])
+    // sent to the pharmacy, then "Finish visit"
+    await db.query(`select refer_patient($1, 'consultation', 'pharmacy')`, [p.enc])
+    await db.query(`select finish_visit($1)`, [p.enc])
+    await asAdmin()
+    const places = (
+      await db.query(
+        `select station::text, finished_at is null as open from queue_entry where encounter_id = $1 and station = 'pharmacy'`,
+        [p.enc],
+      )
+    ).rows
+    if (rhia.n < 1400 || rhia.priced !== rhia.n || places.length !== 1 || !places[0].open)
+      throw new Error(JSON.stringify({ rhia, places }))
+    return `${rhia.n} medicines priced; one open pharmacy place`
+  },
+)
+
+await step('0075: the role dashboards count a period (today by default)', async () => {
+  await as(staff.receptionist)
+  const today = (await one(`select desk_summary() as d`)).d
+  const all = (await one(`select desk_summary('2020-01-01', current_date) as d`)).d
+  await as(staff.lab_tech)
+  const lab = (await one(`select lab_summary('2020-01-01', current_date) as s`)).s
+  await as(staff.pharmacist)
+  const ph = (await one(`select pharmacy_summary(current_date - 30, current_date) as s`)).s
+  await as(staff.doctor)
+  const home = (await one(`select home_summary(current_date - 6, current_date) as j`)).j
+  await asAdmin()
+  if (!(all.tiles.registeredToday >= today.tiles.registeredToday) || !lab || !ph || !home)
+    throw new Error(JSON.stringify({ t: today.tiles, a: all.tiles }))
+  return `registered today ${today.tiles.registeredToday}, since 2020 ${all.tiles.registeredToday}`
+})
+
 finish()
 
 function finish() {

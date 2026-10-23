@@ -45,7 +45,6 @@ import {
   type DashboardRole,
   type StaffUser,
   CLINIC_PROFILE,
-  isoDate,
 } from '@mmc/shared'
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { DepartmentSection } from './department-section'
@@ -65,20 +64,13 @@ import {
 } from '@/components/dash/kit-style'
 import { LineChart } from '@/components/charts/line-chart'
 import { Badge } from '@/components/ui/badge'
-import { Field } from '@/components/ui/field'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ShowMore } from '@/components/ui/list-tools'
-import { Seg } from '@/components/ui/seg'
+import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
+import { usePeriod } from '@/lib/period'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import {
-  methodLabel,
-  rangeDates,
-  useDashboard,
-  type DashboardData,
-  type CustomRange,
-  type DashboardRange,
-} from '@/lib/api/dashboard'
+import { methodLabel, useDashboard, type DashboardData } from '@/lib/api/dashboard'
 import { categoryName } from '@/lib/api/catalogue'
 import { useClinicInfo } from '@/lib/api/public'
 import { ReportButtons } from '@/components/dash/report-buttons'
@@ -125,12 +117,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   const now = new Date()
   const canManage = user.dashboard === 'manager' || user.role === 'manager'
   const [role] = useState<DashboardRole>(view ?? (canManage ? 'manager' : 'head'))
-  const [range, setRange] = useState<DashboardRange>('today')
-  const [custom, setCustom] = useState<CustomRange>(() => {
-    const d = new Date()
-    const first = new Date(d.getFullYear(), d.getMonth(), 1)
-    return { from: isoDate(first), to: isoDate(d) }
-  })
+  const period = usePeriod('today')
+  const { range, custom } = period
   const isManager = canManage && role === 'manager'
   const { data, isFetching, error, refetch, dataUpdatedAt } = useDashboard(range, isManager, custom)
   // "Who did what": eight people at a time.
@@ -139,26 +127,10 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
   const nav = navForUser(user)
   const activeId = 'dashboard'
-  const { from, to } = rangeDates(range, now, custom)
   const rangeLabel =
-    range === 'today'
-      ? `${dayNames.long[now.getDay()]} ${formatDate(now)}`
-      : range === 'all'
-        ? t('dashboard.rangeLabels.all', { to: formatDate(to) })
-        : t('dashboard.rangeLabels.week', { from: formatDate(from), to: formatDate(to) })
+    range === 'today' ? `${dayNames.long[now.getDay()]} ${formatDate(now)}` : period.label
   const periodWord = t(`dashboard.period.${range}`)
   const collections = (data?.collections ?? []).filter((c) => ACCEPTED_METHODS.includes(c.method))
-  // A month picked in the custom range fills both dates.
-  const pickMonth = (ym: string) => {
-    const [y, m] = ym.split('-').map(Number)
-    if (!y || !m) return
-    const last = new Date(y, m, 0)
-    const today = new Date()
-    setCustom({
-      from: isoDate(new Date(y, m - 1, 1)),
-      to: isoDate(last > today ? today : last),
-    })
-  }
   const greeting = greetingFor(user.name, t)
 
   return (
@@ -198,18 +170,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             <Search size={16} aria-hidden="true" />
             {t('common.searchPatient')}
           </StaffLink>
-          <Seg<DashboardRange>
-            label={t('dashboard.dateRange')}
-            value={range}
-            onChange={setRange}
-            options={[
-              { value: 'today', label: t('dashboard.ranges.today') },
-              { value: 'week', label: t('dashboard.ranges.week') },
-              { value: 'month', label: t('dashboard.ranges.month') },
-              { value: 'all', label: t('dashboard.ranges.all') },
-              { value: 'custom', label: t('dashboard.ranges.custom') },
-            ]}
-          />
+          <PeriodSeg period={period} />
           <Button
             size="icon"
             onClick={() => void refetch()}
@@ -236,37 +197,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             {t('dashboard.registerPatient')}
           </StaffLink>
         </div>
-        {range === 'custom' && (
-          <div className="anim-enter bg-card shadow-card flex flex-wrap items-end gap-3 rounded-[16px] px-4 py-3">
-            <Field
-              label={t('dashboard.custom.month')}
-              type="month"
-              value={custom.from.slice(0, 7)}
-              max={isoDate(new Date()).slice(0, 7)}
-              onChange={(e) => e.target.value && pickMonth(e.target.value)}
-              wrapperClassName="w-44"
-            />
-            <span className="text-ink-3 pb-3 text-[13px]">{t('dashboard.custom.or')}</span>
-            <Field
-              label={t('history.from')}
-              type="date"
-              value={custom.from}
-              max={custom.to}
-              onChange={(e) => e.target.value && setCustom((c) => ({ ...c, from: e.target.value }))}
-              wrapperClassName="w-44"
-            />
-            <Field
-              label={t('history.to')}
-              type="date"
-              value={custom.to}
-              min={custom.from}
-              max={isoDate(new Date())}
-              onChange={(e) => e.target.value && setCustom((c) => ({ ...c, to: e.target.value }))}
-              wrapperClassName="w-44"
-            />
-            <span className="text-ink-2 pb-3 text-[13px] font-semibold">{rangeLabel}</span>
-          </div>
-        )}
+        <PeriodCustom period={period} className="bg-card shadow-card rounded-[16px] px-4 py-3" />
 
         {error && (
           <p

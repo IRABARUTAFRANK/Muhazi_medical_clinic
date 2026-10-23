@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import type { DayRange } from './lab'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -81,13 +82,16 @@ const sample = (): DeskSummary => {
   }
 }
 
-export function useDeskSummary() {
+export function useDeskSummary(period?: DayRange | null) {
   return useQuery({
-    queryKey: ['desk'],
+    queryKey: ['desk', period?.from, period?.to],
     refetchInterval: 30_000,
     queryFn: async (): Promise<DeskSummary> => {
       if (!supabase) return sample()
-      const { data, error } = await supabase.rpc('desk_summary')
+      const { data, error } = await supabase.rpc(
+        'desk_summary',
+        period ? { p_from: period.from, p_to: period.to } : undefined,
+      )
       if (error) throw new Error(error.message)
       const d = data as DeskSummary
       const n = (v: unknown) => Number(v ?? 0)

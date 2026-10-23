@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { DayRange } from './lab'
 import {
   APPOINTMENTS,
   BEDS,
@@ -155,13 +156,16 @@ const sampleSummary = (): HomeSummary => ({
 
 const KEY = ['home', 'summary'] as const
 
-export function useHomeSummary() {
+export function useHomeSummary(period?: DayRange | null) {
   return useQuery({
-    queryKey: KEY,
+    queryKey: [...KEY, period?.from, period?.to],
     refetchInterval: 20_000,
     queryFn: async (): Promise<HomeSummary> => {
       if (!supabase) return sampleSummary()
-      const { data, error } = await supabase.rpc('home_summary')
+      const { data, error } = await supabase.rpc(
+        'home_summary',
+        period ? { p_from: period.from, p_to: period.to } : undefined,
+      )
       if (error) throw new Error(error.message)
       const d = data as HomeSummary
       return {

@@ -17,6 +17,8 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { usePeriod } from '@/lib/period'
+import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import {
   CLINIC_HOURS,
   CLINIC_NOW,
@@ -96,7 +98,11 @@ function RoleHome({ user, mode }: HomePageProps) {
   const empty = mode === 'empty'
   const { data: info } = useClinicInfo()
   const { data: status } = useClinicStatus(info?.hours ?? CLINIC_HOURS)
-  const { data: summary, error, refetch, isFetching, dataUpdatedAt } = useHomeSummary()
+  // the figures of the chosen period (today by default; lists of what waits now stay "now")
+  const period = usePeriod('today')
+  const days = period.range === 'today' ? null : { from: period.from, to: period.to }
+  const periodWord = t(`dashboard.period.${period.range}`)
+  const { data: summary, error, refetch, isFetching, dataUpdatedAt } = useHomeSummary(days)
   const sampleNow = empty ? CLINIC_NOW_QUIET : CLINIC_NOW
   const now = isLive
     ? {
@@ -202,6 +208,7 @@ function RoleHome({ user, mode }: HomePageProps) {
             </span>
             {!isLive && <span className="text-ink-3">{t('dashboard.sampleData')}</span>}
           </div>
+          <PeriodSeg period={period} />
           <Button
             size="icon"
             onClick={() => void refetch()}
@@ -228,12 +235,19 @@ function RoleHome({ user, mode }: HomePageProps) {
               </StaffLink>
             ),
           )}
+          <PeriodCustom period={period} className="basis-full" />
         </div>
 
         {error && <ErrorBox>{t('dashboard.loadFailed', { message: error.message })}</ErrorBox>}
 
         {/* KPI TILES */}
-        <RoleTiles role={role} summary={summary} counts={counts} now={now} />
+        <RoleTiles
+          role={role}
+          summary={summary}
+          counts={counts}
+          now={now}
+          periodWord={periodWord}
+        />
 
         {/* THE WORK OF THE DAY */}
         <section className="flex flex-col gap-3">
@@ -276,15 +290,18 @@ function RoleTiles({
   summary,
   counts,
   now,
+  periodWord,
 }: {
   role: HomeRole
   summary: HomeSummary | undefined
   counts: { waiting: number; inProgress: number; done: number }
   now: { inClinic: number; avgWaitMin: number; bedsOccupied: number; bedsTotal: number }
+  /** "today", "this week"…: what the counted tiles cover. */
+  periodWord: string
 }) {
   const { t } = useTranslation()
   const unitNow = t('dashboard.units.now')
-  const unitToday = t('dashboard.period.today')
+  const unitToday = periodWord
   let tiles: ReactNode
   if (role === 'doctor') {
     // verified results the doctor has not seen yet
