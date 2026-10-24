@@ -73,6 +73,7 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { methodLabel, useDashboard, type DashboardData } from '@/lib/api/dashboard'
 import { categoryName } from '@/lib/api/catalogue'
 import { useClinicInfo } from '@/lib/api/public'
+import { useDeactivationReminders } from '@/lib/api/staff'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { dashboardReport } from '@/lib/reports/build'
 import { useDayNames } from '@/lib/hooks'
@@ -124,6 +125,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   // "Who did what": eight people at a time.
   const staffRows = useShowMore(data?.staff ?? [], 8)
   const { data: info } = useClinicInfo()
+  // Managers: accounts deactivated for a month or more become a notice (once each).
+  useDeactivationReminders(canManage)
 
   const nav = navForUser(user)
   const activeId = 'dashboard'

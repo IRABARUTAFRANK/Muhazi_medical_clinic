@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { CategoryId } from '@mmc/shared'
+import { formatRwf, type CategoryId } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -697,7 +697,8 @@ export function useMedicines() {
   return useQuery({
     queryKey: MEDS,
     queryFn: async (): Promise<Medicine[]> => {
-      if (!supabase) return sampleMedicines
+      // a copy: the screens see the medicine just added
+      if (!supabase) return sampleMedicines.map((m) => ({ ...m }))
       const { data, error } = await supabase
         .from('items_catalogue')
         .select('id, code, name_generic, strength, form, unit, cash_price, active')
@@ -728,9 +729,222 @@ export function useMedicines() {
   })
 }
 
+/**
+ * One entry of the RHIA medicines list (June 2026): the list published by the insurer, kept for
+ * looking up names, presentations and list prices. It is not the clinic's stock: an entry
+ * becomes a clinic medicine only when someone adds it (Medicines) or receives it (Stock).
+ */
+export interface MedicineRef {
+  code: string
+  generic: string
+  /** Brand, form and strength as written on the list ("AMOXYCILLIN 500mg capsule"). */
+  presentation: string | null
+  /** Who may prescribe it on the list ("DT", "PED", "IM or PED"); null = any prescriber. */
+  rule: string | null
+  /** Selling unit on the list (TABLET, BOTTLE, TUBE…). */
+  unit: string | null
+  /** List price in RWF. */
+  price: number | null
+  /** Therapeutic group ("J01 · ANTIBACTERIAL DRUGS"). */
+  group: string | null
+}
+
+const sampleReference: MedicineRef[] = [
+  [
+    'A01AA01001',
+    'Sodium Fluoride',
+    'ELMEX SENSITIVE TUBE 50ml 2 AT 6YRS',
+    'DT',
+    'TUBE',
+    9345,
+    'A01 · STOMATOLOGICAL PREPARATIONS',
+  ],
+  [
+    'A06AD17001',
+    'Sodium Phosphate',
+    'FLEET PHOSPHOSODA 45 ml',
+    'IM or PED',
+    'BOTTLE',
+    10257,
+    'A06 · DRUGS FOR CONSTIPATION',
+  ],
+  [
+    'C07AA05002',
+    'Propranolol 10mg',
+    'INDERAL 40mg tablet',
+    'IM or PED',
+    'TABLET',
+    140,
+    'C07 · BETA BLOCKING AGENTS',
+  ],
+  [
+    'J01CA04001',
+    'Amoxycillin 250mg',
+    'AMOXYCILLIN 250mg capsule',
+    null,
+    'CAPSULE',
+    37,
+    'J01 · ANTIBACTERIAL DRUGS',
+  ],
+  [
+    'J01CA04002',
+    'Amoxycillin 500mg',
+    'AMOXYCILLIN 500mg capsule',
+    null,
+    'CAPSULE',
+    69,
+    'J01 · ANTIBACTERIAL DRUGS',
+  ],
+  [
+    'J01CR02001',
+    'Amoxycillin 500mg +clavulanic acid 125mg',
+    'AMOXICILLIN + CLAVULANIC ACID 625mg tablet',
+    null,
+    'TABLET',
+    257,
+    'J01 · ANTIBACTERIAL DRUGS',
+  ],
+  [
+    'M01AE51004',
+    'Paracetamol + Ibuprofen',
+    'PARACETAMOL + IBUPROFEN SYRUP 60ml',
+    null,
+    'BOTTLE',
+    1001,
+    'M01 · ANTIINFLAMMATORY AND ANTIRHEUMATIC DRUGS',
+  ],
+  [
+    'N02BE01001',
+    'Paracetamol 100mg',
+    'PARACETAMOL 100mg tablet',
+    null,
+    'TABLET',
+    4,
+    'N02B · OTHER ANALGESICS AND ANTIPYRETICS',
+  ],
+].map(([code, generic, presentation, rule, unit, price, group]) => ({
+  code: code as string,
+  generic: generic as string,
+  presentation: presentation as string | null,
+  rule: rule as string | null,
+  unit: unit as string | null,
+  price: price as number | null,
+  group: group as string | null,
+}))
+
+/** The whole RHIA list (1,446 entries), read once an hour at most; only for who may use it. */
+export function useMedicineReference(enabled = true) {
+  return useQuery({
+    queryKey: ['catalogue', 'medicine-reference'],
+    staleTime: 3_600_000,
+    enabled,
+    queryFn: async (): Promise<MedicineRef[]> => {
+      if (!supabase) return sampleReference
+      type Row = {
+        code: string
+        generic: string
+        presentation: string | null
+        prescribing_rule: string | null
+        unit: string | null
+        price: number | string | null
+        atc_group: string | null
+      }
+      const rows: Row[] = []
+      // the server sends at most 1,000 rows at a time: read page after page
+      const page = 1000
+      for (let from = 0; ; from += page) {
+        const { data, error } = await supabase
+          .from('medicine_reference')
+          .select('code, generic, presentation, prescribing_rule, unit, price, atc_group')
+          .order('generic')
+          .order('presentation')
+          .order('code')
+          .range(from, from + page - 1)
+        if (error) throw new Error(error.message)
+        rows.push(...(data as Row[]))
+        if ((data ?? []).length < page) break
+      }
+      return rows.map((r) => ({
+        code: r.code,
+        generic: r.generic,
+        presentation: r.presentation,
+        rule: r.prescribing_rule,
+        unit: r.unit,
+        price: r.price == null ? null : Number(r.price),
+        group: r.atc_group,
+      }))
+    },
+  })
+}
+
+/** "TABLET" → "tablet": the list writes its units in capitals. */
+export const readableUnit = (unit: string | null) => (unit ?? '').toLowerCase()
+
+/** The picker line of a list entry: "Paracetamol 100mg · PARACETAMOL 100mg tablet · RHIA list · RWF 4". */
+export function medicineRefLabel(r: MedicineRef, t: (k: string) => string) {
+  return [
+    r.generic,
+    r.presentation,
+    t('prices.meds.ref.tag'),
+    r.price == null ? null : formatRwf(r.price),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/** Who the list's prescribing codes name (the list's own legend); aliases share one wording. */
+const RULE_WHO: Record<string, string> = {
+  DT: 'DT',
+  PED: 'PED',
+  IM: 'IM',
+  SPEC: 'SPEC',
+  D: 'D',
+  GYN: 'GYN',
+  GYNEC: 'GYN',
+  UROL: 'UROL',
+  OPHT: 'OPHT',
+  PSYCH: 'PSYCH',
+  NEUROL: 'NEUROL',
+  ONCO: 'ONCO',
+  AC: 'ONCO',
+  ENT: 'ENT',
+  SURG: 'SURG',
+  SURGEON: 'SURG',
+  CARDIOL: 'CARDIOL',
+  NEPHRO: 'NEPHRO',
+  ORTH: 'ORTH',
+  ORTHO: 'ORTH',
+}
+
+/**
+ * The list's prescribing rule in plain words, the code kept in brackets: "IM or PED" →
+ * "Prescribed only by an internal medicine specialist or a children's doctor (IM or PED)".
+ * A code the legend does not explain stays as it is.
+ */
+export function medicineRuleText(
+  rule: string,
+  t: (k: string, o?: Record<string, unknown>) => string,
+) {
+  const code = rule.trim()
+  if (code === 'HU') return t('prices.meds.ref.ruleHospital', { code })
+  if (code === 'M') return t('prices.meds.ref.ruleNote', { code })
+  const parts = code.split(/\s+or\s+/i).map((p) => p.trim().toUpperCase())
+  if (!parts.some((p) => RULE_WHO[p])) return t('prices.meds.ref.rule', { rule: code })
+  const who = parts
+    .map((p) => (RULE_WHO[p] ? t(`prices.meds.ref.who.${RULE_WHO[p]}`) : p))
+    .filter((w, i, all) => all.indexOf(w) === i)
+    .join(` ${t('prices.meds.ref.whoOr')} `)
+  return t('prices.meds.ref.ruleBy', { who, code })
+}
+
 export function useMedicineActions() {
   const qc = useQueryClient()
-  const refresh = () => qc.invalidateQueries({ queryKey: ['catalogue'] })
+  // a medicine added or changed shows in the stock lists too (name, price)
+  const refresh = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ['catalogue'] }),
+      qc.invalidateQueries({ queryKey: ['stock'] }),
+    ])
   const save = useMutation({
     mutationFn: async (m: {
       id?: string
@@ -740,12 +954,18 @@ export function useMedicineActions() {
       unit: string
       price: number
       active: boolean
+      /** The RHIA list code when the medicine is taken from that list (it keeps the code, the
+       *  prescribing rule and the group of the list); omitted for one typed by hand. */
+      code?: string
     }): Promise<string> => {
       if (!supabase) {
         const existing = m.id ? sampleMedicines.find((x) => x.id === m.id) : undefined
         const row: Medicine = {
           id: existing?.id ?? `it-${Math.random().toString(36).slice(2, 8)}`,
-          code: existing?.code ?? `MED-${String(sampleMedicines.length + 1).padStart(4, '0')}`,
+          code:
+            existing?.code ??
+            m.code ??
+            `MED-${String(sampleMedicines.length + 1).padStart(4, '0')}`,
           name: m.name.trim(),
           strength: m.strength.trim() || null,
           form: m.form.trim() || null,
@@ -765,7 +985,7 @@ export function useMedicineActions() {
         p_form: m.form.trim() || null,
         p_unit: m.unit.trim() || null,
         p_active: m.active,
-        p_code: null,
+        p_code: m.code ?? null,
       })
       if (error) throw new Error(error.message)
       return String(data)

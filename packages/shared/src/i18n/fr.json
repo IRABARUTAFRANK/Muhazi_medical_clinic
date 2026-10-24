@@ -748,7 +748,11 @@
       "roleDept": "Ce rôle n’appartient pas à ce service. Choisissez un autre service ou ajoutez-y le rôle.",
       "needDept": "Choisissez un service pour un chef ou un chef adjoint.",
       "name": "Saisissez le nom complet.",
-      "deptTwice": "Le même département est choisi deux fois."
+      "deptTwice": "Le même département est choisi deux fois.",
+      "deleteSelf": "Vous ne pouvez pas supprimer votre propre compte. Un autre gestionnaire doit le faire.",
+      "lastManager": "C'est le seul gestionnaire actif de la clinique. Donnez d'abord le rôle de gestionnaire à un autre employé, puis supprimez ce compte.",
+      "alreadyDeleted": "Ce compte est déjà supprimé.",
+      "notFound": "Employé introuvable. Actualisez la page."
     },
     "roles": {
       "receptionist": "Réceptionniste",
@@ -795,7 +799,8 @@
       "notSent": "Le code n’a pas pu être envoyé. Essayez « Renvoyer ».",
       "wait": "Un code a été envoyé il y a moins d’une minute. Patientez un instant, puis renvoyez.",
       "resend": "Renvoyer",
-      "resendIn": "Renvoyer dans {{s}} s"
+      "resendIn": "Renvoyer dans {{s}} s",
+      "delete": "Supprimer définitivement le compte de {{name}} (ses dossiers restent)"
     },
     "dept": {
       "none": "Sans service",
@@ -827,7 +832,38 @@
     "hidePin": "Masquer le PIN",
     "copyPin": "Copier le PIN",
     "copied": "Copié",
-    "alsoIn": "aussi dans {{names}}"
+    "alsoIn": "aussi dans {{names}}",
+    "delete": {
+      "button": "Supprimer",
+      "title": "Supprimer le compte de {{name}} ?",
+      "recommendTitle": "Conseillé : désactiver plutôt",
+      "recommendBody": "Désactiver bloque la connexion tout de suite et garde tout tel quel. Vous pouvez l'annuler à tout moment avec « Réactiver ». Après un mois de désactivation, un rappel vous proposera de supprimer le compte si la personne ne revient pas.",
+      "deactivateInstead": "Désactiver plutôt",
+      "confirmButton": "Supprimer le compte",
+      "happensTitle": "Ce qui se passe si vous supprimez",
+      "happens": {
+        "signIn": "{{name}} ne pourra plus jamais se connecter. Son nom d'utilisateur et son e-mail deviennent libres pour quelqu'un d'autre.",
+        "departments": "La personne quitte ses services et perd ses exceptions d'accès. Son agenda est retiré du site web.",
+        "devices": "Ses appareils de confiance et son PIN temporaire sont supprimés.",
+        "waiting": "Les patients et les tâches qui l'attendaient retournent à l'accueil pour qu'une autre personne les prenne.",
+        "final": "Cette action est définitive."
+      },
+      "staysTitle": "Ce qui reste (dossiers de la clinique, pas des données personnelles)",
+      "stays": {
+        "records": "Chaque visite, note, diagnostic, résultat, ordonnance, paiement, reçu et mouvement de stock enregistré par cette personne, ainsi que l'historique des activités, garde son nom, avec la mention « ancien employé ».",
+        "staffId": "Son identifiant d'employé n'est jamais redonné à quelqu'un d'autre."
+      },
+      "deactivatedSince_one": "{{name}} est désactivé(e) depuis le {{date}} ({{count}} jour) et ne peut déjà plus se connecter. La suppression libère aussi son nom d'utilisateur et son e-mail.",
+      "deactivatedSince_other": "{{name}} est désactivé(e) depuis le {{date}} ({{count}} jours) et ne peut déjà plus se connecter. La suppression libère aussi son nom d'utilisateur et son e-mail.",
+      "done": "Le compte de {{name}} est supprimé. Tout ce que cette personne a enregistré reste dans les dossiers de la clinique."
+    },
+    "longDeactivated": {
+      "title": "Désactivés depuis plus d'un mois",
+      "lead": "Si ces personnes ne reviennent pas, vous pouvez supprimer leurs comptes. Tout ce qu'elles ont enregistré reste.",
+      "since_one": "désactivé depuis le {{date}} ({{count}} jour)",
+      "since_other": "désactivé depuis le {{date}} ({{count}} jours)",
+      "delete": "Supprimer le compte…"
+    }
   },
   "login": {
     "title": "Connexion du personnel",
@@ -1163,6 +1199,41 @@
       "saved": "« {{name}} » enregistré.",
       "errors": {
         "name": "Donnez un nom au médicament."
+      },
+      "ref": {
+        "tag": "liste RHIA",
+        "pick": "Choisir dans la liste des médicaments RHIA",
+        "none": "Choisir un médicament de la liste",
+        "note": "Repris de la liste RHIA : modifiez ce que la clinique fait autrement",
+        "rule": "Qui peut le prescrire (RHIA) : {{rule}}",
+        "group": "Groupe : {{group}}",
+        "clear": "Saisir un médicament qui n’est pas sur la liste",
+        "byHand": "La liste RHIA (juin 2026) est la liste des médicaments publiée par l’autorité d’assurance maladie : choisir un médicament remplit son nom, sa présentation, son unité et le prix de la liste. Un médicament qui n’y figure pas peut être saisi ci-dessous.",
+        "presentation": "Présentation et dosage",
+        "loading": "Chargement de la liste des médicaments RHIA…",
+        "failed": "La liste des médicaments RHIA n'a pas pu être chargée. Vous pouvez quand même saisir le médicament à la main.",
+        "ruleBy": "Prescrit uniquement par {{who}} ({{code}})",
+        "ruleHospital": "Réservé à l'usage hospitalier ({{code}})",
+        "ruleNote": "Coûteux : l'assureur demande une note expliquant pourquoi ({{code}})",
+        "whoOr": "ou",
+        "who": {
+          "DT": "un dentiste",
+          "PED": "un médecin des enfants (pédiatre)",
+          "IM": "un spécialiste en médecine interne",
+          "SPEC": "un médecin spécialiste",
+          "D": "un médecin de la peau (dermatologue)",
+          "GYN": "un gynécologue",
+          "UROL": "un urologue",
+          "OPHT": "un médecin des yeux (ophtalmologue)",
+          "PSYCH": "un psychiatre",
+          "NEUROL": "un neurologue",
+          "ONCO": "un spécialiste du cancer (oncologue)",
+          "ENT": "un spécialiste ORL (oreilles, nez, gorge)",
+          "SURG": "un chirurgien",
+          "CARDIOL": "un spécialiste du cœur (cardiologue)",
+          "NEPHRO": "un spécialiste des reins (néphrologue)",
+          "ORTH": "un spécialiste des os (orthopédiste)"
+        }
       }
     },
     "tools": {
@@ -2195,7 +2266,9 @@
     "bookedArrived": "Votre patient sur rendez-vous {{name}} est arrivé",
     "bookedArrivedTriage": "D’abord au tri, puis envoyé chez vous.",
     "bookedArrivedDesk": "Vous attend à votre poste.",
-    "inquiryDoctor": "Pour votre agenda. La réception le programme ; vous l’acceptez ensuite ou changez l’heure."
+    "inquiryDoctor": "Pour votre agenda. La réception le programme ; vous l’acceptez ensuite ou changez l’heure.",
+    "deactivatedLong": "{{name}} est désactivé(e) depuis {{days}} jours",
+    "deactivatedLongBody": "Si cette personne ne revient pas, vous pouvez supprimer le compte sur la page Employés. Tout ce qu'elle a enregistré reste dans les dossiers de la clinique."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -3074,7 +3147,17 @@
     "countNow": "Le système indique {{count}} dans ce magasin.",
     "countTitle": "Corriger un comptage",
     "countLead": "Après avoir compté une étagère, tapez ce qui s’y trouve vraiment. L’écart est gardé avec sa raison.",
-    "reportMonth": "Mois du rapport"
+    "reportMonth": "Mois du rapport",
+    "ref": {
+      "pickHint": "Choisissez le médicament, ne le tapez pas : d’abord les médicaments de la clinique, puis la liste des médicaments RHIA. Un médicament de la liste RHIA rejoint les médicaments de la clinique quand la livraison est enregistrée.",
+      "title": "Nouveau médicament pour la clinique (de la liste RHIA)",
+      "hint": "Ces informations viennent de la liste RHIA de juin 2026. Modifiez ce que la clinique fait autrement, comme le nom, l’unité de vente ou le prix.",
+      "received": "{{quantity}} × {{item}} reçu(s), valeur {{value}}. {{item}} fait désormais partie des médicaments de la clinique, vendu {{price}} l’unité.",
+      "failed": "La liste des médicaments RHIA n'a pas pu être chargée. Vous pouvez quand même choisir un des médicaments de la clinique.",
+      "askHint": "Seuls les médicaments de la clinique sont listés. Pour un nouveau médicament, demandez d'abord au gestionnaire ou à la pharmacie de l'ajouter.",
+      "partial": "{{item}} a été ajouté aux médicaments de la clinique, mais la livraison n'a pas été enregistrée ({{error}}). Enregistrez de nouveau la livraison.",
+      "locked": "Déjà ajouté aux médicaments de la clinique : il ne reste qu'à enregistrer la livraison. Modifiez ses détails dans Médicaments."
+    }
   },
   "report": {
     "excel": "Excel",

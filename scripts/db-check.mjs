@@ -3583,8 +3583,8 @@ await step(
   async () => {
     await asAdmin()
     const rhia = await one(
-      `select count(*)::int as n, count(*) filter (where c.cash_price > 0)::int as priced
-     from items_catalogue c join item i on i.id = c.id where i.source = 'RHIA June 2026'`,
+      `select count(*)::int as n, count(*) filter (where price > 0)::int as priced
+     from medicine_reference where source = 'RHIA June 2026'`,
     )
     const p = await visitAt('Loren 74')
     const amox = (await one(`select id from item where code = 'AMOX500'`)).id
@@ -3626,6 +3626,118 @@ await step('0075: the role dashboards count a period (today by default)', async 
     throw new Error(JSON.stringify({ t: today.tiles, a: all.tiles }))
   return `registered today ${today.tiles.registeredToday}, since 2020 ${all.tiles.registeredToday}`
 })
+
+await step(
+  '0076: deleting an employee removes the sign-in but keeps their name on the records; a month deactivated is pointed out',
+  async () => {
+    await asAdmin()
+    const id = (
+      await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+        'k.leaving@staff.muhaziclinic.rw',
+        JSON.stringify({
+          username: 'k.leaving',
+          full_name: 'Kalisa Leaving',
+          role: 'nurse',
+          station: 'Nursing',
+        }),
+      ])
+    ).id
+    const staffId = (await one(`select staff_id from profiles where id = $1`, [id])).staff_id
+    const p = await visitAt('Leaving 76')
+    await asAdmin()
+    await db.query(`update queue_entry set assigned_to = $2 where id = $1`, [p.queue, id])
+    const kept = (await one(`select retire_staff($1, $2) as r`, [id, staff.manager])).r
+    await db.query(`delete from auth.users where id = $1`, [id])
+    const prof = await one(
+      `select deleted_at is not null as deleted, active, username, staff_id, full_name from profiles where id = $1`,
+      [id],
+    )
+    const q = await one(`select assigned_to from queue_entry where id = $1`, [p.queue])
+    await as(staff.manager)
+    const listed = (await db.query(`select 1 from staff_directory where id = $1`, [id])).rows.length
+    // the manager may not delete the last manager, nor themselves
+    await asAdmin()
+    const self = await db.query(`select retire_staff($1, $1)`, [staff.manager]).then(
+      () => 'ok',
+      (e) => e.message,
+    )
+    // an account deactivated for 40 days is pointed out once
+    await db.query(
+      `update profiles set active = false, deactivated_at = now() - interval '40 days', deletion_reminded_at = null where id = $1`,
+      [staff.cashier],
+    )
+    await as(staff.manager)
+    const first = (await one(`select deactivation_reminders() as n`)).n
+    const again = (await one(`select deactivation_reminders() as n`)).n
+    const n = (await one(`select my_notifications(200) as n`)).n
+    await asAdmin()
+    await db.query(`update profiles set active = true, deactivated_at = null where id = $1`, [
+      staff.cashier,
+    ])
+    const told = n.items.some((x) => x.kind === 'deactivated_long')
+    if (
+      !prof.deleted ||
+      prof.active ||
+      !prof.username.startsWith('former.') ||
+      prof.staff_id !== staffId ||
+      prof.full_name !== 'Kalisa Leaving' ||
+      q.assigned_to !== null ||
+      listed !== 0 ||
+      !/own account/.test(self) ||
+      first < 1 ||
+      again !== 0 ||
+      !told ||
+      kept.patientsBack !== 1
+    )
+      throw new Error(JSON.stringify({ prof, q, listed, self, first, again, told, kept }))
+    return (
+      'profile kept as former employee (' +
+      prof.username +
+      '); patient back to the desk; reminder once'
+    )
+  },
+)
+
+await step(
+  '0077: the RHIA list is a reference list; a medicine added from it gets its details',
+  async () => {
+    await asAdmin()
+    const ref = await one(`select count(*)::int as n from medicine_reference`)
+    const inItems = (
+      await one(
+        `select count(*)::int as n from item where source = 'RHIA June 2026' and deleted_at is null`,
+      )
+    ).n
+    const pick = await one(
+      `select code, generic, presentation, price from medicine_reference where generic ilike 'paracetamol%' order by code limit 1`,
+    )
+    await as(staff.pharmacist)
+    const id = (
+      await one(`select upsert_item(null, $1, 150, $2, null, 'Tablet', true, $3) as id`, [
+        pick.generic,
+        pick.presentation,
+        pick.code,
+      ])
+    ).id
+    await asAdmin()
+    const it = await one(
+      `select code, prescribing_rule is not distinct from (select prescribing_rule from medicine_reference where code = $2) as rule, atc_group is not null as grp, source from item where id = $1`,
+      [id, pick.code],
+    )
+    const price = (await one(`select cash_price from items_catalogue where id = $1`, [id]))
+      .cash_price
+    if (
+      ref.n < 1400 ||
+      inItems !== 0 ||
+      it.code !== pick.code ||
+      !it.rule ||
+      !it.grp ||
+      Number(price) !== 150
+    )
+      throw new Error(JSON.stringify({ ref, inItems, it, price }))
+    return `${ref.n} in the list, none in the clinic's medicines until added; added with its rule and group, clinic price kept`
+  },
+)
 
 finish()
 

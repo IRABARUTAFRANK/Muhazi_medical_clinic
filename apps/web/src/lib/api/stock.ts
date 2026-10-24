@@ -239,7 +239,12 @@ export function useStockOverview() {
     refetchOnWindowFocus: true,
     queryKey: [...KEY, 'overview'],
     queryFn: async (): Promise<StockOverview> => {
-      if (!supabase) return { locations: sampleLocations, items: sampleItems }
+      // copies: the screens see what was just received
+      if (!supabase)
+        return {
+          locations: sampleLocations,
+          items: sampleItems.map((x) => ({ ...x, byLocation: { ...x.byLocation } })),
+        }
       const { data, error } = await supabase.rpc('stock_overview')
       if (error) throw new Error(error.message)
       const d = data as StockOverview
@@ -344,6 +349,11 @@ export function useStockActions() {
     void qc.invalidateQueries({ queryKey: ['visit'] })
     void qc.invalidateQueries({ queryKey: ['queue'] })
   }
+  /** Receiving can add a medicine to the clinic (from the RHIA list): the lists follow. */
+  const refreshAll = () => {
+    refresh()
+    void qc.invalidateQueries({ queryKey: ['catalogue'] })
+  }
   const call = async (fn: string, args: Record<string, unknown>) => {
     if (!supabase) return null
     const { data, error } = await supabase.rpc(fn, args)
@@ -359,8 +369,23 @@ export function useStockActions() {
       batchNo?: string
       expiry?: string
       supplier?: string
+      /** A medicine just added to the clinic (from the RHIA list): sample mode lists it. */
+      newMedicine?: Pick<StockItem, 'code' | 'name' | 'strength' | 'unit' | 'sellingPrice'>
     }) => {
       if (!supabase) {
+        if (i.newMedicine && !sampleItems.some((x) => x.id === i.itemId))
+          sampleItems.push({
+            ...i.newMedicine,
+            id: i.itemId,
+            reorderLevel: 0,
+            onHand: 0,
+            costValue: 0,
+            avgCost: i.unitCost,
+            byLocation: {},
+            earliestExpiry: i.expiry ?? null,
+            expiredUnits: 0,
+            active: true,
+          })
         const it = sampleItems.find((x) => x.id === i.itemId)
         if (it) {
           it.onHand += i.quantity
@@ -379,7 +404,7 @@ export function useStockActions() {
         p_supplier: i.supplier?.trim() || null,
       })
     },
-    onSuccess: refresh,
+    onSuccess: refreshAll,
   })
   const transfer = useMutation({
     mutationFn: (i: {

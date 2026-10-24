@@ -162,6 +162,11 @@ export function useWording() {
               })
             : null,
         }
+      case 'deactivated_long':
+        return {
+          title: t('notify.deactivatedLong', { name: p.name ?? '', days: p.days ?? 30 }),
+          body: t('notify.deactivatedLongBody'),
+        }
       case 'appt_declined':
         return {
           title: t('notify.apptDeclined', { name: p.name ?? '', doctor: p.doctor ?? '' }),

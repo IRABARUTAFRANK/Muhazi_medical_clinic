@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
+  AlertTriangle,
   Building2,
   Check,
   Copy,
@@ -7,6 +8,7 @@ import {
   EyeOff,
   IdCard,
   KeyRound,
+  Lightbulb,
   Mail,
   MailCheck,
   Pencil,
@@ -44,6 +46,7 @@ import {
   sendConfirmCode,
   suggestUsername,
   useDepartmentActions,
+  useDeactivationReminders,
   useDepartments,
   useEmployees,
   useStaffActions,
@@ -95,6 +98,13 @@ export function StaffPage({ user }: { user: StaffUser }) {
   const [showInactive, setShowInactive] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [staffQuery, setStaffQuery] = useState('')
+  // The account the manager is about to delete: the effects are shown first (one at a time).
+  // Only the id is kept: the panel always shows the person as the list has them now
+  // (a Deactivate from the row updates it; once deleted they leave the list and it closes).
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const deleting = employees.find((e) => e.id === deletingId) ?? null
+  // Accounts deactivated for a month or more become a notice for the managers.
+  useDeactivationReminders(true)
   const formRef = useRef<HTMLDivElement>(null)
   // Bring the form the manager just opened into view, wherever the button was on the page.
   useEffect(() => {
@@ -114,8 +124,58 @@ export function StaffPage({ user }: { user: StaffUser }) {
     if (m === 'username') return t('staff.errors.username')
     if (m === 'pin') return t('staff.errors.pin')
     if (m === 'email' || /valid e-mail/i.test(m)) return t('staff.errors.email')
+    if (/delete your own account/i.test(m)) return t('staff.errors.deleteSelf')
+    if (/at least one manager/i.test(m)) return t('staff.errors.lastManager')
+    if (/already deleted/i.test(m)) return t('staff.errors.alreadyDeleted')
+    if (/employee not found/i.test(m)) return t('staff.errors.notFound')
     return t('staff.errors.generic', { message: m })
   }
+
+  // Deactivate or reactivate, after the e-mailed code; `after` runs once it is done.
+  const askSetActive = (e: Employee, after?: () => void) =>
+    setPending({
+      title: t(e.active ? 'staff.confirm.deactivate' : 'staff.confirm.reactivate', {
+        name: e.fullName,
+      }),
+      run: async (confirmCode) => {
+        await actions.setActive.mutateAsync({ id: e.id, active: !e.active, confirmCode })
+        setNotice(
+          t(e.active ? 'staff.deactivatedNotice' : 'staff.reactivatedNotice', {
+            name: e.fullName,
+          }),
+        )
+        after?.()
+      },
+    })
+  const askDelete = (e: Employee) =>
+    setPending({
+      title: t('staff.confirm.delete', { name: e.fullName }),
+      run: async (confirmCode) => {
+        await actions.remove.mutateAsync({ id: e.id, confirmCode })
+        setNotice(t('staff.delete.done', { name: e.fullName }))
+        setDeletingId(null)
+      },
+    })
+  // One panel at a time: opening any form closes the others.
+  const openDelete = (e: Employee) => {
+    setEditing(null)
+    setResetFor(null)
+    setDeletingId(e.id)
+  }
+  const openEdit = (e: Employee | 'new') => {
+    setDeletingId(null)
+    setResetFor(null)
+    setEditing(e)
+  }
+  const openReset = (e: Employee) => {
+    setDeletingId(null)
+    setEditing(null)
+    setResetFor(e)
+  }
+  // Deactivated for a month or more: the manager is invited to delete these accounts.
+  const longDeactivated = employees
+    .filter((e) => !e.active && e.deactivatedAt && daysSince(e.deactivatedAt) >= 30)
+    .sort((a, b) => a.deactivatedAt!.localeCompare(b.deactivatedAt!))
 
   const visible = employees.filter(
     (e) =>
@@ -142,7 +202,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
       <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         <PageBanner icon={IdCard} tint="violet" title={t('staff.title')} lead={t('staff.lead2')}>
           {tab === 'people' && (
-            <Button variant="primary" onClick={() => setEditing('new')}>
+            <Button variant="primary" onClick={() => openEdit('new')}>
               <UserPlus size={18} aria-hidden="true" />
               {t('staff.newEmployee')}
             </Button>
@@ -195,6 +255,31 @@ export function StaffPage({ user }: { user: StaffUser }) {
           <DepartmentsPanel departments={departments} employees={employees} />
         ) : (
           <>
+            {longDeactivated.length > 0 && (
+              <LongDeactivatedCard people={longDeactivated} onDelete={openDelete} />
+            )}
+
+            {deleting && (
+              <Reveal key={deleting.id}>
+                <DeleteAccountCard
+                  employee={deleting}
+                  lastManager={
+                    deleting.role === 'manager' &&
+                    !employees.some((x) => x.id !== deleting.id && x.role === 'manager' && x.active)
+                  }
+                  // Escape belongs to the code dialog while it is open
+                  paused={pending !== null}
+                  onDeactivate={() =>
+                    askSetActive(deleting, () =>
+                      setDeletingId((id) => (id === deleting.id ? null : id)),
+                    )
+                  }
+                  onDelete={() => askDelete(deleting)}
+                  onCancel={() => setDeletingId(null)}
+                />
+              </Reveal>
+            )}
+
             {editing && (
               <Reveal focus>
                 <EmployeeForm
@@ -369,52 +454,34 @@ export function StaffPage({ user }: { user: StaffUser }) {
                               <Badge tone="green">{t('staff.active')}</Badge>
                             )}
                             <span className="flex flex-wrap gap-2">
-                              <Button size="sm" onClick={() => setEditing(e)} disabled={!e.active}>
+                              <Button size="sm" onClick={() => openEdit(e)} disabled={!e.active}>
                                 <Pencil size={15} aria-hidden="true" />
                                 {t('staff.edit')}
                               </Button>
-                              <Button size="sm" onClick={() => setResetFor(e)} disabled={!e.active}>
+                              <Button size="sm" onClick={() => openReset(e)} disabled={!e.active}>
                                 <KeyRound size={15} aria-hidden="true" />
                                 {t('staff.resetPin')}
                               </Button>
-                              <Button
-                                size="sm"
-                                variant={e.active ? 'danger' : 'default'}
-                                disabled={self}
-                                onClick={() =>
-                                  setPending({
-                                    title: t(
-                                      e.active
-                                        ? 'staff.confirm.deactivate'
-                                        : 'staff.confirm.reactivate',
-                                      {
-                                        name: e.fullName,
-                                      },
-                                    ),
-                                    run: async (confirmCode) => {
-                                      await actions.setActive.mutateAsync({
-                                        id: e.id,
-                                        active: !e.active,
-                                        confirmCode,
-                                      })
-                                      setNotice(
-                                        t(
-                                          e.active
-                                            ? 'staff.deactivatedNotice'
-                                            : 'staff.reactivatedNotice',
-                                          { name: e.fullName },
-                                        ),
-                                      )
-                                    },
-                                  })
-                                }
-                              >
+                              {/* deactivating can be undone: not shown as dangerous as deleting */}
+                              <Button size="sm" disabled={self} onClick={() => askSetActive(e)}>
                                 {e.active ? (
                                   <UserX size={15} aria-hidden="true" />
                                 ) : (
                                   <UserCheck size={15} aria-hidden="true" />
                                 )}
                                 {t(e.active ? 'staff.deactivate' : 'staff.reactivate')}
+                              </Button>
+                              {/* the effects and the better option are shown before anything */}
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                disabled={self}
+                                title={self ? t('staff.errors.deleteSelf') : undefined}
+                                aria-expanded={deleting?.id === e.id}
+                                onClick={() => openDelete(e)}
+                              >
+                                <Trash2 size={15} aria-hidden="true" />
+                                {t('staff.delete.button')}
                               </Button>
                             </span>
                           </Row>
@@ -441,6 +508,170 @@ export function StaffPage({ user }: { user: StaffUser }) {
         )}
       </main>
     </StaffShell>
+  )
+}
+
+/* ---------------------------------------------------------------- delete an account */
+
+/** Whole days since an ISO date (0 on the same day). */
+function daysSince(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000))
+}
+
+/**
+ * Before a delete: what goes, what stays (the clinic's records keep the name), and the better
+ * option, deactivating, which keeps everything and can be undone.
+ */
+function DeleteAccountCard({
+  employee,
+  lastManager,
+  paused,
+  onDeactivate,
+  onDelete,
+  onCancel,
+}: {
+  employee: Employee
+  /** The clinic's only active manager: the server refuses, so say it now. */
+  lastManager: boolean
+  paused: boolean
+  onDeactivate: () => void
+  onDelete: () => void
+  onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  const name = employee.fullName
+  useEffect(() => {
+    if (paused) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [paused, onCancel])
+  const happens = [
+    t('staff.delete.happens.signIn', { name }),
+    t('staff.delete.happens.departments'),
+    t('staff.delete.happens.devices'),
+    t('staff.delete.happens.waiting'),
+  ]
+  const stays = [t('staff.delete.stays.records'), t('staff.delete.stays.staffId')]
+
+  return (
+    <Card className="border-red anim-enter">
+      <CardHeader>
+        <span className="inline-flex items-center gap-2">
+          <Trash2 size={16} aria-hidden="true" className="text-red" />
+          {t('staff.delete.title', { name })}
+        </span>
+        {employee.staffId && (
+          <span className="text-ink-3 text-xs tabular-nums">{employee.staffId}</span>
+        )}
+      </CardHeader>
+      <CardBody className="gap-4">
+        {!employee.active && employee.deactivatedAt && (
+          <p className="bg-surface text-ink-2 m-0 rounded-lg px-3 py-2 text-[13px]">
+            {t('staff.delete.deactivatedSince', {
+              name,
+              date: formatDate(new Date(employee.deactivatedAt)),
+              count: daysSince(employee.deactivatedAt),
+            })}
+          </p>
+        )}
+
+        {/* the better option comes first */}
+        {employee.active && (
+          <div className="border-primary bg-primary-tint flex flex-col gap-2 rounded-xl border p-3">
+            <span className="text-primary inline-flex items-center gap-2 text-[14px] font-bold">
+              <Lightbulb size={16} aria-hidden="true" />
+              {t('staff.delete.recommendTitle')}
+            </span>
+            <p className="text-ink m-0 text-[13px]">{t('staff.delete.recommendBody')}</p>
+            <Button variant="primary" className="self-start" onClick={onDeactivate}>
+              <UserX size={16} aria-hidden="true" />
+              {t('staff.delete.deactivateInstead')}
+            </Button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <section className="flex flex-col gap-1.5">
+            <h3 className="text-red m-0 text-[13px] font-bold">{t('staff.delete.happensTitle')}</h3>
+            <ul className="text-ink-2 m-0 flex list-disc flex-col gap-1 pl-5 text-[13px]">
+              {happens.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+              <li className="text-red font-semibold">{t('staff.delete.happens.final')}</li>
+            </ul>
+          </section>
+          <section className="flex flex-col gap-1.5">
+            <h3 className="text-green m-0 text-[13px] font-bold">{t('staff.delete.staysTitle')}</h3>
+            <ul className="text-ink-2 m-0 flex list-disc flex-col gap-1 pl-5 text-[13px]">
+              {stays.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </section>
+        </div>
+
+        {lastManager && (
+          <p role="alert" className={errorBox}>
+            {t('staff.errors.lastManager')}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="danger" disabled={lastManager} onClick={onDelete}>
+            <Trash2 size={16} aria-hidden="true" />
+            {t('staff.delete.confirmButton')}
+          </Button>
+          <Button variant="ghost" onClick={onCancel}>
+            {t('staff.form.cancel')}
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
+  )
+}
+
+/** Deactivated for a month or more: if they are not coming back, the account can go. */
+function LongDeactivatedCard({
+  people,
+  onDelete,
+}: {
+  people: Employee[]
+  onDelete: (e: Employee) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <Card className="border-amber/50">
+      <CardHeader>
+        <span className="inline-flex items-center gap-2">
+          <AlertTriangle size={16} aria-hidden="true" className="text-amber" />
+          {t('staff.longDeactivated.title')}
+        </span>
+        <span className="text-ink-3 text-xs">{people.length}</span>
+      </CardHeader>
+      <CardBody className="gap-2">
+        <p className="text-ink-2 m-0 text-[13px]">{t('staff.longDeactivated.lead')}</p>
+        <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+          {people.map((e) => (
+            <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+              <span className="min-w-[180px] flex-1">
+                <b>{e.fullName}</b>
+                {e.staffId && <span className="text-ink-3 ml-2 tabular-nums">{e.staffId}</span>}
+                <span className="text-ink-3 ml-2">
+                  {t('staff.longDeactivated.since', {
+                    date: formatDate(new Date(e.deactivatedAt!)),
+                    count: daysSince(e.deactivatedAt!),
+                  })}
+                </span>
+              </span>
+              <Button size="sm" variant="danger" onClick={() => onDelete(e)}>
+                <Trash2 size={15} aria-hidden="true" />
+                {t('staff.longDeactivated.delete')}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </CardBody>
+    </Card>
   )
 }
 

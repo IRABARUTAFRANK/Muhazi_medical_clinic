@@ -77,6 +77,7 @@ type Body = { confirm_code?: string } & (
   | { action: 'reset_pin'; user_id: string; pin: string }
   | { action: 'set_active'; user_id: string; active: boolean }
   | { action: 'set_email'; user_id: string; email: string }
+  | { action: 'delete'; user_id: string }
 )
 
 Deno.serve(async (req) => {
@@ -410,6 +411,22 @@ Deno.serve(async (req) => {
           .eq('id', body.user_id)
         await audit('set_active', body.user_id, { active: body.active })
         return json(200, { ok: true })
+      }
+
+      case 'delete': {
+        // Deleting removes the sign-in for good; the profile stays as a former employee so the
+        // clinic's records (visits, payments, results, history) keep the name (migration 0076).
+        if (body.user_id === caller.user.id)
+          return json(400, { error: 'you cannot delete your own account' })
+        const { data: kept, error: keepError } = await admin.rpc('retire_staff', {
+          p_profile_id: body.user_id,
+          p_by: caller.user.id,
+        })
+        if (keepError) return json(400, { error: keepError.message })
+        const { error } = await admin.auth.admin.deleteUser(body.user_id)
+        // already gone from sign-in (an older delete): the profile is retired all the same
+        if (error && !/not found/i.test(error.message)) return json(400, { error: error.message })
+        return json(200, { ok: true, ...(kept as Record<string, unknown>) })
       }
 
       default:

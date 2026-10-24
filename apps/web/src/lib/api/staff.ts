@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { STAFF } from '@mmc/shared'
 import { isLive, supabase } from '@/lib/supabase'
@@ -36,6 +37,8 @@ export interface Employee {
   mustChangePin: boolean
   lastSignInAt: string | null
   createdAt: string
+  /** When the account was deactivated (null while active). */
+  deactivatedAt: string | null
   /** Main department (the first of `departments`). */
   departmentId: string | null
   departmentName: string | null
@@ -156,6 +159,7 @@ const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   mustChangePin: i === 3,
   tempPin: i === 3 ? '482915' : null,
   lastSignInAt: i < 4 ? new Date(2026, 9, 15, 7 + i, 12).toISOString() : null,
+  deactivatedAt: null,
   createdAt: new Date(2026, 8, 1).toISOString(),
   departmentId: null,
   departmentName: null,
@@ -183,6 +187,7 @@ interface DirectoryRow {
   must_change_pin: boolean
   last_sign_in_at: string | null
   created_at: string
+  deactivated_at?: string | null
   department_id: string | null
   department_name: string | null
   position: Position | null
@@ -219,6 +224,7 @@ export function useEmployees() {
         mustChangePin: r.must_change_pin,
         lastSignInAt: r.last_sign_in_at,
         createdAt: r.created_at,
+        deactivatedAt: r.deactivated_at ?? null,
         departmentId: r.department_id,
         departmentName: r.department_name,
         position: r.position ?? 'member',
@@ -357,6 +363,7 @@ export function useStaffActions() {
           mustChangePin: true,
           lastSignInAt: null,
           createdAt: new Date().toISOString(),
+          deactivatedAt: null,
           departmentId: members[0]?.departmentId ?? null,
           departmentName: members[0]?.departmentName ?? null,
           position: members[0]?.position ?? 'member',
@@ -453,7 +460,40 @@ export function useStaffActions() {
     onSuccess: refresh,
   })
 
-  return { create, update, resetPin, setActive }
+  /**
+   * Delete for good: the sign-in goes, the username and e-mail become free; the person stays on
+   * the clinic's records as a former employee (migration 0076).
+   */
+  const remove = useMutation({
+    mutationFn: async ({ id, confirmCode }: { id: string; confirmCode: string }) => {
+      if (!supabase) {
+        sampleCheck(confirmCode)
+        const i = sampleEmployees.findIndex((x) => x.id === id)
+        if (i >= 0) sampleEmployees.splice(i, 1)
+        return
+      }
+      await callManageStaff({ action: 'delete', user_id: id, confirm_code: confirmCode })
+    },
+    onSuccess: refresh,
+  })
+
+  return { create, update, resetPin, setActive, remove }
+}
+
+/**
+ * The managers' reminder: accounts deactivated for a month or more become a notice, once (the
+ * database keeps track). Asked once per page opening.
+ */
+export function useDeactivationReminders(enabled: boolean) {
+  const asked = useRef(false)
+  const qc = useQueryClient()
+  useEffect(() => {
+    if (!enabled || asked.current || !supabase) return
+    asked.current = true
+    void supabase.rpc('deactivation_reminders').then(({ data }) => {
+      if (Number(data) > 0) void qc.invalidateQueries({ queryKey: ['notifications'] })
+    })
+  }, [enabled, qc])
 }
 
 /** Manager: departments (name, description, which roles belong). */

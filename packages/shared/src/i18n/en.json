@@ -748,7 +748,11 @@
       "roleDept": "This role does not belong to that department. Choose another department, or add the role to it.",
       "needDept": "Choose a department for a head or an assistant head.",
       "name": "Enter the full name.",
-      "deptTwice": "The same department is chosen twice."
+      "deptTwice": "The same department is chosen twice.",
+      "deleteSelf": "You cannot delete your own account. Another manager must do it.",
+      "lastManager": "This is the clinic's only active manager. Give another employee the Manager role first, then delete this account.",
+      "alreadyDeleted": "This account is already deleted.",
+      "notFound": "This employee was not found. Refresh the page."
     },
     "roles": {
       "receptionist": "Receptionist",
@@ -795,7 +799,8 @@
       "notSent": "The code could not be sent. Try \"Send again\".",
       "wait": "A code was sent less than a minute ago. Wait a moment, then send again.",
       "resend": "Send again",
-      "resendIn": "Send again in {{s}} s"
+      "resendIn": "Send again in {{s}} s",
+      "delete": "Delete the account of {{name}} for good (their records stay)"
     },
     "dept": {
       "none": "No department",
@@ -827,7 +832,38 @@
     "hidePin": "Hide the PIN",
     "copyPin": "Copy the PIN",
     "copied": "Copied",
-    "alsoIn": "also in {{names}}"
+    "alsoIn": "also in {{names}}",
+    "delete": {
+      "button": "Delete",
+      "title": "Delete {{name}}'s account?",
+      "recommendTitle": "Recommended: deactivate instead",
+      "recommendBody": "Deactivating blocks sign-in at once and keeps everything as it is. You can undo it at any time with Reactivate. After a month deactivated, you will be reminded to delete the account if they are not coming back.",
+      "deactivateInstead": "Deactivate instead",
+      "confirmButton": "Delete the account",
+      "happensTitle": "What happens if you delete",
+      "happens": {
+        "signIn": "{{name}} can never sign in again. Their username and e-mail become free for someone else.",
+        "departments": "They leave their departments and their access exceptions. Their calendar is taken off the website.",
+        "devices": "Their trusted devices and temporary PIN are removed.",
+        "waiting": "Patients and tasks waiting for them go back to the desk, so someone else can take them.",
+        "final": "This cannot be undone."
+      },
+      "staysTitle": "What stays (clinic records, not personal ones)",
+      "stays": {
+        "records": "Every visit, note, diagnosis, result, prescription, payment, receipt and stock movement they recorded, and the activity history, keeps their name, marked as a former employee.",
+        "staffId": "Their staff ID is never given to anyone else."
+      },
+      "deactivatedSince_one": "{{name}} has been deactivated since {{date}} ({{count}} day) and already cannot sign in. Deleting also frees their username and e-mail.",
+      "deactivatedSince_other": "{{name}} has been deactivated since {{date}} ({{count}} days) and already cannot sign in. Deleting also frees their username and e-mail.",
+      "done": "{{name}}'s account is deleted. Everything they recorded stays in the clinic's records."
+    },
+    "longDeactivated": {
+      "title": "Deactivated for more than a month",
+      "lead": "If these people are not coming back, you can delete their accounts. Everything they recorded stays.",
+      "since_one": "deactivated since {{date}} ({{count}} day)",
+      "since_other": "deactivated since {{date}} ({{count}} days)",
+      "delete": "Delete account…"
+    }
   },
   "login": {
     "title": "Staff sign in",
@@ -1163,6 +1199,41 @@
       "saved": "Saved “{{name}}”.",
       "errors": {
         "name": "Give the medicine a name."
+      },
+      "ref": {
+        "tag": "RHIA list",
+        "pick": "Pick from the RHIA medicines list",
+        "none": "Choose a medicine on the list",
+        "note": "From the RHIA list: change what the clinic does differently",
+        "rule": "Who may prescribe it (RHIA): {{rule}}",
+        "group": "Group: {{group}}",
+        "clear": "Type a medicine that is not on the list",
+        "byHand": "The RHIA list (June 2026) is the medicines list published by the health insurance authority: picking a medicine fills its name, presentation, unit and list price. A medicine that is not on it can be typed below.",
+        "presentation": "Presentation and strength",
+        "loading": "Loading the RHIA medicines list…",
+        "failed": "The RHIA medicines list could not be loaded. You can still type the medicine by hand.",
+        "ruleBy": "Prescribed only by {{who}} ({{code}})",
+        "ruleHospital": "For hospital use only ({{code}})",
+        "ruleNote": "Costly: the insurer asks for a note explaining why ({{code}})",
+        "whoOr": "or",
+        "who": {
+          "DT": "a dentist",
+          "PED": "a children's doctor (paediatrician)",
+          "IM": "an internal medicine specialist",
+          "SPEC": "a medical specialist",
+          "D": "a skin doctor (dermatologist)",
+          "GYN": "a gynaecologist",
+          "UROL": "a urologist",
+          "OPHT": "an eye doctor (ophthalmologist)",
+          "PSYCH": "a psychiatrist",
+          "NEUROL": "a neurologist",
+          "ONCO": "a cancer specialist (oncologist)",
+          "ENT": "an ear, nose and throat specialist",
+          "SURG": "a surgeon",
+          "CARDIOL": "a heart specialist (cardiologist)",
+          "NEPHRO": "a kidney specialist (nephrologist)",
+          "ORTH": "a bone specialist (orthopaedist)"
+        }
       }
     },
     "tools": {
@@ -2195,7 +2266,9 @@
     "bookedArrived": "Your booked patient {{name}} has arrived",
     "bookedArrivedTriage": "At triage first, then sent to you.",
     "bookedArrivedDesk": "Waiting for you at your desk.",
-    "inquiryDoctor": "For your calendar. Reception books it; you then accept it or move the time."
+    "inquiryDoctor": "For your calendar. Reception books it; you then accept it or move the time.",
+    "deactivatedLong": "{{name}} has been deactivated for {{days}} days",
+    "deactivatedLongBody": "If they are not coming back, you can delete the account on the Employees page. Everything they recorded stays in the clinic's records."
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -3074,7 +3147,17 @@
     "countNow": "The system says {{count}} in this store.",
     "countTitle": "Correct a count",
     "countLead": "After counting a shelf, type what is really there. The difference is kept with its reason.",
-    "reportMonth": "Report month"
+    "reportMonth": "Report month",
+    "ref": {
+      "pickHint": "Choose the medicine, do not type it: the clinic’s medicines come first, then the RHIA medicines list. A medicine from the RHIA list joins the clinic’s medicines when the delivery is recorded.",
+      "title": "New medicine for the clinic (from the RHIA list)",
+      "hint": "These details come from the RHIA list of June 2026. Change what the clinic does differently, such as the name, the unit it is sold by or its price.",
+      "received": "{{quantity}} × {{item}} received, worth {{value}}. {{item}} is now one of the clinic’s medicines, sold at {{price}} per unit.",
+      "failed": "The RHIA medicines list could not be loaded. You can still choose one of the clinic's medicines.",
+      "askHint": "Only the clinic's medicines are listed. For a new medicine, ask the manager or the pharmacy to add it first.",
+      "partial": "{{item}} was added to the clinic's medicines, but the delivery was not recorded ({{error}}). Record the delivery again.",
+      "locked": "Already added to the clinic's medicines: only the delivery is left to record. Change its details under Medicines."
+    }
   },
   "report": {
     "excel": "Excel",

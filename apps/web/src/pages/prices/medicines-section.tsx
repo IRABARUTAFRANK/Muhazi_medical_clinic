@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Pencil, Pill, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Pill, Plus, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +8,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { ShownList } from '@/components/ui/list-tools'
-import { useMedicineActions, useMedicines, type Medicine } from '@/lib/api/catalogue'
+import { SearchSelect } from '@/components/ui/search-select'
+import {
+  medicineRefLabel,
+  medicineRuleText,
+  readableUnit,
+  useMedicineActions,
+  useMedicineReference,
+  useMedicines,
+  type Medicine,
+} from '@/lib/api/catalogue'
 import { cn } from '@/lib/utils'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
@@ -152,6 +161,25 @@ function MedicineForm({
   const [price, setPrice] = useState(medicine?.cashPrice != null ? String(medicine.cashPrice) : '')
   const [active, setActive] = useState(medicine?.active ?? true)
   const [error, setError] = useState<string | null>(null)
+  // a new medicine can be taken from the RHIA list: its code keeps the list's details with it
+  const {
+    data: reference = [],
+    isLoading: refLoading,
+    isError: refFailed,
+  } = useMedicineReference(!medicine)
+  const { data: meds = [] } = useMedicines()
+  const [code, setCode] = useState('')
+  const ref = code ? reference.find((r) => r.code === code) : undefined
+  const clinicCodes = new Set(meds.map((m) => m.code))
+  const pickRef = (value: string) => {
+    setCode(value)
+    const r = reference.find((x) => x.code === value)
+    setName(r?.generic ?? '')
+    setStrength(r?.presentation ?? '')
+    setForm('')
+    setUnit(readableUnit(r?.unit ?? null))
+    setPrice(r?.price == null ? '' : String(r.price))
+  }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -169,6 +197,7 @@ function MedicineForm({
         unit,
         price: Math.round(p),
         active,
+        code: medicine ? undefined : code || undefined,
       })
       onSaved(name.trim())
     } catch (err) {
@@ -184,6 +213,50 @@ function MedicineForm({
         </span>
       </CardHeader>
       <CardBody className="gap-3">
+        {/* while the list loads, or when it cannot be read, say so: typing stays possible */}
+        {!medicine && (refLoading || refFailed) && (
+          <p className="text-ink-3 m-0 text-[13px]">
+            {t(refLoading ? 'prices.meds.ref.loading' : 'prices.meds.ref.failed')}
+          </p>
+        )}
+        {!medicine && reference.length > 0 && (
+          <div className="border-border bg-surface flex flex-col gap-2 rounded-xl border p-3">
+            <SearchSelect
+              label={t('prices.meds.ref.pick')}
+              value={code}
+              onChange={pickRef}
+              emptyLabel={t('prices.meds.ref.none')}
+              options={reference
+                .filter((r) => !clinicCodes.has(r.code) || r.code === code)
+                .map((r) => ({ value: r.code, label: medicineRefLabel(r, t) }))}
+            />
+            {code ? (
+              <>
+                <p className="text-ink-2 m-0 text-[13px]">
+                  {[
+                    t('prices.meds.ref.note'),
+                    ref?.rule ? medicineRuleText(ref.rule, t) : null,
+                    ref?.group ? t('prices.meds.ref.group', { group: ref.group }) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="self-start"
+                  onClick={() => pickRef('')}
+                >
+                  <X size={14} aria-hidden="true" />
+                  {t('prices.meds.ref.clear')}
+                </Button>
+              </>
+            ) : (
+              <p className="text-ink-3 m-0 text-[12px]">{t('prices.meds.ref.byHand')}</p>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field
             label={t('prices.meds.name')}

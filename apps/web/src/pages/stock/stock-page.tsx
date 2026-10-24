@@ -46,6 +46,15 @@ import {
   type StockLocation,
 } from '@/lib/api/stock'
 import { useDepartments } from '@/lib/api/staff'
+import {
+  medicineRefLabel,
+  medicineRuleText,
+  readableUnit,
+  useMedicineActions,
+  useMedicineReference,
+  useMedicines,
+} from '@/lib/api/catalogue'
+import { Reveal } from '@/components/ui/reveal'
 import { useClinicInfo } from '@/lib/api/public'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { stockReport } from '@/lib/reports/build'
@@ -234,7 +243,9 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
           <StockTable items={items} locations={locations} canSetLevel={fullStock} />
         )}
         {tab === 'pharmacy' && <PharmacyDesk canDispense={fullStock} />}
-        {tab === 'receive' && <ReceiveForm items={items} locations={locations} />}
+        {tab === 'receive' && (
+          <ReceiveForm items={items} locations={locations} addsMedicines={fullStock} />
+        )}
         {tab === 'send' && <SendForm items={items} locations={locations} />}
         {tab === 'use' && <UseForm items={items} locations={locations} />}
         {tab === 'medicines' && (
@@ -417,10 +428,65 @@ function StockTable({
 }
 
 /* ---------------------------------------------------------------- receiving */
-function ReceiveForm({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
+/**
+ * A delivery comes in. The medicine is chosen, never typed: the clinic's own medicines first,
+ * then the RHIA medicines list. An entry of that list becomes a clinic medicine on the way in,
+ * with the details of the list where the clinic does not change them. Only who may add medicines
+ * (the manager, the pharmacy) sees the list; the others receive the clinic's medicines.
+ */
+function ReceiveForm({
+  items,
+  locations,
+  addsMedicines,
+}: {
+  items: StockItem[]
+  locations: StockLocation[]
+  addsMedicines: boolean
+}) {
   const { t } = useTranslation()
   const actions = useStockActions()
+  const medicineActions = useMedicineActions()
+  const {
+    data: reference = [],
+    isLoading: refLoading,
+    isError: refFailed,
+  } = useMedicineReference(addsMedicines)
+  const { data: medicines = [] } = useMedicines()
+  // "ref:<code>" = an entry of the RHIA list, otherwise a clinic medicine id
   const [itemId, setItemId] = useState('')
+  const refCode = itemId.startsWith('ref:') ? itemId.slice(4) : null
+  const ref = refCode ? reference.find((r) => r.code === refCode) : undefined
+  // the clinic's details for a medicine taken from the list (prefilled from the list)
+  const [name, setName] = useState('')
+  const [strength, setStrength] = useState('')
+  const [form, setForm] = useState('')
+  const [unit, setUnit] = useState('')
+  const [price, setPrice] = useState('')
+  // created already, but the delivery failed: the next try only records the delivery
+  const [createdId, setCreatedId] = useState<string | null>(null)
+  const clinicCodes = new Set([...items.map((i) => i.code), ...medicines.map((m) => m.code)])
+  const options = [
+    ...items
+      .filter((i) => i.active)
+      .map((i) => ({
+        value: i.id,
+        label: `${i.name}${i.strength ? ` ${i.strength}` : ''}${i.unit ? ` (${i.unit})` : ''}`,
+      })),
+    ...(addsMedicines ? reference : [])
+      .filter((r) => !clinicCodes.has(r.code) || r.code === refCode)
+      .map((r) => ({ value: `ref:${r.code}`, label: medicineRefLabel(r, t) })),
+  ]
+  const pick = (value: string) => {
+    setItemId(value)
+    setCreatedId(null)
+    const r = value.startsWith('ref:') ? reference.find((x) => x.code === value.slice(4)) : null
+    if (!r) return
+    setName(r.generic)
+    setStrength(r.presentation ?? '')
+    setForm('')
+    setUnit(readableUnit(r.unit))
+    setPrice(r.price == null ? '' : String(r.price))
+  }
   const [chosenLocation, setLocationId] = useState('')
   // the main store until another is chosen (the stores may load after the form)
   const locationId =
@@ -432,6 +498,11 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
   const [supplier, setSupplier] = useState('')
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const item = items.find((i) => i.id === itemId)
+  const sellingPrice = refCode
+    ? price === ''
+      ? null
+      : Number(price)
+    : (item?.sellingPrice ?? null)
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
@@ -444,26 +515,84 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
     if (!Number.isFinite(c) || c < 0 || unitCost === '')
       return setMsg({ ok: false, text: t('stock.errors.cost') })
     if (!expiry) return setMsg({ ok: false, text: t('stock.errors.expiry') })
+    const p = Number(price)
+    if (refCode) {
+      if (name.trim().length < 2) return setMsg({ ok: false, text: t('prices.meds.errors.name') })
+      if (!Number.isFinite(p) || p < 0 || price.trim() === '')
+        return setMsg({ ok: false, text: t('prices.errors.price') })
+    }
+    // set once the medicine is among the clinic's medicines, even if the delivery then fails
+    let created = createdId
     try {
+      // first the medicine joins the clinic's medicines (with its price), then the delivery
+      let id = itemId
+      if (refCode) {
+        created ??= await medicineActions.save.mutateAsync({
+          name,
+          strength,
+          form,
+          unit,
+          price: Math.round(p),
+          active: true,
+          code: refCode,
+        })
+        setCreatedId(created)
+        id = created
+      }
       await actions.receive.mutateAsync({
-        itemId,
+        itemId: id,
         locationId,
         quantity: q,
         unitCost: c,
         batchNo,
         expiry,
         supplier,
+        newMedicine: refCode
+          ? {
+              code: refCode,
+              name: name.trim(),
+              strength: strength.trim() || null,
+              unit: unit.trim() || null,
+              sellingPrice: Math.round(p),
+            }
+          : undefined,
       })
+      const value = formatRwf(q * c)
       setMsg({
         ok: true,
-        text: t('stock.received', { count: q, item: item?.name ?? '', value: formatRwf(q * c) }),
+        text: refCode
+          ? t('stock.ref.received', {
+              quantity: q,
+              item: name.trim(),
+              value,
+              price: formatRwf(Math.round(p)),
+            })
+          : t('stock.received', { count: q, item: item?.name ?? '', value }),
       })
+      // from now on it is one of the clinic's medicines
+      if (refCode) {
+        setItemId(id)
+        setCreatedId(null)
+      }
       setQuantity('')
       setBatchNo('')
     } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) })
+      const error = err instanceof Error ? err.message : String(err)
+      setMsg({
+        ok: false,
+        // the medicine was added, only the delivery is missing: say so, or it looks lost
+        text: refCode && created ? t('stock.ref.partial', { item: name.trim(), error }) : error,
+      })
     }
   }
+  // what the line under the picker says about the RHIA list
+  const pickHint = !addsMedicines
+    ? t('stock.ref.askHint')
+    : refLoading
+      ? t('prices.meds.ref.loading')
+      : refFailed
+        ? t('stock.ref.failed')
+        : t('stock.ref.pickHint')
   return (
     <Panel i={1} icon={PackagePlus} tint="mint" title={t('stock.receiveTitle')}>
       <p className="text-ink-2 m-0 text-[13px]">{t('stock.receiveLead')}</p>
@@ -472,15 +601,10 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
           <SearchSelect
             label={t('stock.cols.item')}
             value={itemId}
-            onChange={setItemId}
+            onChange={pick}
             required
             emptyLabel={t('visit.add.pickItem')}
-            options={items
-              .filter((i) => i.active)
-              .map((i) => ({
-                value: i.id,
-                label: `${i.name}${i.strength ? ` ${i.strength}` : ''}${i.unit ? ` (${i.unit})` : ''}`,
-              }))}
+            options={options}
           />
           <Select
             label={t('stock.store')}
@@ -495,6 +619,69 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
             ))}
           </Select>
         </div>
+        <p className="text-ink-3 m-0 text-[12px]">{pickHint}</p>
+        {refCode && (
+          <Reveal block="nearest">
+            <div className="border-border bg-surface flex flex-col gap-3 rounded-xl border p-3">
+              <span>
+                <span className="text-ink block text-[14px] font-bold">{t('stock.ref.title')}</span>
+                <span className="text-ink-3 block text-[13px]">
+                  {t(createdId ? 'stock.ref.locked' : 'stock.ref.hint')}
+                </span>
+              </span>
+              {/* once added to the clinic's medicines, only the delivery is left to record */}
+              <fieldset
+                disabled={!!createdId}
+                className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0 disabled:opacity-60"
+              >
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field
+                    label={t('prices.meds.name')}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                  <Field
+                    label={t('prices.meds.ref.presentation')}
+                    value={strength}
+                    onChange={(e) => setStrength(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field
+                    label={t('prices.meds.form')}
+                    value={form}
+                    placeholder={t('prices.meds.formPh')}
+                    onChange={(e) => setForm(e.target.value)}
+                  />
+                  <Field
+                    label={t('prices.meds.unit')}
+                    value={unit}
+                    placeholder={t('prices.meds.unitPh')}
+                    onChange={(e) => setUnit(e.target.value)}
+                  />
+                  <Field
+                    label={t('prices.meds.price')}
+                    inputMode="numeric"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))}
+                    required
+                  />
+                </div>
+              </fieldset>
+              {ref && (ref.rule || ref.group) && (
+                <p className="text-ink-2 m-0 text-[13px]">
+                  {[
+                    ref.rule ? medicineRuleText(ref.rule, t) : null,
+                    ref.group ? t('prices.meds.ref.group', { group: ref.group }) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
+            </div>
+          </Reveal>
+        )}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field
             label={t('stock.quantity')}
@@ -531,12 +718,11 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
           onChange={(e) => setSupplier(e.target.value)}
           wrapperClassName="sm:max-w-md"
         />
-        {item && Number(quantity) > 0 && unitCost !== '' && (
+        {(item || refCode) && Number(quantity) > 0 && unitCost !== '' && (
           <p className="text-ink-2 m-0 text-[13px]">
             {t('stock.receivePreview', {
               value: formatRwf(Number(quantity) * Number(unitCost)),
-              sell:
-                item.sellingPrice == null ? '—' : formatRwf(Number(quantity) * item.sellingPrice),
+              sell: sellingPrice == null ? '—' : formatRwf(Number(quantity) * sellingPrice),
             })}
           </p>
         )}
@@ -549,7 +735,7 @@ function ReceiveForm({ items, locations }: { items: StockItem[]; locations: Stoc
           type="submit"
           variant="primary"
           className="self-start"
-          loading={actions.receive.isPending}
+          loading={actions.receive.isPending || medicineActions.save.isPending}
         >
           <PackagePlus size={16} aria-hidden="true" />
           {t('stock.receive')}

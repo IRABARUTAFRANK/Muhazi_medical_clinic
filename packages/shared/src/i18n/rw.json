@@ -752,7 +752,11 @@
       "roleDept": "Uru ruhare ntirubarizwa muri iryo shami. Hitamo irindi shami cyangwa urwongere muri iryo shami.",
       "needDept": "Hitamo ishami ku muyobozi cyangwa umwungirije.",
       "name": "Andika amazina yombi.",
-      "deptTwice": "Ishami rimwe ryahiswemo kabiri."
+      "deptTwice": "Ishami rimwe ryahiswemo kabiri.",
+      "deleteSelf": "Ntushobora gusiba konti yawe bwite. Undi muyobozi ni we ugomba kubikora.",
+      "lastManager": "Uyu ni we muyobozi wenyine ukora mu ivuriro. Banza uhe undi mukozi uruhare rw'umuyobozi, hanyuma usibe iyi konti.",
+      "alreadyDeleted": "Iyi konti yamaze gusibwa.",
+      "notFound": "Uyu mukozi ntabonetse. Ongera ufungure urupapuro."
     },
     "roles": {
       "receptionist": "Umwakira",
@@ -799,7 +803,8 @@
       "notSent": "Kode ntiyashoboye koherezwa. Kanda « Ohereza indi ».",
       "wait": "Kode yoherejwe hashize umunota utarashira. Tegereza gato, hanyuma wohereze indi.",
       "resend": "Ohereza indi",
-      "resendIn": "Ohereza indi mu masegonda {{s}}"
+      "resendIn": "Ohereza indi mu masegonda {{s}}",
+      "delete": "Siba burundu konti ya {{name}} (ibyo yanditse bigumaho)"
     },
     "dept": {
       "none": "Nta shami",
@@ -831,7 +836,38 @@
     "hidePin": "Hisha PIN",
     "copyPin": "Koporora PIN",
     "copied": "Byakoporowe",
-    "alsoIn": "ari no muri {{names}}"
+    "alsoIn": "ari no muri {{names}}",
+    "delete": {
+      "button": "Siba",
+      "title": "Gusiba konti ya {{name}}?",
+      "recommendTitle": "Icyo tugusaba: hagarika konti aho kuyisiba",
+      "recommendBody": "Guhagarika konti bibuza kwinjira ako kanya kandi byose bikaguma uko biri. Ushobora kubisubiramo igihe icyo ari cyo cyose ukanze « Subizaho ». Nyuma y'ukwezi konti ihagaritswe, uzibutswa kuyisiba niba uwo muntu atazagaruka.",
+      "deactivateInstead": "Hagarika aho gusiba",
+      "confirmButton": "Siba konti",
+      "happensTitle": "Ibiba iyo usibye konti",
+      "happens": {
+        "signIn": "{{name}} ntazongera kwinjira na rimwe. Izina ukoresha rye na imeyili ye bizashobora guhabwa undi muntu.",
+        "departments": "Avanwa mu mashami yarimo no mu burenganzira bwihariye yari yarahawe. Kalendari ye ikurwa ku rubuga.",
+        "devices": "Ibikoresho byizewe yakoreshaga na PIN ye y'agateganyo bivanwaho.",
+        "waiting": "Abarwayi n'imirimo byari bimutegereje bisubizwa ku kwakira abantu kugira ngo undi muntu abifate.",
+        "final": "Ibi ntibishobora gusubirwamo."
+      },
+      "staysTitle": "Ibigumaho (ni inyandiko z'ivuriro, si iby'umuntu ku giti cye)",
+      "stays": {
+        "records": "Buri gusura, inyandiko, isuzuma, igisubizo, urupapuro rw'imiti, ubwishyu, inyemezabwishyu n'iyinjira cyangwa isohoka ry'ibiri mu bubiko yanditse, hamwe n'amateka y'ibikorwa, bikomeza kugaragaraho izina rye, handitswe ko ari uwahoze ari umukozi.",
+        "staffId": "Nimero ye y'umukozi ntizigera ihabwa undi muntu."
+      },
+      "deactivatedSince_one": "Konti ya {{name}} yahagaritswe kuva ku wa {{date}} (hashize umunsi {{count}}), ntashobora kwinjira. Kuyisiba binarekura izina ukoresha rye na imeyili ye.",
+      "deactivatedSince_other": "Konti ya {{name}} yahagaritswe kuva ku wa {{date}} (hashize iminsi {{count}}), ntashobora kwinjira. Kuyisiba binarekura izina ukoresha rye na imeyili ye.",
+      "done": "Konti ya {{name}} yasibwe. Ibyo yanditse byose bigumye mu nyandiko z'ivuriro."
+    },
+    "longDeactivated": {
+      "title": "Konti zimaze ukwezi zihagaritswe",
+      "lead": "Niba aba bantu batazagaruka, ushobora gusiba konti zabo. Ibyo banditse byose bigumaho.",
+      "since_one": "yahagaritswe kuva ku wa {{date}} (umunsi {{count}})",
+      "since_other": "yahagaritswe kuva ku wa {{date}} (iminsi {{count}})",
+      "delete": "Siba konti…"
+    }
   },
   "login": {
     "title": "Abakozi: injira",
@@ -1761,6 +1797,41 @@
       "saved": "“{{name}}” yabitswe.",
       "errors": {
         "name": "Ha umuti izina."
+      },
+      "ref": {
+        "tag": "urutonde rwa RHIA",
+        "pick": "Hitamo ku rutonde rw’imiti rwa RHIA",
+        "none": "Hitamo umuti ku rutonde",
+        "note": "Byavuye ku rutonde rwa RHIA: hindura ibyo ivuriro rikora ukundi",
+        "rule": "Uwemerewe kuwandika (RHIA): {{rule}}",
+        "group": "Itsinda: {{group}}",
+        "clear": "Andika umuti utari ku rutonde",
+        "byHand": "Urutonde rwa RHIA (Kamena 2026) ni urutonde rw’imiti rwatangajwe n’ikigo gishinzwe ubwishingizi bw’indwara: guhitamo umuti byuzuza izina ryawo, imiterere yawo, uko ugurishwa n’igiciro cy’urutonde. Umuti utari kuri urwo rutonde ushobora kwandikwa hepfo.",
+        "presentation": "Imiterere n’ingano",
+        "loading": "Urutonde rw'imiti rwa RHIA ruri gufunguka…",
+        "failed": "Urutonde rw'imiti rwa RHIA ntirwabashije gufunguka. Ushobora kwandika umuti ubwawe.",
+        "ruleBy": "Wandikwa na {{who}} gusa ({{code}})",
+        "ruleHospital": "Ukoreshwa mu bitaro gusa ({{code}})",
+        "ruleNote": "Urahenze: ubwishingizi busaba ibisobanuro byanditse ({{code}})",
+        "whoOr": "cyangwa",
+        "who": {
+          "DT": "muganga w'amenyo",
+          "PED": "muganga w'abana",
+          "IM": "inzobere mu buvuzi bw'indwara zo mu mubiri imbere",
+          "SPEC": "muganga w'inzobere",
+          "D": "muganga w'indwara z'uruhu",
+          "GYN": "muganga w'indwara z'abagore",
+          "UROL": "muganga w'indwara z'imyanya y'inkari",
+          "OPHT": "muganga w'amaso",
+          "PSYCH": "muganga w'indwara zo mu mutwe",
+          "NEUROL": "muganga w'indwara z'imyakura",
+          "ONCO": "inzobere mu ndwara za kanseri",
+          "ENT": "muganga w'amatwi, izuru n'umuhogo",
+          "SURG": "muganga ubaga",
+          "CARDIOL": "muganga w'indwara z'umutima",
+          "NEPHRO": "muganga w'indwara z'impyiko",
+          "ORTH": "muganga w'amagufwa"
+        }
       }
     },
     "tools": {
@@ -2204,7 +2275,9 @@
     "bookedArrived": "Umurwayi wawe ufite gahunda {{name}} yageze",
     "bookedArrivedTriage": "Abanza gupimwa, hanyuma akoherezwa.",
     "bookedArrivedDesk": "Agutegereje ku mwanya wawe.",
-    "inquiryDoctor": "Ni iya kalendari yawe. Abakira abantu barayitegura; hanyuma uyemere cyangwa uhindure igihe."
+    "inquiryDoctor": "Ni iya kalendari yawe. Abakira abantu barayitegura; hanyuma uyemere cyangwa uhindure igihe.",
+    "deactivatedLong": "Konti ya {{name}} imaze iminsi {{days}} ihagaritswe",
+    "deactivatedLongBody": "Niba atazagaruka, ushobora gusiba konti ye ku rupapuro rw'Abakozi. Ibyo yanditse byose bigumaho mu nyandiko z'ivuriro."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -3083,7 +3156,17 @@
     "countNow": "Sisitemu ivuga {{count}} muri ubu bubiko.",
     "countTitle": "Kosora ibarura",
     "countLead": "Umaze kubara ibiri ku gipangu, andika ibihari koko. Ikinyuranyo kibikwa n’impamvu yacyo.",
-    "reportMonth": "Ukwezi kwa raporo"
+    "reportMonth": "Ukwezi kwa raporo",
+    "ref": {
+      "pickHint": "Hitamo umuti, ntuwandike: imiti y’ivuriro ibanza, hagakurikiraho urutonde rw’imiti rwa RHIA. Umuti uvuye ku rutonde rwa RHIA winjira mu miti y’ivuriro iyo ibyinjiye byanditswe.",
+      "title": "Umuti mushya w’ivuriro (uvuye ku rutonde rwa RHIA)",
+      "hint": "Ibi bisobanuro bivuye ku rutonde rwa RHIA rwo muri Kamena 2026. Hindura ibyo ivuriro rikora ukundi, nk’izina, uko ugurishwa cyangwa igiciro cyawo.",
+      "received": "{{quantity}} × {{item}} byakiriwe, agaciro {{value}}. {{item}} ubu ni umwe mu miti y’ivuriro, ugurishwa {{price}} kuri kimwe.",
+      "failed": "Urutonde rw'imiti rwa RHIA ntirwabashije gufunguka. Ushobora guhitamo umwe mu miti ivuriro risanganywe.",
+      "askHint": "Hagaragara imiti y'ivuriro gusa. Ku muti mushya, saba umuyobozi cyangwa farumasi kubanza kuwongeramo.",
+      "partial": "{{item}} wongewe mu miti y'ivuriro, ariko ibyakiriwe ntibyanditswe ({{error}}). Ongera wandike ibyakiriwe.",
+      "locked": "Wamaze kongerwa mu miti y'ivuriro: hasigaye kwandika ibyakiriwe gusa. Hindura amakuru yawo muri Imiti."
+    }
   },
   "report": {
     "excel": "Excel",
