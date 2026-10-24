@@ -419,17 +419,30 @@ export function ClinicalCard({
     void run(() => actions.finishVisit.mutateAsync(), t('clinical.finished'))
   }
 
-  const tabBtn = (k: NonNullable<typeof mode>, label: string, icon: React.ReactNode) => (
-    <Button
-      size="sm"
-      variant={mode === k ? 'primary' : 'default'}
-      onClick={() => setMode(mode === k ? null : k)}
-      disabled={k === 'test' ? !((clinician || deskStaff) && can('orders.write')) : !clinician}
-    >
-      {icon}
-      {label}
-    </Button>
-  )
+  // A clinician without the right to request tests (a nurse, by default) is told why the button
+  // is greyed and where treatments given here go.
+  const noTests = clinician && !can('orders.write')
+  const tabBtn = (k: NonNullable<typeof mode>, label: string, icon: React.ReactNode) => {
+    const btn = (
+      <Button
+        size="sm"
+        variant={mode === k ? 'primary' : 'default'}
+        onClick={() => setMode(mode === k ? null : k)}
+        disabled={k === 'test' ? !((clinician || deskStaff) && can('orders.write')) : !clinician}
+      >
+        {icon}
+        {label}
+      </Button>
+    )
+    // a greyed button takes no pointer: the explanation sits on its wrapper
+    return k === 'test' && noTests ? (
+      <span title={t('clinical.testsWhoTitle')} className="inline-flex">
+        {btn}
+      </span>
+    ) : (
+      btn
+    )
+  }
 
   return (
     <Card>
@@ -516,6 +529,7 @@ export function ClinicalCard({
         {!clinician && !readOnly && (
           <p className="text-ink-3 m-0 text-xs">{t('clinical.readOnly')}</p>
         )}
+        {noTests && <p className="text-ink-3 m-0 text-xs">{t('clinical.testsWhoHint')}</p>}
 
         {mode === 'note' && (
           <Reveal focus block="nearest">

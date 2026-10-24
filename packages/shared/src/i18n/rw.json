@@ -689,8 +689,8 @@
       "username": "Izina ukoresha",
       "usernameHint": "Inyuguti nto, imibare, akadomo, akarongo cyangwa _ (3–32).",
       "role": "Uruhare",
-      "station": "Aho akorera",
-      "stationPh": "Gusuzuma 1, Ibipimo, Amenyo…",
+      "station": "Izina ry'aho akorera (si ngombwa)",
+      "stationPh": "Gusuzuma 1, Amenyo 2, Icyumba 4…",
       "dashboard": "Uburenganzira ku mbonerahamwe",
       "dashboardNone": "Nta na bumwe",
       "dashboardHead": "Umuyobozi w'ishami (nta mafaranga)",
@@ -713,7 +713,7 @@
       "noDepartments": "Nta mashami ariho: yafungure mu gice cy’Amashami, hanyuma ushyiremo abakozi.",
       "saveChanges": "Bika impinduka",
       "specialty": "Ubuhanga cyangwa umwanya",
-      "specialtyPh": "urugero: Kubaga bito, Abana, Umubyaza",
+      "specialtyPh": "urugero: Muganga w'amenyo, Umuganga ubaga, Umubyaza",
       "departments": "Amashami",
       "mainDepartment": "Ishami rikuru",
       "pickDepartment": "Hitamo ishami",
@@ -723,7 +723,26 @@
       "noDepartmentYet": "Ntaraba mu ishami na rimwe.",
       "manyHint": "Umukozi akora muri buri shami muri aya, afite umwanya afitemo. Irya mbere ni ryo rikuru (rigaragara ku rupapuro rwe rw’itangiriro).",
       "replacesHead": "{{name}} ni we uyobora {{dept}} ubu. Ishami rigira umuyobozi umwe: kubika bigira {{name}} umwungiriza.",
-      "positionsHint": "Umuyobozi: umwe kuri buri shami, abona imbonerahamwe y’ishami kandi yandikira ishami. Umwungiriza: asimbura umuyobozi, imbonerahamwe n’ubutumwa bimwe. Umunyamuryango: akora mu bice by’ishami."
+      "positionsHint": "Umuyobozi: umwe kuri buri shami, abona imbonerahamwe y’ishami kandi yandikira ishami. Umwungiriza: asimbura umuyobozi, imbonerahamwe n’ubutumwa bimwe. Umunyamuryango: akora mu bice by’ishami.",
+      "roleDoes": {
+        "receptionist": "Yandika abarwayi, afata gahunda kandi akohereza abarwayi aho bakwiye kujya.",
+        "cashier": "Yakira amafaranga, atanga inyemezabwishyu kandi akabara amafaranga yo mu isanduku.",
+        "nurse": "Afata ibipimo by'ibanze, atanga ubuvuzi n'imiti, akora triage.",
+        "doctor": "Asuzuma umurwayi, amenya indwara, yandika imiti kandi agasaba ibizamini.",
+        "sonographer": "Akora ecografiya kandi akandika ibisubizo byazo.",
+        "lab_tech": "Afata ibyitegererezwa, akora ibizamini bya laboratwari kandi akandika ibisubizo.",
+        "pharmacist": "Atanga imiti, agurisha ku idirishya kandi agacunga ububiko.",
+        "manager": "Abona byose: amafaranga, abakozi, ibiciro, igenamiterere na raporo."
+      },
+      "specialtyHint": "Icyo uyu mukozi azobereyemo. Abakozi bagenzi be barakibona, n'abarwayi bakakibona kuri kalendari y'urubuga.",
+      "specialtyDoctorHint": "Shyiramo icyo muganga azobereyemo (Muganga rusange, Muganga w'amenyo, Umuganga ubaga…). Abakozi n'abarwayi barakibona, kandi igihe nta shami afite cyongeraho serivisi yacyo (Muganga w'amenyo → Kuvura amenyo).",
+      "departmentsHint": "Aho uyu mukozi akorera. Serivisi z'aya mashami ni zo zigena abarwayi bamugeraho, mbere y'icyo azobereyemo cyangwa izina ry'aho akorera.",
+      "worksIn": "Akora muri:",
+      "worksAtRoleDesk": "Akorera aho uruhare rwe rukorera (kwakira abarwayi, isanduku cyangwa amapaji y'umuyobozi), si muri serivisi.",
+      "deptNoService": "{{names}}: nta serivisi irashyirwaho. Zishyireho mu gice cy'Amashami.",
+      "stationHint": "Izina ry'aho akorera rigaragara kuri ecran no ku matike. Rihe izina ry'icyumba (Amenyo 1, Icyumba cyo kubagiramo…): umurongo w'abarwayi be ufungukira aho.",
+      "byRole": "Nta shami riratanga serivisi, bityo ibi bigenwa n'uruhare rwe. Nimuhitamo ishami rifite serivisi, ni ryo rizajya rigena.",
+      "byRoleDoctor": "Nta shami riratanga serivisi, bityo ibi bigenwa n'izina ry'aho akorera (Gusuzuma, keretse rivuga ikindi cyumba) n'icyo azobereyemo, cyongeraho serivisi yacyo (Muganga w'amenyo → Kuvura amenyo, Umuganga ubaga → Kubaga byoroheje). Nimuhitamo ishami rifite serivisi, ni ryo rizajya rigena."
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -762,7 +781,7 @@
       "receptionist": "Umwakira",
       "cashier": "Umucungamari",
       "nurse": "Umuforomo",
-      "doctor": "Muganga / muganga w'amenyo",
+      "doctor": "Muganga",
       "sonographer": "Ukora ekografi",
       "lab_tech": "Umutekinisiye wa laboratwari",
       "pharmacist": "Umufarumasiye",
@@ -850,16 +869,29 @@
         "departments": "Avanwa mu mashami yarimo no mu burenganzira bwihariye yari yarahawe. Kalendari ye ikurwa ku rubuga.",
         "devices": "Ibikoresho byizewe yakoreshaga na PIN ye y'agateganyo bivanwaho.",
         "waiting": "Abarwayi n'imirimo byari bimutegereje bisubizwa ku kwakira abantu kugira ngo undi muntu abifate.",
-        "final": "Ibi ntibishobora gusubirwamo."
+        "final": "Ibi ntibishobora gusubirwamo.",
+        "notices": "Ubutumwa n'amatangazo byamwoherejwe birasibwa, harimo n'ubutumwa bagenzi be bamwandikiye.",
+        "noticesCount_one": "Ubutumwa cyangwa itangazo {{count}} yohererejwe birasibwa, harimo n'ubutumwa bagenzi be bamwandikiye.",
+        "noticesCount_other": "Ubutumwa n'amatangazo {{count}} yohererejwe birasibwa, harimo n'ubutumwa bagenzi be bamwandikiye."
       },
       "staysTitle": "Ibigumaho (ni inyandiko z'ivuriro, si iby'umuntu ku giti cye)",
       "stays": {
         "records": "Buri gusura, inyandiko, isuzuma, igisubizo, urupapuro rw'imiti, ubwishyu, inyemezabwishyu n'iyinjira cyangwa isohoka ry'ibiri mu bubiko yanditse, hamwe n'amateka y'ibikorwa, bikomeza kugaragaraho izina rye, handitswe ko ari uwahoze ari umukozi.",
-        "staffId": "Nimero ye y'umukozi ntizigera ihabwa undi muntu."
+        "staffId": "Nimero ye y'umukozi ntizigera ihabwa undi muntu.",
+        "recordsName": "Buri gusura, inyandiko, isuzuma, igisubizo, urupapuro rw'imiti, ubwishyu, inyemezabwishyu n'iyinjira cyangwa isohoka ry'ibiri mu bubiko yanditse, hamwe n'amateka y'ibikorwa, bikomeza kugaragaraho izina rye."
       },
       "deactivatedSince_one": "Konti ya {{name}} yahagaritswe kuva ku wa {{date}} (hashize umunsi {{count}}), ntashobora kwinjira. Kuyisiba binarekura izina ukoresha rye na imeyili ye.",
       "deactivatedSince_other": "Konti ya {{name}} yahagaritswe kuva ku wa {{date}} (hashize iminsi {{count}}), ntashobora kwinjira. Kuyisiba binarekura izina ukoresha rye na imeyili ye.",
-      "done": "Konti ya {{name}} yasibwe. Ibyo yanditse byose bigumye mu nyandiko z'ivuriro."
+      "done": "Konti ya {{name}} yasibwe. Ibyo yanditse byose bigumye mu nyandiko z'ivuriro.",
+      "now": {
+        "patients_one": "umurwayi {{count}} ubu",
+        "patients_other": "abarwayi {{count}} ubu",
+        "tasks_one": "umurimo {{count}} utarakorwa",
+        "tasks_other": "imirimo {{count}} itarakorwa"
+      },
+      "appointments": "Gahunda zari zarafashwe kuri kalendari ya {{name}} ziguma uko ziri. Ntizimurwa ubwazo: zimurire ku wundi muganga cyangwa uhamagare abarwayi.",
+      "appointmentsCount_one": "Gahunda {{count}} iri imbere yafashwe kuri kalendari ya {{name}}. Iguma uko iri kandi ntimurwa ubwayo: yimurire ku wundi muganga cyangwa uhamagare umurwayi.",
+      "appointmentsCount_other": "Gahunda {{count}} ziri imbere zafashwe kuri kalendari ya {{name}}. Ziguma uko ziri kandi ntizimurwa ubwazo: zimurire ku wundi muganga cyangwa uhamagare abarwayi."
     },
     "longDeactivated": {
       "title": "Konti zimaze ukwezi zihagaritswe",
@@ -897,7 +929,16 @@
     "trustHint": "Ubutaha kuri iyi mashakisha, nimero y’umukozi, izina ukoresha na PIN birahagije — nta kode kuri imeyili kugeza igihe cyo kwizerwa kirangiye. Kuraho akamenyetso kuri mudasobwa ihuriweho.",
     "firstPinLead": "Ni ubwa mbere winjira ukoresheje PIN wahawe n’umuyobozi. Hitamo imibare itandatu uzi wenyine; hanyuma kode yoherezwa kuri e-mail yawe kugira ngo wemeze.",
     "firstPinSave": "Bika PIN yanjye wohereze kode",
-    "firstPinSaved": "PIN yawe yabitswe. Andika kode tumaze kukoherereza."
+    "firstPinSaved": "PIN yawe yabitswe. Andika kode tumaze kukoherereza.",
+    "sessionHint": "Ugumamo igihe cyose ukora. Nyuma y'amasaha nta gikorwa, cyangwa iyo usohotse, uzakenera kode nshya.",
+    "ended": {
+      "idle_one": "Wasohowe nyuma y'isaha {{count}} nta gikorwa.",
+      "idle_other": "Wasohowe nyuma y'amasaha {{count}} nta gikorwa.",
+      "signedOut": "Wasohotse.",
+      "wrongPins": "Wasohowe nyuma ya PIN 5 zitari zo kuri ecran ifunze.",
+      "ended": "Kwinjira kwawe kwarangiye.",
+      "next": "Ongera winjire: nimero y'umukozi, izina ukoresha na PIN, hanyuma kode nshya tukoherereza kuri imeyili."
+    }
   },
   "register": {
     "title": "Kwandika umurwayi",
@@ -1018,7 +1059,11 @@
       "generic": "Ntibyabitswe: {{message}}"
     },
     "takenBadge": "Ibipimo byafashwe",
-    "levelOptional": "Ibara ry’ubukana (niba urihaye ubu)"
+    "levelOptional": "Ibara ry’ubukana (niba urihaye ubu)",
+    "forName": "kwa {{name}}",
+    "forYou": "kuri wowe",
+    "lockedFor": "Yoherejwe kwa {{name}}: ni {{name}} wenyine ufata ibipimo akohereza uyu murwayi aho akurikira. Ushobora kureba ariko ntugire icyo uhindura.",
+    "lockedSection": "Abaforomo bakora aho bafatira ibipimo (triage) ni bo bonyine bafata ibipimo bakohereza uyu murwayi aho akurikira. Ushobora kureba ariko ntugire icyo uhindura."
   },
   "settings": {
     "title": "Igenamiterere ry'ivuriro",
@@ -1148,7 +1193,7 @@
       },
       "security": {
         "title": "Umutekano",
-        "hint": "Gufunga paji, kode yo kwinjira kuri e-mail"
+        "hint": "Gusohoka nyuma y'amasaha nta gikorwa"
       },
       "patient": {
         "title": "Ibice bya dosiye",
@@ -1172,6 +1217,23 @@
       "triageFirstHint": "Buri murwayi anyura kuri triage: umuforomo afata ibipimo, ahitamo ibara, akohereza umurwayi.",
       "saved": "Byabitswe. Abandikishwa bashya bakurikiza iyi nzira.",
       "vitalsNote": "Uko byagenda kose, buri ecran yerekana niba ibipimo byafashwe."
+    },
+    "session": {
+      "title": "Igihe cyo kuba winjiye",
+      "lead_one": "Ecran iguma yinjiye igihe cyose ikoreshwa. Nyuma y'isaha {{count}} nta gikorwa, irasohoka, kandi kongera kwinjira bisaba kode nshya yoherejwe kuri imeyili.",
+      "lead_other": "Ecran iguma yinjiye igihe cyose ikoreshwa. Nyuma y'amasaha {{count}} nta gikorwa, irasohoka, kandi kongera kwinjira bisaba kode nshya yoherejwe kuri imeyili.",
+      "rule1_one": "Buri paji ibara ibikorwa byayo: gukanda, kwandika, gukora kuri ecran cyangwa kumanura. Nyuma y'isaha {{count}} nta na kimwe, paji irasohoka.",
+      "rule1_other": "Buri paji ibara ibikorwa byayo: gukanda, kwandika, gukora kuri ecran cyangwa kumanura. Nyuma y'amasaha {{count}} nta na kimwe, paji irasohoka.",
+      "rule2": "Iminota 10 mbere, haza ubutumwa bwo kuburira; gukanda cyangwa kwandika bigumisha umuntu muri sisitemu.",
+      "rule3": "Gusohoka, cyangwa PIN 5 zitari zo kuri ecran ifunze, bisohora paji zose z'uwo muntu muri iyi mushakisha, kandi kwinjira gukurikira bisaba kode nshya yoherejwe kuri imeyili.",
+      "rule4_one": "Indi paji muri iyo mushakisha yinjira ikoresheje nimero y'umukozi, izina ukoresha na PIN, nta kode nshya, igihe cyose uwo muntu yakoze muri yo mu isaha {{count}} ishize.",
+      "rule4_other": "Indi paji muri iyo mushakisha yinjira ikoresheje nimero y'umukozi, izina ukoresha na PIN, nta kode nshya, igihe cyose uwo muntu yakoze muri yo mu masaha {{count}} ashize.",
+      "rule5": "“Funga ecran ubu” igumisha akazi gafunguye inyuma ya PIN; igihe ecran imaze ifunze kibarwa nk'igihe nta gikorwa.",
+      "length": "Gusohoka nyuma ya",
+      "hours_one": "isaha {{count}} nta gikorwa",
+      "hours_other": "amasaha {{count}} nta gikorwa",
+      "saved": "Byabitswe. Ecran zifunguye zikurikiza amasaha mashya mu minota mike.",
+      "revokeHint": "“Ongera usabe kode ku bikoresho byose” ihagarika urufunguzo rwa buri mushakisha: kwinjira gukurikira kwa buri wese bisaba kode nshya yoherejwe kuri imeyili. Ecran zisanzwe zinjiye zigumamo."
     }
   },
   "pin": {
@@ -1196,7 +1258,13 @@
     "soon_one": "Nta gikorwa: ecran irifunga mu isegonda {{count}}.",
     "soon_other": "Nta gikorwa: ecran irifunga mu masegonda {{count}}.",
     "stay": "Ndahari",
-    "switch": "Si wowe? Sohoka"
+    "switch": "Si wowe? Sohoka",
+    "byYouTitle": "Wafunze ecran",
+    "byYouBody": "Andika PIN yawe ukomeze nka {{name}}.",
+    "wrongLeft_one": "PIN si yo. Usigaje igerageza {{count}} mbere yo gusohorwa.",
+    "wrongLeft_other": "PIN si yo. Usigaje amagerageza {{count}} mbere yo gusohorwa.",
+    "idleSignOut_one": "Niba ecran idafunguwe bitarenze {{time}} (isaha {{count}} nta gikorwa), urasohorwa kandi uzakenera kode nshya yoherejwe kuri imeyili.",
+    "idleSignOut_other": "Niba ecran idafunguwe bitarenze {{time}} (amasaha {{count}} nta gikorwa), urasohorwa kandi uzakenera kode nshya yoherejwe kuri imeyili."
   },
   "visit": {
     "patientFile": "Dosiye y'umurwayi",
@@ -1567,7 +1635,9 @@
     "roomNoStock": "{{names}}: ntibyabonetse mu bubiko bwa hano, ntibyakuwe mu bubiko.",
     "returnWhy": "Kuki {{item}} igarutse? (umuti utari wo, utafunguwe…)",
     "returned": "{{item}} yasubiye mu bubiko kandi yavanywe kuri fagitire.",
-    "returnMedicine": "Wagaruwe"
+    "returnMedicine": "Wagaruwe",
+    "testsWhoTitle": "Ba muganga ni bo bonyine basaba ibizamini. Umuyobozi ashobora kubyemera muri Igenamiterere → Ukora iki.",
+    "testsWhoHint": "Ba muganga ni bo basaba ibizamini (na laboratwari cyangwa echographie, ku biro byabo bwite); umuyobozi ashobora kubyemerera abandi muri Igenamiterere → Ukora iki. Ubuvuzi utanga hano bushyirwa muri Ongeraho ubuvuzi."
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -2027,7 +2097,9 @@
     "edit": "Hindura ibipimo",
     "sendOn": "Mwohereze (ibipimo byamaze gufatwa)",
     "notTakenBanner": "Ibipimo ntibirafatwa kuri uru ruzinduko. Bifate mbere yo gusuzuma.",
-    "noneShort": "Nta bipimo"
+    "noneShort": "Nta bipimo",
+    "nurseSendsOn": "Wandika ibipimo gusa: umuforomo ni we utanga ibara ry'uburemere akohereza umurwayi aho akurikira.",
+    "notSentOn": "Umurwayi ntiyoherejwe: {{message}}"
   },
   "ops": {
     "appts": {
@@ -2694,7 +2766,8 @@
       },
       "security": {
         "lock": "Gufunga ecran",
-        "otp": "Kode yo kwinjira ya e-mail"
+        "otp": "Kode yo kwinjira ya e-mail",
+        "session": "Igihe cyo kuba winjiye (amasaha nta gikorwa)"
       }
     },
     "openVisit": "Fungura uruzinduko"
@@ -2832,7 +2905,8 @@
     "tiles": {
       "collected": "Byishyuwe uyu munsi",
       "openBills": "Fagitire zo kwishyuza",
-      "mine": "Nakiriye"
+      "mine": "Nakiriye",
+      "collectedIn": "Byishyuwe {{period}}"
     },
     "toCollect": "zo kwishyuza",
     "section": "Fagitire n’ubwishyu",
@@ -2887,7 +2961,10 @@
     "refundsTitle": "Amafaranga yasubijwe uyu munsi",
     "reprint": "Fungura uruzinduko wongere usohore inyemezabwishyu",
     "countEmpty": "Andika ayo wabaze nibura ku buryo bumwe bwo kwishyura (andika 0 niba nta yo ufite).",
-    "countHint": "Andika ayo ufite; ikinyuranyo kigaragara uko wandika."
+    "countHint": "Andika ayo ufite; ikinyuranyo kigaragara uko wandika.",
+    "byMethodIn": "Uko abarwayi bishyuye {{period}}",
+    "paymentsIn": "Ubwishyu bwakiriwe {{period}}",
+    "periodNeedsUpdate": "Ibindi bihe bisaba ivugurura rishya ry'ububiko bw'amakuru. Imibare iri hasi ni iy'uyu munsi."
   },
   "calendar": {
     "title": "Ingengabihe yanjye",
@@ -3166,7 +3243,9 @@
       "askHint": "Hagaragara imiti y'ivuriro gusa. Ku muti mushya, saba umuyobozi cyangwa farumasi kubanza kuwongeramo.",
       "partial": "{{item}} wongewe mu miti y'ivuriro, ariko ibyakiriwe ntibyanditswe ({{error}}). Ongera wandike ibyakiriwe.",
       "locked": "Wamaze kongerwa mu miti y'ivuriro: hasigaye kwandika ibyakiriwe gusa. Hindura amakuru yawo muri Imiti."
-    }
+    },
+    "sendExpiredNote_one": "Uyu muti ufite igice {{count}} cyarengeje igihe mu bubiko. Ibice byarengeje igihe ntibyoherezwa, bityo ububiko bushobora kugira bike byo kohereza kurusha ibigaragara hano. Bikure mu bubiko muri Gukoresha cyangwa gukura mu bubiko.",
+    "sendExpiredNote_other": "Uyu muti ufite ibice {{count}} byarengeje igihe mu bubiko. Ibice byarengeje igihe ntibyoherezwa, bityo ububiko bushobora kugira bike byo kohereza kurusha ibigaragara hano. Bikure mu bubiko muri Gukoresha cyangwa gukura mu bubiko."
   },
   "report": {
     "excel": "Excel",
@@ -3530,7 +3609,11 @@
     "labelDays_other": "mu minsi {{count}}",
     "forThisPatient": "Imiti yo guha uyu murwayi",
     "shortExplain": "{{item}}: farumasi ifite {{have}}, handitswe {{need}}. Banza uwakire, cyangwa werekane ko utatanzwe.",
-    "receiveIt": "Kwakira imiti"
+    "receiveIt": "Kwakira imiti",
+    "sendIt_one": "Ohereza uvuye mu bubiko bundi ({{count}} irimo)",
+    "sendIt_other": "Ohereza uvuye mu bubiko bundi ({{count}} irimo)",
+    "shortSendExplain_one": "{{item}}: farumasi ifite {{have}}, handitswe {{need}}. Ububiko bundi bufite {{count}}: banza uwohereze muri farumasi, cyangwa werekane ko utatanzwe.",
+    "shortSendExplain_other": "{{item}}: farumasi ifite {{have}}, handitswe {{need}}. Ububiko bundi bufite {{count}}: banza uyohereze muri farumasi, cyangwa werekane ko utatanzwe."
   },
   "queuePage": {
     "title": "Umurongo wanjye · {{desk}}",
@@ -3568,7 +3651,8 @@
     },
     "rxSearch": "Shaka umurwayi, umuti cyangwa dosiye",
     "noRx": "Nta muti wanditswe muri iki gihe.",
-    "loading": "Biraza…"
+    "loading": "Biraza…",
+    "periodNeedsUpdate": "Sisitemu ikeneye ivugurura riheruka kugira ngo yerekane urutonde rurengeje iminsi 90. Kugeza icyo gihe, hagaragara iminsi 90 ya nyuma gusa."
   },
   "receipt": {
     "title": "Inyemezabwishyu",
@@ -3706,5 +3790,18 @@
     "matches_one": "Habonetse {{count}}: gihitemo",
     "matches_other": "Habonetse {{count}}: hitamo kimwe",
     "more": "… n’ibindi {{count}}: ongeraho inyuguti"
+  },
+  "session": {
+    "duration": {
+      "hm": "amasaha {{h}} n'iminota {{m}}",
+      "h": "amasaha {{h}}",
+      "m": "iminota {{m}}"
+    },
+    "idleFor": "Nta gikorwa kimaze {{time}}.",
+    "signOutIn_one": "Uzasohorwa mu munota {{count}}; kanda ahantu cyangwa wandike ikintu ngo ugumemo.",
+    "signOutIn_other": "Uzasohorwa mu minota {{count}}; kanda ahantu cyangwa wandike ikintu ngo ugumemo.",
+    "after": "Nyuma yaho, uzongera winjire ukoresheje kode nshya yoherejwe kuri imeyili.",
+    "rule_one": "Usohorwa nyuma y'isaha {{count}} nta gikorwa",
+    "rule_other": "Usohorwa nyuma y'amasaha {{count}} nta gikorwa"
   }
 }

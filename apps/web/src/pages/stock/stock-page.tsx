@@ -79,6 +79,14 @@ const TABS: { id: Tab; icon: typeof Package }[] = [
   { id: 'sales', icon: Coins },
   { id: 'stores', icon: Store },
 ]
+/** What a form opens with: the medicine, the store to receive into, the store to send to. */
+export interface StockPreset {
+  item?: string
+  location?: string
+  to?: string
+}
+/** Opens Receive or Send already filled in (the pharmacy desk's short medicine). */
+export type OpenStock = (tab: 'receive' | 'send', preset: StockPreset) => void
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
 /**
@@ -86,12 +94,29 @@ const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-s
  * and the value of the stock; receiving; sending a quantity to a department or a doctor's
  * office; the pharmacy hand-over queue; the ledger; what was sold and the margin.
  */
-export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: Tab }) {
+export function StockPage({
+  user,
+  initialTab,
+  preset: initialPreset,
+}: {
+  user: StaffUser
+  initialTab?: Tab
+  /** From the address: the medicine and stores the Receive / Send form starts with. */
+  preset?: StockPreset
+}) {
   const { t } = useTranslation()
   // the pharmacist starts at the hand-over desk
   const [tab, setTab] = useState<Tab>(
     initialTab ?? (user.role === 'pharmacist' ? 'pharmacy' : 'stock'),
   )
+  const [preset, setPreset] = useState<StockPreset>(initialPreset ?? {})
+  // each time the desk opens a form, it starts again with the new medicine and store
+  const [opened, setOpened] = useState(0)
+  const openStock: OpenStock = (to, p) => {
+    setPreset(p)
+    setTab(to)
+    setOpened((n) => n + 1)
+  }
   const { data, error } = useStockOverview()
   const { data: queue = [] } = usePharmacyQueue()
   const now = useNow(60_000)
@@ -217,7 +242,11 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
               type="button"
               role="tab"
               aria-selected={tab === x.id}
-              onClick={() => setTab(x.id)}
+              onClick={() => {
+                // a tab chosen by hand opens empty
+                setTab(x.id)
+                setPreset({})
+              }}
               className={cn(
                 'inline-flex min-h-10 items-center gap-2 rounded-lg px-3.5 text-[14px] font-semibold whitespace-nowrap',
                 tab === x.id ? 'bg-navy text-white' : 'text-ink-2 hover:bg-hover',
@@ -242,11 +271,19 @@ export function StockPage({ user, initialTab }: { user: StaffUser; initialTab?: 
         {tab === 'stock' && (
           <StockTable items={items} locations={locations} canSetLevel={fullStock} />
         )}
-        {tab === 'pharmacy' && <PharmacyDesk canDispense={fullStock} />}
+        {tab === 'pharmacy' && <PharmacyDesk canDispense={fullStock} onOpenStock={openStock} />}
         {tab === 'receive' && (
-          <ReceiveForm items={items} locations={locations} addsMedicines={fullStock} />
+          <ReceiveForm
+            key={opened}
+            items={items}
+            locations={locations}
+            addsMedicines={fullStock}
+            preset={preset}
+          />
         )}
-        {tab === 'send' && <SendForm items={items} locations={locations} />}
+        {tab === 'send' && (
+          <SendForm key={opened} items={items} locations={locations} preset={preset} />
+        )}
         {tab === 'use' && <UseForm items={items} locations={locations} />}
         {tab === 'medicines' && (
           <MedicinesTab canEdit={user.role === 'manager' || user.role === 'pharmacist'} />
@@ -438,10 +475,13 @@ function ReceiveForm({
   items,
   locations,
   addsMedicines,
+  preset,
 }: {
   items: StockItem[]
   locations: StockLocation[]
   addsMedicines: boolean
+  /** The medicine and the store to start with (e.g. a medicine the pharmacy is short of). */
+  preset?: StockPreset
 }) {
   const { t } = useTranslation()
   const actions = useStockActions()
@@ -453,7 +493,7 @@ function ReceiveForm({
   } = useMedicineReference(addsMedicines)
   const { data: medicines = [] } = useMedicines()
   // "ref:<code>" = an entry of the RHIA list, otherwise a clinic medicine id
-  const [itemId, setItemId] = useState('')
+  const [itemId, setItemId] = useState(preset?.item ?? '')
   const refCode = itemId.startsWith('ref:') ? itemId.slice(4) : null
   const ref = refCode ? reference.find((r) => r.code === refCode) : undefined
   // the clinic's details for a medicine taken from the list (prefilled from the list)
@@ -488,9 +528,12 @@ function ReceiveForm({
     setPrice(r.price == null ? '' : String(r.price))
   }
   const [chosenLocation, setLocationId] = useState('')
-  // the main store until another is chosen (the stores may load after the form)
+  // the store asked for (e.g. the pharmacy), else the main store, until another is chosen
+  // (the stores may load after the form)
+  const presetLocation = locations.find((l) => l.id === preset?.location)?.id
   const locationId =
-    chosenLocation || (locations.find((l) => l.type === 'main_store')?.id ?? locations[0]?.id ?? '')
+    chosenLocation ||
+    (presetLocation ?? locations.find((l) => l.type === 'main_store')?.id ?? locations[0]?.id ?? '')
   const [quantity, setQuantity] = useState('')
   const [unitCost, setUnitCost] = useState('')
   const [batchNo, setBatchNo] = useState('')
@@ -746,18 +789,40 @@ function ReceiveForm({
 }
 
 /* ---------------------------------------------------------------- sending to a desk */
-function SendForm({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
+function SendForm({
+  items,
+  locations,
+  preset,
+}: {
+  items: StockItem[]
+  locations: StockLocation[]
+  /** The medicine and the store to send to (e.g. the pharmacy, short of it). */
+  preset?: StockPreset
+}) {
   const { t } = useTranslation()
   const actions = useStockActions()
-  const [itemId, setItemId] = useState('')
+  const [itemId, setItemId] = useState(preset?.item ?? '')
+  const [chosenTo, setTo] = useState('')
+  const to = chosenTo || (locations.find((l) => l.id === preset?.to)?.id ?? '')
+  const item = items.find((i) => i.id === itemId)
+  // expired units are never sent: count only usable stock when the database gives it per store
+  const usableAt = (id: string) =>
+    item ? ((item.byLocationUsable ?? item.byLocation)[id] ?? 0) : 0
+  // the figures per store may still include expired units (the database does not split them yet)
+  const mayIncludeExpired = !!item && !item.byLocationUsable && item.expiredUnits > 0
+  // sent to a named store: from the other store holding the most of it, else the main store
+  const fullest =
+    preset?.to && item
+      ? locations
+          .filter((l) => l.id !== to && usableAt(l.id) > 0)
+          .sort((a, b) => usableAt(b.id) - usableAt(a.id))[0]?.id
+      : undefined
   const [chosenFrom, setFrom] = useState('')
-  const from = chosenFrom || (locations.find((l) => l.type === 'main_store')?.id ?? '')
-  const [to, setTo] = useState('')
+  const from = chosenFrom || (fullest ?? locations.find((l) => l.type === 'main_store')?.id ?? '')
   const [quantity, setQuantity] = useState('')
   const [reason, setReason] = useState('')
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const item = items.find((i) => i.id === itemId)
-  const available = item ? (item.byLocation[from] ?? 0) : 0
+  const available = usableAt(from)
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
@@ -804,7 +869,7 @@ function SendForm({ items, locations }: { items: StockItem[]; locations: StockLo
             {locations.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
-                {item ? ` · ${item.byLocation[l.id] ?? 0}` : ''}
+                {item ? ` · ${usableAt(l.id)}` : ''}
               </option>
             ))}
           </Select>
@@ -835,6 +900,11 @@ function SendForm({ items, locations }: { items: StockItem[]; locations: StockLo
         {item && (
           <p className="text-ink-3 m-0 text-[13px]">
             {t('stock.availableHere', { count: available })}
+          </p>
+        )}
+        {mayIncludeExpired && (
+          <p className="text-amber m-0 text-[13px]">
+            {t('stock.sendExpiredNote', { count: item.expiredUnits })}
           </p>
         )}
         <Field

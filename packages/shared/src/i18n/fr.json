@@ -685,8 +685,8 @@
       "username": "Nom d'utilisateur",
       "usernameHint": "Minuscules, chiffres, point, tiret ou soulignement (3 à 32).",
       "role": "Rôle",
-      "station": "Poste",
-      "stationPh": "Consultation 1, Triage, Dentaire…",
+      "station": "Nom du poste (facultatif)",
+      "stationPh": "Consultation 1, Dentaire 2, Salle 4…",
       "dashboard": "Accès au tableau de bord",
       "dashboardNone": "Aucun",
       "dashboardHead": "Responsable de poste (sans finances)",
@@ -709,7 +709,7 @@
       "noDepartments": "Aucun service : créez-les dans l’onglet Services, puis placez-y les employés.",
       "saveChanges": "Enregistrer",
       "specialty": "Spécialité ou titre",
-      "specialtyPh": "ex. Petite chirurgie, Pédiatrie, Sage-femme",
+      "specialtyPh": "ex. Dentiste, Chirurgien, Sage-femme",
       "departments": "Départements",
       "mainDepartment": "Département principal",
       "pickDepartment": "Choisissez un département",
@@ -719,7 +719,26 @@
       "noDepartmentYet": "Dans aucun département pour l’instant.",
       "manyHint": "L’employé travaille dans chacun de ces départements, avec le poste qu’il y occupe. Le premier est le principal (affiché sur sa page d’accueil).",
       "replacesHead": "{{name}} est responsable de {{dept}}. Un département a un seul responsable : enregistrer fait de {{name}} un adjoint.",
-      "positionsHint": "Responsable : un par département, a le tableau de bord du département et écrit au département. Adjoint : remplace le responsable, même tableau de bord et messages. Membre : travaille dans les sections du département."
+      "positionsHint": "Responsable : un par département, a le tableau de bord du département et écrit au département. Adjoint : remplace le responsable, même tableau de bord et messages. Membre : travaille dans les sections du département.",
+      "roleDoes": {
+        "receptionist": "Enregistre les patients, prend les rendez-vous et oriente les patients.",
+        "cashier": "Encaisse les paiements, remet les reçus et compte la caisse.",
+        "nurse": "Prend les constantes, donne les soins et les traitements, fait le triage.",
+        "doctor": "Examine, pose le diagnostic, prescrit et demande des examens.",
+        "sonographer": "Réalise les échographies et rédige leurs comptes rendus.",
+        "lab_tech": "Prélève les échantillons, fait les analyses de laboratoire et saisit les résultats.",
+        "pharmacist": "Délivre les médicaments, vend au comptoir et tient le stock.",
+        "manager": "Voit tout : argent, personnel, prix, réglages et rapports."
+      },
+      "specialtyHint": "Ce en quoi la personne est experte. Les collègues le voient, et les patients aussi sur le calendrier du site.",
+      "specialtyDoctorHint": "Ajoutez la spécialité du médecin (Médecin généraliste, Dentiste, Chirurgien…). Collègues et patients la voient, et tant que le médecin n'a pas de département elle ajoute aussi son service (Dentiste → Soins dentaires).",
+      "departmentsHint": "Où la personne travaille. Les services de ces départements décident quels patients lui arrivent, avant la spécialité ou le nom du poste.",
+      "worksIn": "Travaille dans :",
+      "worksAtRoleDesk": "Travaille au poste propre à son rôle (accueil, caisse ou pages du gérant), pas dans un service.",
+      "deptNoService": "{{names}} : aucun service défini pour l'instant. Définissez-les dans l'onglet Services.",
+      "stationHint": "Le nom du poste s'affiche sur les écrans et les tickets. Donnez le nom de la salle (Dentaire 1, Bloc…) : la file de la personne s'ouvre à ce poste.",
+      "byRole": "Aucun département ne donne encore de service : cela vient donc du rôle. Dès qu'un département avec des services est choisi, c'est lui qui décide.",
+      "byRoleDoctor": "Aucun département ne donne encore de service : cela vient donc du nom du poste (Consultation, sauf s'il nomme une autre salle) et de la spécialité, qui ajoute son service (Dentiste → Soins dentaires, Chirurgien → Petite chirurgie). Dès qu'un département avec des services est choisi, c'est lui qui décide."
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -758,7 +777,7 @@
       "receptionist": "Réceptionniste",
       "cashier": "Caissier / finances",
       "nurse": "Infirmier·ère",
-      "doctor": "Médecin / dentiste",
+      "doctor": "Médecin",
       "sonographer": "Échographiste",
       "lab_tech": "Technicien·ne de laboratoire",
       "pharmacist": "Pharmacien·ne",
@@ -846,16 +865,29 @@
         "departments": "La personne quitte ses services et perd ses exceptions d'accès. Son agenda est retiré du site web.",
         "devices": "Ses appareils de confiance et son PIN temporaire sont supprimés.",
         "waiting": "Les patients et les tâches qui l'attendaient retournent à l'accueil pour qu'une autre personne les prenne.",
-        "final": "Cette action est définitive."
+        "final": "Cette action est définitive.",
+        "notices": "Les messages et avis qui lui sont adressés sont supprimés, y compris ceux écrits par des collègues.",
+        "noticesCount_one": "Le message ou avis qui lui est adressé ({{count}}) est supprimé, y compris s'il vient d'un collègue.",
+        "noticesCount_other": "Les {{count}} messages et avis qui lui sont adressés sont supprimés, y compris ceux écrits par des collègues."
       },
       "staysTitle": "Ce qui reste (dossiers de la clinique, pas des données personnelles)",
       "stays": {
         "records": "Chaque visite, note, diagnostic, résultat, ordonnance, paiement, reçu et mouvement de stock enregistré par cette personne, ainsi que l'historique des activités, garde son nom, avec la mention « ancien employé ».",
-        "staffId": "Son identifiant d'employé n'est jamais redonné à quelqu'un d'autre."
+        "staffId": "Son identifiant d'employé n'est jamais redonné à quelqu'un d'autre.",
+        "recordsName": "Chaque visite, note, diagnostic, résultat, ordonnance, paiement, reçu et mouvement de stock enregistré par cette personne, ainsi que l'historique des activités, garde son nom."
       },
       "deactivatedSince_one": "{{name}} est désactivé(e) depuis le {{date}} ({{count}} jour) et ne peut déjà plus se connecter. La suppression libère aussi son nom d'utilisateur et son e-mail.",
       "deactivatedSince_other": "{{name}} est désactivé(e) depuis le {{date}} ({{count}} jours) et ne peut déjà plus se connecter. La suppression libère aussi son nom d'utilisateur et son e-mail.",
-      "done": "Le compte de {{name}} est supprimé. Tout ce que cette personne a enregistré reste dans les dossiers de la clinique."
+      "done": "Le compte de {{name}} est supprimé. Tout ce que cette personne a enregistré reste dans les dossiers de la clinique.",
+      "now": {
+        "patients_one": "{{count}} patient en ce moment",
+        "patients_other": "{{count}} patients en ce moment",
+        "tasks_one": "{{count}} tâche en cours",
+        "tasks_other": "{{count}} tâches en cours"
+      },
+      "appointments": "Les rendez-vous déjà pris dans l'agenda de {{name}} restent pris. Ils ne sont pas déplacés automatiquement : déplacez-les vers un autre médecin ou appelez les patients.",
+      "appointmentsCount_one": "{{count}} rendez-vous à venir est pris dans l'agenda de {{name}}. Il reste pris et n'est pas déplacé automatiquement : déplacez-le vers un autre médecin ou appelez le patient.",
+      "appointmentsCount_other": "{{count}} rendez-vous à venir sont pris dans l'agenda de {{name}}. Ils restent pris et ne sont pas déplacés automatiquement : déplacez-les vers un autre médecin ou appelez les patients."
     },
     "longDeactivated": {
       "title": "Désactivés depuis plus d'un mois",
@@ -893,7 +925,16 @@
     "trustHint": "La prochaine fois sur ce navigateur, votre ID, nom d’utilisateur et PIN suffisent — pas de code par e-mail jusqu’à expiration. Décochez sur un ordinateur partagé.",
     "firstPinLead": "C’est votre première connexion avec le PIN donné par le gérant. Choisissez six chiffres que vous seul connaissez ; un code est ensuite envoyé à votre e-mail pour l’approuver.",
     "firstPinSave": "Enregistrer mon PIN et envoyer le code",
-    "firstPinSaved": "Votre PIN est enregistré. Saisissez le code que nous venons d’envoyer."
+    "firstPinSaved": "Votre PIN est enregistré. Saisissez le code que nous venons d’envoyer.",
+    "sessionHint": "Vous restez connecté tant que vous travaillez. Après des heures sans activité, ou quand vous vous déconnectez, il faudra un nouveau code.",
+    "ended": {
+      "idle_one": "Vous avez été déconnecté après {{count}} heure sans activité.",
+      "idle_other": "Vous avez été déconnecté après {{count}} heures sans activité.",
+      "signedOut": "Vous vous êtes déconnecté.",
+      "wrongPins": "Vous avez été déconnecté après 5 PIN incorrects sur l’écran verrouillé.",
+      "ended": "Votre connexion a pris fin.",
+      "next": "Reconnectez-vous : ID du personnel, nom d’utilisateur et PIN, puis le nouveau code que nous vous envoyons par e-mail."
+    }
   },
   "register": {
     "title": "Enregistrer un patient",
@@ -1014,7 +1055,11 @@
       "generic": "Enregistrement impossible : {{message}}"
     },
     "takenBadge": "Constantes prises",
-    "levelOptional": "Couleur de tri (si vous la donnez maintenant)"
+    "levelOptional": "Couleur de tri (si vous la donnez maintenant)",
+    "forName": "pour {{name}}",
+    "forYou": "pour vous",
+    "lockedFor": "Envoyé à {{name}} : seul(e) {{name}} prend les signes vitaux et oriente ce patient. Vous pouvez regarder sans rien changer.",
+    "lockedSection": "Seuls les infirmiers qui travaillent au triage prennent les signes vitaux et orientent ce patient. Vous pouvez regarder sans rien changer."
   },
   "prices": {
     "title": "Soins, tarifs et assureurs",
@@ -1575,7 +1620,7 @@
       },
       "security": {
         "title": "Sécurité",
-        "hint": "Verrouillage, code de connexion par e-mail"
+        "hint": "Déconnexion après des heures sans activité"
       },
       "patient": {
         "title": "Champs du dossier",
@@ -1599,6 +1644,23 @@
       "triageFirstHint": "Chaque patient passe au triage : une infirmière prend les constantes, choisit la couleur et envoie le patient.",
       "saved": "Enregistré. Les nouvelles inscriptions suivent ce parcours.",
       "vitalsNote": "Dans les deux cas, chaque écran indique si les constantes ont été prises."
+    },
+    "session": {
+      "title": "Session de connexion",
+      "lead_one": "Un écran reste connecté tant qu’il est utilisé. Après {{count}} heure sans activité, il se déconnecte et la reconnexion demande un nouveau code par e-mail.",
+      "lead_other": "Un écran reste connecté tant qu’il est utilisé. Après {{count}} heures sans activité, il se déconnecte et la reconnexion demande un nouveau code par e-mail.",
+      "rule1_one": "Chaque onglet compte sa propre activité : un clic, une touche, un toucher ou un défilement. Après {{count}} heure sans rien, l’onglet se déconnecte.",
+      "rule1_other": "Chaque onglet compte sa propre activité : un clic, une touche, un toucher ou un défilement. Après {{count}} heures sans rien, l’onglet se déconnecte.",
+      "rule2": "10 minutes avant, un avertissement s’affiche ; un clic ou une touche suffit pour rester connecté.",
+      "rule3": "Une déconnexion, ou 5 PIN incorrects sur un écran verrouillé, déconnecte tous les onglets de cette personne dans ce navigateur, et la prochaine connexion demande un nouveau code par e-mail.",
+      "rule4_one": "Un autre onglet du même navigateur se connecte avec l’ID du personnel, le nom d’utilisateur et le PIN, sans nouveau code, tant que la personne y a été active dans la dernière {{count}} heure.",
+      "rule4_other": "Un autre onglet du même navigateur se connecte avec l’ID du personnel, le nom d’utilisateur et le PIN, sans nouveau code, tant que la personne y a été active dans les {{count}} dernières heures.",
+      "rule5": "« Verrouiller l’écran maintenant » garde le travail ouvert derrière le PIN ; le temps passé écran verrouillé compte comme du temps sans activité.",
+      "length": "Déconnexion après",
+      "hours_one": "{{count}} heure sans activité",
+      "hours_other": "{{count}} heures sans activité",
+      "saved": "Enregistré. Les écrans ouverts suivent les nouvelles heures en quelques minutes.",
+      "revokeHint": "« Redemander à tous les appareils » met fin à la clé de chaque navigateur : la prochaine connexion de chacun demande un nouveau code par e-mail. Les écrans déjà connectés le restent."
     }
   },
   "pin": {
@@ -1623,7 +1685,13 @@
     "switch": "Ce n'est pas vous ? Se déconnecter",
     "soon_one": "Aucune activité : l'écran se verrouille dans {{count}} seconde.",
     "soon_other": "Aucune activité : l'écran se verrouille dans {{count}} secondes.",
-    "stay": "Je suis là"
+    "stay": "Je suis là",
+    "byYouTitle": "Vous avez verrouillé l’écran",
+    "byYouBody": "Saisissez votre PIN pour continuer en tant que {{name}}.",
+    "wrongLeft_one": "PIN incorrect. Encore {{count}} essai avant la déconnexion.",
+    "wrongLeft_other": "PIN incorrect. Encore {{count}} essais avant la déconnexion.",
+    "idleSignOut_one": "Si l’écran n’est pas déverrouillé avant {{time}} ({{count}} heure sans activité), vous êtes déconnecté et il faudra un nouveau code par e-mail.",
+    "idleSignOut_other": "Si l’écran n’est pas déverrouillé avant {{time}} ({{count}} heures sans activité), vous êtes déconnecté et il faudra un nouveau code par e-mail."
   },
   "patients": {
     "title": "Patients",
@@ -1863,7 +1931,9 @@
     "roomNoStock": "{{names}} : introuvable dans un magasin ici, donc non sorti du stock.",
     "returnWhy": "Pourquoi {{item}} revient-il ? (mauvais médicament, non ouvert…)",
     "returned": "{{item}} est de retour en stock et retiré de la facture.",
-    "returnMedicine": "Rapporté"
+    "returnMedicine": "Rapporté",
+    "testsWhoTitle": "Seuls les médecins demandent des examens. Le gestionnaire peut l'autoriser dans Paramètres → Qui peut faire quoi.",
+    "testsWhoHint": "Seuls les médecins (et le laboratoire ou l'échographie, pour leur propre poste) demandent des examens ; le gestionnaire peut l'autoriser à d'autres dans Paramètres → Qui peut faire quoi. Un soin que vous donnez ici se met dans Ajouter un soin."
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -2000,7 +2070,7 @@
     "selfHint": "Vous venez de mesurer. Si vous saisissez la fiche papier d'une infirmière, choisissez son nom et l'heure notée.",
     "paperHint": "Depuis la fiche papier : les mesures sont enregistrées comme prises par cette infirmière à cette heure, et saisies par vous.",
     "save": "Enregistrer les constantes",
-    "saved": "Constantes enregistrées.",
+    "saved": "Signes vitaux enregistrés.",
     "add": "Ajouter des constantes",
     "addMore": "Ajouter ou mettre à jour",
     "addTitle": "Constantes de {{name}}",
@@ -2023,7 +2093,9 @@
     "edit": "Modifier les constantes",
     "sendOn": "Envoyer (constantes déjà prises)",
     "notTakenBanner": "Constantes pas encore prises pour cette visite. Prenez-les avant la consultation.",
-    "noneShort": "Pas de constantes"
+    "noneShort": "Pas de constantes",
+    "nurseSendsOn": "Vous enregistrez seulement les mesures : l'infirmier(ère) donne la couleur de triage et oriente le patient.",
+    "notSentOn": "Le patient n'a pas été orienté : {{message}}"
   },
   "ops": {
     "appts": {
@@ -2685,7 +2757,8 @@
       },
       "security": {
         "lock": "Verrouillage de l’écran",
-        "otp": "Code de connexion par e-mail"
+        "otp": "Code de connexion par e-mail",
+        "session": "Session de connexion (heures sans activité)"
       }
     },
     "openVisit": "Ouvrir la visite"
@@ -2823,7 +2896,8 @@
     "tiles": {
       "collected": "Encaissé aujourd’hui",
       "openBills": "Factures à encaisser",
-      "mine": "Encaissé par moi"
+      "mine": "Encaissé par moi",
+      "collectedIn": "Encaissé {{period}}"
     },
     "toCollect": "à encaisser",
     "section": "Factures et paiements",
@@ -2878,7 +2952,10 @@
     "refundsTitle": "Argent rendu ce jour",
     "reprint": "Ouvrir la visite pour réimprimer le reçu",
     "countEmpty": "Saisissez ce que vous avez compté pour au moins un mode de paiement (0 si vous n’avez rien).",
-    "countHint": "Saisissez ce que vous avez ; la différence s’affiche pendant la saisie."
+    "countHint": "Saisissez ce que vous avez ; la différence s’affiche pendant la saisie.",
+    "byMethodIn": "Comment les patients ont payé {{period}}",
+    "paymentsIn": "Paiements {{period}}",
+    "periodNeedsUpdate": "Les autres périodes demandent la dernière mise à jour de la base de données. Les chiffres ci-dessous sont ceux d'aujourd'hui."
   },
   "calendar": {
     "title": "Mon agenda",
@@ -3157,7 +3234,9 @@
       "askHint": "Seuls les médicaments de la clinique sont listés. Pour un nouveau médicament, demandez d'abord au gestionnaire ou à la pharmacie de l'ajouter.",
       "partial": "{{item}} a été ajouté aux médicaments de la clinique, mais la livraison n'a pas été enregistrée ({{error}}). Enregistrez de nouveau la livraison.",
       "locked": "Déjà ajouté aux médicaments de la clinique : il ne reste qu'à enregistrer la livraison. Modifiez ses détails dans Médicaments."
-    }
+    },
+    "sendExpiredNote_one": "Ce médicament a {{count}} unité périmée dans les dépôts. Les unités périmées ne sont jamais envoyées : un dépôt peut donc en avoir moins à envoyer qu'affiché ici. Retirez-les sous Utiliser ou retirer du stock.",
+    "sendExpiredNote_other": "Ce médicament a {{count}} unités périmées dans les dépôts. Les unités périmées ne sont jamais envoyées : un dépôt peut donc en avoir moins à envoyer qu'affiché ici. Retirez-les sous Utiliser ou retirer du stock."
   },
   "report": {
     "excel": "Excel",
@@ -3521,7 +3600,11 @@
     "labelDays_other": "pendant {{count}} jours",
     "forThisPatient": "Médicaments à remettre à ce patient",
     "shortExplain": "{{item}} : la pharmacie en a {{have}}, {{need}} prescrit(s). Réceptionnez-le d’abord, ou marquez-le non donné.",
-    "receiveIt": "Réceptionner"
+    "receiveIt": "Réceptionner",
+    "sendIt_one": "Envoyer depuis un autre dépôt ({{count}} là-bas)",
+    "sendIt_other": "Envoyer depuis un autre dépôt ({{count}} là-bas)",
+    "shortSendExplain_one": "{{item}} : la pharmacie en a {{have}}, {{need}} prescrit(s). Un autre dépôt en a {{count}} : envoyez-le d’abord à la pharmacie, ou marquez-le non donné.",
+    "shortSendExplain_other": "{{item}} : la pharmacie en a {{have}}, {{need}} prescrit(s). Un autre dépôt en a {{count}} : envoyez-les d’abord à la pharmacie, ou marquez-le non donné."
   },
   "queuePage": {
     "title": "Ma file · {{desk}}",
@@ -3559,7 +3642,8 @@
     },
     "rxSearch": "Chercher un patient, un médicament ou un dossier",
     "noRx": "Aucune ordonnance sur cette période.",
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "periodNeedsUpdate": "Le système a besoin de sa dernière mise à jour pour afficher les listes de plus de 90 jours. En attendant, seuls les 90 derniers jours sont affichés."
   },
   "receipt": {
     "title": "Reçu",
@@ -3697,5 +3781,18 @@
     "matches_one": "{{count}} résultat : choisissez-le",
     "matches_other": "{{count}} résultats : choisissez",
     "more": "… {{count}} de plus : tapez d’autres lettres"
+  },
+  "session": {
+    "duration": {
+      "hm": "{{h}} h {{m}} min",
+      "h": "{{h}} h",
+      "m": "{{m}} min"
+    },
+    "idleFor": "Aucune activité depuis {{time}}.",
+    "signOutIn_one": "Vous serez déconnecté dans {{count}} minute ; un clic ou une touche suffit pour rester connecté.",
+    "signOutIn_other": "Vous serez déconnecté dans {{count}} minutes ; un clic ou une touche suffit pour rester connecté.",
+    "after": "Ensuite, vous vous reconnectez avec un nouveau code reçu par e-mail.",
+    "rule_one": "Déconnexion après {{count}} heure sans activité",
+    "rule_other": "Déconnexion après {{count}} heures sans activité"
   }
 }

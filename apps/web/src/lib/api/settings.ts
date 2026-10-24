@@ -70,10 +70,17 @@ export function useSaveClinicSettings() {
   })
 }
 
-// ---------------------------------------------------------------- screen lock
-/** Minutes without input before a staff screen locks (setting `security.lock`). */
-export const LOCK_CHOICES = [5, 10, 15, 30, 60, 120, 240] as const
-let sampleIdle = 120
+// ---------------------------------------------------------------- sign-in session
+/**
+ * Hours WITHOUT ACTIVITY after which a signed-in tab signs out (setting `security.session`, 1 to
+ * 12, 5 by default). Counted from the last click, key, touch or scroll in that tab; after it the
+ * next sign-in needs a new e-mailed code.
+ */
+export const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
+export const DEFAULT_SESSION_HOURS = 5
+let sampleHours = DEFAULT_SESSION_HOURS
+/** Sample mode (no database): the hours chosen in Settings. */
+export const sampleSessionHours = () => sampleHours
 const STAFF_KEY = ['settings', 'staff'] as const
 
 /** Settings every signed-in staff member needs (no settings.read required). */
@@ -81,25 +88,14 @@ export function useStaffSettings() {
   return useQuery({
     queryKey: STAFF_KEY,
     staleTime: 5 * 60_000,
-    queryFn: async (): Promise<{
-      idleMinutes: number
-      trustDays: number
-      triageFirst: boolean
-    }> => {
-      if (!supabase)
-        return { idleMinutes: sampleIdle, trustDays: sampleTrust, triageFirst: sampleTriageFirst }
+    queryFn: async (): Promise<{ sessionHours: number; triageFirst: boolean }> => {
+      if (!supabase) return { sessionHours: sampleHours, triageFirst: sampleTriageFirst }
       const { data, error } = await supabase.rpc('staff_settings')
       if (error) throw new Error(error.message)
-      const d = data as {
-        idle_minutes?: number
-        trust_days?: number
-        triage_first?: boolean
-      } | null
-      const m = Number(d?.idle_minutes)
-      const td = Number(d?.trust_days)
+      const d = data as { session_hours?: number; triage_first?: boolean } | null
+      const h = Number(d?.session_hours)
       return {
-        idleMinutes: Number.isFinite(m) && m > 0 ? m : 120,
-        trustDays: Number.isFinite(td) && td >= 0 ? td : 30,
+        sessionHours: Number.isFinite(h) && h >= 1 && h <= 12 ? h : DEFAULT_SESSION_HOURS,
         triageFirst: d?.triage_first === true,
       }
     },
@@ -126,17 +122,18 @@ export function useSaveFlowSetting() {
   })
 }
 
-export function useSaveLockSetting() {
+/** Manager: after how many hours without activity a tab signs out. Open tabs follow it. */
+export function useSaveSessionSetting() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (idleMinutes: number) => {
+    mutationFn: async (hours: number) => {
       if (!supabase) {
-        sampleIdle = idleMinutes
+        sampleHours = hours
         return
       }
       const { error } = await supabase.rpc('save_setting', {
-        p_key: 'security.lock',
-        p_value: { idle_minutes: idleMinutes },
+        p_key: 'security.session',
+        p_value: { hours },
       })
       if (error) throw new Error(error.message)
     },
@@ -144,30 +141,7 @@ export function useSaveLockSetting() {
   })
 }
 
-// ---------------------------------------------------------------- e-mailed sign-in code
-/** Days a device stays trusted after a correct code; 0 = a code at every sign-in. */
-export const TRUST_CHOICES = [0, 1, 7, 30, 90] as const
-let sampleTrust = 30
-
-export function useSaveTrustSetting() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (trustDays: number) => {
-      if (!supabase) {
-        sampleTrust = trustDays
-        return
-      }
-      const { error } = await supabase.rpc('save_setting', {
-        p_key: 'security.otp',
-        p_value: { trust_days: trustDays },
-      })
-      if (error) throw new Error(error.message)
-    },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: STAFF_KEY }),
-  })
-}
-
-/** Manager: every trusted device asks for the e-mailed code again at next sign-in. */
+/** Manager: every browser asks for a new e-mailed code at its next sign-in. */
 export function useRevokeAllDevices() {
   return useMutation({
     mutationFn: async (): Promise<number> => {

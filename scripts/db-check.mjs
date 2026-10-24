@@ -28,7 +28,9 @@ $$;
 create or replace function auth.role() returns text language sql stable as $$
   select coalesce(nullif(current_setting('request.jwt.claim.role', true), ''), 'anon')
 $$;
-create or replace function auth.jwt() returns jsonb language sql stable as $$ select '{}'::jsonb $$;
+create or replace function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb
+$$;
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
@@ -64,25 +66,70 @@ const expectError = async (name, fn, pattern) => {
   })
 }
 const one = async (sql, params = []) => (await db.query(sql, params)).rows[0]
-const as = async (userId, role = 'authenticated') => {
+// The access token says how the session was opened (`amr`): the e-mailed code by default.
+const CODE_AMR = JSON.stringify({ amr: [{ method: 'otp', timestamp: 0 }] })
+const PIN_AMR = JSON.stringify({ amr: [{ method: 'password', timestamp: 0 }] })
+const as = async (userId, role = 'authenticated', claims = CODE_AMR) => {
   await db.exec(
-    `reset role; select set_config('request.jwt.claim.sub', '${userId ?? ''}', false); set role ${role};`,
+    `reset role; select set_config('request.jwt.claim.sub', '${userId ?? ''}', false); select set_config('request.jwt.claims', '${claims}', false); set role ${role};`,
   )
 }
+/** A session opened with the PIN alone (no e-mailed code). */
+const asPinOnly = (userId) => as(userId, 'authenticated', PIN_AMR)
 const asAdmin = async () =>
-  db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false);`)
+  db.exec(
+    `reset role; select set_config('request.jwt.claim.sub', '', false); select set_config('request.jwt.claims', '', false);`,
+  )
 
 // ---------------------------------------------------------------- schema
 await step('stub Supabase auth schema and roles', async () => {
   await db.exec(STUB)
 })
 const files = (await readdir(migrationsDir)).filter((f) => f.endsWith('.sql')).sort()
+// 0079: a browser key made under the old 30-day rule, just before the migration that ends them.
+const oldKey = 'q'.repeat(40)
+let oldKeyUser = null
 for (const f of files) {
+  if (f === '20261120090000_session_hours.sql') {
+    await step('0079: plant a 30-day browser key from before the rule', async () => {
+      oldKeyUser = (
+        await one(
+          `insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`,
+          [
+            'oldkey@staff.muhaziclinic.rw',
+            JSON.stringify({ username: 'oldkey', full_name: 'Old Key', role: 'nurse' }),
+          ],
+        )
+      ).id
+      await db.query(
+        `insert into trusted_device (user_id, token_hash, label, created_at, expires_at, last_used_at)
+         values ($1, encode(sha256(convert_to($2, 'UTF8')), 'hex'), 'old browser',
+                 now() - interval '1 day', now() + interval '29 days', now() - interval '1 day')`,
+        [oldKeyUser, oldKey],
+      )
+      return '29 days left'
+    })
+  }
   await step(`migration ${f}`, async () => {
     await db.exec(await readFile(path.join(migrationsDir, f), 'utf8'))
   })
 }
 if (failures) finish()
+await step('0079: keys made under the old 30-day rule no longer skip the code', async () => {
+  await as(oldKeyUser)
+  const used = (await one(`select use_trusted_device($1) as e`, [oldKey])).e
+  const extended = (await one(`select extend_this_device($1) as e`, [oldKey])).e
+  await asAdmin()
+  const r = await one(
+    `select revoked_at from trusted_device where token_hash = encode(sha256(convert_to($1, 'UTF8')), 'hex')`,
+    [oldKey],
+  )
+  // the test person leaves no trace for the checks below
+  await db.query(`delete from auth.users where id = $1`, [oldKeyUser])
+  await db.query(`delete from profiles where id = $1`, [oldKeyUser])
+  if (used || extended || !r?.revoked_at) throw new Error(JSON.stringify({ used, extended, r }))
+  return 'ended by the migration: not used, not extended'
+})
 await step('seed.sql', async () => {
   await db.exec(await readFile(path.join(root, 'supabase', 'seed.sql'), 'utf8'))
   const n = await one('select count(*)::int as n from service')
@@ -568,13 +615,16 @@ await step('manager deletes an insurer', async () => {
 
 // ---------------------------------------------------------------- vitals on behalf (0020)
 let paperVisit = null
-await step('receptionist types the nurseâ€™s paper vitals; patient moves on', async () => {
+await step('receptionist types the nurseâ€™s paper vitals; the nurse sends on', async () => {
   await as(staff.receptionist)
   paperVisit = (await one(`select open_encounter($1, 'opd', 'triage', null) as id`, [patientId])).id
+  // 0078: reception records the sheet; the nurse at triage chooses where the patient goes
   await db.query(
-    `select record_vitals($1, '{"bp_sys":"130","temp":"37.9"}'::jsonb, 'yellow', 'consultation', null, $2, now() - interval '20 minutes')`,
+    `select record_vitals($1, '{"bp_sys":"130","temp":"37.9"}'::jsonb, 'yellow', null, null, $2, now() - interval '20 minutes')`,
     [paperVisit, staff.nurse],
   )
+  await as(staff.nurse)
+  await db.query(`select send_from_triage($1, 'yellow', 'consultation')`, [paperVisit])
   await asAdmin()
   const o = await one(
     `select count(*)::int as n, bool_and(performer_id = $2) as by_nurse, bool_and(created_by = $3) as typed_by_rec
@@ -751,16 +801,28 @@ await step('a trusted device skips the code; revoked or foreign keys do not', as
     throw new Error('revoked key accepted')
   return 'trusted â†’ used â†’ revoked'
 })
-await step('trust_days 0 means a code at every sign-in', async () => {
-  await as(staff.manager)
-  await db.query(`select save_setting('security.otp', '{"trust_days": 0}'::jsonb)`)
-  await as(staff.nurse)
-  const u = (await one(`select trust_this_device($1) as u`, ['z'.repeat(40)])).u
-  await as(staff.manager)
-  await db.query(`select save_setting('security.otp', '{"trust_days": 30}'::jsonb)`)
-  if (u) throw new Error('trusted although disabled')
-  return 'no trust when 0'
-})
+// 0079: trust_days no longer decides anything. The browser key always follows the hours of
+// inactivity (security.session), whatever trust_days says.
+await step(
+  'trust_days no longer decides: the browser key lasts the hours of inactivity',
+  async () => {
+    const key = 'z'.repeat(40)
+    await as(staff.manager)
+    await db.query(`select save_setting('security.otp', '{"trust_days": 0}'::jsonb)`)
+    await as(staff.nurse)
+    const u = (await one(`select trust_this_device($1) as u`, [key])).u
+    await as(staff.manager)
+    await db.query(`select save_setting('security.otp', '{"trust_days": 30}'::jsonb)`)
+    await asAdmin()
+    const r = await one(
+      `select extract(epoch from expires_at - created_at)::int as secs from trusted_device
+     where token_hash = encode(sha256(convert_to($1, 'UTF8')), 'hex')`,
+      [key],
+    )
+    if (!u || r?.secs !== 5 * 3600) throw new Error(JSON.stringify({ u, r }))
+    return 'trust_days 0: key still made, ends after 5 hours'
+  },
+)
 
 // ---------------------------------------------------------------- departments + notifications (0026)
 let deptId = null
@@ -1297,6 +1359,9 @@ await step('0041: a specialty on the doctor shows on the calendar title', async 
   const dir = await one(`select specialty from staff_directory where id = $1`, [staff.doctor])
   if (pr.title !== 'Minor surgery' || dir.specialty !== 'Minor surgery')
     throw new Error('not synced')
+  // 0080: the specialty also says where a doctor works; this doctor stays at Consultation
+  await asAdmin()
+  await db.query(`update profiles set specialty = null where id = $1`, [staff.doctor])
   return 'profile → calendar title synced'
 })
 await step('0041: bulk add into a department, move a type, then start over', async () => {
@@ -3738,6 +3803,722 @@ await step(
     return `${ref.n} in the list, none in the clinic's medicines until added; added with its rule and group, clinic price kept`
   },
 )
+
+// ---------------------------------------------------------------- 0078: fixes from the audit
+const newStaff = async (username, full_name, role, station = null) => {
+  await asAdmin()
+  return (
+    await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+      `${username}@staff.muhaziclinic.rw`,
+      JSON.stringify({ username, full_name, role, station }),
+    ])
+  ).id
+}
+await step(
+  '0078: from triage, only who has the patient sends on; reception and another nurse record only',
+  async () => {
+    await asAdmin()
+    const nurse2 = (await one(`select id from profiles where username = 'a.umutoni'`)).id
+    await as(staff.receptionist)
+    const r = (
+      await one(
+        `select register_patient_file('Mutesi', 'Triage 78', 'female', null, 31, null) as r`,
+      )
+    ).r
+    // reception sends the patient to triage, to a named nurse
+    const enc = (
+      await one(
+        `select begin_visit(p_patient_id => $1, p_station => 'triage', p_triage_to => $2) as v`,
+        [r.patient_id, staff.nurse],
+      )
+    ).v.encounter_id
+    const recSends = await tryAs(
+      staff.receptionist,
+      `select record_vitals($1, '{"temp":"37.2"}'::jsonb, 'green', 'consultation', null, $2)`,
+      [enc, staff.nurse],
+    )
+    const recRecords = await tryAs(
+      staff.receptionist,
+      `select record_vitals($1, '{"pulse":"82"}'::jsonb, null, null, null, $2)`,
+      [enc, staff.nurse],
+    )
+    const otherSends = await tryAs(
+      nurse2,
+      `select record_vitals($1, '{"temp":"37.3"}'::jsonb, 'green', 'consultation')`,
+      [enc],
+    )
+    const otherRecords = await tryAs(nurse2, `select record_vitals($1, '{"resp":"18"}'::jsonb)`, [
+      enc,
+    ])
+    const namedSends = await tryAs(
+      staff.nurse,
+      `select record_vitals($1, '{"spo2":"98"}'::jsonb, 'green', 'consultation')`,
+      [enc],
+    )
+    const open = (
+      await db.query(
+        `select station::text from queue_entry where encounter_id = $1 and finished_at is null`,
+        [enc],
+      )
+    ).rows.map((x) => x.station)
+    if (
+      !/record the measurements/.test(recSends) ||
+      recRecords !== 'ok' ||
+      !/this patient is with/.test(otherSends) ||
+      otherRecords !== 'ok' ||
+      namedSends !== 'ok' ||
+      JSON.stringify(open) !== '["consultation"]'
+    )
+      throw new Error(
+        JSON.stringify({ recSends, recRecords, otherSends, otherRecords, namedSends, open }),
+      )
+    return 'reception and the other nurse record only; the named nurse sends on to Consultation'
+  },
+)
+
+await step(
+  '0078: deleting a doctor: patients due back to them, and their results, go to the section',
+  async () => {
+    const doc = await newStaff('d.leaving78', 'Dr. Leaving 78', 'doctor', 'Consultation 2')
+    await as(staff.manager)
+    const cat = (await one(`select save_category(null, 'Lab tests 78', null, null, 'lab') as id`))
+      .id
+    const test = (await one(`select upsert_service(null, 'Malaria RDT 78', 'other', 2000) as id`))
+      .id
+    await db.query(`select set_service_category($1, $2)`, [test, cat])
+    // a: sent to the lab to come back to the doctor; b: sent to the lab without asking back
+    const a = await visitAt('Back 78')
+    const b = await visitAt('Requester 78')
+    await as(doc)
+    for (const p of [a, b]) {
+      await db.query(`select take_patient($1)`, [p.queue])
+      await db.query(`select order_test($1, $2, 'fever')`, [p.enc, test])
+    }
+    await db.query(
+      `select refer_patient(p_encounter_id => $1, p_from => 'consultation', p_to => 'laboratory', p_return => true)`,
+      [a.enc],
+    )
+    await asAdmin()
+    await db.query(
+      `update queue_entry set finished_at = now() where encounter_id = $1 and station = 'consultation'`,
+      [b.enc],
+    )
+    const labOf = (enc) =>
+      one(
+        `select return_to, return_station::text from queue_entry where encounter_id = $1 and station = 'laboratory' and finished_at is null`,
+        [enc],
+      )
+    const before = await labOf(a.enc)
+    await db.query(`select retire_staff($1, $2)`, [doc, staff.manager])
+    const after = await labOf(a.enc)
+    await as(staff.lab_tech)
+    for (const p of [a, b]) {
+      const req = (await one(`select id from service_request where encounter_id = $1`, [p.enc])).id
+      await db.query(`select record_result($1, 'Negative', 'No malaria', true)`, [req])
+    }
+    await asAdmin()
+    const backOf = (enc) =>
+      one(
+        `select assigned_to, referral_note from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+        [enc],
+      )
+    const backA = await backOf(a.enc)
+    const backB = await backOf(b.enc)
+    // anyone in Consultation may take them
+    await as(d1)
+    const mayA =
+      backA &&
+      (
+        await one(
+          `select queue_entry_for_me(id) as ok from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+          [a.enc],
+        )
+      ).ok
+    await asAdmin()
+    if (
+      before?.return_to !== doc ||
+      after?.return_to !== null ||
+      after?.return_station !== 'consultation' ||
+      !backA ||
+      backA.assigned_to !== null ||
+      !backB ||
+      backB.assigned_to !== null ||
+      !/Results ready/.test(backB.referral_note ?? '') ||
+      !mayA
+    )
+      throw new Error(JSON.stringify({ before, after, backA, backB, mayA }))
+    return 'return_to cleared; both results back to Consultation for anyone there'
+  },
+)
+
+await step('0078: before deleting, the manager sees what the delete touches', async () => {
+  const doc = await newStaff('d.preview78', 'Dr. Preview 78', 'doctor', 'Consultation 3')
+  const p = await visitAt('Preview 78')
+  await as(staff.manager)
+  const pr = (await one(`select ensure_practitioner($1) as id`, [doc])).id
+  await asAdmin()
+  await db.query(`update queue_entry set assigned_to = $2 where id = $1`, [p.queue, doc])
+  const patient = (await one(`select patient_id from encounter where id = $1`, [p.enc])).patient_id
+  // one booking to come; one cancelled and one past, which do not count
+  for (const [at, status] of [
+    [`now() + interval '2 days'`, 'confirmed'],
+    [`now() + interval '3 days'`, 'cancelled'],
+    [`now() - interval '3 days'`, 'confirmed'],
+  ])
+    await db.query(
+      `insert into appointment (patient_id, practitioner_id, starts_at, status, source)
+       values ($1, $2, ${at}, '${status}', 'reception')`,
+      [patient, pr],
+    )
+  await db.query(
+    `insert into notification (kind, title, body, recipient_user) values ('message', 'Hello', 'Note for you', $1)`,
+    [doc],
+  )
+  await db.query(`insert into internal_task (title, assigned_to) values ('Call back 78', $1)`, [
+    doc,
+  ])
+  const notices = (
+    await one(`select count(*)::int as n from notification where recipient_user = $1`, [doc])
+  ).n
+  await as(staff.manager)
+  const pv = (await one(`select retire_staff_preview($1) as j`, [doc])).j
+  const refused = await tryAs(staff.receptionist, `select retire_staff_preview($1)`, [doc])
+  if (
+    pv.notices !== notices ||
+    notices < 1 ||
+    pv.upcomingAppointments !== 1 ||
+    pv.waitingPatients !== 1 ||
+    pv.openTasks !== 1 ||
+    !/managers only/.test(refused)
+  )
+    throw new Error(JSON.stringify({ pv, notices, refused }))
+  return `${pv.notices} notice(s), ${pv.upcomingAppointments} booking to come, ${pv.waitingPatients} patient, ${pv.openTasks} task; managers only`
+})
+
+await step('0078: the cashier figures, My orders and My prescriptions take a period', async () => {
+  await as(staff.cashier)
+  const day = (await one(`select cashier_summary() as s`)).s
+  const oneArg = (await one(`select cashier_summary(current_date) as s`)).s
+  const range = (
+    await one(`select cashier_summary(p_from => current_date - 30, p_to => current_date + 1) as s`)
+  ).s
+  await as(d1)
+  const last30 = (await one(`select my_orders(30) as j`)).j
+  const ordRange = (
+    await one(`select my_orders(p_from => current_date - 30, p_to => current_date + 1) as j`)
+  ).j
+  const ordOld = (await one(`select my_orders(p_from => '2020-01-01', p_to => '2020-01-31') as j`))
+    .j
+  const rxRange = (
+    await one(`select my_prescriptions(p_from => current_date - 30, p_to => current_date + 1) as j`)
+  ).j
+  await as(staff.pharmacist)
+  const pq = (await one(`select pharmacy_queue() as j`)).j
+  await asAdmin()
+  if (
+    Number(range.total) < Number(day.total) ||
+    range.count < day.count ||
+    range.from >= range.to ||
+    oneArg.day !== day.day ||
+    Number(oneArg.total) !== Number(day.total) ||
+    !ordRange.length ||
+    ordRange.length !== last30.length ||
+    ordOld.length !== 0 ||
+    !Array.isArray(rxRange) ||
+    !pq.every((l) => typeof l.onHandElsewhere === 'number' && l.pharmacyLocationId)
+  )
+    throw new Error(
+      JSON.stringify({
+        day: [day.day, day.total, day.count],
+        range: [range.from, range.to, range.total, range.count],
+        oneArg: [oneArg.day, oneArg.total],
+        ord: [last30.length, ordRange.length, ordOld.length],
+        rx: rxRange.length,
+        pq: pq.slice(0, 1),
+      }),
+    )
+  return `today ${day.total} / 31 days ${range.total}; ${ordRange.length} orders, ${rxRange.length} prescriptions in the period; ${pq.length} pharmacy line(s) with stock elsewhere`
+})
+
+await step('0078: calls from someone who left are withdrawn and cannot be answered', async () => {
+  const gone = await newStaff('d.calls78', 'Dr. Calls 78', 'doctor', 'Consultation 4')
+  const off = await newStaff('d.off78', 'Dr. Off 78', 'doctor', 'Consultation 5')
+  const p = await visitAt('Calls 78')
+  await as(gone)
+  const call = (await one(`select call_next('consultation', 'reception', null, null) as id`)).id
+  await as(off)
+  const offCall = (await one(`select call_next('consultation', 'reception', null, null) as id`)).id
+  await asAdmin()
+  const noticesBefore = (
+    await one(
+      `select count(*)::int as n from notification where kind = 'call_next' and params ->> 'call' = $1`,
+      [call],
+    )
+  ).n
+  await db.query(`select retire_staff($1, $2)`, [gone, staff.manager])
+  const st = (await one(`select status from staff_call where id = $1`, [call])).status
+  const noticesAfter = (
+    await one(
+      `select count(*)::int as n from notification where kind = 'call_next' and params ->> 'call' = $1`,
+      [call],
+    )
+  ).n
+  // deactivated, not deleted: the call stays but nobody can send them a patient
+  await db.query(`update profiles set active = false where id = $1`, [off])
+  const refused = await tryAs(staff.receptionist, `select answer_call($1, $2)`, [offCall, p.queue])
+  await asAdmin()
+  const q = await one(`select assigned_to from queue_entry where id = $1`, [p.queue])
+  if (
+    noticesBefore < 1 ||
+    st !== 'cancelled' ||
+    noticesAfter !== 0 ||
+    !/no longer works here/.test(refused) ||
+    q.assigned_to !== null
+  )
+    throw new Error(JSON.stringify({ noticesBefore, st, noticesAfter, refused, q }))
+  return 'deleted: call cancelled, notice gone; deactivated: answering refused'
+})
+
+// ---------------------------------------------------------------- 0079: hours of inactivity
+// A tab signs out after N hours without activity (the clock runs in the tab). The browser key
+// made after the e-mailed code ends N hours after the code; activity pushes the end forward
+// (extend_this_device); another tab using it (use_trusted_device) never does.
+const sessKey = 's'.repeat(40)
+const sessRow = (key) =>
+  one(
+    `select expires_at, created_at, revoked_at,
+            extract(epoch from expires_at - created_at)::int as secs,
+            extract(epoch from expires_at - last_used_at)::int as since_use
+     from trusted_device where token_hash = encode(sha256(convert_to($1, 'UTF8')), 'hex')`,
+    [key],
+  )
+const sessBack = (key, interval) =>
+  db.query(
+    `update trusted_device
+        set created_at = created_at - $2::interval, last_used_at = last_used_at - $2::interval,
+            expires_at = expires_at - $2::interval
+      where token_hash = encode(sha256(convert_to($1, 'UTF8')), 'hex')`,
+    [key, interval],
+  )
+const ms = (t) => new Date(t).getTime()
+await step('0079: staff read the hours of inactivity (default 5)', async () => {
+  await as(staff.nurse)
+  const s = (await one(`select staff_settings() as j`)).j
+  if (s.session_hours !== 5) throw new Error(JSON.stringify(s))
+  return '5 hours'
+})
+await step('0079: after the code, the browser key ends now + 5 hours (server clock)', async () => {
+  await as(staff.nurse)
+  const until = (await one(`select trust_this_device($1, 'test browser') as u`, [sessKey])).u
+  if (!until) throw new Error('no end returned')
+  await asAdmin()
+  const r = await sessRow(sessKey)
+  if (r.secs !== 5 * 3600) throw new Error(`${r.secs} s`)
+  if (ms(until) !== ms(r.expires_at)) throw new Error('returned end differs from the stored end')
+  return `ends ${new Date(until).toISOString()}`
+})
+await step('0079: another tab uses the key: same end, never pushed forward', async () => {
+  // as if the code had been entered an hour ago
+  await asAdmin()
+  await sessBack(sessKey, '1 hour')
+  const before = (await sessRow(sessKey)).expires_at
+  await as(staff.nurse)
+  const end = (await one(`select use_trusted_device($1) as e`, [sessKey])).e
+  if (!end) throw new Error('own key refused')
+  await asAdmin()
+  const after = (await sessRow(sessKey)).expires_at
+  if (ms(end) !== ms(before)) throw new Error('a different end was returned')
+  if (ms(after) !== ms(before)) throw new Error('using the key pushed the end forward')
+  return 'same end, not extended'
+})
+await step('0079: activity pushes the end to now + 5 hours (owner only)', async () => {
+  await asAdmin()
+  const before = (await sessRow(sessKey)).expires_at
+  // someone else cannot push it, nor use it, nor sign it out
+  await as(staff.receptionist)
+  const foreignExtend = (await one(`select extend_this_device($1) as e`, [sessKey])).e
+  const foreignUse = (await one(`select use_trusted_device($1) as e`, [sessKey])).e
+  await db.query(`select revoke_this_device($1)`, [sessKey])
+  await asAdmin()
+  const mid = await sessRow(sessKey)
+  await as(staff.nurse)
+  const end = (await one(`select extend_this_device($1) as e`, [sessKey])).e
+  await asAdmin()
+  const after = await sessRow(sessKey)
+  if (
+    foreignExtend ||
+    foreignUse ||
+    mid.revoked_at ||
+    ms(mid.expires_at) !== ms(before) ||
+    !end ||
+    ms(end) !== ms(after.expires_at) ||
+    ms(after.expires_at) <= ms(before) ||
+    after.since_use !== 5 * 3600
+  )
+    throw new Error(JSON.stringify({ foreignExtend, foreignUse, mid, end, after }))
+  return 'owner: end moved forward by the hour of no use; others: refused, untouched'
+})
+await step('0079: a new code on the same browser starts the key over (one row)', async () => {
+  await as(staff.nurse)
+  const until = (await one(`select trust_this_device($1, 'test browser') as u`, [sessKey])).u
+  await asAdmin()
+  const n = await one(
+    `select count(*)::int as n from trusted_device where token_hash = encode(sha256(convert_to($1, 'UTF8')), 'hex')`,
+    [sessKey],
+  )
+  const r = await sessRow(sessKey)
+  if (n.n !== 1 || r.secs !== 5 * 3600 || ms(until) !== ms(r.expires_at))
+    throw new Error(JSON.stringify({ n: n.n, secs: r.secs }))
+  return '1 row, a new 5 hours'
+})
+await step('0079: 5 hours without activity: the key asks for a new code', async () => {
+  await asAdmin()
+  await sessBack(sessKey, '5 hours 1 minute')
+  const before = (await sessRow(sessKey)).expires_at
+  await as(staff.nurse)
+  const extended = (await one(`select extend_this_device($1) as e`, [sessKey])).e
+  const used = (await one(`select use_trusted_device($1) as e`, [sessKey])).e
+  await asAdmin()
+  const after = (await sessRow(sessKey)).expires_at
+  if (extended || used || ms(after) !== ms(before))
+    throw new Error(JSON.stringify({ extended, used, before, after }))
+  return 'expired: not used, not brought back'
+})
+await step('0079: signing out revokes this browser: the next sign-in needs a code', async () => {
+  const key = 'o'.repeat(40)
+  await as(staff.nurse)
+  await one(`select trust_this_device($1) as u`, [key])
+  if (!(await one(`select use_trusted_device($1) as e`, [key])).e)
+    throw new Error('own key refused')
+  await db.query(`select revoke_this_device($1)`, [key])
+  const used = (await one(`select use_trusted_device($1) as e`, [key])).e
+  const extended = (await one(`select extend_this_device($1) as e`, [key])).e
+  await db.query(`select revoke_this_device($1)`, [key]) // twice is harmless
+  if (used || extended) throw new Error(JSON.stringify({ used, extended }))
+  return 'signed out: not used, not brought back'
+})
+await step('0079: the PIN alone (no e-mailed code) cannot make a browser key', async () => {
+  const key = 'p'.repeat(40)
+  await asPinOnly(staff.nurse)
+  const pinOnly = (await one(`select trust_this_device($1) as u`, [key])).u
+  const noClaims = await (async () => {
+    await as(staff.nurse, 'authenticated', '')
+    return (await one(`select trust_this_device($1) as u`, [key])).u
+  })()
+  await as(staff.nurse)
+  const code = (await one(`select signed_in_with_code() as c`)).c
+  await asAdmin()
+  const n = await one(
+    `select count(*)::int as n from trusted_device where token_hash = encode(sha256(convert_to($1, 'UTF8')), 'hex')`,
+    [key],
+  )
+  if (pinOnly || noClaims || !code || n.n !== 0)
+    throw new Error(JSON.stringify({ pinOnly, noClaims, code, n: n.n }))
+  return 'PIN only: no key; after the code: allowed'
+})
+await step('0079: a key ended by a sign-out is never brought back, even with a code', async () => {
+  const key = 'r'.repeat(40)
+  await as(staff.nurse)
+  await one(`select trust_this_device($1) as u`, [key])
+  await db.query(`select revoke_this_device($1)`, [key])
+  const again = (await one(`select trust_this_device($1) as u`, [key])).u
+  const used = (await one(`select use_trusted_device($1) as e`, [key])).e
+  await asAdmin()
+  const r = await one(
+    `select revoked_at from trusted_device where token_hash = encode(sha256(convert_to($1, 'UTF8')), 'hex')`,
+    [key],
+  )
+  if (again || used || !r?.revoked_at) throw new Error(JSON.stringify({ again, used, r }))
+  return 'still revoked; the browser makes a new key at the next code'
+})
+await step('0079: the manager sets the hours; new keys and activity follow them', async () => {
+  await as(staff.manager)
+  await db.query(`select save_setting('security.session', '{"hours": 3}'::jsonb)`)
+  await as(staff.nurse)
+  const s = (await one(`select staff_settings() as j`)).j
+  const key = 'h'.repeat(40)
+  await one(`select trust_this_device($1) as u`, [key])
+  await asAdmin()
+  const made = await sessRow(key)
+  await sessBack(key, '1 hour')
+  await as(staff.nurse)
+  await one(`select extend_this_device($1) as e`, [key])
+  await asAdmin()
+  const moved = await sessRow(key)
+  await as(staff.manager)
+  await db.query(`select save_setting('security.session', '{"hours": 5}'::jsonb)`)
+  if (s.session_hours !== 3 || made.secs !== 3 * 3600 || moved.since_use !== 3 * 3600)
+    throw new Error(JSON.stringify({ s, made: made.secs, moved: moved.since_use }))
+  return '3 hours read and applied, back to 5'
+})
+await expectError(
+  '0079: a nurse may not change the hours of inactivity',
+  async () => {
+    await as(staff.nurse)
+    await db.query(`select save_setting('security.session', '{"hours": 12}'::jsonb)`)
+  },
+  /not allowed/i,
+)
+await step('0079: changing settings is not enough: only the manager sets the hours', async () => {
+  // the manager lets the receptionist change settings (an exception for this employee)
+  await asAdmin()
+  await db.query(
+    `insert into staff_permission (profile_id, permission, allowed) values ($1, 'settings.write', true)
+     on conflict (profile_id, permission) do update set allowed = true`,
+    [staff.receptionist],
+  )
+  await as(staff.receptionist)
+  const may = (await one(`select has_perm('settings.write') as ok`)).ok
+  const refused = await tryAs(
+    staff.receptionist,
+    `select save_setting('security.session', '{"hours": 4}'::jsonb)`,
+  )
+  await db.query(
+    `delete from staff_permission where profile_id = $1 and permission = 'settings.write'`,
+    [staff.receptionist],
+  )
+  const h = (await one(`select session_hours() as h`)).h
+  if (!may || !/not allowed/.test(refused) || h !== 5)
+    throw new Error(JSON.stringify({ may, refused, h }))
+  return 'receptionist with settings.write refused; still 5 hours'
+})
+await expectError(
+  '0079: the hours are a whole number from 1 to 12',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select save_setting('security.session', '{"hours": 13}'::jsonb)`)
+  },
+  /between 1 and 12/i,
+)
+await expectError(
+  '0079: half hours are refused',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select save_setting('security.session', '{"hours": 2.5}'::jsonb)`)
+  },
+  /between 1 and 12/i,
+)
+await expectError(
+  '0079: hours written as text are refused',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select save_setting('security.session', '{"hours": "five"}'::jsonb)`)
+  },
+  /between 1 and 12/i,
+)
+await step('0079: the sign-in functions are closed to visitors (anon)', async () => {
+  await asAdmin()
+  const r = await one(
+    `select bool_or(has_function_privilege('anon', p, 'execute')) as anon_any,
+            bool_and(has_function_privilege('authenticated', p, 'execute')) as staff_all
+     from unnest(array['session_hours()', 'signed_in_with_code()', 'trust_this_device(text, text)', 'use_trusted_device(text)',
+                       'extend_this_device(text)', 'revoke_this_device(text)',
+                       'revoke_trusted_devices(boolean)']::regprocedure[]) p`,
+  )
+  if (r.anon_any || !r.staff_all) throw new Error(JSON.stringify(r))
+  return 'anon refused; staff allowed'
+})
+
+// ---------------------------------------------------------------- 0080: the specialty adds where a doctor works
+const servicesOf80 = async (id) =>
+  (
+    await one(
+      `select coalesce(array_agg(s order by s), '{}') as s
+       from unnest(array['consultation', 'dental', 'laboratory', 'ultrasound', 'nursing', 'surgery',
+                         'circ', 'fp', 'hiv', 'pharmacy', 'triage']) s
+       where staff_serves($1, s)`,
+      [id],
+    )
+  ).s
+const doctor80 = {}
+await step(
+  '0080: a doctor with no service set: the specialty adds its section (Dentist → Dental), the desk the app opens (Consultation) stays',
+  async () => {
+    await asAdmin()
+    doctor80.dentist = (
+      await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+        'd.dentist80@staff.muhaziclinic.rw',
+        JSON.stringify({ username: 'd.dentist80', full_name: 'Dr. Habimana Eric', role: 'doctor' }),
+      ])
+    ).id
+    await db.query(`update profiles set specialty = 'Dentist', station = null where id = $1`, [
+      doctor80.dentist,
+    ])
+    const mine = (await one(`select staff_services($1) as s`, [doctor80.dentist])).s
+    const dental = await servicesOf80(doctor80.dentist)
+    await as(staff.receptionist)
+    const listDental = (await one(`select service_staff('dental') as s`)).s
+    await asAdmin()
+    if (
+      mine.length ||
+      !dental.includes('dental') ||
+      // no desk name: the app opens this doctor's queue at Consultation, so it stays
+      !dental.includes('consultation') ||
+      dental.includes('surgery') ||
+      !listDental.staff.some((p) => p.id === doctor80.dentist)
+    )
+      throw new Error(JSON.stringify({ mine, dental }))
+    return `Dentist serves ${dental.join(', ')}; listed for Dental`
+  },
+)
+await step(
+  '0080: General practitioner → Consultation; Surgeon adds Minor surgery and circumcision; the desk name counts too',
+  async () => {
+    await asAdmin()
+    const id = doctor80.dentist
+    await db.query(`update profiles set specialty = 'General practitioner' where id = $1`, [id])
+    const gp = await servicesOf80(id)
+    // the specialty and the desk name both count
+    await db.query(
+      `update profiles set specialty = 'General practitioner', station = 'Dental room' where id = $1`,
+      [id],
+    )
+    const gpDental = await servicesOf80(id)
+    await db.query(`update profiles set specialty = 'Surgeon', station = null where id = $1`, [id])
+    const surgeon = await servicesOf80(id)
+    // a "Minor surgery" doctor at the desk "Consultation 1" keeps Consultation
+    await db.query(
+      `update profiles set specialty = 'Minor surgery', station = 'Consultation 1' where id = $1`,
+      [id],
+    )
+    const both = await servicesOf80(id)
+    await db.query(
+      `update profiles set specialty = 'Chirurgien-dentiste', station = null where id = $1`,
+      [id],
+    )
+    const fr = await servicesOf80(id)
+    // at a desk named for a section, the specialty adds to that desk only
+    await db.query(
+      `update profiles set specialty = 'Dentist', station = 'Dental 1' where id = $1`,
+      [id],
+    )
+    const atDental = await servicesOf80(id)
+    if (
+      !gp.includes('consultation') ||
+      gp.includes('dental') ||
+      !gpDental.includes('consultation') ||
+      !gpDental.includes('dental') ||
+      !surgeon.includes('surgery') ||
+      !surgeon.includes('circ') ||
+      !surgeon.includes('consultation') ||
+      !both.includes('consultation') ||
+      !both.includes('surgery') ||
+      both.includes('dental') ||
+      !fr.includes('dental') ||
+      fr.includes('surgery') ||
+      !atDental.includes('dental') ||
+      atDental.includes('consultation')
+    )
+      throw new Error(JSON.stringify({ gp, gpDental, surgeon, both, fr, atDental }))
+    return `GP: ${gp.join(', ')} · Surgeon: ${surgeon.join(', ')} · Chirurgien-dentiste: ${fr.join(', ')}`
+  },
+)
+await step(
+  '0080: no specialty (or one naming no section) leaves the desk name to decide, as before',
+  async () => {
+    await asAdmin()
+    const id = doctor80.dentist
+    await db.query(
+      `update profiles set specialty = null, station = 'Dental chair 2' where id = $1`,
+      [id],
+    )
+    const byDesk = await servicesOf80(id)
+    // "Resident" is not "dent…": the word must start with it
+    await db.query(`update profiles set specialty = 'Resident', station = null where id = $1`, [id])
+    const resident = await servicesOf80(id)
+    if (
+      !byDesk.includes('dental') ||
+      byDesk.includes('consultation') ||
+      !resident.includes('consultation') ||
+      resident.includes('dental')
+    )
+      throw new Error(JSON.stringify({ byDesk, resident }))
+    return `desk "Dental chair 2": ${byDesk.join(', ')} · Resident: ${resident.join(', ')}`
+  },
+)
+await step(
+  '0080: a doctor whose department gives services keeps exactly those, whatever the specialty',
+  async () => {
+    // the dentist above is now set in Dental, so Dental has its people
+    await asAdmin()
+    await db.query(`update profiles set specialty = 'Dentist', station = null where id = $1`, [
+      doctor80.dentist,
+    ])
+    await as(staff.manager)
+    const dental = (
+      await one(`select upsert_department(null, 'Dental 80', null, '{}', array['dental']) as id`)
+    ).id
+    const theatre = (
+      await one(`select upsert_department(null, 'Theatre 80', null, '{}', array['surgery']) as id`)
+    ).id
+    await asAdmin()
+    const other = (
+      await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+        'd.theatre80@staff.muhaziclinic.rw',
+        JSON.stringify({
+          username: 'd.theatre80',
+          full_name: 'Dr. Ingabire Alice',
+          role: 'doctor',
+        }),
+      ])
+    ).id
+    await db.query(`update profiles set specialty = 'Dentist' where id = $1`, [other])
+    await db.query(
+      `insert into staff_department (profile_id, department_id, position) values ($1, $2, 'member'), ($3, $4, 'member')`,
+      [doctor80.dentist, dental, other, theatre],
+    )
+    // only the services nobody is set for may still fall back to the role's usual desk
+    const unset = (
+      await one(
+        `select coalesce(array_agg(s order by s), '{}') as s
+         from unnest(array['consultation', 'dental', 'laboratory', 'ultrasound', 'nursing', 'surgery',
+                           'circ', 'fp', 'hiv', 'pharmacy', 'triage']) s
+         where not service_has_staff(s)`,
+      )
+    ).s
+    const mine = await servicesOf80(other)
+    const dentist = await servicesOf80(doctor80.dentist)
+    const extra = mine.filter((s) => s !== 'surgery')
+    if (
+      !mine.includes('surgery') ||
+      mine.includes('dental') ||
+      extra.some((s) => !unset.includes(s)) ||
+      !dentist.includes('dental') ||
+      dentist.includes('surgery')
+    )
+      throw new Error(JSON.stringify({ mine, dentist, unset }))
+    return `department Theatre: ${mine.join(', ')} (specialty Dentist not used) · Dental: ${dentist.join(', ')}`
+  },
+)
+await step('0080: the serving functions stay closed to visitors (anon)', async () => {
+  await asAdmin()
+  const r = await one(
+    `select has_function_privilege('anon', 'staff_serves(uuid, text)', 'execute') as anon,
+            has_function_privilege('authenticated', 'staff_serves(uuid, text)', 'execute') as staff,
+            role_serves('doctor', null, 'dental', 'Orthodontist') as ortho,
+            role_serves('doctor', null, 'consultation', 'Paediatrician') as paed,
+            role_serves('doctor', null, 'ultrasound', 'Radiologist') as radio,
+            role_serves('doctor', 'Theatre', 'surgery') as old3,
+            role_serves('nurse', null, 'nursing', 'Midwife') as nurse,
+            role_serves('doctor', null, 'consultation', 'Dentist') as dent_no_desk,
+            role_serves('doctor', 'Dental 1', 'consultation', 'Dentist') as dent_at_dental,
+            has_function_privilege('anon', 'role_serves(role_key, text, text, text)', 'execute') as anon4`,
+  )
+  if (
+    r.anon ||
+    r.anon4 ||
+    !r.staff ||
+    !r.ortho ||
+    !r.paed ||
+    !r.radio ||
+    !r.old3 ||
+    !r.nurse ||
+    !r.dent_no_desk ||
+    r.dent_at_dental
+  )
+    throw new Error(JSON.stringify(r))
+  return 'anon refused; staff allowed; specialties map to sections'
+})
 
 finish()
 

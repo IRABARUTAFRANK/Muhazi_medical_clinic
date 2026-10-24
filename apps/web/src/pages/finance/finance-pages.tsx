@@ -229,6 +229,9 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
   const canCount = useCan(user)('payment.take') || user.role === 'cashier'
   const [cashNotice, setCashNotice] = useState<string | null>(null)
   const [cashError, setCashError] = useState<string | null>(null)
+  // the count's answer lives here: saving refreshes the day, and the panel starts again from the
+  // saved count, so a message kept inside it would vanish at once
+  const [countMsg, setCountMsg] = useState<CountMsg | null>(null)
   const amountOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.amount ?? 0
   const countOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.count ?? 0
 
@@ -249,7 +252,10 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
               type="date"
               value={day}
               max={today()}
-              onChange={(e) => setDay(e.target.value || today())}
+              onChange={(e) => {
+                setDay(e.target.value || today())
+                setCountMsg(null)
+              }}
               className="bg-transparent outline-none"
             />
           </label>
@@ -477,10 +483,12 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
         {s && (
           <CountCashPanel
             // the day's figures arrive after the page opens: start again from the saved count
-            key={JSON.stringify((s.closes ?? []).find((c) => c.mine)?.counted ?? {})}
+            key={`${day}|${JSON.stringify((s.closes ?? []).find((c) => c.mine)?.counted ?? {})}`}
             day={day}
             summary={s}
             canCount={canCount}
+            msg={countMsg}
+            onMsg={setCountMsg}
           />
         )}
         {s && (s.voided ?? []).length > 0 && (
@@ -557,14 +565,21 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
  * Count the cash: at the end of the day each person who took payments says what they hold per
  * method; the difference with what the payments say is kept (the manager sees everyone's).
  */
+type CountMsg = { ok: boolean; text: string }
+
 function CountCashPanel({
   day,
   summary,
   canCount,
+  msg,
+  onMsg: setMsg,
 }: {
   day: string
   summary: CashierSummary
   canCount: boolean
+  /** Kept by the page, so it stays shown when the panel starts again from the saved count. */
+  msg: CountMsg | null
+  onMsg: (m: CountMsg | null) => void
 }) {
   const { t } = useTranslation()
   const cash = useCashActions()
@@ -579,7 +594,6 @@ function CountCashPanel({
     ),
   )
   const [note, setNote] = useState(mineClose?.note ?? '')
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const methods = ['cash', 'momo', 'airtel']
   const total = (o: Record<string, number | string>) =>
     methods.reduce((sum, m) => sum + (Number(o[m]) || 0), 0)

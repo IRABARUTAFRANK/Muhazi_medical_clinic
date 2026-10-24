@@ -685,8 +685,8 @@
       "username": "Username",
       "usernameHint": "Lowercase letters, digits, dot, dash or underscore (3–32).",
       "role": "Role",
-      "station": "Station",
-      "stationPh": "Consultation 1, Triage, Dental…",
+      "station": "Desk name (optional)",
+      "stationPh": "Consultation 1, Dental 2, Room 4…",
       "dashboard": "Dashboard access",
       "dashboardNone": "None",
       "dashboardHead": "Head of station (no money)",
@@ -709,7 +709,7 @@
       "noDepartments": "No departments yet: create them in the Departments tab, then place employees in them.",
       "saveChanges": "Save changes",
       "specialty": "Specialty or title",
-      "specialtyPh": "e.g. Minor surgery, Paediatrics, Midwife",
+      "specialtyPh": "e.g. Dentist, Surgeon, Midwife",
       "departments": "Departments",
       "mainDepartment": "Main department",
       "pickDepartment": "Choose a department",
@@ -719,7 +719,26 @@
       "noDepartmentYet": "Not in any department yet.",
       "manyHint": "The employee works in each of these departments, with the position held there. The first is the main one (shown on their home page).",
       "replacesHead": "{{name}} is head of {{dept}} now. A department has one head: saving makes {{name}} assistant head.",
-      "positionsHint": "Head: one per department, gets the department dashboard and writes to the department. Assistant head: the head’s deputy, the same dashboard and messages. Member: works in the department’s sections."
+      "positionsHint": "Head: one per department, gets the department dashboard and writes to the department. Assistant head: the head’s deputy, the same dashboard and messages. Member: works in the department’s sections.",
+      "roleDoes": {
+        "receptionist": "Registers patients, books appointments and sends patients on.",
+        "cashier": "Takes payments, gives receipts and counts the cash.",
+        "nurse": "Takes vitals, gives care and treatments, does triage.",
+        "doctor": "Examines, diagnoses, prescribes and requests tests.",
+        "sonographer": "Does ultrasound scans and writes their reports.",
+        "lab_tech": "Takes samples, runs laboratory tests and enters the results.",
+        "pharmacist": "Gives out medicines, sells at the counter and keeps the stock.",
+        "manager": "Sees everything: money, staff, prices, settings and reports."
+      },
+      "specialtyHint": "What the person is expert in. Colleagues see it, and so do patients on the website calendar.",
+      "specialtyDoctorHint": "Add the doctor's specialty (General practitioner, Dentist, Surgeon…). Colleagues and patients see it, and while the doctor has no department it also adds its section (Dentist → Dental).",
+      "departmentsHint": "Where the person works. The services of these departments decide which patients reach them, before the specialty or the desk name.",
+      "worksIn": "Works in:",
+      "worksAtRoleDesk": "Works at the role's own desk (reception, cash desk or the manager's pages), not in a service.",
+      "deptNoService": "{{names}}: no service set yet. Set its services in Departments.",
+      "stationHint": "The desk name shows on screens and tickets. Name it after the room (Dental 1, Theatre…): the person's queue opens at that desk.",
+      "byRole": "No department gives a service yet, so this comes from the role. Once a department with services is chosen, the department decides.",
+      "byRoleDoctor": "No department gives a service yet, so this comes from the desk name (Consultation unless it names another room) and the specialty, which adds its section (Dentist → Dental, Surgeon → Minor surgery). Once a department with services is chosen, the department decides."
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -758,7 +777,7 @@
       "receptionist": "Receptionist",
       "cashier": "Cashier / finance",
       "nurse": "Nurse",
-      "doctor": "Doctor / dentist",
+      "doctor": "Doctor",
       "sonographer": "Sonographer",
       "lab_tech": "Lab technician",
       "pharmacist": "Pharmacist",
@@ -846,16 +865,29 @@
         "departments": "They leave their departments and their access exceptions. Their calendar is taken off the website.",
         "devices": "Their trusted devices and temporary PIN are removed.",
         "waiting": "Patients and tasks waiting for them go back to the desk, so someone else can take them.",
-        "final": "This cannot be undone."
+        "final": "This cannot be undone.",
+        "notices": "Messages and notices addressed to them are deleted, including messages colleagues wrote to them.",
+        "noticesCount_one": "The {{count}} message or notice addressed to them is deleted, including messages colleagues wrote to them.",
+        "noticesCount_other": "The {{count}} messages and notices addressed to them are deleted, including messages colleagues wrote to them."
       },
       "staysTitle": "What stays (clinic records, not personal ones)",
       "stays": {
         "records": "Every visit, note, diagnosis, result, prescription, payment, receipt and stock movement they recorded, and the activity history, keeps their name, marked as a former employee.",
-        "staffId": "Their staff ID is never given to anyone else."
+        "staffId": "Their staff ID is never given to anyone else.",
+        "recordsName": "Every visit, note, diagnosis, result, prescription, payment, receipt and stock movement they recorded, and the activity history, keeps their name."
       },
       "deactivatedSince_one": "{{name}} has been deactivated since {{date}} ({{count}} day) and already cannot sign in. Deleting also frees their username and e-mail.",
       "deactivatedSince_other": "{{name}} has been deactivated since {{date}} ({{count}} days) and already cannot sign in. Deleting also frees their username and e-mail.",
-      "done": "{{name}}'s account is deleted. Everything they recorded stays in the clinic's records."
+      "done": "{{name}}'s account is deleted. Everything they recorded stays in the clinic's records.",
+      "now": {
+        "patients_one": "{{count}} patient now",
+        "patients_other": "{{count}} patients now",
+        "tasks_one": "{{count}} open task",
+        "tasks_other": "{{count}} open tasks"
+      },
+      "appointments": "Appointments already booked with {{name}}'s calendar stay booked. They are not moved for you: move them to another doctor or call the patients.",
+      "appointmentsCount_one": "{{count}} upcoming appointment is booked with {{name}}'s calendar. It stays booked and is not moved for you: move it to another doctor or call the patient.",
+      "appointmentsCount_other": "{{count}} upcoming appointments are booked with {{name}}'s calendar. They stay booked and are not moved for you: move them to another doctor or call the patients."
     },
     "longDeactivated": {
       "title": "Deactivated for more than a month",
@@ -893,7 +925,16 @@
     "trustHint": "Next time on this browser, your staff ID, username and PIN are enough — no e-mailed code until the trust expires. Untick on a shared computer.",
     "firstPinLead": "This is your first sign-in with the PIN the manager gave you. Choose six digits only you know; then a code is sent to your e-mail to approve it.",
     "firstPinSave": "Save my PIN and send the code",
-    "firstPinSaved": "Your PIN is saved. Type the code we just e-mailed you."
+    "firstPinSaved": "Your PIN is saved. Type the code we just e-mailed you.",
+    "sessionHint": "You stay signed in while you work. After hours without activity, or when you sign out, you will need a new code.",
+    "ended": {
+      "idle_one": "You were signed out after {{count}} hour without activity.",
+      "idle_other": "You were signed out after {{count}} hours without activity.",
+      "signedOut": "You signed out.",
+      "wrongPins": "You were signed out after 5 wrong PINs on the locked screen.",
+      "ended": "Your sign-in ended.",
+      "next": "Sign in again: staff ID, username and PIN, then the new code we e-mail you."
+    }
   },
   "register": {
     "title": "Register a patient",
@@ -1014,7 +1055,11 @@
       "generic": "Could not save: {{message}}"
     },
     "takenBadge": "Vitals taken",
-    "levelOptional": "Triage colour (if you give one now)"
+    "levelOptional": "Triage colour (if you give one now)",
+    "forName": "for {{name}}",
+    "forYou": "for you",
+    "lockedFor": "Sent to {{name}}: only {{name}} records the vitals and sends this patient on. You can look but not change anything.",
+    "lockedSection": "Only the nurses working at triage record the vitals and send this patient on. You can look but not change anything."
   },
   "prices": {
     "title": "Treatments, prices and insurers",
@@ -1575,7 +1620,7 @@
       },
       "security": {
         "title": "Security",
-        "hint": "Screen lock, e-mailed sign-in code"
+        "hint": "Sign-out after hours without activity"
       },
       "patient": {
         "title": "Patient file fields",
@@ -1599,6 +1644,23 @@
       "triageFirstHint": "Every patient passes at triage: a nurse takes the vitals, chooses the colour and sends the patient on.",
       "saved": "Saved. New registrations follow this flow.",
       "vitalsNote": "Either way, every screen shows whether the vitals were taken."
+    },
+    "session": {
+      "title": "Sign-in session",
+      "lead_one": "A screen stays signed in while it is used. After {{count}} hour without activity it signs out, and signing in again needs a new e-mailed code.",
+      "lead_other": "A screen stays signed in while it is used. After {{count}} hours without activity it signs out, and signing in again needs a new e-mailed code.",
+      "rule1_one": "Each tab counts its own activity: a click, a key, a touch or scrolling. After {{count}} hour without any, the tab signs out.",
+      "rule1_other": "Each tab counts its own activity: a click, a key, a touch or scrolling. After {{count}} hours without any, the tab signs out.",
+      "rule2": "10 minutes before, a warning shows; any click or key keeps the person signed in.",
+      "rule3": "Signing out, or 5 wrong PINs on a locked screen, signs out every tab of that person in this browser, and the next sign-in needs a new e-mailed code.",
+      "rule4_one": "Another tab in the same browser signs in with staff ID, username and PIN, without a new code, as long as the person was active there in the last {{count}} hour.",
+      "rule4_other": "Another tab in the same browser signs in with staff ID, username and PIN, without a new code, as long as the person was active there in the last {{count}} hours.",
+      "rule5": "“Lock the screen now” keeps the work open behind the PIN; time on a locked screen still counts as time without activity.",
+      "length": "Sign out after",
+      "hours_one": "{{count}} hour without activity",
+      "hours_other": "{{count}} hours without activity",
+      "saved": "Saved. Open screens follow the new hours within a few minutes.",
+      "revokeHint": "“Ask every device again” ends every browser's key: everyone's next sign-in needs a new e-mailed code. Screens already signed in stay signed in."
     }
   },
   "pin": {
@@ -1623,7 +1685,13 @@
     "switch": "Not you? Sign out",
     "soon_one": "No activity: the screen locks in {{count}} second.",
     "soon_other": "No activity: the screen locks in {{count}} seconds.",
-    "stay": "I'm here"
+    "stay": "I'm here",
+    "byYouTitle": "You locked the screen",
+    "byYouBody": "Enter your PIN to continue as {{name}}.",
+    "wrongLeft_one": "Wrong PIN. {{count}} try left before you are signed out.",
+    "wrongLeft_other": "Wrong PIN. {{count}} tries left before you are signed out.",
+    "idleSignOut_one": "If the screen is not unlocked by {{time}} ({{count}} hour without activity), you are signed out and need a new e-mailed code.",
+    "idleSignOut_other": "If the screen is not unlocked by {{time}} ({{count}} hours without activity), you are signed out and need a new e-mailed code."
   },
   "patients": {
     "title": "Patients",
@@ -1863,7 +1931,9 @@
     "roomNoStock": "{{names}}: not found in a store here, so not taken out of the stock.",
     "returnWhy": "Why does {{item}} come back? (wrong medicine, unopened…)",
     "returned": "{{item}} is back in the store and off the bill.",
-    "returnMedicine": "Brought back"
+    "returnMedicine": "Brought back",
+    "testsWhoTitle": "Only doctors request tests. The manager can allow it in Settings → Who may do what.",
+    "testsWhoHint": "Only doctors (and the lab or ultrasound, for their own desk) request tests and exams; the manager can allow others in Settings → Who may do what. A treatment you give here goes in Add a treatment."
   },
   "adjust": {
     "mode": "How to enter it",
@@ -2023,7 +2093,9 @@
     "edit": "Edit vitals",
     "sendOn": "Send on (vitals already taken)",
     "notTakenBanner": "Vitals not taken yet for this visit. Record them before the consultation.",
-    "noneShort": "No vitals yet"
+    "noneShort": "No vitals yet",
+    "nurseSendsOn": "You record the measurements only: the nurse gives the triage colour and sends the patient on.",
+    "notSentOn": "The patient was not sent on: {{message}}"
   },
   "ops": {
     "appts": {
@@ -2685,7 +2757,8 @@
       },
       "security": {
         "lock": "Screen lock",
-        "otp": "E-mailed sign-in code"
+        "otp": "E-mailed sign-in code",
+        "session": "Sign-in session (hours without activity)"
       }
     },
     "openVisit": "Open the visit"
@@ -2823,7 +2896,8 @@
     "tiles": {
       "collected": "Collected today",
       "openBills": "Bills to collect",
-      "mine": "Collected by me"
+      "mine": "Collected by me",
+      "collectedIn": "Collected {{period}}"
     },
     "toCollect": "to collect",
     "section": "Bills and payments",
@@ -2878,7 +2952,10 @@
     "refundsTitle": "Money given back this day",
     "reprint": "Open the visit to print the receipt again",
     "countEmpty": "Type what you counted for at least one way of paying (type 0 if you hold none).",
-    "countHint": "Type what you hold; the difference appears as you type."
+    "countHint": "Type what you hold; the difference appears as you type.",
+    "byMethodIn": "How patients paid {{period}}",
+    "paymentsIn": "Payments {{period}}",
+    "periodNeedsUpdate": "Other periods need the latest database update. The figures below are today's."
   },
   "calendar": {
     "title": "My calendar",
@@ -3157,7 +3234,9 @@
       "askHint": "Only the clinic's medicines are listed. For a new medicine, ask the manager or the pharmacy to add it first.",
       "partial": "{{item}} was added to the clinic's medicines, but the delivery was not recorded ({{error}}). Record the delivery again.",
       "locked": "Already added to the clinic's medicines: only the delivery is left to record. Change its details under Medicines."
-    }
+    },
+    "sendExpiredNote_one": "This medicine has {{count}} expired unit in the stores. Expired units are never sent, so a store may have fewer to send than shown here. Write them off under Use or write off.",
+    "sendExpiredNote_other": "This medicine has {{count}} expired units in the stores. Expired units are never sent, so a store may have fewer to send than shown here. Write them off under Use or write off."
   },
   "report": {
     "excel": "Excel",
@@ -3521,7 +3600,11 @@
     "labelDays_other": "for {{count}} days",
     "forThisPatient": "Medicines to hand over to this patient",
     "shortExplain": "{{item}}: the pharmacy has {{have}}, {{need}} prescribed. Receive it first, or mark it not given.",
-    "receiveIt": "Receive stock"
+    "receiveIt": "Receive stock",
+    "sendIt_one": "Send from another store ({{count}} there)",
+    "sendIt_other": "Send from another store ({{count}} there)",
+    "shortSendExplain_one": "{{item}}: the pharmacy has {{have}}, {{need}} prescribed. Another store holds {{count}}: send it to the pharmacy first, or mark it not given.",
+    "shortSendExplain_other": "{{item}}: the pharmacy has {{have}}, {{need}} prescribed. Another store holds {{count}}: send them to the pharmacy first, or mark it not given."
   },
   "queuePage": {
     "title": "My queue · {{desk}}",
@@ -3559,7 +3642,8 @@
     },
     "rxSearch": "Search patient, medicine or file number",
     "noRx": "No prescription in this period.",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "periodNeedsUpdate": "This system needs its latest update to show lists older than 90 days. Until then, only the last 90 days are shown."
   },
   "receipt": {
     "title": "Receipt",
@@ -3697,5 +3781,18 @@
     "matches_one": "{{count}} match: choose it",
     "matches_other": "{{count}} matches: choose one",
     "more": "… {{count}} more: type more letters"
+  },
+  "session": {
+    "duration": {
+      "hm": "{{h}} h {{m}} min",
+      "h": "{{h}} h",
+      "m": "{{m}} min"
+    },
+    "idleFor": "No activity for {{time}}.",
+    "signOutIn_one": "You will be signed out in {{count}} minute; any click or key keeps you signed in.",
+    "signOutIn_other": "You will be signed out in {{count}} minutes; any click or key keeps you signed in.",
+    "after": "After that you sign in again with a new e-mailed code.",
+    "rule_one": "Signs out after {{count}} hour without activity",
+    "rule_other": "Signs out after {{count}} hours without activity"
   }
 }

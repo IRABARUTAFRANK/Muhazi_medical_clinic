@@ -29,6 +29,11 @@ export interface StockItem {
   costValue: number
   avgCost: number | null
   byLocation: Record<string, number>
+  /**
+   * Usable (not expired) units per store, when the database sends them: only these can be sent
+   * to another store. Missing on today's database, where byLocation also counts expired units.
+   */
+  byLocationUsable?: Record<string, number>
   earliestExpiry: string | null
   expiredUnits: number
   active: boolean
@@ -56,6 +61,10 @@ export interface PharmacyLine {
   at: string
   price: number | null
   onHandPharmacy: number
+  /** Usable stock of the medicine in the other stores (main store, desks): 0 before migration 0078. */
+  onHandElsewhere: number
+  /** The pharmacy store, where hand-overs take stock from (null before migration 0078). */
+  pharmacyLocationId: string | null
   /** Expired units in the pharmacy store: never handed over, to write off (migration 0057). */
   expiredInPharmacy?: number
   /** A doctor still has the patient at their desk. */
@@ -159,6 +168,8 @@ const sampleQueue: PharmacyLine[] = [
     at: new Date(Date.now() - 20 * 60_000).toISOString(),
     price: 500,
     onHandPharmacy: 96,
+    onHandElsewhere: 400,
+    pharmacyLocationId: null,
   },
   {
     requestId: 'rx-2',
@@ -179,6 +190,8 @@ const sampleQueue: PharmacyLine[] = [
     at: new Date(Date.now() - 8 * 60_000).toISOString(),
     price: 300,
     onHandPharmacy: 200,
+    onHandElsewhere: 0,
+    pharmacyLocationId: null,
   },
 ]
 const sampleMoves: StockMovement[] = [
@@ -257,6 +270,7 @@ export function useStockOverview() {
           costValue: Number(i.costValue ?? 0),
           avgCost: i.avgCost == null ? null : Number(i.avgCost),
           expiredUnits: Number(i.expiredUnits ?? 0),
+          byLocationUsable: i.byLocationUsable ?? undefined,
         })),
       }
     },
@@ -276,6 +290,9 @@ export function usePharmacyQueue() {
         quantity: Number(l.quantity),
         price: l.price == null ? null : Number(l.price),
         onHandPharmacy: Number(l.onHandPharmacy ?? 0),
+        // both arrive with migration 0078; an older database sends neither
+        onHandElsewhere: Number(l.onHandElsewhere ?? 0),
+        pharmacyLocationId: l.pharmacyLocationId ?? null,
         expiredInPharmacy: Number(l.expiredInPharmacy ?? 0),
       }))
     },

@@ -13,7 +13,7 @@ import { Flash } from '@/components/ui/flash'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useVisitVitals } from '@/lib/api/billing'
 import { useFilesToComplete } from '@/lib/api/desk-ops'
-import { openItems, sortQueue, useQueueBoard } from '@/lib/api/visits'
+import { openItems, sortQueue, useQueueBoard, type QueueItem } from '@/lib/api/visits'
 import { SERVICE_DESK, type ServiceId } from '@/lib/api/services'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
 import { navForUser } from '@/lib/nav'
@@ -31,19 +31,22 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
   // At triage, or anywhere in the clinic without vitals yet.
   const waiting = openItems(items).filter((q) => q.station === 'triage' || !q.vitalsAt)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const selected =
-    waiting.find((i) => i.queueId === selectedId) ??
-    (encounter ? waiting.find((i) => i.encounterId === encounter) : undefined) ??
-    waiting[0] ??
-    null
   const [notice, setNotice] = useState<string | null>(null)
   // A long triage queue: search, choose the order, ten at a time.
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('urgent')
+  // the patients waiting for me (sent to me by name, or to triage where I work) come first
+  const mineFirst = (q: QueueItem) => (q.forMe && q.canWork !== false ? 0 : 1)
   const shown = sortQueue(
     waiting.filter((q) => matches(query, q.name, q.ticket, q.fileNumber)),
     sort,
-  )
+  ).sort((a, b) => mineFirst(a) - mineFirst(b))
+  // the chosen patient, else the one opened from a link, else the first row of the list
+  const selected =
+    waiting.find((i) => i.queueId === selectedId) ??
+    (encounter ? waiting.find((i) => i.encounterId === encounter) : undefined) ??
+    shown[0] ??
+    null
   const paged = usePaged(shown, 10, `${query}|${sort}`)
   // Files the nurse started that reception must complete: send those patients to reception.
   const { data: files = [] } = useFilesToComplete()
@@ -52,6 +55,23 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
     : undefined
   // Vitals already measured (at registration, by another nurse, from a paper sheet).
   const { data: existing = [] } = useVisitVitals(selected?.encounterId ?? '')
+  // At triage the patient is the nurse's they were sent to (or of the nurses working at triage):
+  // another nurse sees the form read only; reception and the doctor may still type a nurse's
+  // paper sheet, without sending the patient on.
+  const notMine = selected?.station === 'triage' && selected.canWork === false
+  const lockedNote =
+    notMine && user.role === 'nurse'
+      ? selected.assignedName && selected.assignedTo !== user.id
+        ? t('triage.lockedFor', { name: selected.assignedName })
+        : t('triage.lockedSection')
+      : null
+  /** "for Chantal" on a patient sent to a named nurse ("for you" when it is me). */
+  const forWhom = (q: QueueItem) =>
+    q.assignedName
+      ? q.assignedTo === user.id
+        ? t('triage.forYou')
+        : t('triage.forName', { name: q.assignedName })
+      : null
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="vitals">
@@ -122,6 +142,11 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
                       {t(`register.stations.${q.station}`, { defaultValue: q.station })}
                     </span>
                   )}
+                  {forWhom(q) && (
+                    <Badge tone={q.assignedTo === user.id ? 'blue' : 'grey'} dot={false}>
+                      {forWhom(q)}
+                    </Badge>
+                  )}
                   {q.priority === 1 && <Badge tone="red">{t('home.triage.red')}</Badge>}
                   <span className="text-ink-2 text-xs tabular-nums">
                     {formatDuration(q.waitMin, t)}
@@ -146,6 +171,9 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
                 title={`${selected.ticket} · ${selected.name}`}
                 subtitle={`${selected.ageSex} · ${selected.fileNumber}`}
                 mode={selected.station === 'triage' ? 'triage' : 'add'}
+                station={selected.station}
+                mayRoute={!notMine}
+                lockedNote={lockedNote}
                 existing={existing}
                 // the service chosen at registration (else consultation)
                 defaultNext={
@@ -158,10 +186,9 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
                 missing={missing}
                 onSaved={(ticket, station) => {
                   setNotice(
-                    t('triage.sent', {
-                      ticket,
-                      station: station ? t(`register.stations.${station}`) : '',
-                    }),
+                    station
+                      ? t('triage.sent', { ticket, station: t(`register.stations.${station}`) })
+                      : t('vitalsForm.saved'),
                   )
                   setSelectedId(null)
                 }}

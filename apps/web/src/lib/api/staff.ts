@@ -461,8 +461,8 @@ export function useStaffActions() {
   })
 
   /**
-   * Delete for good: the sign-in goes, the username and e-mail become free; the person stays on
-   * the clinic's records as a former employee (migration 0076).
+   * Delete for good: the sign-in goes, the username and e-mail become free; the person's name
+   * stays on the clinic's records (migration 0076).
    */
   const remove = useMutation({
     mutationFn: async ({ id, confirmCode }: { id: string; confirmCode: string }) => {
@@ -584,4 +584,41 @@ export function useMyDepartments(userId: string) {
 export function useLeadDepartments(user: { id: string }) {
   const { data = [] } = useMyDepartments(user.id)
   return data.filter((d) => d.position === 'head' || d.position === 'assistant')
+}
+
+/** What deleting someone would touch right now (migration 0078), for the delete panel. */
+export interface RetirePreview {
+  /** Notices and messages addressed to them: deleted with the account. */
+  notices: number
+  /** Appointments booked with their calendar from today on: they stay booked, to be moved. */
+  upcomingAppointments: number
+  /** Patients waiting for them, taken by them or coming back to them. */
+  waitingPatients: number
+  openTasks: number
+}
+
+/** The counts for the delete panel; null when the database does not have them yet (before 0078). */
+export function useRetirePreview(profileId: string | null) {
+  return useQuery({
+    queryKey: ['staff', 'retire-preview', profileId],
+    enabled: !!profileId,
+    queryFn: async (): Promise<RetirePreview | null> => {
+      if (!supabase)
+        return { notices: 4, upcomingAppointments: 2, waitingPatients: 1, openTasks: 0 }
+      const { data, error } = await supabase.rpc('retire_staff_preview', {
+        p_profile_id: profileId,
+      })
+      if (error) {
+        if (/function|schema cache/i.test(error.message)) return null
+        throw new Error(error.message)
+      }
+      const d = (data ?? {}) as Partial<RetirePreview>
+      return {
+        notices: Number(d.notices ?? 0),
+        upcomingAppointments: Number(d.upcomingAppointments ?? 0),
+        waitingPatients: Number(d.waitingPatients ?? 0),
+        openTasks: Number(d.openTasks ?? 0),
+      }
+    },
+  })
 }

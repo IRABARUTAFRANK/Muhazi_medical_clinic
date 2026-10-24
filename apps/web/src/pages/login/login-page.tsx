@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, KeyRound, Lock, MailCheck } from 'lucide-react'
+import { ArrowLeft, Clock, KeyRound, Lock, MailCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
@@ -8,7 +8,14 @@ import { Logo } from '@/components/public/logo'
 import { PIN_RE } from '@/lib/api/staff'
 import { homeRouteFor } from '@/lib/roles'
 import { isLive } from '@/lib/supabase'
-import { MISMATCH_KEY, maskEmail, useSession } from '@/store/session'
+import {
+  clearSignOutNote,
+  MISMATCH_KEY,
+  maskEmail,
+  readSignOutNote,
+  useSession,
+  type SignOutNote,
+} from '@/store/session'
 
 const CODE_RE = /^[0-9]{6}$/
 
@@ -18,6 +25,9 @@ const CODE_RE = /^[0-9]{6}$/
  * Step 3: the code. Only then does the session exist in the app.
  * First sign-in with the manager's temporary PIN: the person chooses their own PIN between
  * steps 2 and 3, so the e-mailed code approves the account with the PIN they will keep.
+ * The tab then stays signed in while it is used; after some hours without activity (5 by
+ * default), or after any sign-out, the page says why the person is here and that a new e-mailed
+ * code is needed.
  */
 export function LoginPage({ staffId }: { staffId: string }) {
   const { t } = useTranslation()
@@ -49,8 +59,12 @@ export function LoginPage({ staffId }: { staffId: string }) {
   })
   const [notice, setNotice] = useState<string | null>(null)
   const [cooldown, setCooldown] = useState(0)
-  // On by default: the clinic's mail budget is limited and staff use their own devices.
-  const [trustDevice, setTrustDevice] = useState(true)
+  // Why this tab was signed out (hours without activity, sign-out, wrong PINs): read once, then
+  // forgotten so it is not shown again after the next sign-in.
+  const [note] = useState<SignOutNote | null>(() => readSignOutNote())
+  useEffect(() => {
+    if (note) clearSignOutNote()
+  }, [note])
   const codeRef = useRef<HTMLInputElement>(null)
 
   const step: 'credentials' | 'new-pin' | 'otp' =
@@ -94,7 +108,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
       setPin('')
       if (result.step === 'new-pin') return
       if (result.step === 'done') {
-        // Trusted device: no e-mailed code this time.
+        // Another tab of this browser while the person is active: no new code.
         void navigate({
           to: result.user.mustChangePin ? '/app/change-pin' : homeRouteFor(result.user),
         })
@@ -138,7 +152,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
     setBusy(true)
     setError(null)
     try {
-      const result = await verifyOtp(code, trustDevice)
+      const result = await verifyOtp(code)
       if (!result.ok) {
         setError(
           t(
@@ -211,6 +225,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
 
         {step === 'credentials' ? (
           <form onSubmit={submitCredentials} className="flex flex-col gap-3.5">
+            {note && <SignedOutNote note={note} />}
             <p className="text-ink-2 m-0 text-[13px]">{t('login.lead')}</p>
             <Field
               label={t('landing.signin.username')}
@@ -295,20 +310,10 @@ export function LoginPage({ staffId }: { staffId: string }) {
               className="text-center text-2xl font-bold tracking-[.4em] tabular-nums"
               required
             />
-            {isLive && (
-              <label className="border-border flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-[13px]">
-                <input
-                  type="checkbox"
-                  className="accent-primary mt-0.5 size-[18px] flex-none"
-                  checked={trustDevice}
-                  onChange={(e) => setTrustDevice(e.target.checked)}
-                />
-                <span>
-                  <span className="text-ink block font-semibold">{t('login.trust')}</span>
-                  <span className="text-ink-3 block text-xs">{t('login.trustHint')}</span>
-                </span>
-              </label>
-            )}
+            <p className="bg-surface text-ink-2 m-0 flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs">
+              <Clock size={14} aria-hidden="true" className="mt-0.5 flex-none" />
+              <span>{t('login.sessionHint')}</span>
+            </p>
             {error && <Alert>{error}</Alert>}
             {notice && (
               <p className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
@@ -340,6 +345,35 @@ export function LoginPage({ staffId }: { staffId: string }) {
         )}
       </div>
       <p className="m-0 text-center text-xs text-white/80">{t('landing.signin.note')}</p>
+    </div>
+  )
+}
+
+/** Why the person is on the login page again, and what signing in now takes. */
+function SignedOutNote({ note }: { note: SignOutNote }) {
+  const { t } = useTranslation()
+  const why =
+    note.reason === 'idle'
+      ? t('login.ended.idle', { count: note.hours })
+      : note.reason === 'signedOut'
+        ? t('login.ended.signedOut')
+        : note.reason === 'wrongPins'
+          ? t('login.ended.wrongPins')
+          : note.reason === 'inactive'
+            ? t('login.inactive')
+            : t('login.ended.ended')
+  return (
+    <div
+      role="status"
+      className="bg-amber-bg border-amber flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-[13px]"
+    >
+      <Clock size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+      <span>
+        <span className="text-ink block font-semibold">{why}</span>
+        {note.reason !== 'inactive' && (
+          <span className="text-ink-2 block">{t('login.ended.next')}</span>
+        )}
+      </span>
     </div>
   )
 }

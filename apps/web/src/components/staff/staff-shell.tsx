@@ -1,14 +1,14 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type NavItem, type StaffUser } from '@mmc/shared'
+import { useStaffSettings } from '@/lib/api/settings'
 import { appNow } from '@/lib/clock'
 import { useDayNames } from '@/lib/hooks'
-import { useStaffSettings } from '@/lib/api/settings'
 import { usePrefsSync } from '@/lib/prefs-sync'
 import { TEXT_ZOOM, usePrefs } from '@/store/prefs'
 import { useSession } from '@/store/session'
 import { useSyncState } from '@/store/sync'
-import { IdleWarning, LockScreen, useIdleLock } from './lock-screen'
+import { IdleWarning, LockScreen } from './lock-screen'
 import { MoreSheet } from './more-sheet'
 import { OfflineBanner } from './offline-banner'
 import { Rail } from './rail'
@@ -27,7 +27,8 @@ interface StaffShellProps {
   children: ReactNode
 }
 
-/** Frame of every staff screen: top bar, offline banner, rail (PC) or bottom bar (tablet), idle lock. */
+/** Frame of every staff screen: top bar, offline banner, rail (PC) or bottom bar (tablet), the
+ *  warning before the sign-out for inactivity and the screen locked by the person. */
 export function StaffShell({
   user,
   nav,
@@ -40,13 +41,17 @@ export function StaffShell({
   const sync = useSyncState()
   const dayNames = useDayNames()
   const locked = useSession((s) => s.locked)
+  // Hours without activity before the tab signs out: a change by the manager reaches open tabs.
+  const { data: staffSettings } = useStaffSettings()
+  const sessionHours = staffSettings?.sessionHours
+  useEffect(() => {
+    if (sessionHours != null) useSession.getState().setSessionHours(sessionHours)
+  }, [sessionHours])
   const [sheet, setSheet] = useState(false)
   const barCount = useBarCount()
   const zoom = TEXT_ZOOM[usePrefs((s) => s.textSize)] ?? 1
   // Text size, theme and language follow the person to every device.
   usePrefsSync(user.id)
-  const { data: staffSettings } = useStaffSettings()
-  const lockIn = useIdleLock(staffSettings?.idleMinutes ?? 120)
   const now = appNow()
   const clock = `${dayNames.short[now.getDay()]} ${formatDate(now)} · ${time ?? formatTime(now)}`
 
@@ -86,7 +91,7 @@ export function StaffShell({
           />
         )}
       </div>
-      {!locked && lockIn != null && <IdleWarning seconds={lockIn} />}
+      {!locked && <IdleWarning />}
       {locked && <LockScreen />}
     </div>
   )

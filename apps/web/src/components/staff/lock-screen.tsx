@@ -1,85 +1,79 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Lock } from 'lucide-react'
+import { Clock, Lock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { formatTime } from '@mmc/shared'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
-import { useSession } from '@/store/session'
+import { IDLE_WARNING_MS, idleDeadline, MAX_UNLOCK_FAILURES, useSession } from '@/store/session'
 
-const ACTIVITY_EVENTS = [
-  'pointerdown',
-  'pointermove',
-  'keydown',
-  'touchstart',
-  'wheel',
-  'scroll',
-] as const
-/** Seconds of warning before the screen locks. */
-const LOCK_WARNING_S = 60
-
-/**
- * Locks the staff screen after `minutes` without input. One minute before, it returns the
- * time left so the shell can show "Still there?"; any touch, key or mouse move resets it.
- * The page underneath stays as it was, so unlocking with the PIN loses no work.
- */
-export function useIdleLock(minutes = 15): number | null {
-  const [left, setLeft] = useState<number | null>(null)
+/** The time of now, refreshed every `ms` (for counters that only need to move slowly). */
+function useNow(ms: number): number {
+  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    let lockAt = 0
-    let lastArm = 0
-    const arm = () => {
-      lockAt = Date.now() + minutes * 60_000
-      lastArm = Date.now()
-      setLeft(null)
-      // remembered with the tab, so a reload after a long pause asks for the PIN
-      useSession.getState().touch()
-    }
-    const onActivity = () => {
-      // pointermove fires constantly: re-arm at most every 5 seconds.
-      if (useSession.getState().locked || Date.now() - lastArm < 5000) return
-      arm()
-    }
-    arm()
-    const tick = window.setInterval(() => {
-      if (useSession.getState().locked) return
-      const remaining = Math.ceil((lockAt - Date.now()) / 1000)
-      if (remaining <= 0) {
-        setLeft(null)
-        useSession.getState().lock()
-      } else if (remaining <= LOCK_WARNING_S) setLeft(remaining)
-    }, 1000)
-    for (const ev of ACTIVITY_EVENTS) window.addEventListener(ev, onActivity, { passive: true })
-    return () => {
-      window.clearInterval(tick)
-      for (const ev of ACTIVITY_EVENTS) window.removeEventListener(ev, onActivity)
-    }
-  }, [minutes])
-  return left
+    const id = window.setInterval(() => setNow(Date.now()), ms)
+    return () => window.clearInterval(id)
+  }, [ms])
+  return now
 }
 
-/** Small bar shown during the last minute before the lock. */
-export function IdleWarning({ seconds }: { seconds: number }) {
+/**
+ * "No activity for 4 h 50 min": shown during the last 10 minutes before this tab signs out for
+ * inactivity. Any click, key, touch or scroll keeps the person signed in and hides it at once
+ * (the activity moves the time of the last activity, see store/session.ts).
+ */
+export function IdleWarning() {
   const { t } = useTranslation()
+  const lastActiveAt = useSession((s) => s.lastActiveAt)
+  const hours = useSession((s) => s.sessionHours)
+  const now = useNow(5_000)
+  const deadline = idleDeadline({ lastActiveAt, sessionHours: hours })
+  const left = deadline - now
+  if (lastActiveAt == null || left <= 0 || left > IDLE_WARNING_MS) return null
+  const idleMin = Math.floor((now - lastActiveAt) / 60_000)
+  const h = Math.floor(idleMin / 60)
+  const m = idleMin % 60
+  const idle =
+    h > 0 && m > 0
+      ? t('session.duration.hm', { h, m })
+      : h > 0
+        ? t('session.duration.h', { h })
+        : t('session.duration.m', { m })
   return (
     <div
       role="status"
-      className="bg-amber-bg text-ink border-amber shadow-card fixed right-4 bottom-4 z-[90] flex max-w-[360px] items-center gap-3 rounded-xl border px-4 py-3"
+      className="bg-amber-bg text-ink border-amber shadow-card fixed right-4 bottom-4 left-4 z-[90] flex flex-col gap-2 rounded-xl border px-4 py-3 sm:left-auto sm:max-w-[440px]"
     >
-      <Lock size={18} aria-hidden="true" className="flex-none" />
-      <span className="flex-1 text-[13px] font-semibold">{t('lock.soon', { count: seconds })}</span>
-      <Button size="sm" variant="primary">
+      <span className="flex items-start gap-3">
+        <Clock size={18} aria-hidden="true" className="mt-0.5 flex-none" />
+        <span className="flex-1 text-[13px]">
+          <b className="block">{t('session.idleFor', { time: idle })}</b>
+          <span className="text-ink-2 block">
+            {t('session.signOutIn', { count: Math.max(1, Math.ceil(left / 60_000)) })}
+          </span>
+          <span className="text-ink-3 block text-xs">{t('session.after')}</span>
+        </span>
+      </span>
+      {/* pressing it is activity, like any click: the warning goes away */}
+      <Button size="sm" variant="primary" className="self-end">
         {t('lock.stay')}
       </Button>
     </div>
   )
 }
 
-/** Full-screen PIN prompt shown while the session is locked. */
+/**
+ * Full-screen PIN prompt shown after "Lock the screen now". Time on a locked screen counts as
+ * time without activity: once the hours pass, the tab signs out instead (see store/session.ts).
+ */
 export function LockScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useSession((s) => s.user)
+  const lastActiveAt = useSession((s) => s.lastActiveAt)
+  const hours = useSession((s) => s.sessionHours)
+  const failures = useSession((s) => s.unlockFailures)
   const unlock = useSession((s) => s.unlock)
   const signOut = useSession((s) => s.signOut)
   const [pin, setPin] = useState('')
@@ -95,7 +89,8 @@ export function LockScreen() {
     const ok = await unlock(pin)
     setBusy(false)
     if (!ok) {
-      setError(t('lock.wrong'))
+      const left = MAX_UNLOCK_FAILURES - useSession.getState().unlockFailures
+      setError(left > 0 ? t('lock.wrongLeft', { count: left }) : t('lock.wrong'))
       setPin('')
     }
   }
@@ -104,7 +99,7 @@ export function LockScreen() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={t('lock.title')}
+      aria-label={t('lock.byYouTitle')}
       className="band-gradient text-ink fixed inset-0 z-[100] flex items-center justify-center p-4"
     >
       <form
@@ -116,8 +111,10 @@ export function LockScreen() {
             <Lock size={22} aria-hidden="true" />
           </span>
           <span>
-            <span className="block text-lg font-bold">{t('lock.title')}</span>
-            <span className="text-ink-3 text-[13px]">{t('lock.body', { name: user.name })}</span>
+            <span className="block text-lg font-bold">{t('lock.byYouTitle')}</span>
+            <span className="text-ink-3 text-[13px]">
+              {t('lock.byYouBody', { name: user.name })}
+            </span>
           </span>
         </div>
         <div className="bg-surface flex items-center gap-3 rounded-lg px-3 py-2">
@@ -127,6 +124,17 @@ export function LockScreen() {
             <span className="text-ink-3 text-xs">{user.username}</span>
           </span>
         </div>
+        {lastActiveAt != null && (
+          <p className="bg-blue-bg text-ink-2 m-0 flex items-start gap-2 rounded-lg px-3 py-2 text-[13px]">
+            <Clock size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+            <span>
+              {t('lock.idleSignOut', {
+                time: formatTime(new Date(idleDeadline({ lastActiveAt, sessionHours: hours }))),
+                count: hours,
+              })}
+            </span>
+          </p>
+        )}
         <Field
           label={t('landing.signin.pin')}
           type="password"
@@ -145,6 +153,11 @@ export function LockScreen() {
             {error}
           </p>
         )}
+        {!error && failures > 0 && (
+          <p className="text-ink-3 m-0 text-xs">
+            {t('lock.wrongLeft', { count: Math.max(1, MAX_UNLOCK_FAILURES - failures) })}
+          </p>
+        )}
         <Button type="submit" variant="primary" size="lg" disabled={busy}>
           {t('lock.unlock')}
         </Button>
@@ -152,7 +165,7 @@ export function LockScreen() {
           type="button"
           className="text-ink-2 text-[13px] underline-offset-2 hover:underline"
           onClick={async () => {
-            await signOut()
+            await signOut('signedOut')
             void navigate({ to: '/', hash: 'signin' })
           }}
         >

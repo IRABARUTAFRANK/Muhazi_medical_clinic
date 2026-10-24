@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { toStaffUser, useSession, type ProfileJson } from '@/store/session'
+import { signInAgainPath, toStaffUser, useSession, type ProfileJson } from '@/store/session'
 
 /**
  * Keeps an open tab in step with the employee's profile: a new role, desk or dashboard set by
@@ -41,10 +41,11 @@ export function useProfileRefresh() {
   }, [data, user])
   useEffect(() => {
     if (error && /deactivated/i.test(error.message)) {
+      const staffId = useSession.getState().user?.staffId
       void useSession
         .getState()
-        .signOut()
-        .then(() => window.location.replace('/#signin'))
+        .signOut('inactive')
+        .then(() => window.location.replace(signInAgainPath(staffId)))
     }
   }, [error])
 }

@@ -14,11 +14,13 @@ export function useUserActions() {
   return {
     theme,
     toggleTheme,
+    /** Signs out and ends this browser's trust: the next sign-in needs a new e-mailed code. */
     signOut: async () => {
-      await signOut()
+      await signOut('signedOut')
       void navigate({ to: '/' })
     },
-    /** Away from the desk: the screen locks now; the PIN opens it again. */
+    /** Away from the desk: the screen locks now; the PIN opens it again until the hours without
+     *  activity have passed (then the tab signs out). */
     lock: () => useSession.getState().lock(),
     changePin: () => void navigate({ to: '/app/change-pin' }),
   }

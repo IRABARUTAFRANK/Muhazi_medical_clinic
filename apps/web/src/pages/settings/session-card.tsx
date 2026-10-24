@@ -1,68 +1,76 @@
 import { useState } from 'react'
-import { Check, MailCheck, ShieldOff } from 'lucide-react'
+import { Check, Clock, ShieldOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
-import { Select } from '@/components/ui/select'
 import { Flash } from '@/components/ui/flash'
+import { Select } from '@/components/ui/select'
 import {
-  TRUST_CHOICES,
+  DEFAULT_SESSION_HOURS,
+  SESSION_CHOICES,
   useRevokeAllDevices,
-  useSaveTrustSetting,
+  useSaveSessionSetting,
   useStaffSettings,
 } from '@/lib/api/settings'
 
+const RULES = ['rule1', 'rule2', 'rule3', 'rule4', 'rule5'] as const
+
 /**
- * Manager: how often staff receive the e-mailed sign-in code. Mail goes through the clinic's
- * Gmail (about 500 messages a day), so by default a device is trusted for 30 days after one
- * correct code. "Every sign-in" is the strictest choice.
+ * Manager: the sign-in session. One rule for everyone: a tab stays signed in while it is used,
+ * and signs out after this many hours WITHOUT ACTIVITY (counted from the last click, key, touch
+ * or scroll in it); after that, or after any sign-out, a new e-mailed code is needed. Replaces
+ * the idle-lock and trusted-days cards.
  */
-export function OtpCard() {
+export function SessionCard() {
   const { t } = useTranslation()
   const { data } = useStaffSettings()
-  const save = useSaveTrustSetting()
+  const save = useSaveSessionSetting()
   const revoke = useRevokeAllDevices()
   const [value, setValue] = useState<number | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const current = value ?? data?.trustDays ?? 30
-
-  const label = (d: number) =>
-    d === 0 ? t('settings.otp.every') : t('settings.otp.days', { count: d })
+  const saved = data?.sessionHours ?? DEFAULT_SESSION_HOURS
+  const current = value ?? saved
 
   return (
-    <Card>
+    <Card className="xl:col-span-2">
       <CardHeader>
         <span className="inline-flex items-center gap-2">
-          <MailCheck size={16} aria-hidden="true" />
-          {t('settings.otp.title')}
+          <Clock size={16} aria-hidden="true" />
+          {t('settings.session.title')}
         </span>
       </CardHeader>
       <CardBody className="gap-3">
-        <p className="text-ink-2 m-0 text-[13px]">{t('settings.otp.lead')}</p>
+        <p className="text-ink-2 m-0 text-[13px]">{t('settings.session.lead', { count: saved })}</p>
+        <ul className="text-ink-2 m-0 flex list-disc flex-col gap-1.5 pl-5 text-[13px]">
+          {RULES.map((r) => (
+            <li key={r}>{t(`settings.session.${r}`, { count: current })}</li>
+          ))}
+        </ul>
         <div className="flex flex-wrap items-end gap-3">
           <Select
-            label={t('settings.otp.ask')}
+            label={t('settings.session.length')}
             value={current}
             onChange={(e) => {
               setValue(Number(e.target.value))
               setNotice(null)
             }}
-            wrapperClassName="w-64"
+            wrapperClassName="w-56"
           >
-            {TRUST_CHOICES.map((d) => (
-              <option key={d} value={d}>
-                {label(d)}
+            {SESSION_CHOICES.map((h) => (
+              <option key={h} value={h}>
+                {t('settings.session.hours', { count: h })}
               </option>
             ))}
           </Select>
           <Button
             variant="primary"
             loading={save.isPending}
-            disabled={value == null || value === data?.trustDays}
+            disabled={value == null || value === saved}
             onClick={async () => {
               if (value == null) return
               await save.mutateAsync(value)
-              setNotice(t('settings.otp.saved'))
+              setValue(null)
+              setNotice(t('settings.session.saved'))
             }}
           >
             <Check size={16} aria-hidden="true" />
@@ -79,7 +87,7 @@ export function OtpCard() {
             {t('settings.otp.revokeAll')}
           </Button>
         </div>
-        <p className="text-ink-3 m-0 text-xs">{t('settings.otp.hint')}</p>
+        <p className="text-ink-3 m-0 text-xs">{t('settings.session.revokeHint')}</p>
         {notice && (
           <Flash key={notice} onClose={() => setNotice(null)}>
             {notice}

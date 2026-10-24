@@ -58,6 +58,9 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
     // an assistant head also has the department dashboard; only the head has head_of
     (user.dashboard === 'head' && user.headOf && user.role !== 'manager' ? 'head' : 'member')
   const department = placement?.department ?? (position === 'head' ? user.headOf : undefined)
+  const specialty = placement?.specialty?.trim() || null
+  // the role pill says "Doctor · Dentist"; a head's pill names the department instead
+  const headLabel = user.dashboard === 'head' && !!user.headOf
 
   return (
     <section
@@ -105,9 +108,9 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
             )}
           >
             <RoleIcon size={14} aria-hidden="true" />
-            {roleLabel(user, t)}
+            {roleLabel(user, t, specialty)}
           </span>
-          {placement?.specialty && <Chip icon={Award}>{placement.specialty}</Chip>}
+          {specialty && headLabel && <Chip icon={Award}>{specialty}</Chip>}
           {placement && placement.departments.length > 1 ? (
             placement.departments.map((x) => (
               <Chip key={x.name} icon={Building2}>
@@ -123,7 +126,9 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
               )}
             </>
           )}
-          {user.station && user.role !== 'doctor' && <Chip icon={MapPin}>{user.station}</Chip>}
+          {user.station && (user.role !== 'doctor' || specialty || headLabel) && (
+            <Chip icon={MapPin}>{user.station}</Chip>
+          )}
           {user.staffId && (
             <Chip icon={IdCard}>
               <span className="tabular-nums">{user.staffId}</span>

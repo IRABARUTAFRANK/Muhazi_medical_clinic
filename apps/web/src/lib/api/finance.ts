@@ -64,6 +64,11 @@ export interface CashierSummary {
   /** Money still owed on visits already over. */
   debts?: number
   debtsDue?: number
+  /**
+   * A period was asked but the database is older than migration 0078: the figures are today's.
+   * Set here, not by the server.
+   */
+  todayOnly?: boolean
 }
 export interface Refund {
   id: string
@@ -102,9 +107,16 @@ const samplePayments: CashPayment[] = [
   cashier: 'Mugisha Samuel',
 }))
 
-export function useCashierSummary(day: string | null) {
+/**
+ * One day of money (`day`, null = today), or with `period` the money of those days (the cashier
+ * home; migration 0078). The day close (what I hold, the counts) stays about one day.
+ */
+export function useCashierSummary(
+  day: string | null,
+  period?: { from: string; to: string } | null,
+) {
   return useQuery({
-    queryKey: ['finance', 'day', day],
+    queryKey: ['finance', 'day', day, period?.from ?? null, period?.to ?? null],
     refetchInterval: 30_000,
     queryFn: async (): Promise<CashierSummary> => {
       if (!supabase) {
@@ -126,6 +138,19 @@ export function useCashierSummary(day: string | null) {
           openBills: 5,
           openDue: 108900,
         }
+      }
+      if (period) {
+        const { data, error } = await supabase.rpc('cashier_summary', {
+          p_day: day,
+          p_from: period.from,
+          p_to: period.to,
+        })
+        if (!error) return data as CashierSummary
+        // before migration 0078 there is only the one-day summary: show today's, and say so
+        if (!/function|schema cache/i.test(error.message)) throw new Error(error.message)
+        const old = await supabase.rpc('cashier_summary', { p_day: day })
+        if (old.error) throw new Error(old.error.message)
+        return { ...(old.data as CashierSummary), todayOnly: true }
       }
       const { data, error } = await supabase.rpc('cashier_summary', { p_day: day })
       if (error) throw new Error(error.message)

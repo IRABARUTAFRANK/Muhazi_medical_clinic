@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import type { Station } from '@/lib/api/visits'
 import type { TestStatus } from '@/lib/api/lab'
@@ -104,28 +105,66 @@ const sampleRx: MyPrescription[] = [
   visitOpen: true,
 }))
 
-export function useMyOrders(days: number) {
+/** The days the lists cover, ISO, both included (the shared period filter). */
+export interface DayRange {
+  from: string
+  to: string
+}
+
+/** A list of the period. `cut`: the database is not updated yet and could only give the last 90 days. */
+export interface PeriodRows<T> {
+  rows: T[]
+  cut: boolean
+}
+
+/** What an older database (before 0078) can reach back: the last 90 days. */
+const OLD_MAX_DAYS = 90
+
+/**
+ * Ask for the days `from`..`to` (migration 0078). An older database only knows "the last N
+ * days" (at most 90): ask for enough days back to reach `from`, then keep only the days
+ * `from`..`to`.
+ */
+async function rowsOfPeriod<T>(
+  fn: 'my_orders' | 'my_prescriptions',
+  period: DayRange,
+  dayOf: (row: T) => string,
+): Promise<PeriodRows<T>> {
+  if (!supabase) return { rows: [], cut: false }
+  const { data, error } = await supabase.rpc(fn, { p_from: period.from, p_to: period.to })
+  if (!error) return { rows: (data as T[]) ?? [], cut: false }
+  if (!/function|schema cache/i.test(error.message)) throw new Error(error.message)
+  const [y, m, d] = period.from.split('-').map(Number)
+  const start = new Date(y!, m! - 1, d!).getTime()
+  const needed = Math.max(1, Math.floor((Date.now() - start) / 86_400_000) + 1)
+  const old = await supabase.rpc(fn, { p_days: Math.min(OLD_MAX_DAYS, needed) })
+  if (old.error) throw new Error(old.error.message)
+  const rows = ((old.data as T[]) ?? []).filter((r) => {
+    const day = isoDate(new Date(dayOf(r)))
+    return day >= period.from && day <= period.to
+  })
+  return { rows, cut: needed > OLD_MAX_DAYS }
+}
+
+export function useMyOrders(period: DayRange) {
   return useQuery({
-    queryKey: ['my-orders', days],
+    queryKey: ['my-orders', period.from, period.to],
     refetchInterval: 20_000,
-    queryFn: async (): Promise<MyOrder[]> => {
-      if (!supabase) return sampleOrders
-      const { data, error } = await supabase.rpc('my_orders', { p_days: days })
-      if (error) throw new Error(error.message)
-      return (data as MyOrder[]) ?? []
+    queryFn: async (): Promise<PeriodRows<MyOrder>> => {
+      if (!supabase) return { rows: sampleOrders, cut: false }
+      return rowsOfPeriod<MyOrder>('my_orders', period, (o) => o.orderedAt)
     },
   })
 }
 
-export function useMyPrescriptions(days: number) {
+export function useMyPrescriptions(period: DayRange) {
   return useQuery({
-    queryKey: ['my-prescriptions', days],
+    queryKey: ['my-prescriptions', period.from, period.to],
     refetchInterval: 30_000,
-    queryFn: async (): Promise<MyPrescription[]> => {
-      if (!supabase) return sampleRx
-      const { data, error } = await supabase.rpc('my_prescriptions', { p_days: days })
-      if (error) throw new Error(error.message)
-      return ((data as MyPrescription[]) ?? []).map((r) => ({ ...r, quantity: Number(r.quantity) }))
+    queryFn: async (): Promise<PeriodRows<MyPrescription>> => {
+      if (!supabase) return { rows: sampleRx, cut: false }
+      const got = await rowsOfPeriod<MyPrescription>('my_prescriptions', period, (r) => r.at)
+      return { ...got, rows: got.rows.map((r) => ({ ...r, quantity: Number(r.quantity) })) }
     },
   })
 }

@@ -7,6 +7,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { roleLabel } from '@/lib/roles'
 import { useUserActions } from '@/lib/user-actions'
 import { cn } from '@/lib/utils'
+import { useSession } from '@/store/session'
 import { TextSizeControl } from './text-size-control'
 
 const itemClass =
@@ -30,6 +31,7 @@ export function UserMenu({ user, onOpenSheet, onDark = false }: UserMenuProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const actions = useUserActions()
+  const idleHours = useSession((s) => s.sessionHours)
 
   useEffect(() => {
     if (!open) return
@@ -86,6 +88,9 @@ export function UserMenu({ user, onOpenSheet, onDark = false }: UserMenuProps) {
             <span className="text-ink-3 text-xs tabular-nums">
               {user.staffId ? `${user.staffId} · ` : ''}
               {user.username}
+            </span>
+            <span className="text-ink-3 block text-xs">
+              {t('session.rule', { count: idleHours })}
             </span>
           </div>
           <div className="border-border my-1.5 border-t" />

@@ -1,5 +1,7 @@
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useState, type CSSProperties, type FormEvent, type MouseEvent } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
+  ArrowRightLeft,
   Ban,
   FolderOpen,
   PackageCheck,
@@ -30,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { SearchSelect } from '@/components/ui/search-select'
+import type { OpenStock, StockPreset } from './stock-page'
 
 /** Usual reasons a medicine is not handed over; the pharmacist may also type their own. */
 const REASONS = ['outOfStock', 'boughtElsewhere', 'refused'] as const
@@ -44,15 +47,33 @@ export function PharmacyDesk({
   canDispense,
   step = 6,
   encounterId,
+  onOpenStock,
 }: {
   canDispense: boolean
   step?: number
   /** Only this visit's medicines (the visit screen of a pharmacist). */
   encounterId?: string
+  /** On the stock page: open Receive / Send there instead of following the link. */
+  onOpenStock?: OpenStock
 }) {
   const { t } = useTranslation()
   const letterhead = useLetterhead()
   const { data: all = [] } = usePharmacyQueue()
+  // the pharmacy store, for a database that does not send it with each line yet (before 0078)
+  const { data: stock } = useStockOverview()
+  const pharmacyStore = stock?.locations.find((l) => l.type === 'pharmacy')?.id
+  // a link to Receive / Send with the medicine and the store filled in
+  const stockLink = (tab: 'receive' | 'send', preset: StockPreset, primary: boolean) => ({
+    to: '/app/stock' as const,
+    search: { tab, ...preset },
+    className: buttonVariants({ size: 'sm', variant: primary ? 'primary' : 'default' }),
+    onClick: (e: MouseEvent) => {
+      // a plain click on the stock page itself switches the tab there
+      if (!onOpenStock || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return
+      e.preventDefault()
+      onOpenStock(tab, preset)
+    },
+  })
   const queue = encounterId ? all.filter((q) => q.encounterId === encounterId) : all
   const actions = useStockActions()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -209,6 +230,18 @@ export function PharmacyDesk({
                     </div>
                     {lines.map((q) => {
                       const short = q.onHandPharmacy < q.quantity
+                      const pharmacyId = q.pharmacyLocationId ?? pharmacyStore
+                      // the other stores hold enough to make up what the pharmacy lacks
+                      const sendCovers = q.onHandPharmacy + q.onHandElsewhere >= q.quantity
+                      // first when it covers the need, else after Receive (it still helps)
+                      const sendLink = (
+                        <Link
+                          {...stockLink('send', { item: q.itemId, to: pharmacyId }, sendCovers)}
+                        >
+                          <ArrowRightLeft size={14} aria-hidden="true" />
+                          {t('pharmacy.sendIt', { count: q.onHandElsewhere })}
+                        </Link>
+                      )
                       return (
                         <div
                           key={q.requestId}
@@ -282,24 +315,37 @@ export function PharmacyDesk({
                               </span>
                             )}
                           </div>
-                          {/* not enough in the pharmacy store: say it plainly, and where to fix it */}
+                          {/* not enough in the pharmacy store: say it plainly, and where to fix it.
+                              Hand-overs take from the pharmacy store only, so both links fill
+                              it in: send it there from another store, or receive it there. */}
                           {short && canDispense && (
                             <p className="bg-red-bg text-red m-0 flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold">
                               <span className="min-w-0 flex-1">
-                                {t('pharmacy.shortExplain', {
-                                  item: q.item,
-                                  have: q.onHandPharmacy,
-                                  need: q.quantity,
-                                })}
+                                {sendCovers
+                                  ? t('pharmacy.shortSendExplain', {
+                                      item: q.item,
+                                      have: q.onHandPharmacy,
+                                      need: q.quantity,
+                                      count: q.onHandElsewhere,
+                                    })
+                                  : t('pharmacy.shortExplain', {
+                                      item: q.item,
+                                      have: q.onHandPharmacy,
+                                      need: q.quantity,
+                                    })}
                               </span>
-                              <StaffLink
-                                to="/app/stock"
-                                search={{ tab: 'receive' }}
-                                className={buttonVariants({ size: 'sm' })}
+                              {sendCovers && sendLink}
+                              <Link
+                                {...stockLink(
+                                  'receive',
+                                  { item: q.itemId, location: pharmacyId },
+                                  !sendCovers,
+                                )}
                               >
                                 <PackagePlus size={14} aria-hidden="true" />
                                 {t('pharmacy.receiveIt')}
-                              </StaffLink>
+                              </Link>
+                              {!sendCovers && q.onHandElsewhere > 0 && sendLink}
                             </p>
                           )}
                           {refusing === q.requestId && (

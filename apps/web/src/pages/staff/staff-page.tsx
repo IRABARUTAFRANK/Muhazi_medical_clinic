@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import {
   AlertTriangle,
   Building2,
+  CalendarClock,
   Check,
   Copy,
   Eye,
@@ -49,6 +50,7 @@ import {
   useDeactivationReminders,
   useDepartments,
   useEmployees,
+  useRetirePreview,
   useStaffActions,
   type DbLang,
   type DbRole,
@@ -58,10 +60,89 @@ import {
   type Position,
   positionIn,
 } from '@/lib/api/staff'
-import { SECTIONS, sectionName } from '@/lib/api/services'
+import { SECTIONS, sectionName, type SectionId } from '@/lib/api/services'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
 import { cn } from '@/lib/utils'
+
+type Translate = (key: string, opts?: Record<string, unknown>) => string
+
+/** "Doctor · Dentist": the role with what the person is expert in, when set. */
+const employeeRole = (e: Pick<Employee, 'role' | 'specialty'>, t: Translate): string => {
+  const role = t(`staff.roles.${e.role}`)
+  const specialty = e.specialty?.trim()
+  // "Sonographer · Sonographer" says it once
+  return specialty && specialty.toLowerCase() !== role.toLowerCase()
+    ? t('roles.withStation', { role, station: specialty })
+    : role
+}
+
+// The start of a word, and its end (SQL \m and \M), letters of any language counted.
+const WORD = '(?<![\\p{L}\\p{N}])'
+const END = '(?![\\p{L}\\p{N}])'
+/** The section a specialty names, in the order the database reads it (0080). */
+const SPECIALTY_SECTIONS: readonly [RegExp, SectionId][] = [
+  [new RegExp(`(${WORD}dent|amenyo|orthodon|stomato)`, 'u'), 'dental'],
+  [new RegExp(`(ultra|${WORD}[ée]cho|sonog|radiol|imaging|imagerie|mucyuma)`, 'u'), 'ultrasound'],
+  [
+    new RegExp(
+      `(surg|chirurg|kubaga|theat|th[ée][aâ]tre|${WORD}circ|gusiramura|anaesth|anesth)`,
+      'u',
+    ),
+    'surgery',
+  ],
+  [
+    new RegExp(
+      `(g[ée]n[ée]ral|${WORD}gp${END}|family|famille|physician|m[ée]decin|internal|interne|` +
+        `paediat|p[ée]diat|gyn|obst|ophtal|ophthal|${WORD}ent${END}|${WORD}orl${END}|cardio|derma|` +
+        `neuro|psychiat|urolog|gastro|pneumo|endocrin|rheumat|rhumat|muganga)`,
+      'u',
+    ),
+    'consultation',
+  ],
+]
+
+/**
+ * Where a person with no department service works: the usual desk of the role. The database's
+ * role_serves (0080) decides; this mirrors it for the form. A doctor: the desk name (Consultation
+ * when it names no section), plus the section the specialty names.
+ */
+function usualSections(role: DbRole, station: string, specialty: string): SectionId[] {
+  if (role === 'sonographer') return ['ultrasound']
+  if (role === 'nurse') return ['triage', 'nursing', 'fp', 'hiv']
+  if (role === 'lab_tech') return ['laboratory']
+  if (role === 'pharmacist') return ['pharmacy']
+  if (role !== 'doctor') return []
+  const desk = station.toLowerCase()
+  const s = specialty.trim().toLowerCase()
+  const named = s ? SPECIALTY_SECTIONS.find(([re]) => re.test(s))?.[1] : undefined
+  const mine = new Set<SectionId>()
+  if (/dent/.test(desk)) mine.add('dental')
+  if (/(theat|surg|circ)/.test(desk)) mine.add('surgery').add('circ')
+  if (/(ultra|echo)/.test(desk)) mine.add('ultrasound')
+  if (!/(dent|theat|surg|ultra|echo)/.test(desk)) mine.add('consultation')
+  if (named) mine.add(named)
+  if (named === 'surgery') mine.add('circ')
+  return SECTIONS.filter((x) => mine.has(x))
+}
+
+/** Usual specialties or titles offered per role; anything else may be typed. */
+const SPECIALTY_SUGGESTIONS: Partial<Record<DbRole, readonly string[]>> = {
+  doctor: [
+    'General practitioner',
+    'Dentist',
+    'Surgeon',
+    'Gynaecologist',
+    'Paediatrician',
+    'Internal medicine',
+    'Ophthalmologist',
+    'ENT specialist',
+  ],
+  nurse: ['Registered nurse', 'Midwife', 'Anaesthetic nurse', 'Nurse assistant'],
+  lab_tech: ['Laboratory technician', 'Biomedical scientist'],
+  sonographer: ['Sonographer', 'Radiographer'],
+  pharmacist: ['Pharmacist', 'Pharmacy technician'],
+}
 
 interface Credentials {
   title: string
@@ -400,11 +481,6 @@ export function StaffPage({ user }: { user: StaffUser }) {
                             <span className="min-w-[200px] flex-1">
                               <span className="block font-semibold">
                                 {e.fullName}
-                                {e.specialty && (
-                                  <span className="text-violet ml-2 text-xs font-semibold">
-                                    {e.specialty}
-                                  </span>
-                                )}
                                 {self && (
                                   <span className="text-ink-3 ml-2 text-xs font-medium">
                                     ({t('staff.you')})
@@ -426,7 +502,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                                   .join(' · ')}
                               </span>
                             </span>
-                            <Chip>{t(`staff.roles.${e.role}`)}</Chip>
+                            <Chip>{employeeRole(e, t)}</Chip>
                             {positionIn(e, g.key) !== 'member' && (
                               <Badge
                                 tone={positionIn(e, g.key) === 'head' ? 'blue' : 'grey'}
@@ -520,7 +596,8 @@ function daysSince(iso: string): number {
 
 /**
  * Before a delete: what goes, what stays (the clinic's records keep the name), and the better
- * option, deactivating, which keeps everything and can be undone.
+ * option, deactivating, which keeps everything and can be undone. The counts (notices, waiting
+ * patients, booked appointments) come from the server when it has them (migration 0078).
  */
 function DeleteAccountCard({
   employee,
@@ -546,13 +623,29 @@ function DeleteAccountCard({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [paused, onCancel])
+  // null: an older database without the counts, so the lines say it without numbers
+  const { data: preview = null, isPending: previewLoading } = useRetirePreview(employee.id)
+  const waitingNow = preview
+    ? [
+        preview.waitingPatients > 0 &&
+          t('staff.delete.now.patients', { count: preview.waitingPatients }),
+        preview.openTasks > 0 && t('staff.delete.now.tasks', { count: preview.openTasks }),
+      ].filter(Boolean)
+    : []
   const happens = [
     t('staff.delete.happens.signIn', { name }),
     t('staff.delete.happens.departments'),
     t('staff.delete.happens.devices'),
-    t('staff.delete.happens.waiting'),
+    waitingNow.length > 0
+      ? `${t('staff.delete.happens.waiting')} (${waitingNow.join(' · ')})`
+      : t('staff.delete.happens.waiting'),
+    preview && preview.notices > 0
+      ? t('staff.delete.happens.noticesCount', { count: preview.notices })
+      : t('staff.delete.happens.notices'),
   ]
-  const stays = [t('staff.delete.stays.records'), t('staff.delete.stays.staffId')]
+  const stays = [t('staff.delete.stays.recordsName'), t('staff.delete.stays.staffId')]
+  // booked appointments are not moved for the manager: say it before, with the number if known
+  const appointments = preview?.upcomingAppointments ?? null
 
   return (
     <Card className="border-red anim-enter">
@@ -610,6 +703,15 @@ function DeleteAccountCard({
             </ul>
           </section>
         </div>
+
+        {!previewLoading && appointments !== 0 && (
+          <p className="bg-amber-bg text-amber m-0 flex items-start gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold">
+            <CalendarClock size={16} aria-hidden="true" className="mt-px shrink-0" />
+            {appointments == null
+              ? t('staff.delete.appointments', { name })
+              : t('staff.delete.appointmentsCount', { name, count: appointments })}
+          </p>
+        )}
 
         {lastManager && (
           <p role="alert" className={errorBox}>
@@ -852,6 +954,16 @@ function EmployeeForm({
   // Only departments this role belongs to (a department with no roles listed accepts all).
   const fitting = departments.filter((d) => d.roles.length === 0 || d.roles.includes(role))
   const others = new Set([...takenUsernames].filter((u) => u !== employee?.username))
+  const specialtyListId = useId()
+  const suggestions = SPECIALTY_SUGGESTIONS[role] ?? []
+  // The chosen departments decide the services (and so the patients) that reach this person.
+  const chosenDepts = memberships
+    .map((m) => departments.find((d) => d.id === m.departmentId))
+    .filter((d): d is Department => !!d)
+  const services = SECTIONS.filter((s) => chosenDepts.some((d) => d.services.includes(s)))
+  const silent = chosenDepts.filter((d) => d.services.length === 0).map((d) => d.name)
+  // with none, the usual desk of the role (a doctor's also follows the specialty and desk name)
+  const shown = services.length ? services : usualSections(role, station, specialty)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -943,34 +1055,70 @@ function EmployeeForm({
           </div>
           <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.usernameHint2')}</p>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Select
-              label={t('staff.form.role')}
-              value={role}
-              onChange={(e) => {
-                const r = e.target.value as DbRole
-                setRole(r)
-                // departments that do not take this role are dropped
-                setMemberships((list) =>
-                  list.filter((m) => {
-                    const d = departments.find((x) => x.id === m.departmentId)
-                    return !d || d.roles.length === 0 || d.roles.includes(r)
-                  }),
-                )
-              }}
-              disabled={self}
-            >
-              {DB_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {t(`staff.roles.${r}`)}
-                </option>
-              ))}
-            </Select>
+          {/* Three separate ideas: what they may do, what they are expert in, where they work. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Select
+                label={t('staff.form.role')}
+                value={role}
+                onChange={(e) => {
+                  const r = e.target.value as DbRole
+                  setRole(r)
+                  // departments that do not take this role are dropped
+                  setMemberships((list) =>
+                    list.filter((m) => {
+                      const d = departments.find((x) => x.id === m.departmentId)
+                      return !d || d.roles.length === 0 || d.roles.includes(r)
+                    }),
+                  )
+                }}
+                disabled={self}
+              >
+                {DB_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {t(`staff.roles.${r}`)}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-ink-3 m-0 text-xs">{t(`staff.form.roleDoes.${role}`)}</p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Field
+                label={t('staff.form.specialty')}
+                value={specialty}
+                placeholder={t('staff.form.specialtyPh')}
+                list={suggestions.length ? specialtyListId : undefined}
+                autoComplete="off"
+                onChange={(e) => setSpecialty(e.target.value)}
+              />
+              {suggestions.length > 0 && (
+                <datalist id={specialtyListId}>
+                  {suggestions.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
+              )}
+              <p
+                className={cn(
+                  'm-0 text-xs',
+                  role === 'doctor' && !specialty.trim()
+                    ? 'text-amber font-semibold'
+                    : 'text-ink-3',
+                )}
+              >
+                {t(
+                  role === 'doctor' && !specialty.trim()
+                    ? 'staff.form.specialtyDoctorHint'
+                    : 'staff.form.specialtyHint',
+                )}
+              </p>
+            </div>
           </div>
           <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
             <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
               {t('staff.form.departments')}
             </legend>
+            <p className="text-ink-3 m-0 -mt-1 text-xs">{t('staff.form.departmentsHint')}</p>
             {memberships.length === 0 && (
               <p className="text-ink-3 m-0 text-xs">{t('staff.form.noDepartmentYet')}</p>
             )}
@@ -1047,6 +1195,27 @@ function EmployeeForm({
                 )}
               </Button>
             )}
+            {/* What the chosen departments send to this person, live. */}
+            <div className="bg-surface flex flex-col gap-1 rounded-lg px-3 py-2 text-[13px]">
+              {shown.length > 0 ? (
+                <span>
+                  <b>{t('staff.form.worksIn')}</b> {shown.map((s) => sectionName(s, t)).join(', ')}
+                </span>
+              ) : (
+                <span className="text-ink-2">{t('staff.form.worksAtRoleDesk')}</span>
+              )}
+              {/* no department service yet: the role (and a doctor's specialty and desk) decide */}
+              {services.length === 0 && shown.length > 0 && (
+                <span className="text-ink-3 text-xs">
+                  {t(role === 'doctor' ? 'staff.form.byRoleDoctor' : 'staff.form.byRole')}
+                </span>
+              )}
+              {silent.length > 0 && (
+                <span className="text-amber font-semibold">
+                  {t('staff.form.deptNoService', { names: silent.join(', ') })}
+                </span>
+              )}
+            </div>
             {memberships.length > 1 && (
               <p className="text-ink-3 m-0 text-xs">{t('staff.form.manyHint')}</p>
             )}
@@ -1060,15 +1229,9 @@ function EmployeeForm({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field
-              label={t('staff.form.specialty')}
-              value={specialty}
-              placeholder={t('staff.form.specialtyPh')}
-              onChange={(e) => setSpecialty(e.target.value)}
-              wrapperClassName="sm:col-span-3"
-            />
-            <Field
               label={t('staff.form.station')}
               value={station}
+              placeholder={t('staff.form.stationPh')}
               onChange={(e) => setStation(e.target.value)}
             />
             <Select
@@ -1101,6 +1264,7 @@ function EmployeeForm({
               </div>
             )}
           </div>
+          <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.stationHint')}</p>
           {isNew && <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.pinHint')}</p>}
 
           {error && (

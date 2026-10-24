@@ -18,6 +18,7 @@ import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-s
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Empty, Kpi, Panel, Pill, SectionTitle } from '@/components/dash/kit'
+import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { delta, greetingFor } from '@/components/dash/kit-style'
 import { NoticesPanel } from '@/components/dash/notices-panel'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -28,6 +29,7 @@ import { useCashierSummary } from '@/lib/api/finance'
 import { useHomeSummary } from '@/lib/api/home'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
+import { usePeriod } from '@/lib/period'
 import { isLive } from '@/lib/supabase'
 import { MyQueuePanel } from './role-panels'
 import { CallsPanel } from './calls-panel'
@@ -41,13 +43,28 @@ const METHOD_ICON: Record<string, LucideIcon> = {
 const METHOD_COLORS = ['var(--mmc-green-dot)', 'var(--mmc-yellow-dot)', 'var(--mmc-red-dot)']
 
 /**
- * Finance (cashier) dashboard in the manager design: what came in today and how (cash, MTN MoMo,
- * Airtel Money), against yesterday; the bills still to collect with "Take payment"; every payment
- * of the day with its receipt; the patients waiting at the cashier.
+ * Finance (cashier) dashboard in the manager design: what came in over the chosen period (today by
+ * default) and how (cash, MTN MoMo, Airtel Money), against the period before; the bills still to
+ * collect with "Take payment"; every payment of the period with its receipt; the patients waiting
+ * at the cashier. The day close stays on the Payments page, one day at a time.
  */
 export function CashierDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
-  const { data: s, error, refetch, isFetching, dataUpdatedAt } = useCashierSummary(null)
+  // the money of the chosen period (today = the one-day summary, as before)
+  const period = usePeriod('today')
+  const {
+    data: s,
+    error,
+    refetch,
+    isFetching,
+    dataUpdatedAt,
+  } = useCashierSummary(
+    null,
+    period.range === 'today' ? null : { from: period.from, to: period.to },
+  )
+  // an older database answers with today's figures only: name them so
+  const range = s?.todayOnly ? 'today' : period.range
+  const periodWord = t(`dashboard.period.${range}`)
   const { data: home } = useHomeSummary()
   const { data: queue = [] } = useQueueBoard('cashier', user.role)
   const rows = openItems(queue)
@@ -74,6 +91,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             </span>
             {!isLive && <span className="text-ink-3">{t('dashboard.sampleData')}</span>}
           </div>
+          <PeriodSeg period={period} />
           <Button
             size="icon"
             onClick={() => void refetch()}
@@ -91,7 +109,14 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             <Receipt size={16} aria-hidden="true" />
             {t('finance.openBillsBtn')}
           </StaffLink>
+          <PeriodCustom period={period} className="basis-full" />
         </div>
+
+        {s?.todayOnly && (
+          <p className="bg-amber-bg text-amber m-0 rounded-xl px-3 py-2 text-[14px] font-semibold">
+            {t('finance.periodNeedsUpdate')}
+          </p>
+        )}
 
         {error && (
           <p
@@ -108,10 +133,11 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               i={0}
               icon={HandCoins}
               tint="violet"
-              label={t('finance.tiles.collected')}
+              label={t('finance.tiles.collectedIn', { period: periodWord })}
               value={s.total}
               unit="RWF"
-              delta={delta(s.total, s.previousTotal, true, t)}
+              // "all time" has no period before it to compare with
+              delta={range === 'all' ? undefined : delta(s.total, s.previousTotal, true, t)}
             />
             <Kpi
               i={1}
@@ -228,7 +254,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                   i={2}
                   icon={PieChart}
                   tint="mint"
-                  title={t('finance.byMethod')}
+                  title={t('finance.byMethodIn', { period: periodWord })}
                   right={formatRwf(s.total)}
                 >
                   {s.byMethod.length === 0 ? (
@@ -264,7 +290,9 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
         </section>
 
         <section className="flex flex-col gap-3">
-          <SectionTitle icon={HandCoins}>{t('finance.todaysPayments')}</SectionTitle>
+          <SectionTitle icon={HandCoins}>
+            {t('finance.paymentsIn', { period: periodWord })}
+          </SectionTitle>
           <div className="pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
             <Panel
               i={1}

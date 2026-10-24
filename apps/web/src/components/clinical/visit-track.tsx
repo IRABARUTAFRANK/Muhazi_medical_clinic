@@ -224,7 +224,10 @@ function trackOf(j: Journey, now: number, t: TFn): Stop[] {
       ? [at(j.closedAt), j.leftReason ? `“${j.leftReason}”` : null].filter(Boolean).join(' · ')
       : t('track.inClinic'),
   }
-  const byTime = (x: Ev, y: Ev) => x.at - y.at
+  // finish_visit sends the patient to the pharmacy or the cashier at the same instant: on a tie,
+  // "Treatment finished" comes before the desk that follows it
+  const byTime = (x: Ev, y: Ev) =>
+    x.at - y.at || (x.key === 'treated' ? 0 : 1) - (y.key === 'treated' ? 0 : 1)
   const plain = ({ key, state, title, detail }: Ev): Stop => ({ key, state, title, detail })
   return [...done.sort(byTime).map(plain), ...current.sort(byTime).map(plain), ...next, left]
 }

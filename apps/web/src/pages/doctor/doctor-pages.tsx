@@ -12,10 +12,11 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
+import { addDays, formatDate, formatTime, isoDate, type StaffUser } from '@mmc/shared'
 import { Empty, Panel, Pill } from '@/components/dash/kit'
 import type { Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
+import { PeriodFilter } from '@/components/dash/period-filter'
 import { buttonVariants } from '@/components/ui/button'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -39,6 +40,8 @@ import {
 } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
+import type { CustomRange } from '@/lib/api/dashboard'
+import { usePeriod, type Period } from '@/lib/period'
 import { cn } from '@/lib/utils'
 import { OpenNextButton } from '../home/open-next'
 import { MyQueuePanel } from '../home/role-panels'
@@ -83,27 +86,6 @@ function Tabs<K extends string>({
         </button>
       ))}
     </div>
-  )
-}
-
-/** How many days back the lists go. */
-function DaysPicker({ days, onDays }: { days: number; onDays: (d: number) => void }) {
-  const { t } = useTranslation()
-  return (
-    <label className="text-ink-2 inline-flex items-center gap-2 text-[13px] font-semibold">
-      {t('doctorLists.period')}
-      <select
-        className="border-border bg-card h-9 rounded-lg border px-2 text-[13px]"
-        value={days}
-        onChange={(e) => onDays(Number(e.target.value))}
-      >
-        {[1, 7, 30, 90].map((d) => (
-          <option key={d} value={d}>
-            {t('doctorLists.lastDays', { count: d })}
-          </option>
-        ))}
-      </select>
-    </label>
   )
 }
 
@@ -201,6 +183,37 @@ export function QueuePage({ user }: { user: StaffUser }) {
 
 /* ---------------------------------------------------------------- tests & results */
 
+/**
+ * The period bar of the two lists, opening on the last 7 days (as Custom), so on a Monday the
+ * results of last Friday's tests are still there.
+ */
+function useLastWeekPeriod(): Period {
+  const { t } = useTranslation()
+  const base = usePeriod('custom')
+  const [custom, setCustom] = useState<CustomRange>(() => {
+    const today = new Date()
+    return { from: isoDate(addDays(today, -6)), to: isoDate(today) }
+  })
+  if (base.range !== 'custom') return base
+  const [fy, fm, fd] = custom.from.split('-').map(Number)
+  const [ty, tm, td] = custom.to.split('-').map(Number)
+  const label = t('dashboard.rangeLabels.week', {
+    from: formatDate(new Date(fy!, fm! - 1, fd!)),
+    to: formatDate(new Date(ty!, tm! - 1, td!)),
+  })
+  return { ...base, custom, setCustom, from: custom.from, to: custom.to, label }
+}
+
+/** An older database could only give the last 90 days. */
+function PeriodCutNote() {
+  const { t } = useTranslation()
+  return (
+    <p className="bg-amber-bg text-amber m-0 rounded-xl px-3 py-2 text-[14px] font-semibold">
+      {t('doctorLists.periodNeedsUpdate')}
+    </p>
+  )
+}
+
 const STATUS_LOOK: Record<TestStatus, { tint: Tint; icon: LucideIcon }> = {
   ordered: { tint: 'amber', icon: Hourglass },
   collected: { tint: 'teal', icon: TestTube },
@@ -221,17 +234,19 @@ const orderTab = (o: MyOrder): OrderTab =>
 /** Every test I ordered: waiting at the lab, results ready (to read), not done (and why). */
 export function ResultsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
-  const [days, setDays] = useState(7)
+  // the same period filter as the dashboards (the last 7 days by default)
+  const period = useLastWeekPeriod()
   const [tab, setTab] = useState<OrderTab>('ready')
   const [query, setQuery] = useState('')
-  const { data = [], isLoading } = useMyOrders(days)
+  const { data: got, isLoading } = useMyOrders({ from: period.from, to: period.to })
+  const data = got?.rows ?? []
   const count = (k: OrderTab) =>
     k === 'all' ? data.length : data.filter((o) => orderTab(o) === k).length
   const shown = data.filter(
     (o) =>
       (tab === 'all' || orderTab(o) === tab) && matches(query, o.patient, o.test, o.fileNumber),
   )
-  const paged = usePaged(shown, 15, `${tab}|${query}|${days}`)
+  const paged = usePaged(shown, 15, `${tab}|${query}|${period.from}|${period.to}`)
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="results">
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
@@ -246,13 +261,9 @@ export function ResultsPage({ user }: { user: StaffUser }) {
             </BannerChip>
           }
         />
-        <Panel
-          i={1}
-          icon={FlaskConical}
-          tint="coral"
-          title={t('doctorLists.resultsPanel')}
-          right={<DaysPicker days={days} onDays={setDays} />}
-        >
+        <Panel i={1} icon={FlaskConical} tint="coral" title={t('doctorLists.resultsPanel')}>
+          <PeriodFilter period={period} />
+          {got?.cut && <PeriodCutNote />}
           <Tabs
             value={tab}
             onChange={setTab}
@@ -344,17 +355,19 @@ const RX_LOOK: Record<RxState, { tint: Tint; icon: LucideIcon }> = {
 /** Every prescription I wrote and what became of it at the pharmacy. */
 export function PrescriptionsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
-  const [days, setDays] = useState(7)
+  // the same period filter as the dashboards (the last 7 days by default)
+  const period = useLastWeekPeriod()
   const [tab, setTab] = useState<RxState | 'all'>('all')
   const [query, setQuery] = useState('')
-  const { data = [], isLoading } = useMyPrescriptions(days)
+  const { data: got, isLoading } = useMyPrescriptions({ from: period.from, to: period.to })
+  const data = got?.rows ?? []
   const count = (k: RxState | 'all') =>
     k === 'all' ? data.length : data.filter((r) => r.state === k).length
   const shown = data.filter(
     (r: MyPrescription) =>
       (tab === 'all' || r.state === tab) && matches(query, r.patient, r.item, r.fileNumber),
   )
-  const paged = usePaged(shown, 15, `${tab}|${query}|${days}`)
+  const paged = usePaged(shown, 15, `${tab}|${query}|${period.from}|${period.to}`)
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="prescriptions">
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
@@ -369,13 +382,9 @@ export function PrescriptionsPage({ user }: { user: StaffUser }) {
             </BannerChip>
           }
         />
-        <Panel
-          i={1}
-          icon={PillIcon}
-          tint="violet"
-          title={t('doctorLists.rxPanel')}
-          right={<DaysPicker days={days} onDays={setDays} />}
-        >
+        <Panel i={1} icon={PillIcon} tint="violet" title={t('doctorLists.rxPanel')}>
+          <PeriodFilter period={period} />
+          {got?.cut && <PeriodCutNote />}
           <Tabs
             value={tab}
             onChange={setTab}

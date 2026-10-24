@@ -92,9 +92,25 @@ export function VisitPage({
   )
   // the desks of my role (database role: a sonographer works at Ultrasound)
   const myDesks = DESKS_OF[user.dbRole ?? user.role] ?? []
+  // reception, the cashier and the manager keep their own way of choosing the desk below
+  const inSections = !['receptionist', 'cashier', 'manager'].includes(user.role)
   const assigned =
     routing.find((r) => r.assignedTo === user.id || r.takenBy === user.id) ??
     routing.find((r) => coverDesks.includes(r.station)) ??
+    // a desk of a section I work in, waiting for anyone there (a nurse of Consultation, a doctor
+    // of Nursing): the desk and the Take button follow the section, not the role. Not a desk
+    // where I only wait for the patient to come back (my lab test, my ultrasound).
+    (inSections
+      ? routing.find(
+          (r) =>
+            r.canWork !== false &&
+            !r.takenBy &&
+            (!r.assignedTo || r.assignedTo === user.id) &&
+            r.returnTo !== user.id &&
+            r.station !== 'reception' &&
+            r.station !== 'cashier',
+        )
+      : undefined) ??
     routing.find((r) => r.canWork !== false && myDesks.includes(r.station)) ??
     // reception and the manager send on a patient wherever they wait
     (user.role === 'receptionist' || user.role === 'manager'

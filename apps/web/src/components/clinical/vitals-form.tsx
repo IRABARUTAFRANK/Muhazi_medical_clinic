@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Activity, ClipboardPen, Send } from 'lucide-react'
+import { Activity, ClipboardPen, Lock, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser, Triage } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +32,8 @@ type VitalKey = (typeof VITALS)[number]['key']
 const LEVELS: readonly Triage[] = ['red', 'yellow', 'green']
 /** Roles who measure themselves; anyone else types in what a nurse measured. */
 const MEASURERS = ['nurse', 'doctor', 'manager']
+/** The server's answer when this person may not send the patient on (another nurse's patient). */
+const REFUSED = /this patient is with|not allowed|may not|only the (nurse|triage)|another nurse/i
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const nowHHMM = () => {
@@ -54,6 +56,9 @@ const todayAt = (hhmm: string): string | null => {
  *
  * mode "triage": also the triage colour and the next station (closes the triage turn).
  * mode "add": measurements only (e.g. the doctor typing the nurse's sheet later).
+ *
+ * Only the nurse who has the patient sends them on. Reception typing the nurse's paper sheet once
+ * the patient has left reception, or anyone the server refuses, records the measurements only.
  */
 export function VitalsForm({
   user,
@@ -61,6 +66,9 @@ export function VitalsForm({
   title,
   subtitle,
   mode,
+  station,
+  mayRoute = true,
+  lockedNote,
   defaultNext = 'consultation',
   missing,
   existing = [],
@@ -74,6 +82,12 @@ export function VitalsForm({
   title: string
   subtitle?: string
   mode: 'triage' | 'add'
+  /** Where the patient waits now (reception sends on only a patient still at reception). */
+  station?: Station
+  /** False when this person may not send the patient on: measurements only. */
+  mayRoute?: boolean
+  /** Set when the patient is another nurse's: the form is shown read only, with this note. */
+  lockedNote?: string | null
   /** Where the patient goes after triage: reception when the file is still incomplete. */
   defaultNext?: Station
   /** File details reception still has to take (shown next to "Send to"). */
@@ -94,7 +108,14 @@ export function VitalsForm({
   const changedKeys = (Object.keys(values) as VitalKey[]).filter(
     (k) => values[k].trim() !== initial[k].trim(),
   )
-  const sendOnOnly = mode === 'triage' && taken && changedKeys.length === 0
+  // The server refused to send the patient on (they are another nurse's, or reception already
+  // sent them on): the measurements are still saved, the nurse sends the patient on.
+  const [refused, setRefused] = useState<string | null>(null)
+  const measureOnly =
+    mode === 'triage' &&
+    (!mayRoute || refused !== null || (user.role === 'receptionist' && station !== 'reception'))
+  const sends = mode === 'triage' && !measureOnly
+  const sendOnOnly = sends && taken && changedKeys.length === 0
   const [level, setLevel] = useState<Triage>('green')
   // First measurements of a patient who skipped the triage desk: the colour is still given
   // (it orders every queue); the patient stays at their desk.
@@ -109,9 +130,17 @@ export function VitalsForm({
   const fromPaper = measuredBy !== 'me'
   const others = takers.filter((p) => p.id !== user.id)
 
+  /** A refusal to send on: switch to measurements only; any other error is shown as it is. */
+  const failed = (err: unknown, sending: boolean) => {
+    const message = err instanceof Error ? err.message : ''
+    if (sending && REFUSED.test(message)) setRefused(message)
+    else setError(t('triage.errors.generic', { message }))
+  }
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (lockedNote) return
     if (sendOnOnly) {
       try {
         const ticket = await actions.sendFromTriage.mutateAsync({
@@ -122,7 +151,7 @@ export function VitalsForm({
         })
         onSaved(ticket, next)
       } catch (err) {
-        setError(t('triage.errors.generic', { message: err instanceof Error ? err.message : '' }))
+        failed(err, true)
       }
       return
     }
@@ -163,15 +192,15 @@ export function VitalsForm({
         vitals: taken
           ? (Object.fromEntries(changedKeys.map((k) => [k, values[k]])) as Record<string, string>)
           : values,
-        triage: mode === 'triage' || (colourOnly && colourSet) ? level : null,
-        nextStation: mode === 'triage' ? next : null,
-        reason,
+        triage: sends || (colourOnly && colourSet) ? level : null,
+        nextStation: sends ? next : null,
+        reason: sends ? reason : '',
         measuredBy: fromPaper ? measuredBy : null,
         measuredAt: at,
       })
-      onSaved(ticket, mode === 'triage' ? next : null)
+      onSaved(ticket, sends ? next : null)
     } catch (err) {
-      setError(t('triage.errors.generic', { message: err instanceof Error ? err.message : '' }))
+      failed(err, sends)
     }
   }
 
@@ -186,110 +215,103 @@ export function VitalsForm({
       </CardHeader>
       <form onSubmit={submit}>
         <CardBody className="gap-4">
-          {taken && (
-            <p className="bg-green-bg text-green m-0 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl px-3 py-2 text-[13px] font-semibold">
-              <Activity size={16} aria-hidden="true" />
-              {latest?.measuredBy
-                ? t('vitalsForm.taken', {
-                    name: latest.measuredBy,
-                    time: formatTime(new Date(latest.at)),
-                  })
-                : t('vitalsForm.takenAt', { time: latest ? formatTime(new Date(latest.at)) : '' })}
-              <span className="text-ink-2 basis-full font-normal">{t('vitalsForm.takenHint')}</span>
+          {lockedNote && (
+            <p className="bg-violet-bg text-violet m-0 flex items-start gap-2 rounded-xl px-3 py-2 text-[13px] font-semibold">
+              <Lock size={16} aria-hidden="true" className="mt-px flex-none" />
+              {lockedNote}
             </p>
           )}
-          {/* Who measured and when (the paper sheet case) */}
-          <div
-            className={cn(
-              // minmax(0, …): long nurse names must not push "Measured at" past the card edge.
-              'grid min-w-0 grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-[minmax(0,2fr)_minmax(140px,1fr)]',
-              fromPaper ? 'border-amber/40 bg-amber-bg/50' : 'border-border',
-            )}
-          >
-            <Select
-              label={t('vitalsForm.measuredBy')}
-              value={measuredBy}
-              onChange={(e) => setMeasuredBy(e.target.value)}
-              wrapperClassName="min-w-0"
-              className="w-full min-w-0 truncate"
-              required
-            >
-              {!measuresSelf && <option value="">{t('vitalsForm.pickNurse')}</option>}
-              {measuresSelf && (
-                <option value="me">{t('vitalsForm.me', { name: user.name })}</option>
+          {!lockedNote && measureOnly && (
+            <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-start gap-x-2 gap-y-1 rounded-xl px-3 py-2 text-[13px] font-semibold">
+              {refused && (
+                <span className="basis-full">
+                  {t('vitalsForm.notSentOn', { message: refused })}
+                </span>
               )}
-              {others.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                  {p.staffId ? ` · ${p.staffId}` : ''} ·{' '}
-                  {t(`roles.${p.role}`, { defaultValue: p.role })}
-                </option>
-              ))}
-            </Select>
-            <Field
-              label={t('vitalsForm.measuredAt')}
-              type="time"
-              value={measuredAt}
-              onChange={(e) => setMeasuredAt(e.target.value)}
-              wrapperClassName="min-w-0"
-              className="w-full min-w-0"
-              required
-            />
-            <p className="text-ink-2 col-span-full m-0 inline-flex items-start gap-1.5 text-xs">
-              <ClipboardPen size={14} aria-hidden="true" className="mt-px flex-none" />
-              {fromPaper ? t('vitalsForm.paperHint') : t('vitalsForm.selfHint')}
+              <span className="text-ink-2 font-normal">{t('vitalsForm.nurseSendsOn')}</span>
             </p>
-          </div>
-
-          <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
-            {VITALS.map((v) => (
-              <Field
-                key={v.key}
-                label={`${t(`triage.vitals.${v.key}`)} (${v.unit})`}
-                inputMode="decimal"
-                placeholder={v.placeholder}
-                value={values[v.key]}
-                onChange={(e) => setValues((s) => ({ ...s, [v.key]: e.target.value }))}
-              />
-            ))}
-          </div>
-
-          {colourOnly && (
-            <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-              <legend className="text-ink-2 mb-1.5 text-[13px] font-semibold">
-                {t('triage.levelOptional')}
-              </legend>
-              <div className="flex flex-wrap gap-2">
-                {LEVELS.map((l) => (
-                  <label
-                    key={l}
-                    className={cn(
-                      'border-border flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 font-semibold',
-                      colourSet && level === l && 'border-primary bg-primary-tint',
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="triage"
-                      className="accent-primary"
-                      checked={colourSet && level === l}
-                      onChange={() => {
-                        setLevel(l)
-                        setColourSet(true)
-                      }}
-                    />
-                    <Badge tone={l}>{t(`home.triage.${l}`)}</Badge>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
           )}
+          {/* read only while the patient is another nurse's */}
+          <fieldset
+            disabled={!!lockedNote}
+            className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0"
+          >
+            {taken && (
+              <p className="bg-green-bg text-green m-0 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl px-3 py-2 text-[13px] font-semibold">
+                <Activity size={16} aria-hidden="true" />
+                {latest?.measuredBy
+                  ? t('vitalsForm.taken', {
+                      name: latest.measuredBy,
+                      time: formatTime(new Date(latest.at)),
+                    })
+                  : t('vitalsForm.takenAt', {
+                      time: latest ? formatTime(new Date(latest.at)) : '',
+                    })}
+                <span className="text-ink-2 basis-full font-normal">
+                  {t('vitalsForm.takenHint')}
+                </span>
+              </p>
+            )}
+            {/* Who measured and when (the paper sheet case) */}
+            <div
+              className={cn(
+                // minmax(0, …): long nurse names must not push "Measured at" past the card edge.
+                'grid min-w-0 grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-[minmax(0,2fr)_minmax(140px,1fr)]',
+                fromPaper ? 'border-amber/40 bg-amber-bg/50' : 'border-border',
+              )}
+            >
+              <Select
+                label={t('vitalsForm.measuredBy')}
+                value={measuredBy}
+                onChange={(e) => setMeasuredBy(e.target.value)}
+                wrapperClassName="min-w-0"
+                className="w-full min-w-0 truncate"
+                required
+              >
+                {!measuresSelf && <option value="">{t('vitalsForm.pickNurse')}</option>}
+                {measuresSelf && (
+                  <option value="me">{t('vitalsForm.me', { name: user.name })}</option>
+                )}
+                {others.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.staffId ? ` · ${p.staffId}` : ''} ·{' '}
+                    {t(`roles.${p.role}`, { defaultValue: p.role })}
+                  </option>
+                ))}
+              </Select>
+              <Field
+                label={t('vitalsForm.measuredAt')}
+                type="time"
+                value={measuredAt}
+                onChange={(e) => setMeasuredAt(e.target.value)}
+                wrapperClassName="min-w-0"
+                className="w-full min-w-0"
+                required
+              />
+              <p className="text-ink-2 col-span-full m-0 inline-flex items-start gap-1.5 text-xs">
+                <ClipboardPen size={14} aria-hidden="true" className="mt-px flex-none" />
+                {fromPaper ? t('vitalsForm.paperHint') : t('vitalsForm.selfHint')}
+              </p>
+            </div>
 
-          {mode === 'triage' && (
-            <>
+            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
+              {VITALS.map((v) => (
+                <Field
+                  key={v.key}
+                  label={`${t(`triage.vitals.${v.key}`)} (${v.unit})`}
+                  inputMode="decimal"
+                  placeholder={v.placeholder}
+                  value={values[v.key]}
+                  onChange={(e) => setValues((s) => ({ ...s, [v.key]: e.target.value }))}
+                />
+              ))}
+            </div>
+
+            {colourOnly && (
               <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
                 <legend className="text-ink-2 mb-1.5 text-[13px] font-semibold">
-                  {t('triage.level')}
+                  {t('triage.levelOptional')}
                 </legend>
                 <div className="flex flex-wrap gap-2">
                   {LEVELS.map((l) => (
@@ -297,53 +319,86 @@ export function VitalsForm({
                       key={l}
                       className={cn(
                         'border-border flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 font-semibold',
-                        level === l && 'border-primary bg-primary-tint',
+                        colourSet && level === l && 'border-primary bg-primary-tint',
                       )}
                     >
                       <input
                         type="radio"
                         name="triage"
                         className="accent-primary"
-                        checked={level === l}
-                        onChange={() => setLevel(l)}
+                        checked={colourSet && level === l}
+                        onChange={() => {
+                          setLevel(l)
+                          setColourSet(true)
+                        }}
                       />
                       <Badge tone={l}>{t(`home.triage.${l}`)}</Badge>
-                      <span className="text-ink-2 text-xs font-normal">
-                        {t(`triage.levels.${l}`)}
-                      </span>
                     </label>
                   ))}
                 </div>
               </fieldset>
+            )}
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Select
-                  label={t('triage.nextStation')}
-                  value={next}
-                  onChange={(e) => setNext(e.target.value as Station)}
-                >
-                  {SEND_FROM_TRIAGE.map((s) => (
-                    <option key={s} value={s}>
-                      {t(`register.stations.${s}`)}
-                    </option>
-                  ))}
-                </Select>
-                <Field
-                  label={t('triage.reason')}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder={t('triage.reasonPh')}
-                />
-                {missing && missing.length > 0 && (
-                  <p className="text-amber bg-amber-bg col-span-full m-0 rounded-lg px-3 py-2 text-xs font-semibold">
-                    {t(next === 'reception' ? 'files.sendToReception' : 'files.stillMissing', {
-                      missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
-                    })}
-                  </p>
-                )}
-              </div>
-            </>
-          )}
+            {sends && (
+              <>
+                <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+                  <legend className="text-ink-2 mb-1.5 text-[13px] font-semibold">
+                    {t('triage.level')}
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    {LEVELS.map((l) => (
+                      <label
+                        key={l}
+                        className={cn(
+                          'border-border flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 font-semibold',
+                          level === l && 'border-primary bg-primary-tint',
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="triage"
+                          className="accent-primary"
+                          checked={level === l}
+                          onChange={() => setLevel(l)}
+                        />
+                        <Badge tone={l}>{t(`home.triage.${l}`)}</Badge>
+                        <span className="text-ink-2 text-xs font-normal">
+                          {t(`triage.levels.${l}`)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Select
+                    label={t('triage.nextStation')}
+                    value={next}
+                    onChange={(e) => setNext(e.target.value as Station)}
+                  >
+                    {SEND_FROM_TRIAGE.map((s) => (
+                      <option key={s} value={s}>
+                        {t(`register.stations.${s}`)}
+                      </option>
+                    ))}
+                  </Select>
+                  <Field
+                    label={t('triage.reason')}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder={t('triage.reasonPh')}
+                  />
+                  {missing && missing.length > 0 && (
+                    <p className="text-amber bg-amber-bg col-span-full m-0 rounded-lg px-3 py-2 text-xs font-semibold">
+                      {t(next === 'reception' ? 'files.sendToReception' : 'files.stillMissing', {
+                        missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
+                      })}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </fieldset>
 
           {error && (
             <p
@@ -354,21 +409,17 @@ export function VitalsForm({
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              loading={actions.recordVitals.isPending || actions.sendFromTriage.isPending}
-            >
-              <Send size={18} aria-hidden="true" />
-              {t(
-                sendOnOnly
-                  ? 'vitalsForm.sendOn'
-                  : mode === 'triage'
-                    ? 'triage.send'
-                    : 'vitalsForm.save',
-              )}
-            </Button>
+            {!lockedNote && (
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={actions.recordVitals.isPending || actions.sendFromTriage.isPending}
+              >
+                <Send size={18} aria-hidden="true" />
+                {t(sendOnOnly ? 'vitalsForm.sendOn' : sends ? 'triage.send' : 'vitalsForm.save')}
+              </Button>
+            )}
             {onCancel && (
               <Button type="button" variant="ghost" size="lg" onClick={onCancel}>
                 {t('staff.form.cancel')}

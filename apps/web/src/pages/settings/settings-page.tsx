@@ -32,10 +32,9 @@ import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { BedsCard } from './beds-card'
 import { FlowCard } from './flow-card'
-import { LockCard } from './lock-card'
-import { OtpCard } from './otp-card'
 import { PatientFieldsCard } from './patient-fields-card'
 import { PermissionsCard } from './permissions-card'
+import { SessionCard } from './session-card'
 
 /** The settings are split into sections; one is shown at a time (remembered on this device). */
 type SectionId = 'clinic' | 'hours' | 'beds' | 'security' | 'access' | 'patient' | 'display'
@@ -80,8 +79,8 @@ type ProfileField = (typeof PROFILE_FIELDS)[number]
 
 /**
  * Clinic settings (manager), in sections chosen from a menu so the page stays short: identity
- * and contacts, opening hours, beds and the price of a night, security (screen lock, sign-in
- * code), patient file fields, and display (text size) with shortcuts.
+ * and contacts, opening hours, beds and the price of a night, security (sign-out after hours
+ * without activity), patient file fields, and display (text size) with shortcuts.
  */
 export function SettingsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -328,8 +327,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
 
             {section === 'security' && (
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <LockCard />
-                <OtpCard />
+                <SessionCard />
               </div>
             )}
 
