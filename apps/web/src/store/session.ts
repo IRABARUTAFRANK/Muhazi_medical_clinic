@@ -9,7 +9,7 @@ import {
   type StaffUser,
 } from '@mmc/shared'
 import { sampleSessionHours } from '@/lib/api/settings'
-import { staffEmail, supabase } from '@/lib/supabase'
+import { onSessionRefused, pinIsRight, staffEmail, supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/query-client'
 
 const HOME_ROLES: readonly string[] = [
@@ -64,7 +64,8 @@ export type SignInResult =
   | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'error' }
 export type VerifyResult =
   | { ok: true; user: StaffUser }
-  | { ok: false; reason: 'invalid' | 'inactive' | 'expired' | 'error' }
+  /** `notApproved`: the code was right but the database did not approve the sign-in (0081). */
+  | { ok: false; reason: 'invalid' | 'inactive' | 'expired' | 'error' | 'notApproved' }
 
 /** Sign-in in progress: the PIN was accepted, the e-mail code is still pending. Kept for this tab
  *  only, so a reload does not lose the code step; the PIN itself is never stored. */
@@ -87,10 +88,12 @@ type RequestOutcome =
 /**
  * Why a tab stopped being signed in. The login page explains it (see `readSignOutNote`):
  * the person chose to sign out, the tab was not used for the set number of hours, 5 wrong PINs
- * on the locked screen, the account was deactivated, or the sign-in ended elsewhere.
+ * on the locked screen, the account was deactivated, the sign-in ended elsewhere, or the
+ * database did not approve this sign-in (`security`: sign in again with the e-mailed code).
  * `switched` (another staff ID typed on this tab) leaves no message.
  */
-export type SignOutReason = 'signedOut' | 'idle' | 'wrongPins' | 'inactive' | 'ended' | 'switched'
+export type SignOutReason =
+  'signedOut' | 'idle' | 'wrongPins' | 'inactive' | 'ended' | 'security' | 'switched'
 
 /*
  * The sign-in session (migration 20261120090000). A tab stays signed in as long as it is used.
@@ -250,6 +253,35 @@ async function sessionHoursSetting(): Promise<number> {
 
 /** When this tab last extended the browser's key on the server (ms). */
 let lastExtendAt = 0
+/** When this tab last told the database that the person is active (touch_session, ms). */
+let lastServerTouchAt = 0
+
+/** True when the error says the database does not have this function yet (older database). */
+const missingFunction = (error: { code?: string } | null | undefined) => error?.code === 'PGRST202'
+
+/**
+ * The person is active: the database counts the hours without activity from now (0081), at most
+ * every 5 minutes, or at once (`now`) after the PIN or when the warning before the sign-out is
+ * answered. Independent of the browser key. If the database says this sign-in no longer works,
+ * the tab signs out (only on its verdict, never on a network fault or an older database).
+ */
+async function touchServer(now = false): Promise<void> {
+  if (!supabase || (!now && Date.now() - lastServerTouchAt < EXTEND_EVERY_MS)) return
+  lastServerTouchAt = Date.now()
+  const res = await withTimeout(supabase.rpc('touch_session'))
+  if (!res || res.error || res.data !== false) return
+  const status = await withTimeout(supabase.rpc('session_status'))
+  const st = status?.data as { ok?: boolean; reason?: string } | null | undefined
+  if (!status?.error && st?.ok === false) {
+    refuseTab(st.reason === 'idle' ? 'idle' : st.reason === 'ended' ? 'ended' : 'security')
+  }
+}
+
+/** Ends this tab's sign-in in the database (every sign-out, before Supabase Auth). */
+async function endServerSession(reason: string): Promise<void> {
+  if (!supabase) return
+  await withTimeout(supabase.rpc('end_session', { p_reason: reason }), 4000)
+}
 
 /**
  * Right after the e-mailed code (or the sign-in link): this browser gets a new key, valid on the
@@ -291,7 +323,7 @@ async function revokeDevice(token: string): Promise<void> {
   if (!supabase) return
   const res = await withTimeout(supabase.rpc('revoke_this_device', { p_token: token }))
   // Older database without revoke_this_device: end all of this person's trusted browsers.
-  if (res?.error) await withTimeout(supabase.rpc('revoke_trusted_devices'))
+  if (missingFunction(res?.error)) await withTimeout(supabase.rpc('revoke_trusted_devices'))
 }
 
 /**
@@ -416,7 +448,7 @@ async function checkTemporaryPin(
   staffId: string,
   username: string,
   pin: string,
-): Promise<{ email: string } | { reason: 'invalid' | 'inactive' } | null> {
+): Promise<{ email: string } | { reason: 'invalid' | 'inactive' | 'error' } | null> {
   const { data: email } = await supabase!.rpc('staff_login_email', {
     p_staff_id: staffId,
     p_username: username,
@@ -426,12 +458,24 @@ async function checkTemporaryPin(
   // Wrong PIN or blocked account: let the usual path answer, so the server keeps counting
   // failed attempts and gives the same messages as before.
   if (error || !auth.user) return null
-  const { data: me } = await supabase!
-    .from('profiles')
-    .select('must_change_pin')
-    .eq('id', auth.user.id)
-    .maybeSingle()
-  if (me?.must_change_pin) return { email: email as string }
+  // Asked through a function: this PIN-only session may not read the profiles table (0081).
+  let { data: temporary, error: askError } = await supabase!.rpc('my_must_change_pin')
+  if (missingFunction(askError)) {
+    // Older database (before 0081): the profile itself still answers.
+    const { data: me, error: readError } = await supabase!
+      .from('profiles')
+      .select('must_change_pin')
+      .eq('id', auth.user.id)
+      .maybeSingle()
+    temporary = me?.must_change_pin === true
+    askError = readError
+  }
+  if (askError) {
+    // Unknown: never treat it as "not a temporary PIN"; the person simply tries again.
+    await supabase!.auth.signOut({ scope: 'local' })
+    return { reason: 'error' }
+  }
+  if (temporary === true) return { email: email as string }
   // Not a temporary PIN: drop this session, the usual same-browser / e-mailed-code path follows.
   await supabase!.auth.signOut({ scope: 'local' })
   return null
@@ -538,14 +582,18 @@ export function clearSignOutNote() {
 }
 
 /** Values that open a session on this tab: the sign-in itself is the first activity. */
-const opened = (user: StaffUser, hours: number) => ({
-  user,
-  locked: false,
-  pending: null,
-  unlockFailures: 0,
-  lastActiveAt: Date.now(),
-  sessionHours: clampHours(hours),
-})
+const opened = (user: StaffUser, hours: number) => {
+  // The approval itself counts as activity in the database.
+  lastServerTouchAt = Date.now()
+  return {
+    user,
+    locked: false,
+    pending: null,
+    unlockFailures: 0,
+    lastActiveAt: Date.now(),
+    sessionHours: clampHours(hours),
+  }
+}
 
 export const useSession = create<SessionState>()(
   persist(
@@ -560,6 +608,7 @@ export const useSession = create<SessionState>()(
       checkStaffId: async (staffId) => {
         const id = normalizeStaffId(staffId)
         if (!supabase) return findStaffByStaffId(id) !== undefined
+        if (!get().user) await dropUnapprovedSession()
         const { data, error } = await supabase.rpc('public_staff_check', { p_staff_id: id })
         if (error) throw new Error(error.message)
         return data === true
@@ -579,6 +628,8 @@ export const useSession = create<SessionState>()(
           set({ pending: { staffId: id, username: name, email, sampleUser: user } })
           return { ok: true, step: 'otp', email }
         }
+        // A PIN session left by an earlier try is never approved: the checks below go without it.
+        await dropUnapprovedSession()
         const first = await checkTemporaryPin(id, name, pin)
         if (first && 'reason' in first) return { ok: false, reason: first.reason }
         if (first) {
@@ -658,7 +709,11 @@ export const useSession = create<SessionState>()(
           set({ pending: null })
           return {
             ok: false,
-            reason: /deactivated/i.test(rpcError?.message ?? '') ? 'inactive' : 'error',
+            reason: /deactivated/i.test(rpcError?.message ?? '')
+              ? 'inactive'
+              : rpcError?.code === 'PT401'
+                ? 'notApproved'
+                : 'error',
           }
         }
         const user = toStaffUser(profile as ProfileJson)
@@ -704,6 +759,9 @@ export const useSession = create<SessionState>()(
         // Past the limit, activity no longer saves the sign-in (a tab waking up after hours).
         if (sessionOver(s)) return checkIdle()
         const now = Date.now()
+        // Answering the warning before the sign-out: the database hears it at once.
+        if (idleDeadline(s) - now <= IDLE_WARNING_MS) void touchServer(true)
+        else void touchServer()
         if (s.lastActiveAt != null && now - s.lastActiveAt < TOUCH_EVERY_MS) return
         set({ lastActiveAt: now })
         markTrustSeen(s.user.username, s.sessionHours)
@@ -738,11 +796,8 @@ export const useSession = create<SessionState>()(
           get().touch()
           return true
         }
-        const { error } = await supabase.auth.signInWithPassword({
-          email: authEmail(user),
-          password: pin,
-        })
-        if (error) {
+        // The PIN is checked aside: this tab keeps the sign-in approved by the e-mailed code.
+        if (!(await pinIsRight(authEmail(user), pin))) {
           // A PIN cannot be guessed at a locked screen: after 5 wrong tries the tab signs out
           // and the full sign-in (with a new e-mailed code) is needed. The server keeps the
           // count too (the manager sees it; sign-in counts it).
@@ -760,8 +815,9 @@ export const useSession = create<SessionState>()(
         set({ locked: false, unlockFailures: 0 })
         // The right PIN opens the person's other locked tabs in this browser too.
         tellOtherTabs({ kind: 'unlocked', username: user.username })
-        // The right PIN is activity: the hours count again from now.
+        // The right PIN is activity: the hours count again from now (the database too).
         get().touch()
+        void touchServer(true)
         return true
       },
 
@@ -772,11 +828,9 @@ export const useSession = create<SessionState>()(
           set({ user: { ...user, mustChangePin: false } })
           return true
         }
-        const { error: verify } = await supabase.auth.signInWithPassword({
-          email: authEmail(user),
-          password: current,
-        })
-        if (verify) return false
+        // The current PIN is checked aside; the new one is set on this tab's own sign-in, the
+        // one the e-mailed code approved (Supabase Auth ends the person's other sign-ins).
+        if (!(await pinIsRight(authEmail(user), current))) return false
         const { error } = await supabase.auth.updateUser({ password: next })
         if (error) return false
         await supabase.rpc('mark_pin_changed')
@@ -796,6 +850,8 @@ export const useSession = create<SessionState>()(
         if (supabase) {
           // This browser's key ends too: the next sign-in asks for a new e-mailed code.
           if (token) await revokeDevice(token)
+          // ... and this sign-in, in the database: a copied access token no longer works.
+          await endServerSession(reason)
           await withTimeout(supabase.auth.signOut({ scope: 'local' }))
         }
       },
@@ -961,6 +1017,7 @@ if (sb) {
           /* ignore */
         }
         if (expected && expected !== got) {
+          await endServerSession('wrong account')
           await sb.auth.signOut({ scope: 'local' })
           try {
             localStorage.setItem(MISMATCH_KEY, JSON.stringify({ expected, got }))
@@ -1002,6 +1059,38 @@ function checkIdle() {
   })
 }
 
+/*
+ * The database refused this tab's sign-in (0081): never approved by the e-mailed code (for
+ * instance every sign-in open when the rule went live), signed out, or hours without activity
+ * counted by the server. The tab signs out and the login page says why. While nobody is signed
+ * in on the tab (or the code step is still pending) the screens handle the answer themselves.
+ */
+function refuseTab(reason: Extract<SignOutReason, 'idle' | 'ended' | 'security'>) {
+  const s = useSession.getState()
+  if (ending || !s.user || s.pending) return
+  ending = true
+  const staffId = s.user.staffId
+  void s.signOut(reason).finally(() => {
+    ending = false
+    if (window.location.pathname.startsWith('/app')) {
+      window.location.replace(signInAgainPath(staffId))
+    }
+  })
+}
+onSessionRefused((hint) =>
+  refuseTab(hint === 'idle' ? 'idle' : hint === 'ended' ? 'ended' : 'security'),
+)
+
+/**
+ * Before a new sign-in on a tab where nobody is signed in: a PIN session left by an earlier try
+ * (never approved by the database) is closed, so the next checks go out as a visitor.
+ */
+async function dropUnapprovedSession(): Promise<void> {
+  if (!supabase || useSession.getState().user) return
+  const { data } = await supabase.auth.getSession()
+  if (data.session) await withTimeout(supabase.auth.signOut({ scope: 'local' }))
+}
+
 /** What counts as activity in a tab. Scroll does not bubble: listened to in the capture phase. */
 const ACTIVITY_EVENTS = [
   'pointerdown',
@@ -1036,13 +1125,15 @@ tabChannel?.addEventListener('message', (e: MessageEvent<TabMessage | null>) => 
     useSession.getState,
     useSession.setState,
   )
-  void (supabase ? withTimeout(supabase.auth.signOut({ scope: 'local' })) : Promise.resolve()).then(
-    () => {
-      if (window.location.pathname.startsWith('/app')) {
-        window.location.replace(signInAgainPath(staffId))
-      }
-    },
-  )
+  void (async () => {
+    if (supabase) {
+      await endServerSession('another tab')
+      await withTimeout(supabase.auth.signOut({ scope: 'local' }))
+    }
+    if (window.location.pathname.startsWith('/app')) {
+      window.location.replace(signInAgainPath(staffId))
+    }
+  })()
 })
 
 if (typeof window !== 'undefined') {

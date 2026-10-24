@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { STAFF } from '@mmc/shared'
-import { isLive, supabase } from '@/lib/supabase'
+import i18n from '@/i18n'
+import { isLive, reportSessionRefused, supabase } from '@/lib/supabase'
 
 /** All roles the database knows (doc §1.4); the UI has designed homes for five of them. */
 export const DB_ROLES = [
@@ -276,7 +277,16 @@ async function callManageStaff<T>(body: Record<string, unknown>): Promise<T> {
     // supabase-js wraps non-2xx responses; surface the function's message when present
     const ctx = (error as { context?: Response }).context
     if (ctx && typeof ctx.json === 'function') {
-      const payload = (await ctx.json().catch(() => null)) as { error?: string } | null
+      const payload = (await ctx.json().catch(() => null)) as {
+        error?: string
+        reason?: string
+      } | null
+      // The sign-in is not approved by the database (0081): the tab signs out and the login
+      // page explains it, instead of showing the function's English message.
+      if (ctx.status === 401 && payload?.reason) {
+        reportSessionRefused(payload.reason)
+        throw new Error(i18n.t('login.ended.security'))
+      }
       if (payload?.error) throw new Error(payload.error)
     }
     throw new Error(error.message)

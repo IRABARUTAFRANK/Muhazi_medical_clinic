@@ -1,4 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { useConfirm } from '@/lib/confirm'
 import { usePrefs } from '@/store/prefs'
 import { useSession } from '@/store/session'
 
@@ -8,6 +10,8 @@ import { useSession } from '@/store/session'
  */
 export function useUserActions() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
+  const confirm = useConfirm()
   const signOut = useSession((s) => s.signOut)
   const theme = usePrefs((s) => s.theme)
   const toggleTheme = usePrefs((s) => s.toggleTheme)
@@ -16,6 +20,12 @@ export function useUserActions() {
     toggleTheme,
     /** Signs out and ends this browser's trust: the next sign-in needs a new e-mailed code. */
     signOut: async () => {
+      const ok = await confirm({
+        title: t('confirm.signOut.title'),
+        body: t('confirm.signOut.body'),
+        confirmLabel: t('confirm.signOut.yes'),
+      })
+      if (!ok) return
       await signOut('signedOut')
       void navigate({ to: '/' })
     },

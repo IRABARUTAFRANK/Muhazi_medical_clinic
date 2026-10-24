@@ -92,6 +92,11 @@ const patch = {
   uri_allow_list: [...allow].join(','),
   mailer_otp_length: 6,
   mailer_otp_exp: 600,
+  // 0081: the database approves a sign-in made by an e-mailed code. A change of e-mail must be
+  // confirmed from BOTH addresses, and there is no sign-in by phone (SMS), so a PIN alone can
+  // never point the code to another inbox or phone.
+  mailer_secure_email_change_enabled: true,
+  external_phone_enabled: false,
 }
 
 // Custom SMTP: explicit SMTP_* values, or derived from a Resend key (Resend also speaks SMTP:
@@ -189,9 +194,17 @@ if (provider) {
 const after = await api('GET', '/config/auth')
 console.log('now:', {
   disable_signup: after.disable_signup,
+  mailer_secure_email_change_enabled: after.mailer_secure_email_change_enabled,
+  external_phone_enabled: after.external_phone_enabled,
   mailer_otp_length: after.mailer_otp_length,
   mailer_otp_exp: after.mailer_otp_exp,
   smtp_host: after.smtp_host,
   hook_send_email_enabled: after.hook_send_email_enabled,
   template_has_token: /\{\{\s*\.Token\s*\}\}/.test(after.mailer_templates_magic_link_content ?? ''),
 })
+if (after.mailer_secure_email_change_enabled !== true || after.external_phone_enabled !== false) {
+  console.error(
+    'WARNING: secure e-mail change must be on and phone sign-in off (see migration 0081)',
+  )
+  process.exitCode = 1
+}

@@ -937,8 +937,10 @@
       "signedOut": "Wasohotse.",
       "wrongPins": "Wasohowe nyuma ya PIN 5 zitari zo kuri ecran ifunze.",
       "ended": "Kwinjira kwawe kwarangiye.",
-      "next": "Ongera winjire: nimero y'umukozi, izina ukoresha na PIN, hanyuma kode nshya tukoherereza kuri imeyili."
-    }
+      "next": "Ongera winjire: nimero y'umukozi, izina ukoresha na PIN, hanyuma kode nshya tukoherereza kuri imeyili.",
+      "security": "Ku bw'umutekano wawe, ongera winjire ukoresheje kode yoherejwe kuri imeri yawe."
+    },
+    "notApproved": "Kode ni yo, ariko sisitemu y'ivuriro ntiyashoboye kwemeza kwinjira kwawe. Ongera ugerageze nyuma y'umunota umwe. Nibikomeza, bimenyeshe umuyobozi."
   },
   "register": {
     "title": "Kwandika umurwayi",
@@ -4283,6 +4285,11 @@
         "bodyUrgent": "Bwanditseho ko byihutirwa: bahita babwakira, bugaragara nk’ubwihutirwa.",
         "yes": "Yego, ohereza"
       }
+    },
+    "signOut": {
+      "title": "Gusohoka ubu?",
+      "body": "Kugira ngo wongere winjire uzakenera nimero y'umukozi, izina ukoresha na PIN, hanyuma kode nshya yoherejwe kuri imeri yawe.",
+      "yes": "Yego, sohoka"
     }
   }
 }

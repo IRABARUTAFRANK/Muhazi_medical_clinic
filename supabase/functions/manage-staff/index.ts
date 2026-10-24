@@ -100,6 +100,38 @@ Deno.serve(async (req) => {
     .maybeSingle()
   if (!me?.active || me.role !== 'manager') return json(403, { error: 'managers only' })
 
+  // The session must be approved by the database (0081): opened by the e-mailed code or a valid
+  // browser key, and active within the hours without activity. A PIN alone is not enough.
+  // Asked with the caller's own token, so the database reads the caller's session_id.
+  const asCaller = createClient(SUPABASE_URL, ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  })
+  const { data: status, error: statusError } = await asCaller.rpc('session_status')
+  // PGRST202: the database does not have session_status yet (0081 not applied): as before.
+  // PT401: the gate itself refused the call (the session is not approved).
+  if (statusError && statusError.code === 'PT401') {
+    return json(401, {
+      error: 'sign-in not approved: sign in again with the e-mailed code',
+      reason: statusError.hint || 'code_required',
+    })
+  }
+  // Anything else (network, timeout, a fault in the database): not a verdict on the session,
+  // so the person is not signed out; they simply try again.
+  if (statusError && statusError.code !== 'PGRST202') {
+    return json(503, { error: 'try again' })
+  }
+  const session = status as { ok?: boolean; reason?: string } | null
+  if (!statusError && session?.ok !== true) {
+    return json(401, {
+      error:
+        session?.reason === 'idle'
+          ? 'signed out after hours without activity: sign in again with the e-mailed code'
+          : 'sign-in not approved: sign in again with the e-mailed code',
+      reason: session?.reason ?? 'code_required',
+    })
+  }
+
   let body: Body
   try {
     body = (await req.json()) as Body

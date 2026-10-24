@@ -933,8 +933,10 @@
       "signedOut": "Vous vous êtes déconnecté.",
       "wrongPins": "Vous avez été déconnecté après 5 PIN incorrects sur l’écran verrouillé.",
       "ended": "Votre connexion a pris fin.",
-      "next": "Reconnectez-vous : ID du personnel, nom d’utilisateur et PIN, puis le nouveau code que nous vous envoyons par e-mail."
-    }
+      "next": "Reconnectez-vous : ID du personnel, nom d’utilisateur et PIN, puis le nouveau code que nous vous envoyons par e-mail.",
+      "security": "Pour votre sécurité, reconnectez-vous avec le code envoyé à votre e-mail."
+    },
+    "notApproved": "Le code est correct, mais le système de la clinique n'a pas pu confirmer votre connexion. Réessayez dans une minute. Si cela continue, prévenez le gestionnaire."
   },
   "register": {
     "title": "Enregistrer un patient",
@@ -4274,6 +4276,11 @@
         "bodyUrgent": "Il est marqué urgent : ils le reçoivent tout de suite, affiché comme urgent.",
         "yes": "Oui, envoyer"
       }
+    },
+    "signOut": {
+      "title": "Se déconnecter maintenant ?",
+      "body": "Pour vous reconnecter, il faudra votre identifiant, votre nom d'utilisateur et votre code PIN, puis un nouveau code envoyé à votre e-mail.",
+      "yes": "Oui, me déconnecter"
     }
   }
 }

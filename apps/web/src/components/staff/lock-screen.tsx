@@ -6,6 +6,7 @@ import { formatTime } from '@mmc/shared'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
+import { useConfirm } from '@/lib/confirm'
 import { IDLE_WARNING_MS, idleDeadline, MAX_UNLOCK_FAILURES, useSession } from '@/store/session'
 
 /** The time of now, refreshed every `ms` (for counters that only need to move slowly). */
@@ -76,6 +77,7 @@ export function LockScreen() {
   const failures = useSession((s) => s.unlockFailures)
   const unlock = useSession((s) => s.unlock)
   const signOut = useSession((s) => s.signOut)
+  const confirm = useConfirm()
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -165,6 +167,12 @@ export function LockScreen() {
           type="button"
           className="text-ink-2 text-[13px] underline-offset-2 hover:underline"
           onClick={async () => {
+            const ok = await confirm({
+              title: t('confirm.signOut.title'),
+              body: t('confirm.signOut.body'),
+              confirmLabel: t('confirm.signOut.yes'),
+            })
+            if (!ok) return
             await signOut('signedOut')
             void navigate({ to: '/', hash: 'signin' })
           }}

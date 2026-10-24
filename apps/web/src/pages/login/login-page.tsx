@@ -160,9 +160,11 @@ export function LoginPage({ staffId }: { staffId: string }) {
               ? 'login.codeExpired'
               : result.reason === 'inactive'
                 ? 'login.inactive'
-                : result.reason === 'error'
-                  ? 'login.error'
-                  : 'login.codeWrong',
+                : result.reason === 'notApproved'
+                  ? 'login.notApproved'
+                  : result.reason === 'error'
+                    ? 'login.error'
+                    : 'login.codeWrong',
           ),
         )
         setCode('')
@@ -361,7 +363,9 @@ function SignedOutNote({ note }: { note: SignOutNote }) {
           ? t('login.ended.wrongPins')
           : note.reason === 'inactive'
             ? t('login.inactive')
-            : t('login.ended.ended')
+            : note.reason === 'security'
+              ? t('login.ended.security')
+              : t('login.ended.ended')
   return (
     <div
       role="status"

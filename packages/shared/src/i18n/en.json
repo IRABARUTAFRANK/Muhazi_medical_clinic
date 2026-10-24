@@ -933,8 +933,10 @@
       "signedOut": "You signed out.",
       "wrongPins": "You were signed out after 5 wrong PINs on the locked screen.",
       "ended": "Your sign-in ended.",
-      "next": "Sign in again: staff ID, username and PIN, then the new code we e-mail you."
-    }
+      "next": "Sign in again: staff ID, username and PIN, then the new code we e-mail you.",
+      "security": "For your security, sign in again with the code sent to your e-mail."
+    },
+    "notApproved": "The code is correct, but the clinic system could not confirm your sign-in. Try again in a minute. If it keeps happening, tell the manager."
   },
   "register": {
     "title": "Register a patient",
@@ -4274,6 +4276,11 @@
         "bodyUrgent": "It is marked urgent: they receive it at once, shown as urgent.",
         "yes": "Yes, send"
       }
+    },
+    "signOut": {
+      "title": "Sign out now?",
+      "body": "To sign in again you will need your staff ID, username and PIN, then a new code sent to your e-mail.",
+      "yes": "Yes, sign out"
     }
   }
 }

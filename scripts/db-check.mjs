@@ -67,11 +67,28 @@ const expectError = async (name, fn, pattern) => {
 }
 const one = async (sql, params = []) => (await db.query(sql, params)).rows[0]
 // The access token says how the session was opened (`amr`): the e-mailed code by default.
-const CODE_AMR = JSON.stringify({ amr: [{ method: 'otp', timestamp: 0 }] })
+// (0081: the code counts for 15 minutes after it was typed: `timestamp` is now.)
+const CODE_AMR = JSON.stringify({
+  amr: [{ method: 'otp', timestamp: Math.floor(Date.now() / 1000) }],
+})
 const PIN_AMR = JSON.stringify({ amr: [{ method: 'password', timestamp: 0 }] })
 const as = async (userId, role = 'authenticated', claims = CODE_AMR) => {
   await db.exec(
     `reset role; select set_config('request.jwt.claim.sub', '${userId ?? ''}', false); select set_config('request.jwt.claims', '${claims}', false); set role ${role};`,
+  )
+}
+/** 0081: a session approved by the database (as after the e-mailed code), for calls that ask. */
+const asApproved = async (userId) => {
+  const sid = crypto.randomUUID()
+  await asAdmin()
+  await db.query(
+    `insert into approved_session (session_id, user_id, via) values ($1, $2, 'code')`,
+    [sid, userId],
+  )
+  await as(
+    userId,
+    'authenticated',
+    JSON.stringify({ sub: userId, session_id: sid, amr: JSON.parse(CODE_AMR).amr }),
   )
 }
 /** A session opened with the PIN alone (no e-mailed code). */
@@ -794,7 +811,7 @@ await step('a trusted device skips the code; revoked or foreign keys do not', as
   await as(staff.receptionist)
   if ((await one(`select use_trusted_device($1) as ok`, [key])).ok)
     throw new Error('foreign key accepted')
-  await as(staff.manager)
+  await asApproved(staff.manager)
   await db.query(`select revoke_trusted_devices(true)`)
   await as(staff.nurse)
   if ((await one(`select use_trusted_device($1) as ok`, [key])).ok)
@@ -4518,6 +4535,457 @@ await step('0080: the serving functions stay closed to visitors (anon)', async (
   )
     throw new Error(JSON.stringify(r))
   return 'anon refused; staff allowed; specialties map to sections'
+})
+
+// ---------------------------------------------------------------- 0081: the code is checked by the database
+// A session (access token `session_id`) works only once approved: by the e-mailed code typed in
+// the last 15 minutes (record_sign_in with amr otp/magiclink) or by a valid browser key
+// (use_trusted_device). The PostgREST pre-request check_request() refuses every other staff
+// request (SQLSTATE PT401).
+const now81 = () => Math.floor(Date.now() / 1000)
+const as81 = (userId, sid, method = 'otp', ts = now81()) =>
+  as(
+    userId,
+    'authenticated',
+    JSON.stringify({
+      sub: userId,
+      role: 'authenticated',
+      session_id: sid,
+      amr: [{ method, timestamp: ts }],
+    }),
+  )
+/** What PostgREST would do before a request on `p` (check_request): 'pass' or the refusal. */
+const gate81 = async (p, method = 'POST') => {
+  await db.query(
+    `select set_config('request.path', $1, false), set_config('request.method', $2, false)`,
+    [p, method],
+  )
+  try {
+    await db.query(`select check_request()`)
+    return 'pass'
+  } catch (e) {
+    return { code: e.code, hint: e.hint, message: String(e.message) }
+  }
+}
+const refused81 = (r, hint) => r !== 'pass' && r.code === 'PT401' && (!hint || r.hint === hint)
+const row81 = async (sid) => {
+  await asAdmin()
+  return one(`select * from approved_session where session_id = $1`, [sid])
+}
+const switch81 = async (on) => {
+  await asAdmin()
+  await db.query(`update setting set value = $1::jsonb where key = 'security.enforce_code'`, [
+    JSON.stringify({ on }),
+  ])
+}
+const sidPin81 = crypto.randomUUID()
+const sidCode81 = crypto.randomUUID()
+const sidDevice81 = crypto.randomUUID()
+const key81 = 'g'.repeat(40)
+await step('0081: a PIN-only session is not approved: every request refused', async () => {
+  await as81(staff.nurse, sidPin81, 'password')
+  const ok = (await one(`select session_ok() as ok`)).ok
+  const table = await gate81('/patient', 'GET')
+  const rpc = await gate81('/rpc/find_patients')
+  const status = (await one(`select session_status() as j`)).j
+  if (ok || !refused81(table, 'code_required') || !refused81(rpc, 'code_required') || status.ok)
+    throw new Error(JSON.stringify({ ok, table, rpc, status }))
+  if (!/sign in again with the e-mailed code/.test(table.message)) throw new Error(table.message)
+  return `refused: ${table.message} (${table.code}, ${table.hint})`
+})
+await expectError(
+  '0081: record_sign_in never approves a PIN-only session',
+  async () => {
+    await as81(staff.nurse, sidPin81, 'password')
+    await db.query(`select record_sign_in('pin only')`)
+  },
+  /not approved/i,
+)
+await step('0081: ... and no approval was written for it', async () => {
+  const r = await row81(sidPin81)
+  if (r) throw new Error(JSON.stringify(r))
+  return 'no row'
+})
+await step(
+  '0081: only the sign-in and sign-out calls pass before the approval; nothing else',
+  async () => {
+    await as81(staff.nurse, sidPin81, 'password')
+    const allowed = [
+      '/rpc/record_sign_in',
+      '/rpc/use_trusted_device',
+      '/rpc/my_must_change_pin',
+      '/rpc/mark_pin_changed',
+      '/rpc/touch_session',
+      '/rpc/end_session',
+      '/rpc/revoke_this_device',
+      '/rpc/session_status',
+      '/rest/v1/rpc/end_session',
+    ]
+    const bad = []
+    for (const p of allowed) if ((await gate81(p)) !== 'pass') bad.push(p)
+    for (const p of [
+      '/rpc/record_sign_in_x',
+      '/rpc/record_wrong_pin',
+      '/rpc/revoke_trusted_devices',
+      '/rpc/staff_settings',
+      '/rpc/session_ok',
+      '/rpc/staff_login_email',
+      '/rpc/public_staff_check',
+      '/rpc/my_session_profile',
+      '/rpc/trust_this_device',
+      '/rpc/extend_this_device',
+      '/rpc/graphql',
+      '/patient/rpc/end_session',
+      '/profiles',
+      '/setting',
+      '/rpc/save_setting',
+    ])
+      if (!refused81(await gate81(p), 'code_required')) bad.push(p)
+    const pin = (await one(`select my_must_change_pin() as b`)).b
+    if (bad.length || typeof pin !== 'boolean') throw new Error(JSON.stringify({ bad, pin }))
+    return `${allowed.length} calls allowed; wrong PINs, browser keys and data refused`
+  },
+)
+await step('0081: the e-mailed code approves the session; data passes', async () => {
+  await as81(staff.nurse, sidCode81, 'otp')
+  const before = await gate81('/patient', 'GET')
+  const p = (await one(`select record_sign_in('code') as j`)).j
+  const ok = (await one(`select session_ok() as ok`)).ok
+  const table = await gate81('/patient', 'GET')
+  const rpc = await gate81('/rpc/find_patients')
+  const status = (await one(`select session_status() as j`)).j
+  const r = await row81(sidCode81)
+  if (
+    !refused81(before) ||
+    p.role !== 'nurse' ||
+    !ok ||
+    table !== 'pass' ||
+    rpc !== 'pass' ||
+    !status.ok ||
+    status.via !== 'code' ||
+    r?.via !== 'code' ||
+    r.user_id !== staff.nurse
+  )
+    throw new Error(JSON.stringify({ before, ok, table, rpc, status, r }))
+  return 'approved via code'
+})
+await step('0081: the sign-in link (magiclink) approves too', async () => {
+  const sid = crypto.randomUUID()
+  await as81(staff.receptionist, sid, 'magiclink')
+  await db.query(`select record_sign_in('link')`)
+  const ok = (await one(`select session_ok() as ok`)).ok
+  if (!ok) throw new Error('link session not approved')
+  return 'approved via code'
+})
+await step(
+  '0081: a code typed long ago (a refresh token left behind) approves nothing',
+  async () => {
+    const sid = crypto.randomUUID()
+    await as81(staff.receptionist, sid, 'otp', now81() - 86_400)
+    let refused = null
+    try {
+      await db.query(`select record_sign_in('old code')`)
+    } catch (e) {
+      refused = e.code
+    }
+    const ok = (await one(`select session_ok() as ok`)).ok
+    const r = await row81(sid)
+    if (refused !== 'PT401' || ok || r) throw new Error(JSON.stringify({ refused, ok, r }))
+    return 'a day-old code: refused, no approval'
+  },
+)
+await step('0081: a session signed out and forgotten is never approved again', async () => {
+  const sid = crypto.randomUUID()
+  const typed = now81()
+  await as81(staff.receptionist, sid, 'otp', typed)
+  await db.query(`select record_sign_in('code')`)
+  await db.query(`select end_session('signed out')`)
+  // a later record_sign_in with the same token (code still fresh): the end stays
+  let again = null
+  try {
+    await db.query(`select record_sign_in('again')`)
+  } catch (e) {
+    again = e.hint
+  }
+  // the row is gone (old purge) and the same session comes back a day later: refused
+  await asAdmin()
+  await db.query(`delete from approved_session where session_id = $1`, [sid])
+  await as81(staff.receptionist, sid, 'otp', typed - 86_400)
+  let later = null
+  try {
+    await db.query(`select record_sign_in('later')`)
+  } catch (e) {
+    later = e.code
+  }
+  const r = await row81(sid)
+  if (again !== 'ended' || later !== 'PT401' || r)
+    throw new Error(JSON.stringify({ again, later, r }))
+  return 'ended stays ended; a forgotten old session is refused'
+})
+await step('0081: another tab: only a valid browser key approves (via device)', async () => {
+  // the key is made after the code, in the approved code session
+  await as81(staff.nurse, sidCode81, 'otp')
+  if (!(await one(`select trust_this_device($1, 'gate test') as u`, [key81])).u)
+    throw new Error('no key made')
+  // a wrong key: nothing
+  await as81(staff.nurse, sidDevice81, 'password')
+  const wrong = (await one(`select use_trusted_device($1) as e`, [key81.replace(/g$/, 'h')])).e
+  const okWrong = (await one(`select session_ok() as ok`)).ok
+  // someone else holding this key: nothing
+  const other = crypto.randomUUID()
+  await as81(staff.receptionist, other, 'password')
+  const foreign = (await one(`select use_trusted_device($1) as e`, [key81])).e
+  const okForeign = (await one(`select session_ok() as ok`)).ok
+  // the right key
+  await as81(staff.nurse, sidDevice81, 'password')
+  const end = (await one(`select use_trusted_device($1) as e`, [key81])).e
+  const ok = (await one(`select session_ok() as ok`)).ok
+  const p = (await one(`select record_sign_in('device') as j`)).j
+  const table = await gate81('/patient', 'GET')
+  const r = await row81(sidDevice81)
+  const foreignRow = await row81(other)
+  if (wrong || okWrong || foreign || okForeign || foreignRow || !end || !ok || p.role !== 'nurse')
+    throw new Error(JSON.stringify({ wrong, okWrong, foreign, okForeign, foreignRow, end, ok }))
+  if (table !== 'pass' || r?.via !== 'device') throw new Error(JSON.stringify({ table, r }))
+  return 'wrong / foreign key refused; own key approves'
+})
+await step('0081: a revoked browser key approves nothing', async () => {
+  const k = 'r'.repeat(40)
+  const sid = crypto.randomUUID()
+  await as81(staff.nurse, sidCode81, 'otp')
+  await db.query(`select trust_this_device($1, 'gate test 2')`, [k])
+  await db.query(`select revoke_this_device($1)`, [k])
+  await as81(staff.nurse, sid, 'password')
+  const e = (await one(`select use_trusted_device($1) as e`, [k])).e
+  const ok = (await one(`select session_ok() as ok`)).ok
+  if (e || ok) throw new Error(JSON.stringify({ e, ok }))
+  return 'refused'
+})
+await step('0081: activity (touch_session) keeps the session for N hours from now', async () => {
+  const hours = (await one(`select session_hours() as h`)).h
+  await asAdmin()
+  await db.query(
+    `update approved_session set last_seen_at = now() - make_interval(hours => $2) + interval '10 minutes'
+      where session_id = $1`,
+    [sidCode81, hours],
+  )
+  await as81(staff.nurse, sidCode81, 'otp')
+  const before = await gate81('/patient', 'GET')
+  const touched = (await one(`select touch_session() as b`)).b
+  const r = await row81(sidCode81)
+  const age = (
+    await one(`select extract(epoch from now() - $1::timestamptz)::int as s`, [r.last_seen_at])
+  ).s
+  if (before !== 'pass' || !touched || age > 5)
+    throw new Error(JSON.stringify({ before, touched, age }))
+  return `${hours} h from now`
+})
+await step('0081: N hours without activity: refused, ended as idle, never revived', async () => {
+  const hours = (await one(`select session_hours() as h`)).h
+  await asAdmin()
+  // past the hours and the 10 minutes of grace
+  await db.query(
+    `update approved_session set last_seen_at = now() - make_interval(hours => $2) - interval '11 minutes'
+      where session_id = $1`,
+    [sidCode81, hours],
+  )
+  await as81(staff.nurse, sidCode81, 'otp')
+  const table = await gate81('/patient', 'GET')
+  const touched = (await one(`select touch_session() as b`)).b
+  const r = await row81(sidCode81)
+  // neither another touch, a browser key nor a new record_sign_in brings it back
+  await as81(staff.nurse, sidCode81, 'otp')
+  const touched2 = (await one(`select touch_session() as b`)).b
+  const k = 'i'.repeat(40)
+  await db.query(`select trust_this_device($1, 'idle test')`, [k])
+  const key = (await one(`select use_trusted_device($1) as e`, [k])).e
+  let again = null
+  try {
+    await db.query(`select record_sign_in('again')`)
+  } catch (e) {
+    again = e.hint
+  }
+  const ok = (await one(`select session_ok() as ok`)).ok
+  const after = await gate81('/rpc/find_patients')
+  if (
+    !refused81(table, 'idle') ||
+    !/without activity/.test(table.message) ||
+    touched ||
+    touched2 ||
+    r.ended_reason !== 'idle' ||
+    !r.ended_at ||
+    key ||
+    again !== 'idle' ||
+    ok ||
+    !refused81(after, 'idle')
+  )
+    throw new Error(JSON.stringify({ table, touched, touched2, r, key, again, ok, after }))
+  return table.message
+})
+await step('0081: a signed-out session (end_session) is refused', async () => {
+  await as81(staff.nurse, sidDevice81, 'password')
+  const before = await gate81('/patient', 'GET')
+  await db.query(`select end_session('signed out')`)
+  const ok = (await one(`select session_ok() as ok`)).ok
+  const table = await gate81('/patient', 'GET')
+  const touched = (await one(`select touch_session() as b`)).b
+  const key = (await one(`select use_trusted_device($1) as e`, [key81])).e
+  const r = await row81(sidDevice81)
+  if (
+    before !== 'pass' ||
+    ok ||
+    !refused81(table, 'ended') ||
+    touched ||
+    key ||
+    r.ended_reason !== 'signed out'
+  )
+    throw new Error(JSON.stringify({ before, ok, table, touched, key, r }))
+  return table.message
+})
+await expectError(
+  '0081: a PIN-only manager session cannot end every browser key',
+  async () => {
+    await as81(staff.manager, crypto.randomUUID(), 'password')
+    await db.query(`select revoke_trusted_devices(true)`)
+  },
+  /not approved/i,
+)
+await expectError(
+  '0081: ... nor a code session that was signed out',
+  async () => {
+    const sid = crypto.randomUUID()
+    await as81(staff.manager, sid, 'otp')
+    await db.query(`select record_sign_in('code')`)
+    await db.query(`select end_session('signed out')`)
+    await db.query(`select revoke_trusted_devices(true)`)
+  },
+  /not approved/i,
+)
+await step('0081: before the code, a PIN change is allowed only for the first PIN', async () => {
+  // not the first PIN: refused
+  await asAdmin()
+  await db.query(`update profiles set must_change_pin = false where id = $1`, [staff.lab_tech])
+  await as81(staff.lab_tech, crypto.randomUUID(), 'password')
+  let refused = null
+  try {
+    await db.query(`select mark_pin_changed()`)
+  } catch (e) {
+    refused = e.code
+  }
+  // the first PIN (temporary PIN from the manager): allowed and written in the history
+  await asAdmin()
+  await db.query(`update profiles set must_change_pin = true where id = $1`, [staff.lab_tech])
+  await as81(staff.lab_tech, crypto.randomUUID(), 'password')
+  const first = (await one(`select my_must_change_pin() as b`)).b
+  await db.query(`select mark_pin_changed()`)
+  await asAdmin()
+  const flag = (
+    await one(`select must_change_pin as b from profiles where id = $1`, [staff.lab_tech])
+  ).b
+  const audit = (
+    await one(
+      `select count(*)::int as n from audit_event where actor_id = $1 and reason like 'PIN changed%'`,
+      [staff.lab_tech],
+    )
+  ).n
+  if (refused !== 'PT401' || !first || flag || audit < 1)
+    throw new Error(JSON.stringify({ refused, first, flag, audit }))
+  return 'other PIN changes refused; first PIN allowed and recorded'
+})
+await step('0081: visitors (anon) and the server (service_role) are not touched', async () => {
+  await as(null, 'anon', '')
+  const anon = await gate81('/rpc/public_clinic_info')
+  const anonTable = await gate81('/public_service_lines', 'GET')
+  const anonLogin = await gate81('/rpc/staff_login_email')
+  await as(null, 'service_role', '')
+  const server = await gate81('/profiles', 'GET')
+  await asAdmin()
+  if (anon !== 'pass' || anonTable !== 'pass' || anonLogin !== 'pass' || server !== 'pass')
+    throw new Error(JSON.stringify({ anon, anonTable, anonLogin, server }))
+  return 'pass'
+})
+await step('0081: kill switch security.enforce_code off lets everything through', async () => {
+  const sid = crypto.randomUUID()
+  await switch81(false)
+  await as81(staff.nurse, sid, 'password')
+  const off = await gate81('/patient', 'GET')
+  const p = (await one(`select record_sign_in('switch off') as j`)).j
+  const status = (await one(`select session_status() as j`)).j
+  // the screens never sign anyone out because of the rule while it is off
+  const touched = (await one(`select touch_session() as b`)).b
+  await switch81(true)
+  await as81(staff.nurse, sid, 'password')
+  const on = await gate81('/patient', 'GET')
+  const touchedOn = (await one(`select touch_session() as b`)).b
+  await asAdmin()
+  if (
+    off !== 'pass' ||
+    p.role !== 'nurse' ||
+    !status.ok ||
+    status.enforced ||
+    !touched ||
+    touchedOn ||
+    !refused81(on)
+  )
+    throw new Error(JSON.stringify({ off, status, touched, touchedOn, on }))
+  return 'off: pass · on: refused'
+})
+await step('0081: the switch and the hours cannot be changed through the API', async () => {
+  // an approved manager (settings.write) writing the table directly: refused
+  const tries = [
+    `update setting set value = '{"on": false}' where key = 'security.enforce_code'`,
+    `delete from setting where key = 'security.enforce_code'`,
+    `update setting set value = '{"hours": 12}' where key = 'security.session'`,
+    `insert into setting (key, value) values ('security.other', '{}')`,
+  ]
+  const passed = []
+  for (const q of tries) {
+    await asApproved(staff.manager)
+    try {
+      await db.query(q)
+      passed.push(q)
+    } catch (e) {
+      if (!/settings screen only/.test(String(e.message))) passed.push(`${q}: ${e.message}`)
+    }
+  }
+  // save_setting (role check + history) still works for the hours
+  await asApproved(staff.manager)
+  await db.query(`select save_setting('security.session', '{"hours": 5}'::jsonb)`)
+  await asAdmin()
+  const sw = (await one(`select value from setting where key = 'security.enforce_code'`)).value
+  if (passed.length || sw?.on !== true) throw new Error(JSON.stringify({ passed, sw }))
+  return 'direct writes refused; save_setting works'
+})
+await step('0081: the approvals are closed to the API; the gate runs for every role', async () => {
+  await asAdmin()
+  const r = await one(
+    `select has_table_privilege('authenticated', 'approved_session', 'select') as staff_read,
+            has_table_privilege('anon', 'approved_session', 'select') as anon_read,
+            has_table_privilege('authenticated', 'approved_session', 'insert') as staff_write,
+            has_function_privilege('anon', 'session_ok()', 'execute') as anon_ok,
+            has_function_privilege('anon', 'record_sign_in(text)', 'execute') as anon_sign,
+            has_function_privilege('authenticated', 'touch_session()', 'execute') as staff_touch,
+            has_function_privilege('authenticated', 'end_session(text)', 'execute') as staff_end,
+            has_function_privilege('anon', 'check_request()', 'execute') as anon_gate,
+            has_function_privilege('authenticated', 'check_request()', 'execute') as staff_gate,
+            has_function_privilege('service_role', 'check_request()', 'execute') as server_gate,
+            (select value from setting where key = 'security.enforce_code') as switch`,
+  )
+  if (
+    r.staff_read ||
+    r.anon_read ||
+    r.staff_write ||
+    r.anon_ok ||
+    r.anon_sign ||
+    !r.staff_touch ||
+    !r.staff_end ||
+    !r.anon_gate ||
+    !r.staff_gate ||
+    !r.server_gate ||
+    r.switch?.on !== true
+  )
+    throw new Error(JSON.stringify(r))
+  return 'table closed; gate callable by anon, staff, server; switch on'
 })
 
 finish()
