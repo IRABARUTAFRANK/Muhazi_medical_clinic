@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { SearchSelect } from '@/components/ui/search-select'
 import {
   CheckCircle2,
@@ -11,18 +11,31 @@ import {
   Printer,
   Stethoscope,
   Trash2,
+  TriangleAlert,
+  XCircle,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
+import { formatDate, formatRwf, formatTime, type StaffUser, type Tone } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
 import { Reveal } from '@/components/ui/reveal'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
-import { treatmentName, useTreatments } from '@/lib/api/catalogue'
-import { useClinicalActions, useItems, useVisitClinical, type Item } from '@/lib/api/patients'
-import { useStockActions } from '@/lib/api/stock'
+import { medicineRuleText, treatmentName, useTreatments } from '@/lib/api/catalogue'
+import {
+  prescriptionState,
+  useClinicalActions,
+  useItems,
+  useVisitClinical,
+  type Item,
+  type Prescription,
+  type PrescriptionState,
+  type RxWarning,
+} from '@/lib/api/patients'
+import { isRoomStore, useStockActions, useStockOverview } from '@/lib/api/stock'
+import { useHoldsStore, useStoreStock, type MyStore } from '@/lib/api/rooms'
+import { errorKind } from '@/lib/api/errors'
 import { useClinicInfo } from '@/lib/api/public'
 import { stationFor, type Station } from '@/lib/api/visits'
 import { openPrescription, type RxDocMedicine } from '@/lib/prescription-doc'
@@ -38,6 +51,8 @@ const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other
 /** Standard prescription frequencies (stored as the usual code: OD, BD, TDS…). */
 const FREQUENCIES = ['OD', 'BD', 'TDS', 'QID', 'Q8H', 'Q6H', 'NOCTE', 'PRN', 'STAT'] as const
 interface RxLine {
+  /** Stable key: a line saved before a refusal leaves the form, the others stay. */
+  key: number
   item: string
   quantity: string
   dose: string
@@ -47,8 +62,13 @@ interface RxLine {
   instructions: string
   /** Patient collects it at the pharmacy, or the prescriber gives it here from the room. */
   supply: 'pharmacy' | 'room'
+  /** Given here: the room store chosen ('' = the prescriber's own), and its name. */
+  store: string
+  storeName: string
 }
+let lineKey = 0
 const emptyLine = (): RxLine => ({
+  key: ++lineKey,
   item: '',
   quantity: '',
   dose: '',
@@ -57,7 +77,31 @@ const emptyLine = (): RxLine => ({
   days: '',
   instructions: '',
   supply: 'pharmacy',
+  store: '',
+  storeName: '',
 })
+/** How a prescription line shows: waiting at the pharmacy, given, not given, cancelled… */
+const STATE_TONE: Record<PrescriptionState, Tone> = {
+  waiting: 'yellow',
+  given: 'green',
+  room: 'blue',
+  notGiven: 'red',
+  returned: 'grey',
+  cancelled: 'grey',
+}
+const STATE_LABEL: Record<PrescriptionState, string> = {
+  waiting: 'clinical.toDispense',
+  given: 'clinical.dispensed',
+  room: 'clinical.givenHere',
+  notGiven: 'clinical.notGiven',
+  returned: 'clinical.returnedBadge',
+  cancelled: 'clinical.cancelled',
+}
+/** A medicine given here: the room store it came from, when the database says it (optional). */
+const givenFrom = (r: Prescription) =>
+  (r as Prescription & { givenFrom?: string | null; store?: string | null }).givenFrom ??
+  (r as Prescription & { store?: string | null }).store ??
+  null
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
 
 /**
@@ -157,6 +201,31 @@ export function ClinicalCard({
   const { data: info } = useClinicInfo()
   const confirm = useConfirm()
   const name = patient?.name || t('confirm.visit.thisPatient')
+  const isManager = user.role === 'manager'
+  // "Given here" is for the people who hold a room store; the manager may give from any one.
+  const holds = useHoldsStore()
+  const myStores = holds.stores.filter((s) => s.active !== false)
+  const canGiveHere = isManager || myStores.length > 0
+  const ownStore = myStores.find((s) => s.personal) ?? myStores[0] ?? null
+  /** The room store a line given here comes out of: the one chosen, else my own. */
+  const storeOf = (l: RxLine) =>
+    l.store
+      ? { id: l.store, name: l.storeName }
+      : ownStore
+        ? { id: ownStore.id, name: ownStore.name }
+        : null
+  // a line the room store refused (not enough, not held): "for the pharmacy" is offered
+  const [refused, setRefused] = useState<{ key: number; message: string } | null>(null)
+  // prescribing-rule notes from the last prescription (never a refusal)
+  const [warnings, setWarnings] = useState<{ item: string; w: RxWarning }[]>([])
+  // cancelling a line waiting at the pharmacy, taking a handed-over one back, or putting a
+  // medicine given here back in the room store: the reason
+  const [reasonFor, setReasonFor] = useState<{
+    id: string
+    kind: 'cancel' | 'return' | 'undo'
+  } | null>(null)
+  const [reason, setReason] = useState('')
+  const supplies: RxLine['supply'][] = canGiveHere ? ['pharmacy', 'room'] : ['pharmacy']
 
   const letterhead = useLetterhead()
   const reportLabels = useMedicalReportLabels()
@@ -373,8 +442,16 @@ export function ClinicalCard({
       setTwiceOk(ids.join(','))
       return setLocalError(t('clinical.errors.rxTwice', { names: twice.join(', ') }))
     }
+    // the manager holds no store of their own: they say which room store it comes from
+    if (prepared.some((p) => p.line.supply === 'room' && !storeOf(p.line)))
+      return setLocalError(t('clinical.errors.pickStore'))
     const list = prepared
-      .map((p) => `${[p.item.name, p.item.strength].filter(Boolean).join(' ')} × ${p.q}`)
+      .map((p) => {
+        const label = `${[p.item.name, p.item.strength].filter(Boolean).join(' ')} × ${p.q}`
+        return p.line.supply === 'room'
+          ? `${label} (${t('clinical.fromStore', { store: storeOf(p.line)?.name ?? '' })})`
+          : label
+      })
       .join(', ')
     if (
       !(await confirm({
@@ -384,39 +461,150 @@ export function ClinicalCard({
       }))
     )
       return
-    // medicines given in the room without a price, or found in no store, are said
+    setLocalError(null)
+    onError(null)
+    setRefused(null)
+    setWarnings([])
+    // medicines given here without a price are said; the rule notes are kept on screen
     const unpriced: string[] = []
-    const noStock: string[] = []
+    const found: { item: string; w: RxWarning }[] = []
+    const saved: number[] = []
+    let pharmacy = 0
+    let here = 0
+    const at = { line: null as RxLine | null }
+    try {
+      // One prescription per medicine, in the order written; the pharmacy sees them together.
+      for (const { item, line, q } of prepared) {
+        at.line = line
+        const r = await actions.prescribe.mutateAsync({
+          item,
+          quantity: q,
+          dose: line.dose,
+          route: line.route,
+          frequency: line.frequency,
+          days: line.days ? Number(line.days) : undefined,
+          instructions: line.instructions,
+          supply: line.supply,
+          station: stationFor(user),
+          locationId: line.supply === 'room' ? (storeOf(line)?.id ?? null) : null,
+        })
+        saved.push(line.key)
+        if (line.supply === 'room') {
+          here += 1
+          if (!r.charged) unpriced.push(item.name)
+        } else pharmacy += 1
+        const label = [item.name, item.strength].filter(Boolean).join(' ')
+        for (const w of r.warnings) found.push({ item: label, w })
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      // the lines already saved leave the form; the refused one and the rest stay
+      setRx((lines) => {
+        const left = lines.filter((l) => !saved.includes(l.key))
+        return left.length ? left : [emptyLine()]
+      })
+      setWarnings(found)
+      const kind = errorKind(e)
+      if (
+        at.line?.supply === 'room' &&
+        (kind === 'roomShort' || kind === 'noRoomStore' || kind === 'notHolder')
+      )
+        setRefused({ key: at.line.key, message })
+      else setLocalError(message)
+      if (saved.length) onDone(t('clinical.rxPartSaved', { count: saved.length }))
+      return
+    }
+    setRx([emptyLine()])
+    setTwiceOk('')
+    setMode(null)
+    setWarnings(found)
+    onDone(
+      [
+        pharmacy ? t('clinical.rxSaved', { count: pharmacy }) : '',
+        here ? t('clinical.rxGivenHere', { count: here }) : '',
+        unpriced.length ? t('clinical.roomUnpriced', { names: unpriced.join(', ') }) : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    )
+  }
+  /** Cancel a line still waiting at the pharmacy, or take a handed-over one back. */
+  const submitReason = async (r: Prescription) => {
+    const why = reason.trim()
+    if (!reasonFor || why.length < 3) return setLocalError(t('clinical.errors.reason'))
+    if (reasonFor.kind === 'cancel') {
+      if (
+        !(await confirm({
+          title: t('confirm.visit.cancelRx', { item: r.item, name }),
+          body: t('confirm.visit.cancelRxBody', { reason: why }),
+          confirmLabel: t('confirm.visit.cancelRxYes'),
+          tone: 'danger',
+        }))
+      )
+        return
+      void run(
+        () =>
+          actions.cancelPrescription.mutateAsync({ requestId: r.id, reason: why }).then((d) => {
+            setReasonFor(null)
+            setReason('')
+            return d
+          }),
+        t('clinical.rxCancelled', { item: r.item }),
+      )
+      return
+    }
+    if (reasonFor.kind === 'undo') {
+      if (
+        !(await confirm({
+          title: t('confirm.visit.undoHere', { item: r.item, name }),
+          body: t(closed ? 'confirm.visit.undoHereClosedBody' : 'confirm.visit.undoHereOpenBody', {
+            reason: why,
+          }),
+          confirmLabel: t('confirm.visit.undoHereYes'),
+          tone: 'danger',
+        }))
+      )
+        return
+      let undone = t('clinical.undone', { item: r.item })
+      void run(
+        () =>
+          actions.undoGivenHere.mutateAsync({ requestId: r.id, reason: why }).then((d) => {
+            setReasonFor(null)
+            setReason('')
+            if (d.mode === 'credit' && d.credit > 0)
+              undone = t('clinical.undoneCredit', { item: r.item, amount: formatRwf(d.credit) })
+            return d
+          }),
+        () => undone,
+      )
+      return
+    }
+    if (
+      !(await confirm({
+        title: t('confirm.visit.returnMedicine', { item: r.item, name }),
+        body: t(closed ? 'confirm.visit.returnClosedBody' : 'confirm.visit.returnOpenBody', {
+          reason: why,
+        }),
+        confirmLabel: t('confirm.visit.returnMedicineYes'),
+        tone: 'danger',
+      }))
+    )
+      return
+    let back = t('clinical.returned', { item: r.item })
     void run(
-      async () => {
-        // One prescription per medicine, in the order written; the pharmacy sees them together.
-        for (const { item, line, q } of prepared) {
-          const r = await actions.prescribe.mutateAsync({
-            item,
-            quantity: q,
-            dose: line.dose,
-            route: line.route,
-            frequency: line.frequency,
-            days: line.days ? Number(line.days) : undefined,
-            instructions: line.instructions,
-            supply: line.supply,
-            station: stationFor(user),
-          })
-          if (line.supply === 'room' && r) {
-            if (!r.charged) unpriced.push(item.name)
-            if (!r.stockTaken) noStock.push(item.name)
-          }
-        }
-        setRx([emptyLine()])
-      },
       () =>
-        [
-          t('clinical.rxSaved', { count: prepared.length }),
-          unpriced.length ? t('clinical.roomUnpriced', { names: unpriced.join(', ') }) : '',
-          noStock.length ? t('clinical.roomNoStock', { names: noStock.join(', ') }) : '',
-        ]
-          .filter(Boolean)
-          .join(' '),
+        stock.returnMedicine.mutateAsync({ requestId: r.id, reason: why }).then((d) => {
+          setReasonFor(null)
+          setReason('')
+          // the bill was already closed: a credit note, the money goes back at the cashier
+          if (d.mode === 'credit')
+            back =
+              d.credit > 0
+                ? t('clinical.returnedCredit', { item: r.item, amount: formatRwf(d.credit) })
+                : t('clinical.returnedCreditNone', { item: r.item })
+          return d
+        }),
+      () => back,
     )
   }
   const submitOrder = async (e: FormEvent) => {
@@ -658,6 +846,9 @@ export function ClinicalCard({
           <Reveal focus block="nearest">
             <form onSubmit={submitRx} className="flex flex-col gap-3">
               <p className="text-ink-3 m-0 text-xs">{t('clinical.rxHint')}</p>
+              <p className="text-ink-3 m-0 text-xs">
+                {t(canGiveHere ? 'clinical.rxPayHint' : 'clinical.rxPharmacyOnly')}
+              </p>
               {rx.map((line, i) => (
                 <fieldset
                   key={i}
@@ -739,13 +930,16 @@ export function ClinicalCard({
                       <span className="text-ink-2 text-[13px] font-semibold">
                         {t('clinical.supplyLabel')}
                       </span>
-                      {(['pharmacy', 'room'] as const).map((k) => (
+                      {supplies.map((k) => (
                         <button
                           key={k}
                           type="button"
                           role="radio"
                           aria-checked={line.supply === k}
-                          onClick={() => setLine(i, { supply: k })}
+                          onClick={() => {
+                            setLine(i, { supply: k })
+                            if (refused?.key === line.key) setRefused(null)
+                          }}
                           className={cn(
                             'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
                             line.supply === k
@@ -774,6 +968,44 @@ export function ClinicalCard({
                       </Button>
                     )}
                   </div>
+                  {line.supply === 'room' &&
+                    canGiveHere &&
+                    (isManager ? (
+                      <ManagerRoomStore
+                        value={storeOf(line)?.id ?? ''}
+                        onChange={(id, storeName) => setLine(i, { store: id, storeName })}
+                        itemId={line.item}
+                        quantity={Number(line.quantity) || 0}
+                        onPharmacy={() => setLine(i, { supply: 'pharmacy' })}
+                      />
+                    ) : (
+                      <RoomStoreChoice
+                        stores={myStores}
+                        value={storeOf(line)?.id ?? ''}
+                        onChange={(id, storeName) => setLine(i, { store: id, storeName })}
+                        itemId={line.item}
+                        quantity={Number(line.quantity) || 0}
+                        onPharmacy={() => setLine(i, { supply: 'pharmacy' })}
+                      />
+                    ))}
+                  {refused?.key === line.key && (
+                    <div
+                      role="alert"
+                      className="bg-red-bg text-red flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-semibold"
+                    >
+                      <span className="min-w-0 flex-1">{refused.message}</span>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setLine(i, { supply: 'pharmacy' })
+                          setRefused(null)
+                        }}
+                      >
+                        <Pill size={14} aria-hidden="true" />
+                        {t('clinical.switchToPharmacy')}
+                      </Button>
+                    </div>
+                  )}
                 </fieldset>
               ))}
               <div className="flex flex-wrap gap-2">
@@ -878,6 +1110,42 @@ export function ClinicalCard({
             {localError}
           </p>
         )}
+        {warnings.length > 0 && (
+          <div
+            role="status"
+            className="bg-amber-bg text-amber flex flex-col gap-1 rounded-xl px-3 py-2 text-[13px]"
+          >
+            <span className="flex items-center gap-2 font-semibold">
+              <TriangleAlert size={14} aria-hidden="true" />
+              {t('clinical.rxWarn.title')}
+            </span>
+            <ul className="m-0 flex flex-col gap-0.5 pl-5">
+              {warnings.map(({ item, w }, i) => (
+                <li key={i}>
+                  {t('clinical.rxWarn.line', {
+                    item,
+                    rule: w.rule ? medicineRuleText(w.rule, t) : '',
+                  })}
+                  {w.kind === 'prescribingRule' &&
+                    ` ${
+                      w.specialty
+                        ? t('clinical.rxWarn.specialty', { specialty: w.specialty })
+                        : t('clinical.rxWarn.noSpecialty')
+                    }`}
+                </li>
+              ))}
+            </ul>
+            <span className="text-xs">{t('clinical.rxWarn.hint')}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="self-start"
+              onClick={() => setWarnings([])}
+            >
+              {t('common.close')}
+            </Button>
+          </div>
+        )}
       </CardBody>
 
       {/* Record */}
@@ -926,76 +1194,188 @@ export function ClinicalCard({
           </Row>
         ))}
       {data &&
-        data.prescriptions.map((r) => (
-          <Row key={r.id} className="gap-3 py-2">
-            <Badge
-              tone={
-                r.supply === 'room'
-                  ? 'blue'
-                  : r.notGivenAt
-                    ? 'red'
-                    : r.dispensed
-                      ? 'green'
-                      : 'yellow'
-              }
-              dot={false}
-            >
-              {r.supply === 'room'
-                ? t('clinical.givenHere')
-                : r.notGivenAt
-                  ? t('clinical.notGiven')
-                  : t(r.dispensed ? 'clinical.dispensed' : 'clinical.toDispense')}
-            </Badge>
-            <span className="min-w-0 flex-1">
-              <span className="block font-semibold">
-                {r.item} × {r.quantity}
+        data.prescriptions.map((r) => {
+          const state = prescriptionState(r)
+          // the prescriber (or the manager) withdraws a line still waiting at the pharmacy
+          const wrote = r.prescriberId ? r.prescriberId === user.id : !!r.by && r.by === user.name
+          const canCancel =
+            state === 'waiting' &&
+            r.pending !== false &&
+            !closed &&
+            (isManager || wrote) &&
+            can('clinical.write')
+          // the pharmacy undoes a hand-over (wrong medicine, brought back unopened)
+          const canReturn =
+            state === 'given' && r.supply !== 'room' && (user.role === 'pharmacist' || isManager)
+          // a medicine given here by mistake: the one who gave it (the same day) or the manager
+          // puts it back in the room store
+          const givenToday =
+            !!r.givenAt && new Date(r.givenAt).toDateString() === new Date().toDateString()
+          const canUndo =
+            state === 'room' &&
+            !!r.givenAt &&
+            (isManager || (wrote && givenToday)) &&
+            can('clinical.write')
+          const asking = reasonFor?.id === r.id ? reasonFor : null
+          const from = givenFrom(r)
+          const returnedWhy = (r.notGivenReason ?? '').replace(/^returned:\s*/i, '')
+          return (
+            <Row key={r.id} className="items-start gap-3 py-2">
+              <Badge tone={STATE_TONE[state]} dot={false} className="mt-0.5">
+                {t(STATE_LABEL[state])}
+              </Badge>
+              <span className="min-w-0 flex-1">
+                <span
+                  className={cn('block font-semibold', state === 'cancelled' && 'line-through')}
+                >
+                  {r.item} × {r.quantity}
+                </span>
+                <span className="text-ink-3 block text-xs">
+                  {[
+                    r.dose,
+                    r.route,
+                    r.frequency,
+                    r.days ? t('clinical.forDays', { count: r.days }) : null,
+                    r.instructions,
+                    state === 'room' && from ? t('clinical.fromStore', { store: from }) : null,
+                    state === 'room' && r.givenBy
+                      ? t('clinical.givenBy', { name: r.givenBy })
+                      : null,
+                    state === 'notGiven' && r.notGivenReason
+                      ? t('clinical.notGivenWhy', { reason: r.notGivenReason })
+                      : null,
+                    state === 'returned'
+                      ? t('clinical.returnedWhy', { reason: returnedWhy })
+                      : null,
+                    state === 'cancelled'
+                      ? t('clinical.cancelledWhy', { reason: r.cancelReason ?? '' })
+                      : null,
+                    state === 'cancelled' ? r.cancelledBy : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+                {asking && (
+                  <Reveal focus block="nearest">
+                    <form
+                      className="mt-2 flex flex-col gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        void submitReason(r)
+                      }}
+                    >
+                      <Field
+                        label={t(
+                          asking.kind === 'cancel'
+                            ? 'clinical.cancelWhy'
+                            : asking.kind === 'undo'
+                              ? 'clinical.undoWhy'
+                              : 'clinical.returnWhy',
+                          { item: r.item },
+                        )}
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder={t(
+                          asking.kind === 'cancel'
+                            ? 'clinical.cancelWhyPh'
+                            : asking.kind === 'undo'
+                              ? 'clinical.undoWhyPh'
+                              : 'clinical.returnWhyPh',
+                        )}
+                        required
+                        minLength={3}
+                      />
+                      <p className="text-ink-3 m-0 text-xs">
+                        {t(
+                          asking.kind === 'cancel'
+                            ? 'clinical.cancelHint'
+                            : asking.kind === 'undo'
+                              ? closed
+                                ? 'clinical.undoClosedHint'
+                                : 'clinical.undoOpenHint'
+                              : closed
+                                ? 'clinical.returnClosedHint'
+                                : 'clinical.returnOpenHint',
+                        )}
+                      </p>
+                      <span className="flex flex-wrap gap-2">
+                        <Button
+                          type="submit"
+                          size="sm"
+                          variant="danger"
+                          loading={
+                            asking.kind === 'cancel'
+                              ? actions.cancelPrescription.isPending
+                              : asking.kind === 'undo'
+                                ? actions.undoGivenHere.isPending
+                                : stock.returnMedicine.isPending
+                          }
+                        >
+                          {t(
+                            asking.kind === 'cancel'
+                              ? 'clinical.cancelRx'
+                              : asking.kind === 'undo'
+                                ? 'clinical.undoHere'
+                                : 'clinical.returnMedicine',
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setReasonFor(null)
+                            setReason('')
+                          }}
+                        >
+                          {t('staff.form.cancel')}
+                        </Button>
+                      </span>
+                    </form>
+                  </Reveal>
+                )}
               </span>
-              <span className="text-ink-3 block text-xs">
-                {[
-                  r.dose,
-                  r.route,
-                  r.frequency,
-                  r.days ? t('clinical.forDays', { count: r.days }) : null,
-                  r.instructions,
-                  r.supply === 'room' && r.givenBy
-                    ? t('clinical.givenBy', { name: r.givenBy })
-                    : null,
-                  r.notGivenReason ? t('clinical.notGivenWhy', { reason: r.notGivenReason }) : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            </span>
-            {/* the pharmacy undoes a hand-over (wrong medicine, brought back unopened) */}
-            {r.dispensed &&
-              r.supply !== 'room' &&
-              (user.role === 'pharmacist' || user.role === 'manager') && (
+              {canCancel && !asking && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  title={t('clinical.cancelRxHint')}
+                  onClick={() => {
+                    setReasonFor({ id: r.id, kind: 'cancel' })
+                    setReason('')
+                  }}
+                >
+                  <XCircle size={14} aria-hidden="true" />
+                  {t('clinical.cancelRx')}
+                </Button>
+              )}
+              {canReturn && !asking && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={async () => {
-                    if (
-                      !(await confirm({
-                        title: t('confirm.visit.returnMedicine', { item: r.item, name }),
-                        body: t('confirm.visit.returnMedicineBody'),
-                        confirmLabel: t('confirm.visit.returnMedicineYes'),
-                        tone: 'danger',
-                      }))
-                    )
-                      return
-                    const reason = window.prompt(t('clinical.returnWhy', { item: r.item }))
-                    if (!reason) return
-                    void run(
-                      () => stock.returnMedicine.mutateAsync({ requestId: r.id, reason }),
-                      t('clinical.returned', { item: r.item }),
-                    )
+                  onClick={() => {
+                    setReasonFor({ id: r.id, kind: 'return' })
+                    setReason('')
                   }}
                 >
                   {t('clinical.returnMedicine')}
                 </Button>
               )}
-          </Row>
-        ))}
+              {canUndo && !asking && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title={t('clinical.undoHereHint')}
+                  onClick={() => {
+                    setReasonFor({ id: r.id, kind: 'undo' })
+                    setReason('')
+                  }}
+                >
+                  {t('clinical.undoHere')}
+                </Button>
+              )}
+            </Row>
+          )
+        })}
       {data &&
         data.orders.map((o) => (
           <Row key={o.id} className="gap-3 py-2">
@@ -1187,5 +1567,106 @@ export function ClinicalCard({
         </CardBody>
       )}
     </Card>
+  )
+}
+
+interface StoreChoiceProps {
+  value: string
+  onChange: (id: string, name: string) => void
+  /** The medicine on this line and how many: the store's stock of it is shown. */
+  itemId: string
+  quantity: number
+  /** Not enough here: the line goes to the pharmacy instead. */
+  onPharmacy: () => void
+}
+
+/** The manager gives from any open room store: the list comes from the stock overview. */
+function ManagerRoomStore(props: StoreChoiceProps) {
+  const { data } = useStockOverview()
+  const stores = (data?.locations ?? [])
+    .filter((l) => isRoomStore(l) && l.active !== false)
+    .map((l) => ({ id: l.id, name: l.name }))
+  return <RoomStoreChoice {...props} stores={stores} pick />
+}
+
+/**
+ * Given here: which room store it comes out of (default: my own) and how much of the medicine
+ * it holds, never counting expired units. Not enough: "for the pharmacy" is offered.
+ */
+function RoomStoreChoice({
+  stores,
+  pick = false,
+  value,
+  onChange,
+  itemId,
+  quantity,
+  onPharmacy,
+}: StoreChoiceProps & {
+  stores: Pick<MyStore, 'id' | 'name'>[]
+  /** No store is preset (the manager): one must be chosen. */
+  pick?: boolean
+}) {
+  const { t } = useTranslation()
+  const known = stores.some((s) => s.id === value)
+  const current = known ? value : ''
+  const { data, isLoading } = useStoreStock(current || null)
+  const storeName = stores.find((s) => s.id === current)?.name ?? ''
+  const row = data?.items.find((x) => x.itemId === itemId)
+  const usable = row?.usable ?? 0
+  let stockLine: ReactNode = null
+  if (current && itemId && !isLoading && data) {
+    const short = quantity > 0 && usable < quantity
+    stockLine = (
+      <span
+        className={cn(
+          'flex flex-wrap items-center gap-2 text-[13px]',
+          short ? 'text-red font-semibold' : 'text-ink-2',
+        )}
+      >
+        <span>
+          {usable === 0
+            ? t('clinical.roomStock.none', { store: storeName })
+            : short
+              ? t('clinical.roomStock.short', { count: usable, store: storeName, quantity })
+              : t('clinical.roomStock.ready', { count: usable, store: storeName })}
+          {row && row.expired > 0 && ` ${t('clinical.roomStock.expired', { count: row.expired })}`}
+        </span>
+        {short && (
+          <Button size="sm" onClick={onPharmacy}>
+            <Pill size={14} aria-hidden="true" />
+            {t('clinical.switchToPharmacy')}
+          </Button>
+        )}
+      </span>
+    )
+  }
+  return (
+    <div className="border-border bg-card flex flex-col gap-2 rounded-lg border px-3 py-2">
+      {stores.length > 1 || pick ? (
+        <Select
+          label={t('clinical.roomStock.label')}
+          value={current}
+          onChange={(e) =>
+            onChange(e.target.value, stores.find((s) => s.id === e.target.value)?.name ?? '')
+          }
+          required
+        >
+          {(pick || !current) && <option value="">{t('clinical.roomStock.pick')}</option>}
+          {stores.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </Select>
+      ) : (
+        <span className="text-ink-2 text-[13px] font-semibold">
+          {t('clinical.fromStore', { store: storeName || stores[0]?.name || '' })}
+        </span>
+      )}
+      {stores.length === 0 && (
+        <span className="text-ink-3 text-xs">{t('clinical.roomStock.noStores')}</span>
+      )}
+      {stockLine}
+    </div>
   )
 }

@@ -1,4 +1,8 @@
 import { ROLE_HOME, type NavItem, type StaffUser } from '@mmc/shared'
+import { isRoomStore, sampleStock } from '@/lib/api/stock'
+import { queryClient } from '@/lib/query-client'
+import { supabase } from '@/lib/supabase'
+import { useSession } from '@/store/session'
 
 /** Every role's rail ends with the notifications page (inbox, filters; manager: sent). */
 const NOTICES: NavItem = {
@@ -54,21 +58,28 @@ export const RECEPTION_NAV: NavItem[] = [
   NOTICES,
 ]
 
-/** Nursing: the dashboard, triage first, then everyone in the clinic, the files and the stock
- *  the nurses use (dressings, injections: "Use" on the stock page). */
+/** Nursing: the dashboard, triage first, then everyone in the clinic and the files. A nurse who
+ *  holds a room store (the ward) also gets "My store" (see withMyStore). */
 export const NURSE_NAV: NavItem[] = [
   { id: 'home', labelKey: 'nav.home', icon: 'layout-dashboard', to: '/app' },
   { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
-  { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' },
   HISTORY,
   NOTICES,
 ]
 
-/** Stock: the pharmacy and the laboratory (reagents, supplies). */
-const STOCK: NavItem = { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' }
+/**
+ * "My store": the room stores the person holds (a doctor's office, the ward, the laboratory).
+ * Same page as the stock page (it shows only their stores); the id keeps the entry lit there.
+ */
+const MY_STORE: NavItem = {
+  id: 'stock',
+  labelKey: 'nav.myStore',
+  icon: 'package',
+  to: '/app/stock',
+}
 /** The person's own calendar (hours, days off, bookings). */
 const CALENDAR: NavItem = {
   id: 'calendar',
@@ -105,7 +116,50 @@ const withHeadDashboard = (user: StaffUser, items: NavItem[]): NavItem[] =>
 export const navForUser = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
     ? MANAGER_NAV
-    : withHeadDashboard(user, navForStaff(user))
+    : withMyStore(user, withHeadDashboard(user, navForStaff(user)))
+
+/**
+ * Whether the person holds a room store, as last read from the database (my_stores). The menu
+ * is built during render, so the answer comes from the query cache: the first time it is asked
+ * for, it is fetched, and when the answer changes the signed-in user is renewed so every open
+ * screen draws its menu again (the same way a role changed by the manager reaches the menu).
+ */
+const holdsKey = (userId: string) => ['stock', 'rooms', 'nav-holds', userId] as const
+async function readHolds(): Promise<boolean> {
+  if (!supabase)
+    return sampleStock.locations.some(
+      (l) => l.active !== false && isRoomStore(l) && sampleStock.holds(l.id),
+    )
+  const { data, error } = await supabase.rpc('my_stores')
+  // an older database (no room stores yet) or a failed read: no entry
+  if (error) return false
+  return Array.isArray(data) && data.length > 0
+}
+function holdsRoomStore(user: StaffUser): boolean {
+  const key = holdsKey(user.id)
+  queueMicrotask(() => {
+    void queryClient.prefetchQuery({
+      queryKey: key,
+      staleTime: 5 * 60_000,
+      queryFn: async () => {
+        const before = queryClient.getQueryData<boolean>(key) ?? false
+        const now = await readHolds()
+        if (now !== before)
+          window.setTimeout(() => {
+            const u = useSession.getState().user
+            if (u && u.id === user.id) useSession.setState({ user: { ...u } })
+          }, 0)
+        return now
+      },
+    })
+  })
+  return queryClient.getQueryData<boolean>(key) ?? false
+}
+/** The pharmacist has the full stock page already; anyone else holding a store gets My store. */
+const withMyStore = (user: StaffUser, items: NavItem[]): NavItem[] =>
+  user.role === 'pharmacist' || items.some((n) => n.to === '/app/stock') || !holdsRoomStore(user)
+    ? items
+    : [...items.slice(0, -2), MY_STORE, ...items.slice(-2)]
 
 const navForStaff = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
@@ -120,7 +174,7 @@ const navForStaff = (user: StaffUser): NavItem[] =>
             ? // sonographers keep their own calendar and have no stock to manage
               user.dbRole === 'sonographer'
               ? [...ROLE_HOME.lab_tech.nav, CALENDAR, PATIENTS, HISTORY, NOTICES]
-              : [...ROLE_HOME.lab_tech.nav, STOCK, PATIENTS, HISTORY, NOTICES]
+              : [...ROLE_HOME.lab_tech.nav, PATIENTS, HISTORY, NOTICES]
             : user.role === 'doctor'
               ? [...ROLE_HOME.doctor.nav, IN_CLINIC, PATIENTS, HISTORY, NOTICES]
               : // the cashier looks a patient up to collect what a past visit still owes

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { Fragment, useState, type FormEvent } from 'react'
 import { PeriodFilter } from '@/components/dash/period-filter'
 import { usePeriod } from '@/lib/period'
 import {
@@ -6,13 +6,16 @@ import {
   ArrowRightLeft,
   Boxes,
   Coins,
+  DoorOpen,
   ListOrdered,
   Package,
   PackageMinus,
   PackagePlus,
   Pill,
+  ShoppingCart,
   Store,
   Tags,
+  Truck,
   Warehouse,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -39,76 +42,237 @@ import {
   usePharmacyQueue,
   isLowStock,
   useStockActions,
+  useStockAlerts,
   useStockMovements,
   useStockOverview,
   useStockSales,
   type StockItem,
   type StockLocation,
+  type StockOverview,
 } from '@/lib/api/stock'
-import { useDepartments } from '@/lib/api/staff'
-import {
-  medicineRefLabel,
-  medicineRuleText,
-  readableUnit,
-  useMedicineActions,
-  useMedicineReference,
-  useMedicines,
-} from '@/lib/api/catalogue'
-import { Reveal } from '@/components/ui/reveal'
+import { useHoldsStore } from '@/lib/api/rooms'
 import { useClinicInfo } from '@/lib/api/public'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { stockReport } from '@/lib/reports/build'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
-import { useCan } from '@/lib/api/permissions'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/confirm'
 import { PharmacyDesk } from './pharmacy-desk'
 import { MedicinesSection } from '../prices/medicines-section'
+import { DeliveriesList, DeliveryForm } from './delivery-form'
+import { MyStoreTab } from './my-store'
+import { ReorderTab, LevelEditor } from './reorder-tab'
+import { RoomStoresTab } from './room-stores'
+import { PharmacyCountForm, StoresTab } from './stores-tab'
+import { MsgFlash } from './stock-shared'
+import {
+  errText,
+  errorBox,
+  expiryState,
+  itemName,
+  mainPharmacy,
+  pharmacySide,
+  pharmacyStores,
+  roomStores,
+  usableIn,
+  type Msg,
+  type Tab,
+} from './stock-util'
 
-export type Tab =
-  'stock' | 'pharmacy' | 'receive' | 'send' | 'use' | 'medicines' | 'moves' | 'sales' | 'stores'
-const TABS: { id: Tab; icon: typeof Package }[] = [
-  { id: 'stock', icon: Boxes },
-  { id: 'pharmacy', icon: Pill },
-  { id: 'receive', icon: PackagePlus },
-  { id: 'send', icon: ArrowRightLeft },
-  { id: 'use', icon: PackageMinus },
-  { id: 'medicines', icon: Tags },
-  { id: 'moves', icon: ListOrdered },
-  { id: 'sales', icon: Coins },
-  { id: 'stores', icon: Store },
+export type { Tab }
+
+const ICONS: Record<Tab, typeof Package> = {
+  stock: Boxes,
+  pharmacy: Pill,
+  receive: PackagePlus,
+  deliveries: Truck,
+  reorder: ShoppingCart,
+  rooms: DoorOpen,
+  mine: Package,
+  send: ArrowRightLeft,
+  use: PackageMinus,
+  medicines: Tags,
+  moves: ListOrdered,
+  sales: Coins,
+  stores: Store,
+}
+/** The pharmacy and the manager: every tab but "My store" (shown when they hold one too). */
+const ADMIN_TABS: Tab[] = [
+  'stock',
+  'pharmacy',
+  'receive',
+  'deliveries',
+  'reorder',
+  'rooms',
+  'send',
+  'use',
+  'medicines',
+  'moves',
+  'sales',
+  'stores',
 ]
-/** What a form opens with: the medicine, the store to receive into, the store to send to. */
+/** What the form opens with: the medicine, the store to receive into, the store to send to. */
 export interface StockPreset {
   item?: string
   location?: string
   to?: string
 }
+/** From the address (a notification): the store, the note, the request or the delivery to open. */
+export interface StockFocus {
+  store?: string
+  note?: string
+  request?: string
+  delivery?: string
+}
 /** Opens Receive or Send already filled in (the pharmacy desk's short medicine). */
 export type OpenStock = (tab: 'receive' | 'send', preset: StockPreset) => void
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
 /**
- * Medicine stock (pharmacist, manager): what is on hand and where, with cost and selling price
- * and the value of the stock; receiving; sending a quantity to a department or a doctor's
- * office; the pharmacy hand-over queue; the ledger; what was sold and the margin.
+ * Medicine stock. The pharmacy is the main store: deliveries are received into it, it hands
+ * medicines over to patients and sends them to the room stores (a doctor's office, a ward) on
+ * transfer notes. The pharmacist and the manager see every store, the value, what to order and
+ * what was sold; the manager decides who holds each room store. Holders see only "My store".
  */
 export function StockPage({
   user,
   initialTab,
   preset: initialPreset,
+  focus = {},
 }: {
   user: StaffUser
   initialTab?: Tab
   /** From the address: the medicine and stores the Receive / Send form starts with. */
   preset?: StockPreset
+  focus?: StockFocus
+}) {
+  const isManager = user.role === 'manager'
+  const admin = isManager || user.role === 'pharmacist'
+  return (
+    <StaffShell user={user} nav={navForUser(user)} activeId="stock">
+      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+        {admin ? (
+          <AdminStock
+            user={user}
+            isManager={isManager}
+            initialTab={initialTab}
+            preset={initialPreset}
+            focus={focus}
+          />
+        ) : (
+          <HolderStock user={user} initialTab={initialTab} focus={focus} />
+        )}
+      </main>
+    </StaffShell>
+  )
+}
+
+/* ---------------------------------------------------------------- holders of a room store */
+function HolderStock({
+  user,
+  initialTab,
+  focus,
+}: {
+  user: StaffUser
+  initialTab?: Tab
+  focus: StockFocus
 }) {
   const { t } = useTranslation()
+  const { holds } = useHoldsStore()
+  const [tab, setTab] = useState<'mine' | 'moves'>(initialTab === 'moves' ? 'moves' : 'mine')
+  const { data } = useStockOverview()
+  return (
+    <>
+      <PageBanner icon={Package} tint="mint" title={t('myStore.title')} lead={t('myStore.lead')} />
+      {holds && (
+        <TabBar
+          tabs={['mine', 'moves']}
+          tab={tab}
+          onTab={(x) => setTab(x as 'mine' | 'moves')}
+          badge={{}}
+        />
+      )}
+      {tab === 'mine' && <MyStoreTab user={user} storeId={focus.store} noteId={focus.note} />}
+      {tab === 'moves' && <Movements items={data?.items ?? []} locations={data?.locations ?? []} />}
+    </>
+  )
+}
+
+function TabBar({
+  tabs,
+  tab,
+  onTab,
+  badge,
+}: {
+  tabs: Tab[]
+  tab: Tab
+  onTab: (t: Tab) => void
+  badge: Partial<Record<Tab, number>>
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-wrap gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
+      {tabs.map((x) => {
+        const Icon = ICONS[x]
+        const n = badge[x] ?? 0
+        return (
+          <button
+            key={x}
+            type="button"
+            role="tab"
+            aria-selected={tab === x}
+            onClick={() => onTab(x)}
+            className={cn(
+              'inline-flex min-h-10 items-center gap-2 rounded-lg px-3.5 text-[14px] font-semibold whitespace-nowrap',
+              tab === x ? 'bg-navy text-white' : 'text-ink-2 hover:bg-hover',
+            )}
+          >
+            <Icon size={16} aria-hidden="true" />
+            {t(`stock.tabs.${x}`)}
+            {n > 0 && (
+              <span
+                className={cn(
+                  'rounded-full px-1.5 text-[12px]',
+                  tab === x ? 'bg-white/20' : 'bg-amber-bg text-amber',
+                )}
+              >
+                {n}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------- the pharmacy and the manager */
+function AdminStock({
+  user,
+  isManager,
+  initialTab,
+  preset: initialPreset,
+  focus,
+}: {
+  user: StaffUser
+  isManager: boolean
+  initialTab?: Tab
+  preset?: StockPreset
+  focus: StockFocus
+}) {
+  const { t } = useTranslation()
+  const { holds } = useHoldsStore()
+  const tabs = holds
+    ? [...ADMIN_TABS.slice(0, 6), 'mine' as const, ...ADMIN_TABS.slice(6)]
+    : ADMIN_TABS
   // the pharmacist starts at the hand-over desk
   const [tab, setTab] = useState<Tab>(
-    initialTab ?? (user.role === 'pharmacist' ? 'pharmacy' : 'stock'),
+    initialTab && (initialTab !== 'mine' || holds)
+      ? initialTab
+      : user.role === 'pharmacist'
+        ? 'pharmacy'
+        : 'stock',
   )
   const [preset, setPreset] = useState<StockPreset>(initialPreset ?? {})
   // each time the desk opens a form, it starts again with the new medicine and store
@@ -122,6 +286,7 @@ export function StockPage({
   const { data: queue = [] } = usePharmacyQueue()
   const now = useNow(60_000)
   const items = data?.items ?? []
+  const locations = data?.locations ?? []
   const { data: info } = useClinicInfo()
   // the report covers a chosen month (this month: up to today)
   const [reportMonth, setReportMonth] = useState(() => isoDate(new Date()).slice(0, 7))
@@ -131,174 +296,249 @@ export function StockPage({
   const reportTo = monthEnd < isoDate(new Date(now)) ? monthEnd : isoDate(new Date(now))
   const { data: reportMoves = [] } = useStockMovements(reportFrom, reportTo, null)
   const { data: reportSales } = useStockSales(reportFrom, reportTo)
-  const locations = data?.locations ?? []
+  const costShown = items.some((i) => i.costShown !== false)
   const value = items.reduce((s, i) => s + i.costValue, 0)
-  const low = items.filter((i) => i.active && isLowStock(i)).length
-  const expiring = items.filter(
-    (i) => i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 90 * 86_400_000,
+  const active = items.filter((i) => i.active)
+  // tiles from unexpired stock: low, expiring (today to +90 days), expired (separately)
+  const low = active.filter((i) => isLowStock(i)).length
+  const expiring = active.filter((i) =>
+    i.expiringUnits != null
+      ? i.expiringUnits > 0
+      : expiryState(i.nextExpiry ?? i.earliestExpiry) === 'soon',
   ).length
-  // what each role may do here (the database refuses the rest): the pharmacy and the manager
-  // run everything; the lab keeps its reagents; nurses and doctors use and look up stock
-  const can = useCan(user)
-  const fullStock = user.role === 'manager' || user.role === 'pharmacist'
-  // receiving, sending, counting: whoever keeps a store (Who may do what decides)
-  const keepsStore = can('stock.write')
-  const tabs = TABS.filter((x) =>
-    x.id === 'pharmacy' || x.id === 'medicines' || x.id === 'sales'
-      ? fullStock
-      : x.id === 'receive' || x.id === 'send' || x.id === 'stores'
-        ? keepsStore
-        : true,
-  )
+  const expired = active.filter((i) => i.expiredUnits > 0).length
 
   return (
-    <StaffShell user={user} nav={navForUser(user)} activeId="stock">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
-        <PageBanner
-          icon={Warehouse}
-          tint="mint"
-          title={t('stock.title')}
-          lead={t('stock.lead')}
-          meta={
+    <>
+      <PageBanner
+        icon={Warehouse}
+        tint="mint"
+        title={t('stock.title')}
+        lead={t('stock.lead')}
+        meta={
+          costShown ? (
             <BannerChip icon={Coins}>
               {t('stock.valueChip', { amount: formatRwf(value) })}
             </BannerChip>
+          ) : undefined
+        }
+      >
+        <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">
+          <span className="text-ink-3 text-[13px]">{t('stock.reportMonth')}</span>
+          <input
+            type="month"
+            value={reportMonth}
+            max={isoDate(new Date()).slice(0, 7)}
+            onChange={(e) => e.target.value && setReportMonth(e.target.value)}
+            className="bg-transparent outline-none"
+          />
+        </label>
+        <ReportButtons
+          build={() =>
+            stockReport(
+              items,
+              reportMoves,
+              reportSales,
+              reportFrom,
+              reportTo,
+              info?.profile ?? CLINIC_PROFILE,
+              user,
+              t,
+            )
           }
-        >
-          <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">
-            <span className="text-ink-3 text-[13px]">{t('stock.reportMonth')}</span>
-            <input
-              type="month"
-              value={reportMonth}
-              max={isoDate(new Date()).slice(0, 7)}
-              onChange={(e) => e.target.value && setReportMonth(e.target.value)}
-              className="bg-transparent outline-none"
-            />
-          </label>
-          <ReportButtons
-            build={() =>
-              stockReport(
-                items,
-                reportMoves,
-                reportSales,
-                reportFrom,
-                reportTo,
-                info?.profile ?? CLINIC_PROFILE,
-                user,
-                t,
-              )
-            }
-          />
-        </PageBanner>
-        {error && <p className={errorBox}>{error.message}</p>}
+        />
+      </PageBanner>
+      {error && <p className={errorBox}>{error.message}</p>}
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4">
-          <Kpi
-            i={0}
-            icon={Boxes}
-            tint="mint"
-            label={t('stock.tiles.items')}
-            value={items.filter((i) => i.active).length}
-            unit={t('stock.units.items')}
-          />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(190px,1fr))] sm:gap-4">
+        <Kpi
+          i={0}
+          icon={Boxes}
+          tint="mint"
+          label={t('stock.tiles.items')}
+          value={active.length}
+          unit={t('stock.units.items')}
+        />
+        {costShown && (
           <Kpi
             i={1}
             icon={Coins}
             tint="navy"
             label={t('stock.tiles.value')}
-            value={value}
+            value={Math.round(value)}
             unit="RWF"
           />
-          <Kpi
-            i={2}
-            icon={AlertTriangle}
-            tint="amber"
-            label={t('stock.tiles.low')}
-            value={low}
-            unit={t('stock.units.toReorder')}
-            delta={low > 0 ? { text: t('stock.reorderSoon'), good: false, up: null } : undefined}
-          />
-          <Kpi
-            i={3}
-            icon={AlertTriangle}
-            tint="coral"
-            label={t('stock.tiles.expiring')}
-            value={expiring}
-            unit={t('stock.units.in90')}
-          />
-          <Kpi
-            i={4}
-            icon={Pill}
-            tint="violet"
-            label={t('stock.tiles.pharmacy')}
-            value={queue.length}
-            unit={t('stock.units.toHandOver')}
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
-          {tabs.map((x) => (
-            <button
-              key={x.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === x.id}
-              onClick={() => {
-                // a tab chosen by hand opens empty
-                setTab(x.id)
-                setPreset({})
-              }}
-              className={cn(
-                'inline-flex min-h-10 items-center gap-2 rounded-lg px-3.5 text-[14px] font-semibold whitespace-nowrap',
-                tab === x.id ? 'bg-navy text-white' : 'text-ink-2 hover:bg-hover',
-              )}
-            >
-              <x.icon size={16} aria-hidden="true" />
-              {t(`stock.tabs.${x.id}`)}
-              {x.id === 'pharmacy' && queue.length > 0 && (
-                <span
-                  className={cn(
-                    'rounded-full px-1.5 text-[12px]',
-                    tab === x.id ? 'bg-white/20' : 'bg-amber-bg text-amber',
-                  )}
-                >
-                  {queue.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {tab === 'stock' && (
-          <StockTable items={items} locations={locations} canSetLevel={fullStock} />
         )}
-        {tab === 'pharmacy' && <PharmacyDesk canDispense={fullStock} onOpenStock={openStock} />}
-        {tab === 'receive' && (
-          <ReceiveForm
-            key={opened}
-            items={items}
+        <Kpi
+          i={2}
+          icon={AlertTriangle}
+          tint="amber"
+          label={t('stock.tiles.low')}
+          value={low}
+          unit={t('stock.units.toReorder')}
+          delta={low > 0 ? { text: t('stock.reorderSoon'), good: false, up: null } : undefined}
+        />
+        <Kpi
+          i={3}
+          icon={AlertTriangle}
+          tint="coral"
+          label={t('stock.tiles.expiring')}
+          value={expiring}
+          unit={t('stock.units.in90')}
+        />
+        <Kpi
+          i={4}
+          icon={AlertTriangle}
+          tint="coral"
+          label={t('stockShared.tiles.expired')}
+          value={expired}
+          unit={t('stockShared.tiles.toWriteOff')}
+        />
+        <Kpi
+          i={5}
+          icon={Pill}
+          tint="violet"
+          label={t('stock.tiles.pharmacy')}
+          value={queue.length}
+          unit={t('stock.units.toHandOver')}
+        />
+        {data?.transit && (
+          <Kpi
+            i={6}
+            icon={Truck}
+            tint="teal"
+            label={t('stockShared.tiles.onTheWay')}
+            value={data.transit.units}
+            unit={t('stockShared.tiles.notes', { count: data.transit.notes })}
+          />
+        )}
+      </div>
+
+      <TabBar
+        tabs={tabs}
+        tab={tab}
+        onTab={(x) => {
+          // a tab chosen by hand opens empty
+          setTab(x)
+          setPreset({})
+        }}
+        badge={{ pharmacy: queue.length }}
+      />
+
+      {tab === 'stock' && (
+        <>
+          <AlertsPanel onWriteOff={() => setTab('use')} />
+          <StockTable items={items} locations={locations} canSetLevel />
+        </>
+      )}
+      {tab === 'pharmacy' && <PharmacyDesk canDispense onOpenStock={openStock} />}
+      {tab === 'receive' && (
+        <DeliveryForm
+          key={opened}
+          items={items}
+          locations={locations}
+          mainId={data?.mainPharmacyId ?? null}
+          addsMedicines
+          preset={preset}
+        />
+      )}
+      {tab === 'deliveries' && <DeliveriesList focusId={focus.delivery} />}
+      {tab === 'reorder' && (
+        <ReorderTab items={items} onReceive={(item) => openStock('receive', { item })} />
+      )}
+      {tab === 'rooms' && (
+        <RoomStoresTab
+          overview={data}
+          isManager={isManager}
+          focusNote={focus.note}
+          focusRequest={focus.request}
+          focusStore={focus.store}
+        />
+      )}
+      {tab === 'mine' && <MyStoreTab user={user} storeId={focus.store} noteId={focus.note} />}
+      {tab === 'send' && (
+        <SendForm key={opened} overview={data} preset={preset} onRooms={() => setTab('rooms')} />
+      )}
+      {tab === 'use' && <UseForm items={items} locations={locations} />}
+      {tab === 'medicines' && <MedicinesTab />}
+      {tab === 'moves' && <Movements items={items} locations={locations} />}
+      {tab === 'sales' && <Sales />}
+      {tab === 'stores' && (
+        <>
+          <StoresTab
             locations={locations}
-            addsMedicines={fullStock}
-            preset={preset}
+            items={items}
+            mainId={data?.mainPharmacyId ?? null}
+            isManager={isManager}
           />
-        )}
-        {tab === 'send' && (
-          <SendForm key={opened} items={items} locations={locations} preset={preset} />
-        )}
-        {tab === 'use' && <UseForm items={items} locations={locations} />}
-        {tab === 'medicines' && (
-          <MedicinesTab canEdit={user.role === 'manager' || user.role === 'pharmacist'} />
-        )}
-        {tab === 'moves' && <Movements items={items} />}
-        {tab === 'sales' && <Sales />}
-        {tab === 'stores' && (
-          <>
-            <Stores locations={locations} />
-            <CountForm items={items} locations={locations} />
-          </>
-        )}
-      </main>
-    </StaffShell>
+          <PharmacyCountForm items={items} locations={locations} />
+        </>
+      )}
+    </>
+  )
+}
+
+/* ---------------------------------------------------------------- alerts */
+/** Expired stock to write off, stock expiring within 90 days, room stores below their minimum. */
+function AlertsPanel({ onWriteOff }: { onWriteOff: () => void }) {
+  const { t } = useTranslation()
+  const { data } = useStockAlerts()
+  if (!data?.supported) return null
+  const { expired, expiring, roomLow } = data
+  if (expired.length + expiring.length + roomLow.length === 0) return null
+  return (
+    <Panel i={0} icon={AlertTriangle} tint="coral" title={t('stockShared.alertsTitle')}>
+      {expired.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-red text-[13px] font-bold">
+            {t('stockShared.expiredList', { count: expired.length })}
+          </span>
+          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+            {expired.slice(0, 8).map((x) => (
+              <li key={`${x.storeId}-${x.itemId}-${x.batchNo}`}>
+                <b>{x.item}</b> × {formatNumber(x.quantity)} · {x.store}
+                {x.batchNo ? ` · ${x.batchNo}` : ''} · {formatDate(new Date(x.expiry))}
+              </li>
+            ))}
+          </ul>
+          <Button size="sm" className="self-start" onClick={onWriteOff}>
+            <PackageMinus size={14} aria-hidden="true" />
+            {t('stockShared.writeOffExpired')}
+          </Button>
+        </div>
+      )}
+      {expiring.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-amber text-[13px] font-bold">
+            {t('stockShared.expiringList', { count: expiring.length })}
+          </span>
+          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+            {expiring.slice(0, 8).map((x) => (
+              <li key={`${x.storeId}-${x.itemId}-${x.batchNo}`}>
+                <b>{x.item}</b> × {formatNumber(x.quantity)} · {x.store}
+                {x.batchNo ? ` · ${x.batchNo}` : ''} ·{' '}
+                {t('stockShared.expiresIn', { count: x.days })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {roomLow.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[13px] font-bold">
+            {t('stockShared.roomLowList', { count: roomLow.length })}
+          </span>
+          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+            {roomLow.slice(0, 8).map((x) => (
+              <li key={`${x.storeId}-${x.itemId}`}>
+                <b>{x.item}</b> · {x.store} ·{' '}
+                {t('stockShared.roomLowLine', { count: x.onHand, min: x.min })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Panel>
   )
 }
 
@@ -314,31 +554,14 @@ function StockTable({
   canSetLevel: boolean
 }) {
   const { t } = useTranslation()
-  const actions = useStockActions()
-  const confirm = useConfirm()
-  const [levelError, setLevelError] = useState<string | null>(null)
-  const editLevel = async (i: StockItem) => {
-    const raw = window.prompt(t('stock.reorderAsk', { name: i.name }), String(i.reorderLevel))
-    if (raw === null) return
-    const level = Number(raw.trim())
-    if (!Number.isInteger(level) || level < 0) return setLevelError(t('stock.reorderBad'))
-    setLevelError(null)
-    if (
-      !(await confirm({
-        title: t('confirm.stock.levelTitle', { item: i.name, level }),
-        body: t('confirm.stock.levelBody'),
-        confirmLabel: t('confirm.stock.saveYes'),
-      }))
-    )
-      return
-    actions.setReorderLevel
-      .mutateAsync({ itemId: i.id, level })
-      .catch((e: unknown) => setLevelError(e instanceof Error ? e.message : String(e)))
-  }
   const [query, setQuery] = useState('')
-  const now = useNow(60_000)
+  const [levelFor, setLevelFor] = useState<string | null>(null)
   const shown = items.filter((i) => i.active && matches(query, i.name, i.strength ?? '', i.code))
   const paged = usePaged(shown, 20, query)
+  // open stores only, the pharmacy first, then the room stores
+  const columns = [...pharmacySide(locations), ...roomStores(locations)]
+  const showCost = items.some((i) => i.costShown !== false)
+  const colCount = 4 + columns.length + (showCost ? 2 : 0)
   return (
     <Panel
       i={1}
@@ -348,11 +571,6 @@ function StockTable({
       right={t('stock.itemCount', { count: shown.length })}
     >
       <ListBar query={query} onQuery={setQuery} placeholderKey="stock.search" />
-      {levelError && (
-        <p className="bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold">
-          {levelError}
-        </p>
-      )}
       {paged.total === 0 ? (
         <Empty icon={Package}>{t('stock.empty')}</Empty>
       ) : (
@@ -364,9 +582,9 @@ function StockTable({
                   {t('stock.cols.item')}
                 </th>
                 <th className="border-border border-b py-2 pr-2 text-right font-semibold">
-                  {t('stock.cols.onHand')}
+                  {t('stockShared.cols.usable')}
                 </th>
-                {locations.map((l) => (
+                {columns.map((l) => (
                   <th
                     key={l.id}
                     className="border-border hidden border-b py-2 pr-2 text-right font-semibold lg:table-cell"
@@ -374,95 +592,131 @@ function StockTable({
                     {l.name}
                   </th>
                 ))}
-                <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold sm:table-cell">
-                  {t('stock.cols.cost')}
-                </th>
+                {showCost && (
+                  <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold sm:table-cell">
+                    {t('stock.cols.cost')}
+                  </th>
+                )}
                 <th className="border-border border-b py-2 pr-2 text-right font-semibold">
                   {t('stock.cols.price')}
                 </th>
-                <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold md:table-cell">
-                  {t('stock.cols.value')}
-                </th>
+                {showCost && (
+                  <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold md:table-cell">
+                    {t('stock.cols.value')}
+                  </th>
+                )}
                 <th className="border-border hidden border-b py-2 font-semibold md:table-cell">
-                  {t('stock.cols.expiry')}
+                  {t('stockShared.cols.nextExpiry')}
                 </th>
               </tr>
             </thead>
             <tbody>
               {paged.slice.map((i) => {
                 const lowStock = isLowStock(i)
-                const soon =
-                  i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 90 * 86_400_000
+                const usable = i.usable ?? i.onHand - i.expiredUnits
+                const next = i.nextExpiry ?? i.earliestExpiry
+                const state = expiryState(next)
                 return (
-                  <tr key={i.id} className="border-grid border-b last:border-b-0">
-                    <td className="py-2 pr-2">
-                      <span className="block font-semibold">
-                        {i.name}
-                        {i.strength ? ` ${i.strength}` : ''}
-                      </span>
-                      <span className="text-ink-3 text-[12px]">
-                        {i.code}
-                        {i.unit ? ` · ${t('prices.meds.perUnit', { unit: i.unit })}` : ''}
-                        {' · '}
-                        {canSetLevel ? (
-                          <button
-                            type="button"
-                            className="text-primary underline-offset-2 hover:underline"
-                            title={t('stock.reorderEdit')}
-                            onClick={() => void editLevel(i)}
-                          >
-                            {i.reorderLevel > 0
-                              ? t('stock.reorderAt', { count: i.reorderLevel })
-                              : t('stock.reorderNone')}
-                          </button>
-                        ) : i.reorderLevel > 0 ? (
-                          t('stock.reorderAt', { count: i.reorderLevel })
-                        ) : (
-                          t('stock.reorderNone')
-                        )}
-                      </span>
-                    </td>
-                    <td
-                      className={cn(
-                        'py-2 pr-2 text-right font-bold tabular-nums',
-                        lowStock ? 'text-red' : i.onHand === 0 ? 'text-ink-3' : 'text-green',
-                      )}
-                    >
-                      {formatNumber(i.onHand)}
-                      {lowStock && (
-                        <Badge tone="red" className="ml-1.5">
-                          {t('stock.low')}
-                        </Badge>
-                      )}
-                    </td>
-                    {locations.map((l) => (
-                      <td
-                        key={l.id}
-                        className="text-ink-2 hidden py-2 pr-2 text-right tabular-nums lg:table-cell"
-                      >
-                        {i.byLocation[l.id] ? formatNumber(i.byLocation[l.id]!) : '—'}
+                  <Fragment key={i.id}>
+                    <tr className="border-grid border-b last:border-b-0">
+                      <td className="py-2 pr-2">
+                        <span className="block font-semibold">{itemName(i)}</span>
+                        <span className="text-ink-3 text-[12px]">
+                          {i.code}
+                          {i.unit ? ` · ${t('prices.meds.perUnit', { unit: i.unit })}` : ''}
+                          {i.packSize && i.packSize > 1
+                            ? ` · ${t('stockShared.packOf', { count: i.packSize })}`
+                            : ''}
+                          {' · '}
+                          {canSetLevel ? (
+                            <button
+                              type="button"
+                              className="text-primary underline-offset-2 hover:underline"
+                              title={t('stock.reorderEdit')}
+                              onClick={() => setLevelFor(levelFor === i.id ? null : i.id)}
+                            >
+                              {i.reorderLevel > 0
+                                ? t('stock.reorderAt', { count: i.reorderLevel })
+                                : t('stock.reorderNone')}
+                            </button>
+                          ) : i.reorderLevel > 0 ? (
+                            t('stock.reorderAt', { count: i.reorderLevel })
+                          ) : (
+                            t('stock.reorderNone')
+                          )}
+                          {i.inTransit
+                            ? ` · ${t('stockShared.inTransit', { count: i.inTransit })}`
+                            : ''}
+                        </span>
                       </td>
-                    ))}
-                    <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
-                      {i.avgCost == null ? '—' : formatNumber(i.avgCost)}
-                    </td>
-                    <td className="py-2 pr-2 text-right font-semibold tabular-nums">
-                      {i.sellingPrice == null ? t('prices.noPrice') : formatNumber(i.sellingPrice)}
-                    </td>
-                    <td className="hidden py-2 pr-2 text-right tabular-nums md:table-cell">
-                      {formatNumber(Math.round(i.costValue))}
-                    </td>
-                    <td
-                      className={cn(
-                        'hidden py-2 tabular-nums md:table-cell',
-                        soon && 'text-amber font-semibold',
-                        i.expiredUnits > 0 && 'text-red',
+                      <td
+                        className={cn(
+                          'py-2 pr-2 text-right font-bold tabular-nums',
+                          lowStock ? 'text-red' : usable <= 0 ? 'text-ink-3' : 'text-green',
+                        )}
+                      >
+                        {formatNumber(usable)}
+                        {lowStock && (
+                          <Badge tone="red" className="ml-1.5">
+                            {t('stock.low')}
+                          </Badge>
+                        )}
+                        {i.pharmacyUsable != null && (
+                          <span className="text-ink-3 block text-[11px] font-normal">
+                            {t('stockShared.inPharmacyShort', { count: i.pharmacyUsable })}
+                          </span>
+                        )}
+                      </td>
+                      {columns.map((l) => (
+                        <td
+                          key={l.id}
+                          className="text-ink-2 hidden py-2 pr-2 text-right tabular-nums lg:table-cell"
+                        >
+                          {i.byLocation[l.id] ? formatNumber(i.byLocation[l.id]!) : '—'}
+                        </td>
+                      ))}
+                      {showCost && (
+                        <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
+                          {i.avgCost == null ? '—' : formatNumber(i.avgCost)}
+                        </td>
                       )}
-                    >
-                      {i.earliestExpiry ? formatDate(new Date(i.earliestExpiry)) : '—'}
-                      {i.expiredUnits > 0 && ` · ${t('stock.expired', { count: i.expiredUnits })}`}
-                    </td>
-                  </tr>
+                      <td className="py-2 pr-2 text-right font-semibold tabular-nums">
+                        {i.sellingPrice == null
+                          ? t('prices.noPrice')
+                          : formatNumber(i.sellingPrice)}
+                      </td>
+                      {showCost && (
+                        <td className="hidden py-2 pr-2 text-right tabular-nums md:table-cell">
+                          {formatNumber(Math.round(i.costValue))}
+                        </td>
+                      )}
+                      <td
+                        className={cn(
+                          'hidden py-2 tabular-nums md:table-cell',
+                          state === 'soon' && 'text-amber font-semibold',
+                        )}
+                      >
+                        {next && state !== 'expired' ? formatDate(new Date(next)) : '—'}
+                        {(i.expiringUnits ?? 0) > 0 && (
+                          <span className="text-amber block text-[12px]">
+                            {t('myStore.expiringUnits', { count: i.expiringUnits })}
+                          </span>
+                        )}
+                        {i.expiredUnits > 0 && (
+                          <span className="text-red block text-[12px] font-semibold">
+                            {t('stock.expired', { count: i.expiredUnits })}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                    {levelFor === i.id && (
+                      <tr className="border-grid border-b">
+                        <td colSpan={colCount} className="bg-surface px-3 py-2">
+                          <LevelEditor item={i} onDone={() => setLevelFor(null)} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 )
               })}
             </tbody>
@@ -474,392 +728,58 @@ function StockTable({
   )
 }
 
-/* ---------------------------------------------------------------- receiving */
+/* ---------------------------------------------------------------- between pharmacy stores */
 /**
- * A delivery comes in. The medicine is chosen, never typed: the clinic's own medicines first,
- * then the RHIA medicines list. An entry of that list becomes a clinic medicine on the way in,
- * with the details of the list where the clinic does not change them. Only who may add medicines
- * (the manager, the pharmacy) sees the list; the others receive the clinic's medicines.
+ * Stock moved between the pharmacy's own stores, or from the old main store to the pharmacy.
+ * Room stores are supplied on transfer notes (Room stores tab), and return their stock the same
+ * way.
  */
-function ReceiveForm({
-  items,
-  locations,
-  addsMedicines,
-  preset,
-}: {
-  items: StockItem[]
-  locations: StockLocation[]
-  addsMedicines: boolean
-  /** The medicine and the store to start with (e.g. a medicine the pharmacy is short of). */
-  preset?: StockPreset
-}) {
-  const { t } = useTranslation()
-  const actions = useStockActions()
-  const confirm = useConfirm()
-  const medicineActions = useMedicineActions()
-  const {
-    data: reference = [],
-    isLoading: refLoading,
-    isError: refFailed,
-  } = useMedicineReference(addsMedicines)
-  const { data: medicines = [] } = useMedicines()
-  // "ref:<code>" = an entry of the RHIA list, otherwise a clinic medicine id
-  const [itemId, setItemId] = useState(preset?.item ?? '')
-  const refCode = itemId.startsWith('ref:') ? itemId.slice(4) : null
-  const ref = refCode ? reference.find((r) => r.code === refCode) : undefined
-  // the clinic's details for a medicine taken from the list (prefilled from the list)
-  const [name, setName] = useState('')
-  const [strength, setStrength] = useState('')
-  const [form, setForm] = useState('')
-  const [unit, setUnit] = useState('')
-  const [price, setPrice] = useState('')
-  // created already, but the delivery failed: the next try only records the delivery
-  const [createdId, setCreatedId] = useState<string | null>(null)
-  const clinicCodes = new Set([...items.map((i) => i.code), ...medicines.map((m) => m.code)])
-  const options = [
-    ...items
-      .filter((i) => i.active)
-      .map((i) => ({
-        value: i.id,
-        label: `${i.name}${i.strength ? ` ${i.strength}` : ''}${i.unit ? ` (${i.unit})` : ''}`,
-      })),
-    ...(addsMedicines ? reference : [])
-      .filter((r) => !clinicCodes.has(r.code) || r.code === refCode)
-      .map((r) => ({ value: `ref:${r.code}`, label: medicineRefLabel(r, t) })),
-  ]
-  const pick = (value: string) => {
-    setItemId(value)
-    setCreatedId(null)
-    const r = value.startsWith('ref:') ? reference.find((x) => x.code === value.slice(4)) : null
-    if (!r) return
-    setName(r.generic)
-    setStrength(r.presentation ?? '')
-    setForm('')
-    setUnit(readableUnit(r.unit))
-    setPrice(r.price == null ? '' : String(r.price))
-  }
-  const [chosenLocation, setLocationId] = useState('')
-  // the store asked for (e.g. the pharmacy), else the main store, until another is chosen
-  // (the stores may load after the form)
-  const presetLocation = locations.find((l) => l.id === preset?.location)?.id
-  const locationId =
-    chosenLocation ||
-    (presetLocation ?? locations.find((l) => l.type === 'main_store')?.id ?? locations[0]?.id ?? '')
-  const [quantity, setQuantity] = useState('')
-  const [unitCost, setUnitCost] = useState('')
-  const [batchNo, setBatchNo] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [supplier, setSupplier] = useState('')
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const item = items.find((i) => i.id === itemId)
-  const sellingPrice = refCode
-    ? price === ''
-      ? null
-      : Number(price)
-    : (item?.sellingPrice ?? null)
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setMsg(null)
-    const q = Number(quantity)
-    const c = Number(unitCost)
-    if (!itemId) return setMsg({ ok: false, text: t('stock.errors.item') })
-    if (!locationId) return setMsg({ ok: false, text: t('stock.errors.store') })
-    if (!Number.isFinite(q) || q <= 0)
-      return setMsg({ ok: false, text: t('stock.errors.quantity') })
-    if (!Number.isFinite(c) || c < 0 || unitCost === '')
-      return setMsg({ ok: false, text: t('stock.errors.cost') })
-    if (!expiry) return setMsg({ ok: false, text: t('stock.errors.expiry') })
-    const p = Number(price)
-    if (refCode) {
-      if (name.trim().length < 2) return setMsg({ ok: false, text: t('prices.meds.errors.name') })
-      if (!Number.isFinite(p) || p < 0 || price.trim() === '')
-        return setMsg({ ok: false, text: t('prices.errors.price') })
-    }
-    const storeName = locations.find((l) => l.id === locationId)?.name ?? ''
-    if (
-      !(await confirm({
-        title: t('confirm.stock.receiveTitle', {
-          quantity: q,
-          item: refCode ? name.trim() : (item?.name ?? ''),
-          store: storeName,
-        }),
-        body: [
-          t('confirm.stock.receiveBody', { value: formatRwf(q * c) }),
-          refCode && !createdId ? t('confirm.stock.receiveNewBody') : '',
-        ]
-          .filter(Boolean)
-          .join(' '),
-        confirmLabel: t('confirm.stock.receiveYes'),
-      }))
-    )
-      return
-    // set once the medicine is among the clinic's medicines, even if the delivery then fails
-    let created = createdId
-    try {
-      // first the medicine joins the clinic's medicines (with its price), then the delivery
-      let id = itemId
-      if (refCode) {
-        created ??= await medicineActions.save.mutateAsync({
-          name,
-          strength,
-          form,
-          unit,
-          price: Math.round(p),
-          active: true,
-          code: refCode,
-        })
-        setCreatedId(created)
-        id = created
-      }
-      await actions.receive.mutateAsync({
-        itemId: id,
-        locationId,
-        quantity: q,
-        unitCost: c,
-        batchNo,
-        expiry,
-        supplier,
-        newMedicine: refCode
-          ? {
-              code: refCode,
-              name: name.trim(),
-              strength: strength.trim() || null,
-              unit: unit.trim() || null,
-              sellingPrice: Math.round(p),
-            }
-          : undefined,
-      })
-      const value = formatRwf(q * c)
-      setMsg({
-        ok: true,
-        text: refCode
-          ? t('stock.ref.received', {
-              quantity: q,
-              item: name.trim(),
-              value,
-              price: formatRwf(Math.round(p)),
-            })
-          : t('stock.received', { count: q, item: item?.name ?? '', value }),
-      })
-      // from now on it is one of the clinic's medicines
-      if (refCode) {
-        setItemId(id)
-        setCreatedId(null)
-      }
-      setQuantity('')
-      setBatchNo('')
-    } catch (err) {
-      const error = err instanceof Error ? err.message : String(err)
-      setMsg({
-        ok: false,
-        // the medicine was added, only the delivery is missing: say so, or it looks lost
-        text: refCode && created ? t('stock.ref.partial', { item: name.trim(), error }) : error,
-      })
-    }
-  }
-  // what the line under the picker says about the RHIA list
-  const pickHint = !addsMedicines
-    ? t('stock.ref.askHint')
-    : refLoading
-      ? t('prices.meds.ref.loading')
-      : refFailed
-        ? t('stock.ref.failed')
-        : t('stock.ref.pickHint')
-  return (
-    <Panel i={1} icon={PackagePlus} tint="mint" title={t('stock.receiveTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stock.receiveLead')}</p>
-      <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <SearchSelect
-            label={t('stock.cols.item')}
-            value={itemId}
-            onChange={pick}
-            required
-            emptyLabel={t('visit.add.pickItem')}
-            options={options}
-          />
-          <Select
-            label={t('stock.store')}
-            value={locationId}
-            onChange={(e) => setLocationId(e.target.value)}
-            required
-          >
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <p className="text-ink-3 m-0 text-[12px]">{pickHint}</p>
-        {refCode && (
-          <Reveal block="nearest">
-            <div className="border-border bg-surface flex flex-col gap-3 rounded-xl border p-3">
-              <span>
-                <span className="text-ink block text-[14px] font-bold">{t('stock.ref.title')}</span>
-                <span className="text-ink-3 block text-[13px]">
-                  {t(createdId ? 'stock.ref.locked' : 'stock.ref.hint')}
-                </span>
-              </span>
-              {/* once added to the clinic's medicines, only the delivery is left to record */}
-              <fieldset
-                disabled={!!createdId}
-                className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0 disabled:opacity-60"
-              >
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Field
-                    label={t('prices.meds.name')}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                  <Field
-                    label={t('prices.meds.ref.presentation')}
-                    value={strength}
-                    onChange={(e) => setStrength(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <Field
-                    label={t('prices.meds.form')}
-                    value={form}
-                    placeholder={t('prices.meds.formPh')}
-                    onChange={(e) => setForm(e.target.value)}
-                  />
-                  <Field
-                    label={t('prices.meds.unit')}
-                    value={unit}
-                    placeholder={t('prices.meds.unitPh')}
-                    onChange={(e) => setUnit(e.target.value)}
-                  />
-                  <Field
-                    label={t('prices.meds.price')}
-                    inputMode="numeric"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))}
-                    required
-                  />
-                </div>
-              </fieldset>
-              {ref && (ref.rule || ref.group) && (
-                <p className="text-ink-2 m-0 text-[13px]">
-                  {[
-                    ref.rule ? medicineRuleText(ref.rule, t) : null,
-                    ref.group ? t('prices.meds.ref.group', { group: ref.group }) : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-              )}
-            </div>
-          </Reveal>
-        )}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Field
-            label={t('stock.quantity')}
-            inputMode="numeric"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ''))}
-            required
-          />
-          <Field
-            label={t('stock.unitCost')}
-            inputMode="numeric"
-            value={unitCost}
-            onChange={(e) => setUnitCost(e.target.value.replace(/[^\d.]/g, ''))}
-            required
-          />
-          <Field
-            label={t('stock.batchNo')}
-            value={batchNo}
-            placeholder={t('stock.batchPh')}
-            onChange={(e) => setBatchNo(e.target.value)}
-          />
-          <Field
-            label={t('stock.expiry')}
-            type="date"
-            value={expiry}
-            required
-            onChange={(e) => setExpiry(e.target.value)}
-          />
-        </div>
-        <Field
-          label={t('stock.supplier')}
-          value={supplier}
-          placeholder={t('stock.supplierPh')}
-          onChange={(e) => setSupplier(e.target.value)}
-          wrapperClassName="sm:max-w-md"
-        />
-        {(item || refCode) && Number(quantity) > 0 && unitCost !== '' && (
-          <p className="text-ink-2 m-0 text-[13px]">
-            {t('stock.receivePreview', {
-              value: formatRwf(Number(quantity) * Number(unitCost)),
-              sell: sellingPrice == null ? '—' : formatRwf(Number(quantity) * sellingPrice),
-            })}
-          </p>
-        )}
-        {msg && (
-          <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
-            {msg.text}
-          </Flash>
-        )}
-        <Button
-          type="submit"
-          variant="primary"
-          className="self-start"
-          loading={actions.receive.isPending || medicineActions.save.isPending}
-        >
-          <PackagePlus size={16} aria-hidden="true" />
-          {t('stock.receive')}
-        </Button>
-      </form>
-    </Panel>
-  )
-}
-
-/* ---------------------------------------------------------------- sending to a desk */
 function SendForm({
-  items,
-  locations,
+  overview,
   preset,
+  onRooms,
 }: {
-  items: StockItem[]
-  locations: StockLocation[]
+  overview: StockOverview | undefined
   /** The medicine and the store to send to (e.g. the pharmacy, short of it). */
   preset?: StockPreset
+  onRooms: () => void
 }) {
   const { t } = useTranslation()
   const actions = useStockActions()
   const confirm = useConfirm()
+  const items = overview?.items ?? []
+  const locations = overview?.locations ?? []
+  const sources = pharmacySide(locations)
+  const targets = pharmacyStores(locations)
   const [itemId, setItemId] = useState(preset?.item ?? '')
-  const [chosenTo, setTo] = useState('')
-  const to = chosenTo || (locations.find((l) => l.id === preset?.to)?.id ?? '')
   const item = items.find((i) => i.id === itemId)
-  // expired units are never sent: count only usable stock when the database gives it per store
-  const usableAt = (id: string) =>
-    item ? ((item.byLocationUsable ?? item.byLocation)[id] ?? 0) : 0
-  // the figures per store may still include expired units (the database does not split them yet)
-  const mayIncludeExpired = !!item && !item.byLocationUsable && item.expiredUnits > 0
-  // sent to a named store: from the other store holding the most of it, else the main store
-  const fullest =
-    preset?.to && item
-      ? locations
-          .filter((l) => l.id !== to && usableAt(l.id) > 0)
-          .sort((a, b) => usableAt(b.id) - usableAt(a.id))[0]?.id
-      : undefined
+  const [chosenTo, setTo] = useState('')
+  const to =
+    chosenTo ||
+    (targets.find((l) => l.id === preset?.to)?.id ??
+      mainPharmacy(locations, overview?.mainPharmacyId)?.id ??
+      '')
+  // from the other pharmacy-side store holding the most of it
+  const fullest = item
+    ? sources
+        .filter((l) => l.id !== to && usableIn(item, l.id) > 0)
+        .sort((a, b) => usableIn(item, b.id) - usableIn(item, a.id))[0]?.id
+    : undefined
   const [chosenFrom, setFrom] = useState('')
-  const from = chosenFrom || (fullest ?? locations.find((l) => l.type === 'main_store')?.id ?? '')
+  const from = chosenFrom || (fullest ?? sources.find((l) => l.id !== to)?.id ?? '')
   const [quantity, setQuantity] = useState('')
   const [reason, setReason] = useState('')
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const available = usableAt(from)
+  const [msg, setMsg] = useState<Msg | null>(null)
+  const available = usableIn(item, from)
+  // the medicine is only in room stores: they return it on a return note
+  const inRooms = item ? roomStores(locations).filter((l) => (item.byLocation[l.id] ?? 0) > 0) : []
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
     const q = Number(quantity)
     if (!itemId) return setMsg({ ok: false, text: t('stock.errors.item') })
-    if (!from || !to) return setMsg({ ok: false, text: t('stock.errors.store') })
-    if (!Number.isFinite(q) || q <= 0)
+    if (!from || !to || from === to) return setMsg({ ok: false, text: t('stock.errors.store') })
+    if (!Number.isInteger(q) || q <= 0)
       return setMsg({ ok: false, text: t('stock.errors.quantity') })
     if (q > available)
       return setMsg({ ok: false, text: t('stock.errors.short', { count: available }) })
@@ -868,7 +788,7 @@ function SendForm({
       !(await confirm({
         title: t('confirm.stock.sendTitle', {
           quantity: q,
-          item: item?.name ?? '',
+          item: itemName(item),
           from: locations.find((l) => l.id === from)?.name ?? '',
           to: toName,
         }),
@@ -878,15 +798,15 @@ function SendForm({
       return
     try {
       await actions.transfer.mutateAsync({ itemId, from, to, quantity: q, reason })
-      setMsg({ ok: true, text: t('stock.sent', { count: q, item: item?.name ?? '', to: toName }) })
+      setMsg({ ok: true, text: t('stock.sent', { count: q, item: itemName(item), to: toName }) })
       setQuantity('')
     } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) })
+      setMsg({ ok: false, text: errText(err) })
     }
   }
   return (
-    <Panel i={1} icon={ArrowRightLeft} tint="teal" title={t('stock.sendTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stock.sendLead')}</p>
+    <Panel i={1} icon={ArrowRightLeft} tint="teal" title={t('stockShared.sendTitle')}>
+      <p className="text-ink-2 m-0 text-[13px]">{t('stockShared.sendLead')}</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
         <SearchSelect
           label={t('stock.cols.item')}
@@ -898,7 +818,7 @@ function SendForm({
             .filter((i) => i.active && i.onHand > 0)
             .map((i) => ({
               value: i.id,
-              label: `${i.name}${i.strength ? ` ${i.strength}` : ''} · ${t('stock.onHandShort', { count: i.onHand })}`,
+              label: `${itemName(i)} · ${t('stock.onHandShort', { count: i.onHand })}`,
             }))}
         />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -908,10 +828,10 @@ function SendForm({
             onChange={(e) => setFrom(e.target.value)}
             required
           >
-            {locations.map((l) => (
+            {sources.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
-                {item ? ` · ${usableAt(l.id)}` : ''}
+                {item ? ` · ${usableIn(item, l.id)}` : ''}
               </option>
             ))}
           </Select>
@@ -922,12 +842,12 @@ function SendForm({
             required
           >
             <option value="">{t('stock.pickStore')}</option>
-            {locations
+            {targets
               .filter((l) => l.id !== from)
               .map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
-                  {l.department ? ` · ${l.department}` : ''}
+                  {l.isMain ? ` · ${t('stockStores.main')}` : ''}
                 </option>
               ))}
           </Select>
@@ -944,23 +864,22 @@ function SendForm({
             {t('stock.availableHere', { count: available })}
           </p>
         )}
-        {mayIncludeExpired && (
-          <p className="text-amber m-0 text-[13px]">
-            {t('stock.sendExpiredNote', { count: item.expiredUnits })}
+        {item && available === 0 && inRooms.length > 0 && (
+          <p className="bg-blue-bg text-blue m-0 rounded-lg px-3 py-2 text-[13px]">
+            {t('stockShared.onlyInRooms', { stores: inRooms.map((l) => l.name).join(', ') })}{' '}
+            <button type="button" className="font-semibold underline" onClick={onRooms}>
+              {t('stockShared.openRooms')}
+            </button>
           </p>
         )}
         <Field
           label={t('stock.reason')}
           value={reason}
-          placeholder={t('stock.reasonPh')}
+          placeholder={t('stockShared.sendReasonPh')}
           onChange={(e) => setReason(e.target.value)}
           wrapperClassName="sm:max-w-md"
         />
-        {msg && (
-          <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
-            {msg.text}
-          </Flash>
-        )}
+        <MsgFlash msg={msg} onClose={() => setMsg(null)} />
         <Button
           type="submit"
           variant="primary"
@@ -978,21 +897,26 @@ function SendForm({
 /* ---------------------------------------------------------------- use / write off */
 const USE_REASONS = ['expired', 'damaged', 'usedAtDesk', 'countCorrection'] as const
 /**
- * Stock that leaves without a sale: expired, damaged, used at a desk (dressings, gloves, reagents)
- * or a count correction. Recorded in the ledger as used, with the reason.
+ * Pharmacy stock that leaves without a sale: expired, damaged, used at a desk or a count
+ * correction, with the reason. Room stores write off their own stock under "My store".
  */
 function UseForm({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
   const { t } = useTranslation()
   const actions = useStockActions()
   const confirm = useConfirm()
+  const stores = pharmacySide(locations)
   const [itemId, setItemId] = useState('')
   const [chosenFrom, setFrom] = useState('')
   const from =
-    chosenFrom || (locations.find((l) => l.type === 'pharmacy')?.id ?? locations[0]?.id ?? '')
+    chosenFrom ||
+    (stores.find((l) => l.isMain)?.id ??
+      stores.find((l) => l.type === 'pharmacy')?.id ??
+      stores[0]?.id ??
+      '')
   const [quantity, setQuantity] = useState('')
   const [why, setWhy] = useState<(typeof USE_REASONS)[number]>('expired')
   const [note, setNote] = useState('')
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [msg, setMsg] = useState<Msg | null>(null)
   const item = items.find((i) => i.id === itemId)
   const available = item ? (item.byLocation[from] ?? 0) : 0
   const submit = async (e: FormEvent) => {
@@ -1001,40 +925,36 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
     const q = Number(quantity)
     if (!itemId) return setMsg({ ok: false, text: t('stock.errors.item') })
     if (!from) return setMsg({ ok: false, text: t('stock.errors.store') })
-    if (!Number.isFinite(q) || q <= 0)
+    if (!Number.isInteger(q) || q <= 0)
       return setMsg({ ok: false, text: t('stock.errors.quantity') })
     if (q > available)
       return setMsg({ ok: false, text: t('stock.errors.short', { count: available }) })
+    const reason = [t(`stock.useReasons.${why}`), note.trim()].filter(Boolean).join(': ')
     if (
       !(await confirm({
         title: t('confirm.stock.useTitle', {
           quantity: q,
-          item: item?.name ?? '',
+          item: itemName(item),
           store: locations.find((l) => l.id === from)?.name ?? '',
         }),
-        body: t('confirm.stock.useBody', { reason: t(`stock.useReasons.${why}`) }),
+        body: t('confirm.stock.useBody', { reason }),
         confirmLabel: t('confirm.stock.useYes'),
         tone: 'danger',
       }))
     )
       return
     try {
-      await actions.use.mutateAsync({
-        itemId,
-        locationId: from,
-        quantity: q,
-        reason: [t(`stock.useReasons.${why}`), note.trim()].filter(Boolean).join(': '),
-      })
-      setMsg({ ok: true, text: t('stock.used', { count: q, item: item?.name ?? '' }) })
+      await actions.use.mutateAsync({ itemId, locationId: from, quantity: q, reason })
+      setMsg({ ok: true, text: t('stock.used', { count: q, item: itemName(item) }) })
       setQuantity('')
       setNote('')
     } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) })
+      setMsg({ ok: false, text: errText(err) })
     }
   }
   return (
     <Panel i={1} icon={PackageMinus} tint="coral" title={t('stock.useTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stock.useLead')}</p>
+      <p className="text-ink-2 m-0 text-[13px]">{t('stockShared.useLead')}</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
         <SearchSelect
           label={t('stock.cols.item')}
@@ -1043,10 +963,10 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
           required
           emptyLabel={t('visit.add.pickItem')}
           options={items
-            .filter((i) => i.active && i.onHand > 0)
+            .filter((i) => i.active && stores.some((l) => (i.byLocation[l.id] ?? 0) > 0))
             .map((i) => ({
               value: i.id,
-              label: `${i.name}${i.strength ? ` ${i.strength}` : ''} · ${t('stock.onHandShort', { count: i.onHand })}${i.expiredUnits > 0 ? ` · ${t('stock.expired', { count: i.expiredUnits })}` : ''}`,
+              label: `${itemName(i)} · ${t('stock.onHandShort', { count: i.onHand })}${i.expiredUnits > 0 ? ` · ${t('stock.expired', { count: i.expiredUnits })}` : ''}`,
             }))}
         />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -1056,7 +976,7 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
             onChange={(e) => setFrom(e.target.value)}
             required
           >
-            {locations.map((l) => (
+            {stores.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
                 {item ? ` · ${item.byLocation[l.id] ?? 0}` : ''}
@@ -1085,6 +1005,7 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
         {item && (
           <p className="text-ink-3 m-0 text-[13px]">
             {t('stock.availableHere', { count: available })}
+            {item.expiredUnits > 0 && ` · ${t('stock.expired', { count: item.expiredUnits })}`}
           </p>
         )}
         <Field
@@ -1094,11 +1015,7 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
           onChange={(e) => setNote(e.target.value)}
           wrapperClassName="sm:max-w-md"
         />
-        {msg && (
-          <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
-            {msg.text}
-          </Flash>
-        )}
+        <MsgFlash msg={msg} onClose={() => setMsg(null)} />
         <Button
           type="submit"
           variant="primary"
@@ -1115,10 +1032,8 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
 
 /* ---------------------------------------------------------------- medicines and prices */
 /** The medicines list with prices: the pharmacist and the manager add medicines and set prices. */
-function MedicinesTab({ canEdit }: { canEdit: boolean }) {
-  const { t } = useTranslation()
+function MedicinesTab() {
   const [notice, setNotice] = useState<string | null>(null)
-  if (!canEdit) return <p className={errorBox}>{t('stock.medicinesNotYours')}</p>
   return (
     <div className="flex flex-col gap-3">
       {notice && (
@@ -1132,13 +1047,14 @@ function MedicinesTab({ canEdit }: { canEdit: boolean }) {
 }
 
 /* ---------------------------------------------------------------- ledger */
-function Movements({ items }: { items: StockItem[] }) {
+function Movements({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
   const { t } = useTranslation()
   const period = usePeriod('month')
   const { from, to } = period
   const [itemId, setItemId] = useState('')
-  const { data: moves = [] } = useStockMovements(from, to, itemId || null)
-  const paged = usePaged(moves, 20, `${from}|${to}|${itemId}`)
+  const [locationId, setLocationId] = useState('')
+  const { data: moves = [] } = useStockMovements(from, to, itemId || null, locationId || null)
+  const paged = usePaged(moves, 20, `${from}|${to}|${itemId}|${locationId}`)
   return (
     <Panel
       i={1}
@@ -1148,17 +1064,29 @@ function Movements({ items }: { items: StockItem[] }) {
       right={String(moves.length)}
     >
       <PeriodFilter period={period} />
-      <div className="grid grid-cols-1 gap-3 sm:max-w-xl">
+      <div className="grid grid-cols-1 gap-3 sm:max-w-3xl sm:grid-cols-2">
         <SearchSelect
           label={t('stock.cols.item')}
           value={itemId}
           onChange={setItemId}
           emptyLabel={t('notices.filters.all')}
-          options={items.map((i) => ({
-            value: i.id,
-            label: `${i.name}${i.strength ? ` ${i.strength}` : ''}`,
-          }))}
+          options={items.map((i) => ({ value: i.id, label: itemName(i) }))}
         />
+        {locations.length > 1 && (
+          <Select
+            label={t('stock.store')}
+            value={locationId}
+            onChange={(e) => setLocationId(e.target.value)}
+          >
+            <option value="">{t('notices.filters.all')}</option>
+            {locations.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+                {l.active === false ? ` · ${t('stockStores.closed')}` : ''}
+              </option>
+            ))}
+          </Select>
+        )}
       </div>
       {paged.total === 0 ? (
         <Empty>{t('stock.noMoves')}</Empty>
@@ -1193,6 +1121,7 @@ function Movements({ items }: { items: StockItem[] }) {
                 <span className="text-ink-3 block text-[12px]">
                   {[
                     m.from && m.to ? `${m.from} → ${m.to}` : (m.to ?? m.from),
+                    m.transfer ?? m.delivery ?? m.sale,
                     m.batch,
                     m.expiry ? t('stock.exp', { date: formatDate(new Date(m.expiry)) }) : null,
                     m.reason,
@@ -1203,7 +1132,9 @@ function Movements({ items }: { items: StockItem[] }) {
                 </span>
               </span>
               {m.unitCost != null && (
-                <span className="tabular-nums">{formatRwf(m.quantity * m.unitCost)}</span>
+                <span className="tabular-nums">
+                  {formatRwf(Math.round(m.value ?? m.quantity * m.unitCost))}
+                </span>
               )}
             </div>
           ))}
@@ -1224,7 +1155,7 @@ function Sales() {
   return (
     <div className="flex flex-col gap-4">
       <PeriodFilter period={period} />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(190px,1fr))] sm:gap-4">
         <Kpi
           i={0}
           icon={Coins}
@@ -1257,6 +1188,16 @@ function Sales() {
           value={Math.round(data?.stockValue ?? 0)}
           unit="RWF"
         />
+        {data?.counterRevenue != null && (
+          <Kpi
+            i={4}
+            icon={Coins}
+            tint="teal"
+            label={t('stockShared.counterRevenue')}
+            value={Math.round(data.counterRevenue)}
+            unit="RWF"
+          />
+        )}
       </div>
       <Panel i={2} icon={Coins} tint="mint" title={t('stock.sales.byItem')}>
         {!data || data.items.length === 0 ? (
@@ -1316,229 +1257,5 @@ function Sales() {
         </p>
       </Panel>
     </div>
-  )
-}
-
-/* ---------------------------------------------------------------- stores */
-function Stores({ locations }: { locations: StockLocation[] }) {
-  const { t } = useTranslation()
-  const actions = useStockActions()
-  const confirm = useConfirm()
-  const { data: departments = [] } = useDepartments()
-  const [name, setName] = useState('')
-  const [type, setType] = useState<StockLocation['type']>('nursing')
-  const [departmentId, setDepartmentId] = useState('')
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setMsg(null)
-    if (name.trim().length < 2) return setMsg({ ok: false, text: t('stock.errors.storeName') })
-    if (
-      !(await confirm({
-        title: t('confirm.stock.addStoreTitle', { name: name.trim() }),
-        confirmLabel: t('confirm.stock.addStoreYes'),
-      }))
-    )
-      return
-    try {
-      await actions.saveLocation.mutateAsync({ name, type, departmentId: departmentId || null })
-      setMsg({ ok: true, text: t('stock.storeSaved', { name }) })
-      setName('')
-    } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) })
-    }
-  }
-  return (
-    <Panel i={1} icon={Store} tint="amber" title={t('stock.storesTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stock.storesLead')}</p>
-      <div className="flex flex-wrap gap-2">
-        {locations.map((l) => (
-          <span
-            key={l.id}
-            className="border-border bg-surface inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px]"
-          >
-            <Store size={14} aria-hidden="true" className="text-ink-3" />
-            <b className={cn(l.active === false && 'text-ink-3 line-through')}>{l.name}</b>
-            <span className="text-ink-3">{t(`stock.storeTypes.${l.type}`)}</span>
-            {l.department && <span className="text-violet">{l.department}</span>}
-            <button
-              type="button"
-              className="text-primary text-[12px] font-semibold underline-offset-2 hover:underline"
-              onClick={async () => {
-                const closing = l.active !== false
-                if (
-                  !(await confirm({
-                    title: t(
-                      closing ? 'confirm.stock.closeStoreTitle' : 'confirm.stock.openStoreTitle',
-                      { name: l.name },
-                    ),
-                    body: closing ? t('confirm.stock.closeStoreBody') : undefined,
-                    confirmLabel: t(
-                      closing ? 'confirm.stock.closeStoreYes' : 'confirm.stock.openStoreYes',
-                    ),
-                    tone: closing ? 'danger' : 'primary',
-                  }))
-                )
-                  return
-                setMsg(null)
-                actions.setLocationActive
-                  .mutateAsync({ id: l.id, active: l.active === false })
-                  .catch((e: unknown) =>
-                    setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) }),
-                  )
-              }}
-            >
-              {l.active === false ? t('stock.storeOpen') : t('stock.storeClose')}
-            </button>
-          </span>
-        ))}
-      </div>
-      <form
-        onSubmit={(e) => void submit(e)}
-        className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
-      >
-        <Field
-          label={t('stock.storeName')}
-          value={name}
-          placeholder={t('stock.storeNamePh')}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <Select
-          label={t('stock.storeType')}
-          value={type}
-          onChange={(e) => setType(e.target.value as StockLocation['type'])}
-        >
-          {(['main_store', 'pharmacy', 'nursing', 'lab', 'theatre'] as const).map((x) => (
-            <option key={x} value={x}>
-              {t(`stock.storeTypes.${x}`)}
-            </option>
-          ))}
-        </Select>
-        <Select
-          label={t('prices.dept.field')}
-          value={departmentId}
-          onChange={(e) => setDepartmentId(e.target.value)}
-        >
-          <option value="">{t('prices.dept.none')}</option>
-          {departments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit" variant="primary" loading={actions.saveLocation.isPending}>
-          {t('stock.addStore')}
-        </Button>
-      </form>
-      {msg && (
-        <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
-          {msg.text}
-        </Flash>
-      )}
-    </Panel>
-  )
-}
-
-/** The shelf was counted: the store's stock becomes the count; the difference keeps its reason. */
-function CountForm({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
-  const { t } = useTranslation()
-  const actions = useStockActions()
-  const confirm = useConfirm()
-  const [itemId, setItemId] = useState('')
-  const [chosen, setLocationId] = useState('')
-  const locationId = chosen || (locations[0]?.id ?? '')
-  const [counted, setCounted] = useState('')
-  const [reason, setReason] = useState('')
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const item = items.find((i) => i.id === itemId)
-  const current = item ? (item.byLocation[locationId] ?? 0) : 0
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setMsg(null)
-    const n = Number(counted)
-    if (!itemId) return setMsg({ ok: false, text: t('stock.errors.item') })
-    if (!locationId) return setMsg({ ok: false, text: t('stock.errors.store') })
-    if (counted === '' || !Number.isInteger(n) || n < 0)
-      return setMsg({ ok: false, text: t('stock.reorderBad') })
-    if (reason.trim().length < 3) return setMsg({ ok: false, text: t('stock.errors.countWhy') })
-    if (
-      !(await confirm({
-        title: t('confirm.stock.countTitle', {
-          item: item?.name ?? '',
-          store: locations.find((l) => l.id === locationId)?.name ?? '',
-          after: n,
-        }),
-        body: t('confirm.stock.countBody', { before: current, after: n }),
-        confirmLabel: t('confirm.stock.countYes'),
-        tone: n < current ? 'danger' : 'primary',
-      }))
-    )
-      return
-    try {
-      await actions.adjust.mutateAsync({ itemId, locationId, counted: n, reason })
-      setMsg({
-        ok: true,
-        text: t('stock.countSaved', { item: item?.name ?? '', before: current, after: n }),
-      })
-      setCounted('')
-      setReason('')
-    } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) })
-    }
-  }
-  return (
-    <Panel i={2} icon={Boxes} tint="teal" title={t('stock.countTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stock.countLead')}</p>
-      <form
-        onSubmit={(e) => void submit(e)}
-        className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_120px]"
-      >
-        <SearchSelect
-          label={t('stock.cols.item')}
-          value={itemId}
-          onChange={setItemId}
-          emptyLabel={t('visit.add.pickItem')}
-          options={items
-            .filter((i) => i.active)
-            .map((i) => ({ value: i.id, label: `${i.name}${i.strength ? ` ${i.strength}` : ''}` }))}
-        />
-        <Select
-          label={t('stock.store')}
-          value={locationId}
-          onChange={(e) => setLocationId(e.target.value)}
-        >
-          {locations.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </Select>
-        <Field
-          label={t('stock.counted')}
-          inputMode="numeric"
-          value={counted}
-          placeholder={String(current)}
-          onChange={(e) => setCounted(e.target.value.replace(/[^\d]/g, ''))}
-        />
-        <Field
-          label={t('stock.countWhy')}
-          value={reason}
-          placeholder={t('stock.countWhyPh')}
-          onChange={(e) => setReason(e.target.value)}
-          wrapperClassName="sm:col-span-2"
-        />
-        <Button type="submit" variant="primary" loading={actions.adjust.isPending}>
-          {t('stock.countSave')}
-        </Button>
-      </form>
-      {item && (
-        <p className="text-ink-3 m-0 text-[13px]">{t('stock.countNow', { count: current })}</p>
-      )}
-      {msg && (
-        <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
-          {msg.text}
-        </Flash>
-      )}
-    </Panel>
   )
 }

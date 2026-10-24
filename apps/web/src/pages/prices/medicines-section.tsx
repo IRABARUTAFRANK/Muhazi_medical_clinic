@@ -18,8 +18,33 @@ import {
   useMedicines,
   type Medicine,
 } from '@/lib/api/catalogue'
+import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/confirm'
+import { errorKind, throwIf } from '@/lib/api/errors'
+import { sampleStock, useStockOverview } from '@/lib/api/stock'
+import { supabase } from '@/lib/supabase'
+import { useSession } from '@/store/session'
+
+/**
+ * The number of units in one box of a medicine (deliveries counted in boxes are converted with
+ * it). Saved by the checked function set_pack_size (the pharmacy and the manager); empty means
+ * one unit per box.
+ */
+async function savePackSize(itemId: string, packSize: number | null) {
+  if (!itemId) return
+  if (!supabase) {
+    // sample mode: the stock list shows it
+    const it = sampleStock.items.find((x) => x.id === itemId)
+    if (it) it.packSize = packSize
+    return
+  }
+  const { error } = await supabase.rpc('set_pack_size', {
+    p_item_id: itemId,
+    p_pack: packSize ?? 1,
+  })
+  throwIf(error)
+}
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -32,6 +57,9 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
   const { data: meds = [], error } = useMedicines()
   const actions = useMedicineActions()
   const confirm = useConfirm()
+  // only the manager deletes a medicine (catalogue.write); the database refuses it while stock
+  // remains
+  const canDelete = useSession((s) => s.user?.role === 'manager')
   const [editing, setEditing] = useState<Medicine | 'new' | null>(null)
   const [query, setQuery] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
@@ -58,7 +86,13 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
       await actions.remove.mutateAsync(m.id)
       onNotice(t('prices.deleted', { name: m.name }))
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e))
+      setActionError(
+        errorKind(e) === 'hasStock' || /has_stock|stock remains/i.test(String(e))
+          ? t('prices.meds.hasStock', { name: m.name })
+          : e instanceof Error
+            ? e.message
+            : String(e),
+      )
     }
   }
 
@@ -135,16 +169,18 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
                     <Pencil size={14} aria-hidden="true" />
                     {t('prices.edit')}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="hover:text-red"
-                    title={t('prices.delete')}
-                    aria-label={t('prices.delete')}
-                    onClick={() => void remove(m)}
-                  >
-                    <Trash2 size={14} aria-hidden="true" />
-                  </Button>
+                  {canDelete && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="hover:text-red"
+                      title={t('prices.delete')}
+                      aria-label={t('prices.delete')}
+                      onClick={() => void remove(m)}
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
+                    </Button>
+                  )}
                 </span>
               </Row>
             ))
@@ -173,6 +209,14 @@ function MedicineForm({
   const [unit, setUnit] = useState(medicine?.unit ?? '')
   const [price, setPrice] = useState(medicine?.cashPrice != null ? String(medicine.cashPrice) : '')
   const [active, setActive] = useState(medicine?.active ?? true)
+  // the box size, read from the stock list (the medicines list does not carry it)
+  const { data: stock } = useStockOverview()
+  const qc = useQueryClient()
+  const knownPack = medicine
+    ? (stock?.items.find((i) => i.id === medicine.id)?.packSize ?? null)
+    : null
+  const [packSize, setPackSize] = useState<string | null>(null)
+  const pack = packSize ?? (knownPack && knownPack > 0 ? String(knownPack) : '')
   const [error, setError] = useState<string | null>(null)
   // a new medicine can be taken from the RHIA list: its code keeps the list's details with it
   const {
@@ -201,6 +245,8 @@ function MedicineForm({
     if (name.trim().length < 2) return setError(t('prices.meds.errors.name'))
     if (!Number.isFinite(p) || p < 0 || price.trim() === '')
       return setError(t('prices.errors.price'))
+    const ps = pack.trim() === '' ? null : Number(pack)
+    if (ps != null && (!Number.isInteger(ps) || ps < 1)) return setError(t('prices.meds.packBad'))
     const label = `${name.trim()}${strength.trim() ? ` ${strength.trim()}` : ''}`
     if (
       !(await confirm({
@@ -217,7 +263,7 @@ function MedicineForm({
     )
       return
     try {
-      await actions.save.mutateAsync({
+      const id = await actions.save.mutateAsync({
         id: medicine?.id,
         name,
         strength,
@@ -227,6 +273,10 @@ function MedicineForm({
         active,
         code: medicine ? undefined : code || undefined,
       })
+      if (ps !== knownPack) {
+        await savePackSize(id || medicine?.id || '', ps)
+        void qc.invalidateQueries({ queryKey: ['stock'] })
+      }
       onSaved(name.trim())
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -322,6 +372,15 @@ function MedicineForm({
             required
           />
         </div>
+        <Field
+          label={t('prices.meds.packSize')}
+          inputMode="numeric"
+          value={pack}
+          placeholder="100"
+          onChange={(e) => setPackSize(e.target.value.replace(/[^\d]/g, ''))}
+          wrapperClassName="sm:max-w-xs"
+        />
+        <p className="text-ink-3 m-0 -mt-1 text-[12px]">{t('prices.meds.packHint')}</p>
         <label className="border-border flex items-start gap-3 rounded-xl border p-3">
           <input
             type="checkbox"

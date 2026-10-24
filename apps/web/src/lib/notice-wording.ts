@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { formatDate, formatTime } from '@mmc/shared'
+import { formatDate, formatRwf, formatTime } from '@mmc/shared'
 import type { Notice } from '@/lib/api/notifications'
 
 /** "5 min ago", "2 h ago", or the date for older ones. */
@@ -14,9 +14,23 @@ export function useAgo() {
   }
 }
 
+/** A number sent in the params (the database sends numbers; the type says text). */
+const num = (v: unknown): number => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+const rwf = (v: unknown) => formatRwf(num(v))
+/** A reason as typed, in quotes. */
+const quoted = (v: string | null | undefined) => (v ? `“${v}”` : null)
+const joinParts = (parts: (string | null | undefined)[]) =>
+  parts.filter(Boolean).join(' · ') || null
+
 /** The notice in the reader's language (automatic kinds) or as written (messages). */
 export function useWording() {
   const { t } = useTranslation()
+  const byText = (by: string | null | undefined) => (by ? t('notify.byPerson', { by }) : null)
+  const linesText = (lines: unknown) =>
+    lines == null ? null : t('notify.noteLines', { count: num(lines) })
   return (n: Notice): { title: string; body: string | null } => {
     const p = n.params ?? {}
     switch (n.kind) {
@@ -181,6 +195,104 @@ export function useWording() {
           ]
             .filter(Boolean)
             .join(' · '),
+        }
+      // ---- medicines and stock (0082 / 0083): params only, worded here
+      case 'rx_cancelled':
+        // the doctor cancelled a line still waiting at the pharmacy
+        return {
+          title: t('notify.rxCancelled', { item: p.item ?? '', name: p.name ?? '' }),
+          body: joinParts([byText(p.by), quoted(p.reason)]),
+        }
+      case 'refund_due':
+        // a medicine came back after the bill was posted: money to give back at the cashier
+        return {
+          title: t('notify.refundDue', { amount: rwf(p.amount), name: p.name ?? '' }),
+          body: joinParts([t('notify.refundDueItem', { item: p.item ?? '' }), quoted(p.reason)]),
+        }
+      case 'stock_low':
+        return {
+          title: t('notify.stockLow', { item: p.item ?? '', onHand: num(p.onHand) }),
+          body: t('notify.stockLowBody', { level: num(p.level) }),
+        }
+      case 'room_stock_low':
+        return {
+          title: t('notify.roomStockLow', {
+            item: p.item ?? '',
+            store: p.store ?? '',
+            onHand: num(p.onHand),
+          }),
+          body: t('notify.roomStockLowBody', { min: num(p.min) }),
+        }
+      case 'room_stock_loss':
+        // a holder wrote stock off or counted their room store down
+        return {
+          title: t('notify.roomStockLoss', {
+            count: num(p.units),
+            item: p.item ?? '',
+            store: p.store ?? '',
+          }),
+          body: joinParts([byText(p.by), quoted(p.reason)]),
+        }
+      case 'refill_requested':
+        return {
+          title: t('notify.refillRequested', { number: p.number ?? '', store: p.store ?? '' }),
+          body: joinParts([linesText(p.lines), byText(p.by)]),
+        }
+      case 'refill_declined':
+        return {
+          title: t('notify.refillDeclined', { number: p.number ?? '', store: p.store ?? '' }),
+          body: joinParts([byText(p.by), quoted(p.reason)]),
+        }
+      case 'transfer_sent':
+        return {
+          title: t('notify.transferSent', { number: p.number ?? '', store: p.store ?? '' }),
+          body: joinParts([linesText(p.lines), byText(p.by), t('notify.confirmWhatArrives')]),
+        }
+      case 'return_sent':
+        return {
+          title: t('notify.returnSent', { number: p.number ?? '', store: p.store ?? '' }),
+          body: joinParts([linesText(p.lines), byText(p.by), t('notify.confirmWhatArrives')]),
+        }
+      case 'transfer_received':
+        return {
+          title: t('notify.transferReceived', {
+            number: p.number ?? '',
+            store: p.store ?? '',
+            by: p.by ?? '',
+          }),
+          body:
+            num(p.missing) > 0
+              ? t('notify.transferMissing', { count: num(p.missing) })
+              : t('notify.transferComplete'),
+        }
+      case 'transfer_difference':
+        return {
+          title: t('notify.transferDifference', { number: p.number ?? '', store: p.store ?? '' }),
+          body: joinParts([
+            num(p.returned) > 0 ? t('notify.differenceReturned', { count: num(p.returned) }) : null,
+            num(p.lost) > 0 ? t('notify.differenceLost', { count: num(p.lost) }) : null,
+            byText(p.by),
+          ]),
+        }
+      case 'transfer_cancelled':
+        return {
+          title: t('notify.transferCancelled', { number: p.number ?? '', store: p.store ?? '' }),
+          body: joinParts([byText(p.by), quoted(p.reason)]),
+        }
+      case 'store_assigned':
+        return {
+          title: t('notify.storeAssigned', { store: p.store ?? '' }),
+          body: t('notify.storeAssignedBody'),
+        }
+      case 'counter_sale_to_pay':
+        return {
+          title: t('notify.counterSaleToPay', { number: p.number ?? '', amount: rwf(p.amount) }),
+          body: p.buyer ?? t('notify.walkInBuyer'),
+        }
+      case 'counter_sale_paid':
+        return {
+          title: t('notify.counterSalePaid', { number: p.number ?? '', amount: rwf(p.amount) }),
+          body: t('notify.counterSalePaidBody', { buyer: p.buyer ?? t('notify.walkInBuyer') }),
         }
       default:
         return { title: n.title ?? '', body: n.body }

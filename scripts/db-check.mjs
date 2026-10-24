@@ -364,7 +364,11 @@ await step('pharmacist dispenses FEFO 21 Ã— amoxicillin and charges 6,300', a
   await as(staff.pharmacist)
   const loc = await one(`select id from stock_location where name = 'Pharmacy'`)
   const item = await one(`select id from item where code = 'AMOX500'`)
+  // 0082: dispense_fefo is internal (only the checked functions call it): run as its owner, with
+  // the pharmacist's identity, as dispense_prescription does
+  await as(staff.pharmacist, 'postgres')
   await db.query(`select dispense_fefo($1, $2, 21, $3)`, [encounterId, item.id, loc.id])
+  await as(staff.pharmacist)
   await db.query(`select add_charge($1, 'pharmacy', null, $2, 21)`, [encounterId, item.id])
   const soh = await one(`select quantity from stock_on_hand where item_id = $1`, [item.id])
   if (soh.quantity !== 979) throw new Error(`stock on hand ${soh.quantity}`)
@@ -1131,14 +1135,51 @@ await step('medicine given in the room: recorded as given, no pharmacy queue', a
   const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [patientId])
   await asAdmin()
   const item = await one(`select id from item where active limit 1`)
+  // 0083: only a holder of a room store gives here (42501); 0082: never without stock (MS003);
+  // the store the doctor holds gets exactly 2 from the pharmacy, then closes
+  const tryRoom = async () => {
+    await as(staff.doctor)
+    try {
+      await db.query(
+        `select prescribe($1, $2, 2, '1 tab', 'oral', 'BD', 1, null, 'room', 'consultation')`,
+        [v.id, item.id],
+      )
+      return null
+    } catch (e) {
+      return e.code
+    }
+  }
+  const noStore = await tryRoom()
+  await as(staff.manager)
+  const room = (
+    await one(`select save_room_store(null, 'Treatment room (check)', 'nursing', $1) as id`, [
+      [staff.doctor],
+    ])
+  ).id
+  const noStock = await tryRoom()
+  await as(staff.manager)
+  await db.query(`select receive_stock($1, main_pharmacy(), 2, 10, 'ROOM-CHK', '2031-01-31')`, [
+    item.id,
+  ])
+  const note = (
+    await one(`select send_to_room($1, $2::jsonb) as j`, [
+      room,
+      JSON.stringify([{ itemId: item.id, quantity: 2 }]),
+    ])
+  ).j
   await as(staff.doctor)
+  await db.query(`select confirm_receipt($1)`, [note.id])
   const r = (
     await one(
       `select prescribe($1, $2, 2, '1 tab', 'oral', 'BD', 1, null, 'room', 'consultation') as r`,
       [v.id, item.id],
     )
   ).r
+  await as(staff.manager)
+  await db.query(`select set_location_active($1, false)`, [room])
   await asAdmin()
+  if (noStore !== '42501' || noStock !== 'MS003' || !r.stockTaken || r.locationId !== room)
+    throw new Error(JSON.stringify({ noStore, noStock, r }))
   const m = await one(`select supply, given_at from medication_request where id = $1`, [r.id])
   const q = await db.query(
     `select 1 from queue_entry where encounter_id = $1 and station = 'pharmacy' and finished_at is null`,
@@ -1422,26 +1463,34 @@ await step(
     const itemId = (
       await one(`select upsert_item(null, 'Ciprofloxacin', 200, '500 mg', 'tablet', 'tab') as id`)
     ).id
-    const main = (await one(`select id from stock_location where type = 'main_store' limit 1`)).id
-    const pharm = (await one(`select id from stock_location where type = 'pharmacy' limit 1`)).id
+    // 0083: deliveries come into the pharmacy; a room store is supplied with a transfer note
+    const pharm = (await one(`select main_pharmacy() as id`)).id
     const office = (
       await one(`select save_location(null, 'Consultation office', 'nursing', $1) as id`, [deptId])
     ).id
     await db.query(
       `select receive_stock($1, $2, 100, 80, 'CIP-001', '2028-01-31', 'Kigali Pharma Wholesale Ltd')`,
-      [itemId, main],
+      [itemId, pharm],
     )
-    await db.query(`select transfer_stock($1, $2, $3, 60)`, [itemId, main, pharm])
-    await db.query(`select transfer_stock($1, $2, $3, 10, 'weekly supply')`, [itemId, main, office])
+    const note = (
+      await one(`select send_to_room($1, $2::jsonb, null, 'weekly supply') as j`, [
+        office,
+        JSON.stringify([{ itemId, quantity: 10 }]),
+      ])
+    ).j
+    await db.query(`select confirm_receipt($1)`, [note.id])
     const ov = (await one(`select stock_overview() as j`)).j
     const it = ov.items.find((x) => x.id === itemId)
     if (!it || it.onHand !== 100 || Number(it.costValue) !== 8000 || it.byLocation[office] !== 10)
       throw new Error(JSON.stringify(it))
     let refused = false
     try {
-      await db.query(`select transfer_stock($1, $2, $3, 500)`, [itemId, main, pharm])
+      await db.query(`select send_to_room($1, $2::jsonb)`, [
+        office,
+        JSON.stringify([{ itemId, quantity: 500 }]),
+      ])
     } catch (e) {
-      refused = /not enough stock/.test(String(e.message))
+      refused = /not enough/.test(String(e.message))
     }
     // a prescription for an open visit, then the pharmacist hands it over
     await asAdmin()
@@ -1455,9 +1504,16 @@ await step(
         [enc.id, itemId],
       )
     ).j
+    // 0082: the hand-over waits until the doctor has finished: the doctor sends the patient on
+    await db.query(
+      `select refer_patient($1, q.station, 'pharmacy') from queue_entry q
+        where q.encounter_id = $1 and q.finished_at is null and station_role(q.station) = 'doctor'`,
+      [enc.id],
+    )
     await as(staff.pharmacist)
     const q = (await one(`select pharmacy_queue() as j`)).j
-    if (!q.some((x) => x.requestId === rx.id)) throw new Error('not in the pharmacy queue')
+    // 0082: { locationId, stores, lines, patients }
+    if (!q.lines.some((x) => x.requestId === rx.id)) throw new Error('not in the pharmacy queue')
     const d = (await one(`select dispense_prescription($1) as j`, [rx.id])).j
     const after = (await one(`select stock_overview() as j`)).j.items.find((x) => x.id === itemId)
     const sales = (await one(`select stock_sales(current_date, current_date) as j`)).j
@@ -1466,12 +1522,12 @@ await step(
       `select unit_price, quantity from invoice_line where item_id = $1 order by created_at desc limit 1`,
       [itemId],
     )
-    if (!d.charged || after.byLocation[pharm] !== 50 || Number(line.unit_price) !== 200)
+    if (!d.charged || after.byLocation[pharm] !== 80 || Number(line.unit_price) !== 200)
       throw new Error(`charged=${d.charged} pharm=${after.byLocation[pharm]}`)
     const sold = sales.items.find((x) => /Ciprofloxacin/.test(x.item))
-    if (!sold || Number(sold.units) !== 10 || Number(sold.revenue) !== 2000)
-      throw new Error('sales wrong ' + JSON.stringify(sold))
-    return `100 received (RWF 8,000), 60 → pharmacy, 10 → office; over-transfer refused: ${refused}; 10 handed over at RWF 200 = revenue 2,000, cost ${sold.cost}`
+    if (!sold || Number(sold.units) !== 10 || Number(sold.revenue) !== 2000 || !refused)
+      throw new Error('sales wrong ' + JSON.stringify({ sold, refused }))
+    return `100 received into the pharmacy (RWF 8,000), 10 → office by note ${note.number}; over-send refused: ${refused}; 10 handed over at RWF 200 = revenue 2,000, cost ${sold.cost}`
   },
 )
 
@@ -2915,20 +2971,17 @@ await step(
     const item = (
       await one(`select upsert_item(null, 'Ibuprofen 64', 100, '400 mg', 'tablet', 'tab') as id`)
     ).id
-    const main = (await one(`select id from stock_location where type = 'main_store' limit 1`)).id
-    const pharm = (
-      await one(`select id from stock_location where type = 'pharmacy' and active limit 1`)
-    ).id
+    // 0083: deliveries come into the pharmacy (the main store no longer receives)
+    const pharm = (await one(`select main_pharmacy() as id`)).id
     let noExpiry = 'ok'
     try {
-      await db.query(`select receive_stock($1, $2, 10, 50)`, [item, main])
+      await db.query(`select receive_stock($1, $2, 10, 50)`, [item, pharm])
     } catch (e) {
       noExpiry = String(e.message).split('\n')[0]
     }
-    await db.query(`select receive_stock($1, $2, 40, 50, 'IBU-64', '2029-06-30')`, [item, main])
-    await db.query(`select transfer_stock($1, $2, $3, 20)`, [item, main, pharm])
-    // the main store holds 18, not 20: the count is corrected with its reason
-    const diff = (await one(`select adjust_stock($1, $2, 18, 'monthly count') as d`, [item, main]))
+    await db.query(`select receive_stock($1, $2, 40, 50, 'IBU-64', '2029-06-30')`, [item, pharm])
+    // the pharmacy holds 38, not 40: the count is corrected with its reason
+    const diff = (await one(`select adjust_stock($1, $2, 38, 'monthly count') as d`, [item, pharm]))
       .d
     // prescribed, handed over, paid, then brought back: off the bill, money given back
     await as(d1)
@@ -2939,6 +2992,8 @@ await step(
         [p.enc, item],
       )
     ).j
+    // 0082: the hand-over waits until the doctor has sent the patient on
+    await db.query(`select refer_patient($1, 'consultation', 'pharmacy')`, [p.enc])
     await as(staff.pharmacist)
     await db.query(`select dispense_prescription($1)`, [rx.id])
     await as(staff.cashier)
@@ -2982,7 +3037,7 @@ await step(
       !/expiry/.test(noExpiry) ||
       Number(diff) !== -2 ||
       Number(back.balance) !== -500 ||
-      inPharm !== 20 ||
+      inPharm !== 38 ||
       !/at most/.test(tooMuch) ||
       Number(refunded.balance) !== 0 ||
       Number(day.refunded) < 500 ||
@@ -4042,7 +4097,7 @@ await step('0078: the cashier figures, My orders and My prescriptions take a per
     ordRange.length !== last30.length ||
     ordOld.length !== 0 ||
     !Array.isArray(rxRange) ||
-    !pq.every((l) => typeof l.onHandElsewhere === 'number' && l.pharmacyLocationId)
+    !pq.lines.every((l) => typeof l.onHandElsewhere === 'number' && l.pharmacyLocationId)
   )
     throw new Error(
       JSON.stringify({
@@ -4987,6 +5042,1902 @@ await step('0081: the approvals are closed to the API; the gate runs for every r
     throw new Error(JSON.stringify(r))
   return 'table closed; gate callable by anon, staff, server; switch on'
 })
+
+// ---------------------------------------------------------------- 0082: dispensing and money
+const t82 = {}
+/** The error code of a statement run as someone (null when it succeeds). */
+const codeAs = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    await db.query(sql, params)
+    return null
+  } catch (e) {
+    return e.code ?? String(e.message).split('\n')[0]
+  } finally {
+    await asAdmin()
+  }
+}
+const openStations82 = async (enc) =>
+  (
+    await db.query(
+      `select station::text as s from queue_entry where encounter_id = $1 and finished_at is null
+        and deleted_at is null order by station`,
+      [enc],
+    )
+  ).rows.map((r) => r.s)
+await step(
+  '0082: set-up: an insurer price list, two pharmacy stores, an insured patient',
+  async () => {
+    await as(staff.manager)
+    t82.amox = (
+      await one(`select upsert_item(null, 'Amoxicillin 82', 300, '500 mg', 'capsule', 'cap') as id`)
+    ).id
+    t82.para = (
+      await one(`select upsert_item(null, 'Paracetamol 82', 50, '500 mg', 'tablet', 'tab') as id`)
+    ).id
+    t82.ors = (
+      await one(`select upsert_item(null, 'ORS 82', 200, null, 'sachet', 'sachet') as id`)
+    ).id
+    t82.ph2 = (await one(`select save_location(null, 'Pharmacy 2 (82)', 'pharmacy') as id`)).id
+    await asAdmin()
+    t82.main = (await one(`select main_pharmacy() as id`)).id
+    t82.mainStore = (
+      await one(`select id from stock_location where type = 'main_store' and active limit 1`)
+    ).id
+    // RHIA rule on amoxicillin: children's doctor only (a warning, never a refusal)
+    await db.query(`update item set prescribing_rule = 'PED' where id = $1`, [t82.amox])
+    const payer = (
+      await one(
+        `insert into payer (code, name, type) values ('INS82', 'Insurer 82', 'private') returning id`,
+      )
+    ).id
+    const plan = (
+      await one(
+        `insert into plan (payer_id, name, coverage_pct, pct_by_group)
+       values ($1, 'Plan 82', 50, '{"pharmacy": 90}') returning id`,
+        [payer],
+      )
+    ).id
+    const list = (
+      await one(
+        `insert into price_list (payer_id, name) values ($1, 'Insurer 82 prices') returning id`,
+        [payer],
+      )
+    ).id
+    await db.query(
+      `insert into price_list_item (price_list_id, item_id, price) values ($1, $2, 250)`,
+      [list, t82.amox],
+    )
+    await as(staff.manager)
+    await db.query(`select receive_stock($1, $2, 20, 100, 'AMX-82A', '2030-06-30')`, [
+      t82.amox,
+      t82.main,
+    ])
+    await db.query(`select receive_stock($1, $2, 5, 100, 'AMX-82B', '2030-06-30')`, [
+      t82.amox,
+      t82.ph2,
+    ])
+    await db.query(`select receive_stock($1, $2, 10, 20, 'PAR-82', '2030-06-30')`, [
+      t82.para,
+      t82.main,
+    ])
+    await as(staff.receptionist)
+    t82.patient = (
+      await one(
+        `select register_patient_file('Ishimwe', 'Insured 82', 'female', '2019-03-01') as r`,
+      )
+    ).r.patient_id
+    await asAdmin()
+    await db.query(`update patient set allergies = 'Penicillin' where id = $1`, [t82.patient])
+    t82.coverage = (
+      await one(
+        `insert into coverage (patient_id, payer_id, plan_id, member_number)
+       values ($1, $2, $3, 'M-82') returning id`,
+        [t82.patient, payer, plan],
+      )
+    ).id
+    await as(staff.receptionist)
+    t82.enc = (
+      await one(`select open_encounter($1, 'opd', 'consultation', $2) as id`, [
+        t82.patient,
+        t82.coverage,
+      ])
+    ).id
+    await asAdmin()
+    const q = await one(
+      `select id from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [t82.enc],
+    )
+    await as(d1)
+    await db.query(`select take_patient($1)`, [q.id])
+    await asAdmin()
+    const stores = (
+      await one(
+        `select count(*)::int as n from stock_location where type = 'pharmacy' and active and deleted_at is null`,
+      )
+    ).n
+    if (!t82.main || t82.main === t82.ph2 || stores < 2)
+      throw new Error(JSON.stringify({ t82, stores }))
+    return `main pharmacy + Pharmacy 2; ${stores} open pharmacy stores`
+  },
+)
+await step('0082 CHK-1: prescribe warns about the RHIA rule, never refuses', async () => {
+  await as(d1)
+  t82.rx = (
+    await one(`select prescribe($1, $2, 4, '1 cap', 'oral', 'TDS', 5, null, 'pharmacy') as j`, [
+      t82.enc,
+      t82.amox,
+    ])
+  ).j
+  await asAdmin()
+  const rules = await one(
+    `select rx_rule_ok('PED', 'Paediatrician') as ped, rx_rule_ok('IM or PED', 'Internal medicine') as im,
+            rx_rule_ok('DT', 'General practitioner') as dt, rx_rule_ok('HU', 'Surgeon') as hu,
+            rx_rule_ok('SPEC', 'General practitioner') as spec_gp, rx_rule_ok('SPEC', 'Cardiologist') as spec,
+            rx_rule_ok(null, 'x') as none`,
+  )
+  const w = t82.rx.warnings ?? []
+  if (
+    !t82.rx.id ||
+    w.length !== 1 ||
+    w[0].kind !== 'prescribingRule' ||
+    w[0].rule !== 'PED' ||
+    rules.ped !== true ||
+    rules.im !== true ||
+    rules.dt !== false ||
+    rules.hu !== null ||
+    rules.spec_gp !== false ||
+    rules.spec !== true ||
+    rules.none !== null
+  )
+    throw new Error(JSON.stringify({ rx: t82.rx, rules }))
+  return `warning ${w[0].kind} (${w[0].rule}); rule matching by specialty works`
+})
+await step(
+  '0082 PRICE-1 / STORE-1 / CHK-1: the pharmacy list prices like the bill, per store, with the check data',
+  async () => {
+    await as(staff.pharmacist)
+    const q = (await one(`select pharmacy_queue() as j`)).j
+    const q2 = (await one(`select pharmacy_queue($1) as j`, [t82.ph2])).j
+    await asAdmin()
+    const bad = await codeAs(staff.pharmacist, `select pharmacy_queue($1)`, [t82.mainStore])
+    const l = q.lines.find((x) => x.requestId === t82.rx.id)
+    const l2 = q2.lines.find((x) => x.requestId === t82.rx.id)
+    const pt = q.patients.find((x) => x.encounterId === t82.enc)
+    const mainRow = q.stores.find((s) => s.id === t82.main)
+    if (
+      !l ||
+      Number(l.cashPrice) !== 300 ||
+      Number(l.price) !== 300 ||
+      Number(l.payerPrice) !== 250 ||
+      Number(l.lineTotal) !== 1000 ||
+      Number(l.coveragePct) !== 90 ||
+      Number(l.insurerShare) !== 900 ||
+      Number(l.patientShare) !== 100 ||
+      l.payer !== 'Insurer 82' ||
+      l.onHandPharmacy !== 20 ||
+      l.locationId !== t82.main ||
+      l.allergies !== 'Penicillin' ||
+      l.sex !== 'female' ||
+      typeof l.ageYears !== 'number' ||
+      l.prescribingRule !== 'PED' ||
+      l.ruleOk !== false ||
+      l.doctorHolds !== true ||
+      l2.onHandPharmacy !== 5 ||
+      l2.locationId !== t82.ph2 ||
+      l2.onHandElsewhere < 20 ||
+      !pt ||
+      Number(pt.patientShare) !== 100 ||
+      Number(pt.total) !== 1000 ||
+      pt.allergies !== 'Penicillin' ||
+      typeof pt.ageMonths !== 'number' ||
+      !mainRow?.isMain ||
+      q.stores.length < 2 ||
+      q2.locationId !== t82.ph2 ||
+      bad !== '22023'
+    )
+      throw new Error(JSON.stringify({ l, l2, pt, stores: q.stores, bad }))
+    return `cash 300, insurer list 250 × 4 = 1,000: patient 100, insurer 900; main 20 / Pharmacy 2: 5; a non-pharmacy store refused`
+  },
+)
+await step('0082 ORD-2: no hand-over while the doctor still has the patient', async () => {
+  const held = await codeAs(staff.pharmacist, `select dispense_prescription($1)`, [t82.rx.id])
+  const notGiven = (await one(`select given_at from medication_request where id = $1`, [t82.rx.id]))
+    .given_at
+  // a sale written by the pharmacist is not held: from Pharmacy 2, charged like the bill
+  await as(staff.pharmacist)
+  const sold = (
+    await one(`select sell_medicine($1, $2, 1, null, $3) as j`, [t82.enc, t82.amox, t82.ph2])
+  ).j
+  await asAdmin()
+  const ph2 = (await one(`select usable_stock($1, $2) as n`, [t82.amox, t82.ph2])).n
+  if (held !== 'MS002' || notGiven || !sold.charged || sold.locationId !== t82.ph2 || ph2 !== 4)
+    throw new Error(JSON.stringify({ held, notGiven, sold, ph2 }))
+  return 'refused (MS002) while held; the pharmacist’s own sale goes through (Pharmacy 2: 5 → 4)'
+})
+await step(
+  '0082 STORE-1 / PAY-END: sent on, handed over from the chosen store → cashier; the bill matches the desk',
+  async () => {
+    await as(d1)
+    await db.query(`select refer_patient($1, 'consultation', 'pharmacy')`, [t82.enc])
+    await as(staff.pharmacist)
+    const d = (await one(`select dispense_prescription($1, $2) as j`, [t82.rx.id, t82.ph2])).j
+    await asAdmin()
+    const line = await one(
+      `select patient_share, insurer_share, unit_price from invoice_line
+        where source_type = 'medication_dispense' and source_id = $1 and deleted_at is null`,
+      [d.dispenseId],
+    )
+    const ph2 = (await one(`select usable_stock($1, $2) as n`, [t82.amox, t82.ph2])).n
+    const main = (await one(`select usable_stock($1, $2) as n`, [t82.amox, t82.main])).n
+    const mv = await one(
+      `select count(*)::int as n from stock_movement where medication_request_id = $1 and type = 'dispense'`,
+      [t82.rx.id],
+    )
+    const stations = await openStations82(t82.enc)
+    const bal = (
+      await one(`select invoice_balance(id) as b from invoice where encounter_id = $1`, [t82.enc])
+    ).b
+    if (
+      !d.charged ||
+      d.locationId !== t82.ph2 ||
+      Number(line.patient_share) !== 100 ||
+      Number(line.insurer_share) !== 900 ||
+      ph2 !== 0 ||
+      main !== 20 ||
+      mv.n < 1 ||
+      JSON.stringify(stations) !== '["cashier"]' ||
+      Number(bal) !== 125
+    )
+      throw new Error(JSON.stringify({ d, line, ph2, main, mv, stations, bal }))
+    return 'Pharmacy 2 → 0, main untouched; bill line 100 / 900 as the desk said; patient at the cashier (125 due)'
+  },
+)
+await step(
+  '0082 PAY-END: an open visit of an earlier day with money due is on the unpaid list',
+  async () => {
+    await asAdmin()
+    await db.query(`update encounter set arrived_at = now() - interval '2 days' where id = $1`, [
+      t82.enc,
+    ])
+    await as(staff.cashier)
+    const list = (await one(`select unpaid_debts() as j`)).j
+    await asAdmin()
+    await db.query(`update encounter set arrived_at = now() where id = $1`, [t82.enc])
+    const row = list.find((x) => x.encounterId === t82.enc)
+    if (!row || row.status !== 'open' || Number(row.amount) !== 125 || !row.since)
+      throw new Error(JSON.stringify(row))
+    return `listed: ${row.status}, ${row.amount} RWF since ${String(row.since).slice(0, 10)}`
+  },
+)
+await step(
+  '0082 RET-1: a return after the bill is posted: stock back, line kept, credit note, cashier told',
+  async () => {
+    await as(staff.cashier)
+    const paid = (await one(`select take_payment($1, 'cash', 125) as j`, [t82.enc])).j
+    await asAdmin()
+    const inv = await one(`select id, status, patient_share from invoice where encounter_id = $1`, [
+      t82.enc,
+    ])
+    const linesBefore = (
+      await one(
+        `select count(*)::int as n from invoice_line where invoice_id = $1 and deleted_at is null`,
+        [inv.id],
+      )
+    ).n
+    const claimBefore = await one(`select amount from claim where invoice_id = $1`, [inv.id])
+    await as(staff.pharmacist)
+    const back = (await one(`select return_medicine($1, 'wrong medicine') as j`, [t82.rx.id])).j
+    await asAdmin()
+    const linesAfter = (
+      await one(
+        `select count(*)::int as n from invoice_line where invoice_id = $1 and deleted_at is null`,
+        [inv.id],
+      )
+    ).n
+    const cn = await one(
+      `select number, patient_amount, insurer_amount, total from credit_note where invoice_id = $1`,
+      [inv.id],
+    )
+    const claimAfter = await one(`select amount from claim where invoice_id = $1`, [inv.id])
+    const m = await one(
+      `select given_at, not_given_reason, rx_pending(m) as pending from medication_request m where id = $1`,
+      [t82.rx.id],
+    )
+    const ph2 = (await one(`select usable_stock($1, $2) as n`, [t82.amox, t82.ph2])).n
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'refund_due' and 'cashier' = any(recipient_stations)
+         and link like '%' || $1 || '%'`,
+      [t82.enc],
+    )
+    await as(staff.cashier)
+    const refunded = (
+      await one(`select refund_payment($1, 100, 'cash', 'returned medicine') as r`, [t82.enc])
+    ).r
+    await asAdmin()
+    if (
+      !paid.closed ||
+      inv.status !== 'posted' ||
+      back.mode !== 'credit' ||
+      Number(back.credit) !== 100 ||
+      Number(back.balance) !== -100 ||
+      back.units !== 4 ||
+      linesAfter !== linesBefore ||
+      !/^CN-/.test(cn?.number ?? '') ||
+      Number(cn.patient_amount) !== 100 ||
+      Number(cn.insurer_amount) !== 900 ||
+      Number(claimBefore?.amount) !== Number(claimAfter?.amount) + 900 ||
+      m.given_at ||
+      m.pending ||
+      !/^returned: wrong medicine/.test(m.not_given_reason ?? '') ||
+      ph2 !== 4 ||
+      told.n !== 1 ||
+      Number(refunded.balance) !== 0
+    )
+      throw new Error(
+        JSON.stringify({
+          paid,
+          inv,
+          back,
+          linesBefore,
+          linesAfter,
+          cn,
+          claimBefore,
+          claimAfter,
+          m,
+          ph2,
+          told,
+          refunded,
+        }),
+      )
+    return `posted bill kept (${linesAfter} lines); ${cn.number}: patient 100 back, claim −900; 4 units back; cashier told; refunded → 0`
+  },
+)
+await step(
+  '0082 CHG-1: a closed bill refuses the charge (MS001); the hand-over takes nothing',
+  async () => {
+    const p = await visitAt('Closedbill 82')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    const rx = (
+      await one(`select prescribe($1, $2, 2, null, null, null, null, null, 'pharmacy') as j`, [
+        p.enc,
+        t82.para,
+      ])
+    ).j
+    await db.query(`select refer_patient($1, 'consultation', 'pharmacy')`, [p.enc])
+    await asAdmin()
+    // the bill posted early (straight through the API by the cashier, or a return case)
+    const inv = (await one(`select id from invoice where encounter_id = $1`, [p.enc])).id
+    await db.query(
+      `insert into invoice_line (invoice_id, item_id, description, quantity, unit_price, office)
+     values ($1, $2, 'early line', 1, 10, 'pharmacy')`,
+      [inv, t82.para],
+    )
+    await db.query(`select post_invoice_now($1)`, [inv])
+    const before = (await one(`select usable_stock($1, $2) as n`, [t82.para, t82.main])).n
+    const refused = await codeAs(staff.pharmacist, `select dispense_prescription($1)`, [rx.id])
+    const after = (await one(`select usable_stock($1, $2) as n`, [t82.para, t82.main])).n
+    let direct = null
+    try {
+      await db.query(`select add_charge_internal($1, 'pharmacy', null, $2, 1)`, [p.enc, t82.para])
+    } catch (e) {
+      direct = e.code
+    }
+    const m = await one(`select given_at from medication_request where id = $1`, [rx.id])
+    if (refused !== 'MS001' || direct !== 'MS001' || before !== after || m.given_at)
+      throw new Error(JSON.stringify({ refused, direct, before, after, m }))
+    return `refused MS001; stock ${before} → ${after}; not marked given`
+  },
+)
+await step(
+  '0082 ORD-2 / TRACK-1: the prescriber cancels a waiting line (reason); others may not; shown as cancelled',
+  async () => {
+    const p = await visitAt('Cancel 82')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    const a = (
+      await one(`select prescribe($1, $2, 3, null, null, null, null, null, 'pharmacy') as j`, [
+        p.enc,
+        t82.para,
+      ])
+    ).j
+    const b = (
+      await one(`select prescribe($1, $2, 1, null, null, null, null, null, 'pharmacy') as j`, [
+        p.enc,
+        t82.ors,
+      ])
+    ).j
+    const other = await codeAs(d2, `select cancel_prescription($1, 'not mine')`, [a.id])
+    const noReason = await codeAs(d1, `select cancel_prescription($1, '')`, [a.id])
+    await as(d1)
+    const c1 = (await one(`select cancel_prescription($1, 'wrong dose') as j`, [a.id])).j
+    await as(staff.pharmacist)
+    const q = (await one(`select pharmacy_queue() as j`)).j
+    await asAdmin()
+    const gone = !q.lines.some((x) => x.requestId === a.id)
+    const stillB = q.lines.some((x) => x.requestId === b.id)
+    const handCancelled = await codeAs(staff.pharmacist, `select dispense_prescription($1)`, [a.id])
+    const twice = await codeAs(d1, `select cancel_prescription($1, 'again')`, [a.id])
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'rx_cancelled' and 'pharmacy' = any(recipient_stations)
+         and params ->> 'reason' = 'wrong dose'`,
+    )
+    // the last line cancelled: the pharmacy place closes (the doctor still has the patient)
+    await as(d1)
+    const c2 = (await one(`select cancel_prescription($1, 'not needed') as j`, [b.id])).j
+    const journey = (await one(`select visit_journey($1) as j`, [p.enc])).j
+    const clinical = (await one(`select visit_clinical($1) as j`, [p.enc])).j
+    const mine = (await one(`select my_prescriptions(1) as j`)).j
+    await asAdmin()
+    const stations = await openStations82(p.enc)
+    const jm = journey.medicines.find((x) => x.cancelReason === 'wrong dose')
+    const cm = clinical.prescriptions.find((x) => x.id === a.id)
+    const mm = mine.find((x) => x.id === a.id)
+    if (
+      other !== '42501' ||
+      noReason !== '22023' ||
+      c1.pending !== 1 ||
+      !gone ||
+      !stillB ||
+      handCancelled !== '23505' ||
+      twice !== 'P0002' ||
+      told.n !== 1 ||
+      c2.pending !== 0 ||
+      stations.includes('pharmacy') ||
+      !stations.includes('consultation') ||
+      !jm?.cancelledAt ||
+      !cm?.cancelledAt ||
+      cm.pending !== false ||
+      cm.prescriberId !== d1 ||
+      mm?.state !== 'cancelled'
+    )
+      throw new Error(
+        JSON.stringify({
+          other,
+          noReason,
+          c1,
+          gone,
+          stillB,
+          handCancelled,
+          twice,
+          told,
+          c2,
+          stations,
+          jm,
+          cm,
+          mm,
+        }),
+      )
+    return 'another doctor refused; cancelled with its reason, off the pharmacy list, pharmacy told; journey/clinical/my list say cancelled'
+  },
+)
+await step('0082 TRACK-1: the visit track says not given, with the reason', async () => {
+  const p = await visitAt('Notgiven 82')
+  await as(d1)
+  await db.query(`select take_patient($1)`, [p.queue])
+  const a = (
+    await one(`select prescribe($1, $2, 1, null, null, null, null, null, 'pharmacy') as j`, [
+      p.enc,
+      t82.ors,
+    ])
+  ).j
+  await as(staff.pharmacist)
+  await db.query(`select rx_not_given($1, 'out of stock')`, [a.id])
+  await as(d1)
+  const j = (await one(`select visit_journey($1) as j`, [p.enc])).j
+  await asAdmin()
+  const m = j.medicines[0]
+  if (!m?.notGivenAt || m.notGivenReason !== 'out of stock' || m.cancelledAt)
+    throw new Error(JSON.stringify(m))
+  return `not given: “${m.notGivenReason}”`
+})
+await step(
+  '0082 ROOM-1: given here from unexpired stock across batches; never expired; short is refused',
+  async () => {
+    await as(staff.manager)
+    // 0083: a room store held by d1, supplied by the pharmacy with a transfer note
+    t82.room = (
+      await one(`select save_room_store(null, 'Room store 82', 'nursing', $1) as id`, [[d1]])
+    ).id
+    await db.query(`select receive_stock($1, $2, 3, 50, 'ORS-82A', '2030-01-31')`, [
+      t82.ors,
+      t82.main,
+    ])
+    await db.query(`select receive_stock($1, $2, 3, 50, 'ORS-82B', '2031-01-31')`, [
+      t82.ors,
+      t82.main,
+    ])
+    const ors82 = (
+      await one(`select send_to_room($1, $2::jsonb, null, null, $3) as j`, [
+        t82.room,
+        JSON.stringify([{ itemId: t82.ors, quantity: 6 }]),
+        t82.main,
+      ])
+    ).j
+    await as(d1)
+    await db.query(`select confirm_receipt($1)`, [ors82.id])
+    await asAdmin()
+    // 4 expired units on the shelf (an old delivery)
+    const old = (
+      await one(
+        `insert into batch (item_id, batch_no, expiry, unit_cost) values ($1, 'ORS-82OLD', current_date - 10, 50) returning id`,
+        [t82.ors],
+      )
+    ).id
+    await db.query(
+      `insert into stock_movement (item_id, batch_id, to_location_id, quantity, type, reason)
+       values ($1, $2, $3, 4, 'receipt', 'old delivery')`,
+      [t82.ors, old, t82.room],
+    )
+    const p = await visitAt('Room 82')
+    t82.roomEnc = p.enc
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    // 5 = 3 + 2 from two batches (no single batch holds 5)
+    const r = (
+      await one(
+        `select prescribe($1, $2, 5, null, null, null, null, null, 'room', 'consultation') as j`,
+        [p.enc, t82.ors],
+      )
+    ).j
+    await asAdmin()
+    const left = await db.query(
+      `select b.batch_no, s.quantity from stock_on_hand s join batch b on b.id = s.batch_id
+        where s.item_id = $1 and s.location_id = $2 order by b.batch_no`,
+      [t82.ors, t82.room],
+    )
+    const byBatch = Object.fromEntries(left.rows.map((x) => [x.batch_no, x.quantity]))
+    const moved = await one(
+      `select count(*)::int as n, sum(quantity)::int as q from stock_movement
+        where medication_request_id = $1 and type = 'consumption'`,
+      [r.id],
+    )
+    const linesBefore = (
+      await one(`select count(*)::int as n from medication_request where encounter_id = $1`, [
+        p.enc,
+      ])
+    ).n
+    // 2 more: only 1 unexpired unit left (4 expired are never given): refused, nothing written
+    const short = await codeAs(
+      d1,
+      `select prescribe($1, $2, 2, null, null, null, null, null, 'room', 'consultation')`,
+      [p.enc, t82.ors],
+    )
+    // a chosen store that holds none: refused too
+    const chosen = await codeAs(
+      d1,
+      `select prescribe($1, $2, 1, null, null, null, null, null, 'room', 'consultation', $3)`,
+      [p.enc, t82.para, t82.room],
+    )
+    const linesAfter = (
+      await one(`select count(*)::int as n from medication_request where encounter_id = $1`, [
+        p.enc,
+      ])
+    ).n
+    const charge = await one(
+      `select count(*)::int as n, coalesce(sum(l.patient_share), 0) as due from invoice_line l
+        join invoice i on i.id = l.invoice_id where i.encounter_id = $1 and l.deleted_at is null`,
+      [p.enc],
+    )
+    if (
+      !r.stockTaken ||
+      !r.charged ||
+      r.locationId !== t82.room ||
+      byBatch['ORS-82A'] !== 0 ||
+      byBatch['ORS-82B'] !== 1 ||
+      byBatch['ORS-82OLD'] !== 4 ||
+      moved.n !== 2 ||
+      moved.q !== 5 ||
+      short !== 'MS003' ||
+      chosen !== 'MS003' ||
+      linesAfter !== linesBefore ||
+      charge.n !== 1 ||
+      Number(charge.due) !== 1000
+    )
+      throw new Error(
+        JSON.stringify({ r, byBatch, moved, short, chosen, linesBefore, linesAfter, charge }),
+      )
+    return '5 given from batches A (3) + B (2), expired untouched; 2 more refused (MS003), nothing written or charged'
+  },
+)
+await step(
+  '0082 PAY-END: given here, the doctor finishes → cashier; the patient leaves unpaid → on the unpaid list',
+  async () => {
+    await as(d1)
+    await db.query(`select add_diagnosis($1, 'Diarrhoea', 'A09', 'primary')`, [t82.roomEnc])
+    await db.query(`select finish_visit($1)`, [t82.roomEnc])
+    await asAdmin()
+    const stations = await openStations82(t82.roomEnc)
+    // reception may not close it with money due; the manager may, with the reason
+    const rec = await codeAs(staff.receptionist, `select end_visit($1, 'went home')`, [t82.roomEnc])
+    await as(staff.manager)
+    await db.query(`select end_visit($1, 'left without paying')`, [t82.roomEnc])
+    await as(staff.cashier)
+    const list = (await one(`select unpaid_debts() as j`)).j
+    await asAdmin()
+    const row = list.find((x) => x.encounterId === t82.roomEnc)
+    if (
+      JSON.stringify(stations) !== '["cashier"]' ||
+      rec !== '23514' ||
+      !row ||
+      row.status !== 'left' ||
+      Number(row.amount) !== 1000 ||
+      row.reason !== 'left without paying'
+    )
+      throw new Error(JSON.stringify({ stations, rec, row }))
+    return `finish → cashier; left: listed as ${row.status}, ${row.amount} RWF`
+  },
+)
+await step(
+  '0082 NEG-1: every function that takes stock locks (medicine, store) first',
+  async () => {
+    await asAdmin()
+    const r = await db.query(
+      `select p.proname, position('lock_stock(' in p.prosrc) > 0 as locks
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in ('dispense_fefo', 'use_stock', 'transfer_stock', 'adjust_stock', 'give_from_store')`,
+    )
+    const missing = r.rows.filter((x) => !x.locks).map((x) => x.proname)
+    // the lock itself works and is held to the end of the transaction
+    await db.query(`select lock_stock($1, $2)`, [t82.ors, t82.room])
+    const staffCall = await codeAs(staff.pharmacist, `select lock_stock($1, $2)`, [
+      t82.ors,
+      t82.room,
+    ])
+    if (r.rows.length !== 5 || missing.length || staffCall !== '42501')
+      throw new Error(JSON.stringify({ rows: r.rows, missing, staffCall }))
+    return '5 functions lock before reading the balance; the lock is internal'
+  },
+)
+await step(
+  '0082 RIGHTS-1: the ledger and the hand-over fields change only through the functions',
+  async () => {
+    const [anyRx] = (
+      await db.query(`select id, encounter_id, item_id from medication_request where id = $1`, [
+        t82.rx.id,
+      ])
+    ).rows
+    const tries = {
+      giveDirect: await codeAs(d1, `update medication_request set given_at = now() where id = $1`, [
+        anyRx.id,
+      ]),
+      notGivenDirect: await codeAs(
+        d1,
+        `update medication_request set not_given_at = now(), not_given_reason = 'x' where id = $1`,
+        [anyRx.id],
+      ),
+      supplyDirect: await codeAs(
+        d1,
+        `update medication_request set supply = 'room' where id = $1`,
+        [anyRx.id],
+      ),
+      qtyDirect: await codeAs(d1, `update medication_request set quantity = 1 where id = $1`, [
+        anyRx.id,
+      ]),
+      cancelDirect: await codeAs(
+        d1,
+        `update medication_request set cancelled_at = now() where id = $1`,
+        [anyRx.id],
+      ),
+      deleteSoft: await codeAs(
+        d1,
+        `update medication_request set deleted_at = now() where id = $1`,
+        [anyRx.id],
+      ),
+      insertDirect: await codeAs(
+        d1,
+        `insert into medication_request (encounter_id, item_id, quantity) values ($1, $2, 1)`,
+        [anyRx.encounter_id, anyRx.item_id],
+      ),
+      deleteHard: await codeAs(staff.manager, `delete from medication_request where id = $1`, [
+        anyRx.id,
+      ]),
+      movement: await codeAs(
+        staff.pharmacist,
+        `insert into stock_movement (item_id, to_location_id, quantity, type) values ($1, $2, 99, 'receipt')`,
+        [t82.ors, t82.room],
+      ),
+      movementEdit: await codeAs(
+        staff.manager,
+        `update stock_movement set quantity = 1 where item_id = $1`,
+        [t82.ors],
+      ),
+      batch: await codeAs(
+        staff.pharmacist,
+        `update batch set expiry = '2040-01-01' where item_id = $1`,
+        [t82.ors],
+      ),
+      dispense: await codeAs(
+        staff.pharmacist,
+        `update medication_dispense set deleted_at = now() where item_id = $1`,
+        [t82.amox],
+      ),
+      credit: await codeAs(
+        staff.manager,
+        `insert into credit_note (invoice_id, total, reason, patient_amount)
+       select id, 1, 'x', 1 from invoice limit 1`,
+      ),
+    }
+    // a correction of the dose is still allowed
+    const dose = await codeAs(d1, `update medication_request set dose = '2 caps' where id = $1`, [
+      anyRx.id,
+    ])
+    const refused = Object.entries(tries).filter(([, c]) => c !== '42501')
+    if (refused.length || dose !== null) throw new Error(JSON.stringify({ tries, dose }))
+    return `${Object.keys(tries).length} direct writes refused; a dose correction allowed`
+  },
+)
+await step('0082: the manager marks the main pharmacy; others may not', async () => {
+  const pharm = await codeAs(staff.pharmacist, `select set_main_pharmacy($1)`, [t82.ph2])
+  const wrong = await codeAs(staff.manager, `select set_main_pharmacy($1)`, [t82.room])
+  await as(staff.manager)
+  await db.query(`select set_main_pharmacy($1)`, [t82.ph2])
+  const now = (await one(`select main_pharmacy() as id`)).id
+  await db.query(`select set_main_pharmacy($1)`, [t82.main])
+  const back = (await one(`select main_pharmacy() as id`)).id
+  await asAdmin()
+  const mains = (
+    await one(`select count(*)::int as n from stock_location where is_main and deleted_at is null`)
+  ).n
+  if (pharm !== '42501' || wrong !== '22023' || now !== t82.ph2 || back !== t82.main || mains !== 1)
+    throw new Error(JSON.stringify({ pharm, wrong, now, back, mains }))
+  return 'manager only; one main pharmacy store at a time'
+})
+
+// ---------------------------------------------------------------- 0083: stores and stock
+const t83 = {}
+const json83 = (x) => JSON.stringify(x)
+const usable83 = async (item, loc) => (await one(`select usable_stock($1, $2) as n`, [item, loc])).n
+await step('0083 C: the manager creates room stores and says who holds them', async () => {
+  await as(staff.manager)
+  t83.main = (await one(`select main_pharmacy() as id`)).id
+  t83.cef = (
+    await one(`select upsert_item(null, 'Ceftriaxone 83', 500, '1 g', 'vial', 'vial') as id`)
+  ).id
+  t83.old = (await one(`select upsert_item(null, 'Expired only 83', 100) as id`)).id
+  // a doctor's office (type room, held by d2) and a ward held by a whole department
+  const pharmRoom = await codeAs(
+    staff.pharmacist,
+    `select save_room_store(null, 'Not allowed 83', 'room', $1)`,
+    [[d2]],
+  )
+  await as(staff.manager)
+  t83.office = (
+    await one(`select save_room_store(null, 'Dr Office 83', 'room', $1) as id`, [[d2]])
+  ).id
+  await asAdmin()
+  t83.dept = (
+    await one(
+      `insert into department (name, roles) values ('Maternity 83', '{nurse}') returning id`,
+    )
+  ).id
+  await db.query(
+    `insert into staff_department (profile_id, department_id, position) values ($1, $2, 'member')`,
+    [staff.nurse, t83.dept],
+  )
+  await as(staff.manager)
+  t83.ward = (
+    await one(`select save_room_store(null, 'Maternity ward 83', 'nursing', null, $1) as id`, [
+      [t83.dept],
+    ])
+  ).id
+  const assignByPharm = await codeAs(staff.pharmacist, `select assign_store_holder($1, $2)`, [
+    t83.office,
+    d3,
+  ])
+  const newMain = await codeAs(
+    staff.manager,
+    `select save_location(null, 'Second main 83', 'main_store')`,
+  )
+  const direct = await codeAs(
+    staff.manager,
+    `insert into stock_location (name, type) values ('Direct 83', 'pharmacy')`,
+  )
+  await as(d2)
+  const mine2 = (await one(`select my_stores() as j`)).j
+  await as(staff.nurse)
+  const mineNurse = (await one(`select my_stores() as j`)).j
+  await as(d3)
+  const mine3 = (await one(`select my_stores() as j`)).j
+  await asAdmin()
+  const type = (await one(`select type::text as t from stock_location where id = $1`, [t83.office]))
+    .t
+  const told = (
+    await one(
+      `select count(*)::int as n from notification where kind = 'store_assigned' and recipient_user = $1`,
+      [d2],
+    )
+  ).n
+  if (
+    pharmRoom !== '42501' ||
+    assignByPharm !== '42501' ||
+    newMain !== '22023' ||
+    direct !== '42501' ||
+    type !== 'room' ||
+    mine2.length !== 1 ||
+    mine2[0].id !== t83.office ||
+    !mine2[0].personal ||
+    !mineNurse.some((s) => s.id === t83.ward && s.departments.includes('Maternity 83')) ||
+    mine3.length !== 0 ||
+    told < 1
+  )
+    throw new Error(
+      json83({ pharmRoom, assignByPharm, newMain, direct, type, mine2, mineNurse, mine3, told }),
+    )
+  return 'room store (type room) held by a doctor, a ward by its department; others refused; no new main store'
+})
+await step(
+  '0083 B: a delivery note into the pharmacy, boxes or units, a new medicine from the RHIA list',
+  async () => {
+    await asAdmin()
+    t83.ref = (
+      await one(
+        `select r.code, r.generic from medicine_reference r
+          where not exists (select 1 from item i where i.code = r.code) order by r.code limit 1`,
+      )
+    ).code
+    await as(staff.pharmacist)
+    const lines = [
+      {
+        itemId: t83.cef,
+        unit: 'box',
+        quantity: 3,
+        packSize: 10,
+        cost: 2000,
+        batchNo: 'CEF-83A',
+        expiry: '2030-01-31',
+      },
+      {
+        refCode: t83.ref,
+        unit: 'unit',
+        quantity: 40,
+        cost: 50,
+        sellingPrice: 120,
+        batchNo: 'REF-83',
+        expiry: '2029-12-31',
+      },
+    ]
+    const d = (
+      await one(`select receive_delivery('Supplier 83', 'DN-8301', $1::jsonb) as j`, [
+        json83(lines),
+      ])
+    ).j
+    const twice = await codeAs(
+      staff.pharmacist,
+      `select receive_delivery('supplier 83', 'dn-8301', $1::jsonb)`,
+      [json83(lines)],
+    )
+    const noPack = await codeAs(
+      staff.pharmacist,
+      `select receive_delivery('Supplier 83', 'DN-8302', $1::jsonb)`,
+      [
+        json83([
+          {
+            itemId: t83.old,
+            unit: 'box',
+            quantity: 1,
+            cost: 10,
+            batchNo: 'X',
+            expiry: '2030-01-01',
+          },
+        ]),
+      ],
+    )
+    const byNurse = await codeAs(
+      staff.nurse,
+      `select receive_delivery('Supplier 83', 'DN-8303', $1::jsonb)`,
+      [json83(lines)],
+    )
+    await as(staff.pharmacist)
+    const detail = (await one(`select delivery_detail($1) as j`, [d.id])).j
+    const list = (await one(`select deliveries() as j`)).j
+    await asAdmin()
+    const newItem = await one(
+      `select i.id, i.code, (select pf.price from price_for(null, i.id, null) pf) as price from item i where i.code = $1`,
+      [t83.ref],
+    )
+    const pack = (await one(`select pack_size from item where id = $1`, [t83.cef])).pack_size
+    t83.refItem = newItem.id
+    const inPharm = await usable83(t83.cef, t83.main)
+    if (
+      !/^GRN-\d{6}-\d{3}$/.test(d.number) ||
+      d.units !== 70 ||
+      Number(d.totalCost) !== 8000 ||
+      twice !== '23505' ||
+      noPack !== '22023' ||
+      byNurse !== '42501' ||
+      !newItem ||
+      Number(newItem.price) !== 120 ||
+      pack !== 10 ||
+      inPharm !== 30 ||
+      detail.lines.length !== 2 ||
+      Number(detail.lines.find((x) => x.itemId === t83.cef).unitCost) !== 200 ||
+      !list.some((x) => x.id === d.id && x.reference === 'DN-8301')
+    )
+      throw new Error(json83({ d, twice, noPack, byNurse, newItem, pack, inPharm, detail }))
+    return `${d.number}: 3 boxes × 10 + 40 units, RWF 8,000; ${newItem.code} added at RWF 120; the same note twice refused`
+  },
+)
+await step(
+  '0083 BATCH-1: a batch keeps its expiry; each delivery keeps its cost; past dates and closed stores refused',
+  async () => {
+    await as(staff.pharmacist)
+    const otherExpiry = await codeAs(
+      staff.pharmacist,
+      `select receive_stock($1, $2, 10, 250, 'CEF-83A', '2031-01-31', 'Supplier 83')`,
+      [t83.cef, t83.main],
+    )
+    await as(staff.pharmacist)
+    await db.query(
+      `select receive_stock($1, $2, 10, 250, 'CEF-83A', '2030-01-31', 'Supplier 83')`,
+      [t83.cef, t83.main],
+    )
+    const past = await codeAs(
+      staff.pharmacist,
+      `select receive_stock($1, $2, 1, 10, 'P-83', current_date - 1)`,
+      [t83.cef, t83.main],
+    )
+    await as(staff.manager)
+    t83.ph3 = (await one(`select save_location(null, 'Pharmacy 3 (83)', 'pharmacy') as id`)).id
+    await db.query(`select set_location_active($1, false)`, [t83.ph3])
+    const closed = await codeAs(
+      staff.pharmacist,
+      `select receive_stock($1, $2, 1, 10, 'C-83', '2030-01-01')`,
+      [t83.cef, t83.ph3],
+    )
+    const intoRoom = await codeAs(
+      staff.manager,
+      `select receive_stock($1, $2, 1, 10, 'R-83', '2030-01-01')`,
+      [t83.cef, t83.office],
+    )
+    const mainStore = (
+      await one(
+        `select id from stock_location where type = 'main_store' and deleted_at is null limit 1`,
+      )
+    ).id
+    t83.mainStore = mainStore
+    const intoMain = await codeAs(
+      staff.manager,
+      `select receive_stock($1, $2, 1, 10, 'M-83', '2030-01-01')`,
+      [t83.cef, mainStore],
+    )
+    await asAdmin()
+    const layers = (
+      await db.query(
+        `select b.unit_cost, sum(s.quantity)::int as q from batch b
+           join stock_on_hand s on s.batch_id = b.id and s.location_id = $2
+          where b.item_id = $1 and b.batch_no = 'CEF-83A' group by b.unit_cost order by b.unit_cost`,
+        [t83.cef, t83.main],
+      )
+    ).rows.map((r) => [Number(r.unit_cost), r.q])
+    // an old expired batch on the pharmacy shelf (never sent, sold or handed over)
+    const oldBatch = (
+      await one(
+        `insert into batch (item_id, batch_no, expiry, unit_cost) values ($1, 'CEF-83OLD', current_date - 5, 200) returning id`,
+        [t83.cef],
+      )
+    ).id
+    await db.query(
+      `insert into stock_movement (item_id, batch_id, to_location_id, quantity, type, reason, moved_at)
+       values ($1, $2, $3, 5, 'receipt', 'old delivery', now() - interval '400 days')`,
+      [t83.cef, oldBatch, t83.main],
+    )
+    const oldOnly = (
+      await one(
+        `insert into batch (item_id, batch_no, expiry, unit_cost) values ($1, 'OLD-83', current_date - 5, 50) returning id`,
+        [t83.old],
+      )
+    ).id
+    await db.query(
+      `insert into stock_movement (item_id, batch_id, to_location_id, quantity, type, reason)
+       values ($1, $2, $3, 5, 'receipt', 'old delivery')`,
+      [t83.old, oldOnly, t83.main],
+    )
+    if (
+      otherExpiry !== '22023' ||
+      past !== '22023' ||
+      closed !== '22023' ||
+      intoRoom !== '22023' ||
+      intoMain !== '22023' ||
+      json83(layers) !==
+        json83([
+          [200, 30],
+          [250, 10],
+        ])
+    )
+      throw new Error(json83({ otherExpiry, past, closed, intoRoom, intoMain, layers }))
+    return 'other expiry refused; 30 at 200 kept beside 10 at 250; past expiry, closed store, room and main store refused'
+  },
+)
+await step(
+  '0083 D: a refill asked, a transfer note sent (FEFO, never expired), on the way, received with a loss',
+  async () => {
+    await as(staff.pharmacist)
+    await db.query(`select set_reorder_level($1, 25, 60)`, [t83.cef])
+    const notHolder = await codeAs(d3, `select request_refill($1, $2::jsonb)`, [
+      t83.office,
+      json83([{ itemId: t83.cef, quantity: 10 }]),
+    ])
+    await as(d2)
+    const rq = (
+      await one(`select request_refill($1, $2::jsonb, 'for the week') as j`, [
+        t83.office,
+        json83([{ itemId: t83.cef, quantity: 10 }]),
+      ])
+    ).j
+    await as(staff.pharmacist)
+    const open = (await one(`select refill_requests('open') as j`)).j
+    const tooMuch = await codeAs(staff.pharmacist, `select send_to_room($1, $2::jsonb, $3)`, [
+      t83.office,
+      json83([{ itemId: t83.cef, quantity: 41 }]),
+      rq.id,
+    ])
+    await as(staff.pharmacist)
+    t83.note = (
+      await one(`select send_to_room($1, $2::jsonb, $3) as j`, [
+        t83.office,
+        json83([{ itemId: t83.cef, quantity: 30 }]),
+        rq.id,
+      ])
+    ).j
+    const ov = (await one(`select stock_overview() as j`)).j
+    const it = ov.items.find((x) => x.id === t83.cef)
+    const detail = (await one(`select transfer_note($1) as j`, [t83.note.id])).j
+    await asAdmin()
+    const pharmAfter = await usable83(t83.cef, t83.main)
+    const inStoreBefore = await usable83(t83.cef, t83.office)
+    const reqAfter = await one(`select status, transfer_id from store_request where id = $1`, [
+      rq.id,
+    ])
+    const lowTold = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'stock_low' and params ->> 'itemId' = $1`,
+        [t83.cef],
+      )
+    ).n
+    const asked = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'refill_requested' and params ->> 'number' = $1`,
+        [rq.number],
+      )
+    ).n
+    // the receiver confirms: the first line 2 short (broken: a loss), the rest as sent
+    const byOther = await codeAs(d3, `select confirm_receipt($1)`, [t83.note.id])
+    const first = detail.items[0]
+    await as(d2)
+    const got = (
+      await one(`select confirm_receipt($1, $2::jsonb, 'checked') as j`, [
+        t83.note.id,
+        json83([
+          {
+            lineId: first.lineId,
+            received: first.quantity - 2,
+            reason: 'two vials broken',
+            action: 'loss',
+          },
+        ]),
+      ])
+    ).j
+    const again = await codeAs(d2, `select confirm_receipt($1)`, [t83.note.id])
+    await asAdmin()
+    const inStore = await usable83(t83.cef, t83.office)
+    const diffTold = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'transfer_difference' and params ->> 'number' = $1`,
+        [t83.note.number],
+      )
+    ).n
+    if (
+      notHolder !== '42501' ||
+      !open.some((r) => r.id === rq.id && r.lines[0].quantity === 10) ||
+      tooMuch !== '23514' ||
+      !/^T-\d{6}-\d{3}$/.test(t83.note.number) ||
+      t83.note.units !== 30 ||
+      detail.items.some((x) => x.batchNo === 'CEF-83OLD') ||
+      it.inTransit !== 30 ||
+      pharmAfter !== 10 ||
+      inStoreBefore !== 0 ||
+      reqAfter.status !== 'fulfilled' ||
+      reqAfter.transfer_id !== t83.note.id ||
+      lowTold !== 1 ||
+      asked !== 1 ||
+      byOther !== '42501' ||
+      got.received !== 28 ||
+      got.lost !== 2 ||
+      again !== '23505' ||
+      inStore !== 28 ||
+      diffTold !== 2
+    )
+      throw new Error(
+        json83({
+          notHolder,
+          tooMuch,
+          note: t83.note,
+          inTransit: it.inTransit,
+          pharmAfter,
+          inStoreBefore,
+          reqAfter,
+          lowTold,
+          asked,
+          byOther,
+          got,
+          again,
+          inStore,
+          diffTold,
+          items: detail.items,
+        }),
+      )
+    return `${rq.number} → ${t83.note.number}: 30 on the way (pharmacy 40 → 10, told once it is low); 28 received, 2 lost; manager and pharmacy told`
+  },
+)
+await step(
+  '0083 D: a note cancelled before receipt comes back; a return note is confirmed by the pharmacy',
+  async () => {
+    await as(staff.pharmacist)
+    const n2 = (
+      await one(`select send_to_room($1, $2::jsonb) as j`, [
+        t83.office,
+        json83([{ itemId: t83.cef, quantity: 5 }]),
+      ])
+    ).j
+    await asAdmin()
+    const during = await usable83(t83.cef, t83.main)
+    const byHolder = await codeAs(d2, `select cancel_transfer($1, 'not mine')`, [n2.id])
+    await as(staff.pharmacist)
+    await db.query(`select cancel_transfer($1, 'wrong store')`, [n2.id])
+    const receiveCancelled = await codeAs(d2, `select confirm_receipt($1)`, [n2.id])
+    await asAdmin()
+    const after = await usable83(t83.cef, t83.main)
+    await as(d2)
+    const rt = (
+      await one(`select return_to_pharmacy($1, $2::jsonb, 'not needed') as j`, [
+        t83.office,
+        json83([{ itemId: t83.cef, quantity: 3 }]),
+      ])
+    ).j
+    const notesD2 = (await one(`select transfer_notes() as j`)).j
+    const holderConfirms = await codeAs(d2, `select confirm_receipt($1)`, [rt.id])
+    await as(staff.pharmacist)
+    await db.query(`select confirm_receipt($1)`, [rt.id])
+    await as(d3)
+    const notesD3 = (await one(`select transfer_notes() as j`)).j
+    await asAdmin()
+    const pharm = await usable83(t83.cef, t83.main)
+    const store = await usable83(t83.cef, t83.office)
+    if (
+      during !== 5 ||
+      byHolder !== '42501' ||
+      receiveCancelled !== '23505' ||
+      after !== 10 ||
+      !/^RT-\d{6}-\d{3}$/.test(rt.number) ||
+      holderConfirms !== '42501' ||
+      !notesD2.some((n) => n.id === rt.id && n.canCancel && !n.canReceive) ||
+      notesD2.some((n) => n.fromId !== t83.office && n.toId !== t83.office) ||
+      notesD2.some((n) => n.value !== null) ||
+      notesD3.length !== 0 ||
+      pharm !== 13 ||
+      store !== 25
+    )
+      throw new Error(
+        json83({
+          during,
+          byHolder,
+          receiveCancelled,
+          after,
+          rt,
+          holderConfirms,
+          notesD2: notesD2.length,
+          notesD3: notesD3.length,
+          pharm,
+          store,
+        }),
+      )
+    return `cancelled: the 5 came back; ${rt.number}: 3 back to the pharmacy once it confirmed`
+  },
+)
+await step(
+  '0083 E: given here only from a store the doctor holds; others prescribe for the pharmacy',
+  async () => {
+    const p = await visitAt('Room 83')
+    t83.enc = p.enc
+    await as(d2)
+    await db.query(`select take_patient($1)`, [p.queue])
+    const r = (
+      await one(
+        `select prescribe($1, $2, 2, null, null, null, null, null, 'room', 'consultation') as j`,
+        [p.enc, t83.cef],
+      )
+    ).j
+    const short = await codeAs(
+      d2,
+      `select prescribe($1, $2, 100, null, null, null, null, null, 'room', 'consultation')`,
+      [p.enc, t83.cef],
+    )
+    const otherStore = await codeAs(
+      d2,
+      `select prescribe($1, $2, 1, null, null, null, null, null, 'room', 'consultation', $3)`,
+      [p.enc, t83.cef, t82.room],
+    )
+    // d3 holds nothing: given here is refused (hint no_room_store), for the pharmacy is fine
+    const p3 = await visitAt('Room 83 bis')
+    await as(d3)
+    await db.query(`select take_patient($1)`, [p3.queue])
+    let noStore = null
+    try {
+      await db.query(
+        `select prescribe($1, $2, 1, null, null, null, null, null, 'room', 'consultation')`,
+        [p3.enc, t83.cef],
+      )
+    } catch (e) {
+      noStore = `${e.code}/${e.hint}`
+    }
+    await as(d3)
+    const forPharmacy = (
+      await one(`select prescribe($1, $2, 1, null, null, null, null, null, 'pharmacy') as j`, [
+        p3.enc,
+        t83.cef,
+      ])
+    ).j
+    await asAdmin()
+    const charge = await one(
+      `select count(*)::int as n, coalesce(sum(l.patient_share + l.insurer_share), 0) as total from invoice_line l
+        where l.source_type = 'medication_request' and l.source_id = $1 and l.deleted_at is null`,
+      [r.id],
+    )
+    const store = await usable83(t83.cef, t83.office)
+    if (
+      r.locationId !== t83.office ||
+      !r.stockTaken ||
+      !r.charged ||
+      short !== 'MS003' ||
+      otherStore !== '42501' ||
+      noStore !== '42501/no_room_store' ||
+      forPharmacy.supply !== 'pharmacy' ||
+      charge.n !== 1 ||
+      Number(charge.total) !== 1000 ||
+      store !== 23
+    )
+      throw new Error(json83({ r, short, otherStore, noStore, forPharmacy, charge, store }))
+    return 'from Dr Office 83 (2 × RWF 500 on the bill); short MS003; another store or no store refused'
+  },
+)
+await step(
+  '0083 RIGHTS-2: holders count and write off their store; the pharmacy its own; rooms by note only',
+  async () => {
+    const nursePharm = await codeAs(staff.nurse, `select use_stock($1, $2, 1, null, 'damaged')`, [
+      t83.cef,
+      t83.main,
+    ])
+    const noReason = await codeAs(d2, `select use_stock($1, $2, 1, null, '')`, [
+      t83.cef,
+      t83.office,
+    ])
+    await as(d2)
+    await db.query(`select use_stock($1, $2, 1, null, 'vial broken')`, [t83.cef, t83.office])
+    const diff = (
+      await one(`select adjust_stock($1, $2, 21, 'monthly count') as d`, [t83.cef, t83.office])
+    ).d
+    const pharmCount = await codeAs(staff.pharmacist, `select adjust_stock($1, $2, 30, 'count')`, [
+      t83.cef,
+      t83.office,
+    ])
+    const direct = await codeAs(staff.pharmacist, `select transfer_stock($1, $2, $3, 1)`, [
+      t83.cef,
+      t83.main,
+      t83.office,
+    ])
+    // an old main store: its stock goes to the pharmacy, then it closes
+    await asAdmin()
+    const layer = (
+      await one(
+        `select id from batch where item_id = $1 and batch_no = 'CEF-83A' and unit_cost = 200`,
+        [t83.cef],
+      )
+    ).id
+    await db.query(
+      `insert into stock_movement (item_id, batch_id, to_location_id, quantity, type, reason, moved_at)
+       values ($1, $2, $3, 4, 'receipt', 'old main store', now() - interval '300 days')`,
+      [t83.cef, layer, t83.mainStore],
+    )
+    await as(staff.pharmacist)
+    await db.query(`select transfer_stock($1, $2, $3, 4)`, [t83.cef, t83.mainStore, t83.main])
+    await db.query(`select set_location_active($1, false)`, [t83.mainStore])
+    const pharmCloseRoom = await codeAs(staff.pharmacist, `select set_location_active($1, false)`, [
+      t83.office,
+    ])
+    const closeFull = await codeAs(staff.manager, `select set_location_active($1, false)`, [
+      t83.office,
+    ])
+    await asAdmin()
+    const store = await usable83(t83.cef, t83.office)
+    const pharm = await usable83(t83.cef, t83.main)
+    if (
+      nursePharm !== '42501' ||
+      noReason !== '22023' ||
+      Number(diff) !== -1 ||
+      pharmCount !== '42501' ||
+      direct !== '22023' ||
+      pharmCloseRoom !== '42501' ||
+      closeFull !== '23514' ||
+      store !== 21 ||
+      pharm !== 17
+    )
+      throw new Error(
+        json83({
+          nursePharm,
+          noReason,
+          diff,
+          pharmCount,
+          direct,
+          pharmCloseRoom,
+          closeFull,
+          store,
+          pharm,
+        }),
+      )
+    return 'write-off with a reason, count by the holder; pharmacy → room only by note; old main store emptied and closed'
+  },
+)
+await step(
+  '0083 F: holders see their stores only; the pharmacy and the manager see all (closed ones too)',
+  async () => {
+    await as(d2)
+    const ov2 = (await one(`select stock_overview() as j`)).j
+    const moves2 = (await one(`select stock_movements(current_date - 1, current_date + 1) as j`)).j
+    const noStore = await codeAs(d3, `select stock_overview()`)
+    await as(staff.pharmacist)
+    const ovP = (await one(`select stock_overview() as j`)).j
+    const storeP = (await one(`select store_stock($1) as j`, [t83.office])).j
+    const otherStore = await codeAs(d2, `select store_stock($1)`, [t83.ward])
+    await asAdmin()
+    const it2 = ov2.items.find((x) => x.id === t83.cef)
+    const office = ovP.locations.find((l) => l.id === t83.office)
+    const closed = ovP.locations.find((l) => l.id === t83.ph3)
+    if (
+      ov2.locations.length !== 1 ||
+      ov2.locations[0].id !== t83.office ||
+      it2.byLocation[t83.office] !== 21 ||
+      it2.onHand !== 21 ||
+      it2.costValue !== null ||
+      !moves2.length ||
+      moves2.some((m) => m.fromId !== t83.office && m.toId !== t83.office) ||
+      noStore !== '42501' ||
+      !office?.holders.some((h) => h.profileId === d2) ||
+      !office.isRoom ||
+      closed?.active !== false ||
+      !ovP.locations.some((l) => l.isMain && l.id === t83.main) ||
+      ovP.locations.some((l) => l.type === 'transit') ||
+      storeP.items.find((x) => x.itemId === t83.cef)?.usable !== 21 ||
+      storeP.value === null ||
+      otherStore !== '42501'
+    )
+      throw new Error(json83({ ov2: ov2.locations, it2, noStore, office, closed, otherStore }))
+    return `Dr Office 83 only for its doctor (${moves2.length} movements); all ${ovP.locations.length} stores for the pharmacy, closed ones included`
+  },
+)
+await step(
+  '0083 CAT-1 / ALERT-1 / REORDER: no delete with stock; alerts on unexpired stock; what to order',
+  async () => {
+    const del = await codeAs(staff.manager, `select delete_item($1)`, [t83.cef])
+    await as(d2)
+    await db.query(`select set_store_min($1, $2, 30)`, [t83.office, t83.cef])
+    await as(staff.pharmacist)
+    const alerts = (await one(`select stock_alerts() as j`)).j
+    const reorder = (await one(`select reorder_suggestions() as j`)).j
+    await as(d2)
+    const alerts2 = (await one(`select stock_alerts() as j`)).j
+    const reorderD2 = (await one(`select reorder_suggestions() as j`)).j
+    await asAdmin()
+    const roomTold = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'room_stock_low' and recipient_user = $1`,
+        [d2],
+      )
+    ).n
+    const lowTold = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'stock_low' and params ->> 'itemId' = $1`,
+        [t83.cef],
+      )
+    ).n
+    const r = reorder.find((x) => x.itemId === t83.cef)
+    const expired = alerts.expired.filter((x) => x.itemId === t83.cef)
+    const expiring = alerts.expiring.filter((x) => x.batchNo === 'CEF-83OLD')
+    if (
+      del !== '23514' ||
+      !alerts.low.some((x) => x.itemId === t83.cef && x.onHand === 17) ||
+      !alerts.roomLow.some((x) => x.storeId === t83.office && x.onHand === 21 && x.min === 30) ||
+      !expired.some((x) => x.batchNo === 'CEF-83OLD' && x.quantity === 5) ||
+      expiring.length ||
+      alerts2.low.length ||
+      alerts2.expired.some((x) => x.storeId !== t83.office) ||
+      roomTold !== 1 ||
+      lowTold !== 1 ||
+      !r ||
+      r.suggested !== 43 ||
+      r.lastSupplier !== 'Supplier 83' ||
+      Number(r.lastCost) !== 250 ||
+      r.inRooms < 21 ||
+      reorderD2.length
+    )
+      throw new Error(json83({ del, alerts, r, roomTold, lowTold, reorderD2 }))
+    return `delete refused (stock left); low at 17 ≤ 25 told once; room below its 30; order ${r.suggested} up to 60 from ${r.lastSupplier} at ${r.lastCost}`
+  },
+)
+await step(
+  '0083 COUNTER SALE: a walk-in pays first at the cashier, then the pharmacy hands over',
+  async () => {
+    await as(staff.pharmacist)
+    const s = (
+      await one(`select create_counter_sale($1::jsonb, 'Walk-in 83', '0788000083') as j`, [
+        json83([{ itemId: t83.cef, quantity: 2 }]),
+      ])
+    ).j
+    const early = await codeAs(staff.pharmacist, `select hand_over_counter_sale($1)`, [s.id])
+    const expiredOnly = await codeAs(staff.pharmacist, `select create_counter_sale($1::jsonb)`, [
+      json83([{ itemId: t83.old, quantity: 1 }]),
+    ])
+    const noRef = await codeAs(staff.cashier, `select take_counter_payment($1, 'momo')`, [s.id])
+    await as(staff.cashier)
+    const paid = (await one(`select take_counter_payment($1, 'cash') as j`, [s.id])).j
+    const day = (await one(`select cashier_summary() as j`)).j
+    const twice = await codeAs(staff.cashier, `select take_counter_payment($1, 'cash')`, [s.id])
+    await as(staff.pharmacist)
+    const h = (await one(`select hand_over_counter_sale($1) as j`, [s.id])).j
+    const sales = (await one(`select stock_sales(current_date, current_date) as j`)).j
+    const summary = (await one(`select pharmacy_summary() as j`)).j
+    const voidAfter = await codeAs(staff.cashier, `select void_payment($1, 'wrong buyer')`, [
+      paid.paymentId,
+    ])
+    // another one cancelled while unpaid
+    await as(staff.pharmacist)
+    const s2 = (
+      await one(`select create_counter_sale($1::jsonb) as j`, [
+        json83([{ itemId: t83.cef, quantity: 1 }]),
+      ])
+    ).j
+    await db.query(`select cancel_counter_sale($1, 'buyer left')`, [s2.id])
+    const payCancelled = await codeAs(staff.cashier, `select take_counter_payment($1, 'cash')`, [
+      s2.id,
+    ])
+    await as(staff.cashier)
+    const list = (await one(`select counter_sales() as j`)).j
+    await asAdmin()
+    const pharm = await usable83(t83.cef, t83.main)
+    const told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'counter_sale_to_pay' and params ->> 'number' = $1`,
+        [s.number],
+      )
+    ).n
+    const row = day.payments.find((x) => x.counterSale === s.number)
+    if (
+      !/^S-\d{6}-\d{3}$/.test(s.number) ||
+      Number(s.total) !== 1000 ||
+      early !== '22023' ||
+      expiredOnly !== '23514' ||
+      noRef !== '22023' ||
+      !/^RCT-/.test(paid.receipt) ||
+      twice !== '23505' ||
+      !row ||
+      row.patient !== 'Walk-in 83' ||
+      day.counterSales.count < 1 ||
+      Number(day.myExpected.cash) < 1000 ||
+      h.status !== 'handed_over' ||
+      h.lines[0].batches[0].batchNo === 'CEF-83OLD' ||
+      pharm !== 15 ||
+      Number(sales.counterRevenue) < 1000 ||
+      summary.counterSales < 1 ||
+      voidAfter !== '23514' ||
+      payCancelled !== 'P0002' ||
+      !list.some((x) => x.id === s2.id && x.status === 'cancelled') ||
+      told !== 1
+    )
+      throw new Error(
+        json83({
+          s,
+          early,
+          expiredOnly,
+          noRef,
+          paid,
+          twice,
+          row,
+          h,
+          pharm,
+          voidAfter,
+          payCancelled,
+        }),
+      )
+    return `${s.number}: paid first (${paid.receipt}, in the cash count), then handed over from unexpired stock; unpaid one cancelled`
+  },
+)
+await step(
+  '0083: the room store report; the store emptied back to the pharmacy, closed, reopened',
+  async () => {
+    await as(d2)
+    const rep = (
+      await one(`select room_store_summary($1, current_date - 1, current_date + 1) as j`, [
+        t83.office,
+      ])
+    ).j
+    const notHolder = await codeAs(d3, `select room_store_summary($1)`, [t83.office])
+    await as(staff.pharmacist)
+    const repP = (await one(`select room_store_summary($1) as j`, [t83.office])).j
+    await as(staff.manager)
+    const back = (await one(`select return_to_pharmacy($1) as j`, [t83.office])).j
+    const whileOnTheWay = await codeAs(staff.manager, `select set_location_active($1, false)`, [
+      t83.office,
+    ])
+    await as(staff.pharmacist)
+    await db.query(`select confirm_receipt($1)`, [back.id])
+    await as(staff.manager)
+    await db.query(`select set_location_active($1, false)`, [t83.office])
+    await as(d2)
+    const mineClosed = (await one(`select my_stores() as j`)).j
+    await as(staff.manager)
+    await db.query(`select set_location_active($1, true)`, [t83.office])
+    await as(d2)
+    const mineOpen = (await one(`select my_stores() as j`)).j
+    await asAdmin()
+    const pharm = await usable83(t83.cef, t83.main)
+    if (
+      rep.given.units !== 2 ||
+      rep.given.lines !== 1 ||
+      Number(rep.given.charged) !== 1000 ||
+      rep.received.units !== 28 ||
+      rep.returned.units !== 3 ||
+      rep.losses.writtenOff !== 1 ||
+      rep.losses.countDown !== 1 ||
+      rep.stock.value !== null ||
+      repP.stock.value === null ||
+      notHolder !== '42501' ||
+      back.units !== 21 ||
+      whileOnTheWay !== '23514' ||
+      pharm !== 36 ||
+      mineClosed.length !== 0 ||
+      mineOpen.length !== 1
+    )
+      throw new Error(json83({ rep, notHolder, back, whileOnTheWay, pharm, mineClosed, mineOpen }))
+    return `given 2 (RWF 1,000 billed), received 28, returned 3, 1 written off, count -1; ${back.number} took the 21 left back; closed and reopened`
+  },
+)
+await step('0083: the lab keeps its own store and receives its reagents there', async () => {
+  await as(staff.manager)
+  const lab = (
+    await one(
+      `select id from stock_location where type = 'lab' and active and deleted_at is null limit 1`,
+    )
+  ).id
+  await db.query(`select assign_store_holder($1, $2)`, [lab, staff.lab_tech])
+  const reagent = (await one(`select upsert_item(null, 'Reagent 83', 0) as id`)).id
+  await as(staff.lab_tech)
+  await db.query(`select receive_stock($1, $2, 5, 10, 'LAB-83', '2030-01-01')`, [reagent, lab])
+  const mine = (await one(`select my_stores() as j`)).j
+  const intoPharm = await codeAs(
+    staff.lab_tech,
+    `select receive_stock($1, $2, 5, 10, 'LAB-83', '2030-01-01')`,
+    [reagent, t83.main],
+  )
+  await asAdmin()
+  const inLab = await usable83(reagent, lab)
+  if (inLab !== 5 || intoPharm !== '42501' || !mine.some((s) => s.id === lab))
+    throw new Error(json83({ inLab, intoPharm, mine }))
+  return 'lab technician receives into the lab store; not into the pharmacy'
+})
+
+// ---------------------------------------------------------------- review fixes (0082 / 0083)
+/** code/hint of a statement run as someone ('ok' when it succeeds). */
+const hintAs = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    await db.query(sql, params)
+    return 'ok'
+  } catch (e) {
+    return `${e.code}/${e.hint ?? ''}`
+  } finally {
+    await asAdmin()
+  }
+}
+await step(
+  'review: dispense_fefo, bills, payments and medicines are not written directly',
+  async () => {
+    await asAdmin()
+    const line = await one(
+      `select l.id from invoice_line l join invoice i on i.id = l.invoice_id
+        where i.status = 'draft' and l.deleted_at is null and i.deleted_at is null limit 1`,
+    )
+    const pay = await one(
+      `select id from payment where counter_sale_id is not null and deleted_at is null limit 1`,
+    )
+    const fefo = await codeAs(staff.pharmacist, `select dispense_fefo($1, $2, 1, $3)`, [
+      t83.enc,
+      t83.cef,
+      t83.main,
+    ])
+    const lineFree = await codeAs(d2, `update invoice_line set patient_share = 0 where id = $1`, [
+      line.id,
+    ])
+    const payGone = await codeAs(
+      staff.cashier,
+      `update payment set deleted_at = now() where id = $1`,
+      [pay.id],
+    )
+    const payNew = await codeAs(
+      staff.cashier,
+      `insert into payment (counter_sale_id, method, amount) select counter_sale_id, 'cash', 1 from payment where id = $1`,
+      [pay.id],
+    )
+    const itemGone = await codeAs(
+      staff.pharmacist,
+      `update item set deleted_at = now(), active = false where id = $1`,
+      [t83.cef],
+    )
+    const packDirect = await codeAs(
+      staff.pharmacist,
+      `update item set pack_size = 7 where id = $1`,
+      [t83.old],
+    )
+    await as(staff.pharmacist)
+    await db.query(`select set_pack_size($1, 20)`, [t83.old])
+    const badPack = await codeAs(staff.pharmacist, `select set_pack_size($1, 0)`, [t83.old])
+    const nursePack = await codeAs(staff.nurse, `select set_pack_size($1, 5)`, [t83.old])
+    await asAdmin()
+    const pack = (await one(`select pack_size from item where id = $1`, [t83.old])).pack_size
+    const still = await one(`select deleted_at, active from item where id = $1`, [t83.cef])
+    if (
+      fefo !== '42501' ||
+      lineFree !== '42501' ||
+      payGone !== '42501' ||
+      payNew !== '42501' ||
+      itemGone !== '42501' ||
+      packDirect !== '42501' ||
+      badPack !== '22023' ||
+      nursePack !== '42501' ||
+      pack !== 20 ||
+      still.deleted_at !== null ||
+      !still.active
+    )
+      throw new Error(
+        json83({ fefo, lineFree, payGone, payNew, itemGone, packDirect, badPack, nursePack, pack }),
+      )
+    return 'dispense_fefo internal; bill line, payment and medicine writes refused; box size through set_pack_size'
+  },
+)
+await step(
+  'review: the tables show what the functions show (stores, costs, buyers, the pharmacy list)',
+  async () => {
+    const count = async (who, sql, params = []) => {
+      await as(who)
+      try {
+        return (await one(sql, params)).n
+      } finally {
+        await asAdmin()
+      }
+    }
+    const notWard = `select count(*)::int as n from stock_movement
+      where not (from_location_id is not distinct from $1 or to_location_id is not distinct from $1)`
+    const nurseOther = await count(staff.nurse, notWard, [t83.ward])
+    const nurseBatch = await count(staff.nurse, `select count(*)::int as n from batch`)
+    const nurseGrn = await count(staff.nurse, `select count(*)::int as n from goods_receipt_line`)
+    const nurseSales = await count(staff.nurse, `select count(*)::int as n from counter_sale`)
+    const nurseMain = await count(
+      staff.nurse,
+      `select count(*)::int as n from stock_on_hand where location_id = $1`,
+      [t83.main],
+    )
+    const labNotes = await count(staff.lab_tech, `select count(*)::int as n from stock_transfer`)
+    const d2Notes = await count(d2, `select count(*)::int as n from stock_transfer_line`)
+    const cashierSales = await count(staff.cashier, `select count(*)::int as n from counter_sale`)
+    const pharmBatch = await count(staff.pharmacist, `select count(*)::int as n from batch`)
+    const pharmMain = await count(
+      staff.pharmacist,
+      `select count(*)::int as n from stock_on_hand where location_id = $1`,
+      [t83.main],
+    )
+    await as(staff.nurse)
+    const nurseQueue = (await one(`select pharmacy_queue() as j`)).j
+    await as(staff.lab_tech)
+    const labQueue = (await one(`select pharmacy_queue() as j`)).j
+    await asAdmin()
+    if (
+      nurseOther !== 0 ||
+      nurseBatch !== 0 ||
+      nurseGrn !== 0 ||
+      nurseSales !== 0 ||
+      nurseMain !== 0 ||
+      labNotes !== 0 ||
+      d2Notes < 1 ||
+      cashierSales < 1 ||
+      pharmBatch < 1 ||
+      pharmMain < 1 ||
+      nurseQueue.lines.length ||
+      labQueue.lines.length
+    )
+      throw new Error(
+        json83({
+          nurseOther,
+          nurseBatch,
+          nurseGrn,
+          nurseSales,
+          nurseMain,
+          labNotes,
+          d2Notes,
+          cashierSales,
+          pharmBatch,
+          pharmMain,
+          nurseQueue,
+          labQueue,
+        }),
+      )
+    return `a nurse sees only her ward (no batches, deliveries, buyers, pharmacy list); the doctor his notes; the pharmacy ${pharmBatch} batches`
+  },
+)
+await step(
+  'review: room stores are not counted up; losses are told; the sender does not confirm; a store needs a holder',
+  async () => {
+    // stock the office again with a note (the doctor confirms)
+    await as(staff.pharmacist)
+    const note = (
+      await one(`select send_to_room($1, $2::jsonb) as j`, [
+        t83.office,
+        json83([{ itemId: t83.cef, quantity: 4 }]),
+      ])
+    ).j
+    await as(d2)
+    await db.query(`select confirm_receipt($1)`, [note.id])
+    const up = await hintAs(d2, `select adjust_stock($1, $2, 9, 'found more')`, [
+      t83.cef,
+      t83.office,
+    ])
+    await asAdmin()
+    const lossBefore = (
+      await one(`select count(*)::int as n from notification where kind = 'room_stock_loss'`)
+    ).n
+    await as(d2)
+    await db.query(`select use_stock($1, $2, 1, null, 'broken vial')`, [t83.cef, t83.office])
+    await db.query(`select adjust_stock($1, $2, 2, 'counted at night')`, [t83.cef, t83.office])
+    await asAdmin()
+    const losses = (
+      await db.query(
+        `select recipient_role::text as role, recipient_stations::text[] as st, params from notification
+          where kind = 'room_stock_loss' order by created_at`,
+      )
+    ).rows.slice(lossBefore)
+    // the pharmacist also holds the office: still may not confirm the note they sent
+    await as(staff.manager)
+    await db.query(`select set_store_holders($1, $2, $3)`, [t83.office, [d2, staff.pharmacist], []])
+    await as(staff.pharmacist)
+    const note2 = (
+      await one(`select send_to_room($1, $2::jsonb) as j`, [
+        t83.office,
+        json83([{ itemId: t83.cef, quantity: 1 }]),
+      ])
+    ).j
+    const own = await hintAs(staff.pharmacist, `select confirm_receipt($1)`, [note2.id])
+    await as(d2)
+    await db.query(`select confirm_receipt($1)`, [note2.id])
+    await as(staff.manager)
+    await db.query(`select set_store_holders($1, $2, $3)`, [t83.office, [d2], []])
+    // a room store nobody holds is not sent to
+    await asAdmin()
+    const orphan = (
+      await one(
+        `insert into stock_location (name, type) values ('No holder 83', 'theatre') returning id`,
+      )
+    ).id
+    const noHolder = await hintAs(staff.pharmacist, `select send_to_room($1, $2::jsonb)`, [
+      orphan,
+      json83([{ itemId: t83.cef, quantity: 1 }]),
+    ])
+    const inOffice = await usable83(t83.cef, t83.office)
+    if (
+      up !== '22023/use_transfer_note' ||
+      losses.length !== 4 ||
+      !losses.some((x) => x.role === 'manager' && x.params.units === 1) ||
+      !losses.some(
+        (x) => (x.st ?? []).includes('pharmacy') && x.params.reason.startsWith('count'),
+      ) ||
+      own !== '42501/own_note' ||
+      noHolder !== '22023/no_holder' ||
+      inOffice !== 3
+    )
+      throw new Error(json83({ up, losses, own, noHolder, inOffice }))
+    return 'count up refused (transfer note); write-off and count down told to manager + pharmacy; own note refused; no holder refused'
+  },
+)
+await step('review: a medicine given here by mistake is put back (store and bill)', async () => {
+  const p = await visitAt('Undo 83')
+  await as(d2)
+  await db.query(`select take_patient($1)`, [p.queue])
+  const r = (
+    await one(
+      `select prescribe($1, $2, 2, null, null, null, null, null, 'room', 'consultation') as j`,
+      [p.enc, t83.cef],
+    )
+  ).j
+  await asAdmin()
+  const inStoreGiven = await usable83(t83.cef, t83.office)
+  const other = await codeAs(d3, `select undo_given_here($1, 'not mine')`, [r.id])
+  const noReason = await codeAs(d2, `select undo_given_here($1, '')`, [r.id])
+  await as(d2)
+  const u = (await one(`select undo_given_here($1, 'wrong medicine') as j`, [r.id])).j
+  const twice = await codeAs(d2, `select undo_given_here($1, 'again')`, [r.id])
+  await asAdmin()
+  const inStore = await usable83(t83.cef, t83.office)
+  const line = (
+    await one(
+      `select count(*)::int as n from invoice_line where source_type = 'medication_request'
+          and source_id = $1 and deleted_at is null`,
+      [r.id],
+    )
+  ).n
+  const m = await one(`select given_at, not_given_reason from medication_request where id = $1`, [
+    r.id,
+  ])
+  if (
+    inStoreGiven !== 1 ||
+    other !== '42501' ||
+    noReason !== '22023' ||
+    u.units !== 2 ||
+    u.mode !== 'bill' ||
+    twice !== '23505' ||
+    inStore !== 3 ||
+    line !== 0 ||
+    m.given_at !== null ||
+    m.not_given_reason !== 'returned: wrong medicine'
+  )
+    throw new Error(json83({ inStoreGiven, other, noReason, u, twice, inStore, line, m }))
+  return 'the giver puts it back the same day: 2 units back in the office, the bill line removed; others refused'
+})
+await step(
+  'review: a paid counter sale holds its stock; a cancelled payment puts it back; card counted',
+  async () => {
+    await as(staff.pharmacist)
+    const s = (
+      await one(`select create_counter_sale($1::jsonb, 'Walk-in review') as j`, [
+        json83([{ itemId: t83.cef, quantity: 1 }]),
+      ])
+    ).j
+    await asAdmin()
+    const before = await usable83(t83.cef, t83.main)
+    await as(staff.cashier)
+    const paid = (await one(`select take_counter_payment($1, 'cash') as j`, [s.id])).j
+    await asAdmin()
+    const held = await usable83(t83.cef, t83.main)
+    await as(staff.cashier)
+    await db.query(`select void_payment($1, 'wrong method')`, [paid.paymentId])
+    await asAdmin()
+    const back = await usable83(t83.cef, t83.main)
+    await as(staff.cashier)
+    const card = (await one(`select take_counter_payment($1, 'card', 'CARD-83') as j`, [s.id])).j
+    await as(staff.pharmacist)
+    const h = (await one(`select hand_over_counter_sale($1) as j`, [s.id])).j
+    await asAdmin()
+    const after = await usable83(t83.cef, t83.main)
+    // the cashier counts the day exactly as expected, card included: no difference
+    await as(staff.cashier)
+    const exp = (await one(`select close_cash_day(null, '{}'::jsonb) as j`)).j.expected
+    const counted = Object.fromEntries(
+      Object.entries(exp).map(([k, v]) => [k, String(Math.max(0, Math.round(Number(v))))]),
+    )
+    const closed = (await one(`select close_cash_day(null, $1::jsonb) as j`, [json83(counted)])).j
+    await asAdmin()
+    if (
+      held !== before - 1 ||
+      back !== before ||
+      after !== before - 1 ||
+      !card.receipt ||
+      h.lines[0].quantity !== 1 ||
+      h.lines[0].batches.length !== 1 ||
+      !('card' in exp) ||
+      Number(closed.variance) !== 0
+    )
+      throw new Error(json83({ before, held, back, after, card, h, exp, closed }))
+    return `taken at payment (${before} → ${held}), back when the payment was cancelled, handed over from what was held; card ${exp.card} counted, variance 0`
+  },
+)
 
 finish()
 

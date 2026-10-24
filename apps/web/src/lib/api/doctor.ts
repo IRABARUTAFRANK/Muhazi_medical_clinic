@@ -29,6 +29,8 @@ export interface MyOrder {
 }
 
 export type RxState = 'waiting' | 'given' | 'not_given' | 'room'
+/** With 0082 a line can also be cancelled by its prescriber (stateFull). */
+export type RxStateFull = RxState | 'cancelled'
 export interface MyPrescription {
   id: string
   encounterId: string
@@ -43,9 +45,17 @@ export interface MyPrescription {
   instructions: string | null
   supply: 'pharmacy' | 'room'
   at: string
+  /**
+   * Where it stands. A cancelled line (0082) shows here as 'not_given' with the cancel reason,
+   * so lists made for the four states keep working; `stateFull` and `cancelled` tell it apart.
+   */
   state: RxState
+  stateFull: RxStateFull
+  cancelled: boolean
   givenAt: string | null
   notGivenReason: string | null
+  cancelledAt: string | null
+  cancelReason: string | null
   visitOpen: boolean
 }
 
@@ -100,8 +110,12 @@ const sampleRx: MyPrescription[] = [
   supply: 'pharmacy' as const,
   at: ago(min as number),
   state: state as RxState,
+  stateFull: state as RxState,
+  cancelled: false,
   givenAt: state === 'given' ? ago((min as number) - 15) : null,
   notGivenReason: reason as string | null,
+  cancelledAt: null,
+  cancelReason: null,
   visitOpen: true,
 }))
 
@@ -163,8 +177,27 @@ export function useMyPrescriptions(period: DayRange) {
     refetchInterval: 30_000,
     queryFn: async (): Promise<PeriodRows<MyPrescription>> => {
       if (!supabase) return { rows: sampleRx, cut: false }
-      const got = await rowsOfPeriod<MyPrescription>('my_prescriptions', period, (r) => r.at)
-      return { ...got, rows: got.rows.map((r) => ({ ...r, quantity: Number(r.quantity) })) }
+      const got = await rowsOfPeriod<Omit<MyPrescription, 'state'> & { state: RxStateFull }>(
+        'my_prescriptions',
+        period,
+        (r) => r.at,
+      )
+      return {
+        ...got,
+        rows: got.rows.map((r) => {
+          const cancelled = r.state === 'cancelled'
+          return {
+            ...r,
+            quantity: Number(r.quantity),
+            state: (cancelled ? 'not_given' : r.state) as RxState,
+            stateFull: r.state,
+            cancelled,
+            notGivenReason: cancelled ? (r.cancelReason ?? null) : r.notGivenReason,
+            cancelledAt: r.cancelledAt ?? null,
+            cancelReason: r.cancelReason ?? null,
+          }
+        }),
+      }
     },
   })
 }

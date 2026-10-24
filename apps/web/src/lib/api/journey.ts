@@ -56,6 +56,14 @@ export interface Journey {
     at: string
     by: string | null
     dispensed: boolean
+    /** The pharmacy could not hand it over (or it came back: 'returned: …'), and who (0082). */
+    notGivenAt?: string | null
+    notGivenReason?: string | null
+    notGivenBy?: string | null
+    /** The prescriber (or the manager) cancelled it before the hand-over (0082). */
+    cancelledAt?: string | null
+    cancelReason?: string | null
+    cancelledBy?: string | null
   }[]
   tests: {
     test: string
@@ -190,6 +198,22 @@ const SAMPLE: Journey = {
       by: 'Dr. Mukamana Béatrice',
       dispensed: false,
     },
+    {
+      item: 'Ciprofloxacin 500 mg',
+      quantity: 10,
+      dose: '1 tab',
+      frequency: 'twice a day',
+      days: 5,
+      supply: 'pharmacy',
+      givenAt: null,
+      givenBy: null,
+      at: new Date(Date.now() - 1.1 * 3_600_000).toISOString(),
+      by: 'Dr. Mukamana Béatrice',
+      dispensed: false,
+      notGivenAt: new Date(Date.now() - 0.6 * 3_600_000).toISOString(),
+      notGivenReason: 'Out of stock',
+      notGivenBy: 'Kalisa Pascal',
+    },
   ],
   tests: [
     {
@@ -231,6 +255,17 @@ const SAMPLE: Journey = {
     settledBy: null,
     settledAt: null,
   },
+}
+
+/** Where a medicine of the visit stands, for the track. */
+export type JourneyMedicineState =
+  'given' | 'room' | 'notGiven' | 'returned' | 'cancelled' | 'toCollect'
+export function journeyMedicineState(m: Journey['medicines'][number]): JourneyMedicineState {
+  if (m.cancelledAt) return 'cancelled'
+  if (m.notGivenAt) return /^returned:/i.test(m.notGivenReason ?? '') ? 'returned' : 'notGiven'
+  if (m.supply === 'room') return 'room'
+  if (m.dispensed || m.givenAt) return 'given'
+  return 'toCollect'
 }
 
 export function useVisitJourney(encounterId: string | null) {

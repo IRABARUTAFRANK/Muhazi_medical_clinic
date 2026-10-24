@@ -9,13 +9,46 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { formatDate, formatRwf, formatTime } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
-import { useVisitJourney } from '@/lib/api/journey'
+import { journeyMedicineState, useVisitJourney, type Journey } from '@/lib/api/journey'
 import { cn } from '@/lib/utils'
 
 const at = (iso: string | null) => (iso ? formatTime(new Date(iso)) : '')
 const day = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
+
+type Medicine = Journey['medicines'][number]
+/**
+ * Where a medicine of the visit stands, in words: given here (from which room store, by whom),
+ * collected, not given (why, by whom), brought back, cancelled, or still to collect.
+ */
+function medicineState(m: Medicine, t: TFunction): string {
+  // the room store it came from, when the database gives it
+  const store = (m as Medicine & { givenFrom?: string | null; store?: string | null }).givenFrom
+  switch (journeyMedicineState(m)) {
+    case 'room':
+      return store
+        ? t('journey.givenInRoomFrom', { store, name: m.givenBy ?? '' })
+        : t('journey.givenInRoom', { name: m.givenBy ?? '' })
+    case 'given':
+      return t('journey.dispensed')
+    case 'notGiven':
+      return m.notGivenBy
+        ? t('journey.notGivenBy', { reason: m.notGivenReason ?? '', name: m.notGivenBy })
+        : t('journey.notGiven', { reason: m.notGivenReason ?? '' })
+    case 'returned':
+      return t('journey.returned', {
+        reason: (m.notGivenReason ?? '').replace(/^returned:\s*/i, ''),
+      })
+    case 'cancelled':
+      return m.cancelledBy
+        ? t('journey.cancelledBy', { reason: m.cancelReason ?? '', name: m.cancelledBy })
+        : t('journey.cancelled', { reason: m.cancelReason ?? '' })
+    default:
+      return t('journey.toCollect')
+  }
+}
 
 /**
  * Everything that happened in a visit, in order: each desk (with who took the patient and
@@ -145,17 +178,7 @@ export function VisitJourney({
             <Line
               key={i}
               main={`${m.item} × ${m.quantity}${m.dose ? ` · ${m.dose}` : ''}${m.frequency ? ` · ${m.frequency}` : ''}${m.days ? ` · ${t('history.days', { count: m.days })}` : ''}`}
-              meta={[
-                m.supply === 'room'
-                  ? t('journey.givenInRoom', { name: m.givenBy ?? '' })
-                  : m.dispensed
-                    ? t('journey.dispensed')
-                    : t('journey.toCollect'),
-                at(m.at),
-                m.by,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+              meta={[medicineState(m, t), at(m.at), m.by].filter(Boolean).join(' · ')}
             />
           ))}
         </Block>

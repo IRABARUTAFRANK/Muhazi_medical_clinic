@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Triage } from '@mmc/shared'
+import { apiError, isMissingFunction, sampleRefusal } from './errors'
+import { isRoomStore, sampleIsManager, sampleStock } from './stock'
 import { supabase } from '@/lib/supabase'
 import type { Sex, Station } from '@/lib/api/visits'
 
@@ -427,6 +429,41 @@ export interface Prescription {
   /** The pharmacy could not hand it over, and why (migration 0056). */
   notGivenAt?: string | null
   notGivenReason?: string | null
+  /** Who wrote it: the prescriber (or the manager) may cancel it while it waits (0082). */
+  prescriberId?: string | null
+  /** Still waiting at the pharmacy (not handed over, not given, not cancelled). */
+  pending?: boolean
+  cancelledAt?: string | null
+  cancelReason?: string | null
+  cancelledBy?: string | null
+}
+
+/** A warning when prescribing (never a refusal): the medicine's rule and the prescriber. */
+export interface RxWarning {
+  kind: 'prescribingRule' | 'hospitalOnly' | 'needsNote'
+  rule: string | null
+  specialty?: string | null
+}
+
+/** What prescribe answers: for 'room' (given here), whether it was charged and taken from a store. */
+export interface PrescribeResult {
+  id: string | null
+  supply: 'pharmacy' | 'room'
+  charged: boolean
+  stockTaken: boolean
+  /** The room store it was taken from. */
+  locationId: string | null
+  warnings: RxWarning[]
+}
+
+/** Where a prescription line stands. */
+export type PrescriptionState = 'waiting' | 'given' | 'room' | 'notGiven' | 'returned' | 'cancelled'
+export function prescriptionState(p: Prescription): PrescriptionState {
+  if (p.cancelledAt) return 'cancelled'
+  if (p.notGivenAt) return /^returned:/i.test(p.notGivenReason ?? '') ? 'returned' : 'notGiven'
+  if (p.supply === 'room') return 'room'
+  if (p.dispensed || p.givenAt) return 'given'
+  return 'waiting'
 }
 export interface TestOrder {
   id: string
@@ -633,7 +670,7 @@ export function useClinicalActions(encounterId: string) {
   }
   const call = async (fn: string, args: Record<string, unknown>) => {
     const { data, error } = await supabase!.rpc(fn, args)
-    if (error) throw new Error(error.message)
+    if (error) throw apiError(error)
     return data
   }
   const now = () => new Date().toISOString()
@@ -677,6 +714,14 @@ export function useClinicalActions(encounterId: string) {
     },
     onSuccess: refresh,
   })
+  /**
+   * One medicine. 'pharmacy': it waits at the pharmacy, the patient collects it (and pays at the
+   * end of the visit). 'room' (given here): taken now from a room store the prescriber holds
+   * (`locationId`, else their own), never expired, charged to the visit's bill; refused when the
+   * store has not enough (MS003: offer "for the pharmacy"), when the prescriber holds no store
+   * (42501 no_room_store) or a store they do not hold (42501 not_holder). Never refused for the
+   * prescribing rule: `warnings` say it.
+   */
   const prescribe = useMutation({
     mutationFn: async (i: {
       item: Item
@@ -688,13 +733,32 @@ export function useClinicalActions(encounterId: string) {
       instructions?: string
       supply?: 'pharmacy' | 'room'
       station?: string
-    }) => {
+      /** Given here: the room store to take it from (default: the prescriber's own). */
+      locationId?: string | null
+    }): Promise<PrescribeResult> => {
+      const supply = i.supply ?? 'pharmacy'
       if (!supabase) {
+        let loc: string | null = null
+        if (supply === 'room') {
+          const q = Math.ceil(i.quantity)
+          const mine = sampleStock.locations.filter(
+            (l) =>
+              l.active !== false &&
+              isRoomStore(l) &&
+              (sampleIsManager() || sampleStock.holds(l.id)) &&
+              (!i.locationId || l.id === i.locationId),
+          )
+          if (!mine.length) throw sampleRefusal(i.locationId ? 'notHolder' : 'noRoomStore', '42501')
+          loc = mine.find((l) => sampleStock.usable(i.item.id, l.id) >= q)?.id ?? null
+          if (!loc) throw sampleRefusal('roomShort', 'MS003')
+          sampleStock.move(i.item.id, loc, null, q)
+        }
+        const id = `rx-${Date.now()}`
         local().prescriptions.push({
-          supply: i.supply ?? 'pharmacy',
-          givenAt: i.supply === 'room' ? now() : null,
+          supply,
+          givenAt: supply === 'room' ? now() : null,
           givenBy: null,
-          id: `rx-${Date.now()}`,
+          id,
           item: `${i.item.name} ${i.item.strength ?? ''}`.trim(),
           dose: i.dose ?? null,
           route: i.route ?? null,
@@ -703,13 +767,21 @@ export function useClinicalActions(encounterId: string) {
           quantity: i.quantity,
           instructions: i.instructions ?? null,
           at: now(),
-          dispensed: i.supply === 'room',
+          dispensed: supply === 'room',
+          prescriberId: 'u-doc',
+          pending: supply === 'pharmacy',
         })
-        return
+        return {
+          id,
+          supply,
+          charged: supply === 'room' && i.item.cashPrice != null,
+          stockTaken: supply === 'room',
+          locationId: loc,
+          warnings: [],
+        }
       }
-      // a medicine given in the room: was it billed, did it leave a store?
-      const r = (await call('prescribe', {
-        p_supply: i.supply ?? 'pharmacy',
+      const args: Record<string, unknown> = {
+        p_supply: supply,
         p_station: i.station ?? null,
         p_encounter_id: encounterId,
         p_item_id: i.item.id,
@@ -719,10 +791,118 @@ export function useClinicalActions(encounterId: string) {
         p_frequency: i.frequency || null,
         p_duration_days: i.days ?? null,
         p_instructions: i.instructions || null,
-      })) as { charged?: boolean; stockTaken?: boolean } | null
-      return { charged: r?.charged ?? true, stockTaken: r?.stockTaken ?? true }
+      }
+      // only when chosen, so a database before 0082 (ten arguments) still takes it
+      if (i.locationId) args.p_location_id = i.locationId
+      let res = await supabase.rpc('prescribe', args)
+      if (res.error && i.locationId && isMissingFunction(res.error)) {
+        delete args.p_location_id
+        res = await supabase.rpc('prescribe', args)
+      }
+      if (res.error) throw apiError(res.error)
+      const r = (res.data ?? null) as Partial<PrescribeResult> | null
+      return {
+        id: r?.id ?? null,
+        supply: r?.supply === 'room' ? 'room' : supply,
+        charged: r?.charged ?? true,
+        stockTaken: r?.stockTaken ?? supply === 'room',
+        locationId: r?.locationId ?? null,
+        warnings: Array.isArray(r?.warnings) ? r.warnings : [],
+      }
     },
-    onSuccess: refresh,
+    onSuccess: () => {
+      refresh()
+      // given here: the room store's figures follow
+      void qc.invalidateQueries({ queryKey: ['stock'] })
+    },
+  })
+  /**
+   * The prescriber (or the manager) cancels a line still waiting at the pharmacy, with a reason
+   * of at least 3 characters; the pharmacy is told. `pending`: lines still waiting on the visit.
+   */
+  const cancelPrescription = useMutation({
+    mutationFn: async (i: {
+      requestId: string
+      reason: string
+    }): Promise<{ id: string; pending: number; balance: number | null }> => {
+      if (!supabase) {
+        const p = local().prescriptions.find((x) => x.id === i.requestId)
+        if (p)
+          Object.assign(p, {
+            cancelledAt: now(),
+            cancelReason: i.reason.trim(),
+            cancelledBy: null,
+            pending: false,
+          })
+        return {
+          id: i.requestId,
+          pending: local().prescriptions.filter((x) => x.pending).length,
+          balance: null,
+        }
+      }
+      const d = (await call('cancel_prescription', {
+        p_request_id: i.requestId,
+        p_reason: i.reason.trim(),
+      })) as { id: string; pending: number | string; balance: number | string | null } | null
+      return {
+        id: d?.id ?? i.requestId,
+        pending: Number(d?.pending ?? 0),
+        balance: d?.balance == null ? null : Number(d.balance),
+      }
+    },
+    onSuccess: () => {
+      refresh()
+      void qc.invalidateQueries({ queryKey: ['stock'] })
+      void qc.invalidateQueries({ queryKey: ['my-prescriptions'] })
+    },
+  })
+  /**
+   * A medicine given here by mistake is put back (0083 undo_given_here): the person who gave it
+   * (the same day) or the manager, with a reason. The units go back into the room store; an open
+   * bill loses the line, a posted bill gets a credit note (mode 'credit').
+   */
+  const undoGivenHere = useMutation({
+    mutationFn: async (i: {
+      requestId: string
+      reason: string
+    }): Promise<{
+      units: number
+      mode: 'bill' | 'credit'
+      credit: number
+      balance: number | null
+    }> => {
+      if (!supabase) {
+        const p = local().prescriptions.find((x) => x.id === i.requestId)
+        if (p)
+          Object.assign(p, {
+            givenAt: null,
+            givenBy: null,
+            notGivenAt: now(),
+            notGivenReason: `returned: ${i.reason.trim()}`,
+          })
+        return { units: p ? Math.ceil(p.quantity) : 0, mode: 'bill', credit: 0, balance: null }
+      }
+      const d = (await call('undo_given_here', {
+        p_request_id: i.requestId,
+        p_reason: i.reason.trim(),
+      })) as {
+        units?: number | string
+        mode?: string
+        credit?: number | string
+        balance?: number | string | null
+      } | null
+      return {
+        units: Number(d?.units ?? 0),
+        mode: d?.mode === 'credit' ? 'credit' : 'bill',
+        credit: Number(d?.credit ?? 0),
+        balance: d?.balance == null ? null : Number(d.balance),
+      }
+    },
+    onSuccess: () => {
+      refresh()
+      void qc.invalidateQueries({ queryKey: ['stock'] })
+      void qc.invalidateQueries({ queryKey: ['my-prescriptions'] })
+    },
   })
   /** One or several tests; with `from`, the patient goes to the test desk now and comes back to
    *  that desk (and this clinician) once the last result is written. */
@@ -819,7 +999,16 @@ export function useClinicalActions(encounterId: string) {
     },
     onSuccess: refresh,
   })
-  return { addDiagnosis, addNote, prescribe, orderTests, finishVisit, recordResult }
+  return {
+    addDiagnosis,
+    addNote,
+    prescribe,
+    cancelPrescription,
+    undoGivenHere,
+    orderTests,
+    finishVisit,
+    recordResult,
+  }
 }
 
 // ---------------------------------------------------------------- custom fields of the file
