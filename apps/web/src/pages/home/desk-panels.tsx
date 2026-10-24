@@ -35,6 +35,7 @@ import {
   type DayAppointment,
 } from '@/lib/api/desk-ops'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
+import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
 
@@ -101,6 +102,7 @@ export function AppointmentsPanel({
   const navigate = useNavigate()
   const { data: appts = [], isLoading } = useAppointmentsDay(day)
   const ops = useDeskOps()
+  const confirm = useConfirm()
   const { error, run } = useRun()
   const waiting = appts.filter((a) => a.status === 'approved' || a.status === 'confirmed')
   // Arrived only on the day itself; no-show once the day has come; cancel until the day is over.
@@ -119,8 +121,18 @@ export function AppointmentsPanel({
       setArriving(null)
       if (v.existing) void navigate({ to: '/app/visit', search: { encounter: v.encounterId } })
     })
-  const noShow = (a: DayAppointment) =>
+  const noShow = async (a: DayAppointment) => {
+    if (
+      !(await confirm({
+        title: t('confirm.desks.appointment.noShow', { name: a.name, time: a.time }),
+        body: t('confirm.desks.appointment.noShowBody'),
+        confirmLabel: t('confirm.desks.appointment.noShowYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     void run(() => ops.outcome.mutateAsync({ id: a.id, status: 'no_show' }))
+  }
   const cancel = (a: DayAppointment) => {
     const reason = window.prompt(t('ops.appts.cancelReason', { name: a.name }))
     if (!reason) return
@@ -194,7 +206,7 @@ export function AppointmentsPanel({
                           </Button>
                         )}
                         {(isToday || isPast) && (
-                          <Button size="sm" variant="ghost" onClick={() => noShow(a)}>
+                          <Button size="sm" variant="ghost" onClick={() => void noShow(a)}>
                             {t('ops.appts.noShow')}
                           </Button>
                         )}
@@ -280,6 +292,7 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
   const { t } = useTranslation()
   const { data: tasks = [] } = useOpenTasks()
   const ops = useDeskOps()
+  const confirm = useConfirm()
   const { error, run } = useRun()
   const notDone = (id: string) => {
     const reason = window.prompt(t('ops.tasks.notDoneWhy'))
@@ -331,7 +344,19 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
                       <Button
                         size="sm"
                         variant="primary"
-                        onClick={() => void run(() => ops.completeTask.mutateAsync(x.id))}
+                        onClick={async () => {
+                          if (
+                            !(await confirm({
+                              title: t('confirm.desks.task.done', { task: x.title }),
+                              body: x.patient
+                                ? t('confirm.desks.task.doneBody', { patient: x.patient })
+                                : undefined,
+                              confirmLabel: t('confirm.desks.task.doneYes'),
+                            }))
+                          )
+                            return
+                          void run(() => ops.completeTask.mutateAsync(x.id))
+                        }}
                       >
                         <Check size={14} aria-hidden="true" />
                         {t('common.done')}
@@ -378,6 +403,7 @@ export function BedsPanel({
   const { data: beds = [] } = useBedBoard()
   const { data: queue = [] } = useQueueBoard('all', userRole)
   const ops = useDeskOps()
+  const confirm = useConfirm()
   const { error, run } = useRun()
   const [form, setForm] = useState<{ bedId: string; mode: 'admit' | 'extend' } | null>(null)
   const inBed = new Set(beds.map((b) => b.encounterId).filter(Boolean))
@@ -443,6 +469,8 @@ export function BedsPanel({
                 {open ? (
                   <StayForm
                     mode={form.mode}
+                    bed={b.name}
+                    patient={b.patient}
                     nightlyPrice={b.nightlyPrice}
                     candidates={form.mode === 'admit' ? candidates : undefined}
                     onCancel={() => setForm(null)}
@@ -499,11 +527,17 @@ export function BedsPanel({
                         {canAct && (
                           <Button
                             size="sm"
-                            onClick={() => {
+                            onClick={async () => {
                               if (
-                                window.confirm(
-                                  t('ops.beds.confirmDischarge', { name: b.patient ?? '' }),
-                                )
+                                await confirm({
+                                  title: t('confirm.desks.bed.discharge', {
+                                    name: b.patient ?? '',
+                                    bed: b.name,
+                                  }),
+                                  body: t('confirm.desks.bed.dischargeBody'),
+                                  confirmLabel: t('confirm.desks.bed.dischargeYes'),
+                                  tone: 'danger',
+                                })
                               )
                                 void run(() => ops.discharge.mutateAsync(b.id))
                             }}
@@ -514,7 +548,19 @@ export function BedsPanel({
                       </span>
                     )}
                     {(b.state === 'cleaning' || b.state === 'out_of_service') && (
-                      <Button size="sm" onClick={() => void run(() => ops.ready.mutateAsync(b.id))}>
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          if (
+                            await confirm({
+                              title: t('confirm.desks.bed.ready', { bed: b.name }),
+                              body: t('confirm.desks.bed.readyBody'),
+                              confirmLabel: t('confirm.desks.bed.readyYes'),
+                            })
+                          )
+                            void run(() => ops.ready.mutateAsync(b.id))
+                        }}
+                      >
                         <Sparkles size={14} aria-hidden="true" />
                         {t('ops.beds.ready')}
                       </Button>
@@ -534,12 +580,17 @@ export function BedsPanel({
 /** Nights and price of a stay (admission or extension); the total goes on the bill. */
 function StayForm({
   mode,
+  bed,
+  patient,
   nightlyPrice,
   candidates,
   onSubmit,
   onCancel,
 }: {
   mode: 'admit' | 'extend'
+  /** The bed's name and, when extending, who is in it (for the question asked before saving). */
+  bed: string
+  patient?: string | null
   nightlyPrice: number
   candidates?: { encounterId: string; ticket: string; name: string }[]
   onSubmit: (v: {
@@ -550,6 +601,7 @@ function StayForm({
   onCancel: () => void
 }) {
   const { t } = useTranslation()
+  const confirm = useConfirm()
   const [encounterId, setEncounterId] = useState('')
   const [nights, setNights] = useState(1)
   const [agree, setAgree] = useState(false)
@@ -566,6 +618,24 @@ function StayForm({
       onSubmit={async (e) => {
         e.preventDefault()
         if (!valid) return
+        const name =
+          mode === 'admit'
+            ? (candidates?.find((c) => c.encounterId === encounterId)?.name ?? '')
+            : (patient ?? '')
+        if (
+          !(await confirm({
+            title: t(mode === 'admit' ? 'confirm.desks.bed.admit' : 'confirm.desks.bed.extend', {
+              name,
+              bed,
+              count: nights,
+            }),
+            body: t('confirm.desks.bed.billBody', { total: formatRwf(total) }),
+            confirmLabel: t(
+              mode === 'admit' ? 'confirm.desks.bed.admitYes' : 'confirm.desks.bed.extendYes',
+            ),
+          }))
+        )
+          return
         setBusy(true)
         await onSubmit({ encounterId: encounterId || undefined, nights, periodPrice: agreed })
         setBusy(false)

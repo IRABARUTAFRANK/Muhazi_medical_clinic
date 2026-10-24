@@ -3803,5 +3803,486 @@
     "after": "Nyuma yaho, uzongera winjire ukoresheje kode nshya yoherejwe kuri imeyili.",
     "rule_one": "Usohorwa nyuma y'isaha {{count}} nta gikorwa",
     "rule_other": "Usohorwa nyuma y'amasaha {{count}} nta gikorwa"
+  },
+  "confirm": {
+    "yes": "Yego, komeza",
+    "no": "Oya, subira inyuma",
+    "desks": {
+      "calls": {
+        "send": "Kohereza {{patient}} kwa {{name}}?",
+        "sendBody": "{{patient}} ajya ku rutonde rwa {{name}}, akava ku rutonde rw’abategereje.",
+        "sendYes": "Yego, ohereza",
+        "accept": "Gufasha {{name}} kuri {{patient}}?",
+        "acceptBody": "Mugenzi wawe azamenyeshwa ko wemeye, kandi uzashobora gukora kuri uyu murwayi.",
+        "acceptYes": "Yego, fasha",
+        "decline": "Kumenyesha {{name}} ko udashobora gufasha ubu?",
+        "declineBody": "Ubusabe burafunzwe kuri wowe; mugenzi wawe ashobora gusaba undi.",
+        "declineYes": "Yego, anga",
+        "endHelp": "Guhagarika gufasha {{name}} kuri {{patient}}?",
+        "endHelpBody": "Ntuzongera gushobora gukora kuri uyu murwayi.",
+        "endHelpYes": "Yego, hagarika gufasha",
+        "cancelCall": "Guhagarika guhamagara umurwayi ukurikira?",
+        "cancelCallBody": "Nta muntu uzakoherereza umurwayi kuri uku guhamagara.",
+        "cancelCallYes": "Yego, hagarika guhamagara",
+        "callNext": "Gusaba {{from}} umurwayi ukurikira?",
+        "callNextBody": "Bazamenyeshwa ko uri uhari, bakoherereze umurwayi ukurikira.",
+        "callNextYes": "Yego, hamagara"
+      },
+      "cover": {
+        "start": "Gusaba {{name}} kugusimbura?",
+        "startBody": "Kugeza {{until}}, {{name}} abona umurongo wawe, yakira abarwayi bawe kandi ashobora kubavura no kurangiza inzinduko zabo mu mwanya wawe.",
+        "startYes": "Yego, tangira gusimbura",
+        "endMine": "Guhagarika gusimburwa na {{name}}?",
+        "endMineBody": "{{name}} ntazongera kubona umurongo wawe cyangwa gukora ku barwayi bawe.",
+        "endTheirs": "Guhagarika gusimbura {{name}}?",
+        "endTheirsBody": "Ntuzongera kubona abarwayi ba {{name}} cyangwa gukora kuri bo.",
+        "endYes": "Yego, hagarika"
+      },
+      "queue": {
+        "take": "Kwakira {{name}} ({{ticket}}) no gufungura uruzinduko?",
+        "takeBody": "Umurwayi aba uwawe: indi myanya bamusangiye ntizongera kumubona ategereje.",
+        "takeYes": "Yego, akira umurwayi"
+      },
+      "inquiry": {
+        "approve": "Kwemeza ubusabe bwa {{name}}?",
+        "approveBody": "Buhinduka gahunda, bukoherezwa kwa muganga ngo abwemere.",
+        "approveYes": "Yego, emeza"
+      },
+      "task": {
+        "done": "Kwemeza ko “{{task}}” byakozwe?",
+        "doneBody": "Kuri {{patient}}. Byandikwa mu izina ryawe, bikava ku rutonde.",
+        "doneYes": "Yego, byakozwe"
+      },
+      "result": {
+        "seen": "Kwemeza ko wabonye igisubizo cya {{test}} cya {{name}}?",
+        "seenBody": "Kiva mu bisubizo byawe bitegerejwe. Uzakomeza kukibona mu ruzinduko.",
+        "seenYes": "Yego, nakibonye"
+      },
+      "appointment": {
+        "accept": "Kwemera gahunda ya {{name}} ku wa {{when}}?",
+        "acceptBody": "Gahunda yemezwa muri kalendari yawe, kandi kwakira abarwayi barayibona.",
+        "acceptYes": "Yego, emera",
+        "noShow": "Kwemeza ko {{name}} ({{time}}) ataje?",
+        "noShowBody": "Gahunda irafungwa nk’uko ataje. Kugira ngo umurwayi azaboneke nyuma, ongera umufatire gahunda.",
+        "noShowYes": "Yego, ntiyaje"
+      },
+      "bed": {
+        "discharge": "Gusezerera {{name}} kuri {{bed}}?",
+        "dischargeBody": "Igihe cyo kuryama kirangiye ubu, igitanda kijya gusukurwa.",
+        "dischargeYes": "Yego, musezerere",
+        "ready": "Kwemeza ko {{bed}} cyiteguye?",
+        "readyBody": "Igitanda kiba kirimo ubusa, umurwayi ashobora kukiryamamo.",
+        "readyYes": "Yego, cyiteguye",
+        "admit_one": "Kuryamisha {{name}} kuri {{bed}} ijoro {{count}}?",
+        "admit_other": "Kuryamisha {{name}} kuri {{bed}} amajoro {{count}}?",
+        "extend_one": "Kongera igihe cya {{name}} kuri {{bed}} ijoro {{count}}?",
+        "extend_other": "Kongera igihe cya {{name}} kuri {{bed}} amajoro {{count}}?",
+        "billBody": "{{total}} byongerwa ku nyemezabuguzi y’umurwayi ubu.",
+        "admitYes": "Yego, muryamishe",
+        "extendYes": "Yego, ongera igihe"
+      },
+      "booking": {
+        "book": "Gufatira {{name}} gahunda kwa {{doctor}} ku wa {{when}}?",
+        "bookBody": "{{doctor}} arasabwa kwemera gahunda; igisubizo kizaza nk’ubutumwa.",
+        "bookYes": "Yego, fata gahunda"
+      },
+      "patient": {
+        "merge": "Guhuza {{dup}} na {{keep}}?",
+        "mergeBody": "Inzinduko, gahunda, inyandiko n’ubwishingizi bya {{dup}} byimurirwa muri iyi dosiye. Ntibishobora gusubizwa inyuma.",
+        "mergeYes": "Yego, huza dosiye",
+        "sendToDoctor": "Kohereza {{name}} kwa muganga?",
+        "sendToDoctorBody": "Umurwayi ava ku kwakira abarwayi, agategereza ku murongo wa muganga.",
+        "sendToDoctorYes": "Yego, ohereza",
+        "addField": "Kongera “{{field}}” muri dosiye ya {{name}}?",
+        "addFieldBody": "Agaciro: {{value}}",
+        "addFieldYes": "Yego, ongeraho",
+        "removeField": "Gukura “{{field}}” muri dosiye ya {{name}}?",
+        "removeFieldBody": "Iki gice n’agaciro kacyo bisibwa muri iyi dosiye.",
+        "removeFieldYes": "Yego, kuraho",
+        "save": "Kubika impinduka muri dosiye ya {{name}}?",
+        "saveBody": "Dosiye ivugururwa ku myanya yose, mu izina ryawe.",
+        "saveYes": "Yego, bika"
+      }
+    },
+    "stock": {
+      "handOverTitle": "Guha {{patient}} {{item}} × {{quantity}}?",
+      "handOverAllTitle": "Guha {{patient}} imiti yose uko ari {{n}}?",
+      "handOverBody": "Ikurwa mu bubiko bwa farumasi kandi ikandikwa kuri fagitire y'umurwayi.",
+      "handOverYes": "Yego, tanga",
+      "notGivenTitle": "Kwemeza ko {{item}} itahawe {{patient}}?",
+      "notGivenBody": "Muganga amenyeshwa impamvu: “{{reason}}”.",
+      "notGivenYes": "Yego, ntiyatanzwe",
+      "sellTitle": "Kugurisha {{patient}} {{item}} × {{quantity}}?",
+      "sellYes": "Yego, gurisha",
+      "levelTitle": "Gushyira urugero rw'ububiko buke bwa {{item}} kuri {{level}}?",
+      "levelBody": "Umuti ugaragara ko ari muke iyo ububiko bugeze kuri uyu mubare.",
+      "saveYes": "Yego, bika",
+      "receiveTitle": "Kwakira {{item}} × {{quantity}} mu {{store}}?",
+      "receiveBody": "Ububiko buriyongera kandi iyakirwa ryandikwa mu gitabo (agaciro {{value}}).",
+      "receiveNewBody": "Umuti kandi wongerwa ku miti y'ivuriro hamwe n'igiciro cyawo.",
+      "receiveYes": "Yego, akira",
+      "sendTitle": "Kohereza {{item}} × {{quantity}} kuva {{from}} ujya {{to}}?",
+      "sendYes": "Yego, ohereza",
+      "useTitle": "Gukura {{item}} × {{quantity}} mu {{store}}?",
+      "useBody": "Byandikwa nka “{{reason}}” kandi bikava mu bubiko. Ntibishobora gusubizwa inyuma.",
+      "useYes": "Yego, bikuremo",
+      "addStoreTitle": "Kongeraho ububiko “{{name}}”?",
+      "addStoreYes": "Yego, ongeraho",
+      "closeStoreTitle": "Gufunga ububiko “{{name}}”?",
+      "closeStoreBody": "Ntibuzongera kugaragara mu kwakira cyangwa kohereza imiti. Ushobora kongera kubufungura nyuma.",
+      "closeStoreYes": "Yego, funga",
+      "openStoreTitle": "Kongera gufungura ububiko “{{name}}”?",
+      "openStoreYes": "Yego, fungura",
+      "countTitle": "Gushyira {{item}} mu {{store}} kuri {{after}}?",
+      "countBody": "Ububiko buva kuri {{before}} bukagera kuri {{after}}; ikinyuranyo kibikwa hamwe n'impamvu yawe.",
+      "countYes": "Yego, bika ibarura",
+      "handOverAllTitle_one": "Guha {{patient}} umuti {{count}}?",
+      "handOverAllTitle_other": "Guha {{patient}} imiti yose uko ari {{count}}?"
+    },
+    "lab": {
+      "sampleTitle": "Kwemeza ko icyitegererezo cya {{test}} cya {{patient}} cyafashwe?",
+      "sampleYes": "Yego, cyafashwe",
+      "analysingTitle": "Gutangira gupima {{test}} ya {{patient}}?",
+      "analysingYes": "Yego, tangira",
+      "notDoneTitle": "Kwemeza ko {{test}} ya {{patient}} itakozwe?",
+      "notDoneBody": "Ikizamini kirahagarikwa kandi muganga amenyeshwa impamvu: “{{reason}}”.",
+      "notDoneYes": "Yego, ntibyakozwe",
+      "resultTitle": "Kubika igisubizo cya {{test}} cya {{patient}}?",
+      "resultBody": "Muganga wagisabye arakibona. Kiracyakeneye kugenzurwa.",
+      "resultVerifyTitle": "Kubika no kwemeza igisubizo cya {{test}} cya {{patient}}?",
+      "resultVerifyBody": "Igisubizo cyemezwa ko cyagenzuwe kandi muganga wagisabye arakibona.",
+      "resultYes": "Yego, bika"
+    },
+    "finance": {
+      "voidTitle": "Guhagarika ubwishyu bwa {{amount}} bwa {{patient}}?",
+      "voidBody": "Bukurwa ku giteranyo cy'umunsi kandi amafaranga yongera kugaragara ko ari ideni kuri fagitire. Impamvu: “{{reason}}”. Ntibishobora gusubizwa inyuma.",
+      "voidYes": "Yego, hagarika ubwishyu",
+      "countTitle": "Kubika ibarura ry'amafaranga yawe ryo ku wa {{day}}?",
+      "countBody": "Wabaze {{counted}} byose hamwe; ikinyuranyo n'ubwishyu ni {{diff}}. Umuyobozi arabibona.",
+      "countYes": "Yego, bika ibarura"
+    },
+    "prices": {
+      "deleteYes": "Yego, siba",
+      "saveYes": "Yego, bika",
+      "deleteCategoryBody": "Ntibishobora gusubizwa inyuma.",
+      "addCategoryTitle": "Kongeraho icyiciro “{{name}}”?",
+      "saveCategoryTitle": "Kubika impinduka z'icyiciro “{{name}}”?",
+      "deleteMedicineTitle": "Gukura {{name}} ku rutonde rw'imiti?",
+      "deleteMedicineBody": "Fagitire zamaze gukorwa zigumana imirongo yazo. Ntibishobora gusubizwa inyuma.",
+      "addMedicineTitle": "Kongeraho {{name}} ku giciro cya {{price}}?",
+      "saveMedicineTitle": "Kubika impinduka za {{name}} ({{price}})?",
+      "inactiveBody": "Irahagaritswe: ntizagaragara aho bakorera.",
+      "bulkAddTitle": "Kongera serivisi {{n}} muri {{dept}}?",
+      "bulkAddYes": "Yego, zongereho",
+      "moveTitle": "Kwimurira serivisi zose za {{category}} muri {{dept}}?",
+      "moveYes": "Yego, imura",
+      "deleteTreatmentTitle": "Gusiba {{name}}?",
+      "deleteTreatmentBody": "Biva ku rutonde rwose. Fagitire zabukoresheje zirabugumana. Ntibishobora gusubizwa inyuma.",
+      "hideTitle": "Guhisha {{name}}?",
+      "hideBody": "Ntibizongera kugaragara aho bakorera. Ushobora kongera kubigaragaza nyuma.",
+      "hideYes": "Yego, hisha",
+      "showTitle": "Kongera kugaragaza {{name}}?",
+      "showBody": "Byongera kugaragara aho bakorera.",
+      "showYes": "Yego, garagaza",
+      "addDeptTitle": "Gushyiraho ishami “{{name}}”?",
+      "addDeptYes": "Yego, rishyireho",
+      "deleteInsurerTitle": "Gusiba ubwishingizi {{name}}?",
+      "deleteInsurerBody": "Fagitire zabanje zirabugumana. Ntibishobora gusubizwa inyuma.",
+      "adjustBody": "Ibiciro bishya bikoreshwa kuri fagitire guhera ubu. Fagitire zamaze gukorwa zigumana ibiciro byazo.",
+      "adjustYes": "Yego, hindura ibiciro",
+      "addTreatmentTitle": "Kongeraho {{name}} ku giciro cya {{price}}?",
+      "saveTreatmentTitle": "Kubika impinduka za {{name}} ({{price}})?",
+      "saveTreatmentBody": "Ibishya bikoreshwa kuri fagitire guhera ubu. Fagitire zamaze gukorwa zigumana ibyazo.",
+      "addInsurerTitle": "Kongeraho ubwishingizi {{name}} bwishyura {{pct}}%?",
+      "saveInsurerTitle": "Kubika impinduka z'ubwishingizi {{name}} (bwishyura {{pct}}%)?",
+      "bulkAddTitle_one": "Kongera serivisi {{count}} muri {{dept}}?",
+      "bulkAddTitle_other": "Kongera serivisi {{count}} muri {{dept}}?",
+      "adjustTitle_one": "Guhindura igiciro cya serivisi {{count}} yo mu cyiciro {{group}} ({{change}})?",
+      "adjustTitle_other": "Guhindura igiciro cya serivisi {{count}} zo mu cyiciro {{group}} ({{change}})?",
+      "adjustAllTitle_one": "Guhindura igiciro cya serivisi {{count}} ({{change}})?",
+      "adjustAllTitle_other": "Guhindura igiciro cya serivisi zose uko ari {{count}} ({{change}})?"
+    },
+    "visit": {
+      "thisPatient": "uyu murwayi",
+      "saveYes": "Yego, bika",
+      "sendYes": "Yego, ohereza",
+      "take": "Gufata {{name}}?",
+      "takeBody": "Umurwayi avanwa ku murongo wo gutegereza, akaba ari wowe umwakira. Bagenzi bawe babona ko wamufashe.",
+      "takeYes": "Yego, fata umurwayi",
+      "payer": "Guhindura uwishyura uruzinduko rwa {{name}}: {{payer}}?",
+      "payerBody": "Ibiciro by'uru ruzinduko n'imigabane yishyurwa n'umurwayi n'ubwishingizi birahinduka.",
+      "payerYes": "Yego, hindura",
+      "member": "Kubika nimero y'umunyamuryango ya {{name}}?",
+      "memberBody": "Nimero y'umunyamuryango: {{number}}.",
+      "removeCharge": "Gukura {{item}} kuri fagitire ya {{name}}?",
+      "removeChargeBody": "Uyu murongo ukurwa kuri fagitire burundu. Uzahita ubazwa impamvu.",
+      "removeChargeYes": "Yego, kuraho",
+      "pay": "Kwakira {{amount}} bya {{name}} hakoreshejwe {{method}}?",
+      "payBody": "Ubwishyu bwandikwa mu izina ryawe kandi buhabwa nimero ya resi. Ntibushobora gusubizwa inyuma.",
+      "payYes": "Yego, akira ubwishyu",
+      "refund": "Gusubiza {{name}} {{amount}} hakoreshejwe {{method}}?",
+      "refundBody": "Amafaranga asubijwe yandikwa mu izina ryawe hamwe n'impamvu. Ntibishobora gusubizwa inyuma.",
+      "refundYes": "Yego, subiza amafaranga",
+      "addCharge": "Gushyira {{item}} kuri fagitire ya {{name}}?",
+      "addChargeBody": "Ingano {{quantity}}, igiteranyo {{total}}. Byandikwa mu izina ryawe.",
+      "addChargeYes": "Yego, shyiraho",
+      "sendBack": "Gusubiza {{name}} kuri {{person}} ({{desk}})?",
+      "sendBackBody": "Umurwayi ava aho ukorera agategereza {{person}}.",
+      "sendBackYes": "Yego, musubizeyo",
+      "refer": "Kohereza {{name}} kuri {{to}}?",
+      "referBody": "Umurwayi ava aho ukorera akajya ku murongo wo gutegereza aho hantu.",
+      "referBackBody": "Umurwayi ava aho ukorera akajya ku murongo wo gutegereza aho hantu, hanyuma akakugarukira.",
+      "toCashier": "Kohereza {{name}} kuri kasiye?",
+      "toCashierBody": "Igice cyawe cy'uruzinduko kirarangiye, umurwayi ategereza kuri kasiye kwishyura.",
+      "helpAsk": "Gusaba {{who}} ubufasha kuri {{name}}?",
+      "helpAskAny": "Gusaba muganga uwo ari we wese ubufasha kuri {{name}}?",
+      "helpAskBody": "Bahita babimenyeshwa. Mugenzi wawe wemeye ashobora gukorana nawe kuri uyu murwayi.",
+      "helpAskYes": "Yego, saba",
+      "helpWithdraw": "Gukuraho ubusabe bwawe bw'ubufasha kuri {{name}}?",
+      "helpWithdrawBody": "Nta wundi uzongera kubisabwa.",
+      "helpWithdrawYes": "Yego, kuraho",
+      "helpEndMine": "Guhagarika gufasha kuri {{name}}?",
+      "helpEndMineBody": "Ntuzongera gushobora gukora kuri uyu murwayi.",
+      "helpEnd": "Guhagarika ubufasha bwa {{helper}} kuri {{name}}?",
+      "helpEndBody": "{{helper}} ntazongera gushobora gukora kuri uyu murwayi.",
+      "helpEndYes": "Yego, hagarika ubufasha",
+      "taskSend": "Kohereza ku baforomo umurimo “{{task}}” wa {{name}}?",
+      "taskSendBody": "Uhita ugaragara ku rubuga rw'abaforomo.",
+      "taskSendYes": "Yego, ohereza",
+      "taskDone": "Kwemeza ko “{{task}}” wakozwe?",
+      "taskDoneBody": "Uva ku rutonde rw'abaforomo, wandikwa mu izina ryawe.",
+      "taskDoneYes": "Yego, wakozwe",
+      "taskNotDone": "Kwemeza ko “{{task}}” utakozwe?",
+      "taskNotDoneBody": "Uzahita ubazwa impamvu. Umurimo uva ku rutonde rw'abaforomo.",
+      "taskNotDoneYes": "Yego, ntibyakozwe",
+      "taskWithdraw": "Gukuraho umurimo “{{task}}”?",
+      "taskWithdrawBody": "Abaforomo ntibazongera kuwubona. Uzahita ubazwa impamvu.",
+      "taskWithdrawYes": "Yego, kuraho",
+      "left": "{{name}} yavuye mu ivuriro?",
+      "leftBody": "Uruzinduko rurafungwa kandi umurwayi akurwa ku mirongo yose. Ntibishobora gusubizwa inyuma.",
+      "leftYes": "Yego, umurwayi yagiye",
+      "note": "Kubika iki cyitonderwa muri dosiye ya {{name}}?",
+      "recordBody": "Biguma muri dosiye y'umurwayi mu izina ryawe.",
+      "dx": "Kubika indwara “{{dx}}” ya {{name}}?",
+      "rx": "Kwandikira {{name}} iyi miti?",
+      "rxBody": "{{list}}. Imiti ya farumasi itegerereza yo; imiti itangiwe hano yishyurwa kandi ivanwa mu bubiko ubu.",
+      "rxYes": "Yego, andika imiti",
+      "tests": "Gusaba ibi bizamini bya {{name}}?",
+      "testsBody": "{{list}}. Bishyirwa kuri fagitire.",
+      "testsSendBody": "{{list}}. Bishyirwa kuri fagitire kandi umurwayi yoherezwa aho bikorerwa.",
+      "testsYes": "Yego, saba",
+      "result": "Kubika igisubizo cya {{test}} cya {{name}}?",
+      "resultBody": "Gishobora guhindurwa kugeza cyemejwe.",
+      "resultVerify": "Kubika no kwemeza igisubizo cya {{test}} cya {{name}}?",
+      "resultVerifyBody": "Iyo cyemejwe, gishobora gukosorwa gusa hatanzwe impamvu.",
+      "resultCorrect": "Gukosora igisubizo cyemejwe cya {{test}} cya {{name}}?",
+      "resultCorrectBody": "Ikosora n'impamvu yaryo bibikwa hamwe n'igisubizo, mu izina ryawe.",
+      "resultCorrectYes": "Yego, kosora",
+      "finish": "Gusoza uruzinduko rwa {{name}}?",
+      "finishBody": "Ibizamini bitararangira biguma bifunguye; fagitire itishyuwe yohereza umurwayi kuri kasiye. Uruzinduko ruhita ruguma muri dosiye y'umurwayi.",
+      "finishYes": "Yego, soza uruzinduko",
+      "returnMedicine": "Kugarura {{item}} yahawe {{name}}?",
+      "returnMedicineBody": "Gutanga umuti biravanwaho. Uzahita ubazwa impamvu.",
+      "returnMedicineYes": "Yego, ugarure",
+      "vitalsSendOn": "Kohereza {{name}} kuri {{desk}}?",
+      "vitalsSendBody": "Ibara rya triage: {{level}}. Umurwayi ava kuri triage agategereza kuri {{desk}}.",
+      "vitalsSend": "Kubika ibipimo no kohereza {{name}} kuri {{desk}}?",
+      "vitalsSendYes": "Yego, bika kandi wohereze",
+      "vitalsSave": "Kubika ibipimo bya {{name}}?",
+      "vitalsCorrect": "Kubika ibipimo bya {{name}} byakosowe?",
+      "vitalsBody": "Byapimwe na {{who}} saa {{time}}.",
+      "start": "Gutangira uruzinduko rwa {{name}}?",
+      "startEmergency": "Gutangira uruzinduko rw'UBUTABAZI BWIHUTIRWA rwa {{name}}?",
+      "startBody": "{{where}}. Umurwayi ahabwa itike n'umwanya ku murongo, kandi fagitire nshya irafungurwa.",
+      "startYes": "Yego, tangira uruzinduko",
+      "newFile": "Gufungura dosiye y'umurwayi ya {{name}}?",
+      "newFileBody": "Hatangwa nimero nshya ya dosiye. Banza urebe amazina, igitsina n'imyaka mbere yo gukomeza.",
+      "newFileYes": "Yego, fungura dosiye"
+    },
+    "staff": {
+      "deactivate": {
+        "title": "Guhagarika {{name}}?",
+        "body": "{{name}} ntazongera kwinjira. Ibyo yanditse byose biguma, kandi ushobora kongera gusubizaho konti nyuma. Hanyuma kode iraza kuri e-mail yawe kugira ngo wemeze.",
+        "yes": "Yego, hagarika"
+      },
+      "reactivate": {
+        "title": "Gusubizaho {{name}}?",
+        "body": "{{name}} azongera abashe kwinjira. Hanyuma kode iraza kuri e-mail yawe kugira ngo wemeze.",
+        "yes": "Yego, subizaho"
+      },
+      "create": {
+        "title": "Gufungura konti ya {{name}}?",
+        "body": "{{name}} azabasha kwinjira akoresheje izina ry’ukoresha na PIN ya mbere bigaragara. Hanyuma kode iraza kuri e-mail yawe kugira ngo wemeze.",
+        "yes": "Yego, fungura"
+      },
+      "update": {
+        "title": "Kubika impinduka za {{name}}?",
+        "body": "Amakuru mashya, umwanya n’amashami bihita bikora: ni byo bigena abarwayi bagera kuri {{name}}. Hanyuma kode iraza kuri e-mail yawe kugira ngo wemeze.",
+        "yes": "Yego, bika"
+      },
+      "resetPin": {
+        "title": "Guha {{name}} PIN nshya?",
+        "body": "PIN ye y’ubu ihita ireka gukora. Muhe PIN nshya imbonankubone; {{name}} agomba kuyihindura ubutaha yinjiye.",
+        "yes": "Yego, muhe PIN nshya"
+      }
+    },
+    "departments": {
+      "create": {
+        "title": "Gushyiraho ishami {{name}}?",
+        "body": "Abakozi baryo bazakira abarwayi boherejwe muri serivisi wahisemo.",
+        "yes": "Yego, shyiraho"
+      },
+      "save": {
+        "title": "Kubika impinduka z’ishami {{name}}?",
+        "body": "Imyanya na serivisi wahisemo bihita bikora ku bakozi bose b’iri shami.",
+        "yes": "Yego, bika"
+      },
+      "delete": {
+        "title": "Gusiba ishami {{name}}?",
+        "body_one": "Umukozi waryo {{count}} akomeza akazi, nta shami. Ntibisubirwaho.",
+        "body_other": "Abakozi baryo {{count}} bakomeza akazi, nta shami. Ntibisubirwaho.",
+        "yes": "Yego, siba"
+      }
+    },
+    "beds": {
+      "apply": {
+        "title_one": "Gushyiraho igitanda {{count}}?",
+        "title_other": "Gushyiraho ibitanda {{count}}?",
+        "body": "Buri joro rizishyurwa {{price}}. Ibitanda biriho abarwayi ntibikurwaho, kandi kurara kwamaze kwishyurwa kugumana igiciro cyako.",
+        "bodyNoPrice": "Buri gitanda kigumana igiciro cyacyo. Ibitanda biriho abarwayi ntibikurwaho.",
+        "yes": "Yego, emeza",
+        "bodyRemove_one": "Igitanda 1 kidafite umurwayi cya nyuma ku rutonde kizakurwaho. Igitanda kirimo umurwayi ntigikurwaho.",
+        "bodyRemove_other": "Ibitanda {{count}} bidafite abarwayi bya nyuma ku rutonde bizakurwaho. Igitanda kirimo umurwayi ntigikurwaho.",
+        "removeYes_one": "Yego, kuraho igitanda 1",
+        "removeYes_other": "Yego, kuraho ibitanda {{count}}",
+        "bodyOnePrice": "Ibitanda byose bizagira iki giciro kimwe; ibiciro byashyizwe kuri buri gitanda bizasimburwa.",
+        "priceOnly": {
+          "title": "Ijoro rimwe ku gitanda cyose rigure {{price}}?",
+          "body": "Ibitanda byose bizagira iki giciro ku majoro ari imbere. Abamaze kwishyurizwa bagumana igiciro cyabo."
+        }
+      },
+      "save": {
+        "title": "Kubika {{name}}?",
+        "body": "Ijoro rimwe kuri iki gitanda rizishyurwa {{price}}. Kurara kwamaze kwishyurwa kugumana igiciro cyako.",
+        "yes": "Yego, bika"
+      },
+      "remove": {
+        "title": "Gukuraho {{name}}?",
+        "body": "Igitanda kivanwa ku rutonde rw’ibitanda. Kurara kwamaze kwishyurwa ntiguhinduka. Ntibisubirwaho.",
+        "yes": "Yego, kuraho"
+      }
+    },
+    "settings": {
+      "flow": {
+        "triageFirst": {
+          "title": "Kohereza buri murwayi mushya kuri triage mbere?",
+          "body": "Guhera ubu, umuforomo afata ibipimo bya buri murwayi wandikishijwe akamwohereza aho agomba kujya."
+        },
+        "deskFirst": {
+          "title": "Kohereza abarwayi bashya ako kanya aho bahisemo?",
+          "body": "Guhera ubu, kwakira abarwayi bohereza buri murwayi wandikishijwe ako kanya kwa muganga cyangwa ahandi, atabanje kunyura kuri triage."
+        },
+        "yes": "Yego, hindura inzira"
+      },
+      "patientFields": {
+        "title_one": "Kubika igice {{count}} cya dosiye y’umurwayi?",
+        "title_other": "Kubika ibice {{count}} bya dosiye y’umurwayi?",
+        "body": "Guhera ubu buri dosiye y’umurwayi igaragaza ibi bice.",
+        "bodyRemoved": "Ibyakuweho: {{names}}. Ibisubizo byari byatanzwe kuri byo ntibizongera kugaragara kuri dosiye z’abarwayi.",
+        "yes": "Yego, bika"
+      },
+      "profile": {
+        "title": "Kubika amakuru ya {{name}}?",
+        "body": "Amakuru mashya ahita akoreshwa kuri buri ecran n’impapuro zicapwa zigaragaza amakuru y’ivuriro."
+      },
+      "hours": {
+        "title": "Kubika amasaha dufungura?",
+        "body": "Amasaha mashya ahita akoreshwa aho amasaha y’ivuriro agaragara cyangwa akoreshwa mu gufata gahunda."
+      },
+      "saveYes": "Yego, bika"
+    },
+    "perms": {
+      "roleOn": {
+        "title": "Kwemerera {{role}} bose: « {{feature}} »?",
+        "body": "Buri wese ufite uyu mwanya arabishobora guhera ubu, uretse abafite irengayobora ryabo hasi.",
+        "yes": "Yego, emera"
+      },
+      "roleOff": {
+        "title": "Kubuza {{role}} bose: « {{feature}} »?",
+        "body": "Nta wufite uyu mwanya uzongera kubishobora guhera ubu, uretse abafite irengayobora ryabo hasi.",
+        "yes": "Yego, buza"
+      },
+      "one": {
+        "role": {
+          "title": "{{name}}: yongere akurikize umwanya we kuri « {{feature}} »?",
+          "body": "Irengayobora rikuweho: {{name}} azabishobora gusa niba {{role}} bose babishobora."
+        },
+        "yes": {
+          "title": "Kwemerera {{name}}: « {{feature}} »?",
+          "body": "{{name}} arabishobora guhera ubu, uko umwanya we waba umeze kose."
+        },
+        "no": {
+          "title": "Kubuza {{name}}: « {{feature}} »?",
+          "body": "{{name}} ntazongera kubishobora guhera ubu, nubwo umwanya we wabyemera."
+        },
+        "change": "Yego, hindura"
+      }
+    },
+    "calendar": {
+      "saveMine": {
+        "title": "Kubika ingengabihe yawe?"
+      },
+      "save": {
+        "title": "Kubika ingengabihe ya {{name}}?"
+      },
+      "body": {
+        "private": "Nyirayo wenyine ni we uzayibona, kandi nta wushobora gufata gahunda kuri internet.",
+        "staff": "Kwakira abarwayi n’abakozi bazabona aya masaha n’iminsi y’ikiruhuko, bayashingireho bafata gahunda z’abarwayi.",
+        "public": "Abakozi n’urubuga rw’ivuriro bizagaragaza aya masaha, kandi abarwayi bashobora gusaba isaha kuri internet."
+      },
+      "yes": "Yego, bika"
+    },
+    "notices": {
+      "markAll": {
+        "title_one": "Kwemeza ko ubutumwa {{count}} bwasomwe?",
+        "title_other": "Kwemeza ko ubutumwa bwose uko ari {{count}} bwasomwe?",
+        "body": "Buguma ku rutonde rwawe ariko ntibuzongera kubarwa nk’ubutarasomwe.",
+        "yes": "Yego, byasomwe"
+      },
+      "markSelected": {
+        "title_one": "Kwemeza ko ubutumwa {{count}} wahisemo bwasomwe?",
+        "title_other": "Kwemeza ko ubutumwa {{count}} wahisemo bwasomwe?"
+      },
+      "markOne": {
+        "title": "Kwemeza ko « {{title}} » byasomwe?"
+      },
+      "hideSelected": {
+        "title_one": "Gukura ubutumwa {{count}} ku rutonde rwawe?",
+        "title_other": "Gukura ubutumwa {{count}} ku rutonde rwawe?"
+      },
+      "hideOne": {
+        "title": "Gukura « {{title}} » ku rutonde rwawe?"
+      },
+      "hide": {
+        "body": "Bivaho ku rutonde rwawe gusa; abandi babwakiriye baracyabubona. Ntibisubirwaho.",
+        "yes": "Yego, kuraho"
+      },
+      "deleteSent": {
+        "title": "Gusiba ubutumwa « {{title}} » kuri bose?",
+        "body": "Buvaho ku rutonde rwa buri wese wabwakiriye. Ntibisubirwaho.",
+        "yes": "Yego, siba"
+      },
+      "send": {
+        "all": "Kohereza « {{title}} » ku bakozi bose?",
+        "allHeads": "Kohereza « {{title}} » ku bayobozi b’amashami bose n’ababungirije?",
+        "role": "Kohereza « {{title}} » kuri {{who}} bose?",
+        "dept": "Kohereza « {{title}} » ku ishami {{who}}?",
+        "deptHeads": "Kohereza « {{title}} » ku muyobozi w’ishami {{who}} n’abamwungirije?",
+        "person": "Kohereza « {{title}} » kuri {{who}}?",
+        "body": "Bahita babwakira mu butumwa bwabo.",
+        "bodyUrgent": "Bwanditseho ko byihutirwa: bahita babwakira, bugaragara nk’ubwihutirwa.",
+        "yes": "Yego, ohereza"
+      }
+    }
   }
 }

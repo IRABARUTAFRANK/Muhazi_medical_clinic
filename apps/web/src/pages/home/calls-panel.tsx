@@ -20,6 +20,7 @@ import { useCallActions, useMyCalls, type StaffCall } from '@/lib/api/calls'
 import { useColleagues } from '@/lib/api/referrals'
 import { stationFor, useQueueBoard, type QueueItem } from '@/lib/api/visits'
 import { formatDuration } from '@/lib/duration'
+import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 const control =
@@ -47,6 +48,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
   const navigate = useNavigate()
   const { data: calls } = useMyCalls(user.role)
   const actions = useCallActions()
+  const confirm = useConfirm()
   const { data: colleagues = [] } = useColleagues()
   const incomingNext = (calls?.incoming ?? []).filter((c) => c.kind === 'next')
   const incomingHelp = (calls?.incoming ?? []).filter((c) => c.kind === 'help')
@@ -156,15 +158,21 @@ export function CallsPanel({ user }: { user: StaffUser }) {
                 <Button
                   variant="primary"
                   disabled={!choice || actions.answer.isPending}
-                  onClick={() =>
+                  onClick={async () => {
+                    const patient = options.find((q) => q.queueId === choice)?.name ?? ''
+                    if (
+                      !(await confirm({
+                        title: t('confirm.desks.calls.send', { patient, name: c.fromName }),
+                        body: t('confirm.desks.calls.sendBody', { patient, name: c.fromName }),
+                        confirmLabel: t('confirm.desks.calls.sendYes'),
+                      }))
+                    )
+                      return
                     void run(
                       () => actions.answer.mutateAsync({ callId: c.id, queueId: choice }),
-                      t('calls.next.sent', {
-                        patient: options.find((q) => q.queueId === choice)?.name ?? '',
-                        name: c.fromName,
-                      }),
+                      t('calls.next.sent', { patient, name: c.fromName }),
                     )
-                  }
+                  }}
                 >
                   <Send size={16} aria-hidden="true" />
                   {t('calls.next.send', { name: c.fromName })}
@@ -204,7 +212,18 @@ export function CallsPanel({ user }: { user: StaffUser }) {
               size="sm"
               variant="primary"
               disabled={actions.respond.isPending}
-              onClick={() =>
+              onClick={async () => {
+                if (
+                  !(await confirm({
+                    title: t('confirm.desks.calls.accept', {
+                      name: c.fromName,
+                      patient: c.patientName ?? '',
+                    }),
+                    body: t('confirm.desks.calls.acceptBody'),
+                    confirmLabel: t('confirm.desks.calls.acceptYes'),
+                  }))
+                )
+                  return
                 void run(
                   async () => {
                     await actions.respond.mutateAsync({ callId: c.id, accept: true })
@@ -213,7 +232,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
                   },
                   t('calls.help.accepted', { name: c.fromName }),
                 )
-              }
+              }}
             >
               <Check size={14} aria-hidden="true" />
               {t('calls.help.accept')}
@@ -223,12 +242,20 @@ export function CallsPanel({ user }: { user: StaffUser }) {
                 size="sm"
                 variant="ghost"
                 disabled={actions.respond.isPending}
-                onClick={() =>
+                onClick={async () => {
+                  if (
+                    !(await confirm({
+                      title: t('confirm.desks.calls.decline', { name: c.fromName }),
+                      body: t('confirm.desks.calls.declineBody'),
+                      confirmLabel: t('confirm.desks.calls.declineYes'),
+                    }))
+                  )
+                    return
                   void run(
                     () => actions.respond.mutateAsync({ callId: c.id, accept: false }),
                     t('calls.help.declined', { name: c.fromName }),
                   )
-                }
+                }}
               >
                 <X size={14} aria-hidden="true" />
                 {t('calls.help.decline')}
@@ -257,7 +284,20 @@ export function CallsPanel({ user }: { user: StaffUser }) {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => void run(() => actions.cancel.mutateAsync(c.id), t('calls.help.ended'))}
+            onClick={async () => {
+              if (
+                !(await confirm({
+                  title: t('confirm.desks.calls.endHelp', {
+                    name: c.fromName,
+                    patient: c.patientName ?? '',
+                  }),
+                  body: t('confirm.desks.calls.endHelpBody'),
+                  confirmLabel: t('confirm.desks.calls.endHelpYes'),
+                }))
+              )
+                return
+              void run(() => actions.cancel.mutateAsync(c.id), t('calls.help.ended'))
+            }}
           >
             {t('calls.help.endMine')}
           </Button>
@@ -281,9 +321,18 @@ export function CallsPanel({ user }: { user: StaffUser }) {
                 variant="ghost"
                 className="self-start"
                 disabled={actions.cancel.isPending}
-                onClick={() =>
+                onClick={async () => {
+                  if (
+                    !(await confirm({
+                      title: t('confirm.desks.calls.cancelCall'),
+                      body: t('confirm.desks.calls.cancelCallBody'),
+                      confirmLabel: t('confirm.desks.calls.cancelCallYes'),
+                      tone: 'danger',
+                    }))
+                  )
+                    return
                   void run(() => actions.cancel.mutateAsync(open.id), t('calls.next.cancelled'))
-                }
+                }}
               >
                 <X size={14} aria-hidden="true" />
                 {t('calls.next.cancel')}
@@ -336,7 +385,19 @@ export function CallsPanel({ user }: { user: StaffUser }) {
                 variant="primary"
                 className="self-start"
                 disabled={actions.callNext.isPending || (target === 'person' && !toUser)}
-                onClick={() =>
+                onClick={async () => {
+                  const from =
+                    target === 'person'
+                      ? (colleagues.find((c) => c.id === toUser)?.name ?? '')
+                      : t(`calls.next.from.${target}`)
+                  if (
+                    !(await confirm({
+                      title: t('confirm.desks.calls.callNext', { from }),
+                      body: t('confirm.desks.calls.callNextBody'),
+                      confirmLabel: t('confirm.desks.calls.callNextYes'),
+                    }))
+                  )
+                    return
                   void run(async () => {
                     await actions.callNext.mutateAsync({
                       station: myStation,
@@ -346,7 +407,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
                     })
                     setNote('')
                   }, t('calls.next.called'))
-                }
+                }}
               >
                 <PhoneCall size={16} aria-hidden="true" />
                 {t('calls.next.call')}

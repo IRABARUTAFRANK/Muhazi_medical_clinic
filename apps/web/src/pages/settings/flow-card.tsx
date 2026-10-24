@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Flash } from '@/components/ui/flash'
 import { useSaveFlowSetting, useStaffSettings } from '@/lib/api/settings'
+import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 /**
@@ -16,11 +17,23 @@ export function FlowCard() {
   const { t } = useTranslation()
   const { data } = useStaffSettings()
   const save = useSaveFlowSetting()
+  const confirm = useConfirm()
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const current = data?.triageFirst ?? false
 
   const choose = async (v: boolean) => {
+    // the flow in use already: nothing changes, nothing to ask
+    if (v === current) return
+    const k = v ? 'confirm.settings.flow.triageFirst' : 'confirm.settings.flow.deskFirst'
+    if (
+      !(await confirm({
+        title: t(`${k}.title`),
+        body: t(`${k}.body`),
+        confirmLabel: t('confirm.settings.flow.yes'),
+      }))
+    )
+      return
     setDone(false)
     setError(null)
     try {

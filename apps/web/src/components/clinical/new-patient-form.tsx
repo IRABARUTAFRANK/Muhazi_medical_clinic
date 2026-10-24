@@ -7,6 +7,7 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { setNoNationalId, type NoIdReason } from '@/lib/api/patients'
 import { useVisitActions, type Sex } from '@/lib/api/visits'
+import { useConfirm } from '@/lib/confirm'
 
 const SEXES: readonly Sex[] = ['female', 'male', 'other', 'unknown']
 
@@ -50,6 +51,7 @@ export function NewPatientForm({
   const [noId, setNoId] = useState<NoIdReason | ''>('')
   const [sector, setSector] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   const reset = () => {
     setSurname('')
@@ -78,6 +80,14 @@ export function NewPatientForm({
       nationalId: noId ? undefined : nationalId || undefined,
       sector: sector || undefined,
     }
+    if (
+      !(await confirm({
+        title: t('confirm.visit.newFile', { name: `${surname.trim()} ${givenNames.trim()}` }),
+        body: t('confirm.visit.newFileBody'),
+        confirmLabel: t('confirm.visit.newFileYes'),
+      }))
+    )
+      return
     try {
       const f = await actions.registerFile.mutateAsync(patient)
       // A child or someone without an ID: say why, so the file is not flagged as incomplete.

@@ -63,6 +63,7 @@ import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
 import { useCan } from '@/lib/api/permissions'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/confirm'
 import { PharmacyDesk } from './pharmacy-desk'
 import { MedicinesSection } from '../prices/medicines-section'
 
@@ -314,13 +315,22 @@ function StockTable({
 }) {
   const { t } = useTranslation()
   const actions = useStockActions()
+  const confirm = useConfirm()
   const [levelError, setLevelError] = useState<string | null>(null)
-  const editLevel = (i: StockItem) => {
+  const editLevel = async (i: StockItem) => {
     const raw = window.prompt(t('stock.reorderAsk', { name: i.name }), String(i.reorderLevel))
     if (raw === null) return
     const level = Number(raw.trim())
     if (!Number.isInteger(level) || level < 0) return setLevelError(t('stock.reorderBad'))
     setLevelError(null)
+    if (
+      !(await confirm({
+        title: t('confirm.stock.levelTitle', { item: i.name, level }),
+        body: t('confirm.stock.levelBody'),
+        confirmLabel: t('confirm.stock.saveYes'),
+      }))
+    )
+      return
     actions.setReorderLevel
       .mutateAsync({ itemId: i.id, level })
       .catch((e: unknown) => setLevelError(e instanceof Error ? e.message : String(e)))
@@ -399,7 +409,7 @@ function StockTable({
                             type="button"
                             className="text-primary underline-offset-2 hover:underline"
                             title={t('stock.reorderEdit')}
-                            onClick={() => editLevel(i)}
+                            onClick={() => void editLevel(i)}
                           >
                             {i.reorderLevel > 0
                               ? t('stock.reorderAt', { count: i.reorderLevel })
@@ -485,6 +495,7 @@ function ReceiveForm({
 }) {
   const { t } = useTranslation()
   const actions = useStockActions()
+  const confirm = useConfirm()
   const medicineActions = useMedicineActions()
   const {
     data: reference = [],
@@ -564,6 +575,24 @@ function ReceiveForm({
       if (!Number.isFinite(p) || p < 0 || price.trim() === '')
         return setMsg({ ok: false, text: t('prices.errors.price') })
     }
+    const storeName = locations.find((l) => l.id === locationId)?.name ?? ''
+    if (
+      !(await confirm({
+        title: t('confirm.stock.receiveTitle', {
+          quantity: q,
+          item: refCode ? name.trim() : (item?.name ?? ''),
+          store: storeName,
+        }),
+        body: [
+          t('confirm.stock.receiveBody', { value: formatRwf(q * c) }),
+          refCode && !createdId ? t('confirm.stock.receiveNewBody') : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
+        confirmLabel: t('confirm.stock.receiveYes'),
+      }))
+    )
+      return
     // set once the medicine is among the clinic's medicines, even if the delivery then fails
     let created = createdId
     try {
@@ -801,6 +830,7 @@ function SendForm({
 }) {
   const { t } = useTranslation()
   const actions = useStockActions()
+  const confirm = useConfirm()
   const [itemId, setItemId] = useState(preset?.item ?? '')
   const [chosenTo, setTo] = useState('')
   const to = chosenTo || (locations.find((l) => l.id === preset?.to)?.id ?? '')
@@ -833,9 +863,21 @@ function SendForm({
       return setMsg({ ok: false, text: t('stock.errors.quantity') })
     if (q > available)
       return setMsg({ ok: false, text: t('stock.errors.short', { count: available }) })
+    const toName = locations.find((l) => l.id === to)?.name ?? ''
+    if (
+      !(await confirm({
+        title: t('confirm.stock.sendTitle', {
+          quantity: q,
+          item: item?.name ?? '',
+          from: locations.find((l) => l.id === from)?.name ?? '',
+          to: toName,
+        }),
+        confirmLabel: t('confirm.stock.sendYes'),
+      }))
+    )
+      return
     try {
       await actions.transfer.mutateAsync({ itemId, from, to, quantity: q, reason })
-      const toName = locations.find((l) => l.id === to)?.name ?? ''
       setMsg({ ok: true, text: t('stock.sent', { count: q, item: item?.name ?? '', to: toName }) })
       setQuantity('')
     } catch (err) {
@@ -942,6 +984,7 @@ const USE_REASONS = ['expired', 'damaged', 'usedAtDesk', 'countCorrection'] as c
 function UseForm({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
   const { t } = useTranslation()
   const actions = useStockActions()
+  const confirm = useConfirm()
   const [itemId, setItemId] = useState('')
   const [chosenFrom, setFrom] = useState('')
   const from =
@@ -962,6 +1005,19 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
       return setMsg({ ok: false, text: t('stock.errors.quantity') })
     if (q > available)
       return setMsg({ ok: false, text: t('stock.errors.short', { count: available }) })
+    if (
+      !(await confirm({
+        title: t('confirm.stock.useTitle', {
+          quantity: q,
+          item: item?.name ?? '',
+          store: locations.find((l) => l.id === from)?.name ?? '',
+        }),
+        body: t('confirm.stock.useBody', { reason: t(`stock.useReasons.${why}`) }),
+        confirmLabel: t('confirm.stock.useYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     try {
       await actions.use.mutateAsync({
         itemId,
@@ -1267,6 +1323,7 @@ function Sales() {
 function Stores({ locations }: { locations: StockLocation[] }) {
   const { t } = useTranslation()
   const actions = useStockActions()
+  const confirm = useConfirm()
   const { data: departments = [] } = useDepartments()
   const [name, setName] = useState('')
   const [type, setType] = useState<StockLocation['type']>('nursing')
@@ -1276,6 +1333,13 @@ function Stores({ locations }: { locations: StockLocation[] }) {
     e.preventDefault()
     setMsg(null)
     if (name.trim().length < 2) return setMsg({ ok: false, text: t('stock.errors.storeName') })
+    if (
+      !(await confirm({
+        title: t('confirm.stock.addStoreTitle', { name: name.trim() }),
+        confirmLabel: t('confirm.stock.addStoreYes'),
+      }))
+    )
+      return
     try {
       await actions.saveLocation.mutateAsync({ name, type, departmentId: departmentId || null })
       setMsg({ ok: true, text: t('stock.storeSaved', { name }) })
@@ -1300,7 +1364,22 @@ function Stores({ locations }: { locations: StockLocation[] }) {
             <button
               type="button"
               className="text-primary text-[12px] font-semibold underline-offset-2 hover:underline"
-              onClick={() => {
+              onClick={async () => {
+                const closing = l.active !== false
+                if (
+                  !(await confirm({
+                    title: t(
+                      closing ? 'confirm.stock.closeStoreTitle' : 'confirm.stock.openStoreTitle',
+                      { name: l.name },
+                    ),
+                    body: closing ? t('confirm.stock.closeStoreBody') : undefined,
+                    confirmLabel: t(
+                      closing ? 'confirm.stock.closeStoreYes' : 'confirm.stock.openStoreYes',
+                    ),
+                    tone: closing ? 'danger' : 'primary',
+                  }))
+                )
+                  return
                 setMsg(null)
                 actions.setLocationActive
                   .mutateAsync({ id: l.id, active: l.active === false })
@@ -1364,6 +1443,7 @@ function Stores({ locations }: { locations: StockLocation[] }) {
 function CountForm({ items, locations }: { items: StockItem[]; locations: StockLocation[] }) {
   const { t } = useTranslation()
   const actions = useStockActions()
+  const confirm = useConfirm()
   const [itemId, setItemId] = useState('')
   const [chosen, setLocationId] = useState('')
   const locationId = chosen || (locations[0]?.id ?? '')
@@ -1381,6 +1461,19 @@ function CountForm({ items, locations }: { items: StockItem[]; locations: StockL
     if (counted === '' || !Number.isInteger(n) || n < 0)
       return setMsg({ ok: false, text: t('stock.reorderBad') })
     if (reason.trim().length < 3) return setMsg({ ok: false, text: t('stock.errors.countWhy') })
+    if (
+      !(await confirm({
+        title: t('confirm.stock.countTitle', {
+          item: item?.name ?? '',
+          store: locations.find((l) => l.id === locationId)?.name ?? '',
+          after: n,
+        }),
+        body: t('confirm.stock.countBody', { before: current, after: n }),
+        confirmLabel: t('confirm.stock.countYes'),
+        tone: n < current ? 'danger' : 'primary',
+      }))
+    )
+      return
     try {
       await actions.adjust.mutateAsync({ itemId, locationId, counted: n, reason })
       setMsg({

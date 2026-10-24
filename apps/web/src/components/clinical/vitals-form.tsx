@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
-import type { Vital } from '@/lib/api/billing'
+import { useVisitHeader, type Vital } from '@/lib/api/billing'
+import { useConfirm } from '@/lib/confirm'
 import { SEND_FROM_TRIAGE, useVisitActions, useVitalsTakers, type Station } from '@/lib/api/visits'
 import { formatTime } from '@mmc/shared'
 import { cn } from '@/lib/utils'
@@ -40,6 +41,8 @@ const nowHHMM = () => {
   const d = new Date()
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
+/** Later than now (5 minutes of clock difference allowed). */
+const inFuture = (iso: string) => new Date(iso).getTime() > Date.now() + 5 * 60_000
 /** Today at HH:MM as an ISO timestamp (the paper sheet gives the time of day). */
 const todayAt = (hhmm: string): string | null => {
   const m = hhmm.match(/^(\d{1,2}):(\d{2})$/)
@@ -129,6 +132,17 @@ export function VitalsForm({
   const [error, setError] = useState<string | null>(null)
   const fromPaper = measuredBy !== 'me'
   const others = takers.filter((p) => p.id !== user.id)
+  const confirm = useConfirm()
+  // the patient's name for the question asked before saving (cached on the visit page)
+  const { data: header } = useVisitHeader(encounterId)
+  const patient = header?.name || t('confirm.visit.thisPatient')
+  const ask = (title: string, body: string, yes: string) =>
+    confirm({ title, body, confirmLabel: yes })
+  const sendBody = () =>
+    t('confirm.visit.vitalsSendBody', {
+      level: t(`home.triage.${level}`),
+      desk: t(`register.stations.${next}`),
+    })
 
   /** A refusal to send on: switch to measurements only; any other error is shown as it is. */
   const failed = (err: unknown, sending: boolean) => {
@@ -142,6 +156,17 @@ export function VitalsForm({
     setError(null)
     if (lockedNote) return
     if (sendOnOnly) {
+      if (
+        !(await ask(
+          t('confirm.visit.vitalsSendOn', {
+            name: patient,
+            desk: t(`register.stations.${next}`),
+          }),
+          sendBody(),
+          t('confirm.visit.sendYes'),
+        ))
+      )
+        return
       try {
         const ticket = await actions.sendFromTriage.mutateAsync({
           encounterId,
@@ -183,8 +208,28 @@ export function VitalsForm({
     if (!measuredBy) return setError(t('vitalsForm.errors.who'))
     const at = todayAt(measuredAt)
     if (!at) return setError(t('vitalsForm.errors.time'))
-    if (new Date(at).getTime() > Date.now() + 5 * 60_000)
-      return setError(t('vitalsForm.errors.future'))
+    if (inFuture(at)) return setError(t('vitalsForm.errors.future'))
+    const who = fromPaper ? (others.find((p) => p.id === measuredBy)?.name ?? '') : user.name
+    const measured = t('confirm.visit.vitalsBody', { who, time: measuredAt })
+    if (
+      !(await (sends
+        ? ask(
+            t('confirm.visit.vitalsSend', {
+              name: patient,
+              desk: t(`register.stations.${next}`),
+            }),
+            `${measured} ${sendBody()}`,
+            t('confirm.visit.vitalsSendYes'),
+          )
+        : ask(
+            t(taken ? 'confirm.visit.vitalsCorrect' : 'confirm.visit.vitalsSave', {
+              name: patient,
+            }),
+            measured,
+            t('confirm.visit.saveYes'),
+          )))
+    )
+      return
     try {
       const ticket = await actions.recordVitals.mutateAsync({
         encounterId,

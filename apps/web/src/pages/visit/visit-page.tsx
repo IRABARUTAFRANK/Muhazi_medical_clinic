@@ -53,6 +53,7 @@ import { HelpCard } from './help-card'
 import { PharmacyDesk } from '@/pages/stock/pharmacy-desk'
 import { openReceipt } from '@/lib/receipt-doc'
 import { useLetterhead } from '@/lib/report-parts'
+import { useConfirm } from '@/lib/confirm'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -177,10 +178,50 @@ export function VisitPage({
 
   const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
   const currentInsurer = insurers.find((i) => i.id === bill?.payerId)
+  const confirm = useConfirm()
+  const patientName = header?.name || t('confirm.visit.thisPatient')
 
-  const choosePayer = async (payerId: string) => {
+  const takePatient = async (queueId: string) => {
+    if (
+      !(await confirm({
+        title: t('confirm.visit.take', { name: patientName }),
+        body: t('confirm.visit.takeBody'),
+        confirmLabel: t('confirm.visit.takeYes'),
+      }))
+    )
+      return
+    try {
+      await take.mutateAsync(queueId)
+      setActionError(null)
+      setDone(t('visit.taken'))
+    } catch (e) {
+      setActionError(describe(e))
+    }
+  }
+
+  /** memberOnly: the "Save member number" button (the payer stays the same). */
+  const choosePayer = async (payerId: string, memberOnly = false) => {
     setActionError(null)
     const ins = insurers.find((i) => i.id === payerId)
+    if (
+      !(await confirm(
+        memberOnly
+          ? {
+              title: t('confirm.visit.member', { name: patientName }),
+              body: t('confirm.visit.memberBody', { number: member.trim() || '—' }),
+              confirmLabel: t('confirm.visit.saveYes'),
+            }
+          : {
+              title: t('confirm.visit.payer', {
+                name: patientName,
+                payer: ins?.name ?? t('visit.payer.cash'),
+              }),
+              body: t('confirm.visit.payerBody'),
+              confirmLabel: t('confirm.visit.payerYes'),
+            },
+      ))
+    )
+      return
     try {
       await actions.setPayer.mutateAsync({
         payerId: payerId || null,
@@ -193,7 +234,16 @@ export function VisitPage({
     }
   }
 
-  const removeCharge = async (id: string) => {
+  const removeCharge = async (id: string, item: string) => {
+    if (
+      !(await confirm({
+        title: t('confirm.visit.removeCharge', { item, name: patientName }),
+        body: t('confirm.visit.removeChargeBody'),
+        confirmLabel: t('confirm.visit.removeChargeYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     const reason = window.prompt(t('visit.removeReason'))
     if (!reason) return
     setActionError(null)
@@ -256,15 +306,7 @@ export function VisitPage({
                     size="sm"
                     variant="primary"
                     loading={take.isPending}
-                    onClick={() =>
-                      void take
-                        .mutateAsync(takeable.queueId)
-                        .then(() => {
-                          setActionError(null)
-                          setDone(t('visit.taken'))
-                        })
-                        .catch((e: unknown) => setActionError(describe(e)))
-                    }
+                    onClick={() => void takePatient(takeable.queueId)}
                     title={t('visit.takeHint')}
                   >
                     <HandHelping size={14} aria-hidden="true" />
@@ -431,9 +473,11 @@ export function VisitPage({
 
             {/* Doctor → nurse: tasks on this visit appear on the nurses' dashboard. */}
             {(user.role === 'doctor' || user.role === 'manager') && !locked && !closed && (
-              <NurseTaskCard encounterId={encounterId} />
+              <NurseTaskCard encounterId={encounterId} patientName={header.name} />
             )}
-            {user.role === 'nurse' && !closed && <NurseTaskCard encounterId={encounterId} nurse />}
+            {user.role === 'nurse' && !closed && (
+              <NurseTaskCard encounterId={encounterId} patientName={header.name} nurse />
+            )}
 
             {/* Ask a colleague for help on this patient (or end the help) */}
             {!closed &&
@@ -441,7 +485,12 @@ export function VisitPage({
               access &&
               can('clinical.write') &&
               ['doctor', 'nurse', 'manager'].includes(user.role) && (
-                <HelpCard encounterId={encounterId} user={user} access={access} />
+                <HelpCard
+                  encounterId={encounterId}
+                  user={user}
+                  access={access}
+                  patientName={header.name}
+                />
               )}
 
             <div
@@ -489,7 +538,7 @@ export function VisitPage({
                             type="button"
                             className="self-end"
                             disabled={!bill?.payerId || actions.setPayer.isPending}
-                            onClick={() => void choosePayer(bill?.payerId ?? '')}
+                            onClick={() => void choosePayer(bill?.payerId ?? '', true)}
                           >
                             {t('visit.payer.saveMember')}
                           </Button>
@@ -553,7 +602,7 @@ export function VisitPage({
                               size="sm"
                               variant="ghost"
                               aria-label={t('visit.charges.remove')}
-                              onClick={() => void removeCharge(c.id)}
+                              onClick={() => void removeCharge(c.id, c.description)}
                             >
                               <Trash2 size={16} aria-hidden="true" />
                             </Button>
@@ -586,6 +635,7 @@ export function VisitPage({
                   </Card>
                   <WhereNextCard
                     encounterId={encounterId}
+                    patientName={header.name}
                     myStation={myStation}
                     isReception={isReception}
                     closed={closed || locked}
@@ -603,6 +653,7 @@ export function VisitPage({
                 {can('payment.take') && bill && (!closed || bill.balance !== 0) && (
                   <PaymentCard
                     bill={bill}
+                    patientName={patientName}
                     onRefund={async (input) => {
                       setActionError(null)
                       try {
@@ -703,6 +754,7 @@ export function VisitPage({
                 )}
                 {!isReception && !isCashier && !closed && !locked && can('charge.write') && (
                   <AddChargeCard
+                    patientName={patientName}
                     // tests and desk work are ordered (Orders), bed nights come from the beds board
                     treatments={treatments.filter((x) => !x.orderStation && x.code !== 'BED-STAY')}
                     myDepartments={isManagerNav ? [] : myDepartments}
@@ -735,6 +787,7 @@ export function VisitPage({
                 {isReception && !routeLocked && (
                   <WhereNextCard
                     encounterId={encounterId}
+                    patientName={header.name}
                     myStation={myStation}
                     isReception={isReception}
                     closed={closed}
@@ -782,10 +835,13 @@ function PaidMark({ bill }: { bill: VisitBill }) {
 
 function PaymentCard({
   bill,
+  patientName,
   onPay,
   onRefund,
 }: {
   bill: VisitBill
+  /** For the question asked before money is taken or given back. */
+  patientName: string
   onPay: (input: {
     method: Method
     amount: number
@@ -811,6 +867,7 @@ function PaymentCard({
   const needsRef = method !== 'cash'
   const overpaid = bill.balance < 0 ? -bill.balance : 0
   const [reason, setReason] = useState('')
+  const confirm = useConfirm()
 
   const giveBack = async (e: FormEvent) => {
     e.preventDefault()
@@ -820,6 +877,19 @@ function PaymentCard({
       return setError(t('visit.refund.errors.amount', { amount: formatRwf(overpaid) }))
     if (reason.trim().length < 3) return setError(t('visit.refund.errors.reason'))
     if (needsRef && !reference.trim()) return setError(t('visit.payment.errors.reference'))
+    if (
+      !(await confirm({
+        title: t('confirm.visit.refund', {
+          amount: formatRwf(Math.round(n)),
+          name: patientName,
+          method: t(`visit.payment.methods.${method}`),
+        }),
+        body: t('confirm.visit.refundBody'),
+        confirmLabel: t('confirm.visit.refundYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     setBusy(true)
     try {
       await onRefund({ method, amount: Math.round(n), reason: reason.trim(), reference })
@@ -901,6 +971,19 @@ function PaymentCard({
     if (n > bill.balance + 0.5)
       return setError(t('visit.payment.errors.tooMuch', { balance: formatRwf(bill.balance) }))
     if (needsRef && !reference.trim()) return setError(t('visit.payment.errors.reference'))
+    if (
+      !(await confirm({
+        title: t('confirm.visit.pay', {
+          amount: formatRwf(Math.round(n)),
+          name: patientName,
+          method: t(`visit.payment.methods.${method}`),
+        }),
+        body: t('confirm.visit.payBody'),
+        confirmLabel: t('confirm.visit.payYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     setBusy(true)
     try {
       await onPay({ method, amount: Math.round(n), reference, phone })
@@ -1003,6 +1086,7 @@ function PaymentCard({
 /* ---------------------------------------------------------------- add a treatment */
 
 function AddChargeCard({
+  patientName,
   treatments,
   myDepartments,
   office,
@@ -1012,6 +1096,8 @@ function AddChargeCard({
   disabled,
   onAdd,
 }: {
+  /** For the question asked before the treatment is charged. */
+  patientName: string
   treatments: Treatment[]
   /** The employee's departments: their treatments (and those of no department) come first; the
    *  others only after "Show other departments". Empty = everything (manager, no department). */
@@ -1051,6 +1137,7 @@ function AddChargeCard({
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const confirm = useConfirm()
 
   const selected = treatments.find((x) => x.id === serviceId)
   const picked = selected
@@ -1095,6 +1182,20 @@ function AddChargeCard({
     if (manualRefused) return setError(t('visit.add.errors.noManual'))
     if (overMax) return setError(t('visit.add.errors.overMax', { pct: maxDiscount }))
     if (changed && !reason.trim()) return setError(t('visit.add.errors.reason'))
+    if (
+      !(await confirm({
+        title: t('confirm.visit.addCharge', {
+          item: treatmentName(picked, i18n.language),
+          name: patientName,
+        }),
+        body: t('confirm.visit.addChargeBody', {
+          quantity: q,
+          total: formatRwf(total),
+        }),
+        confirmLabel: t('confirm.visit.addChargeYes'),
+      }))
+    )
+      return
     setBusy(true)
     try {
       await onAdd({

@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
 import { useFindPatients } from '@/lib/api/visits'
+import { useConfirm } from '@/lib/confirm'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -18,6 +19,7 @@ export function MergeCard({ keepId, keepLabel }: { keepId: string; keepLabel: st
   const { t } = useTranslation()
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [search, setSearch] = useState('')
   const { data: hits = [] } = useFindPatients(search)
   const [busy, setBusy] = useState(false)
@@ -25,7 +27,15 @@ export function MergeCard({ keepId, keepLabel }: { keepId: string; keepLabel: st
   const others = hits.filter((h) => h.id !== keepId)
 
   const merge = async (id: string, label: string) => {
-    if (!window.confirm(t('patients.merge.confirm', { dup: label, keep: keepLabel }))) return
+    if (
+      !(await confirm({
+        title: t('confirm.desks.patient.merge', { dup: label, keep: keepLabel }),
+        body: t('confirm.desks.patient.mergeBody', { dup: label }),
+        confirmLabel: t('confirm.desks.patient.mergeYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     setMsg(null)
     setBusy(true)
     try {

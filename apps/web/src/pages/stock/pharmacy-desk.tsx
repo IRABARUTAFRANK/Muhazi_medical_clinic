@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { openDispenseLabels } from '@/lib/dispense-label'
 import { useLetterhead } from '@/lib/report-parts'
+import { useConfirm } from '@/lib/confirm'
 import { formatRwf, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
 import { Badge } from '@/components/ui/badge'
@@ -76,6 +77,7 @@ export function PharmacyDesk({
   })
   const queue = encounterId ? all.filter((q) => q.encounterId === encounterId) : all
   const actions = useStockActions()
+  const confirm = useConfirm()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [refusing, setRefusing] = useState<string | null>(null)
   const [reason, setReason] = useState('')
@@ -103,11 +105,46 @@ export function PharmacyDesk({
         item: q.item,
       }),
     )
+  const askGive = async (q: PharmacyLine) => {
+    if (
+      !(await confirm({
+        title: t('confirm.stock.handOverTitle', {
+          item: q.item,
+          quantity: q.quantity,
+          patient: q.patient,
+        }),
+        body: t('confirm.stock.handOverBody'),
+        confirmLabel: t('confirm.stock.handOverYes'),
+      }))
+    )
+      return
+    await give(q)
+  }
   const giveAll = async (lines: PharmacyLine[]) => {
+    if (
+      !(await confirm({
+        title: t('confirm.stock.handOverAllTitle', {
+          count: lines.length,
+          patient: lines[0]!.patient,
+        }),
+        body: t('confirm.stock.handOverBody'),
+        confirmLabel: t('confirm.stock.handOverYes'),
+      }))
+    )
+      return
     for (const q of lines) if (!(await give(q))) return
     setMsg({ ok: true, text: t('pharmacy.allGiven', { patient: lines[0]!.patient }) })
   }
   const notGiven = async (q: PharmacyLine) => {
+    if (
+      !(await confirm({
+        title: t('confirm.stock.notGivenTitle', { item: q.item, patient: q.patient }),
+        body: t('confirm.stock.notGivenBody', { reason: reason.trim() }),
+        confirmLabel: t('confirm.stock.notGivenYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     const ok = await run(
       () => actions.notGiven.mutateAsync({ requestId: q.requestId, reason: reason.trim() }),
       t('pharmacy.notGivenDone', { item: q.item, doctor: q.prescriber ?? '' }),
@@ -294,7 +331,7 @@ export function PharmacyDesk({
                                     actions.dispense.isPending &&
                                     actions.dispense.variables === q.requestId
                                   }
-                                  onClick={() => void give(q)}
+                                  onClick={() => void askGive(q)}
                                   title={short ? t('pharmacy.shortHint') : undefined}
                                 >
                                   <Pill size={14} aria-hidden="true" />
@@ -426,6 +463,7 @@ export function SellMedicineCard({
   const { t } = useTranslation()
   const { data: stock } = useStockOverview()
   const actions = useStockActions()
+  const confirm = useConfirm()
   const [encounterId, setEncounterId] = useState('')
   const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState('')
@@ -440,14 +478,23 @@ export function SellMedicineCard({
     e.preventDefault()
     setMsg(null)
     if (!encounterId || !item || !Number.isFinite(q) || q <= 0) return
+    const who = patients.find((p) => p.encounterId === encounterId)?.label ?? ''
+    const itemName = `${item.name}${item.strength ? ` ${item.strength}` : ''}`
+    if (
+      !(await confirm({
+        title: t('confirm.stock.sellTitle', { item: itemName, quantity: q, patient: who }),
+        body: t('confirm.stock.handOverBody'),
+        confirmLabel: t('confirm.stock.sellYes'),
+      }))
+    )
+      return
     try {
       const r = await actions.sell.mutateAsync({ encounterId, itemId, quantity: q, instructions })
-      const who = patients.find((p) => p.encounterId === encounterId)?.label ?? ''
       setMsg({
         ok: true,
         text: t(r.charged ? 'stock.dispensedCharged' : 'stock.dispensedNoPrice', {
           patient: who,
-          item: `${item.name}${item.strength ? ` ${item.strength}` : ''}`,
+          item: itemName,
         }),
       })
       setItemId('')

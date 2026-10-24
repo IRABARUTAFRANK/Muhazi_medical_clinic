@@ -51,6 +51,7 @@ import { useCan } from '@/lib/api/permissions'
 import { openMedicalReport } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { roleLabel } from '@/lib/roles'
+import { useConfirm } from '@/lib/confirm'
 import { MergeCard } from './merge-card'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'bills'
@@ -89,6 +90,7 @@ export function PatientFilePage({
   // "complete" comes from reception's "Files to complete" list: open the form straight away.
   const [editing, setEditing] = useState(initialTab === 'complete')
   const deskOps = useDeskOps()
+  const confirm = useConfirm()
   const [notice, setNotice] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [emergency, setEmergency] = useState(false)
@@ -172,7 +174,15 @@ export function PatientFilePage({
   const atReception = openVisit?.currentStation === 'reception'
 
   const sendToDoctor = async () => {
-    if (!openVisit) return
+    if (!openVisit || !p) return
+    if (
+      !(await confirm({
+        title: t('confirm.desks.patient.sendToDoctor', { name: `${p.surname} ${p.given_names}` }),
+        body: t('confirm.desks.patient.sendToDoctorBody'),
+        confirmLabel: t('confirm.desks.patient.sendToDoctorYes'),
+      }))
+    )
+      return
     setActionError(null)
     try {
       await deskOps.sendOn.mutateAsync({
@@ -307,7 +317,11 @@ export function PatientFilePage({
                         : null
                     }
                     onStarted={started}
-                    onLater={() => setConfirming(false)}
+                    onLater={() => {
+                      // Escape on the "Start the visit?" question only answers it: keep the card open
+                      if (document.querySelector('[role="alertdialog"]')) return
+                      setConfirming(false)
+                    }}
                   />
                 </CardBody>
               )}
@@ -540,6 +554,8 @@ function MoreInfo({ patient: p }: { patient: PatientRecord }) {
   const { t } = useTranslation()
   const { data: defs = [] } = usePatientFields()
   const actions = usePatientActions(p.id)
+  const confirm = useConfirm()
+  const name = `${p.surname} ${p.given_names}`
   const [adding, setAdding] = useState(false)
   const [label, setLabel] = useState('')
   const [value, setValue] = useState('')
@@ -560,13 +576,30 @@ function MoreInfo({ patient: p }: { patient: PatientRecord }) {
       setErr(e instanceof Error ? e.message : String(e))
     }
   }
-  const add = (e: FormEvent) => {
+  const add = async (e: FormEvent) => {
     e.preventDefault()
     const k = label.trim()
     if (!k || !value.trim()) return
+    if (
+      !(await confirm({
+        title: t('confirm.desks.patient.addField', { field: k, name }),
+        body: t('confirm.desks.patient.addFieldBody', { value: value.trim() }),
+        confirmLabel: t('confirm.desks.patient.addFieldYes'),
+      }))
+    )
+      return
     void save({ ...extra, [k]: value.trim() })
   }
-  const remove = (k: string) => {
+  const remove = async (k: string) => {
+    if (
+      !(await confirm({
+        title: t('confirm.desks.patient.removeField', { field: k, name }),
+        body: t('confirm.desks.patient.removeFieldBody'),
+        confirmLabel: t('confirm.desks.patient.removeFieldYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     const next = { ...extra }
     delete next[k]
     void save(next)
@@ -584,7 +617,10 @@ function MoreInfo({ patient: p }: { patient: PatientRecord }) {
       <CardBody className="gap-3">
         <p className="text-ink-3 m-0 text-xs">{t('file.moreLead')}</p>
         {adding && (
-          <form onSubmit={add} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_2fr_auto]">
+          <form
+            onSubmit={(e) => void add(e)}
+            className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_2fr_auto]"
+          >
             <Field
               label={t('file.fieldName')}
               value={label}
@@ -626,7 +662,7 @@ function MoreInfo({ patient: p }: { patient: PatientRecord }) {
               <Info label={k} value={v} />
               <button
                 type="button"
-                onClick={() => remove(k)}
+                onClick={() => void remove(k)}
                 className="text-ink-3 hover:text-red rounded p-0.5"
                 aria-label={t('file.removeField', { name: k })}
                 title={t('file.removeField', { name: k })}
@@ -652,6 +688,7 @@ function EditForm({
 }) {
   const { t } = useTranslation()
   const actions = usePatientActions(p.id)
+  const confirm = useConfirm()
   const { data: defs = [] } = usePatientFields()
   const f = (k: string) => t(`file.fields.${k}`)
   const [v, setV] = useState<Record<string, string>>({
@@ -694,6 +731,16 @@ function EditForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     onError(null)
+    if (
+      !(await confirm({
+        title: t('confirm.desks.patient.save', {
+          name: `${v.surname ?? ''} ${v.given_names ?? ''}`.trim(),
+        }),
+        body: t('confirm.desks.patient.saveBody'),
+        confirmLabel: t('confirm.desks.patient.saveYes'),
+      }))
+    )
+      return
     try {
       const fields: Record<string, string | number | null | Record<string, string>> = { ...v }
       if (!v.birth_date && v.age_years) fields.age_years = Number(v.age_years)
@@ -718,7 +765,7 @@ function EditForm({
       <CardHeader>
         <span>{t('file.editTitle')}</span>
       </CardHeader>
-      <form onSubmit={submit}>
+      <form onSubmit={(e) => void submit(e)}>
         <CardBody className="gap-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {text('surname', { required: true })}

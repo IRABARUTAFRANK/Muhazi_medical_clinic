@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useNotificationActions, useNotifications, type Notice } from '@/lib/api/notifications'
+import { useConfirm } from '@/lib/confirm'
 import { useAgo, useWording } from '@/lib/notice-wording'
 import { cn } from '@/lib/utils'
 import { Empty, IconChip, Panel } from './kit'
@@ -56,6 +57,7 @@ export function NoticesPanel({
   const navigate = useNavigate()
   const { data } = useNotifications()
   const actions = useNotificationActions()
+  const confirm = useConfirm()
   const ago = useAgo()
   const word = useWording()
   const items = [...(data?.items ?? [])]
@@ -123,7 +125,21 @@ export function NoticesPanel({
           {t('notices.manage')} →
         </StaffLink>
         {unread > 0 && (
-          <Button size="sm" variant="ghost" onClick={() => actions.markRead.mutate(null)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={async () => {
+              if (
+                !(await confirm({
+                  title: t('confirm.notices.markAll.title', { count: unread }),
+                  body: t('confirm.notices.markAll.body'),
+                  confirmLabel: t('confirm.notices.markAll.yes'),
+                }))
+              )
+                return
+              actions.markRead.mutate(null)
+            }}
+          >
             <CheckCheck size={14} aria-hidden="true" />
             {t('notify.markAll')}
           </Button>

@@ -3794,5 +3794,486 @@
     "after": "Ensuite, vous vous reconnectez avec un nouveau code reçu par e-mail.",
     "rule_one": "Déconnexion après {{count}} heure sans activité",
     "rule_other": "Déconnexion après {{count}} heures sans activité"
+  },
+  "confirm": {
+    "yes": "Oui, continuer",
+    "no": "Non, revenir",
+    "desks": {
+      "calls": {
+        "send": "Envoyer {{patient}} à {{name}} ?",
+        "sendBody": "{{patient}} passe dans la liste de {{name}} et quitte la file d’attente.",
+        "sendYes": "Oui, envoyer",
+        "accept": "Aider {{name}} pour {{patient}} ?",
+        "acceptBody": "Votre collègue saura que vous acceptez, et vous pourrez travailler sur ce patient.",
+        "acceptYes": "Oui, aider",
+        "decline": "Dire à {{name}} que vous ne pouvez pas aider maintenant ?",
+        "declineBody": "La demande se ferme pour vous ; votre collègue pourra demander à quelqu’un d’autre.",
+        "declineYes": "Oui, refuser",
+        "endHelp": "Arrêter d’aider {{name}} pour {{patient}} ?",
+        "endHelpBody": "Vous ne pourrez plus travailler sur ce patient.",
+        "endHelpYes": "Oui, arrêter d’aider",
+        "cancelCall": "Annuler votre appel du patient suivant ?",
+        "cancelCallBody": "Personne ne vous enverra de patient pour cet appel.",
+        "cancelCallYes": "Oui, annuler l’appel",
+        "callNext": "Demander le patient suivant à : {{from}} ?",
+        "callNextBody": "Ils sauront que vous êtes libre et vous enverront le patient suivant.",
+        "callNextYes": "Oui, appeler"
+      },
+      "cover": {
+        "start": "Demander à {{name}} de vous remplacer ?",
+        "startBody": "Jusqu’au {{until}}, {{name}} voit votre file, reçoit vos patients et peut les soigner et terminer leurs visites à votre place.",
+        "startYes": "Oui, commencer le remplacement",
+        "endMine": "Mettre fin au remplacement par {{name}} ?",
+        "endMineBody": "{{name}} ne verra plus votre file et ne pourra plus travailler sur vos patients.",
+        "endTheirs": "Arrêter de remplacer {{name}} ?",
+        "endTheirsBody": "Vous ne verrez plus les patients de {{name}} et ne pourrez plus travailler sur eux.",
+        "endYes": "Oui, mettre fin"
+      },
+      "queue": {
+        "take": "Prendre {{name}} ({{ticket}}) et ouvrir la visite ?",
+        "takeBody": "Le patient devient le vôtre : les autres postes qui le partagent ne le verront plus en attente.",
+        "takeYes": "Oui, prendre le patient"
+      },
+      "inquiry": {
+        "approve": "Approuver la demande de {{name}} ?",
+        "approveBody": "Elle devient un rendez-vous et part chez le médecin pour acceptation.",
+        "approveYes": "Oui, approuver"
+      },
+      "task": {
+        "done": "Marquer « {{task}} » comme fait ?",
+        "doneBody": "Pour {{patient}}. C’est enregistré à votre nom et quitte la liste.",
+        "doneYes": "Oui, c’est fait"
+      },
+      "result": {
+        "seen": "Marquer le résultat {{test}} de {{name}} comme vu ?",
+        "seenBody": "Il quitte votre boîte de résultats. Vous le retrouvez toujours dans la visite.",
+        "seenYes": "Oui, marquer comme vu"
+      },
+      "appointment": {
+        "accept": "Accepter le rendez-vous de {{name}} le {{when}} ?",
+        "acceptBody": "Le rendez-vous est confirmé dans votre agenda et la réception le voit.",
+        "acceptYes": "Oui, accepter",
+        "noShow": "Marquer {{name}} ({{time}}) comme absent ?",
+        "noShowBody": "Le rendez-vous est clôturé comme absence. Pour voir le patient plus tard, reprenez un rendez-vous.",
+        "noShowYes": "Oui, absent"
+      },
+      "bed": {
+        "discharge": "Faire sortir {{name}} du lit {{bed}} ?",
+        "dischargeBody": "Le séjour se termine maintenant et le lit passe en nettoyage.",
+        "dischargeYes": "Oui, faire sortir",
+        "ready": "Marquer le lit {{bed}} comme prêt ?",
+        "readyBody": "Le lit devient libre et un patient peut y être installé.",
+        "readyYes": "Oui, il est prêt",
+        "admit_one": "Installer {{name}} dans le lit {{bed}} pour {{count}} nuit ?",
+        "admit_other": "Installer {{name}} dans le lit {{bed}} pour {{count}} nuits ?",
+        "extend_one": "Prolonger le séjour de {{name}} dans le lit {{bed}} de {{count}} nuit ?",
+        "extend_other": "Prolonger le séjour de {{name}} dans le lit {{bed}} de {{count}} nuits ?",
+        "billBody": "{{total}} s’ajoute maintenant à la facture du patient.",
+        "admitYes": "Oui, installer",
+        "extendYes": "Oui, prolonger"
+      },
+      "booking": {
+        "book": "Donner rendez-vous à {{name}} avec {{doctor}} le {{when}} ?",
+        "bookBody": "{{doctor}} est invité à accepter le rendez-vous ; la réponse arrive en notification.",
+        "bookYes": "Oui, réserver"
+      },
+      "patient": {
+        "merge": "Fusionner {{dup}} dans {{keep}} ?",
+        "mergeBody": "Les visites, rendez-vous, documents et assurances de {{dup}} passent dans ce dossier. Impossible à annuler.",
+        "mergeYes": "Oui, fusionner",
+        "sendToDoctor": "Envoyer {{name}} chez le médecin ?",
+        "sendToDoctorBody": "Le patient quitte la réception et attend dans la file de consultation.",
+        "sendToDoctorYes": "Oui, envoyer",
+        "addField": "Ajouter « {{field}} » au dossier de {{name}} ?",
+        "addFieldBody": "Valeur : {{value}}",
+        "addFieldYes": "Oui, ajouter",
+        "removeField": "Retirer « {{field}} » du dossier de {{name}} ?",
+        "removeFieldBody": "Le champ et sa valeur sont supprimés de ce dossier.",
+        "removeFieldYes": "Oui, retirer",
+        "save": "Enregistrer les modifications du dossier de {{name}} ?",
+        "saveBody": "Le dossier est mis à jour pour tous les postes, à votre nom.",
+        "saveYes": "Oui, enregistrer"
+      }
+    },
+    "stock": {
+      "handOverTitle": "Remettre {{item}} × {{quantity}} à {{patient}} ?",
+      "handOverAllTitle": "Remettre les {{n}} médicaments à {{patient}} ?",
+      "handOverBody": "Ils sont pris dans le stock de la pharmacie et ajoutés à la facture du patient.",
+      "handOverYes": "Oui, remettre",
+      "notGivenTitle": "Marquer {{item}} comme non remis à {{patient}} ?",
+      "notGivenBody": "Le médecin est informé de la raison : « {{reason}} ».",
+      "notGivenYes": "Oui, non remis",
+      "sellTitle": "Vendre {{item}} × {{quantity}} à {{patient}} ?",
+      "sellYes": "Oui, vendre",
+      "levelTitle": "Fixer le seuil de stock bas de {{item}} à {{level}} ?",
+      "levelBody": "Le médicament apparaît en stock bas quand le stock atteint ce nombre.",
+      "saveYes": "Oui, enregistrer",
+      "receiveTitle": "Recevoir {{quantity}} × {{item}} dans {{store}} ?",
+      "receiveBody": "Le stock augmente et la livraison est inscrite au registre (valeur {{value}}).",
+      "receiveNewBody": "Le médicament est aussi ajouté aux médicaments de la clinique avec son prix.",
+      "receiveYes": "Oui, recevoir",
+      "sendTitle": "Envoyer {{quantity}} × {{item}} de {{from}} vers {{to}} ?",
+      "sendYes": "Oui, envoyer",
+      "useTitle": "Sortir {{quantity}} × {{item}} de {{store}} ?",
+      "useBody": "C'est inscrit comme « {{reason}} » et sort du stock. Impossible d'annuler.",
+      "useYes": "Oui, sortir du stock",
+      "addStoreTitle": "Ajouter le dépôt « {{name}} » ?",
+      "addStoreYes": "Oui, ajouter",
+      "closeStoreTitle": "Fermer le dépôt « {{name}} » ?",
+      "closeStoreBody": "Il n'est plus proposé pour recevoir ou envoyer du stock. Vous pourrez le rouvrir plus tard.",
+      "closeStoreYes": "Oui, fermer",
+      "openStoreTitle": "Rouvrir le dépôt « {{name}} » ?",
+      "openStoreYes": "Oui, rouvrir",
+      "countTitle": "Mettre {{item}} dans {{store}} à {{after}} ?",
+      "countBody": "Le stock passe de {{before}} à {{after}} ; l'écart est gardé avec votre raison.",
+      "countYes": "Oui, enregistrer le comptage",
+      "handOverAllTitle_one": "Remettre {{count}} médicament à {{patient}} ?",
+      "handOverAllTitle_other": "Remettre les {{count}} médicaments à {{patient}} ?"
+    },
+    "lab": {
+      "sampleTitle": "Marquer l'échantillon de {{test}} de {{patient}} comme prélevé ?",
+      "sampleYes": "Oui, prélevé",
+      "analysingTitle": "Commencer l'analyse de {{test}} pour {{patient}} ?",
+      "analysingYes": "Oui, commencer",
+      "notDoneTitle": "Marquer {{test}} pour {{patient}} comme non fait ?",
+      "notDoneBody": "L'examen est annulé et le médecin est informé de la raison : « {{reason}} ».",
+      "notDoneYes": "Oui, non fait",
+      "resultTitle": "Enregistrer le résultat de {{test}} pour {{patient}} ?",
+      "resultBody": "Le médecin qui l'a demandé peut le voir. Il reste à le vérifier.",
+      "resultVerifyTitle": "Enregistrer et vérifier le résultat de {{test}} pour {{patient}} ?",
+      "resultVerifyBody": "Le résultat est marqué comme vérifié et le médecin qui l'a demandé le voit.",
+      "resultYes": "Oui, enregistrer"
+    },
+    "finance": {
+      "voidTitle": "Annuler le paiement de {{amount}} de {{patient}} ?",
+      "voidBody": "Il est retiré du total du jour et le montant est de nouveau dû sur la facture. Raison : « {{reason}} ». Impossible d'annuler.",
+      "voidYes": "Oui, annuler le paiement",
+      "countTitle": "Enregistrer votre comptage de caisse du {{day}} ?",
+      "countBody": "Vous avez compté {{counted}} au total ; l'écart avec les paiements est de {{diff}}. Le gérant le voit.",
+      "countYes": "Oui, enregistrer le comptage"
+    },
+    "prices": {
+      "deleteYes": "Oui, supprimer",
+      "saveYes": "Oui, enregistrer",
+      "deleteCategoryBody": "Impossible d'annuler.",
+      "addCategoryTitle": "Ajouter la catégorie « {{name}} » ?",
+      "saveCategoryTitle": "Enregistrer les changements de la catégorie « {{name}} » ?",
+      "deleteMedicineTitle": "Supprimer {{name}} de la liste des médicaments ?",
+      "deleteMedicineBody": "Les factures déjà faites gardent leurs lignes. Impossible d'annuler.",
+      "addMedicineTitle": "Ajouter {{name}} à {{price}} ?",
+      "saveMedicineTitle": "Enregistrer les changements de {{name}} ({{price}}) ?",
+      "inactiveBody": "Il est désactivé : il ne sera pas proposé aux postes.",
+      "bulkAddTitle": "Ajouter {{n}} soins à {{dept}} ?",
+      "bulkAddYes": "Oui, les ajouter",
+      "moveTitle": "Déplacer tous les soins de {{category}} vers {{dept}} ?",
+      "moveYes": "Oui, déplacer",
+      "deleteTreatmentTitle": "Supprimer {{name}} ?",
+      "deleteTreatmentBody": "Il disparaît de toutes les listes. Les factures qui l'ont utilisé le gardent. Impossible d'annuler.",
+      "hideTitle": "Masquer {{name}} ?",
+      "hideBody": "Il n'est plus proposé aux postes. Vous pourrez le réafficher plus tard.",
+      "hideYes": "Oui, masquer",
+      "showTitle": "Réafficher {{name}} ?",
+      "showBody": "Il est de nouveau proposé aux postes.",
+      "showYes": "Oui, réafficher",
+      "addDeptTitle": "Créer le département « {{name}} » ?",
+      "addDeptYes": "Oui, créer",
+      "deleteInsurerTitle": "Supprimer l'assureur {{name}} ?",
+      "deleteInsurerBody": "Les factures passées le gardent. Impossible d'annuler.",
+      "adjustBody": "Les nouveaux prix s'appliquent aux factures à partir de maintenant. Les factures déjà faites gardent leurs prix.",
+      "adjustYes": "Oui, changer les prix",
+      "addTreatmentTitle": "Ajouter {{name}} à {{price}} ?",
+      "saveTreatmentTitle": "Enregistrer les changements de {{name}} ({{price}}) ?",
+      "saveTreatmentBody": "Les nouvelles données s'appliquent aux factures à partir de maintenant. Les factures déjà faites gardent les leurs.",
+      "addInsurerTitle": "Ajouter l'assureur {{name}} qui couvre {{pct}} % ?",
+      "saveInsurerTitle": "Enregistrer les changements de l'assureur {{name}} ({{pct}} % couverts) ?",
+      "bulkAddTitle_one": "Ajouter {{count}} soin à {{dept}} ?",
+      "bulkAddTitle_other": "Ajouter {{count}} soins à {{dept}} ?",
+      "adjustTitle_one": "Appliquer {{change}} au prix de {{count}} soin de la catégorie {{group}} ?",
+      "adjustTitle_other": "Appliquer {{change}} au prix de {{count}} soins de la catégorie {{group}} ?",
+      "adjustAllTitle_one": "Appliquer {{change}} au prix de {{count}} soin ?",
+      "adjustAllTitle_other": "Appliquer {{change}} au prix des {{count}} soins ?"
+    },
+    "visit": {
+      "thisPatient": "ce patient",
+      "saveYes": "Oui, enregistrer",
+      "sendYes": "Oui, envoyer",
+      "take": "Prendre {{name}} en charge ?",
+      "takeBody": "Le patient quitte la file d’attente et c’est vous qui le voyez. Vos collègues voient que vous l’avez pris.",
+      "takeYes": "Oui, prendre le patient",
+      "payer": "Changer qui paie la visite de {{name}} : {{payer}} ?",
+      "payerBody": "Les prix de cette visite et les parts payées par le patient et par l’assureur changent.",
+      "payerYes": "Oui, changer",
+      "member": "Enregistrer le numéro de membre de {{name}} ?",
+      "memberBody": "Numéro de membre : {{number}}.",
+      "removeCharge": "Retirer {{item}} de la facture de {{name}} ?",
+      "removeChargeBody": "La ligne est retirée définitivement de la facture. On vous demandera ensuite pourquoi.",
+      "removeChargeYes": "Oui, retirer",
+      "pay": "Encaisser {{amount}} de {{name}} par {{method}} ?",
+      "payBody": "Le paiement est enregistré à votre nom avec un numéro de reçu. Il ne peut pas être annulé.",
+      "payYes": "Oui, encaisser",
+      "refund": "Rendre {{amount}} à {{name}} par {{method}} ?",
+      "refundBody": "Le remboursement est enregistré à votre nom avec son motif. Il ne peut pas être annulé.",
+      "refundYes": "Oui, rembourser",
+      "addCharge": "Ajouter {{item}} à la facture de {{name}} ?",
+      "addChargeBody": "Quantité {{quantity}}, total {{total}}. C’est facturé à votre nom.",
+      "addChargeYes": "Oui, ajouter",
+      "sendBack": "Renvoyer {{name}} à {{person}} ({{desk}}) ?",
+      "sendBackBody": "Le patient quitte votre poste et attend {{person}}.",
+      "sendBackYes": "Oui, renvoyer",
+      "refer": "Envoyer {{name}} à {{to}} ?",
+      "referBody": "Le patient quitte votre poste et rejoint la file d’attente là-bas.",
+      "referBackBody": "Le patient quitte votre poste et rejoint la file d’attente là-bas, puis vous revient.",
+      "toCashier": "Envoyer {{name}} à la caisse ?",
+      "toCashierBody": "Votre partie de la visite se termine et le patient attend à la caisse pour payer.",
+      "helpAsk": "Demander l’aide de {{who}} pour {{name}} ?",
+      "helpAskAny": "Demander l’aide de n’importe quel médecin pour {{name}} ?",
+      "helpAskBody": "Ils sont prévenus tout de suite. Le collègue qui accepte peut travailler sur ce patient avec vous.",
+      "helpAskYes": "Oui, demander",
+      "helpWithdraw": "Retirer votre demande d’aide pour {{name}} ?",
+      "helpWithdrawBody": "Plus personne ne sera sollicité.",
+      "helpWithdrawYes": "Oui, retirer",
+      "helpEndMine": "Arrêter d’aider pour {{name}} ?",
+      "helpEndMineBody": "Vous ne pourrez plus travailler sur ce patient.",
+      "helpEnd": "Mettre fin à l’aide de {{helper}} pour {{name}} ?",
+      "helpEndBody": "{{helper}} ne pourra plus travailler sur ce patient.",
+      "helpEndYes": "Oui, y mettre fin",
+      "taskSend": "Envoyer la tâche « {{task}} » pour {{name}} aux infirmières ?",
+      "taskSendBody": "Elle apparaît tout de suite sur le tableau de bord des infirmières.",
+      "taskSendYes": "Oui, envoyer",
+      "taskDone": "Marquer « {{task}} » comme fait ?",
+      "taskDoneBody": "Elle quitte la liste des infirmières, enregistrée à votre nom.",
+      "taskDoneYes": "Oui, c’est fait",
+      "taskNotDone": "Marquer « {{task}} » comme non fait ?",
+      "taskNotDoneBody": "On vous demandera ensuite pourquoi. La tâche quitte la liste des infirmières.",
+      "taskNotDoneYes": "Oui, non fait",
+      "taskWithdraw": "Retirer la tâche « {{task}} » ?",
+      "taskWithdrawBody": "Les infirmières ne la verront plus. On vous demandera ensuite pourquoi.",
+      "taskWithdrawYes": "Oui, retirer",
+      "left": "{{name}} a-t-il quitté la clinique ?",
+      "leftBody": "La visite est clôturée et le patient sort de toutes les files. Cela ne peut pas être annulé.",
+      "leftYes": "Oui, le patient est parti",
+      "note": "Enregistrer cette note dans le dossier de {{name}} ?",
+      "recordBody": "Cela reste dans le dossier du patient, à votre nom.",
+      "dx": "Enregistrer le diagnostic « {{dx}} » pour {{name}} ?",
+      "rx": "Prescrire ces médicaments à {{name}} ?",
+      "rxBody": "{{list}}. Les médicaments pour la pharmacie y attendent ; ceux donnés ici sont facturés et sortis du stock maintenant.",
+      "rxYes": "Oui, prescrire",
+      "tests": "Demander ces examens pour {{name}} ?",
+      "testsBody": "{{list}}. Ils sont ajoutés à la facture.",
+      "testsSendBody": "{{list}}. Ils sont ajoutés à la facture et le patient est envoyé au poste qui les fait.",
+      "testsYes": "Oui, demander",
+      "result": "Enregistrer le résultat de {{test}} pour {{name}} ?",
+      "resultBody": "Il peut encore être modifié tant qu’il n’est pas validé.",
+      "resultVerify": "Enregistrer et valider le résultat de {{test}} pour {{name}} ?",
+      "resultVerifyBody": "Une fois validé, il ne peut être corrigé qu’avec un motif.",
+      "resultCorrect": "Corriger le résultat validé de {{test}} pour {{name}} ?",
+      "resultCorrectBody": "La correction et son motif sont gardés avec le résultat, à votre nom.",
+      "resultCorrectYes": "Oui, corriger",
+      "finish": "Clôturer la visite de {{name}} ?",
+      "finishBody": "Les examens en cours restent ouverts ; une facture impayée envoie le patient à la caisse. La visite reste ensuite dans le dossier du patient.",
+      "finishYes": "Oui, clôturer la visite",
+      "returnMedicine": "Reprendre {{item}} de {{name}} ?",
+      "returnMedicineBody": "La remise est annulée. On vous demandera ensuite pourquoi.",
+      "returnMedicineYes": "Oui, reprendre",
+      "vitalsSendOn": "Envoyer {{name}} à {{desk}} ?",
+      "vitalsSendBody": "Couleur de triage : {{level}}. Le patient quitte le triage et attend à {{desk}}.",
+      "vitalsSend": "Enregistrer les constantes et envoyer {{name}} à {{desk}} ?",
+      "vitalsSendYes": "Oui, enregistrer et envoyer",
+      "vitalsSave": "Enregistrer les constantes de {{name}} ?",
+      "vitalsCorrect": "Enregistrer les constantes corrigées de {{name}} ?",
+      "vitalsBody": "Mesurées par {{who}} à {{time}}.",
+      "start": "Démarrer une visite pour {{name}} ?",
+      "startEmergency": "Démarrer une visite en URGENCE pour {{name}} ?",
+      "startBody": "{{where}}. Le patient reçoit un ticket et une place dans la file, et une nouvelle facture s’ouvre.",
+      "startYes": "Oui, démarrer la visite",
+      "newFile": "Créer un dossier patient pour {{name}} ?",
+      "newFileBody": "Un nouveau numéro de dossier est attribué. Vérifiez les noms, le sexe et l’âge avant de continuer.",
+      "newFileYes": "Oui, créer le dossier"
+    },
+    "staff": {
+      "deactivate": {
+        "title": "Désactiver {{name}} ?",
+        "body": "{{name}} ne pourra plus se connecter. Tout ce qui a été enregistré reste, et vous pourrez réactiver le compte plus tard. Un code vous est ensuite envoyé par e-mail pour confirmer.",
+        "yes": "Oui, désactiver"
+      },
+      "reactivate": {
+        "title": "Réactiver {{name}} ?",
+        "body": "{{name}} pourra de nouveau se connecter. Un code vous est ensuite envoyé par e-mail pour confirmer.",
+        "yes": "Oui, réactiver"
+      },
+      "create": {
+        "title": "Créer le compte de {{name}} ?",
+        "body": "{{name}} pourra se connecter avec le nom d’utilisateur et le premier PIN affichés. Un code vous est ensuite envoyé par e-mail pour confirmer.",
+        "yes": "Oui, créer"
+      },
+      "update": {
+        "title": "Enregistrer les modifications de {{name}} ?",
+        "body": "Les nouvelles informations, le rôle et les services s’appliquent tout de suite : ils décident quels patients arrivent à {{name}}. Un code vous est ensuite envoyé par e-mail pour confirmer.",
+        "yes": "Oui, enregistrer"
+      },
+      "resetPin": {
+        "title": "Donner un nouveau PIN à {{name}} ?",
+        "body": "Le PIN actuel cesse de fonctionner tout de suite. Remettez le nouveau PIN en personne ; {{name}} devra le changer à la prochaine connexion.",
+        "yes": "Oui, donner un nouveau PIN"
+      }
+    },
+    "departments": {
+      "create": {
+        "title": "Créer le service {{name}} ?",
+        "body": "Ses membres prendront les patients envoyés aux sections choisies.",
+        "yes": "Oui, créer"
+      },
+      "save": {
+        "title": "Enregistrer les modifications du service {{name}} ?",
+        "body": "Les rôles et sections choisis s’appliquent tout de suite à tous les membres de ce service.",
+        "yes": "Oui, enregistrer"
+      },
+      "delete": {
+        "title": "Supprimer le service {{name}} ?",
+        "body_one": "Son {{count}} employé reste employé, sans ce service. C’est définitif.",
+        "body_other": "Ses {{count}} employés restent employés, sans ce service. C’est définitif.",
+        "yes": "Oui, supprimer"
+      }
+    },
+    "beds": {
+      "apply": {
+        "title_one": "Fixer le nombre de lits à {{count}} ?",
+        "title_other": "Fixer le nombre de lits à {{count}} ?",
+        "body": "Chaque nuit coûtera {{price}}. Les lits occupés ne sont jamais retirés et les séjours déjà facturés gardent leur prix.",
+        "bodyNoPrice": "Chaque lit garde son prix. Les lits occupés ne sont jamais retirés.",
+        "yes": "Oui, appliquer",
+        "bodyRemove_one": "1 lit libre en fin de liste sera retiré. Un lit occupé n'est jamais retiré.",
+        "bodyRemove_other": "{{count}} lits libres en fin de liste seront retirés. Un lit occupé n'est jamais retiré.",
+        "removeYes_one": "Oui, retirer 1 lit",
+        "removeYes_other": "Oui, retirer {{count}} lits",
+        "bodyOnePrice": "Tous les lits auront ce prix unique ; les prix fixés lit par lit seront remplacés.",
+        "priceOnly": {
+          "title": "Fixer la nuit à {{price}} pour tous les lits ?",
+          "body": "Tous les lits auront ce prix pour les nuits à venir. Les séjours déjà facturés gardent leur prix."
+        }
+      },
+      "save": {
+        "title": "Enregistrer {{name}} ?",
+        "body": "Une nuit dans ce lit coûtera {{price}}. Les séjours déjà facturés gardent leur prix.",
+        "yes": "Oui, enregistrer"
+      },
+      "remove": {
+        "title": "Retirer {{name}} ?",
+        "body": "Le lit quitte la liste des lits. Les séjours déjà facturés ne changent pas. C’est définitif.",
+        "yes": "Oui, retirer"
+      }
+    },
+    "settings": {
+      "flow": {
+        "triageFirst": {
+          "title": "Envoyer chaque nouveau patient d’abord au triage ?",
+          "body": "Désormais, une infirmière prend les signes vitaux de chaque patient nouvellement enregistré et l’envoie plus loin."
+        },
+        "deskFirst": {
+          "title": "Envoyer les nouveaux patients directement au poste choisi ?",
+          "body": "Désormais, l’accueil envoie chaque patient nouvellement enregistré directement chez le médecin ou à un autre poste, sans passer d’abord par le triage."
+        },
+        "yes": "Oui, changer le parcours"
+      },
+      "patientFields": {
+        "title_one": "Enregistrer {{count}} champ du dossier patient ?",
+        "title_other": "Enregistrer {{count}} champs du dossier patient ?",
+        "body": "Chaque dossier patient affiche désormais ces champs.",
+        "bodyRemoved": "Retirés : {{names}}. Les réponses déjà données ne s’affichent plus dans les dossiers patients.",
+        "yes": "Oui, enregistrer"
+      },
+      "profile": {
+        "title": "Enregistrer les informations de {{name}} ?",
+        "body": "Les nouvelles informations sont utilisées tout de suite sur chaque écran et document imprimé qui montre les informations de la clinique."
+      },
+      "hours": {
+        "title": "Enregistrer les horaires d’ouverture ?",
+        "body": "Les nouveaux horaires s’appliquent tout de suite partout où les horaires de la clinique sont affichés ou utilisés pour les rendez-vous."
+      },
+      "saveYes": "Oui, enregistrer"
+    },
+    "perms": {
+      "roleOn": {
+        "title": "Autoriser « {{feature}} » pour chaque {{role}} ?",
+        "body": "Toute personne ayant ce rôle pourra le faire dès maintenant, sauf celles qui ont leur propre exception plus bas.",
+        "yes": "Oui, autoriser"
+      },
+      "roleOff": {
+        "title": "Retirer « {{feature}} » à chaque {{role}} ?",
+        "body": "Plus personne ayant ce rôle ne pourra le faire, sauf celles qui ont leur propre exception plus bas.",
+        "yes": "Oui, retirer"
+      },
+      "one": {
+        "role": {
+          "title": "{{name}} : suivre de nouveau son rôle pour « {{feature}} » ?",
+          "body": "L’exception est retirée : {{name}} pourra le faire seulement si chaque {{role}} le peut."
+        },
+        "yes": {
+          "title": "Autoriser « {{feature}} » pour {{name}} ?",
+          "body": "{{name}} pourra le faire dès maintenant, quoi que permette son rôle."
+        },
+        "no": {
+          "title": "Retirer « {{feature}} » à {{name}} ?",
+          "body": "{{name}} ne pourra plus le faire, même si son rôle le permet."
+        },
+        "change": "Oui, changer"
+      }
+    },
+    "calendar": {
+      "saveMine": {
+        "title": "Enregistrer votre agenda ?"
+      },
+      "save": {
+        "title": "Enregistrer l’agenda de {{name}} ?"
+      },
+      "body": {
+        "private": "Seul son titulaire le verra, et personne ne pourra réserver en ligne.",
+        "staff": "L’accueil et le personnel verront ces horaires et jours de congé et y placeront les rendez-vous.",
+        "public": "Le personnel et le site de la clinique afficheront ces horaires, et les patients pourront demander un créneau en ligne."
+      },
+      "yes": "Oui, enregistrer"
+    },
+    "notices": {
+      "markAll": {
+        "title_one": "Marquer {{count}} notification comme lue ?",
+        "title_other": "Marquer les {{count}} notifications comme lues ?",
+        "body": "Elles restent dans votre liste mais ne comptent plus comme non lues.",
+        "yes": "Oui, marquer comme lu"
+      },
+      "markSelected": {
+        "title_one": "Marquer {{count}} notification choisie comme lue ?",
+        "title_other": "Marquer {{count}} notifications choisies comme lues ?"
+      },
+      "markOne": {
+        "title": "Marquer « {{title}} » comme lu ?"
+      },
+      "hideSelected": {
+        "title_one": "Retirer {{count}} notification de votre liste ?",
+        "title_other": "Retirer {{count}} notifications de votre liste ?"
+      },
+      "hideOne": {
+        "title": "Retirer « {{title}} » de votre liste ?"
+      },
+      "hide": {
+        "body": "Elle disparaît seulement de votre liste ; les autres destinataires la voient encore. C’est définitif.",
+        "yes": "Oui, retirer"
+      },
+      "deleteSent": {
+        "title": "Supprimer le message « {{title}} » pour tout le monde ?",
+        "body": "Il disparaît de la liste de tous ceux qui l’ont reçu. C’est définitif.",
+        "yes": "Oui, supprimer"
+      },
+      "send": {
+        "all": "Envoyer « {{title}} » à tout le personnel ?",
+        "allHeads": "Envoyer « {{title}} » à chaque chef et chef adjoint de service ?",
+        "role": "Envoyer « {{title}} » à chaque {{who}} ?",
+        "dept": "Envoyer « {{title}} » au service {{who}} ?",
+        "deptHeads": "Envoyer « {{title}} » au chef et aux chefs adjoints du service {{who}} ?",
+        "person": "Envoyer « {{title}} » à {{who}} ?",
+        "body": "Ils le reçoivent tout de suite dans leurs notifications.",
+        "bodyUrgent": "Il est marqué urgent : ils le reçoivent tout de suite, affiché comme urgent.",
+        "yes": "Oui, envoyer"
+      }
+    }
   }
 }

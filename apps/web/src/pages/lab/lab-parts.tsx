@@ -19,6 +19,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useLabActions, type LabOrder, type TestStatus } from '@/lib/api/lab'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/confirm'
 import { openMedicalReport } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 
@@ -117,6 +118,8 @@ export function LabOrderRow({
   }
   const look = STATUS_LOOK[o.status]
   const urgent = o.priority <= 2
+  const confirm = useConfirm()
+  const names = { test: o.test, patient: o.patient }
   const run = async (fn: () => Promise<unknown>) => {
     setError(null)
     try {
@@ -167,9 +170,16 @@ export function LabOrderRow({
               size="sm"
               variant="primary"
               loading={actions.setStatus.isPending && actions.setStatus.variables?.id === o.id}
-              onClick={() =>
+              onClick={async () => {
+                if (
+                  !(await confirm({
+                    title: t('confirm.lab.sampleTitle', names),
+                    confirmLabel: t('confirm.lab.sampleYes'),
+                  }))
+                )
+                  return
                 void run(() => actions.setStatus.mutateAsync({ id: o.id, status: 'collected' }))
-              }
+              }}
             >
               <TestTube size={14} aria-hidden="true" />
               {t('lab.sampleTaken')}
@@ -179,9 +189,16 @@ export function LabOrderRow({
             <Button
               size="sm"
               loading={actions.setStatus.isPending && actions.setStatus.variables?.id === o.id}
-              onClick={() =>
+              onClick={async () => {
+                if (
+                  !(await confirm({
+                    title: t('confirm.lab.analysingTitle', names),
+                    confirmLabel: t('confirm.lab.analysingYes'),
+                  }))
+                )
+                  return
                 void run(() => actions.setStatus.mutateAsync({ id: o.id, status: 'in_process' }))
-              }
+              }}
               title={t('lab.analysingHint')}
             >
               <FlaskConical size={14} aria-hidden="true" />
@@ -260,7 +277,16 @@ export function LabOrderRow({
               variant="primary"
               disabled={why.trim().length < 2}
               loading={actions.setStatus.isPending}
-              onClick={() =>
+              onClick={async () => {
+                if (
+                  !(await confirm({
+                    title: t('confirm.lab.notDoneTitle', names),
+                    body: t('confirm.lab.notDoneBody', { reason: why.trim() }),
+                    confirmLabel: t('confirm.lab.notDoneYes'),
+                    tone: 'danger',
+                  }))
+                )
+                  return
                 void run(async () => {
                   await actions.setStatus.mutateAsync({
                     id: o.id,
@@ -269,7 +295,7 @@ export function LabOrderRow({
                   })
                   setCancelling(false)
                 })
-              }
+              }}
             >
               {t('lab.cannotConfirm')}
             </Button>
@@ -297,8 +323,19 @@ export function LabOrderRow({
       {open && (
         <form
           className="bg-surface flex flex-col gap-2 rounded-xl p-3"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault()
+            if (
+              !(await confirm({
+                title: t(
+                  form.verify ? 'confirm.lab.resultVerifyTitle' : 'confirm.lab.resultTitle',
+                  names,
+                ),
+                body: t(form.verify ? 'confirm.lab.resultVerifyBody' : 'confirm.lab.resultBody'),
+                confirmLabel: t('confirm.lab.resultYes'),
+              }))
+            )
+              return
             void run(() => actions.result.mutateAsync({ id: o.id, ...form }))
           }}
         >

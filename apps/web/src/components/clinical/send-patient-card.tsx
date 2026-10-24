@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Activity, FilePlus2, History, Send, Siren, UserRoundCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, type StaffUser } from '@mmc/shared'
@@ -15,6 +15,7 @@ import {
 } from '@/lib/api/services'
 import { stationFor, useVisitActions, type Station, type VisitResult } from '@/lib/api/visits'
 import { useReveal } from '@/lib/hooks'
+import { useConfirm } from '@/lib/confirm'
 import { SECTION_ICON } from './service-icons'
 import { cn } from '@/lib/utils'
 
@@ -83,10 +84,13 @@ export function SendPatientCard({
   // it opens at the top of the page while the button pressed is lower: bring it into view, the
   // cursor on the chosen option (arrow keys change it)
   const ref = useReveal<HTMLElement>({ focus: true })
+  // true while the "Start the visit?" question is open: Escape there only answers it (No) and
+  // must not also close this card (both listen on window, in no fixed order)
+  const asking = useRef(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onLater()
+      if (e.key === 'Escape' && !asking.current) onLater()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -98,9 +102,27 @@ export function SendPatientCard({
     s === 'pharmacy' ? t('register.stations.pharmacy') : t(`categories.${s}`)
   const chosen = staff?.staff.find((p) => p.id === person)
   const chosenNurse = nurses?.staff.find((p) => p.id === nurse)
+  const confirm = useConfirm()
 
   const start = async () => {
     setError(null)
+    asking.current = true
+    let yes: boolean
+    try {
+      yes = await confirm({
+        title: t(emergency ? 'confirm.visit.startEmergency' : 'confirm.visit.start', {
+          name: patient.name,
+        }),
+        body: t('confirm.visit.startBody', { where }),
+        confirmLabel: t('confirm.visit.startYes'),
+      })
+    } finally {
+      // after the key press that answered has reached every listener
+      window.setTimeout(() => {
+        asking.current = false
+      }, 0)
+    }
+    if (!yes) return
     try {
       const r = await actions.beginVisit.mutateAsync({
         patientId: patient.id,

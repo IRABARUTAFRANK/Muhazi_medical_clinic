@@ -24,6 +24,7 @@ import {
   type OpenInquiry,
 } from '@/lib/api/home'
 import { useFindPatients } from '@/lib/api/visits'
+import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 import { NewPatientForm } from '@/components/clinical/new-patient-form'
 
@@ -307,6 +308,7 @@ function BookForm({
 }) {
   const { t } = useTranslation()
   const actions = useHomeActions()
+  const confirm = useConfirm()
   const { data: doctors = [] } = useBookableDoctors()
   const start = q ? (q.startsAt ?? q.preferredAt) : null
   const [patientId, setPatientId] = useState(q?.patientId ?? prefill?.patientId ?? '')
@@ -346,6 +348,16 @@ function BookForm({
     if (!day || !time) return setError(t('ops.inquiries.errors.when'))
     const at = new Date(`${day}T${time}:00`)
     if (Number.isNaN(at.getTime())) return setError(t('ops.inquiries.errors.when'))
+    const name = q?.name ?? patientLabel.split(' · ').slice(1).join(' · ')
+    const when = `${formatDate(at)} ${formatTime(at)}`
+    if (
+      !(await confirm({
+        title: t('confirm.desks.booking.book', { name, doctor: doctor?.name ?? '', when }),
+        body: t('confirm.desks.booking.bookBody', { doctor: doctor?.name ?? '' }),
+        confirmLabel: t('confirm.desks.booking.bookYes'),
+      }))
+    )
+      return
     try {
       if (q)
         await actions.approveInquiry.mutateAsync({
@@ -362,13 +374,7 @@ function BookForm({
           reason,
           source,
         })
-      onDone(
-        t('ops.inquiries.booked', {
-          name: q?.name ?? patientLabel.split(' · ').slice(1).join(' · '),
-          doctor: doctor?.name ?? '',
-          when: `${formatDate(at)} ${formatTime(at)}`,
-        }),
-      )
+      onDone(t('ops.inquiries.booked', { name, doctor: doctor?.name ?? '', when }))
     } catch (err) {
       setError(describe(err))
     }

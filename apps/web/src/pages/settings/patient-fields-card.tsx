@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { usePatientFields, useSavePatientFields, type PatientFieldDef } from '@/lib/api/patients'
+import { useConfirm } from '@/lib/confirm'
 
 const TYPES: PatientFieldDef['type'][] = ['text', 'number', 'date', 'choice', 'yesno']
 
@@ -27,6 +28,7 @@ export function PatientFieldsCard() {
   const { t } = useTranslation()
   const { data } = usePatientFields()
   const save = useSavePatientFields()
+  const confirm = useConfirm()
   const [draft, setDraft] = useState<PatientFieldDef[] | null>(null)
   const [seeded, setSeeded] = useState<PatientFieldDef[] | null>(null)
   const [saved, setSaved] = useState(false)
@@ -56,6 +58,22 @@ export function PatientFieldsCard() {
       }
       clean.push(def)
     }
+    // a field taken away: its answers are no longer shown on the patient files
+    const dropped = (data ?? []).filter((f) => !clean.some((c) => c.key === f.key))
+    if (
+      !(await confirm({
+        title: t('confirm.settings.patientFields.title', { count: clean.length }),
+        body:
+          dropped.length > 0
+            ? t('confirm.settings.patientFields.bodyRemoved', {
+                names: dropped.map((f) => f.label).join(', '),
+              })
+            : t('confirm.settings.patientFields.body'),
+        confirmLabel: t('confirm.settings.patientFields.yes'),
+        tone: dropped.length > 0 ? 'danger' : 'primary',
+      }))
+    )
+      return
     await save.mutateAsync(clean)
     setDraft(null)
     setSaved(true)

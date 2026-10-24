@@ -68,6 +68,7 @@ import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { ShownList } from '@/components/ui/list-tools'
 import { Flash } from '@/components/ui/flash'
+import { useConfirm } from '@/lib/confirm'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -100,6 +101,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const { data: treatments = [], error: tError } = useTreatments()
   const { data: insurers = [], error: iError } = useInsurers()
   const actions = useCatalogueActions()
+  const confirm = useConfirm()
   const [editing, setEditing] = useState<Treatment | 'new' | null>(null)
   const [copyFrom, setCopyFrom] = useState<Treatment | null>(null)
   const [editingInsurer, setEditingInsurer] = useState<Insurer | 'new' | null>(null)
@@ -177,9 +179,16 @@ export function PricesPage({ user }: { user: StaffUser }) {
     closePanels()
     setEditing('new')
   }
-  const createDept = () => {
+  const createDept = async () => {
     const name = (newDept ?? '').trim()
     if (name.length < 2) return
+    if (
+      !(await confirm({
+        title: t('confirm.prices.addDeptTitle', { name }),
+        confirmLabel: t('confirm.prices.addDeptYes'),
+      }))
+    )
+      return
     void run(
       async () => {
         await deptActions.save.mutateAsync({ name, description: '', roles: [], services: [] })
@@ -287,7 +296,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                       variant="ghost"
                       title={t(x.active ? 'prices.hide' : 'prices.show')}
                       aria-label={t(x.active ? 'prices.hide' : 'prices.show')}
-                      onClick={() => toggle(x)}
+                      onClick={() => void toggle(x)}
                     >
                       {x.active ? (
                         <EyeOff size={14} aria-hidden="true" />
@@ -301,7 +310,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                       className="hover:text-red"
                       title={t('prices.delete')}
                       aria-label={t('prices.delete')}
-                      onClick={() => remove(x)}
+                      onClick={() => void remove(x)}
                     >
                       <Trash2 size={14} aria-hidden="true" />
                     </Button>
@@ -325,18 +334,36 @@ export function PricesPage({ user }: { user: StaffUser }) {
       setActionError(e instanceof Error ? e.message : String(e))
     }
   }
-  const remove = (x: Treatment) => {
-    if (!window.confirm(t('prices.confirmDelete', { name: x.nameEn }))) return
+  const remove = async (x: Treatment) => {
+    if (
+      !(await confirm({
+        title: t('confirm.prices.deleteTreatmentTitle', { name: treatmentName(x, i18n.language) }),
+        body: t('confirm.prices.deleteTreatmentBody'),
+        confirmLabel: t('confirm.prices.deleteYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     void run(
       () => actions.deleteTreatment.mutateAsync(x.id),
       t('prices.deleted', { name: x.nameEn }),
     )
   }
-  const toggle = (x: Treatment) =>
+  const toggle = async (x: Treatment) => {
+    const name = treatmentName(x, i18n.language)
+    if (
+      !(await confirm({
+        title: t(x.active ? 'confirm.prices.hideTitle' : 'confirm.prices.showTitle', { name }),
+        body: t(x.active ? 'confirm.prices.hideBody' : 'confirm.prices.showBody'),
+        confirmLabel: t(x.active ? 'confirm.prices.hideYes' : 'confirm.prices.showYes'),
+      }))
+    )
+      return
     void run(
       () => actions.setTreatmentActive.mutateAsync({ treatment: x, active: !x.active }),
       t(x.active ? 'prices.hidden' : 'prices.shown', { name: x.nameEn }),
     )
+  }
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="prices">
@@ -406,7 +433,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
               <Button
                 variant="primary"
                 disabled={newDept.trim().length < 2 || deptActions.save.isPending}
-                onClick={createDept}
+                onClick={() => void createDept()}
               >
                 <FolderPlus size={16} aria-hidden="true" />
                 {t('prices.dept.create')}
@@ -617,8 +644,16 @@ export function PricesPage({ user }: { user: StaffUser }) {
             activeCount={activeInsurers.length}
             editingInsurer={editingInsurer}
             setEditingInsurer={setEditingInsurer}
-            onDelete={(i) => {
-              if (!window.confirm(t('prices.insurers.confirmDelete', { name: i.name }))) return
+            onDelete={async (i) => {
+              if (
+                !(await confirm({
+                  title: t('confirm.prices.deleteInsurerTitle', { name: i.name }),
+                  body: t('confirm.prices.deleteInsurerBody'),
+                  confirmLabel: t('confirm.prices.deleteYes'),
+                  tone: 'danger',
+                }))
+              )
+                return
               void run(
                 () => actions.deleteInsurer.mutateAsync(i.id),
                 t('prices.deleted', { name: i.name }),
@@ -649,7 +684,7 @@ function InsurersSection({
   activeCount: number
   editingInsurer: Insurer | 'new' | null
   setEditingInsurer: (i: Insurer | 'new' | null) => void
-  onDelete: (i: Insurer) => void
+  onDelete: (i: Insurer) => Promise<void>
 }) {
   const { t } = useTranslation()
   return (
@@ -722,7 +757,7 @@ function InsurersSection({
               className="hover:text-red"
               title={t('prices.delete')}
               aria-label={t('prices.delete')}
-              onClick={() => onDelete(i)}
+              onClick={() => void onDelete(i)}
             >
               <Trash2 size={14} aria-hidden="true" />
             </Button>
@@ -744,6 +779,7 @@ function AdjustPricesCard({
 }) {
   const { t, i18n } = useTranslation()
   const actions = useCatalogueActions()
+  const confirm = useConfirm()
   const { data: treatments = [] } = useTreatments()
   const { data: categories = [] } = useCategories()
   const [category, setCategory] = useState('')
@@ -789,7 +825,30 @@ function AdjustPricesCard({
     e.preventDefault()
     setError(null)
     if (!valid) return setError(t('prices.adjust.invalid'))
-    if (!window.confirm(t('prices.adjust.confirm', { count: affected.length }))) return
+    // The change in short form, e.g. "× 1.5", "+10 %", "−200 RWF".
+    const sign = v < 0 ? '−' : '+'
+    const change =
+      mode === 'multiply'
+        ? `× ${v}`
+        : mode === 'percent'
+          ? `${sign}${Math.abs(v)} %`
+          : `${sign}${formatNumber(Math.abs(v))} RWF`
+    const group = categories.find((c) => c.id === category)
+    if (
+      !(await confirm({
+        title: group
+          ? t('confirm.prices.adjustTitle', {
+              count: affected.length,
+              group: categoryName(group, i18n.language),
+              change,
+            })
+          : t('confirm.prices.adjustAllTitle', { count: affected.length, change }),
+        body: t('confirm.prices.adjustBody'),
+        confirmLabel: t('confirm.prices.adjustYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     try {
       const n = await actions.adjustPrices.mutateAsync({
         category: category || null,
@@ -811,7 +870,7 @@ function AdjustPricesCard({
           {t('prices.adjust.title')}
         </span>
       </CardHeader>
-      <form onSubmit={submit}>
+      <form onSubmit={(e) => void submit(e)}>
         <CardBody className="gap-3">
           <p className="text-ink-2 m-0 text-[13px]">{t('prices.adjust.lead')}</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -958,6 +1017,7 @@ function TreatmentForm({
 }) {
   const { t, i18n } = useTranslation()
   const actions = useCatalogueActions()
+  const confirm = useConfirm()
   const base = treatment ?? copyFrom
   const [nameEn, setNameEn] = useState(
     treatment?.nameEn ?? (copyFrom ? t('prices.copyOf', { name: copyFrom.nameEn }) : ''),
@@ -1013,6 +1073,17 @@ function TreatmentForm({
     if (!nameEn.trim()) return setError(t('prices.errors.name'))
     if (!Number.isFinite(p) || p < 0) return setError(t('prices.errors.price'))
     if (pct == null) return setError(t('prices.errors.discount'))
+    if (
+      !(await confirm({
+        title: t(
+          treatment ? 'confirm.prices.saveTreatmentTitle' : 'confirm.prices.addTreatmentTitle',
+          { name: nameEn.trim(), price: formatRwf(Math.round(p)) },
+        ),
+        body: treatment ? t('confirm.prices.saveTreatmentBody') : undefined,
+        confirmLabel: t('confirm.prices.saveYes'),
+      }))
+    )
+      return
     try {
       await actions.saveTreatment.mutateAsync({
         id: treatment?.id,
@@ -1048,7 +1119,7 @@ function TreatmentForm({
               : t('prices.newTreatment')}
         </span>
       </CardHeader>
-      <form onSubmit={submit}>
+      <form onSubmit={(e) => void submit(e)}>
         <CardBody className="gap-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field
@@ -1249,6 +1320,7 @@ function TreatmentForm({
 function InsurerForm({ insurer, onClose }: { insurer: Insurer | null; onClose: () => void }) {
   const { t } = useTranslation()
   const actions = useCatalogueActions()
+  const confirm = useConfirm()
   const [name, setName] = useState(insurer?.name ?? '')
   const [code, setCode] = useState(insurer?.code ?? '')
   const [type, setType] = useState<PayerType>(insurer?.type ?? 'private')
@@ -1279,6 +1351,16 @@ function InsurerForm({ insurer, onClose }: { insurer: Insurer | null; onClose: (
         pctByGroup[g] = n
       }
     }
+    if (
+      !(await confirm({
+        title: t(insurer ? 'confirm.prices.saveInsurerTitle' : 'confirm.prices.addInsurerTitle', {
+          name: name.trim(),
+          pct: c,
+        }),
+        confirmLabel: t('confirm.prices.saveYes'),
+      }))
+    )
+      return
     try {
       await actions.saveInsurer.mutateAsync({
         id: insurer?.id,
@@ -1304,7 +1386,7 @@ function InsurerForm({ insurer, onClose }: { insurer: Insurer | null; onClose: (
             : t('prices.insurers.new')}
         </span>
       </CardHeader>
-      <form onSubmit={submit}>
+      <form onSubmit={(e) => void submit(e)}>
         <CardBody className="gap-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <Field

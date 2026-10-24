@@ -42,6 +42,7 @@ import {
   type DoctorCalendar,
   type Visibility,
 } from '@/lib/api/calendar'
+import { useConfirm } from '@/lib/confirm'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -125,6 +126,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
   const { t } = useTranslation()
   const days = useDayNames()
   const save = useSaveCalendar()
+  const confirm = useConfirm()
   const [hours, setHours] = useState<WeeklyHours>(cal.hours)
   const [slot, setSlot] = useState(cal.slotMinutes)
   const [visibility, setVisibility] = useState<Visibility>(cal.visibility)
@@ -164,6 +166,16 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
       setErr(t(workdays === 0 ? 'calendar.publicNoHours' : 'calendar.publicNoService'))
       return
     }
+    if (
+      !(await confirm({
+        title: t(!userId ? 'confirm.calendar.saveMine.title' : 'confirm.calendar.save.title', {
+          name: cal.name,
+        }),
+        body: t(`confirm.calendar.body.${visibility}`),
+        confirmLabel: t('confirm.calendar.yes'),
+      }))
+    )
+      return
     try {
       await save.mutateAsync({
         userId,

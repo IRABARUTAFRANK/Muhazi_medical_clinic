@@ -15,6 +15,7 @@ import {
   type Feature,
 } from '@/lib/api/permissions'
 import { useEmployees } from '@/lib/api/staff'
+import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 /*
@@ -28,6 +29,7 @@ export function PermissionsCard() {
   const { data: matrix, error: loadError } = usePermissionMatrix()
   const { data: employees = [] } = useEmployees()
   const actions = usePermissionActions()
+  const confirm = useConfirm()
   const [person, setPerson] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +99,21 @@ export function PermissionsCard() {
                           aria-checked={on}
                           aria-label={`${t(`perms.f.${f}.name`)} · ${t(`staff.roles.${r}`)}`}
                           disabled={!matrix || actions.setRole.isPending}
-                          onClick={() =>
+                          onClick={async () => {
+                            const vars = {
+                              feature: t(`perms.f.${f}.name`),
+                              role: t(`staff.roles.${r}`),
+                            }
+                            const k = on ? 'confirm.perms.roleOff' : 'confirm.perms.roleOn'
+                            if (
+                              !(await confirm({
+                                title: t(`${k}.title`, vars),
+                                body: t(`${k}.body`, vars),
+                                confirmLabel: t(`${k}.yes`),
+                                tone: on ? 'danger' : 'primary',
+                              }))
+                            )
+                              return
                             void run(
                               () =>
                                 actions.setRole.mutateAsync({
@@ -110,7 +126,7 @@ export function PermissionsCard() {
                                 role: t(`staff.roles.${r}`),
                               }),
                             )
-                          }
+                          }}
                           className={cn(
                             'inline-flex size-9 items-center justify-center rounded-lg border transition-colors',
                             on
@@ -187,8 +203,22 @@ export function PermissionsCard() {
                         aria-checked={value === v}
                         role="radio"
                         disabled={actions.setStaff.isPending}
-                        onClick={() =>
-                          value !== v &&
+                        onClick={async () => {
+                          if (value === v) return
+                          const vars = {
+                            feature: t(`perms.f.${f}.name`),
+                            name: chosen.fullName,
+                            role: t(`staff.roles.${chosen.role}`),
+                          }
+                          if (
+                            !(await confirm({
+                              title: t(`confirm.perms.one.${v}.title`, vars),
+                              body: t(`confirm.perms.one.${v}.body`, vars),
+                              confirmLabel: t('confirm.perms.one.change'),
+                              tone: v === 'no' ? 'danger' : 'primary',
+                            }))
+                          )
+                            return
                           void run(
                             () =>
                               actions.setStaff.mutateAsync({
@@ -203,7 +233,7 @@ export function PermissionsCard() {
                               name: chosen.fullName,
                             }),
                           )
-                        }
+                        }}
                       >
                         {t(`perms.one.${v}`)}
                       </Button>

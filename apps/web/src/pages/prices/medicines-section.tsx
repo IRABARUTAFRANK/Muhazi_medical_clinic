@@ -19,6 +19,7 @@ import {
   type Medicine,
 } from '@/lib/api/catalogue'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/confirm'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -30,6 +31,7 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
   const { t } = useTranslation()
   const { data: meds = [], error } = useMedicines()
   const actions = useMedicineActions()
+  const confirm = useConfirm()
   const [editing, setEditing] = useState<Medicine | 'new' | null>(null)
   const [query, setQuery] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
@@ -40,7 +42,17 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
   )
 
   const remove = async (m: Medicine) => {
-    if (!window.confirm(t('prices.meds.confirmDelete', { name: m.name }))) return
+    if (
+      !(await confirm({
+        title: t('confirm.prices.deleteMedicineTitle', {
+          name: `${m.name}${m.strength ? ` ${m.strength}` : ''}`,
+        }),
+        body: t('confirm.prices.deleteMedicineBody'),
+        confirmLabel: t('confirm.prices.deleteYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     setActionError(null)
     try {
       await actions.remove.mutateAsync(m.id)
@@ -154,6 +166,7 @@ function MedicineForm({
 }) {
   const { t } = useTranslation()
   const actions = useMedicineActions()
+  const confirm = useConfirm()
   const [name, setName] = useState(medicine?.name ?? '')
   const [strength, setStrength] = useState(medicine?.strength ?? '')
   const [form, setForm] = useState(medicine?.form ?? '')
@@ -188,6 +201,21 @@ function MedicineForm({
     if (name.trim().length < 2) return setError(t('prices.meds.errors.name'))
     if (!Number.isFinite(p) || p < 0 || price.trim() === '')
       return setError(t('prices.errors.price'))
+    const label = `${name.trim()}${strength.trim() ? ` ${strength.trim()}` : ''}`
+    if (
+      !(await confirm({
+        title: t(
+          medicine ? 'confirm.prices.saveMedicineTitle' : 'confirm.prices.addMedicineTitle',
+          {
+            name: label,
+            price: formatRwf(Math.round(p)),
+          },
+        ),
+        body: active ? undefined : t('confirm.prices.inactiveBody'),
+        confirmLabel: t('confirm.prices.saveYes'),
+      }))
+    )
+      return
     try {
       await actions.save.mutateAsync({
         id: medicine?.id,

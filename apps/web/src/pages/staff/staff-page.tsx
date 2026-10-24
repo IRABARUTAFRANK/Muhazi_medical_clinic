@@ -61,6 +61,7 @@ import {
   positionIn,
 } from '@/lib/api/staff'
 import { SECTIONS, sectionName, type SectionId } from '@/lib/api/services'
+import { useConfirm } from '@/lib/confirm'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
 import { cn } from '@/lib/utils'
@@ -171,6 +172,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
   const { data: employees = [], isLoading, error } = useEmployees()
   const { data: departments = [] } = useDepartments()
   const actions = useStaffActions()
+  const confirm = useConfirm()
   const [editing, setEditing] = useState<Employee | 'new' | null>(null)
   const [resetFor, setResetFor] = useState<Employee | null>(null)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
@@ -237,6 +239,21 @@ export function StaffPage({ user }: { user: StaffUser }) {
         setDeletingId(null)
       },
     })
+  // From the row: asked first (the e-mailed code follows the yes). From the delete panel, the
+  // panel itself was the question.
+  const confirmSetActive = async (e: Employee) => {
+    const k = e.active ? 'confirm.staff.deactivate' : 'confirm.staff.reactivate'
+    if (
+      !(await confirm({
+        title: t(`${k}.title`, { name: e.fullName }),
+        body: t(`${k}.body`, { name: e.fullName }),
+        confirmLabel: t(`${k}.yes`),
+        tone: e.active ? 'danger' : 'primary',
+      }))
+    )
+      return
+    askSetActive(e)
+  }
   // One panel at a time: opening any form closes the others.
   const openDelete = (e: Employee) => {
     setEditing(null)
@@ -379,7 +396,16 @@ export function StaffPage({ user }: { user: StaffUser }) {
                   )}
                   self={editing !== 'new' && editing.id === user.id}
                   onCancel={() => setEditing(null)}
-                  onSubmit={(input, firstPin) =>
+                  onSubmit={async (input, firstPin) => {
+                    const k = editing === 'new' ? 'confirm.staff.create' : 'confirm.staff.update'
+                    if (
+                      !(await confirm({
+                        title: t(`${k}.title`, { name: input.fullName }),
+                        body: t(`${k}.body`, { name: input.fullName }),
+                        confirmLabel: t(`${k}.yes`),
+                      }))
+                    )
+                      return
                     setPending({
                       title:
                         editing === 'new'
@@ -406,7 +432,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                         setEditing(null)
                       },
                     })
-                  }
+                  }}
                 />
               </Reveal>
             )}
@@ -417,6 +443,14 @@ export function StaffPage({ user }: { user: StaffUser }) {
                 onClose={() => setResetFor(null)}
                 onSubmit={async (pin) => {
                   // No e-mailed code: the new PIN is temporary and is recorded in the history.
+                  if (
+                    !(await confirm({
+                      title: t('confirm.staff.resetPin.title', { name: resetFor.fullName }),
+                      body: t('confirm.staff.resetPin.body', { name: resetFor.fullName }),
+                      confirmLabel: t('confirm.staff.resetPin.yes'),
+                    }))
+                  )
+                    return
                   setFormError(null)
                   try {
                     await actions.resetPin.mutateAsync({ id: resetFor.id, pin })
@@ -539,7 +573,11 @@ export function StaffPage({ user }: { user: StaffUser }) {
                                 {t('staff.resetPin')}
                               </Button>
                               {/* deactivating can be undone: not shown as dangerous as deleting */}
-                              <Button size="sm" disabled={self} onClick={() => askSetActive(e)}>
+                              <Button
+                                size="sm"
+                                disabled={self}
+                                onClick={() => void confirmSetActive(e)}
+                              >
                                 {e.active ? (
                                   <UserX size={15} aria-hidden="true" />
                                 ) : (
@@ -1383,6 +1421,7 @@ function DepartmentsPanel({
 }) {
   const { t } = useTranslation()
   const actions = useDepartmentActions()
+  const confirm = useConfirm()
   // A department holds its employees and the treatments they give (Treatments and prices).
   const { data: treatments = [] } = useTreatments()
   const [editing, setEditing] = useState<Department | 'new' | null>(null)
@@ -1409,6 +1448,15 @@ function DepartmentsPanel({
             department={editing === 'new' ? null : editing}
             onCancel={() => setEditing(null)}
             onSave={async (d) => {
+              const k = d.id ? 'confirm.departments.save' : 'confirm.departments.create'
+              if (
+                !(await confirm({
+                  title: t(`${k}.title`, { name: d.name.trim() }),
+                  body: t(`${k}.body`),
+                  confirmLabel: t(`${k}.yes`),
+                }))
+              )
+                return
               setError(null)
               try {
                 await actions.save.mutateAsync(d)
@@ -1455,9 +1503,12 @@ function DepartmentsPanel({
                     title={t('staff.dept.delete')}
                     onClick={async () => {
                       if (
-                        !window.confirm(
-                          t('staff.dept.confirmDelete', { name: d.name, count: people.length }),
-                        )
+                        !(await confirm({
+                          title: t('confirm.departments.delete.title', { name: d.name }),
+                          body: t('confirm.departments.delete.body', { count: people.length }),
+                          confirmLabel: t('confirm.departments.delete.yes'),
+                          tone: 'danger',
+                        }))
                       )
                         return
                       setError(null)

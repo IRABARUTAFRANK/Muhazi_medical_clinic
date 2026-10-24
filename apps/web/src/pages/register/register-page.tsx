@@ -144,6 +144,8 @@ export function RegisterPage({ user }: { user: StaffUser }) {
               setResult(r)
             }}
             onLater={() => {
+              // Escape on the "Start the visit?" question only answers it: keep the card open
+              if (document.querySelector('[role="alertdialog"]')) return
               if (sending.isNew)
                 setSavedOnly(
                   t('register.savedOnly', { name: sending.name, file: sending.fileNumber }),

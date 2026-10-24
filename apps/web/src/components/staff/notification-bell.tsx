@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select'
 import { useNotificationActions, useNotifications, type Notice } from '@/lib/api/notifications'
 import { useAgo, useWording } from '@/lib/notice-wording'
 import { DB_ROLES, useDepartments, useEmployees, useLeadDepartments } from '@/lib/api/staff'
+import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 /**
@@ -22,6 +23,7 @@ export function NotificationBell({ user }: { user: StaffUser }) {
   const navigate = useNavigate()
   const { data } = useNotifications()
   const actions = useNotificationActions()
+  const confirm = useConfirm()
   const [open, setOpen] = useState(false)
   const [composing, setComposing] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -35,10 +37,16 @@ export function NotificationBell({ user }: { user: StaffUser }) {
 
   useEffect(() => {
     if (!open) return
+    // The "Are you sure?" box sits outside the bell: a click or Escape there answers it and
+    // leaves the bell open (the backdrop may already be gone when the click reaches here).
+    const asking = (e: Event) =>
+      document.querySelector('[role="alertdialog"]') !== null ||
+      !(e.target as Node | null)?.isConnected
     const onDown = (e: MouseEvent) => {
+      if (asking(e)) return
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !asking(e) && setOpen(false)
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
     return () => {
@@ -103,7 +111,17 @@ export function NotificationBell({ user }: { user: StaffUser }) {
                 className="text-primary inline-flex min-h-9 items-center gap-1 rounded-lg px-1.5 text-xs font-semibold whitespace-nowrap"
                 aria-label={t('notify.markAll')}
                 title={t('notify.markAll')}
-                onClick={() => actions.markRead.mutate(null)}
+                onClick={async () => {
+                  if (
+                    !(await confirm({
+                      title: t('confirm.notices.markAll.title', { count: unread }),
+                      body: t('confirm.notices.markAll.body'),
+                      confirmLabel: t('confirm.notices.markAll.yes'),
+                    }))
+                  )
+                    return
+                  actions.markRead.mutate(null)
+                }}
               >
                 <CheckCheck size={16} aria-hidden="true" />
                 <span className="hidden sm:inline">{t('notify.markAll')}</span>
@@ -208,6 +226,7 @@ export function Composer({
 }) {
   const { t } = useTranslation()
   const actions = useNotificationActions()
+  const confirm = useConfirm()
   const { data: allDepartments = [] } = useDepartments()
   const { data: employees = [] } = useEmployees()
   const departments = leads ?? allDepartments
@@ -224,6 +243,35 @@ export function Composer({
     e.preventDefault()
     setError(null)
     if (to !== 'all' && !target) return setError(t('notify.errors.target'))
+    // who receives it, in words: a role, a department or one person (everyone has its own line)
+    const who =
+      to === 'role'
+        ? t(`staff.roles.${target}`, { defaultValue: target })
+        : to === 'department'
+          ? (departments.find((d) => d.id === target)?.name ?? '')
+          : (employees.find((x) => x.id === target)?.fullName ?? '')
+    const heads = headsOnly && (to === 'all' || to === 'department')
+    const ask = `confirm.notices.send.${
+      to === 'all'
+        ? heads
+          ? 'allHeads'
+          : 'all'
+        : to === 'department'
+          ? heads
+            ? 'deptHeads'
+            : 'dept'
+          : to === 'role'
+            ? 'role'
+            : 'person'
+    }`
+    if (
+      !(await confirm({
+        title: t(ask, { title: title.trim(), who }),
+        body: t(urgent ? 'confirm.notices.send.bodyUrgent' : 'confirm.notices.send.body'),
+        confirmLabel: t('confirm.notices.send.yes'),
+      }))
+    )
+      return
     try {
       await actions.send.mutateAsync({
         to,

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { useBedAdmin, useBedBoard, type BoardBed } from '@/lib/api/desk-ops'
+import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
@@ -20,6 +21,7 @@ export function BedsCard() {
   const { t } = useTranslation()
   const { data: beds = [] } = useBedBoard()
   const admin = useBedAdmin()
+  const confirm = useConfirm()
   const [count, setCount] = useState<string | null>(null)
   const [price, setPrice] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -29,6 +31,37 @@ export function BedsCard() {
   const priceValue = price ?? (prices.length === 1 ? String(prices[0]) : '')
 
   const apply = async () => {
+    const n = Number(countValue || 0)
+    // set_bed_count removes the last free beds when the number goes down, and gives every bed
+    // the one price when a price is sent: the question says both.
+    const removed = Math.max(beds.length - n, 0)
+    const money = priceValue === '' ? '' : formatRwf(Number(priceValue))
+    const priceOnly = n === beds.length && money !== ''
+    const body = priceOnly
+      ? t('confirm.beds.apply.priceOnly.body')
+      : [
+          removed > 0 ? t('confirm.beds.apply.bodyRemove', { count: removed }) : '',
+          money === ''
+            ? t('confirm.beds.apply.bodyNoPrice')
+            : t('confirm.beds.apply.body', { price: money }),
+          money !== '' && prices.length > 1 ? t('confirm.beds.apply.bodyOnePrice') : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+    if (
+      !(await confirm({
+        title: priceOnly
+          ? t('confirm.beds.apply.priceOnly.title', { price: money })
+          : t('confirm.beds.apply.title', { count: n }),
+        body: body || undefined,
+        confirmLabel:
+          removed > 0
+            ? t('confirm.beds.apply.removeYes', { count: removed })
+            : t('confirm.beds.apply.yes'),
+        tone: removed > 0 ? 'danger' : 'primary',
+      }))
+    )
+      return
     setDone(false)
     await admin.setCount.mutateAsync({
       count: Number(countValue || 0),
@@ -113,6 +146,7 @@ export function BedsCard() {
 function BedRow({ bed }: { bed: BoardBed }) {
   const { t } = useTranslation()
   const admin = useBedAdmin()
+  const confirm = useConfirm()
   const [name, setName] = useState(bed.name)
   const [price, setPrice] = useState(String(bed.nightlyPrice))
   const [error, setError] = useState<string | null>(null)
@@ -159,7 +193,15 @@ function BedRow({ bed }: { bed: BoardBed }) {
         size="sm"
         variant={changed ? 'primary' : 'default'}
         disabled={!changed || busy}
-        onClick={() =>
+        onClick={async () => {
+          if (
+            !(await confirm({
+              title: t('confirm.beds.save.title', { name: name.trim() || bed.name }),
+              body: t('confirm.beds.save.body', { price: formatRwf(Number(price || 0)) }),
+              confirmLabel: t('confirm.beds.save.yes'),
+            }))
+          )
+            return
           void run(() =>
             admin.save.mutateAsync({
               id: bed.id,
@@ -167,7 +209,7 @@ function BedRow({ bed }: { bed: BoardBed }) {
               nightlyPrice: Number(price || 0),
             }),
           )
-        }
+        }}
       >
         <Save size={14} aria-hidden="true" />
         {t('settings.beds.save')}
@@ -177,9 +219,17 @@ function BedRow({ bed }: { bed: BoardBed }) {
         variant="ghost"
         disabled={bed.state === 'occupied' || busy}
         title={bed.state === 'occupied' ? t('settings.beds.occupiedNoRemove') : undefined}
-        onClick={() => {
-          if (window.confirm(t('settings.beds.confirmRemove', { name: bed.name })))
-            void run(() => admin.remove.mutateAsync(bed.id))
+        onClick={async () => {
+          if (
+            !(await confirm({
+              title: t('confirm.beds.remove.title', { name: bed.name }),
+              body: t('confirm.beds.remove.body'),
+              confirmLabel: t('confirm.beds.remove.yes'),
+              tone: 'danger',
+            }))
+          )
+            return
+          void run(() => admin.remove.mutateAsync(bed.id))
         }}
       >
         <Trash2 size={14} aria-hidden="true" />

@@ -16,6 +16,7 @@ import {
 } from '@/lib/api/services'
 import type { Station } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/confirm'
 
 /**
  * "Where next" on the visit screen. Back to the colleague who referred the patient (one click),
@@ -30,10 +31,13 @@ export function WhereNextCard({
   myStation,
   isReception,
   closed = false,
+  patientName,
   onDone,
   onError,
 }: {
   encounterId: string
+  /** For the question asked before the patient is sent on. */
+  patientName?: string
   myStation: Station
   isReception: boolean
   /** Finished visit: nothing left to send on. */
@@ -55,9 +59,19 @@ export function WhereNextCard({
   const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
   // The referral that brought the patient to this desk, if any.
   const here = routing.find((r) => r.station === myStation)
+  const confirm = useConfirm()
+  const patient = patientName || t('confirm.visit.thisPatient')
 
   const toCashier = async () => {
     onError(null)
+    if (
+      !(await confirm({
+        title: t('confirm.visit.toCashier', { name: patient }),
+        body: t('confirm.visit.toCashierBody'),
+        confirmLabel: t('confirm.visit.sendYes'),
+      }))
+    )
+      return
     try {
       await actions.finishStation.mutateAsync({ station: myStation, next: 'cashier' })
       onDone(t('visit.sent', { station: deskName('cashier') }))
@@ -73,10 +87,20 @@ export function WhereNextCard({
     note: string
     comeBack: boolean
     message: string
+    /** The question asked first. */
+    ask: { title: string; body: string; yes: string }
   }) => {
     onError(null)
+    if (!(await confirm({ title: i.ask.title, body: i.ask.body, confirmLabel: i.ask.yes }))) return
     try {
-      await refer.mutateAsync({ from: myStation, ...i })
+      await refer.mutateAsync({
+        from: myStation,
+        to: i.to,
+        toUser: i.toUser,
+        service: i.service,
+        note: i.note,
+        comeBack: i.comeBack,
+      })
       setSection(null)
       setPerson('')
       setNote('')
@@ -119,6 +143,15 @@ export function WhereNextCard({
                     note: t('refer.backNote', { desk: deskName(myStation) }),
                     comeBack: false,
                     message: t('refer.sentBack', { name: here.returnName ?? '' }),
+                    ask: {
+                      title: t('confirm.visit.sendBack', {
+                        name: patient,
+                        person: here.returnName ?? '',
+                        desk: deskName(here.returnStation!),
+                      }),
+                      body: t('confirm.visit.sendBackBody', { person: here.returnName ?? '' }),
+                      yes: t('confirm.visit.sendBackYes'),
+                    },
                   })
                 }
               >
@@ -213,6 +246,18 @@ export function WhereNextCard({
                   note,
                   comeBack: !isReception && comeBack,
                   message: t('refer.done', { to: chosen ? `${chosen.name} (${name})` : name }),
+                  ask: {
+                    title: t('confirm.visit.refer', {
+                      name: patient,
+                      to: chosen ? `${chosen.name} (${name})` : name,
+                    }),
+                    body: t(
+                      !isReception && comeBack
+                        ? 'confirm.visit.referBackBody'
+                        : 'confirm.visit.referBody',
+                    ),
+                    yes: t('confirm.visit.sendYes'),
+                  },
                 })
               }
             >

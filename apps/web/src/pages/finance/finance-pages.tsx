@@ -36,6 +36,7 @@ import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 import { useCan } from '@/lib/api/permissions'
 import { Flash } from '@/components/ui/flash'
+import { useConfirm } from '@/lib/confirm'
 
 const METHOD_ICON: Record<string, LucideIcon> = {
   cash: Banknote,
@@ -225,6 +226,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
   const methodName = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
   // cancelling a wrong payment, counting the cash (migration 0062)
   const cash = useCashActions()
+  const confirm = useConfirm()
   const isManager = user.role === 'manager'
   const canCount = useCan(user)('payment.take') || user.role === 'cashier'
   const [cashNotice, setCashNotice] = useState<string | null>(null)
@@ -439,9 +441,21 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                               className="hover:text-red"
                               title={t('finance.cancelPaymentHint')}
                               aria-label={t('finance.cancelPayment')}
-                              onClick={() => {
+                              onClick={async () => {
                                 const reason = window.prompt(t('finance.cancelWhy'))
                                 if (!reason) return
+                                if (
+                                  !(await confirm({
+                                    title: t('confirm.finance.voidTitle', {
+                                      amount: formatRwf(p.amount),
+                                      patient: p.patient,
+                                    }),
+                                    body: t('confirm.finance.voidBody', { reason }),
+                                    confirmLabel: t('confirm.finance.voidYes'),
+                                    tone: 'danger',
+                                  }))
+                                )
+                                  return
                                 setCashError(null)
                                 cash.voidPayment
                                   .mutateAsync({ id: p.id, reason })
@@ -583,6 +597,7 @@ function CountCashPanel({
 }) {
   const { t } = useTranslation()
   const cash = useCashActions()
+  const confirm = useConfirm()
   const expected = summary.myExpected ?? {}
   const mineClose = (summary.closes ?? []).find((c) => c.mine)
   const [counted, setCounted] = useState<Record<string, string>>(() =>
@@ -603,6 +618,17 @@ function CountCashPanel({
   const save = async () => {
     setMsg(null)
     if (!typed) return setMsg({ ok: false, text: t('finance.countEmpty') })
+    if (
+      !(await confirm({
+        title: t('confirm.finance.countTitle', { day: formatDate(new Date(day)) }),
+        body: t('confirm.finance.countBody', {
+          counted: formatRwf(total(counted)),
+          diff: `${diff > 0 ? '+' : ''}${formatRwf(diff)}`,
+        }),
+        confirmLabel: t('confirm.finance.countYes'),
+      }))
+    )
+      return
     try {
       const r = await cash.closeDay.mutateAsync({
         day,

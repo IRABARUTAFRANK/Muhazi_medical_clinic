@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { useDeskOps, useVisitTasks } from '@/lib/api/desk-ops'
+import { useConfirm } from '@/lib/confirm'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const inAnHour = () => {
@@ -20,9 +21,12 @@ const inAnHour = () => {
  */
 export function NurseTaskCard({
   encounterId,
+  patientName,
   nurse = false,
 }: {
   encounterId: string
+  /** For the questions asked before each action. */
+  patientName?: string
   /** The nurse's view: no new task, Done / Not done on each one. */
   nurse?: boolean
 }) {
@@ -39,9 +43,38 @@ export function NurseTaskCard({
     setSaved(false)
     fn().catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
   }
-  const cancel = (id: string, key: 'ops.tasks.withdrawWhy' | 'ops.tasks.notDoneWhy') => {
+  const confirm = useConfirm()
+  const name = patientName || t('confirm.visit.thisPatient')
+  const cancel = async (
+    id: string,
+    task: string,
+    key: 'ops.tasks.withdrawWhy' | 'ops.tasks.notDoneWhy',
+  ) => {
+    const withdraw = key === 'ops.tasks.withdrawWhy'
+    if (
+      !(await confirm({
+        title: t(withdraw ? 'confirm.visit.taskWithdraw' : 'confirm.visit.taskNotDone', { task }),
+        body: t(withdraw ? 'confirm.visit.taskWithdrawBody' : 'confirm.visit.taskNotDoneBody'),
+        confirmLabel: t(
+          withdraw ? 'confirm.visit.taskWithdrawYes' : 'confirm.visit.taskNotDoneYes',
+        ),
+        tone: 'danger',
+      }))
+    )
+      return
     const reason = window.prompt(t(key))
     if (reason) act(() => ops.cancelTask.mutateAsync({ id, reason }))
+  }
+  const done = async (id: string, task: string) => {
+    if (
+      !(await confirm({
+        title: t('confirm.visit.taskDone', { task }),
+        body: t('confirm.visit.taskDoneBody'),
+        confirmLabel: t('confirm.visit.taskDoneYes'),
+      }))
+    )
+      return
+    act(() => ops.completeTask.mutateAsync(id))
   }
 
   const submit = async (e: FormEvent) => {
@@ -55,6 +88,14 @@ export function NurseTaskCard({
       d.setHours(Number(m[1]), Number(m[2]), 0, 0)
       dueAt = d.toISOString()
     }
+    if (
+      !(await confirm({
+        title: t('confirm.visit.taskSend', { task: title.trim(), name }),
+        body: t('confirm.visit.taskSendBody'),
+        confirmLabel: t('confirm.visit.taskSendYes'),
+      }))
+    )
+      return
     try {
       await ops.createTask.mutateAsync({ encounterId, title, dueAt })
       setTitle('')
@@ -133,7 +174,7 @@ export function NurseTaskCard({
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => cancel(x.id, 'ops.tasks.notDoneWhy')}
+                onClick={() => void cancel(x.id, x.title, 'ops.tasks.notDoneWhy')}
               >
                 {t('ops.tasks.notDone')}
               </Button>
@@ -141,7 +182,7 @@ export function NurseTaskCard({
                 size="sm"
                 variant="primary"
                 loading={ops.completeTask.isPending}
-                onClick={() => act(() => ops.completeTask.mutateAsync(x.id))}
+                onClick={() => void done(x.id, x.title)}
               >
                 {t('common.done')}
               </Button>
@@ -153,7 +194,7 @@ export function NurseTaskCard({
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => cancel(x.id, 'ops.tasks.withdrawWhy')}
+                  onClick={() => void cancel(x.id, x.title, 'ops.tasks.withdrawWhy')}
                 >
                   {t('ops.tasks.withdraw')}
                 </Button>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useCoverActions, useMyCover, type CoverCovering } from '@/lib/api/cover'
 import { useColleagues } from '@/lib/api/referrals'
 import { openItems, stationFor, useQueueBoard } from '@/lib/api/visits'
+import { useConfirm } from '@/lib/confirm'
 import { MyQueuePanel } from './role-panels'
 
 const control =
@@ -32,6 +33,7 @@ export function CoverMePanel() {
   const { data } = useMyCover()
   const { data: colleagues = [] } = useColleagues()
   const actions = useCoverActions()
+  const confirm = useConfirm()
   const nurses = colleagues.filter((c) => c.role === 'nurse')
   const [open, setOpen] = useState(false)
   const [nurseId, setNurseId] = useState('')
@@ -44,6 +46,14 @@ export function CoverMePanel() {
     setError(null)
     const nurse = nurses.find((n) => n.id === nurseId)
     if (!nurse) return setError(t('cover.pickNurse'))
+    if (
+      !(await confirm({
+        title: t('confirm.desks.cover.start', { name: nurse.name }),
+        body: t('confirm.desks.cover.startBody', { name: nurse.name, until: at(until) }),
+        confirmLabel: t('confirm.desks.cover.startYes'),
+      }))
+    )
+      return
     try {
       await actions.start.mutateAsync({
         nurseId,
@@ -67,7 +77,22 @@ export function CoverMePanel() {
             <b>{t('cover.coveredBy', { name: active.nurse, until: at(active.until) })}</b>
             {active.note && <span className="text-ink-2 block text-[13px]">{active.note}</span>}
           </span>
-          <Button size="sm" variant="ghost" onClick={() => void actions.end.mutateAsync(active.id)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={async () => {
+              if (
+                !(await confirm({
+                  title: t('confirm.desks.cover.endMine', { name: active.nurse }),
+                  body: t('confirm.desks.cover.endMineBody', { name: active.nurse }),
+                  confirmLabel: t('confirm.desks.cover.endYes'),
+                  tone: 'danger',
+                }))
+              )
+                return
+              void actions.end.mutateAsync(active.id)
+            }}
+          >
             <X size={14} aria-hidden="true" />
             {t('cover.end')}
           </Button>
@@ -152,6 +177,7 @@ export function CoveringPanels({ user }: { user: StaffUser }) {
 function CoveringPanel({ cover, user }: { cover: CoverCovering; user: StaffUser }) {
   const { t } = useTranslation()
   const actions = useCoverActions()
+  const confirm = useConfirm()
   // The doctor's desk ("Consultation 1" → consultation).
   const station = stationFor({ ...user, role: 'doctor', station: cover.station ?? undefined })
   const { data: queue = [] } = useQueueBoard(station, 'doctor')
@@ -171,7 +197,16 @@ function CoveringPanel({ cover, user }: { cover: CoverCovering; user: StaffUser 
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => {
+          onClick={async () => {
+            if (
+              !(await confirm({
+                title: t('confirm.desks.cover.endTheirs', { name: cover.doctor }),
+                body: t('confirm.desks.cover.endTheirsBody', { name: cover.doctor }),
+                confirmLabel: t('confirm.desks.cover.endYes'),
+                tone: 'danger',
+              }))
+            )
+              return
             setError(null)
             actions.end
               .mutateAsync(cover.id)

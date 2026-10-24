@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Flash } from '@/components/ui/flash'
 import { useCallActions, type VisitAccess } from '@/lib/api/calls'
 import { useColleagues } from '@/lib/api/referrals'
+import { useConfirm } from '@/lib/confirm'
 
 const control =
   'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-lg border px-2.5 text-[14px] outline-none'
@@ -20,8 +21,11 @@ export function HelpCard({
   encounterId,
   user,
   access,
+  patientName,
 }: {
   encounterId: string
+  /** For the questions asked before each action. */
+  patientName?: string
   user: StaffUser
   access: VisitAccess
 }) {
@@ -47,6 +51,51 @@ export function HelpCard({
     }
   }
   const pending = actions.askHelp.isPending || actions.cancel.isPending
+  const confirm = useConfirm()
+  const name = patientName || t('confirm.visit.thisPatient')
+  const askHelp = async () => {
+    const who = clinicians.find((c) => c.id === toUser)?.name ?? t('calls.help.anyDoctor')
+    if (
+      !(await confirm({
+        title: toUser
+          ? t('confirm.visit.helpAsk', { who, name })
+          : t('confirm.visit.helpAskAny', { name }),
+        body: t('confirm.visit.helpAskBody'),
+        confirmLabel: t('confirm.visit.helpAskYes'),
+      }))
+    )
+      return
+    await run(
+      async () => {
+        await actions.askHelp.mutateAsync({ encounterId, toUser: toUser || null, note })
+        setOpen(false)
+        setNote('')
+      },
+      t('calls.help.sent', { who }),
+    )
+  }
+  const endHelp = async (h: VisitAccess['help'][number]) => {
+    const withdraw = h.status !== 'accepted'
+    const key = withdraw
+      ? 'confirm.visit.helpWithdraw'
+      : h.helperIsMe
+        ? 'confirm.visit.helpEndMine'
+        : 'confirm.visit.helpEnd'
+    const helper = h.helper ?? t('calls.help.anyDoctor')
+    if (
+      !(await confirm({
+        title: t(key, { name, helper }),
+        body: t(`${key}Body`, { name, helper }),
+        confirmLabel: t(withdraw ? 'confirm.visit.helpWithdrawYes' : 'confirm.visit.helpEndYes'),
+        tone: 'danger',
+      }))
+    )
+      return
+    await run(
+      () => actions.cancel.mutateAsync(h.callId),
+      t(h.status === 'accepted' ? 'calls.help.ended' : 'calls.help.withdrawn'),
+    )
+  }
 
   return (
     <Card className="anim-enter">
@@ -84,17 +133,7 @@ export function HelpCard({
               {t(`calls.help.status.${h.status}`)}
             </Badge>
             {(h.mine || h.helperIsMe) && (
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={pending}
-                onClick={() =>
-                  void run(
-                    () => actions.cancel.mutateAsync(h.callId),
-                    t(h.status === 'accepted' ? 'calls.help.ended' : 'calls.help.withdrawn'),
-                  )
-                }
-              >
+              <Button size="sm" variant="ghost" disabled={pending} onClick={() => void endHelp(h)}>
                 <X size={14} aria-hidden="true" />
                 {t(
                   h.status === 'accepted'
@@ -146,28 +185,7 @@ export function HelpCard({
                 />
               </label>
               <span className="flex flex-wrap gap-2">
-                <Button
-                  variant="primary"
-                  disabled={pending}
-                  onClick={() =>
-                    void run(
-                      async () => {
-                        await actions.askHelp.mutateAsync({
-                          encounterId,
-                          toUser: toUser || null,
-                          note,
-                        })
-                        setOpen(false)
-                        setNote('')
-                      },
-                      t('calls.help.sent', {
-                        who:
-                          clinicians.find((c) => c.id === toUser)?.name ??
-                          t('calls.help.anyDoctor'),
-                      }),
-                    )
-                  }
-                >
+                <Button variant="primary" disabled={pending} onClick={() => void askHelp()}>
                   <Send size={16} aria-hidden="true" />
                   {t('calls.help.send')}
                 </Button>

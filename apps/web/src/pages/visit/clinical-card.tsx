@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import { useCan } from '@/lib/api/permissions'
 import { openMedicalReport } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
+import { useConfirm } from '@/lib/confirm'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
 const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other']
@@ -154,6 +155,8 @@ export function ClinicalCard({
   })
   const [localError, setLocalError] = useState<string | null>(null)
   const { data: info } = useClinicInfo()
+  const confirm = useConfirm()
+  const name = patient?.name || t('confirm.visit.thisPatient')
 
   const letterhead = useLetterhead()
   const reportLabels = useMedicalReportLabels()
@@ -312,17 +315,33 @@ export function ClinicalCard({
       setLocalError(e instanceof Error ? e.message : String(e))
     }
   }
-  const submitNote = (e: FormEvent) => {
+  const submitNote = async (e: FormEvent) => {
     e.preventDefault()
     if (!note.trim()) return
+    if (
+      !(await confirm({
+        title: t('confirm.visit.note', { name }),
+        body: t('confirm.visit.recordBody'),
+        confirmLabel: t('confirm.visit.saveYes'),
+      }))
+    )
+      return
     void run(
       () => actions.addNote.mutateAsync(note).then(() => setNote('')),
       t('clinical.noteSaved'),
     )
   }
-  const submitDx = (e: FormEvent) => {
+  const submitDx = async (e: FormEvent) => {
     e.preventDefault()
     if (!dx.text.trim()) return
+    if (
+      !(await confirm({
+        title: t('confirm.visit.dx', { dx: dx.text.trim(), name }),
+        body: t('confirm.visit.recordBody'),
+        confirmLabel: t('confirm.visit.saveYes'),
+      }))
+    )
+      return
     void run(
       () =>
         actions.addDiagnosis
@@ -331,7 +350,7 @@ export function ClinicalCard({
       t('clinical.dxSaved'),
     )
   }
-  const submitRx = (e: FormEvent) => {
+  const submitRx = async (e: FormEvent) => {
     e.preventDefault()
     const lines = rx.filter((l) => l.item || l.quantity)
     if (lines.length === 0) return setLocalError(t('clinical.errors.rx'))
@@ -354,6 +373,17 @@ export function ClinicalCard({
       setTwiceOk(ids.join(','))
       return setLocalError(t('clinical.errors.rxTwice', { names: twice.join(', ') }))
     }
+    const list = prepared
+      .map((p) => `${[p.item.name, p.item.strength].filter(Boolean).join(' ')} × ${p.q}`)
+      .join(', ')
+    if (
+      !(await confirm({
+        title: t('confirm.visit.rx', { name }),
+        body: t('confirm.visit.rxBody', { list }),
+        confirmLabel: t('confirm.visit.rxYes'),
+      }))
+    )
+      return
     // medicines given in the room without a price, or found in no store, are said
     const unpriced: string[] = []
     const noStock: string[] = []
@@ -389,10 +419,22 @@ export function ClinicalCard({
           .join(' '),
     )
   }
-  const submitOrder = (e: FormEvent) => {
+  const submitOrder = async (e: FormEvent) => {
     e.preventDefault()
     const chosen = tests.filter((x) => order.services.includes(x.id))
     if (chosen.length === 0) return setLocalError(t('clinical.errors.test'))
+    const list = chosen.map((s) => treatmentName(s, i18n.language)).join(', ')
+    if (
+      !(await confirm({
+        title: t('confirm.visit.tests', { name }),
+        body: t(
+          order.send && !deskStaff ? 'confirm.visit.testsSendBody' : 'confirm.visit.testsBody',
+          { list },
+        ),
+        confirmLabel: t('confirm.visit.testsYes'),
+      }))
+    )
+      return
     void run(
       () =>
         actions.orderTests
@@ -412,10 +454,17 @@ export function ClinicalCard({
       ...o,
       services: o.services.includes(id) ? o.services.filter((x) => x !== id) : [...o.services, id],
     }))
-  const finish = () => {
+  const finish = async () => {
     if (!data?.diagnoses.some((d) => d.type === 'primary'))
       return setLocalError(t('clinical.errors.needPrimary'))
-    if (!window.confirm(t('clinical.finishConfirm'))) return
+    if (
+      !(await confirm({
+        title: t('confirm.visit.finish', { name }),
+        body: t('confirm.visit.finishBody'),
+        confirmLabel: t('confirm.visit.finishYes'),
+      }))
+    )
+      return
     void run(() => actions.finishVisit.mutateAsync(), t('clinical.finished'))
   }
 
@@ -924,7 +973,16 @@ export function ClinicalCard({
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => {
+                  onClick={async () => {
+                    if (
+                      !(await confirm({
+                        title: t('confirm.visit.returnMedicine', { item: r.item, name }),
+                        body: t('confirm.visit.returnMedicineBody'),
+                        confirmLabel: t('confirm.visit.returnMedicineYes'),
+                        tone: 'danger',
+                      }))
+                    )
+                      return
                     const reason = window.prompt(t('clinical.returnWhy', { item: r.item }))
                     if (!reason) return
                     void run(
@@ -978,8 +1036,32 @@ export function ClinicalCard({
                 <Reveal focus block="nearest">
                   <form
                     className="mt-2 flex flex-col gap-2"
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                       e.preventDefault()
+                      const correcting = result.correction !== null
+                      if (
+                        !(await confirm({
+                          title: t(
+                            correcting
+                              ? 'confirm.visit.resultCorrect'
+                              : result.verify
+                                ? 'confirm.visit.resultVerify'
+                                : 'confirm.visit.result',
+                            { test: o.test, name },
+                          ),
+                          body: t(
+                            correcting
+                              ? 'confirm.visit.resultCorrectBody'
+                              : result.verify
+                                ? 'confirm.visit.resultVerifyBody'
+                                : 'confirm.visit.resultBody',
+                          ),
+                          confirmLabel: t(
+                            correcting ? 'confirm.visit.resultCorrectYes' : 'confirm.visit.saveYes',
+                          ),
+                        }))
+                      )
+                        return
                       void run(
                         () =>
                           actions.recordResult
@@ -1086,7 +1168,11 @@ export function ClinicalCard({
 
       {clinician && (
         <CardBody className="border-border flex-row flex-wrap items-center gap-3 border-t">
-          <Button variant="primary" onClick={finish} loading={actions.finishVisit.isPending}>
+          <Button
+            variant="primary"
+            onClick={() => void finish()}
+            loading={actions.finishVisit.isPending}
+          >
             <CheckCircle2 size={16} aria-hidden="true" />
             {t('clinical.finish')}
           </Button>

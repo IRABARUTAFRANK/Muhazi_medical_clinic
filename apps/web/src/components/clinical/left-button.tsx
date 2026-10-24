@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { useVisitActions } from '@/lib/api/visits'
+import { useConfirm } from '@/lib/confirm'
 
 /*
  * "Patient has left": closes the visit and takes the patient off every queue. With money still
@@ -29,10 +30,19 @@ export function LeftButton({
   const { t } = useTranslation()
   const { endVisit } = useVisitActions()
   const [error, setError] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   const leave = async () => {
     setError(null)
-    if (!window.confirm(t('visits.left.confirm', { name }))) return
+    if (
+      !(await confirm({
+        title: t('confirm.visit.left', { name }),
+        body: t('confirm.visit.leftBody'),
+        confirmLabel: t('confirm.visit.leftYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     try {
       await endVisit.mutateAsync({ encounterId })
       onDone?.(t('visits.left.done', { name }))

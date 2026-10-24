@@ -27,7 +27,9 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import {
+  formatDate,
   formatRwf,
+  formatTime,
   type ApptStatus,
   type HomeRole,
   type QueueCounts,
@@ -41,6 +43,7 @@ import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useHomeActions, type HomeBed, type HomeSummary } from '@/lib/api/home'
 import { useTakePatient } from '@/lib/api/visits'
+import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 /*
@@ -61,6 +64,8 @@ const bedClass: Record<HomeBed['state'], string> = {
 const rowClass =
   'border-grid anim-enter flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0'
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
+// "24/10/2026 10:30" for a datetime-local value
+const at = (v: string) => `${formatDate(new Date(v))} ${formatTime(new Date(v))}`
 
 export function ErrorBox({ children }: { children: ReactNode }) {
   return (
@@ -100,10 +105,29 @@ export function MyQueuePanel({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const take = useTakePatient()
+  const confirm = useConfirm()
   const [error, setError] = useState<string | null>(null)
   // "Take": claims the patient here (a shared patient leaves the other desks), then opens the visit
   // (a patient at triage opens on the triage form).
-  const takeAndOpen = async (q: { queueId?: string; encounterId?: string; station?: string }) => {
+  const takeAndOpen = async (q: {
+    queueId?: string
+    encounterId?: string
+    station?: string
+    name: string
+    ticket: string
+    takenBy?: string | null
+  }) => {
+    // taking claims the patient: ask first (opening one already taken does not)
+    if (
+      q.queueId &&
+      !q.takenBy &&
+      !(await confirm({
+        title: t('confirm.desks.queue.take', { name: q.name, ticket: q.ticket }),
+        body: t('confirm.desks.queue.takeBody'),
+        confirmLabel: t('confirm.desks.queue.takeYes'),
+      }))
+    )
+      return
     setError(null)
     try {
       if (q.queueId) await take.mutateAsync(q.queueId)
@@ -276,8 +300,17 @@ interface PanelProps {
 function ReceptionistPanels({ data, onError }: PanelProps) {
   const { t } = useTranslation()
   const actions = useHomeActions()
+  const confirm = useConfirm()
   const appts = data.appointments
-  const approve = async (id: string) => {
+  const approve = async (id: string, name: string) => {
+    if (
+      !(await confirm({
+        title: t('confirm.desks.inquiry.approve', { name }),
+        body: t('confirm.desks.inquiry.approveBody'),
+        confirmLabel: t('confirm.desks.inquiry.approveYes'),
+      }))
+    )
+      return
     onError(null)
     try {
       await actions.approveInquiry.mutateAsync({ id })
@@ -361,7 +394,7 @@ function ReceptionistPanels({ data, onError }: PanelProps) {
                       variant="primary"
                       size="sm"
                       disabled={actions.approveInquiry.isPending}
-                      onClick={() => void approve(q.id)}
+                      onClick={() => void approve(q.id, q.name)}
                     >
                       <Check size={14} aria-hidden="true" />
                       {t('common.approve')}
@@ -390,7 +423,16 @@ function NursePanels({ data, onError }: PanelProps) {
   const actions = useHomeActions()
   const occupied = data.beds.filter((b) => b.state === 'occupied').length
   const free = data.beds.filter((b) => b.state === 'free').length
-  const done = async (id: string) => {
+  const confirm = useConfirm()
+  const done = async (id: string, title: string, patient?: string | null) => {
+    if (
+      !(await confirm({
+        title: t('confirm.desks.task.done', { task: title }),
+        body: patient ? t('confirm.desks.task.doneBody', { patient }) : undefined,
+        confirmLabel: t('confirm.desks.task.doneYes'),
+      }))
+    )
+      return
     onError(null)
     try {
       await actions.completeTask.mutateAsync({ id })
@@ -425,7 +467,7 @@ function NursePanels({ data, onError }: PanelProps) {
                       {[task.patient, task.detail].filter(Boolean).join(' · ')}
                     </span>
                   </span>
-                  <Button size="sm" onClick={() => void done(task.id)}>
+                  <Button size="sm" onClick={() => void done(task.id, task.title, task.patient)}>
                     <Check size={14} aria-hidden="true" />
                     {t('common.done')}
                   </Button>
@@ -471,6 +513,7 @@ function DoctorPanels({ data, onError }: PanelProps) {
   const { t } = useTranslation()
   const mine = data.appointments.filter((a) => a.mine)
   const actions = useHomeActions()
+  const confirm = useConfirm()
   return (
     <>
       <Panel
@@ -507,11 +550,19 @@ function DoctorPanels({ data, onError }: PanelProps) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() =>
+                      onClick={async () => {
+                        if (
+                          !(await confirm({
+                            title: t('confirm.desks.result.seen', { test: r.test, name: r.name }),
+                            body: t('confirm.desks.result.seenBody'),
+                            confirmLabel: t('confirm.desks.result.seenYes'),
+                          }))
+                        )
+                          return
                         void actions.markReviewed
                           .mutateAsync(r.id)
                           .catch((e: unknown) => onError(describe(e)))
-                      }
+                      }}
                     >
                       <Check size={14} aria-hidden="true" />
                       {t('home.markSeen')}
@@ -577,6 +628,7 @@ export function ToAcceptPanel({
 }) {
   const { t } = useTranslation()
   const actions = useHomeActions()
+  const confirm = useConfirm()
   // "Another time": the doctor arranges the day by priority before accepting
   const [moving, setMoving] = useState<string | null>(null)
   const [newTime, setNewTime] = useState('')
@@ -586,7 +638,18 @@ export function ToAcceptPanel({
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
-  const accept = async (id: string, startsAt?: string) => {
+  const accept = async (id: string, name: string, when: string, startsAt?: string) => {
+    if (
+      !(await confirm({
+        title: t('confirm.desks.appointment.accept', {
+          name,
+          when: startsAt ? at(startsAt) : when,
+        }),
+        body: t('confirm.desks.appointment.acceptBody'),
+        confirmLabel: t('confirm.desks.appointment.acceptYes'),
+      }))
+    )
+      return
     onError(null)
     try {
       await actions.acceptAppointment.mutateAsync({
@@ -635,7 +698,11 @@ export function ToAcceptPanel({
                   )}
                 </span>
                 <span className="flex flex-wrap gap-1">
-                  <Button variant="primary" size="sm" onClick={() => void accept(q.id)}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => void accept(q.id, q.name, q.when)}
+                  >
                     <Check size={14} aria-hidden="true" />
                     {t('common.accept')}
                   </Button>
@@ -671,7 +738,7 @@ export function ToAcceptPanel({
                         variant="primary"
                         size="sm"
                         disabled={!newTime}
-                        onClick={() => void accept(q.id, newTime)}
+                        onClick={() => void accept(q.id, q.name, q.when, newTime)}
                       >
                         {t('home.acceptAt')}
                       </Button>

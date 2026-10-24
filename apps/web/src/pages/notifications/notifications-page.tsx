@@ -35,6 +35,7 @@ import {
   useSentNotifications,
   type Notice,
 } from '@/lib/api/notifications'
+import { useConfirm, type ConfirmOptions } from '@/lib/confirm'
 import { navForUser } from '@/lib/nav'
 import { useAgo, useWording } from '@/lib/notice-wording'
 import { matches, usePaged } from '@/lib/paging'
@@ -68,6 +69,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
   const navigate = useNavigate()
   const { data } = useNotifications(200)
   const actions = useNotificationActions()
+  const confirm = useConfirm()
   // the manager, and heads / assistant heads for their own department
   const leads = useLeadDepartments(user)
   const canSend = user.role === 'manager' || leads.length > 0
@@ -109,6 +111,10 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
       setError(e instanceof Error ? e.message : String(e))
     }
   }
+  // Asked first; on yes, run as above.
+  const ask = async (options: ConfirmOptions, fn: () => Promise<unknown>) => {
+    if (await confirm(options)) await run(fn)
+  }
   const open = (n: Notice) => {
     if (!n.read) actions.markRead.mutate([n.id])
     if (n.link) {
@@ -136,7 +142,16 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
         >
           <Button
             disabled={unread === 0 || actions.markRead.isPending}
-            onClick={() => void run(() => actions.markRead.mutateAsync(null))}
+            onClick={() =>
+              void ask(
+                {
+                  title: t('confirm.notices.markAll.title', { count: unread }),
+                  body: t('confirm.notices.markAll.body'),
+                  confirmLabel: t('confirm.notices.markAll.yes'),
+                },
+                () => actions.markRead.mutateAsync(null),
+              )
+            }
           >
             <CheckCheck size={16} aria-hidden="true" />
             {t('notify.markAll')}
@@ -249,10 +264,18 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                   size="sm"
                   disabled={selected.length === 0}
                   onClick={() =>
-                    void run(async () => {
-                      await actions.markRead.mutateAsync(selected)
-                      setSelected([])
-                    })
+                    void ask(
+                      {
+                        title: t('confirm.notices.markSelected.title', {
+                          count: selected.length,
+                        }),
+                        confirmLabel: t('confirm.notices.markAll.yes'),
+                      },
+                      async () => {
+                        await actions.markRead.mutateAsync(selected)
+                        setSelected([])
+                      },
+                    )
                   }
                 >
                   <CheckCheck size={14} aria-hidden="true" />
@@ -263,10 +286,20 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                   variant="ghost"
                   disabled={selected.length === 0}
                   onClick={() =>
-                    void run(async () => {
-                      await actions.hide.mutateAsync(selected)
-                      setSelected([])
-                    })
+                    void ask(
+                      {
+                        title: t('confirm.notices.hideSelected.title', {
+                          count: selected.length,
+                        }),
+                        body: t('confirm.notices.hide.body'),
+                        confirmLabel: t('confirm.notices.hide.yes'),
+                        tone: 'danger',
+                      },
+                      async () => {
+                        await actions.hide.mutateAsync(selected)
+                        setSelected([])
+                      },
+                    )
                   }
                 >
                   <EyeOff size={14} aria-hidden="true" />
@@ -334,7 +367,15 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                             size="sm"
                             aria-label={t('notices.markRead')}
                             title={t('notices.markRead')}
-                            onClick={() => void run(() => actions.markRead.mutateAsync([n.id]))}
+                            onClick={() =>
+                              void ask(
+                                {
+                                  title: t('confirm.notices.markOne.title', { title: w.title }),
+                                  confirmLabel: t('confirm.notices.markAll.yes'),
+                                },
+                                () => actions.markRead.mutateAsync([n.id]),
+                              )
+                            }
                           >
                             <CheckCheck size={14} aria-hidden="true" />
                           </Button>
@@ -344,7 +385,17 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                           variant="ghost"
                           aria-label={t('notices.remove')}
                           title={t('notices.remove')}
-                          onClick={() => void run(() => actions.hide.mutateAsync([n.id]))}
+                          onClick={() =>
+                            void ask(
+                              {
+                                title: t('confirm.notices.hideOne.title', { title: w.title }),
+                                body: t('confirm.notices.hide.body'),
+                                confirmLabel: t('confirm.notices.hide.yes'),
+                                tone: 'danger',
+                              },
+                              () => actions.hide.mutateAsync([n.id]),
+                            )
+                          }
                         >
                           <EyeOff size={14} aria-hidden="true" />
                         </Button>
@@ -405,10 +456,17 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
-                            if (window.confirm(t('notices.confirmDelete')))
-                              void run(() => actions.remove.mutateAsync(m.id))
-                          }}
+                          onClick={() =>
+                            void ask(
+                              {
+                                title: t('confirm.notices.deleteSent.title', { title: m.title }),
+                                body: t('confirm.notices.deleteSent.body'),
+                                confirmLabel: t('confirm.notices.deleteSent.yes'),
+                                tone: 'danger',
+                              },
+                              () => actions.remove.mutateAsync(m.id),
+                            )
+                          }
                         >
                           <Trash2 size={14} aria-hidden="true" />
                           {t('notices.delete')}

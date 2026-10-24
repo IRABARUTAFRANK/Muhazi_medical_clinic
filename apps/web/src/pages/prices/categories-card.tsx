@@ -28,6 +28,7 @@ import {
 } from '@/lib/api/catalogue'
 import { suggestNames } from '@/lib/medical-glossary'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/confirm'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -52,9 +53,18 @@ export function CategoriesCard({
   const [editing, setEditing] = useState<Category | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const count = (c: Category) => treatments.filter((x) => x.categoryId === c.id).length
+  const confirm = useConfirm()
 
   const remove = async (c: Category) => {
-    if (!window.confirm(t('prices.cat.confirmDelete', { name: c.nameEn }))) return
+    if (
+      !(await confirm({
+        title: t('prices.cat.confirmDelete', { name: categoryName(c, i18n.language) }),
+        body: t('confirm.prices.deleteCategoryBody'),
+        confirmLabel: t('confirm.prices.deleteYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     setError(null)
     try {
       await actions.remove.mutateAsync(c.id)
@@ -178,6 +188,7 @@ function CategoryForm({
 }) {
   const { t } = useTranslation()
   const actions = useCategoryActions()
+  const confirm = useConfirm()
   const [nameEn, setNameEn] = useState(category?.nameEn ?? '')
   const [nameKin, setNameKin] = useState(category?.nameKin ?? '')
   const [nameFr, setNameFr] = useState(category?.nameFr ?? '')
@@ -200,6 +211,19 @@ function CategoryForm({
     e.preventDefault()
     setError(null)
     if (nameEn.trim().length < 2) return setError(t('prices.cat.errors.name'))
+    if (
+      !(await confirm({
+        title: t(
+          category ? 'confirm.prices.saveCategoryTitle' : 'confirm.prices.addCategoryTitle',
+          {
+            name: nameEn.trim(),
+          },
+        ),
+        body: changed ? t('prices.cat.kindChange', { count: used }) : undefined,
+        confirmLabel: t('confirm.prices.saveYes'),
+      }))
+    )
+      return
     try {
       await actions.save.mutateAsync({
         id: category?.id,
@@ -240,7 +264,7 @@ function CategoryForm({
   )
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field
           label={t('prices.cat.nameEn')}

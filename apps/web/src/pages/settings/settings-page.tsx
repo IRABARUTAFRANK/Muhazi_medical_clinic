@@ -27,6 +27,7 @@ import { Field } from '@/components/ui/field'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useClinicSettings, useSaveClinicSettings, type ClinicSettings } from '@/lib/api/settings'
+import { useConfirm } from '@/lib/confirm'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -87,6 +88,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
   const dayNames = useDayNames()
   const { data, isLoading, error } = useClinicSettings()
   const save = useSaveClinicSettings()
+  const confirm = useConfirm()
   const [draft, setDraft] = useState<ClinicSettings | null>(null)
   const [seededFrom, setSeededFrom] = useState<ClinicSettings | null>(null)
   const [saved, setSaved] = useState(false)
@@ -128,6 +130,16 @@ export function SettingsPage({ user }: { user: StaffUser }) {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!draft) return
+    // the opening hours, or the clinic's name and contacts (each section has its own form)
+    const k = section === 'hours' ? 'confirm.settings.hours' : 'confirm.settings.profile'
+    if (
+      !(await confirm({
+        title: t(`${k}.title`, { name: draft.profile.name ?? '' }),
+        body: t(`${k}.body`),
+        confirmLabel: t('confirm.settings.saveYes'),
+      }))
+    )
+      return
     setSaved(false)
     await save.mutateAsync(draft)
     setSaved(true)

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { useNextPatient, useTakePatient } from '@/lib/api/visits'
+import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 /**
@@ -23,6 +24,7 @@ export function OpenNextButton({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const take = useTakePatient()
+  const confirm = useConfirm()
   const next = useNextPatient(user)
   const [message, setMessage] = useState<string | null>(null)
   const open = async () => {
@@ -31,6 +33,14 @@ export function OpenNextButton({
       setMessage(t('queuePage.nobody'))
       return
     }
+    if (
+      !(await confirm({
+        title: t('confirm.desks.queue.take', { name: next.name, ticket: next.ticket }),
+        body: t('confirm.desks.queue.takeBody'),
+        confirmLabel: t('confirm.desks.queue.takeYes'),
+      }))
+    )
+      return
     try {
       await take.mutateAsync(next.queueId)
       await navigate({ to: '/app/visit', search: { encounter: next.encounterId } })

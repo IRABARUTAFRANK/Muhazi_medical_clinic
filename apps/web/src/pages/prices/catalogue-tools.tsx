@@ -14,6 +14,7 @@ import {
 } from '@/lib/api/catalogue'
 import type { Department } from '@/lib/api/staff'
 import { suggestNames } from '@/lib/medical-glossary'
+import { useConfirm } from '@/lib/confirm'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -32,6 +33,9 @@ export function CatalogueTools({
 }) {
   const { t, i18n } = useTranslation()
   const tools = useCatalogueTools()
+  const ask = useConfirm()
+  const deptName = (id: string) =>
+    departments.find((d) => d.id === id)?.name ?? t('prices.dept.none')
   const [dept, setDept] = useState(departments[0]?.id ?? '')
   const { data: categories = [] } = useCategories()
   const [categoryId, setCategoryId] = useState('')
@@ -148,7 +152,17 @@ export function CatalogueTools({
             className="self-start"
             disabled={parsed.length === 0}
             loading={tools.bulkAdd.isPending}
-            onClick={() =>
+            onClick={async () => {
+              if (
+                !(await ask({
+                  title: t('confirm.prices.bulkAddTitle', {
+                    count: parsed.length,
+                    dept: deptName(dept),
+                  }),
+                  confirmLabel: t('confirm.prices.bulkAddYes'),
+                }))
+              )
+                return
               void run(async () => {
                 const n = await tools.bulkAdd.mutateAsync({
                   departmentId: dept || null,
@@ -157,7 +171,7 @@ export function CatalogueTools({
                 setLines('')
                 return t('prices.tools.bulkDone', { count: n })
               })
-            }
+            }}
           >
             <ListPlus size={16} aria-hidden="true" />
             {t('prices.tools.bulkAdd', { count: parsed.length })}
@@ -198,7 +212,17 @@ export function CatalogueTools({
             <Button
               loading={tools.moveCategory.isPending}
               disabled={!moveCategory}
-              onClick={() =>
+              onClick={async () => {
+                if (
+                  !(await ask({
+                    title: t('confirm.prices.moveTitle', {
+                      category: categoryName(moveCategory!, i18n.language),
+                      dept: deptName(moveDept),
+                    }),
+                    confirmLabel: t('confirm.prices.moveYes'),
+                  }))
+                )
+                  return
                 void run(async () => {
                   const n = await tools.moveCategory.mutateAsync({
                     categoryId: moveCategory!.id,
@@ -206,7 +230,7 @@ export function CatalogueTools({
                   })
                   return t('prices.tools.moveDone', { count: n })
                 })
-              }
+              }}
             >
               {t('prices.tools.move')}
             </Button>

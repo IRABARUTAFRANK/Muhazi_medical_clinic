@@ -3794,5 +3794,486 @@
     "after": "After that you sign in again with a new e-mailed code.",
     "rule_one": "Signs out after {{count}} hour without activity",
     "rule_other": "Signs out after {{count}} hours without activity"
+  },
+  "confirm": {
+    "yes": "Yes, continue",
+    "no": "No, go back",
+    "desks": {
+      "calls": {
+        "send": "Send {{patient}} to {{name}}?",
+        "sendBody": "{{patient}} goes on {{name}}'s list and leaves the waiting list.",
+        "sendYes": "Yes, send",
+        "accept": "Help {{name}} on {{patient}}?",
+        "acceptBody": "Your colleague is told you accepted, and you may then work on this patient.",
+        "acceptYes": "Yes, help",
+        "decline": "Tell {{name}} you cannot help now?",
+        "declineBody": "The request closes for you; your colleague may ask someone else.",
+        "declineYes": "Yes, decline",
+        "endHelp": "Stop helping {{name}} on {{patient}}?",
+        "endHelpBody": "You will no longer be able to work on this patient.",
+        "endHelpYes": "Yes, stop helping",
+        "cancelCall": "Cancel your call for the next patient?",
+        "cancelCallBody": "Nobody will send you a patient for this call.",
+        "cancelCallYes": "Yes, cancel the call",
+        "callNext": "Ask {{from}} for the next patient?",
+        "callNextBody": "They are told you are free and will send you the next patient.",
+        "callNextYes": "Yes, call"
+      },
+      "cover": {
+        "start": "Ask {{name}} to cover for you?",
+        "startBody": "Until {{until}}, {{name}} sees your queue, receives your patients and may treat and finish their visits in your place.",
+        "startYes": "Yes, start the cover",
+        "endMine": "End the cover by {{name}}?",
+        "endMineBody": "{{name}} will no longer see your queue or work on your patients.",
+        "endTheirs": "Stop covering for {{name}}?",
+        "endTheirsBody": "You will no longer see the patients of {{name}} or work on them.",
+        "endYes": "Yes, end the cover"
+      },
+      "queue": {
+        "take": "Take {{name}} ({{ticket}}) and open the visit?",
+        "takeBody": "The patient becomes yours: other desks sharing this patient will no longer see them waiting.",
+        "takeYes": "Yes, take the patient"
+      },
+      "inquiry": {
+        "approve": "Approve the request of {{name}}?",
+        "approveBody": "It becomes a booking and goes to the doctor to accept.",
+        "approveYes": "Yes, approve"
+      },
+      "task": {
+        "done": "Mark “{{task}}” as done?",
+        "doneBody": "For {{patient}}. It is recorded in your name and leaves the list.",
+        "doneYes": "Yes, it is done"
+      },
+      "result": {
+        "seen": "Mark the {{test}} result of {{name}} as seen?",
+        "seenBody": "It leaves your results inbox. You can still find it in the visit.",
+        "seenYes": "Yes, mark as seen"
+      },
+      "appointment": {
+        "accept": "Accept the booking of {{name}} on {{when}}?",
+        "acceptBody": "The booking is confirmed in your calendar and reception sees it.",
+        "acceptYes": "Yes, accept",
+        "noShow": "Mark {{name}} ({{time}}) as not come?",
+        "noShowBody": "The booking is closed as a no-show. To see the patient later, book again.",
+        "noShowYes": "Yes, not come"
+      },
+      "bed": {
+        "discharge": "Discharge {{name}} from {{bed}}?",
+        "dischargeBody": "The stay ends now and the bed goes to cleaning.",
+        "dischargeYes": "Yes, discharge",
+        "ready": "Mark {{bed}} as ready?",
+        "readyBody": "The bed becomes free and a patient can be put in it.",
+        "readyYes": "Yes, it is ready",
+        "admit_one": "Put {{name}} in {{bed}} for {{count}} night?",
+        "admit_other": "Put {{name}} in {{bed}} for {{count}} nights?",
+        "extend_one": "Extend the stay of {{name}} in {{bed}} by {{count}} night?",
+        "extend_other": "Extend the stay of {{name}} in {{bed}} by {{count}} nights?",
+        "billBody": "{{total}} goes on the patient’s bill now.",
+        "admitYes": "Yes, put in the bed",
+        "extendYes": "Yes, extend"
+      },
+      "booking": {
+        "book": "Book {{name}} with {{doctor}} on {{when}}?",
+        "bookBody": "{{doctor}} is asked to accept the booking; the answer comes back as a notification.",
+        "bookYes": "Yes, book"
+      },
+      "patient": {
+        "merge": "Merge {{dup}} into {{keep}}?",
+        "mergeBody": "The visits, bookings, documents and insurance of {{dup}} move to this file. This cannot be undone.",
+        "mergeYes": "Yes, merge the files",
+        "sendToDoctor": "Send {{name}} to the doctor?",
+        "sendToDoctorBody": "The patient leaves reception and waits in the consultation queue.",
+        "sendToDoctorYes": "Yes, send",
+        "addField": "Add “{{field}}” to the file of {{name}}?",
+        "addFieldBody": "Value: {{value}}",
+        "addFieldYes": "Yes, add",
+        "removeField": "Remove “{{field}}” from the file of {{name}}?",
+        "removeFieldBody": "The field and its value are deleted from this file.",
+        "removeFieldYes": "Yes, remove",
+        "save": "Save the changes to the file of {{name}}?",
+        "saveBody": "The file is updated for every desk, in your name.",
+        "saveYes": "Yes, save"
+      }
+    },
+    "stock": {
+      "handOverTitle": "Hand over {{item}} × {{quantity}} to {{patient}}?",
+      "handOverAllTitle": "Hand over all {{n}} medicines to {{patient}}?",
+      "handOverBody": "It is taken from the pharmacy store and charged on the patient's bill.",
+      "handOverYes": "Yes, hand over",
+      "notGivenTitle": "Mark {{item}} as not given to {{patient}}?",
+      "notGivenBody": "The doctor is told the reason: “{{reason}}”.",
+      "notGivenYes": "Yes, not given",
+      "sellTitle": "Sell {{item}} × {{quantity}} to {{patient}}?",
+      "sellYes": "Yes, sell",
+      "levelTitle": "Set the low-stock level of {{item}} to {{level}}?",
+      "levelBody": "The medicine shows as low when the stock reaches this number.",
+      "saveYes": "Yes, save",
+      "receiveTitle": "Receive {{quantity}} × {{item}} into {{store}}?",
+      "receiveBody": "The stock goes up and the delivery is kept in the ledger (value {{value}}).",
+      "receiveNewBody": "The medicine is also added to the clinic's medicines with its price.",
+      "receiveYes": "Yes, receive",
+      "sendTitle": "Send {{quantity}} × {{item}} from {{from}} to {{to}}?",
+      "sendYes": "Yes, send",
+      "useTitle": "Take {{quantity}} × {{item}} out of {{store}}?",
+      "useBody": "It is recorded as “{{reason}}” and leaves the stock. This cannot be undone.",
+      "useYes": "Yes, take it out",
+      "addStoreTitle": "Add the store “{{name}}”?",
+      "addStoreYes": "Yes, add",
+      "closeStoreTitle": "Close the store “{{name}}”?",
+      "closeStoreBody": "It is no longer offered for receiving or sending stock. You can open it again later.",
+      "closeStoreYes": "Yes, close",
+      "openStoreTitle": "Open the store “{{name}}” again?",
+      "openStoreYes": "Yes, open",
+      "countTitle": "Set {{item}} in {{store}} to {{after}}?",
+      "countBody": "The stock there goes from {{before}} to {{after}}; the difference is kept with your reason.",
+      "countYes": "Yes, save the count",
+      "handOverAllTitle_one": "Hand over {{count}} medicine to {{patient}}?",
+      "handOverAllTitle_other": "Hand over all {{count}} medicines to {{patient}}?"
+    },
+    "lab": {
+      "sampleTitle": "Mark the sample for {{test}} of {{patient}} as taken?",
+      "sampleYes": "Yes, sample taken",
+      "analysingTitle": "Start analysing {{test}} for {{patient}}?",
+      "analysingYes": "Yes, start",
+      "notDoneTitle": "Mark {{test}} for {{patient}} as not done?",
+      "notDoneBody": "The test is cancelled and the doctor is told the reason: “{{reason}}”.",
+      "notDoneYes": "Yes, not done",
+      "resultTitle": "Save the result of {{test}} for {{patient}}?",
+      "resultBody": "The doctor who ordered it can see it. It still needs to be verified.",
+      "resultVerifyTitle": "Save and verify the result of {{test}} for {{patient}}?",
+      "resultVerifyBody": "The result is marked as verified and the doctor who ordered it sees it.",
+      "resultYes": "Yes, save"
+    },
+    "finance": {
+      "voidTitle": "Cancel the payment of {{amount}} from {{patient}}?",
+      "voidBody": "It is taken off the day's total and the amount is owed again on the bill. Reason: “{{reason}}”. This cannot be undone.",
+      "voidYes": "Yes, cancel the payment",
+      "countTitle": "Save your cash count for {{day}}?",
+      "countBody": "You counted {{counted}} in all; the difference with the payments is {{diff}}. The manager sees it.",
+      "countYes": "Yes, save the count"
+    },
+    "prices": {
+      "deleteYes": "Yes, delete",
+      "saveYes": "Yes, save",
+      "deleteCategoryBody": "This cannot be undone.",
+      "addCategoryTitle": "Add the category “{{name}}”?",
+      "saveCategoryTitle": "Save the changes to the category “{{name}}”?",
+      "deleteMedicineTitle": "Delete {{name}} from the medicines list?",
+      "deleteMedicineBody": "Bills already made keep their lines. This cannot be undone.",
+      "addMedicineTitle": "Add {{name}} at {{price}}?",
+      "saveMedicineTitle": "Save the changes to {{name}} ({{price}})?",
+      "inactiveBody": "It is switched off: it will not be offered at the desks.",
+      "bulkAddTitle": "Add {{n}} treatments to {{dept}}?",
+      "bulkAddYes": "Yes, add them",
+      "moveTitle": "Move every treatment of {{category}} to {{dept}}?",
+      "moveYes": "Yes, move",
+      "deleteTreatmentTitle": "Delete {{name}}?",
+      "deleteTreatmentBody": "It disappears from every list. Bills that already used it keep it. This cannot be undone.",
+      "hideTitle": "Hide {{name}}?",
+      "hideBody": "It is no longer offered at the desks. You can show it again later.",
+      "hideYes": "Yes, hide",
+      "showTitle": "Show {{name}} again?",
+      "showBody": "It is offered again at the desks.",
+      "showYes": "Yes, show",
+      "addDeptTitle": "Create the department “{{name}}”?",
+      "addDeptYes": "Yes, create",
+      "deleteInsurerTitle": "Delete the insurer {{name}}?",
+      "deleteInsurerBody": "Past bills keep it. This cannot be undone.",
+      "adjustBody": "The new prices apply to bills from now on. Bills already made keep their prices.",
+      "adjustYes": "Yes, change the prices",
+      "addTreatmentTitle": "Add {{name}} at {{price}}?",
+      "saveTreatmentTitle": "Save the changes to {{name}} ({{price}})?",
+      "saveTreatmentBody": "The new details apply to bills from now on. Bills already made keep theirs.",
+      "addInsurerTitle": "Add the insurer {{name}} covering {{pct}}%?",
+      "saveInsurerTitle": "Save the changes to the insurer {{name}} ({{pct}}% covered)?",
+      "bulkAddTitle_one": "Add {{count}} treatment to {{dept}}?",
+      "bulkAddTitle_other": "Add {{count}} treatments to {{dept}}?",
+      "adjustTitle_one": "Change the price of {{count}} {{group}} treatment by {{change}}?",
+      "adjustTitle_other": "Change the price of {{count}} {{group}} treatments by {{change}}?",
+      "adjustAllTitle_one": "Change the price of {{count}} treatment by {{change}}?",
+      "adjustAllTitle_other": "Change the price of all {{count}} treatments by {{change}}?"
+    },
+    "visit": {
+      "thisPatient": "this patient",
+      "saveYes": "Yes, save",
+      "sendYes": "Yes, send",
+      "take": "Take {{name}}?",
+      "takeBody": "The patient leaves the waiting list and is yours to see. Your colleagues see that you have taken them.",
+      "takeYes": "Yes, take the patient",
+      "payer": "Change who pays for the visit of {{name}} to: {{payer}}?",
+      "payerBody": "The prices of this visit and the shares paid by the patient and by the insurer change.",
+      "payerYes": "Yes, change",
+      "member": "Save the insurance member number of {{name}}?",
+      "memberBody": "Member number: {{number}}.",
+      "removeCharge": "Remove {{item}} from the bill of {{name}}?",
+      "removeChargeBody": "The line is taken off the bill for good. You will then be asked why.",
+      "removeChargeYes": "Yes, remove",
+      "pay": "Take {{amount}} from {{name}} by {{method}}?",
+      "payBody": "The payment is recorded under your name with a receipt number. It cannot be undone.",
+      "payYes": "Yes, take the payment",
+      "refund": "Give {{amount}} back to {{name}} by {{method}}?",
+      "refundBody": "The refund is recorded under your name with its reason. It cannot be undone.",
+      "refundYes": "Yes, give it back",
+      "addCharge": "Add {{item}} to the bill of {{name}}?",
+      "addChargeBody": "Quantity {{quantity}}, total {{total}}. It is charged under your name.",
+      "addChargeYes": "Yes, add",
+      "sendBack": "Send {{name}} back to {{person}} ({{desk}})?",
+      "sendBackBody": "The patient leaves your desk and waits for {{person}}.",
+      "sendBackYes": "Yes, send back",
+      "refer": "Send {{name}} to {{to}}?",
+      "referBody": "The patient leaves your desk and joins the waiting list there.",
+      "referBackBody": "The patient leaves your desk and joins the waiting list there, then comes back to you.",
+      "toCashier": "Send {{name}} to the cashier?",
+      "toCashierBody": "Your part of the visit ends and the patient waits at the cashier to pay.",
+      "helpAsk": "Ask {{who}} for help with {{name}}?",
+      "helpAskAny": "Ask any doctor for help with {{name}}?",
+      "helpAskBody": "They are told at once. The colleague who accepts may work on this patient with you.",
+      "helpAskYes": "Yes, ask",
+      "helpWithdraw": "Withdraw your request for help with {{name}}?",
+      "helpWithdrawBody": "Nobody will be asked any more.",
+      "helpWithdrawYes": "Yes, withdraw",
+      "helpEndMine": "Stop helping with {{name}}?",
+      "helpEndMineBody": "You will no longer be able to work on this patient.",
+      "helpEnd": "End the help of {{helper}} with {{name}}?",
+      "helpEndBody": "{{helper}} will no longer be able to work on this patient.",
+      "helpEndYes": "Yes, end the help",
+      "taskSend": "Send the task “{{task}}” for {{name}} to the nurses?",
+      "taskSendBody": "It appears at once on the nurses' dashboard.",
+      "taskSendYes": "Yes, send",
+      "taskDone": "Mark “{{task}}” as done?",
+      "taskDoneBody": "It leaves the nurses' list, recorded under your name.",
+      "taskDoneYes": "Yes, it is done",
+      "taskNotDone": "Mark “{{task}}” as not done?",
+      "taskNotDoneBody": "You will then be asked why. The task leaves the nurses' list.",
+      "taskNotDoneYes": "Yes, not done",
+      "taskWithdraw": "Withdraw the task “{{task}}”?",
+      "taskWithdrawBody": "The nurses will no longer see it. You will then be asked why.",
+      "taskWithdrawYes": "Yes, withdraw",
+      "left": "Has {{name}} left the clinic?",
+      "leftBody": "The visit is closed and the patient leaves every waiting list. This cannot be undone.",
+      "leftYes": "Yes, the patient has left",
+      "note": "Save this note in the record of {{name}}?",
+      "recordBody": "It stays in the patient file under your name.",
+      "dx": "Save the diagnosis “{{dx}}” for {{name}}?",
+      "rx": "Prescribe these medicines for {{name}}?",
+      "rxBody": "{{list}}. Medicines for the pharmacy wait there; medicines given here are charged and taken from stock now.",
+      "rxYes": "Yes, prescribe",
+      "tests": "Request these tests for {{name}}?",
+      "testsBody": "{{list}}. They are added to the bill.",
+      "testsSendBody": "{{list}}. They are added to the bill and the patient is sent to the desk that does them.",
+      "testsYes": "Yes, request",
+      "result": "Save the result of {{test}} for {{name}}?",
+      "resultBody": "It can still be changed until it is verified.",
+      "resultVerify": "Save and verify the result of {{test}} for {{name}}?",
+      "resultVerifyBody": "Once verified, it can only be corrected with a reason.",
+      "resultCorrect": "Correct the verified result of {{test}} for {{name}}?",
+      "resultCorrectBody": "The correction and its reason are kept with the result, under your name.",
+      "resultCorrectYes": "Yes, correct",
+      "finish": "Finish the visit of {{name}}?",
+      "finishBody": "Open test requests stay open; an unpaid bill sends the patient to the cashier. The visit then stays in the patient file.",
+      "finishYes": "Yes, finish the visit",
+      "returnMedicine": "Take {{item}} back from {{name}}?",
+      "returnMedicineBody": "The hand-over is undone. You will then be asked why.",
+      "returnMedicineYes": "Yes, take it back",
+      "vitalsSendOn": "Send {{name}} to {{desk}}?",
+      "vitalsSendBody": "Triage colour: {{level}}. The patient leaves triage and waits at {{desk}}.",
+      "vitalsSend": "Save the vital signs and send {{name}} to {{desk}}?",
+      "vitalsSendYes": "Yes, save and send",
+      "vitalsSave": "Save the vital signs of {{name}}?",
+      "vitalsCorrect": "Save the corrected vital signs of {{name}}?",
+      "vitalsBody": "Measured by {{who}} at {{time}}.",
+      "start": "Start a visit for {{name}}?",
+      "startEmergency": "Start an EMERGENCY visit for {{name}}?",
+      "startBody": "{{where}}. The patient gets a ticket and a place in the queue, and a new bill opens.",
+      "startYes": "Yes, start the visit",
+      "newFile": "Create a patient file for {{name}}?",
+      "newFileBody": "A new file number is given. Check the names, sex and age before going on.",
+      "newFileYes": "Yes, create the file"
+    },
+    "staff": {
+      "deactivate": {
+        "title": "Deactivate {{name}}?",
+        "body": "{{name}} will no longer be able to sign in. Everything they recorded stays, and you can reactivate the account later. A code is then e-mailed to you to confirm.",
+        "yes": "Yes, deactivate"
+      },
+      "reactivate": {
+        "title": "Reactivate {{name}}?",
+        "body": "{{name}} will be able to sign in again. A code is then e-mailed to you to confirm.",
+        "yes": "Yes, reactivate"
+      },
+      "create": {
+        "title": "Create the account of {{name}}?",
+        "body": "{{name}} will be able to sign in with the username and first PIN shown. A code is then e-mailed to you to confirm.",
+        "yes": "Yes, create"
+      },
+      "update": {
+        "title": "Save the changes to {{name}}?",
+        "body": "The new details, role and departments apply at once: they decide which patients reach {{name}}. A code is then e-mailed to you to confirm.",
+        "yes": "Yes, save"
+      },
+      "resetPin": {
+        "title": "Give {{name}} a new PIN?",
+        "body": "Their current PIN stops working now. Hand the new PIN over in person; {{name}} must change it at the next sign-in.",
+        "yes": "Yes, give a new PIN"
+      }
+    },
+    "departments": {
+      "create": {
+        "title": "Create the department {{name}}?",
+        "body": "Its people will take the patients sent to the sections you chose.",
+        "yes": "Yes, create"
+      },
+      "save": {
+        "title": "Save the changes to the department {{name}}?",
+        "body": "The roles and sections you chose apply at once to everyone in this department.",
+        "yes": "Yes, save"
+      },
+      "delete": {
+        "title": "Delete the department {{name}}?",
+        "body_one": "Its {{count}} employee stays employed, without this department. This cannot be undone.",
+        "body_other": "Its {{count}} employees stay employed, without this department. This cannot be undone.",
+        "yes": "Yes, delete"
+      }
+    },
+    "beds": {
+      "apply": {
+        "title_one": "Set the clinic to {{count}} bed?",
+        "title_other": "Set the clinic to {{count}} beds?",
+        "body": "Each night will cost {{price}}. Occupied beds are never removed, and stays already billed keep their price.",
+        "bodyNoPrice": "Each bed keeps its own price. Occupied beds are never removed.",
+        "yes": "Yes, apply",
+        "bodyRemove_one": "1 free bed at the end of the list will be removed. An occupied bed is never removed.",
+        "bodyRemove_other": "{{count}} free beds at the end of the list will be removed. An occupied bed is never removed.",
+        "removeYes_one": "Yes, remove 1 bed",
+        "removeYes_other": "Yes, remove {{count}} beds",
+        "bodyOnePrice": "Every bed gets this one price; the prices set bed by bed are replaced.",
+        "priceOnly": {
+          "title": "Set one night at {{price}} for every bed?",
+          "body": "Every bed gets this price for the nights to come. Stays already billed keep their price."
+        }
+      },
+      "save": {
+        "title": "Save {{name}}?",
+        "body": "One night in this bed will cost {{price}}. Stays already billed keep their price.",
+        "yes": "Yes, save"
+      },
+      "remove": {
+        "title": "Remove {{name}}?",
+        "body": "The bed leaves the list of beds. Stays already billed do not change. This cannot be undone.",
+        "yes": "Yes, remove"
+      }
+    },
+    "settings": {
+      "flow": {
+        "triageFirst": {
+          "title": "Send every new patient to triage first?",
+          "body": "From now on, a nurse takes the vitals of every newly registered patient and sends them on."
+        },
+        "deskFirst": {
+          "title": "Send new patients straight to the chosen desk?",
+          "body": "From now on, reception sends each newly registered patient straight to the doctor or another desk, without triage first."
+        },
+        "yes": "Yes, change the flow"
+      },
+      "patientFields": {
+        "title_one": "Save {{count}} patient file field?",
+        "title_other": "Save {{count}} patient file fields?",
+        "body": "Every patient file shows these fields from now on.",
+        "bodyRemoved": "Removed: {{names}}. The answers already given for them are no longer shown on the patient files.",
+        "yes": "Yes, save"
+      },
+      "profile": {
+        "title": "Save the details of {{name}}?",
+        "body": "The new details are used at once on every screen and printout that shows the clinic’s details."
+      },
+      "hours": {
+        "title": "Save the opening hours?",
+        "body": "The new hours apply at once wherever the clinic’s hours are shown or used for bookings."
+      },
+      "saveYes": "Yes, save"
+    },
+    "perms": {
+      "roleOn": {
+        "title": "Allow “{{feature}}” for every {{role}}?",
+        "body": "Everyone with this role can do it from now on, except people with their own exception below.",
+        "yes": "Yes, allow"
+      },
+      "roleOff": {
+        "title": "Stop “{{feature}}” for every {{role}}?",
+        "body": "No one with this role can do it from now on, except people with their own exception below.",
+        "yes": "Yes, stop it"
+      },
+      "one": {
+        "role": {
+          "title": "{{name}}: follow the role again for “{{feature}}”?",
+          "body": "The exception is removed: {{name}} may do it only if every {{role}} may."
+        },
+        "yes": {
+          "title": "Allow “{{feature}}” for {{name}}?",
+          "body": "{{name}} can do it from now on, whatever their role allows."
+        },
+        "no": {
+          "title": "Stop “{{feature}}” for {{name}}?",
+          "body": "{{name}} cannot do it from now on, even if their role allows it."
+        },
+        "change": "Yes, change"
+      }
+    },
+    "calendar": {
+      "saveMine": {
+        "title": "Save your calendar?"
+      },
+      "save": {
+        "title": "Save the calendar of {{name}}?"
+      },
+      "body": {
+        "private": "Only its owner will see it, and no one can book it online.",
+        "staff": "Reception and the staff will see these hours and days off and book patients with them.",
+        "public": "The staff and the clinic’s website will show these hours, and patients can ask for a time online."
+      },
+      "yes": "Yes, save"
+    },
+    "notices": {
+      "markAll": {
+        "title_one": "Mark {{count}} notification as read?",
+        "title_other": "Mark all {{count}} notifications as read?",
+        "body": "They stay in your list but no longer count as unread.",
+        "yes": "Yes, mark as read"
+      },
+      "markSelected": {
+        "title_one": "Mark {{count}} selected notification as read?",
+        "title_other": "Mark {{count}} selected notifications as read?"
+      },
+      "markOne": {
+        "title": "Mark “{{title}}” as read?"
+      },
+      "hideSelected": {
+        "title_one": "Remove {{count}} notification from your list?",
+        "title_other": "Remove {{count}} notifications from your list?"
+      },
+      "hideOne": {
+        "title": "Remove “{{title}}” from your list?"
+      },
+      "hide": {
+        "body": "It disappears from your list only; the others who received it still see it. This cannot be undone.",
+        "yes": "Yes, remove"
+      },
+      "deleteSent": {
+        "title": "Delete the message “{{title}}” for everyone?",
+        "body": "It disappears from the list of everyone who received it. This cannot be undone.",
+        "yes": "Yes, delete"
+      },
+      "send": {
+        "all": "Send “{{title}}” to all the staff?",
+        "allHeads": "Send “{{title}}” to every head and assistant head of department?",
+        "role": "Send “{{title}}” to every {{who}}?",
+        "dept": "Send “{{title}}” to the department {{who}}?",
+        "deptHeads": "Send “{{title}}” to the head and assistant heads of {{who}}?",
+        "person": "Send “{{title}}” to {{who}}?",
+        "body": "They receive it at once in their notifications.",
+        "bodyUrgent": "It is marked urgent: they receive it at once, shown as urgent.",
+        "yes": "Yes, send"
+      }
+    }
   }
 }
