@@ -1,19 +1,83 @@
-import { formatDate, type ClinicProfile, type StaffUser } from '@mmc/shared'
+import { formatRwf, type ClinicProfile, type StaffUser } from '@mmc/shared'
 import i18n from '@/i18n'
 import { categoryName } from '@/lib/api/catalogue'
 import type { DashboardData } from '@/lib/api/dashboard'
 import type { CashierSummary } from '@/lib/api/finance'
 import type { LabOrder, LabSummary } from '@/lib/api/lab'
 import type { StockItem, StockMovement, StockSales } from '@/lib/api/stock'
-import type { Report, ReportSection } from '@/lib/report'
+import { docDate, kigaliParts, makeDocLabels } from '@/lib/doc-style'
+import type {
+  Cell,
+  Report,
+  ReportColumn,
+  ReportFigure,
+  ReportSection,
+  ReportTable,
+  ReportWords,
+} from '@/lib/report'
+
+/**
+ * The content of the management reports (document standard C7 / C8): what each report says,
+ * in which order, with which key figures and summary sentences. `report.ts` lays it out as a
+ * PDF or an Excel workbook.
+ */
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string
-const periodOf = (from: string, to: string) =>
-  from === to
-    ? formatDate(new Date(from))
-    : `${formatDate(new Date(from))} – ${formatDate(new Date(to))}`
+
+const ymd = (iso: string) => iso.slice(0, 10).replace(/-/g, '')
+/** "24/10/2026" or "01/10/2026 to 24/10/2026". */
+const periodOf = (from: string, to: string, t: TFn) =>
+  from === to ? docDate(from) : t('report.range', { from: docDate(from), to: docDate(to) })
+const periodKeyOf = (from: string, to: string) =>
+  from === to ? ymd(from) : `${ymd(from)}-${ymd(to)}`
 const stem = (name: string, from: string, to: string) =>
   `${name}_${from}${from === to ? '' : `_${to}`}`
+/** Today in Kigali as yyyy-mm-dd. */
+const kigaliToday = () => kigaliDay(new Date())
+/** The Kigali calendar day (yyyy-mm-dd) of an instant. */
+const kigaliDay = (v: string | Date) => {
+  const p = kigaliParts(v instanceof Date ? v : new Date(v))
+  return `${p.y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`
+}
+/**
+ * The column of a moment in a one-day report: HH:mm when every value falls on that day (the
+ * date is already in "Period"), the full date and time otherwise.
+ */
+const whenColumn = (
+  values: (string | null | undefined)[],
+  day: string,
+  timeLabel: string,
+  dateTimeLabel: string,
+): ReportColumn =>
+  values.every((v) => !v || kigaliDay(v) === day)
+    ? { label: timeLabel, kind: 'time', nowrap: true }
+    : { label: dateTimeLabel, kind: 'datetime' }
+
+const sentences = (...parts: (string | null | false | undefined)[]) =>
+  parts.filter(Boolean).join(' ')
+
+/** What every report shares: the document labels and the report wording. */
+function common(t: TFn, clinic: ClinicProfile, user: StaffUser) {
+  const words: ReportWords = {
+    reportNo: t('report.reportNo'),
+    printed: t('report.printed'),
+    preparedBy: t('report.preparedBy'),
+    checkedBy: t('report.checkedBy'),
+    period: t('report.period'),
+    total: t('report.total'),
+    summarySheet: t('report.sheets.summary'),
+    figure: t('report.cols.figure'),
+    value: t('report.cols.value'),
+    unit: t('report.cols.unit'),
+  }
+  return {
+    clinic,
+    producedBy: user.name,
+    doc: makeDocLabels(t),
+    words,
+    lang: i18n.language,
+  }
+}
 
 /** The manager's activity report: the whole dashboard, section by section. */
 export function dashboardReport(
@@ -22,158 +86,136 @@ export function dashboardReport(
   user: StaffUser,
   t: TFn,
 ): Report {
+  const base = common(t, clinic, user)
   const station = (s: string) => t(`register.stations.${s}`, { defaultValue: s })
   const group = (g: string) => t(`prices.groups.${g}`, { defaultValue: g })
   const role = (r: string) => t(`staff.roles.${r}`, { defaultValue: r })
-  const sections: ReportSection[] = [
+  const manager = d.manager && d.tiles.revenue != null
+  const revenue = d.tiles.revenue ?? 0
+  const openBills = d.tiles.openBills ?? 0
+  const openDue = d.tiles.openBillsDue ?? 0
+
+  const figures: ReportFigure[] = [
+    { label: t('dashboard.tiles.visits'), value: d.tiles.visits },
+    { label: t('dashboard.tiles.registered'), value: d.tiles.registered },
+    ...(manager ? [] : [{ label: t('dashboard.tiles.waiting'), value: d.tiles.waitingNow }]),
+    { label: t('dashboard.tiles.avgWait'), value: d.tiles.avgWaitMin, unit: 'min' },
+    ...(manager
+      ? [
+          { label: t('dashboard.tiles.revenuePeriod'), value: revenue, unit: 'RWF' },
+          { label: t('report.fig.outstanding'), value: openDue, unit: 'RWF' },
+        ]
+      : []),
     {
-      name: t('report.sheets.overview'),
-      summary: [
-        { label: t('dashboard.tiles.registered'), value: d.tiles.registered },
-        { label: t('dashboard.tiles.visits'), value: d.tiles.visits },
-        { label: t('dashboard.tiles.waiting'), value: d.tiles.waitingNow },
-        { label: t('dashboard.tiles.avgWait'), value: `${d.tiles.avgWaitMin} min` },
-        ...(d.manager && d.tiles.revenue != null
-          ? [
-              { label: t('dashboard.tiles.revenue'), value: d.tiles.revenue },
-              {
-                label: t('dashboard.tiles.openBills'),
-                value: `${d.tiles.openBills ?? 0} · ${(d.tiles.openBillsDue ?? 0).toLocaleString('en-US')} RWF`,
-              },
-            ]
-          : []),
-        {
-          label: t('dashboard.tiles.beds'),
-          value: `${d.tiles.bedsOccupied} / ${d.tiles.bedsTotal}`,
-        },
-      ],
-      tables: [
-        {
-          title: t('report.t.visitsByType'),
-          columns: [
-            { label: t('report.cols.type'), width: 28 },
-            { label: t('report.cols.visits'), kind: 'number' },
-          ],
-          rows: d.visitsByGroup.map((x) => [
-            x.name
-              ? categoryName(
-                  { nameEn: x.name, nameKin: x.nameKin ?? null, nameFr: x.nameFr ?? null },
-                  i18n.language,
-                )
-              : group(x.group),
-            x.count,
-          ]),
-          totals: [1],
-        },
-        {
-          title: t('report.t.waitByStation'),
-          columns: [
-            { label: t('report.cols.station'), width: 24 },
-            { label: t('report.cols.waiting'), kind: 'number' },
-            { label: t('report.cols.avgMin'), kind: 'number' },
-            { label: t('report.cols.longestMin'), kind: 'number' },
-          ],
-          rows: d.waitByStation.map((x) => [station(x.station), x.waiting, x.minutes, x.longest]),
-        },
-        {
-          title: t('report.t.bookings'),
-          columns: [
-            { label: t('report.cols.item'), width: 24 },
-            { label: t('report.cols.count'), kind: 'number' },
-          ],
-          rows: [
-            [t('report.t.booked'), d.bookings.booked],
-            [t('report.t.missed'), d.bookings.missed],
-            [t('report.t.pendingRequests'), d.bookings.pending],
-          ],
-        },
-      ],
+      label: t('dashboard.tiles.beds'),
+      value: d.tiles.bedsOccupied,
+      unit: t('report.units.ofTotal', { total: d.tiles.bedsTotal }),
     },
   ]
-  if (d.manager) {
+
+  const overview: ReportTable[] = [
+    {
+      title: t('report.t.visitsByType'),
+      columns: [
+        { label: t('report.cols.type') },
+        { label: t('report.cols.visits'), kind: 'number' },
+      ],
+      rows: d.visitsByGroup.map((x) => [
+        x.name
+          ? categoryName(
+              { nameEn: x.name, nameKin: x.nameKin ?? null, nameFr: x.nameFr ?? null },
+              i18n.language,
+            )
+          : group(x.group),
+        x.count,
+      ]),
+      totals: [1],
+    },
+    {
+      title: t('report.t.bookings'),
+      columns: [
+        { label: t('report.cols.item') },
+        { label: t('report.cols.count'), kind: 'number' },
+      ],
+      rows: [
+        [t('report.t.booked'), d.bookings.booked],
+        [t('report.t.missed'), d.bookings.missed],
+        [t('report.t.pendingRequests'), d.bookings.pending],
+      ],
+    },
+    {
+      title: t('report.t.waitByStation'),
+      columns: [
+        { label: t('report.cols.station') },
+        { label: t('report.cols.waiting'), kind: 'number' },
+        { label: t('report.cols.avgMin'), kind: 'number' },
+        { label: t('report.cols.longestMin'), kind: 'number' },
+      ],
+      rows: d.waitByStation.map((x) => [station(x.station), x.waiting, x.minutes, x.longest]),
+    },
+  ]
+  const sections: ReportSection[] = [{ name: t('report.sheets.overview'), tables: overview }]
+
+  if (manager) {
     sections.push({
       name: t('report.sheets.money'),
-      summary: [
-        { label: t('dashboard.tiles.revenue'), value: d.tiles.revenue ?? 0 },
-        { label: t('report.previous'), value: d.tiles.revenuePrev ?? 0 },
-      ],
       tables: [
+        {
+          title: t('report.t.revenueCompare'),
+          columns: [
+            { label: t('report.period') },
+            { label: t('report.cols.amount'), kind: 'money' },
+          ],
+          rows: [
+            [t('report.thisPeriod'), revenue],
+            [t('report.previous'), d.tiles.revenuePrev ?? 0],
+          ],
+        },
         {
           title: t('report.t.collections'),
           columns: [
-            { label: t('report.cols.method'), width: 20 },
-            { label: t('report.cols.amount'), kind: 'money', width: 18 },
+            { label: t('report.cols.method') },
+            { label: t('report.cols.amount'), kind: 'money' },
           ],
-          rows: d.collections.map((x) => [
-            t(`visit.payment.methods.${x.method}`, { defaultValue: x.method }),
-            x.amount,
-          ]),
-          totals: [1],
-        },
-        {
-          title: t('report.t.revenueByDay'),
-          columns: [
-            { label: t('report.cols.day'), kind: 'date', width: 14 },
-            { label: t('report.cols.amount'), kind: 'money', width: 18 },
-          ],
-          rows: d.revenue30d.map((x) => [x.day, x.amount]),
+          rows: d.collections.map((x) => [base.doc.method(x.method), x.amount]),
           totals: [1],
         },
         {
           title: t('report.t.topTreatments'),
           columns: [
-            { label: t('report.cols.treatment'), width: 36 },
+            { label: t('report.cols.treatment') },
             { label: t('report.cols.count'), kind: 'number' },
-            { label: t('report.cols.amount'), kind: 'money', width: 18 },
+            { label: t('report.cols.amount'), kind: 'money' },
           ],
-          rows: d.topTreatments.map((x) => [x.name, x.count, x.amount ?? 0]),
+          rows: d.topTreatments.map((x) => [x.name, x.count, x.amount]),
           totals: [1, 2],
+        },
+        {
+          title: t('report.t.revenueByDay'),
+          columns: [
+            { label: t('report.cols.day'), kind: 'date' },
+            { label: t('report.cols.amount'), kind: 'money' },
+          ],
+          rows: d.revenue30d.map((x) => [x.day, x.amount]),
+          totals: [1],
         },
       ],
     })
   }
-  sections.push({
-    name: t('report.sheets.staff'),
-    tables: [
-      {
-        title: t('report.t.staffWork'),
-        note: t('report.staffNote'),
-        columns: [
-          { label: t('report.cols.name'), width: 28 },
-          { label: t('report.cols.role'), width: 18 },
-          { label: t('report.cols.staffId'), width: 14 },
-          { label: t('report.cols.registrations'), kind: 'number' },
-          { label: t('report.cols.vitals'), kind: 'number' },
-          { label: t('report.cols.charges'), kind: 'number' },
-          ...(d.manager
-            ? [
-                { label: t('report.cols.payments'), kind: 'number' as const },
-                { label: t('report.cols.collected'), kind: 'money' as const, width: 18 },
-              ]
-            : []),
-          { label: t('report.cols.lastSignIn'), kind: 'datetime' as const, width: 18 },
-        ],
-        rows: d.staff.map((s) => [
-          s.name,
-          role(s.role),
-          s.staffId ?? '',
-          s.registrations,
-          s.vitals,
-          s.charges,
-          ...(d.manager ? [s.payments ?? 0, s.collected ?? 0] : []),
-          s.lastSignIn ?? '',
-        ]),
-        totals: d.manager ? [3, 4, 5, 6, 7] : [3, 4, 5],
-      },
-    ],
-  })
+
+  const expiring: Cell[][] = [
+    [t('report.withinDays', { count: 30 }), d.expiring.d30],
+    [t('report.withinDays', { count: 60 }), d.expiring.d60],
+    [t('report.withinDays', { count: 90 }), d.expiring.d90],
+    ...(d.expiring.expired != null ? [[t('report.t.expired'), d.expiring.expired]] : []),
+  ]
   sections.push({
     name: t('report.sheets.stock'),
     tables: [
       {
         title: t('report.t.reorder'),
         columns: [
-          { label: t('stock.cols.item'), width: 32 },
+          { label: t('stock.cols.item') },
           { label: t('stock.cols.onHand'), kind: 'number' },
           { label: t('report.cols.reorderLevel'), kind: 'number' },
         ],
@@ -182,23 +224,70 @@ export function dashboardReport(
       {
         title: t('report.t.expiring'),
         columns: [
-          { label: t('report.cols.horizon'), width: 20 },
+          { label: t('report.cols.horizon') },
           { label: t('report.cols.batches'), kind: 'number' },
         ],
-        rows: [
-          ['30', d.expiring.d30],
-          ['60', d.expiring.d60],
-          ['90', d.expiring.d90],
-        ].map(([h, n]) => [t('report.withinDays', { count: Number(h) }), n]),
+        rows: expiring,
       },
     ],
   })
+
+  // the wide staff table last, so the portrait tables run on without a page change
+  sections.push({
+    name: t('report.sheets.staff'),
+    tables: [
+      {
+        title: t('report.t.staffWork'),
+        note: t('report.staffNote'),
+        columns: [
+          { label: t('report.cols.name') },
+          { label: t('report.cols.role') },
+          { label: t('report.cols.staffId') },
+          { label: t('report.cols.registrations'), kind: 'number' },
+          { label: t('report.cols.vitals'), kind: 'number' },
+          { label: t('report.cols.charges'), kind: 'number' },
+          ...(d.manager
+            ? [
+                { label: t('report.cols.payments'), kind: 'number' as const },
+                { label: t('report.cols.collected'), kind: 'money' as const },
+              ]
+            : []),
+          { label: t('report.cols.lastSignIn'), kind: 'datetime' as const },
+        ],
+        rows: d.staff.map((s) => [
+          s.name,
+          role(s.role),
+          s.staffId,
+          s.registrations,
+          s.vitals,
+          s.charges,
+          ...(d.manager ? [s.payments ?? 0, s.collected ?? 0] : []),
+          s.lastSignIn,
+        ]),
+        totals: d.manager ? [3, 4, 5, 6, 7] : [3, 4, 5],
+      },
+    ],
+  })
+
   return {
+    ...base,
     title: t('report.titles.activity'),
-    period: periodOf(d.from, d.to),
-    clinic,
-    producedBy: user.name,
+    period: periodOf(d.from, d.to, t),
+    code: 'ACT',
+    periodKey: periodKeyOf(d.from, d.to),
     fileName: stem('activity-report', d.from, d.to),
+    figures,
+    summaryText: sentences(
+      t('report.summary.visits', { count: d.tiles.visits }),
+      manager &&
+        (openBills > 0
+          ? t('report.summary.revenueOpen', {
+              count: openBills,
+              amount: formatRwf(revenue),
+              due: formatRwf(openDue),
+            })
+          : t('report.summary.revenue', { amount: formatRwf(revenue) })),
+    ),
     sections,
   }
 }
@@ -210,81 +299,134 @@ export function cashierReport(
   user: StaffUser,
   t: TFn,
 ): Report {
-  const method = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
+  const base = common(t, clinic, user)
+  const method = base.doc.method
+  const day = s.day.slice(0, 10)
+  const when = (values: (string | null | undefined)[]) =>
+    whenColumn(values, day, t('report.cols.time'), t('report.cols.dateTime'))
+
+  const figures: ReportFigure[] = [
+    { label: t('report.fig.collected'), value: s.total, unit: 'RWF' },
+    { label: t('finance.payments'), value: s.count },
+    ...(s.refunded ? [{ label: t('report.fig.refunded'), value: s.refunded, unit: 'RWF' }] : []),
+    { label: t('report.fig.openBills'), value: s.openBills },
+    { label: t('report.fig.outstanding'), value: s.openDue, unit: 'RWF' },
+  ]
+
+  // cash count: one row per cashier and payment method, from the day closes
+  const cashRows: Cell[][] = []
+  for (const c of s.closes ?? []) {
+    const methods = [...new Set([...Object.keys(c.expected), ...Object.keys(c.counted)])]
+    for (const m of methods) {
+      const expected = c.expected[m] ?? 0
+      const counted = c.counted[m] ?? 0
+      cashRows.push([c.cashier, method(m), expected, counted, counted - expected])
+    }
+  }
+  const cashCount: ReportTable | undefined = cashRows.length
+    ? {
+        title: t('report.cash.title'),
+        columns: [
+          { label: t('report.cols.cashier') },
+          { label: t('report.cols.method') },
+          { label: t('report.cash.expected'), kind: 'money' },
+          { label: t('report.cash.counted'), kind: 'money' },
+          { label: t('report.cash.difference'), kind: 'money', boldNegative: true },
+        ],
+        rows: cashRows,
+        totals: [2, 3, 4],
+      }
+    : undefined
+
+  const tables: ReportTable[] = [
+    {
+      title: t('report.t.collections'),
+      columns: [
+        { label: t('report.cols.method') },
+        { label: t('report.cols.count'), kind: 'number' },
+        { label: t('report.cols.amount'), kind: 'money' },
+      ],
+      rows: s.byMethod.map((x) => [method(x.method), x.count, x.amount]),
+      totals: [1, 2],
+    },
+    {
+      title: t('finance.byCashier'),
+      columns: [
+        { label: t('report.cols.cashier') },
+        { label: t('report.cols.count'), kind: 'number' },
+        { label: t('report.cols.amount'), kind: 'money' },
+      ],
+      rows: s.byCashier.map((x) => [x.name, x.count, x.amount]),
+      totals: [1, 2],
+    },
+    {
+      title: t('finance.payments'),
+      columns: [
+        when(s.payments.map((p) => p.at)),
+        { label: t('finance.cols.patient') },
+        { label: t('report.cols.file'), under: true },
+        { label: t('report.cols.method'), nowrap: true },
+        { label: t('report.cols.reference') },
+        { label: t('report.cols.receiptNo') },
+        { label: t('report.cols.cashier'), nowrap: true },
+        { label: t('report.cols.amount'), kind: 'money' },
+      ],
+      rows: s.payments.map((p) => [
+        p.at,
+        p.patient,
+        p.fileNumber,
+        method(p.method),
+        p.reference,
+        p.receipt,
+        p.cashier,
+        p.amount,
+      ]),
+      totals: [7],
+    },
+    {
+      title: t('report.t.refunds'),
+      columns: [
+        when((s.refunds ?? []).map((r) => r.at)),
+        { label: t('finance.cols.patient') },
+        { label: t('report.cols.method') },
+        { label: t('report.cols.reference') },
+        { label: t('report.cols.reason') },
+        { label: t('report.cols.cashier') },
+        { label: t('report.cols.amount'), kind: 'money' },
+      ],
+      rows: (s.refunds ?? []).map((r) => [
+        r.at,
+        r.patient,
+        method(r.method),
+        r.reference,
+        r.reason,
+        r.cashier,
+        r.amount,
+      ]),
+      totals: [6],
+    },
+  ]
+
   return {
+    ...base,
     title: t('report.titles.dayClose'),
-    period: formatDate(new Date(s.day)),
-    clinic,
-    producedBy: user.name,
-    fileName: stem('day-close', s.day, s.day),
-    sections: [
-      {
-        name: t('report.sheets.dayClose'),
-        summary: [
-          { label: t('finance.tiles.collected'), value: s.total },
-          { label: t('finance.paymentsCount', { count: s.count }), value: s.count },
-          {
-            label: t('finance.tiles.openBills'),
-            value: `${s.openBills} · ${s.openDue.toLocaleString('en-US')} RWF`,
-          },
-        ],
-        tables: [
-          {
-            title: t('finance.byMethod'),
-            columns: [
-              { label: t('report.cols.method'), width: 20 },
-              { label: t('report.cols.count'), kind: 'number' },
-              { label: t('report.cols.amount'), kind: 'money', width: 18 },
-            ],
-            rows: s.byMethod.map((x) => [method(x.method), x.count, x.amount]),
-            totals: [1, 2],
-          },
-          {
-            title: t('finance.byCashier'),
-            columns: [
-              { label: t('report.cols.cashier'), width: 28 },
-              { label: t('report.cols.count'), kind: 'number' },
-              { label: t('report.cols.amount'), kind: 'money', width: 18 },
-            ],
-            rows: s.byCashier.map((x) => [x.name, x.count, x.amount]),
-            totals: [1, 2],
-          },
-        ],
-      },
-      {
-        name: t('report.sheets.payments'),
-        tables: [
-          {
-            title: t('finance.payments'),
-            columns: [
-              { label: t('finance.cols.time'), kind: 'datetime', width: 18 },
-              { label: t('finance.cols.patient'), width: 30 },
-              { label: t('report.cols.file'), width: 14 },
-              { label: t('finance.cols.method'), width: 14 },
-              { label: t('report.cols.reference'), width: 24 },
-              { label: t('finance.cols.receipt'), width: 18 },
-              { label: t('finance.cols.cashier'), width: 24 },
-              { label: t('finance.cols.amount'), kind: 'money', width: 18 },
-            ],
-            rows: s.payments.map((p) => [
-              p.at,
-              p.patient,
-              p.fileNumber,
-              method(p.method),
-              p.reference ?? '',
-              p.invoice ?? '',
-              p.cashier ?? '',
-              p.amount,
-            ]),
-            totals: [7],
-          },
-        ],
-      },
-    ],
+    period: docDate(day),
+    code: 'DAY',
+    periodKey: ymd(day),
+    fileName: stem('day-close', day, day),
+    figures,
+    summaryText: sentences(
+      t('report.summary.collected', { count: s.count, amount: formatRwf(s.total) }),
+      s.openBills > 0
+        ? t('report.summary.open', { count: s.openBills, amount: formatRwf(s.openDue) })
+        : t('report.summary.noOpen'),
+    ),
+    cashCount,
+    sections: [{ name: t('report.sheets.dayClose'), tables }],
   }
 }
 
-/** The laboratory's day: worklist and results. */
+/** The laboratory's day: requests still open and results given. */
 export function labReport(
   s: LabSummary | undefined,
   open: LabOrder[],
@@ -293,60 +435,99 @@ export function labReport(
   user: StaffUser,
   t: TFn,
 ): Report {
-  const today = new Date()
-  const iso = today.toISOString().slice(0, 10)
+  const base = common(t, clinic, user)
+  const day = kigaliToday()
   const status = (x: string) => t(`lab.status.${x}`, { defaultValue: x })
-  const cols = [
-    { label: t('report.cols.ordered'), kind: 'datetime' as const, width: 18 },
-    { label: t('finance.cols.patient'), width: 28 },
-    { label: t('report.cols.file'), width: 14 },
-    { label: t('report.cols.test'), width: 28 },
-    { label: t('report.cols.status'), width: 18 },
-    { label: t('report.cols.orderedBy'), width: 24 },
-    { label: t('report.cols.result'), width: 36 },
-    { label: t('report.cols.resultAt'), kind: 'datetime' as const, width: 18 },
-  ]
-  const row = (o: LabOrder) => [
-    o.orderedAt,
-    o.patient,
-    o.fileNumber,
-    o.test,
-    status(o.status),
-    o.orderedBy ?? '',
-    o.impression ?? o.findings ?? '',
-    o.resultAt ?? '',
-  ]
+  const figures: ReportFigure[] = s
+    ? [
+        { label: t('lab.tiles.waiting'), value: s.waiting },
+        { label: t('lab.tiles.inProcess'), value: s.inProcess },
+        { label: t('lab.tiles.toVerify'), value: s.toVerify },
+        { label: t('lab.tiles.done'), value: s.doneToday },
+        { label: t('lab.tiles.urgent'), value: s.urgent },
+        { label: t('lab.tiles.turnaround'), value: s.turnaroundMin, unit: 'min' },
+      ]
+    : []
+  const urgent = open.filter((o) => o.priority <= 1).length
+
   return {
+    ...base,
     title: t('report.titles.lab'),
-    period: formatDate(today),
-    clinic,
-    producedBy: user.name,
-    fileName: stem('laboratory', iso, iso),
+    period: docDate(day),
+    code: 'LAB',
+    periodKey: ymd(day),
+    fileName: stem('laboratory', day, day),
+    figures,
+    summaryText: sentences(
+      t('report.summary.lab', {
+        count: s?.doneToday ?? done.length,
+        minutes: s?.turnaroundMin ?? 0,
+      }),
+      t('report.summary.labOpen', { count: open.length, urgent: s?.urgent ?? urgent }),
+    ),
     sections: [
       {
         name: t('report.sheets.labDay'),
-        summary: s
-          ? [
-              { label: t('lab.tiles.waiting'), value: s.waiting },
-              { label: t('lab.tiles.inProcess'), value: s.inProcess },
-              { label: t('lab.tiles.toVerify'), value: s.toVerify },
-              { label: t('lab.tiles.done'), value: s.doneToday },
-              { label: t('lab.tiles.urgent'), value: s.urgent },
-              { label: t('lab.tiles.turnaround'), value: `${s.turnaroundMin} min` },
-            ]
-          : undefined,
         tables: [
           {
             title: t('lab.mostOrdered'),
             columns: [
-              { label: t('report.cols.test'), width: 32 },
+              { label: t('report.cols.test') },
               { label: t('report.cols.count'), kind: 'number' },
             ],
             rows: (s?.byTest ?? []).map((x) => [x.test, x.count]),
             totals: [1],
           },
-          { title: t('lab.worklist'), columns: cols, rows: open.map(row) },
-          { title: t('lab.resultsGiven'), columns: cols, rows: done.map(row) },
+          {
+            title: t('lab.worklist'),
+            columns: [
+              whenColumn(
+                open.map((o) => o.orderedAt),
+                day,
+                t('report.cols.ordered'),
+                t('report.cols.ordered'),
+              ),
+              { label: t('finance.cols.patient') },
+              { label: t('report.cols.file'), under: true },
+              { label: t('report.cols.test'), pdfWidth: '30%' },
+              { label: t('report.cols.status'), nowrap: true },
+              { label: t('report.cols.orderedBy') },
+            ],
+            rows: open.map((o) => [
+              o.orderedAt,
+              o.patient,
+              o.fileNumber,
+              o.test,
+              status(o.status),
+              o.orderedBy,
+            ]),
+          },
+          {
+            title: t('lab.resultsGiven'),
+            columns: [
+              whenColumn(
+                done.map((o) => o.resultAt),
+                day,
+                t('report.cols.time'),
+                t('report.cols.resultAt'),
+              ),
+              { label: t('finance.cols.patient') },
+              { label: t('report.cols.file'), under: true },
+              { label: t('report.cols.test'), pdfWidth: '18%' },
+              { label: t('report.cols.result'), pdfWidth: '32%' },
+              { label: t('report.cols.status'), nowrap: true },
+              { label: t('report.cols.orderedBy') },
+            ],
+            rows: done.map((o) => [
+              o.resultAt,
+              o.patient,
+              o.fileNumber,
+              o.test,
+              o.impression ?? o.findings,
+              status(o.status),
+              o.orderedBy,
+            ]),
+          },
         ],
       },
     ],
@@ -364,49 +545,67 @@ export function stockReport(
   user: StaffUser,
   t: TFn,
 ): Report {
-  const value = items.reduce((s, i) => s + i.costValue, 0)
+  const base = common(t, clinic, user)
+  const active = items.filter((i) => i.active)
+  const value = Math.round(active.reduce((s, i) => s + i.costValue, 0))
+  const low = active.filter((i) => i.onHand <= i.reorderLevel).length
+  const sold = sales ? Math.round(sales.items.reduce((s, x) => s + x.revenue, 0)) : 0
+  const cost = sales ? Math.round(sales.items.reduce((s, x) => s + x.cost, 0)) : 0
+  const margin = sales ? Math.round(sales.items.reduce((s, x) => s + x.margin, 0)) : 0
+
+  const figures: ReportFigure[] = [
+    { label: t('stock.tiles.items'), value: active.length },
+    { label: t('stock.tiles.value'), value, unit: 'RWF' },
+    { label: t('stock.tiles.low'), value: low },
+    ...(sales
+      ? [
+          { label: t('stock.sales.revenue'), value: sold, unit: 'RWF' },
+          { label: t('stock.sales.cost'), value: cost, unit: 'RWF' },
+          { label: t('stock.sales.margin'), value: margin, unit: 'RWF' },
+        ]
+      : []),
+  ]
+
   return {
+    ...base,
     title: t('report.titles.stock'),
-    period: periodOf(from, to),
-    clinic,
-    producedBy: user.name,
+    period: periodOf(from, to, t),
+    code: 'STK',
+    periodKey: periodKeyOf(from, to),
     fileName: stem('stock', from, to),
+    figures,
+    summaryText: sentences(
+      t('report.summary.stock', { count: active.length, value: formatRwf(value), low }),
+      sales &&
+        sales.items.length > 0 &&
+        t('report.summary.sales', { revenue: formatRwf(sold), margin: formatRwf(margin) }),
+    ),
     sections: [
       {
         name: t('report.sheets.onHand'),
-        summary: [
-          { label: t('stock.tiles.items'), value: items.filter((i) => i.active).length },
-          { label: t('stock.tiles.value'), value: Math.round(value) },
-          {
-            label: t('stock.tiles.low'),
-            value: items.filter((i) => i.active && i.onHand <= i.reorderLevel).length,
-          },
-        ],
         tables: [
           {
             title: t('stock.onHand'),
             columns: [
-              { label: t('stock.cols.item'), width: 32 },
-              { label: t('report.cols.code'), width: 12 },
+              { label: t('stock.cols.item'), pdfWidth: '34%' },
+              { label: t('report.cols.code'), under: true },
               { label: t('stock.cols.onHand'), kind: 'number' },
               { label: t('report.cols.reorderLevel'), kind: 'number' },
-              { label: t('stock.cols.cost'), kind: 'number' },
-              { label: t('stock.cols.price'), kind: 'number' },
-              { label: t('stock.cols.value'), kind: 'money', width: 18 },
-              { label: t('stock.cols.expiry'), kind: 'date', width: 14 },
+              { label: t('stock.cols.cost'), kind: 'money' },
+              { label: t('stock.cols.price'), kind: 'money' },
+              { label: t('report.cols.valueAtCost'), kind: 'money' },
+              { label: t('stock.cols.expiry'), kind: 'date' },
             ],
-            rows: items
-              .filter((i) => i.active)
-              .map((i) => [
-                `${i.name}${i.strength ? ` ${i.strength}` : ''}`,
-                i.code,
-                i.onHand,
-                i.reorderLevel,
-                i.avgCost ?? 0,
-                i.sellingPrice ?? 0,
-                Math.round(i.costValue),
-                i.earliestExpiry ?? '',
-              ]),
+            rows: active.map((i) => [
+              `${i.name}${i.strength ? ` ${i.strength}` : ''}`,
+              i.code,
+              i.onHand,
+              i.reorderLevel,
+              i.avgCost,
+              i.sellingPrice,
+              Math.round(i.costValue),
+              i.earliestExpiry,
+            ]),
             totals: [6],
           },
         ],
@@ -417,60 +616,43 @@ export function stockReport(
           {
             title: t('stock.movesTitle'),
             columns: [
-              { label: t('report.cols.when'), kind: 'datetime', width: 18 },
-              { label: t('report.cols.type'), width: 14 },
-              { label: t('stock.cols.item'), width: 32 },
+              { label: t('report.cols.dateTime'), kind: 'datetime' },
+              { label: t('report.cols.type'), nowrap: true },
+              { label: t('stock.cols.item') },
               { label: t('stock.quantity'), kind: 'number' },
-              { label: t('stock.fromStore'), width: 20 },
-              { label: t('stock.toStore'), width: 20 },
-              { label: t('stock.batchNo'), width: 16 },
-              { label: t('stock.expiry'), kind: 'date', width: 14 },
-              { label: t('report.cols.valueAtCost'), kind: 'money', width: 18 },
-              { label: t('report.cols.by'), width: 24 },
+              { label: t('stock.fromStore'), nowrap: true },
+              { label: t('stock.toStore'), nowrap: true },
+              { label: t('stock.batchNo') },
+              { label: t('stock.expiry'), kind: 'date' },
+              { label: t('report.cols.valueAtCost'), kind: 'money' },
+              { label: t('report.cols.by'), nowrap: true },
             ],
             rows: moves.map((m) => [
               m.at,
-              t(`stock.types.${m.type}`),
+              t(`stock.types.${m.type}`, { defaultValue: m.type }),
               m.item,
               m.quantity,
-              m.from ?? '',
-              m.to ?? '',
-              m.batch ?? '',
-              m.expiry ?? '',
-              m.unitCost == null ? 0 : Math.round(m.quantity * m.unitCost),
-              m.by ?? '',
+              m.from,
+              m.to,
+              m.batch,
+              m.expiry,
+              m.unitCost == null ? null : Math.round(m.quantity * m.unitCost),
+              m.by,
             ]),
           },
         ],
       },
       {
         name: t('report.sheets.sales'),
-        summary: sales
-          ? [
-              {
-                label: t('stock.sales.revenue'),
-                value: Math.round(sales.items.reduce((s, x) => s + x.revenue, 0)),
-              },
-              {
-                label: t('stock.sales.cost'),
-                value: Math.round(sales.items.reduce((s, x) => s + x.cost, 0)),
-              },
-              {
-                label: t('stock.sales.margin'),
-                value: Math.round(sales.items.reduce((s, x) => s + x.margin, 0)),
-              },
-              { label: t('stock.sales.value'), value: Math.round(sales.stockValue) },
-            ]
-          : undefined,
         tables: [
           {
             title: t('stock.sales.byItem'),
             columns: [
-              { label: t('stock.cols.item'), width: 32 },
+              { label: t('stock.cols.item') },
               { label: t('stock.sales.units'), kind: 'number' },
-              { label: t('stock.sales.revenue'), kind: 'money', width: 18 },
-              { label: t('stock.sales.cost'), kind: 'money', width: 18 },
-              { label: t('stock.sales.margin'), kind: 'money', width: 18 },
+              { label: t('stock.sales.revenue'), kind: 'money' },
+              { label: t('stock.sales.cost'), kind: 'money' },
+              { label: t('stock.sales.margin'), kind: 'money' },
             ],
             rows: (sales?.items ?? []).map((x) => [
               x.item,

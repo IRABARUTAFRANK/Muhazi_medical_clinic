@@ -1,210 +1,744 @@
-import { formatDate, formatTime, type ClinicProfile } from '@mmc/shared'
+import type { ClinicProfile } from '@mmc/shared'
+import {
+  DASH,
+  EXCEL,
+  docDate,
+  docDateTime,
+  docMoney,
+  docNumber,
+  docTime,
+  documentHtml,
+  esc,
+  escLines,
+  excelDate,
+  excelFooter,
+  excelTextWidth,
+  formatRwf,
+  keyFiguresHtml,
+  letterheadFrom,
+  letterheadHtml,
+  openPrintWindow,
+  signatureHtml,
+  titleBlockHtml,
+  type CellValue,
+  type DocLabels,
+  type Letterhead,
+  type ProfileLike,
+} from '@/lib/doc-style'
 
 /**
- * Professional reports: the same content as an Excel workbook (several sheets, headers,
- * number formats, totals, column widths) or as a PDF (a print-styled document opened in a new
- * window and sent to the browser's print dialog → "Save as PDF"). Every report carries the
- * clinic's name and address, the title, the period, who produced it and when.
+ * Management reports (dashboard, cashier day, laboratory, stock), following the clinic's
+ * document design standard (C7 PDF, C8 / Part B Excel):
+ *
+ * - PDF: an A4 portrait print document with the compact letterhead, a title block (report no.,
+ *   printed, prepared by), key figures, a one or two sentence summary, one headed table per
+ *   detail section with its total as the last row, the cash count on a day close, and
+ *   "Prepared by" / "Checked by" signature lines. The footer (clinic, report no., printed by,
+ *   page x of y) is printed in the page margin boxes. Only a table with more than 7 columns
+ *   moves to its own A4 landscape pages (a CSS named page); small tables (3 columns or fewer)
+ *   sit side by side in two columns; tables of 12 rows or fewer are never split.
+ * - Excel: Arial 10, a "Summary" sheet first (key figures as Label | Value | Unit, the summary
+ *   sentences, the cash count) then one sheet per table. Every sheet starts with the clinic,
+ *   title, period and printed lines, the header on row 6 (frozen, filtered, repeated on print),
+ *   typed cells (numbers, Kigali wall-clock dates), SUM() totals as the last row.
  */
 
 export type Cell = string | number | null | undefined | Date
 export interface ReportColumn {
-  /** Column header. */
+  /** Column header, without the unit: money columns get " (RWF)" added. */
   label: string
-  /** Width in characters (Excel) ; ignored in the PDF. */
+  /** Kept for older callers; Excel widths follow the standard (text: longest value + 2). */
   width?: number
-  /** Money → "#,##0 RWF"-style formatting; number → "#,##0"; date → dd/mm/yyyy. */
-  kind?: 'text' | 'number' | 'money' | 'date' | 'datetime'
+  /**
+   * money → "12,500" (RWF in the header); number → "1,234"; date → dd/mm/yyyy;
+   * datetime → dd/mm/yyyy HH:mm; time → HH:mm (single-day reports: the date is in "Period").
+   */
+  kind?: 'text' | 'number' | 'money' | 'date' | 'datetime' | 'time'
   align?: 'left' | 'right'
+  /** A negative value prints bold with a "–" sign (cash count difference). */
+  boldNegative?: boolean
+  /**
+   * PDF only: printed on a second line under the previous column's value (8 pt, secondary
+   * colour) instead of as a column of its own, e.g. the file no. under the patient's name.
+   * Excel keeps it as its own column.
+   */
+  under?: boolean
+  /** PDF only: a width hint ("32%"). */
+  pdfWidth?: string
+  /** PDF only: the value never wraps (short status words, names of a few words). */
+  nowrap?: boolean
 }
 export interface ReportTable {
   title: string
-  /** One short line under the title (what the table shows). */
+  /** One short line under the heading (what the table shows). */
   note?: string
   columns: ReportColumn[]
   rows: Cell[][]
-  /** Columns (by index) to sum in a last "Total" row. */
+  /** Columns (by index) summed in a last "Total" row. */
   totals?: number[]
 }
-export interface ReportSummaryItem {
+/** A key figure: a typed value with its unit ("RWF" prints as "RWF 71,270"). */
+export interface ReportFigure {
   label: string
-  value: string | number
+  value: number
+  /** 'RWF' for money, or a unit word ("min", "of 10"); none for a plain count. */
+  unit?: string
 }
+/** @deprecated use ReportFigure */
+export type ReportSummaryItem = ReportFigure
 export interface ReportSection {
-  /** Sheet name in Excel / heading in the PDF (≤ 31 chars for Excel). */
+  /** Groups tables in the builder; each table becomes its own PDF section and Excel sheet. */
   name: string
-  /** Key figures shown before the tables. */
-  summary?: ReportSummaryItem[]
   tables: ReportTable[]
+}
+/** The wording report.ts needs beyond the shared document labels. */
+export interface ReportWords {
+  reportNo: string
+  printed: string
+  preparedBy: string
+  checkedBy: string
+  period: string
+  total: string
+  /** Name of the first Excel sheet. */
+  summarySheet: string
+  figure: string
+  value: string
+  unit: string
 }
 export interface Report {
   title: string
-  /** "01/10/2026 – 20/10/2026" or a single day. */
+  /** "01/10/2026 to 20/10/2026" or a single day. */
   period: string
   clinic: ClinicProfile
+  /** Full name of the user who prepares (prints or downloads) the report. */
   producedBy: string
   sections: ReportSection[]
   /** File stem without extension. */
   fileName: string
+  /** Short report code (DAY, ACT, LAB, STK) and period key (yyyymmdd or yyyymmdd-yyyymmdd). */
+  code: string
+  periodKey: string
+  /** 3 to 6 key figures. */
+  figures?: ReportFigure[]
+  /** One or two plain sentences under the key figures. */
+  summaryText?: string
+  /** Day close only: expected and counted cash (after the detail sections). */
+  cashCount?: ReportTable
+  doc: DocLabels
+  words: ReportWords
+  /** Defaults to the clinic profile with the logo of this site. */
+  letterhead?: Letterhead
+  /** Defaults to now. */
+  printedAt?: Date
+  /** Interface language of the wording (html lang). */
+  lang?: string
+}
+/** The labels the report buttons pass (older wording); the report carries its own words. */
+export interface ReportButtonLabels {
+  period: string
+  producedBy: string
+  producedAt: string
+  total: string
+  page?: string
 }
 
-const money = (n: number) => `${Math.round(n).toLocaleString('en-US')} RWF`
-const num = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 })
-const cellText = (c: Cell, kind: ReportColumn['kind']): string => {
-  if (c == null || c === '') return '—'
-  if (c instanceof Date)
-    return kind === 'datetime' ? `${formatDate(c)} ${formatTime(c)}` : formatDate(c)
-  if (typeof c === 'number')
-    return kind === 'money' ? money(c) : kind === 'number' ? num(c) : String(c)
-  if (kind === 'date' || kind === 'datetime') {
-    const d = new Date(c)
-    if (!Number.isNaN(d.getTime()))
-      return kind === 'datetime' ? `${formatDate(d)} ${formatTime(d)}` : formatDate(d)
-  }
-  return c
+export const reportNumber = (r: Pick<Report, 'code' | 'periodKey'>) =>
+  `RPT-${r.code}-${r.periodKey}`
+
+const isNumKind = (k: ReportColumn['kind']) => k === 'money' || k === 'number'
+const isDateKind = (k: ReportColumn['kind']) => k === 'date' || k === 'datetime' || k === 'time'
+const isRight = (c: ReportColumn) =>
+  c.align === 'right' || (c.align !== 'left' && isNumKind(c.kind))
+
+/**
+ * The column header with its unit: money columns read "Amount (RWF)". A label that already ends
+ * in a parenthesis takes the unit inside it ("Value (at cost, RWF)"), never "(…) (RWF)".
+ */
+export const headerLabel = (c: ReportColumn) => {
+  if (c.kind !== 'money' || /\bRWF\b/.test(c.label)) return c.label
+  return /\)\s*$/.test(c.label) ? c.label.replace(/\)\s*$/, ', RWF)') : `${c.label} (RWF)`
 }
-const totalsRow = (t: ReportTable): Cell[] | null => {
-  if (!t.totals?.length) return null
-  const row: Cell[] = t.columns.map(() => null)
-  row[0] = 'Total'
-  for (const i of t.totals)
-    row[i] = t.rows.reduce((s, r) => s + (typeof r[i] === 'number' ? (r[i] as number) : 0), 0)
-  return row
+
+/** Tables with at least one row (empty sections are left out). */
+const tablesOf = (r: Report) => r.sections.flatMap((s) => s.tables).filter((t) => t.rows.length > 0)
+
+const MAX_PORTRAIT_COLUMNS = 7
+/** At most this many columns: a small table, printed in one half of the page. */
+const MAX_HALF_COLUMNS = 3
+/** At most this many rows (the total row included): the table is never split across pages. */
+const MAX_KEEP_ROWS = 12
+
+/** A printed column with the columns printed under it (`under`). */
+interface PdfColumn {
+  col: ReportColumn
+  index: number
+  under: { col: ReportColumn; index: number }[]
+}
+function pdfColumns(t: ReportTable): PdfColumn[] {
+  const out: PdfColumn[] = []
+  t.columns.forEach((col, index) => {
+    const prev = out[out.length - 1]
+    if (col.under && prev) prev.under.push({ col, index })
+    else out.push({ col, index, under: [] })
+  })
+  return out
+}
+/** The PDF table needs a landscape page (more than 7 printed columns). */
+const isWidePdf = (t: ReportTable) => pdfColumns(t).length > MAX_PORTRAIT_COLUMNS
+/** The Excel sheet prints landscape (more than 7 columns). */
+const isWideSheet = (t: ReportTable) => t.columns.length > MAX_PORTRAIT_COLUMNS
+const isHalf = (t: ReportTable) => pdfColumns(t).length <= MAX_HALF_COLUMNS
+const keepWhole = (t: ReportTable) => t.rows.length + (t.totals?.length ? 1 : 0) <= MAX_KEEP_ROWS
+
+const sumColumn = (t: ReportTable, i: number) =>
+  t.rows.reduce<number>((s, r) => s + (typeof r[i] === 'number' ? (r[i] as number) : 0), 0)
+
+/** "RWF 71,270", "18 min", "3 of 10" or "6". */
+export function figureText(f: ReportFigure): string {
+  if (f.unit === 'RWF') return formatRwf(Math.round(f.value))
+  const n = docNumber(f.value)
+  return f.unit ? `${n} ${f.unit}` : n
+}
+
+// ---------------------------------------------------------------- PDF (print document)
+
+/** Negative values with an en dash ("–1,200"), never a hyphen. */
+const signed = (n: number, format: (n: number) => string) => (n < 0 ? `–${format(-n)}` : format(n))
+/** A value that must not break across lines (date-times, file numbers, codes). */
+const keep = (text: string): CellValue => ({ html: `<span class="nw">${esc(text)}</span>` })
+
+/** Free text for a cell: escaped, line breaks kept, "x10^9" written as ×10⁹ (superscript). */
+const textHtml = (s: string) =>
+  escLines(s).replace(/(^|[\d\s(])[x×] ?10\^(-?\d+)/g, '$1×10<sup>$2</sup>')
+
+function pdfCell(c: Cell, col: ReportColumn | undefined): CellValue {
+  const kind = col?.kind
+  if (c == null || c === '') return null
+  if (c instanceof Date || (isDateKind(kind) && typeof c === 'string')) {
+    const text = kind === 'date' ? docDate(c) : kind === 'time' ? docTime(c) : docDateTime(c)
+    if (text) return keep(text)
+  }
+  if (typeof c === 'number') {
+    if (kind !== 'money' && kind !== 'number') return keep(String(c))
+    const text = esc(signed(c, kind === 'money' ? docMoney : docNumber))
+    return { html: col?.boldNegative && c < 0 ? `<strong>${text}</strong>` : text }
+  }
+  const s = String(c)
+  // one token (file no., receipt no., code, reference) stays on one line
+  return /\s/.test(s) ? { html: textHtml(s) } : keep(s)
+}
+
+const cellHtml = (v: CellValue, empty: string): string => {
+  if (v != null && typeof v === 'object') return v.html
+  if (v == null || v === '') return empty
+  return typeof v === 'number' ? esc(docNumber(v)) : textHtml(v)
+}
+
+/**
+ * A detail table (A10, the shared `.dt` rules): header rule, hairline rows, right-aligned
+ * tabular figures, "–" for an empty cell, the total as the last row. A column marked `under`
+ * prints on a second line in the previous column's cell.
+ */
+function pdfTable(t: ReportTable, total: string): string {
+  const cols = pdfColumns(t)
+  const cls = (p: PdfColumn) =>
+    [isRight(p.col) ? 'num' : '', p.col.nowrap ? 'nw' : ''].filter(Boolean).join(' ')
+  const attr = (p: PdfColumn) => (cls(p) ? ` class="${cls(p)}"` : '')
+  const subs = (parts: string[]) => parts.map((x) => `<div class="sub">${x}</div>`).join('')
+  const head = cols
+    .map(
+      (p) =>
+        `<th${attr(p)}${p.col.pdfWidth ? ` style="width:${esc(p.col.pdfWidth)}"` : ''}>${esc(
+          headerLabel(p.col),
+        )}${subs(p.under.map((u) => esc(headerLabel(u.col))))}</th>`,
+    )
+    .join('')
+  const body = t.rows
+    .map(
+      (r) =>
+        `<tr>${cols
+          .map((p) => {
+            const under = p.under
+              .map((u) => pdfCell(r[u.index], u.col))
+              .filter((v) => v != null && v !== '')
+              .map((v) => cellHtml(v, ''))
+            return `<td${attr(p)}>${cellHtml(pdfCell(r[p.index], p.col), DASH)}${subs(under)}</td>`
+          })
+          .join('')}</tr>`,
+    )
+    .join('')
+  const totals = t.totals?.length
+    ? `<tr class="total grand">${cols
+        .map((p, i) => {
+          const v =
+            i === 0
+              ? esc(total)
+              : t.totals!.includes(p.index)
+                ? cellHtml(pdfCell(sumColumn(t, p.index), p.col), '')
+                : ''
+          return `<td${attr(p)}>${v}</td>`
+        })
+        .join('')}</tr>`
+    : ''
+  return `<table class="dt"><thead><tr>${head}</tr></thead><tbody>${body}${totals}</tbody></table>`
+}
+
+/** Layout specific to management reports, on top of the shared document CSS. */
+const REPORT_CSS = `
+.summary-text { margin: 0 0 4pt; }
+.table-note { margin: -1pt 0 3pt; }
+.nw { white-space: nowrap; }
+.dt td { overflow-wrap: break-word; }
+.dt td.nw, .dt th.nw { white-space: nowrap; }
+/* a long figure header ("Value at cost (RWF)") may wrap; the figures never do */
+.dt th.num { white-space: normal; }
+/* a second line in a cell (file no. under the patient's name) */
+.dt .sub { font-size: var(--fs-small); color: var(--ink-2); }
+.dt th .sub { font-weight: 400; }
+/* small tables (3 columns or fewer) side by side, each heading rule as wide as its table */
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 10mm; align-items: start; }
+.pair > .rs { min-width: 0; }
+/* short tables are never split; a long table never leaves its total or last row alone */
+.rs.keep, .pair.keep { break-inside: avoid; page-break-inside: avoid; }
+.dt tr.total { break-before: avoid; page-break-before: avoid; }
+.dt tbody tr:nth-last-child(2) { break-after: avoid; page-break-after: avoid; }
+/* a table with more than 7 columns gets its own A4 landscape pages; the rest stays portrait */
+@page wide { size: A4 landscape; margin: 15mm 18mm 20mm; }
+.rs.wide { page: wide; }
+.rs.wide > h2:first-child { margin-top: 0; }
+/* the signature lines stay on the last landscape page when the report ends with a wide table */
+.wide-tail { page: wide; }
+/* the signature lines never stand alone at the top of a page: the last rows come with them */
+.sig-wrap, .wide-tail { break-before: avoid; page-break-before: avoid; }
+`
+
+/** One headed table. */
+const sectionHtml = (t: ReportTable, total: string, extra = '') => {
+  const cls = ['rs', isWidePdf(t) ? 'wide' : '', keepWhole(t) ? 'keep' : '', extra]
+    .filter(Boolean)
+    .join(' ')
+  return `<section class="${cls}"><h2>${esc(t.title)}</h2>${
+    t.note ? `<p class="small table-note">${esc(t.note)}</p>` : ''
+  }${pdfTable(t, total)}</section>`
+}
+
+/**
+ * The detail tables. Two consecutive small tables share a row, each in one half of the page:
+ * two short ones are kept whole together; with one long table, the long one goes on the left so
+ * it can run on to the next page in its own column. Two long small tables each take a half row.
+ */
+function sectionsHtml(tables: ReportTable[], total: string): string {
+  const out: string[] = []
+  for (let i = 0; i < tables.length; i++) {
+    const a = tables[i]
+    if (!a) continue
+    if (!isHalf(a)) {
+      out.push(sectionHtml(a, total))
+      continue
+    }
+    const next = tables[i + 1]
+    const b = next && isHalf(next) && (keepWhole(a) || keepWhole(next)) ? next : null
+    if (b) i++
+    const pair: ReportTable[] = b ? (keepWhole(b) ? [a, b] : [b, a]) : [a]
+    const keepPair = pair.every(keepWhole)
+    out.push(
+      `<div class="pair${keepPair ? ' keep' : ''}">${pair.map((t) => sectionHtml(t, total)).join('')}</div>`,
+    )
+  }
+  return out.join('')
+}
+
+/** The full HTML of the PDF report (pure, so it can be rendered outside the app). */
+export function reportHtml(report: Report, opts: { autoPrint?: boolean } = {}): string {
+  const l = report.doc
+  const w = report.words
+  const at = report.printedAt ?? new Date()
+  const no = reportNumber(report)
+  const lh =
+    report.letterhead ??
+    letterheadFrom(report.clinic as unknown as ProfileLike, l, {
+      logoUrl: `${window.location.origin}/logo.jpg`,
+    })
+  const tables = tablesOf(report)
+  const cash = report.cashCount?.rows.length ? report.cashCount : null
+  const sections = sectionsHtml(tables, w.total)
+  const last = cash ?? tables[tables.length - 1]
+  const signatures = signatureHtml(
+    [
+      { heading: w.preparedBy, name: report.producedBy },
+      { heading: w.checkedBy, name: '' },
+    ],
+    l,
+    { stamp: false, note: false },
+  )
+
+  const body = [
+    letterheadHtml(lh, l, 'compact'),
+    titleBlockHtml({
+      title: report.title,
+      scope: `${w.period}: ${report.period}`,
+      meta: [
+        [w.reportNo, no],
+        [w.printed, docDateTime(at)],
+        [w.preparedBy, report.producedBy],
+      ],
+    }),
+    report.figures?.length
+      ? keyFiguresHtml(report.figures.map((f) => ({ label: f.label, value: figureText(f) })))
+      : '',
+    report.summaryText ? `<p class="summary-text">${esc(report.summaryText)}</p>` : '',
+    sections,
+    cash ? sectionHtml(cash, w.total) : '',
+    last && isWidePdf(last) ? `<div class="wide-tail">${signatures}</div>` : signatures,
+  ].join('')
+
+  return documentHtml({
+    base: {
+      page: 'a4',
+      title: report.title,
+      docNo: no,
+      clinicName: lh.legalName,
+      printedBy: report.producedBy,
+      printedAt: at,
+      labels: l,
+    },
+    css: REPORT_CSS,
+    body,
+    lang: report.lang ?? 'en',
+    autoPrint: opts.autoPrint,
+  })
+}
+
+/** The report's own words, with the buttons' older labels as a fallback. */
+const withButtonLabels = (report: Report, labels?: ReportButtonLabels): Report =>
+  labels
+    ? {
+        ...report,
+        words: {
+          ...report.words,
+          period: report.words.period || labels.period,
+          total: report.words.total || labels.total,
+        },
+      }
+    : report
+
+/** Opens the report in a print window ("Save as PDF"). False when the browser blocked it. */
+export function openPdf(report: Report, labels?: ReportButtonLabels): boolean {
+  return openPrintWindow(reportHtml(withButtonLabels(report, labels)))
 }
 
 // ---------------------------------------------------------------- Excel
-export async function downloadExcel(
+
+type ExcelJSModule = typeof import('exceljs')
+type Workbook = InstanceType<ExcelJSModule['Workbook']>
+type Worksheet = ReturnType<Workbook['addWorksheet']>
+type ExcelCell = ReturnType<Worksheet['getCell']>
+
+const BLACK = { argb: 'FF000000' }
+const thin = { style: 'thin' as const, color: BLACK }
+const medium = { style: 'medium' as const, color: BLACK }
+
+/** A sheet name: no : \ / ? * [ ], 31 characters at most, unique in the workbook. */
+function sheetName(wb: Workbook, wanted: string): string {
+  const base =
+    wanted
+      .replace(/[:\\/?*[\]]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim() || 'Sheet'
+  // too long: cut at the last whole word that fits
+  const fit = (max: number) => {
+    if (base.length <= max) return base
+    const cut = base.slice(0, max + 1)
+    const space = cut.lastIndexOf(' ')
+    return (space > max / 2 ? cut.slice(0, space) : base.slice(0, max)).replace(/[\s,;–-]+$/, '')
+  }
+  let name = fit(31)
+  for (let i = 2; wb.worksheets.some((s) => s.name.toLowerCase() === name.toLowerCase()); i++) {
+    const suffix = ` (${i})`
+    name = `${fit(31 - suffix.length)}${suffix}`
+  }
+  return name
+}
+
+/** Excel format of a time of day (the cell still holds the full Kigali date and time). */
+const TIME_FMT = 'hh:mm'
+/** Excel width of a time column. */
+const TIME_WIDTH = 10
+
+/** Text for an Excel cell: "x10^9" written with superscript figures (×10⁹). */
+const SUPERSCRIPT: Record<string, string> = {
+  '-': '⁻',
+  '0': '⁰',
+  '1': '¹',
+  '2': '²',
+  '3': '³',
+  '4': '⁴',
+  '5': '⁵',
+  '6': '⁶',
+  '7': '⁷',
+  '8': '⁸',
+  '9': '⁹',
+}
+const excelText = (s: string) =>
+  s.replace(
+    /(^|[\d\s(])[x×] ?10\^(-?\d+)/g,
+    (_, pre: string, exp: string) =>
+      `${pre}×10${[...exp].map((ch) => SUPERSCRIPT[ch] ?? ch).join('')}`,
+  )
+
+const excelFmt = (col: ReportColumn | undefined): string | undefined => {
+  switch (col?.kind) {
+    case 'money':
+      return col.boldNegative ? '#,##0;"–"#,##0' : EXCEL.fmt.money
+    case 'number':
+      return EXCEL.fmt.count
+    case 'date':
+      return EXCEL.fmt.date
+    case 'datetime':
+      return EXCEL.fmt.datetime
+    case 'time':
+      return TIME_FMT
+    default:
+      return undefined
+  }
+}
+
+/** Writes one value with its real type (number, Kigali wall-clock date, text). */
+function writeCell(cell: ExcelCell, c: Cell, col: ReportColumn | undefined) {
+  const kind = col?.kind
+  const right = col?.align === 'right' || (col?.align !== 'left' && isNumKind(kind))
+  cell.alignment = { horizontal: right ? 'right' : 'left', vertical: 'top' }
+  if (c == null || c === '') return
+  if (c instanceof Date || (isDateKind(kind) && typeof c === 'string')) {
+    const d = excelDate(c)
+    if (d) {
+      cell.value = d
+      cell.numFmt =
+        kind === 'date' ? EXCEL.fmt.date : kind === 'time' ? TIME_FMT : EXCEL.fmt.datetime
+      cell.alignment = { horizontal: 'left', vertical: 'top' }
+      return
+    }
+  }
+  if (typeof c === 'number') {
+    cell.value = c
+    const fmt = excelFmt(col) ?? EXCEL.fmt.count
+    if (fmt) cell.numFmt = fmt
+    if (col?.boldNegative && c < 0) cell.font = { ...EXCEL.font, bold: true }
+    return
+  }
+  cell.value = excelText(String(c))
+}
+
+const columnLetter = (n: number): string => {
+  let s = ''
+  for (let x = n; x > 0; x = Math.floor((x - 1) / 26))
+    s = String.fromCharCode(65 + ((x - 1) % 26)) + s
+  return s
+}
+
+/** Rows 1 to 4 of every sheet: clinic, title, period, printed (row 5 stays empty). */
+function sheetHead(ws: Worksheet, report: Report, legalName: string, at: Date) {
+  const l = report.doc
+  const lines: [string, Partial<ExcelCell['font']>][] = [
+    [legalName, EXCEL.clinicFont],
+    [report.title, EXCEL.titleFont],
+    [`${report.words.period}: ${report.period}`, EXCEL.font],
+    [l.printedBy(docDateTime(at), report.producedBy), EXCEL.font],
+  ]
+  lines.forEach(([text, font], i) => {
+    const cell = ws.getCell(i + 1, 1)
+    cell.value = text
+    cell.font = { ...font }
+    cell.alignment = { horizontal: 'left', vertical: 'middle' }
+  })
+}
+
+/** The header row: Arial 10 bold, no fill, medium black rule under it, wrapped, centred. */
+function headerRow(ws: Worksheet, row: number, labels: string[], right: boolean[]) {
+  labels.forEach((label, i) => {
+    const cell = ws.getCell(row, i + 1)
+    cell.value = label
+    cell.font = { ...EXCEL.headerFont }
+    cell.alignment = {
+      horizontal: right[i] ? 'right' : 'left',
+      vertical: 'middle',
+      wrapText: true,
+    }
+    cell.border = { bottom: medium }
+  })
+}
+
+/** A table from `row` (its header) down; returns the next free row. */
+function writeTable(ws: Worksheet, row: number, t: ReportTable, total: string): number {
+  const right = t.columns.map(isRight)
+  headerRow(ws, row, t.columns.map(headerLabel), right)
+  const first = row + 1
+  t.rows.forEach((r, ri) => {
+    t.columns.forEach((col, i) => writeCell(ws.getCell(first + ri, i + 1), r[i], col))
+  })
+  let next = first + t.rows.length
+  if (t.totals?.length && t.rows.length) {
+    const last = next - 1
+    t.columns.forEach((col, i) => {
+      const cell = ws.getCell(next, i + 1)
+      cell.font = { ...EXCEL.font, bold: true }
+      cell.border = { top: thin }
+      cell.alignment = { horizontal: i === 0 || !right[i] ? 'left' : 'right', vertical: 'top' }
+      if (i === 0) cell.value = total
+      else if (t.totals!.includes(i)) {
+        const L = columnLetter(i + 1)
+        cell.value = { formula: `SUM(${L}${first}:${L}${last})`, result: sumColumn(t, i) }
+        cell.numFmt = excelFmt(col) ?? EXCEL.fmt.count
+      }
+    })
+    next++
+  }
+  return next
+}
+
+/** Column widths: text = longest value + 2 (10 to 50), numbers 14, date-time 17. */
+function setWidths(ws: Worksheet, columns: ReportColumn[], rows: Cell[][]) {
+  columns.forEach((c, i) => {
+    const col = ws.getColumn(i + 1)
+    if (c.kind === 'datetime') col.width = EXCEL.widths.datetime
+    else if (c.kind === 'time') col.width = TIME_WIDTH
+    else if (c.kind === 'date' || isNumKind(c.kind)) col.width = EXCEL.widths.number
+    else col.width = excelTextWidth(rows.map((r) => r[i]))
+  })
+}
+
+/** Print setup: A4, fit to width, margins, header row repeated, standard footer. */
+function printSetup(
+  ws: Worksheet,
   report: Report,
-  labels: { period: string; producedBy: string; producedAt: string; total: string },
+  legalName: string,
+  at: Date,
+  landscape: boolean,
 ) {
+  ws.pageSetup = {
+    paperSize: 9,
+    orientation: landscape ? 'landscape' : 'portrait',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: { ...EXCEL.margins },
+    printTitlesRow: `${EXCEL.headerRow}:${EXCEL.headerRow}`,
+  }
+  ws.headerFooter.oddFooter = excelFooter({
+    clinicName: legalName,
+    reportNo: reportNumber(report),
+    printedBy: report.producedBy,
+    printedAt: at,
+    labels: report.doc,
+  })
+}
+
+/** Arial 10 for every cell of the used columns, also those typed in later. */
+function defaultFont(ws: Worksheet, count: number) {
+  for (let i = 1; i <= count; i++) ws.getColumn(i).font = { ...EXCEL.font }
+}
+
+function newSheet(wb: Workbook, name: string, columns: number) {
+  const ws = wb.addWorksheet(sheetName(wb, name), {
+    views: [{ state: 'frozen', ySplit: EXCEL.headerRow, showGridLines: true }],
+  })
+  defaultFont(ws, Math.max(columns, 3))
+  return ws
+}
+
+/** Builds the workbook (pure: no download), so it can be checked outside the app. */
+export async function buildWorkbook(report: Report): Promise<Workbook> {
   const ExcelJS = (await import('exceljs')).default
   const wb = new ExcelJS.Workbook()
-  wb.creator = report.clinic.name
-  wb.created = new Date()
-  const navy = 'FF0B2252'
-  const teal = 'FF1F6F8B'
-  const light = 'FFE6F1F5'
+  const at = report.printedAt ?? new Date()
+  const legalName = report.letterhead?.legalName ?? (report.clinic.name || 'Muhazi Medical Clinic')
+  const w = report.words
+  wb.creator = legalName
+  wb.lastModifiedBy = report.producedBy
+  wb.title = report.title
+  wb.created = at
 
-  for (const section of report.sections) {
-    const ws = wb.addWorksheet(section.name.slice(0, 31), { views: [{ showGridLines: false }] })
-    const width = Math.max(6, ...section.tables.map((t) => t.columns.length))
-    // Letterhead
-    ws.mergeCells(1, 1, 1, width)
-    const h1 = ws.getCell(1, 1)
-    h1.value = report.clinic.name
-    h1.font = { bold: true, size: 16, color: { argb: navy } }
-    ws.mergeCells(2, 1, 2, width)
-    ws.getCell(2, 1).value = [
-      report.clinic.sector,
-      report.clinic.district,
-      report.clinic.province,
-      report.clinic.country,
+  // ---- Summary: key figures (Label | Value | Unit), the summary sentences, the cash count
+  const figures = report.figures ?? []
+  const cash = report.cashCount?.rows.length ? report.cashCount : null
+  if (figures.length || report.summaryText || cash) {
+    const ws = newSheet(wb, w.summarySheet, cash ? cash.columns.length : 3)
+    sheetHead(ws, report, legalName, at)
+    let row: number = EXCEL.headerRow
+    const figColumns: ReportColumn[] = [
+      { label: w.figure },
+      { label: w.value, kind: 'number' },
+      { label: w.unit },
     ]
-      .filter(Boolean)
-      .join(' · ')
-    ws.getCell(2, 1).font = { size: 10, color: { argb: 'FF52606D' } }
-    ws.mergeCells(3, 1, 3, width)
-    ws.getCell(3, 1).value = [report.clinic.phone, report.clinic.email].filter(Boolean).join(' · ')
-    ws.getCell(3, 1).font = { size: 10, color: { argb: 'FF52606D' } }
-    ws.mergeCells(5, 1, 5, width)
-    const title = ws.getCell(5, 1)
-    title.value = `${report.title} — ${section.name}`
-    title.font = { bold: true, size: 14, color: { argb: teal } }
-    ws.getCell(6, 1).value = `${labels.period}: ${report.period}`
-    ws.getCell(7, 1).value = `${labels.producedBy}: ${report.producedBy}`
-    ws.getCell(8, 1).value =
-      `${labels.producedAt}: ${formatDate(new Date())} ${formatTime(new Date())}`
-    for (const r of [6, 7, 8]) ws.getCell(r, 1).font = { size: 10, color: { argb: 'FF52606D' } }
-    let row = 10
-
-    if (section.summary?.length) {
-      for (const s of section.summary) {
-        ws.getCell(row, 1).value = s.label
-        ws.getCell(row, 1).font = { bold: true }
-        const v = ws.getCell(row, 2)
-        v.value = s.value
-        if (typeof s.value === 'number') v.numFmt = '#,##0'
-        v.alignment = { horizontal: 'left' }
-        row++
-      }
-      row++
+    const figRows: Cell[][] = figures.map((f) => [f.label, f.value, f.unit ?? ''])
+    if (figures.length) {
+      headerRow(ws, row, figColumns.map(headerLabel), [false, true, false])
+      figures.forEach((f, i) => {
+        writeCell(ws.getCell(row + 1 + i, 1), f.label, figColumns[0])
+        const v = ws.getCell(row + 1 + i, 2)
+        writeCell(v, f.value, figColumns[1])
+        v.numFmt = Number.isInteger(f.value) || f.unit === 'RWF' ? EXCEL.fmt.count : '#,##0.0'
+        writeCell(ws.getCell(row + 1 + i, 3), f.unit ?? '', figColumns[2])
+      })
+      ws.autoFilter = { from: { row, column: 1 }, to: { row, column: 3 } }
+      row += figures.length + 2
     }
-
-    for (const table of section.tables) {
-      ws.mergeCells(row, 1, row, Math.max(1, table.columns.length))
-      ws.getCell(row, 1).value = table.title
-      ws.getCell(row, 1).font = { bold: true, size: 12, color: { argb: navy } }
-      row++
-      if (table.note) {
-        ws.mergeCells(row, 1, row, Math.max(1, table.columns.length))
-        ws.getCell(row, 1).value = table.note
-        ws.getCell(row, 1).font = { italic: true, size: 10, color: { argb: 'FF616E7C' } }
-        row++
-      }
-      const header = ws.getRow(row)
-      table.columns.forEach((c, i) => {
-        const cell = header.getCell(i + 1)
-        cell.value = c.label
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: teal } }
-        cell.alignment = {
-          horizontal: c.align ?? (c.kind === 'money' || c.kind === 'number' ? 'right' : 'left'),
-          vertical: 'middle',
-        }
-        cell.border = { bottom: { style: 'thin', color: { argb: navy } } }
-        const col = ws.getColumn(i + 1)
-        col.width = Math.max(col.width ?? 0, c.width ?? Math.max(12, c.label.length + 2))
-      })
-      row++
-      const all = [...table.rows]
-      const tr = totalsRow(table)
-      all.forEach((r, ri) => {
-        const line = ws.getRow(row)
-        r.forEach((c, i) => {
-          const cell = line.getCell(i + 1)
-          const kind = table.columns[i]?.kind
-          if (c instanceof Date) {
-            cell.value = c
-            cell.numFmt = kind === 'datetime' ? 'dd/mm/yyyy hh:mm' : 'dd/mm/yyyy'
-          } else if (typeof c === 'number') {
-            cell.value = c
-            cell.numFmt = kind === 'money' ? '#,##0 "RWF"' : '#,##0.##'
-          } else if ((kind === 'date' || kind === 'datetime') && c) {
-            const d = new Date(String(c))
-            if (!Number.isNaN(d.getTime())) {
-              cell.value = d
-              cell.numFmt = kind === 'datetime' ? 'dd/mm/yyyy hh:mm' : 'dd/mm/yyyy'
-            } else cell.value = c
-          } else cell.value = c ?? ''
-          cell.alignment = {
-            horizontal:
-              table.columns[i]?.align ?? (kind === 'money' || kind === 'number' ? 'right' : 'left'),
-          }
-          if (ri % 2 === 1)
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: light } }
-          cell.border = { bottom: { style: 'hair', color: { argb: 'FFD9DEE3' } } }
-        })
-        row++
-      })
-      if (tr) {
-        const line = ws.getRow(row)
-        tr.forEach((c, i) => {
-          const cell = line.getCell(i + 1)
-          cell.value = i === 0 ? labels.total : (c ?? '')
-          cell.font = { bold: true }
-          if (typeof c === 'number')
-            cell.numFmt = table.columns[i]?.kind === 'money' ? '#,##0 "RWF"' : '#,##0.##'
-          cell.alignment = { horizontal: i === 0 ? 'left' : 'right' }
-          cell.border = { top: { style: 'thin', color: { argb: navy } } }
-        })
-        row++
-      }
+    if (report.summaryText) {
+      const cell = ws.getCell(row, 1)
+      cell.value = report.summaryText
+      cell.font = { ...EXCEL.font }
       row += 2
     }
-    ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
-    ws.headerFooter.oddFooter = `&L${report.clinic.name}&C${report.title}&RPage &P / &N`
+    if (cash) {
+      const title = ws.getCell(row, 1)
+      title.value = cash.title
+      title.font = { ...EXCEL.titleFont }
+      writeTable(ws, row + 1, cash, w.total)
+    }
+    // widths: the figures and the cash count share columns A to C
+    setWidths(ws, figColumns, figRows)
+    if (cash) {
+      cash.columns.forEach((c, i) => {
+        const col = ws.getColumn(i + 1)
+        const want =
+          c.kind === 'datetime'
+            ? EXCEL.widths.datetime
+            : c.kind === 'time'
+              ? TIME_WIDTH
+              : isNumKind(c.kind) || c.kind === 'date'
+                ? EXCEL.widths.number
+                : excelTextWidth(cash.rows.map((r) => r[i]))
+        col.width = Math.max(col.width ?? 0, want)
+      })
+    }
+    printSetup(ws, report, legalName, at, !!cash && isWideSheet(cash))
   }
 
+  // ---- one sheet per table
+  for (const t of tablesOf(report)) {
+    const ws = newSheet(wb, t.title, t.columns.length)
+    sheetHead(ws, report, legalName, at)
+    writeTable(ws, EXCEL.headerRow, t, w.total)
+    ws.autoFilter = {
+      from: { row: EXCEL.headerRow, column: 1 },
+      to: { row: EXCEL.headerRow, column: t.columns.length },
+    }
+    setWidths(ws, t.columns, t.rows)
+    printSetup(ws, report, legalName, at, isWideSheet(t))
+  }
+
+  if (!wb.worksheets.length) {
+    const ws = newSheet(wb, w.summarySheet, 3)
+    sheetHead(ws, report, legalName, at)
+    ws.getCell(EXCEL.headerRow, 1).value = DASH
+    printSetup(ws, report, legalName, at, false)
+  }
+  return wb
+}
+
+/** Downloads the report as an .xlsx workbook. */
+export async function downloadExcel(report: Report, labels?: ReportButtonLabels) {
+  const wb = await buildWorkbook(withButtonLabels(report, labels))
   const buf = await wb.xlsx.writeBuffer()
   const blob = new Blob([buf], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -217,88 +751,4 @@ export async function downloadExcel(
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
-}
-
-// ---------------------------------------------------------------- PDF (print document)
-const esc = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-
-export function openPdf(
-  report: Report,
-  labels: { period: string; producedBy: string; producedAt: string; total: string; page: string },
-) {
-  const sections = report.sections
-    .map((section) => {
-      const summary = section.summary?.length
-        ? `<div class="summary">${section.summary
-            .map(
-              (s) =>
-                `<div class="kpi"><span class="k">${esc(s.label)}</span><span class="v">${esc(typeof s.value === 'number' ? num(s.value) : String(s.value))}</span></div>`,
-            )
-            .join('')}</div>`
-        : ''
-      const tables = section.tables
-        .map((t) => {
-          const tr = totalsRow(t)
-          const head = t.columns
-            .map(
-              (c) =>
-                `<th class="${c.align ?? (c.kind === 'money' || c.kind === 'number' ? 'r' : 'l')}">${esc(c.label)}</th>`,
-            )
-            .join('')
-          const body = t.rows
-            .map(
-              (r) =>
-                `<tr>${r.map((c, i) => `<td class="${t.columns[i]?.align ?? (t.columns[i]?.kind === 'money' || t.columns[i]?.kind === 'number' ? 'r' : 'l')}">${esc(cellText(c, t.columns[i]?.kind))}</td>`).join('')}</tr>`,
-            )
-            .join('')
-          const foot = tr
-            ? `<tr class="total">${tr.map((c, i) => `<td class="${i === 0 ? 'l' : 'r'}">${i === 0 ? esc(labels.total) : typeof c === 'number' ? esc(cellText(c, t.columns[i]?.kind)) : ''}</td>`).join('')}</tr>`
-            : ''
-          return `<h3>${esc(t.title)}</h3>${t.note ? `<p class="note">${esc(t.note)}</p>` : ''}<table><thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${t.columns.length}" class="empty">—</td></tr>`}${foot}</tbody></table>`
-        })
-        .join('')
-      return `<section><h2>${esc(section.name)}</h2>${summary}${tables}</section>`
-    })
-    .join('')
-
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(report.title)}</title>
-<style>
-  @page { size: A4 landscape; margin: 14mm 12mm 16mm; }
-  body { font: 11pt/1.4 Inter, "Segoe UI", Arial, sans-serif; color: #1f2933; margin: 0; }
-  header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0b2252; padding-bottom: 8px; margin-bottom: 14px; }
-  .clinic b { font-size: 16pt; color: #0b2252; display: block; }
-  .clinic span { color: #52606d; font-size: 9.5pt; display: block; }
-  .meta { text-align: right; font-size: 9.5pt; color: #52606d; }
-  .meta b { display: block; font-size: 15pt; color: #1f6f8b; margin-bottom: 2px; }
-  h2 { font-size: 13pt; color: #0b2252; margin: 18px 0 6px; border-left: 4px solid #1f6f8b; padding-left: 8px; }
-  h3 { font-size: 11pt; margin: 14px 0 4px; color: #0b2252; }
-  .note { margin: 0 0 6px; color: #616e7c; font-style: italic; font-size: 9.5pt; }
-  .summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
-  .kpi { border: 1px solid #d9dee3; border-radius: 6px; padding: 6px 10px; min-width: 150px; }
-  .kpi .k { display: block; font-size: 8.5pt; color: #52606d; text-transform: uppercase; letter-spacing: .04em; }
-  .kpi .v { display: block; font-size: 13pt; font-weight: 700; color: #0b2252; }
-  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; page-break-inside: auto; }
-  th { background: #1f6f8b; color: #fff; text-align: left; padding: 5px 6px; font-weight: 600; }
-  td { padding: 4px 6px; border-bottom: 1px solid #e6eaee; vertical-align: top; }
-  tr:nth-child(even) td { background: #f4f8fb; }
-  .r { text-align: right; font-variant-numeric: tabular-nums; } .l { text-align: left; }
-  tr.total td { font-weight: 700; border-top: 2px solid #0b2252; background: #fff; }
-  td.empty { text-align: center; color: #616e7c; }
-  section { page-break-after: auto; }
-  footer { font-size: 8.5pt; color: #616e7c; display: flex; justify-content: space-between; margin-top: 16px; border-top: 1px solid #d9dee3; padding-top: 4px; }
-  @media print { footer { position: fixed; bottom: 0; left: 0; right: 0; margin: 0; border: 0; } }
-  @media screen { body { padding: 20px; background: #eef2f5; } .sheet { background: #fff; padding: 24px; max-width: 1100px; margin: 0 auto; box-shadow: 0 6px 24px rgba(0,0,0,.1); } }
-</style></head><body><div class="sheet">
-<header><div class="clinic"><b>${esc(report.clinic.name)}</b><span>${esc([report.clinic.sector, report.clinic.district, report.clinic.province, report.clinic.country].filter(Boolean).join(' · '))}</span><span>${esc([report.clinic.phone, report.clinic.email].filter(Boolean).join(' · '))}</span></div>
-<div class="meta"><b>${esc(report.title)}</b><span>${esc(labels.period)}: ${esc(report.period)}</span><br><span>${esc(labels.producedBy)}: ${esc(report.producedBy)}</span><br><span>${esc(labels.producedAt)}: ${esc(`${formatDate(new Date())} ${formatTime(new Date())}`)}</span></div></header>
-${sections}
-<footer><span>${esc(report.clinic.name)} · ${esc(report.title)}</span><span>${esc(report.period)}</span></footer>
-</div><script>window.addEventListener('load', () => setTimeout(() => window.print(), 300))</script></body></html>`
-  const w = window.open('', '_blank')
-  if (!w) return false
-  w.document.open()
-  w.document.write(html)
-  w.document.close()
-  return true
 }
