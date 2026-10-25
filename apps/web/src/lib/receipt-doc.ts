@@ -364,6 +364,10 @@ export function buildReceiptHtml(
 
   const foot = [
     lh.openingHours ? `<div>${esc(dl.openingHours)}: ${esc(lh.openingHours)}</div>` : '',
+    // the receipt has no page footer: who printed it (a reprint too) is said here
+    opts.printedBy
+      ? `<div>${esc(dl.printedBy(docDateTime(new Date()), opts.printedBy))}</div>`
+      : '',
     `<div>${esc(rt.thankYou(lh.legalName))}</div>`,
   ].join('')
 

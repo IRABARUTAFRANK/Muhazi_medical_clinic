@@ -14,6 +14,83 @@ import type { Sex, Station } from '@/lib/api/visits'
  * `order_test()` and `finish_visit()`.
  */
 
+/** A staff member as a printed document names them (0084): prescriber, result author. */
+export interface DocPerson {
+  id: string
+  name: string
+  role: string
+  /** Specialty or title ("General practitioner", "Midwife"). */
+  specialty: string | null
+  /** Professional council number; null = not recorded (the document prints a ruled blank). */
+  registrationNo: string | null
+  /** The council (RMDC, NCNM, NPC, RAHPC…). */
+  registrationBody: string | null
+}
+
+/**
+ * The patient details a printed document needs (0084). For a visit: that visit's insurer (none
+ * for cash) and the weight measured then (else within the 90 days before); for the patient file:
+ * the current insurance and the last weight.
+ */
+export interface DocPatient {
+  /** yyyy-mm-dd. */
+  birthDate: string | null
+  ageEstimated?: boolean
+  sex: Sex
+  phone: string | null
+  /** Known allergies (free text); null = none known or not recorded (see allergiesNone). */
+  allergies: string | null
+  /** "No known allergies" was recorded by a nurse or doctor. */
+  allergiesNone: boolean
+  bloodGroup: string | null
+  /** Insurer name; null = cash / none. */
+  insurer: string | null
+  insurerType?: string | null
+  memberNo: string | null
+  /** The insurer's cover in percent (the plan). */
+  coveragePct: number | null
+  weightKg: number | null
+  /** When that weight was measured. */
+  weightAt: string | null
+}
+
+/** The visit as a document prints it (0084). */
+export interface DocVisit {
+  id: string
+  /** V-YYYY-NNNNNN: the medical report prints MR-{reference}. */
+  reference: string | null
+  at: string
+  status: string
+  closedAt: string | null
+  /** The service chosen at registration (consultation, dental…). */
+  service: string | null
+  /** The department the patient was last sent to. */
+  department: string | null
+  referredBy: string | null
+}
+
+/**
+ * The allergy text the document builders take: the allergies, "none" when "no known allergies"
+ * was recorded, null when nothing was recorded.
+ */
+export const allergiesForDoc = (
+  p: { allergies?: string | null; allergiesNone?: boolean | null } | null | undefined,
+): string | null => (p?.allergies?.trim() ? p.allergies : p?.allergiesNone ? 'none' : null)
+
+/** The printed prescription's number (0084, prescription_number). */
+export interface PrescriptionNumber {
+  /** RX-YYYY-NNNNNN. */
+  number: string
+  issuedAt: string
+  issuedBy: string | null
+  /** The prescription lines it covers. */
+  lineIds: string[]
+  /** A new number (a line was added since the last one printed). */
+  isNew: boolean
+  /** Who wrote the lines for the pharmacy (else the first line), with the registration. */
+  prescriber: DocPerson | null
+}
+
 export interface PatientRow {
   id: string
   fileNumber: string
@@ -57,6 +134,8 @@ export interface PatientRecord {
   emergency_phone: string | null
   blood_group: string | null
   allergies: string | null
+  /** "No known allergies" recorded (0084; absent before). */
+  allergies_none?: boolean
   notes: string | null
   flags: Record<string, unknown>
   /** Values of the clinic's custom fields and one-off fields, label → value. */
@@ -74,6 +153,8 @@ export interface PatientFieldDef {
 
 export interface PatientVisit {
   id: string
+  /** V-YYYY-NNNNNN (0084; absent before). */
+  reference?: string | null
   arrivedAt: string
   status: 'open' | 'closed'
   type: string
@@ -125,6 +206,8 @@ export interface PatientFile {
   vitals: PatientVital[]
   conditions: PatientCondition[]
   bills: PatientBill[]
+  /** What the printed history needs: insurer, member number, last weight… (0084; absent before). */
+  document?: DocPatient | null
 }
 
 // ---------------------------------------------------------------- sample data
@@ -190,9 +273,45 @@ const sampleFile = (id: string): PatientFile => {
   sampleFileCache.set(id, built)
   return built
 }
+/** Sample insurance and weight per patient (p-1 insured, p-2 a child, p-3 cash). */
+const SAMPLE_DOC: Record<
+  string,
+  { insurer: string | null; memberNo: string | null; pct: number | null; kg: number; none: boolean }
+> = {
+  'p-1': { insurer: 'RSSB (RAMA)', memberNo: '1234567', pct: 85, kg: 62, none: false },
+  'p-2': {
+    insurer: 'Mutuelle de santé (CBHI)',
+    memberNo: '01-0412-07731',
+    pct: 90,
+    kg: 21.5,
+    none: false,
+  },
+  'p-3': { insurer: null, memberNo: null, pct: null, kg: 78, none: true },
+}
+/** The sample patient's document details. */
+const sampleDocPatient = (r: PatientRow): DocPatient => {
+  const d = SAMPLE_DOC[r.id] ?? SAMPLE_DOC['p-1']!
+  return {
+    birthDate: r.birthDate,
+    ageEstimated: false,
+    sex: r.sex,
+    phone: r.phone,
+    allergies: r.hasAllergies ? 'Penicillin (rash)' : null,
+    allergiesNone: !r.hasAllergies && d.none,
+    bloodGroup: 'O+',
+    insurer: d.insurer,
+    insurerType: d.insurer ? (d.insurer.startsWith('RSSB') ? 'rssb_rama' : 'cbhi') : null,
+    memberNo: d.memberNo,
+    coveragePct: d.pct,
+    weightKg: d.kg,
+    weightAt: r.lastVisitAt ?? r.registeredAt,
+  }
+}
 const buildSampleFile = (id: string): PatientFile => {
   const r = sampleRows.find((x) => x.id === id) ?? sampleRows[0]!
+  const doc = sampleDocPatient(r)
   return {
+    document: doc,
     patient: {
       id: r.id,
       file_number: r.fileNumber,
@@ -216,6 +335,7 @@ const buildSampleFile = (id: string): PatientFile => {
       emergency_phone: null,
       blood_group: 'O+',
       allergies: r.hasAllergies ? 'Penicillin (rash)' : null,
+      allergies_none: doc.allergiesNone,
       notes: null,
       flags: r.flags,
       extra:
@@ -231,6 +351,7 @@ const buildSampleFile = (id: string): PatientFile => {
     visits: [
       {
         id: r.openEncounterId ?? 'e-9',
+        reference: `V-2026-${String(100 + sampleRows.indexOf(r)).padStart(6, '0')}`,
         arrivedAt: r.lastVisitAt ?? r.registeredAt,
         status: r.openEncounterId ? 'open' : 'closed',
         type: 'opd',
@@ -253,6 +374,15 @@ const buildSampleFile = (id: string): PatientFile => {
         value: 128,
         text: null,
         unit: 'mmHg',
+        at: r.lastVisitAt ?? r.registeredAt,
+        by: 'Nyirahabimana Chantal',
+      },
+      {
+        encounterId: 'e-9',
+        code: 'weight',
+        value: doc.weightKg,
+        text: null,
+        unit: 'kg',
         at: r.lastVisitAt ?? r.registeredAt,
         by: 'Nyirahabimana Chantal',
       },
@@ -288,7 +418,7 @@ const buildSampleFile = (id: string): PatientFile => {
         patientShare: 18300,
         insurerShare: 0,
         balance: r.balanceDue,
-        payer: null,
+        payer: doc.insurer,
         at: r.lastVisitAt ?? r.registeredAt,
       },
     ],
@@ -379,10 +509,33 @@ export async function setNoNationalId(patientId: string, reason: NoIdReason | nu
 export function usePatientActions(id: string) {
   const qc = useQueryClient()
   const update = useMutation({
-    mutationFn: async (fields: Record<string, string | number | null | Record<string, string>>) => {
+    /**
+     * `allergies_none: true` records "no known allergies" (0084): it clears the allergy text;
+     * writing an allergy clears it again.
+     */
+    mutationFn: async (
+      fields: Record<string, string | number | boolean | null | Record<string, string>>,
+    ) => {
       if (!supabase) {
         const f = sampleFileCache.get(id)
         if (f && fields.extra && typeof fields.extra === 'object') f.patient.extra = fields.extra
+        if (f) {
+          const text = typeof fields.allergies === 'string' ? fields.allergies.trim() : ''
+          if (text) Object.assign(f.patient, { allergies: text, allergies_none: false })
+          else if ('allergies' in fields || fields.allergies_none === true)
+            Object.assign(f.patient, {
+              allergies: null,
+              allergies_none:
+                fields.allergies_none === true ||
+                (!('allergies_none' in fields) && !!f.patient.allergies_none),
+            })
+          else if (fields.allergies_none === false) f.patient.allergies_none = false
+          if (f.document)
+            Object.assign(f.document, {
+              allergies: f.patient.allergies,
+              allergiesNone: !!f.patient.allergies_none,
+            })
+        }
         return
       }
       const { error } = await supabase.rpc('update_patient', { p_patient_id: id, p_fields: fields })
@@ -436,6 +589,8 @@ export interface Prescription {
   cancelledAt?: string | null
   cancelReason?: string | null
   cancelledBy?: string | null
+  /** Who wrote it, with title and registration, for the printed prescription (0084). */
+  prescriber?: DocPerson | null
 }
 
 /** A warning when prescribing (never a refusal): the medicine's rule and the prescriber. */
@@ -482,6 +637,8 @@ export interface TestOrder {
     correctionReason?: string | null
     at?: string | null
     by?: string | null
+    /** Who validated (else entered) it, with title and registration (0084). */
+    byPerson?: DocPerson | null
   } | null
 }
 
@@ -521,13 +678,18 @@ export interface VisitClinical {
   notes: ClinicalNote[]
   prescriptions: Prescription[]
   orders: TestOrder[]
-  patient: {
-    id: string
-    allergies: string | null
-    bloodGroup: string | null
-    notes: string | null
-    flags: Record<string, unknown>
-  } | null
+  /** With the document details (birth date, phone, insurer, member no., weight…) from 0084. */
+  patient:
+    | ({
+        id: string
+        allergies: string | null
+        bloodGroup: string | null
+        notes: string | null
+        flags: Record<string, unknown>
+      } & Partial<DocPatient>)
+    | null
+  /** Reference, date, service and department of the visit (0084; absent before). */
+  visit?: DocVisit | null
 }
 const EMPTY_CLINICAL: VisitClinical = {
   diagnoses: [],
@@ -537,6 +699,46 @@ const EMPTY_CLINICAL: VisitClinical = {
   patient: null,
 }
 const sampleClinical = new Map<string, VisitClinical>()
+/** The sample visit's patient (the visit header's Mukamana Alice, insured, 62 kg). */
+const sampleClinicalPatient = (): NonNullable<VisitClinical['patient']> => ({
+  id: 'p-sample',
+  allergies: 'Penicillin (rash)',
+  bloodGroup: 'O+',
+  notes: null,
+  flags: {},
+  birthDate: '1995-03-12',
+  ageEstimated: false,
+  sex: 'female',
+  phone: '0788123456',
+  allergiesNone: false,
+  insurer: 'RSSB (RAMA)',
+  insurerType: 'rssb_rama',
+  memberNo: '1234567',
+  coveragePct: 85,
+  weightKg: 62,
+  weightAt: new Date().toISOString(),
+})
+const sampleVisitRefs = new Map<string, string>()
+const sampleVisit = (encounterId: string): DocVisit => {
+  let ref = sampleVisitRefs.get(encounterId)
+  if (!ref) {
+    ref = `V-2026-${String(124 + sampleVisitRefs.size).padStart(6, '0')}`
+    sampleVisitRefs.set(encounterId, ref)
+  }
+  return {
+    id: encounterId,
+    reference: ref,
+    at: new Date(Date.now() - 45 * 60_000).toISOString(),
+    status: 'open',
+    closedAt: null,
+    service: 'consultation',
+    department: null,
+    referredBy: null,
+  }
+}
+/** Sample prescription numbers: the last one per visit and the year's counter. */
+const sampleRx = new Map<string, PrescriptionNumber>()
+let sampleRxSeq = 122
 
 export function useVisitClinical(encounterId: string) {
   return useQuery({
@@ -549,13 +751,8 @@ export function useVisitClinical(encounterId: string) {
         return (
           sampleClinical.get(encounterId) ?? {
             ...EMPTY_CLINICAL,
-            patient: {
-              id: 'p-sample',
-              allergies: 'Penicillin (rash)',
-              bloodGroup: 'O+',
-              notes: null,
-              flags: {},
-            },
+            patient: sampleClinicalPatient(),
+            visit: sampleVisit(encounterId),
           }
         )
       const { data, error } = await supabase.rpc('visit_clinical', { p_encounter_id: encounterId })
@@ -657,13 +854,8 @@ export function useClinicalActions(encounterId: string) {
       notes: [],
       prescriptions: [],
       orders: [],
-      patient: {
-        id: 'p-sample',
-        allergies: 'Penicillin (rash)',
-        bloodGroup: 'O+',
-        notes: null,
-        flags: {},
-      },
+      patient: sampleClinicalPatient(),
+      visit: sampleVisit(encounterId),
     }
     sampleClinical.set(encounterId, c)
     return c
@@ -753,7 +945,7 @@ export function useClinicalActions(encounterId: string) {
           if (!loc) throw sampleRefusal('roomShort', 'MS003')
           sampleStock.move(i.item.id, loc, null, q)
         }
-        const id = `rx-${Date.now()}`
+        const id = `rx-${Date.now()}-${local().prescriptions.length}`
         local().prescriptions.push({
           supply,
           givenAt: supply === 'room' ? now() : null,
@@ -999,10 +1191,55 @@ export function useClinicalActions(encounterId: string) {
     },
     onSuccess: refresh,
   })
+  /**
+   * The printed prescription's number (0084): the visit's last RX-YYYY-NNNNNN while no line was
+   * added since, else a new one; with the prescriber's title and registration. Null on a database
+   * before 0084 (the caller prints its own reference). Refused (22023, hint no_lines) when nothing
+   * is prescribed.
+   */
+  const prescriptionNumber = useMutation({
+    mutationFn: async (): Promise<PrescriptionNumber | null> => {
+      if (!supabase) {
+        const lines = local()
+          .prescriptions.filter((p) => !p.cancelledAt)
+          .map((p) => p.id)
+        if (!lines.length) throw new Error('nothing is prescribed for this visit')
+        const last = sampleRx.get(encounterId)
+        if (last && lines.every((x) => last.lineIds.includes(x))) return { ...last, isNew: false }
+        const issued: PrescriptionNumber = {
+          number: `RX-${new Date().getFullYear()}-${String(++sampleRxSeq).padStart(6, '0')}`,
+          issuedAt: now(),
+          issuedBy: null,
+          lineIds: lines,
+          isNew: true,
+          prescriber: {
+            id: 'u-doc',
+            name: 'Dr. Mukamana Béatrice',
+            role: 'doctor',
+            specialty: 'General practitioner',
+            registrationNo: '2017/0458',
+            registrationBody: 'RMDC',
+          },
+        }
+        sampleRx.set(encounterId, issued)
+        return issued
+      }
+      const { data, error } = await supabase.rpc('prescription_number', {
+        p_encounter_id: encounterId,
+      })
+      if (error) {
+        if (isMissingFunction(error)) return null
+        throw apiError(error)
+      }
+      const d = data as PrescriptionNumber
+      return { ...d, lineIds: d.lineIds ?? [], prescriber: d.prescriber ?? null }
+    },
+  })
   return {
     addDiagnosis,
     addNote,
     prescribe,
+    prescriptionNumber,
     cancelPrescription,
     undoGivenHere,
     orderTests,

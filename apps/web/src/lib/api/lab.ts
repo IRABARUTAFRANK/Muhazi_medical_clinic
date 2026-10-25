@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Triage } from '@mmc/shared'
 import type { Sex } from '@/lib/api/visits'
 import { supabase } from '@/lib/supabase'
+import type { DocPerson } from '@/lib/api/patients'
 
 /**
  * Laboratory (migration 0036): the worklist of tests ordered for this person's bench (lab for lab
@@ -32,6 +33,24 @@ export interface LabOrder {
   verified: boolean
   resultAt: string | null
   resultBy: string | null
+  // ---- what the result report prints (0084; absent on an older database)
+  phone?: string | null
+  /** Insurer of the visit (null = cash). */
+  insurer?: string | null
+  memberNo?: string | null
+  coveragePct?: number | null
+  /** The weight measured at this visit (else within the 90 days before). */
+  weightKg?: number | null
+  weightAt?: string | null
+  allergies?: string | null
+  /** "No known allergies" was recorded. */
+  allergiesNone?: boolean
+  bloodGroup?: string | null
+  /** V-YYYY-NNNNNN. */
+  visitReference?: string | null
+  visitAt?: string | null
+  /** Who validated (else entered) the result, with title and registration. */
+  resultByPerson?: DocPerson | null
 }
 
 export interface LabSummary {
@@ -95,6 +114,28 @@ let sampleOrders: LabOrder[] = [
   verified: false,
   resultAt: status === 'resulted' ? ago(5) : null,
   resultBy: status === 'resulted' ? 'Uwera Diane' : null,
+  phone: `07881234${String(10 + i)}`,
+  insurer: i % 2 ? 'Mutuelle de santé (CBHI)' : null,
+  memberNo: i % 2 ? `01-0412-0773${i}` : null,
+  coveragePct: i % 2 ? 90 : null,
+  weightKg: [62, 21.5, 58, 81, 55, 70][i] ?? null,
+  weightAt: ago((min as number) + 20),
+  allergies: i === 0 ? 'Penicillin (rash)' : null,
+  allergiesNone: i === 1 || i === 3,
+  bloodGroup: null,
+  visitReference: `V-2026-${String(130 + i).padStart(6, '0')}`,
+  visitAt: ago((min as number) + 30),
+  resultByPerson:
+    status === 'resulted'
+      ? {
+          id: 'u-lab',
+          name: 'Uwera Diane',
+          role: 'lab_tech',
+          specialty: 'Biomedical laboratory scientist',
+          registrationNo: '2018/0790',
+          registrationBody: 'RAHPC',
+        }
+      : null,
 }))
 let sampleDone: LabOrder[] = [
   {
@@ -108,6 +149,14 @@ let sampleDone: LabOrder[] = [
     verified: true,
     resultAt: ago(40),
     resultBy: 'Uwera Diane',
+    resultByPerson: {
+      id: 'u-lab',
+      name: 'Uwera Diane',
+      role: 'lab_tech',
+      specialty: 'Biomedical laboratory scientist',
+      registrationNo: '2018/0790',
+      registrationBody: 'RAHPC',
+    },
   },
 ]
 

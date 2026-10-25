@@ -7140,6 +7140,320 @@ await step('0084: more than 300 reports in an hour are refused (abuse cap)', asy
     throw new Error(JSON.stringify({ refused, before, after }))
   return 'the 301st report in the hour is refused'
 })
+=======
+// ---------------------------------------------------------------- 0084: what the documents print
+const t84 = {}
+const json84 = (x) => JSON.stringify(x)
+await step(
+  '0084 A: the registration number is kept, listed for the manager and the person',
+  async () => {
+    // as manage-staff does it (service role)
+    await asAdmin()
+    await db.query(
+      `update profiles set registration_no = 'RMDC/2017/0458', registration_body = 'RMDC', specialty = 'General practitioner' where id = $1`,
+      [d2],
+    )
+    let tooLong = null
+    try {
+      await db.query(`update profiles set registration_no = $2 where id = $1`, [d2, 'X'.repeat(41)])
+    } catch (e) {
+      tooLong = e.code
+    }
+    await as(staff.manager)
+    const row = await one(
+      `select registration_no, registration_body from staff_directory where id = $1`,
+      [d2],
+    )
+    await as(d2)
+    const mine = (await one(`select my_placement() as j`)).j
+    const session = (await one(`select my_session_profile() as j`)).j
+    const direct = await codeAs(d2, `update profiles set registration_no = 'mine' where id = $1`, [
+      d2,
+    ])
+    await asAdmin()
+    if (
+      tooLong !== '23514' ||
+      row.registration_no !== 'RMDC/2017/0458' ||
+      row.registration_body !== 'RMDC' ||
+      mine.registrationNo !== 'RMDC/2017/0458' ||
+      mine.registrationBody !== 'RMDC' ||
+      session.registration_no !== 'RMDC/2017/0458' ||
+      direct !== '42501'
+    )
+      throw new Error(json84({ tooLong, row, mine, session, direct }))
+    return 'saved by the manager path; staff_directory, my_placement and my_session_profile give it; a direct write refused'
+  },
+)
+await step(
+  '0084 B: every visit has a reference V-YYYY-NNNNNN, old ones numbered in order',
+  async () => {
+    const before = await one(
+      `select count(*)::int as n, count(distinct reference)::int as d,
+            bool_and(reference ~ '^V-[0-9]{4}-[0-9]{6}$') as ok from encounter`,
+    )
+    await as(staff.receptionist)
+    const r = (
+      await one(
+        `select register_patient_file('Ishimwe', 'Doc 84', 'female', '2018-05-04', null, '0788 123 456') as r`,
+      )
+    ).r
+    t84.patient = r.patient_id
+    t84.enc = (
+      await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [t84.patient])
+    ).id
+    await asAdmin()
+    t84.queue = (
+      await one(
+        `select id from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+        [t84.enc],
+      )
+    ).id
+    const ref = (await one(`select reference from encounter where id = $1`, [t84.enc])).reference
+    const last = (
+      await one(`select last from number_series where key = 'visit' and year = $1`, [
+        Number(ref.split('-')[1]),
+      ])
+    ).last
+    t84.reference = ref
+    if (
+      before.n < 1 ||
+      before.d !== before.n ||
+      !before.ok ||
+      !/^V-\d{4}-\d{6}$/.test(ref) ||
+      Number(ref.split('-')[2]) !== last
+    )
+      throw new Error(json84({ before, ref, last }))
+    return `${before.n} earlier visits numbered, the new one ${ref}`
+  },
+)
+await step('0084 C: "no known allergies" is recorded apart from "not recorded"', async () => {
+  await as(d2)
+  await db.query(`select update_patient($1, '{"allergies_none": true}'::jsonb)`, [t84.patient])
+  const none = await one(`select allergies, allergies_none from patient where id = $1`, [
+    t84.patient,
+  ])
+  await db.query(`select update_patient($1, '{"allergies": "Sulfonamides (rash)"}'::jsonb)`, [
+    t84.patient,
+  ])
+  const some = await one(`select allergies, allergies_none from patient where id = $1`, [
+    t84.patient,
+  ])
+  // "none" again clears the text; clearing both = not recorded
+  await db.query(`select update_patient($1, '{"allergies_none": true}'::jsonb)`, [t84.patient])
+  const again = await one(`select allergies, allergies_none from patient where id = $1`, [
+    t84.patient,
+  ])
+  const bad = await codeAs(d2, `select update_patient($1, '{"allergies_none": "yes"}'::jsonb)`, [
+    t84.patient,
+  ])
+  const cashier = await codeAs(
+    staff.cashier,
+    `select update_patient($1, '{"allergies_none": false}'::jsonb)`,
+    [t84.patient],
+  )
+  await asAdmin()
+  if (
+    none.allergies !== null ||
+    none.allergies_none !== true ||
+    some.allergies !== 'Sulfonamides (rash)' ||
+    some.allergies_none !== false ||
+    again.allergies !== null ||
+    again.allergies_none !== true ||
+    bad !== '22023' ||
+    cashier !== '42501'
+  )
+    throw new Error(json84({ none, some, again, bad, cashier }))
+  return 'none → text clears none → none clears the text; a wrong value and the cashier refused'
+})
+await step(
+  '0084 D: prescription numbers RX-YYYY-NNNNNN: kept while no line is added, new after',
+  async () => {
+    await as(d2)
+    await db.query(`select take_patient($1)`, [t84.queue])
+    const a = (
+      await one(
+        `select prescribe($1, $2, 10, '1 vial', 'IM', 'OD', 5, null, 'pharmacy', 'consultation') as j`,
+        [t84.enc, t83.cef],
+      )
+    ).j
+    const b = (
+      await one(
+        `select prescribe($1, $2, 12, '2 tab', 'oral', 'TDS', 2, 'after meals', 'pharmacy', 'consultation') as j`,
+        [t84.enc, t82.para],
+      )
+    ).j
+    const n1 = (await one(`select prescription_number($1) as j`, [t84.enc])).j
+    await as(staff.pharmacist)
+    const n2 = (await one(`select prescription_number($1) as j`, [t84.enc])).j
+    await as(d2)
+    await db.query(`select cancel_prescription($1, 'not needed')`, [b.id])
+    const n3 = (await one(`select prescription_number($1) as j`, [t84.enc])).j
+    await db.query(
+      `select prescribe($1, $2, 6, '1 tab', 'oral', 'BD', 3, null, 'pharmacy', 'consultation')`,
+      [t84.enc, t82.para],
+    )
+    const n4 = (await one(`select prescription_number($1) as j`, [t84.enc])).j
+    await asAdmin()
+    const reception = await codeAs(staff.receptionist, `select prescription_number($1)`, [t84.enc])
+    const cashier = await codeAs(staff.cashier, `select prescription_number($1)`, [t84.enc])
+    const insert = await codeAs(
+      d2,
+      `insert into prescription_doc (number, encounter_id, line_ids) values ('RX-1', $1, '{}')`,
+      [t84.enc],
+    )
+    // a visit with nothing prescribed
+    await as(staff.receptionist)
+    const otherPatient = (
+      await one(`select register_patient_file('Empty', 'Rx 84', 'male', null, 40, null) as r`)
+    ).r.patient_id
+    const other = (
+      await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [otherPatient])
+    ).id
+    await asAdmin()
+    const empty = await hintAs(d2, `select prescription_number($1)`, [other])
+    const rows = (
+      await one(`select count(*)::int as n from prescription_doc where encounter_id = $1`, [
+        t84.enc,
+      ])
+    ).n
+    await as(d2)
+    const seen = (await one(`select count(*)::int as n from prescription_doc`)).n
+    await asAdmin()
+    t84.rx = n4.number
+    if (
+      !/^RX-\d{4}-\d{6}$/.test(n1.number) ||
+      !n1.isNew ||
+      n1.lineIds.length !== 2 ||
+      !n1.lineIds.includes(a.id) ||
+      n1.prescriber?.registrationNo !== 'RMDC/2017/0458' ||
+      n1.prescriber?.specialty !== 'General practitioner' ||
+      n1.prescriber?.name !== 'Dr. Two' ||
+      n2.number !== n1.number ||
+      n2.isNew ||
+      n3.number !== n1.number ||
+      n3.isNew ||
+      n4.number === n1.number ||
+      !n4.isNew ||
+      n4.lineIds.length !== 2 ||
+      Number(n4.number.slice(-6)) !== Number(n1.number.slice(-6)) + 1 ||
+      reception !== '42501' ||
+      cashier !== '42501' ||
+      insert !== '42501' ||
+      empty !== '22023/no_lines' ||
+      rows !== 2 ||
+      seen < 2
+    )
+      throw new Error(json84({ n1, n2, n3, n4, reception, cashier, insert, empty, rows, seen }))
+    return `${n1.number} printed twice (doctor, pharmacy) and after a cancellation; a new line → ${n4.number}`
+  },
+)
+await step(
+  '0084 E: visit_clinical, patient_file, the bill and the lab list carry what the documents print',
+  async () => {
+    await asAdmin()
+    const payer = (
+      await one(
+        `insert into payer (code, name, type) values ('RSSB84', 'RSSB (RAMA) 84', 'rssb_rama') returning id`,
+      )
+    ).id
+    await db.query(
+      `insert into plan (payer_id, name, coverage_pct) values ($1, 'RAMA 84', 85) returning id`,
+      [payer],
+    )
+    await as(staff.manager)
+    const cons = (await one(`select upsert_service(null, 'Consultation 84', 'other', 5000) as id`))
+      .id
+    const lab = (await one(`select upsert_service(null, 'Malaria RDT 84', 'lab', 2000) as id`)).id
+    await as(d2)
+    await db.query(`select record_vitals($1, '{"weight":"21.5","temp":"37.4"}'::jsonb)`, [t84.enc])
+    await db.query(`select add_charge($1, 'consultation', $2)`, [t84.enc, cons])
+    const req = (await one(`select order_test($1, $2, 'fever', 2) as id`, [t84.enc, lab])).id
+    await as(staff.manager)
+    await db.query(`select set_visit_payer($1, $2, 'RAMA-84-000777')`, [t84.enc, payer])
+    await as(staff.receptionist)
+    const due = (
+      await one(`select patient_share from visit_bill where encounter_id = $1`, [t84.enc])
+    ).patient_share
+    const paid = (await one(`select take_payment($1, 'cash', $2) as r`, [t84.enc, due])).r
+    const bill = await one(
+      `select member_no, coverage_pct, receipt_no, receipt_method, receipt_amount from visit_bill where encounter_id = $1`,
+      [t84.enc],
+    )
+    await as(d2)
+    const vc = (await one(`select visit_clinical($1) as j`, [t84.enc])).j
+    const file = (await one(`select patient_file($1) as j`, [t84.patient])).j
+    await as(staff.lab_tech)
+    const list = (await one(`select lab_worklist('open') as j`)).j
+    await asAdmin()
+    const row = list.find((x) => x.id === req)
+    const p = vc.patient
+    const visit = file.visits.find((v) => v.id === t84.enc)
+    if (
+      p.birthDate !== '2018-05-04' ||
+      p.sex !== 'female' ||
+      !String(p.phone ?? '')
+        .replace(/\s/g, '')
+        .endsWith('788123456') ||
+      p.insurer !== 'RSSB (RAMA) 84' ||
+      p.memberNo !== 'RAMA-84-000777' ||
+      Number(p.coveragePct) !== 85 ||
+      Number(p.weightKg) !== 21.5 ||
+      p.allergiesNone !== true ||
+      p.allergies !== null ||
+      vc.visit?.reference !== t84.reference ||
+      !vc.prescriptions.every((x) => x.prescriber?.registrationNo === 'RMDC/2017/0458') ||
+      file.document?.memberNo !== 'RAMA-84-000777' ||
+      Number(file.document?.weightKg) !== 21.5 ||
+      file.patient.allergies_none !== true ||
+      visit?.reference !== t84.reference ||
+      bill.member_no !== 'RAMA-84-000777' ||
+      Number(bill.coverage_pct) !== 85 ||
+      bill.receipt_no !== paid.receipt ||
+      bill.receipt_method !== 'cash' ||
+      Number(bill.receipt_amount) !== Number(due) ||
+      !row ||
+      row.visitReference !== t84.reference ||
+      row.memberNo !== 'RAMA-84-000777' ||
+      Number(row.weightKg) !== 21.5 ||
+      row.allergiesNone !== true ||
+      row.birthDate !== '2018-05-04'
+    )
+      throw new Error(json84({ p, visit: vc.visit, doc: file.document, bill, paid, row }))
+    return `born ${p.birthDate}, ${p.insurer} ${p.memberNo} (${p.coveragePct} %), ${p.weightKg} kg, no known allergies; receipt ${bill.receipt_no}`
+  },
+)
+await step(
+  '0084 F: a cash visit prints no insurer; the weight of an earlier visit is used',
+  async () => {
+    await asAdmin()
+    await db.query(`update encounter set status = 'closed', closed_at = now() where id = $1`, [
+      t84.enc,
+    ])
+    await as(staff.receptionist)
+    const enc = (
+      await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [t84.patient])
+    ).id
+    await asAdmin()
+    // the earlier visit's weight is recent: used; the cash visit has no insurer and no member number
+    const d = (await one(`select doc_patient($1, $2) as j`, [t84.patient, enc])).j
+    // older than 90 days: not printed
+    await db.query(
+      `update observation set effective_at = now() - interval '120 days' where encounter_id = $1 and code = 'weight'`,
+      [t84.enc],
+    )
+    const old = (await one(`select doc_patient($1, $2) as j`, [t84.patient, enc])).j
+    const internal = await codeAs(d2, `select doc_patient($1, $2)`, [t84.patient, enc])
+    if (
+      d.insurer !== null ||
+      d.memberNo !== null ||
+      Number(d.weightKg) !== 21.5 ||
+      old.weightKg !== null ||
+      internal !== '42501'
+    )
+      throw new Error(json84({ d, old, internal }))
+    return 'cash: no insurer; earlier weight within 90 days used, older not; doc_patient internal'
+  },
+)
 
 finish()
 

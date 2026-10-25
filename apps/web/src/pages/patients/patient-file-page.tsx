@@ -35,7 +35,9 @@ import {
   setNoNationalId,
   type NoIdReason,
   usePatientResults,
+  allergiesForDoc,
 } from '@/lib/api/patients'
+import { registrationText, useMyCredentials } from '@/lib/api/staff'
 import { type Sex, type VisitResult } from '@/lib/api/visits'
 import { useDeskOps } from '@/lib/api/desk-ops'
 import { useStaffSettings } from '@/lib/api/settings'
@@ -104,9 +106,13 @@ export function PatientFilePage({
   const letterhead = useLetterhead()
   const reportLabels = useMedicalReportLabels()
   const { data: allResults = [] } = usePatientResults(patientId)
+  // the signer's specialty and council registration (nulls on a database before 0084)
+  const { data: creds } = useMyCredentials(user.id)
   const printHistory = () => {
     if (!data) return
     const p = data.patient
+    // insurer, member number and last weight (absent on a database before 0084)
+    const doc = data.document
     const visits = [...data.visits].sort((a, b) => b.arrivedAt.localeCompare(a.arrivedAt))
     const ok = openMedicalReport(
       {
@@ -115,29 +121,46 @@ export function PatientFilePage({
         patient: {
           name: `${p.surname} ${p.given_names}`,
           fileNumber: p.file_number,
+          // only read when the birth date and sex are missing
           ageSex: [p.birth_date ? `${ageOf(p.birth_date)}` : null, t(`register.sexes.${p.sex}`)]
             .filter(Boolean)
             .join(' · '),
+          birthDate: p.birth_date,
+          sex: t(`register.sexes.${p.sex}`),
           phone: p.phone_1,
-          allergies: p.allergies,
+          insurer: doc?.insurer ?? null,
+          memberNo: doc?.memberNo ?? null,
+          weightKg: doc?.weightKg ?? null,
+          allergies: allergiesForDoc({
+            allergies: p.allergies,
+            allergiesNone: p.allergies_none ?? doc?.allergiesNone,
+          }),
           bloodGroup: p.blood_group,
         },
         visits: visits.map((v) => {
           // the latest value of each vital sign of that visit
           const seen = new Set<string>()
-          const vitals = data.vitals
+          const latest = data.vitals
             .filter((x) => x.encounterId === v.id)
             .sort((a, b) => b.at.localeCompare(a.at))
             .filter((x) => !seen.has(x.code) && seen.add(x.code))
-            .map((x) => ({
-              label: t(`triage.vitals.${x.code}`, { defaultValue: x.code }),
-              value: `${x.value ?? x.text ?? ''}${x.unit ? ` ${x.unit}` : ''}`,
-            }))
+          const vitals = latest.map((x) => ({
+            label: t(`triage.vitals.${x.code}`, { defaultValue: x.code }),
+            value: `${x.value ?? x.text ?? ''}${x.unit ? ` ${x.unit}` : ''}`,
+            code: x.code,
+            unit: x.unit,
+          }))
+          // who measured, and when: the most recent measurement of the visit
+          const measured = latest[0]
           return {
             date: formatDate(new Date(v.arrivedAt)),
+            at: v.arrivedAt,
+            reference: v.reference ?? null,
             doctor: v.practitioner,
             desks: v.stations.map((s) => t(`register.stations.${s}`, { defaultValue: s })),
             vitals,
+            vitalsBy: measured?.by ?? null,
+            vitalsAt: measured?.at ?? null,
             notes: [],
             diagnoses: data.conditions
               .filter((c) => c.encounterId === v.id)
@@ -159,7 +182,12 @@ export function PatientFilePage({
             medicines: [],
           }
         }),
-        author: { name: user.name, title: roleLabel(user, t) },
+        author: {
+          name: user.name,
+          title: creds?.specialty || roleLabel(user, t),
+          registrationNo: registrationText(creds),
+        },
+        printedBy: user.name,
       },
       reportLabels,
     )

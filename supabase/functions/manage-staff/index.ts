@@ -1,6 +1,7 @@
 // Muhazi Medical Clinic System — Edge Function `manage-staff`
 // The only place that touches Supabase Auth with the service role. It lets the clinic manager
-// create employee accounts, edit them (name, username, e-mail, role, department and position),
+// create employee accounts, edit them (name, username, e-mail, role, department and position,
+// specialty, professional registration number),
 // hand over or reset a PIN, and deactivate or reactivate an employee.
 //
 //   Deploy:  pnpm sb:deploy   (npx supabase functions deploy manage-staff …)
@@ -33,6 +34,8 @@ const PIN = /^[0-9]{6}$/
 const CODE = /^[0-9]{6,10}$/
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const BAN_FOREVER = '876000h'
+const REGISTRATION_NO_MAX = 40
+const REGISTRATION_BODY_MAX = 60
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -57,6 +60,12 @@ interface Assignment {
   phone?: string | null
   /** Only for role manager: full dashboard. */
   dashboard?: 'manager' | 'head' | null
+  /** Specialty or title shown with the role ("Minor surgery", "Midwife"). */
+  specialty?: string | null
+  /** Professional council registration number, printed on prescriptions (0084). Left out = unchanged. */
+  registration_no?: string | null
+  /** The council (RMDC, NCNM, NPC, RAHPC…). Left out = unchanged. */
+  registration_body?: string | null
 }
 type Body = { confirm_code?: string } & (
   | { action: 'send_code' }
@@ -242,6 +251,36 @@ Deno.serve(async (req) => {
     // A database without migration 0051 keeps the main department only (set with the profile).
     if (error && !/set_staff_departments/.test(error.message)) throw new Error(error.message)
   }
+  // The professional registration (0084), only the fields the request carries. Saved apart from
+  // the rest so a database without migration 0084 (no such columns) still saves the employee.
+  const registration = (a: Assignment) => {
+    const row: { registration_no?: string | null; registration_body?: string | null } = {}
+    if (a.registration_no !== undefined) row.registration_no = a.registration_no?.trim() || null
+    if (a.registration_body !== undefined)
+      row.registration_body = a.registration_body?.trim() || null
+    if ((row.registration_no?.length ?? 0) > REGISTRATION_NO_MAX)
+      throw new Error(`registration number: at most ${REGISTRATION_NO_MAX} characters`)
+    if ((row.registration_body?.length ?? 0) > REGISTRATION_BODY_MAX)
+      throw new Error(`registration body: at most ${REGISTRATION_BODY_MAX} characters`)
+    return row
+  }
+  const saveRegistration = async (
+    userId: string,
+    row: { registration_no?: string | null; registration_body?: string | null },
+  ) => {
+    if (!Object.keys(row).length) return
+    const { error } = await admin.from('profiles').update(row).eq('id', userId)
+    // PGRST204 / 42703: the database does not have the columns yet (0084 not applied)
+    if (
+      error &&
+      !(
+        error.code === 'PGRST204' ||
+        error.code === '42703' ||
+        (/column/i.test(error.message) && /registration_(no|body)/.test(error.message))
+      )
+    )
+      throw new Error(error.message)
+  }
 
   try {
     switch (body.action) {
@@ -257,6 +296,7 @@ Deno.serve(async (req) => {
         if (!EMAIL.test(email ?? ''))
           return json(400, { error: 'a valid e-mail address is required' })
         const { row: a, memberships } = await assignment(body)
+        const reg = registration(body)
         const { data: taken } = await admin
           .from('profiles')
           .select('id')
@@ -297,6 +337,7 @@ Deno.serve(async (req) => {
           })
           .eq('id', data.user.id)
         await saveMemberships(data.user.id, memberships)
+        await saveRegistration(data.user.id, reg)
         const { data: created } = await admin
           .from('profiles')
           .select('staff_id')
@@ -306,7 +347,12 @@ Deno.serve(async (req) => {
         await admin
           .from('staff_temp_pin')
           .upsert({ user_id: data.user.id, pin: body.pin, set_by: caller.user.id })
-        await audit('create', data.user.id, { username, role: a.role, staff_id: created?.staff_id })
+        await audit('create', data.user.id, {
+          username,
+          role: a.role,
+          staff_id: created?.staff_id,
+          ...reg,
+        })
         return json(200, { id: data.user.id, username, staff_id: created?.staff_id ?? null, email })
       }
 
@@ -323,6 +369,7 @@ Deno.serve(async (req) => {
         if (body.user_id === caller.user.id && body.role !== 'manager')
           return json(400, { error: 'you cannot remove your own manager role' })
         const { row: a, memberships } = await assignment(body)
+        const reg = registration(body)
         const { data: taken } = await admin
           .from('profiles')
           .select('id')
@@ -362,6 +409,7 @@ Deno.serve(async (req) => {
           .eq('id', body.user_id)
         if (error) return json(400, { error: error.message })
         await saveMemberships(body.user_id, memberships)
+        await saveRegistration(body.user_id, reg)
         await admin.auth.admin.updateUserById(body.user_id, {
           user_metadata: {
             username,
@@ -378,6 +426,7 @@ Deno.serve(async (req) => {
           department_id: a.department_id,
           position: a.position,
           departments: memberships,
+          ...reg,
         })
         return json(200, { ok: true })
       }

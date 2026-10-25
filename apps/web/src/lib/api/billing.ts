@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Triage } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
-import type { Station } from '@/lib/api/visits'
+import type { Sex, Station } from '@/lib/api/visits'
 
 /**
  * One visit on a station screen: who the patient is, the vitals from triage, who pays, and the
@@ -16,6 +16,9 @@ export interface VisitHeader {
   fileNumber: string
   name: string
   ageSex: string
+  /** yyyy-mm-dd, for the documents (age printed in words). */
+  birthDate?: string | null
+  sex?: Sex
   triage: Triage | null
   ticket: string
   /** Open queue entries (stations the patient is currently expected at). */
@@ -70,7 +73,27 @@ export interface VisitBill {
   /** Last payment: when and by whom (the green "paid" mark). */
   settledAt?: string | null
   settledBy?: string | null
+  /** The invoice number (INV-YYYY-NNNNNN), once the bill has one. */
+  invoiceNo?: string | null
+  /** The patient's insurance member number for this visit (0084; null for cash or before). */
+  memberNo?: string | null
+  /** The insurer's cover in percent (the plan; 0084). */
+  coveragePct?: number | null
+  /** The latest payment, for a reprinted receipt (0084; null before or when nothing is paid). */
+  lastPayment?: LastPayment | null
   charges: Charge[]
+}
+
+/** The latest payment of a visit's bill. */
+export interface LastPayment {
+  /** RCT-YYYY-NNNNNN. */
+  receiptNo: string | null
+  /** The method code (cash, momo, airtel, card…): the receipt translates it. */
+  method: string | null
+  amount: number
+  reference: string | null
+  at: string | null
+  cashier: string | null
 }
 
 const EMPTY_BILL: VisitBill = {
@@ -88,6 +111,7 @@ const EMPTY_BILL: VisitBill = {
 
 // ---------------------------------------------------------------- sample mode
 const sampleBills = new Map<string, VisitBill>()
+let sampleReceiptSeq = 0
 const sampleBill = (encounterId: string): VisitBill => {
   let b = sampleBills.get(encounterId)
   if (!b) {
@@ -143,6 +167,8 @@ export function useVisitHeader(encounterId: string) {
           fileNumber: 'MMC-000124',
           name: 'Mukamana Alice',
           ageSex: '31 F',
+          birthDate: '1995-03-12',
+          sex: 'female',
           triage: 'yellow',
           ticket: 'A-012',
           stations: ['consultation'],
@@ -188,6 +214,8 @@ export function useVisitHeader(encounterId: string) {
           fileNumber: p.file_number,
           name: `${p.surname} ${p.given_names}`,
           ageSex: `${ageOf(p.birth_date)} ${sexLetter[p.sex]}`.trim(),
+          birthDate: p.birth_date,
+          sex: p.sex,
           triage: (e.triage_level as Triage | null) ?? null,
           ticket: (first?.[0] as { ticket_no: string } | undefined)?.ticket_no ?? '—',
           stations: [],
@@ -202,6 +230,8 @@ export function useVisitHeader(encounterId: string) {
         fileNumber: r.file_number,
         name: `${r.surname} ${r.given_names}`,
         ageSex: `${ageOf(r.birth_date)} ${sexLetter[r.sex]}`.trim(),
+        birthDate: r.birth_date,
+        sex: r.sex,
         triage: r.triage_level,
         ticket: r.ticket_no,
         stations: rows.filter((x) => !x.finished_at).map((x) => x.station),
@@ -267,6 +297,13 @@ interface BillRow {
   number: string | null
   settled_at?: string | null
   settled_by?: string | null
+  /** 0084 (absent before). */
+  member_no?: string | null
+  coverage_pct?: number | string | null
+  receipt_no?: string | null
+  receipt_method?: string | null
+  receipt_amount?: number | string | null
+  receipt_reference?: string | null
 }
 interface ChargeRow {
   id: string
@@ -316,6 +353,20 @@ export function useVisitBill(encounterId: string) {
         refunded: Number(b?.refunded ?? 0),
         settledAt: b?.settled_at ?? null,
         settledBy: b?.settled_by ?? null,
+        invoiceNo: b?.number ?? null,
+        memberNo: b?.member_no ?? null,
+        coveragePct: b?.coverage_pct == null ? null : Number(b.coverage_pct),
+        lastPayment:
+          b && b.receipt_amount != null
+            ? {
+                receiptNo: b.receipt_no ?? null,
+                method: b.receipt_method ?? null,
+                amount: Number(b.receipt_amount),
+                reference: b.receipt_reference ?? null,
+                at: b.settled_at ?? null,
+                cashier: b.settled_by ?? null,
+              }
+            : null,
         charges: ((lines ?? []) as ChargeRow[]).map((c) => ({
           id: c.id,
           description: c.description,
@@ -442,6 +493,8 @@ export function useBillingActions(encounterId: string) {
         const b = sampleBill(encounterId)
         b.payerId = payerId
         b.payerName = payerId ? (payerName ?? null) : null
+        b.memberNo = payerId ? memberNumber?.trim() || null : null
+        b.coveragePct = payerId ? (coveragePct ?? null) : null
         for (const c of b.charges) {
           const total = Math.round(c.unitPrice * c.quantity)
           c.coveragePct = payerId ? (coveragePct ?? 0) : 0
@@ -512,12 +565,23 @@ export function useBillingActions(encounterId: string) {
         b.paid += amount
         recompute(b)
         if (b.balance <= 0) b.status = 'posted'
+        if (b.balance <= 0) b.invoiceNo = 'INV-2026-000001'
+        const receipt = `RCT-2026-${String(++sampleReceiptSeq).padStart(6, '0')}`
+        b.lastPayment = {
+          receiptNo: receipt,
+          method,
+          amount,
+          reference: reference?.trim() || null,
+          at: new Date().toISOString(),
+          cashier: null,
+        }
+        b.settledAt = b.lastPayment.at
         return {
           balance: b.balance,
           number: b.balance <= 0 ? 'INV-2026-000001' : null,
           status: b.status ?? 'draft',
           closed: b.balance <= 0,
-          receipt: 'RCT-2026-000001',
+          receipt,
         }
       }
       const { data, error } = await supabase.rpc('take_payment', {

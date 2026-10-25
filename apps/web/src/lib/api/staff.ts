@@ -48,6 +48,10 @@ export interface Employee {
   departments: Membership[]
   /** Specialty or title shown with the role ("Minor surgery", "Midwife"). */
   specialty: string | null
+  /** Professional council registration number, printed on prescriptions (0084; null before). */
+  registrationNo: string | null
+  /** The council that registered the person (RMDC, NCNM, NPC, RAHPC…). */
+  registrationBody: string | null
   /** The temporary PIN the manager handed over, until the employee replaces it (managers only). */
   tempPin?: string | null
 }
@@ -84,6 +88,23 @@ export interface EmployeeInput {
   language?: DbLang
   phone?: string
   specialty?: string
+  /** Professional registration number; left out (undefined) = unchanged, '' = cleared. */
+  registrationNo?: string
+  /** The council (RMDC, NCNM, NPC, RAHPC…); left out = unchanged, '' = cleared. */
+  registrationBody?: string
+}
+
+/** The professional councils of Rwanda (suggestions for the employee form). */
+export const REGISTRATION_BODIES = ['RMDC', 'NCNM', 'NPC', 'RAHPC'] as const
+
+/** "RMDC 2017/0458": the council and the number as a document prints them (null when none). */
+export const registrationText = (
+  p: { registrationNo?: string | null; registrationBody?: string | null } | null | undefined,
+): string | null => {
+  const no = p?.registrationNo?.trim()
+  if (!no) return null
+  const body = p?.registrationBody?.trim()
+  return body && !no.toUpperCase().startsWith(body.toUpperCase()) ? `${body} ${no}` : no
 }
 
 export const USERNAME_RE = /^[a-z0-9._-]{3,32}$/
@@ -143,9 +164,19 @@ export function suggestUsername(fullName: string, taken: ReadonlySet<string> = n
 
 // ---------------------------------------------------------------- sample mode (no Supabase)
 const sampleDepartments: Department[] = []
+/** Sample registrations by role (realistic council numbers). */
+const SAMPLE_REGISTRATION: Partial<Record<DbRole, [string, string]>> = {
+  doctor: ['RMDC', '2017/0458'],
+  nurse: ['NCNM', '2019/1123'],
+  pharmacist: ['NPC', '2020/0311'],
+  lab_tech: ['RAHPC', '2018/0790'],
+  sonographer: ['RAHPC', '2021/0154'],
+}
 const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   id: u.id,
   specialty: u.role === 'doctor' ? 'General practitioner' : null,
+  registrationBody: SAMPLE_REGISTRATION[u.role as DbRole]?.[0] ?? null,
+  registrationNo: SAMPLE_REGISTRATION[u.role as DbRole]?.[1] ?? null,
   staffId: u.staffId ?? null,
   email: u.email ?? null,
   username: u.username,
@@ -194,6 +225,9 @@ interface DirectoryRow {
   position: Position | null
   specialty?: string | null
   departments?: { id: string; name: string; position: Position }[] | null
+  /** 0084 (absent before). */
+  registration_no?: string | null
+  registration_body?: string | null
 }
 
 export function useEmployees() {
@@ -230,6 +264,8 @@ export function useEmployees() {
         departmentName: r.department_name,
         position: r.position ?? 'member',
         specialty: r.specialty ?? null,
+        registrationNo: r.registration_no ?? null,
+        registrationBody: r.registration_body ?? null,
         // Before migration 0051 only the main department exists.
         departments: r.departments
           ? r.departments.map((m) => ({
@@ -315,6 +351,11 @@ const toBody = (e: EmployeeInput) => ({
   language: e.language ?? 'kin',
   phone: e.phone?.trim() || null,
   specialty: e.specialty?.trim() || null,
+  // left out when the form does not carry them: the function keeps what is saved
+  ...(e.registrationNo !== undefined && { registration_no: e.registrationNo.trim() || null }),
+  ...(e.registrationBody !== undefined && {
+    registration_body: e.registrationBody.trim() || null,
+  }),
 })
 
 /**
@@ -330,7 +371,11 @@ const sampleMembers = (input: EmployeeInput): Membership[] =>
 
 export function useStaffActions() {
   const qc = useQueryClient()
-  const refresh = () => qc.invalidateQueries({ queryKey: ['staff'] })
+  const refresh = () => {
+    // the documents read the person's own registration (useMyCredentials)
+    void qc.invalidateQueries({ queryKey: ['my-credentials'] })
+    return qc.invalidateQueries({ queryKey: ['staff'] })
+  }
   const sampleCheck = (pin: string) => {
     if (!/^[0-9]{6,10}$/.test(pin)) throw new Error('confirm_code_wrong')
   }
@@ -360,6 +405,8 @@ export function useStaffActions() {
           id,
           staffId,
           specialty: input.specialty?.trim() || null,
+          registrationNo: input.registrationNo?.trim() || null,
+          registrationBody: input.registrationBody?.trim() || null,
           email: input.email,
           username: input.username,
           fullName: input.fullName,
@@ -414,6 +461,12 @@ export function useStaffActions() {
             position: members[0]?.position ?? 'member',
             departments: members,
             specialty: input.specialty?.trim() || null,
+            ...(input.registrationNo !== undefined && {
+              registrationNo: input.registrationNo.trim() || null,
+            }),
+            ...(input.registrationBody !== undefined && {
+              registrationBody: input.registrationBody.trim() || null,
+            }),
             station: input.station ?? null,
             language: input.language ?? 'kin',
             phone: input.phone ?? null,
@@ -628,6 +681,47 @@ export function useRetirePreview(profileId: string | null) {
         upcomingAppointments: Number(d.upcomingAppointments ?? 0),
         waitingPatients: Number(d.waitingPatients ?? 0),
         openTasks: Number(d.openTasks ?? 0),
+      }
+    },
+  })
+}
+
+/** What a document prints about the signed-in person (prescriber, author, dispenser). */
+export interface MyCredentials {
+  specialty: string | null
+  registrationNo: string | null
+  registrationBody: string | null
+}
+
+/**
+ * The signed-in person's specialty and professional registration (0084, `my_placement`), for the
+ * documents they sign. Before 0084 the registration is null (the document prints a ruled blank).
+ */
+export function useMyCredentials(userId: string) {
+  return useQuery({
+    queryKey: ['my-credentials', userId],
+    staleTime: 5 * 60_000,
+    enabled: !!userId,
+    queryFn: async (): Promise<MyCredentials> => {
+      if (!supabase) {
+        const e = sampleEmployees.find((x) => x.id === userId)
+        return {
+          specialty: e?.specialty ?? null,
+          registrationNo: e?.registrationNo ?? null,
+          registrationBody: e?.registrationBody ?? null,
+        }
+      }
+      const { data, error } = await supabase.rpc('my_placement')
+      if (error) throw new Error(error.message)
+      const d = (data ?? {}) as {
+        specialty?: string | null
+        registrationNo?: string | null
+        registrationBody?: string | null
+      }
+      return {
+        specialty: d.specialty ?? null,
+        registrationNo: d.registrationNo ?? null,
+        registrationBody: d.registrationBody ?? null,
       }
     },
   })

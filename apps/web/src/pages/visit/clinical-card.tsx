@@ -24,10 +24,12 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { medicineRuleText, treatmentName, useTreatments } from '@/lib/api/catalogue'
 import {
+  allergiesForDoc,
   prescriptionState,
   useClinicalActions,
   useItems,
   useVisitClinical,
+  type DocPerson,
   type Item,
   type Prescription,
   type PrescriptionState,
@@ -35,14 +37,14 @@ import {
 } from '@/lib/api/patients'
 import { isRoomStore, useStockActions, useStockOverview } from '@/lib/api/stock'
 import { useHoldsStore, useStoreStock, type MyStore } from '@/lib/api/rooms'
-import { errorKind } from '@/lib/api/errors'
-import { useClinicInfo } from '@/lib/api/public'
+import { ApiError, errorKind } from '@/lib/api/errors'
+import { registrationText, useMyCredentials } from '@/lib/api/staff'
 import { stationFor, type Station } from '@/lib/api/visits'
-import { openPrescription, type RxDocMedicine } from '@/lib/prescription-doc'
+import { buildPrescriptionHtml, type RxDoc, type RxDocMedicine } from '@/lib/prescription-doc'
 import { roleLabel } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { useCan } from '@/lib/api/permissions'
-import { openMedicalReport } from '@/lib/medical-report'
+import { openMedicalReport, type ReportMedicine } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
 
@@ -128,7 +130,15 @@ export function ClinicalCard({
   /** For the printed prescription. */
   patient?: { name: string; fileNumber: string; ageSex: string; weight?: string | null }
   /** For the medical report: the visit's vital signs and what was charged. */
-  report?: { vitals: { label: string; value: string }[]; treatments: string[]; since?: string }
+  report?: {
+    /** Latest value of each vital sign; the code and unit let the report build its table. */
+    vitals: { label: string; value: string; code?: string | null; unit?: string | null }[]
+    /** Who measured the latest vital signs, and when (ISO). */
+    vitalsBy?: string | null
+    vitalsAt?: string | null
+    treatments: string[]
+    since?: string
+  }
   /** Open the medical report panel at once. */
   openReport?: boolean
   /** The patient is with someone else: read only, with who holds them. */
@@ -139,7 +149,7 @@ export function ClinicalCard({
   onError: (m: string | null) => void
 }) {
   const { t, i18n } = useTranslation()
-  const { data, error } = useVisitClinical(encounterId)
+  const { data, error, refetch } = useVisitClinical(encounterId)
   const actions = useClinicalActions(encounterId)
   const { data: items = [] } = useItems()
   const { data: treatments = [] } = useTreatments(true)
@@ -198,7 +208,6 @@ export function ClinicalCard({
     urgent: false,
   })
   const [localError, setLocalError] = useState<string | null>(null)
-  const { data: info } = useClinicInfo()
   const confirm = useConfirm()
   const name = patient?.name || t('confirm.visit.thisPatient')
   const isManager = user.role === 'manager'
@@ -231,6 +240,28 @@ export function ClinicalCard({
   const reportLabels = useMedicalReportLabels()
   const [reporting, setReporting] = useState(openReport)
   const [comment, setComment] = useState('')
+  // the signed-in person's specialty and council registration (nulls before 0084)
+  const { data: creds } = useMyCredentials(user.id)
+  const [printingRx, setPrintingRx] = useState(false)
+  /** A staff member as a document names them: specialty (else role), council registration. */
+  const docPerson = (p: DocPerson) => ({
+    name: p.name,
+    title: p.specialty?.trim() || t(`staff.roles.${p.role}`, { defaultValue: p.role }),
+    registrationNo: registrationText(p),
+  })
+  /** The person printing, as author or prescriber. */
+  const me = {
+    name: user.name,
+    title: creds?.specialty?.trim() || roleLabel(user, t),
+    registrationNo: registrationText(creds),
+  }
+  const routeWords = (r: Prescription) =>
+    r.route ? t(`clinical.routes.${r.route}`, { defaultValue: r.route }) : null
+  const frequencyWords = (r: Prescription) =>
+    r.frequency ? t(`clinical.frequencies.${r.frequency}`, { defaultValue: r.frequency }) : null
+  const primaryDx = () =>
+    data ? (data.diagnoses.find((d) => d.type === 'primary') ?? data.diagnoses[0]) : undefined
+
   const printReport = () => {
     if (!data || !patient) return
     const ats = [
@@ -238,6 +269,27 @@ export function ClinicalCard({
       ...(report?.since ? [report.since] : []),
     ]
     const first = ats.sort()[0]
+    const visitAt = data.visit?.at ?? first ?? null
+    const p = data.patient
+    const medicines: ReportMedicine[] = data.prescriptions
+      // a cancelled line was never taken: it is not part of the record of care
+      .filter((r) => !r.cancelledAt)
+      .map((r) => {
+        const state = prescriptionState(r)
+        const route = routeWords(r)
+        const frequency = frequencyWords(r)
+        const duration = r.days ? t('clinical.forDays', { count: r.days }) : null
+        return {
+          name: r.item,
+          how: [r.dose, route, frequency, duration, r.instructions].filter(Boolean).join(' · '),
+          dose: r.dose,
+          route,
+          frequency,
+          duration,
+          quantity: r.quantity,
+          status: state === 'room' ? 'given' : state === 'returned' ? 'stopped' : 'new',
+        }
+      })
     const ok = openMedicalReport(
       {
         kind: 'visit',
@@ -246,14 +298,26 @@ export function ClinicalCard({
           name: patient.name,
           fileNumber: patient.fileNumber,
           ageSex: patient.ageSex,
-          allergies: data.patient?.allergies ?? null,
-          bloodGroup: data.patient?.bloodGroup ?? null,
+          birthDate: p?.birthDate ?? null,
+          sex: p?.sex ? t(`register.sexes.${p.sex}`) : null,
+          phone: p?.phone ?? null,
+          insurer: p?.insurer ?? null,
+          memberNo: p?.memberNo ?? null,
+          weightKg: p?.weightKg ?? patient.weight ?? null,
+          allergies: allergiesForDoc(p),
+          bloodGroup: p?.bloodGroup ?? null,
         },
         visits: [
           {
-            date: formatDate(first ? new Date(first) : new Date()),
+            date: formatDate(visitAt ? new Date(visitAt) : new Date()),
+            at: visitAt,
+            reference: data.visit?.reference ?? null,
+            department: data.visit?.department ?? null,
+            referredBy: data.visit?.referredBy ?? null,
             doctor: data.diagnoses[0]?.by ?? data.notes[0]?.by ?? null,
             vitals: report?.vitals ?? [],
+            vitalsBy: report?.vitalsBy ?? null,
+            vitalsAt: report?.vitalsAt ?? null,
             notes: data.notes.map((n) => n.text),
             diagnoses: data.diagnoses.map((d) => ({
               text: d.text,
@@ -268,109 +332,94 @@ export function ClinicalCard({
               verified: !!o.result?.verified,
             })),
             treatments: report?.treatments ?? [],
-            medicines: data.prescriptions.map((r) => ({
-              name: `${r.item} × ${r.quantity}`,
-              how: [
-                r.dose,
-                r.route ? t(`clinical.routes.${r.route}`, { defaultValue: r.route }) : null,
-                r.frequency
-                  ? t(`clinical.frequencies.${r.frequency}`, { defaultValue: r.frequency })
-                  : null,
-                r.days ? t('clinical.forDays', { count: r.days }) : null,
-                r.instructions,
-              ]
-                .filter(Boolean)
-                .join(' · '),
-            })),
+            medicines,
           },
         ],
         comment: comment.trim() || null,
-        author: { name: user.name, title: roleLabel(user, t) },
+        author: me,
+        printedBy: user.name,
       },
       reportLabels,
     )
     if (!ok) setLocalError(t('report.popupBlocked'))
   }
 
-  const printRx = () => {
-    if (!data || !patient) return
-    const toDoc = (r: (typeof data.prescriptions)[number]): RxDocMedicine => ({
-      name: r.item,
-      quantity: r.quantity,
-      dose: r.dose,
-      route: r.route ? t(`clinical.routes.${r.route}`, { defaultValue: r.route }) : null,
-      frequency: r.frequency
-        ? t(`clinical.frequencies.${r.frequency}`, { defaultValue: r.frequency })
-        : null,
-      days: r.days,
-      instructions: r.instructions,
-    })
-    const profile = (info?.profile ?? {}) as Record<string, unknown> & {
-      name?: string
-      sector?: string
-      district?: string
-      province?: string
-      country?: string
-      phone?: string
-      email?: string
-    }
-    const dx = data.diagnoses.find((d) => d.type === 'primary') ?? data.diagnoses[0]
-    const at = data.prescriptions[0]?.at
-    const ok = openPrescription(
-      {
-        number: `${patient.fileNumber}-${(at ?? new Date().toISOString()).slice(0, 10).replace(/-/g, '')}`,
-        date: at ? new Date(at) : new Date(),
-        clinic: {
-          name: profile.name ?? 'Muhazi Medical Clinic',
-          address: [profile.sector, profile.district, profile.province, profile.country]
-            .filter(Boolean)
-            .join(' · '),
-          contacts: [profile.phone, profile.email].filter(Boolean).join(' · '),
-          licences: [
-            profile.moh_licence ? `${t('rxDoc.moh')} ${String(profile.moh_licence)}` : null,
-            profile.tin ? `TIN ${String(profile.tin)}` : null,
-          ]
-            .filter(Boolean)
-            .join(' · '),
-          logoUrl: `${window.location.origin}/logo.jpg`,
+  const printRx = async () => {
+    if (!data || !patient || printingRx) return
+    setLocalError(null)
+    // the window opens on the click itself (a browser blocks one opened after a wait)
+    const w = window.open('', '_blank')
+    if (!w) return setLocalError(t('report.popupBlocked'))
+    setPrintingRx(true)
+    try {
+      // the prescription's own number: the same while no line was added (null before 0084)
+      const rx = await actions.prescriptionNumber.mutateAsync()
+      // a line written at another desk since the last refresh
+      let lines = data.prescriptions
+      if (rx && rx.lineIds.some((id) => !lines.some((r) => r.id === id)))
+        lines = (await refetch()).data?.prescriptions ?? lines
+      const covered = lines.filter((r) => !r.cancelledAt && (!rx || rx.lineIds.includes(r.id)))
+      const toDoc = (r: Prescription): RxDocMedicine => ({
+        name: r.item,
+        quantity: r.quantity,
+        // codes: the prescription writes them out in plain words
+        dose: r.dose,
+        route: r.route,
+        frequency: r.frequency,
+        days: r.days,
+        instructions: r.instructions,
+      })
+      const forPharmacy = covered.filter((r) => r.supply !== 'room')
+      const dx = primaryDx()
+      const p = data.patient
+      // the clinician who wrote it, not whoever prints it
+      const writer = rx?.prescriber ?? forPharmacy.find((r) => r.prescriber)?.prescriber ?? null
+      const by = forPharmacy[0]?.by
+      const prescriber = writer
+        ? docPerson(writer)
+        : by && by !== user.name
+          ? { name: by, title: t('staff.roles.doctor') }
+          : me
+      const doc: RxDoc = {
+        // before 0084 the document makes RX-{file no.}-{date and time} of this one
+        number:
+          rx?.number ??
+          `${patient.fileNumber}-${(forPharmacy[0]?.at ?? new Date().toISOString()).slice(0, 10).replace(/-/g, '')}`,
+        date: rx ? new Date(rx.issuedAt) : new Date(),
+        clinic: letterhead,
+        patient: {
+          name: patient.name,
+          fileNumber: patient.fileNumber,
+          ageSex: patient.ageSex,
+          birthDate: p?.birthDate ?? null,
+          sex: p?.sex ?? null,
+          weight: p?.weightKg ?? patient.weight ?? null,
+          allergies: allergiesForDoc(p),
+          phone: p?.phone ?? null,
+          insurer: p?.insurer ?? null,
+          memberNo: p?.memberNo ?? null,
         },
-        patient: { ...patient, allergies: data.patient?.allergies ?? null },
-        diagnosis: dx
-          ? `${dx.text}${dx.icd10 ? ` (${dx.icd10})` : ''}${dx.provisional ? ` · ${t('clinical.provisional')}` : ''}`
-          : null,
-        medicines: data.prescriptions.filter((r) => r.supply !== 'room').map(toDoc),
-        givenHere: data.prescriptions.filter((r) => r.supply === 'room').map(toDoc),
-        // the doctor who wrote it, not whoever prints it
-        prescriber: (() => {
-          const by = data?.prescriptions.find((r) => r.supply !== 'room')?.by
-          return by && by !== user.name
-            ? { name: by, title: t('staff.roles.doctor') }
-            : { name: user.name, title: roleLabel(user, t) }
-        })(),
-      },
-      {
-        title: t('rxDoc.title'),
-        number: t('rxDoc.number'),
-        date: t('rxDoc.date'),
-        patient: t('rxDoc.patient'),
-        file: t('rxDoc.file'),
-        ageSex: t('rxDoc.ageSex'),
-        weight: t('rxDoc.weight'),
-        allergies: t('rxDoc.allergies'),
-        none: t('rxDoc.none'),
-        diagnosis: t('rxDoc.diagnosis'),
-        medicines: t('rxDoc.medicines'),
-        quantity: t('rxDoc.quantity'),
-        forDays: (n) => t('clinical.forDays', { count: n }),
-        givenHere: t('rxDoc.givenHere'),
-        prescriber: t('rxDoc.prescriber'),
-        signature: t('rxDoc.signature'),
-        stamp: t('rxDoc.stamp'),
-        validity: t('rxDoc.validity'),
-        asWritten: t('rxDoc.asWritten'),
-      },
-    )
-    if (!ok) setLocalError(t('report.popupBlocked'))
+        diagnosis: dx ? { text: dx.text, icd10: dx.icd10, provisional: dx.provisional } : null,
+        medicines: forPharmacy.map(toDoc),
+        givenHere: covered.filter((r) => r.supply === 'room').map(toDoc),
+        prescriber,
+        printedBy: user.name,
+      }
+      w.document.open()
+      w.document.write(buildPrescriptionHtml(doc))
+      w.document.close()
+    } catch (e) {
+      w.close()
+      setLocalError(
+        e instanceof ApiError && e.hint === 'no_lines'
+          ? t('rxDoc.noLines')
+          : e instanceof Error
+            ? e.message
+            : String(e),
+      )
+    } finally {
+      setPrintingRx(false)
+    }
   }
 
   const run = async (fn: () => Promise<unknown>, done: string | (() => string)) => {
@@ -705,8 +754,13 @@ export function ClinicalCard({
               {t('medReport.open')}
             </Button>
           )}
-          {patient && (data?.prescriptions.length ?? 0) > 0 && (
-            <Button size="sm" onClick={printRx} title={t('rxDoc.printHint')}>
+          {patient && data?.prescriptions.some((r) => !r.cancelledAt) && (
+            <Button
+              size="sm"
+              onClick={() => void printRx()}
+              disabled={printingRx}
+              title={t('rxDoc.printHint')}
+            >
               <Printer size={14} aria-hidden="true" />
               {t('rxDoc.print')}
             </Button>

@@ -277,6 +277,7 @@ function medWords(t: TFn) {
     labNo: k('labNo'),
     reported: k('reported'),
     requestedBy: k('requestedBy'),
+    visitNo: k('visitNo'),
     clinicalInfo: k('clinicalInfo'),
     specimen: k('specimen'),
     requested: k('requested'),
@@ -762,12 +763,13 @@ function patientFields(d: MedicalReportDoc, c: Ctx, layout: 'visit' | 'history' 
     { label: c.dl.sex, value: p.sex ?? legacy?.sex ?? null },
     { label: c.dl.fileNo, value: p.fileNumber },
   ]
-  // weight belongs to one visit (it is in each visit's vital signs on the history)
+  // weight belongs to one visit (it is in each visit's vital signs on the history); the result
+  // report carries it too, since doses and some reference values depend on it
   const right: (Field | null)[] = [
-    layout === 'lab' ? null : { label: c.dl.phone, value: p.phone },
+    { label: c.dl.phone, value: p.phone },
     { label: c.dl.insurer, value: p.insurer },
     { label: c.dl.memberNo, value: p.memberNo },
-    layout === 'visit' ? { label: c.dl.weightKg, value: weight } : null,
+    layout !== 'history' ? { label: c.dl.weightKg, value: weight } : null,
     layout === 'history' ? { label: c.l.bloodGroup, value: p.bloodGroup } : null,
   ]
   const html = identityHtml(left, right)
@@ -818,7 +820,7 @@ export interface MedicalReportContext {
   now?: Date
   /** Default true; false for previews. */
   autoPrint?: boolean
-  /** The locally bundled Source Sans 3 files (absolute URLs); without them Google Fonts is used. */
+  /** The Source Sans 3 files (absolute URLs); default: the ones bundled with the website. */
   fonts?: FontUrls
 }
 
@@ -1044,6 +1046,7 @@ function labReportHtml(d: MedicalReportDoc, l: MedicalReportLabels, ctx: Medical
         { label: w.specimen, value: lab.specimen },
       ],
       [
+        { label: w.visitNo, value: v?.reference?.trim() || null },
         { label: w.requested, value: requested || null },
         { label: w.collected, value: docDateTime(lab.collectedAt) || null },
         { label: w.received, value: docDateTime(lab.receivedAt) || null },

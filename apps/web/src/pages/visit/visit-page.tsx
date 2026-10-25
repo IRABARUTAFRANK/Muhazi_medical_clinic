@@ -157,6 +157,8 @@ export function VisitPage({
   // What the manager allows this person (Settings → Who may do what).
   const can = useCan(user)
   const weight = vitals.find((v) => v.code === 'weight')
+  // the latest vital sign measured: who measured it and when, for the medical report
+  const latestVital = vitals.reduce<Vital | null>((a, v) => (!a || v.at > a.at ? v : a), null)
   // A finished visit opens read-only (it stays in the patient file).
   const closed = !!header?.closed
   // The patient belongs to the desk, department or colleague they were sent to (migration 0055):
@@ -450,10 +452,17 @@ export function VisitPage({
                 report={{
                   // the visit's date: its first vital sign when nothing clinical is written yet
                   since: vitals.map((v) => v.at).sort()[0],
-                  vitals: vitals.map((v) => ({
-                    label: t(`triage.vitals.${v.code}`),
-                    value: `${v.value}${v.unit ? ` ${v.unit}` : ''}`,
-                  })),
+                  // oldest first: the report keeps the latest value of each sign
+                  vitals: [...vitals]
+                    .sort((a, b) => a.at.localeCompare(b.at))
+                    .map((v) => ({
+                      label: t(`triage.vitals.${v.code}`),
+                      value: `${v.value}${v.unit ? ` ${v.unit}` : ''}`,
+                      code: v.code,
+                      unit: v.unit,
+                    })),
+                  vitalsBy: latestVital?.measuredBy ?? latestVital?.enteredBy ?? null,
+                  vitalsAt: latestVital?.at ?? null,
                   treatments: (bill?.charges ?? []).map(
                     (c) => `${c.description}${c.quantity > 1 ? ` × ${c.quantity}` : ''}`,
                   ),
@@ -670,7 +679,8 @@ export function VisitPage({
                         const r = await actions.takePayment.mutateAsync(input)
                         setLastPayment({
                           receipt: r.receipt,
-                          method: t(`visit.payment.methods.${input.method}`),
+                          // the code: the receipt writes it in the reader's language
+                          method: input.method,
                           amount: input.amount,
                           reference: input.reference?.trim() || null,
                         })
@@ -692,61 +702,78 @@ export function VisitPage({
                   <Button
                     className="self-start"
                     onClick={() => {
+                      // the payment just taken, else the bill's last one (a reprint, 0084)
+                      const saved = bill.lastPayment ?? null
+                      const payment = lastPayment
+                        ? {
+                            receiptNo: lastPayment.receipt,
+                            method: lastPayment.method,
+                            amount: lastPayment.amount,
+                            reference: lastPayment.reference,
+                            at: null as string | null,
+                            cashier: user.name as string | null,
+                          }
+                        : saved
+                          ? {
+                              receiptNo: saved.receiptNo,
+                              method: saved.method ?? '',
+                              amount: saved.amount,
+                              reference: saved.reference,
+                              at: saved.at,
+                              cashier: saved.cashier,
+                            }
+                          : null
                       const ok = openReceipt(
                         {
-                          receiptNo: lastPayment?.receipt ?? null,
-                          invoiceNo: null,
-                          at: new Date(),
+                          receiptNo: payment?.receiptNo ?? null,
+                          invoiceNo: bill.invoiceNo ?? null,
+                          at: payment?.at ? new Date(payment.at) : new Date(),
                           clinic: letterhead,
-                          patient: { name: header.name, fileNumber: header.fileNumber },
+                          patient: {
+                            name: header.name,
+                            fileNumber: header.fileNumber,
+                            insurer: bill.payerName,
+                            memberNo: bill.memberNo ?? null,
+                          },
                           lines: bill.charges.map((c) => ({
                             description: c.description,
                             quantity: c.quantity,
+                            unitPrice: c.unitPrice,
+                            fullAmount: Math.round(c.unitPrice * c.quantity),
                             amount: c.patientShare,
                           })),
                           total: bill.patientShare,
                           insurer:
                             bill.insurerShare > 0
-                              ? { name: bill.payerName ?? '', amount: bill.insurerShare }
+                              ? {
+                                  name: bill.payerName ?? '',
+                                  amount: bill.insurerShare,
+                                  pct: bill.coveragePct ?? null,
+                                }
                               : null,
-                          payment: lastPayment
+                          // the method code: the receipt writes it in the reader's language
+                          payment: payment
                             ? {
-                                method: lastPayment.method,
-                                amount: lastPayment.amount,
-                                reference: lastPayment.reference,
+                                method: payment.method,
+                                amount: payment.amount,
+                                reference: payment.reference,
                               }
                             : null,
                           paid: bill.paid,
                           balance: bill.balance,
-                          cashier: user.name,
+                          cashier: payment?.cashier || user.name,
                         },
-                        {
-                          title: t('receipt.title'),
-                          statement: t('receipt.statement'),
-                          receiptNo: t('receipt.receiptNo'),
-                          invoiceNo: t('receipt.invoiceNo'),
-                          patient: t('rxDoc.patient'),
-                          file: t('rxDoc.file'),
-                          item: t('receipt.item'),
-                          amount: t('receipt.amount'),
-                          total: t('receipt.total'),
-                          insurerPays: (name) => t('receipt.insurerPays', { name }),
-                          patientPays: t('receipt.patientPays'),
-                          paidNow: t('receipt.paidNow'),
-                          reference: t('visit.payment.reference'),
-                          paidSoFar: t('receipt.paidSoFar'),
-                          balance: t('receipt.balance'),
-                          settled: t('receipt.settled'),
-                          cashier: t('receipt.cashier'),
-                          thanks: t('receipt.thanks'),
-                        },
+                        undefined,
+                        { printedBy: user.name },
                       )
                       if (!ok) setActionError(t('report.popupBlocked'))
                     }}
                     title={t('receipt.hint')}
                   >
                     <Printer size={16} aria-hidden="true" />
-                    {t(lastPayment ? 'receipt.print' : 'receipt.printStatement')}
+                    {t(
+                      lastPayment || bill.lastPayment ? 'receipt.print' : 'receipt.printStatement',
+                    )}
                   </Button>
                 )}
                 {isCashier && !closed && (

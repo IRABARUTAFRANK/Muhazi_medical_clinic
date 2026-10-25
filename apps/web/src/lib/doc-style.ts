@@ -1,4 +1,6 @@
 import { formatNumber, formatRwf } from '@mmc/shared'
+import sourceSansLatin from '@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2?url'
+import sourceSansLatinExt from '@fontsource-variable/source-sans-3/files/source-sans-3-latin-ext-wght-normal.woff2?url'
 
 /**
  * The clinic's document design standard (v1), shared by every printed or exported document:
@@ -9,8 +11,8 @@ import { formatNumber, formatRwf } from '@mmc/shared'
  * A builder composes its body from the pieces below and hands it to `documentHtml`, then
  * `openPrintWindow` writes it into a new window, waits for the fonts and images and prints.
  *
- * Type: Source Sans 3 (400, 600, 700) with a full system fallback, so a document prints the same
- * even offline. Colour: near-black text, one navy accent (letterhead only), red only for
+ * Type: Source Sans 3 (400, 600, 700), bundled with the website (no Google Fonts, so printing
+ * never depends on the internet), with a full system fallback. Colour: near-black text, one navy accent (letterhead only), red only for
  * ALLERGY / CRIT / AMENDED (always with the word and bold weight, so B&W prints keep the meaning).
  */
 
@@ -341,24 +343,48 @@ export function letterheadFrom(
 
 // ---------------------------------------------------------------- fonts
 
-const GOOGLE_FONTS_CSS =
-  'https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap'
-
 export const FONT_STACK = '"Source Sans 3", "Segoe UI", Arial, "Liberation Sans", sans-serif'
 
-/** Optional locally bundled woff2 files (absolute URLs); without them Google Fonts is used. */
+/** The Source Sans 3 woff2 files (variable weight 200–900), as absolute URLs. */
 export interface FontUrls {
   latin: string
   latinExt: string
 }
 
-function fontHead(local?: FontUrls): string {
-  if (local) {
-    const face = (url: string, range: string) =>
-      `@font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;src:url(${cssString(url)}) format("woff2-variations"),url(${cssString(url)}) format("woff2");unicode-range:${range}}`
-    return `<style>${face(local.latin, 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD')}${face(local.latinExt, 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF')}</style>`
+/**
+ * Absolute URL of a file served by the website. The print window is a fresh `about:blank`
+ * document, so a root-relative path would not resolve there. Outside a browser (a script that
+ * renders a document) the path is returned as it is.
+ */
+function absoluteUrl(path: string): string {
+  try {
+    if (typeof window === 'undefined' || !window.location?.origin) return path
+    return new URL(path, window.location.origin).href
+  } catch {
+    return path
   }
-  return `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${GOOGLE_FONTS_CSS}">`
+}
+
+/**
+ * The Source Sans 3 files bundled with the website (no internet needed to print): Vite copies
+ * them into the build and gives their served path. Every document uses them unless the caller
+ * passes other `fonts`.
+ */
+export function defaultFonts(): FontUrls {
+  return { latin: absoluteUrl(sourceSansLatin), latinExt: absoluteUrl(sourceSansLatinExt) }
+}
+
+const LATIN_RANGE =
+  'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'
+const LATIN_EXT_RANGE =
+  'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'
+
+/** The @font-face rules of the document; the system fonts of FONT_STACK stay as the fallback. */
+function fontHead(fonts: FontUrls = defaultFonts()): string {
+  const face = (url: string, range: string) =>
+    `@font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;src:url(${cssString(url)}) format("woff2-variations"),url(${cssString(url)}) format("woff2");unicode-range:${range}}`
+  const preload = `<link rel="preload" as="font" type="font/woff2" href="${esc(fonts.latin)}" crossorigin>`
+  return `${preload}<style>${face(fonts.latin, LATIN_RANGE)}${face(fonts.latinExt, LATIN_EXT_RANGE)}</style>`
 }
 
 // ---------------------------------------------------------------- base CSS
@@ -381,7 +407,7 @@ export interface PrintBaseOptions {
   /** Top-right running text from page 2 on (default: the title). */
   runningTitle?: string
   labels: DocLabels
-  /** Bundled font files; omitted = Google Fonts with the system fallback. */
+  /** Font files; omitted = the Source Sans 3 files bundled with the website (`defaultFonts`). */
   fonts?: FontUrls
 }
 

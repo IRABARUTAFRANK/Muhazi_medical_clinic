@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { CircleAlert, Plus, Printer, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf, formatTime } from '@mmc/shared'
+import { registrationText, useMyCredentials } from '@/lib/api/staff'
 import { openDispenseLabels } from '@/lib/dispense-label'
 import { allergyList } from '@/lib/doc-style'
 import { useLetterhead } from '@/lib/report-parts'
@@ -60,6 +61,7 @@ export function HandedStrip({
   const { t } = useTranslation()
   const letterhead = useLetterhead()
   const me = useSession((s) => s.user)
+  const creds = useMyCredentials(me?.id ?? '').data
   const all = useHanded((s) => s.groups)
   const update = useHanded((s) => s.update)
   const remove = useHanded((s) => s.remove)
@@ -76,7 +78,7 @@ export function HandedStrip({
         patient: g.patient,
         date: new Date(g.at),
         lines: g.lines,
-        dispensedBy: me ? { name: me.name } : null,
+        dispensedBy: me ? { name: me.name, registrationNo: registrationText(creds) } : null,
       },
       {
         title: t('pharmacy.labelTitle'),

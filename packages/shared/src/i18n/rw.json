@@ -743,7 +743,24 @@
       "deptNoService": "{{names}}: nta serivisi irashyirwaho. Zishyireho mu gice cy'Amashami.",
       "stationHint": "Izina ry'aho akorera rigaragara kuri ecran no ku matike. Rihe izina ry'icyumba (Amenyo 1, Icyumba cyo kubagiramo…): umurongo w'abarwayi be ufungukira aho.",
       "byRole": "Nta shami riratanga serivisi, bityo ibi bigenwa n'uruhare rwe. Nimuhitamo ishami rifite serivisi, ni ryo rizajya rigena.",
-      "byRoleDoctor": "Nta shami riratanga serivisi, bityo ibi bigenwa n'izina ry'aho akorera (Gusuzuma, keretse rivuga ikindi cyumba) n'icyo azobereyemo, cyongeraho serivisi yacyo (Muganga w'amenyo → Kuvura amenyo, Umuganga ubaga → Kubaga byoroheje). Nimuhitamo ishami rifite serivisi, ni ryo rizajya rigena."
+      "byRoleDoctor": "Nta shami riratanga serivisi, bityo ibi bigenwa n'izina ry'aho akorera (Gusuzuma, keretse rivuga ikindi cyumba) n'icyo azobereyemo, cyongeraho serivisi yacyo (Muganga w'amenyo → Kuvura amenyo, Umuganga ubaga → Kubaga byoroheje). Nimuhitamo ishami rifite serivisi, ni ryo rizajya rigena.",
+      "registrationNo": "Nomero y'iyandikwa mu rugaga rw'umwuga",
+      "registrationNoPh": "urugero: 2017/0458",
+      "registrationNoHint": "Nomero yatanzwe n'urugaga rw'umwuga. Yandikwa ku mpapuro z'imiti no kuri raporo.",
+      "registrationBody": "Yatanzwe na",
+      "registrationBodyPh": "urugero: RMDC, NCNM, NPC, RAHPC",
+      "registrationBodyNone": "Urugaga ntirwavuzwe",
+      "registrationBodies": {
+        "RMDC": "Urugaga rw'abaganga n'abaganga b'amenyo (RMDC)",
+        "NCNM": "Urugaga rw'abaforomo n'ababyaza (NCNM)",
+        "NPC": "Urugaga rw'abahanga mu by'imiti (NPC)",
+        "RAHPC": "Urugaga rw'abandi banyamwuga b'ubuzima (RAHPC)",
+        "other": "Urundi rugaga"
+      },
+      "registrationBodyOther": "Izina ry'urugaga",
+      "registrationHint": "Yandikwa munsi y'izina ku mpapuro z'imiti, raporo n'ibirango uyu mukozi asinyaho.",
+      "registrationDoctorHint": "Andika nomero y'urugaga ya muganga: itarandikwa, impapuro z'imiti zisohoka zifite umurongo w'ubusa wo kuyandikaho.",
+      "registrationPrinted": "Igaragara ku nyandiko gutya: {{reg}}"
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -776,7 +793,9 @@
       "deleteSelf": "Ntushobora gusiba konti yawe bwite. Undi muyobozi ni we ugomba kubikora.",
       "lastManager": "Uyu ni we muyobozi wenyine ukora mu ivuriro. Banza uhe undi mukozi uruhare rw'umuyobozi, hanyuma usibe iyi konti.",
       "alreadyDeleted": "Iyi konti yamaze gusibwa.",
-      "notFound": "Uyu mukozi ntabonetse. Ongera ufungure urupapuro."
+      "notFound": "Uyu mukozi ntabonetse. Ongera ufungure urupapuro.",
+      "registrationNo": "Nomero y'iyandikwa ntigomba kurenza inyuguti 40.",
+      "registrationBody": "Andika izina ry'urugaga (inyuguti 60 ntarengwa)."
     },
     "roles": {
       "receptionist": "Umwakira",
@@ -900,7 +919,8 @@
       "since_one": "yahagaritswe kuva ku wa {{date}} (umunsi {{count}})",
       "since_other": "yahagaritswe kuva ku wa {{date}} (iminsi {{count}})",
       "delete": "Siba konti…"
-    }
+    },
+    "registrationShort": "Nomero y'urugaga {{reg}}"
   },
   "login": {
     "title": "Abakozi: injira",
@@ -1511,7 +1531,10 @@
     "awaitingResult": "Bategereje igisubizo",
     "orderedBy": "byasabwe na {{name}}, {{when}}",
     "resultBy": "igisubizo cyatanzwe na {{name}}, {{when}}",
-    "seeVisit": "Reba uruzinduko"
+    "seeVisit": "Reba uruzinduko",
+    "allergiesNone": "Nta allergie izwi",
+    "allergiesNoneHint": "Kanda hano igihe umurwayi yabajijwe akaba nta allergie izwi afite. Bigaragara ku mpapuro z'imiti no kuri raporo.",
+    "allergiesNotRecorded": "Allergies ntiziranditswe"
   },
   "clinical": {
     "title": "Inyandiko z'ubuvuzi",
@@ -3590,7 +3613,8 @@
       "SC": "Tera",
       "topical": "Siga",
       "rectal": "Shyira"
-    }
+    },
+    "noLines": "Nta muti uranditswe muri uru ruzinduko."
   },
   "visitConfirm": {
     "title": "Gutangira uruzinduko rwa {{name}}?",
@@ -3790,7 +3814,8 @@
       "performedBy": "Byakozwe na",
       "validatedBy": "Byemejwe na",
       "notified": "Yamenyeshejwe: {{name}}, {{time}}",
-      "age": "Imyaka"
+      "age": "Imyaka",
+      "visitNo": "Nimero y’uruzinduko"
     }
   },
   "access": {

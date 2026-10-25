@@ -59,12 +59,21 @@ import {
   type EmployeeInput,
   type Position,
   positionIn,
+  registrationText,
 } from '@/lib/api/staff'
 import { SECTIONS, sectionName, type SectionId } from '@/lib/api/services'
 import { useConfirm } from '@/lib/confirm'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
 import { cn } from '@/lib/utils'
+import { RegistrationField } from './registration-field'
+import {
+  registrationError,
+  registrationForRole,
+  registrationInput,
+  registrationStart,
+  showsRegistration,
+} from './registration'
 
 type Translate = (key: string, opts?: Record<string, unknown>) => string
 
@@ -205,6 +214,8 @@ export function StaffPage({ user }: { user: StaffUser }) {
     if (/does not belong/i.test(m)) return t('staff.errors.roleDept')
     if (/choose a department/i.test(m)) return t('staff.errors.needDept')
     if (m === 'username') return t('staff.errors.username')
+    if (/registration number/i.test(m)) return t('staff.errors.registrationNo')
+    if (/registration body/i.test(m)) return t('staff.errors.registrationBody')
     if (m === 'pin') return t('staff.errors.pin')
     if (m === 'email' || /valid e-mail/i.test(m)) return t('staff.errors.email')
     if (/delete your own account/i.test(m)) return t('staff.errors.deleteSelf')
@@ -524,6 +535,8 @@ export function StaffPage({ user }: { user: StaffUser }) {
                               <span className="text-ink-3 text-xs tabular-nums">
                                 {[
                                   e.staffId,
+                                  registrationText(e) &&
+                                    t('staff.registrationShort', { reg: registrationText(e) }),
                                   e.username,
                                   e.email,
                                   e.lastSignInAt
@@ -985,6 +998,10 @@ function EmployeeForm({
     setMemberships((list) => list.map((m, j) => (j === i ? { ...m, ...patch } : m)))
   const [station, setStation] = useState(employee?.station ?? '')
   const [specialty, setSpecialty] = useState(employee?.specialty ?? '')
+  // the professional council number printed on what the person signs (0084)
+  const [registration, setRegistration] = useState(() =>
+    registrationStart(employee, employee?.role ?? 'receptionist'),
+  )
   const [language, setLanguage] = useState<DbLang>(employee?.language ?? 'kin')
   const [pin, setPin] = useState(generatePin)
   const [error, setError] = useState<string | null>(null)
@@ -1014,6 +1031,8 @@ function EmployeeForm({
     if (new Set(chosen.map((m) => m.departmentId)).size !== chosen.length)
       return setError(t('staff.errors.deptTwice'))
     if (isNew && !PIN_RE.test(pin)) return setError(t('staff.errors.pin'))
+    const regError = registrationError(registration)
+    if (regError) return setError(t(regError))
     onSubmit(
       {
         fullName,
@@ -1025,6 +1044,7 @@ function EmployeeForm({
         language,
         phone,
         specialty,
+        ...registrationInput(registration, employee),
       },
       isNew ? pin : undefined,
     )
@@ -1102,6 +1122,7 @@ function EmployeeForm({
                 onChange={(e) => {
                   const r = e.target.value as DbRole
                   setRole(r)
+                  setRegistration((v) => registrationForRole(v, r))
                   // departments that do not take this role are dropped
                   setMemberships((list) =>
                     list.filter((m) => {
@@ -1152,6 +1173,9 @@ function EmployeeForm({
               </p>
             </div>
           </div>
+          {showsRegistration(role, registration) && (
+            <RegistrationField role={role} value={registration} onChange={setRegistration} />
+          )}
           <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
             <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
               {t('staff.form.departments')}

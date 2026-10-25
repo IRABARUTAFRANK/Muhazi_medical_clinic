@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",
+    "@fontsource-variable/source-sans-3": "5.3.0",
     "@mmc/shared": "workspace:*",
     "@supabase/supabase-js": "2.118.0",
     "@tanstack/react-query": "5.104.3",

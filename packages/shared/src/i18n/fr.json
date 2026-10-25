@@ -739,7 +739,24 @@
       "deptNoService": "{{names}} : aucun service défini pour l'instant. Définissez-les dans l'onglet Services.",
       "stationHint": "Le nom du poste s'affiche sur les écrans et les tickets. Donnez le nom de la salle (Dentaire 1, Bloc…) : la file de la personne s'ouvre à ce poste.",
       "byRole": "Aucun département ne donne encore de service : cela vient donc du rôle. Dès qu'un département avec des services est choisi, c'est lui qui décide.",
-      "byRoleDoctor": "Aucun département ne donne encore de service : cela vient donc du nom du poste (Consultation, sauf s'il nomme une autre salle) et de la spécialité, qui ajoute son service (Dentiste → Soins dentaires, Chirurgien → Petite chirurgie). Dès qu'un département avec des services est choisi, c'est lui qui décide."
+      "byRoleDoctor": "Aucun département ne donne encore de service : cela vient donc du nom du poste (Consultation, sauf s'il nomme une autre salle) et de la spécialité, qui ajoute son service (Dentiste → Soins dentaires, Chirurgien → Petite chirurgie). Dès qu'un département avec des services est choisi, c'est lui qui décide.",
+      "registrationNo": "N° d'inscription à l'ordre professionnel",
+      "registrationNoPh": "ex. 2017/0458",
+      "registrationNoHint": "Le numéro donné par l'ordre professionnel. Il est imprimé sur les ordonnances et les comptes rendus.",
+      "registrationBody": "Délivré par",
+      "registrationBodyPh": "ex. RMDC, NCNM, NPC, RAHPC",
+      "registrationBodyNone": "Ordre non précisé",
+      "registrationBodies": {
+        "RMDC": "Conseil médical et dentaire (RMDC)",
+        "NCNM": "Conseil des infirmiers et sages-femmes (NCNM)",
+        "NPC": "Conseil de la pharmacie (NPC)",
+        "RAHPC": "Conseil des professions paramédicales (RAHPC)",
+        "other": "Autre ordre"
+      },
+      "registrationBodyOther": "Nom de l'ordre",
+      "registrationHint": "Imprimé sous le nom sur les ordonnances, rapports et étiquettes que cette personne signe.",
+      "registrationDoctorHint": "Ajoutez le numéro d'ordre du médecin : tant qu'il manque, les ordonnances impriment une ligne vide pour l'écrire.",
+      "registrationPrinted": "Imprimé sur les documents ainsi : {{reg}}"
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -772,7 +789,9 @@
       "deleteSelf": "Vous ne pouvez pas supprimer votre propre compte. Un autre gestionnaire doit le faire.",
       "lastManager": "C'est le seul gestionnaire actif de la clinique. Donnez d'abord le rôle de gestionnaire à un autre employé, puis supprimez ce compte.",
       "alreadyDeleted": "Ce compte est déjà supprimé.",
-      "notFound": "Employé introuvable. Actualisez la page."
+      "notFound": "Employé introuvable. Actualisez la page.",
+      "registrationNo": "Le numéro d'inscription ne peut dépasser 40 caractères.",
+      "registrationBody": "Écrivez le nom de l'ordre (60 caractères au plus)."
     },
     "roles": {
       "receptionist": "Réceptionniste",
@@ -896,7 +915,8 @@
       "since_one": "désactivé depuis le {{date}} ({{count}} jour)",
       "since_other": "désactivé depuis le {{date}} ({{count}} jours)",
       "delete": "Supprimer le compte…"
-    }
+    },
+    "registrationShort": "Inscr. {{reg}}"
   },
   "login": {
     "title": "Connexion du personnel",
@@ -1811,7 +1831,10 @@
     "awaitingResult": "En attente du résultat",
     "orderedBy": "demandé par {{name}}, {{when}}",
     "resultBy": "résultat par {{name}}, {{when}}",
-    "seeVisit": "Voir la visite"
+    "seeVisit": "Voir la visite",
+    "allergiesNone": "Aucune allergie connue",
+    "allergiesNoneHint": "Cochez quand le patient a été interrogé et n'a aucune allergie connue. C'est imprimé sur les ordonnances et les comptes rendus.",
+    "allergiesNotRecorded": "Allergies pas encore enregistrées"
   },
   "clinical": {
     "title": "Dossier clinique",
@@ -3581,7 +3604,8 @@
       "SC": "Injecter",
       "topical": "Appliquer",
       "rectal": "Introduire"
-    }
+    },
+    "noLines": "Aucun médicament n'est encore prescrit pour cette visite."
   },
   "visitConfirm": {
     "title": "Commencer une visite pour {{name}} ?",
@@ -3781,7 +3805,8 @@
       "performedBy": "Réalisé par",
       "validatedBy": "Validé par",
       "notified": "Prévenu : {{name}}, {{time}}",
-      "age": "Âge"
+      "age": "Âge",
+      "visitNo": "N° de visite"
     }
   },
   "access": {

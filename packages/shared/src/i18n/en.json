@@ -739,7 +739,24 @@
       "deptNoService": "{{names}}: no service set yet. Set its services in Departments.",
       "stationHint": "The desk name shows on screens and tickets. Name it after the room (Dental 1, Theatre…): the person's queue opens at that desk.",
       "byRole": "No department gives a service yet, so this comes from the role. Once a department with services is chosen, the department decides.",
-      "byRoleDoctor": "No department gives a service yet, so this comes from the desk name (Consultation unless it names another room) and the specialty, which adds its section (Dentist → Dental, Surgeon → Minor surgery). Once a department with services is chosen, the department decides."
+      "byRoleDoctor": "No department gives a service yet, so this comes from the desk name (Consultation unless it names another room) and the specialty, which adds its section (Dentist → Dental, Surgeon → Minor surgery). Once a department with services is chosen, the department decides.",
+      "registrationNo": "Professional registration no.",
+      "registrationNoPh": "e.g. 2017/0458",
+      "registrationNoHint": "The number given by the professional council. It is printed on prescriptions and reports.",
+      "registrationBody": "Issued by",
+      "registrationBodyPh": "e.g. RMDC, NCNM, NPC, RAHPC",
+      "registrationBodyNone": "Council not stated",
+      "registrationBodies": {
+        "RMDC": "Medical and Dental Council (RMDC)",
+        "NCNM": "Nursing and Midwifery Council (NCNM)",
+        "NPC": "Pharmacy Council (NPC)",
+        "RAHPC": "Allied Health Professions Council (RAHPC)",
+        "other": "Other council"
+      },
+      "registrationBodyOther": "Name of the council",
+      "registrationHint": "Printed under the name on the prescriptions, reports and labels this person signs.",
+      "registrationDoctorHint": "Add the doctor's council number: until it is filled in, prescriptions print a blank line for it.",
+      "registrationPrinted": "Printed on documents as: {{reg}}"
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -772,7 +789,9 @@
       "deleteSelf": "You cannot delete your own account. Another manager must do it.",
       "lastManager": "This is the clinic's only active manager. Give another employee the Manager role first, then delete this account.",
       "alreadyDeleted": "This account is already deleted.",
-      "notFound": "This employee was not found. Refresh the page."
+      "notFound": "This employee was not found. Refresh the page.",
+      "registrationNo": "The registration number can have at most 40 characters.",
+      "registrationBody": "Write the name of the council (at most 60 characters)."
     },
     "roles": {
       "receptionist": "Receptionist",
@@ -896,7 +915,8 @@
       "since_one": "deactivated since {{date}} ({{count}} day)",
       "since_other": "deactivated since {{date}} ({{count}} days)",
       "delete": "Delete account…"
-    }
+    },
+    "registrationShort": "Reg. {{reg}}"
   },
   "login": {
     "title": "Staff sign in",
@@ -1811,7 +1831,10 @@
     "awaitingResult": "Waiting for result",
     "orderedBy": "requested by {{name}}, {{when}}",
     "resultBy": "result by {{name}}, {{when}}",
-    "seeVisit": "See the visit"
+    "seeVisit": "See the visit",
+    "allergiesNone": "No known allergies",
+    "allergiesNoneHint": "Tick it when the patient was asked and has no known allergy. It is printed on prescriptions and reports.",
+    "allergiesNotRecorded": "Allergies not recorded yet"
   },
   "clinical": {
     "title": "Clinical record",
@@ -3581,7 +3604,8 @@
       "SC": "Inject",
       "topical": "Apply",
       "rectal": "Insert"
-    }
+    },
+    "noLines": "Nothing is prescribed for this visit yet."
   },
   "visitConfirm": {
     "title": "Start a visit for {{name}}?",
@@ -3781,7 +3805,8 @@
       "performedBy": "Performed by",
       "validatedBy": "Validated by",
       "notified": "Notified: {{name}}, {{time}}",
-      "age": "Age"
+      "age": "Age",
+      "visitNo": "Visit no."
     }
   },
   "access": {

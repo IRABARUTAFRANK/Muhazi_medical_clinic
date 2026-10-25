@@ -21,7 +21,9 @@ import { useLabActions, type LabOrder, type TestStatus } from '@/lib/api/lab'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/confirm'
 import { openMedicalReport } from '@/lib/medical-report'
-import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
+import { useLetterhead, useMedicalReportLabels, usePrintedBy } from '@/lib/report-parts'
+import { allergiesForDoc } from '@/lib/api/patients'
+import { registrationText } from '@/lib/api/staff'
 
 const STATUS_LOOK: Record<TestStatus, { tint: Tint; icon: LucideIcon }> = {
   ordered: { tint: 'amber', icon: Hourglass },
@@ -73,8 +75,16 @@ export function LabOrderRow({
   const [why, setWhy] = useState('')
   const letterhead = useLetterhead()
   const labels = useMedicalReportLabels()
-  // The result slip the patient (or the doctor) takes away: the medical report with this test only.
+  const printedBy = usePrintedBy()
+  // The result slip the patient (or the doctor) takes away: the result report of this test only.
   const printSlip = () => {
+    // who entered (or validated) the result, with title and registration (0084; absent before)
+    const person = o.resultByPerson ?? null
+    const benchTitle =
+      o.category === 'imaging' ? t('staff.roles.sonographer') : t('staff.roles.lab_tech')
+    const personTitle = person
+      ? person.specialty?.trim() || t(`staff.roles.${person.role}`, { defaultValue: benchTitle })
+      : benchTitle
     const ok = openMedicalReport(
       {
         kind: 'visit',
@@ -83,13 +93,25 @@ export function LabOrderRow({
         patient: {
           name: o.patient,
           fileNumber: o.fileNumber,
+          // only read when the birth date and sex are missing
           ageSex: [ageOf(o.birthDate), o.sex === 'female' ? 'F' : o.sex === 'male' ? 'M' : '']
             .filter(Boolean)
             .join(' '),
+          birthDate: o.birthDate,
+          sex: t(`register.sexes.${o.sex}`),
+          phone: o.phone ?? null,
+          insurer: o.insurer ?? null,
+          memberNo: o.memberNo ?? null,
+          weightKg: o.weightKg ?? null,
+          allergies: allergiesForDoc(o),
+          bloodGroup: o.bloodGroup ?? null,
         },
         visits: [
           {
-            date: formatDate(new Date(o.orderedAt)),
+            date: formatDate(new Date(o.visitAt ?? o.orderedAt)),
+            at: o.visitAt ?? null,
+            reference: o.visitReference ?? null,
+            // "Requested by" on the result report
             doctor: o.orderedBy,
             vitals: [],
             notes: o.reason ? [o.reason] : [],
@@ -107,9 +129,26 @@ export function LabOrderRow({
           },
         ],
         author: {
-          name: o.resultBy ?? '',
-          title:
-            o.category === 'imaging' ? t('staff.roles.sonographer') : t('staff.roles.lab_tech'),
+          name: person?.name ?? o.resultBy ?? '',
+          title: personTitle,
+          registrationNo: registrationText(person),
+        },
+        printedBy: printedBy || null,
+        lab: {
+          reason: o.reason,
+          requestedAt: o.orderedAt,
+          reportedAt: o.resultAt,
+          performedAt: o.resultAt,
+          // a result not verified yet prints as preliminary, with "Validated by" left blank
+          validatedBy:
+            o.verified && (person || o.resultBy)
+              ? {
+                  name: person?.name ?? o.resultBy ?? '',
+                  title: personTitle,
+                  registrationNo: registrationText(person),
+                }
+              : null,
+          validatedAt: o.verified ? o.resultAt : null,
         },
       },
       labels,
