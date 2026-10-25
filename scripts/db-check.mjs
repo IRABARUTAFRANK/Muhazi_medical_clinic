@@ -6939,6 +6939,208 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0084: sign-in trace reports + 0079 repair
+// When a tab loses its signed-in person without the person choosing it, the browser sends its
+// sign-in trace (report_client_event): visitors too, since the sign-in may be gone. Only the
+// manager reads them; nobody writes the table directly. The 0081 gate lets the report through.
+const report84 = (kind, detail) =>
+  db.query(`select report_client_event($1, $2::jsonb)`, [kind, JSON.stringify(detail)])
+const count84 = async (where = 'true', params = []) => {
+  await asAdmin()
+  return (await one(`select count(*)::int as n from client_event where ${where}`, params)).n
+}
+await step('0084: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261124120000_signin_trace_and_repair.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step('0084: a visitor (the sign-in already gone) stores a report', async () => {
+  const before = await count84()
+  await as(null, 'anon', '')
+  await report84('signed_out_unexpected', {
+    username: 'j.uwimana',
+    trace: ['2026-10-25T08:00:00.000Z [ab12cd34] auth.event {"event":"SIGNED_OUT"}'],
+  })
+  await asAdmin()
+  const r = await one(`select * from client_event order by id desc limit 1`)
+  if ((await count84()) !== before + 1 || r.user_id !== null || r.username !== 'j.uwimana')
+    throw new Error(JSON.stringify(r))
+  if (r.kind !== 'signed_out_unexpected' || r.detail.trace.length !== 1)
+    throw new Error(JSON.stringify(r))
+  return 'stored, no user id, the username the tab held'
+})
+await step('0084: a signed-in person stores a report with their id', async () => {
+  await asApproved(staff.nurse)
+  await report84('verify_failed_after_code', { username: 'someone-else', trace: [] })
+  // an unapproved (PIN only) session may report too
+  await as81(staff.receptionist, crypto.randomUUID(), 'password')
+  await report84('initial_session_missing', { trace: [] })
+  await asAdmin()
+  const rows = (
+    await db.query(`select user_id, username, kind from client_event order by id desc limit 2`)
+  ).rows
+  if (
+    rows[1].user_id !== staff.nurse ||
+    rows[1].kind !== 'verify_failed_after_code' ||
+    rows[0].user_id !== staff.receptionist ||
+    rows[0].username !== null
+  )
+    throw new Error(JSON.stringify(rows))
+  return 'user id from the sign-in; username as said by the tab'
+})
+await expectError(
+  '0084: a report over 8 KB is refused',
+  async () => {
+    await as(null, 'anon', '')
+    await report84('signed_out_unexpected', { trace: ['x'.repeat(8300)] })
+  },
+  /too large/i,
+)
+await expectError(
+  '0084: an unknown kind is refused',
+  async () => {
+    await as(null, 'anon', '')
+    await report84('Robert; drop table', {})
+  },
+  /unknown kind/i,
+)
+await step('0084: the manager reads the reports; other staff and visitors do not', async () => {
+  await asApproved(staff.manager)
+  const manager = (await one(`select count(*)::int as n from client_event`)).n
+  await asApproved(staff.nurse)
+  const nurse = (await one(`select count(*)::int as n from client_event`)).n
+  let anon = 'read'
+  try {
+    await as(null, 'anon', '')
+    await db.query(`select count(*) from client_event`)
+  } catch (e) {
+    anon = /permission denied/i.test(String(e.message)) ? 'refused' : String(e.message)
+  }
+  await asAdmin()
+  if (manager < 3 || nurse !== 0 || anon !== 'refused')
+    throw new Error(JSON.stringify({ manager, nurse, anon }))
+  return `manager ${manager} reports; nurse 0; visitors refused`
+})
+await step('0084: nobody writes the reports directly (insert, update, delete)', async () => {
+  const tries = [
+    [() => as(null, 'anon', ''), `insert into client_event (kind) values ('x')`],
+    [() => asApproved(staff.nurse), `insert into client_event (kind) values ('x')`],
+    [() => asApproved(staff.manager), `insert into client_event (kind) values ('x')`],
+    [() => asApproved(staff.manager), `update client_event set kind = 'x'`],
+    [() => asApproved(staff.manager), `delete from client_event`],
+  ]
+  const passed = []
+  for (const [who, sql] of tries) {
+    await who()
+    try {
+      await db.query(sql)
+      passed.push(sql)
+    } catch (e) {
+      if (!/permission denied/i.test(String(e.message))) passed.push(`${sql}: ${e.message}`)
+    }
+  }
+  await asAdmin()
+  if (passed.length) throw new Error(JSON.stringify(passed))
+  return `${tries.length} direct writes refused`
+})
+await step(
+  '0084: the gate lets the report through for an unapproved or ended session; nothing else',
+  async () => {
+    const sidEnded = crypto.randomUUID()
+    await as81(staff.nurse, sidEnded, 'otp')
+    await db.query(`select record_sign_in('code')`)
+    await db.query(`select end_session('test')`)
+    const bad = []
+    for (const [sid, method] of [
+      [crypto.randomUUID(), 'password'],
+      [sidEnded, 'otp'],
+    ]) {
+      await as81(staff.nurse, sid, method)
+      for (const p of ['/rpc/report_client_event', '/rest/v1/rpc/report_client_event'])
+        if ((await gate81(p)) !== 'pass') bad.push(`${method} ${p}`)
+      for (const p of [
+        '/rpc/report_client_event_x',
+        '/rpc/report_client_events',
+        '/client_event',
+        '/rpc/find_patients',
+        '/patient',
+      ])
+        if (!refused81(await gate81(p))) bad.push(`${method} ${p} passed`)
+    }
+    // the sign-in and sign-out calls still pass as before
+    await as81(staff.nurse, crypto.randomUUID(), 'password')
+    for (const p of ['/rpc/record_sign_in', '/rpc/end_session', '/rpc/session_status'])
+      if ((await gate81(p)) !== 'pass') bad.push(p)
+    await asAdmin()
+    if (bad.length) throw new Error(JSON.stringify(bad))
+    return 'report passes (not approved, ended); data and look-alike names refused'
+  },
+)
+await step(
+  '0084: extend_this_device and signed_in_with_code are there and work as in 0079',
+  async () => {
+    await asAdmin()
+    const rights = await one(
+      `select bool_or(has_function_privilege('anon', p, 'execute')) as anon_any,
+            bool_and(has_function_privilege('authenticated', p, 'execute')) as staff_all
+     from unnest(array['signed_in_with_code()', 'extend_this_device(text)']::regprocedure[]) p`,
+    )
+    const key = '8'.repeat(40)
+    await as(staff.nurse)
+    const code = (await one(`select signed_in_with_code() as c`)).c
+    await one(`select trust_this_device($1) as u`, [key])
+    await asAdmin()
+    await db.query(
+      `update trusted_device set expires_at = now() + interval '1 hour'
+     where token_hash = encode(sha256(convert_to($1, 'UTF8')), 'hex')`,
+      [key],
+    )
+    await as(staff.nurse)
+    const extended = (await one(`select extend_this_device($1) as e`, [key])).e
+    const unknown = (await one(`select extend_this_device($1) as e`, ['9'.repeat(40)])).e
+    await asPinOnly(staff.nurse)
+    const pin = (await one(`select signed_in_with_code() as c`)).c
+    await as(staff.receptionist)
+    const foreign = (await one(`select extend_this_device($1) as e`, [key])).e
+    await asAdmin()
+    const hours = (await one(`select session_hours() as h`)).h
+    const left = (new Date(extended).getTime() - Date.now()) / 3_600_000
+    if (
+      rights.anon_any ||
+      !rights.staff_all ||
+      !code ||
+      pin ||
+      unknown !== null ||
+      foreign !== null ||
+      Math.abs(left - hours) > 0.05
+    )
+      throw new Error(JSON.stringify({ rights, code, pin, unknown, foreign, left, hours }))
+    return `code: true, PIN: false; own key extended to now + ${hours} h; unknown or foreign key: null`
+  },
+)
+await step('0084: more than 300 reports in an hour are refused (abuse cap)', async () => {
+  await asAdmin()
+  const before = await count84()
+  await db.query(
+    `insert into client_event (kind, detail) select 'flood', '{}'::jsonb from generate_series(1, 300)`,
+  )
+  let refused = false
+  try {
+    await as(null, 'anon', '')
+    await report84('signed_out_unexpected', { trace: [] })
+  } catch (e) {
+    refused = /too many/i.test(String(e.message))
+  }
+  await asAdmin()
+  const after = await count84()
+  await db.query(`delete from client_event where kind = 'flood'`)
+  if (!refused || after !== before + 300)
+    throw new Error(JSON.stringify({ refused, before, after }))
+  return 'the 301st report in the hour is refused'
+})
+
 finish()
 
 function finish() {

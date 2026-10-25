@@ -9,7 +9,16 @@ import {
   type StaffUser,
 } from '@mmc/shared'
 import { sampleSessionHours } from '@/lib/api/settings'
-import { onSessionRefused, pinIsRight, staffEmail, supabase } from '@/lib/supabase'
+import {
+  onSessionRefused,
+  pinIsRight,
+  reportClientEvent,
+  signOutAuth,
+  staffEmail,
+  supabase,
+  tabHasSession,
+} from '@/lib/supabase'
+import { describeSession, isoTime, shortStack, trace } from '@/lib/sign-in-trace'
 import { queryClient } from '@/lib/query-client'
 
 const HOME_ROLES: readonly string[] = [
@@ -342,6 +351,7 @@ async function signInTrusted(
   const seen = readTrustSeen(username)
   // A key without activity noted (kept from before the session rule), or not used for N hours.
   if (!seen || Date.now() - seen.at >= seen.hours * HOUR_MS) {
+    trace('signInTrusted.keyTooOld')
     writeTrust(username, null)
     return null
   }
@@ -351,24 +361,29 @@ async function signInTrusted(
   })
   if (!email) return { reason: 'invalid' }
   const { error } = await supabase!.auth.signInWithPassword({ email, password: pin })
-  if (error) return { reason: /banned/i.test(error.message) ? 'inactive' : 'invalid' }
+  if (error) {
+    trace('signInTrusted.pin', { ok: false, error: error.message })
+    return { reason: /banned/i.test(error.message) ? 'inactive' : 'invalid' }
+  }
   const { data: until, error: trustError } = await supabase!.rpc('use_trusted_device', {
     p_token: token,
   })
   // The key's end on the server; `true` from an older database means "the key is valid".
   const valid =
     !trustError && (until === true || (typeof until === 'string' && Date.parse(until) > Date.now()))
+  trace('signInTrusted.key', { valid, error: trustError?.code })
   if (!valid) {
     // Ended, revoked or unknown: forget the key, ask for a code.
     writeTrust(username, null)
-    await supabase!.auth.signOut({ scope: 'local' })
+    await signOutAuth('trusted key refused')
     return null
   }
   const { data: profile, error: rpcError } = await supabase!.rpc('record_sign_in', {
     p_device: deviceLabel(),
   })
+  trace('signInTrusted.recordSignIn', { ok: !rpcError && !!profile, error: rpcError?.code })
   if (rpcError || !profile) {
-    await supabase!.auth.signOut({ scope: 'local' })
+    await signOutAuth('trusted record_sign_in failed')
     return { reason: /deactivated/i.test(rpcError?.message ?? '') ? 'inactive' : 'invalid' }
   }
   return { profile: profile as ProfileJson }
@@ -433,7 +448,7 @@ async function requestCodeDirect(
     options: { shouldCreateUser: false },
   })
   if (otpError) {
-    await supabase!.auth.signOut({ scope: 'local' })
+    await signOutAuth('code request failed')
     return { ok: false, reason: 'otp' }
   }
   return { ok: true, email }
@@ -455,6 +470,7 @@ async function checkTemporaryPin(
   })
   if (!email) return { reason: 'invalid' }
   const { data: auth, error } = await supabase!.auth.signInWithPassword({ email, password: pin })
+  trace('signIn.pin', { ok: !error && !!auth.user, error: error?.message })
   // Wrong PIN or blocked account: let the usual path answer, so the server keeps counting
   // failed attempts and gives the same messages as before.
   if (error || !auth.user) return null
@@ -470,14 +486,15 @@ async function checkTemporaryPin(
     temporary = me?.must_change_pin === true
     askError = readError
   }
+  trace('signIn.temporaryPin', { temporary: temporary === true, error: askError?.code })
   if (askError) {
     // Unknown: never treat it as "not a temporary PIN"; the person simply tries again.
-    await supabase!.auth.signOut({ scope: 'local' })
+    await signOutAuth('temporary PIN check failed')
     return { reason: 'error' }
   }
   if (temporary === true) return { email: email as string }
   // Not a temporary PIN: drop this session, the usual same-browser / e-mailed-code path follows.
-  await supabase!.auth.signOut({ scope: 'local' })
+  await signOutAuth('PIN checked')
   return null
 }
 
@@ -628,15 +645,20 @@ export const useSession = create<SessionState>()(
           set({ pending: { staffId: id, username: name, email, sampleUser: user } })
           return { ok: true, step: 'otp', email }
         }
+        trace('signIn.start', { staffId: id, username: name })
         // A PIN session left by an earlier try is never approved: the checks below go without it.
         await dropUnapprovedSession()
         const first = await checkTemporaryPin(id, name, pin)
-        if (first && 'reason' in first) return { ok: false, reason: first.reason }
+        if (first && 'reason' in first) {
+          trace('signIn.done', { ok: false, reason: first.reason })
+          return { ok: false, reason: first.reason }
+        }
         if (first) {
           set({
             pending: { staffId: id, username: name, email: first.email, pin, needsNewPin: true },
           })
           rememberExpected(name)
+          trace('signIn.done', { ok: true, step: 'new-pin' })
           return { ok: true, step: 'new-pin' }
         }
         const trusted = await signInTrusted(id, name, pin)
@@ -646,18 +668,34 @@ export const useSession = create<SessionState>()(
           queryClient.clear()
           set(opened(user, hours))
           markTrustSeen(user.username, hours)
+          trace('signIn.done', { ok: true, step: 'done (browser key)' })
           return { ok: true, step: 'done', user }
         }
-        if (trusted && 'reason' in trusted) return { ok: false, reason: trusted.reason }
+        if (trusted && 'reason' in trusted) {
+          trace('signIn.done', { ok: false, reason: trusted.reason })
+          return { ok: false, reason: trusted.reason }
+        }
         let outcome = await requestCodeViaFunction(id, name, pin)
+        trace('signIn.codeRequest', {
+          via: 'function',
+          ok: outcome.ok,
+          ...(outcome.ok ? {} : { reason: outcome.reason }),
+        })
         if (!outcome.ok && outcome.reason === 'unavailable') {
           outcome = await requestCodeDirect(id, name, pin)
+          trace('signIn.codeRequest', {
+            via: 'direct',
+            ok: outcome.ok,
+            ...(outcome.ok ? {} : { reason: outcome.reason }),
+          })
         }
         if (!outcome.ok) {
+          trace('signIn.done', { ok: false, reason: outcome.reason })
           return { ok: false, reason: outcome.reason === 'unavailable' ? 'error' : outcome.reason }
         }
         set({ pending: { staffId: id, username: name, email: outcome.email, pin } })
         rememberExpected(name)
+        trace('signIn.done', { ok: true, step: 'otp' })
         return { ok: true, step: 'otp', email: outcome.email }
       },
 
@@ -665,10 +703,17 @@ export const useSession = create<SessionState>()(
         const pending = get().pending
         if (!pending?.needsNewPin || !supabase) return 'error'
         if (next === pending.pin) return 'same'
+        trace('setFirstPin.start')
         const { error } = await supabase.auth.updateUser({ password: next })
-        if (error) return /same|different/i.test(error.message) ? 'same' : 'error'
+        if (error) {
+          trace('setFirstPin.done', { ok: false, step: 'updateUser', error: error.message })
+          return /same|different/i.test(error.message) ? 'same' : 'error'
+        }
         const { error: markError } = await supabase.rpc('mark_pin_changed')
-        if (markError) return 'error'
+        if (markError) {
+          trace('setFirstPin.done', { ok: false, step: 'mark_pin_changed', error: markError.code })
+          return 'error'
+        }
         // The new PIN is set; the e-mailed code now approves this first sign-in.
         let outcome = await requestCodeViaFunction(pending.staffId, pending.username, next)
         if (!outcome.ok && outcome.reason === 'unavailable') {
@@ -679,12 +724,16 @@ export const useSession = create<SessionState>()(
           outcome = otpError ? { ok: false, reason: 'otp' } : { ok: true, email: pending.email }
         }
         set({ pending: { ...pending, pin: next, needsNewPin: false } })
+        trace('setFirstPin.done', { ok: true, codeSent: outcome.ok })
         return outcome.ok ? 'ok' : 'otp'
       },
 
       verifyOtp: async (code) => {
         const pending = get().pending
-        if (!pending) return { ok: false, reason: 'expired' }
+        if (!pending) {
+          trace('verifyOtp.noPending')
+          return { ok: false, reason: 'expired' }
+        }
         const token = code.replace(/\D/g, '')
         if (!supabase) {
           if (token.length !== 6 || !pending.sampleUser) return { ok: false, reason: 'invalid' }
@@ -692,10 +741,16 @@ export const useSession = create<SessionState>()(
           set(opened(pending.sampleUser, sampleSessionHours()))
           return { ok: true, user: pending.sampleUser }
         }
-        const { error } = await supabase.auth.verifyOtp({
+        trace('verifyOtp.start', { username: pending.username })
+        const { data: verified, error } = await supabase.auth.verifyOtp({
           email: pending.email,
           token,
           type: 'email',
+        })
+        trace('verifyOtp.code', {
+          ok: !error,
+          error: error?.message,
+          session: describeSession(verified?.session),
         })
         if (error) {
           return { ok: false, reason: /expired/i.test(error.message) ? 'expired' : 'invalid' }
@@ -704,8 +759,22 @@ export const useSession = create<SessionState>()(
         const { data: profile, error: rpcError } = await supabase.rpc('record_sign_in', {
           p_device: deviceLabel(),
         })
+        trace('verifyOtp.recordSignIn', {
+          ok: !rpcError && !!profile,
+          error: rpcError?.code,
+          hint: rpcError?.hint,
+          message: rpcError?.message,
+        })
         if (rpcError || !profile) {
-          await supabase.auth.signOut({ scope: 'local' })
+          // The code was right but the sign-in did not open here: the server may still have
+          // approved it (an answer lost on the way). Support gets the trace.
+          void reportClientEvent('verify_failed_after_code', {
+            username: pending.username,
+            staffId: pending.staffId,
+            error: rpcError?.code ?? 'no profile',
+            hint: rpcError?.hint,
+          })
+          await signOutAuth('record_sign_in failed')
           set({ pending: null })
           return {
             ok: false,
@@ -721,6 +790,7 @@ export const useSession = create<SessionState>()(
         await trustThisBrowser(user.username, hours)
         queryClient.clear()
         set(opened(user, hours))
+        trace('verifyOtp.done', { ok: true, hours, browserKey: readTrust(user.username) != null })
         return { ok: true, user }
       },
 
@@ -748,7 +818,8 @@ export const useSession = create<SessionState>()(
       },
 
       cancelSignIn: () => {
-        if (supabase && get().pending) void supabase.auth.signOut({ scope: 'local' })
+        trace('cancelSignIn', { pending: get().pending != null })
+        if (supabase && get().pending) void signOutAuth('sign-in cancelled')
         set({ pending: null })
       },
 
@@ -843,7 +914,8 @@ export const useSession = create<SessionState>()(
         // the same person's other tabs in this browser. Other devices are not touched. The app
         // forgets the user first, so nothing more is shown or recorded under their name.
         const username = get().user?.username
-        const token = forgetTab(reason, get, set)
+        trace('signOut', { reason, user: username, by: shortStack(3) })
+        const token = forgetTab(reason, get, set, 'signOut')
         if (username && SHARED_SIGN_OUTS.includes(reason)) {
           tellOtherTabs({ kind: 'signedOut', username, reason })
         }
@@ -852,7 +924,7 @@ export const useSession = create<SessionState>()(
           if (token) await revokeDevice(token)
           // ... and this sign-in, in the database: a copied access token no longer works.
           await endServerSession(reason)
-          await withTimeout(supabase.auth.signOut({ scope: 'local' }))
+          await withTimeout(signOutAuth(`signOut ${reason}`))
         }
       },
     }),
@@ -908,8 +980,10 @@ function forgetTab(
   reason: SignOutReason,
   get: () => SessionState,
   set: (p: Partial<SessionState>) => void,
+  caller: string,
 ): string | null {
   const { user, lastActiveAt, sessionHours } = get()
+  trace('forgetTab', { reason, caller, user: user?.username, pending: get().pending != null })
   if (!user) {
     set({ locked: false, pending: null, unlockFailures: 0 })
     return null
@@ -979,34 +1053,58 @@ let arrivedByMagicLink =
 const sb = supabase
 if (sb) {
   sb.auth.onAuthStateChange((event, session) => {
+    const s = useSession.getState()
+    trace('auth.event', {
+      event,
+      session: describeSession(session),
+      user: s.user?.username,
+      pending: s.pending != null,
+      // true on a SIGNED_OUT: it came from another page sharing this tab's key (see tabHasSession)
+      stored: tabHasSession(),
+    })
     if (event === 'SIGNED_OUT') {
-      const user = useSession.getState().user
+      const user = s.user
       // Our own sign-out forgets the user first; a user still here was signed out elsewhere
       // (another tab, the manager): back to the sign-in, not a blank page. This browser's key
       // is forgotten too (the server can no longer be asked; the key ends there after N hours).
       if (user) {
-        forgetTab('ended', useSession.getState, useSession.setState)
+        // Nobody chose this sign-out: support gets the trace (see lib/sign-in-trace.ts).
+        const sent = reportClientEvent('signed_out_unexpected', {
+          username: user.username,
+          staffId: user.staffId,
+          userId: user.id,
+          lastActiveAt: isoTime(s.lastActiveAt),
+        })
+        forgetTab('ended', useSession.getState, useSession.setState, 'auth SIGNED_OUT')
         if (window.location.pathname.startsWith('/app')) {
-          window.location.assign(signInAgainPath(user.staffId))
+          // the report goes first (at most a moment): the page is about to be left
+          void sent.finally(() => window.location.assign(signInAgainPath(user.staffId)))
         }
       }
     }
-    if (event === 'INITIAL_SESSION' && !session && useSession.getState().user) {
-      forgetTab('ended', useSession.getState, useSession.setState)
+    if (event === 'INITIAL_SESSION' && !session && s.user) {
+      void reportClientEvent('initial_session_missing', {
+        username: s.user.username,
+        staffId: s.user.staffId,
+        userId: s.user.id,
+        lastActiveAt: isoTime(s.lastActiveAt),
+      })
+      forgetTab('ended', useSession.getState, useSession.setState, 'auth INITIAL_SESSION empty')
     }
     if (event === 'SIGNED_IN' && session && arrivedByMagicLink && !useSession.getState().user) {
       arrivedByMagicLink = false
       if (!openedByCode(session.access_token)) {
         // Not the e-mailed link (a PIN session): it never opens the staff area by itself.
-        void sb.auth.signOut({ scope: 'local' })
+        void signOutAuth('link session not from the e-mail')
         return
       }
       void (async () => {
         const { data: profile, error } = await sb.rpc('record_sign_in', {
           p_device: deviceLabel(),
         })
+        trace('link.recordSignIn', { ok: !error && !!profile, error: error?.code })
         if (error || !profile) {
-          await sb.auth.signOut({ scope: 'local' })
+          await signOutAuth('link record_sign_in failed')
           return
         }
         const expected = expectedUsername()
@@ -1017,8 +1115,9 @@ if (sb) {
           /* ignore */
         }
         if (expected && expected !== got) {
+          trace('link.wrongAccount')
           await endServerSession('wrong account')
-          await sb.auth.signOut({ scope: 'local' })
+          await signOutAuth('link for another account')
           try {
             localStorage.setItem(MISMATCH_KEY, JSON.stringify({ expected, got }))
           } catch {
@@ -1050,6 +1149,10 @@ function checkIdle() {
   const s = useSession.getState()
   if (ending || !sessionOver(s)) return
   ending = true
+  trace('checkIdle.over', {
+    lastActiveAt: isoTime(s.lastActiveAt),
+    hours: s.sessionHours,
+  })
   const staffId = s.user?.staffId
   void s.signOut(s.lastActiveAt == null ? 'ended' : 'idle').finally(() => {
     ending = false
@@ -1067,6 +1170,7 @@ function checkIdle() {
  */
 function refuseTab(reason: Extract<SignOutReason, 'idle' | 'ended' | 'security'>) {
   const s = useSession.getState()
+  trace('refuseTab', { reason, user: s.user?.username, pending: s.pending != null, ending })
   if (ending || !s.user || s.pending) return
   ending = true
   const staffId = s.user.staffId
@@ -1088,7 +1192,7 @@ onSessionRefused((hint) =>
 async function dropUnapprovedSession(): Promise<void> {
   if (!supabase || useSession.getState().user) return
   const { data } = await supabase.auth.getSession()
-  if (data.session) await withTimeout(supabase.auth.signOut({ scope: 'local' }))
+  if (data.session) await withTimeout(signOutAuth('unapproved session left'))
 }
 
 /** What counts as activity in a tab. Scroll does not bubble: listened to in the capture phase. */
@@ -1120,15 +1224,17 @@ tabChannel?.addEventListener('message', (e: MessageEvent<TabMessage | null>) => 
   }
   if (m.kind !== 'signedOut') return
   const staffId = s.user.staffId
+  trace('tabs.signedOut', { reason: m.reason })
   forgetTab(
     SHARED_SIGN_OUTS.includes(m.reason) ? m.reason : 'ended',
     useSession.getState,
     useSession.setState,
+    'another tab signed out',
   )
   void (async () => {
     if (supabase) {
       await endServerSession('another tab')
-      await withTimeout(supabase.auth.signOut({ scope: 'local' }))
+      await withTimeout(signOutAuth('another tab signed out'))
     }
     if (window.location.pathname.startsWith('/app')) {
       window.location.replace(signInAgainPath(staffId))
