@@ -24,6 +24,8 @@ import { openMedicalReport } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels, usePrintedBy } from '@/lib/report-parts'
 import { allergiesForDoc } from '@/lib/api/patients'
 import { registrationText } from '@/lib/api/staff'
+import { deskOfRequest } from '@/lib/api/desks'
+import { useSessionCanDesk } from '@/components/clinical/session-desks'
 
 const STATUS_LOOK: Record<TestStatus, { tint: Tint; icon: LucideIcon }> = {
   ordered: { tint: 'amber', icon: Hourglass },
@@ -64,6 +66,11 @@ export function LabOrderRow({
 }) {
   const { t } = useTranslation()
   const actions = useLabActions()
+  // The steps of a laboratory test are the laboratory desk's, of an imaging one the ultrasound
+  // desk's (a department of the person gives it). Someone without it sees the test, not the steps.
+  // An order done at another desk: that desk's staff work it (the database checks).
+  const canDesk = useSessionCanDesk()
+  const mayWork = desk || canDesk(deskOfRequest(null, o.category))
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({
     findings: o.findings ?? '',
@@ -204,7 +211,7 @@ export function LabOrderRow({
           {t(`lab.status.${o.status}`)}
         </Pill>
         <span className="flex flex-wrap gap-1">
-          {o.status === 'ordered' && !desk && (
+          {mayWork && o.status === 'ordered' && !desk && (
             <Button
               size="sm"
               variant="primary"
@@ -224,7 +231,7 @@ export function LabOrderRow({
               {t('lab.sampleTaken')}
             </Button>
           )}
-          {o.status === 'collected' && !desk && (
+          {mayWork && o.status === 'collected' && !desk && (
             <Button
               size="sm"
               loading={actions.setStatus.isPending && actions.setStatus.variables?.id === o.id}
@@ -244,7 +251,7 @@ export function LabOrderRow({
               {t('lab.analysing')}
             </Button>
           )}
-          {o.status !== 'verified' && o.status !== 'cancelled' && !open && (
+          {mayWork && o.status !== 'verified' && o.status !== 'cancelled' && !open && (
             <Button
               size="sm"
               variant={o.status === 'ordered' ? 'default' : 'primary'}
@@ -260,7 +267,8 @@ export function LabOrderRow({
               {t('lab.printSlip')}
             </Button>
           )}
-          {(o.status === 'ordered' || o.status === 'collected' || o.status === 'in_process') &&
+          {mayWork &&
+            (o.status === 'ordered' || o.status === 'collected' || o.status === 'in_process') &&
             !cancelling && (
               <Button
                 size="sm"
@@ -281,7 +289,7 @@ export function LabOrderRow({
           </StaffLink>
         </span>
       </div>
-      {cancelling && (
+      {cancelling && mayWork && (
         <div className="bg-surface flex flex-col gap-2 rounded-xl p-3">
           <span className="text-[13px] font-semibold">
             {t('lab.cannotWhy', { doctor: o.orderedBy ?? '' })}
@@ -359,7 +367,7 @@ export function LabOrderRow({
           )}
         </span>
       )}
-      {open && (
+      {open && mayWork && (
         <form
           className="bg-surface flex flex-col gap-2 rounded-xl p-3"
           onSubmit={async (e) => {

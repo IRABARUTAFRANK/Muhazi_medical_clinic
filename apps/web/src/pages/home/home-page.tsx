@@ -63,6 +63,8 @@ import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
 import { CallsPanel } from './calls-panel'
 import { DeskOrdersPanel } from './desk-orders-panel'
 import { PharmacyDashboard } from './pharmacy-dashboard'
+import { DeskBlocks } from './home-desks'
+import { actionShown, homeKindFor, useHomeDesks } from './home-desks-rules'
 import { OpenNextButton } from './open-next'
 
 interface HomePageProps {
@@ -81,20 +83,31 @@ const timeForMode: Record<HomeMode, string | undefined> = {
  * Staff home. Receptionists and nurses get their desk dashboard; doctors, cashiers and the lab,
  * pharmacy and ultrasound desks get the same dashboard design: identity banner, toolbar with
  * their quick actions, KPI tiles, then their queue and the work of the day.
+ *
+ * The role picks the dashboard while the person works at one of its desks (0085: their
+ * departments decide); otherwise the dashboard of a desk they do work at (a doctor only in the
+ * Laboratory: the laboratory bench). The desks their departments give beyond it add blocks.
  */
 export function HomePage({ user, mode }: HomePageProps) {
-  if (user.role === 'receptionist' || user.role === 'nurse')
-    return <DeskDashboard user={user} role={user.role} />
-  if (user.role === 'lab_tech') return <LabDashboard user={user} />
-  if (user.role === 'pharmacist') return <PharmacyDashboard user={user} />
-  if (user.role === 'cashier') return <CashierDashboard user={user} />
+  const { desks } = useHomeDesks(user)
+  const { kind } = homeKindFor(user.role, desks)
+  if (kind === 'cashier') return <CashierDashboard user={user} />
+  if (kind === 'reception') return <DeskDashboard user={user} role="receptionist" />
+  if (kind === 'nurse') return <DeskDashboard user={user} role="nurse" />
+  if (kind === 'lab') return <LabDashboard user={user} />
+  if (kind === 'pharmacy') return <PharmacyDashboard user={user} />
   return <RoleHome user={user} mode={mode} />
 }
 
 function RoleHome({ user, mode }: HomePageProps) {
   const { t } = useTranslation()
   const role: HomeRole = user.role === 'manager' ? 'receptionist' : user.role
-  const home = ROLE_HOME[role]
+  const { desks } = useHomeDesks(user)
+  // the quick actions of the desks the person works at
+  const home = {
+    ...ROLE_HOME[role],
+    actions: ROLE_HOME[role].actions.filter((a) => actionShown(a.id, desks)),
+  }
   const empty = mode === 'empty'
   const { data: info } = useClinicInfo()
   const { data: status } = useClinicStatus(info?.hours ?? CLINIC_HOURS)
@@ -277,6 +290,8 @@ function RoleHome({ user, mode }: HomePageProps) {
             )}
           </div>
         </section>
+        {/* the desks the person's departments give besides this one (the lab, the pharmacy…) */}
+        <DeskBlocks user={user} kind="doctor" />
         <DoctorCalendarsSection user={user} />
       </main>
     </StaffShell>

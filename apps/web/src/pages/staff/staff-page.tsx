@@ -61,6 +61,20 @@ import {
   positionIn,
   registrationText,
 } from '@/lib/api/staff'
+import {
+  DEFAULT_CEILINGS,
+  DESKS,
+  ROLE_DESKS,
+  departmentGivesNothing,
+  deskName,
+  desksFor,
+  desksOutsideCeiling,
+  desksText,
+  isDesk,
+  useKeptDeskActions,
+  useRoleDeskMatrix,
+  type DeskId,
+} from '@/lib/api/desks'
 import { SECTIONS, sectionName, type SectionId } from '@/lib/api/services'
 import { useConfirm } from '@/lib/confirm'
 import { navForUser } from '@/lib/nav'
@@ -169,6 +183,119 @@ interface Pending {
 }
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const warnBox = 'bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+
+/** A department service's name: the sections (0071), and Reception, a desk only (0085). */
+const serviceLabel = (s: string, t: Translate): string =>
+  s === 'reception' ? deskName(s, t) : sectionName(s, t)
+
+/** The desks some department of the clinic gives (the others follow the role alone). */
+const offeredBy = (departments: readonly Department[]): DeskId[] =>
+  DESKS.filter((d) => departments.some((x) => x.services.includes(d)))
+
+interface Lead {
+  id: string
+  name: string
+}
+/** The head (or the assistant head) of each department now, by department id. */
+const leadsOf = (employees: readonly Employee[], position: 'head' | 'assistant') =>
+  Object.fromEntries(
+    employees.flatMap((e) =>
+      e.active
+        ? e.departments
+            .filter((m) => m.position === position)
+            .map((m): [string, Lead] => [m.departmentId, { id: e.id, name: e.fullName }])
+        : [],
+    ),
+  ) as Record<string, Lead>
+
+/**
+ * What saving one place does to the department's head and assistant head: one of each per
+ * department (0073, 0085). A new head makes the head the assistant and the assistant a member;
+ * a new assistant makes the assistant a member. Shown in the form and in the "Are you sure?".
+ */
+function leadChanges(
+  m: { departmentId: string; position: Position },
+  selfId: string | undefined,
+  heads: Record<string, Lead>,
+  assistants: Record<string, Lead>,
+  dept: string,
+  t: Translate,
+): string[] {
+  if (!m.departmentId || m.position === 'member') return []
+  const head = heads[m.departmentId]
+  const assistant = assistants[m.departmentId]
+  const otherHead = head && head.id !== selfId ? head : undefined
+  const otherAssistant = assistant && assistant.id !== selfId ? assistant : undefined
+  const out: string[] = []
+  if (m.position === 'head' && otherHead) {
+    out.push(t('staff.form.replacesHead', { name: otherHead.name, dept }))
+    if (otherAssistant)
+      out.push(t('staff.form.assistantToMember', { name: otherAssistant.name, dept }))
+  }
+  if (m.position === 'assistant' && otherAssistant)
+    out.push(t('staff.form.replacesAssistant', { name: otherAssistant.name, dept }))
+  return out
+}
+
+interface DeskLoss {
+  desk: DeskId
+  names: string[]
+  /** A desk no department gave until now (true), or one this department stops giving. */
+  newly: boolean
+}
+/**
+ * Who loses a desk when a department's services change (0085). A desk no department gave until
+ * now is, once saved, used only by the members of departments giving it: the people using it now
+ * who are not members are listed (those who work there as usual are placed in it by the database
+ * when nothing else changes for them; the manager is told about the others). A desk this
+ * department stops giving (every desk, when it is deleted: next = null) leaves its members unless
+ * another of their departments gives it, or no department gives it any more and their role does.
+ * A desk kept from before (keptDesks) stays either way.
+ */
+function deskLosses(
+  dept: Department | null,
+  next: readonly string[] | null,
+  departments: readonly Department[],
+  employees: readonly Employee[],
+  desksOf: (e: Employee) => DeskId[] | null,
+): DeskLoss[] {
+  const others = departments.filter((d) => d.id !== dept?.id)
+  const before = dept?.services ?? []
+  const after = next ?? []
+  const people = employees.filter((e) => e.active && e.role !== 'manager')
+  const inDept = (e: Employee, id: string | undefined) =>
+    !!id && e.departments.some((m) => m.departmentId === id)
+  const uses = (e: Employee, desk: DeskId) =>
+    (desksOf(e) ?? []).includes(desk) && !(e.keptDesks ?? []).includes(desk)
+  const out: DeskLoss[] = []
+  for (const desk of DESKS) {
+    const elsewhere = others.some((d) => d.services.includes(desk))
+    if (after.includes(desk) && !before.includes(desk) && !elsewhere) {
+      const names = people
+        .filter((e) => uses(e, desk) && !inDept(e, dept?.id))
+        .map((e) => e.fullName)
+      if (names.length) out.push({ desk, names, newly: true })
+    } else if (before.includes(desk) && !after.includes(desk)) {
+      const names = people
+        .filter(
+          (e) =>
+            inDept(e, dept?.id) &&
+            uses(e, desk) &&
+            !others.some((d) => d.services.includes(desk) && inDept(e, d.id)) &&
+            (elsewhere || !ROLE_DESKS[e.role].includes(desk)),
+        )
+        .map((e) => e.fullName)
+      if (names.length) out.push({ desk, names, newly: false })
+    }
+  }
+  return out
+}
+const lossText = (l: DeskLoss, t: Translate): string =>
+  t(l.newly ? 'staff.dept.willLoseNew' : 'staff.dept.willLoseDropped', {
+    desk: deskName(l.desk, t),
+    names: l.names.join(', '),
+  })
 
 /**
  * Manager-only: employees (create, edit everything, reset PIN, deactivate) and departments
@@ -305,6 +432,25 @@ export function StaffPage({ user }: { user: StaffUser }) {
     },
   ].filter((g) => g.people.length > 0)
   const rank: Record<Position, number> = { head: 0, assistant: 1, member: 2 }
+  // One head and one assistant head per department: the form says who a save moves down.
+  const heads = leadsOf(employees, 'head')
+  const assistants = leadsOf(employees, 'assistant')
+  // The desks each employee may use (0085: staff_directory.desks). In sample mode they are
+  // computed the database's way; before 0085 nothing is shown (the role decides, as before).
+  const { data: deskMatrix } = useRoleDeskMatrix()
+  const desksOfEmployee = (e: Employee): DeskId[] | null => {
+    if (!e.active || e.role === 'manager') return null
+    if (e.desks) return e.desks.filter(isDesk)
+    if (!deskMatrix || deskMatrix.fallback) return null
+    return desksFor({
+      role: e.role,
+      services: e.departments.map(
+        (m) => departments.find((d) => d.id === m.departmentId)?.services ?? [],
+      ),
+      ceiling: deskMatrix.roles[e.role],
+      offered: offeredBy(departments),
+    }).desks
+  }
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="staff">
@@ -361,7 +507,11 @@ export function StaffPage({ user }: { user: StaffUser }) {
         </div>
 
         {tab === 'departments' ? (
-          <DepartmentsPanel departments={departments} employees={employees} />
+          <DepartmentsPanel
+            departments={departments}
+            employees={employees}
+            desksOf={desksOfEmployee}
+          />
         ) : (
           <>
             {longDeactivated.length > 0 && (
@@ -396,23 +546,39 @@ export function StaffPage({ user }: { user: StaffUser }) {
                   employee={editing === 'new' ? null : editing}
                   departments={departments}
                   takenUsernames={new Set(employees.map((e) => e.username))}
-                  heads={Object.fromEntries(
-                    employees.flatMap((e) =>
-                      e.active
-                        ? e.departments
-                            .filter((m) => m.position === 'head')
-                            .map((m) => [m.departmentId, { id: e.id, name: e.fullName }])
-                        : [],
-                    ),
-                  )}
+                  heads={heads}
+                  assistants={assistants}
                   self={editing !== 'new' && editing.id === user.id}
                   onCancel={() => setEditing(null)}
                   onSubmit={async (input, firstPin) => {
                     const k = editing === 'new' ? 'confirm.staff.create' : 'confirm.staff.update'
+                    const body = t(`${k}.body`, { name: input.fullName })
+                    // the head or assistant head this save moves down, said again before saving
+                    const changes = input.departments.flatMap((m) =>
+                      leadChanges(
+                        m,
+                        editing === 'new' ? undefined : editing.id,
+                        heads,
+                        assistants,
+                        departments.find((d) => d.id === m.departmentId)?.name ?? '',
+                        t,
+                      ),
+                    )
                     if (
                       !(await confirm({
                         title: t(`${k}.title`, { name: input.fullName }),
-                        body: t(`${k}.body`, { name: input.fullName }),
+                        body: changes.length ? (
+                          <span className="flex flex-col gap-2">
+                            <span>{body}</span>
+                            {changes.map((c) => (
+                              <span key={c} className="text-amber font-semibold">
+                                {c}
+                              </span>
+                            ))}
+                          </span>
+                        ) : (
+                          body
+                        ),
                         confirmLabel: t(`${k}.yes`),
                       }))
                     )
@@ -514,6 +680,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                     <>
                       {shownPeople.map((e) => {
                         const self = e.id === user.id
+                        const desks = desksOfEmployee(e)
                         return (
                           <Row
                             key={e.id}
@@ -548,6 +715,11 @@ export function StaffPage({ user }: { user: StaffUser }) {
                                   .filter(Boolean)
                                   .join(' · ')}
                               </span>
+                              {desks && (
+                                <span className="text-ink-2 block text-xs">
+                                  {desksText(desks, t)}
+                                </span>
+                              )}
                             </span>
                             <Chip>{employeeRole(e, t)}</Chip>
                             {positionIn(e, g.key) !== 'member' && (
@@ -965,6 +1137,7 @@ function EmployeeForm({
   departments,
   takenUsernames,
   heads,
+  assistants,
   self,
   onSubmit,
   onCancel,
@@ -973,7 +1146,9 @@ function EmployeeForm({
   departments: Department[]
   takenUsernames: ReadonlySet<string>
   /** The head of each department now: one head per department (migration 0073). */
-  heads: Record<string, { id: string; name: string }>
+  heads: Record<string, Lead>
+  /** The assistant head of each department now: one per department (migration 0085). */
+  assistants: Record<string, Lead>
   self: boolean
   onSubmit: (input: EmployeeInput, firstPin?: string) => void
   onCancel: () => void
@@ -1019,6 +1194,51 @@ function EmployeeForm({
   const silent = chosenDepts.filter((d) => d.services.length === 0).map((d) => d.name)
   // with none, the usual desk of the role (a doctor's also follows the specialty and desk name)
   const shown = services.length ? services : usualSections(role, station, specialty)
+
+  // The desks the person will use, live (0085): the role is the ceiling, the chosen departments
+  // decide among it; a desk no department gives follows the role alone, as before. Before 0085
+  // the role decides everything.
+  const { data: deskMatrix } = useRoleDeskMatrix()
+  const ceiling: readonly DeskId[] | null =
+    role === 'manager' ? null : (deskMatrix?.roles[role] ?? DEFAULT_CEILINGS[role])
+  const offered = offeredBy(departments)
+  const deskRule = deskMatrix?.fallback
+    ? null
+    : desksFor({
+        role,
+        services: chosenDepts.map((d) => d.services),
+        ceiling,
+        offered,
+        // kept on day one while the role stays the same (0085)
+        kept: employee && employee.role === role ? employee.keptDesks : null,
+      })
+  const canUse: DeskId[] = deskRule ? deskRule.desks : ROLE_DESKS[role]
+  // desks with no department yet: the role decides them
+  const byRoleDesks = deskRule ? canUse.filter((d) => deskRule.via[d] === 'role') : []
+  // the role's usual desks that another department gives (not one chosen here)
+  const elsewhere =
+    deskRule && ceiling
+      ? ROLE_DESKS[role].filter(
+          (d) => ceiling.includes(d) && offered.includes(d) && !canUse.includes(d),
+        )
+      : []
+  // a chosen department that gives nothing this role may use; and what the role may not use
+  const givesNothing =
+    role === 'manager'
+      ? []
+      : chosenDepts.filter((d) => departmentGivesNothing(role, d.services, ceiling))
+  const notForRole =
+    role === 'manager'
+      ? []
+      : DESKS.filter((x) =>
+          chosenDepts.some(
+            (d) =>
+              !givesNothing.includes(d) &&
+              desksOutsideCeiling(role, d.services, ceiling).includes(x),
+          ),
+        )
+  const roleName = t(`staff.roles.${role}`)
+  const deskList = (list: readonly string[]) => list.map((d) => deskName(d, t)).join(', ')
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -1228,17 +1448,19 @@ function EmployeeForm({
                 >
                   <Trash2 size={16} aria-hidden="true" />
                 </Button>
-                {/* one head per department: the head now becomes assistant head */}
-                {m.position === 'head' &&
-                  heads[m.departmentId] &&
-                  heads[m.departmentId]!.id !== employee?.id && (
-                    <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold sm:col-span-3">
-                      {t('staff.form.replacesHead', {
-                        name: heads[m.departmentId]!.name,
-                        dept: departments.find((d) => d.id === m.departmentId)?.name ?? '',
-                      })}
-                    </p>
-                  )}
+                {/* one head and one assistant head per department: who this save moves down */}
+                {leadChanges(
+                  m,
+                  employee?.id,
+                  heads,
+                  assistants,
+                  departments.find((d) => d.id === m.departmentId)?.name ?? '',
+                  t,
+                ).map((line) => (
+                  <p key={line} className={cn(warnBox, 'sm:col-span-3')}>
+                    {line}
+                  </p>
+                ))}
               </div>
             ))}
             {fitting.some((d) => !memberships.some((x) => x.departmentId === d.id)) && (
@@ -1257,8 +1479,35 @@ function EmployeeForm({
                 )}
               </Button>
             )}
-            {/* What the chosen departments send to this person, live. */}
-            <div className="bg-surface flex flex-col gap-1 rounded-lg px-3 py-2 text-[13px]">
+            {/* What the chosen departments give this person, live: the desks, then the patients. */}
+            <div
+              className="bg-surface flex flex-col gap-1 rounded-lg px-3 py-2 text-[13px]"
+              aria-live="polite"
+            >
+              <span className="font-semibold">
+                {role === 'manager' ? t('staff.form.desksManager') : desksText(canUse, t)}
+              </span>
+              {byRoleDesks.length > 0 && (
+                <span className="text-ink-3 text-xs">
+                  {t('staff.form.desksByRole', { list: deskList(byRoleDesks) })}
+                </span>
+              )}
+              {employee && deskRule && (
+                <KeptDesks
+                  employee={employee}
+                  desks={canUse.filter((d) => deskRule.via[d] === 'kept')}
+                />
+              )}
+              {elsewhere.length > 0 && (
+                <span className="text-amber text-xs font-semibold">
+                  {t('staff.form.desksElsewhere', { list: deskList(elsewhere) })}
+                </span>
+              )}
+              {notForRole.length > 0 && (
+                <span className="text-ink-3 text-xs">
+                  {t('staff.form.desksNotForRole', { list: deskList(notForRole), role: roleName })}
+                </span>
+              )}
               {shown.length > 0 ? (
                 <span>
                   <b>{t('staff.form.worksIn')}</b> {shown.map((s) => sectionName(s, t)).join(', ')}
@@ -1278,6 +1527,15 @@ function EmployeeForm({
                 </span>
               )}
             </div>
+            {givesNothing.length > 0 && (
+              <p role="alert" className={warnBox}>
+                {t('staff.form.deptGivesNothing', {
+                  names: givesNothing.map((d) => d.name).join(', '),
+                  role: roleName,
+                  list: deskList(givesNothing.flatMap((d) => d.services.filter(isDesk))),
+                })}
+              </p>
+            )}
             {memberships.length > 1 && (
               <p className="text-ink-3 m-0 text-xs">{t('staff.form.manyHint')}</p>
             )}
@@ -1439,9 +1697,12 @@ function ResetPinCard({
 function DepartmentsPanel({
   departments,
   employees,
+  desksOf,
 }: {
   departments: Department[]
   employees: Employee[]
+  /** The desks each employee may use now (null: not known). */
+  desksOf: (e: Employee) => DeskId[] | null
 }) {
   const { t } = useTranslation()
   const actions = useDepartmentActions()
@@ -1470,13 +1731,30 @@ function DepartmentsPanel({
           <DepartmentForm
             key={editing === 'new' ? 'new' : editing.id}
             department={editing === 'new' ? null : editing}
+            losses={(services) =>
+              deskLosses(
+                editing === 'new' ? null : editing,
+                services,
+                departments,
+                employees,
+                desksOf,
+              )
+            }
             onCancel={() => setEditing(null)}
             onSave={async (d) => {
               const k = d.id ? 'confirm.departments.save' : 'confirm.departments.create'
+              // who loses a desk with this save (0085), repeated in the "Are you sure?"
+              const lost = deskLosses(
+                editing === 'new' ? null : editing,
+                d.services,
+                departments,
+                employees,
+                desksOf,
+              )
               if (
                 !(await confirm({
                   title: t(`${k}.title`, { name: d.name.trim() }),
-                  body: t(`${k}.body`),
+                  body: <LossBody text={t(`${k}.body`)} lines={lost.map((l) => lossText(l, t))} />,
                   confirmLabel: t(`${k}.yes`),
                 }))
               )
@@ -1505,8 +1783,12 @@ function DepartmentsPanel({
           const people = employees.filter(
             (e) => e.active && e.departments.some((m) => m.departmentId === d.id),
           )
+          // one head and one assistant head (0073, 0085); the members may be many
           const head = people.find((e) => positionIn(e, d.id) === 'head')
-          const assistants = people.filter((e) => positionIn(e, d.id) === 'assistant')
+          const assistant = people.find((e) => positionIn(e, d.id) === 'assistant')
+          const members = people
+            .filter((e) => e !== head && e !== assistant)
+            .sort((a, b) => a.fullName.localeCompare(b.fullName))
           return (
             <Card key={d.id} className="anim-enter" style={{ '--i': i } as React.CSSProperties}>
               <CardHeader>
@@ -1529,7 +1811,14 @@ function DepartmentsPanel({
                       if (
                         !(await confirm({
                           title: t('confirm.departments.delete.title', { name: d.name }),
-                          body: t('confirm.departments.delete.body', { count: people.length }),
+                          body: (
+                            <LossBody
+                              text={t('confirm.departments.delete.body', { count: people.length })}
+                              lines={deskLosses(d, null, departments, employees, desksOf).map((l) =>
+                                lossText(l, t),
+                              )}
+                            />
+                          ),
                           confirmLabel: t('confirm.departments.delete.yes'),
                           tone: 'danger',
                         }))
@@ -1559,22 +1848,33 @@ function DepartmentsPanel({
                 <p className="m-0 text-[13px]">
                   <b>{t('staff.dept.servicesShort')}:</b>{' '}
                   {d.services.length > 0 ? (
-                    d.services.map((s) => sectionName(s, t)).join(', ')
+                    d.services.map((s) => serviceLabel(s, t)).join(', ')
                   ) : (
                     <span className="text-ink-3">{t('staff.dept.noServices')}</span>
                   )}
                 </p>
-                <p className="m-0 text-[13px]">
-                  <b>{t('staff.positions.head')}:</b>{' '}
-                  {head?.fullName ?? <span className="text-ink-3">{t('staff.dept.noHead')}</span>}
-                  {assistants.length > 0 && (
-                    <>
-                      {' · '}
-                      <b>{t('staff.positions.assistant')}:</b>{' '}
-                      {assistants.map((a) => a.fullName).join(', ')}
-                    </>
-                  )}
-                </p>
+                <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 text-[13px]">
+                  <dt className="font-bold">{t('staff.positions.head')}:</dt>
+                  <dd className="m-0">
+                    {head?.fullName ?? <span className="text-ink-3">{t('staff.dept.noHead')}</span>}
+                  </dd>
+                  <dt className="font-bold">{t('staff.positions.assistant')}:</dt>
+                  <dd className="m-0">
+                    {assistant?.fullName ?? (
+                      <span className="text-ink-3">{t('staff.dept.noHead')}</span>
+                    )}
+                  </dd>
+                  <dt className="font-bold">
+                    {t('staff.dept.membersLabel', { count: members.length })}:
+                  </dt>
+                  <dd className="m-0">
+                    {members.length > 0 ? (
+                      members.map((e) => e.fullName).join(', ')
+                    ) : (
+                      <span className="text-ink-3">{t('staff.dept.noMembers')}</span>
+                    )}
+                  </dd>
+                </dl>
                 <p className="text-ink-3 m-0 text-xs">
                   {t('staff.dept.members', { count: people.length })} ·{' '}
                   {t('staff.dept.treatments', {
@@ -1590,13 +1890,80 @@ function DepartmentsPanel({
   )
 }
 
+/** Desks kept from before departments decided (0085, day one): the manager places the employee in
+ *  a department that gives them, or stops one here (asked first; saved at once). */
+function KeptDesks({ employee, desks }: { employee: Employee; desks: DeskId[] }) {
+  const { t } = useTranslation()
+  const confirm = useConfirm()
+  const { forget } = useKeptDeskActions()
+  const [error, setError] = useState<string | null>(null)
+  if (desks.length === 0) return null
+  return (
+    <span className="text-amber flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+      {t('staff.form.desksKept', { list: desks.map((d) => deskName(d, t)).join(', ') })}
+      {desks.map((d) => (
+        <Button
+          key={d}
+          type="button"
+          size="sm"
+          variant="ghost"
+          loading={forget.isPending && forget.variables?.desk === d}
+          onClick={async () => {
+            const desk = deskName(d, t)
+            if (
+              !(await confirm({
+                title: t('confirm.staff.forgetKept.title', { desk, name: employee.fullName }),
+                body: t('confirm.staff.forgetKept.body', { desk, name: employee.fullName }),
+                confirmLabel: t('confirm.staff.forgetKept.yes'),
+                tone: 'danger',
+              }))
+            )
+              return
+            setError(null)
+            try {
+              await forget.mutateAsync({ profileId: employee.id, desk: d })
+            } catch (e) {
+              setError(e instanceof Error ? e.message : String(e))
+            }
+          }}
+        >
+          {t('staff.form.keptStop', { desk: deskName(d, t) })}
+        </Button>
+      ))}
+      {error && (
+        <span role="alert" className="text-red">
+          {error}
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** The "Are you sure?" text, then (in amber) who loses a desk with it (0085). */
+function LossBody({ text, lines }: { text: string; lines: string[] }) {
+  if (!lines.length) return <>{text}</>
+  return (
+    <span className="flex flex-col gap-2">
+      <span>{text}</span>
+      {lines.map((l) => (
+        <span key={l} className="text-amber font-semibold">
+          {l}
+        </span>
+      ))}
+    </span>
+  )
+}
+
 function DepartmentForm({
   department,
+  losses,
   onSave,
   onCancel,
   saving,
 }: {
   department: Department | null
+  /** Who loses a desk if the department is saved with these services (0085). */
+  losses: (services: readonly string[]) => DeskLoss[]
   onSave: (d: {
     id?: string
     name: string
@@ -1616,6 +1983,18 @@ function DepartmentForm({
     setRoles((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]))
   const toggleService = (s: string) =>
     setServices((ss) => (ss.includes(s) ? ss.filter((x) => x !== s) : [...ss, s]))
+  // The services are also the desks its members use, each as far as their role allows (0085).
+  // Reception is a desk only, known once the database has 0085.
+  const { data: deskMatrix } = useRoleDeskMatrix()
+  const options = DESKS.filter(
+    (d) => d !== 'reception' || (deskMatrix && !deskMatrix.fallback) || services.includes(d),
+  )
+  // the ticked roles that would get no desk at all from these services
+  const getNothing = roles.filter(
+    (r) =>
+      r !== 'manager' &&
+      departmentGivesNothing(r, services, deskMatrix?.roles[r] ?? DEFAULT_CEILINGS[r]),
+  )
   return (
     <Card className="border-primary anim-enter">
       <CardHeader>
@@ -1676,7 +2055,7 @@ function DepartmentForm({
               {t('staff.dept.services')}
             </legend>
             <div className="flex flex-wrap gap-2">
-              {SECTIONS.map((s) => (
+              {options.map((s) => (
                 <label
                   key={s}
                   className={cn(
@@ -1690,11 +2069,24 @@ function DepartmentForm({
                     checked={services.includes(s)}
                     onChange={() => toggleService(s)}
                   />
-                  {sectionName(s, t)}
+                  {serviceLabel(s, t)}
                 </label>
               ))}
             </div>
             <p className="text-ink-3 m-0 mt-2 text-xs">{t('staff.dept.servicesHint')}</p>
+            <p className="text-ink-3 m-0 mt-1 text-xs">{t('staff.dept.desksHint')}</p>
+            {getNothing.length > 0 && (
+              <p className={cn(warnBox, 'mt-2')}>
+                {t('staff.dept.rolesGetNothing', {
+                  roles: getNothing.map((r) => t(`staff.roles.${r}`)).join(', '),
+                })}
+              </p>
+            )}
+            {losses(services).map((l) => (
+              <p key={l.desk} className={cn(warnBox, 'mt-2')} role="status">
+                {lossText(l, t)}
+              </p>
+            ))}
           </fieldset>
           <div className="flex gap-2">
             <Button type="submit" variant="primary" loading={saving}>

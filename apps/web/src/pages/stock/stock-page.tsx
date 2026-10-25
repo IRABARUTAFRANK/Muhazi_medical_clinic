@@ -51,6 +51,7 @@ import {
   type StockOverview,
 } from '@/lib/api/stock'
 import { useHoldsStore } from '@/lib/api/rooms'
+import { useCanDesk } from '@/lib/api/desks'
 import { useClinicInfo } from '@/lib/api/public'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { stockReport } from '@/lib/reports/build'
@@ -132,8 +133,9 @@ export type OpenStock = (tab: 'receive' | 'send', preset: StockPreset) => void
 /**
  * Medicine stock. The pharmacy is the main store: deliveries are received into it, it hands
  * medicines over to patients and sends them to the room stores (a doctor's office, a ward) on
- * transfer notes. The pharmacist and the manager see every store, the value, what to order and
- * what was sold; the manager decides who holds each room store. Holders see only "My store".
+ * transfer notes. The pharmacy desk (the pharmacist, or anyone a department of theirs gives the
+ * pharmacy, 0085) and the manager see every store, the value, what to order and what was sold; the
+ * manager decides who holds each room store. Holders see only "My store".
  */
 export function StockPage({
   user,
@@ -148,7 +150,9 @@ export function StockPage({
   focus?: StockFocus
 }) {
   const isManager = user.role === 'manager'
-  const admin = isManager || user.role === 'pharmacist'
+  // the pharmacy desk, not the role (0085): the database's stock_admin() asks the same
+  const canDesk = useCanDesk(user)
+  const admin = isManager || canDesk('pharmacy')
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="stock">
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
@@ -266,13 +270,9 @@ function AdminStock({
   const tabs = holds
     ? [...ADMIN_TABS.slice(0, 6), 'mine' as const, ...ADMIN_TABS.slice(6)]
     : ADMIN_TABS
-  // the pharmacist starts at the hand-over desk
+  // the pharmacy desk starts at the hand-over (only the manager starts at the stock)
   const [tab, setTab] = useState<Tab>(
-    initialTab && (initialTab !== 'mine' || holds)
-      ? initialTab
-      : user.role === 'pharmacist'
-        ? 'pharmacy'
-        : 'stock',
+    initialTab && (initialTab !== 'mine' || holds) ? initialTab : !isManager ? 'pharmacy' : 'stock',
   )
   const [preset, setPreset] = useState<StockPreset>(initialPreset ?? {})
   // each time the desk opens a form, it starts again with the new medicine and store

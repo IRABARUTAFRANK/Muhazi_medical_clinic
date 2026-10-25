@@ -12,6 +12,7 @@ import {
   type ApptStatus,
 } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import { throwIf } from './errors'
 
 /**
  * What each role must do next, computed by `home_summary()` in the database: today's
@@ -344,17 +345,13 @@ export function useHomeActions() {
       call('decline_appointment', { p_appointment_id: id, p_reason: reason }),
     onSuccess: refresh,
   })
+  // complete_task checks who may (the nursing desk, the person named, the giver) and tells the
+  // giver; the task table is not written directly (0085)
   const completeTask = useMutation({
     mutationFn: async ({ id }: { id: string }) => {
       if (!supabase) return
-      const { error } = await supabase
-        .from('internal_task')
-        .update({
-          done_at: new Date().toISOString(),
-          done_by: (await supabase.auth.getUser()).data.user?.id,
-        })
-        .eq('id', id)
-      if (error) throw new Error(error.message)
+      const { error } = await supabase.rpc('complete_task', { p_task_id: id })
+      throwIf(error)
     },
     onSuccess: refresh,
   })

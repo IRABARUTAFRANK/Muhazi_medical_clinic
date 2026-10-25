@@ -52,6 +52,12 @@ export interface Employee {
   registrationNo: string | null
   /** The council that registered the person (RMDC, NCNM, NPC, RAHPC…). */
   registrationBody: string | null
+  /** The desks the person may use now (0085: the role's ceiling and their departments). Null
+   *  before 0085 and in sample mode: compute them with desksFor (lib/api/desks). */
+  desks?: string[] | null
+  /** The desks kept on day one by the rule of before, until the manager places the person in a
+   *  department giving them (0085; null before and in sample mode). */
+  keptDesks?: string[] | null
   /** The temporary PIN the manager handed over, until the employee replaces it (managers only). */
   tempPin?: string | null
 }
@@ -198,6 +204,11 @@ const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   position: 'member',
   departments: [],
 }))
+/** Sample mode: the departments and the employees as saved in memory (read by lib/api/desks). */
+export const sampleStaffData = (): {
+  departments: readonly Department[]
+  employees: readonly Employee[]
+} => ({ departments: sampleDepartments, employees: sampleEmployees })
 
 // ---------------------------------------------------------------- queries
 const KEY = ['staff', 'employees'] as const
@@ -228,6 +239,9 @@ interface DirectoryRow {
   /** 0084 (absent before). */
   registration_no?: string | null
   registration_body?: string | null
+  /** 0085 (absent before). */
+  desks?: string[] | null
+  kept_desks?: string[] | null
 }
 
 export function useEmployees() {
@@ -266,6 +280,8 @@ export function useEmployees() {
         specialty: r.specialty ?? null,
         registrationNo: r.registration_no ?? null,
         registrationBody: r.registration_body ?? null,
+        desks: r.desks ?? null,
+        keptDesks: r.kept_desks ?? null,
         // Before migration 0051 only the main department exists.
         departments: r.departments
           ? r.departments.map((m) => ({

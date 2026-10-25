@@ -104,7 +104,9 @@
     "history": "Amateka",
     "worklist": "Urutonde rw’akazi",
     "doctorCalendars": "Ingengabihe z’abaganga",
-    "myStore": "Ububiko bwanjye"
+    "myStore": "Ububiko bwanjye",
+    "labWorklist": "Urutonde rwa laboratwari",
+    "pharmacy": "Farumasi"
   },
   "roles": {
     "receptionist": "Umwakira",
@@ -760,7 +762,16 @@
       "registrationBodyOther": "Izina ry'urugaga",
       "registrationHint": "Yandikwa munsi y'izina ku mpapuro z'imiti, raporo n'ibirango uyu mukozi asinyaho.",
       "registrationDoctorHint": "Andika nomero y'urugaga ya muganga: itarandikwa, impapuro z'imiti zisohoka zifite umurongo w'ubusa wo kuyandikaho.",
-      "registrationPrinted": "Igaragara ku nyandiko gutya: {{reg}}"
+      "registrationPrinted": "Igaragara ku nyandiko gutya: {{reg}}",
+      "desksManager": "Ashobora gukoresha: aho bakorera hose (umuyobozi)",
+      "desksByRole": "Nta shami rirabitanga, bityo bigenwa n'uruhare: {{list}}",
+      "desksElsewhere": "Irindi shami ni ryo ribitanga: ryongeremo niba uyu mukozi ahakorera: {{list}}",
+      "desksNotForRole": "{{role}} ntiyemerewe gukoresha: {{list}}. Umuyobozi abigena mu Igenamiterere.",
+      "deptGivesNothing": "{{names}}: nta kintu ritanga {{role}} yemerewe gukoresha. Hitamo irindi shami cyangwa urebe serivisi zaryo.",
+      "replacesAssistant": "{{name}} ni we muyobozi wungirije wa {{dept}} ubu. Ishami rigira umuyobozi wungirije umwe: kubika bigira {{name}} umunyamuryango.",
+      "assistantToMember": "{{name}}, umuyobozi wungirije wa {{dept}} ubu, azaba umunyamuryango.",
+      "desksKept": "Byagumanywe nk'uko byari bimeze mbere: {{list}}. Shyira uyu mukozi mu ishami ribitanga, cyangwa ubihagarike hano.",
+      "keptStop": "Hagarika {{desk}}"
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -868,7 +879,15 @@
       "services": "Serivisi zitangirwa muri iri shami",
       "servicesHint": "Abarikoramo bakira abarwayi boherejwe kuri izi serivisi, uko akazi kabo kaba kameze kose (umuforomo mu isuzuma, muganga mu buforomo). Muganga ashobora no kwandika serivisi muri kalendari ye.",
       "servicesShort": "Serivisi",
-      "noServices": "nta yatoranyijwe: abarikoramo bakora aho akazi kabo gasanzwe gakorerwa"
+      "noServices": "nta yatoranyijwe: abarikoramo bakora aho akazi kabo gasanzwe gakorerwa",
+      "membersLabel": "Abanyamuryango ({{count}})",
+      "noMembers": "nta n'umwe urashyirwamo",
+      "desksHint": "Izi serivisi ni na ho abarikoramo bakorera, uko uruhare rwa buri wese rubyemera.",
+      "rolesGetNothing": "Izi nshingano nta ho zibona zikorera muri izi serivisi: {{roles}}.",
+      "membersLabel_one": "Umunyamuryango",
+      "membersLabel_other": "Abanyamuryango",
+      "willLoseNew": "{{desk}} nta shami riratanga: nimubika, abanyamuryango b'amashami abitanga ni bo bonyine bazabikoresha. Ababikoresha ubu batari abanyamuryango: {{names}}. Abahakora bisanzwe bongerwamo nk'abanyamuryango niba nta kindi gihindutse kuri bo; uzamenyeshwa ku bandi.",
+      "willLoseDropped": "{{desk}}: aba banyamuryango ntibazongera kubikoresha: {{names}}."
     },
     "tempPin": "PIN y’agateganyo",
     "showPin": "Erekana PIN",
@@ -3695,6 +3714,17 @@
         "name": "Gucunga ububiko",
         "hint": "Kwakira imiti n’ibikoresho no kubyohereza aho bikenewe."
       }
+    },
+    "desks": {
+      "title": "Aho buri ruhare rushobora gukorera",
+      "lead": "Uruhare ni rwo rugena aho umuntu atarenga. Amashami umuntu akoramo ni yo agena aho akorera muri ho. Aho nta shami ritanga hakurikiza uruhare gusa.",
+      "desk": "Aho akorera",
+      "offeredBy": "Bitangwa na: {{names}}",
+      "byRole": "Nta shami ribitanga: uruhare ni rwo rugena",
+      "fallback": "Ububiko bw'amakuru ntiburamenya aho abakozi bakorera (ivugurura 0085 ntirirashyirwamo): ibi ni ibisanzwe, ntibihindurwa.",
+      "managerNote": "Umuyobozi ahora afite aho bakorera hose. Amafaranga (kwishyura, inyemezabuguzi) agumana uruhare n'ibyo wafunguye haruguru; ububiko bw'ibyumba bugumana ababufite.",
+      "on": "{{desk}} byemerewe buri {{role}}.",
+      "off": "{{desk}} byahagaritswe kuri buri {{role}}."
     }
   },
   "medReport": {
@@ -4551,6 +4581,11 @@
         "title": "Guha {{name}} PIN nshya?",
         "body": "PIN ye y’ubu ihita ireka gukora. Muhe PIN nshya imbonankubone; {{name}} agomba kuyihindura ubutaha yinjiye.",
         "yes": "Yego, muhe PIN nshya"
+      },
+      "forgetKept": {
+        "title": "Uhagarike {{desk}} kuri {{name}}?",
+        "body": "{{name}} azakoresha {{desk}} gusa binyuze mu ishami ribitanga. Bihita bibikwa.",
+        "yes": "Yego, hagarika"
       }
     },
     "departments": {
@@ -4653,6 +4688,16 @@
           "body": "{{name}} ntazongera kubishobora guhera ubu, nubwo umwanya we wabyemera."
         },
         "change": "Yego, hindura"
+      },
+      "deskOn": {
+        "title": "Wemerere buri {{role}} {{desk}}?",
+        "body": "{{role}} azajya abikoresha iyo rimwe mu mashami ye ribitanga (cyangwa, igihe nta shami ribitanga, bigenwe n'uruhare).",
+        "yes": "Yego, emera"
+      },
+      "deskOff": {
+        "title": "Uhagarike {{desk}} kuri buri {{role}}?",
+        "body": "Nta {{role}} uzongera kubikoresha, uko amashami ye yaba ameze kose.",
+        "yes": "Yego, hagarika"
       }
     },
     "calendar": {
@@ -4925,7 +4970,8 @@
     "shortBy": "Ibiri mu bubiko (bitarangiye) ntibihagije: haburaho {{n}}.",
     "expiredShort": "Ibitarangiye ntibihagije: haburaho {{n}}. Kura mu bubiko ibyarangiye.",
     "ownNote": "Ni wowe wohereje uru rupapuro: uwakiriye ni we wemeza ibyageze.",
-    "noHolder": "Ubu bubiko nta wubushinzwe uragenwa: umuyobozi abanze amugene."
+    "noHolder": "Ubu bubiko nta wubushinzwe uragenwa: umuyobozi abanze amugene.",
+    "noDesk": "Ntukora mu ishami rikora ibi. Saba umuyobozi agushyire mu ishami ribikora."
   },
   "cashierDesk": {
     "noMatch": "Nta kintu gihuye n'ibyo washakishije.",
@@ -5444,5 +5490,46 @@
     "returns_other": "Impapuro zo gusubiza {{count}} zo kwemeza",
     "onTheWay_one": "Urupapuro {{count}} ruri mu nzira",
     "onTheWay_other": "Impapuro {{count}} ziri mu nzira"
+  },
+  "desks": {
+    "canUse": "Ashobora gukoresha: {{list}}",
+    "none": "nta ho akorera",
+    "names": {
+      "reception": "Kwakira abarwayi",
+      "triage": "Ibipimo",
+      "consultation": "Gusuzuma",
+      "dental": "Kuvura amenyo",
+      "surgery": "Kubaga byoroheje",
+      "circ": "Gusiramura",
+      "nursing": "Kwita ku barwayi",
+      "fp": "Kuboneza urubyaro",
+      "hiv": "Ipimwa rya SIDA n'inkingo",
+      "laboratory": "Urutonde rwa laboratwari",
+      "ultrasound": "Urutonde rwo guca mu cyuma",
+      "pharmacy": "Farumasi"
+    },
+    "hints": {
+      "reception": "Gutangiza uruzinduko no kohereza abarwayi",
+      "triage": "Gufata ibipimo no kohereza abarwayi",
+      "consultation": "Dosiye y'ubuvuzi, imiti n'ibizamini",
+      "dental": "Kuvura amenyo: dosiye, imiti n'ibizamini",
+      "surgery": "Kubaga byoroheje: dosiye, imiti n'ibizamini",
+      "circ": "Gusiramura: dosiye, imiti n'ibizamini",
+      "nursing": "Imirimo y'abaforomo, ibitanda no kwita ku barwayi",
+      "fp": "Kuboneza urubyaro: dosiye, imiti n'ibizamini",
+      "hiv": "Ipimwa rya SIDA n'inkingo: dosiye n'ibizamini",
+      "laboratory": "Ibizamini: gufata ibyitegererezwa, ibisubizo, kwemeza",
+      "ultrasound": "Guca mu cyuma: raporo n'ibisubizo",
+      "pharmacy": "Gutanga imiti, kugurisha ku idirishya, ububiko bwa farumasi"
+    }
+  },
+  "deskGate": {
+    "title": "Ntukora mu ishami rikora ibi",
+    "body": "Saba umuyobozi agushyire mu ishami ritanga: {{desks}}.",
+    "bodyShort": "Saba umuyobozi agushyire mu ishami rikora ibi."
+  },
+  "homeDesks": {
+    "section": "Ahandi ukorera",
+    "labEmpty": "Nta kizamini gitegereje aho ukorera."
   }
 }

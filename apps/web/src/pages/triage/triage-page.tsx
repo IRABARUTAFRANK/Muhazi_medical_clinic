@@ -18,6 +18,8 @@ import { SERVICE_DESK, type ServiceId } from '@/lib/api/services'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
+import { NoDeskPage } from '@/components/clinical/desk-gate'
+import { useCanDesk } from '@/lib/api/desks'
 
 /**
  * Triage screen (MoH: vitals before the doctor). Left: everyone waiting at triage, in priority
@@ -26,6 +28,25 @@ import { cn } from '@/lib/utils'
  * it to type in what a nurse wrote on paper.
  */
 export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: string }) {
+  const { t } = useTranslation()
+  // The triage desk: a department of the person gives it (or, where no department does, the
+  // role). Vital signs of a patient elsewhere in the clinic are still added on the visit screen.
+  const canDesk = useCanDesk(user)
+  if (!canDesk('triage'))
+    return (
+      <NoDeskPage
+        user={user}
+        activeId="vitals"
+        desks={['triage']}
+        icon={Activity}
+        tint="coral"
+        title={t('triage.title')}
+      />
+    )
+  return <TriageDesk user={user} encounter={encounter} />
+}
+
+function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }) {
   const { t } = useTranslation()
   const { data: items = [], isLoading } = useQueueBoard('all', user.role)
   // At triage, or anywhere in the clinic without vitals yet.

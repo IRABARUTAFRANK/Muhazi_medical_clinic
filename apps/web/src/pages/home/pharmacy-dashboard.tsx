@@ -31,6 +31,7 @@ import { isLive } from '@/lib/supabase'
 import { PharmacyDesk, SellMedicineCard } from '../stock/pharmacy-desk'
 import { CallsPanel } from './calls-panel'
 import { MyQueuePanel } from './role-panels'
+import { DeskBlocks } from './home-desks'
 
 /**
  * Pharmacy dashboard (pharmacists): the hand-over desk in the manager design. Figures of the day,
@@ -283,6 +284,8 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
             </div>
           </div>
         </section>
+        {/* the desks the person's departments give besides this one */}
+        <DeskBlocks user={user} kind="pharmacy" />
       </main>
     </StaffShell>
   )

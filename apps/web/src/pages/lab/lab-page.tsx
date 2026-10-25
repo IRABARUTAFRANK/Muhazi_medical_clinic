@@ -14,7 +14,11 @@ import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
 import { cn } from '@/lib/utils'
+import { NoDeskPage } from '@/components/clinical/desk-gate'
+import { useCanDesk, type DeskId } from '@/lib/api/desks'
 import { LabOrderRow } from './lab-parts'
+
+const LAB_DESKS: readonly DeskId[] = ['laboratory', 'ultrasound']
 
 type Filter = 'all' | 'ordered' | 'process' | 'resulted'
 
@@ -31,6 +35,25 @@ const sortOrders = (rows: LabOrder[], sort: SortKey) =>
  * in the order chosen, 15 at a time; each row takes the test to its next step.
  */
 export function LabPage({ user }: { user: StaffUser }) {
+  const { t } = useTranslation()
+  // the laboratory and ultrasound desks: a department of the person gives them (or, where no
+  // department does, the role); the list itself only holds the tests of the desks they have
+  const canDesk = useCanDesk(user)
+  if (!canDesk(LAB_DESKS))
+    return (
+      <NoDeskPage
+        user={user}
+        activeId="worklist"
+        desks={LAB_DESKS}
+        icon={FlaskConical}
+        tint="coral"
+        title={t('lab.worklistTitle')}
+      />
+    )
+  return <LabWorklist user={user} />
+}
+
+function LabWorklist({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const now = useNow()
   const [tab, setTab] = useState<'open' | 'done'>('open')

@@ -78,6 +78,9 @@ import { useDeskOrders } from '@/lib/api/lab'
 import { LabOrderRow } from '../lab/lab-parts'
 import { MyQueuePanel } from './role-panels'
 import { useNow } from '@/lib/hooks'
+import { TREATING_DESKS } from '@/lib/api/desks'
+import { DeskBlocks } from './home-desks'
+import { useHomeDesks } from './home-desks-rules'
 
 export type DeskRole = 'receptionist' | 'nurse'
 
@@ -97,6 +100,9 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
   const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary(days)
   const can = useCan(user)
+  // the desks the person works at (their departments decide, 0085): each block of a desk shows
+  // only to those who work there
+  const { has } = useHomeDesks(user)
   const { data: queue = [] } = useQueueBoard('all', user.role)
   const open = onePerPool(openItems(queue))
   // The nurse: everyone at triage and everyone still without vitals (whatever the desk, so the
@@ -122,6 +128,11 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
   const greeting = greetingFor(user.name, t)
   const nurse = role === 'nurse'
+  const triage = has('triage')
+  const reception = has('reception')
+  const nursing = has('nursing')
+  // the primary button: vitals at triage (nurse), registering at reception
+  const primary = nurse ? triage : reception
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
@@ -161,23 +172,25 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
           >
             {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
           </Button>
-          {nurse && (
+          {nurse && reception && (
             <StaffLink to="/app/register" className={buttonVariants({ size: 'md' })}>
               <UserPlus size={16} aria-hidden="true" />
               {t('dashboard.registerPatient')}
             </StaffLink>
           )}
-          <StaffLink
-            to={nurse ? '/app/vitals' : '/app/register'}
-            className={buttonVariants({ variant: 'primary', size: 'md' })}
-          >
-            {nurse ? (
-              <HeartPulse size={16} aria-hidden="true" />
-            ) : (
-              <UserPlus size={16} aria-hidden="true" />
-            )}
-            {t(nurse ? 'desk.nurse.takeVitals' : 'dashboard.registerPatient')}
-          </StaffLink>
+          {primary && (
+            <StaffLink
+              to={nurse ? '/app/vitals' : '/app/register'}
+              className={buttonVariants({ variant: 'primary', size: 'md' })}
+            >
+              {nurse ? (
+                <HeartPulse size={16} aria-hidden="true" />
+              ) : (
+                <UserPlus size={16} aria-hidden="true" />
+              )}
+              {t(nurse ? 'desk.nurse.takeVitals' : 'dashboard.registerPatient')}
+            </StaffLink>
+          )}
           <PeriodCustom period={period} className="basis-full" />
         </div>
 
@@ -221,7 +234,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
               <div className="pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
                 {nurse ? (
                   <>
-                    <QueuePanel role={role} rows={waiting} />
+                    {triage && <QueuePanel role={role} rows={waiting} />}
                     <UrgentPanel d={data} />
                     <ArrivalsPanel d={data} />
                   </>
@@ -237,7 +250,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             </section>
 
             {/* NURSING CARE: patients sent to the nurses, and the orders done at Nursing */}
-            {nurse && (
+            {nurse && has(TREATING_DESKS) && (
               <section className="flex flex-col gap-3">
                 <SectionTitle icon={HeartPulse}>{t('desk.nurse.careSection')}</SectionTitle>
                 <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
@@ -268,14 +281,16 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                 )}
               >
                 {nurse ? (
-                  <>
-                    <BedsPanel
-                      userRole={user.role}
-                      className="pc:col-span-2"
-                      canAct={can('clinical.write')}
-                    />
-                    <TasksPanel canAct={can('clinical.write')} />
-                  </>
+                  nursing && (
+                    <>
+                      <BedsPanel
+                        userRole={user.role}
+                        className="pc:col-span-2"
+                        canAct={can('clinical.write')}
+                      />
+                      <TasksPanel canAct={can('clinical.write')} />
+                    </>
+                  )
                 ) : (
                   <>
                     <AppointmentsPanel
@@ -301,6 +316,8 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             </section>
           </div>
         )}
+        {/* the desks the person's departments give besides this one (the lab, the pharmacy…) */}
+        <DeskBlocks user={user} kind={nurse ? 'nurse' : 'reception'} />
         <DoctorCalendarsSection user={user} />
       </main>
     </StaffShell>

@@ -95,7 +95,9 @@
     "history": "Historique",
     "worklist": "Liste de travail",
     "doctorCalendars": "Agendas des médecins",
-    "myStore": "Mon stock"
+    "myStore": "Mon stock",
+    "labWorklist": "Liste du laboratoire",
+    "pharmacy": "Pharmacie"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -756,7 +758,16 @@
       "registrationBodyOther": "Nom de l'ordre",
       "registrationHint": "Imprimé sous le nom sur les ordonnances, rapports et étiquettes que cette personne signe.",
       "registrationDoctorHint": "Ajoutez le numéro d'ordre du médecin : tant qu'il manque, les ordonnances impriment une ligne vide pour l'écrire.",
-      "registrationPrinted": "Imprimé sur les documents ainsi : {{reg}}"
+      "registrationPrinted": "Imprimé sur les documents ainsi : {{reg}}",
+      "desksManager": "Peut utiliser : tous les postes (le gestionnaire)",
+      "desksByRole": "Aucun département ne les donne encore, le rôle décide donc : {{list}}",
+      "desksElsewhere": "Un autre département les donne : ajoutez-le si cette personne y travaille : {{list}}",
+      "desksNotForRole": "Un·e {{role}} ne peut pas utiliser : {{list}}. Le gestionnaire le règle dans les Paramètres.",
+      "deptGivesNothing": "{{names}} : ne donne rien qu'un·e {{role}} puisse utiliser. Choisissez un autre département ou vérifiez ses services.",
+      "replacesAssistant": "{{name}} est chef adjoint de {{dept}}. Un département a un seul chef adjoint : enregistrer fait de {{name}} un membre.",
+      "assistantToMember": "{{name}}, chef adjoint de {{dept}}, devient membre.",
+      "desksKept": "Gardé comme avant que les départements décident : {{list}}. Placez cette personne dans un département qui le donne, ou arrêtez-le ici.",
+      "keptStop": "Arrêter {{desk}}"
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -864,7 +875,15 @@
       "services": "Services donnés dans ce département",
       "servicesHint": "Ses membres prennent les patients envoyés vers ces services, quel que soit leur rôle (un infirmier en consultation, un médecin aux soins). Un médecin peut aussi inscrire des services dans son agenda.",
       "servicesShort": "Services",
-      "noServices": "aucun choisi : ses membres travaillent au poste habituel de leur rôle"
+      "noServices": "aucun choisi : ses membres travaillent au poste habituel de leur rôle",
+      "membersLabel": "Membres ({{count}})",
+      "noMembers": "aucun pour l'instant",
+      "desksHint": "Ces services sont aussi les postes où travaillent ses membres, dans la limite de ce que permet le rôle de chacun.",
+      "rolesGetNothing": "Ces rôles n'obtiennent aucun poste de ces services : {{roles}}.",
+      "membersLabel_one": "Membre",
+      "membersLabel_other": "Membres",
+      "willLoseNew": "{{desk}} n'est encore donné par aucun département : après l'enregistrement, seuls les membres des départements qui le donnent l'utilisent. L'utilisent maintenant sans être membres : {{names}}. Ceux qui y travaillent habituellement sont ajoutés comme membres si rien d'autre ne change pour eux ; vous serez informé pour les autres.",
+      "willLoseDropped": "{{desk}} : ces membres ne l'utiliseront plus : {{names}}."
     },
     "tempPin": "PIN temporaire",
     "showPin": "Afficher le PIN",
@@ -3686,6 +3705,17 @@
         "name": "Gérer le stock",
         "hint": "Recevoir médicaments et fournitures et les envoyer aux postes."
       }
+    },
+    "desks": {
+      "title": "Postes que chaque rôle peut utiliser",
+      "lead": "Le rôle est la limite : ce qu'une personne de ce rôle peut utiliser. Les départements où elle travaille décident lesquels de ces postes elle obtient. Un poste qu'aucun département ne donne suit le rôle seul.",
+      "desk": "Poste",
+      "offeredBy": "Donné par : {{names}}",
+      "byRole": "Aucun département ne le donne : le rôle décide",
+      "fallback": "La base de données ne connaît pas encore les postes (mise à jour 0085 non installée) : ce sont les valeurs par défaut, en lecture seule.",
+      "managerNote": "Le gestionnaire a toujours tous les postes. L'argent (paiements, factures) reste lié au rôle et aux interrupteurs ci-dessus ; les stocks de salle restent à leurs détenteurs.",
+      "on": "{{desk}} permis pour chaque {{role}}.",
+      "off": "{{desk}} retiré pour chaque {{role}}."
     }
   },
   "medReport": {
@@ -4542,6 +4572,11 @@
         "title": "Donner un nouveau PIN à {{name}} ?",
         "body": "Le PIN actuel cesse de fonctionner tout de suite. Remettez le nouveau PIN en personne ; {{name}} devra le changer à la prochaine connexion.",
         "yes": "Oui, donner un nouveau PIN"
+      },
+      "forgetKept": {
+        "title": "Arrêter {{desk}} pour {{name}} ?",
+        "body": "{{name}} n'utilisera {{desk}} que par un département qui le donne. C'est enregistré tout de suite.",
+        "yes": "Oui, arrêter"
       }
     },
     "departments": {
@@ -4644,6 +4679,16 @@
           "body": "{{name}} ne pourra plus le faire, même si son rôle le permet."
         },
         "change": "Oui, changer"
+      },
+      "deskOn": {
+        "title": "Permettre {{desk}} pour chaque {{role}} ?",
+        "body": "Un·e {{role}} l'utilise alors quand un de ses départements le donne (ou, tant qu'aucun département ne le donne, par le rôle).",
+        "yes": "Oui, permettre"
+      },
+      "deskOff": {
+        "title": "Retirer {{desk}} pour chaque {{role}} ?",
+        "body": "Aucun·e {{role}} ne peut plus l'utiliser, quels que soient ses départements.",
+        "yes": "Oui, retirer"
       }
     },
     "calendar": {
@@ -4916,7 +4961,8 @@
     "shortBy": "Stock insuffisant (non périmé) : il manque {{n}} unité(s).",
     "expiredShort": "Pas assez de stock non périmé : il manque {{n}} unité(s). Retirez le stock périmé.",
     "ownNote": "Vous avez envoyé ce bon : c'est le destinataire qui confirme ce qui est arrivé.",
-    "noHolder": "Ce stock de salle n'a encore aucun responsable : le gérant en désigne un d'abord."
+    "noHolder": "Ce stock de salle n'a encore aucun responsable : le gérant en désigne un d'abord.",
+    "noDesk": "Vous ne travaillez dans aucun département qui fait ceci. Demandez au gestionnaire de vous y placer."
   },
   "cashierDesk": {
     "noMatch": "Rien ne correspond à votre recherche.",
@@ -5435,5 +5481,46 @@
     "returns_other": "{{count}} bons de retour à confirmer",
     "onTheWay_one": "{{count}} bon en route",
     "onTheWay_other": "{{count}} bons en route"
+  },
+  "desks": {
+    "canUse": "Peut utiliser : {{list}}",
+    "none": "aucun poste",
+    "names": {
+      "reception": "Réception",
+      "triage": "Triage (constantes)",
+      "consultation": "Consultation",
+      "dental": "Soins dentaires",
+      "surgery": "Petite chirurgie",
+      "circ": "Circoncision",
+      "nursing": "Soins infirmiers",
+      "fp": "Planification familiale",
+      "hiv": "Dépistage VIH et vaccination",
+      "laboratory": "Liste du laboratoire",
+      "ultrasound": "Liste d'échographie",
+      "pharmacy": "Poste de pharmacie"
+    },
+    "hints": {
+      "reception": "Ouvrir les visites et orienter les patients",
+      "triage": "Constantes au triage et orientation des patients",
+      "consultation": "Dossier clinique, ordonnances et examens",
+      "dental": "Soins dentaires : dossier, ordonnances et examens",
+      "surgery": "Petite chirurgie : dossier, ordonnances et examens",
+      "circ": "Circoncision : dossier, ordonnances et examens",
+      "nursing": "Tâches infirmières, lits et soins",
+      "fp": "Planification familiale : dossier, ordonnances et examens",
+      "hiv": "Dépistage VIH et vaccination : dossier et examens",
+      "laboratory": "Analyses : prélèvements, résultats, validation",
+      "ultrasound": "Imagerie : comptes rendus et résultats",
+      "pharmacy": "Remise des médicaments, ventes au comptoir, stock de la pharmacie"
+    }
+  },
+  "deskGate": {
+    "title": "Vous ne travaillez dans aucun département qui fait ceci",
+    "body": "Demandez au gestionnaire de vous placer dans un département qui assure : {{desks}}.",
+    "bodyShort": "Demandez au gestionnaire de vous placer dans un département qui fait ceci."
+  },
+  "homeDesks": {
+    "section": "Vos autres postes",
+    "labEmpty": "Aucun examen en attente à vos postes."
   }
 }

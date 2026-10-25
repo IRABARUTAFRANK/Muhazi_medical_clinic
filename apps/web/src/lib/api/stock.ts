@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DayRange } from './lab'
 import { apiError, isMissingFunction, sampleRefusal } from './errors'
+import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 
@@ -670,10 +671,14 @@ const sampleDeliveries: DeliveryDetail[] = [
 
 /** The signed-in sample user (sample mode only). */
 export const sampleUserId = () => useSession.getState().user?.id ?? null
-/** Sample mode: the pharmacy and the manager see every store and the costs. */
+/** Sample mode: the pharmacy desk and the manager see every store and the costs. The desks come
+ *  from the sample departments (lib/api/desks, cached as ['desks', 'mine', id]); until read, the
+ *  pharmacist's role, as before. */
 export const sampleIsAdmin = () => {
   const u = useSession.getState().user
-  return !u || u.role === 'manager' || (u.role as string) === 'pharmacist'
+  if (!u || u.role === 'manager') return true
+  const mine = queryClient.getQueryData<{ desks: string[] }>(['desks', 'mine', u.id])
+  return mine ? mine.desks.includes('pharmacy') : (u.role as string) === 'pharmacist'
 }
 export const sampleIsManager = () => {
   const u = useSession.getState().user

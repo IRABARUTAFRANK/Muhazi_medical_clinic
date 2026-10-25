@@ -296,10 +296,13 @@ await expectError(
       [encounterId],
     )
   },
-  /row-level security/i,
+  // 0085: the clinical tables are written by the desk functions only
+  /row-level security|permission denied/i,
 )
 await step('nurse records vitals and triage', async () => {
-  await as(staff.nurse)
+  // 0085: the clinical tables are written by the desk functions only; the journey writes them as
+  // their owner, with the nurse's identity
+  await as(staff.nurse, 'postgres')
   await db.query(
     `insert into observation (encounter_id, code, value_num, unit) values ($1, 'bp_sys', 128, 'mmHg')`,
     [encounterId],
@@ -308,6 +311,7 @@ await step('nurse records vitals and triage', async () => {
     `update encounter set triage_level = 'yellow', triage_reason = 'fever 3 days' where id = $1`,
     [encounterId],
   ) // the nurse sends the patient on to the doctors
+  await as(staff.nurse)
   await db.query(`select finish_station($1, 'triage', 'consultation')`, [encounterId])
 })
 await step('doctor charges consultation (RSSB preset 5,000)', async () => {
@@ -331,10 +335,13 @@ await step('doctor orders lab (preset 2,000 + 4,000)', async () => {
   await as(staff.doctor)
 })
 await step('doctor records the primary diagnosis', async () => {
+  // 0085: written by the desk functions only (add_diagnosis); here as the owner, as the doctor
+  await as(staff.doctor, 'postgres')
   await db.query(
     `insert into condition (encounter_id, icd10_code, text, type) values ($1, 'B54', 'Malaria', 'primary')`,
     [encounterId],
   )
+  await as(staff.doctor)
 })
 await expectError(
   'typed price without a reason is refused',
@@ -583,7 +590,8 @@ await step(
   },
 )
 await step('nurse may write but manager may not read HIV tests (sensitive)', async () => {
-  await as(staff.nurse)
+  // 0085: written by the desk functions only; here as the owner, as the nurse
+  await as(staff.nurse, 'postgres')
   await db.query(
     `insert into hiv_test (encounter_id, patient_id, result) values ($1, $2, 'negative')`,
     [encounterId, patientId],
@@ -7452,6 +7460,723 @@ await step(
     )
       throw new Error(json84({ d, old, internal }))
     return 'cash: no insurer; earlier weight within 90 days used, older not; doc_patient internal'
+  },
+)
+
+// ---------------------------------------------------------------- 0085: departments decide the desks
+const t85 = {}
+const json85 = (x) => JSON.stringify(x)
+const deskAs = async (who, desk) => {
+  await as(who)
+  const r = (await one(`select may_use_desk($1) as ok`, [desk])).ok
+  await asAdmin()
+  return r
+}
+const myDesks85 = async (who) => {
+  await as(who)
+  const r = (await one(`select my_desks() as j`)).j
+  await asAdmin()
+  return r
+}
+const member85 = async (who, dep, position = 'member') => {
+  await asAdmin()
+  await db.query(
+    `insert into staff_department (profile_id, department_id, position) values ($1, $2, $3)
+     on conflict (profile_id, department_id) do update set position = excluded.position`,
+    [who, dep, position],
+  )
+}
+/** A department written directly (no placement of the people who work there as usual). */
+const dept85 = async (name, services, roles = '{}') => {
+  await asAdmin()
+  return (
+    await one(`insert into department (name, roles, services) values ($1, $2, $3) returning id`, [
+      name,
+      roles,
+      services,
+    ])
+  ).id
+}
+const patient85 = async (given) => {
+  await as(staff.receptionist)
+  const id = (
+    await one(`select register_patient_file('Desk', $1, 'female', null, 30, null) as r`, [given])
+  ).r.patient_id
+  await asAdmin()
+  return id
+}
+const routing85 = async () => (await one(`select routing_snapshot()::text[] as r`)).r
+await step(
+  '0085 A: safety net — no department gives a desk: the role decides, as before',
+  async () => {
+    t85.docLab = await newStaff('doc.lab85', 'Dr. Lab 85', 'doctor', 'Consultation 2')
+    t85.docCons = await newStaff('doc.cons85', 'Dr. Cons 85', 'doctor', 'Consultation 3')
+    t85.docEcho = await newStaff('doc.echo85', 'Dr. Echo 85', 'doctor', 'Ultrasound')
+    t85.nurse = await newStaff('nurse.ph85', 'Nurse Pharmacy 85', 'nurse')
+    t85.pharm = await newStaff('pharm.lab85', 'Pharmacist Lab 85', 'pharmacist')
+    await asAdmin()
+    // nobody gives laboratory, ultrasound or pharmacy yet (Consultation 71 gives consultation)
+    const offered = (
+      await one(
+        `select bool_or(desk_offered(d)) as any from unnest(array['laboratory','ultrasound','pharmacy']) d`,
+      )
+    ).any
+    const r = {
+      offered,
+      // the worklists were run by the lab tech, the sonographer and the ultrasound doctor
+      docLab: await deskAs(t85.docLab, 'laboratory'),
+      docImaging: await deskAs(t85.docLab, 'ultrasound'),
+      echo: await deskAs(t85.docEcho, 'ultrasound'),
+      nurseLab: await deskAs(t85.nurse, 'laboratory'),
+      labTech: await deskAs(staff.lab_tech, 'laboratory'),
+      labTechImaging: await deskAs(staff.lab_tech, 'ultrasound'),
+      pharm: await deskAs(staff.pharmacist, 'pharmacy'),
+      nursePharm: await deskAs(t85.nurse, 'pharmacy'),
+      cashierTriage: await deskAs(staff.cashier, 'triage'),
+      cashierReception: await deskAs(staff.cashier, 'reception'),
+      receptionTriage: await deskAs(staff.receptionist, 'triage'),
+      docMine: await myDesks85(t85.docLab),
+    }
+    if (
+      r.offered ||
+      r.docLab ||
+      r.docImaging ||
+      !r.echo ||
+      r.nurseLab ||
+      !r.labTech ||
+      r.labTechImaging ||
+      !r.pharm ||
+      r.nursePharm ||
+      r.cashierTriage ||
+      r.cashierReception ||
+      !r.receptionTriage ||
+      r.docMine.via?.triage !== 'role' ||
+      r.docMine.desks.includes('laboratory') ||
+      r.docMine.desks.includes('pharmacy') ||
+      !r.docMine.ceiling.includes('pharmacy')
+    )
+      throw new Error(json85(r))
+    return `doctor: no worklist by role (the ultrasound doctor: imaging); lab tech: lab not imaging; nurse: no lab, no pharmacy; desks ${r.docMine.desks.length}`
+  },
+)
+await step(
+  '0085 B: a doctor in Laboratory enters results; a doctor only in Consultation cannot; the lab tech is placed',
+  async () => {
+    // the laboratory given for the first time: the lab tech (his usual desk) is placed in it
+    await as(staff.manager)
+    t85.lab = (
+      await one(
+        `select upsert_department(null, 'Laboratory 85', null, '{}', array['laboratory']) as id`,
+      )
+    ).id
+    await asAdmin()
+    const labTechPlaced = (
+      await one(
+        `select count(*)::int as n from staff_department where profile_id = $1 and department_id = $2`,
+        [staff.lab_tech, t85.lab],
+      )
+    ).n
+    t85.cons = (await one(`select id from department where name = 'Consultation 71'`)).id
+    await as(staff.manager)
+    t85.test = (await one(`select upsert_service(null, 'Malaria RDT 85', 'lab', 2000) as id`)).id
+    await member85(t85.docLab, t85.lab)
+    await member85(t85.docCons, t85.cons)
+    await as(staff.receptionist)
+    const p = (
+      await one(`select register_patient_file('Desk', 'Lab 85', 'female', null, 30, null) as r`)
+    ).r.patient_id
+    t85.enc = (await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [p])).id
+    await asAdmin()
+    const req = async (requester = null) =>
+      (
+        await one(
+          `insert into service_request (encounter_id, category, service_id, priority, station, requester_id)
+           values ($1, 'lab', $2, 3, 'laboratory', $3) returning id`,
+          [t85.enc, t85.test, requester],
+        )
+      ).id
+    t85.req1 = await req()
+    t85.req2 = await req()
+    t85.req3 = await req()
+    // the doctor's own test: no longer by "orders.write" once a department gives the laboratory
+    const own = await req(t85.docCons)
+    const inLab = await hintAs(
+      t85.docLab,
+      `select record_result($1, 'Negative', 'No malaria', true)`,
+      [t85.req1],
+    )
+    const consOnly = await hintAs(t85.docCons, `select record_result($1, 'x', 'y', true)`, [
+      t85.req2,
+    ])
+    const ownTest = await hintAs(t85.docCons, `select record_result($1, 'x', 'y', true)`, [own])
+    // no department gives the ultrasound: the clinician still types the result of his own test
+    const img = async (requester) =>
+      (
+        await one(
+          `insert into service_request (encounter_id, category, service_id, priority, station, requester_id)
+           values ($1, 'imaging', $2, 3, 'ultrasound', $3) returning id`,
+          [t85.enc, t85.test, requester],
+        )
+      ).id
+    const ownImg = await hintAs(t85.docCons, `select record_result($1, 'x', 'y', false)`, [
+      await img(t85.docCons),
+    ])
+    const otherImg = await hintAs(t85.docCons, `select record_result($1, 'x', 'y', false)`, [
+      await img(t85.docLab),
+    ])
+    await as(t85.docCons)
+    const vc85 = (await one(`select visit_clinical($1) as j`, [t85.enc])).j
+    await asAdmin()
+    const mineFlag =
+      vc85?.orders?.find((o) => o.id === own)?.mine === true &&
+      vc85.orders.find((o) => o.id === t85.req2)?.mine === false
+    const sample = await hintAs(t85.docCons, `select set_request_status($1, 'collected')`, [
+      t85.req2,
+    ])
+    const labTech = await hintAs(staff.lab_tech, `select record_result($1, 'x', 'y', false)`, [
+      t85.req2,
+    ])
+    // a doctor or a sonographer may not write a result straight into the table (0085)
+    const direct = await codeAs(
+      t85.docCons,
+      `insert into diagnostic_report (service_request_id, findings, verified_at) values ($1, 'x', now())`,
+      [t85.req3],
+    )
+    const directStatus = await codeAs(
+      t85.docCons,
+      `update service_request set status = 'verified' where id = $1`,
+      [t85.req3],
+    )
+    await as(t85.docLab)
+    const catsLab = (await one(`select my_test_categories()::text[] as c`)).c
+    await as(t85.docCons)
+    const catsCons = (await one(`select my_test_categories()::text[] as c`)).c
+    await asAdmin()
+    const status = (await one(`select status from service_request where id = $1`, [t85.req1]))
+      .status
+    if (
+      labTechPlaced !== 1 ||
+      inLab !== 'ok' ||
+      status !== 'verified' ||
+      consOnly !== '42501/no_desk' ||
+      ownTest !== '42501/no_desk' ||
+      ownImg !== 'ok' ||
+      otherImg !== '42501/no_desk' ||
+      !mineFlag ||
+      sample !== '42501/no_desk' ||
+      labTech !== 'ok' ||
+      direct !== '42501' ||
+      directStatus !== '42501' ||
+      String(catsLab) !== String(['lab']) ||
+      String(catsCons) !== String([])
+    )
+      throw new Error(
+        json85({
+          labTechPlaced,
+          inLab,
+          consOnly,
+          ownTest,
+          ownImg,
+          otherImg,
+          mineFlag,
+          sample,
+          labTech,
+          direct,
+          directStatus,
+          status,
+          catsLab,
+          catsCons,
+        }),
+      )
+    return `in Laboratory: verified; Consultation only: ${consOnly}; direct write: ${direct}; lab tech placed`
+  },
+)
+await step(
+  '0085 C: the role is the ceiling — a pharmacist placed in Laboratory still cannot enter results',
+  async () => {
+    await member85(t85.pharm, t85.lab)
+    const lab = await deskAs(t85.pharm, 'laboratory')
+    const result = await hintAs(t85.pharm, `select record_result($1, 'x', 'y', true)`, [t85.req2])
+    // the manager narrows the doctor's ceiling: the department no longer gives him the lab
+    await as(staff.manager)
+    await db.query(`select set_role_desk('doctor', 'laboratory', false)`)
+    const narrowed = await deskAs(t85.docLab, 'laboratory')
+    await as(staff.manager)
+    await db.query(`select set_role_desk('doctor', 'laboratory', true)`)
+    const back = await deskAs(t85.docLab, 'laboratory')
+    const managerRefused = await hintAs(
+      staff.manager,
+      `select set_role_desk('manager', 'pharmacy', false)`,
+    )
+    const unknown = await hintAs(staff.manager, `select set_role_desk('nurse', 'cashier', true)`)
+    const notManager = await hintAs(staff.nurse, `select set_role_desk('nurse', 'pharmacy', true)`)
+    await as(staff.manager)
+    const matrix = (await one(`select role_desk_matrix() as j`)).j
+    await as(staff.nurse)
+    const hidden = (await one(`select role_desk_matrix() as j`)).j
+    await asAdmin()
+    const audited = (
+      await one(
+        `select count(*)::int as n from audit_event where entity = 'setting' and after ->> 'key' = 'desks'`,
+      )
+    ).n
+    if (
+      lab ||
+      result !== '42501/no_desk' ||
+      narrowed ||
+      !back ||
+      managerRefused !== '22023/' ||
+      unknown !== '22023/' ||
+      notManager !== '42501/' ||
+      !matrix?.roles?.pharmacist?.includes('pharmacy') ||
+      matrix.roles.pharmacist.includes('laboratory') ||
+      matrix.roles.cashier?.includes('reception') ||
+      matrix.desks.length !== 12 ||
+      !matrix.offered.includes('laboratory') ||
+      hidden !== null ||
+      audited < 2
+    )
+      throw new Error(
+        json85({
+          lab,
+          result,
+          narrowed,
+          back,
+          managerRefused,
+          unknown,
+          notManager,
+          matrix,
+          hidden,
+          audited,
+        }),
+      )
+    return `pharmacist in Laboratory: ${result}; ceiling switched off and on (audited ${audited})`
+  },
+)
+await step(
+  '0085 D: a nurse in Pharmacy gets the pharmacy desk, never the money; the manager has every desk',
+  async () => {
+    await as(staff.manager)
+    t85.pharmacy = (
+      await one(
+        `select upsert_department(null, 'Pharmacy 85', null, '{}', array['pharmacy']) as id`,
+      )
+    ).id
+    await member85(t85.nurse, t85.pharmacy)
+    const nurse = await deskAs(t85.nurse, 'pharmacy')
+    await as(t85.nurse)
+    const admin = (await one(`select stock_admin() as ok`)).ok
+    const queue = (await one(`select pharmacy_queue(null) as j`)).j
+    const pay = (await one(`select has_perm('payment.take') as ok`)).ok
+    await asAdmin()
+    const payment = await hintAs(t85.nurse, `select take_payment($1, 'cash', 100)`, [t85.enc])
+    // a return on a posted bill is money: the nurse of the Pharmacy department may not
+    const again = (
+      await one(
+        `insert into medication_dispense (medication_request_id, encounter_id, item_id, batch_id, quantity)
+         select medication_request_id, encounter_id, item_id, batch_id, quantity from medication_dispense
+         where medication_request_id = $1 order by created_at desc limit 1 returning id`,
+        [t82.rx.id],
+      )
+    ).id
+    const posted = (
+      await one(`select status::text as s from invoice where encounter_id = $1`, [t82.enc])
+    ).s
+    const returned = await hintAs(t85.nurse, `select return_medicine($1, 'test 85 return')`, [
+      t82.rx.id,
+    ])
+    await db.query(`update medication_dispense set deleted_at = now() where id = $1`, [again])
+    // the pharmacist was not placed: putting him in would have changed which patients reach a
+    // colleague (the pharmacist of Laboratory 85); the manager was told
+    const pharmacist = await deskAs(staff.pharmacist, 'pharmacy')
+    const otherNurse = await deskAs(staff.nurse, 'pharmacy')
+    const mgr = await myDesks85(staff.manager)
+    if (
+      !nurse ||
+      !admin ||
+      !Array.isArray(queue?.stores) ||
+      pay ||
+      payment !== '42501/' ||
+      posted === 'draft' ||
+      returned !== '42501/' ||
+      pharmacist ||
+      otherNurse ||
+      mgr.desks.length !== 12 ||
+      mgr.via.pharmacy !== 'manager'
+    )
+      throw new Error(
+        json85({
+          nurse,
+          admin,
+          queue,
+          pay,
+          payment,
+          posted,
+          returned,
+          pharmacist,
+          otherNurse,
+          mgr,
+        }),
+      )
+    return 'nurse of Pharmacy 85: pharmacy desk and stores; payment and a posted-bill return refused; manager 12 desks'
+  },
+)
+await step(
+  '0085 E: day one — the people who used a desk keep it (placed, or kept as before); nothing else changes',
+  async () => {
+    await asAdmin()
+    // a doctor who once wrote a lab result is not made a member of the Laboratory
+    t85.docOnce = await newStaff('doc.once85', 'Dr. Once 85', 'doctor', 'Consultation 4')
+    await db.query(`update diagnostic_report set created_by = $1 where service_request_id = $2`, [
+      t85.docOnce,
+      t85.req1,
+    ])
+    const serves = async () =>
+      (await one(`select staff_serves($1, 'consultation') as ok`, [t85.docOnce])).ok
+    const consBefore = await serves()
+    const before = await routing85()
+    const lines = (await one(`select place_staff_for_desks(true) as j`)).j
+    const after = await routing85()
+    const consAfter = await serves()
+    const placed = (who, desk) =>
+      lines.find((l) => l.profileId === who && l.desk === desk && l.action === 'placed')
+    const pharmacist = placed(staff.pharmacist, 'pharmacy')
+    const kept = lines.filter((l) => l.action === 'kept')
+    const notice = await one(
+      `select params, title, body, recipient_role from notification where kind = 'desks_placed'
+       order by created_at desc limit 1`,
+    )
+    const history = (
+      await one(
+        `select count(*)::int as n from audit_event where after ->> 'key' = 'desk_placement' and entity_id = $1`,
+        [staff.pharmacist],
+      )
+    ).n
+    const keptRows = (await one(`select count(*)::int as n from staff_desk_keep`)).n
+    const r = {
+      pharmacist: await deskAs(staff.pharmacist, 'pharmacy'),
+      viaLab: (await myDesks85(staff.lab_tech)).via?.laboratory,
+      keptVia: kept[0] ? (await myDesks85(kept[0].profileId)).via?.[kept[0].desk] : 'kept',
+      onceLab: lines.find((l) => l.profileId === t85.docOnce && l.desk === 'laboratory'),
+      onceMember: (
+        await one(
+          `select count(*)::int as n from staff_department where profile_id = $1 and department_id = $2`,
+          [t85.docOnce, t85.lab],
+        )
+      ).n,
+      docCons: lines.find((l) => l.profileId === t85.docCons && l.desk === 'laboratory'),
+      cashier: lines.find((l) => l.profileId === staff.cashier),
+      again: (await one(`select place_staff_for_desks(true) as j`)).j,
+    }
+    if (
+      !pharmacist ||
+      pharmacist.department !== 'Pharmacy 85' ||
+      !r.pharmacist ||
+      r.viaLab !== 'department' ||
+      r.keptVia !== 'kept' ||
+      keptRows !== kept.length ||
+      r.onceLab ||
+      r.onceMember !== 0 ||
+      consBefore !== consAfter ||
+      json85(before) !== json85(after) ||
+      r.docCons ||
+      r.cashier ||
+      r.again.length !== 0 ||
+      lines.some((l) => l.action === 'lost') ||
+      notice?.recipient_role !== 'manager' ||
+      Number(notice.params.count) !== lines.length ||
+      !/Pharmacy 85/.test(notice.body) ||
+      history !== 1
+    )
+      throw new Error(json85({ lines, r, notice, history, keptRows, consBefore, consAfter }))
+    return `${lines.length} lines: ${lines.length - kept.length} placed, ${kept.length} kept as before; the patients reaching each person unchanged; run again: none`
+  },
+)
+await step(
+  '0085 F: reception is a desk; emergencies stay with the people who treat; nurse tasks follow the nursing desk',
+  async () => {
+    await as(staff.manager)
+    const unknown = await hintAs(
+      staff.manager,
+      `select upsert_department(null, 'Bad 85', null, '{}', array['cashier'])`,
+    )
+    t85.front = await dept85('Front desk 85', ['reception'], '{receptionist}')
+    const p = await patient85('Front 85')
+    const pEm = await patient85('Emergency 85')
+    const pDoc = await patient85('Walk-in 85')
+    const pMine = await patient85('Myself 85')
+    const before = await hintAs(staff.receptionist, `select start_visit($1)`, [p])
+    await member85(staff.receptionist, t85.front)
+    const after = await hintAs(staff.receptionist, `select start_visit($1)`, [p])
+    // the manager's "not allowed" on "start a visit" takes the desk away, department or not
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'visit.start', false)`, [staff.receptionist])
+    const switchedOff = await deskAs(staff.receptionist, 'reception')
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'visit.start', null)`, [staff.receptionist])
+    // a doctor outside Front desk 85: an emergency, yes; an ordinary visit, no; open_encounter
+    // straight, no
+    const emergency = await hintAs(t85.docCons, `select start_visit($1, true, 'consultation')`, [
+      pEm,
+    ])
+    const ordinary = await hintAs(t85.docCons, `select start_visit($1)`, [pDoc])
+    const direct = await hintAs(
+      t85.docCons,
+      `select open_encounter($1, 'opd', 'consultation', null)`,
+      [pDoc],
+    )
+    const directRow = await codeAs(
+      staff.cashier,
+      `insert into encounter (patient_id, type) values ($1, 'opd')`,
+      [pDoc],
+    )
+    // a nurse outside it takes a patient herself at triage
+    const myself = await hintAs(
+      staff.nurse,
+      `select begin_visit($1, 'triage', null, null, true, false)`,
+      [pMine],
+    )
+    // nurse tasks: by role until a department gives nursing care, then its people
+    const tasks = async (who) => {
+      await as(who)
+      const r = (await one(`select task_for_me('nurse') as ok`)).ok
+      await asAdmin()
+      return r
+    }
+    const nurseBefore = await tasks(staff.nurse)
+    const docBefore = await tasks(t85.docLab)
+    t85.nursing = await dept85('Nursing 85', ['nursing'])
+    await member85(t85.docLab, t85.nursing)
+    const nurseAfter = await tasks(staff.nurse)
+    const docAfter = await tasks(t85.docLab)
+    const bed = await hintAs(staff.nurse, `select bed_ready(gen_random_uuid())`)
+    // a nurse task on a visit: the doctor of Nursing 85 is told and may work on the patient; the
+    // nurses outside it are not told
+    const task = (
+      await one(
+        `insert into internal_task (encounter_id, patient_id, assigned_role, title)
+         select e.id, e.patient_id, 'nurse', 'Injection 85' from encounter e where e.id = $1 returning id`,
+        [t85.enc],
+      )
+    ).id
+    const told = await one(
+      `select count(*) filter (where recipient_user = $1)::int as doc,
+                count(*) filter (where recipient_role = 'nurse')::int as nurses
+         from notification where kind = 'task' and params ->> 'title' = 'Injection 85'`,
+      [t85.docLab],
+    )
+    await as(t85.docLab)
+    const docWorks = (await one(`select may_work_on($1) as ok`, [t85.enc])).ok
+    await asAdmin()
+    // marking it done straight in the table is refused; complete_task does it
+    const directDone = await codeAs(
+      staff.cashier,
+      `update internal_task set done_at = now() where id = $1`,
+      [task],
+    )
+    const done = await hintAs(t85.docLab, `select complete_task($1)`, [task])
+    await as(staff.manager)
+    const dir = await one(`select desks from staff_directory where id = $1`, [t85.docLab])
+    await as(t85.docLab)
+    const session = (await one(`select my_session_profile() as j`)).j
+    await asAdmin()
+    // put things back for anything after: reception and nursing given by no department
+    await db.query(`update department set active = false where id in ($1, $2)`, [
+      t85.front,
+      t85.nursing,
+    ])
+    const r = {
+      unknown,
+      before,
+      after,
+      switchedOff,
+      emergency,
+      ordinary,
+      direct,
+      directRow,
+      myself,
+      nurseBefore,
+      docBefore,
+      nurseAfter,
+      docAfter,
+      bed,
+      told,
+      docWorks,
+      directDone,
+      done,
+      dir,
+      session,
+    }
+    if (
+      unknown !== '22023/' ||
+      before !== '42501/no_desk' ||
+      after !== 'ok' ||
+      switchedOff ||
+      emergency !== 'ok' ||
+      ordinary !== '42501/no_desk' ||
+      direct !== '42501/no_desk' ||
+      directRow !== '42501' ||
+      myself !== 'ok' ||
+      !nurseBefore ||
+      docBefore ||
+      nurseAfter ||
+      !docAfter ||
+      bed !== '42501/no_desk' ||
+      told.doc !== 1 ||
+      told.nurses !== 0 ||
+      !docWorks ||
+      directDone !== '42501' ||
+      done !== 'ok' ||
+      !dir?.desks?.includes('nursing') ||
+      !dir.desks.includes('laboratory') ||
+      !session?.desks?.includes('laboratory')
+    )
+      throw new Error(json85(r))
+    return `reception: ${before} → ok as a member; emergency by a doctor outside: ok, ordinary: ${ordinary}; nurse tasks to Nursing 85 (told by name)`
+  },
+)
+await step('0085 G: one head and one assistant per department; members many', async () => {
+  await as(staff.manager)
+  const dep = (await one(`select upsert_department(null, 'Ward 85', null, '{}', null) as id`)).id
+  await asAdmin()
+  const ids = []
+  for (const n of ['a', 'b', 'c', 'd', 'e'])
+    ids.push(await newStaff(`ward85.${n}`, `Ward 85 ${n.toUpperCase()}`, 'nurse'))
+  const [a, b, c, d, e] = ids
+  const positions = async () => {
+    const rows = (
+      await db.query(`select profile_id, position from staff_department where department_id = $1`, [
+        dep,
+      ])
+    ).rows
+    return Object.fromEntries(rows.map((r) => [ids.indexOf(r.profile_id), r.position]))
+  }
+  await member85(a, dep, 'head')
+  await member85(b, dep, 'assistant')
+  await member85(e, dep, 'member')
+  // a new assistant: the previous assistant becomes a member
+  await member85(c, dep, 'assistant')
+  const s1 = await positions()
+  // the assistant made head: the previous head becomes the assistant
+  await db.query(
+    `update staff_department set position = 'head' where profile_id = $1 and department_id = $2`,
+    [c, dep],
+  )
+  const s2 = await positions()
+  // a new head: the previous head is the assistant, the previous assistant a member
+  await member85(d, dep, 'head')
+  const s3 = await positions()
+  const lead = async (id) =>
+    (await one(`select dashboard from profiles where id = $1`, [id])).dashboard
+  const dash = { a: await lead(a), c: await lead(c), d: await lead(d) }
+  let twice = 'ok'
+  try {
+    await db.exec('begin')
+    await db.query(`alter table staff_department disable trigger staff_department_one_head`)
+    await db.query(
+      `update staff_department set position = 'assistant' where department_id = $1 and profile_id = $2`,
+      [dep, b],
+    )
+    await db.exec('commit')
+  } catch (err) {
+    twice = err.code ?? String(err.message)
+    await db.exec('rollback')
+  }
+  const want1 = { 0: 'head', 1: 'member', 2: 'assistant', 4: 'member' }
+  const want2 = { 0: 'assistant', 1: 'member', 2: 'head', 4: 'member' }
+  const want3 = { 0: 'member', 1: 'member', 2: 'assistant', 3: 'head', 4: 'member' }
+  if (
+    json85(s1) !== json85(want1) ||
+    json85(s2) !== json85(want2) ||
+    json85(s3) !== json85(want3) ||
+    dash.a !== null ||
+    dash.c !== 'head' ||
+    dash.d !== 'head' ||
+    twice !== '23P01'
+  )
+    throw new Error(json85({ s1, s2, s3, dash, twice }))
+  return 'assistant replaced; assistant promoted (old head → assistant); new head cascades; two assistants refused'
+})
+await step(
+  '0085 H: triage by department; cover passes treating desks only; exceptions only take away',
+  async () => {
+    const triage = await dept85('Triage 85', ['triage'])
+    await asAdmin()
+    const nurse2 = await newStaff('triage85.n', 'Triage Nurse 85', 'nurse')
+    await member85(nurse2, triage)
+    await as(staff.receptionist)
+    const takers = (await one(`select vitals_takers() as j`)).j.map((x) => x.id)
+    await asAdmin()
+    const r = {
+      member: await deskAs(nurse2, 'triage'),
+      other: await deskAs(staff.nurse, 'triage'),
+      listed: takers.includes(nurse2),
+      otherListed: takers.includes(staff.nurse),
+    }
+    // a new receptionist (no vitals yet) keeps triage: it is the receptionist's usual desk
+    const recep2 = await newStaff('recep85.n', 'Receptionist 85', 'receptionist')
+    r.recepBefore = await deskAs(recep2, 'triage')
+    r.placed = (await one(`select place_staff_for_desks(true, array['triage']) as j`)).j
+    r.recepAfter = await deskAs(recep2, 'triage')
+    r.recepVia = (await myDesks85(recep2)).via?.triage
+    // cover: a nurse covers the doctor of Consultation 71 (also in Pharmacy 85): his consultation desk,
+    // not his department's laboratory or pharmacy
+    await member85(t85.docCons, t85.pharmacy)
+    await db.query(
+      `insert into clinician_cover (doctor_id, nurse_id, ends_at) values ($1, $2, now() + interval '1 hour')`,
+      [t85.docCons, nurse2],
+    )
+    r.cover = await deskAs(nurse2, 'consultation')
+    r.coverVia = (await myDesks85(nurse2)).via?.consultation
+    r.coverPharmacy = await deskAs(nurse2, 'pharmacy')
+    r.dispense = await hintAs(nurse2, `select dispense_prescription(gen_random_uuid())`)
+    await db.query(`update clinician_cover set ended_at = now() where nurse_id = $1`, [nurse2])
+    await db.query(`delete from staff_department where profile_id = $1 and department_id = $2`, [
+      t85.docCons,
+      t85.pharmacy,
+    ])
+    r.ended = await deskAs(nurse2, 'consultation')
+    await db.query(
+      `insert into clinician_cover (doctor_id, nurse_id, ends_at) values ($1, $2, now() + interval '1 hour')`,
+      [t85.docLab, t85.nurse],
+    )
+    r.coverLab = await deskAs(t85.nurse, 'laboratory')
+    await db.query(`update clinician_cover set ended_at = now() where nurse_id = $1`, [t85.nurse])
+    // the manager's exception: "orders.write not allowed" for the doctor of Laboratory 85 takes
+    // the desk away; "allowed" for the receptionist adds no worklist
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'orders.write', false)`, [t85.docLab])
+    r.denied = await deskAs(t85.docLab, 'laboratory')
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'orders.write', null)`, [t85.docLab])
+    r.restored = await deskAs(t85.docLab, 'laboratory')
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'orders.write', true)`, [staff.receptionist])
+    r.allowedAdds = await deskAs(staff.receptionist, 'laboratory')
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'orders.write', null)`, [staff.receptionist])
+    await asAdmin()
+    await db.query(`update department set active = false where id = $1`, [triage])
+    if (
+      !r.member ||
+      r.other ||
+      !r.listed ||
+      r.otherListed ||
+      r.recepBefore ||
+      !r.recepAfter ||
+      r.recepVia !== 'department' ||
+      !r.cover ||
+      r.coverVia !== 'cover' ||
+      r.coverPharmacy ||
+      r.dispense !== '42501/no_desk' ||
+      r.ended ||
+      r.coverLab ||
+      r.denied ||
+      !r.restored ||
+      r.allowedAdds
+    )
+      throw new Error(json85(r))
+    return 'triage: members (the receptionist placed); cover: consultation, never pharmacy or the lab; exceptions only take away'
   },
 )
 

@@ -39,6 +39,8 @@ import { AllergyBox, HandedStrip, ReasonBox } from './pharmacy/parts'
 import { ageText, errText, itemName, sexText, usableIn } from './pharmacy/util'
 import { CounterSalesPanel } from './pharmacy/counter-sales'
 import { RoomStoresSummary } from './pharmacy/room-summary'
+import { NoDeskNotice } from '@/components/clinical/desk-gate'
+import { useSessionCanDesk } from '@/components/clinical/session-desks'
 
 /** Usual reasons a medicine is not handed over; the pharmacist may also type their own. */
 const REASONS = ['outOfStock', 'boughtElsewhere', 'refused'] as const
@@ -70,16 +72,23 @@ export function PharmacyDesk({
   /** On the stock page: open Receive / Send there instead of following the link. */
   onOpenStock?: OpenStock
 }) {
+  // The pharmacy desk: a department of the person gives it (or, where no department does, the
+  // role). Without it: on one visit the medicines are shown read only; on the dashboard and the
+  // stock page the person is told to ask the manager. Room stores ("My store") stay with holders.
+  const canDesk = useSessionCanDesk()
+  const atDesk = canDesk('pharmacy')
+  if (!atDesk && !encounterId) return <NoDeskNotice desks={['pharmacy']} />
+  const dispense = canDispense && atDesk
   return (
     <>
       <HandOverPanel
-        canDispense={canDispense}
+        canDispense={dispense}
         step={step}
         encounterId={encounterId}
         onOpenStock={onOpenStock}
       />
-      {!encounterId && canDispense && <CounterSalesPanel />}
-      {!encounterId && canDispense && <RoomStoresSummary />}
+      {!encounterId && dispense && <CounterSalesPanel />}
+      {!encounterId && dispense && <RoomStoresSummary />}
     </>
   )
 }
@@ -640,11 +649,13 @@ function HandOverPanel({
  * Taken from the dispensing store and put on the visit's bill; the patient pays at the end of
  * the visit with the rest. A walk-in buyer without a visit: the counter sale, who pays first.
  */
-export function SellMedicineCard({
-  patients,
-}: {
-  patients: { encounterId: string; label: string }[]
-}) {
+export function SellMedicineCard(props: { patients: { encounterId: string; label: string }[] }) {
+  // selling is the pharmacy desk's (the hand-over beside it tells the others why)
+  const canDesk = useSessionCanDesk()
+  return canDesk('pharmacy') ? <SellMedicine {...props} /> : null
+}
+
+function SellMedicine({ patients }: { patients: { encounterId: string; label: string }[] }) {
   const { t } = useTranslation()
   const { data: stock } = useStockOverview()
   const { data: desk } = usePharmacyDesk(null)

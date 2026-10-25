@@ -48,6 +48,7 @@ import { ClinicalCard } from './clinical-card'
 import { WhereNextCard } from './where-next-card'
 import { VisitTrack } from '@/components/clinical/visit-track'
 import { useCan } from '@/lib/api/permissions'
+import { STATION_DESKS, TREATING_DESKS, useCanDesk, useMyDesks } from '@/lib/api/desks'
 import { useVisitAccess } from '@/lib/api/calls'
 import { HelpCard } from './help-card'
 import { PharmacyDesk } from '@/pages/stock/pharmacy-desk'
@@ -62,7 +63,8 @@ const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-s
  * discount the clinician may grant) and the patient / insurer split, then send the patient
  * to the cashier or another station. Every charge is recorded against the signed-in employee.
  */
-/** The desks each role works at (to find where this person meets the patient). */
+/** The usual desks of each role (to find where this person meets the patient), kept while the
+ *  person still has that desk; a department adds its own desks (below). */
 const DESKS_OF: Record<string, Station[]> = {
   doctor: ['consultation', 'dental', 'theatre'],
   nurse: ['triage', 'nursing', 'beds'],
@@ -72,6 +74,11 @@ const DESKS_OF: Record<string, Station[]> = {
   cashier: ['cashier'],
   receptionist: ['reception'],
 }
+/** The places where patients wait that a department's desk works at (not the counters). */
+const DESK_STATIONS = (Object.keys(STATION_DESKS) as Station[]).filter(
+  (s) => s !== 'reception' && s !== 'cashier' && (STATION_DESKS[s]?.length ?? 0) > 0,
+)
+const deskOf = (s: Station) => STATION_DESKS[s] ?? []
 
 export function VisitPage({
   user,
@@ -91,8 +98,16 @@ export function VisitPage({
   const coverDesks = (cover?.covering ?? []).map((c) =>
     stationFor({ ...user, role: 'doctor', station: c.station ?? undefined }),
   )
-  // the desks of my role (database role: a sonographer works at Ultrasound)
-  const myDesks = DESKS_OF[user.dbRole ?? user.role] ?? []
+  // The desks I work at: my role's usual ones I still have, and those my departments give
+  // (a doctor of the Laboratory meets the patient at the laboratory).
+  const canDesk = useCanDesk(user)
+  const { data: deskInfo } = useMyDesks(user)
+  const myDesks: Station[] = [
+    ...(DESKS_OF[user.dbRole ?? user.role] ?? []).filter(
+      (s) => s === 'reception' || s === 'cashier' || canDesk(deskOf(s)),
+    ),
+    ...DESK_STATIONS.filter((s) => deskOf(s).some((d) => deskInfo?.via[d] === 'department')),
+  ]
   // reception, the cashier and the manager keep their own way of choosing the desk below
   const inSections = !['receptionist', 'cashier', 'manager'].includes(user.role)
   const assigned =
@@ -156,6 +171,11 @@ export function VisitPage({
   const isCashier = user.role === 'cashier'
   // What the manager allows this person (Settings → Who may do what).
   const can = useCan(user)
+  // The desks I have (the clinical record, the pharmacy, nurse tasks), not my bare role.
+  const treats = canDesk(TREATING_DESKS)
+  // Vital signs: the manager's switch; a patient waiting at triage also needs the triage desk.
+  const mayVitals =
+    can('vitals.write') && (canDesk('triage') || !header?.stations.includes('triage'))
   const weight = vitals.find((v) => v.code === 'weight')
   // the latest vital sign measured: who measured it and when, for the medical report
   const latestVital = vitals.reduce<Vital | null>((a, v) => (!a || v.at > a.at ? v : a), null)
@@ -342,7 +362,7 @@ export function VisitPage({
                   </Chip>
                 ))}
                 <span className="flex-1" />
-                {!addingVitals && !closed && !isCashier && can('vitals.write') && (
+                {!addingVitals && !closed && !isCashier && mayVitals && (
                   <Button size="sm" onClick={() => setAddingVitals(true)}>
                     <Activity size={14} aria-hidden="true" />
                     {t(vitals.length ? 'vitalsForm.edit' : 'vitalsForm.add')}
@@ -356,19 +376,15 @@ export function VisitPage({
               )}
             </Card>
 
-            {!closed &&
-              vitals.length === 0 &&
-              !addingVitals &&
-              !isCashier &&
-              can('vitals.write') && (
-                <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
-                  <Activity size={18} aria-hidden="true" />
-                  <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
-                  <Button size="sm" variant="primary" onClick={() => setAddingVitals(true)}>
-                    {t('vitalsForm.add')}
-                  </Button>
-                </p>
-              )}
+            {!closed && vitals.length === 0 && !addingVitals && !isCashier && mayVitals && (
+              <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+                <Activity size={18} aria-hidden="true" />
+                <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
+                <Button size="sm" variant="primary" onClick={() => setAddingVitals(true)}>
+                  {t('vitalsForm.add')}
+                </Button>
+              </p>
+            )}
             {/* where the patient is in the visit: start → each desk → treatment → payment → left */}
             <VisitTrack encounterId={encounterId} />
             {closed && (
@@ -431,13 +447,12 @@ export function VisitPage({
               </Flash>
             )}
 
-            {/* the pharmacist hands this patient's medicines over here */}
-            {!closed && (user.role === 'pharmacist' || myStation === 'pharmacy') && (
-              <PharmacyDesk
-                canDispense={user.role === 'pharmacist' || user.role === 'manager'}
-                encounterId={encounterId}
-              />
-            )}
+            {/* the pharmacy desk hands this patient's medicines over here (read only to others
+                at the pharmacy; the manager, who has every desk, when working at the pharmacy) */}
+            {!closed &&
+              ((user.role !== 'manager' && canDesk('pharmacy')) || myStation === 'pharmacy') && (
+                <PharmacyDesk canDispense={canDesk('pharmacy')} encounterId={encounterId} />
+              )}
             {!isReception && !isCashier && (
               <ClinicalCard
                 encounterId={encounterId}
@@ -480,11 +495,13 @@ export function VisitPage({
               />
             )}
 
-            {/* Doctor → nurse: tasks on this visit appear on the nurses' dashboard. */}
-            {(user.role === 'doctor' || user.role === 'manager') && !locked && !closed && (
-              <NurseTaskCard encounterId={encounterId} patientName={header.name} />
-            )}
-            {user.role === 'nurse' && !closed && (
+            {/* Doctor → nurse: tasks on this visit appear on the nurses' dashboard. Giving one
+                needs a desk that treats patients; the nurse works them at the nursing desk. */}
+            {(user.role === 'doctor' || user.role === 'manager') &&
+              treats &&
+              !locked &&
+              !closed && <NurseTaskCard encounterId={encounterId} patientName={header.name} />}
+            {user.role === 'nurse' && canDesk('nursing') && !closed && (
               <NurseTaskCard encounterId={encounterId} patientName={header.name} nurse />
             )}
 
@@ -493,6 +510,7 @@ export function VisitPage({
               !locked &&
               access &&
               can('clinical.write') &&
+              treats &&
               ['doctor', 'nurse', 'manager'].includes(user.role) && (
                 <HelpCard
                   encounterId={encounterId}

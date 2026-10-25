@@ -44,6 +44,8 @@ export type ApiErrorKind =
   | 'notesInTransit'
   | 'hasStock'
   | 'duplicateDelivery'
+  // 0085: not in a department that does this desk's work
+  | 'noDesk'
   // sample mode only (the database's own sentence is kept for these)
   | 'alreadyDone'
   | 'notFound'
@@ -80,6 +82,7 @@ const BY_HINT: Record<string, ApiErrorKind> = {
   notes_in_transit: 'notesInTransit',
   has_stock: 'hasStock',
   duplicate_delivery: 'duplicateDelivery',
+  no_desk: 'noDesk',
 }
 
 /** An error from a database function, with its code and hint kept for the screens. */

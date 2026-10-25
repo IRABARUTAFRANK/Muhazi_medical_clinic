@@ -44,6 +44,13 @@ import { buildPrescriptionHtml, type RxDoc, type RxDocMedicine } from '@/lib/pre
 import { roleLabel } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { useCan } from '@/lib/api/permissions'
+import {
+  deskOfRequest,
+  STATION_DESKS,
+  TREATING_DESKS,
+  useCanDesk,
+  useMyDesks,
+} from '@/lib/api/desks'
 import { openMedicalReport, type ReportMedicine } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
@@ -159,26 +166,35 @@ export function ClinicalCard({
   const can = useCan(user)
   const stock = useStockActions()
   const readOnly = closed || !!lockedNote
-  const clinician =
-    (user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager') &&
-    !readOnly &&
-    can('clinical.write')
+  // The desks a department of the person gives (or, where no department gives one, the role):
+  // the clinical record is a treating desk's (Consultation, Dental, Nursing…), results are the
+  // laboratory's or the ultrasound's, a hand-over taken back is the pharmacy's.
+  const canDesk = useCanDesk(user)
+  const clinician = canDesk(TREATING_DESKS) && !readOnly && can('clinical.write')
   // The lab / ultrasound may register the tests of their own desk (a patient who came straight
   // to them); notes, diagnoses and prescriptions stay with the clinicians.
-  const deskStaff = user.role === 'lab_tech' && !readOnly && can('orders.write')
-  // Lab / ultrasound staff (and clinicians) record results; reception and the cashier do not.
-  // (a doctor or nurse locked out of this patient does not write results on it)
-  const canResult =
-    !closed &&
-    user.role !== 'receptionist' &&
-    user.role !== 'cashier' &&
-    user.role !== 'pharmacist' &&
-    !(lockedNote && (user.role === 'doctor' || user.role === 'nurse'))
+  const deskStaff =
+    !clinician && canDesk(['laboratory', 'ultrasound']) && !readOnly && can('orders.write')
+  // a doctor or nurse locked out of this patient does not write results on it
+  const lockedOut = !!lockedNote && (user.role === 'doctor' || user.role === 'nurse')
+  const { data: deskInfo } = useMyDesks(user)
+  /** Whose result is it: the laboratory or ultrasound desk of the test; a test done at another
+   *  desk (Nursing, Dental…) also that desk's clinical staff; the clinician's own test while no
+   *  department gives its desk ('mine' from visit_clinical; before 0085: anyone who orders tests).
+   *  As the database checks. */
+  const mayResult = (o: { station?: string | null; category: 'lab' | 'imaging' }) =>
+    canDesk(deskOfRequest(o.station, o.category)) ||
+    (can('clinical.write') &&
+      !['laboratory', 'ultrasound'].includes(o.station ?? 'laboratory') &&
+      canDesk(STATION_DESKS[o.station ?? ''] ?? [])) ||
+    (can('orders.write') &&
+      (!!deskInfo?.fallback ||
+        ((o as { mine?: boolean }).mine === true &&
+          !(deskInfo?.offered ?? []).includes(deskOfRequest(o.station, o.category)))))
+  const canResult = (o: Parameters<typeof mayResult>[0]) => !closed && !lockedOut && mayResult(o)
   // A verified result is corrected with a reason, also after the visit ended.
-  const canCorrect =
-    user.role === 'lab_tech' ||
-    user.role === 'manager' ||
-    ((user.role === 'doctor' || user.role === 'nurse') && !lockedNote)
+  const canCorrect = (o: Parameters<typeof mayResult>[0]) =>
+    user.role === 'manager' || (!lockedOut && mayResult(o))
   const [resultFor, setResultFor] = useState<string | null>(null)
   const [result, setResult] = useState({
     findings: '',
@@ -1259,8 +1275,7 @@ export function ClinicalCard({
             (isManager || wrote) &&
             can('clinical.write')
           // the pharmacy undoes a hand-over (wrong medicine, brought back unopened)
-          const canReturn =
-            state === 'given' && r.supply !== 'room' && (user.role === 'pharmacist' || isManager)
+          const canReturn = state === 'given' && r.supply !== 'room' && canDesk('pharmacy')
           // a medicine given here by mistake: the one who gave it (the same day) or the manager
           // puts it back in the room store
           const givenToday =
@@ -1569,12 +1584,9 @@ export function ClinicalCard({
                 </Reveal>
               )}
             </span>
-            {(o.result?.verified ? canCorrect : canResult) &&
+            {(o.result?.verified ? canCorrect(o) : canResult(o)) &&
               resultFor !== o.id &&
-              o.status !== 'cancelled' &&
-              // a nurse writes the result of a desk order (Nursing…), the lab its own tests
-              (user.role !== 'nurse' ||
-                !['laboratory', 'ultrasound'].includes(o.station ?? 'laboratory')) && (
+              o.status !== 'cancelled' && (
                 <Button
                   size="sm"
                   onClick={() => {

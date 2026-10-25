@@ -251,6 +251,51 @@ Deno.serve(async (req) => {
     // A database without migration 0051 keeps the main department only (set with the profile).
     if (error && !/set_staff_departments/.test(error.message)) throw new Error(error.message)
   }
+  // One head and one assistant per department (0073, 0085): the database moves the previous ones
+  // down (a new head: the head becomes the assistant and the assistant a member; a new assistant:
+  // the assistant becomes a member). Read before saving, for the history and the reply.
+  const leadsReplaced = async (
+    userId: string | null,
+    list: { department_id: string; position: string }[],
+  ) => {
+    const leads = list.filter((m) => m.position === 'head' || m.position === 'assistant')
+    if (!leads.length) return []
+    const { data, error } = await admin
+      .from('staff_department')
+      .select('profile_id, department_id, position')
+      .in(
+        'department_id',
+        leads.map((m) => m.department_id),
+      )
+      .in('position', ['head', 'assistant'])
+    if (error || !data) return []
+    const others = (
+      data as { profile_id: string; department_id: string; position: string }[]
+    ).filter((r) => r.profile_id !== userId)
+    const out: { department_id: string; profile_id: string; from: string; to: string }[] = []
+    for (const m of leads) {
+      const here = others.filter((r) => r.department_id === m.department_id)
+      const head = here.find((r) => r.position === 'head')
+      const assistant = here.find((r) => r.position === 'assistant')
+      if (m.position === 'head' && head) {
+        out.push({
+          department_id: m.department_id,
+          profile_id: head.profile_id,
+          from: 'head',
+          to: 'assistant',
+        })
+      }
+      if (assistant && (m.position === 'assistant' || head)) {
+        out.push({
+          department_id: m.department_id,
+          profile_id: assistant.profile_id,
+          from: 'assistant',
+          to: 'member',
+        })
+      }
+    }
+    return out
+  }
   // The professional registration (0084), only the fields the request carries. Saved apart from
   // the rest so a database without migration 0084 (no such columns) still saves the employee.
   const registration = (a: Assignment) => {
@@ -327,6 +372,7 @@ Deno.serve(async (req) => {
           },
         })
         if (error) return json(400, { error: error.message })
+        const replaced = await leadsReplaced(null, memberships)
         // The profile row is created by a trigger; add the department placement.
         await admin
           .from('profiles')
@@ -351,9 +397,16 @@ Deno.serve(async (req) => {
           username,
           role: a.role,
           staff_id: created?.staff_id,
+          replaced,
           ...reg,
         })
-        return json(200, { id: data.user.id, username, staff_id: created?.staff_id ?? null, email })
+        return json(200, {
+          id: data.user.id,
+          username,
+          staff_id: created?.staff_id ?? null,
+          email,
+          replaced,
+        })
       }
 
       case 'update': {
@@ -397,6 +450,7 @@ Deno.serve(async (req) => {
           })
           if (error) return json(400, { error: error.message })
         }
+        const replaced = await leadsReplaced(body.user_id, memberships)
         const { error } = await admin
           .from('profiles')
           .update({
@@ -426,9 +480,10 @@ Deno.serve(async (req) => {
           department_id: a.department_id,
           position: a.position,
           departments: memberships,
+          replaced,
           ...reg,
         })
-        return json(200, { ok: true })
+        return json(200, { ok: true, replaced })
       }
 
       case 'set_email': {

@@ -1,4 +1,5 @@
 import { ROLE_HOME, type NavItem, type StaffUser } from '@mmc/shared'
+import { desksNow, TREATING_DESKS, type DeskId, type MyDesks } from '@/lib/api/desks'
 import { isRoomStore, sampleStock } from '@/lib/api/stock'
 import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
@@ -112,11 +113,85 @@ const HEAD_DASHBOARD: NavItem = {
 const withHeadDashboard = (user: StaffUser, items: NavItem[]): NavItem[] =>
   user.dashboard === 'head' ? [items[0]!, HEAD_DASHBOARD, ...items.slice(1)] : items
 
-/** Navigation items for the user's role. */
+/** Navigation items for the user: the role's menu, shaped by the desks they work at. */
 export const navForUser = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
     ? MANAGER_NAV
-    : withMyStore(user, withHeadDashboard(user, navForStaff(user)))
+    : withMyStore(user, withHeadDashboard(user, withDesks(user, navForStaff(user))))
+
+/* ---------------------------------------------------------------- desks (migration 0085) */
+
+/** The desks where a doctor sees patients (the doctor's queue, tests ordered, prescriptions). */
+export const DOCTOR_DESKS: readonly DeskId[] = ['consultation', 'dental', 'surgery', 'circ']
+
+/** The lab worklist (the laboratory or ultrasound desk of someone whose role menu lacks it). */
+const LAB_WORKLIST: NavItem = {
+  id: 'worklist',
+  labelKey: 'nav.labWorklist',
+  icon: 'flask-conical',
+  to: '/app/lab',
+}
+/** The pharmacy desk (hand over, counter sale, the pharmacy's stock): the stock page. */
+const PHARMACY_DESK: NavItem = {
+  id: 'stock',
+  labelKey: 'nav.pharmacy',
+  icon: 'pill',
+  to: '/app/stock',
+}
+const doctorEntry = (id: 'queue' | 'results' | 'prescriptions'): NavItem =>
+  ROLE_HOME.doctor.nav.find((n) => n.id === id)!
+
+/**
+ * The menu entries that belong to a desk, in the order they are added after Home:
+ *   keep  the role's own entry stays while the person has one of these desks;
+ *   add   someone whose role menu lacks it gets it when a department of theirs (or the manager's
+ *         exception for them) gives one of these desks.
+ * A desk the person has only because their role always had it (no department gives it) adds
+ * nothing: on the day departments start deciding, nobody's menu changes.
+ */
+const DESK_ENTRIES: { item: NavItem; keep: readonly DeskId[]; add: readonly DeskId[] }[] = [
+  { item: RECEPTION_NAV[1]!, keep: ['reception'], add: ['reception'] },
+  { item: RECEPTION_NAV[2]!, keep: ['triage'], add: ['triage'] },
+  { item: doctorEntry('queue'), keep: TREATING_DESKS, add: DOCTOR_DESKS },
+  { item: doctorEntry('results'), keep: TREATING_DESKS, add: DOCTOR_DESKS },
+  { item: doctorEntry('prescriptions'), keep: TREATING_DESKS, add: DOCTOR_DESKS },
+  { item: LAB_WORKLIST, keep: ['laboratory', 'ultrasound'], add: ['laboratory', 'ultrasound'] },
+  { item: PHARMACY_DESK, keep: ['pharmacy'], add: ['pharmacy'] },
+]
+
+/** The desks a department of the person gives: the ones that add entries to the menu and blocks
+ *  to the home page. A desk kept on day one or decided by the role adds nothing (the menu stays as
+ *  before); a doctor covered by a nurse adds nothing (the cover has its own panels). */
+export const extraDesks = (mine: Pick<MyDesks, 'desks' | 'via'> | undefined): DeskId[] =>
+  (mine?.desks ?? []).filter((d) => mine?.via[d] === 'department')
+
+/**
+ * The desks of the person now, read during render from the query cache (desksNow fetches them
+ * the first time and redraws the menus when they change). Until the first answer: today's rule
+ * of the role, and nothing extra.
+ */
+export function desksOfUser(user: StaffUser): { desks: DeskId[]; extra: DeskId[] } {
+  const desks = desksNow(user)
+  const mine = queryClient.getQueryData<MyDesks>(['desks', 'mine', user.id])
+  return { desks, extra: extraDesks(mine) }
+}
+
+/** The role's menu without the desk entries the person does not work at, plus those their
+ *  departments give (right after Home). The cashier's menu is money only: never changed. */
+function withDesks(user: StaffUser, items: NavItem[]): NavItem[] {
+  if (user.role === 'cashier') return items
+  const { desks, extra } = desksOfUser(user)
+  const has = (list: readonly DeskId[]) => list.some((d) => desks.includes(d))
+  const kept = items.filter((n) => {
+    const entry = DESK_ENTRIES.find((e) => e.item.to === n.to)
+    // the pharmacist's own "Stock" is the pharmacy desk
+    return !entry || has(entry.keep)
+  })
+  const added = DESK_ENTRIES.filter(
+    (e) => !kept.some((n) => n.to === e.item.to) && e.add.some((d) => extra.includes(d)),
+  ).map((e) => e.item)
+  return added.length ? [kept[0]!, ...added, ...kept.slice(1)] : kept
+}
 
 /**
  * Whether the person holds a room store, as last read from the database (my_stores). The menu
@@ -155,9 +230,10 @@ function holdsRoomStore(user: StaffUser): boolean {
   })
   return queryClient.getQueryData<boolean>(key) ?? false
 }
-/** The pharmacist has the full stock page already; anyone else holding a store gets My store. */
+/** Whoever has the pharmacy desk has the full stock page already; anyone else holding a store
+ *  gets My store. */
 const withMyStore = (user: StaffUser, items: NavItem[]): NavItem[] =>
-  user.role === 'pharmacist' || items.some((n) => n.to === '/app/stock') || !holdsRoomStore(user)
+  items.some((n) => n.to === '/app/stock') || !holdsRoomStore(user)
     ? items
     : [...items.slice(0, -2), MY_STORE, ...items.slice(-2)]
 

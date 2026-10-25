@@ -7,8 +7,9 @@ import { useSession } from '@/store/session'
 const id = (v: unknown) => (typeof v === 'string' && /^[\w-]{1,64}$/.test(v) ? v : undefined)
 
 /**
- * Medicine stock. The pharmacist and the manager see every store; anyone else sees only the
- * room stores they hold ("My store", tab=mine) and is told so when they hold none.
+ * Medicine stock. The pharmacy desk (0085: the pharmacist, or a doctor or nurse whose department
+ * gives the pharmacy) and the manager see every store; anyone else sees only the room stores they
+ * hold ("My store", tab=mine) and is told so when they hold none.
  */
 export const Route = createFileRoute('/app/stock')({
   beforeLoad: () => {

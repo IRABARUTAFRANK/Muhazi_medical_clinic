@@ -39,6 +39,8 @@ import { LabOrderRow } from '../lab/lab-parts'
 import { ErrorBox, MyQueuePanel, ToAcceptPanel } from './role-panels'
 import { useHomeSummary } from '@/lib/api/home'
 import { CallsPanel } from './calls-panel'
+import { DeskBlocks } from './home-desks'
+import { useHomeDesks } from './home-desks-rules'
 
 /**
  * Laboratory dashboard (lab technicians; sonographers for imaging): the bench in the manager
@@ -55,8 +57,13 @@ export function LabDashboard({ user }: { user: StaffUser }) {
   const { data: s, refetch, isFetching, dataUpdatedAt } = useLabSummary(days)
   const { data: open = [] } = useLabWorklist('open')
   const { data: done = [] } = useLabWorklist('done')
-  // the lab's queue, or the ultrasound queue for sonographers
-  const desk = stationFor(user)
+  // the lab's queue, or the ultrasound queue for sonographers; someone else working here (a
+  // doctor or nurse whose department is the Laboratory or Ultrasound) sees the queue of that desk
+  const { has } = useHomeDesks(user)
+  const desk =
+    user.role === 'lab_tech' ? stationFor(user) : has('laboratory') ? 'laboratory' : 'ultrasound'
+  // the laboratory's shelves go with the laboratory desk (not ultrasound)
+  const labDesk = user.dbRole !== 'sonographer' && has('laboratory')
   const { data: queue = [] } = useQueueBoard(desk, user.role)
   const rows = openItems(queue)
   const [query, setQuery] = useState('')
@@ -104,7 +111,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
           >
             {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
           </Button>
-          {user.dbRole !== 'sonographer' && (
+          {labDesk && (
             <StaffLink to="/app/stock" className={buttonVariants({ size: 'md' })}>
               <Warehouse size={16} aria-hidden="true" />
               {t('lab.stock')}
@@ -241,7 +248,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
                   <ToAcceptPanel items={home.toAccept} onError={setBookingError} />
                 </>
               )}
-              {user.dbRole !== 'sonographer' && labStores.length > 0 && (
+              {labDesk && labStores.length > 0 && (
                 <Panel
                   i={4}
                   icon={Warehouse}
@@ -318,6 +325,8 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             )}
           </Panel>
         </section>
+        {/* the desks the person's departments give besides this one */}
+        <DeskBlocks user={user} kind="lab" />
         <DoctorCalendarsSection user={user} />
       </main>
     </StaffShell>

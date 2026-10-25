@@ -95,7 +95,9 @@
     "history": "History",
     "worklist": "Worklist",
     "doctorCalendars": "Doctors’ calendars",
-    "myStore": "My store"
+    "myStore": "My store",
+    "labWorklist": "Lab worklist",
+    "pharmacy": "Pharmacy"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -756,7 +758,16 @@
       "registrationBodyOther": "Name of the council",
       "registrationHint": "Printed under the name on the prescriptions, reports and labels this person signs.",
       "registrationDoctorHint": "Add the doctor's council number: until it is filled in, prescriptions print a blank line for it.",
-      "registrationPrinted": "Printed on documents as: {{reg}}"
+      "registrationPrinted": "Printed on documents as: {{reg}}",
+      "desksManager": "Can use: every desk (the manager)",
+      "desksByRole": "No department gives these yet, so the role decides them: {{list}}",
+      "desksElsewhere": "Another department gives these: add it if this person works there: {{list}}",
+      "desksNotForRole": "A {{role}} may not use: {{list}}. The manager sets this in Settings.",
+      "deptGivesNothing": "{{names}}: gives nothing a {{role}} may use. Choose another department or check its services.",
+      "replacesAssistant": "{{name}} is assistant head of {{dept}} now. A department has one assistant head: saving makes {{name}} a member.",
+      "assistantToMember": "{{name}}, assistant head of {{dept}} now, becomes a member.",
+      "desksKept": "Kept as before departments decided: {{list}}. Place this person in a department that gives it, or stop it here.",
+      "keptStop": "Stop {{desk}}"
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -864,7 +875,15 @@
       "services": "Services given in this department",
       "servicesHint": "Its people take the patients sent to these services, whatever their role (a nurse in Consultation, a doctor in Nursing). A doctor may also list services in their calendar.",
       "servicesShort": "Services",
-      "noServices": "none chosen: its people work at the usual desk of their role"
+      "noServices": "none chosen: its people work at the usual desk of their role",
+      "membersLabel": "Members ({{count}})",
+      "noMembers": "none yet",
+      "desksHint": "These services are also the desks its members work at, as far as each one's role allows.",
+      "rolesGetNothing": "These roles get no desk from these services: {{roles}}.",
+      "membersLabel_one": "Member",
+      "membersLabel_other": "Members",
+      "willLoseNew": "{{desk}} is given by no department yet: once saved, only members of departments giving it use it. Using it now, not members: {{names}}. Those who work there as usual are added as members when nothing else changes for them; you are told about the others.",
+      "willLoseDropped": "{{desk}}: these members will no longer use it: {{names}}."
     },
     "tempPin": "Temporary PIN",
     "showPin": "Show the PIN",
@@ -3686,6 +3705,17 @@
         "name": "Manage stock",
         "hint": "Receive medicines and supplies and send them to the desks."
       }
+    },
+    "desks": {
+      "title": "Desks each role may use",
+      "lead": "The role is the limit: what a person of that role may ever use. The departments a person works in decide which of these desks they get. A desk no department gives follows the role alone.",
+      "desk": "Desk",
+      "offeredBy": "Given by: {{names}}",
+      "byRole": "No department gives it: the role decides",
+      "fallback": "The database does not know desks yet (update 0085 not installed): these are the defaults, read only.",
+      "managerNote": "The manager always has every desk. Money (payments, bills) stays with the role and the switches above; room stores stay with their holders.",
+      "on": "{{desk}} allowed for every {{role}}.",
+      "off": "{{desk}} stopped for every {{role}}."
     }
   },
   "medReport": {
@@ -4542,6 +4572,11 @@
         "title": "Give {{name}} a new PIN?",
         "body": "Their current PIN stops working now. Hand the new PIN over in person; {{name}} must change it at the next sign-in.",
         "yes": "Yes, give a new PIN"
+      },
+      "forgetKept": {
+        "title": "Stop {{desk}} for {{name}}?",
+        "body": "{{name}} will use {{desk}} only through a department that gives it. This is saved at once.",
+        "yes": "Yes, stop it"
       }
     },
     "departments": {
@@ -4644,6 +4679,16 @@
           "body": "{{name}} cannot do it from now on, even if their role allows it."
         },
         "change": "Yes, change"
+      },
+      "deskOn": {
+        "title": "Allow {{desk}} for every {{role}}?",
+        "body": "A {{role}} then uses it when one of their departments gives it (or, while no department gives it, by the role).",
+        "yes": "Yes, allow"
+      },
+      "deskOff": {
+        "title": "Stop {{desk}} for every {{role}}?",
+        "body": "No {{role}} may use it from now on, whatever their departments.",
+        "yes": "Yes, stop it"
       }
     },
     "calendar": {
@@ -4916,7 +4961,8 @@
     "shortBy": "Not enough in stock (not expired): {{n}} unit(s) short.",
     "expiredShort": "Not enough stock that is not expired: {{n}} unit(s) short. Write the expired stock off.",
     "ownNote": "You sent this note: the person receiving it confirms what arrived.",
-    "noHolder": "This room store has no holder yet: the manager assigns one first."
+    "noHolder": "This room store has no holder yet: the manager assigns one first.",
+    "noDesk": "You do not work in a department that does this. Ask the manager to place you in one."
   },
   "cashierDesk": {
     "noMatch": "Nothing matches your search.",
@@ -5435,5 +5481,46 @@
     "returns_other": "{{count}} return notes to confirm",
     "onTheWay_one": "{{count}} note on the way",
     "onTheWay_other": "{{count}} notes on the way"
+  },
+  "desks": {
+    "canUse": "Can use: {{list}}",
+    "none": "no desk",
+    "names": {
+      "reception": "Reception",
+      "triage": "Triage (vital signs)",
+      "consultation": "Consultation",
+      "dental": "Dental",
+      "surgery": "Minor surgery",
+      "circ": "Circumcision",
+      "nursing": "Nursing care",
+      "fp": "Family planning",
+      "hiv": "HIV testing & vaccination",
+      "laboratory": "Laboratory worklist",
+      "ultrasound": "Ultrasound worklist",
+      "pharmacy": "Pharmacy desk"
+    },
+    "hints": {
+      "reception": "Start visits and send patients on",
+      "triage": "Vital signs at triage and sending patients on",
+      "consultation": "Clinical record, prescriptions and tests",
+      "dental": "Dental care: record, prescriptions and tests",
+      "surgery": "Minor surgery: record, prescriptions and tests",
+      "circ": "Circumcision: record, prescriptions and tests",
+      "nursing": "Nurse tasks, beds and nursing care",
+      "fp": "Family planning: record, prescriptions and tests",
+      "hiv": "HIV testing and vaccination: record and tests",
+      "laboratory": "Lab tests: samples, results, verify",
+      "ultrasound": "Imaging: reports and results",
+      "pharmacy": "Hand over medicines, counter sales, pharmacy stock"
+    }
+  },
+  "deskGate": {
+    "title": "You do not work in a department that does this",
+    "body": "Ask the manager to place you in a department that gives: {{desks}}.",
+    "bodyShort": "Ask the manager to place you in a department that does this."
+  },
+  "homeDesks": {
+    "section": "Your other desks",
+    "labEmpty": "No test waiting at your desks."
   }
 }
