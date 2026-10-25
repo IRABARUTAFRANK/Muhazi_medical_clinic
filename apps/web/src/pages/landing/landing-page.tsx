@@ -14,7 +14,6 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDuration } from '@/lib/duration'
 import {
   CATEGORY_FILTERS,
   CLINIC,
@@ -457,9 +456,10 @@ function StatusPill({
       ? t('landing.status.open24')
       : t('landing.status.open', { closes: status.closesAt ?? '' })
     : t('landing.status.closed', { opens: status.opensAt ?? '' })
+  // how many wait now (joined today); no waiting time: an average of open queues was not one
   const wait =
-    status.open && status.avgWaitMin > 0
-      ? ` · ${t('landing.status.wait', { time: formatDuration(status.avgWaitMin, t) })}`
+    status.open && status.live && status.waiting > 0
+      ? ` · ${t('landing.status.waiting', { count: status.waiting })}`
       : ''
   return (
     <span

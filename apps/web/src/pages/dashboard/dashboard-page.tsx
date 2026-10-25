@@ -1,4 +1,5 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { useRouter } from '@tanstack/react-router'
 import {
   Banknote,
   BedDouble,
@@ -7,6 +8,7 @@ import {
   CalendarClock,
   ChartLine,
   Clock,
+  History,
   Coins,
   FlaskConical,
   HeartPulse,
@@ -28,7 +30,6 @@ import {
   Smartphone,
   Stethoscope,
   Tablets,
-  Timer,
   UserPlus,
   Users,
   Wallet,
@@ -37,11 +38,13 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   FEATURES,
+  addDays,
   formatDate,
   formatDayMonth,
   formatNumber,
   formatRwf,
   formatTime,
+  isoDate,
   type DashboardRole,
   type StaffUser,
   CLINIC_PROFILE,
@@ -53,6 +56,12 @@ import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { StationTile } from '@/components/dash/station-tile'
 import { Empty, Kpi, ListRows, Panel, Pill, SectionTitle } from '@/components/dash/kit'
+import { DashLink } from '@/components/dash/dash-link'
+import {
+  periodSearch,
+  useAnalyticsLink,
+  type AnalyticsSearch,
+} from '@/components/dash/analytics-links'
 import { NoticesPanel } from '@/components/dash/notices-panel'
 import {
   avatarTint,
@@ -70,7 +79,8 @@ import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { usePeriod } from '@/lib/period'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { methodLabel, useDashboard, type DashboardData } from '@/lib/api/dashboard'
+import { methodLabel, useDashboard, type RevenuePoint } from '@/lib/api/dashboard'
+import type { ActivityKind } from '@/lib/api/analytics'
 import { categoryName } from '@/lib/api/catalogue'
 import { useClinicInfo } from '@/lib/api/public'
 import { useDeactivationReminders } from '@/lib/api/staff'
@@ -80,7 +90,6 @@ import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { useShowMore } from '@/lib/paging'
-import { formatDuration } from '@/lib/duration'
 import { cn } from '@/lib/utils'
 
 /* Figma: "Muhazi Clinic — Manager Dashboard v2". Tinted KPI chips, 16 px cards with a soft
@@ -135,6 +144,28 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   const periodWord = t(`dashboard.period.${range}`)
   const collections = (data?.collections ?? []).filter((c) => ACCEPTED_METHODS.includes(c.method))
   const greeting = greetingFor(user.name, t)
+  // Every highlighted figure opens its detailed view on the Analytics page, with this period;
+  // undefined when the person may not open that view (the card then stays a plain card).
+  const link = useAnalyticsLink(periodSearch(period))
+  // Revenue by day: the chosen period (up to 92 days), or the last 30 days for "Today",
+  // "All time" and long periods.
+  const today = isoDate(now)
+  const last30: AnalyticsSearch = {
+    range: 'custom',
+    from: isoDate(addDays(now, -29)),
+    to: today,
+  }
+  const periodSeries =
+    range !== 'today' && (data?.revenuePeriod?.length ?? 0) > 1 ? data!.revenuePeriod! : null
+  const revenueSeries = periodSeries ?? data?.revenue30d ?? []
+  const revenueSearch = periodSeries ? {} : last30
+  const revenueTotal = revenueSeries.reduce((s, r) => s + r.amount, 0)
+  const revenueRefunds = revenueSeries.reduce((s, r) => s + r.refunds, 0)
+  // "Who did what": a person's detailed view, or one kind of their work. The manager only: a
+  // head's list here is clinic-wide while their Analytics shows their own department (people
+  // outside it are refused), so a head keeps the panel's "Details" link to their department.
+  const personLink = (id: string | null, kind?: ActivityKind) =>
+    id && isManager ? link('staff', { person: id, ...(kind ? { kind } : {}) }) : undefined
 
   return (
     <StaffShell user={user} nav={nav} activeId={activeId}>
@@ -230,6 +261,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 value={data.tiles.registered}
                 unit={periodWord}
                 delta={delta(data.tiles.registered, data.tiles.registeredPrev, true, t)}
+                to={link('visits')}
               />
               <Kpi
                 i={1}
@@ -239,7 +271,10 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 value={data.tiles.visits}
                 unit={periodWord}
                 delta={delta(data.tiles.visits, data.tiles.visitsPrev, true, t)}
+                to={link('visits')}
               />
+              {/* No average waiting time on the cards: the waiting times (median and 90th
+                  percentile of completed waits) are on the Analytics page. */}
               <Kpi
                 i={2}
                 icon={Users}
@@ -247,71 +282,58 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 label={t('dashboard.tiles.waiting')}
                 value={data.tiles.waitingNow}
                 unit={t('dashboard.units.now')}
-              />
-              <Kpi
-                i={3}
-                icon={Timer}
-                tint="coral"
-                label={t('dashboard.tiles.avgWait')}
-                value={data.tiles.avgWaitMin}
-                text={formatDuration(data.tiles.avgWaitMin, t)}
-                unit={t('dashboard.period.today')}
                 delta={
-                  data.tiles.avgWaitMin > 30
-                    ? { text: t('dashboard.queueLong'), good: false, up: true }
+                  data.tiles.forgottenNow > 0
+                    ? {
+                        text: t('dashboard.forgottenShort', { count: data.tiles.forgottenNow }),
+                        good: false,
+                        up: null,
+                      }
                     : undefined
                 }
               />
               {isManager && data.tiles.revenue != null && (
-                <StaffLink
-                  to="/app/payments"
-                  className="flex text-inherit no-underline [&>*]:flex-1"
-                >
-                  <Kpi
-                    i={4}
-                    icon={Wallet}
-                    tint="violet"
-                    label={t(
-                      range === 'today'
-                        ? 'dashboard.tiles.revenue'
-                        : 'dashboard.tiles.revenuePeriod',
-                    )}
-                    value={data.tiles.revenue}
-                    unit="RWF"
-                    delta={delta(data.tiles.revenue, data.tiles.revenuePrev ?? 0, true, t)}
-                    spark={data.revenue30d.slice(-10).map((r) => r.amount)}
-                  />
-                </StaffLink>
+                <Kpi
+                  i={3}
+                  icon={Wallet}
+                  tint="violet"
+                  label={t(
+                    range === 'today' ? 'dashboard.tiles.revenue' : 'dashboard.tiles.revenuePeriod',
+                  )}
+                  value={data.tiles.revenue}
+                  unit="RWF"
+                  delta={delta(data.tiles.revenue, data.tiles.revenuePrev ?? 0, true, t)}
+                  spark={data.revenue30d.slice(-10).map((r) => r.amount)}
+                  to={link('revenue') ?? '/app/payments'}
+                />
               )}
               {isManager && data.tiles.openBills != null && (
-                <StaffLink to="/app/bills" className="flex text-inherit no-underline [&>*]:flex-1">
-                  <Kpi
-                    i={5}
-                    icon={Receipt}
-                    tint="navy"
-                    label={t('dashboard.tiles.openBills')}
-                    value={data.tiles.openBills}
-                    unit={formatRwf(data.tiles.openBillsDue ?? 0)}
-                    delta={
-                      data.tiles.openBills > 0
-                        ? { text: t('dashboard.toCollect'), good: false, up: null }
-                        : undefined
-                    }
-                  />
-                </StaffLink>
+                <Kpi
+                  i={4}
+                  icon={Receipt}
+                  tint="navy"
+                  label={t('dashboard.tiles.openBills')}
+                  value={data.tiles.openBills}
+                  unit={formatRwf(data.tiles.openBillsDue ?? 0)}
+                  delta={
+                    data.tiles.openBills > 0
+                      ? { text: t('dashboard.toCollect'), good: false, up: null }
+                      : undefined
+                  }
+                  to="/app/bills"
+                />
               )}
               {isManager && (data.tiles.debts ?? 0) > 0 && (
-                <StaffLink to="/app/bills" className="flex text-inherit no-underline [&>*]:flex-1">
-                  <Kpi
-                    i={5}
-                    icon={Wallet}
-                    tint="coral"
-                    label={t('dashboard.tiles.debts')}
-                    value={data.tiles.debts ?? 0}
-                    unit={formatRwf(data.tiles.debtsDue ?? 0)}
-                    delta={{ text: t('dashboard.debtsHint'), good: false, up: null }}
-                  />
-                </StaffLink>
+                <Kpi
+                  i={5}
+                  icon={Wallet}
+                  tint="coral"
+                  label={t('dashboard.tiles.debts')}
+                  value={data.tiles.debts ?? 0}
+                  unit={formatRwf(data.tiles.debtsDue ?? 0)}
+                  delta={{ text: t('dashboard.debtsHint'), good: false, up: null }}
+                  to="/app/bills"
+                />
               )}
               <Kpi
                 i={6}
@@ -344,12 +366,23 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     i={1}
                     icon={ChartLine}
                     tint="violet"
-                    title={t('dashboard.revenue30')}
-                    right={t('dashboard.collectedTotal', {
-                      amount: formatRwf(data.revenue30d.reduce((s, r) => s + r.amount, 0)),
-                    })}
+                    title={
+                      periodSeries
+                        ? t('dashboard.revenueByDay', { period: periodWord })
+                        : t('dashboard.revenue30')
+                    }
+                    right={
+                      revenueRefunds > 0
+                        ? `${t('dashboard.collectedTotal', { amount: formatRwf(revenueTotal) })} · ${t('dashboard.netTotal', { amount: formatRwf(revenueTotal - revenueRefunds) })}`
+                        : t('dashboard.collectedTotal', { amount: formatRwf(revenueTotal) })
+                    }
+                    to={link('revenue', revenueSearch)}
                   >
-                    <RevenueChart data={data} />
+                    <RevenueChart
+                      points={revenueSeries}
+                      last30={!periodSeries}
+                      dayLink={(day) => link('revenue', { ...revenueSearch, day })}
+                    />
                   </Panel>
                   <Panel
                     i={2}
@@ -357,6 +390,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     tint="mint"
                     title={t('dashboard.collections', { period: periodWord })}
                     right={formatRwf(collections.reduce((s, c) => s + c.amount, 0))}
+                    to={link('revenue', { by: 'method' })}
                   >
                     <div className="flex flex-wrap items-center justify-center gap-4">
                       <Donut
@@ -391,6 +425,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       tint="navy"
                       title={t('dashboard.receivables')}
                       right={formatRwf(data.receivables.reduce((s, r) => s + r.amount, 0))}
+                      to={link('revenue', { by: 'payer' })}
                     >
                       {data.receivables.length === 0 ? (
                         <Empty>{t('dashboard.noReceivables')}</Empty>
@@ -420,13 +455,15 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             {/* OPERATIONS */}
             <section className="flex flex-col gap-3">
               <SectionTitle icon={Workflow}>{t('dashboard.sections.ops')}</SectionTitle>
-              <div className="pc:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.5fr)] grid grid-cols-1 gap-4">
+              <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
                 <Panel
                   i={1}
                   icon={Users}
                   tint="amber"
                   title={t('dashboard.queueNow')}
                   right={t('dashboard.refreshNote')}
+                  to={link('waiting')}
+                  toLabel={t('dashboard.links.waitingTimes')}
                 >
                   {data.waitByStation.length === 0 ? (
                     <Empty>{t('dashboard.noQueue')}</Empty>
@@ -437,6 +474,15 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       ))}
                     </div>
                   )}
+                  {data.tiles.forgottenNow > 0 && (
+                    <DashLink
+                      href="/app/visits"
+                      className="text-yellow inline-flex items-center gap-1.5 self-start text-[13px] font-semibold"
+                    >
+                      <History size={14} aria-hidden="true" />
+                      {t('dashboard.forgottenHint', { count: data.tiles.forgottenNow })} →
+                    </DashLink>
+                  )}
                 </Panel>
                 <Panel
                   i={2}
@@ -444,6 +490,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   tint="mint"
                   title={t('dashboard.visitsByService', { period: periodWord })}
                   right={t('dashboard.visitsCount', { count: data.tiles.visits })}
+                  to={link('visits', { by: 'group' })}
                 >
                   {data.visitsByGroup.length === 0 ? (
                     <Empty>{t('dashboard.noVisits')}</Empty>
@@ -479,81 +526,91 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     </StaffLink>
                   </div>
                 </Panel>
-                <Panel
-                  i={3}
-                  icon={Users}
-                  tint="teal"
-                  title={t('dashboard.staffActivity', { period: periodWord })}
-                  right={t('dashboard.staffActivityNote')}
-                  className="overflow-x-auto"
-                >
-                  {data.staff.length === 0 ? (
-                    <Empty>{t('dashboard.noStaffActivity')}</Empty>
-                  ) : (
-                    <table className="w-full border-collapse text-[14px]">
-                      <thead>
-                        <tr className="text-ink-3 text-left text-[12px] tracking-[.04em] uppercase">
-                          <th className="border-border border-b py-1.5 pr-2 font-semibold">
+              </div>
+              {/* Who did what: its own full-width row, so every count shows */}
+              <Panel
+                i={3}
+                icon={Users}
+                tint="teal"
+                title={t('dashboard.staffActivity', { period: periodWord })}
+                right={t('dashboard.staffActivityNote')}
+                to={link('staff')}
+                className="overflow-x-auto"
+              >
+                {data.staff.length === 0 ? (
+                  <Empty>{t('dashboard.noStaffActivity')}</Empty>
+                ) : (
+                  <table className="w-full border-collapse text-[14px]">
+                    <thead>
+                      <tr className="text-ink-3 text-left text-[12px] tracking-[.04em] uppercase">
+                        <th className="border-border border-b py-1.5 pr-2 font-semibold">
+                          <span className="inline-flex items-center gap-1">
+                            <Users size={13} aria-hidden="true" />
+                            {t('dashboard.cols.employee')}
+                          </span>
+                        </th>
+                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                          <span className="inline-flex items-center gap-1">
+                            <UserPlus size={13} aria-hidden="true" />
+                            {t('dashboard.cols.registrations')}
+                          </span>
+                        </th>
+                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                          <span className="inline-flex items-center gap-1">
+                            <HeartPulse size={13} aria-hidden="true" />
+                            {t('dashboard.cols.vitals')}
+                          </span>
+                        </th>
+                        <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
+                          <span className="inline-flex items-center gap-1">
+                            <Stethoscope size={13} aria-hidden="true" />
+                            {t('dashboard.cols.patients')}
+                          </span>
+                        </th>
+                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                          <span className="inline-flex items-center gap-1">
+                            <FlaskConical size={13} aria-hidden="true" />
+                            {t('dashboard.cols.results')}
+                          </span>
+                        </th>
+                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                          <span className="inline-flex items-center gap-1">
+                            <Tablets size={13} aria-hidden="true" />
+                            {t('dashboard.cols.dispensed')}
+                          </span>
+                        </th>
+                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                          <span className="inline-flex items-center gap-1">
+                            <Receipt size={13} aria-hidden="true" />
+                            {t('dashboard.cols.charges')}
+                          </span>
+                        </th>
+                        {isManager && (
+                          <th className="border-border border-b py-1.5 text-right font-semibold">
                             <span className="inline-flex items-center gap-1">
-                              <Users size={13} aria-hidden="true" />
-                              {t('dashboard.cols.employee')}
+                              <Wallet size={13} aria-hidden="true" />
+                              {t('dashboard.cols.collected')}
                             </span>
                           </th>
-                          <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
-                            <span className="inline-flex items-center gap-1">
-                              <UserPlus size={13} aria-hidden="true" />
-                              {t('dashboard.cols.registrations')}
-                            </span>
-                          </th>
-                          <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
-                            <span className="inline-flex items-center gap-1">
-                              <HeartPulse size={13} aria-hidden="true" />
-                              {t('dashboard.cols.vitals')}
-                            </span>
-                          </th>
-                          <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
-                            <span className="inline-flex items-center gap-1">
-                              <Stethoscope size={13} aria-hidden="true" />
-                              {t('dashboard.cols.patients')}
-                            </span>
-                          </th>
-                          <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
-                            <span className="inline-flex items-center gap-1">
-                              <FlaskConical size={13} aria-hidden="true" />
-                              {t('dashboard.cols.results')}
-                            </span>
-                          </th>
-                          <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
-                            <span className="inline-flex items-center gap-1">
-                              <Tablets size={13} aria-hidden="true" />
-                              {t('dashboard.cols.dispensed')}
-                            </span>
-                          </th>
-                          <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
-                            <span className="inline-flex items-center gap-1">
-                              <Receipt size={13} aria-hidden="true" />
-                              {t('dashboard.cols.charges')}
-                            </span>
-                          </th>
-                          {isManager && (
-                            <th className="border-border border-b py-1.5 text-right font-semibold">
-                              <span className="inline-flex items-center gap-1">
-                                <Wallet size={13} aria-hidden="true" />
-                                {t('dashboard.cols.collected')}
-                              </span>
-                            </th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {staffRows.visible.map((s, i) => (
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {staffRows.visible.map((s, i) => {
+                        const cell = (what: string, n: number) =>
+                          `${s.name} · ${what}: ${formatNumber(n)}`
+                        const person = personLink(s.id)
+                        return (
                           <tr
-                            key={s.name}
+                            key={s.id ?? s.name}
                             className="border-grid anim-enter border-b last:border-b-0"
                             style={{ '--i': i } as CSSProperties}
                           >
                             <td className="py-2 pr-2">
-                              <span className="flex items-center gap-2.5">
+                              <PersonCell
+                                to={person}
+                                label={t('dashboard.links.person', { name: s.name })}
+                              >
                                 <span
                                   className={cn(
                                     'inline-flex size-[30px] flex-none items-center justify-center rounded-full text-[12px] font-extrabold',
@@ -567,41 +624,71 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                                   <span className="text-ink-3 block truncate text-[12px]">
                                     {t(`staff.roles.${s.role}`)}
                                     {s.staffId ? ` · ${s.staffId}` : ''}
+                                    {!s.active && ` · ${t('dashboard.staffLeft')}`}
                                   </span>
                                 </span>
-                              </span>
+                              </PersonCell>
                             </td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{s.registrations}</td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{s.vitals}</td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{s.patients ?? 0}</td>
-                            <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
-                              {s.results ?? 0}
-                            </td>
-                            <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
-                              {s.dispensed ?? 0}
-                            </td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{s.charges}</td>
+                            <CountCell
+                              n={s.registrations}
+                              to={personLink(s.id, 'registered')}
+                              label={cell(t('dashboard.cols.registrations'), s.registrations)}
+                              className="hidden sm:table-cell"
+                            />
+                            <CountCell
+                              n={s.vitals}
+                              to={personLink(s.id, 'vitals')}
+                              label={cell(t('dashboard.cols.vitals'), s.vitals)}
+                              className="hidden sm:table-cell"
+                            />
+                            <CountCell
+                              n={s.patients ?? 0}
+                              to={personLink(s.id, 'patientsSeen')}
+                              label={cell(t('dashboard.cols.patients'), s.patients ?? 0)}
+                            />
+                            <CountCell
+                              n={s.results ?? 0}
+                              to={personLink(s.id, 'results')}
+                              label={cell(t('dashboard.cols.results'), s.results ?? 0)}
+                              className="hidden sm:table-cell"
+                            />
+                            <CountCell
+                              n={s.dispensed ?? 0}
+                              to={personLink(s.id, 'medicinesGiven')}
+                              label={cell(t('dashboard.cols.dispensed'), s.dispensed ?? 0)}
+                              className="hidden sm:table-cell"
+                            />
+                            <CountCell
+                              n={s.charges}
+                              to={personLink(s.id, 'charges')}
+                              label={cell(t('dashboard.cols.charges'), s.charges)}
+                              className="hidden sm:table-cell"
+                            />
                             {isManager && (
-                              <td className="py-2 text-right tabular-nums">
-                                {s.collected ? formatNumber(s.collected) : '—'}
-                              </td>
+                              <CountCell
+                                n={s.collected ?? 0}
+                                to={personLink(s.id, 'payments')}
+                                label={cell(t('dashboard.cols.collected'), s.collected ?? 0)}
+                                empty="—"
+                                className="pr-0"
+                              />
                             )}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  {data.staff.length > 0 && (
-                    <ShowMore
-                      rest={staffRows.rest}
-                      expanded={staffRows.expanded}
-                      onMore={staffRows.more}
-                      onLess={staffRows.less}
-                      step={8}
-                    />
-                  )}
-                </Panel>
-              </div>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+                {data.staff.length > 0 && (
+                  <ShowMore
+                    rest={staffRows.rest}
+                    expanded={staffRows.expanded}
+                    onMore={staffRows.more}
+                    onLess={staffRows.less}
+                    step={8}
+                  />
+                )}
+              </Panel>
             </section>
 
             {/* CLINICAL · STOCK · SECURITY */}
@@ -616,6 +703,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   tint="teal"
                   title={t('dashboard.topTreatments', { period: periodWord })}
                   right={t('dashboard.cases')}
+                  to={link('treatments')}
                 >
                   {data.topTreatments.length === 0 && <Empty>{t('dashboard.noTreatments')}</Empty>}
                   <ListRows
@@ -640,6 +728,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   tint="amber"
                   title={t('dashboard.reorder')}
                   right={`${t('dashboard.expiring')} · ${t('dashboard.days30')}: ${data.expiring.d30}`}
+                  to={link('stock') ? '/app/stock?tab=reorder' : undefined}
                 >
                   {data.reorder.length === 0 &&
                     data.expiring.d30 + data.expiring.d60 + data.expiring.d90 === 0 && (
@@ -648,7 +737,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   <ListRows
                     rows={[
                       ...data.reorder.map((r) => ({
-                        key: r.name,
+                        key: r.id,
                         pill: (
                           <Pill tint={r.onHand < r.min / 2 ? 'coral' : 'amber'} icon={PackageX}>
                             {t('dashboard.lowShort')}
@@ -696,6 +785,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   tint="navy"
                   title={`${t('dashboard.logins')} · ${t('dashboard.last24h')}`}
                   right={`${data.logins.length}`}
+                  to={link('staff', { by: 'signins' })}
                 >
                   {data.logins.length === 0 && <Empty>{t('dashboard.noLogins')}</Empty>}
                   <ListRows
@@ -713,6 +803,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                         ),
                         label: `${l.name} · ${t(`staff.roles.${l.role}`)}`,
                         value: `${formatDayMonth(new Date(l.at))} ${formatTime(new Date(l.at))}`,
+                        to: personLink(l.id),
                       }
                     })}
                   />
@@ -788,17 +879,50 @@ function Donut({
   )
 }
 
-function RevenueChart({ data }: { data: DashboardData }) {
+/** The line chart's frame (components/charts/line-chart.tsx): 640 wide, plot from 56 to 600. */
+const CHART = { width: 640, left: 56, right: 600 }
+
+/**
+ * Revenue by day: the amount collected each day. A click on a day opens that day on the
+ * Analytics page (its payments, cancellations, refunds and cash count); the panel's
+ * "Details" link opens the whole period for the keyboard.
+ */
+function RevenueChart({
+  points,
+  last30,
+  dayLink,
+}: {
+  points: RevenuePoint[]
+  /** The fixed "last 30 days" series (otherwise the chosen period). */
+  last30: boolean
+  /** The detailed view of one day, or undefined when the person may not open it. */
+  dayLink: (day: string) => string | undefined
+}) {
   const { t } = useTranslation()
-  const values = data.revenue30d.map((r) => r.amount)
-  const labels = data.revenue30d.map((r) => formatDayMonth(new Date(r.day)))
+  const router = useRouter()
+  const values = points.map((r) => r.amount)
+  const labels = points.map((r) => formatDayMonth(new Date(r.day)))
   const peak = Math.max(1, ...values)
   const step = niceStep(peak)
   const max = Math.max(step, Math.ceil(peak / step) * step)
   const ticks = [0, max / 4, max / 2, (3 * max) / 4, max]
+  const n = points.length
+  // five dates spread over the period (the first and the last included)
+  const xTicks = [...new Set([0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * (n - 1))))]
   const rwfShort = (v: number) =>
     v === 0 ? '0' : v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : `${Math.round(v / 1000)}k`
-  return (
+  const latest = formatRwf(values[n - 1] ?? 0)
+  const canPick = n > 0 && !!dayLink(points[0]!.day)
+  const onClick = (e: MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    if (!rect.width) return
+    const x = ((e.clientX - rect.left) / rect.width) * CHART.width
+    const i = Math.round(((x - CHART.left) / (CHART.right - CHART.left)) * (n - 1))
+    const point = points[Math.min(n - 1, Math.max(0, i))]
+    const href = point && dayLink(point.day)
+    if (href) void router.navigate({ href })
+  }
+  const chart = (
     <LineChart
       values={values}
       labels={labels}
@@ -806,11 +930,85 @@ function RevenueChart({ data }: { data: DashboardData }) {
       ticks={ticks}
       tickLabel={rwfShort}
       format={formatRwf}
-      xTicks={[0, 7, 14, 21, 29]}
+      xTicks={xTicks}
       area
       animate
-      ariaLabel={t('dashboard.revenueAria', { latest: formatRwf(values[values.length - 1] ?? 0) })}
+      ariaLabel={
+        last30
+          ? t('dashboard.revenueAria', { latest })
+          : t('dashboard.revenueAriaDays', { count: n, latest })
+      }
     />
+  )
+  if (!canPick) return chart
+  return (
+    // a pointer shortcut only: the panel's "Details" link is the keyboard way to the same view
+    <div className="cursor-pointer" title={t('dashboard.links.openDay')} onClick={onClick}>
+      {chart}
+    </div>
+  )
+}
+
+/** The name cell of "Who did what": a link to the person's detailed view when there is one. */
+function PersonCell({
+  to,
+  label,
+  children,
+}: {
+  to: string | undefined
+  label: string
+  children: ReactNode
+}) {
+  const row = 'flex items-center gap-2.5'
+  return to ? (
+    <DashLink
+      href={to}
+      title={label}
+      className={cn(
+        row,
+        'hover:text-primary focus-visible:ring-primary/45 rounded-md text-inherit no-underline outline-none focus-visible:ring-[3px]',
+      )}
+    >
+      {children}
+    </DashLink>
+  ) : (
+    <span className={row}>{children}</span>
+  )
+}
+
+/** One count of "Who did what": a link to that kind of work of the person when above 0. */
+function CountCell({
+  n,
+  to,
+  label,
+  empty,
+  className,
+}: {
+  n: number
+  to: string | undefined
+  /** "Name · Vitals: 12", for the link's accessible name. */
+  label: string
+  /** Shown instead of 0 (e.g. "—"). */
+  empty?: string
+  className?: string
+}) {
+  return (
+    <td className={cn('py-2 pr-2 text-right tabular-nums', className)}>
+      {n > 0 && to ? (
+        <DashLink
+          href={to}
+          aria-label={label}
+          title={label}
+          className="hover:text-primary focus-visible:ring-primary/45 decoration-ink-3/50 rounded px-0.5 text-inherit underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-[3px]"
+        >
+          {formatNumber(n)}
+        </DashLink>
+      ) : n > 0 ? (
+        formatNumber(n)
+      ) : (
+        (empty ?? '0')
+      )}
+    </td>
   )
 }
 

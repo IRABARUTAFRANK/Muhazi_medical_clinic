@@ -29,6 +29,8 @@ const HISTORY: NavItem = {
  */
 export const MANAGER_NAV: NavItem[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'layout-dashboard', to: '/app/dashboard' },
+  // the detailed views behind the dashboard cards (one view at a time)
+  { id: 'analytics', labelKey: 'nav.analytics', icon: 'bar-chart-3', to: '/app/analytics' },
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
   { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
@@ -110,8 +112,15 @@ const HEAD_DASHBOARD: NavItem = {
   icon: 'layout-dashboard',
   to: '/app/dashboard',
 }
+/** …and the detailed views of their department (no money). */
+const HEAD_ANALYTICS: NavItem = {
+  id: 'analytics',
+  labelKey: 'nav.analytics',
+  icon: 'bar-chart-3',
+  to: '/app/analytics',
+}
 const withHeadDashboard = (user: StaffUser, items: NavItem[]): NavItem[] =>
-  user.dashboard === 'head' ? [items[0]!, HEAD_DASHBOARD, ...items.slice(1)] : items
+  user.dashboard === 'head' ? [items[0]!, HEAD_DASHBOARD, HEAD_ANALYTICS, ...items.slice(1)] : items
 
 /** Navigation items for the user: the role's menu, shaped by the desks they work at. */
 export const navForUser = (user: StaffUser): NavItem[] =>

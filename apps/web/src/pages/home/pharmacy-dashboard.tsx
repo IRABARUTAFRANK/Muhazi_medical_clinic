@@ -18,6 +18,7 @@ import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Empty, Kpi, ListRows, Panel, Pill as Tag, SectionTitle } from '@/components/dash/kit'
 import { greetingFor } from '@/components/dash/kit-style'
+import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
 import { NoticesPanel } from '@/components/dash/notices-panel'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -47,6 +48,10 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const period = usePeriod('today')
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
   const periodWord = t(`dashboard.period.${period.range}`)
+  // the pharmacy figures open the Analytics page (the manager, a head whose department has the
+  // pharmacy); for anyone else they stay plain, and the stock tiles open the stock page
+  const link = useAnalyticsLink(periodSearch(period))
+  const stockLink = link('stock') ?? '/app/stock'
   const { data: s, refetch, isFetching, dataUpdatedAt } = usePharmacySummary(days)
   const { data: lines = [], refetch: refetchLines } = usePharmacyQueue()
   const { data: stock, refetch: refetchStock } = useStockOverview()
@@ -146,6 +151,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                 count: s.patientsServedToday,
                 period: periodWord,
               })}
+              to={link('staff', { kind: 'medicinesGiven' })}
             />
             <Kpi
               i={2}
@@ -155,6 +161,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               value={s.salesToday}
               text={formatRwf(s.salesToday)}
               unit={periodWord}
+              to={link('pharmacy')}
             />
             <Kpi
               i={3}
@@ -163,6 +170,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               label={t('pharmacy.tiles.notGiven')}
               value={s.notGivenToday}
               unit={periodWord}
+              to={link('pharmacy', { by: 'notGiven' })}
             />
             <Kpi
               i={4}
@@ -174,6 +182,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               delta={
                 low.length > 0 ? { text: t('stock.reorderSoon'), good: false, up: null } : undefined
               }
+              to={stockLink}
             />
             <Kpi
               i={5}
@@ -182,6 +191,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               label={t('stock.tiles.expiring')}
               value={expiring.length}
               unit={t('stock.units.in90')}
+              to={stockLink}
             />
           </div>
         )}
@@ -214,6 +224,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                 tint="amber"
                 title={t('pharmacy.stockAlerts')}
                 right={String(low.length + expiring.length)}
+                to={link('stock')}
               >
                 {low.length + expiring.length === 0 ? (
                   <Empty>{t('pharmacy.stockFine')}</Empty>
@@ -224,7 +235,11 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                         key: `low-${i.id}`,
                         pill: <Tag tint="amber">{t('stock.low')}</Tag>,
                         label: `${i.name}${i.strength ? ` ${i.strength}` : ''}`,
-                        value: t('pharmacy.leftOf', { count: i.onHand, level: i.reorderLevel }),
+                        // the usable units at the pharmacy: what the "Low" rule judges
+                        value: t('pharmacy.leftOf', {
+                          count: i.pharmacyUsable ?? i.onHand,
+                          level: i.reorderLevel,
+                        }),
                       })),
                       ...expiring.slice(0, 6).map((i) => ({
                         key: `exp-${i.id}`,
@@ -250,6 +265,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                   tint="coral"
                   title={t('pharmacy.notGivenToday', { period: periodWord })}
                   right={String(s.notGiven.length)}
+                  to={link('pharmacy', { by: 'notGiven' })}
                 >
                   <ListRows
                     rows={s.notGiven.slice(0, 6).map((n, i) => ({
@@ -268,6 +284,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                   tint="violet"
                   title={t('pharmacy.mostGiven')}
                   right={t('pharmacy.givenCount', { count: s.dispensedToday })}
+                  to={link('pharmacy')}
                 >
                   {s.topToday.length === 0 && <Empty>{t('pharmacy.nothingYet')}</Empty>}
                   <ListRows

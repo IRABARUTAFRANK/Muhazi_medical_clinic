@@ -15,6 +15,7 @@ import { Route as BookRouteImport } from './routes/book'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppSectionRouteImport } from './routes/app/$section'
+import { Route as AppAnalyticsRouteImport } from './routes/app/analytics'
 import { Route as AppAppointmentsRouteImport } from './routes/app/appointments'
 import { Route as AppBillsRouteImport } from './routes/app/bills'
 import { Route as AppCalendarRouteImport } from './routes/app/calendar'
@@ -66,6 +67,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppSectionRoute = AppSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/book': typeof BookRoute
   '/login': typeof LoginRoute
   '/app/$section': typeof AppSectionRoute
+  '/app/analytics': typeof AppAnalyticsRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/bills': typeof AppBillsRoute
   '/app/calendar': typeof AppCalendarRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/book': typeof BookRoute
   '/login': typeof LoginRoute
   '/app/$section': typeof AppSectionRoute
+  '/app/analytics': typeof AppAnalyticsRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/bills': typeof AppBillsRoute
   '/app/calendar': typeof AppCalendarRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/book': typeof BookRoute
   '/login': typeof LoginRoute
   '/app/$section': typeof AppSectionRoute
+  '/app/analytics': typeof AppAnalyticsRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/bills': typeof AppBillsRoute
   '/app/calendar': typeof AppCalendarRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/book'
     | '/login'
     | '/app/$section'
+    | '/app/analytics'
     | '/app/appointments'
     | '/app/bills'
     | '/app/calendar'
@@ -306,6 +316,7 @@ export interface FileRouteTypes {
     | '/book'
     | '/login'
     | '/app/$section'
+    | '/app/analytics'
     | '/app/appointments'
     | '/app/bills'
     | '/app/calendar'
@@ -336,6 +347,7 @@ export interface FileRouteTypes {
     | '/book'
     | '/login'
     | '/app/$section'
+    | '/app/analytics'
     | '/app/appointments'
     | '/app/bills'
     | '/app/calendar'
@@ -410,6 +422,13 @@ declare module '@tanstack/react-router' {
       path: '/$section'
       fullPath: '/app/$section'
       preLoaderRoute: typeof AppSectionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/analytics': {
+      id: '/app/analytics'
+      path: '/analytics'
+      fullPath: '/app/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/appointments': {
@@ -571,6 +590,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppSectionRoute: typeof AppSectionRoute
+  AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppAppointmentsRoute: typeof AppAppointmentsRoute
   AppBillsRoute: typeof AppBillsRoute
   AppCalendarRoute: typeof AppCalendarRoute
@@ -598,6 +618,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppSectionRoute: AppSectionRoute,
+  AppAnalyticsRoute: AppAnalyticsRoute,
   AppAppointmentsRoute: AppAppointmentsRoute,
   AppBillsRoute: AppBillsRoute,
   AppCalendarRoute: AppCalendarRoute,

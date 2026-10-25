@@ -245,26 +245,24 @@ export interface ClinicStatus {
   open: boolean
   closesAt?: string
   opensAt?: string
+  /** Joined a queue today and not taken yet (0086: today only). */
   waiting: number
-  avgWaitMin: number
   live: boolean
 }
 
 const sampleStatus = (hours: ClinicHours): ClinicStatus => ({
   ...openStatus(hours, appNow()),
   waiting: CLINIC.currentWaiting,
-  avgWaitMin: CLINIC.currentWaitMin,
   live: false,
 })
 /** Live mode without the queue figures: open or closed from the hours, no invented wait. */
 const hoursStatus = (hours: ClinicHours): ClinicStatus => ({
   ...openStatus(hours, appNow()),
   waiting: 0,
-  avgWaitMin: 0,
   live: false,
 })
 
-/** "Clinic now": open/closed from the hours setting, waiting count and average wait from the queue. */
+/** "Clinic now": open/closed from the hours setting and the waiting count (no waiting time). */
 export function useClinicStatus(hours: ClinicHours) {
   return useQuery({
     queryKey: ['public', 'status'],
@@ -280,7 +278,6 @@ export function useClinicStatus(hours: ClinicHours) {
             /** The next open day when it is not today (0066). */
             opens_on?: string | null
             waiting: number
-            avg_wait_min: number | string
           }
           return {
             open: d.open,
@@ -292,7 +289,6 @@ export function useClinicStatus(hours: ClinicHours) {
                 : d.opens_at
               : undefined,
             waiting: Number(d.waiting),
-            avgWaitMin: Number(d.avg_wait_min),
             live: true,
           }
         },

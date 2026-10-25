@@ -142,35 +142,43 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
                   type="button"
                   onClick={() => setSelectedId(q.queueId)}
                   className={cn(
-                    'border-border flex w-full items-center gap-3 border-b px-4 py-3 text-left last:border-b-0',
+                    'border-border flex w-full items-start gap-3 border-b px-4 py-3 text-left last:border-b-0',
                     selected?.queueId === q.queueId ? 'bg-primary-tint' : 'hover:bg-surface',
                   )}
                 >
-                  <span className="text-primary w-14 font-bold tabular-nums">{q.ticket}</span>
+                  <span className="text-primary w-16 flex-none font-bold whitespace-nowrap tabular-nums">
+                    {q.ticket}
+                  </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{q.name}</span>
-                    <span className="text-ink-3 text-xs tabular-nums">
+                    {/* The full name always: it has its own line and wraps rather than being
+                        cut to a letter; the badges go on the line under it. */}
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 font-semibold wrap-break-word">{q.name}</span>
+                      <span className="text-ink-2 flex-none text-xs whitespace-nowrap tabular-nums">
+                        {formatDuration(q.waitMin, t)}
+                      </span>
+                    </span>
+                    <span className="text-ink-3 block text-xs tabular-nums">
                       {q.ageSex} · {q.fileNumber}
                     </span>
-                  </span>
-                  {q.vitalsAt ? (
-                    <Badge tone="green">{t('triage.takenBadge')}</Badge>
-                  ) : (
-                    <Badge tone="yellow">{t('vitalsForm.noneShort')}</Badge>
-                  )}
-                  {q.station !== 'triage' && (
-                    <span className="text-ink-3 text-xs">
-                      {t(`register.stations.${q.station}`, { defaultValue: q.station })}
+                    <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {q.priority === 1 && <Badge tone="red">{t('home.triage.red')}</Badge>}
+                      {q.vitalsAt ? (
+                        <Badge tone="green">{t('triage.takenBadge')}</Badge>
+                      ) : (
+                        <Badge tone="yellow">{t('vitalsForm.noneShort')}</Badge>
+                      )}
+                      {forWhom(q) && (
+                        <Badge tone={q.assignedTo === user.id ? 'blue' : 'grey'} dot={false}>
+                          {forWhom(q)}
+                        </Badge>
+                      )}
+                      {q.station !== 'triage' && (
+                        <span className="text-ink-3 text-xs">
+                          {t(`register.stations.${q.station}`, { defaultValue: q.station })}
+                        </span>
+                      )}
                     </span>
-                  )}
-                  {forWhom(q) && (
-                    <Badge tone={q.assignedTo === user.id ? 'blue' : 'grey'} dot={false}>
-                      {forWhom(q)}
-                    </Badge>
-                  )}
-                  {q.priority === 1 && <Badge tone="red">{t('home.triage.red')}</Badge>}
-                  <span className="text-ink-2 text-xs tabular-nums">
-                    {formatDuration(q.waitMin, t)}
                   </span>
                 </button>
               ))

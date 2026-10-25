@@ -40,6 +40,8 @@ import {
   StationGlyph,
 } from '@/components/dash/kit'
 import { NoticesPanel } from '@/components/dash/notices-panel'
+import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
+import type { AnalyticsView } from '@/lib/api/analytics'
 import { StationTile } from '@/components/dash/station-tile'
 import { CoveringPanels } from './cover-panels'
 import {
@@ -99,6 +101,9 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   const period = usePeriod('today')
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
   const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary(days)
+  // the figures open their detailed view on the Analytics page when the person may see it
+  // (the manager, a head of department); otherwise the tiles stay plain
+  const link = useAnalyticsLink(periodSearch(period))
   const can = useCan(user)
   // the desks the person works at (their departments decide, 0085): each block of a desk shows
   // only to those who work there
@@ -217,9 +222,9 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
         {data && (
           <div className="flex flex-col gap-5">
             {nurse ? (
-              <NurseTiles d={data} range={period.range} />
+              <NurseTiles d={data} range={period.range} link={link} />
             ) : (
-              <ReceptionTiles d={data} range={period.range} />
+              <ReceptionTiles d={data} range={period.range} link={link} />
             )}
 
             {/* Covering for a doctor: their queue comes first */}
@@ -243,7 +248,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                     {/* The nurse registered them first; reception completes the file. */}
                     <FilesToCompletePanel i={1} />
                     <QueuePanel role={role} rows={waiting} />
-                    <StationsPanel d={data} />
+                    <StationsPanel d={data} to={link('waiting')} />
                   </>
                 )}
               </div>
@@ -326,7 +331,21 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
 /* ---------------------------------------------------------------- tiles */
 
-function ReceptionTiles({ d, range }: { d: DeskSummary; range: DashboardRange }) {
+/** The address of an Analytics view, or undefined when the person may not open it. */
+type LinkFn = (view: AnalyticsView) => string | undefined
+
+/* No average waiting time on these tiles: the waiting times (completed waits, median and 90th
+   percentile) are on the Analytics page, Waiting times. */
+
+function ReceptionTiles({
+  d,
+  range,
+  link,
+}: {
+  d: DeskSummary
+  range: DashboardRange
+  link: LinkFn
+}) {
   const { t } = useTranslation()
   const x = d.tiles
   const today = t(`dashboard.period.${range}`)
@@ -351,6 +370,7 @@ function ReceptionTiles({ d, range }: { d: DeskSummary; range: DashboardRange })
         value={x.registeredToday}
         unit={today}
         delta={vsYesterday(x.registeredToday, x.registeredYesterday)}
+        to={link('visits')}
       />
       <Kpi
         i={1}
@@ -360,6 +380,7 @@ function ReceptionTiles({ d, range }: { d: DeskSummary; range: DashboardRange })
         value={x.visitsToday}
         unit={today}
         delta={vsYesterday(x.visitsToday, x.visitsYesterday)}
+        to={link('visits')}
       />
       <Kpi
         i={2}
@@ -376,21 +397,18 @@ function ReceptionTiles({ d, range }: { d: DeskSummary; range: DashboardRange })
         label={t('dashboard.tiles.waiting')}
         value={x.waitingNow}
         unit={t('dashboard.units.now')}
-      />
-      <Kpi
-        i={4}
-        icon={Timer}
-        tint="coral"
-        label={t('dashboard.tiles.avgWait')}
-        value={x.avgWaitMin}
-        text={formatDuration(x.avgWaitMin, t)}
-        unit=""
         delta={
-          x.avgWaitMin > 30 ? { text: t('dashboard.queueLong'), good: false, up: true } : undefined
+          (x.forgottenNow ?? 0) > 0
+            ? {
+                text: t('dashboard.forgottenShort', { count: x.forgottenNow }),
+                good: false,
+                up: null,
+              }
+            : undefined
         }
       />
       <Kpi
-        i={5}
+        i={4}
         icon={CalendarCheck}
         tint="violet"
         label={t('desk.tiles.appointments')}
@@ -398,7 +416,7 @@ function ReceptionTiles({ d, range }: { d: DeskSummary; range: DashboardRange })
         unit={today}
       />
       <Kpi
-        i={6}
+        i={5}
         icon={MessageSquare}
         tint="teal"
         label={t('desk.tiles.inquiries')}
@@ -412,7 +430,7 @@ function ReceptionTiles({ d, range }: { d: DeskSummary; range: DashboardRange })
   )
 }
 
-function NurseTiles({ d, range }: { d: DeskSummary; range: DashboardRange }) {
+function NurseTiles({ d, range, link }: { d: DeskSummary; range: DashboardRange; link: LinkFn }) {
   const before = range === 'today' ? 'Yesterday' : 'Before'
   const { t } = useTranslation()
   const x = d.tiles
@@ -435,6 +453,7 @@ function NurseTiles({ d, range }: { d: DeskSummary; range: DashboardRange }) {
         value={x.triageRed}
         unit={t('dashboard.units.now')}
         delta={x.triageRed > 0 ? { text: t('desk.seeFirst'), good: false, up: null } : undefined}
+        to={link('triage')}
       />
       <Kpi
         i={2}
@@ -443,6 +462,7 @@ function NurseTiles({ d, range }: { d: DeskSummary; range: DashboardRange }) {
         label={t('desk.tiles.yellow')}
         value={x.triageYellow}
         unit={t('dashboard.units.now')}
+        to={link('triage')}
       />
       <Kpi
         i={3}
@@ -459,23 +479,10 @@ function NurseTiles({ d, range }: { d: DeskSummary; range: DashboardRange }) {
           good: null,
           up: diff === 0 ? null : diff > 0,
         }}
+        to={link('triage')}
       />
       <Kpi
         i={4}
-        icon={Timer}
-        tint="violet"
-        label={t('desk.tiles.triageWait')}
-        value={x.triageAvgWaitMin}
-        text={formatDuration(x.triageAvgWaitMin, t)}
-        unit=""
-        delta={
-          x.triageAvgWaitMin > 15
-            ? { text: t('dashboard.queueLong'), good: false, up: true }
-            : undefined
-        }
-      />
-      <Kpi
-        i={5}
         icon={BedDouble}
         tint="navy"
         label={t('dashboard.tiles.beds')}
@@ -510,14 +517,16 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
               {shown.map((r, i) => (
                 <div
                   key={r.queueId}
-                  className="border-grid anim-enter flex min-h-11 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
+                  className="border-grid anim-enter flex min-h-11 flex-wrap items-center gap-x-2.5 gap-y-1.5 border-b py-1.5 text-[14px] last:border-b-0"
                   style={{ '--i': i } as CSSProperties}
                 >
                   <Pill tint={triageTint[r.triage] ?? 'teal'} icon={triageIcon[r.triage]}>
                     {r.ticket}
                   </Pill>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{r.name}</span>
+                  {/* the full name: it keeps room for itself (the button drops under it on a
+                      narrow column) and wraps rather than being cut short */}
+                  <span className="min-w-32 flex-1">
+                    <span className="block font-semibold wrap-break-word">{r.name}</span>
                     <span className="text-ink-3 flex items-center gap-1 truncate text-[13px]">
                       <StationGlyph station={r.station} size={12} className="flex-none" />
                       {r.ageSex} · {stationLabel(r.station, t)} ·{' '}
@@ -529,11 +538,14 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
                   <StaffLink
                     to={nurse ? '/app/vitals' : '/app/visit'}
                     search={{ encounter: r.encounterId }}
-                    className={buttonVariants({
-                      size: 'sm',
-                      variant:
-                        !nurse && r.canWork === false ? 'ghost' : i === 0 ? 'primary' : 'default',
-                    })}
+                    className={cn(
+                      buttonVariants({
+                        size: 'sm',
+                        variant:
+                          !nurse && r.canWork === false ? 'ghost' : i === 0 ? 'primary' : 'default',
+                      }),
+                      'ml-auto flex-none',
+                    )}
                   >
                     {/* sent to someone else: reception may look, not work on the patient */}
                     {!nurse && r.canWork === false
@@ -553,9 +565,10 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
   )
 }
 
-function StationsPanel({ d }: { d: DeskSummary }) {
+function StationsPanel({ d, to }: { d: DeskSummary; to?: string }) {
   const { t } = useTranslation()
-  const rows = d.stations.filter((s) => s.waiting + s.busy > 0)
+  // a desk with only entries forgotten from an earlier day still shows (to be closed)
+  const rows = d.stations.filter((s) => s.waiting + s.busy + (s.forgotten ?? 0) > 0)
   return (
     <Panel
       i={2}
@@ -563,6 +576,8 @@ function StationsPanel({ d }: { d: DeskSummary }) {
       tint="teal"
       title={t('dashboard.queueNow')}
       right={t('dashboard.refreshNote')}
+      to={to}
+      toLabel={t('dashboard.links.waitingTimes')}
     >
       {rows.length === 0 ? (
         <Empty>{t('dashboard.noQueue')}</Empty>

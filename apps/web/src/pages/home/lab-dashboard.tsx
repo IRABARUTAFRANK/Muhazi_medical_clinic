@@ -23,13 +23,14 @@ import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-s
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Empty, Kpi, ListRows, Panel, Pill, SectionTitle } from '@/components/dash/kit'
 import { greetingFor } from '@/components/dash/kit-style'
+import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
 import { NoticesPanel } from '@/components/dash/notices-panel'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ListBar, ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useLabSummary, useLabWorklist } from '@/lib/api/lab'
-import { isLowStock, useStockOverview } from '@/lib/api/stock'
+import { useStockAlerts, useStockOverview } from '@/lib/api/stock'
 import { openItems, stationFor, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
@@ -54,6 +55,9 @@ export function LabDashboard({ user }: { user: StaffUser }) {
   const period = usePeriod('today')
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
   const periodWord = t(`dashboard.period.${period.range}`)
+  // the laboratory figures open the Analytics page (the manager, a head whose department has the
+  // laboratory); for anyone else they stay plain
+  const link = useAnalyticsLink(periodSearch(period))
   const { data: s, refetch, isFetching, dataUpdatedAt } = useLabSummary(days)
   const { data: open = [] } = useLabWorklist('open')
   const { data: done = [] } = useLabWorklist('done')
@@ -74,11 +78,20 @@ export function LabDashboard({ user }: { user: StaffUser }) {
   // the laboratory's own shelves (reagents, supplies): low or expiring soon
   const { data: stock } = useStockOverview()
   const labStores = (stock?.locations ?? []).filter((l) => l.type === 'lab').map((l) => l.id)
+  // judged by the laboratory's own stores (their minimum), not by the pharmacy's reorder level
+  const { data: alerts } = useStockAlerts()
+  const labLow = new Set(
+    (alerts?.roomLow ?? []).filter((r) => labStores.includes(r.storeId)).map((r) => r.itemId),
+  )
+  const labQty = (i: {
+    byLocation: Record<string, number>
+    byLocationUsable?: Record<string, number>
+  }) => labStores.reduce((n, id) => n + (i.byLocationUsable?.[id] ?? i.byLocation[id] ?? 0), 0)
   const watch = (stock?.items ?? [])
     .filter((i) => i.active && labStores.some((id) => (i.byLocation[id] ?? 0) > 0))
     .filter(
       (i) =>
-        isLowStock(i) ||
+        labLow.has(i.id) ||
         (i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 60 * 86_400_000),
     )
 
@@ -160,6 +173,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               label={t('lab.tiles.done')}
               value={s.doneToday}
               unit={periodWord}
+              to={link('lab')}
             />
             <Kpi
               i={4}
@@ -178,6 +192,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               value={s.turnaroundMin}
               text={formatDuration(s.turnaroundMin, t)}
               unit=""
+              to={link('lab')}
             />
           </div>
         )}
@@ -228,6 +243,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
                   tint="violet"
                   title={t('lab.mostOrdered')}
                   right={t('lab.orderedToday', { count: s.orderedToday, period: periodWord })}
+                  to={link('lab')}
                 >
                   {s.byTest.length === 0 && (
                     <Empty>{t('lab.nothingToday', { period: periodWord })}</Empty>
@@ -263,14 +279,12 @@ export function LabDashboard({ user }: { user: StaffUser }) {
                       rows={watch.map((i) => ({
                         key: i.id,
                         pill: (
-                          <Pill tint={isLowStock(i) ? 'coral' : 'amber'}>
-                            {formatNumber(
-                              labStores.reduce((n, id) => n + (i.byLocation[id] ?? 0), 0),
-                            )}
+                          <Pill tint={labLow.has(i.id) ? 'coral' : 'amber'}>
+                            {formatNumber(labQty(i))}
                           </Pill>
                         ),
                         label: i.name,
-                        value: isLowStock(i)
+                        value: labLow.has(i.id)
                           ? t('stock.low')
                           : t('lab.expiresOn', { date: formatDate(new Date(i.earliestExpiry!)) }),
                       }))}
@@ -290,6 +304,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             tint="coral"
             title={t('lab.notDoneToday', { period: periodWord })}
             right={String(s!.notDone!.length)}
+            to={link('lab')}
           >
             <ListRows
               rows={s!.notDone!.map((x) => ({
@@ -309,6 +324,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             tint="mint"
             title={t('lab.resultsGiven')}
             right={String(done.length)}
+            to={link('staff', { kind: 'results' })}
           >
             {done.length === 0 ? (
               <Empty>{t('lab.noneDone')}</Empty>

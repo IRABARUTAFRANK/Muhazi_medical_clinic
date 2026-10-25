@@ -20,6 +20,7 @@ import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Empty, Kpi, Panel, Pill, SectionTitle } from '@/components/dash/kit'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { delta, greetingFor } from '@/components/dash/kit-style'
+import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
 import { NoticesPanel } from '@/components/dash/notices-panel'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ShownList } from '@/components/ui/list-tools'
@@ -65,6 +66,8 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
   // an older database answers with today's figures only: name them so
   const range = s?.todayOnly ? 'today' : period.range
   const periodWord = t(`dashboard.period.${range}`)
+  // the manager opens the money on the Analytics page; a cashier keeps the payments page
+  const link = useAnalyticsLink(periodSearch(period))
   const { data: home } = useHomeSummary()
   const { data: queue = [] } = useQueueBoard('cashier', user.role)
   const rows = openItems(queue)
@@ -138,6 +141,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               unit="RWF"
               // "all time" has no period before it to compare with
               delta={range === 'all' ? undefined : delta(s.total, s.previousTotal, true, t)}
+              to={link('revenue') ?? '/app/payments'}
             />
             <Kpi
               i={1}
@@ -256,6 +260,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                   tint="mint"
                   title={t('finance.byMethodIn', { period: periodWord })}
                   right={formatRwf(s.total)}
+                  to={link('revenue', { by: 'method' }) ?? '/app/payments'}
                 >
                   {s.byMethod.length === 0 ? (
                     <Empty>{t('finance.nothingYet')}</Empty>

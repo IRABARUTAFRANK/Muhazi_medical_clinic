@@ -1001,12 +1001,17 @@ await step('a person hides a notice from their list; the sender sees it was read
   await db.query(`select delete_notification($1)`, [item.id])
   return `hidden for the nurse; read by ${mine.readBy}; deleted by the sender`
 })
-await step('a patient waiting since yesterday still counts (0030)', async () => {
+// 0030 kept a patient waiting since yesterday in the counts; 0086: still shown, as "forgotten"
+// (left from an earlier day, please close), not as waiting today.
+await step('a patient waiting since yesterday shows as forgotten (0030 → 0086)', async () => {
   await asAdmin()
   const q = await one(
     `select q.id, q.station from queue_entry q join encounter e on e.id = q.encounter_id
-     where q.finished_at is null and q.deleted_at is null and e.status = 'open' limit 1`,
+     where q.finished_at is null and q.started_at is null and q.deleted_at is null and e.status = 'open' limit 1`,
   )
+  await as(staff.receptionist)
+  const before = (await one(`select desk_summary() as d`)).d
+  await asAdmin()
   await db.query(`update queue_entry set created_at = now() - interval '1 day' where id = $1`, [
     q.id,
   ])
@@ -1015,10 +1020,13 @@ await step('a patient waiting since yesterday still counts (0030)', async () => 
   const desk = (await one(`select desk_summary() as d`)).d
   await asAdmin()
   await db.query(`update queue_entry set created_at = now() where id = $1`, [q.id])
+  const was = before.stations.find((s) => s.station === q.station)
   const tile = desk.stations.find((s) => s.station === q.station)
-  if (!status.waiting) throw new Error('public waiting is 0')
-  if (!tile || tile.waiting + tile.busy < 1) throw new Error(`station ${q.station} missing`)
-  return `waiting ${status.waiting}; ${q.station} tile ${tile.waiting} waiting`
+  if (typeof status.waiting !== 'number' || 'avg_wait_min' in status)
+    throw new Error(JSON.stringify(status))
+  if (!tile || tile.forgotten !== (was?.forgotten ?? 0) + 1 || tile.waiting !== was.waiting - 1)
+    throw new Error(JSON.stringify({ was, tile }))
+  return `${q.station}: waiting ${was.waiting} → ${tile.waiting}, forgotten ${tile.forgotten}`
 })
 // ---------------------------------------------------------------- 0031
 await step('shared patient â†’ one notice per role, gone once a doctor takes them', async () => {
@@ -1581,18 +1589,22 @@ await step('0043: reception cannot register an emergency', async () => {
   if (!refused) throw new Error('receptionist registered an emergency')
   return 'receptionist refused'
 })
-await step(
-  '0043: average wait counts only patients already taken today; longest waiting shown apart',
-  async () => {
-    await as(staff.receptionist)
-    const d = (await one(`select desk_summary() as j`)).j
-    await asAdmin()
-    const s = d.stations.find((x) => x.waiting > 0)
-    if (typeof d.tiles.avgWaitMin !== 'number' || (s && s.longest == null))
-      throw new Error(JSON.stringify(s))
-    return `avg ${d.tiles.avgWaitMin} min; ${s ? `${s.station} longest waiting ${s.longest} min` : 'nobody waiting'}`
-  },
-)
+// 0043 showed an average wait on the desk tiles; 0086 removed it (it was not a waiting time: see
+// wait_time_stats at the end). The longest waiting now stays.
+await step('0043 → 0086: desk tiles show the longest waiting now, no average wait', async () => {
+  await as(staff.receptionist)
+  const d = (await one(`select desk_summary() as j`)).j
+  await asAdmin()
+  const s = d.stations.find((x) => x.waiting > 0)
+  if (
+    'avgWaitMin' in d.tiles ||
+    'triageAvgWaitMin' in d.tiles ||
+    d.stations.some((x) => 'minutes' in x) ||
+    (s && s.longest == null)
+  )
+    throw new Error(JSON.stringify({ tiles: d.tiles, s }))
+  return s ? `${s.station} longest waiting ${s.longest} min` : 'nobody waiting'
+})
 
 // ---------------------------------------------------------------- 0044: cashier, tests that come back, task done
 await step(
@@ -8177,6 +8189,534 @@ await step(
     )
       throw new Error(json85(r))
     return 'triage: members (the receptionist placed); cover: consultation, never pharmacy or the lab; exceptions only take away'
+  },
+)
+
+// ---------------------------------------------------------------- 0086: analytics
+// A small clinic week seeded straight into the tables (1st–7th of a past month, Kigali time), so
+// every figure below is known exactly. P is that week; the week before holds one payment.
+const t86 = {}
+const json86 = (x) => JSON.stringify(x)
+const P86 = ['2025-03-03', '2025-03-09']
+const at86 = (s) => `${s}+02`
+const visit86 = async (given, arrived, type = 'opd') => {
+  await asAdmin()
+  const pid = (
+    await one(
+      `insert into patient (surname, given_names, sex, created_at) values ('Analytics', $1, 'female', $2) returning id`,
+      [given, at86(arrived)],
+    )
+  ).id
+  const enc = (
+    await one(
+      `insert into encounter (patient_id, type, arrived_at, created_at) values ($1, $2, $3, $3) returning id`,
+      [pid, type, at86(arrived)],
+    )
+  ).id
+  const inv = (await one(`select id from invoice where encounter_id = $1`, [enc])).id
+  return { pid, enc, inv }
+}
+const queue86 = async (enc, station, created, started = null, finished = null, more = {}) =>
+  (
+    await one(
+      `insert into queue_entry (encounter_id, station, ticket_no, created_at, started_at, finished_at, taken_by, pool_id)
+       values ($1, $2, 'T86', $3, $4, $5, $6, $7) returning id`,
+      [
+        enc,
+        station,
+        at86(created),
+        started && at86(started),
+        finished && at86(finished),
+        more.takenBy ?? null,
+        more.pool ?? null,
+      ],
+    )
+  ).id
+const close86 = async (enc, at) =>
+  db.query(`update encounter set status = 'closed', closed_at = $2 where id = $1`, [enc, at86(at)])
+const pay86 = async (inv, method, amount, paid, more = {}) =>
+  (
+    await one(
+      `insert into payment (invoice_id, method, amount, cashier_id, paid_at, deleted_at, voided_at, voided_by, void_reason)
+       values ($1, $2, $3, $4, $5, $6, $6, $7, $8) returning id`,
+      [
+        inv,
+        method,
+        amount,
+        staff.cashier,
+        at86(paid),
+        more.voidedAt ? at86(more.voidedAt) : null,
+        more.voidedAt ? staff.cashier : null,
+        more.voidedAt ? 'wrong amount' : null,
+      ],
+    )
+  ).id
+/** A function run as someone: its jsonb, or the error code. */
+const call86 = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    return (await one(sql, params)).j
+  } catch (e) {
+    return e.code ?? String(e.message).split('\n')[0]
+  } finally {
+    await asAdmin()
+  }
+}
+await step('0086: seed a week (waits, money, work) for the analytics checks', async () => {
+  await asAdmin()
+  t86.head = await newStaff('an86.head', 'Head Analytics 86', 'doctor')
+  t86.member = await newStaff('an86.member', 'Member Analytics 86', 'doctor')
+  t86.outsider = await newStaff('an86.out', 'Outsider Analytics 86', 'doctor')
+  t86.nobody = await newStaff('an86.nobody', 'Nobody Analytics 86', 'doctor')
+  t86.retired = await newStaff('an86.retired', 'Retired Analytics 86', 'nurse')
+  t86.dept = await dept85('Analytics 86', ['consultation'])
+  await member85(t86.head, t86.dept, 'head')
+  await member85(t86.member, t86.dept)
+  // E1: triage (vitals measured 8 min after joining), then consultation taken by the member (10 min)
+  const e1 = await visit86('One', '2025-03-03 08:45')
+  await queue86(e1.enc, 'triage', '2025-03-03 08:50', null, '2025-03-03 09:00')
+  await db.query(
+    `insert into observation (encounter_id, code, value_num, performer_id, effective_at) values ($1, 'temp', 37, $2, $3)`,
+    [e1.enc, staff.nurse, at86('2025-03-03 08:58')],
+  )
+  await queue86(
+    e1.enc,
+    'consultation',
+    '2025-03-03 09:00',
+    '2025-03-03 09:10',
+    '2025-03-03 09:30',
+    {
+      takenBy: t86.member,
+    },
+  )
+  // E2: consultation taken by the head (30 min); the cashier 5 min (paid by MoMo)
+  const e2 = await visit86('Two', '2025-03-03 08:55')
+  await queue86(
+    e2.enc,
+    'consultation',
+    '2025-03-03 09:00',
+    '2025-03-03 09:30',
+    '2025-03-03 09:50',
+    {
+      takenBy: t86.head,
+    },
+  )
+  await queue86(e2.enc, 'cashier', '2025-03-03 09:40', null, '2025-03-03 09:45')
+  // E3 20 min, E4 40 min, E5 50 min
+  const e3 = await visit86('Three', '2025-03-03 09:55')
+  await queue86(e3.enc, 'consultation', '2025-03-03 10:00', '2025-03-03 10:20', '2025-03-03 10:40')
+  const e4 = await visit86('Four', '2025-03-03 09:55')
+  await queue86(e4.enc, 'consultation', '2025-03-03 10:00', '2025-03-03 10:40', '2025-03-03 11:00')
+  const e5 = await visit86('Five', '2025-03-04 10:55')
+  await queue86(e5.enc, 'consultation', '2025-03-04 11:00', '2025-03-04 11:50', '2025-03-04 12:00')
+  // E6: closed with the visit, nobody took the patient: no wait
+  const e6 = await visit86('Six', '2025-03-04 08:00')
+  await queue86(e6.enc, 'consultation', '2025-03-04 08:05', null, '2025-03-04 12:00')
+  // E7: sent to dental and consultation at once; consultation took the patient after 60 min
+  const pool = crypto.randomUUID()
+  const e7 = await visit86('Seven', '2025-03-04 08:55')
+  await queue86(e7.enc, 'dental', '2025-03-04 09:00', null, '2025-03-04 10:00', { pool })
+  await queue86(
+    e7.enc,
+    'consultation',
+    '2025-03-04 09:00',
+    '2025-03-04 10:00',
+    '2025-03-04 10:30',
+    {
+      pool,
+    },
+  )
+  // E8: 13 hours (a data error); E9: across midnight (a data error)
+  const e8 = await visit86('Eight', '2025-03-05 05:55')
+  await queue86(e8.enc, 'consultation', '2025-03-05 06:00', '2025-03-05 19:00', '2025-03-05 19:10')
+  const e9 = await visit86('Nine', '2025-03-05 23:25')
+  await queue86(e9.enc, 'consultation', '2025-03-05 23:30', '2025-03-06 00:10', '2025-03-06 00:20')
+  for (const e of [e1, e2, e3, e4, e5, e6, e7, e8, e9]) await close86(e.enc, '2025-03-06 01:00')
+  Object.assign(t86, { e1, e2, e3, e4, e5, e6, e7, e8, e9 })
+  // money: 10 000 cash + 5 000 MoMo + 2 000 Airtel; 3 000 cancelled; 1 500 refunded; 4 000 the week before
+  await pay86(e1.inv, 'cash', 10000, '2025-03-03 10:00')
+  await pay86(e2.inv, 'momo', 5000, '2025-03-03 09:45')
+  await pay86(e3.inv, 'cash', 3000, '2025-03-04 10:00', { voidedAt: '2025-03-04 10:05' })
+  await pay86(e5.inv, 'airtel', 2000, '2025-03-05 12:00')
+  await pay86(e6.inv, 'cash', 4000, '2025-02-25 10:00')
+  await db.query(
+    `insert into refund (invoice_id, amount, method, reason, cashier_id, refunded_at) values ($1, 1500, 'cash', 'overcharged', $2, $3)`,
+    [e1.inv, staff.cashier, at86('2025-03-05 13:00')],
+  )
+  await db.query(
+    `insert into invoice_line (invoice_id, service_id, description, quantity, unit_price, office, created_at, entered_by)
+     select $1, s.id, 'Consultation 86', 1, 10000, 'consultation', $2, null
+     from service s where s.deleted_at is null and s.department_id is null
+       and not exists (select 1 from service_department sd where sd.service_id = s.id)
+     order by s.code limit 1`,
+    [e1.inv, at86('2025-03-03 09:20')],
+  )
+  // work: the member wrote a diagnosis and a prescription on E2, gave a room medicine on E3
+  // (prescribed by the outsider) and registered E5's patient; the retired nurse wrote on E4
+  const item = (
+    await one(`select id from item where deleted_at is null order by created_at limit 1`)
+  ).id
+  await db.query(
+    `insert into condition (encounter_id, text, created_by, created_at) values ($1, 'Malaria 86', $2, $3), ($4, 'Note 86', $5, $6)`,
+    [e2.enc, t86.member, at86('2025-03-03 09:35'), e4.enc, t86.retired, at86('2025-03-03 10:45')],
+  )
+  await db.query(
+    `insert into medication_request (encounter_id, item_id, quantity, prescriber_id, created_at) values ($1, $2, 1, $3, $4)`,
+    [e2.enc, item, t86.member, at86('2025-03-03 09:36')],
+  )
+  await db.query(
+    `insert into medication_request (encounter_id, item_id, quantity, prescriber_id, created_at, given_by, given_at)
+     values ($1, $2, 1, $3, $4, $5, $6)`,
+    [e3.enc, item, t86.outsider, at86('2025-03-03 10:25'), t86.member, at86('2025-03-04 10:30')],
+  )
+  await db.query(`update patient set created_by = $1 where id = $2`, [t86.member, e5.pid])
+  await db.query(`update profiles set active = false where id = $1`, [t86.retired])
+  return '9 visits, 5 payments, 1 refund, a department of 2'
+})
+await step('0086: who may look: the manager, a head (no money), nobody else', async () => {
+  const fns = [
+    [`select revenue_analysis($1, $2) as j`, P86],
+    [`select staff_activity($1, $2) as j`, P86],
+    [`select staff_activity_detail($1, $2, $3) as j`, [t86.member, ...P86]],
+    [`select visits_analysis($1, $2) as j`, P86],
+    [`select wait_time_stats($1, $2) as j`, P86],
+  ]
+  const nobody = []
+  for (const [sql, params] of fns) nobody.push(await call86(t86.nobody, sql, params))
+  const access = {
+    nobody: await call86(t86.nobody, `select analytics_access() as j`),
+    head: await call86(t86.head, `select analytics_access() as j`),
+    manager: await call86(staff.manager, `select analytics_access() as j`),
+  }
+  const head = {
+    revenue: await call86(t86.head, ...fns[0]),
+    outsider: await call86(t86.head, `select staff_activity_detail($1, $2, $3) as j`, [
+      t86.outsider,
+      ...P86,
+    ]),
+    otherDept: await call86(t86.head, `select staff_activity($1, $2, $3) as j`, [
+      ...P86,
+      crypto.randomUUID(),
+    ]),
+  }
+  if (
+    nobody.some((x) => x !== '42501') ||
+    access.nobody.views.length !== 0 ||
+    json86(access.head.views) !== json86(['staff', 'visits', 'treatments', 'waiting']) ||
+    access.head.departments[0]?.id !== t86.dept ||
+    access.head.manager ||
+    !access.manager.views.includes('revenue') ||
+    head.revenue !== '42501' ||
+    head.outsider !== '42501' ||
+    head.otherDept !== '42501'
+  )
+    throw new Error(json86({ nobody, access, head }))
+  return `nobody: 42501 ×${nobody.length}; head views ${access.head.views.join(', ')}; head: no revenue, no outsider`
+})
+await step('0086: revenue: net = collected − refunds; days add up; the period before', async () => {
+  const r = await call86(staff.manager, `select revenue_analysis($1, $2) as j`, P86)
+  const d = await call86(staff.manager, `select dashboard_summary($1, $2) as j`, P86)
+  const sum = (k) => r.days.reduce((n, x) => n + Number(x[k]), 0)
+  const t = r.totals
+  const cash = r.byMethod.find((m) => m.method === 'cash')
+  const periodNet = (d.revenuePeriod ?? []).reduce((n, x) => n + Number(x.net), 0)
+  if (
+    Number(t.collected) !== 17000 ||
+    Number(t.refunded) !== 1500 ||
+    Number(t.net) !== 15500 ||
+    Number(t.voided) !== 3000 ||
+    t.voidedCount !== 1 ||
+    t.payments !== 3 ||
+    t.paidVisits !== 3 ||
+    Number(r.prev.collected) !== 4000 ||
+    r.days.length !== 7 ||
+    sum('net') !== 15500 ||
+    sum('cash') + sum('momo') + sum('airtel') + sum('other') !== 17000 ||
+    sum('refunds') !== 1500 ||
+    sum('voided') !== 3000 ||
+    Number(cash?.amount) !== 10000 ||
+    r.voided[0]?.reason !== 'wrong amount' ||
+    r.refunds[0]?.reason !== 'overcharged' ||
+    Number(t.charged) !== 10000 ||
+    Number(d.tiles.refunded) !== 1500 ||
+    d.revenuePeriod?.length !== 7 ||
+    periodNet !== 15500
+  )
+    throw new Error(json86({ t, prev: r.prev, days: r.days, byMethod: r.byMethod }))
+  return `collected ${t.collected} − refunded ${t.refunded} = net ${t.net}; cancelled ${t.voided}; before ${r.prev.collected}`
+})
+await step(
+  '0086: who did what: patients seen by writing too, room medicines, retired staff',
+  async () => {
+    const m = await call86(staff.manager, `select staff_activity($1, $2) as j`, P86)
+    const person = (id) => m.people.find((p) => p.id === id)
+    const mem = person(t86.member)
+    const cashier = person(staff.cashier)
+    const retired = person(t86.retired)
+    const d = await call86(staff.manager, `select dashboard_summary($1, $2) as j`, P86)
+    const row = d.staff.find((x) => x.id === t86.member)
+    // the head: their department's people only, never money
+    const h = await call86(t86.head, `select staff_activity($1, $2) as j`, P86)
+    const hd = await call86(t86.head, `select staff_activity_detail($1, $2, $3) as j`, [
+      t86.member,
+      ...P86,
+    ])
+    const md = await call86(staff.manager, `select staff_activity_detail($1, $2, $3) as j`, [
+      staff.cashier,
+      ...P86,
+    ])
+    const headIds = h.people.map((p) => p.id).sort()
+    const seenByDay = m.days.filter((x) => x.kind === 'patientsSeen').reduce((n, x) => n + x.n, 0)
+    if (
+      seenByDay !== m.totals.patientsSeen ||
+      d.reorder.some((r) => !r.id || !r.name) ||
+      mem?.departments[0]?.id !== t86.dept ||
+      mem?.counts.patientsSeen !== 2 ||
+      mem.counts.diagnoses !== 1 ||
+      mem.counts.prescriptions !== 1 ||
+      mem.counts.medicinesGiven !== 1 ||
+      mem.counts.registered !== 1 ||
+      person(t86.head)?.counts.patientsSeen !== 1 ||
+      person(staff.nurse)?.counts.vitals < 1 ||
+      cashier?.counts.payments !== 3 ||
+      Number(cashier.amount) !== 17000 ||
+      cashier.counts.refunds !== 1 ||
+      cashier.counts.voided !== 1 ||
+      !retired ||
+      retired.active ||
+      retired.counts.diagnoses !== 1 ||
+      m.summary.patientsSeen !== 4 ||
+      !m.kinds.includes('payments') ||
+      row?.patients !== 2 ||
+      row.dispensed !== 1 ||
+      json86(headIds) !== json86([t86.head, t86.member].sort()) ||
+      h.kinds.some((k) => ['payments', 'refunds', 'voided', 'handovers'].includes(k)) ||
+      h.people.some((p) => p.amount != null) ||
+      h.summary.collected != null ||
+      hd.total !== 6 ||
+      hd.money != null ||
+      hd.records.some((x) => x.amount != null) ||
+      md.money?.byMethod.length !== 3 ||
+      md.money.voided[0]?.reason !== 'wrong amount'
+    )
+      throw new Error(json86({ mem, cashier, retired, summary: m.summary, row, headIds, hd }))
+    return `member: seen ${mem.counts.patientsSeen}, room medicines ${mem.counts.medicinesGiven}; head sees ${headIds.length} people, no money`
+  },
+)
+await step(
+  '0086: a pharmacy hand-over counts once; counter sales are the pharmacy’s revenue',
+  async () => {
+    await asAdmin()
+    const pharmId = (await one(`select main_pharmacy() as id`)).id
+    const batch = await one(`select id, item_id from batch order by created_at limit 1`)
+    // a hand-over at the pharmacy, as dispense_prescription writes it: a medication_dispense row
+    // AND given_by / given_at on the request (the room-store branch must not count it again)
+    const rx = (
+      await one(
+        `insert into medication_request (encounter_id, item_id, quantity, prescriber_id, created_at, given_by, given_at)
+         values ($1, $2, 2, $3, $4, $5, $6) returning id`,
+        [
+          t86.e4.enc,
+          batch.item_id,
+          t86.outsider,
+          at86('2025-03-04 11:00'),
+          staff.pharmacist,
+          at86('2025-03-04 11:30'),
+        ],
+      )
+    ).id
+    await db.query(
+      `insert into medication_dispense (medication_request_id, encounter_id, item_id, batch_id, quantity, dispenser_id, created_at)
+       values ($1, $2, $3, $4, 2, $5, $6)`,
+      [rx, t86.e4.enc, batch.item_id, batch.id, staff.pharmacist, at86('2025-03-04 11:30')],
+    )
+    // a walk-in sale of 2 400, paid by cash
+    const sale = (
+      await one(
+        `insert into counter_sale (number, location_id, status, total, paid_at, created_at)
+         values ('CS-86-' || substr(gen_random_uuid()::text, 1, 8), $1, 'paid', 2400, $2, $2) returning id`,
+        [pharmId, at86('2025-03-06 10:00')],
+      )
+    ).id
+    await db.query(
+      `insert into counter_sale_line (sale_id, item_id, quantity, unit_price, line_total, created_at)
+       values ($1, $2, 3, 800, 2400, $3)`,
+      [sale, batch.item_id, at86('2025-03-06 10:00')],
+    )
+    await db.query(
+      `insert into payment (counter_sale_id, method, amount, cashier_id, paid_at) values ($1, 'cash', 2400, $2, $3)`,
+      [sale, staff.cashier, at86('2025-03-06 10:00')],
+    )
+    const m = await call86(staff.manager, `select staff_activity($1, $2) as j`, P86)
+    const ph = m.people.find((p) => p.id === staff.pharmacist)
+    const d = await call86(staff.manager, `select dashboard_summary($1, $2) as j`, P86)
+    const row = d.staff.find((x) => x.id === staff.pharmacist)
+    const det = await call86(staff.manager, `select staff_activity_detail($1, $2, $3, $4) as j`, [
+      staff.pharmacist,
+      ...P86,
+      'medicinesGiven',
+    ])
+    const r = await call86(staff.manager, `select revenue_analysis($1, $2) as j`, P86)
+    const pharmDeptId = (
+      await one(
+        `select id from department where active and deleted_at is null and 'pharmacy' = any (services)
+         order by sort_order, name limit 1`,
+      )
+    )?.id
+    const pharmDept = r.byDepartment.find((x) =>
+      pharmDeptId ? x.id === pharmDeptId : x.key === 'pharmacy',
+    )
+    const pharmCat = r.byCategory.find((x) => x.group === 'pharmacy' && x.id == null)
+    if (
+      ph?.counts.medicinesGiven !== 1 ||
+      row?.dispensed !== 1 ||
+      det.total !== 1 ||
+      det.records.length !== 1 ||
+      Number(r.totals.charged) !== 12400 ||
+      Number(r.totals.counterSales) !== 2400 ||
+      Number(pharmCat?.charged) !== 2400 ||
+      Number(pharmCat?.collectedEst) !== 2400 ||
+      !pharmDept ||
+      Number(pharmDept.collectedEst) < 2400 ||
+      Number(pharmDept.charged) < 2400
+    )
+      throw new Error(
+        json86({
+          ph: ph?.counts,
+          row,
+          det: det.total,
+          totals: r.totals,
+          pharmCat,
+          byDepartment: r.byDepartment,
+        }),
+      )
+    return `pharmacist: 1 medicine given (not 2); charged ${r.totals.charged} with the counter sale; pharmacy collected (est.) ${pharmDept.collectedEst}`
+  },
+)
+await step(
+  '0086: waiting time: median and 90th percentile; left-out, pooled and untaken waits',
+  async () => {
+    const w = await call86(staff.manager, `select wait_time_stats($1, $2) as j`, P86)
+    const desk = (s) => w.desks.find((x) => x.station === s)
+    const cons = desk('consultation')
+    const day = (d) => w.days.find((x) => x.day === d)
+    const h = await call86(t86.head, `select wait_time_stats($1, $2) as j`, P86)
+    if (
+      cons?.n !== 6 ||
+      Number(cons.median) !== 35 ||
+      Number(cons.p90) !== 55 ||
+      cons.excluded !== 2 ||
+      desk('dental')?.n !== 0 ||
+      desk('dental').median !== null ||
+      desk('triage')?.n !== 1 ||
+      Number(desk('triage').median) !== 8 ||
+      desk('cashier')?.n !== 1 ||
+      Number(desk('cashier').median) !== 5 ||
+      w.overall.n !== 8 ||
+      Number(w.overall.median) !== 25 ||
+      Number(w.overall.p90) !== 53 ||
+      w.overall.excluded !== 2 ||
+      w.arrival.n !== 6 ||
+      Number(w.arrival.median) !== 40 ||
+      w.days.length !== 7 ||
+      day('2025-03-03')?.n !== 6 ||
+      Number(day('2025-03-03').median) !== 15 ||
+      day('2025-03-04')?.n !== 2 ||
+      Number(day('2025-03-04').median) !== 55 ||
+      w.rules.minN !== 5 ||
+      json86(h.desks.map((x) => x.station)) !== json86(['consultation']) ||
+      h.desks[0].n !== 6
+    )
+      throw new Error(
+        json86({ desks: w.desks, overall: w.overall, arrival: w.arrival, days: w.days }),
+      )
+    return `consultation n ${cons.n}, median ${cons.median}, p90 ${cons.p90}, left out ${cons.excluded}; all desks median ${w.overall.median}`
+  },
+)
+await step('0086: waiting now: joined today; older open entries are forgotten', async () => {
+  const today = async () =>
+    (await call86(staff.manager, `select wait_time_stats() as j`)).desks.find(
+      (x) => x.station === 'consultation',
+    )
+  const before = await today()
+  const dashBefore = await call86(
+    staff.manager,
+    `select dashboard_summary(current_date, current_date) as j`,
+  )
+  await asAdmin()
+  const now = (
+    await one(`insert into patient (surname, given_names) values ('Analytics', 'Now') returning id`)
+  ).id
+  const old = (
+    await one(`insert into patient (surname, given_names) values ('Analytics', 'Old') returning id`)
+  ).id
+  const eNow = (await one(`insert into encounter (patient_id) values ($1) returning id`, [now])).id
+  const eOld = (
+    await one(
+      `insert into encounter (patient_id, arrived_at) values ($1, now() - interval '1 day') returning id`,
+      [old],
+    )
+  ).id
+  await db.query(
+    `insert into queue_entry (encounter_id, station, ticket_no, created_at) values
+     ($1, 'consultation', 'N86', now() - interval '20 minutes'), ($2, 'consultation', 'O86', now() - interval '1 day')`,
+    [eNow, eOld],
+  )
+  const after = await today()
+  const dash = await call86(
+    staff.manager,
+    `select dashboard_summary(current_date, current_date) as j`,
+  )
+  const tile = dash.waitByStation.find((x) => x.station === 'consultation')
+  await db.query(`update queue_entry set finished_at = now() where encounter_id in ($1, $2)`, [
+    eNow,
+    eOld,
+  ])
+  await db.query(`update encounter set status = 'closed', closed_at = now() where id in ($1, $2)`, [
+    eNow,
+    eOld,
+  ])
+  await asAdmin()
+  await db.query(`update department set active = false where id = $1`, [t86.dept])
+  if (
+    after.waitingNow !== before.waitingNow + 1 ||
+    after.forgotten !== before.forgotten + 1 ||
+    after.longestNow < 20 ||
+    dash.tiles.waitingNow !== dashBefore.tiles.waitingNow + 1 ||
+    dash.tiles.forgottenNow !== dashBefore.tiles.forgottenNow + 1 ||
+    'avgWaitMin' in dash.tiles ||
+    !tile ||
+    'minutes' in tile ||
+    tile.forgotten < 1
+  )
+    throw new Error(json86({ before, after, tiles: dash.tiles, tile }))
+  return `consultation: waiting ${before.waitingNow} → ${after.waitingNow}, forgotten ${before.forgotten} → ${after.forgotten}; no average on the cards`
+})
+await step(
+  '0086: visits and treatments: the period, new patients, a head sees no money',
+  async () => {
+    const m = await call86(staff.manager, `select visits_analysis($1, $2) as j`, P86)
+    const h = await call86(t86.head, `select visits_analysis($1, $2) as j`, P86)
+    const daySum = m.days.reduce((n, x) => n + x.visits, 0)
+    const hourSum = m.byHour.reduce((n, x) => n + x, 0)
+    const line = m.treatments.find((x) => x.description === 'Consultation 86')
+    if (
+      m.totals.visits !== 9 ||
+      m.totals.newPatients !== 9 ||
+      m.totals.registered !== 9 ||
+      m.prev.visits !== 0 ||
+      daySum !== 9 ||
+      hourSum !== 9 ||
+      m.days.length !== 7 ||
+      m.byType.find((x) => x.type === 'opd')?.count !== 9 ||
+      line?.count !== 1 ||
+      Number(line.amount) !== 10000 ||
+      h.totals.visits !== 9 ||
+      h.treatmentTotals.charged != null ||
+      h.treatments.some((x) => x.amount != null)
+    )
+      throw new Error(json86({ totals: m.totals, prev: m.prev, h: h.totals, line }))
+    return `visits ${m.totals.visits} (${m.totals.newPatients} new), by day and hour; head: no amounts`
   },
 )
 

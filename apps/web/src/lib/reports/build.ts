@@ -4,7 +4,7 @@ import { categoryName } from '@/lib/api/catalogue'
 import type { DashboardData } from '@/lib/api/dashboard'
 import type { CashierSummary } from '@/lib/api/finance'
 import type { LabOrder, LabSummary } from '@/lib/api/lab'
-import type { StockItem, StockMovement, StockSales } from '@/lib/api/stock'
+import { isLowStock, type StockItem, type StockMovement, type StockSales } from '@/lib/api/stock'
 import { docDate, kigaliParts, makeDocLabels } from '@/lib/doc-style'
 import type {
   Cell,
@@ -87,7 +87,6 @@ export function dashboardReport(
   t: TFn,
 ): Report {
   const base = common(t, clinic, user)
-  const station = (s: string) => t(`register.stations.${s}`, { defaultValue: s })
   const group = (g: string) => t(`prices.groups.${g}`, { defaultValue: g })
   const role = (r: string) => t(`staff.roles.${r}`, { defaultValue: r })
   const manager = d.manager && d.tiles.revenue != null
@@ -99,10 +98,13 @@ export function dashboardReport(
     { label: t('dashboard.tiles.visits'), value: d.tiles.visits },
     { label: t('dashboard.tiles.registered'), value: d.tiles.registered },
     ...(manager ? [] : [{ label: t('dashboard.tiles.waiting'), value: d.tiles.waitingNow }]),
-    { label: t('dashboard.tiles.avgWait'), value: d.tiles.avgWaitMin, unit: 'min' },
     ...(manager
       ? [
           { label: t('dashboard.tiles.revenuePeriod'), value: revenue, unit: 'RWF' },
+          // money given back in the period (0086), so the revenue reads net
+          ...((d.tiles.refunded ?? 0) > 0
+            ? [{ label: t('report.fig.refunded'), value: d.tiles.refunded ?? 0, unit: 'RWF' }]
+            : []),
           { label: t('report.fig.outstanding'), value: openDue, unit: 'RWF' },
         ]
       : []),
@@ -143,16 +145,9 @@ export function dashboardReport(
         [t('report.t.pendingRequests'), d.bookings.pending],
       ],
     },
-    {
-      title: t('report.t.waitByStation'),
-      columns: [
-        { label: t('report.cols.station') },
-        { label: t('report.cols.waiting'), kind: 'number' },
-        { label: t('report.cols.avgMin'), kind: 'number' },
-        { label: t('report.cols.longestMin'), kind: 'number' },
-      ],
-      rows: d.waitByStation.map((x) => [station(x.station), x.waiting, x.minutes, x.longest]),
-    },
+    // No waiting-time table: a period report cannot use "waiting now", and the correct waiting
+    // times (median and 90th percentile of completed waits per desk) are exported from the
+    // Analytics page (Waiting times).
   ]
   const sections: ReportSection[] = [{ name: t('report.sheets.overview'), tables: overview }]
 
@@ -191,13 +186,16 @@ export function dashboardReport(
           totals: [1, 2],
         },
         {
-          title: t('report.t.revenueByDay'),
+          // the chosen period day by day (up to 92 days), otherwise the last 30 days
+          title: d.revenuePeriod ? t('report.t.revenueByDay') : t('dashboard.revenue30'),
           columns: [
             { label: t('report.cols.day'), kind: 'date' },
-            { label: t('report.cols.amount'), kind: 'money' },
+            { label: t('report.fig.collected'), kind: 'money' },
+            { label: t('report.fig.refunded'), kind: 'money' },
+            { label: t('report.cols.net'), kind: 'money' },
           ],
-          rows: d.revenue30d.map((x) => [x.day, x.amount]),
-          totals: [1],
+          rows: (d.revenuePeriod ?? d.revenue30d).map((x) => [x.day, x.amount, x.refunds, x.net]),
+          totals: [1, 2, 3],
         },
       ],
     })
@@ -245,6 +243,9 @@ export function dashboardReport(
           { label: t('report.cols.staffId') },
           { label: t('report.cols.registrations'), kind: 'number' },
           { label: t('report.cols.vitals'), kind: 'number' },
+          { label: t('dashboard.cols.patients'), kind: 'number' },
+          { label: t('dashboard.cols.results'), kind: 'number' },
+          { label: t('dashboard.cols.dispensed'), kind: 'number' },
           { label: t('report.cols.charges'), kind: 'number' },
           ...(d.manager
             ? [
@@ -255,16 +256,19 @@ export function dashboardReport(
           { label: t('report.cols.lastSignIn'), kind: 'datetime' as const },
         ],
         rows: d.staff.map((s) => [
-          s.name,
+          s.active ? s.name : `${s.name} (${t('dashboard.staffLeft')})`,
           role(s.role),
           s.staffId,
           s.registrations,
           s.vitals,
+          s.patients ?? 0,
+          s.results ?? 0,
+          s.dispensed ?? 0,
           s.charges,
           ...(d.manager ? [s.payments ?? 0, s.collected ?? 0] : []),
           s.lastSignIn,
         ]),
-        totals: d.manager ? [3, 4, 5, 6, 7] : [3, 4, 5],
+        totals: d.manager ? [3, 4, 5, 6, 7, 8, 9, 10] : [3, 4, 5, 6, 7, 8],
       },
     ],
   })
@@ -548,7 +552,9 @@ export function stockReport(
   const base = common(t, clinic, user)
   const active = items.filter((i) => i.active)
   const value = Math.round(active.reduce((s, i) => s + i.costValue, 0))
-  const low = active.filter((i) => i.onHand <= i.reorderLevel).length
+  // the rule of the screens (stock page, pharmacy home, manager dashboard): the server's low
+  // flag (unexpired units in the pharmacy at or below a reorder level above 0)
+  const low = active.filter(isLowStock).length
   const sold = sales ? Math.round(sales.items.reduce((s, x) => s + x.revenue, 0)) : 0
   const cost = sales ? Math.round(sales.items.reduce((s, x) => s + x.cost, 0)) : 0
   const margin = sales ? Math.round(sales.items.reduce((s, x) => s + x.margin, 0)) : 0

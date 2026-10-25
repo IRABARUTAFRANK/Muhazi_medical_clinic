@@ -11,7 +11,6 @@ import {
   Receipt,
   RefreshCw,
   Stethoscope,
-  Timer,
   Users,
   Wallet,
   Workflow,
@@ -36,6 +35,7 @@ import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Kpi, SectionTitle } from '@/components/dash/kit'
 import { NoticesPanel } from '@/components/dash/notices-panel'
 import { greetingFor } from '@/components/dash/kit-style'
+import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -52,7 +52,6 @@ import {
 } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
-import { formatDuration } from '@/lib/duration'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
 import { CashierDashboard } from './cashier-dashboard'
@@ -120,7 +119,6 @@ function RoleHome({ user, mode }: HomePageProps) {
   const now = isLive
     ? {
         inClinic: status?.waiting ?? 0,
-        avgWaitMin: status?.avgWaitMin ?? 0,
         bedsOccupied: summary?.beds.filter((b) => b.state === 'occupied').length ?? 0,
         bedsTotal: summary?.beds.filter((b) => b.state !== 'out_of_service').length ?? 0,
       }
@@ -133,6 +131,9 @@ function RoleHome({ user, mode }: HomePageProps) {
         ? t(`register.stations.${stationFor(user)}`)
         : home.station
   const setOverride = useSyncStore((s) => s.setOverride)
+  // a head of department: "Seen" opens their own work on the Analytics page (others: no link)
+  const link = useAnalyticsLink(periodSearch(period))
+  const seenLink = link('staff', { person: user.id, kind: 'patientsSeen' })
 
   useEffect(() => {
     if (mode === 'offline') {
@@ -260,6 +261,7 @@ function RoleHome({ user, mode }: HomePageProps) {
           counts={counts}
           now={now}
           periodWord={periodWord}
+          seenLink={seenLink}
         />
 
         {/* THE WORK OF THE DAY */}
@@ -306,13 +308,17 @@ function RoleTiles({
   counts,
   now,
   periodWord,
+  seenLink,
 }: {
   role: HomeRole
   summary: HomeSummary | undefined
   counts: { waiting: number; inProgress: number; done: number }
-  now: { inClinic: number; avgWaitMin: number; bedsOccupied: number; bedsTotal: number }
+  /** No average waiting time on the tiles: the waiting times are on the Analytics page. */
+  now: { inClinic: number; bedsOccupied: number; bedsTotal: number }
   /** "today", "this week"…: what the counted tiles cover. */
   periodWord: string
+  /** The person's own work on the Analytics page (heads of department only). */
+  seenLink?: string
 }) {
   const { t } = useTranslation()
   const unitNow = t('dashboard.units.now')
@@ -348,6 +354,7 @@ function RoleTiles({
           label={t('roleHome.tiles.seen')}
           value={counts.done}
           unit={unitToday}
+          to={seenLink}
         />
         <Kpi
           i={3}
@@ -424,15 +431,6 @@ function RoleTiles({
           value={now.inClinic}
           unit={unitNow}
         />
-        <Kpi
-          i={5}
-          icon={Timer}
-          tint="teal"
-          label={t('dashboard.tiles.avgWait')}
-          value={now.avgWaitMin}
-          text={formatDuration(now.avgWaitMin, t)}
-          unit=""
-        />
       </>
     )
   } else {
@@ -456,15 +454,6 @@ function RoleTiles({
         />
         <Kpi
           i={2}
-          icon={Timer}
-          tint="coral"
-          label={t('dashboard.tiles.avgWait')}
-          value={now.avgWaitMin}
-          text={formatDuration(now.avgWaitMin, t)}
-          unit=""
-        />
-        <Kpi
-          i={3}
           icon={BedDouble}
           tint="teal"
           label={t('dashboard.tiles.beds')}

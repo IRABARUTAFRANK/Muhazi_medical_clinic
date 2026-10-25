@@ -13,8 +13,10 @@ export interface DeskSummary {
     visitsToday: number
     visitsYesterday: number
     inClinic: number
+    /** Joined a queue today and not taken yet (0086: an older entry is not "waiting"). */
     waitingNow: number
-    avgWaitMin: number
+    /** Still open in a queue from an earlier day: forgotten, please close (0086). */
+    forgottenNow?: number
     triageWaiting: number
     triageRed: number
     triageYellow: number
@@ -23,7 +25,6 @@ export interface DeskSummary {
     triageNone?: number
     /** Open visits still without any measurement. */
     needVitals?: number
-    triageAvgWaitMin: number
     vitalsToday: number
     vitalsYesterday: number
     apptsToday: number
@@ -31,14 +32,15 @@ export interface DeskSummary {
     bedsOccupied: number
     bedsTotal: number
   }
-  /** minutes: average wait today of those already taken (null: nobody yet); longest: the
-   *  first patient still in line (null: nobody waiting). */
+  /** waiting: joined today, not taken yet; longest: the first of them still in line, in minutes
+   *  (null: nobody waiting); forgotten: still open from an earlier day (0086). No average wait:
+   *  waiting times are shown on the Analytics page only. */
   stations: {
     station: string
     waiting: number
     busy: number
-    minutes: number | null
     longest: number | null
+    forgotten: number
   }[]
   arrivals: { hour: number; count: number }[]
   mine: { registrations: number; visitsStarted: number; vitals: number; charges: number }
@@ -55,14 +57,13 @@ const sample = (): DeskSummary => {
       visitsYesterday: 41,
       inClinic: 12,
       waitingNow: 7,
-      avgWaitMin: 18,
+      forgottenNow: 1,
       triageWaiting: 5,
       triageRed: 1,
       triageYellow: 2,
       triageGreen: 6,
       triageNone: 3,
       needVitals: 4,
-      triageAvgWaitMin: 9,
       vitalsToday: 29,
       vitalsYesterday: 33,
       apptsToday: 9,
@@ -71,11 +72,11 @@ const sample = (): DeskSummary => {
       bedsTotal: 8,
     },
     stations: [
-      { station: 'triage', waiting: 5, busy: 1, minutes: 9, longest: 14 },
-      { station: 'consultation', waiting: 4, busy: 2, minutes: 22, longest: 41 },
-      { station: 'laboratory', waiting: 2, busy: 1, minutes: 14, longest: 18 },
-      { station: 'pharmacy', waiting: 1, busy: 0, minutes: 6, longest: 4 },
-      { station: 'cashier', waiting: 2, busy: 1, minutes: 5, longest: 7 },
+      { station: 'triage', waiting: 5, busy: 1, longest: 14, forgotten: 0 },
+      { station: 'consultation', waiting: 4, busy: 2, longest: 41, forgotten: 1 },
+      { station: 'laboratory', waiting: 2, busy: 1, longest: 18, forgotten: 0 },
+      { station: 'pharmacy', waiting: 1, busy: 0, longest: 4, forgotten: 0 },
+      { station: 'cashier', waiting: 2, busy: 1, longest: 7, forgotten: 0 },
     ],
     arrivals: curve.map((c, i) => ({ hour: 6 + i, count: 6 + i <= hour ? c : 0 })),
     mine: { registrations: 6, visitsStarted: 9, vitals: 12, charges: 3 },
@@ -96,15 +97,18 @@ export function useDeskSummary(period?: DayRange | null) {
       const d = data as DeskSummary
       const n = (v: unknown) => Number(v ?? 0)
       return {
+        // before 0086 the tiles also carried an average wait: dropped (it was not a waiting time)
         tiles: Object.fromEntries(
-          Object.entries(d.tiles).map(([k, v]) => [k, n(v)]),
+          Object.entries(d.tiles)
+            .filter(([k]) => k !== 'avgWaitMin' && k !== 'triageAvgWaitMin')
+            .map(([k, v]) => [k, n(v)]),
         ) as DeskSummary['tiles'],
         stations: d.stations.map((s) => ({
           station: s.station,
           waiting: n(s.waiting),
           busy: n(s.busy),
-          minutes: s.minutes == null ? null : Number(s.minutes),
           longest: s.longest == null ? null : Number(s.longest),
+          forgotten: n(s.forgotten),
         })),
         arrivals: d.arrivals.map((a) => ({ hour: n(a.hour), count: n(a.count) })),
         mine: {

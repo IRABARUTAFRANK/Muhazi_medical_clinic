@@ -45,7 +45,6 @@ export const CLINIC = {
   mapsEmbedUrl: 'https://www.google.com/maps?q=-1.797670,30.416055&z=17&t=k&output=embed',
   emergencyNumber: '912',
   /** Sample "clinic now" numbers used when no live status is available. */
-  currentWaitMin: 18,
   currentWaiting: 11,
 } as const
 

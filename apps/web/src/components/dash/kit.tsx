@@ -1,5 +1,15 @@
 import { createElement, type CSSProperties, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, CircleCheck, Info, Minus, type LucideIcon } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  ArrowUpRight,
+  CircleCheck,
+  Info,
+  Minus,
+  type LucideIcon,
+} from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@mmc/shared'
 import { useCountUp } from '@/lib/motion'
 import { cn } from '@/lib/utils'
@@ -12,6 +22,7 @@ import { cn } from '@/lib/utils'
  */
 
 import { ShownList } from '@/components/ui/list-tools'
+import { DashLink } from './dash-link'
 import {
   tintBorder,
   tintClass,
@@ -37,6 +48,7 @@ export function Kpi({
   delta: d,
   spark,
   text,
+  to,
 }: {
   i: number
   icon: LucideIcon
@@ -48,7 +60,11 @@ export function Kpi({
   text?: string
   delta?: { text: string; good: boolean | null; up: boolean | null }
   spark?: number[]
+  /** The detailed view behind the figure (an app address): the whole tile becomes a link with a
+   *  small "Details" mark. Left out, the tile is a plain card. */
+  to?: string
 }) {
+  const { t } = useTranslation()
   const Arrow = d ? (d.up === null ? Minus : d.up ? ArrowUp : ArrowDown) : Minus
   const pill = d
     ? d.good === null
@@ -57,19 +73,23 @@ export function Kpi({
         ? 'bg-green-bg text-green'
         : 'bg-red-bg text-red'
     : ''
-  return (
-    <div
-      className={cn(
-        card,
-        'anim-enter relative gap-2 overflow-hidden px-3.5 pt-3.5 pb-3 sm:gap-2.5 sm:px-[18px] sm:pt-[18px] sm:pb-3.5',
+  const className = cn(
+    card,
+    'anim-enter relative gap-2 overflow-hidden px-3.5 pt-3.5 pb-3 sm:gap-2.5 sm:px-[18px] sm:pt-[18px] sm:pb-3.5',
+    to && linkCard,
+  )
+  const style = {
+    '--i': i,
+    backgroundImage: `linear-gradient(150deg, ${tintWash[tint]} 0%, var(--mmc-card) 62%)`,
+  } as CSSProperties
+  const body = (
+    <>
+      {to && (
+        <span className="text-ink-3 group-hover:text-primary group-focus-visible:text-primary absolute top-3 right-3 inline-flex items-center gap-0.5 text-[12px] font-semibold sm:top-4 sm:right-4">
+          <span className="hidden sm:inline">{t('dashboard.links.details')}</span>
+          <ArrowUpRight size={14} strokeWidth={2.5} aria-hidden="true" />
+        </span>
       )}
-      style={
-        {
-          '--i': i,
-          backgroundImage: `linear-gradient(150deg, ${tintWash[tint]} 0%, var(--mmc-card) 62%)`,
-        } as CSSProperties
-      }
-    >
       <span
         className={cn(
           'inline-flex size-10 items-center justify-center rounded-xl',
@@ -102,7 +122,35 @@ export function Kpi({
         </span>
       )}
       {spark && spark.length > 1 && <Sparkline values={spark} />}
+    </>
+  )
+  return to ? (
+    <DashLink href={to} className={className} style={style}>
+      {body}
+    </DashLink>
+  ) : (
+    <div className={className} style={style}>
+      {body}
     </div>
+  )
+}
+
+/** A card that is a link: the text keeps its colours, the focus ring shows for the keyboard. */
+const linkCard =
+  'group cursor-pointer text-inherit no-underline outline-none focus-visible:ring-[3px] focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface'
+
+/** "Details →" at the top of a panel: the detailed view behind it. */
+function DetailsLink({ to, label, title }: { to: string; label?: string; title: string }) {
+  const { t } = useTranslation()
+  return (
+    <DashLink
+      href={to}
+      aria-label={label ? undefined : t('dashboard.links.detailsOf', { what: title })}
+      className="text-primary hover:bg-primary-tint focus-visible:ring-primary/45 inline-flex flex-none items-center gap-1 rounded-lg px-2 py-1 text-[13px] font-bold whitespace-nowrap no-underline outline-none focus-visible:ring-[3px]"
+    >
+      {label ?? t('dashboard.links.details')}
+      <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" />
+    </DashLink>
   )
 }
 
@@ -191,6 +239,8 @@ export function Panel({
   icon,
   tint = 'teal',
   right,
+  to,
+  toLabel,
   children,
   className,
 }: {
@@ -200,6 +250,10 @@ export function Panel({
   icon?: LucideIcon
   tint?: Tint
   right?: ReactNode
+  /** The detailed view behind the panel (an app address): a "Details →" link in the header. */
+  to?: string
+  /** The link's words instead of "Details" (e.g. "Waiting times"). */
+  toLabel?: string
   children: ReactNode
   className?: string
 }) {
@@ -218,8 +272,11 @@ export function Panel({
           {icon && <IconChip icon={icon} tint={tint} />}
           <span className={cn('min-w-0 break-words', tintText[tint])}>{title}</span>
         </span>
-        {right && (
-          <span className="text-ink-3 ml-auto max-w-full text-[13px] font-semibold">{right}</span>
+        {(right || to) && (
+          <span className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-x-2 gap-y-1">
+            {right && <span className="text-ink-3 text-[13px] font-semibold">{right}</span>}
+            {to && <DetailsLink to={to} label={toLabel} title={title} />}
+          </span>
         )}
       </h3>
       {children}
@@ -264,24 +321,52 @@ export function ListRows({
     tint?: Tint
     label: string
     value: string
+    /** The row opens this app address (keyboard and pointer). */
+    to?: string
   }[]
 }) {
   return (
     <ShownList items={rows} step={step}>
       {(shown) => (
         <div className="flex flex-col">
-          {shown.map((r, i) => (
-            <div
-              key={r.key}
-              className="border-grid anim-enter flex min-h-10 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
-              style={{ '--i': i } as CSSProperties}
-            >
-              {r.icon && <IconChip icon={r.icon} tint={r.tint} size="sm" />}
-              {r.pill}
-              <span className="min-w-0 flex-1 truncate">{r.label}</span>
-              <span className="font-bold whitespace-nowrap tabular-nums">{r.value}</span>
-            </div>
-          ))}
+          {shown.map((r, i) => {
+            const row =
+              'border-grid anim-enter flex min-h-10 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0'
+            const style = { '--i': i } as CSSProperties
+            const content = (
+              <>
+                {r.icon && <IconChip icon={r.icon} tint={r.tint} size="sm" />}
+                {r.pill}
+                {/* the whole label wraps (a medicine with its strength, a full name) */}
+                <span className="min-w-0 flex-1 wrap-break-word">{r.label}</span>
+                <span className="font-bold whitespace-nowrap tabular-nums">{r.value}</span>
+                {r.to && (
+                  <ArrowRight
+                    size={14}
+                    aria-hidden="true"
+                    className="text-ink-3 group-hover:text-primary flex-none"
+                  />
+                )}
+              </>
+            )
+            return r.to ? (
+              <DashLink
+                key={r.key}
+                href={r.to}
+                className={cn(
+                  row,
+                  'group hover:bg-hover focus-visible:ring-primary/45 -mx-1.5 rounded-md px-1.5 text-inherit no-underline outline-none focus-visible:ring-[3px]',
+                )}
+                style={style}
+              >
+                {content}
+              </DashLink>
+            ) : (
+              <div key={r.key} className={row} style={style}>
+                {content}
+              </div>
+            )
+          })}
         </div>
       )}
     </ShownList>

@@ -2,6 +2,8 @@ import { useState, type CSSProperties } from 'react'
 import { Building2, ClipboardList, FlaskConical, ListTodo, UserCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
+import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
+import { DashLink } from '@/components/dash/dash-link'
 import { Empty, Kpi, ListRows, Panel, SectionTitle } from '@/components/dash/kit'
 import { StationTile } from '@/components/dash/station-tile'
 import { Badge } from '@/components/ui/badge'
@@ -39,6 +41,11 @@ export function DepartmentSection({
   const [picked, setPicked] = useState<string | null>(null)
   const current = leads.find((d) => d.id === picked) ?? leads[0] ?? null
   const { data, error } = useDepartmentSummary(current?.id ?? null, range, custom)
+  // each figure opens its detailed view of this department on the Analytics page
+  const link = useAnalyticsLink({
+    ...periodSearch({ range, from: custom.from, to: custom.to }),
+    dept: current?.id,
+  })
   if (!current) return null
   return (
     <section className="flex flex-col gap-3">
@@ -60,16 +67,29 @@ export function DepartmentSection({
           {error.message}
         </p>
       )}
-      {data && <DepartmentBody d={data} periodWord={periodWord} />}
+      {data && <DepartmentBody d={data} periodWord={periodWord} link={link} />}
     </section>
   )
 }
 
-function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: string }) {
+function DepartmentBody({
+  d,
+  periodWord,
+  link,
+}: {
+  d: DepartmentSummary
+  periodWord: string
+  link: ReturnType<typeof useAnalyticsLink>
+}) {
   const { t } = useTranslation()
   const x = d.tiles
   const diff = Number(x.patients) - Number(x.patientsPrev)
-  const queue = d.queue.filter((s) => Number(s.waiting) + Number(s.busy) > 0)
+  // a desk with only entries forgotten from an earlier day still shows (to be closed)
+  const queue = d.queue.filter(
+    (s) => Number(s.waiting) + Number(s.busy) + Number(s.forgotten ?? 0) > 0,
+  )
+  const forgotten = Number(x.forgottenNow ?? 0)
+  const labDesk = d.stations.some((s) => s === 'laboratory' || s === 'ultrasound')
   return (
     <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] sm:gap-4">
@@ -80,6 +100,7 @@ function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: s
           label={t('dept.tiles.patients')}
           value={Number(x.patients)}
           unit={periodWord}
+          to={link('visits')}
           delta={
             diff === 0
               ? undefined
@@ -97,6 +118,16 @@ function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: s
           label={t('dept.tiles.waiting')}
           value={Number(x.waitingNow)}
           unit={t('dashboard.units.now')}
+          to={link('waiting')}
+          delta={
+            forgotten > 0
+              ? {
+                  text: t('dashboard.forgottenShort', { count: forgotten }),
+                  good: false,
+                  up: null,
+                }
+              : undefined
+          }
         />
         <Kpi
           i={2}
@@ -105,6 +136,7 @@ function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: s
           label={t('dept.tiles.orders')}
           value={Number(x.ordersOpen)}
           unit={t('dashboard.units.now')}
+          to={labDesk ? link('lab') : undefined}
           delta={
             Number(x.ordersNotDone) > 0
               ? {
@@ -140,6 +172,7 @@ function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: s
           tint="teal"
           title={t('dept.people', { period: periodWord })}
           right={t('dept.peopleNote')}
+          to={link('staff')}
           className="overflow-x-auto"
         >
           {d.members.length === 0 ? (
@@ -189,7 +222,7 @@ function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: s
                     >
                       <td className="py-2 pr-2">
                         <span className="block font-semibold">
-                          {m.name}{' '}
+                          <PersonName name={m.name} to={link('staff', { person: m.id })} />{' '}
                           {m.position !== 'member' && (
                             <Badge tone={m.position === 'head' ? 'blue' : 'grey'} dot={false}>
                               {t(`staff.positions.${m.position}`)}
@@ -219,7 +252,14 @@ function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: s
         </Panel>
 
         <div className="flex min-w-0 flex-col gap-4">
-          <Panel i={2} icon={ClipboardList} tint="amber" title={t('dept.queue')}>
+          <Panel
+            i={2}
+            icon={ClipboardList}
+            tint="amber"
+            title={t('dept.queue')}
+            to={link('waiting')}
+            toLabel={t('dashboard.links.waitingTimes')}
+          >
             {queue.length === 0 ? (
               <Empty>{t('dashboard.noQueue')}</Empty>
             ) : (
@@ -231,8 +271,8 @@ function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: s
                     station={s.station}
                     waiting={Number(s.waiting)}
                     busy={Number(s.busy)}
-                    minutes={s.minutes == null ? null : Number(s.minutes)}
                     longest={s.longest == null ? null : Number(s.longest)}
+                    forgotten={Number(s.forgotten ?? 0)}
                   />
                 ))}
               </div>
@@ -243,6 +283,7 @@ function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: s
             icon={FlaskConical}
             tint="violet"
             title={t('dept.services', { period: periodWord })}
+            to={link('treatments')}
           >
             {d.services.length === 0 ? (
               <Empty>{t('dept.noServices')}</Empty>
@@ -259,5 +300,21 @@ function DepartmentBody({ d, periodWord }: { d: DepartmentSummary; periodWord: s
         </div>
       </div>
     </>
+  )
+}
+
+/** A member's name: a link to their work on the Analytics page when the viewer may open it. */
+function PersonName({ name, to }: { name: string; to: string | undefined }) {
+  const { t } = useTranslation()
+  return to ? (
+    <DashLink
+      href={to}
+      aria-label={t('dashboard.links.person', { name })}
+      className="text-ink hover:text-primary focus-visible:ring-primary/45 rounded-sm underline-offset-2 outline-none hover:underline focus-visible:ring-[3px]"
+    >
+      {name}
+    </DashLink>
+  ) : (
+    <>{name}</>
   )
 }

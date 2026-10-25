@@ -16,14 +16,12 @@ import type {
 
 export interface ClinicNow {
   inClinic: number
-  avgWaitMin: number
   bedsOccupied: number
   bedsTotal: number
 }
-export const CLINIC_NOW: ClinicNow = { inClinic: 23, avgWaitMin: 18, bedsOccupied: 5, bedsTotal: 8 }
+export const CLINIC_NOW: ClinicNow = { inClinic: 23, bedsOccupied: 5, bedsTotal: 8 }
 export const CLINIC_NOW_QUIET: ClinicNow = {
   inClinic: 2,
-  avgWaitMin: 0,
   bedsOccupied: 3,
   bedsTotal: 8,
 }

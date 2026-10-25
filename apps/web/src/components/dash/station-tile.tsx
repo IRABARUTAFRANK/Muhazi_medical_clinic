@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { Hourglass, Timer } from 'lucide-react'
+import { History, Hourglass } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import { cn } from '@/lib/utils'
@@ -10,27 +10,28 @@ import { stationLabel } from './kit-style'
 const LONG_WAIT_MIN = 30
 
 /*
- * One station in "Queue now": how many wait, how many are being seen, the average wait today
- * (from joining the queue until a staff member took the patient, over those already taken)
- * and how long the first patient still in line has been waiting.
+ * One station in "Queue now": how many wait (joined today), how many are being seen and how long
+ * the first patient still in line has been waiting. No average wait here: a correct waiting time
+ * needs completed waits over a period, so it lives on the Analytics page (Waiting times).
+ * Entries left open from an earlier day are counted apart, to be closed.
  */
 export function StationTile({
   i,
   station,
   waiting,
   busy,
-  minutes,
   longest,
+  forgotten = 0,
 }: {
   i: number
   station: string
   waiting: number
   /** Being seen now (left out where unknown). */
   busy?: number
-  /** Average wait today; null while nobody has been taken yet. */
-  minutes: number | null
   /** Minutes the first patient still in line has waited; null when nobody waits. */
   longest: number | null
+  /** Still open in this queue from an earlier day (0086). */
+  forgotten?: number
 }) {
   const { t } = useTranslation()
   const hot = waiting > 0 && (longest ?? 0) > LONG_WAIT_MIN
@@ -50,16 +51,16 @@ export function StationTile({
       {busy !== undefined && (
         <span className="text-ink-3 text-[12px]">{t('desk.busyShort', { count: busy })}</span>
       )}
-      <span className="text-ink-3 text-[12px]">
-        <Timer size={11} aria-hidden="true" className="mr-0.5 inline align-[-1px]" />
-        {minutes === null
-          ? t('dashboard.noneTaken')
-          : t('dashboard.avgShort', { time: formatDuration(minutes, t) })}
-      </span>
       {waiting > 0 && longest !== null && (
         <span className={cn('text-[12px]', hot ? 'text-red font-semibold' : 'text-ink-2')}>
           <Hourglass size={11} aria-hidden="true" className="mr-0.5 inline align-[-1px]" />
           {t('dashboard.longestShort', { time: formatDuration(longest, t) })}
+        </span>
+      )}
+      {forgotten > 0 && (
+        <span className="text-yellow text-[12px] font-semibold [overflow-wrap:anywhere]">
+          <History size={11} aria-hidden="true" className="mr-0.5 inline align-[-1px]" />
+          {t('dashboard.forgottenShort', { count: forgotten })}
         </span>
       )}
     </div>
