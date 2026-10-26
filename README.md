@@ -139,8 +139,9 @@ assets/                 Project document
 - **Motion.** Animations are CSS only, respect `prefers-reduced-motion`, and reveal-on-scroll
   never hides content when JavaScript or IntersectionObserver is missing.
 - **Languages.** i18next uses BCP-47 codes `rw`, `en`, `fr`; the database enum from doc §10.2 is
-  `kin`, `en`, `fr` (`LANG_DB_CODE`). English is the source of truth, French is complete, the
-  Kinyarwanda file is a draft the clinical champion must review in the translation editor.
+  `kin`, `en`, `fr` (`LANG_DB_CODE`). English is the source of truth; French and Kinyarwanda are
+  complete and follow `docs/translation-glossary.md`. The database's refusal sentences are
+  translated from `apps/web/src/lib/api/db-messages.generated.ts` (`node scripts/db-messages.mjs --check`).
 - **Demo clock.** Sample screens are frozen at Thursday 15/10/2026 12:45 (`DEMO_NOW`) so that
   queue times, calendars and charts stay coherent. Replace `demoNow()` once real data flows.
 - **Breakpoints.** The custom `pc` breakpoint (901 px) is declared in rem like Tailwind's own;

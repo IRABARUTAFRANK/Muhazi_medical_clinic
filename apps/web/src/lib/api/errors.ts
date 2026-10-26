@@ -1,13 +1,52 @@
 import i18n from '@/i18n'
+import { DB_MESSAGES } from './db-messages.generated'
 
 /**
  * Database refusals turned into clear words for clinic staff (migrations 0082 and 0083).
  *
  * The functions raise a SQLSTATE (errcode) and often a hint word. PostgREST hands both back as
- * `code` and `hint`. Known codes and hints get a translated message (stockErrors.*); anything else
- * keeps the server's own sentence. The screens can still branch on `code` / `hint` / `kind`, for
- * example MS003 (not enough in the room store) offers "for the pharmacy" instead.
+ * `code` and `hint`. Known codes and hints get a translated message (stockErrors.*); any other
+ * sentence is looked up in the generated table of the database's sentences (dbErrors.*, see
+ * scripts/db-messages.mjs) and only an unknown one keeps the server's own English. The screens
+ * can still branch on `code` / `hint` / `kind`, for example MS003 (not enough in the room store)
+ * offers "for the pharmacy" instead.
  */
+
+/** The English words the database writes into a sentence (desk names: initcap of the station enum
+ *  or a word; a transfer note's status), and the key that says them in the person's language. */
+const INSERTED_WORDS: Record<string, string> = {
+  Reception: 'register.stations.reception',
+  Triage: 'register.stations.triage',
+  Consultation: 'register.stations.consultation',
+  Doctor: 'register.stations.consultation',
+  Dental: 'register.stations.dental',
+  Laboratory: 'register.stations.laboratory',
+  Lab: 'register.stations.laboratory',
+  Ultrasound: 'register.stations.ultrasound',
+  Imaging: 'register.stations.ultrasound',
+  Theatre: 'register.stations.theatre',
+  Nursing: 'register.stations.nursing',
+  Pharmacy: 'register.stations.pharmacy',
+  Cashier: 'register.stations.cashier',
+  Beds: 'register.stations.beds',
+  received: 'roomStores.noteStatus.received',
+  cancelled: 'roomStores.noteStatus.cancelled',
+}
+
+/** The translated sentence for one the database wrote, or null when it is not a known one. */
+export function translateDbSentence(sentence: string): string | null {
+  for (const [re, key, n] of DB_MESSAGES) {
+    const m = re.exec(sentence)
+    if (!m) continue
+    const params: Record<string, string> = {}
+    for (let i = 1; i <= n; i++) {
+      const v = m[i] ?? ''
+      params[`p${i}`] = INSERTED_WORDS[v] ? i18n.t(INSERTED_WORDS[v]) : v
+    }
+    return i18n.t(key, { ...params, defaultValue: sentence })
+  }
+  return null
+}
 
 export interface DbErrorLike {
   code?: string | null
@@ -200,16 +239,18 @@ export function apiError(e: DbErrorLike | null | undefined): ApiError {
   const short = /(\d+) unit\(s\) short/.exec(inner)
   const n = short ? Number(short[1]) : null
   if (kind === 'short' && n != null) kind = 'shortBy'
-  // a refusal or a missing record without its own reason still reads in the person's language
+  // the database's own sentence in the person's language; a refusal or a missing record without a
+  // known sentence still reads in their language, with a general reason
+  const known = kind ? null : translateDbSentence(inner)
   const generic =
-    !kind && !hint && code === '42501'
+    !kind && !known && !hint && code === '42501'
       ? i18n.t('apiErrors.notAllowed', { defaultValue: inner })
-      : !kind && !hint && code === 'P0002'
+      : !kind && !known && !hint && code === 'P0002'
         ? i18n.t('apiErrors.notFound', { defaultValue: inner })
         : null
   const text = kind
     ? i18n.t(`stockErrors.${kind}`, { defaultValue: inner, n: n ?? '' })
-    : (generic ?? inner)
+    : (known ?? generic ?? inner)
   const message = line != null ? i18n.t('stockErrors.line', { n: line, message: text }) : text
   return new ApiError(message, { code, hint, kind, line, serverMessage: raw })
 }
