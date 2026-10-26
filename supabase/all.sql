@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-26T05:48:59.711Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-26T05:51:15.586Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql

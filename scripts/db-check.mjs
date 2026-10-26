@@ -7160,7 +7160,6 @@ await step('0084: more than 300 reports in an hour are refused (abuse cap)', asy
     throw new Error(JSON.stringify({ refused, before, after }))
   return 'the 301st report in the hour is refused'
 })
-=======
 // ---------------------------------------------------------------- 0084: what the documents print
 const t84 = {}
 const json84 = (x) => JSON.stringify(x)
