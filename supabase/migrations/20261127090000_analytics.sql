@@ -771,8 +771,11 @@ revoke all on function revenue_analysis(date, date) from public, anon;
 grant execute on function revenue_analysis(date, date) to authenticated;
 
 -- ---------------------------------------------------------------- D patients and visits
--- The visits of a window in scope (all, or those with a queue entry at one of the stations).
-create or replace function analytics_visits(p_start timestamptz, p_end timestamptz, p_stations station[])
+-- The visits of a window in scope (all, or those with a queue entry at one of the stations). A
+-- department counts a visit only when one of its own people took or was given the patient there,
+-- or the visit was sent to it: a visit at a desk several departments give is not counted for each.
+create or replace function analytics_visits(p_start timestamptz, p_end timestamptz, p_stations station[],
+                                            p_members uuid[] default null)
 returns table (id uuid, patient_id uuid, type encounter_type, arrived_at timestamptz, is_new boolean)
 language sql stable security definer set search_path = public
 as $$
@@ -782,15 +785,20 @@ as $$
   from encounter e
   where e.deleted_at is null and e.arrived_at >= p_start and e.arrived_at < p_end
     and (p_stations is null or exists (select 1 from queue_entry q where q.encounter_id = e.id and q.deleted_at is null
-                                       and q.station = any (p_stations)))
+                                       and q.station = any (p_stations)
+                                       and (p_members is null
+                                            or q.taken_by = any (p_members) or q.assigned_to = any (p_members)
+                                            or exists (select 1 from staff_department sd
+                                                       where sd.department_id = q.department_id
+                                                         and sd.profile_id = any (p_members)))))
 $$;
-revoke all on function analytics_visits(timestamptz, timestamptz, station[]) from public, anon, authenticated;
+revoke all on function analytics_visits(timestamptz, timestamptz, station[], uuid[]) from public, anon, authenticated;
 
 create or replace function visits_totals(p_start timestamptz, p_end timestamptz, p_stations station[], p_members uuid[])
 returns jsonb
 language sql stable security definer set search_path = public
 as $$
-  with v as (select * from analytics_visits(p_start, p_end, p_stations)),
+  with v as (select * from analytics_visits(p_start, p_end, p_stations, p_members)),
   ap as (
     select a.status from appointment a
     left join practitioner pr on pr.id = a.practitioner_id
@@ -835,7 +843,8 @@ begin
   v_end := (v_to + 1)::timestamp at time zone 'Africa/Kigali';
   v_stations := case when s.s_department is null then null else s.s_stations end;
 
-  with v as (select * from analytics_visits(v_start, v_end, v_stations)),
+  with v as (select * from analytics_visits(v_start, v_end, v_stations,
+                                            case when s.s_department is null then null else s.s_members end)),
   -- the bill lines of the window (a department: its own services)
   ln as (
     select l.*, sv.category_id, sv.department_id as service_department

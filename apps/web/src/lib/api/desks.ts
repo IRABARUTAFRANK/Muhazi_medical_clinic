@@ -300,6 +300,15 @@ async function readMyDesks(user: Pick<StaffUser, 'id' | 'role' | 'dbRole'>): Pro
 
 const myKey = (userId: string) => ['desks', 'mine', userId] as const
 
+/** The desks of the person, waited for (route guards): the cached answer, or read now. */
+export function desksReady(user: StaffUser): Promise<MyDesks> {
+  return queryClient.ensureQueryData({
+    queryKey: myKey(user.id),
+    staleTime: 60_000,
+    queryFn: () => readMyDesks(user),
+  })
+}
+
 /** The desks of the signed-in person (refreshed every minute, like the profile). */
 export function useMyDesks(user: StaffUser) {
   return useQuery({

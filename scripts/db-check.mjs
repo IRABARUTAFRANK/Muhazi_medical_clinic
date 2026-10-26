@@ -8710,6 +8710,20 @@ await step(
     const daySum = m.days.reduce((n, x) => n + x.visits, 0)
     const hourSum = m.byHour.reduce((n, x) => n + x, 0)
     const line = m.treatments.find((x) => x.description === 'Consultation 86')
+    // a department counts only the visits its own people took or were given (or sent to it)
+    await asAdmin()
+    const hExpected = (
+      await one(
+        `select count(distinct q.encounter_id)::int as n from queue_entry q
+         join encounter e on e.id = q.encounter_id and e.deleted_at is null
+         where q.deleted_at is null and q.station = 'consultation'
+           and e.arrived_at >= ($1::date)::timestamp at time zone 'Africa/Kigali'
+           and e.arrived_at < ($2::date + 1)::timestamp at time zone 'Africa/Kigali'
+           and (q.department_id = $3 or exists (select 1 from staff_department sd
+                where sd.department_id = $3 and sd.profile_id in (q.taken_by, q.assigned_to)))`,
+        [...P86, t86.dept],
+      )
+    ).n
     if (
       m.totals.visits !== 9 ||
       m.totals.newPatients !== 9 ||
@@ -8721,7 +8735,9 @@ await step(
       m.byType.find((x) => x.type === 'opd')?.count !== 9 ||
       line?.count !== 1 ||
       Number(line.amount) !== 10000 ||
-      h.totals.visits !== 9 ||
+      h.totals.visits !== hExpected ||
+      hExpected < 1 ||
+      hExpected >= 9 ||
       h.treatmentTotals.charged != null ||
       h.treatments.some((x) => x.amount != null)
     )

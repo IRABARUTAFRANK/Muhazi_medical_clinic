@@ -1,6 +1,6 @@
 import { ROLE_HOME, type NavItem, type StaffUser } from '@mmc/shared'
-import { desksNow, TREATING_DESKS, type DeskId, type MyDesks } from '@/lib/api/desks'
-import { permsNow } from '@/lib/api/permissions'
+import { desksNow, desksReady, TREATING_DESKS, type DeskId, type MyDesks } from '@/lib/api/desks'
+import { permsNow, permsReady } from '@/lib/api/permissions'
 import { isRoomStore, sampleStock } from '@/lib/api/stock'
 import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
@@ -311,6 +311,23 @@ function holdsRoomStore(user: StaffUser): boolean {
   })
   return queryClient.getQueryData<boolean>(key) ?? false
 }
+/**
+ * Route guard: is this page in the person's own menu? Waits for the switches, the desks and the
+ * room stores (the same answers the menu is drawn from), so a page the menu does not offer cannot
+ * be opened by typing its address. The database still refuses the data either way.
+ */
+export async function menuAllows(user: StaffUser, path: string): Promise<boolean> {
+  if (user.dashboard === 'manager' || user.role === 'manager') return true
+  await Promise.all([
+    permsReady(user).catch(() => null),
+    desksReady(user).catch(() => null),
+    queryClient
+      .ensureQueryData({ queryKey: holdsKey(user.id), staleTime: 5 * 60_000, queryFn: readHolds })
+      .catch(() => false),
+  ])
+  return navForUser(user).some((n) => n.to.split('?')[0] === path)
+}
+
 /** Whoever has the pharmacy desk has the full stock page already; anyone else holding a store
  *  gets My store. */
 const withMyStore = (user: StaffUser, items: NavItem[]): NavItem[] =>
