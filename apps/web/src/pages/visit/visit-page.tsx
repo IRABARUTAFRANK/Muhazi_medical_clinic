@@ -47,7 +47,8 @@ import { useVisitRouting } from '@/lib/api/referrals'
 import { ClinicalCard } from './clinical-card'
 import { WhereNextCard } from './where-next-card'
 import { VisitTrack } from '@/components/clinical/visit-track'
-import { useCan } from '@/lib/api/permissions'
+import { useCan, useSwitchedOff } from '@/lib/api/permissions'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { STATION_DESKS, TREATING_DESKS, useCanDesk, useMyDesks } from '@/lib/api/desks'
 import { useVisitAccess } from '@/lib/api/calls'
 import { HelpCard } from './help-card'
@@ -171,6 +172,8 @@ export function VisitPage({
   const isCashier = user.role === 'cashier'
   // What the manager allows this person (Settings → Who may do what).
   const can = useCan(user)
+  // …and what the role normally does but the manager has switched off: said, not hidden
+  const switchedOff = useSwitchedOff(user)
   // The desks I have (the clinical record, the pharmacy, nurse tasks), not my bare role.
   const treats = canDesk(TREATING_DESKS)
   // Vital signs: the manager's switch; a patient waiting at triage also needs the triage desk.
@@ -362,7 +365,7 @@ export function VisitPage({
                   </Chip>
                 ))}
                 <span className="flex-1" />
-                {!addingVitals && !closed && !isCashier && mayVitals && (
+                {!addingVitals && !closed && mayVitals && (
                   <Button size="sm" onClick={() => setAddingVitals(true)}>
                     <Activity size={14} aria-hidden="true" />
                     {t(vitals.length ? 'vitalsForm.edit' : 'vitalsForm.add')}
@@ -376,7 +379,10 @@ export function VisitPage({
               )}
             </Card>
 
-            {!closed && vitals.length === 0 && !addingVitals && !isCashier && mayVitals && (
+            {!closed && switchedOff('vitals.write') && vitals.length === 0 && (
+              <NotAllowedNotice feature="vitals.write" compact />
+            )}
+            {!closed && vitals.length === 0 && !addingVitals && mayVitals && (
               <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
                 <Activity size={18} aria-hidden="true" />
                 <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
@@ -499,9 +505,10 @@ export function VisitPage({
                 needs a desk that treats patients; the nurse works them at the nursing desk. */}
             {(user.role === 'doctor' || user.role === 'manager') &&
               treats &&
+              can('clinical.write') &&
               !locked &&
               !closed && <NurseTaskCard encounterId={encounterId} patientName={header.name} />}
-            {user.role === 'nurse' && canDesk('nursing') && !closed && (
+            {user.role === 'nurse' && canDesk('nursing') && can('clinical.write') && !closed && (
               <NurseTaskCard encounterId={encounterId} patientName={header.name} nurse />
             )}
 
@@ -624,16 +631,19 @@ export function VisitPage({
                           )}
                           {/* not on a visit held by someone else or already over (the
                               database refuses it; lines from orders: the manager) */}
-                          {bill?.status === 'draft' && !isCashier && !locked && !closed && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              aria-label={t('visit.charges.remove')}
-                              onClick={() => void removeCharge(c.id, c.description)}
-                            >
-                              <Trash2 size={16} aria-hidden="true" />
-                            </Button>
-                          )}
+                          {bill?.status === 'draft' &&
+                            can('charge.write') &&
+                            !locked &&
+                            !closed && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                aria-label={t('visit.charges.remove')}
+                                onClick={() => void removeCharge(c.id, c.description)}
+                              >
+                                <Trash2 size={16} aria-hidden="true" />
+                              </Button>
+                            )}
                         </Row>
                       ))
                     )}
@@ -677,6 +687,9 @@ export function VisitPage({
 
               <div className="flex flex-col gap-4">
                 {/* a finished visit still owing money can be paid later (debt) */}
+                {switchedOff('payment.take') && bill && (!closed || bill.balance !== 0) && (
+                  <NotAllowedNotice feature="payment.take" compact />
+                )}
                 {can('payment.take') && bill && (!closed || bill.balance !== 0) && (
                   <PaymentCard
                     bill={bill}
@@ -797,7 +810,10 @@ export function VisitPage({
                 {isCashier && !closed && (
                   <p className="text-ink-3 m-0 text-[13px]">{t('visit.cashierNote')}</p>
                 )}
-                {!isReception && !isCashier && !closed && !locked && can('charge.write') && (
+                {!closed && !locked && switchedOff('charge.write') && (
+                  <NotAllowedNotice feature="charge.write" compact />
+                )}
+                {!closed && !locked && can('charge.write') && (
                   <AddChargeCard
                     patientName={patientName}
                     // tests and desk work are ordered (Orders), bed nights come from the beds board

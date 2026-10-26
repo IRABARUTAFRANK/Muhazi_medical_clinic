@@ -24,7 +24,8 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { isLowStock, usePharmacyQueue, usePharmacySummary, useStockOverview } from '@/lib/api/stock'
-import { useCan } from '@/lib/api/permissions'
+import { useCan, useSwitchedOff } from '@/lib/api/permissions'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
@@ -44,6 +45,8 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const now = useNow(60_000)
   const can = useCan(user)
+  // receiving and managing stock follow the manager's switch; handing over stays
+  const switchedOff = useSwitchedOff(user)
   // the figures of the chosen period (today by default; lists of what waits now stay "now")
   const period = usePeriod('today')
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
@@ -77,6 +80,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
         <IdentityBanner user={user} greeting={greetingFor(user.name, t)} />
+        {switchedOff('stock.write') && <NotAllowedNotice feature="stock.write" compact />}
 
         <div className="anim-enter flex flex-wrap items-center gap-3">
           <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">

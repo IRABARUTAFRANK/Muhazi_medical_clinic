@@ -1,4 +1,4 @@
-import { FlaskConical, HeartPulse, Layers, UserPlus } from 'lucide-react'
+import { Banknote, FlaskConical, HeartPulse, Layers, Receipt, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { NoDeskNotice } from '@/components/clinical/desk-gate'
@@ -6,6 +6,7 @@ import { Empty, Panel, SectionTitle } from '@/components/dash/kit'
 import { buttonVariants } from '@/components/ui/button'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
+import { useHomeSummary } from '@/lib/api/home'
 import { useLabWorklist } from '@/lib/api/lab'
 import { useCan } from '@/lib/api/permissions'
 import { onePerPool, openItems, useQueueBoard } from '@/lib/api/visits'
@@ -15,6 +16,7 @@ import { PharmacyDesk } from '../stock/pharmacy-desk'
 import { LabOrderRow } from '../lab/lab-parts'
 import { AppointmentsPanel, BedsPanel, TasksPanel } from './desk-panels'
 import { MyQueuePanel } from './role-panels'
+import { OpenBillsPanel } from './bills-panel'
 import {
   homeKindFor,
   KIND_NATIVE,
@@ -38,12 +40,15 @@ export function DeskBlocks({ user, kind }: { user: StaffUser; kind: HomeKind }) 
   const native = KIND_NATIVE[kind]
   const more = extra.filter((d) => !native.includes(d))
   const lab = more.some((d) => d === 'laboratory' || d === 'ultrasound')
-  if (!noDesk && more.length === 0) return null
+  // "Take payments" given to someone whose role does not take money: the bills to settle
+  const money = can('payment.take')
+  if (!noDesk && more.length === 0 && !money) return null
   const ownNotice =
     user.dbRole === 'sonographer' ? (['ultrasound'] as const) : NOTICE_DESKS[ROLE_KIND[user.role]]
   return (
     <section className="flex flex-col gap-3">
       {noDesk && <NoDeskNotice desks={ownNotice} />}
+      {money && <MoneyBlock />}
       {more.length > 0 && (
         <>
           <SectionTitle icon={Layers}>{t('homeDesks.section')}</SectionTitle>
@@ -54,17 +59,19 @@ export function DeskBlocks({ user, kind }: { user: StaffUser; kind: HomeKind }) 
                 canArrive={can('visit.start')}
                 limit={6}
                 footer={
-                  <StaffLink
-                    to="/app/register"
-                    className={cn(buttonVariants({ size: 'sm' }), 'self-start')}
-                  >
-                    <UserPlus size={15} aria-hidden="true" />
-                    {t('dashboard.registerPatient')}
-                  </StaffLink>
+                  can('visit.start') ? (
+                    <StaffLink
+                      to="/app/register"
+                      className={cn(buttonVariants({ size: 'sm' }), 'self-start')}
+                    >
+                      <UserPlus size={15} aria-hidden="true" />
+                      {t('dashboard.registerPatient')}
+                    </StaffLink>
+                  ) : undefined
                 }
               />
             )}
-            {more.includes('triage') && <TriageBlock user={user} />}
+            {more.includes('triage') && can('vitals.write') && <TriageBlock user={user} />}
             {more.includes('nursing') && (
               <>
                 <BedsPanel userRole={user.role} canAct={can('clinical.write')} />
@@ -81,6 +88,34 @@ export function DeskBlocks({ user, kind }: { user: StaffUser; kind: HomeKind }) 
         </>
       )}
     </section>
+  )
+}
+
+/** The bills to settle and the way to the payments of the day (her own cash count), for someone
+ *  whose role does not take money but whom the manager allows to (Take payments). */
+function MoneyBlock() {
+  const { t } = useTranslation()
+  const { data } = useHomeSummary()
+  return (
+    <>
+      <SectionTitle icon={Receipt}>{t('homeDesks.money')}</SectionTitle>
+      <OpenBillsPanel
+        bills={data?.openBills ?? []}
+        canTake
+        footer={
+          <>
+            <StaffLink to="/app/bills" className={buttonVariants({ size: 'sm' })}>
+              <Receipt size={15} aria-hidden="true" />
+              {t('nav.bills')}
+            </StaffLink>
+            <StaffLink to="/app/payments" className={buttonVariants({ size: 'sm' })}>
+              <Banknote size={15} aria-hidden="true" />
+              {t('finance.dayClose')}
+            </StaffLink>
+          </>
+        }
+      />
+    </>
   )
 }
 

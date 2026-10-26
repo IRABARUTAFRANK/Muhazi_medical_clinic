@@ -15,6 +15,8 @@ import { navForUser } from '@/lib/nav'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 import { NoDeskPage } from '@/components/clinical/desk-gate'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
+import { useCan } from '@/lib/api/permissions'
 import { useCanDesk, type DeskId } from '@/lib/api/desks'
 import { LabOrderRow } from './lab-parts'
 
@@ -55,6 +57,8 @@ export function LabPage({ user }: { user: StaffUser }) {
 
 function LabWorklist({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
+  // the list stays readable; taking samples and writing results follow the manager's switch
+  const can = useCan(user)
   const now = useNow()
   const [tab, setTab] = useState<'open' | 'done'>('open')
   const { data: orders = [] } = useLabWorklist(tab)
@@ -95,6 +99,8 @@ function LabWorklist({ user }: { user: StaffUser }) {
             }
           />
         </PageBanner>
+
+        {!can('orders.write') && <NotAllowedNotice feature="orders.write" />}
 
         <div className="flex gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
           {(['open', 'done'] as const).map((k) => (

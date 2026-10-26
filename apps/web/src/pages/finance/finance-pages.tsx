@@ -40,7 +40,8 @@ import { useHomeSummary } from '@/lib/api/home'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
-import { useCan } from '@/lib/api/permissions'
+import { useCan, useSwitchedOff } from '@/lib/api/permissions'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { Flash } from '@/components/ui/flash'
 import { useConfirm } from '@/lib/confirm'
 import { useCounterSales } from '@/lib/api/counter-sales'
@@ -80,6 +81,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   // the manager sees every bill but takes payments only when allowed (Who may do what)
   const canTake = useCan(user)('payment.take')
+  const switchedOff = useSwitchedOff(user)
   // a notice about a counter sale opens this page with ?sale=…
   const search = useSearch({ strict: false }) as { sale?: unknown }
   const saleId = typeof search.sale === 'string' ? search.sale : null
@@ -103,6 +105,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
             </BannerChip>
           }
         />
+        {switchedOff('payment.take') && <NotAllowedNotice feature="payment.take" />}
         {loadError && (
           <p
             role="alert"
@@ -346,7 +349,11 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
   const cash = useCashActions()
   const confirm = useConfirm()
   const isManager = user.role === 'manager'
-  const canCount = useCan(user)('payment.take') || user.role === 'cashier'
+  // the cash count: whoever may take payments, or still has payments of their own to count (a
+  // cashier switched off during the day counts what she took; the database asks the same)
+  const canTake = useCan(user)('payment.take')
+  const switchedOff = useSwitchedOff(user)
+  const canCount = canTake || (s?.payments ?? []).some((p) => p.mine && !p.counted)
   const [cashNotice, setCashNotice] = useState<string | null>(null)
   const [cashError, setCashError] = useState<string | null>(null)
   // the count's answer lives here: saving refreshes the day, and the panel starts again from the
@@ -459,6 +466,15 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
             </span>
           </div>
         </div>
+        {switchedOff('payment.take') && (
+          <NotAllowedNotice feature="payment.take" compact className="print:hidden" />
+        )}
+        {/* someone outside the cash desk sees only what they took */}
+        {s?.scope === 'mine' && (
+          <p className="bg-primary-tint text-primary m-0 rounded-xl px-3 py-2 text-[14px] print:hidden">
+            {t('finance.mineOnly')}
+          </p>
+        )}
         {(s?.counterToPay ?? []).length > 0 && day === today() && (
           <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-[14px] font-semibold print:hidden">
             <ShoppingBag size={16} aria-hidden="true" />

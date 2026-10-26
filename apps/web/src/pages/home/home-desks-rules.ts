@@ -1,5 +1,6 @@
 import type { Role, StaffUser } from '@mmc/shared'
 import { DESKS, ROLE_DESKS, TREATING_DESKS, useMyDesks, type DeskId } from '@/lib/api/desks'
+import type { Feature } from '@/lib/api/permissions'
 import type { DbRole } from '@/lib/api/staff'
 import { DOCTOR_DESKS, extraDesks } from '@/lib/nav'
 
@@ -74,6 +75,20 @@ const ACTION_DESKS: Record<string, readonly DeskId[]> = {
   stock: ['pharmacy'],
 }
 
+/** …and the manager's switch they need (Settings → Who may do what; others: none). */
+const ACTION_PERMS: Record<string, Feature> = {
+  registerPatient: 'visit.start',
+  walkInTicket: 'visit.start',
+  vitals: 'vitals.write',
+  injection: 'clinical.write',
+  dressing: 'clinical.write',
+  admit: 'clinical.write',
+  newPrescription: 'clinical.write',
+  newOrder: 'orders.write',
+  takePayment: 'payment.take',
+  dayClose: 'payment.take',
+}
+
 const dbRoleOf = (user: StaffUser): DbRole => (user.dbRole ?? user.role) as DbRole
 
 /**
@@ -101,8 +116,14 @@ export function homeKindFor(
   return other ? { kind: other, noDesk: false } : { kind: own, noDesk: true }
 }
 
-/** May this quick action of the home toolbar show (its desk is one of the person's)? */
-export const actionShown = (id: string, desks: readonly DeskId[]): boolean => {
+/** May this quick action of the home toolbar show (its desk is one of the person's, and the
+ *  manager allows its work)? */
+export const actionShown = (
+  id: string,
+  desks: readonly DeskId[],
+  can: (f: Feature) => boolean = () => true,
+): boolean => {
   const need = ACTION_DESKS[id]
-  return !need || need.some((d) => desks.includes(d))
+  const perm = ACTION_PERMS[id]
+  return (!need || need.some((d) => desks.includes(d))) && (!perm || can(perm))
 }

@@ -101,6 +101,7 @@ export function PatientFilePage({
   const openVisit = data?.visits.find((v) => v.status === 'open')
   const [confirming, setConfirming] = useState(false)
   const mayStart = useCan(user)('visit.start')
+  const mayVitals = useCan(user)('vitals.write')
   // The medical report holds diagnoses: clinicians and the manager only.
   const mayReport = user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager'
   const letterhead = useLetterhead()
@@ -229,7 +230,7 @@ export function PatientFilePage({
     setConfirming(false)
     if (r.myself)
       void navigate({
-        to: r.station === 'triage' ? '/app/vitals' : '/app/visit',
+        to: r.station === 'triage' && mayVitals ? '/app/vitals' : '/app/visit',
         search: { encounter: r.encounterId },
       })
     else

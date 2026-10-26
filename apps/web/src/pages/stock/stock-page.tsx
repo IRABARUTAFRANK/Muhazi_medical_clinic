@@ -52,6 +52,8 @@ import {
 } from '@/lib/api/stock'
 import { useHoldsStore } from '@/lib/api/rooms'
 import { useCanDesk } from '@/lib/api/desks'
+import { useCan } from '@/lib/api/permissions'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { useClinicInfo } from '@/lib/api/public'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { stockReport } from '@/lib/reports/build'
@@ -267,6 +269,11 @@ function AdminStock({
 }) {
   const { t } = useTranslation()
   const { holds } = useHoldsStore()
+  // receiving, sending, counting and the stores themselves: the manager, or the pharmacy desk with
+  // the switch "Manage stock" (the database's stock_manager()); handing over and selling stay
+  const can = useCan(user)
+  const manage = isManager || can('stock.write')
+  const blocked = <NotAllowedNotice feature="stock.write" />
   const tabs = holds
     ? [...ADMIN_TABS.slice(0, 6), 'mine' as const, ...ADMIN_TABS.slice(6)]
     : ADMIN_TABS
@@ -428,11 +435,12 @@ function AdminStock({
       {tab === 'stock' && (
         <>
           <AlertsPanel onWriteOff={() => setTab('use')} />
-          <StockTable items={items} locations={locations} canSetLevel />
+          <StockTable items={items} locations={locations} canSetLevel={manage} />
         </>
       )}
       {tab === 'pharmacy' && <PharmacyDesk canDispense onOpenStock={openStock} />}
-      {tab === 'receive' && (
+      {tab === 'receive' && !manage && blocked}
+      {tab === 'receive' && manage && (
         <DeliveryForm
           key={opened}
           items={items}
@@ -446,6 +454,7 @@ function AdminStock({
       {tab === 'reorder' && (
         <ReorderTab items={items} onReceive={(item) => openStock('receive', { item })} />
       )}
+      {tab === 'rooms' && !manage && blocked}
       {tab === 'rooms' && (
         <RoomStoresTab
           overview={data}
@@ -456,22 +465,24 @@ function AdminStock({
         />
       )}
       {tab === 'mine' && <MyStoreTab user={user} storeId={focus.store} noteId={focus.note} />}
-      {tab === 'send' && (
+      {tab === 'send' && !manage && blocked}
+      {tab === 'send' && manage && (
         <SendForm key={opened} overview={data} preset={preset} onRooms={() => setTab('rooms')} />
       )}
-      {tab === 'use' && <UseForm items={items} locations={locations} />}
+      {tab === 'use' && (manage ? <UseForm items={items} locations={locations} /> : blocked)}
       {tab === 'medicines' && <MedicinesTab />}
       {tab === 'moves' && <Movements items={items} locations={locations} />}
       {tab === 'sales' && <Sales />}
       {tab === 'stores' && (
         <>
+          {!manage && blocked}
           <StoresTab
             locations={locations}
             items={items}
             mainId={data?.mainPharmacyId ?? null}
             isManager={isManager}
           />
-          <PharmacyCountForm items={items} locations={locations} />
+          {manage && <PharmacyCountForm items={items} locations={locations} />}
         </>
       )}
     </>

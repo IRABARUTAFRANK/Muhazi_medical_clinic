@@ -46,6 +46,8 @@ export type ApiErrorKind =
   | 'duplicateDelivery'
   // 0085: not in a department that does this desk's work
   | 'noDesk'
+  // 0087: the manager has switched this work off (Settings → Who may do what)
+  | 'notPermitted'
   // sample mode only (the database's own sentence is kept for these)
   | 'alreadyDone'
   | 'notFound'
@@ -83,6 +85,7 @@ const BY_HINT: Record<string, ApiErrorKind> = {
   has_stock: 'hasStock',
   duplicate_delivery: 'duplicateDelivery',
   no_desk: 'noDesk',
+  not_permitted: 'notPermitted',
 }
 
 /** An error from a database function, with its code and hint kept for the screens. */

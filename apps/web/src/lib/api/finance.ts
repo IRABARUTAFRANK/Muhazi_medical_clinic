@@ -52,6 +52,9 @@ export interface CashClose {
 }
 export interface CashierSummary {
   day: string
+  /** 'desk': the whole cash desk (the cashier, reception); 'mine': only what I took (someone
+   *  else the manager allows to take payments, migration 0087). Absent before 0087: the desk. */
+  scope?: 'desk' | 'mine'
   total: number
   count: number
   previousTotal: number

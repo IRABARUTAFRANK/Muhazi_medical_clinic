@@ -19,6 +19,7 @@ import { navForUser } from '@/lib/nav'
 import { canRegisterEmergency } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { useCan } from '@/lib/api/permissions'
+import { useSessionCan } from '@/components/clinical/session-desks'
 import { Flash } from '@/components/ui/flash'
 import { useReveal } from '@/lib/hooks'
 
@@ -43,9 +44,11 @@ export function RegisterPage({ user }: { user: StaffUser }) {
   } | null>(null)
   const [savedOnly, setSavedOnly] = useState<string | null>(null)
   const navigate = useNavigate()
-  // Seen by me: straight to the work (the visit; a nurse at triage to the measurements).
+  // Seen by me: straight to the work (the visit; a nurse at triage to the measurements, when the
+  // manager allows her to record vital signs).
+  const mayVitals = useCan(user)('vitals.write')
   const setResult = (r: VisitResult | null) => {
-    if (r?.myself && r.station === 'triage')
+    if (r?.myself && r.station === 'triage' && mayVitals)
       void navigate({ to: '/app/vitals', search: { encounter: r.encounterId } })
     else if (r?.myself) void navigate({ to: '/app/visit', search: { encounter: r.encounterId } })
     else setResultState(r)
@@ -258,9 +261,11 @@ function ResultCard({
   onAnother: () => void
 }) {
   const { t } = useTranslation()
+  const can = useSessionCan()
   // the ticket shows at the top of the page: bring it into view
   const ref = useReveal<HTMLElement>()
-  const triage = result.station === 'triage'
+  // the measurements at triage, for whoever the manager allows to record vital signs
+  const triage = result.station === 'triage' && can('vitals.write')
   const station = t(`register.stations.${result.station}`)
   return (
     <Card ref={ref} className={emergency ? 'border-red' : 'border-green'}>

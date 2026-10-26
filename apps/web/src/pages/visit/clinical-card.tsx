@@ -43,7 +43,8 @@ import { stationFor, type Station } from '@/lib/api/visits'
 import { buildPrescriptionHtml, type RxDoc, type RxDocMedicine } from '@/lib/prescription-doc'
 import { roleLabel } from '@/lib/roles'
 import { cn } from '@/lib/utils'
-import { useCan } from '@/lib/api/permissions'
+import { useCan, useSwitchedOff } from '@/lib/api/permissions'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import {
   deskOfRequest,
   STATION_DESKS,
@@ -164,6 +165,7 @@ export function ClinicalCard({
   const tests = treatments.filter((x) => x.orderStation)
   const desks = [...new Set(tests.map((x) => x.orderStation!))]
   const can = useCan(user)
+  const switchedOff = useSwitchedOff(user)
   const stock = useStockActions()
   const readOnly = closed || !!lockedNote
   // The desks a department of the person gives (or, where no department gives one, the role):
@@ -183,7 +185,8 @@ export function ClinicalCard({
    *  department gives its desk ('mine' from visit_clinical; before 0085: anyone who orders tests).
    *  As the database checks. */
   const mayResult = (o: { station?: string | null; category: 'lab' | 'imaging' }) =>
-    canDesk(deskOfRequest(o.station, o.category)) ||
+    // the laboratory / ultrasound desk comes with the department, the switch with the manager
+    (canDesk(deskOfRequest(o.station, o.category)) && can('orders.write')) ||
     (can('clinical.write') &&
       !['laboratory', 'ultrasound'].includes(o.station ?? 'laboratory') &&
       canDesk(STATION_DESKS[o.station ?? ''] ?? [])) ||
@@ -783,6 +786,12 @@ export function ClinicalCard({
           )}
         </span>
       </CardHeader>
+      {/* the record is the manager's switch: said, not silently read only */}
+      {!readOnly && canDesk(TREATING_DESKS) && switchedOff('clinical.write') && (
+        <CardBody>
+          <NotAllowedNotice feature="clinical.write" compact />
+        </CardBody>
+      )}
       {reporting && patient && data && (
         <CardBody className="bg-primary-tint/40 border-border anim-enter gap-2 border-b">
           <p className="m-0 text-[14px] font-bold">{t('medReport.panelTitle')}</p>

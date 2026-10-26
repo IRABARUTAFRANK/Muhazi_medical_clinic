@@ -3125,7 +3125,8 @@
         "left": "Left without paying",
         "closed": "Closed"
       }
-    }
+    },
+    "mineOnly": "Only the payments you took, and your own cash count, are shown here."
   },
   "calendar": {
     "title": "My calendar",
@@ -3692,7 +3693,19 @@
     },
     "blocked": {
       "visit": "The manager has not allowed you to start visits.",
-      "visitBanner": "The manager has not allowed you to start visits. You can still find patients and open their files."
+      "visitBanner": "The manager has not allowed you to start visits. You can still find patients and open their files.",
+      "title": "The manager has not allowed you to do this",
+      "body": "The manager has not allowed you to {{what}} (Settings → Who may do what).",
+      "what": {
+        "paymentTake": "take payments",
+        "visitStart": "start visits",
+        "vitalsWrite": "record vital signs",
+        "chargeWrite": "add treatments to a bill",
+        "clinicalWrite": "write in the clinical record",
+        "ordersWrite": "request tests and write results",
+        "appointmentApprove": "answer booking requests",
+        "stockWrite": "manage stock"
+      }
     },
     "f": {
       "payment.take": {
@@ -4984,7 +4997,8 @@
     "expiredShort": "Not enough stock that is not expired: {{n}} unit(s) short. Write the expired stock off.",
     "ownNote": "You sent this note: the person receiving it confirms what arrived.",
     "noHolder": "This room store has no holder yet: the manager assigns one first.",
-    "noDesk": "You do not work in a department that does this. Ask the manager to place you in one."
+    "noDesk": "You do not work in a department that does this. Ask the manager to place you in one.",
+    "notPermitted": "The manager has not allowed you to do this (Settings → Who may do what)."
   },
   "cashierDesk": {
     "noMatch": "Nothing matches your search.",
@@ -5543,7 +5557,8 @@
   },
   "homeDesks": {
     "section": "Your other desks",
-    "labEmpty": "No test waiting at your desks."
+    "labEmpty": "No test waiting at your desks.",
+    "money": "Bills to settle"
   },
   "analytics": {
     "needsUpdate": "This view needs the latest database update. Ask the person who looks after the system to apply it.",

@@ -4,6 +4,7 @@ import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { isMissingFunction, throwIf } from './errors'
+import { permsReady, samplePermsOf, type Feature } from './permissions'
 import { sampleStaffData, type DbRole } from './staff'
 
 /**
@@ -93,6 +94,28 @@ export const ROLE_DESKS: Record<DbRole, DeskId[]> = {
   manager: [...DESKS],
 }
 
+/** The switch (Settings → Who may do what) a desk needs, as the database's desk_permission: start
+ *  a visit at reception, vital signs at triage, the clinical record at the treating desks, tests and
+ *  results at the worklists. The pharmacy follows handing over medicines, which is not a switch. */
+export const DESK_PERMISSION: Partial<Record<DeskId, Feature>> = {
+  reception: 'visit.start',
+  triage: 'vitals.write',
+  laboratory: 'orders.write',
+  ultrasound: 'orders.write',
+  consultation: 'clinical.write',
+  dental: 'clinical.write',
+  surgery: 'clinical.write',
+  circ: 'clinical.write',
+  nursing: 'clinical.write',
+  fp: 'clinical.write',
+  hiv: 'clinical.write',
+}
+/** Does the person have the switch this desk needs? */
+const switchAllows = (desk: DeskId, perms: ReadonlySet<string>): boolean => {
+  const f = DESK_PERMISSION[desk]
+  return !f || perms.has(f)
+}
+
 export const isDesk = (s: string): s is DeskId => (DESKS as readonly string[]).includes(s)
 const onlyDesks = (list: readonly string[] | null | undefined): DeskId[] =>
   DESKS.filter((d) => (list ?? []).includes(d))
@@ -160,6 +183,7 @@ const WORKLIST_DESKS: readonly DeskId[] = ['laboratory', 'ultrasound', 'pharmacy
  *   ceiling     the role's ceiling (useRoleDeskMatrix().roles[role]; DEFAULT_CEILINGS while loading)
  *   offered     the desks some active department of the clinic gives (all departments' services)
  *   kept        the desks the employee kept on day one (staff_directory.kept_desks)
+ *   perms       the person's own switches (sample mode); without them, today's rule of the role
  */
 export function desksFor(i: {
   role: DbRole
@@ -167,6 +191,7 @@ export function desksFor(i: {
   ceiling?: readonly string[] | null
   offered: readonly string[]
   kept?: readonly string[] | null
+  perms?: ReadonlySet<string> | null
 }): { desks: DeskId[]; via: Partial<Record<DeskId, 'department' | 'kept' | 'role' | 'manager'>> } {
   if (i.role === 'manager')
     return { desks: [...DESKS], via: Object.fromEntries(DESKS.map((d) => [d, 'manager'])) }
@@ -174,13 +199,15 @@ export function desksFor(i: {
   const mine = new Set(i.services.flat())
   const offered = new Set(i.offered)
   const kept = new Set(i.kept ?? [])
-  const switchOn = (d: DeskId) => ROLE_DESKS[i.role].includes(d)
+  const perms = i.perms
+  // the switch the desk needs: the person's own when known, else today's rule of the role
+  const switchOn = (d: DeskId) => (perms ? switchAllows(d, perms) : ROLE_DESKS[i.role].includes(d))
   const via: Partial<Record<DeskId, 'department' | 'kept' | 'role'>> = {}
   for (const d of DESKS) {
     if (!ceiling.has(d)) continue
     if (mine.has(d) && (WORKLIST_DESKS.includes(d) || switchOn(d))) via[d] = 'department'
-    else if (kept.has(d)) via[d] = 'kept'
-    else if (!offered.has(d) && switchOn(d)) via[d] = 'role'
+    else if (kept.has(d) && (!perms || switchOn(d))) via[d] = 'kept'
+    else if (!offered.has(d) && ROLE_DESKS[i.role].includes(d) && switchOn(d)) via[d] = 'role'
   }
   return { desks: DESKS.filter((d) => via[d]), via }
 }
@@ -219,7 +246,9 @@ function sampleDesksOf(userId: string, role: DbRole): MyDesks {
     (m) => departments.find((d) => d.id === m.departmentId)?.services ?? [],
   )
   const offered = sampleOffered()
-  const r = desksFor({ role, services, ceiling: sampleCeilings[role], offered })
+  // the sample switches decide reception, triage, the treating desks and the worklists too
+  const perms = samplePermsOf(userId, role)
+  const r = desksFor({ role, services, ceiling: sampleCeilings[role], offered, perms })
   return {
     desks: r.desks,
     via: r.via,
@@ -229,23 +258,29 @@ function sampleDesksOf(userId: string, role: DbRole): MyDesks {
   }
 }
 
-/** Before 0085: the desks by role, as the app decided until now. */
-const fromRole = (role: DbRole): MyDesks => ({
-  desks: [...ROLE_DESKS[role]],
-  via: Object.fromEntries(
-    ROLE_DESKS[role].map((d) => [d, role === 'manager' ? 'manager' : 'role']),
-  ) as MyDesks['via'],
-  offered: [],
-  ceiling: role === 'manager' ? [...DESKS] : [...(DEFAULT_CEILINGS[role] ?? [])],
-  fallback: true,
-})
+/** Before 0085: the desks by role, as the app decided until now, less those whose switch the
+ *  manager turned off (the functions behind them refuse: vital signs, start a visit…). */
+const fromRole = (role: DbRole, perms?: ReadonlySet<string>): MyDesks => {
+  const desks = ROLE_DESKS[role].filter(
+    (d) => role === 'manager' || !perms || switchAllows(d, perms),
+  )
+  return {
+    desks: [...desks],
+    via: Object.fromEntries(
+      desks.map((d) => [d, role === 'manager' ? 'manager' : 'role']),
+    ) as MyDesks['via'],
+    offered: [],
+    ceiling: role === 'manager' ? [...DESKS] : [...(DEFAULT_CEILINGS[role] ?? [])],
+    fallback: true,
+  }
+}
 
 async function readMyDesks(user: Pick<StaffUser, 'id' | 'role' | 'dbRole'>): Promise<MyDesks> {
   const role = dbRoleOf(user)
   if (!supabase) return sampleDesksOf(user.id, role)
   const { data, error } = await supabase.rpc('my_desks')
   // an older database (0085 not applied) or a failed read: the role decides, as before
-  if (error || !data) return fromRole(role)
+  if (error || !data) return fromRole(role, await permsReady(user))
   const j = data as {
     desks?: string[]
     via?: Record<string, DeskVia>

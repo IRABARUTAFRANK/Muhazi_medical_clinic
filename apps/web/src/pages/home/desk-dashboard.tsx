@@ -73,7 +73,8 @@ import {
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { formatDuration } from '@/lib/duration'
-import { useCan } from '@/lib/api/permissions'
+import { useCan, useSwitchedOff } from '@/lib/api/permissions'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { cn } from '@/lib/utils'
 import { CallsPanel } from './calls-panel'
 import { useDeskOrders } from '@/lib/api/lab'
@@ -105,6 +106,8 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   // (the manager, a head of department); otherwise the tiles stay plain
   const link = useAnalyticsLink(periodSearch(period))
   const can = useCan(user)
+  // the desk's own work the manager has switched off: said once, at the top
+  const switchedOff = useSwitchedOff(user)
   // the desks the person works at (their departments decide, 0085): each block of a desk shows
   // only to those who work there
   const { has } = useHomeDesks(user)
@@ -133,8 +136,9 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
   const greeting = greetingFor(user.name, t)
   const nurse = role === 'nurse'
-  const triage = has('triage')
-  const reception = has('reception')
+  // a desk counts here with the manager's switch for its work (vital signs, starting visits)
+  const triage = has('triage') && can('vitals.write')
+  const reception = has('reception') && can('visit.start')
   const nursing = has('nursing')
   // the primary button: vitals at triage (nurse), registering at reception
   const primary = nurse ? triage : reception
@@ -208,6 +212,11 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
           </p>
         )}
 
+        {role === 'nurse' && switchedOff('vitals.write') && (
+          <NotAllowedNotice feature="vitals.write" compact />
+        )}
+        {switchedOff('visit.start') && <NotAllowedNotice feature="visit.start" compact />}
+
         {!data && !error && (
           <div
             className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4"
@@ -222,7 +231,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
         {data && (
           <div className="flex flex-col gap-5">
             {nurse ? (
-              <NurseTiles d={data} range={period.range} link={link} />
+              <NurseTiles d={data} range={period.range} link={link} triage={triage} />
             ) : (
               <ReceptionTiles d={data} range={period.range} link={link} />
             )}
@@ -430,57 +439,74 @@ function ReceptionTiles({
   )
 }
 
-function NurseTiles({ d, range, link }: { d: DeskSummary; range: DashboardRange; link: LinkFn }) {
+function NurseTiles({
+  d,
+  range,
+  link,
+  triage,
+}: {
+  d: DeskSummary
+  range: DashboardRange
+  link: LinkFn
+  /** Works at triage with "Record vital signs": the triage and vital-sign tiles. */
+  triage: boolean
+}) {
   const before = range === 'today' ? 'Yesterday' : 'Before'
   const { t } = useTranslation()
   const x = d.tiles
   const diff = x.vitalsToday - x.vitalsYesterday
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4">
-      <Kpi
-        i={0}
-        icon={Activity}
-        tint="teal"
-        label={t(x.needVitals == null ? 'desk.tiles.triageWaiting' : 'desk.tiles.toMeasure')}
-        value={x.needVitals ?? x.triageWaiting}
-        unit={t('dashboard.units.now')}
-      />
-      <Kpi
-        i={1}
-        icon={AlertTriangle}
-        tint="coral"
-        label={t('desk.tiles.red')}
-        value={x.triageRed}
-        unit={t('dashboard.units.now')}
-        delta={x.triageRed > 0 ? { text: t('desk.seeFirst'), good: false, up: null } : undefined}
-        to={link('triage')}
-      />
-      <Kpi
-        i={2}
-        icon={AlertTriangle}
-        tint="amber"
-        label={t('desk.tiles.yellow')}
-        value={x.triageYellow}
-        unit={t('dashboard.units.now')}
-        to={link('triage')}
-      />
-      <Kpi
-        i={3}
-        icon={HeartPulse}
-        tint="mint"
-        label={t('desk.tiles.vitals')}
-        value={x.vitalsToday}
-        unit={t(`dashboard.period.${range}`)}
-        delta={{
-          text:
-            diff === 0
-              ? t(`desk.sameAs${before}`)
-              : t(`desk.vs${before}`, { change: `${diff > 0 ? '+' : '−'}${Math.abs(diff)}` }),
-          good: null,
-          up: diff === 0 ? null : diff > 0,
-        }}
-        to={link('triage')}
-      />
+      {triage && (
+        <>
+          <Kpi
+            i={0}
+            icon={Activity}
+            tint="teal"
+            label={t(x.needVitals == null ? 'desk.tiles.triageWaiting' : 'desk.tiles.toMeasure')}
+            value={x.needVitals ?? x.triageWaiting}
+            unit={t('dashboard.units.now')}
+          />
+          <Kpi
+            i={1}
+            icon={AlertTriangle}
+            tint="coral"
+            label={t('desk.tiles.red')}
+            value={x.triageRed}
+            unit={t('dashboard.units.now')}
+            delta={
+              x.triageRed > 0 ? { text: t('desk.seeFirst'), good: false, up: null } : undefined
+            }
+            to={link('triage')}
+          />
+          <Kpi
+            i={2}
+            icon={AlertTriangle}
+            tint="amber"
+            label={t('desk.tiles.yellow')}
+            value={x.triageYellow}
+            unit={t('dashboard.units.now')}
+            to={link('triage')}
+          />
+          <Kpi
+            i={3}
+            icon={HeartPulse}
+            tint="mint"
+            label={t('desk.tiles.vitals')}
+            value={x.vitalsToday}
+            unit={t(`dashboard.period.${range}`)}
+            delta={{
+              text:
+                diff === 0
+                  ? t(`desk.sameAs${before}`)
+                  : t(`desk.vs${before}`, { change: `${diff > 0 ? '+' : '−'}${Math.abs(diff)}` }),
+              good: null,
+              up: diff === 0 ? null : diff > 0,
+            }}
+            to={link('triage')}
+          />
+        </>
+      )}
       <Kpi
         i={4}
         icon={BedDouble}

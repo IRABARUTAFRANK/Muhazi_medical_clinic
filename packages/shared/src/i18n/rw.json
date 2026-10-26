@@ -3134,7 +3134,8 @@
         "left": "Yagiye atishyuye",
         "closed": "Yafunzwe"
       }
-    }
+    },
+    "mineOnly": "Hano hagaragara gusa amafaranga wakiriye n'ibarura ryawe ry'amafaranga."
   },
   "calendar": {
     "title": "Ingengabihe yanjye",
@@ -3701,7 +3702,19 @@
     },
     "blocked": {
       "visit": "Umuyobozi ntiyakwemereye gutangira inzinduko.",
-      "visitBanner": "Umuyobozi ntiyakwemereye gutangira inzinduko. Ushobora gushaka abarwayi no gufungura dosiye zabo."
+      "visitBanner": "Umuyobozi ntiyakwemereye gutangira inzinduko. Ushobora gushaka abarwayi no gufungura dosiye zabo.",
+      "title": "Umuyobozi ntiyakwemereye gukora ibi",
+      "body": "Umuyobozi ntiyakwemereye {{what}} (Igenamiterere → Ushobora gukora iki).",
+      "what": {
+        "paymentTake": "kwakira amafaranga",
+        "visitStart": "gutangiza uruzinduko",
+        "vitalsWrite": "kwandika ibipimo by'ubuzima",
+        "chargeWrite": "kongera ubuvuzi kuri fagitire",
+        "clinicalWrite": "kwandika muri dosiye y'ubuvuzi",
+        "ordersWrite": "gusaba ibizamini no kwandika ibisubizo",
+        "appointmentApprove": "gusubiza ubusabe bwa gahunda",
+        "stockWrite": "gucunga ububiko"
+      }
     },
     "f": {
       "payment.take": {
@@ -4993,7 +5006,8 @@
     "expiredShort": "Ibitarangiye ntibihagije: haburaho {{n}}. Kura mu bubiko ibyarangiye.",
     "ownNote": "Ni wowe wohereje uru rupapuro: uwakiriye ni we wemeza ibyageze.",
     "noHolder": "Ubu bubiko nta wubushinzwe uragenwa: umuyobozi abanze amugene.",
-    "noDesk": "Ntukora mu ishami rikora ibi. Saba umuyobozi agushyire mu ishami ribikora."
+    "noDesk": "Ntukora mu ishami rikora ibi. Saba umuyobozi agushyire mu ishami ribikora.",
+    "notPermitted": "Umuyobozi ntiyakwemereye gukora ibi (Igenamiterere → Ushobora gukora iki)."
   },
   "cashierDesk": {
     "noMatch": "Nta kintu gihuye n'ibyo washakishije.",
@@ -5552,7 +5566,8 @@
   },
   "homeDesks": {
     "section": "Ahandi ukorera",
-    "labEmpty": "Nta kizamini gitegereje aho ukorera."
+    "labEmpty": "Nta kizamini gitegereje aho ukorera.",
+    "money": "Fagitire zo kwishyurwa"
   },
   "analytics": {
     "needsUpdate": "Iki gice gikeneye ivugurura rishya ry'ububiko bw'amakuru. Saba ushinzwe sisitemu kurishyiraho.",

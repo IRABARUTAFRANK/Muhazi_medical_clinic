@@ -16,7 +16,8 @@ import { NewPatientForm } from '@/components/clinical/new-patient-form'
 import type { RegisterRequest } from '@/pages/home/inquiries-panel'
 import { NewBookingCard, type BookingPrefill } from '@/pages/home/inquiries-panel'
 import { Flash } from '@/components/ui/flash'
-import { useCan } from '@/lib/api/permissions'
+import { useCan, useSwitchedOff } from '@/lib/api/permissions'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 
 /**
  * Appointments and inquiries (doc §5.2). Reception approves booking requests, then on the day
@@ -53,6 +54,7 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
   // booking, cancelling and the arrival follow Who may do what (the manager's switches)
   const can = useCan(user)
   const canAct = can('appointment.approve')
+  const switchedOff = useSwitchedOff(user)
   const label =
     offset === 0
       ? t('ops.appts.today')
@@ -120,6 +122,10 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
             {t('dashboard.registerPatient')}
           </StaffLink>
         </PageBanner>
+
+        {switchedOff('appointment.approve') && (
+          <NotAllowedNotice feature="appointment.approve" compact />
+        )}
 
         {/* the manager oversees the bookings; reception books them and the doctor accepts */}
         {!canAct && user.role === 'manager' && (

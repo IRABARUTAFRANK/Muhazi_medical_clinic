@@ -3125,7 +3125,8 @@
         "left": "Parti sans payer",
         "closed": "Clôturée"
       }
-    }
+    },
+    "mineOnly": "Seuls les paiements que vous avez encaissés, et votre propre comptage de caisse, sont affichés ici."
   },
   "calendar": {
     "title": "Mon agenda",
@@ -3692,7 +3693,19 @@
     },
     "blocked": {
       "visit": "Le gérant ne vous a pas permis de commencer des visites.",
-      "visitBanner": "Le gérant ne vous a pas permis de commencer des visites. Vous pouvez toujours chercher des patients et ouvrir leurs dossiers."
+      "visitBanner": "Le gérant ne vous a pas permis de commencer des visites. Vous pouvez toujours chercher des patients et ouvrir leurs dossiers.",
+      "title": "Le gérant ne vous a pas autorisé à faire ceci",
+      "body": "Le gérant ne vous a pas autorisé à {{what}} (Paramètres → Qui peut faire quoi).",
+      "what": {
+        "paymentTake": "encaisser les paiements",
+        "visitStart": "commencer des visites",
+        "vitalsWrite": "enregistrer les signes vitaux",
+        "chargeWrite": "ajouter des soins à une facture",
+        "clinicalWrite": "écrire dans le dossier clinique",
+        "ordersWrite": "demander des examens et saisir les résultats",
+        "appointmentApprove": "répondre aux demandes de rendez-vous",
+        "stockWrite": "gérer le stock"
+      }
     },
     "f": {
       "payment.take": {
@@ -4984,7 +4997,8 @@
     "expiredShort": "Pas assez de stock non périmé : il manque {{n}} unité(s). Retirez le stock périmé.",
     "ownNote": "Vous avez envoyé ce bon : c'est le destinataire qui confirme ce qui est arrivé.",
     "noHolder": "Ce stock de salle n'a encore aucun responsable : le gérant en désigne un d'abord.",
-    "noDesk": "Vous ne travaillez dans aucun département qui fait ceci. Demandez au gestionnaire de vous y placer."
+    "noDesk": "Vous ne travaillez dans aucun département qui fait ceci. Demandez au gestionnaire de vous y placer.",
+    "notPermitted": "Le gérant ne vous a pas autorisé à faire ceci (Paramètres → Qui peut faire quoi)."
   },
   "cashierDesk": {
     "noMatch": "Rien ne correspond à votre recherche.",
@@ -5543,7 +5557,8 @@
   },
   "homeDesks": {
     "section": "Vos autres postes",
-    "labEmpty": "Aucun examen en attente à vos postes."
+    "labEmpty": "Aucun examen en attente à vos postes.",
+    "money": "Factures à régler"
   },
   "analytics": {
     "needsUpdate": "Cette vue a besoin de la dernière mise à jour de la base de données. Demandez à la personne qui gère le système de l'appliquer.",

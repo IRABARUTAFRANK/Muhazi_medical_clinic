@@ -1,5 +1,6 @@
 import type { StaffUser } from '@mmc/shared'
 import { useCanDesk } from '@/lib/api/desks'
+import { useCan } from '@/lib/api/permissions'
 import { useSession } from '@/store/session'
 
 /** Nobody signed in (never inside the staff pages): no desk at all. */
@@ -12,4 +13,10 @@ const NOBODY: StaffUser = { id: 'nobody', username: '', name: '', role: 'cashier
 export function useSessionCanDesk() {
   const user = useSession((s) => s.user)
   return useCanDesk(user ?? NOBODY)
+}
+
+/** can('orders.write') for the signed-in person (Settings → Who may do what), for the same parts. */
+export function useSessionCan() {
+  const user = useSession((s) => s.user)
+  return useCan(user ?? NOBODY)
 }

@@ -50,6 +50,7 @@ import {
   stationFor,
   useQueueBoard,
 } from '@/lib/api/visits'
+import { useCan } from '@/lib/api/permissions'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -102,10 +103,14 @@ function RoleHome({ user, mode }: HomePageProps) {
   const { t } = useTranslation()
   const role: HomeRole = user.role === 'manager' ? 'receptionist' : user.role
   const { desks } = useHomeDesks(user)
-  // the quick actions of the desks the person works at
+  const can = useCan(user)
+  // the quick actions of the desks the person works at, as far as the manager allows them
   const home = {
     ...ROLE_HOME[role],
-    actions: ROLE_HOME[role].actions.filter((a) => actionShown(a.id, desks)),
+    actions: ROLE_HOME[role].actions.filter((a) =>
+      // the manager's toolbar never changes
+      actionShown(a.id, desks, user.role === 'manager' ? undefined : can),
+    ),
   }
   const empty = mode === 'empty'
   const { data: info } = useClinicInfo()

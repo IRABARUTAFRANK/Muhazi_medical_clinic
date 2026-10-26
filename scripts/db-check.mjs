@@ -8720,6 +8720,392 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0087: every switch decides
+// Settings → Who may do what: a role's switch, or one employee's exception (which wins), decides
+// what the database lets the person do, in both directions.
+const t87 = {}
+const json87 = (x) => JSON.stringify(x)
+const perms87 = async (who) => {
+  await as(who)
+  const p = (await one(`select my_permissions() as p`)).p
+  await asAdmin()
+  return p
+}
+/** As the manager: a role's switch, or one employee's exception (null = as the role). */
+const role87 = async (role, perm, on) => {
+  await as(staff.manager)
+  await db.query(`select set_role_permission($1, $2, $3)`, [role, perm, on])
+  await asAdmin()
+}
+const except87 = async (who, perm, on) => {
+  await as(staff.manager)
+  await db.query(`select set_staff_permission($1, $2, $3)`, [who, perm, on])
+  await asAdmin()
+}
+/** A visit opened directly: at triage or not, with a bill line of `amount` RWF. */
+const visit87 = async (given, { triage = false, amount = 0 } = {}) => {
+  await asAdmin()
+  const pid = (
+    await one(
+      `insert into patient (surname, given_names, sex) values ('Switch', $1, 'female') returning id`,
+      [given],
+    )
+  ).id
+  const enc = (await one(`insert into encounter (patient_id) values ($1) returning id`, [pid])).id
+  if (triage)
+    await db.query(
+      `insert into queue_entry (encounter_id, station, ticket_no) values ($1, 'triage', 'S87')`,
+      [enc],
+    )
+  const inv = (await one(`select id from invoice where encounter_id = $1`, [enc])).id
+  if (amount)
+    await db.query(
+      `insert into invoice_line (invoice_id, service_id, description, quantity, unit_price, office, patient_share, insurer_share)
+       select $1, s.id, 'Consultation 87', 1, $2, 'consultation', $2, 0 from service s
+       where s.deleted_at is null order by s.code limit 1`,
+      [inv, amount],
+    )
+  return { pid, enc, inv }
+}
+/** A statement's single value as someone ({ error } when refused). */
+const valAs = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    return (await one(sql, params))?.v
+  } catch (e) {
+    return { error: `${e.code}/${e.hint ?? ''}` }
+  } finally {
+    await asAdmin()
+  }
+}
+await step(
+  '0087 A: vital signs switched off for nurses: every function that writes them refuses',
+  async () => {
+    t87.triage = await dept85('Triage 87', ['triage'])
+    t87.nurse = await newStaff('sw87.nurse', 'Switch Nurse 87', 'nurse', 'Triage')
+    await member85(t87.nurse, t87.triage)
+    const atTriage = await visit87('Vitals', { triage: true })
+    const later = await visit87('Later')
+    const vitals = `select record_vitals($1, '{"pulse":"80"}'::jsonb)`
+    const r = {}
+    r.deskOn = await deskAs(t87.nurse, 'triage')
+    r.on = await hintAs(t87.nurse, vitals, [atTriage.enc])
+    // Frank's switch: "Record vital signs" off for the nurse role
+    await role87('nurse', 'vitals.write', false)
+    r.perms = await perms87(t87.nurse)
+    r.deskOff = await deskAs(t87.nurse, 'triage')
+    r.atTriage = await hintAs(t87.nurse, vitals, [atTriage.enc])
+    r.later = await hintAs(t87.nurse, vitals, [later.enc])
+    r.send = await hintAs(t87.nurse, `select send_from_triage($1, 'green', 'consultation')`, [
+      atTriage.enc,
+    ])
+    r.otherNurse = await hintAs(staff.nurse, vitals, [later.enc])
+    // reading what other permissions allow stays: the nurse still sees the vitals of the visit
+    r.read = await valAs(
+      t87.nurse,
+      `select count(*)::int as v from visit_vitals where encounter_id = $1`,
+      [atTriage.enc],
+    )
+    // the manager allows this one nurse: her exception wins over the role
+    await except87(t87.nurse, 'vitals.write', true)
+    r.permsEx = await perms87(t87.nurse)
+    r.deskEx = await deskAs(t87.nurse, 'triage')
+    r.exception = await hintAs(t87.nurse, vitals, [later.enc])
+    // and the other way: the role allowed again, this nurse not allowed
+    await role87('nurse', 'vitals.write', true)
+    await except87(t87.nurse, 'vitals.write', false)
+    r.denied = await hintAs(t87.nurse, vitals, [later.enc])
+    r.otherBack = await hintAs(staff.nurse, vitals, [later.enc])
+    await except87(t87.nurse, 'vitals.write', null)
+    r.back = await hintAs(t87.nurse, vitals, [atTriage.enc])
+    await asAdmin()
+    await db.query(`update department set active = false where id = $1`, [t87.triage])
+    if (
+      !r.deskOn ||
+      r.on !== 'ok' ||
+      r.perms.includes('vitals.write') ||
+      r.deskOff ||
+      r.atTriage !== '42501/not_permitted' ||
+      r.later !== '42501/not_permitted' ||
+      r.send !== '42501/not_permitted' ||
+      r.otherNurse !== '42501/not_permitted' ||
+      !(r.read > 0) ||
+      !r.permsEx.includes('vitals.write') ||
+      !r.deskEx ||
+      r.exception !== 'ok' ||
+      r.denied !== '42501/not_permitted' ||
+      r.otherBack !== 'ok' ||
+      r.back !== 'ok'
+    )
+      throw new Error(json87(r))
+    return 'off: record_vitals (at triage and later) and send_from_triage refuse, the triage desk goes, vitals still read; exceptions win both ways'
+  },
+)
+await step(
+  '0087 B: "Take payments" given to a nurse: she takes a payment, reprints the receipt, counts her cash',
+  async () => {
+    const v = await visit87('Pays', { amount: 5000 })
+    const r = {}
+    r.before = await hintAs(t87.nurse, `select take_payment($1, 'cash', 2000)`, [v.enc])
+    await role87('nurse', 'payment.take', true)
+    // her treatments switched off: what she reads of the bill comes from "Take payments" alone
+    await except87(t87.nurse, 'charge.write', false)
+    r.perms = await perms87(t87.nurse)
+    const paid = await valAs(t87.nurse, `select take_payment($1, 'cash', 2000) as v`, [v.enc])
+    r.receipt = paid?.receipt ?? null
+    r.bill = await valAs(
+      t87.nurse,
+      `select to_jsonb(b) as v from (select paid, balance, receipt_no, receipt_amount, settled_by
+         from visit_bill where encounter_id = $1) b`,
+      [v.enc],
+    )
+    r.lines = await valAs(
+      t87.nurse,
+      `select count(*)::int as v from visit_charges where encounter_id = $1`,
+      [v.enc],
+    )
+    await asAdmin()
+    const notes = (await one(`select count(*)::int as n from credit_note`)).n
+    r.notes = await valAs(t87.nurse, `select count(*)::int as v from credit_note`)
+    // the cashier pages: her own payments, the bills waiting; the cashier still sees the whole desk
+    const mine = await valAs(t87.nurse, `select cashier_summary() as v`)
+    const desk = await valAs(staff.cashier, `select cashier_summary() as v`)
+    r.mine = {
+      scope: mine?.scope,
+      total: Number(mine?.total),
+      count: mine?.count,
+      payments: mine?.payments?.length,
+      allMine: mine?.payments?.every((p) => p.mine),
+      expected: mine?.myExpected?.cash,
+      openBills: mine?.openBills,
+    }
+    r.desk = { scope: desk?.scope, total: Number(desk?.total) }
+    // the manager switches her off during the day: she can no longer take money, but still counts
+    // what she took
+    await role87('nurse', 'payment.take', false)
+    r.off = await hintAs(t87.nurse, `select take_payment($1, 'cash', 1000)`, [v.enc])
+    r.direct = await hintAs(t87.nurse, `select record_payment($1, 'cash', 1000)`, [v.inv])
+    r.offSummary = (await valAs(t87.nurse, `select cashier_summary() as v`))?.scope
+    r.count = await valAs(
+      t87.nurse,
+      `select close_cash_day(null, '{"cash":"2000"}'::jsonb, 'switched off') as v`,
+    )
+    r.afterCount = await valAs(t87.nurse, `select cashier_summary() as v`)
+    r.billOff = await valAs(
+      t87.nurse,
+      `select count(*)::int as v from visit_bill where encounter_id = $1`,
+      [v.enc],
+    )
+    await except87(t87.nurse, 'charge.write', null)
+    if (
+      r.before !== '42501/' ||
+      !r.perms.includes('payment.take') ||
+      r.perms.includes('charge.write') ||
+      !r.receipt ||
+      Number(r.bill?.paid) !== 2000 ||
+      Number(r.bill?.balance) !== 3000 ||
+      r.bill?.receipt_no !== r.receipt ||
+      Number(r.bill?.receipt_amount) !== 2000 ||
+      r.bill?.settled_by !== 'Switch Nurse 87' ||
+      r.lines !== 1 ||
+      r.notes !== notes ||
+      r.mine.scope !== 'mine' ||
+      r.mine.total !== 2000 ||
+      r.mine.count !== 1 ||
+      r.mine.payments !== 1 ||
+      !r.mine.allMine ||
+      Number(r.mine.expected) !== 2000 ||
+      !(r.mine.openBills >= 1) ||
+      r.desk.scope !== 'desk' ||
+      !(r.desk.total >= 2000) ||
+      r.off !== '42501/' ||
+      r.direct !== '42501/not_permitted' ||
+      r.offSummary !== 'mine' ||
+      Number(r.count?.variance) !== 0 ||
+      r.afterCount?.error !== '42501/' ||
+      r.billOff !== 0
+    )
+      throw new Error(json87(r))
+    return `receipt ${r.receipt}, bill paid ${r.bill.paid} of 5000; her summary: ${r.mine.total} (own only); switched off: refused, still counted (variance 0)`
+  },
+)
+await step(
+  '0087 C: "Take payments" off for one cashier: no payment, refund, cancellation or cash count by direct calls',
+  async () => {
+    const cashier = await newStaff('sw87.cashier', 'Switch Cashier 87', 'cashier')
+    const v = await visit87('Cashier', { amount: 4000 })
+    const r = {}
+    r.on = await valAs(cashier, `select take_payment($1, 'cash', 1000) as v`, [v.enc])
+    const pay = (await one(`select id from payment where invoice_id = $1`, [v.inv])).id
+    await except87(cashier, 'payment.take', false)
+    r.perms = await perms87(cashier)
+    r.take = await hintAs(cashier, `select take_payment($1, 'cash', 1000)`, [v.enc])
+    r.record = await hintAs(cashier, `select record_payment($1, 'cash', 1000)`, [v.inv])
+    r.post = await hintAs(cashier, `select post_invoice($1)`, [v.inv])
+    r.refund = await hintAs(cashier, `select refund_payment($1, 500, 'cash', 'test 87')`, [v.enc])
+    r.void = await hintAs(cashier, `select void_payment($1, 'test 87')`, [pay])
+    // she took 1 000 today: she still counts it; the desk's summary stays hers to read (billing.read)
+    r.count = await hintAs(cashier, `select close_cash_day(null, '{"cash":"1000"}'::jsonb)`)
+    r.summary = (await valAs(cashier, `select cashier_summary() as v`))?.scope
+    // another cashier switched off, with nothing taken today: no cash count
+    const idle = await newStaff('sw87.idle', 'Idle Cashier 87', 'cashier')
+    await except87(idle, 'payment.take', false)
+    r.idleCount = await hintAs(idle, `select close_cash_day(null, '{}'::jsonb)`)
+    await except87(cashier, 'payment.take', null)
+    await except87(idle, 'payment.take', null)
+    r.back = await hintAs(cashier, `select record_payment($1, 'cash', 500)`, [v.inv])
+    if (
+      !r.on?.receipt ||
+      r.perms.includes('payment.take') ||
+      r.take !== '42501/' ||
+      r.record !== '42501/not_permitted' ||
+      r.post !== '42501/not_permitted' ||
+      r.refund !== '42501/not_permitted' ||
+      r.void !== '42501/not_permitted' ||
+      r.count !== 'ok' ||
+      r.summary !== 'desk' ||
+      r.idleCount !== '42501/not_permitted' ||
+      r.back !== 'ok'
+    )
+      throw new Error(json87(r))
+    return 'off: record_payment, post_invoice, refund and cancel refused; the day she worked still counted'
+  },
+)
+await step(
+  '0087 D: "Test results" off for the lab: the Laboratory desk stays, results and samples refused',
+  async () => {
+    const v = await visit87('Lab')
+    const req = async () =>
+      (
+        await one(
+          `insert into service_request (encounter_id, category, service_id, priority, station)
+           values ($1, 'lab', $2, 3, 'laboratory') returning id`,
+          [v.enc, t85.test],
+        )
+      ).id
+    const a = await req()
+    const b = await req()
+    const r = {}
+    r.deskOn = await deskAs(staff.lab_tech, 'laboratory')
+    r.verify = await hintAs(
+      staff.lab_tech,
+      `select record_result($1, 'Negative', 'No malaria', true)`,
+      [a],
+    )
+    await role87('lab_tech', 'orders.write', false)
+    r.deskOff = await deskAs(staff.lab_tech, 'laboratory')
+    r.result = await hintAs(staff.lab_tech, `select record_result($1, 'x', 'y', true)`, [b])
+    r.sample = await hintAs(staff.lab_tech, `select set_request_status($1, 'collected')`, [b])
+    r.correct = await hintAs(staff.lab_tech, `select correct_result($1, 'x', 'y', 'typo 87')`, [a])
+    // one lab tech allowed: the exception wins
+    await except87(staff.lab_tech, 'orders.write', true)
+    r.exception = await hintAs(staff.lab_tech, `select set_request_status($1, 'collected')`, [b])
+    await except87(staff.lab_tech, 'orders.write', null)
+    await role87('lab_tech', 'orders.write', true)
+    r.back = await hintAs(staff.lab_tech, `select record_result($1, 'x', 'y', true)`, [b])
+    if (
+      !r.deskOn ||
+      r.verify !== 'ok' ||
+      !r.deskOff ||
+      r.result !== '42501/not_permitted' ||
+      r.sample !== '42501/not_permitted' ||
+      r.correct !== '42501/not_permitted' ||
+      r.exception !== 'ok' ||
+      r.back !== 'ok'
+    )
+      throw new Error(json87(r))
+    return 'off: record_result, set_request_status and correct_result refuse at the Laboratory desk; one lab tech allowed'
+  },
+)
+await step(
+  '0087 E: "Approve bookings" given to a pharmacist: he sees the requests and answers them',
+  async () => {
+    await asAdmin()
+    const inquiry = async (name) =>
+      (
+        await one(
+          `insert into appointment (status, contact_name, contact_phone, preferred_at)
+           values ('inquiry', $1, '0788000087', now() + interval '1 day') returning id`,
+          [name],
+        )
+      ).id
+    const a = await inquiry('Booking 87 A')
+    const b = await inquiry('Booking 87 B')
+    const seen = async () =>
+      ((await valAs(staff.pharmacist, `select inquiries_open() as v`)) ?? []).filter((x) =>
+        [a, b].includes(x.id),
+      ).length
+    const r = {}
+    r.before = await seen()
+    r.rejectBefore = await hintAs(staff.pharmacist, `select reject_inquiry($1, 'test 87')`, [a])
+    await except87(staff.pharmacist, 'appointment.approve', true)
+    r.after = await seen()
+    r.detail = (await valAs(staff.pharmacist, `select appointment_detail($1) as v`, [a]))?.id
+    r.day = Array.isArray(await valAs(staff.pharmacist, `select appointments_day() as v`))
+    r.reject = await hintAs(staff.pharmacist, `select reject_inquiry($1, 'test 87')`, [a])
+    // the reception's switch off: the receptionist answers no more requests
+    await role87('receptionist', 'appointment.approve', false)
+    r.recep = await hintAs(staff.receptionist, `select reject_inquiry($1, 'test 87')`, [b])
+    await role87('receptionist', 'appointment.approve', true)
+    await except87(staff.pharmacist, 'appointment.approve', null)
+    await asAdmin()
+    await db.query(`update appointment set deleted_at = now() where id = any ($1)`, [[a, b]])
+    if (
+      r.before !== 0 ||
+      r.rejectBefore !== '42501/' ||
+      r.after !== 2 ||
+      r.detail !== a ||
+      !r.day ||
+      r.reject !== 'ok' ||
+      r.recep !== '42501/'
+    )
+      throw new Error(json87(r))
+    return 'allowed: requests seen (2) and answered; reception switched off: refused'
+  },
+)
+await step(
+  '0087 F: "Manage stock" decides at the pharmacy desk; dispensing and selling stay with the desk',
+  async () => {
+    const pharm = (await one(`select main_pharmacy() as id`)).id
+    const item = (await one(`select id from item where code = 'AMOX500'`)).id
+    const receive = `select receive_stock($1, $2, 5, 10, 'SW-87', '2031-06-30')`
+    t87.pharm = await newStaff('sw87.pharm', 'Switch Pharmacist 87', 'pharmacist')
+    await member85(t87.pharm, t85.pharmacy)
+    const r = {}
+    r.desk = await deskAs(t87.pharm, 'pharmacy')
+    r.on = await hintAs(t87.pharm, receive, [item, pharm])
+    await role87('pharmacist', 'stock.write', false)
+    r.off = await hintAs(t87.pharm, receive, [item, pharm])
+    r.count = await hintAs(t87.pharm, `select adjust_stock($1, $2, 0, 'count 87')`, [item, pharm])
+    r.manage = (await valAs(t87.pharm, `select store_stock($1) as v`, [pharm]))?.canManage
+    r.admin = await valAs(t87.pharm, `select stock_admin() as v`)
+    await role87('pharmacist', 'stock.write', true)
+    r.manageOn = (await valAs(t87.pharm, `select store_stock($1) as v`, [pharm]))?.canManage
+    // the nurse of Pharmacy 85 dispenses (the desk) but does not manage the stock …
+    r.nurse = await hintAs(t85.nurse, receive, [item, pharm])
+    // … until the manager allows her
+    await except87(t85.nurse, 'stock.write', true)
+    r.nurseEx = await hintAs(t85.nurse, receive, [item, pharm])
+    await except87(t85.nurse, 'stock.write', null)
+    // a lab tech (stock.write by role) without the pharmacy desk still does not
+    r.labTech = await hintAs(staff.lab_tech, receive, [item, pharm])
+    if (
+      !r.desk ||
+      r.on !== 'ok' ||
+      r.off !== '42501/not_permitted' ||
+      r.count !== '42501/not_permitted' ||
+      r.manage !== false ||
+      r.admin !== true ||
+      r.manageOn !== true ||
+      r.nurse !== '42501/not_permitted' ||
+      r.nurseEx !== 'ok' ||
+      r.labTech !== '42501/'
+    )
+      throw new Error(json87(r))
+    return 'pharmacist switched off: receive and count refused, desk kept; nurse of Pharmacy allowed by exception'
+  },
+)
+
 finish()
 
 function finish() {

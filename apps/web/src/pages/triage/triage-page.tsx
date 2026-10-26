@@ -19,7 +19,9 @@ import { matches, usePaged, type SortKey } from '@/lib/paging'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { NoDeskPage } from '@/components/clinical/desk-gate'
+import { NotAllowedPage } from '@/components/clinical/perm-gate'
 import { useCanDesk } from '@/lib/api/desks'
+import { useCan } from '@/lib/api/permissions'
 
 /**
  * Triage screen (MoH: vitals before the doctor). Left: everyone waiting at triage, in priority
@@ -32,6 +34,19 @@ export function TriagePage({ user, encounter }: { user: StaffUser; encounter?: s
   // The triage desk: a department of the person gives it (or, where no department does, the
   // role). Vital signs of a patient elsewhere in the clinic are still added on the visit screen.
   const canDesk = useCanDesk(user)
+  // first the manager's switch (Settings → Who may do what): without it the desk is no use
+  const can = useCan(user)
+  if (!can('vitals.write'))
+    return (
+      <NotAllowedPage
+        user={user}
+        activeId="vitals"
+        feature="vitals.write"
+        icon={Activity}
+        tint="coral"
+        title={t('triage.title')}
+      />
+    )
   if (!canDesk('triage'))
     return (
       <NoDeskPage

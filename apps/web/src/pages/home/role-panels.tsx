@@ -44,6 +44,7 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { useHomeActions, type HomeBed, type HomeSummary } from '@/lib/api/home'
 import { useTakePatient } from '@/lib/api/visits'
 import { useConfirm } from '@/lib/confirm'
+import { useSessionCan } from '@/components/clinical/session-desks'
 import { cn } from '@/lib/utils'
 
 /*
@@ -106,6 +107,8 @@ export function MyQueuePanel({
   const navigate = useNavigate()
   const take = useTakePatient()
   const confirm = useConfirm()
+  // a patient at triage opens on the triage form for whoever may record vital signs
+  const can = useSessionCan()
   const [error, setError] = useState<string | null>(null)
   // "Take": claims the patient here (a shared patient leaves the other desks), then opens the visit
   // (a patient at triage opens on the triage form).
@@ -133,7 +136,7 @@ export function MyQueuePanel({
       if (q.queueId) await take.mutateAsync(q.queueId)
       if (q.encounterId)
         await navigate({
-          to: q.station === 'triage' ? '/app/vitals' : '/app/visit',
+          to: q.station === 'triage' && can('vitals.write') ? '/app/vitals' : '/app/visit',
           search: { encounter: q.encounterId },
         })
     } catch (e) {

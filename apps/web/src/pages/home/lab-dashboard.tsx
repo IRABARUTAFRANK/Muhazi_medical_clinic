@@ -41,6 +41,8 @@ import { ErrorBox, MyQueuePanel, ToAcceptPanel } from './role-panels'
 import { useHomeSummary } from '@/lib/api/home'
 import { CallsPanel } from './calls-panel'
 import { DeskBlocks } from './home-desks'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
+import { useSwitchedOff } from '@/lib/api/permissions'
 import { useHomeDesks } from './home-desks-rules'
 
 /**
@@ -50,6 +52,8 @@ import { useHomeDesks } from './home-desks-rules'
  */
 export function LabDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
+  // samples and results follow the manager's switch; the worklist stays readable
+  const switchedOff = useSwitchedOff(user)
   const now = useNow()
   // the figures of the chosen period (today by default; lists of what waits now stay "now")
   const period = usePeriod('today')
@@ -99,6 +103,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
         <IdentityBanner user={user} greeting={greetingFor(user.name, t)} />
+        {switchedOff('orders.write') && <NotAllowedNotice feature="orders.write" compact />}
 
         <div className="anim-enter flex flex-wrap items-center gap-3">
           <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">

@@ -17,7 +17,7 @@ import { formatNumber, formatRwf, formatTime, type StaffUser } from '@mmc/shared
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
-import { Empty, Kpi, Panel, Pill, SectionTitle } from '@/components/dash/kit'
+import { Empty, Kpi, Panel, SectionTitle } from '@/components/dash/kit'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { delta, greetingFor } from '@/components/dash/kit-style'
 import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
@@ -35,6 +35,9 @@ import { isLive } from '@/lib/supabase'
 import { MyQueuePanel } from './role-panels'
 import { CallsPanel } from './calls-panel'
 import { DebtsPanel } from '@/pages/finance/finance-pages'
+import { NotAllowedNotice } from '@/components/clinical/perm-gate'
+import { useCan } from '@/lib/api/permissions'
+import { OpenBillsPanel } from './bills-panel'
 
 const METHOD_ICON: Record<string, LucideIcon> = {
   cash: Banknote,
@@ -74,6 +77,8 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
   const bills = home?.openBills ?? []
   const amountOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.amount ?? 0
   const methodName = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
+  // the manager's switch "Take payments": switched off, the cashier still sees the money
+  const canTake = useCan(user)('payment.take')
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
@@ -108,12 +113,17 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             <Clock size={16} aria-hidden="true" />
             {t('finance.dayClose')}
           </StaffLink>
-          <StaffLink to="/app/bills" className={buttonVariants({ variant: 'primary', size: 'md' })}>
+          <StaffLink
+            to="/app/bills"
+            className={buttonVariants({ variant: canTake ? 'primary' : 'default', size: 'md' })}
+          >
             <Receipt size={16} aria-hidden="true" />
             {t('finance.openBillsBtn')}
           </StaffLink>
           <PeriodCustom period={period} className="basis-full" />
         </div>
+
+        {!canTake && <NotAllowedNotice feature="payment.take" compact />}
 
         {s?.todayOnly && (
           <p className="bg-amber-bg text-amber m-0 rounded-xl px-3 py-2 text-[14px] font-semibold">
@@ -197,61 +207,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
         <section className="flex flex-col gap-3">
           <SectionTitle icon={Workflow}>{t('finance.section')}</SectionTitle>
           <div className="pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
-            <Panel
-              i={1}
-              icon={Receipt}
-              tint="coral"
-              title={t('home.openBills')}
-              right={t('home.billsDue', {
-                count: bills.length,
-                amount: formatRwf(bills.reduce((x, b) => x + b.balance, 0)),
-              })}
-            >
-              {bills.length === 0 ? (
-                <Empty>{t('home.noOpenBills')}</Empty>
-              ) : (
-                <ShownList items={bills} step={6}>
-                  {(shown) => (
-                    <div className="flex flex-col">
-                      {shown.map((b, i) => (
-                        <div
-                          key={b.encounterId}
-                          className="border-grid anim-enter flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
-                          style={{ '--i': i } as CSSProperties}
-                        >
-                          <Pill tint="amber" icon={Receipt}>
-                            {b.ticket ?? '—'}
-                          </Pill>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-semibold">{b.name}</span>
-                            <span className="text-ink-3 block truncate text-[13px]">
-                              {b.file}
-                              {b.station
-                                ? ` · ${t('home.atStation', { station: t(`register.stations.${b.station}`, { defaultValue: b.station }) })}`
-                                : ''}
-                            </span>
-                          </span>
-                          <span className="font-bold whitespace-nowrap tabular-nums">
-                            {formatRwf(b.balance)}
-                          </span>
-                          <StaffLink
-                            to="/app/visit"
-                            search={{ encounter: b.encounterId }}
-                            className={buttonVariants({
-                              variant: i === 0 ? 'primary' : 'default',
-                              size: 'sm',
-                            })}
-                          >
-                            <Wallet size={14} aria-hidden="true" />
-                            {t('home.takePayment')}
-                          </StaffLink>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ShownList>
-              )}
-            </Panel>
+            <OpenBillsPanel bills={bills} canTake={canTake} />
             <div className="flex min-w-0 flex-col gap-4">
               {s && (
                 <Panel
@@ -346,7 +302,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             <NoticesPanel limit={4} />
           </div>
           {/* money still owed on visits already over: collected here when the patient comes back */}
-          {(s?.debts ?? 0) > 0 && <DebtsPanel canTake />}
+          {(s?.debts ?? 0) > 0 && <DebtsPanel canTake={canTake} />}
         </section>
         <DoctorCalendarsSection user={user} />
       </main>

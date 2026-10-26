@@ -25,7 +25,7 @@ import { useLetterhead, useMedicalReportLabels, usePrintedBy } from '@/lib/repor
 import { allergiesForDoc } from '@/lib/api/patients'
 import { registrationText } from '@/lib/api/staff'
 import { deskOfRequest } from '@/lib/api/desks'
-import { useSessionCanDesk } from '@/components/clinical/session-desks'
+import { useSessionCan, useSessionCanDesk } from '@/components/clinical/session-desks'
 
 const STATUS_LOOK: Record<TestStatus, { tint: Tint; icon: LucideIcon }> = {
   ordered: { tint: 'amber', icon: Hourglass },
@@ -70,7 +70,9 @@ export function LabOrderRow({
   // desk's (a department of the person gives it). Someone without it sees the test, not the steps.
   // An order done at another desk: that desk's staff work it (the database checks).
   const canDesk = useSessionCanDesk()
-  const mayWork = desk || canDesk(deskOfRequest(null, o.category))
+  // …and the manager's switch "Request tests and write results" (Who may do what)
+  const can = useSessionCan()
+  const mayWork = desk || (canDesk(deskOfRequest(null, o.category)) && can('orders.write'))
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({
     findings: o.findings ?? '',

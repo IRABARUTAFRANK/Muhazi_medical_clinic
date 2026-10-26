@@ -1,5 +1,6 @@
 import { ROLE_HOME, type NavItem, type StaffUser } from '@mmc/shared'
 import { desksNow, TREATING_DESKS, type DeskId, type MyDesks } from '@/lib/api/desks'
+import { permsNow } from '@/lib/api/permissions'
 import { isRoomStore, sampleStock } from '@/lib/api/stock'
 import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
@@ -122,11 +123,60 @@ const HEAD_ANALYTICS: NavItem = {
 const withHeadDashboard = (user: StaffUser, items: NavItem[]): NavItem[] =>
   user.dashboard === 'head' ? [items[0]!, HEAD_DASHBOARD, HEAD_ANALYTICS, ...items.slice(1)] : items
 
-/** Navigation items for the user: the role's menu, shaped by the desks they work at. */
+/** Navigation items for the user: the role's menu, shaped by the desks they work at and by what
+ *  the manager allows them (Settings → Who may do what). The manager's menu never changes. */
 export const navForUser = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
     ? MANAGER_NAV
-    : withMyStore(user, withHeadDashboard(user, withDesks(user, navForStaff(user))))
+    : withMyStore(
+        user,
+        withHeadDashboard(user, withSwitches(user, withDesks(user, navForStaff(user)))),
+      )
+
+/* ---------------------------------------------------------------- switches (Who may do what) */
+
+const BILLS: NavItem = { id: 'bills', labelKey: 'nav.bills', icon: 'wallet', to: '/app/bills' }
+const PAYMENTS: NavItem = {
+  id: 'payments',
+  labelKey: 'nav.payments',
+  icon: 'banknote',
+  to: '/app/payments',
+}
+const BOOKINGS: NavItem = {
+  id: 'appointments',
+  labelKey: 'nav.bookings',
+  icon: 'calendar',
+  to: '/app/appointments',
+}
+
+/**
+ * The menu follows the manager's switches, read again every minute (permsNow):
+ *   off  an entry that only serves the feature goes: Triage without "Record vital signs", Register
+ *        without "Start visits" (Patients stays, to find a patient);
+ *   on   a role whose menu lacks it gets it: Bills and Payments with "Take payments", Bookings
+ *        with "Answer booking requests".
+ * The cashier keeps Bills and Payments when switched off: what was taken stays readable there.
+ */
+function withSwitches(user: StaffUser, items: NavItem[]): NavItem[] {
+  const may = permsNow(user)
+  const kept = items.filter(
+    (n) =>
+      !(n.to === '/app/vitals' && !may.has('vitals.write')) &&
+      !(n.to === '/app/register' && !may.has('visit.start')),
+  )
+  const has = (to: string) => kept.some((n) => n.to === to)
+  const added: NavItem[] = [
+    ...(may.has('appointment.approve') && !has('/app/appointments') ? [BOOKINGS] : []),
+    ...(may.has('payment.take') && user.role !== 'cashier' && !has('/app/bills')
+      ? [BILLS, PAYMENTS]
+      : []),
+  ]
+  if (!added.length) return kept
+  // before History and the notices, which close every menu
+  const at = kept.findIndex((n) => n.to === '/app/history')
+  const cut = at >= 0 ? at : kept.length
+  return [...kept.slice(0, cut), ...added, ...kept.slice(cut)]
+}
 
 /* ---------------------------------------------------------------- desks (migration 0085) */
 
