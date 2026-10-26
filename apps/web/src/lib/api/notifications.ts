@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useSession } from '@/store/session'
 
 /**
  * Notifications (migration 0026). Each person sees only what is addressed to them: their own
@@ -22,6 +23,24 @@ export interface Notice {
 
 const KEY = ['notifications'] as const
 let sample: Notice[] = [
+  {
+    id: 'n0',
+    at: new Date(Date.now() - 6 * 60_000).toISOString(),
+    kind: 'handover',
+    params: {
+      by: 'Dr. Uwase Aline',
+      ticket: 'A-015',
+      name: 'Ingabire Diane',
+      station: 'consultation',
+      note: 'Called to theatre. Malaria test done (negative); please review the urine test and decide on treatment.',
+    },
+    title: null,
+    body: null,
+    link: '/app/visit?encounter=e-consultation-3',
+    urgent: true,
+    read: false,
+    sender: 'Dr. Uwase Aline',
+  },
   {
     id: 'n1',
     at: new Date(Date.now() - 4 * 60_000).toISOString(),
@@ -66,7 +85,13 @@ export function useNotifications(limit = 40) {
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<{ unread: number; items: Notice[] }> => {
-      if (!supabase) return { unread: sample.filter((n) => !n.read).length, items: sample }
+      if (!supabase) {
+        // the sample handover notice is for the sample doctor only
+        const items = sample.filter(
+          (n) => !n.kind.startsWith('handover') || useSession.getState().user?.role === 'doctor',
+        )
+        return { unread: items.filter((n) => !n.read).length, items }
+      }
       const { data, error } = await supabase.rpc('my_notifications', { p_limit: limit })
       if (error) throw new Error(error.message)
       const d = data as { unread: number; items: Notice[] }

@@ -2513,7 +2513,13 @@
     "accessEmergency": "Accès d’urgence : {{by}} a ouvert le dossier antérieur de {{name}}",
     "accessEmergencyBody": "Vérifiez-le dans la page Accès aux dossiers.",
     "fileAttached": "{{by}} a ajouté un fichier à {{test}}",
-    "fileAttachedTest": "votre examen"
+    "fileAttachedTest": "votre examen",
+    "handover": "{{by}} vous confie {{ticket}} {{name}}",
+    "handoverTaken": "{{by}} a pris en charge {{name}}",
+    "handoverDeclined": "{{by}} ne peut pas prendre en charge {{name}}",
+    "handoverCancelled": "{{by}} a annulé la passation de {{name}}",
+    "handoverLapsed": "La passation de {{name}} par {{by}} est terminée : le patient est parti ailleurs",
+    "handoverLeft": "La passation de {{name}} est terminée : {{leftName}} ne travaille plus ici"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -2655,7 +2661,8 @@
       "diagnostic_report": "résultat",
       "internal_task": "tâche",
       "message": "message",
-      "service_category": "catégorie de soins"
+      "service_category": "catégorie de soins",
+      "patient_handover": "passation de patient"
     },
     "leadOwn": "Tout ce que vous avez fait, le plus récent en premier.",
     "whatChanged": "Ce qui a changé",
@@ -2751,7 +2758,13 @@
       "deptDel": "A supprimé le département « {{name}} ».",
       "catNew": "A créé la catégorie de soins « {{name}} » ({{kind}}).",
       "catEdit": "A modifié la catégorie de soins « {{name}} » ({{kind}}).",
-      "catDel": "A supprimé la catégorie de soins « {{name}} »."
+      "catDel": "A supprimé la catégorie de soins « {{name}} ».",
+      "handoverNew": "A confié {{patient}} à un collègue.",
+      "handoverTaken": "A pris en charge {{patient}} confié par un collègue.",
+      "handoverDeclined": "A refusé de prendre en charge {{patient}}.",
+      "handoverCancelled": "A annulé la passation de {{patient}}.",
+      "handoverLapsed": "La passation de {{patient}} est terminée : le patient est parti ailleurs.",
+      "handoverEdit": "A modifié la passation de {{patient}}."
     },
     "line": {
       "reason": "Motif : {{value}}",
@@ -3259,7 +3272,16 @@
     "notGiven": "non donné ({{reason}})",
     "notGivenBy": "non donné par {{name}} ({{reason}})",
     "returned": "rapporté ({{reason}})",
-    "cancelledBy": "annulé par {{name}} ({{reason}})"
+    "cancelledBy": "annulé par {{name}} ({{reason}})",
+    "handover": "{{from}} a confié le patient à {{to}}",
+    "handoverStatus": {
+      "pending": "en attente de réponse",
+      "taken": "pris par {{name}} à {{time}}",
+      "declined": "refusé par {{name}} à {{time}}",
+      "cancelled": "annulé par {{name}} à {{time}}",
+      "lapsed": "terminé : le patient est parti ailleurs avant la réponse"
+    },
+    "handoverReason": "Raison : « {{reason}} »"
   },
   "stock": {
     "title": "Stock de médicaments",
@@ -4266,7 +4288,14 @@
     "left": "Parti",
     "inClinic": "encore à la clinique",
     "followOnly": "Le patient a quitté la réception : la personne qui a le patient l’envoie plus loin. Vous suivez la visite sur le parcours ci-dessus.",
-    "vitals": "Constantes prises"
+    "vitals": "Constantes prises",
+    "handoverWaiting": "Passation en attente",
+    "handover": {
+      "taken": "Confié",
+      "declined": "Passation refusée",
+      "cancelled": "Passation annulée",
+      "lapsed": "Passation terminée"
+    }
   },
   "picker": {
     "search": "Tapez pour chercher parmi {{count}}…",
@@ -4872,6 +4901,22 @@
       "mainTitle": "Faire de {{name}} le stock principal de la pharmacie ?",
       "mainBody": "Les livraisons y sont reçues par défaut et le comptoir de la pharmacie délivre à partir de lui.",
       "mainYes": "Oui, en faire le stock principal"
+    },
+    "handover": {
+      "send": "Confier {{name}} à {{to}} ?",
+      "sendBody": "{{to}} est prévenu tout de suite et répond Prendre ou Refuser. D’ici là, {{name}} reste votre patient et vous continuez à travailler.",
+      "sendYes": "Oui, confier",
+      "take": "Prendre {{name}} confié par {{by}} ?",
+      "takeBody": "{{name}} devient votre patient : vous continuez la visite et les résultats vous reviennent. {{by}} ne travaille plus sur cette visite et en est informé.",
+      "takeYes": "Oui, prendre",
+      "decline": "Refuser {{name}} ?",
+      "declineBody": "{{name}} reste avec {{by}}, qui reçoit votre raison.",
+      "declineYes": "Oui, refuser",
+      "cancel": "Annuler la passation de {{name}} à {{to}} ?",
+      "cancelBody": "{{to}} est prévenu. {{name}} reste votre patient.",
+      "cancelYes": "Oui, annuler la passation",
+      "cancelOther": "Annuler la passation de {{name}} de {{from}} à {{to}} ?",
+      "cancelOtherBody": "{{from}} et {{to}} sont prévenus. {{name}} reste avec {{from}}."
     }
   },
   "doc": {
@@ -5032,7 +5077,15 @@
     "alreadyRemoved": "Ce fichier a déjà été retiré.",
     "filesUnavailable": "Les fichiers ne peuvent pas encore être ajoutés : la mise à jour de la base de données pour les fichiers n’est pas installée.",
     "sessionExpired": "Votre session demande à nouveau le code de connexion. Reconnectez-vous, puis réessayez.",
-    "storageNotDeleted": "La copie stockée n’a pas pu être supprimée. Vérifiez la connexion et réessayez."
+    "storageNotDeleted": "La copie stockée n’a pas pu être supprimée. Vérifiez la connexion et réessayez.",
+    "handoverNotHolder": "Seul le soignant qui a le patient peut le confier à un collègue.",
+    "handoverNotColleague": "Choisissez un collègue actif qui travaille à ce poste.",
+    "handoverNote": "Dites pourquoi vous confiez le patient et ce qui reste à faire.",
+    "handoverReason": "Dites pourquoi vous ne pouvez pas prendre le patient.",
+    "handoverPending": "Ce patient est déjà en cours de passation. Annulez-la d'abord.",
+    "handoverNotYours": "Cette passation ne vous revient pas : seul le collègue choisi y répond, et seul l'expéditeur l'annule.",
+    "handoverGone": "Cette passation n'est plus en attente : elle a reçu une réponse ou a été annulée, ou le patient est passé ailleurs. La liste est actualisée.",
+    "coverRetired": "Le remplacement n'est plus utilisé. Confiez le patient à un collègue depuis la visite."
   },
   "cashierDesk": {
     "noMatch": "Rien ne correspond à votre recherche.",
@@ -6228,5 +6281,51 @@
     "count_one": "{{count}} pièce jointe",
     "count_other": "{{count}} pièces jointes",
     "countHint": "Ouvrir les pièces jointes de cet examen"
+  },
+  "handover": {
+    "title": "Confier à un collègue",
+    "lead": "Demandez à un collègue de ce poste de continuer avec ce patient. Il répond Prendre ou Refuser ; d’ici là, le patient reste le vôtre.",
+    "ask": "Confier à un collègue",
+    "colleague": "Collègue",
+    "pickColleague": "Choisissez le collègue",
+    "patients_one": "{{count}} patient en ce moment",
+    "patients_other": "{{count}} patients en ce moment",
+    "none": "Aucun autre collègue ne travaille à ce poste en ce moment. Demandez au responsable, ou gardez le patient.",
+    "note": "Pourquoi, et ce qui reste à faire",
+    "notePh": "Par exemple : appelé au bloc ; l’examen d’urine est en attente, merci de décider du traitement.",
+    "send": "Confier",
+    "sent": "{{name}} est sollicité pour prendre le relais. Le patient reste le vôtre jusqu’à sa réponse.",
+    "sentAt": "de {{name}} à {{time}}",
+    "waiting": "En attente de la réponse de {{name}}",
+    "waitingHint": "Vous continuez à travailler sur le patient jusqu’à ce que {{name}} le prenne.",
+    "cancel": "Annuler la passation",
+    "cancelled": "La passation est annulée. {{name}} est prévenu.",
+    "toYou": "{{by}} vous confie ce patient",
+    "toYouHint": "Prenez le patient pour continuer avec lui, ou refusez en disant pourquoi. Tant que vous ne l’avez pas pris, la visite reste en lecture seule pour vous.",
+    "take": "Prendre",
+    "decline": "Refuser",
+    "reason": "Pourquoi vous ne pouvez pas prendre le patient",
+    "reasonPh": "Par exemple : je pars pour la visite des hospitalisés.",
+    "taken": "{{name}} est maintenant votre patient.",
+    "declined": "Vous avez refusé. Le patient reste avec {{by}}, qui connaît votre raison.",
+    "answer": "Prendre ou refuser",
+    "homeTitle": "Confiés à vous",
+    "homeOutgoing": "Vos passations",
+    "toAnswer_one": "{{count}} à répondre",
+    "toAnswer_other": "{{count}} à répondre",
+    "fromAt": "De {{name}} à {{time}}",
+    "outPending": "En attente de {{to}} depuis {{time}}",
+    "outTaken": "{{to}} a pris le relais à {{time}}",
+    "outDeclined": "{{to}} a refusé à {{time}} : le patient reste le vôtre",
+    "outCancelled": "Annulée à {{time}}",
+    "outLapsed": "Terminée : le patient est parti ailleurs avant la réponse",
+    "status": {
+      "pending": "En attente"
+    },
+    "badgeBy": "Confié par {{name}}",
+    "badgeToYou": "Confié à vous par {{name}}",
+    "badgeWaiting": "Confié par {{from}} à {{to}}, en attente",
+    "titleToYou": "Confié à vous",
+    "othersWaiting": "{{from}} a confié ce patient à {{to}} ; en attente de la réponse"
   }
 }

@@ -128,6 +128,38 @@ export function useWording() {
             ? [p.reason, p.impression].filter(Boolean).join(' · ') || null
             : (p.impression ?? null),
         }
+      case 'handover':
+        // 0088: a colleague hands a patient over to me: Take or Decline (home page or the visit).
+        return {
+          title: t('notify.handover', {
+            by: p.by ?? '',
+            ticket: p.ticket ?? '',
+            name: p.name ?? '',
+          }),
+          body: quoted(p.note),
+        }
+      case 'handover_answer':
+        // 0088: the colleague took the patient, or declined with a reason (the patient stays mine).
+        return {
+          title: t(
+            (p.taken as unknown) === true ? 'notify.handoverTaken' : 'notify.handoverDeclined',
+            { by: p.by ?? '', name: p.name ?? '' },
+          ),
+          body: (p.taken as unknown) === true ? null : quoted(p.reason),
+        }
+      case 'handover_cancelled':
+        // 0088: the sender (or the manager) withdrew the handover before the answer; or it ended
+        // by itself: the patient moved on (lapsed), or one of the two colleagues left the clinic.
+        return {
+          title:
+            (p.lapsed as unknown) === true
+              ? t('notify.handoverLapsed', { by: p.by ?? '', name: p.name ?? '' })
+              : (p.left as unknown) === true
+                ? t('notify.handoverLeft', { name: p.name ?? '', leftName: p.leftName ?? '' })
+                : t('notify.handoverCancelled', { by: p.by ?? '', name: p.name ?? '' }),
+          body: null,
+        }
+      // "Cover for me" was retired in 0088; older notices still read.
       case 'cover':
         return {
           title: t('notify.cover', {

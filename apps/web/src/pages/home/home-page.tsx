@@ -57,7 +57,7 @@ import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useSyncStore } from '@/store/sync'
 import { CashierDashboard } from './cashier-dashboard'
-import { CoverMePanel } from './cover-panels'
+import { HandoverPanel } from './handover-panel'
 import { DeskDashboard } from './desk-dashboard'
 import { LabDashboard } from './lab-dashboard'
 import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
@@ -270,6 +270,9 @@ function RoleHome({ user, mode }: HomePageProps) {
           seenLink={seenLink}
         />
 
+        {/* Patients a colleague hands over to me (Take / Decline), and mine waiting (0088) */}
+        <HandoverPanel />
+
         {/* THE WORK OF THE DAY */}
         <section className="flex flex-col gap-3">
           <SectionTitle icon={Workflow}>{t(`roleHome.section.${role}`)}</SectionTitle>
@@ -283,7 +286,6 @@ function RoleHome({ user, mode }: HomePageProps) {
             {summary && (
               <div className="flex min-w-0 flex-col gap-4">
                 <CallsPanel user={user} />
-                {role === 'doctor' && user.role === 'doctor' && <CoverMePanel />}
                 {/* orders sent to this doctor's desk (dental, minor surgery, consultation…) */}
                 {user.role === 'doctor' && (
                   <DeskOrdersPanel

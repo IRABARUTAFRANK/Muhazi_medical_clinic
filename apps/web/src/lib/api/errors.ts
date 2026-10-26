@@ -74,6 +74,15 @@ export type ApiErrorKind =
   | 'filesUnavailable'
   | 'sessionExpired'
   | 'storageNotDeleted'
+  // 0088: handing a patient over to a colleague; cover retired
+  | 'handoverNotHolder'
+  | 'handoverNotColleague'
+  | 'handoverNote'
+  | 'handoverReason'
+  | 'handoverPending'
+  | 'handoverNotYours'
+  | 'handoverGone'
+  | 'coverRetired'
   // sample mode only (the database's own sentence is kept for these)
   | 'alreadyDone'
   | 'notFound'
@@ -133,6 +142,14 @@ const BY_HINT: Record<string, ApiErrorKind> = {
   remove_too_late: 'removeTooLate',
   already_removed: 'alreadyRemoved',
   not_found: 'notFound',
+  handover_not_holder: 'handoverNotHolder',
+  handover_not_colleague: 'handoverNotColleague',
+  handover_note: 'handoverNote',
+  handover_reason: 'handoverReason',
+  handover_pending: 'handoverPending',
+  handover_not_yours: 'handoverNotYours',
+  handover_gone: 'handoverGone',
+  cover_retired: 'coverRetired',
 }
 
 /** An error from a database function, with its code and hint kept for the screens. */

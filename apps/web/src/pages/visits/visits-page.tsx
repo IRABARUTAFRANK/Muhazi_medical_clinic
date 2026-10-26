@@ -11,6 +11,7 @@ import { ListBar, ShowMore } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { LeftButton } from '@/components/clinical/left-button'
+import { HandoverBadge } from '@/components/clinical/handover-badge'
 import {
   STATIONS,
   openItems,
@@ -188,6 +189,7 @@ function VisitRow({
             {r.referralNote ? ` · “${r.referralNote}”` : ''}
           </span>
         )}
+        <HandoverBadge handover={r.handover} className="mt-0.5 text-[13px]" />
         {desks && (
           <span className="mt-1 flex flex-wrap gap-1">
             {desks.map((d) => (

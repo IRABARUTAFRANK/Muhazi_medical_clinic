@@ -734,6 +734,7 @@ declare
   v_bill jsonb;
   v_enc encounter%rowtype;
   v_view text;
+  v_handovers jsonb;
 begin
   if not has_perm('patient.read') then
     raise exception 'not allowed' using errcode = '42501';
@@ -817,6 +818,20 @@ begin
                             'number', b.number, 'settledBy', b.settled_by, 'settledAt', b.settled_at)
   into v_bill from visit_bill b where b.encounter_id = p_encounter_id;
 
+  -- who handed the patient over to whom (20261129090000_handover); the note and the reason are
+  -- clinical: for the two colleagues and those who may see this visit's record
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', h.id, 'station', h.station, 'at', h.created_at, 'from', f.full_name, 'to', t.full_name,
+      'note', case when v_view is not null or auth.uid() in (h.from_user, h.to_user) then h.note end,
+      'status', h.status, 'answeredAt', h.answered_at,
+      'answeredBy', (select full_name from profiles where id = h.answered_by),
+      'reason', case when v_view is not null or auth.uid() in (h.from_user, h.to_user) then h.reason end
+    ) order by h.created_at), '[]'::jsonb) into v_handovers
+  from patient_handover h
+  join profiles f on f.id = h.from_user
+  join profiles t on t.id = h.to_user
+  where h.encounter_id = p_encounter_id and h.deleted_at is null;
+
   return jsonb_build_object(
     'encounterId', v_enc.id, 'arrivedAt', v_enc.arrived_at, 'status', v_enc.status, 'closedAt', v_enc.closed_at,
     'triage', v_enc.triage_level,
@@ -825,7 +840,7 @@ begin
     -- the track: treatment finished, why the patient left, what they came for
     'treatmentDoneAt', v_enc.clinical_done_at, 'leftReason', v_enc.left_reason, 'service', v_enc.service,
     'steps', v_steps, 'vitals', v_vitals, 'diagnoses', v_dx, 'medicines', v_meds, 'tests', v_tests,
-    'charges', v_charges, 'payments', v_payments, 'bill', v_bill,
+    'charges', v_charges, 'payments', v_payments, 'bill', v_bill, 'handovers', v_handovers,
     'private', v_view is null
   );
 end
@@ -1366,7 +1381,16 @@ create or replace view queue_board with (security_invoker = false) as
          q.taken_by, coalesce(q.service, e.service) as service,
          (q.assigned_to = auth.uid() or q.taken_by = auth.uid()
           or (q.assigned_to is null and q.taken_by is null
-              and serves_station(auth.uid(), q.station, q.service))) as for_me
+              and serves_station(auth.uid(), q.station, q.service))
+          or coalesce(ho.status = 'pending' and ho.to_user = auth.uid(), false)) as for_me,
+         -- the latest handover of the entry (20261129090000_handover); its note is clinical: for
+         -- the two colleagues and those who read clinical records
+         ho.id as handover_id, ho.status as handover_status,
+         ho.from_user as handover_from, hf.full_name as handover_from_name,
+         ho.to_user as handover_to, ht.full_name as handover_to_name,
+         case when auth.uid() in (ho.from_user, ho.to_user) or has_perm('clinical.read')
+              then ho.note end as handover_note,
+         ho.created_at as handover_at, ho.answered_at as handover_answered_at
   from queue_entry q
   join encounter e on e.id = q.encounter_id
   join patient p on p.id = e.patient_id
@@ -1375,6 +1399,11 @@ create or replace view queue_board with (security_invoker = false) as
   left join profiles rb on rb.id = q.referred_by and (rb.id = auth.uid() or has_perm('staff.read'))
   left join department dep on dep.id = q.department_id and dep.deleted_at is null
   left join lateral last_vitals_stamp(q.encounter_id) v on true
+  left join lateral (select h.* from patient_handover h
+                     where h.queue_id = q.id and h.status in ('pending', 'taken') and h.deleted_at is null
+                     order by h.created_at desc limit 1) ho on true
+  left join profiles hf on hf.id = ho.from_user
+  left join profiles ht on ht.id = ho.to_user
   where q.deleted_at is null and e.status = 'open'
     and has_perm('queue.read') and has_perm('patient.read');
 revoke all on queue_board from anon;

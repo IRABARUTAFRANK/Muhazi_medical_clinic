@@ -2522,7 +2522,13 @@
     "accessEmergency": "Uburenganzira bwihutirwa: {{by}} yafunguye amakuru ya kera ya {{name}}",
     "accessEmergencyBody": "Bisuzume ku rupapuro rw’Abarebye amadosiye.",
     "fileAttached": "{{by}} yongeyeho idosiye kuri {{test}}",
-    "fileAttachedTest": "ikizamini cyawe"
+    "fileAttachedTest": "ikizamini cyawe",
+    "handover": "{{by}} akoherereje {{ticket}} {{name}} ngo umukomereze",
+    "handoverTaken": "{{by}} yakiriye {{name}}",
+    "handoverDeclined": "{{by}} ntashobora kwakira {{name}}",
+    "handoverCancelled": "{{by}} yahagaritse kohereza {{name}}",
+    "handoverLapsed": "Kohereza {{name}} byakozwe na {{by}} byarangiye: umurwayi yagiye ahandi",
+    "handoverLeft": "Kohereza {{name}} byarangiye: {{leftName}} ntagikora hano"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -2664,7 +2670,8 @@
       "diagnostic_report": "igisubizo",
       "internal_task": "umurimo",
       "message": "ubutumwa",
-      "service_category": "icyiciro cy’ubuvuzi"
+      "service_category": "icyiciro cy’ubuvuzi",
+      "patient_handover": "kohereza umurwayi ku mugenzi"
     },
     "leadOwn": "Ibyo wakoze byose, ibya vuba biza mbere.",
     "whatChanged": "Ibyahindutse",
@@ -2760,7 +2767,13 @@
       "deptDel": "Yasibye ishami “{{name}}”.",
       "catNew": "Yashyizeho icyiciro cy’ubuvuzi “{{name}}” ({{kind}}).",
       "catEdit": "Yahinduye icyiciro cy’ubuvuzi “{{name}}” ({{kind}}).",
-      "catDel": "Yasibye icyiciro cy’ubuvuzi “{{name}}”."
+      "catDel": "Yasibye icyiciro cy’ubuvuzi “{{name}}”.",
+      "handoverNew": "Yohereje {{patient}} kuri mugenzi we.",
+      "handoverTaken": "Yakiriye {{patient}} woherejwe na mugenzi we.",
+      "handoverDeclined": "Yanze kwakira {{patient}}.",
+      "handoverCancelled": "Yahagaritse kohereza {{patient}}.",
+      "handoverLapsed": "Kohereza {{patient}} byarangiye: umurwayi yagiye ahandi.",
+      "handoverEdit": "Yahinduye iby’ukohereza {{patient}}."
     },
     "line": {
       "reason": "Impamvu: {{value}}",
@@ -3268,7 +3281,16 @@
     "notGiven": "ntiwatanzwe ({{reason}})",
     "notGivenBy": "ntiwatanzwe na {{name}} ({{reason}})",
     "returned": "wagaruwe ({{reason}})",
-    "cancelledBy": "wahagaritswe na {{name}} ({{reason}})"
+    "cancelledBy": "wahagaritswe na {{name}} ({{reason}})",
+    "handover": "{{from}} yohereje umurwayi kwa {{to}}",
+    "handoverStatus": {
+      "pending": "birategereje igisubizo",
+      "taken": "yakiriwe na {{name}} saa {{time}}",
+      "declined": "byanzwe na {{name}} saa {{time}}",
+      "cancelled": "byahagaritswe na {{name}} saa {{time}}",
+      "lapsed": "byarangiye: umurwayi yagiye ahandi mbere y’igisubizo"
+    },
+    "handoverReason": "Impamvu: “{{reason}}”"
   },
   "stock": {
     "title": "Ububiko bw’imiti",
@@ -4275,7 +4297,14 @@
     "left": "Yagiye",
     "inClinic": "aracyari mu ivuriro",
     "followOnly": "Umurwayi yavuye ku kwakira: ufite umurwayi ubu ni we umwohereza ahandi. Ukurikirana uruzinduko ku murongo uri hejuru.",
-    "vitals": "Ibipimo byafashwe"
+    "vitals": "Ibipimo byafashwe",
+    "handoverWaiting": "Kohereza birategerejwe",
+    "handover": {
+      "taken": "Yoherejwe kuri mugenzi",
+      "declined": "Kohereza byanzwe",
+      "cancelled": "Kohereza byahagaritswe",
+      "lapsed": "Kohereza byarangiye"
+    }
   },
   "picker": {
     "search": "Andika ushakishe muri {{count}}…",
@@ -4881,6 +4910,22 @@
       "mainTitle": "Kugira {{name}} ububiko bukuru bwa farumasi?",
       "mainBody": "Ibyakiriwe byinjira muri bwo mbere na mbere, kandi konti ya farumasi itanga imiti ibukuyemo.",
       "mainYes": "Yego, bugire ububiko bukuru"
+    },
+    "handover": {
+      "send": "Kohereza {{name}} kwa {{to}}?",
+      "sendBody": "{{to}} ahita abimenyeshwa agasubiza Akira cyangwa Anga. Kugeza icyo gihe {{name}} akomeza kuba umurwayi wawe kandi ukomeza gukora.",
+      "sendYes": "Yego, ohereza",
+      "take": "Kwakira {{name}} woherejwe na {{by}}?",
+      "takeBody": "{{name}} aba umurwayi wawe: ukomeza uruzinduko kandi ibisubizo bikugarukira. {{by}} ntakomeza gukora kuri uru ruzinduko kandi arabimenyeshwa.",
+      "takeYes": "Yego, akira",
+      "decline": "Kwanga {{name}}?",
+      "declineBody": "{{name}} agumana na {{by}}, umenyeshwa impamvu yawe.",
+      "declineYes": "Yego, anga",
+      "cancel": "Guhagarika kohereza {{name}} kwa {{to}}?",
+      "cancelBody": "{{to}} arabimenyeshwa. {{name}} akomeza kuba umurwayi wawe.",
+      "cancelYes": "Yego, hagarika kohereza",
+      "cancelOther": "Guhagarika kohereza {{name}} kwa {{to}} byakozwe na {{from}}?",
+      "cancelOtherBody": "{{from}} na {{to}} barabimenyeshwa. {{name}} agumana na {{from}}."
     }
   },
   "doc": {
@@ -5041,7 +5086,15 @@
     "alreadyRemoved": "Iyi dosiye yamaze gukurwamo.",
     "filesUnavailable": "Amadosiye ntarashobora kongerwamo: ivugurura ry’ububiko bw’amakuru ry’amadosiye ntirirashyirwamo.",
     "sessionExpired": "Kwinjira kwawe kurasaba kode yo kwinjira nanone. Ongera winjire, hanyuma wongere ugerageze.",
-    "storageNotDeleted": "Kopi iri mu bubiko ntiyashoboye gusibwa. Reba interineti wongere ugerageze."
+    "storageNotDeleted": "Kopi iri mu bubiko ntiyashoboye gusibwa. Reba interineti wongere ugerageze.",
+    "handoverNotHolder": "Umuvuzi ufite umurwayi ni we wenyine ushobora kumwoherereza mugenzi we.",
+    "handoverNotColleague": "Hitamo mugenzi wawe ukiri mu kazi kandi ukorera kuri iyi serivisi.",
+    "handoverNote": "Vuga impamvu wohereza umurwayi n'ibisigaye gukorwa.",
+    "handoverReason": "Vuga impamvu udashobora kwakira umurwayi.",
+    "handoverPending": "Uyu murwayi ari koherezwa ku wundi. Banza uhagarike icyo cyoherezo.",
+    "handoverNotYours": "Iki cyoherezo si icyawe: uwo cyoherejwe ni we ugisubiza, kandi uwacyohereje ni we ugihagarika.",
+    "handoverGone": "Iki cyoherezo ntikigitegereje: cyasubijwe cyangwa cyahagaritswe, cyangwa umurwayi yagiye ahandi. Urutonde rwavuguruwe.",
+    "coverRetired": "Gusimburana ntibigikoreshwa. Ohereza umurwayi kwa mugenzi wawe uhereye ku ruzinduko rwe."
   },
   "cashierDesk": {
     "noMatch": "Nta kintu gihuye n'ibyo washakishije.",
@@ -6237,5 +6290,51 @@
     "count_one": "Inyandiko {{count}}",
     "count_other": "Inyandiko {{count}}",
     "countHint": "Fungura inyandiko z’iki kizamini"
+  },
+  "handover": {
+    "title": "Ohereza umurwayi kuri mugenzi wawe",
+    "lead": "Saba mugenzi wawe ukorera kuri uyu mwanya gukomeza n’uyu murwayi. Asubiza Akira cyangwa Anga; kugeza icyo gihe umurwayi akomeza kuba uwawe.",
+    "ask": "Ohereza kuri mugenzi wawe",
+    "colleague": "Mugenzi wawe",
+    "pickColleague": "Hitamo mugenzi wawe",
+    "patients_one": "Afite umurwayi {{count}} ubu",
+    "patients_other": "Afite abarwayi {{count}} ubu",
+    "none": "Nta wundi mugenzi wawe ukorera kuri uyu mwanya ubu. Baza umuyobozi, cyangwa ugumane umurwayi.",
+    "note": "Impamvu, n’ibisigaye gukorwa",
+    "notePh": "Urugero: nahamagawe mu cyumba cyo kubaga; igisubizo cy’inkari kiracyategerejwe, wemeze imiti.",
+    "send": "Ohereza",
+    "sent": "{{name}} yasabwe gukomeza n’umurwayi. Umurwayi akomeza kuba uwawe kugeza asubije.",
+    "sentAt": "byoherejwe na {{name}} saa {{time}}",
+    "waiting": "Utegereje igisubizo cya {{name}}",
+    "waitingHint": "Ukomeza gukora ku murwayi kugeza {{name}} amwakiriye.",
+    "cancel": "Hagarika kohereza",
+    "cancelled": "Kohereza byahagaritswe. {{name}} yabimenyeshejwe.",
+    "toYou": "{{by}} akoherereje uyu murwayi ngo umukomereze",
+    "toYouHint": "Akira umurwayi kugira ngo ukomeze nawe, cyangwa wange uvuge impamvu. Kugeza umwakiriye, uru ruzinduko urarureba gusa.",
+    "take": "Akira",
+    "decline": "Anga",
+    "reason": "Impamvu udashobora kwakira umurwayi",
+    "reasonPh": "Urugero: ngiye gusura abarwayi bari mu bitaro.",
+    "taken": "{{name}} ubu ni umurwayi wawe.",
+    "declined": "Wanze. Umurwayi agumana na {{by}}, wamenyeshejwe impamvu.",
+    "answer": "Akira cyangwa wange",
+    "homeTitle": "Abakoherejwe",
+    "homeOutgoing": "Abo wohereje",
+    "toAnswer_one": "{{count}} gusubiza",
+    "toAnswer_other": "{{count}} gusubiza",
+    "fromAt": "Byoherejwe na {{name}} saa {{time}}",
+    "outPending": "Utegereje {{to}} kuva saa {{time}}",
+    "outTaken": "{{to}} yamwakiriye saa {{time}}",
+    "outDeclined": "{{to}} yanze saa {{time}}: umurwayi akomeza kuba uwawe",
+    "outCancelled": "Byahagaritswe saa {{time}}",
+    "outLapsed": "Byarangiye: umurwayi yagiye ahandi mbere y’igisubizo",
+    "status": {
+      "pending": "Birategerejwe"
+    },
+    "badgeBy": "Yoherejwe na {{name}}",
+    "badgeToYou": "Woherejwe na {{name}}",
+    "badgeWaiting": "Yoherejwe na {{from}} kwa {{to}}, birategerejwe",
+    "titleToYou": "Umurwayi wohererejwe",
+    "othersWaiting": "{{from}} yohereje uyu murwayi kwa {{to}}; hategerejwe igisubizo"
   }
 }

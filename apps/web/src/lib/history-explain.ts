@@ -410,6 +410,25 @@ export function explain(h: HistoryItem, t: TFn): Explained {
         who: value(r('calendar_visibility') || 'public'),
       })
       break
+    case 'patient_handover': {
+      // 0088: a patient handed over to a colleague, and the answer
+      const status = changed('status') ? r('status') : ''
+      sentence =
+        h.action === 'create'
+          ? say('handoverNew')
+          : status === 'taken'
+            ? say('handoverTaken')
+            : status === 'declined'
+              ? say('handoverDeclined')
+              : status === 'cancelled'
+                ? say('handoverCancelled')
+                : status === 'lapsed'
+                  ? say('handoverLapsed')
+                  : say('handoverEdit')
+      line('note', row.note)
+      if (status === 'declined') line('reason', row.reason)
+      break
+    }
     case 'payer':
       sentence = say(
         deleted ? 'insurerDel' : h.action === 'create' ? 'insurerNew' : 'insurerEdit',

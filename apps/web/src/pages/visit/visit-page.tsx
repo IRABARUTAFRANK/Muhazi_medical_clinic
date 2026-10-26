@@ -42,7 +42,6 @@ import { cn } from '@/lib/utils'
 import { resolveAdjust, type AdjustMode } from '@/lib/adjust'
 import { AdjustField } from '@/components/ui/adjust-field'
 import { Flash } from '@/components/ui/flash'
-import { useMyCover } from '@/lib/api/cover'
 import { useVisitRouting } from '@/lib/api/referrals'
 import { ClinicalCard } from './clinical-card'
 import { WhereNextCard } from './where-next-card'
@@ -52,6 +51,7 @@ import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { STATION_DESKS, TREATING_DESKS, useCanDesk, useMyDesks } from '@/lib/api/desks'
 import { useVisitAccess } from '@/lib/api/calls'
 import { HelpCard } from './help-card'
+import { HandoverCard } from './handover-card'
 import { PharmacyDesk } from '@/pages/stock/pharmacy-desk'
 import { openReceipt } from '@/lib/receipt-doc'
 import { useLetterhead } from '@/lib/report-parts'
@@ -95,13 +95,9 @@ export function VisitPage({
   openReport?: boolean
 }) {
   const { t } = useTranslation()
-  // The desk this person works at for this patient: the one the patient was referred to them at,
-  // or the covered doctor's desk while covering; otherwise their own station.
+  // The desk this person works at for this patient: the one the patient was referred to them at
+  // (or handed over to them, 0088); otherwise their own station.
   const { data: routing = [] } = useVisitRouting(encounterId)
-  const { data: cover } = useMyCover()
-  const coverDesks = (cover?.covering ?? []).map((c) =>
-    stationFor({ ...user, role: 'doctor', station: c.station ?? undefined }),
-  )
   // The desks I work at: my role's usual ones I still have, and those my departments give
   // (a doctor of the Laboratory meets the patient at the laboratory).
   const canDesk = useCanDesk(user)
@@ -116,7 +112,6 @@ export function VisitPage({
   const inSections = !['receptionist', 'cashier', 'manager'].includes(user.role)
   const assigned =
     routing.find((r) => r.assignedTo === user.id || r.takenBy === user.id) ??
-    routing.find((r) => coverDesks.includes(r.station)) ??
     // a desk of a section I work in, waiting for anyone there (a nurse of Consultation, a doctor
     // of Nursing): the desk and the Take button follow the section, not the role. Not a desk
     // where I only wait for the patient to come back (my lab test, my ultrasound).
@@ -416,7 +411,23 @@ export function VisitPage({
               </p>
             )}
 
-            {locked && (
+            {/* 0088: a patient handed over to me (Take / Decline), or mine waiting for an answer */}
+            {!closed && access?.handover && (
+              <HandoverCard
+                encounterId={encounterId}
+                access={access}
+                patientName={header.name}
+                ticket={header.ticket}
+                mayHandOver={false}
+                role={user.role}
+                onDone={(m) => {
+                  setActionError(null)
+                  setDone(m)
+                }}
+                onError={setActionError}
+              />
+            )}
+            {locked && !access?.handover?.forMe && (
               <p className="bg-violet-bg text-violet m-0 flex flex-wrap items-start gap-2 rounded-xl px-3 py-2.5 text-[14px]">
                 <Lock size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
                 <span className="min-w-0 flex-1">
@@ -550,6 +561,29 @@ export function VisitPage({
                   user={user}
                   access={access}
                   patientName={header.name}
+                />
+              )}
+            {/* 0088: hand the patient over to a colleague of this desk ("Cover for me" is gone) */}
+            {!closed &&
+              !locked &&
+              access &&
+              !access.handover &&
+              !isReception &&
+              !isCashier &&
+              treats &&
+              can('clinical.write') && (
+                <HandoverCard
+                  encounterId={encounterId}
+                  access={access}
+                  patientName={header.name}
+                  ticket={header.ticket}
+                  mayHandOver
+                  role={user.role}
+                  onDone={(m) => {
+                    setActionError(null)
+                    setDone(m)
+                  }}
+                  onError={setActionError}
                 />
               )}
 

@@ -18,6 +18,7 @@ import {
   Send,
   Siren,
   Trash2,
+  UserRoundCheck,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -49,6 +50,11 @@ const KIND_LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   queue: { icon: Users, tint: 'amber' },
   referral: { icon: ArrowRightLeft, tint: 'violet' },
   result: { icon: FlaskConical, tint: 'mint' },
+  // 0088: a patient handed over to me, the answer to mine, a handover withdrawn (the 'cover'
+  // notices from before 0088 keep their look)
+  handover: { icon: UserRoundCheck, tint: 'violet' },
+  handover_answer: { icon: UserRoundCheck, tint: 'mint' },
+  handover_cancelled: { icon: UserRoundCheck, tint: 'navy' },
   cover: { icon: HeartHandshake, tint: 'mint' },
   task: { icon: ListTodo, tint: 'teal' },
   inquiry: { icon: MessageSquare, tint: 'violet' },

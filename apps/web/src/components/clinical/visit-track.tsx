@@ -177,6 +177,32 @@ function trackOf(j: Journey, now: number, t: TFn): Stop[] {
             ].join(' · '),
       })
   })
+  // 0088: a patient handed over between colleagues (the note is on the visit's full journey)
+  ;(j.handovers ?? []).forEach((h) => {
+    const pair = `${h.from} → ${h.to}`
+    if (h.status === 'pending')
+      current.push({
+        key: `handover-${h.id}`,
+        state: 'now',
+        at: ms(h.at),
+        title: t('track.handoverWaiting'),
+        detail: `${pair} · ${at(h.at)}`,
+      })
+    else
+      done.push({
+        key: `handover-${h.id}`,
+        state: 'done',
+        at: ms(h.at),
+        title: t(`track.handover.${h.status}`),
+        detail: [
+          pair,
+          at(h.answeredAt ?? h.at),
+          h.status === 'declined' && h.reason ? `“${h.reason}”` : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      })
+  })
   // treatment finished: the doctor's "Finish visit", or the visit's end
   const treated = j.treatmentDoneAt ?? (closed ? j.closedAt : null)
   if (treated)
