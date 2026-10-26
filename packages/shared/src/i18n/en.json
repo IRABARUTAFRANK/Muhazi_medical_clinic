@@ -1633,7 +1633,9 @@
       "optionsPh": "None, Diabetes, Hypertension, HIV, Asthma",
       "remove": "Remove field",
       "save": "Save fields",
-      "saved": "Fields saved. They now appear on every patient file."
+      "saved": "Fields saved. They now appear on every patient file.",
+      "private": "Medical (private)",
+      "privateHint": "only the people treating the patient and those allowed to see the full history see it; reception can fill it in when it is empty but never sees it"
     },
     "lock": {
       "title": "Screen lock",
@@ -1875,7 +1877,8 @@
     "seeVisit": "See the visit",
     "allergiesNone": "No known allergies",
     "allergiesNoneHint": "Tick it when the patient was asked and has no known allergy. It is printed on prescriptions and reports.",
-    "allergiesNotRecorded": "Allergies not recorded yet"
+    "allergiesNotRecorded": "Allergies not recorded yet",
+    "privateField": "Private (medical)"
   },
   "clinical": {
     "title": "Clinical record",

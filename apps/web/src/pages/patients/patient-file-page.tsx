@@ -634,7 +634,7 @@ function Overview({ file }: { file: PatientFile }) {
           {!file.safetyHidden && <Info label={f('notes')} value={p.notes} />}
         </CardBody>
       </Card>
-      <MoreInfo patient={p} />
+      <MoreInfo patient={p} safetyHidden={!!file.safetyHidden} />
     </div>
   )
 }
@@ -643,7 +643,14 @@ function Overview({ file }: { file: PatientFile }) {
  * The customizable part of the file. Fields the manager defined in Settings appear for
  * every patient; anyone with patient.write can also add a one-off field for this patient.
  */
-function MoreInfo({ patient: p }: { patient: PatientRecord }) {
+function MoreInfo({
+  patient: p,
+  safetyHidden = false,
+}: {
+  patient: PatientRecord
+  /** Identity level: the "medical" fields are not sent; say so instead of showing them empty. */
+  safetyHidden?: boolean
+}) {
   const { t } = useTranslation()
   const { data: defs = [] } = usePatientFields()
   const actions = usePatientActions(p.id)
@@ -748,7 +755,11 @@ function MoreInfo({ patient: p }: { patient: PatientRecord }) {
         )}
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
           {defs.map((d) => (
-            <Info key={d.key} label={d.label} value={valueOf(d)} />
+            <Info
+              key={d.key}
+              label={d.label}
+              value={safetyHidden && d.private ? t('file.privateField') : valueOf(d)}
+            />
           ))}
           {adHoc.map(([k, v]) => (
             <div key={k} className="flex items-start gap-1">
@@ -939,14 +950,17 @@ function EditForm({
                 {t('file.more')}
               </h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {defs.map((d) => (
-                  <CustomInput
-                    key={d.key}
-                    def={d}
-                    value={valueOf(d)}
-                    onChange={(val) => setX(d.key, val)}
-                  />
-                ))}
+                {/* the "medical" fields are not sent at the identity level: not edited here */}
+                {defs
+                  .filter((d) => !(safetyHidden && d.private))
+                  .map((d) => (
+                    <CustomInput
+                      key={d.key}
+                      def={d}
+                      value={valueOf(d)}
+                      onChange={(val) => setX(d.key, val)}
+                    />
+                  ))}
                 {adHocKeys.map((k) => (
                   <Field
                     key={k}

@@ -1194,7 +1194,9 @@
       "optionsPh": "Nta yo, Diyabete, Umuvuduko w'amaraso, SIDA, Asima",
       "remove": "Kuraho igice",
       "save": "Bika ibice",
-      "saved": "Ibice byabitswe. Ubu bigaragara kuri buri dosiye y'umurwayi."
+      "saved": "Ibice byabitswe. Ubu bigaragara kuri buri dosiye y'umurwayi.",
+      "private": "By'ubuvuzi (ibanga)",
+      "privateHint": "ababona ni abavura umurwayi n'abemerewe kubona amateka yose; kwakira abarwayi bishobora kuyuzuza iyo irimo ubusa ariko ntibayibona"
     },
     "lock": {
       "title": "Gufunga ecran",
@@ -1575,7 +1577,8 @@
     "seeVisit": "Reba uruzinduko",
     "allergiesNone": "Nta allergie izwi",
     "allergiesNoneHint": "Kanda hano igihe umurwayi yabajijwe akaba nta allergie izwi afite. Bigaragara ku mpapuro z'imiti no kuri raporo.",
-    "allergiesNotRecorded": "Allergies ntiziranditswe"
+    "allergiesNotRecorded": "Allergies ntiziranditswe",
+    "privateField": "Ibanga (by'ubuvuzi)"
   },
   "clinical": {
     "title": "Inyandiko z'ubuvuzi",

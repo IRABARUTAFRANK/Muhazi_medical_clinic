@@ -1633,7 +1633,9 @@
       "optionsPh": "Aucune, Diabète, Hypertension, VIH, Asthme",
       "remove": "Supprimer le champ",
       "save": "Enregistrer les champs",
-      "saved": "Champs enregistrés. Ils apparaissent maintenant sur chaque dossier patient."
+      "saved": "Champs enregistrés. Ils apparaissent maintenant sur chaque dossier patient.",
+      "private": "Médical (privé)",
+      "privateHint": "seules les personnes qui soignent le patient et celles autorisées à voir tout l'historique le voient ; l'accueil peut le remplir s'il est vide mais ne le voit jamais"
     },
     "lock": {
       "title": "Verrouillage de l'écran",
@@ -1875,7 +1877,8 @@
     "seeVisit": "Voir la visite",
     "allergiesNone": "Aucune allergie connue",
     "allergiesNoneHint": "Cochez quand le patient a été interrogé et n'a aucune allergie connue. C'est imprimé sur les ordonnances et les comptes rendus.",
-    "allergiesNotRecorded": "Allergies pas encore enregistrées"
+    "allergiesNotRecorded": "Allergies pas encore enregistrées",
+    "privateField": "Privé (médical)"
   },
   "clinical": {
     "title": "Dossier clinique",

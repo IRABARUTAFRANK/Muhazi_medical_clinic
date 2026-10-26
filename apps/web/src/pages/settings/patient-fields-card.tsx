@@ -53,6 +53,7 @@ export function PatientFieldsCard() {
       while (seen.has(key)) key += '_'
       seen.add(key)
       const def: PatientFieldDef = { key, label, type: f.type }
+      if (f.private) def.private = true
       if (f.type === 'choice') {
         def.options = (f.options ?? []).map((o) => o.trim()).filter(Boolean)
       }
@@ -136,6 +137,19 @@ export function PatientFieldsCard() {
             >
               <Trash2 size={16} aria-hidden="true" />
             </Button>
+            <label className="text-ink-2 flex items-start gap-2 text-[13px] sm:col-span-4">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={!!f.private}
+                onChange={(e) => update(i, { private: e.target.checked })}
+              />
+              <span>
+                <b>{t('settings.patientFields.private')}</b>
+                {' · '}
+                {t('settings.patientFields.privateHint')}
+              </span>
+            </label>
           </div>
         ))}
         {save.error && (

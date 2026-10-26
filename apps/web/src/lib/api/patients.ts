@@ -160,6 +160,8 @@ export interface PatientFieldDef {
   label: string
   type: 'text' | 'number' | 'date' | 'choice' | 'yesno'
   options?: string[]
+  /** Medical: shown only to whoever treats the patient now and full-history readers (privacy). */
+  private?: boolean
 }
 
 export interface PatientVisit {

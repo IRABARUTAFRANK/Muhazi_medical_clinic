@@ -11052,6 +11052,50 @@ await step(
   },
 )
 
+await step(
+  '0088 G: the manager\'s "medical" extra fields are private like the safety summary',
+  async () => {
+    await asAdmin()
+    await db.query(
+      `insert into setting (key, value) values ('patient.fields', $1::jsonb)
+       on conflict (key) do update set value = excluded.value`,
+      [
+        JSON.stringify([
+          { key: 'kin', label: 'Next of kin', type: 'text' },
+          { key: 'hiv', label: 'HIV status', type: 'text', private: true },
+          { key: 'tb', label: 'TB treatment', type: 'text', private: true },
+        ]),
+      ],
+    )
+    await db.query(
+      `update patient set extra = '{"kin":"Mama","hiv":"positive"}'::jsonb where id = $1`,
+      [t88.pid],
+    )
+    const r = {}
+    const rec = await j88(staff.receptionist, `select patient_file($1) as j`, [t88.pid])
+    r.recExtra = rec.patient?.extra
+    // reception saves the form as it sees it, fills the empty TB field, tries to overwrite HIV
+    r.save = await j88(staff.receptionist, `select to_jsonb(update_patient($1, $2::jsonb)) as j`, [
+      t88.pid,
+      JSON.stringify({ extra: { kin: 'Mama Uwase', tb: 'started', hiv: 'negative' } }),
+    ])
+    await asAdmin()
+    r.stored = (await one(`select extra from patient where id = $1`, [t88.pid])).extra
+    const b = await j88(t88.docB, `select patient_file($1) as j`, [t88.pid])
+    r.docExtra = b.patient?.extra
+    await db.query(`update setting set value = '[]'::jsonb where key = 'patient.fields'`)
+    if (
+      JSON.stringify(r.recExtra) !== JSON.stringify({ kin: 'Mama' }) ||
+      r.stored.hiv !== 'positive' ||
+      r.stored.tb !== 'started' ||
+      r.stored.kin !== 'Mama Uwase' ||
+      r.docExtra?.hiv !== 'positive'
+    )
+      throw new Error(json88(r))
+    return 'reception sees kin only; fills the empty TB field but cannot overwrite HIV; the treating doctor sees both'
+  },
+)
+
 finish()
 
 function finish() {

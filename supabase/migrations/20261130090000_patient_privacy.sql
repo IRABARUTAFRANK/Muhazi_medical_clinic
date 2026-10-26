@@ -489,6 +489,21 @@ $$;
 -- its diagnosis, triage reason, vital signs and diagnoses only where the record may be seen
 -- ('private' otherwise); the safety summary from level 2; the safety fields of the patient row
 -- and of the printed details hidden at level 1. Opening past records is logged.
+-- The extra fields the manager marked "medical" in Settings → Patient file fields
+-- (setting patient.fields: [{key, label, type, private: true}]): private like the safety
+-- summary — shown to whoever treats the patient now and to full-history readers only.
+create or replace function private_extra_keys()
+returns text[]
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(array_agg(f ->> 'key'), '{}'::text[])
+  from setting s
+  cross join lateral jsonb_array_elements(
+    case when jsonb_typeof(s.value) = 'array' then s.value else '[]'::jsonb end) f
+  where s.key = 'patient.fields' and jsonb_typeof(f) = 'object' and f ->> 'private' = 'true'
+$$;
+revoke all on function private_extra_keys() from public, anon, authenticated;
+
 create or replace function patient_file(p_patient_id uuid)
 returns jsonb
 language plpgsql security definer set search_path = public
@@ -580,6 +595,8 @@ begin
   if v_level = 'identity' then
     v_patient := v_patient || jsonb_build_object('allergies', null, 'allergies_none', null,
                                                  'blood_group', null, 'notes', null,
+                                                 -- the manager's "medical" extra fields go too
+                                                 'extra', coalesce(v_patient -> 'extra', '{}'::jsonb) - private_extra_keys(),
                                                  -- the safety marks go; "VIP" is not one
                                                  'flags', jsonb_strip_nulls(jsonb_build_object('vip', v_patient -> 'flags' -> 'vip')));
     v_doc := v_doc - 'allergies' - 'allergiesNone' - 'bloodGroup' - 'weightKg' - 'weightAt';
@@ -880,6 +897,17 @@ begin
     end if;
     if v_old.notes is not null or nullif(trim(coalesce(p_fields ->> 'notes', '')), '') is null then
       p_fields := p_fields - 'notes';
+    end if;
+    -- the manager's "medical" extra fields: never shown at this level, so a value already there
+    -- is kept as it is; an empty one may be filled in (like the allergies above)
+    if p_fields ? 'extra' then
+      p_fields := jsonb_set(p_fields, '{extra}',
+        ((p_fields -> 'extra') - private_extra_keys())
+        || coalesce((select jsonb_object_agg(k,
+                              case when nullif(trim(coalesce(v_old.extra ->> k, '')), '') is not null
+                                   then v_old.extra -> k else p_fields -> 'extra' -> k end)
+                     from unnest(private_extra_keys()) k
+                     where coalesce(v_old.extra, '{}'::jsonb) ? k or (p_fields -> 'extra') ? k), '{}'::jsonb));
     end if;
   end if;
   v_allergies := nullif(trim(coalesce(p_fields ->> 'allergies', '')), '');
