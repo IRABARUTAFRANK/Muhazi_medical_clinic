@@ -2,14 +2,14 @@ import { useId, useState, type ReactNode } from 'react'
 import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { controlClass } from './field'
 
 export interface SearchOption {
   value: string
   label: string
 }
 
-const control =
-  'border-border bg-card text-ink focus:border-primary focus:ring-primary-tint h-11 w-full rounded-lg border px-3 text-[15px] font-normal outline-none focus:ring-[3px] disabled:opacity-60'
+const control = cn(controlClass, 'w-full')
 
 /**
  * A choice among many (the clinic's 1,400+ medicines): type a few letters, then pick among the
@@ -54,8 +54,8 @@ export function SearchSelect({
   if (chosen && !shown.includes(chosen)) shown.unshift(chosen)
 
   return (
-    <div className={cn('flex min-w-0 flex-col gap-1.5', wrapperClassName)}>
-      <label htmlFor={id} className="text-ink-2 text-[13px] font-semibold">
+    <div className={cn('flex min-w-0 flex-col gap-1', wrapperClassName)}>
+      <label htmlFor={id} className="text-ink-2 text-[13px] font-medium">
         {label}
       </label>
       {searchable && (

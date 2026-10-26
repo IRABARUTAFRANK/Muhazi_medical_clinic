@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import {
   CalendarDays,
   CalendarOff,
+  CircleAlert,
   Clock,
   Copy,
   Eye,
@@ -51,7 +52,14 @@ import { cn } from '@/lib/utils'
 const WEEK = ['1', '2', '3', '4', '5', '6', '0'] as const
 const SLOTS = [15, 20, 30, 45, 60] as const
 const VIS_ICON = { private: Lock, staff: Users, public: Globe } as const
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-medium'
+const ErrorLine = ({ children }: { children: string }) => (
+  <p role="alert" className={errorBox}>
+    <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+    <span>{children}</span>
+  </p>
+)
 
 /**
  * A doctor's own calendar: the hours of each weekday, the booking slot, days off, a note and
@@ -99,7 +107,7 @@ export function CalendarPage({ user, initialUser }: { user: StaffUser; initialUs
           )}
         </PageBanner>
 
-        {error && <p className={errorBox}>{error.message}</p>}
+        {error && <ErrorLine>{error.message}</ErrorLine>}
         {waiting && (
           <Panel i={1} icon={Stethoscope} tint="violet" title={t('calendar.noDoctors')}>
             <Hint>{t('calendar.noDoctorsHint')}</Hint>
@@ -223,7 +231,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                   setDone(false)
                 }}
                 className={cn(
-                  'flex items-start gap-3 rounded-xl border-2 p-3.5 text-left transition-colors',
+                  'flex items-start gap-3 rounded-md border p-3 text-left transition-colors duration-120',
                   on
                     ? 'border-violet bg-violet-bg'
                     : 'border-border bg-card hover:border-violet/50 hover:bg-hover',
@@ -231,14 +239,14 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
               >
                 <span
                   className={cn(
-                    'inline-flex size-9 flex-none items-center justify-center rounded-lg',
+                    'inline-flex size-8 flex-none items-center justify-center rounded',
                     on ? 'bg-violet text-white' : 'bg-hover text-ink-2',
                   )}
                 >
                   <Icon size={18} aria-hidden="true" />
                 </span>
                 <span className="min-w-0">
-                  <span className={cn('block text-[15px] font-bold', on && 'text-violet')}>
+                  <span className={cn('block text-[14px] font-semibold', on && 'text-violet')}>
                     {t(`calendar.visibility.${v}.title`)}
                   </span>
                   <span className="text-ink-2 block text-[13px]">
@@ -267,9 +275,9 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
               return (
                 <div
                   key={k}
-                  className="border-grid flex min-h-12 flex-wrap items-center gap-x-3 gap-y-2 border-b py-2 last:border-b-0"
+                  className="border-grid flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 border-b py-2 last:border-b-0"
                 >
-                  <label className="flex w-[150px] items-center gap-2 text-[14px] font-semibold">
+                  <label className="flex w-[150px] items-center gap-2 text-[14px] font-medium">
                     <input
                       type="checkbox"
                       className="accent-primary size-[18px]"
@@ -297,7 +305,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                               spans.map((s, j) => (j === n ? [e.target.value || a, s[1]] : s)),
                             )
                           }
-                          className="border-border bg-card h-9 rounded-lg border px-2 text-[14px] tabular-nums"
+                          className="border-border bg-card focus:border-primary focus:ring-primary/20 h-[38px] rounded-md border px-2 text-[14px] tabular-nums outline-none focus:ring-2"
                         />
                         <span className="text-ink-3">–</span>
                         <input
@@ -312,7 +320,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                             )
                           }
                           className={cn(
-                            'bg-card h-9 rounded-lg border px-2 text-[14px] tabular-nums',
+                            'bg-card focus:border-primary focus:ring-primary/20 h-[38px] rounded-md border px-2 text-[14px] tabular-nums outline-none focus:ring-2',
                             toMinutes(a) >= toMinutes(b) ? 'border-red' : 'border-border',
                           )}
                         />
@@ -332,7 +340,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                           <X size={14} aria-hidden="true" />
                         </Button>
                         {n < spans.length - 1 && (
-                          <span className="text-amber bg-amber-bg rounded-full px-2 py-0.5 text-[12px] font-semibold">
+                          <span className="text-amber border-amber/30 bg-amber-bg inline-flex h-6 items-center rounded border px-2 text-[12px] font-medium">
                             {t('calendar.breakBetween', { from: b, to: spans[n + 1]![0] })}
                           </span>
                         )}
@@ -428,7 +436,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-ink-2 text-[13px] font-semibold">{t('calendar.services')}</span>
+              <span className="text-ink-2 text-[13px] font-medium">{t('calendar.services')}</span>
               <div className="flex flex-wrap gap-1.5">
                 {CATEGORY_IDS.map((c) => {
                   const on = cats.includes(c)
@@ -439,7 +447,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                       aria-pressed={on}
                       onClick={() => setCats((xs) => (on ? xs.filter((x) => x !== c) : [...xs, c]))}
                       className={cn(
-                        'inline-flex min-h-8 items-center rounded-full border px-3 text-[13px] font-semibold',
+                        'inline-flex h-8 items-center rounded-md border px-3 text-[13px] font-medium transition-colors duration-120',
                         on
                           ? 'border-green bg-green-bg text-green'
                           : 'border-border bg-card text-ink-2 hover:bg-hover',
@@ -496,14 +504,15 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                 {upcomingOff.map((d) => (
                   <span
                     key={d}
-                    className="bg-amber-bg text-amber inline-flex items-center gap-1.5 rounded-full py-1 pr-1 pl-3 text-[13px] font-bold"
+                    className="border-amber/30 bg-amber-bg text-amber inline-flex h-8 items-center gap-1.5 rounded-md border py-1 pr-1 pl-2.5 text-[13px] font-medium"
                   >
+                    <CalendarOff size={14} aria-hidden="true" />
                     {formatDate(new Date(`${d}T00:00:00`))}
                     <button
                       type="button"
                       aria-label={t('calendar.removeDayOff')}
                       onClick={() => setDaysOff((xs) => xs.filter((x) => x !== d))}
-                      className="hover:bg-card/60 inline-flex size-6 items-center justify-center rounded-full"
+                      className="hover:bg-card/60 inline-flex size-6 items-center justify-center rounded"
                     >
                       <Trash2 size={13} aria-hidden="true" />
                     </button>
@@ -524,11 +533,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
         />
       </Panel>
 
-      {err && (
-        <p role="alert" className={errorBox}>
-          {err}
-        </p>
-      )}
+      {err && <ErrorLine>{err}</ErrorLine>}
       {done && <Flash onClose={() => setDone(false)}>{t(`calendar.saved.${visibility}`)}</Flash>}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" variant="primary" size="lg" loading={save.isPending}>

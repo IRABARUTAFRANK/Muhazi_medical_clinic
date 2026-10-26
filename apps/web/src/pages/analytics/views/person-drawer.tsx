@@ -75,7 +75,7 @@ export function PersonDrawer({
       {q.error ? (
         <LoadError error={q.error} />
       ) : !d ? (
-        <div className="skeleton h-[300px] rounded-xl" aria-busy="true" />
+        <div className="skeleton h-[300px] rounded-md" aria-busy="true" />
       ) : d.needsUpdate ? (
         <NeedsUpdate />
       ) : (
@@ -290,7 +290,7 @@ function MoneyList({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <h4 className="text-ink-2 m-0 text-[13px] font-bold">{title}</h4>
+      <h4 className="text-ink-2 m-0 text-[13px] font-semibold">{title}</h4>
       <ul className="m-0 flex list-none flex-col p-0 text-[14px]">
         {rows.map((r, i) => (
           <li key={`${r.k}-${i}`} className="border-grid border-b py-1.5 last:border-b-0">

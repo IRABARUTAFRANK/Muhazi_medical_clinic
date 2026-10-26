@@ -42,7 +42,7 @@ export function PeriodCustom({ period, className }: { period: Period; className?
     })
   }
   return (
-    <div className={cn('anim-enter flex flex-wrap items-end gap-3', className)}>
+    <div className={cn('flex flex-wrap items-end gap-3', className)}>
       <Field
         label={t('dashboard.custom.month')}
         type="month"
@@ -51,7 +51,7 @@ export function PeriodCustom({ period, className }: { period: Period; className?
         onChange={(e) => e.target.value && pickMonth(e.target.value)}
         wrapperClassName="w-44"
       />
-      <span className="text-ink-3 pb-3 text-[13px]">{t('dashboard.custom.or')}</span>
+      <span className="text-ink-3 pb-2.5 text-[14px]">{t('dashboard.custom.or')}</span>
       <Field
         label={t('history.from')}
         type="date"
@@ -69,7 +69,7 @@ export function PeriodCustom({ period, className }: { period: Period; className?
         onChange={(e) => e.target.value && setCustom({ ...custom, to: e.target.value })}
         wrapperClassName="w-44"
       />
-      <span className="text-ink-2 pb-3 text-[13px] font-semibold">{period.label}</span>
+      <span className="text-ink-2 pb-2.5 text-[14px] font-medium">{period.label}</span>
     </div>
   )
 }

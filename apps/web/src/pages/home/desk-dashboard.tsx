@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePeriod } from '@/lib/period'
+import { rowSignature, useChanged } from '@/lib/motion'
 import type { DashboardRange } from '@/lib/api/dashboard'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { formatTime, type StaffUser } from '@mmc/shared'
@@ -141,12 +142,12 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         {/* WHO IS SIGNED IN */}
         <IdentityBanner user={user} greeting={greeting} />
 
         {/* TOOLBAR */}
-        <div className="anim-enter flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <span className="inline-flex items-center gap-1.5 font-semibold">
               <ClipboardCheck size={16} aria-hidden="true" className="text-primary" />
@@ -162,7 +163,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
           </div>
           <StaffLink
             to="/app/patients"
-            className="border-border bg-card text-ink-3 card-lift wide:flex hidden h-11 w-[260px] items-center gap-2.5 rounded-xl border px-3.5 text-sm no-underline"
+            className="border-border bg-surface text-ink-3 hover:bg-hover wide:flex hidden h-9 w-[260px] items-center gap-2 rounded-full border px-3 text-[14px] no-underline"
           >
             <Search size={16} aria-hidden="true" />
             {t('common.searchPatient')}
@@ -202,7 +203,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+            className="border-red/25 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
             {t('dashboard.loadFailed', { message: error.message })}
           </p>
@@ -215,17 +216,17 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
         {!data && !error && (
           <div
-            className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4"
+            className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3"
             aria-busy="true"
           >
             {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className="skeleton h-[150px] rounded-[16px]" />
+              <div key={i} className="skeleton h-[130px] rounded-md" />
             ))}
           </div>
         )}
 
         {data && (
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4">
             {nurse ? (
               <NurseTiles d={data} range={period.range} link={link} triage={triage} />
             ) : (
@@ -453,7 +454,7 @@ function NurseTiles({
   const x = d.tiles
   const diff = x.vitalsToday - x.vitalsYesterday
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
       {triage && (
         <>
           <Kpi
@@ -523,6 +524,8 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
   const nurse = role === 'nurse'
   // Longest-waiting first at reception; urgency first at triage (the board is already by priority).
   const list = nurse ? rows : [...rows].sort((a, b) => b.waitMin - a.waitMin)
+  // a row whose patient moved (triage colour, station, status) flashes once
+  const changed = useChanged(list, (r) => r.queueId, rowSignature)
   return (
     <Panel
       i={1}
@@ -539,8 +542,12 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
             <div className="flex flex-col">
               {shown.map((r, i) => (
                 <div
-                  key={r.queueId}
-                  className="border-grid anim-enter flex min-h-11 flex-wrap items-center gap-x-2.5 gap-y-1.5 border-b py-1.5 text-[14px] last:border-b-0"
+                  // the change count in the key replays the flash on the next change
+                  key={`${r.queueId}:${changed.get(r.queueId) ?? 0}`}
+                  className={cn(
+                    'border-grid flex min-h-11 flex-wrap items-center gap-x-2.5 gap-y-1.5 border-b py-1.5 text-[14px] last:border-b-0',
+                    changed.get(r.queueId) && 'anim-row',
+                  )}
                   style={{ '--i': i } as CSSProperties}
                 >
                   <Pill tint={triageTint[r.triage] ?? 'teal'} icon={triageIcon[r.triage]}>
@@ -755,11 +762,11 @@ function MinePanel({ d, role }: { d: DeskSummary; role: DeskRole }) {
         {rows.map((r, i) => (
           <div
             key={r.key}
-            className="border-border anim-enter flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5"
+            className="border-border flex flex-col items-start gap-1 rounded-md border px-3 py-2.5"
             style={{ '--i': i } as CSSProperties}
           >
             <IconChip icon={r.icon} tint={r.tint} size="sm" />
-            <span className="text-2xl font-extrabold tabular-nums">{r.n}</span>
+            <span className="text-[24px] leading-8 font-semibold tabular-nums">{r.n}</span>
             <span className="text-ink-2 text-[12px] leading-tight font-semibold">{r.label}</span>
           </div>
         ))}

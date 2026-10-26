@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { SearchSelect } from '@/components/ui/search-select'
+import { EmptyNote } from '@/components/clinical/empty-note'
 import {
   CheckCircle2,
   ClipboardList,
@@ -57,7 +58,8 @@ import { openMedicalReport, type ReportMedicine } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
 
-const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
 const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other']
 /** Standard prescription frequencies (stored as the usual code: OD, BD, TDS…). */
 const FREQUENCIES = ['OD', 'BD', 'TDS', 'QID', 'Q8H', 'Q6H', 'NOCTE', 'PRN', 'STAT'] as const
@@ -813,7 +815,7 @@ export function ClinicalCard({
       )}
       {reporting && patient && data && (
         <CardBody className="bg-primary-tint/40 border-border anim-enter gap-2 border-b">
-          <p className="m-0 text-[14px] font-bold">{t('medReport.panelTitle')}</p>
+          <p className="m-0 text-[14px] font-semibold">{t('medReport.panelTitle')}</p>
           <p className="text-ink-2 m-0 text-[13px]">{t('medReport.panelLead')}</p>
           <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-semibold">
             {t('medReport.commentLabel')}
@@ -822,7 +824,7 @@ export function ClinicalCard({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder={t('medReport.commentPh')}
-              className="border-border bg-card text-ink focus:border-primary rounded-lg border px-3 py-2 text-[14px] font-normal outline-none"
+              className="border-border bg-card text-ink focus:border-primary rounded-md border px-3 py-2 text-[14px] font-normal outline-none"
             />
           </label>
           <span className="flex flex-wrap gap-2">
@@ -844,12 +846,12 @@ export function ClinicalCard({
       <CardBody className="gap-3">
         {error && <p className={errorBox}>{error.message}</p>}
         {closed && (
-          <p className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <p className="bg-green-bg text-green border-green/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
             {t('clinical.closedNote')}
           </p>
         )}
         {lockedNote && !closed && (
-          <p className="bg-violet-bg text-violet m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <p className="bg-violet-bg text-violet border-violet/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
             {lockedNote}
           </p>
         )}
@@ -876,7 +878,7 @@ export function ClinicalCard({
                   onChange={(e) => setNote(e.target.value)}
                   rows={4}
                   placeholder={t('clinical.notePh')}
-                  className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint rounded-lg border px-3 py-2 text-[15px] font-normal outline-none focus:ring-[3px]"
+                  className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint rounded-md border px-3 py-2 text-[14px] font-normal outline-none focus:ring-[3px]"
                   required
                 />
               </label>
@@ -920,7 +922,7 @@ export function ClinicalCard({
                 <option value="secondary">{t('clinical.type.secondary')}</option>
               </Select>
               <div className="flex items-end gap-2">
-                <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
+                <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
                   <input
                     type="checkbox"
                     className="accent-primary"
@@ -950,9 +952,9 @@ export function ClinicalCard({
               {rx.map((line, i) => (
                 <fieldset
                   key={i}
-                  className="border-border bg-hover/40 m-0 flex min-w-0 flex-col gap-3 rounded-xl border p-3"
+                  className="border-border bg-hover/40 m-0 flex min-w-0 flex-col gap-3 rounded-md border p-3"
                 >
-                  <legend className="text-ink-2 px-1 text-xs font-bold">
+                  <legend className="text-ink-2 px-1 text-xs font-semibold">
                     {t('clinical.medicineN', { n: i + 1 })}
                   </legend>
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -1089,7 +1091,7 @@ export function ClinicalCard({
                   {refused?.key === line.key && (
                     <div
                       role="alert"
-                      className="bg-red-bg text-red flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-semibold"
+                      className="bg-red-bg text-red flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-[13px] font-semibold"
                     >
                       <span className="min-w-0 flex-1">{refused.message}</span>
                       <Button
@@ -1163,16 +1165,14 @@ export function ClinicalCard({
                     </fieldset>
                   )
                 })}
-              {tests.length === 0 && (
-                <p className="text-ink-3 m-0 text-[13px]">{t('clinical.noTests')}</p>
-              )}
+              {tests.length === 0 && <EmptyNote>{t('clinical.noTests')}</EmptyNote>}
               <Field
                 label={t('clinical.reason')}
                 value={order.reason}
                 onChange={(e) => setOrder({ ...order, reason: e.target.value })}
                 placeholder={t('clinical.reasonPh')}
               />
-              <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
+              <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
                 <input
                   type="checkbox"
                   className="accent-primary size-[18px]"
@@ -1211,7 +1211,7 @@ export function ClinicalCard({
         {warnings.length > 0 && (
           <div
             role="status"
-            className="bg-amber-bg text-amber flex flex-col gap-1 rounded-xl px-3 py-2 text-[13px]"
+            className="bg-amber-bg text-amber flex flex-col gap-1 rounded-md px-3 py-2 text-[13px]"
           >
             <span className="flex items-center gap-2 font-semibold">
               <TriangleAlert size={14} aria-hidden="true" />
@@ -1254,7 +1254,7 @@ export function ClinicalCard({
           data.orders.length ===
           0 && (
           <CardBody className="border-border border-t">
-            <p className="text-ink-3 m-0 text-[13px]">{t('clinical.empty')}</p>
+            <EmptyNote>{t('clinical.empty')}</EmptyNote>
           </CardBody>
         )}
       {data &&
@@ -1499,7 +1499,7 @@ export function ClinicalCard({
                 serviceRequestId={o.id}
               />
               {o.result && (
-                <span className="bg-green-bg/60 mt-1 block rounded-lg px-2.5 py-1.5 text-[13px]">
+                <span className="bg-green-bg/60 mt-1 block rounded-md px-2.5 py-1.5 text-[13px]">
                   {o.result.findings && <span className="block">{o.result.findings}</span>}
                   {o.result.impression && (
                     <span className="block font-semibold">{o.result.impression}</span>
@@ -1561,7 +1561,7 @@ export function ClinicalCard({
                       {t('clinical.findings')}
                       <textarea
                         rows={2}
-                        className="border-border bg-card rounded-lg border px-2.5 py-2 text-[14px] font-normal"
+                        className="border-border bg-card rounded-md border px-2.5 py-2 text-[14px] font-normal"
                         value={result.findings}
                         onChange={(e) => setResult({ ...result, findings: e.target.value })}
                       />
@@ -1569,7 +1569,7 @@ export function ClinicalCard({
                     <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
                       {t('clinical.impression')}
                       <input
-                        className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px] font-normal"
+                        className="border-border bg-card h-10 rounded-md border px-2.5 text-[14px] font-normal"
                         value={result.impression}
                         onChange={(e) => setResult({ ...result, impression: e.target.value })}
                       />
@@ -1590,7 +1590,7 @@ export function ClinicalCard({
                         <input
                           required
                           minLength={3}
-                          className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px] font-normal"
+                          className="border-border bg-card h-10 rounded-md border px-2.5 text-[14px] font-normal"
                           placeholder={t('clinical.correctionPh')}
                           value={result.correction}
                           onChange={(e) => setResult({ ...result, correction: e.target.value })}
@@ -1744,7 +1744,7 @@ function RoomStoreChoice({
     )
   }
   return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-lg border px-3 py-2">
+    <div className="border-border bg-card flex flex-col gap-2 rounded-md border px-3 py-2">
       {stores.length > 1 || pick ? (
         <Select
           label={t('clinical.roomStock.label')}

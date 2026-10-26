@@ -15,6 +15,7 @@ import { Hint, Kpi, Panel } from '@/components/dash/kit'
 import { delta } from '@/components/dash/kit-style'
 import { StaffLink } from '@/components/staff/staff-link'
 import { buttonVariants } from '@/components/ui/button'
+import { controlClass } from '@/components/ui/field'
 import {
   useVisitsAnalysis,
   type Treatment,
@@ -444,7 +445,7 @@ export function TreatmentsView({ period, search, update, dept, clinic }: ViewPro
             aria-label={t('analytics.treatments.category')}
             value={group ?? ''}
             onChange={(e) => update({ group: e.target.value || undefined }, { replace: true })}
-            className="border-border bg-card text-ink h-10 max-w-full rounded-lg border px-2 text-[14px]"
+            className={cn(controlClass, 'h-8 max-w-full px-2 text-[13px]')}
           >
             <option value="">{t('analytics.treatments.allCategories')}</option>
             {catList
@@ -461,7 +462,7 @@ export function TreatmentsView({ period, search, update, dept, clinic }: ViewPro
           <button
             type="button"
             onClick={() => update({ group: undefined }, { replace: true })}
-            className="bg-primary-tint text-primary inline-flex min-h-9 items-center gap-1.5 self-start rounded-full px-3 text-[13px] font-semibold"
+            className="border-primary/30 bg-primary-tint text-primary hover:bg-hover inline-flex h-8 items-center gap-1.5 self-start rounded-md border px-3 text-[13px] font-medium transition-colors duration-120"
           >
             {groupLabel || t('analytics.treatments.category')}
             <X size={14} aria-hidden="true" />

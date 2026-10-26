@@ -11,7 +11,8 @@ const SUCCESS_MS = 5000
  * A message after an action: green success ("2 prices changed.") disappears by itself after a
  * few seconds; a red error stays until it is closed (or the next action replaces it). Both have
  * an × to close them at once. Give `onClose` to clear the page's own message state; pass the
- * message as `key` so a new message shows again.
+ * message as `key` so a new message shows again. The line fades in and rises; a success
+ * check-mark pops (300 ms).
  */
 export function Flash({
   tone = 'success',
@@ -49,21 +50,27 @@ export function Flash({
       ref={ref}
       role={tone === 'success' ? 'status' : 'alert'}
       className={cn(
-        'anim-enter m-0 flex scroll-mt-4 scroll-mb-4 items-start gap-2 rounded-lg py-2 pr-1.5 pl-3 text-[13px] font-semibold',
-        tone === 'success' ? 'bg-green-bg text-green' : 'bg-red-bg text-red',
+        'anim-dialog m-0 flex scroll-mt-4 scroll-mb-4 items-start gap-2 rounded-md border py-2 pr-2 pl-3 text-[14px] font-medium',
+        tone === 'success'
+          ? 'border-green/25 bg-green-bg text-green'
+          : 'border-red/25 bg-red-bg text-red',
         className,
       )}
     >
-      <Icon size={16} aria-hidden="true" className="mt-px flex-none" />
+      <Icon
+        size={15}
+        aria-hidden="true"
+        className={cn('mt-0.5 flex-none', tone === 'success' && 'anim-pop')}
+      />
       <span className="min-w-0 flex-1">{children}</span>
       <button
         type="button"
         onClick={close}
         aria-label={t('common.close')}
         title={t('common.close')}
-        className="-my-1 inline-flex size-7 flex-none items-center justify-center rounded-md opacity-70 hover:opacity-100"
+        className="-my-0.5 inline-flex size-6 flex-none items-center justify-center rounded opacity-70 hover:opacity-100"
       >
-        <X size={15} aria-hidden="true" />
+        <X size={14} aria-hidden="true" />
       </button>
     </p>
   )

@@ -93,7 +93,7 @@ export function TriageView({ period, update, dept, clinic }: ViewProps) {
         ) : staff.data?.needsUpdate ? (
           <NeedsUpdate />
         ) : !a ? (
-          <div className="skeleton h-[200px] rounded-xl" />
+          <div className="skeleton h-[200px] rounded-md" />
         ) : perDay.every((v) => !v) ? (
           <Quiet>{t('analytics.noData')}</Quiet>
         ) : (

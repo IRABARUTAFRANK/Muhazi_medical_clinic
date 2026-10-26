@@ -34,7 +34,7 @@ import { isApprover, isManagerUser } from './approvers'
  */
 
 const textarea =
-  'border-border bg-card text-ink focus:border-primary focus:ring-primary-tint w-full rounded-lg border px-3 py-2 text-[14px] font-normal outline-none focus:ring-[3px]'
+  'border-border bg-card text-ink focus:border-primary focus:ring-primary/20 w-full rounded-md border px-3 py-2 text-[14px] font-normal outline-none focus:ring-2'
 
 /** At least three letters: the database refuses shorter reasons. */
 const enough = (s: string) => s.trim().length >= 3
@@ -157,9 +157,9 @@ export function AccessRequestCard({
       ref={ref}
       id={`request-${row.id}`}
       className={cn(
-        'border-border anim-enter flex flex-col gap-2 rounded-xl border px-3.5 py-3',
-        row.kind === 'emergency' && !row.reviewedAt && 'border-red/40 bg-red-bg/40',
-        highlight && 'ring-primary/50 ring-[3px]',
+        'border-border bg-card anim-enter flex flex-col gap-2 rounded-md border p-3',
+        row.kind === 'emergency' && !row.reviewedAt && 'border-l-red-dot border-l-[3px]',
+        highlight && 'border-primary ring-primary/20 ring-2',
       )}
       style={{ '--i': i } as CSSProperties}
     >
@@ -175,7 +175,7 @@ export function AccessRequestCard({
         <StaffLink
           to="/app/patient"
           search={{ id: row.patientId }}
-          className="text-ink hover:text-primary min-w-0 text-[15px] font-bold no-underline"
+          className="text-ink hover:text-primary min-w-0 text-[14px] font-semibold no-underline"
         >
           {row.patient}
         </StaffLink>
@@ -250,7 +250,7 @@ export function AccessRequestCard({
             <StaffLink
               to="/app/patient"
               search={{ id: row.patientId }}
-              className="text-primary inline-flex min-h-10 items-center gap-1.5 px-2 text-[13px] font-semibold no-underline hover:underline"
+              className="text-primary inline-flex h-8 items-center gap-1.5 px-2 text-[13px] font-medium no-underline hover:underline"
             >
               <FolderOpen size={15} aria-hidden="true" />
               {t('recordAccess.card.openFile')}
@@ -260,7 +260,7 @@ export function AccessRequestCard({
       )}
       {row.canAnswer && mode === 'refuse' && (
         <div className="flex flex-col gap-2">
-          <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-semibold">
+          <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-medium">
             {t('recordAccess.refuseReason')}
             <textarea
               rows={2}
@@ -292,7 +292,7 @@ export function AccessRequestCard({
       {row.canReview &&
         (mode === 'review' ? (
           <div className="flex flex-col gap-2">
-            <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-semibold">
+            <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-medium">
               {t('recordAccess.reviewLabel')}
               <textarea
                 rows={2}
@@ -382,7 +382,7 @@ export function AccessApprovalsPanel({ user, i = 1 }: { user: StaffUser; i?: num
         {rows.length > 3 && (
           <StaffLink
             to="/app/record-access"
-            className="text-primary text-[13px] font-semibold no-underline hover:underline"
+            className="text-primary text-[13px] font-medium no-underline hover:underline"
           >
             {t('recordAccess.homeMore', { count: rows.length - 3 })}
           </StaffLink>

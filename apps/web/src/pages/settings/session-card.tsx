@@ -42,8 +42,8 @@ export function SessionCard() {
         </span>
       </CardHeader>
       <CardBody className="gap-3">
-        <p className="text-ink-2 m-0 text-[13px]">{t('settings.session.lead', { count: saved })}</p>
-        <ul className="text-ink-2 m-0 flex list-disc flex-col gap-1.5 pl-5 text-[13px]">
+        <p className="text-ink-2 m-0 text-[14px]">{t('settings.session.lead', { count: saved })}</p>
+        <ul className="text-ink-2 m-0 flex list-disc flex-col gap-1.5 pl-5 text-[14px]">
           {RULES.map((r) => (
             <li key={r}>{t(`settings.session.${r}`, { count: current })}</li>
           ))}
@@ -115,7 +115,7 @@ export function SessionCard() {
         {(save.error || revoke.error) && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
             {(save.error ?? revoke.error)?.message}
           </p>

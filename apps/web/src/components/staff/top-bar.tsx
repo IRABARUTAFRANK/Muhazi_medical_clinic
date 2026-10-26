@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { StaffUser, SyncState } from '@mmc/shared'
 import { LangSwitch } from '@/components/public/lang-switch'
 import { Logo } from '@/components/public/logo'
+import { cn } from '@/lib/utils'
 import { NotificationBell } from './notification-bell'
 import { SyncBadge } from './sync-badge'
 import { UserMenu } from './user-menu'
@@ -13,6 +14,8 @@ interface TopBarProps {
   user: StaffUser
   sync: SyncState
   onOpenSheet: () => void
+  /** The open page's name, after the clinic's in the breadcrumb ("Clinic / Patients"). */
+  title?: string
 }
 
 /**
@@ -50,9 +53,12 @@ function PatientSearch({ className }: { className?: string }) {
         const text = q.trim()
         void navigate({ to: '/app/patients', search: text ? { q: text } : {} })
       }}
-      className={`glass-dark flex h-11 items-center gap-2.5 rounded-xl px-3.5 text-sm text-white/70 transition-[background-color,box-shadow] duration-150 focus-within:bg-white/15 focus-within:ring-[3px] focus-within:ring-white/25 ${className ?? ''}`}
+      className={cn(
+        'border-border bg-surface text-ink-3 focus-within:border-primary focus-within:ring-primary/20 flex h-9 items-center gap-2 rounded-full border px-3 text-[14px] transition-[border-color,box-shadow] duration-120 focus-within:ring-2',
+        className,
+      )}
     >
-      <Search size={18} aria-hidden="true" />
+      <Search size={16} aria-hidden="true" />
       <input
         ref={input}
         type="search"
@@ -60,9 +66,9 @@ function PatientSearch({ className }: { className?: string }) {
         onChange={(e) => setQ(e.target.value)}
         placeholder={t('common.searchPatient')}
         aria-label={t('common.searchPatient')}
-        className="min-w-0 flex-1 border-0 bg-transparent text-white outline-none placeholder:text-white/60"
+        className="text-ink placeholder:text-ink-4 min-w-0 flex-1 border-0 bg-transparent outline-none"
       />
-      <kbd className="hidden rounded-md border border-white/20 px-1.5 text-[11px] text-white/60 lg:inline">
+      <kbd className="border-border text-ink-4 hidden rounded border px-1 text-[11px] leading-4 lg:inline">
         /
       </kbd>
     </form>
@@ -70,45 +76,48 @@ function PatientSearch({ className }: { className?: string }) {
 }
 
 /**
- * Top bar on every staff screen (Figma: Manager Dashboard v2): the same navy as the rail so the
- * two form one frame around the workspace. Logo and name, global patient search, sync badge,
- * current user, language switch. Two rows on tablets.
+ * Top bar on every staff screen: 48 px, white, a 1 px bottom border. On a PC the sidebar
+ * carries the logo, so the bar starts with the breadcrumb ("Clinic / Patients"), then the
+ * search pill, sync state, bell, user menu and the language switch. Tablets and phones have
+ * no sidebar: the logo comes first, and the search gets a second row.
  */
-export function TopBar({ user, sync, onOpenSheet }: TopBarProps) {
+export function TopBar({ user, sync, onOpenSheet, title }: TopBarProps) {
   const { t } = useTranslation()
-  const logoClass = 'text-white [&_span]:text-white [&_span>span:last-child]:text-white/65'
   return (
-    <header className="topbar-gradient relative z-[6] flex-none text-white shadow-[0_6px_24px_rgba(11,34,82,0.25)]">
-      {/* PC: one 64 px row */}
-      <div className="pc:flex hidden h-16 items-center gap-3 px-4 xl:gap-4">
-        <Logo
-          to="/app"
-          size="md"
-          compact
-          subtitle={t('app.shortPlace')}
-          ariaLabel={t('app.staffHome')}
-          className={`flex-none ${logoClass}`}
-        />
-        <PatientSearch className="min-w-[150px] flex-1 xl:max-w-[440px]" />
-        <div className="hidden flex-1 xl:block" />
+    <header className="border-border bg-card relative z-[6] flex-none border-b">
+      {/* PC: one 48 px row */}
+      <div className="pc:flex hidden h-12 items-center gap-3 px-4">
+        <span className="text-ink-3 flex min-w-0 items-center gap-1.5 text-[14px]">
+          <span className="truncate">{t('app.clinicName')}</span>
+          {title && (
+            <>
+              <span className="text-ink-4" aria-hidden="true">
+                /
+              </span>
+              <span className="text-ink truncate font-medium">{title}</span>
+            </>
+          )}
+        </span>
+        <div className="flex-1" />
+        <PatientSearch className="w-[min(320px,40vw)]" />
         <SyncBadge state={sync} />
         <NotificationBell user={user} />
-        <UserMenu user={user} onDark />
+        <UserMenu user={user} />
         <span className="hidden xl:inline-flex">
           <LangSwitch size="sm" />
         </span>
       </div>
       {/* Tablet and phone: two rows. Phones keep only the logo, bell and person on the first
           row (sync state and language live in the "More" sheet) and the search on the second. */}
-      <div className="pc:hidden flex flex-col gap-2 px-3 py-2 sm:px-4">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <div className="pc:hidden flex flex-col gap-1.5 px-3 py-1.5 sm:px-4">
+        <div className="flex h-10 items-center gap-2 sm:gap-3">
           <Logo
             to="/app"
             size="md"
             compact
             subtitle={t('app.shortPlace')}
             ariaLabel={t('app.staffHome')}
-            className={`min-w-0 ${logoClass}`}
+            className="min-w-0 [&_img]:size-7 [&_span>span:first-child]:text-[14px] [&_span>span:first-child]:font-semibold"
           />
           <span className="flex-1" />
           <span className="hidden md:inline-flex">
@@ -116,11 +125,11 @@ export function TopBar({ user, sync, onOpenSheet }: TopBarProps) {
           </span>
           <NotificationBell user={user} />
           <span className="hidden lg:inline-flex">
-            <LangSwitch />
+            <LangSwitch size="sm" />
           </span>
-          <UserMenu user={user} onOpenSheet={onOpenSheet} onDark />
+          <UserMenu user={user} onOpenSheet={onOpenSheet} />
         </div>
-        <PatientSearch className="h-11" />
+        <PatientSearch />
       </div>
     </header>
   )

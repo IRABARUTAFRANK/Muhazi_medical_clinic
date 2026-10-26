@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
+import { EmptyNote } from '@/components/clinical/empty-note'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
@@ -39,7 +40,8 @@ import { cn } from '@/lib/utils'
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
 /** Keeps a unit next to its value inside a chip (a plain space is lost there). */
 const NBSP = String.fromCharCode(160)
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
 
 /**
  * "Past records are private": how many past visits are hidden, my request (waiting, refused),
@@ -78,7 +80,7 @@ export function PrivacyNotice({
     return (
       <p
         className={cn(
-          'm-0 flex flex-wrap items-start gap-2 rounded-xl px-3 py-2.5 text-[14px]',
+          'm-0 flex flex-wrap items-start gap-2 rounded-md px-3 py-2.5 text-[14px]',
           emergency ? 'bg-red-bg text-red' : 'bg-green-bg text-green',
         )}
       >
@@ -175,7 +177,7 @@ export function PrivacyNotice({
   return (
     <Card className="border-violet/40 anim-enter">
       <CardBody className="gap-2.5">
-        <p className="text-violet m-0 flex items-start gap-2 text-[15px] font-bold">
+        <p className="text-violet m-0 flex items-start gap-2 text-[16px] font-semibold">
           <Lock size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
           {visit
             ? t(visitOpen ? 'recordPrivacy.visitTitleOpen' : 'recordPrivacy.visitTitle')
@@ -199,7 +201,7 @@ export function PrivacyNotice({
         )}
 
         {req?.status === 'pending' && (
-          <div className="bg-amber-bg/70 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-[13px]">
+          <div className="bg-amber-bg/70 flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-[13px]">
             <span className="min-w-[200px] flex-1">
               <b className="block">{t('recordPrivacy.pending', { when: when(req.at) })}</b>
               <span className="text-ink-2">
@@ -212,7 +214,7 @@ export function PrivacyNotice({
           </div>
         )}
         {req?.status === 'refused' && (
-          <p className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <p className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
             {req.answeredBy
               ? t('recordPrivacy.refusedBy', { name: req.answeredBy, note: req.answerNote ?? '' })
               : t('recordPrivacy.refused', { note: req.answerNote ?? '' })}
@@ -248,7 +250,7 @@ export function PrivacyNotice({
             <form
               onSubmit={(e) => void run(e)}
               className={cn(
-                'flex flex-col gap-2 rounded-xl border px-3 py-3',
+                'flex flex-col gap-2 rounded-md border px-3 py-3',
                 mode === 'emergency' ? 'border-red/50 bg-red-bg/40' : 'border-border bg-hover/50',
               )}
             >
@@ -275,7 +277,7 @@ export function PrivacyNotice({
                       : 'recordPrivacy.reasonPh',
                   )}
                   required
-                  className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint rounded-lg border px-3 py-2 text-[15px] font-normal outline-none focus:ring-[3px]"
+                  className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint rounded-md border px-3 py-2 text-[14px] font-normal outline-none focus:ring-[3px]"
                 />
               </label>
               <span className="flex flex-wrap gap-2">
@@ -309,7 +311,7 @@ export function SafetyHiddenNote({ className }: { className?: string }) {
   return (
     <p
       className={cn(
-        'bg-hover text-ink-2 m-0 flex items-start gap-2 rounded-xl px-3 py-2 text-[13px]',
+        'bg-hover text-ink-2 m-0 flex items-start gap-2 rounded-md px-3 py-2 text-[13px]',
         className,
       )}
     >
@@ -322,7 +324,7 @@ export function SafetyHiddenNote({ className }: { className?: string }) {
 function Part({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-ink-3 inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[.04em] uppercase">
+      <span className="text-ink-3 inline-flex items-center gap-1.5 text-[12px] font-medium">
         {icon}
         {title}
       </span>
@@ -380,13 +382,11 @@ export function SafetySummaryCard({
         )}
         <div
           className={cn(
-            'rounded-xl px-3 py-2',
+            'rounded-md px-3 py-2',
             summary.allergies ? 'bg-red-bg text-red' : 'bg-hover text-ink-2',
           )}
         >
-          <span className="block text-[11px] font-semibold tracking-[.04em] uppercase">
-            {t('file.fields.allergies')}
-          </span>
+          <span className="block text-[12px] font-medium">{t('file.fields.allergies')}</span>
           <span className="font-semibold">
             {summary.allergies ??
               (summary.allergiesNone ? t('safetySummary.noKnown') : t('safetySummary.notRecorded'))}
@@ -402,7 +402,7 @@ export function SafetySummaryCard({
             </p>
           )}
         {open && summary.alerts && (
-          <p className="bg-amber-bg/70 m-0 rounded-xl px-3 py-2 text-[13px]">
+          <p className="bg-amber-bg/70 m-0 rounded-md px-3 py-2 text-[13px]">
             <b>{t('safetySummary.alerts')}:</b> {summary.alerts}
           </p>
         )}
@@ -538,7 +538,7 @@ export function WhoLookedCard({ patientId, className }: { patientId: string; cla
         </CardBody>
       ) : rows.length === 0 ? (
         <CardBody>
-          <p className="text-ink-3 m-0 text-[13px]">{t('whoLooked.empty')}</p>
+          <EmptyNote>{t('whoLooked.empty')}</EmptyNote>
         </CardBody>
       ) : (
         <ShownList items={rows} step={6} footerClassName="px-4 py-2">
@@ -640,7 +640,7 @@ export function VisitRecordGate({
 function PrivateVisitPlain() {
   const { t } = useTranslation()
   return (
-    <p className="bg-violet-bg text-violet m-0 flex items-start gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+    <p className="bg-violet-bg text-violet border-violet/30 m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] font-semibold">
       <Lock size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
       {t('recordPrivacy.visitTitle')}
     </p>

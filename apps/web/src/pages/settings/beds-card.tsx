@@ -10,7 +10,8 @@ import { useBedAdmin, useBedBoard, type BoardBed } from '@/lib/api/desk-ops'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
 const digits = (v: string) => v.replace(/[^0-9]/g, '')
 /** The most beds the database accepts (set_bed_count). */
 const MAX_BEDS = 200
@@ -82,7 +83,7 @@ export function BedsCard() {
           <IconChip icon={BedDouble} tint="navy" />
           {t('settings.beds.title')}
         </span>
-        <span className="text-ink-2 text-[13px] font-semibold tabular-nums">
+        <span className="text-ink-2 text-[14px] font-semibold tabular-nums">
           {t('settings.beds.summary', { count: beds.length, occupied })}
         </span>
       </CardHeader>
@@ -119,7 +120,7 @@ export function BedsCard() {
             {t('settings.beds.apply')}
           </Button>
           {done && !admin.setCount.isPending && (
-            <span className="text-green text-[13px] font-semibold">{t('settings.beds.saved')}</span>
+            <span className="text-green text-[14px] font-semibold">{t('settings.beds.saved')}</span>
           )}
         </div>
         {tooMany && (
@@ -138,7 +139,7 @@ export function BedsCard() {
 
         {beds.length > 0 && (
           <div className="flex flex-col">
-            <span className="text-ink-3 mb-1 text-[12px] font-bold tracking-[.06em] uppercase">
+            <span className="text-ink-3 mb-1 text-[12px] font-medium">
               {t('settings.beds.each')}
             </span>
             {beds.map((b) => (
@@ -173,7 +174,7 @@ function BedRow({ bed }: { bed: BoardBed }) {
       <BedDouble size={16} aria-hidden="true" className="text-ink-3 flex-none" />
       <input
         aria-label={t('settings.beds.name')}
-        className="border-border bg-card h-10 w-36 rounded-lg border px-2.5 text-[14px] font-semibold"
+        className="border-border bg-card h-10 w-36 rounded-md border px-2.5 text-[14px] font-semibold"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
@@ -183,15 +184,17 @@ function BedRow({ bed }: { bed: BoardBed }) {
       <input
         aria-label={t('settings.beds.price')}
         inputMode="numeric"
-        className="border-border bg-card h-10 w-32 rounded-lg border px-2.5 text-[14px] tabular-nums"
+        className="border-border bg-card h-10 w-32 rounded-md border px-2.5 text-[14px] tabular-nums"
         value={price}
         onChange={(e) => setPrice(digits(e.target.value).slice(0, 9))}
       />
       <span className="text-ink-3 text-[13px]">RWF</span>
       <span
         className={cn(
-          'rounded-full px-2.5 py-0.5 text-[12px] font-bold',
-          bed.state === 'occupied' ? 'bg-primary-tint text-primary' : 'bg-green-bg text-green',
+          'rounded border px-2 py-0.5 text-[12px] font-medium',
+          bed.state === 'occupied'
+            ? 'border-primary/30 bg-primary-tint text-primary'
+            : 'border-green/30 bg-green-bg text-green',
         )}
       >
         {t(`desk.bedState.${bed.state}`)}

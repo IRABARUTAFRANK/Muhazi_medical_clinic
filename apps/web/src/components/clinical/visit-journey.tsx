@@ -14,8 +14,10 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { formatDate, formatRwf, formatTime } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
+import { EmptyNote } from '@/components/clinical/empty-note'
 import { journeyMedicineState, useVisitJourney, type Journey } from '@/lib/api/journey'
 import { cn } from '@/lib/utils'
+import './visit-motion.css'
 
 const at = (iso: string | null) => (iso ? formatTime(new Date(iso)) : '')
 const day = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
@@ -68,7 +70,9 @@ export function VisitJourney({
   const { data: j, isLoading, error } = useVisitJourney(encounterId)
   if (error)
     return (
-      <p className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px]">{error.message}</p>
+      <p className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px]">
+        {error.message}
+      </p>
     )
   if (!j || isLoading) return <p className="text-ink-3 m-0 text-[13px]">…</p>
   const station = (s: string) => t(`register.stations.${s}`, { defaultValue: s })
@@ -77,8 +81,12 @@ export function VisitJourney({
 
   return (
     <div className={cn('flex flex-col gap-4', compact && 'gap-3')}>
-      {/* The path through the clinic */}
-      <ol className="m-0 flex list-none flex-col gap-0 p-0">
+      {/* The path through the clinic: a line down the dots draws in; the open desk pulses */}
+      <ol className="relative m-0 flex list-none flex-col gap-0 p-0">
+        <span
+          aria-hidden="true"
+          className="bg-border anim-progress-y absolute top-4 bottom-4 left-[13px] w-0.5"
+        />
         <li className="flex items-start gap-3 py-1.5">
           <Dot icon={Footprints} tint="teal" />
           <span className="text-[14px]">
@@ -97,7 +105,11 @@ export function VisitJourney({
           const done = !!s.finishedAt
           return (
             <li key={i} className="flex items-start gap-3 py-1.5">
-              <Dot icon={done ? CheckCircle2 : Stethoscope} tint={done ? 'mint' : 'amber'} />
+              <Dot
+                icon={done ? CheckCircle2 : Stethoscope}
+                tint={done ? 'mint' : 'amber'}
+                pulse={!done && j.status === 'open'}
+              />
               <span className="min-w-0 text-[14px]">
                 <b>{station(s.station)}</b>
                 <span className="text-ink-2">
@@ -157,7 +169,7 @@ export function VisitJourney({
 
       {/* 0088: the clinical part of a visit this person may not see comes empty */}
       {j.private && (
-        <p className="bg-violet-bg text-violet m-0 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold">
+        <p className="bg-violet-bg text-violet border-violet/30 m-0 flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-semibold">
           <Lock size={14} aria-hidden="true" />
           {t('recordPrivacy.journeyPrivate')}
         </p>
@@ -251,7 +263,7 @@ export function VisitJourney({
             />
           ))}
           {total > 0 && (
-            <p className="m-0 mt-1 text-[13px] font-bold">
+            <p className="m-0 mt-1 text-[13px] font-semibold">
               {t('journey.total', { amount: formatRwf(total) })}
             </p>
           )}
@@ -299,12 +311,22 @@ const TINT: Record<string, string> = {
   violet: 'bg-violet-bg text-violet',
   navy: 'bg-blue-bg text-navy-ink',
 }
-function Dot({ icon: Icon, tint }: { icon: typeof Footprints; tint: string }) {
+function Dot({
+  icon: Icon,
+  tint,
+  pulse = false,
+}: {
+  icon: typeof Footprints
+  tint: string
+  /** The step the patient is at now. */
+  pulse?: boolean
+}) {
   return (
     <span
       className={cn(
-        'inline-flex size-7 flex-none items-center justify-center rounded-full',
+        'bg-card relative inline-flex size-7 flex-none items-center justify-center rounded-full',
         TINT[tint],
+        pulse && 'anim-pulse-dot ring-primary/40 ring-1',
       )}
     >
       <Icon size={14} aria-hidden="true" />
@@ -327,16 +349,14 @@ function Block({
   children: React.ReactNode
 }) {
   return (
-    <section className="border-border flex flex-col gap-1.5 rounded-xl border p-3">
-      <h4 className="m-0 flex items-center gap-2 text-[13px] font-bold">
-        <span
-          className={cn('inline-flex size-6 items-center justify-center rounded-md', TINT[tint])}
-        >
-          <Icon size={13} aria-hidden="true" />
+    <section className="border-border flex flex-col gap-1.5 rounded-md border p-3">
+      <h4 className="m-0 flex items-center gap-2 text-[14px] font-semibold">
+        <span className={cn('inline-flex size-6 items-center justify-center rounded', TINT[tint])}>
+          <Icon size={14} aria-hidden="true" />
         </span>
         {title}
       </h4>
-      {empty ? <p className="text-ink-3 m-0 text-[13px]">{emptyText}</p> : children}
+      {empty ? <EmptyNote>{emptyText}</EmptyNote> : children}
     </section>
   )
 }

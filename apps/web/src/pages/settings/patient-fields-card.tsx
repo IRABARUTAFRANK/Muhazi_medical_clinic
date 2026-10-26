@@ -93,7 +93,7 @@ export function PatientFieldsCard() {
         </Button>
       </CardHeader>
       <CardBody className="gap-3">
-        <p className="text-ink-2 m-0 text-[13px]">{t('settings.patientFields.lead')}</p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('settings.patientFields.lead')}</p>
         {fields.length === 0 && (
           <p className="text-ink-3 m-0 text-[13px]">{t('settings.patientFields.none')}</p>
         )}
@@ -137,7 +137,7 @@ export function PatientFieldsCard() {
             >
               <Trash2 size={16} aria-hidden="true" />
             </Button>
-            <label className="text-ink-2 flex items-start gap-2 text-[13px] sm:col-span-4">
+            <label className="text-ink-2 flex items-start gap-2 text-[14px] sm:col-span-4">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -155,7 +155,7 @@ export function PatientFieldsCard() {
         {save.error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
             {save.error.message}
           </p>
@@ -166,7 +166,7 @@ export function PatientFieldsCard() {
             {t('settings.patientFields.save')}
           </Button>
           {saved && !save.isPending && (
-            <span className="text-green text-[13px] font-semibold">
+            <span className="text-green text-[14px] font-semibold">
               {t('settings.patientFields.saved')}
             </span>
           )}

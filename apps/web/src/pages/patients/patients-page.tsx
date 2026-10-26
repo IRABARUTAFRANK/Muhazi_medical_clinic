@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, FolderOpen, Search, UserPlus, Users } from '
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, type StaffUser } from '@mmc/shared'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
+import { EmptyNote } from '@/components/clinical/empty-note'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
@@ -79,7 +80,7 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold"
+            className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold"
           >
             {error.message}
           </p>
@@ -95,26 +96,26 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
           </CardHeader>
           {data && data.rows.length === 0 && (
             <CardBody>
-              <p className="text-ink-3 m-0 text-[13px]">{t('patients.none')}</p>
+              <EmptyNote>{t('patients.none')}</EmptyNote>
             </CardBody>
           )}
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
               <thead>
-                <tr className="text-ink-3 text-left text-[11px] tracking-[.04em] uppercase">
-                  <th className="border-border hidden border-b px-4 py-2 font-semibold sm:table-cell">
+                <tr className="text-ink-3 text-left text-[12px]">
+                  <th className="border-border hidden border-b px-4 py-2 font-medium sm:table-cell">
                     {t('patients.cols.file')}
                   </th>
-                  <th className="border-border border-b px-2 py-2 font-semibold">
+                  <th className="border-border border-b px-2 py-2 font-medium">
                     {t('patients.cols.patient')}
                   </th>
-                  <th className="border-border hidden border-b px-2 py-2 font-semibold sm:table-cell">
+                  <th className="border-border hidden border-b px-2 py-2 font-medium sm:table-cell">
                     {t('patients.cols.ageSex')}
                   </th>
-                  <th className="border-border hidden border-b px-2 py-2 font-semibold lg:table-cell">
+                  <th className="border-border hidden border-b px-2 py-2 font-medium lg:table-cell">
                     {t('patients.cols.phone')}
                   </th>
-                  <th className="border-border hidden border-b px-2 py-2 font-semibold lg:table-cell">
+                  <th className="border-border hidden border-b px-2 py-2 font-medium lg:table-cell">
                     {t('patients.cols.lastVisit')}
                   </th>
                   <th className="border-border hidden border-b px-2 py-2 text-right font-semibold lg:table-cell">
@@ -133,7 +134,7 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
                     className="border-grid anim-enter hover:bg-hover/60 border-b transition-colors last:border-b-0"
                     style={{ '--i': i } as CSSProperties}
                   >
-                    <td className="text-primary hidden px-4 py-2.5 font-bold tabular-nums sm:table-cell">
+                    <td className="text-primary hidden px-4 py-2.5 font-semibold tabular-nums sm:table-cell">
                       {r.fileNumber}
                     </td>
                     <td className="px-3 py-2.5 sm:px-2">
@@ -142,7 +143,7 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
                       </span>
                       <span className="text-ink-3 block text-xs">
                         <span className="sm:hidden">
-                          <span className="text-primary font-bold tabular-nums">
+                          <span className="text-primary font-semibold tabular-nums">
                             {r.fileNumber}
                           </span>
                           {' · '}

@@ -54,6 +54,8 @@ export function StaffShell({
   usePrefsSync(user.id)
   const now = appNow()
   const clock = `${dayNames.short[now.getDay()]} ${formatDate(now)} · ${time ?? formatTime(now)}`
+  // the open page's name for the top bar's breadcrumb
+  const activeItem = nav.find((n) => n.id === activeId)
 
   return (
     // Text size (Settings or the user menu) scales the whole staff screen; the height is divided
@@ -65,17 +67,24 @@ export function StaffShell({
     >
       {/* while locked, nothing behind the lock screen can be reached (keyboard or reader) */}
       <div className="contents" inert={locked} aria-hidden={locked || undefined}>
-        <TopBar user={user} sync={sync} onOpenSheet={() => setSheet(true)} />
+        <TopBar
+          user={user}
+          sync={sync}
+          onOpenSheet={() => setSheet(true)}
+          title={activeItem ? t(activeItem.labelKey) : undefined}
+        />
         {sync.status === 'offline' && <OfflineBanner />}
         <div data-shell-body className="flex min-h-0 flex-1">
-          <Rail nav={nav} activeId={activeId} clock={clock} />
-          {/* Workspace: calm sky-blue surface with a faint dot texture behind the page. */}
-          <div className="workspace flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+          <Rail nav={nav} activeId={activeId} clock={clock} user={user} />
+          {/* Workspace: a flat neutral surface behind the page (the class is kept for print). */}
+          <div className="workspace bg-surface flex min-h-0 min-w-0 flex-1 flex-col">
+            {children}
+          </div>
         </div>
         {tabletActions && (
           <div
             aria-label={t('common.quickActions')}
-            className="border-border bg-card/90 pc:hidden grid flex-none grid-cols-2 gap-2 border-t px-3 py-2 backdrop-blur sm:flex sm:px-4 sm:[&>*]:flex-1"
+            className="border-border bg-card pc:hidden grid flex-none grid-cols-2 gap-2 border-t px-3 py-2 sm:flex sm:px-4 [&>*]:h-auto [&>*]:min-h-8 [&>*]:min-w-0 [&>*]:py-1.5 [&>*]:whitespace-normal sm:[&>*]:flex-1"
           >
             {tabletActions}
           </div>

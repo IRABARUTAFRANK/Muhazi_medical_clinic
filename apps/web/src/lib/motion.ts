@@ -54,17 +54,60 @@ export function useReveal<T extends HTMLElement>() {
   return ref
 }
 
-/** Counts from 0 to `target` with an ease-out curve (instant under reduced motion). */
-export function useCountUp(target: number, durationMs = 1200): number {
+/**
+ * Which rows of a live list just changed: a map of row key → how many times its content has
+ * changed since the list was first shown (rows seen for the first time count 0). A queue row
+ * flashes once per change: give the row `anim-row` when its count is above 0 and put the count
+ * in its React key, so the flash plays again on the next change.
+ */
+export function useChanged<T>(
+  items: readonly T[],
+  key: (item: T) => string,
+  signature: (item: T) => string,
+): Map<string, number> {
+  // the last list and what was seen of it: compared in render, the way React derives state
+  // from the previous props (a new list → one setState during render, no ref, no effect)
+  const [seen, setSeen] = useState<{
+    items: readonly T[] | null
+    rows: Map<string, { sig: string; n: number }>
+  }>({ items: null, rows: new Map() })
+  let rows = seen.rows
+  if (seen.items !== items) {
+    rows = new Map()
+    for (const item of items) {
+      const k = key(item)
+      const sig = signature(item)
+      const prev = seen.rows.get(k)
+      rows.set(k, { sig, n: prev ? (prev.sig === sig ? prev.n : prev.n + 1) : 0 })
+    }
+    setSeen({ items, rows })
+  }
+  return new Map(Array.from(rows, ([k, r]) => [k, r.n]))
+}
+
+/** The content of a list row as one string, without the fields that tick by themselves
+ *  (waiting minutes, "x min ago"), so a row flashes when something real changed. */
+export const rowSignature = (row: object): string =>
+  JSON.stringify(row, (k, v) => (/wait|ago|min$|At$/i.test(k) ? undefined : v))
+
+/**
+ * Counts up to `target` once with an ease-out curve: from 0 when the figure first shows, from
+ * the previous figure when it changes later (a live tile does not restart from zero every
+ * refresh). Instant under reduced motion.
+ */
+export function useCountUp(target: number, durationMs = 800): number {
   const [value, setValue] = useState(0)
+  const from = useRef(0)
   useEffect(() => {
     let raf = 0
     const start = performance.now()
+    const base = from.current
     const reduced = prefersReducedMotion()
     const tick = (now: number) => {
       const p = reduced ? 1 : Math.min(1, (now - start) / durationMs)
       const eased = 1 - Math.pow(1 - p, 3)
-      setValue(Math.round(target * eased))
+      setValue(Math.round(base + (target - base) * eased))
+      if (p >= 1) from.current = target
       if (p < 1) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)

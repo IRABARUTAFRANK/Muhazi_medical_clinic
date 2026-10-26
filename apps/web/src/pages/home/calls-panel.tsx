@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils'
 
 const control =
   'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-lg border px-2.5 text-[14px] outline-none'
-const row = 'border-border flex flex-col gap-2 rounded-xl border px-3 py-2.5'
+const row = 'border-border flex flex-col gap-2 rounded-md border px-3 py-2.5'
 const minutesSince = (iso: string) =>
   Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000))
 
@@ -126,11 +126,11 @@ export function CallsPanel({ user }: { user: StaffUser }) {
         return (
           <div
             key={c.id}
-            className={cn(row, 'border-violet/40 bg-violet-bg/50 anim-enter')}
+            className={cn(row, 'border-l-blue-dot border-l-2')}
             style={{ '--i': i } as CSSProperties}
           >
             <span className="inline-flex flex-wrap items-center gap-x-2 text-[14px]">
-              <PhoneCall size={16} aria-hidden="true" className="text-violet" />
+              <PhoneCall size={16} aria-hidden="true" className="text-blue" />
               <b>{t('calls.next.incoming', { name: c.fromName, desk: desk(c.station) })}</b>
               <span className="text-ink-3 text-[13px]">
                 {formatDuration(minutesSince(c.at), t)}

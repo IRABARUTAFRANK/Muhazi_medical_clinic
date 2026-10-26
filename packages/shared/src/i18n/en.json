@@ -2124,7 +2124,8 @@
       "confirm": "{{name}} has left the clinic? The visit closes and the patient leaves every queue.",
       "done": "{{name}} has left: the visit is closed.",
       "due": "{{amount}} RWF is still due: take the payment first, or ask the manager.",
-      "reasonPrompt": "{{amount}} RWF is still due. Why does the patient leave without paying?"
+      "reasonPrompt": "{{amount}} RWF is still due. Why does the patient leave without paying?",
+      "unpaid": "The patient has not paid yet: send them to the cashier. Only the manager can end a visit with money due."
     }
   },
   "desk": {

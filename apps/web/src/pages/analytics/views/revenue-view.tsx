@@ -584,7 +584,9 @@ function Breakdown({
             label: t('analytics.revenue.variance'),
             align: 'right',
             cell: (r) => (
-              <span className={cn(r.variance != null && r.variance < 0 && 'text-red font-bold')}>
+              <span
+                className={cn(r.variance != null && r.variance < 0 && 'text-red font-semibold')}
+              >
                 {r.variance == null ? '—' : money(r.variance)}
               </span>
             ),
@@ -779,8 +781,8 @@ function SubList({
 }) {
   return (
     <section className="flex flex-col gap-1.5">
-      <h4 className="text-ink m-0 text-[14px] font-bold">
-        {title} <span className="text-ink-3 font-semibold">· {count}</span>
+      <h4 className="text-ink m-0 text-[14px] font-semibold">
+        {title} <span className="text-ink-2 font-normal">· {count}</span>
       </h4>
       {children}
     </section>

@@ -170,12 +170,12 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
   return (
     <StaffShell user={user} nav={nav} activeId={activeId}>
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4 print:overflow-visible">
+      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4 print:overflow-visible">
         {/* WHO IS SIGNED IN */}
         <IdentityBanner user={user} greeting={greeting} />
 
         {/* TOOLBAR */}
-        <div className="anim-enter flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             {/* Today's date is in the banner; a week or month shows its span here. */}
             {range !== 'today' && (
@@ -200,7 +200,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
           </div>
           <StaffLink
             to="/app/patients"
-            className="border-border bg-card text-ink-3 card-lift wide:flex hidden h-11 w-[260px] items-center gap-2.5 rounded-xl border px-3.5 text-sm no-underline"
+            className="border-border bg-surface text-ink-3 hover:bg-hover wide:flex hidden h-9 w-[260px] items-center gap-2 rounded-full border px-3 text-[14px] no-underline"
           >
             <Search size={16} aria-hidden="true" />
             {t('common.searchPatient')}
@@ -232,12 +232,15 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             {t('dashboard.registerPatient')}
           </StaffLink>
         </div>
-        <PeriodCustom period={period} className="bg-card shadow-card rounded-[16px] px-4 py-3" />
+        <PeriodCustom
+          period={period}
+          className="bg-card border-border rounded-md border px-4 py-3"
+        />
 
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+            className="border-red/25 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
             {t('dashboard.loadFailed', { message: error.message })}
           </p>
@@ -251,9 +254,9 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
         {!data && !error && <Skeleton isManager={isManager} />}
 
         {data && (
-          <div key={range} className="flex flex-col gap-5">
+          <div key={range} className="flex flex-col gap-4">
             {/* KPI ROW */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
               <Kpi
                 i={0}
                 icon={UserPlus}
@@ -545,44 +548,44 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 ) : (
                   <table className="w-full border-collapse text-[14px]">
                     <thead>
-                      <tr className="text-ink-3 text-left text-[12px] tracking-[.04em] uppercase">
-                        <th className="border-border border-b py-1.5 pr-2 font-semibold">
+                      <tr className="text-ink-3 text-left text-[12px] font-normal">
+                        <th className="border-border border-b py-2 pr-2 font-normal">
                           <span className="inline-flex items-center gap-1">
                             <Users size={13} aria-hidden="true" />
                             {t('dashboard.cols.employee')}
                           </span>
                         </th>
-                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
                           <span className="inline-flex items-center gap-1">
                             <UserPlus size={13} aria-hidden="true" />
                             {t('dashboard.cols.registrations')}
                           </span>
                         </th>
-                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
                           <span className="inline-flex items-center gap-1">
                             <HeartPulse size={13} aria-hidden="true" />
                             {t('dashboard.cols.vitals')}
                           </span>
                         </th>
-                        <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
+                        <th className="border-border border-b py-2 pr-2 text-right font-normal">
                           <span className="inline-flex items-center gap-1">
                             <Stethoscope size={13} aria-hidden="true" />
                             {t('dashboard.cols.patients')}
                           </span>
                         </th>
-                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
                           <span className="inline-flex items-center gap-1">
                             <FlaskConical size={13} aria-hidden="true" />
                             {t('dashboard.cols.results')}
                           </span>
                         </th>
-                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
                           <span className="inline-flex items-center gap-1">
                             <Tablets size={13} aria-hidden="true" />
                             {t('dashboard.cols.dispensed')}
                           </span>
                         </th>
-                        <th className="border-border hidden border-b py-1.5 pr-2 text-right font-semibold sm:table-cell">
+                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
                           <span className="inline-flex items-center gap-1">
                             <Receipt size={13} aria-hidden="true" />
                             {t('dashboard.cols.charges')}
@@ -606,7 +609,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                         return (
                           <tr
                             key={s.id ?? s.name}
-                            className="border-grid anim-enter border-b last:border-b-0"
+                            className="border-grid border-b last:border-b-0"
                             style={{ '--i': i } as CSSProperties}
                           >
                             <td className="py-2 pr-2">
@@ -616,7 +619,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                               >
                                 <span
                                   className={cn(
-                                    'inline-flex size-[30px] flex-none items-center justify-center rounded-full text-[12px] font-extrabold',
+                                    'inline-flex size-8 flex-none items-center justify-center rounded-full text-[12px] font-semibold',
                                     avatarTint(i),
                                   )}
                                 >
@@ -1025,15 +1028,15 @@ const niceStep = (peak: number) => {
 function Skeleton({ isManager }: { isManager: boolean }) {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-col gap-5" aria-busy="true" aria-label={t('dashboard.loading')}>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4">
+    <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('dashboard.loading')}>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
         {Array.from({ length: isManager ? 7 : 5 }, (_, i) => (
-          <div key={i} className="skeleton h-[150px] rounded-[16px]" />
+          <div key={i} className="skeleton h-[130px] rounded-md" />
         ))}
       </div>
       <div className="pc:grid-cols-3 grid grid-cols-1 gap-4">
         {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="skeleton h-[260px] rounded-[16px]" />
+          <div key={i} className="skeleton h-[260px] rounded-md" />
         ))}
       </div>
     </div>

@@ -24,7 +24,7 @@ export function AllergyBox({ allergies }: { allergies: string | null | undefined
   const list = allergyList(allergies ?? null)
   if (list == null)
     return (
-      <p className="bg-amber-bg text-amber m-0 rounded-lg px-2.5 py-1 text-[12px] font-semibold">
+      <p className="border-amber/30 bg-amber-bg text-amber m-0 rounded border px-2.5 py-1 text-[12px] font-medium">
         {t('pharmacy.allergiesNotRecorded')}
       </p>
     )
@@ -32,7 +32,7 @@ export function AllergyBox({ allergies }: { allergies: string | null | undefined
     return <p className="text-ink-3 m-0 text-[12px]">{t('pharmacy.noKnownAllergies')}</p>
   return (
     <p
-      className="bg-red-bg text-red border-red m-0 flex items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] font-bold"
+      className="bg-red-bg text-red border-red m-0 flex items-start gap-1.5 rounded-md border px-2.5 py-1.5 text-[14px] font-semibold"
       role="alert"
     >
       <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
@@ -93,9 +93,9 @@ export function HandedStrip({
       {groups.map((g) => (
         <div
           key={g.key}
-          className="border-green bg-green-bg/60 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border px-3 py-2"
+          className="border-green bg-green-bg/60 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border px-3 py-2"
         >
-          <span className="min-w-[200px] flex-1 text-[13px]">
+          <span className="min-w-[200px] flex-1 text-[14px]">
             <span className="text-ink block font-semibold">
               {t(kind === 'sale' ? 'pharmacy.handedSale' : 'pharmacy.handedTo', {
                 name: g.patient.name,
@@ -164,8 +164,8 @@ export function ReasonBox({
   const [reason, setReason] = useState(initial)
   return (
     <Reveal focus block="nearest">
-      <div className="border-border bg-card flex flex-col gap-2 rounded-lg border p-2.5">
-        <span className="text-[13px] font-semibold">{title}</span>
+      <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-2.5">
+        <span className="text-[14px] font-semibold">{title}</span>
         {choices.length > 0 && (
           <span className="flex flex-wrap gap-1.5">
             {choices.map((c) => (
@@ -174,7 +174,7 @@ export function ReasonBox({
                 type="button"
                 onClick={() => setReason(c)}
                 className={cn(
-                  'rounded-full border px-2.5 py-1 text-[12px] font-semibold',
+                  'rounded border px-2.5 py-1 text-[12px] font-medium transition-colors duration-120',
                   reason === c
                     ? 'border-primary bg-primary text-white'
                     : 'border-border text-ink-2 hover:bg-hover',
@@ -186,7 +186,7 @@ export function ReasonBox({
           </span>
         )}
         <input
-          className="border-border bg-card focus:border-primary h-10 rounded-lg border px-2.5 text-[14px] outline-none"
+          className="border-border bg-card focus:border-primary h-10 rounded-md border px-2.5 text-[14px] outline-none"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder={t('pharmacy.reasonPh')}
@@ -230,7 +230,7 @@ export function LinesEditor({
   return (
     <div className="flex flex-col gap-2">
       {lines.map((l, i) => (
-        <div key={l.key} className="bg-surface/70 flex flex-col gap-1.5 rounded-lg p-2">
+        <div key={l.key} className="bg-surface/70 flex flex-col gap-1.5 rounded-md p-2">
           <div className="grid grid-cols-[minmax(0,1fr)_96px_auto] items-end gap-2">
             <SearchSelect
               label={i === 0 ? t('stock.cols.item') : ''}

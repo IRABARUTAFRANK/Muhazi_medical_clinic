@@ -115,11 +115,11 @@ export function CounterSalesPanel({
       title={t('cashierDesk.counter.title')}
       right={t('cashierDesk.counter.waiting', { count: open.length, amount: formatRwf(total) })}
     >
-      <p className="text-ink-2 m-0 text-[13px]">{t('cashierDesk.counter.lead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('cashierDesk.counter.lead')}</p>
       {loadError && (
         <p
           role="alert"
-          className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+          className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
         >
           {t('dashboard.loadFailed', { message: loadError.message })}
         </p>
@@ -136,7 +136,7 @@ export function CounterSalesPanel({
                 id={`sale-${s.id}`}
                 className={cn(
                   'border-grid anim-enter flex flex-col gap-2 border-b py-3 text-[14px] last:border-b-0',
-                  s.id === highlightId && 'bg-primary-tint/40 -mx-2 rounded-lg px-2',
+                  s.id === highlightId && 'bg-primary-tint/40 -mx-2 rounded-md px-2',
                 )}
                 style={{ '--i': Math.min(n, 12) } as CSSProperties}
               >
@@ -159,7 +159,7 @@ export function CounterSalesPanel({
                         .join(' · ')}
                     </span>
                   </span>
-                  <span className="text-[16px] font-extrabold whitespace-nowrap tabular-nums">
+                  <span className="text-[16px] font-semibold whitespace-nowrap tabular-nums">
                     {formatRwf(s.total)}
                   </span>
                   {canTake && payingId !== s.id && (
@@ -188,7 +188,7 @@ export function CounterSalesPanel({
                     </Button>
                   )}
                 </div>
-                <ul className="text-ink-2 m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+                <ul className="text-ink-2 m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
                   {s.lines.map((l) => (
                     <li key={l.itemId} className="flex flex-wrap items-baseline gap-x-2">
                       <span className="text-ink min-w-0 flex-1">
@@ -202,7 +202,7 @@ export function CounterSalesPanel({
                   ))}
                 </ul>
                 {short.length > 0 && (
-                  <p className="text-amber m-0 flex items-center gap-1.5 text-[13px] font-semibold">
+                  <p className="text-amber m-0 flex items-center gap-1.5 text-[14px] font-semibold">
                     <TriangleAlert size={14} aria-hidden="true" />
                     {t('cashierDesk.counter.short', {
                       list: short.map((l) => `${l.item} (${l.inStock})`).join(', '),
@@ -243,7 +243,7 @@ export function CounterSalesPanel({
 
       {paid.length > 0 && (
         <div className="flex flex-col">
-          <span className="text-ink-2 text-[13px] font-semibold">
+          <span className="text-ink-2 text-[14px] font-semibold">
             {t('cashierDesk.counter.toCollect', { count: paid.length })}
           </span>
           {paid.map((s) => (
@@ -252,7 +252,7 @@ export function CounterSalesPanel({
               id={`sale-${s.id}`}
               className={cn(
                 'border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[14px] last:border-b-0',
-                s.id === highlightId && 'bg-primary-tint/40 -mx-2 rounded-lg px-2',
+                s.id === highlightId && 'bg-primary-tint/40 -mx-2 rounded-md px-2',
               )}
             >
               <Pill tint="mint">{s.number}</Pill>
@@ -270,7 +270,9 @@ export function CounterSalesPanel({
                     .join(' · ')}
                 </span>
               </span>
-              <span className="font-bold whitespace-nowrap tabular-nums">{formatRwf(s.total)}</span>
+              <span className="font-semibold whitespace-nowrap tabular-nums">
+                {formatRwf(s.total)}
+              </span>
               <Button
                 size="sm"
                 variant="ghost"
@@ -372,7 +374,7 @@ function CounterPayForm({
   return (
     <form
       onSubmit={(e) => void submit(e)}
-      className="border-border bg-surface flex flex-col gap-3 rounded-xl border p-3"
+      className="border-border bg-surface flex flex-col gap-3 rounded-md border p-3"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Select
@@ -411,7 +413,7 @@ function CounterPayForm({
       {error && (
         <p
           role="alert"
-          className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+          className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
         >
           {error}
         </p>

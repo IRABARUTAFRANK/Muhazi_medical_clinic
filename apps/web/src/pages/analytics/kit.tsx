@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, CircleAlert, DatabaseZap, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { controlClass } from '@/components/ui/field'
 import { Pager } from '@/components/ui/list-tools'
 import { Seg } from '@/components/ui/seg'
 import { ApiError } from '@/lib/api/errors'
@@ -46,9 +47,9 @@ export function NeedsUpdate() {
   return (
     <p
       role="status"
-      className="border-border bg-amber-bg text-amber m-0 flex items-start gap-2 rounded-xl border px-3.5 py-3 text-[14px] font-semibold"
+      className="border-amber/30 bg-amber-bg text-amber m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] font-medium"
     >
-      <DatabaseZap size={18} aria-hidden="true" className="mt-0.5 flex-none" />
+      <DatabaseZap size={16} aria-hidden="true" className="mt-0.5 flex-none" />
       {t('analytics.needsUpdate')}
     </p>
   )
@@ -66,9 +67,9 @@ export function LoadError({ error }: { error: unknown }) {
   return (
     <p
       role="alert"
-      className="border-border bg-red-bg text-red m-0 flex items-start gap-2 rounded-xl border px-3.5 py-3 text-[14px] font-semibold"
+      className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] font-medium"
     >
-      <CircleAlert size={18} aria-hidden="true" className="mt-0.5 flex-none" />
+      <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
       {text}
     </p>
   )
@@ -81,10 +82,10 @@ export function ViewSkeleton() {
     <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('dashboard.loading')}>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="skeleton h-[130px] rounded-[16px]" />
+          <div key={i} className="skeleton h-[130px] rounded-md" />
         ))}
       </div>
-      <div className="skeleton h-[280px] rounded-[16px]" />
+      <div className="skeleton h-[280px] rounded-md" />
     </div>
   )
 }
@@ -107,13 +108,11 @@ export function Stat({
   tone?: 'red' | 'green'
 }) {
   return (
-    <div className="border-border bg-surface flex min-w-0 flex-col gap-0.5 rounded-xl border px-3 py-2.5">
-      <span className="text-ink-3 truncate text-[12px] font-bold tracking-[.03em] uppercase">
-        {label}
-      </span>
+    <div className="border-border bg-card flex min-w-0 flex-col gap-0.5 rounded-md border px-3 py-2.5">
+      <span className="text-ink-2 truncate text-[12px] font-medium">{label}</span>
       <span
         className={cn(
-          'text-[20px] leading-tight font-extrabold tabular-nums',
+          'text-[20px] leading-tight font-semibold tabular-nums',
           tone === 'red' ? 'text-red' : tone === 'green' ? 'text-green' : 'text-ink',
         )}
       >
@@ -159,7 +158,7 @@ export function Choice<T extends string>({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint h-10 w-full max-w-full rounded-lg border px-3 text-[14px] outline-none focus:ring-[3px] lg:hidden"
+        className={cn(controlClass, 'w-full max-w-full lg:hidden')}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -238,14 +237,15 @@ export function DataTable<T>({
   }, [rows, cols, sort])
   const paged = usePaged(sorted, pageSize, `${sort?.key}-${sort?.desc}-${rows.length}`)
   if (rows.length === 0) return <div className="py-2">{empty}</div>
-  const th = 'border-border border-b px-2 py-2 text-[12px] font-semibold tracking-[.03em] uppercase'
+  // the header row: 12 px grey, normal weight; the rows 40 px with a 1 px divider
+  const th = 'border-border border-b px-2 py-2 text-[12px] font-normal'
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <div className="max-w-full overflow-x-auto">
         <table className="w-full border-collapse text-[14px]">
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className="text-ink-3 text-left">
+            <tr className="text-ink-2 text-left">
               {cols.map((c) => {
                 const on = sort?.key === c.key
                 return (
@@ -268,7 +268,7 @@ export function DataTable<T>({
                           )
                         }
                         className={cn(
-                          'hover:text-ink inline-flex items-center gap-1 uppercase',
+                          'hover:text-ink inline-flex items-center gap-1',
                           c.align === 'right' && 'flex-row-reverse',
                           on && 'text-ink',
                         )}
@@ -300,7 +300,7 @@ export function DataTable<T>({
                   key={k}
                   onClick={onRow ? () => onRow(r) : undefined}
                   className={cn(
-                    'border-grid border-b last:border-b-0',
+                    'border-grid border-b transition-colors duration-120 last:border-b-0',
                     onRow && 'hover:bg-hover cursor-pointer',
                     selectedKey === k && 'bg-primary-tint',
                   )}
@@ -309,7 +309,8 @@ export function DataTable<T>({
                     <td
                       key={c.key}
                       className={cn(
-                        'px-2 py-2 align-top',
+                        'px-2 py-2.5 align-top',
+                        i === 0 && 'font-medium',
                         c.align === 'right' && 'text-right tabular-nums',
                         c.wide && 'hidden sm:table-cell',
                       )}
@@ -322,7 +323,7 @@ export function DataTable<T>({
                             e.stopPropagation()
                             onRow(r)
                           }}
-                          className="text-primary w-full text-left font-semibold hover:underline"
+                          className="text-primary w-full text-left font-medium hover:underline"
                         >
                           {c.cell(r)}
                         </button>
@@ -337,12 +338,12 @@ export function DataTable<T>({
           </tbody>
           {totalsLabel && (
             <tfoot>
-              <tr className="border-border border-t-2 font-bold">
+              <tr className="border-border bg-surface border-t font-semibold">
                 {cols.map((c, i) => (
                   <td
                     key={c.key}
                     className={cn(
-                      'px-2 py-2',
+                      'px-2 py-2.5',
                       c.align === 'right' && 'text-right tabular-nums',
                       c.wide && 'hidden sm:table-cell',
                     )}
@@ -425,30 +426,28 @@ export function Drawer({
         aria-modal="true"
         aria-labelledby={id}
         tabIndex={-1}
-        className="bg-card anim-enter flex h-full w-[min(560px,100vw)] flex-col shadow-[var(--mmc-shadow)] outline-none"
+        className="bg-card anim-enter shadow-sheet flex h-full w-[min(560px,100vw)] flex-col outline-none"
       >
-        <header className="border-border flex items-start gap-3 border-b px-4 py-3 sm:px-5">
+        <header className="border-border bg-primary-tint/60 flex items-start gap-3 border-b px-4 py-3">
           <div className="min-w-0 flex-1">
-            <h2 id={id} className="text-ink m-0 text-[18px] font-bold [overflow-wrap:anywhere]">
+            <h2 id={id} className="text-ink m-0 text-[16px] font-semibold [overflow-wrap:anywhere]">
               {title}
             </h2>
-            {subtitle && <div className="text-ink-3 mt-0.5 text-[13px]">{subtitle}</div>}
+            {subtitle && <div className="text-ink-2 mt-0.5 text-[13px]">{subtitle}</div>}
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label={t('analytics.close')}
             title={t('analytics.close')}
-            className="hover:bg-hover text-ink-2 inline-flex size-10 flex-none items-center justify-center rounded-lg"
+            className="hover:bg-hover text-ink-2 focus-visible:ring-primary/20 inline-flex size-9 flex-none items-center justify-center rounded-md transition-colors duration-120 outline-none focus-visible:ring-2"
           >
-            <X size={20} aria-hidden="true" />
+            <X size={18} aria-hidden="true" />
           </button>
         </header>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-5">
-          {children}
-        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">{children}</div>
         {actions && (
-          <footer className="border-border flex flex-wrap gap-2 border-t px-4 py-3 sm:px-5">
+          <footer className="border-border flex flex-wrap gap-2 border-t px-4 py-3">
             {actions}
           </footer>
         )}
@@ -457,7 +456,7 @@ export function Drawer({
   )
 }
 
-/** A titled block inside a side panel. */
+/** A titled block inside a side panel: 14 px semibold title with a 1 px rule under it. */
 export function Block({
   title,
   right,
@@ -469,9 +468,9 @@ export function Block({
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-2">
-      <h3 className="text-ink m-0 flex flex-wrap items-center justify-between gap-2 text-[15px] font-bold">
+      <h3 className="text-ink border-border m-0 flex flex-wrap items-center justify-between gap-2 border-b pb-1.5 text-[14px] font-semibold">
         {title}
-        {right && <span className="text-ink-3 text-[13px] font-semibold">{right}</span>}
+        {right && <span className="text-ink-2 text-[13px] font-normal">{right}</span>}
       </h3>
       {children}
     </section>

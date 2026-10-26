@@ -218,7 +218,10 @@ function TabBar({
 }) {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-wrap gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
+    <div
+      className="border-border bg-surface flex flex-wrap gap-0.5 self-start rounded-md border p-0.5"
+      role="tablist"
+    >
       {tabs.map((x) => {
         const Icon = ICONS[x]
         const n = badge[x] ?? 0
@@ -230,18 +233,17 @@ function TabBar({
             aria-selected={tab === x}
             onClick={() => onTab(x)}
             className={cn(
-              'inline-flex min-h-10 items-center gap-2 rounded-lg px-3.5 text-[14px] font-semibold whitespace-nowrap',
-              tab === x ? 'bg-navy text-white' : 'text-ink-2 hover:bg-hover',
+              'inline-flex min-h-8 items-center gap-2 rounded px-3 text-[14px] font-medium whitespace-nowrap transition-colors duration-120',
+              tab === x
+                ? 'bg-card text-primary border-border border'
+                : 'text-ink-2 hover:bg-hover hover:text-ink border border-transparent',
             )}
           >
             <Icon size={16} aria-hidden="true" />
             {t(`stock.tabs.${x}`)}
             {n > 0 && (
               <span
-                className={cn(
-                  'rounded-full px-1.5 text-[12px]',
-                  tab === x ? 'bg-white/20' : 'bg-amber-bg text-amber',
-                )}
+                className={cn('rounded px-1.5 text-[12px] font-medium', 'bg-amber-bg text-amber')}
               >
                 {n}
               </span>
@@ -330,7 +332,7 @@ function AdminStock({
           ) : undefined
         }
       >
-        <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">
+        <label className="border-border bg-card flex h-10 items-center gap-2 rounded-md border px-3 text-[14px]">
           <span className="text-ink-3 text-[13px]">{t('stock.reportMonth')}</span>
           <input
             type="month"
@@ -506,10 +508,10 @@ function AlertsPanel({ onWriteOff }: { onWriteOff: () => void }) {
     <Panel i={0} icon={AlertTriangle} tint="coral" title={t('stockShared.alertsTitle')}>
       {expired.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-red text-[13px] font-bold">
+          <span className="text-red text-[14px] font-semibold">
             {t('stockShared.expiredList', { count: expired.length })}
           </span>
-          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
             {expired.slice(0, 8).map((x) => (
               <li key={`${x.storeId}-${x.itemId}-${x.batchNo}`}>
                 <b>{x.item}</b> × {formatNumber(x.quantity)} · {x.store}
@@ -525,10 +527,10 @@ function AlertsPanel({ onWriteOff }: { onWriteOff: () => void }) {
       )}
       {expiring.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-amber text-[13px] font-bold">
+          <span className="text-amber text-[14px] font-semibold">
             {t('stockShared.expiringList', { count: expiring.length })}
           </span>
-          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
             {expiring.slice(0, 8).map((x) => (
               <li key={`${x.storeId}-${x.itemId}-${x.batchNo}`}>
                 <b>{x.item}</b> × {formatNumber(x.quantity)} · {x.store}
@@ -541,10 +543,10 @@ function AlertsPanel({ onWriteOff }: { onWriteOff: () => void }) {
       )}
       {roomLow.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-[13px] font-bold">
+          <span className="text-[14px] font-semibold">
             {t('stockShared.roomLowList', { count: roomLow.length })}
           </span>
-          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
             {roomLow.slice(0, 8).map((x) => (
               <li key={`${x.storeId}-${x.itemId}`}>
                 <b>{x.item}</b> · {x.store} ·{' '}
@@ -591,10 +593,10 @@ function StockTable({
         <Empty icon={Package}>{t('stock.empty')}</Empty>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[13px]">
+          <table className="w-full border-collapse text-[14px]">
             <thead>
-              <tr className="text-ink-3 text-left text-[11px] tracking-[.04em] uppercase">
-                <th className="border-border border-b py-2 pr-2 font-semibold">
+              <tr className="text-ink-3 text-left text-[12px]">
+                <th className="border-border border-b py-2 pr-2 font-medium">
                   {t('stock.cols.item')}
                 </th>
                 <th className="border-border border-b py-2 pr-2 text-right font-semibold">
@@ -667,7 +669,7 @@ function StockTable({
                       </td>
                       <td
                         className={cn(
-                          'py-2 pr-2 text-right font-bold tabular-nums',
+                          'py-2 pr-2 text-right font-semibold tabular-nums',
                           lowStock ? 'text-red' : usable <= 0 ? 'text-ink-3' : 'text-green',
                         )}
                       >
@@ -822,7 +824,7 @@ function SendForm({
   }
   return (
     <Panel i={1} icon={ArrowRightLeft} tint="teal" title={t('stockShared.sendTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stockShared.sendLead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('stockShared.sendLead')}</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
         <SearchSelect
           label={t('stock.cols.item')}
@@ -881,7 +883,7 @@ function SendForm({
           </p>
         )}
         {item && available === 0 && inRooms.length > 0 && (
-          <p className="bg-blue-bg text-blue m-0 rounded-lg px-3 py-2 text-[13px]">
+          <p className="bg-blue-bg text-blue m-0 rounded-md px-3 py-2 text-[14px]">
             {t('stockShared.onlyInRooms', { stores: inRooms.map((l) => l.name).join(', ') })}{' '}
             <button type="button" className="font-semibold underline" onClick={onRooms}>
               {t('stockShared.openRooms')}
@@ -970,7 +972,7 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
   }
   return (
     <Panel i={1} icon={PackageMinus} tint="coral" title={t('stock.useTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stockShared.useLead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('stockShared.useLead')}</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
         <SearchSelect
           label={t('stock.cols.item')}
@@ -1111,7 +1113,7 @@ function Movements({ items, locations }: { items: StockItem[]; locations: StockL
           {paged.slice.map((m) => (
             <div
               key={m.id}
-              className="border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[13px] last:border-b-0"
+              className="border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[14px] last:border-b-0"
             >
               <span className="text-ink-3 w-24 tabular-nums">
                 {formatDate(new Date(m.at))}
@@ -1220,10 +1222,10 @@ function Sales() {
           <Empty>{t('stock.sales.none')}</Empty>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[13px]">
+            <table className="w-full border-collapse text-[14px]">
               <thead>
-                <tr className="text-ink-3 text-left text-[11px] tracking-[.04em] uppercase">
-                  <th className="border-border border-b py-2 pr-2 font-semibold">
+                <tr className="text-ink-3 text-left text-[12px]">
+                  <th className="border-border border-b py-2 pr-2 font-medium">
                     {t('stock.cols.item')}
                   </th>
                   <th className="border-border border-b py-2 pr-2 text-right font-semibold">
@@ -1245,7 +1247,7 @@ function Sales() {
                   <tr key={x.item} className="border-grid border-b last:border-b-0">
                     <td className="py-2 pr-2 font-semibold">{x.item}</td>
                     <td className="py-2 pr-2 text-right tabular-nums">{formatNumber(x.units)}</td>
-                    <td className="py-2 pr-2 text-right font-bold tabular-nums">
+                    <td className="py-2 pr-2 text-right font-semibold tabular-nums">
                       {formatNumber(x.revenue)}
                     </td>
                     <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">

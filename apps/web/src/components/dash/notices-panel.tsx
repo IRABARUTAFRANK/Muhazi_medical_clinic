@@ -106,18 +106,29 @@ export function NoticesPanel({
                 key={n.id}
                 type="button"
                 onClick={() => open(n)}
+                // a new (unread) notice slides in; read ones are simply there
                 className={cn(
-                  'border-grid anim-enter hover:bg-hover/60 flex w-full items-start gap-3 border-b py-2.5 text-left last:border-b-0',
-                  !n.read && 'bg-primary-tint/30 -mx-2 rounded-lg px-2',
+                  'border-grid hover:bg-hover flex w-full items-start gap-3 border-b py-2 text-left transition-colors duration-120 last:border-b-0',
+                  !n.read && 'anim-slide-in',
                 )}
                 style={{ '--i': k } as CSSProperties}
               >
                 <IconChip icon={look.icon} tint={look.tint} size="sm" />
                 <span className="min-w-0 flex-1">
                   <span
-                    className={cn('block text-[14px] leading-snug', !n.read && 'font-semibold')}
+                    className={cn(
+                      'flex items-center gap-1.5 text-[14px] leading-snug',
+                      !n.read && 'font-semibold',
+                    )}
                   >
-                    {w.title}
+                    {/* unread: a teal dot, not a tinted row */}
+                    {!n.read && (
+                      <span
+                        aria-hidden="true"
+                        className="bg-primary size-1.5 flex-none rounded-full"
+                      />
+                    )}
+                    <span className="min-w-0">{w.title}</span>
                   </span>
                   {w.body && (
                     <span className="text-ink-2 block truncate text-[13px]">{w.body}</span>

@@ -5,6 +5,7 @@ import { formatRwf, formatTime } from '@mmc/shared'
 import { useVisitJourney, type Journey } from '@/lib/api/journey'
 import { useNow } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
+import './visit-motion.css'
 
 type State = 'done' | 'now' | 'next'
 
@@ -45,28 +46,29 @@ export function VisitTrack({
             style={{ '--i': i } as CSSProperties}
             aria-current={s.state === 'now' ? 'step' : undefined}
           >
+            {/* the line into this stop: it draws itself in up to where the patient is now */}
             {i > 0 && (
               <span
                 aria-hidden="true"
                 className={cn(
-                  'mt-[13px] h-0.5 w-5 flex-none sm:w-8',
-                  s.state === 'next' ? 'bg-border' : 'bg-green',
+                  'mt-[15px] h-0.5 w-5 flex-none sm:w-8',
+                  s.state === 'next' ? 'bg-border' : 'bg-green-dot anim-progress',
                 )}
               />
             )}
             <span
               className={cn(
-                'flex max-w-[220px] min-w-0 items-start gap-2 rounded-xl border px-2.5 py-1.5',
-                s.state === 'done' && 'border-green/40 bg-green-bg/50',
-                s.state === 'now' && 'border-primary bg-primary-tint shadow-card',
+                'flex max-w-[220px] min-w-0 items-start gap-2 rounded-md border px-2.5 py-1.5 transition-colors duration-120',
+                s.state === 'done' && 'border-green/30 bg-green-bg',
+                s.state === 'now' && 'border-primary bg-primary-tint',
                 s.state === 'next' && 'border-border bg-card border-dashed',
               )}
             >
               <span
                 className={cn(
                   'mt-0.5 inline-flex size-5 flex-none items-center justify-center rounded-full',
-                  s.state === 'done' && 'bg-green text-white',
-                  s.state === 'now' && 'bg-primary text-white',
+                  s.state === 'done' && 'bg-green-dot text-white',
+                  s.state === 'now' && 'bg-primary anim-pulse-dot text-white',
                   s.state === 'next' && 'bg-hover text-ink-3',
                 )}
               >
@@ -81,7 +83,7 @@ export function VisitTrack({
               <span className="min-w-0">
                 <span
                   className={cn(
-                    'block truncate text-[13px] font-bold',
+                    'block truncate text-[14px] font-semibold',
                     s.state === 'next' && 'text-ink-3',
                   )}
                 >

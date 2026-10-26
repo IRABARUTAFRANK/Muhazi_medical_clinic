@@ -5,6 +5,8 @@ import { formatNumber, formatRwf } from '@mmc/shared'
 import { Hint, Kpi, Panel } from '@/components/dash/kit'
 import { delta } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
+import { controlClass } from '@/components/ui/field'
+import { cn } from '@/lib/utils'
 import {
   previousPeriod,
   useStaffActivity,
@@ -174,7 +176,7 @@ export function StaffView({ period, search, update, dept, clinic }: ViewProps) {
                 aria-label={t('analytics.staff.role')}
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="border-border bg-card text-ink h-10 max-w-full rounded-lg border px-2 text-[14px]"
+                className={cn(controlClass, 'h-8 max-w-full px-2 text-[13px]')}
               >
                 <option value="">{t('analytics.staff.allRoles')}</option>
                 {roles.map((r) => (
@@ -237,7 +239,7 @@ export function KindPicker({
       aria-label={t('analytics.staff.kind')}
       value={value ?? ''}
       onChange={(e) => onChange((e.target.value || null) as ActivityKind | null)}
-      className="border-border bg-card text-ink h-10 max-w-full rounded-lg border px-2 text-[14px]"
+      className={cn(controlClass, 'h-8 max-w-full px-2 text-[13px]')}
     >
       <option value="">{t('analytics.staff.allKinds')}</option>
       {kinds.map((k) => (

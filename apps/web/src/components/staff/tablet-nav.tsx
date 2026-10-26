@@ -13,9 +13,9 @@ interface TabletNavProps {
 }
 
 const tab =
-  'flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-0 bg-transparent px-1 text-[11px] font-semibold text-white/70 no-underline transition-[background-color,color,transform] duration-150 hover:bg-white/10 hover:text-white active:scale-[0.97] sm:text-xs'
+  'flex min-h-13 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md border-0 bg-transparent px-1 text-[12px] font-medium text-ink-2 no-underline transition-colors duration-120 hover:bg-hover hover:text-ink'
 
-/** Tablet bottom bar (navy like the rail): the same ≤ 5 items plus "More". */
+/** Tablet bottom bar: white with a 1 px top border, the same ≤ 5 items plus "More". */
 export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
   const { t } = useTranslation()
   const { shown, rest } = splitNav(nav, useBarCount(), activeId)
@@ -23,7 +23,7 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
   return (
     <nav
       aria-label={t('common.mainNav')}
-      className="topbar-gradient pc:hidden flex flex-none gap-1 px-2 py-1.5 pb-[max(6px,env(safe-area-inset-bottom))] text-white"
+      className="border-border bg-card pc:hidden flex flex-none gap-1 border-t px-2 py-1 pb-[max(4px,env(safe-area-inset-bottom))]"
     >
       {shown.map((n) => {
         const active = n.id === activeId
@@ -32,23 +32,20 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
             key={n.id}
             to={n.to}
             aria-current={active ? 'page' : undefined}
-            className={cn(
-              tab,
-              active && 'bg-white/15 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]',
-            )}
+            className={cn(tab, active && 'bg-primary-tint text-primary')}
           >
-            <NavIcon id={n.id} name={n.icon} />
+            <NavIcon id={n.id} name={n.icon} size={20} />
             <span className="max-w-full truncate">{t(n.labelKey)}</span>
           </StaffLink>
         )
       })}
       <button
         type="button"
-        className={cn(tab, moreActive && 'bg-white/15 text-white')}
+        className={cn(tab, moreActive && 'bg-primary-tint text-primary')}
         onClick={onMore}
       >
         <span className="relative inline-flex">
-          <Ellipsis size={22} aria-hidden="true" />
+          <Ellipsis size={20} aria-hidden="true" />
           {rest.some((n) => n.id === 'notifications') && <UnreadBadge />}
         </span>
         {t('common.more')}

@@ -10,9 +10,9 @@ import { useHandoverActions, useHandoverColleagues, type VisitHandover } from '@
 import { useConfirm } from '@/lib/confirm'
 
 const control =
-  'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-lg border px-2.5 text-[14px] outline-none'
+  'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-md border px-2.5 text-[14px] outline-none'
 const area =
-  'border-border bg-card focus:border-primary rounded-lg border px-2.5 py-2 text-[14px] font-normal outline-none'
+  'border-border bg-card focus:border-primary rounded-md border px-2.5 py-2 text-[14px] font-normal outline-none'
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 /**
@@ -145,7 +145,7 @@ function Waiting({
     }
   }
   return (
-    <div className="border-border flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2">
+    <div className="border-border flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3 py-2">
       <span className="min-w-[200px] flex-1 text-[14px]">
         <span className="block font-semibold">
           {h.mine
@@ -223,7 +223,7 @@ function ToMe({ h, patientName, onDone, onError }: Part & { h: VisitHandover }) 
     }
   }
   return (
-    <div className="border-yellow-dot/50 bg-amber-bg/60 flex flex-col gap-3 rounded-xl border px-3 py-2.5">
+    <div className="border-yellow-dot/50 bg-amber-bg/60 flex flex-col gap-3 rounded-md border px-3 py-2.5">
       <span className="text-[14px]">
         <span className="block font-semibold">{t('handover.toYou', { by: h.fromName })}</span>
         <Note h={h} />
@@ -343,7 +343,7 @@ function HandOverForm({
         </select>
       </label>
       {!isLoading && colleagues.length === 0 && (
-        <p className="bg-hover text-ink-2 m-0 rounded-lg px-3 py-2 text-[13px]">
+        <p className="bg-hover text-ink-2 m-0 rounded-md px-3 py-2 text-[13px]">
           {t('handover.none')}
         </p>
       )}

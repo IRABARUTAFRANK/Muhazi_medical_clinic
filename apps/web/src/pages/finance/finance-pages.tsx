@@ -20,6 +20,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { CLINIC_PROFILE, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { Empty, IconChip, Panel, Pill } from '@/components/dash/kit'
+import { tileClass } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ListBar, Pager } from '@/components/ui/list-tools'
@@ -109,7 +110,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
         {loadError && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
             {t('dashboard.loadFailed', { message: loadError.message })}
           </p>
@@ -130,7 +131,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
               {paged.slice.map((b, i) => (
                 <div
                   key={b.encounterId}
-                  className="border-grid anim-enter flex min-h-12 flex-wrap items-center gap-3 border-b py-2.5 text-[14px] last:border-b-0"
+                  className="border-grid anim-enter flex min-h-10 flex-wrap items-center gap-3 border-b py-2.5 text-[14px] last:border-b-0"
                   style={{ '--i': Math.min(i, 12) } as CSSProperties}
                 >
                   <Pill tint="amber" icon={Receipt}>
@@ -148,7 +149,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
                   <span className="text-ink-3 text-[13px] tabular-nums">
                     {t('finance.billTotal', { amount: formatRwf(b.amount) })}
                   </span>
-                  <span className="font-bold whitespace-nowrap tabular-nums">
+                  <span className="font-semibold whitespace-nowrap tabular-nums">
                     {formatRwf(b.balance)}
                   </span>
                   <StaffLink
@@ -201,11 +202,11 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
       title={t('cashierDesk.unpaid.title')}
       right={t('finance.debtsTotal', { count: debts.length, amount: formatRwf(total) })}
     >
-      <p className="text-ink-2 m-0 text-[13px]">{t('cashierDesk.unpaid.lead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('cashierDesk.unpaid.lead')}</p>
       {error && (
         <p
           role="alert"
-          className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+          className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
         >
           {t('dashboard.loadFailed', { message: error.message })}
         </p>
@@ -220,7 +221,7 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
           {paged.slice.map((d) => (
             <div
               key={d.encounterId}
-              className="border-grid flex min-h-12 flex-wrap items-center gap-3 border-b py-2.5 text-[14px] last:border-b-0"
+              className="border-grid flex min-h-10 flex-wrap items-center gap-3 border-b py-2.5 text-[14px] last:border-b-0"
             >
               {d.status && (
                 <Pill tint={statusTint(d.status)}>
@@ -253,7 +254,7 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
                   </span>
                 )}
               </span>
-              <span className="font-bold whitespace-nowrap tabular-nums">
+              <span className="font-semibold whitespace-nowrap tabular-nums">
                 {formatRwf(d.amount)}
               </span>
               <StaffLink
@@ -386,7 +387,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           lead={t('finance.paymentsLead')}
           meta={<BannerChip icon={HandCoins}>{formatRwf(dayTotal)}</BannerChip>}
         >
-          <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">
+          <label className="border-border bg-card flex h-10 items-center gap-2 rounded-md border px-3 text-[14px]">
             <CalendarDays size={16} aria-hidden="true" className="text-ink-3" />
             <span className="sr-only">{t('finance.day')}</span>
             <input
@@ -412,41 +413,40 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
         {loadError && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
             {t('dashboard.loadFailed', { message: loadError.message })}
           </p>
         )}
 
         {/* Day close: totals by method and by cashier */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {methods.map((m, i) => {
             const Icon = METHOD_ICON[m] ?? Wallet
+            // one tint per payment method, the same as its chip elsewhere
+            const tint =
+              m === 'cash'
+                ? 'mint'
+                : m === 'momo'
+                  ? 'amber'
+                  : m === 'airtel'
+                    ? 'coral'
+                    : m === 'card'
+                      ? 'violet'
+                      : 'teal'
             return (
               <div
                 key={m}
-                className="bg-card shadow-card anim-enter flex items-center gap-3 rounded-[16px] px-4 py-3"
+                className={cn(
+                  'anim-enter flex items-center gap-3 rounded-md border px-4 py-3',
+                  tileClass[tint],
+                )}
                 style={{ '--i': i } as CSSProperties}
               >
-                <IconChip
-                  icon={Icon}
-                  tint={
-                    m === 'cash'
-                      ? 'mint'
-                      : m === 'momo'
-                        ? 'amber'
-                        : m === 'airtel'
-                          ? 'coral'
-                          : m === 'card'
-                            ? 'violet'
-                            : 'teal'
-                  }
-                />
+                <IconChip icon={Icon} tint={tint} />
                 <span className="min-w-0 flex-1">
-                  <span className="text-ink-2 block text-[13px] font-semibold">
-                    {methodName(m)}
-                  </span>
-                  <span className="block text-[20px] font-extrabold tabular-nums">
+                  <span className="text-ink-2 block text-[13px] font-medium">{methodName(m)}</span>
+                  <span className="block text-[28px] leading-8 font-semibold tabular-nums">
                     {formatRwf(amountOf(m))}
                   </span>
                   <span className="text-ink-3 block text-[12px]">
@@ -458,23 +458,29 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
               </div>
             )
           })}
-          <div className="bg-navy anim-enter flex items-center gap-3 rounded-[16px] px-4 py-3 text-white">
-            <HandCoins size={22} aria-hidden="true" />
+          <div
+            className={cn(
+              'anim-enter flex items-center gap-3 rounded-md border px-4 py-3',
+              tileClass.navy,
+            )}
+            style={{ '--i': methods.length } as CSSProperties}
+          >
+            <IconChip icon={HandCoins} tint="navy" />
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold text-white/80">
+              <span className="text-ink-2 block text-[13px] font-medium">
                 {t('finance.dayTotal', { day: formatDate(new Date(day)) })}
               </span>
-              <span className="block text-[22px] font-extrabold tabular-nums">
+              <span className="text-navy-ink block text-[28px] leading-8 font-semibold tabular-nums">
                 {formatRwf(dayTotal)}
               </span>
-              <span className="block text-[12px] text-white/70">
+              <span className="text-ink-3 block text-[12px]">
                 {t('finance.paymentsCount', { count: s?.count ?? 0 })}
                 {(s?.refunded ?? 0) > 0 &&
                   ` · ${t('finance.afterRefunds', { amount: formatRwf(s?.refunded ?? 0) })}`}
               </span>
               {/* walk-in buyers' sales are in the total, said apart */}
               {(s?.counterSales?.count ?? 0) > 0 && (
-                <span className="block text-[12px] text-white/70">
+                <span className="text-ink-3 block text-[12px]">
                   {t('cashierDesk.counter.inTotal', {
                     count: s!.counterSales!.count,
                     amount: formatRwf(s!.counterSales!.total),
@@ -489,12 +495,12 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
         )}
         {/* someone outside the cash desk sees only what they took */}
         {s?.scope === 'mine' && (
-          <p className="bg-primary-tint text-primary m-0 rounded-xl px-3 py-2 text-[14px] print:hidden">
+          <p className="bg-primary-tint text-primary m-0 rounded-md px-3 py-2 text-[14px] print:hidden">
             {t('finance.mineOnly')}
           </p>
         )}
         {(s?.counterToPay ?? []).length > 0 && day === today() && (
-          <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-[14px] font-semibold print:hidden">
+          <p className="border-amber/30 bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[14px] font-medium print:hidden">
             <ShoppingBag size={16} aria-hidden="true" />
             {t('cashierDesk.counter.waitingNote', {
               count: s!.counterToPay!.length,
@@ -515,7 +521,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
               {s.byCashier.map((c) => (
                 <span
                   key={c.name}
-                  className="border-border bg-surface inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[14px]"
+                  className="border-border bg-surface inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-[14px]"
                 >
                   <UserRound size={14} aria-hidden="true" className="text-ink-3" />
                   <b>{c.name}</b>
@@ -537,7 +543,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                 aria-pressed={method === m}
                 onClick={() => setMethod(m)}
                 className={cn(
-                  'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                  'inline-flex min-h-8 items-center gap-1.5 rounded-md border px-3 text-[14px] font-medium',
                   method === m
                     ? 'border-primary bg-primary text-white'
                     : 'border-border bg-card text-ink-2 hover:bg-hover',
@@ -553,14 +559,14 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[14px]">
                 <thead>
-                  <tr className="text-ink-3 text-left text-[12px] tracking-[.04em] uppercase">
-                    <th className="border-border border-b py-2 pr-2 font-semibold">
+                  <tr className="text-ink-3 text-left text-[12px]">
+                    <th className="border-border border-b py-2 pr-2 font-medium">
                       {t('finance.cols.time')}
                     </th>
-                    <th className="border-border border-b py-2 pr-2 font-semibold">
+                    <th className="border-border border-b py-2 pr-2 font-medium">
                       {t('finance.cols.patient')}
                     </th>
-                    <th className="border-border border-b py-2 pr-2 font-semibold">
+                    <th className="border-border border-b py-2 pr-2 font-medium">
                       {t('finance.cols.method')}
                     </th>
                     <th className="border-border hidden border-b py-2 pr-2 font-semibold sm:table-cell">
@@ -613,7 +619,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                         <td className="text-ink-2 hidden py-2 pr-2 md:table-cell">
                           {p.cashier ?? '—'}
                         </td>
-                        <td className="py-2 text-right font-bold tabular-nums">
+                        <td className="py-2 text-right font-semibold tabular-nums">
                           {formatRwf(p.amount)}
                         </td>
                         <td className="py-2 pl-2 text-right whitespace-nowrap print:hidden">
@@ -753,7 +759,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                         .join(' · ')}
                     </span>
                   </span>
-                  <span className="text-ink-3 font-bold tabular-nums line-through">
+                  <span className="text-ink-3 font-semibold tabular-nums line-through">
                     {formatRwf(v.amount)}
                   </span>
                 </div>
@@ -784,7 +790,9 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                       {[r.reference, `“${r.reason}”`, r.cashier].filter(Boolean).join(' · ')}
                     </span>
                   </span>
-                  <span className="text-amber font-bold tabular-nums">−{formatRwf(r.amount)}</span>
+                  <span className="text-amber font-semibold tabular-nums">
+                    −{formatRwf(r.amount)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -873,18 +881,18 @@ function CountCashPanel({
     <Panel i={3} icon={Calculator} tint="navy" title={t('finance.countTitle')}>
       {canCount && (
         <>
-          <p className="text-ink-2 m-0 text-[13px]">{t('finance.countLead')}</p>
+          <p className="text-ink-2 m-0 text-[14px]">{t('finance.countLead')}</p>
           {(summary.counterSales?.count ?? 0) > 0 && (
             <p className="text-ink-3 m-0 text-[13px]">{t('cashierDesk.counter.inCount')}</p>
           )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {methods.map((m) => (
-              <label key={m} className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+              <label key={m} className="text-ink-2 flex flex-col gap-1 text-[14px] font-semibold">
                 {t(`visit.payment.methods.${m}`)} ·{' '}
                 {t('finance.expected', { amount: formatRwf(Number(expected[m] ?? 0)) })}
                 <input
                   inputMode="numeric"
-                  className="border-border bg-card focus:border-primary h-10 rounded-lg border px-2.5 text-[14px] font-normal outline-none"
+                  className="border-border bg-card focus:border-primary h-10 rounded-md border px-2.5 text-[14px] font-normal outline-none"
                   value={counted[m] ?? ''}
                   onChange={(e) =>
                     setCounted((c) => ({ ...c, [m]: e.target.value.replace(/[^\d]/g, '') }))
@@ -894,10 +902,10 @@ function CountCashPanel({
               </label>
             ))}
           </div>
-          <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+          <label className="text-ink-2 flex flex-col gap-1 text-[14px] font-semibold">
             {t('finance.countNote')}
             <input
-              className="border-border bg-card focus:border-primary h-10 rounded-lg border px-2.5 text-[14px] font-normal outline-none"
+              className="border-border bg-card focus:border-primary h-10 rounded-md border px-2.5 text-[14px] font-normal outline-none"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={t('finance.countNotePh')}
@@ -911,7 +919,7 @@ function CountCashPanel({
             {typed ? (
               <span
                 className={cn(
-                  'text-[14px] font-bold tabular-nums',
+                  'text-[14px] font-semibold tabular-nums',
                   diff === 0 ? 'text-green' : 'text-red',
                 )}
               >
@@ -930,7 +938,7 @@ function CountCashPanel({
       )}
       {(summary.closes ?? []).length > 0 && (
         <div className="flex flex-col">
-          <span className="text-ink-2 text-[13px] font-semibold">{t('finance.countsOfDay')}</span>
+          <span className="text-ink-2 text-[14px] font-semibold">{t('finance.countsOfDay')}</span>
           {(summary.closes ?? []).map((c, i) => (
             <div
               key={i}
@@ -945,7 +953,7 @@ function CountCashPanel({
               </span>
               <span
                 className={cn(
-                  'font-bold tabular-nums',
+                  'font-semibold tabular-nums',
                   Number(c.variance) === 0 ? 'text-green' : 'text-red',
                 )}
               >

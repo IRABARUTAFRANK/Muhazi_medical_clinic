@@ -62,7 +62,7 @@ export function OpenNextButton({
         {next && <span className="font-normal opacity-80">· {next.ticket}</span>}
       </Button>
       {message && (
-        <span role="status" className="text-ink-2 text-[13px] font-semibold">
+        <span role="status" className="text-ink-2 text-[13px] font-medium">
           {message}
         </span>
       )}

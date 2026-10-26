@@ -44,10 +44,10 @@ export function IdleWarning() {
   return (
     <div
       role="status"
-      className="bg-amber-bg text-ink border-amber shadow-card fixed right-4 bottom-4 left-4 z-[90] flex flex-col gap-2 rounded-xl border px-4 py-3 sm:left-auto sm:max-w-[440px]"
+      className="bg-card text-ink border-border border-l-yellow-dot shadow-sheet fixed right-4 bottom-4 left-4 z-[90] flex flex-col gap-2 rounded-md border border-l-2 px-4 py-3 sm:left-auto sm:max-w-[440px]"
     >
       <span className="flex items-start gap-3">
-        <Clock size={18} aria-hidden="true" className="mt-0.5 flex-none" />
+        <Clock size={16} aria-hidden="true" className="text-yellow mt-0.5 flex-none" />
         <span className="flex-1 text-[13px]">
           <b className="block">{t('session.idleFor', { time: idle })}</b>
           <span className="text-ink-2 block">
@@ -102,33 +102,33 @@ export function LockScreen() {
       role="dialog"
       aria-modal="true"
       aria-label={t('lock.byYouTitle')}
-      className="band-gradient text-ink fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="bg-surface text-ink fixed inset-0 z-[100] flex items-center justify-center p-4"
     >
       <form
         onSubmit={submit}
-        className="bg-card shadow-sheet flex w-full max-w-[400px] flex-col gap-4 rounded-2xl p-6"
+        className="bg-card border-border shadow-sheet flex w-full max-w-[400px] flex-col gap-4 rounded-md border p-6"
       >
         <div className="flex items-center gap-3">
-          <span className="icon-gradient inline-flex size-11 flex-none items-center justify-center rounded-xl text-white">
-            <Lock size={22} aria-hidden="true" />
+          <span className="border-primary/25 bg-primary-tint text-primary inline-flex size-9 flex-none items-center justify-center rounded-md border">
+            <Lock size={18} aria-hidden="true" />
           </span>
           <span>
-            <span className="block text-lg font-bold">{t('lock.byYouTitle')}</span>
+            <span className="block text-[16px] font-semibold">{t('lock.byYouTitle')}</span>
             <span className="text-ink-3 text-[13px]">
               {t('lock.byYouBody', { name: user.name })}
             </span>
           </span>
         </div>
-        <div className="bg-surface flex items-center gap-3 rounded-lg px-3 py-2">
+        <div className="border-border bg-surface flex items-center gap-3 rounded-md border px-3 py-2">
           <Avatar name={user.name} size="md" />
           <span>
-            <span className="block font-semibold">{user.name}</span>
-            <span className="text-ink-3 text-xs">{user.username}</span>
+            <span className="block font-medium">{user.name}</span>
+            <span className="text-ink-3 text-[13px]">{user.username}</span>
           </span>
         </div>
         {lastActiveAt != null && (
-          <p className="bg-blue-bg text-ink-2 m-0 flex items-start gap-2 rounded-lg px-3 py-2 text-[13px]">
-            <Clock size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+          <p className="text-ink-2 m-0 flex items-start gap-2 text-[13px]">
+            <Clock size={15} aria-hidden="true" className="text-ink-3 mt-0.5 flex-none" />
             <span>
               {t('lock.idleSignOut', {
                 time: formatTime(new Date(idleDeadline({ lastActiveAt, sessionHours: hours }))),
@@ -150,13 +150,13 @@ export function LockScreen() {
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            className="border-red/25 bg-red-bg text-red m-0 rounded-md border px-3 py-1.5 text-[13px] font-medium"
           >
             {error}
           </p>
         )}
         {!error && failures > 0 && (
-          <p className="text-ink-3 m-0 text-xs">
+          <p className="text-ink-3 m-0 text-[12px]">
             {t('lock.wrongLeft', { count: Math.max(1, MAX_UNLOCK_FAILURES - failures) })}
           </p>
         )}

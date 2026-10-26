@@ -2,6 +2,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AdjustMode } from '@/lib/adjust'
 import { cn } from '@/lib/utils'
+import { controlClass } from './field'
 
 /**
  * A number input with a small mode switch next to the label: % off, RWF off, × multiplier
@@ -31,15 +32,15 @@ export function AdjustField({
   const { t } = useTranslation()
   const id = useId()
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <label htmlFor={id} className="text-ink-2 text-[13px] font-semibold">
+        <label htmlFor={id} className="text-ink-2 text-[13px] font-medium">
           {label}
         </label>
         <div
           role="radiogroup"
           aria-label={t('adjust.mode')}
-          className="bg-hover inline-flex rounded-lg p-0.5"
+          className="border-border bg-surface inline-flex h-7 gap-0.5 rounded-md border p-0.5"
         >
           {modes.map((m) => (
             <button
@@ -51,8 +52,10 @@ export function AdjustField({
               title={t(`adjust.titles.${m}`)}
               onClick={() => onMode(m)}
               className={cn(
-                'min-w-9 rounded-md px-2 py-1 text-xs font-bold transition-colors',
-                mode === m ? 'bg-card text-primary shadow-sm' : 'text-ink-3 hover:text-ink',
+                'min-w-9 rounded border px-2 text-[12px] font-medium transition-colors duration-120',
+                mode === m
+                  ? 'border-border bg-card text-ink'
+                  : 'text-ink-3 hover:text-ink border-transparent',
               )}
             >
               {t(`adjust.short.${m}`)}
@@ -68,10 +71,7 @@ export function AdjustField({
         disabled={disabled}
         placeholder={t(`adjust.ph.${mode}`)}
         aria-invalid={invalid || undefined}
-        className={cn(
-          'border-border bg-card text-ink focus:border-primary focus:ring-primary-tint h-11 rounded-lg border px-3 text-[15px] tabular-nums outline-none focus:ring-[3px] disabled:opacity-60',
-          invalid && 'border-red',
-        )}
+        className={cn(controlClass, 'tabular-nums', invalid && 'border-red')}
       />
       {hint && <span className="text-ink-3 text-xs">{hint}</span>}
     </div>

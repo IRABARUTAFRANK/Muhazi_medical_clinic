@@ -185,7 +185,7 @@ function RoleHome({ user, mode }: HomePageProps) {
       <OpenNextButton
         key={a.id}
         user={user}
-        className="[&>button]:min-h-[48px] [&>button]:w-full"
+        className="[&>button]:h-auto [&>button]:min-h-9 [&>button]:w-full [&>button]:px-2 [&>button]:py-1.5 [&>button]:whitespace-normal"
       />
     ) : (
       <StaffLink
@@ -193,7 +193,7 @@ function RoleHome({ user, mode }: HomePageProps) {
         to={a.to}
         className={cn(
           buttonVariants({ variant: a.primary ? 'primary' : 'default' }),
-          'min-h-[48px] px-2 text-center text-[14px] leading-tight whitespace-normal sm:min-h-[52px]',
+          'h-auto min-h-9 px-2 py-1.5 text-center leading-tight whitespace-normal',
         )}
       >
         {t(a.labelKey)}
@@ -209,12 +209,12 @@ function RoleHome({ user, mode }: HomePageProps) {
       time={timeForMode[mode]}
       tabletActions={tabletActions}
     >
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         {/* WHO IS SIGNED IN */}
         <IdentityBanner user={user} greeting={greetingFor(user.name, t)} />
 
         {/* TOOLBAR: what this desk is, freshness, quick actions */}
-        <div className="anim-enter flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <span className="inline-flex items-center gap-1.5 font-semibold">
               <ClipboardCheck size={16} aria-hidden="true" className="text-primary" />
@@ -474,7 +474,7 @@ function RoleTiles({
     )
   }
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
       {tiles}
     </div>
   )

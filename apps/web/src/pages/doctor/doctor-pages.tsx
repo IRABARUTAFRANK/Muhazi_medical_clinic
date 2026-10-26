@@ -9,6 +9,7 @@ import {
   ListOrdered,
   Pill as PillIcon,
   TestTube,
+  TriangleAlert,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -48,7 +49,7 @@ import { MyQueuePanel } from '../home/role-panels'
 
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
 
-/** Tabs as pills with a count. */
+/** Tabs as 32 px bordered chips with a count; the open one on the teal tint. */
 function Tabs<K extends string>({
   value,
   onChange,
@@ -68,17 +69,17 @@ function Tabs<K extends string>({
           aria-selected={value === x.id}
           onClick={() => onChange(x.id)}
           className={cn(
-            'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+            'focus-visible:ring-primary/20 inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors duration-120 outline-none focus-visible:ring-2',
             value === x.id
-              ? 'border-primary bg-primary text-white'
+              ? 'border-primary/30 bg-primary-tint text-primary'
               : 'border-border bg-card text-ink-2 hover:bg-hover',
           )}
         >
           {x.label}
           <span
             className={cn(
-              'rounded-full px-1.5 text-[12px]',
-              value === x.id ? 'bg-white/20' : 'bg-hover',
+              'rounded px-1.5 text-[12px] tabular-nums',
+              value === x.id ? 'bg-card' : 'bg-hover',
             )}
           >
             {x.count}
@@ -148,7 +149,7 @@ export function QueuePage({ user }: { user: StaffUser }) {
   const desk = t(`register.stations.${station}`)
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="queue">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         <PageBanner
           icon={ListOrdered}
           tint="amber"
@@ -208,7 +209,8 @@ function useLastWeekPeriod(): Period {
 function PeriodCutNote() {
   const { t } = useTranslation()
   return (
-    <p className="bg-amber-bg text-amber m-0 rounded-xl px-3 py-2 text-[14px] font-semibold">
+    <p className="border-amber/30 bg-amber-bg text-amber m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] font-medium">
+      <TriangleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
       {t('doctorLists.periodNeedsUpdate')}
     </p>
   )
@@ -249,7 +251,7 @@ export function ResultsPage({ user }: { user: StaffUser }) {
   const paged = usePaged(shown, 15, `${tab}|${query}|${period.from}|${period.to}`)
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="results">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         <PageBanner
           icon={FlaskConical}
           tint="coral"
@@ -315,7 +317,7 @@ export function ResultsPage({ user }: { user: StaffUser }) {
                       />
                     </div>
                     {(o.findings || o.impression) && (
-                      <span className="bg-green-bg/60 block rounded-lg px-3 py-2 text-[13px]">
+                      <span className="border-border bg-card border-l-green-dot block rounded-md border border-l-2 px-3 py-2 text-[13px]">
                         {o.findings && <span className="block">{o.findings}</span>}
                         {o.impression && (
                           <span className="block font-semibold">{o.impression}</span>
@@ -370,7 +372,7 @@ export function PrescriptionsPage({ user }: { user: StaffUser }) {
   const paged = usePaged(shown, 15, `${tab}|${query}|${period.from}|${period.to}`)
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="prescriptions">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         <PageBanner
           icon={PillIcon}
           tint="violet"

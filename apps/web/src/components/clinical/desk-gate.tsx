@@ -27,7 +27,7 @@ export function NoDeskNotice({
     <p
       role="status"
       className={cn(
-        'bg-violet-bg text-violet m-0 flex items-start gap-3 rounded-xl px-4 py-3.5 text-[14px]',
+        'bg-violet-bg text-violet border-violet/30 m-0 flex items-start gap-3 rounded-md border px-4 py-3.5 text-[14px]',
         className,
       )}
     >

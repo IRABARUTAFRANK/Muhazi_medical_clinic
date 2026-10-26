@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react'
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Info, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, isoDate, type StaffUser } from '@mmc/shared'
 import { AppointmentDetail } from './appointment-detail'
@@ -73,7 +73,7 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
           title={t('ops.appts.title')}
           lead={t('ops.appts.lead')}
         >
-          <div className="bg-card shadow-card flex items-center gap-1 rounded-xl p-1">
+          <div className="border-border bg-card flex items-center gap-1 rounded-md border p-1">
             <Button
               size="icon"
               variant="ghost"
@@ -94,7 +94,7 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
               <ChevronRight size={16} aria-hidden="true" />
             </Button>
           </div>
-          <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">
+          <label className="border-border bg-card flex h-[38px] items-center gap-2 rounded-md border px-3 text-[14px]">
             <span className="sr-only">{t('ops.appts.pickDay')}</span>
             <input
               type="date"
@@ -129,8 +129,9 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
 
         {/* the manager oversees the bookings; reception books them and the doctor accepts */}
         {!canAct && user.role === 'manager' && (
-          <p className="bg-primary-tint text-primary m-0 rounded-xl px-3 py-2.5 text-[14px]">
-            {t('ops.appts.managerOversees')}
+          <p className="border-border bg-card text-ink-2 border-l-primary m-0 flex items-start gap-2 rounded-md border border-l-[3px] px-3 py-2 text-[14px]">
+            <Info size={16} aria-hidden="true" className="text-primary mt-0.5 flex-none" />
+            <span>{t('ops.appts.managerOversees')}</span>
           </p>
         )}
         <section className="flex flex-col gap-3">

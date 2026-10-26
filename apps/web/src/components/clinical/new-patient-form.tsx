@@ -127,7 +127,7 @@ export function NewPatientForm({
       </CardHeader>
       <form onSubmit={submit}>
         <CardBody className="gap-3">
-          <p className="text-ink-2 bg-primary-tint/60 m-0 rounded-lg px-3 py-2 text-xs">
+          <p className="text-ink-2 bg-primary-tint/60 m-0 rounded-md px-3 py-2 text-xs">
             {t(
               fileOnly
                 ? 'register.fileOnly.hint'
@@ -229,7 +229,7 @@ export function NewPatientForm({
           </div>
           {/* a possible duplicate never blocks: the file may still be registered */}
           {duplicates.length > 0 && (
-            <div className="bg-amber-bg text-amber flex flex-col gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold">
+            <div className="bg-amber-bg text-amber flex flex-col gap-2 rounded-md px-3 py-2 text-[13px] font-semibold">
               {duplicates.map((d) => (
                 <span key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <AlertTriangle size={16} aria-hidden="true" className="flex-none" />
@@ -250,7 +250,7 @@ export function NewPatientForm({
           {error && (
             <p
               role="alert"
-              className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+              className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold"
             >
               {error}
             </p>

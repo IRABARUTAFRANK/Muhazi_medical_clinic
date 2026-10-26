@@ -79,12 +79,12 @@ export function StartVisitConfirm({
       role="alertdialog"
       aria-label={title}
       className={cn(
-        'anim-enter flex flex-col gap-3 rounded-xl border p-3.5',
+        'anim-enter flex flex-col gap-3 rounded-md border p-3.5',
         emergency ? 'border-red/40 bg-red-bg/60' : 'border-primary/40 bg-primary-tint/50',
         className,
       )}
     >
-      <p className="m-0 text-[15px] leading-snug font-bold">
+      <p className="m-0 text-[16px] leading-snug font-semibold">
         {title}
         {fileNumber && (
           <span className="text-ink-3 ml-2 text-[13px] font-semibold tabular-nums">
@@ -98,7 +98,7 @@ export function StartVisitConfirm({
             key={p.text}
             className={cn(
               'flex items-start gap-2 text-[13px]',
-              p.strong ? 'text-red font-bold' : 'text-ink-2',
+              p.strong ? 'text-red font-semibold' : 'text-ink-2',
             )}
           >
             <p.icon size={15} aria-hidden="true" className="mt-0.5 flex-none" />

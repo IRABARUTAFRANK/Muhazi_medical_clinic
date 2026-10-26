@@ -167,7 +167,7 @@ export function StoresTab({
   }
   return (
     <Panel i={1} icon={Store} tint="amber" title={t('stock.storesTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stockStores.lead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('stockStores.lead')}</p>
       <div className="flex flex-col gap-2">
         {stores.map((l) => {
           const units = unitsIn(l.id)
@@ -177,13 +177,13 @@ export function StoresTab({
             <div
               key={l.id}
               className={cn(
-                'border-border flex flex-wrap items-center gap-3 rounded-xl border p-3',
+                'border-border flex flex-wrap items-center gap-3 rounded-md border p-3',
                 closed && 'opacity-75',
               )}
             >
               <Store size={18} aria-hidden="true" className="text-ink-3" />
               <span className="min-w-[200px] flex-1">
-                <span className={cn('block font-bold', closed && 'text-ink-3 line-through')}>
+                <span className={cn('block font-semibold', closed && 'text-ink-3 line-through')}>
                   {l.name}
                 </span>
                 <span className="text-ink-3 block text-[12px]">
@@ -308,7 +308,7 @@ export function PharmacyCountForm({
   }
   return (
     <Panel i={2} icon={Boxes} tint="teal" title={t('stock.countTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stockStores.countLead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('stockStores.countLead')}</p>
       <form
         onSubmit={(e) => void submit(e)}
         className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_120px]"

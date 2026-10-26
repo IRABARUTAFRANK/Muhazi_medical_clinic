@@ -62,7 +62,7 @@ export function PermissionsCard() {
           </span>
         </CardHeader>
         <CardBody className="gap-3">
-          <p className="text-ink-2 m-0 text-[13px]">{t('perms.lead')}</p>
+          <p className="text-ink-2 m-0 text-[14px]">{t('perms.lead')}</p>
           {(loadError || error) && (
             <Flash tone="error" onClose={() => setError(null)}>
               {error ?? loadError?.message}
@@ -73,8 +73,8 @@ export function PermissionsCard() {
               {notice}
             </Flash>
           )}
-          <div className="border-border overflow-x-auto rounded-xl border">
-            <table className="w-full min-w-[760px] text-[13px]">
+          <div className="border-border overflow-x-auto rounded-md border">
+            <table className="w-full min-w-[760px] text-[14px]">
               <thead className="bg-hover/60 text-ink-2">
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold">{t('perms.feature')}</th>
@@ -131,7 +131,7 @@ export function PermissionsCard() {
                               )
                             }}
                             className={cn(
-                              'inline-flex size-9 items-center justify-center rounded-lg border transition-colors',
+                              'inline-flex size-9 items-center justify-center rounded-md border transition-colors',
                               on
                                 ? 'border-green/40 bg-green-bg text-green'
                                 : 'border-border bg-card text-ink-3 hover:bg-hover',
@@ -156,11 +156,11 @@ export function PermissionsCard() {
 
         {/* One employee */}
         <CardBody className="border-border gap-3 border-t">
-          <h3 className="m-0 inline-flex items-center gap-2 text-[15px] font-bold">
+          <h3 className="m-0 inline-flex items-center gap-2 text-[16px] font-semibold">
             <UserCog size={16} aria-hidden="true" />
             {t('perms.oneTitle')}
           </h3>
-          <p className="text-ink-2 m-0 text-[13px]">{t('perms.oneLead')}</p>
+          <p className="text-ink-2 m-0 text-[14px]">{t('perms.oneLead')}</p>
           <Select
             label={t('perms.employee')}
             value={person}
@@ -184,7 +184,7 @@ export function PermissionsCard() {
                 return (
                   <div
                     key={f}
-                    className="border-border flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2"
+                    className="border-border flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3 py-2"
                   >
                     <span className="min-w-[200px] flex-1">
                       <span className="block font-semibold">{t(`perms.f.${f}.name`)}</span>
@@ -249,9 +249,9 @@ export function PermissionsCard() {
           )}
           {matrix && matrix.exceptions.length > 0 && (
             <div className="flex flex-col gap-1">
-              <span className="text-ink-2 text-[13px] font-semibold">{t('perms.current')}</span>
+              <span className="text-ink-2 text-[14px] font-semibold">{t('perms.current')}</span>
               {matrix.exceptions.map((x) => (
-                <span key={x.profileId + x.permission} className="text-[13px]">
+                <span key={x.profileId + x.permission} className="text-[14px]">
                   <b>{x.name}</b> · {t(`perms.f.${x.permission}.name`)}:{' '}
                   <span className={x.allowed ? 'text-green' : 'text-red'}>
                     {t(x.allowed ? 'perms.allowed' : 'perms.notAllowed')}

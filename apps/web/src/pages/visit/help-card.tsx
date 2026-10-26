@@ -11,7 +11,7 @@ import { useColleagues } from '@/lib/api/referrals'
 import { useConfirm } from '@/lib/confirm'
 
 const control =
-  'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-lg border px-2.5 text-[14px] outline-none'
+  'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-md border px-2.5 text-[14px] outline-none'
 
 /**
  * "Ask a colleague for help" on the visit screen: one colleague or every doctor, with what the
@@ -119,7 +119,7 @@ export function HelpCard({
         {access.help.map((h) => (
           <div
             key={h.callId}
-            className="border-border flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2"
+            className="border-border flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3 py-2"
           >
             <span className="min-w-[200px] flex-1 text-[14px]">
               <span className="block font-semibold">
@@ -181,7 +181,7 @@ export function HelpCard({
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder={t('calls.help.whatPh')}
-                  className="border-border bg-card focus:border-primary rounded-lg border px-2.5 py-2 text-[14px] font-normal outline-none"
+                  className="border-border bg-card focus:border-primary rounded-md border px-2.5 py-2 text-[14px] font-normal outline-none"
                 />
               </label>
               <span className="flex flex-wrap gap-2">

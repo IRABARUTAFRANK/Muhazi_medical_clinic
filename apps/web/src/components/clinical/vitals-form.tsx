@@ -271,13 +271,13 @@ export function VitalsForm({
       <form onSubmit={submit}>
         <CardBody className="gap-4">
           {lockedNote && (
-            <p className="bg-violet-bg text-violet m-0 flex items-start gap-2 rounded-xl px-3 py-2 text-[13px] font-semibold">
+            <p className="bg-violet-bg text-violet border-violet/30 m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-semibold">
               <Lock size={16} aria-hidden="true" className="mt-px flex-none" />
               {lockedNote}
             </p>
           )}
           {!lockedNote && measureOnly && (
-            <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-start gap-x-2 gap-y-1 rounded-xl px-3 py-2 text-[13px] font-semibold">
+            <p className="bg-amber-bg text-amber border-amber/30 m-0 flex flex-wrap items-start gap-x-2 gap-y-1 rounded-md border px-3 py-2 text-[13px] font-semibold">
               {refused && (
                 <span className="basis-full">
                   {t('vitalsForm.notSentOn', { message: refused })}
@@ -292,7 +292,7 @@ export function VitalsForm({
             className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0"
           >
             {taken && (
-              <p className="bg-green-bg text-green m-0 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl px-3 py-2 text-[13px] font-semibold">
+              <p className="bg-green-bg text-green border-green/30 m-0 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border px-3 py-2 text-[13px] font-semibold">
                 <Activity size={16} aria-hidden="true" />
                 {latest?.measuredBy
                   ? t('vitalsForm.taken', {
@@ -311,7 +311,7 @@ export function VitalsForm({
             <div
               className={cn(
                 // minmax(0, …): long nurse names must not push "Measured at" past the card edge.
-                'grid min-w-0 grid-cols-1 gap-3 rounded-xl border p-3 sm:grid-cols-[minmax(0,2fr)_minmax(140px,1fr)]',
+                'grid min-w-0 grid-cols-1 gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,2fr)_minmax(140px,1fr)]',
                 fromPaper ? 'border-amber/40 bg-amber-bg/50' : 'border-border',
               )}
             >
@@ -373,7 +373,7 @@ export function VitalsForm({
                     <label
                       key={l}
                       className={cn(
-                        'border-border flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 font-semibold',
+                        'border-border flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-3 font-semibold',
                         colourSet && level === l && 'border-primary bg-primary-tint',
                       )}
                     >
@@ -405,7 +405,7 @@ export function VitalsForm({
                       <label
                         key={l}
                         className={cn(
-                          'border-border flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 font-semibold',
+                          'border-border flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-3 font-semibold',
                           level === l && 'border-primary bg-primary-tint',
                         )}
                       >
@@ -444,7 +444,7 @@ export function VitalsForm({
                     placeholder={t('triage.reasonPh')}
                   />
                   {missing && missing.length > 0 && (
-                    <p className="text-amber bg-amber-bg col-span-full m-0 rounded-lg px-3 py-2 text-xs font-semibold">
+                    <p className="text-amber bg-amber-bg col-span-full m-0 rounded-md px-3 py-2 text-xs font-semibold">
                       {t(next === 'reception' ? 'files.sendToReception' : 'files.stillMissing', {
                         missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
                       })}
@@ -458,7 +458,7 @@ export function VitalsForm({
           {error && (
             <p
               role="alert"
-              className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+              className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold"
             >
               {error}
             </p>

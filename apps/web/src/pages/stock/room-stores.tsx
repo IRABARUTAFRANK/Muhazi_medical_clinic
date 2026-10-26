@@ -274,9 +274,9 @@ function SendNoteForm({
   return (
     <div id="send-note">
       <Panel i={2} icon={Send} tint="teal" title={t('roomStores.sendTitle')}>
-        <p className="text-ink-2 m-0 text-[13px]">{t('roomStores.sendLead')}</p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('roomStores.sendLead')}</p>
         {preset.requestNumber && (
-          <p className="bg-blue-bg text-blue m-0 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <p className="border-blue/30 bg-blue-bg text-blue m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[14px] font-medium">
             {t('roomStores.fromRequest', { number: preset.requestNumber })}
             <button type="button" className="underline" onClick={onClear}>
               {t('roomStores.clearRequest')}
@@ -404,12 +404,12 @@ function RoomStoresList({
         )
       }
     >
-      <p className="text-ink-2 m-0 text-[13px]">
+      <p className="text-ink-2 m-0 text-[14px]">
         {t(isManager ? 'roomStores.listLeadManager' : 'roomStores.listLead')}
       </p>
       {/* open stores nobody holds: nobody can confirm a note or give from them */}
       {orphans.length > 0 && (
-        <div className="bg-orange-bg text-orange flex flex-col gap-2 rounded-lg px-3 py-2 text-[13px]">
+        <div className="bg-orange-bg text-orange flex flex-col gap-2 rounded-md px-3 py-2 text-[14px]">
           <p className="m-0 font-semibold">
             {t('roomStores.withoutHolder', { count: orphans.length })}
           </p>
@@ -452,13 +452,13 @@ function RoomStoresList({
             return (
               <div
                 key={l.id}
-                className={cn('border-border rounded-xl border', closed && 'opacity-75')}
+                className={cn('border-border rounded-md border', closed && 'opacity-75')}
               >
                 <button
                   type="button"
                   aria-expanded={open === l.id}
                   onClick={() => setOpen(open === l.id ? null : l.id)}
-                  className="hover:bg-hover flex w-full flex-wrap items-center gap-3 rounded-xl p-3 text-left"
+                  className="hover:bg-hover flex w-full flex-wrap items-center gap-3 rounded-md p-3 text-left"
                 >
                   {open === l.id ? (
                     <ChevronDown size={16} aria-hidden="true" />
@@ -466,14 +466,14 @@ function RoomStoresList({
                     <ChevronRight size={16} aria-hidden="true" />
                   )}
                   <span className="min-w-[200px] flex-1">
-                    <span className="block font-bold">{l.name}</span>
+                    <span className="block font-semibold">{l.name}</span>
                     <span className="text-ink-3 flex items-center gap-1 text-[12px]">
                       <Users size={12} aria-hidden="true" />
                       {t(`stock.storeTypes.${l.type}`)} ·{' '}
                       {holdersText(l.holders, t('roomStores.noHolder'))}
                     </span>
                   </span>
-                  <span className="text-[13px] tabular-nums">
+                  <span className="text-[14px] tabular-nums">
                     {t('roomStores.unitsCount', { count: units })}
                     {value != null && (
                       <span className="text-ink-3 block text-[12px]">
@@ -680,10 +680,10 @@ function RoomStoreForm({ store, onClose }: { store: StockLocation | null; onClos
   return (
     <form
       onSubmit={(e) => void submit(e)}
-      className="border-border bg-surface flex flex-col gap-3 rounded-xl border p-3"
+      className="border-border bg-surface flex flex-col gap-3 rounded-md border p-3"
     >
       <div className="flex items-center gap-2">
-        <span className="flex-1 text-[15px] font-extrabold">
+        <span className="flex-1 text-[16px] font-semibold">
           {store ? t('roomStores.editTitle', { name: store.name }) : t('roomStores.new')}
         </span>
         <Button
@@ -717,7 +717,7 @@ function RoomStoreForm({ store, onClose }: { store: StockLocation | null; onClos
         </Select>
       </div>
       <div className="flex flex-col gap-2">
-        <span className="text-ink-2 text-[13px] font-semibold">{t('roomStores.people')}</span>
+        <span className="text-ink-2 text-[14px] font-semibold">{t('roomStores.people')}</span>
         <SearchSelect
           label={t('roomStores.addPerson')}
           value=""
@@ -737,7 +737,7 @@ function RoomStoreForm({ store, onClose }: { store: StockLocation | null; onClos
             {staff.map((id) => (
               <span
                 key={id}
-                className="border-border bg-card inline-flex items-center gap-1 rounded-full border py-1 pr-1 pl-3 text-[13px]"
+                className="border-border bg-card inline-flex items-center gap-1 rounded-md border py-0.5 pr-1 pl-2.5 text-[14px]"
               >
                 {nameOf(id)}
                 <button
@@ -755,7 +755,7 @@ function RoomStoreForm({ store, onClose }: { store: StockLocation | null; onClos
         )}
       </div>
       <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-        <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
+        <legend className="text-ink-2 mb-1 text-[14px] font-semibold">
           {t('roomStores.departments')}
         </legend>
         <div className="flex flex-wrap gap-1.5">
@@ -765,7 +765,7 @@ function RoomStoreForm({ store, onClose }: { store: StockLocation | null; onClos
               <label
                 key={d.id}
                 className={cn(
-                  'inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full border px-3 text-[13px]',
+                  'inline-flex min-h-8 cursor-pointer items-center gap-2 rounded-md border px-3 text-[14px]',
                   on
                     ? 'border-primary bg-primary-tint text-primary font-semibold'
                     : 'border-border',

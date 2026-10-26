@@ -65,14 +65,14 @@ export function FlowCard() {
                 disabled={save.isPending}
                 onClick={() => void choose(v)}
                 className={cn(
-                  'flex flex-col gap-1 rounded-xl border-2 p-3.5 text-left transition-colors',
-                  on ? 'border-amber bg-amber-bg' : 'border-border bg-card hover:bg-hover',
+                  'flex flex-col gap-1 rounded-md border p-3 text-left transition-colors duration-120',
+                  on ? 'border-amber/40 bg-amber-bg' : 'border-border bg-card hover:bg-hover',
                 )}
               >
-                <span className={cn('text-[15px] font-bold', on && 'text-amber')}>
+                <span className={cn('text-[16px] font-semibold', on && 'text-amber')}>
                   {t(v ? 'settings.flow.triageFirst' : 'settings.flow.deskFirst')}
                 </span>
-                <span className="text-ink-2 text-[13px]">
+                <span className="text-ink-2 text-[14px]">
                   {t(v ? 'settings.flow.triageFirstHint' : 'settings.flow.deskFirstHint')}
                 </span>
               </button>
@@ -82,7 +82,7 @@ export function FlowCard() {
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
             {error}
           </p>

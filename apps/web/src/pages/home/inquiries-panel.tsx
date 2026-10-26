@@ -115,7 +115,7 @@ export function InquiriesPanel({
               {shown.map((q, k) => (
                 <div
                   key={q.id}
-                  className="border-grid anim-enter flex flex-col gap-2 border-b py-2.5 last:border-b-0"
+                  className="border-grid flex flex-col gap-2 border-b py-2.5 last:border-b-0"
                   style={{ '--i': k } as CSSProperties}
                 >
                   <div className="flex flex-wrap items-start gap-2.5">
@@ -131,7 +131,7 @@ export function InquiriesPanel({
                       {/* the time asked for is already past: book another one with the person */}
                       {(q.startsAt ?? q.preferredAt) &&
                         new Date((q.startsAt ?? q.preferredAt)!).getTime() < Date.now() && (
-                          <span className="text-amber block text-[13px] font-semibold">
+                          <span className="text-yellow block text-[13px] font-semibold">
                             {t('ops.inquiries.timePassed')}
                           </span>
                         )}
@@ -183,7 +183,7 @@ export function InquiriesPanel({
                       <span
                         className={cn(
                           'block text-[13px]',
-                          q.patientId ? 'text-green' : 'text-amber',
+                          q.patientId ? 'text-green' : 'text-yellow',
                         )}
                       >
                         <UserRound size={12} aria-hidden="true" className="mr-1 inline" />
@@ -383,13 +383,13 @@ function BookForm({
   return (
     <form
       onSubmit={(e) => void submit(e)}
-      className="border-primary/30 bg-primary-tint/40 flex flex-col gap-3 rounded-xl border p-3"
+      className="border-primary/30 bg-primary-tint/40 flex flex-col gap-3 rounded-md border p-3"
     >
       <div className="flex flex-col gap-1.5">
         <span className="text-ink-2 text-[13px] font-semibold">{t('ops.inquiries.patient')}</span>
         {patientId ? (
           <span className="flex flex-wrap items-center gap-2">
-            <span className="bg-green-bg text-green inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-bold">
+            <span className="border-green/25 bg-green-bg text-green inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[11px] leading-none font-medium">
               <Check size={14} aria-hidden="true" />
               {patientLabel}
             </span>
@@ -425,7 +425,7 @@ function BookForm({
                       setPatientLabel(`${h.fileNumber} · ${h.surname} ${h.givenNames}`)
                     }}
                   >
-                    <span className="text-primary font-bold tabular-nums">{h.fileNumber}</span>
+                    <span className="text-primary font-semibold tabular-nums">{h.fileNumber}</span>
                     <span className="flex-1 font-semibold">
                       {h.surname} {h.givenNames}
                     </span>

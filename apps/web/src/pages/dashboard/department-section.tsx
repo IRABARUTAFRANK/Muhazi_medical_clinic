@@ -180,14 +180,14 @@ function DepartmentBody({
           ) : (
             <table className="w-full border-collapse text-[14px]">
               <thead>
-                <tr className="text-ink-3 text-left text-[12px] tracking-[.04em] uppercase">
-                  <th className="border-border border-b py-1.5 pr-2 font-semibold">
+                <tr className="text-ink-3 text-left text-[12px] font-normal">
+                  <th className="border-border border-b py-2 pr-2 font-normal">
                     {t('dashboard.cols.employee')}
                   </th>
-                  <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
+                  <th className="border-border border-b py-2 pr-2 text-right font-normal">
                     {t('dept.cols.work')}
                   </th>
-                  <th className="border-border border-b py-1.5 pr-2 text-right font-semibold">
+                  <th className="border-border border-b py-2 pr-2 text-right font-normal">
                     {t('dept.cols.now')}
                   </th>
                   <th className="border-border hidden border-b py-1.5 text-right font-semibold sm:table-cell">
@@ -215,7 +215,7 @@ function DepartmentBody({
                     <tr
                       key={m.id}
                       className={cn(
-                        'border-grid anim-enter border-b last:border-b-0',
+                        'border-grid border-b last:border-b-0',
                         !m.active && 'opacity-60',
                       )}
                       style={{ '--i': i } as CSSProperties}

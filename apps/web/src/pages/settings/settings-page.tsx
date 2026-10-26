@@ -152,7 +152,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
       {save.error && (
         <p
           role="alert"
-          className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+          className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
         >
           {t('settings.saveFailed', { message: save.error.message })}
         </p>
@@ -163,7 +163,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           {save.isPending ? t('settings.saving') : t('settings.save')}
         </Button>
         {saved && !save.isPending && (
-          <span className="text-green inline-flex items-center gap-1 text-[13px] font-semibold">
+          <span className="text-green inline-flex items-center gap-1 text-[14px] font-semibold">
             <Check size={16} aria-hidden="true" />
             {t('settings.savedNote')}
           </span>
@@ -185,7 +185,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
             {t('settings.loadFailed', { message: error.message })}
           </p>
@@ -195,7 +195,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           {/* Section menu: a column on PC, a scrolling row of tabs on tablets */}
           <nav
             aria-label={t('settings.title')}
-            className="bg-card shadow-card pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap flex flex-wrap gap-1 rounded-[16px] p-2"
+            className="bg-card pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap flex flex-wrap gap-1 rounded-md p-2"
           >
             {SECTIONS.map((sec) => {
               const on = section === sec.id
@@ -206,14 +206,14 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   aria-current={on ? 'page' : undefined}
                   onClick={() => choose(sec.id)}
                   className={cn(
-                    'pc:flex-none flex flex-[1_1_150px] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
-                    on ? 'bg-navy text-white' : 'text-ink hover:bg-hover',
+                    'pc:flex-none flex flex-[1_1_150px] items-center gap-3 rounded-md px-3 py-2 text-left transition-colors duration-120',
+                    on ? 'bg-primary-tint text-primary' : 'text-ink hover:bg-hover',
                   )}
                 >
                   <span
                     className={cn(
-                      'inline-flex size-9 flex-none items-center justify-center rounded-[10px]',
-                      on ? 'bg-white/15 text-white' : tintClass[sec.tint],
+                      'inline-flex size-9 flex-none items-center justify-center rounded-md',
+                      tintClass[sec.tint],
                     )}
                   >
                     <sec.icon size={18} aria-hidden="true" />
@@ -225,7 +225,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                     <span
                       className={cn(
                         'pc:block hidden text-[12px] leading-snug',
-                        on ? 'text-white/75' : 'text-ink-3',
+                        on ? 'text-primary/80' : 'text-ink-3',
                       )}
                     >
                       {t(`settings.sections.${sec.id}.hint`)}
@@ -248,7 +248,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                     <span className="text-ink-3 text-xs">{isLoading ? '…' : ''}</span>
                   </CardHeader>
                   <CardBody className="gap-3">
-                    <p className="text-ink-2 m-0 text-[13px]">{t('settings.profile.lead')}</p>
+                    <p className="text-ink-2 m-0 text-[14px]">{t('settings.profile.lead')}</p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       {PROFILE_FIELDS.map((k) => (
                         <Field
@@ -306,9 +306,9 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                     </span>
                   </CardHeader>
                   <CardBody className="gap-3">
-                    <p className="text-ink-2 m-0 text-[13px]">{t('settings.hours.lead')}</p>
+                    <p className="text-ink-2 m-0 text-[14px]">{t('settings.hours.lead')}</p>
                     <div className="flex flex-col">
-                      <div className="text-ink-3 hidden grid-cols-[130px_180px_120px_120px] gap-2 pb-1 text-[12px] font-bold tracking-[.06em] uppercase sm:grid">
+                      <div className="text-ink-3 hidden grid-cols-[130px_180px_120px_120px] gap-2 pb-1 text-[12px] font-medium sm:grid">
                         <span>{t('settings.hours.day')}</span>
                         <span>{t('settings.hours.mode')}</span>
                         <span>{t('settings.hours.open')}</span>
@@ -417,7 +417,7 @@ function Shortcut({ to, icon, label }: { to: string; icon: React.ReactNode; labe
 }
 
 const control =
-  'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-lg border px-2.5 text-[14px] outline-none'
+  'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-md border px-2.5 text-[14px] outline-none'
 
 /** One compact row per day: name, mode, and the hours when they are custom. */
 function HoursRow({

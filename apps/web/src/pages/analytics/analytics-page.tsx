@@ -14,8 +14,10 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CLINIC_PROFILE, type StaffUser } from '@mmc/shared'
+import { PageBanner } from '@/components/dash/page-banner'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { ReportButtons } from '@/components/dash/report-buttons'
+import { controlClass } from '@/components/ui/field'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useAnalyticsAccess, type AnalyticsView } from '@/lib/api/analytics'
 import { useClinicInfo } from '@/lib/api/public'
@@ -140,24 +142,22 @@ export function AnalyticsPage({
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="analytics">
       <style>{SERIES_CSS}</style>
-      <main className="mmc-analytics pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        {/* HEADER: title, period, department, export */}
+      <main className="mmc-analytics pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+        {/* HEADER: title, period, department, export (the page header band, teal) */}
         <header className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="flex min-w-0 flex-[1_1_240px] flex-col">
-              <h1 className="text-ink m-0 flex items-center gap-2 text-[24px] font-extrabold tracking-[-0.01em]">
-                <ChartColumn size={22} aria-hidden="true" className="text-primary flex-none" />
-                {t('analytics.title')}
-              </h1>
-              <span className="text-ink-3 text-[14px]">
-                {view ? `${t(`analytics.views.${view}`)} · ` : ''}
-                {period.label}
-              </span>
-            </div>
+          <PageBanner
+            icon={ChartColumn}
+            tint="teal"
+            title={t('analytics.title')}
+            lead={`${view ? `${t(`analytics.views.${view}`)} · ` : ''}${period.label}`}
+          >
             <PeriodSeg period={period} className="max-w-full flex-wrap" />
             {View && <ReportButtons build={() => exportRef.current?.() ?? null} />}
-          </div>
-          <PeriodCustom period={period} className="bg-card shadow-card rounded-2xl px-4 py-3" />
+          </PageBanner>
+          <PeriodCustom
+            period={period}
+            className="bg-card border-border rounded-md border px-4 py-3"
+          />
         </header>
 
         {accessQ.error ? (
@@ -167,7 +167,7 @@ export function AnalyticsPage({
         ) : !View || !view ? (
           <p
             role="status"
-            className="border-border bg-card text-ink-2 m-0 rounded-xl border px-4 py-3 text-[14px]"
+            className="border-border bg-card text-ink-2 m-0 rounded-md border px-4 py-3 text-[14px]"
           >
             {t('analytics.notAllowed')}
           </p>
@@ -175,10 +175,10 @@ export function AnalyticsPage({
           <div className="pc:grid-cols-[220px_minmax(0,1fr)] grid grid-cols-1 gap-4">
             {/* SECTIONS: a list on the side (wide screens), a choice on a phone */}
             <nav aria-label={t('analytics.sections')} className="pc:block hidden">
-              <div className="bg-card shadow-card sticky top-0 flex flex-col gap-3 rounded-2xl p-3">
+              <div className="bg-card border-border sticky top-0 flex flex-col gap-3 rounded-md border p-2">
                 {groups.map((g) => (
                   <div key={g.key} className="flex flex-col gap-0.5">
-                    <span className="text-ink-3 px-2 text-[12px] font-bold tracking-[.04em] uppercase">
+                    <span className="text-ink-3 px-2 pb-0.5 text-[12px] font-medium">
                       {t(`analytics.groups.${g.key}`)}
                     </span>
                     {g.views.map((v) => {
@@ -191,11 +191,11 @@ export function AnalyticsPage({
                           aria-current={on ? 'page' : undefined}
                           onClick={() => !on && open(v)}
                           className={cn(
-                            'focus-visible:ring-primary/45 flex min-h-10 items-center gap-2.5 rounded-lg px-2 text-left text-[14px] font-semibold outline-none focus-visible:ring-[3px]',
+                            'focus-visible:ring-primary/20 flex min-h-8 items-center gap-2.5 rounded-md px-2 text-left text-[14px] font-medium transition-colors duration-120 outline-none focus-visible:ring-2',
                             on ? 'bg-primary-tint text-primary' : 'text-ink-2 hover:bg-hover',
                           )}
                         >
-                          <Icon size={17} aria-hidden="true" className="flex-none" />
+                          <Icon size={16} aria-hidden="true" className="flex-none" />
                           <span className="min-w-0 flex-1">{t(`analytics.views.${v}`)}</span>
                         </button>
                       )
@@ -208,14 +208,14 @@ export function AnalyticsPage({
             <div className="flex min-w-0 flex-col gap-4">
               <div className="flex flex-wrap items-end gap-3">
                 <div className="pc:hidden flex min-w-0 flex-[1_1_200px] flex-col gap-1">
-                  <label htmlFor={sectionId} className="text-ink-2 text-[13px] font-semibold">
+                  <label htmlFor={sectionId} className="text-ink-2 text-[13px] font-medium">
                     {t('analytics.section')}
                   </label>
                   <select
                     id={sectionId}
                     value={view}
                     onChange={(e) => open(e.target.value as AnalyticsView)}
-                    className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint h-11 w-full max-w-full rounded-lg border px-3 text-[15px] outline-none focus:ring-[3px]"
+                    className={cn(controlClass, 'w-full max-w-full')}
                   >
                     {groups.map((g) => (
                       <optgroup key={g.key} label={t(`analytics.groups.${g.key}`)}>
@@ -230,7 +230,7 @@ export function AnalyticsPage({
                 </div>
                 {showDept && (
                   <div className="flex min-w-0 flex-[1_1_200px] flex-col gap-1 sm:max-w-[320px]">
-                    <label htmlFor={deptId} className="text-ink-2 text-[13px] font-semibold">
+                    <label htmlFor={deptId} className="text-ink-2 text-[13px] font-medium">
                       {t('analytics.department')}
                     </label>
                     <select
@@ -242,7 +242,7 @@ export function AnalyticsPage({
                           { replace: true },
                         )
                       }
-                      className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint h-11 w-full max-w-full rounded-lg border px-3 text-[15px] outline-none focus:ring-[3px]"
+                      className={cn(controlClass, 'w-full max-w-full')}
                     >
                       {access.manager && <option value="">{t('analytics.allDepartments')}</option>}
                       {departments.map((d) => (

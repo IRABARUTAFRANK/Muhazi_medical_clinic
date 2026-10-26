@@ -182,8 +182,10 @@ interface Pending {
   run: (confirmCode: string) => Promise<void>
 }
 
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
-const warnBox = 'bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
+const warnBox =
+  'border-amber/30 bg-amber-bg text-amber m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
 
 /** A department service's name: the sections (0071), and Reception, a desk only (0085). */
 const serviceLabel = (s: string, t: Translate): string =>
@@ -464,7 +466,10 @@ export function StaffPage({ user }: { user: StaffUser }) {
           )}
         </PageBanner>
 
-        <div className="flex flex-wrap gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
+        <div
+          className="border-border bg-surface flex flex-wrap gap-0.5 self-start rounded-md border p-0.5"
+          role="tablist"
+        >
           {(['people', 'departments'] as const).map((k) => (
             <button
               key={k}
@@ -473,8 +478,10 @@ export function StaffPage({ user }: { user: StaffUser }) {
               aria-selected={tab === k}
               onClick={() => setTab(k)}
               className={cn(
-                'min-h-10 rounded-lg px-4 text-[13px] font-semibold transition-colors',
-                tab === k ? 'bg-navy shadow-card text-white' : 'text-ink-2 hover:bg-hover',
+                'inline-flex min-h-8 items-center rounded px-3 text-[14px] font-medium transition-colors duration-120',
+                tab === k
+                  ? 'bg-card text-primary border-border border'
+                  : 'text-ink-2 hover:bg-hover hover:text-ink border border-transparent',
               )}
             >
               {k === 'people'
@@ -647,7 +654,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
             )}
 
             <ListBar query={staffQuery} onQuery={setStaffQuery} placeholderKey="list.searchStaff" />
-            <label className="flex items-center gap-2 self-start text-[13px] font-semibold">
+            <label className="flex items-center gap-2 self-start text-[14px] font-semibold">
               <input
                 type="checkbox"
                 className="accent-primary size-[18px]"
@@ -886,7 +893,7 @@ function DeleteAccountCard({
       </CardHeader>
       <CardBody className="gap-4">
         {!employee.active && employee.deactivatedAt && (
-          <p className="bg-surface text-ink-2 m-0 rounded-lg px-3 py-2 text-[13px]">
+          <p className="bg-surface text-ink-2 m-0 rounded-md px-3 py-2 text-[14px]">
             {t('staff.delete.deactivatedSince', {
               name,
               date: formatDate(new Date(employee.deactivatedAt)),
@@ -897,12 +904,12 @@ function DeleteAccountCard({
 
         {/* the better option comes first */}
         {employee.active && (
-          <div className="border-primary bg-primary-tint flex flex-col gap-2 rounded-xl border p-3">
-            <span className="text-primary inline-flex items-center gap-2 text-[14px] font-bold">
+          <div className="border-primary bg-primary-tint flex flex-col gap-2 rounded-md border p-3">
+            <span className="text-primary inline-flex items-center gap-2 text-[14px] font-semibold">
               <Lightbulb size={16} aria-hidden="true" />
               {t('staff.delete.recommendTitle')}
             </span>
-            <p className="text-ink m-0 text-[13px]">{t('staff.delete.recommendBody')}</p>
+            <p className="text-ink m-0 text-[14px]">{t('staff.delete.recommendBody')}</p>
             <Button variant="primary" className="self-start" onClick={onDeactivate}>
               <UserX size={16} aria-hidden="true" />
               {t('staff.delete.deactivateInstead')}
@@ -912,8 +919,10 @@ function DeleteAccountCard({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <section className="flex flex-col gap-1.5">
-            <h3 className="text-red m-0 text-[13px] font-bold">{t('staff.delete.happensTitle')}</h3>
-            <ul className="text-ink-2 m-0 flex list-disc flex-col gap-1 pl-5 text-[13px]">
+            <h3 className="text-red m-0 text-[14px] font-semibold">
+              {t('staff.delete.happensTitle')}
+            </h3>
+            <ul className="text-ink-2 m-0 flex list-disc flex-col gap-1 pl-5 text-[14px]">
               {happens.map((line) => (
                 <li key={line}>{line}</li>
               ))}
@@ -921,8 +930,10 @@ function DeleteAccountCard({
             </ul>
           </section>
           <section className="flex flex-col gap-1.5">
-            <h3 className="text-green m-0 text-[13px] font-bold">{t('staff.delete.staysTitle')}</h3>
-            <ul className="text-ink-2 m-0 flex list-disc flex-col gap-1 pl-5 text-[13px]">
+            <h3 className="text-green m-0 text-[14px] font-semibold">
+              {t('staff.delete.staysTitle')}
+            </h3>
+            <ul className="text-ink-2 m-0 flex list-disc flex-col gap-1 pl-5 text-[14px]">
               {stays.map((line) => (
                 <li key={line}>{line}</li>
               ))}
@@ -931,7 +942,7 @@ function DeleteAccountCard({
         </div>
 
         {!previewLoading && appointments !== 0 && (
-          <p className="bg-amber-bg text-amber m-0 flex items-start gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <p className="border-amber/30 bg-amber-bg text-amber m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[14px] font-medium">
             <CalendarClock size={16} aria-hidden="true" className="mt-px shrink-0" />
             {appointments == null
               ? t('staff.delete.appointments', { name })
@@ -977,10 +988,10 @@ function LongDeactivatedCard({
         <span className="text-ink-3 text-xs">{people.length}</span>
       </CardHeader>
       <CardBody className="gap-2">
-        <p className="text-ink-2 m-0 text-[13px]">{t('staff.longDeactivated.lead')}</p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('staff.longDeactivated.lead')}</p>
         <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
           {people.map((e) => (
-            <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+            <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
               <span className="min-w-[180px] flex-1">
                 <b>{e.fullName}</b>
                 {e.staffId && <span className="text-ink-3 ml-2 tabular-nums">{e.staffId}</span>}
@@ -1070,23 +1081,23 @@ function ConfirmCodeDialog({
       role="dialog"
       aria-modal="true"
       aria-label={t('staff.confirm.title')}
-      className="anim-enter fixed inset-0 z-[90] flex items-center justify-center bg-[#0b2252]/45 p-4 backdrop-blur-[2px]"
+      className="anim-enter fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4"
       onKeyDown={(e) => e.key === 'Escape' && onCancel()}
     >
       <form
         onSubmit={submit}
-        className="bg-card shadow-sheet flex w-full max-w-[440px] flex-col gap-4 rounded-2xl p-6"
+        className="bg-card shadow-sheet border-border flex w-full max-w-[440px] flex-col gap-4 rounded-md border p-4"
       >
         <div className="flex items-center gap-3">
-          <span className="icon-gradient inline-flex size-11 flex-none items-center justify-center rounded-xl text-white">
-            <MailCheck size={22} aria-hidden="true" />
+          <span className="bg-primary-tint text-primary inline-flex size-8 flex-none items-center justify-center rounded">
+            <MailCheck size={18} aria-hidden="true" />
           </span>
           <span>
-            <span className="block text-lg font-bold">{t('staff.confirm.title')}</span>
+            <span className="block text-[16px] font-semibold">{t('staff.confirm.title')}</span>
             <span className="text-ink-2 text-[14px]">{title}</span>
           </span>
         </div>
-        <p className="bg-surface text-ink-2 m-0 flex items-center gap-2 rounded-lg px-3 py-2 text-[14px]">
+        <p className="bg-surface text-ink-2 m-0 flex items-center gap-2 rounded-md px-3 py-2 text-[14px]">
           <Mail size={16} aria-hidden="true" className="text-primary flex-none" />
           {sending
             ? t('staff.confirm.sending')
@@ -1400,7 +1411,7 @@ function EmployeeForm({
             <RegistrationField role={role} value={registration} onChange={setRegistration} />
           )}
           <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-            <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
+            <legend className="text-ink-2 mb-1 text-[14px] font-semibold">
               {t('staff.form.departments')}
             </legend>
             <p className="text-ink-3 m-0 -mt-1 text-xs">{t('staff.form.departmentsHint')}</p>
@@ -1484,7 +1495,7 @@ function EmployeeForm({
             )}
             {/* What the chosen departments give this person, live: the desks, then the patients. */}
             <div
-              className="bg-surface flex flex-col gap-1 rounded-lg px-3 py-2 text-[13px]"
+              className="bg-surface flex flex-col gap-1 rounded-md px-3 py-2 text-[14px]"
               aria-live="polite"
             >
               <span className="font-semibold">
@@ -1618,7 +1629,7 @@ function TempPin({ pin }: { pin: string }) {
   const [shown, setShown] = useState(false)
   const [copied, setCopied] = useState(false)
   return (
-    <span className="border-amber/40 bg-amber-bg text-ink inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-1 pl-3 text-[13px]">
+    <span className="border-amber/40 bg-amber-bg text-ink inline-flex items-center gap-1.5 rounded-md border py-0.5 pr-1 pl-3 text-[14px]">
       <KeyRound size={13} aria-hidden="true" className="text-amber" />
       <span className="text-ink-2 font-semibold">{t('staff.tempPin')}</span>
       <b className="tracking-[.2em] tabular-nums">{shown ? pin : '••••••'}</b>
@@ -1665,7 +1676,7 @@ function ResetPinCard({
         <span>{t('staff.reset.title', { name: employee.fullName })}</span>
       </CardHeader>
       <CardBody className="gap-3">
-        <p className="text-ink-2 m-0 text-[13px]">{t('staff.reset.body')}</p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('staff.reset.body')}</p>
         <div className="flex flex-wrap items-end gap-2">
           <Field
             label={t('staff.form.pin')}
@@ -1718,7 +1729,7 @@ function DepartmentsPanel({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-3">
-        <p className="text-ink-2 m-0 max-w-[680px] flex-1 text-[13px]">{t('staff.dept.lead')}</p>
+        <p className="text-ink-2 m-0 max-w-[680px] flex-1 text-[14px]">{t('staff.dept.lead')}</p>
         <Button variant="primary" onClick={() => setEditing('new')}>
           <Plus size={18} aria-hidden="true" />
           {t('staff.dept.new')}
@@ -1840,7 +1851,7 @@ function DepartmentsPanel({
                 </span>
               </CardHeader>
               <CardBody className="gap-2.5">
-                {d.description && <p className="text-ink-2 m-0 text-[13px]">{d.description}</p>}
+                {d.description && <p className="text-ink-2 m-0 text-[14px]">{d.description}</p>}
                 <div className="flex flex-wrap gap-1.5">
                   {d.roles.length === 0 ? (
                     <Chip>{t('staff.dept.allRoles')}</Chip>
@@ -1848,7 +1859,7 @@ function DepartmentsPanel({
                     d.roles.map((r) => <Chip key={r}>{t(`staff.roles.${r}`)}</Chip>)
                   )}
                 </div>
-                <p className="m-0 text-[13px]">
+                <p className="m-0 text-[14px]">
                   <b>{t('staff.dept.servicesShort')}:</b>{' '}
                   {d.services.length > 0 ? (
                     d.services.map((s) => serviceLabel(s, t)).join(', ')
@@ -1856,18 +1867,18 @@ function DepartmentsPanel({
                     <span className="text-ink-3">{t('staff.dept.noServices')}</span>
                   )}
                 </p>
-                <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 text-[13px]">
-                  <dt className="font-bold">{t('staff.positions.head')}:</dt>
+                <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 text-[14px]">
+                  <dt className="font-semibold">{t('staff.positions.head')}:</dt>
                   <dd className="m-0">
                     {head?.fullName ?? <span className="text-ink-3">{t('staff.dept.noHead')}</span>}
                   </dd>
-                  <dt className="font-bold">{t('staff.positions.assistant')}:</dt>
+                  <dt className="font-semibold">{t('staff.positions.assistant')}:</dt>
                   <dd className="m-0">
                     {assistant?.fullName ?? (
                       <span className="text-ink-3">{t('staff.dept.noHead')}</span>
                     )}
                   </dd>
-                  <dt className="font-bold">
+                  <dt className="font-semibold">
                     {t('staff.dept.membersLabel', { count: members.length })}:
                   </dt>
                   <dd className="m-0">
@@ -2028,7 +2039,7 @@ function DepartmentForm({
             />
           </div>
           <fieldset className="m-0 border-0 p-0">
-            <legend className="text-ink-2 mb-2 text-[13px] font-semibold">
+            <legend className="text-ink-2 mb-2 text-[14px] font-semibold">
               {t('staff.dept.roles')}
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -2036,7 +2047,7 @@ function DepartmentForm({
                 <label
                   key={r}
                   className={cn(
-                    'border-border flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-[13px] font-semibold transition-colors',
+                    'border-border flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 text-[14px] font-semibold transition-colors',
                     roles.includes(r) && 'border-primary bg-primary-tint text-primary',
                   )}
                 >
@@ -2054,7 +2065,7 @@ function DepartmentForm({
           </fieldset>
           {/* the sections this department works in: its people take the patients sent there */}
           <fieldset className="m-0 border-0 p-0">
-            <legend className="text-ink-2 mb-2 text-[13px] font-semibold">
+            <legend className="text-ink-2 mb-2 text-[14px] font-semibold">
               {t('staff.dept.services')}
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -2062,7 +2073,7 @@ function DepartmentForm({
                 <label
                   key={s}
                   className={cn(
-                    'border-border flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-[13px] font-semibold transition-colors',
+                    'border-border flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 text-[14px] font-semibold transition-colors',
                     services.includes(s) && 'border-primary bg-primary-tint text-primary',
                   )}
                 >
@@ -2135,7 +2146,7 @@ function CredentialsCard({
             <CopyField label={t('staff.created.email')} value={credentials.email} />
           )}
         </div>
-        <p className="text-ink-2 m-0 text-[13px]">{t('staff.created.note')}</p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('staff.created.note')}</p>
         <Button variant="primary" className="self-start" onClick={onDone}>
           {t('staff.created.done')}
         </Button>
@@ -2158,11 +2169,11 @@ function CopyField({ label, value, mono }: { label: string; value: string; mono?
   }
   return (
     <div className="flex items-end gap-2">
-      <span className="text-ink-2 flex min-w-0 flex-1 flex-col gap-1.5 text-[13px] font-semibold">
+      <span className="text-ink-2 flex min-w-0 flex-1 flex-col gap-1.5 text-[14px] font-semibold">
         {label}
         <span
           className={cn(
-            'border-border bg-surface text-ink truncate rounded-lg border px-3 py-2 text-xl font-bold',
+            'border-border bg-surface text-ink truncate rounded-md border px-3 py-2 text-[20px] font-semibold',
             mono && 'tracking-[.3em] tabular-nums',
           )}
         >

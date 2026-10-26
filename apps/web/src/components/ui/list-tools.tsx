@@ -33,7 +33,7 @@ export function ShowMore({
         <button
           type="button"
           onClick={onMore}
-          className="border-border bg-card text-primary hover:bg-hover inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold"
+          className="border-border bg-card text-primary hover:bg-hover inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium"
         >
           <ChevronDown size={14} aria-hidden="true" />
           {t('list.showMore', { count: Math.min(step, rest), rest })}
@@ -43,7 +43,7 @@ export function ShowMore({
         <button
           type="button"
           onClick={onLess}
-          className="text-ink-3 hover:text-ink inline-flex min-h-9 items-center gap-1 px-2 text-[13px] font-semibold"
+          className="text-ink-3 hover:text-ink inline-flex h-8 items-center gap-1 px-2 text-[13px] font-medium"
         >
           <ChevronUp size={14} aria-hidden="true" />
           {t('list.showLess')}
@@ -75,7 +75,7 @@ export function Pager({
   const start = Math.max(1, Math.min(page - 2, pages - 4))
   const nums = Array.from({ length: Math.min(5, pages) }, (_, i) => start + i)
   const btn =
-    'inline-flex size-9 items-center justify-center rounded-lg text-[13px] font-semibold tabular-nums disabled:opacity-40'
+    'inline-flex size-9 items-center justify-center rounded-md text-[14px] font-medium tabular-nums disabled:opacity-40'
   return (
     <nav
       aria-label={t('list.pages')}
@@ -100,7 +100,12 @@ export function Pager({
               key={n}
               type="button"
               aria-current={n === page ? 'page' : undefined}
-              className={cn(btn, n === page ? 'bg-navy text-white' : 'hover:bg-hover text-ink-2')}
+              className={cn(
+                btn,
+                n === page
+                  ? 'border-primary/30 bg-primary-tint text-primary border'
+                  : 'hover:bg-hover text-ink-2',
+              )}
               onClick={() => onPage(n)}
             >
               {n}
@@ -142,8 +147,8 @@ export function ListBar({
   const { t } = useTranslation()
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      <label className="border-border bg-card focus-within:border-primary flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-lg border px-3">
-        <Search size={16} aria-hidden="true" className="text-ink-3 flex-none" />
+      <label className="border-border bg-card focus-within:border-primary focus-within:ring-primary/20 flex h-9 min-w-[200px] flex-1 items-center gap-2 rounded-md border px-3 focus-within:ring-2">
+        <Search size={14} aria-hidden="true" className="text-ink-3 flex-none" />
         <input
           type="search"
           value={query}
@@ -154,13 +159,13 @@ export function ListBar({
         />
       </label>
       {sorts && sort && onSort && (
-        <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">
-          <ArrowDownUp size={16} aria-hidden="true" className="text-ink-3" />
+        <label className="border-border bg-card flex h-9 items-center gap-2 rounded-md border px-3 text-[14px]">
+          <ArrowDownUp size={14} aria-hidden="true" className="text-ink-3" />
           <span className="sr-only">{t('list.sortBy')}</span>
           <select
             value={sort}
             onChange={(e) => onSort(e.target.value as SortKey)}
-            className="bg-transparent font-semibold outline-none"
+            className="bg-transparent font-medium outline-none"
           >
             {sorts.map((s) => (
               <option key={s} value={s}>

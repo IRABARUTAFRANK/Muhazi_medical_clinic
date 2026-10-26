@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { KeyRound } from 'lucide-react'
+import { CircleAlert, KeyRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
@@ -42,14 +42,14 @@ export function ChangePinPage({ user }: { user: StaffUser }) {
     <div className="bg-surface text-ink flex min-h-dvh items-center justify-center p-4">
       <form
         onSubmit={submit}
-        className="border-border bg-card flex w-full max-w-[440px] flex-col gap-4 rounded-2xl border p-6"
+        className="border-border bg-card anim-enter flex w-full max-w-[440px] flex-col gap-4 rounded-md border p-4"
       >
         <div className="flex items-center gap-3">
-          <span className="icon-gradient inline-flex size-11 flex-none items-center justify-center rounded-xl text-white">
-            <KeyRound size={22} aria-hidden="true" />
+          <span className="bg-primary-tint text-primary inline-flex size-9 flex-none items-center justify-center rounded">
+            <KeyRound size={20} aria-hidden="true" />
           </span>
           <span>
-            <span className="block text-lg font-bold">
+            <span className="block text-[20px] leading-7 font-semibold">
               {t(user.mustChangePin ? 'pin.changeTitle' : 'pin.ownTitle')}
             </span>
             <span className="text-ink-3 text-[13px]">
@@ -88,9 +88,10 @@ export function ChangePinPage({ user }: { user: StaffUser }) {
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-medium"
           >
-            {error}
+            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+            <span>{error}</span>
           </p>
         )}
         <Button type="submit" variant="primary" size="lg" disabled={busy}>

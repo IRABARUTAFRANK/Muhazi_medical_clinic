@@ -3,6 +3,7 @@ import { ArrowRightLeft, FolderOpen, Lock, Stethoscope, UserPlus, Users } from '
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { StationGlyph } from '@/components/dash/kit'
+import { EmptyNote } from '@/components/clinical/empty-note'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
@@ -12,6 +13,7 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { LeftButton } from '@/components/clinical/left-button'
 import { HandoverBadge } from '@/components/clinical/handover-badge'
+import { useChangeFlash } from '@/components/clinical/use-change-flash'
 import {
   STATIONS,
   openItems,
@@ -23,6 +25,7 @@ import {
 import { formatDuration } from '@/lib/duration'
 import { navForUser } from '@/lib/nav'
 import { matches, useShowMore, type SortKey } from '@/lib/paging'
+import { cn } from '@/lib/utils'
 
 /**
  * "In the clinic": every patient with an open visit today, grouped by the station where they
@@ -70,7 +73,7 @@ export function VisitsPage({ user }: { user: StaffUser }) {
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold"
+            className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold"
           >
             {error.message}
           </p>
@@ -88,7 +91,7 @@ export function VisitsPage({ user }: { user: StaffUser }) {
         {!isLoading && open.length === 0 && (
           <Card>
             <CardBody>
-              <p className="text-ink-3 m-0 text-[13px]">{t('visits.none')}</p>
+              <EmptyNote>{t('visits.none')}</EmptyNote>
             </CardBody>
           </Card>
         )}
@@ -167,9 +170,11 @@ function VisitRow({
   user: StaffUser
 }) {
   const { t } = useTranslation()
+  // the row glows for a moment when the patient moves desk, is taken or changes colour
+  const changed = useChangeFlash(`${r.station}|${r.startedAt}|${r.takenBy}|${r.triage}`)
   return (
-    <Row className="flex-wrap gap-x-3 gap-y-1 py-2">
-      <span className="text-primary w-14 font-bold tabular-nums">{r.ticket}</span>
+    <Row className={cn('flex-wrap gap-x-3 gap-y-1 py-2', changed && 'anim-row-flash')}>
+      <span className="text-primary w-14 font-semibold tabular-nums">{r.ticket}</span>
       <span className="min-w-[160px] flex-1">
         <span className="block font-semibold">{r.name}</span>
         <span className="text-ink-3 block text-xs tabular-nums">
@@ -195,7 +200,7 @@ function VisitRow({
             {desks.map((d) => (
               <span
                 key={d}
-                className="bg-violet-bg text-violet inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold"
+                className="bg-violet-bg text-violet inline-flex items-center gap-1 rounded px-2 py-0.5 text-[12px] font-semibold"
               >
                 <StationGlyph station={d} size={12} />
                 {t(`register.stations.${d}`)}
@@ -224,6 +229,7 @@ function VisitRow({
           search={{ encounter: r.encounterId }}
           className={buttonVariants({ size: 'sm', variant: 'primary' })}
         >
+          <Stethoscope size={14} aria-hidden="true" />
           {t('visits.openVisit')}
         </StaffLink>
       )}

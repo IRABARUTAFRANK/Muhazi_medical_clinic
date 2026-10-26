@@ -58,7 +58,7 @@ export function RoomStoresSummary() {
       }
     >
       {nothing ? (
-        <p className="text-ink-2 m-0 text-[13px]">{t('deskRooms.nothing')}</p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('deskRooms.nothing')}</p>
       ) : (
         <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
           {tiles

@@ -46,7 +46,7 @@ export function OpenBillsPanel({
               {shown.map((b, n) => (
                 <div
                   key={b.encounterId}
-                  className="border-grid anim-enter flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
+                  className="border-grid flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
                   style={{ '--i': n } as CSSProperties}
                 >
                   <Pill tint="amber" icon={Receipt}>
@@ -61,7 +61,7 @@ export function OpenBillsPanel({
                         : ''}
                     </span>
                   </span>
-                  <span className="font-bold whitespace-nowrap tabular-nums">
+                  <span className="font-semibold whitespace-nowrap tabular-nums">
                     {formatRwf(b.balance)}
                   </span>
                   <StaffLink

@@ -38,16 +38,30 @@ export function StationTile({
   return (
     <div
       className={cn(
-        'anim-enter flex flex-col gap-0.5 rounded-xl border px-3 py-2.5',
-        hot ? 'border-red-dot/30 bg-red-bg/40' : 'border-border',
+        'bg-card anim-enter flex flex-col gap-0.5 rounded-md border px-3 py-2.5',
+        hot ? 'border-red/40 bg-red-bg' : 'border-border',
       )}
       style={{ '--i': i } as CSSProperties}
     >
       <span className="flex items-center justify-between">
-        <span className="text-xl font-extrabold tabular-nums">{waiting}</span>
-        <StationGlyph station={station} className={hot ? 'text-red' : 'text-primary'} />
+        <span
+          className={cn(
+            'inline-flex items-center gap-2 text-[24px] leading-8 font-semibold tabular-nums',
+            hot && 'text-red',
+          )}
+        >
+          {waiting}
+          {/* a long wait: a breathing dot, so the eye lands on it */}
+          {hot && (
+            <span
+              aria-hidden="true"
+              className="anim-pulse-dot bg-red-dot text-red-dot inline-block size-2 rounded-full"
+            />
+          )}
+        </span>
+        <StationGlyph station={station} size={18} className={hot ? 'text-red' : 'text-primary'} />
       </span>
-      <span className="text-ink-2 text-[13px] font-semibold">{stationLabel(station, t)}</span>
+      <span className="text-ink-2 text-[14px] font-medium">{stationLabel(station, t)}</span>
       {busy !== undefined && (
         <span className="text-ink-3 text-[12px]">{t('desk.busyShort', { count: busy })}</span>
       )}

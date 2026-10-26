@@ -2124,7 +2124,8 @@
       "confirm": "{{name}} a quitté la clinique ? La visite se clôt et le patient sort de toutes les files.",
       "done": "{{name}} est parti : la visite est clôturée.",
       "due": "{{amount}} RWF restent dus : encaissez d’abord, ou demandez au gérant.",
-      "reasonPrompt": "{{amount}} RWF restent dus. Pourquoi le patient part-il sans payer ?"
+      "reasonPrompt": "{{amount}} RWF restent dus. Pourquoi le patient part-il sans payer ?",
+      "unpaid": "Le patient n’a pas encore payé : envoyez-le à la caisse. Seul le gestionnaire peut clore une visite avec un montant dû."
     }
   },
   "desk": {

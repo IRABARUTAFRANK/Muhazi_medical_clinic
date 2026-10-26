@@ -91,10 +91,10 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         <IdentityBanner user={user} greeting={greetingFor(user.name, t)} />
 
-        <div className="anim-enter flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <span className="inline-flex items-center gap-1.5 font-semibold">
               <Wallet size={16} aria-hidden="true" className="text-primary" />
@@ -135,7 +135,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
         {!canTake && <NotAllowedNotice feature="payment.take" compact />}
 
         {s?.todayOnly && (
-          <p className="bg-amber-bg text-amber m-0 rounded-xl px-3 py-2 text-[14px] font-semibold">
+          <p className="border-yellow/25 bg-yellow-bg text-yellow m-0 rounded-md border px-3 py-2 text-[14px] font-medium">
             {t('finance.periodNeedsUpdate')}
           </p>
         )}
@@ -143,14 +143,14 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+            className="border-red/25 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
             {t('dashboard.loadFailed', { message: error.message })}
           </p>
         )}
 
         {s && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
             <Kpi
               i={0}
               icon={HandCoins}
@@ -282,7 +282,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                         return (
                           <div
                             key={p.id}
-                            className="border-grid anim-enter flex min-h-11 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
+                            className="border-grid flex min-h-11 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
                             style={{ '--i': i } as CSSProperties}
                           >
                             <span className="text-ink-3 w-12 tabular-nums">
@@ -297,7 +297,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                                   .join(' · ')}
                               </span>
                             </span>
-                            <span className="font-bold whitespace-nowrap tabular-nums">
+                            <span className="font-semibold whitespace-nowrap tabular-nums">
                               {formatRwf(p.amount)}
                             </span>
                           </div>

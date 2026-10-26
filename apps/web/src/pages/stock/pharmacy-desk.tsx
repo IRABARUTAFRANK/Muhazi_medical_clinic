@@ -352,7 +352,7 @@ function HandOverPanel({
                 return (
                   <div
                     key={first.encounterId}
-                    className="border-border anim-enter flex flex-col gap-2 rounded-xl border px-3 py-2.5"
+                    className="border-border anim-enter flex flex-col gap-2 rounded-md border px-3 py-2.5"
                     style={{ '--i': gi } as CSSProperties}
                   >
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -362,7 +362,7 @@ function HandOverPanel({
                           {first.patient}{' '}
                           <span className="text-ink-3 font-normal">· {first.file}</span>
                         </span>
-                        <span className="text-ink-2 block text-[13px] font-semibold">
+                        <span className="text-ink-2 block text-[14px] font-semibold">
                           {facts.join(' · ')}
                         </span>
                         <span className="text-ink-3 block text-[12px]">
@@ -376,7 +376,7 @@ function HandOverPanel({
                         </span>
                       </span>
                       <span className="text-right">
-                        <span className="block text-[14px] font-bold tabular-nums">
+                        <span className="block text-[14px] font-semibold tabular-nums">
                           {formatRwf(share)}
                         </span>
                         <span className="text-ink-3 block text-[12px]">
@@ -412,8 +412,8 @@ function HandOverPanel({
                     </div>
                     <AllergyBox allergies={patient?.allergies ?? first.allergies} />
                     {holds && (
-                      <p className="bg-amber-bg text-amber m-0 flex items-start gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold">
-                        <Hourglass size={15} aria-hidden="true" className="mt-0.5 flex-none" />
+                      <p className="border-amber/30 bg-amber-bg text-amber m-0 flex items-start gap-1.5 rounded-md border px-2.5 py-1.5 text-[14px] font-medium">
+                        <Hourglass size={16} aria-hidden="true" className="mt-0.5 flex-none" />
                         <span>{t('pharmacy.doctorHolds')}</span>
                       </p>
                     )}
@@ -437,7 +437,7 @@ function HandOverPanel({
                       return (
                         <div
                           key={q.requestId}
-                          className="bg-surface/70 flex flex-col gap-2 rounded-lg px-3 py-2"
+                          className="bg-surface/70 flex flex-col gap-2 rounded-md px-3 py-2"
                         >
                           <div className="flex flex-wrap items-center gap-3">
                             <span className="min-w-[180px] flex-1">
@@ -477,7 +477,7 @@ function HandOverPanel({
                                 </span>
                               )}
                             </span>
-                            <span className="text-right text-[13px]">
+                            <span className="text-right text-[14px]">
                               {q.priced ? (
                                 <>
                                   <span className="block font-semibold tabular-nums">
@@ -563,7 +563,7 @@ function HandOverPanel({
                               it: send it from another pharmacy store, or receive it. Stock in a
                               room store comes back only by a return note of its holders. */}
                           {short && canDispense && (
-                            <div className="bg-red-bg text-red m-0 flex flex-col gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold">
+                            <div className="border-red/30 bg-red-bg text-red m-0 flex flex-col gap-1.5 rounded-md border px-2.5 py-1.5 text-[14px] font-medium">
                               <span className="flex flex-wrap items-center gap-2">
                                 <span className="min-w-0 flex-1">
                                   {sendCovers
@@ -613,7 +613,7 @@ function HandOverPanel({
                         </div>
                       )
                     })}
-                    <p className="border-border m-0 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t pt-2 text-[13px]">
+                    <p className="border-border m-0 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t pt-2 text-[14px]">
                       <span className="text-ink-2">
                         {insurer > 0
                           ? t('pharmacy.cardSplit', {
@@ -623,7 +623,7 @@ function HandOverPanel({
                             })
                           : t('pharmacy.cardTotal', { total: formatRwf(total) })}
                       </span>
-                      <span className="text-ink font-bold">
+                      <span className="text-ink font-semibold">
                         {t('pharmacy.payAtEnd', { amount: formatRwf(share) })}
                       </span>
                       {patient?.balance != null && patient.balance > 0 && (
@@ -731,7 +731,7 @@ function SellMedicine({ patients }: { patients: { encounterId: string; label: st
   }
   return (
     <Panel i={2} icon={ShoppingBag} tint="teal" title={t('pharmacy.sellTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('pharmacy.sellLeadEnd')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('pharmacy.sellLeadEnd')}</p>
       <form onSubmit={(e) => void sell(e)} className="flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Select
@@ -800,7 +800,7 @@ function SellMedicine({ patients }: { patients: { encounterId: string; label: st
         {item && q > 0 && (
           <p
             className={cn(
-              'm-0 text-[13px] font-semibold',
+              'm-0 text-[14px] font-semibold',
               q > inStore(item) ? 'text-red' : 'text-ink-2',
             )}
           >

@@ -45,9 +45,12 @@ import { cn } from '@/lib/utils'
  */
 
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
-const okBox = 'bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
-const warnBox = 'bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
+const okBox =
+  'bg-green-bg text-green m-0 border border-green/30 rounded-md px-3 py-2 text-[13px] font-semibold'
+const warnBox =
+  'bg-amber-bg text-amber m-0 border border-amber/30 rounded-md px-3 py-2 text-[13px] font-semibold'
 /** The id of the visit page's "Attachments of this visit" card (the test chips scroll to it). */
 const VISIT_FILES_ID = 'visit-attachments'
 const msgOf = (x: unknown) => (x instanceof Error ? x.message : String(x))
@@ -188,10 +191,10 @@ export function PatientFilesSection({
             )}
             {groups.map((g) => (
               <div key={g.encounterId} className="flex flex-col">
-                <p className="text-ink-3 m-0 flex flex-wrap items-center gap-2 pb-1 text-[12px] font-semibold tracking-[.04em] uppercase">
+                <p className="text-ink-3 m-0 flex flex-wrap items-center gap-2 pb-1 text-[12px] font-medium">
                   {visitLabel(g.first, t)}
                   {g.first.visitOpen && (
-                    <span className="bg-green-bg text-green rounded-full px-2 py-0.5 text-[11px] tracking-normal normal-case">
+                    <span className="bg-green-bg text-green rounded px-2 py-0.5 text-[11px]">
                       {t('supportingFiles.openVisit')}
                     </span>
                   )}
@@ -313,7 +316,7 @@ export function TestFilesPanel({
   const [msg, setMsg] = useState<Msg | null>(null)
 
   return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-xl border p-3">
+    <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-ink-2 inline-flex flex-1 items-center gap-1.5 text-[13px] font-semibold">
           <Paperclip size={14} aria-hidden="true" />
@@ -391,7 +394,7 @@ function HiddenNote({
   const { t } = useTranslation()
   if (hidden <= 0) return null
   return (
-    <p className="bg-violet/10 text-violet m-0 flex items-start gap-2 rounded-xl px-3 py-2 text-[13px] font-semibold">
+    <p className="bg-violet-bg text-violet border-violet/30 m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-semibold">
       <Lock size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
       <span>
         {t(scope === 'visit' ? 'supportingFiles.hiddenVisit' : 'supportingFiles.hidden', {
@@ -455,7 +458,7 @@ function FileRows({
   }
 
   return (
-    <div className="border-border flex flex-col rounded-xl border">
+    <div className="border-border flex flex-col rounded-md border">
       {files.map((f) => {
         const Icon = isImage(f.mimeType) ? ImageIcon : FileText
         return (
@@ -469,7 +472,7 @@ function FileRows({
             <div className="flex flex-wrap items-center gap-3">
               <span
                 className={cn(
-                  'grid size-9 shrink-0 place-items-center rounded-lg',
+                  'grid size-9 shrink-0 place-items-center rounded-md',
                   f.removed ? 'bg-hover text-ink-3' : 'bg-primary-tint text-primary',
                 )}
               >
@@ -679,7 +682,7 @@ function AttachForm({
     <Reveal focus block="nearest">
       <form
         onSubmit={(e) => void submit(e)}
-        className="border-border bg-hover/50 flex flex-col gap-3 rounded-xl border p-3"
+        className="border-border bg-hover/50 flex flex-col gap-3 rounded-md border p-3"
       >
         <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0" disabled={busy}>
           <legend className="text-ink-2 mb-1.5 p-0 text-[13px] font-semibold">
@@ -709,7 +712,7 @@ function AttachForm({
           <span className="text-ink-2 text-[13px] font-semibold">{t('supportingFiles.file')}</span>
           <label
             className={cn(
-              'border-border bg-card hover:border-primary flex cursor-pointer flex-wrap items-center gap-3 rounded-xl border border-dashed px-3 py-3',
+              'border-border bg-card hover:border-primary flex cursor-pointer flex-wrap items-center gap-3 rounded-md border border-dashed px-3 py-3',
               busy && 'pointer-events-none opacity-60',
             )}
           >
@@ -725,10 +728,10 @@ function AttachForm({
               <img
                 src={preview}
                 alt=""
-                className="border-border size-14 shrink-0 rounded-lg border object-cover"
+                className="border-border size-14 shrink-0 rounded-md border object-cover"
               />
             ) : (
-              <span className="bg-primary-tint text-primary grid size-14 shrink-0 place-items-center rounded-lg">
+              <span className="bg-primary-tint text-primary grid size-14 shrink-0 place-items-center rounded-md">
                 {file ? (
                   <FileText size={22} aria-hidden="true" />
                 ) : (
@@ -849,7 +852,7 @@ function RemoveForm({
     <Reveal focus block="nearest">
       <form
         onSubmit={(e) => void submit(e)}
-        className="border-red/40 bg-red-bg/40 flex flex-col gap-2 rounded-xl border p-3"
+        className="border-red/40 bg-red-bg/40 flex flex-col gap-2 rounded-md border p-3"
       >
         <Field
           label={t('supportingFiles.removeReason')}
@@ -975,19 +978,19 @@ function FileViewer({
       <iframe
         src={src}
         title={file.title}
-        className="border-border h-[70vh] w-full rounded-lg border bg-white"
+        className="border-border h-[70vh] w-full rounded-md border bg-white"
       />
     )
   else
     body = (
-      <div className="flex flex-col items-center gap-3 p-6 text-center">
+      <div className="flex flex-col items-center gap-3 p-4 text-center">
         <FileText size={40} aria-hidden="true" className="text-primary" />
         {!expired && (
           <a
             href={src}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-primary inline-flex min-h-12 items-center gap-2 rounded-xl px-5 text-[15px] font-bold text-white"
+            className="bg-primary inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-[14px] font-medium text-white"
           >
             <ExternalLink size={18} aria-hidden="true" />
             {t('supportingFiles.openPdf')}
@@ -1008,16 +1011,16 @@ function FileViewer({
         role="dialog"
         aria-modal="true"
         aria-label={file.title}
-        className="bg-card shadow-card flex max-h-[95vh] w-full max-w-4xl flex-col gap-3 rounded-[16px] p-3"
+        className="bg-card border-border shadow-sheet flex max-h-[95vh] w-full max-w-4xl flex-col gap-3 rounded-md border p-3"
       >
         <div className="flex flex-wrap items-center gap-2">
-          <span className="min-w-[160px] flex-1 font-bold break-words">{file.title}</span>
+          <span className="min-w-[160px] flex-1 font-semibold break-words">{file.title}</span>
           {!expired && inline && (
             <a
               href={src}
               target="_blank"
               rel="noopener noreferrer"
-              className="border-border text-ink hover:bg-hover inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-[13px] font-semibold"
+              className="border-border text-ink hover:bg-hover inline-flex h-8 items-center gap-2 rounded-md border px-3 text-[13px] font-medium"
             >
               <ExternalLink size={14} aria-hidden="true" />
               {t('supportingFiles.newTab')}

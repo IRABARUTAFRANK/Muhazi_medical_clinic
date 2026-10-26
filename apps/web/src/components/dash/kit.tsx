@@ -15,27 +15,29 @@ import { useCountUp } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 /*
- * Dashboard kit (Figma: "Muhazi Clinic — Manager Dashboard v2"): tinted KPI tiles with
- * count-up numbers, 16 px cards with a soft shadow, section titles, pills and list rows.
- * Every dashboard (manager, head of station, front desk, nursing) is built from these so
- * they share one look and one motion system.
+ * Dashboard kit: KPI tiles on a solid light tint with a coloured icon chip, bordered panels
+ * with a 40 px tinted header, 16 px section titles, coloured tags and 40 px list rows. Every
+ * dashboard (manager, head of station, front desk, nursing) is built from these so they share
+ * one look: flat colour, 6 px corners, 1 px borders, no gradient, no shadow. Motion is small
+ * and purposeful: tiles and panels enter staggered (anim-enter with --i), a figure counts up
+ * once, a sparkline draws itself; hover is a background tint.
  */
 
 import { ShownList } from '@/components/ui/list-tools'
 import { DashLink } from './dash-link'
 import {
-  tintBorder,
+  tagClass,
+  tileClass,
   tintClass,
-  tintText,
-  tintWash,
-  type Tint,
+  type Hue,
   card,
   sectionTitle,
   stationIconFor,
 } from './kit-style'
+
+/** A figure that counts up once to its value (instant under reduced motion), formatted. */
 export function CountUp({ value }: { value: number }) {
-  const v = useCountUp(value, 600)
-  return <>{formatNumber(v)}</>
+  return <>{formatNumber(useCountUp(value))}</>
 }
 
 export function Kpi({
@@ -52,7 +54,7 @@ export function Kpi({
 }: {
   i: number
   icon: LucideIcon
-  tint: Tint
+  tint: Hue
   label: string
   value: number
   unit: string
@@ -66,62 +68,55 @@ export function Kpi({
 }) {
   const { t } = useTranslation()
   const Arrow = d ? (d.up === null ? Minus : d.up ? ArrowUp : ArrowDown) : Minus
-  const pill = d
+  // the delta tag sits on the tinted tile, so it is white with its colour as text and border
+  const tag = d
     ? d.good === null
-      ? 'bg-hover text-ink-2'
+      ? 'border-border bg-card text-ink-2'
       : d.good
-        ? 'bg-green-bg text-green'
-        : 'bg-red-bg text-red'
+        ? 'border-green/30 bg-card text-green'
+        : 'border-red/30 bg-card text-red'
     : ''
   const className = cn(
     card,
-    'anim-enter relative gap-2 overflow-hidden px-3.5 pt-3.5 pb-3 sm:gap-2.5 sm:px-[18px] sm:pt-[18px] sm:pb-3.5',
+    'anim-enter relative gap-2 overflow-hidden',
+    tileClass[tint],
     to && linkCard,
   )
-  const style = {
-    '--i': i,
-    backgroundImage: `linear-gradient(150deg, ${tintWash[tint]} 0%, var(--mmc-card) 62%)`,
-  } as CSSProperties
+  const style = { '--i': i } as CSSProperties
   const body = (
     <>
-      {to && (
-        <span className="text-ink-3 group-hover:text-primary group-focus-visible:text-primary absolute top-3 right-3 inline-flex items-center gap-0.5 text-[12px] font-semibold sm:top-4 sm:right-4">
-          <span className="hidden sm:inline">{t('dashboard.links.details')}</span>
-          <ArrowUpRight size={14} strokeWidth={2.5} aria-hidden="true" />
-        </span>
-      )}
-      <span
-        className={cn(
-          'inline-flex size-10 items-center justify-center rounded-xl',
-          tintClass[tint],
+      <span className="flex items-start gap-2 text-[13px] font-medium">
+        <IconChip icon={IconC} tint={tint} />
+        <span className="text-ink-2 min-w-0 flex-1 pt-1 break-words">{label}</span>
+        {to && (
+          <span className="text-ink-2 group-hover:text-primary group-focus-visible:text-primary ml-auto inline-flex flex-none items-center gap-0.5 pt-1 text-[12px]">
+            <span className="hidden sm:inline">{t('dashboard.links.details')}</span>
+            <ArrowUpRight size={13} aria-hidden="true" />
+          </span>
         )}
-      >
-        <IconC size={18} aria-hidden="true" />
       </span>
-      <span
-        className={cn(
-          'text-[11px] font-bold tracking-[.04em] uppercase sm:text-[13px]',
-          tintText[tint],
-        )}
-      >
-        {label}
-      </span>
-      <span className="flex flex-wrap items-baseline gap-1.5 text-[26px] leading-none font-extrabold tracking-[-0.02em] tabular-nums sm:text-[32px]">
+      <span className="flex flex-wrap items-baseline gap-1.5 text-[28px] leading-8 font-semibold tracking-[-0.01em] tabular-nums">
         {text ?? <CountUp value={value} />}
-        <small className="text-ink-3 text-[14px] font-semibold">{unit}</small>
+        <small className="text-ink-2 text-[13px] font-normal">{unit}</small>
       </span>
-      {d && (
-        <span
-          className={cn(
-            'fade-in-late inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-bold tabular-nums',
-            pill,
+      {(d || (spark && spark.length > 1)) && (
+        <span className="flex items-end justify-between gap-2">
+          {d ? (
+            <span
+              className={cn(
+                'inline-flex min-h-6 min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-[12px] leading-tight font-medium tabular-nums',
+                tag,
+              )}
+            >
+              <Arrow size={12} strokeWidth={2.5} aria-hidden="true" className="flex-none" />
+              <span className="min-w-0">{d.text}</span>
+            </span>
+          ) : (
+            <span />
           )}
-        >
-          <Arrow size={12} strokeWidth={3} aria-hidden="true" />
-          {d.text}
+          {spark && spark.length > 1 && <Sparkline values={spark} />}
         </span>
       )}
-      {spark && spark.length > 1 && <Sparkline values={spark} />}
     </>
   )
   return to ? (
@@ -135,9 +130,21 @@ export function Kpi({
   )
 }
 
-/** A card that is a link: the text keeps its colours, the focus ring shows for the keyboard. */
+/** A card that is a link: the text keeps its colours, the tint deepens a little on hover (120
+ *  ms, no lift), the focus ring shows for the keyboard. */
 const linkCard =
-  'group cursor-pointer text-inherit no-underline outline-none focus-visible:ring-[3px] focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface'
+  'group cursor-pointer text-inherit no-underline outline-none transition-[filter] duration-120 hover:brightness-[0.97] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20'
+
+/** Light tint of a panel header: teal for ordinary panels, the subject's colour where it has one. */
+const headerTint: Record<Hue, string> = {
+  teal: 'bg-primary-tint/60',
+  mint: 'bg-green-bg/70',
+  amber: 'bg-amber-bg/70',
+  coral: 'bg-red-bg/70',
+  violet: 'bg-violet-bg/70',
+  navy: 'bg-blue-bg/70',
+  rose: 'bg-rose-bg/70',
+}
 
 /** "Details →" at the top of a panel: the detailed view behind it. */
 function DetailsLink({ to, label, title }: { to: string; label?: string; title: string }) {
@@ -146,14 +153,15 @@ function DetailsLink({ to, label, title }: { to: string; label?: string; title: 
     <DashLink
       href={to}
       aria-label={label ? undefined : t('dashboard.links.detailsOf', { what: title })}
-      className="text-primary hover:bg-primary-tint focus-visible:ring-primary/45 inline-flex flex-none items-center gap-1 rounded-lg px-2 py-1 text-[13px] font-bold whitespace-nowrap no-underline outline-none focus-visible:ring-[3px]"
+      className="text-primary hover:bg-card focus-visible:ring-primary/20 inline-flex h-7 flex-none items-center gap-1 rounded-md px-2 text-[13px] font-medium whitespace-nowrap no-underline outline-none focus-visible:ring-2"
     >
       {label ?? t('dashboard.links.details')}
-      <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" />
+      <ArrowRight size={14} aria-hidden="true" />
     </DashLink>
   )
 }
 
+/** Thin line in the tile's colour at the end of its last row; it draws itself in once. */
 export function Sparkline({ values }: { values: number[] }) {
   const max = Math.max(1, ...values)
   const pts = values
@@ -162,56 +170,50 @@ export function Sparkline({ values }: { values: number[] }) {
   return (
     <svg
       viewBox="0 0 84 34"
-      className="text-violet pointer-events-none absolute right-3 bottom-3 hidden h-[34px] w-[84px] sm:block"
+      className="pointer-events-none hidden h-[28px] w-[70px] flex-none opacity-60 sm:block"
       aria-hidden="true"
     >
       <polyline
         points={pts}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
         pathLength={1}
         className="draw-line"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
       />
     </svg>
   )
 }
 
-/** Small tinted square holding an icon, used before panel titles and in list rows. */
+/** Small tinted square holding an icon: 32 px before tile and panel titles, 28 px in rows. */
 export function IconChip({
   icon: IconC,
   tint = 'teal',
   size = 'md',
 }: {
   icon: LucideIcon
-  tint?: Tint
+  tint?: Hue
   size?: 'sm' | 'md'
 }) {
   return (
     <span
       className={cn(
-        'inline-flex flex-none items-center justify-center',
-        size === 'sm' ? 'size-7 rounded-lg' : 'size-8 rounded-[10px]',
+        'inline-flex flex-none items-center justify-center rounded',
+        size === 'sm' ? 'size-7' : 'size-8',
         tintClass[tint],
       )}
     >
-      <IconC size={size === 'sm' ? 14 : 16} aria-hidden="true" />
+      <IconC size={size === 'sm' ? 16 : 18} aria-hidden="true" />
     </span>
   )
 }
 
-/** Uppercase section label with its icon ("MONEY", "OPERATIONS"). */
+/** Section title with its icon ("Money", "Operations"): 16 px semibold with a teal rule below. */
 export function SectionTitle({ icon: IconC, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
-    <div className={cn(sectionTitle, 'flex items-center gap-2')}>
-      <span className="bg-primary inline-flex size-6 items-center justify-center rounded-md text-white">
-        <IconC size={13} strokeWidth={2.5} aria-hidden="true" />
-      </span>
+    <div className={cn(sectionTitle, 'border-primary/30 flex items-center gap-2 border-b pb-2')}>
+      <IconC size={18} aria-hidden="true" className="text-primary" />
       {children}
-      <span
-        aria-hidden="true"
-        className="from-primary/40 h-px flex-1 bg-linear-to-r to-transparent"
-      />
     </div>
   )
 }
@@ -248,7 +250,7 @@ export function Panel({
   title: string
   /** Icon chip before the title, so each panel is recognisable at a glance. */
   icon?: LucideIcon
-  tint?: Tint
+  tint?: Hue
   right?: ReactNode
   /** The detailed view behind the panel (an app address): a "Details →" link in the header. */
   to?: string
@@ -259,37 +261,39 @@ export function Panel({
 }) {
   return (
     <section
-      className={cn(card, 'anim-enter border-t-[3px]', tintBorder[tint], className)}
-      style={
-        {
-          '--i': i,
-          backgroundImage: `linear-gradient(180deg, ${tintWash[tint]} 0, var(--mmc-card) 88px)`,
-        } as CSSProperties
-      }
+      className={cn(card, 'anim-enter gap-0 p-0', className)}
+      style={{ '--i': i } as CSSProperties}
     >
-      <h3 className="m-0 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[16px] font-bold">
-        <span className="flex min-w-0 flex-[1_1_180px] items-center gap-2.5">
-          {icon && <IconChip icon={icon} tint={tint} />}
-          <span className={cn('min-w-0 break-words', tintText[tint])}>{title}</span>
+      {/* 40 px header on the panel's light tint: icon and title left, note and link right */}
+      <h3
+        className={cn(
+          'border-border m-0 flex min-h-10 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b px-4 py-1.5 text-[16px] font-semibold',
+          headerTint[tint],
+        )}
+      >
+        <span className="flex min-w-0 flex-[1_1_180px] items-center gap-2">
+          {icon && <IconChip icon={icon} tint={tint} size="sm" />}
+          <span className="text-ink min-w-0 break-words">{title}</span>
         </span>
         {(right || to) && (
           <span className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-x-2 gap-y-1">
-            {right && <span className="text-ink-3 text-[13px] font-semibold">{right}</span>}
+            {right && <span className="text-ink-2 text-[13px] font-normal">{right}</span>}
             {to && <DetailsLink to={to} label={toLabel} title={title} />}
           </span>
         )}
       </h3>
-      {children}
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">{children}</div>
     </section>
   )
 }
 
+/** Small bordered tag in a tint, with an optional symbol before the text. */
 export function Pill({
   tint,
   icon,
   children,
 }: {
-  tint: Tint
+  tint: Hue
   /** Small symbol before the text (clock for a time, siren for red). */
   icon?: LucideIcon
   children: ReactNode
@@ -297,8 +301,8 @@ export function Pill({
   return (
     <span
       className={cn(
-        'inline-flex min-w-6 flex-none items-center justify-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-bold whitespace-nowrap',
-        tintClass[tint],
+        'inline-flex h-6 min-w-6 flex-none items-center justify-center gap-1 rounded border px-2 text-[12px] leading-none font-medium whitespace-nowrap tabular-nums',
+        tagClass[tint],
       )}
     >
       {icon && createElement(icon, { size: 12, strokeWidth: 2.5, 'aria-hidden': true })}
@@ -318,7 +322,7 @@ export function ListRows({
     pill?: ReactNode
     /** Icon chip at the start of the row. */
     icon?: LucideIcon
-    tint?: Tint
+    tint?: Hue
     label: string
     value: string
     /** The row opens this app address (keyboard and pointer). */
@@ -331,7 +335,7 @@ export function ListRows({
         <div className="flex flex-col">
           {shown.map((r, i) => {
             const row =
-              'border-grid anim-enter flex min-h-10 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0'
+              'border-grid flex min-h-10 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0'
             const style = { '--i': i } as CSSProperties
             const content = (
               <>
@@ -339,7 +343,7 @@ export function ListRows({
                 {r.pill}
                 {/* the whole label wraps (a medicine with its strength, a full name) */}
                 <span className="min-w-0 flex-1 wrap-break-word">{r.label}</span>
-                <span className="font-bold whitespace-nowrap tabular-nums">{r.value}</span>
+                <span className="font-medium whitespace-nowrap tabular-nums">{r.value}</span>
                 {r.to && (
                   <ArrowRight
                     size={14}
@@ -355,7 +359,7 @@ export function ListRows({
                 href={r.to}
                 className={cn(
                   row,
-                  'group hover:bg-hover focus-visible:ring-primary/45 -mx-1.5 rounded-md px-1.5 text-inherit no-underline outline-none focus-visible:ring-[3px]',
+                  'group hover:bg-hover focus-visible:ring-primary/20 -mx-2 rounded px-2 text-inherit no-underline transition-colors duration-120 outline-none focus-visible:ring-2',
                 )}
                 style={style}
               >
@@ -381,8 +385,8 @@ export function Empty({
   icon?: LucideIcon
 }) {
   return (
-    <p className="text-ink-3 m-0 flex items-center gap-2 py-2 text-[14px]">
-      {createElement(icon, { size: 18, className: 'text-green flex-none', 'aria-hidden': true })}
+    <p className="text-ink-3 m-0 flex items-center gap-2 py-1 text-[14px]">
+      {createElement(icon, { size: 16, className: 'text-green flex-none', 'aria-hidden': true })}
       {children}
     </p>
   )

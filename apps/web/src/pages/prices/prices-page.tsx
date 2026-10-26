@@ -70,7 +70,8 @@ import { ShownList } from '@/components/ui/list-tools'
 import { Flash } from '@/components/ui/flash'
 import { useConfirm } from '@/lib/confirm'
 
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
 
 /** Each department card gets its own colour, in this order. */
 const DEPT_TINTS: Tint[] = ['teal', 'violet', 'mint', 'amber', 'coral', 'navy']
@@ -225,7 +226,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                   {x.nameFr ? ` · ${x.nameFr}` : ''}
                 </span>
               </span>
-              <span className="text-primary text-[15px] font-extrabold tabular-nums">
+              <span className="text-primary text-[16px] font-semibold tabular-nums">
                 {x.cashPrice == null
                   ? t('prices.noPrice')
                   : x.cashPrice === 0
@@ -506,7 +507,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 </option>
               ))}
             </Select>
-            <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
+            <label className="flex min-h-9 items-center gap-2 text-[14px] font-medium">
               <input
                 type="checkbox"
                 className="accent-primary size-[18px]"
@@ -554,25 +555,30 @@ export function PricesPage({ user }: { user: StaffUser }) {
             )
             return (
               <Card key={c.id || 'none'} className="overflow-hidden">
-                <div className={cn('flex flex-wrap items-center gap-3 px-4 py-3', DEPT_HEAD[tint])}>
+                <div
+                  className={cn(
+                    'border-border flex flex-wrap items-center gap-3 border-b px-4 py-3',
+                    DEPT_HEAD[tint],
+                  )}
+                >
                   <span
                     className={cn(
-                      'inline-flex size-10 flex-none items-center justify-center rounded-xl',
+                      'inline-flex size-8 flex-none items-center justify-center rounded',
                       tintClass[tint],
                       'bg-card',
                     )}
                   >
                     {c.dept ? (
-                      <Building2 size={20} aria-hidden="true" />
+                      <Building2 size={18} aria-hidden="true" />
                     ) : (
-                      <Layers size={20} aria-hidden="true" />
+                      <Layers size={18} aria-hidden="true" />
                     )}
                   </span>
                   <span className="min-w-[180px] flex-1">
-                    <span className={cn('block text-[17px] font-extrabold', DEPT_TEXT[tint])}>
+                    <span className={cn('block text-[16px] font-semibold', DEPT_TEXT[tint])}>
                       {c.dept?.name ?? t('prices.dept.none')}
                     </span>
-                    <span className="text-ink-2 block text-[13px]">
+                    <span className="text-ink-2 block text-[14px]">
                       {c.dept
                         ? c.dept.description ||
                           t('prices.dept.servicesCount', { count: c.items.length })
@@ -611,7 +617,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
           <Card>
             <CardBody className="flex-row items-center gap-3">
               <Building2 size={18} aria-hidden="true" className="text-violet flex-none" />
-              <p className="text-ink-2 m-0 text-[13px]">{t('prices.dept.noDepartments')}</p>
+              <p className="text-ink-2 m-0 text-[14px]">{t('prices.dept.noDepartments')}</p>
             </CardBody>
           </Card>
         )}
@@ -664,7 +670,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
           <Card>
             <CardBody className="flex-row items-center gap-3">
               <ShieldCheck size={18} aria-hidden="true" className="text-ink-3 flex-none" />
-              <p className="text-ink-2 m-0 text-[13px]">{t('prices.insurers.parked')}</p>
+              <p className="text-ink-2 m-0 text-[14px]">{t('prices.insurers.parked')}</p>
             </CardBody>
           </Card>
         )}
@@ -691,7 +697,7 @@ function InsurersSection({
     <>
       <div className="mt-2 flex flex-wrap items-end gap-3">
         <div className="min-w-[260px] flex-1">
-          <h2 className="m-0 text-xl font-bold">{t('prices.insurers.title')}</h2>
+          <h2 className="m-0 text-[16px] font-semibold">{t('prices.insurers.title')}</h2>
           <p className="text-ink-2 m-0 mt-1 max-w-[720px]">{t('prices.insurers.lead')}</p>
         </div>
         <Button onClick={() => setEditingInsurer('new')}>
@@ -734,7 +740,7 @@ function InsurersSection({
                 {i.code} · {t(`prices.insurers.types.${i.type}`)}
               </span>
             </span>
-            <span className="font-bold tabular-nums">
+            <span className="font-semibold tabular-nums">
               {t('prices.insurers.covers', { pct: i.coveragePct })}
             </span>
             {Object.entries(i.pctByGroup).map(([g, pct]) => (
@@ -872,7 +878,7 @@ function AdjustPricesCard({
       </CardHeader>
       <form onSubmit={(e) => void submit(e)}>
         <CardBody className="gap-3">
-          <p className="text-ink-2 m-0 text-[13px]">{t('prices.adjust.lead')}</p>
+          <p className="text-ink-2 m-0 text-[14px]">{t('prices.adjust.lead')}</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <Select
               label={t('prices.adjust.which')}
@@ -918,8 +924,8 @@ function AdjustPricesCard({
             </Select>
           </div>
           {valid && rows.length > 0 && (
-            <div className="border-border overflow-x-auto rounded-xl border">
-              <table className="w-full text-[13px] tabular-nums">
+            <div className="border-border overflow-x-auto rounded-md border">
+              <table className="w-full text-[14px] tabular-nums">
                 <thead className="bg-hover/60 text-ink-2 text-left">
                   <tr>
                     <th className="px-3 py-2 font-semibold">{t('prices.adjust.cols.treatment')}</th>
@@ -954,7 +960,7 @@ function AdjustPricesCard({
                         )}
                         <td
                           className={cn(
-                            'px-3 py-1.5 text-right font-bold',
+                            'px-3 py-1.5 text-right font-semibold',
                             to === x.cashPrice ? 'text-amber' : 'text-primary',
                           )}
                         >
@@ -972,9 +978,9 @@ function AdjustPricesCard({
               )}
             </div>
           )}
-          {valid && explain && <p className="text-ink-2 m-0 text-[13px]">{explain}</p>}
+          {valid && explain && <p className="text-ink-2 m-0 text-[14px]">{explain}</p>}
           {valid && unchanged.length > 0 && (
-            <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+            <p className="border-amber/30 bg-amber-bg text-amber m-0 rounded-md border px-3 py-2 text-[14px] font-medium">
               {t('prices.adjust.unchanged', { count: unchanged.length })}
             </p>
           )}
@@ -1153,7 +1159,7 @@ function TreatmentForm({
             </p>
           )}
           <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-            <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
+            <legend className="text-ink-2 mb-1 text-[14px] font-semibold">
               {t('prices.dept.fieldMany')}
             </legend>
             {departments.length === 0 ? (
@@ -1170,7 +1176,7 @@ function TreatmentForm({
                       aria-checked={on}
                       onClick={() => toggleDept(d.id)}
                       className={cn(
-                        'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                        'inline-flex min-h-8 items-center gap-1.5 rounded-md border px-3 text-[14px] font-medium',
                         on
                           ? 'border-primary bg-primary text-white'
                           : 'border-border bg-card text-ink-2 hover:bg-hover',
@@ -1246,7 +1252,7 @@ function TreatmentForm({
           </div>
           {insurers.length > 0 && (
             <div className="flex flex-col gap-2">
-              <span className="text-ink-2 text-[13px] font-semibold">
+              <span className="text-ink-2 text-[14px] font-semibold">
                 {t('prices.form.insurerPrices')}
               </span>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -1269,7 +1275,7 @@ function TreatmentForm({
             </div>
           )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="border-border flex items-start gap-3 rounded-xl border p-3">
+            <label className="border-border flex items-start gap-3 rounded-md border p-3">
               <input
                 type="checkbox"
                 className="accent-primary mt-0.5 size-[18px] flex-none"
@@ -1277,13 +1283,13 @@ function TreatmentForm({
                 onChange={(e) => setAllowManual(e.target.checked)}
               />
               <span>
-                <span className="block text-[13px] font-semibold">
+                <span className="block text-[14px] font-semibold">
                   {t('prices.form.allowManual')}
                 </span>
                 <span className="text-ink-3 block text-xs">{t('prices.form.allowManualHint')}</span>
               </span>
             </label>
-            <label className="border-border flex items-start gap-3 rounded-xl border p-3">
+            <label className="border-border flex items-start gap-3 rounded-md border p-3">
               <input
                 type="checkbox"
                 className="accent-primary mt-0.5 size-[18px] flex-none"
@@ -1291,7 +1297,7 @@ function TreatmentForm({
                 onChange={(e) => setActive(e.target.checked)}
               />
               <span>
-                <span className="block text-[13px] font-semibold">{t('prices.form.active')}</span>
+                <span className="block text-[14px] font-semibold">{t('prices.form.active')}</span>
                 <span className="text-ink-3 block text-xs">{t('prices.form.activeHint')}</span>
               </span>
             </label>
@@ -1420,7 +1426,7 @@ function InsurerForm({ insurer, onClose }: { insurer: Insurer | null; onClose: (
               required
             />
           </div>
-          <span className="text-ink-2 text-[13px] font-semibold">
+          <span className="text-ink-2 text-[14px] font-semibold">
             {t('prices.insurers.form.byGroup')}
           </span>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -1440,7 +1446,7 @@ function InsurerForm({ insurer, onClose }: { insurer: Insurer | null; onClose: (
               />
             ))}
           </div>
-          <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
+          <label className="flex min-h-9 items-center gap-2 text-[14px] font-medium">
             <input
               type="checkbox"
               className="accent-primary size-[18px]"

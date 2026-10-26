@@ -11,11 +11,15 @@ import {
   Plus,
   Printer,
   Receipt,
+  ShieldCheck,
   Trash2,
+  Undo2,
+  Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FEATURES, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { LeftButton } from '@/components/clinical/left-button'
+import { EmptyNote } from '@/components/clinical/empty-note'
 import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
@@ -60,7 +64,8 @@ import { useVisitClinical } from '@/lib/api/patients'
 import { VisitRecordGate, VisitSafetySummary } from '@/components/clinical/record-privacy'
 import { VisitFilesCard } from '@/components/clinical/supporting-files'
 
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
 
 /**
  * One visit at a station: patient and triage, who pays, the treatments given (with the
@@ -303,11 +308,11 @@ export function VisitPage({
             {/* Patient header */}
             <Card>
               <CardBody className="flex-row flex-wrap items-center gap-x-5 gap-y-2">
-                <span className="text-primary text-2xl font-bold tabular-nums">
+                <span className="text-primary text-[24px] font-semibold tabular-nums">
                   {header.ticket}
                 </span>
                 <span className="min-w-[200px] flex-1">
-                  <span className="block text-lg font-bold">{header.name}</span>
+                  <span className="block text-[20px] font-semibold">{header.name}</span>
                   <span className="text-ink-3 text-xs tabular-nums">
                     {header.fileNumber} · {header.ageSex}
                   </span>
@@ -385,7 +390,7 @@ export function VisitPage({
               <NotAllowedNotice feature="vitals.write" compact />
             )}
             {!closed && vitals.length === 0 && !addingVitals && mayVitals && !recordPrivate && (
-              <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+              <p className="bg-amber-bg text-amber border-amber/30 m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2.5 text-[14px] font-semibold">
                 <Activity size={18} aria-hidden="true" />
                 <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
                 <Button size="sm" variant="primary" onClick={() => setAddingVitals(true)}>
@@ -396,7 +401,7 @@ export function VisitPage({
             {/* where the patient is in the visit: start → each desk → treatment → payment → left */}
             <VisitTrack encounterId={encounterId} />
             {closed && (
-              <p className="bg-green-bg text-green m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+              <p className="bg-green-bg text-green border-green/30 m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2.5 text-[14px] font-semibold">
                 <CheckCircle2 size={18} aria-hidden="true" />
                 {t('visit.closedBanner', {
                   when: header.closedAt
@@ -428,7 +433,7 @@ export function VisitPage({
               />
             )}
             {locked && !access?.handover?.forMe && (
-              <p className="bg-violet-bg text-violet m-0 flex flex-wrap items-start gap-2 rounded-xl px-3 py-2.5 text-[14px]">
+              <p className="bg-violet-bg text-violet border-violet/30 m-0 flex flex-wrap items-start gap-2 rounded-md border px-3 py-2.5 text-[14px]">
                 <Lock size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
                 <span className="min-w-0 flex-1">
                   <b className="block">
@@ -439,7 +444,7 @@ export function VisitPage({
               </p>
             )}
             {!closed && access?.helping && (
-              <p className="bg-primary-tint text-primary m-0 flex items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+              <p className="bg-primary-tint text-primary border-primary/30 m-0 flex items-center gap-2 rounded-md border px-3 py-2.5 text-[14px] font-semibold">
                 <HandHelping size={18} aria-hidden="true" />
                 {t('access.helpingBanner')}
               </p>
@@ -610,7 +615,7 @@ export function VisitPage({
                   {/* Who pays: only once the clinic works with insurers */}
                   {FEATURES.insurance && (
                     <Card>
-                      <CardHeader>
+                      <CardHeader icon={ShieldCheck}>
                         <span>{t('visit.payer.title')}</span>
                         {currentInsurer && (
                           <Chip>
@@ -669,7 +674,7 @@ export function VisitPage({
                     </CardHeader>
                     {(bill?.charges.length ?? 0) === 0 ? (
                       <CardBody>
-                        <p className="text-ink-3 m-0 text-[13px]">{t('visit.charges.empty')}</p>
+                        <EmptyNote>{t('visit.charges.empty')}</EmptyNote>
                       </CardBody>
                     ) : (
                       bill!.charges.map((c) => (
@@ -690,7 +695,7 @@ export function VisitPage({
                               <s className="text-ink-3 ml-1">{formatRwf(c.listPrice)}</s>
                             )}
                           </span>
-                          <span className="font-bold tabular-nums">
+                          <span className="font-semibold tabular-nums">
                             {formatRwf(Math.round(c.unitPrice * c.quantity))}
                           </span>
                           {c.coveragePct > 0 && (
@@ -722,7 +727,7 @@ export function VisitPage({
                     <CardBody className="border-border flex-row flex-wrap items-center gap-x-6 gap-y-1 border-t">
                       <span className="text-ink-2 text-[13px]">
                         {t('visit.charges.total')}{' '}
-                        <b className="text-ink text-lg tabular-nums">
+                        <b className="text-ink text-[16px] tabular-nums">
                           {formatRwf(bill?.total ?? 0)}
                         </b>
                       </span>
@@ -918,7 +923,7 @@ export function VisitPage({
                 {/* reception sends the patient on while the patient is with reception; once
                     sent to a desk, reception follows the visit (the track above) */}
                 {isReception && !closed && routeLocked && (
-                  <p className="bg-primary-tint text-primary m-0 flex items-start gap-2 rounded-xl px-3 py-2.5 text-[14px]">
+                  <p className="bg-primary-tint text-primary border-primary/30 m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px]">
                     <Footprints size={18} aria-hidden="true" className="mt-0.5 shrink-0" />
                     {t('track.followOnly')}
                   </p>
@@ -1045,7 +1050,7 @@ function PaymentCard({
   if (overpaid > 0)
     return (
       <Card className="border-amber">
-        <CardHeader>
+        <CardHeader icon={Undo2}>
           <span>{t('visit.refund.title')}</span>
           <span className="text-ink-2 text-[13px] tabular-nums">
             {t('visit.refund.owed')} <b className="text-ink">{formatRwf(overpaid)}</b>
@@ -1137,7 +1142,7 @@ function PaymentCard({
 
   return (
     <Card className={cn(settled ? 'border-green' : 'border-primary')}>
-      <CardHeader>
+      <CardHeader icon={Wallet}>
         <span>{t('visit.payment.title')}</span>
         {settled ? (
           <PaidMark bill={bill} />
@@ -1154,9 +1159,7 @@ function PaymentCard({
               {t('visit.payment.alreadyPaid', { amount: formatRwf(bill.paid) })}
             </p>
           )}
-          {bill.total === 0 && (
-            <p className="text-ink-3 m-0 text-[13px]">{t('visit.payment.nothingYet')}</p>
-          )}
+          {bill.total === 0 && <EmptyNote>{t('visit.payment.nothingYet')}</EmptyNote>}
           {!settled && bill.total > 0 && (
             <>
               <div className="grid grid-cols-2 gap-3">
@@ -1417,7 +1420,7 @@ function AddChargeCard({
             </div>
           )}
           {myIds.length > 0 && showOthers && others.some((x) => x.id === serviceId) && (
-            <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+            <p className="bg-amber-bg text-amber border-amber/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
               {t('visit.add.otherWarning')}
             </p>
           )}

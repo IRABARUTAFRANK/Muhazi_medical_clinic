@@ -1,0 +1,70 @@
+/*
+ * Motion of the visit track and journey (where the patient is): the line between stops draws in,
+ * the dot on the current stop pulses, and a queue row that just changed desk or hands glows for a
+ * moment. 150–300 ms, no lift, no shadow; nothing moves under prefers-reduced-motion.
+ * Job `motion` defines `anim-progress` and `anim-pulse-dot` in globals.css with the same meaning;
+ * the copies here keep the track moving until then and do the same thing, so they do not clash.
+ */
+@keyframes mmc-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes mmc-progress-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes mmc-pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--mmc-primary) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--mmc-primary) 0%, transparent);
+  }
+}
+@keyframes mmc-row-flash {
+  from {
+    background-color: var(--mmc-primary-tint);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* the line into a stop, drawn left to right; `--i` is the stop's index, as for anim-enter */
+.anim-progress {
+  transform-origin: left center;
+  animation: mmc-progress 300ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+/* the same line down a vertical list */
+.anim-progress-y {
+  transform-origin: center top;
+  animation: mmc-progress-y 600ms ease-out both;
+}
+/* the dot on the step the patient is at now */
+.anim-pulse-dot {
+  animation: mmc-pulse-dot 1.8s ease-out infinite;
+}
+/* a queue row that just changed (new desk, taken, triage colour) */
+.anim-row-flash {
+  animation: mmc-row-flash 1.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-progress,
+  .anim-progress-y,
+  .anim-pulse-dot,
+  .anim-row-flash {
+    animation: none;
+    transform: none;
+  }
+}

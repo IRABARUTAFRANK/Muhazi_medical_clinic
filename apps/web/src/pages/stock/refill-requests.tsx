@@ -134,13 +134,13 @@ export function RefillRequestsList({
             <div
               key={r.id}
               className={cn(
-                'border-border flex flex-col gap-2 rounded-xl border p-3',
+                'border-border flex flex-col gap-2 rounded-md border p-3',
                 r.id === focusId && 'border-primary ring-primary-tint ring-[3px]',
               )}
             >
               <div className="flex flex-wrap items-start gap-2">
                 <span className="min-w-[200px] flex-1">
-                  <span className="block font-bold">
+                  <span className="block font-semibold">
                     {r.number} · {r.store}
                   </span>
                   <span className="text-ink-3 block text-[12px]">
@@ -157,11 +157,11 @@ export function RefillRequestsList({
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
-                  {r.note && <span className="text-ink-2 block text-[13px]">“{r.note}”</span>}
+                  {r.note && <span className="text-ink-2 block text-[14px]">“{r.note}”</span>}
                 </span>
                 <Badge tone={TONE[r.status]}>{t(`roomStores.requestStatus.${r.status}`)}</Badge>
               </div>
-              <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
+              <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
                 {r.lines.map((l) => (
                   <li key={l.itemId} className="flex flex-wrap gap-x-3">
                     <span className="min-w-[160px] flex-1 font-semibold">

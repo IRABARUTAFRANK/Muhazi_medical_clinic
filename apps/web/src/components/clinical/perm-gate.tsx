@@ -30,7 +30,7 @@ export function NotAllowedNotice({
     <p
       role="status"
       className={cn(
-        'bg-amber-bg text-amber m-0 flex items-start gap-3 rounded-xl text-[14px]',
+        'bg-amber-bg text-amber border-amber/30 m-0 flex items-start gap-3 rounded-md border text-[14px]',
         compact ? 'px-3 py-2' : 'px-4 py-3.5',
         className,
       )}

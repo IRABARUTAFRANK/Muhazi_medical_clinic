@@ -1,5 +1,16 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import { Clock, History, LockKeyhole, Search, ShieldCheck, Siren, UserRound, X } from 'lucide-react'
+import {
+  CircleAlert,
+  Clock,
+  FolderOpen,
+  History,
+  LockKeyhole,
+  Search,
+  ShieldCheck,
+  Siren,
+  UserRound,
+  X,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
@@ -35,6 +46,17 @@ const VIA_TINT: Record<AccessLogVia, Tint> = {
   manager: 'navy',
 }
 const PAGE_SIZE = 25
+
+/** A refusal from the database, as a bordered red line with its symbol. */
+const ErrorLine = ({ children }: { children: string }) => (
+  <p
+    role="alert"
+    className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[14px] font-medium"
+  >
+    <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+    <span>{children}</span>
+  </p>
+)
 
 /**
  * Record access (0088): the approvers' page.
@@ -86,11 +108,7 @@ export function RecordAccessPage({ user, focus }: { user: StaffUser; focus?: str
             {done}
           </Flash>
         )}
-        {error && (
-          <p className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold">
-            {error.message}
-          </p>
-        )}
+        {error && <ErrorLine>{error.message}</ErrorLine>}
 
         <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
           {/* waiting for my answer */}
@@ -283,10 +301,10 @@ function AccessLogPanel() {
           </Select>
           {patient ? (
             <div className="flex w-full flex-col gap-1.5 sm:w-64">
-              <span className="text-ink-2 text-[13px] font-semibold">
+              <span className="text-ink-2 text-[13px] font-medium">
                 {t('recordAccess.patient')}
               </span>
-              <span className="border-primary bg-primary-tint text-ink flex h-11 items-center gap-2 rounded-lg border px-3 text-[14px]">
+              <span className="border-primary bg-primary-tint text-ink flex h-[38px] items-center gap-2 rounded-md border px-3 text-[14px]">
                 <UserRound size={16} aria-hidden="true" className="text-primary flex-none" />
                 <span className="min-w-0 flex-1 truncate">{patient.label}</span>
                 <button
@@ -294,7 +312,7 @@ function AccessLogPanel() {
                   onClick={() => setPatient(null)}
                   aria-label={t('recordAccess.allPatients')}
                   title={t('recordAccess.allPatients')}
-                  className="text-ink-3 hover:text-ink hover:bg-hover inline-flex size-8 items-center justify-center rounded-md"
+                  className="text-ink-3 hover:text-ink hover:bg-hover inline-flex size-7 items-center justify-center rounded"
                 >
                   <X size={16} aria-hidden="true" />
                 </button>
@@ -315,11 +333,7 @@ function AccessLogPanel() {
         </div>
       </div>
 
-      {log.error && (
-        <p className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold">
-          {log.error.message}
-        </p>
-      )}
+      {log.error && <ErrorLine>{log.error.message}</ErrorLine>}
       {!log.isLoading && rows.length === 0 ? (
         <Empty>{t('recordAccess.logEmpty')}</Empty>
       ) : (
@@ -360,7 +374,7 @@ function PatientMatches({
   const { data, isLoading } = usePatientsList(query, 0)
   const hits = (data?.rows ?? []).slice(0, 6)
   return (
-    <div className="border-border bg-card shadow-card absolute top-full right-0 left-0 z-10 mt-1 flex flex-col rounded-lg border p-1">
+    <div className="border-border bg-card shadow-sheet absolute top-full right-0 left-0 z-10 mt-1 flex flex-col rounded-md border p-1">
       {isLoading ? (
         <span className="text-ink-3 px-2 py-2 text-[13px]">{t('recordAccess.loading')}</span>
       ) : hits.length === 0 ? (
@@ -376,7 +390,7 @@ function PatientMatches({
               key={p.id}
               type="button"
               onClick={() => onPick(p.id, label)}
-              className="hover:bg-hover text-ink min-h-10 rounded-md px-2 text-left text-[14px]"
+              className="hover:bg-hover text-ink min-h-9 rounded px-2 text-left text-[14px] transition-colors duration-120"
             >
               {label}
             </button>
@@ -401,7 +415,7 @@ function LogRow({ row, i, onPatient }: { row: AccessLogRow; i: number; onPatient
     <li
       className={cn(
         'border-grid anim-enter flex flex-wrap items-start gap-x-3 gap-y-1 border-b py-2.5 text-[14px] last:border-b-0',
-        row.emergency && 'bg-red-bg/60 -mx-2 rounded-lg border-b-0 px-2',
+        row.emergency && 'border-l-red-dot -ml-2.5 border-l-2 pl-2',
       )}
       style={{ '--i': i } as CSSProperties}
     >
@@ -450,8 +464,9 @@ function LogRow({ row, i, onPatient }: { row: AccessLogRow; i: number; onPatient
         <StaffLink
           to="/app/patient"
           search={{ id: row.patientId }}
-          className="text-primary text-[13px] font-semibold no-underline hover:underline"
+          className="text-primary inline-flex items-center gap-1 text-[13px] font-medium no-underline hover:underline"
         >
+          <FolderOpen size={14} aria-hidden="true" />
           {t('recordAccess.card.openFile')}
         </StaffLink>
       </span>

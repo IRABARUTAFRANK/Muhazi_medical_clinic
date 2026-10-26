@@ -102,7 +102,10 @@ function LabWorklist({ user }: { user: StaffUser }) {
 
         {!can('orders.write') && <NotAllowedNotice feature="orders.write" />}
 
-        <div className="flex gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
+        <div
+          className="border-border bg-surface flex gap-0.5 self-start rounded-md border p-0.5"
+          role="tablist"
+        >
           {(['open', 'done'] as const).map((k) => (
             <button
               key={k}
@@ -111,8 +114,10 @@ function LabWorklist({ user }: { user: StaffUser }) {
               aria-selected={tab === k}
               onClick={() => setTab(k)}
               className={cn(
-                'inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-[14px] font-semibold',
-                tab === k ? 'bg-navy text-white' : 'text-ink-2 hover:bg-hover',
+                'inline-flex h-8 items-center gap-2 rounded border px-3 text-[14px] font-medium transition-colors duration-120',
+                tab === k
+                  ? 'border-border bg-card text-primary'
+                  : 'text-ink-2 hover:bg-hover border-transparent',
               )}
             >
               {k === 'open' ? (
@@ -148,7 +153,7 @@ function LabWorklist({ user }: { user: StaffUser }) {
                   aria-pressed={filter === f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                    'inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors duration-120',
                     filter === f
                       ? 'border-primary bg-primary text-white'
                       : 'border-border bg-card text-ink-2 hover:bg-hover',
@@ -157,7 +162,7 @@ function LabWorklist({ user }: { user: StaffUser }) {
                   {t(`lab.filters.${f}`)}
                   <span
                     className={cn(
-                      'rounded-full px-1.5 text-[12px]',
+                      'rounded px-1.5 text-[12px] tabular-nums',
                       filter === f ? 'bg-white/20' : 'bg-hover',
                     )}
                   >

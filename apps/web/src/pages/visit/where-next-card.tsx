@@ -125,7 +125,7 @@ export function WhereNextCard({
       <CardBody className="gap-3">
         {/* Referred here: who sent the patient, why, and the way back */}
         {here?.referredName && (
-          <div className="border-violet/30 bg-violet-bg/60 flex flex-col gap-2 rounded-xl border px-3 py-2.5">
+          <div className="border-violet/30 bg-violet-bg/60 flex flex-col gap-2 rounded-md border px-3 py-2.5">
             <span className="inline-flex items-center gap-2 text-[14px] font-semibold">
               <ArrowRightLeft size={16} aria-hidden="true" className="text-violet" />
               {t('refer.cameFrom', { name: here.referredName })}
@@ -185,7 +185,7 @@ export function WhereNextCard({
                   setPerson('')
                 }}
                 className={cn(
-                  'flex min-h-11 items-center gap-2 rounded-xl border px-3 text-left text-[14px] font-semibold transition-colors',
+                  'flex min-h-9 items-center gap-2 rounded-md border px-3 text-left text-[14px] font-semibold transition-colors',
                   on
                     ? 'border-primary bg-primary text-white'
                     : 'border-border bg-card text-ink-2 hover:bg-hover',
@@ -215,7 +215,7 @@ export function WhereNextCard({
               {t('refer.why')}
               <textarea
                 rows={2}
-                className="border-border bg-card focus:border-primary rounded-lg border px-2.5 py-2 text-[14px] font-normal outline-none"
+                className="border-border bg-card focus:border-primary rounded-md border px-2.5 py-2 text-[14px] font-normal outline-none"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />

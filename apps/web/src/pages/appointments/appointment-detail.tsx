@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarCheck, FolderOpen, Stethoscope } from 'lucide-react'
+import { ArrowLeft, CalendarCheck, CircleAlert, FolderOpen, Stethoscope } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Panel } from '@/components/dash/kit'
@@ -75,8 +75,9 @@ export function AppointmentDetail({ id, onBack }: { id: string; onBack: () => vo
         {t('ops.detail.back')}
       </Button>
       {error && (
-        <p className="bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold">
-          {error.message}
+        <p className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-medium">
+          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+          <span>{error.message}</span>
         </p>
       )}
       {isLoading && <p className="text-ink-3 m-0 text-[13px]">…</p>}
@@ -87,10 +88,8 @@ export function AppointmentDetail({ id, onBack }: { id: string; onBack: () => vo
               .filter(([, v]) => v)
               .map(([k, v]) => (
                 <div key={k} className="contents">
-                  <dt className="text-ink-3 text-[12px] font-bold tracking-[.04em] uppercase">
-                    {k}
-                  </dt>
-                  <dd className="text-ink m-0 text-[14px]">{v}</dd>
+                  <dt className="text-ink-3 text-[13px]">{k}</dt>
+                  <dd className="text-ink m-0 text-[14px] font-medium">{v}</dd>
                 </div>
               ))}
           </dl>

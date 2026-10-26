@@ -64,16 +64,16 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
         showValue ? t('myStore.valueRight', { value: formatRwf(Math.round(data!.value!)) }) : null
       }
     >
-      {error && <p className="text-red m-0 text-[13px]">{error.message}</p>}
+      {error && <p className="text-red m-0 text-[14px]">{error.message}</p>}
       <ListBar query={query} onQuery={setQuery} placeholderKey="stock.search" />
       {isLoading ? null : paged.total === 0 ? (
         <Empty icon={Package}>{t('myStore.empty')}</Empty>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[13px]">
+          <table className="w-full border-collapse text-[14px]">
             <thead>
-              <tr className="text-ink-3 text-left text-[11px] tracking-[.04em] uppercase">
-                <th className="border-border border-b py-2 pr-2 font-semibold">
+              <tr className="text-ink-3 text-left text-[12px]">
+                <th className="border-border border-b py-2 pr-2 font-medium">
                   {t('stock.cols.item')}
                 </th>
                 <th className="border-border border-b py-2 pr-2 text-right font-semibold">
@@ -82,7 +82,7 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                 <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold sm:table-cell">
                   {t('myStore.min')}
                 </th>
-                <th className="border-border border-b py-2 pr-2 font-semibold">
+                <th className="border-border border-b py-2 pr-2 font-medium">
                   {t('stock.cols.expiry')}
                 </th>
                 {showValue && (
@@ -126,7 +126,7 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                     </td>
                     <td
                       className={cn(
-                        'py-2 pr-2 text-right font-bold tabular-nums',
+                        'py-2 pr-2 text-right font-semibold tabular-nums',
                         x.low ? 'text-red' : x.usable === 0 ? 'text-ink-3' : 'text-green',
                       )}
                     >
@@ -160,7 +160,7 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                                 value: e.target.value.replace(/[^\d]/g, ''),
                               })
                             }
-                            className="border-border bg-card h-8 w-16 rounded-lg border px-2 text-right"
+                            className="border-border bg-card h-8 w-16 rounded-md border px-2 text-right"
                           />
                           <button
                             type="button"
@@ -251,7 +251,7 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
   return (
     <Panel i={i} icon={BarChart3} tint="violet" title={t('myStore.useTitle')}>
       <PeriodFilter period={period} />
-      {error && <p className="text-red m-0 text-[13px]">{error.message}</p>}
+      {error && <p className="text-red m-0 text-[14px]">{error.message}</p>}
       {data && (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -288,7 +288,7 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
               unit={t('stock.units.items')}
             />
           </div>
-          <p className="text-ink-2 m-0 text-[13px]">
+          <p className="text-ink-2 m-0 text-[14px]">
             {[
               t('myStore.sum.returned', { count: data.returned.units }),
               t('myStore.sum.stockNow', { count: data.stock.units }),
@@ -312,10 +312,10 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
             <Empty>{t('stock.noMoves')}</Empty>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
+              <table className="w-full border-collapse text-[14px]">
                 <thead>
-                  <tr className="text-ink-3 text-left text-[11px] tracking-[.04em] uppercase">
-                    <th className="border-border border-b py-2 pr-2 font-semibold">
+                  <tr className="text-ink-3 text-left text-[12px]">
+                    <th className="border-border border-b py-2 pr-2 font-medium">
                       {t('stock.cols.item')}
                     </th>
                     {(
@@ -341,7 +341,7 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
                   {data.items.map((x) => (
                     <tr key={x.itemId} className="border-grid border-b last:border-b-0">
                       <td className="py-2 pr-2 font-semibold">{x.item}</td>
-                      <td className="py-2 pr-2 text-right font-bold tabular-nums">
+                      <td className="py-2 pr-2 text-right font-semibold tabular-nums">
                         {formatNumber(x.given)}
                       </td>
                       <td className="py-2 pr-2 text-right tabular-nums">

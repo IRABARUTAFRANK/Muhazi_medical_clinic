@@ -23,48 +23,93 @@ import {
 } from 'lucide-react'
 import { formatNumber, type Role } from '@mmc/shared'
 
-/** Style tokens and helpers shared by every dashboard (see kit.tsx for the components). */
-export const sectionTitle = 'text-[13px] font-extrabold tracking-[.08em] text-primary uppercase'
-export const card =
-  'card-lift bg-card shadow-card flex min-w-0 flex-col gap-3 rounded-[16px] px-4 py-4 sm:gap-3.5 sm:px-5 sm:py-[18px]'
+/*
+ * Style tokens and helpers shared by every dashboard (see kit.tsx for the components).
+ * The tints are the health palette of tokens.css: teal (the clinic), mint (healthy, done, paid),
+ * amber (waiting), coral (critical, due), violet (laboratory), navy (the clinical blue:
+ * information), rose (maternity, family planning).
+ * The console look with colour: white bordered cards, 16 px semibold titles, tiles and bands on a
+ * solid light tint with a 1 px border in the same hue, coloured icon chips and tags. Never a
+ * gradient, never a shadow. The six "tints" are the subjects the dashboards pass.
+ */
+export const sectionTitle = 'text-[16px] font-semibold text-ink'
+export const card = 'bg-card border-border flex min-w-0 flex-col gap-3 rounded-md border p-4'
 
 export type TFn = (key: string, opts?: Record<string, unknown>) => string
 export type Tint = 'teal' | 'mint' | 'amber' | 'coral' | 'violet' | 'navy'
-export const tintClass: Record<Tint, string> = {
+/** The tints plus rose (maternity, family planning): what the kit paints; pages keep `Tint`. */
+export type Hue = Tint | 'rose'
+/** Light tint with its text colour: icon chips and avatars. */
+export const tintClass: Record<Hue, string> = {
   teal: 'bg-primary-tint text-primary',
   mint: 'bg-green-bg text-green',
   amber: 'bg-amber-bg text-amber',
   coral: 'bg-red-bg text-red',
   violet: 'bg-violet-bg text-violet',
-  navy: 'bg-blue-bg text-navy',
+  navy: 'bg-blue-bg text-navy-ink',
+  rose: 'bg-rose-bg text-rose',
 }
-/** Strong text colour of each tint (panel titles, KPI labels). */
-export const tintText: Record<Tint, string> = {
+/** The same tint as a 1 px bordered tag (pills, counts, states). */
+export const tagClass: Record<Hue, string> = {
+  teal: 'border-primary/30 bg-primary-tint text-primary',
+  mint: 'border-green/30 bg-green-bg text-green',
+  amber: 'border-amber/30 bg-amber-bg text-amber',
+  coral: 'border-red/30 bg-red-bg text-red',
+  violet: 'border-violet/30 bg-violet-bg text-violet',
+  navy: 'border-navy/30 bg-blue-bg text-navy-ink',
+  rose: 'border-rose/30 bg-rose-bg text-rose',
+}
+/** A tile or band in the tint: solid light background, 1 px border in the same hue. */
+export const tileClass: Record<Hue, string> = {
+  teal: 'border-primary/30 bg-primary-tint',
+  mint: 'border-green/30 bg-green-bg',
+  amber: 'border-amber/30 bg-amber-bg',
+  coral: 'border-red/30 bg-red-bg',
+  violet: 'border-violet/30 bg-violet-bg',
+  navy: 'border-navy/30 bg-blue-bg',
+  rose: 'border-rose/30 bg-rose-bg',
+}
+/** The 3 px coloured left edge of a band (identity and page headers). */
+export const edgeClass: Record<Hue, string> = {
+  teal: 'border-l-primary',
+  mint: 'border-l-green-dot',
+  amber: 'border-l-yellow-dot',
+  coral: 'border-l-red-dot',
+  violet: 'border-l-violet-dot',
+  navy: 'border-l-blue-dot',
+  rose: 'border-l-rose-dot',
+}
+/** Strong text colour of each tint (figures and icons that carry a subject). Titles stay ink. */
+export const tintText: Record<Hue, string> = {
   teal: 'text-primary',
   mint: 'text-green',
   amber: 'text-amber',
   coral: 'text-red',
   violet: 'text-violet',
   navy: 'text-navy-ink',
+  rose: 'text-rose',
 }
-/** Coloured top edge of a panel. */
-export const tintBorder: Record<Tint, string> = {
+/** Coloured top edge of a panel (kept for callers; the kit's panels no longer use it). */
+export const tintBorder: Record<Hue, string> = {
   teal: 'border-t-primary',
   mint: 'border-t-green-dot',
-  amber: 'border-t-yellow-dot',
+  amber: 'border-t-amber',
   coral: 'border-t-red-dot',
   violet: 'border-t-violet',
-  navy: 'border-t-navy',
+  navy: 'border-t-blue-dot',
+  rose: 'border-t-rose-dot',
 }
-/** Soft wash of a tint fading into the card (top of panels, KPI tiles, banners). */
-export const tintWash: Record<Tint, string> = {
+/** Light tint colour as a CSS value (kept for callers; the kit paints solid tints, never washes). */
+export const tintWash: Record<Hue, string> = {
   teal: 'var(--mmc-primary-tint)',
   mint: 'var(--mmc-green-bg)',
   amber: 'var(--mmc-amber-bg)',
   coral: 'var(--mmc-red-bg)',
   violet: 'var(--mmc-violet-bg)',
   navy: 'var(--mmc-blue-bg)',
+  rose: 'var(--mmc-rose-bg)',
 }
+/** Initials discs in lists: a tint per person, cycling. */
 export const avatarTint = (i: number) =>
   tintClass[(['teal', 'mint', 'violet', 'amber', 'coral', 'navy'] as Tint[])[i % 6]!]
 export const initials = (name: string) =>
@@ -116,26 +161,29 @@ export const greetingFor = (name: string, t: TFn) => {
   })
 }
 
-/** Each role's icon and colour: banner stripe, avatar badge and role pill. */
-const ROLE_LOOK: Record<Role, { icon: LucideIcon; tint: Tint; stripe: string }> = {
-  manager: { icon: Crown, tint: 'navy', stripe: 'bg-navy' },
-  receptionist: { icon: ConciergeBell, tint: 'teal', stripe: 'bg-primary' },
-  nurse: { icon: HeartPulse, tint: 'mint', stripe: 'bg-green' },
-  doctor: { icon: Stethoscope, tint: 'violet', stripe: 'bg-violet' },
-  cashier: { icon: Wallet, tint: 'amber', stripe: 'bg-amber' },
-  lab_tech: { icon: FlaskConical, tint: 'coral', stripe: 'bg-red' },
-  pharmacist: { icon: Pill, tint: 'mint', stripe: 'bg-green' },
+/** Each role's icon and tint (the health palette: the manager in the clinic's teal, the doctor
+ *  in the clinical blue, nurse and pharmacist in mint, the laboratory in lavender, the cashier
+ *  in amber, reception in rose): the identity band, its avatar ring and the role tag. */
+const ROLE_LOOK: Record<Role, { icon: LucideIcon; tint: Hue; stripe: string }> = {
+  manager: { icon: Crown, tint: 'teal', stripe: 'bg-primary' },
+  receptionist: { icon: ConciergeBell, tint: 'rose', stripe: 'bg-rose-dot' },
+  nurse: { icon: HeartPulse, tint: 'mint', stripe: 'bg-green-dot' },
+  doctor: { icon: Stethoscope, tint: 'navy', stripe: 'bg-blue-dot' },
+  cashier: { icon: Wallet, tint: 'amber', stripe: 'bg-yellow-dot' },
+  lab_tech: { icon: FlaskConical, tint: 'violet', stripe: 'bg-violet-dot' },
+  pharmacist: { icon: Pill, tint: 'mint', stripe: 'bg-green-dot' },
 }
 export const lookFor = (role: Role) => ROLE_LOOK[role] ?? ROLE_LOOK.doctor
 
-/** Banner stripe colour for each tint. */
-export const stripeClass: Record<Tint, string> = {
+/** Solid colour of each tint (dots, avatar badges). */
+export const stripeClass: Record<Hue, string> = {
   teal: 'bg-primary',
-  mint: 'bg-green',
-  amber: 'bg-amber',
-  coral: 'bg-red',
-  violet: 'bg-violet',
-  navy: 'bg-navy',
+  mint: 'bg-green-dot',
+  amber: 'bg-yellow-dot',
+  coral: 'bg-red-dot',
+  violet: 'bg-violet-dot',
+  navy: 'bg-blue-dot',
+  rose: 'bg-rose-dot',
 }
 
 const STATION_ICONS: Record<string, LucideIcon> = {

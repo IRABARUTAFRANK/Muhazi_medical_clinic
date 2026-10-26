@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Bell, BellRing, CheckCheck, Inbox, Megaphone, Send, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
-import { Field } from '@/components/ui/field'
+import { controlClass, Field, labelClass } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { useNotificationActions, useNotifications, type Notice } from '@/lib/api/notifications'
 import { useAgo, useWording } from '@/lib/notice-wording'
@@ -73,17 +73,17 @@ export function NotificationBell({ user }: { user: StaffUser }) {
         aria-label={t('notify.open', { count: unread })}
         title={t('notify.title')}
         className={cn(
-          'relative inline-flex size-11 items-center justify-center rounded-xl text-white/85 transition-colors hover:bg-white/10 hover:text-white',
-          open && 'bg-white/15 text-white',
+          'text-ink-2 hover:bg-hover hover:text-ink focus-visible:ring-primary/20 relative inline-flex size-9 items-center justify-center rounded-md transition-colors duration-120 focus-visible:ring-2 focus-visible:outline-none',
+          open && 'bg-hover text-ink',
         )}
       >
         {unread > 0 ? (
-          <BellRing size={20} aria-hidden="true" className="bell-ring" />
+          <BellRing size={18} aria-hidden="true" />
         ) : (
-          <Bell size={20} aria-hidden="true" />
+          <Bell size={18} aria-hidden="true" />
         )}
         {unread > 0 && (
-          <span className="absolute top-1.5 right-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-[#e5484d] px-1 text-[10px] leading-[18px] font-bold text-white tabular-nums ring-2 ring-[#13306b]">
+          <span className="bg-red-dot ring-card absolute top-0.5 right-0.5 inline-flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-4 font-semibold text-white tabular-nums ring-2">
             {unread > 99 ? '99+' : unread}
           </span>
         )}
@@ -93,22 +93,22 @@ export function NotificationBell({ user }: { user: StaffUser }) {
         <div
           role="dialog"
           aria-label={t('notify.title')}
-          className="anim-enter text-ink bg-card shadow-sheet fixed inset-x-2 top-[112px] z-50 flex max-h-[min(560px,70dvh)] flex-col overflow-hidden rounded-2xl sm:absolute sm:inset-x-auto sm:top-[calc(100%+8px)] sm:right-0 sm:w-[min(400px,92vw)]"
+          className="text-ink bg-card border-border shadow-sheet anim-dialog fixed inset-x-2 top-[100px] z-50 flex max-h-[min(560px,70dvh)] flex-col overflow-hidden rounded-md border sm:absolute sm:inset-x-auto sm:top-[calc(100%+6px)] sm:right-0 sm:w-[min(400px,92vw)]"
         >
-          <div className="border-border flex items-center gap-2 border-b px-4 py-3">
-            <span className="flex-1 text-[15px] font-bold">{t('notify.title')}</span>
+          <div className="border-border bg-primary-tint/60 flex min-h-10 items-center gap-2 border-b px-3 py-1.5">
+            <span className="flex-1 text-[16px] font-semibold">{t('notify.title')}</span>
             <button
               type="button"
               aria-label={t('common.close')}
               onClick={() => setOpen(false)}
-              className="text-ink-3 hover:bg-hover hover:text-ink order-last inline-flex size-9 items-center justify-center rounded-lg sm:hidden"
+              className="text-ink-3 hover:bg-hover hover:text-ink order-last inline-flex size-7 items-center justify-center rounded-md sm:hidden"
             >
-              <X size={18} aria-hidden="true" />
+              <X size={16} aria-hidden="true" />
             </button>
             {unread > 0 && (
               <button
                 type="button"
-                className="text-primary inline-flex min-h-9 items-center gap-1 rounded-lg px-1.5 text-xs font-semibold whitespace-nowrap"
+                className="text-primary hover:bg-hover inline-flex h-8 items-center gap-1 rounded-md px-2 text-[13px] font-medium whitespace-nowrap"
                 aria-label={t('notify.markAll')}
                 title={t('notify.markAll')}
                 onClick={async () => {
@@ -153,42 +153,47 @@ export function NotificationBell({ user }: { user: StaffUser }) {
                 {t('notify.empty')}
               </p>
             )}
-            {items.map((n) => {
+            {items.map((n, k) => {
               const w = word(n)
               return (
                 <button
                   key={n.id}
                   type="button"
                   onClick={() => openNotice(n)}
+                  // a new (unread) notice slides in; read ones are simply there
                   className={cn(
-                    'border-border hover:bg-hover flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors last:border-b-0',
-                    !n.read && 'bg-primary-tint/50',
+                    'border-grid hover:bg-hover flex w-full items-start gap-2.5 border-b px-3 py-2.5 text-left transition-colors duration-120 last:border-b-0',
+                    !n.read && k < 8 && 'anim-slide-in',
                   )}
+                  style={{ '--i': k } as CSSProperties}
                 >
+                  {/* unread: a dot (red when urgent), not a tinted row */}
                   <span
                     aria-hidden="true"
                     className={cn(
-                      'mt-1.5 size-2 flex-none rounded-full',
-                      n.read ? 'bg-transparent' : n.urgent ? 'bg-[#e5484d]' : 'bg-primary',
+                      'mt-1.5 size-1.5 flex-none rounded-full',
+                      n.read ? 'bg-transparent' : n.urgent ? 'bg-red-dot' : 'bg-primary',
                     )}
                   />
                   <span className="min-w-0 flex-1">
                     <span
-                      className={cn('block text-[13px] leading-snug', !n.read && 'font-semibold')}
+                      className={cn('block text-[14px] leading-snug', !n.read && 'font-semibold')}
                     >
                       {n.kind === 'message' && (
                         <Megaphone
                           size={13}
                           aria-hidden="true"
-                          className="mr-1 inline text-[#b45309]"
+                          className="text-yellow mr-1 inline"
                         />
                       )}
                       {w.title}
                     </span>
                     {w.body && (
-                      <span className="text-ink-2 mt-0.5 block text-xs leading-snug">{w.body}</span>
+                      <span className="text-ink-2 mt-0.5 block text-[13px] leading-snug">
+                        {w.body}
+                      </span>
                     )}
-                    <span className="text-ink-3 mt-1 block text-[11px]">
+                    <span className="text-ink-3 mt-1 block text-[12px]">
                       {ago(n.at)}
                       {n.kind === 'message' && n.sender
                         ? ` · ${t('notify.from', { name: n.sender })}`
@@ -205,7 +210,7 @@ export function NotificationBell({ user }: { user: StaffUser }) {
               setOpen(false)
               void navigate({ to: '/app/notifications' })
             }}
-            className="border-border text-primary hover:bg-hover flex items-center justify-center gap-1.5 border-t px-4 py-2.5 text-[13px] font-semibold"
+            className="border-border text-primary hover:bg-hover flex min-h-10 items-center justify-center gap-1.5 border-t px-4 text-[14px] font-medium"
           >
             <Inbox size={14} aria-hidden="true" />
             {t('notices.manage')}
@@ -293,10 +298,10 @@ export function Composer({
   return (
     <form
       onSubmit={submit}
-      className="border-border bg-surface flex flex-col gap-2.5 border-b px-4 py-3"
+      className="border-border bg-surface flex flex-col gap-2.5 border-b px-3 py-3"
     >
       <div className="flex items-center justify-between">
-        <span className="text-[13px] font-bold">{t('notify.compose')}</span>
+        <span className="text-[14px] font-semibold">{t('notify.compose')}</span>
         <button
           type="button"
           onClick={onClose}
@@ -367,7 +372,7 @@ export function Composer({
       </div>
       {/* to a department: its heads only; to everyone (the manager): every head of department */}
       {(to === 'department' || to === 'all') && (
-        <label className="flex items-center gap-2 text-xs font-semibold">
+        <label className="flex items-center gap-2 text-[13px] font-medium">
           <input
             type="checkbox"
             className="accent-primary"
@@ -383,16 +388,16 @@ export function Composer({
         onChange={(e) => setTitle(e.target.value)}
         required
       />
-      <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-semibold">
+      <label className={labelClass}>
         {t('notify.message')}
         <textarea
           rows={3}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint rounded-lg border px-3 py-2 text-[14px] font-normal outline-none focus:ring-[3px]"
+          className={cn(controlClass, 'h-auto py-1.5')}
         />
       </label>
-      <label className="flex items-center gap-2 text-xs font-semibold">
+      <label className="flex items-center gap-2 text-[13px] font-medium">
         <input
           type="checkbox"
           className="accent-red"
@@ -402,9 +407,16 @@ export function Composer({
         {t('notify.urgent')}
       </label>
       {error && (
-        <p className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-xs font-semibold">{error}</p>
+        <p className="border-red/25 bg-red-bg text-red m-0 rounded-md border px-3 py-1.5 text-[12px] font-medium">
+          {error}
+        </p>
       )}
-      {sent && <p className="text-green m-0 text-xs font-semibold">{t('notify.sent')}</p>}
+      {sent && (
+        <p className="text-green m-0 flex items-center gap-1 text-[12px] font-medium">
+          <CheckCheck size={14} aria-hidden="true" className="anim-pop" />
+          {t('notify.sent')}
+        </p>
+      )}
       <Button
         type="submit"
         variant="primary"

@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { stripeClass, tintClass, tintText, tintWash, type Tint } from './kit-style'
+import { edgeClass, tileClass, tintClass, type Tint } from './kit-style'
 
 /*
- * Page banner: the title of every screen opened from the sidebar, in the identity banner's
- * design (colour stripe, large icon tile, big title, faint watermark icon). The feature's
- * icon matches its sidebar entry; the coloured title is followed by one sentence saying what
- * the page is for, and the page's own buttons sit on the right.
+ * Page header: the title of every screen opened from the sidebar, a band on the feature's
+ * light tint with a 3 px coloured left edge. The feature's icon (the sidebar's) sits in a
+ * coloured chip before a 24 px semibold title; one grey sentence under it says what the page is for; the page's own
+ * buttons sit on the right.
  */
 export function PageBanner({
   icon: IconC,
@@ -29,58 +29,39 @@ export function PageBanner({
 }) {
   return (
     <section
-      className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-4 gap-y-3 overflow-hidden rounded-[18px] py-3 pr-4 pl-5 sm:gap-x-5 sm:py-3.5 sm:pr-5 sm:pl-6"
-      style={{
-        backgroundImage: `linear-gradient(100deg, ${tintWash[tint]} 0%, var(--mmc-card) 58%)`,
-      }}
+      className={cn(
+        'flex flex-none flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-l-[3px] py-3 pr-4 pl-4',
+        tileClass[tint],
+        edgeClass[tint],
+      )}
     >
       <span
-        className={cn('absolute inset-y-0 left-0 w-1.5', stripeClass[tint])}
-        aria-hidden="true"
-      />
-      <IconC
-        size={104}
-        strokeWidth={1.2}
-        aria-hidden="true"
-        className="text-ink pointer-events-none absolute -right-3 -bottom-6 opacity-[0.045]"
-      />
-
-      <span
         className={cn(
-          'relative inline-flex size-11 flex-none items-center justify-center rounded-2xl sm:size-[52px]',
+          'inline-flex size-10 flex-none items-center justify-center rounded-md',
           tintClass[tint],
         )}
       >
-        <IconC size={24} strokeWidth={2} aria-hidden="true" />
+        <IconC size={20} strokeWidth={2} aria-hidden="true" />
       </span>
 
-      <div className="relative min-w-[200px] flex-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <h1
-            className={cn(
-              'm-0 text-[21px] leading-[1.15] font-extrabold tracking-[-0.02em] sm:text-[24px]',
-              tintText[tint],
-            )}
-          >
-            {title}
-          </h1>
+      <div className="min-w-[200px] flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <h1 className="text-ink m-0 text-[24px] leading-8 font-semibold">{title}</h1>
           {meta}
         </div>
-        {lead && (
-          <p className="text-ink-2 m-0 mt-1 max-w-[720px] text-[14px] leading-snug">{lead}</p>
-        )}
+        {lead && <p className="text-ink-2 m-0 max-w-[720px] text-[14px] leading-snug">{lead}</p>}
       </div>
 
-      {children && <div className="relative flex flex-wrap items-center gap-2.5">{children}</div>}
+      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
     </section>
   )
 }
 
-/** Small chip for the banner's meta row ("12 patients", "3 waiting"). */
+/** Small tag for the header's meta row ("12 patients", "3 waiting"). */
 export function BannerChip({ icon: IconC, children }: { icon?: LucideIcon; children: ReactNode }) {
   return (
-    <span className="border-border text-ink-2 bg-surface inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-semibold tabular-nums">
-      {IconC && <IconC size={14} aria-hidden="true" className="text-ink-3" />}
+    <span className="border-border text-ink-2 bg-card inline-flex min-h-6 items-center gap-1 rounded border px-2 py-0.5 text-[12px] leading-tight font-medium tabular-nums">
+      {IconC && <IconC size={12} aria-hidden="true" className="text-ink-3" />}
       {children}
     </span>
   )

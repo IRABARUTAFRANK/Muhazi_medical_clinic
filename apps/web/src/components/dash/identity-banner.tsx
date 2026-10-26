@@ -3,17 +3,20 @@ import { useQuery } from '@tanstack/react-query'
 import { Award, Building2, CalendarDays, IdCard, MapPin, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CLINIC_HOURS, formatDate, type StaffUser } from '@mmc/shared'
+import { Avatar } from '@/components/ui/avatar'
 import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
 import { useDayNames } from '@/lib/hooks'
 import { roleLabel } from '@/lib/roles'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { initials, lookFor, tintClass } from './kit-style'
+import { edgeClass, lookFor, stripeClass, tagClass, tileClass } from './kit-style'
 
 /*
- * Identity banner, the first thing under the top bar on every dashboard: who is signed in
- * (large name), as what (role with its icon and colour), where (department, position,
- * station) and the staff ID, so a shared screen never leaves doubt about whose session it is.
+ * Identity header, the first thing under the top bar on every dashboard: who is signed in
+ * (name, 20 px), as what (role tag with its icon), where (department, position, station) and
+ * the staff ID, so a shared screen never leaves doubt about whose session it is. A band on the
+ * role's light tint with a 3 px coloured left edge; the date and the clinic's open state sit
+ * at the right.
  */
 
 type Position = 'head' | 'assistant' | 'member'
@@ -59,55 +62,43 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
     (user.dashboard === 'head' && user.headOf && user.role !== 'manager' ? 'head' : 'member')
   const department = placement?.department ?? (position === 'head' ? user.headOf : undefined)
   const specialty = placement?.specialty?.trim() || null
-  // the role pill says "Doctor · Dentist"; a head's pill names the department instead
+  // the role tag says "Doctor · Dentist"; a head's tag names the department instead
   const headLabel = user.dashboard === 'head' && !!user.headOf
 
   return (
     <section
       aria-label={t('identity.aria', { name: user.name })}
-      className="anim-enter bg-card shadow-card relative flex flex-none flex-wrap items-center gap-x-4 gap-y-3 overflow-hidden rounded-[20px] py-4 pr-5 pl-6 sm:gap-x-6 sm:gap-y-4 sm:py-5 sm:pr-6 sm:pl-7"
+      className={cn(
+        'anim-enter flex flex-none flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-l-[3px] py-3 pr-4 pl-4',
+        tileClass[look.tint],
+        edgeClass[look.tint],
+      )}
     >
-      {/* Role colour stripe and a large faint role icon, for recognition from across the room. */}
-      <span className={cn('absolute inset-y-0 left-0 w-1.5', look.stripe)} aria-hidden="true" />
-      <RoleIcon
-        size={150}
-        strokeWidth={1.2}
-        aria-hidden="true"
-        className="text-ink pointer-events-none absolute -right-4 -bottom-8 opacity-[0.045]"
-      />
-
       <span className="relative flex-none">
+        <Avatar name={user.name} size="xl" className="bg-card" />
         <span
           className={cn(
-            'inline-flex size-16 items-center justify-center rounded-[20px] text-[22px] font-extrabold tracking-[-0.02em] sm:size-[76px] sm:rounded-[22px] sm:text-[26px]',
-            tintClass[look.tint],
+            'ring-card absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center rounded-full text-white ring-2',
+            stripeClass[look.tint],
           )}
         >
-          {initials(user.name)}
-        </span>
-        <span
-          className={cn(
-            'ring-card absolute -right-1.5 -bottom-1.5 inline-flex size-8 items-center justify-center rounded-full text-white ring-[3px]',
-            look.stripe,
-          )}
-        >
-          <RoleIcon size={16} aria-hidden="true" />
+          <RoleIcon size={11} aria-hidden="true" />
         </span>
       </span>
 
-      <div className="relative min-w-[180px] flex-1">
-        <div className="text-ink-2 text-sm font-semibold">{greeting}</div>
-        <h1 className="m-0 mt-0.5 text-[24px] leading-[1.15] font-extrabold tracking-[-0.02em] break-words sm:text-[30px]">
+      <div className="min-w-[180px] flex-1">
+        <h1 className="text-ink m-0 text-[24px] leading-8 font-semibold break-words">
           {user.name}
         </h1>
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <span
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-bold',
-              tintClass[look.tint],
+              'bg-card inline-flex h-6 items-center gap-1 rounded border px-2 text-[12px] leading-none font-medium',
+              tagClass[look.tint],
+              'bg-card',
             )}
           >
-            <RoleIcon size={14} aria-hidden="true" />
+            <RoleIcon size={12} aria-hidden="true" />
             {roleLabel(user, t, specialty)}
           </span>
           {specialty && headLabel && <Chip icon={Award}>{specialty}</Chip>}
@@ -137,22 +128,24 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
         </div>
       </div>
 
-      <div className="relative flex flex-row flex-wrap items-center gap-2 text-sm sm:flex-col sm:items-start">
-        <span className="text-ink-2 inline-flex items-center gap-2 font-semibold">
-          <CalendarDays size={16} aria-hidden="true" className="text-ink-3" />
+      <div className="flex flex-row flex-wrap items-center gap-x-3 gap-y-1 text-[14px] sm:flex-col sm:items-end sm:gap-y-1">
+        <span className="text-ink-2">{greeting}</span>
+        <span className="text-ink-2 inline-flex items-center gap-1.5">
+          <CalendarDays size={14} aria-hidden="true" className="text-ink-3" />
           {dayNames.long[now.getDay()]} {formatDate(now)}
         </span>
         {status && (
           <span
             className={cn(
-              'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-bold',
-              status.open ? 'bg-green-bg text-green' : 'bg-red-bg text-red',
+              'bg-card inline-flex h-6 items-center gap-1.5 rounded border px-2 text-[12px] leading-none font-medium',
+              status.open ? 'border-green/30 text-green' : 'border-red/30 text-red',
             )}
           >
             <span
+              // open: the dot breathes (the clinic is live)
               className={cn(
-                'size-2 rounded-full',
-                status.open ? 'bg-green animate-pulse' : 'bg-red',
+                'size-1.5 rounded-full',
+                status.open ? 'bg-green-dot text-green-dot anim-pulse-dot' : 'bg-red-dot',
               )}
               aria-hidden="true"
             />
@@ -166,8 +159,8 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
 
 function Chip({ icon: IconC, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
-    <span className="border-border text-ink-2 bg-surface inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-semibold">
-      <IconC size={14} aria-hidden="true" className="text-ink-3" />
+    <span className="border-border text-ink-2 bg-card inline-flex h-6 items-center gap-1 rounded border px-2 text-[12px] leading-none font-medium">
+      <IconC size={12} aria-hidden="true" className="text-ink-3" />
       {children}
     </span>
   )

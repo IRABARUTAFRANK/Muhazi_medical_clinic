@@ -41,7 +41,7 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
       {q.error ? (
         <LoadError error={q.error} />
       ) : !s ? (
-        <div className="skeleton h-[240px] rounded-xl" aria-busy="true" />
+        <div className="skeleton h-[240px] rounded-md" aria-busy="true" />
       ) : (
         <>
           {s.todayOnly && <Quiet>{t('analytics.revenue.todayOnly')}</Quiet>}

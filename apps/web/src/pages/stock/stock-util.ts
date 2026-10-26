@@ -38,7 +38,8 @@ export const STOCK_TABS: readonly Tab[] = [
  * pickers and the lines of a note.
  */
 
-export const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+export const errorBox =
+  'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
 
 export interface Msg {
   ok: boolean

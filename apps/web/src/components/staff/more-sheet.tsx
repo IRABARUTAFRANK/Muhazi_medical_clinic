@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { NavItem, StaffUser, SyncState } from '@mmc/shared'
 import { LangSwitch } from '@/components/public/lang-switch'
+import { Button } from '@/components/ui/button'
 import { useUserActions } from '@/lib/user-actions'
 import { cn } from '@/lib/utils'
 import { StaffLink } from './staff-link'
@@ -20,7 +21,7 @@ interface MoreSheetProps {
 }
 
 const item =
-  'flex min-h-12 w-full items-center justify-between rounded-lg px-3 text-left text-ink no-underline hover:bg-hover'
+  'flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 text-left text-[14px] text-ink no-underline hover:bg-hover'
 
 /**
  * Tablet bottom sheet: dashboard (managers and heads of station only), settings (managers),
@@ -40,29 +41,29 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
   }, [onClose])
   return (
     <div
-      className="absolute inset-0 z-20 flex flex-col justify-end bg-[rgba(15,23,32,.45)]"
+      className="absolute inset-0 z-20 flex flex-col justify-end bg-black/40"
       onClick={onClose}
       role="presentation"
     >
       <div
         role="dialog"
         aria-label={t('common.more')}
-        className="bg-card shadow-sheet max-h-[88dvh] overflow-y-auto rounded-t-2xl px-4 pt-3 pb-[max(24px,env(safe-area-inset-bottom))]"
+        className="bg-card border-border shadow-sheet anim-dialog max-h-[88dvh] overflow-y-auto rounded-t-md border-t px-3 pt-2 pb-[max(16px,env(safe-area-inset-bottom))]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-border mx-auto mb-3 h-1 w-10 rounded-sm" />
+        <div className="bg-border mx-auto mb-2 h-1 w-8 rounded-sm" />
         <div className="flex flex-wrap items-center gap-2 px-3 py-1.5">
           <button
             type="button"
             aria-label={t('common.close')}
             onClick={onClose}
-            className="text-ink-3 hover:bg-hover hover:text-ink order-last inline-flex size-10 items-center justify-center rounded-lg"
+            className="text-ink-3 hover:bg-hover hover:text-ink order-last inline-flex size-8 items-center justify-center rounded-md"
           >
-            <X size={20} aria-hidden="true" />
+            <X size={16} aria-hidden="true" />
           </button>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold">{user.name}</span>
-            <span className="text-ink-3 text-xs tabular-nums">
+            <span className="block text-[14px] font-medium">{user.name}</span>
+            <span className="text-ink-3 text-[12px] tabular-nums">
               {user.staffId ? `${user.staffId} · ` : ''}
               {user.username}
             </span>
@@ -80,13 +81,13 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
                   onClick={onClose}
                   aria-current={n.id === activeId ? 'page' : undefined}
                   className={cn(
-                    'text-ink flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-xl px-1 text-center text-[12px] font-semibold no-underline',
+                    'border-border flex min-h-16 flex-col items-center justify-center gap-1 rounded-md border px-1 text-center text-[12px] font-medium no-underline',
                     n.id === activeId
-                      ? 'bg-primary-tint text-primary'
-                      : 'bg-surface hover:bg-hover',
+                      ? 'border-primary/30 bg-primary-tint text-primary'
+                      : 'bg-card text-ink-2 hover:bg-hover',
                   )}
                 >
-                  <NavIcon id={n.id} name={n.icon} ring="ring-white" />
+                  <NavIcon id={n.id} name={n.icon} size={20} />
                   <span className="max-w-full leading-tight">{t(n.labelKey)}</span>
                 </StaffLink>
               ))}
@@ -95,18 +96,18 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
         )}
         <div className="border-border my-2 border-t" />
         <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-1.5 lg:hidden">
-          <span className="text-ink-3 text-xs font-semibold">{t('lang.label')}</span>
+          <span className="text-ink-3 text-[13px]">{t('lang.label')}</span>
           <LangSwitch size="sm" />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-1.5">
-          <span className="text-ink-3 text-xs font-semibold">{t('textSize.title')}</span>
+          <span className="text-ink-3 text-[13px]">{t('textSize.title')}</span>
           <TextSizeControl />
         </div>
-        <div className="text-ink-3 px-3 py-1.5 text-xs">{t('common.more')}</div>
+        <div className="text-ink-3 px-3 py-1.5 text-[12px]">{t('common.more')}</div>
         {dashboard && (
           <StaffLink to="/app/dashboard" className={item} onClick={onClose}>
             <span>{t('common.dashboard')}</span>
-            <span className="text-ink-3 text-xs">
+            <span className="text-ink-3 text-[12px]">
               {manager ? t('common.manager') : t('staff.positions.head')}
             </span>
           </StaffLink>
@@ -125,7 +126,7 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
           }}
         >
           <span>{t(actions.theme === 'light' ? 'common.toDim' : 'common.toLight')}</span>
-          <span className="text-ink-3 text-xs">{t('common.nightUse')}</span>
+          <span className="text-ink-3 text-[12px]">{t('common.nightUse')}</span>
         </button>
         <button
           type="button"
@@ -136,7 +137,7 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
           }}
         >
           <span>{t('common.lockNow')}</span>
-          <span className="text-ink-3 text-xs">{t('common.lockNowHint')}</span>
+          <span className="text-ink-3 text-[12px]">{t('common.lockNowHint')}</span>
         </button>
         <button
           type="button"
@@ -147,21 +148,17 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
           }}
         >
           <span>{t('common.changePin')}</span>
-          <span className="text-ink-3 text-xs">{t('common.changePinHint')}</span>
+          <span className="text-ink-3 text-[12px]">{t('common.changePinHint')}</span>
         </button>
         <button type="button" className={item} onClick={actions.signOut}>
           <span>{t('common.signOut')}</span>
-          <span className="text-ink-3 text-xs">{t('common.backToSite')}</span>
+          <span className="text-ink-3 text-[12px]">{t('common.backToSite')}</span>
         </button>
         <div className="border-border my-2 border-t" />
-        <button
-          type="button"
-          className="border-border text-ink hover:bg-hover flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border font-semibold"
-          onClick={onClose}
-        >
-          <X size={18} aria-hidden="true" />
+        <Button size="lg" className="w-full" onClick={onClose}>
+          <X size={16} aria-hidden="true" />
           {t('common.close')}
-        </button>
+        </Button>
       </div>
     </div>
   )

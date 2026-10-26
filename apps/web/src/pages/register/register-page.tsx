@@ -1,9 +1,21 @@
 import { useState } from 'react'
-import { AlertTriangle, Search, UserPlus, Check, Ticket } from 'lucide-react'
+import {
+  Activity,
+  AlertTriangle,
+  Check,
+  FolderOpen,
+  RotateCcw,
+  Search,
+  Stethoscope,
+  Ticket,
+  UserPlus,
+  Users,
+} from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { PageBanner } from '@/components/dash/page-banner'
+import { EmptyNote } from '@/components/clinical/empty-note'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -89,7 +101,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
         />
 
         {!mayStart && (
-          <p className="bg-amber-bg text-amber m-0 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
+          <p className="bg-amber-bg text-amber border-amber/30 m-0 rounded-md border px-3 py-2.5 text-[14px] font-semibold">
             {t('perms.blocked.visitBanner')}
           </p>
         )}
@@ -97,7 +109,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
         <Card className={cn(emergency && 'border-red')}>
           <CardBody className="gap-3">
             {canRegisterEmergency(user) && (
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 font-semibold">
+              <label className="flex min-h-9 cursor-pointer items-center gap-3 font-semibold">
                 <input
                   type="checkbox"
                   className="accent-red size-5"
@@ -188,7 +200,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
                 autoComplete="off"
               />
               {query.trim().length >= 2 && hits.length === 0 && !isFetching && (
-                <p className="text-ink-3 m-0 text-[13px]">{t('register.noMatch')}</p>
+                <EmptyNote>{t('register.noMatch')}</EmptyNote>
               )}
               {hits.map((p) => (
                 <Row key={p.id} className="flex-wrap gap-x-3 gap-y-1 py-2">
@@ -208,6 +220,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
                     search={{ id: p.id }}
                     className={buttonVariants({ size: 'sm', variant: 'ghost' })}
                   >
+                    <FolderOpen size={14} aria-hidden="true" />
                     {t('patients.openFile')}
                   </StaffLink>
                   {p.hasOpenVisit ? (
@@ -277,7 +290,7 @@ function ResultCard({
       </CardHeader>
       <CardBody className="gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="border-border bg-surface rounded-lg border px-4 py-2 text-2xl font-bold tabular-nums">
+          <span className="border-border bg-surface rounded-md border px-4 py-2 text-[24px] font-semibold tabular-nums">
             {result.ticketNo}
           </span>
           <Chip>{result.fileNumber}</Chip>
@@ -302,6 +315,7 @@ function ResultCard({
               search={{ encounter: result.encounterId }}
               className={buttonVariants({ variant: 'primary' })}
             >
+              <Activity size={16} aria-hidden="true" />
               {t('register.done.takeVitals')}
             </StaffLink>
           )}
@@ -310,6 +324,7 @@ function ResultCard({
             search={{ id: result.patientId }}
             className={buttonVariants({ variant: triage ? 'default' : 'primary' })}
           >
+            <FolderOpen size={16} aria-hidden="true" />
             {t('register.done.openFile')}
           </StaffLink>
           <StaffLink
@@ -317,12 +332,15 @@ function ResultCard({
             search={{ encounter: result.encounterId }}
             className={buttonVariants({ variant: 'default' })}
           >
+            <Stethoscope size={16} aria-hidden="true" />
             {t('register.done.openVisit')}
           </StaffLink>
           <StaffLink to="/app/patients" className={buttonVariants({ variant: 'default' })}>
+            <Users size={16} aria-hidden="true" />
             {t('register.done.register')}
           </StaffLink>
           <Button variant="ghost" onClick={onAnother}>
+            <RotateCcw size={16} aria-hidden="true" />
             {t('register.another')}
           </Button>
         </div>

@@ -1,9 +1,10 @@
-import { Activity } from 'lucide-react'
+import { Activity, ListOrdered, Stethoscope } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import type { StaffUser } from '@mmc/shared'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
+import { EmptyNote } from '@/components/clinical/empty-note'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
@@ -134,7 +135,7 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
 
         <div className="pc:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] grid grid-cols-1 gap-4">
           <Card>
-            <CardHeader>
+            <CardHeader icon={ListOrdered}>
               <span>{t('triage.queueTitle')}</span>
               <span className="text-ink-3 text-xs">{isLoading ? '…' : ''}</span>
             </CardHeader>
@@ -152,7 +153,7 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
             )}
             {waiting.length === 0 ? (
               <CardBody>
-                <p className="text-ink-3 m-0 text-[13px]">{t('triage.empty')}</p>
+                <EmptyNote>{t('triage.empty')}</EmptyNote>
               </CardBody>
             ) : (
               paged.slice.map((q) => (
@@ -165,7 +166,7 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
                     selected?.queueId === q.queueId ? 'bg-primary-tint' : 'hover:bg-surface',
                   )}
                 >
-                  <span className="text-primary w-16 flex-none font-bold whitespace-nowrap tabular-nums">
+                  <span className="text-primary w-16 flex-none font-semibold whitespace-nowrap tabular-nums">
                     {q.ticket}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -252,9 +253,11 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
                     search={{ encounter: encounter! }}
                     className={buttonVariants({ size: 'sm' })}
                   >
+                    <Stethoscope size={14} aria-hidden="true" />
                     {t('visits.openVisit')}
                   </StaffLink>
                   <StaffLink to="/app/vitals" className={buttonVariants({ size: 'sm' })}>
+                    <ListOrdered size={14} aria-hidden="true" />
                     {t('triage.backToList')}
                   </StaffLink>
                 </div>
@@ -263,7 +266,7 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
           ) : (
             <Card>
               <CardBody>
-                <p className="text-ink-3 m-0 text-[13px]">{t('triage.select')}</p>
+                <EmptyNote>{t('triage.select')}</EmptyNote>
               </CardBody>
             </Card>
           )}

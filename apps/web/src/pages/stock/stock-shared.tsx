@@ -75,7 +75,7 @@ export function LinesEditor({
         return (
           <div
             key={l.key}
-            className="border-border grid grid-cols-[minmax(0,1fr)_110px_auto] items-end gap-2 rounded-xl border p-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]"
+            className="border-border grid grid-cols-[minmax(0,1fr)_110px_auto] items-end gap-2 rounded-md border p-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]"
           >
             <SearchSelect
               label={t('stockShared.lineN', { n: n + 1 })}

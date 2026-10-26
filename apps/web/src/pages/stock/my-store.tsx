@@ -64,7 +64,7 @@ export function MyStoreTab({
   const [action, setAction] = useState<Action>('refill')
 
   if (isLoading) return null
-  if (error) return <p className="text-red m-0 text-[13px]">{error.message}</p>
+  if (error) return <p className="text-red m-0 text-[14px]">{error.message}</p>
   if (!store)
     return (
       <Panel i={1} icon={Store} tint="amber" title={t('myStore.title')}>
@@ -94,16 +94,16 @@ export function MyStoreTab({
                 setOpenNote(null)
               }}
               className={cn(
-                'inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold',
+                'inline-flex min-h-8 items-center gap-2 rounded-md border px-3 text-[14px] font-medium',
                 s.id === store.id
-                  ? 'bg-navy border-transparent text-white'
+                  ? 'border-primary/30 bg-primary-tint text-primary'
                   : 'border-border bg-card text-ink-2 hover:bg-hover',
               )}
             >
               <Store size={14} aria-hidden="true" />
               {s.name}
               {s.incoming > 0 && (
-                <span className="bg-amber-bg text-amber rounded-full px-1.5 text-[12px]">
+                <span className="bg-amber-bg text-amber rounded px-1.5 text-[12px] font-medium">
                   {s.incoming}
                 </span>
               )}
@@ -166,7 +166,10 @@ export function MyStoreTab({
       />
 
       <Panel i={2} icon={ClipboardCheck} tint="navy" title={t('myStore.actionsTitle')}>
-        <div className="flex flex-wrap gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
+        <div
+          className="border-border bg-surface flex flex-wrap gap-0.5 self-start rounded-md border p-0.5"
+          role="tablist"
+        >
           {actions.map((a) => (
             <button
               key={a}
@@ -175,8 +178,10 @@ export function MyStoreTab({
               aria-selected={action === a}
               onClick={() => setAction(a)}
               className={cn(
-                'inline-flex min-h-10 items-center rounded-lg px-3 text-[13px] font-semibold whitespace-nowrap',
-                action === a ? 'bg-navy text-white' : 'text-ink-2 hover:bg-hover',
+                'inline-flex min-h-8 items-center rounded px-3 text-[14px] font-medium whitespace-nowrap transition-colors duration-120',
+                action === a
+                  ? 'bg-card text-primary border-border border'
+                  : 'text-ink-2 hover:bg-hover hover:text-ink border border-transparent',
               )}
             >
               {t(`myStore.actions.${a}`)}
@@ -200,8 +205,8 @@ export function MyStoreTab({
 function StoreHeader({ store }: { store: MyStore }) {
   const { t } = useTranslation()
   return (
-    <p className="text-ink-2 m-0 text-[13px]">
-      <b className="text-ink text-[15px]">{store.name}</b>
+    <p className="text-ink-2 m-0 text-[14px]">
+      <b className="text-ink text-[16px]">{store.name}</b>
       {' · '}
       {t(`stock.storeTypes.${store.type}`)}
       {' · '}
@@ -274,7 +279,7 @@ function RefillForm({ store }: { store: MyStore }) {
   }
   return (
     <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
-      <p className="text-ink-2 m-0 text-[13px]">{t('myStore.refillLead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('myStore.refillLead')}</p>
       <LinesEditor
         lines={lines}
         onChange={setLines}
@@ -361,7 +366,7 @@ function ReturnForm({ store }: { store: MyStore }) {
       }}
       className="flex flex-col gap-3"
     >
-      <p className="text-ink-2 m-0 text-[13px]">{t('myStore.returnLead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('myStore.returnLead')}</p>
       <LinesEditor
         lines={lines}
         onChange={setLines}
@@ -439,7 +444,7 @@ function CountForm({ store }: { store: MyStore }) {
   }
   return (
     <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
-      <p className="text-ink-2 m-0 text-[13px]">{t('stock.countLead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('stock.countLead')}</p>
       <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_140px]">
         <SearchSelect
           label={t('stock.cols.item')}
@@ -527,7 +532,7 @@ function WriteOffForm({ store }: { store: MyStore }) {
   }
   return (
     <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
-      <p className="text-ink-2 m-0 text-[13px]">{t('myStore.writeOffLead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('myStore.writeOffLead')}</p>
       <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_120px]">
         <SearchSelect
           label={t('stock.cols.item')}
@@ -646,7 +651,7 @@ function LabReceiveForm({ store }: { store: MyStore }) {
   }
   return (
     <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
-      <p className="text-ink-2 m-0 text-[13px]">{t('myStore.labReceiveLead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('myStore.labReceiveLead')}</p>
       <SearchSelect
         label={t('stock.cols.item')}
         value={itemId}

@@ -27,6 +27,7 @@ import {
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
+import { rowSignature, useChanged } from '@/lib/motion'
 import {
   formatDate,
   formatRwf,
@@ -67,7 +68,7 @@ const bedClass: Record<HomeBed['state'], string> = {
   out_of_service: 'bg-red-bg text-red border-red-dot/30',
 }
 const rowClass =
-  'border-grid anim-enter flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0'
+  'border-grid flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0'
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 // "24/10/2026 10:30" for a datetime-local value
 const at = (v: string) => `${formatDate(new Date(v))} ${formatTime(new Date(v))}`
@@ -76,7 +77,7 @@ export function ErrorBox({ children }: { children: ReactNode }) {
   return (
     <p
       role="alert"
-      className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+      className="border-red/25 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
     >
       {children}
     </p>
@@ -150,6 +151,8 @@ export function MyQueuePanel({
       setError(describe(e))
     }
   }
+  // a row whose patient moved (triage colour, station, taken by) flashes once
+  const changed = useChanged(rows, (q) => q.queueId ?? q.ticket, rowSignature)
   return (
     <Panel
       i={1}
@@ -167,8 +170,9 @@ export function MyQueuePanel({
             <div className="flex flex-col">
               {shown.map((q, i) => (
                 <div
-                  key={q.queueId ?? q.ticket}
-                  className={rowClass}
+                  // the change count in the key replays the flash on the next change
+                  key={`${q.queueId ?? q.ticket}:${changed.get(q.queueId ?? q.ticket) ?? 0}`}
+                  className={cn(rowClass, changed.get(q.queueId ?? q.ticket) && 'anim-row')}
                   style={{ '--i': i } as CSSProperties}
                 >
                   <Pill tint={triageTint[q.triage] ?? 'teal'} icon={triageIcon[q.triage]}>
@@ -197,20 +201,20 @@ export function MyQueuePanel({
                         </span>
                       )}
                       {'vitalsAt' in q && !q.vitalsAt && (
-                        <span className="text-amber inline-flex items-center gap-1 font-semibold">
+                        <span className="text-yellow inline-flex items-center gap-1 font-semibold">
                           <Activity size={12} aria-hidden="true" />
                           {t('vitalsForm.noneShort')}
                         </span>
                       )}
                       {q.poolId && (
-                        <span className="text-violet inline-flex items-center gap-1 font-semibold">
+                        <span className="text-blue inline-flex items-center gap-1 font-semibold">
                           <Users size={12} aria-hidden="true" />
                           {t('home.sharedQueue')}
                         </span>
                       )}
                       {q.referredBy && (
                         <span
-                          className="text-violet inline-flex items-center gap-1 font-semibold"
+                          className="text-blue inline-flex items-center gap-1 font-semibold"
                           title={q.referralNote ?? undefined}
                         >
                           <ArrowRightLeft size={12} aria-hidden="true" />
@@ -219,7 +223,7 @@ export function MyQueuePanel({
                         </span>
                       )}
                       {q.departmentName && !q.assignedName && (
-                        <span className="text-violet inline-flex items-center gap-1 font-semibold">
+                        <span className="text-blue inline-flex items-center gap-1 font-semibold">
                           <Building2 size={12} aria-hidden="true" />
                           {q.departmentName}
                         </span>
@@ -512,12 +516,12 @@ function NursePanels({ data, onError }: PanelProps) {
             <div
               key={b.name}
               className={cn(
-                'anim-enter flex min-h-14 flex-col gap-0.5 rounded-xl border px-3 py-2 text-[13px]',
+                'flex min-h-14 flex-col gap-0.5 rounded-md border px-3 py-2 text-[13px]',
                 bedClass[b.state],
               )}
               style={{ '--i': i } as CSSProperties}
             >
-              <span className="inline-flex items-center gap-1.5 font-bold">
+              <span className="inline-flex items-center gap-1.5 font-semibold">
                 <BedDouble size={15} aria-hidden="true" />
                 {b.name}
               </span>
@@ -807,7 +811,7 @@ function CashierPanels({ data }: PanelProps) {
                         : ''}
                     </span>
                   </span>
-                  <span className="font-bold whitespace-nowrap tabular-nums">
+                  <span className="font-semibold whitespace-nowrap tabular-nums">
                     {formatRwf(b.balance)}
                   </span>
                   <StaffLink
@@ -836,7 +840,7 @@ function CashierPanels({ data }: PanelProps) {
       >
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-ink-2 font-semibold">{t('home.collectedToday')}</span>
-          <span className="text-[26px] font-extrabold tabular-nums">
+          <span className="text-[24px] leading-8 font-semibold tabular-nums">
             {formatRwf(data.paidToday.amount)}
           </span>
         </div>

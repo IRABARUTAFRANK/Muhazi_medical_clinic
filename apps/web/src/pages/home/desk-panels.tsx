@@ -43,7 +43,7 @@ import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const errorLine = 'bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold'
 const rowClass =
-  'border-grid anim-enter flex min-h-11 flex-wrap items-center gap-2 border-b py-1.5 text-[14px] last:border-b-0'
+  'border-grid flex min-h-11 flex-wrap items-center gap-2 border-b py-1.5 text-[14px] last:border-b-0'
 
 /** Runs an action and keeps its error next to the panel that caused it. */
 function useRun() {
@@ -398,7 +398,7 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
 const bedTint: Record<BoardBed['state'], string> = {
   free: 'border-green-dot/40 bg-green-bg/50',
   occupied: 'border-primary/30 bg-primary-tint/60',
-  cleaning: 'border-amber/30 bg-amber-bg/60',
+  cleaning: 'border-yellow-dot/40 bg-yellow-bg/60',
   out_of_service: 'border-border bg-hover opacity-60',
 }
 
@@ -457,14 +457,14 @@ export function BedsPanel({
               <div
                 key={b.id}
                 className={cn(
-                  'anim-enter flex flex-col gap-1 rounded-xl border px-3 py-2',
+                  'flex flex-col gap-1 rounded-md border px-3 py-2',
                   bedTint[b.state],
                   open && 'col-span-2',
                 )}
                 style={{ '--i': k } as CSSProperties}
               >
                 <span className="flex items-center justify-between gap-1">
-                  <span className="inline-flex items-center gap-1.5 text-[13px] font-bold">
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold">
                     <BedDouble size={15} aria-hidden="true" />
                     {b.name}
                   </span>

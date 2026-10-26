@@ -46,7 +46,8 @@ async function savePackSize(itemId: string, packSize: number | null) {
   throwIf(error)
 }
 
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
 
 /**
  * Medicines and supplies with their price (manager). Anything listed here can be put on the
@@ -98,15 +99,15 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
 
   return (
     <Card className="overflow-hidden">
-      <div className="bg-green-bg flex flex-wrap items-center gap-3 px-4 py-3">
-        <span className="bg-card text-green inline-flex size-10 flex-none items-center justify-center rounded-xl">
-          <Pill size={20} aria-hidden="true" />
+      <div className="border-border bg-green-bg flex flex-wrap items-center gap-3 border-b px-4 py-3">
+        <span className="bg-card text-green inline-flex size-8 flex-none items-center justify-center rounded">
+          <Pill size={18} aria-hidden="true" />
         </span>
         <span className="min-w-[180px] flex-1">
-          <span className="text-green block text-[17px] font-extrabold">
+          <span className="text-green block text-[16px] font-semibold">
             {t('prices.meds.title')}
           </span>
-          <span className="text-ink-2 block text-[13px]">{t('prices.meds.lead')}</span>
+          <span className="text-ink-2 block text-[14px]">{t('prices.meds.lead')}</span>
         </span>
         <Button size="sm" variant="primary" onClick={() => setEditing('new')}>
           <Plus size={14} aria-hidden="true" />
@@ -160,7 +161,7 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
                       .join(' · ')}
                   </span>
                 </span>
-                <span className="text-primary text-[15px] font-extrabold tabular-nums">
+                <span className="text-primary text-[16px] font-semibold tabular-nums">
                   {m.cashPrice == null ? t('prices.noPrice') : formatRwf(m.cashPrice)}
                 </span>
                 {!m.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
@@ -298,7 +299,7 @@ function MedicineForm({
           </p>
         )}
         {!medicine && reference.length > 0 && (
-          <div className="border-border bg-surface flex flex-col gap-2 rounded-xl border p-3">
+          <div className="border-border bg-surface flex flex-col gap-2 rounded-md border p-3">
             <SearchSelect
               label={t('prices.meds.ref.pick')}
               value={code}
@@ -310,7 +311,7 @@ function MedicineForm({
             />
             {code ? (
               <>
-                <p className="text-ink-2 m-0 text-[13px]">
+                <p className="text-ink-2 m-0 text-[14px]">
                   {[
                     t('prices.meds.ref.note'),
                     ref?.rule ? medicineRuleText(ref.rule, t) : null,
@@ -381,7 +382,7 @@ function MedicineForm({
           wrapperClassName="sm:max-w-xs"
         />
         <p className="text-ink-3 m-0 -mt-1 text-[12px]">{t('prices.meds.packHint')}</p>
-        <label className="border-border flex items-start gap-3 rounded-xl border p-3">
+        <label className="border-border flex items-start gap-3 rounded-md border p-3">
           <input
             type="checkbox"
             className="accent-primary mt-0.5 size-[18px] flex-none"
@@ -389,7 +390,7 @@ function MedicineForm({
             onChange={(e) => setActive(e.target.checked)}
           />
           <span>
-            <span className="block text-[13px] font-semibold">{t('prices.meds.active')}</span>
+            <span className="block text-[14px] font-semibold">{t('prices.meds.active')}</span>
             <span className="text-ink-3 block text-xs">{t('prices.meds.activeHint')}</span>
           </span>
         </label>

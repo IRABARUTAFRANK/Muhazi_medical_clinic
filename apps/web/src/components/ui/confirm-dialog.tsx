@@ -12,7 +12,7 @@ interface Pending extends ConfirmOptions {
 /**
  * The "Are you sure?" box of the whole app (useConfirm). One at a time; Escape or a click
  * outside answers no; the focus starts on "No, go back" for danger actions, on the yes button
- * otherwise, and returns where it was.
+ * otherwise, and returns where it was. The box fades in and rises 8 px over 200 ms.
  */
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
@@ -63,7 +63,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       {children}
       {pending && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+          className="anim-dialog fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) answer(false)
           }}
@@ -73,19 +73,21 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             aria-modal="true"
             aria-labelledby="mmc-confirm-title"
             aria-describedby={pending.body ? 'mmc-confirm-body' : undefined}
-            className="bg-card shadow-card anim-enter flex w-full max-w-md flex-col gap-4 rounded-2xl p-5"
+            className="bg-card border-border shadow-sheet anim-dialog flex w-full max-w-md flex-col gap-4 rounded-md border p-5"
           >
             <div className="flex items-start gap-3">
               <span
                 className={cn(
-                  'inline-flex size-10 flex-none items-center justify-center rounded-full',
-                  danger ? 'bg-red-bg text-red' : 'bg-primary-tint text-primary',
+                  'inline-flex size-9 flex-none items-center justify-center rounded-full border',
+                  danger
+                    ? 'border-red/25 bg-red-bg text-red'
+                    : 'border-primary/25 bg-primary-tint text-primary',
                 )}
               >
-                <Icon size={20} aria-hidden="true" />
+                <Icon size={18} aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <h2 id="mmc-confirm-title" className="text-ink m-0 text-[17px] font-bold">
+                <h2 id="mmc-confirm-title" className="text-ink m-0 text-[16px] font-semibold">
                   {pending.title}
                 </h2>
                 {pending.body && (

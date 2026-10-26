@@ -1824,7 +1824,8 @@
       "confirm": "{{name}} yavuye mu ivuriro? Kwivuza kurafungwa kandi umurwayi akurwa ku mirongo yose.",
       "done": "{{name}} yagiye: kwivuza kwafunzwe.",
       "due": "Hasigaye kwishyurwa {{amount}} RWF: banza wakire ubwishyu, cyangwa ubaze umuyobozi.",
-      "reasonPrompt": "Hasigaye kwishyurwa {{amount}} RWF. Kuki umurwayi agiye atishyuye?"
+      "reasonPrompt": "Hasigaye kwishyurwa {{amount}} RWF. Kuki umurwayi agiye atishyuye?",
+      "unpaid": "Umurwayi ntarishyura: mwohereze aho bakira ubwishyu. Umuyobozi wenyine ni we ushobora gufunga kwivuza hasigaye amafaranga yo kwishyurwa."
     }
   },
   "prices": {

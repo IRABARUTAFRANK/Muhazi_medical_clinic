@@ -3,6 +3,7 @@ import { LogOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
+import { ApiError } from '@/lib/api/errors'
 import { useVisitActions } from '@/lib/api/visits'
 import { useConfirm } from '@/lib/confirm'
 
@@ -48,8 +49,10 @@ export function LeftButton({
       onDone?.(t('visits.left.done', { name }))
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e)
-      const due = /still due \((\d+)/.exec(m)?.[1]
-      if (/say why|still due/.test(m) && user.role === 'manager') {
+      // the database's own (English) sentence tells the refusal apart whatever the language shown
+      const raw = e instanceof ApiError ? e.serverMessage : m
+      const due = /still due \((\d+)/.exec(raw)?.[1]
+      if (/say why|still due/.test(raw) && user.role === 'manager') {
         const reason = window.prompt(t('visits.left.reasonPrompt', { amount: due ?? '' }))
         if (!reason?.trim()) return
         try {
@@ -60,7 +63,17 @@ export function LeftButton({
         }
         return
       }
-      setError(due ? t('visits.left.due', { amount: due }) : m)
+      // not the manager, money still due: say plainly where the patient goes and who may close it
+      setError(
+        /take the payment first/.test(raw)
+          ? t('visits.left.unpaid', {
+              defaultValue:
+                'The patient has not paid yet: send them to the cashier. Only the manager can end a visit with money due.',
+            })
+          : due
+            ? t('visits.left.due', { amount: due })
+            : m,
+      )
     }
   }
 

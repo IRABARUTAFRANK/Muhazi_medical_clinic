@@ -1,14 +1,18 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
 import {
+  Activity,
   ArrowLeft,
   Check,
   FileText,
   FlaskConical,
   FolderOpen,
   Footprints,
+  HeartPulse,
+  IdCard,
   Lock,
   Pencil,
   Plus,
+  Receipt,
   Stethoscope,
   Ticket,
   X,
@@ -17,6 +21,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
+import { EmptyNote } from '@/components/clinical/empty-note'
 import { Reveal } from '@/components/ui/reveal'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
@@ -67,7 +72,8 @@ import { MergeCard } from './merge-card'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'files' | 'bills'
 const TABS: Tab[] = ['overview', 'visits', 'clinical', 'files', 'bills']
-const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
 
 /**
  * The patient file. Header with identity, allergies and the current visit; tabs for the
@@ -288,11 +294,11 @@ export function PatientFilePage({
             {/* Header */}
             <Card className="anim-enter">
               <CardBody className="flex-row flex-wrap items-center gap-x-5 gap-y-3">
-                <span className="bg-primary-tint text-primary inline-flex size-14 flex-none items-center justify-center rounded-2xl text-lg font-extrabold">
+                <span className="bg-primary-tint text-primary inline-flex size-10 flex-none items-center justify-center rounded-full text-[14px] font-semibold">
                   {initials(p)}
                 </span>
                 <span className="min-w-[220px] flex-1">
-                  <span className="block text-xl font-bold">
+                  <span className="block text-[24px] font-semibold">
                     {p.surname} {p.given_names}
                   </span>
                   <span className="text-ink-3 block text-[13px] tabular-nums">
@@ -413,7 +419,7 @@ export function PatientFilePage({
               {!openVisit && (
                 <CardBody className="border-border flex-row flex-wrap items-end gap-3 border-t">
                   {canRegisterEmergency(user) && (
-                    <label className="flex min-h-11 items-center gap-2 text-[13px] font-semibold">
+                    <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
                       <input
                         type="checkbox"
                         className="accent-red size-[18px]"
@@ -466,7 +472,7 @@ export function PatientFilePage({
 
             {/* Tabs */}
             <div
-              className="anim-enter flex flex-wrap gap-1 rounded-xl bg-white/60 p-1"
+              className="anim-enter border-border bg-surface flex flex-wrap gap-0.5 self-start rounded-md border p-0.5"
               style={{ '--i': 1 } as CSSProperties}
               role="tablist"
             >
@@ -478,8 +484,10 @@ export function PatientFilePage({
                   aria-selected={tab === k}
                   onClick={() => setTab(k)}
                   className={cn(
-                    'min-h-10 rounded-lg px-4 text-[13px] font-semibold transition-colors',
-                    tab === k ? 'bg-navy shadow-card text-white' : 'text-ink-2 hover:bg-hover',
+                    'h-8 rounded border px-3 text-[14px] font-medium transition-colors duration-120',
+                    tab === k
+                      ? 'border-border bg-card text-primary'
+                      : 'text-ink-2 hover:bg-hover border-transparent',
                   )}
                 >
                   {t(`file.tabs.${k}`)}
@@ -551,9 +559,7 @@ const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Dat
 function Info({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-ink-3 text-[11px] font-semibold tracking-[.04em] uppercase">
-        {label}
-      </span>
+      <span className="text-ink-3 text-[12px] font-medium">{label}</span>
       <span className="text-[14px] font-medium">{value == null || value === '' ? '—' : value}</span>
     </div>
   )
@@ -566,7 +572,7 @@ function Overview({ file }: { file: PatientFile }) {
   return (
     <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
       <Card className="anim-enter">
-        <CardHeader>
+        <CardHeader icon={IdCard}>
           <span>{t('file.identity')}</span>
         </CardHeader>
         <CardBody className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
@@ -598,7 +604,7 @@ function Overview({ file }: { file: PatientFile }) {
         </CardBody>
       </Card>
       <Card className="anim-enter" style={{ '--i': 1 } as CSSProperties}>
-        <CardHeader>
+        <CardHeader icon={HeartPulse}>
           <span>{t('file.medical')}</span>
         </CardHeader>
         <CardBody className="gap-3">
@@ -611,13 +617,11 @@ function Overview({ file }: { file: PatientFile }) {
               <Info label={f('blood_group')} value={p.blood_group} />
               <div
                 className={cn(
-                  'rounded-xl px-3 py-2',
+                  'rounded-md px-3 py-2',
                   p.allergies ? 'bg-red-bg text-red' : 'bg-hover text-ink-2',
                 )}
               >
-                <span className="block text-[11px] font-semibold tracking-[.04em] uppercase">
-                  {f('allergies')}
-                </span>
+                <span className="block text-[12px] font-medium">{f('allergies')}</span>
                 <span className="font-medium">
                   {p.allergies ??
                     (p.allergies_none
@@ -758,9 +762,7 @@ function MoreInfo({
             {err}
           </p>
         )}
-        {defs.length + adHoc.length === 0 && (
-          <p className="text-ink-3 m-0 text-[13px]">{t('file.noExtra')}</p>
-        )}
+        {defs.length + adHoc.length === 0 && <EmptyNote>{t('file.noExtra')}</EmptyNote>}
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
           {defs.map((d) => (
             <Info
@@ -902,7 +904,7 @@ function EditForm({
   }
   return (
     <Card className="border-primary anim-enter">
-      <CardHeader>
+      <CardHeader icon={Pencil}>
         <span>{t('file.editTitle')}</span>
       </CardHeader>
       <form onSubmit={(e) => void submit(e)}>
@@ -968,7 +970,7 @@ function EditForm({
                 disabled={allergiesNone}
               />
               <p className="text-ink-3 m-0 -mt-2 text-xs">{t('file.allergiesHint')}</p>
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[14px] font-semibold">
+              <label className="flex min-h-9 cursor-pointer items-center gap-3 text-[14px] font-semibold">
                 <input
                   type="checkbox"
                   className="accent-primary size-5"
@@ -987,9 +989,7 @@ function EditForm({
 
           {defs.length + adHocKeys.length > 0 && (
             <>
-              <h3 className="text-ink-2 m-0 mt-2 text-[13px] font-bold tracking-[.04em] uppercase">
-                {t('file.more')}
-              </h3>
+              <h3 className="text-ink-2 m-0 mt-2 text-[12px] font-medium">{t('file.more')}</h3>
               {/* the "medical" fields are not sent at the identity level: one that already
                   holds a value is locked (update_patient keeps it anyway); an empty one may be
                   filled in */}
@@ -1082,7 +1082,7 @@ function Visits({
     return (
       <Card className="anim-enter">
         <CardBody>
-          <p className="text-ink-3 m-0 text-[13px]">{t('file.noVisits')}</p>
+          <EmptyNote>{t('file.noVisits')}</EmptyNote>
         </CardBody>
       </Card>
     )
@@ -1185,14 +1185,14 @@ function Clinical({ file }: { file: PatientFile }) {
     <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
       <ResultsCard patientId={file.patient.id} />
       <Card className="anim-enter">
-        <CardHeader>
+        <CardHeader icon={Activity}>
           <span>{t('file.latestVitals')}</span>
           <span className="text-ink-3 text-xs">
             {latest.size ? when([...latest.values()][0]!.at) : ''}
           </span>
         </CardHeader>
         <CardBody className="flex-row flex-wrap gap-2">
-          {latest.size === 0 && <p className="text-ink-3 m-0 text-[13px]">{t('file.noVitals')}</p>}
+          {latest.size === 0 && <EmptyNote>{t('file.noVitals')}</EmptyNote>}
           {[...latest.values()].map((v) => (
             <Chip key={v.code}>
               {t(`triage.vitals.${v.code}`)}:{' '}
@@ -1203,13 +1203,13 @@ function Clinical({ file }: { file: PatientFile }) {
         </CardBody>
       </Card>
       <Card className="anim-enter" style={{ '--i': 1 } as CSSProperties}>
-        <CardHeader>
+        <CardHeader icon={Stethoscope}>
           <span>{t('file.diagnoses')}</span>
           <span className="text-ink-3 text-xs">{file.conditions.length}</span>
         </CardHeader>
         {file.conditions.length === 0 && (
           <CardBody>
-            <p className="text-ink-3 m-0 text-[13px]">{t('file.noDiagnosis')}</p>
+            <EmptyNote>{t('file.noDiagnosis')}</EmptyNote>
           </CardBody>
         )}
         {file.conditions.map((c) => (
@@ -1239,7 +1239,7 @@ function Bills({ file }: { file: PatientFile }) {
   const due = file.bills.reduce((s, b) => s + b.balance, 0)
   return (
     <Card className="anim-enter">
-      <CardHeader>
+      <CardHeader icon={Receipt}>
         <span>{t('file.tabs.bills')}</span>
         <span
           className={cn('text-xs font-semibold tabular-nums', due > 0 ? 'text-red' : 'text-ink-3')}
@@ -1249,7 +1249,7 @@ function Bills({ file }: { file: PatientFile }) {
       </CardHeader>
       {file.bills.length === 0 && (
         <CardBody>
-          <p className="text-ink-3 m-0 text-[13px]">{t('file.noBills')}</p>
+          <EmptyNote>{t('file.noBills')}</EmptyNote>
         </CardBody>
       )}
       {file.bills.map((b) => (
@@ -1301,7 +1301,7 @@ function ResultsCard({ patientId }: { patientId: string }) {
       </CardHeader>
       {results.length === 0 ? (
         <CardBody>
-          <p className="text-ink-3 m-0 text-[13px]">{t('file.noResults')}</p>
+          <EmptyNote>{t('file.noResults')}</EmptyNote>
         </CardBody>
       ) : (
         <ShownList items={results} step={5} footerClassName="px-4 py-2">

@@ -98,9 +98,9 @@ export function TransferNotesList({
                 type="button"
                 onClick={() => onOpen(openId === n.id ? null : n.id)}
                 aria-expanded={openId === n.id}
-                className="hover:bg-hover flex w-full flex-wrap items-center gap-3 rounded-lg px-1 py-2 text-left text-[13px]"
+                className="hover:bg-hover flex w-full flex-wrap items-center gap-3 rounded-md px-1 py-2 text-left text-[14px]"
               >
-                <span className="w-28 font-bold tabular-nums">{n.number}</span>
+                <span className="w-28 font-semibold tabular-nums">{n.number}</span>
                 <span className="min-w-[180px] flex-1">
                   <span className="flex items-center gap-1 font-semibold">
                     {n.from} <ArrowRight size={13} aria-hidden="true" /> {n.to}
@@ -167,7 +167,7 @@ export function TransferNoteView({
   const [note, setNote] = useState('')
   const [cancelling, setCancelling] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
-  if (error) return <p className="text-red m-0 text-[13px]">{error.message}</p>
+  if (error) return <p className="text-red m-0 text-[14px]">{error.message}</p>
   if (!n) return null
   const open = n.status === 'in_transit'
   const showCost = n.items.some((x) => x.unitCost != null)
@@ -256,15 +256,15 @@ export function TransferNoteView({
   }
 
   return (
-    <div className="border-border bg-surface flex flex-col gap-3 rounded-xl border p-3">
+    <div className="border-border bg-surface flex flex-col gap-3 rounded-md border p-3">
       <div className="flex flex-wrap items-start gap-3">
         <span className="min-w-[200px] flex-1">
-          <span className="block text-[15px] font-extrabold">
+          <span className="block text-[16px] font-semibold">
             {t(n.direction === 'to_room' ? 'roomStores.noteOut' : 'roomStores.noteReturn', {
               number: n.number,
             })}
           </span>
-          <span className="text-ink-2 block text-[13px]">
+          <span className="text-ink-2 block text-[14px]">
             {n.from} → {n.to}
           </span>
           <span className="text-ink-3 block text-[12px]">
@@ -291,9 +291,9 @@ export function TransferNoteView({
               .filter(Boolean)
               .join(' · ')}
           </span>
-          {n.note && <span className="text-ink-2 block text-[13px]">“{n.note}”</span>}
+          {n.note && <span className="text-ink-2 block text-[14px]">“{n.note}”</span>}
           {n.receiveNote && (
-            <span className="text-ink-2 block text-[13px]">
+            <span className="text-ink-2 block text-[14px]">
               {t('roomStores.receiveNoteSaid', { note: n.receiveNote })}
             </span>
           )}
@@ -323,18 +323,14 @@ export function TransferNoteView({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[13px]">
+        <table className="w-full border-collapse text-[14px]">
           <thead>
-            <tr className="text-ink-3 text-left text-[11px] tracking-[.04em] uppercase">
-              <th className="border-border border-b py-2 pr-2 font-semibold">
+            <tr className="text-ink-3 text-left text-[12px]">
+              <th className="border-border border-b py-2 pr-2 font-medium">
                 {t('stock.cols.item')}
               </th>
-              <th className="border-border border-b py-2 pr-2 font-semibold">
-                {t('stock.batchNo')}
-              </th>
-              <th className="border-border border-b py-2 pr-2 font-semibold">
-                {t('stock.expiry')}
-              </th>
+              <th className="border-border border-b py-2 pr-2 font-medium">{t('stock.batchNo')}</th>
+              <th className="border-border border-b py-2 pr-2 font-medium">{t('stock.expiry')}</th>
               <th className="border-border border-b py-2 pr-2 text-right font-semibold">
                 {t('roomStores.sent')}
               </th>
@@ -396,7 +392,7 @@ export function TransferNoteView({
                   <td className="py-2 pr-2">
                     <ExpiryMark date={x.expiry} />
                   </td>
-                  <td className="py-2 pr-2 text-right font-bold tabular-nums">
+                  <td className="py-2 pr-2 text-right font-semibold tabular-nums">
                     {formatNumber(x.quantity)}
                   </td>
                   <td className="py-2 pr-2 text-right tabular-nums">
@@ -411,14 +407,14 @@ export function TransferNoteView({
                           })
                         }
                         className={cn(
-                          'border-border bg-card h-9 w-20 rounded-lg border px-2 text-right',
+                          'border-border bg-card h-9 w-20 rounded-md border px-2 text-right',
                           differs && 'border-amber',
                         )}
                       />
                     ) : x.received == null ? (
                       '—'
                     ) : (
-                      <span className={cn(x.received !== x.quantity && 'text-amber font-bold')}>
+                      <span className={cn(x.received !== x.quantity && 'text-amber font-semibold')}>
                         {formatNumber(x.received)}
                       </span>
                     )}
@@ -435,14 +431,14 @@ export function TransferNoteView({
         </table>
       </div>
       {showCost && n.value != null && (
-        <p className="text-ink-2 m-0 text-[13px]">
+        <p className="text-ink-2 m-0 text-[14px]">
           {t('roomStores.noteValue', { value: formatRwf(Math.round(n.value)) })}
         </p>
       )}
 
       {open && n.canReceive && (
         <div className="flex flex-col gap-2">
-          <p className="text-ink-2 m-0 text-[13px]">
+          <p className="text-ink-2 m-0 text-[14px]">
             {t(
               n.direction === 'to_room' ? 'roomStores.receiveLead' : 'roomStores.receiveReturnLead',
             )}

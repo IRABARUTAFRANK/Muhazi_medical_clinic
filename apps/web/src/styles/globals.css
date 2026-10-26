@@ -39,6 +39,7 @@
   --color-ink: var(--mmc-text);
   --color-ink-2: var(--mmc-text-2);
   --color-ink-3: var(--mmc-text-3);
+  --color-ink-4: var(--mmc-text-4);
 
   --color-red: var(--mmc-red);
   --color-red-bg: var(--mmc-red-bg);
@@ -55,6 +56,9 @@
   --color-orange: var(--mmc-orange);
   --color-orange-bg: var(--mmc-orange-bg);
   --color-orange-dot: var(--mmc-orange-dot);
+  --color-rose: var(--mmc-rose);
+  --color-rose-bg: var(--mmc-rose-bg);
+  --color-rose-dot: var(--mmc-rose-dot);
 
   --color-c-money: var(--mmc-c-money);
   --color-c-visits: var(--mmc-c-visits);
@@ -65,6 +69,7 @@
   --color-navy-ink: var(--mmc-navy-ink);
   --color-violet: var(--mmc-violet);
   --color-violet-bg: var(--mmc-violet-bg);
+  --color-violet-dot: var(--mmc-violet-dot);
   --color-amber: var(--mmc-amber);
   --color-amber-bg: var(--mmc-amber-bg);
 
@@ -83,8 +88,9 @@
   }
   body {
     margin: 0;
+    /* console type: 14 px on a 20 px line */
     font-size: 14px;
-    line-height: 1.4;
+    line-height: 20px;
   }
   a {
     color: var(--mmc-primary);
@@ -94,7 +100,7 @@
   }
   input::placeholder,
   textarea::placeholder {
-    color: var(--mmc-text-3);
+    color: var(--mmc-text-4);
   }
   svg {
     flex: none;
@@ -104,8 +110,154 @@
 @layer components {
   /* Offline banner colours are fixed in the design (same in both themes). */
   .offline-banner {
-    background: #fff3c4;
+    background: #fff8e1;
     color: #5c3d00;
     border-color: #e8d27a;
+  }
+}
+
+/*
+ * Staff console look, on top of brand.css (which keeps the public website's motion and
+ * textures). Unlayered so it wins over the same selectors there: the workspace is a flat
+ * neutral surface and cards never lift or cast a shadow; hover is a background tint, 120 ms.
+ *
+ * Motion of the workflow (purposeful, 150–300 ms, off under prefers-reduced-motion). The sweeps
+ * use these classes too, so their names are fixed:
+ *   .anim-enter      content fades in and rises 8 px on load, staggered 40 ms per `--i`
+ *   .anim-pulse-dot  the dot of the current step breathes (visit track, live queues)
+ *   .anim-progress   a progress line draws from the left (scaleX, set `--p` 0–1 for a part)
+ *   .anim-pop        a 300 ms check-mark pop on "saved / paid / handed over"
+ *   .anim-row        a row that just changed flashes its background once (queues)
+ *   .anim-slide-in   a new notice slides in from the right
+ *   .anim-dialog     dialogs and sheets fade in and rise 8 px over 200 ms
+ *   .skeleton        shimmer where a list is still loading (instead of a spinner)
+ *   .draw-line       an SVG path (pathLength="1") draws itself; .fade-in-late follows it
+ *   .press           0.98 scale while a button is pressed
+ */
+.workspace,
+:root[data-theme='dim'] .workspace {
+  background-color: var(--mmc-bg);
+  background-image: none;
+}
+.card-lift,
+.card-lift:hover {
+  box-shadow: none;
+  transition: background-color 0.12s ease;
+}
+@keyframes mmc-pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent);
+  }
+  60% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+@keyframes mmc-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(var(--p, 1));
+  }
+}
+@keyframes mmc-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes mmc-row-flash {
+  0% {
+    background-color: var(--mmc-primary-tint);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@keyframes mmc-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mmc-dialog {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-enter {
+  animation: mmc-enter 0.24s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.anim-pulse-dot {
+  animation: mmc-pulse-dot 1.6s ease-out infinite;
+}
+.anim-progress {
+  transform-origin: left center;
+  transform: scaleX(var(--p, 1));
+  animation: mmc-progress 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.anim-pop {
+  animation: mmc-pop 0.3s cubic-bezier(0.2, 0.7, 0.2, 1.2) both;
+}
+.anim-row {
+  animation: mmc-row-flash 1.2s ease-out both;
+}
+.anim-slide-in {
+  animation: mmc-slide-in 0.24s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.anim-dialog {
+  animation: mmc-dialog 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.skeleton {
+  border-radius: var(--mmc-radius);
+}
+.press {
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: 0.12s;
+}
+.press:active:not(:disabled) {
+  transform: scale(0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-enter,
+  .anim-pulse-dot,
+  .anim-progress,
+  .anim-pop,
+  .anim-row,
+  .anim-slide-in,
+  .anim-dialog {
+    animation: none;
+    opacity: 1;
+  }
+  .anim-progress {
+    transform: scaleX(var(--p, 1));
+  }
+  .anim-pop,
+  .anim-slide-in,
+  .anim-dialog {
+    transform: none;
+  }
+  .press:active:not(:disabled) {
+    transform: none;
   }
 }

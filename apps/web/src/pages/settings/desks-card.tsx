@@ -74,9 +74,9 @@ export function DesksCard() {
         </span>
       </CardHeader>
       <CardBody className="gap-3">
-        <p className="text-ink-2 m-0 text-[13px]">{t('perms.desks.lead')}</p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('perms.desks.lead')}</p>
         {matrix?.fallback && (
-          <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <p className="border-amber/30 bg-amber-bg text-amber m-0 rounded-md border px-3 py-2 text-[14px] font-medium">
             {t('perms.desks.fallback')}
           </p>
         )}
@@ -90,8 +90,8 @@ export function DesksCard() {
             {notice}
           </Flash>
         )}
-        <div className="border-border overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[820px] text-[13px]">
+        <div className="border-border overflow-x-auto rounded-md border">
+          <table className="w-full min-w-[820px] text-[14px]">
             <thead className="bg-hover/60 text-ink-2">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">{t('perms.desks.desk')}</th>
@@ -135,7 +135,7 @@ export function DesksCard() {
                             disabled={readOnly || setRoleDesk.isPending}
                             onClick={() => void toggle(r, desk)}
                             className={cn(
-                              'inline-flex size-9 items-center justify-center rounded-lg border transition-colors disabled:cursor-not-allowed',
+                              'inline-flex size-9 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed',
                               on
                                 ? 'border-green/40 bg-green-bg text-green'
                                 : 'border-border bg-card text-ink-3 hover:bg-hover',

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, Clock, KeyRound, Lock, MailCheck } from 'lucide-react'
+import { ArrowLeft, CircleAlert, CircleCheck, Clock, KeyRound, Lock, MailCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
@@ -222,21 +222,21 @@ export function LoginPage({ staffId }: { staffId: string }) {
   }
 
   return (
-    <div className="theme-public band-gradient flex min-h-dvh flex-col items-center justify-center gap-6 p-4 text-white">
-      <Logo subtitle={t('app.place')} className="text-white [&_span]:text-white" />
-      <div className="text-ink flex w-full max-w-[440px] flex-col gap-4 rounded-2xl border border-white/60 bg-white p-6 shadow-[0_24px_64px_rgba(11,34,82,.35)]">
+    <div className="bg-surface text-ink flex min-h-dvh flex-col items-center justify-center gap-4 p-4">
+      <Logo subtitle={t('app.place')} />
+      <div className="border-border bg-card text-ink anim-enter flex w-full max-w-[440px] flex-col gap-4 rounded-md border p-4">
         <div className="flex items-center gap-3">
-          <span className="icon-gradient inline-flex size-11 flex-none items-center justify-center rounded-xl text-white">
+          <span className="bg-primary-tint text-primary inline-flex size-9 flex-none items-center justify-center rounded">
             {step === 'otp' ? (
-              <MailCheck size={22} aria-hidden="true" />
+              <MailCheck size={20} aria-hidden="true" />
             ) : step === 'new-pin' ? (
-              <KeyRound size={22} aria-hidden="true" />
+              <KeyRound size={20} aria-hidden="true" />
             ) : (
-              <Lock size={22} aria-hidden="true" />
+              <Lock size={20} aria-hidden="true" />
             )}
           </span>
           <span className="min-w-0">
-            <span className="block text-lg font-bold">
+            <span className="block text-[20px] leading-7 font-semibold">
               {t(
                 step === 'otp'
                   ? 'login.codeTitle'
@@ -254,7 +254,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
         {step === 'credentials' ? (
           <form onSubmit={submitCredentials} className="flex flex-col gap-3.5">
             {note && <SignedOutNote note={note} />}
-            <p className="text-ink-2 m-0 text-[13px]">{t('login.lead')}</p>
+            <p className="text-ink-2 m-0 text-[14px]">{t('login.lead')}</p>
             <Field
               label={t('landing.signin.username')}
               value={username}
@@ -288,7 +288,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
           </form>
         ) : step === 'new-pin' ? (
           <form onSubmit={submitNewPin} className="flex flex-col gap-3.5">
-            <p className="text-ink-2 m-0 text-[13px]">{t('login.firstPinLead')}</p>
+            <p className="text-ink-2 m-0 text-[14px]">{t('login.firstPinLead')}</p>
             <Field
               label={t('pin.new')}
               type="password"
@@ -323,7 +323,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
           </form>
         ) : (
           <form onSubmit={submitCode} className="flex flex-col gap-3.5">
-            <p className="text-ink-2 m-0 text-[13px]">
+            <p className="text-ink-2 m-0 text-[14px]">
               {t('login.codeLead', { email: maskEmail(pending?.email ?? '') })}
             </p>
             {!isLive && <p className="text-ink-3 m-0 text-xs">{t('login.codeSample')}</p>}
@@ -335,17 +335,18 @@ export function LoginPage({ staffId }: { staffId: string }) {
               autoComplete="one-time-code"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="text-center text-2xl font-bold tracking-[.4em] tabular-nums"
+              className="text-center text-[22px] font-semibold tracking-[.3em] tabular-nums"
               required
             />
-            <p className="bg-surface text-ink-2 m-0 flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs">
+            <p className="text-ink-3 m-0 flex items-start gap-2 text-[13px]">
               <Clock size={14} aria-hidden="true" className="mt-0.5 flex-none" />
               <span>{t('login.sessionHint')}</span>
             </p>
             {error && <Alert>{error}</Alert>}
             {notice && (
-              <p className="bg-green-bg text-green m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
-                {notice}
+              <p className="border-green/30 bg-green-bg text-green m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-medium">
+                <CircleCheck size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+                <span>{notice}</span>
               </p>
             )}
             {askPin && (
@@ -385,7 +386,9 @@ export function LoginPage({ staffId }: { staffId: string }) {
           </form>
         )}
       </div>
-      <p className="m-0 text-center text-xs text-white/80">{t('landing.signin.note')}</p>
+      <p className="text-ink-3 m-0 max-w-[440px] text-center text-[13px]">
+        {t('landing.signin.note')}
+      </p>
     </div>
   )
 }
@@ -408,7 +411,7 @@ function SignedOutNote({ note }: { note: SignOutNote }) {
   return (
     <div
       role="status"
-      className="bg-amber-bg border-amber flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-[13px]"
+      className="bg-amber-bg border-amber/30 text-amber flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-[13px]"
     >
       <Clock size={16} aria-hidden="true" className="mt-0.5 flex-none" />
       <span>
@@ -425,9 +428,10 @@ function Alert({ children }: { children: string }) {
   return (
     <p
       role="alert"
-      className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+      className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-medium"
     >
-      {children}
+      <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+      <span>{children}</span>
     </p>
   )
 }

@@ -273,7 +273,7 @@ export function DeliveryForm({
 
   return (
     <Panel i={1} icon={PackagePlus} tint="mint" title={t('stock.receiveTitle')}>
-      <p className="text-ink-2 m-0 text-[13px]">{t('stockDelivery.lead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('stockDelivery.lead')}</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field
@@ -322,7 +322,7 @@ export function DeliveryForm({
               <div
                 key={l.key}
                 className={cn(
-                  'border-border flex flex-col gap-2 rounded-xl border p-3',
+                  'border-border flex flex-col gap-2 rounded-md border p-3',
                   badLine === l.key && 'border-red ring-red-bg ring-[3px]',
                 )}
               >
@@ -445,7 +445,7 @@ export function DeliveryForm({
           onChange={(e) => setNote(e.target.value)}
           wrapperClassName="sm:max-w-md"
         />
-        <p className="bg-surface m-0 rounded-lg px-3 py-2 text-[14px] font-semibold tabular-nums">
+        <p className="bg-surface m-0 rounded-md px-3 py-2 text-[14px] font-semibold tabular-nums">
           {t('stockDelivery.total', {
             count: filled.length,
             units: formatNumber(totalUnits),
@@ -501,10 +501,10 @@ export function DeliveriesList({ focusId }: { focusId?: string }) {
                 type="button"
                 aria-expanded={open === d.id}
                 onClick={() => setOpen(open === d.id ? null : d.id)}
-                className="border-grid hover:bg-hover flex flex-wrap items-center gap-3 border-b px-1 py-2 text-left text-[13px]"
+                className="border-grid hover:bg-hover flex flex-wrap items-center gap-3 border-b px-1 py-2 text-left text-[14px]"
               >
                 <FileText size={16} aria-hidden="true" className="text-ink-3" />
-                <span className="w-32 font-bold tabular-nums">{d.number}</span>
+                <span className="w-32 font-semibold tabular-nums">{d.number}</span>
                 <span className="min-w-[180px] flex-1">
                   <span className="block font-semibold">{d.supplier ?? '—'}</span>
                   <span className="text-ink-3 block text-[12px]">
@@ -519,7 +519,7 @@ export function DeliveriesList({ focusId }: { focusId?: string }) {
                   </span>
                 </span>
                 <span className="text-right tabular-nums">
-                  <span className="block font-bold">{formatRwf(Math.round(d.totalCost))}</span>
+                  <span className="block font-semibold">{formatRwf(Math.round(d.totalCost))}</span>
                   <span className="text-ink-3 block text-[12px]">
                     {t('stockDelivery.linesUnits', { count: d.lines, units: d.units })}
                   </span>
@@ -538,13 +538,13 @@ export function DeliveriesList({ focusId }: { focusId?: string }) {
 function DeliveryDetailView({ id, onClose }: { id: string; onClose: () => void }) {
   const { t } = useTranslation()
   const { data: d, error } = useDeliveryDetail(id)
-  if (error) return <p className="text-red m-0 text-[13px]">{error.message}</p>
+  if (error) return <p className="text-red m-0 text-[14px]">{error.message}</p>
   if (!d) return null
   return (
-    <div className="border-border bg-surface my-2 flex flex-col gap-2 rounded-xl border p-3">
+    <div className="border-border bg-surface my-2 flex flex-col gap-2 rounded-md border p-3">
       <div className="flex items-start gap-2">
         <span className="flex-1">
-          <span className="block text-[15px] font-extrabold">
+          <span className="block text-[16px] font-semibold">
             {d.number} · {d.supplier}
           </span>
           <span className="text-ink-3 block text-[12px]">
@@ -557,7 +557,7 @@ function DeliveryDetailView({ id, onClose }: { id: string; onClose: () => void }
               .filter(Boolean)
               .join(' · ')}
           </span>
-          {d.note && <span className="text-ink-2 block text-[13px]">“{d.note}”</span>}
+          {d.note && <span className="text-ink-2 block text-[14px]">“{d.note}”</span>}
         </span>
         <Button
           size="icon"
@@ -570,18 +570,14 @@ function DeliveryDetailView({ id, onClose }: { id: string; onClose: () => void }
         </Button>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[13px]">
+        <table className="w-full border-collapse text-[14px]">
           <thead>
-            <tr className="text-ink-3 text-left text-[11px] tracking-[.04em] uppercase">
-              <th className="border-border border-b py-2 pr-2 font-semibold">
+            <tr className="text-ink-3 text-left text-[12px]">
+              <th className="border-border border-b py-2 pr-2 font-medium">
                 {t('stock.cols.item')}
               </th>
-              <th className="border-border border-b py-2 pr-2 font-semibold">
-                {t('stock.batchNo')}
-              </th>
-              <th className="border-border border-b py-2 pr-2 font-semibold">
-                {t('stock.expiry')}
-              </th>
+              <th className="border-border border-b py-2 pr-2 font-medium">{t('stock.batchNo')}</th>
+              <th className="border-border border-b py-2 pr-2 font-medium">{t('stock.expiry')}</th>
               <th className="border-border border-b py-2 pr-2 text-right font-semibold">
                 {t('stockDelivery.received')}
               </th>
@@ -621,7 +617,7 @@ function DeliveryDetailView({ id, onClose }: { id: string; onClose: () => void }
           </tbody>
         </table>
       </div>
-      <p className="m-0 text-right text-[14px] font-bold tabular-nums">
+      <p className="m-0 text-right text-[14px] font-semibold tabular-nums">
         {t('stockDelivery.totalCost', { value: formatRwf(Math.round(d.totalCost)) })}
       </p>
     </div>

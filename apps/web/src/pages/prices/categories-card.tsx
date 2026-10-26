@@ -30,7 +30,8 @@ import { suggestNames } from '@/lib/medical-glossary'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/confirm'
 
-const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+const errorBox =
+  'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
 
 /*
  * The clinic's own categories of treatments (Prices → Categories): create, rename, delete when
@@ -94,7 +95,7 @@ export function CategoriesCard({
         </span>
       </CardHeader>
       <CardBody className="gap-2">
-        <p className="text-ink-2 m-0 text-[13px]">{t('prices.cat.lead')}</p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('prices.cat.lead')}</p>
         {error && (
           <p role="alert" className={errorBox}>
             {error}
@@ -251,14 +252,14 @@ function CategoryForm({
       aria-checked={on}
       onClick={() => setOrdered(value)}
       className={cn(
-        'flex min-w-0 flex-1 items-start gap-2.5 rounded-xl border p-3 text-left',
+        'flex min-w-0 flex-1 items-start gap-2.5 rounded-md border p-3 text-left',
         on ? 'border-primary bg-primary/5 ring-primary/30 ring-2' : 'border-border hover:bg-hover',
       )}
     >
       <span className={cn('mt-0.5 flex-none', on ? 'text-primary' : 'text-ink-3')}>{icon}</span>
       <span className="min-w-0">
-        <span className="block text-[14px] font-bold">{title}</span>
-        <span className="text-ink-2 block text-[13px]">{hint}</span>
+        <span className="block text-[14px] font-semibold">{title}</span>
+        <span className="text-ink-2 block text-[14px]">{hint}</span>
       </span>
     </button>
   )
@@ -291,7 +292,7 @@ function CategoryForm({
         />
       </div>
       <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-        <legend className="text-ink-2 mb-1 text-[13px] font-semibold">{t('prices.cat.how')}</legend>
+        <legend className="text-ink-2 mb-1 text-[14px] font-semibold">{t('prices.cat.how')}</legend>
         <div className="flex flex-col gap-2 sm:flex-row" role="radiogroup">
           {choice(
             !ordered,
@@ -329,7 +330,7 @@ function CategoryForm({
         )}
       </fieldset>
       {changed && (
-        <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+        <p className="border-amber/30 bg-amber-bg text-amber m-0 rounded-md border px-3 py-2 text-[14px] font-medium">
           {t('prices.cat.kindChange', { count: used })}
         </p>
       )}

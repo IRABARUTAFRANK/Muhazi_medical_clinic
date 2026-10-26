@@ -16,7 +16,7 @@ import { useConfirm } from '@/lib/confirm'
 import { ErrorBox } from './role-panels'
 
 const rowClass =
-  'border-grid anim-enter flex flex-wrap items-start gap-2.5 border-b py-2.5 text-[14px] last:border-b-0'
+  'border-grid flex flex-wrap items-start gap-2.5 border-b py-2.5 text-[14px] last:border-b-0'
 const area =
   'border-border bg-card focus:border-primary w-full rounded-lg border px-2.5 py-2 text-[14px] outline-none'
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -58,9 +58,7 @@ export function HandoverPanel({ i = 1 }: { i?: number }) {
       {outgoing.length > 0 && (
         <div className="flex flex-col">
           {incoming.length > 0 && (
-            <span className="text-ink-3 pt-1 text-[12px] font-bold tracking-wide uppercase">
-              {t('handover.homeOutgoing')}
-            </span>
+            <span className="text-ink-3 pt-1 text-[12px]">{t('handover.homeOutgoing')}</span>
           )}
           {outgoing.map((h, n) => (
             <Outgoing key={h.id} h={h} n={n} />

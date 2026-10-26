@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   CalendarX,
   CheckCheck,
+  CircleAlert,
   EyeOff,
   Inbox,
   ListTodo,
@@ -144,7 +145,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="notifications">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         <PageBanner
           icon={Bell}
           tint="amber"
@@ -177,7 +178,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
         </PageBanner>
 
         {composing && canSend && (
-          <div className="bg-card shadow-card anim-enter overflow-hidden rounded-[16px]">
+          <div className="bg-card border-border anim-enter overflow-hidden rounded-md border">
             <Composer
               onClose={() => setComposing(false)}
               leads={user.role === 'manager' ? undefined : leads}
@@ -188,14 +189,19 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+            className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] font-medium"
           >
+            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
             {error}
           </p>
         )}
 
+        {/* the segmented control of the kit: a grey track, the open tab a white tile in teal */}
         {canSend && (
-          <div className="flex gap-1 self-start rounded-xl bg-white/70 p-1" role="tablist">
+          <div
+            className="border-border bg-surface flex h-9 gap-0.5 self-start rounded-md border p-0.5"
+            role="tablist"
+          >
             {(['inbox', 'sent'] as const).map((k) => (
               <button
                 key={k}
@@ -204,8 +210,10 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                 aria-selected={tab === k}
                 onClick={() => setTab(k)}
                 className={cn(
-                  'inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-[14px] font-semibold',
-                  tab === k ? 'bg-navy text-white' : 'text-ink-2 hover:bg-hover',
+                  'focus-visible:ring-primary/20 inline-flex items-center gap-2 rounded border px-3 text-[13px] font-medium transition-colors duration-120 outline-none focus-visible:ring-2',
+                  tab === k
+                    ? 'border-border bg-card text-primary'
+                    : 'text-ink-2 hover:bg-hover hover:text-ink border-transparent',
                 )}
               >
                 {k === 'inbox' ? (
@@ -240,17 +248,17 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                     setSelected([])
                   }}
                   className={cn(
-                    'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                    'focus-visible:ring-primary/20 inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors duration-120 outline-none focus-visible:ring-2',
                     filter === f
-                      ? 'border-primary bg-primary text-white'
+                      ? 'border-primary/30 bg-primary-tint text-primary'
                       : 'border-border bg-card text-ink-2 hover:bg-hover',
                   )}
                 >
                   {t(`notices.filters.${f}`)}
                   <span
                     className={cn(
-                      'rounded-full px-1.5 text-[12px] tabular-nums',
-                      filter === f ? 'bg-white/20' : 'bg-hover',
+                      'rounded px-1.5 text-[12px] tabular-nums',
+                      filter === f ? 'bg-card' : 'bg-hover',
                     )}
                   >
                     {counts[f]}
@@ -332,7 +340,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                       key={n.id}
                       className={cn(
                         'border-grid anim-enter flex flex-wrap items-start gap-3 border-b py-3 last:border-b-0',
-                        !n.read && 'bg-primary-tint/30 -mx-2 rounded-lg px-2',
+                        !n.read && 'bg-primary-tint/30 -mx-2 rounded-md px-2',
                       )}
                       style={{ '--i': Math.min(i, 12) } as CSSProperties}
                     >
@@ -351,8 +359,8 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                       <span className="min-w-0 flex-[1_1_200px]">
                         <span
                           className={cn(
-                            'flex items-center gap-2 text-[15px]',
-                            !n.read ? 'font-bold' : 'font-semibold',
+                            'flex items-center gap-2 text-[14px]',
+                            !n.read ? 'font-semibold' : 'font-medium',
                           )}
                         >
                           {!n.read && <span className="bg-primary size-2 flex-none rounded-full" />}
@@ -446,7 +454,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                           tint={m.urgent ? 'coral' : 'violet'}
                         />
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[15px] font-semibold">{m.title}</span>
+                          <span className="block text-[14px] font-medium">{m.title}</span>
                           {m.body && <span className="text-ink-2 block text-[14px]">{m.body}</span>}
                           <span className="text-ink-3 mt-1 flex flex-wrap items-center gap-x-3 text-[13px]">
                             <span>{ago(m.at)}</span>

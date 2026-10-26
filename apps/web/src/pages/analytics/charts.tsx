@@ -144,7 +144,7 @@ export function StackedBars({
         aria-describedby={id}
         tabIndex={0}
         className={cn(
-          'focus-visible:ring-primary/45 block overflow-visible rounded-lg font-sans outline-none focus-visible:ring-[3px]',
+          'focus-visible:ring-primary/20 block overflow-visible rounded-md font-sans outline-none focus-visible:ring-2',
           onPick && 'cursor-pointer',
         )}
         onPointerMove={onMove}
@@ -292,11 +292,11 @@ export function StackedBars({
       </svg>
       {tip != null && (
         <div
-          className="border-border bg-card shadow-card pointer-events-none absolute top-1 z-10 min-w-[140px] rounded-lg border px-2.5 py-1.5 text-[12px]"
+          className="border-border bg-card shadow-sheet pointer-events-none absolute top-1 z-10 min-w-[140px] rounded-md border px-2.5 py-1.5 text-[12px]"
           style={tipStyle}
           role="presentation"
         >
-          <div className="text-ink mb-0.5 font-bold">{labels[tip]}</div>
+          <div className="text-ink mb-0.5 font-semibold">{labels[tip]}</div>
           {series.every((s) => s.values[tip] == null) && lines.length === 0 ? (
             <div className="text-ink-3">{noData ?? '—'}</div>
           ) : (
@@ -414,8 +414,8 @@ export function PickBars({
           </>
         )
         const cls = cn(
-          'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-lg px-2 py-1.5 @md:grid-cols-[minmax(96px,170px)_1fr_auto]',
-          on && 'bg-primary-tint ring-primary/40 ring-1',
+          'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-md px-2 py-1.5 @md:grid-cols-[minmax(96px,170px)_1fr_auto]',
+          on && 'bg-primary-tint ring-primary/30 ring-1',
         )
         return onPick ? (
           <button

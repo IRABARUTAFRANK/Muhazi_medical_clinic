@@ -121,8 +121,8 @@ export function ReorderTab({
             : null
         }
       >
-        <p className="text-ink-2 m-0 text-[13px]">{t('stockReorder.lead')}</p>
-        {error && <p className="text-red m-0 text-[13px]">{error.message}</p>}
+        <p className="text-ink-2 m-0 text-[14px]">{t('stockReorder.lead')}</p>
+        {error && <p className="text-red m-0 text-[14px]">{error.message}</p>}
         {isLoading ? null : list.length === 0 ? (
           <Empty icon={ShoppingCart}>{t('stockReorder.none')}</Empty>
         ) : (
@@ -134,7 +134,7 @@ export function ReorderTab({
                   key={x.itemId}
                   className="border-grid flex flex-col gap-2 border-b py-2.5 last:border-b-0"
                 >
-                  <div className="flex flex-wrap items-start gap-3 text-[13px]">
+                  <div className="flex flex-wrap items-start gap-3 text-[14px]">
                     <span className="min-w-[200px] flex-1">
                       <span className="block font-semibold">{x.item}</span>
                       <span className="text-ink-3 block text-[12px]">
@@ -161,10 +161,10 @@ export function ReorderTab({
                       </span>
                     </span>
                     <span className="text-right tabular-nums">
-                      <span className="text-red block font-bold">
+                      <span className="text-red block font-semibold">
                         {t('stockReorder.onHand', { count: x.onHand })}
                       </span>
-                      <span className="block text-[14px] font-extrabold">
+                      <span className="block text-[14px] font-semibold">
                         {x.suggestedBoxes != null && x.packSize
                           ? t('stockReorder.orderBoxes', {
                               count: x.suggestedBoxes,
@@ -218,7 +218,7 @@ export function ReorderTab({
       </Panel>
       {canSetLevel && (
         <Panel i={2} icon={SlidersHorizontal} tint="navy" title={t('stockReorder.anyTitle')}>
-          <p className="text-ink-2 m-0 text-[13px]">{t('stockReorder.anyLead')}</p>
+          <p className="text-ink-2 m-0 text-[14px]">{t('stockReorder.anyLead')}</p>
           <SearchSelect
             label={t('stock.cols.item')}
             value={levelItem}

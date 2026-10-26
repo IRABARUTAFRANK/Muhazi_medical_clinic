@@ -145,7 +145,7 @@ export function SendPatientCard({
     <label
       key={key}
       className={cn(
-        'border-border flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5',
+        'border-border flex min-h-10 cursor-pointer items-start gap-3 rounded-md border px-3 py-2.5',
         target === key && 'border-primary bg-primary-tint',
       )}
     >
@@ -216,7 +216,7 @@ export function SendPatientCard({
           </p>
         )}
         {emergency && (
-          <p className="bg-red-bg text-red m-0 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <p className="bg-red-bg text-red border-red/30 m-0 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-semibold">
             <Siren size={16} aria-hidden="true" />
             {t('sendPatient.emergency')}
           </p>
@@ -254,7 +254,7 @@ export function SendPatientCard({
 
         <span className="text-ink-2 text-[13px] font-semibold">{t('sendPatient.byService')}</span>
         {viaTriage && (
-          <p className="bg-amber-bg text-amber m-0 rounded-lg px-3 py-2 text-[13px]">
+          <p className="bg-amber-bg text-amber border-amber/30 m-0 rounded-md border px-3 py-2 text-[13px]">
             {t('sendPatient.triageFirstThen')}
           </p>
         )}
@@ -311,7 +311,7 @@ export function SendPatientCard({
         {error && (
           <p
             role="alert"
-            className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold"
           >
             {error}
           </p>
@@ -357,7 +357,7 @@ export function WhoPicker({
   const { t } = useTranslation()
   return (
     <div
-      className="border-border flex flex-col gap-1.5 rounded-xl border p-2.5"
+      className="border-border flex flex-col gap-1.5 rounded-md border p-2.5"
       role="radiogroup"
       aria-label={title}
     >
@@ -416,7 +416,7 @@ function PersonRow({
   return (
     <label
       className={cn(
-        'flex min-h-12 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 rounded-lg px-2.5 py-2',
+        'flex min-h-10 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-2.5 py-2',
         checked ? 'bg-primary-tint' : 'hover:bg-hover',
       )}
     >
@@ -436,25 +436,25 @@ function PersonRow({
         <span className="flex flex-wrap items-center gap-1.5 text-[12px] font-semibold">
           {/* working now by the calendar; else signed in today */}
           {person.workingNow === true ? (
-            <span className="bg-green-bg text-green rounded-full px-2 py-0.5">
+            <span className="bg-green-bg text-green rounded px-2 py-0.5">
               {t('sendPatient.workingNow')}
             </span>
           ) : person.workingNow === false ? (
-            <span className="bg-hover text-ink-3 rounded-full px-2 py-0.5">
+            <span className="bg-hover text-ink-3 rounded px-2 py-0.5">
               {t('sendPatient.notWorkingNow')}
             </span>
           ) : person.onDuty ? (
-            <span className="bg-green-bg text-green rounded-full px-2 py-0.5">
+            <span className="bg-green-bg text-green rounded px-2 py-0.5">
               {t('sendPatient.onDuty')}
             </span>
           ) : (
-            <span className="bg-hover text-ink-3 rounded-full px-2 py-0.5">
+            <span className="bg-hover text-ink-3 rounded px-2 py-0.5">
               {t('sendPatient.notSignedIn')}
             </span>
           )}
           <span
             className={cn(
-              'rounded-full px-2 py-0.5 tabular-nums',
+              'rounded px-2 py-0.5 tabular-nums',
               busy === 0
                 ? 'bg-green-bg text-green'
                 : busy >= 5

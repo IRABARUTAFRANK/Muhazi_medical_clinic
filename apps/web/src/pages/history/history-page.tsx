@@ -3,8 +3,10 @@ import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { usePeriod } from '@/lib/period'
 import {
   Activity,
+  ArrowRightLeft,
   BedDouble,
   CalendarRange,
+  CircleAlert,
   FileText,
   History,
   LogIn,
@@ -80,7 +82,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="history">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         <PageBanner
           icon={History}
           tint="violet"
@@ -92,7 +94,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
         />
 
         {/* Filters */}
-        <section className="bg-card shadow-card anim-enter flex flex-col gap-3 rounded-[16px] px-5 py-4">
+        <section className="bg-card border-border anim-enter flex flex-col gap-3 rounded-md border p-4">
           <PeriodCustom period={period} />
           <div className="flex flex-wrap items-end gap-3">
             <PeriodSeg period={period} />
@@ -123,9 +125,9 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                   aria-pressed={on}
                   onClick={() => setGroup(g)}
                   className={cn(
-                    'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                    'focus-visible:ring-primary/20 inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors duration-120 outline-none focus-visible:ring-2',
                     on
-                      ? 'border-primary bg-primary text-white'
+                      ? 'border-primary/30 bg-primary-tint text-primary'
                       : 'border-border bg-card text-ink-2 hover:bg-hover',
                   )}
                 >
@@ -145,7 +147,11 @@ export function HistoryPage({ user }: { user: StaffUser }) {
           right={t('history.shown', { count: items.length, total })}
         >
           {q.error && (
-            <p className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold">
+            <p
+              role="alert"
+              className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] font-medium"
+            >
+              <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
               {q.error.message}
             </p>
           )}
@@ -167,7 +173,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                   </span>
                   <IconChip icon={look.icon} tint={look.tint} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-ink m-0 text-[15px] leading-snug font-semibold">
+                    <p className="text-ink m-0 text-[14px] leading-snug font-medium">
                       {x.sentence}
                     </p>
                     {x.lines.length > 0 && (
@@ -183,8 +189,9 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                       </ul>
                     )}
                     {x.changes.length > 0 && (
-                      <div className="bg-surface border-border mt-1.5 rounded-lg border px-3 py-2">
-                        <span className="text-ink-3 block text-[11px] font-bold tracking-[.06em] uppercase">
+                      <div className="bg-card border-border border-l-primary mt-1.5 rounded-md border border-l-2 px-3 py-2">
+                        <span className="text-ink-2 mb-0.5 flex items-center gap-1 text-[12px] font-medium">
+                          <ArrowRightLeft size={12} aria-hidden="true" />
                           {t('history.whatChanged')}
                         </span>
                         <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[13px]">
@@ -232,7 +239,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                     )}
                   </div>
                   <span
-                    className="bg-primary-tint text-primary pc:inline-flex hidden size-8 flex-none items-center justify-center rounded-full text-[11px] font-extrabold"
+                    className="bg-primary-tint text-primary pc:inline-flex hidden size-8 flex-none items-center justify-center rounded-full text-[11px] font-semibold"
                     title={h.actor ?? ''}
                   >
                     {initials(h.actor ?? '?')}

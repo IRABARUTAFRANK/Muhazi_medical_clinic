@@ -209,7 +209,7 @@ export function LabOrderRow({
     <div
       className={cn(
         'border-grid anim-enter flex flex-col gap-2 border-b py-3 last:border-b-0',
-        urgent && o.status !== 'verified' && 'bg-red-bg/40 -mx-2 rounded-lg px-2',
+        urgent && o.status !== 'verified' && 'bg-red-bg/40 -mx-2 rounded-md px-2',
       )}
       style={{ '--i': Math.min(i, 12) } as CSSProperties}
     >
@@ -332,7 +332,7 @@ export function LabOrderRow({
         </span>
       </div>
       {cancelling && mayWork && (
-        <div className="bg-surface flex flex-col gap-2 rounded-xl p-3">
+        <div className="bg-surface flex flex-col gap-2 rounded-md p-3">
           <span className="text-[13px] font-semibold">
             {t('lab.cannotWhy', { doctor: o.orderedBy ?? '' })}
           </span>
@@ -354,7 +354,7 @@ export function LabOrderRow({
             ))}
           </span>
           <input
-            className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px]"
+            className="border-border bg-card h-10 rounded-md border px-2.5 text-[14px]"
             value={why}
             onChange={(e) => setWhy(e.target.value)}
             placeholder={t('lab.cannotPh')}
@@ -395,7 +395,7 @@ export function LabOrderRow({
         </div>
       )}
       {(o.findings || o.impression) && !open && (
-        <span className="bg-green-bg/60 block rounded-lg px-3 py-2 text-[13px]">
+        <span className="bg-green-bg/60 block rounded-md px-3 py-2 text-[13px]">
           {o.findings && <span className="block">{o.findings}</span>}
           {o.impression && <span className="block font-semibold">{o.impression}</span>}
           {o.resultBy && o.resultAt && (
@@ -411,7 +411,7 @@ export function LabOrderRow({
       )}
       {open && mayWork && (
         <form
-          className="bg-surface flex flex-col gap-2 rounded-xl p-3"
+          className="bg-surface flex flex-col gap-2 rounded-md p-3"
           onSubmit={async (e) => {
             e.preventDefault()
             if (
@@ -433,7 +433,7 @@ export function LabOrderRow({
             <textarea
               rows={2}
               autoFocus
-              className="border-border bg-card rounded-lg border px-2.5 py-2 text-[14px] font-normal"
+              className="border-border bg-card rounded-md border px-2.5 py-2 text-[14px] font-normal"
               value={form.findings}
               onChange={(e) => setForm({ ...form, findings: e.target.value })}
             />
@@ -441,7 +441,7 @@ export function LabOrderRow({
           <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
             {t('clinical.impression')}
             <input
-              className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px] font-normal"
+              className="border-border bg-card h-10 rounded-md border px-2.5 text-[14px] font-normal"
               value={form.impression}
               onChange={(e) => setForm({ ...form, impression: e.target.value })}
             />
@@ -477,7 +477,7 @@ export function LabOrderRow({
         />
       )}
       {error && (
-        <p className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+        <p className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
           {error}
         </p>
       )}

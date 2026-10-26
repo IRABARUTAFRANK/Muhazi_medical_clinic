@@ -118,7 +118,7 @@ export function NurseTaskCard({
       </CardHeader>
       {nurse && error && (
         <CardBody>
-          <p className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <p className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
             {error}
           </p>
         </CardBody>
@@ -146,7 +146,7 @@ export function NurseTaskCard({
               <p
                 className={
                   error
-                    ? 'bg-red-bg text-red col-span-full m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
+                    ? 'bg-red-bg text-red col-span-full m-0 rounded-md px-3 py-2 text-[13px] font-semibold'
                     : 'text-green col-span-full m-0 text-[13px] font-semibold'
                 }
               >
@@ -159,7 +159,9 @@ export function NurseTaskCard({
       {mine.map((x) => (
         <Row key={x.id} className="gap-3 py-2 text-[13px]">
           <span
-            className={x.overdue ? 'text-red font-bold tabular-nums' : 'text-ink-2 tabular-nums'}
+            className={
+              x.overdue ? 'text-red font-semibold tabular-nums' : 'text-ink-2 tabular-nums'
+            }
           >
             {x.dueAt ? formatTime(new Date(x.dueAt)) : '—'}
           </span>

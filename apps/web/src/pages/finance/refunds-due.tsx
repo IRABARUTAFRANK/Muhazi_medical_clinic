@@ -37,11 +37,11 @@ export function RefundsDuePanel({ i, canTake }: { i: number; canTake: boolean })
       title={t('cashierDesk.refunds.title')}
       right={t('cashierDesk.refunds.total', { count: list.length, amount: formatRwf(total) })}
     >
-      <p className="text-ink-2 m-0 text-[13px]">{t('cashierDesk.refunds.lead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('cashierDesk.refunds.lead')}</p>
       {loadError && (
         <p
           role="alert"
-          className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+          className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
         >
           {t('dashboard.loadFailed', { message: loadError.message })}
         </p>
@@ -149,7 +149,7 @@ function RefundRow({
               .join(' · ')}
           </span>
         </span>
-        <span className="text-amber font-bold whitespace-nowrap tabular-nums">
+        <span className="text-amber font-semibold whitespace-nowrap tabular-nums">
           −{formatRwf(r.amount)}
         </span>
         {canTake && !open && (
@@ -169,7 +169,7 @@ function RefundRow({
       {open && (
         <form
           onSubmit={(e) => void give(e)}
-          className="border-border bg-surface flex flex-col gap-3 rounded-xl border p-3"
+          className="border-border bg-surface flex flex-col gap-3 rounded-md border p-3"
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select
@@ -196,7 +196,7 @@ function RefundRow({
           {error && (
             <p
               role="alert"
-              className="bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[14px] font-semibold"
+              className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
             >
               {error}
             </p>

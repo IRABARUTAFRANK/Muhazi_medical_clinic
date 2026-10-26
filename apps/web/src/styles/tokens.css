@@ -1,58 +1,72 @@
 /* Muhazi Medical Clinic System — design tokens
-   Source of truth for the UI. Import once at the app root. */
+   Source of truth for the UI. Import once at the app root.
+   The staff app is a plain, dense admin console: neutral greys with a slight cool bias, one
+   teal for buttons, links, focus rings and the active menu item, 6 px corners, borders instead
+   of shadows. Every token name stays; the public website has its own look in brand.css. */
 
 :root {
   /* The page paints its own colours in both themes: browsers must not force-darken it. */
   color-scheme: only light;
-  /* Brand / primary */
+  /* Brand / primary — buttons, links, focus rings, the active nav item; never a wash */
   --mmc-primary: #1f6f8b;
   --mmc-primary-hover: #185b72;
   --mmc-primary-tint: #e6f1f5;
   --mmc-on-primary: #ffffff;
 
   /* Surfaces & text (light theme) */
-  --mmc-bg: #f4f6f8;
+  --mmc-bg: #fbfbfc;
   --mmc-card: #ffffff;
-  --mmc-border: #d9dee3;
-  --mmc-grid: #e6eaee;
-  --mmc-hover: #eef2f5;
-  --mmc-text: #1f2933;
-  --mmc-text-2: #52606d;
-  --mmc-text-3: #616e7c; /* 5.3:1 on white — minimum for captions */
+  --mmc-border: #e5e7eb;
+  --mmc-grid: #eceef1; /* row dividers, a shade lighter than the border */
+  --mmc-hover: #f4f5f7;
+  --mmc-text: #1f2328;
+  --mmc-text-2: #4b5563; /* secondary text, sidebar items */
+  --mmc-text-3: #6b7280; /* captions, table headers: 4.8:1 on white */
+  --mmc-text-4: #9ca3af; /* muted: placeholders, disabled, decorative icons only */
 
-  /* Semantic — ALWAYS paired with an icon, dot or word, never colour alone */
-  --mmc-red: #b42318;
-  --mmc-red-bg: #fdecea;
-  --mmc-red-dot: #d92d20; /* triage red, critical, sync failed */
-  --mmc-yellow: #7a5000;
-  --mmc-yellow-bg: #fff3c4;
-  --mmc-yellow-dot: #e0a800; /* triage yellow, abnormal, needs attention */
-  --mmc-green: #1e7b34;
-  --mmc-green-bg: #e3f5e7;
-  --mmc-green-dot: #2ea043; /* triage green, normal, synced, arrived */
-  --mmc-blue: #1f6f8b;
-  --mmc-blue-bg: #e6f1f5;
-  --mmc-blue-dot: #1f6f8b; /* syncing, due, in progress */
-  --mmc-orange: #b5440f;
-  --mmc-orange-bg: #ffe8d9;
-  --mmc-orange-dot: #e8671b; /* offline, provisional */
+  /* Semantic — the health palette, flat. ALWAYS paired with an icon, dot or word, never colour
+     alone. Each hue is a light tint (-bg) with a 1 px border in the same hue for tags, tiles and
+     bands, a dot for the solid colour, and a darker text colour that reads at 4.5:1 on its tint.
+     red = coral (critical, due, refused), yellow = amber (waiting, attention), green = mint
+     (healthy, done, paid), blue = clinical blue (links, information), violet = lavender
+     (laboratory, results), rose (maternity, family planning). */
+  --mmc-red: #b91c1c;
+  --mmc-red-bg: #fee2e2;
+  --mmc-red-dot: #ef4444; /* triage red, critical, sync failed */
+  --mmc-yellow: #92400e;
+  --mmc-yellow-bg: #fef3c7;
+  --mmc-yellow-dot: #f59e0b; /* triage yellow, abnormal, needs attention */
+  --mmc-green: #047857;
+  --mmc-green-bg: #d1fae5;
+  --mmc-green-dot: #10b981; /* triage green, normal, synced, arrived */
+  --mmc-blue: #1d4ed8;
+  --mmc-blue-bg: #dbeafe;
+  --mmc-blue-dot: #2563eb; /* syncing, due, in progress */
+  --mmc-orange: #9a3412;
+  --mmc-orange-bg: #ffedd5;
+  --mmc-orange-dot: #f97316; /* offline, provisional */
+  --mmc-rose: #be185d;
+  --mmc-rose-bg: #fce7f3;
+  --mmc-rose-dot: #ec4899; /* maternity, family planning */
 
   /* Charts — one colour per subject, everywhere */
   --mmc-c-money: #1f6f8b;
-  --mmc-c-visits: #2f8f5b;
+  --mmc-c-visits: #059669;
   --mmc-c-time: #5b6e85;
 
-  /* Dashboard v2 accents (Figma: Manager Dashboard v2) */
-  --mmc-navy: #0b2252;
-  --mmc-navy-2: #13306b;
-  --mmc-navy-ink: #0b2252; /* headings in navy, readable in both themes */
-  --mmc-violet: #6b4fd8;
-  --mmc-violet-bg: #eeeafc;
-  --mmc-amber: #8a5a00;
-  --mmc-amber-bg: #fff4d6;
-  --mmc-shadow-card: 0 10px 30px rgba(11, 34, 82, 0.08);
-  --mmc-shadow-card-hover: 0 18px 40px rgba(11, 34, 82, 0.14);
-  --mmc-radius-lg: 16px;
+  /* Dashboard accents: solid light tints for tiles and chips (never gradients).
+     Navy now reads as the clinical blue; violet as the lavender; amber as the amber above. */
+  --mmc-navy: #1e40af;
+  --mmc-navy-2: #1d4ed8;
+  --mmc-navy-ink: #1e3a8a; /* blue text on the blue tint */
+  --mmc-violet: #6d28d9;
+  --mmc-violet-bg: #ede9fe;
+  --mmc-violet-dot: #8b5cf6;
+  --mmc-amber: #92400e;
+  --mmc-amber-bg: #fef3c7;
+  --mmc-shadow-card: none; /* cards have a 1 px border instead */
+  --mmc-shadow-card-hover: none;
+  --mmc-radius-lg: 6px;
 
   /* Type */
   --mmc-font: Inter, 'Segoe UI', system-ui, sans-serif;
@@ -70,49 +84,52 @@
   --mmc-sp-4: 16px;
   --mmc-sp-6: 24px;
   --mmc-sp-8: 32px;
-  --mmc-radius: 8px;
+  --mmc-radius: 6px;
   --mmc-touch: 44px;
-  --mmc-shadow: 0 8px 24px rgba(31, 41, 51, 0.14); /* sheets and dialogs only */
+  --mmc-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); /* menus, sheets and dialogs only */
 }
 
 /* Dim theme for night use: add data-theme="dim" on <html> */
 :root[data-theme='dim'] {
   color-scheme: dark;
-  --mmc-bg: #0f1720;
-  --mmc-card: #182230;
-  --mmc-border: #2b3747;
-  --mmc-grid: #243040;
-  --mmc-hover: #1f2b3a;
-  --mmc-text: #e7ecf1;
-  --mmc-text-2: #b4bec8;
-  --mmc-text-3: #95a1ad;
+  --mmc-bg: #0f1115;
+  --mmc-card: #15181d;
+  --mmc-border: #262a31;
+  --mmc-grid: #20242a;
+  --mmc-hover: #1c2026;
+  --mmc-text: #e6e8eb;
+  --mmc-text-2: #b3bac3;
+  --mmc-text-3: #9aa3ad;
+  --mmc-text-4: #6b7380;
   --mmc-primary: #5cb3d0;
   --mmc-primary-hover: #7cc4dc;
-  --mmc-primary-tint: #1a3340;
+  --mmc-primary-tint: #16303a;
   --mmc-on-primary: #0b1b22;
-  --mmc-red: #f49c94;
-  --mmc-red-bg: #3a1f1e;
-  --mmc-yellow: #f2c94c;
-  --mmc-yellow-bg: #3a3015;
-  --mmc-green: #8bd9a4;
-  --mmc-green-bg: #173125;
-  --mmc-blue: #5cb3d0;
-  --mmc-blue-bg: #1a3340;
-  --mmc-orange: #f5a26b;
-  --mmc-orange-bg: #3c2615;
+  --mmc-red: #fca5a5;
+  --mmc-red-bg: #2c1a19;
+  --mmc-yellow: #fcd34d;
+  --mmc-yellow-bg: #2c2613;
+  --mmc-green: #6ee7b7;
+  --mmc-green-bg: #13271f;
+  --mmc-blue: #93c5fd;
+  --mmc-blue-bg: #172338;
+  --mmc-orange: #fdba74;
+  --mmc-orange-bg: #2e2014;
+  --mmc-rose: #f9a8d4;
+  --mmc-rose-bg: #2e1a26;
   --mmc-c-money: #5cb3d0;
-  --mmc-c-visits: #6fcb95;
+  --mmc-c-visits: #6ee7b7;
   --mmc-c-time: #9db0c6;
-  --mmc-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --mmc-navy: #0a1a3d;
-  --mmc-navy-2: #10264f;
-  --mmc-navy-ink: #a9c1f5;
-  --mmc-violet: #b7a6ff;
-  --mmc-violet-bg: #2a2452;
-  --mmc-amber: #f2c94c;
-  --mmc-amber-bg: #3a3015;
-  --mmc-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
-  --mmc-shadow-card-hover: 0 18px 40px rgba(0, 0, 0, 0.5);
+  --mmc-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --mmc-navy: #93c5fd;
+  --mmc-navy-2: #bfdbfe;
+  --mmc-navy-ink: #bfdbfe;
+  --mmc-violet: #c4b5fd;
+  --mmc-violet-bg: #231f3a;
+  --mmc-amber: #fcd34d;
+  --mmc-amber-bg: #2c2613;
+  --mmc-shadow-card: none;
+  --mmc-shadow-card-hover: none;
 }
 
 /* Tabular numbers for money, vitals, times */

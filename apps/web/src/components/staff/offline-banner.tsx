@@ -7,9 +7,9 @@ export function OfflineBanner() {
   return (
     <div
       role="status"
-      className="offline-banner flex flex-none items-center gap-2.5 border-b px-4 py-2 font-semibold"
+      className="offline-banner flex flex-none items-center gap-2 border-b px-4 py-2 text-[14px] font-medium"
     >
-      <TriangleAlert size={18} aria-hidden="true" />
+      <TriangleAlert size={16} aria-hidden="true" />
       {t('sync.banner')}
     </div>
   )

@@ -309,7 +309,7 @@ function CounterSales({ user }: { user: StaffUser }) {
       title={t('counterSale.title')}
       right={t('counterSale.waiting', { toPay, toHand })}
     >
-      <p className="text-ink-2 m-0 text-[13px]">{t('counterSale.lead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">{t('counterSale.lead')}</p>
       {msg && (
         <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
           {msg.text}
@@ -385,11 +385,11 @@ function CounterSales({ user }: { user: StaffUser }) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
-        <p className="m-0 text-[15px] font-bold">
+        <p className="m-0 text-[16px] font-semibold">
           {t('counterSale.total', { amount: formatRwf(total) })}
         </p>
         {canTake && (
-          <label className="text-ink-2 flex items-center gap-2 text-[13px] font-semibold">
+          <label className="text-ink-2 flex items-center gap-2 text-[14px] font-semibold">
             <input type="checkbox" checked={payNow} onChange={(e) => setPayNow(e.target.checked)} />
             {t('counterSale.payHere')}
           </label>
@@ -433,7 +433,7 @@ function CounterSales({ user }: { user: StaffUser }) {
         </Button>
       </div>
 
-      <h4 className="m-0 mt-1 text-[14px] font-bold">{t('counterSale.listTitle')}</h4>
+      <h4 className="m-0 mt-1 text-[14px] font-semibold">{t('counterSale.listTitle')}</h4>
       {shown.length === 0 ? (
         <Empty icon={Receipt}>{t('counterSale.none')}</Empty>
       ) : (
@@ -444,12 +444,12 @@ function CounterSales({ user }: { user: StaffUser }) {
                 <div
                   key={s.id}
                   className={cn(
-                    'bg-surface/70 flex flex-col gap-1.5 rounded-lg px-3 py-2',
+                    'bg-surface/70 flex flex-col gap-1.5 rounded-md px-3 py-2',
                     focusSale === s.id && 'ring-primary ring-2',
                   )}
                 >
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="min-w-[180px] flex-1 text-[13px]">
+                    <span className="min-w-[180px] flex-1 text-[14px]">
                       <span className="text-ink block font-semibold">
                         {s.number} · {s.buyer || t('counterSale.walkIn')}
                         {s.phone ? ` · ${s.phone}` : ''}
@@ -468,7 +468,9 @@ function CounterSales({ user }: { user: StaffUser }) {
                           .join(' · ')}
                       </span>
                     </span>
-                    <span className="text-[14px] font-bold tabular-nums">{formatRwf(s.total)}</span>
+                    <span className="text-[14px] font-semibold tabular-nums">
+                      {formatRwf(s.total)}
+                    </span>
                     <Badge
                       tone={
                         s.status === 'open'
@@ -555,7 +557,7 @@ function PayForm({
   const [reference, setReference] = useState('')
   const missing = needsReference(method) && reference.trim().length < 3
   return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-lg border p-2.5">
+    <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-2.5">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Select
           label={t('visit.payment.method')}
