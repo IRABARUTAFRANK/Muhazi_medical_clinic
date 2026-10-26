@@ -6,6 +6,7 @@ import {
   Pill,
   Receipt,
   Stethoscope,
+  UserRoundCheck,
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -118,6 +119,30 @@ export function VisitJourney({
             </li>
           )
         })}
+        {/* 0088: handed over between colleagues: who to whom, the note, the answer */}
+        {(j.handovers ?? []).map((h) => (
+          <li key={h.id} className="flex items-start gap-3 py-1.5">
+            <Dot icon={UserRoundCheck} tint="violet" />
+            <span className="min-w-0 text-[14px]">
+              <b>{t('journey.handover', { from: h.from, to: h.to })}</b>
+              <span className="text-ink-2">
+                {' · '}
+                {at(h.at)}
+                {' · '}
+                {t(`journey.handoverStatus.${h.status}`, {
+                  name: h.answeredBy ?? '',
+                  time: at(h.answeredAt),
+                })}
+              </span>
+              {h.note && <span className="text-violet block text-[13px]">“{h.note}”</span>}
+              {h.status === 'declined' && h.reason && (
+                <span className="text-red block text-[13px]">
+                  {t('journey.handoverReason', { reason: h.reason })}
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
         {j.status === 'closed' && (
           <li className="flex items-start gap-3 py-1.5">
             <Dot icon={CheckCircle2} tint="mint" />

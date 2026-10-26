@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { sampleJourneyHandovers } from './handover'
 
 /** Everything that happened in a visit (visit_journey), in order. */
 export interface Journey {
@@ -98,6 +99,25 @@ export interface Journey {
     settledBy: string | null
     settledAt: string | null
   } | null
+  /**
+   * 0088: patients handed over between colleagues: who to whom, when, why, and the answer
+   * (pending, taken, declined with a reason, cancelled by the sender, lapsed when the patient
+   * moved on first). Absent before 0088.
+   */
+  handovers?: JourneyHandover[]
+}
+
+export interface JourneyHandover {
+  id: string
+  station: string
+  at: string
+  from: string
+  to: string
+  note: string
+  status: 'pending' | 'taken' | 'declined' | 'cancelled' | 'lapsed'
+  answeredAt: string | null
+  answeredBy: string | null
+  reason: string | null
 }
 
 const SAMPLE: Journey = {
@@ -276,7 +296,13 @@ export function useVisitJourney(encounterId: string | null) {
     refetchOnWindowFocus: true,
     enabled: !!encounterId,
     queryFn: async (): Promise<Journey> => {
-      if (!supabase) return { ...SAMPLE, encounterId: encounterId ?? 'e-1' }
+      if (!supabase)
+        return {
+          ...SAMPLE,
+          encounterId: encounterId ?? 'e-1',
+          // the sample handovers as they stand (waiting, taken, declined, cancelled)
+          handovers: sampleJourneyHandovers(encounterId ?? 'e-1'),
+        }
       const { data, error } = await supabase.rpc('visit_journey', { p_encounter_id: encounterId })
       if (error) throw new Error(error.message)
       return data as Journey

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ROLE_HOME, type QueueRow, type Role, type StaffUser, type Triage } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import { sampleHandoverOnQueue } from './handover'
 
 /**
  * Patient journey (MoH workflow): registration at any station → triage (vitals + colour) →
@@ -521,6 +522,25 @@ export interface QueueItem extends QueueRow {
    * 0071): my home queue shows it whatever the desk.
    */
   forMe?: boolean
+  /**
+   * 0088: the latest handover of this entry, waiting ('pending': the badge "Handed over by X",
+   * Take/Decline for the colleague) or taken ('taken': "Handed over by X" on the new clinician's row).
+   * Seen by the two colleagues, the manager and those who read clinical records.
+   */
+  handover?: QueueHandover | null
+}
+
+/** The handover shown on a queue row (0088). */
+export interface QueueHandover {
+  id: string
+  status: 'pending' | 'taken'
+  fromId: string
+  fromName: string
+  toId: string
+  toName: string
+  note: string
+  at: string
+  answeredAt: string | null
 }
 
 interface BoardRow {
@@ -553,6 +573,15 @@ interface BoardRow {
   department_name?: string | null
   can_work?: boolean | null
   for_me?: boolean | null
+  handover_id?: string | null
+  handover_status?: 'pending' | 'taken' | null
+  handover_from?: string | null
+  handover_from_name?: string | null
+  handover_to?: string | null
+  handover_to_name?: string | null
+  handover_note?: string | null
+  handover_at?: string | null
+  handover_answered_at?: string | null
 }
 
 const sexLetter: Record<Sex, string> = { female: 'F', male: 'M', other: '', unknown: '' }
@@ -592,6 +621,20 @@ const toItem = (r: BoardRow): QueueItem => ({
   departmentName: r.department_name ?? null,
   canWork: r.can_work ?? true,
   forMe: r.for_me ?? false,
+  handover:
+    r.handover_id && r.handover_status
+      ? {
+          id: r.handover_id,
+          status: r.handover_status,
+          fromId: r.handover_from ?? '',
+          fromName: r.handover_from_name ?? '',
+          toId: r.handover_to ?? '',
+          toName: r.handover_to_name ?? '',
+          note: r.handover_note ?? '',
+          at: r.handover_at ?? r.queued_at,
+          answeredAt: r.handover_answered_at ?? null,
+        }
+      : null,
   ticket: r.ticket_no,
   name: `${r.surname} ${r.given_names}`,
   ageSex: `${ageOf(r.birth_date)} ${sexLetter[r.sex]}`.trim(),
@@ -617,6 +660,24 @@ const sampleQueue: QueueItem[] = ROLE_HOME.nurse.queue.map((q, i) => ({
   takenBy: null,
 }))
 
+/** Sample mode: the handover badge of a sample row (the doctor's sample has one waiting). */
+const sampleQueueHandover = (queueId: string): QueueHandover | null => {
+  const h = sampleHandoverOnQueue(queueId)
+  return h && (h.status === 'pending' || h.status === 'taken')
+    ? {
+        id: h.id,
+        status: h.status,
+        fromId: h.fromId,
+        fromName: h.fromName,
+        toId: h.toId,
+        toName: h.toName,
+        note: h.note,
+        at: h.at,
+        answeredAt: h.answeredAt,
+      }
+    : null
+}
+
 /** Today's queue at one station (or everywhere for reception), refreshed every 15 s. */
 export function useQueueBoard(station: Station | 'all', role: Role) {
   return useQuery({
@@ -630,6 +691,7 @@ export function useQueueBoard(station: Station | 'all', role: Role) {
           ...q,
           insurer: `MMC-00013${i}`,
           queueId: `q-${station}-${i}`,
+          handover: role === 'doctor' ? sampleQueueHandover(`q-${station}-${i}`) : null,
           encounterId: `e-${station}-${i}`,
           patientId: `p-${station}-${i}`,
           fileNumber: `MMC-00013${i}`,

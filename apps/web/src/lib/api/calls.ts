@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { Station } from '@/lib/api/visits'
+import { useSession } from '@/store/session'
+import { sampleMayHandOver, sampleVisitHandover, type VisitHandover } from './handover'
 
 /**
  * Who works on a patient, calling the next patient and asking for help (migration 0055).
@@ -26,6 +28,10 @@ export interface VisitAccess {
     helperIsMe: boolean
     note: string | null
   }[]
+  /** 0088: I have the patient at a treating desk and may hand them over (absent before 0088). */
+  canHandOver?: boolean
+  /** 0088: the handover waiting for an answer on this visit, if any. */
+  handover?: VisitHandover | null
 }
 
 export interface StaffCall {
@@ -121,8 +127,21 @@ export function useVisitAccess(encounterId: string) {
     queryKey: ['access', encounterId],
     refetchInterval: 20_000,
     queryFn: async (): Promise<VisitAccess> => {
-      if (!supabase)
-        return { canWork: true, canRoute: true, holder: null, helping: false, help: [] }
+      if (!supabase) {
+        const handover = sampleVisitHandover(encounterId)
+        const user = useSession.getState().user
+        return {
+          // a patient handed over to me is mine only once I take them
+          canWork: !handover?.forMe,
+          canRoute: !handover?.forMe,
+          holder: handover?.forMe ? handover.fromName : null,
+          helping: false,
+          help: [],
+          // a doctor or nurse of a treating desk, with no handover waiting on the visit
+          canHandOver: sampleMayHandOver(user) && !handover,
+          handover,
+        }
+      }
       const { data, error } = await supabase.rpc('visit_access', { p_encounter_id: encounterId })
       if (error) throw new Error(error.message)
       return data as VisitAccess

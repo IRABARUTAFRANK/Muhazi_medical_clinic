@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Receipt,
   Stethoscope,
+  UserRoundCheck,
   Users,
   Wallet,
   X,
@@ -45,6 +46,9 @@ import { useHomeActions, type HomeBed, type HomeSummary } from '@/lib/api/home'
 import { useTakePatient } from '@/lib/api/visits'
 import { useConfirm } from '@/lib/confirm'
 import { useSessionCan } from '@/components/clinical/session-desks'
+import { HandoverBadge } from '@/components/clinical/handover-badge'
+import type { QueueHandover } from '@/lib/api/visits'
+import { useSession } from '@/store/session'
 import { cn } from '@/lib/utils'
 
 /*
@@ -99,6 +103,8 @@ export function MyQueuePanel({
     departmentName?: string | null
     canWork?: boolean
     service?: string | null
+    /** 0088: handed over by a colleague (waiting for an answer, or taken). */
+    handover?: QueueHandover | null
   })[]
   counts: QueueCounts
   rowAction: 'open' | 'call'
@@ -109,6 +115,7 @@ export function MyQueuePanel({
   const confirm = useConfirm()
   // a patient at triage opens on the triage form for whoever may record vital signs
   const can = useSessionCan()
+  const me = useSession((s) => s.user?.id)
   const [error, setError] = useState<string | null>(null)
   // "Take": claims the patient here (a shared patient leaves the other desks), then opens the visit
   // (a patient at triage opens on the triage form).
@@ -217,6 +224,7 @@ export function MyQueuePanel({
                           {q.departmentName}
                         </span>
                       )}
+                      <HandoverBadge handover={q.handover} />
                       {q.takenBy && (
                         <span className="text-primary inline-flex items-center gap-1 font-semibold">
                           <Stethoscope size={12} aria-hidden="true" />
@@ -225,7 +233,19 @@ export function MyQueuePanel({
                       )}
                     </span>
                   </span>
-                  {q.encounterId && q.canWork === false ? (
+                  {q.encounterId && q.handover?.status === 'pending' && q.handover.toId === me ? (
+                    // handed over to me: Take or Decline on the visit (the patient is not mine yet)
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() =>
+                        void navigate({ to: '/app/visit', search: { encounter: q.encounterId! } })
+                      }
+                    >
+                      <UserRoundCheck size={14} aria-hidden="true" />
+                      {t('handover.answer')}
+                    </Button>
+                  ) : q.encounterId && q.canWork === false ? (
                     // sent to someone else: in the clinic, but not ours to work on
                     <Button
                       size="sm"

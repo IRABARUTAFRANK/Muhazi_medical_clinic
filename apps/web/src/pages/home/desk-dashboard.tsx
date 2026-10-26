@@ -43,7 +43,7 @@ import { NoticesPanel } from '@/components/dash/notices-panel'
 import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
 import type { AnalyticsView } from '@/lib/api/analytics'
 import { StationTile } from '@/components/dash/station-tile'
-import { CoveringPanels } from './cover-panels'
+import { HandoverPanel } from './handover-panel'
 import {
   delta,
   greetingFor,
@@ -236,8 +236,8 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
               <ReceptionTiles d={data} range={period.range} link={link} />
             )}
 
-            {/* Covering for a doctor: their queue comes first */}
-            {nurse && <CoveringPanels user={user} />}
+            {/* Patients a colleague hands over to me (Take / Decline), and mine waiting (0088) */}
+            {nurse && <HandoverPanel />}
 
             {/* Colleagues calling for the next patient, help requests */}
             <CallsPanel user={user} />

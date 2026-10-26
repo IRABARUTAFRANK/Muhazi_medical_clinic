@@ -2503,7 +2503,13 @@
     "differenceLost_other": "{{count}} units lost",
     "storeAssignedBody": "Find it under My store: ask for refills, confirm what arrives, give medicines to your patients.",
     "counterSalePaidBody": "Hand the medicines over to {{buyer}}.",
-    "walkInBuyer": "Walk-in buyer"
+    "walkInBuyer": "Walk-in buyer",
+    "handover": "{{by}} hands {{ticket}} {{name}} over to you",
+    "handoverTaken": "{{by}} took over {{name}}",
+    "handoverDeclined": "{{by}} cannot take over {{name}}",
+    "handoverCancelled": "{{by}} cancelled the handover of {{name}}",
+    "handoverLapsed": "The handover of {{name}} from {{by}} has ended: the patient moved on",
+    "handoverLeft": "The handover of {{name}} has ended: {{leftName}} no longer works here"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -2645,7 +2651,8 @@
       "diagnostic_report": "result",
       "internal_task": "task",
       "message": "message",
-      "service_category": "treatment category"
+      "service_category": "treatment category",
+      "patient_handover": "patient handover"
     },
     "leadOwn": "Everything you did, newest first.",
     "whatChanged": "What changed",
@@ -2741,7 +2748,13 @@
       "deptDel": "Deleted the department “{{name}}”.",
       "catNew": "Created the treatment category “{{name}}” ({{kind}}).",
       "catEdit": "Changed the treatment category “{{name}}” ({{kind}}).",
-      "catDel": "Deleted the treatment category “{{name}}”."
+      "catDel": "Deleted the treatment category “{{name}}”.",
+      "handoverNew": "Handed {{patient}} over to a colleague.",
+      "handoverTaken": "Took over {{patient}} from a colleague.",
+      "handoverDeclined": "Declined to take over {{patient}}.",
+      "handoverCancelled": "Cancelled the handover of {{patient}}.",
+      "handoverLapsed": "The handover of {{patient}} ended: the patient moved on.",
+      "handoverEdit": "Changed the handover of {{patient}}."
     },
     "line": {
       "reason": "Reason: {{value}}",
@@ -2957,21 +2970,6 @@
     "sentBack": "Patient sent back to {{name}}.",
     "backNote": "Done at {{desk}}",
     "from": "from {{name}}"
-  },
-  "cover": {
-    "title": "Cover for me",
-    "ask": "Ask a nurse to cover for me",
-    "nurse": "Nurse",
-    "pickNurse": "Choose the nurse",
-    "until": "Until",
-    "note": "Note for the nurse (optional)",
-    "start": "Start the cover",
-    "end": "End",
-    "coveredBy": "{{name}} is covering for you until {{until}}",
-    "hint": "While covering, the nurse sees your queue, receives the patients sent to you and may treat and finish their visits in your place. Everything is recorded in the nurse’s name.",
-    "covering": "You are covering for {{name}} until {{until}}",
-    "coveringHint": "Their patients are below: take, treat and finish them as the doctor would. Everything is recorded in your name.",
-    "queue": "Queue of {{name}}"
   },
   "lab": {
     "bench": "Laboratory bench",
@@ -3249,7 +3247,16 @@
     "notGiven": "not given ({{reason}})",
     "notGivenBy": "not given by {{name}} ({{reason}})",
     "returned": "brought back ({{reason}})",
-    "cancelledBy": "cancelled by {{name}} ({{reason}})"
+    "cancelledBy": "cancelled by {{name}} ({{reason}})",
+    "handover": "{{from}} handed the patient over to {{to}}",
+    "handoverStatus": {
+      "pending": "waiting for an answer",
+      "taken": "taken by {{name}} at {{time}}",
+      "declined": "declined by {{name}} at {{time}}",
+      "cancelled": "cancelled by {{name}} at {{time}}",
+      "lapsed": "ended: the patient moved on before an answer"
+    },
+    "handoverReason": "Reason: “{{reason}}”"
   },
   "stock": {
     "title": "Medicine stock",
@@ -4256,7 +4263,14 @@
     "left": "Left",
     "inClinic": "still in the clinic",
     "followOnly": "The patient has left reception: the person who has the patient now sends them on. You follow the visit on the track above.",
-    "vitals": "Vitals taken"
+    "vitals": "Vitals taken",
+    "handoverWaiting": "Handover waiting",
+    "handover": {
+      "taken": "Handed over",
+      "declined": "Handover declined",
+      "cancelled": "Handover cancelled",
+      "lapsed": "Handover ended"
+    }
   },
   "picker": {
     "search": "Type to search {{count}}…",
@@ -4301,16 +4315,6 @@
         "callNext": "Ask {{from}} for the next patient?",
         "callNextBody": "They are told you are free and will send you the next patient.",
         "callNextYes": "Yes, call"
-      },
-      "cover": {
-        "start": "Ask {{name}} to cover for you?",
-        "startBody": "Until {{until}}, {{name}} sees your queue, receives your patients and may treat and finish their visits in your place.",
-        "startYes": "Yes, start the cover",
-        "endMine": "End the cover by {{name}}?",
-        "endMineBody": "{{name}} will no longer see your queue or work on your patients.",
-        "endTheirs": "Stop covering for {{name}}?",
-        "endTheirsBody": "You will no longer see the patients of {{name}} or work on them.",
-        "endYes": "Yes, end the cover"
       },
       "queue": {
         "take": "Take {{name}} ({{ticket}}) and open the visit?",
@@ -4862,6 +4866,22 @@
       "mainTitle": "Make {{name}} the main pharmacy store?",
       "mainBody": "Deliveries are received into it by default, and the pharmacy desk hands over from it.",
       "mainYes": "Yes, make it the main store"
+    },
+    "handover": {
+      "send": "Hand {{name}} over to {{to}}?",
+      "sendBody": "{{to}} is told at once and answers Take or Decline. Until then {{name}} stays your patient and you keep working.",
+      "sendYes": "Yes, hand over",
+      "take": "Take over {{name}} from {{by}}?",
+      "takeBody": "{{name}} becomes your patient: you continue the visit and the results come back to you. {{by}} no longer works on this visit and is told.",
+      "takeYes": "Yes, take over",
+      "decline": "Decline {{name}}?",
+      "declineBody": "{{name}} stays with {{by}}, who is told your reason.",
+      "declineYes": "Yes, decline",
+      "cancel": "Cancel the handover of {{name}} to {{to}}?",
+      "cancelBody": "{{to}} is told. {{name}} stays your patient.",
+      "cancelYes": "Yes, cancel the handover",
+      "cancelOther": "Cancel the handover of {{name}} from {{from}} to {{to}}?",
+      "cancelOtherBody": "{{from}} and {{to}} are told. {{name}} stays with {{from}}."
     }
   },
   "doc": {
@@ -4998,7 +5018,15 @@
     "ownNote": "You sent this note: the person receiving it confirms what arrived.",
     "noHolder": "This room store has no holder yet: the manager assigns one first.",
     "noDesk": "You do not work in a department that does this. Ask the manager to place you in one.",
-    "notPermitted": "The manager has not allowed you to do this (Settings → Who may do what)."
+    "notPermitted": "The manager has not allowed you to do this (Settings → Who may do what).",
+    "handoverNotHolder": "Only the clinician who has the patient can hand them over.",
+    "handoverNotColleague": "Choose an active colleague who works at this desk.",
+    "handoverNote": "Say why you hand the patient over and what is still to do.",
+    "handoverReason": "Say why you cannot take the patient.",
+    "handoverPending": "This patient is already being handed over. Cancel that first.",
+    "handoverNotYours": "This handover is not yours: only the colleague it was sent to answers it, and only the sender cancels it.",
+    "handoverGone": "This handover is no longer waiting: it was answered or cancelled, or the patient has moved on. The list is refreshed.",
+    "coverRetired": "Cover is no longer used. Hand the patient over to a colleague from the visit."
   },
   "cashierDesk": {
     "noMatch": "Nothing matches your search.",
@@ -5903,5 +5931,51 @@
       "daysTitle": "Per day",
       "turnaroundTitle": "Test turnaround (order to verified result)"
     }
+  },
+  "handover": {
+    "title": "Hand over to a colleague",
+    "lead": "Ask a colleague at this desk to continue with this patient. They answer Take or Decline; until then the patient stays yours.",
+    "ask": "Hand over to a colleague",
+    "colleague": "Colleague",
+    "pickColleague": "Choose the colleague",
+    "patients_one": "{{count}} patient now",
+    "patients_other": "{{count}} patients now",
+    "none": "No other colleague works at this desk now. Ask the manager, or keep the patient.",
+    "note": "Why, and what is still to do",
+    "notePh": "For example: called to theatre; the urine test is pending, please decide on treatment.",
+    "send": "Hand over",
+    "sent": "{{name}} has been asked to take over. The patient stays yours until they answer.",
+    "sentAt": "from {{name}} at {{time}}",
+    "waiting": "Waiting for {{name}} to answer",
+    "waitingHint": "You keep working on the patient until {{name}} takes them.",
+    "cancel": "Cancel the handover",
+    "cancelled": "The handover was cancelled. {{name}} has been told.",
+    "toYou": "{{by}} hands this patient over to you",
+    "toYouHint": "Take the patient to continue with them, or decline and say why. Until you take them, the visit stays read only for you.",
+    "take": "Take",
+    "decline": "Decline",
+    "reason": "Why you cannot take the patient",
+    "reasonPh": "For example: I am leaving for the ward round.",
+    "taken": "{{name}} is now your patient.",
+    "declined": "You declined. The patient stays with {{by}}, who has been told why.",
+    "answer": "Take or decline",
+    "homeTitle": "Handed to you",
+    "homeOutgoing": "Your handovers",
+    "toAnswer_one": "{{count}} to answer",
+    "toAnswer_other": "{{count}} to answer",
+    "fromAt": "From {{name}} at {{time}}",
+    "outPending": "Waiting for {{to}} since {{time}}",
+    "outTaken": "{{to}} took over at {{time}}",
+    "outDeclined": "{{to}} declined at {{time}}: the patient stays yours",
+    "outCancelled": "Cancelled at {{time}}",
+    "outLapsed": "Ended: the patient moved on before an answer",
+    "status": {
+      "pending": "Waiting"
+    },
+    "badgeBy": "Handed over by {{name}}",
+    "badgeToYou": "Handed over to you by {{name}}",
+    "badgeWaiting": "Handed over by {{from}} to {{to}}, waiting",
+    "titleToYou": "Handed over to you",
+    "othersWaiting": "{{from}} handed this patient over to {{to}}; waiting for an answer"
   }
 }

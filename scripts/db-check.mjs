@@ -1206,17 +1206,21 @@ await step('medicine given in the room: recorded as given, no pharmacy queue', a
   return `given in the room; charged: ${r.charged}`
 })
 await step(
-  'nurse covers for the doctor: gets his rights and patients, loses them after',
+  'cover retired: start_cover refuses; the nurse gets no rights and no patients',
   async () => {
+    // 0088: "Cover for me" is retired: start_cover refuses and the nurse never gets his rights
     const can = async () => (await one(`select has_perm('orders.write') as ok`)).ok
     await as(staff.nurse)
     const before = await can()
     await as(staff.doctor)
-    const cover = (
-      await one(`select start_cover($1, now() + interval '4 hours', 'Theatre all day') as id`, [
+    let refused = null
+    try {
+      await db.query(`select start_cover($1, now() + interval '4 hours', 'Theatre all day')`, [
         staff.nurse,
       ])
-    ).id
+    } catch (e) {
+      refused = `${e.code}/${e.hint ?? ''}`
+    }
     await as(staff.nurse)
     const during = await can()
     const mine = (await one(`select my_cover() as c`)).c
@@ -1232,18 +1236,14 @@ await step(
       [v.id],
     )
     await as(staff.nurse)
-    const nurseDuring = (await one(`select may_work_on($1) as ok`, [v.id])).ok
-    await as(staff.doctor)
-    await db.query(`select end_cover($1)`, [cover])
-    await as(staff.nurse)
-    const after = await can()
-    const nurseAfter = (await one(`select may_work_on($1) as ok`, [v.id])).ok
-    if (before || !during || after) throw new Error(`rights ${before}/${during}/${after}`)
-    // 0057: the patient stays the doctor's; the covering nurse may work on it only during the cover
+    const nurseMay = (await one(`select may_work_on($1) as ok`, [v.id])).ok
+    await asAdmin()
+    if (refused !== '42501/cover_retired') throw new Error(`start_cover: ${refused}`)
+    if (before || during) throw new Error(`rights ${before}/${during}`)
     if (q.assigned_to !== staff.doctor) throw new Error('patient moved away from the doctor')
-    if (!nurseDuring || nurseAfter) throw new Error(`nurse may work ${nurseDuring}/${nurseAfter}`)
-    if (!mine.covering.length) throw new Error('my_cover empty')
-    return 'orders.write and the doctor patient only during cover; the patient stays with the doctor'
+    if (nurseMay) throw new Error('the nurse may work on the doctor patient')
+    if (mine.covering.length || mine.coveredBy.length) throw new Error('my_cover not empty')
+    return 'start_cover refused (cover_retired); no rights, no patients, my_cover empty'
   },
 )
 
@@ -8109,7 +8109,7 @@ await step('0085 G: one head and one assistant per department; members many', as
   return 'assistant replaced; assistant promoted (old head → assistant); new head cascades; two assistants refused'
 })
 await step(
-  '0085 H: triage by department; cover passes treating desks only; exceptions only take away',
+  '0085 H: triage by department; cover gives no desk (0088); exceptions only take away',
   async () => {
     const triage = await dept85('Triage 85', ['triage'])
     await asAdmin()
@@ -8130,15 +8130,26 @@ await step(
     r.placed = (await one(`select place_staff_for_desks(true, array['triage']) as j`)).j
     r.recepAfter = await deskAs(recep2, 'triage')
     r.recepVia = (await myDesks85(recep2)).via?.triage
-    // cover: a nurse covers the doctor of Consultation 71 (also in Pharmacy 85): his consultation desk,
-    // not his department's laboratory or pharmacy
+    // 0088: cover is retired: no cover row can be written, and one from before (history) gives
+    // no desk: neither the doctor's consultation nor his department's pharmacy
     await member85(t85.docCons, t85.pharmacy)
+    try {
+      await db.query(
+        `insert into clinician_cover (doctor_id, nurse_id, ends_at) values ($1, $2, now() + interval '1 hour')`,
+        [t85.docCons, nurse2],
+      )
+      r.coverInsert = 'ok'
+    } catch (e) {
+      r.coverInsert = `${e.code}/${e.hint ?? ''}`
+    }
+    await db.exec(`alter table clinician_cover disable trigger trg_cover_retired`)
     await db.query(
       `insert into clinician_cover (doctor_id, nurse_id, ends_at) values ($1, $2, now() + interval '1 hour')`,
       [t85.docCons, nurse2],
     )
+    await db.exec(`alter table clinician_cover enable trigger trg_cover_retired`)
     r.cover = await deskAs(nurse2, 'consultation')
-    r.coverVia = (await myDesks85(nurse2)).via?.consultation
+    r.coverVia = (await myDesks85(nurse2)).via?.consultation ?? null
     r.coverPharmacy = await deskAs(nurse2, 'pharmacy')
     r.dispense = await hintAs(nurse2, `select dispense_prescription(gen_random_uuid())`)
     await db.query(`update clinician_cover set ended_at = now() where nurse_id = $1`, [nurse2])
@@ -8146,13 +8157,6 @@ await step(
       t85.docCons,
       t85.pharmacy,
     ])
-    r.ended = await deskAs(nurse2, 'consultation')
-    await db.query(
-      `insert into clinician_cover (doctor_id, nurse_id, ends_at) values ($1, $2, now() + interval '1 hour')`,
-      [t85.docLab, t85.nurse],
-    )
-    r.coverLab = await deskAs(t85.nurse, 'laboratory')
-    await db.query(`update clinician_cover set ended_at = now() where nurse_id = $1`, [t85.nurse])
     // the manager's exception: "orders.write not allowed" for the doctor of Laboratory 85 takes
     // the desk away; "allowed" for the receptionist adds no worklist
     await as(staff.manager)
@@ -8176,18 +8180,17 @@ await step(
       r.recepBefore ||
       !r.recepAfter ||
       r.recepVia !== 'department' ||
-      !r.cover ||
-      r.coverVia !== 'cover' ||
+      r.coverInsert !== '42501/cover_retired' ||
+      r.cover ||
+      r.coverVia !== null ||
       r.coverPharmacy ||
       r.dispense !== '42501/no_desk' ||
-      r.ended ||
-      r.coverLab ||
       r.denied ||
       !r.restored ||
       r.allowedAdds
     )
       throw new Error(json85(r))
-    return 'triage: members (the receptionist placed); cover: consultation, never pharmacy or the lab; exceptions only take away'
+    return 'triage: members (the receptionist placed); cover refused and gives no desk; exceptions only take away'
   },
 )
 
@@ -9102,6 +9105,499 @@ await step(
     )
       throw new Error(json87(r))
     return 'pharmacist switched off: receive and count refused, desk kept; nurse of Pharmacy allowed by exception'
+  },
+)
+
+// ---------------------------------------------------------------- 0088: hand one patient over to a colleague
+// Dr. A has the patient at Consultation (department Handover 88 gives it, with Dr. B). Dr. C works
+// in no department that gives consultation; the pharmacist serves another desk.
+const t88 = {}
+const json88 = (x) => JSON.stringify(x)
+/** The open consultation queue entry of a visit (as the database). */
+const q88 = async (enc) => {
+  await asAdmin()
+  return one(
+    `select id, assigned_to, taken_by, started_at, return_to from queue_entry
+     where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+    [enc],
+  )
+}
+const newVisit88 = async (given, doctor) => {
+  const pid = await patient85(given)
+  await as(staff.receptionist)
+  const enc = (await one(`select open_encounter($1, 'opd', 'reception', null) as id`, [pid])).id
+  await db.query(
+    `select refer_patient($1, 'reception', 'consultation', $2, 'for the doctor', false)`,
+    [enc, doctor],
+  )
+  const q = await q88(enc)
+  await as(doctor)
+  await db.query(`select take_patient($1)`, [q.id])
+  await asAdmin()
+  return enc
+}
+const lastNotice88 = async (who, kind) => {
+  await asAdmin()
+  return one(
+    `select params, urgent, link from notification where recipient_user = $1 and kind = $2
+     order by created_at desc limit 1`,
+    [who, kind],
+  )
+}
+await step(
+  '0088 A: hand over: only who has the patient, only to a colleague of the desk, with a note',
+  async () => {
+    t88.dep = await dept85('Handover 88', ['consultation'])
+    t88.a = await newStaff('doc.a88', 'Dr. Handover A 88', 'doctor', 'Consultation 4')
+    t88.b = await newStaff('doc.b88', 'Dr. Handover B 88', 'doctor', 'Consultation 5')
+    t88.c = await newStaff('doc.c88', 'Dr. Handover C 88', 'doctor', 'Consultation 6')
+    await member85(t88.a, t88.dep)
+    await member85(t88.b, t88.dep)
+    t88.enc = await newVisit88('Handover 88', t88.a)
+    const ho = (who, to, note = 'Going to theatre; results of the RDT pending') =>
+      hintAs(who, `select handover_patient($1, $2, $3)`, [t88.enc, to, note])
+    const r = {}
+    r.notHolder = await ho(t88.b, t88.a)
+    r.nonColleague = await ho(t88.a, t88.c)
+    r.pharmacist = await ho(t88.a, staff.pharmacist)
+    r.self = await ho(t88.a, t88.a)
+    r.noNote = await ho(t88.a, t88.b, '  ')
+    const list = await valAs(t88.a, `select handover_colleagues($1) as v`, [t88.enc])
+    r.list = Array.isArray(list) ? list.map((x) => x.id) : list
+    r.listOther = await valAs(t88.b, `select handover_colleagues($1) as v`, [t88.enc])
+    r.access = await valAs(t88.a, `select visit_access($1) as v`, [t88.enc])
+    t88.h1 = await valAs(t88.a, `select handover_patient($1, $2, $3) as v`, [
+      t88.enc,
+      t88.b,
+      'Going to theatre; results of the RDT pending',
+    ])
+    r.twice = await ho(t88.a, t88.b)
+    // until Dr. B answers, the patient is still Dr. A's
+    r.aMay = await valAs(t88.a, `select may_work_on($1) as v`, [t88.enc])
+    r.bMay = await valAs(t88.b, `select may_work_on($1) as v`, [t88.enc])
+    r.bWrite = await hintAs(t88.b, `select add_clinical_note($1, 'not yet mine')`, [t88.enc])
+    r.incoming = (await valAs(t88.b, `select my_handovers() as v`))?.incoming ?? []
+    r.outgoing = (await valAs(t88.a, `select my_handovers() as v`))?.outgoing ?? []
+    await as(t88.b)
+    r.board = await one(
+      `select for_me, can_work, handover_status, handover_from_name, handover_note, handover_to
+       from queue_board where encounter_id = $1 and station = 'consultation'`,
+      [t88.enc],
+    )
+    await asAdmin()
+    r.bAccess = await valAs(t88.b, `select visit_access($1) as v`, [t88.enc])
+    r.notice = await lastNotice88(t88.b, 'handover')
+    // only Dr. B answers
+    r.cTake = await hintAs(t88.c, `select take_handover($1)`, [t88.h1])
+    r.aTake = await hintAs(t88.a, `select take_handover($1)`, [t88.h1])
+    r.cDecline = await hintAs(t88.c, `select decline_handover($1, 'not mine')`, [t88.h1])
+    r.bCancel = await hintAs(t88.b, `select cancel_handover($1)`, [t88.h1])
+    if (
+      r.notHolder !== '42501/handover_not_holder' ||
+      r.nonColleague !== '42501/handover_not_colleague' ||
+      r.pharmacist !== '42501/handover_not_colleague' ||
+      r.self !== '42501/handover_not_colleague' ||
+      r.noNote !== '22023/handover_note' ||
+      !Array.isArray(r.list) ||
+      !r.list.includes(t88.b) ||
+      r.list.includes(t88.a) ||
+      r.list.includes(t88.c) ||
+      r.list.includes(staff.pharmacist) ||
+      r.listOther?.error !== '42501/handover_not_holder' ||
+      r.access?.canHandOver !== true ||
+      typeof t88.h1 !== 'string' ||
+      r.twice !== '23505/handover_pending' ||
+      r.aMay !== true ||
+      r.bMay !== false ||
+      !/^42501/.test(r.bWrite) ||
+      r.incoming.length !== 1 ||
+      r.incoming[0].id !== t88.h1 ||
+      r.incoming[0].fromName !== 'Dr. Handover A 88' ||
+      r.outgoing[0]?.status !== 'pending' ||
+      r.board?.for_me !== true ||
+      r.board?.can_work !== false ||
+      r.board?.handover_status !== 'pending' ||
+      r.board?.handover_to !== t88.b ||
+      r.bAccess?.handover?.forMe !== true ||
+      r.bAccess?.canHandOver !== false ||
+      r.notice?.params?.by !== 'Dr. Handover A 88' ||
+      !r.notice?.params?.note ||
+      r.cTake !== '42501/handover_not_yours' ||
+      r.aTake !== '42501/handover_not_yours' ||
+      r.cDecline !== '42501/handover_not_yours' ||
+      r.bCancel !== '42501/handover_not_yours'
+    )
+      throw new Error(json88({ ...r, list: r.list, h1: t88.h1 }))
+    return 'holder only, colleague of the desk only (not Dr. C, not the pharmacist), note required; one at a time; Dr. A keeps the patient until the answer'
+  },
+)
+await step(
+  '0088 B: Take: the patient becomes the colleague’s; the sender loses it and is told',
+  async () => {
+    const r = {}
+    r.take = await valAs(t88.b, `select take_handover($1) as v`, [t88.h1])
+    r.q = await q88(t88.enc)
+    r.aMay = await valAs(t88.a, `select may_work_on($1) as v`, [t88.enc])
+    r.bMay = await valAs(t88.b, `select may_work_on($1) as v`, [t88.enc])
+    r.aWrite = await hintAs(t88.a, `select add_clinical_note($1, 'no longer mine')`, [t88.enc])
+    r.bWrite = await hintAs(t88.b, `select add_clinical_note($1, 'taken over')`, [t88.enc])
+    r.again = await hintAs(t88.b, `select take_handover($1)`, [t88.h1])
+    r.notice = await lastNotice88(t88.a, 'handover_answer')
+    r.track = (await valAs(t88.b, `select visit_journey($1) as v`, [t88.enc]))?.handovers ?? []
+    r.bAccess = await valAs(t88.b, `select visit_access($1) as v`, [t88.enc])
+    r.aAccess = await valAs(t88.a, `select visit_access($1) as v`, [t88.enc])
+    await asAdmin()
+    // the change of hands is no new referral (the entry came from reception: referred_by is
+    // set), and the answered "hands over to you" notice is gone
+    r.referredBy = (
+      await one(`select referred_by from queue_entry where id = $1`, [r.take?.queueId])
+    )?.referred_by
+    r.referral = (
+      await one(
+        `select count(*)::int as n from notification
+         where recipient_user = $1 and kind in ('queue', 'referral') and params ->> 'queue' = $2`,
+        [t88.b, r.take?.queueId],
+      )
+    ).n
+    r.hoNotice = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'handover' and params ->> 'handover' = $1`,
+        [t88.h1],
+      )
+    ).n
+    r.audit = (
+      await one(
+        `select count(*)::int as n from audit_event where entity = 'patient_handover' and entity_id = $1`,
+        [t88.h1],
+      )
+    ).n
+    r.practitioner = (
+      await one(
+        `select pr.user_id from encounter e join practitioner pr on pr.id = e.practitioner_id where e.id = $1`,
+        [t88.enc],
+      )
+    )?.user_id
+    if (
+      r.take?.encounterId !== t88.enc ||
+      r.q.taken_by !== t88.b ||
+      r.q.assigned_to !== t88.b ||
+      r.aMay !== false ||
+      r.bMay !== true ||
+      !/^42501/.test(r.aWrite) ||
+      r.bWrite !== 'ok' ||
+      r.again !== '23505/handover_gone' ||
+      r.notice?.params?.taken !== true ||
+      r.notice?.params?.by !== 'Dr. Handover B 88' ||
+      r.track.length !== 1 ||
+      r.track[0].status !== 'taken' ||
+      r.track[0].from !== 'Dr. Handover A 88' ||
+      r.track[0].to !== 'Dr. Handover B 88' ||
+      r.bAccess?.canHandOver !== true ||
+      r.bAccess?.handover !== null ||
+      r.aAccess?.canWork !== false ||
+      r.aAccess?.canHandOver !== false ||
+      r.audit < 2 ||
+      r.practitioner !== t88.b ||
+      !r.referredBy ||
+      r.referral !== 0 ||
+      r.hoNotice !== 0
+    )
+      throw new Error(json88(r))
+    return `taken: Dr. B has the patient (and is the treating doctor), Dr. A may no longer write; told; ${r.audit} audit rows`
+  },
+)
+await step('0088 C: Decline with a reason: the patient stays; the sender is told why', async () => {
+  const r = {}
+  t88.h2 = await valAs(t88.b, `select handover_patient($1, $2, $3) as v`, [
+    t88.enc,
+    t88.a,
+    'Back to you for the review',
+  ])
+  r.noReason = await hintAs(t88.a, `select decline_handover($1, ' ')`, [t88.h2])
+  r.decline = await hintAs(t88.a, `select decline_handover($1, 'Fully booked this afternoon')`, [
+    t88.h2,
+  ])
+  r.q = await q88(t88.enc)
+  r.bMay = await valAs(t88.b, `select may_work_on($1) as v`, [t88.enc])
+  r.aMay = await valAs(t88.a, `select may_work_on($1) as v`, [t88.enc])
+  r.notice = await lastNotice88(t88.b, 'handover_answer')
+  r.outgoing = (await valAs(t88.b, `select my_handovers() as v`))?.outgoing ?? []
+  r.incomingA = (await valAs(t88.a, `select my_handovers() as v`))?.incoming ?? []
+  r.take = await hintAs(t88.a, `select take_handover($1)`, [t88.h2])
+  const declined = r.outgoing.find((x) => x.id === t88.h2)
+  if (
+    r.noReason !== '22023/handover_reason' ||
+    r.decline !== 'ok' ||
+    r.q.taken_by !== t88.b ||
+    r.bMay !== true ||
+    r.aMay !== false ||
+    r.notice?.params?.taken !== false ||
+    r.notice?.params?.reason !== 'Fully booked this afternoon' ||
+    declined?.status !== 'declined' ||
+    declined?.reason !== 'Fully booked this afternoon' ||
+    r.incomingA.length !== 0 ||
+    r.take !== '23505/handover_gone'
+  )
+    throw new Error(json88({ ...r, outgoing: declined }))
+  return 'declined with a reason: Dr. B keeps the patient and reads why'
+})
+await step(
+  '0088 D: Cancel by the sender (not the colleague); a waiting handover lapses when the patient moves',
+  async () => {
+    const r = {}
+    t88.h3 = await valAs(t88.b, `select handover_patient($1, $2, $3) as v`, [
+      t88.enc,
+      t88.a,
+      'Please continue, I am called away',
+    ])
+    r.aCancel = await hintAs(t88.a, `select cancel_handover($1)`, [t88.h3])
+    r.bCancel = await hintAs(t88.b, `select cancel_handover($1)`, [t88.h3])
+    r.notice = await lastNotice88(t88.a, 'handover_cancelled')
+    r.take = await hintAs(t88.a, `select take_handover($1)`, [t88.h3])
+    // a new handover, then the patient finishes at Consultation before the answer: it lapses
+    t88.h4 = await valAs(t88.b, `select handover_patient($1, $2, $3) as v`, [
+      t88.enc,
+      t88.a,
+      'Continue please',
+    ])
+    await asAdmin()
+    await db.query(
+      `update queue_entry set finished_at = now() where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [t88.enc],
+    )
+    r.lapsed = (await one(`select status from patient_handover where id = $1`, [t88.h4])).status
+    // Dr. A is told the patient moved on; the "hands over to you" notices of h3 and h4 are gone
+    r.lapseNotice = await lastNotice88(t88.a, 'handover_cancelled')
+    r.hoNotices = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'handover' and params ->> 'handover' in ($1, $2)`,
+        [t88.h3, t88.h4],
+      )
+    ).n
+    r.incomingA = (await valAs(t88.a, `select my_handovers() as v`))?.incoming ?? []
+    r.lateTake = await hintAs(t88.a, `select take_handover($1)`, [t88.h4])
+    r.cancelled = (await one(`select status from patient_handover where id = $1`, [t88.h3])).status
+    // nobody may write the record directly
+    r.direct = await hintAs(
+      t88.a,
+      `update patient_handover set status = 'taken' where id = $1 returning id`,
+      [t88.h4],
+    )
+    await asAdmin()
+    r.after = (await one(`select status from patient_handover where id = $1`, [t88.h4])).status
+    if (
+      r.aCancel !== '42501/handover_not_yours' ||
+      r.bCancel !== 'ok' ||
+      r.cancelled !== 'cancelled' ||
+      r.notice?.params?.by !== 'Dr. Handover B 88' ||
+      r.take !== '23505/handover_gone' ||
+      r.lapsed !== 'lapsed' ||
+      r.lapseNotice?.params?.lapsed !== true ||
+      r.lapseNotice?.params?.handover !== t88.h4 ||
+      r.hoNotices !== 0 ||
+      r.incomingA.length !== 0 ||
+      r.lateTake !== '23505/handover_gone' ||
+      r.after !== 'lapsed'
+    )
+      throw new Error(json88(r))
+    return 'cancelled by the sender (colleague told); lapsed when the patient left; no direct writes'
+  },
+)
+await step(
+  '0088 E: cover retired: covering_for is empty, end_cover refuses, an old cover row grants nothing',
+  async () => {
+    const r = {}
+    await asAdmin()
+    await db.exec(`alter table clinician_cover disable trigger trg_cover_retired`)
+    const id = (
+      await one(
+        `insert into clinician_cover (doctor_id, nurse_id, ends_at) values ($1, $2, now() + interval '1 hour') returning id`,
+        [t88.a, staff.nurse],
+      )
+    ).id
+    await db.exec(`alter table clinician_cover enable trigger trg_cover_retired`)
+    t88.enc2 = await newVisit88('Handover 88 two', t88.a)
+    r.coveringFor = await valAs(staff.nurse, `select covering_for($1) as v`, [staff.nurse])
+    r.perm = await valAs(staff.nurse, `select has_perm('orders.write') as v`)
+    r.desk = await valAs(staff.nurse, `select may_use_desk('consultation') as v`)
+    r.work = await valAs(staff.nurse, `select may_work_on($1) as v`, [t88.enc2])
+    r.end = await hintAs(t88.a, `select end_cover($1)`, [id])
+    r.mine = await valAs(staff.nurse, `select my_cover() as v`)
+    await asAdmin()
+    await db.query(`update clinician_cover set ended_at = now() where id = $1`, [id])
+    if (
+      r.coveringFor !== null ||
+      r.perm !== false ||
+      r.desk !== false ||
+      r.work !== false ||
+      r.end !== '42501/cover_retired' ||
+      r.mine?.covering?.length !== 0
+    )
+      throw new Error(json88(r))
+    return 'an old cover row gives no right, desk or patient; end_cover refuses; my_cover empty'
+  },
+)
+await step(
+  '0088 F: the patient is at the laboratory, due back to Dr. A: he hands over; the result comes back to Dr. B',
+  async () => {
+    const r = {}
+    t88.enc3 = await newVisit88('Handover 88 lab', t88.a)
+    await asAdmin()
+    const test = (
+      await one(`select id from service where name_en = 'Check test A' and deleted_at is null`)
+    ).id
+    await as(t88.a)
+    await db.query(`select order_tests($1, $2, 'fever', 'consultation')`, [t88.enc3, [test]])
+    await asAdmin()
+    const lab = await one(
+      `select id, return_to, taken_by from queue_entry
+       where encounter_id = $1 and station = 'laboratory' and finished_at is null`,
+      [t88.enc3],
+    )
+    r.labReturn = lab?.return_to === t88.a
+    r.access = await valAs(t88.a, `select visit_access($1) as v`, [t88.enc3])
+    const list = await valAs(t88.a, `select handover_colleagues($1) as v`, [t88.enc3])
+    r.list = Array.isArray(list) ? list.map((x) => x.id) : list
+    t88.h5 = await valAs(t88.a, `select handover_patient($1, $2, $3) as v`, [
+      t88.enc3,
+      t88.b,
+      'Called to theatre; malaria test pending, please decide',
+    ])
+    await asAdmin()
+    r.row = await one(`select station, via_return, queue_id from patient_handover where id = $1`, [
+      t88.h5,
+    ])
+    // the lab taking the sample is not the patient leaving Dr. A
+    await as(staff.lab_tech)
+    const req = (
+      await one(`select id from service_request where encounter_id = $1 and deleted_at is null`, [
+        t88.enc3,
+      ])
+    ).id
+    r.collect = await hintAs(staff.lab_tech, `select set_request_status($1, 'collected')`, [req])
+    await asAdmin()
+    r.stillPending = (
+      await one(`select status from patient_handover where id = $1`, [t88.h5])
+    ).status
+    r.take = await valAs(t88.b, `select take_handover($1) as v`, [t88.h5])
+    await asAdmin()
+    const labAfter = await one(`select return_to, taken_by from queue_entry where id = $1`, [
+      lab.id,
+    ])
+    r.labReturnB = labAfter.return_to === t88.b
+    r.labTakenKept = labAfter.taken_by !== t88.b
+    r.bMay = await valAs(t88.b, `select may_work_on($1) as v`, [t88.enc3])
+    r.result = await hintAs(
+      staff.lab_tech,
+      `select record_result($1, 'No parasites', 'Negative', true)`,
+      [req],
+    )
+    await asAdmin()
+    r.back = await one(
+      `select assigned_to from queue_entry
+       where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [t88.enc3],
+    )
+    r.toB = (
+      await one(
+        `select count(*)::int as n from notification
+         where kind = 'result' and recipient_user = $1 and link like '%' || $2`,
+        [t88.b, t88.enc3],
+      )
+    ).n
+    r.toA = (
+      await one(
+        `select count(*)::int as n from notification
+         where kind = 'result' and recipient_user = $1 and link like '%' || $2`,
+        [t88.a, t88.enc3],
+      )
+    ).n
+    r.orderedBy = (
+      await one(`select requester_id from service_request where id = $1`, [req])
+    ).requester_id
+    if (
+      !r.labReturn ||
+      r.access?.canHandOver !== true ||
+      !Array.isArray(r.list) ||
+      !r.list.includes(t88.b) ||
+      r.list.includes(t88.c) ||
+      typeof t88.h5 !== 'string' ||
+      r.row?.station !== 'consultation' ||
+      r.row?.via_return !== true ||
+      r.row?.queue_id !== lab.id ||
+      r.collect !== 'ok' ||
+      r.stillPending !== 'pending' ||
+      r.take?.encounterId !== t88.enc3 ||
+      !r.labReturnB ||
+      !r.labTakenKept ||
+      r.bMay !== true ||
+      r.result !== 'ok' ||
+      r.back?.assigned_to !== t88.b ||
+      r.toB !== 1 ||
+      r.toA !== 0 ||
+      r.orderedBy !== t88.a
+    )
+      throw new Error(json88({ ...r, h5: t88.h5 }))
+    return 'handed over while at the laboratory; taken; the result and the patient come back to Dr. B; "ordered by" stays Dr. A'
+  },
+)
+await step(
+  '0088 G: a colleague who leaves the clinic: the handover waiting for them ends and the sender is told',
+  async () => {
+    const r = {}
+    t88.enc4 = await newVisit88('Handover 88 leaves', t88.a)
+    t88.h6 = await valAs(t88.a, `select handover_patient($1, $2, $3) as v`, [
+      t88.enc4,
+      t88.b,
+      'Please continue with this patient',
+    ])
+    await asAdmin()
+    await db.query(`update profiles set active = false, deactivated_at = now() where id = $1`, [
+      t88.b,
+    ])
+    r.row = await one(`select status, reason from patient_handover where id = $1`, [t88.h6])
+    r.notice = await lastNotice88(t88.a, 'handover_cancelled')
+    r.hoNotice = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'handover' and params ->> 'handover' = $1`,
+        [t88.h6],
+      )
+    ).n
+    r.aMay = await valAs(t88.a, `select may_work_on($1) as v`, [t88.enc4])
+    await db.query(`update profiles set active = true, deactivated_at = null where id = $1`, [
+      t88.b,
+    ])
+    // the patient can be handed over again
+    r.again = await hintAs(t88.a, `select handover_patient($1, $2, 'Again, please')`, [
+      t88.enc4,
+      t88.b,
+    ])
+    // the manager cancels it: both colleagues are told
+    await asAdmin()
+    const h7 = (
+      await one(`select id from patient_handover where encounter_id = $1 and status = 'pending'`, [
+        t88.enc4,
+      ])
+    )?.id
+    r.mgrCancel = await hintAs(staff.manager, `select cancel_handover($1)`, [h7])
+    await asAdmin()
+    r.toldA = (await lastNotice88(t88.a, 'handover_cancelled'))?.params?.handover === h7
+    r.toldB = (await lastNotice88(t88.b, 'handover_cancelled'))?.params?.handover === h7
+    if (
+      r.row?.status !== 'cancelled' ||
+      !r.row?.reason ||
+      r.notice?.params?.handover !== t88.h6 ||
+      r.notice?.params?.left !== true ||
+      r.notice?.params?.leftName !== 'Dr. Handover B 88' ||
+      r.hoNotice !== 0 ||
+      r.aMay !== true ||
+      r.again !== 'ok' ||
+      r.mgrCancel !== 'ok' ||
+      !r.toldA ||
+      !r.toldB
+    )
+      throw new Error(json88(r))
+    return 'deactivated colleague: the handover ends, Dr. A keeps the patient and is told; the manager cancels: both told'
   },
 )
 
