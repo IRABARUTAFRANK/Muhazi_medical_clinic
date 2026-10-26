@@ -7,3 +7,4 @@ assets
 
 # E-mail HTML: table layout and inline styles kept exactly as written for mail clients
 supabase/templates/
+apps/web/src/lib/api/db-messages.generated.ts
