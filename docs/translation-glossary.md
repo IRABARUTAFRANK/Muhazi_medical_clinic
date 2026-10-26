@@ -9,8 +9,8 @@ has the same name everywhere. The owner chose the four starred terms.
 
 - Plain, everyday Kinyarwanda of a Rwandan clinic, as a nurse says it to a colleague. Prefer a plain
   word over a loanword. Accepted loanwords (no plain equivalent, or printed on the thing itself):
-  farumasi, laboratwari, ekografi, kalendari, dosiye, raporo, fagitire, serivisi, PIN, kode, imeyili,
-  interineti, mobile money, RWF, SMS, WhatsApp, lot (a medicine batch number), konti, nimero, sisitemu,
+  farumasi, laboratwari, ekografi, dosiye, raporo, fagitire, serivisi, PIN, kode, imeyili,
+  interineti, mobile money, RWF, SMS, WhatsApp, link, lot (a medicine batch number), konti, nimero, sisitemu,
   itike.
 - The user is addressed in the singular (Bika, Ohereza, Ushobora…). Patients and colleagues are third
   person. Printed documents for the patient use the polite plural (Murakoze).
@@ -81,3 +81,10 @@ The sentences the database refuses with (`raise exception` in the migrations) ar
 app from the generated table `apps/web/src/lib/api/db-messages.generated.ts` and the `dbErrors.*` keys.
 After adding or changing a `raise exception`, run `node scripts/db-messages.mjs --check`: it regenerates
 the table and lists the sentences that have no text yet; add them to the three language files.
+
+## Owner's choices (26 October 2026)
+
+calendar = ingengabihe · pulse = gutera k’umutima · deposit = gutanga amafaranga mbere · department
+member = umukozi usanzwe · link = link · the Prescriptions tile on the stock page = Urupapuro rw’imiti ·
+refill request = ubusabe bw’imiti · notifications = Ubutumwa · counter sale = igurisha ryo ku irembo ·
+Consultation service = Gusuzumwa na muganga · "Work on" = Mwiteho.
