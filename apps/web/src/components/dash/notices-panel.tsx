@@ -9,8 +9,10 @@ import {
   CalendarX,
   CheckCheck,
   ListTodo,
+  LockKeyhole,
   Megaphone,
   MessageSquare,
+  ShieldCheck,
   Siren,
   Users,
   type LucideIcon,
@@ -38,6 +40,10 @@ const LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   booked_arrived: { icon: CalendarCheck, tint: 'teal' },
   appt_declined: { icon: CalendarX, tint: 'coral' },
   message: { icon: Megaphone, tint: 'coral' },
+  // 0088: past records (a request to answer, the answer, an emergency access)
+  access_request: { icon: LockKeyhole, tint: 'amber' },
+  access_answer: { icon: ShieldCheck, tint: 'mint' },
+  access_emergency: { icon: Siren, tint: 'coral' },
 }
 
 /**

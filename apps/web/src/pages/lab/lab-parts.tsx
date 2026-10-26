@@ -5,6 +5,7 @@ import {
   Clock,
   FlaskConical,
   Hourglass,
+  Paperclip,
   Printer,
   Siren,
   TestTube,
@@ -26,6 +27,8 @@ import { allergiesForDoc } from '@/lib/api/patients'
 import { registrationText } from '@/lib/api/staff'
 import { deskOfRequest } from '@/lib/api/desks'
 import { useSessionCan, useSessionCanDesk } from '@/components/clinical/session-desks'
+import { TestFilesPanel } from '@/components/clinical/supporting-files'
+import { useVisitFiles } from '@/lib/api/files'
 
 const STATUS_LOOK: Record<TestStatus, { tint: Tint; icon: LucideIcon }> = {
   ordered: { tint: 'amber', icon: Hourglass },
@@ -82,6 +85,18 @@ export function LabOrderRow({
   const [error, setError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [why, setWhy] = useState('')
+  // the test's supporting files (images, printouts): shown with the result entry, or on demand
+  const [showFiles, setShowFiles] = useState(false)
+  const filesShown = showFiles || (open && mayWork)
+  // how many, once the list was fetched (not fetched for every row of the worklist)
+  const { data: filesKnown } = useVisitFiles(o.encounterId, {
+    patientId: o.patientId,
+    serviceRequestId: o.id,
+    enabled: false,
+  })
+  const filesCount = filesKnown?.available
+    ? filesKnown.files.filter((f) => !f.removed).length
+    : null
   const letterhead = useLetterhead()
   const labels = useMedicalReportLabels()
   const printedBy = usePrintedBy()
@@ -282,6 +297,19 @@ export function LabOrderRow({
                 {t('lab.cannot')}
               </Button>
             )}
+          {!(open && mayWork) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-expanded={showFiles}
+              onClick={() => setShowFiles((v) => !v)}
+              title={t('supportingFiles.titleTest', { test: o.test })}
+            >
+              <Paperclip size={14} aria-hidden="true" />
+              {t('supportingFiles.title')}
+              {filesCount != null && filesCount > 0 && ` (${filesCount})`}
+            </Button>
+          )}
           <StaffLink
             to="/app/visit"
             search={{ encounter: o.encounterId }}
@@ -425,6 +453,16 @@ export function LabOrderRow({
             </Button>
           </span>
         </form>
+      )}
+      {filesShown && (
+        <TestFilesPanel
+          encounterId={o.encounterId}
+          patientId={o.patientId}
+          patientName={o.patient}
+          serviceRequestId={o.id}
+          test={o.test}
+          imaging={o.category === 'imaging'}
+        />
       )}
       {error && (
         <p className="bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold">

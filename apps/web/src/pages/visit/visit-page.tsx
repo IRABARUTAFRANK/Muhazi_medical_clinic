@@ -56,6 +56,9 @@ import { PharmacyDesk } from '@/pages/stock/pharmacy-desk'
 import { openReceipt } from '@/lib/receipt-doc'
 import { useLetterhead } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
+import { useVisitClinical } from '@/lib/api/patients'
+import { VisitRecordGate, VisitSafetySummary } from '@/components/clinical/record-privacy'
+import { VisitFilesCard } from '@/components/clinical/supporting-files'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 
@@ -149,6 +152,8 @@ export function VisitPage({
         )
   const { data: header, isLoading, error } = useVisitHeader(encounterId)
   const { data: vitals = [] } = useVisitVitals(encounterId)
+  // 0088: a visit whose clinical record this person may not see (its vital signs come empty)
+  const recordPrivate = useVisitClinical(encounterId).data?.private === true
   const { data: bill } = useVisitBill(encounterId)
   const { data: treatments = [] } = useTreatments(true)
   const { data: myDepartments = [] } = useMyDepartments(user.id)
@@ -352,7 +357,9 @@ export function VisitPage({
               </CardBody>
               <CardBody className="border-border flex-row flex-wrap items-center gap-2 border-t">
                 {vitals.length === 0 ? (
-                  <span className="text-ink-3 text-[13px]">{t('vitalsForm.none')}</span>
+                  <span className="text-ink-3 text-[13px]">
+                    {t(recordPrivate ? 'recordPrivacy.vitalsPrivate' : 'vitalsForm.none')}
+                  </span>
                 ) : (
                   <Badge tone="green" icon={<CheckCircle2 size={12} strokeWidth={3} />}>
                     {t('vitalsForm.takenShort')}
@@ -382,7 +389,7 @@ export function VisitPage({
             {!closed && switchedOff('vitals.write') && vitals.length === 0 && (
               <NotAllowedNotice feature="vitals.write" compact />
             )}
-            {!closed && vitals.length === 0 && !addingVitals && mayVitals && (
+            {!closed && vitals.length === 0 && !addingVitals && mayVitals && !recordPrivate && (
               <p className="bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold">
                 <Activity size={18} aria-hidden="true" />
                 <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
@@ -459,46 +466,63 @@ export function VisitPage({
               ((user.role !== 'manager' && canDesk('pharmacy')) || myStation === 'pharmacy') && (
                 <PharmacyDesk canDispense={canDesk('pharmacy')} encounterId={encounterId} />
               )}
+            {/* the safety summary for the people treating the patient (the database decides) */}
+            {!closed && !isReception && !isCashier && (
+              <VisitSafetySummary patientId={header.patientId} patientName={header.name} />
+            )}
             {!isReception && !isCashier && (
-              <ClinicalCard
+              <VisitRecordGate
                 encounterId={encounterId}
-                user={user}
-                station={myStation}
-                patient={{
-                  name: header.name,
-                  fileNumber: header.fileNumber,
-                  ageSex: header.ageSex,
-                  weight: weight ? `${weight.value}${weight.unit ? ` ${weight.unit}` : ''}` : null,
-                }}
-                report={{
-                  // the visit's date: its first vital sign when nothing clinical is written yet
-                  since: vitals.map((v) => v.at).sort()[0],
-                  // oldest first: the report keeps the latest value of each sign
-                  vitals: [...vitals]
-                    .sort((a, b) => a.at.localeCompare(b.at))
-                    .map((v) => ({
-                      label: t(`triage.vitals.${v.code}`),
-                      value: `${v.value}${v.unit ? ` ${v.unit}` : ''}`,
-                      code: v.code,
-                      unit: v.unit,
-                    })),
-                  vitalsBy: latestVital?.measuredBy ?? latestVital?.enteredBy ?? null,
-                  vitalsAt: latestVital?.at ?? null,
-                  treatments: (bill?.charges ?? []).map(
-                    (c) => `${c.description}${c.quantity > 1 ? ` × ${c.quantity}` : ''}`,
-                  ),
-                }}
-                openReport={openReport}
-                lockedNote={
-                  locked ? t('access.lockedShort', { holder: access?.holder ?? '' }) : null
-                }
-                closed={closed}
-                onDone={(m) => {
+                patientId={header.patientId}
+                patientName={header.name}
+                onMessage={(m) => {
                   setActionError(null)
                   setDone(m)
                 }}
-                onError={setActionError}
-              />
+              >
+                <ClinicalCard
+                  encounterId={encounterId}
+                  patientId={header.patientId}
+                  user={user}
+                  station={myStation}
+                  patient={{
+                    name: header.name,
+                    fileNumber: header.fileNumber,
+                    ageSex: header.ageSex,
+                    weight: weight
+                      ? `${weight.value}${weight.unit ? ` ${weight.unit}` : ''}`
+                      : null,
+                  }}
+                  report={{
+                    // the visit's date: its first vital sign when nothing clinical is written yet
+                    since: vitals.map((v) => v.at).sort()[0],
+                    // oldest first: the report keeps the latest value of each sign
+                    vitals: [...vitals]
+                      .sort((a, b) => a.at.localeCompare(b.at))
+                      .map((v) => ({
+                        label: t(`triage.vitals.${v.code}`),
+                        value: `${v.value}${v.unit ? ` ${v.unit}` : ''}`,
+                        code: v.code,
+                        unit: v.unit,
+                      })),
+                    vitalsBy: latestVital?.measuredBy ?? latestVital?.enteredBy ?? null,
+                    vitalsAt: latestVital?.at ?? null,
+                    treatments: (bill?.charges ?? []).map(
+                      (c) => `${c.description}${c.quantity > 1 ? ` × ${c.quantity}` : ''}`,
+                    ),
+                  }}
+                  openReport={openReport}
+                  lockedNote={
+                    locked ? t('access.lockedShort', { holder: access?.holder ?? '' }) : null
+                  }
+                  closed={closed}
+                  onDone={(m) => {
+                    setActionError(null)
+                    setDone(m)
+                  }}
+                  onError={setActionError}
+                />
+              </VisitRecordGate>
             )}
 
             {/* Doctor → nurse: tasks on this visit appear on the nurses' dashboard. Giving one
@@ -507,6 +531,7 @@ export function VisitPage({
               treats &&
               can('clinical.write') &&
               !locked &&
+              !recordPrivate &&
               !closed && <NurseTaskCard encounterId={encounterId} patientName={header.name} />}
             {user.role === 'nurse' && canDesk('nursing') && can('clinical.write') && !closed && (
               <NurseTaskCard encounterId={encounterId} patientName={header.name} nurse />
@@ -515,6 +540,7 @@ export function VisitPage({
             {/* Ask a colleague for help on this patient (or end the help) */}
             {!closed &&
               !locked &&
+              !recordPrivate &&
               access &&
               can('clinical.write') &&
               treats &&
@@ -526,6 +552,17 @@ export function VisitPage({
                   patientName={header.name}
                 />
               )}
+
+            {/* Supporting files (0089): photos, scans and PDFs of this visit; the database
+                decides who sees them and who may add one */}
+            {!isReception && !isCashier && (
+              <VisitFilesCard
+                encounterId={encounterId}
+                patientId={header.patientId}
+                patientName={header.name}
+                closed={closed}
+              />
+            )}
 
             <div
               className={cn(

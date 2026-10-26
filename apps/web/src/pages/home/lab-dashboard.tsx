@@ -25,6 +25,7 @@ import { Empty, Kpi, ListRows, Panel, Pill, SectionTitle } from '@/components/da
 import { greetingFor } from '@/components/dash/kit-style'
 import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
 import { NoticesPanel } from '@/components/dash/notices-panel'
+import { AccessApprovalsPanel } from '@/components/privacy/approvals'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ListBar, ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -297,6 +298,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
                   )}
                 </Panel>
               )}
+              <AccessApprovalsPanel user={user} />
               <NoticesPanel limit={4} />
             </div>
           </div>

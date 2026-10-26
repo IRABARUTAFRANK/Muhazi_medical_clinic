@@ -38,6 +38,7 @@ import {
 import { isRoomStore, useStockActions, useStockOverview } from '@/lib/api/stock'
 import { useHoldsStore, useStoreStock, type MyStore } from '@/lib/api/rooms'
 import { ApiError, errorKind } from '@/lib/api/errors'
+import { TestFilesChip } from '@/components/clinical/supporting-files'
 import { registrationText, useMyCredentials } from '@/lib/api/staff'
 import { stationFor, type Station } from '@/lib/api/visits'
 import { buildPrescriptionHtml, type RxDoc, type RxDocMedicine } from '@/lib/prescription-doc'
@@ -128,10 +129,13 @@ export function ClinicalCard({
   report,
   openReport = false,
   lockedNote = null,
+  patientId = null,
   onDone,
   onError,
 }: {
   encounterId: string
+  /** The patient (the attachments of each test: 0089). */
+  patientId?: string | null
   user: StaffUser
   /** The desk this person works at for this patient (tests send the patient back here). */
   station?: Station
@@ -1470,6 +1474,12 @@ export function ClinicalCard({
                 <span className="text-ink-3 text-xs">· {t(`clinical.status.${o.status}`)}</span>
               </span>
               {o.reason && <span className="text-ink-3 block text-xs">{o.reason}</span>}
+              {/* the image or printout the laboratory / ultrasound attached to the test */}
+              <TestFilesChip
+                encounterId={encounterId}
+                patientId={patientId}
+                serviceRequestId={o.id}
+              />
               {o.result && (
                 <span className="bg-green-bg/60 mt-1 block rounded-lg px-2.5 py-1.5 text-[13px]">
                   {o.result.findings && <span className="block">{o.result.findings}</span>}

@@ -11,8 +11,10 @@ import {
   EyeOff,
   Inbox,
   ListTodo,
+  LockKeyhole,
   Megaphone,
   MessageSquare,
+  ShieldCheck,
   Send,
   Siren,
   Trash2,
@@ -55,6 +57,10 @@ const KIND_LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   booked_arrived: { icon: CalendarCheck, tint: 'teal' },
   appt_declined: { icon: CalendarX, tint: 'coral' },
   message: { icon: Megaphone, tint: 'coral' },
+  // 0088: past records (a request to answer, the answer, an emergency access)
+  access_request: { icon: LockKeyhole, tint: 'amber' },
+  access_answer: { icon: ShieldCheck, tint: 'mint' },
+  access_emergency: { icon: Siren, tint: 'coral' },
 }
 const lookOf = (n: Notice) =>
   n.urgent ? { icon: Siren, tint: 'coral' as Tint } : (KIND_LOOK[n.kind] ?? KIND_LOOK.message!)

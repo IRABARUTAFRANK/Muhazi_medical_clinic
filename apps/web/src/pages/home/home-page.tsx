@@ -34,6 +34,7 @@ import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-s
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { Kpi, SectionTitle } from '@/components/dash/kit'
 import { NoticesPanel } from '@/components/dash/notices-panel'
+import { AccessApprovalsPanel } from '@/components/privacy/approvals'
 import { greetingFor } from '@/components/dash/kit-style'
 import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -291,6 +292,8 @@ function RoleHome({ user, mode }: HomePageProps) {
                     hideEmpty
                   />
                 )}
+                {/* a head of department: colleagues asking to see past records */}
+                <AccessApprovalsPanel user={user} />
                 <NoticesPanel limit={4} />
                 <RolePanels role={role} data={summary} />
               </div>

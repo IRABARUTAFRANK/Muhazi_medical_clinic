@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   FlaskConical,
   Footprints,
+  Lock,
   Pill,
   Receipt,
   Stethoscope,
@@ -129,76 +130,87 @@ export function VisitJourney({
         )}
       </ol>
 
+      {/* 0088: the clinical part of a visit this person may not see comes empty */}
+      {j.private && (
+        <p className="bg-violet-bg text-violet m-0 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold">
+          <Lock size={14} aria-hidden="true" />
+          {t('recordPrivacy.journeyPrivate')}
+        </p>
+      )}
       <div className={cn('grid grid-cols-1 gap-3', !compact && 'md:grid-cols-2')}>
-        <Block
-          icon={Activity}
-          tint="coral"
-          title={t('journey.vitals')}
-          empty={j.vitals.length === 0}
-          emptyText={t('vitalsForm.none')}
-        >
-          {j.vitals.map((v, i) => (
-            <Line
-              key={i}
-              main={`${t(`triage.vitals.${v.code}`, { defaultValue: v.code })}: ${v.value ?? ''}${v.unit ? ` ${v.unit}` : ''}`}
-              meta={[at(v.at), v.by].filter(Boolean).join(' · ')}
-            />
-          ))}
-        </Block>
-        <Block
-          icon={Stethoscope}
-          tint="violet"
-          title={t('journey.diagnoses')}
-          empty={j.diagnoses.length === 0}
-          emptyText={t('file.noDiagnosis')}
-        >
-          {j.diagnoses.map((d, i) => (
-            <Line
-              key={i}
-              main={`${d.text}${d.icd10 ? ` (${d.icd10})` : ''}`}
-              meta={[
-                t(`clinical.type.${d.type}`, { defaultValue: d.type }),
-                d.provisional ? t('history.line.provisional') : null,
-                at(d.at),
-                d.by,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            />
-          ))}
-        </Block>
-        <Block
-          icon={Pill}
-          tint="mint"
-          title={t('journey.medicines')}
-          empty={j.medicines.length === 0}
-          emptyText={t('journey.noMedicines')}
-        >
-          {j.medicines.map((m, i) => (
-            <Line
-              key={i}
-              main={`${m.item} × ${m.quantity}${m.dose ? ` · ${m.dose}` : ''}${m.frequency ? ` · ${m.frequency}` : ''}${m.days ? ` · ${t('history.days', { count: m.days })}` : ''}`}
-              meta={[medicineState(m, t), at(m.at), m.by].filter(Boolean).join(' · ')}
-            />
-          ))}
-        </Block>
-        <Block
-          icon={FlaskConical}
-          tint="teal"
-          title={t('journey.tests')}
-          empty={j.tests.length === 0}
-          emptyText={t('journey.noTests')}
-        >
-          {j.tests.map((x, i) => (
-            <Line
-              key={i}
-              main={`${x.test}${x.result ? ` — ${x.result}` : ''}`}
-              meta={[t(`lab.status.${x.status}`, { defaultValue: x.status }), at(x.at), x.by]
-                .filter(Boolean)
-                .join(' · ')}
-            />
-          ))}
-        </Block>
+        {!j.private && (
+          <>
+            <Block
+              icon={Activity}
+              tint="coral"
+              title={t('journey.vitals')}
+              empty={j.vitals.length === 0}
+              emptyText={t('vitalsForm.none')}
+            >
+              {j.vitals.map((v, i) => (
+                <Line
+                  key={i}
+                  main={`${t(`triage.vitals.${v.code}`, { defaultValue: v.code })}: ${v.value ?? ''}${v.unit ? ` ${v.unit}` : ''}`}
+                  meta={[at(v.at), v.by].filter(Boolean).join(' · ')}
+                />
+              ))}
+            </Block>
+            <Block
+              icon={Stethoscope}
+              tint="violet"
+              title={t('journey.diagnoses')}
+              empty={j.diagnoses.length === 0}
+              emptyText={t('file.noDiagnosis')}
+            >
+              {j.diagnoses.map((d, i) => (
+                <Line
+                  key={i}
+                  main={`${d.text}${d.icd10 ? ` (${d.icd10})` : ''}`}
+                  meta={[
+                    t(`clinical.type.${d.type}`, { defaultValue: d.type }),
+                    d.provisional ? t('history.line.provisional') : null,
+                    at(d.at),
+                    d.by,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                />
+              ))}
+            </Block>
+            <Block
+              icon={Pill}
+              tint="mint"
+              title={t('journey.medicines')}
+              empty={j.medicines.length === 0}
+              emptyText={t('journey.noMedicines')}
+            >
+              {j.medicines.map((m, i) => (
+                <Line
+                  key={i}
+                  main={`${m.item} × ${m.quantity}${m.dose ? ` · ${m.dose}` : ''}${m.frequency ? ` · ${m.frequency}` : ''}${m.days ? ` · ${t('history.days', { count: m.days })}` : ''}`}
+                  meta={[medicineState(m, t), at(m.at), m.by].filter(Boolean).join(' · ')}
+                />
+              ))}
+            </Block>
+            <Block
+              icon={FlaskConical}
+              tint="teal"
+              title={t('journey.tests')}
+              empty={j.tests.length === 0}
+              emptyText={t('journey.noTests')}
+            >
+              {j.tests.map((x, i) => (
+                <Line
+                  key={i}
+                  main={`${x.test}${x.result ? ` — ${x.result}` : ''}`}
+                  meta={[t(`lab.status.${x.status}`, { defaultValue: x.status }), at(x.at), x.by]
+                    .filter(Boolean)
+                    .join(' · ')}
+                />
+              ))}
+            </Block>
+          </>
+        )}
         <Block
           icon={Receipt}
           tint="amber"

@@ -56,6 +56,25 @@ export const STAFF: readonly StaffUser[] = [
     headOf: 'Dental',
     email: 'f.ndayisaba@example.com',
   },
+  {
+    id: 'u-sono',
+    staffId: 'MMC-S-0007',
+    username: 'c.uwase',
+    name: 'Uwase Claudine',
+    role: 'lab_tech',
+    dbRole: 'sonographer',
+    station: 'Ultrasound',
+    email: 'c.uwase@example.com',
+  },
+  {
+    id: 'u-lab',
+    staffId: 'MMC-S-0008',
+    username: 'd.uwera',
+    name: 'Uwera Diane',
+    role: 'lab_tech',
+    station: 'Laboratory',
+    email: 'd.uwera@example.com',
+  },
 ]
 
 export const findStaffByUsername = (username: string): StaffUser | undefined =>

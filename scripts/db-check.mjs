@@ -7246,22 +7246,25 @@ await step(
   },
 )
 await step('0084 C: "no known allergies" is recorded apart from "not recorded"', async () => {
+  // 0088: the safety fields are read through the functions only; the check reads them as admin
+  const read84 = async () => {
+    await db.exec(`reset role`)
+    const r = await one(`select allergies, allergies_none from patient where id = $1`, [
+      t84.patient,
+    ])
+    await db.exec(`set role authenticated`)
+    return r
+  }
   await as(d2)
   await db.query(`select update_patient($1, '{"allergies_none": true}'::jsonb)`, [t84.patient])
-  const none = await one(`select allergies, allergies_none from patient where id = $1`, [
-    t84.patient,
-  ])
+  const none = await read84()
   await db.query(`select update_patient($1, '{"allergies": "Sulfonamides (rash)"}'::jsonb)`, [
     t84.patient,
   ])
-  const some = await one(`select allergies, allergies_none from patient where id = $1`, [
-    t84.patient,
-  ])
+  const some = await read84()
   // "none" again clears the text; clearing both = not recorded
   await db.query(`select update_patient($1, '{"allergies_none": true}'::jsonb)`, [t84.patient])
-  const again = await one(`select allergies, allergies_none from patient where id = $1`, [
-    t84.patient,
-  ])
+  const again = await read84()
   const bad = await codeAs(d2, `select update_patient($1, '{"allergies_none": "yes"}'::jsonb)`, [
     t84.patient,
   ])
@@ -9102,6 +9105,1454 @@ await step(
     )
       throw new Error(json87(r))
     return 'pharmacist switched off: receive and count refused, desk kept; nurse of Pharmacy allowed by exception'
+  },
+)
+
+// ---------------------------------------------------------------- 0088 patient record privacy
+const t88 = {}
+const json88 = (x) => JSON.stringify(x)
+/** A function's jsonb as someone (`{ error: 'code/hint' }` when refused). */
+const j88 = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    return (await one(sql, params)).j
+  } catch (e) {
+    return { error: `${e.code}/${e.hint ?? ''}` }
+  } finally {
+    await asAdmin()
+  }
+}
+const log88 = async (pid) =>
+  (
+    await db.query(
+      `select actor_id, via, what, encounter_id, request_id from record_access_entry where patient_id = $1 order by at`,
+      [pid],
+    )
+  ).rows
+const notices88 = async (kind, requestId) =>
+  (
+    await db.query(
+      `select recipient_user, urgent from notification where kind = $1 and params ->> 'requestId' = $2`,
+      [kind, requestId],
+    )
+  ).rows
+/** An open visit of the patient at consultation, taken by `doctor`. */
+const openVisit88 = async (pid, doctor) => {
+  await asAdmin()
+  const enc = (await one(`insert into encounter (patient_id) values ($1) returning id`, [pid])).id
+  await db.query(
+    `insert into queue_entry (encounter_id, station, ticket_no, department_id, taken_by, started_at)
+     values ($1, 'consultation', 'P88', $2, $3, now())`,
+    [enc, t88.dept, doctor],
+  )
+  return enc
+}
+const close88 = async (enc) => {
+  await asAdmin()
+  await db.query(
+    `update queue_entry set finished_at = now() where encounter_id = $1 and finished_at is null`,
+    [enc],
+  )
+  await db.query(`update encounter set status = 'closed', closed_at = now() where id = $1`, [enc])
+}
+await step(
+  '0088 seed: a patient with a past visit (Dr A) and an open one (Dr B); a head and an assistant',
+  async () => {
+    t88.dept = await dept85('Consultation 88', ['consultation'])
+    t88.docA = await newStaff('p88.doca', 'Dr. Past 88', 'doctor', 'Consultation 1')
+    t88.docB = await newStaff('p88.docb', 'Dr. Now 88', 'doctor', 'Consultation 1')
+    t88.docC = await newStaff('p88.docc', 'Dr. Other 88', 'doctor', 'Consultation 1')
+    t88.head = await newStaff('p88.head', 'Dr. Head 88', 'doctor', 'Consultation 1')
+    t88.assist = await newStaff('p88.assist', 'Dr. Assistant 88', 'doctor', 'Consultation 1')
+    for (const d of [t88.docA, t88.docB, t88.docC]) await member85(d, t88.dept)
+    await member85(t88.head, t88.dept, 'head')
+    await member85(t88.assist, t88.dept, 'assistant')
+    await asAdmin()
+    t88.pid = (
+      await one(
+        `insert into patient (surname, given_names, sex, allergies, blood_group, notes)
+         values ('Private', 'Record 88', 'female', 'Penicillin', 'A+', 'Asthmatic, carries an inhaler') returning id`,
+      )
+    ).id
+    // the past visit, treated by Dr A in Consultation 88
+    t88.v1 = await openVisit88(t88.pid, t88.docA)
+    await db.query(
+      `insert into condition (encounter_id, icd10_code, text, type, created_by)
+       values ($1, 'I10', 'Essential hypertension', 'primary', $2)`,
+      [t88.v1, t88.docA],
+    )
+    await db.query(
+      `insert into observation (encounter_id, code, value_text, performer_id, created_by)
+       values ($1, 'note', 'Past visit note 88', $2, $2)`,
+      [t88.v1, t88.docA],
+    )
+    await db.query(
+      `insert into observation (encounter_id, code, value_num, unit, performer_id) values ($1, 'bp_sys', 162, 'mmHg', $2)`,
+      [t88.v1, t88.docA],
+    )
+    const item = (await one(`select id from item where code = 'AMOX500'`)).id
+    await db.query(
+      `insert into medication_request (encounter_id, item_id, quantity, duration_days, prescriber_id, created_by, created_at)
+       values ($1, $2, 30, 60, $3, $3, now() - interval '10 days')`,
+      [t88.v1, item, t88.docA],
+    )
+    t88.service = (
+      await one(`select id from service where deleted_at is null order by code limit 1`)
+    ).id
+    const sr = (
+      await one(
+        `insert into service_request (encounter_id, category, service_id, station, requester_id)
+         values ($1, 'lab', $2, 'laboratory', $3) returning id`,
+        [t88.v1, t88.service, t88.docA],
+      )
+    ).id
+    await db.query(
+      `insert into diagnostic_report (service_request_id, findings, impression, verified_at) values ($1, 'Past finding 88', 'Past result 88', now())`,
+      [sr],
+    )
+    await close88(t88.v1)
+    // the visit today, Dr B treats the patient
+    t88.v2 = await openVisit88(t88.pid, t88.docB)
+    const r = await one(
+      `select (select count(*)::int from encounter where patient_id = $1) as visits,
+              heads_in_charge($1) = array[$2::uuid] as heads, visit_departments($3) as deps`,
+      [t88.pid, t88.head, t88.v1],
+    )
+    if (r.visits !== 2 || !r.heads || !r.deps.includes(t88.dept)) throw new Error(json88(r))
+    return `Consultation 88 in charge (${r.deps.length} departments give consultation); one head; 1 past visit, 1 open`
+  },
+)
+await step(
+  '0088 A: four levels — identity, safety summary, this visit, full history (manager, head, own visit)',
+  async () => {
+    const file = `select patient_file($1) as j`
+    const vc = `select visit_clinical($1) as j`
+    const r = {}
+    const rec = await j88(staff.receptionist, file, [t88.pid])
+    const pastRec = rec.visits.find((v) => v.id === t88.v1)
+    r.reception = {
+      level: rec.access.level,
+      private: pastRec.private,
+      diagnosis: pastRec.diagnosis,
+      conditions: rec.conditions.length,
+      allergies: rec.patient.allergies,
+      blood: rec.patient.blood_group,
+      hidden: rec.safetyHidden,
+      summary: rec.summary,
+      docAllergies: rec.document?.allergies,
+      // identity stays: name, file number, phone, payer
+      name: rec.patient.surname,
+      file: !!rec.patient.file_number,
+      bills: rec.bills.length,
+    }
+    r.recClinical = await j88(staff.receptionist, vc, [t88.v1])
+    const b = await j88(t88.docB, file, [t88.pid])
+    r.docB = {
+      level: b.access.level,
+      v1Private: b.visits.find((v) => v.id === t88.v1).private,
+      v2View: b.visits.find((v) => v.id === t88.v2).view,
+      allergies: b.summary?.allergies,
+      blood: b.summary?.bloodGroup,
+      alerts: b.summary?.alerts,
+      chronic: b.summary?.chronic?.map((c) => c.icd10),
+      meds: b.summary?.medications?.length,
+      lastBp: b.summary?.lastVitals?.find((v) => v.code === 'bp_sys')?.value,
+      conditions: b.conditions.length,
+      canRequest: b.access.canRequest,
+      canEmergency: b.access.canEmergency,
+      hiddenVisits: b.access.hiddenVisits,
+      treating: b.access.treatingEncounterId === t88.v2,
+    }
+    const bv1 = await j88(t88.docB, vc, [t88.v1])
+    r.docBv1 = { private: bv1.private, dx: bv1.diagnoses.length, notes: bv1.notes.length }
+    const bv2 = await j88(t88.docB, vc, [t88.v2])
+    r.docBv2 = { private: bv2.private, view: bv2.view }
+    // Dr C is in the department but neither treats nor treated the patient
+    const cv2 = await j88(t88.docC, vc, [t88.v2])
+    r.docC = { v2: cv2.private, level: (await j88(t88.docC, file, [t88.pid])).access.level }
+    // Dr A treated the past visit: he sees it, not today's
+    const a = await j88(t88.docA, file, [t88.pid])
+    r.docA = {
+      level: a.access.level,
+      v1: a.visits.find((v) => v.id === t88.v1).view,
+      own: a.access.ownVisits,
+      dx: (await j88(t88.docA, vc, [t88.v1])).diagnoses.length,
+      v2: (await j88(t88.docA, vc, [t88.v2])).private,
+    }
+    const h = await j88(t88.head, file, [t88.pid])
+    r.head = {
+      level: h.access.level,
+      via: h.access.via,
+      v1: h.visits.find((v) => v.id === t88.v1).view,
+      dx: (await j88(t88.head, vc, [t88.v1])).diagnoses.length,
+    }
+    const as_ = await j88(t88.assist, file, [t88.pid])
+    r.assistant = { level: as_.access.level, v1: as_.visits.find((v) => v.id === t88.v1).private }
+    const m = await j88(staff.manager, file, [t88.pid])
+    r.manager = {
+      level: m.access.level,
+      via: m.access.via,
+      v1: m.visits.find((v) => v.id === t88.v1).view,
+    }
+    // results: Dr B sees none of the past visit's, the head does
+    r.resultsB = (await j88(t88.docB, `select patient_results($1) as j`, [t88.pid])).length
+    r.resultsHead = (await j88(t88.head, `select patient_results($1) as j`, [t88.pid])).length
+    r.log = (await log88(t88.pid)).map((x) => `${x.via}:${x.what}`)
+    if (
+      r.reception.level !== 'identity' ||
+      r.reception.private !== true ||
+      r.reception.diagnosis !== null ||
+      r.reception.conditions !== 0 ||
+      r.reception.allergies !== null ||
+      r.reception.blood !== null ||
+      r.reception.hidden !== true ||
+      r.reception.summary !== null ||
+      r.reception.docAllergies !== undefined ||
+      r.reception.name !== 'Private' ||
+      !r.reception.file ||
+      r.reception.bills !== 2 ||
+      r.recClinical !== null ||
+      r.docB.level !== 'summary' ||
+      r.docB.v1Private !== true ||
+      r.docB.v2View !== 'visit' ||
+      r.docB.allergies !== 'Penicillin' ||
+      r.docB.blood !== 'A+' ||
+      !r.docB.alerts ||
+      !r.docB.chronic?.includes('I10') ||
+      r.docB.meds !== 1 ||
+      Number(r.docB.lastBp) !== 162 ||
+      r.docB.conditions !== 0 ||
+      !r.docB.canRequest ||
+      !r.docB.canEmergency ||
+      r.docB.hiddenVisits !== 1 ||
+      !r.docB.treating ||
+      r.docBv1.private !== true ||
+      r.docBv1.dx !== 0 ||
+      r.docBv1.notes !== 0 ||
+      r.docBv2.private !== false ||
+      r.docBv2.view !== 'visit' ||
+      r.docC.v2 !== true ||
+      r.docC.level !== 'identity' ||
+      r.docA.level !== 'identity' ||
+      r.docA.v1 !== 'own' ||
+      r.docA.own !== 1 ||
+      r.docA.dx !== 1 ||
+      r.docA.v2 !== true ||
+      r.head.level !== 'full' ||
+      r.head.via !== 'head' ||
+      r.head.v1 !== 'head' ||
+      r.head.dx !== 1 ||
+      r.assistant.level !== 'identity' ||
+      r.assistant.v1 !== true ||
+      r.manager.level !== 'full' ||
+      r.manager.via !== 'manager' ||
+      r.manager.v1 !== 'manager' ||
+      r.resultsB !== 0 ||
+      r.resultsHead !== 1 ||
+      !r.log.includes('own:file') ||
+      !r.log.includes('own:visit') ||
+      !r.log.includes('head:file') ||
+      !r.log.includes('manager:file') ||
+      r.log.some((x) => x.startsWith('visit'))
+    )
+      throw new Error(json88(r))
+    return `reception: identity; Dr B (treating): summary, past private; Dr A: own visit; head and manager: full; assistant: identity; log ${r.log.length}`
+  },
+)
+await step(
+  '0088 B: request access: only while treating, with a reason; the first approver answers; ends when the visit closes',
+  async () => {
+    const ask = `select request_record_access($1, $2) as j`
+    const r = {}
+    r.noReason = (await j88(t88.docB, ask, [t88.pid, ' ']))?.error
+    r.notTreating = (await j88(t88.docC, ask, [t88.pid, 'Need the history']))?.error
+    r.reception = (await j88(staff.receptionist, ask, [t88.pid, 'Need the history']))?.error
+    r.head = (await j88(t88.head, ask, [t88.pid, 'Need the history']))?.error
+    const req = await j88(t88.docB, ask, [t88.pid, 'Chest pain: earlier ECG and treatment'])
+    t88.req = req.id
+    r.again = (await j88(t88.docB, ask, [t88.pid, 'again']))?.existing
+    r.notices = (await notices88('access_request', t88.req)).map((n) => n.recipient_user).sort()
+    r.pendingHead = (await j88(t88.head, `select record_access_requests('pending') as j`)).map(
+      (x) => x.id === t88.req && x.canAnswer,
+    )
+    r.pendingAssist = (
+      await j88(t88.assist, `select record_access_requests('pending') as j`)
+    ).length
+    r.accessB = (await j88(t88.docB, `select patient_access($1) as j`, [t88.pid])).request?.status
+    const answer = `select answer_record_access($1, $2, $3) as j`
+    r.assistant = (await j88(t88.assist, answer, [t88.req, true, null]))?.error
+    r.self = (await j88(t88.docB, answer, [t88.req, true, null]))?.error
+    r.refuseNoReason = (await j88(t88.head, answer, [t88.req, false, '']))?.error
+    r.approve = (await j88(t88.head, answer, [t88.req, true, null]))?.status
+    r.late = (await j88(staff.manager, answer, [t88.req, false, 'No']))?.error
+    r.othersCleared = (await notices88('access_request', t88.req)).length
+    r.answerNotice = (await notices88('access_answer', t88.req)).map((n) => n.recipient_user)
+    const b = await j88(t88.docB, `select patient_file($1) as j`, [t88.pid])
+    r.after = {
+      level: b.access.level,
+      via: b.access.via,
+      v1: b.visits.find((v) => v.id === t88.v1).view,
+      dx: (await j88(t88.docB, `select visit_clinical($1) as j`, [t88.v1])).diagnoses.length,
+    }
+    r.logged = (await log88(t88.pid)).filter(
+      (x) => x.actor_id === t88.docB && x.via === 'request' && x.request_id === t88.req,
+    ).length
+    r.mine = (await j88(t88.docB, `select record_access_requests('mine') as j`)).map(
+      (x) => `${x.status}:${x.active}`,
+    )
+    // the visit closes: the access ends
+    await close88(t88.v2)
+    const closed = await j88(t88.docB, `select patient_file($1) as j`, [t88.pid])
+    r.closed = {
+      level: closed.access.level,
+      v1: closed.visits.find((v) => v.id === t88.v1).private,
+      // his own visit of today stays his
+      v2: closed.visits.find((v) => v.id === t88.v2).view,
+      active: (await j88(t88.docB, `select record_access_requests('mine') as j`))[0]?.active,
+    }
+    // a refused request: the requester is told why, and may ask again
+    t88.v3 = await openVisit88(t88.pid, t88.docB)
+    const req2 = (await j88(t88.docB, ask, [t88.pid, 'Follow-up of the earlier result'])).id
+    r.cancel = await hintAs(t88.docC, `select cancel_record_access($1)`, [req2])
+    r.refused = (await j88(staff.manager, answer, [req2, false, 'Ask the patient first']))?.status
+    r.refusedNotice = await one(
+      `select params ->> 'reason' as reason, params ->> 'approved' as ok from notification where kind = 'access_answer' and params ->> 'requestId' = $1`,
+      [req2],
+    )
+    r.canAgain = (await j88(t88.docB, `select patient_access($1) as j`, [t88.pid])).canRequest
+    if (
+      r.noReason !== '22023/reason_needed' ||
+      r.notTreating !== '42501/not_treating' ||
+      r.reception !== '42501/' ||
+      r.head !== '42501/not_treating' ||
+      r.again !== true ||
+      json88(r.notices) !== json88([t88.head, staff.manager].sort()) ||
+      !r.pendingHead.includes(true) ||
+      r.pendingAssist !== 0 ||
+      r.accessB !== 'pending' ||
+      r.assistant !== '42501/not_approver' ||
+      r.self !== '42501/not_approver' ||
+      r.refuseNoReason !== '22023/reason_needed' ||
+      r.approve !== 'approved' ||
+      r.late !== '22023/already_answered' ||
+      r.othersCleared !== 0 ||
+      json88(r.answerNotice) !== json88([t88.docB]) ||
+      r.after.level !== 'full' ||
+      r.after.via !== 'request' ||
+      r.after.v1 !== 'request' ||
+      r.after.dx !== 1 ||
+      r.logged < 1 ||
+      json88(r.mine) !== json88(['approved:true']) ||
+      r.closed.level !== 'identity' ||
+      r.closed.v1 !== true ||
+      r.closed.v2 !== 'own' ||
+      r.closed.active !== false ||
+      r.cancel !== 'P0002/not_found' ||
+      r.refused !== 'refused' ||
+      r.refusedNotice?.reason !== 'Ask the patient first' ||
+      r.refusedNotice?.ok !== 'false' ||
+      r.canAgain !== true
+    )
+      throw new Error(json88(r))
+    return 'asked with a reason → head and manager told; head approved first; access ended at closing; refusal says why'
+  },
+)
+await step(
+  '0088 C: emergency access: at once, with a reason; urgent notices; red log entry; the manager reviews',
+  async () => {
+    const em = `select emergency_record_access($1, $2) as j`
+    const r = {}
+    r.notTreating = (await j88(t88.docC, em, [t88.pid, 'Collapsed in the corridor']))?.error
+    r.noReason = (await j88(t88.docB, em, [t88.pid, '']))?.error
+    const e = await j88(t88.docB, em, [t88.pid, 'Unconscious: need past medicines'])
+    t88.emergency = e.id
+    r.via = e.via
+    r.level = (await j88(t88.docB, `select patient_access($1) as j`, [t88.pid])).via
+    r.dx = (await j88(t88.docB, `select visit_clinical($1) as j`, [t88.v1])).diagnoses.length
+    r.notices = (await notices88('access_emergency', t88.emergency))
+      .map(
+        (n) =>
+          `${n.recipient_user === staff.manager ? 'manager' : n.recipient_user === t88.head ? 'head' : 'other'}:${n.urgent}`,
+      )
+      .sort()
+    const log = await j88(staff.manager, `select record_access_log(p_patient_id => $1) as j`, [
+      t88.pid,
+    ])
+    r.red = log.rows.filter((x) => x.emergency && x.requestId === t88.emergency).length
+    r.unreviewed = log.unreviewed
+    r.reviewByDoctor = await hintAs(t88.head, `select review_emergency_access($1, 'ok')`, [
+      t88.emergency,
+    ])
+    r.review = await hintAs(staff.manager, `select review_emergency_access($1, $2)`, [
+      t88.emergency,
+      'Justified: patient arrived unconscious',
+    ])
+    const list = await j88(staff.manager, `select record_access_requests('emergency') as j`)
+    const row = list.find((x) => x.id === t88.emergency)
+    r.reviewed = { by: !!row?.reviewedBy, note: row?.reviewNote, canReview: row?.canReview }
+    const log2 = await j88(staff.manager, `select record_access_log(p_via => 'emergency') as j`)
+    r.logReviewed = log2.rows.find((x) => x.requestId === t88.emergency)?.reviewed
+    if (
+      r.notTreating !== '42501/not_treating' ||
+      r.noReason !== '22023/reason_needed' ||
+      r.via !== 'emergency' ||
+      r.level !== 'emergency' ||
+      r.dx !== 1 ||
+      json88(r.notices) !== json88(['head:true', 'manager:true']) ||
+      r.red < 1 ||
+      !(r.unreviewed >= 1) ||
+      r.reviewByDoctor !== '42501/not_manager' ||
+      r.review !== 'ok' ||
+      !r.reviewed.by ||
+      r.reviewed.note !== 'Justified: patient arrived unconscious' ||
+      r.reviewed.canReview !== false ||
+      r.logReviewed !== true
+    )
+      throw new Error(json88(r))
+    return 'opened at once, head and manager told (urgent), red entry, reviewed by the manager'
+  },
+)
+await step(
+  '0088 D: the access log: once per half hour, the manager filters it, the patient file shows who looked',
+  async () => {
+    await asAdmin()
+    const before = (await log88(t88.pid)).filter((x) => x.actor_id === t88.head).length
+    await j88(t88.head, `select patient_file($1) as j`, [t88.pid])
+    await j88(t88.head, `select patient_file($1) as j`, [t88.pid])
+    await j88(t88.head, `select patient_results($1) as j`, [t88.pid])
+    const after = (await log88(t88.pid)).filter((x) => x.actor_id === t88.head).length
+    const r = { before, after }
+    r.byActor = (
+      await j88(staff.manager, `select record_access_log(p_actor => $1) as j`, [t88.docA])
+    ).rows.map((x) => x.via)
+    r.doctorLog = (await j88(t88.docB, `select record_access_log() as j`))?.error
+    r.headSees = (await j88(t88.head, `select patient_access_log($1) as j`, [t88.pid])).length
+    r.doctorSees = (await j88(t88.docB, `select patient_access_log($1) as j`, [t88.pid]))?.error
+    r.assistantSees = (
+      await j88(t88.assist, `select patient_access_log($1) as j`, [t88.pid])
+    )?.error
+    // nobody writes or reads the tables directly
+    r.write = await codeAs(
+      t88.docB,
+      `insert into record_access_entry (actor_id, patient_id, via) values ($1, $2, 'manager')`,
+      [t88.docB, t88.pid],
+    )
+    r.read = await codeAs(staff.manager, `select count(*) from record_access_request`)
+    r.logFn = await codeAs(t88.docB, `select log_record_access($1, null, 'manager', 'file')`, [
+      t88.pid,
+    ])
+    if (
+      r.after !== r.before ||
+      !r.byActor.length ||
+      r.byActor.some((v) => v !== 'own') ||
+      r.doctorLog !== '42501/' ||
+      !(r.headSees >= 3) ||
+      r.doctorSees !== '42501/' ||
+      r.assistantSees !== '42501/' ||
+      r.write !== '42501' ||
+      r.read !== '42501' ||
+      r.logFn !== '42501'
+    )
+      throw new Error(json88(r))
+    return `repeat openings not logged twice; manager-only log; who looked: ${r.headSees} lines`
+  },
+)
+await step(
+  '0088 E: the clinical tables read directly give only the visits one may see',
+  async () => {
+    const count = async (who, table, col = 'encounter_id') =>
+      valAs(who, `select count(*)::int as v from ${table} where ${col} = $1`, [t88.v1])
+    const r = {
+      docC: await count(t88.docC, 'condition'),
+      docCobs: await count(t88.docC, 'observation'),
+      docCrx: await count(t88.docC, 'medication_request'),
+      docA: await count(t88.docA, 'condition'),
+      head: await count(t88.head, 'condition'),
+      assist: await count(t88.assist, 'condition'),
+      manager: await count(staff.manager, 'condition'),
+      reports: await valAs(
+        t88.docC,
+        `select count(*)::int as v from diagnostic_report d join service_request r on r.id = d.service_request_id where r.encounter_id = $1`,
+        [t88.v1],
+      ),
+      reportsA: await valAs(
+        t88.docA,
+        `select count(*)::int as v from diagnostic_report d join service_request r on r.id = d.service_request_id where r.encounter_id = $1`,
+        [t88.v1],
+      ),
+    }
+    if (
+      r.docC !== 0 ||
+      r.docCobs !== 0 ||
+      r.docCrx !== 0 ||
+      r.docA !== 1 ||
+      r.head !== 1 ||
+      r.assist !== 0 ||
+      r.manager !== 1 ||
+      r.reports !== 0 ||
+      r.reportsA !== 1
+    )
+      throw new Error(json88(r))
+    return 'other doctor and assistant: none; the doctor who treated, the head, the manager: the rows'
+  },
+)
+await step(
+  '0088 F: level 1 cannot clear or replace the safety fields; may add one where none is recorded',
+  async () => {
+    await asAdmin()
+    const p2 = (
+      await one(
+        `insert into patient (surname, given_names, sex) values ('Private', 'New 88', 'male') returning id`,
+      )
+    ).id
+    // the patient form sends every field: the hidden ones empty
+    const form = {
+      surname: 'Private',
+      phone_1: '0788000088',
+      allergies: '',
+      blood_group: '',
+      notes: '',
+      allergies_none: false,
+    }
+    const r = {}
+    r.update = await hintAs(staff.receptionist, `select update_patient($1, $2)`, [
+      t88.pid,
+      JSON.stringify(form),
+    ])
+    r.kept = await one(`select allergies, blood_group, notes, phone_1 from patient where id = $1`, [
+      t88.pid,
+    ])
+    r.replace = await hintAs(staff.receptionist, `select update_patient($1, $2)`, [
+      t88.pid,
+      JSON.stringify({ ...form, allergies: 'None' }),
+    ])
+    r.notReplaced = (await one(`select allergies from patient where id = $1`, [t88.pid])).allergies
+    r.add = await hintAs(staff.receptionist, `select update_patient($1, $2)`, [
+      p2,
+      JSON.stringify({ ...form, allergies: 'Sulfa drugs', blood_group: 'B+' }),
+    ])
+    r.added = await one(`select allergies, blood_group from patient where id = $1`, [p2])
+    // the doctor treating the patient now changes them
+    r.doctor = await hintAs(t88.docB, `select update_patient($1, $2)`, [
+      t88.pid,
+      JSON.stringify({ allergies: 'Penicillin, aspirin' }),
+    ])
+    r.changed = (await one(`select allergies from patient where id = $1`, [t88.pid])).allergies
+    if (
+      r.update !== 'ok' ||
+      r.kept.allergies !== 'Penicillin' ||
+      r.kept.blood_group !== 'A+' ||
+      !r.kept.notes ||
+      r.kept.phone_1 !== '0788000088' ||
+      r.replace !== 'ok' ||
+      r.notReplaced !== 'Penicillin' ||
+      r.add !== 'ok' ||
+      r.added.allergies !== 'Sulfa drugs' ||
+      r.added.blood_group !== 'B+' ||
+      r.doctor !== 'ok' ||
+      r.changed !== 'Penicillin, aspirin'
+    )
+      throw new Error(json88(r))
+    return 'reception: empty fields ignored, no replacing; adds where none; the treating doctor changes them'
+  },
+)
+await step(
+  '0088 G: the visit track hides the clinical part; the lab desk reads the visit of its open test',
+  async () => {
+    const jr = `select visit_journey($1) as j`
+    const rec = await j88(staff.receptionist, jr, [t88.v1])
+    const head = await j88(t88.head, jr, [t88.v1])
+    const r = {
+      recPrivate: rec.private,
+      recDx: rec.diagnoses.length,
+      recSteps: rec.steps.length,
+      recCharges: Array.isArray(rec.charges),
+      headPrivate: head.private,
+      headDx: head.diagnoses.length,
+    }
+    // a test of today's visit waits at the laboratory
+    await asAdmin()
+    await db.query(
+      `insert into service_request (encounter_id, category, service_id, station, requester_id)
+       values ($1, 'lab', $2, 'laboratory', $3)`,
+      [t88.v3, t88.service, t88.docB],
+    )
+    r.labDesk = await deskAs(staff.lab_tech, 'laboratory')
+    const lab = await j88(staff.lab_tech, `select visit_clinical($1) as j`, [t88.v3])
+    r.lab = { private: lab.private, orders: lab.orders.length, allergies: lab.patient.allergies }
+    r.labPast = (await j88(staff.lab_tech, `select visit_clinical($1) as j`, [t88.v1])).private
+    // the doctor prints today's documents: the record and the prescription number
+    r.print = (await j88(t88.docB, `select visit_clinical($1) as j`, [t88.v3])).visit?.reference
+    if (
+      r.recPrivate !== true ||
+      r.recDx !== 0 ||
+      r.recSteps < 1 ||
+      !r.recCharges ||
+      r.headPrivate !== false ||
+      r.headDx !== 1 ||
+      !r.labDesk ||
+      r.lab.private !== false ||
+      r.lab.orders !== 1 ||
+      !r.lab.allergies ||
+      r.labPast !== true ||
+      !r.print
+    )
+      throw new Error(json88(r))
+    return "reception: steps and bill only; the head: the diagnoses; the lab: today's test, not the past"
+  },
+)
+await step(
+  '0088 H: only the department the visit was sent to is in charge; another department giving the desk is not',
+  async () => {
+    t88.dept2 = await dept85('Consultation 88 bis', ['consultation'])
+    t88.head2 = await newStaff('p88.head2', 'Dr. Head Elsewhere 88', 'doctor', 'Consultation 1')
+    await member85(t88.head2, t88.dept2, 'head')
+    await asAdmin()
+    const r = await one(
+      `select $2::uuid = any (heads_in_charge($1)) as heads, $2::uuid = any (record_access_approvers($1)) as approver,
+              $3::uuid = any (visit_departments($4)) as dept2`,
+      [t88.pid, t88.head2, t88.dept2, t88.v1],
+    )
+    r.via = await valAs(t88.head2, `select history_via($1) as v`, [t88.pid])
+    const f = await j88(t88.head2, `select patient_file($1) as j`, [t88.pid])
+    r.level = f.access.level
+    r.canSeeLog = f.access.canSeeLog
+    r.firstHead = (
+      await one(`select $2::uuid = any (heads_in_charge($1)) as ok`, [t88.pid, t88.head])
+    ).ok
+    // a visit sent to no department: the departments giving the desk are in charge
+    const pid = (
+      await one(
+        `insert into patient (surname, given_names, sex) values ('Nodept', 'Visit 88', 'male') returning id`,
+      )
+    ).id
+    const enc = (await one(`insert into encounter (patient_id) values ($1) returning id`, [pid])).id
+    await db.query(
+      `insert into queue_entry (encounter_id, station, ticket_no) values ($1, 'consultation', 'P88N')`,
+      [enc],
+    )
+    r.noDept = (
+      await one(`select $2::uuid = any (visit_departments($1)) as ok`, [enc, t88.dept2])
+    ).ok
+    if (
+      r.heads ||
+      r.approver ||
+      r.dept2 ||
+      r.via !== null ||
+      r.level === 'full' ||
+      r.canSeeLog ||
+      !r.firstHead ||
+      !r.noDept
+    )
+      throw new Error(json88(r))
+    return 'the other head of a consultation department: not in charge, no approval, no history'
+  },
+)
+await step(
+  "0088 I: 'own' is for the people who treated a closed visit; measuring, a lab result do not open it",
+  async () => {
+    await asAdmin()
+    // the lab technician validated the past visit's result; the triage nurse measured its vitals
+    await db.query(
+      `update diagnostic_report d set created_by = $2, verified_by = $2
+       from service_request r where r.id = d.service_request_id and r.encounter_id = $1`,
+      [t88.v1, staff.lab_tech],
+    )
+    await db.query(
+      `insert into observation (encounter_id, code, value_num, unit, performer_id, created_by)
+       values ($1, 'bp_dia', 96, 'mmHg', $2, $2)`,
+      [t88.v1, staff.nurse],
+    )
+    const vv = `select visit_view($1) as v`
+    const r = {
+      lab: await valAs(staff.lab_tech, vv, [t88.v1]),
+      nurse: await valAs(staff.nurse, vv, [t88.v1]),
+      docA: await valAs(t88.docA, vv, [t88.v1]),
+      labDx: await valAs(
+        staff.lab_tech,
+        `select count(*)::int as v from condition where encounter_id = $1`,
+        [t88.v1],
+      ),
+    }
+    if (r.lab !== null || r.nurse !== null || r.docA !== 'own' || r.labDx !== 0)
+      throw new Error(json88(r))
+    return 'the lab technician and the nurse who measured: private; the doctor who treated: own'
+  },
+)
+await step(
+  '0088 J: past vital signs: visit_vitals and the patient file; reception sees the open visit only',
+  async () => {
+    await asAdmin()
+    await db.query(
+      `insert into observation (encounter_id, code, value_num, unit, performer_id, created_by)
+       values ($1, 'bp_sys', 131, 'mmHg', $2, $3)`,
+      [t88.v3, staff.nurse, staff.receptionist],
+    )
+    const vv = `select count(*)::int as v from visit_vitals where encounter_id = $1`
+    const rec = await j88(staff.receptionist, `select patient_file($1) as j`, [t88.pid])
+    const r = {
+      docC: await valAs(t88.docC, vv, [t88.v1]),
+      docA: await valAs(t88.docA, vv, [t88.v1]),
+      recPast: await valAs(staff.receptionist, vv, [t88.v1]),
+      recOpen: await valAs(staff.receptionist, vv, [t88.v3]),
+      fileOpen: rec.vitals.some((v) => v.encounterId === t88.v3 && Number(v.value) === 131),
+      filePast: rec.vitals.some((v) => v.encounterId === t88.v1),
+    }
+    if (
+      r.docC !== 0 ||
+      !(r.docA > 0) ||
+      r.recPast !== 0 ||
+      !(r.recOpen > 0) ||
+      !r.fileOpen ||
+      r.filePast
+    )
+      throw new Error(json88(r))
+    return "past vitals: none for Dr C or reception, the doctor who treated sees them; today's for reception"
+  },
+)
+await step(
+  '0088 K: the tables read directly give no safety field, triage reason or referral note',
+  async () => {
+    const r = {
+      allergies: await codeAs(t88.docB, `select allergies from patient limit 1`),
+      flags: await codeAs(staff.receptionist, `select flags from patient limit 1`),
+      star: await codeAs(t88.docB, `select * from patient limit 1`),
+      triage: await codeAs(t88.docB, `select triage_reason from encounter limit 1`),
+      referral: await codeAs(t88.docB, `select referral_note from queue_entry limit 1`),
+      identity: await valAs(
+        staff.receptionist,
+        `select surname || ' ' || file_number as v from patient where id = $1`,
+        [t88.pid],
+      ),
+      visit: await valAs(
+        staff.receptionist,
+        `select status::text as v from encounter where id = $1`,
+        [t88.v1],
+      ),
+      board: await valAs(
+        staff.receptionist,
+        `select count(*)::int as v from queue_board where encounter_id = $1`,
+        [t88.v3],
+      ),
+      boardCashier: await codeAs(
+        staff.cashier,
+        `select referral_note, taken_by_name from queue_board limit 5`,
+      ),
+      // the patient search: the allergy mark for those who read clinical records
+      searchRec: (
+        await j88(staff.receptionist, `select patients_list('Private Record 88') as j`)
+      ).rows.find((x) => x.id === t88.pid)?.hasAllergies,
+      searchDoc: (await j88(t88.docC, `select patients_list('Private Record 88') as j`)).rows.find(
+        (x) => x.id === t88.pid,
+      )?.hasAllergies,
+    }
+    if (
+      r.allergies !== '42501' ||
+      r.flags !== '42501' ||
+      r.star !== '42501' ||
+      r.triage !== '42501' ||
+      r.referral !== '42501' ||
+      !r.identity?.startsWith('Private ') ||
+      r.visit !== 'closed' ||
+      !(r.board >= 1) ||
+      r.boardCashier !== null ||
+      r.searchRec !== false ||
+      r.searchDoc !== true
+    )
+      throw new Error(json88(r))
+    return 'safety fields, triage reason, referral note refused; identity, visits and the queue read'
+  },
+)
+await step(
+  '0088 L: the safety summary is for the people treating: not the cashier or reception holding the patient',
+  async () => {
+    await asAdmin()
+    const pid = (
+      await one(
+        `insert into patient (surname, given_names, sex, allergies) values ('Cashier', 'Wait 88', 'female', 'Latex') returning id`,
+      )
+    ).id
+    const enc = (await one(`insert into encounter (patient_id) values ($1) returning id`, [pid])).id
+    await db.query(
+      `insert into queue_entry (encounter_id, station, ticket_no) values ($1, 'cashier', 'C88'), ($1, 'reception', 'R88')`,
+      [enc],
+    )
+    const cash = await j88(staff.cashier, `select patient_file($1) as j`, [pid])
+    const rec = await j88(staff.receptionist, `select patient_file($1) as j`, [pid])
+    const r = {
+      cashier: `${cash.access.level}:${cash.summary}`,
+      reception: `${rec.access.level}:${rec.summary}`,
+      cashierAllergies: cash.patient.allergies,
+    }
+    if (
+      r.cashier !== 'identity:null' ||
+      r.reception !== 'identity:null' ||
+      r.cashierAllergies !== null
+    )
+      throw new Error(json88(r))
+    return 'the cashier and reception holding the patient: identity, no summary'
+  },
+)
+await step(
+  '0088 M: the analytics of a colleague hide what was written in visits one may not see',
+  async () => {
+    const detail = `select staff_activity_detail($1, null, null, 'diagnoses') as j`
+    const pick = (j) =>
+      (j?.records ?? []).filter((x) => x.encounterId === t88.v1).map((x) => x.what ?? null)
+    const r = {
+      assistant: pick(await j88(t88.assist, detail, [t88.docA])),
+      head: pick(await j88(t88.head, detail, [t88.docA])),
+      manager: pick(await j88(staff.manager, detail, [t88.docA])),
+    }
+    if (
+      !r.assistant.length ||
+      r.assistant.some((w) => w !== null) ||
+      !r.head.some((w) => w && /hypertension/i.test(w)) ||
+      !r.manager.some((w) => w && /hypertension/i.test(w))
+    )
+      throw new Error(json88(r))
+    return 'assistant: the diagnosis hidden; the head in charge and the manager: shown'
+  },
+)
+await step(
+  '0088 N: a request waiting when the visit closes is cancelled, its notices removed; the rules are not callable',
+  async () => {
+    await asAdmin()
+    const pid = (
+      await one(
+        `insert into patient (surname, given_names, sex) values ('Closing', 'Request 88', 'male') returning id`,
+      )
+    ).id
+    const enc = await openVisit88(pid, t88.docC)
+    const req = (
+      await j88(t88.docC, `select request_record_access($1, $2) as j`, [pid, 'Earlier treatment'])
+    ).id
+    const before = (await notices88('access_request', req)).length
+    await close88(enc)
+    const r = {
+      before,
+      status: (await one(`select status from record_access_request where id = $1`, [req])).status,
+      after: (await notices88('access_request', req)).length,
+      tookPart: await codeAs(t88.docB, `select took_part($1, $2)`, [t88.v1, t88.docA]),
+      heads: await codeAs(t88.docB, `select heads_in_charge($1)`, [t88.pid]),
+      level: await codeAs(t88.docB, `select patient_level($1)`, [t88.pid]),
+      viewOk: await codeAs(t88.docB, `select visit_view($1)`, [t88.v1]),
+    }
+    if (
+      !(r.before >= 1) ||
+      r.status !== 'cancelled' ||
+      r.after !== 0 ||
+      r.tookPart !== '42501' ||
+      r.heads !== '42501' ||
+      r.level !== '42501' ||
+      r.viewOk !== null
+    )
+      throw new Error(json88(r))
+    return `request cancelled at closing, ${r.before} notices removed; the rule helpers refused`
+  },
+)
+
+// ---------------------------------------------------------------- 0089 supporting files
+const t89 = {}
+/** A storage path of the visit: <patient>/<visit>/<file>.<ext>. */
+const path89 = (pid, enc, ext = 'jpg') => `${pid}/${enc}/${crypto.randomUUID()}.${ext}`
+/** attach_file as someone: the file's json, or { error: 'code/hint' }. */
+const attach89 = (who, o) =>
+  j88(who, `select attach_file($1, $2, $3, $4, $5, $6, $7, $8) as j`, [
+    o.enc,
+    o.path ?? path89(o.pid ?? t89.pid, o.enc, o.ext ?? 'jpg'),
+    o.kind ?? 'photo',
+    o.title ?? 'Wound photo',
+    o.mime ?? 'image/jpeg',
+    o.size ?? 250000,
+    o.sr ?? null,
+    o.note ?? null,
+  ])
+/** A boolean rule as someone with an approved session (true) or a session without approval. */
+const rule89 = async (who, sql, params, approved = true) => {
+  if (approved) await asApproved(who)
+  else await as(who)
+  try {
+    return (await one(sql, params)).b
+  } finally {
+    await asAdmin()
+  }
+}
+await step(
+  '0089 seed: a patient with a past visit (Dr A) and an open one (Dr B, an ultrasound asked)',
+  async () => {
+    t89.usDept = await dept85('Ultrasound 89', ['ultrasound'])
+    t89.labDept = await dept85('Laboratory 89', ['laboratory'])
+    t89.sono = await newStaff('p89.sono', 'Sono 89', 'sonographer')
+    t89.lab = await newStaff('p89.lab', 'Lab 89', 'lab_tech')
+    await member85(t89.sono, t89.usDept)
+    await member85(t89.lab, t89.labDept)
+    await asAdmin()
+    t89.pid = (
+      await one(
+        `insert into patient (surname, given_names, sex) values ('Files', 'Patient 89', 'female') returning id`,
+      )
+    ).id
+    t89.other = (
+      await one(
+        `insert into patient (surname, given_names, sex) values ('Other', 'Patient 89', 'male') returning id`,
+      )
+    ).id
+    // the past visit: Dr A adds a referral letter while it is open, then it closes
+    t89.v1 = await openVisit88(t89.pid, t88.docA)
+    const f1 = await attach89(t88.docA, {
+      enc: t89.v1,
+      kind: 'referral',
+      title: 'Referral letter from Kiziguro',
+      mime: 'application/pdf',
+      ext: 'pdf',
+      size: 480000,
+    })
+    if (f1.error) throw new Error(`Dr A could not attach: ${f1.error}`)
+    t89.f1 = f1
+    await close88(t89.v1)
+    // today: Dr B treats the patient and asks for an ultrasound
+    t89.v2 = await openVisit88(t89.pid, t88.docB)
+    await asAdmin()
+    t89.sr = (
+      await one(
+        `insert into service_request (encounter_id, category, service_id, station, requester_id)
+         values ($1, 'imaging', $2, 'ultrasound', $3) returning id`,
+        [t89.v2, t88.service, t88.docB],
+      )
+    ).id
+    t89.otherVisit = await openVisit88(t89.other, t88.docB)
+    t89.otherSr = (
+      await one(
+        `insert into service_request (encounter_id, category, service_id, station, requester_id)
+         values ($1, 'imaging', $2, 'ultrasound', $3) returning id`,
+        [t89.otherVisit, t88.service, t88.docB],
+      )
+    ).id
+    return `past visit with a referral letter (${f1.mimeType}, view ${f1.view}); open visit with an ultrasound asked`
+  },
+)
+await step(
+  '0089 A: who adds a file: the people working on the open visit, the ultrasound desk on its test; the limits',
+  async () => {
+    const r = {}
+    const b = await attach89(t88.docB, { enc: t89.v2, title: 'Rash on the arm', note: 'Day 2' })
+    t89.fB = b
+    r.docB = {
+      error: b.error,
+      view: b.view,
+      canRemove: b.canRemove,
+      kind: b.kind,
+      by: b.uploadedBy,
+    }
+    const s = await attach89(t89.sono, {
+      enc: t89.v2,
+      sr: t89.sr,
+      kind: 'ultrasound',
+      title: 'Abdominal ultrasound image',
+      mime: 'image/png',
+      ext: 'png',
+    })
+    t89.fS = s
+    r.sono = { error: s.error, test: s.test, sr: s.serviceRequestId === t89.sr }
+    await asAdmin()
+    r.notice = (
+      await db.query(
+        `select recipient_user, link, params ->> 'title' as title from notification
+         where kind = 'file_attached' and params ->> 'fileId' = $1`,
+        [s.id ?? ''],
+      )
+    ).rows
+    r.noticeForB = (
+      await db.query(
+        `select count(*)::int as n from notification where kind = 'file_attached' and params ->> 'fileId' = $1`,
+        [b.id ?? ''],
+      )
+    ).rows[0].n
+    r.reception = (await attach89(staff.receptionist, { enc: t89.v2 })).error
+    r.cashier = (await attach89(staff.cashier, { enc: t89.v2 })).error
+    r.docC = (await attach89(t88.docC, { enc: t89.v2 })).error
+    r.labNoTest = (await attach89(t89.lab, { enc: t89.v2 })).error
+    r.sonoOtherTest = (await attach89(t89.sono, { enc: t89.v2, sr: t89.otherSr })).error
+    r.gif = (await attach89(t88.docB, { enc: t89.v2, mime: 'image/gif', ext: 'gif' })).error
+    r.big = (await attach89(t88.docB, { enc: t89.v2, size: 10485761 })).error
+    r.pdfAsJpg = (
+      await attach89(t88.docB, { enc: t89.v2, mime: 'application/pdf', ext: 'jpg' })
+    ).error
+    r.otherPatientPath = (
+      await attach89(t88.docB, { enc: t89.v2, path: path89(t89.other, t89.v2) })
+    ).error
+    r.otherVisitPath = (
+      await attach89(t88.docB, { enc: t89.v2, path: path89(t89.pid, t89.v1) })
+    ).error
+    r.badPath = (await attach89(t88.docB, { enc: t89.v2, path: '../../etc/passwd' })).error
+    r.noTitle = (await attach89(t88.docB, { enc: t89.v2, title: '  ' })).error
+    r.kind = (await attach89(t88.docB, { enc: t89.v2, kind: 'xray' })).error
+    r.closed = (await attach89(t88.docA, { enc: t89.v1 })).error
+    r.again = (await attach89(t88.docB, { enc: t89.v2, path: b.path })).error
+    r.manager = (
+      await attach89(staff.manager, { enc: t89.v2, kind: 'other', title: 'Consent' })
+    ).error
+    if (
+      r.docB.error ||
+      r.docB.view !== 'visit' ||
+      r.docB.canRemove !== true ||
+      r.docB.kind !== 'photo' ||
+      r.docB.by !== 'Dr. Now 88' ||
+      r.sono.error ||
+      !r.sono.sr ||
+      !r.sono.test ||
+      r.notice.length !== 1 ||
+      r.notice[0].recipient_user !== t88.docB ||
+      r.notice[0].link !== `/app/visit?encounter=${t89.v2}` ||
+      r.noticeForB !== 0 ||
+      r.reception !== '42501/not_on_visit' ||
+      r.cashier !== '42501/not_on_visit' ||
+      r.docC !== '42501/not_on_visit' ||
+      r.labNoTest !== '42501/not_on_visit' ||
+      r.sonoOtherTest !== '22023/wrong_test' ||
+      r.gif !== '22023/file_type' ||
+      r.big !== '22023/file_too_big' ||
+      r.pdfAsJpg !== '22023/file_path' ||
+      r.otherPatientPath !== '22023/file_path' ||
+      r.otherVisitPath !== '22023/file_path' ||
+      r.badPath !== '22023/file_path' ||
+      r.noTitle !== '22023/title_needed' ||
+      r.kind !== '22023/file_kind' ||
+      r.closed !== '22023/file_visit_closed' ||
+      r.again !== '23505/' ||
+      r.manager
+    )
+      throw new Error(json88(r))
+    return 'Dr B, the ultrasound desk (requester told) and the manager add; reception, cashier, Dr C, the laboratory refused; type, size, path, title checked'
+  },
+)
+await step(
+  '0089 B: who sees the files: the privacy levels (open visit: level 3, past visit: level 4); opening a past file is logged',
+  async () => {
+    const list = `select list_patient_files($1) as j`
+    const seen = async (who) => {
+      const j = await j88(who, list, [t89.pid])
+      if (j.error) return j.error
+      return {
+        files: j.files.length,
+        hidden: j.hidden,
+        attachTo: j.attachTo,
+        titles: j.files.map((f) => f.title).sort(),
+      }
+    }
+    const r = {}
+    r.docB = await seen(t88.docB)
+    r.docA = await seen(t88.docA)
+    r.head = await seen(t88.head)
+    r.assistant = await seen(t88.assist)
+    r.reception = await seen(staff.receptionist)
+    r.manager = await seen(staff.manager)
+    r.sono = await seen(t89.sono)
+    const vs = await j88(t89.sono, `select list_visit_files($1, $2) as j`, [t89.v2, t89.sr])
+    r.sonoTest = { files: vs.files?.length, canAttach: vs.canAttach, max: vs.maxBytes }
+    const vc = await j88(t88.docC, `select list_visit_files($1) as j`, [t89.v2])
+    r.docCVisit = { files: vc.files?.length, hidden: vc.hidden, canAttach: vc.canAttach }
+    const open = `select file_open($1) as j`
+    r.openBpast = (await j88(t88.docB, open, [t89.f1.id])).error
+    r.openRecPast = (await j88(staff.receptionist, open, [t89.fB.id])).error
+    const a = await j88(t88.docA, open, [t89.f1.id])
+    r.openA = { path: a.path === t89.f1.path, expires: a.expiresIn, bucket: a.bucket }
+    r.openBtoday = (await j88(t88.docB, open, [t89.fB.id])).path === t89.fB.path
+    r.openHead = !!(await j88(t88.head, open, [t89.f1.id])).path
+    r.openMissing = (await j88(t88.docB, open, [crypto.randomUUID()])).error
+    r.log = (await log88(t89.pid)).filter((x) => x.what === 'attachment').map((x) => x.via)
+    if (
+      r.docB.files !== 3 ||
+      r.docB.hidden !== 1 ||
+      r.docB.attachTo !== t89.v2 ||
+      r.docA.files !== 1 ||
+      r.docA.titles[0] !== 'Referral letter from Kiziguro' ||
+      r.docA.hidden !== 3 ||
+      r.docA.attachTo !== null ||
+      r.head.files !== 4 ||
+      r.head.hidden !== 0 ||
+      r.assistant.files !== 0 ||
+      r.assistant.hidden !== 4 ||
+      r.reception.files !== 0 ||
+      r.reception.hidden !== 4 ||
+      r.reception.attachTo !== null ||
+      r.manager.files !== 4 ||
+      r.manager.attachTo !== t89.v2 ||
+      r.sono.files !== 3 ||
+      r.sono.hidden !== 1 ||
+      r.sonoTest.files !== 1 ||
+      r.sonoTest.canAttach !== true ||
+      r.sonoTest.max !== 10485760 ||
+      r.docCVisit.files !== 0 ||
+      r.docCVisit.hidden !== 3 ||
+      r.docCVisit.canAttach !== false ||
+      r.openBpast !== '42501/private' ||
+      r.openRecPast !== '42501/private' ||
+      !r.openA.path ||
+      r.openA.expires !== 300 ||
+      r.openA.bucket !== 'patient-files' ||
+      !r.openBtoday ||
+      !r.openHead ||
+      r.openMissing !== 'P0002/not_found' ||
+      !r.log.includes('own') ||
+      !r.log.includes('head') ||
+      r.log.includes('visit')
+    )
+      throw new Error(json88(r))
+    return `Dr B sees today's 3 of 4 (past private); Dr A his past file; head and manager all; reception none; log: ${r.log.join(', ')}`
+  },
+)
+await step(
+  '0089 C: the Storage rules: an approved session, a visit one may add to, a file one may see; no overwrite',
+  async () => {
+    const ins = `select file_object_insert_ok($1) as b`
+    const read = `select file_object_read_ok($1) as b`
+    const del = `select file_object_delete_ok($1) as b`
+    const fresh = path89(t89.pid, t89.v2)
+    const r = {}
+    r.insB = await rule89(t88.docB, ins, [fresh])
+    r.insBnoApproval = await rule89(t88.docB, ins, [fresh], false)
+    r.insRec = await rule89(staff.receptionist, ins, [fresh])
+    r.insC = await rule89(t88.docC, ins, [fresh])
+    r.insPast = await rule89(t88.docA, ins, [path89(t89.pid, t89.v1)])
+    r.insWrongPatient = await rule89(t88.docB, ins, [path89(t89.other, t89.v2)])
+    r.insBadName = await rule89(t88.docB, ins, [`${t89.pid}/${t89.v2}/photo.jpg`])
+    r.insExe = await rule89(t88.docB, ins, [path89(t89.pid, t89.v2, 'exe')])
+    r.insRegistered = await rule89(t88.docB, ins, [t89.fB.path])
+    r.readB = await rule89(t88.docB, read, [t89.fB.path])
+    r.readBpast = await rule89(t88.docB, read, [t89.f1.path])
+    r.readBnoApproval = await rule89(t88.docB, read, [t89.fB.path], false)
+    r.readA = await rule89(t88.docA, read, [t89.f1.path])
+    r.readRec = await rule89(staff.receptionist, read, [t89.fB.path])
+    r.readPending = await rule89(t88.docB, read, [fresh])
+    r.readPendingC = await rule89(t88.docC, read, [fresh])
+    r.delLive = await rule89(t88.docB, del, [t89.fB.path])
+    r.delPending = await rule89(t88.docB, del, [fresh])
+    // the table is read through the functions only
+    r.table = await codeAs(t88.docB, `select * from patient_file_doc`)
+    r.helper = await codeAs(t88.docB, `select files_list($1, null, null)`, [t89.pid])
+    r.anon = await codeAs(null, `select list_patient_files($1)`, [t89.pid])
+    if (
+      r.insB !== true ||
+      r.insBnoApproval !== false ||
+      r.insRec !== false ||
+      r.insC !== false ||
+      r.insPast !== false ||
+      r.insWrongPatient !== false ||
+      r.insBadName !== false ||
+      r.insExe !== false ||
+      r.insRegistered !== false ||
+      r.readB !== true ||
+      r.readBpast !== false ||
+      r.readBnoApproval !== false ||
+      r.readA !== true ||
+      r.readRec !== false ||
+      r.readPending !== true ||
+      r.readPendingC !== false ||
+      r.delLive !== false ||
+      r.delPending !== true ||
+      r.table !== '42501' ||
+      r.helper !== '42501' ||
+      r.anon !== '42501'
+    )
+      throw new Error(json88(r))
+    return 'send, read and delete follow the visit and the levels; no approved session: nothing'
+  },
+)
+await step(
+  '0089 D: removing a file: the uploader within 24 hours or the manager, with a reason; kept and audited',
+  async () => {
+    const rm = `select remove_file($1, $2) as j`
+    const r = {}
+    r.docC = (await j88(t88.docC, rm, [t89.fB.id, 'Wrong patient']))?.error
+    r.noReason = (await j88(t88.docB, rm, [t89.fB.id, ' ']))?.error
+    const ok = await j88(t88.docB, rm, [t89.fB.id, 'Wrong patient'])
+    r.ok = { error: ok.error, path: ok.path === t89.fB.path }
+    r.again = (await j88(t88.docB, rm, [t89.fB.id, 'Wrong patient']))?.error
+    r.listB = (await j88(t88.docB, `select list_patient_files($1) as j`, [t89.pid])).files.map(
+      (f) => f.id,
+    )
+    const m = await j88(staff.manager, `select list_patient_files($1) as j`, [t89.pid])
+    const mf = m.files.find((f) => f.id === t89.fB.id)
+    r.manager = { removed: mf?.removed, reason: mf?.removeReason, by: mf?.removedBy }
+    r.openRemoved = (await j88(t88.docB, `select file_open($1) as j`, [t89.fB.id]))?.error
+    const del = `select file_object_delete_ok($1) as b`
+    r.delB = await rule89(t88.docB, del, [t89.fB.path])
+    r.delC = await rule89(t88.docC, del, [t89.fB.path])
+    // the remover still reads it (Postgres deletes only rows it may read); nobody else
+    r.readB = await rule89(t88.docB, `select file_object_read_ok($1) as b`, [t89.fB.path])
+    r.readHead = await rule89(t88.head, `select file_object_read_ok($1) as b`, [t89.fB.path])
+    // the ultrasound image, added more than 24 hours ago: only the manager removes it now
+    await asAdmin()
+    await db.query(
+      `update patient_file_doc set uploaded_at = now() - interval '25 hours' where id = $1`,
+      [t89.fS.id],
+    )
+    r.late = (await j88(t89.sono, rm, [t89.fS.id, 'Blurred image']))?.error
+    r.sonoCanRemove = (
+      await j88(t89.sono, `select list_visit_files($1) as j`, [t89.v2])
+    ).files.find((f) => f.id === t89.fS.id)?.canRemove
+    r.byManager = (await j88(staff.manager, rm, [t89.fS.id, 'Blurred image']))?.error ?? null
+    r.delManager = await rule89(staff.manager, del, [t89.fS.path])
+    await asAdmin()
+    r.audit = await one(
+      `select count(*) filter (where action = 'create')::int as created,
+                count(*) filter (where action = 'delete' and reason is not null)::int as removed
+         from audit_event where entity = 'patient_file_doc' and entity_id = any($1::uuid[])`,
+      [[t89.fB.id, t89.fS.id]],
+    )
+    if (
+      r.docC !== '42501/not_uploader' ||
+      r.noReason !== '22023/reason_needed' ||
+      r.ok.error ||
+      !r.ok.path ||
+      r.again !== '22023/already_removed' ||
+      r.listB.includes(t89.fB.id) ||
+      r.manager.removed !== true ||
+      r.manager.reason !== 'Wrong patient' ||
+      r.manager.by !== 'Dr. Now 88' ||
+      r.openRemoved !== 'P0002/not_found' ||
+      r.delB !== true ||
+      r.delC !== false ||
+      r.readB !== true ||
+      r.readHead !== false ||
+      r.late !== '42501/remove_too_late' ||
+      r.sonoCanRemove !== false ||
+      r.byManager !== null ||
+      r.delManager !== true ||
+      r.audit.created !== 2 ||
+      r.audit.removed !== 2
+    )
+      throw new Error(json88(r))
+    return 'Dr C refused; Dr B removed with a reason (kept, the manager sees why); after 24 h only the manager; audited'
+  },
+)
+
+await step(
+  '0089 E: with a Storage schema (stub of Supabase): the bucket, its policies, registering checks the file arrived',
+  async () => {
+    await asAdmin()
+    // just enough of Supabase Storage for the migration's guarded part
+    await db.exec(`
+      create schema if not exists storage;
+      create table if not exists storage.buckets (
+        id text primary key, name text not null, public boolean default false,
+        file_size_limit bigint, allowed_mime_types text[]);
+      create table if not exists storage.objects (
+        id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id),
+        name text not null, owner uuid default auth.uid(), metadata jsonb, unique (bucket_id, name));
+      alter table storage.objects enable row level security;
+      grant usage on schema storage to authenticated;
+      grant select, insert, update, delete on storage.objects to authenticated;
+    `)
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20261201090000_supporting_files.sql'), 'utf8'),
+    )
+    const r = {}
+    r.bucket = await one(
+      `select public, file_size_limit::int as max, allowed_mime_types as types from storage.buckets where id = 'patient-files'`,
+    )
+    r.policies = (
+      await db.query(
+        `select policyname from pg_policies where schemaname = 'storage' and tablename = 'objects' order by 1`,
+      )
+    ).rows.map((x) => x.policyname)
+    const put = async (who, name, size = 120000, mime = 'image/jpeg') => {
+      await asApproved(who)
+      try {
+        await db.query(
+          `insert into storage.objects (bucket_id, name, metadata) values ('patient-files', $1, $2)`,
+          [name, JSON.stringify({ size, mimetype: mime })],
+        )
+        return null
+      } catch (e) {
+        return e.code ?? String(e.message)
+      } finally {
+        await asAdmin()
+      }
+    }
+    const fresh = path89(t89.pid, t89.v2)
+    r.putC = await put(t88.docC, fresh)
+    r.putB = await put(t88.docB, fresh, 90000)
+    // registering: the file must be there; the size is the one Storage holds
+    r.missing = (await attach89(t88.docB, { enc: t89.v2, path: path89(t89.pid, t89.v2) })).error
+    const ok = await attach89(t88.docB, { enc: t89.v2, path: fresh, size: 1 })
+    r.ok = { error: ok.error, size: ok.sizeBytes }
+    const big = path89(t89.pid, t89.v2)
+    r.putBig = await put(t88.docB, big, 20000000)
+    r.bigRegistered = (await attach89(t88.docB, { enc: t89.v2, path: big })).error
+    const sees = async (who) => {
+      await asApproved(who)
+      try {
+        return (
+          await one(`select count(*)::int as n from storage.objects where name = $1`, [fresh])
+        ).n
+      } finally {
+        await asAdmin()
+      }
+    }
+    r.seeB = await sees(t88.docB)
+    r.seeA = await sees(t88.docA)
+    r.seeRec = await sees(staff.receptionist)
+    // no approved session: nothing
+    await as(t88.docB)
+    r.seeBnoApproval = (
+      await one(`select count(*)::int as n from storage.objects where name = $1`, [fresh])
+    ).n
+    await asAdmin()
+    const drop = async (who, name) => {
+      await asApproved(who)
+      try {
+        return (await db.query(`delete from storage.objects where name = $1 returning id`, [name]))
+          .rows.length
+      } finally {
+        await asAdmin()
+      }
+    }
+    r.dropLive = await drop(t88.docB, fresh)
+    await j88(t88.docB, `select remove_file($1, $2) as j`, [ok.id, 'Duplicate photo'])
+    r.dropRemoved = await drop(t88.docB, fresh)
+    r.dropUnregistered = await drop(t88.docB, big)
+    if (
+      r.bucket?.public !== false ||
+      r.bucket?.max !== 10485760 ||
+      r.bucket?.types?.length !== 4 ||
+      r.policies.join(',') !== 'patient_files_delete,patient_files_insert,patient_files_select' ||
+      r.putC !== '42501' ||
+      r.putB !== null ||
+      r.missing !== '22023/not_uploaded' ||
+      r.ok.error ||
+      r.ok.size !== 90000 ||
+      r.putBig !== null ||
+      r.bigRegistered !== '22023/file_too_big' ||
+      r.seeB !== 1 ||
+      r.seeA !== 0 ||
+      r.seeRec !== 0 ||
+      r.seeBnoApproval !== 0 ||
+      r.dropLive !== 0 ||
+      r.dropRemoved !== 1 ||
+      r.dropUnregistered !== 1
+    )
+      throw new Error(json88(r))
+    return 'private bucket (10 MB, 4 types), 3 policies; sending, reading and deleting follow the rules'
+  },
+)
+
+await step(
+  '0089 F: a past file is read only after a logged opening; the uploader keeps 24 h; a copy left in storage',
+  async () => {
+    const read = `select file_object_read_ok($1) as b`
+    const del = `select file_object_delete_ok($1) as b`
+    const open = `select file_open($1) as j`
+    // the storage stub of 0089 E is still here: a file is put before it is registered
+    const put = async (who, name, mime = 'image/jpeg') => {
+      await asApproved(who)
+      try {
+        await db.query(
+          `insert into storage.objects (bucket_id, name, metadata) values ('patient-files', $1, $2)`,
+          [name, JSON.stringify({ size: 64000, mimetype: mime })],
+        )
+      } finally {
+        await asAdmin()
+      }
+    }
+    const r = {}
+    // 1. Dr A's past file: no 'attachment' line, no read; file_open writes it, then the read works
+    await asAdmin()
+    await db.query(
+      `delete from record_access_entry where actor_id = $1 and patient_id = $2 and what = 'attachment'`,
+      [t88.docA, t89.pid],
+    )
+    r.readBefore = await rule89(t88.docA, read, [t89.f1.path])
+    r.open = (await j88(t88.docA, open, [t89.f1.id])).path === t89.f1.path
+    r.readAfter = await rule89(t88.docA, read, [t89.f1.path])
+    // 2. the manager opens the past visit, then its file: two lines, not one
+    await j88(staff.manager, `select visit_clinical($1) as j`, [t89.v1])
+    await j88(staff.manager, open, [t89.f1.id])
+    await asAdmin()
+    r.managerLog = (
+      await db.query(
+        `select what from record_access_entry where actor_id = $1 and encounter_id = $2 order by what`,
+        [staff.manager, t89.v1],
+      )
+    ).rows.map((x) => x.what)
+    // 3. the ultrasound adds an image to the other patient's test; the visit closes: the
+    // sonographer still sees it (24 h, 'own'), opens it and may remove it; Dr C never
+    const sPath = path89(t89.other, t89.otherVisit, 'png')
+    await put(t89.sono, sPath, 'image/png')
+    const s = await attach89(t89.sono, {
+      pid: t89.other,
+      enc: t89.otherVisit,
+      path: sPath,
+      sr: t89.otherSr,
+      kind: 'ultrasound',
+      title: 'Pelvic ultrasound image',
+      mime: 'image/png',
+    })
+    r.sonoAttach = s.error ?? null
+    await close88(t89.otherVisit)
+    const sl = await j88(t89.sono, `select list_patient_files($1) as j`, [t89.other])
+    const sf = sl.files?.find((f) => f.id === s.id)
+    r.sonoAfterClose = { view: sf?.view, canRemove: sf?.canRemove }
+    r.sonoOpen = (await j88(t89.sono, open, [s.id])).path === sPath
+    r.sonoRead = await rule89(t89.sono, read, [sPath])
+    r.docCOpen = (await j88(t88.docC, open, [s.id])).error
+    r.sonoRemove =
+      (await j88(t89.sono, `select remove_file($1, $2) as j`, [s.id, 'Wrong side'])).error ?? null
+    // 4. Dr B removes a file but its copy stays in storage: the manager sees it is left; Dr B may
+    // delete it for 15 minutes only, the manager at any time
+    const bPath = path89(t89.pid, t89.v2)
+    await put(t88.docB, bPath)
+    const b = await attach89(t88.docB, { enc: t89.v2, path: bPath, title: 'Second wound photo' })
+    r.bAttach = b.error ?? null
+    await j88(t88.docB, `select remove_file($1, $2) as j`, [b.id, 'Blurred photo'])
+    const left = async () =>
+      (await j88(staff.manager, `select list_patient_files($1) as j`, [t89.pid])).files?.find(
+        (f) => f.id === b.id,
+      )?.storageLeft
+    r.leftBefore = await left()
+    r.delBNow = await rule89(t88.docB, del, [bPath])
+    await asAdmin()
+    await db.query(
+      `update patient_file_doc set removed_at = now() - interval '20 minutes' where id = $1`,
+      [b.id],
+    )
+    r.delBLate = await rule89(t88.docB, del, [bPath])
+    r.readBLate = await rule89(t88.docB, read, [bPath])
+    r.delManager = await rule89(staff.manager, del, [bPath])
+    await asApproved(staff.manager)
+    try {
+      r.dropped = (
+        await db.query(`delete from storage.objects where name = $1 returning id`, [bPath])
+      ).rows.length
+    } finally {
+      await asAdmin()
+    }
+    r.leftAfter = await left()
+    if (
+      r.readBefore !== false ||
+      !r.open ||
+      r.readAfter !== true ||
+      r.managerLog.join(',') !== 'attachment,visit' ||
+      r.sonoAttach ||
+      r.sonoAfterClose.view !== 'own' ||
+      r.sonoAfterClose.canRemove !== true ||
+      !r.sonoOpen ||
+      r.sonoRead !== true ||
+      r.docCOpen !== '42501/private' ||
+      r.sonoRemove ||
+      r.bAttach ||
+      r.leftBefore !== true ||
+      r.delBNow !== true ||
+      r.delBLate !== false ||
+      r.readBLate !== false ||
+      r.delManager !== true ||
+      r.dropped !== 1 ||
+      r.leftAfter !== false
+    )
+      throw new Error(json88(r))
+    return 'read after the logged opening only; visit + attachment logged; uploader 24 h; the manager finishes a removal'
   },
 )
 

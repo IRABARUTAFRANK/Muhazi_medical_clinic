@@ -63,6 +63,7 @@ import {
   type AnalyticsSearch,
 } from '@/components/dash/analytics-links'
 import { NoticesPanel } from '@/components/dash/notices-panel'
+import { AccessApprovalsPanel } from '@/components/privacy/approvals'
 import {
   avatarTint,
   delta,
@@ -346,6 +347,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             </div>
 
             {/* NOTIFICATIONS: what is addressed to the manager right now */}
+            {/* requests to see past records, emergency accesses to review (0088) */}
+            <AccessApprovalsPanel user={user} />
             <NoticesPanel limit={4} />
             {/* calls and help requests addressed to the manager */}
             <CallsPanel user={user} />

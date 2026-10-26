@@ -22,6 +22,15 @@ const HISTORY: NavItem = {
   to: '/app/history',
 }
 
+/** Record access (0088): requests to see past records, emergency accesses and (manager) who
+ *  opened past records. The manager and the heads of department (not the assistants) answer. */
+const RECORD_ACCESS: NavItem = {
+  id: 'record-access',
+  labelKey: 'nav.recordAccess',
+  icon: 'shield-check',
+  to: '/app/record-access',
+}
+
 /**
  * Manager rail (the dashboard is the manager's home page, doc §12.3). The manager runs the
  * whole clinic and can work at any station, so every operation has its own entry, in the
@@ -44,6 +53,7 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
   { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'id-card', to: '/app/staff' },
+  RECORD_ACCESS,
   HISTORY,
   NOTICES,
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings', to: '/app/settings' },
@@ -130,8 +140,20 @@ export const navForUser = (user: StaffUser): NavItem[] =>
     ? MANAGER_NAV
     : withMyStore(
         user,
-        withHeadDashboard(user, withSwitches(user, withDesks(user, navForStaff(user)))),
+        withRecordAccess(
+          user,
+          withHeadDashboard(user, withSwitches(user, withDesks(user, navForStaff(user)))),
+        ),
       )
+
+/** A head of department answers the requests to see past records of their department's
+ *  patients: Record access, before History and the notices (headOf is set for heads only). */
+function withRecordAccess(user: StaffUser, items: NavItem[]): NavItem[] {
+  if (!user.headOf || items.some((n) => n.to === RECORD_ACCESS.to)) return items
+  const at = items.findIndex((n) => n.to === '/app/history')
+  const cut = at >= 0 ? at : items.length
+  return [...items.slice(0, cut), RECORD_ACCESS, ...items.slice(cut)]
+}
 
 /* ---------------------------------------------------------------- switches (Who may do what) */
 

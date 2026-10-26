@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Triage } from '@mmc/shared'
 import { apiError, isMissingFunction, sampleRefusal } from './errors'
+import {
+  sampleAccess,
+  sampleVisitView,
+  type PatientAccess,
+  type SafetySummary,
+  type VisitView,
+} from './privacy'
 import { isRoomStore, sampleIsManager, sampleStock } from './stock'
 import { supabase } from '@/lib/supabase'
 import type { Sex, Station } from '@/lib/api/visits'
@@ -12,6 +19,10 @@ import type { Sex, Station } from '@/lib/api/visits'
  * The clinical record of a visit (diagnoses, notes, prescriptions, orders) is read with
  * `visit_clinical()` and written with `add_diagnosis()`, `add_clinical_note()`, `prescribe()`,
  * `order_test()` and `finish_visit()`.
+ *
+ * 0088 (privacy): patient_file and visit_clinical return only what the reader's level allows
+ * (see ./privacy.ts): a visit the reader may not see comes with `private: true` and no clinical
+ * content; the file carries `access`, the safety `summary` and `safetyHidden`.
  */
 
 /** A staff member as a printed document names them (0084): prescriber, result author. */
@@ -168,6 +179,10 @@ export interface PatientVisit {
   balance: number | null
   billStatus: string | null
   closedAt: string | null
+  /** 0088: the reader may not see this visit's clinical record (diagnosis, triage reason null). */
+  private?: boolean
+  /** 0088: how the reader sees it ('visit' today's, 'own' treated it, 'manager', 'head'…). */
+  view?: VisitView | null
 }
 export interface PatientVital {
   encounterId: string
@@ -208,6 +223,17 @@ export interface PatientFile {
   bills: PatientBill[]
   /** What the printed history needs: insurer, member number, last weight… (0084; absent before). */
   document?: DocPatient | null
+  /**
+   * 0088: what the reader may see and ask for. Absent on an older database (everything visible).
+   */
+  access?: PatientAccess
+  /** 0088: the safety summary, from level 2 (treating now); null at level 1. */
+  summary?: SafetySummary | null
+  /**
+   * 0088: level 1. patient.allergies, allergies_none, blood_group and notes come null and are
+   * not the real values: do not show them as "none"; the database ignores them if sent empty.
+   */
+  safetyHidden?: boolean
 }
 
 // ---------------------------------------------------------------- sample data
@@ -307,7 +333,7 @@ const sampleDocPatient = (r: PatientRow): DocPatient => {
     weightAt: r.lastVisitAt ?? r.registeredAt,
   }
 }
-const buildSampleFile = (id: string): PatientFile => {
+const buildSampleFileBase = (id: string): PatientFile => {
   const r = sampleRows.find((x) => x.id === id) ?? sampleRows[0]!
   const doc = sampleDocPatient(r)
   return {
@@ -425,6 +451,153 @@ const buildSampleFile = (id: string): PatientFile => {
   }
 }
 
+/** Habimana Eric (p-2, here today) also came in August: a past visit to show the privacy rules. */
+const buildSampleFile = (id: string): PatientFile => {
+  const f = buildSampleFileBase(id)
+  if (id !== 'p-2') return f
+  const at = '2026-08-20T08:40:00Z'
+  return {
+    ...f,
+    visits: [
+      ...f.visits,
+      {
+        id: 'e-8',
+        reference: 'V-2026-000097',
+        arrivedAt: at,
+        status: 'closed',
+        type: 'opd',
+        triage: 'green',
+        triageReason: 'Ear pain for 2 days',
+        practitioner: 'Dr. Mukamana Béatrice',
+        stations: ['triage', 'consultation', 'pharmacy', 'cashier'],
+        currentStation: null,
+        diagnosis: 'Acute otitis media',
+        total: 9500,
+        balance: 0,
+        billStatus: 'posted',
+        closedAt: '2026-08-20T10:05:00Z',
+      },
+    ],
+    vitals: [
+      ...f.vitals,
+      {
+        encounterId: 'e-8',
+        code: 'temp',
+        value: 38.6,
+        text: null,
+        unit: '°C',
+        at,
+        by: 'Nyirahabimana Chantal',
+      },
+      {
+        encounterId: 'e-8',
+        code: 'weight',
+        value: 20.8,
+        text: null,
+        unit: 'kg',
+        at,
+        by: 'Nyirahabimana Chantal',
+      },
+    ],
+    conditions: [
+      ...f.conditions,
+      {
+        id: 'c-8',
+        encounterId: 'e-8',
+        text: 'Acute otitis media',
+        icd10: 'H66.9',
+        type: 'primary',
+        provisional: false,
+        at,
+        by: 'Dr. Mukamana Béatrice',
+      },
+    ],
+  }
+}
+
+/**
+ * The sample file as the signed-in sample person may see it (0088): the manager and a head see
+ * everything; a doctor or nurse treating today's visit sees the safety summary and today's
+ * visit, past visits private; others see the identity only.
+ */
+const withSamplePrivacy = (f: PatientFile): PatientFile => {
+  const access = sampleAccess(f.patient.id, f.visits)
+  const views = new Map(f.visits.map((v) => [v.id, sampleVisitView(access, v)]))
+  const seen = (encounterId: string) => views.get(encounterId) != null
+  const p = f.patient
+  const lastVitals = [...new Map(f.vitals.map((v) => [v.code, v])).values()]
+  const identity = access.level === 'identity'
+  return {
+    ...f,
+    access,
+    safetyHidden: identity,
+    patient: identity
+      ? { ...p, allergies: null, allergies_none: undefined, blood_group: null, notes: null }
+      : p,
+    document:
+      identity && f.document
+        ? {
+            ...f.document,
+            allergies: null,
+            allergiesNone: false,
+            bloodGroup: null,
+            weightKg: null,
+            weightAt: null,
+          }
+        : f.document,
+    visits: f.visits.map((v) => {
+      const view = views.get(v.id) ?? null
+      return view
+        ? { ...v, private: false, view }
+        : { ...v, private: true, view: null, diagnosis: null, triageReason: null }
+    }),
+    vitals: f.vitals.filter((v) => seen(v.encounterId)),
+    conditions: f.conditions.filter((c) => seen(c.encounterId)),
+    summary: identity
+      ? null
+      : {
+          allergies: p.allergies,
+          allergiesNone: !!p.allergies_none,
+          bloodGroup: p.blood_group,
+          alerts: p.notes,
+          flags: p.flags,
+          chronic:
+            p.id === 'p-3'
+              ? [
+                  {
+                    text: 'Essential hypertension',
+                    icd10: 'I10',
+                    since: '2025-11-04T09:00:00Z',
+                    lastAt: '2026-10-12T14:00:00Z',
+                  },
+                ]
+              : [],
+          medications:
+            p.id === 'p-3'
+              ? [
+                  {
+                    item: 'Amlodipine 5 mg',
+                    dose: '1 tablet',
+                    frequency: 'once a day',
+                    days: 30,
+                    at: '2026-10-12T14:20:00Z',
+                    until: '2026-11-11T14:20:00Z',
+                    by: 'Dr. Mukamana Béatrice',
+                  },
+                ]
+              : [],
+          lastVitals: lastVitals.map((v) => ({
+            code: v.code,
+            value: v.value,
+            unit: v.unit,
+            at: v.at,
+            by: v.by,
+          })),
+          lastVisitAt: f.visits[0]?.arrivedAt ?? null,
+        },
+  }
+}
+
 // ---------------------------------------------------------------- register
 const PAGE = 50
 export function usePatientsList(query: string, page: number) {
@@ -470,7 +643,7 @@ export function usePatientFile(id: string) {
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<PatientFile> => {
-      if (!supabase) return sampleFile(id)
+      if (!supabase) return withSamplePrivacy(sampleFile(id))
       const { data, error } = await supabase.rpc('patient_file', { p_patient_id: id })
       if (error) throw new Error(error.message)
       const f = data as PatientFile
@@ -690,6 +863,15 @@ export interface VisitClinical {
     | null
   /** Reference, date, service and department of the visit (0084; absent before). */
   visit?: DocVisit | null
+  /**
+   * 0088: the reader may not see this visit's record: the lists come empty (not "nothing
+   * recorded"); show "Past records are private" with the Request / Emergency buttons (access).
+   */
+  private?: boolean
+  /** 0088: how the reader sees this visit (null when private). */
+  view?: VisitView | null
+  /** 0088: present when private: what the reader may ask for. */
+  access?: PatientAccess
 }
 const EMPTY_CLINICAL: VisitClinical = {
   diagnoses: [],

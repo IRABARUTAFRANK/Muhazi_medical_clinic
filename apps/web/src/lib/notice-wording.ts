@@ -294,6 +294,36 @@ export function useWording() {
           title: t('notify.counterSalePaid', { number: p.number ?? '', amount: rwf(p.amount) }),
           body: t('notify.counterSalePaidBody', { buyer: p.buyer ?? t('notify.walkInBuyer') }),
         }
+      // 0088: past records (request to the manager and heads, their answer, emergency access)
+      case 'access_request':
+        return {
+          title: t('notify.accessRequest', { by: p.by ?? '', name: p.name ?? '' }),
+          body: joinParts([p.file, quoted(p.reason)]),
+        }
+      case 'access_answer':
+        return String(p.approved) === 'true'
+          ? {
+              title: t('notify.accessApproved', { by: p.by ?? '', name: p.name ?? '' }),
+              body: t('notify.accessApprovedBody'),
+            }
+          : {
+              title: t('notify.accessRefused', { by: p.by ?? '', name: p.name ?? '' }),
+              body: quoted(p.reason),
+            }
+      case 'access_emergency':
+        return {
+          title: t('notify.accessEmergency', { by: p.by ?? '', name: p.name ?? '' }),
+          body: joinParts([quoted(p.reason), t('notify.accessEmergencyBody')]),
+        }
+      // 0089: the laboratory or ultrasound added a file to a test the reader asked for
+      case 'file_attached':
+        return {
+          title: t('notify.fileAttached', {
+            by: p.by ?? '',
+            test: p.test ?? t('notify.fileAttachedTest'),
+          }),
+          body: joinParts([p.title ? quoted(p.title) : null, p.name, p.file]),
+        }
       default:
         return { title: n.title ?? '', body: n.body }
     }

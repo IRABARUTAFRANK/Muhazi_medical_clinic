@@ -6,6 +6,7 @@ import {
   FlaskConical,
   FolderOpen,
   Footprints,
+  Lock,
   Pencil,
   Plus,
   Stethoscope,
@@ -54,10 +55,18 @@ import { openMedicalReport } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { roleLabel } from '@/lib/roles'
 import { useConfirm } from '@/lib/confirm'
+import {
+  PrivacyNotice,
+  SafetyHiddenNote,
+  SafetySummaryCard,
+  WhoLookedCard,
+} from '@/components/clinical/record-privacy'
+import { privacyNoticeShown, privacyOn } from '@/components/clinical/record-privacy-rules'
+import { PatientFilesSection } from '@/components/clinical/supporting-files'
 import { MergeCard } from './merge-card'
 
-type Tab = 'overview' | 'visits' | 'clinical' | 'bills'
-const TABS: Tab[] = ['overview', 'visits', 'clinical', 'bills']
+type Tab = 'overview' | 'visits' | 'clinical' | 'files' | 'bills'
+const TABS: Tab[] = ['overview', 'visits', 'clinical', 'files', 'bills']
 const errorBox = 'bg-red-bg text-red m-0 rounded-xl px-3 py-2 text-[13px] font-semibold'
 
 /**
@@ -114,7 +123,11 @@ export function PatientFilePage({
     const p = data.patient
     // insurer, member number and last weight (absent on a database before 0084)
     const doc = data.document
-    const visits = [...data.visits].sort((a, b) => b.arrivedAt.localeCompare(a.arrivedAt))
+    // only the visits this person may see (0088); the others are said, not printed
+    const visits = [...data.visits]
+      .filter((v) => !v.private)
+      .sort((a, b) => b.arrivedAt.localeCompare(a.arrivedAt))
+    const hidden = data.visits.length - visits.length
     const ok = openMedicalReport(
       {
         kind: 'history',
@@ -183,6 +196,7 @@ export function PatientFilePage({
             medicines: [],
           }
         }),
+        comment: hidden > 0 ? t('recordPrivacy.printHidden', { count: hidden }) : null,
         author: {
           name: user.name,
           title: creds?.specialty || roleLabel(user, t),
@@ -316,7 +330,8 @@ export function PatientFilePage({
                     {t(emergency ? 'register.submitEmergency' : 'file.startVisit')}
                   </Button>
                 )}
-                {mayReport && data.visits.length > 0 && (
+                {/* the history needs the safety details and at least one visit this person may see */}
+                {mayReport && !data.safetyHidden && data.visits.some((v) => !v.private) && (
                   <Button onClick={printHistory} title={t('medReport.historyHint')}>
                     <FileText size={16} aria-hidden="true" />
                     {t('medReport.history')}
@@ -421,9 +436,23 @@ export function PatientFilePage({
               )}
             </Card>
 
+            {/* past records private: request / emergency access, or the access in force */}
+            {privacyNoticeShown(data.access) && (
+              <PrivacyNotice
+                patientId={p.id}
+                patientName={`${p.surname} ${p.given_names}`}
+                access={data.access}
+                onMessage={(m) => {
+                  setActionError(null)
+                  setNotice(m)
+                }}
+              />
+            )}
+
             {editing && (
               <Reveal focus>
                 <EditForm
+                  safetyHidden={!!data.safetyHidden}
                   patient={p}
                   onDone={() => {
                     setEditing(false)
@@ -460,7 +489,16 @@ export function PatientFilePage({
             </div>
 
             <div key={tab} className="flex flex-col gap-4">
+              {tab === 'overview' && data.summary && privacyOn(data.access) && (
+                <SafetySummaryCard
+                  summary={data.summary}
+                  patientName={`${p.surname} ${p.given_names}`}
+                />
+              )}
               {tab === 'overview' && <Overview file={data} />}
+              {tab === 'overview' && data.access?.canSeeLog && !data.access.legacy && (
+                <WhoLookedCard patientId={patientId} />
+              )}
               {tab === 'overview' && user.role === 'manager' && (
                 <MergeCard
                   keepId={patientId}
@@ -470,7 +508,20 @@ export function PatientFilePage({
               {tab === 'visits' && (
                 <Visits file={data} openId={openVisit?.id ?? null} canReport={mayReport} />
               )}
+              {tab === 'clinical' && (data.access?.hiddenVisits ?? 0) > 0 && (
+                <p className="text-ink-3 m-0 flex items-center gap-1.5 text-[13px]">
+                  <Lock size={14} aria-hidden="true" />
+                  {t('recordPrivacy.onlyVisible')}
+                </p>
+              )}
               {tab === 'clinical' && <Clinical file={data} />}
+              {tab === 'files' && (
+                <PatientFilesSection
+                  patientId={patientId}
+                  patientName={`${p.surname} ${p.given_names}`}
+                  canRequest={privacyNoticeShown(data.access) && !!data.access?.canRequest}
+                />
+              )}
               {tab === 'bills' && <Bills file={data} />}
             </div>
           </>
@@ -550,24 +601,37 @@ function Overview({ file }: { file: PatientFile }) {
           <span>{t('file.medical')}</span>
         </CardHeader>
         <CardBody className="gap-3">
-          <Info label={f('blood_group')} value={p.blood_group} />
-          <div
-            className={cn(
-              'rounded-xl px-3 py-2',
-              p.allergies ? 'bg-red-bg text-red' : 'bg-hover text-ink-2',
-            )}
-          >
-            <span className="block text-[11px] font-semibold tracking-[.04em] uppercase">
-              {f('allergies')}
-            </span>
-            <span className="font-medium">{p.allergies ?? t('file.noAllergies')}</span>
-            <span className="text-ink-3 mt-1 block text-xs">{t('file.allergiesHint')}</span>
-          </div>
+          {/* level 1 (0088): the safety fields come empty, which is not "none" */}
+          {/* the safety summary above already shows blood group and allergies */}
+          {file.safetyHidden ? (
+            <SafetyHiddenNote />
+          ) : file.summary ? null : (
+            <>
+              <Info label={f('blood_group')} value={p.blood_group} />
+              <div
+                className={cn(
+                  'rounded-xl px-3 py-2',
+                  p.allergies ? 'bg-red-bg text-red' : 'bg-hover text-ink-2',
+                )}
+              >
+                <span className="block text-[11px] font-semibold tracking-[.04em] uppercase">
+                  {f('allergies')}
+                </span>
+                <span className="font-medium">
+                  {p.allergies ??
+                    (p.allergies_none
+                      ? t('safetySummary.noKnown')
+                      : t('safetySummary.notRecorded'))}
+                </span>
+                <span className="text-ink-3 mt-1 block text-xs">{t('file.allergiesHint')}</span>
+              </div>
+            </>
+          )}
           <Info
             label={f('emergency')}
             value={[p.emergency_name, p.emergency_phone].filter(Boolean).join(' · ')}
           />
-          <Info label={f('notes')} value={p.notes} />
+          {!file.safetyHidden && <Info label={f('notes')} value={p.notes} />}
         </CardBody>
       </Card>
       <MoreInfo patient={p} />
@@ -708,10 +772,13 @@ function MoreInfo({ patient: p }: { patient: PatientRecord }) {
 
 function EditForm({
   patient: p,
+  safetyHidden = false,
   onDone,
   onError,
 }: {
   patient: PatientRecord
+  /** Level 1 (0088): allergies, blood group and notes are not shown, nor sent. */
+  safetyHidden?: boolean
   onDone: () => void
   onError: (m: string | null) => void
 }) {
@@ -782,6 +849,12 @@ function EditForm({
       }
       fields.extra = Object.fromEntries(Object.entries(merged).filter(([, val]) => val.trim()))
       if (noId) delete fields.national_id
+      // what this person cannot see is left as it is (never cleared by an empty field)
+      if (safetyHidden) {
+        delete fields.blood_group
+        delete fields.allergies
+        delete fields.notes
+      }
       await actions.update.mutateAsync(fields)
       if (noId !== (p.no_national_id ?? '')) await setNoNationalId(p.id, noId || null)
       onDone()
@@ -840,19 +913,25 @@ function EditForm({
             {text('village')}
             {text('occupation')}
             {text('ubudehe_category', { inputMode: 'numeric' })}
-            {text('blood_group', { placeholder: 'O+' })}
+            {!safetyHidden && text('blood_group', { placeholder: 'O+' })}
             {text('emergency_name')}
             {text('emergency_phone', { type: 'tel' })}
           </div>
-          <Field
-            label={f('allergies')}
-            value={v.allergies ?? ''}
-            onChange={(e) => set('allergies', e.target.value)}
-            placeholder={t('file.allergiesPh')}
-            className="border-red/60"
-          />
-          <p className="text-ink-3 m-0 -mt-2 text-xs">{t('file.allergiesHint')}</p>
-          {text('notes')}
+          {safetyHidden ? (
+            <SafetyHiddenNote />
+          ) : (
+            <>
+              <Field
+                label={f('allergies')}
+                value={v.allergies ?? ''}
+                onChange={(e) => set('allergies', e.target.value)}
+                placeholder={t('file.allergiesPh')}
+                className="border-red/60"
+              />
+              <p className="text-ink-3 m-0 -mt-2 text-xs">{t('file.allergiesHint')}</p>
+              {text('notes')}
+            </>
+          )}
 
           {defs.length + adHocKeys.length > 0 && (
             <>
@@ -968,7 +1047,14 @@ function Visits({
                 </span>
                 {v.triage && <Badge tone={v.triage}>{t(`home.triage.${v.triage}`)}</Badge>}
                 <span className="min-w-[160px] text-[13px]">
-                  {v.diagnosis ?? <span className="text-ink-3">{t('file.noDiagnosis')}</span>}
+                  {v.private ? (
+                    <span className="text-violet inline-flex items-center gap-1.5 font-semibold">
+                      <Lock size={13} aria-hidden="true" />
+                      {t('recordPrivacy.privateVisit')}
+                    </span>
+                  ) : (
+                    (v.diagnosis ?? <span className="text-ink-3">{t('file.noDiagnosis')}</span>)
+                  )}
                 </span>
                 <span className="font-semibold tabular-nums">
                   {v.total != null ? formatRwf(v.total) : '—'}
@@ -990,7 +1076,7 @@ function Visits({
                   <FolderOpen size={14} aria-hidden="true" />
                   {t('common.open')}
                 </StaffLink>
-                {canReport && (
+                {canReport && !v.private && (
                   <StaffLink
                     to="/app/visit"
                     search={{ encounter: v.id, report: true }}

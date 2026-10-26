@@ -98,6 +98,11 @@ export interface Journey {
     settledBy: string | null
     settledAt: string | null
   } | null
+  /**
+   * 0088: true when the reader may not see this visit's clinical record (vitals, diagnoses,
+   * medicines, tests come empty; the triage reason and step notes null). Absent before 0088.
+   */
+  private?: boolean
 }
 
 const SAMPLE: Journey = {

@@ -40,6 +40,7 @@ import {
   StationGlyph,
 } from '@/components/dash/kit'
 import { NoticesPanel } from '@/components/dash/notices-panel'
+import { AccessApprovalsPanel } from '@/components/privacy/approvals'
 import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
 import type { AnalyticsView } from '@/lib/api/analytics'
 import { StationTile } from '@/components/dash/station-tile'
@@ -325,6 +326,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                 )}
                 {!nurse && <ArrivalsPanel d={data} />}
                 <MinePanel d={data} role={role} />
+                <AccessApprovalsPanel user={user} />
                 <NoticesPanel />
               </div>
             </section>

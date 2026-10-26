@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Triage } from '@mmc/shared'
 import type { Sex } from '@/lib/api/visits'
 import { supabase } from '@/lib/supabase'
+import { useSession } from '@/store/session'
 import type { DocPerson } from '@/lib/api/patients'
 
 /**
@@ -137,6 +138,39 @@ let sampleOrders: LabOrder[] = [
         }
       : null,
 }))
+// The ultrasound asked for Habimana Eric today (its image is in the sample files, lib/api/files.ts).
+sampleOrders = [
+  ...sampleOrders,
+  {
+    ...sampleOrders[1]!,
+    id: 'sr-us-1',
+    encounterId: 'e-1',
+    patientId: 'p-2',
+    patient: 'Habimana Eric',
+    fileNumber: 'MMC-000131',
+    ticket: 'A-017',
+    test: 'Abdominal ultrasound',
+    category: 'imaging',
+    status: 'in_process',
+    priority: 3,
+    reason: 'abdominal pain, right upper side',
+    orderedAt: ago(70),
+    visitReference: 'V-2026-000101',
+  },
+]
+/** The sample tests at the signed-in person's bench: imaging for a sonographer, the laboratory's
+ *  for a laboratory technician, every test for the others (the manager). */
+const sampleBench = (list: LabOrder[]): LabOrder[] => {
+  const u = useSession.getState().user
+  if (u?.role !== 'lab_tech') return list
+  const imaging = u.dbRole === 'sonographer'
+  return list.filter((o) => (o.category === 'imaging') === imaging)
+}
+/** The open sample tests (sample mode of the supporting files: whose desk a visit's test is at). */
+export const sampleLabTests = (): Pick<
+  LabOrder,
+  'id' | 'encounterId' | 'patientId' | 'test' | 'category'
+>[] => sampleOrders
 let sampleDone: LabOrder[] = [
   {
     ...sampleOrders[0]!,
@@ -165,7 +199,7 @@ export function useLabWorklist(scope: 'open' | 'done') {
     queryKey: ['lab', 'worklist', scope],
     refetchInterval: 20_000,
     queryFn: async (): Promise<LabOrder[]> => {
-      if (!supabase) return scope === 'open' ? sampleOrders : sampleDone
+      if (!supabase) return sampleBench(scope === 'open' ? sampleOrders : sampleDone)
       const { data, error } = await supabase.rpc('lab_worklist', { p_scope: scope })
       if (error) throw new Error(error.message)
       return (data as LabOrder[]) ?? []

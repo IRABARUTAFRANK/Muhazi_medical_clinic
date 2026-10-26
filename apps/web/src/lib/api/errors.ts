@@ -48,6 +48,32 @@ export type ApiErrorKind =
   | 'noDesk'
   // 0087: the manager has switched this work off (Settings → Who may do what)
   | 'notPermitted'
+  // 0088: patient record privacy (access requests, emergency access)
+  | 'notTreating'
+  | 'notApprover'
+  | 'reasonNeeded'
+  | 'alreadyAnswered'
+  | 'alreadyAllowed'
+  | 'visitClosed'
+  | 'notManager'
+  // 0089: supporting files (photos, scans, PDFs on the patient file)
+  | 'fileType'
+  | 'fileTooBig'
+  | 'fileEmpty'
+  | 'filePath'
+  | 'titleNeeded'
+  | 'fileKind'
+  | 'fileVisitClosed'
+  | 'notOnVisit'
+  | 'wrongTest'
+  | 'notUploaded'
+  | 'privateRecord'
+  | 'notUploader'
+  | 'removeTooLate'
+  | 'alreadyRemoved'
+  | 'filesUnavailable'
+  | 'sessionExpired'
+  | 'storageNotDeleted'
   // sample mode only (the database's own sentence is kept for these)
   | 'alreadyDone'
   | 'notFound'
@@ -86,6 +112,27 @@ const BY_HINT: Record<string, ApiErrorKind> = {
   duplicate_delivery: 'duplicateDelivery',
   no_desk: 'noDesk',
   not_permitted: 'notPermitted',
+  not_treating: 'notTreating',
+  not_approver: 'notApprover',
+  reason_needed: 'reasonNeeded',
+  already_answered: 'alreadyAnswered',
+  already_allowed: 'alreadyAllowed',
+  visit_closed: 'visitClosed',
+  not_manager: 'notManager',
+  file_type: 'fileType',
+  file_too_big: 'fileTooBig',
+  file_path: 'filePath',
+  title_needed: 'titleNeeded',
+  file_kind: 'fileKind',
+  file_visit_closed: 'fileVisitClosed',
+  not_on_visit: 'notOnVisit',
+  wrong_test: 'wrongTest',
+  not_uploaded: 'notUploaded',
+  private: 'privateRecord',
+  not_uploader: 'notUploader',
+  remove_too_late: 'removeTooLate',
+  already_removed: 'alreadyRemoved',
+  not_found: 'notFound',
 }
 
 /** An error from a database function, with its code and hint kept for the screens. */
