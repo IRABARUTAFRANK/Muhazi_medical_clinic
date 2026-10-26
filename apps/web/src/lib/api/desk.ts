@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { DayRange } from './lab'
 import { supabase } from '@/lib/supabase'
+import { apiError } from './errors'
 
 /**
  * Today's figures for the front-desk and nursing dashboards, from `desk_summary()`: no money,
@@ -93,7 +94,7 @@ export function useDeskSummary(period?: DayRange | null) {
         'desk_summary',
         period ? { p_from: period.from, p_to: period.to } : undefined,
       )
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = data as DeskSummary
       const n = (v: unknown) => Number(v ?? 0)
       return {

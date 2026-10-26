@@ -2531,7 +2531,10 @@
     "handoverDeclined": "{{by}} ntashobora kwakira {{name}}",
     "handoverCancelled": "{{by}} yahagaritse kohereza {{name}}",
     "handoverLapsed": "Kohereza {{name}} byakozwe na {{by}} byarangiye: umurwayi yagiye ahandi",
-    "handoverLeft": "Kohereza {{name}} byarangiye: {{leftName}} ntagikora hano"
+    "handoverLeft": "Kohereza {{name}} byarangiye: {{leftName}} ntagikora hano",
+    "desksPlaced_one": "Umukozi {{count}} yashyizwe mu ishami kugira ngo akomeze akazi ke",
+    "desksPlaced_other": "Abakozi {{count}} bashyizwe mu mashami kugira ngo bakomeze akazi kabo",
+    "desksPlacedBody": "Ubu amashami ni yo agena aho buri wese akorera. Reba Abakozi uhindure aho umuntu yashyizwe niba bidakwiye."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -6339,5 +6342,9 @@
     "badgeWaiting": "Yoherejwe na {{from}} kwa {{to}}, birategerejwe",
     "titleToYou": "Umurwayi wohererejwe",
     "othersWaiting": "{{from}} yohereje uyu murwayi kwa {{to}}; hategerejwe igisubizo"
+  },
+  "apiErrors": {
+    "notAllowed": "Ntiwemerewe gukora ibi. Baza umuyobozi niba ubikeneye.",
+    "notFound": "Ntibibonetse cyangwa byarangiye. Ongera ufungure urupapuro."
   }
 }

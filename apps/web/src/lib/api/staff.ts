@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { STAFF } from '@mmc/shared'
 import i18n from '@/i18n'
 import { isLive, reportSessionRefused, supabase } from '@/lib/supabase'
+import { apiError } from './errors'
 
 /** All roles the database knows (doc §1.4); the UI has designed homes for five of them. */
 export const DB_ROLES = [
@@ -250,7 +251,7 @@ export function useEmployees() {
     queryFn: async (): Promise<Employee[]> => {
       if (!supabase) return [...sampleEmployees]
       const { data, error } = await supabase.from('staff_directory').select('*').order('full_name')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       // Managers can read the temporary PINs not yet replaced (empty for everyone else).
       const { data: temps } = await supabase.from('staff_temp_pin').select('user_id, pin')
       const tempOf = new Map(
@@ -313,7 +314,7 @@ export function useDepartments() {
       let { data, error } = await read('id, name, description, roles, services')
       // before migration 0071 departments have no services
       if (error) ({ data, error } = await read('id, name, description, roles'))
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as unknown as Department[]).map((d) => ({
         ...d,
         roles: d.roles ?? [],
@@ -341,7 +342,7 @@ async function callManageStaff<T>(body: Record<string, unknown>): Promise<T> {
       }
       if (payload?.error) throw new Error(payload.error)
     }
-    throw new Error(error.message)
+    throw apiError(error)
   }
   if (data && typeof data === 'object' && 'error' in data)
     throw new Error(String((data as { error: unknown }).error))
@@ -616,7 +617,7 @@ export function useDepartmentActions() {
       // before migration 0071 the department has no services
       if (error && /function|schema cache/i.test(error.message))
         ({ error } = await supabase.rpc('upsert_department', args))
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -628,7 +629,7 @@ export function useDepartmentActions() {
         return
       }
       const { error } = await supabase.rpc('delete_department', { p_id: id })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -643,7 +644,7 @@ export function useMyDepartments(userId: string) {
     queryFn: async (): Promise<{ id: string; name: string; position?: string | null }[]> => {
       if (!supabase) return []
       const { data, error } = await supabase.rpc('my_placement')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = (data ?? {}) as {
         departmentId?: string | null
         department?: string | null
@@ -689,7 +690,7 @@ export function useRetirePreview(profileId: string | null) {
       })
       if (error) {
         if (/function|schema cache/i.test(error.message)) return null
-        throw new Error(error.message)
+        throw apiError(error)
       }
       const d = (data ?? {}) as Partial<RetirePreview>
       return {
@@ -728,7 +729,7 @@ export function useMyCredentials(userId: string) {
         }
       }
       const { data, error } = await supabase.rpc('my_placement')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = (data ?? {}) as {
         specialty?: string | null
         registrationNo?: string | null

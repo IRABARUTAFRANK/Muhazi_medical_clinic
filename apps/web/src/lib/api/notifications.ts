@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
+import { apiError } from './errors'
 
 /**
  * Notifications (migration 0026). Each person sees only what is addressed to them: their own
@@ -93,7 +94,7 @@ export function useNotifications(limit = 40) {
         return { unread: items.filter((n) => !n.read).length, items }
       }
       const { data, error } = await supabase.rpc('my_notifications', { p_limit: limit })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = data as { unread: number; items: Notice[] }
       return { unread: Number(d.unread), items: d.items ?? [] }
     },
@@ -110,7 +111,7 @@ export function useNotificationActions() {
         return
       }
       const { error } = await supabase.rpc('mark_notifications_read', { p_ids: ids })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -149,7 +150,7 @@ export function useNotificationActions() {
         p_heads_only: !!i.headsOnly,
         p_urgent: !!i.urgent,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -161,7 +162,7 @@ export function useNotificationActions() {
         return
       }
       const { error } = await supabase.rpc('hide_notifications', { p_ids: ids })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -173,7 +174,7 @@ export function useNotificationActions() {
         return
       }
       const { error } = await supabase.rpc('delete_notification', { p_id: id })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: () => {
       void refresh()
@@ -218,7 +219,7 @@ export function useSentNotifications(enabled: boolean) {
     queryFn: async (): Promise<SentNotice[]> => {
       if (!supabase) return sampleSent
       const { data, error } = await supabase.rpc('my_sent_notifications', { p_limit: 100 })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as SentNotice[]) ?? []
     },
   })

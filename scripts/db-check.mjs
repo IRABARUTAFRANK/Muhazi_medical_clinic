@@ -251,11 +251,13 @@ await step('mark_pin_changed clears the first-PIN flag for the caller only', asy
 // ---------------------------------------------------------------- the patient journey (doc Â§3, Â§4.5 worked example)
 let patientId, coverageId, encounterId, invoiceId
 await step('receptionist registers a patient â†’ hub file number', async () => {
-  await as(staff.receptionist)
+  // the file is made behind the registration function (direct table writes are closed to staff)
+  await asAdmin()
   const r = await one(
     `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
      values ('Niyonzima', 'Jean Bosco', 'male', '1972-03-14', '0788123456', true, true, true) returning id, file_number`,
   )
+  await as(staff.receptionist)
   patientId = r.id
   if (r.file_number !== 'MMC-000001') throw new Error(`file number ${r.file_number}`)
   return r.file_number
@@ -268,12 +270,14 @@ await step('duplicate check finds the same phone', async () => {
   return 'match on phone'
 })
 await step('coverage: RSSB RAMA member', async () => {
+  await asAdmin()
   const r = await one(
     `insert into coverage (patient_id, payer_id, plan_id, member_number)
      select $1, p.id, pl.id, '1197280012345678' from payer p join plan pl on pl.payer_id = p.id where p.code = 'RAMA'
      returning id`,
     [patientId],
   )
+  await as(staff.receptionist)
   coverageId = r.id
 })
 await step('walk-in: open_encounter â†’ ticket + draft invoice', async () => {
@@ -5020,7 +5024,8 @@ await step('0081: the switch and the hours cannot be changed through the API', a
       await db.query(q)
       passed.push(q)
     } catch (e) {
-      if (!/settings screen only/.test(String(e.message))) passed.push(`${q}: ${e.message}`)
+      if (!/settings screen only|permission denied/.test(String(e.message)))
+        passed.push(`${q}: ${e.message}`)
     }
   }
   // save_setting (role check + history) still works for the hours
@@ -5780,13 +5785,13 @@ await step(
        select id, 1, 'x', 1 from invoice limit 1`,
       ),
     }
-    // a correction of the dose is still allowed
+    // security hardening (20261202090000): no direct table writes at all, a dose correction included
     const dose = await codeAs(d1, `update medication_request set dose = '2 caps' where id = $1`, [
       anyRx.id,
     ])
     const refused = Object.entries(tries).filter(([, c]) => c !== '42501')
-    if (refused.length || dose !== null) throw new Error(JSON.stringify({ tries, dose }))
-    return `${Object.keys(tries).length} direct writes refused; a dose correction allowed`
+    if (refused.length || dose !== '42501') throw new Error(JSON.stringify({ tries, dose }))
+    return `${Object.keys(tries).length + 1} direct writes refused (a direct dose change too)`
   },
 )
 await step('0082: the manager marks the main pharmacy; others may not', async () => {
@@ -9723,7 +9728,9 @@ await step(
     r.firstHead = (
       await one(`select $2::uuid = any (heads_in_charge($1)) as ok`, [t88.pid, t88.head])
     ).ok
-    // a visit sent to no department: the departments giving the desk are in charge
+    // a visit sent to no department: nobody's department while nobody took the patient; once
+    // someone took them, that person's department (security hardening: never every department
+    // giving the desk)
     const pid = (
       await one(
         `insert into patient (surname, given_names, sex) values ('Nodept', 'Visit 88', 'male') returning id`,
@@ -9734,9 +9741,14 @@ await step(
       `insert into queue_entry (encounter_id, station, ticket_no) values ($1, 'consultation', 'P88N')`,
       [enc],
     )
-    r.noDept = (
+    const untaken = (
       await one(`select $2::uuid = any (visit_departments($1)) as ok`, [enc, t88.dept2])
     ).ok
+    await db.query(`update queue_entry set taken_by = $2 where encounter_id = $1`, [enc, t88.head2])
+    const taken = (
+      await one(`select $2::uuid = any (visit_departments($1)) as ok`, [enc, t88.dept2])
+    ).ok
+    r.noDept = !untaken && taken
     if (
       r.heads ||
       r.approver ||
@@ -11093,6 +11105,84 @@ await step(
     )
       throw new Error(json88(r))
     return 'reception sees kin only; fills the empty TB field but cannot overwrite HIV; the treating doctor sees both'
+  },
+)
+
+// ---------------------------------------------------------------- security hardening (20261202090000)
+await step(
+  'hardening: the audit log cannot be read, changed or forged by staff; nor through its partitions',
+  async () => {
+    await asAdmin()
+    const part = (
+      await one(
+        `select c.relname from pg_inherits i join pg_class c on c.oid = i.inhrelid
+       join pg_class p on p.oid = i.inhparent where p.relname = 'audit_event' order by c.relname desc limit 1`,
+      )
+    ).relname
+    const r = {
+      readPart: await codeAs(staff.receptionist, `select count(*) from ${part}`),
+      deletePart: await codeAs(staff.receptionist, `delete from ${part} where true`),
+      insertParent: await codeAs(
+        staff.receptionist,
+        `insert into audit_event (actor_id, action, entity) values ($1, 'login', 'profiles')`,
+        [staff.receptionist],
+      ),
+      deleteParent: await codeAs(staff.manager, `delete from audit_event where true`),
+    }
+    if (Object.values(r).some((c) => c !== '42501')) throw new Error(JSON.stringify({ part, ...r }))
+    return `${part}: read, delete, insert and delete through the parent all refused`
+  },
+)
+await step('hardening: views and tables are read only from the API', async () => {
+  await asAdmin()
+  const pid = (
+    await one(`select id from patient where deleted_at is null order by created_at limit 1`)
+  ).id
+  const r = {
+    practitioners: await codeAs(
+      staff.lab_tech ?? staff.nurse,
+      `update public_practitioners set names = 'FORGED' where true`,
+    ),
+    payers: await codeAs(
+      staff.receptionist,
+      `insert into public_payers (code, name) values ('FAKE', 'Fake')`,
+    ),
+    patient: await codeAs(staff.nurse, `update patient set allergies = null where id = $1`, [pid]),
+    dayClose: await codeAs(staff.cashier, `update day_close set counted = expected where true`),
+  }
+  const priv = await one(
+    `select has_table_privilege('authenticated', 'public_payers', 'insert') as payers_ins,
+            has_table_privilege('anon', 'public_service_lines', 'update') as lines_upd,
+            has_table_privilege('authenticated', 'patient', 'update') as patient_upd`,
+  )
+  if (
+    Object.values(r).some((c) => c !== '42501') ||
+    priv.payers_ins ||
+    priv.lines_upd ||
+    priv.patient_upd
+  )
+    throw new Error(JSON.stringify({ r, priv }))
+  return 'forged practitioners, a fake insurer, a cleared allergy and a hidden cash shortage: all refused'
+})
+await step(
+  'hardening: home results only for those who may see them; a deactivated account loses its sign-ins',
+  async () => {
+    const rec = await j88(staff.receptionist, `select home_summary() as j`)
+    await asAdmin()
+    const sid = crypto.randomUUID()
+    await db.query(
+      `insert into approved_session (session_id, user_id, via) values ($1, $2, 'code')`,
+      [sid, staff.nurse],
+    )
+    await db.query(`update profiles set active = false where id = $1`, [staff.nurse])
+    const ended = await one(
+      `select ended_at is not null as e, ended_reason from approved_session where session_id = $1`,
+      [sid],
+    )
+    await db.query(`update profiles set active = true where id = $1`, [staff.nurse])
+    if ((rec.results ?? []).length !== 0 || !ended.e || ended.ended_reason !== 'deactivated')
+      throw new Error(JSON.stringify({ results: rec.results?.length, ended }))
+    return 'reception gets no results; the deactivated nurse’s approved sign-in ended at once'
   },
 )
 

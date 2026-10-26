@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CATEGORY_IDS, PRACTITIONERS, type CategoryId } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import type { Station } from './visits'
+import { apiError } from './errors'
 
 /**
  * The clinic's services, as on the website: medical consultation, dental services, laboratory
@@ -129,7 +130,7 @@ export function useServiceStaff(service: ServiceId | 'triage' | null) {
             }
           : sampleStaff(service!)
       const { data, error } = await supabase.rpc('service_staff', { p_service: service })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = data as ServiceStaff
       return {
         ...d,

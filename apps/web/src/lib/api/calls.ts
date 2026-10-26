@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import type { Station } from '@/lib/api/visits'
 import { useSession } from '@/store/session'
 import { sampleMayHandOver, sampleVisitHandover, type VisitHandover } from './handover'
+import { apiError } from './errors'
 
 /**
  * Who works on a patient, calling the next patient and asking for help (migration 0055).
@@ -116,7 +117,7 @@ export function useMyCalls(role: string) {
     queryFn: async (): Promise<MyCalls> => {
       if (!supabase) return sampleCalls(role)
       const { data, error } = await supabase.rpc('my_calls')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as MyCalls | null) ?? { incoming: [], mine: [], helping: [] }
     },
   })
@@ -143,7 +144,7 @@ export function useVisitAccess(encounterId: string) {
         }
       }
       const { data, error } = await supabase.rpc('visit_access', { p_encounter_id: encounterId })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return data as VisitAccess
     },
   })
@@ -161,7 +162,7 @@ export function useCallActions() {
   const rpc = async (fn: string, args: Record<string, unknown>) => {
     if (!supabase) return null
     const { data, error } = await supabase.rpc(fn, args)
-    if (error) throw new Error(error.message)
+    if (error) throw apiError(error)
     return data as unknown
   }
   return {

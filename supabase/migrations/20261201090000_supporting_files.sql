@@ -179,7 +179,7 @@ as $$
                       and r.deleted_at is null and r.status <> 'cancelled'))
     and (
       ((has_perm('clinical.write') or has_perm('orders.write')) and clinical_reader()
-       and visit_view(p_encounter_id) = 'visit')
+       and may_work_on(p_encounter_id))
       or (has_perm('orders.write')
           and exists (select 1 from service_request r
                       where r.encounter_id = p_encounter_id and r.deleted_at is null

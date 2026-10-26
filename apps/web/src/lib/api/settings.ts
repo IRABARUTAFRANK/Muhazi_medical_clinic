@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CLINIC_HOURS, CLINIC_PROFILE, type ClinicHours, type ClinicProfile } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import { apiError } from './errors'
 
 /**
  * Clinic settings the manager edits: the `setting` rows `clinic.profile` and `clinic.hours`.
@@ -30,7 +31,7 @@ export function useClinicSettings() {
         .from('setting')
         .select('key, value')
         .in('key', ['clinic.profile', 'clinic.hours'])
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const rows = Object.fromEntries(
         (data as { key: string; value: unknown }[]).map((r) => [r.key, r.value]),
       )
@@ -60,7 +61,7 @@ export function useSaveClinicSettings() {
         ['clinic.hours', next.hours],
       ] as const) {
         const { error } = await supabase.rpc('save_setting', { p_key: key, p_value: value })
-        if (error) throw new Error(error.message)
+        if (error) throw apiError(error)
       }
     },
     onSuccess: () => {
@@ -91,7 +92,7 @@ export function useStaffSettings() {
     queryFn: async (): Promise<{ sessionHours: number; triageFirst: boolean }> => {
       if (!supabase) return { sessionHours: sampleHours, triageFirst: sampleTriageFirst }
       const { data, error } = await supabase.rpc('staff_settings')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = data as { session_hours?: number; triage_first?: boolean } | null
       const h = Number(d?.session_hours)
       return {
@@ -116,7 +117,7 @@ export function useSaveFlowSetting() {
         p_key: 'flow',
         p_value: { triage_first: triageFirst },
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: STAFF_KEY }),
   })
@@ -135,7 +136,7 @@ export function useSaveSessionSetting() {
         p_key: 'security.session',
         p_value: { hours },
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: STAFF_KEY }),
   })
@@ -147,7 +148,7 @@ export function useRevokeAllDevices() {
     mutationFn: async (): Promise<number> => {
       if (!supabase) return 0
       const { data, error } = await supabase.rpc('revoke_trusted_devices', { p_all: true })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return Number(data)
     },
   })

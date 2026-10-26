@@ -4,6 +4,7 @@ import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import type { DbRole } from './staff'
+import { apiError } from './errors'
 
 /**
  * Who may do what (Settings → Who may do what): the main features the manager switches on or off
@@ -237,7 +238,7 @@ export function usePermissionMatrix() {
         return { roles: { ...sampleRoles }, exceptions: [...sampleExceptions] }
       }
       const { data, error } = await supabase.rpc('permission_matrix')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const m = (data ?? {}) as Partial<PermissionMatrix>
       return { roles: m.roles ?? {}, exceptions: m.exceptions ?? [] }
     },
@@ -267,7 +268,7 @@ export function usePermissionActions() {
         p_permission: i.permission,
         p_allowed: i.allowed,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -303,7 +304,7 @@ export function usePermissionActions() {
         p_permission: i.permission,
         p_allowed: i.allowed,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })

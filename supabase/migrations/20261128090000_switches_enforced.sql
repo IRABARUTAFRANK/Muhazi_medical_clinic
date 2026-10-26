@@ -489,6 +489,11 @@ begin
   if not exists (select 1 from profiles where id = v_by and active) then
     raise exception 'unknown staff member for "measured by"' using errcode = '22023';
   end if;
+  -- the person named as having measured must be allowed to record vital signs themselves
+  if v_by <> auth.uid() and not staff_perm(v_by, 'vitals.write') then
+    raise exception 'the person named as "measured by" is not allowed to take vital signs'
+      using errcode = '42501', hint = 'not_permitted';
+  end if;
   if v_at > now() + interval '5 minutes' then
     raise exception 'the measurement time is in the future' using errcode = '22023';
   end if;

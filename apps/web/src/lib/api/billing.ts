@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Triage } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import type { Sex, Station } from '@/lib/api/visits'
+import { apiError } from './errors'
 
 /**
  * One visit on a station screen: who the patient is, the vitals from triage, who pays, and the
@@ -179,7 +180,7 @@ export function useVisitHeader(encounterId: string) {
         .select('*')
         .eq('encounter_id', encounterId)
         .order('queued_at')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const rows = data as BoardRow[]
       const r = rows[0]
       if (!r) {
@@ -260,7 +261,7 @@ export function useVisitVitals(encounterId: string) {
         .from('visit_vitals')
         .select('code, value_num, unit, effective_at, measured_by, entered_by')
         .eq('encounter_id', encounterId)
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (
         data as {
           code: string
@@ -458,7 +459,7 @@ export function useBillingActions(encounterId: string) {
         p_discount_pct: input.manualPrice != null ? 0 : input.discountPct,
         p_discount_reason: input.manualPrice != null ? null : input.discountReason?.trim() || null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -472,7 +473,7 @@ export function useBillingActions(encounterId: string) {
         return
       }
       const { error } = await supabase.rpc('void_charge', { p_line_id: id, p_reason: reason })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -509,7 +510,7 @@ export function useBillingActions(encounterId: string) {
         p_payer_id: payerId,
         p_member_number: memberNumber?.trim() || null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -522,7 +523,7 @@ export function useBillingActions(encounterId: string) {
         p_station: station,
         p_next: next,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -536,7 +537,7 @@ export function useBillingActions(encounterId: string) {
         p_station: station,
         p_next: next,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -591,7 +592,7 @@ export function useBillingActions(encounterId: string) {
         p_reference: reference?.trim() || null,
         p_payer_phone: phone?.trim() || null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const r = data as {
         balance: number | string
         number: string | null
@@ -635,7 +636,7 @@ export function useBillingActions(encounterId: string) {
         p_reason: i.reason,
         p_reference: i.reference?.trim() || null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })

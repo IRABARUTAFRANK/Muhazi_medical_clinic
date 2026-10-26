@@ -12,6 +12,7 @@ import {
   sampleVisitTotals,
   sampleVisitsByGroup,
 } from './analytics-sample'
+import { apiError } from './errors'
 
 /**
  * Manager dashboard numbers, computed by `dashboard_summary(from, to)` in the database.
@@ -249,7 +250,7 @@ export function useDashboard(range: DashboardRange, manager: boolean, custom?: C
         p_from: p.from,
         p_to: p.to,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       // the shape of 0086, with the fields older databases do not send yet made optional
       type Raw = Omit<
         DashboardData,
@@ -419,7 +420,7 @@ export function useDepartmentSummary(
         p_from: iso(from),
         p_to: iso(to),
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = data as Omit<DepartmentSummary, 'queue' | 'tiles'> & {
         tiles: Omit<DepartmentSummary['tiles'], 'forgottenNow'> & { forgottenNow?: unknown }
         queue?: Partial<Record<keyof QueueNow, unknown>>[]

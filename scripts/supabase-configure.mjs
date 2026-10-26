@@ -97,6 +97,9 @@ const patch = {
   // never point the code to another inbox or phone.
   mailer_secure_email_change_enabled: true,
   external_phone_enabled: false,
+  // Security review (26 Oct): a PIN guessed against Supabase Auth must not be enough to change
+  // the PIN: a change needs a recent sign-in (the app changes it right after the e-mailed code).
+  security_update_password_require_reauthentication: true,
 }
 
 // Custom SMTP: explicit SMTP_* values, or derived from a Resend key (Resend also speaks SMTP:
@@ -196,6 +199,8 @@ console.log('now:', {
   disable_signup: after.disable_signup,
   mailer_secure_email_change_enabled: after.mailer_secure_email_change_enabled,
   external_phone_enabled: after.external_phone_enabled,
+  security_update_password_require_reauthentication:
+    after.security_update_password_require_reauthentication,
   mailer_otp_length: after.mailer_otp_length,
   mailer_otp_exp: after.mailer_otp_exp,
   smtp_host: after.smtp_host,

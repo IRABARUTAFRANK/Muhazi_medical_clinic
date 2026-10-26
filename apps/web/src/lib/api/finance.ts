@@ -176,7 +176,7 @@ export function useCashierSummary(
         })
         if (!error) return toSummary(data)
         // before migration 0078 there is only the one-day summary: show today's, and say so
-        if (!/function|schema cache/i.test(error.message)) throw new Error(error.message)
+        if (!/function|schema cache/i.test(error.message)) throw apiError(error)
         const old = await supabase.rpc('cashier_summary', { p_day: day })
         if (old.error) throw new Error(old.error.message)
         return { ...toSummary(old.data), todayOnly: true }
@@ -322,7 +322,7 @@ export function useCashActions() {
           p_counted: i.counted,
           p_note: i.note?.trim() || null,
         })
-        if (error) throw new Error(error.message)
+        if (error) throw apiError(error)
         return data as { variance: number }
       },
       onSuccess: refresh,

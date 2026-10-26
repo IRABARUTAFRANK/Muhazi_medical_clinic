@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { apiError } from './errors'
 
 /**
  * Activity history (migration 0031): every change to the clinic's records, sign-ins and staff /
@@ -225,7 +226,7 @@ export function useActivityHistory(f: HistoryFilter) {
         p_limit: PAGE,
         p_offset: pageParam,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = data as { total: number; items: HistoryItem[] }
       return { total: Number(d.total), items: d.items ?? [] }
     },

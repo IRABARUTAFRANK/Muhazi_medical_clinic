@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import { apiError } from './errors'
 
 /**
  * Operations that link reception, triage and the doctor: the day's appointments (arrival opens
@@ -110,7 +111,7 @@ export function useAppointmentDetail(id: string | null) {
         }
       }
       const { data, error } = await supabase.rpc('appointment_detail', { p_id: id })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data ?? null) as AppointmentDetail | null
     },
   })
@@ -231,7 +232,7 @@ export function useAppointmentsDay(day: Date) {
     queryFn: async (): Promise<DayAppointment[]> => {
       if (!supabase) return iso(day) === iso(new Date()) ? sampleAppts : []
       const { data, error } = await supabase.rpc('appointments_day', { p_day: iso(day) })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as DayAppointment[]) ?? []
     },
   })
@@ -244,7 +245,7 @@ export function useBedBoard() {
     queryFn: async (): Promise<BoardBed[]> => {
       if (!supabase) return sampleBeds
       const { data, error } = await supabase.rpc('bed_board')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as BoardBed[]) ?? []
     },
   })
@@ -257,7 +258,7 @@ export function useOpenTasks() {
     queryFn: async (): Promise<OpenTask[]> => {
       if (!supabase) return sampleTasks
       const { data, error } = await supabase.rpc('open_tasks')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as OpenTask[]) ?? []
     },
   })
@@ -274,7 +275,7 @@ export function useVisitTasks(encounterId: string) {
       if (!error) return (data as OpenTask[]) ?? []
       // a database without migration 0060: the tasks of my role only
       const r = await supabase.rpc('open_tasks')
-      if (r.error) throw new Error(error.message)
+      if (r.error) throw apiError(error)
       return ((r.data as OpenTask[]) ?? []).filter((x) => x.encounterId === encounterId)
     },
   })
@@ -325,7 +326,7 @@ export function useFilesToComplete() {
     queryFn: async (): Promise<FileToComplete[]> => {
       if (!supabase) return sampleFiles
       const { data, error } = await supabase.rpc('files_to_complete')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as FileToComplete[]) ?? []
     },
   })
@@ -349,7 +350,7 @@ export function useDeskOps() {
   }
   const call = async <T = unknown>(fn: string, args: Record<string, unknown>): Promise<T> => {
     const { data, error } = await supabase!.rpc(fn, args)
-    if (error) throw new Error(error.message)
+    if (error) throw apiError(error)
     return data as T
   }
 
@@ -554,7 +555,7 @@ export function useBedAdmin() {
   const refresh = () => qc.invalidateQueries({ queryKey: ['beds'] })
   const rpc = async (fn: string, args: Record<string, unknown>) => {
     const { error } = await supabase!.rpc(fn, args)
-    if (error) throw new Error(error.message)
+    if (error) throw apiError(error)
   }
   const setCount = useMutation({
     mutationFn: async (i: { count: number; nightlyPrice: number | null }) => {

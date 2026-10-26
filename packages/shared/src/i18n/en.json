@@ -2522,7 +2522,10 @@
     "handoverDeclined": "{{by}} cannot take over {{name}}",
     "handoverCancelled": "{{by}} cancelled the handover of {{name}}",
     "handoverLapsed": "The handover of {{name}} from {{by}} has ended: the patient moved on",
-    "handoverLeft": "The handover of {{name}} has ended: {{leftName}} no longer works here"
+    "handoverLeft": "The handover of {{name}} has ended: {{leftName}} no longer works here",
+    "desksPlaced_one": "{{count}} employee was placed in a department so they keep their desk",
+    "desksPlaced_other": "{{count}} employees were placed in departments so they keep their desks",
+    "desksPlacedBody": "Departments now decide the desks each person uses. Check Employees and change any placement you do not want."
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -6330,5 +6333,9 @@
     "badgeWaiting": "Handed over by {{from}} to {{to}}, waiting",
     "titleToYou": "Handed over to you",
     "othersWaiting": "{{from}} handed this patient over to {{to}}; waiting for an answer"
+  },
+  "apiErrors": {
+    "notAllowed": "You are not allowed to do this. Ask the manager if you need it.",
+    "notFound": "Not found, or already closed. Refresh the page."
   }
 }

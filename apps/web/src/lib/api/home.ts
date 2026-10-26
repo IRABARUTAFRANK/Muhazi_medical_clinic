@@ -12,7 +12,7 @@ import {
   type ApptStatus,
 } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
-import { throwIf } from './errors'
+import { throwIf, apiError } from './errors'
 
 /**
  * What each role must do next, computed by `home_summary()` in the database: today's
@@ -167,7 +167,7 @@ export function useHomeSummary(period?: DayRange | null) {
         'home_summary',
         period ? { p_from: period.from, p_to: period.to } : undefined,
       )
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = data as HomeSummary
       return {
         ...d,
@@ -229,7 +229,7 @@ export function useOpenInquiries() {
     queryFn: async (): Promise<OpenInquiry[]> => {
       if (!supabase) return SAMPLE_OPEN
       const { data, error } = await supabase.rpc('inquiries_open')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return ((data ?? []) as Omit<OpenInquiry, 'matches'>[] & { matches?: number }[]).map((r) => ({
         ...r,
         matches: Number((r as { matches?: number }).matches ?? 0),
@@ -264,7 +264,7 @@ export function useBookableDoctors() {
           title: null,
         }))
       const { data, error } = await supabase.rpc('bookable_doctors')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data ?? []) as BookableDoctor[]
     },
   })
@@ -283,7 +283,7 @@ export function useHomeActions() {
   const call = async (fn: string, args: Record<string, unknown>) => {
     if (!supabase) return
     const { error } = await supabase.rpc(fn, args)
-    if (error) throw new Error(error.message)
+    if (error) throw apiError(error)
   }
   const approveInquiry = useMutation({
     mutationFn: ({

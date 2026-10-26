@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ROLE_HOME, type QueueRow, type Role, type StaffUser, type Triage } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { sampleHandoverOnQueue } from './handover'
+import { apiError } from './errors'
 
 /**
  * Patient journey (MoH workflow): registration at any station → triage (vitals + colour) →
@@ -127,7 +128,7 @@ export function useFindPatients(query: string) {
         )
       }
       const { data, error } = await supabase.rpc('find_patients', { p_query: q, p_limit: 10 })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as FindRow[]).map((r) => ({
         id: r.id,
         fileNumber: r.file_number,
@@ -258,7 +259,7 @@ export function useVisitActions() {
         p_emergency: visit.emergency,
         p_station: visit.station,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const v = data as VisitJson
       return {
         patientId: v.patient_id!,
@@ -282,7 +283,7 @@ export function useVisitActions() {
         p_emergency: visit.emergency,
         p_station: visit.station,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const v = data as VisitJson
       return {
         patientId: patient.id,
@@ -317,7 +318,7 @@ export function useVisitActions() {
         p_assigned_to: i.assignedTo ?? null,
         p_triage_to: i.triageTo ?? null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const v = data as VisitJson & { myself?: boolean }
       return {
         patientId: i.patientId,
@@ -371,7 +372,7 @@ export function useVisitActions() {
         p_measured_by: measuredBy ?? null,
         p_measured_at: measuredAt ?? null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return String(data)
     },
     onSuccess: refresh,
@@ -401,7 +402,7 @@ export function useVisitActions() {
         p_next_station: nextStation,
         p_reason: reason?.trim() || null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return String(data)
     },
     onSuccess: refresh,
@@ -416,7 +417,7 @@ export function useVisitActions() {
         p_encounter_id: encounterId,
         p_reason: reason || null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -449,7 +450,7 @@ export function useVisitActions() {
         p_national_id: patient.nationalId?.trim() || null,
         p_sector: patient.sector?.trim() || null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const r = data as { patient_id: string; file_number: string }
       return { patientId: r.patient_id, fileNumber: r.file_number }
     },
@@ -480,7 +481,7 @@ export function useVitalsTakers() {
           { id: 'u-mgr', name: 'Mugabo Théogène', staffId: 'MMC-S-0007', role: 'manager' },
         ]
       const { data, error } = await supabase.rpc('vitals_takers')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as VitalsTaker[]) ?? []
     },
   })
@@ -716,7 +717,7 @@ export function useQueueBoard(station: Station | 'all', role: Role) {
         .order('queued_at')
       if (station !== 'all') query = query.eq('station', station)
       const { data, error } = await query
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as BoardRow[]).map(toItem)
     },
   })
@@ -785,7 +786,7 @@ export function useTakePatient() {
     mutationFn: async (queueId: string) => {
       if (!supabase) return
       const { error } = await supabase.rpc('take_patient', { p_queue_id: queueId })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['queue'] }),
   })

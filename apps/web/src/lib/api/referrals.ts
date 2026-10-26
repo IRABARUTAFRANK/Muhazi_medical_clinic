@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { Station } from '@/lib/api/visits'
+import { apiError } from './errors'
 
 /**
  * Referrals (migration 0034): hand a patient to another desk or a named colleague with a reason,
@@ -67,7 +68,7 @@ export function useColleagues() {
     queryFn: async (): Promise<Colleague[]> => {
       if (!supabase) return sampleColleagues
       const { data, error } = await supabase.rpc('colleagues')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as Colleague[]) ?? []
     },
   })
@@ -80,7 +81,7 @@ export function useVisitRouting(encounterId: string) {
     queryFn: async (): Promise<RoutingEntry[]> => {
       if (!supabase) return []
       const { data, error } = await supabase.rpc('visit_routing', { p_encounter_id: encounterId })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as RoutingEntry[]) ?? []
     },
   })
@@ -118,7 +119,7 @@ export function useRefer(encounterId: string) {
       // before migration 0071 the desk is enough
       if (error && i.service && /function|schema cache/i.test(error.message))
         ({ error } = await supabase.rpc('refer_patient', args))
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['routing', encounterId] })

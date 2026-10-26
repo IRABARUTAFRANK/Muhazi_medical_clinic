@@ -2522,7 +2522,10 @@
     "handoverDeclined": "{{by}} ne peut pas prendre en charge {{name}}",
     "handoverCancelled": "{{by}} a annulé la passation de {{name}}",
     "handoverLapsed": "La passation de {{name}} par {{by}} est terminée : le patient est parti ailleurs",
-    "handoverLeft": "La passation de {{name}} est terminée : {{leftName}} ne travaille plus ici"
+    "handoverLeft": "La passation de {{name}} est terminée : {{leftName}} ne travaille plus ici",
+    "desksPlaced_one": "{{count}} employé a été placé dans un service pour garder son poste",
+    "desksPlaced_other": "{{count}} employés ont été placés dans des services pour garder leurs postes",
+    "desksPlacedBody": "Les services décident maintenant des postes de chacun. Vérifiez Employés et changez tout placement qui ne convient pas."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -6330,5 +6333,9 @@
     "badgeWaiting": "Confié par {{from}} à {{to}}, en attente",
     "titleToYou": "Confié à vous",
     "othersWaiting": "{{from}} a confié ce patient à {{to}} ; en attente de la réponse"
+  },
+  "apiErrors": {
+    "notAllowed": "Vous n'êtes pas autorisé à faire ceci. Demandez au gestionnaire si vous en avez besoin.",
+    "notFound": "Introuvable ou déjà clôturé. Actualisez la page."
   }
 }

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { sampleJourneyHandovers } from './handover'
+import { apiError } from './errors'
 
 /** Everything that happened in a visit (visit_journey), in order. */
 export interface Journey {
@@ -309,7 +310,7 @@ export function useVisitJourney(encounterId: string | null) {
           handovers: sampleJourneyHandovers(encounterId ?? 'e-1'),
         }
       const { data, error } = await supabase.rpc('visit_journey', { p_encounter_id: encounterId })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return data as Journey
     },
   })

@@ -1,5 +1,6 @@
 import { inquiryReference, type CategoryFilter } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import { apiError } from './errors'
 
 export type InquiryChannel = 'whatsapp' | 'sms' | 'call'
 
@@ -62,6 +63,6 @@ export async function sendInquiry(input: InquiryInput): Promise<InquiryResult> {
     p_channel: input.channel ?? 'whatsapp',
     p_preferred_at: input.preferredAt?.toISOString() ?? null,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw apiError(error)
   return { reference: String(data), mode: 'live' }
 }

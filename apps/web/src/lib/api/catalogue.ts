@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatRwf, type CategoryId } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import { apiError } from './errors'
 
 /**
  * The manager's catalogue: treatments (what the clinic treats, the cash price, the discount a
@@ -225,7 +226,7 @@ export function useCategoryActions() {
       // before migration 0052 only the laboratory / ultrasound desks exist (by kind)
       if (error && /save_category/.test(error.message))
         ({ data, error } = await supabase.rpc('save_category', args))
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return String(data)
     },
     onSuccess: refresh,
@@ -240,7 +241,7 @@ export function useCategoryActions() {
         return
       }
       const { error } = await supabase.rpc('delete_category', { p_id: id })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -465,7 +466,7 @@ export function useTreatments(onlyActive = false) {
         .order('name_en')
       if (onlyActive) q = q.eq('active', true)
       const { data, error } = await q
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as ServiceRow[]).map((r) => ({
         id: r.id,
         code: r.code,
@@ -515,7 +516,7 @@ export function useServiceBilling(from: string, to: string) {
           ]),
         )
       const { data, error } = await supabase.rpc('service_billing', { p_from: from, p_to: to })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return Object.fromEntries(
         Object.entries(
           (data ?? {}) as Record<string, { count: number; amount: number | string }>,
@@ -573,7 +574,7 @@ export function useCatalogueTools() {
         p_department_id: input.departmentId,
         p_items: input.items,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return Number(data)
     },
     onSuccess: refresh,
@@ -597,7 +598,7 @@ export function useCatalogueTools() {
         p_group: input.group,
         p_department_id: input.departmentId,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return Number(data)
     },
     onSuccess: refresh,
@@ -610,7 +611,7 @@ export function useCatalogueTools() {
         return n
       }
       const { data, error } = await supabase.rpc('delete_all_services')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return Number(data)
     },
     onSuccess: refresh,
@@ -639,7 +640,7 @@ export function useCatalogueTools() {
         p_category_id: input.categoryId,
         p_department_id: input.departmentId,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return Number(data)
     },
     onSuccess: refresh,
@@ -703,7 +704,7 @@ export function useMedicines() {
         .from('items_catalogue')
         .select('id, code, name_generic, strength, form, unit, cash_price, active')
         .order('name_generic')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (
         data as {
           id: string
@@ -860,7 +861,7 @@ export function useMedicineReference(enabled = true) {
           .order('presentation')
           .order('code')
           .range(from, from + page - 1)
-        if (error) throw new Error(error.message)
+        if (error) throw apiError(error)
         rows.push(...(data as Row[]))
         if ((data ?? []).length < page) break
       }
@@ -987,7 +988,7 @@ export function useMedicineActions() {
         p_active: m.active,
         p_code: m.code ?? null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return String(data)
     },
     onSuccess: refresh,
@@ -1000,7 +1001,7 @@ export function useMedicineActions() {
         return
       }
       const { error } = await supabase.rpc('delete_item', { p_id: id })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -1029,7 +1030,7 @@ export function useInsurers(onlyActive = false) {
       let q = supabase.from('insurer_plans').select('*').order('name')
       if (onlyActive) q = q.eq('active', true)
       const { data, error } = await q
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as InsurerRow[]).map((r) => ({
         id: r.id,
         code: r.code,
@@ -1104,7 +1105,7 @@ export function useCatalogueActions() {
         p_code: input.code?.trim() || null,
         p_booking_category: input.bookingCategory ?? null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const id = String(data)
       for (const [payerId, price] of Object.entries(input.payerPrices ?? {})) {
         const { error: pe } = await supabase.rpc('set_service_price', {
@@ -1168,7 +1169,7 @@ export function useCatalogueActions() {
         p_active: input.active,
         p_code: input.code?.trim() || null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return String(data)
     },
     onSuccess: refresh,
@@ -1183,7 +1184,7 @@ export function useCatalogueActions() {
         return
       }
       const { error } = await supabase.rpc('delete_service', { p_id: id })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -1209,7 +1210,7 @@ export function useCatalogueActions() {
         p_code: treatment.code,
         p_booking_category: treatment.bookingCategory,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -1222,7 +1223,7 @@ export function useCatalogueActions() {
         return
       }
       const { error } = await supabase.rpc('delete_payer', { p_id: id })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -1263,7 +1264,7 @@ export function useCatalogueActions() {
         p_round: input.round,
         ...(input.category && !group ? { p_category_id: input.category } : {}),
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return Number(data)
     },
     onSuccess: refresh,

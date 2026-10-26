@@ -622,7 +622,7 @@ export function usePatientsList(query: string, page: number) {
         p_limit: PAGE,
         p_offset: page * PAGE,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = data as { total: number; rows: PatientRow[] }
       return {
         total: Number(d.total),
@@ -647,7 +647,7 @@ export function usePatientFile(id: string) {
     queryFn: async (): Promise<PatientFile> => {
       if (!supabase) return withSamplePrivacy(sampleFile(id))
       const { data, error } = await supabase.rpc('patient_file', { p_patient_id: id })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const f = data as PatientFile
       return {
         ...f,
@@ -678,7 +678,7 @@ export async function setNoNationalId(patientId: string, reason: NoIdReason | nu
     p_patient_id: patientId,
     p_reason: reason,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw apiError(error)
 }
 
 export function usePatientActions(id: string) {
@@ -714,7 +714,7 @@ export function usePatientActions(id: string) {
         return
       }
       const { error } = await supabase.rpc('update_patient', { p_patient_id: id, p_fields: fields })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['patients'] }),
   })
@@ -843,7 +843,7 @@ export function usePatientResults(patientId: string) {
     queryFn: async (): Promise<PatientResult[]> => {
       if (!supabase) return []
       const { data, error } = await supabase.rpc('patient_results', { p_patient_id: patientId })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as PatientResult[]) ?? []
     },
   })
@@ -940,7 +940,7 @@ export function useVisitClinical(encounterId: string) {
           }
         )
       const { data, error } = await supabase.rpc('visit_clinical', { p_encounter_id: encounterId })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       const d = (data ?? EMPTY_CLINICAL) as VisitClinical
       return {
         ...d,
@@ -998,7 +998,7 @@ export function useItems() {
         .select('*')
         .eq('active', true)
         .order('name_generic')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (
         data as {
           id: string
@@ -1314,7 +1314,7 @@ export function useClinicalActions(encounterId: string) {
       })
       if (!error) return
       // Database without migration 0044 yet: order one by one (the patient is not sent back).
-      if (!/order_tests/.test(error.message)) throw new Error(error.message)
+      if (!/order_tests/.test(error.message)) throw apiError(error)
       for (const x of i.tests)
         await call('order_test', {
           p_encounter_id: encounterId,
@@ -1453,7 +1453,7 @@ export function usePatientFields() {
     queryFn: async (): Promise<PatientFieldDef[]> => {
       if (!supabase) return sampleFields
       const { data, error } = await supabase.rpc('patient_fields')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return Array.isArray(data) ? (data as PatientFieldDef[]) : []
     },
   })
@@ -1472,7 +1472,7 @@ export function useSavePatientFields() {
         p_key: 'patient.fields',
         p_value: fields,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: FIELDS_KEY }),
   })

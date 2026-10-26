@@ -3,6 +3,7 @@ import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import type { Station } from '@/lib/api/visits'
 import type { TestStatus } from '@/lib/api/lab'
+import { apiError } from './errors'
 
 /**
  * The doctor's own lists (migration 0057): the tests they ordered with their results, and the
@@ -147,7 +148,7 @@ async function rowsOfPeriod<T>(
   if (!supabase) return { rows: [], cut: false }
   const { data, error } = await supabase.rpc(fn, { p_from: period.from, p_to: period.to })
   if (!error) return { rows: (data as T[]) ?? [], cut: false }
-  if (!/function|schema cache/i.test(error.message)) throw new Error(error.message)
+  if (!/function|schema cache/i.test(error.message)) throw apiError(error)
   const [y, m, d] = period.from.split('-').map(Number)
   const start = new Date(y!, m! - 1, d!).getTime()
   const needed = Math.max(1, Math.floor((Date.now() - start) / 86_400_000) + 1)

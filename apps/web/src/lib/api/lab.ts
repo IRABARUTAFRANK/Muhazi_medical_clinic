@@ -4,6 +4,7 @@ import type { Sex } from '@/lib/api/visits'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import type { DocPerson } from '@/lib/api/patients'
+import { apiError } from './errors'
 
 /**
  * Laboratory (migration 0036): the worklist of tests ordered for this person's bench (lab for lab
@@ -201,7 +202,7 @@ export function useLabWorklist(scope: 'open' | 'done') {
     queryFn: async (): Promise<LabOrder[]> => {
       if (!supabase) return sampleBench(scope === 'open' ? sampleOrders : sampleDone)
       const { data, error } = await supabase.rpc('lab_worklist', { p_scope: scope })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as LabOrder[]) ?? []
     },
   })
@@ -215,7 +216,7 @@ export function useDeskOrders(station: string) {
     queryFn: async (): Promise<LabOrder[]> => {
       if (!supabase) return []
       const { data, error } = await supabase.rpc('desk_orders', { p_station: station })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data as LabOrder[]) ?? []
     },
   })
@@ -255,7 +256,7 @@ export function useLabSummary(period?: DayRange | null) {
         'lab_summary',
         period ? { p_from: period.from, p_to: period.to } : undefined,
       )
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return data as LabSummary
     },
   })
@@ -285,7 +286,7 @@ export function useLabActions() {
         p_status: i.status,
         p_reason: i.reason ?? null,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -321,7 +322,7 @@ export function useLabActions() {
         p_impression: i.impression || null,
         p_verify: i.verify,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })

@@ -7,6 +7,7 @@ import {
   type WeeklyHours,
 } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import { apiError } from './errors'
 
 /**
  * Doctors' own calendars: weekly hours, slot length, days off, a note, and who may see them
@@ -164,7 +165,7 @@ export function useStaffCalendars() {
     queryFn: async (): Promise<DoctorCalendar[]> => {
       if (!supabase) return [...sampleCalendars, ...(sampleMine.saved ? [sampleMine] : [])]
       const { data, error } = await supabase.rpc('staff_doctor_calendars')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return ((data ?? []) as CalendarJson[]).map(fromJson)
     },
     staleTime: 60_000,
@@ -179,7 +180,7 @@ export function useMyCalendar(userId: string | null) {
     queryFn: async (): Promise<DoctorCalendar> => {
       if (!supabase) return { ...sampleMine }
       const { data, error } = await supabase.rpc('my_calendar', { p_user: userId })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return fromJson(data as CalendarJson)
     },
   })
@@ -193,7 +194,7 @@ export function useCalendarPeople(enabled: boolean) {
     queryFn: async (): Promise<CalendarPerson[]> => {
       if (!supabase) return []
       const { data, error } = await supabase.rpc('calendar_people')
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
       return (data ?? []) as CalendarPerson[]
     },
   })
@@ -223,7 +224,7 @@ export function useSaveCalendar() {
         p_categories: input.categories,
         p_languages: input.languages,
       })
-      if (error) throw new Error(error.message)
+      if (error) throw apiError(error)
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: KEY })

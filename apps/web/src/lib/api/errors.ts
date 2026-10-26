@@ -200,7 +200,16 @@ export function apiError(e: DbErrorLike | null | undefined): ApiError {
   const short = /(\d+) unit\(s\) short/.exec(inner)
   const n = short ? Number(short[1]) : null
   if (kind === 'short' && n != null) kind = 'shortBy'
-  const text = kind ? i18n.t(`stockErrors.${kind}`, { defaultValue: inner, n: n ?? '' }) : inner
+  // a refusal or a missing record without its own reason still reads in the person's language
+  const generic =
+    !kind && !hint && code === '42501'
+      ? i18n.t('apiErrors.notAllowed', { defaultValue: inner })
+      : !kind && !hint && code === 'P0002'
+        ? i18n.t('apiErrors.notFound', { defaultValue: inner })
+        : null
+  const text = kind
+    ? i18n.t(`stockErrors.${kind}`, { defaultValue: inner, n: n ?? '' })
+    : (generic ?? inner)
   const message = line != null ? i18n.t('stockErrors.line', { n: line, message: text }) : text
   return new ApiError(message, { code, hint, kind, line, serverMessage: raw })
 }

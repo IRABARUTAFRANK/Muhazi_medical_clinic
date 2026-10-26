@@ -193,10 +193,17 @@ create or replace function visit_departments(p_encounter_id uuid)
 returns uuid[]
 language sql stable security definer set search_path = public
 as $$
+  -- when no department was named, the department of the person who took (or was given) the
+  -- patient there and gives that desk; never every department giving the desk (a head of another
+  -- department who never saw the patient is not "in charge")
   select coalesce(array_agg(distinct d.id), '{}')
   from queue_entry q
   join department d on d.active and d.deleted_at is null
-    and (d.id = q.department_id or (q.department_id is null and station_desks(q.station) && d.services))
+    and (d.id = q.department_id
+         or (q.department_id is null and station_desks(q.station) && d.services
+             and exists (select 1 from staff_department sd
+                         where sd.department_id = d.id
+                           and sd.profile_id in (q.taken_by, q.assigned_to))))
   where q.encounter_id = p_encounter_id and q.deleted_at is null
     and station_desks(q.station) && (treating_desks() || array['laboratory', 'ultrasound'])
 $$;
@@ -464,9 +471,9 @@ begin
     'pastVisits', v_past,
     'ownVisits', v_own,
     'hiddenVisits', v_hidden,
-    'canRequest', v_reader and v_treating is not null and v_via is null and v_hidden > 0
+    'canRequest', has_perm('clinical.read') and v_treating is not null and v_via is null and v_hidden > 0
                   and (v_req.id is null or v_req.status in ('refused', 'cancelled')),
-    'canEmergency', v_reader and v_treating is not null and v_via is null and v_hidden > 0,
+    'canEmergency', has_perm('clinical.read') and v_treating is not null and v_via is null and v_hidden > 0,
     -- the manager and the heads in charge (history_via says so)
     'canSeeLog', coalesce(v_via in ('manager', 'head'), false),
     'request', case when v_req.id is not null then jsonb_build_object(
@@ -551,7 +558,7 @@ begin
       'stations', (select coalesce(jsonb_agg(distinct q.station::text), '[]'::jsonb) from queue_entry q where q.encounter_id = e.id and q.deleted_at is null),
       'currentStation', (select q.station from queue_entry q where q.encounter_id = e.id and q.finished_at is null and q.deleted_at is null order by q.created_at desc limit 1),
       'diagnosis', case when s.view is not null then
-        (select c.text from condition c where c.encounter_id = e.id and c.type = 'primary' and c.deleted_at is null order by c.created_at desc limit 1) end,
+        (select c.text from condition c where c.encounter_id = e.id and c.type = 'primary' and c.deleted_at is null and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read')) order by c.created_at desc limit 1) end,
       'total', (select i.total from invoice i where i.encounter_id = e.id),
       'balance', (select invoice_balance(i.id) from invoice i where i.encounter_id = e.id),
       'billStatus', (select i.status from invoice i where i.encounter_id = e.id),
@@ -580,7 +587,7 @@ begin
       'provisional', c.provisional, 'at', c.created_at, 'by', (select full_name from profiles where id = c.created_by)
     ) order by c.created_at desc), '[]'::jsonb) into v_conditions
   from condition c
-  where v_views ? c.encounter_id::text and c.deleted_at is null;
+  where v_views ? c.encounter_id::text and c.deleted_at is null and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read'));
 
   select coalesce(jsonb_agg(jsonb_build_object(
       'invoiceId', i.id, 'encounterId', i.encounter_id, 'number', i.number, 'status', i.status,
@@ -662,7 +669,7 @@ begin
   return jsonb_build_object(
     'diagnoses', coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'text', c.text, 'icd10', c.icd10_code, 'type', c.type, 'provisional', c.provisional, 'at', c.created_at,
         'by', (select full_name from profiles where id = c.created_by)) order by c.created_at)
-      from condition c where c.encounter_id = p_encounter_id and c.deleted_at is null), '[]'::jsonb),
+      from condition c where c.encounter_id = p_encounter_id and c.deleted_at is null and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read'))), '[]'::jsonb),
     'notes', coalesce((select jsonb_agg(jsonb_build_object('id', o.id, 'text', o.value_text, 'at', o.effective_at,
         'by', (select full_name from profiles where id = o.performer_id)) order by o.effective_at)
       from observation o where o.encounter_id = p_encounter_id and o.code = 'note' and o.deleted_at is null), '[]'::jsonb),
@@ -787,7 +794,7 @@ begin
         'text', c.text, 'icd10', c.icd10_code, 'type', c.type, 'provisional', c.provisional, 'at', c.created_at,
         'by', (select full_name from profiles where id = c.created_by)
       ) order by c.created_at), '[]'::jsonb) into v_dx
-    from condition c where c.encounter_id = p_encounter_id and c.deleted_at is null;
+    from condition c where c.encounter_id = p_encounter_id and c.deleted_at is null and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read'));
 
     select coalesce(jsonb_agg(jsonb_build_object(
         'item', i.name_generic || coalesce(' ' || i.strength, ''), 'quantity', m.quantity, 'dose', m.dose,
@@ -1029,7 +1036,7 @@ as $$
 declare
   v_enc uuid;
 begin
-  if auth.uid() is null or not clinical_reader() then
+  if auth.uid() is null or not has_perm('clinical.read') then
     raise exception 'not allowed' using errcode = '42501';
   end if;
   if not exists (select 1 from patient where id = p_patient_id and deleted_at is null) then
@@ -1403,7 +1410,10 @@ create or replace view queue_board with (security_invoker = false) as
          p.file_number, p.surname, p.given_names, p.sex, p.birth_date, p.phone_1,
          q.pool_id, tb.full_name as taken_by_name,
          q.assigned_to, asg.full_name as assigned_name, rb.full_name as referred_by_name,
-         q.referral_note, q.return_station,
+         -- the referral note is clinical: for clinical readers who may see the visit
+         case when has_perm('clinical.read') and visit_view(q.encounter_id) is not null
+              then q.referral_note end as referral_note,
+         q.return_station,
          v.effective_at as vitals_at, v.measured_by as vitals_by,
          q.department_id, dep.name as department_name, queue_entry_for_me(q.id) as can_work,
          q.taken_by, coalesce(q.service, e.service) as service,
@@ -1416,7 +1426,8 @@ create or replace view queue_board with (security_invoker = false) as
          ho.id as handover_id, ho.status as handover_status,
          ho.from_user as handover_from, hf.full_name as handover_from_name,
          ho.to_user as handover_to, ht.full_name as handover_to_name,
-         case when auth.uid() in (ho.from_user, ho.to_user) or has_perm('clinical.read')
+         case when auth.uid() in (ho.from_user, ho.to_user)
+                   or (has_perm('clinical.read') and visit_view(q.encounter_id) is not null)
               then ho.note end as handover_note,
          ho.created_at as handover_at, ho.answered_at as handover_answered_at
   from queue_entry q
@@ -1569,7 +1580,7 @@ begin
                -- 0088: what was written (a diagnosis, a medicine, a result…) only where the reader may
                -- see that visit's record; the manager and the person themselves always
                case when v_manager or ev.user_id = auth.uid()
-                         or ev.kind in ('registered', 'patientsSeen', 'charges', 'admissions',
+                         or ev.kind in ('registered', 'patientsSeen', 'admissions',
                                         'payments', 'refunds', 'voided', 'handovers')
                          or (ev.encounter_id is not null and visit_view(ev.encounter_id) is not null)
                     then ev.what end as what,
@@ -1633,6 +1644,10 @@ returns trigger
 language plpgsql security definer set search_path = public
 as $$
 begin
+  -- finish_visit closes and reopens within one transaction: only a visit still closed counts
+  if not exists (select 1 from encounter where id = new.id and status = 'closed') then
+    return null;
+  end if;
   with c as (
     update record_access_request
     set status = 'cancelled', answered_at = now(), answer_note = 'visit closed'
@@ -1646,8 +1661,9 @@ end
 $$;
 revoke all on function cancel_requests_of_closed_visit() from public, anon, authenticated;
 drop trigger if exists encounter_closed_cancels_access on encounter;
-create trigger encounter_closed_cancels_access
+create constraint trigger encounter_closed_cancels_access
   after update of status on encounter
+  deferrable initially deferred
   for each row when (new.status = 'closed' and old.status is distinct from 'closed')
   execute function cancel_requests_of_closed_visit();
 

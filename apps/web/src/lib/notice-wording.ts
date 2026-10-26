@@ -228,6 +228,12 @@ export function useWording() {
             .filter(Boolean)
             .join(' · '),
         }
+      case 'desks_placed':
+        // 0085: on the day departments started deciding the desks, who was placed where
+        return {
+          title: t('notify.desksPlaced', { count: Number(p.count ?? 0) }),
+          body: t('notify.desksPlacedBody'),
+        }
       // ---- medicines and stock (0082 / 0083): params only, worded here
       case 'rx_cancelled':
         // the doctor cancelled a line still waiting at the pharmacy
