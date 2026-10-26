@@ -236,6 +236,12 @@ export interface PatientFile {
    * not the real values: do not show them as "none"; the database ignores them if sent empty.
    */
   safetyHidden?: boolean
+  /**
+   * The manager's private ("medical") extra fields that hold a value, keys only, at every
+   * level: at level 1 the values are not sent, so this says which are already recorded (locked)
+   * and which are still empty (reception may fill them in). Absent on an older database.
+   */
+  extra_filled?: string[]
 }
 
 // ---------------------------------------------------------------- sample data
@@ -1455,6 +1461,58 @@ export function usePatientFields() {
       const { data, error } = await supabase.rpc('patient_fields')
       if (error) throw apiError(error)
       return Array.isArray(data) ? (data as PatientFieldDef[]) : []
+    },
+  })
+}
+
+/** A file that may already be the person being registered (find_patient_duplicates). */
+export interface DuplicateHit {
+  id: string
+  fileNumber: string
+  name: string
+}
+
+/**
+ * Possible duplicates while a new file is typed: same ID, same phone, or same names and birth
+ * date. Asked once the names and a phone or an ID are in; it never blocks registering.
+ */
+export function useFindDuplicates(p: {
+  surname: string
+  givenNames: string
+  phone: string
+  nationalId: string
+  birthDate: string
+}) {
+  const surname = p.surname.trim()
+  const givenNames = p.givenNames.trim()
+  const phone = p.phone.trim()
+  const nationalId = p.nationalId.trim()
+  const birthDate = p.birthDate.trim()
+  return useQuery({
+    queryKey: ['patients', 'duplicates', surname, givenNames, phone, nationalId, birthDate],
+    enabled: surname.length >= 2 && givenNames.length >= 2 && (!!phone || !!nationalId),
+    staleTime: 60_000,
+    queryFn: async (): Promise<DuplicateHit[]> => {
+      if (!supabase) return []
+      const { data, error } = await supabase.rpc('find_patient_duplicates', {
+        p_national_id: nationalId || null,
+        p_phone: phone || null,
+        p_surname: surname,
+        p_given_names: givenNames,
+        p_birth_date: birthDate || null,
+      })
+      if (error) throw apiError(error)
+      const rows = (data ?? []) as {
+        id: string
+        file_number: string
+        surname: string
+        given_names: string
+      }[]
+      return rows.map((r) => ({
+        id: r.id,
+        fileNumber: r.file_number,
+        name: `${r.surname} ${r.given_names}`,
+      }))
     },
   })
 }

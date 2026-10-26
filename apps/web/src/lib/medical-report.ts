@@ -135,6 +135,8 @@ export interface ReportLabInfo {
   performedAt?: string | null
   /** The date-time (ISO) of the report this one replaces, for an amended report. */
   amends?: string | null
+  /** An amended report whose first issue date is not known: the banner without the date. */
+  amended?: boolean
 }
 
 /** The clinic as `useLetterhead()` gives it (structured fields plus the older joined strings). */
@@ -285,6 +287,7 @@ function medWords(t: TFn) {
     received: k('received'),
     preliminaryBanner: k('preliminaryBanner'),
     amendedBanner: (date: string) => k('amendedBanner', { date }),
+    amendedBannerNoDate: k('amendedBannerNoDate'),
     findings: k('findings'),
     method: k('method'),
     rangesNote: k('rangesNote'),
@@ -1058,6 +1061,8 @@ function labReportHtml(d: MedicalReportDoc, l: MedicalReportLabels, ctx: Medical
     head.push(
       `<div class="banner amended flag-word">${esc(w.amendedBanner(docDateTime(lab.amends)))}</div>`,
     )
+  else if (lab.amended)
+    head.push(`<div class="banner amended flag-word">${esc(w.amendedBannerNoDate)}</div>`)
   if (anyResult && !verified) head.push(`<div class="banner">${esc(w.preliminaryBanner)}</div>`)
 
   // measured results in a table, grouped by panel; text results as findings and conclusion

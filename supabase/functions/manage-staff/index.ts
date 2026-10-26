@@ -508,6 +508,9 @@ Deno.serve(async (req) => {
       }
 
       case 'reset_pin': {
+        // The manager changes their own PIN from the menu; the database refuses this path too.
+        if (body.user_id === caller.user.id)
+          return json(400, { error: 'you cannot reset your own PIN; change it from the menu' })
         if (!PIN.test(body.pin ?? '')) return json(400, { error: 'PIN must be six digits' })
         const { error } = await admin.auth.admin.updateUserById(body.user_id, {
           password: body.pin,

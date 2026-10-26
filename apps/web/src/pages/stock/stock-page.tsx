@@ -452,13 +452,18 @@ function AdminStock({
       )}
       {tab === 'deliveries' && <DeliveriesList focusId={focus.delivery} />}
       {tab === 'reorder' && (
-        <ReorderTab items={items} onReceive={(item) => openStock('receive', { item })} />
+        <ReorderTab
+          items={items}
+          onReceive={(item) => openStock('receive', { item })}
+          canSetLevel={manage}
+        />
       )}
       {tab === 'rooms' && !manage && blocked}
       {tab === 'rooms' && (
         <RoomStoresTab
           overview={data}
           isManager={isManager}
+          canAct={manage}
           focusNote={focus.note}
           focusRequest={focus.request}
           focusStore={focus.store}

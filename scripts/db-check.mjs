@@ -10,6 +10,8 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PGlite } from '@electric-sql/pglite'
+// 0092: staff_login_email checks the PIN against the Auth password hash (bcrypt, pgcrypto).
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const migrationsDir = path.join(root, 'supabase', 'migrations')
@@ -19,6 +21,7 @@ create schema if not exists auth;
 create table if not exists auth.users (
   id uuid primary key default gen_random_uuid(),
   email text unique,
+  encrypted_password text,
   raw_user_meta_data jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
@@ -41,7 +44,7 @@ grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid(), auth.role(), auth.jwt() to anon, authenticated, service_role;
 `
 
-const db = new PGlite()
+const db = new PGlite({ extensions: { pgcrypto } })
 const results = []
 let failures = 0
 
@@ -11102,6 +11105,8 @@ await step(
     const r = {}
     const rec = await j88(staff.receptionist, `select patient_file($1) as j`, [t88.pid])
     r.recExtra = rec.patient?.extra
+    // 0092: the keys of the filled private fields (no values), so the form locks HIV and offers TB
+    r.recFilled = rec.extra_filled
     // reception saves the form as it sees it, fills the empty TB field, tries to overwrite HIV
     r.save = await j88(staff.receptionist, `select to_jsonb(update_patient($1, $2::jsonb)) as j`, [
       t88.pid,
@@ -11114,6 +11119,7 @@ await step(
     await db.query(`update setting set value = '[]'::jsonb where key = 'patient.fields'`)
     if (
       JSON.stringify(r.recExtra) !== JSON.stringify({ kin: 'Mama' }) ||
+      JSON.stringify(r.recFilled) !== JSON.stringify(['hiv']) ||
       r.stored.hiv !== 'positive' ||
       r.stored.tb !== 'started' ||
       r.stored.kin !== 'Mama Uwase' ||
@@ -11199,6 +11205,386 @@ await step(
     if ((rec.results ?? []).length !== 0 || !ended.e || ended.ended_reason !== 'deactivated')
       throw new Error(JSON.stringify({ results: rec.results?.length, ended }))
     return 'reception gets no results; the deactivated nurse’s approved sign-in ended at once'
+  },
+)
+
+// ---------------------------------------------------------------- 0092 guide fixes
+const t92 = {}
+await step('0092: the sign-in e-mail lookup needs the PIN; 5 wrong PINs close it', async () => {
+  await asAdmin()
+  const me = await one(`select staff_id, username, email from profiles where id = $1`, [
+    staff.lab_tech,
+  ])
+  await db.query(
+    `update auth.users set encrypted_password = crypt('482915', gen_salt('bf', 6)) where id = $1`,
+    [staff.lab_tech],
+  )
+  const look = async (pin) => {
+    await as(null, 'anon', '')
+    const r = (
+      await one(`select staff_login_email($1, $2, $3) as e`, [me.staff_id, me.username, pin])
+    ).e
+    await asAdmin()
+    return r
+  }
+  const r = {}
+  r.wrong = await look('000000')
+  r.right = await look('482915')
+  r.audit = (
+    await one(
+      `select count(*)::int as n from audit_event where actor_id = $1 and action = 'login' and reason = 'wrong PIN (lookup)'`,
+      [staff.lab_tech],
+    )
+  ).n
+  for (let i = 0; i < 4; i++) await look('111111')
+  r.locked = await look('482915')
+  r.oldSignature = (
+    await one(
+      `select exists (select 1 from pg_proc where proname = 'staff_login_email' and pronargs = 2) as b`,
+    )
+  ).b
+  await db.query(`delete from audit_event where actor_id = $1 and reason = 'wrong PIN (lookup)'`, [
+    staff.lab_tech,
+  ])
+  if (
+    r.wrong !== null ||
+    r.right !== me.email ||
+    r.audit !== 1 ||
+    r.locked !== null ||
+    r.oldSignature
+  )
+    throw new Error(json88(r))
+  return 'wrong PIN: nothing (and logged); right PIN: the e-mail; after 5 wrong PINs: nothing even with the right one'
+})
+await step('0092: open bills on the home page only for who takes payments', async () => {
+  // the earlier steps left open bills behind (the cashier's list is not empty)
+  const bills = async (who) =>
+    ((await j88(who, `select home_summary() as j`)).openBills ?? []).length
+  const r = {
+    nurse: await bills(staff.nurse),
+    doctor: await bills(t88.docB),
+    cashier: await bills(staff.cashier),
+    manager: await bills(staff.manager),
+  }
+  if (r.nurse || r.doctor || !r.cashier || r.manager !== r.cashier) throw new Error(json88(r))
+  return `nurse and doctor: none; cashier and manager: ${r.cashier} open bill(s)`
+})
+await step(
+  '0092: HIV tests: the record needs sensitive.read, the lab list the right or the desk; an HIV diagnosis needs the right',
+  async () => {
+    await asAdmin()
+    t92.pid = (
+      await one(
+        `insert into patient (surname, given_names, sex) values ('Guide', 'Fixes 92', 'male') returning id`,
+      )
+    ).id
+    t92.enc = await openVisit88(t92.pid, t88.docB)
+    await as(staff.manager)
+    const cat = (await one(`select save_category(null, 'Lab tests 92', null, null, 'lab') as id`))
+      .id
+    t92.hiv = (await one(`select upsert_service(null, 'HIV test 92', 'other', 1000) as id`)).id
+    t92.glu = (await one(`select upsert_service(null, 'Glucose 92', 'other', 1000) as id`)).id
+    await db.query(`select set_service_category($1, $2)`, [t92.hiv, cat])
+    await db.query(`select set_service_category($1, $2)`, [t92.glu, cat])
+    // Dr B's two requests, written directly (as the 0088 seed does)
+    await asAdmin()
+    await db.query(
+      `insert into service_request (encounter_id, category, service_id, station, requester_id)
+       values ($1, 'lab', $2, 'laboratory', $3), ($1, 'lab', $4, 'laboratory', $3)`,
+      [t92.enc, t92.hiv, t88.docB, t92.glu],
+    )
+    const tests = async (who, sql) =>
+      ((await j88(who, sql, [t92.enc])) ?? {}).orders?.map((o) => o.test)
+    const lab = async () =>
+      (await j88(staff.lab_tech, `select lab_worklist('open') as j`))
+        .filter((x) => x.encounterId === t92.enc)
+        .map((x) => x.test)
+    const r = {}
+    r.doctor = await tests(t88.docB, `select visit_clinical($1) as j`)
+    // the laboratory runs the test: its desk is enough, whatever its rights
+    r.labList = await lab()
+    r.reception = await tests(staff.receptionist, `select visit_clinical($1) as j`)
+    // sensitive.read is not one of the switches: written directly, as the 0081 steps do
+    await asAdmin()
+    await db.query(
+      `insert into staff_permission (profile_id, permission, allowed) values ($1, 'sensitive.read', false)`,
+      [t88.docB],
+    )
+    r.doctorWithout = await tests(t88.docB, `select visit_clinical($1) as j`)
+    r.b20 = await codeAs(t88.docB, `select add_diagnosis($1, 'HIV disease', 'B20')`, [t92.enc])
+    await asAdmin()
+    await db.query(
+      `delete from staff_permission where permission = 'sensitive.read' and profile_id = $1`,
+      [t88.docB],
+    )
+    r.b20Allowed = await codeAs(t88.docB, `select add_diagnosis($1, 'HIV disease', 'B20')`, [
+      t92.enc,
+    ])
+    const has = (a, name) => (a ?? []).includes(name)
+    if (
+      !has(r.doctor, 'HIV test 92') ||
+      !has(r.doctor, 'Glucose 92') ||
+      !has(r.labList, 'HIV test 92') ||
+      !has(r.labList, 'Glucose 92') ||
+      r.reception !== undefined ||
+      has(r.doctorWithout, 'HIV test 92') ||
+      !has(r.doctorWithout, 'Glucose 92') ||
+      r.b20 !== '42501' ||
+      r.b20Allowed !== null
+    )
+      throw new Error(json88(r))
+    return 'the doctor and the laboratory see both; reception nothing; a doctor without the right: the glucose only, B20 refused'
+  },
+)
+await step("0092: a head's dashboard shows their own department's people only", async () => {
+  await asAdmin()
+  await db.query(`update profiles set dashboard = 'head' where id = $1`, [t88.head])
+  await db.query(
+    `insert into audit_event (actor_id, action, entity, entity_id, reason) values ($1, 'login', 'profiles', $1, 'signed in'), ($2, 'login', 'profiles', $2, 'signed in')`,
+    [staff.receptionist, t88.docB],
+  )
+  const members = (
+    await db.query(`select profile_id from staff_department where department_id = $1`, [t88.dept])
+  ).rows.map((x) => x.profile_id)
+  const head = await j88(t88.head, `select dashboard_summary(current_date - 7, current_date) as j`)
+  const mgr = await j88(
+    staff.manager,
+    `select dashboard_summary(current_date - 7, current_date) as j`,
+  )
+  await asAdmin()
+  await db.query(`update profiles set dashboard = null where id = $1`, [t88.head])
+  const r = {
+    staff: head.staff?.length,
+    outsiders: (head.staff ?? []).filter((s) => !members.includes(s.id)).length,
+    loginOutsiders: (head.logins ?? []).filter((l) => !members.includes(l.id)).length,
+    loginsOfMine: (head.logins ?? []).some((l) => l.id === t88.docB),
+    managerSeesAll: (mgr.staff ?? []).some((s) => s.id === staff.receptionist),
+  }
+  if (!r.staff || r.outsiders || r.loginOutsiders || !r.loginsOfMine || !r.managerSeesAll)
+    throw new Error(json88(r))
+  return `the head: ${r.staff} people of Consultation 88, their sign-ins only; the manager: everyone`
+})
+await step('0092: every temporary PIN ends the sign-ins; nobody gives themself one', async () => {
+  await asAdmin()
+  const session = async () => {
+    const sid = crypto.randomUUID()
+    await db.query(
+      `insert into approved_session (session_id, user_id, via) values ($1, $2, 'code')`,
+      [sid, staff.pharmacist],
+    )
+    return sid
+  }
+  const ended = async (sid) =>
+    (await one(`select ended_reason from approved_session where session_id = $1`, [sid]))
+      .ended_reason
+  const r = {}
+  const s1 = await session()
+  await db.query(`update profiles set must_change_pin = true where id = $1`, [staff.pharmacist])
+  await db.query(`insert into staff_temp_pin (user_id, pin, set_by) values ($1, '111111', $2)`, [
+    staff.pharmacist,
+    staff.manager,
+  ])
+  r.first = await ended(s1)
+  // a second reset while the first is still pending: the flag does not change, the PIN does
+  const s2 = await session()
+  await db.query(`update staff_temp_pin set pin = '222222', set_at = now() where user_id = $1`, [
+    staff.pharmacist,
+  ])
+  r.second = await ended(s2)
+  // written by the server (manage-staff): as the owner here
+  try {
+    await db.query(`insert into staff_temp_pin (user_id, pin, set_by) values ($1, '333333', $1)`, [
+      staff.manager,
+    ])
+    r.self = null
+  } catch (e) {
+    r.self = `${e.code}/${e.hint ?? ''}`
+  }
+  await db.query(`delete from staff_temp_pin where user_id = $1`, [staff.pharmacist])
+  await db.query(`update profiles set must_change_pin = false where id = $1`, [staff.pharmacist])
+  if (r.first !== 'new PIN' || r.second !== 'new PIN' || r.self !== '42501/not_permitted')
+    throw new Error(json88(r))
+  return 'both resets ended the open sign-in; a manager cannot set their own temporary PIN'
+})
+await step("0092: only the calendar's doctor (or the manager) declines a booking", async () => {
+  // an approved booking on the dentist's calendar (written directly: the calendar is staff-only now)
+  await asAdmin()
+  const id = (
+    await one(
+      `insert into appointment (patient_id, practitioner_id, starts_at, status, contact_phone, category)
+       select $1, p.id, $2::timestamptz + interval '21 days', 'approved', '0788 000 920', 'dental'
+       from practitioner p where p.code = 'nf' returning id`,
+      [patientId, slot],
+    )
+  ).id
+  const r = {}
+  r.other = await codeAs(staff.doctor, `select decline_appointment($1, 'busy')`, [id])
+  r.owner = await codeAs(dentist, `select decline_appointment($1, 'busy')`, [id])
+  await asAdmin()
+  r.status = (await one(`select status from appointment where id = $1`, [id])).status
+  if (r.other !== '42501' || r.owner !== null || r.status !== 'declined') throw new Error(json88(r))
+  return "another doctor refused; the calendar's doctor declined"
+})
+await step(
+  '0092: "Seen" and the file notice go to the requester or the colleague who took the patient over',
+  async () => {
+    await asAdmin()
+    const sr = (
+      await db.query(
+        `select r.id from service_request r where r.encounter_id = $1 order by r.created_at`,
+        [t92.enc],
+      )
+    ).rows.map((x) => x.id)
+    const report = async (req) =>
+      (
+        await one(
+          `insert into diagnostic_report (service_request_id, findings, impression, verified_at) values ($1, 'f', 'normal', now()) returning id`,
+          [req],
+        )
+      ).id
+    const r = {}
+    const d1 = await report(sr[0])
+    r.other = await codeAs(t88.docC, `select mark_result_reviewed($1)`, [d1])
+    r.requester = await codeAs(t88.docB, `select mark_result_reviewed($1)`, [d1])
+    // Dr B hands the patient over to Dr C, who takes them
+    await asAdmin()
+    const q = (await one(`select id from queue_entry where encounter_id = $1 limit 1`, [t92.enc]))
+      .id
+    await db.query(
+      `insert into patient_handover (encounter_id, queue_id, station, from_user, to_user, note, status, answered_at, answered_by)
+       values ($1, $2, 'consultation', $3, $4, 'please continue', 'taken', now(), $4)`,
+      [t92.enc, q, t88.docB, t88.docC],
+    )
+    await db.query(`update queue_entry set taken_by = $2 where id = $1`, [q, t88.docC])
+    const d2 = await report(sr[1])
+    r.takenOver = await codeAs(t88.docC, `select mark_result_reviewed($1)`, [d2])
+    r.reviewedBy = (
+      await one(`select reviewed_by from diagnostic_report where id = $1`, [d2])
+    ).reviewed_by
+    // the laboratory adds a file to the test: the notice goes to Dr C, not Dr B
+    // (the 0089 step re-ran its migration after all the others: put the 0092 definitions back)
+    await asAdmin()
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20261203090000_guide_fixes.sql'), 'utf8'),
+    )
+    const name = path89(t92.pid, t92.enc)
+    await db.query(
+      `insert into storage.objects (bucket_id, name, metadata) values ('patient-files', $1, $2)`,
+      [name, JSON.stringify({ size: 120000, mimetype: 'image/jpeg' })],
+    )
+    const f = await attach89(staff.lab_tech, {
+      enc: t92.enc,
+      pid: t92.pid,
+      path: name,
+      kind: 'lab',
+      title: 'Printout 92',
+      sr: sr[1],
+    })
+    await asAdmin()
+    r.notice = (
+      await db.query(
+        `select recipient_user from notification where kind = 'file_attached' and params ->> 'fileId' = $1`,
+        [f.id ?? ''],
+      )
+    ).rows.map((x) => x.recipient_user)
+    if (
+      r.other !== '42501' ||
+      r.requester !== null ||
+      r.takenOver !== null ||
+      r.reviewedBy !== t88.docC ||
+      r.notice.length !== 1 ||
+      r.notice[0] !== t88.docC
+    )
+      throw new Error(json88({ ...r, file: f }))
+    return 'another doctor refused; the requester and, after the handover, the colleague allowed; the notice went to the colleague'
+  },
+)
+await step('0092: impossible vital signs are refused with a sentence per field', async () => {
+  const v = await visit87('Vitals92')
+  const r = {}
+  r.sys = await codeAs(staff.nurse, `select record_vitals($1, '{"bp_sys":"450"}'::jsonb)`, [v.enc])
+  r.temp = await codeAs(staff.nurse, `select record_vitals($1, '{"temp":"67"}'::jsonb)`, [v.enc])
+  r.spo2 = await codeAs(staff.nurse, `select record_vitals($1, '{"spo2":"101"}'::jsonb)`, [v.enc])
+  r.weight = await codeAs(staff.nurse, `select record_vitals($1, '{"weight":"0.2"}'::jsonb)`, [
+    v.enc,
+  ])
+  r.ok = await codeAs(
+    staff.nurse,
+    `select record_vitals($1, '{"bp_sys":"300","temp":"30","spo2":"100","weight":"0.3","muac":"60"}'::jsonb)`,
+    [v.enc],
+  )
+  await asAdmin()
+  r.rows = (
+    await one(`select count(*)::int as n from observation where encounter_id = $1`, [v.enc])
+  ).n
+  if (
+    r.sys !== '22023' ||
+    r.temp !== '22023' ||
+    r.spo2 !== '22023' ||
+    r.weight !== '22023' ||
+    r.ok !== null ||
+    r.rows !== 5
+  )
+    throw new Error(json88(r))
+  return '450 mmHg, 67 °C, 101 %, 0.2 kg refused; the limits themselves accepted'
+})
+await step(
+  '0092: a merge moves files and access rows; the old number still finds the patient',
+  async () => {
+    await as(staff.receptionist)
+    const keep = (
+      await one(
+        `select register_patient_file('Merge', 'Keep 92', 'female', null, 30, '0788920001') as r`,
+      )
+    ).r
+    const dup = (
+      await one(
+        `select register_patient_file('Merge', 'Dup 92', 'female', null, 30, '0788920002') as r`,
+      )
+    ).r
+    await asAdmin()
+    const enc = (
+      await one(`insert into encounter (patient_id) values ($1) returning id`, [dup.patient_id])
+    ).id
+    await db.query(
+      `insert into patient_file_doc (patient_id, encounter_id, kind, title, storage_path, mime_type, size_bytes, uploaded_by)
+     values ($1, $2, 'photo', 'Photo 92', $3, 'image/jpeg', 1000, $4)`,
+      [dup.patient_id, enc, path89(dup.patient_id, enc), t88.docB],
+    )
+    await db.query(
+      `insert into record_access_request (patient_id, encounter_id, requested_by, reason) values ($1, $2, $3, 'second opinion')`,
+      [dup.patient_id, enc, t88.docC],
+    )
+    await db.query(`update encounter set status = 'closed', closed_at = now() where id = $1`, [enc])
+    await as(staff.manager)
+    await db.query(`select merge_patients($1, $2)`, [keep.patient_id, dup.patient_id])
+    await asAdmin()
+    const r = {
+      file: (await one(`select patient_id from patient_file_doc where encounter_id = $1`, [enc]))
+        .patient_id,
+      request: (
+        await one(`select patient_id from record_access_request where encounter_id = $1`, [enc])
+      ).patient_id,
+    }
+    await as(staff.receptionist)
+    r.find = (await db.query(`select id from find_patients($1)`, [dup.file_number])).rows.map(
+      (x) => x.id,
+    )
+    r.list = ((await one(`select patients_list($1) as j`, [dup.file_number])).j.rows ?? []).map(
+      (x) => x.id,
+    )
+    await asAdmin()
+    // (the digits of a file number may also match a phone, as before: the kept file is what counts)
+    if (
+      r.file !== keep.patient_id ||
+      r.request !== keep.patient_id ||
+      !r.find.includes(keep.patient_id) ||
+      r.find.includes(dup.patient_id) ||
+      !r.list.includes(keep.patient_id) ||
+      r.list.includes(dup.patient_id)
+    )
+      throw new Error(json88(r))
+    return 'file and access request moved; both searches find the kept file by the old number'
   },
 )
 

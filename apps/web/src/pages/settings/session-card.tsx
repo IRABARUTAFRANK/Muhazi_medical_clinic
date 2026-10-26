@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Flash } from '@/components/ui/flash'
 import { Select } from '@/components/ui/select'
+import { useConfirm } from '@/lib/confirm'
 import {
   DEFAULT_SESSION_HOURS,
   SESSION_CHOICES,
@@ -26,6 +27,7 @@ export function SessionCard() {
   const { data } = useStaffSettings()
   const save = useSaveSessionSetting()
   const revoke = useRevokeAllDevices()
+  const confirm = useConfirm()
   const [value, setValue] = useState<number | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const saved = data?.sessionHours ?? DEFAULT_SESSION_HOURS
@@ -68,6 +70,14 @@ export function SessionCard() {
             disabled={value == null || value === saved}
             onClick={async () => {
               if (value == null) return
+              if (
+                !(await confirm({
+                  title: t('confirm.settings.session.title', { count: value }),
+                  body: t('confirm.settings.session.body'),
+                  confirmLabel: t('confirm.settings.saveYes'),
+                }))
+              )
+                return
               await save.mutateAsync(value)
               setValue(null)
               setNotice(t('settings.session.saved'))
@@ -79,6 +89,15 @@ export function SessionCard() {
           <Button
             loading={revoke.isPending}
             onClick={async () => {
+              if (
+                !(await confirm({
+                  title: t('confirm.settings.session.revokeTitle'),
+                  body: t('confirm.settings.session.revokeBody'),
+                  confirmLabel: t('confirm.settings.session.revokeYes'),
+                  tone: 'danger',
+                }))
+              )
+                return
               const n = await revoke.mutateAsync()
               setNotice(t('settings.otp.revoked', { count: n }))
             }}

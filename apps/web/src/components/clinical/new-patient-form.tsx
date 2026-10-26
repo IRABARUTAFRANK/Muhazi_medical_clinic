@@ -1,11 +1,12 @@
-import { useState, type FormEvent } from 'react'
-import { UserPlus } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { AlertTriangle, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
-import { setNoNationalId, type NoIdReason } from '@/lib/api/patients'
+import { StaffLink } from '@/components/staff/staff-link'
+import { setNoNationalId, useFindDuplicates, type NoIdReason } from '@/lib/api/patients'
 import { useVisitActions, type Sex } from '@/lib/api/visits'
 import { useConfirm } from '@/lib/confirm'
 
@@ -52,6 +53,16 @@ export function NewPatientForm({
   const [sector, setSector] = useState('')
   const [error, setError] = useState<string | null>(null)
   const confirm = useConfirm()
+  // Once the names and a phone (or ID) are typed, the files that may be this person's already
+  // (a pause after typing, so the database is not asked at every key).
+  const typed = useDebounced({
+    surname,
+    givenNames,
+    phone,
+    nationalId: noId ? '' : nationalId,
+    birthDate,
+  })
+  const { data: duplicates = [] } = useFindDuplicates(typed)
 
   const reset = () => {
     setSurname('')
@@ -216,6 +227,26 @@ export function NewPatientForm({
               </p>
             )}
           </div>
+          {/* a possible duplicate never blocks: the file may still be registered */}
+          {duplicates.length > 0 && (
+            <div className="bg-amber-bg text-amber flex flex-col gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold">
+              {duplicates.map((d) => (
+                <span key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <AlertTriangle size={16} aria-hidden="true" className="flex-none" />
+                  <span className="min-w-0 flex-1">
+                    {t('register.duplicate.line', { name: d.name, file: d.fileNumber })}
+                  </span>
+                  <StaffLink
+                    to="/app/patient"
+                    search={{ id: d.id }}
+                    className={buttonVariants({ size: 'sm' })}
+                  >
+                    {t('patients.openFile')}
+                  </StaffLink>
+                </span>
+              ))}
+            </div>
+          )}
           {error && (
             <p
               role="alert"
@@ -245,6 +276,18 @@ export function NewPatientForm({
       </form>
     </Card>
   )
+}
+
+/** The value as it was half a second ago (the typing has paused). */
+function useDebounced<T>(value: T, ms = 500): T {
+  const [settled, setSettled] = useState(value)
+  const key = JSON.stringify(value)
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(value), ms)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a new object each render: compare by content
+  }, [key, ms])
+  return settled
 }
 
 /** Whole years between a YYYY-MM-DD date and today. */

@@ -26,7 +26,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { useCashierSummary } from '@/lib/api/finance'
+import { useCashierSummary, useUnpaidDebts } from '@/lib/api/finance'
 import { useHomeSummary } from '@/lib/api/home'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
@@ -74,8 +74,17 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
   const { data: home } = useHomeSummary()
   const { data: queue = [] } = useQueueBoard('cashier', user.role)
   const rows = openItems(queue)
-  const bills = home?.openBills ?? []
-  const amountOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.amount ?? 0
+  // an earlier day's visit still open with money due is an unpaid bill, not an open bill of
+  // today: listed once, under Unpaid bills
+  const { data: debts = [] } = useUnpaidDebts()
+  const earlier = new Set(debts.filter((d) => d.status === 'open').map((d) => d.encounterId))
+  const bills = (home?.openBills ?? []).filter((b) => !earlier.has(b.encounterId))
+  // what came in less the money given back, as the cash count expects
+  const refundedOf = (m: string) =>
+    (s?.refunds ?? []).filter((r) => r.method === m).reduce((sum, r) => sum + r.amount, 0)
+  const amountOf = (m: string) =>
+    (s?.byMethod.find((x) => x.method === m)?.amount ?? 0) - refundedOf(m)
+  const collected = (s?.total ?? 0) - (s?.refunded ?? 0)
   const methodName = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
   // the manager's switch "Take payments": switched off, the cashier still sees the money
   const canTake = useCan(user)('payment.take')
@@ -147,10 +156,10 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               icon={HandCoins}
               tint="violet"
               label={t('finance.tiles.collectedIn', { period: periodWord })}
-              value={s.total}
+              value={collected}
               unit="RWF"
               // "all time" has no period before it to compare with
-              delta={range === 'all' ? undefined : delta(s.total, s.previousTotal, true, t)}
+              delta={range === 'all' ? undefined : delta(collected, s.previousTotal, true, t)}
               to={link('revenue') ?? '/app/payments'}
             />
             <Kpi
@@ -215,7 +224,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                   icon={PieChart}
                   tint="mint"
                   title={t('finance.byMethodIn', { period: periodWord })}
-                  right={formatRwf(s.total)}
+                  right={formatRwf(collected)}
                   to={link('revenue', { by: 'method' }) ?? '/app/payments'}
                 >
                   {s.byMethod.length === 0 ? (
@@ -302,7 +311,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             <NoticesPanel limit={4} />
           </div>
           {/* money still owed on visits already over: collected here when the patient comes back */}
-          {(s?.debts ?? 0) > 0 && <DebtsPanel canTake={canTake} />}
+          {((s?.debts ?? 0) > 0 || debts.length > 0) && <DebtsPanel canTake={canTake} />}
         </section>
         <DoctorCalendarsSection user={user} />
       </main>

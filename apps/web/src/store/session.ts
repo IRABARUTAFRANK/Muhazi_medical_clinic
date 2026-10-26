@@ -8,6 +8,7 @@ import {
   type Role,
   type StaffUser,
 } from '@mmc/shared'
+import { isMissingFunction } from '@/lib/api/errors'
 import { sampleSessionHours } from '@/lib/api/settings'
 import {
   onSessionRefused,
@@ -70,7 +71,8 @@ export type SignInResult =
   /** First sign-in with the temporary PIN: choose a new PIN first, then the e-mailed code. */
   | { ok: true; step: 'new-pin' }
   | { ok: true; step: 'done'; user: StaffUser }
-  | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'error' }
+  /** `tooMany`: 5 wrong PINs or too many code requests lately; the server waits 15 minutes. */
+  | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'tooMany' | 'error' }
 export type VerifyResult =
   | { ok: true; user: StaffUser }
   /** `notApproved`: the code was right but the database did not approve the sign-in (0081). */
@@ -92,7 +94,18 @@ export interface PendingSignIn {
 
 type RequestOutcome =
   | { ok: true; email: string }
-  | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'error' | 'unavailable' }
+  | { ok: false; reason: 'invalid' | 'inactive' | 'otp' | 'tooMany' | 'error' | 'unavailable' }
+
+/**
+ * "Send a new code": sent, or why not. `needPin`: the PIN is no longer in memory (the page was
+ * reloaded), so the person types it again and the request goes through the same PIN check as
+ * the first one.
+ */
+export type ResendResult = 'ok' | 'needPin' | 'invalid' | 'tooMany' | 'failed'
+
+/** The server says "wait" (429): too many wrong PINs or code requests lately. */
+const isRateLimited = (error: unknown): boolean =>
+  (error as { status?: number } | null)?.status === 429
 
 /**
  * Why a tab stopped being signed in. The login page explains it (see `readSignOutNote`):
@@ -269,6 +282,31 @@ let lastServerTouchAt = 0
 const missingFunction = (error: { code?: string } | null | undefined) => error?.code === 'PGRST202'
 
 /**
+ * The sign-in e-mail of a staff ID + username, given the PIN (migration 0092: the e-mail is no
+ * longer told without it; null = wrong PIN or unknown account). The website deploys before the
+ * database: an older database still has the two-argument function, used then.
+ */
+async function lookupLoginEmail(
+  staffId: string,
+  username: string,
+  pin: string,
+): Promise<{ email: string | null; error: { code?: string; message?: string } | null }> {
+  const three = await supabase!.rpc('staff_login_email', {
+    p_staff_id: staffId,
+    p_username: username,
+    p_pin: pin,
+  })
+  if (!isMissingFunction(three.error)) {
+    return { email: (three.data as string | null) ?? null, error: three.error }
+  }
+  const two = await supabase!.rpc('staff_login_email', {
+    p_staff_id: staffId,
+    p_username: username,
+  })
+  return { email: (two.data as string | null) ?? null, error: two.error }
+}
+
+/**
  * The person is active: the database counts the hours without activity from now (0081), at most
  * every 5 minutes, or at once (`now`) after the PIN or when the warning before the sign-out is
  * answered. Independent of the browser key. If the database says this sign-in no longer works,
@@ -355,10 +393,8 @@ async function signInTrusted(
     writeTrust(username, null)
     return null
   }
-  const { data: email } = await supabase!.rpc('staff_login_email', {
-    p_staff_id: staffId,
-    p_username: username,
-  })
+  // null with the PIN given = wrong PIN (the same message as a refused PIN session)
+  const { email } = await lookupLoginEmail(staffId, username, pin)
   if (!email) return { reason: 'invalid' }
   const { error } = await supabase!.auth.signInWithPassword({ email, password: pin })
   if (error) {
@@ -414,6 +450,7 @@ async function requestCodeViaFunction(
       case 'inactive':
         return { ok: false, reason: 'inactive' }
       case 'too_many':
+        return { ok: false, reason: 'tooMany' }
       case 'otp_send_failed':
         return { ok: false, reason: 'otp' }
       default:
@@ -431,14 +468,13 @@ async function requestCodeDirect(
   username: string,
   pin: string,
 ): Promise<RequestOutcome> {
-  const { data: email, error: lookupError } = await supabase!.rpc('staff_login_email', {
-    p_staff_id: staffId,
-    p_username: username,
-  })
+  const { email, error: lookupError } = await lookupLoginEmail(staffId, username, pin)
   if (lookupError) return { ok: false, reason: 'error' }
+  // null with the PIN given = wrong PIN
   if (!email) return { ok: false, reason: 'invalid' }
   const { error } = await supabase!.auth.signInWithPassword({ email, password: pin })
   if (error) {
+    if (isRateLimited(error)) return { ok: false, reason: 'tooMany' }
     return { ok: false, reason: /banned/i.test(error.message) ? 'inactive' : 'invalid' }
   }
   // PIN accepted. The session only counts once the e-mailed code is verified: until then
@@ -449,7 +485,7 @@ async function requestCodeDirect(
   })
   if (otpError) {
     await signOutAuth('code request failed')
-    return { ok: false, reason: 'otp' }
+    return { ok: false, reason: isRateLimited(otpError) ? 'tooMany' : 'otp' }
   }
   return { ok: true, email }
 }
@@ -464,10 +500,8 @@ async function checkTemporaryPin(
   username: string,
   pin: string,
 ): Promise<{ email: string } | { reason: 'invalid' | 'inactive' | 'error' } | null> {
-  const { data: email } = await supabase!.rpc('staff_login_email', {
-    p_staff_id: staffId,
-    p_username: username,
-  })
+  // null with the PIN given = wrong PIN
+  const { email } = await lookupLoginEmail(staffId, username, pin)
   if (!email) return { reason: 'invalid' }
   const { data: auth, error } = await supabase!.auth.signInWithPassword({ email, password: pin })
   trace('signIn.pin', { ok: !error && !!auth.user, error: error?.message })
@@ -517,7 +551,8 @@ interface SessionState {
   setFirstPin: (next: string) => Promise<'ok' | 'same' | 'otp' | 'error'>
   /** Step 3: the six-digit code from the e-mail. Starts the session. */
   verifyOtp: (code: string) => Promise<VerifyResult>
-  resendOtp: () => Promise<boolean>
+  /** A new code, through the same PIN check as the first one (the PIN again after a reload). */
+  resendOtp: (pin?: string) => Promise<ResendResult>
   cancelSignIn: () => void
   /** Activity in this tab keeps the sign-in going (written at most every 20 seconds). */
   touch: () => void
@@ -794,27 +829,28 @@ export const useSession = create<SessionState>()(
         return { ok: true, user }
       },
 
-      resendOtp: async () => {
+      resendOtp: async (typedPin) => {
         const pending = get().pending
-        if (!pending) return false
-        if (!supabase) return true
+        if (!pending) return 'failed'
+        if (!supabase) return 'ok'
         // Same PIN-gated request as the first code (the hook drops codes without a PIN check).
-        if (pending.pin) {
-          let outcome = await requestCodeViaFunction(pending.staffId, pending.username, pending.pin)
-          if (!outcome.ok && outcome.reason === 'unavailable') {
-            const { error } = await supabase.auth.signInWithOtp({
-              email: pending.email,
-              options: { shouldCreateUser: false },
-            })
-            outcome = error ? { ok: false, reason: 'otp' } : { ok: true, email: pending.email }
-          }
-          return outcome.ok
+        // After a reload the PIN is no longer in memory: the page asks for it again.
+        const pin = typedPin?.trim() || pending.pin
+        if (!pin) return 'needPin'
+        let outcome = await requestCodeViaFunction(pending.staffId, pending.username, pin)
+        if (!outcome.ok && outcome.reason === 'unavailable')
+          outcome = await requestCodeDirect(pending.staffId, pending.username, pin)
+        trace('resendOtp', { ok: outcome.ok, ...(outcome.ok ? {} : { reason: outcome.reason }) })
+        if (outcome.ok) {
+          // the PIN typed again serves the next "Send a new code" too
+          if (pin !== pending.pin) set({ pending: { ...pending, pin } })
+          return 'ok'
         }
-        const { error } = await supabase.auth.signInWithOtp({
-          email: pending.email,
-          options: { shouldCreateUser: false },
-        })
-        return !error
+        return outcome.reason === 'invalid' || outcome.reason === 'inactive'
+          ? 'invalid'
+          : outcome.reason === 'tooMany'
+            ? 'tooMany'
+            : 'failed'
       },
 
       cancelSignIn: () => {

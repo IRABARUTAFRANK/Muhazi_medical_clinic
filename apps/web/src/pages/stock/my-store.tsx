@@ -395,20 +395,16 @@ function CountForm({ store }: { store: MyStore }) {
   const { t } = useTranslation()
   const actions = useRoomStoreActions()
   const confirm = useConfirm()
+  // A room store is supplied only by the pharmacy's transfer notes: its holder counts what is
+  // missing, never more than the system says, and only medicines the store lists (the
+  // database refuses both).
   const { items, options } = useStoreOptions(store.id, true)
-  const { data: overview } = useStockOverview()
   const [itemId, setItemId] = useState('')
   const [counted, setCounted] = useState('')
   const [reason, setReason] = useState('')
   const [msg, setMsg] = useState<Msg | null>(null)
-  // a medicine found on the shelf that the system does not list here can be counted too
-  const extra = (overview?.items ?? [])
-    .filter((i) => i.active && !items.some((x) => x.itemId === i.id))
-    .map((i) => ({ value: i.id, label: itemName(i) }))
   const current = items.find((x) => x.itemId === itemId)?.onHand ?? 0
-  const name =
-    items.find((x) => x.itemId === itemId)?.item ??
-    itemName(overview?.items.find((i) => i.id === itemId))
+  const name = items.find((x) => x.itemId === itemId)?.item ?? ''
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
@@ -416,6 +412,7 @@ function CountForm({ store }: { store: MyStore }) {
     if (!itemId) return setMsg({ ok: false, text: t('stock.errors.item') })
     if (counted === '' || !Number.isInteger(n) || n < 0)
       return setMsg({ ok: false, text: t('stock.reorderBad') })
+    if (n > current) return setMsg({ ok: false, text: t('stock.countNoUp', { count: current }) })
     if (reason.trim().length < 3) return setMsg({ ok: false, text: t('stock.errors.countWhy') })
     if (
       !(await confirm({
@@ -449,7 +446,7 @@ function CountForm({ store }: { store: MyStore }) {
           value={itemId}
           onChange={setItemId}
           emptyLabel={t('visit.add.pickItem')}
-          options={[...options, ...extra]}
+          options={options}
         />
         <Field
           label={t('stock.counted')}
@@ -460,7 +457,9 @@ function CountForm({ store }: { store: MyStore }) {
         />
       </div>
       {itemId && (
-        <p className="text-ink-3 m-0 text-[13px]">{t('stock.countNow', { count: current })}</p>
+        <p className="text-ink-3 m-0 text-[13px]">
+          {t('stock.countNow', { count: current })} {t('stock.countHolderHint')}
+        </p>
       )}
       <Field
         label={t('stock.countWhy')}

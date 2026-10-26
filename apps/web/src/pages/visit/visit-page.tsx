@@ -526,6 +526,7 @@ export function VisitPage({
                   lockedNote={
                     locked ? t('access.lockedShort', { holder: access?.holder ?? '' }) : null
                   }
+                  holder={access?.holder ?? null}
                   closed={closed}
                   onDone={(m) => {
                     setActionError(null)
@@ -761,45 +762,51 @@ export function VisitPage({
                 {switchedOff('payment.take') && bill && (!closed || bill.balance !== 0) && (
                   <NotAllowedNotice feature="payment.take" compact />
                 )}
-                {can('payment.take') && bill && (!closed || bill.balance !== 0) && (
-                  <PaymentCard
-                    bill={bill}
-                    patientName={patientName}
-                    onRefund={async (input) => {
-                      setActionError(null)
-                      try {
-                        await actions.refund.mutateAsync(input)
-                        setDone(t('visit.refund.done', { amount: formatRwf(input.amount) }))
-                      } catch (e) {
-                        setActionError(describe(e))
-                        throw e
-                      }
-                    }}
-                    onPay={async (input) => {
-                      setActionError(null)
-                      try {
-                        const r = await actions.takePayment.mutateAsync(input)
-                        setLastPayment({
-                          receipt: r.receipt,
-                          // the code: the receipt writes it in the reader's language
-                          method: input.method,
-                          amount: input.amount,
-                          reference: input.reference?.trim() || null,
-                        })
-                        setDone(
-                          r.balance > 0
-                            ? t('visit.payment.partial', { balance: formatRwf(r.balance) })
-                            : r.closed
-                              ? t('visit.payment.settledClosed', { receipt: r.receipt ?? '' })
-                              : t('visit.payment.settledOpen', { receipt: r.receipt ?? '' }),
-                        )
-                      } catch (e) {
-                        setActionError(describe(e))
-                        throw e
-                      }
-                    }}
-                  />
-                )}
+                {/* the manager gives money back without the "Take payments" switch (as the database allows) */}
+                {bill &&
+                  (can('payment.take') || (user.role === 'manager' && bill.balance < 0)) &&
+                  (!closed || bill.balance !== 0) && (
+                    <PaymentCard
+                      bill={bill}
+                      patientName={patientName}
+                      onRefund={async (input) => {
+                        setActionError(null)
+                        try {
+                          await actions.refund.mutateAsync(input)
+                          setDone(t('visit.refund.done', { amount: formatRwf(input.amount) }))
+                        } catch (e) {
+                          setActionError(describe(e))
+                          throw e
+                        }
+                      }}
+                      onPay={async (input) => {
+                        setActionError(null)
+                        try {
+                          const r = await actions.takePayment.mutateAsync(input)
+                          setLastPayment({
+                            receipt: r.receipt,
+                            // the code: the receipt writes it in the reader's language
+                            method: input.method,
+                            amount: input.amount,
+                            reference: input.reference?.trim() || null,
+                          })
+                          setDone(
+                            r.balance > 0
+                              ? t('visit.payment.partial', { balance: formatRwf(r.balance) })
+                              : // a debt paid after the visit was finished: nothing goes on
+                                closed
+                                ? t('visit.payment.settledDebt', { receipt: r.receipt ?? '' })
+                                : r.closed
+                                  ? t('visit.payment.settledClosed', { receipt: r.receipt ?? '' })
+                                  : t('visit.payment.settledOpen', { receipt: r.receipt ?? '' }),
+                          )
+                        } catch (e) {
+                          setActionError(describe(e))
+                          throw e
+                        }
+                      }}
+                    />
+                  )}
                 {bill && header && (bill.paid > 0 || lastPayment) && (
                   <Button
                     className="self-start"
@@ -1063,7 +1070,7 @@ function PaymentCard({
                 label={t('visit.payment.amount')}
                 inputMode="numeric"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^d]/g, ''))}
+                onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))}
                 placeholder={String(overpaid)}
               />
             </div>

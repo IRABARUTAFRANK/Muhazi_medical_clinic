@@ -452,7 +452,8 @@ export function labReport(
         { label: t('lab.tiles.turnaround'), value: s.turnaroundMin, unit: 'min' },
       ]
     : []
-  const urgent = open.filter((o) => o.priority <= 1).length
+  // urgent as the worklist shows it (priority 1 and 2)
+  const urgent = open.filter((o) => o.priority <= 2).length
 
   return {
     ...base,

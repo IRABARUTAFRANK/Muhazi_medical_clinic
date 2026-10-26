@@ -71,12 +71,16 @@ interface SendPreset {
 export function RoomStoresTab({
   overview,
   isManager,
+  canAct,
   focusNote,
   focusRequest,
   focusStore,
 }: {
   overview: StockOverview | undefined
   isManager: boolean
+  /** "Manage stock" (or the manager): send notes, decline requests, cancel a note. Without it
+   *  the tab stays readable, without the buttons. */
+  canAct: boolean
   focusNote?: string
   focusRequest?: string
   /** A store a notice points to (a loss in a room store): opened in the list. */
@@ -140,28 +144,38 @@ export function RoomStoresTab({
           unit={t('roomStores.tiles.open')}
         />
       </div>
-      <RefillRequestsList pharmacy focusId={focusRequest} onPrepare={prepare} i={1} />
-      <SendNoteForm
-        key={presetKey}
-        locations={locations}
-        items={items}
-        mainId={overview?.mainPharmacyId ?? null}
-        preset={preset}
-        onClear={() => {
-          setPreset({})
-          setPresetKey((k) => k + 1)
-        }}
+      <RefillRequestsList
+        pharmacy
+        canAct={canAct}
+        focusId={focusRequest}
+        onPrepare={prepare}
+        i={1}
       />
+      {canAct && (
+        <SendNoteForm
+          key={presetKey}
+          locations={locations}
+          items={items}
+          mainId={overview?.mainPharmacyId ?? null}
+          preset={preset}
+          onClear={() => {
+            setPreset({})
+            setPresetKey((k) => k + 1)
+          }}
+        />
+      )}
       <TransferNotesList
         i={3}
         initialStatus={focusNote ? 'all' : 'in_transit'}
         openId={openNote}
         onOpen={setOpenNote}
+        canAct={canAct}
       />
       <RoomStoresList
         locations={locations}
         items={items}
         isManager={isManager}
+        canAct={canAct}
         focusStore={focusStore}
         onSend={(storeId) => {
           setPreset({ storeId })
@@ -350,12 +364,14 @@ function RoomStoresList({
   locations,
   items,
   isManager,
+  canAct,
   focusStore,
   onSend,
 }: {
   locations: StockLocation[]
   items: StockItem[]
   isManager: boolean
+  canAct: boolean
   focusStore?: string
   onSend: (storeId: string) => void
 }) {
@@ -477,6 +493,7 @@ function RoomStoresList({
                       store={l}
                       units={units}
                       isManager={isManager}
+                      canAct={canAct}
                       onEdit={() => setEditing(l)}
                       onSend={() => onSend(l.id)}
                     />
@@ -497,12 +514,14 @@ function StoreAdminActions({
   store,
   units,
   isManager,
+  canAct,
   onEdit,
   onSend,
 }: {
   store: StockLocation
   units: number
   isManager: boolean
+  canAct: boolean
   onEdit: () => void
   onSend: () => void
 }) {
@@ -557,7 +576,7 @@ function StoreAdminActions({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
-        {!closed && (
+        {!closed && canAct && (
           <Button size="sm" variant="primary" onClick={onSend}>
             <Send size={14} aria-hidden="true" />
             {t('roomStores.sendHere')}

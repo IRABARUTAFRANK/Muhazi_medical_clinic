@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -19,6 +20,8 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
   const { t } = useTranslation()
   const q = useCashierSummary(day)
   const s = q.data
+  // the payments route reads it loosely (no validateSearch): typed as a plain object
+  const toDay: { day?: string } = { day }
   return (
     <Drawer
       title={t('analytics.revenue.dayTitle', { day: dayLong(day) })}
@@ -29,9 +32,10 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
       }
       onClose={onClose}
       actions={
-        <StaffLink to="/app/payments" className={cn(buttonVariants({ size: 'sm' }))}>
+        // the Payments page opens on this day (?day=), not on today
+        <Link to="/app/payments" search={toDay} className={cn(buttonVariants({ size: 'sm' }))}>
           {t('analytics.revenue.openPayments')} →
-        </StaffLink>
+        </Link>
       }
     >
       {q.error ? (

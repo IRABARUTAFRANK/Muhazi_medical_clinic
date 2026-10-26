@@ -35,6 +35,7 @@ const TONE: Record<RefillStatus, 'yellow' | 'green' | 'red' | 'grey'> = {
 export function RefillRequestsList({
   locationId = null,
   pharmacy,
+  canAct = true,
   focusId,
   onPrepare,
   i = 2,
@@ -42,6 +43,8 @@ export function RefillRequestsList({
   locationId?: string | null
   /** The pharmacy or the manager: prepare a note from a request, decline it. */
   pharmacy: boolean
+  /** false: "Manage stock" is switched off for the reader; the list stays, the buttons go. */
+  canAct?: boolean
   focusId?: string | null
   onPrepare?: (r: RefillRequest) => void
   i?: number
@@ -184,13 +187,13 @@ export function RefillRequestsList({
               </ul>
               {r.status === 'open' && (
                 <div className="flex flex-wrap gap-2">
-                  {pharmacy && onPrepare && (
+                  {pharmacy && canAct && onPrepare && (
                     <Button size="sm" variant="primary" onClick={() => onPrepare(r)}>
                       <Send size={14} aria-hidden="true" />
                       {t('roomStores.prepareNote')}
                     </Button>
                   )}
-                  {pharmacy && declining !== r.id && (
+                  {pharmacy && canAct && declining !== r.id && (
                     <Button
                       size="sm"
                       variant="danger"

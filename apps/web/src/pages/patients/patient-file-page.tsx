@@ -453,6 +453,7 @@ export function PatientFilePage({
               <Reveal focus>
                 <EditForm
                   safetyHidden={!!data.safetyHidden}
+                  extraFilled={data.extra_filled ?? []}
                   patient={p}
                   onDone={() => {
                     setEditing(false)
@@ -634,7 +635,11 @@ function Overview({ file }: { file: PatientFile }) {
           {!file.safetyHidden && <Info label={f('notes')} value={p.notes} />}
         </CardBody>
       </Card>
-      <MoreInfo patient={p} safetyHidden={!!file.safetyHidden} />
+      <MoreInfo
+        patient={p}
+        safetyHidden={!!file.safetyHidden}
+        extraFilled={file.extra_filled ?? []}
+      />
     </div>
   )
 }
@@ -646,10 +651,13 @@ function Overview({ file }: { file: PatientFile }) {
 function MoreInfo({
   patient: p,
   safetyHidden = false,
+  extraFilled = [],
 }: {
   patient: PatientRecord
   /** Identity level: the "medical" fields are not sent; say so instead of showing them empty. */
   safetyHidden?: boolean
+  /** The private fields that hold a value (keys only): the others really are empty. */
+  extraFilled?: string[]
 }) {
   const { t } = useTranslation()
   const { data: defs = [] } = usePatientFields()
@@ -758,7 +766,13 @@ function MoreInfo({
             <Info
               key={d.key}
               label={d.label}
-              value={safetyHidden && d.private ? t('file.privateField') : valueOf(d)}
+              value={
+                safetyHidden && d.private
+                  ? extraFilled.includes(d.key)
+                    ? t('file.privateField')
+                    : null
+                  : valueOf(d)
+              }
             />
           ))}
           {adHoc.map(([k, v]) => (
@@ -784,12 +798,15 @@ function MoreInfo({
 function EditForm({
   patient: p,
   safetyHidden = false,
+  extraFilled = [],
   onDone,
   onError,
 }: {
   patient: PatientRecord
   /** Level 1 (0088): allergies, blood group and notes are not shown, nor sent. */
   safetyHidden?: boolean
+  /** The private fields that hold a value (keys only): locked at level 1; the others fillable. */
+  extraFilled?: string[]
   onDone: () => void
   onError: (m: string | null) => void
 }) {
@@ -821,6 +838,8 @@ function EditForm({
   })
   const [extra, setExtra] = useState<Record<string, string>>({ ...(p.extra ?? {}) })
   const [noId, setNoId] = useState<NoIdReason | ''>(p.no_national_id ?? '')
+  // "No known allergies" (0084): ticked, the allergy text is cleared and cannot be typed
+  const [allergiesNone, setAllergiesNone] = useState(!!p.allergies_none)
   const set = (k: string, val: string) => setV((s) => ({ ...s, [k]: val }))
   const setX = (k: string, val: string) => setExtra((s) => ({ ...s, [k]: val }))
   const text = (k: string, more: Record<string, unknown> = {}) => (
@@ -838,6 +857,9 @@ function EditForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     onError(null)
+    // the same check as the register form, before the database refuses in its own words
+    if (!noId && v.national_id && v.national_id.replace(/\D/g, '').length !== 16)
+      return onError(t('register.errors.nationalIdFormat'))
     if (
       !(await confirm({
         title: t('confirm.desks.patient.save', {
@@ -849,7 +871,11 @@ function EditForm({
     )
       return
     try {
-      const fields: Record<string, string | number | null | Record<string, string>> = { ...v }
+      const fields: Record<string, string | number | boolean | null | Record<string, string>> = {
+        ...v,
+        allergies_none: allergiesNone,
+      }
+      if (allergiesNone) fields.allergies = ''
       if (!v.birth_date && v.age_years) fields.age_years = Number(v.age_years)
       else delete fields.age_years
       const merged = { ...extra }
@@ -864,6 +890,7 @@ function EditForm({
       if (safetyHidden) {
         delete fields.blood_group
         delete fields.allergies
+        delete fields.allergies_none
         delete fields.notes
       }
       await actions.update.mutateAsync(fields)
@@ -938,8 +965,22 @@ function EditForm({
                 onChange={(e) => set('allergies', e.target.value)}
                 placeholder={t('file.allergiesPh')}
                 className="border-red/60"
+                disabled={allergiesNone}
               />
               <p className="text-ink-3 m-0 -mt-2 text-xs">{t('file.allergiesHint')}</p>
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[14px] font-semibold">
+                <input
+                  type="checkbox"
+                  className="accent-primary size-5"
+                  checked={allergiesNone}
+                  onChange={(e) => {
+                    setAllergiesNone(e.target.checked)
+                    if (e.target.checked) set('allergies', '')
+                  }}
+                />
+                {t('file.allergiesNone')}
+              </label>
+              <p className="text-ink-3 m-0 -mt-2 text-xs">{t('file.allergiesNoneHint')}</p>
               {text('notes')}
             </>
           )}
@@ -949,18 +990,25 @@ function EditForm({
               <h3 className="text-ink-2 m-0 mt-2 text-[13px] font-bold tracking-[.04em] uppercase">
                 {t('file.more')}
               </h3>
+              {/* the "medical" fields are not sent at the identity level: one that already
+                  holds a value is locked (update_patient keeps it anyway); an empty one may be
+                  filled in */}
+              {safetyHidden && defs.some((d) => d.private) && (
+                <p className="text-ink-3 m-0 text-xs">{t('file.privateFill')}</p>
+              )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {/* the "medical" fields are not sent at the identity level: not edited here */}
-                {defs
-                  .filter((d) => !(safetyHidden && d.private))
-                  .map((d) => (
+                {defs.map((d) =>
+                  safetyHidden && d.private && extraFilled.includes(d.key) ? (
+                    <Field key={d.key} label={d.label} value={t('file.privateField')} disabled />
+                  ) : (
                     <CustomInput
                       key={d.key}
                       def={d}
                       value={valueOf(d)}
                       onChange={(val) => setX(d.key, val)}
                     />
-                  ))}
+                  ),
+                )}
                 {adHocKeys.map((k) => (
                   <Field
                     key={k}

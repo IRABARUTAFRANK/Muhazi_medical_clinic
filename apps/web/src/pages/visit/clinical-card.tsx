@@ -129,6 +129,7 @@ export function ClinicalCard({
   report,
   openReport = false,
   lockedNote = null,
+  holder = null,
   patientId = null,
   onDone,
   onError,
@@ -155,6 +156,9 @@ export function ClinicalCard({
   openReport?: boolean
   /** The patient is with someone else: read only, with who holds them. */
   lockedNote?: string | null
+  /** Who holds the patient now (visit_access): the colleague who took them over after a
+   *  hand-over may cancel the prescriber's medicine still waiting at the pharmacy (0091). */
+  holder?: string | null
   /** A finished visit: shown read-only (everything stays in the patient file). */
   closed?: boolean
   onDone: (m: string) => void
@@ -266,6 +270,11 @@ export function ClinicalCard({
   // the signed-in person's specialty and council registration (nulls before 0084)
   const { data: creds } = useMyCredentials(user.id)
   const [printingRx, setPrintingRx] = useState(false)
+  // every medicine still standing was given here: the patient has nothing to take to a pharmacy
+  const allGivenHere =
+    !!data &&
+    data.prescriptions.some((r) => !r.cancelledAt) &&
+    data.prescriptions.every((r) => r.cancelledAt || r.supply === 'room')
   /** A staff member as a document names them: specialty (else role), council registration. */
   const docPerson = (p: DocPerson) => ({
     name: p.name,
@@ -778,15 +787,21 @@ export function ClinicalCard({
             </Button>
           )}
           {patient && data?.prescriptions.some((r) => !r.cancelledAt) && (
-            <Button
-              size="sm"
-              onClick={() => void printRx()}
-              disabled={printingRx}
-              title={t('rxDoc.printHint')}
+            // every medicine given here: nothing would print for a pharmacy (a greyed button
+            // takes no pointer: the explanation sits on its wrapper)
+            <span
+              title={t(allGivenHere ? 'rxDoc.allGivenHere' : 'rxDoc.printHint')}
+              className="inline-flex"
             >
-              <Printer size={14} aria-hidden="true" />
-              {t('rxDoc.print')}
-            </Button>
+              <Button
+                size="sm"
+                onClick={() => void printRx()}
+                disabled={printingRx || allGivenHere}
+              >
+                <Printer size={14} aria-hidden="true" />
+                {t('rxDoc.print')}
+              </Button>
+            </span>
           )}
         </span>
       </CardHeader>
@@ -1279,13 +1294,16 @@ export function ClinicalCard({
       {data &&
         data.prescriptions.map((r) => {
           const state = prescriptionState(r)
-          // the prescriber (or the manager) withdraws a line still waiting at the pharmacy
+          // the prescriber (or the manager) withdraws a line still waiting at the pharmacy; so
+          // does the colleague who took the patient over (the holder of the visit, as the
+          // database checks through the hand-over since 0091)
           const wrote = r.prescriberId ? r.prescriberId === user.id : !!r.by && r.by === user.name
+          const tookOver = !readOnly && !wrote && !!holder && holder.split(', ').includes(user.name)
           const canCancel =
             state === 'waiting' &&
             r.pending !== false &&
             !closed &&
-            (isManager || wrote) &&
+            (isManager || wrote || tookOver) &&
             can('clinical.write')
           // the pharmacy undoes a hand-over (wrong medicine, brought back unopened)
           const canReturn = state === 'given' && r.supply !== 'room' && canDesk('pharmacy')

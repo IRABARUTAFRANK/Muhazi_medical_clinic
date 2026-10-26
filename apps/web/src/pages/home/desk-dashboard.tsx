@@ -114,16 +114,11 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   const { has } = useHomeDesks(user)
   const { data: queue = [] } = useQueueBoard('all', user.role)
   const open = onePerPool(openItems(queue))
-  // The nurse: everyone at triage and everyone still without vitals (whatever the desk, so the
-  // list is not empty when patients go straight to the doctor); reception: everyone.
+  // The nurse: everyone at triage and everyone still without vitals, whatever the desk (the same
+  // rule as the "To measure" tile and the Vitals page); reception: everyone.
   const waiting =
     role === 'nurse'
-      ? open.filter(
-          (r) =>
-            r.station === 'triage' ||
-            (!r.vitalsAt &&
-              !['cashier', 'pharmacy', 'laboratory', 'ultrasound'].includes(r.station)),
-        )
+      ? open.filter((r) => r.station === 'triage' || !r.vitalsAt)
       : // reception: those still waiting (not those already being seen)
         open.filter((r) => !r.startedAt)
   // patients sent to the nurses for care (Nursing, Beds), and those of the other sections this

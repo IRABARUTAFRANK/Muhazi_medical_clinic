@@ -6,7 +6,9 @@ import type { StaffUser } from '@mmc/shared'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
 import { Reveal } from '@/components/ui/reveal'
+import { StaffLink } from '@/components/staff/staff-link'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { Flash } from '@/components/ui/flash'
@@ -77,12 +79,14 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
     waiting.filter((q) => matches(query, q.name, q.ticket, q.fileNumber)),
     sort,
   ).sort((a, b) => mineFirst(a) - mineFirst(b))
-  // the chosen patient, else the one opened from a link, else the first row of the list
+  // the chosen patient, else the one opened from a link, else the first row of the list; a link
+  // to a patient who is not waiting says so rather than opening someone else's form
+  const linked = encounter ? waiting.find((i) => i.encounterId === encounter) : undefined
+  const linkMissing = !!encounter && !isLoading && !linked && selectedId === null
   const selected =
     waiting.find((i) => i.queueId === selectedId) ??
-    (encounter ? waiting.find((i) => i.encounterId === encounter) : undefined) ??
-    shown[0] ??
-    null
+    linked ??
+    (linkMissing ? null : (shown[0] ?? null))
   const paged = usePaged(shown, 10, `${query}|${sort}`)
   // Files the nurse started that reception must complete: send those patients to reception.
   const { data: files = [] } = useFilesToComplete()
@@ -238,6 +242,24 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
                 }}
               />
             </Reveal>
+          ) : linkMissing ? (
+            <Card>
+              <CardBody className="gap-3">
+                <p className="text-ink-2 m-0 text-[14px] font-semibold">{t('triage.notWaiting')}</p>
+                <div className="flex flex-wrap gap-2">
+                  <StaffLink
+                    to="/app/visit"
+                    search={{ encounter: encounter! }}
+                    className={buttonVariants({ size: 'sm' })}
+                  >
+                    {t('visits.openVisit')}
+                  </StaffLink>
+                  <StaffLink to="/app/vitals" className={buttonVariants({ size: 'sm' })}>
+                    {t('triage.backToList')}
+                  </StaffLink>
+                </div>
+              </CardBody>
+            </Card>
           ) : (
             <Card>
               <CardBody>

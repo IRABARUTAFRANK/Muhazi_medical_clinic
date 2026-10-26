@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { useVisitHeader, type Vital } from '@/lib/api/billing'
+import { ApiError } from '@/lib/api/errors'
 import { useConfirm } from '@/lib/confirm'
 import { SEND_FROM_TRIAGE, useVisitActions, useVitalsTakers, type Station } from '@/lib/api/visits'
 import { formatTime } from '@mmc/shared'
@@ -147,6 +148,15 @@ export function VitalsForm({
   /** A refusal to send on: switch to measurements only; any other error is shown as it is. */
   const failed = (err: unknown, sending: boolean) => {
     const message = err instanceof Error ? err.message : ''
+    // The "Measured by" list cannot leave out a nurse whose right the manager switched off
+    // (vitals_takers does not know it): the refusal names the person chosen instead.
+    const server = err instanceof ApiError ? err.serverMessage : message
+    if (/"measured by" is not allowed/i.test(server))
+      return setError(
+        t('vitalsForm.errors.takerNotAllowed', {
+          name: others.find((p) => p.id === measuredBy)?.name ?? '',
+        }),
+      )
     if (sending && REFUSED.test(message)) setRefused(message)
     else setError(t('triage.errors.generic', { message }))
   }

@@ -753,10 +753,13 @@ export function StaffPage({ user }: { user: StaffUser }) {
                                 <Pencil size={15} aria-hidden="true" />
                                 {t('staff.edit')}
                               </Button>
-                              <Button size="sm" onClick={() => openReset(e)} disabled={!e.active}>
-                                <KeyRound size={15} aria-hidden="true" />
-                                {t('staff.resetPin')}
-                              </Button>
+                              {/* one's own PIN is changed from the menu, not reset here */}
+                              {!self && (
+                                <Button size="sm" onClick={() => openReset(e)} disabled={!e.active}>
+                                  <KeyRound size={15} aria-hidden="true" />
+                                  {t('staff.resetPin')}
+                                </Button>
+                              )}
                               {/* deactivating can be undone: not shown as dangerous as deleting */}
                               <Button
                                 size="sm"

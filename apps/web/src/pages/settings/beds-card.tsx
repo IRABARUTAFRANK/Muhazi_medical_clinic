@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils'
 
 const errorBox = 'bg-red-bg text-red m-0 rounded-lg px-3 py-2 text-[13px] font-semibold'
 const digits = (v: string) => v.replace(/[^0-9]/g, '')
+/** The most beds the database accepts (set_bed_count). */
+const MAX_BEDS = 200
 
 /**
  * Manager: how many beds the clinic has and what one night costs (one price for all beds, or a
@@ -29,6 +31,7 @@ export function BedsCard() {
   const prices = [...new Set(beds.map((b) => b.nightlyPrice))]
   const countValue = count ?? String(beds.length)
   const priceValue = price ?? (prices.length === 1 ? String(prices[0]) : '')
+  const tooMany = Number(countValue || 0) > MAX_BEDS
 
   const apply = async () => {
     const n = Number(countValue || 0)
@@ -109,7 +112,7 @@ export function BedsCard() {
           <Button
             variant="primary"
             loading={admin.setCount.isPending}
-            disabled={count == null && price == null}
+            disabled={(count == null && price == null) || tooMany}
             onClick={() => void apply().catch(() => undefined)}
           >
             <Check size={16} aria-hidden="true" />
@@ -119,6 +122,11 @@ export function BedsCard() {
             <span className="text-green text-[13px] font-semibold">{t('settings.beds.saved')}</span>
           )}
         </div>
+        {tooMany && (
+          <p role="alert" className={errorBox}>
+            {t('settings.beds.max', { count: MAX_BEDS })}
+          </p>
+        )}
         {prices.length > 1 && price == null && (
           <p className="text-ink-3 m-0 text-[13px]">{t('settings.beds.mixed')}</p>
         )}

@@ -9,7 +9,11 @@ import { PIN_RE } from '@/lib/api/staff'
 import { homeRouteFor } from '@/lib/roles'
 import { useSession } from '@/store/session'
 
-/** Forced at first sign-in (and whenever the manager resets a PIN): replace the handed-over PIN. */
+/**
+ * Forced at first sign-in (and whenever the manager resets a PIN): replace the handed-over PIN.
+ * Also opened by choice from the menu ("Change my PIN"): then the words do not mention the
+ * manager.
+ */
 export function ChangePinPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -45,13 +49,15 @@ export function ChangePinPage({ user }: { user: StaffUser }) {
             <KeyRound size={22} aria-hidden="true" />
           </span>
           <span>
-            <span className="block text-lg font-bold">{t('pin.changeTitle')}</span>
+            <span className="block text-lg font-bold">
+              {t(user.mustChangePin ? 'pin.changeTitle' : 'pin.ownTitle')}
+            </span>
             <span className="text-ink-3 text-[13px]">
               {user.name} · {user.username}
             </span>
           </span>
         </div>
-        <p className="text-ink-2 m-0">{t('pin.changeLead')}</p>
+        <p className="text-ink-2 m-0">{t(user.mustChangePin ? 'pin.changeLead' : 'pin.ownLead')}</p>
         <Field
           label={t('pin.current')}
           type="password"

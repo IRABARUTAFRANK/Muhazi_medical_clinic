@@ -35,6 +35,7 @@ import {
   type DayAppointment,
 } from '@/lib/api/desk-ops'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
+import { useStaffSettings } from '@/lib/api/settings'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
@@ -104,6 +105,9 @@ export function AppointmentsPanel({
   const ops = useDeskOps()
   const confirm = useConfirm()
   const { error, run } = useRun()
+  // "Arrived" queues the patient at triage or at the doctor's desk: the clinic's choice (Settings)
+  const { data: staffSettings } = useStaffSettings()
+  const triageFirst = staffSettings?.triageFirst ?? false
   const waiting = appts.filter((a) => a.status === 'approved' || a.status === 'confirmed')
   // Arrived only on the day itself; no-show once the day has come; cancel until the day is over.
   const dayKey = isoDate(day)
@@ -188,7 +192,9 @@ export function AppointmentsPanel({
                     >
                       {a.late ? t('ops.appts.late') : t(`ops.appts.status.${a.status}`)}
                     </span>
-                    {canAct && open && (
+                    {/* Arrived needs only "Start visits" (appointment_arrived asks for nothing
+                        else that the manager switches); No-show and Cancel answer the booking */}
+                    {(canAct || (canArrive ?? canAct)) && open && (
                       <span className="flex gap-1">
                         {isToday && (canArrive ?? canAct) && (
                           <Button
@@ -198,19 +204,23 @@ export function AppointmentsPanel({
                             disabled={!a.patientId || arriving?.id === a.id}
                             title={
                               a.patientId
-                                ? t('ops.appts.arrivedHint')
+                                ? t(
+                                    triageFirst
+                                      ? 'ops.appts.arrivedHint'
+                                      : 'ops.appts.arrivedHintDesk',
+                                  )
                                 : t('ops.appts.registerFirst')
                             }
                           >
                             {t('ops.appts.arrived')}
                           </Button>
                         )}
-                        {(isToday || isPast) && (
+                        {canAct && (isToday || isPast) && (
                           <Button size="sm" variant="ghost" onClick={() => void noShow(a)}>
                             {t('ops.appts.noShow')}
                           </Button>
                         )}
-                        {!isPast && (
+                        {canAct && !isPast && (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -265,7 +275,7 @@ export function AppointmentsPanel({
                           mode="arrival"
                           className="basis-full"
                           name={a.name}
-                          desk="triage"
+                          desk={triageFirst ? 'triage' : 'consultation'}
                           busy={ops.arrived.isPending}
                           onConfirm={() => arrive(a)}
                           onCancel={() => setArriving(null)}
@@ -294,7 +304,17 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
   const ops = useDeskOps()
   const confirm = useConfirm()
   const { error, run } = useRun()
-  const notDone = (id: string) => {
+  // asked the same way as on the visit page: first "are you sure", then the reason
+  const notDone = async (id: string, task: string) => {
+    if (
+      !(await confirm({
+        title: t('confirm.visit.taskNotDone', { task }),
+        body: t('confirm.visit.taskNotDoneBody'),
+        confirmLabel: t('confirm.visit.taskNotDoneYes'),
+        tone: 'danger',
+      }))
+    )
+      return
     const reason = window.prompt(t('ops.tasks.notDoneWhy'))
     if (reason) void run(() => ops.cancelTask.mutateAsync({ id, reason }))
   }
@@ -338,7 +358,7 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
                   )}
                   {canAct && (
                     <>
-                      <Button size="sm" variant="ghost" onClick={() => notDone(x.id)}>
+                      <Button size="sm" variant="ghost" onClick={() => void notDone(x.id, x.title)}>
                         {t('ops.tasks.notDone')}
                       </Button>
                       <Button
@@ -396,7 +416,7 @@ export function BedsPanel({
   i?: number
   userRole: Role
   className?: string
-  /** Admit, extend, discharge (clinical work, switched in Who may do what). */
+  /** Admit, extend, discharge, mark ready (clinical work, switched in Who may do what). */
   canAct?: boolean
 }) {
   const { t } = useTranslation()
@@ -547,7 +567,9 @@ export function BedsPanel({
                         )}
                       </span>
                     )}
-                    {(b.state === 'cleaning' || b.state === 'out_of_service') && (
+                    {/* clinical work like the rest (bed_ready asks for it); a bed out of service
+                        is the manager's to put back, not the nurse's */}
+                    {b.state === 'cleaning' && canAct && (
                       <Button
                         size="sm"
                         onClick={async () => {

@@ -53,6 +53,10 @@ export interface LabOrder {
   visitAt?: string | null
   /** Who validated (else entered) the result, with title and registration. */
   resultByPerson?: DocPerson | null
+  /** A verified result corrected afterwards (the slip prints as an amended report). */
+  corrected?: boolean
+  /** The desk an order is done at when it is not the laboratory or ultrasound (desk_orders). */
+  station?: string
 }
 
 export interface LabSummary {
@@ -217,7 +221,8 @@ export function useDeskOrders(station: string) {
       if (!supabase) return []
       const { data, error } = await supabase.rpc('desk_orders', { p_station: station })
       if (error) throw apiError(error)
-      return (data as LabOrder[]) ?? []
+      // the rows do not say their desk: the slip's title and signer need it
+      return ((data as LabOrder[]) ?? []).map((o) => ({ ...o, station }))
     },
   })
 }

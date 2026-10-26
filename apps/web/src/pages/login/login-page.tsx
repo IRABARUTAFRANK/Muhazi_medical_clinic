@@ -44,6 +44,9 @@ export function LoginPage({ staffId }: { staffId: string }) {
   const [username, setUsername] = useState('')
   const [pin, setPin] = useState('')
   const [code, setCode] = useState('')
+  // "Send a new code" after a reload: the PIN is asked again (it is never stored)
+  const [askPin, setAskPin] = useState(false)
+  const [resendPin, setResendPin] = useState('')
   const [busy, setBusy] = useState(false)
   // A sign-in link for another account was refused (see session.ts): say which one.
   const [error, setError] = useState<string | null>(() => {
@@ -98,9 +101,11 @@ export function LoginPage({ staffId }: { staffId: string }) {
               ? 'login.inactive'
               : result.reason === 'otp'
                 ? 'login.otpSendFailed'
-                : result.reason === 'error'
-                  ? 'login.error'
-                  : 'login.failed',
+                : result.reason === 'tooMany'
+                  ? 'login.tooMany'
+                  : result.reason === 'error'
+                    ? 'login.error'
+                    : 'login.failed',
           ),
         )
         return
@@ -182,15 +187,36 @@ export function LoginPage({ staffId }: { staffId: string }) {
 
   const resend = async () => {
     setError(null)
-    const ok = await resendOtp()
-    setNotice(ok ? t('login.codeResent') : null)
-    if (!ok) setError(t('login.otpSendFailed'))
+    setNotice(null)
+    const r = await resendOtp(askPin ? resendPin : undefined)
+    if (r === 'needPin') {
+      // reloaded page: the PIN is typed again, then the button sends
+      setAskPin(true)
+      return
+    }
+    if (r === 'ok') {
+      setAskPin(false)
+      setResendPin('')
+      setNotice(t('login.codeResent'))
+    } else {
+      setError(
+        t(
+          r === 'tooMany'
+            ? 'login.tooMany'
+            : r === 'invalid'
+              ? 'login.failed'
+              : 'login.otpSendFailed',
+        ),
+      )
+    }
     setCooldown(30)
   }
 
   const back = () => {
     cancelSignIn()
     setCode('')
+    setAskPin(false)
+    setResendPin('')
     setError(null)
     setNotice(null)
   }
@@ -322,6 +348,19 @@ export function LoginPage({ staffId }: { staffId: string }) {
                 {notice}
               </p>
             )}
+            {askPin && (
+              <>
+                <p className="text-ink-2 m-0 text-[13px]">{t('login.resendPinLead')}</p>
+                <Field
+                  label={t('landing.signin.pin')}
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="current-password"
+                  value={resendPin}
+                  onChange={(e) => setResendPin(e.target.value)}
+                />
+              </>
+            )}
             <Button type="submit" variant="primary" size="lg" disabled={busy}>
               {busy ? t('landing.signin.signingIn') : t('login.verify')}
             </Button>
@@ -337,7 +376,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
               <button
                 type="button"
                 className="text-primary font-semibold disabled:opacity-50"
-                disabled={cooldown > 0}
+                disabled={cooldown > 0 || (askPin && !resendPin.trim())}
                 onClick={() => void resend()}
               >
                 {cooldown > 0 ? t('login.resendIn', { s: cooldown }) : t('login.resend')}

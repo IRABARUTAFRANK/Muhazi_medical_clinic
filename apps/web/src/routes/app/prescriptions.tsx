@@ -5,16 +5,18 @@ import type { StaffUser } from '@mmc/shared'
 import { NoDeskPage } from '@/components/clinical/desk-gate'
 import { TREATING_DESKS, useCanDesk } from '@/lib/api/desks'
 import { PrescriptionsPage } from '@/pages/doctor/doctor-pages'
+import { menuAllows } from '@/lib/nav'
 import { useSession } from '@/store/session'
 
 /**
- * The prescriptions I wrote and what the pharmacy did. Doctors, nurses and the manager, at a desk where patients are treated
- * (their departments decide, 0085); someone without one is told to ask the manager.
+ * The prescriptions I wrote and what the pharmacy did. Whoever's menu offers it (the role, or a
+ * department that gives a treating desk, 0085); someone without such a desk is told to ask the
+ * manager.
  */
 export const Route = createFileRoute('/app/prescriptions')({
-  beforeLoad: () => {
-    const role = useSession.getState().user?.role
-    if (!role || !['doctor', 'nurse', 'manager'].includes(role)) throw redirect({ to: '/app' })
+  beforeLoad: async () => {
+    const user = useSession.getState().user
+    if (!user || !(await menuAllows(user, '/app/prescriptions'))) throw redirect({ to: '/app' })
   },
   component: Page,
 })

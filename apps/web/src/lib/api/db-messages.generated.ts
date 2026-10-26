@@ -4,6 +4,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^handing over, not given, cancelling and the medicine or quantity change only through the pharmacy and prescription screens$/, 'dbErrors.1f7aa212', 0], // guard_medication_request
   [/^this patient is with (.+?): record the measurements without choosing where they go next; the nurse there sends them on$/, 'dbErrors.ed0c022b', 1], // record_vitals
   [/^deleting, switching off, the code, the box size and the stock levels change only through their screens$/, 'dbErrors.621ea696', 0], // guard_item
+  [/^only the doctor who asked for the test, or who took the patient over, marks the result seen$/, 'dbErrors.ca6fef80', 0], // mark_result_reviewed
   [/^this medicine is no longer waiting at the pharmacy \(handed over, not given or cancelled\)$/, 'dbErrors.d8d1076f', 0], // cancel_prescription
   [/^Bed stay is built in: bed nights are billed under it \(change its name or price instead\)$/, 'dbErrors.6c3bb7c1', 0], // delete_service
   [/^this patient is with (.+?): they must send the patient to you, or ask for your help$/, 'dbErrors.bdcba673', 1], // assert_may_work_on
@@ -26,11 +27,13 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^too many requests for this phone today; please call reception$/, 'dbErrors.810d2ad5', 0], // create_appointment_inquiry
   [/^only a verified result is corrected; edit the result instead$/, 'dbErrors.e0f675a5', 0], // correct_result
   [/^only the person who gave the task, the nurses or the manager$/, 'dbErrors.ad402386', 0], // cancel_task
+  [/^the diastolic blood pressure must be between 20 and 200 mmHg$/, 'dbErrors.5a6f2876', 0], // record_vitals
   [/^the store "In transit · transfer notes" could not be created$/, 'dbErrors.04503e19', 0], // transit_store
   [/^a booking still to come is cancelled, not marked as no-show$/, 'dbErrors.ebfdf877', 0], // set_appointment_outcome
   [/^only the pharmacy \(or the manager\) works the pharmacy stock$/, 'dbErrors.49af7b6b', 0], // assert_store_work
   [/^register the patient first \(no single file matches phone (.+?)\)$/, 'dbErrors.3d3fc2f6', 1], // approve_inquiry_auto
   [/^security settings are changed from the settings screen only$/, 'dbErrors.c78cce60', 0], // setting_guard
+  [/^the systolic blood pressure must be between 40 and 300 mmHg$/, 'dbErrors.7176bbc3', 0], // record_vitals
   [/^a counter sale is paid in cash, mobile money, card or bank$/, 'dbErrors.4122e994', 0], // take_counter_payment
   [/^a medicine given on another day is put back by the manager$/, 'dbErrors.686cc9cc', 0], // undo_given_here
   [/^a medicine is deleted with the Delete button \(the manager\)$/, 'dbErrors.723bf2d6', 0], // guard_item
@@ -44,8 +47,10 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^you may not start visits \(the manager has not allowed it\)$/, 'dbErrors.d9af705e', 0], // begin_visit, open_encounter, start_visit
   [/^a primary diagnosis is required before closing the visit$/, 'dbErrors.e4c9a0f6', 0], // close_encounter
   [/^the cash of that day is already counted: ask the manager$/, 'dbErrors.f64b8e4d', 0], // void_payment
+  [/^the breathing rate must be between 4 and 100 per minute$/, 'dbErrors.da39329e', 0], // record_vitals
   [/^invoice (.+?) is posted and immutable; issue a credit note$/, 'dbErrors.e246a4c8', 1], // guard_posted_invoice
   [/^this result is verified: correct it, giving the reason$/, 'dbErrors.0974feb4', 0], // record_result
+  [/^only the doctor of this calendar declines the booking$/, 'dbErrors.090c842f', 0], // decline_appointment
   [/^the duplicate file was not found or is already merged$/, 'dbErrors.9be2575c', 0], // merge_patients
   [/^you do not work at (.+?) : send the patient there instead$/, 'dbErrors.1380f064', 1], // begin_visit
   [/^a payment of another day is cancelled by the manager$/, 'dbErrors.56c50d9e', 0], // void_payment
@@ -59,6 +64,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a hand-over of another day is undone by the manager$/, 'dbErrors.2b5019a6', 0], // return_medicine
   [/^appointment not found or not waiting for the doctor$/, 'dbErrors.00523f7c', 0], // accept_appointment
   [/^the medicines of this sale were already handed over$/, 'dbErrors.4cff006a', 0], // void_payment
+  [/^the oxygen saturation must be between 40 and 100 %$/, 'dbErrors.54c6982b', 0], // record_vitals
   [/^that time has just been taken; please pick another$/, 'dbErrors.918d2b07', 0], // create_appointment_inquiry
   [/^the booking slot must be between 5 and 240 minutes$/, 'dbErrors.e61b8bcc', 0], // save_calendar
   [/^the measurement time is before the patient arrived$/, 'dbErrors.ac3f5d11', 0], // record_vitals
@@ -66,6 +72,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^this medicine is no longer waiting at the pharmacy$/, 'dbErrors.fc53c552', 0], // rx_not_given
   [/^a patient with this national ID already exists: (.+?)$/, 'dbErrors.e8755b51', 1], // register_patient, register_patient_file
   [/^register the patient first, then mark the arrival$/, 'dbErrors.a1aef429', 0], // appointment_arrived
+  [/^the arm circumference must be between 5 and 60 cm$/, 'dbErrors.936ac589', 0], // record_vitals
   [/^the discount on this treatment may not exceed %(.+?)$/, 'dbErrors.029b1747', 1], // add_charge_internal
   [/^the percentage must be above -100 and at most 900$/, 'dbErrors.f76784b2', 0], // adjust_prices
   [/^this bed is occupied; discharge the patient first$/, 'dbErrors.fce95d12', 0], // remove_bed
@@ -79,6 +86,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only the manager closes and reopens room stores$/, 'dbErrors.93a0cf62', 0], // set_location_active
   [/^only the manager decides who holds a room store$/, 'dbErrors.c0aac831', 0], // assign_store_holder, set_store_holders, unassign_store_holder
   [/^that patient is at (.+?) \(not waiting for a doctor\)$/, 'dbErrors.37a8695a', 1], // answer_call
+  [/^the pulse must be between 20 and 250 per minute$/, 'dbErrors.194d0d47', 0], // record_vitals
   [/^this appointment is not waiting for the patient$/, 'dbErrors.1b56fa84', 0], // appointment_arrived
   [/^a difference goes back \(returned\) or is a loss$/, 'dbErrors.5492db37', 0], // confirm_receipt
   [/^nothing to give back: the bill is not overpaid$/, 'dbErrors.7fd89e00', 0], // refund_payment
@@ -98,6 +106,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the doctor already has a booking at that time$/, 'dbErrors.aa836e79', 0], // approve_inquiry
   [/^the multiplier must be above 0 and at most 10$/, 'dbErrors.b4f02bd6', 0], // adjust_prices
   [/^the number of beds must be between 0 and 200$/, 'dbErrors.cfe7e2be', 0], // set_bed_count
+  [/^the temperature must be between 30 and 44 °C$/, 'dbErrors.8be65a90', 0], // record_vitals
   [/^this account is deactivated; ask the manager$/, 'dbErrors.e9ee3924', 0], // my_session_profile, record_sign_in
   [/^only a medicine given here is put back here$/, 'dbErrors.a1741a01', 0], // undo_given_here
   [/^only doctors and sonographers can be booked$/, 'dbErrors.d0089942', 0], // ensure_practitioner
@@ -111,11 +120,13 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^call reception, the nurses or a colleague$/, 'dbErrors.35c23da4', 0], // call_next
   [/^only the pharmacy confirms what came back$/, 'dbErrors.56d945ce', 0], // confirm_receipt
   [/^signed out after (.+?) hours without activity$/, 'dbErrors.59565a6b', 1], // check_request
+  [/^the weight must be between 0\.3 and 350 kg$/, 'dbErrors.7028b3a6', 0], // record_vitals
   [/^this appointment can no longer be changed$/, 'dbErrors.87b51b7d', 0], // set_appointment_outcome
   [/^a category with this name already exists$/, 'dbErrors.af608345', 0], // save_category
   [/^dashboard must be manager, head or empty$/, 'dbErrors.c360b741', 0], // update_profile
   [/^only the manager can merge patient files$/, 'dbErrors.04623b87', 0], // merge_patients
   [/^that colleague is not an active employee$/, 'dbErrors.c8abd0fd', 0], // refer_patient
+  [/^the height must be between 20 and 250 cm$/, 'dbErrors.f2b8b050', 0], // record_vitals
   [/^charge not found or bill already posted$/, 'dbErrors.ffcee653', 0], // void_charge
   [/^flow\.triage_first must be true or false$/, 'dbErrors.d4fd33e8', 0], // save_setting
   [/^give the expiry date written on the box$/, 'dbErrors.a4a537bf', 0], // receive_batch

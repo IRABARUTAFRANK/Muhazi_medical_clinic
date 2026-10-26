@@ -168,7 +168,8 @@ export function BillsPage({ user }: { user: StaffUser }) {
           )}
           <Pager {...paged} onPage={paged.setPage} />
         </Panel>
-        <RefundsDuePanel i={3} canTake={canTake} />
+        {/* the manager may give money back without the "Take payments" switch (as the database allows) */}
+        <RefundsDuePanel i={3} canTake={canTake || user.role === 'manager'} />
         <DebtsPanel canTake={canTake} i={4} />
       </main>
     </StaffShell>
@@ -278,7 +279,15 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
  */
 export function PaymentsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
-  const [day, setDay] = useState(today)
+  // the Revenue view's "Open payments of this day" opens this page with ?day=YYYY-MM-DD
+  const search = useSearch({ strict: false }) as { day?: unknown }
+  const [day, setDay] = useState(() =>
+    typeof search.day === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(search.day) &&
+    search.day <= today()
+      ? search.day
+      : today(),
+  )
   const { data: s, error: loadError } = useCashierSummary(day)
   const { data: info } = useClinicInfo()
   const [method, setMethod] = useState<string>('all')
@@ -359,8 +368,13 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
   // the count's answer lives here: saving refreshes the day, and the panel starts again from the
   // saved count, so a message kept inside it would vanish at once
   const [countMsg, setCountMsg] = useState<CountMsg | null>(null)
-  const amountOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.amount ?? 0
+  // what the day holds: the payments less the money given back, as the cash count expects
+  const refundedOf = (m: string) =>
+    (s?.refunds ?? []).filter((r) => r.method === m).reduce((sum, r) => sum + r.amount, 0)
+  const amountOf = (m: string) =>
+    (s?.byMethod.find((x) => x.method === m)?.amount ?? 0) - refundedOf(m)
   const countOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.count ?? 0
+  const dayTotal = (s?.total ?? 0) - (s?.refunded ?? 0)
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="payments">
@@ -370,7 +384,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           tint="violet"
           title={t('finance.paymentsTitle')}
           lead={t('finance.paymentsLead')}
-          meta={<BannerChip icon={HandCoins}>{formatRwf(s?.total ?? 0)}</BannerChip>}
+          meta={<BannerChip icon={HandCoins}>{formatRwf(dayTotal)}</BannerChip>}
         >
           <label className="border-border bg-card flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px]">
             <CalendarDays size={16} aria-hidden="true" className="text-ink-3" />
@@ -437,6 +451,8 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                   </span>
                   <span className="text-ink-3 block text-[12px]">
                     {t('finance.paymentsCount', { count: countOf(m) })}
+                    {refundedOf(m) > 0 &&
+                      ` · ${t('finance.afterRefunds', { amount: formatRwf(refundedOf(m)) })}`}
                   </span>
                 </span>
               </div>
@@ -449,10 +465,12 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                 {t('finance.dayTotal', { day: formatDate(new Date(day)) })}
               </span>
               <span className="block text-[22px] font-extrabold tabular-nums">
-                {formatRwf(s?.total ?? 0)}
+                {formatRwf(dayTotal)}
               </span>
               <span className="block text-[12px] text-white/70">
                 {t('finance.paymentsCount', { count: s?.count ?? 0 })}
+                {(s?.refunded ?? 0) > 0 &&
+                  ` · ${t('finance.afterRefunds', { amount: formatRwf(s?.refunded ?? 0) })}`}
               </span>
               {/* walk-in buyers' sales are in the total, said apart */}
               {(s?.counterSales?.count ?? 0) > 0 && (

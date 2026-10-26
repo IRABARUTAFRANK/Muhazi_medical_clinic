@@ -95,9 +95,12 @@ export function LevelEditor({
 export function ReorderTab({
   items,
   onReceive,
+  canSetLevel,
 }: {
   items: StockItem[]
   onReceive: (itemId: string) => void
+  /** The levels are changed with "Manage stock" (the same right as the On-hand table). */
+  canSetLevel: boolean
 }) {
   const { t } = useTranslation()
   const { data: list = [], isLoading, error } = useReorderSuggestions(true)
@@ -184,15 +187,17 @@ export function ReorderTab({
                       <PackagePlus size={14} aria-hidden="true" />
                       {t('stockReorder.receive')}
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => setEditing(editing === x.itemId ? null : x.itemId)}
-                    >
-                      <SlidersHorizontal size={14} aria-hidden="true" />
-                      {t('stockReorder.setLevels')}
-                    </Button>
+                    {canSetLevel && (
+                      <Button
+                        size="sm"
+                        onClick={() => setEditing(editing === x.itemId ? null : x.itemId)}
+                      >
+                        <SlidersHorizontal size={14} aria-hidden="true" />
+                        {t('stockReorder.setLevels')}
+                      </Button>
+                    )}
                   </div>
-                  {editing === x.itemId && (
+                  {canSetLevel && editing === x.itemId && (
                     <LevelEditor
                       item={
                         it ?? {
@@ -211,27 +216,29 @@ export function ReorderTab({
           </div>
         )}
       </Panel>
-      <Panel i={2} icon={SlidersHorizontal} tint="navy" title={t('stockReorder.anyTitle')}>
-        <p className="text-ink-2 m-0 text-[13px]">{t('stockReorder.anyLead')}</p>
-        <SearchSelect
-          label={t('stock.cols.item')}
-          value={levelItem}
-          onChange={setLevelItem}
-          emptyLabel={t('visit.add.pickItem')}
-          wrapperClassName="sm:max-w-xl"
-          options={items
-            .filter((i) => i.active)
-            .map((i) => ({
-              value: i.id,
-              label: `${itemName(i)} · ${
-                i.reorderLevel > 0
-                  ? t('stock.reorderAt', { count: i.reorderLevel })
-                  : t('stock.reorderNone')
-              }`,
-            }))}
-        />
-        {chosen && <LevelEditor key={chosen.id} item={chosen} />}
-      </Panel>
+      {canSetLevel && (
+        <Panel i={2} icon={SlidersHorizontal} tint="navy" title={t('stockReorder.anyTitle')}>
+          <p className="text-ink-2 m-0 text-[13px]">{t('stockReorder.anyLead')}</p>
+          <SearchSelect
+            label={t('stock.cols.item')}
+            value={levelItem}
+            onChange={setLevelItem}
+            emptyLabel={t('visit.add.pickItem')}
+            wrapperClassName="sm:max-w-xl"
+            options={items
+              .filter((i) => i.active)
+              .map((i) => ({
+                value: i.id,
+                label: `${itemName(i)} · ${
+                  i.reorderLevel > 0
+                    ? t('stock.reorderAt', { count: i.reorderLevel })
+                    : t('stock.reorderNone')
+                }`,
+              }))}
+          />
+          {chosen && <LevelEditor key={chosen.id} item={chosen} />}
+        </Panel>
+      )}
     </div>
   )
 }

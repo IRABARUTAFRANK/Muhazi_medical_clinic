@@ -199,7 +199,7 @@
       "continue": "Continuer",
       "notStaff": "Cet identifiant est inconnu. Demandez au gestionnaire de la clinique.",
       "checkFailed": "Impossible de vérifier l'identifiant. Réessayez.",
-      "username": "Nom d'utilisateur ou matricule",
+      "username": "Nom d’utilisateur",
       "usernamePh": "ex. j.uwimana",
       "pin": "Code PIN",
       "pinPh": "4 à 6 chiffres",
@@ -997,7 +997,9 @@
       "next": "Reconnectez-vous : ID du personnel, nom d’utilisateur et PIN, puis le nouveau code que nous vous envoyons par e-mail.",
       "security": "Pour votre sécurité, reconnectez-vous avec le code envoyé à votre e-mail."
     },
-    "notApproved": "Le code est correct, mais le système de la clinique n'a pas pu confirmer votre connexion. Réessayez dans une minute. Si cela continue, prévenez le gestionnaire."
+    "notApproved": "Le code est correct, mais le système de la clinique n'a pas pu confirmer votre connexion. Réessayez dans une minute. Si cela continue, prévenez le gestionnaire.",
+    "tooMany": "Trop de tentatives. Attendez 15 minutes, puis réessayez.",
+    "resendPinLead": "Saisissez votre PIN pour envoyer un nouveau code."
   },
   "register": {
     "title": "Enregistrer un patient",
@@ -1081,7 +1083,10 @@
     "flow": "Trouvez le patient ou créez un nouveau dossier, puis choisissez où va le patient.",
     "flowTriageFirst": "Trouvez le patient ou créez un nouveau dossier. « Tri d’abord » est activé : le patient voit d’abord l’infirmier, sauf si vous vous en occupez vous-même.",
     "savedOnly": "Dossier de {{name}} enregistré ({{file}}). Aucune visite commencée : utilisez « Commencer la visite » quand le patient est prêt.",
-    "submitFirst": "Enregistrer le patient"
+    "submitFirst": "Enregistrer le patient",
+    "duplicate": {
+      "line": "Doublon possible : {{name}} {{file}} — ouvrir ce dossier plutôt ?"
+    }
   },
   "triage": {
     "title": "Constantes",
@@ -1122,7 +1127,9 @@
     "forName": "pour {{name}}",
     "forYou": "pour vous",
     "lockedFor": "Envoyé à {{name}} : seul(e) {{name}} prend les signes vitaux et oriente ce patient. Vous pouvez regarder sans rien changer.",
-    "lockedSection": "Seuls les infirmiers qui travaillent au triage prennent les signes vitaux et orientent ce patient. Vous pouvez regarder sans rien changer."
+    "lockedSection": "Seuls les infirmiers qui travaillent au triage prennent les signes vitaux et orientent ce patient. Vous pouvez regarder sans rien changer.",
+    "notWaiting": "Ce patient n’attend pas ses signes vitaux.",
+    "backToList": "Retour à la liste"
   },
   "prices": {
     "title": "Soins, tarifs et assureurs",
@@ -1527,7 +1534,8 @@
         "reference": "Une référence de transaction est requise pour ce mode."
       },
       "settledClosed": "Tout est payé. Reçu {{receipt}}. La visite est terminée.",
-      "settledOpen": "Payé à ce jour. Reçu {{receipt}}. La visite continue : ce qui sera ajouté sera payé à la fin."
+      "settledOpen": "Payé à ce jour. Reçu {{receipt}}. La visite continue : ce qui sera ajouté sera payé à la fin.",
+      "settledDebt": "Tout est payé. Reçu {{receipt}}. La dette est réglée ; la visite reste terminée."
     },
     "next": {
       "title": "Prochaine étape pour ce patient",
@@ -1676,7 +1684,8 @@
       "save": "Enregistrer",
       "remove": "Retirer",
       "occupiedNoRemove": "Un lit occupé ne peut pas être retiré",
-      "confirmRemove": "Retirer {{name}} ?"
+      "confirmRemove": "Retirer {{name}} ?",
+      "max": "Au plus {{count}} lits."
     },
     "leadShort": "Tous les réglages de la clinique, section par section.",
     "sections": {
@@ -1749,7 +1758,9 @@
     "format": "Utilisez exactement six chiffres.",
     "same": "Choisissez un PIN différent de l'actuel.",
     "failed": "Le PIN n'a pas pu être changé. Vérifiez le PIN actuel et réessayez.",
-    "changed": "PIN changé."
+    "changed": "PIN changé.",
+    "ownTitle": "Changer mon PIN",
+    "ownLead": "Saisissez votre PIN actuel, puis choisissez six nouveaux chiffres que vous seul connaissez."
   },
   "lock": {
     "title": "Verrouillé après 5 minutes d'inactivité",
@@ -1878,7 +1889,8 @@
     "allergiesNone": "Aucune allergie connue",
     "allergiesNoneHint": "Cochez quand le patient a été interrogé et n'a aucune allergie connue. C'est imprimé sur les ordonnances et les comptes rendus.",
     "allergiesNotRecorded": "Allergies pas encore enregistrées",
-    "privateField": "Privé (médical)"
+    "privateField": "Privé (médical)",
+    "privateFill": "Champs privés (médicaux) : vous ne voyez pas ce qui y est enregistré. Remplissez-en un seulement s’il est vide ; une valeur déjà présente est conservée."
   },
   "clinical": {
     "title": "Dossier clinique",
@@ -1986,7 +1998,7 @@
     "verifyNow": "Validé (résultat final)",
     "saveResult": "Enregistrer le résultat",
     "enterResult": "Saisir le résultat",
-    "editResult": "Corriger le résultat",
+    "editResult": "Modifier le résultat",
     "resultSaved": "Résultat enregistré ; le médecin prescripteur est prévenu.",
     "icdHint": "La CIM-10 est le code international de la maladie (B54 = paludisme, A01.0 = typhoïde). Facultatif ; avec lui, les rapports comptent les maladies comme le Ministère de la Santé.",
     "provisionalHint": "Cochez « Provisoire » quand vous soupçonnez la maladie sans l’avoir confirmée (par exemple en attendant un examen). Laissez décoché quand le diagnostic est confirmé.",
@@ -2219,7 +2231,8 @@
       "future": "L'heure de la mesure est dans le futur.",
       "nothingChanged": "Rien n’a changé. Corrigez une valeur ou annulez.",
       "range": "{{name}} {{value}} {{unit}} est impossible : vérifiez le chiffre (entre {{min}} et {{max}} {{unit}}).",
-      "bpOrder": "La pression diastolique (chiffre du bas) doit être plus petite que la systolique (chiffre du haut)."
+      "bpOrder": "La pression diastolique (chiffre du bas) doit être plus petite que la systolique (chiffre du haut).",
+      "takerNotAllowed": "{{name}} n’est pas autorisé(e) à prendre les signes vitaux (le gestionnaire l’a désactivé) : choisissez une autre infirmière ou demandez au gestionnaire."
     },
     "takenShort": "Constantes prises",
     "taken": "Constantes prises par {{name}} à {{time}}",
@@ -2259,14 +2272,16 @@
         "in_progress": "Chez le médecin",
         "completed": "Vu",
         "no_show": "Non venu",
-        "cancelled": "Annulé"
+        "cancelled": "Annulé",
+        "declined": "Refusé"
       },
       "flow": "Enchaînement : une demande réservée attend l’accord du médecin ; le jour venu, « Arrivé » ouvre la visite et le patient rejoint la file du médecin (ou le triage d’abord, si la clinique l’a choisi dans les réglages).",
       "pickDay": "Choisir un jour",
       "declinedWhy": "{{doctor}} a refusé : {{reason}}",
       "rebooked": "reprogrammé",
       "bookAgain": "Reprogrammer",
-      "managerOversees": "Vous supervisez les rendez-vous : la réception traite les demandes et chaque médecin accepte les rendez-vous de son propre agenda."
+      "managerOversees": "Vous supervisez les rendez-vous : la réception traite les demandes et chaque médecin accepte les rendez-vous de son propre agenda.",
+      "arrivedHintDesk": "Le patient est là : ouvre une visite et le place dans la file du médecin."
     },
     "inquiries": {
       "reject": "Refuser",
@@ -3079,7 +3094,8 @@
     "stockFine": "Rien de bas ni de périmé au labo.",
     "expiresOn": "périme le {{date}}",
     "notDoneToday": "Examens non faits {{period}}",
-    "slipTitleImaging": "Compte rendu d’échographie"
+    "slipTitleImaging": "Compte rendu d’échographie",
+    "slipTitleDesk": "Rapport – {{desk}}"
   },
   "finance": {
     "desk": "Caisse",
@@ -3155,7 +3171,8 @@
         "closed": "Clôturée"
       }
     },
-    "mineOnly": "Seuls les paiements que vous avez encaissés, et votre propre comptage de caisse, sont affichés ici."
+    "mineOnly": "Seuls les paiements que vous avez encaissés, et votre propre comptage de caisse, sont affichés ici.",
+    "afterRefunds": "après {{amount}} rendus"
   },
   "calendar": {
     "title": "Mon agenda",
@@ -3475,7 +3492,9 @@
       "locked": "Déjà ajouté aux médicaments de la clinique : il ne reste qu'à enregistrer la livraison. Modifiez ses détails dans Médicaments."
     },
     "sendExpiredNote_one": "Ce médicament a {{count}} unité périmée dans les dépôts. Les unités périmées ne sont jamais envoyées : un dépôt peut donc en avoir moins à envoyer qu'affiché ici. Retirez-les sous Utiliser ou retirer du stock.",
-    "sendExpiredNote_other": "Ce médicament a {{count}} unités périmées dans les dépôts. Les unités périmées ne sont jamais envoyées : un dépôt peut donc en avoir moins à envoyer qu'affiché ici. Retirez-les sous Utiliser ou retirer du stock."
+    "sendExpiredNote_other": "Ce médicament a {{count}} unités périmées dans les dépôts. Les unités périmées ne sont jamais envoyées : un dépôt peut donc en avoir moins à envoyer qu'affiché ici. Retirez-les sous Utiliser ou retirer du stock.",
+    "countNoUp": "Le comptage ne peut pas dépasser {{count}} : le détenteur d’un magasin n’enregistre que ce qui manque. Il y en a plus sur l'étagère ? Demandez à la pharmacie de l’envoyer avec un bon de transfert.",
+    "countHolderHint": "Vous pouvez compter moins que le système, pas plus : la pharmacie envoie le reste avec un bon de transfert."
   },
   "report": {
     "excel": "Excel",
@@ -3685,7 +3704,8 @@
       "topical": "Appliquer",
       "rectal": "Introduire"
     },
-    "noLines": "Aucun médicament n'est encore prescrit pour cette visite."
+    "noLines": "Aucun médicament n'est encore prescrit pour cette visite.",
+    "allGivenHere": "Tous les médicaments ont été donnés ici : rien à imprimer pour une pharmacie."
   },
   "visitConfirm": {
     "title": "Commencer une visite pour {{name}} ?",
@@ -3709,7 +3729,7 @@
     "title": "Qui peut faire quoi",
     "lead": "Activez ou désactivez chaque fonction pour chaque rôle. Le système suit aussitôt : les boutons disparaissent pour ceux qui ne peuvent pas, et la base de données refuse.",
     "feature": "Fonction",
-    "managerNote": "Le gérant garde toutes les fonctions, sauf répondre aux demandes de rendez-vous (la réception les programme, chaque médecin accepte les siens).",
+    "managerNote": "Le gérant garde toutes les fonctions sauf deux : encaisser les paiements (la caisse) et répondre aux demandes de rendez-vous (la réception les programme, chaque médecin accepte les siens).",
     "roleOn": "{{feature}} : désormais permis pour {{role}}.",
     "roleOff": "{{feature}} : n’est plus permis pour {{role}}.",
     "oneTitle": "Une exception pour un employé",
@@ -3909,7 +3929,8 @@
       "validatedBy": "Validé par",
       "notified": "Prévenu : {{name}}, {{time}}",
       "age": "Âge",
-      "visitNo": "N° de visite"
+      "visitNo": "N° de visite",
+      "amendedBannerNoDate": "RAPPORT RECTIFIÉ – remplace un rapport antérieur"
     }
   },
   "access": {
@@ -4105,7 +4126,9 @@
     "sellShort_one": "Seulement {{count}} unité non périmée dans le stock",
     "sellShort_other": "Seulement {{count}} unités non périmées dans le stock",
     "sellCashTotal": "Prix comptant {{amount}}. La facture applique l'assurance du patient, qui paie à la fin de la visite.",
-    "soldOnBill": "{{item}} remis à {{patient}} et ajouté à la facture de la visite. Imprimez l'étiquette."
+    "soldOnBill": "{{item}} remis à {{patient}} et ajouté à la facture de la visite. Imprimez l'étiquette.",
+    "mostGivenIn": "Les plus remis {{period}}",
+    "nothingYetIn": "Rien de remis {{period}}."
   },
   "queuePage": {
     "title": "Ma file · {{desk}}",
@@ -4732,7 +4755,15 @@
         "title": "Enregistrer les horaires d’ouverture ?",
         "body": "Les nouveaux horaires s’appliquent tout de suite partout où les horaires de la clinique sont affichés ou utilisés pour les rendez-vous."
       },
-      "saveYes": "Oui, enregistrer"
+      "saveYes": "Oui, enregistrer",
+      "session": {
+        "title_one": "Déconnecter tout le monde après {{count}} heure sans activité ?",
+        "title_other": "Déconnecter tout le monde après {{count}} heures sans activité ?",
+        "body": "Les écrans ouverts suivent les nouvelles heures en quelques minutes.",
+        "revokeTitle": "Redemander un code à tous les appareils ?",
+        "revokeBody": "La clé de chaque navigateur prend fin : la prochaine connexion de chacun demande un nouveau code par e-mail. Les écrans déjà connectés le restent.",
+        "revokeYes": "Oui, redemander à tous"
+      }
     },
     "perms": {
       "roleOn": {
@@ -4923,6 +4954,9 @@
       "cancelYes": "Oui, annuler la passation",
       "cancelOther": "Annuler la passation de {{name}} de {{from}} à {{to}} ?",
       "cancelOtherBody": "{{from}} et {{to}} sont prévenus. {{name}} reste avec {{from}}."
+    },
+    "result": {
+      "seenBody": "Il est marqué comme vu et reste deux jours dans votre boîte de résultats. Vous le retrouvez toujours dans la visite."
     }
   },
   "doc": {
@@ -6635,6 +6669,17 @@
     "fd6af5fe": "Vous ne pouvez pas encaisser les paiements : le responsable ne l’a pas autorisé.",
     "fef9c567": "Choisissez une personne ou un service.",
     "ffcee653": "La ligne de facture est introuvable, ou la facture est déjà émise.",
-    "fff6f888": "Le stock doit avoir un nom."
+    "fff6f888": "Le stock doit avoir un nom.",
+    "ca6fef80": "Seul le médecin qui a demandé l’examen, ou celui qui a repris le patient, marque le résultat comme vu.",
+    "090c842f": "Seul le médecin de cet agenda refuse le rendez-vous.",
+    "7176bbc3": "La pression systolique doit être entre 40 et 300 mmHg.",
+    "5a6f2876": "La pression diastolique doit être entre 20 et 200 mmHg.",
+    "194d0d47": "Le pouls doit être entre 20 et 250 par minute.",
+    "8be65a90": "La température doit être entre 30 et 44 °C.",
+    "da39329e": "La fréquence respiratoire doit être entre 4 et 100 par minute.",
+    "54c6982b": "La saturation en oxygène doit être entre 40 et 100 %.",
+    "7028b3a6": "Le poids doit être entre 0,3 et 350 kg.",
+    "f2b8b050": "La taille doit être entre 20 et 250 cm.",
+    "936ac589": "Le périmètre brachial doit être entre 5 et 60 cm."
   }
 }

@@ -31,6 +31,7 @@ import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { PharmacyDesk, SellMedicineCard } from '../stock/pharmacy-desk'
+import { expiryState } from '../stock/stock-util'
 import { CallsPanel } from './calls-panel'
 import { MyQueuePanel } from './role-panels'
 import { DeskBlocks } from './home-desks'
@@ -72,8 +73,11 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const others = openItems(board).filter((q) => !withRx.has(q.encounterId))
   const items = (stock?.items ?? []).filter((i) => i.active)
   const low = items.filter(isLowStock)
-  const expiring = items.filter(
-    (i) => i.earliestExpiry && new Date(i.earliestExpiry).getTime() < now + 90 * 86_400_000,
+  // expiring within 90 days, not yet expired (the stock page counts expired stock separately)
+  const expiring = items.filter((i) =>
+    i.expiringUnits != null
+      ? i.expiringUnits > 0
+      : expiryState(i.nextExpiry ?? i.earliestExpiry) === 'soon',
   )
 
   return (
@@ -249,7 +253,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                         key: `exp-${i.id}`,
                         pill: <Tag tint="coral">{t('pharmacy.expires')}</Tag>,
                         label: `${i.name}${i.strength ? ` ${i.strength}` : ''}`,
-                        value: formatDate(new Date(i.earliestExpiry!)),
+                        value: formatDate(new Date((i.nextExpiry ?? i.earliestExpiry)!)),
                       })),
                     ]}
                   />
@@ -286,11 +290,13 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                   i={4}
                   icon={Users}
                   tint="violet"
-                  title={t('pharmacy.mostGiven')}
+                  title={t('pharmacy.mostGivenIn', { period: periodWord })}
                   right={t('pharmacy.givenCount', { count: s.dispensedToday })}
                   to={link('pharmacy')}
                 >
-                  {s.topToday.length === 0 && <Empty>{t('pharmacy.nothingYet')}</Empty>}
+                  {s.topToday.length === 0 && (
+                    <Empty>{t('pharmacy.nothingYetIn', { period: periodWord })}</Empty>
+                  )}
                   <ListRows
                     rows={s.topToday.map((b, i) => ({
                       key: b.item,

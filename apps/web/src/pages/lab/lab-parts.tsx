@@ -104,15 +104,24 @@ export function LabOrderRow({
   const printSlip = () => {
     // who entered (or validated) the result, with title and registration (0084; absent before)
     const person = o.resultByPerson ?? null
+    // An order done at another desk (Nursing, Dental…) is that desk's report, signed with the
+    // role of whoever wrote it; the bench title is only the fallback for an older row.
+    const deskName =
+      desk && o.station ? t(`register.stations.${o.station}`, { defaultValue: o.station }) : null
     const benchTitle =
-      o.category === 'imaging' ? t('staff.roles.sonographer') : t('staff.roles.lab_tech')
+      deskName ??
+      (o.category === 'imaging' ? t('staff.roles.sonographer') : t('staff.roles.lab_tech'))
     const personTitle = person
       ? person.specialty?.trim() || t(`staff.roles.${person.role}`, { defaultValue: benchTitle })
       : benchTitle
     const ok = openMedicalReport(
       {
         kind: 'visit',
-        title: o.category === 'imaging' ? t('lab.slipTitleImaging') : t('lab.slipTitle'),
+        title: deskName
+          ? t('lab.slipTitleDesk', { desk: deskName })
+          : o.category === 'imaging'
+            ? t('lab.slipTitleImaging')
+            : t('lab.slipTitle'),
         clinic: letterhead,
         patient: {
           name: o.patient,
@@ -173,6 +182,9 @@ export function LabOrderRow({
                 }
               : null,
           validatedAt: o.verified ? o.resultAt : null,
+          // a verified result corrected afterwards prints with the "Amended report" banner (the
+          // worklist says only that it was corrected, not when the first report was issued)
+          amended: o.corrected === true,
         },
       },
       labels,

@@ -199,7 +199,7 @@
       "continue": "Continue",
       "notStaff": "This staff ID is not known. Ask the clinic manager.",
       "checkFailed": "Could not check the ID. Try again.",
-      "username": "Username or staff ID",
+      "username": "Username",
       "usernamePh": "e.g. j.uwimana",
       "pin": "PIN",
       "pinPh": "4–6 digits",
@@ -997,7 +997,9 @@
       "next": "Sign in again: staff ID, username and PIN, then the new code we e-mail you.",
       "security": "For your security, sign in again with the code sent to your e-mail."
     },
-    "notApproved": "The code is correct, but the clinic system could not confirm your sign-in. Try again in a minute. If it keeps happening, tell the manager."
+    "notApproved": "The code is correct, but the clinic system could not confirm your sign-in. Try again in a minute. If it keeps happening, tell the manager.",
+    "tooMany": "Too many tries. Wait 15 minutes, then try again.",
+    "resendPinLead": "Type your PIN to send a new code."
   },
   "register": {
     "title": "Register a patient",
@@ -1081,7 +1083,10 @@
     "flow": "Find the patient or register a new file, then choose where the patient goes.",
     "flowTriageFirst": "Find the patient or register a new file. “Triage first” is on: the patient sees the nurse first, unless you see them yourself.",
     "savedOnly": "File of {{name}} saved ({{file}}). No visit started: use “Start visit” when the patient is ready.",
-    "submitFirst": "Register the patient"
+    "submitFirst": "Register the patient",
+    "duplicate": {
+      "line": "Possible duplicate: {{name}} {{file}} — open the file instead?"
+    }
   },
   "triage": {
     "title": "Vitals",
@@ -1122,7 +1127,9 @@
     "forName": "for {{name}}",
     "forYou": "for you",
     "lockedFor": "Sent to {{name}}: only {{name}} records the vitals and sends this patient on. You can look but not change anything.",
-    "lockedSection": "Only the nurses working at triage record the vitals and send this patient on. You can look but not change anything."
+    "lockedSection": "Only the nurses working at triage record the vitals and send this patient on. You can look but not change anything.",
+    "notWaiting": "This patient is not waiting for vital signs.",
+    "backToList": "Back to the list"
   },
   "prices": {
     "title": "Treatments, prices and insurers",
@@ -1527,7 +1534,8 @@
         "reference": "A transaction reference is required for this method."
       },
       "settledClosed": "Paid in full. Receipt {{receipt}}. The visit is finished.",
-      "settledOpen": "Paid so far. Receipt {{receipt}}. The visit goes on: anything added later is charged and paid at the end."
+      "settledOpen": "Paid so far. Receipt {{receipt}}. The visit goes on: anything added later is charged and paid at the end.",
+      "settledDebt": "Paid in full. Receipt {{receipt}}. The debt is settled; the visit stays finished."
     },
     "next": {
       "title": "Next step for this patient",
@@ -1676,7 +1684,8 @@
       "save": "Save",
       "remove": "Remove",
       "occupiedNoRemove": "An occupied bed cannot be removed",
-      "confirmRemove": "Remove {{name}}?"
+      "confirmRemove": "Remove {{name}}?",
+      "max": "At most {{count}} beds."
     },
     "leadShort": "Everything you set for the clinic, one section at a time.",
     "sections": {
@@ -1749,7 +1758,9 @@
     "format": "Use exactly six digits.",
     "same": "Choose a PIN different from the current one.",
     "failed": "The PIN could not be changed. Check the current PIN and try again.",
-    "changed": "PIN changed."
+    "changed": "PIN changed.",
+    "ownTitle": "Change my PIN",
+    "ownLead": "Type your current PIN, then choose six new digits only you know."
   },
   "lock": {
     "title": "Locked after 5 minutes without activity",
@@ -1878,7 +1889,8 @@
     "allergiesNone": "No known allergies",
     "allergiesNoneHint": "Tick it when the patient was asked and has no known allergy. It is printed on prescriptions and reports.",
     "allergiesNotRecorded": "Allergies not recorded yet",
-    "privateField": "Private (medical)"
+    "privateField": "Private (medical)",
+    "privateFill": "Private (medical) fields: you do not see what is recorded in them. Fill one in only when it is empty; a value already there is kept."
   },
   "clinical": {
     "title": "Clinical record",
@@ -1986,7 +1998,7 @@
     "verifyNow": "Verified (final result)",
     "saveResult": "Save the result",
     "enterResult": "Enter result",
-    "editResult": "Correct result",
+    "editResult": "Edit result",
     "resultSaved": "Result saved; the person who requested it is told.",
     "icdHint": "ICD-10 is the international code of the disease (B54 = malaria, A01.0 = typhoid). It is optional; with it, reports count diseases the same way as the Ministry of Health.",
     "provisionalHint": "Tick “Provisional” when you suspect the disease but have not confirmed it yet (for example while waiting for a test). Leave it unticked when the diagnosis is confirmed.",
@@ -2219,7 +2231,8 @@
       "future": "The measurement time is in the future.",
       "nothingChanged": "Nothing changed. Correct a value, or cancel.",
       "range": "{{name}} {{value}} {{unit}} is not possible: check the number (between {{min}} and {{max}} {{unit}}).",
-      "bpOrder": "The diastolic pressure (lower number) must be smaller than the systolic (upper number)."
+      "bpOrder": "The diastolic pressure (lower number) must be smaller than the systolic (upper number).",
+      "takerNotAllowed": "{{name}} is not allowed to take vital signs (the manager switched it off): choose another nurse or ask the manager."
     },
     "takenShort": "Vitals taken",
     "taken": "Vitals taken by {{name}} at {{time}}",
@@ -2259,14 +2272,16 @@
         "in_progress": "With the doctor",
         "completed": "Seen",
         "no_show": "Did not come",
-        "cancelled": "Cancelled"
+        "cancelled": "Cancelled",
+        "declined": "Declined"
       },
       "flow": "How it links up: a booked request waits for the doctor to accept; on the day, “Arrived” opens the visit and the patient goes to the doctor’s queue (or to triage first, if the clinic chose that in Settings).",
       "pickDay": "Choose a day",
       "declinedWhy": "{{doctor}} declined: {{reason}}",
       "rebooked": "booked again",
       "bookAgain": "Book again",
-      "managerOversees": "You oversee the bookings: reception books the requests and each doctor accepts the bookings on their own calendar."
+      "managerOversees": "You oversee the bookings: reception books the requests and each doctor accepts the bookings on their own calendar.",
+      "arrivedHintDesk": "The patient is here: opens a visit and queues them at the doctor’s desk."
     },
     "inquiries": {
       "reject": "Reject",
@@ -3079,7 +3094,8 @@
     "stockFine": "Nothing low or expiring in the lab.",
     "expiresOn": "expires {{date}}",
     "notDoneToday": "Tests not done {{period}}",
-    "slipTitleImaging": "Ultrasound report"
+    "slipTitleImaging": "Ultrasound report",
+    "slipTitleDesk": "{{desk}} report"
   },
   "finance": {
     "desk": "Cash desk",
@@ -3155,7 +3171,8 @@
         "closed": "Closed"
       }
     },
-    "mineOnly": "Only the payments you took, and your own cash count, are shown here."
+    "mineOnly": "Only the payments you took, and your own cash count, are shown here.",
+    "afterRefunds": "after {{amount}} given back"
   },
   "calendar": {
     "title": "My calendar",
@@ -3475,7 +3492,9 @@
       "locked": "Already added to the clinic's medicines: only the delivery is left to record. Change its details under Medicines."
     },
     "sendExpiredNote_one": "This medicine has {{count}} expired unit in the stores. Expired units are never sent, so a store may have fewer to send than shown here. Write them off under Use or write off.",
-    "sendExpiredNote_other": "This medicine has {{count}} expired units in the stores. Expired units are never sent, so a store may have fewer to send than shown here. Write them off under Use or write off."
+    "sendExpiredNote_other": "This medicine has {{count}} expired units in the stores. Expired units are never sent, so a store may have fewer to send than shown here. Write them off under Use or write off.",
+    "countNoUp": "The count cannot be above {{count}}: a store holder records only what is missing. More on the shelf? Ask the pharmacy to send it with a transfer note.",
+    "countHolderHint": "You can count down to what is really there, not up: the pharmacy sends more with a transfer note."
   },
   "report": {
     "excel": "Excel",
@@ -3685,7 +3704,8 @@
       "topical": "Apply",
       "rectal": "Insert"
     },
-    "noLines": "Nothing is prescribed for this visit yet."
+    "noLines": "Nothing is prescribed for this visit yet.",
+    "allGivenHere": "Every medicine was given here: there is nothing to print for a pharmacy."
   },
   "visitConfirm": {
     "title": "Start a visit for {{name}}?",
@@ -3709,7 +3729,7 @@
     "title": "Who may do what",
     "lead": "Switch each feature on or off for each role. The system follows it at once: the buttons disappear for those who may not, and the database refuses them.",
     "feature": "Feature",
-    "managerNote": "The manager keeps every feature, except answering booking requests (reception books them, each doctor accepts their own).",
+    "managerNote": "The manager keeps every feature except two: taking payments (the cashier's) and answering booking requests (reception books them, each doctor accepts their own).",
     "roleOn": "{{feature}}: now allowed for {{role}}.",
     "roleOff": "{{feature}}: no longer allowed for {{role}}.",
     "oneTitle": "An exception for one employee",
@@ -3909,7 +3929,8 @@
       "validatedBy": "Validated by",
       "notified": "Notified: {{name}}, {{time}}",
       "age": "Age",
-      "visitNo": "Visit no."
+      "visitNo": "Visit no.",
+      "amendedBannerNoDate": "AMENDED REPORT – replaces an earlier report"
     }
   },
   "access": {
@@ -4105,7 +4126,9 @@
     "sellShort_one": "Only {{count}} unit not expired in the store",
     "sellShort_other": "Only {{count}} units not expired in the store",
     "sellCashTotal": "Cash price {{amount}}. The bill applies the patient's insurance, and the patient pays at the end of the visit.",
-    "soldOnBill": "{{item}} handed over to {{patient}} and put on the visit's bill. Print the label."
+    "soldOnBill": "{{item}} handed over to {{patient}} and put on the visit's bill. Print the label.",
+    "mostGivenIn": "Most handed over {{period}}",
+    "nothingYetIn": "Nothing handed over {{period}}."
   },
   "queuePage": {
     "title": "My queue · {{desk}}",
@@ -4732,7 +4755,15 @@
         "title": "Save the opening hours?",
         "body": "The new hours apply at once wherever the clinic’s hours are shown or used for bookings."
       },
-      "saveYes": "Yes, save"
+      "saveYes": "Yes, save",
+      "session": {
+        "title_one": "Sign everyone out after {{count}} hour without activity?",
+        "title_other": "Sign everyone out after {{count}} hours without activity?",
+        "body": "Open screens follow the new hours within a few minutes.",
+        "revokeTitle": "Ask every device for a new code?",
+        "revokeBody": "Every browser's key ends: everyone's next sign-in needs a new e-mailed code. Screens already signed in stay signed in.",
+        "revokeYes": "Yes, ask every device again"
+      }
     },
     "perms": {
       "roleOn": {
@@ -4923,6 +4954,9 @@
       "cancelYes": "Yes, cancel the handover",
       "cancelOther": "Cancel the handover of {{name}} from {{from}} to {{to}}?",
       "cancelOtherBody": "{{from}} and {{to}} are told. {{name}} stays with {{from}}."
+    },
+    "result": {
+      "seenBody": "It is marked as seen and stays in your results inbox for two days. You can still find it in the visit."
     }
   },
   "doc": {
@@ -6635,6 +6669,17 @@
     "fd6af5fe": "You may not take payments: the manager has not allowed it.",
     "fef9c567": "Choose a person or a department.",
     "ffcee653": "The bill line was not found, or the bill is already posted.",
-    "fff6f888": "the store needs a name"
+    "fff6f888": "the store needs a name",
+    "ca6fef80": "Only the doctor who asked for the test, or who took the patient over, marks the result seen.",
+    "090c842f": "Only the doctor of this calendar declines the booking.",
+    "7176bbc3": "The systolic blood pressure must be between 40 and 300 mmHg.",
+    "5a6f2876": "The diastolic blood pressure must be between 20 and 200 mmHg.",
+    "194d0d47": "The pulse must be between 20 and 250 per minute.",
+    "8be65a90": "The temperature must be between 30 and 44 °C.",
+    "da39329e": "The breathing rate must be between 4 and 100 per minute.",
+    "54c6982b": "The oxygen saturation must be between 40 and 100 %.",
+    "7028b3a6": "The weight must be between 0.3 and 350 kg.",
+    "f2b8b050": "The height must be between 20 and 250 cm.",
+    "936ac589": "The arm circumference must be between 5 and 60 cm."
   }
 }

@@ -50,6 +50,7 @@ export function TransferNotesList({
   onOpen,
   title,
   i = 2,
+  canAct = true,
 }: {
   locationId?: string | null
   initialStatus?: TransferStatus | 'all'
@@ -57,6 +58,8 @@ export function TransferNotesList({
   onOpen: (id: string | null) => void
   title?: string
   i?: number
+  /** false: "Manage stock" is switched off for the reader; a note opens read-only. */
+  canAct?: boolean
 }) {
   const { t } = useTranslation()
   const [status, setStatus] = useState<TransferStatus | 'all'>(initialStatus)
@@ -120,7 +123,7 @@ export function TransferNotesList({
               </button>
               {openId === n.id && (
                 <div className="pb-3">
-                  <TransferNoteView id={n.id} onClose={() => onOpen(null)} />
+                  <TransferNoteView id={n.id} onClose={() => onOpen(null)} canAct={canAct} />
                 </div>
               )}
             </div>
@@ -143,7 +146,16 @@ interface LineDraft {
  * confirms everything at once or line by line (the quantity that arrived and why it differs:
  * back to the sender or a loss); the sender may cancel it before receipt (the units go back).
  */
-export function TransferNoteView({ id, onClose }: { id: string; onClose?: () => void }) {
+export function TransferNoteView({
+  id,
+  onClose,
+  canAct = true,
+}: {
+  id: string
+  onClose?: () => void
+  /** false: the sender's "Cancel the note" stays hidden ("Manage stock" switched off). */
+  canAct?: boolean
+}) {
   const { t } = useTranslation()
   const { data: n, error } = useTransferNote(id)
   const actions = useRoomStoreActions()
@@ -477,7 +489,7 @@ export function TransferNoteView({ id, onClose }: { id: string; onClose?: () => 
         </div>
       )}
 
-      {open && n.canCancel && (
+      {open && n.canCancel && canAct && (
         <div className="flex flex-col gap-2">
           {cancelling ? (
             <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
