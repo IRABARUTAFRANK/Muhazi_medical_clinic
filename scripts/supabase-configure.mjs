@@ -113,7 +113,7 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     smtp_port: process.env.SMTP_PORT || '587',
     smtp_user: process.env.SMTP_USER,
     // Google shows app passwords in groups of four: the spaces are not part of the password.
-    smtp_pass: process.env.SMTP_PASS.replace(/s+/g, ''),
+    smtp_pass: process.env.SMTP_PASS.replace(/\s+/g, ''),
     smtp_sender_name: process.env.SMTP_SENDER || 'Muhazi Medical Clinic',
     smtp_admin_email: process.env.SMTP_ADMIN_EMAIL || fromAddress || process.env.SMTP_USER,
   }
