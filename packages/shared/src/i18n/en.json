@@ -6528,7 +6528,26 @@
     "purged": "The stored copy of \"{{title}}\" is deleted.",
     "count_one": "{{count}} attachment",
     "count_other": "{{count}} attachments",
-    "countHint": "Open the attachments of this test"
+    "countHint": "Open the attachments of this test",
+    "viewer": {
+      "openFile": "Open {{title}}",
+      "download": "Download",
+      "prev": "Previous file",
+      "next": "Next file",
+      "position": "File {{n}} of {{total}}",
+      "all": "All the files",
+      "tools": "Picture tools",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "fit": "Fit to screen",
+      "fitHint": "Fit to screen. Double-click the picture to see it at 100 %.",
+      "rotate": "Rotate",
+      "loading": "Opening the file…",
+      "retry": "Try again",
+      "noPreview": "This file cannot be shown here. Download it to open it.",
+      "recorded": "Opening is recorded",
+      "recordedHint": "A picture of a past visit is shown only when you open it: the opening is recorded in the access log."
+    }
   },
   "handover": {
     "title": "Hand over to a colleague",

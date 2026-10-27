@@ -1497,6 +1497,7 @@ export function ClinicalCard({
                 encounterId={encounterId}
                 patientId={patientId}
                 serviceRequestId={o.id}
+                patientName={patient?.name}
               />
               {o.result && (
                 <span className="bg-green-bg/60 mt-1 block rounded-md px-2.5 py-1.5 text-[13px]">

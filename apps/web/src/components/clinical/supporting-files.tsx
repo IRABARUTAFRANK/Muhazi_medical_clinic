@@ -1,15 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import {
-  ExternalLink,
-  FileText,
-  Image as ImageIcon,
-  Lock,
-  Paperclip,
-  RotateCw,
-  Trash2,
-  Upload,
-  X,
-} from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { FileText, Lock, Paperclip, Trash2, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
@@ -27,13 +17,11 @@ import {
   usePatientFiles,
   useVisitFiles,
   type FileKind,
-  type OpenedFile,
   type PatientFileDoc,
 } from '@/lib/api/files'
 import { useConfirm } from '@/lib/confirm'
-import { useNow } from '@/lib/hooks'
-import { heroBand } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
+import { FileThumb, FileViewer, type Msg } from './file-viewer'
 
 /**
  * Supporting files on the screens (migration 0089): photos, scans and PDF files attached to a
@@ -42,7 +30,8 @@ import { cn } from '@/lib/utils'
  * - the visit page ("Files of this visit"),
  * - the laboratory / ultrasound result entry ("Files of this test").
  * The database decides who sees, adds and removes (the privacy levels of 0088); these screens
- * only show what it returned. A file opens through a link that works 5 minutes.
+ * only show what it returned. The files are cards with a thumbnail; one opens in the full-screen
+ * viewer (file-viewer.tsx) through a link that works 5 minutes; nothing opens inside the page.
  */
 
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
@@ -52,12 +41,11 @@ const okBox =
   'bg-green-bg text-green m-0 border border-green/30 rounded-md px-3 py-2 text-[13px] font-semibold'
 const warnBox =
   'bg-amber-bg text-amber m-0 border border-amber/30 rounded-md px-3 py-2 text-[13px] font-semibold'
-/** The id of the visit page's "Attachments of this visit" card (the test chips scroll to it). */
+/** The id of the visit page's "Attachments of this visit" card. */
 const VISIT_FILES_ID = 'visit-attachments'
 const msgOf = (x: unknown) => (x instanceof Error ? x.message : String(x))
 
 /** A card's message line: what was done, or a warning (a stored copy left behind). */
-type Msg = { text: string; warn?: boolean }
 function MsgLine({ msg }: { msg: Msg | null }) {
   if (!msg) return null
   return (
@@ -200,7 +188,7 @@ export function PatientFilesSection({
                     </span>
                   )}
                 </p>
-                <FileRows files={g.files} patientName={patientName} onMessage={setMsg} showTest />
+                <FileGrid files={g.files} patientName={patientName} onMessage={setMsg} showTest />
               </div>
             ))}
 
@@ -273,7 +261,7 @@ export function VisitFilesCard({
         )}
         <MsgLine msg={msg} />
         {data.files.length > 0 ? (
-          <FileRows files={data.files} patientName={patientName} onMessage={setMsg} showTest />
+          <FileGrid files={data.files} patientName={patientName} onMessage={setMsg} showTest />
         ) : (
           data.hidden === 0 && (
             <p className="text-ink-3 m-0 text-[13px]">
@@ -358,7 +346,7 @@ export function TestFilesPanel({
       <MsgLine msg={msg} />
       {data?.available &&
         (data.files.length > 0 ? (
-          <FileRows files={data.files} patientName={patientName} onMessage={setMsg} />
+          <FileGrid files={data.files} patientName={patientName} onMessage={setMsg} />
         ) : (
           data.hidden === 0 && (
             <p className="text-ink-3 m-0 text-[13px]">
@@ -407,8 +395,12 @@ function HiddenNote({
   )
 }
 
-/** The files, one row each: open (link of 5 minutes), remove with a reason within the rules. */
-function FileRows({
+/**
+ * The files as cards (like a drive): a thumbnail, the title, the type, who added it and when,
+ * the test. A card opens the file in the full-screen viewer (where it is downloaded, opened in a
+ * new tab or removed); the files of the same list are its "next" and "previous".
+ */
+function FileGrid({
   files,
   patientName,
   onMessage,
@@ -422,20 +414,10 @@ function FileRows({
 }) {
   const { t } = useTranslation()
   const confirm = useConfirm()
-  const { open, purge } = useFileActions()
-  const [viewing, setViewing] = useState<OpenedFile | null>(null)
-  const [removing, setRemoving] = useState<string | null>(null)
+  const { purge } = useFileActions()
+  const [viewing, setViewing] = useState<string | null>(null)
   const [err, setErr] = useState<{ id: string; text: string } | null>(null)
-
-  const show = async (f: PatientFileDoc) => {
-    setErr(null)
-    onMessage(null)
-    try {
-      setViewing(await open.mutateAsync(f.id))
-    } catch (x) {
-      setErr({ id: f.id, text: msgOf(x) })
-    }
-  }
+  const openable = files.filter((f) => !f.removed)
 
   // the manager deletes the stored copy a removal left behind
   const finishRemoval = async (f: PatientFileDoc) => {
@@ -454,141 +436,129 @@ function FileRows({
       await purge.mutateAsync(f)
       onMessage({ text: t('supportingFiles.purged', { title: f.title }) })
     } catch (x) {
-      setErr({ id: f.id, text: msgOf(x) })
+      setErr({ id: f.id, text: x instanceof Error ? x.message : String(x) })
     }
   }
 
   return (
-    <div className="border-border flex flex-col rounded-md border">
-      {files.map((f) => {
-        const Icon = isImage(f.mimeType) ? ImageIcon : FileText
-        return (
-          <div
+    <>
+      <ul className="m-0 grid list-none grid-cols-2 gap-2.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))] sm:gap-3">
+        {files.map((f) => (
+          <li
             key={f.id}
             className={cn(
-              'border-grid flex flex-col gap-2 border-b px-3 py-2.5 last:border-b-0',
-              f.removed && 'bg-hover/50',
+              'border-card-border bg-card shadow-card relative flex min-w-0 flex-col overflow-hidden rounded-[10px] border',
+              f.removed
+                ? 'bg-hover/40'
+                : 'lift has-[button:focus-visible]:ring-primary has-[button:focus-visible]:ring-2',
             )}
           >
-            <div className="flex flex-wrap items-center gap-3">
-              <span
-                className={cn(
-                  'grid size-9 shrink-0 place-items-center rounded-md',
-                  f.removed ? 'bg-hover text-ink-3' : 'bg-primary-tint text-primary',
-                )}
-              >
-                <Icon size={18} aria-hidden="true" />
-              </span>
-              <span className="min-w-[180px] flex-1">
+            <span className="border-card-border relative block aspect-[4/3] overflow-hidden border-b">
+              <FileThumb file={f} />
+              {!f.visitOpen && f.view !== 'visit' && (
                 <span
-                  className={cn(
-                    'block font-semibold break-words',
-                    f.removed && 'text-ink-3 line-through',
-                  )}
+                  title={t('supportingFiles.seenAs')}
+                  className="bg-card/95 text-violet absolute top-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm"
+                >
+                  <Lock size={11} aria-hidden="true" />
+                  {t(`whoLooked.via.${f.view}`)}
+                </span>
+              )}
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-1 p-2.5">
+              {f.removed ? (
+                <span
+                  className="text-ink-3 block truncate text-[14px] font-semibold line-through"
+                  title={f.title}
                 >
                   {f.title}
                 </span>
-                <span className="text-ink-3 block text-[12px]">
-                  {[
-                    t(`supportingFiles.kinds.${f.kind}`),
-                    showTest && f.test ? t('supportingFiles.forTest', { test: f.test }) : null,
-                    `${f.mimeType === 'application/pdf' ? 'PDF' : t('supportingFiles.image')} · ${formatFileSize(f.sizeBytes)}`,
-                    t('supportingFiles.addedBy', {
-                      name: f.uploadedBy ?? t('supportingFiles.someone'),
-                      when: when(f.uploadedAt),
-                    }),
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
+              ) : (
+                // the whole card opens the file (the button's area covers it)
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErr(null)
+                    onMessage(null)
+                    setViewing(f.id)
+                  }}
+                  title={f.title}
+                  aria-label={t('supportingFiles.viewer.openFile', { title: f.title })}
+                  className="text-ink block w-full truncate text-left text-[14px] font-semibold outline-none after:absolute after:inset-0 after:content-['']"
+                >
+                  {f.title}
+                </button>
+              )}
+              <span className="flex flex-wrap items-center gap-1">
+                <span className="bg-violet-bg text-violet max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                  {t(`supportingFiles.kinds.${f.kind}`)}
                 </span>
-                {f.note && <span className="text-ink-2 block text-[13px]">{f.note}</span>}
-                {f.removed && (
-                  <span className="text-red block text-[12px] font-semibold">
-                    {t('supportingFiles.removedRow', {
-                      name: f.removedBy ?? t('supportingFiles.someone'),
-                      when: f.removedAt ? when(f.removedAt) : '',
-                      reason: f.removeReason ?? '',
-                    })}
-                  </span>
-                )}
-                {f.removed && f.storageLeft && (
+              </span>
+              {showTest && f.test && (
+                <span className="text-ink-2 block truncate text-[12px] font-medium" title={f.test}>
+                  {t('supportingFiles.forTest', { test: f.test })}
+                </span>
+              )}
+              {/* who added it, and when (the whole sentence on hover) */}
+              <span
+                className="text-ink-3 flex flex-col text-[12px] leading-[1.35]"
+                title={t('supportingFiles.addedBy', {
+                  name: f.uploadedBy ?? t('supportingFiles.someone'),
+                  when: when(f.uploadedAt),
+                })}
+              >
+                <span className="text-ink-2 truncate font-medium">
+                  {f.uploadedBy ?? t('supportingFiles.someone')}
+                </span>
+                <span className="tabular-nums">{when(f.uploadedAt)}</span>
+              </span>
+              {f.removed && (
+                <span className="text-red block text-[12px] font-semibold">
+                  {t('supportingFiles.removedRow', {
+                    name: f.removedBy ?? t('supportingFiles.someone'),
+                    when: f.removedAt ? when(f.removedAt) : '',
+                    reason: f.removeReason ?? '',
+                  })}
+                </span>
+              )}
+              {f.removed && f.storageLeft && (
+                <>
                   <span className="text-amber block text-[12px] font-semibold">
                     {t('supportingFiles.storageLeftRow')}
                   </span>
-                )}
-              </span>
-              {!f.visitOpen && f.view !== 'visit' && (
-                <Chip title={t('supportingFiles.seenAs')}>
-                  <Lock size={11} aria-hidden="true" className="mr-1" />
-                  {t(`whoLooked.via.${f.view}`)}
-                </Chip>
-              )}
-              {!f.removed && (
-                <span className="flex flex-wrap gap-1">
+                  {/* only the manager lists removed files: a copy left behind is deleted here */}
                   <Button
                     size="sm"
-                    loading={open.isPending && open.variables === f.id}
-                    onClick={() => void show(f)}
+                    variant="danger"
+                    loading={purge.isPending && purge.variables?.id === f.id}
+                    onClick={() => void finishRemoval(f)}
                   >
-                    {!(open.isPending && open.variables === f.id) && (
-                      <ExternalLink size={14} aria-hidden="true" />
-                    )}
-                    {t('supportingFiles.open')}
-                  </Button>
-                  {f.canRemove && removing !== f.id && (
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => {
-                        setErr(null)
-                        onMessage(null)
-                        setRemoving(f.id)
-                      }}
-                    >
+                    {!(purge.isPending && purge.variables?.id === f.id) && (
                       <Trash2 size={14} aria-hidden="true" />
-                      {t('supportingFiles.remove')}
-                    </Button>
-                  )}
+                    )}
+                    {t('supportingFiles.purge')}
+                  </Button>
+                </>
+              )}
+              {err?.id === f.id && (
+                <span role="alert" className={errorBox}>
+                  {err.text}
                 </span>
               )}
-              {/* only the manager lists removed files: a copy left behind is deleted here */}
-              {f.removed && f.storageLeft && (
-                <Button
-                  size="sm"
-                  variant="danger"
-                  loading={purge.isPending && purge.variables?.id === f.id}
-                  onClick={() => void finishRemoval(f)}
-                >
-                  {!(purge.isPending && purge.variables?.id === f.id) && (
-                    <Trash2 size={14} aria-hidden="true" />
-                  )}
-                  {t('supportingFiles.purge')}
-                </Button>
-              )}
-            </div>
-            {removing === f.id && (
-              <RemoveForm
-                file={f}
-                patientName={patientName}
-                onDone={(m) => {
-                  setRemoving(null)
-                  onMessage(m)
-                }}
-                onCancel={() => setRemoving(null)}
-              />
-            )}
-            {err?.id === f.id && (
-              <p role="alert" className={errorBox}>
-                {err.text}
-              </p>
-            )}
-          </div>
-        )
-      })}
+            </span>
+          </li>
+        ))}
+      </ul>
       {viewing && (
-        <FileViewer file={viewing} onClose={() => setViewing(null)} onRenew={setViewing} />
+        <FileViewer
+          files={openable}
+          startId={viewing}
+          patientName={patientName}
+          onClose={() => setViewing(null)}
+          onMessage={onMessage}
+        />
       )}
-    </div>
+    </>
   )
 }
 
@@ -801,334 +771,49 @@ function AttachForm({
   )
 }
 
-/** Removing a file: the reason, then "Are you sure?" (the row stays, with who and why). */
-function RemoveForm({
-  file,
-  patientName,
-  onDone,
-  onCancel,
-}: {
-  file: PatientFileDoc
-  patientName: string
-  onDone: (message: Msg) => void
-  onCancel: () => void
-}) {
-  const { t } = useTranslation()
-  const confirm = useConfirm()
-  const { remove } = useFileActions()
-  const [reason, setReason] = useState('')
-  const [err, setErr] = useState<string | null>(null)
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    const why = reason.trim()
-    if (why.length < 3) {
-      setErr(t('stockErrors.reasonNeeded'))
-      return
-    }
-    setErr(null)
-    if (
-      !(await confirm({
-        title: t('supportingFiles.confirm.removeTitle', { title: file.title, name: patientName }),
-        body: t('supportingFiles.confirm.removeBody', { reason: why }),
-        confirmLabel: t('supportingFiles.confirm.removeYes'),
-        tone: 'danger',
-      }))
-    )
-      return
-    try {
-      const done = await remove.mutateAsync({ fileId: file.id, reason: why })
-      // the row is removed; its copy in storage may not be (the manager finishes it)
-      onDone(
-        done.storageLeft
-          ? { text: t('supportingFiles.storageLeft', { title: file.title }), warn: true }
-          : { text: t('supportingFiles.removed', { title: file.title }) },
-      )
-    } catch (x) {
-      setErr(msgOf(x))
-    }
-  }
-
-  return (
-    <Reveal focus block="nearest">
-      <form
-        onSubmit={(e) => void submit(e)}
-        className="border-red/40 bg-red-bg/40 flex flex-col gap-2 rounded-md border p-3"
-      >
-        <Field
-          label={t('supportingFiles.removeReason')}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder={t('supportingFiles.removeReasonPh')}
-          maxLength={300}
-          required
-        />
-        {err && (
-          <p role="alert" className={errorBox}>
-            {err}
-          </p>
-        )}
-        <span className="flex flex-wrap gap-2">
-          <Button type="submit" size="sm" variant="danger" loading={remove.isPending}>
-            {!remove.isPending && <Trash2 size={14} aria-hidden="true" />}
-            {t('supportingFiles.removeSend')}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onCancel}>
-            {t('supportingFiles.cancel')}
-          </Button>
-        </span>
-      </form>
-    </Reveal>
-  )
-}
-
-/**
- * Can this browser show a PDF inside the page? Desktop browsers can; Android Chrome cannot (the
- * frame stays blank) and iOS Safari shows only the first page: phones and tablets open it in a
- * new tab instead.
- */
-const pdfInline = () => {
-  if (typeof window === 'undefined') return true
-  const nav = navigator as Navigator & { pdfViewerEnabled?: boolean }
-  if (nav.pdfViewerEnabled === false) return false
-  return !window.matchMedia?.('(pointer: coarse)').matches
-}
-
-/**
- * The file opened: a picture in an <img>, a PDF in the browser's viewer (on a phone, a button
- * that opens it in a new tab), "Open in a new tab", and how long the link works. When the link
- * expires, what is on screen stays; "Open again" asks for a new link. Escape or Close shuts it.
- */
-function FileViewer({
-  file,
-  onClose,
-  onRenew,
-}: {
-  file: OpenedFile
-  onClose: () => void
-  /** A new link for the same file ("Open again"). */
-  onRenew: (file: OpenedFile) => void
-}) {
-  const { t } = useTranslation()
-  const { open } = useFileActions()
-  const now = useNow(10_000)
-  const close = useRef<HTMLButtonElement>(null)
-  // the latest onClose, so that a new one (the list refreshed) does not move the focus again
-  const onCloseRef = useRef(onClose)
-  useEffect(() => {
-    onCloseRef.current = onClose
-  })
-  const [renewErr, setRenewErr] = useState<string | null>(null)
-  // sample mode gives data: links, which a new tab refuses: turned into a blob link
-  const [blob, setBlob] = useState<string | null>(null)
-  const isData = file.url.startsWith('data:')
-  const src = isData ? (blob ?? file.url) : file.url
-  const expired = now > new Date(file.expiresAt).getTime()
-  const inline = isImage(file.mimeType) || pdfInline()
-
-  useEffect(() => {
-    if (!isData) return
-    let live = true
-    let made: string | null = null
-    void fetch(file.url)
-      .then((r) => r.blob())
-      .then((b) => {
-        if (!live) return
-        made = URL.createObjectURL(b)
-        setBlob(made)
-      })
-      .catch(() => undefined)
-    return () => {
-      live = false
-      if (made) URL.revokeObjectURL(made)
-    }
-  }, [file.url, isData])
-
-  useEffect(() => {
-    close.current?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onCloseRef.current()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
-  const renew = async () => {
-    setRenewErr(null)
-    try {
-      onRenew(await open.mutateAsync(file.id))
-    } catch (x) {
-      setRenewErr(msgOf(x))
-    }
-  }
-
-  let body: ReactNode
-  if (isImage(file.mimeType))
-    body = (
-      <img
-        src={src}
-        alt={file.title}
-        className="mx-auto block max-h-[70vh] max-w-full object-contain"
-      />
-    )
-  else if (inline)
-    body = (
-      <iframe
-        src={src}
-        title={file.title}
-        className="border-border h-[70vh] w-full rounded-md border bg-white"
-      />
-    )
-  else
-    body = (
-      <div className="flex flex-col items-center gap-3 p-4 text-center">
-        <FileText size={40} aria-hidden="true" className="text-primary" />
-        {!expired && (
-          <a
-            href={src}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-primary inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-[14px] font-medium text-white"
-          >
-            <ExternalLink size={18} aria-hidden="true" />
-            {t('supportingFiles.openPdf')}
-          </a>
-        )}
-        <p className="text-ink-2 m-0 text-[13px]">{t('supportingFiles.pdfPhone')}</p>
-      </div>
-    )
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={file.title}
-        className="bg-card border-border anim-dialog flex max-h-[95vh] w-full max-w-4xl flex-col gap-3 overflow-hidden rounded-xl border p-3 shadow-[0_20px_60px_rgba(11,34,82,.22)]"
-      >
-        {/* the viewer's header on the patient hue's gradient: white title, glass buttons */}
-        <div
-          className={cn(
-            heroBand('teal'),
-            '-mx-3 -mt-3 flex flex-wrap items-center gap-2 px-3 py-2.5 text-white',
-          )}
-        >
-          <span className="min-w-[160px] flex-1 text-[16px] font-semibold break-words">
-            {file.title}
-          </span>
-          {!expired && inline && (
-            <a
-              href={src}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-8 items-center gap-2 rounded-md border border-white/30 bg-white/20 px-3 text-[13px] font-medium text-white no-underline hover:bg-white/30"
-            >
-              <ExternalLink size={14} aria-hidden="true" />
-              {t('supportingFiles.newTab')}
-            </a>
-          )}
-          {expired && (
-            <Button
-              size="sm"
-              variant="primary"
-              loading={open.isPending}
-              onClick={() => void renew()}
-            >
-              {!open.isPending && <RotateCw size={14} aria-hidden="true" />}
-              {t('supportingFiles.openAgain')}
-            </Button>
-          )}
-          <Button
-            ref={close}
-            size="sm"
-            variant="ghost"
-            className="text-white hover:bg-white/15 hover:text-white"
-            onClick={onClose}
-          >
-            <X size={16} aria-hidden="true" />
-            {t('supportingFiles.close')}
-          </Button>
-        </div>
-        <div className="min-h-0 overflow-auto">{body}</div>
-        {renewErr && (
-          <p role="alert" className={errorBox}>
-            {renewErr}
-          </p>
-        )}
-        <p className={cn('m-0 text-[12px]', expired ? 'text-amber font-semibold' : 'text-ink-3')}>
-          {t(expired ? 'supportingFiles.expired' : 'supportingFiles.linkNote')}
-        </p>
-      </div>
-    </div>
-  )
-}
-
 // ---------------------------------------------------------------- next to a test's result
 /**
  * Next to a test on the visit page: "1 attachment" when the laboratory or ultrasound attached
- * an image or a printout to it. One file opens at once; several scroll to the visit's card.
+ * an image or a printout to it. It opens the test's files in the viewer (the first one shown).
  */
 export function TestFilesChip({
   encounterId,
   patientId,
   serviceRequestId,
+  patientName = '',
 }: {
   encounterId: string
   patientId?: string | null
   serviceRequestId: string
+  patientName?: string
 }) {
   const { t } = useTranslation()
   // the same list as the visit's card (one request for every test of the visit)
   const { data } = useVisitFiles(encounterId, { patientId })
-  const { open } = useFileActions()
-  const [viewing, setViewing] = useState<OpenedFile | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const [viewing, setViewing] = useState<string | null>(null)
   const files = (data?.files ?? []).filter(
     (f) => f.serviceRequestId === serviceRequestId && !f.removed,
   )
   if (files.length === 0) return null
 
-  const press = async () => {
-    setErr(null)
-    if (files.length > 1) {
-      document
-        .getElementById(VISIT_FILES_ID)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      return
-    }
-    try {
-      setViewing(await open.mutateAsync(files[0]!.id))
-    } catch (x) {
-      setErr(msgOf(x))
-    }
-  }
-
   return (
     <span className="mt-1 flex flex-col items-start gap-1">
       <button
         type="button"
-        onClick={() => void press()}
+        onClick={() => setViewing(files[0]!.id)}
         title={t('supportingFiles.countHint')}
         className="border-primary/40 bg-primary-tint text-primary hover:bg-primary/15 inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-semibold"
       >
         <Paperclip size={12} aria-hidden="true" />
         {t('supportingFiles.count', { count: files.length })}
       </button>
-      {err && (
-        <span role="alert" className={errorBox}>
-          {err}
-        </span>
-      )}
       {viewing && (
-        <FileViewer file={viewing} onClose={() => setViewing(null)} onRenew={setViewing} />
+        <FileViewer
+          files={files}
+          startId={viewing}
+          patientName={patientName}
+          onClose={() => setViewing(null)}
+        />
       )}
     </span>
   )

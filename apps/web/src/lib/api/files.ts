@@ -223,7 +223,7 @@ const storageRefusal = async (e: ApiError): Promise<ApiError> => {
 // ---------------------------------------------------------------- sample data
 const me = () => useSession.getState().user
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString()
-/** The sample visits (as in the sample patient files: every patient's visit today is e-1). */
+/** The sample visits (as in the sample patient files; the sample visit page shows p-sample,: every patient's visit today is e-1). */
 const sampleVisits = (patientId: string): { id: string; status: 'open' | 'closed' }[] => [
   { id: 'e-1', status: 'open' },
   { id: patientId === 'p-2' ? 'e-8' : 'e-9', status: 'closed' },
@@ -237,11 +237,29 @@ const SAMPLE_REF: Record<string, string> = {
   'e-9': 'V-2026-000100',
 }
 
-/** A grey ultrasound-like picture (SVG), for the sample image. */
-const sampleImage = () =>
-  `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"><rect width="640" height="480" fill="#0b0b0b"/><path d="M320 40 L600 420 Q320 470 40 420 Z" fill="#262626"/><ellipse cx="320" cy="270" rx="120" ry="80" fill="#4a4a4a"/><ellipse cx="320" cy="270" rx="70" ry="44" fill="#131313"/><text x="24" y="36" fill="#bbb" font-family="monospace" font-size="16">MMC US · ABDOMEN · SAMPLE</text></svg>`,
-  )}`
+/** Sample pictures (SVG): an ultrasound, a photo of a wound, a scanned page (portrait). */
+const svgUrl = (svg: string) => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+const sampleImage = (label = 'ABDOMEN', round = false) =>
+  svgUrl(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"><rect width="640" height="480" fill="#0b0b0b"/><path d="M320 40 L600 420 Q320 470 40 420 Z" fill="#262626"/><ellipse cx="320" cy="270" rx="${round ? 90 : 120}" ry="${round ? 90 : 80}" fill="#4a4a4a"/><ellipse cx="${round ? 330 : 320}" cy="${round ? 280 : 270}" rx="${round ? 46 : 70}" ry="${round ? 34 : 44}" fill="#131313"/><text x="24" y="36" fill="#bbb" font-family="monospace" font-size="16">MMC US · ${label} · SAMPLE</text></svg>`,
+  )
+const samplePhoto = () =>
+  svgUrl(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><rect width="800" height="600" fill="#e9dccf"/><ellipse cx="400" cy="320" rx="330" ry="210" fill="#b98463"/><ellipse cx="410" cy="310" rx="120" ry="46" fill="#c9574f"/><ellipse cx="410" cy="310" rx="80" ry="22" fill="#8e2f2b"/><rect x="40" y="520" width="200" height="40" rx="6" fill="#fff"/><text x="56" y="547" fill="#333" font-family="sans-serif" font-size="20">0 · 1 · 2 · 3 cm</text><text x="560" y="560" fill="#5b4636" font-family="sans-serif" font-size="18">SAMPLE PHOTO</text></svg>`,
+  )
+const sampleScan = () =>
+  svgUrl(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800"><rect width="600" height="800" fill="#f7f5ef"/><text x="50" y="80" fill="#1f2937" font-family="serif" font-size="26">Kiziguro Health Centre</text><text x="50" y="116" fill="#4b5563" font-family="serif" font-size="18">Prescription · 14/08/2026 · SAMPLE</text>${[
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+    ]
+      .map(
+        (i) =>
+          `<rect x="50" y="${170 + i * 48}" width="${300 + ((i * 37) % 200)}" height="10" rx="5" fill="#9ca3af"/>`,
+      )
+      .join(
+        '',
+      )}<path d="M380 700 q40 -50 80 0 t80 0" stroke="#1d4ed8" stroke-width="4" fill="none"/></svg>`,
+  )
 /** A one-page PDF with a few lines (valid enough for the browser's viewer). */
 const samplePdf = (lines: string[]) => {
   const text = lines
@@ -281,6 +299,7 @@ const sampleStore = (): SampleFile[] => {
     removedBy: null,
     removeReason: null,
   }
+  // fd-4 to fd-7 are of Mukamana Alice (p-sample), the patient of the sample visit page
   sampleFiles = [
     {
       ...base,
@@ -301,6 +320,117 @@ const sampleStore = (): SampleFile[] => {
       uploadedByRole: 'sonographer',
       uploadedAt: minutesAgo(25),
       url: sampleImage(),
+    },
+    {
+      ...base,
+      id: 'fd-3',
+      encounterId: 'e-1',
+      visitReference: SAMPLE_REF['e-1']!,
+      visitOpen: true,
+      visitAt: minutesAgo(90),
+      serviceRequestId: 'sr-us-1',
+      test: 'Abdominal ultrasound',
+      kind: 'ultrasound',
+      title: 'Abdominal ultrasound: gallbladder',
+      mimeType: 'image/png',
+      sizeBytes: 640_000,
+      path: 'p-2/e-1/fd-3.png',
+      uploadedById: 'u-sono',
+      uploadedBy: 'Uwase Claudine',
+      uploadedByRole: 'sonographer',
+      uploadedAt: minutesAgo(24),
+      url: sampleImage('GALLBLADDER', true),
+    },
+    {
+      ...base,
+      id: 'fd-4',
+      patientId: 'p-sample',
+      encounterId: 'e-1',
+      visitReference: SAMPLE_REF['e-1']!,
+      visitOpen: true,
+      visitAt: minutesAgo(90),
+      serviceRequestId: null,
+      test: null,
+      kind: 'photo',
+      title: 'Wound on the left forearm',
+      note: 'Taken before cleaning, with the ruler',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1_450_000,
+      path: 'p-sample/e-1/fd-4.jpg',
+      uploadedById: 'u-doc',
+      uploadedBy: 'Dr. Mukamana Béatrice',
+      uploadedByRole: 'doctor',
+      uploadedAt: minutesAgo(50),
+      url: samplePhoto(),
+    },
+    {
+      ...base,
+      id: 'fd-5',
+      patientId: 'p-sample',
+      encounterId: 'e-1',
+      visitReference: SAMPLE_REF['e-1']!,
+      visitOpen: true,
+      visitAt: minutesAgo(90),
+      serviceRequestId: null,
+      test: null,
+      kind: 'lab',
+      title: 'Full blood count from Kiziguro',
+      mimeType: 'application/pdf',
+      sizeBytes: 98_000,
+      path: 'p-sample/e-1/fd-5.pdf',
+      uploadedById: 'u-nur',
+      uploadedBy: 'Nyirahabimana Chantal',
+      uploadedByRole: 'nurse',
+      uploadedAt: minutesAgo(70),
+      url: samplePdf([
+        'Kiziguro Health Centre - Laboratory',
+        'Full blood count (sample)',
+        'Haemoglobin 11.8 g/dL',
+        'White cells 9.4 x10^9/L',
+        'Platelets 260 x10^9/L',
+      ]),
+    },
+    {
+      ...base,
+      id: 'fd-6',
+      patientId: 'p-sample',
+      encounterId: 'e-1',
+      visitReference: SAMPLE_REF['e-1']!,
+      visitOpen: true,
+      visitAt: minutesAgo(90),
+      serviceRequestId: null,
+      test: null,
+      kind: 'scan',
+      title: 'Previous prescription from the health centre',
+      mimeType: 'image/png',
+      sizeBytes: 520_000,
+      path: 'p-sample/e-1/fd-6.png',
+      uploadedById: 'u-nur',
+      uploadedBy: 'Nyirahabimana Chantal',
+      uploadedByRole: 'nurse',
+      uploadedAt: minutesAgo(80),
+      url: sampleScan(),
+    },
+    {
+      ...base,
+      id: 'fd-7',
+      patientId: 'p-sample',
+      encounterId: 'e-1',
+      visitReference: SAMPLE_REF['e-1']!,
+      visitOpen: true,
+      visitAt: minutesAgo(90),
+      serviceRequestId: null,
+      test: null,
+      kind: 'ultrasound',
+      title: 'Pelvic ultrasound from the district hospital',
+      mimeType: 'image/png',
+      sizeBytes: 702_000,
+      path: 'p-sample/e-1/fd-7.png',
+      uploadedById: 'u-doc',
+      uploadedBy: 'Dr. Mukamana Béatrice',
+      uploadedByRole: 'doctor',
+      uploadedAt: minutesAgo(35),
+      url: sampleImage('PELVIS', true),
     },
     {
       ...base,
@@ -507,6 +637,66 @@ export function useVisitFiles(
   })
 }
 
+// ---------------------------------------------------------------- the 5-minute link
+/**
+ * A link to one file, valid 5 minutes: file_open checks (and logs the opening of a past visit's
+ * file), then Storage signs the link. Sample mode gives the file kept in memory.
+ */
+export async function openFileLink(fileId: string): Promise<OpenedFile> {
+  const expiresAt = new Date(Date.now() + FILE_LINK_SECONDS * 1000).toISOString()
+  if (!supabase) {
+    const f = sampleStore().find((x) => x.id === fileId)
+    if (!f || (f.removed && !sampleManager())) throw sampleRefusal('notFound', 'P0002')
+    if (f.removed) throw sampleRefusal('alreadyRemoved', '22023')
+    if (!sampleFileView(f)) throw sampleRefusal('privateRecord', '42501')
+    return { id: f.id, url: f.url, mimeType: f.mimeType, title: f.title, expiresAt }
+  }
+  const { data, error } = await supabase.rpc('file_open', { p_file_id: fileId })
+  if (error) {
+    if (isMissingFunction(error)) throw sampleRefusal('filesUnavailable', 'PGRST202')
+    throw apiError(error)
+  }
+  const o = data as { path: string; mimeType: FileMime; title: string; expiresIn?: number }
+  const signed = await supabase.storage
+    .from(FILES_BUCKET)
+    .createSignedUrl(o.path, o.expiresIn ?? FILE_LINK_SECONDS)
+  if (signed.error || !signed.data?.signedUrl)
+    throw await storageRefusal(storageError(signed.error as StorageErr, 'open'))
+  return { id: fileId, url: signed.data.signedUrl, mimeType: o.mimeType, title: o.title, expiresAt }
+}
+
+/** A link is asked again 30 seconds before it stops working. */
+const LINK_FRESH_MS = (FILE_LINK_SECONDS - 30) * 1000
+/** The cache of opened links (outside ['files'], so a list refresh does not open them again). */
+export const fileLinkKey = (fileId: string) => ['file-link', fileId] as const
+/** Is this link still good for a while? */
+export const linkFresh = (f: OpenedFile | null | undefined, now = Date.now()) =>
+  !!f && new Date(f.expiresAt).getTime() - now > 30_000
+
+/**
+ * The link of one file, shared by the viewer and the thumbnails (one request per file per 5
+ * minutes). Only enable it where opening is not a recorded look (a file of today's visit: the
+ * thumbnails), or when the person opened the file (the viewer).
+ */
+export function useFileLink(fileId: string | null, enabled = true) {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: fileLinkKey(fileId ?? ''),
+    enabled: enabled && !!fileId,
+    queryFn: async () => {
+      const o = await openFileLink(fileId!)
+      // opening a past visit's file is logged
+      void qc.invalidateQueries({ queryKey: ['privacy'] })
+      return o
+    },
+    staleTime: LINK_FRESH_MS,
+    gcTime: FILE_LINK_SECONDS * 1000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+}
+
 // ---------------------------------------------------------------- acting
 /**
  * attach: checks the type and size, sends the file to Storage, then registers it (attach_file);
@@ -594,34 +784,7 @@ export function useFileActions() {
   })
 
   const open = useMutation({
-    mutationFn: async (fileId: string): Promise<OpenedFile> => {
-      const expiresAt = new Date(Date.now() + FILE_LINK_SECONDS * 1000).toISOString()
-      if (!supabase) {
-        const f = sampleStore().find((x) => x.id === fileId)
-        if (!f || (f.removed && !sampleManager())) throw sampleRefusal('notFound', 'P0002')
-        if (f.removed) throw sampleRefusal('alreadyRemoved', '22023')
-        if (!sampleFileView(f)) throw sampleRefusal('privateRecord', '42501')
-        return { id: f.id, url: f.url, mimeType: f.mimeType, title: f.title, expiresAt }
-      }
-      const { data, error } = await supabase.rpc('file_open', { p_file_id: fileId })
-      if (error) {
-        if (isMissingFunction(error)) throw sampleRefusal('filesUnavailable', 'PGRST202')
-        throw apiError(error)
-      }
-      const o = data as { path: string; mimeType: FileMime; title: string; expiresIn?: number }
-      const signed = await supabase.storage
-        .from(FILES_BUCKET)
-        .createSignedUrl(o.path, o.expiresIn ?? FILE_LINK_SECONDS)
-      if (signed.error || !signed.data?.signedUrl)
-        throw await storageRefusal(storageError(signed.error as StorageErr, 'open'))
-      return {
-        id: fileId,
-        url: signed.data.signedUrl,
-        mimeType: o.mimeType,
-        title: o.title,
-        expiresAt,
-      }
-    },
+    mutationFn: openFileLink,
     // opening a past visit's file is logged
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['privacy'] }),
   })

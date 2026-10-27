@@ -6528,7 +6528,26 @@
     "purged": "La copie stockée de « {{title}} » est supprimée.",
     "count_one": "{{count}} pièce jointe",
     "count_other": "{{count}} pièces jointes",
-    "countHint": "Ouvrir les pièces jointes de cet examen"
+    "countHint": "Ouvrir les pièces jointes de cet examen",
+    "viewer": {
+      "openFile": "Ouvrir {{title}}",
+      "download": "Télécharger",
+      "prev": "Fichier précédent",
+      "next": "Fichier suivant",
+      "position": "Fichier {{n}} sur {{total}}",
+      "all": "Tous les fichiers",
+      "tools": "Outils de l’image",
+      "zoomIn": "Agrandir",
+      "zoomOut": "Réduire",
+      "fit": "Ajuster à l’écran",
+      "fitHint": "Ajuster à l’écran. Double-cliquez sur l’image pour la voir à 100 %.",
+      "rotate": "Faire pivoter",
+      "loading": "Ouverture du fichier…",
+      "retry": "Réessayer",
+      "noPreview": "Ce fichier ne peut pas être affiché ici. Téléchargez-le pour l’ouvrir.",
+      "recorded": "Ouverture enregistrée",
+      "recordedHint": "L’image d’une visite passée ne s’affiche que lorsque vous l’ouvrez : l’ouverture est inscrite au journal des accès."
+    }
   },
   "handover": {
     "title": "Confier à un collègue",

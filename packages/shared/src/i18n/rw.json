@@ -6537,7 +6537,26 @@
     "purged": "Kopi ya “{{title}}” iri mu bubiko yasibwe.",
     "count_one": "Inyandiko {{count}}",
     "count_other": "Inyandiko {{count}}",
-    "countHint": "Fungura inyandiko z’inyongera z’iki kizamini"
+    "countHint": "Fungura inyandiko z’inyongera z’iki kizamini",
+    "viewer": {
+      "openFile": "Fungura {{title}}",
+      "download": "Kuramo",
+      "prev": "Inyandiko ibanziriza",
+      "next": "Inyandiko ikurikira",
+      "position": "Inyandiko ya {{n}} muri {{total}}",
+      "all": "Inyandiko zose",
+      "tools": "Ibikoresho by’ifoto",
+      "zoomIn": "Gira nini",
+      "zoomOut": "Gira nto",
+      "fit": "Yerekane yose kuri mugaragaza",
+      "fitHint": "Yerekane yose kuri mugaragaza. Kanda kabiri ku ifoto uyibone ku 100 %.",
+      "rotate": "Hindukiza",
+      "loading": "Inyandiko irimo gufunguka…",
+      "retry": "Ongera ugerageze",
+      "noPreview": "Iyi nyandiko ntishobora kugaragara hano. Yikuremo kugira ngo uyifungure.",
+      "recorded": "Kuyifungura birandikwa",
+      "recordedHint": "Ifoto yo kwivuza kwa kera igaragara ari uko uyifunguye: kuyifungura byandikwa mu rutonde rw’abarebye."
+    }
   },
   "handover": {
     "title": "Egurira mugenzi wawe umurwayi",
