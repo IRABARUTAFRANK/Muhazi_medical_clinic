@@ -2460,7 +2460,7 @@
     "inquiry": "New booking request from {{name}}",
     "inquiryBody": "Approve or reject it in Bookings.",
     "toAccept": "Booking to accept: {{name}}",
-    "toAcceptBody": "Reception approved it; accept or decline on your home page.",
+    "toAcceptBody": "Reception approved it: accept, choose another time or decline here, or on your home page.",
     "to": "To",
     "toAll": "Everyone",
     "toRole": "A role",

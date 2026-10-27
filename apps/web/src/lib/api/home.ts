@@ -157,9 +157,11 @@ const sampleSummary = (): HomeSummary => ({
 
 const KEY = ['home', 'summary'] as const
 
-export function useHomeSummary(period?: DayRange | null) {
+/** `enabled: false` waits (a notice asks only when it is about a booking to accept). */
+export function useHomeSummary(period?: DayRange | null, opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: [...KEY, period?.from, period?.to],
+    enabled: opts.enabled ?? true,
     refetchInterval: 20_000,
     queryFn: async (): Promise<HomeSummary> => {
       if (!supabase) return sampleSummary()

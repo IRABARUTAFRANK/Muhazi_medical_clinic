@@ -60,7 +60,7 @@ import { CashierDashboard } from './cashier-dashboard'
 import { HandoverPanel } from './handover-panel'
 import { DeskDashboard } from './desk-dashboard'
 import { LabDashboard } from './lab-dashboard'
-import { ErrorBox, MyQueuePanel, RolePanels } from './role-panels'
+import { ErrorBox, MyQueuePanel, RolePanels, ToAcceptSection } from './role-panels'
 import { CallsPanel } from './calls-panel'
 import { DeskOrdersPanel } from './desk-orders-panel'
 import { PharmacyDashboard } from './pharmacy-dashboard'
@@ -271,6 +271,10 @@ function RoleHome({ user, mode }: HomePageProps) {
           seenLink={seenLink}
         />
 
+        {/* Bookings to accept right under the tiles while there is something to answer (a notice
+            "Booking to accept" points here); empty, the doctor's panel stays at the bottom */}
+        {summary && <ToAcceptSection items={summary.toAccept} />}
+
         {/* Patients a colleague hands over to me (Take / Decline), and mine waiting (0088) */}
         <HandoverPanel />
 
@@ -394,6 +398,8 @@ function RoleTiles({
           value={toAccept}
           unit={t('roleHome.units.toAnswer')}
           delta={toAccept > 0 ? { text: t('desk.answerSoon'), good: false, up: null } : undefined}
+          // the "Bookings to accept" panel of this page, brought into view and outlined
+          to="/app?focus=to_accept"
         />
       </>
     )

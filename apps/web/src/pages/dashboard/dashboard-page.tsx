@@ -52,6 +52,7 @@ import {
 import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-section'
 import { DepartmentSection } from './department-section'
 import { CallsPanel } from '@/pages/home/calls-panel'
+import { ToAcceptSection } from '@/pages/home/role-panels'
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { StationTile } from '@/components/dash/station-tile'
@@ -349,6 +350,10 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 unit={`/ ${data.tiles.bedsTotal} ${t('dashboard.units.beds')}`}
               />
             </div>
+
+            {/* the manager keeps a calendar (0094): bookings to accept, under the tiles while there
+                is something to answer (a "Booking to accept" notice points here) */}
+            {user.role === 'manager' && <ToAcceptSection />}
 
             {/* NOTIFICATIONS: what is addressed to the manager right now */}
             {/* requests to see past records, emergency accesses to review (0088) */}

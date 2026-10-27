@@ -25,6 +25,8 @@ import {
 } from '@/lib/api/home'
 import { useFindPatients } from '@/lib/api/visits'
 import { useConfirm } from '@/lib/confirm'
+import { focusAttr, useFocusFirst } from '@/lib/notice-focus'
+import { FOCUS_PANEL } from '@/lib/notice-target'
 import { cn } from '@/lib/utils'
 import { NewPatientForm } from '@/components/clinical/new-patient-form'
 
@@ -62,7 +64,9 @@ export function InquiriesPanel({
   onBookingClosed?: () => void
 }) {
   const { t } = useTranslation()
-  const { data: inquiries = [] } = useOpenInquiries()
+  const { data: waiting = [] } = useOpenInquiries()
+  // a notice points to one request (?focus=inquiry:<id>): it comes first and is outlined
+  const inquiries = useFocusFirst(waiting, 'inquiry')
   const actions = useHomeActions()
   const confirm = useConfirm()
   const [open, setOpenState] = useState<string | null>(null)
@@ -106,6 +110,7 @@ export function InquiriesPanel({
   return (
     <Panel
       i={i}
+      id={FOCUS_PANEL.inquiry}
       icon={MessageSquare}
       tint="teal"
       title={t('desk.receptionist.inquiries')}
@@ -126,6 +131,7 @@ export function InquiriesPanel({
               {shown.map((q, k) => (
                 <div
                   key={q.id}
+                  {...focusAttr('inquiry', q.id)}
                   className="border-grid flex flex-col gap-2 border-b py-2.5 last:border-b-0"
                   style={{ '--i': k } as CSSProperties}
                 >

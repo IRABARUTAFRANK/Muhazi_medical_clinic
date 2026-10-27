@@ -1,5 +1,4 @@
 import type { CSSProperties } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import {
   ArrowRightLeft,
   Bell,
@@ -21,9 +20,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
-import { useNotificationActions, useNotifications, type Notice } from '@/lib/api/notifications'
+import { useNotificationActions, useNotifications } from '@/lib/api/notifications'
 import { useConfirm } from '@/lib/confirm'
 import { useAgo, useWording } from '@/lib/notice-wording'
+import { useOpenNotice } from '@/lib/notice-target'
 import { cn } from '@/lib/utils'
 import { Empty, IconChip, Panel } from './kit'
 import type { Tint } from './kit-style'
@@ -66,7 +66,6 @@ export function NoticesPanel({
   className?: string
 }) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { data } = useNotifications()
   const actions = useNotificationActions()
   const confirm = useConfirm()
@@ -76,13 +75,8 @@ export function NoticesPanel({
     .sort((a, b) => Number(a.read) - Number(b.read))
     .slice(0, limit)
   const unread = data?.unread ?? 0
-  const open = (n: Notice) => {
-    if (!n.read) actions.markRead.mutate([n.id])
-    if (n.link) {
-      const [path, query] = n.link.split('?')
-      void navigate({ href: query ? `${path}?${query}` : path! })
-    }
-  }
+  // the exact place a notice is about (a visit, a booking on Home…), marked read on the way
+  const { open } = useOpenNotice()
   return (
     <Panel
       i={i}

@@ -22,6 +22,8 @@ import { useColleagues } from '@/lib/api/referrals'
 import { stationFor, useQueueBoard, type QueueItem } from '@/lib/api/visits'
 import { formatDuration } from '@/lib/duration'
 import { useConfirm } from '@/lib/confirm'
+import { focusAttr } from '@/lib/notice-focus'
+import { FOCUS_PANEL } from '@/lib/notice-target'
 import { cn } from '@/lib/utils'
 
 const control = cn(controlClass, 'w-full')
@@ -108,7 +110,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
   if (nothing && !notice && !error) return null
 
   return (
-    <Panel i={1} icon={BellRing} tint="violet" title={t('calls.title')}>
+    <Panel i={1} id={FOCUS_PANEL.call} icon={BellRing} tint="violet" title={t('calls.title')}>
       {error && (
         <Flash tone="error" onClose={() => setError(null)}>
           {error}
@@ -127,6 +129,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
         return (
           <div
             key={c.id}
+            {...focusAttr('call', c.id)}
             className={cn(row, 'border-l-blue-dot border-l-2')}
             style={{ '--i': i } as CSSProperties}
           >
@@ -186,7 +189,11 @@ export function CallsPanel({ user }: { user: StaffUser }) {
 
       {/* Help requests for me */}
       {incomingHelp.map((c) => (
-        <div key={c.id} className={cn(row, 'border-red/30 bg-red-bg/40')}>
+        <div
+          key={c.id}
+          {...focusAttr('call', c.id)}
+          className={cn(row, 'border-red/30 bg-red-bg/40')}
+        >
           <span className="inline-flex flex-wrap items-center gap-x-2 text-[14px]">
             <HandHelping size={16} aria-hidden="true" className="text-red" />
             <b>

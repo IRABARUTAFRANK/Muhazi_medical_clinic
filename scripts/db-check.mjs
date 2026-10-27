@@ -11726,6 +11726,63 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- notices open their thing (0096)
+await step('0096: a booking to accept carries the appointment id (Home focuses it)', async () => {
+  await asAdmin()
+  const pr = await one(`select id from practitioner where user_id = $1 limit 1`, [staff.doctor])
+  if (!pr) throw new Error('the doctor has no calendar')
+  const appt = (
+    await one(
+      `insert into appointment (practitioner_id, status, source, contact_name, contact_phone, starts_at)
+       values ($1, 'inquiry', 'online', 'Notice Target 96', '0788000096', now() + interval '2 days') returning id`,
+      [pr.id],
+    )
+  ).id
+  await db.query(`update appointment set status = 'approved' where id = $1`, [appt])
+  const n = await one(
+    `select params, link from notification where kind = 'to_accept' and recipient_user = $1
+       and params ->> 'appointment' = $2`,
+    [staff.doctor, appt],
+  )
+  await db.query(`delete from notification where params ->> 'appointment' = $1`, [appt])
+  await db.query(`delete from appointment where id = $1`, [appt])
+  if (!n || n.params.name !== 'Notice Target 96' || !n.params.when)
+    throw new Error(JSON.stringify(n))
+  return `to_accept for the doctor with the appointment id; link ${n.link}`
+})
+await step(
+  '0096: a task without a visit links to Home with its id; on a visit, the visit',
+  async () => {
+    await asAdmin()
+    const loose = (
+      await one(
+        `insert into internal_task (title, assigned_to) values ('Call back 96', $1) returning id`,
+        [staff.doctor],
+      )
+    ).id
+    const a = await one(
+      `select params, link from notification where kind = 'task' and params ->> 'title' = 'Call back 96'`,
+    )
+    const enc = await one(`select id, patient_id from encounter order by created_at desc limit 1`)
+    const onVisit = (
+      await one(
+        `insert into internal_task (encounter_id, patient_id, title, assigned_to)
+       values ($1, $2, 'Dressing 96', $3) returning id`,
+        [enc.id, enc.patient_id, staff.doctor],
+      )
+    ).id
+    const b = await one(
+      `select params, link from notification where kind = 'task' and params ->> 'title' = 'Dressing 96'`,
+    )
+    await db.query(`delete from internal_task where id in ($1, $2)`, [loose, onVisit])
+    if (a?.params.task !== loose || a.link !== `/app?focus=task:${loose}`)
+      throw new Error(JSON.stringify(a))
+    if (b?.params.task !== onVisit || b.link !== `/app/visit?encounter=${enc.id}`)
+      throw new Error(JSON.stringify(b))
+    return 'task id in params; Home focus without a visit, the visit otherwise'
+  },
+)
+
 finish()
 
 function finish() {

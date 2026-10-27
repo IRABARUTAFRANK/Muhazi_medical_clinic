@@ -17,6 +17,7 @@ import { TopBar } from './top-bar'
 import { splitNav, useBarCount } from '@/lib/bottom-bar'
 import { NAV_GROUPS, navGroupOf } from '@/lib/nav'
 import { FilePanelHost } from '@/components/clinical/file-panel'
+import { useNoticeFocus } from '@/lib/notice-focus'
 
 interface StaffShellProps {
   user: StaffUser
@@ -54,6 +55,8 @@ export function StaffShell({
   const zoom = TEXT_ZOOM[usePrefs((s) => s.textSize)] ?? 1
   // Text size, theme and language follow the person to every device.
   usePrefsSync(user.id)
+  // ?focus=<kind>:<id> from a notice: that item comes into view, outlined (lib/notice-focus.ts)
+  useNoticeFocus()
   const now = appNow()
   const clock = `${dayNames.short[now.getDay()]} ${formatDate(now)} · ${time ?? formatTime(now)}`
   // the open page's name for the top bar's breadcrumb

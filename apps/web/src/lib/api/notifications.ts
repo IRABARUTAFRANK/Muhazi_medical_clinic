@@ -43,6 +43,19 @@ let sample: Notice[] = [
     sender: 'Dr. Uwase Aline',
   },
   {
+    // the sample doctor's booking to accept (home.ts sample 'ta-1'): answered in the notice
+    id: 'n-acc',
+    at: new Date(Date.now() - 5 * 60_000).toISOString(),
+    kind: 'to_accept',
+    params: { name: 'Hakizimana Emmanuel', when: null, appointment: 'ta-1' },
+    title: null,
+    body: null,
+    link: '/app',
+    urgent: false,
+    read: false,
+    sender: null,
+  },
+  {
     id: 'n1',
     at: new Date(Date.now() - 4 * 60_000).toISOString(),
     kind: 'queue',
@@ -87,9 +100,11 @@ export function useNotifications(limit = 40) {
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<{ unread: number; items: Notice[] }> => {
       if (!supabase) {
-        // the sample handover notice is for the sample doctor only
+        // the sample handover and booking notices are for the sample doctor only
         const items = sample.filter(
-          (n) => !n.kind.startsWith('handover') || useSession.getState().user?.role === 'doctor',
+          (n) =>
+            !(n.kind.startsWith('handover') || n.kind === 'to_accept') ||
+            useSession.getState().user?.role === 'doctor',
         )
         return { unread: items.filter((n) => !n.read).length, items }
       }

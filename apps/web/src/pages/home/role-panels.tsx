@@ -30,9 +30,7 @@ import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import { rowSignature, useChanged } from '@/lib/motion'
 import {
-  formatDate,
   formatRwf,
-  formatTime,
   type ApptStatus,
   type HomeRole,
   type QueueCounts,
@@ -41,11 +39,12 @@ import {
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { triageIcon, type Tint } from '@/components/dash/kit-style'
 import { Button, actionLink, buttonVariants } from '@/components/ui/button'
-import { controlClass, labelClass } from '@/components/ui/field'
-import { Reveal } from '@/components/ui/reveal'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
-import { useHomeActions, type HomeBed, type HomeSummary } from '@/lib/api/home'
+import { useHomeActions, useHomeSummary, type HomeBed, type HomeSummary } from '@/lib/api/home'
+import { focusAttr, useFocusFirst } from '@/lib/notice-focus'
+import { FOCUS_PANEL } from '@/lib/notice-target'
+import { BookingAnswer } from './booking-answer'
 import { useTakePatient } from '@/lib/api/visits'
 import { useConfirm } from '@/lib/confirm'
 import { useSessionCan } from '@/components/clinical/session-desks'
@@ -72,8 +71,6 @@ const bedClass: Record<HomeBed['state'], string> = {
 const rowClass =
   'border-grid flex min-h-10 flex-wrap items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0'
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
-// "24/10/2026 10:30" for a datetime-local value
-const at = (v: string) => `${formatDate(new Date(v))} ${formatTime(new Date(v))}`
 
 export function ErrorBox({ children }: { children: ReactNode }) {
   return (
@@ -455,8 +452,6 @@ function ReceptionistPanels({ data, onError }: PanelProps) {
           )}
         </ShownList>
       </Panel>
-      {/* the manager's home uses these panels: the bookings made with the manager's own calendar */}
-      {data.toAccept.length > 0 && <ToAcceptPanel items={data.toAccept} onError={onError} />}
     </>
   )
 }
@@ -552,8 +547,6 @@ function NursePanels({ data, onError }: PanelProps) {
           ))}
         </div>
       </Panel>
-      {/* a nurse keeps a calendar (0094): the bookings made with them */}
-      {data.toAccept.length > 0 && <ToAcceptPanel items={data.toAccept} onError={onError} />}
     </>
   )
 }
@@ -662,13 +655,18 @@ function DoctorPanels({ data, onError }: PanelProps) {
             )}
           </ShownList>
         </Panel>
-        <ToAcceptPanel items={data.toAccept} onError={onError} />
+        {/* with bookings to answer it sits near the top of the home (ToAcceptSection) */}
+        {data.toAccept.length === 0 && <ToAcceptPanel items={[]} onError={onError} />}
       </div>
     </>
   )
 }
 
-/** Bookings approved by reception that this practitioner (doctor, sonographer) accepts or declines. */
+/**
+ * Bookings approved by reception that this practitioner (doctor, sonographer, nurse, manager)
+ * accepts or declines. A notice points to one row (`?focus=to_accept:<id>`): it comes first and
+ * is outlined.
+ */
 export function ToAcceptPanel({
   items,
   onError,
@@ -677,75 +675,27 @@ export function ToAcceptPanel({
   onError: (message: string | null) => void
 }) {
   const { t } = useTranslation()
-  const actions = useHomeActions()
-  const confirm = useConfirm()
-  // "Another time": the doctor arranges the day by priority before accepting
-  const [moving, setMoving] = useState<string | null>(null)
-  const [newTime, setNewTime] = useState('')
-  const localInput = (iso?: string | null) => {
-    if (!iso) return ''
-    const d = new Date(iso)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-  }
-  const accept = async (id: string, name: string, when: string, startsAt?: string) => {
-    if (
-      !(await confirm({
-        title: t('confirm.desks.appointment.accept', {
-          name,
-          when: startsAt ? at(startsAt) : when,
-        }),
-        body: t('confirm.desks.appointment.acceptBody'),
-        confirmLabel: t('confirm.desks.appointment.acceptYes'),
-      }))
-    )
-      return
-    onError(null)
-    try {
-      await actions.acceptAppointment.mutateAsync({
-        id,
-        startsAt: startsAt ? new Date(startsAt).toISOString() : null,
-      })
-      setMoving(null)
-    } catch (e) {
-      onError(describe(e))
-    }
-  }
-  const decline = async (id: string, name: string) => {
-    const r = await confirm({
-      title: t('confirm.desks.appointment.decline', { name }),
-      input: {
-        label: t('home.declineReason'),
-        placeholder: t('confirm.reasonPh'),
-        required: true,
-        multiline: true,
-      },
-      confirmLabel: t('confirm.desks.appointment.declineYes'),
-      tone: 'danger',
-    })
-    if (!r.ok) return
-    onError(null)
-    try {
-      await actions.declineAppointment.mutateAsync({ id, reason: r.value })
-    } catch (e) {
-      onError(describe(e))
-    }
-  }
-  const data = { toAccept: items }
+  const rows = useFocusFirst(items, 'to_accept')
   return (
     <Panel
       i={4}
+      id={FOCUS_PANEL.to_accept}
       icon={MessageSquare}
       tint="amber"
       title={t('home.inquiriesToAccept')}
-      right={String(data.toAccept.length)}
+      right={String(rows.length)}
     >
-      {data.toAccept.length === 0 && <Empty>{t('home.nothingToAccept')}</Empty>}
-      <ShownList items={data.toAccept} step={5}>
+      {rows.length === 0 && <Empty>{t('home.nothingToAccept')}</Empty>}
+      <ShownList items={rows} step={5}>
         {(shown) => (
           <div className="flex flex-col">
             {shown.map((q, i) => (
-              <div key={q.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
+              <div
+                key={q.id}
+                {...focusAttr('to_accept', q.id)}
+                className={rowClass}
+                style={{ '--i': i } as CSSProperties}
+              >
                 <Pill tint="violet" icon={CalendarCheck}>
                   {q.when}
                 </Pill>
@@ -757,63 +707,31 @@ export function ToAcceptPanel({
                     </span>
                   )}
                 </span>
-                <span className="flex flex-wrap gap-1">
-                  <Button
-                    variant="success"
-                    size="sm"
-                    onClick={() => void accept(q.id, q.name, q.when)}
-                  >
-                    <Check size={14} aria-hidden="true" />
-                    {t('common.accept')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="tint-amber"
-                    onClick={() => {
-                      setMoving(moving === q.id ? null : q.id)
-                      setNewTime(localInput(q.startsAt))
-                    }}
-                  >
-                    <Clock size={14} aria-hidden="true" />
-                    {t('home.otherTime')}
-                  </Button>
-                  <Button variant="tint-coral" size="sm" onClick={() => void decline(q.id, q.name)}>
-                    <X size={14} aria-hidden="true" />
-                    {t('common.decline')}
-                  </Button>
-                </span>
-                {moving === q.id && (
-                  <Reveal focus block="nearest">
-                    <span className="flex basis-full flex-wrap items-end gap-2">
-                      <label className={labelClass}>
-                        {t('home.newTime')}
-                        <input
-                          type="datetime-local"
-                          step={300}
-                          value={newTime}
-                          onChange={(e) => setNewTime(e.target.value)}
-                          className={controlClass}
-                        />
-                      </label>
-                      <Button
-                        variant="success"
-                        size="sm"
-                        className="mb-0.5"
-                        disabled={!newTime}
-                        onClick={() => void accept(q.id, q.name, q.when, newTime)}
-                      >
-                        <Check size={14} aria-hidden="true" />
-                        {t('home.acceptAt')}
-                      </Button>
-                    </span>
-                  </Reveal>
-                )}
+                <BookingAnswer booking={q} onError={onError} />
               </div>
             ))}
           </div>
         )}
       </ShownList>
     </Panel>
+  )
+}
+
+/**
+ * "Bookings to accept" near the top of a home (after the tiles) while there is something to
+ * answer: the doctor's home, the nurse's, the manager's dashboard. Without `items` it asks
+ * home_summary itself (the nurse and manager dashboards load other summaries).
+ */
+export function ToAcceptSection({ items }: { items?: HomeSummary['toAccept'] }) {
+  const { data } = useHomeSummary(null, { enabled: !items })
+  const [error, setError] = useState<string | null>(null)
+  const list = items ?? data?.toAccept ?? []
+  if (list.length === 0) return null
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      {error && <ErrorBox>{error}</ErrorBox>}
+      <ToAcceptPanel items={list} onError={setError} />
+    </div>
   )
 }
 

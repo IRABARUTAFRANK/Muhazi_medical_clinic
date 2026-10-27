@@ -1,5 +1,4 @@
 import { useState, type CSSProperties } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import {
   ArrowRightLeft,
   Bell,
@@ -43,6 +42,8 @@ import {
 import { useConfirm, type ConfirmOptions } from '@/lib/confirm'
 import { navForUser } from '@/lib/nav'
 import { useAgo, useWording } from '@/lib/notice-wording'
+import { useOpenNotice } from '@/lib/notice-target'
+import { NoticeBookingAnswer } from '@/pages/home/booking-answer'
 import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 
@@ -80,7 +81,6 @@ const lookOf = (n: Notice) =>
  */
 export function NotificationsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { data } = useNotifications(200)
   const actions = useNotificationActions()
   const confirm = useConfirm()
@@ -132,13 +132,8 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
   const ask = async (options: Omit<ConfirmOptions, 'input'>, fn: () => Promise<unknown>) => {
     if (await confirm(options)) await run(fn)
   }
-  const open = (n: Notice) => {
-    if (!n.read) actions.markRead.mutate([n.id])
-    if (n.link) {
-      const [path, query] = n.link.split('?')
-      void navigate({ href: query ? `${path}?${query}` : path! })
-    }
-  }
+  // the exact place a notice is about (a visit, a booking on Home…); marked read on the way
+  const notice = useOpenNotice()
   const counts: Record<Filter, number> = {
     all: items.length,
     unread,
@@ -387,8 +382,8 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                         </span>
                       </span>
                       <span className="ml-auto flex flex-none flex-wrap justify-end gap-1 pl-7 sm:pl-0">
-                        {n.link && (
-                          <Button size="sm" variant="info" onClick={() => open(n)}>
+                        {notice.target(n) && (
+                          <Button size="sm" variant="info" onClick={() => notice.open(n)}>
                             {t('common.open')}
                           </Button>
                         )}
@@ -529,7 +524,6 @@ function NoticePanel({
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const actions = useNotificationActions()
   const confirm = useConfirm()
   const ago = useAgo()
@@ -546,13 +540,10 @@ function NoticePanel({
       setError(e instanceof Error ? e.message : String(e))
     }
   }
+  const notice = useOpenNotice()
   const openLink = () => {
-    if (!n.read) actions.markRead.mutate([n.id])
     onClose()
-    if (n.link) {
-      const [path, query] = n.link.split('?')
-      void navigate({ href: query ? `${path}?${query}` : path! })
-    }
+    notice.open(n)
   }
   return (
     <SidePanel
@@ -617,7 +608,7 @@ function NoticePanel({
             <EyeOff size={14} aria-hidden="true" />
             {t('notices.remove')}
           </Button>
-          {n.link && (
+          {notice.target(n) && (
             <Button size="sm" variant="info" onClick={openLink}>
               {t('common.open')}
             </Button>
@@ -630,6 +621,9 @@ function NoticePanel({
           <IconChip icon={look.icon} tint={look.tint} />
           <p className="text-ink m-0 text-[14px] leading-relaxed">{w.body || w.title}</p>
         </div>
+        {/* a booking to accept is answered here; the notice is then marked read */}
+        <NoticeBookingAnswer notice={n} />
+
         {error && (
           <p
             role="alert"

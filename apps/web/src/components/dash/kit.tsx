@@ -245,9 +245,12 @@ export function Panel({
   toLabel,
   children,
   className,
+  id,
 }: {
   i: number
   title: string
+  /** A stable id: a notice points to the panel with it (lib/notice-target.ts FOCUS_PANEL). */
+  id?: string
   /** Icon chip before the title, so each panel is recognisable at a glance. */
   icon?: LucideIcon
   tint?: Hue
@@ -261,7 +264,8 @@ export function Panel({
 }) {
   return (
     <section
-      className={cn(card, 'anim-enter gap-0 p-0', className)}
+      id={id}
+      className={cn(card, 'anim-enter scroll-mt-4 gap-0 p-0', className)}
       style={{ '--i': i } as CSSProperties}
     >
       {/* 40 px header band (the hue's tint fading to white): icon and title left, note and link right */}

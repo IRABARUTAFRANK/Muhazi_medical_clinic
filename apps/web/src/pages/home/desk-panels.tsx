@@ -41,6 +41,8 @@ import {
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { useStaffSettings } from '@/lib/api/settings'
 import { useConfirm } from '@/lib/confirm'
+import { focusAttr, useFocusFirst } from '@/lib/notice-focus'
+import { FOCUS_PANEL } from '@/lib/notice-target'
 import { cn } from '@/lib/utils'
 import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
 
@@ -315,7 +317,9 @@ export function AppointmentsPanel({
 /** What doctors asked the nurses to do, with times; "Done" ticks it off (recorded with you). */
 export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: boolean }) {
   const { t } = useTranslation()
-  const { data: tasks = [] } = useOpenTasks()
+  const { data: open = [] } = useOpenTasks()
+  // a notice points to one task (?focus=task:<id>): it comes first and is outlined
+  const tasks = useFocusFirst(open, 'task')
   const ops = useDeskOps()
   const confirm = useConfirm()
   const { error, run } = useRun()
@@ -334,6 +338,7 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
   return (
     <Panel
       i={i}
+      id={FOCUS_PANEL.task}
       icon={ListTodo}
       tint="amber"
       title={t('desk.nurse.tasks')}
@@ -347,7 +352,12 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
           {(shown) => (
             <div className="flex flex-col">
               {shown.map((x, k) => (
-                <div key={x.id} className={rowClass} style={{ '--i': k } as CSSProperties}>
+                <div
+                  key={x.id}
+                  {...focusAttr('task', x.id)}
+                  className={rowClass}
+                  style={{ '--i': k } as CSSProperties}
+                >
                   <Pill tint={x.overdue ? 'coral' : 'teal'} icon={x.overdue ? AlarmClock : Clock}>
                     {x.dueAt ? formatTime(new Date(x.dueAt)) : '—'}
                   </Pill>

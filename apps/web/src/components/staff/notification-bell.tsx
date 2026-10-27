@@ -8,6 +8,8 @@ import { controlClass, Field, labelClass } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { useNotificationActions, useNotifications, type Notice } from '@/lib/api/notifications'
 import { useAgo, useWording } from '@/lib/notice-wording'
+import { useOpenNotice } from '@/lib/notice-target'
+import { NoticeBookingAnswer } from '@/pages/home/booking-answer'
 import { DB_ROLES, useDepartments, useEmployees, useLeadDepartments } from '@/lib/api/staff'
 import { useConfirm } from '@/lib/confirm'
 import { headerBand } from '@/components/dash/kit-style'
@@ -56,13 +58,11 @@ export function NotificationBell({ user }: { user: StaffUser }) {
     }
   }, [open])
 
+  // the exact place a notice is about (a visit, a booking on Home, a stock note…), marked read
+  const notice = useOpenNotice()
   const openNotice = (n: Notice) => {
-    if (!n.read) actions.markRead.mutate([n.id])
-    if (n.link) {
-      setOpen(false)
-      const [path, query] = n.link.split('?')
-      void navigate({ href: query ? `${path}?${query}` : path! })
-    }
+    if (notice.target(n)) setOpen(false)
+    notice.open(n)
   }
 
   return (
@@ -163,51 +163,57 @@ export function NotificationBell({ user }: { user: StaffUser }) {
             {items.map((n, k) => {
               const w = word(n)
               return (
-                <button
+                <div
                   key={n.id}
-                  type="button"
-                  onClick={() => openNotice(n)}
                   // a new (unread) notice slides in; read ones are simply there
                   className={cn(
-                    'border-grid hover:bg-hover flex w-full items-start gap-2.5 border-b px-3 py-2.5 text-left transition-colors duration-120 last:border-b-0',
+                    'border-grid border-b last:border-b-0',
                     !n.read && k < 8 && 'anim-slide-in',
                   )}
                   style={{ '--i': k } as CSSProperties}
                 >
-                  {/* unread: a dot (red when urgent), not a tinted row */}
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'mt-1.5 size-1.5 flex-none rounded-full',
-                      n.read ? 'bg-transparent' : n.urgent ? 'bg-red-dot' : 'bg-primary',
-                    )}
-                  />
-                  <span className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => openNotice(n)}
+                    className="hover:bg-hover flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors duration-120"
+                  >
+                    {/* unread: a dot (red when urgent), not a tinted row */}
                     <span
-                      className={cn('block text-[14px] leading-snug', !n.read && 'font-semibold')}
-                    >
-                      {n.kind === 'message' && (
-                        <Megaphone
-                          size={13}
-                          aria-hidden="true"
-                          className="text-yellow mr-1 inline"
-                        />
+                      aria-hidden="true"
+                      className={cn(
+                        'mt-1.5 size-1.5 flex-none rounded-full',
+                        n.read ? 'bg-transparent' : n.urgent ? 'bg-red-dot' : 'bg-primary',
                       )}
-                      {w.title}
-                    </span>
-                    {w.body && (
-                      <span className="text-ink-2 mt-0.5 block text-[13px] leading-snug">
-                        {w.body}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={cn('block text-[14px] leading-snug', !n.read && 'font-semibold')}
+                      >
+                        {n.kind === 'message' && (
+                          <Megaphone
+                            size={13}
+                            aria-hidden="true"
+                            className="text-yellow mr-1 inline"
+                          />
+                        )}
+                        {w.title}
                       </span>
-                    )}
-                    <span className="text-ink-3 mt-1 block text-[12px]">
-                      {ago(n.at)}
-                      {n.kind === 'message' && n.sender
-                        ? ` · ${t('notify.from', { name: n.sender })}`
-                        : ''}
+                      {w.body && (
+                        <span className="text-ink-2 mt-0.5 block text-[13px] leading-snug">
+                          {w.body}
+                        </span>
+                      )}
+                      <span className="text-ink-3 mt-1 block text-[12px]">
+                        {ago(n.at)}
+                        {n.kind === 'message' && n.sender
+                          ? ` · ${t('notify.from', { name: n.sender })}`
+                          : ''}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  {/* a booking to accept is answered here (Accept / Another time / Decline) */}
+                  <NoticeBookingAnswer notice={n} className="px-3 pb-2.5 pl-7" />
+                </div>
               )
             })}
           </div>

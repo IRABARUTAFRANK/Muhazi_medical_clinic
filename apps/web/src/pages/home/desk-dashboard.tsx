@@ -84,7 +84,7 @@ import { cn } from '@/lib/utils'
 import { CallsPanel } from './calls-panel'
 import { useDeskOrders } from '@/lib/api/lab'
 import { LabOrderRow } from '../lab/lab-parts'
-import { MyQueuePanel } from './role-panels'
+import { MyQueuePanel, ToAcceptSection } from './role-panels'
 import { useNow } from '@/lib/hooks'
 import { TREATING_DESKS } from '@/lib/api/desks'
 import { DeskBlocks } from './home-desks'
@@ -236,6 +236,10 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             ) : (
               <ReceptionTiles d={data} range={period.range} link={link} />
             )}
+
+            {/* a nurse keeps a calendar (0094): the bookings made with them, to accept, under the
+                tiles while there is something to answer */}
+            {nurse && <ToAcceptSection />}
 
             {/* Patients a colleague hands over to me (Take / Decline), and mine waiting (0088) */}
             {nurse && <HandoverPanel />}

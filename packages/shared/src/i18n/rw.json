@@ -2469,7 +2469,7 @@
     "inquiry": "Ubusabe bushya bwa gahunda bwa {{name}}",
     "inquiryBody": "Bwemeze cyangwa ubuhakane muri Gahunda.",
     "toAccept": "Gahunda yo kwemera: {{name}}",
-    "toAcceptBody": "Umwakiranyi yayemeje; yemere cyangwa uyange ku rupapuro rwawe rw’ahabanza.",
+    "toAcceptBody": "Umwakiranyi yayemeje: yemere, uhitemo ikindi gihe cyangwa uyange hano, cyangwa ku rupapuro rwawe rw’ahabanza.",
     "to": "Uwo bugenewe",
     "toAll": "Bose",
     "toRole": "Umwanya",

@@ -2460,7 +2460,7 @@
     "inquiry": "Nouvelle demande de rendez-vous de {{name}}",
     "inquiryBody": "Approuvez ou refusez-la dans Rendez-vous.",
     "toAccept": "Rendez-vous à accepter : {{name}}",
-    "toAcceptBody": "L’accueil l’a approuvé ; acceptez ou refusez sur votre page d’accueil.",
+    "toAcceptBody": "L’accueil l’a approuvé : acceptez, choisissez une autre heure ou déclinez ici, ou sur votre page d’accueil.",
     "to": "À",
     "toAll": "Tout le monde",
     "toRole": "Un rôle",
