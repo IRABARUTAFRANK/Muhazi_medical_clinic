@@ -28,6 +28,8 @@ import {
   medicineRuleText,
   treatmentName,
   useMedicineReference,
+  medicineRefOption,
+  sortMedicineRefs,
   useTreatments,
 } from '@/lib/api/catalogue'
 import {
@@ -297,12 +299,10 @@ export function ClinicalCard({
       label: [it.name, it.strength, it.form ? `· ${it.form}` : null].filter(Boolean).join(' '),
     })),
     // the official list's medicines the clinic does not hold: for an outside pharmacy
-    ...refs
-      .filter((r) => !itemCodes.has(r.code))
-      .map((r) => ({
-        value: REF + r.code,
-        label: [r.generic, r.presentation, t('clinical.stock.notSold')].filter(Boolean).join(' · '),
-      })),
+    ...sortMedicineRefs(refs.filter((r) => !itemCodes.has(r.code))).map((r) => ({
+      ...medicineRefOption(r, t, REF + r.code),
+      hint: t('clinical.stock.notSold'),
+    })),
   ]
   const [order, setOrder] = useState({
     services: [] as string[],
@@ -1100,6 +1100,11 @@ export function ClinicalCard({
                         required
                         emptyLabel={t('clinical.pickMedicine')}
                         options={medicineOptions}
+                        onWrite={(text) => {
+                          pickMedicine(i, TYPED)
+                          setLine(i, { typedName: text })
+                        }}
+                        writeLabel={(text) => t('clinical.writeMedicine', { name: text })}
                       />
                       {(() => {
                         const note = stockNote(line)

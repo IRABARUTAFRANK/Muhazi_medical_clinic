@@ -31,13 +31,27 @@ export function Seg<T extends string>({
   className,
 }: SegProps<T>) {
   const track = useRef<HTMLDivElement>(null)
-  const [pill, setPill] = useState<{ left: number; width: number } | null>(null)
+  const [pill, setPill] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   useLayoutEffect(() => {
     const root = track.current
     if (!root) return
     const place = () => {
       const on = root.querySelector<HTMLElement>('[aria-pressed="true"]')
-      setPill(on ? { left: on.offsetLeft, width: on.offsetWidth } : null)
+      setPill(
+        on
+          ? {
+              left: on.offsetLeft,
+              top: on.offsetTop,
+              width: on.offsetWidth,
+              height: on.offsetHeight,
+            }
+          : null,
+      )
     }
     place()
     // labels change with the language and the text size: measure again when the track resizes
@@ -52,15 +66,16 @@ export function Seg<T extends string>({
       aria-label={label}
       className={cn(
         'border-border bg-surface relative inline-flex max-w-full gap-0.5 overflow-x-auto rounded-md border p-0.5',
-        size === 'sm' ? 'h-8' : 'h-9',
+        // grows when the buttons wrap onto a second row (long labels, French, Kinyarwanda)
+        size === 'sm' ? 'min-h-8' : 'min-h-9',
         className,
       )}
     >
       {pill && (
         <span
           aria-hidden="true"
-          className="border-border bg-card absolute top-0.5 bottom-0.5 rounded border transition-[left,width] duration-200 ease-out motion-reduce:transition-none"
-          style={{ left: pill.left, width: pill.width }}
+          className="border-border bg-card absolute rounded border transition-[left,top,width] duration-200 ease-out motion-reduce:transition-none"
+          style={{ left: pill.left, top: pill.top, width: pill.width, height: pill.height }}
         />
       )}
       {options.map((o) => {
@@ -72,6 +87,7 @@ export function Seg<T extends string>({
             aria-pressed={on}
             onClick={() => onChange(o.value)}
             className={cn(
+              size === 'sm' ? 'min-h-7' : 'min-h-8',
               'focus-visible:ring-primary/20 relative inline-flex min-w-10 flex-none items-center justify-center rounded px-3 text-[13px] font-medium whitespace-nowrap transition-colors duration-120 focus-visible:ring-2 focus-visible:outline-none',
               on ? 'text-primary' : 'text-ink-2 hover:bg-hover hover:text-ink',
             )}

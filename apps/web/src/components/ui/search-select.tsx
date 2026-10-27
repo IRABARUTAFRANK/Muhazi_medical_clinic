@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown, Search } from 'lucide-react'
+import { Check, ChevronDown, Search, PenLine } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { controlClass } from './field'
@@ -70,6 +70,9 @@ function marked(text: string, words: string[]): ReactNode {
  * always stays, and a single match is chosen at once. ↑ ↓ Home End Page Up/Down move, Enter
  * picks, Esc closes. Long names wrap in the popover; rows are 40 px at least for fingers.
  */
+/** The value of the "write it" row: never a real option's value. */
+const WRITE = '\u0000write'
+
 export function SearchSelect({
   label,
   value,
@@ -80,6 +83,8 @@ export function SearchSelect({
   disabled,
   wrapperClassName,
   limit = 60,
+  onWrite,
+  writeLabel,
 }: {
   label: ReactNode
   value: string
@@ -91,6 +96,13 @@ export function SearchSelect({
   disabled?: boolean
   wrapperClassName?: string
   limit?: number
+  /**
+   * Something not in the list may be written: while a search is typed, a last row offers it
+   * ("Write “Zinc syrup” as the medicine name") and picking it hands the text over.
+   */
+  onWrite?: (text: string) => void
+  /** The words of that row, with the text typed. */
+  writeLabel?: (text: string) => string
 }) {
   const { t } = useTranslation()
   const id = useId()
@@ -112,7 +124,17 @@ export function SearchSelect({
   const shown = hits.slice(0, limit)
   if (open && chosen && !shown.includes(chosen)) shown.unshift(chosen)
   const empty: SearchOption = { value: '', label: emptyLabel }
-  const rows: SearchOption[] = open && !required && !words.length ? [empty, ...shown] : shown
+  const base: SearchOption[] = open && !required && !words.length ? [empty, ...shown] : shown
+  // the "write it" row, last, whenever something is typed and the page accepts a written name
+  const writeRow: SearchOption | null =
+    open && onWrite && query.trim().length >= 2
+      ? {
+          value: WRITE,
+          label: writeLabel ? writeLabel(query.trim()) : query.trim(),
+          group: t('picker.writeGroup'),
+        }
+      : null
+  const rows: SearchOption[] = writeRow ? [...base, writeRow] : base
   const found = rows.findIndex((o) => o.value === activeValue)
   const activeIdx = found >= 0 ? found : rows.length ? 0 : -1
   const optId = (i: number) => `${id}-o-${i}`
@@ -129,6 +151,11 @@ export function SearchSelect({
     setOpen(true)
   }
   const pick = (v: string) => {
+    if (v === WRITE) {
+      onWrite?.(query.trim())
+      close()
+      return
+    }
     if (v !== value) onChange(v)
     close()
   }
@@ -353,7 +380,9 @@ export function SearchSelect({
               <p className="text-ink-3 m-0 flex-none px-3 pt-2 text-[12px]" aria-live="polite">
                 {hits.length
                   ? t('picker.found', { count: hits.length })
-                  : t('picker.none', { query: query.trim() })}
+                  : onWrite
+                    ? t('picker.noneWrite', { query: query.trim() })
+                    : t('picker.none', { query: query.trim() })}
               </p>
             )}
             <ul
@@ -393,16 +422,28 @@ export function SearchSelect({
                         selected && 'text-primary',
                       )}
                     >
-                      <Check
-                        size={16}
-                        aria-hidden="true"
-                        className={cn('mt-0.5 flex-none', !selected && 'invisible')}
-                      />
+                      {o.value === WRITE ? (
+                        <PenLine
+                          size={16}
+                          aria-hidden="true"
+                          className="text-primary mt-0.5 flex-none"
+                        />
+                      ) : (
+                        <Check
+                          size={16}
+                          aria-hidden="true"
+                          className={cn('mt-0.5 flex-none', !selected && 'invisible')}
+                        />
+                      )}
                       <span className="min-w-0 flex-1">
                         <span
                           className={cn(
                             'block break-words',
-                            o.value === '' ? 'text-ink-3' : !selected && 'text-ink',
+                            o.value === ''
+                              ? 'text-ink-3'
+                              : o.value === WRITE
+                                ? 'text-primary font-semibold'
+                                : !selected && 'text-ink',
                             selected && 'font-semibold',
                           )}
                         >

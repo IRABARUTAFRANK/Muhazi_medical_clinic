@@ -54,7 +54,11 @@ export function PageBanner({
         {lead && <p className="m-0 max-w-[720px] text-[14px] leading-snug text-white/85">{lead}</p>}
       </div>
 
-      {children && <div className="relative flex flex-wrap items-center gap-2">{children}</div>}
+      {/* the actions sit on white boxes and buttons: their text is the normal ink, not the
+          banner's white (white on white made the date and the day invisible) */}
+      {children && (
+        <div className="text-ink relative flex flex-wrap items-center gap-2">{children}</div>
+      )}
     </section>
   )
 }

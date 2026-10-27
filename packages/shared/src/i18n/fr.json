@@ -1309,7 +1309,7 @@
     },
     "meds": {
       "title": "Médicaments et fournitures",
-      "lead": "Chacun avec son prix unitaire : facturé à tout poste et lorsqu’il est donné en salle.",
+      "lead": "Ce que la clinique vend et son prix unitaire, facturé à tout poste. Cette liste ne contient pas de stock : un nouveau médicament commence à 0, et le stock vient d’Ajouter du stock (une livraison avec son lot, sa date d’expiration et sa quantité).",
       "new": "Nouveau médicament",
       "editTitle": "Modifier {{name}}",
       "name": "Nom",
@@ -1370,7 +1370,10 @@
       "packSize": "Unités par boîte",
       "packHint": "Sert quand une livraison est comptée en boîtes.",
       "packBad": "La taille de la boîte est un nombre entier, 1 ou plus.",
-      "hasStock": "{{name}} a encore du stock et ne peut pas être supprimé. Marquez-le comme plus utilisé, ou écoulez ou sortez d’abord son stock."
+      "hasStock": "{{name}} a encore du stock et ne peut pas être supprimé. Marquez-le comme plus utilisé, ou écoulez ou sortez d’abord son stock.",
+      "addedNoStock": "« {{name}} » est maintenant dans la liste de la clinique, sans stock pour l’instant.",
+      "addedHow": "Pour en avoir à la pharmacie, enregistrez la livraison dans Ajouter du stock : lot, date d’expiration et quantité.",
+      "addStockNow": "Ajouter du stock"
     },
     "tools": {
       "open": "Outils du catalogue",
@@ -1536,7 +1539,9 @@
         "bad_price": "Le prix n’est pas un nombre égal ou supérieur à zéro",
         "duplicate": "Ce code figure déjà sur une ligne précédente",
         "not_a_row": "Pas une ligne de la liste"
-      }
+      },
+      "removeFile": "Retirer",
+      "fileChange": "Mauvais fichier ? Cliquez ici pour en choisir un autre, ou Retirez-le. Rien n’est enregistré avant Vérifier la liste et Utiliser cette liste."
     }
   },
   "visit": {
@@ -2208,7 +2213,8 @@
     },
     "typedMedicine": "Autre médicament (écrire son nom)",
     "typedName": "Nom du médicament",
-    "typedNamePh": "p. ex. Ciprofloxacine collyre 0,3 %"
+    "typedNamePh": "p. ex. Ciprofloxacine collyre 0,3 %",
+    "writeMedicine": "Écrire « {{name}} » comme nom du médicament (pharmacie extérieure)"
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -4566,7 +4572,9 @@
     "more": "… {{count}} de plus : tapez d’autres lettres",
     "found_one": "{{count}} résultat",
     "found_other": "{{count}} résultats",
-    "none": "Aucun résultat pour « {{query}} »"
+    "none": "Aucun résultat pour « {{query}} »",
+    "writeGroup": "Pas dans la liste",
+    "noneWrite": "Aucun résultat pour « {{query}} » : vous pouvez l’écrire ci-dessous."
   },
   "session": {
     "duration": {
@@ -6402,10 +6410,19 @@
       "emergency": "Accès d’urgence",
       "log": "Dossiers antérieurs ouverts",
       "when": "Quand",
-      "who": "Qui",
+      "who": "Ouvert par",
       "what": "Ce qui a été ouvert",
       "reason": "Raison donnée",
-      "review": "Examen"
+      "review": "Examen",
+      "why": "Pourquoi c’était permis",
+      "logBy": "Dossier ouvert par {{name}}"
+    },
+    "why": {
+      "own": "{{name}} a soigné ce patient lors de cette visite et peut donc la relire.",
+      "manager": "{{name}} est le gérant : le gérant peut lire tous les dossiers.",
+      "head": "{{name}} dirige le service responsable de cette visite.",
+      "request": "{{name}} a demandé à lire le dossier et la demande a été acceptée.",
+      "emergency": "{{name}} l’a ouvert en urgence, avec une raison ; le gérant le vérifie."
     }
   },
   "recordPrivacy": {
@@ -7110,7 +7127,9 @@
       },
       "filledHint": "Les champs en couleur ont été remplis pour vous : vérifiez-les et modifiez ce qui diffère.",
       "perBoxKnown_one": "{{count}} par boîte",
-      "perBoxKnown_other": "{{count}} par boîte"
+      "perBoxKnown_other": "{{count}} par boîte",
+      "clinicName": "Nom dans la clinique",
+      "clinicNameHint": "Rempli depuis la liste : changez le nom, le dosage, la forme ou l’unité si la clinique les écrit autrement. Le code et le prix de la liste restent liés."
     },
     "received": "Stock reçu",
     "salesByItem": "Ventes par article",

@@ -17,6 +17,7 @@ import {
   sortMedicineRefs,
   useMedicineReference,
   useMedicines,
+  type MedicineRef,
 } from '@/lib/api/catalogue'
 import { nameCollator, tidyName } from '@/lib/medicine-name'
 import { supabase } from '@/lib/supabase'
@@ -214,6 +215,16 @@ export function AddStockForm({
    *     2026-10-27: filled, to be changed when the clinic's cash price differs) and the box size
    *     the list gives ("B/20").
    */
+  /** The clinic name the list suggests: "Acetazolamide (Diamox)", "250 mg", "tablet", "tablet". */
+  const listNames = (r: MedicineRef) => {
+    const p = medicineRefParts(r)
+    return {
+      newName: p.brand ? `${p.genericOnly} (${p.brand})` : (p.genericOnly ?? r.generic),
+      newStrength: p.strengthText ?? '',
+      newForm: p.form ?? '',
+      newUnit: readableUnit(r.unit) || '',
+    }
+  }
   const pick = (key: number, value: string) => {
     const it = items.find((i) => i.id === value)
     const r = value.startsWith('ref:') ? reference.find((x) => x.code === value.slice(4)) : null
@@ -245,7 +256,15 @@ export function AddStockForm({
         auto.perBox = 'list'
       }
     }
-    set(key, { pick: value, sellPrice, perBox, unitCost, auto })
+    set(key, {
+      pick: value,
+      sellPrice,
+      perBox,
+      unitCost,
+      auto,
+      // a list medicine: its name and details fill fields the pharmacist may still change
+      ...(r ? listNames(r) : {}),
+    })
     if (!it) return
     // the cost of the last batch received, when the database has one, replaces the average
     void qc
@@ -284,7 +303,7 @@ export function AddStockForm({
         return t('stockDelivery.errors.line', { n: k + 1, text })
       }
       if (!l.pick) return bad(t('stockPage.add.errors.item'))
-      if (l.pick === 'new' && l.newName.trim().length < 2)
+      if ((l.pick === 'new' || l.pick.startsWith('ref:')) && l.newName.trim().length < 2)
         return bad(t('stockPage.add.errors.newName'))
       if (!l.batchNo.trim()) return bad(t('stockPage.add.errors.batch'))
       if (!l.expiry) return bad(t('stock.errors.expiry'))
@@ -343,11 +362,13 @@ export function AddStockForm({
         itemId: it?.id,
         newItem: r
           ? {
-              // the list's wording made clean: "Acetazolamide (Diamox)", "250 mg", "tablet"
-              name: p?.brand ? `${p.genericOnly} (${p.brand})` : (p?.genericOnly ?? r.generic),
-              strength: p?.strengthText ?? null,
-              form: p?.form ?? null,
-              unit: readableUnit(r.unit) || null,
+              // the list's clean wording, as the pharmacist may have changed it on the line
+              name:
+                l.newName.trim() ||
+                (p?.brand ? `${p.genericOnly} (${p.brand})` : (p?.genericOnly ?? r.generic)),
+              strength: l.newStrength.trim() || p?.strengthText || null,
+              form: l.newForm.trim() || p?.form || null,
+              unit: l.newUnit.trim() || readableUnit(r.unit) || null,
               kind: 'medicine',
               // the item keeps the list's code: its insurer price and prescribing rule follow the list
               code: r.code,
@@ -537,6 +558,40 @@ export function AddStockForm({
                         {t('stockPage.add.listTariffFilled', { price: formatRwf(r.price) })}
                       </span>
                     )}
+                  </div>
+                )}
+                {r && (
+                  // the clinic's name for it: filled from the list, free to change before saving
+                  <div className="flex flex-col gap-1.5">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+                      <Field
+                        label={t('stockPage.add.clinicName')}
+                        value={l.newName}
+                        onChange={(e) => set(l.key, { newName: e.target.value })}
+                        required
+                      />
+                      <Field
+                        label={t('stockPage.add.strength')}
+                        value={l.newStrength}
+                        placeholder="500 mg"
+                        onChange={(e) => set(l.key, { newStrength: e.target.value })}
+                      />
+                      <Field
+                        label={t('stockPage.add.form')}
+                        value={l.newForm}
+                        placeholder={t('stockPage.add.formPh')}
+                        onChange={(e) => set(l.key, { newForm: e.target.value })}
+                      />
+                      <Field
+                        label={t('stockPage.add.unit')}
+                        value={l.newUnit}
+                        placeholder={t('stockPage.add.unitPh')}
+                        onChange={(e) => set(l.key, { newUnit: e.target.value })}
+                      />
+                    </div>
+                    <p className="text-ink-3 m-0 text-[12.5px]">
+                      {t('stockPage.add.clinicNameHint')}
+                    </p>
                   </div>
                 )}
                 <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-4">

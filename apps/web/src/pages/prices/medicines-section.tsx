@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Pencil, Pill, Plus, Trash2, X } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { PackagePlus, Pencil, Pill, Plus, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { SidePanel } from '@/components/ui/side-panel'
@@ -27,6 +28,7 @@ import { errorKind, throwIf } from '@/lib/api/errors'
 import { sampleStock, useStockOverview } from '@/lib/api/stock'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
+import { useSessionCanDesk } from '@/components/clinical/session-desks'
 
 /**
  * The number of units in one box of a medicine (deliveries counted in boxes are converted with
@@ -66,6 +68,11 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
   // remains
   const canDelete = useSession((s) => s.user?.role === 'manager')
   const [editing, setEditing] = useState<Medicine | 'new' | null>(null)
+  // a medicine just created: it is in the list with no stock yet (Add stock puts some in)
+  const [added, setAdded] = useState<{ id: string; name: string } | null>(null)
+  const isManager = useSession((s) => s.user?.role === 'manager')
+  const canDesk = useSessionCanDesk()
+  const mayAddStock = isManager || canDesk('pharmacy')
   const [query, setQuery] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
   const q = query.trim().toLowerCase()
@@ -128,11 +135,43 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
           key={editing === 'new' ? 'new' : editing.id}
           medicine={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
-          onSaved={(name) => {
+          onSaved={(name, id) => {
+            const created = editing === 'new'
             setEditing(null)
             onNotice(t('prices.meds.saved', { name }))
+            setAdded(created && id ? { id, name } : null)
           }}
         />
+      )}
+      {added && (
+        <div
+          role="status"
+          className="border-amber/40 bg-amber-bg/60 mx-4 mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3 py-2.5"
+        >
+          <PackagePlus size={18} aria-hidden="true" className="text-amber flex-none" />
+          <span className="min-w-0 flex-[1_1_16rem] text-[14px]">
+            <b className="block">{t('prices.meds.addedNoStock', { name: added.name })}</b>
+            <span className="text-ink-2">{t('prices.meds.addedHow')}</span>
+          </span>
+          {mayAddStock && (
+            <Link
+              to="/app/stock"
+              search={{ tab: 'add', item: added.id }}
+              className={buttonVariants({ variant: 'primary', size: 'sm' })}
+            >
+              <PackagePlus size={14} aria-hidden="true" />
+              {t('prices.meds.addStockNow')}
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => setAdded(null)}
+            aria-label={t('common.close')}
+            className="text-ink-3 hover:text-ink inline-flex size-8 items-center justify-center rounded"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
       )}
       <CardBody className="border-border border-b py-2.5">
         <Field
@@ -204,7 +243,7 @@ function MedicineForm({
 }: {
   medicine: Medicine | null
   onClose: () => void
-  onSaved: (name: string) => void
+  onSaved: (name: string, id: string | null) => void
 }) {
   const { t } = useTranslation()
   const actions = useMedicineActions()
@@ -286,7 +325,7 @@ function MedicineForm({
         await savePackSize(id || medicine?.id || '', ps)
         void qc.invalidateQueries({ queryKey: ['stock'] })
       }
-      onSaved(name.trim())
+      onSaved(name.trim(), id || medicine?.id || null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }

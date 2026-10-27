@@ -1820,7 +1820,8 @@
     },
     "typedMedicine": "Undi muti (andika izina ryawo)",
     "typedName": "Izina ry’umuti",
-    "typedNamePh": "urugero: Ciprofloxacin y’amaso 0.3%"
+    "typedNamePh": "urugero: Ciprofloxacin y’amaso 0.3%",
+    "writeMedicine": "Andika “{{name}}” nk’izina ry’umuti (farumasi yo hanze)"
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -2030,7 +2031,7 @@
     },
     "meds": {
       "title": "Imiti n’ibikoresho",
-      "lead": "Buri kimwe n’igiciro cya kimwe: cyishyuzwa aho bakorera hose, no mu gihe gihawe umurwayi mu cyumba.",
+      "lead": "Ibyo ivuriro rigurisha n’igiciro cya kimwe, byishyuzwa aho bakorera hose. Uru rutonde ntirurimo ibiri mu bubiko: umuti mushya utangirira kuri 0, ibiri mu bubiko biva kuri Injiza mu bubiko (ibyakiriwe bifite lot, itariki birangiriraho n’ingano).",
       "new": "Umuti mushya",
       "editTitle": "Hindura {{name}}",
       "name": "Izina",
@@ -2091,7 +2092,10 @@
       "packSize": "Ibice biri mu gakarito",
       "packHint": "Bikoreshwa iyo ibyagemuwe bibarwa mu dukarito.",
       "packBad": "Ingano y’agakarito ni umubare wuzuye, 1 cyangwa urenga.",
-      "hasStock": "{{name}} uracyari mu bubiko, ntushobora gusibwa. Wandike ko utagikoreshwa, cyangwa ubanze ukoreshe cyangwa uvane mu bubiko ibisigaye."
+      "hasStock": "{{name}} uracyari mu bubiko, ntushobora gusibwa. Wandike ko utagikoreshwa, cyangwa ubanze ukoreshe cyangwa uvane mu bubiko ibisigaye.",
+      "addedNoStock": "“{{name}}” ubu iri ku rutonde rw’ivuriro, ariko nta na kimwe kiri mu bubiko.",
+      "addedHow": "Kugira ngo uboneke muri farumasi, andika ibyakiriwe muri Injiza mu bubiko: lot, itariki birangiriraho n’ingano.",
+      "addStockNow": "Wongere mu bubiko"
     },
     "tools": {
       "open": "Ibikorwa ku rutonde rw’ibiciro",
@@ -2257,7 +2261,9 @@
         "bad_price": "Igiciro si umubare wa zeru cyangwa urenga zeru",
         "duplicate": "Iyi kode isanzwe iri ku murongo wabanje",
         "not_a_row": "Si umurongo w’urutonde"
-      }
+      },
+      "removeFile": "Kuraho",
+      "fileChange": "Si yo? Kanda hano uhitemo indi, cyangwa uyikureho. Nta kibikwa mbere ya Genzura urutonde na Koresha uru rutonde."
     }
   },
   "desk": {
@@ -4575,7 +4581,9 @@
     "more": "… n’ibindi {{count}}: ongeraho inyuguti",
     "found_one": "Habonetse {{count}}",
     "found_other": "Habonetse {{count}}",
-    "none": "Nta kibonetse kuri “{{query}}”"
+    "none": "Nta kibonetse kuri “{{query}}”",
+    "writeGroup": "Ntiri ku rutonde",
+    "noneWrite": "Nta kibonetse kuri “{{query}}”: ushobora kucyandika hepfo."
   },
   "session": {
     "duration": {
@@ -6411,10 +6419,19 @@
       "emergency": "Kureba mu buryo bwihutirwa",
       "log": "Amakuru ya kera yarebwe",
       "when": "Ryari",
-      "who": "Uwabirebye",
+      "who": "Yafunguwe na",
       "what": "Icyarebwe",
       "reason": "Impamvu yatanzwe",
-      "review": "Igenzura"
+      "review": "Igenzura",
+      "why": "Impamvu byemewe",
+      "logBy": "Dosiye yafunguwe na {{name}}"
+    },
+    "why": {
+      "own": "{{name}} yavuye uyu murwayi muri iyo nshuro yaje kwivuza, bityo yemerewe kongera kuyireba.",
+      "manager": "{{name}} ni umuyobozi: umuyobozi yemerewe kureba dosiye zose.",
+      "head": "{{name}} ni umukuru w’ishami ryari rishinzwe iyo nshuro yo kwivuza.",
+      "request": "{{name}} yasabye kureba dosiye kandi ubusabe bwe bwemewe.",
+      "emergency": "{{name}} yayifunguye nk’ibyihutirwa, atanga impamvu; umuyobozi arabigenzura."
     }
   },
   "recordPrivacy": {
@@ -7119,7 +7136,9 @@
       },
       "filledHint": "Ahafite ibara huzujwe ku bwawe: hagenzure, uhindure ibitandukanye.",
       "perBoxKnown_one": "{{count}} mu gakarito",
-      "perBoxKnown_other": "{{count}} mu gakarito"
+      "perBoxKnown_other": "{{count}} mu gakarito",
+      "clinicName": "Izina mu ivuriro",
+      "clinicNameHint": "Byuzujwe biturutse ku rutonde: hindura izina, ingano y’umuti, uko umeze cyangwa igipimo niba ivuriro ribyandika ukundi. Kode n’igiciro by’urutonde bigumana nawo."
     },
     "received": "Ibyinjiye mu bubiko",
     "salesByItem": "Ibyagurishijwe kuri buri kimwe",

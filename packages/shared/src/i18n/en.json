@@ -1309,7 +1309,7 @@
     },
     "meds": {
       "title": "Medicines and supplies",
-      "lead": "Each with its price per unit: charged at any desk, and when given in the room.",
+      "lead": "What the clinic sells and its price per unit, charged at any desk. This list holds no stock: a new medicine starts at 0, and the stock comes from Add stock (a delivery with its batch, expiry and quantity).",
       "new": "New medicine",
       "editTitle": "Edit {{name}}",
       "name": "Name",
@@ -1370,7 +1370,10 @@
       "packSize": "Units per box",
       "packHint": "Used when a delivery is counted in boxes.",
       "packBad": "The box size is a whole number, 1 or more.",
-      "hasStock": "{{name}} still has stock and cannot be deleted. Mark it as no longer used, or use or write off its stock first."
+      "hasStock": "{{name}} still has stock and cannot be deleted. Mark it as no longer used, or use or write off its stock first.",
+      "addedNoStock": "“{{name}}” is now in the clinic’s list, with no stock yet.",
+      "addedHow": "To have some at the pharmacy, record the delivery in Add stock: batch, expiry date and quantity.",
+      "addStockNow": "Add stock for it"
     },
     "tools": {
       "open": "Catalogue tools",
@@ -1536,7 +1539,9 @@
         "bad_price": "The price is not a number of zero or more",
         "duplicate": "This code is already on an earlier row",
         "not_a_row": "Not a row of the list"
-      }
+      },
+      "removeFile": "Remove",
+      "fileChange": "Wrong file? Click here to choose another one, or Remove it. Nothing is saved before Check the list and Use this list."
     }
   },
   "visit": {
@@ -2208,7 +2213,8 @@
     },
     "typedMedicine": "Another medicine (write its name)",
     "typedName": "Name of the medicine",
-    "typedNamePh": "e.g. Ciprofloxacin eye drops 0.3%"
+    "typedNamePh": "e.g. Ciprofloxacin eye drops 0.3%",
+    "writeMedicine": "Write “{{name}}” as the medicine name (outside pharmacy)"
   },
   "adjust": {
     "mode": "How to enter it",
@@ -4566,7 +4572,9 @@
     "more": "… {{count}} more: type more letters",
     "found_one": "{{count}} match",
     "found_other": "{{count}} matches",
-    "none": "Nothing matches “{{query}}”"
+    "none": "Nothing matches “{{query}}”",
+    "writeGroup": "Not in the list",
+    "noneWrite": "Nothing matches “{{query}}”: you can write it below."
   },
   "session": {
     "duration": {
@@ -6402,10 +6410,19 @@
       "emergency": "Emergency access",
       "log": "Past records opened",
       "when": "When",
-      "who": "Who",
+      "who": "Opened by",
       "what": "What was opened",
       "reason": "Reason given",
-      "review": "Review"
+      "review": "Review",
+      "why": "Why it was allowed",
+      "logBy": "Record opened by {{name}}"
+    },
+    "why": {
+      "own": "{{name}} treated this patient on that visit, so may read it again.",
+      "manager": "{{name}} is the manager: the manager may read every record.",
+      "head": "{{name}} heads the department in charge of that visit.",
+      "request": "{{name}} asked to read the record and the request was approved.",
+      "emergency": "{{name}} opened it as an emergency, with a reason; the manager reviews it."
     }
   },
   "recordPrivacy": {
@@ -7110,7 +7127,9 @@
       },
       "filledHint": "Tinted fields were filled in for you: check them and change what differs.",
       "perBoxKnown_one": "{{count}} per box",
-      "perBoxKnown_other": "{{count}} per box"
+      "perBoxKnown_other": "{{count}} per box",
+      "clinicName": "Name in the clinic",
+      "clinicNameHint": "Filled from the list: change the name, strength, form or unit if the clinic writes them differently. The list’s code and price stay linked."
     },
     "received": "Stock received",
     "salesByItem": "Sales by item",

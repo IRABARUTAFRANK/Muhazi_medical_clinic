@@ -22,6 +22,9 @@
 }
 .anim-panel {
   animation: mmc-panel-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  /* its own layer while it slides: Chrome on Windows left thin lines of the page behind */
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 .anim-panel-overlay {
   animation: mmc-panel-overlay 0.22s ease-out both;

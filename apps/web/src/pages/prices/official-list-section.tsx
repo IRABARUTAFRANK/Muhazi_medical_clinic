@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
-import { BookCheck, FileSpreadsheet, History, ListChecks, Upload } from 'lucide-react'
+import { BookCheck, FileSpreadsheet, History, ListChecks, Upload, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatNumber, formatRwf, isoDate } from '@mmc/shared'
 import { tableCell, tableHead, tableRow, tileClass, type Hue } from '@/components/dash/kit-style'
@@ -58,6 +58,17 @@ export function OfficialListSection({ onNotice }: { onNotice: (text: string) => 
   const current = lists.find((l) => l.status === 'current') ?? null
   const past = lists.filter((l) => l.status === 'past')
   const colName = (c: string) => t(`prices.refList.col.${c}`)
+
+  /** The wrong file: forget it, what was read from it and the name it suggested. */
+  const removeFile = () => {
+    if (parsed?.title && name === parsed.title.slice(0, 120)) setName('')
+    setPreview(null)
+    setError(null)
+    setFileError(null)
+    setParsed(null)
+    setFileName('')
+    if (fileInput.current) fileInput.current.value = ''
+  }
 
   const choose = async (file: File | null) => {
     setPreview(null)
@@ -173,29 +184,45 @@ export function OfficialListSection({ onNotice }: { onNotice: (text: string) => 
         </span>
         <div className="flex flex-col gap-1">
           <span className="text-ink-2 text-[13px] font-medium">{t('prices.refList.file')}</span>
-          <label
-            className={cn(
-              'border-border bg-card hover:border-navy/40 flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-3 py-2.5',
-              reading && 'pointer-events-none opacity-60',
-            )}
-          >
-            <input
-              ref={fileInput}
-              type="file"
-              accept={ACCEPT}
-              className="sr-only"
-              onChange={(e) => void choose(e.target.files?.[0] ?? null)}
-            />
-            <span className="bg-blue-bg text-navy-ink grid size-10 flex-none place-items-center rounded-md">
-              <FileSpreadsheet size={20} aria-hidden="true" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="text-ink block text-[14px] font-semibold break-words">
-                {reading ? t('prices.refList.reading') : fileName || t('prices.refList.choose')}
+          <div className="flex items-stretch gap-2">
+            <label
+              className={cn(
+                'border-border bg-card hover:border-navy/40 flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-md border border-dashed px-3 py-2.5',
+                reading && 'pointer-events-none opacity-60',
+              )}
+            >
+              <input
+                ref={fileInput}
+                type="file"
+                accept={ACCEPT}
+                className="sr-only"
+                onChange={(e) => void choose(e.target.files?.[0] ?? null)}
+              />
+              <span className="bg-blue-bg text-navy-ink grid size-10 flex-none place-items-center rounded-md">
+                <FileSpreadsheet size={20} aria-hidden="true" />
               </span>
-              <span className="text-ink-3 block text-[13px]">{t('prices.refList.fileHint')}</span>
-            </span>
-          </label>
+              <span className="min-w-0 flex-1">
+                <span className="text-ink block text-[14px] font-semibold break-words">
+                  {reading ? t('prices.refList.reading') : fileName || t('prices.refList.choose')}
+                </span>
+                <span className="text-ink-3 block text-[13px]">
+                  {fileName ? t('prices.refList.fileChange') : t('prices.refList.fileHint')}
+                </span>
+              </span>
+            </label>
+            {fileName && !reading && (
+              <Button
+                type="button"
+                variant="tint-grey"
+                className="h-auto self-stretch"
+                onClick={removeFile}
+                title={t('prices.refList.removeFile')}
+              >
+                <X size={16} aria-hidden="true" />
+                <span className="max-[480px]:sr-only">{t('prices.refList.removeFile')}</span>
+              </Button>
+            )}
+          </div>
         </div>
         {fileError && (
           <p role="alert" className={errorBox}>

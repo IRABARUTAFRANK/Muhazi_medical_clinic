@@ -633,6 +633,10 @@ function LogPanel({
     ],
     [t('recordAccess.patient'), `${row.patient}${row.fileNumber ? ` · ${row.fileNumber}` : ''}`],
     [t('recordAccess.panel.what'), whatOpened(row, t)],
+    [
+      t('recordAccess.panel.why'),
+      t(`recordAccess.why.${row.via}`, { name: row.actor ?? t('recordAccess.unknownPerson') }),
+    ],
     [t('recordAccess.panel.reason'), row.reason ?? null],
     [
       t('recordAccess.panel.review'),
@@ -650,12 +654,7 @@ function LogPanel({
       hue="coral"
       icon={row.emergency ? Siren : ShieldCheck}
       title={row.patient}
-      subtitle={`${t('recordAccess.panel.log')} · ${formatDate(at)} ${formatTime(at)}`}
-      tags={
-        <Pill tint={VIA_TINT[row.via]} icon={row.emergency ? Siren : undefined}>
-          {t(`recordAccess.via.${row.via}`)}
-        </Pill>
-      }
+      subtitle={`${t('recordAccess.panel.logBy', { name: row.actor ?? t('recordAccess.unknownPerson') })} · ${formatDate(at)} ${formatTime(at)}`}
     >
       <div className="flex flex-col gap-4">
         <dl
