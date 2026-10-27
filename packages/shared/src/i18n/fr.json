@@ -2090,7 +2090,8 @@
     "supplyLabel": "Le patient le reçoit :",
     "supply": {
       "pharmacy": "À la pharmacie",
-      "room": "Je le donne ici"
+      "room": "Je le donne ici",
+      "outside": "Pharmacie extérieure"
     },
     "givenHere": "Donné ici",
     "givenBy": "donné par {{name}}",
@@ -2183,7 +2184,30 @@
     "undoOpenHint": "Les unités retournent dans le stock de la salle et la ligne quitte la facture.",
     "undoClosedHint": "Les unités retournent dans le stock de la salle. La facture est clôturée : un avoir rend la part du patient à la caisse.",
     "undone": "{{item}} remis dans le stock",
-    "undoneCredit": "{{item}} remis ; {{amount}} sera rendu au patient à la caisse"
+    "undoneCredit": "{{item}} remis ; {{amount}} sera rendu au patient à la caisse",
+    "outsideTag": "Pharmacie extérieure",
+    "notCharged": "non facturé",
+    "decidedBy": "décidé par {{name}}",
+    "sendOutsideCall": "La pharmacie n’a pas pu le donner. L’envoyer à une pharmacie extérieure pour que le patient l’y achète ?",
+    "buyOutside": "Acheter à l’extérieur",
+    "buyOutsideHint": "Le patient l’achète dans une pharmacie extérieure : il quitte la liste de la pharmacie de la clinique et n’est pas facturé.",
+    "giveAtClinic": "Donner à la clinique",
+    "giveAtClinicHint": "Finalement, la pharmacie de la clinique le donne : il revient sur sa liste et est facturé à la remise.",
+    "sentOutside": "{{item}} : à acheter dans une pharmacie extérieure. Imprimez-le avec « Imprimer pour la pharmacie extérieure ».",
+    "backToClinic": "{{item}} retourne à la pharmacie de la clinique.",
+    "rxOutsideHint": "Un médicament que la clinique n’a pas : choisissez « Pharmacie extérieure ». Le patient l’achète ailleurs ; il n’est pas sur la facture. Vous pouvez aussi chercher dans la liste officielle ou écrire le nom.",
+    "outsideLineHint": "Le patient achète ce médicament dans une pharmacie extérieure. Il n’est pas facturé et ne va pas à la pharmacie de la clinique.",
+    "rxOutsideSaved_one": "{{count}} médicament à acheter à l’extérieur : imprimez-le avec « Imprimer pour la pharmacie extérieure ».",
+    "rxOutsideSaved_other": "{{count}} médicaments à acheter à l’extérieur : imprimez-les avec « Imprimer pour la pharmacie extérieure ».",
+    "stock": {
+      "in": "En stock : {{count}}",
+      "few": "Il n’en reste que {{count}}",
+      "none": "Pas en stock à la clinique",
+      "notSold": "Non vendu à la clinique"
+    },
+    "typedMedicine": "Autre médicament (écrire son nom)",
+    "typedName": "Nom du médicament",
+    "typedNamePh": "p. ex. Ciprofloxacine collyre 0,3 %"
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -2660,7 +2684,9 @@
     "rxPartGiven": "{{item}} pour {{name}} : {{given}} sur {{quantity}} donnés",
     "rxPartGivenBody_one": "{{count}} reste à donner : la pharmacie le donne plus tard pendant la visite, ou le marque non donné.",
     "rxPartGivenBody_other": "{{count}} restent à donner : la pharmacie les donne plus tard pendant la visite, ou les marque non donnés.",
-    "staffMessage": "Message de {{from}}"
+    "staffMessage": "Message de {{from}}",
+    "rxNotGivenOutside": "Ouvrez la visite pour l’envoyer à une pharmacie extérieure.",
+    "rxOutside": "{{item}} pour {{name}} : acheté dans une pharmacie extérieure"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -3427,7 +3453,8 @@
       "cancelled": "annulé par {{name}} à {{time}}",
       "lapsed": "terminé : le patient est parti ailleurs avant la réponse"
     },
-    "handoverReason": "Raison : « {{reason}} »"
+    "handoverReason": "Raison : « {{reason}} »",
+    "outside": "à acheter dans une pharmacie extérieure"
   },
   "stock": {
     "title": "Stock de médicaments",
@@ -3464,7 +3491,8 @@
       "prescriptions": "Ordonnances",
       "walkin": "Ventes au comptoir",
       "add": "Ajouter du stock",
-      "reports": "Rapports"
+      "reports": "Rapports",
+      "outside": "Achetés à l’extérieur"
     },
     "onHand": "Stock disponible",
     "itemCount_one": "{{count}} médicament",
@@ -3621,7 +3649,17 @@
     "sendExpiredNote_one": "Ce médicament a {{count}} unité périmée dans les dépôts. Les unités périmées ne sont jamais envoyées : un dépôt peut donc en avoir moins à envoyer qu'affiché ici. Retirez-les sous Utiliser ou retirer du stock.",
     "sendExpiredNote_other": "Ce médicament a {{count}} unités périmées dans les dépôts. Les unités périmées ne sont jamais envoyées : un dépôt peut donc en avoir moins à envoyer qu'affiché ici. Retirez-les sous Utiliser ou retirer du stock.",
     "countNoUp": "Le comptage ne peut pas dépasser {{count}} : le détenteur d’un magasin n’enregistre que ce qui manque. Il y en a plus sur l'étagère ? Demandez à la pharmacie de l’envoyer avec un bon de transfert.",
-    "countHolderHint": "Vous pouvez compter moins que le système, pas plus : la pharmacie envoie le reste avec un bon de transfert."
+    "countHolderHint": "Vous pouvez compter moins que le système, pas plus : la pharmacie envoie le reste avec un bon de transfert.",
+    "outside": {
+      "title": "Prescrits mais achetés à l’extérieur",
+      "lead": "Médicaments que les prescripteurs ont envoyés à une pharmacie extérieure sur la période, les plus demandés d’abord : un repère pour les commandes.",
+      "none": "Aucun médicament envoyé à l’extérieur sur cette période.",
+      "times": "Fois",
+      "quantity": "Quantité",
+      "patients": "Patients",
+      "afterNotGiven_one": "{{count}} fois après « non remis »",
+      "afterNotGiven_other": "{{count}} fois après « non remis »"
+    }
   },
   "report": {
     "excel": "Excel",
@@ -3832,7 +3870,12 @@
       "rectal": "Introduire"
     },
     "noLines": "Aucun médicament n'est encore prescrit pour cette visite.",
-    "allGivenHere": "Tous les médicaments ont été donnés ici : rien à imprimer pour une pharmacie."
+    "allGivenHere": "Tous les médicaments ont été donnés ici : rien à imprimer pour une pharmacie.",
+    "printOutside": "Imprimer pour la pharmacie extérieure",
+    "printOutsideHint": "Seulement les médicaments que le patient achète dans une pharmacie extérieure, avec le nom et la signature du prescripteur.",
+    "outsideTitle": "Ordonnance pour une pharmacie extérieure",
+    "outsideMedicines": "À acheter dans une pharmacie extérieure",
+    "outsideNote": "La pharmacie de la clinique ne donne pas ces médicaments. Veuillez les acheter dans n’importe quelle pharmacie."
   },
   "visitConfirm": {
     "title": "Commencer une visite pour {{name}} ?",
@@ -4254,7 +4297,7 @@
     "payAtEnd": "Le patient paie {{amount}} à la fin de la visite",
     "alreadyOnBill": "Déjà sur la facture de la visite et encore dû : {{amount}}",
     "hintEnd": "La remise prend le médicament dans le stock de délivrance et l'ajoute à la facture de la visite. Rien n'est payé ici : le patient paie tout en une fois, à la caisse, à la fin de la visite. Imprimez les étiquettes après la remise.",
-    "sellLeadEnd": "Pour un patient en visite, sans ordonnance (ou une ordonnance oubliée par le médecin). Il va sur la facture de la visite et le patient paie à la fin de la visite. Un acheteur sans visite : utilisez la vente au comptoir.",
+    "sellLeadEnd": "Pour un patient en visite, sans ordonnance (ou une ordonnance oubliée par le médecin). Il va sur la facture de la visite et le patient paie à la fin de la visite. Un acheteur sans visite : utilisez Clients de passage.",
     "sellShort_one": "Seulement {{count}} unité non périmée dans le stock",
     "sellShort_other": "Seulement {{count}} unités non périmées dans le stock",
     "sellCashTotal": "Prix comptant {{amount}}. La facture applique l'assurance du patient, qui paie à la fin de la visite.",
@@ -4309,7 +4352,13 @@
       "expiredTag": "périmé",
       "expiredLeft_one": "{{count}} unité à sortir",
       "expiredLeft_other": "{{count}} unités à sortir"
-    }
+    },
+    "sellSearchPh": "Chercher par nom, numéro de dossier ou ticket",
+    "sellFound": "Dossier {{file}} · ticket {{ticket}} · en ce moment à {{where}}",
+    "sellChange": "Changer",
+    "sellNoMatch": "Aucun patient en visite ne correspond. Seuls les patients présents dans la clinique maintenant sont trouvés ici.",
+    "sellResults": "Patients trouvés",
+    "sellNobody": "Aucun patient n’est en visite maintenant."
   },
   "queuePage": {
     "title": "Ma file · {{desk}}",
@@ -4343,7 +4392,8 @@
       "waiting": "À la pharmacie",
       "given": "Remis",
       "not_given": "Non remis",
-      "room": "Donné ici"
+      "room": "Donné ici",
+      "outside": "Achetés à l’extérieur"
     },
     "rxSearch": "Chercher un patient, un médicament ou un dossier",
     "noRx": "Aucune ordonnance sur cette période.",
@@ -4835,7 +4885,14 @@
       "undoHere": "Remettre {{item}} dans le stock pour {{name}} ?",
       "undoHereOpenBody": "Les unités retournent dans le stock de la salle et la ligne quitte la facture. Raison : « {{reason}} ».",
       "undoHereClosedBody": "Les unités retournent dans le stock de la salle. La facture est clôturée : un avoir rend la part du patient à la caisse. Raison : « {{reason}} ».",
-      "undoHereYes": "Oui, le remettre"
+      "undoHereYes": "Oui, le remettre",
+      "outside": "Envoyer {{item}} à une pharmacie extérieure pour {{name}} ?",
+      "outsideBody": "Le patient l’achète dans une pharmacie extérieure. Il quitte la liste de la pharmacie de la clinique, n’est pas facturé et s’imprime sur l’ordonnance pour la pharmacie extérieure.",
+      "outsideYes": "Oui, à l’extérieur",
+      "clinic": "Faire donner {{item}} par la pharmacie de la clinique pour {{name}} ?",
+      "clinicBody": "Il revient sur la liste de la pharmacie de la clinique ; il est facturé à la remise.",
+      "clinicYes": "Oui, à la clinique",
+      "rxOutsideNote": "Les médicaments pour une pharmacie extérieure ne sont pas facturés : imprimez-les pour le patient."
     },
     "staff": {
       "deactivate": {
@@ -5384,7 +5441,7 @@
     }
   },
   "counterSale": {
-    "title": "Ventes au comptoir (clients de passage)",
+    "title": "Clients de passage",
     "lead": "Pour un acheteur sans visite : il paie d'abord à la caisse, puis récupère les médicaments ici. Un patient en visite paie plutôt à la fin de la visite.",
     "waiting": "{{toPay}} à payer · {{toHand}} à remettre",
     "walkIn": "Client de passage",
@@ -6402,7 +6459,14 @@
       "cancelBody": "Le gestionnaire (et toute personne autorisée à répondre) ne la voit plus. Vous pourrez redemander plus tard.",
       "cancelYes": "Oui, retirer"
     },
-    "canEmergencyOnly": "En cas d’urgence, vous pouvez quand même l’ouvrir tout de suite."
+    "canEmergencyOnly": "En cas d’urgence, vous pouvez quand même l’ouvrir tout de suite.",
+    "lockedTitle": "Vous n’êtes pas autorisé à voir le dossier médical de {{name}}",
+    "lockedNotError": "Ce n’est pas une panne du système : le dossier existe, mais il est confidentiel.",
+    "lockedWhy": "Les notes, diagnostics, résultats d’examens, signes vitaux et ordonnances d’un patient ne sont montrés qu’au gestionnaire, aux chefs des services concernés et aux soignants qui traitent le patient.",
+    "lockedAsk": "Vous traitez ce patient maintenant : appuyez sur Demander l’accès en haut du dossier et dites pourquoi.",
+    "lockedManager": "Si votre travail le demande, demandez l’accès au gestionnaire.",
+    "lockedStill": "Vous voyez toujours l’identité du patient, la liste des visites et les factures.",
+    "noneVisible": "Aucun dans les visites que vous pouvez voir."
   },
   "safetySummary": {
     "title": "Résumé de sécurité",
@@ -6923,7 +6987,12 @@
     "0371e135": "La liste a trop de lignes (20 000 au plus).",
     "d6ff72fe": "Donnez un nom à la liste.",
     "4f0bcaa5": "La liste n’a aucune ligne.",
-    "80d3e9fe": "Seul le gestionnaire voit les rendez-vous d’un collègue."
+    "80d3e9fe": "Seul le gestionnaire voit les rendez-vous d’un collègue.",
+    "be5394d5": "Une partie de ce médicament a déjà été remise : prescrivez le reste comme un nouveau médicament.",
+    "9ca9150e": "Ce médicament s’achète dans une pharmacie extérieure : la clinique ne le remet pas.",
+    "942424e3": "Ce médicament n’est pas vendu à la clinique : il ne peut être acheté qu’à l’extérieur.",
+    "6b5fd4a1": "Ce médicament a déjà été remis ou annulé : il reste tel quel.",
+    "3ab9b692": "Écrivez le nom du médicament à acheter à l’extérieur."
   },
   "panel": {
     "close": "Fermer",

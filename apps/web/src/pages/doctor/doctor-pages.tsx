@@ -8,6 +8,7 @@ import {
   Hourglass,
   ListOrdered,
   Pill as PillIcon,
+  Store,
   TestTube,
   TriangleAlert,
   type LucideIcon,
@@ -355,6 +356,7 @@ const RX_LOOK: Record<RxState, { tint: Tint; icon: LucideIcon }> = {
   given: { tint: 'mint', icon: CircleCheck },
   not_given: { tint: 'coral', icon: Ban },
   room: { tint: 'teal', icon: PillIcon },
+  outside: { tint: 'violet', icon: Store },
 }
 
 /** Every prescription I wrote and what became of it at the pharmacy. */
@@ -393,11 +395,13 @@ export function PrescriptionsPage({ user }: { user: StaffUser }) {
           <Tabs
             value={tab}
             onChange={setTab}
-            tabs={(['all', 'waiting', 'given', 'not_given', 'room'] as const).map((k) => ({
-              id: k,
-              label: t(`doctorLists.rxTabs.${k}`),
-              count: count(k),
-            }))}
+            tabs={(['all', 'waiting', 'given', 'not_given', 'room', 'outside'] as const).map(
+              (k) => ({
+                id: k,
+                label: t(`doctorLists.rxTabs.${k}`),
+                count: count(k),
+              }),
+            )}
           />
           <ListBar query={query} onQuery={setQuery} placeholderKey="doctorLists.rxSearch" />
           {paged.total === 0 ? (

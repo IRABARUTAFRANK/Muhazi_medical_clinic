@@ -483,7 +483,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   {data.waitByStation.length === 0 ? (
                     <Empty>{t('dashboard.noQueue')}</Empty>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2.5">
                       {data.waitByStation.map((s, i) => (
                         <StationTile key={s.station} i={i} {...s} />
                       ))}

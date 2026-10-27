@@ -708,7 +708,12 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                             <span className="text-ink-3 block text-[12px]">{p.reference}</span>
                           )}
                         </td>
-                        <td className={cn(tableCell, 'hidden tabular-nums sm:table-cell')}>
+                        <td
+                          className={cn(
+                            tableCell,
+                            'hidden whitespace-nowrap tabular-nums sm:table-cell',
+                          )}
+                        >
                           {p.receipt ?? p.invoice ?? p.counterSale ?? '—'}
                         </td>
                         <td className={cn(tableCell, 'text-ink-2 hidden md:table-cell')}>

@@ -10,6 +10,7 @@ import {
   Pill,
   ShieldAlert,
   ShoppingBag,
+  UserRound,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useConfirm } from '@/lib/confirm'
@@ -799,13 +800,123 @@ function HandOverPanel({
  * Taken from the dispensing store and put on the visit's bill; the patient pays at the end of
  * the visit with the rest. A walk-in buyer without a visit: the counter sale, who pays first.
  */
-export function SellMedicineCard(props: { patients: { encounterId: string; label: string }[] }) {
+/** A patient on a visit now, as the sale's patient search shows them. */
+export interface VisitPatient {
+  encounterId: string
+  name: string
+  fileNumber: string
+  ticket: string
+  /** Where the patient is now (the desk's name). */
+  where: string
+}
+
+export function SellMedicineCard(props: { patients: VisitPatient[] }) {
   // selling is the pharmacy desk's (the hand-over beside it tells the others why)
   const canDesk = useSessionCanDesk()
   return canDesk('pharmacy') ? <SellMedicine {...props} /> : null
 }
 
-function SellMedicine({ patients }: { patients: { encounterId: string; label: string }[] }) {
+/**
+ * The patient of a sale: searched by name, file number or ticket among the patients who have a
+ * visit open in the clinic now (a sale goes on that visit's bill). The chosen one shows as a card
+ * with "Change".
+ */
+function VisitPatientSearch({
+  patients,
+  value,
+  onChange,
+}: {
+  patients: VisitPatient[]
+  value: string
+  onChange: (encounterId: string) => void
+}) {
+  const { t } = useTranslation()
+  const [query, setQuery] = useState('')
+  const chosen = patients.find((p) => p.encounterId === value)
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const hits = words.length
+    ? patients.filter((p) => {
+        const text = `${p.name} ${p.fileNumber} ${p.ticket}`.toLowerCase()
+        return words.every((w) => text.includes(w))
+      })
+    : []
+  if (chosen) {
+    return (
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="text-ink-2 text-[13px] font-medium">{t('pharmacy.sellPatient')}</span>
+        <div className="border-primary/40 bg-primary-tint flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2">
+          <UserRound size={18} aria-hidden="true" className="text-primary flex-none" />
+          <span className="min-w-0 flex-[1_1_12rem]">
+            <b className="block">{chosen.name}</b>
+            <span className="text-ink-2 text-[13px]">
+              {t('pharmacy.sellFound', {
+                file: chosen.fileNumber,
+                ticket: chosen.ticket,
+                where: chosen.where,
+              })}
+            </span>
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              onChange('')
+              setQuery('')
+            }}
+          >
+            {t('pharmacy.sellChange')}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <Field
+        label={t('pharmacy.sellPatient')}
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={t('pharmacy.sellSearchPh')}
+        autoComplete="off"
+      />
+      {words.length > 0 &&
+        (hits.length === 0 ? (
+          <p className="text-ink-3 m-0 text-[13px]">{t('pharmacy.sellNoMatch')}</p>
+        ) : (
+          <ul
+            className="border-border bg-card m-0 flex max-h-64 list-none flex-col overflow-y-auto rounded-lg border p-1"
+            aria-label={t('pharmacy.sellResults')}
+          >
+            {hits.slice(0, 20).map((p) => (
+              <li key={p.encounterId}>
+                <button
+                  type="button"
+                  onClick={() => onChange(p.encounterId)}
+                  className="hover:bg-hover focus-visible:ring-primary/30 flex w-full min-w-0 flex-wrap items-baseline gap-x-2 rounded-md px-2.5 py-2 text-left outline-none focus-visible:ring-2"
+                >
+                  <b className="min-w-0">{p.name}</b>
+                  <span className="text-ink-2 text-[13px]">
+                    {t('pharmacy.sellFound', {
+                      file: p.fileNumber,
+                      ticket: p.ticket,
+                      where: p.where,
+                    })}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ))}
+      {patients.length === 0 && (
+        <p className="text-ink-3 m-0 text-[13px]">{t('pharmacy.sellNobody')}</p>
+      )}
+    </div>
+  )
+}
+
+function SellMedicine({ patients }: { patients: VisitPatient[] }) {
   const { t } = useTranslation()
   const { data: stock } = useStockOverview()
   const { data: desk } = usePharmacyDesk(null)
@@ -833,7 +944,7 @@ function SellMedicine({ patients }: { patients: { encounterId: string; label: st
     e.preventDefault()
     setMsg(null)
     if (!encounterId || !item || !Number.isFinite(q) || q <= 0) return
-    const who = patients.find((p) => p.encounterId === encounterId)?.label ?? ''
+    const who = patients.find((p) => p.encounterId === encounterId)?.name ?? ''
     const name = itemName(item)
     if (
       !(await confirm({
@@ -853,7 +964,14 @@ function SellMedicine({ patients }: { patients: { encounterId: string; label: st
       })
       const batches = await fetchDispensedBatches(r.dispenseId, itemId, q)
       addHanded(
-        { key: encounterId, kind: 'visit', patient: { name: who, fileNumber: '' } },
+        {
+          key: encounterId,
+          kind: 'visit',
+          patient: {
+            name: who,
+            fileNumber: patients.find((p) => p.encounterId === encounterId)?.fileNumber ?? '',
+          },
+        },
         {
           item: name,
           quantity: q,
@@ -884,19 +1002,7 @@ function SellMedicine({ patients }: { patients: { encounterId: string; label: st
       <p className="text-ink-2 m-0 text-[14px]">{t('pharmacy.sellLeadEnd')}</p>
       <form onSubmit={(e) => void sell(e)} className="flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Select
-            label={t('pharmacy.sellPatient')}
-            value={encounterId}
-            onChange={(e) => setEncounterId(e.target.value)}
-            required
-          >
-            <option value="">{t('pharmacy.pickPatient')}</option>
-            {patients.map((p) => (
-              <option key={p.encounterId} value={p.encounterId}>
-                {p.label}
-              </option>
-            ))}
-          </Select>
+          <VisitPatientSearch patients={patients} value={encounterId} onChange={setEncounterId} />
           {stores.length > 1 && (
             <Select
               label={t('pharmacy.dispensingStore')}
@@ -971,7 +1077,7 @@ function SellMedicine({ patients }: { patients: { encounterId: string; label: st
           variant="success"
           className="self-start"
           loading={actions.sell.isPending}
-          disabled={patients.length === 0 || (!!item && q > inStore(item))}
+          disabled={!encounterId || (!!item && q > inStore(item))}
         >
           <ShoppingBag size={16} aria-hidden="true" />
           {t('pharmacy.sell')}

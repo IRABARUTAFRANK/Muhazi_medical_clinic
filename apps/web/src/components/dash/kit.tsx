@@ -90,11 +90,13 @@ export function Kpi({
           word only (break-words broke "Patients registered" into letters in a thin tile). */}
       {to && (
         <span className="text-ink-2 group-hover:text-primary group-focus-visible:text-primary absolute top-3 right-3 inline-flex items-center gap-0.5 text-[12px]">
-          <span className="hidden lg:inline">{t('dashboard.links.details')}</span>
+          <span className="hidden 2xl:inline">{t('dashboard.links.details')}</span>
           <ArrowUpRight size={13} aria-hidden="true" />
         </span>
       )}
-      <span className={cn('flex items-start gap-2 text-[13px] font-medium', to && 'pr-6 lg:pr-16')}>
+      <span
+        className={cn('flex items-start gap-2 text-[13px] font-medium', to && 'pr-6 2xl:pr-16')}
+      >
         <IconChip icon={IconC} tint={tint} />
         <span className="text-ink-2 min-w-0 flex-1 pt-1 [text-wrap:balance] [overflow-wrap:normal]">
           {label}
@@ -111,11 +113,13 @@ export function Kpi({
         <small className="text-ink-2 text-[13px] font-normal">{unit}</small>
       </span>
       {(d || (spark && spark.length > 1)) && (
-        <span className="flex items-end justify-between gap-2">
+        // wraps: a long change line (French, Kinyarwanda) pushes the small chart below it
+        // instead of being squeezed beside it
+        <span className="flex flex-wrap items-end justify-between gap-2">
           {d ? (
             <span
               className={cn(
-                'inline-flex min-h-6 min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-[12px] leading-tight font-medium tabular-nums',
+                'inline-flex min-h-6 max-w-full min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-[12px] leading-tight font-medium tabular-nums',
                 tag,
               )}
             >
@@ -338,16 +342,20 @@ export function ListRows({
       {(shown) => (
         <div className="flex flex-col">
           {shown.map((r, i) => {
+            // The row wraps: a long value (a sentence in Kinyarwanda, a reason) goes under the
+            // label, right-aligned, instead of squeezing the label to one letter per line.
             const row =
-              'border-grid flex min-h-10 items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0'
+              'border-grid flex min-h-10 flex-wrap items-center gap-x-2.5 gap-y-0.5 border-b py-1.5 text-[14px] last:border-b-0'
             const style = { '--i': i } as CSSProperties
             const content = (
               <>
                 {r.icon && <IconChip icon={r.icon} tint={r.tint} size="sm" />}
                 {r.pill}
                 {/* the whole label wraps (a medicine with its strength, a full name) */}
-                <span className="min-w-0 flex-1 wrap-break-word">{r.label}</span>
-                <span className="font-medium whitespace-nowrap tabular-nums">{r.value}</span>
+                <span className="min-w-0 flex-[1_1_9rem] wrap-break-word">{r.label}</span>
+                <span className="ml-auto max-w-full min-w-0 text-right font-medium tabular-nums">
+                  {r.value}
+                </span>
                 {r.to && (
                   <ArrowRight
                     size={14}

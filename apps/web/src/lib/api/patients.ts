@@ -756,8 +756,19 @@ export interface Prescription {
   instructions: string | null
   at: string
   dispensed: boolean
-  /** Collected at the pharmacy, or given in the room by the prescriber (migration 0035). */
-  supply?: 'pharmacy' | 'room'
+  /** Collected at the pharmacy, given in the room by the prescriber (migration 0035), or bought
+   *  at an outside pharmacy (0100: never charged, never at the clinic pharmacy). */
+  supply?: RxSupply
+  /** The clinic's medicine (null: a medicine the clinic does not hold, bought outside; 0100). */
+  itemId?: string | null
+  /** The official (RHIA) list code of a medicine picked from that list (0100). */
+  referenceCode?: string | null
+  /** Units the pharmacy already gave (a line partly given cannot go outside; 0100). */
+  quantityGiven?: number
+  /** Who decided where it is given, when and why (0100). */
+  supplySetAt?: string | null
+  supplySetBy?: string | null
+  supplyReason?: string | null
   givenAt?: string | null
   givenBy?: string | null
   /** The pharmacy could not hand it over, and why (migration 0056). */
@@ -781,10 +792,14 @@ export interface RxWarning {
   specialty?: string | null
 }
 
+/** Who gives a prescribed medicine: the clinic pharmacy, the prescriber in the room, or an
+ *  outside pharmacy where the patient buys it (0100). */
+export type RxSupply = 'pharmacy' | 'room' | 'outside'
+
 /** What prescribe answers: for 'room' (given here), whether it was charged and taken from a store. */
 export interface PrescribeResult {
   id: string | null
-  supply: 'pharmacy' | 'room'
+  supply: RxSupply
   charged: boolean
   stockTaken: boolean
   /** The room store it was taken from. */
@@ -793,9 +808,12 @@ export interface PrescribeResult {
 }
 
 /** Where a prescription line stands. */
-export type PrescriptionState = 'waiting' | 'given' | 'room' | 'notGiven' | 'returned' | 'cancelled'
+export type PrescriptionState =
+  'waiting' | 'given' | 'room' | 'notGiven' | 'returned' | 'cancelled' | 'outside'
 export function prescriptionState(p: Prescription): PrescriptionState {
   if (p.cancelledAt) return 'cancelled'
+  // bought at an outside pharmacy (also after the pharmacy said "not given")
+  if (p.supply === 'outside') return 'outside'
   if (p.notGivenAt) return /^returned:/i.test(p.notGivenReason ?? '') ? 'returned' : 'notGiven'
   if (p.supply === 'room') return 'room'
   if (p.dispensed || p.givenAt) return 'given'
@@ -889,6 +907,26 @@ const EMPTY_CLINICAL: VisitClinical = {
   patient: null,
 }
 const sampleClinical = new Map<string, VisitClinical>()
+const sampleAgo = (min: number) => new Date(Date.now() - min * 60_000).toISOString()
+const sampleRxLine = (
+  p: Partial<Prescription> & Pick<Prescription, 'id' | 'item' | 'quantity'>,
+): Prescription => ({
+  by: 'Dr. Mukamana Béatrice',
+  dose: '1 tab',
+  route: 'oral',
+  frequency: 'BD',
+  days: 5,
+  instructions: null,
+  at: sampleAgo(25),
+  dispensed: false,
+  supply: 'pharmacy',
+  givenAt: null,
+  givenBy: null,
+  prescriberId: 'u-doc',
+  pending: true,
+  quantityGiven: 0,
+  ...p,
+})
 /** The sample visit's patient (the visit header's Mukamana Alice, insured, 62 kg). */
 const sampleClinicalPatient = (): NonNullable<VisitClinical['patient']> => ({
   id: 'p-sample',
@@ -929,6 +967,57 @@ const sampleVisit = (encounterId: string): DocVisit => {
 /** Sample prescription numbers: the last one per visit and the year's counter. */
 const sampleRx = new Map<string, PrescriptionNumber>()
 let sampleRxSeq = 122
+// The sample visit e-1 (the doctor's patient): one medicine waiting at the pharmacy, one bought
+// at an outside pharmacy (none at the clinic) and one the pharmacy could not give (out of stock).
+sampleClinical.set('e-1', {
+  ...EMPTY_CLINICAL,
+  diagnoses: [
+    {
+      id: 'd-s1',
+      text: 'Uncomplicated malaria',
+      icd10: 'B50.9',
+      type: 'primary',
+      provisional: false,
+      at: sampleAgo(30),
+      by: 'Dr. Mukamana Béatrice',
+    },
+  ],
+  notes: [],
+  orders: [],
+  patient: sampleClinicalPatient(),
+  visit: sampleVisit('e-1'),
+  prescriptions: [
+    sampleRxLine({
+      id: 'rx-s1',
+      itemId: 'it-3',
+      item: 'Artemether-lumefantrine 20/120 mg',
+      quantity: 24,
+      dose: '4 tab',
+      days: 3,
+    }),
+    sampleRxLine({
+      id: 'rx-s2',
+      itemId: 'it-4',
+      item: 'Ciprofloxacin 500 mg',
+      quantity: 10,
+      instructions: 'after meals',
+      supply: 'outside',
+      pending: false,
+      supplySetAt: sampleAgo(25),
+      supplySetBy: 'Dr. Mukamana Béatrice',
+    }),
+    sampleRxLine({
+      id: 'rx-s3',
+      itemId: 'it-5',
+      item: 'Ibuprofen 400 mg',
+      quantity: 15,
+      frequency: 'TDS',
+      pending: false,
+      notGivenAt: sampleAgo(8),
+      notGivenReason: 'Out of stock',
+    }),
+  ],
+})
 
 export function useVisitClinical(encounterId: string) {
   return useQuery({
@@ -998,6 +1087,25 @@ export function useItems() {
             unit: 'tab',
             cashPrice: 500,
           },
+          // none at the sample pharmacy: "Not in the clinic's stock"
+          {
+            id: 'it-4',
+            code: 'CIPRO500',
+            name: 'Ciprofloxacin',
+            strength: '500 mg',
+            form: 'tablet',
+            unit: 'tab',
+            cashPrice: 150,
+          },
+          {
+            id: 'it-5',
+            code: 'IBU400',
+            name: 'Ibuprofen',
+            strength: '400 mg',
+            form: 'tablet',
+            unit: 'tab',
+            cashPrice: 40,
+          },
         ]
       const { data, error } = await supabase
         .from('items_catalogue')
@@ -1024,6 +1132,34 @@ export function useItems() {
         unit: r.unit,
         cashPrice: r.cash_price == null ? null : Number(r.cash_price),
       }))
+    },
+  })
+}
+
+/**
+ * The usable (unexpired) units of each medicine at the clinic pharmacy (0100 rx_stock), for the
+ * prescription form: { itemId: units }; a medicine missing has none. Null before 0100 (the form
+ * then says nothing about stock).
+ */
+export function useRxStock(enabled = true) {
+  return useQuery({
+    queryKey: ['stock', 'rx-stock'],
+    enabled,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Record<string, number> | null> => {
+      if (!supabase) {
+        const main = sampleStock.locations.find((l) => l.type === 'pharmacy')?.id ?? 'l-pharm'
+        return Object.fromEntries(
+          sampleStock.items.map((x) => [x.id, Math.max(0, sampleStock.usable(x.id, main))]),
+        )
+      }
+      const { data, error } = await supabase.rpc('rx_stock')
+      if (error) {
+        if (isMissingFunction(error)) return null
+        throw apiError(error)
+      }
+      const items = (data as { items?: Record<string, number | string> } | null)?.items ?? {}
+      return Object.fromEntries(Object.entries(items).map(([k, v]) => [k, Number(v)]))
     },
   })
 }
@@ -1102,26 +1238,38 @@ export function useClinicalActions(encounterId: string) {
    * (`locationId`, else their own), never expired, charged to the visit's bill; refused when the
    * store has not enough (MS003: offer "for the pharmacy"), when the prescriber holds no store
    * (42501 no_room_store) or a store they do not hold (42501 not_holder). Never refused for the
-   * prescribing rule: `warnings` say it.
+   * prescribing rule: `warnings` say it. 'outside' (0100): the patient buys it at an outside
+   * pharmacy: never charged, never at the clinic pharmacy, no stock moved; `item` may be null
+   * then, for a medicine the clinic does not hold (`medicineName`, and `referenceCode` when
+   * picked from the official list).
    */
   const prescribe = useMutation({
     mutationFn: async (i: {
-      item: Item
+      item: Item | null
+      /** Outside, not a clinic medicine: its name (and the official list code). */
+      medicineName?: string
+      referenceCode?: string | null
       quantity: number
       dose?: string
       route?: string
       frequency?: string
       days?: number
       instructions?: string
-      supply?: 'pharmacy' | 'room'
+      supply?: RxSupply
       station?: string
       /** Given here: the room store to take it from (default: the prescriber's own). */
       locationId?: string | null
     }): Promise<PrescribeResult> => {
       const supply = i.supply ?? 'pharmacy'
+      const name = i.item
+        ? `${i.item.name} ${i.item.strength ?? ''}`.trim()
+        : (i.medicineName ?? '').trim()
       if (!supabase) {
         let loc: string | null = null
-        if (supply === 'room') {
+        if (!i.item && supply !== 'outside')
+          throw new Error('this medicine is not sold at the clinic')
+        const roomItem = supply === 'room' ? i.item : null
+        if (roomItem) {
           const q = Math.ceil(i.quantity)
           const mine = sampleStock.locations.filter(
             (l) =>
@@ -1131,9 +1279,9 @@ export function useClinicalActions(encounterId: string) {
               (!i.locationId || l.id === i.locationId),
           )
           if (!mine.length) throw sampleRefusal(i.locationId ? 'notHolder' : 'noRoomStore', '42501')
-          loc = mine.find((l) => sampleStock.usable(i.item.id, l.id) >= q)?.id ?? null
+          loc = mine.find((l) => sampleStock.usable(roomItem.id, l.id) >= q)?.id ?? null
           if (!loc) throw sampleRefusal('roomShort', 'MS003')
-          sampleStock.move(i.item.id, loc, null, q)
+          sampleStock.move(roomItem.id, loc, null, q)
         }
         const id = `rx-${Date.now()}-${local().prescriptions.length}`
         local().prescriptions.push({
@@ -1141,7 +1289,12 @@ export function useClinicalActions(encounterId: string) {
           givenAt: supply === 'room' ? now() : null,
           givenBy: null,
           id,
-          item: `${i.item.name} ${i.item.strength ?? ''}`.trim(),
+          item: name,
+          itemId: i.item?.id ?? null,
+          referenceCode: i.referenceCode ?? null,
+          quantityGiven: 0,
+          supplySetAt: now(),
+          supplySetBy: 'Dr. Mukamana Béatrice',
           dose: i.dose ?? null,
           route: i.route ?? null,
           frequency: i.frequency ?? null,
@@ -1156,7 +1309,7 @@ export function useClinicalActions(encounterId: string) {
         return {
           id,
           supply,
-          charged: supply === 'room' && i.item.cashPrice != null,
+          charged: supply === 'room' && i.item?.cashPrice != null,
           stockTaken: supply === 'room',
           locationId: loc,
           warnings: [],
@@ -1166,7 +1319,7 @@ export function useClinicalActions(encounterId: string) {
         p_supply: supply,
         p_station: i.station ?? null,
         p_encounter_id: encounterId,
-        p_item_id: i.item.id,
+        p_item_id: i.item?.id ?? null,
         p_quantity: i.quantity,
         p_dose: i.dose || null,
         p_route: i.route || null,
@@ -1176,6 +1329,11 @@ export function useClinicalActions(encounterId: string) {
       }
       // only when chosen, so a database before 0082 (ten arguments) still takes it
       if (i.locationId) args.p_location_id = i.locationId
+      // bought outside (0100): the name kept on the line, and the official list code
+      if (supply === 'outside') {
+        args.p_medicine_name = name || null
+        args.p_reference_code = i.referenceCode ?? null
+      }
       let res = await supabase.rpc('prescribe', args)
       if (res.error && i.locationId && isMissingFunction(res.error)) {
         delete args.p_location_id
@@ -1185,7 +1343,7 @@ export function useClinicalActions(encounterId: string) {
       const r = (res.data ?? null) as Partial<PrescribeResult> | null
       return {
         id: r?.id ?? null,
-        supply: r?.supply === 'room' ? 'room' : supply,
+        supply: r?.supply === 'room' || r?.supply === 'outside' ? r.supply : supply,
         charged: r?.charged ?? true,
         stockTaken: r?.stockTaken ?? supply === 'room',
         locationId: r?.locationId ?? null,
@@ -1196,6 +1354,56 @@ export function useClinicalActions(encounterId: string) {
       refresh()
       // given here: the room store's figures follow
       void qc.invalidateQueries({ queryKey: ['stock'] })
+    },
+  })
+  /**
+   * The prescriber changes who gives a line not given yet (0100 rx_set_supply): 'outside' (the
+   * patient buys it at an outside pharmacy: it leaves the pharmacy's list, the pharmacy is told)
+   * or back to 'pharmacy' (a clinic medicine, open visit). The pharmacist may not.
+   */
+  const setSupply = useMutation({
+    mutationFn: async (i: {
+      requestId: string
+      supply: 'pharmacy' | 'outside'
+      reason?: string
+    }): Promise<{ id: string; supply: 'pharmacy' | 'outside'; pending: number }> => {
+      if (!supabase) {
+        const p = local().prescriptions.find((x) => x.id === i.requestId)
+        if (p) {
+          if (i.supply === 'pharmacy' && !p.itemId)
+            throw new Error(
+              'this medicine is not sold at the clinic: it can only be bought outside',
+            )
+          Object.assign(p, {
+            supply: i.supply,
+            pending: i.supply === 'pharmacy',
+            supplySetAt: now(),
+            supplySetBy: 'Dr. Mukamana Béatrice',
+            supplyReason: i.reason?.trim() || null,
+            ...(i.supply === 'pharmacy' ? { notGivenAt: null, notGivenReason: null } : {}),
+          })
+        }
+        return {
+          id: i.requestId,
+          supply: i.supply,
+          pending: local().prescriptions.filter((x) => x.pending).length,
+        }
+      }
+      const d = (await call('rx_set_supply', {
+        p_request_id: i.requestId,
+        p_supply: i.supply,
+        p_reason: i.reason?.trim() || null,
+      })) as { id?: string; supply?: string; pending?: number | string } | null
+      return {
+        id: d?.id ?? i.requestId,
+        supply: d?.supply === 'pharmacy' ? 'pharmacy' : 'outside',
+        pending: Number(d?.pending ?? 0),
+      }
+    },
+    onSuccess: () => {
+      refresh()
+      void qc.invalidateQueries({ queryKey: ['stock'] })
+      void qc.invalidateQueries({ queryKey: ['my-prescriptions'] })
     },
   })
   /**
@@ -1430,6 +1638,7 @@ export function useClinicalActions(encounterId: string) {
     addNote,
     prescribe,
     prescriptionNumber,
+    setSupply,
     cancelPrescription,
     undoGivenHere,
     orderTests,

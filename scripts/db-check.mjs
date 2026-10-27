@@ -12576,6 +12576,247 @@ await step('0099 C: the manager sees a colleague’s bookings; others do not', a
   return 'manager sees it; a doctor and reception refused; a backwards period refused'
 })
 
+// ---------------------------------------------------------------- 0100 medicines bought outside
+const t100 = {}
+// the 0089 and 0092 steps re-ran older migrations: put the 0100 definitions back (it runs twice)
+await step('0100: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261210090000_outside_prescriptions.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step('0100 A: outside lines: not charged, not at the pharmacy, no stock moved', async () => {
+  t100.v = await visitAt('Outside 100')
+  t100.ref = await one(
+    `select r.code, r.generic from medicine_reference r
+        where not exists (select 1 from item i where i.code = r.code) order by r.code limit 1`,
+  )
+  const stock = async () => (await one(`select usable_stock($1, $2) as n`, [t97.amox, t97.main])).n
+  const before = await stock()
+  const billed = async () =>
+    (
+      await one(
+        `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id
+            where i.encounter_id = $1 and l.deleted_at is null and l.item_id is not null`,
+        [t100.v.enc],
+      )
+    ).n
+  await as(d1)
+  await db.query(`select take_patient($1)`, [t100.v.queue])
+  await db.query(`select add_diagnosis($1, 'Otitis', 'H66', 'primary')`, [t100.v.enc])
+  const rx = async (args) =>
+    (
+      await one(
+        `select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => $3, p_supply => $4,
+                  p_medicine_name => $5, p_reference_code => $6, p_dose => '1 cap', p_frequency => 'TDS',
+                  p_duration_days => 5) as j`,
+        args,
+      )
+    ).j
+  const clinic = await rx([t100.v.enc, t97.amox, 15, 'outside', null, null])
+  const listed = await rx([t100.v.enc, null, 2, 'outside', null, t100.ref.code])
+  const typed = await rx([t100.v.enc, null, 1, 'outside', 'Ear drops 100', null])
+  const noName = await hintAs(
+    d1,
+    `select prescribe($1, null, 1, null, null, null, null, null, 'outside')`,
+    [t100.v.enc],
+  )
+  const notHere = await hintAs(
+    d1,
+    `select prescribe($1, null, 1, null, null, null, null, null, 'pharmacy', null, null, 'X')`,
+    [t100.v.enc],
+  )
+  await as(d1)
+  const stockSeen = (await one(`select rx_stock() as j`)).j
+  const vc = (await one(`select visit_clinical($1) as j`, [t100.v.enc])).j
+  const mine = (await one(`select my_prescriptions(1) as j`)).j
+  await as(staff.pharmacist)
+  const q = (await one(`select pharmacy_queue() as j`)).j
+  const giveOutside = await codeAs(staff.pharmacist, `select dispense_prescription($1)`, [
+    clinic.id,
+  ])
+  await asAdmin()
+  t100.clinic = clinic.id
+  t100.typed = typed.id
+  const lines = vc.prescriptions
+  const atPharmacy = (
+    await one(
+      `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'pharmacy' and finished_at is null`,
+      [t100.v.enc],
+    )
+  ).n
+  const row = await one(
+    `select medicine_name, reference_code, supply_set_by from medication_request where id = $1`,
+    [listed.id],
+  )
+  if (
+    clinic.supply !== 'outside' ||
+    clinic.charged ||
+    clinic.stockTaken ||
+    clinic.medicineName !== 'Amoxicillin 97 500 mg' ||
+    row.medicine_name !== t100.ref.generic ||
+    row.reference_code !== t100.ref.code ||
+    row.supply_set_by !== d1 ||
+    typed.medicineName !== 'Ear drops 100' ||
+    noName !== '22023/' ||
+    notHere !== '22023/' ||
+    (await billed()) !== 0 ||
+    (await stock()) !== before ||
+    atPharmacy !== 0 ||
+    q.lines.some((x) => x.encounterId === t100.v.enc) ||
+    giveOutside !== '23505' ||
+    Number(stockSeen.items[t97.amox] ?? 0) !== before ||
+    lines.length !== 3 ||
+    !lines.every((x) => x.supply === 'outside' && x.pending === false && !x.dispensed) ||
+    !lines.some((x) => x.item === 'Ear drops 100' && x.itemId === null) ||
+    mine.find((x) => x.id === typed.id)?.state !== 'outside'
+  )
+    throw new Error(
+      JSON.stringify({
+        clinic,
+        listed,
+        typed,
+        row,
+        noName,
+        notHere,
+        atPharmacy,
+        stockSeen,
+        lines,
+        giveOutside,
+      }),
+    )
+  return `3 outside lines (clinic, list ${t100.ref.code}, typed): no bill line, stock ${before} kept, no pharmacy place`
+})
+await step(
+  '0100 B: the prescriber moves a line to and from the pharmacy; the pharmacist may not',
+  async () => {
+    await as(d1)
+    const p = (
+      await one(`select prescribe($1, $2, 6, null, null, null, null, null, 'pharmacy') as j`, [
+        t100.v.enc,
+        t97.amox,
+      ])
+    ).j
+    await asAdmin()
+    const pharmacist = await codeAs(staff.pharmacist, `select rx_set_supply($1, 'outside')`, [p.id])
+    const other = await codeAs(d2, `select rx_set_supply($1, 'outside')`, [p.id])
+    const typedBack = await codeAs(d1, `select rx_set_supply($1, 'pharmacy')`, [t100.typed])
+    await as(staff.pharmacist)
+    const q1 = (await one(`select pharmacy_queue() as j`)).j
+    await as(d1)
+    const out = (await one(`select rx_set_supply($1, 'outside', 'none in stock') as j`, [p.id])).j
+    await as(staff.pharmacist)
+    const q2 = (await one(`select pharmacy_queue() as j`)).j
+    await as(d1)
+    const back = (await one(`select rx_set_supply($1, 'pharmacy') as j`, [t100.clinic])).j
+    await as(staff.pharmacist)
+    const q3 = (await one(`select pharmacy_queue() as j`)).j
+    await asAdmin()
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'rx_outside' and 'pharmacy' = any(recipient_stations)
+        and params ->> 'requestId' = $1`,
+      [p.id],
+    )
+    const row = await one(
+      `select supply, supply_reason, supply_set_by from medication_request where id = $1`,
+      [p.id],
+    )
+    if (
+      pharmacist !== '42501' ||
+      other !== '42501' ||
+      typedBack !== '22023' ||
+      !q1.lines.some((x) => x.requestId === p.id) ||
+      out.supply !== 'outside' ||
+      out.pending !== 0 ||
+      q2.lines.some((x) => x.requestId === p.id) ||
+      told.n !== 1 ||
+      row.supply !== 'outside' ||
+      row.supply_reason !== 'none in stock' ||
+      row.supply_set_by !== d1 ||
+      back.supply !== 'pharmacy' ||
+      back.pending !== 1 ||
+      !q3.lines.some((x) => x.requestId === t100.clinic)
+    )
+      throw new Error(JSON.stringify({ pharmacist, other, typedBack, out, told, row, back }))
+    t100.p = p.id
+    return 'pharmacist and another doctor refused; out of the queue (pharmacy told), back in the queue'
+  },
+)
+await step(
+  '0100 C: "not given" tells the prescriber, who sends it outside; finishing does not wait for it',
+  async () => {
+    await as(staff.pharmacist)
+    await db.query(`select rx_not_given($1, 'out of stock')`, [t100.clinic])
+    await asAdmin()
+    const told = await one(
+      `select params from notification where kind = 'rx_not_given' and params ->> 'requestId' = $1`,
+      [t100.clinic],
+    )
+    await as(d1)
+    const out = (await one(`select rx_set_supply($1, 'outside') as j`, [t100.clinic])).j
+    await db.query(`select finish_visit($1)`, [t100.v.enc])
+    await asAdmin()
+    const row = await one(
+      `select supply, not_given_at is not null as ng, rx_pending(m) as pending from medication_request m where id = $1`,
+      [t100.clinic],
+    )
+    const open = await openStations82(t100.v.enc)
+    const lines = (
+      await one(
+        `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id
+          where i.encounter_id = $1 and l.deleted_at is null and l.item_id is not null`,
+        [t100.v.enc],
+      )
+    ).n
+    if (
+      told?.params.outside !== true ||
+      typeof told?.params.noStock !== 'boolean' ||
+      out.supply !== 'outside' ||
+      row.supply !== 'outside' ||
+      row.pending ||
+      open.includes('pharmacy') ||
+      open.includes('consultation') ||
+      lines !== 0
+    )
+      throw new Error(JSON.stringify({ told, out, row, open, lines }))
+    return `prescriber told (no stock: ${told.params.noStock}); sent outside; finished: ${open.join(', ') || 'closed'}`
+  },
+)
+await step('0100 D: "Prescribed but bought outside" for the pharmacy and the manager', async () => {
+  await as(staff.pharmacist)
+  const r = (await one(`select rx_bought_outside(current_date - 1, current_date + 1) as j`)).j
+  await asAdmin()
+  const doctor = await codeAs(d1, `select rx_bought_outside(current_date, current_date)`)
+  const amox = r.find((x) => x.itemId === t97.amox)
+  const typed = r.find((x) => x.name === 'Ear drops 100')
+  if (
+    !amox ||
+    amox.times !== 2 ||
+    Number(amox.quantity) !== 21 ||
+    amox.notGiven !== 1 ||
+    !typed ||
+    typed.inClinic ||
+    doctor !== '42501'
+  )
+    throw new Error(JSON.stringify({ r, doctor }))
+  return `${r.length} medicines; ${amox.name}: ${amox.times} times, ${amox.quantity} units; a doctor refused`
+})
+await step('0100 E: an outside line is cancelled by its prescriber', async () => {
+  await as(d1)
+  const c = (await one(`select cancel_prescription($1, 'wrong medicine 100') as j`, [t100.typed])).j
+  await asAdmin()
+  const m = await one(
+    `select cancelled_at is not null as c from medication_request where id = $1`,
+    [t100.typed],
+  )
+  const told = await one(
+    `select count(*)::int as n from notification where kind = 'rx_cancelled' and params ->> 'reason' = 'wrong medicine 100'`,
+  )
+  if (!m.c || c.pending !== 0 || told.n !== 0) throw new Error(JSON.stringify({ c, m, told }))
+  return 'cancelled; the pharmacy not told (it never had it)'
+})
+
 finish()
 
 function finish() {

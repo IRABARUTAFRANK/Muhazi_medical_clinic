@@ -38,6 +38,8 @@ function medicineState(m: Medicine, t: TFunction): string {
         : t('journey.givenInRoom', { name: m.givenBy ?? '' })
     case 'given':
       return t('journey.dispensed')
+    case 'outside':
+      return t('journey.outside')
     case 'notGiven':
       return m.notGivenBy
         ? t('journey.notGivenBy', { reason: m.notGivenReason ?? '', name: m.notGivenBy })

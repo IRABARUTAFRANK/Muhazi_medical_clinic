@@ -7,13 +7,16 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only the doctor who asked for the test, or who took the patient over, marks the result seen$/, 'dbErrors.ca6fef80', 0], // mark_result_reviewed
   [/^this medicine is no longer waiting at the pharmacy \(handed over, not given or cancelled\)$/, 'dbErrors.d8d1076f', 0], // cancel_prescription
   [/^Bed stay is built in: bed nights are billed under it \(change its name or price instead\)$/, 'dbErrors.6c3bb7c1', 0], // delete_service
+  [/^part of this medicine was already given: prescribe what remains as a new medicine$/, 'dbErrors.be5394d5', 0], // rx_set_supply
   [/^this patient is with (.+?): they must send the patient to you, or ask for your help$/, 'dbErrors.bdcba673', 1], // assert_may_work_on
   [/^only an unpaid sale is cancelled \(a payment is cancelled at the cashier first\)$/, 'dbErrors.60627a75', 0], // cancel_counter_sale
   [/^this category still has (.+?) treatment\(s\): move them to another category first$/, 'dbErrors.67568016', 1], // delete_category
+  [/^this medicine is bought at an outside pharmacy: the clinic does not give it$/, 'dbErrors.9ca9150e', 0], // dispense_prescription
   [/^a medicine on a posted bill is taken back by the pharmacist or the manager$/, 'dbErrors.012c5edf', 0], // return_medicine
   [/^only the manager, or a head for their own department, can send messages$/, 'dbErrors.cdc4fb66', 0], // send_notification
   [/^this test was marked "not done": order it again if it is done after all$/, 'dbErrors.d5d5700e', 0], // record_result
   [/^money is still due \((.+?) RWF\): take the payment first, or ask the manager$/, 'dbErrors.141acc9e', 1], // end_visit
+  [/^this medicine is not sold at the clinic: it can only be bought outside$/, 'dbErrors.942424e3', 0], // prescribe, rx_set_supply
   [/^a bed that would be removed is occupied; discharge the patient first$/, 'dbErrors.b5993cd6', 0], // set_bed_count
   [/^bed stays are charged from the beds board \(admit or extend the stay\)$/, 'dbErrors.74135e60', 0], // add_charge
   [/^this insurer is on an open bill; finish or change those visits first$/, 'dbErrors.697d8bbd', 0], // delete_payer
@@ -25,6 +28,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^this is ordered, not added: use Orders so that (.+?) gets the patient$/, 'dbErrors.db962d48', 1], // add_charge
   [/^verified report (.+?) is immutable; issue a corrected report instead$/, 'dbErrors.af4e6ca0', 1], // guard_verified_report
   [/^only doctors, sonographers, nurses and managers keep a calendar$/, 'dbErrors.bfaad0ce', 0], // save_calendar
+  [/^this medicine was already given or cancelled: it stays as it is$/, 'dbErrors.6b5fd4a1', 0], // rx_set_supply
   [/^only the pharmacy \(or the manager\) sends stock to a room store$/, 'dbErrors.37f09728', 0], // send_to_room
   [/^only doctors, sonographers, nurses and managers can be booked$/, 'dbErrors.abb6e23b', 0], // ensure_practitioner
   [/^the expiry window is a whole number of days between 1 and 365$/, 'dbErrors.0c52507e', 0], // save_setting
@@ -111,6 +115,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the colleague who called no longer works here$/, 'dbErrors.afc7a230', 0], // answer_call
   [/^the doctor already has a booking at that time$/, 'dbErrors.aa836e79', 0], // approve_inquiry
   [/^the multiplier must be above 0 and at most 10$/, 'dbErrors.b4f02bd6', 0], // adjust_prices
+  [/^write the name of the medicine to buy outside$/, 'dbErrors.3ab9b692', 0], // prescribe
   [/^the number of beds must be between 0 and 200$/, 'dbErrors.cfe7e2be', 0], // set_bed_count
   [/^the temperature must be between 30 and 44 °C$/, 'dbErrors.8be65a90', 0], // record_vitals
   [/^this account is deactivated; ask the manager$/, 'dbErrors.e9ee3924', 0], // my_session_profile, record_sign_in
@@ -125,7 +130,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^call reception, the nurses or a colleague$/, 'dbErrors.35c23da4', 0], // call_next
   [/^only the pharmacy confirms what came back$/, 'dbErrors.56d945ce', 0], // confirm_receipt
   [/^signed out after (.+?) hours without activity$/, 'dbErrors.59565a6b', 1], // check_request
-  [/^the end of the period is before its start$/, 'dbErrors.93857009', 0], // my_bookings
+  [/^the end of the period is before its start$/, 'dbErrors.93857009', 0], // my_bookings, rx_bought_outside
   [/^the weight must be between 0\.3 and 350 kg$/, 'dbErrors.7028b3a6', 0], // record_vitals
   [/^this appointment can no longer be changed$/, 'dbErrors.87b51b7d', 0], // set_appointment_outcome
   [/^a category with this name already exists$/, 'dbErrors.af608345', 0], // save_category
@@ -329,7 +334,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^sale not found$/, 'dbErrors.d3cea71f', 0], // cancel_counter_sale, take_counter_payment
   [/^unknown desk (.+?)$/, 'dbErrors.96eaa90b', 1], // set_role_desk
   [/^unknown reason$/, 'dbErrors.086d3295', 0], // set_no_national_id
-  [/^unknown supply$/, 'dbErrors.d6d017fb', 0], // prescribe
+  [/^unknown supply$/, 'dbErrors.d6d017fb', 0], // prescribe, rx_set_supply
   [/^bed not found$/, 'dbErrors.af019ac6', 0], // remove_bed, save_bed
   [/^managers only$/, 'dbErrors.dca63001', 0], // retire_staff_preview, set_profile_active, update_profile
   [/^not signed in$/, 'dbErrors.9ad3d400', 0], // activity_history, analytics_access, hide_notifications, …

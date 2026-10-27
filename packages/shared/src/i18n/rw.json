@@ -1703,7 +1703,8 @@
     "supplyLabel": "Umurwayi awubona:",
     "supply": {
       "pharmacy": "Kuri farumasi",
-      "room": "Ndawutanga hano"
+      "room": "Ndawutanga hano",
+      "outside": "Farumasi yo hanze"
     },
     "givenHere": "Yatanzwe hano",
     "givenBy": "yatanzwe na {{name}}",
@@ -1796,7 +1797,30 @@
     "undoOpenHint": "Ibice bisubira mu bubiko bw’icyumba kandi umurongo ukurwa kuri fagitire.",
     "undoClosedHint": "Ibice bisubira mu bubiko bw’icyumba. Fagitire yarafunzwe: icyemezo cyo gusubiza amafaranga gisubiza umurwayi umugabane we aho bakira ubwishyu.",
     "undone": "{{item}} yasubijwe mu bubiko",
-    "undoneCredit": "{{item}} yasubijwe; {{amount}} asubizwa umurwayi aho bakira ubwishyu"
+    "undoneCredit": "{{item}} yasubijwe; {{amount}} asubizwa umurwayi aho bakira ubwishyu",
+    "outsideTag": "Farumasi yo hanze",
+    "notCharged": "ntujya kuri fagitire",
+    "decidedBy": "byemejwe na {{name}}",
+    "sendOutsideCall": "Farumasi ntiyabashije kuwutanga. Wohereze kuri farumasi yo hanze kugira ngo umurwayi awugureyo?",
+    "buyOutside": "Kugurira hanze",
+    "buyOutsideHint": "Umurwayi awugurira kuri farumasi yo hanze: uvanwa ku rutonde rwa farumasi y’ivuriro kandi ntujya kuri fagitire.",
+    "giveAtClinic": "Utangwe hano",
+    "giveAtClinicHint": "Farumasi y’ivuriro ni yo izawutanga: usubira ku rutonde rwayo kandi wishyurwa igihe utanzwe.",
+    "sentOutside": "{{item}}: azawugurira kuri farumasi yo hanze. Wucape ukoresheje “Cyapa urupapuro rw’imiti yo kugura hanze”.",
+    "backToClinic": "{{item}} usubijwe kuri farumasi y’ivuriro.",
+    "rxOutsideHint": "Umuti ivuriro ridafite: hitamo “Farumasi yo hanze”. Umurwayi awugurira ahandi; ntujya kuri fagitire. Ushobora no gushakira ku rutonde rwemewe cyangwa ukandika izina ryawo.",
+    "outsideLineHint": "Umurwayi azagura uyu muti kuri farumasi yo hanze. Ntujya kuri fagitire kandi ntujya kuri farumasi y’ivuriro.",
+    "rxOutsideSaved_one": "Umuti {{count}} wo kugura hanze: wucape ukoresheje “Cyapa urupapuro rw’imiti yo kugura hanze”.",
+    "rxOutsideSaved_other": "Imiti {{count}} yo kugura hanze: yicape ukoresheje “Cyapa urupapuro rw’imiti yo kugura hanze”.",
+    "stock": {
+      "in": "Mu bubiko: {{count}}",
+      "few": "Hasigaye {{count}} gusa",
+      "none": "Ntawuri mu bubiko bw’ivuriro",
+      "notSold": "Ntugurishwa ku ivuriro"
+    },
+    "typedMedicine": "Undi muti (andika izina ryawo)",
+    "typedName": "Izina ry’umuti",
+    "typedNamePh": "urugero: Ciprofloxacin y’amaso 0.3%"
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -2669,7 +2693,9 @@
     "rxPartGiven": "{{item}} ya {{name}}: hatanzwe {{given}} kuri {{quantity}}",
     "rxPartGivenBody_one": "Hasigaye {{count}} yo gutanga: farumasi iyitanga nyuma muri uku kwivuza, cyangwa ikerekana ko itatanzwe.",
     "rxPartGivenBody_other": "Hasigaye {{count}} yo gutanga: farumasi iyitanga nyuma muri uku kwivuza, cyangwa ikerekana ko itatanzwe.",
-    "staffMessage": "Ubutumwa bwa {{from}}"
+    "staffMessage": "Ubutumwa bwa {{from}}",
+    "rxNotGivenOutside": "Fungura kwivuza kwe kugira ngo uwohereze kuri farumasi yo hanze.",
+    "rxOutside": "{{item}} ya {{name}}: izagurirwa kuri farumasi yo hanze"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -3436,7 +3462,8 @@
       "cancelled": "byahagaritswe na {{name}} saa {{time}}",
       "lapsed": "byarangiye: umurwayi yagiye ahandi mbere y’igisubizo"
     },
-    "handoverReason": "Impamvu: “{{reason}}”"
+    "handoverReason": "Impamvu: “{{reason}}”",
+    "outside": "kugurira kuri farumasi yo hanze"
   },
   "stock": {
     "title": "Ububiko bw’imiti",
@@ -3473,7 +3500,8 @@
       "prescriptions": "Urupapuro rw’imiti",
       "walkin": "Igurisha ryo ku irembo",
       "add": "Injiza mu bubiko",
-      "reports": "Raporo"
+      "reports": "Raporo",
+      "outside": "Imiti yaguriwe hanze"
     },
     "onHand": "Ibiri mu bubiko",
     "itemCount_one": "umuti {{count}}",
@@ -3630,7 +3658,17 @@
     "sendExpiredNote_one": "Uyu muti ufite igice {{count}} cyarengeje igihe mu bubiko. Ibice byarengeje igihe ntibyoherezwa, bityo ububiko bushobora kugira ibyo kohereza bike kuruta ibigaragara hano. Kivane mu bubiko muri “Gukoresha / kuvana mu bubiko”.",
     "sendExpiredNote_other": "Uyu muti ufite ibice {{count}} byarengeje igihe mu bubiko. Ibice byarengeje igihe ntibyoherezwa, bityo ububiko bushobora kugira ibyo kohereza bike kuruta ibigaragara hano. Bivane mu bubiko muri “Gukoresha / kuvana mu bubiko”.",
     "countNoUp": "Umubare ntushobora kurenga {{count}}: ushinzwe ububiko yandika gusa ibibuze. Hari ibirenzeho ku gipangu? Saba farumasi kubyohereza n’urupapuro rwo kohereza.",
-    "countHolderHint": "Ushobora kwandika ibiri munsi y’ibyo sisitemu ivuga, ntabwo wandika ibirenzeho: farumasi yohereza ibindi n’urupapuro rwo kohereza."
+    "countHolderHint": "Ushobora kwandika ibiri munsi y’ibyo sisitemu ivuga, ntabwo wandika ibirenzeho: farumasi yohereza ibindi n’urupapuro rwo kohereza.",
+    "outside": {
+      "title": "Yanditswe ariko yaguriwe hanze",
+      "lead": "Imiti abaganga banditse ngo igurirwe hanze muri iki gihe, ikenewe cyane mbere: bifasha guhitamo ibyo gutumiza.",
+      "none": "Nta muti woherejwe hanze muri iki gihe.",
+      "times": "Inshuro",
+      "quantity": "Umubare",
+      "patients": "Abarwayi",
+      "afterNotGiven_one": "Inshuro {{count}} nyuma ya “ntiyatanzwe”",
+      "afterNotGiven_other": "Inshuro {{count}} nyuma ya “ntiyatanzwe”"
+    }
   },
   "report": {
     "excel": "Excel",
@@ -3841,7 +3879,12 @@
       "rectal": "Shyira"
     },
     "noLines": "Nta muti uranditswe muri uku kwivuza.",
-    "allGivenHere": "Imiti yose yatanzwe hano: nta kintu cyo gucapa cya farumasi."
+    "allGivenHere": "Imiti yose yatanzwe hano: nta kintu cyo gucapa cya farumasi.",
+    "printOutside": "Cyapa urupapuro rw’imiti yo kugura hanze",
+    "printOutsideHint": "Imiti umurwayi agomba kugura kuri farumasi yo hanze gusa, iriho izina n’umukono by’uwayanditse.",
+    "outsideTitle": "Urupapuro rw’imiti yo kugura hanze",
+    "outsideMedicines": "Imiti yo kugura kuri farumasi yo hanze",
+    "outsideNote": "Farumasi y’ivuriro ntitanga iyi miti. Muyigure kuri farumasi iyo ari yo yose."
   },
   "visitConfirm": {
     "title": "Gutangira kwivuza kwa {{name}}?",
@@ -4263,7 +4306,7 @@
     "payAtEnd": "Umurwayi yishyura {{amount}} kwivuza kurangiye",
     "alreadyOnBill": "Bimaze kwandikwa kuri fagitire yo kwivuza kandi bitarishyurwa: {{amount}}",
     "hintEnd": "Gutanga umuti biwukura mu bubiko butangirwamo imiti bikawandika kuri fagitire yo kwivuza. Nta kwishyura hano: umurwayi yishyura byose rimwe, aho bakira ubwishyu, kwivuza kurangiye. Cyapa udupapuro tw’imiti umaze kuyitanga.",
-    "sellLeadEnd": "Ku murwayi uri kwivuza, nta rupapuro rw’imiti (cyangwa urwo muganga yibagiwe). Wandikwa kuri fagitire yo kwivuza, umurwayi akishyura kwivuza kurangiye. Umuguzi utari kwivuza: koresha igurisha ryo ku irembo.",
+    "sellLeadEnd": "Ku murwayi uri kwivuza, nta rupapuro rw’imiti (cyangwa urwo muganga yibagiwe). Wandikwa kuri fagitire yo kwivuza, umurwayi akishyura kwivuza kurangiye. Umuguzi utari kwivuza: koresha Abaguzi baje kugura gusa.",
     "sellShort_one": "Mu bubiko hari igice {{count}} gusa kitarengeje igihe",
     "sellShort_other": "Mu bubiko hari ibice {{count}} gusa bitarengeje igihe",
     "sellCashTotal": "Igiciro gisanzwe {{amount}}. Fagitire ishyiraho ubwishingizi bw’umurwayi, akishyura kwivuza kurangiye.",
@@ -4318,7 +4361,13 @@
       "expiredTag": "yarengeje igihe",
       "expiredLeft_one": "igice {{count}} cyo kuvana mu bubiko",
       "expiredLeft_other": "ibice {{count}} byo kuvana mu bubiko"
-    }
+    },
+    "sellSearchPh": "Shakisha ukoresheje izina, nimero ya dosiye cyangwa nimero yo ku murongo",
+    "sellFound": "Dosiye {{file}} · nimero {{ticket}} · ubu ari kuri {{where}}",
+    "sellChange": "Hindura",
+    "sellNoMatch": "Nta murwayi uri kwivuza uhuye n’ibyo washakishije. Hano haboneka gusa abarwayi bari mu ivuriro ubu.",
+    "sellResults": "Abarwayi babonetse",
+    "sellNobody": "Nta murwayi uri kwivuza ubu."
   },
   "queuePage": {
     "title": "Umurongo wanjye · {{desk}}",
@@ -4352,7 +4401,8 @@
       "waiting": "Muri farumasi",
       "given": "Yatanzwe",
       "not_given": "Ntiyatanzwe",
-      "room": "Yatanzwe hano"
+      "room": "Yatanzwe hano",
+      "outside": "Kugurira hanze"
     },
     "rxSearch": "Shakisha umurwayi, umuti cyangwa nimero ya dosiye",
     "noRx": "Nta muti wanditswe muri iki gihe.",
@@ -4844,7 +4894,14 @@
       "undoHere": "Gusubiza {{item}} mu bubiko kuri {{name}}?",
       "undoHereOpenBody": "Ibice bisubira mu bubiko bw’icyumba kandi umurongo ukurwa kuri fagitire. Impamvu: “{{reason}}”.",
       "undoHereClosedBody": "Ibice bisubira mu bubiko bw’icyumba. Fagitire yarafunzwe, bityo icyemezo cyo gusubiza amafaranga gisubiza umurwayi umugabane we aho bakira ubwishyu. Impamvu: “{{reason}}”.",
-      "undoHereYes": "Yego, bisubize"
+      "undoHereYes": "Yego, bisubize",
+      "outside": "Wohereza {{item}} ya {{name}} kuri farumasi yo hanze?",
+      "outsideBody": "Umurwayi azawugurira kuri farumasi yo hanze. Uvanwa ku rutonde rwa farumasi y’ivuriro, ntujya kuri fagitire, kandi wandikwa ku rupapuro rw’imiti yo kugura hanze.",
+      "outsideYes": "Yego, kugurira hanze",
+      "clinic": "{{item}} ya {{name}} itangwe na farumasi y’ivuriro?",
+      "clinicBody": "Usubira ku rutonde rwa farumasi y’ivuriro; wishyurwa igihe farumasi iwutanze.",
+      "clinicYes": "Yego, utangwe hano",
+      "rxOutsideNote": "Imiti yo kugura hanze ntijya kuri fagitire: yicapire umurwayi."
     },
     "staff": {
       "deactivate": {
@@ -5393,7 +5450,7 @@
     }
   },
   "counterSale": {
-    "title": "Igurisha ryo ku irembo (abaguzi baje kugura gusa)",
+    "title": "Abaguzi baje kugura gusa",
     "lead": "Ku muguzi utari mu kwivuza: abanza kwishyura aho bakira ubwishyu, hanyuma agafata imiti hano. Umurwayi uri kwivuza we yishyura kwivuza kurangiye.",
     "waiting": "{{toPay}} yo kwishyura · {{toHand}} yo gutanga",
     "walkIn": "Umuguzi uje kugura gusa",
@@ -6411,7 +6468,14 @@
       "cancelBody": "Umuyobozi (n’uwo yahaye uburenganzira bwo gusubiza) ntazongera kububona. Ushobora kongera gusaba nyuma.",
       "cancelYes": "Yego, kuraho"
     },
-    "canEmergencyOnly": "Mu gihe cyihutirwa, ushobora kuyafungura ako kanya."
+    "canEmergencyOnly": "Mu gihe cyihutirwa, ushobora kuyafungura ako kanya.",
+    "lockedTitle": "Ntiwemerewe kureba amakuru yo kwivuza ya {{name}}",
+    "lockedNotError": "Si ikibazo cya sisitemu: amakuru arahari, ariko ni ibanga.",
+    "lockedWhy": "Inyandiko za muganga, indwara zabonetse, ibisubizo by’ibizamini, ibipimo by’ibanze n’impapuro z’imiti by’umurwayi bigaragarira gusa umuyobozi, abakuriye serivisi bireba n’abaganga cyangwa abaforomo bamuvura.",
+    "lockedAsk": "Ni wowe uvura uyu murwayi ubu: kanda Saba kureba dosiye hejuru, uvuge impamvu ubikeneye.",
+    "lockedManager": "Niba akazi kawe kabisaba, saba umuyobozi aguhe uburenganzira.",
+    "lockedStill": "Ushobora kureba umwirondoro w’umurwayi, urutonde rw’inshuro yaje kwivuza na fagitire.",
+    "noneVisible": "Nta na kimwe mu nshuro wemerewe kureba."
   },
   "safetySummary": {
     "title": "Incamake y’umutekano",
@@ -6932,7 +6996,12 @@
     "0371e135": "Urutonde rufite imirongo myinshi cyane (ntirugomba kurenza 20.000).",
     "d6ff72fe": "Ha urutonde izina.",
     "4f0bcaa5": "Urutonde nta murongo rufite.",
-    "80d3e9fe": "Umuyobozi wenyine ni we ureba gahunda za mugenzi wawe."
+    "80d3e9fe": "Umuyobozi wenyine ni we ureba gahunda za mugenzi wawe.",
+    "be5394d5": "Igice cy’uyu muti cyamaze gutangwa: andika ibisigaye nk’umuti mushya.",
+    "9ca9150e": "Uyu muti ugurirwa kuri farumasi yo hanze: ivuriro ntiriwutanga.",
+    "942424e3": "Uyu muti ntugurishwa ku ivuriro: ugurirwa hanze gusa.",
+    "6b5fd4a1": "Uyu muti wamaze gutangwa cyangwa wahagaritswe: ntuhinduka.",
+    "3ab9b692": "Andika izina ry’umuti wo kugura hanze."
   },
   "panel": {
     "close": "Funga",

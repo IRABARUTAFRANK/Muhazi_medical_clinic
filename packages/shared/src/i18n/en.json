@@ -2090,7 +2090,8 @@
     "supplyLabel": "The patient gets it:",
     "supply": {
       "pharmacy": "At the pharmacy",
-      "room": "I give it here"
+      "room": "I give it here",
+      "outside": "Outside pharmacy"
     },
     "givenHere": "Given here",
     "givenBy": "given by {{name}}",
@@ -2183,7 +2184,30 @@
     "undoOpenHint": "The units go back into the room store and the line leaves the bill.",
     "undoClosedHint": "The units go back into the room store. The bill is closed: a credit note gives the patient's share back at the cashier.",
     "undone": "{{item}} put back in the store",
-    "undoneCredit": "{{item}} put back; {{amount}} goes back to the patient at the cashier"
+    "undoneCredit": "{{item}} put back; {{amount}} goes back to the patient at the cashier",
+    "outsideTag": "Outside pharmacy",
+    "notCharged": "not charged",
+    "decidedBy": "decided by {{name}}",
+    "sendOutsideCall": "The pharmacy could not give it. Send it to an outside pharmacy so the patient can buy it there?",
+    "buyOutside": "Buy outside",
+    "buyOutsideHint": "The patient buys it at an outside pharmacy: it leaves the clinic pharmacy’s list and is not charged.",
+    "giveAtClinic": "Give at the clinic",
+    "giveAtClinicHint": "The clinic pharmacy gives it after all: it goes back to the pharmacy’s list and is charged when handed over.",
+    "sentOutside": "{{item}}: to buy at an outside pharmacy. Print it with “Print for the outside pharmacy”.",
+    "backToClinic": "{{item}} goes back to the clinic pharmacy.",
+    "rxOutsideHint": "A medicine the clinic does not have: choose “Outside pharmacy”. The patient buys it elsewhere; it is not on the bill. You can also search the official list or write the name.",
+    "outsideLineHint": "The patient buys this medicine at an outside pharmacy. It is not charged and does not go to the clinic pharmacy.",
+    "rxOutsideSaved_one": "{{count}} medicine to buy outside: print it with “Print for the outside pharmacy”.",
+    "rxOutsideSaved_other": "{{count}} medicines to buy outside: print them with “Print for the outside pharmacy”.",
+    "stock": {
+      "in": "In stock: {{count}}",
+      "few": "Only {{count}} left",
+      "none": "Not in the clinic’s stock",
+      "notSold": "Not sold at the clinic"
+    },
+    "typedMedicine": "Another medicine (write its name)",
+    "typedName": "Name of the medicine",
+    "typedNamePh": "e.g. Ciprofloxacin eye drops 0.3%"
   },
   "adjust": {
     "mode": "How to enter it",
@@ -2660,7 +2684,9 @@
     "rxPartGiven": "{{item}} for {{name}}: {{given}} of {{quantity}} given",
     "rxPartGivenBody_one": "{{count}} still to give: the pharmacy gives it later in the visit, or marks it not given.",
     "rxPartGivenBody_other": "{{count}} still to give: the pharmacy gives them later in the visit, or marks them not given.",
-    "staffMessage": "Message from {{from}}"
+    "staffMessage": "Message from {{from}}",
+    "rxNotGivenOutside": "Open the visit to send it to an outside pharmacy.",
+    "rxOutside": "{{item}} for {{name}}: bought at an outside pharmacy"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -3427,7 +3453,8 @@
       "cancelled": "cancelled by {{name}} at {{time}}",
       "lapsed": "ended: the patient moved on before an answer"
     },
-    "handoverReason": "Reason: “{{reason}}”"
+    "handoverReason": "Reason: “{{reason}}”",
+    "outside": "to buy at an outside pharmacy"
   },
   "stock": {
     "title": "Medicine stock",
@@ -3464,7 +3491,8 @@
       "prescriptions": "Prescriptions",
       "walkin": "Walk-in sales",
       "add": "Add stock",
-      "reports": "Reports"
+      "reports": "Reports",
+      "outside": "Bought outside"
     },
     "onHand": "Stock on hand",
     "itemCount_one": "{{count}} medicine",
@@ -3621,7 +3649,17 @@
     "sendExpiredNote_one": "This medicine has {{count}} expired unit in the stores. Expired units are never sent, so a store may have fewer to send than shown here. Write them off under Use or write off.",
     "sendExpiredNote_other": "This medicine has {{count}} expired units in the stores. Expired units are never sent, so a store may have fewer to send than shown here. Write them off under Use or write off.",
     "countNoUp": "The count cannot be above {{count}}: a store holder records only what is missing. More on the shelf? Ask the pharmacy to send it with a transfer note.",
-    "countHolderHint": "You can count down to what is really there, not up: the pharmacy sends more with a transfer note."
+    "countHolderHint": "You can count down to what is really there, not up: the pharmacy sends more with a transfer note.",
+    "outside": {
+      "title": "Prescribed but bought outside",
+      "lead": "Medicines the prescribers sent to an outside pharmacy in the period, most asked first: a guide for what to order.",
+      "none": "No medicine was sent outside in this period.",
+      "times": "Times",
+      "quantity": "Quantity",
+      "patients": "Patients",
+      "afterNotGiven_one": "{{count}} time after “not given”",
+      "afterNotGiven_other": "{{count}} times after “not given”"
+    }
   },
   "report": {
     "excel": "Excel",
@@ -3832,7 +3870,12 @@
       "rectal": "Insert"
     },
     "noLines": "Nothing is prescribed for this visit yet.",
-    "allGivenHere": "Every medicine was given here: there is nothing to print for a pharmacy."
+    "allGivenHere": "Every medicine was given here: there is nothing to print for a pharmacy.",
+    "printOutside": "Print for the outside pharmacy",
+    "printOutsideHint": "Only the medicines the patient buys at an outside pharmacy, with the prescriber’s name and signature.",
+    "outsideTitle": "Prescription for an outside pharmacy",
+    "outsideMedicines": "To buy at an outside pharmacy",
+    "outsideNote": "The clinic pharmacy does not give these medicines. Please buy them at any pharmacy."
   },
   "visitConfirm": {
     "title": "Start a visit for {{name}}?",
@@ -4254,7 +4297,7 @@
     "payAtEnd": "The patient pays {{amount}} at the end of the visit",
     "alreadyOnBill": "Already on the visit's bill and still due: {{amount}}",
     "hintEnd": "Handing over takes the medicine from the dispensing store and puts it on the visit's bill. Nothing is paid here: the patient pays everything once, at the cashier, at the end of the visit. Print the labels after the hand-over.",
-    "sellLeadEnd": "For a patient on a visit, without a prescription (or one the doctor forgot). It goes on the visit's bill and the patient pays at the end of the visit. A buyer without a visit: use the counter sale.",
+    "sellLeadEnd": "For a patient on a visit, without a prescription (or one the doctor forgot). It goes on the visit's bill and the patient pays at the end of the visit. A buyer without a visit: use Walk-in buyers.",
     "sellShort_one": "Only {{count}} unit not expired in the store",
     "sellShort_other": "Only {{count}} units not expired in the store",
     "sellCashTotal": "Cash price {{amount}}. The bill applies the patient's insurance, and the patient pays at the end of the visit.",
@@ -4309,7 +4352,13 @@
       "expiredTag": "expired",
       "expiredLeft_one": "{{count}} unit to write off",
       "expiredLeft_other": "{{count}} units to write off"
-    }
+    },
+    "sellSearchPh": "Search by name, file number or ticket",
+    "sellFound": "File {{file}} · ticket {{ticket}} · now at {{where}}",
+    "sellChange": "Change",
+    "sellNoMatch": "No patient on a visit matches. Only patients who are in the clinic now can be found here.",
+    "sellResults": "Patients found",
+    "sellNobody": "No patient is on a visit now."
   },
   "queuePage": {
     "title": "My queue · {{desk}}",
@@ -4343,7 +4392,8 @@
       "waiting": "At the pharmacy",
       "given": "Handed over",
       "not_given": "Not given",
-      "room": "Given here"
+      "room": "Given here",
+      "outside": "Bought outside"
     },
     "rxSearch": "Search patient, medicine or file number",
     "noRx": "No prescription in this period.",
@@ -4835,7 +4885,14 @@
       "undoHere": "Put {{item}} back in the store for {{name}}?",
       "undoHereOpenBody": "The units go back into the room store and the line leaves the bill. Reason: “{{reason}}”.",
       "undoHereClosedBody": "The units go back into the room store. The bill is closed, so a credit note gives the patient's share back at the cashier. Reason: “{{reason}}”.",
-      "undoHereYes": "Yes, put it back"
+      "undoHereYes": "Yes, put it back",
+      "outside": "Send {{item}} to an outside pharmacy for {{name}}?",
+      "outsideBody": "The patient buys it at an outside pharmacy. It leaves the clinic pharmacy’s list, is not charged, and prints on the prescription for the outside pharmacy.",
+      "outsideYes": "Yes, buy outside",
+      "clinic": "Give {{item}} at the clinic pharmacy for {{name}}?",
+      "clinicBody": "It goes back to the clinic pharmacy’s list; it is charged when the pharmacy hands it over.",
+      "clinicYes": "Yes, give at the clinic",
+      "rxOutsideNote": "Medicines for an outside pharmacy are not charged: print them for the patient."
     },
     "staff": {
       "deactivate": {
@@ -5384,7 +5441,7 @@
     }
   },
   "counterSale": {
-    "title": "Counter sales (walk-in buyers)",
+    "title": "Walk-in buyers",
     "lead": "For a buyer without a visit: they pay first at the cashier, then collect the medicines here. A patient on a visit pays at the end of the visit instead.",
     "waiting": "{{toPay}} to pay · {{toHand}} to hand over",
     "walkIn": "Walk-in buyer",
@@ -6402,7 +6459,14 @@
       "cancelBody": "The manager (and anyone allowed to answer) no longer sees it. You can ask again later.",
       "cancelYes": "Yes, withdraw"
     },
-    "canEmergencyOnly": "In an emergency you can still open them at once."
+    "canEmergencyOnly": "In an emergency you can still open them at once.",
+    "lockedTitle": "You are not allowed to see the medical record of {{name}}",
+    "lockedNotError": "This is not a fault of the system: the record is there, but it is private.",
+    "lockedWhy": "A patient’s notes, diagnoses, test results, vital signs and prescriptions are shown only to the manager, the heads of the departments in charge and the clinicians who treat the patient.",
+    "lockedAsk": "You treat this patient now: press Request access at the top of the file and say why you need it.",
+    "lockedManager": "If your work needs it, ask the manager to give you access.",
+    "lockedStill": "You can still see the patient’s details, the list of visits and the bills.",
+    "noneVisible": "None in the visits you may see."
   },
   "safetySummary": {
     "title": "Safety summary",
@@ -6923,7 +6987,12 @@
     "0371e135": "The list has too many rows (20,000 at most).",
     "d6ff72fe": "Give the list a name.",
     "4f0bcaa5": "The list has no rows.",
-    "80d3e9fe": "Only the manager sees the bookings of a colleague."
+    "80d3e9fe": "Only the manager sees the bookings of a colleague.",
+    "be5394d5": "Part of this medicine was already given: prescribe what remains as a new medicine.",
+    "9ca9150e": "This medicine is bought at an outside pharmacy: the clinic does not give it.",
+    "942424e3": "This medicine is not sold at the clinic: it can only be bought outside.",
+    "6b5fd4a1": "This medicine was already given or cancelled: it stays as it is.",
+    "3ab9b692": "Write the name of the medicine to buy outside."
   },
   "panel": {
     "close": "Close",

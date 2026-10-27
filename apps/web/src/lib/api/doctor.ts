@@ -29,7 +29,8 @@ export interface MyOrder {
   visitOpen: boolean
 }
 
-export type RxState = 'waiting' | 'given' | 'not_given' | 'room'
+/** 'outside' (0100): the patient buys it at an outside pharmacy. */
+export type RxState = 'waiting' | 'given' | 'not_given' | 'room' | 'outside'
 /** With 0082 a line can also be cancelled by its prescriber (stateFull). */
 export type RxStateFull = RxState | 'cancelled'
 export interface MyPrescription {
@@ -44,7 +45,7 @@ export interface MyPrescription {
   frequency: string | null
   days: number | null
   instructions: string | null
-  supply: 'pharmacy' | 'room'
+  supply: 'pharmacy' | 'room' | 'outside'
   at: string
   /**
    * Where it stands. A cancelled line (0082) shows here as 'not_given' with the cancel reason,
@@ -96,6 +97,7 @@ const sampleRx: MyPrescription[] = [
   ['Artemether-lumefantrine 20/120 mg', 'Mukamana Alice', 24, 'waiting', null, 30],
   ['Amoxicillin 500 mg', 'Habimana Eric', 21, 'given', null, 65],
   ['Ciprofloxacin 500 mg', 'Ingabire Diane', 10, 'not_given', 'Out of stock', 80],
+  ['Ibuprofen 400 mg', 'Mukamana Alice', 15, 'outside', null, 25],
 ].map(([item, patient, quantity, state, reason, min], i) => ({
   id: `mp-${i}`,
   encounterId: `e-${i}`,
@@ -108,7 +110,7 @@ const sampleRx: MyPrescription[] = [
   frequency: 'BD',
   days: 3,
   instructions: null,
-  supply: 'pharmacy' as const,
+  supply: state === 'outside' ? ('outside' as const) : ('pharmacy' as const),
   at: ago(min as number),
   state: state as RxState,
   stateFull: state as RxState,

@@ -1082,6 +1082,62 @@ export function useStockMovements(
   })
 }
 
+/** A medicine prescribers sent to an outside pharmacy in a period (0100 rx_bought_outside). */
+export interface BoughtOutside {
+  name: string
+  /** The clinic's medicine; null: one the clinic does not hold (official list or written). */
+  itemId: string | null
+  referenceCode: string | null
+  inClinic: boolean
+  /** How many prescription lines, the units prescribed, how many patients. */
+  times: number
+  quantity: number
+  patients: number
+  lastAt: string | null
+  /** Lines sent outside after the pharmacy could not give them. */
+  notGiven: number
+}
+
+/**
+ * "Prescribed but bought outside": what the patients had to buy elsewhere in the period, most
+ * asked first, to help decide what to order. The pharmacy and the manager; [] before 0100.
+ */
+export function useBoughtOutside(from: string, to: string) {
+  return useQuery({
+    queryKey: [...KEY, 'bought-outside', from, to],
+    queryFn: async (): Promise<BoughtOutside[]> => {
+      if (!supabase)
+        return [
+          ['Ciprofloxacin 500 mg', 'it-4', null, true, 6, 60, 6, 2],
+          ['Ibuprofen 400 mg', 'it-5', null, true, 4, 60, 4, 3],
+          ['Propranolol 10mg (INDERAL 40mg tablet)', null, 'C07AA05002', false, 2, 60, 1, 0],
+        ].map(([name, itemId, referenceCode, inClinic, times, quantity, patients, notGiven]) => ({
+          name: name as string,
+          itemId: itemId as string | null,
+          referenceCode: referenceCode as string | null,
+          inClinic: inClinic as boolean,
+          times: times as number,
+          quantity: quantity as number,
+          patients: patients as number,
+          lastAt: new Date(Date.now() - 3_600_000).toISOString(),
+          notGiven: notGiven as number,
+        }))
+      const { data, error } = await supabase.rpc('rx_bought_outside', { p_from: from, p_to: to })
+      if (error) {
+        if (isMissingFunction(error)) return []
+        throw apiError(error)
+      }
+      return ((data ?? []) as BoughtOutside[]).map((x) => ({
+        ...x,
+        times: num(x.times),
+        quantity: num(x.quantity),
+        patients: num(x.patients),
+        notGiven: num(x.notGiven),
+      }))
+    },
+  })
+}
+
 export function useStockSales(from: string, to: string) {
   return useQuery({
     queryKey: [...KEY, 'sales', from, to],

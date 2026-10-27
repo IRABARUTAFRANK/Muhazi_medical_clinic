@@ -167,7 +167,7 @@ export function WhereNextCard({
 
         <p className="text-ink-2 m-0 text-[14px]">{t('visit.next.sectionLead')}</p>
         <div
-          className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+          className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2"
           role="radiogroup"
           aria-label={t('visit.next.section')}
         >

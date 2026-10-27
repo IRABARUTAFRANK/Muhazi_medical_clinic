@@ -285,9 +285,11 @@ const SAMPLE: Journey = {
 
 /** Where a medicine of the visit stands, for the track. */
 export type JourneyMedicineState =
-  'given' | 'room' | 'notGiven' | 'returned' | 'cancelled' | 'toCollect'
+  'given' | 'room' | 'notGiven' | 'returned' | 'cancelled' | 'toCollect' | 'outside'
 export function journeyMedicineState(m: Journey['medicines'][number]): JourneyMedicineState {
   if (m.cancelledAt) return 'cancelled'
+  // bought at an outside pharmacy (0100)
+  if (m.supply === 'outside') return 'outside'
   if (m.notGivenAt) return /^returned:/i.test(m.notGivenReason ?? '') ? 'returned' : 'notGiven'
   if (m.supply === 'room') return 'room'
   if (m.dispensed || m.givenAt) return 'given'

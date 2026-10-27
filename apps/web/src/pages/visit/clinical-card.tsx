@@ -11,6 +11,7 @@ import {
   Plus,
   Printer,
   Stethoscope,
+  Store,
   Trash2,
   TriangleAlert,
   XCircle,
@@ -23,17 +24,24 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
-import { medicineRuleText, treatmentName, useTreatments } from '@/lib/api/catalogue'
+import {
+  medicineRuleText,
+  treatmentName,
+  useMedicineReference,
+  useTreatments,
+} from '@/lib/api/catalogue'
 import {
   allergiesForDoc,
   prescriptionState,
   useClinicalActions,
   useItems,
+  useRxStock,
   useVisitClinical,
   type DocPerson,
   type Item,
   type Prescription,
   type PrescriptionState,
+  type RxSupply,
   type RxWarning,
 } from '@/lib/api/patients'
 import { isRoomStore, useStockActions, useStockOverview } from '@/lib/api/stock'
@@ -73,8 +81,13 @@ interface RxLine {
   frequency: string
   days: string
   instructions: string
-  /** Patient collects it at the pharmacy, or the prescriber gives it here from the room. */
-  supply: 'pharmacy' | 'room'
+  /** Patient collects it at the pharmacy, the prescriber gives it here from the room, or the
+   *  patient buys it at an outside pharmacy (0100: not charged, not at the clinic pharmacy). */
+  supply: RxSupply
+  /** The prescriber chose who gives it; until then it follows the stock of the medicine picked. */
+  supplyChosen: boolean
+  /** A medicine the clinic does not hold, written by hand (item = TYPED). */
+  typedName: string
   /** Given here: the room store chosen ('' = the prescriber's own), and its name. */
   store: string
   storeName: string
@@ -90,9 +103,16 @@ const emptyLine = (): RxLine => ({
   days: '',
   instructions: '',
   supply: 'pharmacy',
+  supplyChosen: false,
+  typedName: '',
   store: '',
   storeName: '',
 })
+/** The medicine picker's values: a clinic medicine is its id; one only on the official list is
+ *  REF + its code; TYPED is a medicine written by hand (both only for an outside pharmacy). */
+const REF = 'ref:'
+const TYPED = 'typed'
+const outsideOnly = (value: string) => value === TYPED || value.startsWith(REF)
 /** How a prescription line shows: waiting at the pharmacy, given, not given, cancelled… */
 const STATE_TONE: Record<PrescriptionState, Tone> = {
   waiting: 'yellow',
@@ -101,6 +121,7 @@ const STATE_TONE: Record<PrescriptionState, Tone> = {
   notGiven: 'red',
   returned: 'grey',
   cancelled: 'grey',
+  outside: 'orange',
 }
 const STATE_LABEL: Record<PrescriptionState, string> = {
   waiting: 'clinical.toDispense',
@@ -109,6 +130,7 @@ const STATE_LABEL: Record<PrescriptionState, string> = {
   notGiven: 'clinical.notGiven',
   returned: 'clinical.returnedBadge',
   cancelled: 'clinical.cancelled',
+  outside: 'clinical.outsideTag',
 }
 /** A medicine given here: the room store it came from, when the database says it (optional). */
 const givenFrom = (r: Prescription) =>
@@ -216,6 +238,9 @@ export function ClinicalCard({
     correction: null as string | null,
   })
   const [mode, setMode] = useState<'note' | 'dx' | 'rx' | 'test' | null>(null)
+  // the clinic pharmacy's usable stock, and the official list for medicines bought outside
+  const { data: rxStock = null } = useRxStock(mode === 'rx')
+  const { data: refs = [] } = useMedicineReference(mode === 'rx')
 
   // small forms
   const [note, setNote] = useState('')
@@ -230,6 +255,55 @@ export function ClinicalCard({
   const [twiceOk, setTwiceOk] = useState('')
   const setLine = (i: number, patch: Partial<RxLine>) =>
     setRx((lines) => lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
+  const refOf = (value: string) =>
+    value.startsWith(REF) ? refs.find((r) => r.code === value.slice(REF.length)) : undefined
+  /** Usable units at the clinic pharmacy (null: not a clinic medicine, or not known). */
+  const stockOf = (value: string) =>
+    rxStock && items.some((it) => it.id === value) ? (rxStock[value] ?? 0) : null
+  /** Choosing the medicine: who gives it follows the stock (enough: the clinic pharmacy; none:
+   *  an outside pharmacy) until the prescriber chooses; a medicine the clinic does not hold is
+   *  always bought outside. */
+  const pickMedicine = (i: number, value: string) =>
+    setRx((lines) =>
+      lines.map((l, j) => {
+        if (j !== i) return l
+        if (outsideOnly(value))
+          return { ...l, item: value, supply: 'outside' as const, supplyChosen: false }
+        const n = stockOf(value)
+        const supply: RxSupply = l.supplyChosen
+          ? l.supply
+          : n == null || n > 0
+            ? 'pharmacy'
+            : 'outside'
+        return { ...l, item: value, supply }
+      }),
+    )
+  /** What the clinic has of the medicine chosen, said under the picker. */
+  const stockNote = (l: RxLine): { tone: Tone; text: string } | null => {
+    if (outsideOnly(l.item)) return { tone: 'grey', text: t('clinical.stock.notSold') }
+    if (!l.item) return null
+    const n = stockOf(l.item)
+    if (n == null) return null
+    if (n <= 0) return { tone: 'red', text: t('clinical.stock.none') }
+    if ((Number(l.quantity) || 0) > n)
+      return { tone: 'yellow', text: t('clinical.stock.few', { count: n }) }
+    return { tone: 'green', text: t('clinical.stock.in', { count: n }) }
+  }
+  const itemCodes = new Set(items.map((it) => it.code))
+  const medicineOptions = [
+    { value: TYPED, label: t('clinical.typedMedicine') },
+    ...items.map((it) => ({
+      value: it.id,
+      label: [it.name, it.strength, it.form ? `· ${it.form}` : null].filter(Boolean).join(' '),
+    })),
+    // the official list's medicines the clinic does not hold: for an outside pharmacy
+    ...refs
+      .filter((r) => !itemCodes.has(r.code))
+      .map((r) => ({
+        value: REF + r.code,
+        label: [r.generic, r.presentation, t('clinical.stock.notSold')].filter(Boolean).join(' · '),
+      })),
+  ]
   const [order, setOrder] = useState({
     services: [] as string[],
     reason: '',
@@ -263,7 +337,9 @@ export function ClinicalCard({
     kind: 'cancel' | 'return' | 'undo'
   } | null>(null)
   const [reason, setReason] = useState('')
-  const supplies: RxLine['supply'][] = canGiveHere ? ['pharmacy', 'room'] : ['pharmacy']
+  const supplies: RxSupply[] = canGiveHere
+    ? ['pharmacy', 'room', 'outside']
+    : ['pharmacy', 'outside']
 
   const letterhead = useLetterhead()
   const reportLabels = useMedicalReportLabels()
@@ -277,6 +353,8 @@ export function ClinicalCard({
     !!data &&
     data.prescriptions.some((r) => !r.cancelledAt) &&
     data.prescriptions.every((r) => r.cancelledAt || r.supply === 'room')
+  // medicines the patient buys at an outside pharmacy: their own print
+  const hasOutside = !!data?.prescriptions.some((r) => !r.cancelledAt && r.supply === 'outside')
   /** A staff member as a document names them: specialty (else role), council registration. */
   const docPerson = (p: DocPerson) => ({
     name: p.name,
@@ -378,7 +456,8 @@ export function ClinicalCard({
     if (!ok) setLocalError(t('report.popupBlocked'))
   }
 
-  const printRx = async () => {
+  /** 'outside': the prescription for an outside pharmacy, only the medicines bought outside. */
+  const printRx = async (only: 'all' | 'outside' = 'all') => {
     if (!data || !patient || printingRx) return
     setLocalError(null)
     // the window opens on the click itself (a browser blocks one opened after a wait)
@@ -403,7 +482,9 @@ export function ClinicalCard({
         days: r.days,
         instructions: r.instructions,
       })
-      const forPharmacy = covered.filter((r) => r.supply !== 'room')
+      const forPharmacy = covered.filter((r) =>
+        only === 'outside' ? r.supply === 'outside' : r.supply !== 'room',
+      )
       const dx = primaryDx()
       const p = data.patient
       // the clinician who wrote it, not whoever prints it
@@ -435,7 +516,8 @@ export function ClinicalCard({
         },
         diagnosis: dx ? { text: dx.text, icd10: dx.icd10, provisional: dx.provisional } : null,
         medicines: forPharmacy.map(toDoc),
-        givenHere: covered.filter((r) => r.supply === 'room').map(toDoc),
+        givenHere: only === 'outside' ? [] : covered.filter((r) => r.supply === 'room').map(toDoc),
+        outside: only === 'outside',
         prescriber,
         printedBy: user.name,
       }
@@ -506,20 +588,32 @@ export function ClinicalCard({
     e.preventDefault()
     const lines = rx.filter((l) => l.item || l.quantity)
     if (lines.length === 0) return setLocalError(t('clinical.errors.rx'))
-    const prepared: { item: Item; line: RxLine; q: number }[] = []
+    const prepared: {
+      item: Item | null
+      name: string
+      code: string | null
+      line: RxLine
+      q: number
+    }[] = []
     for (const line of lines) {
-      const item = items.find((i) => i.id === line.item)
+      const item = items.find((i) => i.id === line.item) ?? null
+      const ref = refOf(line.item)
+      const name = item
+        ? [item.name, item.strength].filter(Boolean).join(' ')
+        : ref
+          ? ref.presentation
+            ? `${ref.generic} (${ref.presentation})`
+            : ref.generic
+          : line.item === TYPED
+            ? line.typedName.trim()
+            : ''
       const q = Number(line.quantity)
-      if (!item || !Number.isFinite(q) || q <= 0) return setLocalError(t('clinical.errors.rx'))
-      prepared.push({ item, line, q })
+      if (!name || !Number.isFinite(q) || q <= 0) return setLocalError(t('clinical.errors.rx'))
+      prepared.push({ item, name, code: ref?.code ?? null, line, q })
     }
-    const ids = prepared.map((p) => p.item.id)
+    const ids = prepared.map((p) => p.item?.id ?? p.code ?? p.name.toLowerCase())
     const twice = [
-      ...new Set(
-        prepared
-          .filter((p, i) => ids.indexOf(p.item.id) !== i)
-          .map((p) => `${p.item.name} ${p.item.strength ?? ''}`.trim()),
-      ),
+      ...new Set(prepared.filter((_, i) => ids.indexOf(ids[i]!) !== i).map((p) => p.name)),
     ]
     if (twice.length > 0 && twiceOk !== ids.join(',')) {
       setTwiceOk(ids.join(','))
@@ -530,16 +624,23 @@ export function ClinicalCard({
       return setLocalError(t('clinical.errors.pickStore'))
     const list = prepared
       .map((p) => {
-        const label = `${[p.item.name, p.item.strength].filter(Boolean).join(' ')} × ${p.q}`
+        const label = `${p.name} × ${p.q}`
         return p.line.supply === 'room'
           ? `${label} (${t('clinical.fromStore', { store: storeOf(p.line)?.name ?? '' })})`
-          : label
+          : p.line.supply === 'outside'
+            ? `${label} (${t('clinical.outsideTag')})`
+            : label
       })
       .join(', ')
     if (
       !(await confirm({
         title: t('confirm.visit.rx', { name }),
-        body: t('confirm.visit.rxBody', { list }),
+        body: [
+          t('confirm.visit.rxBody', { list }),
+          prepared.some((p) => p.line.supply === 'outside') ? t('confirm.visit.rxOutsideNote') : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
         confirmLabel: t('confirm.visit.rxYes'),
       }))
     )
@@ -554,13 +655,16 @@ export function ClinicalCard({
     const saved: number[] = []
     let pharmacy = 0
     let here = 0
+    let outside = 0
     const at = { line: null as RxLine | null }
     try {
       // One prescription per medicine, in the order written; the pharmacy sees them together.
-      for (const { item, line, q } of prepared) {
+      for (const { item, name: medicineName, code, line, q } of prepared) {
         at.line = line
         const r = await actions.prescribe.mutateAsync({
           item,
+          medicineName,
+          referenceCode: code,
           quantity: q,
           dose: line.dose,
           route: line.route,
@@ -574,10 +678,10 @@ export function ClinicalCard({
         saved.push(line.key)
         if (line.supply === 'room') {
           here += 1
-          if (!r.charged) unpriced.push(item.name)
-        } else pharmacy += 1
-        const label = [item.name, item.strength].filter(Boolean).join(' ')
-        for (const w of r.warnings) found.push({ item: label, w })
+          if (!r.charged) unpriced.push(medicineName)
+        } else if (line.supply === 'outside') outside += 1
+        else pharmacy += 1
+        for (const w of r.warnings) found.push({ item: medicineName, w })
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
@@ -605,10 +709,27 @@ export function ClinicalCard({
       [
         pharmacy ? t('clinical.rxSaved', { count: pharmacy }) : '',
         here ? t('clinical.rxGivenHere', { count: here }) : '',
+        outside ? t('clinical.rxOutsideSaved', { count: outside }) : '',
         unpriced.length ? t('clinical.roomUnpriced', { names: unpriced.join(', ') }) : '',
       ]
         .filter(Boolean)
         .join(' '),
+    )
+  }
+  /** The prescriber sends a line to an outside pharmacy, or back to the clinic pharmacy (0100). */
+  const decideSupply = async (r: Prescription, to: 'pharmacy' | 'outside') => {
+    const out = to === 'outside'
+    if (
+      !(await confirm({
+        title: t(out ? 'confirm.visit.outside' : 'confirm.visit.clinic', { item: r.item, name }),
+        body: t(out ? 'confirm.visit.outsideBody' : 'confirm.visit.clinicBody'),
+        confirmLabel: t(out ? 'confirm.visit.outsideYes' : 'confirm.visit.clinicYes'),
+      }))
+    )
+      return
+    void run(
+      () => actions.setSupply.mutateAsync({ requestId: r.id, supply: to }),
+      t(out ? 'clinical.sentOutside' : 'clinical.backToClinic', { item: r.item }),
     )
   }
   /** Cancel a line still waiting at the pharmacy, or take a handed-over one back. */
@@ -805,6 +926,18 @@ export function ClinicalCard({
               </Button>
             </span>
           )}
+          {patient && hasOutside && (
+            // only the medicines the patient buys at an outside pharmacy (0100)
+            <Button
+              size="sm"
+              onClick={() => void printRx('outside')}
+              disabled={printingRx}
+              title={t('rxDoc.printOutsideHint')}
+            >
+              <Store size={14} aria-hidden="true" />
+              {t('rxDoc.printOutside')}
+            </Button>
+          )}
         </span>
       </CardHeader>
       {/* the record is the manager's switch: said, not silently read only */}
@@ -949,6 +1082,7 @@ export function ClinicalCard({
               <p className="text-ink-3 m-0 text-xs">
                 {t(canGiveHere ? 'clinical.rxPayHint' : 'clinical.rxPharmacyOnly')}
               </p>
+              <p className="text-ink-3 m-0 text-xs">{t('clinical.rxOutsideHint')}</p>
               {rx.map((line, i) => (
                 <fieldset
                   key={i}
@@ -958,20 +1092,33 @@ export function ClinicalCard({
                     {t('clinical.medicineN', { n: i + 1 })}
                   </legend>
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <SearchSelect
-                      label={t('clinical.medicine')}
-                      value={line.item}
-                      onChange={(v) => setLine(i, { item: v })}
-                      wrapperClassName="col-span-2"
-                      required
-                      emptyLabel={t('clinical.pickMedicine')}
-                      options={items.map((it) => ({
-                        value: it.id,
-                        label: [it.name, it.strength, it.form ? `· ${it.form}` : null]
-                          .filter(Boolean)
-                          .join(' '),
-                      }))}
-                    />
+                    <div className="col-span-2 flex min-w-0 flex-col gap-1.5">
+                      <SearchSelect
+                        label={t('clinical.medicine')}
+                        value={line.item}
+                        onChange={(v) => pickMedicine(i, v)}
+                        required
+                        emptyLabel={t('clinical.pickMedicine')}
+                        options={medicineOptions}
+                      />
+                      {(() => {
+                        const note = stockNote(line)
+                        return note ? (
+                          <Badge tone={note.tone} className="self-start" aria-live="polite">
+                            {note.text}
+                          </Badge>
+                        ) : null
+                      })()}
+                      {line.item === TYPED && (
+                        <Field
+                          label={t('clinical.typedName')}
+                          value={line.typedName}
+                          onChange={(e) => setLine(i, { typedName: e.target.value })}
+                          placeholder={t('clinical.typedNamePh')}
+                          required
+                        />
+                      )}
+                    </div>
                     <Field
                       label={t('clinical.quantity')}
                       inputMode="numeric"
@@ -1030,31 +1177,41 @@ export function ClinicalCard({
                       <span className="text-ink-2 text-[13px] font-semibold">
                         {t('clinical.supplyLabel')}
                       </span>
-                      {supplies.map((k) => (
-                        <button
-                          key={k}
-                          type="button"
-                          role="radio"
-                          aria-checked={line.supply === k}
-                          onClick={() => {
-                            setLine(i, { supply: k })
-                            if (refused?.key === line.key) setRefused(null)
-                          }}
-                          className={cn(
-                            'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
-                            line.supply === k
-                              ? 'border-primary bg-primary text-white'
-                              : 'border-border bg-card text-ink-2 hover:bg-hover',
-                          )}
-                        >
-                          {k === 'pharmacy' ? (
-                            <Pill size={14} aria-hidden="true" />
-                          ) : (
-                            <HandHeart size={14} aria-hidden="true" />
-                          )}
-                          {t(`clinical.supply.${k}`)}
-                        </button>
-                      ))}
+                      {supplies.map((k) => {
+                        // a medicine the clinic does not hold: only an outside pharmacy
+                        const off = k !== 'outside' && outsideOnly(line.item)
+                        return (
+                          <button
+                            key={k}
+                            type="button"
+                            role="radio"
+                            aria-checked={line.supply === k}
+                            disabled={off}
+                            title={off ? t('clinical.stock.notSold') : undefined}
+                            onClick={() => {
+                              setLine(i, { supply: k, supplyChosen: true })
+                              if (refused?.key === line.key) setRefused(null)
+                            }}
+                            className={cn(
+                              'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50',
+                              line.supply === k
+                                ? k === 'outside'
+                                  ? 'border-orange bg-orange text-white'
+                                  : 'border-primary bg-primary text-white'
+                                : 'border-border bg-card text-ink-2 hover:bg-hover',
+                            )}
+                          >
+                            {k === 'pharmacy' ? (
+                              <Pill size={14} aria-hidden="true" />
+                            ) : k === 'room' ? (
+                              <HandHeart size={14} aria-hidden="true" />
+                            ) : (
+                              <Store size={14} aria-hidden="true" />
+                            )}
+                            {t(`clinical.supply.${k}`)}
+                          </button>
+                        )
+                      })}
                     </div>
                     {rx.length > 1 && (
                       <Button
@@ -1068,6 +1225,12 @@ export function ClinicalCard({
                       </Button>
                     )}
                   </div>
+                  {line.supply === 'outside' && (
+                    <p className="bg-orange-bg text-orange border-orange/25 m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-semibold">
+                      <Store size={14} aria-hidden="true" className="mt-0.5 flex-none" />
+                      {t('clinical.outsideLineHint')}
+                    </p>
+                  )}
                   {line.supply === 'room' &&
                     canGiveHere &&
                     (isManager ? (
@@ -1300,8 +1463,7 @@ export function ClinicalCard({
           const wrote = r.prescriberId ? r.prescriberId === user.id : !!r.by && r.by === user.name
           const tookOver = !readOnly && !wrote && !!holder && holder.split(', ').includes(user.name)
           const canCancel =
-            state === 'waiting' &&
-            r.pending !== false &&
+            ((state === 'waiting' && r.pending !== false) || state === 'outside') &&
             !closed &&
             (isManager || wrote || tookOver) &&
             can('clinical.write')
@@ -1316,15 +1478,26 @@ export function ClinicalCard({
             !!r.givenAt &&
             (isManager || (wrote && givenToday)) &&
             can('clinical.write')
+          // who gives it (0100): the prescriber, the colleague who took the patient over, the
+          // manager, or whoever treats the patient now; never once part of it was given
+          const mayDecide =
+            can('clinical.write') &&
+            canDesk(TREATING_DESKS) &&
+            (isManager || wrote || tookOver || !readOnly) &&
+            (r.quantityGiven ?? 0) === 0
+          const canOutside =
+            mayDecide && ((state === 'waiting' && r.pending !== false) || state === 'notGiven')
+          const canClinic = mayDecide && state === 'outside' && !!r.itemId && !closed
           const asking = reasonFor?.id === r.id ? reasonFor : null
           const from = givenFrom(r)
           const returnedWhy = (r.notGivenReason ?? '').replace(/^returned:\s*/i, '')
           return (
-            <Row key={r.id} className="items-start gap-3 py-2">
+            <Row key={r.id} className="flex-wrap items-start gap-3 py-2">
               <Badge tone={STATE_TONE[state]} dot={false} className="mt-0.5">
                 {t(STATE_LABEL[state])}
               </Badge>
-              <span className="min-w-0 flex-1">
+              {/* wraps on a phone: the buttons go under the medicine instead of crushing it */}
+              <span className="min-w-0 flex-[1_1_14rem]">
                 <span
                   className={cn('block font-semibold', state === 'cancelled' && 'line-through')}
                 >
@@ -1351,10 +1524,29 @@ export function ClinicalCard({
                       ? t('clinical.cancelledWhy', { reason: r.cancelReason ?? '' })
                       : null,
                     state === 'cancelled' ? r.cancelledBy : null,
+                    state === 'outside' ? t('clinical.notCharged') : null,
+                    state === 'outside' && r.supplySetBy
+                      ? t('clinical.decidedBy', { name: r.supplySetBy })
+                      : null,
+                    state === 'outside' ? r.supplyReason : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
+                {state === 'notGiven' && canOutside && !asking && (
+                  // the pharmacy could not give it: the patient may buy it outside
+                  <span className="bg-orange-bg text-orange border-orange/25 mt-1.5 flex flex-wrap items-center gap-2 rounded-md border px-2.5 py-1.5 text-[13px] font-semibold">
+                    <span className="min-w-0 flex-1">{t('clinical.sendOutsideCall')}</span>
+                    <Button
+                      size="sm"
+                      onClick={() => void decideSupply(r, 'outside')}
+                      loading={actions.setSupply.isPending}
+                    >
+                      <Store size={14} aria-hidden="true" />
+                      {t('clinical.buyOutside')}
+                    </Button>
+                  </span>
+                )}
                 {asking && (
                   <Reveal focus block="nearest">
                     <form
@@ -1446,6 +1638,28 @@ export function ClinicalCard({
                 >
                   <XCircle size={14} aria-hidden="true" />
                   {t('clinical.cancelRx')}
+                </Button>
+              )}
+              {state === 'waiting' && canOutside && !asking && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title={t('clinical.buyOutsideHint')}
+                  onClick={() => void decideSupply(r, 'outside')}
+                >
+                  <Store size={14} aria-hidden="true" />
+                  {t('clinical.buyOutside')}
+                </Button>
+              )}
+              {canClinic && !asking && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title={t('clinical.giveAtClinicHint')}
+                  onClick={() => void decideSupply(r, 'pharmacy')}
+                >
+                  <Pill size={14} aria-hidden="true" />
+                  {t('clinical.giveAtClinic')}
                 </Button>
               )}
               {canReturn && !asking && (

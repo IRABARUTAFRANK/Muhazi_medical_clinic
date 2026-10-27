@@ -6,6 +6,7 @@ import {
   PackageMinus,
   PackagePlus,
   Pill,
+  Store,
   TrendingUp,
   Warehouse,
 } from 'lucide-react'
@@ -30,6 +31,7 @@ import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import { SearchSelect } from '@/components/ui/search-select'
 import {
+  useBoughtOutside,
   useStockMovements,
   useStockSales,
   type StockItem,
@@ -44,11 +46,12 @@ import { cn } from '@/lib/utils'
 import { DeliveriesList } from './delivery-form'
 import { itemName } from './stock-util'
 
-type Part = 'sales' | 'moves' | 'deliveries'
+type Part = 'sales' | 'moves' | 'deliveries' | 'outside'
 
 /**
  * Reports: the month's report (PDF / Excel), sales and value (revenue, the cost of what was sold
- * and the margin, by item), the movements ledger and the stock received.
+ * and the margin, by item), the movements ledger, the stock received and the medicines patients
+ * were sent to buy at an outside pharmacy (0100).
  */
 export function StockReports({
   user,
@@ -68,7 +71,7 @@ export function StockReports({
   const [part, setPart] = useState<Part>(
     focusDelivery
       ? 'deliveries'
-      : initialPart === 'moves' || initialPart === 'deliveries'
+      : initialPart === 'moves' || initialPart === 'deliveries' || initialPart === 'outside'
         ? initialPart
         : 'sales',
   )
@@ -118,12 +121,14 @@ export function StockReports({
           { value: 'sales', label: t('stock.tabs.sales') },
           { value: 'moves', label: t('stock.tabs.moves') },
           { value: 'deliveries', label: t('stockPage.received') },
+          { value: 'outside', label: t('stock.tabs.outside') },
         ]}
         className="self-start"
       />
       {part === 'sales' && <Sales />}
       {part === 'moves' && <Movements items={items} locations={locations} />}
       {part === 'deliveries' && <DeliveriesList focusId={focusDelivery} />}
+      {part === 'outside' && <BoughtOutsideList />}
     </div>
   )
 }
@@ -354,6 +359,81 @@ function Sales() {
             consumed: formatRwf(Math.round(data?.consumed ?? 0)),
           })}
         </p>
+      </Panel>
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------- bought outside (0100) */
+/** "Prescribed but bought outside": what patients had to buy elsewhere, most asked first. */
+function BoughtOutsideList() {
+  const { t } = useTranslation()
+  const period = usePeriod('month')
+  const { data: rows = [], isLoading } = useBoughtOutside(period.from, period.to)
+  return (
+    <div className="flex flex-col gap-4">
+      <PeriodFilter period={period} />
+      <Panel
+        i={1}
+        icon={Store}
+        tint="amber"
+        title={t('stock.outside.title')}
+        right={String(rows.length)}
+      >
+        <p className="text-ink-3 m-0 text-[13px]">{t('stock.outside.lead')}</p>
+        {rows.length === 0 ? (
+          <Empty icon={Store}>
+            {isLoading ? t('doctorLists.loading') : t('stock.outside.none')}
+          </Empty>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[14px]">
+              <thead className="bg-surface">
+                <tr className="border-border border-b">
+                  <th className={tableHead}>{t('stockPage.cols.item')}</th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.outside.times')}</th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.outside.quantity')}</th>
+                  <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
+                    {t('stock.outside.patients')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((x) => (
+                  <tr
+                    key={`${x.itemId ?? ''}|${x.referenceCode ?? ''}|${x.name}`}
+                    className={tableRow}
+                  >
+                    <td className={tableFirstCell}>
+                      <span className="block">{x.name}</span>
+                      <span className="mt-1 flex flex-wrap gap-1.5">
+                        {!x.inClinic && (
+                          <Badge tone="grey" dot={false}>
+                            {t('clinical.stock.notSold')}
+                          </Badge>
+                        )}
+                        {x.notGiven > 0 && (
+                          <Badge tone="orange" dot={false}>
+                            {t('stock.outside.afterNotGiven', { count: x.notGiven })}
+                          </Badge>
+                        )}
+                      </span>
+                    </td>
+                    <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                      {formatNumber(x.times)}
+                    </td>
+                    <td className={cn(tableCell, 'text-right tabular-nums')}>
+                      {formatNumber(x.quantity)}
+                    </td>
+                    <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
+                      {formatNumber(x.patients)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Panel>
     </div>
   )

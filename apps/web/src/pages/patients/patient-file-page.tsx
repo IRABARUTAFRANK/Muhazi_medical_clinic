@@ -547,14 +547,34 @@ export function PatientFilePage({
             {tab === 'visits' && (
               <Visits file={data} openId={openVisit?.id ?? null} canReport={mayReport} />
             )}
-            {tab === 'clinical' && (data.access?.hiddenVisits ?? 0) > 0 && (
-              <p className="text-ink-3 m-0 flex items-center gap-1.5 text-[13px]">
-                <Lock size={14} aria-hidden="true" />
-                {t('recordPrivacy.onlyVisible')}
-              </p>
+            {tab === 'clinical' && recordLocked(data.access) && (
+              <LockedRecord
+                name={`${p.surname} ${p.given_names}`}
+                canRequest={!!data.access?.canRequest}
+              />
             )}
-            {tab === 'clinical' && <Clinical file={data} embedded={embedded} />}
-            {tab === 'files' && (
+            {tab === 'clinical' && !recordLocked(data.access) && (
+              <>
+                {(data.access?.hiddenVisits ?? 0) > 0 && (
+                  <p className="text-ink-3 m-0 flex items-center gap-1.5 text-[13px]">
+                    <Lock size={14} aria-hidden="true" />
+                    {t('recordPrivacy.onlyVisible')}
+                  </p>
+                )}
+                <Clinical
+                  file={data}
+                  embedded={embedded}
+                  partial={(data.access?.hiddenVisits ?? 0) > 0}
+                />
+              </>
+            )}
+            {tab === 'files' && recordLocked(data.access) && (
+              <LockedRecord
+                name={`${p.surname} ${p.given_names}`}
+                canRequest={!!data.access?.canRequest}
+              />
+            )}
+            {tab === 'files' && !recordLocked(data.access) && (
               <PatientFilesSection
                 patientId={patientId}
                 patientName={`${p.surname} ${p.given_names}`}
@@ -1215,13 +1235,58 @@ function Visits({
   )
 }
 
-function Clinical({ file, embedded }: { file: PatientFile; embedded?: boolean }) {
+/**
+ * Nothing of the medical record is open to this person: only the identity (a receptionist, a
+ * cashier), or past visits all hidden and no visit of theirs. The tab says so plainly, so an
+ * empty page is never taken for a fault of the system.
+ */
+function recordLocked(access: PatientFile['access']): boolean {
+  if (!privacyOn(access)) return false
+  if (access.level === 'identity') return true
+  return (
+    access.hiddenVisits > 0 &&
+    access.ownVisits === 0 &&
+    access.via == null &&
+    !access.treatingEncounterId
+  )
+}
+
+function LockedRecord({ name, canRequest }: { name: string; canRequest: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <Card className="border-violet/40 anim-enter">
+      <CardBody className="gap-2.5">
+        <p className="text-violet m-0 flex items-start gap-2 text-[17px] font-semibold">
+          <Lock size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
+          {t('recordPrivacy.lockedTitle', { name })}
+        </p>
+        <p className="text-ink m-0 text-[15px]">{t('recordPrivacy.lockedNotError')}</p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('recordPrivacy.lockedWhy')}</p>
+        <p className="bg-violet-bg/60 text-ink m-0 rounded-md px-3 py-2 text-[14px] font-medium">
+          {t(canRequest ? 'recordPrivacy.lockedAsk' : 'recordPrivacy.lockedManager')}
+        </p>
+        <p className="text-ink-3 m-0 text-[13px]">{t('recordPrivacy.lockedStill')}</p>
+      </CardBody>
+    </Card>
+  )
+}
+
+function Clinical({
+  file,
+  embedded,
+  partial = false,
+}: {
+  file: PatientFile
+  embedded?: boolean
+  /** Some visits are hidden: an empty list means "none in what you may see", not "none". */
+  partial?: boolean
+}) {
   const { t } = useTranslation()
   const latest = new Map<string, (typeof file.vitals)[number]>()
   for (const v of file.vitals) if (!latest.has(v.code)) latest.set(v.code, v)
   return (
     <div className={cn('grid grid-cols-1 gap-4', !embedded && 'pc:grid-cols-2')}>
-      <ResultsCard patientId={file.patient.id} />
+      <ResultsCard patientId={file.patient.id} partial={partial} />
       <Card className="anim-enter">
         <CardHeader icon={Activity} hue="mint">
           <span>{t('file.latestVitals')}</span>
@@ -1230,7 +1295,9 @@ function Clinical({ file, embedded }: { file: PatientFile; embedded?: boolean })
           </span>
         </CardHeader>
         <CardBody className="flex-row flex-wrap gap-2">
-          {latest.size === 0 && <EmptyNote>{t('file.noVitals')}</EmptyNote>}
+          {latest.size === 0 && (
+            <EmptyNote>{t(partial ? 'recordPrivacy.noneVisible' : 'file.noVitals')}</EmptyNote>
+          )}
           {[...latest.values()].map((v) => (
             <Chip key={v.code}>
               {t(`triage.vitals.${v.code}`)}:{' '}
@@ -1247,7 +1314,7 @@ function Clinical({ file, embedded }: { file: PatientFile; embedded?: boolean })
         </CardHeader>
         {file.conditions.length === 0 && (
           <CardBody>
-            <EmptyNote>{t('file.noDiagnosis')}</EmptyNote>
+            <EmptyNote>{t(partial ? 'recordPrivacy.noneVisible' : 'file.noDiagnosis')}</EmptyNote>
           </CardBody>
         )}
         {file.conditions.map((c) => (
@@ -1325,7 +1392,7 @@ function Bills({ file }: { file: PatientFile }) {
 }
 
 /** Every lab and imaging result of the patient, newest first, so any doctor can read them. */
-function ResultsCard({ patientId }: { patientId: string }) {
+function ResultsCard({ patientId, partial = false }: { patientId: string; partial?: boolean }) {
   const { t } = useTranslation()
   const { data: results = [] } = usePatientResults(patientId)
   return (
@@ -1339,7 +1406,7 @@ function ResultsCard({ patientId }: { patientId: string }) {
       </CardHeader>
       {results.length === 0 ? (
         <CardBody>
-          <EmptyNote>{t('file.noResults')}</EmptyNote>
+          <EmptyNote>{t(partial ? 'recordPrivacy.noneVisible' : 'file.noResults')}</EmptyNote>
         </CardBody>
       ) : (
         <ShownList items={results} step={5} footerClassName="px-4 py-2">

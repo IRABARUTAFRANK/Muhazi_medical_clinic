@@ -90,6 +90,9 @@ export interface RxDoc {
   medicines: RxDocMedicine[]
   /** Already given at the clinic: not printed on the patient's prescription. */
   givenHere?: RxDocMedicine[]
+  /** 0100: the prescription for an outside pharmacy: only the medicines the patient buys
+   *  outside, under its own title and a line saying the clinic does not give them. */
+  outside?: boolean
   prescriber: {
     name: string
     /** Qualification ("Medical doctor", "Clinical officer"). */
@@ -493,6 +496,10 @@ function diagnosisText(dx: RxDoc['diagnosis'], t: TFn): string | null {
 /** English fallbacks of the document's own keys (the dictionaries hold the real wording). */
 const RX_EN: Record<string, string> = {
   title: 'Prescription',
+  outsideTitle: 'Prescription for an outside pharmacy',
+  outsideMedicines: 'To buy at an outside pharmacy',
+  outsideNote:
+    'The clinic pharmacy does not give these medicines. Please buy them at any pharmacy.',
   number: 'Prescription no.',
   diagnosis: 'Diagnosis',
   medicines: 'Medicines',
@@ -565,6 +572,7 @@ ol.rx > li.rx-first { border-top: 0; }
 .rx-qty { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; }
 .rx-l2 { padding-left: 7mm; margin-top: 1pt; }
 .rx-dx { margin: 0 0 2pt; }
+.rx-out { margin: 0 0 2pt; font-style: italic; }
 /* the last medicine, the closing line and the prescriber block never part: a page break always
    carries at least one medicine onto the signed page, and the block never stands alone */
 .rx-end { break-inside: avoid; page-break-inside: avoid; }
@@ -601,7 +609,7 @@ export function buildPrescriptionHtml(
   const lh = isLetterhead(d.clinic) ? d.clinic : letterheadFromLegacy(d.clinic, dl, t)
   const printedAt = opts.printedAt ?? new Date()
   const rxNo = /^RX-/i.test(d.number) ? d.number : `RX-${d.patient.fileNumber}-${docStamp(d.date)}`
-  const title = r('title')
+  const title = d.outside ? r('outsideTitle') : r('title')
   const words = {
     units: r('words.units'),
     micrograms: r('words.micrograms'),
@@ -663,7 +671,8 @@ export function buildPrescriptionHtml(
     identityHtml(left, right),
     allergyHtml(allergies, dl),
     dx ? runInHtml(r('diagnosis'), dx).replace('<p class="runin">', '<p class="runin rx-dx">') : '',
-    `<h2>${esc(r('medicines'))}</h2>`,
+    `<h2>${esc(r(d.outside ? 'outsideMedicines' : 'medicines'))}</h2>`,
+    d.outside ? `<p class="rx-out">${esc(r('outsideNote'))}</p>` : '',
     items.length > 1 ? `<ol class="rx">${items.slice(0, -1).join('')}</ol>` : '',
     `<div class="rx-end">`,
     items.length ? `<ol class="rx">${items[items.length - 1]}</ol>` : '',

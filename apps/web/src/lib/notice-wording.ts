@@ -67,9 +67,13 @@ export function useWording() {
       }
       case 'rx_not_given':
         // The pharmacy could not hand a medicine over.
+        // 0100: nothing given yet: the prescriber may send it to an outside pharmacy
         return {
           title: t('notify.rxNotGiven', { item: p.item ?? '', name: p.name ?? '' }),
-          body: p.reason ? `“${p.reason}”` : null,
+          body: joinParts([
+            quoted(p.reason),
+            String(p.outside) === 'true' ? t('notify.rxNotGivenOutside') : null,
+          ]),
         }
       case 'test_cancelled':
         // The laboratory could not do a test; it left the bill.
@@ -239,6 +243,12 @@ export function useWording() {
         // the doctor cancelled a line still waiting at the pharmacy
         return {
           title: t('notify.rxCancelled', { item: p.item ?? '', name: p.name ?? '' }),
+          body: joinParts([byText(p.by), quoted(p.reason)]),
+        }
+      case 'rx_outside':
+        // 0100: the doctor sent a line waiting at the pharmacy to an outside pharmacy
+        return {
+          title: t('notify.rxOutside', { item: p.item ?? '', name: p.name ?? '' }),
           body: joinParts([byText(p.by), quoted(p.reason)]),
         }
       case 'refund_due':

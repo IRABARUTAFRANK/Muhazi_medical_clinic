@@ -82,7 +82,10 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const inClinic = [...new Map(openItems(everyone).map((q) => [q.encounterId, q])).values()].map(
     (q) => ({
       encounterId: q.encounterId,
-      label: `${q.ticket} · ${q.name} · ${q.fileNumber}`,
+      name: q.name,
+      fileNumber: q.fileNumber,
+      ticket: q.ticket,
+      where: t(`register.stations.${q.station}`),
     }),
   )
   // At the pharmacy desk without a medicine to hand over (sent to buy something, to ask…).
