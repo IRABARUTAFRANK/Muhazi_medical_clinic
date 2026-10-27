@@ -2404,11 +2404,12 @@
         "approved": "Waiting for the doctor",
         "confirmed": "Confirmed",
         "arrived": "Arrived",
-        "in_progress": "With the doctor",
-        "completed": "Seen",
+        "in_progress": "With the clinician",
+        "completed": "Seen · visit finished",
         "no_show": "Did not come",
         "cancelled": "Cancelled",
-        "declined": "Declined"
+        "declined": "Declined",
+        "left_unseen": "Left before being seen"
       },
       "flow": "How it links up: a booked request waits for the doctor to accept; on the day, “Arrived” opens the visit and the patient goes to the doctor’s queue (or to triage first, if the clinic chose that in Settings).",
       "pickDay": "Choose a day",

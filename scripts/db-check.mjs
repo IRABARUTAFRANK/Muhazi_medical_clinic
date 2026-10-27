@@ -2469,7 +2469,7 @@ await step(
   },
 )
 await step(
-  '0057: a booked patient waits for the booked doctor; the booking completes with the visit',
+  '0057: a booked patient waits for the booked doctor; a visit ended unseen cancels the booking',
   async () => {
     await as(staff.receptionist)
     const r = (
@@ -2502,10 +2502,16 @@ await step(
     await as(staff.manager)
     await db.query(`select end_visit($1, 'test over')`, [enc]).catch(() => null)
     await asAdmin()
-    const a = await one(`select status::text from appointment where id = $1`, [appt])
-    if (q?.assigned_to !== d2 || linked.appointment_id !== appt || a.status !== 'completed')
+    // 0101: nobody took the patient: the booking is not "Seen" but cancelled, left unseen
+    const a = await one(`select status::text, cancel_reason from appointment where id = $1`, [appt])
+    if (
+      q?.assigned_to !== d2 ||
+      linked.appointment_id !== appt ||
+      a.status !== 'cancelled' ||
+      !String(a.cancel_reason).startsWith('left_unseen')
+    )
       throw new Error(JSON.stringify({ q, linked, a }))
-    return 'straight to the booked doctor (told) → visit ends → booking completed'
+    return 'straight to the booked doctor (told) → left unseen → booking cancelled (left_unseen)'
   },
 )
 await step(
@@ -12815,6 +12821,101 @@ await step('0100 E: an outside line is cancelled by its prescriber', async () =>
   )
   if (!m.c || c.pending !== 0 || told.n !== 0) throw new Error(JSON.stringify({ c, m, told }))
   return 'cancelled; the pharmacy not told (it never had it)'
+})
+
+// ---------------------------------------------------------------- 0101: a booking is Seen only when seen
+const t101 = {}
+const booked101 = async (given) => {
+  await as(staff.receptionist)
+  const r = (
+    await one(`select register_patient_file('Uwase', $1, 'female', null, 30, null) as r`, [given])
+  ).r
+  await asAdmin()
+  const pr = (await one(`select ensure_practitioner($1) as id`, [d2])).id
+  const appt = (
+    await one(
+      `insert into appointment (patient_id, practitioner_id, starts_at, status, source)
+       values ($1, $2, now() + interval '20 minutes', 'confirmed', 'reception') returning id`,
+      [r.patient_id, pr],
+    )
+  ).id
+  await as(staff.receptionist)
+  const v = (await one(`select appointment_arrived($1) as v`, [appt])).v
+  await asAdmin()
+  const q = await one(
+    `select id from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+    [v.encounter_id],
+  )
+  return { appt, enc: v.encounter_id, queue: q?.id }
+}
+const status101 = async (id) =>
+  one(`select status::text, cancel_reason from appointment where id = $1`, [id])
+await step('0101: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261211090000_booking_seen_rule.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step('0101 A: arrived is not Seen; the doctor takes, diagnoses and finishes → Seen', async () => {
+  const b = await booked101('Claudine 101')
+  const arrived = await status101(b.appt)
+  await as(d2)
+  await db.query(`select take_patient($1)`, [b.queue])
+  const taken = await status101(b.appt)
+  await db.query(`select add_diagnosis($1, 'Malaria', 'B54', 'primary')`, [b.enc])
+  await db.query(`select finish_visit($1)`, [b.enc])
+  await asAdmin()
+  const done = await status101(b.appt)
+  if (arrived.status !== 'arrived' || taken.status !== 'in_progress' || done.status !== 'completed')
+    throw new Error(JSON.stringify({ arrived, taken, done }))
+  return 'arrived → in_progress → completed (Seen) only after the doctor finished'
+})
+await step('0101 B: the patient leaves before anyone takes them → not Seen, left unseen', async () => {
+  const b = await booked101('Leaves 101')
+  await as(staff.manager)
+  await db.query(`select end_visit($1, 'could not wait')`, [b.enc]).catch(() => null)
+  await asAdmin()
+  const a = await status101(b.appt)
+  if (a.status !== 'cancelled' || a.cancel_reason !== 'left_unseen: could not wait')
+    throw new Error(JSON.stringify(a))
+  return `cancelled · ${a.cancel_reason}`
+})
+await step('0101 C: a wrong "Seen" is corrected when the update runs', async () => {
+  await asAdmin()
+  const pr = (await one(`select ensure_practitioner($1) as id`, [d2])).id
+  const p = await one(`select id from patient order by created_at limit 1`)
+  const past = (
+    await one(
+      `insert into appointment (patient_id, practitioner_id, starts_at, status, source)
+       values ($1, $2, now() - interval '3 days', 'completed', 'reception') returning id`,
+      [p.id, pr],
+    )
+  ).id
+  const later = (
+    await one(
+      `insert into appointment (patient_id, practitioner_id, starts_at, status, source)
+       values ($1, $2, now() + interval '2 days', 'completed', 'reception') returning id`,
+      [p.id, pr],
+    )
+  ).id
+  const b = await booked101('Wrong 101')
+  await as(staff.manager)
+  await db.query(`select end_visit($1, 'test')`, [b.enc]).catch(() => null)
+  await asAdmin()
+  // as the old rule left it
+  await db.query(`update appointment set status = 'completed', cancel_reason = null where id = $1`, [
+    b.appt,
+  ])
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261211090000_booking_seen_rule.sql'), 'utf8'),
+  )
+  const a = await status101(past)
+  const c = await status101(later)
+  const d = await status101(b.appt)
+  if (a.status !== 'no_show' || c.status !== 'confirmed' || d.status !== 'cancelled')
+    throw new Error(JSON.stringify({ a, c, d }))
+  return 'no visit, past → did not come; no visit, coming → confirmed; left unseen → cancelled'
 })
 
 finish()

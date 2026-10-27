@@ -2404,11 +2404,12 @@
         "approved": "En attente du médecin",
         "confirmed": "Confirmé",
         "arrived": "Arrivé",
-        "in_progress": "Chez le médecin",
-        "completed": "Vu",
+        "in_progress": "Avec le soignant",
+        "completed": "Vu · visite terminée",
         "no_show": "Non venu",
         "cancelled": "Annulé",
-        "declined": "Refusé"
+        "declined": "Refusé",
+        "left_unseen": "Parti sans être vu"
       },
       "flow": "Enchaînement : une demande réservée attend l’accord du médecin ; le jour venu, « Arrivé » ouvre la visite et le patient rejoint la file du médecin (ou le triage d’abord, si la clinique l’a choisi dans les réglages).",
       "pickDay": "Choisir un jour",

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { apiError } from './errors'
+import { withLeftUnseen } from './booking-status'
 
 /**
  * Operations that link reception, triage and the doctor: the day's appointments (arrival opens
@@ -22,6 +23,9 @@ export interface DayAppointment {
     | 'no_show'
     | 'cancelled'
     | 'declined'
+    | 'left_unseen'
+  /** Why it was cancelled (0101: "left_unseen…" becomes the status left_unseen). */
+  cancelReason?: string | null
   patientId: string | null
   fileNumber: string | null
   name: string
@@ -112,7 +116,8 @@ export function useAppointmentDetail(id: string | null) {
       }
       const { data, error } = await supabase.rpc('appointment_detail', { p_id: id })
       if (error) throw apiError(error)
-      return (data ?? null) as AppointmentDetail | null
+      const d = (data ?? null) as AppointmentDetail | null
+      return d ? withLeftUnseen(d) : null
     },
   })
 }
@@ -233,7 +238,7 @@ export function useAppointmentsDay(day: Date) {
       if (!supabase) return iso(day) === iso(new Date()) ? sampleAppts : []
       const { data, error } = await supabase.rpc('appointments_day', { p_day: iso(day) })
       if (error) throw apiError(error)
-      return (data as DayAppointment[]) ?? []
+      return ((data as DayAppointment[]) ?? []).map(withLeftUnseen)
     },
   })
 }

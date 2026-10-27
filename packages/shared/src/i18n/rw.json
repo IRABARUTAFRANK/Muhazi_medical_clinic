@@ -2408,11 +2408,12 @@
         "approved": "Itegereje muganga",
         "confirmed": "Yemejwe",
         "arrived": "Yageze",
-        "in_progress": "Ari kwa muganga",
-        "completed": "Yakiriwe",
+        "in_progress": "Ari kwivuza",
+        "completed": "Yavuwe · kwivuza byarangiye",
         "no_show": "Ntiyaje",
         "cancelled": "Yahagaritswe",
-        "declined": "Yanzwe"
+        "declined": "Yanzwe",
+        "left_unseen": "Yagiye atavuwe"
       },
       "flow": "Uko bikurikirana: ubusabe bwa gahunda bwafashwe butegereza ko muganga abwemera; ku munsi wa gahunda, “Yageze” ifungura kwivuza umurwayi akajya ku murongo wa muganga (cyangwa ku bipimo by’ibanze mbere, niba ivuriro ryabihisemo mu Igenamiterere).",
       "pickDay": "Hitamo umunsi",

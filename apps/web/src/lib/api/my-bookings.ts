@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { apiError, isMissingFunction } from './errors'
+import { withLeftUnseen } from './booking-status'
 
 /**
  * The bookings made with the signed-in person (`my_bookings`, 0099): every booking still
@@ -18,6 +19,8 @@ export type MyBookingStatus =
   | 'no_show'
   | 'cancelled'
   | 'declined'
+  /** Came, but the visit closed before anyone saw the patient (0101). */
+  | 'left_unseen'
 
 export interface MyBookingStep {
   at: string
@@ -184,7 +187,11 @@ export function useMyBookings(userId?: string | null) {
         throw apiError(error)
       }
       const d = data as MyBookings
-      return { ...d, slotMinutes: Number(d.slotMinutes) || 30, rows: d.rows ?? [] }
+      return {
+        ...d,
+        slotMinutes: Number(d.slotMinutes) || 30,
+        rows: (d.rows ?? []).map(withLeftUnseen),
+      }
     },
   })
 }

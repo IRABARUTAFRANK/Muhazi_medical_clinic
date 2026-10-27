@@ -48,8 +48,9 @@ const TONE: Record<string, 'blue' | 'green' | 'yellow' | 'red' | 'grey'> = {
   no_show: 'red',
   cancelled: 'red',
   declined: 'red',
+  left_unseen: 'yellow',
 }
-const CLOSED: readonly MyBookingStatus[] = ['declined', 'cancelled']
+const CLOSED: readonly MyBookingStatus[] = ['declined', 'cancelled', 'left_unseen']
 const rowClass =
   'border-grid flex min-h-11 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0'
 
