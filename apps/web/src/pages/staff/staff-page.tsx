@@ -2108,7 +2108,8 @@ function DepartmentForm({
               {t('staff.dept.roles')}
             </legend>
             <div className="flex flex-wrap gap-2">
-              {DB_ROLES.filter((r) => r !== 'manager').map((r) => (
+              {/* the manager too: a leadership department holds the manager and the heads */}
+              {DB_ROLES.map((r) => (
                 <label
                   key={r}
                   className={cn(
