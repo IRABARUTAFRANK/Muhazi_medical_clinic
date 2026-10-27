@@ -1447,7 +1447,94 @@
       "orderedAt": "Requested · done at {{desk}}"
     },
     "builtIn": "Built in",
-    "builtInBedHint": "Bed nights are billed under this line: change its name or price, it cannot be hidden or deleted."
+    "builtInBedHint": "Bed nights are billed under this line: change its name or price, it cannot be hidden or deleted.",
+    "refList": {
+      "title": "Official medicine list",
+      "lead": "The list of reimbursable medicines the RHIA publishes every six months. Its prices are what insurers that follow it pay; your cash prices do not change.",
+      "none": "No list yet.",
+      "past": "Earlier lists",
+      "upload": "Upload a new list",
+      "file": "The list file (Excel or CSV)",
+      "reading": "Reading the file…",
+      "choose": "Choose a file",
+      "fileHint": "Use the Excel file (.xlsx) the RHIA publishes. A PDF cannot be read reliably.",
+      "read_one": "{{count}} medicine read (header on row {{row}}, {{sheet}})",
+      "read_other": "{{count}} medicines read (header on row {{row}}, {{sheet}})",
+      "columnsFound": "Columns recognised:",
+      "columnsMissing": "Not found (left empty):",
+      "col": {
+        "code": "Code",
+        "generic": "Generic name",
+        "presentation": "Presentation",
+        "rule": "Prescribing rule",
+        "unit": "Unit",
+        "price": "Price",
+        "group": "ATC group"
+      },
+      "fileErr": {
+        "pdf": "A PDF cannot be read reliably. Please upload the Excel file (.xlsx) the RHIA publishes with the list.",
+        "type": "This kind of file cannot be read. Upload the Excel file (.xlsx) or a CSV.",
+        "noHeader": "No header row with a code column and a generic name column was found. Is this the medicine list?",
+        "empty": "The file has a header but no medicines under it.",
+        "unreadable": "The file could not be opened. Save it again as .xlsx and try again."
+      },
+      "name": "Name of the list",
+      "namePh": "RHIA December 2026",
+      "effective": "Used from",
+      "needAll": "Choose the file, give the list a name and the date it is used from.",
+      "check": "Check the list",
+      "checking": "Checking…",
+      "insurersNote": "Insurers that follow the list (RSSB RAMA, MMI, Mutuelle de Santé) price medicines from it as soon as the clinic works with them.",
+      "confirmTitle": "Use {{name}} from {{date}}?",
+      "confirmBody_one": "It becomes the official list ({{count}} medicine): insurers that follow it pay its prices from that date. The list in use now is kept as an earlier list.",
+      "confirmBody_other": "It becomes the official list ({{count}} medicines): insurers that follow it pay its prices from that date. The list in use now is kept as an earlier list.",
+      "confirmYes": "Yes, use this list",
+      "done": "{{name}} is the official list from {{date}}.",
+      "doneFlagged_one": "{{count}} medicine of the clinic is no longer on it.",
+      "doneFlagged_other": "{{count}} medicines of the clinic are no longer on it.",
+      "uploadedBy": "uploaded by {{name}} on {{date}}",
+      "uploadedOn": "uploaded on {{date}}",
+      "loaded": "loaded with the system",
+      "from": "From {{date}}",
+      "rows_one": "{{n}} medicine",
+      "rows_other": "{{n}} medicines",
+      "inUse": "In use",
+      "inUseUntil": "In use until the new list starts",
+      "tile": {
+        "new": "New",
+        "changed": "Price changed",
+        "removed": "Removed",
+        "unchanged": "Unchanged",
+        "errors": "Rows left out"
+      },
+      "previewTitle": "Check: {{name}}",
+      "comparedWith_one": "Compared with {{name}} ({{count}} medicine)",
+      "comparedWith_other": "Compared with {{name}} ({{count}} medicines)",
+      "firstList": "The first list: nothing to compare with",
+      "use": "Use this list from {{date}}",
+      "kept_one": "{{count}} of {{total}} rows will be kept.",
+      "kept_other": "{{count}} of {{total}} rows will be kept.",
+      "changedTitle": "Price changes",
+      "noChange": "No price changed.",
+      "colMedicine": "Medicine",
+      "colOld": "Old price",
+      "colNew": "New price",
+      "atClinic": "At the clinic",
+      "removedTitle": "No longer on the list",
+      "noneRemoved": "No medicine leaves the list.",
+      "removedHint": "Medicines of the clinic among these will show “Not on the current list”: insurers that follow the list no longer have a price for them.",
+      "errorsTitle": "Rows left out",
+      "errorsHint": "These rows are not kept. Correct them in the file and check again if they matter.",
+      "rowN": "Row {{n}}",
+      "err": {
+        "no_code": "The code is missing",
+        "bad_code": "The code is too long",
+        "no_generic": "The generic name is missing",
+        "bad_price": "The price is not a number of zero or more",
+        "duplicate": "This code is already on an earlier row",
+        "not_a_row": "Not a row of the list"
+      }
+    }
   },
   "visit": {
     "back": "Back to my queue",
@@ -6807,7 +6894,13 @@
     "25e0efa8": "Too many messages in the last hour: try again later.",
     "20afd965": "Write a message of 3 to 500 characters.",
     "9e9e0b02": "A new item is a medicine or a supply.",
-    "a31cbeb6": "Only {{p1}} left to give of this medicine."
+    "a31cbeb6": "Only {{p1}} left to give of this medicine.",
+    "9c2126b1": "The new list cannot start before the list in use.",
+    "5427e21d": "No row of the list can be used.",
+    "dd744cc3": "Give the date the list is used from.",
+    "0371e135": "The list has too many rows (20,000 at most).",
+    "d6ff72fe": "Give the list a name.",
+    "4f0bcaa5": "The list has no rows."
   },
   "panel": {
     "close": "Close",
@@ -6913,6 +7006,8 @@
     "received": "Stock received",
     "salesByItem": "Sales by item",
     "marginPct": "RWF · {{pct}} % of revenue",
-    "receiveAllHint": "Everything on the note arrived: confirm it in one click. A difference: open the note."
+    "receiveAllHint": "Everything on the note arrived: confirm it in one click. A difference: open the note.",
+    "notOnList": "Not on the current list",
+    "notOnListHint": "The current official list no longer has this medicine: insurers that follow the list have no price for it."
   }
 }

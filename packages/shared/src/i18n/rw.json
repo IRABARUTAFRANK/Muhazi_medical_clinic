@@ -2144,7 +2144,94 @@
       "orderedAt": "Busabwa · bukorerwa kuri {{desk}}"
     },
     "builtIn": "Biri muri sisitemu",
-    "builtInBedHint": "Amajoro umurwayi aryamishijwe yishyuzwa kuri uyu murongo: hindura izina cyangwa igiciro, ntushobora kuwuhisha cyangwa kuwusiba."
+    "builtInBedHint": "Amajoro umurwayi aryamishijwe yishyuzwa kuri uyu murongo: hindura izina cyangwa igiciro, ntushobora kuwuhisha cyangwa kuwusiba.",
+    "refList": {
+      "title": "Urutonde rw’imiti rwemewe",
+      "lead": "Urutonde rw’imiti yishyurwa n’ubwishingizi RHIA isohora buri mezi atandatu. Ibiciro byarwo ni byo ibigo by’ubwishingizi birukurikiza byishyura; ibiciro byawe by’abishyura amafaranga ntibihinduka.",
+      "none": "Nta rutonde rurajyaho.",
+      "past": "Intonde zabanje",
+      "upload": "Shyiraho urutonde rushya",
+      "file": "Inyandiko y’urutonde (Excel cyangwa CSV)",
+      "reading": "Turasoma inyandiko…",
+      "choose": "Hitamo inyandiko",
+      "fileHint": "Koresha inyandiko ya Excel (.xlsx) RHIA isohora. PDF ntishobora gusomwa neza.",
+      "read_one": "Umuti {{count}} wasomwe (imitwe iri ku murongo wa {{row}}, {{sheet}})",
+      "read_other": "Imiti {{count}} yasomwe (imitwe iri ku murongo wa {{row}}, {{sheet}})",
+      "columnsFound": "Inkingi zamenyekanye:",
+      "columnsMissing": "Izitabonetse (zisigara ari ubusa):",
+      "col": {
+        "code": "Kode",
+        "generic": "Izina rusange",
+        "presentation": "Uko uteye",
+        "rule": "Uwemerewe kuwandika",
+        "unit": "Igipimo cyo kugurisha",
+        "price": "Igiciro",
+        "group": "Itsinda rya ATC"
+      },
+      "fileErr": {
+        "pdf": "PDF ntishobora gusomwa neza. Shyiraho inyandiko ya Excel (.xlsx) RHIA isohorana n’urutonde.",
+        "type": "Ubu bwoko bw’inyandiko ntibushobora gusomwa. Shyiraho inyandiko ya Excel (.xlsx) cyangwa CSV.",
+        "noHeader": "Nta murongo w’imitwe ufite inkingi ya kode n’iy’izina rusange wabonetse. Iyi ni yo nyandiko y’urutonde rw’imiti?",
+        "empty": "Inyandiko ifite imitwe ariko nta miti iri munsi yayo.",
+        "unreadable": "Inyandiko ntiyafungutse. Yongere uyibike nka .xlsx hanyuma wongere ugerageze."
+      },
+      "name": "Izina ry’urutonde",
+      "namePh": "RHIA Ukuboza 2026",
+      "effective": "Ikoreshwa guhera",
+      "needAll": "Hitamo inyandiko, uhe urutonde izina n’itariki ruzatangira gukoreshwa.",
+      "check": "Genzura urutonde",
+      "checking": "Turagenzura…",
+      "insurersNote": "Ibigo by’ubwishingizi bikurikiza urutonde (RSSB RAMA, MMI, Mutuelle de Santé) bifata ibiciro by’imiti kuri rwo ivuriro rikimara gutangira gukorana na byo.",
+      "confirmTitle": "Ukoreshe {{name}} guhera {{date}}?",
+      "confirmBody_one": "Ruhinduka urutonde rwemewe (umuti {{count}}): ibigo by’ubwishingizi birukurikiza byishyura ibiciro byarwo guhera kuri iyo tariki. Urutonde rukoreshwa ubu rubikwa mu zabanje.",
+      "confirmBody_other": "Ruhinduka urutonde rwemewe (imiti {{count}}): ibigo by’ubwishingizi birukurikiza byishyura ibiciro byarwo guhera kuri iyo tariki. Urutonde rukoreshwa ubu rubikwa mu zabanje.",
+      "confirmYes": "Yego, koresha uru rutonde",
+      "done": "{{name}} ni rwo rutonde rwemewe guhera {{date}}.",
+      "doneFlagged_one": "Umuti {{count}} w’ivuriro ntukiri kuri rwo.",
+      "doneFlagged_other": "Imiti {{count}} y’ivuriro ntikiri kuri rwo.",
+      "uploadedBy": "rwashyizweho na {{name}} ku wa {{date}}",
+      "uploadedOn": "rwashyizweho ku wa {{date}}",
+      "loaded": "rwashyizwemo hamwe na sisitemu",
+      "from": "Guhera {{date}}",
+      "rows_one": "umuti {{n}}",
+      "rows_other": "imiti {{n}}",
+      "inUse": "Rurakoreshwa",
+      "inUseUntil": "Rurakoreshwa kugeza urushya rutangiye",
+      "tile": {
+        "new": "Imishya",
+        "changed": "Igiciro cyahindutse",
+        "removed": "Yavanyweho",
+        "unchanged": "Ntiyahindutse",
+        "errors": "Imirongo yasizwe"
+      },
+      "previewTitle": "Igenzura: {{name}}",
+      "comparedWith_one": "Igereranywa na {{name}} (umuti {{count}})",
+      "comparedWith_other": "Igereranywa na {{name}} (imiti {{count}})",
+      "firstList": "Urutonde rwa mbere: nta cyo kugereranya",
+      "use": "Koresha uru rutonde guhera {{date}}",
+      "kept_one": "Umurongo {{count}} kuri {{total}} uzagumishwa.",
+      "kept_other": "Imirongo {{count}} kuri {{total}} izagumishwa.",
+      "changedTitle": "Ibiciro byahindutse",
+      "noChange": "Nta giciro cyahindutse.",
+      "colMedicine": "Umuti",
+      "colOld": "Igiciro cya mbere",
+      "colNew": "Igiciro gishya",
+      "atClinic": "Iri mu ivuriro",
+      "removedTitle": "Itakiri ku rutonde",
+      "noneRemoved": "Nta muti uvuye ku rutonde.",
+      "removedHint": "Imiti y’ivuriro irimo izerekana ngo “Ntiri ku rutonde rukoreshwa”: ibigo by’ubwishingizi bikurikiza urutonde ntibikiyifitiye igiciro.",
+      "errorsTitle": "Imirongo yasizwe",
+      "errorsHint": "Iyi mirongo ntizagumishwa. Niba ari ngombwa, yikosore mu nyandiko wongere ugenzure.",
+      "rowN": "Umurongo wa {{n}}",
+      "err": {
+        "no_code": "Kode irabura",
+        "bad_code": "Kode ni ndende cyane",
+        "no_generic": "Izina rusange rirabura",
+        "bad_price": "Igiciro si umubare wa zeru cyangwa urenga zeru",
+        "duplicate": "Iyi kode isanzwe iri ku murongo wabanje",
+        "not_a_row": "Si umurongo w’urutonde"
+      }
+    }
   },
   "desk": {
     "today": "Uyu munsi",
@@ -6816,7 +6903,13 @@
     "25e0efa8": "Wohereje ubutumwa bwinshi mu isaha ishize: ongera ugerageze nyuma.",
     "20afd965": "Andika ubutumwa bw’inyuguti 3 kugeza kuri 500.",
     "9e9e0b02": "Ikintu gishya ni umuti cyangwa igikoresho.",
-    "a31cbeb6": "Hasigaye {{p1}} gusa zo gutanga kuri uyu muti."
+    "a31cbeb6": "Hasigaye {{p1}} gusa zo gutanga kuri uyu muti.",
+    "9c2126b1": "Urutonde rushya ntirushobora gutangira mbere y’urukoreshwa ubu.",
+    "5427e21d": "Nta murongo w’urutonde ushobora gukoreshwa.",
+    "dd744cc3": "Andika itariki urutonde ruzatangira gukoreshwa.",
+    "0371e135": "Urutonde rufite imirongo myinshi cyane (ntirugomba kurenza 20.000).",
+    "d6ff72fe": "Ha urutonde izina.",
+    "4f0bcaa5": "Urutonde nta murongo rufite."
   },
   "panel": {
     "close": "Funga",
@@ -6922,6 +7015,8 @@
     "received": "Ibyinjiye mu bubiko",
     "salesByItem": "Ibyagurishijwe kuri buri kimwe",
     "marginPct": "RWF · {{pct}} % by’ibyinjiye",
-    "receiveAllHint": "Ibiri ku rupapuro rwo kohereza byose byageze: emeza ukanze rimwe. Hari ikinyuranyo: fungura urupapuro."
+    "receiveAllHint": "Ibiri ku rupapuro rwo kohereza byose byageze: emeza ukanze rimwe. Hari ikinyuranyo: fungura urupapuro.",
+    "notOnList": "Ntiri ku rutonde rukoreshwa",
+    "notOnListHint": "Urutonde rwemewe rukoreshwa ntirukigira uyu muti: ibigo by’ubwishingizi bikurikiza urutonde nta giciro bifite cyawo."
   }
 }

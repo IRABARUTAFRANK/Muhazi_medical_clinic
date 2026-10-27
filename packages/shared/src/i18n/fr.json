@@ -1447,7 +1447,94 @@
       "orderedAt": "Demandé · fait à {{desk}}"
     },
     "builtIn": "Intégré",
-    "builtInBedHint": "Les nuits d’hospitalisation sont facturées sous cette ligne : changez son nom ou son prix, elle ne peut être ni masquée ni supprimée."
+    "builtInBedHint": "Les nuits d’hospitalisation sont facturées sous cette ligne : changez son nom ou son prix, elle ne peut être ni masquée ni supprimée.",
+    "refList": {
+      "title": "Liste officielle des médicaments",
+      "lead": "La liste des médicaments remboursables que la RHIA publie tous les six mois. Ses prix sont ceux que paient les assureurs qui la suivent ; vos prix au comptant ne changent pas.",
+      "none": "Aucune liste pour l’instant.",
+      "past": "Listes précédentes",
+      "upload": "Charger une nouvelle liste",
+      "file": "Le fichier de la liste (Excel ou CSV)",
+      "reading": "Lecture du fichier…",
+      "choose": "Choisir un fichier",
+      "fileHint": "Utilisez le fichier Excel (.xlsx) publié par la RHIA. Un PDF ne peut pas être lu de façon fiable.",
+      "read_one": "{{count}} médicament lu (en-tête à la ligne {{row}}, {{sheet}})",
+      "read_other": "{{count}} médicaments lus (en-tête à la ligne {{row}}, {{sheet}})",
+      "columnsFound": "Colonnes reconnues :",
+      "columnsMissing": "Introuvables (laissées vides) :",
+      "col": {
+        "code": "Code",
+        "generic": "Nom générique",
+        "presentation": "Présentation",
+        "rule": "Règle de prescription",
+        "unit": "Unité",
+        "price": "Prix",
+        "group": "Groupe ATC"
+      },
+      "fileErr": {
+        "pdf": "Un PDF ne peut pas être lu de façon fiable. Chargez le fichier Excel (.xlsx) que la RHIA publie avec la liste.",
+        "type": "Ce type de fichier ne peut pas être lu. Chargez le fichier Excel (.xlsx) ou un CSV.",
+        "noHeader": "Aucune ligne d’en-tête avec une colonne code et une colonne nom générique n’a été trouvée. Est-ce bien la liste des médicaments ?",
+        "empty": "Le fichier a un en-tête mais aucun médicament en dessous.",
+        "unreadable": "Le fichier n’a pas pu être ouvert. Enregistrez-le à nouveau en .xlsx et réessayez."
+      },
+      "name": "Nom de la liste",
+      "namePh": "RHIA décembre 2026",
+      "effective": "Utilisée à partir du",
+      "needAll": "Choisissez le fichier, donnez un nom à la liste et la date à partir de laquelle elle s’applique.",
+      "check": "Vérifier la liste",
+      "checking": "Vérification…",
+      "insurersNote": "Les assureurs qui suivent la liste (RSSB RAMA, MMI, Mutuelle de Santé) en prennent les prix des médicaments dès que la clinique travaille avec eux.",
+      "confirmTitle": "Utiliser {{name}} à partir du {{date}} ?",
+      "confirmBody_one": "Elle devient la liste officielle ({{count}} médicament) : les assureurs qui la suivent paient ses prix à partir de cette date. La liste en vigueur est gardée comme liste précédente.",
+      "confirmBody_other": "Elle devient la liste officielle ({{count}} médicaments) : les assureurs qui la suivent paient ses prix à partir de cette date. La liste en vigueur est gardée comme liste précédente.",
+      "confirmYes": "Oui, utiliser cette liste",
+      "done": "{{name}} est la liste officielle à partir du {{date}}.",
+      "doneFlagged_one": "{{count}} médicament de la clinique n’y figure plus.",
+      "doneFlagged_other": "{{count}} médicaments de la clinique n’y figurent plus.",
+      "uploadedBy": "chargée par {{name}} le {{date}}",
+      "uploadedOn": "chargée le {{date}}",
+      "loaded": "chargée avec le système",
+      "from": "À partir du {{date}}",
+      "rows_one": "{{n}} médicament",
+      "rows_other": "{{n}} médicaments",
+      "inUse": "En vigueur",
+      "inUseUntil": "En vigueur jusqu’au début de la nouvelle liste",
+      "tile": {
+        "new": "Nouveaux",
+        "changed": "Prix changé",
+        "removed": "Retirés",
+        "unchanged": "Inchangés",
+        "errors": "Lignes écartées"
+      },
+      "previewTitle": "Vérification : {{name}}",
+      "comparedWith_one": "Comparée à {{name}} ({{count}} médicament)",
+      "comparedWith_other": "Comparée à {{name}} ({{count}} médicaments)",
+      "firstList": "Première liste : rien à comparer",
+      "use": "Utiliser cette liste à partir du {{date}}",
+      "kept_one": "{{count}} ligne sur {{total}} sera gardée.",
+      "kept_other": "{{count}} lignes sur {{total}} seront gardées.",
+      "changedTitle": "Changements de prix",
+      "noChange": "Aucun prix n’a changé.",
+      "colMedicine": "Médicament",
+      "colOld": "Ancien prix",
+      "colNew": "Nouveau prix",
+      "atClinic": "À la clinique",
+      "removedTitle": "Plus sur la liste",
+      "noneRemoved": "Aucun médicament ne quitte la liste.",
+      "removedHint": "Les médicaments de la clinique parmi eux afficheront « Pas sur la liste actuelle » : les assureurs qui suivent la liste n’ont plus de prix pour eux.",
+      "errorsTitle": "Lignes écartées",
+      "errorsHint": "Ces lignes ne sont pas gardées. Corrigez-les dans le fichier et vérifiez à nouveau si elles comptent.",
+      "rowN": "Ligne {{n}}",
+      "err": {
+        "no_code": "Le code manque",
+        "bad_code": "Le code est trop long",
+        "no_generic": "Le nom générique manque",
+        "bad_price": "Le prix n’est pas un nombre égal ou supérieur à zéro",
+        "duplicate": "Ce code figure déjà sur une ligne précédente",
+        "not_a_row": "Pas une ligne de la liste"
+      }
+    }
   },
   "visit": {
     "back": "Retour à ma file",
@@ -6807,7 +6894,13 @@
     "25e0efa8": "Trop de messages dans la dernière heure : réessayez plus tard.",
     "20afd965": "Écrivez un message de 3 à 500 caractères.",
     "9e9e0b02": "Un nouvel article est un médicament ou une fourniture.",
-    "a31cbeb6": "Il ne reste que {{p1}} à remettre pour ce médicament."
+    "a31cbeb6": "Il ne reste que {{p1}} à remettre pour ce médicament.",
+    "9c2126b1": "La nouvelle liste ne peut pas commencer avant la liste en vigueur.",
+    "5427e21d": "Aucune ligne de la liste n’est utilisable.",
+    "dd744cc3": "Indiquez la date à partir de laquelle la liste s’applique.",
+    "0371e135": "La liste a trop de lignes (20 000 au plus).",
+    "d6ff72fe": "Donnez un nom à la liste.",
+    "4f0bcaa5": "La liste n’a aucune ligne."
   },
   "panel": {
     "close": "Fermer",
@@ -6913,6 +7006,8 @@
     "received": "Stock reçu",
     "salesByItem": "Ventes par article",
     "marginPct": "RWF · {{pct}} % du chiffre d’affaires",
-    "receiveAllHint": "Tout ce qui est sur le bon est arrivé : confirmez en un clic. Une différence : ouvrez le bon."
+    "receiveAllHint": "Tout ce qui est sur le bon est arrivé : confirmez en un clic. Une différence : ouvrez le bon.",
+    "notOnList": "Pas sur la liste actuelle",
+    "notOnListHint": "La liste officielle actuelle n’a plus ce médicament : les assureurs qui suivent la liste n’ont pas de prix pour lui."
   }
 }

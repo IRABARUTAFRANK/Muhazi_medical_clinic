@@ -12179,6 +12179,345 @@ await step('0097 F: totals, margin, message to the manager, the expiry window', 
   return `inventory ${tot.inventory_cost} at cost, ${tot.selling_value} to sell; margin ${sales.margin}; message to the managers; window 60 then 30`
 })
 
+// ---------------------------------------------------------------- 0098 the official list, versioned
+const t98 = {}
+await step(
+  '0098 A: the June list is a versioned list; the view reads the list in effect',
+  async () => {
+    await asAdmin()
+    const lists = await one(
+      `select count(*)::int as n, min(name) as name, min(effective_from)::text as eff, min(status) as status,
+            min(rows)::int as rows from reference_list`,
+    )
+    const view = (await one(`select count(*)::int as n from medicine_reference`)).n
+    const follows = (
+      await db.query(`select code from payer where follows_reference_list order by code`)
+    ).rows.map((r) => r.code)
+    if (
+      lists.n !== 1 ||
+      lists.name !== 'RHIA June 2026' ||
+      lists.eff !== '2026-06-01' ||
+      lists.status !== 'current' ||
+      lists.rows !== view ||
+      view < 1400 ||
+      !'CBHI MMI RAMA'.split(' ').every((c) => follows.includes(c)) ||
+      ['CASH', 'BRITAM', 'PRIME', 'RADIANT'].some((c) => follows.includes(c))
+    )
+      throw new Error(JSON.stringify({ lists, view, follows }))
+    t98.n = view
+    return `${view} rows, current; RAMA, MMI and CBHI follow the list`
+  },
+)
+await step(
+  '0098 B: the preview counts new, changed, removed, unchanged and the bad rows',
+  async () => {
+    await asAdmin()
+    const picks = (
+      await db.query(
+        `select code, generic, presentation, price from medicine_reference r
+        where not exists (select 1 from item i where i.code = r.code) and price is not null and price <> 1000
+        order by code limit 2`,
+      )
+    ).rows
+    t98.keep = picks[0]
+    t98.gone = picks[1]
+    await as(staff.manager)
+    t98.item = (
+      await one(`select upsert_item(null, $1, 1300, $2, null, 'Tablet', true, $3) as id`, [
+        t98.keep.generic,
+        t98.keep.presentation,
+        t98.keep.code,
+      ])
+    ).id
+    t98.goneItem = (
+      await one(`select upsert_item(null, $1, 500, $2, null, 'Tablet', true, $3) as id`, [
+        t98.gone.generic,
+        t98.gone.presentation,
+        t98.gone.code,
+      ])
+    ).id
+    await asAdmin()
+    const all = (
+      await db.query(
+        `select code, generic, presentation, prescribing_rule as rule, unit, price, atc_group as "group"
+         from medicine_reference order by code`,
+      )
+    ).rows
+    t98.rows = all
+      .filter((r) => r.code !== t98.gone.code)
+      .map((r, i) => ({
+        ...r,
+        row: i + 11,
+        price: r.code === t98.keep.code ? 1000 : r.price == null ? null : Number(r.price),
+      }))
+    t98.rows.push(
+      {
+        row: 5001,
+        code: 'T98NEW001',
+        generic: 'Testamol 98',
+        presentation: 'TESTAMOL 98 tablet',
+        unit: 'TABLET',
+        price: 250,
+      },
+      { row: 5002, code: '', generic: 'No code' },
+      { row: 5003, code: 'T98BAD', generic: 'Bad price', price: '-4' },
+      { row: 5004, code: t98.keep.code, generic: 'Twice', price: 7 },
+    )
+    await as(staff.manager)
+    const p = (
+      await one(
+        `select import_reference_list('RHIA December 2026', current_date, $1::jsonb) as j`,
+        [JSON.stringify(t98.rows)],
+      )
+    ).j
+    await asAdmin()
+    const lists = (await one(`select count(*)::int as n from reference_list`)).n
+    const changed = p.changed.find((c) => c.code === t98.keep.code)
+    const errs = p.errors.map((e) => `${e.row}:${e.code}`).join(',')
+    if (
+      !p.dryRun ||
+      p.new !== 1 ||
+      p.changed.length !== 1 ||
+      Number(changed?.old) !== Number(t98.keep.price) ||
+      Number(changed?.new) !== 1000 ||
+      !changed.inClinic ||
+      p.removed.length !== 1 ||
+      p.removed[0].code !== t98.gone.code ||
+      !p.removed[0].inClinic ||
+      p.unchanged !== t98.n - 2 ||
+      errs !== '5002:no_code,5003:bad_price,5004:duplicate' ||
+      p.rows !== t98.n ||
+      p.current?.name !== 'RHIA June 2026' ||
+      lists !== 1
+    )
+      throw new Error(
+        JSON.stringify({ ...p, changed: p.changed.slice(0, 3), removed: p.removed, lists }),
+      )
+    return `new 1, changed 1 (${changed.old} → 1000), removed 1, unchanged ${p.unchanged}, 3 bad rows; nothing stored`
+  },
+)
+await step(
+  '0098 C: only the manager uploads; a list cannot start before the current one',
+  async () => {
+    const rows = JSON.stringify([{ code: 'X1', generic: 'X' }])
+    const pharm = await codeAs(
+      staff.pharmacist,
+      `select import_reference_list('X', current_date, $1::jsonb)`,
+      [rows],
+    )
+    const early = await codeAs(
+      staff.manager,
+      `select import_reference_list('X', date '2026-05-01', $1::jsonb, false)`,
+      [rows],
+    )
+    const noName = await codeAs(
+      staff.manager,
+      `select import_reference_list('  ', current_date, $1::jsonb)`,
+      [rows],
+    )
+    if (pharm !== '42501' || early !== '22023' || noName !== '22023')
+      throw new Error(JSON.stringify({ pharm, early, noName }))
+    return 'pharmacist 42501; before June 22023; no name 22023'
+  },
+)
+await step(
+  '0098 D: using the list makes it current, keeps the old one, flags what left it',
+  async () => {
+    await as(staff.manager)
+    const r = (
+      await one(
+        `select import_reference_list('RHIA December 2026', current_date, $1::jsonb, false) as j`,
+        [JSON.stringify(t98.rows)],
+      )
+    ).j
+    const shown = (await one(`select reference_lists() as j`)).j
+    await asAdmin()
+    const lists = (
+      await db.query(`select name, status, rows from reference_list order by uploaded_at`)
+    ).rows
+    const oldRows = (
+      await one(
+        `select count(*)::int as n from medicine_reference_entry e join reference_list l on l.id = e.list_id
+        where l.name = 'RHIA June 2026'`,
+      )
+    ).n
+    const view = await one(
+      `select count(*)::int as n, count(*) filter (where code = 'T98NEW001')::int as added,
+            count(*) filter (where code = $1)::int as gone from medicine_reference`,
+      [t98.gone.code],
+    )
+    const flags = await one(
+      `select (select reference_removed_at is not null from item where id = $1) as gone,
+            (select reference_removed_at is null from item where id = $2) as kept`,
+      [t98.goneItem, t98.item],
+    )
+    const direct = await codeAs(
+      staff.manager,
+      `update item set reference_removed_at = null where id = $1`,
+      [t98.goneItem],
+    )
+    if (
+      r.dryRun ||
+      !r.id ||
+      r.itemsFlagged !== 1 ||
+      JSON.stringify(lists.map((l) => l.status)) !== '["past","current"]' ||
+      lists[1].rows !== t98.n ||
+      oldRows !== t98.n ||
+      view.n !== t98.n ||
+      view.added !== 1 ||
+      view.gone !== 0 ||
+      !flags.gone ||
+      !flags.kept ||
+      direct !== '42501' ||
+      shown[0]?.name !== 'RHIA December 2026' ||
+      shown[0]?.status !== 'current' ||
+      !shown[0]?.inEffect ||
+      shown[1]?.status !== 'past'
+    )
+      throw new Error(
+        JSON.stringify({
+          r: { ...r, changed: null, removed: null },
+          lists,
+          oldRows,
+          view,
+          flags,
+          direct,
+          shown,
+        }),
+      )
+    return `December current (${t98.n} rows), June kept as past (${oldRows}); 1 clinic medicine flagged`
+  },
+)
+await step(
+  '0098 E: an insurer that follows the list pays the list price; cash keeps the clinic price',
+  async () => {
+    await asAdmin()
+    const pf = async (payer, at = null) =>
+      Number(
+        (
+          await one(
+            `select price from price_for(null, $1, (select id from payer where code = $2), coalesce($3::date, current_date))`,
+            [t98.item, payer, at],
+          )
+        )?.price,
+      )
+    const rama = await pf('RAMA')
+    const mmi = await pf('MMI')
+    const britam = await pf('BRITAM')
+    const cash = await pf('CASH')
+    const none = Number(
+      (await one(`select price from price_for(null, $1, null)`, [t98.item])).price,
+    )
+    // the day before the new list: the June price
+    const before = await pf('RAMA', new Date(Date.now() - 86_400_000).toISOString().slice(0, 10))
+    // removed from the list: the cash price
+    const gone = Number(
+      (
+        await one(
+          `select price from price_for(null, $1, (select id from payer where code = 'RAMA'))`,
+          [t98.goneItem],
+        )
+      ).price,
+    )
+    // the bill: a RAMA visit, the medicine charged, 85 % on 1,000
+    const v = await visitAt('Loren 98')
+    const cov = (
+      await one(
+        `insert into coverage (patient_id, payer_id, plan_id, member_number)
+       select e.patient_id, p.id, pl.id, 'RAMA-98-0001' from encounter e, payer p join plan pl on pl.payer_id = p.id
+        where e.id = $1 and p.code = 'RAMA' returning id`,
+        [v.enc],
+      )
+    ).id
+    await db.query(
+      `update invoice set coverage_id = $2, payer_id = (select id from payer where code = 'RAMA') where encounter_id = $1`,
+      [v.enc, cov],
+    )
+    await db.query(`select add_charge_internal($1, 'pharmacy', null, $2, 2)`, [v.enc, t98.item])
+    const line = await one(
+      `select l.unit_price, l.coverage_pct, l.insurer_share, l.patient_share from invoice_line l
+       join invoice i on i.id = l.invoice_id where i.encounter_id = $1 and l.item_id = $2 and l.deleted_at is null`,
+      [v.enc, t98.item],
+    )
+    if (
+      rama !== 1000 ||
+      mmi !== 1000 ||
+      britam !== 1300 ||
+      cash !== 1300 ||
+      none !== 1300 ||
+      before !== Number(t98.keep.price) ||
+      gone !== 500 ||
+      Number(line?.unit_price) !== 1000 ||
+      Number(line.coverage_pct) !== 85 ||
+      Number(line.insurer_share) !== 1700 ||
+      Number(line.patient_share) !== 300
+    )
+      throw new Error(JSON.stringify({ rama, mmi, britam, cash, none, before, gone, line }))
+    return `RAMA/MMI 1,000 (list), Britam/cash 1,300; the day before ${before}; bill 2 × 1,000 → 1,700 / 300`
+  },
+)
+await step(
+  '0098 F: a medicine added from the list keeps the list code; a new insurer of the kind follows',
+  async () => {
+    await as(staff.pharmacist)
+    const r = (
+      await one(`select add_stock($1::jsonb) as j`, [
+        JSON.stringify([
+          {
+            new_item: {
+              name: 'Testamol 98',
+              strength: 'TESTAMOL 98 tablet',
+              kind: 'medicine',
+              unit: 'tablet',
+              code: 'T98NEW001',
+            },
+            batch_no: 'T98-A',
+            expiry: '2031-01-31',
+            quantity: 10,
+            unit_cost: 100,
+            sell_price: 300,
+          },
+        ]),
+      ])
+    ).j
+    const notOnList = await codeAs(staff.pharmacist, `select add_stock($1::jsonb)`, [
+      JSON.stringify([
+        {
+          new_item: { name: 'Nolist 98', kind: 'medicine', code: 'T98NOPE' },
+          batch_no: 'T98-B',
+          expiry: '2031-01-31',
+          quantity: 1,
+          unit_cost: 1,
+        },
+      ]),
+    ])
+    await asAdmin()
+    const it = await one(`select code, source from item where id = $1`, [r.lines[0].item_id])
+    const ramaPrice = Number(
+      (
+        await one(
+          `select price from price_for(null, $1, (select id from payer where code = 'RAMA'))`,
+          [r.lines[0].item_id],
+        )
+      ).price,
+    )
+    const added = (
+      await one(
+        `insert into payer (code, name, type) values ('MMI98', 'MMI 98', 'mmi') returning follows_reference_list as f`,
+      )
+    ).f
+    if (
+      it.code !== 'T98NEW001' ||
+      it.source !== 'RHIA December 2026' ||
+      ramaPrice !== 250 ||
+      notOnList !== 'P0002' ||
+      !added
+    )
+      throw new Error(JSON.stringify({ it, ramaPrice, notOnList, added }))
+    return 'item T98NEW001 (RAMA 250, cash 300); a code not on the list refused; a new MMI insurer follows'
+  },
+)
+
 finish()
 
 function finish() {

@@ -63,6 +63,7 @@ import { suggestNames } from '@/lib/medical-glossary'
 import { CatalogueTools } from './catalogue-tools'
 import { CategoriesCard } from './categories-card'
 import { MedicinesSection } from './medicines-section'
+import { OfficialListSection } from './official-list-section'
 import { useDepartmentActions, useDepartments, type Department } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -645,6 +646,9 @@ export function PricesPage({ user }: { user: StaffUser }) {
 
         {/* Medicines and supplies with their price */}
         <MedicinesSection onNotice={setNotice} />
+
+        {/* The official medicine list (RHIA): the insurers' tariff, uploaded by the manager */}
+        <OfficialListSection onNotice={setNotice} />
 
         {/* Insurers: only once the clinic works with insurers */}
         {FEATURES.insurance ? (

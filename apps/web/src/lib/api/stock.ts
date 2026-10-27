@@ -249,6 +249,8 @@ export interface AddStockLineInput {
     strength?: string | null
     kind: 'medicine' | 'supply'
     unit?: string | null
+    /** The code of the official list it was picked from (the item keeps it). */
+    code?: string | null
   }
   batchNo: string
   /** Not in the past. */
@@ -1553,7 +1555,8 @@ export function useStockActions() {
             sampleNewMedicine(
               itemId,
               {
-                code: l.newItem.name.slice(0, 8).toUpperCase().replace(/\s+/g, ''),
+                code:
+                  l.newItem.code ?? l.newItem.name.slice(0, 8).toUpperCase().replace(/\s+/g, ''),
                 name: l.newItem.name.trim(),
                 strength: l.newItem.strength?.trim() || null,
                 unit: l.newItem.unit?.trim() || null,
@@ -1598,6 +1601,7 @@ export function useStockActions() {
                 strength: l.newItem.strength?.trim() || null,
                 kind: l.newItem.kind,
                 unit: l.newItem.unit?.trim() || null,
+                code: l.newItem.code ?? null,
               }
             : null,
           batch_no: l.batchNo.trim(),

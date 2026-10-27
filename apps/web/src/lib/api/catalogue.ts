@@ -750,7 +750,7 @@ export interface MedicineRef {
   group: string | null
 }
 
-const sampleReference: MedicineRef[] = [
+export const sampleReference: MedicineRef[] = [
   [
     'A01AA01001',
     'Sodium Fluoride',

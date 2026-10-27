@@ -15,6 +15,7 @@ import {
   useMedicines,
 } from '@/lib/api/catalogue'
 import { ApiError } from '@/lib/api/errors'
+import { useNotOnList } from '@/lib/api/reference-list'
 import {
   useStockActions,
   type AddStockLineInput,
@@ -93,6 +94,8 @@ export function AddStockForm({
   const confirm = useConfirm()
   const { data: reference = [] } = useMedicineReference(true)
   const { data: medicines = [] } = useMedicines()
+  // the clinic's medicines whose code left the current official list
+  const { data: notOnList } = useNotOnList()
   const stores = pharmacyStores(locations)
   const main = mainPharmacy(locations, mainId)
   const [chosenStore, setStore] = useState('')
@@ -113,7 +116,15 @@ export function AddStockForm({
   const options = [
     ...items
       .filter((i) => i.active)
-      .map((i) => ({ value: i.id, label: `${itemName(i)}${i.unit ? ` (${i.unit})` : ''}` })),
+      .map((i) => ({
+        value: i.id,
+        label: [
+          `${itemName(i)}${i.unit ? ` (${i.unit})` : ''}`,
+          notOnList?.has(i.id) ? t('stockPage.notOnList') : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      })),
     ...reference
       .filter((r) => !clinicCodes.has(r.code))
       .map((r) => ({ value: `ref:${r.code}`, label: medicineRefLabel(r, t) })),
@@ -215,6 +226,8 @@ export function AddStockForm({
               strength: r.presentation,
               unit: readableUnit(r.unit) || null,
               kind: 'medicine',
+              // the item keeps the list's code: its insurer price and prescribing rule follow the list
+              code: r.code,
             }
           : l.pick === 'new'
             ? {
@@ -340,6 +353,11 @@ export function AddStockForm({
                     <Trash2 size={16} aria-hidden="true" />
                   </Button>
                 </div>
+                {it && notOnList?.has(it.id) && (
+                  <p className="border-yellow/30 bg-yellow-bg text-yellow m-0 rounded-md border px-3 py-1.5 text-[13px] font-medium">
+                    {t('stockPage.notOnList')} · {t('stockPage.notOnListHint')}
+                  </p>
+                )}
                 {l.pick === 'new' && (
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <Select

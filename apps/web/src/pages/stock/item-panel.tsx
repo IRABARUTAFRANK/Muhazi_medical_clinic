@@ -19,6 +19,7 @@ import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import { SidePanel } from '@/components/ui/side-panel'
+import { useNotOnList } from '@/lib/api/reference-list'
 import { useItemBatches } from '@/lib/api/rooms'
 import { useStockActions, type StockItem, type StockLocation } from '@/lib/api/stock'
 import { useConfirm } from '@/lib/confirm'
@@ -57,6 +58,8 @@ export function ItemPanel({
   onAddStock: (itemId: string) => void
 }) {
   const { t } = useTranslation()
+  // its code left the official list: insurers that follow the list have no price for it
+  const { data: notOnList } = useNotOnList(!!item)
   return (
     <SidePanel
       open={!!item}
@@ -64,6 +67,13 @@ export function ItemPanel({
       hue="amber"
       icon={Package}
       title={item ? itemName(item) : ''}
+      tags={
+        item && notOnList?.has(item.id) ? (
+          <Badge tone="yellow" title={t('stockPage.notOnListHint')}>
+            {t('stockPage.notOnList')}
+          </Badge>
+        ) : undefined
+      }
       subtitle={
         item
           ? [

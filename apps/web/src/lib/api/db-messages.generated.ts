@@ -87,6 +87,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^signed out: sign in again with the e-mailed code$/, 'dbErrors.320f14fe', 0], // check_request
   [/^the clinic must keep at least one active manager$/, 'dbErrors.07387972', 0], // update_profile
   [/^the most to keep must be above the reorder level$/, 'dbErrors.b82c0f73', 0], // set_reorder_level
+  [/^the new list cannot start before the current one$/, 'dbErrors.9c2126b1', 0], // import_reference_list
   [/^a typed price is not allowed for this treatment$/, 'dbErrors.5e3cc139', 0], // add_charge
   [/^only the manager closes and reopens room stores$/, 'dbErrors.93a0cf62', 0], // set_location_active
   [/^only the manager decides who holds a room store$/, 'dbErrors.c0aac831', 0], // assign_store_holder, set_store_holders, unassign_store_holder
@@ -118,7 +119,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a submitted claim batch cannot be reopened$/, 'dbErrors.e0453e4d', 0], // guard_submitted_batch
   [/^bed stays have their own built-in category$/, 'dbErrors.42373ee2', 0], // save_category
   [/^choose the nurse who took the measurements$/, 'dbErrors.63ee378a', 0], // record_vitals
-  [/^this medicine is not on the reference list$/, 'dbErrors.fba3d5d4', 0], // receive_delivery
+  [/^this medicine is not on the reference list$/, 'dbErrors.fba3d5d4', 0], // add_stock, receive_delivery
   [/^a transaction reference is required for (.+?)$/, 'dbErrors.1c9774c1', 1], // record_payment, take_counter_payment
   [/^call reception, the nurses or a colleague$/, 'dbErrors.35c23da4', 0], // call_next
   [/^only the pharmacy confirms what came back$/, 'dbErrors.56d945ce', 0], // confirm_receipt
@@ -220,6 +221,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^give the transaction reference$/, 'dbErrors.6a36775a', 0], // refund_payment
   [/^message not found or not yours$/, 'dbErrors.7a8522d3', 0], // delete_notification
   [/^mmc: placement changes routing$/, 'dbErrors.5b6beaf1', 0], // place_staff_for_desks
+  [/^no row of the list can be used$/, 'dbErrors.5427e21d', 0], // import_reference_list
   [/^only no-show or cancelled here$/, 'dbErrors.579bddb5', 0], // set_appointment_outcome
   [/^task not found or already done$/, 'dbErrors.c1d06b38', 0], // cancel_task, complete_task
   [/^that patient is already with (.+?)$/, 'dbErrors.5bf0fe56', 1], // answer_call
@@ -232,6 +234,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^this request is no longer open$/, 'dbErrors.8a6b2dd4', 0], // cancel_refill, decline_refill, send_to_room
   [/^choose an open pharmacy store$/, 'dbErrors.09f3f21a', 0], // create_counter_sale, dispense_fefo, dispense_prescription, …
   [/^choose where the patient goes$/, 'dbErrors.3bd0dd03', 0], // send_to_stations
+  [/^give the date the list starts$/, 'dbErrors.dd744cc3', 0], // import_reference_list
   [/^patient\.fields must be a list$/, 'dbErrors.8d9a82e2', 0], // save_setting
   [/^say why the note is cancelled$/, 'dbErrors.70dd6c48', 0], // cancel_transfer
   [/^say why the sale is cancelled$/, 'dbErrors.6c0d4e0a', 0], // cancel_counter_sale
@@ -253,6 +256,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^choose two different files$/, 'dbErrors.2b25857e', 0], // merge_patients
   [/^count in boxes or in units$/, 'dbErrors.52e68280', 0], // receive_delivery
   [/^emergency access not found$/, 'dbErrors.cf92dadb', 0], // review_emergency_access
+  [/^the list has too many rows$/, 'dbErrors.0371e135', 0], // import_reference_list
   [/^the treatment needs a name$/, 'dbErrors.36e748b9', 0], // upsert_service
   [/^this patient was sent to (.+?)$/, 'dbErrors.93d04886', 1], // take_patient
   [/^add at least one medicine$/, 'dbErrors.4bef06b3', 0], // add_stock, note_lines, receive_delivery, …
@@ -286,9 +290,11 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^take the vitals first$/, 'dbErrors.55dbbba4', 0], // send_from_triage
   [/^a reason is required$/, 'dbErrors.f33d287e', 0], // void_charge
   [/^department not found$/, 'dbErrors.b86f7a99', 0], // analytics_scope, assign_store_holder, bulk_add_services, …
+  [/^give the list a name$/, 'dbErrors.d6ff72fe', 0], // import_reference_list
   [/^room store not found$/, 'dbErrors.fb0e8bbe', 0], // room_store_summary, save_room_store
   [/^test order not found$/, 'dbErrors.8a617326', 0], // correct_result, record_result
   [/^the lines are a list$/, 'dbErrors.18d283bc', 0], // confirm_receipt
+  [/^the list has no rows$/, 'dbErrors.4f0bcaa5', 0], // import_reference_list
   [/^this bed is not free$/, 'dbErrors.4714e02b', 0], // admit_to_bed
   [/^unknown kind of work$/, 'dbErrors.945df340', 0], // staff_activity_detail
   [/^unknown practitioner$/, 'dbErrors.701c8aca', 0], // create_appointment_inquiry
