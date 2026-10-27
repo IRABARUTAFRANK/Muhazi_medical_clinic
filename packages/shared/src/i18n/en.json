@@ -4406,7 +4406,9 @@
       "inquiry": {
         "approve": "Approve the request of {{name}}?",
         "approveBody": "It becomes a booking and goes to the doctor to accept.",
-        "approveYes": "Yes, approve"
+        "approveYes": "Yes, approve",
+        "reject": "Reject the request of {{name}}?",
+        "rejectYes": "Yes, reject"
       },
       "task": {
         "done": "Mark “{{task}}” as done?",
@@ -4424,7 +4426,10 @@
         "acceptYes": "Yes, accept",
         "noShow": "Mark {{name}} ({{time}}) as not come?",
         "noShowBody": "The booking is closed as a no-show. To see the patient later, book again.",
-        "noShowYes": "Yes, not come"
+        "noShowYes": "Yes, not come",
+        "cancelYes": "Yes, cancel the booking",
+        "decline": "Decline the booking of {{name}}?",
+        "declineYes": "Yes, decline"
       },
       "bed": {
         "discharge": "Discharge {{name}} from {{bed}}?",
@@ -4519,7 +4524,8 @@
       "voidYes": "Yes, cancel the payment",
       "countTitle": "Save your cash count for {{day}}?",
       "countBody": "You counted {{counted}} in all; the difference with the payments is {{diff}}. The manager sees it.",
-      "countYes": "Yes, save the count"
+      "countYes": "Yes, save the count",
+      "voidBodyAsk": "It is taken off the day's total and the amount is owed again on the bill. This cannot be undone."
     },
     "prices": {
       "deleteYes": "Yes, delete",
@@ -4575,7 +4581,7 @@
       "member": "Save the insurance member number of {{name}}?",
       "memberBody": "Member number: {{number}}.",
       "removeCharge": "Remove {{item}} from the bill of {{name}}?",
-      "removeChargeBody": "The line is taken off the bill for good. You will then be asked why.",
+      "removeChargeBody": "The line is taken off the bill for good. Say why below.",
       "removeChargeYes": "Yes, remove",
       "pay": "Take {{amount}} from {{name}} by {{method}}?",
       "payBody": "The payment is recorded under your name with a receipt number. It cannot be undone.",
@@ -4613,10 +4619,10 @@
       "taskDoneBody": "It leaves the nurses' list, recorded under your name.",
       "taskDoneYes": "Yes, it is done",
       "taskNotDone": "Mark “{{task}}” as not done?",
-      "taskNotDoneBody": "You will then be asked why. The task leaves the nurses' list.",
+      "taskNotDoneBody": "The task leaves the nurses' list. Say why below.",
       "taskNotDoneYes": "Yes, not done",
       "taskWithdraw": "Withdraw the task “{{task}}”?",
-      "taskWithdrawBody": "The nurses will no longer see it. You will then be asked why.",
+      "taskWithdrawBody": "The nurses will no longer see it. Say why below.",
       "taskWithdrawYes": "Yes, withdraw",
       "left": "Has {{name}} left the clinic?",
       "leftBody": "The visit is closed and the patient leaves every waiting list. This cannot be undone.",
@@ -4642,7 +4648,7 @@
       "finishBody": "Open test requests stay open; an unpaid bill sends the patient to the cashier. The visit then stays in the patient file.",
       "finishYes": "Yes, finish the visit",
       "returnMedicine": "Take {{item}} back from {{name}}?",
-      "returnMedicineBody": "The hand-over is undone. You will then be asked why.",
+      "returnMedicineBody": "The hand-over is undone. Say why below.",
       "returnMedicineYes": "Yes, take it back",
       "vitalsSendOn": "Send {{name}} to {{desk}}?",
       "vitalsSendBody": "Triage colour: {{level}}. The patient leaves triage and waits at {{desk}}.",
@@ -4975,7 +4981,9 @@
     },
     "result": {
       "seenBody": "It is marked as seen and stays in your results inbox for two days. You can still find it in the visit."
-    }
+    },
+    "reasonLabel": "Reason",
+    "reasonPh": "Say why in a few words"
   },
   "doc": {
     "docNo": "Document no.",
@@ -5207,7 +5215,9 @@
       "payTitle": "Take {{amount}} from {{buyer}} for sale {{number}} by {{method}}?",
       "payBody": "The payment is recorded under your name and a receipt is printed. The buyer then collects the medicines at the pharmacy.",
       "payYes": "Yes, take the payment",
-      "voidSaleBody": "The payment is cancelled ({{reason}}). Sale {{number}} waits for payment again if its medicines were not handed over yet."
+      "voidSaleBody": "The payment is cancelled ({{reason}}). Sale {{number}} waits for payment again if its medicines were not handed over yet.",
+      "voidSaleBodyAsk": "Sale {{number}} waits for payment again if its medicines were not handed over yet.",
+      "cancelSaleBodyAsk": "The sale is cancelled and nothing is handed over."
     }
   },
   "counterSale": {

@@ -267,20 +267,17 @@ export function VisitPage({
   }
 
   const removeCharge = async (id: string, item: string) => {
-    if (
-      !(await confirm({
-        title: t('confirm.visit.removeCharge', { item, name: patientName }),
-        body: t('confirm.visit.removeChargeBody'),
-        confirmLabel: t('confirm.visit.removeChargeYes'),
-        tone: 'danger',
-      }))
-    )
-      return
-    const reason = window.prompt(t('visit.removeReason'))
-    if (!reason) return
+    const r = await confirm({
+      title: t('confirm.visit.removeCharge', { item, name: patientName }),
+      body: t('confirm.visit.removeChargeBody'),
+      input: { label: t('visit.removeReason'), required: true, multiline: true },
+      confirmLabel: t('confirm.visit.removeChargeYes'),
+      tone: 'danger',
+    })
+    if (!r.ok) return
     setActionError(null)
     try {
-      await actions.voidCharge.mutateAsync({ id, reason })
+      await actions.voidCharge.mutateAsync({ id, reason: r.value })
     } catch (e) {
       setActionError(describe(e))
     }

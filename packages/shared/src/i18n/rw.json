@@ -4415,7 +4415,9 @@
       "inquiry": {
         "approve": "Kwemeza ubusabe bwa {{name}}?",
         "approveBody": "Buhinduka gahunda, bukajya kwa muganga ngo ayemere.",
-        "approveYes": "Yego, emeza"
+        "approveYes": "Yego, emeza",
+        "reject": "Wanga ubusabe bwa {{name}}?",
+        "rejectYes": "Yego, anga"
       },
       "task": {
         "done": "Kwemeza ko “{{task}}” byakozwe?",
@@ -4433,7 +4435,10 @@
         "acceptYes": "Yego, emera",
         "noShow": "Kwemeza ko {{name}} ({{time}}) ataje?",
         "noShowBody": "Gahunda irafungwa kuko umurwayi ataje. Kugira ngo azabonwe nyuma, ongera umufatire gahunda.",
-        "noShowYes": "Yego, ntiyaje"
+        "noShowYes": "Yego, ntiyaje",
+        "cancelYes": "Yego, hagarika gahunda",
+        "decline": "Wanga gahunda ya {{name}}?",
+        "declineYes": "Yego, anga"
       },
       "bed": {
         "discharge": "Gusezerera {{name}} kuri {{bed}}?",
@@ -4528,7 +4533,8 @@
       "voidYes": "Yego, hagarika ubwishyu",
       "countTitle": "Kubika uko wabaze amafaranga yakiriwe ku wa {{day}}?",
       "countBody": "Wabaze {{counted}} yose hamwe; ikinyuranyo n’ubwishyu bwakiriwe ni {{diff}}. Umuyobozi arabibona.",
-      "countYes": "Yego, bika ibyo wabaze"
+      "countYes": "Yego, bika ibyo wabaze",
+      "voidBodyAsk": "Bukurwa ku giteranyo cy’umunsi kandi amafaranga asubira kuri fagitire nk’umwenda. Ntibisubirwaho."
     },
     "prices": {
       "deleteYes": "Yego, siba",
@@ -4584,7 +4590,7 @@
       "member": "Kubika nimero y’umunyamuryango ya {{name}}?",
       "memberBody": "Nimero y’umunyamuryango: {{number}}.",
       "removeCharge": "Gukura {{item}} kuri fagitire ya {{name}}?",
-      "removeChargeBody": "Uyu murongo ukurwa kuri fagitire burundu. Uzahita ubazwa impamvu.",
+      "removeChargeBody": "Uyu murongo ukurwa kuri fagitire burundu. Andika impamvu hepfo.",
       "removeChargeYes": "Yego, kuraho",
       "pay": "Kwakira {{amount}} kuri {{name}} hakoreshejwe {{method}}?",
       "payBody": "Ubwishyu bwandikwa mu izina ryawe kandi buhabwa nimero y’inyemezabwishyu. Ntibusubirwaho.",
@@ -4622,10 +4628,10 @@
       "taskDoneBody": "Kiva ku rutonde rw’abaforomo, cyandikwa mu izina ryawe.",
       "taskDoneYes": "Yego, byakozwe",
       "taskNotDone": "Kwemeza ko “{{task}}” bitakozwe?",
-      "taskNotDoneBody": "Uzahita ubazwa impamvu. Igikorwa kiva ku rutonde rw’abaforomo.",
+      "taskNotDoneBody": "Igikorwa kiva ku rutonde rw’abaforomo. Andika impamvu hepfo.",
       "taskNotDoneYes": "Yego, ntibyakozwe",
       "taskWithdraw": "Gukuraho igikorwa “{{task}}”?",
-      "taskWithdrawBody": "Abaforomo ntibazongera kukibona. Uzahita ubazwa impamvu.",
+      "taskWithdrawBody": "Abaforomo ntibazongera kukibona. Andika impamvu hepfo.",
       "taskWithdrawYes": "Yego, kuraho",
       "left": "Ese {{name}} yavuye mu ivuriro?",
       "leftBody": "Kwivuza kurafungwa kandi umurwayi akurwa ku mirongo yose. Ntibisubirwaho.",
@@ -4651,7 +4657,7 @@
       "finishBody": "Ibizamini byasabwe bitarakorwa bikomeza gutegerezwa; fagitire itishyuwe yohereza umurwayi aho bakira ubwishyu. Hanyuma kwivuza kuguma muri dosiye y’umurwayi.",
       "finishYes": "Yego, rangiza kwivuza",
       "returnMedicine": "Kugarura {{item}} yahawe {{name}}?",
-      "returnMedicineBody": "Gutanga umuti biravanwaho. Uzahita ubazwa impamvu.",
+      "returnMedicineBody": "Gutanga umuti biravanwaho. Andika impamvu hepfo.",
       "returnMedicineYes": "Yego, ugarure",
       "vitalsSendOn": "Kohereza {{name}} kuri {{desk}}?",
       "vitalsSendBody": "Ibara ry’ibipimo by’ibanze: {{level}}. Umurwayi ava ku bipimo by’ibanze agategereza kuri {{desk}}.",
@@ -4984,7 +4990,9 @@
     },
     "result": {
       "seenBody": "Cyandikwa ko cyarebwe, kikaguma mu bisubizo byawe byo kureba iminsi ibiri. Uracyashobora kukibona mu kwivuza kw’umurwayi."
-    }
+    },
+    "reasonLabel": "Impamvu",
+    "reasonPh": "Vuga impamvu mu magambo make"
   },
   "doc": {
     "docNo": "Nimero y’inyandiko",
@@ -5216,7 +5224,9 @@
       "payTitle": "Kwakira {{amount}} ya {{buyer}} ku igurisha {{number}} hakoreshejwe {{method}}?",
       "payBody": "Ubwishyu bwandikwa mu izina ryawe kandi inyemezabwishyu iracyapwa. Umuguzi ahita afata imiti kuri farumasi.",
       "payYes": "Yego, akira ubwishyu",
-      "voidSaleBody": "Ubwishyu burahagaritswe ({{reason}}). Igurisha {{number}} ryongera gutegereza kwishyurwa niba imiti yaryo itaratangwa."
+      "voidSaleBody": "Ubwishyu burahagaritswe ({{reason}}). Igurisha {{number}} ryongera gutegereza kwishyurwa niba imiti yaryo itaratangwa.",
+      "voidSaleBodyAsk": "Igurisha {{number}} ryongera gutegereza kwishyurwa niba imiti yaryo itaratangwa.",
+      "cancelSaleBodyAsk": "Igurisha rirahagarikwa kandi nta muti utangwa."
     }
   },
   "counterSale": {

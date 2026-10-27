@@ -53,10 +53,20 @@ export function LeftButton({
       const raw = e instanceof ApiError ? e.serverMessage : m
       const due = /still due \((\d+)/.exec(raw)?.[1]
       if (/say why|still due/.test(raw) && user.role === 'manager') {
-        const reason = window.prompt(t('visits.left.reasonPrompt', { amount: due ?? '' }))
-        if (!reason?.trim()) return
+        const r = await confirm({
+          title: t('visits.left.reasonPrompt', { amount: due ?? '' }),
+          input: {
+            label: t('confirm.reasonLabel'),
+            placeholder: t('confirm.reasonPh'),
+            required: true,
+            multiline: true,
+          },
+          confirmLabel: t('confirm.visit.leftYes'),
+          tone: 'danger',
+        })
+        if (!r.ok) return
         try {
-          await endVisit.mutateAsync({ encounterId, reason })
+          await endVisit.mutateAsync({ encounterId, reason: r.value })
           onDone?.(t('visits.left.done', { name }))
         } catch (e2) {
           setError(e2 instanceof Error ? e2.message : String(e2))

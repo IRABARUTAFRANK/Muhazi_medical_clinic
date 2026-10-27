@@ -141,10 +141,20 @@ export function AppointmentsPanel({
       return
     void run(() => ops.outcome.mutateAsync({ id: a.id, status: 'no_show' }))
   }
-  const cancel = (a: DayAppointment) => {
-    const reason = window.prompt(t('ops.appts.cancelReason', { name: a.name }))
-    if (!reason) return
-    void run(() => ops.outcome.mutateAsync({ id: a.id, status: 'cancelled', reason }))
+  const cancel = async (a: DayAppointment) => {
+    const r = await confirm({
+      title: t('ops.appts.cancelReason', { name: a.name }),
+      input: {
+        label: t('confirm.reasonLabel'),
+        placeholder: t('confirm.reasonPh'),
+        required: true,
+        multiline: true,
+      },
+      confirmLabel: t('confirm.desks.appointment.cancelYes'),
+      tone: 'danger',
+    })
+    if (!r.ok) return
+    void run(() => ops.outcome.mutateAsync({ id: a.id, status: 'cancelled', reason: r.value }))
   }
 
   return (
@@ -231,7 +241,7 @@ export function AppointmentsPanel({
                             variant="tint-coral"
                             aria-label={t('ops.appts.cancel')}
                             title={t('ops.appts.cancel')}
-                            onClick={() => cancel(a)}
+                            onClick={() => void cancel(a)}
                           >
                             <X size={14} aria-hidden="true" />
                           </Button>
@@ -309,19 +319,16 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
   const ops = useDeskOps()
   const confirm = useConfirm()
   const { error, run } = useRun()
-  // asked the same way as on the visit page: first "are you sure", then the reason
+  // asked the same way as on the visit page: "are you sure" and the reason in one box
   const notDone = async (id: string, task: string) => {
-    if (
-      !(await confirm({
-        title: t('confirm.visit.taskNotDone', { task }),
-        body: t('confirm.visit.taskNotDoneBody'),
-        confirmLabel: t('confirm.visit.taskNotDoneYes'),
-        tone: 'danger',
-      }))
-    )
-      return
-    const reason = window.prompt(t('ops.tasks.notDoneWhy'))
-    if (reason) void run(() => ops.cancelTask.mutateAsync({ id, reason }))
+    const r = await confirm({
+      title: t('confirm.visit.taskNotDone', { task }),
+      body: t('confirm.visit.taskNotDoneBody'),
+      input: { label: t('ops.tasks.notDoneWhy'), required: true, multiline: true },
+      confirmLabel: t('confirm.visit.taskNotDoneYes'),
+      tone: 'danger',
+    })
+    if (r.ok) void run(() => ops.cancelTask.mutateAsync({ id, reason: r.value }))
   }
   const overdue = tasks.filter((x) => x.overdue).length
   return (

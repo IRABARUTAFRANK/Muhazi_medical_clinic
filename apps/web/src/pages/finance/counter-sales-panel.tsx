@@ -96,18 +96,16 @@ export function CounterSalesPanel({
   }
 
   const cancel = async (s: CounterSale) => {
-    const reason = window.prompt(t('cashierDesk.counter.cancelWhy'))
-    if (!reason) return
-    if (reason.trim().length < 3) return setError(t('cashierDesk.counter.cancelWhyShort'))
-    if (
-      !(await confirm({
-        title: t('cashierDesk.confirm.cancelSaleTitle', { number: s.number, buyer: buyerOf(s) }),
-        body: t('cashierDesk.confirm.cancelSaleBody', { reason: reason.trim() }),
-        confirmLabel: t('cashierDesk.confirm.cancelSaleYes'),
-        tone: 'danger',
-      }))
-    )
-      return
+    const r = await confirm({
+      title: t('cashierDesk.confirm.cancelSaleTitle', { number: s.number, buyer: buyerOf(s) }),
+      body: t('cashierDesk.confirm.cancelSaleBodyAsk'),
+      input: { label: t('cashierDesk.counter.cancelWhy'), required: true, multiline: true },
+      confirmLabel: t('cashierDesk.confirm.cancelSaleYes'),
+      tone: 'danger',
+    })
+    if (!r.ok) return
+    const reason = r.value
+    if (reason.length < 3) return setError(t('cashierDesk.counter.cancelWhyShort'))
     setError(null)
     try {
       await actions.cancel.mutateAsync({ saleId: s.id, reason })

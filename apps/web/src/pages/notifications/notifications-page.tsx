@@ -129,7 +129,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
     }
   }
   // Asked first; on yes, run as above.
-  const ask = async (options: ConfirmOptions, fn: () => Promise<unknown>) => {
+  const ask = async (options: Omit<ConfirmOptions, 'input'>, fn: () => Promise<unknown>) => {
     if (await confirm(options)) await run(fn)
   }
   const open = (n: Notice) => {
@@ -537,7 +537,7 @@ function NoticePanel({
   const w = word(n)
   const look = lookOf(n)
   const [error, setError] = useState<string | null>(null)
-  const ask = async (options: ConfirmOptions, fn: () => Promise<unknown>) => {
+  const ask = async (options: Omit<ConfirmOptions, 'input'>, fn: () => Promise<unknown>) => {
     if (!(await confirm(options))) return
     setError(null)
     try {

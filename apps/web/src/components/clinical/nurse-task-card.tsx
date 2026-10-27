@@ -51,19 +51,15 @@ export function NurseTaskCard({
     key: 'ops.tasks.withdrawWhy' | 'ops.tasks.notDoneWhy',
   ) => {
     const withdraw = key === 'ops.tasks.withdrawWhy'
-    if (
-      !(await confirm({
-        title: t(withdraw ? 'confirm.visit.taskWithdraw' : 'confirm.visit.taskNotDone', { task }),
-        body: t(withdraw ? 'confirm.visit.taskWithdrawBody' : 'confirm.visit.taskNotDoneBody'),
-        confirmLabel: t(
-          withdraw ? 'confirm.visit.taskWithdrawYes' : 'confirm.visit.taskNotDoneYes',
-        ),
-        tone: 'danger',
-      }))
-    )
-      return
-    const reason = window.prompt(t(key))
-    if (reason) act(() => ops.cancelTask.mutateAsync({ id, reason }))
+    // one box: the question, the reason and the yes button together
+    const r = await confirm({
+      title: t(withdraw ? 'confirm.visit.taskWithdraw' : 'confirm.visit.taskNotDone', { task }),
+      body: t(withdraw ? 'confirm.visit.taskWithdrawBody' : 'confirm.visit.taskNotDoneBody'),
+      input: { label: t(key), required: true, multiline: true },
+      confirmLabel: t(withdraw ? 'confirm.visit.taskWithdrawYes' : 'confirm.visit.taskNotDoneYes'),
+      tone: 'danger',
+    })
+    if (r.ok) act(() => ops.cancelTask.mutateAsync({ id, reason: r.value }))
   }
   const done = async (id: string, task: string) => {
     if (

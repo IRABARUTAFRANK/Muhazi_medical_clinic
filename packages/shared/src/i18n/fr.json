@@ -4406,7 +4406,9 @@
       "inquiry": {
         "approve": "Approuver la demande de {{name}} ?",
         "approveBody": "Elle devient un rendez-vous et part chez le médecin pour acceptation.",
-        "approveYes": "Oui, approuver"
+        "approveYes": "Oui, approuver",
+        "reject": "Refuser la demande de {{name}} ?",
+        "rejectYes": "Oui, refuser"
       },
       "task": {
         "done": "Marquer « {{task}} » comme fait ?",
@@ -4424,7 +4426,10 @@
         "acceptYes": "Oui, accepter",
         "noShow": "Marquer {{name}} ({{time}}) comme absent ?",
         "noShowBody": "Le rendez-vous est clôturé comme absence. Pour voir le patient plus tard, reprenez un rendez-vous.",
-        "noShowYes": "Oui, absent"
+        "noShowYes": "Oui, absent",
+        "cancelYes": "Oui, annuler le rendez-vous",
+        "decline": "Refuser le rendez-vous de {{name}} ?",
+        "declineYes": "Oui, refuser"
       },
       "bed": {
         "discharge": "Faire sortir {{name}} du lit {{bed}} ?",
@@ -4519,7 +4524,8 @@
       "voidYes": "Oui, annuler le paiement",
       "countTitle": "Enregistrer votre comptage de caisse du {{day}} ?",
       "countBody": "Vous avez compté {{counted}} au total ; l'écart avec les paiements est de {{diff}}. Le gérant le voit.",
-      "countYes": "Oui, enregistrer le comptage"
+      "countYes": "Oui, enregistrer le comptage",
+      "voidBodyAsk": "Il est retiré du total du jour et le montant est de nouveau dû sur la facture. Impossible d’annuler."
     },
     "prices": {
       "deleteYes": "Oui, supprimer",
@@ -4575,7 +4581,7 @@
       "member": "Enregistrer le numéro de membre de {{name}} ?",
       "memberBody": "Numéro de membre : {{number}}.",
       "removeCharge": "Retirer {{item}} de la facture de {{name}} ?",
-      "removeChargeBody": "La ligne est retirée définitivement de la facture. On vous demandera ensuite pourquoi.",
+      "removeChargeBody": "La ligne est retirée définitivement de la facture. Indiquez la raison ci-dessous.",
       "removeChargeYes": "Oui, retirer",
       "pay": "Encaisser {{amount}} de {{name}} par {{method}} ?",
       "payBody": "Le paiement est enregistré à votre nom avec un numéro de reçu. Il ne peut pas être annulé.",
@@ -4613,10 +4619,10 @@
       "taskDoneBody": "Elle quitte la liste des infirmières, enregistrée à votre nom.",
       "taskDoneYes": "Oui, c’est fait",
       "taskNotDone": "Marquer « {{task}} » comme non fait ?",
-      "taskNotDoneBody": "On vous demandera ensuite pourquoi. La tâche quitte la liste des infirmières.",
+      "taskNotDoneBody": "La tâche quitte la liste des infirmières. Indiquez la raison ci-dessous.",
       "taskNotDoneYes": "Oui, non fait",
       "taskWithdraw": "Retirer la tâche « {{task}} » ?",
-      "taskWithdrawBody": "Les infirmières ne la verront plus. On vous demandera ensuite pourquoi.",
+      "taskWithdrawBody": "Les infirmières ne la verront plus. Indiquez la raison ci-dessous.",
       "taskWithdrawYes": "Oui, retirer",
       "left": "{{name}} a-t-il quitté la clinique ?",
       "leftBody": "La visite est clôturée et le patient sort de toutes les files. Cela ne peut pas être annulé.",
@@ -4642,7 +4648,7 @@
       "finishBody": "Les examens en cours restent ouverts ; une facture impayée envoie le patient à la caisse. La visite reste ensuite dans le dossier du patient.",
       "finishYes": "Oui, clôturer la visite",
       "returnMedicine": "Reprendre {{item}} de {{name}} ?",
-      "returnMedicineBody": "La remise est annulée. On vous demandera ensuite pourquoi.",
+      "returnMedicineBody": "La remise est annulée. Indiquez la raison ci-dessous.",
       "returnMedicineYes": "Oui, reprendre",
       "vitalsSendOn": "Envoyer {{name}} à {{desk}} ?",
       "vitalsSendBody": "Couleur de triage : {{level}}. Le patient quitte le triage et attend à {{desk}}.",
@@ -4975,7 +4981,9 @@
     },
     "result": {
       "seenBody": "Il est marqué comme vu et reste deux jours dans votre boîte de résultats. Vous le retrouvez toujours dans la visite."
-    }
+    },
+    "reasonLabel": "Motif",
+    "reasonPh": "Indiquez pourquoi en quelques mots"
   },
   "doc": {
     "docNo": "N° du document",
@@ -5207,7 +5215,9 @@
       "payTitle": "Encaisser {{amount}} de {{buyer}} pour la vente {{number}} par {{method}} ?",
       "payBody": "Le paiement est enregistré à votre nom et un reçu est imprimé. L'acheteur retire ensuite les médicaments à la pharmacie.",
       "payYes": "Oui, encaisser",
-      "voidSaleBody": "Le paiement est annulé ({{reason}}). La vente {{number}} attend de nouveau le paiement si ses médicaments n'ont pas encore été remis."
+      "voidSaleBody": "Le paiement est annulé ({{reason}}). La vente {{number}} attend de nouveau le paiement si ses médicaments n'ont pas encore été remis.",
+      "voidSaleBodyAsk": "La vente {{number}} attend de nouveau le paiement si ses médicaments n’ont pas encore été remis.",
+      "cancelSaleBodyAsk": "La vente est annulée et rien n’est remis."
     }
   },
   "counterSale": {

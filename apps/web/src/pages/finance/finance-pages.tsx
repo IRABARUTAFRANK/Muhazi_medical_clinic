@@ -755,27 +755,28 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                                 title={t('finance.cancelPaymentHint')}
                                 aria-label={t('finance.cancelPayment')}
                                 onClick={async () => {
-                                  const reason = window.prompt(t('finance.cancelWhy'))
-                                  if (!reason) return
-                                  if (
-                                    !(await confirm({
-                                      title: t('confirm.finance.voidTitle', {
-                                        amount: formatRwf(p.amount),
-                                        patient:
-                                          p.patient ||
-                                          (p.counterSale ? t('cashierDesk.counter.walkIn') : '—'),
-                                      }),
-                                      body: p.counterSaleId
-                                        ? t('cashierDesk.confirm.voidSaleBody', {
-                                            reason,
-                                            number: p.counterSale ?? '',
-                                          })
-                                        : t('confirm.finance.voidBody', { reason }),
-                                      confirmLabel: t('confirm.finance.voidYes'),
-                                      tone: 'danger',
-                                    }))
-                                  )
-                                    return
+                                  const r = await confirm({
+                                    title: t('confirm.finance.voidTitle', {
+                                      amount: formatRwf(p.amount),
+                                      patient:
+                                        p.patient ||
+                                        (p.counterSale ? t('cashierDesk.counter.walkIn') : '—'),
+                                    }),
+                                    body: p.counterSaleId
+                                      ? t('cashierDesk.confirm.voidSaleBodyAsk', {
+                                          number: p.counterSale ?? '',
+                                        })
+                                      : t('confirm.finance.voidBodyAsk'),
+                                    input: {
+                                      label: t('finance.cancelWhy'),
+                                      required: true,
+                                      multiline: true,
+                                    },
+                                    confirmLabel: t('confirm.finance.voidYes'),
+                                    tone: 'danger',
+                                  })
+                                  if (!r.ok) return
+                                  const reason = r.value
                                   setCashError(null)
                                   cash.voidPayment
                                     .mutateAsync({ id: p.id, reason })

@@ -64,6 +64,7 @@ export function InquiriesPanel({
   const { t } = useTranslation()
   const { data: inquiries = [] } = useOpenInquiries()
   const actions = useHomeActions()
+  const confirm = useConfirm()
   const [open, setOpenState] = useState<string | null>(null)
   // Leaving a booking (Cancel, another Book, booked, rejected) also closes its new-file form.
   const setOpen = (id: string | null) => {
@@ -74,11 +75,21 @@ export function InquiriesPanel({
   const [done, setDone] = useState<string | null>(null)
 
   const reject = async (q: OpenInquiry) => {
-    const reason = window.prompt(t('ops.inquiries.rejectReason', { name: q.name }))
-    if (!reason) return
+    const r = await confirm({
+      title: t('ops.inquiries.rejectReason', { name: q.name }),
+      input: {
+        label: t('confirm.reasonLabel'),
+        placeholder: t('confirm.reasonPh'),
+        required: true,
+        multiline: true,
+      },
+      confirmLabel: t('confirm.desks.inquiry.rejectYes'),
+      tone: 'danger',
+    })
+    if (!r.ok) return
     setError(null)
     try {
-      await actions.rejectInquiry.mutateAsync({ id: q.id, reason })
+      await actions.rejectInquiry.mutateAsync({ id: q.id, reason: r.value })
       // the rejected request was the one being booked: its new-file form closes too
       if (open === q.id) setOpen(null)
     } catch (e) {

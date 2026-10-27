@@ -348,12 +348,22 @@ function ReceptionistPanels({ data, onError }: PanelProps) {
       onError(t('home.inquiryApproveFailed', { message: describe(e) }))
     }
   }
-  const reject = async (id: string) => {
-    const reason = window.prompt(t('home.inquiryRejectReason'))
-    if (!reason) return
+  const reject = async (id: string, name: string) => {
+    const r = await confirm({
+      title: t('confirm.desks.inquiry.reject', { name }),
+      input: {
+        label: t('home.inquiryRejectReason'),
+        placeholder: t('confirm.reasonPh'),
+        required: true,
+        multiline: true,
+      },
+      confirmLabel: t('confirm.desks.inquiry.rejectYes'),
+      tone: 'danger',
+    })
+    if (!r.ok) return
     onError(null)
     try {
-      await actions.rejectInquiry.mutateAsync({ id, reason })
+      await actions.rejectInquiry.mutateAsync({ id, reason: r.value })
     } catch (e) {
       onError(describe(e))
     }
@@ -433,7 +443,7 @@ function ReceptionistPanels({ data, onError }: PanelProps) {
                       variant="tint-coral"
                       size="sm"
                       disabled={actions.rejectInquiry.isPending}
-                      onClick={() => void reject(q.id)}
+                      onClick={() => void reject(q.id, q.name)}
                     >
                       <X size={14} aria-hidden="true" />
                       {t('common.reject')}
@@ -701,12 +711,22 @@ export function ToAcceptPanel({
       onError(describe(e))
     }
   }
-  const decline = async (id: string) => {
-    const reason = window.prompt(t('home.declineReason'))
-    if (!reason) return
+  const decline = async (id: string, name: string) => {
+    const r = await confirm({
+      title: t('confirm.desks.appointment.decline', { name }),
+      input: {
+        label: t('home.declineReason'),
+        placeholder: t('confirm.reasonPh'),
+        required: true,
+        multiline: true,
+      },
+      confirmLabel: t('confirm.desks.appointment.declineYes'),
+      tone: 'danger',
+    })
+    if (!r.ok) return
     onError(null)
     try {
-      await actions.declineAppointment.mutateAsync({ id, reason })
+      await actions.declineAppointment.mutateAsync({ id, reason: r.value })
     } catch (e) {
       onError(describe(e))
     }
@@ -757,7 +777,7 @@ export function ToAcceptPanel({
                     <Clock size={14} aria-hidden="true" />
                     {t('home.otherTime')}
                   </Button>
-                  <Button variant="tint-coral" size="sm" onClick={() => void decline(q.id)}>
+                  <Button variant="tint-coral" size="sm" onClick={() => void decline(q.id, q.name)}>
                     <X size={14} aria-hidden="true" />
                     {t('common.decline')}
                   </Button>
