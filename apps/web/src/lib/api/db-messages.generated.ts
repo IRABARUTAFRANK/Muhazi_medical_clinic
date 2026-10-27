@@ -76,6 +76,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the units on the way belong to their transfer note$/, 'dbErrors.810b5f7d', 0], // assert_store_work
   [/^this medicine is no longer waiting at the pharmacy$/, 'dbErrors.fc53c552', 0], // rx_not_given
   [/^a patient with this national ID already exists: (.+?)$/, 'dbErrors.e8755b51', 1], // register_patient, register_patient_file
+  [/^only the manager sees the bookings of a colleague$/, 'dbErrors.80d3e9fe', 0], // my_bookings
   [/^register the patient first, then mark the arrival$/, 'dbErrors.a1aef429', 0], // appointment_arrived
   [/^the arm circumference must be between 5 and 60 cm$/, 'dbErrors.936ac589', 0], // record_vitals
   [/^the discount on this treatment may not exceed %(.+?)$/, 'dbErrors.029b1747', 1], // add_charge_internal
@@ -124,6 +125,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^call reception, the nurses or a colleague$/, 'dbErrors.35c23da4', 0], // call_next
   [/^only the pharmacy confirms what came back$/, 'dbErrors.56d945ce', 0], // confirm_receipt
   [/^signed out after (.+?) hours without activity$/, 'dbErrors.59565a6b', 1], // check_request
+  [/^the end of the period is before its start$/, 'dbErrors.93857009', 0], // my_bookings
   [/^the weight must be between 0\.3 and 350 kg$/, 'dbErrors.7028b3a6', 0], // record_vitals
   [/^this appointment can no longer be changed$/, 'dbErrors.87b51b7d', 0], // set_appointment_outcome
   [/^a category with this name already exists$/, 'dbErrors.af608345', 0], // save_category

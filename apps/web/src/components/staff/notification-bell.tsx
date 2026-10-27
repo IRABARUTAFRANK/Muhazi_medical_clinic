@@ -212,7 +212,11 @@ export function NotificationBell({ user }: { user: StaffUser }) {
                     </span>
                   </button>
                   {/* a booking to accept is answered here (Accept / Another time / Decline) */}
-                  <NoticeBookingAnswer notice={n} className="px-3 pb-2.5 pl-7" />
+                  <NoticeBookingAnswer
+                    notice={n}
+                    className="px-3 pb-2.5 pl-7"
+                    onLeave={() => setOpen(false)}
+                  />
                 </div>
               )
             })}

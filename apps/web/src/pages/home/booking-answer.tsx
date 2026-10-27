@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Check, Clock, X } from 'lucide-react'
+import { CalendarCheck, Check, Clock, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDate, formatTime } from '@mmc/shared'
-import { Button } from '@/components/ui/button'
-import { controlClass, labelClass } from '@/components/ui/field'
+import { formatDate, formatTime, isoDate } from '@mmc/shared'
+import { Button, actionLink } from '@/components/ui/button'
+import { StaffLink } from '@/components/staff/staff-link'
+import { Field } from '@/components/ui/field'
+import { TimeSelect } from '@/components/ui/time-select'
 import { Reveal } from '@/components/ui/reveal'
 import { useHomeActions, useHomeSummary, type HomeToAccept } from '@/lib/api/home'
 import { useNotificationActions, type Notice } from '@/lib/api/notifications'
@@ -11,14 +13,15 @@ import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
-// "24/10/2026 10:30" for a datetime-local value
+// "24/10/2026 10:30" for a "yyyy-mm-ddThh:mm" value
 const at = (v: string) => `${formatDate(new Date(v))} ${formatTime(new Date(v))}`
-// the datetime-local value of a booked time
-const localInput = (iso?: string | null) => {
+const pad = (n: number) => String(n).padStart(2, '0')
+// the day and the time of a booked time, for the day field and the time list
+const dayOf = (iso?: string | null) => (iso ? isoDate(new Date(iso)) : '')
+const timeOf = (iso?: string | null) => {
   if (!iso) return ''
   const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 /**
@@ -30,8 +33,11 @@ export function BookingAnswer({
   booking: q,
   onError,
   onAnswered,
+  slotMinutes,
 }: {
   booking: HomeToAccept
+  /** The practitioner's booking length: the steps of the time list (15 minutes by default). */
+  slotMinutes?: number
   onError: (message: string | null) => void
   /** After the answer was saved (the notice is then marked read). */
   onAnswered?: () => void
@@ -40,7 +46,10 @@ export function BookingAnswer({
   const actions = useHomeActions()
   const confirm = useConfirm()
   const [moving, setMoving] = useState(false)
+  // "Another time": a day and a time picked from a list (not the browser's clock picker)
+  const [newDay, setNewDay] = useState('')
   const [newTime, setNewTime] = useState('')
+  const newAt = newDay && newTime ? `${newDay}T${newTime}` : ''
   const busy = actions.acceptAppointment.isPending || actions.declineAppointment.isPending
 
   const accept = async (startsAt?: string) => {
@@ -103,7 +112,8 @@ export function BookingAnswer({
           disabled={busy}
           onClick={() => {
             setMoving(!moving)
-            setNewTime(localInput(q.startsAt))
+            setNewDay(dayOf(q.startsAt))
+            setNewTime(timeOf(q.startsAt))
           }}
         >
           <Clock size={14} aria-hidden="true" />
@@ -117,22 +127,26 @@ export function BookingAnswer({
       {moving && (
         <Reveal focus block="nearest" className="basis-full">
           <span className="flex flex-wrap items-end gap-2">
-            <label className={labelClass}>
-              {t('home.newTime')}
-              <input
-                type="datetime-local"
-                step={300}
-                value={newTime}
-                onChange={(e) => setNewTime(e.target.value)}
-                className={controlClass}
-              />
-            </label>
+            <Field
+              label={t('ops.inquiries.day')}
+              type="date"
+              value={newDay}
+              min={isoDate(new Date())}
+              onChange={(e) => setNewDay(e.target.value)}
+            />
+            <TimeSelect
+              label={t('home.newTime')}
+              value={newTime}
+              onChange={setNewTime}
+              step={slotMinutes ?? 15}
+              day={newDay}
+            />
             <Button
               variant="success"
               size="sm"
               className="mb-0.5"
-              disabled={!newTime || busy}
-              onClick={() => void accept(newTime)}
+              disabled={!newAt || busy}
+              onClick={() => void accept(newAt)}
             >
               <Check size={14} aria-hidden="true" />
               {t('home.acceptAt')}
@@ -144,33 +158,50 @@ export function BookingAnswer({
   )
 }
 
+/** "See all my bookings": the person's own bookings page (/app/my-bookings). */
+export function MyBookingsLink({ onClick }: { onClick?: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <StaffLink to="/app/my-bookings" className={actionLink} onClick={onClick}>
+      <CalendarCheck size={14} aria-hidden="true" />
+      {t('myBookings.seeAll')}
+    </StaffLink>
+  )
+}
+
 /**
  * A "Booking to accept" notice answered where it is read: the same three answers while the
  * booking still waits for this practitioner (it is in their "Bookings to accept"); once
- * answered, the notice is marked read (the database then removes it).
+ * answered, the notice is marked read (the database then removes it). "See all my bookings"
+ * leads to the person's own bookings page (`onLeave` closes the bell's list on the way).
  */
 export function NoticeBookingAnswer({
   notice: n,
   className,
+  onLeave,
 }: {
   notice: Notice
   className?: string
+  onLeave?: () => void
 }) {
   const id = n.kind === 'to_accept' ? (n.params?.appointment ?? null) : null
   const { data } = useHomeSummary(null, { enabled: !!id })
   const notices = useNotificationActions()
   const [error, setError] = useState<string | null>(null)
+  if (n.kind !== 'to_accept') return null
   const booking = id ? data?.toAccept.find((x) => x.id === id) : undefined
-  if (!booking) return null
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      <BookingAnswer
-        booking={booking}
-        onError={setError}
-        onAnswered={() => {
-          if (!n.read) notices.markRead.mutate([n.id])
-        }}
-      />
+      {booking && (
+        <BookingAnswer
+          booking={booking}
+          onError={setError}
+          onAnswered={() => {
+            if (!n.read) notices.markRead.mutate([n.id])
+          }}
+        />
+      )}
+      <MyBookingsLink onClick={onLeave} />
       {error && (
         <p
           role="alert"

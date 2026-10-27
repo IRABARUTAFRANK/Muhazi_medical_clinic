@@ -44,6 +44,7 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { useHomeActions, useHomeSummary, type HomeBed, type HomeSummary } from '@/lib/api/home'
 import { focusAttr, useFocusFirst } from '@/lib/notice-focus'
 import { FOCUS_PANEL } from '@/lib/notice-target'
+import { navForUser } from '@/lib/nav'
 import { BookingAnswer } from './booking-answer'
 import { useTakePatient } from '@/lib/api/visits'
 import { useConfirm } from '@/lib/confirm'
@@ -676,6 +677,9 @@ export function ToAcceptPanel({
 }) {
   const { t } = useTranslation()
   const rows = useFocusFirst(items, 'to_accept')
+  // "See all my bookings" for whoever has the page in their menu (those who keep a calendar)
+  const user = useSession((s) => s.user)
+  const seeAll = !!user && navForUser(user).some((n) => n.to === '/app/my-bookings')
   return (
     <Panel
       i={4}
@@ -684,6 +688,8 @@ export function ToAcceptPanel({
       tint="amber"
       title={t('home.inquiriesToAccept')}
       right={String(rows.length)}
+      to={seeAll ? '/app/my-bookings' : undefined}
+      toLabel={t('myBookings.seeAll')}
     >
       {rows.length === 0 && <Empty>{t('home.nothingToAccept')}</Empty>}
       <ShownList items={rows} step={5}>

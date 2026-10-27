@@ -88,6 +88,8 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
   { id: 'appointments', labelKey: 'nav.bookings', icon: 'calendar', to: '/app/appointments' },
   { id: 'calendar', labelKey: 'nav.doctorCalendars', icon: 'calendar-days', to: '/app/calendar' },
+  // the bookings made with the manager themself (they keep a calendar too, 0094)
+  { id: 'my-bookings', labelKey: 'nav.myBookings', icon: 'calendar-check', to: '/app/my-bookings' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
   { id: 'lab', labelKey: 'nav.worklist', icon: 'flask-conical', to: '/app/lab' },
   { id: 'bills', labelKey: 'nav.bills', icon: 'wallet', to: '/app/bills' },
@@ -142,6 +144,20 @@ const CALENDAR: NavItem = {
   labelKey: 'nav.calendar',
   icon: 'calendar-days',
   to: '/app/calendar',
+}
+/** The bookings made with the person (to answer, coming, earlier): everyone who keeps a
+ *  calendar, right after Calendar. */
+const MY_BOOKINGS: NavItem = {
+  id: 'my-bookings',
+  labelKey: 'nav.myBookings',
+  icon: 'calendar-check',
+  to: '/app/my-bookings',
+}
+/** My bookings right after the calendar entry, when the menu has one. */
+const withMyBookings = (items: NavItem[]): NavItem[] => {
+  const at = items.findIndex((n) => n.to === '/app/calendar')
+  if (at < 0 || items.some((n) => n.to === MY_BOOKINGS.to)) return items
+  return [...items.slice(0, at + 1), MY_BOOKINGS, ...items.slice(at + 1)]
 }
 /** Everyone in the clinic now, by desk. */
 const IN_CLINIC: NavItem = {
@@ -378,7 +394,9 @@ const withMyStore = (user: StaffUser, items: NavItem[]): NavItem[] =>
     ? items
     : [...items.slice(0, -2), MY_STORE, ...items.slice(-2)]
 
-const navForStaff = (user: StaffUser): NavItem[] =>
+const navForStaff = (user: StaffUser): NavItem[] => withMyBookings(roleNav(user))
+
+const roleNav = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
     ? MANAGER_NAV
     : user.role === 'receptionist'

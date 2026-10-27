@@ -108,7 +108,8 @@
       "stock": "Stock",
       "manage": "Management",
       "inbox": "Inbox"
-    }
+    },
+    "myBookings": "My bookings"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -6584,6 +6585,7 @@
     "52464355": "There is no open pharmacy store to send it to.",
     "67568016": "this category still has {{p1}} treatment(s): move them to another category first",
     "75188350": "The category was not found.",
+    "93857009": "The end of the period is before its start.",
     "00523f7c": "This appointment was not found or is not waiting for the doctor.",
     "00a8d6e8": "Only the pharmacy (or the manager) can cancel a transfer note it sent.",
     "012c5edf": "a medicine on a posted bill is taken back by the pharmacist or the manager",
@@ -6901,7 +6903,8 @@
     "dd744cc3": "Give the date the list is used from.",
     "0371e135": "The list has too many rows (20,000 at most).",
     "d6ff72fe": "Give the list a name.",
-    "4f0bcaa5": "The list has no rows."
+    "4f0bcaa5": "The list has no rows.",
+    "80d3e9fe": "Only the manager sees the bookings of a colleague."
   },
   "panel": {
     "close": "Close",
@@ -7011,5 +7014,38 @@
     "receiveAllHint": "Everything on the note arrived: confirm it in one click. A difference: open the note.",
     "notOnList": "Not on the current list",
     "notOnListHint": "The current official list no longer has this medicine: insurers that follow the list have no price for it."
+  },
+  "myBookings": {
+    "title": "My bookings",
+    "lead": "The bookings made with you: answer the new ones, see what is coming and what happened.",
+    "myCalendar": "My calendar",
+    "needsUpdate": "This page needs the database update. Until then, answer your bookings from Home or from the notice.",
+    "tiles": {
+      "toAnswer": "To answer",
+      "today": "Today",
+      "week": "This week",
+      "closed": "Declined or cancelled"
+    },
+    "units": {
+      "booked": "booked",
+      "last30": "last 30 days"
+    },
+    "toAnswer": "To answer",
+    "nothingToAnswer": "No booking is waiting for your answer.",
+    "bookedBy": "Booked by {{name}}",
+    "coming": "Coming (next 3 weeks)",
+    "comingNote_one": "{{count}} booking",
+    "comingNote_other": "{{count}} bookings",
+    "nothingComing": "No accepted booking in the next 3 weeks.",
+    "earlier": "Earlier, declined and cancelled",
+    "nothingEarlier": "Nothing in the last 30 days.",
+    "openVisit": "Open the visit",
+    "declineReason": "Reason given",
+    "step": {
+      "requested": "Requested"
+    },
+    "history": "History of the booking",
+    "movedTo": "moved to {{when}}",
+    "seeAll": "See all my bookings"
   }
 }

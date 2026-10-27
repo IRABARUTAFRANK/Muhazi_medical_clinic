@@ -108,7 +108,8 @@
       "stock": "Stock",
       "manage": "Gestion",
       "inbox": "Boîte de réception"
-    }
+    },
+    "myBookings": "Mes rendez-vous"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -6584,6 +6585,7 @@
     "52464355": "Il n’y a aucun stock de pharmacie ouvert où l’envoyer.",
     "67568016": "Cette catégorie contient encore {{p1}} service(s) : déplacez-les d’abord dans une autre catégorie.",
     "75188350": "La catégorie est introuvable.",
+    "93857009": "La fin de la période est avant son début.",
     "00523f7c": "Ce rendez-vous est introuvable ou n’attend pas le médecin.",
     "00a8d6e8": "Seule la pharmacie (ou le responsable) peut annuler un bon de transfert qu’elle a envoyé.",
     "012c5edf": "Un médicament figurant sur une facture validée ne peut être repris que par le pharmacien ou le gestionnaire.",
@@ -6901,7 +6903,8 @@
     "dd744cc3": "Indiquez la date à partir de laquelle la liste s’applique.",
     "0371e135": "La liste a trop de lignes (20 000 au plus).",
     "d6ff72fe": "Donnez un nom à la liste.",
-    "4f0bcaa5": "La liste n’a aucune ligne."
+    "4f0bcaa5": "La liste n’a aucune ligne.",
+    "80d3e9fe": "Seul le gestionnaire voit les rendez-vous d’un collègue."
   },
   "panel": {
     "close": "Fermer",
@@ -7011,5 +7014,38 @@
     "receiveAllHint": "Tout ce qui est sur le bon est arrivé : confirmez en un clic. Une différence : ouvrez le bon.",
     "notOnList": "Pas sur la liste actuelle",
     "notOnListHint": "La liste officielle actuelle n’a plus ce médicament : les assureurs qui suivent la liste n’ont pas de prix pour lui."
+  },
+  "myBookings": {
+    "title": "Mes rendez-vous",
+    "lead": "Les rendez-vous pris avec vous : répondez aux nouveaux, voyez ceux à venir et ceux passés.",
+    "myCalendar": "Mon agenda",
+    "needsUpdate": "Cette page attend la mise à jour de la base de données. En attendant, répondez à vos rendez-vous depuis l’Accueil ou depuis la notification.",
+    "tiles": {
+      "toAnswer": "À répondre",
+      "today": "Aujourd’hui",
+      "week": "Cette semaine",
+      "closed": "Refusés ou annulés"
+    },
+    "units": {
+      "booked": "prévus",
+      "last30": "30 derniers jours"
+    },
+    "toAnswer": "À répondre",
+    "nothingToAnswer": "Aucun rendez-vous n’attend votre réponse.",
+    "bookedBy": "Pris par {{name}}",
+    "coming": "À venir (3 prochaines semaines)",
+    "comingNote_one": "{{count}} rendez-vous",
+    "comingNote_other": "{{count}} rendez-vous",
+    "nothingComing": "Aucun rendez-vous accepté dans les 3 prochaines semaines.",
+    "earlier": "Passés, refusés et annulés",
+    "nothingEarlier": "Rien ces 30 derniers jours.",
+    "openVisit": "Ouvrir la visite",
+    "declineReason": "Motif donné",
+    "step": {
+      "requested": "Demandé"
+    },
+    "history": "Historique du rendez-vous",
+    "movedTo": "déplacé au {{when}}",
+    "seeAll": "Voir tous mes rendez-vous"
   }
 }

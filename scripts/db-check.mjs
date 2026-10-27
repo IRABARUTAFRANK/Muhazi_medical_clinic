@@ -12518,6 +12518,64 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0099 my bookings
+const t99 = {}
+await step('0099 A: the nurse lists her own bookings, waiting ones first to answer', async () => {
+  await as(staff.receptionist)
+  const r = (
+    await one(
+      `select register_patient_file('Mukeshimana', 'My Bookings', 'female', null, 30, null) as r`,
+    )
+  ).r
+  t99.appt = (
+    await one(
+      `select book_appointment($1, $2, date_trunc('day', now()) + interval '2 days 10 hours', 'Wound check') as id`,
+      [r.patient_id, staff.nurse],
+    )
+  ).id
+  await as(staff.nurse)
+  const mine = (await one(`select my_bookings() as j`)).j
+  await asAdmin()
+  const row = mine.rows.find((x) => x.id === t99.appt)
+  if (mine.userId !== staff.nurse || !row) throw new Error(JSON.stringify(mine).slice(0, 300))
+  if (
+    row.status !== 'approved' ||
+    row.reason !== 'Wound check' ||
+    row.name !== 'Mukeshimana My Bookings'
+  )
+    throw new Error(JSON.stringify(row))
+  if (!row.bookedBy || row.history.length < 1 || row.history.at(-1).status !== 'approved')
+    throw new Error(JSON.stringify(row.history))
+  return `${mine.rows.length} rows; waiting, booked by ${row.bookedBy}; ${row.history.length} history steps`
+})
+await step('0099 B: accepted at another time: confirmed, the move in its history', async () => {
+  await as(staff.nurse)
+  await db.query(
+    `select accept_appointment($1, date_trunc('day', now()) + interval '2 days 11 hours')`,
+    [t99.appt],
+  )
+  const mine = (await one(`select my_bookings(current_date - 1, current_date + 21) as j`)).j
+  await asAdmin()
+  const row = mine.rows.find((x) => x.id === t99.appt)
+  if (!row || row.status !== 'confirmed' || !row.acceptedBy) throw new Error(JSON.stringify(row))
+  const moved = row.history.find((h) => h.moved)
+  if (!moved || moved.status !== 'confirmed') throw new Error(JSON.stringify(row.history))
+  return `confirmed by ${row.acceptedBy}; history: ${row.history.map((h) => h.status + (h.moved ? ' (moved)' : '')).join(' → ')}`
+})
+await step('0099 C: the manager sees a colleague’s bookings; others do not', async () => {
+  await as(staff.manager)
+  const seen = (await one(`select my_bookings(null, null, $1) as j`, [staff.nurse])).j
+  await asAdmin()
+  const doctor = await codeAs(staff.doctor, `select my_bookings(null, null, $1)`, [staff.nurse])
+  const desk = await codeAs(staff.receptionist, `select my_bookings()`)
+  const backwards = await codeAs(staff.nurse, `select my_bookings(current_date, current_date - 1)`)
+  if (!seen.rows.some((x) => x.id === t99.appt) || seen.userId !== staff.nurse)
+    throw new Error('the manager does not see the nurse’s booking')
+  if (doctor !== '42501' || desk !== '42501' || backwards !== '22023')
+    throw new Error(JSON.stringify({ doctor, desk, backwards }))
+  return 'manager sees it; a doctor and reception refused; a backwards period refused'
+})
+
 finish()
 
 function finish() {

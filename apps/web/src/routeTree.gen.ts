@@ -23,6 +23,7 @@ import { Route as AppChangePinRouteImport } from './routes/app/change-pin'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 import { Route as AppHistoryRouteImport } from './routes/app/history'
 import { Route as AppLabRouteImport } from './routes/app/lab'
+import { Route as AppMyBookingsRouteImport } from './routes/app/my-bookings'
 import { Route as AppNotificationsRouteImport } from './routes/app/notifications'
 import { Route as AppPatientRouteImport } from './routes/app/patient'
 import { Route as AppPatientsRouteImport } from './routes/app/patients'
@@ -108,6 +109,11 @@ const AppHistoryRoute = AppHistoryRouteImport.update({
 const AppLabRoute = AppLabRouteImport.update({
   id: '/lab',
   path: '/lab',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMyBookingsRoute = AppMyBookingsRouteImport.update({
+  id: '/my-bookings',
+  path: '/my-bookings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/history': typeof AppHistoryRoute
   '/app/lab': typeof AppLabRoute
+  '/app/my-bookings': typeof AppMyBookingsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
@@ -236,6 +243,7 @@ export interface FileRoutesByTo {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/history': typeof AppHistoryRoute
   '/app/lab': typeof AppLabRoute
+  '/app/my-bookings': typeof AppMyBookingsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
@@ -269,6 +277,7 @@ export interface FileRoutesById {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/history': typeof AppHistoryRoute
   '/app/lab': typeof AppLabRoute
+  '/app/my-bookings': typeof AppMyBookingsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/patients': typeof AppPatientsRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/history'
     | '/app/lab'
+    | '/app/my-bookings'
     | '/app/notifications'
     | '/app/patient'
     | '/app/patients'
@@ -334,6 +344,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/history'
     | '/app/lab'
+    | '/app/my-bookings'
     | '/app/notifications'
     | '/app/patient'
     | '/app/patients'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/history'
     | '/app/lab'
+    | '/app/my-bookings'
     | '/app/notifications'
     | '/app/patient'
     | '/app/patients'
@@ -490,6 +502,13 @@ declare module '@tanstack/react-router' {
       path: '/lab'
       fullPath: '/app/lab'
       preLoaderRoute: typeof AppLabRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/my-bookings': {
+      id: '/app/my-bookings'
+      path: '/my-bookings'
+      fullPath: '/app/my-bookings'
+      preLoaderRoute: typeof AppMyBookingsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/notifications': {
@@ -617,6 +636,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppHistoryRoute: typeof AppHistoryRoute
   AppLabRoute: typeof AppLabRoute
+  AppMyBookingsRoute: typeof AppMyBookingsRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPatientRoute: typeof AppPatientRoute
   AppPatientsRoute: typeof AppPatientsRoute
@@ -646,6 +666,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppHistoryRoute: AppHistoryRoute,
   AppLabRoute: AppLabRoute,
+  AppMyBookingsRoute: AppMyBookingsRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPatientRoute: AppPatientRoute,
   AppPatientsRoute: AppPatientsRoute,

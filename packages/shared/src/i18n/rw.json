@@ -117,7 +117,8 @@
       "stock": "Ububiko",
       "manage": "Ubuyobozi",
       "inbox": "Ubutumwa"
-    }
+    },
+    "myBookings": "Gahunda zanjye"
   },
   "roles": {
     "receptionist": "Umwakiranyi",
@@ -6593,6 +6594,7 @@
     "52464355": "Nta bubiko bwa farumasi bufunguye bwo kubisubizamo.",
     "67568016": "Iki cyiciro kiracyarimo serivisi {{p1}}: banza uzimurire mu kindi cyiciro.",
     "75188350": "Icyiciro nticyabonetse.",
+    "93857009": "Iherezo ry’igihe riri mbere y’intangiriro yacyo.",
     "00523f7c": "Iyi gahunda ntiyabonetse cyangwa ntitegereje muganga.",
     "00a8d6e8": "Farumasi (cyangwa umuyobozi) ni yo yonyine ishobora guhagarika urupapuro rwo kohereza yohereje.",
     "012c5edf": "Umuti uri kuri fagitire yemejwe usubizwa n’umufarumasiye cyangwa umuyobozi gusa.",
@@ -6910,7 +6912,8 @@
     "dd744cc3": "Andika itariki urutonde ruzatangira gukoreshwa.",
     "0371e135": "Urutonde rufite imirongo myinshi cyane (ntirugomba kurenza 20.000).",
     "d6ff72fe": "Ha urutonde izina.",
-    "4f0bcaa5": "Urutonde nta murongo rufite."
+    "4f0bcaa5": "Urutonde nta murongo rufite.",
+    "80d3e9fe": "Umuyobozi wenyine ni we ureba gahunda za mugenzi wawe."
   },
   "panel": {
     "close": "Funga",
@@ -7020,5 +7023,38 @@
     "receiveAllHint": "Ibiri ku rupapuro rwo kohereza byose byageze: emeza ukanze rimwe. Hari ikinyuranyo: fungura urupapuro.",
     "notOnList": "Ntiri ku rutonde rukoreshwa",
     "notOnListHint": "Urutonde rwemewe rukoreshwa ntirukigira uyu muti: ibigo by’ubwishingizi bikurikiza urutonde nta giciro bifite cyawo."
+  },
+  "myBookings": {
+    "title": "Gahunda zanjye",
+    "lead": "Gahunda zafashwe kuri wowe: subiza inshya, reba iziteganyijwe n’izashize.",
+    "myCalendar": "Ingengabihe yanjye",
+    "needsUpdate": "Iyi paji itegereje ivugurura rya sisitemu. Kugeza icyo gihe, subiza gahunda zawe uhereye Ahabanza cyangwa ku butumwa.",
+    "tiles": {
+      "toAnswer": "Izo gusubiza",
+      "today": "Uyu munsi",
+      "week": "Iki cyumweru",
+      "closed": "Izanzwe cyangwa izahagaritswe"
+    },
+    "units": {
+      "booked": "ziteganyijwe",
+      "last30": "iminsi 30 ishize"
+    },
+    "toAnswer": "Izo gusubiza",
+    "nothingToAnswer": "Nta gahunda itegereje igisubizo cyawe.",
+    "bookedBy": "Yafashwe na {{name}}",
+    "coming": "Iziteganyijwe (ibyumweru 3 biri imbere)",
+    "comingNote_one": "Gahunda {{count}}",
+    "comingNote_other": "Gahunda {{count}}",
+    "nothingComing": "Nta gahunda yemejwe mu byumweru 3 biri imbere.",
+    "earlier": "Izashize, izanzwe n’izahagaritswe",
+    "nothingEarlier": "Nta na kimwe mu minsi 30 ishize.",
+    "openVisit": "Fungura kwivuza",
+    "declineReason": "Impamvu yatanzwe",
+    "step": {
+      "requested": "Yasabwe"
+    },
+    "history": "Amateka ya gahunda",
+    "movedTo": "yimuriwe ku wa {{when}}",
+    "seeAll": "Reba gahunda zanjye zose"
   }
 }
