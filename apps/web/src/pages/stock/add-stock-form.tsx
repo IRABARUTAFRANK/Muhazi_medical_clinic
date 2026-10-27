@@ -139,8 +139,9 @@ export function AddStockForm({
   }
   const pick = (key: number, value: string) => {
     const it = items.find((i) => i.id === value)
-    const r = value.startsWith('ref:') ? reference.find((x) => x.code === value.slice(4)) : null
-    const price = it?.sellingPrice ?? r?.price ?? null
+    // The official list's price is what insurers pay, not the clinic's cash price (owner's
+    // decision): a medicine new from the list starts with an empty selling price to fill in.
+    const price = it?.sellingPrice ?? null
     set(key, {
       pick: value,
       sellPrice: price != null ? String(price) : '',
@@ -389,7 +390,12 @@ export function AddStockForm({
                   </div>
                 )}
                 {r && (
-                  <p className="text-ink-2 m-0 text-[12px]">{t('stockDelivery.newFromList')}</p>
+                  <p className="text-ink-2 m-0 text-[12px]">
+                    {t('stockDelivery.newFromList')}
+                    {r.price != null && (
+                      <> · {t('stockPage.add.listTariff', { price: formatRwf(r.price) })}</>
+                    )}
+                  </p>
                 )}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <Field

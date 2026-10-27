@@ -7001,7 +7001,8 @@
         "batch": "Indiquez le numéro de lot écrit sur la boîte.",
         "boxes": "Indiquez le nombre de boîtes et les unités par boîte."
       },
-      "batchPh": "comme écrit sur la boîte"
+      "batchPh": "comme écrit sur la boîte",
+      "listTariff": "tarif officiel {{price}} (ce que paient les assureurs) : fixez votre prix de vente au comptant ci-dessous"
     },
     "received": "Stock reçu",
     "salesByItem": "Ventes par article",

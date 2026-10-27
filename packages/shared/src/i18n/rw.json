@@ -7010,7 +7010,8 @@
         "batch": "Andika nimero ya lot iri ku gakarito.",
         "boxes": "Andika umubare w’udukarito n’ibice biri mu gakarito kamwe."
       },
-      "batchPh": "uko yanditse ku gakarito"
+      "batchPh": "uko yanditse ku gakarito",
+      "listTariff": "igiciro cy’urutonde rwemewe {{price}} (icyo ibigo by’ubwishingizi byishyura): andika hepfo igiciro cyawe cyo kugurisha ku mafaranga"
     },
     "received": "Ibyinjiye mu bubiko",
     "salesByItem": "Ibyagurishijwe kuri buri kimwe",

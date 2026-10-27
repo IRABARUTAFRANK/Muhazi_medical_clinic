@@ -7001,7 +7001,8 @@
         "batch": "Give the batch number written on the box.",
         "boxes": "Give the number of boxes and the units in one box."
       },
-      "batchPh": "as written on the box"
+      "batchPh": "as written on the box",
+      "listTariff": "official tariff {{price}} (what insurers pay): set your cash selling price below"
     },
     "received": "Stock received",
     "salesByItem": "Sales by item",
