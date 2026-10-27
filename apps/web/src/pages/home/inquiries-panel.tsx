@@ -14,6 +14,7 @@ import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { Button, actionLink } from '@/components/ui/button'
 import { Reveal } from '@/components/ui/reveal'
 import { Field } from '@/components/ui/field'
+import { TimeSelect } from '@/components/ui/time-select'
 import { ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
 import { Flash } from '@/components/ui/flash'
@@ -500,12 +501,12 @@ function BookForm({
           onChange={(e) => setDay(e.target.value)}
           required
         />
-        <Field
+        <TimeSelect
           label={t('ops.inquiries.time')}
-          type="time"
-          step={300}
           value={time}
-          onChange={(e) => setTime(e.target.value)}
+          onChange={setTime}
+          step={doctor?.slotMinutes ?? 15}
+          day={day}
           required
         />
       </div>

@@ -54,7 +54,8 @@
     "lockNow": "Verrouiller l’écran",
     "lockNowHint": "Vous quittez le poste : votre PIN le rouvre",
     "changePin": "Changer mon PIN",
-    "changePinHint": "Choisir un nouveau PIN"
+    "changePinHint": "Choisir un nouveau PIN",
+    "chooseTime": "Choisissez une heure"
   },
   "days": {
     "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],

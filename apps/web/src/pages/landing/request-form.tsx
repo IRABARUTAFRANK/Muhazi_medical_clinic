@@ -3,6 +3,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { kigaliTime, kigaliToday } from '@/lib/clock'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
+import { TimeSelect } from '@/components/ui/time-select'
 import {
   RW_PHONE,
   cleanPhone,
@@ -104,13 +105,7 @@ export function RequestForm() {
           value={day}
           onChange={(e) => setDay(e.target.value)}
         />
-        <Field
-          label={t('landing.book.time')}
-          type="time"
-          step={900}
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-        />
+        <TimeSelect label={t('landing.book.time')} value={time} onChange={setTime} day={day} />
       </div>
       <div className="text-ink-2 flex flex-wrap items-center gap-2 text-[13px]">
         {t('landing.book.confirmBy')}

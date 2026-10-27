@@ -55,7 +55,8 @@
     "lockNow": "Funga mugaragaza ubu",
     "lockNowHint": "Ugiye kure y’aho ukorera: PIN yawe ni yo iyifungura",
     "changePin": "Hindura PIN yanjye",
-    "changePinHint": "Hitamo PIN nshya"
+    "changePinHint": "Hitamo PIN nshya",
+    "chooseTime": "Hitamo isaha"
   },
   "days": {
     "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],

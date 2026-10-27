@@ -54,7 +54,8 @@
     "lockNow": "Lock the screen now",
     "lockNowHint": "Away from the desk: your PIN opens it again",
     "changePin": "Change my PIN",
-    "changePinHint": "Choose a new PIN"
+    "changePinHint": "Choose a new PIN",
+    "chooseTime": "Choose a time"
   },
   "days": {
     "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
