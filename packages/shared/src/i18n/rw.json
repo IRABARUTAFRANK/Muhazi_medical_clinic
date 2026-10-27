@@ -3789,7 +3789,8 @@
         "clinicalWrite": "kwandika mu nyandiko z’ubuvuzi",
         "ordersWrite": "gusaba ibizamini no kwandika ibisubizo",
         "appointmentApprove": "gusubiza ubusabe bwa gahunda",
-        "stockWrite": "gucunga ububiko"
+        "stockWrite": "gucunga ububiko",
+        "recordsApprove": "gusubiza ubusabe bwo kureba dosiye"
       }
     },
     "f": {
@@ -3824,6 +3825,10 @@
       "stock.write": {
         "name": "Gucunga ububiko",
         "hint": "Kwakira imiti n’ibikoresho no kubyohereza aho bakorera."
+      },
+      "records.approve": {
+        "name": "Gusubiza ubusabe bwo kureba dosiye",
+        "hint": "Kwemera cyangwa kwanga ubusabe bwa bagenzi bawe bwo kureba amakuru ya kera y’umurwayi. Ubusanzwe umuyobozi wenyine ni we usubiza."
       }
     },
     "desks": {
@@ -5130,7 +5135,7 @@
     "noDesk": "Ntukora mu ishami rikora ibi. Saba umuyobozi agushyire mu ishami ribikora.",
     "notPermitted": "Umuyobozi ntiyakwemereye gukora ibi (Igenamiterere → Ninde ukora iki).",
     "notTreating": "Abavura uyu murwayi ubu ni bo bonyine bashobora gusaba kureba amakuru ye ya kera.",
-    "notApprover": "Umuyobozi cyangwa umukuru w’ishami rishinzwe uyu murwayi ni we wenyine usubiza ubu busabe.",
+    "notApprover": "Umuyobozi wenyine, cyangwa uwo yahaye uburenganzira (Igenamiterere → Ninde ukora iki), ni we usubiza ubu busabe.",
     "reasonNeeded": "Banza wandike impamvu.",
     "alreadyAnswered": "Ubu busabe bwamaze gusubizwa.",
     "alreadyAllowed": "Usanzwe ubona amakuru ya kera y’uyu murwayi.",
@@ -6071,7 +6076,7 @@
   "recordAccess": {
     "title": "Kureba amakuru y’abarwayi",
     "lead": "Ubusabe bwo kureba amakuru ya kera y’abarwayi, kureba mu buryo bwihutirwa, n’abarebye amakuru ya kera.",
-    "leadHead": "Bagenzi bawe bavura umurwayi w’ishami ryawe basaba kureba amakuru ye ya kera: emera cyangwa wange.",
+    "leadHead": "Bagenzi bawe bavura umurwayi basaba kureba amakuru ye ya kera: emera cyangwa wange. Umuyobozi yaguhaye uburenganzira bwo gusubiza.",
     "loading": "Birimo gutegurwa…",
     "waitingChip_one": "{{count}} butegereje",
     "waitingChip_other": "{{count}} butegereje",
@@ -6079,7 +6084,7 @@
     "toReviewChip_other": "{{count}} byihutirwa byo kugenzura",
     "pendingTitle": "Bitegereje igisubizo cyawe",
     "pendingEmpty": "Nta busabe butegereje igisubizo cyawe.",
-    "pendingHint": "Usubije mbere ni we ufata icyemezo: umuyobozi cyangwa umukuru w’ishami rishinzwe umurwayi. Iyo byemewe, kureba birangira iyo kwivuza kurangiye.",
+    "pendingHint": "Usubije mbere ni we ufata icyemezo: umuyobozi, cyangwa uwo yahaye uburenganzira bwo gusubiza. Iyo byemewe, kureba birangira iyo kwivuza kurangiye.",
     "emergencyTitle": "Kureba mu buryo bwihutirwa",
     "emergencyEmpty": "Nta warebye mu buryo bwihutirwa mu minsi 90 ishize.",
     "emergencyHint": "Kureba mu buryo bwihutirwa bifungura amakuru ya kera ako kanya. Soma impamvu, hanyuma wemeze ko wabigenzuye wandika icyo ubivugaho.",
@@ -6174,7 +6179,7 @@
     "homeCount_other": "{{count}} byo gusubiza",
     "homeMore_one": "Hari n’ubundi {{count}} ku rupapuro rwo Kureba amakuru y’abarwayi",
     "homeMore_other": "Hari n’ubundi {{count}} ku rupapuro rwo Kureba amakuru y’abarwayi",
-    "emergencyHeadNote": "Umuyobozi ni we ugenzura kureba mu buryo bwihutirwa. Urabibona kuko ukuriye ishami rishinzwe uyu murwayi.",
+    "emergencyHeadNote": "Umuyobozi ni we ugenzura kureba mu buryo bwihutirwa. Urabibona kuko umuyobozi yaguhaye uburenganzira bwo gusubiza ubusabe bwo kureba dosiye.",
     "panel": {
       "details": "Ibisobanuro",
       "request": "Ubusabe bwo kureba dosiye",
@@ -6203,8 +6208,8 @@
     "notTreating": "Uvura uyu murwayi ubu wenyine ni we ushobora gusaba kureba amakuru ye.",
     "request": "Saba kureba dosiye",
     "emergency": "Kureba mu buryo bwihutirwa",
-    "requestLead": "Umuyobozi n’abakuru b’amashami abishinzwe babona ubusabe bwawe. Ubanza gusubiza arabwemera cyangwa akabwanga. Iyo bwemewe, ubona amakuru ya kera kugeza uku kwivuza kurangiye.",
-    "emergencyLead": "Ni igihe gusa umurwayi adashobora gutegereza igisubizo. Amakuru ahita afunguka; umuyobozi n’abakuru b’amashami abishinzwe bamenyeshwa byihutirwa, kandi umuyobozi akagenzura impamvu yawe.",
+    "requestLead": "Umuyobozi (n’uwo yahaye uburenganzira bwo gusubiza) abona ubusabe bwawe. Ubanza gusubiza arabwemera cyangwa akabwanga. Iyo bwemewe, ubona amakuru ya kera kugeza uku kwivuza kurangiye.",
+    "emergencyLead": "Ni igihe gusa umurwayi adashobora gutegereza igisubizo. Amakuru ahita afunguka; umuyobozi (n’uwo yahaye uburenganzira bwo gusubiza) amenyeshwa byihutirwa, kandi umuyobozi akagenzura impamvu yawe.",
     "reasonLabel": "Ukeneye amakuru ya kera kubera iki?",
     "reasonPh": "Urugero: umuvuduko w’amaraso uri hejuru uyu munsi, yavuwe iki mbere?",
     "emergencyReason": "Ikihutirwa ni ikihe?",
@@ -6233,13 +6238,13 @@
     "printHidden_other": "Hacapwa kwivuza uwanditse yemerewe kubona gusa: kwivuza {{count}} kwa kera ni ibanga, ntikurimo.",
     "confirm": {
       "request": "Gusaba kureba amakuru ya kera ya {{name}}?",
-      "requestBody": "Umuyobozi n’abakuru b’amashami abishinzwe babona ubutumwa burimo impamvu yawe. Umwe nabwemera, uzabona amakuru ya kera kugeza uku kwivuza kurangiye.",
+      "requestBody": "Umuyobozi (n’uwo yahaye uburenganzira bwo gusubiza) abona ubutumwa burimo impamvu yawe. Umwe nabwemera, uzabona amakuru ya kera kugeza uku kwivuza kurangiye.",
       "requestYes": "Yego, ohereza ubusabe",
       "emergency": "Gufungura ubu amakuru ya kera ya {{name}}, mu buryo bwihutirwa?",
-      "emergencyBody": "Ahita afunguka kandi akaguma afunguye kugeza uku kwivuza kurangiye. Umuyobozi n’abakuru b’amashami abishinzwe bamenyeshwa byihutirwa, bikandikwa mu mutuku ku rutonde rw’abarebye, kandi umuyobozi akagenzura impamvu yawe.",
+      "emergencyBody": "Ahita afunguka kandi akaguma afunguye kugeza uku kwivuza kurangiye. Umuyobozi (n’uwo yahaye uburenganzira bwo gusubiza) amenyeshwa byihutirwa, bikandikwa mu mutuku ku rutonde rw’abarebye, kandi umuyobozi akagenzura impamvu yawe.",
       "emergencyYes": "Yego, fungura ubu",
       "cancel": "Gukuraho ubusabe bwawe bwo kureba amakuru ya {{name}}?",
-      "cancelBody": "Umuyobozi n’abakuru b’amashami abishinzwe ntibazongera kububona. Ushobora kongera gusaba nyuma.",
+      "cancelBody": "Umuyobozi (n’uwo yahaye uburenganzira bwo gusubiza) ntazongera kububona. Ushobora kongera gusaba nyuma.",
       "cancelYes": "Yego, kuraho"
     },
     "canEmergencyOnly": "Mu gihe cyihutirwa, ushobora kuyafungura ako kanya."

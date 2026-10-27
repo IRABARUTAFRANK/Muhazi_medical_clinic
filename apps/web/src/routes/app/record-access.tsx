@@ -1,20 +1,22 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { isApprover } from '@/components/privacy/approvers'
+import { permsReady } from '@/lib/api/permissions'
 import { RecordAccessPage } from '@/pages/record-access/record-access-page'
 import { useSession } from '@/store/session'
 
 /**
  * Record access (0088): the requests to see patients' past records and their answers, the
- * emergency accesses and (manager) the log of who opened past records. For the manager and the
- * heads of department; a notice opens it on one request: /app/record-access?request=<id>.
+ * emergency accesses and (manager) the log of who opened past records. For the manager and
+ * whoever the manager allowed to answer (Settings → Who may do what, 0095); a notice opens it on
+ * one request: /app/record-access?request=<id>.
  */
 export const Route = createFileRoute('/app/record-access')({
   validateSearch: (search: Record<string, unknown>): { request?: string } => ({
     request: typeof search.request === 'string' ? search.request : undefined,
   }),
-  beforeLoad: () => {
+  beforeLoad: async () => {
     const user = useSession.getState().user
-    if (user && !isApprover(user)) throw redirect({ to: '/app' })
+    if (user && !isApprover(user, await permsReady(user))) throw redirect({ to: '/app' })
   },
   component: RecordAccessRoute,
 })

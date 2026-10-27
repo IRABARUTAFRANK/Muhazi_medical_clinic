@@ -9387,9 +9387,16 @@ await step(
   },
 )
 await step(
-  '0088 B: request access: only while treating, with a reason; the first approver answers; ends when the visit closes',
+  '0088 B: request access: only while treating, with a reason; the manager answers (or who the manager allowed, 0095); ends when the visit closes',
   async () => {
     const ask = `select request_record_access($1, $2) as j`
+    const pending = `select record_access_requests('pending') as j`
+    const mine = async (who) => {
+      await as(who)
+      const p = (await one(`select my_permissions() as p`)).p
+      await asAdmin()
+      return p.includes('records.approve')
+    }
     const r = {}
     r.noReason = (await j88(t88.docB, ask, [t88.pid, ' ']))?.error
     r.notTreating = (await j88(t88.docC, ask, [t88.pid, 'Need the history']))?.error
@@ -9397,20 +9404,34 @@ await step(
     r.head = (await j88(t88.head, ask, [t88.pid, 'Need the history']))?.error
     const req = await j88(t88.docB, ask, [t88.pid, 'Chest pain: earlier ECG and treatment'])
     t88.req = req.id
+    r.approvers = req.approvers
     r.again = (await j88(t88.docB, ask, [t88.pid, 'again']))?.existing
+    // 0095: only the manager is told; a head is not an approver by position
     r.notices = (await notices88('access_request', t88.req)).map((n) => n.recipient_user).sort()
-    r.pendingHead = (await j88(t88.head, `select record_access_requests('pending') as j`)).map(
+    r.pendingHead = (await j88(t88.head, pending)).length
+    r.pendingManager = (await j88(staff.manager, pending)).map(
       (x) => x.id === t88.req && x.canAnswer,
     )
-    r.pendingAssist = (
-      await j88(t88.assist, `select record_access_requests('pending') as j`)
-    ).length
+    r.pendingAssist = (await j88(t88.assist, pending)).length
     r.accessB = (await j88(t88.docB, `select patient_access($1) as j`, [t88.pid])).request?.status
     const answer = `select answer_record_access($1, $2, $3) as j`
     r.assistant = (await j88(t88.assist, answer, [t88.req, true, null]))?.error
+    r.headAnswer = (await j88(t88.head, answer, [t88.req, true, null]))?.error
     r.self = (await j88(t88.docB, answer, [t88.req, true, null]))?.error
-    r.refuseNoReason = (await j88(t88.head, answer, [t88.req, false, '']))?.error
-    r.approve = (await j88(t88.head, answer, [t88.req, true, null]))?.status
+    // the manager gives the head the right as an exception: the head sees and may answer
+    await except87(t88.head, 'records.approve', true)
+    r.headMine = await mine(t88.head)
+    r.pendingHeadOn = (await j88(t88.head, pending)).map((x) => x.id === t88.req && x.canAnswer)
+    await except87(t88.head, 'records.approve', null)
+    r.headMineOff = await mine(t88.head)
+    r.headAgain = (await j88(t88.head, answer, [t88.req, true, null]))?.error
+    r.refuseNoReason = (await j88(staff.manager, answer, [t88.req, false, '']))?.error
+    // the switch for every nurse: a nurse answers
+    r.nurseBefore = (await j88(staff.nurse, answer, [t88.req, true, null]))?.error
+    await role87('nurse', 'records.approve', true)
+    r.nurseMine = await mine(staff.nurse)
+    r.managerMine = await mine(staff.manager)
+    r.approve = (await j88(staff.nurse, answer, [t88.req, true, null]))?.status
     r.late = (await j88(staff.manager, answer, [t88.req, false, 'No']))?.error
     r.othersCleared = (await notices88('access_request', t88.req)).length
     r.answerNotice = (await notices88('access_answer', t88.req)).map((n) => n.recipient_user)
@@ -9439,8 +9460,22 @@ await step(
     }
     // a refused request: the requester is told why, and may ask again
     t88.v3 = await openVisit88(t88.pid, t88.docB)
+    // while the nurses hold the switch, a new request is sent to the manager and the nurse
     const req2 = (await j88(t88.docB, ask, [t88.pid, 'Follow-up of the earlier result'])).id
+    const told2 = (await notices88('access_request', req2)).map((n) => n.recipient_user)
+    const roles2 = (
+      await db.query(`select distinct role from profiles where id = any ($1)`, [told2])
+    ).rows.map((x) => x.role)
+    r.notices2 = {
+      manager: told2.includes(staff.manager),
+      nurse: told2.includes(staff.nurse),
+      head: told2.includes(t88.head),
+      roles: roles2.sort(),
+    }
+    await role87('nurse', 'records.approve', false)
+    r.nurseAfter = await mine(staff.nurse)
     r.cancel = await hintAs(t88.docC, `select cancel_record_access($1)`, [req2])
+    // the manager always answers
     r.refused = (await j88(staff.manager, answer, [req2, false, 'Ask the patient first']))?.status
     r.refusedNotice = await one(
       `select params ->> 'reason' as reason, params ->> 'approved' as ok from notification where kind = 'access_answer' and params ->> 'requestId' = $1`,
@@ -9453,13 +9488,23 @@ await step(
       r.reception !== '42501/' ||
       r.head !== '42501/not_treating' ||
       r.again !== true ||
-      json88(r.notices) !== json88([t88.head, staff.manager].sort()) ||
-      !r.pendingHead.includes(true) ||
+      r.approvers !== 1 ||
+      json88(r.notices) !== json88([staff.manager]) ||
+      r.pendingHead !== 0 ||
+      !r.pendingManager.includes(true) ||
       r.pendingAssist !== 0 ||
       r.accessB !== 'pending' ||
       r.assistant !== '42501/not_approver' ||
+      r.headAnswer !== '42501/not_approver' ||
       r.self !== '42501/not_approver' ||
+      !r.headMine ||
+      !r.pendingHeadOn.includes(true) ||
+      r.headMineOff ||
+      r.headAgain !== '42501/not_approver' ||
       r.refuseNoReason !== '22023/reason_needed' ||
+      r.nurseBefore !== '42501/not_approver' ||
+      !r.nurseMine ||
+      !r.managerMine ||
       r.approve !== 'approved' ||
       r.late !== '22023/already_answered' ||
       r.othersCleared !== 0 ||
@@ -9474,6 +9519,11 @@ await step(
       r.closed.v1 !== true ||
       r.closed.v2 !== 'own' ||
       r.closed.active !== false ||
+      !r.notices2.manager ||
+      !r.notices2.nurse ||
+      r.notices2.head ||
+      json88(r.notices2.roles) !== json88(['manager', 'nurse']) ||
+      r.nurseAfter ||
       r.cancel !== 'P0002/not_found' ||
       r.refused !== 'refused' ||
       r.refusedNotice?.reason !== 'Ask the patient first' ||
@@ -9481,7 +9531,7 @@ await step(
       r.canAgain !== true
     )
       throw new Error(json88(r))
-    return 'asked with a reason → head and manager told; head approved first; access ended at closing; refusal says why'
+    return 'asked with a reason → the manager told, not the head; head answers only with the right (exception), a nurse with the switch; access ended at closing; refusal says why'
   },
 )
 await step(
@@ -9525,7 +9575,7 @@ await step(
       r.via !== 'emergency' ||
       r.level !== 'emergency' ||
       r.dx !== 1 ||
-      json88(r.notices) !== json88(['head:true', 'manager:true']) ||
+      json88(r.notices) !== json88(['manager:true']) ||
       r.red < 1 ||
       !(r.unreviewed >= 1) ||
       r.reviewByDoctor !== '42501/not_manager' ||
@@ -9536,7 +9586,7 @@ await step(
       r.logReviewed !== true
     )
       throw new Error(json88(r))
-    return 'opened at once, head and manager told (urgent), red entry, reviewed by the manager'
+    return 'opened at once, the manager told (urgent; the head only with the right, 0095), red entry, reviewed by the manager'
   },
 )
 await step(

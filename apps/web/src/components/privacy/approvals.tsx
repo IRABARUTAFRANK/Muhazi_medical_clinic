@@ -21,15 +21,17 @@ import {
   useRecordAccessRequests,
   type AccessRequestRow,
 } from '@/lib/api/privacy'
+import { useCan } from '@/lib/api/permissions'
 import { useConfirm } from '@/lib/confirm'
 import { useAgo } from '@/lib/notice-wording'
 import { cn } from '@/lib/utils'
-import { isApprover, isManagerUser } from './approvers'
+import { isManagerUser } from './approvers'
 
 /*
- * Patient record privacy (0088), the approvers' side: the manager and the HEAD (not the
- * assistant) of a department in charge of the patient answer the requests of colleagues who
- * treat the patient now (approve, or refuse with a reason; the first answer wins). The manager
+ * Patient record privacy (0088), the approvers' side: the manager, and whoever the manager
+ * allowed to in Settings → Who may do what (records.approve, 0095), answer the requests of
+ * colleagues who treat the patient now (approve, or refuse with a reason; the first answer wins).
+ * A head of department no longer answers by position. The manager
  * also reviews every emergency access. Used on the Record access page and on the approvers' homes.
  */
 
@@ -352,8 +354,9 @@ export function AccessRequestCard({
  */
 export function AccessApprovalsPanel({ user, i = 1 }: { user: StaffUser; i?: number }) {
   const { t } = useTranslation()
-  const approver = isApprover(user)
+  const can = useCan(user)
   const manager = isManagerUser(user)
+  const approver = manager || can('records.approve')
   const { data: pending = [] } = useRecordAccessRequests('pending', approver)
   const { data: emergencies = [] } = useRecordAccessRequests('emergency', approver && manager)
   const toReview = emergencies.filter((r) => r.canReview)

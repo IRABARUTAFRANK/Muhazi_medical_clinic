@@ -3780,7 +3780,8 @@
         "clinicalWrite": "écrire dans le dossier clinique",
         "ordersWrite": "demander des examens et saisir les résultats",
         "appointmentApprove": "répondre aux demandes de rendez-vous",
-        "stockWrite": "gérer le stock"
+        "stockWrite": "gérer le stock",
+        "recordsApprove": "répondre aux demandes d’accès aux dossiers"
       }
     },
     "f": {
@@ -3815,6 +3816,10 @@
       "stock.write": {
         "name": "Gérer le stock",
         "hint": "Recevoir médicaments et fournitures et les envoyer aux postes."
+      },
+      "records.approve": {
+        "name": "Répondre aux demandes d’accès aux dossiers",
+        "hint": "Accepter ou refuser les demandes des collègues de voir les dossiers antérieurs d’un patient. Par défaut, seul le gestionnaire répond."
       }
     },
     "desks": {
@@ -5121,7 +5126,7 @@
     "noDesk": "Vous ne travaillez dans aucun département qui fait ceci. Demandez au gestionnaire de vous y placer.",
     "notPermitted": "Le gérant ne vous a pas autorisé à faire ceci (Paramètres → Qui peut faire quoi).",
     "notTreating": "Seules les personnes qui soignent ce patient maintenant peuvent demander à voir son dossier antérieur.",
-    "notApprover": "Seul le gérant ou le chef d’un service responsable de ce patient répond à cette demande.",
+    "notApprover": "Seul le gestionnaire, ou une personne qu’il y a autorisée (Paramètres → Qui peut faire quoi), répond à cette demande.",
     "reasonNeeded": "Écrivez d’abord la raison.",
     "alreadyAnswered": "Cette demande a déjà reçu une réponse.",
     "alreadyAllowed": "Vous voyez déjà le dossier antérieur de ce patient.",
@@ -6062,7 +6067,7 @@
   "recordAccess": {
     "title": "Accès aux dossiers",
     "lead": "Demandes de consultation des dossiers antérieurs, accès d’urgence, et qui a ouvert les dossiers antérieurs.",
-    "leadHead": "Des collègues qui soignent un patient de votre service demandent à voir ses dossiers antérieurs : acceptez ou refusez.",
+    "leadHead": "Des collègues qui soignent un patient demandent à voir ses dossiers antérieurs : acceptez ou refusez. Le gestionnaire vous a autorisé à répondre.",
     "loading": "Chargement…",
     "waitingChip_one": "{{count}} en attente",
     "waitingChip_other": "{{count}} en attente",
@@ -6070,7 +6075,7 @@
     "toReviewChip_other": "{{count}} urgences à examiner",
     "pendingTitle": "En attente de votre réponse",
     "pendingEmpty": "Aucune demande n’attend votre réponse.",
-    "pendingHint": "La première personne qui répond décide : le gérant ou un chef d’un service en charge du patient. Un accès accepté prend fin à la clôture de la visite.",
+    "pendingHint": "La première personne qui répond décide : le gestionnaire, ou une personne qu’il a autorisée à répondre. Un accès accepté prend fin à la clôture de la visite.",
     "emergencyTitle": "Accès d’urgence",
     "emergencyEmpty": "Aucun accès d’urgence ces 90 derniers jours.",
     "emergencyHint": "Un accès d’urgence ouvre aussitôt les dossiers antérieurs. Lisez le motif, puis marquez-le examiné avec votre commentaire.",
@@ -6165,7 +6170,7 @@
     "homeCount_other": "{{count}} à traiter",
     "homeMore_one": "Et {{count}} autre sur la page Accès aux dossiers",
     "homeMore_other": "Et {{count}} autres sur la page Accès aux dossiers",
-    "emergencyHeadNote": "Le gestionnaire examine les accès d’urgence. Vous les voyez parce que vous êtes chef d’un service concerné par ce patient.",
+    "emergencyHeadNote": "Le gestionnaire examine les accès d’urgence. Vous les voyez parce qu’il vous a autorisé à répondre aux demandes d’accès aux dossiers.",
     "panel": {
       "details": "Détails",
       "request": "Demande d’accès",
@@ -6194,8 +6199,8 @@
     "notTreating": "Seul celui qui soigne ce patient maintenant peut demander l’accès.",
     "request": "Demander l’accès",
     "emergency": "Accès d’urgence",
-    "requestLead": "Le gestionnaire et les chefs des services concernés reçoivent votre demande. Le premier à répondre l’accepte ou la refuse. Si elle est acceptée, vous voyez les dossiers antérieurs jusqu’à la fin de cette visite.",
-    "emergencyLead": "Seulement quand le patient ne peut pas attendre une réponse. Les dossiers s’ouvrent tout de suite ; le gestionnaire et les chefs concernés sont avertis en urgence, et le gestionnaire examine votre motif.",
+    "requestLead": "Le gestionnaire (et toute personne qu’il a autorisée à répondre) reçoit votre demande. Le premier à répondre l’accepte ou la refuse. Si elle est acceptée, vous voyez les dossiers antérieurs jusqu’à la fin de cette visite.",
+    "emergencyLead": "Seulement quand le patient ne peut pas attendre une réponse. Les dossiers s’ouvrent tout de suite ; le gestionnaire (et toute personne autorisée à répondre aux demandes) est averti en urgence, et le gestionnaire examine votre motif.",
     "reasonLabel": "Pourquoi avez-vous besoin des dossiers antérieurs ?",
     "reasonPh": "Par exemple : tension élevée aujourd’hui, avec quoi a-t-elle été traitée avant ?",
     "emergencyReason": "Quelle est l’urgence ?",
@@ -6224,13 +6229,13 @@
     "printHidden_other": "Seules les visites que l’auteur peut voir sont imprimées : {{count}} visites antérieures sont confidentielles et n’y figurent pas.",
     "confirm": {
       "request": "Demander à voir les dossiers antérieurs de {{name}} ?",
-      "requestBody": "Le gestionnaire et les chefs concernés reçoivent un avis avec votre motif. Si l’un d’eux accepte, vous voyez les dossiers antérieurs jusqu’à la fin de cette visite.",
+      "requestBody": "Le gestionnaire (et toute personne autorisée à répondre) reçoit un avis avec votre motif. Si l’un d’eux accepte, vous voyez les dossiers antérieurs jusqu’à la fin de cette visite.",
       "requestYes": "Oui, envoyer la demande",
       "emergency": "Ouvrir maintenant les dossiers antérieurs de {{name}}, en urgence ?",
-      "emergencyBody": "Ils s’ouvrent tout de suite et restent ouverts jusqu’à la fin de cette visite. Le gestionnaire et les chefs concernés sont avertis en urgence, l’ouverture est marquée en rouge dans le journal des accès et le gestionnaire examine votre motif.",
+      "emergencyBody": "Ils s’ouvrent tout de suite et restent ouverts jusqu’à la fin de cette visite. Le gestionnaire (et toute personne autorisée à répondre) est averti en urgence, l’ouverture est marquée en rouge dans le journal des accès et le gestionnaire examine votre motif.",
       "emergencyYes": "Oui, ouvrir maintenant",
       "cancel": "Retirer votre demande pour les dossiers de {{name}} ?",
-      "cancelBody": "Le gestionnaire et les chefs concernés ne la voient plus. Vous pourrez redemander plus tard.",
+      "cancelBody": "Le gestionnaire (et toute personne autorisée à répondre) ne la voit plus. Vous pourrez redemander plus tard.",
       "cancelYes": "Oui, retirer"
     },
     "canEmergencyOnly": "En cas d’urgence, vous pouvez quand même l’ouvrir tout de suite."

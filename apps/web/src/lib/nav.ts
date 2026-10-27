@@ -65,7 +65,7 @@ const HISTORY: NavItem = {
 }
 
 /** Record access (0088): requests to see past records, emergency accesses and (manager) who
- *  opened past records. The manager and the heads of department (not the assistants) answer. */
+ *  opened past records. The manager answers, and whoever the manager allowed to (0095). */
 const RECORD_ACCESS: NavItem = {
   id: 'record-access',
   labelKey: 'nav.recordAccess',
@@ -188,10 +188,11 @@ export const navForUser = (user: StaffUser): NavItem[] =>
         ),
       )
 
-/** A head of department answers the requests to see past records of their department's
- *  patients: Record access, before History and the notices (headOf is set for heads only). */
+/** Whoever the manager allowed to answer the requests to see past records (Settings → Who may
+ *  do what, records.approve; 0095) gets Record access, before History and the notices. */
 function withRecordAccess(user: StaffUser, items: NavItem[]): NavItem[] {
-  if (!user.headOf || items.some((n) => n.to === RECORD_ACCESS.to)) return items
+  if (!permsNow(user).has('records.approve') || items.some((n) => n.to === RECORD_ACCESS.to))
+    return items
   const at = items.findIndex((n) => n.to === '/app/history')
   const cut = at >= 0 ? at : items.length
   return [...items.slice(0, cut), RECORD_ACCESS, ...items.slice(cut)]

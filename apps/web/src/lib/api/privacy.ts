@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { samplePermsOf } from './permissions'
 import { apiError, isMissingFunction, sampleRefusal } from './errors'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
@@ -306,6 +307,14 @@ let sampleLog: AccessLogRow[] = [
   },
 ]
 const sampleIsHead = () => !!me()?.headOf
+/** Sample mode: may the person answer record-access requests? The manager, or the sample switch
+ *  "Answer record-access requests" (0095). */
+const sampleMayAnswer = () => {
+  const u = me()
+  return (
+    !!u && (u.role === 'manager' || samplePermsOf(u.id, u.dbRole ?? u.role).has('records.approve'))
+  )
+}
 const TREATS = new Set(['doctor', 'nurse'])
 
 /** The sample access in force for the patient (approved, its visit open). */
@@ -427,11 +436,11 @@ export function useRecordAccessRequests(scope: AccessRequestScope = 'pending', e
             r.status === 'pending' &&
             r.visitOpen &&
             r.requestedById !== u?.id &&
-            (manager || sampleIsHead()),
+            (manager || sampleMayAnswer()),
           canCancel: r.kind === 'request' && r.status === 'pending' && r.requestedById === u?.id,
           canReview: r.kind === 'emergency' && !r.reviewedAt && manager,
         }))
-        const visible = rows.filter((r) => r.mine || manager || sampleIsHead())
+        const visible = rows.filter((r) => r.mine || manager || sampleMayAnswer())
         if (scope === 'pending') return visible.filter((r) => r.canAnswer)
         if (scope === 'mine') return visible.filter((r) => r.mine)
         if (scope === 'emergency') return visible.filter((r) => r.kind === 'emergency')

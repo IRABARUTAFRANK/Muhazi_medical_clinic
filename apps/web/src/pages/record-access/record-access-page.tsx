@@ -83,7 +83,7 @@ const ErrorLine = ({ children }: { children: string }) => (
 
 /**
  * Record access (0088): the approvers' page.
- *   Everyone who answers (the manager, the head of a department in charge): the requests waiting
+ *   Everyone who answers (the manager, whoever the manager allowed to; 0095): the requests waiting
  *   for their answer (approve, or refuse with a reason; the first answer wins) and the requests
  *   answered in the last 90 days.
  *   The manager also: the emergency accesses to review (mark reviewed, with a comment) and the log
@@ -96,7 +96,7 @@ export function RecordAccessPage({ user, focus }: { user: StaffUser; focus?: str
   const manager = isManagerUser(user)
   const pending = useRecordAccessRequests('pending')
   const all = useRecordAccessRequests('all')
-  // every approver: a head is told of an emergency too (read only: the manager reviews it)
+  // every approver is told of an emergency too (read only: the manager reviews it)
   const emergencies = useRecordAccessRequests('emergency')
   const waiting = pending.data ?? []
   const toReview = (emergencies.data ?? []).filter((r) => r.canReview)

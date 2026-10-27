@@ -3780,7 +3780,8 @@
         "clinicalWrite": "write in the clinical record",
         "ordersWrite": "request tests and write results",
         "appointmentApprove": "answer booking requests",
-        "stockWrite": "manage stock"
+        "stockWrite": "manage stock",
+        "recordsApprove": "answer record-access requests"
       }
     },
     "f": {
@@ -3815,6 +3816,10 @@
       "stock.write": {
         "name": "Manage stock",
         "hint": "Receive medicines and supplies and send them to the desks."
+      },
+      "records.approve": {
+        "name": "Answer record-access requests",
+        "hint": "Approve or refuse colleagues’ requests to see a patient’s past records. By default only the manager answers."
       }
     },
     "desks": {
@@ -5121,7 +5126,7 @@
     "noDesk": "You do not work in a department that does this. Ask the manager to place you in one.",
     "notPermitted": "The manager has not allowed you to do this (Settings → Who may do what).",
     "notTreating": "Only the people treating this patient now may ask to see the past records.",
-    "notApprover": "Only the manager or the head of a department in charge of this patient answers this request.",
+    "notApprover": "Only the manager, or someone the manager allowed to (Settings → Who may do what), answers this request.",
     "reasonNeeded": "Write the reason first.",
     "alreadyAnswered": "This request was already answered.",
     "alreadyAllowed": "You already see the past records of this patient.",
@@ -6062,7 +6067,7 @@
   "recordAccess": {
     "title": "Record access",
     "lead": "Requests to see patients’ past records, emergency accesses, and who opened past records.",
-    "leadHead": "Colleagues treating a patient of your department ask to see the past records: approve or refuse.",
+    "leadHead": "Colleagues treating a patient ask to see the past records: approve or refuse. The manager allowed you to answer.",
     "loading": "Loading…",
     "waitingChip_one": "{{count}} waiting",
     "waitingChip_other": "{{count}} waiting",
@@ -6070,7 +6075,7 @@
     "toReviewChip_other": "{{count}} emergencies to review",
     "pendingTitle": "Waiting for your answer",
     "pendingEmpty": "No request is waiting for your answer.",
-    "pendingHint": "The first person to answer decides: the manager or a head of a department in charge of the patient. An approved access ends when the visit closes.",
+    "pendingHint": "The first person to answer decides: the manager, or someone the manager allowed to answer. An approved access ends when the visit closes.",
     "emergencyTitle": "Emergency accesses",
     "emergencyEmpty": "No emergency access in the last 90 days.",
     "emergencyHint": "An emergency access opens the past records at once. Read the reason, then mark it reviewed with your comment.",
@@ -6165,7 +6170,7 @@
     "homeCount_other": "{{count}} to answer",
     "homeMore_one": "And {{count}} more on the Record access page",
     "homeMore_other": "And {{count}} more on the Record access page",
-    "emergencyHeadNote": "The manager reviews emergency accesses. You see them because you are a head in charge of this patient.",
+    "emergencyHeadNote": "The manager reviews emergency accesses. You see them because the manager allowed you to answer record-access requests.",
     "panel": {
       "details": "Details",
       "request": "Access request",
@@ -6194,8 +6199,8 @@
     "notTreating": "Only someone treating this patient now can ask for access.",
     "request": "Request access",
     "emergency": "Emergency access",
-    "requestLead": "The manager and the heads of the departments in charge get your request. The first to answer approves or refuses. If approved, you see the past records until this visit closes.",
-    "emergencyLead": "Only when the patient cannot wait for an answer. The records open at once; the manager and the heads in charge are told urgently, and the manager reviews your reason.",
+    "requestLead": "The manager (and anyone the manager allowed to answer) gets your request. The first to answer approves or refuses. If approved, you see the past records until this visit closes.",
+    "emergencyLead": "Only when the patient cannot wait for an answer. The records open at once; the manager (and anyone allowed to answer requests) is told urgently, and the manager reviews your reason.",
     "reasonLabel": "Why do you need the past records?",
     "reasonPh": "For example: high blood pressure today, what was she treated with before?",
     "emergencyReason": "What is the emergency?",
@@ -6224,13 +6229,13 @@
     "printHidden_other": "Only the visits the author may see are printed: {{count}} past visits are private and not included.",
     "confirm": {
       "request": "Ask to see the past records of {{name}}?",
-      "requestBody": "The manager and the heads in charge get a notice with your reason. If one approves, you see the past records until this visit closes.",
+      "requestBody": "The manager (and anyone allowed to answer) gets a notice with your reason. If one approves, you see the past records until this visit closes.",
       "requestYes": "Yes, send the request",
       "emergency": "Open the past records of {{name}} now, as an emergency?",
-      "emergencyBody": "They open at once and stay open until this visit closes. The manager and the heads in charge are told urgently, the opening is marked in red in the access log and the manager reviews your reason.",
+      "emergencyBody": "They open at once and stay open until this visit closes. The manager (and anyone allowed to answer) is told urgently, the opening is marked in red in the access log and the manager reviews your reason.",
       "emergencyYes": "Yes, open now",
       "cancel": "Withdraw your request for the records of {{name}}?",
-      "cancelBody": "The manager and the heads in charge no longer see it. You can ask again later.",
+      "cancelBody": "The manager (and anyone allowed to answer) no longer sees it. You can ask again later.",
       "cancelYes": "Yes, withdraw"
     },
     "canEmergencyOnly": "In an emergency you can still open them at once."
