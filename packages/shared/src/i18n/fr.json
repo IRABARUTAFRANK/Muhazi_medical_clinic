@@ -1364,7 +1364,8 @@
           "CARDIOL": "un spécialiste du cœur (cardiologue)",
           "NEPHRO": "un spécialiste des reins (néphrologue)",
           "ORTH": "un spécialiste des os (orthopédiste)"
-        }
+        },
+        "box": "boîte de {{n}}"
       },
       "packSize": "Unités par boîte",
       "packHint": "Sert quand une livraison est comptée en boîtes.",
@@ -4562,7 +4563,10 @@
     "searchAria": "Chercher dans la liste",
     "matches_one": "{{count}} résultat : choisissez-le",
     "matches_other": "{{count}} résultats : choisissez",
-    "more": "… {{count}} de plus : tapez d’autres lettres"
+    "more": "… {{count}} de plus : tapez d’autres lettres",
+    "found_one": "{{count}} résultat",
+    "found_other": "{{count}} résultats",
+    "none": "Aucun résultat pour « {{query}} »"
   },
   "session": {
     "duration": {
@@ -7094,7 +7098,19 @@
         "boxes": "Indiquez le nombre de boîtes et les unités par boîte."
       },
       "batchPh": "comme écrit sur la boîte",
-      "listTariff": "tarif officiel {{price}} (ce que paient les assureurs) : fixez votre prix de vente au comptant ci-dessous"
+      "listTariff": "tarif officiel {{price}} (ce que paient les assureurs) : fixez votre prix de vente au comptant ci-dessous",
+      "groupClinic": "Médicaments et fournitures de la clinique",
+      "soldBy": "unité : {{unit}}",
+      "listTariffFilled": "Tarif officiel {{price}} (ce que paient les assureurs), repris comme prix de vente : modifiez-le si le prix au comptant de la clinique est différent.",
+      "filled": {
+        "list": "de la liste",
+        "item": "tel qu’enregistré",
+        "delivery": "dernière livraison",
+        "average": "coût moyen"
+      },
+      "filledHint": "Les champs en couleur ont été remplis pour vous : vérifiez-les et modifiez ce qui diffère.",
+      "perBoxKnown_one": "{{count}} par boîte",
+      "perBoxKnown_other": "{{count}} par boîte"
     },
     "received": "Stock reçu",
     "salesByItem": "Ventes par article",

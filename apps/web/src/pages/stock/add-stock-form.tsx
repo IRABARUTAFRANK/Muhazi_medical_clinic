@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { PackagePlus, Plus, Sparkles, Trash2, Undo2 } from 'lucide-react'
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { PackagePlus, Plus, Sparkles, Trash2, Undo2, WandSparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber, formatRwf } from '@mmc/shared'
 import { Panel } from '@/components/dash/kit'
@@ -9,11 +10,16 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { SearchSelect } from '@/components/ui/search-select'
 import {
-  medicineRefLabel,
+  medicineRefDisplay,
+  medicineRefOption,
+  medicineRefParts,
   readableUnit,
+  sortMedicineRefs,
   useMedicineReference,
   useMedicines,
 } from '@/lib/api/catalogue'
+import { nameCollator, tidyName } from '@/lib/medicine-name'
+import { supabase } from '@/lib/supabase'
 import { ApiError } from '@/lib/api/errors'
 import { useNotOnList } from '@/lib/api/reference-list'
 import {
@@ -27,10 +33,16 @@ import { cn } from '@/lib/utils'
 import { MsgFlash } from './stock-shared'
 import { errText, itemName, mainPharmacy, pharmacyStores, todayIso, type Msg } from './stock-util'
 
+/** Where a field filled by itself came from: the RHIA list, the item, its last delivery. */
+type Filled = 'list' | 'item' | 'delivery' | 'average'
+type AutoField = 'sellPrice' | 'perBox' | 'unitCost'
+
 interface ALine {
   key: number
   /** A clinic item id, "ref:<code>" (a medicine of the RHIA list) or "new" (typed here). */
   pick: string
+  /** The fields filled when the item was picked (cleared as soon as one is typed over). */
+  auto: Partial<Record<AutoField, Filled>>
   newName: string
   newStrength: string
   newForm: string
@@ -50,6 +62,7 @@ let lineKey = 1
 const newLine = (pick = '', sellPrice = ''): ALine => ({
   key: lineKey++,
   pick,
+  auto: {},
   newName: '',
   newStrength: '',
   newForm: '',
@@ -67,6 +80,29 @@ const newLine = (pick = '', sellPrice = ''): ALine => ({
 
 const digits = (s: string) => s.replace(/[^\d]/g, '')
 const decimal = (s: string) => s.replace(/[^\d.]/g, '')
+
+/**
+ * The cost per unit of the item's latest batch received (the pharmacy and the manager may read
+ * the batches); null when it never came in. Sample mode has no batches: null.
+ */
+async function lastBatchCost(itemId: string): Promise<number | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('batch')
+    .select('unit_cost')
+    .eq('item_id', itemId)
+    .is('deleted_at', null)
+    .order('received_on', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  const c = Number((data as { unit_cost: number | string | null }).unit_cost)
+  return Number.isFinite(c) ? c : null
+}
+
+/** A cost as the field takes it: no grouping, at most 2 decimals ("1200.5"). */
+const costText = (n: number) => String(Math.round(n * 100) / 100)
 
 /**
  * Add stock: what arrived at the pharmacy, one line per batch. Each line names the item (picked
@@ -90,6 +126,7 @@ export function AddStockForm({
   preset?: { item?: string; location?: string }
 }) {
   const { t } = useTranslation()
+  const qc = useQueryClient()
   const actions = useStockActions()
   const confirm = useConfirm()
   const { data: reference = [] } = useMedicineReference(true)
@@ -112,23 +149,39 @@ export function AddStockForm({
   const [badLine, setBadLine] = useState<number | null>(null)
   const today = todayIso()
 
-  const clinicCodes = new Set([...items.map((i) => i.code), ...medicines.map((m) => m.code)])
-  const options = [
-    ...items
+  // the clinic's own items first (A to Z), then the RHIA list (by generic name and strength)
+  const options = useMemo(() => {
+    const clinicCodes = new Set([...items.map((i) => i.code), ...medicines.map((m) => m.code)])
+    const refByCode = new Map(reference.map((r) => [r.code, r]))
+    const clinicGroup = t('stockPage.add.groupClinic')
+    const own = items
       .filter((i) => i.active)
-      .map((i) => ({
-        value: i.id,
-        label: [
-          `${itemName(i)}${i.unit ? ` (${i.unit})` : ''}`,
-          notOnList?.has(i.id) ? t('stockPage.notOnList') : null,
-        ]
-          .filter(Boolean)
-          .join(' · '),
-      })),
-    ...reference
+      .map((i) => {
+        // an item taken from the list unchanged reads like the list's clean name
+        const r = refByCode.get(i.code)
+        const fromList = r && i.name === r.generic ? medicineRefDisplay(r, t) : null
+        return {
+          value: i.id,
+          label: fromList?.name ?? tidyName(itemName(i)),
+          sub:
+            [
+              fromList?.sub,
+              !fromList && i.unit ? i.unit : null,
+              notOnList?.has(i.id) ? t('stockPage.notOnList') : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || undefined,
+          hint: i.sellingPrice == null ? undefined : formatRwf(i.sellingPrice),
+          group: clinicGroup,
+          keywords: `${i.code} ${itemName(i)}`,
+        }
+      })
+      .sort((a, b) => nameCollator.compare(a.label, b.label))
+    const list = sortMedicineRefs(reference)
       .filter((r) => !clinicCodes.has(r.code))
-      .map((r) => ({ value: `ref:${r.code}`, label: medicineRefLabel(r, t) })),
-  ]
+      .map((r) => medicineRefOption(r, t, `ref:${r.code}`))
+    return [...own, ...list]
+  }, [items, medicines, reference, notOnList, t])
   const itemOf = (l: ALine) => items.find((i) => i.id === l.pick)
   const refOf = (l: ALine) =>
     l.pick.startsWith('ref:') ? reference.find((r) => r.code === l.pick.slice(4)) : undefined
@@ -137,16 +190,82 @@ export function AddStockForm({
     setBadLine(null)
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)))
   }
+  /** A field typed by hand: it is no longer "filled from …". */
+  const type = (l: ALine, field: AutoField, text: string) =>
+    set(l.key, { [field]: text, auto: { ...l.auto, [field]: undefined } })
+  /** A filled field: a small note after its label ("from the list") and a light teal tint. */
+  const filledLabel = (text: string, from?: Filled): ReactNode =>
+    from ? (
+      <span className="flex flex-wrap items-baseline gap-x-1.5">
+        {text}
+        <span className="text-primary text-[11px] font-normal">
+          {t(`stockPage.add.filled.${from}`)}
+        </span>
+      </span>
+    ) : (
+      text
+    )
+  const filledClass = (from?: Filled) => (from ? 'bg-primary-tint border-primary/40' : undefined)
+  /**
+   * Picking fills what can be known, for the pharmacist to change only what differs:
+   *   a clinic item: its selling price, its box size, the cost per unit of its last delivery
+   *     (or, without one, the average cost of the stock);
+   *   a medicine new from the RHIA list: the list's tariff as the selling price (owner,
+   *     2026-10-27: filled, to be changed when the clinic's cash price differs) and the box size
+   *     the list gives ("B/20").
+   */
   const pick = (key: number, value: string) => {
     const it = items.find((i) => i.id === value)
-    // The official list's price is what insurers pay, not the clinic's cash price (owner's
-    // decision): a medicine new from the list starts with an empty selling price to fill in.
-    const price = it?.sellingPrice ?? null
-    set(key, {
-      pick: value,
-      sellPrice: price != null ? String(price) : '',
-      perBox: it?.packSize && it.packSize > 1 ? String(it.packSize) : '',
-    })
+    const r = value.startsWith('ref:') ? reference.find((x) => x.code === value.slice(4)) : null
+    const auto: ALine['auto'] = {}
+    let sellPrice = ''
+    let perBox = ''
+    let unitCost = ''
+    if (it) {
+      if (it.sellingPrice != null) {
+        sellPrice = String(it.sellingPrice)
+        auto.sellPrice = 'item'
+      }
+      if (it.packSize && it.packSize > 1) {
+        perBox = String(it.packSize)
+        auto.perBox = 'item'
+      }
+      if (it.avgCost != null && it.avgCost > 0) {
+        unitCost = costText(it.avgCost)
+        auto.unitCost = 'average'
+      }
+    } else if (r) {
+      if (r.price != null) {
+        sellPrice = String(Math.round(r.price))
+        auto.sellPrice = 'list'
+      }
+      const pack = medicineRefParts(r).pack
+      if (pack && pack > 1) {
+        perBox = String(pack)
+        auto.perBox = 'list'
+      }
+    }
+    set(key, { pick: value, sellPrice, perBox, unitCost, auto })
+    if (!it) return
+    // the cost of the last batch received, when the database has one, replaces the average
+    void qc
+      .fetchQuery({
+        queryKey: ['stock', 'last-batch-cost', it.id],
+        queryFn: () => lastBatchCost(it.id),
+        staleTime: 60_000,
+      })
+      .then((cost) => {
+        if (cost == null) return
+        setLines((ls) =>
+          ls.map((l) =>
+            // only while the line still names this item and the cost was not typed
+            l.key === key && l.pick === it.id && (l.unitCost === '' || l.auto.unitCost)
+              ? { ...l, unitCost: costText(cost), auto: { ...l.auto, unitCost: 'delivery' } }
+              : l,
+          ),
+        )
+      })
+      .catch(() => {})
   }
   const quantityOf = (l: ALine) =>
     l.inBoxes ? Number(l.boxes || 0) * Number(l.perBox || 0) : Number(l.quantity || 0)
@@ -217,14 +336,17 @@ export function AddStockForm({
       return
     const input: AddStockLineInput[] = lines.map((l) => {
       const r = refOf(l)
+      const p = r ? medicineRefParts(r) : null
       const it = itemOf(l)
       const price = l.sellPrice.trim() === '' ? null : Math.round(Number(l.sellPrice))
       return {
         itemId: it?.id,
         newItem: r
           ? {
-              name: r.generic,
-              strength: r.presentation,
+              // the list's wording made clean: "Acetazolamide (Diamox)", "250 mg", "tablet"
+              name: p?.brand ? `${p.genericOnly} (${p.brand})` : (p?.genericOnly ?? r.generic),
+              strength: p?.strengthText ?? null,
+              form: p?.form ?? null,
               unit: readableUnit(r.unit) || null,
               kind: 'medicine',
               // the item keeps the list's code: its insurer price and prescribing rule follow the list
@@ -299,6 +421,7 @@ export function AddStockForm({
           {lines.map((l, k) => {
             const it = itemOf(l)
             const r = refOf(l)
+            const rd = r ? medicineRefDisplay(r, t) : null
             const q = quantityOf(l)
             const priceChanges =
               it && l.sellPrice !== '' && Number(l.sellPrice) !== (it.sellingPrice ?? -1)
@@ -333,7 +456,13 @@ export function AddStockForm({
                     size="sm"
                     className="mb-0.5"
                     onClick={() =>
-                      set(l.key, { pick: l.pick === 'new' ? '' : 'new', sellPrice: '' })
+                      set(l.key, {
+                        pick: l.pick === 'new' ? '' : 'new',
+                        sellPrice: '',
+                        perBox: l.auto.perBox ? '' : l.perBox,
+                        unitCost: l.auto.unitCost ? '' : l.unitCost,
+                        auto: {},
+                      })
                     }
                   >
                     {l.pick === 'new' ? (
@@ -390,14 +519,27 @@ export function AddStockForm({
                   </div>
                 )}
                 {r && (
-                  <p className="text-ink-2 m-0 text-[12px]">
-                    {t('stockDelivery.newFromList')}
+                  // what the list says about it, read-only: it becomes the clinic's item as is
+                  <div className="border-border bg-surface flex flex-col gap-0.5 rounded-md border px-3 py-2 text-[13px]">
+                    <span className="text-ink-3 text-[12px]">{t('stockDelivery.newFromList')}</span>
+                    <span className="text-ink font-semibold">{rd?.name}</span>
+                    <span className="text-ink-2">
+                      {[
+                        rd?.sub,
+                        r.unit ? t('stockPage.add.soldBy', { unit: readableUnit(r.unit) }) : null,
+                        r.code,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
                     {r.price != null && (
-                      <> · {t('stockPage.add.listTariff', { price: formatRwf(r.price) })}</>
+                      <span className="text-ink-2">
+                        {t('stockPage.add.listTariffFilled', { price: formatRwf(r.price) })}
+                      </span>
                     )}
-                  </p>
+                  </div>
                 )}
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-4">
                   <Field
                     label={t('stock.batchNo')}
                     value={l.batchNo}
@@ -420,11 +562,12 @@ export function AddStockForm({
                         onChange={(e) => set(l.key, { boxes: digits(e.target.value) })}
                       />
                       <Field
-                        label={t('stockDelivery.packSize')}
+                        label={filledLabel(t('stockDelivery.packSize'), l.auto.perBox)}
                         inputMode="numeric"
                         value={l.perBox}
                         placeholder={it?.packSize ? String(it.packSize) : '100'}
-                        onChange={(e) => set(l.key, { perBox: digits(e.target.value) })}
+                        className={filledClass(l.auto.perBox)}
+                        onChange={(e) => type(l, 'perBox', digits(e.target.value))}
                       />
                     </div>
                   ) : (
@@ -436,17 +579,19 @@ export function AddStockForm({
                     />
                   )}
                   <Field
-                    label={t('stockPage.add.unitCost')}
+                    label={filledLabel(t('stockPage.add.unitCost'), l.auto.unitCost)}
                     inputMode="decimal"
                     value={l.unitCost}
-                    onChange={(e) => set(l.key, { unitCost: decimal(e.target.value) })}
+                    className={filledClass(l.auto.unitCost)}
+                    onChange={(e) => type(l, 'unitCost', decimal(e.target.value))}
                   />
                   <Field
-                    label={t('stockDelivery.sellingPrice')}
+                    label={filledLabel(t('stockDelivery.sellingPrice'), l.auto.sellPrice)}
                     inputMode="numeric"
                     value={l.sellPrice}
                     placeholder={t('stockDelivery.sellingPricePh')}
-                    onChange={(e) => set(l.key, { sellPrice: digits(e.target.value) })}
+                    className={filledClass(l.auto.sellPrice)}
+                    onChange={(e) => type(l, 'sellPrice', digits(e.target.value))}
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
@@ -462,7 +607,18 @@ export function AddStockForm({
                       }
                     />
                     {t('stockPage.add.inBoxes')}
+                    {!l.inBoxes && l.perBox && (
+                      <span className="text-ink-3">
+                        · {t('stockPage.add.perBoxKnown', { count: Number(l.perBox) })}
+                      </span>
+                    )}
                   </label>
+                  {Object.values(l.auto).some(Boolean) && (
+                    <span className="text-primary inline-flex items-center gap-1">
+                      <WandSparkles size={12} aria-hidden="true" />
+                      {t('stockPage.add.filledHint')}
+                    </span>
+                  )}
                   {q > 0 && (
                     <span className="text-ink-2 tabular-nums">
                       {t('stockPage.add.lineSum', {

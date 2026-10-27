@@ -2085,7 +2085,8 @@
           "CARDIOL": "muganga w’indwara z’umutima",
           "NEPHRO": "muganga w’indwara z’impyiko",
           "ORTH": "muganga w’amagufwa"
-        }
+        },
+        "box": "agakarito k’ibice {{n}}"
       },
       "packSize": "Ibice biri mu gakarito",
       "packHint": "Bikoreshwa iyo ibyagemuwe bibarwa mu dukarito.",
@@ -4571,7 +4572,10 @@
     "searchAria": "Shakisha mu rutonde",
     "matches_one": "Habonetse {{count}}: hitamo",
     "matches_other": "Habonetse {{count}}: hitamo kimwe",
-    "more": "… n’ibindi {{count}}: ongeraho inyuguti"
+    "more": "… n’ibindi {{count}}: ongeraho inyuguti",
+    "found_one": "Habonetse {{count}}",
+    "found_other": "Habonetse {{count}}",
+    "none": "Nta kibonetse kuri “{{query}}”"
   },
   "session": {
     "duration": {
@@ -7103,7 +7107,19 @@
         "boxes": "Andika umubare w’udukarito n’ibice biri mu gakarito kamwe."
       },
       "batchPh": "uko yanditse ku gakarito",
-      "listTariff": "igiciro cy’urutonde rwemewe {{price}} (icyo ibigo by’ubwishingizi byishyura): andika hepfo igiciro cyawe cyo kugurisha ku mafaranga"
+      "listTariff": "igiciro cy’urutonde rwemewe {{price}} (icyo ibigo by’ubwishingizi byishyura): andika hepfo igiciro cyawe cyo kugurisha ku mafaranga",
+      "groupClinic": "Imiti n’ibikoresho by’ivuriro",
+      "soldBy": "igice: {{unit}}",
+      "listTariffFilled": "Igiciro cy’urutonde rwemewe {{price}} (icyo ibigo by’ubwishingizi byishyura) cyashyizwe nk’igiciro cyo kugurisha: gihindure niba igiciro cy’ivuriro cyo kugurisha ku mafaranga gitandukanye.",
+      "filled": {
+        "list": "bivuye ku rutonde",
+        "item": "nk’uko byanditswe",
+        "delivery": "ibyagemuwe biheruka",
+        "average": "igiciro mpuzandengo"
+      },
+      "filledHint": "Ahafite ibara huzujwe ku bwawe: hagenzure, uhindure ibitandukanye.",
+      "perBoxKnown_one": "{{count}} mu gakarito",
+      "perBoxKnown_other": "{{count}} mu gakarito"
     },
     "received": "Ibyinjiye mu bubiko",
     "salesByItem": "Ibyagurishijwe kuri buri kimwe",

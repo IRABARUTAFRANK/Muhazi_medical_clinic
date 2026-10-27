@@ -1,0 +1,36 @@
+/*
+ * The picker's popover fades in and slides 4 px from the field over 120 ms (from above when it
+ * opens upwards). Nothing moves under prefers-reduced-motion.
+ */
+@keyframes mmc-pop-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mmc-pop-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mmc-pop {
+  animation: mmc-pop-down 0.12s ease-out both;
+}
+.mmc-pop[data-side='top'] {
+  animation-name: mmc-pop-up;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mmc-pop,
+  .mmc-pop[data-side='top'] {
+    animation: none;
+  }
+}

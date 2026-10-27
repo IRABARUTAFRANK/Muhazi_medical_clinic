@@ -1364,7 +1364,8 @@
           "CARDIOL": "a heart specialist (cardiologist)",
           "NEPHRO": "a kidney specialist (nephrologist)",
           "ORTH": "a bone specialist (orthopaedist)"
-        }
+        },
+        "box": "box of {{n}}"
       },
       "packSize": "Units per box",
       "packHint": "Used when a delivery is counted in boxes.",
@@ -4562,7 +4563,10 @@
     "searchAria": "Search the list",
     "matches_one": "{{count}} match: choose it",
     "matches_other": "{{count}} matches: choose one",
-    "more": "… {{count}} more: type more letters"
+    "more": "… {{count}} more: type more letters",
+    "found_one": "{{count}} match",
+    "found_other": "{{count}} matches",
+    "none": "Nothing matches “{{query}}”"
   },
   "session": {
     "duration": {
@@ -7094,7 +7098,19 @@
         "boxes": "Give the number of boxes and the units in one box."
       },
       "batchPh": "as written on the box",
-      "listTariff": "official tariff {{price}} (what insurers pay): set your cash selling price below"
+      "listTariff": "official tariff {{price}} (what insurers pay): set your cash selling price below",
+      "groupClinic": "Clinic medicines and supplies",
+      "soldBy": "unit: {{unit}}",
+      "listTariffFilled": "Official tariff {{price}} (what insurers pay), filled in as the selling price: change it if the clinic’s cash price differs.",
+      "filled": {
+        "list": "from the list",
+        "item": "as saved",
+        "delivery": "last delivery",
+        "average": "average cost"
+      },
+      "filledHint": "Tinted fields were filled in for you: check them and change what differs.",
+      "perBoxKnown_one": "{{count}} per box",
+      "perBoxKnown_other": "{{count}} per box"
     },
     "received": "Stock received",
     "salesByItem": "Sales by item",

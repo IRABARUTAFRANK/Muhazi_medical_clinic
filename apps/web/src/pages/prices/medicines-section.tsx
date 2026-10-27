@@ -10,9 +10,11 @@ import { SidePanel } from '@/components/ui/side-panel'
 import { ShownList } from '@/components/ui/list-tools'
 import { SearchSelect } from '@/components/ui/search-select'
 import {
-  medicineRefLabel,
+  medicineRefOption,
+  medicineRefParts,
   medicineRuleText,
   readableUnit,
+  sortMedicineRefs,
   useMedicineActions,
   useMedicineReference,
   useMedicines,
@@ -235,11 +237,14 @@ function MedicineForm({
   const pickRef = (value: string) => {
     setCode(value)
     const r = reference.find((x) => x.code === value)
-    setName(r?.generic ?? '')
-    setStrength(r?.presentation ?? '')
-    setForm('')
+    // the list's wording made clean: name (with the brand when it has one), strength, form, unit
+    const p = r ? medicineRefParts(r) : null
+    setName(p ? (p.brand ? `${p.genericOnly} (${p.brand})` : p.genericOnly) : '')
+    setStrength(p?.strengthText ?? '')
+    setForm(p?.form ?? '')
     setUnit(readableUnit(r?.unit ?? null))
     setPrice(r?.price == null ? '' : String(r.price))
+    setPackSize(p?.pack ? String(p.pack) : null)
   }
 
   const submit = async (e: FormEvent) => {
@@ -330,9 +335,9 @@ function MedicineForm({
                 value={code}
                 onChange={pickRef}
                 emptyLabel={t('prices.meds.ref.none')}
-                options={reference
+                options={sortMedicineRefs(reference)
                   .filter((r) => !clinicCodes.has(r.code) || r.code === code)
-                  .map((r) => ({ value: r.code, label: medicineRefLabel(r, t) }))}
+                  .map((r) => medicineRefOption(r, t))}
               />
               {code ? (
                 <>

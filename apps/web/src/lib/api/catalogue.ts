@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatRwf, type CategoryId } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import {
+  compareMedicineParts,
+  medicineNameParts,
+  type MedicineNameParts,
+} from '@/lib/medicine-name'
 import { apiError } from './errors'
 
 /**
@@ -823,6 +828,35 @@ export const sampleReference: MedicineRef[] = [
     4,
     'N02B · OTHER ANALGESICS AND ANTIPYRETICS',
   ],
+  // more rows as the list writes them (brands in capitals, "B/30" boxes), so the sample picker
+  // is long enough to search and shows how the names are cleaned
+  ['S01EC01001', 'Acetazolamide 250mg', 'ACETAZOLAMIDE  250mg tablet', null, 'TABLET', 84, null],
+  ['S01EC01002', 'Acetazolamide 250mg', 'DIAMOX  250mg tablet', null, 'TABLET', 478, null],
+  [
+    'B01AC06003',
+    'Acetylsalicylic Acid 100mg',
+    'ACETYLSALISYLIC ACID  100mg tablet',
+    null,
+    'TABLET',
+    3,
+    'B01 · ANTITHROMBOTIC AGENTS',
+  ],
+  [
+    'B01AC06005',
+    'Acetylsalicylic Acid  100mg',
+    'CARDIO ASPIRINE Tablet  100mg tablet',
+    null,
+    'TABLET',
+    205,
+    'B01 · ANTITHROMBOTIC AGENTS',
+  ],
+  ['A10BB12006', 'Glimepiride 4mg', 'AMAREL 4mg  tablet  B/30', null, 'TABLET', 178, null],
+  ['C09AA03004', 'Lisinopril 5mg', 'ZESTRIL 5mg tablet  B/28', null, 'TABLET', 424, null],
+  ['A07DA03001', 'Loperamide', 'LOPERAMIDE   2MG tablet', null, 'TABLET', 27, null],
+  ['A03F01001', 'Metoclopramide', 'METOCLOPRAMIDE 10mg tablet', null, 'TABLET', 13.35, null],
+  ['A01AB09001', 'Miconazole 20g/1g', 'DAKTARIN Oral  gel   40g', null, 'TUBE', 12683, null],
+  ['A11AA03003', 'Multivitamin', 'MULTIVITAMIN Syrup  100ml', null, 'BOTTLE', 600.75, null],
+  ['J01DB04001', 'Cefazolin', 'CEFAZOLIN  1G injection', null, 'VIAL', 845, null],
 ].map(([code, generic, presentation, rule, unit, price, group]) => ({
   code: code as string,
   generic: generic as string,
@@ -881,16 +915,86 @@ export function useMedicineReference(enabled = true) {
 /** "TABLET" → "tablet": the list writes its units in capitals. */
 export const readableUnit = (unit: string | null) => (unit ?? '').toLowerCase()
 
-/** The picker line of a list entry: "Paracetamol 100mg · PARACETAMOL 100mg tablet · RHIA list · RWF 4". */
-export function medicineRefLabel(r: MedicineRef, t: (k: string) => string) {
-  return [
-    r.generic,
-    r.presentation,
-    t('prices.meds.ref.tag'),
-    r.price == null ? null : formatRwf(r.price),
-  ]
+const refParts = new WeakMap<MedicineRef, MedicineNameParts>()
+/** The clean parts of a list entry (computed once per entry). */
+export function medicineRefParts(r: MedicineRef): MedicineNameParts {
+  let p = refParts.get(r)
+  if (!p) {
+    p = medicineNameParts(r)
+    refParts.set(r, p)
+  }
+  return p
+}
+
+/**
+ * A list entry as pickers show it: name "Acetazolamide 250 mg tablet" (generic, strength, form),
+ * sub "Diamox · box of 20" (the brand when it is not the generic, the content, the box size),
+ * hint "RWF 478" (the list's tariff).
+ */
+export function medicineRefDisplay(
+  r: MedicineRef,
+  t: (k: string, o?: Record<string, unknown>) => string,
+): { name: string; sub: string | undefined; hint: string | undefined } {
+  const p = medicineRefParts(r)
+  const sub = [p.brand, p.content, p.pack ? t('prices.meds.ref.box', { n: p.pack }) : null]
     .filter(Boolean)
     .join(' · ')
+  return {
+    name: p.name,
+    sub: sub || undefined,
+    hint: r.price == null ? undefined : formatRwf(r.price),
+  }
+}
+
+/** Hidden search words of a list entry: the code and the list's own wording ("250mg", brand). */
+export const medicineRefKeywords = (r: MedicineRef) =>
+  [r.code, r.generic, r.presentation].filter(Boolean).join(' ')
+
+const sortedRefs = new WeakMap<readonly MedicineRef[], MedicineRef[]>()
+/**
+ * The list in reading order: by generic name, then strength, the plain generic before brands.
+ * Kept per list read (sort the whole list, then filter: the order is worked out once).
+ */
+export function sortMedicineRefs(refs: readonly MedicineRef[]): MedicineRef[] {
+  let out = sortedRefs.get(refs)
+  if (!out) {
+    out = [...refs].sort(
+      (a, b) =>
+        compareMedicineParts(medicineRefParts(a), medicineRefParts(b)) ||
+        a.code.localeCompare(b.code),
+    )
+    sortedRefs.set(refs, out)
+  }
+  return out
+}
+
+/** One line of text for a list entry: "Acetazolamide 250 mg tablet · Diamox · RHIA list · RWF 478". */
+export function medicineRefLabel(
+  r: MedicineRef,
+  t: (k: string, o?: Record<string, unknown>) => string,
+) {
+  const d = medicineRefDisplay(r, t)
+  return [d.name, d.sub, t('prices.meds.ref.tag'), d.hint].filter(Boolean).join(' · ')
+}
+
+/**
+ * A picker option of a list entry: the clean name, brand and box on a second line, the tariff on
+ * the right; typing still finds it by brand, by the list's own wording or by its code.
+ */
+export function medicineRefOption(
+  r: MedicineRef,
+  t: (k: string, o?: Record<string, unknown>) => string,
+  value: string = r.code,
+) {
+  const d = medicineRefDisplay(r, t)
+  return {
+    value,
+    label: d.name,
+    sub: d.sub,
+    hint: d.hint,
+    group: t('prices.meds.ref.tag'),
+    keywords: medicineRefKeywords(r),
+  }
 }
 
 /** Who the list's prescribing codes name (the list's own legend); aliases share one wording. */
