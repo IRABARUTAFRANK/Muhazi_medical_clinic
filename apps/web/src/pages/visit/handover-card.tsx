@@ -53,7 +53,7 @@ export function HandoverCard({
 
   return (
     <Card className="anim-enter">
-      <CardHeader>
+      <CardHeader hue="mint">
         <span className="inline-flex items-center gap-2">
           <UserRoundCheck size={16} aria-hidden="true" />
           {t(

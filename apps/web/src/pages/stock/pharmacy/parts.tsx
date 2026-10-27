@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { controlClass, Field } from '@/components/ui/field'
 import { Reveal } from '@/components/ui/reveal'
 import { SearchSelect } from '@/components/ui/search-select'
+import { card } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 import { useHanded, type HandedGroup } from './handed'
 import { newLine, type EditLine } from './util'
@@ -164,7 +165,7 @@ export function ReasonBox({
   const [reason, setReason] = useState(initial)
   return (
     <Reveal focus block="nearest">
-      <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-2.5">
+      <div className={cn(card, 'gap-2 p-2.5')}>
         <span className="text-[14px] font-semibold">{title}</span>
         {choices.length > 0 && (
           <span className="flex flex-wrap gap-1.5">

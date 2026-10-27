@@ -56,7 +56,7 @@ export function PermissionsCard() {
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader hue="navy">
           <span className="inline-flex items-center gap-2">
             <IconChip icon={KeyRound} tint="violet" />
             {t('perms.title')}
@@ -160,7 +160,7 @@ export function PermissionsCard() {
         </CardBody>
 
         {/* One employee */}
-        <CardHeader className="border-t">
+        <CardHeader hue="navy" className="border-t">
           <span className="inline-flex items-center gap-2">
             <IconChip icon={UserCog} tint="violet" />
             {t('perms.oneTitle')}

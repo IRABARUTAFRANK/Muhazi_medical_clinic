@@ -3,6 +3,7 @@ import { CircleHelp, TriangleAlert } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ConfirmContext, type ConfirmOptions } from '@/lib/confirm'
 import { Button } from '@/components/ui/button'
+import { heroBand } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 
 interface Pending extends ConfirmOptions {
@@ -73,31 +74,30 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             aria-modal="true"
             aria-labelledby="mmc-confirm-title"
             aria-describedby={pending.body ? 'mmc-confirm-body' : undefined}
-            className="bg-card border-border shadow-sheet anim-dialog flex w-full max-w-md flex-col gap-4 rounded-md border p-5"
+            className="bg-card border-card-border shadow-panel anim-dialog flex w-full max-w-md flex-col overflow-hidden rounded-xl border"
           >
-            <div className="flex items-start gap-3">
-              <span
-                className={cn(
-                  'inline-flex size-9 flex-none items-center justify-center rounded-full border',
-                  danger
-                    ? 'border-red/25 bg-red-bg text-red'
-                    : 'border-primary/25 bg-primary-tint text-primary',
-                )}
-              >
+            {/* the question on a hero band: teal for an ordinary question, coral for a danger */}
+            <div
+              className={cn(
+                'flex items-start gap-3 px-5 py-4',
+                heroBand(danger ? 'coral' : 'teal'),
+              )}
+            >
+              <span className="inline-flex size-9 flex-none items-center justify-center rounded-full bg-white/20 text-white">
                 <Icon size={18} aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <h2 id="mmc-confirm-title" className="text-ink m-0 text-[16px] font-semibold">
+                <h2 id="mmc-confirm-title" className="m-0 text-[16px] font-semibold text-white">
                   {pending.title}
                 </h2>
                 {pending.body && (
-                  <div id="mmc-confirm-body" className="text-ink-2 mt-1 text-[14px]">
+                  <div id="mmc-confirm-body" className="mt-1 text-[14px] text-white/85">
                     {pending.body}
                   </div>
                 )}
               </div>
             </div>
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2 px-5 py-4">
               <Button ref={noRef} variant="ghost" onClick={() => answer(false)}>
                 {pending.cancelLabel ?? t('confirm.no')}
               </Button>

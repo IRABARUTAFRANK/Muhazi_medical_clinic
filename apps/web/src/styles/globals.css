@@ -73,9 +73,15 @@
   --color-amber: var(--mmc-amber);
   --color-amber-bg: var(--mmc-amber-bg);
 
+  --color-rail: var(--mmc-rail);
+  --color-card-border: var(--mmc-card-border);
+  --color-hero-navy: var(--mmc-hero-navy);
+  --color-hero-teal: var(--mmc-hero-teal);
+
   --shadow-sheet: var(--mmc-shadow);
   --shadow-card: var(--mmc-shadow-card);
   --shadow-card-hover: var(--mmc-shadow-card-hover);
+  --shadow-panel: var(--mmc-shadow-panel);
   --radius-lg2: var(--mmc-radius-lg);
 }
 
@@ -118,8 +124,19 @@
 
 /*
  * Staff console look, on top of brand.css (which keeps the public website's motion and
- * textures). Unlayered so it wins over the same selectors there: the workspace is a flat
- * neutral surface and cards never lift or cast a shadow; hover is a background tint, 120 ms.
+ * textures). Unlayered so it wins over the same selectors there. The surfaces:
+ *   .workspace   the page behind the cards: a soft three-stop gradient with a 22 px dot grid
+ *                that drifts slowly (30 s, still under reduced motion)
+ *   .topbar      white at 92 % with an 8 px blur, so the workspace shows through
+ *   .band-<hue>  a panel or card header: a light gradient from the hue's tint to white
+ *   .hero-<hue>  a strong band in the hue (identity band, page banners, side-panel and dialog
+ *                headers): hue → deep hue at 135°, white text, a faint dot grid; .hero-clinic is
+ *                the clinic's navy → teal
+ *   .wash-<hue>  a KPI tile: the hue's tint washing into white at 150°
+ *   .lift        a card that is a link: rises 1 px with a deeper shadow on hover (120 ms)
+ *   .rail-<group> the sidebar group blocks, each on its group's tint
+ * Hues: teal (the clinic), mint, amber, coral, violet (laboratory), navy (clinical blue), rose,
+ * grey (settings, notifications).
  *
  * Motion of the workflow (purposeful, 150–300 ms, off under prefers-reduced-motion). The sweeps
  * use these classes too, so their names are fixed:
@@ -134,15 +151,238 @@
  *   .draw-line       an SVG path (pathLength="1") draws itself; .fade-in-late follows it
  *   .press           0.98 scale while a button is pressed
  */
+@keyframes mmc-ambient {
+  from {
+    background-position:
+      0% 0%,
+      0 0;
+  }
+  to {
+    background-position:
+      100% 100%,
+      0 0;
+  }
+}
 .workspace,
 :root[data-theme='dim'] .workspace {
-  background-color: var(--mmc-bg);
-  background-image: none;
+  background-color: var(--mmc-ws-1);
+  background-image:
+    linear-gradient(160deg, var(--mmc-ws-1) 0%, var(--mmc-ws-2) 45%, var(--mmc-ws-3) 100%),
+    radial-gradient(var(--mmc-ws-dot) 1px, transparent 1.2px);
+  background-size:
+    220% 220%,
+    22px 22px;
+  background-position:
+    0% 0%,
+    0 0;
+  animation: mmc-ambient 30s ease-in-out infinite alternate;
+}
+.topbar {
+  background-color: color-mix(in srgb, var(--mmc-card) 92%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 .card-lift,
-.card-lift:hover {
-  box-shadow: none;
-  transition: background-color 0.12s ease;
+.lift {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background-color 0.12s ease;
+}
+.card-lift:hover,
+.lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--mmc-shadow-card-hover);
+}
+
+/* Light header bands: the hue's tint fading to the card's white (dim: to the dim card) */
+.band {
+  background-color: var(--mmc-card);
+  background-image: linear-gradient(
+    90deg,
+    var(--band-from, var(--mmc-primary-tint)) 0%,
+    var(--mmc-card) 100%
+  );
+}
+.band-teal {
+  --band-from: var(--mmc-primary-tint);
+}
+.band-mint {
+  --band-from: var(--mmc-green-bg);
+}
+.band-amber {
+  --band-from: var(--mmc-amber-bg);
+}
+.band-coral {
+  --band-from: var(--mmc-red-bg);
+}
+.band-violet {
+  --band-from: var(--mmc-violet-bg);
+}
+.band-navy {
+  --band-from: var(--mmc-blue-bg);
+}
+.band-rose {
+  --band-from: var(--mmc-rose-bg);
+}
+.band-grey {
+  --band-from: var(--mmc-hover);
+}
+
+/* KPI washes: the tint at the top-left corner washing into white by 70 % */
+.wash {
+  background-color: var(--mmc-card);
+  background-image: linear-gradient(
+    150deg,
+    var(--wash-from, var(--mmc-primary-tint)) 0%,
+    var(--mmc-card) 70%
+  );
+}
+.wash-teal {
+  --wash-from: var(--mmc-primary-tint);
+}
+.wash-mint {
+  --wash-from: var(--mmc-green-bg);
+}
+.wash-amber {
+  --wash-from: var(--mmc-amber-bg);
+}
+.wash-coral {
+  --wash-from: var(--mmc-red-bg);
+}
+.wash-violet {
+  --wash-from: var(--mmc-violet-bg);
+}
+.wash-navy {
+  --wash-from: var(--mmc-blue-bg);
+}
+.wash-rose {
+  --wash-from: var(--mmc-rose-bg);
+}
+.wash-grey {
+  --wash-from: var(--mmc-hover);
+}
+
+/* Hero bands: the hue to its deep end at 135°, white text, a faint white dot grid over it */
+.hero {
+  color: #fff;
+  background-color: var(--hero-to, var(--mmc-hero-teal));
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1.2px),
+    linear-gradient(
+      135deg,
+      var(--hero-from, var(--mmc-hero-navy)) 0%,
+      var(--hero-to, var(--mmc-hero-teal)) 100%
+    );
+  background-size:
+    22px 22px,
+    100% 100%;
+}
+.hero-clinic {
+  --hero-from: var(--mmc-hero-navy);
+  --hero-to: var(--mmc-hero-teal);
+}
+.hero-teal {
+  --hero-from: #1f6f8b;
+  --hero-to: var(--mmc-deep-teal);
+}
+.hero-mint {
+  --hero-from: #10b981;
+  --hero-to: var(--mmc-deep-mint);
+}
+.hero-amber {
+  --hero-from: var(--mmc-hue-amber);
+  --hero-to: var(--mmc-deep-amber);
+}
+.hero-coral {
+  --hero-from: #ef4444;
+  --hero-to: var(--mmc-deep-coral);
+}
+.hero-violet {
+  --hero-from: #8b5cf6;
+  --hero-to: var(--mmc-deep-violet);
+}
+.hero-navy {
+  --hero-from: #2563eb;
+  --hero-to: var(--mmc-deep-navy);
+}
+.hero-rose {
+  --hero-from: #ec4899;
+  --hero-to: var(--mmc-deep-rose);
+}
+.hero-grey {
+  --hero-from: var(--mmc-hue-grey);
+  --hero-to: var(--mmc-deep-grey);
+}
+
+/* Sidebar group blocks: each group on its own light tint, its label and active item in the hue */
+.rail-work {
+  --rail-bg: var(--mmc-primary-tint);
+  --rail-ink: var(--mmc-primary);
+  --rail-bar: var(--mmc-primary);
+}
+.rail-patients {
+  --rail-bg: var(--mmc-blue-bg);
+  --rail-ink: var(--mmc-navy-ink);
+  --rail-bar: var(--mmc-blue-dot);
+}
+.rail-finance {
+  --rail-bg: var(--mmc-green-bg);
+  --rail-ink: var(--mmc-green);
+  --rail-bar: var(--mmc-green-dot);
+}
+.rail-stock {
+  --rail-bg: var(--mmc-amber-bg);
+  --rail-ink: var(--mmc-amber);
+  --rail-bar: var(--mmc-yellow-dot);
+}
+.rail-manage {
+  --rail-bg: var(--mmc-violet-bg);
+  --rail-ink: var(--mmc-violet);
+  --rail-bar: var(--mmc-violet-dot);
+}
+.rail-inbox {
+  --rail-bg: var(--mmc-rose-bg);
+  --rail-ink: var(--mmc-rose);
+  --rail-bar: var(--mmc-rose-dot);
+}
+.rail-group {
+  background-color: var(--rail-bg, var(--mmc-hover));
+  border-radius: var(--mmc-radius-lg);
+}
+.rail-label {
+  color: var(--rail-ink, var(--mmc-text-3));
+}
+.rail-item {
+  color: var(--mmc-text-2);
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.rail-item:hover {
+  color: var(--mmc-text);
+  background-color: color-mix(in srgb, var(--mmc-card) 55%, transparent);
+}
+.rail-item[aria-current='page'] {
+  color: var(--rail-ink, var(--mmc-primary));
+  background-color: var(--mmc-card);
+  box-shadow:
+    inset 3px 0 0 var(--rail-bar, var(--mmc-primary)),
+    0 1px 3px rgba(11, 34, 82, 0.08);
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace,
+  :root[data-theme='dim'] .workspace {
+    animation: none;
+  }
+  .card-lift:hover,
+  .lift:hover {
+    transform: none;
+  }
+  .rail-item {
+    transition: none;
+  }
 }
 @keyframes mmc-pulse-dot {
   0%,

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { headerBand } from '@/components/dash/kit-style'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
@@ -80,11 +81,8 @@ export function CategoriesCard({
 
   return (
     <Card className="border-primary">
-      <CardHeader>
-        <span className="inline-flex items-center gap-2">
-          <Tags size={16} aria-hidden="true" />
-          {t('prices.cat.title')}
-        </span>
+      <CardHeader icon={Tags} className={headerBand('mint')}>
+        <span className="min-w-0 flex-1">{t('prices.cat.title')}</span>
         <span className="flex gap-1">
           {editing === null && (
             <Button size="sm" variant="primary" onClick={() => setEditing('new')}>

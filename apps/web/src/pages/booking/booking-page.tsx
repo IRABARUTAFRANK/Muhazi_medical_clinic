@@ -224,6 +224,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                   <span className="font-bold">{p.name}</span>
                   <span className="text-ink-2 text-[13px]">{p.title}</span>
                   <span className="flex flex-wrap gap-1">
+                    {p.role && <Chip>{t(`booking.roleLabel.${p.role}`)}</Chip>}
                     {p.langs && <Chip>{p.langs}</Chip>}
                     <Chip>{workdaysLabel(p)}</Chip>
                   </span>

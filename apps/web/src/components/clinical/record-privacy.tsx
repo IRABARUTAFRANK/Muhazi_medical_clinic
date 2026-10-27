@@ -358,7 +358,7 @@ export function SafetySummaryCard({
   const none = <span className="text-ink-3 text-[13px]">{t('safetySummary.none')}</span>
   return (
     <Card className={cn('anim-enter', className)}>
-      <CardHeader>
+      <CardHeader hue="coral">
         <span className="inline-flex items-center gap-2">
           <ShieldAlert size={16} aria-hidden="true" />
           {t('safetySummary.title')}
@@ -522,7 +522,7 @@ export function WhoLookedCard({ patientId, className }: { patientId: string; cla
   const { data: rows = [], isLoading } = usePatientAccessLog(patientId)
   return (
     <Card className={cn('anim-enter', className)}>
-      <CardHeader>
+      <CardHeader hue="coral">
         <span className="inline-flex items-center gap-2">
           <Eye size={16} aria-hidden="true" />
           {t('whoLooked.title')}

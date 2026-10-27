@@ -10,6 +10,7 @@ import { useNotificationActions, useNotifications, type Notice } from '@/lib/api
 import { useAgo, useWording } from '@/lib/notice-wording'
 import { DB_ROLES, useDepartments, useEmployees, useLeadDepartments } from '@/lib/api/staff'
 import { useConfirm } from '@/lib/confirm'
+import { headerBand } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 
 /**
@@ -93,9 +94,15 @@ export function NotificationBell({ user }: { user: StaffUser }) {
         <div
           role="dialog"
           aria-label={t('notify.title')}
-          className="text-ink bg-card border-border shadow-sheet anim-dialog fixed inset-x-2 top-[100px] z-50 flex max-h-[min(560px,70dvh)] flex-col overflow-hidden rounded-md border sm:absolute sm:inset-x-auto sm:top-[calc(100%+6px)] sm:right-0 sm:w-[min(400px,92vw)]"
+          className="text-ink bg-card border-card-border shadow-panel anim-dialog rounded-lg2 fixed inset-x-2 top-[100px] z-50 flex max-h-[min(560px,70dvh)] flex-col overflow-hidden border sm:absolute sm:inset-x-auto sm:top-[calc(100%+6px)] sm:right-0 sm:w-[min(400px,92vw)]"
         >
-          <div className="border-border bg-primary-tint/60 flex min-h-10 items-center gap-2 border-b px-3 py-1.5">
+          {/* the header on the amber band of every notices panel */}
+          <div
+            className={cn(
+              'border-border flex min-h-10 items-center gap-2 border-b px-3 py-1.5',
+              headerBand('amber'),
+            )}
+          >
             <span className="flex-1 text-[16px] font-semibold">{t('notify.title')}</span>
             <button
               type="button"

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ArrowRightLeft, ListPlus, Trash2, Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { headerBand } from '@/components/dash/kit-style'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
@@ -80,11 +81,8 @@ export function CatalogueTools({
 
   return (
     <Card className="border-primary">
-      <CardHeader>
-        <span className="inline-flex items-center gap-2">
-          <Wrench size={16} aria-hidden="true" />
-          {t('prices.tools.title')}
-        </span>
+      <CardHeader icon={Wrench} className={headerBand('grey')}>
+        <span className="min-w-0 flex-1">{t('prices.tools.title')}</span>
         <Button size="sm" variant="tint-grey" onClick={onClose}>
           {t('common.close')}
         </Button>

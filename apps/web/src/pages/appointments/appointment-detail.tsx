@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
+import { card } from '@/components/dash/kit-style'
 import { SidePanel } from '@/components/ui/side-panel'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useAppointmentDetail } from '@/lib/api/desk-ops'
+import { cn } from '@/lib/utils'
 
 const when = (iso: string | null) =>
   iso ? `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}` : '—'
@@ -85,7 +87,12 @@ export function AppointmentDetail({ id, onClose }: { id: string | null; onClose:
         {isLoading && <p className="text-ink-3 m-0 text-[13px]">…</p>}
         {a && (
           <>
-            <dl className="border-border m-0 grid grid-cols-1 gap-x-4 gap-y-2 rounded-md border p-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+            <dl
+              className={cn(
+                card,
+                'm-0 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[160px_minmax(0,1fr)]',
+              )}
+            >
               {rows
                 .filter(([, v]) => v)
                 .map(([k, v]) => (

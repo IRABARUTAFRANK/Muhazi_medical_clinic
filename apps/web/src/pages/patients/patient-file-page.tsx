@@ -15,6 +15,7 @@ import {
   Receipt,
   Stethoscope,
   Ticket,
+  UserRound,
   X,
 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
@@ -24,6 +25,7 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { Reveal } from '@/components/ui/reveal'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { GlassAvatar, GlassPill, HeroHead } from '@/components/clinical/hero-head'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
@@ -301,27 +303,31 @@ export function PatientFilePage({
         <>
           {/* Header */}
           <Card className="anim-enter">
-            <CardBody className="flex-row flex-wrap items-center gap-x-5 gap-y-3">
-              {!embedded && (
-                <span className="bg-primary-tint text-primary inline-flex size-10 flex-none items-center justify-center rounded-full text-[14px] font-semibold">
-                  {initials(p)}
+            {/* The person's band (the side panel's header already names them when embedded):
+                initials, name and details on the clinic's gradient, the tags as glass pills. */}
+            {!embedded && (
+              <HeroHead icon={UserRound}>
+                <GlassAvatar>{initials(p)}</GlassAvatar>
+                <span className="min-w-[220px] flex-1">
+                  <span className="block text-[24px] leading-8 font-semibold">
+                    {p.surname} {p.given_names}
+                  </span>
+                  <span className="block text-[13px] text-white/80 tabular-nums">
+                    {p.file_number} · {ageSexOf(p.birth_date, p.sex)}
+                    {p.birth_date
+                      ? ` · ${formatDate(new Date(p.birth_date))}${p.age_estimated ? ` (${t('file.estimated')})` : ''}`
+                      : ''}
+                    {p.phone_1 ? ` · ${p.phone_1}` : ''}
+                    {p.sector ? ` · ${p.sector}` : ''}
+                  </span>
                 </span>
-              )}
-              <span className={cn('min-w-[220px] flex-1', embedded && 'hidden')}>
-                <span className="block text-[24px] font-semibold">
-                  {p.surname} {p.given_names}
-                </span>
-                <span className="text-ink-3 block text-[13px] tabular-nums">
-                  {p.file_number} · {ageSexOf(p.birth_date, p.sex)}
-                  {p.birth_date
-                    ? ` · ${formatDate(new Date(p.birth_date))}${p.age_estimated ? ` (${t('file.estimated')})` : ''}`
-                    : ''}
-                  {p.phone_1 ? ` · ${p.phone_1}` : ''}
-                  {p.sector ? ` · ${p.sector}` : ''}
-                </span>
-              </span>
-              {p.blood_group && <Chip>{p.blood_group}</Chip>}
-              {!!p.flags.vip && <Chip>VIP</Chip>}
+                {p.blood_group && <GlassPill>{p.blood_group}</GlassPill>}
+                {!!p.flags.vip && <GlassPill>VIP</GlassPill>}
+              </HeroHead>
+            )}
+            <CardBody className="flex-row flex-wrap items-center gap-2">
+              {embedded && p.blood_group && <Chip>{p.blood_group}</Chip>}
+              {embedded && !!p.flags.vip && <Chip>VIP</Chip>}
               {openVisit ? (
                 <StaffLink
                   to="/app/visit"
@@ -384,7 +390,7 @@ export function PatientFilePage({
               </CardBody>
             )}
             {p.allergies && (
-              <CardBody className="bg-red-bg text-red border-border rounded-b-[16px] border-t py-2 text-[13px] font-semibold">
+              <CardBody className="bg-red-bg text-red border-border border-t py-2 text-[13px] font-semibold">
                 ⚠ {t('file.allergiesLabel')}: {p.allergies}
               </CardBody>
             )}
@@ -636,7 +642,7 @@ function Overview({ file, embedded }: { file: PatientFile; embedded?: boolean })
         </CardBody>
       </Card>
       <Card className="anim-enter" style={{ '--i': 1 } as CSSProperties}>
-        <CardHeader icon={HeartPulse}>
+        <CardHeader icon={HeartPulse} hue="mint">
           <span>{t('file.medical')}</span>
         </CardHeader>
         <CardBody className="gap-3">
@@ -751,7 +757,7 @@ function MoreInfo({
 
   return (
     <Card className="pc:col-span-2 anim-enter" style={{ '--i': 2 } as CSSProperties}>
-      <CardHeader>
+      <CardHeader hue="grey">
         <span>{t('file.more')}</span>
         <Button size="sm" onClick={() => setAdding((a) => !a)}>
           <Plus size={14} aria-hidden="true" />
@@ -1217,7 +1223,7 @@ function Clinical({ file, embedded }: { file: PatientFile; embedded?: boolean })
     <div className={cn('grid grid-cols-1 gap-4', !embedded && 'pc:grid-cols-2')}>
       <ResultsCard patientId={file.patient.id} />
       <Card className="anim-enter">
-        <CardHeader icon={Activity}>
+        <CardHeader icon={Activity} hue="mint">
           <span>{t('file.latestVitals')}</span>
           <span className="text-ink-3 text-xs">
             {latest.size ? when([...latest.values()][0]!.at) : ''}
@@ -1235,7 +1241,7 @@ function Clinical({ file, embedded }: { file: PatientFile; embedded?: boolean })
         </CardBody>
       </Card>
       <Card className="anim-enter" style={{ '--i': 1 } as CSSProperties}>
-        <CardHeader icon={Stethoscope}>
+        <CardHeader icon={Stethoscope} hue="navy">
           <span>{t('file.diagnoses')}</span>
           <span className="text-ink-3 text-xs">{file.conditions.length}</span>
         </CardHeader>
@@ -1271,7 +1277,7 @@ function Bills({ file }: { file: PatientFile }) {
   const due = file.bills.reduce((s, b) => s + b.balance, 0)
   return (
     <Card className="anim-enter">
-      <CardHeader icon={Receipt}>
+      <CardHeader icon={Receipt} hue="mint">
         <span>{t('file.tabs.bills')}</span>
         <span
           className={cn('text-xs font-semibold tabular-nums', due > 0 ? 'text-red' : 'text-ink-3')}
@@ -1324,7 +1330,7 @@ function ResultsCard({ patientId }: { patientId: string }) {
   const { data: results = [] } = usePatientResults(patientId)
   return (
     <Card className="anim-enter pc:col-span-2">
-      <CardHeader>
+      <CardHeader hue="violet">
         <span className="inline-flex items-center gap-2">
           <FlaskConical size={16} aria-hidden="true" />
           {t('file.results')}

@@ -72,68 +72,74 @@ export function UserMenu({ user, onOpenSheet }: UserMenuProps) {
       {open && (
         <div
           role="menu"
-          className="border-border bg-card shadow-sheet anim-dialog absolute top-[calc(100%+6px)] right-0 z-[5] flex w-[min(280px,calc(100vw-24px))] flex-col rounded-md border p-1"
+          className="border-card-border bg-card shadow-panel anim-dialog rounded-lg2 absolute top-[calc(100%+6px)] right-0 z-[5] flex w-[min(280px,calc(100vw-24px))] flex-col overflow-hidden border pb-1"
         >
-          <div className="px-2 py-1.5">
-            <span className="block text-[14px] font-medium">{user.name}</span>
-            <span className="text-ink-3 text-[12px] tabular-nums">
-              {user.staffId ? `${user.staffId} · ` : ''}
-              {user.username}
+          {/* who is signed in, on the clinic's hero */}
+          <div className="hero hero-clinic flex items-center gap-2.5 px-3 py-2.5 text-white">
+            <Avatar name={user.name} size="md" className="border-white/30 bg-white/15 text-white" />
+            <span className="min-w-0">
+              <span className="block truncate text-[14px] font-semibold">{user.name}</span>
+              <span className="block truncate text-[12px] text-white/80 tabular-nums">
+                {user.staffId ? `${user.staffId} · ` : ''}
+                {user.username}
+              </span>
+              <span className="block text-[12px] text-white/70">
+                {t('session.rule', { count: idleHours })}
+              </span>
             </span>
-            <span className="text-ink-3 block text-[12px]">
-              {t('session.rule', { count: idleHours })}
-            </span>
           </div>
-          <div className="border-border my-1 border-t" />
-          <div className="flex flex-col gap-1 px-2 py-1.5">
-            <span className="text-ink-3 text-[12px]">{t('textSize.title')}</span>
-            <TextSizeControl />
+          <div className="px-1">
+            <div className="border-border my-1 border-t" />
+            <div className="flex flex-col gap-1 px-2 py-1.5">
+              <span className="text-ink-3 text-[12px]">{t('textSize.title')}</span>
+              <TextSizeControl />
+            </div>
+            <div className="flex flex-col gap-1 px-2 py-1.5 xl:hidden">
+              <span className="text-ink-3 text-[12px]">{t('lang.label')}</span>
+              <LangSwitch size="sm" />
+            </div>
+            <div className="border-border my-1 border-t" />
+            <button
+              type="button"
+              role="menuitem"
+              className={itemClass}
+              onClick={() => {
+                setOpen(false)
+                actions.toggleTheme()
+              }}
+            >
+              <span>{t(actions.theme === 'light' ? 'common.toDim' : 'common.toLight')}</span>
+              <span className="text-ink-3 text-[12px]">{t('common.nightUse')}</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className={itemClass}
+              onClick={() => {
+                setOpen(false)
+                actions.lock()
+              }}
+            >
+              <span>{t('common.lockNow')}</span>
+              <span className="text-ink-3 text-[12px]">{t('common.lockNowHint')}</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className={itemClass}
+              onClick={() => {
+                setOpen(false)
+                actions.changePin()
+              }}
+            >
+              <span>{t('common.changePin')}</span>
+              <span className="text-ink-3 text-[12px]">{t('common.changePinHint')}</span>
+            </button>
+            <button type="button" role="menuitem" className={itemClass} onClick={actions.signOut}>
+              <span>{t('common.signOut')}</span>
+              <span className="text-ink-3 text-[12px]">{t('common.backToSite')}</span>
+            </button>
           </div>
-          <div className="flex flex-col gap-1 px-2 py-1.5 xl:hidden">
-            <span className="text-ink-3 text-[12px]">{t('lang.label')}</span>
-            <LangSwitch size="sm" />
-          </div>
-          <div className="border-border my-1 border-t" />
-          <button
-            type="button"
-            role="menuitem"
-            className={itemClass}
-            onClick={() => {
-              setOpen(false)
-              actions.toggleTheme()
-            }}
-          >
-            <span>{t(actions.theme === 'light' ? 'common.toDim' : 'common.toLight')}</span>
-            <span className="text-ink-3 text-[12px]">{t('common.nightUse')}</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className={itemClass}
-            onClick={() => {
-              setOpen(false)
-              actions.lock()
-            }}
-          >
-            <span>{t('common.lockNow')}</span>
-            <span className="text-ink-3 text-[12px]">{t('common.lockNowHint')}</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className={itemClass}
-            onClick={() => {
-              setOpen(false)
-              actions.changePin()
-            }}
-          >
-            <span>{t('common.changePin')}</span>
-            <span className="text-ink-3 text-[12px]">{t('common.changePinHint')}</span>
-          </button>
-          <button type="button" role="menuitem" className={itemClass} onClick={actions.signOut}>
-            <span>{t('common.signOut')}</span>
-            <span className="text-ink-3 text-[12px]">{t('common.backToSite')}</span>
-          </button>
         </div>
       )}
     </div>

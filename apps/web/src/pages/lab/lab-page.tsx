@@ -119,7 +119,7 @@ function LabWorklist({ user }: { user: StaffUser }) {
 
         <section className="flex flex-col gap-3">
           <SectionTitle icon={TestTubes}>{t('lab.section')}</SectionTitle>
-          <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Kpi
               i={0}
               icon={Hourglass}

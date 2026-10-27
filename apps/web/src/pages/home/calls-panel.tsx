@@ -25,7 +25,8 @@ import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 const control = cn(controlClass, 'w-full')
-const row = 'border-border flex flex-col gap-2 rounded-md border px-3 py-2.5'
+const row =
+  'bg-card border-card-border shadow-card flex flex-col gap-2 rounded-lg2 border px-3 py-2.5'
 const minutesSince = (iso: string) =>
   Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000))
 

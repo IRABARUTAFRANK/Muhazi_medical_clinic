@@ -46,6 +46,8 @@ import {
 import { useConfirm } from '@/lib/confirm'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
+import { card } from '@/components/dash/kit-style'
+import { lift } from '@/components/clinical/lift'
 import { cn } from '@/lib/utils'
 
 /** Monday first, as the clinic plans its week. */
@@ -64,7 +66,7 @@ const ErrorLine = ({ children }: { children: string }) => (
 /**
  * A doctor's own calendar: the hours of each weekday, the booking slot, days off, a note and
  * who may see it (only me, the staff, or the staff and the public). The manager keeps the
- * calendar of any doctor or sonographer from the same page.
+ * calendar of any doctor, sonographer or nurse, and their own, from the same page.
  */
 export function CalendarPage({ user, initialUser }: { user: StaffUser; initialUser?: string }) {
   const { t } = useTranslation()
@@ -82,7 +84,7 @@ export function CalendarPage({ user, initialUser }: { user: StaffUser; initialUs
           icon={CalendarDays}
           tint="violet"
           title={t(isManager ? 'calendar.titleManager' : 'calendar.title')}
-          lead={t(isManager ? 'calendar.leadManager' : 'calendar.lead')}
+          lead={t(isManager ? 'calendar.leadManagerAll' : 'calendar.lead')}
           meta={
             cal?.saved ? (
               <BannerChip icon={VIS_ICON[cal.visibility]}>
@@ -100,6 +102,7 @@ export function CalendarPage({ user, initialUser }: { user: StaffUser; initialUs
               {people.map((p) => (
                 <option key={p.userId} value={p.userId}>
                   {p.name}
+                  {` · ${t(`booking.roleLabel.${p.role}`)}`}
                   {p.saved ? '' : ` · ${t('calendar.notSet')}`}
                 </option>
               ))}
@@ -110,11 +113,11 @@ export function CalendarPage({ user, initialUser }: { user: StaffUser; initialUs
         {error && <ErrorLine>{error.message}</ErrorLine>}
         {waiting && (
           <Panel i={1} icon={Stethoscope} tint="violet" title={t('calendar.noDoctors')}>
-            <Hint>{t('calendar.noDoctorsHint')}</Hint>
+            <Hint>{t('calendar.noPeopleHint')}</Hint>
           </Panel>
         )}
         {cal && !waiting && cal.canKeep === false && (
-          <Panel i={1} icon={Lock} tint="coral" title={t('calendar.cannotKeep')}>
+          <Panel i={1} icon={Lock} tint="coral" title={t('calendar.cannotKeepAll')}>
             <Hint>{t('calendar.cannotKeepHint')}</Hint>
           </Panel>
         )}
@@ -231,10 +234,10 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                   setDone(false)
                 }}
                 className={cn(
-                  'flex items-start gap-3 rounded-md border p-3 text-left transition-colors duration-120',
-                  on
-                    ? 'border-violet bg-violet-bg'
-                    : 'border-border bg-card hover:border-violet/50 hover:bg-hover',
+                  card,
+                  lift,
+                  'flex-row items-start gap-3 p-3 text-left',
+                  on ? 'border-violet bg-violet-bg' : 'hover:border-violet/50',
                 )}
               >
                 <span

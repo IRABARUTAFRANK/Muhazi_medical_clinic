@@ -235,7 +235,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
         </div>
         <PeriodCustom
           period={period}
-          className="bg-card border-border rounded-md border px-4 py-3"
+          className="bg-card border-card-border shadow-card rounded-lg2 border px-4 py-3"
         />
 
         {error && (

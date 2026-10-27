@@ -106,7 +106,7 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
               <thead>
-                <tr className="text-ink-3 text-left text-[12px]">
+                <tr className="text-ink-3 bg-surface text-left text-[12px]">
                   <th className="border-border hidden border-b px-4 py-2 font-medium sm:table-cell">
                     {t('patients.cols.file')}
                   </th>

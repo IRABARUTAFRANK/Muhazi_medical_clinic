@@ -17,7 +17,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { PageBanner } from '@/components/dash/page-banner'
-import { tileClass } from '@/components/dash/kit-style'
+import { card, tileClass } from '@/components/dash/kit-style'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -112,10 +112,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
         {/* Visit options apply to both an existing and a new patient: a band, coral once the
             emergency is ticked */}
         <section
-          className={cn(
-            'anim-enter flex flex-col gap-2 rounded-md border px-4 py-3',
-            emergency ? tileClass.coral : 'border-border bg-card',
-          )}
+          className={cn(card, 'anim-enter gap-2 px-4 py-3', emergency && tileClass.coral)}
           style={{ '--i': 0 } as CSSProperties}
         >
           {canRegisterEmergency(user) && (
@@ -303,10 +300,7 @@ function ResultCard({
   const station = t(`register.stations.${result.station}`)
   return (
     <Card ref={ref} className={emergency ? 'border-red' : 'border-green'}>
-      <CardHeader
-        icon={emergency ? AlertTriangle : CircleCheck}
-        className={emergency ? 'bg-red-bg/70' : 'bg-green-bg/70'}
-      >
+      <CardHeader icon={emergency ? AlertTriangle : CircleCheck} hue={emergency ? 'coral' : 'mint'}>
         <span className="min-w-0 flex-1">{t('register.done.title')}</span>
         <Badge
           tone={emergency ? 'red' : 'green'}

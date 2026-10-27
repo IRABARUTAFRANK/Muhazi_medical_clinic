@@ -264,7 +264,7 @@ export function VisitsView({ period, search, update, dept, clinic }: ViewProps) 
         )}
         {by === 'bookings' && (
           <>
-            <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Stat
                 icon={CalendarPlus}
                 label={t('analytics.visits.booked')}

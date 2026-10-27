@@ -1,4 +1,4 @@
-import { ClipboardList, Wallet } from 'lucide-react'
+import { ClipboardList, UserRound, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@mmc/shared'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -54,6 +54,8 @@ export function PersonDrawer({
 
   return (
     <Drawer
+      icon={UserRound}
+      hue="navy"
       title={person?.name || t('analytics.staff.person')}
       subtitle={
         person && (

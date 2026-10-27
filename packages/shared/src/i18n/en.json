@@ -370,7 +370,13 @@
     "noneYet": "No doctor has published a calendar for this service yet. Call or WhatsApp reception and we find you a time.",
     "reason": "Reason for the visit",
     "reasonPh": "e.g. fever for 3 days, dental check-up",
-    "exactTime": "Exact time"
+    "exactTime": "Exact time",
+    "roleLabel": {
+      "doctor": "Doctor",
+      "sonographer": "Sonographer",
+      "nurse": "Nurse",
+      "manager": "Manager"
+    }
   },
   "home": {
     "clinicNow": "Clinic now",
@@ -3273,7 +3279,10 @@
     "breakBetween": "Break {{from}}–{{to}}",
     "breakHint": "Add a break to split the day (for example 12:00–14:00); patients cannot book during the break. A third period is possible for evening hours.",
     "publicNoHours": "A public calendar needs at least one working day, or the site cannot show it.",
-    "publicNoService": "Choose at least one service, or patients cannot find this calendar on the site."
+    "publicNoService": "Choose at least one service, or patients cannot find this calendar on the site.",
+    "cannotKeepAll": "Only doctors, sonographers, nurses and the manager keep a calendar",
+    "noPeopleHint": "Create the employees under Employees (role Doctor, Sonographer, Nurse or Manager); each can then keep a calendar here.",
+    "leadManagerAll": "The working hours and days off of each doctor, sonographer and nurse, and your own."
   },
   "journey": {
     "show": "Show what was done",
@@ -6700,7 +6709,9 @@
     "54c6982b": "The oxygen saturation must be between 40 and 100 %.",
     "7028b3a6": "The weight must be between 0.3 and 350 kg.",
     "f2b8b050": "The height must be between 20 and 250 cm.",
-    "936ac589": "The arm circumference must be between 5 and 60 cm."
+    "936ac589": "The arm circumference must be between 5 and 60 cm.",
+    "bfaad0ce": "Only doctors, sonographers, nurses and managers keep a calendar.",
+    "abb6e23b": "Only doctors, sonographers, nurses and managers can be booked."
   },
   "panel": {
     "close": "Close",

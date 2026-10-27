@@ -109,7 +109,7 @@ export function NurseTaskCard({
   if (nurse && mine.length === 0) return null
   return (
     <Card>
-      <CardHeader>
+      <CardHeader hue="mint">
         <span className="inline-flex items-center gap-2">
           <ClipboardList size={16} aria-hidden="true" />
           {t('ops.tasks.forNurse')}

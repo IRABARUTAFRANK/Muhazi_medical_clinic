@@ -9,14 +9,15 @@ import { useDayNames } from '@/lib/hooks'
 import { roleLabel } from '@/lib/roles'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { edgeClass, lookFor, stripeClass, tagClass, tileClass } from './kit-style'
+import { heroBand, lookFor, stripeClass } from './kit-style'
 
 /*
  * Identity header, the first thing under the top bar on every dashboard: who is signed in
- * (name, 20 px), as what (role tag with its icon), where (department, position, station) and
- * the staff ID, so a shared screen never leaves doubt about whose session it is. A band on the
- * role's light tint with a 3 px coloured left edge; the date and the clinic's open state sit
- * at the right.
+ * (name, 24 px white), as what (role tag with its icon), where (department, position, station)
+ * and the staff ID, so a shared screen never leaves doubt about whose session it is. The first
+ * design's hero: the clinic's navy → teal gradient with a faint dot grid and the role's icon
+ * large and faint at the right; the tags are white glass pills; the date and the clinic's
+ * open state sit at the right, the open state as a pill with a breathing dot.
  */
 
 type Position = 'head' | 'assistant' | 'member'
@@ -69,16 +70,27 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
     <section
       aria-label={t('identity.aria', { name: user.name })}
       className={cn(
-        'anim-enter flex flex-none flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-l-[3px] py-3 pr-4 pl-4',
-        tileClass[look.tint],
-        edgeClass[look.tint],
+        'anim-enter shadow-card rounded-lg2 relative flex flex-none flex-wrap items-center gap-x-4 gap-y-2 overflow-hidden py-4 pr-4 pl-4',
+        heroBand('teal'),
+        'hero-clinic',
       )}
     >
+      {/* the role's icon, large and faint, at the right edge of the hero */}
+      <RoleIcon
+        size={140}
+        strokeWidth={1.5}
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-6 right-4 text-white/10"
+      />
       <span className="relative flex-none">
-        <Avatar name={user.name} size="xl" className="bg-card" />
+        <Avatar
+          name={user.name}
+          size="xl"
+          className="border-white/30 bg-white/15 text-white backdrop-blur-[2px]"
+        />
         <span
           className={cn(
-            'ring-card absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center rounded-full text-white ring-2',
+            'absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center rounded-full text-white ring-2 ring-white/60',
             stripeClass[look.tint],
           )}
         >
@@ -86,18 +98,12 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
         </span>
       </span>
 
-      <div className="min-w-[180px] flex-1">
-        <h1 className="text-ink m-0 text-[24px] leading-8 font-semibold break-words">
+      <div className="relative min-w-[180px] flex-1">
+        <h1 className="m-0 text-[24px] leading-8 font-semibold break-words text-white">
           {user.name}
         </h1>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <span
-            className={cn(
-              'bg-card inline-flex h-6 items-center gap-1 rounded border px-2 text-[12px] leading-none font-medium',
-              tagClass[look.tint],
-              'bg-card',
-            )}
-          >
+          <span className="inline-flex h-6 items-center gap-1 rounded border border-white/30 bg-white/25 px-2 text-[12px] leading-none font-semibold text-white">
             <RoleIcon size={12} aria-hidden="true" />
             {roleLabel(user, t, specialty)}
           </span>
@@ -128,17 +134,19 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
         </div>
       </div>
 
-      <div className="flex flex-row flex-wrap items-center gap-x-3 gap-y-1 text-[14px] sm:flex-col sm:items-end sm:gap-y-1">
-        <span className="text-ink-2">{greeting}</span>
-        <span className="text-ink-2 inline-flex items-center gap-1.5">
-          <CalendarDays size={14} aria-hidden="true" className="text-ink-3" />
+      <div className="relative flex flex-row flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-white/85 sm:flex-col sm:items-end sm:gap-y-1">
+        <span>{greeting}</span>
+        <span className="inline-flex items-center gap-1.5">
+          <CalendarDays size={14} aria-hidden="true" className="text-white/70" />
           {dayNames.long[now.getDay()]} {formatDate(now)}
         </span>
         {status && (
           <span
             className={cn(
-              'bg-card inline-flex h-6 items-center gap-1.5 rounded border px-2 text-[12px] leading-none font-medium',
-              status.open ? 'border-green/30 text-green' : 'border-red/30 text-red',
+              'inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-[12px] leading-none font-semibold',
+              status.open
+                ? 'border-green-dot/40 bg-green-dot/25 text-white'
+                : 'border-red-dot/40 bg-red-dot/30 text-white',
             )}
           >
             <span
@@ -157,10 +165,11 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
   )
 }
 
+/** White glass pill on the hero: department, position, station, staff ID. */
 function Chip({ icon: IconC, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
-    <span className="border-border text-ink-2 bg-card inline-flex h-6 items-center gap-1 rounded border px-2 text-[12px] leading-none font-medium">
-      <IconC size={12} aria-hidden="true" className="text-ink-3" />
+    <span className="inline-flex h-6 items-center gap-1 rounded border border-white/25 bg-white/20 px-2 text-[12px] leading-none font-medium text-white">
+      <IconC size={12} aria-hidden="true" className="text-white/80" />
       {children}
     </span>
   )

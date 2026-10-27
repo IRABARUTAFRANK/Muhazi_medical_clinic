@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@mmc/shared'
 import { Panel } from '@/components/dash/kit'
+import { card } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
@@ -185,10 +186,7 @@ export function StoresTab({
           return (
             <div
               key={l.id}
-              className={cn(
-                'border-border flex flex-wrap items-center gap-3 rounded-md border p-3',
-                closed && 'opacity-75',
-              )}
+              className={cn(card, 'flex-row flex-wrap items-center p-3', closed && 'opacity-75')}
             >
               <Store size={18} aria-hidden="true" className="text-ink-3" />
               <span className="min-w-[200px] flex-1">

@@ -19,7 +19,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Empty, Kpi, Panel } from '@/components/dash/kit'
-import { focusedForm, selectedRow, tileClass } from '@/components/dash/kit-style'
+import { card, focusedForm, headerBand, selectedRow, tileClass } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button, actionLink } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
@@ -115,7 +115,7 @@ export function RoomStoresTab({
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi
           i={0}
           icon={ClipboardList}
@@ -468,10 +468,7 @@ function RoomStoresList({
             const value = valueIn(l.id)
             const closed = l.active === false
             return (
-              <div
-                key={l.id}
-                className={cn('border-border rounded-md border', closed && 'opacity-75')}
-              >
+              <div key={l.id} className={cn(card, 'gap-0 p-0', closed && 'opacity-75')}>
                 <button
                   type="button"
                   aria-expanded={open === l.id}
@@ -710,7 +707,7 @@ function RoomStoreForm({ store, onClose }: { store: StockLocation | null; onClos
   }
   return (
     <Card className={focusedForm}>
-      <CardHeader icon={Store}>
+      <CardHeader icon={Store} className={headerBand('amber')}>
         <span className="min-w-0 flex-1 break-words">
           {store ? t('roomStores.editTitle', { name: store.name }) : t('roomStores.new')}
         </span>

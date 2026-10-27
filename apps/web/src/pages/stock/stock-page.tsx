@@ -390,7 +390,7 @@ function AdminStock({
       {error && <p className={errorBox}>{error.message}</p>}
 
       <SectionTitle icon={Gauge}>{t('stock.onHand')}</SectionTitle>
-      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi
           i={0}
           icon={Boxes}
@@ -655,7 +655,7 @@ function StockTable({
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[14px]">
-            <thead>
+            <thead className="bg-surface">
               <tr className="border-border border-b">
                 <th className={tableHead}>{t('stock.cols.item')}</th>
                 <th className={cn(tableHead, 'text-right')}>{t('stockShared.cols.usable')}</th>
@@ -1250,7 +1250,7 @@ function Sales() {
     <div className="flex flex-col gap-4">
       <PeriodFilter period={period} />
       <SectionTitle icon={Coins}>{t('stock.tabs.sales')}</SectionTitle>
-      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi
           i={0}
           icon={Coins}
@@ -1300,7 +1300,7 @@ function Sales() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[14px]">
-              <thead>
+              <thead className="bg-surface">
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('stock.cols.item')}</th>
                   <th className={cn(tableHead, 'text-right')}>{t('stock.sales.units')}</th>

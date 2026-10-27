@@ -150,7 +150,7 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
 
         <div className="pc:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] grid grid-cols-1 gap-4">
           <Card style={{ '--i': 0 } as CSSProperties}>
-            <CardHeader icon={ListOrdered}>
+            <CardHeader icon={ListOrdered} hue="amber">
               <span className="min-w-0 flex-1">{t('triage.queueTitle')}</span>
               <Pill tint="coral" icon={Users}>
                 {isLoading ? '…' : waiting.length}
@@ -294,7 +294,9 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
             </Reveal>
           ) : linkMissing ? (
             <Card style={{ '--i': 1 } as CSSProperties}>
-              <CardHeader icon={Activity}>{t('triage.title')}</CardHeader>
+              <CardHeader icon={Activity} hue="mint">
+                {t('triage.title')}
+              </CardHeader>
               <CardBody className="gap-3">
                 <EmptyNote icon={Inbox} className="text-ink-2 text-[14px] font-medium">
                   {t('triage.notWaiting')}
@@ -317,7 +319,9 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
             </Card>
           ) : (
             <Card style={{ '--i': 1 } as CSSProperties}>
-              <CardHeader icon={Activity}>{t('triage.title')}</CardHeader>
+              <CardHeader icon={Activity} hue="mint">
+                {t('triage.title')}
+              </CardHeader>
               <CardBody>
                 <EmptyNote icon={MousePointerClick} className="text-[14px]">
                   {t('triage.select')}

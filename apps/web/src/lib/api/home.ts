@@ -238,7 +238,8 @@ export function useOpenInquiries() {
   })
 }
 
-/** Doctors and sonographers reception can book (their calendar is created when first booked). */
+/** Everyone reception can book: doctors, sonographers, nurses, managers (their calendar is
+ *  created when first booked). */
 export interface BookableDoctor {
   userId: string
   name: string

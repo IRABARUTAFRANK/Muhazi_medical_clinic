@@ -26,7 +26,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Empty, IconChip, Panel } from '@/components/dash/kit'
-import { type Tint } from '@/components/dash/kit-style'
+import { card, type Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Button } from '@/components/ui/button'
 import { SidePanel, useSidePanelState } from '@/components/ui/side-panel'
@@ -183,7 +183,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
         </PageBanner>
 
         {composing && canSend && (
-          <div className="bg-card border-border anim-enter overflow-hidden rounded-md border">
+          <div className={cn(card, 'anim-enter gap-0 overflow-hidden p-0')}>
             <Composer
               onClose={() => setComposing(false)}
               leads={user.role === 'manager' ? undefined : leads}
@@ -626,7 +626,7 @@ function NoticePanel({
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="border-border flex items-start gap-3 rounded-md border p-4">
+        <div className={cn(card, 'flex-row items-start gap-3')}>
           <IconChip icon={look.icon} tint={look.tint} />
           <p className="text-ink m-0 text-[14px] leading-relaxed">{w.body || w.title}</p>
         </div>

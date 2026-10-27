@@ -104,6 +104,8 @@ export interface Practitioner {
   daysOff?: string[]
   /** Short note the doctor shows with the calendar ("Theatre on Fridays"). */
   note?: string
+  /** Live data: the role behind the calendar (doctor, sonographer, nurse, manager). */
+  role?: string
 }
 
 export interface QueueRow {

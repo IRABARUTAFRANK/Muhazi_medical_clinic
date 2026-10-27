@@ -178,7 +178,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
             <div className="-mx-4 overflow-x-auto">
               <table className="w-full min-w-[640px] border-collapse">
                 <thead>
-                  <tr className="border-grid border-b">
+                  <tr className="border-grid bg-surface border-b">
                     <th className={tableHead}>{t('report.cols.when')}</th>
                     <th className={tableHead}>{t('history.fields.type')}</th>
                     <th className={cn(tableHead, 'w-full')}>{t('history.list')}</th>

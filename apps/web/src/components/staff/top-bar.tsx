@@ -78,7 +78,8 @@ function PatientSearch({ className }: { className?: string }) {
 }
 
 /**
- * Top bar on every staff screen: 48 px, white, a 1 px bottom border. On a PC the sidebar
+ * Top bar on every staff screen: 48 px, white at 92 % with an 8 px blur so the workspace's
+ * gradient shows through (.topbar), a 1 px bottom border. On a PC the sidebar
  * carries the logo, so the bar starts with the breadcrumb ("Clinic / Group / Page"), then the
  * search pill, sync state, bell, user menu and the language switch. Tablets and phones have
  * no sidebar: the logo comes first, and the search gets a second row.
@@ -86,10 +87,11 @@ function PatientSearch({ className }: { className?: string }) {
 export function TopBar({ user, sync, onOpenSheet, title, group }: TopBarProps) {
   const { t } = useTranslation()
   return (
-    <header className="border-border bg-card relative z-[6] flex-none border-b">
+    <header className="topbar border-border relative z-[6] flex-none border-b">
       {/* PC: one 48 px row */}
       <div className="pc:flex hidden h-12 items-center gap-3 px-4">
-        <span className="text-ink-3 flex min-w-0 items-center gap-1.5 text-[14px]">
+        {/* the breadcrumb takes the free space, so nothing is cut while there is room */}
+        <span className="text-ink-3 flex min-w-0 flex-1 items-center gap-1.5 text-[14px]">
           <span className="truncate">{t('app.clinicName')}</span>
           {group && group !== title && (
             <>
@@ -108,8 +110,7 @@ export function TopBar({ user, sync, onOpenSheet, title, group }: TopBarProps) {
             </>
           )}
         </span>
-        <div className="flex-1" />
-        <PatientSearch className="w-[min(320px,40vw)]" />
+        <PatientSearch className="w-[min(320px,20vw)] min-w-[180px] flex-none" />
         <SyncBadge state={sync} />
         <NotificationBell user={user} />
         <UserMenu user={user} />

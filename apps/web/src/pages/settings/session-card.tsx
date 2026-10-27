@@ -36,7 +36,7 @@ export function SessionCard() {
 
   return (
     <Card className="xl:col-span-2">
-      <CardHeader>
+      <CardHeader hue="grey">
         <span className="inline-flex items-center gap-2.5">
           <IconChip icon={Clock} tint="coral" />
           {t('settings.session.title')}

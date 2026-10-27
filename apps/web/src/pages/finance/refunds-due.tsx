@@ -4,7 +4,7 @@ import { ArrowUpRight, Receipt, Undo2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf } from '@mmc/shared'
 import { Empty, Panel, Pill } from '@/components/dash/kit'
-import { focusedForm } from '@/components/dash/kit-style'
+import { card, focusedForm } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
@@ -174,10 +174,7 @@ function RefundRow({
         </StaffLink>
       </div>
       {open && (
-        <form
-          onSubmit={(e) => void give(e)}
-          className={cn('bg-card flex flex-col gap-3 rounded-md border p-3', focusedForm)}
-        >
+        <form onSubmit={(e) => void give(e)} className={cn(card, 'p-3', focusedForm)}>
           <div className="grid gap-3 sm:grid-cols-2">
             <Select
               label={t('visit.refund.method')}

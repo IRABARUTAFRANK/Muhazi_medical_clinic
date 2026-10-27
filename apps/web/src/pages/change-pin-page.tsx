@@ -3,11 +3,13 @@ import { useNavigate } from '@tanstack/react-router'
 import { CircleAlert, KeyRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
+import { card, heroBand } from '@/components/dash/kit-style'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { PIN_RE } from '@/lib/api/staff'
 import { homeRouteFor } from '@/lib/roles'
 import { useSession } from '@/store/session'
+import { cn } from '@/lib/utils'
 
 /**
  * Forced at first sign-in (and whenever the manager resets a PIN): replace the handed-over PIN.
@@ -39,20 +41,26 @@ export function ChangePinPage({ user }: { user: StaffUser }) {
   }
 
   return (
-    <div className="bg-surface text-ink flex min-h-dvh items-center justify-center p-4">
+    <div className="workspace text-ink flex min-h-dvh items-center justify-center p-4">
       <form
         onSubmit={submit}
-        className="border-border bg-card anim-enter flex w-full max-w-[440px] flex-col gap-4 rounded-md border p-4"
+        className={cn(card, 'anim-enter shadow-sheet w-full max-w-[440px] gap-4 overflow-hidden')}
       >
-        <div className="flex items-center gap-3">
-          <span className="bg-primary-tint text-primary inline-flex size-9 flex-none items-center justify-center rounded">
+        {/* the title on the clinic's gradient band, like the sign-in card */}
+        <div
+          className={cn(
+            heroBand('teal'),
+            '-mx-4 -mt-4 flex items-center gap-3 px-4 py-3 text-white',
+          )}
+        >
+          <span className="inline-flex size-9 flex-none items-center justify-center rounded bg-white/20 text-white">
             <KeyRound size={20} aria-hidden="true" />
           </span>
           <span>
             <span className="block text-[20px] leading-7 font-semibold">
               {t(user.mustChangePin ? 'pin.changeTitle' : 'pin.ownTitle')}
             </span>
-            <span className="text-ink-3 text-[13px]">
+            <span className="text-[13px] text-white/80">
               {user.name} · {user.username}
             </span>
           </span>

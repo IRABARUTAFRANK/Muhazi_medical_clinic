@@ -6,6 +6,8 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Flash } from '@/components/ui/flash'
 import { useSaveFlowSetting, useStaffSettings } from '@/lib/api/settings'
 import { useConfirm } from '@/lib/confirm'
+import { card } from '@/components/dash/kit-style'
+import { lift } from '@/components/clinical/lift'
 import { cn } from '@/lib/utils'
 
 /**
@@ -45,7 +47,7 @@ export function FlowCard() {
 
   return (
     <Card className="anim-enter">
-      <CardHeader>
+      <CardHeader hue="amber">
         <span className="flex items-center gap-2.5">
           <IconChip icon={Route} tint="amber" />
           {t('settings.flow.title')}
@@ -64,8 +66,10 @@ export function FlowCard() {
                 disabled={save.isPending}
                 onClick={() => void choose(v)}
                 className={cn(
-                  'flex flex-col gap-1 rounded-md border p-3 text-left transition-colors duration-120',
-                  on ? 'border-amber/40 bg-amber-bg' : 'border-border bg-card hover:bg-hover',
+                  card,
+                  lift,
+                  'gap-1 p-3 text-left',
+                  on && 'border-amber/40 bg-amber-bg',
                 )}
               >
                 <span

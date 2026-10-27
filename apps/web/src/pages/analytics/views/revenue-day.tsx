@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Undo2, Wallet } from 'lucide-react'
+import { CalendarDays, Undo2, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -25,6 +25,8 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
   const toDay: { day?: string } = { day }
   return (
     <Drawer
+      icon={CalendarDays}
+      hue="mint"
       title={t('analytics.revenue.dayTitle', { day: dayLong(day) })}
       subtitle={
         s

@@ -32,6 +32,7 @@ import {
 } from '@/lib/api/files'
 import { useConfirm } from '@/lib/confirm'
 import { useNow } from '@/lib/hooks'
+import { heroBand } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 
 /**
@@ -106,7 +107,7 @@ export function PatientFilesSection({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader hue="violet">
         <span className="inline-flex items-center gap-2">
           <Paperclip size={16} aria-hidden="true" />
           {t('supportingFiles.title')}
@@ -237,7 +238,7 @@ export function VisitFilesCard({
 
   return (
     <Card id={VISIT_FILES_ID}>
-      <CardHeader>
+      <CardHeader hue="violet">
         <span className="inline-flex items-center gap-2">
           <Paperclip size={16} aria-hidden="true" />
           {t('supportingFiles.titleVisit')}
@@ -1011,16 +1012,24 @@ function FileViewer({
         role="dialog"
         aria-modal="true"
         aria-label={file.title}
-        className="bg-card border-border shadow-sheet flex max-h-[95vh] w-full max-w-4xl flex-col gap-3 rounded-md border p-3"
+        className="bg-card border-border anim-dialog flex max-h-[95vh] w-full max-w-4xl flex-col gap-3 overflow-hidden rounded-xl border p-3 shadow-[0_20px_60px_rgba(11,34,82,.22)]"
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="min-w-[160px] flex-1 font-semibold break-words">{file.title}</span>
+        {/* the viewer's header on the patient hue's gradient: white title, glass buttons */}
+        <div
+          className={cn(
+            heroBand('teal'),
+            '-mx-3 -mt-3 flex flex-wrap items-center gap-2 px-3 py-2.5 text-white',
+          )}
+        >
+          <span className="min-w-[160px] flex-1 text-[16px] font-semibold break-words">
+            {file.title}
+          </span>
           {!expired && inline && (
             <a
               href={src}
               target="_blank"
               rel="noopener noreferrer"
-              className="border-border text-ink hover:bg-hover inline-flex h-8 items-center gap-2 rounded-md border px-3 text-[13px] font-medium"
+              className="inline-flex h-8 items-center gap-2 rounded-md border border-white/30 bg-white/20 px-3 text-[13px] font-medium text-white no-underline hover:bg-white/30"
             >
               <ExternalLink size={14} aria-hidden="true" />
               {t('supportingFiles.newTab')}
@@ -1037,7 +1046,13 @@ function FileViewer({
               {t('supportingFiles.openAgain')}
             </Button>
           )}
-          <Button ref={close} size="sm" variant="ghost" onClick={onClose}>
+          <Button
+            ref={close}
+            size="sm"
+            variant="ghost"
+            className="text-white hover:bg-white/15 hover:text-white"
+            onClick={onClose}
+          >
             <X size={16} aria-hidden="true" />
             {t('supportingFiles.close')}
           </Button>

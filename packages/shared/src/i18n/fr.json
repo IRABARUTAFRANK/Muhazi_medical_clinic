@@ -370,7 +370,13 @@
     "noneYet": "Aucun médecin n’a encore publié d’agenda pour ce service. Appelez ou écrivez sur WhatsApp à l’accueil et nous vous trouvons une heure.",
     "reason": "Motif de la visite",
     "reasonPh": "ex. fièvre depuis 3 jours, contrôle dentaire",
-    "exactTime": "Heure exacte"
+    "exactTime": "Heure exacte",
+    "roleLabel": {
+      "doctor": "Médecin",
+      "sonographer": "Échographiste",
+      "nurse": "Infirmier·ère",
+      "manager": "Gestionnaire"
+    }
   },
   "home": {
     "clinicNow": "Clinique maintenant",
@@ -3273,7 +3279,10 @@
     "breakBetween": "Pause {{from}}–{{to}}",
     "breakHint": "Ajoutez une pause pour couper la journée (par exemple 12:00–14:00) ; aucun rendez-vous pendant la pause. Une troisième période est possible pour le soir.",
     "publicNoHours": "Un agenda public a besoin d’au moins un jour de travail, sinon le site ne peut pas l’afficher.",
-    "publicNoService": "Choisissez au moins un service, sinon les patients ne trouvent pas cet agenda sur le site."
+    "publicNoService": "Choisissez au moins un service, sinon les patients ne trouvent pas cet agenda sur le site.",
+    "cannotKeepAll": "Seuls les médecins, échographistes, infirmier·ères et le gestionnaire ont un calendrier",
+    "noPeopleHint": "Créez les employés sous Employés (rôle Médecin, Échographiste, Infirmier·ère ou Gestionnaire) ; chacun pourra ensuite tenir son calendrier ici.",
+    "leadManagerAll": "Les horaires et jours de congé de chaque médecin, échographiste et infirmier·ère, et les vôtres."
   },
   "journey": {
     "show": "Voir ce qui a été fait",
@@ -6700,7 +6709,9 @@
     "54c6982b": "La saturation en oxygène doit être entre 40 et 100 %.",
     "7028b3a6": "Le poids doit être entre 0,3 et 350 kg.",
     "f2b8b050": "La taille doit être entre 20 et 250 cm.",
-    "936ac589": "Le périmètre brachial doit être entre 5 et 60 cm."
+    "936ac589": "Le périmètre brachial doit être entre 5 et 60 cm.",
+    "bfaad0ce": "Seuls les médecins, échographistes, infirmier·ères et gestionnaires ont un calendrier.",
+    "abb6e23b": "Seuls les médecins, échographistes, infirmier·ères et gestionnaires peuvent recevoir une réservation."
   },
   "panel": {
     "close": "Fermer",

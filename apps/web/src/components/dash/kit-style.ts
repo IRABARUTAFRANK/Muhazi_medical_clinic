@@ -28,12 +28,14 @@ import { formatNumber, type Role } from '@mmc/shared'
  * The tints are the health palette of tokens.css: teal (the clinic), mint (healthy, done, paid),
  * amber (waiting), coral (critical, due), violet (laboratory), navy (the clinical blue:
  * information), rose (maternity, family planning).
- * The console look with colour: white bordered cards, 16 px semibold titles, tiles and bands on a
- * solid light tint with a 1 px border in the same hue, coloured icon chips and tags. Never a
- * gradient, never a shadow. The six "tints" are the subjects the dashboards pass.
+ * The console structure with the first design's richness: white cards with 10 px corners, a 1 px
+ * border at 8 % navy and a soft shadow; 16 px semibold titles; tiles on a tint wash with a
+ * 1 px border in the hue; header bands as a light gradient in the hue; coloured icon chips and
+ * tags. The six "tints" are the subjects the dashboards pass.
  */
 export const sectionTitle = 'text-[16px] font-semibold text-ink'
-export const card = 'bg-card border-border flex min-w-0 flex-col gap-3 rounded-md border p-4'
+export const card =
+  'bg-card border-card-border shadow-card flex min-w-0 flex-col gap-3 rounded-lg2 border p-4'
 
 /* Tables and lists of every page: 40 px rows on 1 px dividers, a 12 px grey header row, the
  * first column medium, a soft hover tint and a soft teal tint on the selected row (never a
@@ -74,8 +76,19 @@ export const tagClass: Record<Hue, string> = {
   navy: 'border-navy/30 bg-blue-bg text-navy-ink',
   rose: 'border-rose/30 bg-rose-bg text-rose',
 }
-/** A tile or band in the tint: solid light background, 1 px border in the same hue. */
+/** A tile in the tint: the first design's wash (the tint at the corner fading into white by
+ *  70 %, .wash-* in globals.css) with a 1 px border in the hue at 30 %. */
 export const tileClass: Record<Hue, string> = {
+  teal: 'border-primary/30 wash wash-teal',
+  mint: 'border-green/30 wash wash-mint',
+  amber: 'border-amber/30 wash wash-amber',
+  coral: 'border-red/30 wash wash-coral',
+  violet: 'border-violet/30 wash wash-violet',
+  navy: 'border-navy/30 wash wash-navy',
+  rose: 'border-rose/30 wash wash-rose',
+}
+/** The same tint as a solid light background (a selected row, a soft callout), no wash. */
+export const solidTint: Record<Hue, string> = {
   teal: 'border-primary/30 bg-primary-tint',
   mint: 'border-green/30 bg-green-bg',
   amber: 'border-amber/30 bg-amber-bg',
@@ -124,6 +137,22 @@ export const tintWash: Record<Hue, string> = {
   navy: 'var(--mmc-blue-bg)',
   rose: 'var(--mmc-rose-bg)',
 }
+/** A hue name as the pages and panels write it; `lavender` and `blue` are the kit's violet
+ *  and navy, `grey` is for settings and notifications. */
+export type BandHue = Hue | 'grey' | 'lavender' | 'blue'
+const bandHue = (hue: BandHue) => (hue === 'lavender' ? 'violet' : hue === 'blue' ? 'navy' : hue)
+/**
+ * Header band of a panel, card or dialog: a light gradient from the hue's tint to white
+ * (classes .band-* in globals.css, dim-aware) under the icon chip and the 16 px title.
+ * Side panels, dialogs and page banners use the strong `heroBand`.
+ */
+export const headerBand = (hue: BandHue = 'teal') => `band band-${bandHue(hue)}`
+/**
+ * Strong band in the hue (`linear-gradient(135deg, hue, hue-deep)`, white text, a faint dot
+ * grid): the identity band, page banners, side-panel and dialog headers (.hero-* in globals.css).
+ */
+export const heroBand = (hue: BandHue = 'teal') => `hero hero-${bandHue(hue)}`
+
 /** Initials discs in lists: a tint per person, cycling. */
 export const avatarTint = (i: number) =>
   tintClass[(['teal', 'mint', 'violet', 'amber', 'coral', 'navy'] as Tint[])[i % 6]!]

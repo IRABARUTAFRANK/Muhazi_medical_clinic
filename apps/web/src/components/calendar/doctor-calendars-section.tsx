@@ -20,7 +20,11 @@ export function DoctorCalendarsSection({ user, i = 4 }: { user: StaffUser; i?: n
   const now = new Date(useNow(60_000))
   const { data: calendars = [] } = useStaffCalendars()
   const { data: booked } = useBookedSlots(startOfDay(now), 21)
-  const canEdit = user.role === 'doctor' || user.role === 'manager' || user.dbRole === 'sonographer'
+  const canEdit =
+    user.role === 'doctor' ||
+    user.role === 'manager' ||
+    user.role === 'nurse' ||
+    user.dbRole === 'sonographer'
   const inNow = calendars.filter((c) => workingAt(asPractitioner(c), now)).length
 
   return (

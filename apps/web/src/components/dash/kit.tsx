@@ -15,17 +15,18 @@ import { useCountUp } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 /*
- * Dashboard kit: KPI tiles on a solid light tint with a coloured icon chip, bordered panels
- * with a 40 px tinted header, 16 px section titles, coloured tags and 40 px list rows. Every
- * dashboard (manager, head of station, front desk, nursing) is built from these so they share
- * one look: flat colour, 6 px corners, 1 px borders, no gradient, no shadow. Motion is small
- * and purposeful: tiles and panels enter staggered (anim-enter with --i), a figure counts up
- * once, a sparkline draws itself; hover is a background tint.
+ * Dashboard kit: KPI tiles on a tint wash with a coloured icon chip, white panels with a soft
+ * shadow and a 40 px gradient header band in their hue, 16 px section titles, coloured tags and
+ * 40 px list rows. Every dashboard (manager, head of station, front desk, nursing) is built from
+ * these so they share one look: 10 px corners, soft shadows, light washes and bands. Motion is
+ * small and purposeful: tiles and panels enter staggered (anim-enter with --i), a figure counts
+ * up once, a sparkline draws itself; a tile that is a link lifts 1 px on hover.
  */
 
 import { ShownList } from '@/components/ui/list-tools'
 import { DashLink } from './dash-link'
 import {
+  headerBand,
   tagClass,
   tileClass,
   tintClass,
@@ -140,21 +141,10 @@ export function Kpi({
   )
 }
 
-/** A card that is a link: the text keeps its colours, the tint deepens a little on hover (120
- *  ms, no lift), the focus ring shows for the keyboard. */
+/** A card that is a link: the text keeps its colours, the card lifts 1 px with a deeper shadow
+ *  on hover (120 ms, .lift), the focus ring shows for the keyboard. */
 const linkCard =
-  'group cursor-pointer text-inherit no-underline outline-none transition-[filter] duration-120 hover:brightness-[0.97] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20'
-
-/** Light tint of a panel header: teal for ordinary panels, the subject's colour where it has one. */
-const headerTint: Record<Hue, string> = {
-  teal: 'bg-primary-tint/60',
-  mint: 'bg-green-bg/70',
-  amber: 'bg-amber-bg/70',
-  coral: 'bg-red-bg/70',
-  violet: 'bg-violet-bg/70',
-  navy: 'bg-blue-bg/70',
-  rose: 'bg-rose-bg/70',
-}
+  'group lift cursor-pointer text-inherit no-underline outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20'
 
 /** "Details →" at the top of a panel: the detailed view behind it. */
 function DetailsLink({ to, label, title }: { to: string; label?: string; title: string }) {
@@ -274,11 +264,11 @@ export function Panel({
       className={cn(card, 'anim-enter gap-0 p-0', className)}
       style={{ '--i': i } as CSSProperties}
     >
-      {/* 40 px header on the panel's light tint: icon and title left, note and link right */}
+      {/* 40 px header band (the hue's tint fading to white): icon and title left, note and link right */}
       <h3
         className={cn(
           'border-border m-0 flex min-h-10 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b px-4 py-1.5 text-[16px] font-semibold',
-          headerTint[tint],
+          headerBand(tint),
         )}
       >
         <span className="flex min-w-0 flex-[1_1_180px] items-center gap-2">

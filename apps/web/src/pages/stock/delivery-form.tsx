@@ -5,6 +5,7 @@ import { formatDate, formatNumber, formatRwf } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
 import {
   expandedSection,
+  card,
   selectedRow,
   tableCell,
   tableFirstCell,
@@ -331,7 +332,8 @@ export function DeliveryForm({
               <div
                 key={l.key}
                 className={cn(
-                  'border-border flex flex-col gap-2 rounded-md border p-3',
+                  card,
+                  'gap-2 p-3',
                   badLine === l.key && 'border-red ring-red-bg ring-[3px]',
                 )}
               >
@@ -596,7 +598,7 @@ function DeliveryDetailView({ id, onClose }: { id: string; onClose: () => void }
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[14px]">
-          <thead>
+          <thead className="bg-surface">
             <tr className="border-border border-b">
               <th className={tableHead}>{t('stock.cols.item')}</th>
               <th className={tableHead}>{t('stock.batchNo')}</th>

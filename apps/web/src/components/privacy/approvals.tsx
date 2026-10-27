@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Hint, Panel, Pill } from '@/components/dash/kit'
-import type { Tint } from '@/components/dash/kit-style'
+import { card, type Tint } from '@/components/dash/kit-style'
 import { Button } from '@/components/ui/button'
 import { Flash } from '@/components/ui/flash'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -157,7 +157,8 @@ export function AccessRequestCard({
       ref={ref}
       id={`request-${row.id}`}
       className={cn(
-        'border-border bg-card anim-enter flex flex-col gap-2 rounded-md border p-3',
+        card,
+        'anim-enter gap-2 p-3',
         row.kind === 'emergency' && !row.reviewedAt && 'border-l-red-dot border-l-[3px]',
         highlight && 'border-primary ring-primary/20 ring-2',
       )}

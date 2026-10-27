@@ -62,7 +62,7 @@ export function MergeCard({ keepId, keepLabel }: { keepId: string; keepLabel: st
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader hue="amber">
         <span className="inline-flex items-center gap-2">
           <Combine size={16} aria-hidden="true" />
           {t('patients.merge.title')}

@@ -383,11 +383,12 @@ const navForStaff = (user: StaffUser): NavItem[] =>
     : user.role === 'receptionist'
       ? RECEPTION_NAV
       : user.role === 'nurse'
-        ? NURSE_NAV
+        ? // a nurse keeps a calendar and is booked like a doctor (0094)
+          [...NURSE_NAV.slice(0, 2), CALENDAR, ...NURSE_NAV.slice(2)]
         : user.role === 'pharmacist'
           ? [...ROLE_HOME.pharmacist.nav, PATIENTS, HISTORY, NOTICES]
           : user.role === 'lab_tech'
-            ? // sonographers keep their own calendar and have no stock to manage
+            ? // sonographers keep their own calendar (as nurses do) and have no stock to manage
               user.dbRole === 'sonographer'
               ? [...ROLE_HOME.lab_tech.nav, CALENDAR, PATIENTS, HISTORY, NOTICES]
               : [...ROLE_HOME.lab_tech.nav, PATIENTS, HISTORY, NOTICES]

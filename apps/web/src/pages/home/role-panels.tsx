@@ -445,6 +445,8 @@ function ReceptionistPanels({ data, onError }: PanelProps) {
           )}
         </ShownList>
       </Panel>
+      {/* the manager's home uses these panels: the bookings made with the manager's own calendar */}
+      {data.toAccept.length > 0 && <ToAcceptPanel items={data.toAccept} onError={onError} />}
     </>
   )
 }
@@ -540,6 +542,8 @@ function NursePanels({ data, onError }: PanelProps) {
           ))}
         </div>
       </Panel>
+      {/* a nurse keeps a calendar (0094): the bookings made with them */}
+      {data.toAccept.length > 0 && <ToAcceptPanel items={data.toAccept} onError={onError} />}
     </>
   )
 }

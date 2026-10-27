@@ -150,7 +150,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
 
         <section className="flex flex-col gap-3">
           <SectionTitle icon={Wallet}>{t('finance.section')}</SectionTitle>
-          <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Kpi
               i={0}
               icon={ShoppingBag}
@@ -200,7 +200,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
           ) : (
             <div className="-mx-4 overflow-x-auto px-4">
               <table className="w-full border-collapse">
-                <thead>
+                <thead className="bg-surface">
                   <tr>
                     <th className={tableHead}>{t('finance.cols.patient')}</th>
                     <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
@@ -323,7 +323,7 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
       ) : (
         <div className="-mx-4 overflow-x-auto px-4">
           <table className="w-full border-collapse">
-            <thead>
+            <thead className="bg-surface">
               <tr>
                 <th className={tableHead}>{t('finance.cols.patient')}</th>
                 <th className={cn(tableHead, 'text-right')}>{t('finance.cols.amount')}</th>
@@ -561,7 +561,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
         {/* Day close: totals by method, then the day */}
         <section className="flex flex-col gap-3">
           <SectionTitle icon={Wallet}>{t('finance.byMethod')}</SectionTitle>
-          <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
             {methods.map((m, i) => (
               <Kpi
                 key={m}
@@ -657,7 +657,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           ) : (
             <div className="-mx-4 overflow-x-auto px-4">
               <table className="w-full border-collapse">
-                <thead>
+                <thead className="bg-surface">
                   <tr>
                     <th className={tableHead}>{t('finance.cols.time')}</th>
                     <th className={tableHead}>{t('finance.cols.patient')}</th>

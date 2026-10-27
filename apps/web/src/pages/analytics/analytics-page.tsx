@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CLINIC_PROFILE, type StaffUser } from '@mmc/shared'
+import { card } from '@/components/dash/kit-style'
 import { ActionRow, ActionRowEnd, PageBanner } from '@/components/dash/page-banner'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { ReportButtons } from '@/components/dash/report-buttons'
@@ -163,10 +164,7 @@ export function AnalyticsPage({
             </Button>
             <ActionRowEnd />
           </ActionRow>
-          <PeriodCustom
-            period={period}
-            className="bg-card border-border rounded-md border px-4 py-3"
-          />
+          <PeriodCustom period={period} className={cn(card, 'flex-row gap-3 px-4 py-3')} />
         </header>
 
         {accessQ.error ? (
@@ -176,7 +174,7 @@ export function AnalyticsPage({
         ) : !View || !view ? (
           <p
             role="status"
-            className="border-border bg-card text-ink-2 m-0 flex items-center gap-2 rounded-md border px-4 py-3 text-[14px]"
+            className={cn(card, 'text-ink-2 m-0 flex-row items-center gap-2 px-4 py-3 text-[14px]')}
           >
             <ShieldOff size={16} aria-hidden="true" className="text-ink-3 flex-none" />
             {t('analytics.notAllowed')}
@@ -185,7 +183,7 @@ export function AnalyticsPage({
           <div className="pc:grid-cols-[220px_minmax(0,1fr)] grid grid-cols-1 gap-4">
             {/* SECTIONS: a list on the side (wide screens), a choice on a phone */}
             <nav aria-label={t('analytics.sections')} className="pc:block hidden">
-              <div className="bg-card border-border sticky top-0 flex flex-col gap-3 rounded-md border p-2">
+              <div className={cn(card, 'sticky top-0 p-2')}>
                 {groups.map((g) => (
                   <div key={g.key} className="flex flex-col gap-0.5">
                     <span className="text-ink-3 px-2 pb-0.5 text-[12px] font-medium">

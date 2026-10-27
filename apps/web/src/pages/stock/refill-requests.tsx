@@ -11,7 +11,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatNumber, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
-import { selectedRow } from '@/components/dash/kit-style'
+import { card, selectedRow } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
@@ -150,7 +150,8 @@ export function RefillRequestsList({
             <div
               key={r.id}
               className={cn(
-                'border-border flex flex-col gap-2 rounded-md border p-3',
+                card,
+                'gap-2 p-3',
                 r.id === focusId && cn('border-primary', selectedRow),
               )}
             >

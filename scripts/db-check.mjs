@@ -11588,6 +11588,94 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- calendars for nurses and the manager (0094)
+await step('0094: a nurse keeps a calendar; the website lists it as a nurse', async () => {
+  await as(staff.nurse)
+  const hours = JSON.stringify(
+    Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((d) => [d, [['00:00', '23:59']]])),
+  )
+  const mine = (await one(`select my_calendar(null) as j`)).j
+  await one(
+    `select save_calendar(null, $1::jsonb, 20, 'public', '{}', 'Dressings and injections') as id`,
+    [hours],
+  )
+  await as(null, 'anon')
+  const pub = await one(
+    `select role, slot_minutes from public_practitioners where names = 'Nyirahabimana Chantal'`,
+  )
+  await asAdmin()
+  if (mine.canKeep !== true) throw new Error('the nurse may not keep a calendar')
+  if (!pub || pub.role !== 'nurse' || pub.slot_minutes !== 20) throw new Error(JSON.stringify(pub))
+  return `canKeep; public row role ${pub.role}, ${pub.slot_minutes}-minute slots`
+})
+await step('0094: the manager keeps their own calendar and is in "Calendar of"', async () => {
+  await as(staff.manager)
+  const before = (await one(`select my_calendar(null) as j`)).j
+  await one(`select save_calendar(null, '{"1":[["08:00","12:00"]]}'::jsonb, 30, 'staff') as id`)
+  const people = (await one(`select calendar_people() as j`)).j
+  const me = people.find((p) => p.userId === staff.manager)
+  const nurse = people.find((p) => p.userId === staff.nurse)
+  const cashier = people.find((p) => p.userId === staff.cashier)
+  await asAdmin()
+  if (before.canKeep !== true || before.saved !== false) throw new Error(JSON.stringify(before))
+  if (!me || me.role !== 'manager' || me.saved !== true) throw new Error(JSON.stringify(me))
+  if (!nurse || nurse.saved !== true || cashier) throw new Error('people list wrong')
+  return `${people.length} people; the manager first, saved`
+})
+await expectError(
+  '0094: a cashier still cannot be booked',
+  async () => {
+    await as(staff.receptionist)
+    await db.query(`select ensure_practitioner($1)`, [staff.cashier])
+  },
+  /nurses and managers can be booked/,
+)
+await step(
+  '0094: a nurse is booked at reception; on arrival the patient waits at Nursing',
+  async () => {
+    await asAdmin()
+    const flow = (await one(`select value from setting where key = 'flow'`))?.value ?? null
+    await db.query(
+      `insert into setting (key, value) values ('flow', '{"triage_first": false}') on conflict (key) do update set value = setting.value || '{"triage_first": false}'`,
+    )
+    await as(staff.receptionist)
+    const r = (
+      await one(
+        `select register_patient_file('Uwase', 'Nurse Booked', 'female', null, 24, null) as r`,
+      )
+    ).r
+    const listed = (await one(`select bookable_doctors() as j`)).j.find(
+      (d) => d.userId === staff.nurse,
+    )
+    const appt = (
+      await one(
+        `select book_appointment($1, $2, date_trunc('day', now()) + interval '1 day 9 hours', 'Dressing') as id`,
+        [r.patient_id, staff.nurse],
+      )
+    ).id
+    await as(staff.nurse)
+    await db.query(`select accept_appointment($1)`, [appt])
+    await as(staff.receptionist)
+    const v = (await one(`select appointment_arrived($1) as v`, [appt])).v
+    await asAdmin()
+    const q = await one(
+      `select station::text as station, assigned_to from queue_entry where encounter_id = $1 and finished_at is null`,
+      [v.encounter_id],
+    )
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'booked_arrived' and recipient_user = $1`,
+      [staff.nurse],
+    )
+    if (flow) await db.query(`update setting set value = $1 where key = 'flow'`, [flow])
+    else await db.query(`delete from setting where key = 'flow'`)
+    if (!listed || listed.role !== 'nurse') throw new Error('the nurse is not in the bookable list')
+    if (v.station !== 'nursing' || q?.station !== 'nursing' || q.assigned_to !== staff.nurse)
+      throw new Error(JSON.stringify({ v, q }))
+    if (told.n < 1) throw new Error('the nurse was not told')
+    return `booked, accepted by the nurse; arrived at ${q.station}, given to the nurse, told`
+  },
+)
+
 finish()
 
 function finish() {

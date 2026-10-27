@@ -261,7 +261,7 @@ export function VitalsForm({
 
   return (
     <Card className={cn(mode === 'add' && 'border-primary')}>
-      <CardHeader>
+      <CardHeader hue="mint">
         <span className="inline-flex items-center gap-2">
           <Activity size={16} aria-hidden="true" />
           {title}

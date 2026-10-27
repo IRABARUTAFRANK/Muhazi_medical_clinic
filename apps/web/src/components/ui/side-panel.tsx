@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { ExternalLink, X, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@tanstack/react-router'
-import { tintClass, type Hue } from '@/components/dash/kit-style'
+import { heroBand, type Hue } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 import './side-panel.css'
 
@@ -18,7 +18,7 @@ export type PanelHue = Hue | 'lavender' | 'blue' | 'grey'
 const kitHue = (hue: PanelHue): Hue | 'grey' =>
   hue === 'lavender' ? 'violet' : hue === 'blue' ? 'navy' : hue
 
-/** The 3 px coloured left edge (the dot colour of the hue) and the header on its tint at 60 %. */
+/** The 3 px coloured left edge (the dot colour of the hue); the header is the hue's hero band. */
 const EDGE: Record<Hue | 'grey', string> = {
   teal: 'bg-primary',
   mint: 'bg-green-dot',
@@ -29,23 +29,9 @@ const EDGE: Record<Hue | 'grey', string> = {
   rose: 'bg-rose-dot',
   grey: 'bg-ink-3',
 }
-const HEADER: Record<Hue | 'grey', string> = {
-  teal: 'bg-primary-tint/60',
-  mint: 'bg-green-bg/60',
-  amber: 'bg-amber-bg/60',
-  coral: 'bg-red-bg/60',
-  violet: 'bg-violet-bg/60',
-  navy: 'bg-blue-bg/60',
-  rose: 'bg-rose-bg/60',
-  grey: 'bg-surface',
-}
-const look = (hue: PanelHue): { edge: string; header: string; chip: string } => {
+const look = (hue: PanelHue): { edge: string; header: string } => {
   const h = kitHue(hue)
-  return {
-    edge: EDGE[h],
-    header: HEADER[h],
-    chip: h === 'grey' ? 'bg-hover text-ink-2' : tintClass[h],
-  }
+  return { edge: EDGE[h], header: heroBand(h) }
 }
 
 export interface SidePanelProps {
@@ -76,13 +62,14 @@ const FOCUSABLE =
 
 /**
  * A right-hand drawer for the thing someone opened (a patient file, an employee, a booking):
- * 600 px wide (92 vw at most; the whole screen on a tablet or phone), white, a 1 px left border
- * plus a 3 px coloured edge in the subject's hue, over a dim overlay. It slides in over 220 ms,
- * closes on Escape, on the overlay and on the × button, moves the focus inside (and back where
- * it was on close), keeps Tab inside and locks the page's scroll behind it. The header (56 px)
- * sits on a soft tint of the hue: a 32 px icon chip, the title at 18 px semibold, a 13 px grey
- * subtitle, and on the right "Open full page" when a route exists, then ×. The body scrolls;
- * the footer appears only when a form needs Save / Cancel.
+ * 600 px wide (92 vw at most; the whole screen on a tablet or phone), white with 12 px left
+ * corners and a deep soft shadow, a 1 px left border plus a 3 px coloured edge in the subject's
+ * hue, over a dim overlay. It slides in over 220 ms, closes on Escape, on the overlay and on
+ * the × button, moves the focus inside (and back where it was on close), keeps Tab inside and
+ * locks the page's scroll behind it. The header (56 px) is the hue's hero band (gradient, white
+ * text): a 32 px white-glass icon chip, the title at 18 px semibold, a 13 px subtitle, and on
+ * the right "Open full page" when a route exists, then ×. The body scrolls; the footer appears
+ * only when a form needs Save / Cancel.
  */
 export function SidePanel({
   open,
@@ -171,38 +158,33 @@ export function SidePanel({
         tabIndex={-1}
         onKeyDown={onKeyDown}
         className={cn(
-          'bg-card border-border anim-panel relative flex h-full w-[600px] max-w-[92vw] flex-col border-l outline-none max-[901px]:w-full max-[901px]:max-w-none',
+          'bg-card border-border anim-panel shadow-panel relative flex h-full w-[600px] max-w-[92vw] flex-col overflow-hidden rounded-l-xl border-l outline-none max-[901px]:w-full max-[901px]:max-w-none max-[901px]:rounded-none',
           className,
         )}
       >
-        <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-[3px]', l.edge)} />
+        <span
+          aria-hidden="true"
+          className={cn('absolute inset-y-0 left-0 z-[1] w-[3px]', l.edge)}
+        />
 
         <header
           className={cn(
-            'border-border flex min-h-14 flex-none items-center gap-3 border-b py-2 pr-3 pl-5',
+            'flex min-h-14 flex-none items-center gap-3 py-2 pr-3 pl-5 text-white',
             l.header,
           )}
         >
-          <span
-            className={cn(
-              'inline-flex size-8 flex-none items-center justify-center rounded-md',
-              l.chip,
-            )}
-          >
+          <span className="inline-flex size-8 flex-none items-center justify-center rounded-md bg-white/20 text-white">
             <IconC size={18} aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <h2
-                id={titleId}
-                className="text-ink m-0 truncate text-[18px] leading-6 font-semibold"
-              >
+              <h2 id={titleId} className="m-0 truncate text-[18px] leading-6 font-semibold">
                 {title}
               </h2>
               {tags}
             </div>
             {subtitle && (
-              <div className="text-ink-3 truncate text-[13px] leading-tight">{subtitle}</div>
+              <div className="truncate text-[13px] leading-tight text-white/80">{subtitle}</div>
             )}
           </div>
           <div className="flex flex-none items-center gap-1">
@@ -210,7 +192,7 @@ export function SidePanel({
             {fullPageTo && fullHref && (
               <a
                 href={fullHref}
-                className="text-primary hover:bg-primary-tint inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-120 hover:underline"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium whitespace-nowrap text-white no-underline transition-colors duration-120 hover:bg-white/15 hover:underline"
                 onClick={(e) => {
                   // a plain click stays in the app and closes the panel; middle / ctrl-click opens a tab
                   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
@@ -228,7 +210,7 @@ export function SidePanel({
               type="button"
               onClick={onClose}
               aria-label={t('panel.close')}
-              className="text-ink-2 hover:bg-hover hover:text-ink focus-visible:ring-primary/20 inline-flex size-8 items-center justify-center rounded-md transition-colors duration-120 focus-visible:ring-2 focus-visible:outline-none"
+              className="inline-flex size-8 items-center justify-center rounded-md text-white/85 transition-colors duration-120 hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
             >
               <X size={18} aria-hidden="true" />
             </button>

@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { formatRwf, formatTime } from '@mmc/shared'
 import { Empty, Pill } from '@/components/dash/kit'
 import { Panel } from '@/components/dash/kit'
-import { focusedForm, selectedRow } from '@/components/dash/kit-style'
+import { card, focusedForm, selectedRow } from '@/components/dash/kit-style'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
@@ -385,10 +385,7 @@ function CounterPayForm({
   }
 
   return (
-    <form
-      onSubmit={(e) => void submit(e)}
-      className={cn('bg-card flex flex-col gap-3 rounded-md border p-3', focusedForm)}
-    >
+    <form onSubmit={(e) => void submit(e)} className={cn(card, 'p-3', focusedForm)}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Select
           label={t('visit.payment.method')}

@@ -2,12 +2,14 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, CircleAlert, CircleCheck, Clock, KeyRound, Lock, MailCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { card, heroBand } from '@/components/dash/kit-style'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Logo } from '@/components/public/logo'
 import { PIN_RE } from '@/lib/api/staff'
 import { homeRouteFor } from '@/lib/roles'
 import { isLive } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 import {
   clearSignOutNote,
   MISMATCH_KEY,
@@ -222,11 +224,19 @@ export function LoginPage({ staffId }: { staffId: string }) {
   }
 
   return (
-    <div className="bg-surface text-ink flex min-h-dvh flex-col items-center justify-center gap-4 p-4">
+    <div className="workspace text-ink flex min-h-dvh flex-col items-center justify-center gap-4 p-4">
       <Logo subtitle={t('app.place')} />
-      <div className="border-border bg-card text-ink anim-enter flex w-full max-w-[440px] flex-col gap-4 rounded-md border p-4">
-        <div className="flex items-center gap-3">
-          <span className="bg-primary-tint text-primary inline-flex size-9 flex-none items-center justify-center rounded">
+      <div
+        className={cn(card, 'anim-enter shadow-sheet w-full max-w-[440px] gap-4 overflow-hidden')}
+      >
+        {/* the card's title on the clinic's gradient band: the first design's hero, small */}
+        <div
+          className={cn(
+            heroBand('teal'),
+            '-mx-4 -mt-4 flex items-center gap-3 px-4 py-3 text-white',
+          )}
+        >
+          <span className="inline-flex size-9 flex-none items-center justify-center rounded bg-white/20 text-white">
             {step === 'otp' ? (
               <MailCheck size={20} aria-hidden="true" />
             ) : step === 'new-pin' ? (
@@ -245,8 +255,8 @@ export function LoginPage({ staffId }: { staffId: string }) {
                     : 'login.title',
               )}
             </span>
-            <span className="text-ink-3 block text-[13px]">
-              {t('login.staffId')} <b className="text-ink tabular-nums">{staffId}</b>
+            <span className="block text-[13px] text-white/80">
+              {t('login.staffId')} <b className="text-white tabular-nums">{staffId}</b>
             </span>
           </span>
         </div>

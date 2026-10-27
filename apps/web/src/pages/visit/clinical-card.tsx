@@ -766,7 +766,7 @@ export function ClinicalCard({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader hue="navy">
         <span className="inline-flex items-center gap-2">
           <Stethoscope size={16} aria-hidden="true" />
           {t('clinical.title')}

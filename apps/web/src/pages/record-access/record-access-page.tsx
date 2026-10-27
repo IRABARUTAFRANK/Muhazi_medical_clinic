@@ -18,7 +18,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
-import type { Tint } from '@/components/dash/kit-style'
+import { card, type Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { AccessRequestCard } from '@/components/privacy/approvals'
@@ -658,7 +658,12 @@ function LogPanel({
       }
     >
       <div className="flex flex-col gap-4">
-        <dl className="border-border m-0 grid grid-cols-1 gap-x-4 gap-y-2 rounded-md border p-4 sm:grid-cols-[150px_minmax(0,1fr)]">
+        <dl
+          className={cn(
+            card,
+            'm-0 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[150px_minmax(0,1fr)]',
+          )}
+        >
           {lines
             .filter(([, v]) => v)
             .map(([k, v]) => (

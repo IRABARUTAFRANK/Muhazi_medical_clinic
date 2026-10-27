@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Pill } from '@/components/dash/kit'
-import { focusedForm, tagClass, type Tint } from '@/components/dash/kit-style'
+import { card, focusedForm, tagClass, type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { controlClass, labelClass } from '@/components/ui/field'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -347,7 +347,7 @@ export function LabOrderRow({
         </span>
       </div>
       {cancelling && mayWork && (
-        <div className="border-red/30 bg-card flex flex-col gap-2 rounded-md border p-3">
+        <div className={cn(card, 'border-red/30 gap-2 p-3')}>
           <span className="text-ink-2 flex items-center gap-1.5 text-[13px] font-medium">
             <Ban size={14} aria-hidden="true" className="text-red" />
             {t('lab.cannotWhy', { doctor: o.orderedBy ?? '' })}
@@ -432,7 +432,7 @@ export function LabOrderRow({
       )}
       {open && mayWork && (
         <form
-          className={cn('bg-card flex flex-col gap-3 rounded-md border p-3', focusedForm)}
+          className={cn(card, 'p-3', focusedForm)}
           onSubmit={async (e) => {
             e.preventDefault()
             if (

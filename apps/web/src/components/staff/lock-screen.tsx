@@ -44,7 +44,7 @@ export function IdleWarning() {
   return (
     <div
       role="status"
-      className="bg-card text-ink border-border border-l-yellow-dot shadow-sheet fixed right-4 bottom-4 left-4 z-[90] flex flex-col gap-2 rounded-md border border-l-2 px-4 py-3 sm:left-auto sm:max-w-[440px]"
+      className="bg-card text-ink border-card-border border-l-yellow-dot shadow-panel rounded-lg2 fixed right-4 bottom-4 left-4 z-[90] flex flex-col gap-2 border border-l-[3px] px-4 py-3 sm:left-auto sm:max-w-[440px]"
     >
       <span className="flex items-start gap-3">
         <Clock size={16} aria-hidden="true" className="text-yellow mt-0.5 flex-none" />
@@ -102,83 +102,86 @@ export function LockScreen() {
       role="dialog"
       aria-modal="true"
       aria-label={t('lock.byYouTitle')}
-      className="bg-surface text-ink fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="workspace text-ink fixed inset-0 z-[100] flex items-center justify-center p-4"
     >
       <form
         onSubmit={submit}
-        className="bg-card border-border shadow-sheet flex w-full max-w-[400px] flex-col gap-4 rounded-md border p-6"
+        className="bg-card border-card-border shadow-panel anim-dialog flex w-full max-w-[400px] flex-col overflow-hidden rounded-xl border"
       >
-        <div className="flex items-center gap-3">
-          <span className="border-primary/25 bg-primary-tint text-primary inline-flex size-9 flex-none items-center justify-center rounded-md border">
+        {/* the lock on the clinic's hero, like every dialog header */}
+        <div className="hero hero-clinic flex items-center gap-3 px-6 py-4 text-white">
+          <span className="inline-flex size-9 flex-none items-center justify-center rounded-md bg-white/20">
             <Lock size={18} aria-hidden="true" />
           </span>
           <span>
             <span className="block text-[16px] font-semibold">{t('lock.byYouTitle')}</span>
-            <span className="text-ink-3 text-[13px]">
+            <span className="text-[13px] text-white/85">
               {t('lock.byYouBody', { name: user.name })}
             </span>
           </span>
         </div>
-        <div className="border-border bg-surface flex items-center gap-3 rounded-md border px-3 py-2">
-          <Avatar name={user.name} size="md" />
-          <span>
-            <span className="block font-medium">{user.name}</span>
-            <span className="text-ink-3 text-[13px]">{user.username}</span>
-          </span>
-        </div>
-        {lastActiveAt != null && (
-          <p className="text-ink-2 m-0 flex items-start gap-2 text-[13px]">
-            <Clock size={15} aria-hidden="true" className="text-ink-3 mt-0.5 flex-none" />
+        <div className="flex flex-col gap-4 p-6">
+          <div className="border-primary/30 wash wash-teal rounded-lg2 flex items-center gap-3 border px-3 py-2">
+            <Avatar name={user.name} size="md" />
             <span>
-              {t('lock.idleSignOut', {
-                time: formatTime(new Date(idleDeadline({ lastActiveAt, sessionHours: hours }))),
-                count: hours,
-              })}
+              <span className="block font-medium">{user.name}</span>
+              <span className="text-ink-3 text-[13px]">{user.username}</span>
             </span>
-          </p>
-        )}
-        <Field
-          label={t('landing.signin.pin')}
-          type="password"
-          inputMode="numeric"
-          autoFocus
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          autoComplete="current-password"
-          required
-        />
-        {error && (
-          <p
-            role="alert"
-            className="border-red/25 bg-red-bg text-red m-0 rounded-md border px-3 py-1.5 text-[13px] font-medium"
+          </div>
+          {lastActiveAt != null && (
+            <p className="text-ink-2 m-0 flex items-start gap-2 text-[13px]">
+              <Clock size={15} aria-hidden="true" className="text-ink-3 mt-0.5 flex-none" />
+              <span>
+                {t('lock.idleSignOut', {
+                  time: formatTime(new Date(idleDeadline({ lastActiveAt, sessionHours: hours }))),
+                  count: hours,
+                })}
+              </span>
+            </p>
+          )}
+          <Field
+            label={t('landing.signin.pin')}
+            type="password"
+            inputMode="numeric"
+            autoFocus
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+          {error && (
+            <p
+              role="alert"
+              className="border-red/25 bg-red-bg text-red m-0 rounded-md border px-3 py-1.5 text-[13px] font-medium"
+            >
+              {error}
+            </p>
+          )}
+          {!error && failures > 0 && (
+            <p className="text-ink-3 m-0 text-[12px]">
+              {t('lock.wrongLeft', { count: Math.max(1, MAX_UNLOCK_FAILURES - failures) })}
+            </p>
+          )}
+          <Button type="submit" variant="primary" size="lg" disabled={busy}>
+            {t('lock.unlock')}
+          </Button>
+          <button
+            type="button"
+            className="text-ink-2 text-[13px] underline-offset-2 hover:underline"
+            onClick={async () => {
+              const ok = await confirm({
+                title: t('confirm.signOut.title'),
+                body: t('confirm.signOut.body'),
+                confirmLabel: t('confirm.signOut.yes'),
+              })
+              if (!ok) return
+              await signOut('signedOut')
+              void navigate({ to: '/', hash: 'signin' })
+            }}
           >
-            {error}
-          </p>
-        )}
-        {!error && failures > 0 && (
-          <p className="text-ink-3 m-0 text-[12px]">
-            {t('lock.wrongLeft', { count: Math.max(1, MAX_UNLOCK_FAILURES - failures) })}
-          </p>
-        )}
-        <Button type="submit" variant="primary" size="lg" disabled={busy}>
-          {t('lock.unlock')}
-        </Button>
-        <button
-          type="button"
-          className="text-ink-2 text-[13px] underline-offset-2 hover:underline"
-          onClick={async () => {
-            const ok = await confirm({
-              title: t('confirm.signOut.title'),
-              body: t('confirm.signOut.body'),
-              confirmLabel: t('confirm.signOut.yes'),
-            })
-            if (!ok) return
-            await signOut('signedOut')
-            void navigate({ to: '/', hash: 'signin' })
-          }}
-        >
-          {t('lock.switch')}
-        </button>
+            {t('lock.switch')}
+          </button>
+        </div>
       </form>
     </div>
   )

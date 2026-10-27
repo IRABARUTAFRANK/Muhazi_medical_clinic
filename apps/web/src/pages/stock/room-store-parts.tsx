@@ -91,7 +91,7 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[14px]">
-            <thead>
+            <thead className="bg-surface">
               <tr className="border-border border-b">
                 <th className={tableHead}>{t('stock.cols.item')}</th>
                 <th className={cn(tableHead, 'text-right')}>{t('myStore.usable')}</th>
@@ -273,7 +273,7 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
       {error && <p className="text-red m-0 text-[14px]">{error.message}</p>}
       {data && (
         <>
-          <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Kpi
               i={0}
               icon={Package}
@@ -332,7 +332,7 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[14px]">
-                <thead>
+                <thead className="bg-surface">
                   <tr className="border-border border-b">
                     <th className={tableHead}>{t('stock.cols.item')}</th>
                     {(

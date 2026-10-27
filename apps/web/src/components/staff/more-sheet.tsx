@@ -92,7 +92,7 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
       <div
         role="dialog"
         aria-label={t('common.more')}
-        className="bg-card border-border shadow-sheet anim-dialog max-h-[88dvh] overflow-y-auto rounded-t-md border-t px-3 pt-2 pb-[max(16px,env(safe-area-inset-bottom))]"
+        className="bg-card border-border shadow-panel anim-dialog max-h-[88dvh] overflow-y-auto rounded-t-xl border-t px-3 pt-2 pb-[max(16px,env(safe-area-inset-bottom))]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-border mx-auto mb-2 h-1 w-8 rounded-sm" />
@@ -115,11 +115,17 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
           {sync && <SyncBadge state={sync} />}
         </div>
         {groups.length > 0 && <div className="border-border my-2 border-t" />}
+        {/* the same group blocks as the PC sidebar: each on its tint, the active tile white */}
         {groups.map((g) => (
-          <div key={g.id} role="group" aria-labelledby={`sheet-group-${g.id}`} className="mb-3">
+          <div
+            key={g.id}
+            role="group"
+            aria-labelledby={`sheet-group-${g.id}`}
+            className={cn('rail-group mb-2.5 p-2', `rail-${g.id}`)}
+          >
             <div
               id={`sheet-group-${g.id}`}
-              className="text-ink-3 mb-1.5 px-3 text-[11px] font-semibold tracking-[0.06em] uppercase"
+              className="rail-label mb-1.5 px-1 text-[11px] font-semibold tracking-[0.06em] uppercase"
             >
               {t(g.labelKey)}
             </div>
@@ -131,10 +137,8 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
                   onClick={onClose}
                   aria-current={n.id === activeId ? 'page' : undefined}
                   className={cn(
-                    'border-border flex min-h-16 flex-col items-center justify-center gap-1 rounded-md border px-1 text-center text-[12px] font-medium no-underline',
-                    n.id === activeId
-                      ? 'border-primary/30 bg-primary-tint text-primary'
-                      : 'bg-card text-ink-2 hover:bg-hover',
+                    'rail-item flex min-h-16 flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[12px] font-medium no-underline',
+                    n.id === activeId && 'shadow-card',
                   )}
                 >
                   <NavIcon id={n.id} name={n.icon} size={20} />

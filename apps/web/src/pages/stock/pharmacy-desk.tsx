@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useConfirm } from '@/lib/confirm'
 import { formatRwf, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
+import { card } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Flash } from '@/components/ui/flash'
@@ -352,7 +353,7 @@ function HandOverPanel({
                 return (
                   <div
                     key={first.encounterId}
-                    className="border-border anim-enter flex flex-col gap-2 rounded-md border px-3 py-2.5"
+                    className={cn(card, 'anim-enter gap-2 px-3 py-2.5')}
                     style={{ '--i': gi } as CSSProperties}
                   >
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

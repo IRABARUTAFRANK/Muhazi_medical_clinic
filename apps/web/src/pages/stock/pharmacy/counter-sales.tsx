@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { formatRwf, formatTime } from '@mmc/shared'
 import type { StaffUser } from '@mmc/shared'
 import { Empty, Panel, SectionTitle } from '@/components/dash/kit'
-import { selectedRow } from '@/components/dash/kit-style'
+import { card, selectedRow } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
@@ -445,7 +445,8 @@ function CounterSales({ user }: { user: StaffUser }) {
                 <div
                   key={s.id}
                   className={cn(
-                    'border-border flex flex-col gap-1.5 rounded-md border px-3 py-2',
+                    card,
+                    'gap-1.5 px-3 py-2',
                     focusSale === s.id && cn('border-primary', selectedRow),
                   )}
                 >
@@ -573,7 +574,7 @@ function PayForm({
   const [reference, setReference] = useState('')
   const missing = needsReference(method) && reference.trim().length < 3
   return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-2.5">
+    <div className={cn(card, 'gap-2 p-2.5')}>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Select
           label={t('visit.payment.method')}

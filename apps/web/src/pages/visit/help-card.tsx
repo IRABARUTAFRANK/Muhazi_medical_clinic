@@ -99,7 +99,7 @@ export function HelpCard({
 
   return (
     <Card className="anim-enter">
-      <CardHeader>
+      <CardHeader hue="coral">
         <span className="inline-flex items-center gap-2">
           <HandHelping size={16} aria-hidden="true" />
           {t('calls.help.title')}

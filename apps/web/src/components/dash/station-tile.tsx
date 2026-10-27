@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import { cn } from '@/lib/utils'
 import { StationGlyph } from './kit'
-import { stationLabel } from './kit-style'
+import { stationLabel, tileClass } from './kit-style'
 
 /** First in line waiting longer than this turns the tile red. */
 const LONG_WAIT_MIN = 30
@@ -38,8 +38,9 @@ export function StationTile({
   return (
     <div
       className={cn(
-        'bg-card anim-enter flex flex-col gap-0.5 rounded-md border px-3 py-2.5',
-        hot ? 'border-red/40 bg-red-bg' : 'border-border',
+        'bg-card anim-enter shadow-card rounded-lg2 flex flex-col gap-0.5 border px-3 py-2.5',
+        // a long wait: the coral wash; otherwise the teal wash of every tile
+        hot ? tileClass.coral : tileClass.teal,
       )}
       style={{ '--i': i } as CSSProperties}
     >

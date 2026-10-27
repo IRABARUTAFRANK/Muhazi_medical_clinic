@@ -14,7 +14,7 @@ import {
   type Practitioner,
   type TimeSpan,
 } from '@mmc/shared'
-import { avatarTint, initials } from '@/components/dash/kit-style'
+import { avatarTint, card, initials } from '@/components/dash/kit-style'
 import { useDayNames } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 import type { Visibility } from '@/lib/api/calendar'
@@ -102,7 +102,7 @@ export function ScheduleBoard({
       {/* Phones: a card per doctor, the seven days in a small grid under the name. */}
       <div className="flex flex-col gap-3 sm:hidden">
         {rows.map(({ doc, i, avail }) => (
-          <div key={doc.p.id} className="border-border bg-card rounded-md border p-3">
+          <div key={doc.p.id} className={cn(card, 'gap-0 p-3')}>
             <DoctorHead doc={doc} i={i} now={now} variant={variant} action={action} t={t} />
             <div className="mt-2.5 grid grid-cols-7 gap-1">
               {days.map((d, k) => {

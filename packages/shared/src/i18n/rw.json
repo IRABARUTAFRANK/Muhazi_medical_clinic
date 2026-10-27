@@ -379,7 +379,13 @@
     "noneYet": "Nta muganga uratangaza ingengabihe ye kuri iyi serivisi. Hamagara cyangwa wandikire aho bakirira abarwayi kuri WhatsApp tugushakire igihe.",
     "reason": "Icyakuzanye",
     "reasonPh": "urugero: umuriro w’iminsi 3, gusuzumwa amenyo",
-    "exactTime": "Isaha nyayo"
+    "exactTime": "Isaha nyayo",
+    "roleLabel": {
+      "doctor": "Muganga",
+      "sonographer": "Ukora ekografi",
+      "nurse": "Umuforomo",
+      "manager": "Umuyobozi"
+    }
   },
   "home": {
     "clinicNow": "Ivuriro ubu",
@@ -3282,7 +3288,10 @@
     "breakBetween": "Akaruhuko {{from}}–{{to}}",
     "breakHint": "Ongeraho akaruhuko kugira ngo umunsi ugabanywemo kabiri (urugero 12:00–14:00); nta gahunda ifatwa mu karuhuko. Igihe cya gatatu gishoboka ku masaha y’umugoroba.",
     "publicNoHours": "Ingengabihe rusange ikeneye nibura umunsi umwe w’akazi, bitabaye ibyo urubuga ntirushobora kuyerekana.",
-    "publicNoService": "Hitamo nibura serivisi imwe, bitabaye ibyo abarwayi ntibabona iyi ingengabihe ku rubuga."
+    "publicNoService": "Hitamo nibura serivisi imwe, bitabaye ibyo abarwayi ntibabona iyi ingengabihe ku rubuga.",
+    "cannotKeepAll": "Abaganga, abakora ekografi, abaforomo n’umuyobozi ni bo bonyine bagira ingengabihe",
+    "noPeopleHint": "Andika abakozi mu Bakozi (umwanya Muganga, Ukora ekografi, Umuforomo cyangwa Umuyobozi); buri wese azashobora gushyiraho ingengabihe ye hano.",
+    "leadManagerAll": "Amasaha y’akazi n’iminsi y’ikiruhuko bya buri muganga, ukora ekografi n’umuforomo, n’ibyawe."
   },
   "journey": {
     "show": "Reba ibyakozwe",
@@ -6709,7 +6718,9 @@
     "54c6982b": "Ingano ya ogisijeni mu maraso igomba kuba hagati ya 40 na 100 %.",
     "7028b3a6": "Ibiro bigomba kuba hagati ya 0,3 na 350 kg.",
     "f2b8b050": "Uburebure bugomba kuba hagati ya 20 na 250 cm.",
-    "936ac589": "Umuzenguruko w’ukuboko ugomba kuba hagati ya 5 na 60 cm."
+    "936ac589": "Umuzenguruko w’ukuboko ugomba kuba hagati ya 5 na 60 cm.",
+    "bfaad0ce": "Abaganga, abakora ekografi, abaforomo n’abayobozi ni bo bonyine bagira ingengabihe.",
+    "abb6e23b": "Abaganga, abakora ekografi, abaforomo n’abayobozi ni bo bonyine bashobora guhabwa gahunda."
   },
   "panel": {
     "close": "Funga",

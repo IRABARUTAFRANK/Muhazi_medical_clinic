@@ -385,7 +385,7 @@ function BookForm({
   return (
     <form
       onSubmit={(e) => void submit(e)}
-      className="border-primary/30 bg-primary-tint/40 flex flex-col gap-3 rounded-md border p-3"
+      className="border-primary/30 wash wash-teal rounded-lg2 flex flex-col gap-3 border p-3"
     >
       <div className="flex flex-col gap-1.5">
         <span className="text-ink-2 text-[13px] font-semibold">{t('ops.inquiries.patient')}</span>
@@ -417,7 +417,7 @@ function BookForm({
               onChange={(e) => setSearch(e.target.value)}
             />
             {hits.length > 0 && (
-              <div className="border-border bg-card flex flex-col rounded-lg border">
+              <div className="border-card-border bg-card shadow-card rounded-lg2 flex flex-col border">
                 {hits.slice(0, 6).map((h) => (
                   <button
                     key={h.id}
@@ -469,6 +469,7 @@ function BookForm({
           {doctors.map((d) => (
             <option key={d.userId} value={d.userId}>
               {d.name}
+              {d.role !== 'doctor' ? ` · ${t(`booking.roleLabel.${d.role}`)}` : ''}
               {d.title ? ` · ${d.title}` : ''}
               {d.hasHours ? '' : ` · ${t('ops.inquiries.noHours')}`}
             </option>

@@ -23,7 +23,9 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^this line comes from (.+?) : undo it there \(the manager can remove it\)$/, 'dbErrors.3c15cbce', 1], // void_charge
   [/^this is ordered, not added: use Orders so that (.+?) gets the patient$/, 'dbErrors.db962d48', 1], // add_charge
   [/^verified report (.+?) is immutable; issue a corrected report instead$/, 'dbErrors.af4e6ca0', 1], // guard_verified_report
+  [/^only doctors, sonographers, nurses and managers keep a calendar$/, 'dbErrors.bfaad0ce', 0], // save_calendar
   [/^only the pharmacy \(or the manager\) sends stock to a room store$/, 'dbErrors.37f09728', 0], // send_to_room
+  [/^only doctors, sonographers, nurses and managers can be booked$/, 'dbErrors.abb6e23b', 0], // ensure_practitioner
   [/^too many requests for this phone today; please call reception$/, 'dbErrors.810d2ad5', 0], // create_appointment_inquiry
   [/^only a verified result is corrected; edit the result instead$/, 'dbErrors.e0f675a5', 0], // correct_result
   [/^only the person who gave the task, the nurses or the manager$/, 'dbErrors.ad402386', 0], // cancel_task
@@ -100,7 +102,6 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^hours must be a whole number between 1 and 12$/, 'dbErrors.3a0edf89', 0], // save_setting
   [/^no batch of this item yet: receive it instead$/, 'dbErrors.da9f4990', 0], // adjust_stock
   [/^no pharmacy store yet: create one under Stock$/, 'dbErrors.0bcbe76f', 0], // dispense_prescription
-  [/^only doctors and sonographers keep a calendar$/, 'dbErrors.e2ea3885', 0], // save_calendar
   [/^only treating staff can register an emergency$/, 'dbErrors.aca7475e', 0], // begin_visit, start_visit
   [/^the colleague who called no longer works here$/, 'dbErrors.afc7a230', 0], // answer_call
   [/^the doctor already has a booking at that time$/, 'dbErrors.aa836e79', 0], // approve_inquiry
@@ -109,7 +110,6 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the temperature must be between 30 and 44 °C$/, 'dbErrors.8be65a90', 0], // record_vitals
   [/^this account is deactivated; ask the manager$/, 'dbErrors.e9ee3924', 0], // my_session_profile, record_sign_in
   [/^only a medicine given here is put back here$/, 'dbErrors.a1741a01', 0], // undo_given_here
-  [/^only doctors and sonographers can be booked$/, 'dbErrors.d0089942', 0], // ensure_practitioner
   [/^the practitioner does not work at that time$/, 'dbErrors.bfdfdfe1', 0], // create_appointment_inquiry
   [/^this call was already answered or cancelled$/, 'dbErrors.bb89a226', 0], // answer_call
   [/^a submitted claim batch cannot be reopened$/, 'dbErrors.e0453e4d', 0], // guard_submitted_batch

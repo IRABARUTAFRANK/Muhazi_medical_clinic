@@ -50,6 +50,10 @@ async function withFallback<T>(
 /** Sample data while loading only in sample mode; live pages wait for the real data. */
 const samplePlaceholder = <T>(v: T): T | undefined => (supabase ? undefined : v)
 
+/** PostgREST: the database does not have this column yet (an older migration set). */
+const missingColumn = (e: { code?: string; message?: string }) =>
+  e.code === '42703' || /column .* does not exist/i.test(e.message ?? '')
+
 const isCategory = (v: string): v is CategoryId => (CATEGORY_IDS as readonly string[]).includes(v)
 
 // ---------------------------------------------------------------- practitioners
@@ -64,6 +68,7 @@ interface PractitionerRow {
   slot_minutes: number | null
   days_off?: string[] | null
   calendar_note?: string | null
+  role?: string | null
 }
 
 const toPractitioner = (r: PractitionerRow): Practitioner => ({
@@ -78,6 +83,7 @@ const toPractitioner = (r: PractitionerRow): Practitioner => ({
   seed: 0,
   daysOff: r.days_off ?? [],
   note: r.calendar_note ?? '',
+  role: r.role ?? undefined,
 })
 
 export function usePractitioners() {
@@ -86,14 +92,28 @@ export function usePractitioners() {
     queryFn: () =>
       withFallback(
         async () => {
-          const { data, error } = await supabase!
+          const columns =
+            'id, code, names, title, categories, languages, working_hours, slot_minutes, days_off, calendar_note'
+          // 0094 adds the role; a website deployed before that migration reads without it
+          // (everyone with a public calendar was a doctor or sonographer, labelled as a doctor).
+          const first = await supabase!
             .from('public_practitioners')
-            .select(
-              'id, code, names, title, categories, languages, working_hours, slot_minutes, days_off, calendar_note',
-            )
+            .select(`${columns}, role`)
             .order('names')
+          let rows = first.data as PractitionerRow[] | null
+          let error = first.error
+          if (error && missingColumn(error)) {
+            const again = await supabase!
+              .from('public_practitioners')
+              .select(columns)
+              .order('names')
+            error = again.error
+            rows = error
+              ? null
+              : (again.data as PractitionerRow[]).map((r) => ({ ...r, role: 'doctor' }))
+          }
           if (error) throw error
-          return (data as PractitionerRow[]).map(toPractitioner)
+          return (rows ?? []).map(toPractitioner)
         },
         () => [...PRACTITIONERS],
       ),

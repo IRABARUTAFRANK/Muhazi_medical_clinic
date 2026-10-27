@@ -1,8 +1,10 @@
 /* Muhazi Medical Clinic System — design tokens
    Source of truth for the UI. Import once at the app root.
-   The staff app is a plain, dense admin console: neutral greys with a slight cool bias, one
-   teal for buttons, links, focus rings and the active menu item, 6 px corners, borders instead
-   of shadows. Every token name stays; the public website has its own look in brand.css. */
+   The staff app is a dense console with the richness of the first design on top: a soft
+   gradient workspace with a faint dot grid, white cards with 10 px corners and a soft shadow,
+   light tint washes and gradient bands in the subject's hue, the navy→teal hero of the clinic.
+   Controls keep 6 px corners. Every token name stays; the public website has its own look in
+   brand.css. */
 
 :root {
   /* The page paints its own colours in both themes: browsers must not force-darken it. */
@@ -64,9 +66,33 @@
   --mmc-violet-dot: #8b5cf6;
   --mmc-amber: #92400e;
   --mmc-amber-bg: #fef3c7;
-  --mmc-shadow-card: none; /* cards have a 1 px border instead */
-  --mmc-shadow-card-hover: none;
-  --mmc-radius-lg: 6px;
+  /* Cards: a 1 px border at 8 % navy plus a soft shadow; link cards lift 1 px on hover */
+  --mmc-shadow-card: 0 6px 18px rgba(11, 34, 82, 0.06);
+  --mmc-shadow-card-hover: 0 10px 24px rgba(11, 34, 82, 0.1);
+  --mmc-shadow-panel: 0 20px 60px rgba(11, 34, 82, 0.22); /* side panels and dialogs */
+  --mmc-card-border: rgba(11, 34, 82, 0.08);
+  --mmc-radius-lg: 10px; /* cards, tiles, panels; controls keep --mmc-radius */
+
+  /* The workspace: a soft three-stop gradient with a 22 px dot grid that drifts slowly */
+  --mmc-ws-1: #f3f8fb;
+  --mmc-ws-2: #eef7f2;
+  --mmc-ws-3: #f4f2fb;
+  --mmc-ws-dot: rgba(11, 34, 82, 0.05);
+  /* The sidebar: its own light surface; the clinic block on the navy→teal hero */
+  --mmc-rail: #f7f9fc;
+  --mmc-hero-navy: #0b2252;
+  --mmc-hero-teal: #1f6f8b;
+  /* Deep end of each hue's hero gradient (page banners, panel headers): white text on both ends */
+  --mmc-deep-teal: #134a5e;
+  --mmc-deep-mint: #047857;
+  --mmc-deep-amber: #92400e;
+  --mmc-deep-coral: #b91c1c;
+  --mmc-deep-violet: #5b21b6;
+  --mmc-deep-navy: #1e3a8a;
+  --mmc-deep-rose: #9d174d;
+  --mmc-deep-grey: #334155;
+  --mmc-hue-amber: #d97706; /* the amber hero starts darker than the dot so white text reads */
+  --mmc-hue-grey: #64748b;
 
   /* Type */
   --mmc-font: Inter, 'Segoe UI', system-ui, sans-serif;
@@ -128,8 +154,15 @@
   --mmc-violet-bg: #231f3a;
   --mmc-amber: #fcd34d;
   --mmc-amber-bg: #2c2613;
-  --mmc-shadow-card: none;
-  --mmc-shadow-card-hover: none;
+  --mmc-shadow-card: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --mmc-shadow-card-hover: 0 10px 24px rgba(0, 0, 0, 0.5);
+  --mmc-shadow-panel: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --mmc-card-border: rgba(255, 255, 255, 0.08);
+  --mmc-ws-1: #0f1725;
+  --mmc-ws-2: #0f1d1a;
+  --mmc-ws-3: #141229;
+  --mmc-ws-dot: rgba(255, 255, 255, 0.045);
+  --mmc-rail: #0f1420;
 }
 
 /* Tabular numbers for money, vitals, times */

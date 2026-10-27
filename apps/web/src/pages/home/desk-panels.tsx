@@ -737,7 +737,7 @@ function StayForm({
           />
         </label>
       )}
-      <p className="bg-card m-0 flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px]">
+      <p className="border-primary/20 wash wash-teal m-0 flex items-center gap-2 rounded-md border px-2.5 py-2 text-[13px]">
         <Receipt size={14} aria-hidden="true" className="text-primary flex-none" />
         <span>
           {agreed != null

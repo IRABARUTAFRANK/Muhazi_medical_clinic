@@ -1,11 +1,13 @@
 import { AlertTriangle, Clock, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate } from '@mmc/shared'
+import { card } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
 import { SearchSelect, type SearchOption } from '@/components/ui/search-select'
+import { cn } from '@/lib/utils'
 import { daysUntil, draftLine, expiryState, type DraftLine, type Msg } from './stock-util'
 
 /** Small pieces the stock screens share: the message under a form, expiry marks, note lines. */
@@ -81,7 +83,10 @@ export function LinesEditor({
         return (
           <div
             key={l.key}
-            className="border-border grid grid-cols-[minmax(0,1fr)_110px_auto] items-end gap-2 rounded-md border p-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]"
+            className={cn(
+              card,
+              'grid grid-cols-[minmax(0,1fr)_110px_auto] items-end gap-2 p-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]',
+            )}
           >
             <SearchSelect
               label={t('stockShared.lineN', { n: n + 1 })}

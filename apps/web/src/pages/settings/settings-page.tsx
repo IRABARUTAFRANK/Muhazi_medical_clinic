@@ -20,7 +20,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { DAY_KEYS, type ClinicHours, type DayKey, type StaffUser, type TimeSpan } from '@mmc/shared'
 import { IconChip } from '@/components/dash/kit'
-import { tintClass, type Tint } from '@/components/dash/kit-style'
+import { card, tintClass, type Tint } from '@/components/dash/kit-style'
 import { PageBanner } from '@/components/dash/page-banner'
 import { TextSizeControl } from '@/components/staff/text-size-control'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -198,7 +198,10 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           {/* Section menu: a column on PC, a scrolling row of tabs on tablets */}
           <nav
             aria-label={t('settings.title')}
-            className="bg-card border-border pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap flex flex-wrap gap-1 rounded-md border p-2"
+            className={cn(
+              card,
+              'pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap flex-row flex-wrap gap-1 p-2',
+            )}
           >
             {SECTIONS.map((sec) => {
               const on = section === sec.id
@@ -243,7 +246,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
             {section === 'clinic' && draft && (
               <form onSubmit={submit} className="flex flex-col gap-4">
                 <Card className="anim-enter">
-                  <CardHeader>
+                  <CardHeader hue="grey">
                     <span className="flex items-center gap-2.5">
                       <IconChip icon={Building2} tint="teal" />
                       {t('settings.profile.title')}
@@ -356,7 +359,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
             {section === 'display' && (
               <>
                 <Card className="anim-enter">
-                  <CardHeader>
+                  <CardHeader hue="grey">
                     <span className="flex items-center gap-2.5">
                       <IconChip icon={ALargeSmall} tint="violet" />
                       {t('textSize.title')}
@@ -370,7 +373,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   </CardBody>
                 </Card>
                 <Card className="anim-enter">
-                  <CardHeader>
+                  <CardHeader hue="grey">
                     <span className="flex items-center gap-2.5">
                       <IconChip icon={LayoutDashboard} tint="teal" />
                       {t('settings.manage.title')}

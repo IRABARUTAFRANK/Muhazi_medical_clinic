@@ -16,6 +16,7 @@ import { formatDate, formatRwf, formatTime } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { journeyMedicineState, useVisitJourney, type Journey } from '@/lib/api/journey'
+import { card } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 import './visit-motion.css'
 
@@ -349,7 +350,7 @@ function Block({
   children: React.ReactNode
 }) {
   return (
-    <section className="border-border flex flex-col gap-1.5 rounded-md border p-3">
+    <section className={cn(card, 'gap-1.5 p-3')}>
       <h4 className="m-0 flex items-center gap-2 text-[14px] font-semibold">
         <span className={cn('inline-flex size-6 items-center justify-center rounded', TINT[tint])}>
           <Icon size={14} aria-hidden="true" />

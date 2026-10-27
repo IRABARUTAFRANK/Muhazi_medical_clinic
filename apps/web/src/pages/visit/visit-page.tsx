@@ -12,6 +12,7 @@ import {
   Printer,
   Receipt,
   ShieldCheck,
+  Stethoscope,
   Trash2,
   Undo2,
   Wallet,
@@ -21,6 +22,7 @@ import { FEATURES, formatDate, formatRwf, formatTime, type StaffUser } from '@mm
 import { LeftButton } from '@/components/clinical/left-button'
 import { OpenFileLink } from '@/components/clinical/file-panel'
 import { EmptyNote } from '@/components/clinical/empty-note'
+import { GlassPill, HeroHead } from '@/components/clinical/hero-head'
 import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
@@ -307,13 +309,15 @@ export function VisitPage({
           <>
             {/* Patient header */}
             <Card>
-              <CardBody className="flex-row flex-wrap items-center gap-x-5 gap-y-2">
-                <span className="text-primary text-[24px] font-semibold tabular-nums">
+              {/* The patient's band: ticket, name and tags on the clinic's gradient; the
+                  actions sit on the white row under it so they keep their colours. */}
+              <HeroHead icon={Stethoscope}>
+                <span className="text-[24px] leading-8 font-semibold tabular-nums">
                   {header.ticket}
                 </span>
                 <span className="min-w-[200px] flex-1">
-                  <span className="block text-[20px] font-semibold">{header.name}</span>
-                  <span className="text-ink-3 text-xs tabular-nums">
+                  <span className="block text-[24px] leading-8 font-semibold">{header.name}</span>
+                  <span className="block text-[13px] text-white/80 tabular-nums">
                     {header.fileNumber} · {header.ageSex}
                   </span>
                 </span>
@@ -321,8 +325,10 @@ export function VisitPage({
                   <Badge tone={header.triage}>{t(`home.triage.${header.triage}`)}</Badge>
                 )}
                 {header.stations.map((s) => (
-                  <Chip key={s}>{t(`register.stations.${s}`)}</Chip>
+                  <GlassPill key={s}>{t(`register.stations.${s}`)}</GlassPill>
                 ))}
+              </HeroHead>
+              <CardBody className="flex-row flex-wrap items-center gap-2">
                 {/* the file opens beside the visit (teal tint: an action); middle-click: the whole page */}
                 <OpenFileLink
                   patientId={header.patientId}
@@ -615,7 +621,7 @@ export function VisitPage({
                   {/* Who pays: only once the clinic works with insurers */}
                   {FEATURES.insurance && (
                     <Card>
-                      <CardHeader icon={ShieldCheck}>
+                      <CardHeader icon={ShieldCheck} hue="mint">
                         <span>{t('visit.payer.title')}</span>
                         {currentInsurer && (
                           <Chip>
@@ -665,7 +671,7 @@ export function VisitPage({
 
                   {/* Charges */}
                   <Card>
-                    <CardHeader>
+                    <CardHeader hue="mint">
                       <span className="inline-flex items-center gap-2">
                         <Receipt size={16} aria-hidden="true" />
                         {t('visit.charges.title')}
@@ -1050,7 +1056,7 @@ function PaymentCard({
   if (overpaid > 0)
     return (
       <Card className="border-amber">
-        <CardHeader icon={Undo2}>
+        <CardHeader icon={Undo2} hue="amber">
           <span>{t('visit.refund.title')}</span>
           <span className="text-ink-2 text-[13px] tabular-nums">
             {t('visit.refund.owed')} <b className="text-ink">{formatRwf(overpaid)}</b>
@@ -1142,7 +1148,7 @@ function PaymentCard({
 
   return (
     <Card className={cn(settled ? 'border-green' : 'border-primary')}>
-      <CardHeader icon={Wallet}>
+      <CardHeader icon={Wallet} hue="mint">
         <span>{t('visit.payment.title')}</span>
         {settled ? (
           <PaidMark bill={bill} />

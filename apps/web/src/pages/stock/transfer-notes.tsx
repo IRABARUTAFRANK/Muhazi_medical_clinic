@@ -360,7 +360,7 @@ export function TransferNoteView({
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[14px]">
-          <thead>
+          <thead className="bg-surface">
             <tr className="border-border border-b">
               <th className={tableHead}>{t('stock.cols.item')}</th>
               <th className={tableHead}>{t('stock.batchNo')}</th>

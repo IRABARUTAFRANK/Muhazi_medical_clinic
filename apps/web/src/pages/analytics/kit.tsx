@@ -5,7 +5,6 @@ import {
   useEffect,
   useId,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
   type RefObject,
@@ -15,10 +14,10 @@ import {
   ArrowUp,
   ArrowUpDown,
   CircleAlert,
+  ClipboardList,
   DatabaseZap,
   Info,
   type LucideIcon,
-  X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { IconChip } from '@/components/dash/kit'
@@ -36,6 +35,7 @@ import { tableLink } from '@/components/ui/button'
 import { controlClass } from '@/components/ui/field'
 import { Pager } from '@/components/ui/list-tools'
 import { Seg } from '@/components/ui/seg'
+import { SidePanel, type PanelHue } from '@/components/ui/side-panel'
 import { ApiError } from '@/lib/api/errors'
 import type { Report } from '@/lib/report'
 import { usePaged } from '@/lib/paging'
@@ -102,7 +102,7 @@ export function ViewSkeleton() {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('dashboard.loading')}>
-      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
         {Array.from({ length: 4 }, (_, i) => (
           <div key={i} className="skeleton h-[130px] rounded-md" />
         ))}
@@ -112,13 +112,18 @@ export function ViewSkeleton() {
   )
 }
 
-/** The four headline figures of a view: 4-up on a PC, 2-up on a tablet, 1-up on a phone. */
+/** The headline figures of a view: as many as fit at 150 px or more on a PC (the sections list
+ *  takes 220 px beside them), 2-up on a tablet, 1-up on a phone. */
 export function Figures({ children }: { children: ReactNode }) {
-  return <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
+  return (
+    <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {children}
+    </div>
+  )
 }
 
 /** The grid of small figures inside a panel or a side panel: 2-up from 640 px. */
-export const statGrid = 'grid grid-cols-1 gap-3 sm:grid-cols-2'
+export const statGrid = 'grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]'
 
 /**
  * A small figure (inside a panel or a side panel): the tile of the dashboard kit on its light
@@ -147,11 +152,17 @@ export function Stat({
     <div className={cn(card, 'gap-1.5', tileClass[hue])}>
       <span className="flex items-start gap-2 text-[13px] font-medium">
         {icon && <IconChip icon={icon} tint={hue} size="sm" />}
-        <span className="text-ink-2 min-w-0 flex-1 pt-1 break-words">{label}</span>
+        <span className="text-ink-2 min-w-0 flex-1 pt-1 [text-wrap:balance] [overflow-wrap:normal]">
+          {label}
+        </span>
       </span>
       <span
         className={cn(
-          'min-w-0 text-[28px] leading-8 font-semibold tracking-[-0.01em] break-words tabular-nums',
+          'min-w-0 font-semibold tracking-[-0.01em] break-words tabular-nums',
+          // a sentence in place of a figure ("Not enough data") reads at a text size
+          typeof value === 'string' && !/\d/.test(value) && value.length > 6
+            ? 'text-[18px] leading-6'
+            : 'text-[28px] leading-8',
           tone === 'red' ? 'text-red' : tone === 'green' ? 'text-green' : 'text-ink',
         )}
       >
@@ -283,7 +294,7 @@ export function DataTable<T>({
       <div className="max-w-full overflow-x-auto">
         <table className="w-full border-collapse text-[14px]">
           <caption className="sr-only">{caption}</caption>
-          <thead>
+          <thead className="bg-surface">
             <tr>
               {cols.map((c) => {
                 const on = sort?.key === c.key
@@ -416,8 +427,9 @@ export function DataTable<T>({
 
 /**
  * The detail of a person or a day, over the page on the right (the whole screen on a phone),
- * so the page never grows. Escape, the close button or a click outside close it; the focus goes
- * into the panel and back to where it was.
+ * so the page never grows: the app's SidePanel (hue header band, 3 px coloured edge, Escape,
+ * the close button or a click outside close it; the focus goes into the panel and back). The
+ * `actions` sit in the footer; the Analytics hue is the clinic's teal unless a view says.
  */
 export function Drawer({
   title,
@@ -425,75 +437,29 @@ export function Drawer({
   onClose,
   children,
   actions,
+  icon = ClipboardList,
+  hue = 'teal',
 }: {
   title: ReactNode
   subtitle?: ReactNode
   onClose: () => void
   children: ReactNode
   actions?: ReactNode
+  icon?: LucideIcon
+  hue?: PanelHue
 }) {
-  const { t } = useTranslation()
-  const panel = useRef<HTMLDivElement>(null)
-  const id = useId()
-  const close = useRef(onClose)
-  useEffect(() => {
-    close.current = onClose
-  })
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement | null
-    panel.current?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        close.current()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      before?.focus?.()
-    }
-  }, [])
   return (
-    <div
-      className="fixed inset-0 z-[60] flex justify-end bg-black/40"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+    <SidePanel
+      open
+      onClose={onClose}
+      hue={hue}
+      icon={icon}
+      title={title}
+      subtitle={subtitle}
+      footer={actions}
     >
-      <div
-        ref={panel}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={id}
-        tabIndex={-1}
-        className="bg-card anim-enter shadow-sheet flex h-full w-[min(560px,100vw)] flex-col outline-none"
-      >
-        <header className="border-border bg-primary-tint/60 flex items-start gap-3 border-b px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <h2 id={id} className="text-ink m-0 text-[16px] font-semibold [overflow-wrap:anywhere]">
-              {title}
-            </h2>
-            {subtitle && <div className="text-ink-2 mt-0.5 text-[13px]">{subtitle}</div>}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('analytics.close')}
-            title={t('analytics.close')}
-            className="hover:bg-hover text-ink-2 focus-visible:ring-primary/20 inline-flex size-9 flex-none items-center justify-center rounded-md transition-colors duration-120 outline-none focus-visible:ring-2"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
-        </header>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">{children}</div>
-        {actions && (
-          <footer className="border-border flex flex-wrap gap-2 border-t px-4 py-3">
-            {actions}
-          </footer>
-        )}
-      </div>
-    </div>
+      <div className="flex flex-col gap-4">{children}</div>
+    </SidePanel>
   )
 }
 

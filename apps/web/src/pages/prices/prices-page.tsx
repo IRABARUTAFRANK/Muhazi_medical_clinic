@@ -29,7 +29,7 @@ import {
   type CategoryId,
   type StaffUser,
 } from '@mmc/shared'
-import { tintClass, type Tint } from '@/components/dash/kit-style'
+import { headerBand, tintClass, type Tint } from '@/components/dash/kit-style'
 import { PageBanner } from '@/components/dash/page-banner'
 import { AdjustField } from '@/components/ui/adjust-field'
 import { Badge } from '@/components/ui/badge'
@@ -630,9 +630,8 @@ export function PricesPage({ user }: { user: StaffUser }) {
         {view === 'group' &&
           shownCategories.map((c) => (
             <Card key={c.id}>
-              <CardHeader>
-                <span className="inline-flex items-center gap-2">
-                  <Tag size={16} aria-hidden="true" />
+              <CardHeader icon={Tag} className={headerBand('mint')}>
+                <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-2">
                   {categoryName(c, i18n.language)}
                   <Chip>{handlingLabel(c, t)}</Chip>
                 </span>
@@ -719,11 +718,8 @@ function InsurersSection({
       )}
 
       <Card>
-        <CardHeader>
-          <span className="inline-flex items-center gap-2">
-            <ShieldCheck size={16} aria-hidden="true" />
-            {t('prices.insurers.list')}
-          </span>
+        <CardHeader icon={ShieldCheck} className={headerBand('navy')}>
+          <span className="min-w-0 flex-1">{t('prices.insurers.list')}</span>
           <span className="text-ink-3 text-xs">
             {t('prices.insurers.activeCount', { count: activeCount })}
           </span>
@@ -877,11 +873,8 @@ function AdjustPricesCard({
 
   return (
     <Card className="border-primary">
-      <CardHeader>
-        <span className="inline-flex items-center gap-2">
-          <SlidersHorizontal size={16} aria-hidden="true" />
-          {t('prices.adjust.title')}
-        </span>
+      <CardHeader icon={SlidersHorizontal} className={headerBand('mint')}>
+        {t('prices.adjust.title')}
       </CardHeader>
       <form onSubmit={(e) => void submit(e)}>
         <CardBody className="gap-3">
@@ -933,7 +926,7 @@ function AdjustPricesCard({
           {valid && rows.length > 0 && (
             <div className="border-border overflow-x-auto rounded-md border">
               <table className="w-full text-[14px] tabular-nums">
-                <thead className="bg-hover/60 text-ink-2 text-left">
+                <thead className="bg-surface text-ink-2 text-left">
                   <tr>
                     <th className="px-3 py-2 font-semibold">{t('prices.adjust.cols.treatment')}</th>
                     <th className="px-3 py-2 text-right font-semibold">

@@ -80,6 +80,7 @@ import { SECTIONS, sectionName, type SectionId } from '@/lib/api/services'
 import { useConfirm } from '@/lib/confirm'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
+import { heroBand } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 import { RegistrationField } from './registration-field'
 import {
@@ -700,7 +701,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
             {isLoading && <p className="text-ink-3 m-0">…</p>}
             {groups.map((g) => (
               <Card key={g.key}>
-                <CardHeader>
+                <CardHeader hue="navy">
                   <span className="inline-flex items-center gap-2">
                     <Building2 size={16} aria-hidden="true" />
                     {g.name}
@@ -924,7 +925,7 @@ function DeleteAccountCard({
 
   return (
     <Card className="border-red anim-enter">
-      <CardHeader>
+      <CardHeader hue="coral">
         <span className="inline-flex items-center gap-2">
           <Trash2 size={16} aria-hidden="true" className="text-red" />
           {t('staff.delete.title', { name })}
@@ -1022,7 +1023,7 @@ function LongDeactivatedCard({
   const { t } = useTranslation()
   return (
     <Card className="border-amber/50">
-      <CardHeader>
+      <CardHeader hue="amber">
         <span className="inline-flex items-center gap-2">
           <AlertTriangle size={16} aria-hidden="true" className="text-amber" />
           {t('staff.longDeactivated.title')}
@@ -1128,15 +1129,21 @@ function ConfirmCodeDialog({
     >
       <form
         onSubmit={submit}
-        className="bg-card shadow-sheet border-border flex w-full max-w-[440px] flex-col gap-4 rounded-md border p-4"
+        className="bg-card border-border anim-dialog flex w-full max-w-[440px] flex-col gap-4 overflow-hidden rounded-xl border p-4 shadow-[0_20px_60px_rgba(11,34,82,.22)]"
       >
-        <div className="flex items-center gap-3">
-          <span className="bg-primary-tint text-primary inline-flex size-8 flex-none items-center justify-center rounded">
+        {/* the dialog's header on the staff hue's gradient (clinical blue), white icon chip */}
+        <div
+          className={cn(
+            heroBand('navy'),
+            '-mx-4 -mt-4 flex items-center gap-3 px-4 py-3 text-white',
+          )}
+        >
+          <span className="inline-flex size-8 flex-none items-center justify-center rounded bg-white/20 text-white">
             <MailCheck size={18} aria-hidden="true" />
           </span>
           <span>
             <span className="block text-[16px] font-semibold">{t('staff.confirm.title')}</span>
-            <span className="text-ink-2 text-[14px]">{title}</span>
+            <span className="text-[14px] text-white/80">{title}</span>
           </span>
         </div>
         <p className="bg-surface text-ink-2 m-0 flex items-center gap-2 rounded-md px-3 py-2 text-[14px]">
@@ -1656,7 +1663,7 @@ function EmployeeForm({
     )
   return (
     <Card className="border-primary anim-enter">
-      <CardHeader>
+      <CardHeader hue="navy">
         <span>
           {isNew ? t('staff.newEmployee') : t('staff.editTitle', { name: employee.fullName })}
         </span>
@@ -1863,7 +1870,7 @@ function DepartmentsPanel({
             .sort((a, b) => a.fullName.localeCompare(b.fullName))
           return (
             <Card key={d.id} className="anim-enter" style={{ '--i': i } as React.CSSProperties}>
-              <CardHeader>
+              <CardHeader hue="navy">
                 <span className="inline-flex items-center gap-2">
                   <Building2 size={16} aria-hidden="true" />
                   {d.name}
@@ -2069,7 +2076,7 @@ function DepartmentForm({
   )
   return (
     <Card className="border-primary anim-enter">
-      <CardHeader>
+      <CardHeader hue="navy">
         <span>
           {department ? t('staff.dept.editTitle', { name: department.name }) : t('staff.dept.new')}
         </span>
@@ -2187,7 +2194,7 @@ function CredentialsCard({
   const { t } = useTranslation()
   return (
     <Card className="border-green anim-enter">
-      <CardHeader>
+      <CardHeader hue="navy">
         <span>{credentials.title}</span>
         <Badge tone="green" icon={<Check size={12} strokeWidth={3} aria-hidden="true" />}>
           {t('staff.active')}

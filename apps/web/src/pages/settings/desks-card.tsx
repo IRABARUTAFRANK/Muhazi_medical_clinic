@@ -68,7 +68,7 @@ export function DesksCard() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader hue="navy">
         <span className="inline-flex items-center gap-2">
           <IconChip icon={DoorOpen} tint="teal" />
           {t('perms.desks.title')}

@@ -186,7 +186,7 @@ export function useMyCalendar(userId: string | null) {
   })
 }
 
-/** Manager: the doctors and sonographers who may keep a calendar. */
+/** Manager: everyone who may keep a calendar (doctors, sonographers, nurses, the manager). */
 export function useCalendarPeople(enabled: boolean) {
   return useQuery({
     queryKey: [...KEY, 'people'],
