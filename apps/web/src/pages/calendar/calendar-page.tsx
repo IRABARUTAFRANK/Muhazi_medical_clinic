@@ -20,6 +20,7 @@ import {
   CATEGORY_IDS,
   formatDate,
   isoDate,
+  startOfDay,
   toMinutes,
   type CategoryId,
   type StaffUser,
@@ -43,6 +44,7 @@ import {
   type DoctorCalendar,
   type Visibility,
 } from '@/lib/api/calendar'
+import { bookedFor, useBookedSlots } from '@/lib/api/public'
 import { useConfirm } from '@/lib/confirm'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
@@ -138,6 +140,9 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
   const days = useDayNames()
   const save = useSaveCalendar()
   const confirm = useConfirm()
+  // the preview counts free times against the real bookings, like the website does (without
+  // them the board fell back to its demo pattern and showed hours as taken that were free)
+  const { data: booked } = useBookedSlots(startOfDay(new Date()), 21)
   const [hours, setHours] = useState<WeeklyHours>(cal.hours)
   const [slot, setSlot] = useState(cal.slotMinutes)
   const [visibility, setVisibility] = useState<Visibility>(cal.visibility)
@@ -532,6 +537,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
           variant="staff"
           now={new Date()}
           doctors={[{ p: preview, visibility, department: cal.department, mine: cal.mine }]}
+          bookedFor={(p) => bookedFor(booked, p)}
         />
       </Panel>
 
