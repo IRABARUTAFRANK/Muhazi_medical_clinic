@@ -11,6 +11,8 @@ import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { ListBar, ShowMore } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { OpenFileLink } from '@/components/clinical/file-panel'
+import { useOpenFileId } from '@/lib/panel-url'
 import { LeftButton } from '@/components/clinical/left-button'
 import { HandoverBadge } from '@/components/clinical/handover-badge'
 import { useChangeFlash } from '@/components/clinical/use-change-flash'
@@ -172,8 +174,15 @@ function VisitRow({
   const { t } = useTranslation()
   // the row glows for a moment when the patient moves desk, is taken or changes colour
   const changed = useChangeFlash(`${r.station}|${r.startedAt}|${r.takenBy}|${r.triage}`)
+  const fileOpen = useOpenFileId() === r.patientId
   return (
-    <Row className={cn('flex-wrap gap-x-3 gap-y-1 py-2', changed && 'anim-row-flash')}>
+    <Row
+      className={cn(
+        'flex-wrap gap-x-3 gap-y-1 py-2',
+        changed && 'anim-row-flash',
+        fileOpen && 'bg-primary-tint/50 hover:bg-primary-tint/50',
+      )}
+    >
       <span className="text-primary w-14 font-semibold tabular-nums">{r.ticket}</span>
       <span className="min-w-[160px] flex-1">
         <span className="block font-semibold">{r.name}</span>
@@ -233,15 +242,15 @@ function VisitRow({
           {t('visits.openVisit')}
         </StaffLink>
       )}
-      <StaffLink
-        to="/app/patient"
-        search={{ id: r.patientId }}
-        className={buttonVariants({ size: 'sm' })}
+      {/* the file opens beside the list (teal tint: an action); middle-click: the whole page */}
+      <OpenFileLink
+        patientId={r.patientId}
+        className={buttonVariants({ size: 'sm', variant: 'tint-teal' })}
         aria-label={t('visit.patientFile')}
         title={t('visit.patientFile')}
       >
         <FolderOpen size={14} aria-hidden="true" />
-      </StaffLink>
+      </OpenFileLink>
       <LeftButton encounterId={r.encounterId} name={r.name} user={user} compact />
     </Row>
   )

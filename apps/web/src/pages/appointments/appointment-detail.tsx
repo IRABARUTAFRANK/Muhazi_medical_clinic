@@ -1,9 +1,9 @@
-import { ArrowLeft, CalendarCheck, CircleAlert, FolderOpen, Stethoscope } from 'lucide-react'
+import { CalendarCheck, CircleAlert, FolderOpen, Stethoscope } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime } from '@mmc/shared'
-import { Panel } from '@/components/dash/kit'
 import { Badge } from '@/components/ui/badge'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
+import { SidePanel } from '@/components/ui/side-panel'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useAppointmentDetail } from '@/lib/api/desk-ops'
 
@@ -23,8 +23,11 @@ const TONE: Record<string, 'blue' | 'green' | 'yellow' | 'red' | 'grey'> = {
   declined: 'red',
 }
 
-/** Everything about one booking, on the same page, with a way back to the list. */
-export function AppointmentDetail({ id, onBack }: { id: string; onBack: () => void }) {
+/**
+ * Everything about one booking, in a side panel (rose: bookings) over the day's list, which
+ * keeps the chosen row tinted. Closing it (Escape, the overlay, ×) returns to the list.
+ */
+export function AppointmentDetail({ id, onClose }: { id: string | null; onClose: () => void }) {
   const { t } = useTranslation()
   const { data: a, isLoading, error } = useAppointmentDetail(id)
   const rows: [string, string | null | undefined][] = a
@@ -57,12 +60,14 @@ export function AppointmentDetail({ id, onBack }: { id: string; onBack: () => vo
     : []
 
   return (
-    <Panel
-      i={1}
+    <SidePanel
+      open={id !== null}
+      onClose={onClose}
+      hue="rose"
       icon={CalendarCheck}
-      tint="violet"
       title={a ? (a.patientName ?? a.contactName ?? '') : t('ops.detail.title')}
-      right={
+      subtitle={a ? [when(a.startsAt), a.doctor].filter(Boolean).join(' · ') : undefined}
+      tags={
         a ? (
           <Badge tone={TONE[a.status] ?? 'grey'}>
             {t(`ops.appts.status.${a.status}`, { defaultValue: a.status })}
@@ -70,53 +75,51 @@ export function AppointmentDetail({ id, onBack }: { id: string; onBack: () => vo
         ) : undefined
       }
     >
-      <Button size="sm" className="self-start" onClick={onBack}>
-        <ArrowLeft size={14} aria-hidden="true" />
-        {t('ops.detail.back')}
-      </Button>
-      {error && (
-        <p className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-medium">
-          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
-          <span>{error.message}</span>
-        </p>
-      )}
-      {isLoading && <p className="text-ink-3 m-0 text-[13px]">…</p>}
-      {a && (
-        <>
-          <dl className="m-0 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[160px_minmax(0,1fr)]">
-            {rows
-              .filter(([, v]) => v)
-              .map(([k, v]) => (
-                <div key={k} className="contents">
-                  <dt className="text-ink-3 text-[13px]">{k}</dt>
-                  <dd className="text-ink m-0 text-[14px] font-medium">{v}</dd>
-                </div>
-              ))}
-          </dl>
-          <div className="flex flex-wrap gap-2">
-            {a.patientId && (
-              <StaffLink
-                to="/app/patient"
-                search={{ id: a.patientId }}
-                className={buttonVariants({ size: 'sm' })}
-              >
-                <FolderOpen size={14} aria-hidden="true" />
-                {t('patients.openFile')}
-              </StaffLink>
-            )}
-            {a.encounterId && (
-              <StaffLink
-                to="/app/visit"
-                search={{ encounter: a.encounterId }}
-                className={buttonVariants({ size: 'sm', variant: 'primary' })}
-              >
-                <Stethoscope size={14} aria-hidden="true" />
-                {t('register.done.openVisit')}
-              </StaffLink>
-            )}
-          </div>
-        </>
-      )}
-    </Panel>
+      <div className="flex flex-col gap-4">
+        {error && (
+          <p className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-medium">
+            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+            <span>{error.message}</span>
+          </p>
+        )}
+        {isLoading && <p className="text-ink-3 m-0 text-[13px]">…</p>}
+        {a && (
+          <>
+            <dl className="border-border m-0 grid grid-cols-1 gap-x-4 gap-y-2 rounded-md border p-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+              {rows
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <div key={k} className="contents">
+                    <dt className="text-ink-3 text-[13px]">{k}</dt>
+                    <dd className="text-ink m-0 text-[14px] font-medium">{v}</dd>
+                  </div>
+                ))}
+            </dl>
+            <div className="flex flex-wrap gap-2">
+              {a.patientId && (
+                <StaffLink
+                  to="/app/patient"
+                  search={{ id: a.patientId }}
+                  className={buttonVariants({ size: 'sm' })}
+                >
+                  <FolderOpen size={14} aria-hidden="true" />
+                  {t('patients.openFile')}
+                </StaffLink>
+              )}
+              {a.encounterId && (
+                <StaffLink
+                  to="/app/visit"
+                  search={{ encounter: a.encounterId }}
+                  className={buttonVariants({ size: 'sm', variant: 'primary' })}
+                >
+                  <Stethoscope size={14} aria-hidden="true" />
+                  {t('register.done.openVisit')}
+                </StaffLink>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </SidePanel>
   )
 }

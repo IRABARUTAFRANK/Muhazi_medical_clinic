@@ -1,3 +1,4 @@
+import { ClipboardList, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@mmc/shared'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -13,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { bucketsOf } from '../buckets'
 import { Legend, PickBars, StackedBars } from '../charts'
 import { dayLong, kindName, num, payMethod, roleName, short, when } from '../format'
-import { Block, DataTable, Drawer, LoadError, NeedsUpdate, Quiet, Stat } from '../kit'
+import { Block, DataTable, Drawer, LoadError, NeedsUpdate, Quiet, Stat, statGrid } from '../kit'
 import { workSeries } from '../work-series'
 
 /**
@@ -80,10 +81,10 @@ export function PersonDrawer({
         <NeedsUpdate />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className={statGrid}>
             {counts.length === 0 && <Quiet>{t('analytics.staff.nothing')}</Quiet>}
             {counts.slice(0, 4).map(([k, n]) => (
-              <Stat key={k} label={kindName(k, t)} value={formatNumber(n)} />
+              <Stat key={k} icon={ClipboardList} label={kindName(k, t)} value={formatNumber(n)} />
             ))}
           </div>
 
@@ -228,10 +229,12 @@ export function PersonDrawer({
               m.voided.length > 0 ||
               m.closes.length > 0) && (
               <Block title={t('analytics.staff.money')}>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                <div className={statGrid}>
                   {m.byMethod.map((x) => (
                     <Stat
                       key={x.method}
+                      icon={Wallet}
+                      tint="mint"
                       label={payMethod(x.method, t)}
                       value={num(x.amount)}
                       note={t('analytics.revenue.paymentsN', { count: x.count })}

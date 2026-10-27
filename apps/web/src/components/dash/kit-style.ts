@@ -35,6 +35,21 @@ import { formatNumber, type Role } from '@mmc/shared'
 export const sectionTitle = 'text-[16px] font-semibold text-ink'
 export const card = 'bg-card border-border flex min-w-0 flex-col gap-3 rounded-md border p-4'
 
+/* Tables and lists of every page: 40 px rows on 1 px dividers, a 12 px grey header row, the
+ * first column medium, a soft hover tint and a soft teal tint on the selected row (never a
+ * strong fill). */
+export const tableHead = 'text-ink-3 h-10 px-3 text-left text-[12px] font-normal whitespace-nowrap'
+export const tableRow =
+  'border-grid hover:bg-hover h-10 border-b transition-colors duration-120 last:border-b-0'
+export const tableCell = 'px-3 py-1.5 align-middle text-[14px]'
+export const tableFirstCell = 'px-3 py-1.5 align-middle text-[14px] font-medium'
+/** The selected row (its panel or detail is open): primary tint at 50 %. */
+export const selectedRow = 'bg-primary-tint/50'
+/** An expanded section inside a card. */
+export const expandedSection = 'bg-surface'
+/** A form card that has the focus: 1 px teal border. */
+export const focusedForm = 'border-primary'
+
 export type TFn = (key: string, opts?: Record<string, unknown>) => string
 export type Tint = 'teal' | 'mint' | 'amber' | 'coral' | 'violet' | 'navy'
 /** The tints plus rose (maternity, family planning): what the kit paints; pages keep `Tint`. */

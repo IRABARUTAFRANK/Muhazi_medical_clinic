@@ -159,9 +159,7 @@ export function StaffView({ period, search, update, dept, clinic }: ViewProps) {
             ariaLabel={t('analytics.staff.chartAria', { period: period.label })}
           />
         )}
-        {bk.monthly && (
-          <p className="text-ink-3 m-0 text-[13px]">{t('analytics.chartHintMonth')}</p>
-        )}
+        {bk.monthly && <Hint>{t('analytics.chartHintMonth')}</Hint>}
       </Panel>
 
       <Panel

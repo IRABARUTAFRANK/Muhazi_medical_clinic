@@ -19,6 +19,7 @@ import type { Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { PeriodFilter } from '@/components/dash/period-filter'
 import { buttonVariants } from '@/components/ui/button'
+import { OpenFileLink } from '@/components/clinical/file-panel'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
@@ -105,19 +106,21 @@ function VisitLink({
     <StaffLink
       to="/app/visit"
       search={{ encounter: encounterId }}
-      className={buttonVariants({ size: 'sm' })}
+      className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
     >
+      <FolderOpen size={14} aria-hidden="true" />
       {t('visits.openVisit')}
     </StaffLink>
   ) : (
-    <StaffLink
-      to="/app/patient"
-      search={{ id: patientId }}
-      className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+    // the file opens in the side panel; the link underneath keeps middle-click and ctrl-click
+    // on the whole page
+    <OpenFileLink
+      patientId={patientId}
+      className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
     >
       <FolderOpen size={14} aria-hidden="true" />
       {t('visit.patientFile')}
-    </StaffLink>
+    </OpenFileLink>
   )
 }
 

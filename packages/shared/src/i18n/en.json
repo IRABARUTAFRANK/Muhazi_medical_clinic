@@ -99,7 +99,15 @@
     "labWorklist": "Lab worklist",
     "pharmacy": "Pharmacy",
     "analytics": "Analytics",
-    "recordAccess": "Record access"
+    "recordAccess": "Record access",
+    "groups": {
+      "work": "Work",
+      "patients": "Patients",
+      "finance": "Finance",
+      "stock": "Stock",
+      "manage": "Management",
+      "inbox": "Inbox"
+    }
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -6138,7 +6146,18 @@
     "homeCount_other": "{{count}} to answer",
     "homeMore_one": "And {{count}} more on the Record access page",
     "homeMore_other": "And {{count}} more on the Record access page",
-    "emergencyHeadNote": "The manager reviews emergency accesses. You see them because you are a head in charge of this patient."
+    "emergencyHeadNote": "The manager reviews emergency accesses. You see them because you are a head in charge of this patient.",
+    "panel": {
+      "details": "Details",
+      "request": "Access request",
+      "emergency": "Emergency access",
+      "log": "Past records opened",
+      "when": "When",
+      "who": "Who",
+      "what": "What was opened",
+      "reason": "Reason given",
+      "review": "Review"
+    }
   },
   "recordPrivacy": {
     "title": "Past records are private",
@@ -6682,5 +6701,9 @@
     "7028b3a6": "The weight must be between 0.3 and 350 kg.",
     "f2b8b050": "The height must be between 20 and 250 cm.",
     "936ac589": "The arm circumference must be between 5 and 60 cm."
+  },
+  "panel": {
+    "close": "Close",
+    "openFull": "Open full page"
   }
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Check, ListPlus, Plus, Trash2 } from 'lucide-react'
+import { Check, CircleAlert, Inbox, ListPlus, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { IconChip } from '@/components/dash/kit'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
@@ -83,22 +84,28 @@ export function PatientFieldsCard() {
   return (
     <Card>
       <CardHeader>
-        <span className="inline-flex items-center gap-2">
-          <ListPlus size={16} aria-hidden="true" />
+        <span className="inline-flex items-center gap-2.5">
+          <IconChip icon={ListPlus} tint="violet" />
           {t('settings.patientFields.title')}
         </span>
-        <Button size="sm" onClick={add}>
-          <Plus size={14} aria-hidden="true" />
+        <Button size="sm" variant="tint-teal" onClick={add}>
+          <Plus size={16} aria-hidden="true" />
           {t('settings.patientFields.add')}
         </Button>
       </CardHeader>
       <CardBody className="gap-3">
         <p className="text-ink-2 m-0 text-[14px]">{t('settings.patientFields.lead')}</p>
         {fields.length === 0 && (
-          <p className="text-ink-3 m-0 text-[13px]">{t('settings.patientFields.none')}</p>
+          <p className="text-ink-3 m-0 flex items-center gap-2 text-[14px]">
+            <Inbox size={16} aria-hidden="true" className="flex-none" />
+            {t('settings.patientFields.none')}
+          </p>
         )}
         {fields.map((f, i) => (
-          <div key={i} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[2fr_1fr_2fr_auto]">
+          <div
+            key={i}
+            className="border-grid grid grid-cols-1 items-end gap-3 border-b pb-3 last-of-type:border-b-0 last-of-type:pb-0 sm:grid-cols-[2fr_1fr_2fr_auto]"
+          >
             <Field
               label={t('settings.patientFields.label')}
               value={f.label}
@@ -129,8 +136,9 @@ export function PatientFieldsCard() {
               </span>
             )}
             <Button
-              variant="ghost"
-              size="sm"
+              variant="tint-coral"
+              size="md"
+              className="sm:mb-0"
               onClick={() => remove(i)}
               aria-label={t('settings.patientFields.remove')}
               title={t('settings.patientFields.remove')}
@@ -155,8 +163,9 @@ export function PatientFieldsCard() {
         {save.error && (
           <p
             role="alert"
-            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
+            className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
+            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
             {save.error.message}
           </p>
         )}
@@ -166,7 +175,8 @@ export function PatientFieldsCard() {
             {t('settings.patientFields.save')}
           </Button>
           {saved && !save.isPending && (
-            <span className="text-green text-[14px] font-semibold">
+            <span className="text-green inline-flex items-center gap-1 text-[14px] font-semibold">
+              <Check size={16} aria-hidden="true" />
               {t('settings.patientFields.saved')}
             </span>
           )}

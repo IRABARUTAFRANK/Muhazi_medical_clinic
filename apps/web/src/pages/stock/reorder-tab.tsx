@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { PackagePlus, ShoppingCart, SlidersHorizontal } from 'lucide-react'
+import { PackagePlus, Save, ShoppingCart, SlidersHorizontal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatNumber, formatRwf } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
@@ -78,6 +78,7 @@ export function LevelEditor({
         className="col-span-2 sm:col-span-1"
         loading={actions.setReorderLevel.isPending}
       >
+        {!actions.setReorderLevel.isPending && <Save size={16} aria-hidden="true" />}
         {t('prices.form.save')}
       </Button>
       <div className="col-span-2 sm:col-span-3">
@@ -183,7 +184,7 @@ export function ReorderTab({
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="primary" onClick={() => onReceive(x.itemId)}>
+                    <Button size="sm" variant="success" onClick={() => onReceive(x.itemId)}>
                       <PackagePlus size={14} aria-hidden="true" />
                       {t('stockReorder.receive')}
                     </Button>

@@ -85,7 +85,7 @@ export function CatalogueTools({
           <Wrench size={16} aria-hidden="true" />
           {t('prices.tools.title')}
         </span>
-        <Button size="sm" variant="ghost" onClick={onClose}>
+        <Button size="sm" variant="tint-grey" onClick={onClose}>
           {t('common.close')}
         </Button>
       </CardHeader>
@@ -254,7 +254,7 @@ export function CatalogueTools({
               wrapperClassName="w-48"
             />
             <Button
-              variant="danger"
+              variant="danger-solid"
               disabled={confirm !== 'DELETE'}
               loading={tools.deleteAll.isPending}
               onClick={() =>

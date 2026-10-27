@@ -1,11 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import {
+  AlertTriangle,
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  DoorClosed,
   DoorOpen,
   Pencil,
   Plus,
+  Save,
   Send,
   Store,
   Truck,
@@ -16,8 +19,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Empty, Kpi, Panel } from '@/components/dash/kit'
+import { focusedForm, selectedRow, tileClass } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, actionLink } from '@/components/ui/button'
+import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Reveal } from '@/components/ui/reveal'
 import { Select } from '@/components/ui/select'
@@ -110,7 +115,7 @@ export function RoomStoresTab({
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(190px,1fr))]">
+      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi
           i={0}
           icon={ClipboardList}
@@ -122,7 +127,7 @@ export function RoomStoresTab({
         <Kpi
           i={1}
           icon={Truck}
-          tint="teal"
+          tint="navy"
           label={t('roomStores.tiles.onTheWay')}
           value={onTheWay.filter((n) => n.direction === 'to_room').length}
           unit={t('roomStores.tiles.notes')}
@@ -276,9 +281,16 @@ function SendNoteForm({
       <Panel i={2} icon={Send} tint="teal" title={t('roomStores.sendTitle')}>
         <p className="text-ink-2 m-0 text-[14px]">{t('roomStores.sendLead')}</p>
         {preset.requestNumber && (
-          <p className="border-blue/30 bg-blue-bg text-blue m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[14px] font-medium">
+          <p
+            className={cn(
+              'text-navy-ink m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[14px] font-medium',
+              tileClass.navy,
+            )}
+          >
+            <ClipboardList size={16} aria-hidden="true" className="flex-none" />
             {t('roomStores.fromRequest', { number: preset.requestNumber })}
-            <button type="button" className="underline" onClick={onClear}>
+            <button type="button" className={actionLink} onClick={onClear}>
+              <X size={14} aria-hidden="true" />
               {t('roomStores.clearRequest')}
             </button>
           </p>
@@ -409,8 +421,14 @@ function RoomStoresList({
       </p>
       {/* open stores nobody holds: nobody can confirm a note or give from them */}
       {orphans.length > 0 && (
-        <div className="bg-orange-bg text-orange flex flex-col gap-2 rounded-md px-3 py-2 text-[14px]">
-          <p className="m-0 font-semibold">
+        <div
+          className={cn(
+            'text-ink flex flex-col gap-2 rounded-md border px-3 py-2 text-[14px]',
+            tileClass.amber,
+          )}
+        >
+          <p className="text-amber m-0 flex items-center gap-1.5 font-semibold">
+            <AlertTriangle size={16} aria-hidden="true" className="flex-none" />
             {t('roomStores.withoutHolder', { count: orphans.length })}
           </p>
           <p className="m-0">
@@ -424,7 +442,7 @@ function RoomStoresList({
                   {t('roomStores.assignHolder', { store: l.name })}
                 </Button>
               ) : (
-                <Badge key={l.id} tone="orange">
+                <Badge key={l.id} tone="orange" icon={<Users size={12} aria-hidden="true" />}>
                   {l.name}
                 </Badge>
               ),
@@ -458,7 +476,10 @@ function RoomStoresList({
                   type="button"
                   aria-expanded={open === l.id}
                   onClick={() => setOpen(open === l.id ? null : l.id)}
-                  className="hover:bg-hover flex w-full flex-wrap items-center gap-3 rounded-md p-3 text-left"
+                  className={cn(
+                    'hover:bg-hover flex min-h-10 w-full flex-wrap items-center gap-3 rounded-md p-3 text-left transition-colors duration-120',
+                    open === l.id && selectedRow,
+                  )}
                 >
                   {open === l.id ? (
                     <ChevronDown size={16} aria-hidden="true" />
@@ -482,9 +503,13 @@ function RoomStoresList({
                     )}
                   </span>
                   {closed ? (
-                    <Badge tone="grey">{t('stockStores.closed')}</Badge>
+                    <Badge tone="grey" icon={<DoorClosed size={12} aria-hidden="true" />}>
+                      {t('stockStores.closed')}
+                    </Badge>
                   ) : (l.holders ?? []).length === 0 ? (
-                    <Badge tone="orange">{t('roomStores.noHolder')}</Badge>
+                    <Badge tone="orange" icon={<AlertTriangle size={12} aria-hidden="true" />}>
+                      {t('roomStores.noHolder')}
+                    </Badge>
                   ) : null}
                 </button>
                 {open === l.id && (
@@ -591,6 +616,7 @@ function StoreAdminActions({
         {isManager && !closed && units > 0 && (
           <Button
             size="sm"
+            variant="tint-amber"
             loading={actions.returnToPharmacy.isPending}
             onClick={() => void returnAll()}
           >
@@ -601,10 +627,15 @@ function StoreAdminActions({
         {isManager && (
           <Button
             size="sm"
-            variant={closed ? 'default' : 'danger'}
+            variant={closed ? 'tint-amber' : 'tint-coral'}
             loading={admin.setActive.isPending}
             onClick={() => void setActive(closed)}
           >
+            {closed ? (
+              <DoorOpen size={14} aria-hidden="true" />
+            ) : (
+              <DoorClosed size={14} aria-hidden="true" />
+            )}
             {closed ? t('stock.storeOpen') : t('stock.storeClose')}
           </Button>
         )}
@@ -678,12 +709,9 @@ function RoomStoreForm({ store, onClose }: { store: StockLocation | null; onClos
     }
   }
   return (
-    <form
-      onSubmit={(e) => void submit(e)}
-      className="border-border bg-surface flex flex-col gap-3 rounded-md border p-3"
-    >
-      <div className="flex items-center gap-2">
-        <span className="flex-1 text-[16px] font-semibold">
+    <Card className={focusedForm}>
+      <CardHeader icon={Store}>
+        <span className="min-w-0 flex-1 break-words">
           {store ? t('roomStores.editTitle', { name: store.name }) : t('roomStores.new')}
         </span>
         <Button
@@ -695,104 +723,111 @@ function RoomStoreForm({ store, onClose }: { store: StockLocation | null; onClos
         >
           <X size={16} aria-hidden="true" />
         </Button>
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <Field
-          label={t('stock.storeName')}
-          value={name}
-          placeholder={t('roomStores.namePh')}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <Select
-          label={t('stock.storeType')}
-          value={type}
-          onChange={(e) => setType(e.target.value as RoomStoreType)}
-        >
-          {ROOM_TYPES.map((x) => (
-            <option key={x} value={x}>
-              {t(`stock.storeTypes.${x}`)}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="flex flex-col gap-2">
-        <span className="text-ink-2 text-[14px] font-semibold">{t('roomStores.people')}</span>
-        <SearchSelect
-          label={t('roomStores.addPerson')}
-          value=""
-          onChange={(id) => id && !staff.includes(id) && setStaff([...staff, id])}
-          emptyLabel={t('roomStores.pickPerson')}
-          options={active
-            .filter((e) => !staff.includes(e.id))
-            .map((e) => ({
-              value: e.id,
-              label: `${e.fullName} · ${t(`roles.${e.role}`, { defaultValue: e.role })}${
-                e.departmentName ? ` · ${e.departmentName}` : ''
-              }`,
-            }))}
-        />
-        {staff.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {staff.map((id) => (
-              <span
-                key={id}
-                className="border-border bg-card inline-flex items-center gap-1 rounded-md border py-0.5 pr-1 pl-2.5 text-[14px]"
-              >
-                {nameOf(id)}
-                <button
-                  type="button"
-                  className="hover:bg-hover rounded-full p-1"
-                  aria-label={t('roomStores.removeHolder', { name: nameOf(id) })}
-                  title={t('roomStores.removeHolder', { name: nameOf(id) })}
-                  onClick={() => setStaff(staff.filter((x) => x !== id))}
-                >
-                  <X size={12} aria-hidden="true" />
-                </button>
-              </span>
-            ))}
+      </CardHeader>
+      <CardBody>
+        <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <Field
+              label={t('stock.storeName')}
+              value={name}
+              placeholder={t('roomStores.namePh')}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <Select
+              label={t('stock.storeType')}
+              value={type}
+              onChange={(e) => setType(e.target.value as RoomStoreType)}
+            >
+              {ROOM_TYPES.map((x) => (
+                <option key={x} value={x}>
+                  {t(`stock.storeTypes.${x}`)}
+                </option>
+              ))}
+            </Select>
           </div>
-        )}
-      </div>
-      <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-        <legend className="text-ink-2 mb-1 text-[14px] font-semibold">
-          {t('roomStores.departments')}
-        </legend>
-        <div className="flex flex-wrap gap-1.5">
-          {departments.map((d) => {
-            const on = depts.includes(d.id)
-            return (
-              <label
-                key={d.id}
-                className={cn(
-                  'inline-flex min-h-8 cursor-pointer items-center gap-2 rounded-md border px-3 text-[14px]',
-                  on
-                    ? 'border-primary bg-primary-tint text-primary font-semibold'
-                    : 'border-border',
-                )}
-              >
-                <input
-                  type="checkbox"
-                  className="accent-primary"
-                  checked={on}
-                  onChange={() => setDepts(on ? depts.filter((x) => x !== d.id) : [...depts, d.id])}
-                />
-                {d.name}
-              </label>
-            )
-          })}
-        </div>
-        <span className="text-ink-3 text-[12px]">{t('roomStores.holdersHint')}</span>
-      </fieldset>
-      <MsgFlash msg={msg} onClose={() => setMsg(null)} />
-      <div className="flex gap-2">
-        <Button type="submit" variant="primary" loading={admin.save.isPending}>
-          {t('prices.form.save')}
-        </Button>
-        <Button variant="ghost" onClick={onClose}>
-          {t('staff.form.cancel')}
-        </Button>
-      </div>
-    </form>
+          <div className="flex flex-col gap-2">
+            <span className="text-ink-2 text-[14px] font-semibold">{t('roomStores.people')}</span>
+            <SearchSelect
+              label={t('roomStores.addPerson')}
+              value=""
+              onChange={(id) => id && !staff.includes(id) && setStaff([...staff, id])}
+              emptyLabel={t('roomStores.pickPerson')}
+              options={active
+                .filter((e) => !staff.includes(e.id))
+                .map((e) => ({
+                  value: e.id,
+                  label: `${e.fullName} · ${t(`roles.${e.role}`, { defaultValue: e.role })}${
+                    e.departmentName ? ` · ${e.departmentName}` : ''
+                  }`,
+                }))}
+            />
+            {staff.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {staff.map((id) => (
+                  <span
+                    key={id}
+                    className="border-border bg-card inline-flex items-center gap-1 rounded-md border py-0.5 pr-1 pl-2.5 text-[14px]"
+                  >
+                    {nameOf(id)}
+                    <button
+                      type="button"
+                      className="hover:bg-hover rounded-full p-1"
+                      aria-label={t('roomStores.removeHolder', { name: nameOf(id) })}
+                      title={t('roomStores.removeHolder', { name: nameOf(id) })}
+                      onClick={() => setStaff(staff.filter((x) => x !== id))}
+                    >
+                      <X size={12} aria-hidden="true" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+            <legend className="text-ink-2 mb-1 text-[14px] font-semibold">
+              {t('roomStores.departments')}
+            </legend>
+            <div className="flex flex-wrap gap-1.5">
+              {departments.map((d) => {
+                const on = depts.includes(d.id)
+                return (
+                  <label
+                    key={d.id}
+                    className={cn(
+                      'inline-flex min-h-8 cursor-pointer items-center gap-2 rounded-md border px-3 text-[14px]',
+                      on
+                        ? 'border-primary bg-primary-tint text-primary font-semibold'
+                        : 'border-border',
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-primary"
+                      checked={on}
+                      onChange={() =>
+                        setDepts(on ? depts.filter((x) => x !== d.id) : [...depts, d.id])
+                      }
+                    />
+                    {d.name}
+                  </label>
+                )
+              })}
+            </div>
+            <span className="text-ink-3 text-[12px]">{t('roomStores.holdersHint')}</span>
+          </fieldset>
+          <MsgFlash msg={msg} onClose={() => setMsg(null)} />
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="primary" loading={admin.save.isPending}>
+              {!admin.save.isPending && <Save size={16} aria-hidden="true" />}
+              {t('prices.form.save')}
+            </Button>
+            <Button variant="tint-grey" onClick={onClose}>
+              {t('staff.form.cancel')}
+            </Button>
+          </div>
+        </form>
+      </CardBody>
+    </Card>
   )
 }

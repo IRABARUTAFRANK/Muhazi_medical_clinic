@@ -29,6 +29,7 @@ import { Empty, IconChip, Panel } from '@/components/dash/kit'
 import { type Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Button } from '@/components/ui/button'
+import { SidePanel, useSidePanelState } from '@/components/ui/side-panel'
 import { ListBar, Pager, ShownList } from '@/components/ui/list-tools'
 import { Composer } from '@/components/staff/notification-bell'
 import { useLeadDepartments } from '@/lib/api/staff'
@@ -95,7 +96,10 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
   const [selected, setSelected] = useState<string[]>([])
   const [composing, setComposing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // one notice opens in a side panel (grey) over the list; its row keeps a tint meanwhile
+  const panel = useSidePanelState<Notice>((n) => n.id)
   const items = data?.items ?? []
+  const inPanel = panel.item ? (items.find((x) => x.id === panel.item!.id) ?? panel.item) : null
   const unread = data?.unread ?? 0
 
   const filtered = items.filter((n) =>
@@ -154,6 +158,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
           meta={<BannerChip icon={Inbox}>{t('notices.unreadCount', { count: unread })}</BannerChip>}
         >
           <Button
+            variant="tint-mint"
             disabled={unread === 0 || actions.markRead.isPending}
             onClick={() =>
               void ask(
@@ -282,6 +287,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                 <span className="flex-1" />
                 <Button
                   size="sm"
+                  variant="tint-mint"
                   disabled={selected.length === 0}
                   onClick={() =>
                     void ask(
@@ -303,7 +309,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                 </Button>
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant="tint-coral"
                   disabled={selected.length === 0}
                   onClick={() =>
                     void ask(
@@ -341,6 +347,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                       className={cn(
                         'border-grid anim-enter flex flex-wrap items-start gap-3 border-b py-3 last:border-b-0',
                         !n.read && 'bg-primary-tint/30 -mx-2 rounded-md px-2',
+                        panel.isOpen(n) && 'bg-primary-tint/50 -mx-2 rounded-md px-2',
                       )}
                       style={{ '--i': Math.min(i, 12) } as CSSProperties}
                     >
@@ -357,15 +364,18 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                       />
                       <IconChip icon={look.icon} tint={look.tint} />
                       <span className="min-w-0 flex-[1_1_200px]">
-                        <span
+                        {/* the title opens the notice in the side panel */}
+                        <button
+                          type="button"
+                          onClick={() => panel.show(n)}
                           className={cn(
-                            'flex items-center gap-2 text-[14px]',
+                            'hover:text-primary flex items-center gap-2 text-left text-[14px] outline-none hover:underline focus-visible:underline',
                             !n.read ? 'font-semibold' : 'font-medium',
                           )}
                         >
                           {!n.read && <span className="bg-primary size-2 flex-none rounded-full" />}
                           {w.title}
-                        </span>
+                        </button>
                         {w.body && (
                           <span className="text-ink-2 block text-[14px] leading-snug">
                             {w.body}
@@ -378,13 +388,14 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                       </span>
                       <span className="ml-auto flex flex-none flex-wrap justify-end gap-1 pl-7 sm:pl-0">
                         {n.link && (
-                          <Button size="sm" variant="primary" onClick={() => open(n)}>
+                          <Button size="sm" variant="info" onClick={() => open(n)}>
                             {t('common.open')}
                           </Button>
                         )}
                         {!n.read && (
                           <Button
                             size="sm"
+                            variant="tint-mint"
                             aria-label={t('notices.markRead')}
                             title={t('notices.markRead')}
                             onClick={() =>
@@ -402,7 +413,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                         )}
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="tint-coral"
                           aria-label={t('notices.remove')}
                           title={t('notices.remove')}
                           onClick={() =>
@@ -475,7 +486,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                         </span>
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="tint-coral"
                           onClick={() =>
                             void ask(
                               {
@@ -499,7 +510,136 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
             )}
           </Panel>
         )}
+
+        {/* one notice, opened from its title: what it says, when, from whom; the same actions */}
+        {inPanel && <NoticePanel notice={inPanel} open={panel.open} onClose={panel.close} />}
       </main>
     </StaffShell>
+  )
+}
+
+/** One notice in a side panel (grey): the wording in full, then Open / Mark read / Remove. */
+function NoticePanel({
+  notice: n,
+  open,
+  onClose,
+}: {
+  notice: Notice
+  open: boolean
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const actions = useNotificationActions()
+  const confirm = useConfirm()
+  const ago = useAgo()
+  const word = useWording()
+  const w = word(n)
+  const look = lookOf(n)
+  const [error, setError] = useState<string | null>(null)
+  const ask = async (options: ConfirmOptions, fn: () => Promise<unknown>) => {
+    if (!(await confirm(options))) return
+    setError(null)
+    try {
+      await fn()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+  const openLink = () => {
+    if (!n.read) actions.markRead.mutate([n.id])
+    onClose()
+    if (n.link) {
+      const [path, query] = n.link.split('?')
+      void navigate({ href: query ? `${path}?${query}` : path! })
+    }
+  }
+  return (
+    <SidePanel
+      open={open}
+      onClose={onClose}
+      hue="grey"
+      icon={look.icon}
+      title={w.title}
+      subtitle={`${ago(n.at)}${n.sender ? ` · ${t('notify.from', { name: n.sender })}` : ''}`}
+      tags={
+        n.urgent ? (
+          <span className="border-red/30 bg-red-bg text-red inline-flex h-6 items-center gap-1 rounded border px-2 text-[12px] font-medium">
+            <Siren size={12} aria-hidden="true" />
+            {t('notices.filters.urgent')}
+          </span>
+        ) : !n.read ? (
+          <span className="border-primary/30 bg-primary-tint text-primary inline-flex h-6 items-center rounded border px-2 text-[12px] font-medium">
+            {t('notices.filters.unread')}
+          </span>
+        ) : undefined
+      }
+      footer={
+        <>
+          {!n.read && (
+            <Button
+              size="sm"
+              variant="tint-mint"
+              disabled={actions.markRead.isPending}
+              onClick={() =>
+                void ask(
+                  {
+                    title: t('confirm.notices.markOne.title', { title: w.title }),
+                    confirmLabel: t('confirm.notices.markAll.yes'),
+                  },
+                  () => actions.markRead.mutateAsync([n.id]),
+                )
+              }
+            >
+              <CheckCheck size={14} aria-hidden="true" />
+              {t('notices.markRead')}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="tint-coral"
+            disabled={actions.hide.isPending}
+            onClick={() =>
+              void ask(
+                {
+                  title: t('confirm.notices.hideOne.title', { title: w.title }),
+                  body: t('confirm.notices.hide.body'),
+                  confirmLabel: t('confirm.notices.hide.yes'),
+                  tone: 'danger',
+                },
+                async () => {
+                  await actions.hide.mutateAsync([n.id])
+                  onClose()
+                },
+              )
+            }
+          >
+            <EyeOff size={14} aria-hidden="true" />
+            {t('notices.remove')}
+          </Button>
+          {n.link && (
+            <Button size="sm" variant="info" onClick={openLink}>
+              {t('common.open')}
+            </Button>
+          )}
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="border-border flex items-start gap-3 rounded-md border p-4">
+          <IconChip icon={look.icon} tint={look.tint} />
+          <p className="text-ink m-0 text-[14px] leading-relaxed">{w.body || w.title}</p>
+        </div>
+        {error && (
+          <p
+            role="alert"
+            className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] font-medium"
+          >
+            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+            {error}
+          </p>
+        )}
+      </div>
+    </SidePanel>
   )
 }

@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import {
   Activity,
   AlertTriangle,
   Check,
+  CircleCheck,
   FolderOpen,
+  Inbox,
   RotateCcw,
   Search,
   Stethoscope,
@@ -15,6 +17,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { PageBanner } from '@/components/dash/page-banner'
+import { tileClass } from '@/components/dash/kit-style'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -92,7 +95,7 @@ export function RegisterPage({ user }: { user: StaffUser }) {
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="register">
-      <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
         <PageBanner
           icon={UserPlus}
           tint="teal"
@@ -101,36 +104,46 @@ export function RegisterPage({ user }: { user: StaffUser }) {
         />
 
         {!mayStart && (
-          <p className="bg-amber-bg text-amber border-amber/30 m-0 rounded-md border px-3 py-2.5 text-[14px] font-semibold">
+          <p className="bg-amber-bg text-amber border-amber/30 m-0 flex items-center gap-2 rounded-md border px-3 py-2.5 text-[14px] font-medium">
+            <AlertTriangle size={16} aria-hidden="true" className="flex-none" />
             {t('perms.blocked.visitBanner')}
           </p>
         )}
-        {/* Visit options apply to both an existing and a new patient */}
-        <Card className={cn(emergency && 'border-red')}>
-          <CardBody className="gap-3">
-            {canRegisterEmergency(user) && (
-              <label className="flex min-h-9 cursor-pointer items-center gap-3 font-semibold">
-                <input
-                  type="checkbox"
-                  className="accent-red size-5"
-                  checked={emergency}
-                  onChange={(e) => setEmergency(e.target.checked)}
-                />
-                <AlertTriangle size={18} className={emergency ? 'text-red' : 'text-ink-3'} />
-                {t('register.emergency')}
-              </label>
+        {/* Visit options apply to both an existing and a new patient: a band, coral once the
+            emergency is ticked */}
+        <section
+          className={cn(
+            'anim-enter flex flex-col gap-2 rounded-md border px-4 py-3',
+            emergency ? tileClass.coral : 'border-border bg-card',
+          )}
+          style={{ '--i': 0 } as CSSProperties}
+        >
+          {canRegisterEmergency(user) && (
+            <label className="flex min-h-9 cursor-pointer items-center gap-3 text-[14px] font-medium">
+              <input
+                type="checkbox"
+                className="accent-red size-5"
+                checked={emergency}
+                onChange={(e) => setEmergency(e.target.checked)}
+              />
+              <AlertTriangle
+                size={18}
+                aria-hidden="true"
+                className={emergency ? 'text-red' : 'text-ink-3'}
+              />
+              {t('register.emergency')}
+            </label>
+          )}
+          <p className="text-ink-2 m-0 text-[14px]">
+            {t(
+              emergency
+                ? 'register.emergencyHint'
+                : triageFirst
+                  ? 'register.flowTriageFirst'
+                  : 'register.flow',
             )}
-            <p className="text-ink-2 m-0 text-[13px]">
-              {t(
-                emergency
-                  ? 'register.emergencyHint'
-                  : triageFirst
-                    ? 'register.flowTriageFirst'
-                    : 'register.flow',
-              )}
-            </p>
-          </CardBody>
-        </Card>
+          </p>
+        </section>
 
         {/* messages come into view when they appear (the button pressed may be lower down) */}
         {error && (
@@ -183,13 +196,10 @@ export function RegisterPage({ user }: { user: StaffUser }) {
 
         <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
           {/* Existing patient */}
-          <Card>
-            <CardHeader>
-              <span className="inline-flex items-center gap-2">
-                <Search size={16} aria-hidden="true" />
-                {t('register.search')}
-              </span>
-              <span className="text-ink-3 text-xs">{isFetching ? '…' : ''}</span>
+          <Card style={{ '--i': 1 } as CSSProperties}>
+            <CardHeader icon={Search}>
+              <span className="min-w-0 flex-1">{t('register.search')}</span>
+              {isFetching && <span className="text-ink-3 text-[12px] font-normal">…</span>}
             </CardHeader>
             <CardBody className="gap-3">
               <Field
@@ -200,45 +210,56 @@ export function RegisterPage({ user }: { user: StaffUser }) {
                 autoComplete="off"
               />
               {query.trim().length >= 2 && hits.length === 0 && !isFetching && (
-                <EmptyNote>{t('register.noMatch')}</EmptyNote>
+                <EmptyNote icon={Inbox} className="text-[14px]">
+                  {t('register.noMatch')}
+                </EmptyNote>
               )}
-              {hits.map((p) => (
-                <Row key={p.id} className="flex-wrap gap-x-3 gap-y-1 py-2">
-                  <span className="min-w-[160px] flex-1">
-                    <span className="block font-semibold">
-                      {p.surname} {p.givenNames}
-                    </span>
-                    <span className="text-ink-3 text-xs tabular-nums">
-                      {p.fileNumber} · {t(`register.sexes.${p.sex}`)}
-                      {p.birthDate ? ` · ${p.birthDate}` : ''}
-                      {p.phone ? ` · ${p.phone}` : ''}
-                    </span>
-                  </span>
-                  {/* the file opens from here (an open visit is reached from the file) */}
-                  <StaffLink
-                    to="/app/patient"
-                    search={{ id: p.id }}
-                    className={buttonVariants({ size: 'sm', variant: 'ghost' })}
-                  >
-                    <FolderOpen size={14} aria-hidden="true" />
-                    {t('patients.openFile')}
-                  </StaffLink>
-                  {p.hasOpenVisit ? (
-                    <Badge tone="blue">{t('register.openVisit')}</Badge>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant={emergency ? 'danger' : 'primary'}
-                      disabled={sending?.id === p.id || !mayStart}
-                      title={mayStart ? undefined : t('perms.blocked.visit')}
-                      onClick={() => send(p)}
-                    >
-                      <Ticket size={16} aria-hidden="true" />
-                      {t('register.startVisit')}
-                    </Button>
-                  )}
-                </Row>
-              ))}
+              {hits.length > 0 && (
+                <div className="-mx-4 flex flex-col">
+                  {hits.map((p) => (
+                    <Row key={p.id} className="flex-wrap gap-x-3 gap-y-1 py-2">
+                      <span className="min-w-[160px] flex-1">
+                        <span className="block font-medium">
+                          {p.surname} {p.givenNames}
+                        </span>
+                        <span className="text-ink-3 text-[13px] tabular-nums">
+                          {p.fileNumber} · {t(`register.sexes.${p.sex}`)}
+                          {p.birthDate ? ` · ${p.birthDate}` : ''}
+                          {p.phone ? ` · ${p.phone}` : ''}
+                        </span>
+                      </span>
+                      {/* the file opens from here (an open visit is reached from the file) */}
+                      <StaffLink
+                        to="/app/patient"
+                        search={{ id: p.id }}
+                        className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
+                      >
+                        <FolderOpen size={14} aria-hidden="true" />
+                        {t('patients.openFile')}
+                      </StaffLink>
+                      {p.hasOpenVisit ? (
+                        <Badge
+                          tone="blue"
+                          icon={<Stethoscope size={12} strokeWidth={2.5} aria-hidden="true" />}
+                        >
+                          {t('register.openVisit')}
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant={emergency ? 'danger-solid' : 'primary'}
+                          disabled={sending?.id === p.id || !mayStart}
+                          title={mayStart ? undefined : t('perms.blocked.visit')}
+                          onClick={() => send(p)}
+                        >
+                          <Ticket size={16} aria-hidden="true" />
+                          {t('register.startVisit')}
+                        </Button>
+                      )}
+                    </Row>
+                  ))}
+                </div>
+              )}
             </CardBody>
           </Card>
 
@@ -282,19 +303,30 @@ function ResultCard({
   const station = t(`register.stations.${result.station}`)
   return (
     <Card ref={ref} className={emergency ? 'border-red' : 'border-green'}>
-      <CardHeader>
-        <span>{t('register.done.title')}</span>
-        <Badge tone={emergency ? 'red' : 'green'} icon={<Check size={12} strokeWidth={3} />}>
+      <CardHeader
+        icon={emergency ? AlertTriangle : CircleCheck}
+        className={emergency ? 'bg-red-bg/70' : 'bg-green-bg/70'}
+      >
+        <span className="min-w-0 flex-1">{t('register.done.title')}</span>
+        <Badge
+          tone={emergency ? 'red' : 'green'}
+          icon={<Check size={12} strokeWidth={3} aria-hidden="true" />}
+        >
           {t(`register.stations.${result.station}`)}
         </Badge>
       </CardHeader>
       <CardBody className="gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="border-border bg-surface rounded-md border px-4 py-2 text-[24px] font-semibold tabular-nums">
+          <span
+            className={cn(
+              'rounded-md border px-4 py-1 text-[28px] leading-8 font-semibold tabular-nums',
+              emergency ? tileClass.coral : tileClass.mint,
+            )}
+          >
             {result.ticketNo}
           </span>
           <Chip>{result.fileNumber}</Chip>
-          <span className="text-ink-2 text-[13px]">
+          <span className="text-ink-2 min-w-0 text-[14px]">
             {t(
               emergency
                 ? 'register.done.emergencyNote'
@@ -305,7 +337,7 @@ function ResultCard({
             )}
           </span>
         </div>
-        <p className="text-ink-2 m-0 text-[13px]">
+        <p className="text-ink-2 m-0 text-[14px]">
           {t(triage ? 'register.done.where' : 'register.done.whereDesk', { station })}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -322,7 +354,7 @@ function ResultCard({
           <StaffLink
             to="/app/patient"
             search={{ id: result.patientId }}
-            className={buttonVariants({ variant: triage ? 'default' : 'primary' })}
+            className={buttonVariants({ variant: 'tint-blue' })}
           >
             <FolderOpen size={16} aria-hidden="true" />
             {t('register.done.openFile')}
@@ -330,16 +362,16 @@ function ResultCard({
           <StaffLink
             to="/app/visit"
             search={{ encounter: result.encounterId }}
-            className={buttonVariants({ variant: 'default' })}
+            className={buttonVariants({ variant: triage ? 'default' : 'primary' })}
           >
             <Stethoscope size={16} aria-hidden="true" />
             {t('register.done.openVisit')}
           </StaffLink>
-          <StaffLink to="/app/patients" className={buttonVariants({ variant: 'default' })}>
+          <StaffLink to="/app/patients" className={buttonVariants({ variant: 'tint-grey' })}>
             <Users size={16} aria-hidden="true" />
             {t('register.done.register')}
           </StaffLink>
-          <Button variant="ghost" onClick={onAnother}>
+          <Button variant="default" onClick={onAnother}>
             <RotateCcw size={16} aria-hidden="true" />
             {t('register.another')}
           </Button>

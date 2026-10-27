@@ -207,6 +207,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
           </StaffLink>
           <PeriodSeg period={period} />
           <Button
+            variant="tint-grey"
             size="icon"
             onClick={() => void refetch()}
             loading={isFetching}
@@ -220,7 +221,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
               data ? dashboardReport(data, info?.profile ?? CLINIC_PROFILE, user, t) : null
             }
           />
-          <Button size="md" onClick={() => window.print()}>
+          <Button variant="tint-grey" size="md" onClick={() => window.print()}>
             <Printer size={16} aria-hidden="true" />
             {t('dashboard.print')}
           </Button>
@@ -256,7 +257,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
         {data && (
           <div key={range} className="flex flex-col gap-4">
             {/* KPI ROW */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
+            <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Kpi
                 i={0}
                 icon={UserPlus}
@@ -1029,7 +1030,7 @@ function Skeleton({ isManager }: { isManager: boolean }) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('dashboard.loading')}>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
+      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {Array.from({ length: isManager ? 7 : 5 }, (_, i) => (
           <div key={i} className="skeleton h-[130px] rounded-md" />
         ))}

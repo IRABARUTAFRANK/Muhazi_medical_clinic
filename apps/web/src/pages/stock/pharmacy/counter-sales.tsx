@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Ban, HandCoins, PackageCheck, Receipt, Send } from 'lucide-react'
+import { Ban, HandCoins, Hourglass, PackageCheck, Receipt, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf, formatTime } from '@mmc/shared'
 import type { StaffUser } from '@mmc/shared'
-import { Empty, Panel } from '@/components/dash/kit'
+import { Empty, Panel, SectionTitle } from '@/components/dash/kit'
+import { selectedRow } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
@@ -305,7 +306,7 @@ function CounterSales({ user }: { user: StaffUser }) {
     <Panel
       i={3}
       icon={Receipt}
-      tint="amber"
+      tint="teal"
       title={t('counterSale.title')}
       right={t('counterSale.waiting', { toPay, toHand })}
     >
@@ -418,7 +419,7 @@ function CounterSales({ user }: { user: StaffUser }) {
           </div>
         )}
         <Button
-          variant="primary"
+          variant={payNow ? 'success' : 'primary'}
           className="self-start"
           disabled={!ready || working}
           loading={working}
@@ -433,7 +434,7 @@ function CounterSales({ user }: { user: StaffUser }) {
         </Button>
       </div>
 
-      <h4 className="m-0 mt-1 text-[14px] font-semibold">{t('counterSale.listTitle')}</h4>
+      <SectionTitle icon={Receipt}>{t('counterSale.listTitle')}</SectionTitle>
       {shown.length === 0 ? (
         <Empty icon={Receipt}>{t('counterSale.none')}</Empty>
       ) : (
@@ -444,8 +445,8 @@ function CounterSales({ user }: { user: StaffUser }) {
                 <div
                   key={s.id}
                   className={cn(
-                    'bg-surface/70 flex flex-col gap-1.5 rounded-md px-3 py-2',
-                    focusSale === s.id && 'ring-primary ring-2',
+                    'border-border flex flex-col gap-1.5 rounded-md border px-3 py-2',
+                    focusSale === s.id && cn('border-primary', selectedRow),
                   )}
                 >
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -481,13 +482,24 @@ function CounterSales({ user }: { user: StaffUser }) {
                               ? 'green'
                               : 'grey'
                       }
+                      icon={
+                        s.status === 'open' ? (
+                          <Hourglass size={12} aria-hidden="true" />
+                        ) : s.status === 'paid' ? (
+                          <HandCoins size={12} aria-hidden="true" />
+                        ) : s.status === 'handed_over' ? (
+                          <PackageCheck size={12} aria-hidden="true" />
+                        ) : (
+                          <Ban size={12} aria-hidden="true" />
+                        )
+                      }
                     >
                       {t(`counterSale.status.${s.status}`)}
                     </Badge>
                     {s.status === 'paid' && (
                       <Button
                         size="sm"
-                        variant="primary"
+                        variant="success"
                         loading={actions.handOver.isPending && actions.handOver.variables === s.id}
                         disabled={actions.handOver.isPending}
                         onClick={() => void handOver(s)}
@@ -497,7 +509,11 @@ function CounterSales({ user }: { user: StaffUser }) {
                       </Button>
                     )}
                     {s.status === 'open' && canTake && (
-                      <Button size="sm" onClick={() => setPaying(paying === s.id ? null : s.id)}>
+                      <Button
+                        size="sm"
+                        variant="tint-mint"
+                        onClick={() => setPaying(paying === s.id ? null : s.id)}
+                      >
                         <HandCoins size={14} aria-hidden="true" />
                         {t('counterSale.takePayment')}
                       </Button>
@@ -505,7 +521,7 @@ function CounterSales({ user }: { user: StaffUser }) {
                     {s.status === 'open' && (
                       <Button
                         size="sm"
-                        variant="ghost"
+                        variant="tint-coral"
                         onClick={() => setCancelling(cancelling === s.id ? null : s.id)}
                       >
                         <Ban size={14} aria-hidden="true" />
@@ -581,14 +597,15 @@ function PayForm({
       <span className="flex flex-wrap gap-2">
         <Button
           size="sm"
-          variant="primary"
+          variant="success"
           disabled={missing || busy}
           loading={busy}
           onClick={() => onPay(method, reference.trim())}
         >
+          {!busy && <HandCoins size={14} aria-hidden="true" />}
           {t('counterSale.takePayment')}
         </Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>
+        <Button size="sm" variant="tint-grey" onClick={onCancel}>
           {t('staff.form.cancel')}
         </Button>
       </span>

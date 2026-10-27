@@ -27,6 +27,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
+import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
@@ -94,10 +95,16 @@ export function PatientFilePage({
   user,
   patientId,
   initialTab,
+  embedded = false,
 }: {
   user: StaffUser
   patientId: string
   initialTab?: string
+  /**
+   * Inside the side panel (file-panel.tsx): no shell, no back link, no name block (the panel's
+   * header shows name, file number, age and sex), tabs as a segmented control, 16 px gaps.
+   */
+  embedded?: boolean
 }) {
   const { t } = useTranslation()
   const { data, isLoading, error } = usePatientFile(patientId)
@@ -262,9 +269,9 @@ export function PatientFilePage({
       )
   }
 
-  return (
-    <StaffShell user={user} nav={navForUser(user)} activeId="patients">
-      <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+  const body = (
+    <>
+      {!embedded && (
         <StaffLink
           to="/app/patients"
           className="text-ink-2 inline-flex items-center gap-1 text-[13px] no-underline"
@@ -272,205 +279,221 @@ export function PatientFilePage({
           <ArrowLeft size={14} aria-hidden="true" />
           {t('file.back')}
         </StaffLink>
-        {isLoading && <p className="text-ink-3 m-0">…</p>}
-        {error && (
-          <p role="alert" className={errorBox}>
-            {error.message}
-          </p>
-        )}
-        {actionError && (
-          <Flash key={actionError} tone="error" onClose={() => setActionError(null)}>
-            {actionError}
-          </Flash>
-        )}
-        {!actionError && notice && (
-          <Flash key={notice} onClose={() => setNotice(null)}>
-            {notice}
-          </Flash>
-        )}
+      )}
+      {isLoading && <p className="text-ink-3 m-0">…</p>}
+      {error && (
+        <p role="alert" className={errorBox}>
+          {error.message}
+        </p>
+      )}
+      {actionError && (
+        <Flash key={actionError} tone="error" onClose={() => setActionError(null)}>
+          {actionError}
+        </Flash>
+      )}
+      {!actionError && notice && (
+        <Flash key={notice} onClose={() => setNotice(null)}>
+          {notice}
+        </Flash>
+      )}
 
-        {data && p && (
-          <>
-            {/* Header */}
-            <Card className="anim-enter">
-              <CardBody className="flex-row flex-wrap items-center gap-x-5 gap-y-3">
+      {data && p && (
+        <>
+          {/* Header */}
+          <Card className="anim-enter">
+            <CardBody className="flex-row flex-wrap items-center gap-x-5 gap-y-3">
+              {!embedded && (
                 <span className="bg-primary-tint text-primary inline-flex size-10 flex-none items-center justify-center rounded-full text-[14px] font-semibold">
                   {initials(p)}
                 </span>
-                <span className="min-w-[220px] flex-1">
-                  <span className="block text-[24px] font-semibold">
-                    {p.surname} {p.given_names}
-                  </span>
-                  <span className="text-ink-3 block text-[13px] tabular-nums">
-                    {p.file_number} · {ageSexOf(p.birth_date, p.sex)}
-                    {p.birth_date
-                      ? ` · ${formatDate(new Date(p.birth_date))}${p.age_estimated ? ` (${t('file.estimated')})` : ''}`
-                      : ''}
-                    {p.phone_1 ? ` · ${p.phone_1}` : ''}
-                    {p.sector ? ` · ${p.sector}` : ''}
-                  </span>
+              )}
+              <span className={cn('min-w-[220px] flex-1', embedded && 'hidden')}>
+                <span className="block text-[24px] font-semibold">
+                  {p.surname} {p.given_names}
                 </span>
-                {p.blood_group && <Chip>{p.blood_group}</Chip>}
-                {!!p.flags.vip && <Chip>VIP</Chip>}
-                {openVisit ? (
-                  <StaffLink
-                    to="/app/visit"
-                    search={{ encounter: openVisit.id }}
-                    className={buttonVariants({ variant: 'primary' })}
-                  >
-                    <Stethoscope size={16} aria-hidden="true" />
-                    {t('file.openVisit', {
-                      station: openVisit.currentStation
-                        ? t(`register.stations.${openVisit.currentStation}`)
-                        : '',
-                    })}
-                  </StaffLink>
-                ) : (
-                  <Button
-                    variant="primary"
-                    onClick={() => setConfirming(true)}
-                    disabled={confirming || !mayStart}
-                    title={mayStart ? undefined : t('perms.blocked.visit')}
-                  >
-                    <Ticket size={16} aria-hidden="true" />
-                    {t(emergency ? 'register.submitEmergency' : 'file.startVisit')}
-                  </Button>
-                )}
-                {/* the history needs the safety details and at least one visit this person may see */}
-                {mayReport && !data.safetyHidden && data.visits.some((v) => !v.private) && (
-                  <Button onClick={printHistory} title={t('medReport.historyHint')}>
-                    <FileText size={16} aria-hidden="true" />
-                    {t('medReport.history')}
-                  </Button>
-                )}
-                <Button onClick={() => setEditing((e) => !e)}>
-                  <Pencil size={16} aria-hidden="true" />
-                  {t(editing ? 'staff.form.cancel' : 'file.edit')}
-                </Button>
-              </CardBody>
-              {/* A new visit (ticket, queue, a new bill) only after the person confirms it. */}
-              {confirming && !openVisit && (
-                <CardBody className="border-border border-t">
-                  <SendPatientCard
-                    user={user}
-                    patient={{
-                      id: p.id,
-                      name: `${p.surname} ${p.given_names}`,
-                      fileNumber: p.file_number,
-                    }}
-                    mode="visit"
-                    emergency={emergency}
-                    triageFirst={staffSettings?.triageFirst ?? false}
-                    lastVisit={
-                      lastVisit
-                        ? { at: lastVisit.arrivedAt, count: data?.visits.length ?? 0 }
-                        : null
-                    }
-                    onStarted={started}
-                    onLater={() => {
-                      // Escape on the "Start the visit?" question only answers it: keep the card open
-                      if (document.querySelector('[role="alertdialog"]')) return
-                      setConfirming(false)
-                    }}
-                  />
-                </CardBody>
-              )}
-              {p.allergies && (
-                <CardBody className="bg-red-bg text-red border-border rounded-b-[16px] border-t py-2 text-[13px] font-semibold">
-                  ⚠ {t('file.allergiesLabel')}: {p.allergies}
-                </CardBody>
-              )}
-              {openVisit && (
-                <CardBody className="bg-primary-tint/50 border-border border-t py-2 text-[13px]">
-                  {t('file.inClinicNow', {
+                <span className="text-ink-3 block text-[13px] tabular-nums">
+                  {p.file_number} · {ageSexOf(p.birth_date, p.sex)}
+                  {p.birth_date
+                    ? ` · ${formatDate(new Date(p.birth_date))}${p.age_estimated ? ` (${t('file.estimated')})` : ''}`
+                    : ''}
+                  {p.phone_1 ? ` · ${p.phone_1}` : ''}
+                  {p.sector ? ` · ${p.sector}` : ''}
+                </span>
+              </span>
+              {p.blood_group && <Chip>{p.blood_group}</Chip>}
+              {!!p.flags.vip && <Chip>VIP</Chip>}
+              {openVisit ? (
+                <StaffLink
+                  to="/app/visit"
+                  search={{ encounter: openVisit.id }}
+                  className={buttonVariants({ variant: 'primary' })}
+                >
+                  <Stethoscope size={16} aria-hidden="true" />
+                  {t('file.openVisit', {
                     station: openVisit.currentStation
                       ? t(`register.stations.${openVisit.currentStation}`)
-                      : '—',
+                      : '',
                   })}
-                </CardBody>
+                </StaffLink>
+              ) : (
+                <Button
+                  variant="primary"
+                  onClick={() => setConfirming(true)}
+                  disabled={confirming || !mayStart}
+                  title={mayStart ? undefined : t('perms.blocked.visit')}
+                >
+                  <Ticket size={16} aria-hidden="true" />
+                  {t(emergency ? 'register.submitEmergency' : 'file.startVisit')}
+                </Button>
               )}
-              {/* Nurse first, reception completes: what is still missing, and the hand-over. */}
-              {(missing.length > 0 || atReception) && (
-                <CardBody className="bg-amber-bg/60 border-border flex-row flex-wrap items-center gap-3 border-t py-2.5 text-[13px]">
-                  <span className="min-w-[220px] flex-1 font-semibold">
-                    {missing.length > 0
-                      ? t('files.lacks', {
-                          missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
-                        })
-                      : t('files.completeNow')}
-                  </span>
-                  {missing.length > 0 && !editing && (
-                    <Button size="sm" onClick={() => setEditing(true)}>
-                      {t('files.complete')}
-                    </Button>
-                  )}
-                  {atReception && (
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      loading={deskOps.sendOn.isPending}
-                      onClick={() => void sendToDoctor()}
-                    >
-                      {t('files.sendToDoctor')}
-                    </Button>
-                  )}
-                </CardBody>
+              {/* the history needs the safety details and at least one visit this person may see */}
+              {mayReport && !data.safetyHidden && data.visits.some((v) => !v.private) && (
+                <Button onClick={printHistory} title={t('medReport.historyHint')}>
+                  <FileText size={16} aria-hidden="true" />
+                  {t('medReport.history')}
+                </Button>
               )}
-              {!openVisit && (
-                <CardBody className="border-border flex-row flex-wrap items-end gap-3 border-t">
-                  {canRegisterEmergency(user) && (
-                    <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
-                      <input
-                        type="checkbox"
-                        className="accent-red size-[18px]"
-                        checked={emergency}
-                        onChange={(e) => setEmergency(e.target.checked)}
-                      />
-                      {t('register.emergency')}
-                    </label>
-                  )}
-                  <span className="text-ink-3 text-xs">
-                    {t(
-                      emergency
-                        ? 'register.emergencyHint'
-                        : staffSettings?.triageFirst
-                          ? 'register.flowTriageFirst'
-                          : 'register.flow',
-                    )}
-                  </span>
-                </CardBody>
-              )}
-            </Card>
-
-            {/* past records private: request / emergency access, or the access in force */}
-            {privacyNoticeShown(data.access) && (
-              <PrivacyNotice
-                patientId={p.id}
-                patientName={`${p.surname} ${p.given_names}`}
-                access={data.access}
-                onMessage={(m) => {
-                  setActionError(null)
-                  setNotice(m)
-                }}
-              />
-            )}
-
-            {editing && (
-              <Reveal focus>
-                <EditForm
-                  safetyHidden={!!data.safetyHidden}
-                  extraFilled={data.extra_filled ?? []}
-                  patient={p}
-                  onDone={() => {
-                    setEditing(false)
-                    setNotice(t('file.saved'))
+              <Button onClick={() => setEditing((e) => !e)}>
+                <Pencil size={16} aria-hidden="true" />
+                {t(editing ? 'staff.form.cancel' : 'file.edit')}
+              </Button>
+            </CardBody>
+            {/* A new visit (ticket, queue, a new bill) only after the person confirms it. */}
+            {confirming && !openVisit && (
+              <CardBody className="border-border border-t">
+                <SendPatientCard
+                  user={user}
+                  patient={{
+                    id: p.id,
+                    name: `${p.surname} ${p.given_names}`,
+                    fileNumber: p.file_number,
                   }}
-                  onError={setActionError}
+                  mode="visit"
+                  emergency={emergency}
+                  triageFirst={staffSettings?.triageFirst ?? false}
+                  lastVisit={
+                    lastVisit ? { at: lastVisit.arrivedAt, count: data?.visits.length ?? 0 } : null
+                  }
+                  onStarted={started}
+                  onLater={() => {
+                    // Escape on the "Start the visit?" question only answers it: keep the card open
+                    if (document.querySelector('[role="alertdialog"]')) return
+                    setConfirming(false)
+                  }}
                 />
-              </Reveal>
+              </CardBody>
             )}
+            {p.allergies && (
+              <CardBody className="bg-red-bg text-red border-border rounded-b-[16px] border-t py-2 text-[13px] font-semibold">
+                ⚠ {t('file.allergiesLabel')}: {p.allergies}
+              </CardBody>
+            )}
+            {openVisit && (
+              <CardBody className="bg-primary-tint/50 border-border border-t py-2 text-[13px]">
+                {t('file.inClinicNow', {
+                  station: openVisit.currentStation
+                    ? t(`register.stations.${openVisit.currentStation}`)
+                    : '—',
+                })}
+              </CardBody>
+            )}
+            {/* Nurse first, reception completes: what is still missing, and the hand-over. */}
+            {(missing.length > 0 || atReception) && (
+              <CardBody className="bg-amber-bg/60 border-border flex-row flex-wrap items-center gap-3 border-t py-2.5 text-[13px]">
+                <span className="min-w-[220px] flex-1 font-semibold">
+                  {missing.length > 0
+                    ? t('files.lacks', {
+                        missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
+                      })
+                    : t('files.completeNow')}
+                </span>
+                {missing.length > 0 && !editing && (
+                  <Button size="sm" onClick={() => setEditing(true)}>
+                    {t('files.complete')}
+                  </Button>
+                )}
+                {atReception && (
+                  <Button
+                    size="sm"
+                    variant="success"
+                    loading={deskOps.sendOn.isPending}
+                    onClick={() => void sendToDoctor()}
+                  >
+                    {t('files.sendToDoctor')}
+                  </Button>
+                )}
+              </CardBody>
+            )}
+            {!openVisit && (
+              <CardBody className="border-border flex-row flex-wrap items-end gap-3 border-t">
+                {canRegisterEmergency(user) && (
+                  <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
+                    <input
+                      type="checkbox"
+                      className="accent-red size-[18px]"
+                      checked={emergency}
+                      onChange={(e) => setEmergency(e.target.checked)}
+                    />
+                    {t('register.emergency')}
+                  </label>
+                )}
+                <span className="text-ink-3 text-xs">
+                  {t(
+                    emergency
+                      ? 'register.emergencyHint'
+                      : staffSettings?.triageFirst
+                        ? 'register.flowTriageFirst'
+                        : 'register.flow',
+                  )}
+                </span>
+              </CardBody>
+            )}
+          </Card>
 
-            {/* Tabs */}
+          {/* past records private: request / emergency access, or the access in force */}
+          {privacyNoticeShown(data.access) && (
+            <PrivacyNotice
+              patientId={p.id}
+              patientName={`${p.surname} ${p.given_names}`}
+              access={data.access}
+              onMessage={(m) => {
+                setActionError(null)
+                setNotice(m)
+              }}
+            />
+          )}
+
+          {editing && (
+            <Reveal focus>
+              <EditForm
+                safetyHidden={!!data.safetyHidden}
+                extraFilled={data.extra_filled ?? []}
+                patient={p}
+                onDone={() => {
+                  setEditing(false)
+                  setNotice(t('file.saved'))
+                }}
+                onError={setActionError}
+              />
+            </Reveal>
+          )}
+
+          {/* Tabs */}
+          {embedded ? (
+            <Seg
+              label={t('file.tabs.overview')}
+              value={tab}
+              onChange={setTab}
+              options={TABS.map((k) => ({
+                value: k,
+                label:
+                  t(`file.tabs.${k}`) +
+                  (k === 'visits' ? ` · ${data.visits.length}` : '') +
+                  (k === 'bills' && data.bills.some((b) => b.balance > 0) ? ' · ⚠' : ''),
+              }))}
+              className="anim-enter self-start"
+            />
+          ) : (
             <div
               className="anim-enter border-border bg-surface flex flex-wrap gap-0.5 self-start rounded-md border p-0.5"
               style={{ '--i': 1 } as CSSProperties}
@@ -496,45 +519,53 @@ export function PatientFilePage({
                 </button>
               ))}
             </div>
+          )}
 
-            <div key={tab} className="flex flex-col gap-4">
-              {tab === 'overview' && data.summary && privacyOn(data.access) && (
-                <SafetySummaryCard
-                  summary={data.summary}
-                  patientName={`${p.surname} ${p.given_names}`}
-                />
-              )}
-              {tab === 'overview' && <Overview file={data} />}
-              {tab === 'overview' && data.access?.canSeeLog && !data.access.legacy && (
-                <WhoLookedCard patientId={patientId} />
-              )}
-              {tab === 'overview' && user.role === 'manager' && (
-                <MergeCard
-                  keepId={patientId}
-                  keepLabel={`${data.patient.file_number} · ${data.patient.surname} ${data.patient.given_names}`}
-                />
-              )}
-              {tab === 'visits' && (
-                <Visits file={data} openId={openVisit?.id ?? null} canReport={mayReport} />
-              )}
-              {tab === 'clinical' && (data.access?.hiddenVisits ?? 0) > 0 && (
-                <p className="text-ink-3 m-0 flex items-center gap-1.5 text-[13px]">
-                  <Lock size={14} aria-hidden="true" />
-                  {t('recordPrivacy.onlyVisible')}
-                </p>
-              )}
-              {tab === 'clinical' && <Clinical file={data} />}
-              {tab === 'files' && (
-                <PatientFilesSection
-                  patientId={patientId}
-                  patientName={`${p.surname} ${p.given_names}`}
-                  canRequest={privacyNoticeShown(data.access) && !!data.access?.canRequest}
-                />
-              )}
-              {tab === 'bills' && <Bills file={data} />}
-            </div>
-          </>
-        )}
+          <div key={tab} className="flex flex-col gap-4">
+            {tab === 'overview' && data.summary && privacyOn(data.access) && (
+              <SafetySummaryCard
+                summary={data.summary}
+                patientName={`${p.surname} ${p.given_names}`}
+              />
+            )}
+            {tab === 'overview' && <Overview file={data} embedded={embedded} />}
+            {tab === 'overview' && data.access?.canSeeLog && !data.access.legacy && (
+              <WhoLookedCard patientId={patientId} />
+            )}
+            {tab === 'overview' && user.role === 'manager' && (
+              <MergeCard
+                keepId={patientId}
+                keepLabel={`${data.patient.file_number} · ${data.patient.surname} ${data.patient.given_names}`}
+              />
+            )}
+            {tab === 'visits' && (
+              <Visits file={data} openId={openVisit?.id ?? null} canReport={mayReport} />
+            )}
+            {tab === 'clinical' && (data.access?.hiddenVisits ?? 0) > 0 && (
+              <p className="text-ink-3 m-0 flex items-center gap-1.5 text-[13px]">
+                <Lock size={14} aria-hidden="true" />
+                {t('recordPrivacy.onlyVisible')}
+              </p>
+            )}
+            {tab === 'clinical' && <Clinical file={data} embedded={embedded} />}
+            {tab === 'files' && (
+              <PatientFilesSection
+                patientId={patientId}
+                patientName={`${p.surname} ${p.given_names}`}
+                canRequest={privacyNoticeShown(data.access) && !!data.access?.canRequest}
+              />
+            )}
+            {tab === 'bills' && <Bills file={data} />}
+          </div>
+        </>
+      )}
+    </>
+  )
+  if (embedded) return <div className="flex min-w-0 flex-col gap-4">{body}</div>
+  return (
+    <StaffShell user={user} nav={navForUser(user)} activeId="patients">
+      <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+        {body}
       </main>
     </StaffShell>
   )
@@ -565,17 +596,18 @@ function Info({ label, value }: { label: string; value: string | number | null |
   )
 }
 
-function Overview({ file }: { file: PatientFile }) {
+function Overview({ file, embedded }: { file: PatientFile; embedded?: boolean }) {
   const { t } = useTranslation()
   const p = file.patient
   const f = (k: string) => t(`file.fields.${k}`)
   return (
-    <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
+    // one column in the 600 px side panel, two on the whole page
+    <div className={cn('grid grid-cols-1 gap-4', !embedded && 'pc:grid-cols-2')}>
       <Card className="anim-enter">
         <CardHeader icon={IdCard}>
           <span>{t('file.identity')}</span>
         </CardHeader>
-        <CardBody className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+        <CardBody className={cn('grid grid-cols-2 gap-x-4 gap-y-3', !embedded && 'sm:grid-cols-3')}>
           <Info label={f('file_number')} value={p.file_number} />
           <Info
             label={f('national_id')}
@@ -1177,12 +1209,12 @@ function Visits({
   )
 }
 
-function Clinical({ file }: { file: PatientFile }) {
+function Clinical({ file, embedded }: { file: PatientFile; embedded?: boolean }) {
   const { t } = useTranslation()
   const latest = new Map<string, (typeof file.vitals)[number]>()
   for (const v of file.vitals) if (!latest.has(v.code)) latest.set(v.code, v)
   return (
-    <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
+    <div className={cn('grid grid-cols-1 gap-4', !embedded && 'pc:grid-cols-2')}>
       <ResultsCard patientId={file.patient.id} />
       <Card className="anim-enter">
         <CardHeader icon={Activity}>

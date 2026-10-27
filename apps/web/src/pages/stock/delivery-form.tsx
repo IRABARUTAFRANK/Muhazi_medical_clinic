@@ -3,6 +3,15 @@ import { FileText, PackagePlus, Plus, Trash2, Truck, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatNumber, formatRwf } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
+import {
+  expandedSection,
+  selectedRow,
+  tableCell,
+  tableFirstCell,
+  tableHead,
+  tableRow,
+  tileClass,
+} from '@/components/dash/kit-style'
 import { PeriodFilter } from '@/components/dash/period-filter'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
@@ -272,7 +281,7 @@ export function DeliveryForm({
         : t('stockDelivery.pickHint')
 
   return (
-    <Panel i={1} icon={PackagePlus} tint="mint" title={t('stock.receiveTitle')}>
+    <Panel i={1} icon={PackagePlus} tint="amber" title={t('stock.receiveTitle')}>
       <p className="text-ink-2 m-0 text-[14px]">{t('stockDelivery.lead')}</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -445,7 +454,13 @@ export function DeliveryForm({
           onChange={(e) => setNote(e.target.value)}
           wrapperClassName="sm:max-w-md"
         />
-        <p className="bg-surface m-0 rounded-md px-3 py-2 text-[14px] font-semibold tabular-nums">
+        <p
+          className={cn(
+            'm-0 flex items-center gap-2 rounded-md border px-3 py-2 text-[14px] font-semibold tabular-nums',
+            tileClass.teal,
+          )}
+        >
+          <Truck size={16} aria-hidden="true" className="text-primary flex-none" />
           {t('stockDelivery.total', {
             count: filled.length,
             units: formatNumber(totalUnits),
@@ -455,7 +470,7 @@ export function DeliveryForm({
         <MsgFlash msg={msg} onClose={() => setMsg(null)} />
         <Button
           type="submit"
-          variant="primary"
+          variant="success"
           className="self-start"
           loading={actions.receiveDelivery.isPending}
         >
@@ -501,7 +516,11 @@ export function DeliveriesList({ focusId }: { focusId?: string }) {
                 type="button"
                 aria-expanded={open === d.id}
                 onClick={() => setOpen(open === d.id ? null : d.id)}
-                className="border-grid hover:bg-hover flex flex-wrap items-center gap-3 border-b px-1 py-2 text-left text-[14px]"
+                className={cn(
+                  tableRow,
+                  'flex h-auto min-h-10 w-full flex-wrap items-center gap-3 px-2 py-1.5 text-left text-[14px]',
+                  open === d.id && selectedRow,
+                )}
               >
                 <FileText size={16} aria-hidden="true" className="text-ink-3" />
                 <span className="w-32 font-semibold tabular-nums">{d.number}</span>
@@ -541,10 +560,16 @@ function DeliveryDetailView({ id, onClose }: { id: string; onClose: () => void }
   if (error) return <p className="text-red m-0 text-[14px]">{error.message}</p>
   if (!d) return null
   return (
-    <div className="border-border bg-surface my-2 flex flex-col gap-2 rounded-md border p-3">
+    <div
+      className={cn(
+        expandedSection,
+        'border-border my-2 flex flex-col gap-2 rounded-md border p-3',
+      )}
+    >
       <div className="flex items-start gap-2">
-        <span className="flex-1">
-          <span className="block text-[16px] font-semibold">
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-[16px] font-semibold">
+            <FileText size={16} aria-hidden="true" className="text-primary flex-none" />
             {d.number} · {d.supplier}
           </span>
           <span className="text-ink-3 block text-[12px]">
@@ -572,30 +597,24 @@ function DeliveryDetailView({ id, onClose }: { id: string; onClose: () => void }
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[14px]">
           <thead>
-            <tr className="text-ink-3 text-left text-[12px]">
-              <th className="border-border border-b py-2 pr-2 font-medium">
-                {t('stock.cols.item')}
-              </th>
-              <th className="border-border border-b py-2 pr-2 font-medium">{t('stock.batchNo')}</th>
-              <th className="border-border border-b py-2 pr-2 font-medium">{t('stock.expiry')}</th>
-              <th className="border-border border-b py-2 pr-2 text-right font-semibold">
-                {t('stockDelivery.received')}
-              </th>
-              <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold sm:table-cell">
+            <tr className="border-border border-b">
+              <th className={tableHead}>{t('stock.cols.item')}</th>
+              <th className={tableHead}>{t('stock.batchNo')}</th>
+              <th className={tableHead}>{t('stock.expiry')}</th>
+              <th className={cn(tableHead, 'text-right')}>{t('stockDelivery.received')}</th>
+              <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
                 {t('stock.cols.cost')}
               </th>
-              <th className="border-border border-b py-2 text-right font-semibold">
-                {t('stockDelivery.lineCost')}
-              </th>
+              <th className={cn(tableHead, 'text-right')}>{t('stockDelivery.lineCost')}</th>
             </tr>
           </thead>
           <tbody>
             {d.lines.map((l) => (
-              <tr key={l.id} className="border-grid border-b last:border-b-0">
-                <td className="py-2 pr-2 font-semibold">{l.item}</td>
-                <td className="py-2 pr-2 tabular-nums">{l.batchNo ?? '—'}</td>
-                <td className="py-2 pr-2">{l.expiry ? formatDate(new Date(l.expiry)) : '—'}</td>
-                <td className="py-2 pr-2 text-right tabular-nums">
+              <tr key={l.id} className={tableRow}>
+                <td className={tableFirstCell}>{l.item}</td>
+                <td className={cn(tableCell, 'tabular-nums')}>{l.batchNo ?? '—'}</td>
+                <td className={tableCell}>{l.expiry ? formatDate(new Date(l.expiry)) : '—'}</td>
+                <td className={cn(tableCell, 'text-right tabular-nums')}>
                   {l.unit === 'box'
                     ? t('stockDelivery.boxesOf', {
                         count: l.packs,
@@ -604,12 +623,12 @@ function DeliveryDetailView({ id, onClose }: { id: string; onClose: () => void }
                       })
                     : formatNumber(l.units)}
                 </td>
-                <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
+                <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
                   {l.packCost != null
                     ? t('stockDelivery.perBox', { cost: formatNumber(l.packCost) })
                     : formatNumber(l.unitCost)}
                 </td>
-                <td className="py-2 text-right font-semibold tabular-nums">
+                <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
                   {formatNumber(Math.round(l.lineCost))}
                 </td>
               </tr>

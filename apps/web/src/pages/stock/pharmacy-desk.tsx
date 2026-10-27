@@ -288,7 +288,7 @@ function HandOverPanel({
     <Panel
       i={1}
       icon={Pill}
-      tint="violet"
+      tint="mint"
       title={encounterId ? t('pharmacy.forThisPatient') : t('stock.pharmacyTitle')}
       right={
         encounterId
@@ -386,15 +386,16 @@ function HandOverPanel({
                       <StaffLink
                         to="/app/visit"
                         search={{ encounter: first.encounterId }}
-                        className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                        className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
                         title={t('pharmacy.openVisit')}
+                        aria-label={t('pharmacy.openVisit')}
                       >
                         <FolderOpen size={14} aria-hidden="true" />
                       </StaffLink>
                       {canDispense && cardLines.length > 1 && (
                         <Button
                           size="sm"
-                          variant="primary"
+                          variant="success"
                           disabled={busy || anyShort || holds}
                           onClick={() => void giveAll(cardLines, patient)}
                           title={
@@ -530,7 +531,7 @@ function HandOverPanel({
                               <span className="flex flex-wrap gap-1">
                                 <Button
                                   size="sm"
-                                  variant={cardLines.length > 1 ? 'default' : 'primary'}
+                                  variant={cardLines.length > 1 ? 'tint-mint' : 'success'}
                                   disabled={short || busy || holds}
                                   loading={giving === q.requestId}
                                   onClick={() => void askGive(q, patient, cardLines.length)}
@@ -547,7 +548,7 @@ function HandOverPanel({
                                 </Button>
                                 <Button
                                   size="sm"
-                                  variant="ghost"
+                                  variant="tint-coral"
                                   disabled={busy}
                                   onClick={() =>
                                     setRefusing(refusing === q.requestId ? null : q.requestId)
@@ -818,7 +819,7 @@ function SellMedicine({ patients }: { patients: { encounterId: string; label: st
         )}
         <Button
           type="submit"
-          variant="primary"
+          variant="success"
           className="self-start"
           loading={actions.sell.isPending}
           disabled={patients.length === 0 || (!!item && q > inStore(item))}

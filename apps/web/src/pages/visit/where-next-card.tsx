@@ -133,7 +133,7 @@ export function WhereNextCard({
             {here.note && <span className="text-ink-2 text-[14px]">“{here.note}”</span>}
             {here.returnStation && here.returnTo && (
               <Button
-                variant="primary"
+                variant="success"
                 disabled={sending}
                 className="self-start"
                 onClick={() =>
@@ -235,7 +235,7 @@ export function WhereNextCard({
               </label>
             )}
             <Button
-              variant="primary"
+              variant="success"
               disabled={sending}
               className="self-start"
               onClick={() =>
@@ -271,7 +271,12 @@ export function WhereNextCard({
 
         {!isReception && (
           <div className="border-border border-t pt-3">
-            <Button disabled={sending} onClick={() => void toCashier()} className="justify-start">
+            <Button
+              variant="tint-mint"
+              disabled={sending}
+              onClick={() => void toCashier()}
+              className="justify-start"
+            >
               <Wallet size={18} aria-hidden="true" />
               {t('visit.next.toCashier')}
             </Button>

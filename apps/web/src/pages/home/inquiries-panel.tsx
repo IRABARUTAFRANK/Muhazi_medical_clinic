@@ -11,7 +11,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, isoDate } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
-import { Button } from '@/components/ui/button'
+import { Button, actionLink } from '@/components/ui/button'
 import { Reveal } from '@/components/ui/reveal'
 import { Field } from '@/components/ui/field'
 import { ShownList } from '@/components/ui/list-tools'
@@ -214,7 +214,8 @@ export function InquiriesPanel({
                           )}
                           {open === q.id ? t('staff.form.cancel') : t('ops.inquiries.book')}
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => void reject(q)}>
+                        <Button size="sm" variant="tint-coral" onClick={() => void reject(q)}>
+                          <X size={14} aria-hidden="true" />
                           {t('ops.inquiries.reject')}
                         </Button>
                       </span>
@@ -282,7 +283,8 @@ export function NewBookingCard({
       tint="violet"
       title={t('ops.booking.title')}
       right={
-        <Button size="sm" variant="ghost" onClick={onCancel}>
+        <Button size="sm" variant="tint-coral" onClick={onCancel}>
+          <X size={14} aria-hidden="true" />
           {t('staff.form.cancel')}
         </Button>
       }
@@ -396,12 +398,13 @@ function BookForm({
             <Button
               type="button"
               size="sm"
-              variant="ghost"
+              variant="tint-grey"
               onClick={() => {
                 setPatientId('')
                 setPatientLabel('')
               }}
             >
+              <UserRound size={14} aria-hidden="true" />
               {t('ops.inquiries.otherFile')}
             </Button>
           </span>
@@ -438,9 +441,10 @@ function BookForm({
               {t('ops.inquiries.noFileHint')}{' '}
               <button
                 type="button"
-                className="text-primary font-semibold underline"
+                className={actionLink}
                 onClick={() => (onRegister ? onRegister(register) : setRegistering(true))}
               >
+                <UserRound size={12} aria-hidden="true" />
                 {t('ops.inquiries.registerNow')}
               </button>
             </span>

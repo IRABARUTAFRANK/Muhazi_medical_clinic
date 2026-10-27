@@ -15,6 +15,8 @@ import { Rail } from './rail'
 import { TabletNav } from './tablet-nav'
 import { TopBar } from './top-bar'
 import { splitNav, useBarCount } from '@/lib/bottom-bar'
+import { NAV_GROUPS, navGroupOf } from '@/lib/nav'
+import { FilePanelHost } from '@/components/clinical/file-panel'
 
 interface StaffShellProps {
   user: StaffUser
@@ -56,6 +58,7 @@ export function StaffShell({
   const clock = `${dayNames.short[now.getDay()]} ${formatDate(now)} · ${time ?? formatTime(now)}`
   // the open page's name for the top bar's breadcrumb
   const activeItem = nav.find((n) => n.id === activeId)
+  const activeGroup = activeId ? NAV_GROUPS.find((g) => g.id === navGroupOf(activeId)) : undefined
 
   return (
     // Text size (Settings or the user menu) scales the whole staff screen; the height is divided
@@ -72,6 +75,7 @@ export function StaffShell({
           sync={sync}
           onOpenSheet={() => setSheet(true)}
           title={activeItem ? t(activeItem.labelKey) : undefined}
+          group={activeItem && activeGroup ? t(activeGroup.labelKey) : undefined}
         />
         {sync.status === 'offline' && <OfflineBanner />}
         <div data-shell-body className="flex min-h-0 flex-1">
@@ -81,6 +85,8 @@ export function StaffShell({
             {children}
           </div>
         </div>
+        {/* The patient file as a side panel (?file=<id> on any staff route), mounted once. */}
+        <FilePanelHost />
         {tabletActions && (
           <div
             aria-label={t('common.quickActions')}

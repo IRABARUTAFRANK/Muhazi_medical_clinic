@@ -1,11 +1,29 @@
 import { useState } from 'react'
-import { ArrowRight, CheckCheck, ListChecks, Printer, Truck, X, XCircle } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowRight,
+  Ban,
+  CheckCheck,
+  ListChecks,
+  Printer,
+  Truck,
+  X,
+  XCircle,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatNumber, formatRwf, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
+import {
+  expandedSection,
+  selectedRow,
+  tableCell,
+  tableFirstCell,
+  tableHead,
+  tableRow,
+} from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Field } from '@/components/ui/field'
+import { controlClass, Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { Pager } from '@/components/ui/list-tools'
 import {
@@ -31,10 +49,23 @@ export function NoteStatus({ n }: { n: Pick<TransferNote, 'status' | 'hasDiffere
     <span className="inline-flex flex-wrap gap-1">
       <Badge
         tone={n.status === 'in_transit' ? 'yellow' : n.status === 'received' ? 'green' : 'grey'}
+        icon={
+          n.status === 'in_transit' ? (
+            <Truck size={12} aria-hidden="true" />
+          ) : n.status === 'received' ? (
+            <CheckCheck size={12} aria-hidden="true" />
+          ) : (
+            <Ban size={12} aria-hidden="true" />
+          )
+        }
       >
         {t(`roomStores.noteStatus.${n.status}`)}
       </Badge>
-      {n.hasDifference && <Badge tone="orange">{t('roomStores.withDifference')}</Badge>}
+      {n.hasDifference && (
+        <Badge tone="orange" icon={<AlertTriangle size={12} aria-hidden="true" />}>
+          {t('roomStores.withDifference')}
+        </Badge>
+      )}
     </span>
   )
 }
@@ -98,7 +129,10 @@ export function TransferNotesList({
                 type="button"
                 onClick={() => onOpen(openId === n.id ? null : n.id)}
                 aria-expanded={openId === n.id}
-                className="hover:bg-hover flex w-full flex-wrap items-center gap-3 rounded-md px-1 py-2 text-left text-[14px]"
+                className={cn(
+                  'hover:bg-hover flex min-h-10 w-full flex-wrap items-center gap-3 rounded-md px-2 py-1.5 text-left text-[14px] transition-colors duration-120',
+                  openId === n.id && selectedRow,
+                )}
               >
                 <span className="w-28 font-semibold tabular-nums">{n.number}</span>
                 <span className="min-w-[180px] flex-1">
@@ -256,10 +290,11 @@ export function TransferNoteView({
   }
 
   return (
-    <div className="border-border bg-surface flex flex-col gap-3 rounded-md border p-3">
+    <div className={cn(expandedSection, 'border-border flex flex-col gap-3 rounded-md border p-3')}>
       <div className="flex flex-wrap items-start gap-3">
         <span className="min-w-[200px] flex-1">
-          <span className="block text-[16px] font-semibold">
+          <span className="flex items-center gap-2 text-[16px] font-semibold">
+            <Truck size={16} aria-hidden="true" className="text-primary flex-none" />
             {t(n.direction === 'to_room' ? 'roomStores.noteOut' : 'roomStores.noteReturn', {
               number: n.number,
             })}
@@ -301,6 +336,7 @@ export function TransferNoteView({
         <NoteStatus n={n} />
         <Button
           size="sm"
+          variant="tint-grey"
           onClick={() => {
             if (!print(n as TransferNoteDetail))
               setMsg({ ok: false, text: t('roomStores.printBlocked') })
@@ -325,20 +361,14 @@ export function TransferNoteView({
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[14px]">
           <thead>
-            <tr className="text-ink-3 text-left text-[12px]">
-              <th className="border-border border-b py-2 pr-2 font-medium">
-                {t('stock.cols.item')}
-              </th>
-              <th className="border-border border-b py-2 pr-2 font-medium">{t('stock.batchNo')}</th>
-              <th className="border-border border-b py-2 pr-2 font-medium">{t('stock.expiry')}</th>
-              <th className="border-border border-b py-2 pr-2 text-right font-semibold">
-                {t('roomStores.sent')}
-              </th>
-              <th className="border-border border-b py-2 pr-2 text-right font-semibold">
-                {t('roomStores.receivedCol')}
-              </th>
+            <tr className="border-border border-b">
+              <th className={tableHead}>{t('stock.cols.item')}</th>
+              <th className={tableHead}>{t('stock.batchNo')}</th>
+              <th className={tableHead}>{t('stock.expiry')}</th>
+              <th className={cn(tableHead, 'text-right')}>{t('roomStores.sent')}</th>
+              <th className={cn(tableHead, 'text-right')}>{t('roomStores.receivedCol')}</th>
               {showCost && (
-                <th className="border-border hidden border-b py-2 text-right font-semibold sm:table-cell">
+                <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
                   {t('stock.cols.value')}
                 </th>
               )}
@@ -349,8 +379,8 @@ export function TransferNoteView({
               const d = draftOf(x.lineId, x.quantity)
               const differs = byLine && Number(d.received) !== x.quantity
               return (
-                <tr key={x.lineId} className="border-grid border-b align-top last:border-b-0">
-                  <td className="py-2 pr-2 font-semibold">
+                <tr key={x.lineId} className={cn(tableRow, 'h-auto align-top')}>
+                  <td className={tableFirstCell}>
                     {x.item}
                     {x.differenceReason && (
                       <span className="text-amber block text-[12px] font-normal">
@@ -388,14 +418,14 @@ export function TransferNoteView({
                       </span>
                     )}
                   </td>
-                  <td className="py-2 pr-2 tabular-nums">{x.batchNo ?? '—'}</td>
-                  <td className="py-2 pr-2">
+                  <td className={cn(tableCell, 'tabular-nums')}>{x.batchNo ?? '—'}</td>
+                  <td className={tableCell}>
                     <ExpiryMark date={x.expiry} />
                   </td>
-                  <td className="py-2 pr-2 text-right font-semibold tabular-nums">
+                  <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
                     {formatNumber(x.quantity)}
                   </td>
-                  <td className="py-2 pr-2 text-right tabular-nums">
+                  <td className={cn(tableCell, 'text-right tabular-nums')}>
                     {byLine && open && n.canReceive ? (
                       <input
                         inputMode="numeric"
@@ -407,7 +437,8 @@ export function TransferNoteView({
                           })
                         }
                         className={cn(
-                          'border-border bg-card h-9 w-20 rounded-md border px-2 text-right',
+                          controlClass,
+                          'h-9 w-20 px-2 text-right',
                           differs && 'border-amber',
                         )}
                       />
@@ -420,7 +451,7 @@ export function TransferNoteView({
                     )}
                   </td>
                   {showCost && (
-                    <td className="hidden py-2 text-right tabular-nums sm:table-cell">
+                    <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
                       {x.value == null ? '—' : formatRwf(Math.round(x.value))}
                     </td>
                   )}
@@ -454,14 +485,14 @@ export function TransferNoteView({
             {!byLine ? (
               <>
                 <Button
-                  variant="primary"
+                  variant="success"
                   loading={actions.confirmReceipt.isPending}
                   onClick={() => void receive(true)}
                 >
                   <CheckCheck size={16} aria-hidden="true" />
                   {t('roomStores.receiveAll')}
                 </Button>
-                <Button onClick={() => setByLine(true)}>
+                <Button variant="tint-mint" onClick={() => setByLine(true)}>
                   <ListChecks size={16} aria-hidden="true" />
                   {t('roomStores.receiveByLine')}
                 </Button>
@@ -469,14 +500,14 @@ export function TransferNoteView({
             ) : (
               <>
                 <Button
-                  variant="primary"
+                  variant="success"
                   loading={actions.confirmReceipt.isPending}
                   onClick={() => void receive(false)}
                 >
                   <CheckCheck size={16} aria-hidden="true" />
                   {t('roomStores.receiveCounted')}
                 </Button>
-                <Button variant="ghost" onClick={() => setByLine(false)}>
+                <Button variant="tint-grey" onClick={() => setByLine(false)}>
                   {t('staff.form.cancel')}
                 </Button>
               </>
@@ -496,20 +527,21 @@ export function TransferNoteView({
                 onChange={(e) => setCancelReason(e.target.value)}
               />
               <Button
-                variant="danger"
+                variant="danger-solid"
                 loading={actions.cancelTransfer.isPending}
                 onClick={() => void cancel()}
               >
+                {!actions.cancelTransfer.isPending && <XCircle size={16} aria-hidden="true" />}
                 {t('roomStores.cancelNote')}
               </Button>
-              <Button variant="ghost" onClick={() => setCancelling(false)}>
+              <Button variant="tint-grey" onClick={() => setCancelling(false)}>
                 {t('staff.form.cancel')}
               </Button>
             </div>
           ) : (
             <Button
               size="sm"
-              variant="danger"
+              variant="tint-coral"
               className="self-start"
               onClick={() => setCancelling(true)}
             >

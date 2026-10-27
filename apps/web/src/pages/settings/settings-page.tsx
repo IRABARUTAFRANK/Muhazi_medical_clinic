@@ -4,7 +4,9 @@ import {
   ALargeSmall,
   BedDouble,
   Building2,
+  CalendarClock,
   Check,
+  CircleAlert,
   ClipboardList,
   Clock,
   KeyRound,
@@ -23,7 +25,7 @@ import { PageBanner } from '@/components/dash/page-banner'
 import { TextSizeControl } from '@/components/staff/text-size-control'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
-import { Field } from '@/components/ui/field'
+import { controlClass, Field } from '@/components/ui/field'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useClinicSettings, useSaveClinicSettings, type ClinicSettings } from '@/lib/api/settings'
@@ -77,6 +79,11 @@ const PROFILE_FIELDS = [
   'fda_licence',
 ] as const
 type ProfileField = (typeof PROFILE_FIELDS)[number]
+
+/** The 38 px control of the hours rows (full width of its grid cell). */
+const control = cn(controlClass, 'w-full')
+const errorBox =
+  'border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[14px] font-medium'
 
 /**
  * Clinic settings (manager), in sections chosen from a menu so the page stays short: identity
@@ -150,10 +157,8 @@ export function SettingsPage({ user }: { user: StaffUser }) {
   const saveBar = (
     <>
       {save.error && (
-        <p
-          role="alert"
-          className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
-        >
+        <p role="alert" className={errorBox}>
+          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
           {t('settings.saveFailed', { message: save.error.message })}
         </p>
       )}
@@ -183,10 +188,8 @@ export function SettingsPage({ user }: { user: StaffUser }) {
         />
 
         {error && (
-          <p
-            role="alert"
-            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
-          >
+          <p role="alert" className={errorBox}>
+            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
             {t('settings.loadFailed', { message: error.message })}
           </p>
         )}
@@ -195,7 +198,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           {/* Section menu: a column on PC, a scrolling row of tabs on tablets */}
           <nav
             aria-label={t('settings.title')}
-            className="bg-card pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap flex flex-wrap gap-1 rounded-md p-2"
+            className="bg-card border-border pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap flex flex-wrap gap-1 rounded-md border p-2"
           >
             {SECTIONS.map((sec) => {
               const on = section === sec.id
@@ -285,22 +288,26 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                       <Button
                         type="button"
                         size="sm"
+                        variant="tint-amber"
                         onClick={() => {
                           for (const k of DAY_KEYS) setDay(k, 'allDay')
                           setDay('lab', 'allDay')
                         }}
                       >
+                        <Clock size={16} aria-hidden="true" />
                         {t('settings.hours.all247')}
                       </Button>
                       <Button
                         type="button"
                         size="sm"
+                        variant="tint-amber"
                         onClick={() => {
                           for (const k of DAY_KEYS)
                             setDay(k, k === '0' ? 'closed' : 'custom', ['08:00', '17:00'])
                           setDay('lab', 'custom', ['08:00', '17:00'])
                         }}
                       >
+                        <CalendarClock size={16} aria-hidden="true" />
                         {t('settings.hours.officeHours')}
                       </Button>
                     </span>
@@ -308,7 +315,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   <CardBody className="gap-3">
                     <p className="text-ink-2 m-0 text-[14px]">{t('settings.hours.lead')}</p>
                     <div className="flex flex-col">
-                      <div className="text-ink-3 hidden grid-cols-[130px_180px_120px_120px] gap-2 pb-1 text-[12px] font-medium sm:grid">
+                      <div className="text-ink-3 border-border hidden h-10 grid-cols-[130px_180px_120px_120px] items-center gap-2 border-b text-[12px] font-normal sm:grid">
                         <span>{t('settings.hours.day')}</span>
                         <span>{t('settings.hours.mode')}</span>
                         <span>{t('settings.hours.open')}</span>
@@ -416,9 +423,6 @@ function Shortcut({ to, icon, label }: { to: string; icon: React.ReactNode; labe
   )
 }
 
-const control =
-  'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-md border px-2.5 text-[14px] outline-none'
-
 /** One compact row per day: name, mode, and the hours when they are custom. */
 function HoursRow({
   label,
@@ -432,8 +436,8 @@ function HoursRow({
   const { t } = useTranslation()
   const mode = modeOf(span)
   return (
-    <div className="border-grid grid grid-cols-[110px_minmax(0,1fr)] items-center gap-2 border-b py-1.5 last:border-b-0 sm:grid-cols-[130px_180px_120px_120px]">
-      <span className="text-[14px] font-semibold">{label}</span>
+    <div className="border-grid hover:bg-hover grid min-h-10 grid-cols-[110px_minmax(0,1fr)] items-center gap-2 border-b py-1.5 transition-colors duration-120 last:border-b-0 sm:grid-cols-[130px_180px_120px_120px]">
+      <span className="text-[14px] font-medium">{label}</span>
       <select
         aria-label={`${label} · ${t('settings.hours.mode')}`}
         className={control}

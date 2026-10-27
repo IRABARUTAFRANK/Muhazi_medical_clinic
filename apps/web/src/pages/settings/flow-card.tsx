@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { Route } from 'lucide-react'
+import { Activity, CircleAlert, DoorOpen, Route } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { IconChip } from '@/components/dash/kit'
-import { Button } from '@/components/ui/button'
+import { Hint, IconChip } from '@/components/dash/kit'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Flash } from '@/components/ui/flash'
 import { useSaveFlowSetting, useStaffSettings } from '@/lib/api/settings'
@@ -69,7 +68,13 @@ export function FlowCard() {
                   on ? 'border-amber/40 bg-amber-bg' : 'border-border bg-card hover:bg-hover',
                 )}
               >
-                <span className={cn('text-[16px] font-semibold', on && 'text-amber')}>
+                <span
+                  className={cn(
+                    'flex items-center gap-2 text-[16px] font-semibold',
+                    on && 'text-amber',
+                  )}
+                >
+                  <IconChip icon={v ? Activity : DoorOpen} tint={on ? 'amber' : 'teal'} size="sm" />
                   {t(v ? 'settings.flow.triageFirst' : 'settings.flow.deskFirst')}
                 </span>
                 <span className="text-ink-2 text-[14px]">
@@ -82,15 +87,14 @@ export function FlowCard() {
         {error && (
           <p
             role="alert"
-            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
+            className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
+            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
             {error}
           </p>
         )}
         {done && <Flash onClose={() => setDone(false)}>{t('settings.flow.saved')}</Flash>}
-        <Button type="button" size="sm" variant="ghost" className="self-start" disabled>
-          {t('settings.flow.vitalsNote')}
-        </Button>
+        <Hint>{t('settings.flow.vitalsNote')}</Hint>
       </CardBody>
     </Card>
   )

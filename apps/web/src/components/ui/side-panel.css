@@ -1,0 +1,36 @@
+/*
+ * The side panel slides in from the right over 220 ms with the ease of .anim-dialog, and the
+ * overlay fades with it. Both stop under prefers-reduced-motion (the panel just appears).
+ */
+@keyframes mmc-panel-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes mmc-panel-overlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-panel {
+  animation: mmc-panel-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.anim-panel-overlay {
+  animation: mmc-panel-overlay 0.22s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-panel,
+  .anim-panel-overlay {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

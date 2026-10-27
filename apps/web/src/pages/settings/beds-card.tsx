@@ -1,17 +1,19 @@
 import { useState } from 'react'
-import { BedDouble, Check, Moon, Save, Trash2 } from 'lucide-react'
+import { BedDouble, Check, CircleAlert, Info, Moon, Save, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { IconChip } from '@/components/dash/kit'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
-import { Field } from '@/components/ui/field'
+import { controlClass, Field } from '@/components/ui/field'
 import { useBedAdmin, useBedBoard, type BoardBed } from '@/lib/api/desk-ops'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 const errorBox =
-  'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
+  'border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[14px] font-medium'
+const Alert = () => <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
 const digits = (v: string) => v.replace(/[^0-9]/g, '')
 /** The most beds the database accepts (set_bed_count). */
 const MAX_BEDS = 200
@@ -120,26 +122,34 @@ export function BedsCard() {
             {t('settings.beds.apply')}
           </Button>
           {done && !admin.setCount.isPending && (
-            <span className="text-green text-[14px] font-semibold">{t('settings.beds.saved')}</span>
+            <span className="text-green inline-flex items-center gap-1 text-[14px] font-semibold">
+              <Check size={16} aria-hidden="true" />
+              {t('settings.beds.saved')}
+            </span>
           )}
         </div>
         {tooMany && (
           <p role="alert" className={errorBox}>
+            <Alert />
             {t('settings.beds.max', { count: MAX_BEDS })}
           </p>
         )}
         {prices.length > 1 && price == null && (
-          <p className="text-ink-3 m-0 text-[13px]">{t('settings.beds.mixed')}</p>
+          <p className="text-ink-3 m-0 flex items-start gap-1.5 text-[13px]">
+            <Info size={14} aria-hidden="true" className="mt-0.5 flex-none" />
+            {t('settings.beds.mixed')}
+          </p>
         )}
         {admin.setCount.error && (
           <p role="alert" className={errorBox}>
+            <Alert />
             {admin.setCount.error.message}
           </p>
         )}
 
         {beds.length > 0 && (
           <div className="flex flex-col">
-            <span className="text-ink-3 mb-1 text-[12px] font-medium">
+            <span className="text-ink-3 border-border flex h-10 items-center border-b text-[12px]">
               {t('settings.beds.each')}
             </span>
             {beds.map((b) => (
@@ -170,11 +180,11 @@ function BedRow({ bed }: { bed: BoardBed }) {
     }
   }
   return (
-    <div className="border-grid flex flex-wrap items-center gap-2 border-b py-2 last:border-b-0">
-      <BedDouble size={16} aria-hidden="true" className="text-ink-3 flex-none" />
+    <div className="border-grid hover:bg-hover flex min-h-10 flex-wrap items-center gap-2 border-b py-1.5 transition-colors duration-120 last:border-b-0">
+      <IconChip icon={BedDouble} tint={bed.state === 'occupied' ? 'navy' : 'mint'} size="sm" />
       <input
         aria-label={t('settings.beds.name')}
-        className="border-border bg-card h-10 w-36 rounded-md border px-2.5 text-[14px] font-semibold"
+        className={cn(controlClass, 'w-36 font-medium')}
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
@@ -184,21 +194,14 @@ function BedRow({ bed }: { bed: BoardBed }) {
       <input
         aria-label={t('settings.beds.price')}
         inputMode="numeric"
-        className="border-border bg-card h-10 w-32 rounded-md border px-2.5 text-[14px] tabular-nums"
+        className={cn(controlClass, 'w-32 tabular-nums')}
         value={price}
         onChange={(e) => setPrice(digits(e.target.value).slice(0, 9))}
       />
       <span className="text-ink-3 text-[13px]">RWF</span>
-      <span
-        className={cn(
-          'rounded border px-2 py-0.5 text-[12px] font-medium',
-          bed.state === 'occupied'
-            ? 'border-primary/30 bg-primary-tint text-primary'
-            : 'border-green/30 bg-green-bg text-green',
-        )}
-      >
+      <Badge tone={bed.state === 'occupied' ? 'blue' : 'green'}>
         {t(`desk.bedState.${bed.state}`)}
-      </span>
+      </Badge>
       <span className="flex-1" />
       <Button
         size="sm"
@@ -227,7 +230,7 @@ function BedRow({ bed }: { bed: BoardBed }) {
       </Button>
       <Button
         size="sm"
-        variant="ghost"
+        variant="tint-coral"
         disabled={bed.state === 'occupied' || busy}
         title={bed.state === 'occupied' ? t('settings.beds.occupiedNoRemove') : undefined}
         onClick={async () => {
@@ -246,9 +249,14 @@ function BedRow({ bed }: { bed: BoardBed }) {
         <Trash2 size={14} aria-hidden="true" />
         {t('settings.beds.remove')}
       </Button>
-      {error && <p className={cn(errorBox, 'w-full')}>{error}</p>}
+      {error && (
+        <p className={cn(errorBox, 'w-full')}>
+          <Alert />
+          {error}
+        </p>
+      )}
       {bed.state === 'occupied' && bed.patient && (
-        <span className="text-ink-3 w-full pl-6 text-[12px]">
+        <span className="text-ink-3 w-full pl-9 text-[12px]">
           {bed.patient} · {formatRwf(bed.nightlyPrice)}
         </span>
       )}

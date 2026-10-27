@@ -108,7 +108,15 @@
     "labWorklist": "Ibizamini bya laboratwari",
     "pharmacy": "Farumasi",
     "analytics": "Isesengura",
-    "recordAccess": "Kureba dosiye z’abarwayi"
+    "recordAccess": "Kureba dosiye z’abarwayi",
+    "groups": {
+      "work": "Akazi",
+      "patients": "Abarwayi",
+      "finance": "Amafaranga",
+      "stock": "Ububiko",
+      "manage": "Ubuyobozi",
+      "inbox": "Ubutumwa"
+    }
   },
   "roles": {
     "receptionist": "Umwakiranyi",
@@ -6147,7 +6155,18 @@
     "homeCount_other": "{{count}} byo gusubiza",
     "homeMore_one": "Hari n’ubundi {{count}} ku rupapuro rwo Kureba amakuru y’abarwayi",
     "homeMore_other": "Hari n’ubundi {{count}} ku rupapuro rwo Kureba amakuru y’abarwayi",
-    "emergencyHeadNote": "Umuyobozi ni we ugenzura kureba mu buryo bwihutirwa. Urabibona kuko ukuriye ishami rishinzwe uyu murwayi."
+    "emergencyHeadNote": "Umuyobozi ni we ugenzura kureba mu buryo bwihutirwa. Urabibona kuko ukuriye ishami rishinzwe uyu murwayi.",
+    "panel": {
+      "details": "Ibisobanuro",
+      "request": "Ubusabe bwo kureba dosiye",
+      "emergency": "Kureba mu buryo bwihutirwa",
+      "log": "Amakuru ya kera yarebwe",
+      "when": "Ryari",
+      "who": "Uwabirebye",
+      "what": "Icyarebwe",
+      "reason": "Impamvu yatanzwe",
+      "review": "Igenzura"
+    }
   },
   "recordPrivacy": {
     "title": "Amakuru ya kera ni ibanga",
@@ -6691,5 +6710,9 @@
     "7028b3a6": "Ibiro bigomba kuba hagati ya 0,3 na 350 kg.",
     "f2b8b050": "Uburebure bugomba kuba hagati ya 20 na 250 cm.",
     "936ac589": "Umuzenguruko w’ukuboko ugomba kuba hagati ya 5 na 60 cm."
+  },
+  "panel": {
+    "close": "Funga",
+    "openFull": "Fungura urupapuro rwose"
   }
 }

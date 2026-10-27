@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Check, DoorOpen, X } from 'lucide-react'
+import { Check, DoorOpen, TriangleAlert, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { IconChip } from '@/components/dash/kit'
+import { Hint, IconChip } from '@/components/dash/kit'
+import { tableCell, tableFirstCell, tableHead, tableRow } from '@/components/dash/kit-style'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Flash } from '@/components/ui/flash'
 import {
@@ -76,7 +77,8 @@ export function DesksCard() {
       <CardBody className="gap-3">
         <p className="text-ink-2 m-0 text-[14px]">{t('perms.desks.lead')}</p>
         {matrix?.fallback && (
-          <p className="border-amber/30 bg-amber-bg text-amber m-0 rounded-md border px-3 py-2 text-[14px] font-medium">
+          <p className="border-amber/30 bg-amber-bg text-amber m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[14px] font-medium">
+            <TriangleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
             {t('perms.desks.fallback')}
           </p>
         )}
@@ -91,12 +93,14 @@ export function DesksCard() {
           </Flash>
         )}
         <div className="border-border overflow-x-auto rounded-md border">
-          <table className="w-full min-w-[820px] text-[14px]">
-            <thead className="bg-hover/60 text-ink-2">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold">{t('perms.desks.desk')}</th>
+          <table className="w-full min-w-[820px] border-collapse text-[14px]">
+            <thead>
+              <tr className="border-border bg-surface border-b">
+                <th scope="col" className={tableHead}>
+                  {t('perms.desks.desk')}
+                </th>
                 {ROLES.map((r) => (
-                  <th key={r} className="px-2 py-2 text-center font-semibold">
+                  <th key={r} scope="col" className={cn(tableHead, 'px-2 text-center')}>
                     {t(`staff.roles.${r}`)}
                   </th>
                 ))}
@@ -106,15 +110,15 @@ export function DesksCard() {
               {DESKS.map((desk) => {
                 const by = givenBy(desk)
                 return (
-                  <tr key={desk} className="border-border border-t">
-                    <td className="px-3 py-2">
-                      <span className="block font-semibold">{deskName(desk, t)}</span>
+                  <tr key={desk} className={tableRow}>
+                    <td className={tableFirstCell}>
+                      <span className="block">{deskName(desk, t)}</span>
                       <span className="text-ink-3 block text-xs">
                         {t(`desks.hints.${desk}`, { defaultValue: '' })}
                       </span>
                       <span
                         className={cn(
-                          'block text-xs font-semibold',
+                          'block text-xs font-medium',
                           by.length ? 'text-green' : 'text-ink-3',
                         )}
                       >
@@ -126,7 +130,7 @@ export function DesksCard() {
                     {ROLES.map((r) => {
                       const on = has(r, desk)
                       return (
-                        <td key={r} className="px-2 py-2 text-center">
+                        <td key={r} className={cn(tableCell, 'px-2 text-center')}>
                           <button
                             type="button"
                             role="switch"
@@ -157,7 +161,7 @@ export function DesksCard() {
             </tbody>
           </table>
         </div>
-        <p className="text-ink-3 m-0 text-xs">{t('perms.desks.managerNote')}</p>
+        <Hint>{t('perms.desks.managerNote')}</Hint>
       </CardBody>
     </Card>
   )

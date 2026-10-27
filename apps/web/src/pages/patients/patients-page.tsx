@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { ChevronLeft, ChevronRight, FolderOpen, Search, UserPlus, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, UserPlus, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, type StaffUser } from '@mmc/shared'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
@@ -11,6 +11,8 @@ import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { OpenFileLink } from '@/components/clinical/file-panel'
+import { tableLinkClass, useOpenFileId } from '@/lib/panel-url'
 import { PATIENTS_PAGE_SIZE, ageSexOf, usePatientsList } from '@/lib/api/patients'
 import { navForUser } from '@/lib/nav'
 import { openItems, stationFor, useQueueBoard } from '@/lib/api/visits'
@@ -31,6 +33,8 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
   // Patients sent to my desk: what needs my attention first.
   const { data: queue = [] } = useQueueBoard(stationFor(user), user.role)
   const mine = openItems(queue)
+  // the row whose file is open in the side panel keeps a soft teal tint
+  const openFileId = useOpenFileId()
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="patients">
@@ -131,7 +135,10 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
                 {data?.rows.map((r, i) => (
                   <tr
                     key={r.id}
-                    className="border-grid anim-enter hover:bg-hover/60 border-b transition-colors last:border-b-0"
+                    className={cn(
+                      'border-grid anim-enter hover:bg-hover/60 border-b transition-colors last:border-b-0',
+                      openFileId === r.id && 'bg-primary-tint/50 hover:bg-primary-tint/50',
+                    )}
                     style={{ '--i': i } as CSSProperties}
                   >
                     <td className="text-primary hidden px-4 py-2.5 font-semibold tabular-nums sm:table-cell">
@@ -197,19 +204,13 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-right sm:px-4">
-                      <StaffLink
-                        to="/app/patient"
-                        search={{ id: r.id }}
+                      {/* opens the file beside the list; middle / ctrl-click: the whole page */}
+                      <OpenFileLink
+                        patientId={r.id}
                         aria-label={t('patients.openFile')}
                         title={t('patients.openFile')}
-                        className={cn(
-                          buttonVariants({ size: 'sm', variant: 'primary' }),
-                          'whitespace-nowrap',
-                        )}
-                      >
-                        <FolderOpen size={14} aria-hidden="true" />
-                        <span className="hidden sm:inline">{t('patients.openFile')}</span>
-                      </StaffLink>
+                        className={tableLinkClass}
+                      />
                     </td>
                   </tr>
                 ))}

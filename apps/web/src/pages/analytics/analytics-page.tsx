@@ -8,15 +8,18 @@ import {
   ListOrdered,
   type LucideIcon,
   Pill,
+  Printer,
+  ShieldOff,
   UserCheck,
   Users,
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CLINIC_PROFILE, type StaffUser } from '@mmc/shared'
-import { PageBanner } from '@/components/dash/page-banner'
+import { ActionRow, ActionRowEnd, PageBanner } from '@/components/dash/page-banner'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { ReportButtons } from '@/components/dash/report-buttons'
+import { Button } from '@/components/ui/button'
 import { controlClass } from '@/components/ui/field'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useAnalyticsAccess, type AnalyticsView } from '@/lib/api/analytics'
@@ -143,17 +146,23 @@ export function AnalyticsPage({
     <StaffShell user={user} nav={navForUser(user)} activeId="analytics">
       <style>{SERIES_CSS}</style>
       <main className="mmc-analytics pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        {/* HEADER: title, period, department, export (the page header band, teal) */}
+        {/* HEADER: the page band (teal), then the action row: period, Excel / PDF, Print */}
         <header className="flex flex-col gap-3">
           <PageBanner
             icon={ChartColumn}
             tint="teal"
             title={t('analytics.title')}
             lead={`${view ? `${t(`analytics.views.${view}`)} · ` : ''}${period.label}`}
-          >
+          />
+          <ActionRow>
             <PeriodSeg period={period} className="max-w-full flex-wrap" />
             {View && <ReportButtons build={() => exportRef.current?.() ?? null} />}
-          </PageBanner>
+            <Button variant="tint-grey" onClick={() => window.print()}>
+              <Printer size={16} aria-hidden="true" />
+              {t('dashboard.print')}
+            </Button>
+            <ActionRowEnd />
+          </ActionRow>
           <PeriodCustom
             period={period}
             className="bg-card border-border rounded-md border px-4 py-3"
@@ -167,8 +176,9 @@ export function AnalyticsPage({
         ) : !View || !view ? (
           <p
             role="status"
-            className="border-border bg-card text-ink-2 m-0 rounded-md border px-4 py-3 text-[14px]"
+            className="border-border bg-card text-ink-2 m-0 flex items-center gap-2 rounded-md border px-4 py-3 text-[14px]"
           >
+            <ShieldOff size={16} aria-hidden="true" className="text-ink-3 flex-none" />
             {t('analytics.notAllowed')}
           </p>
         ) : (

@@ -230,6 +230,7 @@ function RoleHome({ user, mode }: HomePageProps) {
           </div>
           <PeriodSeg period={period} />
           <Button
+            variant="tint-grey"
             size="icon"
             onClick={() => void refetch()}
             loading={isFetching}

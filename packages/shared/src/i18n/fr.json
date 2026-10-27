@@ -99,7 +99,15 @@
     "labWorklist": "Liste du laboratoire",
     "pharmacy": "Pharmacie",
     "analytics": "Analyses",
-    "recordAccess": "Accès aux dossiers"
+    "recordAccess": "Accès aux dossiers",
+    "groups": {
+      "work": "Travail",
+      "patients": "Patients",
+      "finance": "Finances",
+      "stock": "Stock",
+      "manage": "Gestion",
+      "inbox": "Boîte de réception"
+    }
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -6138,7 +6146,18 @@
     "homeCount_other": "{{count}} à traiter",
     "homeMore_one": "Et {{count}} autre sur la page Accès aux dossiers",
     "homeMore_other": "Et {{count}} autres sur la page Accès aux dossiers",
-    "emergencyHeadNote": "Le gestionnaire examine les accès d’urgence. Vous les voyez parce que vous êtes chef d’un service concerné par ce patient."
+    "emergencyHeadNote": "Le gestionnaire examine les accès d’urgence. Vous les voyez parce que vous êtes chef d’un service concerné par ce patient.",
+    "panel": {
+      "details": "Détails",
+      "request": "Demande d’accès",
+      "emergency": "Accès d’urgence",
+      "log": "Dossiers antérieurs ouverts",
+      "when": "Quand",
+      "who": "Qui",
+      "what": "Ce qui a été ouvert",
+      "reason": "Raison donnée",
+      "review": "Examen"
+    }
   },
   "recordPrivacy": {
     "title": "Les dossiers antérieurs sont confidentiels",
@@ -6682,5 +6701,9 @@
     "7028b3a6": "Le poids doit être entre 0,3 et 350 kg.",
     "f2b8b050": "La taille doit être entre 20 et 250 cm.",
     "936ac589": "Le périmètre brachial doit être entre 5 et 60 cm."
+  },
+  "panel": {
+    "close": "Fermer",
+    "openFull": "Ouvrir la page entière"
   }
 }

@@ -32,7 +32,6 @@ import {
 import { tintClass, type Tint } from '@/components/dash/kit-style'
 import { PageBanner } from '@/components/dash/page-banner'
 import { AdjustField } from '@/components/ui/adjust-field'
-import { Reveal } from '@/components/ui/reveal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
@@ -40,6 +39,7 @@ import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
+import { SidePanel } from '@/components/ui/side-panel'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { allowanceAsPct, type AdjustMode } from '@/lib/adjust'
 import {
@@ -72,6 +72,9 @@ import { useConfirm } from '@/lib/confirm'
 
 const errorBox =
   'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
+/** The forms open in a side panel; the panel's footer submits them by this id. */
+const TREATMENT_FORM = 'treatment-form'
+const INSURER_FORM = 'insurer-form'
 
 /** Each department card gets its own colour, in this order. */
 const DEPT_TINTS: Tint[] = ['teal', 'violet', 'mint', 'amber', 'coral', 'navy']
@@ -141,10 +144,10 @@ export function PricesPage({ user }: { user: StaffUser }) {
     else setTools(true)
   }
   const deptOpen = newDept !== null
-  const anyPanel = adjusting || deptOpen || managingCats || tools || editing !== null
+  const anyPanel = adjusting || deptOpen || managingCats || tools
   useEffect(() => {
     if (anyPanel) panelsTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [anyPanel, adjusting, deptOpen, managingCats, tools, editing])
+  }, [anyPanel, adjusting, deptOpen, managingCats, tools])
   const { data: departments = [] } = useDepartments()
   const deptActions = useDepartmentActions()
   const today = new Date()
@@ -207,7 +210,11 @@ export function PricesPage({ user }: { user: StaffUser }) {
           return (
             <Row
               key={x.id}
-              className={cn('flex-wrap gap-x-3 gap-y-1 py-2', !x.active && 'opacity-60')}
+              className={cn(
+                'flex-wrap gap-x-3 gap-y-1 py-2',
+                !x.active && 'opacity-60',
+                editing !== 'new' && editing?.id === x.id && 'bg-primary-tint/50',
+              )}
             >
               <span className="min-w-[200px] flex-1">
                 <span className="text-ink block font-semibold">
@@ -276,7 +283,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 </Button>
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant="tint-grey"
                   title={t('prices.duplicate')}
                   aria-label={t('prices.duplicate')}
                   onClick={() => {
@@ -294,7 +301,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                   <>
                     <Button
                       size="sm"
-                      variant="ghost"
+                      variant="tint-amber"
                       title={t(x.active ? 'prices.hide' : 'prices.show')}
                       aria-label={t(x.active ? 'prices.hide' : 'prices.show')}
                       onClick={() => void toggle(x)}
@@ -307,8 +314,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                     </Button>
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="hover:text-red"
+                      variant="tint-coral"
                       title={t('prices.delete')}
                       aria-label={t('prices.delete')}
                       onClick={() => void remove(x)}
@@ -375,19 +381,19 @@ export function PricesPage({ user }: { user: StaffUser }) {
           title={t(FEATURES.insurance ? 'prices.title' : 'prices.titleCash')}
           lead={t(FEATURES.insurance ? 'prices.lead' : 'prices.leadCash')}
         >
-          <Button onClick={() => openPanel('adjust', adjusting)}>
+          <Button variant="tint-grey" onClick={() => openPanel('adjust', adjusting)}>
             <SlidersHorizontal size={18} aria-hidden="true" />
             {t('prices.adjust.open')}
           </Button>
-          <Button onClick={() => openPanel('dept', newDept !== null)}>
+          <Button variant="tint-grey" onClick={() => openPanel('dept', newDept !== null)}>
             <FolderPlus size={18} aria-hidden="true" />
             {t('prices.dept.new')}
           </Button>
-          <Button onClick={() => openPanel('cats', managingCats)}>
+          <Button variant="tint-grey" onClick={() => openPanel('cats', managingCats)}>
             <Tags size={18} aria-hidden="true" />
             {t('prices.cat.open')}
           </Button>
-          <Button onClick={() => openPanel('tools', tools)}>
+          <Button variant="tint-grey" onClick={() => openPanel('tools', tools)}>
             <Wrench size={18} aria-hidden="true" />
             {t('prices.tools.open')}
           </Button>
@@ -469,21 +475,19 @@ export function PricesPage({ user }: { user: StaffUser }) {
         )}
 
         {editing && (
-          <Reveal focus>
-            <TreatmentForm
-              key={editing === 'new' ? `new-${copyFrom?.id ?? ''}-${presetDept ?? ''}` : editing.id}
-              treatment={editing === 'new' ? null : editing}
-              copyFrom={editing === 'new' ? copyFrom : null}
-              insurers={activeInsurers}
-              departments={departments}
-              presetDepartment={editing === 'new' ? presetDept : null}
-              onClose={() => {
-                setEditing(null)
-                setCopyFrom(null)
-                setPresetDept(null)
-              }}
-            />
-          </Reveal>
+          <TreatmentForm
+            key={editing === 'new' ? `new-${copyFrom?.id ?? ''}-${presetDept ?? ''}` : editing.id}
+            treatment={editing === 'new' ? null : editing}
+            copyFrom={editing === 'new' ? copyFrom : null}
+            insurers={activeInsurers}
+            departments={departments}
+            presetDepartment={editing === 'new' ? presetDept : null}
+            onClose={() => {
+              setEditing(null)
+              setCopyFrom(null)
+              setPresetDept(null)
+            }}
+          />
         )}
 
         {/* Search and filter */}
@@ -732,7 +736,11 @@ function InsurersSection({
         {insurers.map((i) => (
           <Row
             key={i.id}
-            className={cn('flex-wrap gap-x-4 gap-y-1 py-2', !i.active && 'opacity-60')}
+            className={cn(
+              'flex-wrap gap-x-4 gap-y-1 py-2',
+              !i.active && 'opacity-60',
+              editingInsurer !== 'new' && editingInsurer?.id === i.id && 'bg-primary-tint/50',
+            )}
           >
             <span className="min-w-[200px] flex-1">
               <span className="block font-semibold">{i.name}</span>
@@ -759,8 +767,7 @@ function InsurersSection({
             </Button>
             <Button
               size="sm"
-              variant="ghost"
-              className="hover:text-red"
+              variant="tint-coral"
               title={t('prices.delete')}
               aria-label={t('prices.delete')}
               onClick={() => void onDelete(i)}
@@ -1113,20 +1120,39 @@ function TreatmentForm({
   }
 
   return (
-    <Card className="border-primary">
-      <CardHeader>
-        <span>
-          {treatment
-            ? t('prices.form.editTitle', { name: treatment.nameEn })
-            : presetDepartment
-              ? t('prices.dept.addTo', {
-                  name: departments.find((d) => d.id === presetDepartment)?.name ?? '',
-                })
-              : t('prices.newTreatment')}
-        </span>
-      </CardHeader>
-      <form onSubmit={(e) => void submit(e)}>
-        <CardBody className="gap-3">
+    <SidePanel
+      open
+      onClose={onClose}
+      hue="mint"
+      icon={treatment ? Pencil : Plus}
+      title={
+        treatment
+          ? t('prices.form.editTitle', { name: treatment.nameEn })
+          : presetDepartment
+            ? t('prices.dept.addTo', {
+                name: departments.find((d) => d.id === presetDepartment)?.name ?? '',
+              })
+            : t('prices.newTreatment')
+      }
+      subtitle={treatment ? treatment.code : undefined}
+      footer={
+        <>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t('staff.form.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            form={TREATMENT_FORM}
+            variant="primary"
+            disabled={actions.saveTreatment.isPending}
+          >
+            {actions.saveTreatment.isPending ? t('settings.saving') : t('prices.form.save')}
+          </Button>
+        </>
+      }
+    >
+      <form id={TREATMENT_FORM} onSubmit={(e) => void submit(e)}>
+        <CardBody className="gap-3 p-0">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field
               label={t('prices.form.nameEn')}
@@ -1307,17 +1333,9 @@ function TreatmentForm({
               {error}
             </p>
           )}
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary" disabled={actions.saveTreatment.isPending}>
-              {actions.saveTreatment.isPending ? t('settings.saving') : t('prices.form.save')}
-            </Button>
-            <Button type="button" variant="ghost" onClick={onClose}>
-              {t('staff.form.cancel')}
-            </Button>
-          </div>
         </CardBody>
       </form>
-    </Card>
+    </SidePanel>
   )
 }
 
@@ -1384,16 +1402,35 @@ function InsurerForm({ insurer, onClose }: { insurer: Insurer | null; onClose: (
   }
 
   return (
-    <Card className="border-primary">
-      <CardHeader>
-        <span>
-          {insurer
-            ? t('prices.insurers.editTitle', { name: insurer.name })
-            : t('prices.insurers.new')}
-        </span>
-      </CardHeader>
-      <form onSubmit={(e) => void submit(e)}>
-        <CardBody className="gap-3">
+    <SidePanel
+      open
+      onClose={onClose}
+      hue="mint"
+      icon={ShieldCheck}
+      title={
+        insurer ? t('prices.insurers.editTitle', { name: insurer.name }) : t('prices.insurers.new')
+      }
+      subtitle={
+        insurer ? `${insurer.code} · ${t(`prices.insurers.types.${insurer.type}`)}` : undefined
+      }
+      footer={
+        <>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t('staff.form.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            form={INSURER_FORM}
+            variant="primary"
+            disabled={actions.saveInsurer.isPending}
+          >
+            {actions.saveInsurer.isPending ? t('settings.saving') : t('prices.form.save')}
+          </Button>
+        </>
+      }
+    >
+      <form id={INSURER_FORM} onSubmit={(e) => void submit(e)}>
+        <CardBody className="gap-3 p-0">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <Field
               label={t('prices.insurers.form.name')}
@@ -1461,16 +1498,8 @@ function InsurerForm({ insurer, onClose }: { insurer: Insurer | null; onClose: (
               {error}
             </p>
           )}
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary" disabled={actions.saveInsurer.isPending}>
-              {actions.saveInsurer.isPending ? t('settings.saving') : t('prices.form.save')}
-            </Button>
-            <Button type="button" variant="ghost" onClick={onClose}>
-              {t('staff.form.cancel')}
-            </Button>
-          </div>
         </CardBody>
       </form>
-    </Card>
+    </SidePanel>
   )
 }

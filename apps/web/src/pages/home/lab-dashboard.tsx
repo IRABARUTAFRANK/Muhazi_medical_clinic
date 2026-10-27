@@ -122,6 +122,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
           </div>
           <PeriodSeg period={period} />
           <Button
+            variant="tint-grey"
             size="icon"
             onClick={() => void refetch()}
             loading={isFetching}
@@ -131,7 +132,10 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
           </Button>
           {labDesk && (
-            <StaffLink to="/app/stock" className={buttonVariants({ size: 'md' })}>
+            <StaffLink
+              to="/app/stock"
+              className={buttonVariants({ variant: 'tint-violet', size: 'md' })}
+            >
               <Warehouse size={16} aria-hidden="true" />
               {t('lab.stock')}
             </StaffLink>

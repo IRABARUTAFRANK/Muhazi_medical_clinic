@@ -1,16 +1,20 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import {
+  ArrowUpRight,
   Ban,
   Banknote,
   Calculator,
   CalendarDays,
+  Clock,
   CreditCard,
+  DoorOpen,
   HandCoins,
   Landmark,
   Printer,
   Undo2,
   Receipt,
+  Save,
   ShoppingBag,
   Smartphone,
   type LucideIcon,
@@ -19,10 +23,18 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CLINIC_PROFILE, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
-import { Empty, IconChip, Panel, Pill } from '@/components/dash/kit'
-import { tileClass } from '@/components/dash/kit-style'
-import { BannerChip, PageBanner } from '@/components/dash/page-banner'
+import { Empty, IconChip, Kpi, Panel, Pill, SectionTitle } from '@/components/dash/kit'
+import {
+  tableCell,
+  tableFirstCell,
+  tableHead,
+  tableRow,
+  type Tint,
+} from '@/components/dash/kit-style'
+import { ActionRow, ActionRowEnd, BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Field } from '@/components/ui/field'
+import { Seg } from '@/components/ui/seg'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
@@ -50,6 +62,7 @@ import { useLetterhead, usePrintedBy } from '@/lib/report-parts'
 import { CounterSalesPanel } from './counter-sales-panel'
 import { openCounterReceipt } from './counter-receipt'
 import { RefundsDuePanel } from './refunds-due'
+import { useRefundsDue } from './refunds-due-data'
 
 const METHOD_ICON: Record<string, LucideIcon> = {
   cash: Banknote,
@@ -57,6 +70,14 @@ const METHOD_ICON: Record<string, LucideIcon> = {
   airtel: Smartphone,
   card: CreditCard,
   bank: Landmark,
+}
+/** One tint per way of paying, the same as its chip elsewhere. */
+const METHOD_TINT: Record<string, Tint> = {
+  cash: 'mint',
+  momo: 'amber',
+  airtel: 'coral',
+  card: 'violet',
+  bank: 'teal',
 }
 /** The ways of paying always shown; card and bank (counter sales) appear when used. */
 const METHODS = ['cash', 'momo', 'airtel'] as const
@@ -71,6 +92,19 @@ const daysBefore = (day: string, n: number) => {
   const d = new Date(`${day}T12:00:00`)
   d.setDate(d.getDate() - n)
   return d.toISOString().slice(0, 10)
+}
+
+/** A load error under the banner. */
+function LoadError({ message }: { message: string }) {
+  const { t } = useTranslation()
+  return (
+    <p
+      role="alert"
+      className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
+    >
+      {t('dashboard.loadFailed', { message })}
+    </p>
+  )
 }
 
 /**
@@ -88,10 +122,15 @@ export function BillsPage({ user }: { user: StaffUser }) {
   const saleId = typeof search.sale === 'string' ? search.sale : null
   const { data: home, error: loadError } = useHomeSummary()
   const bills = home?.openBills ?? []
+  // the figures of the four panels below (the same queries, read once more for the tiles)
+  const { data: counterOpen = [] } = useCounterSales('open')
+  const { data: refunds = [] } = useRefundsDue()
+  const { data: debts = [] } = useUnpaidDebts()
   const [query, setQuery] = useState('')
   const shown = bills.filter((b) => matches(query, b.name, b.file, b.ticket))
   const paged = usePaged(shown, 15, query)
   const due = bills.reduce((s, b) => s + b.balance, 0)
+  const sum = (xs: { amount: number }[]) => xs.reduce((s, x) => s + x.amount, 0)
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="bills">
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
@@ -107,14 +146,46 @@ export function BillsPage({ user }: { user: StaffUser }) {
           }
         />
         {switchedOff('payment.take') && <NotAllowedNotice feature="payment.take" />}
-        {loadError && (
-          <p
-            role="alert"
-            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
-          >
-            {t('dashboard.loadFailed', { message: loadError.message })}
-          </p>
-        )}
+        {loadError && <LoadError message={loadError.message} />}
+
+        <section className="flex flex-col gap-3">
+          <SectionTitle icon={Wallet}>{t('finance.section')}</SectionTitle>
+          <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Kpi
+              i={0}
+              icon={ShoppingBag}
+              tint="violet"
+              label={t('cashierDesk.counter.title')}
+              value={counterOpen.length}
+              unit={formatRwf(counterOpen.reduce((s, x) => s + x.total, 0))}
+            />
+            <Kpi
+              i={1}
+              icon={Receipt}
+              tint="coral"
+              label={t('home.openBills')}
+              value={bills.length}
+              unit={formatRwf(due)}
+            />
+            <Kpi
+              i={2}
+              icon={Undo2}
+              tint="amber"
+              label={t('cashierDesk.refunds.title')}
+              value={refunds.length}
+              unit={formatRwf(sum(refunds))}
+            />
+            <Kpi
+              i={3}
+              icon={DoorOpen}
+              tint="navy"
+              label={t('cashierDesk.unpaid.title')}
+              value={debts.length}
+              unit={formatRwf(sum(debts))}
+            />
+          </div>
+        </section>
+
         <CounterSalesPanel
           i={1}
           canTake={canTake}
@@ -127,44 +198,80 @@ export function BillsPage({ user }: { user: StaffUser }) {
           {paged.total === 0 ? (
             <Empty>{t('home.noOpenBills')}</Empty>
           ) : (
-            <div className="flex flex-col">
-              {paged.slice.map((b, i) => (
-                <div
-                  key={b.encounterId}
-                  className="border-grid anim-enter flex min-h-10 flex-wrap items-center gap-3 border-b py-2.5 text-[14px] last:border-b-0"
-                  style={{ '--i': Math.min(i, 12) } as CSSProperties}
-                >
-                  <Pill tint="amber" icon={Receipt}>
-                    {b.ticket ?? '—'}
-                  </Pill>
-                  <span className="min-w-[180px] flex-1">
-                    <span className="block font-semibold">{b.name}</span>
-                    <span className="text-ink-3 block text-[13px]">
-                      {b.file}
-                      {b.station
-                        ? ` · ${t('home.atStation', { station: t(`register.stations.${b.station}`, { defaultValue: b.station }) })}`
-                        : ''}
-                    </span>
-                  </span>
-                  <span className="text-ink-3 text-[13px] tabular-nums">
-                    {t('finance.billTotal', { amount: formatRwf(b.amount) })}
-                  </span>
-                  <span className="font-semibold whitespace-nowrap tabular-nums">
-                    {formatRwf(b.balance)}
-                  </span>
-                  <StaffLink
-                    to="/app/visit"
-                    search={{ encounter: b.encounterId }}
-                    className={buttonVariants({
-                      variant: canTake ? 'primary' : 'default',
-                      size: 'sm',
-                    })}
-                  >
-                    <Wallet size={14} aria-hidden="true" />
-                    {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
-                  </StaffLink>
-                </div>
-              ))}
+            <div className="-mx-4 overflow-x-auto px-4">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className={tableHead}>{t('finance.cols.patient')}</th>
+                    <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
+                      {t('finance.cols.amount')}
+                    </th>
+                    <th className={cn(tableHead, 'text-right')}>{t('finance.toCollect')}</th>
+                    <th className={cn(tableHead, 'w-0')}>
+                      <span className="sr-only">{t('home.takePayment')}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.slice.map((b, i) => (
+                    <tr
+                      key={b.encounterId}
+                      className={cn(tableRow, 'anim-enter')}
+                      style={{ '--i': Math.min(i, 12) } as CSSProperties}
+                    >
+                      <td className={tableFirstCell}>
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <Pill tint="amber" icon={Receipt}>
+                            {b.ticket ?? '—'}
+                          </Pill>
+                          <span className="min-w-0">
+                            <span className="block">{b.name}</span>
+                            <span className="text-ink-3 block text-[13px] font-normal">
+                              {b.file}
+                              {b.station
+                                ? ` · ${t('home.atStation', { station: t(`register.stations.${b.station}`, { defaultValue: b.station }) })}`
+                                : ''}
+                            </span>
+                          </span>
+                        </span>
+                      </td>
+                      <td
+                        className={cn(
+                          tableCell,
+                          'text-ink-3 hidden text-right whitespace-nowrap tabular-nums sm:table-cell',
+                        )}
+                      >
+                        {formatRwf(b.amount)}
+                      </td>
+                      <td
+                        className={cn(
+                          tableCell,
+                          'text-right font-semibold whitespace-nowrap tabular-nums',
+                        )}
+                      >
+                        {formatRwf(b.balance)}
+                      </td>
+                      <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
+                        <StaffLink
+                          to="/app/visit"
+                          search={{ encounter: b.encounterId }}
+                          className={buttonVariants({
+                            variant: canTake ? 'success' : 'tint-blue',
+                            size: 'sm',
+                          })}
+                        >
+                          {canTake ? (
+                            <Wallet size={14} aria-hidden="true" />
+                          ) : (
+                            <ArrowUpRight size={14} aria-hidden="true" />
+                          )}
+                          {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
+                        </StaffLink>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
           <Pager {...paged} onPage={paged.setPage} />
@@ -192,81 +299,109 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
   )
   const paged = usePaged(shown, 15, query)
   const total = debts.reduce((s, d) => s + d.amount, 0)
-  const statusTint = (s: Debt['status']) =>
-    s === 'left' ? 'coral' : s === 'open' ? 'amber' : ('navy' as const)
+  const statusLook = (s: Debt['status']): { tint: Tint; icon: LucideIcon } =>
+    s === 'left'
+      ? { tint: 'coral', icon: DoorOpen }
+      : s === 'open'
+        ? { tint: 'amber', icon: Clock }
+        : { tint: 'navy', icon: Receipt }
   return (
     <Panel
       i={i}
-      icon={Wallet}
-      tint="amber"
+      icon={DoorOpen}
+      tint="navy"
       title={t('cashierDesk.unpaid.title')}
       right={t('finance.debtsTotal', { count: debts.length, amount: formatRwf(total) })}
     >
       <p className="text-ink-2 m-0 text-[14px]">{t('cashierDesk.unpaid.lead')}</p>
-      {error && (
-        <p
-          role="alert"
-          className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
-        >
-          {t('dashboard.loadFailed', { message: error.message })}
-        </p>
-      )}
+      {error && <LoadError message={error.message} />}
       {debts.length > 15 && (
         <ListBar query={query} onQuery={setQuery} placeholderKey="list.searchPatient" />
       )}
       {paged.total === 0 ? (
         <Empty>{t(debts.length === 0 ? 'cashierDesk.unpaid.none' : 'cashierDesk.noMatch')}</Empty>
       ) : (
-        <div className="flex flex-col">
-          {paged.slice.map((d) => (
-            <div
-              key={d.encounterId}
-              className="border-grid flex min-h-10 flex-wrap items-center gap-3 border-b py-2.5 text-[14px] last:border-b-0"
-            >
-              {d.status && (
-                <Pill tint={statusTint(d.status)}>
-                  {t(`cashierDesk.unpaid.status.${d.status}`)}
-                </Pill>
-              )}
-              <span className="min-w-[180px] flex-1">
-                <span className="block font-semibold">{d.patient}</span>
-                <span className="text-ink-3 block text-[13px]">
-                  {[
-                    d.fileNumber,
-                    d.phone,
-                    d.billNumber,
-                    (d.since ?? d.closedAt) &&
-                      t('cashierDesk.unpaid.since', {
-                        date: formatDate(new Date((d.since ?? d.closedAt)!)),
-                      }),
-                    d.reason && `“${d.reason}”`,
-                    d.closedBy && t('finance.debtBy', { name: d.closedBy }),
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-                {d.total != null && d.total > 0 && (
-                  <span className="text-ink-3 block text-[12px] tabular-nums">
-                    {t('cashierDesk.unpaid.billPaid', {
-                      total: formatRwf(d.total),
-                      paid: formatRwf(d.paid ?? 0),
-                    })}
-                  </span>
-                )}
-              </span>
-              <span className="font-semibold whitespace-nowrap tabular-nums">
-                {formatRwf(d.amount)}
-              </span>
-              <StaffLink
-                to="/app/visit"
-                search={{ encounter: d.encounterId }}
-                className={buttonVariants({ variant: canTake ? 'primary' : 'default', size: 'sm' })}
-              >
-                <Wallet size={14} aria-hidden="true" />
-                {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
-              </StaffLink>
-            </div>
-          ))}
+        <div className="-mx-4 overflow-x-auto px-4">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>
+                <th className={tableHead}>{t('finance.cols.patient')}</th>
+                <th className={cn(tableHead, 'text-right')}>{t('finance.cols.amount')}</th>
+                <th className={cn(tableHead, 'w-0')}>
+                  <span className="sr-only">{t('home.takePayment')}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.slice.map((d) => {
+                const look = d.status ? statusLook(d.status) : null
+                return (
+                  <tr key={d.encounterId} className={tableRow}>
+                    <td className={tableFirstCell}>
+                      <span className="flex min-w-0 items-start gap-2.5">
+                        {look && d.status && (
+                          <Pill tint={look.tint} icon={look.icon}>
+                            {t(`cashierDesk.unpaid.status.${d.status}`)}
+                          </Pill>
+                        )}
+                        <span className="min-w-0">
+                          <span className="block">{d.patient}</span>
+                          <span className="text-ink-3 block text-[13px] font-normal">
+                            {[
+                              d.fileNumber,
+                              d.phone,
+                              d.billNumber,
+                              (d.since ?? d.closedAt) &&
+                                t('cashierDesk.unpaid.since', {
+                                  date: formatDate(new Date((d.since ?? d.closedAt)!)),
+                                }),
+                              d.reason && `“${d.reason}”`,
+                              d.closedBy && t('finance.debtBy', { name: d.closedBy }),
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                          {d.total != null && d.total > 0 && (
+                            <span className="text-ink-3 block text-[12px] font-normal tabular-nums">
+                              {t('cashierDesk.unpaid.billPaid', {
+                                total: formatRwf(d.total),
+                                paid: formatRwf(d.paid ?? 0),
+                              })}
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                    </td>
+                    <td
+                      className={cn(
+                        tableCell,
+                        'text-right font-semibold whitespace-nowrap tabular-nums',
+                      )}
+                    >
+                      {formatRwf(d.amount)}
+                    </td>
+                    <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
+                      <StaffLink
+                        to="/app/visit"
+                        search={{ encounter: d.encounterId }}
+                        className={buttonVariants({
+                          variant: canTake ? 'success' : 'tint-blue',
+                          size: 'sm',
+                        })}
+                      >
+                        {canTake ? (
+                          <Wallet size={14} aria-hidden="true" />
+                        ) : (
+                          <ArrowUpRight size={14} aria-hidden="true" />
+                        )}
+                        {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
+                      </StaffLink>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
       <Pager {...paged} onPage={paged.setPage} />
@@ -376,18 +511,28 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
     (s?.byMethod.find((x) => x.method === m)?.amount ?? 0) - refundedOf(m)
   const countOf = (m: string) => s?.byMethod.find((x) => x.method === m)?.count ?? 0
   const dayTotal = (s?.total ?? 0) - (s?.refunded ?? 0)
+  const countLine = (count: number, refunded: number) =>
+    `${t('finance.paymentsCount', { count })}${
+      refunded > 0 ? ` · ${t('finance.afterRefunds', { amount: formatRwf(refunded) })}` : ''
+    }`
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="payments">
       <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4 print:overflow-visible">
         <PageBanner
           icon={HandCoins}
-          tint="violet"
+          tint="mint"
           title={t('finance.paymentsTitle')}
           lead={t('finance.paymentsLead')}
-          meta={<BannerChip icon={HandCoins}>{formatRwf(dayTotal)}</BannerChip>}
-        >
-          <label className="border-border bg-card flex h-10 items-center gap-2 rounded-md border px-3 text-[14px]">
+          meta={
+            <>
+              <BannerChip icon={CalendarDays}>{formatDate(new Date(day))}</BannerChip>
+              <BannerChip icon={HandCoins}>{formatRwf(dayTotal)}</BannerChip>
+            </>
+          }
+        />
+        <ActionRow>
+          <label className="border-border bg-card text-ink flex h-9 items-center gap-2 rounded-md border px-3 text-[14px]">
             <CalendarDays size={16} aria-hidden="true" className="text-ink-3" />
             <span className="sr-only">{t('finance.day')}</span>
             <input
@@ -404,98 +549,59 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           <ReportButtons
             build={() => (s ? cashierReport(s, info?.profile ?? CLINIC_PROFILE, user, t) : null)}
           />
-          <Button onClick={() => setPrinting(true)}>
+          <Button variant="tint-grey" onClick={() => setPrinting(true)}>
             <Printer size={16} aria-hidden="true" />
             {t('finance.printDay')}
           </Button>
-        </PageBanner>
+          <ActionRowEnd />
+        </ActionRow>
 
-        {loadError && (
-          <p
-            role="alert"
-            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
-          >
-            {t('dashboard.loadFailed', { message: loadError.message })}
-          </p>
-        )}
+        {loadError && <LoadError message={loadError.message} />}
 
-        {/* Day close: totals by method and by cashier */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {methods.map((m, i) => {
-            const Icon = METHOD_ICON[m] ?? Wallet
-            // one tint per payment method, the same as its chip elsewhere
-            const tint =
-              m === 'cash'
-                ? 'mint'
-                : m === 'momo'
-                  ? 'amber'
-                  : m === 'airtel'
-                    ? 'coral'
-                    : m === 'card'
-                      ? 'violet'
-                      : 'teal'
-            return (
-              <div
+        {/* Day close: totals by method, then the day */}
+        <section className="flex flex-col gap-3">
+          <SectionTitle icon={Wallet}>{t('finance.byMethod')}</SectionTitle>
+          <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {methods.map((m, i) => (
+              <Kpi
                 key={m}
-                className={cn(
-                  'anim-enter flex items-center gap-3 rounded-md border px-4 py-3',
-                  tileClass[tint],
-                )}
-                style={{ '--i': i } as CSSProperties}
-              >
-                <IconChip icon={Icon} tint={tint} />
-                <span className="min-w-0 flex-1">
-                  <span className="text-ink-2 block text-[13px] font-medium">{methodName(m)}</span>
-                  <span className="block text-[28px] leading-8 font-semibold tabular-nums">
-                    {formatRwf(amountOf(m))}
-                  </span>
-                  <span className="text-ink-3 block text-[12px]">
-                    {t('finance.paymentsCount', { count: countOf(m) })}
-                    {refundedOf(m) > 0 &&
-                      ` · ${t('finance.afterRefunds', { amount: formatRwf(refundedOf(m)) })}`}
-                  </span>
-                </span>
-              </div>
-            )
-          })}
-          <div
-            className={cn(
-              'anim-enter flex items-center gap-3 rounded-md border px-4 py-3',
-              tileClass.navy,
-            )}
-            style={{ '--i': methods.length } as CSSProperties}
-          >
-            <IconChip icon={HandCoins} tint="navy" />
-            <span className="min-w-0 flex-1">
-              <span className="text-ink-2 block text-[13px] font-medium">
-                {t('finance.dayTotal', { day: formatDate(new Date(day)) })}
-              </span>
-              <span className="text-navy-ink block text-[28px] leading-8 font-semibold tabular-nums">
-                {formatRwf(dayTotal)}
-              </span>
-              <span className="text-ink-3 block text-[12px]">
-                {t('finance.paymentsCount', { count: s?.count ?? 0 })}
-                {(s?.refunded ?? 0) > 0 &&
-                  ` · ${t('finance.afterRefunds', { amount: formatRwf(s?.refunded ?? 0) })}`}
-              </span>
-              {/* walk-in buyers' sales are in the total, said apart */}
-              {(s?.counterSales?.count ?? 0) > 0 && (
-                <span className="text-ink-3 block text-[12px]">
-                  {t('cashierDesk.counter.inTotal', {
-                    count: s!.counterSales!.count,
-                    amount: formatRwf(s!.counterSales!.total),
-                  })}
-                </span>
-              )}
-            </span>
+                i={i}
+                icon={METHOD_ICON[m] ?? Wallet}
+                tint={METHOD_TINT[m] ?? 'teal'}
+                label={methodName(m)}
+                value={amountOf(m)}
+                text={formatRwf(amountOf(m))}
+                unit={countLine(countOf(m), refundedOf(m))}
+              />
+            ))}
+            <Kpi
+              i={methods.length}
+              icon={HandCoins}
+              tint="navy"
+              label={t('finance.dayTotal', { day: formatDate(new Date(day)) })}
+              value={dayTotal}
+              text={formatRwf(dayTotal)}
+              unit={[
+                countLine(s?.count ?? 0, s?.refunded ?? 0),
+                // walk-in buyers' sales are in the total, said apart
+                (s?.counterSales?.count ?? 0) > 0
+                  ? t('cashierDesk.counter.inTotal', {
+                      count: s!.counterSales!.count,
+                      amount: formatRwf(s!.counterSales!.total),
+                    })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            />
           </div>
-        </div>
+        </section>
         {switchedOff('payment.take') && (
           <NotAllowedNotice feature="payment.take" compact className="print:hidden" />
         )}
         {/* someone outside the cash desk sees only what they took */}
         {s?.scope === 'mine' && (
-          <p className="bg-primary-tint text-primary m-0 rounded-md px-3 py-2 text-[14px] print:hidden">
+          <p className="bg-primary-tint text-primary border-primary/30 m-0 rounded-md border px-3 py-2 text-[14px] print:hidden">
             {t('finance.mineOnly')}
           </p>
         )}
@@ -508,8 +614,9 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
             })}
             <StaffLink
               to="/app/bills"
-              className={buttonVariants({ size: 'sm', variant: 'default' })}
+              className={buttonVariants({ size: 'sm', variant: 'tint-amber' })}
             >
+              <ArrowUpRight size={14} aria-hidden="true" />
               {t('cashierDesk.counter.open')}
             </StaffLink>
           </p>
@@ -521,9 +628,9 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
               {s.byCashier.map((c) => (
                 <span
                   key={c.name}
-                  className="border-border bg-surface inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-[14px]"
+                  className="border-border bg-card inline-flex min-h-10 items-center gap-2 rounded-md border py-1 pr-3 pl-1 text-[14px]"
                 >
-                  <UserRound size={14} aria-hidden="true" className="text-ink-3" />
+                  <IconChip icon={UserRound} tint="teal" size="sm" />
                   <b>{c.name}</b>
                   <span className="tabular-nums">{formatRwf(c.amount)}</span>
                   <span className="text-ink-3 text-[12px]">({c.count})</span>
@@ -533,52 +640,36 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           </Panel>
         )}
 
-        <Panel i={2} icon={HandCoins} tint="violet" title={t('finance.payments')}>
+        <Panel i={2} icon={HandCoins} tint="mint" title={t('finance.payments')}>
           <ListBar query={query} onQuery={setQuery} placeholderKey="finance.searchPayments" />
-          <div className="flex flex-wrap gap-2 print:hidden">
-            {['all', ...methods].map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={method === m}
-                onClick={() => setMethod(m)}
-                className={cn(
-                  'inline-flex min-h-8 items-center gap-1.5 rounded-md border px-3 text-[14px] font-medium',
-                  method === m
-                    ? 'border-primary bg-primary text-white'
-                    : 'border-border bg-card text-ink-2 hover:bg-hover',
-                )}
-              >
-                {m === 'all' ? t('notices.filters.all') : methodName(m)}
-              </button>
-            ))}
-          </div>
+          <Seg
+            className="self-start print:hidden"
+            label={t('finance.cols.method')}
+            value={method}
+            onChange={setMethod}
+            options={['all', ...methods].map((m) => ({
+              value: m,
+              label: m === 'all' ? t('notices.filters.all') : methodName(m),
+            }))}
+          />
           {paged.total === 0 ? (
             <Empty>{t('finance.nothingYet')}</Empty>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[14px]">
+            <div className="-mx-4 overflow-x-auto px-4">
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr className="text-ink-3 text-left text-[12px]">
-                    <th className="border-border border-b py-2 pr-2 font-medium">
-                      {t('finance.cols.time')}
-                    </th>
-                    <th className="border-border border-b py-2 pr-2 font-medium">
-                      {t('finance.cols.patient')}
-                    </th>
-                    <th className="border-border border-b py-2 pr-2 font-medium">
-                      {t('finance.cols.method')}
-                    </th>
-                    <th className="border-border hidden border-b py-2 pr-2 font-semibold sm:table-cell">
+                  <tr>
+                    <th className={tableHead}>{t('finance.cols.time')}</th>
+                    <th className={tableHead}>{t('finance.cols.patient')}</th>
+                    <th className={tableHead}>{t('finance.cols.method')}</th>
+                    <th className={cn(tableHead, 'hidden sm:table-cell')}>
                       {t('finance.cols.receipt')}
                     </th>
-                    <th className="border-border hidden border-b py-2 pr-2 font-semibold md:table-cell">
+                    <th className={cn(tableHead, 'hidden md:table-cell')}>
                       {t('finance.cols.cashier')}
                     </th>
-                    <th className="border-border border-b py-2 text-right font-semibold">
-                      {t('finance.cols.amount')}
-                    </th>
-                    <th className="border-border w-0 border-b py-2 print:hidden">
+                    <th className={cn(tableHead, 'text-right')}>{t('finance.cols.amount')}</th>
+                    <th className={cn(tableHead, 'w-0 print:hidden')}>
                       <span className="sr-only">{t('finance.cancelPayment')}</span>
                     </th>
                   </tr>
@@ -587,12 +678,17 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                   {(printing ? payments : paged.slice).map((p) => {
                     const Icon = METHOD_ICON[p.method] ?? Wallet
                     return (
-                      <tr key={p.id} className="border-grid border-b last:border-b-0">
-                        <td className="text-ink-2 py-2 pr-2 tabular-nums">
+                      <tr key={p.id} className={tableRow}>
+                        <td
+                          className={cn(
+                            tableFirstCell,
+                            'text-ink-2 whitespace-nowrap tabular-nums',
+                          )}
+                        >
                           {formatTime(new Date(p.at))}
                         </td>
-                        <td className="py-2 pr-2">
-                          <span className="block font-semibold">
+                        <td className={tableCell}>
+                          <span className="block font-medium">
                             {p.patient || (p.counterSale ? t('cashierDesk.counter.walkIn') : '—')}
                           </span>
                           {p.counterSale ? (
@@ -604,100 +700,107 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                             <span className="text-ink-3 text-[12px]">{p.fileNumber}</span>
                           )}
                         </td>
-                        <td className="py-2 pr-2">
-                          <span className="inline-flex items-center gap-1.5">
-                            <Icon size={14} aria-hidden="true" className="text-ink-3" />
+                        <td className={tableCell}>
+                          <Pill tint={METHOD_TINT[p.method] ?? 'teal'} icon={Icon}>
                             {methodName(p.method)}
-                          </span>
+                          </Pill>
                           {p.reference && (
                             <span className="text-ink-3 block text-[12px]">{p.reference}</span>
                           )}
                         </td>
-                        <td className="hidden py-2 pr-2 tabular-nums sm:table-cell">
+                        <td className={cn(tableCell, 'hidden tabular-nums sm:table-cell')}>
                           {p.receipt ?? p.invoice ?? p.counterSale ?? '—'}
                         </td>
-                        <td className="text-ink-2 hidden py-2 pr-2 md:table-cell">
+                        <td className={cn(tableCell, 'text-ink-2 hidden md:table-cell')}>
                           {p.cashier ?? '—'}
                         </td>
-                        <td className="py-2 text-right font-semibold tabular-nums">
+                        <td
+                          className={cn(
+                            tableCell,
+                            'text-right font-semibold whitespace-nowrap tabular-nums',
+                          )}
+                        >
                           {formatRwf(p.amount)}
                         </td>
-                        <td className="py-2 pl-2 text-right whitespace-nowrap print:hidden">
-                          {/* the visit prints the receipt again (all its payments) */}
-                          {p.encounterId && (
-                            <StaffLink
-                              to="/app/visit"
-                              search={{ encounter: p.encounterId }}
-                              className={buttonVariants({ size: 'sm', variant: 'ghost' })}
-                              title={t('finance.reprint')}
-                              aria-label={t('finance.reprint')}
-                            >
-                              <Printer size={14} aria-hidden="true" />
-                            </StaffLink>
-                          )}
-                          {/* a counter sale's receipt is printed again from here */}
-                          {!p.encounterId && p.counterSaleId && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              title={t('cashierDesk.counter.reprint')}
-                              aria-label={t('cashierDesk.counter.reprint')}
-                              onClick={() => reprintCounter(p)}
-                            >
-                              <Printer size={14} aria-hidden="true" />
-                            </Button>
-                          )}
-                          {(isManager || (p.mine && !p.counted && day === today())) && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="hover:text-red"
-                              title={t('finance.cancelPaymentHint')}
-                              aria-label={t('finance.cancelPayment')}
-                              onClick={async () => {
-                                const reason = window.prompt(t('finance.cancelWhy'))
-                                if (!reason) return
-                                if (
-                                  !(await confirm({
-                                    title: t('confirm.finance.voidTitle', {
-                                      amount: formatRwf(p.amount),
-                                      patient:
-                                        p.patient ||
-                                        (p.counterSale ? t('cashierDesk.counter.walkIn') : '—'),
-                                    }),
-                                    body: p.counterSaleId
-                                      ? t('cashierDesk.confirm.voidSaleBody', {
-                                          reason,
-                                          number: p.counterSale ?? '',
-                                        })
-                                      : t('confirm.finance.voidBody', { reason }),
-                                    confirmLabel: t('confirm.finance.voidYes'),
-                                    tone: 'danger',
-                                  }))
-                                )
-                                  return
-                                setCashError(null)
-                                cash.voidPayment
-                                  .mutateAsync({ id: p.id, reason })
-                                  .then((r) =>
-                                    setCashNotice(
-                                      // a counter sale not yet handed over is unpaid again
-                                      r.counterSaleId || p.counterSaleId
-                                        ? t('cashierDesk.counter.voided', {
-                                            amount: formatRwf(p.amount),
+                        <td className={cn(tableCell, 'text-right whitespace-nowrap print:hidden')}>
+                          <span className="inline-flex gap-1">
+                            {/* the visit prints the receipt again (all its payments) */}
+                            {p.encounterId && (
+                              <StaffLink
+                                to="/app/visit"
+                                search={{ encounter: p.encounterId }}
+                                className={buttonVariants({ size: 'sm', variant: 'tint-grey' })}
+                                title={t('finance.reprint')}
+                                aria-label={t('finance.reprint')}
+                              >
+                                <Printer size={14} aria-hidden="true" />
+                              </StaffLink>
+                            )}
+                            {/* a counter sale's receipt is printed again from here */}
+                            {!p.encounterId && p.counterSaleId && (
+                              <Button
+                                size="sm"
+                                variant="tint-grey"
+                                title={t('cashierDesk.counter.reprint')}
+                                aria-label={t('cashierDesk.counter.reprint')}
+                                onClick={() => reprintCounter(p)}
+                              >
+                                <Printer size={14} aria-hidden="true" />
+                              </Button>
+                            )}
+                            {(isManager || (p.mine && !p.counted && day === today())) && (
+                              <Button
+                                size="sm"
+                                variant="tint-coral"
+                                title={t('finance.cancelPaymentHint')}
+                                aria-label={t('finance.cancelPayment')}
+                                onClick={async () => {
+                                  const reason = window.prompt(t('finance.cancelWhy'))
+                                  if (!reason) return
+                                  if (
+                                    !(await confirm({
+                                      title: t('confirm.finance.voidTitle', {
+                                        amount: formatRwf(p.amount),
+                                        patient:
+                                          p.patient ||
+                                          (p.counterSale ? t('cashierDesk.counter.walkIn') : '—'),
+                                      }),
+                                      body: p.counterSaleId
+                                        ? t('cashierDesk.confirm.voidSaleBody', {
+                                            reason,
                                             number: p.counterSale ?? '',
                                           })
-                                        : t('finance.cancelled', { amount: formatRwf(p.amount) }),
-                                    ),
+                                        : t('confirm.finance.voidBody', { reason }),
+                                      confirmLabel: t('confirm.finance.voidYes'),
+                                      tone: 'danger',
+                                    }))
                                   )
-                                  .catch((e: unknown) =>
-                                    setCashError(e instanceof Error ? e.message : String(e)),
-                                  )
-                              }}
-                            >
-                              <Ban size={14} aria-hidden="true" />
-                            </Button>
-                          )}
+                                    return
+                                  setCashError(null)
+                                  cash.voidPayment
+                                    .mutateAsync({ id: p.id, reason })
+                                    .then((r) =>
+                                      setCashNotice(
+                                        // a counter sale not yet handed over is unpaid again
+                                        r.counterSaleId || p.counterSaleId
+                                          ? t('cashierDesk.counter.voided', {
+                                              amount: formatRwf(p.amount),
+                                              number: p.counterSale ?? '',
+                                            })
+                                          : t('finance.cancelled', {
+                                              amount: formatRwf(p.amount),
+                                            }),
+                                      ),
+                                    )
+                                    .catch((e: unknown) =>
+                                      setCashError(e instanceof Error ? e.message : String(e)),
+                                    )
+                                }}
+                              >
+                                <Ban size={14} aria-hidden="true" />
+                              </Button>
+                            )}
+                          </span>
                         </td>
                       </tr>
                     )
@@ -743,12 +846,13 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
               {s.voided!.map((v) => (
                 <div
                   key={v.id}
-                  className="border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[14px] last:border-b-0"
+                  className="border-grid hover:bg-hover flex min-h-10 flex-wrap items-center gap-3 border-b py-2 text-[14px] transition-colors duration-120 last:border-b-0"
                 >
+                  <Pill tint="coral" icon={Ban}>
+                    {methodName(v.method)}
+                  </Pill>
                   <span className="min-w-[180px] flex-1">
-                    <span className="block font-semibold">
-                      {v.patient} · {methodName(v.method)}
-                    </span>
+                    <span className="block font-medium">{v.patient}</span>
                     <span className="text-ink-3 block text-[13px]">
                       {[
                         v.receipt,
@@ -779,11 +883,13 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
               {s.refunds!.map((r) => (
                 <div
                   key={r.id}
-                  className="border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[14px] last:border-b-0"
+                  className="border-grid hover:bg-hover flex min-h-10 flex-wrap items-center gap-3 border-b py-2 text-[14px] transition-colors duration-120 last:border-b-0"
                 >
-                  <span className="text-ink-2 w-12 tabular-nums">{formatTime(new Date(r.at))}</span>
+                  <Pill tint="amber" icon={Clock}>
+                    {formatTime(new Date(r.at))}
+                  </Pill>
                   <span className="min-w-[180px] flex-1">
-                    <span className="block font-semibold">
+                    <span className="block font-medium">
                       {r.patient} · {methodName(r.method)}
                     </span>
                     <span className="text-ink-3 block text-[13px]">
@@ -885,35 +991,29 @@ function CountCashPanel({
           {(summary.counterSales?.count ?? 0) > 0 && (
             <p className="text-ink-3 m-0 text-[13px]">{t('cashierDesk.counter.inCount')}</p>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             {methods.map((m) => (
-              <label key={m} className="text-ink-2 flex flex-col gap-1 text-[14px] font-semibold">
-                {t(`visit.payment.methods.${m}`)} ·{' '}
-                {t('finance.expected', { amount: formatRwf(Number(expected[m] ?? 0)) })}
-                <input
-                  inputMode="numeric"
-                  className="border-border bg-card focus:border-primary h-10 rounded-md border px-2.5 text-[14px] font-normal outline-none"
-                  value={counted[m] ?? ''}
-                  onChange={(e) =>
-                    setCounted((c) => ({ ...c, [m]: e.target.value.replace(/[^\d]/g, '') }))
-                  }
-                  aria-label={t('finance.countedOf', { method: t(`visit.payment.methods.${m}`) })}
-                />
-              </label>
+              <Field
+                key={m}
+                label={`${t(`visit.payment.methods.${m}`)} · ${t('finance.expected', { amount: formatRwf(Number(expected[m] ?? 0)) })}`}
+                inputMode="numeric"
+                value={counted[m] ?? ''}
+                onChange={(e) =>
+                  setCounted((c) => ({ ...c, [m]: e.target.value.replace(/[^\d]/g, '') }))
+                }
+                aria-label={t('finance.countedOf', { method: t(`visit.payment.methods.${m}`) })}
+              />
             ))}
           </div>
-          <label className="text-ink-2 flex flex-col gap-1 text-[14px] font-semibold">
-            {t('finance.countNote')}
-            <input
-              className="border-border bg-card focus:border-primary h-10 rounded-md border px-2.5 text-[14px] font-normal outline-none"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={t('finance.countNotePh')}
-            />
-          </label>
+          <Field
+            label={t('finance.countNote')}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t('finance.countNotePh')}
+          />
           <span className="flex flex-wrap items-center gap-3">
-            <Button variant="primary" onClick={() => void save()} loading={cash.closeDay.isPending}>
-              <Calculator size={16} aria-hidden="true" />
+            <Button variant="success" onClick={() => void save()} loading={cash.closeDay.isPending}>
+              <Save size={16} aria-hidden="true" />
               {t(mineClose ? 'finance.countUpdate' : 'finance.countSave')}
             </Button>
             {typed ? (
@@ -938,13 +1038,16 @@ function CountCashPanel({
       )}
       {(summary.closes ?? []).length > 0 && (
         <div className="flex flex-col">
-          <span className="text-ink-2 text-[14px] font-semibold">{t('finance.countsOfDay')}</span>
+          <span className="text-ink-2 flex items-center gap-1.5 text-[14px] font-semibold">
+            <Calculator size={14} aria-hidden="true" className="text-navy-ink" />
+            {t('finance.countsOfDay')}
+          </span>
           {(summary.closes ?? []).map((c, i) => (
             <div
               key={i}
-              className="border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[14px] last:border-b-0"
+              className="border-grid hover:bg-hover flex min-h-10 flex-wrap items-center gap-3 border-b py-2 text-[14px] transition-colors duration-120 last:border-b-0"
             >
-              <span className="min-w-[160px] flex-1 font-semibold">{c.cashier ?? '—'}</span>
+              <span className="min-w-[160px] flex-1 font-medium">{c.cashier ?? '—'}</span>
               <span className="text-ink-3 text-[13px] tabular-nums">
                 {t('finance.expectedCounted', {
                   expected: formatRwf(totalAll(c.expected ?? {})),

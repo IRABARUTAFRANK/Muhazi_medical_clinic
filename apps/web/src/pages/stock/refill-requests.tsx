@@ -1,8 +1,17 @@
-import { useState } from 'react'
-import { ClipboardList, Send, XCircle } from 'lucide-react'
+import { createElement, useState } from 'react'
+import {
+  Ban,
+  CheckCheck,
+  ClipboardList,
+  Hourglass,
+  Send,
+  XCircle,
+  type LucideIcon,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatNumber, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
+import { selectedRow } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
@@ -25,6 +34,13 @@ const TONE: Record<RefillStatus, 'yellow' | 'green' | 'red' | 'grey'> = {
   fulfilled: 'green',
   declined: 'red',
   cancelled: 'grey',
+}
+/** Colour is never the only signal: each state has its symbol. */
+const STATUS_ICON: Record<RefillStatus, LucideIcon> = {
+  open: Hourglass,
+  fulfilled: CheckCheck,
+  declined: XCircle,
+  cancelled: Ban,
 }
 
 /**
@@ -135,7 +151,7 @@ export function RefillRequestsList({
               key={r.id}
               className={cn(
                 'border-border flex flex-col gap-2 rounded-md border p-3',
-                r.id === focusId && 'border-primary ring-primary-tint ring-[3px]',
+                r.id === focusId && cn('border-primary', selectedRow),
               )}
             >
               <div className="flex flex-wrap items-start gap-2">
@@ -159,7 +175,12 @@ export function RefillRequestsList({
                   </span>
                   {r.note && <span className="text-ink-2 block text-[14px]">“{r.note}”</span>}
                 </span>
-                <Badge tone={TONE[r.status]}>{t(`roomStores.requestStatus.${r.status}`)}</Badge>
+                <Badge
+                  tone={TONE[r.status]}
+                  icon={createElement(STATUS_ICON[r.status], { size: 12, 'aria-hidden': true })}
+                >
+                  {t(`roomStores.requestStatus.${r.status}`)}
+                </Badge>
               </div>
               <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
                 {r.lines.map((l) => (
@@ -196,7 +217,7 @@ export function RefillRequestsList({
                   {pharmacy && canAct && declining !== r.id && (
                     <Button
                       size="sm"
-                      variant="danger"
+                      variant="tint-coral"
                       onClick={() => {
                         setDeclining(r.id)
                         setReason('')
@@ -209,7 +230,7 @@ export function RefillRequestsList({
                   {!pharmacy && r.mine && (
                     <Button
                       size="sm"
-                      variant="danger"
+                      variant="tint-coral"
                       loading={actions.cancelRefill.isPending}
                       onClick={() => void withdraw(r)}
                     >
@@ -228,13 +249,14 @@ export function RefillRequestsList({
                     onChange={(e) => setReason(e.target.value)}
                   />
                   <Button
-                    variant="danger"
+                    variant="danger-solid"
                     loading={actions.declineRefill.isPending}
                     onClick={() => void decline(r)}
                   >
+                    {!actions.declineRefill.isPending && <XCircle size={16} aria-hidden="true" />}
                     {t('roomStores.decline')}
                   </Button>
-                  <Button variant="ghost" onClick={() => setDeclining(null)}>
+                  <Button variant="tint-grey" onClick={() => setDeclining(null)}>
                     {t('staff.form.cancel')}
                   </Button>
                 </div>

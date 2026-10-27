@@ -9,10 +9,13 @@ import {
   Store,
   Truck,
   Undo2,
+  Users,
+  type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf, type StaffUser } from '@mmc/shared'
-import { Empty, Kpi, Panel } from '@/components/dash/kit'
+import { Empty, Kpi, Panel, SectionTitle } from '@/components/dash/kit'
+import { BannerChip } from '@/components/dash/page-banner'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
@@ -37,6 +40,14 @@ import {
 import { TransferNotesList } from './transfer-notes'
 
 type Action = 'refill' | 'return' | 'count' | 'writeOff' | 'receive'
+/** The icon of each action tab: every control with a verb carries one. */
+const ACTION_ICONS: Record<Action, LucideIcon> = {
+  refill: ClipboardList,
+  return: Undo2,
+  count: ClipboardCheck,
+  writeOff: PackageMinus,
+  receive: PackagePlus,
+}
 
 /**
  * "My store": the room stores I hold (a doctor's office, the dental room, a ward). What is in
@@ -112,11 +123,11 @@ export function MyStoreTab({
         </div>
       )}
       <StoreHeader store={store} />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
+      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi
           i={0}
           icon={Boxes}
-          tint="mint"
+          tint="amber"
           label={t('myStore.tiles.items')}
           value={store.items}
           unit={t('myStore.tiles.units', { count: store.units })}
@@ -148,7 +159,7 @@ export function MyStoreTab({
         <Kpi
           i={4}
           icon={Truck}
-          tint="teal"
+          tint="navy"
           label={t('myStore.tiles.incoming')}
           value={store.incoming}
           unit={t('myStore.tiles.toConfirm')}
@@ -170,23 +181,27 @@ export function MyStoreTab({
           className="border-border bg-surface flex flex-wrap gap-0.5 self-start rounded-md border p-0.5"
           role="tablist"
         >
-          {actions.map((a) => (
-            <button
-              key={a}
-              type="button"
-              role="tab"
-              aria-selected={action === a}
-              onClick={() => setAction(a)}
-              className={cn(
-                'inline-flex min-h-8 items-center rounded px-3 text-[14px] font-medium whitespace-nowrap transition-colors duration-120',
-                action === a
-                  ? 'bg-card text-primary border-border border'
-                  : 'text-ink-2 hover:bg-hover hover:text-ink border border-transparent',
-              )}
-            >
-              {t(`myStore.actions.${a}`)}
-            </button>
-          ))}
+          {actions.map((a) => {
+            const Icon = ACTION_ICONS[a]
+            return (
+              <button
+                key={a}
+                type="button"
+                role="tab"
+                aria-selected={action === a}
+                onClick={() => setAction(a)}
+                className={cn(
+                  'inline-flex min-h-8 items-center gap-2 rounded px-3 text-[14px] font-medium whitespace-nowrap transition-colors duration-120',
+                  action === a
+                    ? 'bg-card text-primary border-border border'
+                    : 'text-ink-2 hover:bg-hover hover:text-ink border border-transparent',
+                )}
+              >
+                <Icon size={16} aria-hidden="true" />
+                {t(`myStore.actions.${a}`)}
+              </button>
+            )
+          })}
         </div>
         {action === 'refill' && <RefillForm key={store.id} store={store} />}
         {action === 'return' && <ReturnForm key={store.id} store={store} />}
@@ -204,19 +219,29 @@ export function MyStoreTab({
 
 function StoreHeader({ store }: { store: MyStore }) {
   const { t } = useTranslation()
+  // the store's name as the section title, its facts as chips beside it
   return (
-    <p className="text-ink-2 m-0 text-[14px]">
-      <b className="text-ink text-[16px]">{store.name}</b>
-      {' · '}
-      {t(`stock.storeTypes.${store.type}`)}
-      {' · '}
-      {store.personal
-        ? t('myStore.heldByMe')
-        : t('myStore.heldByDept', { departments: store.departments.join(', ') })}
-      {store.openRequests > 0 && ` · ${t('myStore.openRequests', { count: store.openRequests })}`}
-      {store.returnsOnTheWay > 0 &&
-        ` · ${t('myStore.returnsOnTheWay', { count: store.returnsOnTheWay })}`}
-    </p>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <SectionTitle icon={Store}>{store.name}</SectionTitle>
+      <span className="flex flex-wrap items-center gap-1.5">
+        <BannerChip icon={Store}>{t(`stock.storeTypes.${store.type}`)}</BannerChip>
+        <BannerChip icon={Users}>
+          {store.personal
+            ? t('myStore.heldByMe')
+            : t('myStore.heldByDept', { departments: store.departments.join(', ') })}
+        </BannerChip>
+        {store.openRequests > 0 && (
+          <BannerChip icon={ClipboardList}>
+            {t('myStore.openRequests', { count: store.openRequests })}
+          </BannerChip>
+        )}
+        {store.returnsOnTheWay > 0 && (
+          <BannerChip icon={Undo2}>
+            {t('myStore.returnsOnTheWay', { count: store.returnsOnTheWay })}
+          </BannerChip>
+        )}
+      </span>
+    </div>
   )
 }
 
@@ -383,11 +408,12 @@ function ReturnForm({ store }: { store: MyStore }) {
       />
       <MsgFlash msg={msg} onClose={() => setMsg(null)} />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary" loading={actions.returnToPharmacy.isPending}>
+        <Button type="submit" variant="warning" loading={actions.returnToPharmacy.isPending}>
           <Undo2 size={16} aria-hidden="true" />
           {t('myStore.returnSend')}
         </Button>
-        <Button variant="danger" onClick={() => void send(true)}>
+        <Button variant="tint-amber" onClick={() => void send(true)}>
+          <Undo2 size={16} aria-hidden="true" />
           {t('myStore.returnAll')}
         </Button>
       </div>
@@ -575,7 +601,7 @@ function WriteOffForm({ store }: { store: MyStore }) {
       <MsgFlash msg={msg} onClose={() => setMsg(null)} />
       <Button
         type="submit"
-        variant="primary"
+        variant="danger-solid"
         className="self-start"
         loading={actions.writeOff.isPending}
       >
@@ -696,7 +722,7 @@ function LabReceiveForm({ store }: { store: MyStore }) {
       <MsgFlash msg={msg} onClose={() => setMsg(null)} />
       <Button
         type="submit"
-        variant="primary"
+        variant="success"
         className="self-start"
         loading={actions.receive.isPending}
       >

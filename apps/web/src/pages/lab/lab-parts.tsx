@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import {
+  ArrowUpRight,
   Ban,
   CircleCheck,
   Clock,
@@ -9,14 +10,16 @@ import {
   Printer,
   Siren,
   TestTube,
+  Undo2,
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Pill } from '@/components/dash/kit'
-import type { Tint } from '@/components/dash/kit-style'
+import { focusedForm, tagClass, type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { controlClass, labelClass } from '@/components/ui/field'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useLabActions, type LabOrder, type TestStatus } from '@/lib/api/lab'
 import { cn } from '@/lib/utils'
@@ -208,17 +211,17 @@ export function LabOrderRow({
   return (
     <div
       className={cn(
-        'border-grid anim-enter flex flex-col gap-2 border-b py-3 last:border-b-0',
-        urgent && o.status !== 'verified' && 'bg-red-bg/40 -mx-2 rounded-md px-2',
+        'border-grid anim-enter -mx-2 flex flex-col gap-2 rounded-md border-b px-2 py-3 text-[14px] transition-colors duration-120 last:border-b-0',
+        urgent && o.status !== 'verified' ? 'bg-red-bg/40' : 'hover:bg-hover',
       )}
       style={{ '--i': Math.min(i, 12) } as CSSProperties}
     >
       <div className="flex flex-wrap items-center gap-3">
-        <Pill tint={urgent ? 'coral' : 'teal'} icon={urgent ? Siren : FlaskConical}>
+        <Pill tint={urgent ? 'coral' : 'violet'} icon={urgent ? Siren : FlaskConical}>
           {o.ticket ?? '—'}
         </Pill>
         <span className="min-w-[180px] flex-1">
-          <span className="block font-semibold">
+          <span className="block font-medium">
             {o.test}
             <span className="text-ink-2 font-normal"> · {o.patient}</span>
           </span>
@@ -243,7 +246,7 @@ export function LabOrderRow({
           {mayWork && o.status === 'ordered' && !desk && (
             <Button
               size="sm"
-              variant="primary"
+              variant="success"
               loading={actions.setStatus.isPending && actions.setStatus.variables?.id === o.id}
               onClick={async () => {
                 if (
@@ -263,6 +266,7 @@ export function LabOrderRow({
           {mayWork && o.status === 'collected' && !desk && (
             <Button
               size="sm"
+              variant="tint-violet"
               loading={actions.setStatus.isPending && actions.setStatus.variables?.id === o.id}
               onClick={async () => {
                 if (
@@ -283,15 +287,25 @@ export function LabOrderRow({
           {mayWork && o.status !== 'verified' && o.status !== 'cancelled' && !open && (
             <Button
               size="sm"
-              variant={o.status === 'ordered' ? 'default' : 'primary'}
+              variant={
+                o.status === 'resulted'
+                  ? 'success'
+                  : o.status === 'ordered'
+                    ? 'tint-violet'
+                    : 'primary'
+              }
               onClick={() => setOpen(true)}
             >
-              <FlaskConical size={14} aria-hidden="true" />
+              {o.status === 'resulted' ? (
+                <CircleCheck size={14} aria-hidden="true" />
+              ) : (
+                <FlaskConical size={14} aria-hidden="true" />
+              )}
               {t(o.status === 'resulted' ? 'lab.verify' : 'lab.enterResult')}
             </Button>
           )}
           {(o.status === 'verified' || o.status === 'resulted') && (
-            <Button size="sm" variant="ghost" onClick={printSlip} title={t('lab.slipHint')}>
+            <Button size="sm" variant="tint-grey" onClick={printSlip} title={t('lab.slipHint')}>
               <Printer size={14} aria-hidden="true" />
               {t('lab.printSlip')}
             </Button>
@@ -301,7 +315,7 @@ export function LabOrderRow({
             !cancelling && (
               <Button
                 size="sm"
-                variant="ghost"
+                variant="tint-coral"
                 onClick={() => setCancelling(true)}
                 title={t('lab.cannotHint')}
               >
@@ -312,7 +326,7 @@ export function LabOrderRow({
           {!(open && mayWork) && (
             <Button
               size="sm"
-              variant="ghost"
+              variant="tint-grey"
               aria-expanded={showFiles}
               onClick={() => setShowFiles((v) => !v)}
               title={t('supportingFiles.titleTest', { test: o.test })}
@@ -325,15 +339,17 @@ export function LabOrderRow({
           <StaffLink
             to="/app/visit"
             search={{ encounter: o.encounterId }}
-            className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+            className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
           >
+            <ArrowUpRight size={14} aria-hidden="true" />
             {t('visits.openVisit')}
           </StaffLink>
         </span>
       </div>
       {cancelling && mayWork && (
-        <div className="bg-surface flex flex-col gap-2 rounded-md p-3">
-          <span className="text-[13px] font-semibold">
+        <div className="border-red/30 bg-card flex flex-col gap-2 rounded-md border p-3">
+          <span className="text-ink-2 flex items-center gap-1.5 text-[13px] font-medium">
+            <Ban size={14} aria-hidden="true" className="text-red" />
             {t('lab.cannotWhy', { doctor: o.orderedBy ?? '' })}
           </span>
           <span className="flex flex-wrap gap-1.5">
@@ -343,10 +359,10 @@ export function LabOrderRow({
                 type="button"
                 onClick={() => setWhy(t(`lab.cannotReasons.${r}`))}
                 className={cn(
-                  'rounded-full border px-2.5 py-1 text-[12px] font-semibold',
+                  'inline-flex h-7 items-center rounded-md border px-2.5 text-[12px] font-medium transition-colors duration-120',
                   why === t(`lab.cannotReasons.${r}`)
-                    ? 'border-primary bg-primary text-white'
-                    : 'border-border text-ink-2 hover:bg-hover',
+                    ? tagClass.coral
+                    : 'border-border bg-card text-ink-2 hover:bg-hover',
                 )}
               >
                 {t(`lab.cannotReasons.${r}`)}
@@ -354,7 +370,7 @@ export function LabOrderRow({
             ))}
           </span>
           <input
-            className="border-border bg-card h-10 rounded-md border px-2.5 text-[14px]"
+            className={controlClass}
             value={why}
             onChange={(e) => setWhy(e.target.value)}
             placeholder={t('lab.cannotPh')}
@@ -363,7 +379,7 @@ export function LabOrderRow({
           <span className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant="primary"
+              variant="danger-solid"
               disabled={why.trim().length < 2}
               loading={actions.setStatus.isPending}
               onClick={async () => {
@@ -386,32 +402,37 @@ export function LabOrderRow({
                 })
               }}
             >
+              <Ban size={14} aria-hidden="true" />
               {t('lab.cannotConfirm')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setCancelling(false)}>
+            <Button size="sm" variant="tint-grey" onClick={() => setCancelling(false)}>
+              <Undo2 size={14} aria-hidden="true" />
               {t('staff.form.cancel')}
             </Button>
           </span>
         </div>
       )}
       {(o.findings || o.impression) && !open && (
-        <span className="bg-green-bg/60 block rounded-md px-3 py-2 text-[13px]">
-          {o.findings && <span className="block">{o.findings}</span>}
-          {o.impression && <span className="block font-semibold">{o.impression}</span>}
-          {o.resultBy && o.resultAt && (
-            <span className="text-ink-3 block text-xs">
-              {[
-                o.verified ? t('clinical.verified') : t('clinical.notVerified'),
-                o.resultBy,
-                when(o.resultAt),
-              ].join(' · ')}
-            </span>
-          )}
+        <span className="border-green/30 bg-green-bg/60 flex gap-2 rounded-md border px-3 py-2 text-[13px]">
+          <CircleCheck size={14} aria-hidden="true" className="text-green mt-0.5 flex-none" />
+          <span className="min-w-0 flex-1">
+            {o.findings && <span className="block">{o.findings}</span>}
+            {o.impression && <span className="block font-semibold">{o.impression}</span>}
+            {o.resultBy && o.resultAt && (
+              <span className="text-ink-3 block text-xs">
+                {[
+                  o.verified ? t('clinical.verified') : t('clinical.notVerified'),
+                  o.resultBy,
+                  when(o.resultAt),
+                ].join(' · ')}
+              </span>
+            )}
+          </span>
         </span>
       )}
       {open && mayWork && (
         <form
-          className="bg-surface flex flex-col gap-2 rounded-md p-3"
+          className={cn('bg-card flex flex-col gap-3 rounded-md border p-3', focusedForm)}
           onSubmit={async (e) => {
             e.preventDefault()
             if (
@@ -428,25 +449,25 @@ export function LabOrderRow({
             void run(() => actions.result.mutateAsync({ id: o.id, ...form }))
           }}
         >
-          <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+          <label className={labelClass}>
             {t('clinical.findings')}
             <textarea
               rows={2}
               autoFocus
-              className="border-border bg-card rounded-md border px-2.5 py-2 text-[14px] font-normal"
+              className={cn(controlClass, 'h-auto py-2')}
               value={form.findings}
               onChange={(e) => setForm({ ...form, findings: e.target.value })}
             />
           </label>
-          <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+          <label className={labelClass}>
             {t('clinical.impression')}
             <input
-              className="border-border bg-card h-10 rounded-md border px-2.5 text-[14px] font-normal"
+              className={controlClass}
               value={form.impression}
               onChange={(e) => setForm({ ...form, impression: e.target.value })}
             />
           </label>
-          <label className="flex items-center gap-2 text-[13px] font-semibold">
+          <label className="text-ink-2 flex items-center gap-2 text-[13px] font-medium">
             <input
               type="checkbox"
               className="accent-primary size-4"
@@ -460,7 +481,8 @@ export function LabOrderRow({
               <CircleCheck size={14} aria-hidden="true" />
               {t('clinical.saveResult')}
             </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+            <Button type="button" size="sm" variant="tint-grey" onClick={() => setOpen(false)}>
+              <Undo2 size={14} aria-hidden="true" />
               {t('staff.form.cancel')}
             </Button>
           </span>
@@ -477,7 +499,10 @@ export function LabOrderRow({
         />
       )}
       {error && (
-        <p className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
+        <p
+          role="alert"
+          className="bg-red-bg text-red border-red/30 m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
+        >
           {error}
         </p>
       )}

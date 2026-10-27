@@ -1,9 +1,17 @@
-import { Banknote, FlaskConical, HeartPulse, Layers, Receipt, UserPlus } from 'lucide-react'
+import {
+  ArrowRight,
+  Banknote,
+  FlaskConical,
+  HeartPulse,
+  Layers,
+  Receipt,
+  UserPlus,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { NoDeskNotice } from '@/components/clinical/desk-gate'
 import { Empty, Panel, SectionTitle } from '@/components/dash/kit'
-import { buttonVariants } from '@/components/ui/button'
+import { actionLink, buttonVariants } from '@/components/ui/button'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useHomeSummary } from '@/lib/api/home'
@@ -174,8 +182,9 @@ export function LabBenchPanel() {
           )}
         </ShownList>
       )}
-      <StaffLink to="/app/lab" className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
-        {t('lab.openWorklist')} →
+      <StaffLink to="/app/lab" className={cn(actionLink, 'self-start text-[13px]')}>
+        {t('lab.openWorklist')}
+        <ArrowRight size={14} aria-hidden="true" />
       </StaffLink>
     </Panel>
   )

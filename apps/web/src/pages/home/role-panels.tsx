@@ -2,6 +2,7 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import {
   Activity,
   AlarmClock,
+  ArrowRight,
   ArrowRightLeft,
   BedDouble,
   Building2,
@@ -39,7 +40,8 @@ import {
 } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { triageIcon, type Tint } from '@/components/dash/kit-style'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button, actionLink, buttonVariants } from '@/components/ui/button'
+import { controlClass, labelClass } from '@/components/ui/field'
 import { Reveal } from '@/components/ui/reveal'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -68,7 +70,7 @@ const bedClass: Record<HomeBed['state'], string> = {
   out_of_service: 'bg-red-bg text-red border-red-dot/30',
 }
 const rowClass =
-  'border-grid flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0'
+  'border-grid flex min-h-10 flex-wrap items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0'
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 // "24/10/2026 10:30" for a datetime-local value
 const at = (v: string) => `${formatDate(new Date(v))} ${formatTime(new Date(v))}`
@@ -253,7 +255,7 @@ export function MyQueuePanel({
                     // sent to someone else: in the clinic, but not ours to work on
                     <Button
                       size="sm"
-                      variant="ghost"
+                      variant="tint-blue"
                       title={t('access.notYours', {
                         holder: q.takenBy ?? q.assignedName ?? q.departmentName ?? '',
                       })}
@@ -291,8 +293,9 @@ export function MyQueuePanel({
           )}
         </ShownList>
       )}
-      <StaffLink to="/app/visits" className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
-        {t('desk.allInClinic')} →
+      <StaffLink to="/app/visits" className={cn(actionLink, 'self-start text-[13px]')}>
+        {t('desk.allInClinic')}
+        <ArrowRight size={14} aria-hidden="true" />
       </StaffLink>
     </Panel>
   )
@@ -427,11 +430,12 @@ function ReceptionistPanels({ data, onError }: PanelProps) {
                       {t('common.approve')}
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="tint-coral"
                       size="sm"
                       disabled={actions.rejectInquiry.isPending}
                       onClick={() => void reject(q.id)}
                     >
+                      <X size={14} aria-hidden="true" />
                       {t('common.reject')}
                     </Button>
                   </span>
@@ -494,7 +498,11 @@ function NursePanels({ data, onError }: PanelProps) {
                       {[task.patient, task.detail].filter(Boolean).join(' · ')}
                     </span>
                   </span>
-                  <Button size="sm" onClick={() => void done(task.id, task.title, task.patient)}>
+                  <Button
+                    size="sm"
+                    variant="success"
+                    onClick={() => void done(task.id, task.title, task.patient)}
+                  >
                     <Check size={14} aria-hidden="true" />
                     {t('common.done')}
                   </Button>
@@ -576,7 +584,7 @@ function DoctorPanels({ data, onError }: PanelProps) {
                   {r.verified && !r.reviewed && (
                     <Button
                       size="sm"
-                      variant="ghost"
+                      variant="tint-mint"
                       onClick={async () => {
                         if (
                           !(await confirm({
@@ -598,7 +606,7 @@ function DoctorPanels({ data, onError }: PanelProps) {
                   <StaffLink
                     to="/app/visit"
                     search={{ encounter: r.encounterId }}
-                    className={buttonVariants({ size: 'sm' })}
+                    className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
                   >
                     <FileText size={14} aria-hidden="true" />
                     {t('common.open')}
@@ -628,8 +636,9 @@ function DoctorPanels({ data, onError }: PanelProps) {
                       <StaffLink
                         to="/app/visit"
                         search={{ encounter: c.encounterId }}
-                        className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                        className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
                       >
+                        <FileText size={14} aria-hidden="true" />
                         {t('common.open')}
                       </StaffLink>
                     )}
@@ -726,7 +735,7 @@ export function ToAcceptPanel({
                 </span>
                 <span className="flex flex-wrap gap-1">
                   <Button
-                    variant="primary"
+                    variant="success"
                     size="sm"
                     onClick={() => void accept(q.id, q.name, q.when)}
                   >
@@ -735,6 +744,7 @@ export function ToAcceptPanel({
                   </Button>
                   <Button
                     size="sm"
+                    variant="tint-amber"
                     onClick={() => {
                       setMoving(moving === q.id ? null : q.id)
                       setNewTime(localInput(q.startsAt))
@@ -743,7 +753,7 @@ export function ToAcceptPanel({
                     <Clock size={14} aria-hidden="true" />
                     {t('home.otherTime')}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => void decline(q.id)}>
+                  <Button variant="tint-coral" size="sm" onClick={() => void decline(q.id)}>
                     <X size={14} aria-hidden="true" />
                     {t('common.decline')}
                   </Button>
@@ -751,22 +761,24 @@ export function ToAcceptPanel({
                 {moving === q.id && (
                   <Reveal focus block="nearest">
                     <span className="flex basis-full flex-wrap items-end gap-2">
-                      <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+                      <label className={labelClass}>
                         {t('home.newTime')}
                         <input
                           type="datetime-local"
                           step={300}
                           value={newTime}
                           onChange={(e) => setNewTime(e.target.value)}
-                          className="border-border bg-card h-10 rounded-lg border px-2.5 text-[14px] font-normal"
+                          className={controlClass}
                         />
                       </label>
                       <Button
-                        variant="primary"
+                        variant="success"
                         size="sm"
+                        className="mb-0.5"
                         disabled={!newTime}
                         onClick={() => void accept(q.id, q.name, q.when, newTime)}
                       >
+                        <Check size={14} aria-hidden="true" />
                         {t('home.acceptAt')}
                       </Button>
                     </span>
@@ -818,7 +830,7 @@ function CashierPanels({ data }: PanelProps) {
                     to="/app/visit"
                     search={{ encounter: b.encounterId }}
                     className={buttonVariants({
-                      variant: i === 0 ? 'primary' : 'default',
+                      variant: i === 0 ? 'success' : 'tint-mint',
                       size: 'sm',
                     })}
                   >
@@ -840,7 +852,7 @@ function CashierPanels({ data }: PanelProps) {
       >
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-ink-2 font-semibold">{t('home.collectedToday')}</span>
-          <span className="text-[24px] leading-8 font-semibold tabular-nums">
+          <span className="text-[28px] leading-8 font-semibold tracking-[-0.01em] tabular-nums">
             {formatRwf(data.paidToday.amount)}
           </span>
         </div>

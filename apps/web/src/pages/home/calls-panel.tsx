@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Panel } from '@/components/dash/kit'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { controlClass, labelClass } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useCallActions, useMyCalls, type StaffCall } from '@/lib/api/calls'
@@ -23,8 +24,7 @@ import { formatDuration } from '@/lib/duration'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
-const control =
-  'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-lg border px-2.5 text-[14px] outline-none'
+const control = cn(controlClass, 'w-full')
 const row = 'border-border flex flex-col gap-2 rounded-md border px-3 py-2.5'
 const minutesSince = (iso: string) =>
   Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000))
@@ -141,7 +141,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
               <span className="text-ink-3 text-[13px]">{t('calls.next.noneWaiting')}</span>
             ) : (
               <span className="flex flex-wrap items-end gap-2">
-                <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-[13px] font-semibold">
+                <label className={cn(labelClass, 'min-w-[220px] flex-1')}>
                   {t('calls.next.pick')}
                   <select
                     className={control}
@@ -202,7 +202,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
               <StaffLink
                 to="/app/visit"
                 search={{ encounter: c.encounterId }}
-                className={buttonVariants({ size: 'sm' })}
+                className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
               >
                 <FolderOpen size={14} aria-hidden="true" />
                 {t('calls.help.look')}
@@ -210,7 +210,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
             )}
             <Button
               size="sm"
-              variant="primary"
+              variant="success"
               disabled={actions.respond.isPending}
               onClick={async () => {
                 if (
@@ -240,7 +240,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
             {c.target === 'person' && (
               <Button
                 size="sm"
-                variant="ghost"
+                variant="tint-coral"
                 disabled={actions.respond.isPending}
                 onClick={async () => {
                   if (
@@ -276,14 +276,15 @@ export function CallsPanel({ user }: { user: StaffUser }) {
             <StaffLink
               to="/app/visit"
               search={{ encounter: c.encounterId }}
-              className={buttonVariants({ size: 'sm' })}
+              className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
             >
+              <FolderOpen size={14} aria-hidden="true" />
               {t('common.open')}
             </StaffLink>
           )}
           <Button
             size="sm"
-            variant="ghost"
+            variant="tint-coral"
             onClick={async () => {
               if (
                 !(await confirm({
@@ -299,6 +300,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
               void run(() => actions.cancel.mutateAsync(c.id), t('calls.help.ended'))
             }}
           >
+            <X size={14} aria-hidden="true" />
             {t('calls.help.endMine')}
           </Button>
         </div>
@@ -318,7 +320,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
               </span>
               <Button
                 size="sm"
-                variant="ghost"
+                variant="tint-coral"
                 className="self-start"
                 disabled={actions.cancel.isPending}
                 onClick={async () => {
@@ -428,8 +430,9 @@ export function CallsPanel({ user }: { user: StaffUser }) {
                 <StaffLink
                   to="/app/visit"
                   search={{ encounter: c.encounterId }}
-                  className={buttonVariants({ size: 'sm' })}
+                  className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
                 >
+                  <FolderOpen size={14} aria-hidden="true" />
                   {t('common.open')}
                 </StaffLink>
               )}

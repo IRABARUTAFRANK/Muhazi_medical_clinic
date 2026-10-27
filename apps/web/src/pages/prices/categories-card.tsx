@@ -16,6 +16,7 @@ import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
+import { SidePanel } from '@/components/ui/side-panel'
 import {
   ORDER_DESKS,
   categoryName,
@@ -32,6 +33,8 @@ import { useConfirm } from '@/lib/confirm'
 
 const errorBox =
   'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
+/** The category form opens in a side panel; the panel's footer submits it by this id. */
+const CATEGORY_FORM = 'category-form'
 
 /*
  * The clinic's own categories of treatments (Prices → Categories): create, rename, delete when
@@ -89,7 +92,7 @@ export function CategoriesCard({
               {t('prices.cat.new')}
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={onClose}>
+          <Button size="sm" variant="tint-grey" onClick={onClose}>
             {t('common.close')}
           </Button>
         </span>
@@ -101,37 +104,31 @@ export function CategoriesCard({
             {error}
           </p>
         )}
-        {editing === 'new' && (
-          <CategoryForm
-            category={null}
-            used={0}
-            onCancel={() => setEditing(null)}
-            onSaved={(name) => {
-              setEditing(null)
-              onDone(t('prices.cat.saved', { name }))
-            }}
-          />
-        )}
       </CardBody>
+      {/* the form (new or one category) opens in the side panel; its row keeps a tint */}
+      {editing && (
+        <CategoryForm
+          key={editing === 'new' ? 'new' : editing.id}
+          category={editing === 'new' ? null : editing}
+          used={editing === 'new' ? 0 : count(editing)}
+          onCancel={() => setEditing(null)}
+          onSaved={(name) => {
+            setEditing(null)
+            onDone(t('prices.cat.saved', { name }))
+          }}
+        />
+      )}
       {categories.map((c) => {
         const n = count(c)
         const Icon = c.kind === 'bed' ? BedDouble : c.orderStation ? FlaskConical : Receipt
-        if (editing !== 'new' && editing?.id === c.id)
-          return (
-            <CardBody key={c.id} className="border-border border-t">
-              <CategoryForm
-                category={c}
-                used={n}
-                onCancel={() => setEditing(null)}
-                onSaved={(name) => {
-                  setEditing(null)
-                  onDone(t('prices.cat.saved', { name }))
-                }}
-              />
-            </CardBody>
-          )
         return (
-          <Row key={c.id} className="flex-wrap gap-x-3 gap-y-1 py-2">
+          <Row
+            key={c.id}
+            className={cn(
+              'flex-wrap gap-x-3 gap-y-1 py-2',
+              editing !== 'new' && editing?.id === c.id && 'bg-primary-tint/50',
+            )}
+          >
             <Icon size={16} aria-hidden="true" className="text-primary flex-none" />
             <span className="min-w-45 flex-1">
               <span className="block font-semibold">{categoryName(c, i18n.language)}</span>
@@ -158,7 +155,7 @@ export function CategoriesCard({
                 </Button>
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant="tint-coral"
                   disabled={n > 0 || actions.remove.isPending}
                   title={n > 0 ? t('prices.cat.deleteBlocked') : t('prices.cat.delete')}
                   aria-label={t('prices.cat.delete')}
@@ -187,7 +184,7 @@ function CategoryForm({
   onCancel: () => void
   onSaved: (name: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const actions = useCategoryActions()
   const confirm = useConfirm()
   const [nameEn, setNameEn] = useState(category?.nameEn ?? '')
@@ -265,88 +262,106 @@ function CategoryForm({
   )
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Field
-          label={t('prices.cat.nameEn')}
-          value={nameEn}
-          onChange={(e) => onEnglish(e.target.value)}
-          autoFocus
-          required
-        />
-        <Field
-          label={t('prices.cat.nameKin')}
-          value={nameKin}
-          onChange={(e) => {
-            setTouched((x) => ({ ...x, kin: true }))
-            setNameKin(e.target.value)
-          }}
-        />
-        <Field
-          label={t('prices.cat.nameFr')}
-          value={nameFr}
-          onChange={(e) => {
-            setTouched((x) => ({ ...x, fr: true }))
-            setNameFr(e.target.value)
-          }}
-        />
-      </div>
-      <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-        <legend className="text-ink-2 mb-1 text-[14px] font-semibold">{t('prices.cat.how')}</legend>
-        <div className="flex flex-col gap-2 sm:flex-row" role="radiogroup">
-          {choice(
-            !ordered,
-            false,
-            <Receipt size={18} aria-hidden="true" />,
-            t('prices.cat.charged'),
-            t('prices.cat.chargedHint'),
-          )}
-          {choice(
-            ordered,
-            true,
-            <Send size={18} aria-hidden="true" />,
-            t('prices.cat.ordered'),
-            t('prices.cat.orderedHint'),
-          )}
-        </div>
-        {ordered && (
-          <Select
-            label={t('prices.cat.desk')}
-            value={desk}
-            onChange={(e) => setDesk(e.target.value as OrderDesk)}
-            wrapperClassName="sm:max-w-sm"
+    <SidePanel
+      open
+      onClose={onCancel}
+      hue="mint"
+      icon={category ? Pencil : Plus}
+      title={category ? categoryName(category, i18n.language) : t('prices.cat.new')}
+      subtitle={category ? t('prices.cat.count', { count: used }) : undefined}
+      footer={
+        <>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t('prices.cat.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            form={CATEGORY_FORM}
+            variant="primary"
+            loading={actions.save.isPending}
           >
-            {ORDER_DESKS.map((d) => (
-              <option key={d} value={d}>
-                {t(`register.stations.${d}`)}
-              </option>
-            ))}
-          </Select>
-        )}
-        {ordered && (
-          <p className="text-ink-3 m-0 text-xs">
-            {t('prices.cat.deskHint', { desk: t(`register.stations.${desk}`) })}
+            {t('prices.cat.save')}
+          </Button>
+        </>
+      }
+    >
+      <form id={CATEGORY_FORM} onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Field
+            label={t('prices.cat.nameEn')}
+            value={nameEn}
+            onChange={(e) => onEnglish(e.target.value)}
+            autoFocus
+            required
+          />
+          <Field
+            label={t('prices.cat.nameKin')}
+            value={nameKin}
+            onChange={(e) => {
+              setTouched((x) => ({ ...x, kin: true }))
+              setNameKin(e.target.value)
+            }}
+          />
+          <Field
+            label={t('prices.cat.nameFr')}
+            value={nameFr}
+            onChange={(e) => {
+              setTouched((x) => ({ ...x, fr: true }))
+              setNameFr(e.target.value)
+            }}
+          />
+        </div>
+        <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+          <legend className="text-ink-2 mb-1 text-[14px] font-semibold">
+            {t('prices.cat.how')}
+          </legend>
+          <div className="flex flex-col gap-2 sm:flex-row" role="radiogroup">
+            {choice(
+              !ordered,
+              false,
+              <Receipt size={18} aria-hidden="true" />,
+              t('prices.cat.charged'),
+              t('prices.cat.chargedHint'),
+            )}
+            {choice(
+              ordered,
+              true,
+              <Send size={18} aria-hidden="true" />,
+              t('prices.cat.ordered'),
+              t('prices.cat.orderedHint'),
+            )}
+          </div>
+          {ordered && (
+            <Select
+              label={t('prices.cat.desk')}
+              value={desk}
+              onChange={(e) => setDesk(e.target.value as OrderDesk)}
+              wrapperClassName="sm:max-w-sm"
+            >
+              {ORDER_DESKS.map((d) => (
+                <option key={d} value={d}>
+                  {t(`register.stations.${d}`)}
+                </option>
+              ))}
+            </Select>
+          )}
+          {ordered && (
+            <p className="text-ink-3 m-0 text-xs">
+              {t('prices.cat.deskHint', { desk: t(`register.stations.${desk}`) })}
+            </p>
+          )}
+        </fieldset>
+        {changed && (
+          <p className="border-amber/30 bg-amber-bg text-amber m-0 rounded-md border px-3 py-2 text-[14px] font-medium">
+            {t('prices.cat.kindChange', { count: used })}
           </p>
         )}
-      </fieldset>
-      {changed && (
-        <p className="border-amber/30 bg-amber-bg text-amber m-0 rounded-md border px-3 py-2 text-[14px] font-medium">
-          {t('prices.cat.kindChange', { count: used })}
-        </p>
-      )}
-      {error && (
-        <p role="alert" className={errorBox}>
-          {error}
-        </p>
-      )}
-      <span className="flex gap-2">
-        <Button type="submit" variant="primary" loading={actions.save.isPending}>
-          {t('prices.cat.save')}
-        </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          {t('prices.cat.cancel')}
-        </Button>
-      </span>
-    </form>
+        {error && (
+          <p role="alert" className={errorBox}>
+            {error}
+          </p>
+        )}
+      </form>
+    </SidePanel>
   )
 }

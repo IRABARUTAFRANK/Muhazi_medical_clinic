@@ -4,6 +4,8 @@ import { formatNumber } from '@mmc/shared'
 import { Hint, Kpi, Panel } from '@/components/dash/kit'
 import { DashLink } from '@/components/dash/dash-link'
 import { delta } from '@/components/dash/kit-style'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import {
   previousPeriod,
   useWaitTimeStats,
@@ -155,9 +157,7 @@ export function WaitingView({ period, dept, clinic }: ViewProps) {
             ariaLabel={t('analytics.wait.chartAria', { period: period.label })}
           />
         )}
-        <p className="text-ink-3 m-0 text-[13px]">
-          {t(bk.monthly ? 'analytics.wait.chartNoteMonth' : 'analytics.wait.chartNote')}
-        </p>
+        <Hint>{t(bk.monthly ? 'analytics.wait.chartNoteMonth' : 'analytics.wait.chartNote')}</Hint>
       </Panel>
 
       <Panel i={2} icon={Clock} tint="amber" title={t('analytics.wait.tableTitle')}>
@@ -165,10 +165,10 @@ export function WaitingView({ period, dept, clinic }: ViewProps) {
         {forgotten > 0 && (
           <DashLink
             href="/app/visits"
-            className="text-yellow inline-flex items-center gap-1.5 self-start text-[13px] font-semibold"
+            className={cn(buttonVariants({ variant: 'tint-amber', size: 'sm' }), 'self-start')}
           >
-            <History size={14} aria-hidden="true" />
-            {t('dashboard.forgottenHint', { count: forgotten })} →
+            <History size={16} aria-hidden="true" />
+            {t('dashboard.forgottenHint', { count: forgotten })}
           </DashLink>
         )}
         <Hint>{t('analytics.wait.tableNote')}</Hint>

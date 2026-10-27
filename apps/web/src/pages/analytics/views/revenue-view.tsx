@@ -1,5 +1,17 @@
 import { useState, type ReactNode } from 'react'
-import { Banknote, ChartColumn, Coins, ReceiptText, Scale, Undo2 } from 'lucide-react'
+import {
+  BadgePercent,
+  Banknote,
+  ChartColumn,
+  Coins,
+  FileWarning,
+  ListChecks,
+  ReceiptText,
+  Scale,
+  ShoppingCart,
+  Undo2,
+  Wallet,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FEATURES, formatNumber, formatRwf } from '@mmc/shared'
 import { Hint, Kpi, Panel } from '@/components/dash/kit'
@@ -25,6 +37,7 @@ import {
   NeedsUpdate,
   Quiet,
   Stat,
+  statGrid,
   useExport,
   ViewSkeleton,
   type Col,
@@ -385,8 +398,9 @@ function Breakdown({
   if (by === 'source') {
     const all = d.bySource.bills.amount + d.bySource.counterSales.amount
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className={statGrid}>
         <Stat
+          icon={ReceiptText}
           label={t('analytics.revenue.bills')}
           value={formatRwf(d.bySource.bills.amount)}
           note={t('analytics.revenue.sourceNote', {
@@ -395,6 +409,8 @@ function Breakdown({
           })}
         />
         <Stat
+          icon={ShoppingCart}
+          tint="mint"
           label={t('analytics.revenue.counterSales')}
           value={formatRwf(d.bySource.counterSales.amount)}
           note={t('analytics.revenue.sourceNote', {
@@ -603,9 +619,15 @@ function Breakdown({
   if (by === 'discounts')
     return (
       <>
-        <div className="grid grid-cols-2 gap-3">
-          <Stat label={t('analytics.revenue.discountLines')} value={num(d.discounts.lines)} />
+        <div className={statGrid}>
           <Stat
+            icon={ListChecks}
+            label={t('analytics.revenue.discountLines')}
+            value={num(d.discounts.lines)}
+          />
+          <Stat
+            icon={BadgePercent}
+            tint="amber"
             label={t('analytics.revenue.discountAmount')}
             value={formatRwf(d.discounts.amount)}
           />
@@ -705,13 +727,16 @@ function Breakdown({
   // debts: what is owed now (not a period figure)
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
+      <div className={statGrid}>
         <Stat
+          icon={Wallet}
+          tint="amber"
           label={t('analytics.revenue.owedOpen')}
           value={formatRwf(d.debts.openDue)}
           note={t('analytics.revenue.billsN', { count: d.debts.openCount })}
         />
         <Stat
+          icon={FileWarning}
           label={t('analytics.revenue.owedClosed')}
           value={formatRwf(d.debts.closedDue)}
           note={t('analytics.revenue.billsN', { count: d.debts.closedCount })}
@@ -763,8 +788,12 @@ function Breakdown({
         empty={<Quiet>{t('analytics.revenue.noDebts')}</Quiet>}
         caption={t('analytics.revenue.by.debts')}
       />
-      <StaffLink to="/app/bills" className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
-        {t('analytics.revenue.openBills')} →
+      <StaffLink
+        to="/app/bills"
+        className={cn(buttonVariants({ variant: 'tint-teal', size: 'sm' }), 'self-start')}
+      >
+        <ReceiptText size={16} aria-hidden="true" />
+        {t('analytics.revenue.openBills')}
       </StaffLink>
     </>
   )

@@ -1,5 +1,14 @@
 import { useState, type FormEvent } from 'react'
-import { ArrowRightLeft, Boxes, Plus, Star, Store } from 'lucide-react'
+import {
+  ArrowRightLeft,
+  Boxes,
+  ClipboardCheck,
+  DoorClosed,
+  DoorOpen,
+  Plus,
+  Star,
+  Store,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@mmc/shared'
 import { Panel } from '@/components/dash/kit'
@@ -218,9 +227,14 @@ export function StoresTab({
                 {!isMain && (
                   <Button
                     size="sm"
-                    variant={closed ? 'default' : 'danger'}
+                    variant={closed ? 'tint-amber' : 'tint-coral'}
                     onClick={() => void setActive(l)}
                   >
+                    {closed ? (
+                      <DoorOpen size={14} aria-hidden="true" />
+                    ) : (
+                      <DoorClosed size={14} aria-hidden="true" />
+                    )}
                     {closed ? t('stock.storeOpen') : t('stock.storeClose')}
                   </Button>
                 )}
@@ -346,6 +360,7 @@ export function PharmacyCountForm({
           wrapperClassName="sm:col-span-2"
         />
         <Button type="submit" variant="primary" loading={actions.adjust.isPending}>
+          {!actions.adjust.isPending && <ClipboardCheck size={16} aria-hidden="true" />}
           {t('stock.countSave')}
         </Button>
       </form>

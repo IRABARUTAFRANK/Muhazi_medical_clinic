@@ -7,7 +7,7 @@ import { useLetterhead, usePrintedBy } from '@/lib/report-parts'
 import { useClinicInfo } from '@/lib/api/public'
 
 /**
- * "Excel" and "PDF" buttons for a report. The report is built only when a button is pressed
+ * "Excel" and "PDF" buttons for a report, in the grey tint of every export and print action. The report is built only when a button is pressed
  * (the builder may read query data already on the page).
  */
 export function ReportButtons({
@@ -61,6 +61,7 @@ export function ReportButtons({
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
       <Button
+        variant="tint-grey"
         size={size}
         onClick={() => void run('xlsx')}
         loading={busy === 'xlsx'}
@@ -70,6 +71,7 @@ export function ReportButtons({
         {t('report.excel')}
       </Button>
       <Button
+        variant="tint-grey"
         size={size}
         onClick={() => void run('pdf')}
         loading={busy === 'pdf'}

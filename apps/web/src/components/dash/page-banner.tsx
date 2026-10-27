@@ -57,6 +57,27 @@ export function PageBanner({
   )
 }
 
+/**
+ * The page's action row, right under the banner: the period control, Excel / PDF / Print in
+ * their grey tint, then the primary action, with 8 px gaps. `end` pushes what follows it to
+ * the right on a wide screen.
+ */
+export function ActionRow({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <div
+      className={cn('flex flex-none flex-wrap items-center gap-2 print:hidden', className)}
+      role="toolbar"
+    >
+      {children}
+    </div>
+  )
+}
+
+/** Spacer inside an ActionRow: everything after it sits at the right edge. */
+export function ActionRowEnd() {
+  return <span className="hidden flex-1 sm:block" aria-hidden="true" />
+}
+
 /** Small tag for the header's meta row ("12 patients", "3 waiting"). */
 export function BannerChip({ icon: IconC, children }: { icon?: LucideIcon; children: ReactNode }) {
   return (

@@ -1,9 +1,11 @@
-import { Activity, ListOrdered, Stethoscope } from 'lucide-react'
-import { useState } from 'react'
+import { Activity, ArrowUpRight, Inbox, ListOrdered, MousePointerClick, Users } from 'lucide-react'
+import { useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import type { StaffUser } from '@mmc/shared'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
+import { Pill } from '@/components/dash/kit'
+import { selectedRow, triageIcon } from '@/components/dash/kit-style'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +27,11 @@ import { NoDeskPage } from '@/components/clinical/desk-gate'
 import { NotAllowedPage } from '@/components/clinical/perm-gate'
 import { useCanDesk } from '@/lib/api/desks'
 import { useCan } from '@/lib/api/permissions'
+
+/** The triage symbols as 12 px badge icons: siren for red, warning for yellow, check for green. */
+const RedIcon = triageIcon.red!
+const YellowIcon = triageIcon.yellow!
+const GreenIcon = triageIcon.green!
 
 /**
  * Triage screen (MoH: vitals before the doctor). Left: everyone waiting at triage, in priority
@@ -113,17 +120,25 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
         ? t('triage.forYou')
         : t('triage.forName', { name: q.assignedName })
       : null
+  const redCount = waiting.filter((q) => q.priority === 1).length
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="vitals">
-      <main className="pc:px-6 pc:pb-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
         <PageBanner
           icon={Activity}
           tint="coral"
           title={t('triage.title')}
           lead={t('triage.lead')}
           meta={
-            <BannerChip icon={Activity}>{t('home.waiting', { count: waiting.length })}</BannerChip>
+            <>
+              <BannerChip icon={Users}>{t('home.waiting', { count: waiting.length })}</BannerChip>
+              {redCount > 0 && (
+                <Pill tint="coral" icon={RedIcon}>
+                  {t('home.triage.red')} {redCount}
+                </Pill>
+              )}
+            </>
           }
         />
 
@@ -134,10 +149,12 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
         )}
 
         <div className="pc:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] grid grid-cols-1 gap-4">
-          <Card>
+          <Card style={{ '--i': 0 } as CSSProperties}>
             <CardHeader icon={ListOrdered}>
-              <span>{t('triage.queueTitle')}</span>
-              <span className="text-ink-3 text-xs">{isLoading ? '…' : ''}</span>
+              <span className="min-w-0 flex-1">{t('triage.queueTitle')}</span>
+              <Pill tint="coral" icon={Users}>
+                {isLoading ? '…' : waiting.length}
+              </Pill>
             </CardHeader>
             {waiting.length > 0 && (
               <CardBody className="border-border flex-none border-b py-2.5">
@@ -153,55 +170,87 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
             )}
             {waiting.length === 0 ? (
               <CardBody>
-                <EmptyNote>{t('triage.empty')}</EmptyNote>
+                <EmptyNote icon={GreenIcon} className="text-[14px]">
+                  {t('triage.empty')}
+                </EmptyNote>
+              </CardBody>
+            ) : paged.total === 0 ? (
+              <CardBody>
+                <EmptyNote icon={Inbox} className="text-[14px]">
+                  {t('cashierDesk.noMatch')}
+                </EmptyNote>
               </CardBody>
             ) : (
-              paged.slice.map((q) => (
-                <button
-                  key={q.queueId}
-                  type="button"
-                  onClick={() => setSelectedId(q.queueId)}
-                  className={cn(
-                    'border-border flex w-full items-start gap-3 border-b px-4 py-3 text-left last:border-b-0',
-                    selected?.queueId === q.queueId ? 'bg-primary-tint' : 'hover:bg-surface',
-                  )}
-                >
-                  <span className="text-primary w-16 flex-none font-semibold whitespace-nowrap tabular-nums">
-                    {q.ticket}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    {/* The full name always: it has its own line and wraps rather than being
-                        cut to a letter; the badges go on the line under it. */}
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="min-w-0 font-semibold wrap-break-word">{q.name}</span>
-                      <span className="text-ink-2 flex-none text-xs whitespace-nowrap tabular-nums">
-                        {formatDuration(q.waitMin, t)}
+              paged.slice.map((q) => {
+                const on = selected?.queueId === q.queueId
+                return (
+                  <button
+                    key={q.queueId}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setSelectedId(q.queueId)}
+                    className={cn(
+                      'border-grid focus-visible:ring-primary/20 flex min-h-10 w-full items-start gap-3 border-b px-4 py-2.5 text-left text-[14px] transition-colors duration-120 outline-none last:border-b-0 focus-visible:ring-2 focus-visible:ring-inset',
+                      on ? selectedRow : 'hover:bg-hover',
+                    )}
+                  >
+                    <Pill
+                      tint={q.priority === 1 ? 'coral' : 'teal'}
+                      icon={q.priority === 1 ? RedIcon : undefined}
+                    >
+                      {q.ticket}
+                    </Pill>
+                    <span className="min-w-0 flex-1">
+                      {/* The full name always: it has its own line and wraps rather than being
+                          cut to a letter; the badges go on the line under it. */}
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="min-w-0 font-medium wrap-break-word">{q.name}</span>
+                        <span className="text-ink-2 flex-none text-[12px] whitespace-nowrap tabular-nums">
+                          {formatDuration(q.waitMin, t)}
+                        </span>
+                      </span>
+                      <span className="text-ink-3 block text-[13px] tabular-nums">
+                        {q.ageSex} · {q.fileNumber}
+                      </span>
+                      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {q.priority === 1 && (
+                          <Badge
+                            tone="red"
+                            icon={<RedIcon size={12} strokeWidth={2.5} aria-hidden="true" />}
+                          >
+                            {t('home.triage.red')}
+                          </Badge>
+                        )}
+                        {q.vitalsAt ? (
+                          <Badge
+                            tone="green"
+                            icon={<GreenIcon size={12} strokeWidth={2.5} aria-hidden="true" />}
+                          >
+                            {t('triage.takenBadge')}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            tone="yellow"
+                            icon={<YellowIcon size={12} strokeWidth={2.5} aria-hidden="true" />}
+                          >
+                            {t('vitalsForm.noneShort')}
+                          </Badge>
+                        )}
+                        {forWhom(q) && (
+                          <Badge tone={q.assignedTo === user.id ? 'blue' : 'grey'} dot={false}>
+                            {forWhom(q)}
+                          </Badge>
+                        )}
+                        {q.station !== 'triage' && (
+                          <span className="text-ink-3 text-[12px]">
+                            {t(`register.stations.${q.station}`, { defaultValue: q.station })}
+                          </span>
+                        )}
                       </span>
                     </span>
-                    <span className="text-ink-3 block text-xs tabular-nums">
-                      {q.ageSex} · {q.fileNumber}
-                    </span>
-                    <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      {q.priority === 1 && <Badge tone="red">{t('home.triage.red')}</Badge>}
-                      {q.vitalsAt ? (
-                        <Badge tone="green">{t('triage.takenBadge')}</Badge>
-                      ) : (
-                        <Badge tone="yellow">{t('vitalsForm.noneShort')}</Badge>
-                      )}
-                      {forWhom(q) && (
-                        <Badge tone={q.assignedTo === user.id ? 'blue' : 'grey'} dot={false}>
-                          {forWhom(q)}
-                        </Badge>
-                      )}
-                      {q.station !== 'triage' && (
-                        <span className="text-ink-3 text-xs">
-                          {t(`register.stations.${q.station}`, { defaultValue: q.station })}
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                </button>
-              ))
+                  </button>
+                )
+              })
             )}
             {waiting.length > 0 && (
               <CardBody className="flex-none py-2">
@@ -244,16 +293,19 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
               />
             </Reveal>
           ) : linkMissing ? (
-            <Card>
+            <Card style={{ '--i': 1 } as CSSProperties}>
+              <CardHeader icon={Activity}>{t('triage.title')}</CardHeader>
               <CardBody className="gap-3">
-                <p className="text-ink-2 m-0 text-[14px] font-semibold">{t('triage.notWaiting')}</p>
+                <EmptyNote icon={Inbox} className="text-ink-2 text-[14px] font-medium">
+                  {t('triage.notWaiting')}
+                </EmptyNote>
                 <div className="flex flex-wrap gap-2">
                   <StaffLink
                     to="/app/visit"
                     search={{ encounter: encounter! }}
-                    className={buttonVariants({ size: 'sm' })}
+                    className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
                   >
-                    <Stethoscope size={14} aria-hidden="true" />
+                    <ArrowUpRight size={14} aria-hidden="true" />
                     {t('visits.openVisit')}
                   </StaffLink>
                   <StaffLink to="/app/vitals" className={buttonVariants({ size: 'sm' })}>
@@ -264,9 +316,12 @@ function TriageDesk({ user, encounter }: { user: StaffUser; encounter?: string }
               </CardBody>
             </Card>
           ) : (
-            <Card>
+            <Card style={{ '--i': 1 } as CSSProperties}>
+              <CardHeader icon={Activity}>{t('triage.title')}</CardHeader>
               <CardBody>
-                <EmptyNote>{t('triage.select')}</EmptyNote>
+                <EmptyNote icon={MousePointerClick} className="text-[14px]">
+                  {t('triage.select')}
+                </EmptyNote>
               </CardBody>
             </Card>
           )}

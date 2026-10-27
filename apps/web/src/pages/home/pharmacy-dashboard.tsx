@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArrowRight,
   Ban,
   Clock,
   Coins,
@@ -20,10 +21,11 @@ import { Empty, Kpi, ListRows, Panel, Pill as Tag, SectionTitle } from '@/compon
 import { greetingFor } from '@/components/dash/kit-style'
 import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
 import { NoticesPanel } from '@/components/dash/notices-panel'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button, actionLink, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { isLowStock, usePharmacyQueue, usePharmacySummary, useStockOverview } from '@/lib/api/stock'
+import { cn } from '@/lib/utils'
 import { useCan, useSwitchedOff } from '@/lib/api/permissions'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
@@ -102,6 +104,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
           </div>
           <PeriodSeg period={period} />
           <Button
+            variant="tint-grey"
             size="icon"
             onClick={() => {
               // the figures, the hand-over list and the stock together
@@ -261,9 +264,10 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                 <StaffLink
                   to="/app/stock"
                   search={{ tab: 'stock' }}
-                  className={buttonVariants({ size: 'sm' })}
+                  className={cn(actionLink, 'self-start text-[13px]')}
                 >
-                  {t('pharmacy.openStock')} →
+                  {t('pharmacy.openStock')}
+                  <ArrowRight size={14} aria-hidden="true" />
                 </StaffLink>
               </Panel>
               {s && s.notGiven.length > 0 && (

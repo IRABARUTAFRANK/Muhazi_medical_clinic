@@ -1,8 +1,19 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { Ban, Printer, ShoppingBag, TriangleAlert, Wallet } from 'lucide-react'
+import {
+  Ban,
+  CircleCheck,
+  PackageCheck,
+  Printer,
+  ShoppingBag,
+  TriangleAlert,
+  Undo2,
+  Wallet,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf, formatTime } from '@mmc/shared'
-import { Empty, Panel, Pill } from '@/components/dash/kit'
+import { Empty, Pill } from '@/components/dash/kit'
+import { Panel } from '@/components/dash/kit'
+import { focusedForm, selectedRow } from '@/components/dash/kit-style'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
@@ -135,8 +146,8 @@ export function CounterSalesPanel({
                 key={s.id}
                 id={`sale-${s.id}`}
                 className={cn(
-                  'border-grid anim-enter flex flex-col gap-2 border-b py-3 text-[14px] last:border-b-0',
-                  s.id === highlightId && 'bg-primary-tint/40 -mx-2 rounded-md px-2',
+                  'border-grid anim-enter -mx-2 flex flex-col gap-2 rounded-md border-b px-2 py-3 text-[14px] transition-colors duration-120 last:border-b-0',
+                  s.id === highlightId ? selectedRow : 'hover:bg-hover',
                 )}
                 style={{ '--i': Math.min(n, 12) } as CSSProperties}
               >
@@ -145,7 +156,7 @@ export function CounterSalesPanel({
                     {s.number}
                   </Pill>
                   <span className="min-w-[180px] flex-1">
-                    <span className="block font-semibold">{buyerOf(s)}</span>
+                    <span className="block font-medium">{buyerOf(s)}</span>
                     <span className="text-ink-3 block text-[13px]">
                       {[
                         s.phone,
@@ -165,7 +176,7 @@ export function CounterSalesPanel({
                   {canTake && payingId !== s.id && (
                     <Button
                       size="sm"
-                      variant="primary"
+                      variant="success"
                       onClick={() => {
                         setError(null)
                         setPayingId(s.id)
@@ -178,8 +189,7 @@ export function CounterSalesPanel({
                   {canCancel && (
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="hover:text-red"
+                      variant="tint-coral"
                       title={t('cashierDesk.counter.cancel')}
                       aria-label={t('cashierDesk.counter.cancel')}
                       onClick={() => void cancel(s)}
@@ -243,7 +253,8 @@ export function CounterSalesPanel({
 
       {paid.length > 0 && (
         <div className="flex flex-col">
-          <span className="text-ink-2 text-[14px] font-semibold">
+          <span className="text-ink-2 flex items-center gap-1.5 text-[14px] font-semibold">
+            <PackageCheck size={14} aria-hidden="true" className="text-green" />
             {t('cashierDesk.counter.toCollect', { count: paid.length })}
           </span>
           {paid.map((s) => (
@@ -251,13 +262,15 @@ export function CounterSalesPanel({
               key={s.id}
               id={`sale-${s.id}`}
               className={cn(
-                'border-grid flex flex-wrap items-center gap-3 border-b py-2 text-[14px] last:border-b-0',
-                s.id === highlightId && 'bg-primary-tint/40 -mx-2 rounded-md px-2',
+                'border-grid -mx-2 flex min-h-10 flex-wrap items-center gap-3 rounded-md border-b px-2 py-2 text-[14px] transition-colors duration-120 last:border-b-0',
+                s.id === highlightId ? selectedRow : 'hover:bg-hover',
               )}
             >
-              <Pill tint="mint">{s.number}</Pill>
+              <Pill tint="mint" icon={CircleCheck}>
+                {s.number}
+              </Pill>
               <span className="min-w-[160px] flex-1">
-                <span className="block font-semibold">{buyerOf(s)}</span>
+                <span className="block font-medium">{buyerOf(s)}</span>
                 <span className="text-ink-3 block text-[13px]">
                   {[
                     s.receipt,
@@ -275,7 +288,7 @@ export function CounterSalesPanel({
               </span>
               <Button
                 size="sm"
-                variant="ghost"
+                variant="tint-grey"
                 title={t('cashierDesk.counter.reprint')}
                 aria-label={t('cashierDesk.counter.reprint')}
                 onClick={() =>
@@ -374,9 +387,9 @@ function CounterPayForm({
   return (
     <form
       onSubmit={(e) => void submit(e)}
-      className="border-border bg-surface flex flex-col gap-3 rounded-md border p-3"
+      className={cn('bg-card flex flex-col gap-3 rounded-md border p-3', focusedForm)}
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Select
           label={t('visit.payment.method')}
           value={method}
@@ -391,7 +404,7 @@ function CounterPayForm({
         <Field label={t('visit.payment.amount')} value={formatRwf(sale.total)} readOnly />
       </div>
       {needsRef && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field
             label={t('visit.payment.reference')}
             value={reference}
@@ -419,11 +432,12 @@ function CounterPayForm({
         </p>
       )}
       <span className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary" loading={pay.isPending}>
+        <Button type="submit" variant="success" loading={pay.isPending}>
           <Wallet size={16} aria-hidden="true" />
           {t('visit.payment.take', { amount: formatRwf(sale.total) })}
         </Button>
-        <Button type="button" onClick={onCancel}>
+        <Button type="button" variant="tint-grey" onClick={onCancel}>
+          <Undo2 size={16} aria-hidden="true" />
           {t('cashierDesk.counter.back')}
         </Button>
       </span>

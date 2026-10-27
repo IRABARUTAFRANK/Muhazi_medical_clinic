@@ -1,15 +1,19 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   CircleAlert,
+  CircleCheck,
+  CircleX,
   Clock,
   FolderOpen,
   History,
+  Info,
   LockKeyhole,
   Search,
   ShieldCheck,
   Siren,
   UserRound,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
@@ -19,10 +23,12 @@ import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { AccessRequestCard } from '@/components/privacy/approvals'
 import { isManagerUser } from '@/components/privacy/approvers'
+import { buttonVariants, tableLink } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
 import { Pager, ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
+import { SidePanel, useSidePanelState } from '@/components/ui/side-panel'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { StaffLink } from '@/components/staff/staff-link'
 import { usePatientsList } from '@/lib/api/patients'
@@ -31,9 +37,11 @@ import {
   useRecordAccessRequests,
   type AccessLogRow,
   type AccessLogVia,
+  type AccessRequestRow,
 } from '@/lib/api/privacy'
 import { useEmployees } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
+import { useAgo } from '@/lib/notice-wording'
 import { usePeriod } from '@/lib/period'
 import { cn } from '@/lib/utils'
 
@@ -46,6 +54,21 @@ const VIA_TINT: Record<AccessLogVia, Tint> = {
   manager: 'navy',
 }
 const PAGE_SIZE = 25
+
+/** The state of a request or an emergency access: its tint, icon and wording key. */
+function requestLook(r: AccessRequestRow): { tint: Tint; icon: LucideIcon; key: string } {
+  if (r.kind === 'emergency')
+    return r.reviewedAt
+      ? { tint: 'navy', icon: ShieldCheck, key: 'reviewed' }
+      : { tint: 'coral', icon: Siren, key: 'toReview' }
+  if (r.status === 'pending') return { tint: 'amber', icon: Clock, key: 'pending' }
+  if (r.status === 'approved')
+    return r.active
+      ? { tint: 'mint', icon: CircleCheck, key: 'active' }
+      : { tint: 'teal', icon: CircleCheck, key: 'approved' }
+  if (r.status === 'refused') return { tint: 'coral', icon: CircleX, key: 'refused' }
+  return { tint: 'navy', icon: CircleX, key: 'cancelled' }
+}
 
 /** A refusal from the database, as a bordered red line with its symbol. */
 const ErrorLine = ({ children }: { children: string }) => (
@@ -65,7 +88,8 @@ const ErrorLine = ({ children }: { children: string }) => (
  *   answered in the last 90 days.
  *   The manager also: the emergency accesses to review (mark reviewed, with a comment) and the log
  *   of every opening of past records, filtered by period, person, patient and how.
- * A notice opens this page on its request (?request=<id>), outlined.
+ * A request or an emergency access opens in a side panel (coral: record access) with its
+ * actions; a notice opens this page on its request (?request=<id>), straight into the panel.
  */
 export function RecordAccessPage({ user, focus }: { user: StaffUser; focus?: string }) {
   const { t } = useTranslation()
@@ -80,6 +104,31 @@ export function RecordAccessPage({ user, focus }: { user: StaffUser; focus?: str
   const error = pending.error ?? all.error ?? emergencies.error
   // an answered card moves to another list: its message is shown here
   const [done, setDone] = useState<string | null>(null)
+  // the request opened in the side panel; the row keeps its tint while it is open
+  const panel = useSidePanelState<AccessRequestRow>((r) => r.id)
+  const everyRow = [...waiting, ...(emergencies.data ?? []), ...answered]
+  const inPanel = panel.item ? (everyRow.find((r) => r.id === panel.item!.id) ?? panel.item) : null
+  // from a notice: the request named in the address opens once its list has loaded
+  const focusOpened = useRef<string | null>(null)
+  const focusRow = focus ? everyRow.find((r) => r.id === focus) : undefined
+  useEffect(() => {
+    if (!focus || !focusRow || focusOpened.current === focus) return
+    focusOpened.current = focus
+    panel.show(focusRow)
+  }, [focus, focusRow, panel])
+  const requestList = (rows: AccessRequestRow[]) => (
+    <ul className="m-0 flex list-none flex-col p-0">
+      {rows.map((r, n) => (
+        <RequestRow
+          key={r.id}
+          row={r}
+          i={n}
+          selected={panel.isOpen(r)}
+          onOpen={() => panel.show(r)}
+        />
+      ))}
+    </ul>
+  )
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="record-access">
@@ -124,17 +173,7 @@ export function RecordAccessPage({ user, focus }: { user: StaffUser; focus?: str
             ) : waiting.length === 0 ? (
               <Empty>{t('recordAccess.pendingEmpty')}</Empty>
             ) : (
-              <div className="flex flex-col gap-2.5">
-                {waiting.map((r, n) => (
-                  <AccessRequestCard
-                    key={r.id}
-                    row={r}
-                    i={n}
-                    highlight={r.id === focus}
-                    onDone={setDone}
-                  />
-                ))}
-              </div>
+              requestList(waiting)
             )}
             <Hint>{t('recordAccess.pendingHint')}</Hint>
           </Panel>
@@ -154,20 +193,8 @@ export function RecordAccessPage({ user, focus }: { user: StaffUser; focus?: str
             {(emergencies.data ?? []).length === 0 ? (
               <Empty>{t('recordAccess.emergencyEmpty')}</Empty>
             ) : (
-              <ShownList items={emergencies.data ?? []} step={4}>
-                {(shown) => (
-                  <div className="flex flex-col gap-2.5">
-                    {shown.map((r, n) => (
-                      <AccessRequestCard
-                        key={r.id}
-                        row={r}
-                        i={n}
-                        highlight={r.id === focus}
-                        onDone={setDone}
-                      />
-                    ))}
-                  </div>
-                )}
+              <ShownList items={emergencies.data ?? []} step={6}>
+                {(shown) => requestList(shown)}
               </ShownList>
             )}
             <Hint>
@@ -189,25 +216,116 @@ export function RecordAccessPage({ user, focus }: { user: StaffUser; focus?: str
           {answered.length === 0 ? (
             <Empty>{t('recordAccess.answeredEmpty')}</Empty>
           ) : (
-            <ShownList items={answered} step={6}>
-              {(shown) => (
-                <div className="pc:grid-cols-2 grid grid-cols-1 gap-2.5">
-                  {shown.map((r, n) => (
-                    <AccessRequestCard
-                      key={r.id}
-                      row={r}
-                      i={n}
-                      highlight={r.id === focus}
-                      onDone={setDone}
-                    />
-                  ))}
-                </div>
-              )}
+            <ShownList items={answered} step={10}>
+              {(shown) => requestList(shown)}
             </ShownList>
           )}
         </Panel>
+
+        {/* the request opened: the approvals card with its actions, in the coral side panel */}
+        {inPanel && (
+          <RequestPanel
+            row={inPanel}
+            open={panel.open}
+            onClose={panel.close}
+            onDone={(message) => {
+              setDone(message)
+              panel.close()
+            }}
+          />
+        )}
       </main>
     </StaffShell>
+  )
+}
+
+/** One request in a list: its state, the patient, who asks, when, and "Details" to open it. */
+function RequestRow({
+  row,
+  i,
+  selected,
+  onOpen,
+}: {
+  row: AccessRequestRow
+  i: number
+  selected: boolean
+  onOpen: () => void
+}) {
+  const { t } = useTranslation()
+  const ago = useAgo()
+  const look = requestLook(row)
+  const role = t(`staff.roles.${row.requestedByRole}`, { defaultValue: row.requestedByRole })
+  return (
+    <li
+      className={cn(
+        'border-grid anim-enter flex flex-wrap items-center gap-x-3 gap-y-1 border-b py-2 text-[14px] transition-colors duration-120 last:border-b-0',
+        row.kind === 'emergency' && !row.reviewedAt && 'border-l-red-dot -ml-2.5 border-l-2 pl-2',
+        selected && 'bg-primary-tint/50 -mx-2 rounded-md px-2',
+      )}
+      style={{ '--i': i } as CSSProperties}
+    >
+      <Pill tint={look.tint} icon={look.icon}>
+        {row.kind === 'emergency'
+          ? t('recordAccess.status.emergency')
+          : t(`recordAccess.status.${look.key}`)}
+      </Pill>
+      <span className="min-w-0 flex-[1_1_200px]">
+        <span className="text-ink block font-semibold">
+          {row.patient}
+          {row.fileNumber && (
+            <span className="text-ink-3 font-normal tabular-nums"> · {row.fileNumber}</span>
+          )}
+        </span>
+        <span className="text-ink-3 block text-[13px]">
+          {t(
+            row.kind === 'emergency' ? 'recordAccess.card.openedBy' : 'recordAccess.card.askedBy',
+            {
+              name: row.requestedBy,
+              role,
+            },
+          )}
+        </span>
+      </span>
+      <span className="text-ink-3 text-[13px] whitespace-nowrap">{ago(row.at)}</span>
+      <button type="button" onClick={onOpen} aria-expanded={selected} className={tableLink}>
+        <Info size={14} aria-hidden="true" />
+        {t('recordAccess.panel.details')}
+      </button>
+    </li>
+  )
+}
+
+/** The side panel of a request: the approvals card (approve, refuse, review, withdraw) as is. */
+function RequestPanel({
+  row,
+  open,
+  onClose,
+  onDone,
+}: {
+  row: AccessRequestRow
+  open: boolean
+  onClose: () => void
+  onDone: (message: string) => void
+}) {
+  const { t } = useTranslation()
+  const look = requestLook(row)
+  const role = t(`staff.roles.${row.requestedByRole}`, { defaultValue: row.requestedByRole })
+  return (
+    <SidePanel
+      open={open}
+      onClose={onClose}
+      hue="coral"
+      icon={row.kind === 'emergency' ? Siren : LockKeyhole}
+      title={row.patient}
+      subtitle={`${t(row.kind === 'emergency' ? 'recordAccess.panel.emergency' : 'recordAccess.panel.request')}${row.fileNumber ? ` · ${row.fileNumber}` : ''} · ${role}`}
+      tags={
+        <Pill tint={look.tint} icon={look.icon}>
+          {t(`recordAccess.status.${look.key}`)}
+        </Pill>
+      }
+    >
+      <AccessRequestCard row={row} onDone={onDone} />
+    </SidePanel>
   )
 }
 
@@ -250,6 +368,7 @@ function AccessLogPanel() {
   )
   const log = useRecordAccessLog(filter)
   const rows = log.data?.rows ?? []
+  const panel = useSidePanelState<AccessLogRow>((r) => r.id)
   const total = log.data?.total ?? 0
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const pick = (id: string, label: string) => {
@@ -343,6 +462,8 @@ function AccessLogPanel() {
               key={r.id}
               row={r}
               i={n}
+              selected={panel.isOpen(r)}
+              onOpen={() => panel.show(r)}
               onPatient={() =>
                 pick(r.patientId, `${r.patient}${r.fileNumber ? ` · ${r.fileNumber}` : ''}`)
               }
@@ -358,6 +479,7 @@ function AccessLogPanel() {
         total={total}
         onPage={(p) => setPaging({ page: p, key: filterKey })}
       />
+      {panel.item && <LogPanel row={panel.item} open={panel.open} onClose={panel.close} />}
     </Panel>
   )
 }
@@ -402,20 +524,37 @@ function PatientMatches({
 }
 
 /** One opening of past records; an emergency in red. */
-function LogRow({ row, i, onPatient }: { row: AccessLogRow; i: number; onPatient: () => void }) {
+/** "Visit MMC-…", "Patient file", … : what a log entry opened. */
+function whatOpened(row: AccessLogRow, t: (k: string, o?: Record<string, unknown>) => string) {
+  return row.what === 'visit'
+    ? row.visitReference
+      ? t('recordAccess.what.visit', { ref: row.visitReference })
+      : t('recordAccess.what.visitNoRef')
+    : t(`recordAccess.what.${row.what}`)
+}
+
+function LogRow({
+  row,
+  i,
+  selected,
+  onOpen,
+  onPatient,
+}: {
+  row: AccessLogRow
+  i: number
+  selected: boolean
+  onOpen: () => void
+  onPatient: () => void
+}) {
   const { t } = useTranslation()
   const at = new Date(row.at)
-  const what =
-    row.what === 'visit'
-      ? row.visitReference
-        ? t('recordAccess.what.visit', { ref: row.visitReference })
-        : t('recordAccess.what.visitNoRef')
-      : t(`recordAccess.what.${row.what}`)
+  const what = whatOpened(row, t)
   return (
     <li
       className={cn(
-        'border-grid anim-enter flex flex-wrap items-start gap-x-3 gap-y-1 border-b py-2.5 text-[14px] last:border-b-0',
+        'border-grid anim-enter flex flex-wrap items-start gap-x-3 gap-y-1 border-b py-2.5 text-[14px] transition-colors duration-120 last:border-b-0',
         row.emergency && 'border-l-red-dot -ml-2.5 border-l-2 pl-2',
+        selected && 'bg-primary-tint/50 -mx-2 rounded-md px-2',
       )}
       style={{ '--i': i } as CSSProperties}
     >
@@ -439,7 +578,7 @@ function LogRow({ row, i, onPatient }: { row: AccessLogRow; i: number; onPatient
             type="button"
             onClick={onPatient}
             title={t('recordAccess.onlyThisPatient')}
-            className="text-primary font-semibold hover:underline"
+            className="text-primary focus-visible:ring-primary/20 rounded font-semibold outline-none hover:underline focus-visible:ring-2"
           >
             {row.patient}
           </button>
@@ -461,15 +600,85 @@ function LogRow({ row, i, onPatient }: { row: AccessLogRow; i: number; onPatient
         {row.emergency && !row.reviewed && (
           <Pill tint="coral">{t('recordAccess.status.toReview')}</Pill>
         )}
-        <StaffLink
-          to="/app/patient"
-          search={{ id: row.patientId }}
-          className="text-primary inline-flex items-center gap-1 text-[13px] font-medium no-underline hover:underline"
-        >
+        <button type="button" onClick={onOpen} aria-expanded={selected} className={tableLink}>
+          <Info size={14} aria-hidden="true" />
+          {t('recordAccess.panel.details')}
+        </button>
+        <StaffLink to="/app/patient" search={{ id: row.patientId }} className={tableLink}>
           <FolderOpen size={14} aria-hidden="true" />
           {t('recordAccess.card.openFile')}
         </StaffLink>
       </span>
     </li>
+  )
+}
+
+/** One log entry in the coral side panel: when, who, which patient, what, how, the reason. */
+function LogPanel({
+  row,
+  open,
+  onClose,
+}: {
+  row: AccessLogRow
+  open: boolean
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const at = new Date(row.at)
+  const lines: [string, string | null][] = [
+    [t('recordAccess.panel.when'), `${formatDate(at)} ${formatTime(at)}`],
+    [
+      t('recordAccess.panel.who'),
+      `${row.actor ?? t('recordAccess.unknownPerson')}${row.actorRole ? ` · ${t(`staff.roles.${row.actorRole}`, { defaultValue: row.actorRole })}` : ''}`,
+    ],
+    [t('recordAccess.patient'), `${row.patient}${row.fileNumber ? ` · ${row.fileNumber}` : ''}`],
+    [t('recordAccess.panel.what'), whatOpened(row, t)],
+    [t('recordAccess.panel.reason'), row.reason ?? null],
+    [
+      t('recordAccess.panel.review'),
+      row.emergency
+        ? row.reviewed
+          ? `${t('recordAccess.logReviewed', { name: row.reviewedBy ?? '' })}${row.reviewNote ? ` · ${row.reviewNote}` : ''}`
+          : t('recordAccess.status.toReview')
+        : null,
+    ],
+  ]
+  return (
+    <SidePanel
+      open={open}
+      onClose={onClose}
+      hue="coral"
+      icon={row.emergency ? Siren : ShieldCheck}
+      title={row.patient}
+      subtitle={`${t('recordAccess.panel.log')} · ${formatDate(at)} ${formatTime(at)}`}
+      tags={
+        <Pill tint={VIA_TINT[row.via]} icon={row.emergency ? Siren : undefined}>
+          {t(`recordAccess.via.${row.via}`)}
+        </Pill>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <dl className="border-border m-0 grid grid-cols-1 gap-x-4 gap-y-2 rounded-md border p-4 sm:grid-cols-[150px_minmax(0,1fr)]">
+          {lines
+            .filter(([, v]) => v)
+            .map(([k, v]) => (
+              <div key={k} className="contents">
+                <dt className="text-ink-3 text-[13px]">{k}</dt>
+                <dd className="text-ink m-0 text-[14px] font-medium">{v}</dd>
+              </div>
+            ))}
+        </dl>
+        <div className="flex flex-wrap gap-2">
+          <StaffLink
+            to="/app/patient"
+            search={{ id: row.patientId }}
+            className={buttonVariants({ size: 'sm' })}
+          >
+            <FolderOpen size={14} aria-hidden="true" />
+            {t('recordAccess.card.openFile')}
+          </StaffLink>
+        </div>
+      </div>
+    </SidePanel>
   )
 }

@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { Undo2, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -6,7 +7,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { useCashierSummary, type CashPayment } from '@/lib/api/finance'
 import { cn } from '@/lib/utils'
 import { dayLong, num, payMethod, timeOf } from '../format'
-import { Block, DataTable, Drawer, LoadError, Quiet, Stat } from '../kit'
+import { Block, DataTable, Drawer, LoadError, Quiet, Stat, statGrid } from '../kit'
 
 const sumOf = (r: Record<string, number> | undefined) =>
   Object.values(r ?? {}).reduce((s, v) => s + Number(v || 0), 0)
@@ -33,8 +34,13 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
       onClose={onClose}
       actions={
         // the Payments page opens on this day (?day=), not on today
-        <Link to="/app/payments" search={toDay} className={cn(buttonVariants({ size: 'sm' }))}>
-          {t('analytics.revenue.openPayments')} →
+        <Link
+          to="/app/payments"
+          search={toDay}
+          className={cn(buttonVariants({ variant: 'tint-teal', size: 'sm' }))}
+        >
+          <Wallet size={16} aria-hidden="true" />
+          {t('analytics.revenue.openPayments')}
         </Link>
       }
     >
@@ -45,10 +51,12 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
       ) : (
         <>
           {s.todayOnly && <Quiet>{t('analytics.revenue.todayOnly')}</Quiet>}
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          <div className={statGrid}>
             {s.byMethod.map((m) => (
               <Stat
                 key={m.method}
+                icon={Wallet}
+                tint="mint"
                 label={payMethod(m.method, t)}
                 value={num(m.amount)}
                 note={t('analytics.revenue.paymentsN', { count: m.count })}
@@ -56,6 +64,7 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
             ))}
             {(s.refunded ?? 0) > 0 && (
               <Stat
+                icon={Undo2}
                 label={t('analytics.revenue.refunded')}
                 value={num(s.refunded ?? 0)}
                 tone="red"

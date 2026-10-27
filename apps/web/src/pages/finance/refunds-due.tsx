@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Undo2 } from 'lucide-react'
+import { ArrowUpRight, Receipt, Undo2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf } from '@mmc/shared'
 import { Empty, Panel, Pill } from '@/components/dash/kit'
+import { focusedForm } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
@@ -12,6 +13,7 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { useBillingActions } from '@/lib/api/billing'
 import { useConfirm } from '@/lib/confirm'
 import { supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 import { sampleRefunds, useRefundsDue, type RefundDue } from './refunds-due-data'
 
 type Method = 'cash' | 'momo' | 'airtel'
@@ -132,11 +134,15 @@ function RefundRow({
   }
 
   return (
-    <div className="border-grid flex flex-col gap-2 border-b py-2.5 text-[14px] last:border-b-0">
-      <div className="flex flex-wrap items-center gap-3">
-        {r.billNumber && <Pill tint="amber">{r.billNumber}</Pill>}
+    <div className="border-grid hover:bg-hover -mx-2 flex flex-col gap-2 rounded-md border-b px-2 py-2.5 text-[14px] transition-colors duration-120 last:border-b-0">
+      <div className="flex min-h-10 flex-wrap items-center gap-3">
+        {r.billNumber && (
+          <Pill tint="amber" icon={Receipt}>
+            {r.billNumber}
+          </Pill>
+        )}
         <span className="min-w-[180px] flex-1">
-          <span className="block font-semibold">{r.patient}</span>
+          <span className="block font-medium">{r.patient}</span>
           <span className="text-ink-3 block text-[13px]">
             {[
               r.fileNumber,
@@ -153,7 +159,7 @@ function RefundRow({
           −{formatRwf(r.amount)}
         </span>
         {canTake && !open && (
-          <Button size="sm" variant="primary" onClick={() => setOpen(true)}>
+          <Button size="sm" variant="danger-solid" onClick={() => setOpen(true)}>
             <Undo2 size={14} aria-hidden="true" />
             {t('cashierDesk.refunds.give')}
           </Button>
@@ -161,17 +167,18 @@ function RefundRow({
         <StaffLink
           to="/app/visit"
           search={{ encounter: r.encounterId }}
-          className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+          className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
         >
+          <ArrowUpRight size={14} aria-hidden="true" />
           {t('finance.openVisit')}
         </StaffLink>
       </div>
       {open && (
         <form
           onSubmit={(e) => void give(e)}
-          className="border-border bg-surface flex flex-col gap-3 rounded-md border p-3"
+          className={cn('bg-card flex flex-col gap-3 rounded-md border p-3', focusedForm)}
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Select
               label={t('visit.refund.method')}
               value={method}
@@ -202,10 +209,11 @@ function RefundRow({
             </p>
           )}
           <span className="flex flex-wrap gap-2">
-            <Button type="submit" variant="primary" loading={refund.isPending}>
+            <Button type="submit" variant="danger-solid" loading={refund.isPending}>
+              <Undo2 size={16} aria-hidden="true" />
               {t('visit.refund.give', { amount: formatRwf(r.amount) })}
             </Button>
-            <Button type="button" onClick={() => setOpen(false)}>
+            <Button type="button" variant="tint-grey" onClick={() => setOpen(false)}>
               {t('cashierDesk.counter.back')}
             </Button>
           </span>

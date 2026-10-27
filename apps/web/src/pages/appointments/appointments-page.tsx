@@ -104,7 +104,7 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
             />
           </label>
           {offset !== 0 && (
-            <Button size="md" onClick={() => setOffset(0)}>
+            <Button size="md" variant="tint-grey" onClick={() => setOffset(0)}>
               {t('ops.appts.today')}
             </Button>
           )}
@@ -150,10 +150,6 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
                     onCancel: () => setRegistering(null),
                   }}
                 />
-              </Reveal>
-            ) : selected ? (
-              <Reveal>
-                <AppointmentDetail id={selected} onBack={() => setSelected(null)} />
               </Reveal>
             ) : (
               <AppointmentsPanel
@@ -204,6 +200,8 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
           </div>
           <p className="text-ink-3 m-0 text-xs">{t('ops.appts.flow')}</p>
         </section>
+        {/* one booking opens beside the list (rose: bookings); Back / Escape returns to it */}
+        <AppointmentDetail id={selected} onClose={() => setSelected(null)} />
       </main>
     </StaffShell>
   )

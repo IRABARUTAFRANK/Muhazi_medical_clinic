@@ -6,6 +6,8 @@ import { formatTime } from '@mmc/shared'
 import { Panel, Pill } from '@/components/dash/kit'
 import type { Tint } from '@/components/dash/kit-style'
 import { Button } from '@/components/ui/button'
+import { controlClass, labelClass } from '@/components/ui/field'
+import { cn } from '@/lib/utils'
 import {
   useHandoverActions,
   useMyHandovers,
@@ -16,9 +18,9 @@ import { useConfirm } from '@/lib/confirm'
 import { ErrorBox } from './role-panels'
 
 const rowClass =
-  'border-grid flex flex-wrap items-start gap-2.5 border-b py-2.5 text-[14px] last:border-b-0'
-const area =
-  'border-border bg-card focus:border-primary w-full rounded-lg border px-2.5 py-2 text-[14px] outline-none'
+  'border-grid flex min-h-10 flex-wrap items-start gap-2.5 border-b py-2 text-[14px] last:border-b-0'
+// the reason box: the control's border, radius and focus ring, free in height
+const area = cn(controlClass, 'h-auto w-full py-2')
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const time = (iso: string | null) => (iso ? formatTime(new Date(iso)) : '')
 const statusTint: Record<HandoverStatus, Tint> = {
@@ -127,13 +129,13 @@ function Incoming({ h, n }: { h: Handover; n: number }) {
         <span className="text-ink block text-[13px]">“{h.note}”</span>
       </span>
       <span className="flex flex-wrap gap-2">
-        <Button size="sm" variant="ghost" onClick={open}>
+        <Button size="sm" variant="tint-blue" onClick={open}>
           <Eye size={14} aria-hidden="true" />
           {t('access.view')}
         </Button>
         <Button
           size="sm"
-          variant="primary"
+          variant="success"
           loading={take.isPending && take.variables === h.id}
           onClick={() => void takeIt()}
         >
@@ -141,7 +143,7 @@ function Incoming({ h, n }: { h: Handover; n: number }) {
           {t('handover.take')}
         </Button>
         {!declining && (
-          <Button size="sm" onClick={() => setDeclining(true)}>
+          <Button size="sm" variant="tint-coral" onClick={() => setDeclining(true)}>
             <X size={14} aria-hidden="true" />
             {t('handover.decline')}
           </Button>
@@ -149,7 +151,7 @@ function Incoming({ h, n }: { h: Handover; n: number }) {
       </span>
       {declining && (
         <div className="flex basis-full flex-col gap-2">
-          <label className="flex flex-col gap-1.5 text-[13px] font-semibold">
+          <label className={labelClass}>
             {t('handover.reason')}
             <textarea
               rows={2}
@@ -162,14 +164,14 @@ function Incoming({ h, n }: { h: Handover; n: number }) {
           <span className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant="danger"
+              variant="danger-solid"
               loading={decline.isPending}
               onClick={() => void declineIt()}
             >
               <X size={14} aria-hidden="true" />
               {t('handover.decline')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setDeclining(false)}>
+            <Button size="sm" variant="tint-grey" onClick={() => setDeclining(false)}>
               {t('staff.form.cancel')}
             </Button>
           </span>
@@ -234,7 +236,7 @@ function Outgoing({ h, n }: { h: Handover; n: number }) {
         {h.status !== 'taken' && (
           <Button
             size="sm"
-            variant="ghost"
+            variant="tint-blue"
             onClick={() =>
               void navigate({ to: '/app/visit', search: { encounter: h.encounterId } })
             }
@@ -246,7 +248,7 @@ function Outgoing({ h, n }: { h: Handover; n: number }) {
         {h.status === 'pending' && (
           <Button
             size="sm"
-            variant="ghost"
+            variant="tint-coral"
             loading={cancel.isPending}
             onClick={() => void withdraw()}
           >

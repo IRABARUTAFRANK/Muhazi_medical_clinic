@@ -1,5 +1,8 @@
 import {
   CalendarCheck,
+  CalendarClock,
+  CalendarPlus,
+  CalendarX,
   ChartColumn,
   ListOrdered,
   Stethoscope,
@@ -14,7 +17,7 @@ import { formatHour, formatNumber, formatRwf } from '@mmc/shared'
 import { Hint, Kpi, Panel } from '@/components/dash/kit'
 import { delta } from '@/components/dash/kit-style'
 import { StaffLink } from '@/components/staff/staff-link'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { controlClass } from '@/components/ui/field'
 import {
   useVisitsAnalysis,
@@ -166,9 +169,7 @@ export function VisitsView({ period, search, update, dept, clinic }: ViewProps) 
             ariaLabel={t('analytics.visits.chartAria', { period: period.label, count: T.visits })}
           />
         )}
-        {bk.monthly && (
-          <p className="text-ink-3 m-0 text-[13px]">{t('analytics.chartHintMonth')}</p>
-        )}
+        {bk.monthly && <Hint>{t('analytics.chartHintMonth')}</Hint>}
       </Panel>
 
       <Panel
@@ -263,21 +264,37 @@ export function VisitsView({ period, search, update, dept, clinic }: ViewProps) 
         )}
         {by === 'bookings' && (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label={t('analytics.visits.booked')} value={num(T.booked)} />
-              <Stat label={t('analytics.visits.kept')} value={num(T.kept)} tone="green" />
+            <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Stat
+                icon={CalendarPlus}
+                label={t('analytics.visits.booked')}
+                value={num(T.booked)}
+              />
+              <Stat
+                icon={CalendarCheck}
+                label={t('analytics.visits.kept')}
+                value={num(T.kept)}
+                tone="green"
+              />
+              <Stat
+                icon={CalendarX}
                 label={t('analytics.visits.missed')}
                 value={num(T.missed)}
                 tone={T.missed ? 'red' : undefined}
               />
-              <Stat label={t('analytics.visits.pending')} value={num(T.pending)} />
+              <Stat
+                icon={CalendarClock}
+                tint="amber"
+                label={t('analytics.visits.pending')}
+                value={num(T.pending)}
+              />
             </div>
             <StaffLink
               to="/app/appointments"
-              className={cn(buttonVariants({ size: 'sm' }), 'self-start')}
+              className={cn(buttonVariants({ variant: 'tint-teal', size: 'sm' }), 'self-start')}
             >
-              {t('analytics.visits.openBookings')} →
+              <CalendarCheck size={16} aria-hidden="true" />
+              {t('analytics.visits.openBookings')}
             </StaffLink>
           </>
         )}
@@ -459,15 +476,16 @@ export function TreatmentsView({ period, search, update, dept, clinic }: ViewPro
         }
       >
         {group && (
-          <button
-            type="button"
+          <Button
+            variant="tint-teal"
+            size="sm"
+            className="self-start"
             onClick={() => update({ group: undefined }, { replace: true })}
-            className="border-primary/30 bg-primary-tint text-primary hover:bg-hover inline-flex h-8 items-center gap-1.5 self-start rounded-md border px-3 text-[13px] font-medium transition-colors duration-120"
           >
             {groupLabel || t('analytics.treatments.category')}
             <X size={14} aria-hidden="true" />
             <span className="sr-only">{t('analytics.treatments.clearCategory')}</span>
-          </button>
+          </Button>
         )}
         {rows.length === 0 ? (
           <Quiet>{t('analytics.noData')}</Quiet>

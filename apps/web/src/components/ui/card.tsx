@@ -34,12 +34,17 @@ export function CardHeader({ icon: IconC, className, children, ...props }: CardH
       )}
       {...props}
     >
-      {IconC && (
-        <span className="bg-primary-tint text-primary inline-flex size-7 flex-none items-center justify-center rounded">
-          <IconC size={16} aria-hidden="true" />
+      {/* icon and title stay together on the left; a trailing element is pushed right */}
+      {IconC ? (
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="bg-primary-tint text-primary inline-flex size-7 flex-none items-center justify-center rounded">
+            <IconC size={16} aria-hidden="true" />
+          </span>
+          {children}
         </span>
+      ) : (
+        children
       )}
-      {children}
     </div>
   )
 }

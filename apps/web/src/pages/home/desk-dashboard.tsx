@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import {
   Activity,
   AlertTriangle,
+  ArrowRight,
   BedDouble,
   CalendarCheck,
   ChartLine,
@@ -47,13 +48,15 @@ import type { AnalyticsView } from '@/lib/api/analytics'
 import { StationTile } from '@/components/dash/station-tile'
 import { HandoverPanel } from './handover-panel'
 import {
+  card,
   delta,
   greetingFor,
   stationLabel,
+  tileClass,
   triageIcon,
   type Tint,
 } from '@/components/dash/kit-style'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button, actionLink, buttonVariants } from '@/components/ui/button'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
@@ -170,6 +173,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
           </StaffLink>
           <PeriodSeg period={period} />
           <Button
+            variant="tint-grey"
             size="icon"
             onClick={() => void refetch()}
             loading={isFetching}
@@ -311,9 +315,10 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                       footer={
                         <StaffLink
                           to="/app/appointments"
-                          className={cn(buttonVariants({ size: 'sm' }), 'self-start')}
+                          className={cn(actionLink, 'self-start text-[13px]')}
                         >
-                          {t('ops.appts.all')} →
+                          {t('ops.appts.all')}
+                          <ArrowRight size={14} aria-hidden="true" />
                         </StaffLink>
                       }
                     />
@@ -545,7 +550,7 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
                   // the change count in the key replays the flash on the next change
                   key={`${r.queueId}:${changed.get(r.queueId) ?? 0}`}
                   className={cn(
-                    'border-grid flex min-h-11 flex-wrap items-center gap-x-2.5 gap-y-1.5 border-b py-1.5 text-[14px] last:border-b-0',
+                    'border-grid flex min-h-10 flex-wrap items-center gap-x-2.5 gap-y-1.5 border-b py-1.5 text-[14px] last:border-b-0',
                     changed.get(r.queueId) && 'anim-row',
                   )}
                   style={{ '--i': i } as CSSProperties}
@@ -588,8 +593,9 @@ function QueuePanel({ role, rows }: { role: DeskRole; rows: QueueItem[] }) {
           )}
         </ShownList>
       )}
-      <StaffLink to="/app/visits" className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
-        {t('desk.allInClinic')} →
+      <StaffLink to="/app/visits" className={cn(actionLink, 'self-start text-[13px]')}>
+        {t('desk.allInClinic')}
+        <ArrowRight size={14} aria-hidden="true" />
       </StaffLink>
     </Panel>
   )
@@ -758,16 +764,19 @@ function MinePanel({ d, role }: { d: DeskSummary; role: DeskRole }) {
       title={t('desk.mine.title')}
       right={t('desk.mine.note')}
     >
-      <div className="grid grid-cols-3 gap-2.5">
+      {/* three small tiles in the kit's tints (the same look as the KPI tiles, smaller) */}
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
         {rows.map((r, i) => (
           <div
             key={r.key}
-            className="border-border flex flex-col items-start gap-1 rounded-md border px-3 py-2.5"
+            className={cn(card, 'anim-enter gap-1 px-3 py-2.5', tileClass[r.tint])}
             style={{ '--i': i } as CSSProperties}
           >
-            <IconChip icon={r.icon} tint={r.tint} size="sm" />
-            <span className="text-[24px] leading-8 font-semibold tabular-nums">{r.n}</span>
-            <span className="text-ink-2 text-[12px] leading-tight font-semibold">{r.label}</span>
+            <span className="flex items-center gap-2 text-[13px] font-medium">
+              <IconChip icon={r.icon} tint={r.tint} size="sm" />
+              <span className="text-ink-2 min-w-0 break-words">{r.label}</span>
+            </span>
+            <span className="text-[28px] leading-8 font-semibold tabular-nums">{r.n}</span>
           </div>
         ))}
       </div>

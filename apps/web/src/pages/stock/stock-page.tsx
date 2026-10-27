@@ -1,17 +1,20 @@
-import { Fragment, useState, type FormEvent } from 'react'
+import { createElement, Fragment, useState, type FormEvent } from 'react'
 import { PeriodFilter } from '@/components/dash/period-filter'
 import { usePeriod } from '@/lib/period'
 import {
   AlertTriangle,
   ArrowRightLeft,
   Boxes,
+  Clock,
   Coins,
   DoorOpen,
+  Gauge,
   ListOrdered,
   Package,
   PackageMinus,
   PackagePlus,
   Pill,
+  Printer,
   ShoppingCart,
   Store,
   Tags,
@@ -28,10 +31,18 @@ import {
   isoDate,
   type StaffUser,
 } from '@mmc/shared'
-import { Empty, Kpi, Panel } from '@/components/dash/kit'
-import { BannerChip, PageBanner } from '@/components/dash/page-banner'
+import { Empty, Kpi, Panel, Pill as KitPill, SectionTitle } from '@/components/dash/kit'
+import {
+  expandedSection,
+  selectedRow,
+  tableCell,
+  tableFirstCell,
+  tableHead,
+  tableRow,
+} from '@/components/dash/kit-style'
+import { ActionRow, ActionRowEnd, BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, actionLink } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
@@ -190,7 +201,7 @@ function HolderStock({
   const { data } = useStockOverview()
   return (
     <>
-      <PageBanner icon={Package} tint="mint" title={t('myStore.title')} lead={t('myStore.lead')} />
+      <PageBanner icon={Package} tint="amber" title={t('myStore.title')} lead={t('myStore.lead')} />
       {holds && (
         <TabBar
           tabs={['mine', 'moves']}
@@ -321,18 +332,26 @@ function AdminStock({
     <>
       <PageBanner
         icon={Warehouse}
-        tint="mint"
+        tint="amber"
         title={t('stock.title')}
         lead={t('stock.lead')}
         meta={
-          costShown ? (
-            <BannerChip icon={Coins}>
-              {t('stock.valueChip', { amount: formatRwf(value) })}
-            </BannerChip>
-          ) : undefined
+          <>
+            {costShown && (
+              <BannerChip icon={Coins}>
+                {t('stock.valueChip', { amount: formatRwf(value) })}
+              </BannerChip>
+            )}
+            <BannerChip icon={Boxes}>{t('stock.itemCount', { count: active.length })}</BannerChip>
+            {queue.length > 0 && (
+              <BannerChip icon={Pill}>{t('stock.toHandOver', { count: queue.length })}</BannerChip>
+            )}
+          </>
         }
-      >
-        <label className="border-border bg-card flex h-10 items-center gap-2 rounded-md border px-3 text-[14px]">
+      />
+      <ActionRow>
+        {/* the report covers a chosen month: the control sits first, like a period control */}
+        <label className="border-border bg-card flex h-9 items-center gap-2 rounded-md border px-3 text-[14px]">
           <span className="text-ink-3 text-[13px]">{t('stock.reportMonth')}</span>
           <input
             type="month"
@@ -356,14 +375,26 @@ function AdminStock({
             )
           }
         />
-      </PageBanner>
+        <Button variant="tint-grey" onClick={() => window.print()}>
+          <Printer size={16} aria-hidden="true" />
+          {t('dashboard.print')}
+        </Button>
+        <ActionRowEnd />
+        {manage && (
+          <Button variant="primary" onClick={() => openStock('receive', {})}>
+            <PackagePlus size={16} aria-hidden="true" />
+            {t('stock.tabs.receive')}
+          </Button>
+        )}
+      </ActionRow>
       {error && <p className={errorBox}>{error.message}</p>}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(190px,1fr))] sm:gap-4">
+      <SectionTitle icon={Gauge}>{t('stock.onHand')}</SectionTitle>
+      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi
           i={0}
           icon={Boxes}
-          tint="mint"
+          tint="amber"
           label={t('stock.tiles.items')}
           value={active.length}
           unit={t('stock.units.items')}
@@ -372,7 +403,7 @@ function AdminStock({
           <Kpi
             i={1}
             icon={Coins}
-            tint="navy"
+            tint="teal"
             label={t('stock.tiles.value')}
             value={Math.round(value)}
             unit="RWF"
@@ -406,7 +437,7 @@ function AdminStock({
         <Kpi
           i={5}
           icon={Pill}
-          tint="violet"
+          tint="mint"
           label={t('stock.tiles.pharmacy')}
           value={queue.length}
           unit={t('stock.units.toHandOver')}
@@ -415,7 +446,7 @@ function AdminStock({
           <Kpi
             i={6}
             icon={Truck}
-            tint="teal"
+            tint="navy"
             label={t('stockShared.tiles.onTheWay')}
             value={data.transit.units}
             unit={t('stockShared.tiles.notes', { count: data.transit.notes })}
@@ -497,6 +528,11 @@ function AdminStock({
 }
 
 /* ---------------------------------------------------------------- alerts */
+/** The alert lists: 40 px rows on 1 px dividers, a pill with the date or the count first. */
+const alertList = 'm-0 flex list-none flex-col p-0 text-[14px]'
+const alertRow =
+  'border-grid flex min-h-10 flex-wrap items-center gap-2.5 border-b py-1.5 last:border-b-0'
+
 /** Expired stock to write off, stock expiring within 90 days, room stores below their minimum. */
 function AlertsPanel({ onWriteOff }: { onWriteOff: () => void }) {
   const { t } = useTranslation()
@@ -508,18 +544,28 @@ function AlertsPanel({ onWriteOff }: { onWriteOff: () => void }) {
     <Panel i={0} icon={AlertTriangle} tint="coral" title={t('stockShared.alertsTitle')}>
       {expired.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-red text-[14px] font-semibold">
+          <span className="text-red flex items-center gap-1.5 text-[14px] font-semibold">
+            <AlertTriangle size={16} aria-hidden="true" />
             {t('stockShared.expiredList', { count: expired.length })}
           </span>
-          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
+          <ul className={alertList}>
             {expired.slice(0, 8).map((x) => (
-              <li key={`${x.storeId}-${x.itemId}-${x.batchNo}`}>
-                <b>{x.item}</b> × {formatNumber(x.quantity)} · {x.store}
-                {x.batchNo ? ` · ${x.batchNo}` : ''} · {formatDate(new Date(x.expiry))}
+              <li key={`${x.storeId}-${x.itemId}-${x.batchNo}`} className={alertRow}>
+                <KitPill tint="coral" icon={AlertTriangle}>
+                  {formatDate(new Date(x.expiry))}
+                </KitPill>
+                <span className="min-w-0 flex-1 wrap-break-word">
+                  <b>{x.item}</b> × {formatNumber(x.quantity)}
+                  <span className="text-ink-3">
+                    {' · '}
+                    {x.store}
+                    {x.batchNo ? ` · ${x.batchNo}` : ''}
+                  </span>
+                </span>
               </li>
             ))}
           </ul>
-          <Button size="sm" className="self-start" onClick={onWriteOff}>
+          <Button size="sm" variant="tint-coral" className="self-start" onClick={onWriteOff}>
             <PackageMinus size={14} aria-hidden="true" />
             {t('stockShared.writeOffExpired')}
           </Button>
@@ -527,15 +573,24 @@ function AlertsPanel({ onWriteOff }: { onWriteOff: () => void }) {
       )}
       {expiring.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-amber text-[14px] font-semibold">
+          <span className="text-amber flex items-center gap-1.5 text-[14px] font-semibold">
+            <Clock size={16} aria-hidden="true" />
             {t('stockShared.expiringList', { count: expiring.length })}
           </span>
-          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
+          <ul className={alertList}>
             {expiring.slice(0, 8).map((x) => (
-              <li key={`${x.storeId}-${x.itemId}-${x.batchNo}`}>
-                <b>{x.item}</b> × {formatNumber(x.quantity)} · {x.store}
-                {x.batchNo ? ` · ${x.batchNo}` : ''} ·{' '}
-                {t('stockShared.expiresIn', { count: x.days })}
+              <li key={`${x.storeId}-${x.itemId}-${x.batchNo}`} className={alertRow}>
+                <KitPill tint="amber" icon={Clock}>
+                  {t('stockShared.expiresIn', { count: x.days })}
+                </KitPill>
+                <span className="min-w-0 flex-1 wrap-break-word">
+                  <b>{x.item}</b> × {formatNumber(x.quantity)}
+                  <span className="text-ink-3">
+                    {' · '}
+                    {x.store}
+                    {x.batchNo ? ` · ${x.batchNo}` : ''}
+                  </span>
+                </span>
               </li>
             ))}
           </ul>
@@ -543,14 +598,20 @@ function AlertsPanel({ onWriteOff }: { onWriteOff: () => void }) {
       )}
       {roomLow.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-[14px] font-semibold">
+          <span className="text-ink flex items-center gap-1.5 text-[14px] font-semibold">
+            <Gauge size={16} aria-hidden="true" className="text-amber" />
             {t('stockShared.roomLowList', { count: roomLow.length })}
           </span>
-          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[14px]">
+          <ul className={alertList}>
             {roomLow.slice(0, 8).map((x) => (
-              <li key={`${x.storeId}-${x.itemId}`}>
-                <b>{x.item}</b> · {x.store} ·{' '}
-                {t('stockShared.roomLowLine', { count: x.onHand, min: x.min })}
+              <li key={`${x.storeId}-${x.itemId}`} className={alertRow}>
+                <KitPill tint="amber" icon={Gauge}>
+                  {t('stockShared.roomLowLine', { count: x.onHand, min: x.min })}
+                </KitPill>
+                <span className="min-w-0 flex-1 wrap-break-word">
+                  <b>{x.item}</b>
+                  <span className="text-ink-3"> · {x.store}</span>
+                </span>
               </li>
             ))}
           </ul>
@@ -595,35 +656,26 @@ function StockTable({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[14px]">
             <thead>
-              <tr className="text-ink-3 text-left text-[12px]">
-                <th className="border-border border-b py-2 pr-2 font-medium">
-                  {t('stock.cols.item')}
-                </th>
-                <th className="border-border border-b py-2 pr-2 text-right font-semibold">
-                  {t('stockShared.cols.usable')}
-                </th>
+              <tr className="border-border border-b">
+                <th className={tableHead}>{t('stock.cols.item')}</th>
+                <th className={cn(tableHead, 'text-right')}>{t('stockShared.cols.usable')}</th>
                 {columns.map((l) => (
-                  <th
-                    key={l.id}
-                    className="border-border hidden border-b py-2 pr-2 text-right font-semibold lg:table-cell"
-                  >
+                  <th key={l.id} className={cn(tableHead, 'hidden text-right lg:table-cell')}>
                     {l.name}
                   </th>
                 ))}
                 {showCost && (
-                  <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold sm:table-cell">
+                  <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
                     {t('stock.cols.cost')}
                   </th>
                 )}
-                <th className="border-border border-b py-2 pr-2 text-right font-semibold">
-                  {t('stock.cols.price')}
-                </th>
+                <th className={cn(tableHead, 'text-right')}>{t('stock.cols.price')}</th>
                 {showCost && (
-                  <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold md:table-cell">
+                  <th className={cn(tableHead, 'hidden text-right md:table-cell')}>
                     {t('stock.cols.value')}
                   </th>
                 )}
-                <th className="border-border hidden border-b py-2 font-semibold md:table-cell">
+                <th className={cn(tableHead, 'hidden md:table-cell')}>
                   {t('stockShared.cols.nextExpiry')}
                 </th>
               </tr>
@@ -636,9 +688,9 @@ function StockTable({
                 const state = expiryState(next)
                 return (
                   <Fragment key={i.id}>
-                    <tr className="border-grid border-b last:border-b-0">
-                      <td className="py-2 pr-2">
-                        <span className="block font-semibold">{itemName(i)}</span>
+                    <tr className={cn(tableRow, levelFor === i.id && selectedRow)}>
+                      <td className={tableFirstCell}>
+                        <span className="block">{itemName(i)}</span>
                         <span className="text-ink-3 text-[12px]">
                           {i.code}
                           {i.unit ? ` · ${t('prices.meds.perUnit', { unit: i.unit })}` : ''}
@@ -649,7 +701,7 @@ function StockTable({
                           {canSetLevel ? (
                             <button
                               type="button"
-                              className="text-primary underline-offset-2 hover:underline"
+                              className={cn(actionLink, 'text-[12px]')}
                               title={t('stock.reorderEdit')}
                               onClick={() => setLevelFor(levelFor === i.id ? null : i.id)}
                             >
@@ -669,13 +721,18 @@ function StockTable({
                       </td>
                       <td
                         className={cn(
-                          'py-2 pr-2 text-right font-semibold tabular-nums',
+                          tableCell,
+                          'text-right font-semibold tabular-nums',
                           lowStock ? 'text-red' : usable <= 0 ? 'text-ink-3' : 'text-green',
                         )}
                       >
                         {formatNumber(usable)}
                         {lowStock && (
-                          <Badge tone="red" className="ml-1.5">
+                          <Badge
+                            tone="red"
+                            className="ml-1.5"
+                            icon={<AlertTriangle size={12} aria-hidden="true" />}
+                          >
                             {t('stock.low')}
                           </Badge>
                         )}
@@ -688,29 +745,37 @@ function StockTable({
                       {columns.map((l) => (
                         <td
                           key={l.id}
-                          className="text-ink-2 hidden py-2 pr-2 text-right tabular-nums lg:table-cell"
+                          className={cn(
+                            tableCell,
+                            'text-ink-2 hidden text-right tabular-nums lg:table-cell',
+                          )}
                         >
                           {i.byLocation[l.id] ? formatNumber(i.byLocation[l.id]!) : '—'}
                         </td>
                       ))}
                       {showCost && (
-                        <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
+                        <td
+                          className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}
+                        >
                           {i.avgCost == null ? '—' : formatNumber(i.avgCost)}
                         </td>
                       )}
-                      <td className="py-2 pr-2 text-right font-semibold tabular-nums">
+                      <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
                         {i.sellingPrice == null
                           ? t('prices.noPrice')
                           : formatNumber(i.sellingPrice)}
                       </td>
                       {showCost && (
-                        <td className="hidden py-2 pr-2 text-right tabular-nums md:table-cell">
+                        <td
+                          className={cn(tableCell, 'hidden text-right tabular-nums md:table-cell')}
+                        >
                           {formatNumber(Math.round(i.costValue))}
                         </td>
                       )}
                       <td
                         className={cn(
-                          'hidden py-2 tabular-nums md:table-cell',
+                          tableCell,
+                          'hidden tabular-nums md:table-cell',
                           state === 'soon' && 'text-amber font-semibold',
                         )}
                       >
@@ -729,7 +794,7 @@ function StockTable({
                     </tr>
                     {levelFor === i.id && (
                       <tr className="border-grid border-b">
-                        <td colSpan={colCount} className="bg-surface px-3 py-2">
+                        <td colSpan={colCount} className={cn(expandedSection, 'px-3 py-2')}>
                           <LevelEditor item={i} onDone={() => setLevelFor(null)} />
                         </td>
                       </tr>
@@ -885,7 +950,8 @@ function SendForm({
         {item && available === 0 && inRooms.length > 0 && (
           <p className="bg-blue-bg text-blue m-0 rounded-md px-3 py-2 text-[14px]">
             {t('stockShared.onlyInRooms', { stores: inRooms.map((l) => l.name).join(', ') })}{' '}
-            <button type="button" className="font-semibold underline" onClick={onRooms}>
+            <button type="button" className={actionLink} onClick={onRooms}>
+              <DoorOpen size={14} aria-hidden="true" />
               {t('stockShared.openRooms')}
             </button>
           </p>
@@ -1036,7 +1102,7 @@ function UseForm({ items, locations }: { items: StockItem[]; locations: StockLoc
         <MsgFlash msg={msg} onClose={() => setMsg(null)} />
         <Button
           type="submit"
-          variant="primary"
+          variant="danger-solid"
           className="self-start"
           loading={actions.use.isPending}
         >
@@ -1129,6 +1195,16 @@ function Movements({ items, locations }: { items: StockItem[]; locations: StockL
                         ? 'yellow'
                         : 'grey'
                 }
+                icon={createElement(
+                  m.type === 'receipt'
+                    ? PackagePlus
+                    : m.type === 'transfer'
+                      ? ArrowRightLeft
+                      : m.type === 'dispense'
+                        ? Pill
+                        : PackageMinus,
+                  { size: 12, 'aria-hidden': true },
+                )}
               >
                 {t(`stock.types.${m.type}`)}
               </Badge>
@@ -1173,11 +1249,12 @@ function Sales() {
   return (
     <div className="flex flex-col gap-4">
       <PeriodFilter period={period} />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(190px,1fr))] sm:gap-4">
+      <SectionTitle icon={Coins}>{t('stock.tabs.sales')}</SectionTitle>
+      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi
           i={0}
           icon={Coins}
-          tint="mint"
+          tint="teal"
           label={t('stock.sales.revenue')}
           value={revenue}
           unit="RWF"
@@ -1193,7 +1270,7 @@ function Sales() {
         <Kpi
           i={2}
           icon={Coins}
-          tint="violet"
+          tint="mint"
           label={t('stock.sales.margin')}
           value={Math.round(revenue - cost)}
           unit="RWF"
@@ -1217,45 +1294,40 @@ function Sales() {
           />
         )}
       </div>
-      <Panel i={2} icon={Coins} tint="mint" title={t('stock.sales.byItem')}>
+      <Panel i={2} icon={Coins} tint="teal" title={t('stock.sales.byItem')}>
         {!data || data.items.length === 0 ? (
-          <Empty>{t('stock.sales.none')}</Empty>
+          <Empty icon={Coins}>{t('stock.sales.none')}</Empty>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[14px]">
               <thead>
-                <tr className="text-ink-3 text-left text-[12px]">
-                  <th className="border-border border-b py-2 pr-2 font-medium">
-                    {t('stock.cols.item')}
-                  </th>
-                  <th className="border-border border-b py-2 pr-2 text-right font-semibold">
-                    {t('stock.sales.units')}
-                  </th>
-                  <th className="border-border border-b py-2 pr-2 text-right font-semibold">
-                    {t('stock.sales.revenue')}
-                  </th>
-                  <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold sm:table-cell">
+                <tr className="border-border border-b">
+                  <th className={tableHead}>{t('stock.cols.item')}</th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.sales.units')}</th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.sales.revenue')}</th>
+                  <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
                     {t('stock.sales.cost')}
                   </th>
-                  <th className="border-border border-b py-2 text-right font-semibold">
-                    {t('stock.sales.margin')}
-                  </th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.sales.margin')}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.items.map((x) => (
-                  <tr key={x.item} className="border-grid border-b last:border-b-0">
-                    <td className="py-2 pr-2 font-semibold">{x.item}</td>
-                    <td className="py-2 pr-2 text-right tabular-nums">{formatNumber(x.units)}</td>
-                    <td className="py-2 pr-2 text-right font-semibold tabular-nums">
+                  <tr key={x.item} className={tableRow}>
+                    <td className={tableFirstCell}>{x.item}</td>
+                    <td className={cn(tableCell, 'text-right tabular-nums')}>
+                      {formatNumber(x.units)}
+                    </td>
+                    <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
                       {formatNumber(x.revenue)}
                     </td>
-                    <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
+                    <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
                       {formatNumber(Math.round(x.cost))}
                     </td>
                     <td
                       className={cn(
-                        'py-2 text-right font-semibold tabular-nums',
+                        tableCell,
+                        'text-right font-semibold tabular-nums',
                         x.margin >= 0 ? 'text-green' : 'text-red',
                       )}
                     >

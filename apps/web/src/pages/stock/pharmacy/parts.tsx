@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { CircleAlert, Plus, Printer, Trash2, X } from 'lucide-react'
+import { Ban, CircleAlert, Plus, Printer, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf, formatTime } from '@mmc/shared'
 import { registrationText, useMyCredentials } from '@/lib/api/staff'
@@ -8,7 +8,7 @@ import { allergyList } from '@/lib/doc-style'
 import { useLetterhead } from '@/lib/report-parts'
 import { useSession } from '@/store/session'
 import { Button } from '@/components/ui/button'
-import { Field } from '@/components/ui/field'
+import { controlClass, Field } from '@/components/ui/field'
 import { Reveal } from '@/components/ui/reveal'
 import { SearchSelect } from '@/components/ui/search-select'
 import { cn } from '@/lib/utils'
@@ -123,7 +123,7 @@ export function HandedStrip({
                 .join('; ')}
             </span>
           </span>
-          <Button size="sm" variant={g.printed ? 'default' : 'primary'} onClick={() => print(g)}>
+          <Button size="sm" variant={g.printed ? 'tint-grey' : 'primary'} onClick={() => print(g)}>
             <Printer size={14} aria-hidden="true" />
             {g.printed ? t('pharmacy.reprintLabels') : t('pharmacy.printLabelsNow')}
           </Button>
@@ -174,9 +174,9 @@ export function ReasonBox({
                 type="button"
                 onClick={() => setReason(c)}
                 className={cn(
-                  'rounded border px-2.5 py-1 text-[12px] font-medium transition-colors duration-120',
+                  'inline-flex h-7 items-center rounded border px-2.5 text-[12px] font-medium transition-colors duration-120',
                   reason === c
-                    ? 'border-primary bg-primary text-white'
+                    ? 'border-primary/30 bg-primary-tint text-primary'
                     : 'border-border text-ink-2 hover:bg-hover',
                 )}
               >
@@ -186,7 +186,7 @@ export function ReasonBox({
           </span>
         )}
         <input
-          className="border-border bg-card focus:border-primary h-10 rounded-md border px-2.5 text-[14px] outline-none"
+          className={controlClass}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder={t('pharmacy.reasonPh')}
@@ -195,14 +195,15 @@ export function ReasonBox({
         <span className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            variant="primary"
+            variant="danger-solid"
             disabled={reason.trim().length < 3 || busy}
             loading={busy}
             onClick={() => onConfirm(reason.trim())}
           >
+            {!busy && <Ban size={14} aria-hidden="true" />}
             {confirmLabel}
           </Button>
-          <Button size="sm" variant="ghost" onClick={onCancel}>
+          <Button size="sm" variant="tint-grey" onClick={onCancel}>
             {t('staff.form.cancel')}
           </Button>
         </span>
@@ -264,12 +265,7 @@ export function LinesEditor({
           {l.itemId && below?.(l)}
         </div>
       ))}
-      <Button
-        size="sm"
-        variant="ghost"
-        className="self-start"
-        onClick={() => onChange([...lines, newLine()])}
-      >
+      <Button size="sm" className="self-start" onClick={() => onChange([...lines, newLine()])}>
         <Plus size={14} aria-hidden="true" />
         {t('pharmacy.addLine')}
       </Button>

@@ -3,10 +3,10 @@ import { Pencil, Pill, Plus, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
-import { Reveal } from '@/components/ui/reveal'
 import { Button } from '@/components/ui/button'
-import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
+import { Card, CardBody, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
+import { SidePanel } from '@/components/ui/side-panel'
 import { ShownList } from '@/components/ui/list-tools'
 import { SearchSelect } from '@/components/ui/search-select'
 import {
@@ -48,6 +48,8 @@ async function savePackSize(itemId: string, packSize: number | null) {
 
 const errorBox =
   'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
+/** The medicine form opens in a side panel; the panel's footer submits it by this id. */
+const MEDICINE_FORM = 'medicine-form'
 
 /**
  * Medicines and supplies with their price (manager). Anything listed here can be put on the
@@ -120,17 +122,15 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
         </p>
       )}
       {editing && (
-        <Reveal focus>
-          <MedicineForm
-            key={editing === 'new' ? 'new' : editing.id}
-            medicine={editing === 'new' ? null : editing}
-            onClose={() => setEditing(null)}
-            onSaved={(name) => {
-              setEditing(null)
-              onNotice(t('prices.meds.saved', { name }))
-            }}
-          />
-        </Reveal>
+        <MedicineForm
+          key={editing === 'new' ? 'new' : editing.id}
+          medicine={editing === 'new' ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={(name) => {
+            setEditing(null)
+            onNotice(t('prices.meds.saved', { name }))
+          }}
+        />
       )}
       <CardBody className="border-border border-b py-2.5">
         <Field
@@ -148,7 +148,11 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
             rows.map((m) => (
               <Row
                 key={m.id}
-                className={cn('flex-wrap gap-x-3 gap-y-1 py-2', !m.active && 'opacity-60')}
+                className={cn(
+                  'flex-wrap gap-x-3 gap-y-1 py-2',
+                  !m.active && 'opacity-60',
+                  editing !== 'new' && editing?.id === m.id && 'bg-primary-tint/50',
+                )}
               >
                 <span className="min-w-[180px] flex-1">
                   <span className="text-ink block font-semibold">
@@ -173,8 +177,7 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
                   {canDelete && (
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="hover:text-red"
+                      variant="tint-coral"
                       title={t('prices.delete')}
                       aria-label={t('prices.delete')}
                       onClick={() => void remove(m)}
@@ -285,129 +288,144 @@ function MedicineForm({
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="border-border border-b">
-      <CardHeader>
-        <span>
-          {medicine ? t('prices.meds.editTitle', { name: medicine.name }) : t('prices.meds.new')}
-        </span>
-      </CardHeader>
-      <CardBody className="gap-3">
-        {/* while the list loads, or when it cannot be read, say so: typing stays possible */}
-        {!medicine && (refLoading || refFailed) && (
-          <p className="text-ink-3 m-0 text-[13px]">
-            {t(refLoading ? 'prices.meds.ref.loading' : 'prices.meds.ref.failed')}
-          </p>
-        )}
-        {!medicine && reference.length > 0 && (
-          <div className="border-border bg-surface flex flex-col gap-2 rounded-md border p-3">
-            <SearchSelect
-              label={t('prices.meds.ref.pick')}
-              value={code}
-              onChange={pickRef}
-              emptyLabel={t('prices.meds.ref.none')}
-              options={reference
-                .filter((r) => !clinicCodes.has(r.code) || r.code === code)
-                .map((r) => ({ value: r.code, label: medicineRefLabel(r, t) }))}
-            />
-            {code ? (
-              <>
-                <p className="text-ink-2 m-0 text-[14px]">
-                  {[
-                    t('prices.meds.ref.note'),
-                    ref?.rule ? medicineRuleText(ref.rule, t) : null,
-                    ref?.group ? t('prices.meds.ref.group', { group: ref.group }) : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="self-start"
-                  onClick={() => pickRef('')}
-                >
-                  <X size={14} aria-hidden="true" />
-                  {t('prices.meds.ref.clear')}
-                </Button>
-              </>
-            ) : (
-              <p className="text-ink-3 m-0 text-[12px]">{t('prices.meds.ref.byHand')}</p>
-            )}
-          </div>
-        )}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field
-            label={t('prices.meds.name')}
-            value={name}
-            placeholder={t('prices.meds.namePh')}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-          <Field
-            label={t('prices.meds.strength')}
-            value={strength}
-            placeholder="500 mg"
-            onChange={(e) => setStrength(e.target.value)}
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Field
-            label={t('prices.meds.form')}
-            value={form}
-            placeholder={t('prices.meds.formPh')}
-            onChange={(e) => setForm(e.target.value)}
-          />
-          <Field
-            label={t('prices.meds.unit')}
-            value={unit}
-            placeholder={t('prices.meds.unitPh')}
-            onChange={(e) => setUnit(e.target.value)}
-          />
-          <Field
-            label={t('prices.meds.price')}
-            inputMode="numeric"
-            value={price}
-            placeholder="500"
-            onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))}
-            required
-          />
-        </div>
-        <Field
-          label={t('prices.meds.packSize')}
-          inputMode="numeric"
-          value={pack}
-          placeholder="100"
-          onChange={(e) => setPackSize(e.target.value.replace(/[^\d]/g, ''))}
-          wrapperClassName="sm:max-w-xs"
-        />
-        <p className="text-ink-3 m-0 -mt-1 text-[12px]">{t('prices.meds.packHint')}</p>
-        <label className="border-border flex items-start gap-3 rounded-md border p-3">
-          <input
-            type="checkbox"
-            className="accent-primary mt-0.5 size-[18px] flex-none"
-            checked={active}
-            onChange={(e) => setActive(e.target.checked)}
-          />
-          <span>
-            <span className="block text-[14px] font-semibold">{t('prices.meds.active')}</span>
-            <span className="text-ink-3 block text-xs">{t('prices.meds.activeHint')}</span>
-          </span>
-        </label>
-        {error && (
-          <p role="alert" className={errorBox}>
-            {error}
-          </p>
-        )}
-        <div className="flex gap-2">
-          <Button type="submit" variant="primary" loading={actions.save.isPending}>
-            {t('prices.form.save')}
-          </Button>
+    <SidePanel
+      open
+      onClose={onClose}
+      hue="amber"
+      icon={Pill}
+      title={medicine ? t('prices.meds.editTitle', { name: medicine.name }) : t('prices.meds.new')}
+      subtitle={
+        medicine
+          ? [medicine.code, medicine.strength, medicine.form].filter(Boolean).join(' · ')
+          : undefined
+      }
+      footer={
+        <>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('staff.form.cancel')}
           </Button>
-        </div>
-      </CardBody>
-    </form>
+          <Button
+            type="submit"
+            form={MEDICINE_FORM}
+            variant="primary"
+            loading={actions.save.isPending}
+          >
+            {t('prices.form.save')}
+          </Button>
+        </>
+      }
+    >
+      <form id={MEDICINE_FORM} onSubmit={(e) => void submit(e)}>
+        <CardBody className="gap-3 p-0">
+          {/* while the list loads, or when it cannot be read, say so: typing stays possible */}
+          {!medicine && (refLoading || refFailed) && (
+            <p className="text-ink-3 m-0 text-[13px]">
+              {t(refLoading ? 'prices.meds.ref.loading' : 'prices.meds.ref.failed')}
+            </p>
+          )}
+          {!medicine && reference.length > 0 && (
+            <div className="border-border bg-surface flex flex-col gap-2 rounded-md border p-3">
+              <SearchSelect
+                label={t('prices.meds.ref.pick')}
+                value={code}
+                onChange={pickRef}
+                emptyLabel={t('prices.meds.ref.none')}
+                options={reference
+                  .filter((r) => !clinicCodes.has(r.code) || r.code === code)
+                  .map((r) => ({ value: r.code, label: medicineRefLabel(r, t) }))}
+              />
+              {code ? (
+                <>
+                  <p className="text-ink-2 m-0 text-[14px]">
+                    {[
+                      t('prices.meds.ref.note'),
+                      ref?.rule ? medicineRuleText(ref.rule, t) : null,
+                      ref?.group ? t('prices.meds.ref.group', { group: ref.group }) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="tint-grey"
+                    className="self-start"
+                    onClick={() => pickRef('')}
+                  >
+                    <X size={14} aria-hidden="true" />
+                    {t('prices.meds.ref.clear')}
+                  </Button>
+                </>
+              ) : (
+                <p className="text-ink-3 m-0 text-[12px]">{t('prices.meds.ref.byHand')}</p>
+              )}
+            </div>
+          )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field
+              label={t('prices.meds.name')}
+              value={name}
+              placeholder={t('prices.meds.namePh')}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <Field
+              label={t('prices.meds.strength')}
+              value={strength}
+              placeholder="500 mg"
+              onChange={(e) => setStrength(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Field
+              label={t('prices.meds.form')}
+              value={form}
+              placeholder={t('prices.meds.formPh')}
+              onChange={(e) => setForm(e.target.value)}
+            />
+            <Field
+              label={t('prices.meds.unit')}
+              value={unit}
+              placeholder={t('prices.meds.unitPh')}
+              onChange={(e) => setUnit(e.target.value)}
+            />
+            <Field
+              label={t('prices.meds.price')}
+              inputMode="numeric"
+              value={price}
+              placeholder="500"
+              onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))}
+              required
+            />
+          </div>
+          <Field
+            label={t('prices.meds.packSize')}
+            inputMode="numeric"
+            value={pack}
+            placeholder="100"
+            onChange={(e) => setPackSize(e.target.value.replace(/[^\d]/g, ''))}
+            wrapperClassName="sm:max-w-xs"
+          />
+          <p className="text-ink-3 m-0 -mt-1 text-[12px]">{t('prices.meds.packHint')}</p>
+          <label className="border-border flex items-start gap-3 rounded-md border p-3">
+            <input
+              type="checkbox"
+              className="accent-primary mt-0.5 size-[18px] flex-none"
+              checked={active}
+              onChange={(e) => setActive(e.target.checked)}
+            />
+            <span>
+              <span className="block text-[14px] font-semibold">{t('prices.meds.active')}</span>
+              <span className="text-ink-3 block text-xs">{t('prices.meds.activeHint')}</span>
+            </span>
+          </label>
+          {error && (
+            <p role="alert" className={errorBox}>
+              {error}
+            </p>
+          )}
+        </CardBody>
+      </form>
+    </SidePanel>
   )
 }

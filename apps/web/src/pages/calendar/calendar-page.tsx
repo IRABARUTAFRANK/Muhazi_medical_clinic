@@ -327,7 +327,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                         <Button
                           type="button"
                           size="sm"
-                          variant="ghost"
+                          variant="tint-coral"
                           aria-label={t('calendar.removePeriod')}
                           title={t('calendar.removePeriod')}
                           onClick={() =>
@@ -348,7 +348,6 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                           <Button
                             type="button"
                             size="sm"
-                            variant="ghost"
                             onClick={() => {
                               // Split the day around a midday break when the hours allow it.
                               const [start, end] = spans[0]!
@@ -372,7 +371,6 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                           <Button
                             type="button"
                             size="sm"
-                            variant="ghost"
                             onClick={() => setDay(k, [...spans, ['16:00', '18:00']])}
                           >
                             <Plus size={14} aria-hidden="true" />
@@ -390,6 +388,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
             <Button
               type="button"
               size="sm"
+              variant="tint-grey"
               disabled={!(hours['1'] ?? []).length}
               onClick={() => {
                 const mon = hours['1'] ?? []

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Check, KeyRound, UserCog, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { IconChip } from '@/components/dash/kit'
+import { Hint, IconChip } from '@/components/dash/kit'
+import { tableCell, tableFirstCell, tableHead, tableRow } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
@@ -74,12 +75,14 @@ export function PermissionsCard() {
             </Flash>
           )}
           <div className="border-border overflow-x-auto rounded-md border">
-            <table className="w-full min-w-[760px] text-[14px]">
-              <thead className="bg-hover/60 text-ink-2">
-                <tr>
-                  <th className="px-3 py-2 text-left font-semibold">{t('perms.feature')}</th>
+            <table className="w-full min-w-[760px] border-collapse text-[14px]">
+              <thead>
+                <tr className="border-border bg-surface border-b">
+                  <th scope="col" className={tableHead}>
+                    {t('perms.feature')}
+                  </th>
                   {MATRIX_ROLES.map((r) => (
-                    <th key={r} className="px-2 py-2 text-center font-semibold">
+                    <th key={r} scope="col" className={cn(tableHead, 'px-2 text-center')}>
                       {t(`staff.roles.${r}`)}
                     </th>
                   ))}
@@ -87,15 +90,17 @@ export function PermissionsCard() {
               </thead>
               <tbody>
                 {MANAGED_FEATURES.map((f) => (
-                  <tr key={f} className="border-border border-t">
-                    <td className="px-3 py-2">
-                      <span className="block font-semibold">{t(`perms.f.${f}.name`)}</span>
-                      <span className="text-ink-3 block text-xs">{t(`perms.f.${f}.hint`)}</span>
+                  <tr key={f} className={tableRow}>
+                    <td className={tableFirstCell}>
+                      <span className="block">{t(`perms.f.${f}.name`)}</span>
+                      <span className="text-ink-3 block text-xs font-normal">
+                        {t(`perms.f.${f}.hint`)}
+                      </span>
                     </td>
                     {MATRIX_ROLES.map((r) => {
                       const on = has(r, f)
                       return (
-                        <td key={r} className="px-2 py-2 text-center">
+                        <td key={r} className={cn(tableCell, 'px-2 text-center')}>
                           <button
                             type="button"
                             role="switch"
@@ -151,15 +156,17 @@ export function PermissionsCard() {
               </tbody>
             </table>
           </div>
-          <p className="text-ink-3 m-0 text-xs">{t('perms.managerNote')}</p>
+          <Hint>{t('perms.managerNote')}</Hint>
         </CardBody>
 
         {/* One employee */}
-        <CardBody className="border-border gap-3 border-t">
-          <h3 className="m-0 inline-flex items-center gap-2 text-[16px] font-semibold">
-            <UserCog size={16} aria-hidden="true" />
+        <CardHeader className="border-t">
+          <span className="inline-flex items-center gap-2">
+            <IconChip icon={UserCog} tint="violet" />
             {t('perms.oneTitle')}
-          </h3>
+          </span>
+        </CardHeader>
+        <CardBody className="gap-3">
           <p className="text-ink-2 m-0 text-[14px]">{t('perms.oneLead')}</p>
           <Select
             label={t('perms.employee')}
@@ -175,7 +182,7 @@ export function PermissionsCard() {
             ))}
           </Select>
           {chosen && (
-            <div className="flex flex-col gap-2">
+            <div className="border-border flex flex-col rounded-md border">
               {MANAGED_FEATURES.map((f) => {
                 const ex = exceptionOf(chosen.id, f)
                 const byRole = has(chosen.role, f)
@@ -184,17 +191,26 @@ export function PermissionsCard() {
                 return (
                   <div
                     key={f}
-                    className="border-border flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3 py-2"
+                    className="border-grid hover:bg-hover flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 border-b px-3 py-1.5 transition-colors duration-120 last:border-b-0"
                   >
                     <span className="min-w-[200px] flex-1">
-                      <span className="block font-semibold">{t(`perms.f.${f}.name`)}</span>
+                      <span className="block font-medium">{t(`perms.f.${f}.name`)}</span>
                       <span className="text-ink-3 block text-xs">
                         {t(byRole ? 'perms.roleYes' : 'perms.roleNo', {
                           role: t(`staff.roles.${chosen.role}`),
                         })}
                       </span>
                     </span>
-                    <Badge tone={effective ? 'green' : 'red'}>
+                    <Badge
+                      tone={effective ? 'green' : 'red'}
+                      icon={
+                        effective ? (
+                          <Check size={12} strokeWidth={2.5} aria-hidden="true" />
+                        ) : (
+                          <X size={12} strokeWidth={2.5} aria-hidden="true" />
+                        )
+                      }
+                    >
                       {t(effective ? 'perms.allowed' : 'perms.notAllowed')}
                     </Badge>
                     <span className="flex flex-wrap gap-1" role="radiogroup">
@@ -202,7 +218,7 @@ export function PermissionsCard() {
                         <Button
                           key={v}
                           size="sm"
-                          variant={value === v ? 'primary' : 'ghost'}
+                          variant={value === v ? 'primary' : 'tint-grey'}
                           aria-checked={value === v}
                           role="radio"
                           disabled={actions.setStaff.isPending}
@@ -248,14 +264,29 @@ export function PermissionsCard() {
             </div>
           )}
           {matrix && matrix.exceptions.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <span className="text-ink-2 text-[14px] font-semibold">{t('perms.current')}</span>
+            <div className="flex flex-col">
+              <span className="text-ink-3 border-border flex h-10 items-center border-b text-[12px]">
+                {t('perms.current')}
+              </span>
               {matrix.exceptions.map((x) => (
-                <span key={x.profileId + x.permission} className="text-[14px]">
-                  <b>{x.name}</b> · {t(`perms.f.${x.permission}.name`)}:{' '}
-                  <span className={x.allowed ? 'text-green' : 'text-red'}>
+                <span
+                  key={x.profileId + x.permission}
+                  className="border-grid flex min-h-10 flex-wrap items-center gap-x-2 gap-y-1 border-b py-1.5 text-[14px] last:border-b-0"
+                >
+                  <span className="font-medium">{x.name}</span>
+                  <span className="text-ink-2">· {t(`perms.f.${x.permission}.name`)}</span>
+                  <Badge
+                    tone={x.allowed ? 'green' : 'red'}
+                    icon={
+                      x.allowed ? (
+                        <Check size={12} strokeWidth={2.5} aria-hidden="true" />
+                      ) : (
+                        <X size={12} strokeWidth={2.5} aria-hidden="true" />
+                      )
+                    }
+                  >
                     {t(x.allowed ? 'perms.allowed' : 'perms.notAllowed')}
-                  </span>
+                  </Badge>
                 </span>
               ))}
             </div>

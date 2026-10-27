@@ -1,4 +1,4 @@
-import { Boxes, CalendarClock, Coins, PackageX, Store } from 'lucide-react'
+import { Boxes, CalendarClock, Coins, PackageX, ShoppingCart, Store } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Hint, Kpi, Panel } from '@/components/dash/kit'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -115,9 +115,14 @@ export function StockView({ access, period, search, update, clinic }: ViewProps)
             search={{ tab: 'reorder' }}
             className={cn(buttonVariants({ variant: 'primary', size: 'md' }))}
           >
+            <ShoppingCart size={16} aria-hidden="true" />
             {t('analytics.stock.openReorder')}
           </StaffLink>
-          <StaffLink to="/app/stock" className={cn(buttonVariants({ size: 'md' }))}>
+          <StaffLink
+            to="/app/stock"
+            className={cn(buttonVariants({ variant: 'tint-teal', size: 'md' }))}
+          >
+            <Boxes size={16} aria-hidden="true" />
             {t('analytics.stock.openStock')}
           </StaffLink>
         </div>

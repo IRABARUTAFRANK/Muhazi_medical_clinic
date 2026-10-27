@@ -9,7 +9,9 @@ import {
   Check,
   Clock,
   FilePen,
+  FolderOpen,
   ListTodo,
+  LogOut,
   Moon,
   Receipt,
   Sparkles,
@@ -21,6 +23,8 @@ import { formatDayMonth, formatRwf, formatTime, isoDate, type Role } from '@mmc/
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { controlClass, labelClass } from '@/components/ui/field'
+import { OpenFileLink } from '@/components/clinical/file-panel'
 import { Reveal } from '@/components/ui/reveal'
 import { Pager, ShownList } from '@/components/ui/list-tools'
 import { usePaged } from '@/lib/paging'
@@ -43,7 +47,7 @@ import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const errorLine = 'bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold'
 const rowClass =
-  'border-grid flex min-h-11 flex-wrap items-center gap-2 border-b py-1.5 text-[14px] last:border-b-0'
+  'border-grid flex min-h-10 flex-wrap items-center gap-2 border-b py-1.5 text-[14px] last:border-b-0'
 
 /** Runs an action and keeps its error next to the panel that caused it. */
 function useRun() {
@@ -216,14 +220,15 @@ export function AppointmentsPanel({
                           </Button>
                         )}
                         {canAct && (isToday || isPast) && (
-                          <Button size="sm" variant="ghost" onClick={() => void noShow(a)}>
+                          <Button size="sm" variant="tint-coral" onClick={() => void noShow(a)}>
+                            <X size={14} aria-hidden="true" />
                             {t('ops.appts.noShow')}
                           </Button>
                         )}
                         {canAct && !isPast && (
                           <Button
                             size="sm"
-                            variant="ghost"
+                            variant="tint-coral"
                             aria-label={t('ops.appts.cancel')}
                             title={t('ops.appts.cancel')}
                             onClick={() => cancel(a)}
@@ -254,19 +259,19 @@ export function AppointmentsPanel({
                         <StaffLink
                           to="/app/visit"
                           search={{ encounter: a.encounterId }}
-                          className={buttonVariants({ size: 'sm' })}
+                          className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
                         >
+                          <FolderOpen size={14} aria-hidden="true" />
                           {t('visits.openVisit')}
                         </StaffLink>
                       ) : (
                         a.patientId && (
-                          <StaffLink
-                            to="/app/patient"
-                            search={{ id: a.patientId }}
-                            className={buttonVariants({ size: 'sm' })}
-                          >
-                            {t('patients.openFile')}
-                          </StaffLink>
+                          // the file opens in the side panel; the link underneath keeps
+                          // middle-click and ctrl-click on the whole page
+                          <OpenFileLink
+                            patientId={a.patientId}
+                            className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
+                          />
                         )
                       ))}
                     {arriving?.id === a.id && (
@@ -351,19 +356,25 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
                     <StaffLink
                       to="/app/visit"
                       search={{ encounter: x.encounterId }}
-                      className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                      className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
                     >
+                      <FolderOpen size={14} aria-hidden="true" />
                       {t('visits.openVisit')}
                     </StaffLink>
                   )}
                   {canAct && (
                     <>
-                      <Button size="sm" variant="ghost" onClick={() => void notDone(x.id, x.title)}>
+                      <Button
+                        size="sm"
+                        variant="tint-coral"
+                        onClick={() => void notDone(x.id, x.title)}
+                      >
+                        <X size={14} aria-hidden="true" />
                         {t('ops.tasks.notDone')}
                       </Button>
                       <Button
                         size="sm"
-                        variant="primary"
+                        variant="success"
                         onClick={async () => {
                           if (
                             !(await confirm({
@@ -519,7 +530,11 @@ export function BedsPanel({
                 ) : (
                   <>
                     {b.state === 'free' && canAct && (
-                      <Button size="sm" onClick={() => setForm({ bedId: b.id, mode: 'admit' })}>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => setForm({ bedId: b.id, mode: 'admit' })}
+                      >
                         <BedDouble size={14} aria-hidden="true" />
                         {t('ops.beds.admit')}
                       </Button>
@@ -530,14 +545,16 @@ export function BedsPanel({
                           <StaffLink
                             to="/app/visit"
                             search={{ encounter: b.encounterId }}
-                            className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+                            className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
                           >
+                            <FolderOpen size={14} aria-hidden="true" />
                             {t('visits.openVisit')}
                           </StaffLink>
                         )}
                         {canAct && (
                           <Button
                             size="sm"
+                            variant="tint-amber"
                             onClick={() => setForm({ bedId: b.id, mode: 'extend' })}
                           >
                             <CalendarPlus size={14} aria-hidden="true" />
@@ -547,6 +564,7 @@ export function BedsPanel({
                         {canAct && (
                           <Button
                             size="sm"
+                            variant="tint-coral"
                             onClick={async () => {
                               if (
                                 await confirm({
@@ -562,6 +580,7 @@ export function BedsPanel({
                                 void run(() => ops.discharge.mutateAsync(b.id))
                             }}
                           >
+                            <LogOut size={14} aria-hidden="true" />
                             {t('ops.beds.discharge')}
                           </Button>
                         )}
@@ -572,6 +591,7 @@ export function BedsPanel({
                     {b.state === 'cleaning' && canAct && (
                       <Button
                         size="sm"
+                        variant="success"
                         onClick={async () => {
                           if (
                             await confirm({
@@ -633,7 +653,7 @@ function StayForm({
   const total = agreed ?? nights * nightlyPrice
   const valid =
     nights >= 1 && nights <= 365 && (mode === 'extend' || !!encounterId) && (!agree || price !== '')
-  const input = 'border-border bg-card h-10 w-full rounded-lg border px-2.5 text-[14px]'
+  const input = cn(controlClass, 'w-full')
   return (
     <form
       className="mt-1 flex flex-col gap-2"
@@ -665,7 +685,7 @@ function StayForm({
     >
       {mode === 'admit' && (
         <Reveal focus block="nearest">
-          <label className="flex flex-col gap-1 text-[13px] font-semibold">
+          <label className={labelClass}>
             {t('ops.beds.patient')}
             <select
               autoFocus
@@ -685,7 +705,7 @@ function StayForm({
           </label>
         </Reveal>
       )}
-      <label className="flex flex-col gap-1 text-[13px] font-semibold">
+      <label className={labelClass}>
         {t(mode === 'admit' ? 'ops.beds.nights' : 'ops.beds.moreNights')}
         <input
           type="number"
@@ -697,7 +717,7 @@ function StayForm({
           onChange={(e) => setNights(Math.max(1, Math.min(365, Number(e.target.value) || 1)))}
         />
       </label>
-      <label className="flex items-center gap-2 text-[13px] font-semibold">
+      <label className="text-ink-2 flex items-center gap-2 text-[13px] font-medium">
         <input
           type="checkbox"
           className="accent-primary size-4"
@@ -707,7 +727,7 @@ function StayForm({
         {t('ops.beds.agree')}
       </label>
       {agree && (
-        <label className="flex flex-col gap-1 text-[13px] font-semibold">
+        <label className={labelClass}>
           {t('ops.beds.agreedPrice')}
           <input
             inputMode="numeric"
@@ -734,7 +754,8 @@ function StayForm({
           <Check size={14} aria-hidden="true" />
           {t(mode === 'admit' ? 'ops.beds.admitBtn' : 'ops.beds.extendBtn')}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+        <Button type="button" size="sm" variant="tint-coral" onClick={onCancel}>
+          <X size={14} aria-hidden="true" />
           {t('staff.form.cancel')}
         </Button>
       </span>
@@ -782,16 +803,19 @@ export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
                         : ''}
                     </span>
                   </span>
-                  <StaffLink
-                    to="/app/patient"
-                    search={{ id: f.patientId, tab: 'complete' }}
+                  {/* the file opens on its "Complete" tab in the side panel; the link
+                      underneath keeps middle-click and ctrl-click on the whole page */}
+                  <OpenFileLink
+                    patientId={f.patientId}
+                    tab="complete"
                     className={buttonVariants({
                       size: 'sm',
                       variant: f.station === 'reception' ? 'primary' : 'default',
                     })}
                   >
+                    <FilePen size={14} aria-hidden="true" />
                     {t('files.complete')}
-                  </StaffLink>
+                  </OpenFileLink>
                 </div>
               ))}
             </div>

@@ -92,7 +92,7 @@ function DepartmentBody({
   const labDesk = d.stations.some((s) => s === 'laboratory' || s === 'ultrasound')
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] sm:gap-4">
+      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi
           i={0}
           icon={UserCheck}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Check, Clock, ShieldOff } from 'lucide-react'
+import { Check, CircleAlert, Clock, ShieldOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Hint, IconChip } from '@/components/dash/kit'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Flash } from '@/components/ui/flash'
@@ -36,8 +37,8 @@ export function SessionCard() {
   return (
     <Card className="xl:col-span-2">
       <CardHeader>
-        <span className="inline-flex items-center gap-2">
-          <Clock size={16} aria-hidden="true" />
+        <span className="inline-flex items-center gap-2.5">
+          <IconChip icon={Clock} tint="coral" />
           {t('settings.session.title')}
         </span>
       </CardHeader>
@@ -87,6 +88,7 @@ export function SessionCard() {
             {t('settings.lock.save')}
           </Button>
           <Button
+            variant="tint-amber"
             loading={revoke.isPending}
             onClick={async () => {
               if (
@@ -106,7 +108,7 @@ export function SessionCard() {
             {t('settings.otp.revokeAll')}
           </Button>
         </div>
-        <p className="text-ink-3 m-0 text-xs">{t('settings.session.revokeHint')}</p>
+        <Hint>{t('settings.session.revokeHint')}</Hint>
         {notice && (
           <Flash key={notice} onClose={() => setNotice(null)}>
             {notice}
@@ -115,8 +117,9 @@ export function SessionCard() {
         {(save.error || revoke.error) && (
           <p
             role="alert"
-            className="border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium"
+            className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[14px] font-medium"
           >
+            <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
             {(save.error ?? revoke.error)?.message}
           </p>
         )}

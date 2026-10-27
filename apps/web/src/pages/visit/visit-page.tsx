@@ -19,12 +19,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { FEATURES, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { LeftButton } from '@/components/clinical/left-button'
+import { OpenFileLink } from '@/components/clinical/file-panel'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { StaffLink } from '@/components/staff/staff-link'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
@@ -323,18 +323,18 @@ export function VisitPage({
                 {header.stations.map((s) => (
                   <Chip key={s}>{t(`register.stations.${s}`)}</Chip>
                 ))}
-                <StaffLink
-                  to="/app/patient"
-                  search={{ id: header.patientId }}
-                  className={buttonVariants({ size: 'sm' })}
+                {/* the file opens beside the visit (teal tint: an action); middle-click: the whole page */}
+                <OpenFileLink
+                  patientId={header.patientId}
+                  className={buttonVariants({ size: 'sm', variant: 'tint-teal' })}
                 >
                   <FolderOpen size={14} aria-hidden="true" />
                   {t('visit.patientFile')}
-                </StaffLink>
+                </OpenFileLink>
                 {takeable && (
                   <Button
                     size="sm"
-                    variant="primary"
+                    variant="success"
                     loading={take.isPending}
                     onClick={() => void takePatient(takeable.queueId)}
                     title={t('visit.takeHint')}
@@ -1206,7 +1206,7 @@ function PaymentCard({
               )}
               <Button
                 type="submit"
-                variant="primary"
+                variant="success"
                 size="lg"
                 className="self-start"
                 disabled={busy}

@@ -6,6 +6,48 @@ import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 
+/* ---------------------------------------------------------------- groups (the sidebar's sections) */
+
+/** The sidebar is grouped: the day's work, the patients, money, stock, the clinic's management
+ *  and the inbox, in that order. The order inside a group is the role's own menu order. */
+export type NavGroupId = 'work' | 'patients' | 'finance' | 'stock' | 'manage' | 'inbox'
+
+/** The groups in display order with their label keys (`nav.groups.*`). */
+export const NAV_GROUPS: readonly { id: NavGroupId; labelKey: string }[] = [
+  { id: 'work', labelKey: 'nav.groups.work' },
+  { id: 'patients', labelKey: 'nav.groups.patients' },
+  { id: 'finance', labelKey: 'nav.groups.finance' },
+  { id: 'stock', labelKey: 'nav.groups.stock' },
+  { id: 'manage', labelKey: 'nav.groups.manage' },
+  { id: 'inbox', labelKey: 'nav.groups.inbox' },
+]
+
+const GROUP_OF: Record<string, NavGroupId> = {
+  patients: 'patients',
+  history: 'patients',
+  'record-access': 'patients',
+  bills: 'finance',
+  payments: 'finance',
+  prices: 'finance',
+  stock: 'stock',
+  analytics: 'manage',
+  staff: 'manage',
+  settings: 'manage',
+  notifications: 'inbox',
+}
+
+/** The group a menu entry belongs to; anything not listed (home, dashboard, queue, visits, vitals,
+ *  register, appointments, calendar, lab, worklist, results, prescriptions…) is the day's work. */
+export const navGroupOf = (id: string): NavGroupId => GROUP_OF[id] ?? 'work'
+
+/** The menu split into its groups, in display order, empty groups left out. */
+export const groupNav = (
+  items: NavItem[],
+): { id: NavGroupId; labelKey: string; items: NavItem[] }[] =>
+  NAV_GROUPS.map((g) => ({ ...g, items: items.filter((n) => navGroupOf(n.id) === g.id) })).filter(
+    (g) => g.items.length > 0,
+  )
+
 /** Every role's rail ends with the notifications page (inbox, filters; manager: sent). */
 const NOTICES: NavItem = {
   id: 'notifications',

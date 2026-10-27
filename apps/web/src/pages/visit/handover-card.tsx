@@ -253,11 +253,11 @@ function ToMe({ h, patientName, onDone, onError }: Part & { h: VisitHandover }) 
         </div>
       ) : (
         <span className="flex flex-wrap gap-2">
-          <Button variant="primary" loading={take.isPending} onClick={() => void takeIt()}>
+          <Button variant="success" loading={take.isPending} onClick={() => void takeIt()}>
             <Check size={16} aria-hidden="true" />
             {t('handover.take')}
           </Button>
-          <Button onClick={() => setDeclining(true)}>
+          <Button variant="danger" onClick={() => setDeclining(true)}>
             <X size={16} aria-hidden="true" />
             {t('handover.decline')}
           </Button>
@@ -359,7 +359,7 @@ function HandOverForm({
       </label>
       <span className="flex flex-wrap gap-2">
         <Button
-          variant="primary"
+          variant="success"
           loading={handOver.isPending}
           disabled={colleagues.length === 0}
           onClick={() => void send()}

@@ -14,8 +14,10 @@ interface TopBarProps {
   user: StaffUser
   sync: SyncState
   onOpenSheet: () => void
-  /** The open page's name, after the clinic's in the breadcrumb ("Clinic / Patients"). */
+  /** The open page's name, after the clinic's in the breadcrumb ("Clinic / Patients / History"). */
   title?: string
+  /** The sidebar group the page belongs to, between the clinic and the page. */
+  group?: string
 }
 
 /**
@@ -77,11 +79,11 @@ function PatientSearch({ className }: { className?: string }) {
 
 /**
  * Top bar on every staff screen: 48 px, white, a 1 px bottom border. On a PC the sidebar
- * carries the logo, so the bar starts with the breadcrumb ("Clinic / Patients"), then the
+ * carries the logo, so the bar starts with the breadcrumb ("Clinic / Group / Page"), then the
  * search pill, sync state, bell, user menu and the language switch. Tablets and phones have
  * no sidebar: the logo comes first, and the search gets a second row.
  */
-export function TopBar({ user, sync, onOpenSheet, title }: TopBarProps) {
+export function TopBar({ user, sync, onOpenSheet, title, group }: TopBarProps) {
   const { t } = useTranslation()
   return (
     <header className="border-border bg-card relative z-[6] flex-none border-b">
@@ -89,6 +91,14 @@ export function TopBar({ user, sync, onOpenSheet, title }: TopBarProps) {
       <div className="pc:flex hidden h-12 items-center gap-3 px-4">
         <span className="text-ink-3 flex min-w-0 items-center gap-1.5 text-[14px]">
           <span className="truncate">{t('app.clinicName')}</span>
+          {group && group !== title && (
+            <>
+              <span className="text-ink-4" aria-hidden="true">
+                /
+              </span>
+              <span className="truncate">{group}</span>
+            </>
+          )}
           {title && (
             <>
               <span className="text-ink-4" aria-hidden="true">

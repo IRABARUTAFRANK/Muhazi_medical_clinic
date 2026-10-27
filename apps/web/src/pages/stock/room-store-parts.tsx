@@ -1,10 +1,30 @@
 import { Fragment, useState } from 'react'
-import { BarChart3, Boxes, ChevronDown, ChevronRight, Package } from 'lucide-react'
+import {
+  AlertTriangle,
+  BarChart3,
+  Boxes,
+  ChevronDown,
+  ChevronRight,
+  Coins,
+  Package,
+  PackageMinus,
+  Truck,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber, formatRwf } from '@mmc/shared'
 import { Empty, Kpi, Panel } from '@/components/dash/kit'
+import {
+  expandedSection,
+  selectedRow,
+  tableCell,
+  tableFirstCell,
+  tableHead,
+  tableRow,
+} from '@/components/dash/kit-style'
 import { PeriodFilter } from '@/components/dash/period-filter'
 import { Badge } from '@/components/ui/badge'
+import { tableLink } from '@/components/ui/button'
+import { controlClass } from '@/components/ui/field'
 import { useRoomStoreActions, useRoomStoreSummary, useStoreStock } from '@/lib/api/rooms'
 import { useConfirm } from '@/lib/confirm'
 import { usePeriod } from '@/lib/period'
@@ -72,21 +92,15 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[14px]">
             <thead>
-              <tr className="text-ink-3 text-left text-[12px]">
-                <th className="border-border border-b py-2 pr-2 font-medium">
-                  {t('stock.cols.item')}
-                </th>
-                <th className="border-border border-b py-2 pr-2 text-right font-semibold">
-                  {t('myStore.usable')}
-                </th>
-                <th className="border-border hidden border-b py-2 pr-2 text-right font-semibold sm:table-cell">
+              <tr className="border-border border-b">
+                <th className={tableHead}>{t('stock.cols.item')}</th>
+                <th className={cn(tableHead, 'text-right')}>{t('myStore.usable')}</th>
+                <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
                   {t('myStore.min')}
                 </th>
-                <th className="border-border border-b py-2 pr-2 font-medium">
-                  {t('stock.cols.expiry')}
-                </th>
+                <th className={tableHead}>{t('stock.cols.expiry')}</th>
                 {showValue && (
-                  <th className="border-border hidden border-b py-2 text-right font-semibold md:table-cell">
+                  <th className={cn(tableHead, 'hidden text-right md:table-cell')}>
                     {t('stock.cols.value')}
                   </th>
                 )}
@@ -95,8 +109,8 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
             <tbody>
               {paged.slice.map((x) => (
                 <Fragment key={x.itemId}>
-                  <tr className="border-grid border-b last:border-b-0">
-                    <td className="py-2 pr-2">
+                  <tr className={cn(tableRow, openItem === x.itemId && selectedRow)}>
+                    <td className={tableFirstCell}>
                       <button
                         type="button"
                         className="flex items-start gap-1 text-left"
@@ -109,8 +123,8 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                           <ChevronRight size={14} className="mt-0.5 flex-none" aria-hidden="true" />
                         )}
                         <span>
-                          <span className="block font-semibold">{x.item}</span>
-                          <span className="text-ink-3 block text-[12px]">
+                          <span className="block">{x.item}</span>
+                          <span className="text-ink-3 block text-[12px] font-normal">
                             {[
                               x.code,
                               x.unit ? t('prices.meds.perUnit', { unit: x.unit }) : null,
@@ -126,13 +140,18 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                     </td>
                     <td
                       className={cn(
-                        'py-2 pr-2 text-right font-semibold tabular-nums',
+                        tableCell,
+                        'text-right font-semibold tabular-nums',
                         x.low ? 'text-red' : x.usable === 0 ? 'text-ink-3' : 'text-green',
                       )}
                     >
                       {formatNumber(x.usable)}
                       {x.low && (
-                        <Badge tone="red" className="ml-1.5">
+                        <Badge
+                          tone="red"
+                          className="ml-1.5"
+                          icon={<AlertTriangle size={12} aria-hidden="true" />}
+                        >
                           {t('stock.low')}
                         </Badge>
                       )}
@@ -147,7 +166,7 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                         </span>
                       )}
                     </td>
-                    <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">
+                    <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
                       {data?.canManage && editMin?.itemId === x.itemId ? (
                         <span className="inline-flex items-center gap-1">
                           <input
@@ -160,11 +179,11 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                                 value: e.target.value.replace(/[^\d]/g, ''),
                               })
                             }
-                            className="border-border bg-card h-8 w-16 rounded-md border px-2 text-right"
+                            className={cn(controlClass, 'h-8 w-20 px-2 text-right')}
                           />
                           <button
                             type="button"
-                            className="text-primary text-[12px] font-semibold"
+                            className={tableLink}
                             onClick={() => void saveMin(x.itemId, x.item, editMin.value)}
                           >
                             {t('prices.form.save')}
@@ -173,7 +192,7 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                       ) : data?.canManage ? (
                         <button
                           type="button"
-                          className="text-primary underline-offset-2 hover:underline"
+                          className={tableLink}
                           title={t('myStore.minEdit')}
                           onClick={() =>
                             setEditMin({
@@ -190,18 +209,18 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                         formatNumber(x.minLevel)
                       )}
                     </td>
-                    <td className="py-2 pr-2">
+                    <td className={tableCell}>
                       <ExpiryMark date={x.earliestExpiry} />
                     </td>
                     {showValue && (
-                      <td className="hidden py-2 text-right tabular-nums md:table-cell">
+                      <td className={cn(tableCell, 'hidden text-right tabular-nums md:table-cell')}>
                         {x.value == null ? '—' : formatNumber(Math.round(x.value))}
                       </td>
                     )}
                   </tr>
                   {openItem === x.itemId && (
                     <tr className="border-grid border-b">
-                      <td colSpan={showValue ? 5 : 4} className="bg-surface px-3 py-2">
+                      <td colSpan={showValue ? 5 : 4} className={cn(expandedSection, 'px-3 py-2')}>
                         {x.batches.length === 0 ? (
                           <span className="text-ink-3 text-[12px]">{t('myStore.noBatches')}</span>
                         ) : (
@@ -254,7 +273,7 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
       {error && <p className="text-red m-0 text-[14px]">{error.message}</p>}
       {data && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Kpi
               i={0}
               icon={Package}
@@ -265,23 +284,23 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
             />
             <Kpi
               i={1}
-              icon={Package}
-              tint="navy"
+              icon={Coins}
+              tint="teal"
               label={t('myStore.sum.charged')}
               value={Math.round(data.given.charged)}
               unit="RWF"
             />
             <Kpi
               i={2}
-              icon={Package}
-              tint="teal"
+              icon={Truck}
+              tint="navy"
               label={t('myStore.sum.received')}
               value={data.received.units}
               unit={t('myStore.sum.notes', { count: data.received.notes })}
             />
             <Kpi
               i={3}
-              icon={Package}
+              icon={PackageMinus}
               tint="coral"
               label={t('myStore.sum.losses')}
               value={data.losses.writtenOff + data.losses.countDown}
@@ -314,10 +333,8 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[14px]">
                 <thead>
-                  <tr className="text-ink-3 text-left text-[12px]">
-                    <th className="border-border border-b py-2 pr-2 font-medium">
-                      {t('stock.cols.item')}
-                    </th>
+                  <tr className="border-border border-b">
+                    <th className={tableHead}>{t('stock.cols.item')}</th>
                     {(
                       [
                         'given',
@@ -328,10 +345,7 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
                         'onHand',
                       ] as const
                     ).map((c) => (
-                      <th
-                        key={c}
-                        className="border-border border-b py-2 pr-2 text-right font-semibold"
-                      >
+                      <th key={c} className={cn(tableHead, 'text-right')}>
                         {t(`myStore.cols.${c}`)}
                       </th>
                     ))}
@@ -339,20 +353,21 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
                 </thead>
                 <tbody>
                   {data.items.map((x) => (
-                    <tr key={x.itemId} className="border-grid border-b last:border-b-0">
-                      <td className="py-2 pr-2 font-semibold">{x.item}</td>
-                      <td className="py-2 pr-2 text-right font-semibold tabular-nums">
+                    <tr key={x.itemId} className={tableRow}>
+                      <td className={tableFirstCell}>{x.item}</td>
+                      <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
                         {formatNumber(x.given)}
                       </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">
+                      <td className={cn(tableCell, 'text-right tabular-nums')}>
                         {formatNumber(x.received)}
                       </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">
+                      <td className={cn(tableCell, 'text-right tabular-nums')}>
                         {formatNumber(x.returned)}
                       </td>
                       <td
                         className={cn(
-                          'py-2 pr-2 text-right tabular-nums',
+                          tableCell,
+                          'text-right tabular-nums',
                           x.writtenOff > 0 && 'text-red',
                         )}
                       >
@@ -360,13 +375,14 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
                       </td>
                       <td
                         className={cn(
-                          'py-2 pr-2 text-right tabular-nums',
+                          tableCell,
+                          'text-right tabular-nums',
                           x.countDiff < 0 && 'text-red',
                         )}
                       >
                         {x.countDiff > 0 ? `+${x.countDiff}` : formatNumber(x.countDiff)}
                       </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">
+                      <td className={cn(tableCell, 'text-right tabular-nums')}>
                         {formatNumber(x.onHand)}
                       </td>
                     </tr>

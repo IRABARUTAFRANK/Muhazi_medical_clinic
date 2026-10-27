@@ -1652,7 +1652,7 @@ export function ClinicalCard({
       {clinician && (
         <CardBody className="border-border flex-row flex-wrap items-center gap-3 border-t">
           <Button
-            variant="primary"
+            variant="success"
             onClick={() => void finish()}
             loading={actions.finishVisit.isPending}
           >

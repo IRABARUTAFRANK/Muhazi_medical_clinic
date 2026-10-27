@@ -1,5 +1,6 @@
 import {
   createContext,
+  createElement,
   useContext,
   useEffect,
   useId,
@@ -9,8 +10,29 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, CircleAlert, DatabaseZap, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  CircleAlert,
+  DatabaseZap,
+  Info,
+  type LucideIcon,
+  X,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { IconChip } from '@/components/dash/kit'
+import {
+  card,
+  selectedRow,
+  tableCell,
+  tableFirstCell,
+  tableHead,
+  tableRow,
+  tileClass,
+  type Hue,
+} from '@/components/dash/kit-style'
+import { tableLink } from '@/components/ui/button'
 import { controlClass } from '@/components/ui/field'
 import { Pager } from '@/components/ui/list-tools'
 import { Seg } from '@/components/ui/seg'
@@ -80,7 +102,7 @@ export function ViewSkeleton() {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('dashboard.loading')}>
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {Array.from({ length: 4 }, (_, i) => (
           <div key={i} className="skeleton h-[130px] rounded-md" />
         ))}
@@ -90,35 +112,52 @@ export function ViewSkeleton() {
   )
 }
 
-/** The four headline figures of a view. */
+/** The four headline figures of a view: 4-up on a PC, 2-up on a tablet, 1-up on a phone. */
 export function Figures({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{children}</div>
+  return <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
 }
 
-/** A small figure (inside a side panel). */
+/** The grid of small figures inside a panel or a side panel: 2-up from 640 px. */
+export const statGrid = 'grid grid-cols-1 gap-3 sm:grid-cols-2'
+
+/**
+ * A small figure (inside a panel or a side panel): the tile of the dashboard kit on its light
+ * tint with an icon chip, the label 13 px, the figure 28 px, a grey note under it. The tone
+ * (red for money owed, green for visits kept) colours the tile and the figure.
+ */
 export function Stat({
   label,
   value,
   note,
   tone,
+  icon,
+  tint,
 }: {
   label: string
   value: ReactNode
   note?: ReactNode
   tone?: 'red' | 'green'
+  /** Icon of the figure, in the tile's chip. */
+  icon?: LucideIcon
+  /** The tile's tint (teal unless the tone says otherwise). */
+  tint?: Hue
 }) {
+  const hue: Hue = tint ?? (tone === 'red' ? 'coral' : tone === 'green' ? 'mint' : 'teal')
   return (
-    <div className="border-border bg-card flex min-w-0 flex-col gap-0.5 rounded-md border px-3 py-2.5">
-      <span className="text-ink-2 truncate text-[12px] font-medium">{label}</span>
+    <div className={cn(card, 'gap-1.5', tileClass[hue])}>
+      <span className="flex items-start gap-2 text-[13px] font-medium">
+        {icon && <IconChip icon={icon} tint={hue} size="sm" />}
+        <span className="text-ink-2 min-w-0 flex-1 pt-1 break-words">{label}</span>
+      </span>
       <span
         className={cn(
-          'text-[20px] leading-tight font-semibold tabular-nums',
+          'min-w-0 text-[28px] leading-8 font-semibold tracking-[-0.01em] break-words tabular-nums',
           tone === 'red' ? 'text-red' : tone === 'green' ? 'text-green' : 'text-ink',
         )}
       >
         {value}
       </span>
-      {note && <span className="text-ink-3 text-[12px]">{note}</span>}
+      {note && <span className="text-ink-2 text-[13px]">{note}</span>}
     </div>
   )
 }
@@ -237,15 +276,15 @@ export function DataTable<T>({
   }, [rows, cols, sort])
   const paged = usePaged(sorted, pageSize, `${sort?.key}-${sort?.desc}-${rows.length}`)
   if (rows.length === 0) return <div className="py-2">{empty}</div>
-  // the header row: 12 px grey, normal weight; the rows 40 px with a 1 px divider
-  const th = 'border-border border-b px-2 py-2 text-[12px] font-normal'
+  // the header row: 12 px grey, normal weight; the rows 40 px with a 1 px divider (kit-style)
+  const th = cn(tableHead, 'border-border border-b')
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <div className="max-w-full overflow-x-auto">
         <table className="w-full border-collapse text-[14px]">
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className="text-ink-2 text-left">
+            <tr>
               {cols.map((c) => {
                 const on = sort?.key === c.key
                 return (
@@ -300,17 +339,16 @@ export function DataTable<T>({
                   key={k}
                   onClick={onRow ? () => onRow(r) : undefined}
                   className={cn(
-                    'border-grid border-b transition-colors duration-120 last:border-b-0',
-                    onRow && 'hover:bg-hover cursor-pointer',
-                    selectedKey === k && 'bg-primary-tint',
+                    tableRow,
+                    onRow && 'cursor-pointer',
+                    selectedKey === k && selectedRow,
                   )}
                 >
                   {cols.map((c, i) => (
                     <td
                       key={c.key}
                       className={cn(
-                        'px-2 py-2.5 align-top',
-                        i === 0 && 'font-medium',
+                        i === 0 ? tableFirstCell : tableCell,
                         c.align === 'right' && 'text-right tabular-nums',
                         c.wide && 'hidden sm:table-cell',
                       )}
@@ -323,7 +361,10 @@ export function DataTable<T>({
                             e.stopPropagation()
                             onRow(r)
                           }}
-                          className="text-primary w-full text-left font-medium hover:underline"
+                          className={cn(
+                            tableLink,
+                            '-mx-2 h-auto min-h-7 max-w-full text-left whitespace-normal',
+                          )}
                         >
                           {c.cell(r)}
                         </button>
@@ -338,12 +379,12 @@ export function DataTable<T>({
           </tbody>
           {totalsLabel && (
             <tfoot>
-              <tr className="border-border bg-surface border-t font-semibold">
+              <tr className="border-border bg-surface h-10 border-t font-semibold">
                 {cols.map((c, i) => (
                   <td
                     key={c.key}
                     className={cn(
-                      'px-2 py-2.5',
+                      tableCell,
                       c.align === 'right' && 'text-right tabular-nums',
                       c.wide && 'hidden sm:table-cell',
                     )}
@@ -477,7 +518,12 @@ export function Block({
   )
 }
 
-/** A plain line of grey text (nothing to show, a note). */
-export function Quiet({ children }: { children: ReactNode }) {
-  return <p className="text-ink-3 m-0 text-[14px]">{children}</p>
+/** A plain line of grey text with a small symbol (nothing to show, a note). */
+export function Quiet({ children, icon = Info }: { children: ReactNode; icon?: LucideIcon }) {
+  return (
+    <p className="text-ink-3 m-0 flex items-start gap-2 text-[14px]">
+      {createElement(icon, { size: 16, className: 'mt-0.5 flex-none', 'aria-hidden': true })}
+      <span className="min-w-0">{children}</span>
+    </p>
+  )
 }

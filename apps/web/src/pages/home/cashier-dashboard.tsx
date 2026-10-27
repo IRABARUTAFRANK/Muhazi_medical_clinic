@@ -110,6 +110,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
           </div>
           <PeriodSeg period={period} />
           <Button
+            variant="tint-grey"
             size="icon"
             onClick={() => void refetch()}
             loading={isFetching}
@@ -282,7 +283,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                         return (
                           <div
                             key={p.id}
-                            className="border-grid flex min-h-11 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
+                            className="border-grid flex min-h-10 flex-wrap items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
                             style={{ '--i': i } as CSSProperties}
                           >
                             <span className="text-ink-3 w-12 tabular-nums">

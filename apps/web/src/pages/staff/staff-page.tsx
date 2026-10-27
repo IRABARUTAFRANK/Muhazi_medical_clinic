@@ -34,6 +34,7 @@ import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { ListBar, ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
+import { SidePanel } from '@/components/ui/side-panel'
 import { Flash } from '@/components/ui/flash'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useTreatments } from '@/lib/api/catalogue'
@@ -90,6 +91,9 @@ import {
 } from './registration'
 
 type Translate = (key: string, opts?: Record<string, unknown>) => string
+
+/** The employee form's id: the panel's footer buttons submit it from outside the form. */
+const EMPLOYEE_FORM = 'employee-form'
 
 /** "Doctor · Dentist": the role with what the person is expert in, when set. */
 const employeeRole = (e: Pick<Employee, 'role' | 'specialty'>, t: Translate): string => {
@@ -327,11 +331,11 @@ export function StaffPage({ user }: { user: StaffUser }) {
   // Accounts deactivated for a month or more become a notice for the managers.
   useDeactivationReminders(true)
   const formRef = useRef<HTMLDivElement>(null)
-  // Bring the form the manager just opened into view, wherever the button was on the page.
+  // Bring the credentials the manager just made into view, wherever the button was on the page
+  // (the forms themselves open in the side panel).
   useEffect(() => {
-    if (editing || resetFor || credentials)
-      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [editing, resetFor, credentials])
+    if (credentials) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [credentials])
 
   const describeError = (e: unknown): string => {
     const m = e instanceof Error ? e.message : String(e)
@@ -501,7 +505,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
             {notice}
           </Flash>
         )}
-        {/* Forms open here; the page scrolls to them (Reset PIN, Edit, New employee). */}
+        {/* The credentials of a new account or a reset PIN show here; the page scrolls to them. */}
         <div ref={formRef} className="flex scroll-mt-4 flex-col gap-4">
           {formError && (
             <Flash key={formError} tone="error" onClose={() => setFormError(null)}>
@@ -546,9 +550,38 @@ export function StaffPage({ user }: { user: StaffUser }) {
               </Reveal>
             )}
 
-            {editing && (
-              <Reveal focus>
+            <SidePanel
+              open={editing !== null}
+              onClose={() => setEditing(null)}
+              hue="blue"
+              icon={editing === 'new' ? UserPlus : Pencil}
+              title={
+                editing === 'new'
+                  ? t('staff.newEmployee')
+                  : editing
+                    ? t('staff.editTitle', { name: editing.fullName })
+                    : ''
+              }
+              subtitle={
+                editing && editing !== 'new'
+                  ? [editing.staffId, employeeRole(editing, t)].filter(Boolean).join(' · ')
+                  : undefined
+              }
+              footer={
+                <>
+                  <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
+                    {t('staff.form.cancel')}
+                  </Button>
+                  <Button type="submit" form={EMPLOYEE_FORM} variant="primary">
+                    <ShieldCheck size={16} aria-hidden="true" />
+                    {editing === 'new' ? t('staff.form.create') : t('staff.form.saveChanges')}
+                  </Button>
+                </>
+              }
+            >
+              {editing && (
                 <EmployeeForm
+                  inPanel
                   key={editing === 'new' ? 'new' : editing.id}
                   employee={editing === 'new' ? null : editing}
                   departments={departments}
@@ -618,8 +651,8 @@ export function StaffPage({ user }: { user: StaffUser }) {
                     })
                   }}
                 />
-              </Reveal>
-            )}
+              )}
+            </SidePanel>
 
             {resetFor && (
               <ResetPinCard
@@ -694,6 +727,9 @@ export function StaffPage({ user }: { user: StaffUser }) {
                             className={cn(
                               'flex-wrap gap-x-4 gap-y-2 py-3',
                               !e.active && 'opacity-60',
+                              ((editing !== 'new' && editing?.id === e.id) ||
+                                resetFor?.id === e.id) &&
+                                'bg-primary-tint/50',
                             )}
                           >
                             <Avatar name={e.fullName} size="md" />
@@ -762,7 +798,12 @@ export function StaffPage({ user }: { user: StaffUser }) {
                               </Button>
                               {/* one's own PIN is changed from the menu, not reset here */}
                               {!self && (
-                                <Button size="sm" onClick={() => openReset(e)} disabled={!e.active}>
+                                <Button
+                                  size="sm"
+                                  variant="tint-amber"
+                                  onClick={() => openReset(e)}
+                                  disabled={!e.active}
+                                >
                                   <KeyRound size={15} aria-hidden="true" />
                                   {t('staff.resetPin')}
                                 </Button>
@@ -770,6 +811,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                               {/* deactivating can be undone: not shown as dangerous as deleting */}
                               <Button
                                 size="sm"
+                                variant={e.active ? 'tint-amber' : 'tint-mint'}
                                 disabled={self}
                                 onClick={() => void confirmSetActive(e)}
                               >
@@ -956,7 +998,7 @@ function DeleteAccountCard({
           </p>
         )}
         <div className="flex flex-wrap gap-2">
-          <Button variant="danger" disabled={lastManager} onClick={onDelete}>
+          <Button variant="danger-solid" disabled={lastManager} onClick={onDelete}>
             <Trash2 size={16} aria-hidden="true" />
             {t('staff.delete.confirmButton')}
           </Button>
@@ -1002,7 +1044,7 @@ function LongDeactivatedCard({
                   })}
                 </span>
               </span>
-              <Button size="sm" variant="danger" onClick={() => onDelete(e)}>
+              <Button size="sm" variant="tint-coral" onClick={() => onDelete(e)}>
                 <Trash2 size={15} aria-hidden="true" />
                 {t('staff.longDeactivated.delete')}
               </Button>
@@ -1081,7 +1123,7 @@ function ConfirmCodeDialog({
       role="dialog"
       aria-modal="true"
       aria-label={t('staff.confirm.title')}
-      className="anim-enter fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4"
+      className="anim-enter fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
       onKeyDown={(e) => e.key === 'Escape' && onCancel()}
     >
       <form
@@ -1153,12 +1195,15 @@ function EmployeeForm({
   heads,
   assistants,
   self,
+  inPanel = false,
   onSubmit,
   onCancel,
 }: {
   employee: Employee | null
   departments: Department[]
   takenUsernames: ReadonlySet<string>
+  /** Inside the side panel: no card around the fields, Save / Cancel in the panel's footer. */
+  inPanel?: boolean
   /** The head of each department now: one head per department (migration 0073). */
   heads: Record<string, Lead>
   /** The assistant head of each department now: one per department (migration 0085). */
@@ -1284,6 +1329,331 @@ function EmployeeForm({
     )
   }
 
+  const body = (
+    <CardBody className={cn('gap-4', inPanel && 'p-0')}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field
+          label={t('staff.form.fullName')}
+          value={fullName}
+          onChange={(e) => {
+            setFullName(e.target.value)
+            if (!usernameTouched) setUsername(suggestUsername(e.target.value, others))
+          }}
+          required
+          autoFocus
+        />
+        <div className="flex min-w-0 items-end gap-2">
+          <Field
+            label={t('staff.form.username')}
+            value={username}
+            onChange={(e) => {
+              setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))
+              setUsernameTouched(true)
+            }}
+            wrapperClassName="min-w-0 flex-1"
+            required
+          />
+          <Button
+            type="button"
+            className="flex-none"
+            onClick={() => {
+              setUsername(suggestUsername(fullName, others))
+              setUsernameTouched(true)
+            }}
+            disabled={!fullName.trim()}
+            title={t('staff.form.suggest')}
+          >
+            <Wand2 size={16} aria-hidden="true" />
+            {t('staff.form.suggest')}
+          </Button>
+        </div>
+        <Field
+          label={t('staff.form.email')}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Field
+          label={t('staff.form.phone')}
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+      </div>
+      <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.usernameHint2')}</p>
+
+      {/* Three separate ideas: what they may do, what they are expert in, where they work. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Select
+            label={t('staff.form.role')}
+            value={role}
+            onChange={(e) => {
+              const r = e.target.value as DbRole
+              setRole(r)
+              setRegistration((v) => registrationForRole(v, r))
+              // departments that do not take this role are dropped
+              setMemberships((list) =>
+                list.filter((m) => {
+                  const d = departments.find((x) => x.id === m.departmentId)
+                  return !d || d.roles.length === 0 || d.roles.includes(r)
+                }),
+              )
+            }}
+            disabled={self}
+          >
+            {DB_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {t(`staff.roles.${r}`)}
+              </option>
+            ))}
+          </Select>
+          <p className="text-ink-3 m-0 text-xs">{t(`staff.form.roleDoes.${role}`)}</p>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Field
+            label={t('staff.form.specialty')}
+            value={specialty}
+            placeholder={t('staff.form.specialtyPh')}
+            list={suggestions.length ? specialtyListId : undefined}
+            autoComplete="off"
+            onChange={(e) => setSpecialty(e.target.value)}
+          />
+          {suggestions.length > 0 && (
+            <datalist id={specialtyListId}>
+              {suggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          )}
+          <p
+            className={cn(
+              'm-0 text-xs',
+              role === 'doctor' && !specialty.trim() ? 'text-amber font-semibold' : 'text-ink-3',
+            )}
+          >
+            {t(
+              role === 'doctor' && !specialty.trim()
+                ? 'staff.form.specialtyDoctorHint'
+                : 'staff.form.specialtyHint',
+            )}
+          </p>
+        </div>
+      </div>
+      {showsRegistration(role, registration) && (
+        <RegistrationField role={role} value={registration} onChange={setRegistration} />
+      )}
+      <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+        <legend className="text-ink-2 mb-1 text-[14px] font-semibold">
+          {t('staff.form.departments')}
+        </legend>
+        <p className="text-ink-3 m-0 -mt-1 text-xs">{t('staff.form.departmentsHint')}</p>
+        {memberships.length === 0 && (
+          <p className="text-ink-3 m-0 text-xs">{t('staff.form.noDepartmentYet')}</p>
+        )}
+        {memberships.map((m, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
+          >
+            <Select
+              label={i === 0 ? t('staff.form.mainDepartment') : t('staff.form.department')}
+              value={m.departmentId}
+              onChange={(e) => setMembership(i, { departmentId: e.target.value })}
+            >
+              <option value="">{t('staff.form.pickDepartment')}</option>
+              {fitting
+                .filter(
+                  (d) =>
+                    d.id === m.departmentId || !memberships.some((x) => x.departmentId === d.id),
+                )
+                .map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+            </Select>
+            <Select
+              label={t('staff.form.position')}
+              value={m.position}
+              onChange={(e) => setMembership(i, { position: e.target.value as Position })}
+              disabled={!m.departmentId}
+            >
+              {POSITIONS.map((p) => (
+                <option key={p} value={p}>
+                  {t(`staff.positions.${p}`)}
+                </option>
+              ))}
+            </Select>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setMemberships((list) => list.filter((_, j) => j !== i))}
+              aria-label={t('staff.form.removeDepartment')}
+              title={t('staff.form.removeDepartment')}
+            >
+              <Trash2 size={16} aria-hidden="true" />
+            </Button>
+            {/* one head and one assistant head per department: who this save moves down */}
+            {leadChanges(
+              m,
+              employee?.id,
+              heads,
+              assistants,
+              departments.find((d) => d.id === m.departmentId)?.name ?? '',
+              t,
+            ).map((line) => (
+              <p key={line} className={cn(warnBox, 'sm:col-span-3')}>
+                {line}
+              </p>
+            ))}
+          </div>
+        ))}
+        {fitting.some((d) => !memberships.some((x) => x.departmentId === d.id)) && (
+          <Button
+            type="button"
+            className="self-start"
+            onClick={() =>
+              setMemberships((list) => [...list, { departmentId: '', position: 'member' }])
+            }
+          >
+            <Plus size={16} aria-hidden="true" />
+            {t(memberships.length ? 'staff.form.addAnotherDepartment' : 'staff.form.addDepartment')}
+          </Button>
+        )}
+        {/* What the chosen departments give this person, live: the desks, then the patients. */}
+        <div
+          className="bg-surface flex flex-col gap-1 rounded-md px-3 py-2 text-[14px]"
+          aria-live="polite"
+        >
+          <span className="font-semibold">
+            {role === 'manager' ? t('staff.form.desksManager') : desksText(canUse, t)}
+          </span>
+          {byRoleDesks.length > 0 && (
+            <span className="text-ink-3 text-xs">
+              {t('staff.form.desksByRole', { list: deskList(byRoleDesks) })}
+            </span>
+          )}
+          {employee && deskRule && (
+            <KeptDesks
+              employee={employee}
+              desks={canUse.filter((d) => deskRule.via[d] === 'kept')}
+            />
+          )}
+          {elsewhere.length > 0 && (
+            <span className="text-amber text-xs font-semibold">
+              {t('staff.form.desksElsewhere', { list: deskList(elsewhere) })}
+            </span>
+          )}
+          {notForRole.length > 0 && (
+            <span className="text-ink-3 text-xs">
+              {t('staff.form.desksNotForRole', { list: deskList(notForRole), role: roleName })}
+            </span>
+          )}
+          {shown.length > 0 ? (
+            <span>
+              <b>{t('staff.form.worksIn')}</b> {shown.map((s) => sectionName(s, t)).join(', ')}
+            </span>
+          ) : (
+            <span className="text-ink-2">{t('staff.form.worksAtRoleDesk')}</span>
+          )}
+          {/* no department service yet: the role (and a doctor's specialty and desk) decide */}
+          {services.length === 0 && shown.length > 0 && (
+            <span className="text-ink-3 text-xs">
+              {t(role === 'doctor' ? 'staff.form.byRoleDoctor' : 'staff.form.byRole')}
+            </span>
+          )}
+          {silent.length > 0 && (
+            <span className="text-amber font-semibold">
+              {t('staff.form.deptNoService', { names: silent.join(', ') })}
+            </span>
+          )}
+        </div>
+        {givesNothing.length > 0 && (
+          <p role="alert" className={warnBox}>
+            {t('staff.form.deptGivesNothing', {
+              names: givesNothing.map((d) => d.name).join(', '),
+              role: roleName,
+              list: deskList(givesNothing.flatMap((d) => d.services.filter(isDesk))),
+            })}
+          </p>
+        )}
+        {memberships.length > 1 && (
+          <p className="text-ink-3 m-0 text-xs">{t('staff.form.manyHint')}</p>
+        )}
+        {memberships.length > 0 && (
+          <p className="text-ink-3 m-0 text-xs">{t('staff.form.positionsHint')}</p>
+        )}
+      </fieldset>
+      {departments.length === 0 && (
+        <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.noDepartments')}</p>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Field
+          label={t('staff.form.station')}
+          value={station}
+          placeholder={t('staff.form.stationPh')}
+          onChange={(e) => setStation(e.target.value)}
+        />
+        <Select
+          label={t('staff.form.language')}
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as DbLang)}
+        >
+          <option value="kin">Kinyarwanda</option>
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+        </Select>
+        {isNew && (
+          <div className="flex items-end gap-2">
+            <Field
+              label={t('staff.form.pin')}
+              inputMode="numeric"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              className="tracking-[.3em] tabular-nums"
+              wrapperClassName="flex-1"
+              required
+            />
+            <Button
+              type="button"
+              onClick={() => setPin(generatePin())}
+              aria-label={t('staff.form.generate')}
+            >
+              <RefreshCw size={16} aria-hidden="true" />
+            </Button>
+          </div>
+        )}
+      </div>
+      <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.stationHint')}</p>
+      {isNew && <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.pinHint')}</p>}
+
+      {error && (
+        <p role="alert" className={errorBox}>
+          {error}
+        </p>
+      )}
+      {!inPanel && (
+        <div className="flex gap-2">
+          <Button type="submit" variant="primary">
+            <ShieldCheck size={16} aria-hidden="true" />
+            {isNew ? t('staff.form.create') : t('staff.form.saveChanges')}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t('staff.form.cancel')}
+          </Button>
+        </div>
+      )}
+    </CardBody>
+  )
+  if (inPanel)
+    return (
+      <form id={EMPLOYEE_FORM} onSubmit={submit}>
+        {body}
+      </form>
+    )
   return (
     <Card className="border-primary anim-enter">
       <CardHeader>
@@ -1294,329 +1664,7 @@ function EmployeeForm({
           <span className="text-ink-3 text-xs tabular-nums">{employee.staffId}</span>
         )}
       </CardHeader>
-      <form onSubmit={submit}>
-        <CardBody className="gap-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field
-              label={t('staff.form.fullName')}
-              value={fullName}
-              onChange={(e) => {
-                setFullName(e.target.value)
-                if (!usernameTouched) setUsername(suggestUsername(e.target.value, others))
-              }}
-              required
-              autoFocus
-            />
-            <div className="flex items-end gap-2">
-              <Field
-                label={t('staff.form.username')}
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))
-                  setUsernameTouched(true)
-                }}
-                wrapperClassName="flex-1"
-                required
-              />
-              <Button
-                type="button"
-                onClick={() => {
-                  setUsername(suggestUsername(fullName, others))
-                  setUsernameTouched(true)
-                }}
-                disabled={!fullName.trim()}
-                title={t('staff.form.suggest')}
-              >
-                <Wand2 size={16} aria-hidden="true" />
-                {t('staff.form.suggest')}
-              </Button>
-            </div>
-            <Field
-              label={t('staff.form.email')}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Field
-              label={t('staff.form.phone')}
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
-          <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.usernameHint2')}</p>
-
-          {/* Three separate ideas: what they may do, what they are expert in, where they work. */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Select
-                label={t('staff.form.role')}
-                value={role}
-                onChange={(e) => {
-                  const r = e.target.value as DbRole
-                  setRole(r)
-                  setRegistration((v) => registrationForRole(v, r))
-                  // departments that do not take this role are dropped
-                  setMemberships((list) =>
-                    list.filter((m) => {
-                      const d = departments.find((x) => x.id === m.departmentId)
-                      return !d || d.roles.length === 0 || d.roles.includes(r)
-                    }),
-                  )
-                }}
-                disabled={self}
-              >
-                {DB_ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {t(`staff.roles.${r}`)}
-                  </option>
-                ))}
-              </Select>
-              <p className="text-ink-3 m-0 text-xs">{t(`staff.form.roleDoes.${role}`)}</p>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Field
-                label={t('staff.form.specialty')}
-                value={specialty}
-                placeholder={t('staff.form.specialtyPh')}
-                list={suggestions.length ? specialtyListId : undefined}
-                autoComplete="off"
-                onChange={(e) => setSpecialty(e.target.value)}
-              />
-              {suggestions.length > 0 && (
-                <datalist id={specialtyListId}>
-                  {suggestions.map((s) => (
-                    <option key={s} value={s} />
-                  ))}
-                </datalist>
-              )}
-              <p
-                className={cn(
-                  'm-0 text-xs',
-                  role === 'doctor' && !specialty.trim()
-                    ? 'text-amber font-semibold'
-                    : 'text-ink-3',
-                )}
-              >
-                {t(
-                  role === 'doctor' && !specialty.trim()
-                    ? 'staff.form.specialtyDoctorHint'
-                    : 'staff.form.specialtyHint',
-                )}
-              </p>
-            </div>
-          </div>
-          {showsRegistration(role, registration) && (
-            <RegistrationField role={role} value={registration} onChange={setRegistration} />
-          )}
-          <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-            <legend className="text-ink-2 mb-1 text-[14px] font-semibold">
-              {t('staff.form.departments')}
-            </legend>
-            <p className="text-ink-3 m-0 -mt-1 text-xs">{t('staff.form.departmentsHint')}</p>
-            {memberships.length === 0 && (
-              <p className="text-ink-3 m-0 text-xs">{t('staff.form.noDepartmentYet')}</p>
-            )}
-            {memberships.map((m, i) => (
-              <div
-                key={i}
-                className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
-              >
-                <Select
-                  label={i === 0 ? t('staff.form.mainDepartment') : t('staff.form.department')}
-                  value={m.departmentId}
-                  onChange={(e) => setMembership(i, { departmentId: e.target.value })}
-                >
-                  <option value="">{t('staff.form.pickDepartment')}</option>
-                  {fitting
-                    .filter(
-                      (d) =>
-                        d.id === m.departmentId ||
-                        !memberships.some((x) => x.departmentId === d.id),
-                    )
-                    .map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                </Select>
-                <Select
-                  label={t('staff.form.position')}
-                  value={m.position}
-                  onChange={(e) => setMembership(i, { position: e.target.value as Position })}
-                  disabled={!m.departmentId}
-                >
-                  {POSITIONS.map((p) => (
-                    <option key={p} value={p}>
-                      {t(`staff.positions.${p}`)}
-                    </option>
-                  ))}
-                </Select>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setMemberships((list) => list.filter((_, j) => j !== i))}
-                  aria-label={t('staff.form.removeDepartment')}
-                  title={t('staff.form.removeDepartment')}
-                >
-                  <Trash2 size={16} aria-hidden="true" />
-                </Button>
-                {/* one head and one assistant head per department: who this save moves down */}
-                {leadChanges(
-                  m,
-                  employee?.id,
-                  heads,
-                  assistants,
-                  departments.find((d) => d.id === m.departmentId)?.name ?? '',
-                  t,
-                ).map((line) => (
-                  <p key={line} className={cn(warnBox, 'sm:col-span-3')}>
-                    {line}
-                  </p>
-                ))}
-              </div>
-            ))}
-            {fitting.some((d) => !memberships.some((x) => x.departmentId === d.id)) && (
-              <Button
-                type="button"
-                className="self-start"
-                onClick={() =>
-                  setMemberships((list) => [...list, { departmentId: '', position: 'member' }])
-                }
-              >
-                <Plus size={16} aria-hidden="true" />
-                {t(
-                  memberships.length
-                    ? 'staff.form.addAnotherDepartment'
-                    : 'staff.form.addDepartment',
-                )}
-              </Button>
-            )}
-            {/* What the chosen departments give this person, live: the desks, then the patients. */}
-            <div
-              className="bg-surface flex flex-col gap-1 rounded-md px-3 py-2 text-[14px]"
-              aria-live="polite"
-            >
-              <span className="font-semibold">
-                {role === 'manager' ? t('staff.form.desksManager') : desksText(canUse, t)}
-              </span>
-              {byRoleDesks.length > 0 && (
-                <span className="text-ink-3 text-xs">
-                  {t('staff.form.desksByRole', { list: deskList(byRoleDesks) })}
-                </span>
-              )}
-              {employee && deskRule && (
-                <KeptDesks
-                  employee={employee}
-                  desks={canUse.filter((d) => deskRule.via[d] === 'kept')}
-                />
-              )}
-              {elsewhere.length > 0 && (
-                <span className="text-amber text-xs font-semibold">
-                  {t('staff.form.desksElsewhere', { list: deskList(elsewhere) })}
-                </span>
-              )}
-              {notForRole.length > 0 && (
-                <span className="text-ink-3 text-xs">
-                  {t('staff.form.desksNotForRole', { list: deskList(notForRole), role: roleName })}
-                </span>
-              )}
-              {shown.length > 0 ? (
-                <span>
-                  <b>{t('staff.form.worksIn')}</b> {shown.map((s) => sectionName(s, t)).join(', ')}
-                </span>
-              ) : (
-                <span className="text-ink-2">{t('staff.form.worksAtRoleDesk')}</span>
-              )}
-              {/* no department service yet: the role (and a doctor's specialty and desk) decide */}
-              {services.length === 0 && shown.length > 0 && (
-                <span className="text-ink-3 text-xs">
-                  {t(role === 'doctor' ? 'staff.form.byRoleDoctor' : 'staff.form.byRole')}
-                </span>
-              )}
-              {silent.length > 0 && (
-                <span className="text-amber font-semibold">
-                  {t('staff.form.deptNoService', { names: silent.join(', ') })}
-                </span>
-              )}
-            </div>
-            {givesNothing.length > 0 && (
-              <p role="alert" className={warnBox}>
-                {t('staff.form.deptGivesNothing', {
-                  names: givesNothing.map((d) => d.name).join(', '),
-                  role: roleName,
-                  list: deskList(givesNothing.flatMap((d) => d.services.filter(isDesk))),
-                })}
-              </p>
-            )}
-            {memberships.length > 1 && (
-              <p className="text-ink-3 m-0 text-xs">{t('staff.form.manyHint')}</p>
-            )}
-            {memberships.length > 0 && (
-              <p className="text-ink-3 m-0 text-xs">{t('staff.form.positionsHint')}</p>
-            )}
-          </fieldset>
-          {departments.length === 0 && (
-            <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.noDepartments')}</p>
-          )}
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field
-              label={t('staff.form.station')}
-              value={station}
-              placeholder={t('staff.form.stationPh')}
-              onChange={(e) => setStation(e.target.value)}
-            />
-            <Select
-              label={t('staff.form.language')}
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as DbLang)}
-            >
-              <option value="kin">Kinyarwanda</option>
-              <option value="en">English</option>
-              <option value="fr">Français</option>
-            </Select>
-            {isNew && (
-              <div className="flex items-end gap-2">
-                <Field
-                  label={t('staff.form.pin')}
-                  inputMode="numeric"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="tracking-[.3em] tabular-nums"
-                  wrapperClassName="flex-1"
-                  required
-                />
-                <Button
-                  type="button"
-                  onClick={() => setPin(generatePin())}
-                  aria-label={t('staff.form.generate')}
-                >
-                  <RefreshCw size={16} aria-hidden="true" />
-                </Button>
-              </div>
-            )}
-          </div>
-          <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.stationHint')}</p>
-          {isNew && <p className="text-ink-3 m-0 -mt-2 text-xs">{t('staff.form.pinHint')}</p>}
-
-          {error && (
-            <p role="alert" className={errorBox}>
-              {error}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary">
-              <ShieldCheck size={16} aria-hidden="true" />
-              {isNew ? t('staff.form.create') : t('staff.form.saveChanges')}
-            </Button>
-            <Button type="button" variant="ghost" onClick={onCancel}>
-              {t('staff.form.cancel')}
-            </Button>
-          </div>
-        </CardBody>
-      </form>
+      <form onSubmit={submit}>{body}</form>
     </Card>
   )
 }
@@ -1671,38 +1719,48 @@ function ResetPinCard({
   const { t } = useTranslation()
   const [pin, setPin] = useState(generatePin)
   return (
-    <Card className="border-primary anim-enter">
-      <CardHeader>
-        <span>{t('staff.reset.title', { name: employee.fullName })}</span>
-      </CardHeader>
-      <CardBody className="gap-3">
+    <SidePanel
+      open
+      onClose={onClose}
+      hue="blue"
+      icon={KeyRound}
+      title={t('staff.reset.title', { name: employee.fullName })}
+      subtitle={[employee.staffId, employeeRole(employee, t)].filter(Boolean).join(' · ')}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            {t('staff.form.cancel')}
+          </Button>
+          <Button variant="primary" disabled={!PIN_RE.test(pin)} onClick={() => onSubmit(pin)}>
+            <ShieldCheck size={16} aria-hidden="true" />
+            {t('staff.reset.confirm')}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
         <p className="text-ink-2 m-0 text-[14px]">{t('staff.reset.body')}</p>
         <div className="flex flex-wrap items-end gap-2">
           <Field
             label={t('staff.form.pin')}
             inputMode="numeric"
             value={pin}
+            autoFocus
             onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
             className="tracking-[.3em] tabular-nums"
             wrapperClassName="w-48"
           />
           <Button
             type="button"
+            variant="tint-grey"
             onClick={() => setPin(generatePin())}
             aria-label={t('staff.form.generate')}
           >
             <RefreshCw size={16} aria-hidden="true" />
           </Button>
-          <Button variant="primary" disabled={!PIN_RE.test(pin)} onClick={() => onSubmit(pin)}>
-            <ShieldCheck size={16} aria-hidden="true" />
-            {t('staff.reset.confirm')}
-          </Button>
-          <Button variant="ghost" onClick={onClose}>
-            {t('staff.form.cancel')}
-          </Button>
         </div>
-      </CardBody>
-    </Card>
+      </div>
+    </SidePanel>
   )
 }
 

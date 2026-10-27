@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { Receipt, Wallet } from 'lucide-react'
+import { FolderOpen, Receipt, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Empty, Panel, Pill } from '@/components/dash/kit'
@@ -46,7 +46,7 @@ export function OpenBillsPanel({
               {shown.map((b, n) => (
                 <div
                   key={b.encounterId}
-                  className="border-grid flex min-h-12 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0"
+                  className="border-grid flex min-h-10 flex-wrap items-center gap-2.5 border-b py-1.5 text-[14px] last:border-b-0"
                   style={{ '--i': n } as CSSProperties}
                 >
                   <Pill tint="amber" icon={Receipt}>
@@ -68,11 +68,16 @@ export function OpenBillsPanel({
                     to="/app/visit"
                     search={{ encounter: b.encounterId }}
                     className={buttonVariants({
-                      variant: canTake && n === 0 ? 'primary' : 'default',
+                      // paying is mint; without the right to take payments the row only opens
+                      variant: !canTake ? 'tint-blue' : n === 0 ? 'success' : 'tint-mint',
                       size: 'sm',
                     })}
                   >
-                    <Wallet size={14} aria-hidden="true" />
+                    {canTake ? (
+                      <Wallet size={14} aria-hidden="true" />
+                    ) : (
+                      <FolderOpen size={14} aria-hidden="true" />
+                    )}
                     {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
                   </StaffLink>
                 </div>

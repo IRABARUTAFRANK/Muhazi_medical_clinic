@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Clock, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
@@ -38,9 +38,15 @@ export function ExpiryMark({ date }: { date: string | null | undefined }) {
       >
         {formatDate(new Date(date))}
       </span>
-      {s === 'expired' && <Badge tone="red">{t('stockShared.expired')}</Badge>}
+      {s === 'expired' && (
+        <Badge tone="red" icon={<AlertTriangle size={12} aria-hidden="true" />}>
+          {t('stockShared.expired')}
+        </Badge>
+      )}
       {s === 'soon' && (
-        <Badge tone="orange">{t('stockShared.expiresIn', { count: daysUntil(date) })}</Badge>
+        <Badge tone="orange" icon={<Clock size={12} aria-hidden="true" />}>
+          {t('stockShared.expiresIn', { count: daysUntil(date) })}
+        </Badge>
       )}
     </span>
   )
