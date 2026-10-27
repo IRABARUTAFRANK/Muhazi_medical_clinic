@@ -765,7 +765,8 @@ function MinePanel({ d, role }: { d: DeskSummary; role: DeskRole }) {
       right={t('desk.mine.note')}
     >
       {/* three small tiles in the kit's tints (the same look as the KPI tiles, smaller) */}
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+      {/* tiles never narrower than a word: they wrap to the next line instead */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5">
         {rows.map((r, i) => (
           <div
             key={r.key}
@@ -774,7 +775,7 @@ function MinePanel({ d, role }: { d: DeskSummary; role: DeskRole }) {
           >
             <span className="flex items-center gap-2 text-[13px] font-medium">
               <IconChip icon={r.icon} tint={r.tint} size="sm" />
-              <span className="text-ink-2 min-w-0 break-words">{r.label}</span>
+              <span className="text-ink-2 min-w-0 [overflow-wrap:normal]">{r.label}</span>
             </span>
             <span className="text-[28px] leading-8 font-semibold tabular-nums">{r.n}</span>
           </div>

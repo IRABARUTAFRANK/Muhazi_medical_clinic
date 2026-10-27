@@ -65,24 +65,25 @@ export function useChanged<T>(
   key: (item: T) => string,
   signature: (item: T) => string,
 ): Map<string, number> {
-  // the last list and what was seen of it: compared in render, the way React derives state
-  // from the previous props (a new list → one setState during render, no ref, no effect)
-  const [seen, setSeen] = useState<{
-    items: readonly T[] | null
-    rows: Map<string, { sig: string; n: number }>
-  }>({ items: null, rows: new Map() })
-  let rows = seen.rows
-  if (seen.items !== items) {
-    rows = new Map()
+  // Compared by content, never by list identity: live data hands a new array on every render,
+  // and a setState in render on that would loop forever. The counts live in a ref, updated in
+  // render only when the joined signatures actually differ.
+  const sigs = items.map((item) => key(item) + '\u0000' + signature(item)).join('\u0001')
+  const seen = useRef<{ sigs: string | null; rows: Map<string, { sig: string; n: number }> }>({
+    sigs: null,
+    rows: new Map(),
+  })
+  if (seen.current.sigs !== sigs) {
+    const rows = new Map<string, { sig: string; n: number }>()
     for (const item of items) {
       const k = key(item)
       const sig = signature(item)
-      const prev = seen.rows.get(k)
+      const prev = seen.current.rows.get(k)
       rows.set(k, { sig, n: prev ? (prev.sig === sig ? prev.n : prev.n + 1) : 0 })
     }
-    setSeen({ items, rows })
+    seen.current = { sigs, rows }
   }
-  return new Map(Array.from(rows, ([k, r]) => [k, r.n]))
+  return new Map(Array.from(seen.current.rows, ([k, r]) => [k, r.n]))
 }
 
 /** The content of a list row as one string, without the fields that tick by themselves

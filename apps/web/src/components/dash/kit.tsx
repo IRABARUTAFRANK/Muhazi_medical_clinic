@@ -85,17 +85,27 @@ export function Kpi({
   const style = { '--i': i } as CSSProperties
   const body = (
     <>
-      <span className="flex items-start gap-2 text-[13px] font-medium">
+      {/* The Details mark sits in the corner so the label keeps the whole width and wraps by
+          word only (break-words broke "Patients registered" into letters in a thin tile). */}
+      {to && (
+        <span className="text-ink-2 group-hover:text-primary group-focus-visible:text-primary absolute top-3 right-3 inline-flex items-center gap-0.5 text-[12px]">
+          <span className="hidden lg:inline">{t('dashboard.links.details')}</span>
+          <ArrowUpRight size={13} aria-hidden="true" />
+        </span>
+      )}
+      <span className={cn('flex items-start gap-2 text-[13px] font-medium', to && 'pr-6 lg:pr-16')}>
         <IconChip icon={IconC} tint={tint} />
-        <span className="text-ink-2 min-w-0 flex-1 pt-1 break-words">{label}</span>
-        {to && (
-          <span className="text-ink-2 group-hover:text-primary group-focus-visible:text-primary ml-auto inline-flex flex-none items-center gap-0.5 pt-1 text-[12px]">
-            <span className="hidden sm:inline">{t('dashboard.links.details')}</span>
-            <ArrowUpRight size={13} aria-hidden="true" />
-          </span>
-        )}
+        <span className="text-ink-2 min-w-0 flex-1 pt-1 [text-wrap:balance] [overflow-wrap:normal]">
+          {label}
+        </span>
       </span>
-      <span className="flex flex-wrap items-baseline gap-1.5 text-[28px] leading-8 font-semibold tracking-[-0.01em] tabular-nums">
+      <span
+        className={cn(
+          'flex flex-wrap items-baseline gap-1.5 font-semibold tracking-[-0.01em] tabular-nums',
+          // a sentence in place of a number ("Not enough data") reads at a text size
+          text && text.length > 6 ? 'text-[18px] leading-6' : 'text-[28px] leading-8',
+        )}
+      >
         {text ?? <CountUp value={value} />}
         <small className="text-ink-2 text-[13px] font-normal">{unit}</small>
       </span>
