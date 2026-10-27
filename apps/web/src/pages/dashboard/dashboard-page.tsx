@@ -84,6 +84,7 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { methodLabel, useDashboard, type RevenuePoint } from '@/lib/api/dashboard'
 import type { ActivityKind } from '@/lib/api/analytics'
 import { categoryName } from '@/lib/api/catalogue'
+import { useDailyStockAlertCheck } from '@/lib/api/pharmacy'
 import { useClinicInfo } from '@/lib/api/public'
 import { useDeactivationReminders } from '@/lib/api/staff'
 import { ReportButtons } from '@/components/dash/report-buttons'
@@ -136,6 +137,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   // "Who did what": eight people at a time.
   const staffRows = useShowMore(data?.staff ?? [], 8)
   const { data: info } = useClinicInfo()
+  // the manager hears about low, expiring and expired stock even on a day nobody opens the pharmacy
+  useDailyStockAlertCheck(isManager)
   // Managers: accounts deactivated for a month or more become a notice (once each).
   useDeactivationReminders(canManage)
 

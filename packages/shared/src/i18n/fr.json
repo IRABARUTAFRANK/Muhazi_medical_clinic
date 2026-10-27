@@ -2522,7 +2522,7 @@
     "counterSalePaid": "La vente au comptoir {{number}} est payée ({{amount}})",
     "byPerson": "par {{by}}",
     "refundDueItem": "{{item}} rendu",
-    "stockLowBody": "Seuil de commande {{level}}. Voir Stock → À commander.",
+    "stockLowBody": "Seuil de commande {{level}}. Voir Stock (filtre Bas).",
     "roomStockLowBody": "Sous le minimum de {{min}} de ce stock. Demandez un réapprovisionnement à la pharmacie.",
     "roomStockLoss_one": "{{store}} : {{count}} unité de {{item}} retirée ou manquante",
     "roomStockLoss_other": "{{store}} : {{count}} unités de {{item}} retirées ou manquantes",
@@ -2555,7 +2555,23 @@
     "handoverLeft": "La passation de {{name}} est terminée : {{leftName}} ne travaille plus ici",
     "desksPlaced_one": "{{count}} employé a été placé dans un service pour garder son poste",
     "desksPlaced_other": "{{count}} employés ont été placés dans des services pour garder leurs postes",
-    "desksPlacedBody": "Les services décident maintenant des postes de chacun. Vérifiez Employés et changez tout placement qui ne convient pas."
+    "desksPlacedBody": "Les services décident maintenant des postes de chacun. Vérifiez Employés et changez tout placement qui ne convient pas.",
+    "stockExpiring_one": "{{item}} périme dans {{count}} jour",
+    "stockExpiring_other": "{{item}} périme dans {{count}} jours",
+    "stockExpiringBody": "Lot {{batch}} : {{quantity}} restants, péremption le {{date}}. À utiliser en premier ou à prévoir en retour.",
+    "stockExpired": "Périmé en rayon : {{item}} ({{quantity}})",
+    "stockExpiredBody": "Le lot {{batch}} a périmé le {{date}} ({{value}} au coût). Retirez-le du stock pour qu’il ne soit jamais donné.",
+    "stockSummary": "Stock de la pharmacie aujourd’hui",
+    "stockSummaryLow_one": "{{count}} produit sous son seuil de commande",
+    "stockSummaryLow_other": "{{count}} produits sous leur seuil de commande",
+    "stockSummaryExpiring_one": "{{count}} lot périmant dans les {{days}} jours",
+    "stockSummaryExpiring_other": "{{count}} lots périmant dans les {{days}} jours",
+    "stockSummaryExpired_one": "{{count}} lot périmé encore en rayon",
+    "stockSummaryExpired_other": "{{count}} lots périmés encore en rayon",
+    "rxPartGiven": "{{item}} pour {{name}} : {{given}} sur {{quantity}} donnés",
+    "rxPartGivenBody_one": "{{count}} reste à donner : la pharmacie le donne plus tard pendant la visite, ou le marque non donné.",
+    "rxPartGivenBody_other": "{{count}} restent à donner : la pharmacie les donne plus tard pendant la visite, ou les marque non donnés.",
+    "staffMessage": "Message de {{from}}"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -3343,7 +3359,7 @@
     },
     "reorderSoon": "commander bientôt",
     "tabs": {
-      "stock": "En stock",
+      "stock": "Stock",
       "pharmacy": "Comptoir pharmacie",
       "receive": "Réception",
       "send": "Entre stocks de la pharmacie",
@@ -3355,7 +3371,11 @@
       "deliveries": "Livraisons",
       "reorder": "À commander",
       "rooms": "Stocks de salle",
-      "mine": "Mon stock"
+      "mine": "Mon stock",
+      "prescriptions": "Ordonnances",
+      "walkin": "Ventes au comptoir",
+      "add": "Ajouter du stock",
+      "reports": "Rapports"
     },
     "onHand": "Stock disponible",
     "itemCount_one": "{{count}} médicament",
@@ -4151,7 +4171,56 @@
     "sellCashTotal": "Prix comptant {{amount}}. La facture applique l'assurance du patient, qui paie à la fin de la visite.",
     "soldOnBill": "{{item}} remis à {{patient}} et ajouté à la facture de la visite. Imprimez l'étiquette.",
     "mostGivenIn": "Les plus remis {{period}}",
-    "nothingYetIn": "Rien de remis {{period}}."
+    "nothingYetIn": "Rien de remis {{period}}.",
+    "part": {
+      "thePrescriber": "le prescripteur",
+      "confirmRest_one": "L’autre {{count}} reste à remettre ; {{doctor}} est prévenu.",
+      "confirmRest_other": "Les {{count}} autres restent à remettre ; {{doctor}} est prévenu.",
+      "givenPart_one": "{{item}} : {{given}} remis, encore {{count}} à remettre. {{doctor}} est prévenu.",
+      "givenPart_other": "{{item}} : {{given}} remis, encore {{count}} à remettre. {{doctor}} est prévenu.",
+      "notGivenRestTitle_one": "Marquer l’autre {{count}} {{item}} comme non remis à {{patient}} ?",
+      "notGivenRestTitle_other": "Marquer les {{count}} autres {{item}} comme non remis à {{patient}} ?",
+      "restNotGivenDone": "{{item}} : {{given}} remis, le reste marqué non remis ; {{doctor}} est prévenu.",
+      "progress_one": "Remis {{given}} sur {{total}} : encore {{count}} à remettre",
+      "progress_other": "Remis {{given}} sur {{total}} : encore {{count}} à remettre",
+      "qtyLabel_one": "Combien de {{item}} remettre maintenant (jusqu’à {{count}})",
+      "qtyLabel_other": "Combien de {{item}} remettre maintenant (jusqu’à {{count}})",
+      "badAmount_one": "Remettez entre 1 et {{count}}",
+      "badAmount_other": "Remettez entre 1 et {{count}}",
+      "giveOf_one": "Remettre {{given}} sur {{count}}",
+      "giveOf_other": "Remettre {{given}} sur {{count}}",
+      "shortCanPart_one": "Vous pouvez remettre maintenant les {{have}} disponibles : le reste des {{count}} reste à remettre plus tard pendant la visite, ou est marqué non remis.",
+      "shortCanPart_other": "Vous pouvez remettre maintenant les {{have}} disponibles : le reste des {{count}} reste à remettre plus tard pendant la visite, ou est marqué non remis.",
+      "whyRest_one": "Pourquoi l’autre {{count}} n’est-il pas remis ? {{doctor}} sera prévenu.",
+      "whyRest_other": "Pourquoi les {{count}} autres ne sont-ils pas remis ? {{doctor}} sera prévenu.",
+      "notGivenRest_one": "Reste non remis ({{count}})",
+      "notGivenRest_other": "Reste non remis ({{count}})"
+    },
+    "home": {
+      "addStock": "Ajouter du stock",
+      "messageManager": "Écrire au gestionnaire",
+      "messageTitle": "Envoyer un message au gestionnaire ?",
+      "messageBody": "Chaque gestionnaire le reçoit dans ses notifications, avec votre nom.",
+      "messageLabel": "Votre message",
+      "messagePh": "ex. L’amoxicilline est presque finie : merci d’en commander.",
+      "messageSend": "Envoyer",
+      "messageShort": "Écrivez au moins 3 caractères.",
+      "messageSent": "Message envoyé au gestionnaire.",
+      "revenue": "Recettes {{period}}",
+      "revenueSplit": "ordonnances {{rx}} · comptoir {{walkIn}}",
+      "withinDays_one": "sous {{count}} jour",
+      "withinDays_other": "sous {{count}} jours",
+      "expired": "Périmés en rayon",
+      "expiredUnit": "unités · coût {{amount}}",
+      "writeOff": "à sortir du stock",
+      "inventory": "Valeur du stock (coût)",
+      "sellsFor": "se vend {{amount}}",
+      "stockFine_one": "Rien à recommander, rien de périmé et rien n’expire dans le prochain {{count}} jour.",
+      "stockFine_other": "Rien à recommander, rien de périmé et rien n’expire dans les {{count}} prochains jours.",
+      "expiredTag": "périmé",
+      "expiredLeft_one": "{{count}} unité à sortir",
+      "expiredLeft_other": "{{count}} unités à sortir"
+    }
   },
   "queuePage": {
     "title": "Ma file · {{desk}}",
@@ -5265,6 +5334,12 @@
     "reasons": {
       "left": "L'acheteur est parti sans payer",
       "mistake": "Saisie par erreur"
+    },
+    "desk": {
+      "lead": "Pour un acheteur sans visite : écrivez la vente, encaissez ici, remettez les médicaments et donnez le reçu. Un patient en visite paie plutôt à la fin de la visite.",
+      "payTitle": "Encaisser ici",
+      "payHandPrint": "Encaisser {{amount}}, remettre et imprimer le reçu",
+      "payNote": "Le paiement compte dans votre propre caisse et dans les recettes du jour. Les factures des visites se paient toujours à la caisse."
     }
   },
   "myStore": {
@@ -6726,10 +6801,118 @@
     "f2b8b050": "La taille doit être entre 20 et 250 cm.",
     "936ac589": "Le périmètre brachial doit être entre 5 et 60 cm.",
     "bfaad0ce": "Seuls les médecins, échographistes, infirmier·ères et gestionnaires ont un calendrier.",
-    "abb6e23b": "Seuls les médecins, échographistes, infirmier·ères et gestionnaires peuvent recevoir une réservation."
+    "abb6e23b": "Seuls les médecins, échographistes, infirmier·ères et gestionnaires peuvent recevoir une réservation.",
+    "641d3981": "Le stock est ajouté à la pharmacie principale ; seul le responsable l’ajoute à un autre stock.",
+    "0c52507e": "Le délai avant péremption est un nombre entier de jours entre 1 et 365.",
+    "25e0efa8": "Trop de messages dans la dernière heure : réessayez plus tard.",
+    "20afd965": "Écrivez un message de 3 à 500 caractères.",
+    "9e9e0b02": "Un nouvel article est un médicament ou une fourniture.",
+    "a31cbeb6": "Il ne reste que {{p1}} à remettre pour ce médicament."
   },
   "panel": {
     "close": "Fermer",
     "openFull": "Ouvrir la page entière"
+  },
+  "stockPage": {
+    "totalsTitle": "Le stock maintenant",
+    "tiles": {
+      "cost": "Valeur du stock (coût)",
+      "selling": "Valeur au prix de vente",
+      "items": "Articles en stock",
+      "expired": "Périmé en rayon"
+    },
+    "units": {
+      "inDays_one": "dans {{count}} jour",
+      "inDays_other": "dans les {{count}} jours",
+      "expiredCost": "unités · {{value}} au coût"
+    },
+    "expiringList_one": "{{count}} lot expire dans les {{days}} jours",
+    "expiringList_other": "{{count}} lots expirent dans les {{days}} jours",
+    "partsLabel": "Vue du stock",
+    "parts": {
+      "list": "Liste du stock"
+    },
+    "filterLabel": "Afficher",
+    "filter": {
+      "all": "Tout"
+    },
+    "status": {
+      "ok": "OK",
+      "low": "Bas",
+      "expiring_one": "Expire ({{count}} j)",
+      "expiring_other": "Expire ({{count}} j)",
+      "expiringShort": "Expire bientôt",
+      "expired": "Périmé"
+    },
+    "cols": {
+      "item": "Article",
+      "pharmacy": "En pharmacie",
+      "rooms": "Dans les salles",
+      "total": "Total",
+      "expiry": "Péremption la plus proche",
+      "status": "État"
+    },
+    "kind": {
+      "medicine": "Médicament",
+      "supply": "Produit"
+    },
+    "panel": {
+      "sellsAt": "vendu à {{price}}",
+      "reorderPoint": "Seuil de commande",
+      "batches": "Lots par magasin",
+      "noBatches": "Aucun lot en stock.",
+      "roomStore": "stock de salle",
+      "actions": "Actions",
+      "level": "Seuil de commande",
+      "writeOff": "Sortir du stock",
+      "count": "Corriger le compte",
+      "levelLead": "L’article apparaît bas, et le gestionnaire et la pharmacie sont prévenus, quand le stock de la pharmacie descend à ce nombre.",
+      "nothingHere": "Rien de cet article en pharmacie à sortir. Les stocks de salle sortent leur propre stock sous Mon stock."
+    },
+    "add": {
+      "title": "Ajouter du stock",
+      "lead": "Une ligne par lot : l’article (choisissez-le, ou créez-le comme médicament ou produit), le numéro de lot, la date de péremption, la quantité, le coût unitaire et le prix de vente. Il entre aujourd’hui à la pharmacie principale.",
+      "pickItem": "Choisissez l’article",
+      "create": "Nouvel article",
+      "pickInstead": "Choisir dans la liste",
+      "newName": "Ligne {{n}} : nom du nouvel article",
+      "newNamePh": "ex. Gants chirurgicaux M",
+      "kind": "Type",
+      "strength": "Dosage",
+      "form": "Forme",
+      "formPh": "comprimé, sirop…",
+      "unit": "Unité",
+      "unitPh": "comp., flacon, paire…",
+      "quantity": "Quantité (unités)",
+      "unitCost": "Coût unitaire (RWF)",
+      "inBoxes": "Compter en boîtes (boîtes × unités par boîte)",
+      "lineSum": "{{units}} unités · {{value}}",
+      "priceChanges": "Le prix de vente passe de {{from}} à {{to}}.",
+      "note": "Note (facultatif)",
+      "notePh": "ex. 2 boîtes abîmées, refusées",
+      "total_one": "{{count}} ligne · {{units}} unités · coût total {{value}}",
+      "total_other": "{{count}} lignes · {{units}} unités · coût total {{value}}",
+      "save": "Ajouter au stock",
+      "confirmTitle_one": "Ajouter {{count}} ligne à {{store}} ?",
+      "confirmTitle_other": "Ajouter {{count}} lignes à {{store}} ?",
+      "confirmBody": "{{units}} unités, coût total {{value}}.",
+      "confirmNew_one": "{{count}} nouvel article entre dans la liste de la clinique à son prix de vente.",
+      "confirmNew_other": "{{count}} nouveaux articles entrent dans la liste de la clinique à leur prix de vente.",
+      "confirmYes": "Oui, ajouter",
+      "saved_one": "Stock ajouté à {{store}} : {{count}} ligne, {{units}} unités, coût total {{value}}.",
+      "saved_other": "Stock ajouté à {{store}} : {{count}} lignes, {{units}} unités, coût total {{value}}.",
+      "priceIgnored": "Le prix de vente n’a pas été changé : fixer les prix demande ce droit.",
+      "errors": {
+        "item": "Choisissez l’article, ou créez-en un nouveau.",
+        "newName": "Donnez un nom au nouvel article.",
+        "batch": "Indiquez le numéro de lot écrit sur la boîte.",
+        "boxes": "Indiquez le nombre de boîtes et les unités par boîte."
+      },
+      "batchPh": "comme écrit sur la boîte"
+    },
+    "received": "Stock reçu",
+    "salesByItem": "Ventes par article",
+    "marginPct": "RWF · {{pct}} % du chiffre d’affaires",
+    "receiveAllHint": "Tout ce qui est sur le bon est arrivé : confirmez en un clic. Une différence : ouvrez le bon."
   }
 }

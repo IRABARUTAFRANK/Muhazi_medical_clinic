@@ -99,6 +99,31 @@ export function TransferNotesList({
     locationId,
   })
   const paged = usePaged(notes, 10, `${status}|${locationId}`)
+  const actions = useRoomStoreActions()
+  const [rowMsg, setRowMsg] = useState<Msg | null>(null)
+  const [receiving, setReceiving] = useState<string | null>(null)
+  // one click: everything on the note arrived (a difference: open the note, line by line)
+  const receiveAll = async (n: TransferNote) => {
+    setRowMsg(null)
+    setReceiving(n.id)
+    try {
+      const r = await actions.confirmReceipt.mutateAsync({ transferId: n.id, lines: null })
+      setRowMsg({
+        ok: true,
+        text: t('roomStores.received', {
+          number: r.number,
+          received: r.received,
+          returned: r.returned,
+          lost: r.lost,
+        }),
+      })
+      if (openId === n.id) onOpen(null)
+    } catch (e) {
+      setRowMsg({ ok: false, text: errText(e) })
+    } finally {
+      setReceiving(null)
+    }
+  }
   return (
     <Panel
       i={i}
@@ -123,38 +148,55 @@ export function TransferNotesList({
         <Empty icon={Truck}>{t('roomStores.noNotes')}</Empty>
       ) : (
         <div className="flex flex-col">
+          <MsgFlash msg={rowMsg} onClose={() => setRowMsg(null)} />
           {paged.slice.map((n) => (
             <div key={n.id} className="border-grid border-b last:border-b-0">
-              <button
-                type="button"
-                onClick={() => onOpen(openId === n.id ? null : n.id)}
-                aria-expanded={openId === n.id}
-                className={cn(
-                  'hover:bg-hover flex min-h-10 w-full flex-wrap items-center gap-3 rounded-md px-2 py-1.5 text-left text-[14px] transition-colors duration-120',
-                  openId === n.id && selectedRow,
-                )}
-              >
-                <span className="w-28 font-semibold tabular-nums">{n.number}</span>
-                <span className="min-w-[180px] flex-1">
-                  <span className="flex items-center gap-1 font-semibold">
-                    {n.from} <ArrowRight size={13} aria-hidden="true" /> {n.to}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onOpen(openId === n.id ? null : n.id)}
+                  aria-expanded={openId === n.id}
+                  className={cn(
+                    'hover:bg-hover flex min-h-10 min-w-0 flex-[1_1_320px] flex-wrap items-center gap-3 rounded-md px-2 py-1.5 text-left text-[14px] transition-colors duration-120',
+                    openId === n.id && selectedRow,
+                  )}
+                >
+                  <span className="w-28 font-semibold tabular-nums">{n.number}</span>
+                  <span className="min-w-[180px] flex-1">
+                    <span className="flex items-center gap-1 font-semibold">
+                      {n.from} <ArrowRight size={13} aria-hidden="true" /> {n.to}
+                    </span>
+                    <span className="text-ink-3 block text-[12px]">
+                      {[
+                        `${formatDate(new Date(n.sentAt))} ${formatTime(new Date(n.sentAt))}`,
+                        n.sentBy,
+                        n.units != null ? t('roomStores.unitsCount', { count: n.units }) : null,
+                        n.requestNumber,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
                   </span>
-                  <span className="text-ink-3 block text-[12px]">
-                    {[
-                      `${formatDate(new Date(n.sentAt))} ${formatTime(new Date(n.sentAt))}`,
-                      n.sentBy,
-                      n.units != null ? t('roomStores.unitsCount', { count: n.units }) : null,
-                      n.requestNumber,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
-                </span>
-                <NoteStatus n={n} />
-                {(n.canReceive || n.canCancel) && n.status === 'in_transit' && (
-                  <Badge tone="blue">{t('roomStores.waitsForYou')}</Badge>
+                  <NoteStatus n={n} />
+                  {(n.canReceive || n.canCancel) && n.status === 'in_transit' && (
+                    <Badge tone="blue">{t('roomStores.waitsForYou')}</Badge>
+                  )}
+                </button>
+                {n.canReceive && n.status === 'in_transit' && (
+                  <Button
+                    size="sm"
+                    variant="success"
+                    className="ml-auto"
+                    loading={receiving === n.id}
+                    disabled={receiving != null && receiving !== n.id}
+                    title={t('stockPage.receiveAllHint')}
+                    onClick={() => void receiveAll(n)}
+                  >
+                    {receiving !== n.id && <CheckCheck size={14} aria-hidden="true" />}
+                    {t('roomStores.receiveAll')}
+                  </Button>
                 )}
-              </button>
+              </div>
               {openId === n.id && (
                 <div className="pb-3">
                   <TransferNoteView id={n.id} onClose={() => onOpen(null)} canAct={canAct} />

@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, Gauge, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate } from '@mmc/shared'
 import { card } from '@/components/dash/kit-style'
@@ -8,7 +8,15 @@ import { Field } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
 import { SearchSelect, type SearchOption } from '@/components/ui/search-select'
 import { cn } from '@/lib/utils'
-import { daysUntil, draftLine, expiryState, type DraftLine, type Msg } from './stock-util'
+import { EXPIRY_WINDOW_DAYS } from '@/lib/api/pharmacy'
+import {
+  daysUntil,
+  draftLine,
+  expiryState,
+  type DraftLine,
+  type ItemStatus,
+  type Msg,
+} from './stock-util'
 
 /** Small pieces the stock screens share: the message under a form, expiry marks, note lines. */
 
@@ -22,7 +30,7 @@ export function MsgFlash({ msg, onClose }: { msg: Msg | null; onClose: () => voi
   )
 }
 
-/** The expiry date with a mark: red when expired, amber within 90 days. */
+/** The expiry date with a mark: red when expired, amber within the expiry window (30 days). */
 export function ExpiryMark({ date }: { date: string | null | undefined }) {
   const { t } = useTranslation()
   const s = expiryState(date)
@@ -127,5 +135,39 @@ export function LinesEditor({
         {t('stockShared.addLine')}
       </Button>
     </div>
+  )
+}
+
+const STATUS_TONE: Record<ItemStatus, 'red' | 'yellow' | 'orange'> = {
+  expired: 'red',
+  expiring: 'yellow',
+  low: 'orange',
+}
+const STATUS_ICON: Record<ItemStatus, typeof Clock> = {
+  expired: AlertTriangle,
+  expiring: Clock,
+  low: Gauge,
+}
+
+/** The status tags of an item (none: OK). */
+export function StatusTags({ statuses }: { statuses: ItemStatus[] }) {
+  const { t } = useTranslation()
+  if (statuses.length === 0)
+    return (
+      <Badge tone="green" icon={<CheckCircle2 size={12} aria-hidden="true" />}>
+        {t('stockPage.status.ok')}
+      </Badge>
+    )
+  return (
+    <span className="flex flex-wrap gap-1">
+      {statuses.map((s) => {
+        const Icon = STATUS_ICON[s]
+        return (
+          <Badge key={s} tone={STATUS_TONE[s]} icon={<Icon size={12} aria-hidden="true" />}>
+            {t(`stockPage.status.${s}`, { count: EXPIRY_WINDOW_DAYS })}
+          </Badge>
+        )
+      })}
+    </span>
   )
 }

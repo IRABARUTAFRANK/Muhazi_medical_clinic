@@ -1,30 +1,41 @@
 import { isoDate } from '@mmc/shared'
 import type { StockItem, StockLocation, StoreHolder } from '@/lib/api/stock'
-import { isRoomStore } from '@/lib/api/stock'
+import { isLowStock, isRoomStore } from '@/lib/api/stock'
+import { EXPIRY_WINDOW_DAYS } from '@/lib/api/pharmacy'
 
-/** The tabs of the stock page (the address may name one). */
-export type Tab =
-  | 'stock'
+/**
+ * The six tabs of the stock page (the pharmacy and the manager), and "My store" for room
+ * holders. The address may still name an older tab: it opens the tab that now holds it.
+ */
+export type MainTab = 'stock' | 'prescriptions' | 'walkin' | 'add' | 'rooms' | 'reports' | 'mine'
+/** Older tab names, kept so old links and notices still open the right place. */
+export type OldTab =
   | 'pharmacy'
   | 'receive'
   | 'deliveries'
   | 'reorder'
-  | 'rooms'
-  | 'mine'
   | 'send'
   | 'use'
   | 'medicines'
   | 'moves'
   | 'sales'
   | 'stores'
-export const STOCK_TABS: readonly Tab[] = [
+export type Tab = MainTab | OldTab
+export const MAIN_TABS: readonly MainTab[] = [
   'stock',
+  'prescriptions',
+  'walkin',
+  'add',
+  'rooms',
+  'reports',
+  'mine',
+]
+export const STOCK_TABS: readonly Tab[] = [
+  ...MAIN_TABS,
   'pharmacy',
   'receive',
   'deliveries',
   'reorder',
-  'rooms',
-  'mine',
   'send',
   'use',
   'medicines',
@@ -32,6 +43,22 @@ export const STOCK_TABS: readonly Tab[] = [
   'sales',
   'stores',
 ]
+/** Where an older tab now lives (and the part of it to show first). */
+const OLD_TABS: Record<OldTab, { tab: MainTab; part?: string }> = {
+  pharmacy: { tab: 'prescriptions' },
+  receive: { tab: 'add' },
+  deliveries: { tab: 'reports', part: 'deliveries' },
+  reorder: { tab: 'stock', part: 'order' },
+  use: { tab: 'stock' },
+  medicines: { tab: 'stock', part: 'prices' },
+  moves: { tab: 'reports', part: 'moves' },
+  sales: { tab: 'reports', part: 'sales' },
+  stores: { tab: 'rooms', part: 'stores' },
+  send: { tab: 'rooms', part: 'send' },
+}
+/** The tab an address names, with the part of it to open. */
+export const mainTab = (tab: Tab | undefined): { tab: MainTab | undefined; part?: string } =>
+  !tab ? { tab: undefined } : tab in OLD_TABS ? OLD_TABS[tab as OldTab] : { tab: tab as MainTab }
 
 /**
  * Helpers the stock screens share: messages, names, dates and expiry, the store filters of the
@@ -64,11 +91,21 @@ export const daysUntil = (iso: string): number => {
 }
 
 export type ExpiryState = 'expired' | 'soon' | 'ok'
-/** Expired (before today), expiring within 90 days, or fine. */
+/** Expired (before today), expiring within the expiry window (30 days), or fine. */
 export const expiryState = (iso: string | null | undefined): ExpiryState | null => {
   if (!iso) return null
   const d = daysUntil(iso)
-  return d < 0 ? 'expired' : d <= 90 ? 'soon' : 'ok'
+  return d < 0 ? 'expired' : d <= EXPIRY_WINDOW_DAYS ? 'soon' : 'ok'
+}
+
+/** What the stock list tags an item with: expired units on a shelf, expiring soon, low. */
+export type ItemStatus = 'expired' | 'expiring' | 'low'
+export const itemStatuses = (i: StockItem): ItemStatus[] => {
+  const out: ItemStatus[] = []
+  if (i.expiredUnits > 0) out.push('expired')
+  if (expiryState(i.nextExpiry ?? i.earliestExpiry) === 'soon') out.push('expiring')
+  if (isLowStock(i)) out.push('low')
+  return out
 }
 
 /** Open stores of the pharmacy side (pharmacy stores and the old main store). */
@@ -93,6 +130,14 @@ export const roomStores = (locations: StockLocation[], withClosed = false) =>
 /** Units of a medicine in a store that are not expired (when the database splits them). */
 export const usableIn = (i: StockItem | undefined, locationId: string): number =>
   i ? ((i.byLocationUsable ?? i.byLocation)[locationId] ?? 0) : 0
+
+/** Usable units in the pharmacy (its stores and the old main store), in the room stores, in all. */
+export const splitStock = (i: StockItem, locations: StockLocation[]) => {
+  const pharmacy =
+    i.pharmacyUsable ?? pharmacySide(locations, true).reduce((s, l) => s + usableIn(i, l.id), 0)
+  const rooms = roomStores(locations, true).reduce((s, l) => s + usableIn(i, l.id), 0)
+  return { pharmacy, rooms, total: i.usable ?? Math.max(0, i.onHand - i.expiredUnits) }
+}
 
 // ---------------------------------------------------------------- lines of a note
 export interface DraftLine {

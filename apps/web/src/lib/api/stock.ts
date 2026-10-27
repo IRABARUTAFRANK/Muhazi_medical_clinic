@@ -14,7 +14,7 @@ import { useSession } from '@/store/session'
  * store (the main one by default). Room stores (a doctor's office, a ward) are supplied from it by
  * transfer notes: see rooms.ts. Walk-in counter sales: see counter-sales.ts.
  *
- * Live: stock_overview, receive_delivery, receive_stock, deliveries, delivery_detail,
+ * Live: stock_overview, add_stock, receive_delivery, receive_stock, deliveries, delivery_detail,
  * transfer_stock, use_stock, adjust_stock, pharmacy_queue, dispense_prescription, sell_medicine,
  * rx_not_given, return_medicine, set_main_pharmacy, set_reorder_level, stock_movements,
  * stock_alerts, reorder_suggestions, stock_sales, save_location, set_location_active,
@@ -85,7 +85,7 @@ export interface StockItem {
   /** The earliest expiry date not yet passed. */
   nextExpiry?: string | null
   expiredUnits: number
-  /** Units expiring within 90 days (not yet expired). */
+  /** Units expiring within the expiry window (30 days; not yet expired). */
   expiringUnits?: number
   /** Units on transfer notes not yet received (pharmacy and manager; null for others). */
   inTransit?: number | null
@@ -93,6 +93,8 @@ export interface StockItem {
   pharmacyUsable?: number | null
   /** At or below its reorder level in the pharmacy (unexpired units), as the database counts it. */
   low?: boolean
+  /** A medicine or a product (supply); missing on an older database. */
+  kind?: 'medicine' | 'supply' | null
   active: boolean
 }
 export interface StockOverview {
@@ -232,6 +234,37 @@ export interface StockSales {
   stockValue: number
   /** Counter sales (walk-in buyers) handed over in the period. */
   counterRevenue?: number
+  /** Totals of the period: revenue, cost of what was sold, margin (revenue − cost). */
+  revenue: number
+  cost: number
+  margin: number
+}
+
+/** A line of "Add stock" (add_stock): an item of the clinic, or a new one. */
+export interface AddStockLineInput {
+  itemId?: string
+  newItem?: {
+    name: string
+    form?: string | null
+    strength?: string | null
+    kind: 'medicine' | 'supply'
+    unit?: string | null
+  }
+  batchNo: string
+  /** Not in the past. */
+  expiry: string
+  /** Units (> 0). */
+  quantity: number
+  /** Cost per unit (≥ 0). */
+  unitCost: number
+  /** The selling price per unit: sets the price of a new item, updates a changed one. */
+  sellPrice?: number | null
+}
+export interface AddStockResult {
+  lines: { itemId: string; batchId: string | null; quantity: number }[]
+  totalCost: number
+  /** A new selling price was not saved (the reader may not set prices). */
+  priceIgnored: boolean
 }
 
 /** A line of a delivery note (receive_delivery). */
@@ -472,6 +505,7 @@ const sampleItems: StockItem[] = [
     active: true,
   },
 ]
+/** The batch number of each sample item (the latest added). */
 const sampleBatchNo: Record<string, string> = {
   'it-1': 'B261020-001',
   'it-2': 'B260901-004',
@@ -752,7 +786,8 @@ const sampleOverview = (): StockOverview => {
   const visible = sampleLocations.filter((l) => admin || sampleHolds(l.id))
   const ids = new Set(visible.map((l) => l.id))
   const today = new Date().toISOString().slice(0, 10)
-  const in90 = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10)
+  // the expiry window (setting stock.expiry_days, 30 days)
+  const soon = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)
   return {
     admin,
     mainPharmacyId: 'l-pharm',
@@ -771,7 +806,7 @@ const sampleOverview = (): StockOverview => {
       const pharmacy = sampleLocations
         .filter((l) => l.type === 'pharmacy' && l.active !== false)
         .reduce((s, l) => s + (x.byLocation[l.id] ?? 0), 0)
-      const expiring = x.earliestExpiry && x.earliestExpiry <= in90 && x.earliestExpiry >= today
+      const expiring = x.earliestExpiry && x.earliestExpiry <= soon && x.earliestExpiry >= today
       return {
         ...x,
         byLocation,
@@ -1066,22 +1101,32 @@ export function useStockSales(from: string, to: string) {
           consumed: 4800,
           stockValue: 185200,
           counterRevenue: 3500,
+          revenue: 73900,
+          cost: 34360,
+          margin: 39540,
         }
       const { data, error } = await supabase.rpc('stock_sales', { p_from: from, p_to: to })
       if (error) throw apiError(error)
-      const d = data as StockSales
+      const d = data as Partial<StockSales>
+      const items = (d.items ?? []).map((x) => ({
+        item: x.item,
+        units: num(x.units),
+        revenue: num(x.revenue),
+        cost: num(x.cost),
+        margin: num(x.margin),
+      }))
+      // the period's totals, from the lines when the database sends none
+      const revenue = d.revenue == null ? items.reduce((s, x) => s + x.revenue, 0) : num(d.revenue)
+      const cost = d.cost == null ? items.reduce((s, x) => s + x.cost, 0) : num(d.cost)
       return {
-        items: (d.items ?? []).map((x) => ({
-          item: x.item,
-          units: num(x.units),
-          revenue: num(x.revenue),
-          cost: num(x.cost),
-          margin: num(x.margin),
-        })),
+        items,
         received: num(d.received),
         consumed: num(d.consumed),
         stockValue: num(d.stockValue),
         counterRevenue: d.counterRevenue == null ? undefined : num(d.counterRevenue),
+        revenue,
+        cost,
+        margin: d.margin == null ? revenue - cost : num(d.margin),
       }
     },
   })
@@ -1480,6 +1525,108 @@ export function useStockActions() {
     onSuccess: refreshAll,
   })
 
+  /**
+   * Stock added to the pharmacy (add_stock; another store: the manager only): one line per
+   * batch, each an item of the clinic or a new one (created at its selling price), with its batch
+   * number, expiry date (not in the past), units, cost per unit and selling price. No supplier,
+   * no delivery note: the date is today.
+   */
+  const addStock = useMutation({
+    mutationFn: async (i: {
+      lines: AddStockLineInput[]
+      locationId?: string | null
+      note?: string
+    }): Promise<AddStockResult> => {
+      if (!supabase) {
+        const loc = i.locationId ?? 'l-pharm'
+        const today = new Date().toISOString().slice(0, 10)
+        const out: AddStockResult = { lines: [], totalCost: 0, priceIgnored: false }
+        for (const l of i.lines) {
+          if (l.expiry < today) throw sampleRefusal('expiredDate', '22023')
+          const batch = l.batchNo.trim().toUpperCase()
+          const known = l.itemId ? sampleItems.find((x) => x.id === l.itemId) : undefined
+          if (known && sampleBatchNo[known.id] === batch && known.earliestExpiry !== l.expiry)
+            throw sampleRefusal('batchExpiry', '22023')
+          let itemId = l.itemId
+          if (!itemId && l.newItem) {
+            itemId = `it-new-${Date.now()}-${out.lines.length}`
+            sampleNewMedicine(
+              itemId,
+              {
+                code: l.newItem.name.slice(0, 8).toUpperCase().replace(/\s+/g, ''),
+                name: l.newItem.name.trim(),
+                strength: l.newItem.strength?.trim() || null,
+                unit: l.newItem.unit?.trim() || null,
+                sellingPrice: l.sellPrice ?? null,
+              },
+              l.unitCost,
+              l.expiry,
+            )
+            const it = sampleItems.find((x) => x.id === itemId)
+            if (it) it.kind = l.newItem.kind
+          }
+          if (!itemId) continue
+          const it = sampleItems.find((x) => x.id === itemId)
+          if (it) {
+            if (l.sellPrice != null) it.sellingPrice = l.sellPrice
+            if (!it.earliestExpiry || l.expiry < it.earliestExpiry) it.earliestExpiry = l.expiry
+            sampleBatchNo[itemId] = batch
+          }
+          sampleMove(itemId, null, loc, l.quantity)
+          sampleStock.log({
+            type: 'receipt',
+            itemId,
+            item: sampleLabel(itemId),
+            quantity: l.quantity,
+            from: null,
+            toId: loc,
+            to: sampleLocations.find((x) => x.id === loc)?.name ?? null,
+            reason: i.note?.trim() || null,
+          })
+          out.lines.push({ itemId, batchId: `b-${itemId}`, quantity: l.quantity })
+          out.totalCost += l.quantity * l.unitCost
+        }
+        return out
+      }
+      const { data, error } = await supabase.rpc('add_stock', {
+        p_lines: i.lines.map((l) => ({
+          item_id: l.itemId ?? null,
+          new_item: l.newItem
+            ? {
+                name: l.newItem.name.trim(),
+                form: l.newItem.form?.trim() || null,
+                strength: l.newItem.strength?.trim() || null,
+                kind: l.newItem.kind,
+                unit: l.newItem.unit?.trim() || null,
+              }
+            : null,
+          batch_no: l.batchNo.trim(),
+          expiry: l.expiry,
+          quantity: l.quantity,
+          unit_cost: l.unitCost,
+          sell_price: l.sellPrice ?? null,
+        })),
+        p_location_id: i.locationId ?? null,
+        p_note: i.note?.trim() || null,
+      })
+      if (error) throw apiError(error)
+      const d = (data ?? {}) as Record<string, unknown>
+      const lines = (Array.isArray(d.lines) ? d.lines : []) as Record<string, unknown>[]
+      const flag = (o: Record<string, unknown>) =>
+        !!(o.price_ignored ?? o.priceIgnored ?? o.price_not_changed ?? o.priceNotChanged)
+      return {
+        lines: lines.map((l) => ({
+          itemId: String(l.item_id ?? l.itemId ?? ''),
+          batchId: (l.batch_id ?? l.batchId ?? null) as string | null,
+          quantity: num(l.quantity),
+        })),
+        totalCost: num(d.total_cost ?? d.totalCost),
+        priceIgnored: flag(d) || lines.some(flag),
+      }
+    },
+    onSuccess: refreshAll,
+  })
+
   /** Between pharmacy stores, or from the old main store to the pharmacy (room stores: notes). */
   const transfer = useMutation({
     mutationFn: (i: {
@@ -1746,6 +1893,7 @@ export function useStockActions() {
   })
   return {
     returnMedicine,
+    addStock,
     receive,
     receiveDelivery,
     transfer,

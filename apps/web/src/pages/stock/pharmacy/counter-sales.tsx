@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Ban, HandCoins, Hourglass, PackageCheck, Receipt, Send } from 'lucide-react'
+import { Ban, HandCoins, Hourglass, PackageCheck, Printer, Receipt, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf, formatTime } from '@mmc/shared'
 import type { StaffUser } from '@mmc/shared'
@@ -19,10 +19,13 @@ import {
 } from '@/lib/api/counter-sales'
 import { useCan } from '@/lib/api/permissions'
 import { usePharmacyDesk, useStockOverview } from '@/lib/api/stock'
+import { useSessionCanDesk } from '@/components/clinical/session-desks'
 import { useConfirm } from '@/lib/confirm'
 import { useNow } from '@/lib/hooks'
+import { useLetterhead, usePrintedBy } from '@/lib/report-parts'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/store/session'
+import { openCounterReceipt } from '../../finance/counter-receipt'
 import { useHanded } from './handed'
 import { useSearchParam } from './hooks'
 import { HandedStrip, LinesEditor, ReasonBox } from './parts'
@@ -41,10 +44,11 @@ const METHODS: CounterPaymentMethod[] = ['cash', 'momo', 'airtel', 'card', 'bank
 type Msg = { ok: boolean; text: string } | null
 
 /**
- * Counter sales: a walk-in buyer without a visit pays FIRST, then collects. The pharmacy writes
- * the sale at cash prices (expired stock is never offered) and sends it to the cashier; once it
- * is paid, the pharmacy hands the medicines over (earliest expiry first). Someone allowed to take
- * payments may take it here and hand over at once.
+ * Counter sales: a walk-in buyer without a visit pays FIRST, then collects. The pharmacist writes
+ * the sale at cash prices (expired stock is never offered), takes the payment here (counter sales
+ * only: visit bills stay with the cashier), hands the medicines over (earliest expiry first) and
+ * prints the receipt. The payment counts in the pharmacist's own cash count and in the day's
+ * revenue. A sale may still be sent to the cashier instead; the cashier's list keeps working.
  */
 export function CounterSalesPanel() {
   const user = useSession((s) => s.user)
@@ -54,7 +58,11 @@ export function CounterSalesPanel() {
 
 function CounterSales({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
-  const canTake = useCan(user)('payment.take')
+  // the pharmacy desk takes the payment of its own counter sales (take_counter_payment)
+  const canDesk = useSessionCanDesk()
+  const canTake = useCan(user)('payment.take') || canDesk('pharmacy')
+  const letterhead = useLetterhead()
+  const printedBy = usePrintedBy()
   const now = useNow(60_000)
   const today = dayOf(now)
   const { data: stock } = useStockOverview()
@@ -70,9 +78,9 @@ function CounterSales({ user }: { user: StaffUser }) {
   const [phone, setPhone] = useState('')
   const [note, setNote] = useState('')
   const [storeChoice, setStoreChoice] = useState('')
-  const [payNow, setPayNow] = useState(false)
   const [method, setMethod] = useState<CounterPaymentMethod>('cash')
   const [reference, setReference] = useState('')
+  const [payerPhone, setPayerPhone] = useState('')
   const [msg, setMsg] = useState<Msg>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [paying, setPaying] = useState<string | null>(null)
@@ -99,8 +107,25 @@ function CounterSales({ user }: { user: StaffUser }) {
     const i = byId.get(l.itemId)
     return !i || qty(l.quantity) > usableIn(i, storeId)
   })
-  const refMissing = payNow && needsReference(method) && reference.trim().length < 3
-  const ready = chosen.length > 0 && !tooMany && !refMissing
+  const refMissing = needsReference(method) && reference.trim().length < 3
+  const mobile = method === 'momo' || method === 'airtel'
+  const ready = chosen.length > 0 && !tooMany
+
+  /** The receipt of a paid sale, in a print window (blocked window: said in the message). */
+  const printReceipt = (
+    sale: Pick<CounterSale, 'number' | 'buyer' | 'phone' | 'total' | 'lines'>,
+    pay: {
+      receipt: string | null
+      method: string | null
+      amount: number
+      reference?: string | null
+      at?: string | null
+      cashier?: string | null
+    },
+  ) => {
+    const ok = openCounterReceipt(sale, pay, letterhead, t, printedBy)
+    if (!ok) setMsg({ ok: false, text: t('report.popupBlocked') })
+  }
 
   const handOverAndLabel = async (saleId: string) => {
     const r = await actions.handOver.mutateAsync(saleId)
@@ -138,11 +163,13 @@ function CounterSales({ user }: { user: StaffUser }) {
     setPhone('')
     setNote('')
     setReference('')
-    setPayNow(false)
+    setPayerPhone('')
+    setMethod('cash')
   }
 
-  const submit = async () => {
-    if (!ready) return
+  /** Writes the sale; with payNow the pharmacist takes the payment, hands over and prints. */
+  const submit = async (payNow: boolean) => {
+    if (!ready || (payNow && refMissing)) return
     const who = buyer.trim() || t('counterSale.walkIn')
     if (
       !(await confirm(
@@ -189,12 +216,41 @@ function CounterSales({ user }: { user: StaffUser }) {
         reset()
         return
       }
+      // what the receipt lists: the lines as written, at cash prices
+      const receiptSale = {
+        number: s.number,
+        buyer: buyer.trim() || null,
+        phone: phone.trim() || null,
+        total: s.total,
+        lines: chosen.map((l) => {
+          const i = byId.get(l.itemId)
+          const price = i?.sellingPrice ?? 0
+          return {
+            itemId: l.itemId,
+            item: i ? itemName(i) : l.itemId,
+            unit: i?.unit ?? null,
+            quantity: qty(l.quantity),
+            unitPrice: price,
+            lineTotal: price * qty(l.quantity),
+            inStock: 0,
+          }
+        }),
+      }
       try {
+        const ref = needsReference(method) ? reference.trim() : undefined
         const p = await actions.pay.mutateAsync({
           saleId: s.id,
           method,
-          reference,
-          payerPhone: phone,
+          reference: ref,
+          payerPhone: mobile ? payerPhone.trim() || phone.trim() : undefined,
+        })
+        // the buyer leaves with the receipt; the labels are printed from the strip above
+        printReceipt(receiptSale, {
+          receipt: p.receipt,
+          method,
+          amount: p.amount,
+          reference: ref ?? null,
+          cashier: user.name,
         })
         await handOverAndLabel(s.id)
         setMsg({
@@ -265,7 +321,7 @@ function CounterSales({ user }: { user: StaffUser }) {
     }
   }
 
-  const payOpen = async (s: CounterSale, m: CounterPaymentMethod, ref: string) => {
+  const payOpen = async (s: CounterSale, m: CounterPaymentMethod, ref: string, payer: string) => {
     if (
       !(await confirm({
         title: t('confirm.counterSale.payTitle', {
@@ -283,8 +339,20 @@ function CounterSales({ user }: { user: StaffUser }) {
       return
     setMsg(null)
     try {
-      const p = await actions.pay.mutateAsync({ saleId: s.id, method: m, reference: ref })
+      const p = await actions.pay.mutateAsync({
+        saleId: s.id,
+        method: m,
+        reference: needsReference(m) ? ref : undefined,
+        payerPhone: payer || undefined,
+      })
       setPaying(null)
+      printReceipt(s, {
+        receipt: p.receipt,
+        method: m,
+        amount: p.amount,
+        reference: needsReference(m) ? ref : null,
+        cashier: user.name,
+      })
       setMsg({
         ok: true,
         text: t('counterSale.paid', { number: s.number, receipt: p.receipt ?? '' }),
@@ -310,7 +378,9 @@ function CounterSales({ user }: { user: StaffUser }) {
       title={t('counterSale.title')}
       right={t('counterSale.waiting', { toPay, toHand })}
     >
-      <p className="text-ink-2 m-0 text-[14px]">{t('counterSale.lead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">
+        {canTake ? t('counterSale.desk.lead') : t('counterSale.lead')}
+      </p>
       {msg && (
         <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
           {msg.text}
@@ -389,49 +459,76 @@ function CounterSales({ user }: { user: StaffUser }) {
         <p className="m-0 text-[16px] font-semibold">
           {t('counterSale.total', { amount: formatRwf(total) })}
         </p>
-        {canTake && (
-          <label className="text-ink-2 flex items-center gap-2 text-[14px] font-semibold">
-            <input type="checkbox" checked={payNow} onChange={(e) => setPayNow(e.target.checked)} />
-            {t('counterSale.payHere')}
-          </label>
-        )}
-        {canTake && payNow && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Select
-              label={t('visit.payment.method')}
-              value={method}
-              onChange={(e) => setMethod(e.target.value as CounterPaymentMethod)}
-            >
-              {METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {t(`visit.payment.methods.${m}`)}
-                </option>
-              ))}
-            </Select>
-            {needsReference(method) && (
-              <Field
-                label={t('visit.payment.reference')}
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-                required
-              />
-            )}
+        {canTake ? (
+          <div className="border-green/30 bg-green-bg/40 flex flex-col gap-3 rounded-md border p-3">
+            <span className="text-ink flex items-center gap-1.5 text-[14px] font-semibold">
+              <HandCoins size={16} aria-hidden="true" className="text-green" />
+              {t('counterSale.desk.payTitle')}
+            </span>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Select
+                label={t('visit.payment.method')}
+                value={method}
+                onChange={(e) => setMethod(e.target.value as CounterPaymentMethod)}
+              >
+                {METHODS.map((m) => (
+                  <option key={m} value={m}>
+                    {t(`visit.payment.methods.${m}`)}
+                  </option>
+                ))}
+              </Select>
+              {needsReference(method) && (
+                <Field
+                  label={t('visit.payment.reference')}
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  required
+                />
+              )}
+              {mobile && (
+                <Field
+                  label={t('visit.payment.phone')}
+                  type="tel"
+                  value={payerPhone}
+                  onChange={(e) => setPayerPhone(e.target.value)}
+                  placeholder={phone.trim() || '07xx xxx xxx'}
+                />
+              )}
+            </div>
+            <span className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="success"
+                disabled={!ready || refMissing || working}
+                loading={working}
+                onClick={() => void submit(true)}
+                title={refMissing && ready ? t('visit.payment.errors.reference') : undefined}
+              >
+                {!working && <HandCoins size={16} aria-hidden="true" />}
+                {t('counterSale.desk.payHandPrint', { amount: formatRwf(total) })}
+              </Button>
+              <Button
+                variant="tint-grey"
+                disabled={!ready || working}
+                onClick={() => void submit(false)}
+              >
+                <Send size={16} aria-hidden="true" />
+                {t('counterSale.sendToCashier')}
+              </Button>
+            </span>
+            <span className="text-ink-3 text-[12px]">{t('counterSale.desk.payNote')}</span>
           </div>
+        ) : (
+          <Button
+            variant="primary"
+            className="self-start"
+            disabled={!ready || working}
+            loading={working}
+            onClick={() => void submit(false)}
+          >
+            {!working && <Send size={16} aria-hidden="true" />}
+            {t('counterSale.sendToCashier')}
+          </Button>
         )}
-        <Button
-          variant={payNow ? 'success' : 'primary'}
-          className="self-start"
-          disabled={!ready || working}
-          loading={working}
-          onClick={() => void submit()}
-        >
-          {payNow ? (
-            <HandCoins size={16} aria-hidden="true" />
-          ) : (
-            <Send size={16} aria-hidden="true" />
-          )}
-          {payNow ? t('counterSale.payAndHand') : t('counterSale.sendToCashier')}
-        </Button>
       </div>
 
       <SectionTitle icon={Receipt}>{t('counterSale.listTitle')}</SectionTitle>
@@ -509,6 +606,25 @@ function CounterSales({ user }: { user: StaffUser }) {
                         {t('stock.handOver')}
                       </Button>
                     )}
+                    {(s.status === 'paid' || s.status === 'handed_over') && s.receipt && (
+                      <Button
+                        size="sm"
+                        variant="tint-grey"
+                        title={t('cashierDesk.counter.reprint')}
+                        aria-label={t('cashierDesk.counter.reprint')}
+                        onClick={() =>
+                          printReceipt(s, {
+                            receipt: s.receipt,
+                            method: s.method,
+                            amount: s.total,
+                            at: s.paidAt,
+                            cashier: s.cashier,
+                          })
+                        }
+                      >
+                        <Printer size={14} aria-hidden="true" />
+                      </Button>
+                    )}
                     {s.status === 'open' && canTake && (
                       <Button
                         size="sm"
@@ -536,7 +652,8 @@ function CounterSales({ user }: { user: StaffUser }) {
                   {paying === s.id && (
                     <PayForm
                       busy={actions.pay.isPending}
-                      onPay={(m, ref) => void payOpen(s, m, ref)}
+                      phone={s.phone}
+                      onPay={(m, ref, payer) => void payOpen(s, m, ref, payer)}
                       onCancel={() => setPaying(null)}
                     />
                   )}
@@ -562,17 +679,22 @@ function CounterSales({ user }: { user: StaffUser }) {
 
 function PayForm({
   busy,
+  phone,
   onPay,
   onCancel,
 }: {
   busy: boolean
-  onPay: (method: CounterPaymentMethod, reference: string) => void
+  /** The buyer's phone written on the sale (the paying phone by default). */
+  phone: string | null
+  onPay: (method: CounterPaymentMethod, reference: string, payerPhone: string) => void
   onCancel: () => void
 }) {
   const { t } = useTranslation()
   const [method, setMethod] = useState<CounterPaymentMethod>('cash')
   const [reference, setReference] = useState('')
+  const [payer, setPayer] = useState('')
   const missing = needsReference(method) && reference.trim().length < 3
+  const mobile = method === 'momo' || method === 'airtel'
   return (
     <div className={cn(card, 'gap-2 p-2.5')}>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -594,6 +716,15 @@ function PayForm({
             onChange={(e) => setReference(e.target.value)}
           />
         )}
+        {mobile && (
+          <Field
+            label={t('visit.payment.phone')}
+            type="tel"
+            value={payer}
+            onChange={(e) => setPayer(e.target.value)}
+            placeholder={phone ?? '07xx xxx xxx'}
+          />
+        )}
       </div>
       <span className="flex flex-wrap gap-2">
         <Button
@@ -601,7 +732,9 @@ function PayForm({
           variant="success"
           disabled={missing || busy}
           loading={busy}
-          onClick={() => onPay(method, reference.trim())}
+          onClick={() =>
+            onPay(method, reference.trim(), mobile ? payer.trim() || (phone ?? '') : '')
+          }
         >
           {!busy && <HandCoins size={14} aria-hidden="true" />}
           {t('counterSale.takePayment')}

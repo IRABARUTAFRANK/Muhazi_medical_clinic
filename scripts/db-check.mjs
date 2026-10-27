@@ -6466,7 +6466,8 @@ await step(
     ).n
     const lowTold = (
       await one(
-        `select count(*)::int as n from notification where kind = 'stock_low' and params ->> 'itemId' = $1`,
+        `select count(*)::int as n from notification where kind = 'stock_low' and params ->> 'itemId' = $1
+           and not params ? 'key'`, // 0097: the daily alerts (with a key) apart
         [t83.cef],
       )
     ).n
@@ -11782,6 +11783,401 @@ await step(
     return 'task id in params; Home focus without a visit, the visit otherwise'
   },
 )
+
+// ---------------------------------------------------------------- 0097 the pharmacy, simplified
+const t97 = {}
+await step('0097 A: add stock: a new supply and an existing medicine, no supplier', async () => {
+  await as(staff.manager)
+  t97.amox = (
+    await one(`select upsert_item(null, 'Amoxicillin 97', 300, '500 mg', 'capsule', 'cap') as id`)
+  ).id
+  await asAdmin()
+  t97.main = (await one(`select main_pharmacy() as id`)).id
+  t97.day = await one(`select (current_date + 400)::text as d, (current_date + 10)::text as soon`)
+  await as(staff.pharmacist)
+  const r = (
+    await one(`select add_stock($1::jsonb, null, 'shelf 97') as j`, [
+      JSON.stringify([
+        {
+          item_id: t97.amox,
+          batch_no: 'AMX-97',
+          expiry: t97.day.d,
+          quantity: 100,
+          unit_cost: 120,
+          sell_price: 350,
+        },
+        {
+          new_item: { name: 'Gauze 97', kind: 'supply', unit: 'pack' },
+          batch_no: 'GZ-97',
+          expiry: t97.day.d,
+          quantity: 10,
+          unit_cost: 500,
+          sell_price: 800,
+        },
+      ]),
+    ])
+  ).j
+  await asAdmin()
+  t97.gauze = r.lines[1].item_id
+  const gz = await one(
+    `select i.kind, i.code, (select pf.price from price_for(null, i.id, null) pf) as price from item i where i.id = $1`,
+    [t97.gauze],
+  )
+  const amoxPrice = (await one(`select pf.price from price_for(null, $1, null) pf`, [t97.amox]))
+    .price
+  const grn = await one(
+    `select supplier_id, supplier_name, total_cost from goods_receipt where id = $1`,
+    [r.id],
+  )
+  const usable = (await one(`select usable_stock($1, $2) as n`, [t97.amox, t97.main])).n
+  const nurse = await codeAs(staff.nurse, `select add_stock($1::jsonb)`, [
+    JSON.stringify([
+      { item_id: t97.amox, batch_no: 'N-97', expiry: t97.day.d, quantity: 1, unit_cost: 1 },
+    ]),
+  ])
+  const otherStore = await codeAs(staff.pharmacist, `select add_stock($1::jsonb, $2)`, [
+    JSON.stringify([
+      { item_id: t97.amox, batch_no: 'P2-97', expiry: t97.day.d, quantity: 1, unit_cost: 1 },
+    ]),
+    t82.ph2,
+  ])
+  if (
+    r.lines.length !== 2 ||
+    r.lines[0].item_id !== t97.amox ||
+    r.lines[0].quantity !== 100 ||
+    !r.lines[0].price_updated ||
+    !r.lines[1].created ||
+    Number(r.total_cost) !== 17000 ||
+    gz.kind !== 'supply' ||
+    !/^SUP-/.test(gz.code) ||
+    Number(gz.price) !== 800 ||
+    Number(amoxPrice) !== 350 ||
+    grn.supplier_id !== null ||
+    grn.supplier_name !== null ||
+    Number(grn.total_cost) !== 17000 ||
+    usable !== 100 ||
+    nurse !== '42501' ||
+    otherStore !== '42501'
+  )
+    throw new Error(JSON.stringify({ r, gz, amoxPrice, grn, usable, nurse, otherStore }))
+  return `GRN ${r.number} without supplier: 100 + 10 (new supply ${gz.code}); 17,000 cost; price 300 → 350`
+})
+await step(
+  '0097 A: an expiry already past and a batch with another expiry are refused',
+  async () => {
+    const line = (x) => JSON.stringify([{ item_id: t97.amox, quantity: 5, unit_cost: 100, ...x }])
+    const past = await hintAs(staff.pharmacist, `select add_stock($1::jsonb)`, [
+      line({ batch_no: 'OLD-97X', expiry: '2020-01-01' }),
+    ])
+    const other = await hintAs(staff.pharmacist, `select add_stock($1::jsonb)`, [
+      line({ batch_no: 'AMX-97', expiry: t97.day.soon }),
+    ])
+    // the nurse of Pharmacy 85 allowed to manage stock, without the price right: a different price is not applied
+    await except87(t85.nurse, 'stock.write', true)
+    await as(t85.nurse)
+    const r = (
+      await one(`select add_stock($1::jsonb) as j`, [
+        line({ batch_no: 'AMX-97B', expiry: t97.day.d, sell_price: 999 }),
+      ])
+    ).j
+    await asAdmin()
+    await except87(t85.nurse, 'stock.write', null)
+    const price = (await one(`select pf.price from price_for(null, $1, null) pf`, [t97.amox])).price
+    if (
+      past !== '22023/expired_date' ||
+      other !== '22023/batch_expiry' ||
+      !r.lines[0].price_ignored ||
+      r.lines[0].price_updated ||
+      Number(price) !== 350
+    )
+      throw new Error(JSON.stringify({ past, other, r, price }))
+    return `past: ${past}; other expiry: ${other}; price 999 ignored without the right`
+  },
+)
+await step('0097 A: receive_delivery still works, its supplier now optional', async () => {
+  await as(staff.pharmacist)
+  const d = (
+    await one(`select receive_delivery(null, null, $1::jsonb) as j`, [
+      JSON.stringify([
+        {
+          itemId: t97.amox,
+          unit: 'unit',
+          quantity: 2,
+          cost: 100,
+          batchNo: 'AMX-97D',
+          expiry: t97.day.d,
+        },
+      ]),
+    ])
+  ).j
+  await asAdmin()
+  const g = await one(`select supplier_id, supplier_name from goods_receipt where id = $1`, [d.id])
+  if (
+    !/^GRN-/.test(d.number) ||
+    d.units !== 2 ||
+    g.supplier_id !== null ||
+    g.supplier_name !== null
+  )
+    throw new Error(JSON.stringify({ d, g }))
+  return `${d.number} without a supplier`
+})
+await step('0097 B: give 10 of 20, then the rest; the bill charges what was given', async () => {
+  t97.v = await visit87('Pharmacy 97')
+  const rx = async (q) =>
+    (
+      await one(
+        `insert into medication_request (encounter_id, item_id, quantity, supply, prescriber_id)
+         values ($1, $2, $3, 'pharmacy', $4) returning id`,
+        [t97.v.enc, t97.amox, q, d1],
+      )
+    ).id
+  t97.rx1 = await rx(20)
+  t97.rx2 = await rx(20)
+  await as(staff.pharmacist)
+  const part = (await one(`select dispense_prescription($1, null, 10) as j`, [t97.rx1])).j
+  const q = (await one(`select pharmacy_queue() as j`)).j
+  await asAdmin()
+  const line = q.lines.find((x) => x.requestId === t97.rx1)
+  const told = await one(
+    `select params from notification where kind = 'rx_part_given' and recipient_user = $1
+      and params ->> 'requestId' = $2`,
+    [d1, t97.rx1],
+  )
+  const tooMuch = await hintAs(staff.pharmacist, `select dispense_prescription($1, null, 11)`, [
+    t97.rx1,
+  ])
+  await as(staff.pharmacist)
+  const rest = (await one(`select dispense_prescription($1) as j`, [t97.rx1])).j
+  await asAdmin()
+  const m = await one(`select quantity_given, given_at from medication_request where id = $1`, [
+    t97.rx1,
+  ])
+  const billed = (
+    await one(
+      `select coalesce(sum(l.quantity), 0)::int as n from invoice_line l
+        join medication_dispense d on d.id = l.source_id and l.source_type = 'medication_dispense'
+       where d.medication_request_id = $1 and l.deleted_at is null`,
+      [t97.rx1],
+    )
+  ).n
+  const again = await codeAs(staff.pharmacist, `select dispense_prescription($1)`, [t97.rx1])
+  if (
+    part.given !== 10 ||
+    part.remaining !== 10 ||
+    !line ||
+    line.given !== 10 ||
+    line.remaining !== 10 ||
+    Number(line.lineTotal) !== 3500 ||
+    told?.params.given !== 10 ||
+    told?.params.remaining !== 10 ||
+    tooMuch !== '22023/more_than_remaining' ||
+    rest.given !== 10 ||
+    rest.remaining !== 0 ||
+    m.quantity_given !== 20 ||
+    !m.given_at ||
+    billed !== 20 ||
+    again !== '23505'
+  )
+    throw new Error(JSON.stringify({ part, line, told, tooMuch, rest, m, billed, again }))
+  return '10 given (queue: 10 remaining, the prescriber told), then 10: billed 20, closed'
+})
+await step('0097 B: 5 given, then "not given" closes the remaining 15', async () => {
+  await as(staff.pharmacist)
+  await db.query(`select dispense_prescription($1, null, 5)`, [t97.rx2])
+  await db.query(`select rx_not_given($1, 'out of stock, bought outside')`, [t97.rx2])
+  const q = (await one(`select pharmacy_queue() as j`)).j
+  await asAdmin()
+  const m = await one(
+    `select quantity_given, given_at, not_given_at, rx_pending(m) as pending from medication_request m where id = $1`,
+    [t97.rx2],
+  )
+  const told = await one(
+    `select params from notification where kind = 'rx_not_given' and recipient_user = $1
+      and params ->> 'requestId' = $2`,
+    [d1, t97.rx2],
+  )
+  const after = await codeAs(staff.pharmacist, `select dispense_prescription($1)`, [t97.rx2])
+  if (
+    m.quantity_given !== 5 ||
+    m.given_at ||
+    !m.not_given_at ||
+    m.pending ||
+    q.lines.some((x) => x.requestId === t97.rx2) ||
+    told?.params.given !== 5 ||
+    told?.params.remaining !== 15 ||
+    after !== '23505'
+  )
+    throw new Error(JSON.stringify({ m, told, after }))
+  return 'off the list; the prescriber told 5 given, 15 not'
+})
+await step('0097 C: the pharmacist takes a walk-in payment, not a visit payment', async () => {
+  await as(staff.pharmacist)
+  const s = (
+    await one(`select create_counter_sale($1::jsonb, 'Walk-in 97') as j`, [
+      JSON.stringify([{ itemId: t97.amox, quantity: 2 }]),
+    ])
+  ).j
+  const paid = (await one(`select take_counter_payment($1, 'cash') as j`, [s.id])).j
+  const h = (await one(`select hand_over_counter_sale($1) as j`, [s.id])).j
+  const day = (await one(`select cashier_summary() as j`)).j
+  const count = (await one(`select close_cash_day(null, '{"cash":"700"}'::jsonb) as j`)).j
+  await asAdmin()
+  const pay = await one(`select cashier_id, amount from payment where id = $1`, [paid.paymentId])
+  const toldPharmacy = (
+    await one(
+      `select count(*)::int as n from notification where kind = 'counter_sale_paid' and params ->> 'saleId' = $1`,
+      [s.id],
+    )
+  ).n
+  const visit = await hintAs(staff.pharmacist, `select take_payment($1, 'cash', 1000)`, [t97.v.enc])
+  const nurse = await hintAs(staff.nurse, `select take_counter_payment($1, 'cash')`, [s.id])
+  if (
+    !/^RCT-/.test(paid.receipt ?? '') ||
+    pay.cashier_id !== staff.pharmacist ||
+    Number(pay.amount) !== 700 ||
+    h.status !== 'handed_over' ||
+    day.scope !== 'mine' ||
+    Number(day.myExpected.cash) < 700 ||
+    !day.payments.some((x) => x.counterSale === s.number && x.mine) ||
+    Number(count.variance) !== 0 ||
+    toldPharmacy !== 0 ||
+    !visit.startsWith('42501') ||
+    !nurse.startsWith('42501')
+  )
+    throw new Error(
+      JSON.stringify({ paid, pay, h, day: day.scope, count, toldPharmacy, visit, nurse }),
+    )
+  return `walk-in paid at the pharmacy (${paid.receipt}), in the pharmacist's own count; a visit bill refused`
+})
+await step('0097 D: the room confirms a transfer note with one click (Received all)', async () => {
+  await as(staff.pharmacist)
+  const note = (
+    await one(`select send_to_room($1, $2::jsonb) as j`, [
+      t83.office,
+      JSON.stringify([{ itemId: t97.amox, quantity: 3 }]),
+    ])
+  ).j
+  await as(d2)
+  await db.query(`select confirm_receipt($1)`, [note.id])
+  await asAdmin()
+  const st = (await one(`select status from stock_transfer where id = $1`, [note.id])).status
+  const inRoom = (await one(`select usable_stock($1, $2) as n`, [t97.amox, t83.office])).n
+  if (st !== 'received' || inRoom !== 3) throw new Error(JSON.stringify({ st, inRoom }))
+  return 'note received in full by its holder; 3 in Dr Office 83'
+})
+await step(
+  '0097 E: alerts: low, expiring (30 d), expired: created once; a daily summary',
+  async () => {
+    await as(staff.pharmacist)
+    await db.query(`select set_reorder_level($1, 500)`, [t97.amox])
+    await db.query(`select add_stock($1::jsonb)`, [
+      JSON.stringify([
+        {
+          item_id: t97.amox,
+          batch_no: 'AMX-97S',
+          expiry: t97.day.soon,
+          quantity: 4,
+          unit_cost: 100,
+        },
+      ]),
+    ])
+    await asAdmin()
+    t97.old = (
+      await one(
+        `insert into batch (item_id, batch_no, expiry, unit_cost) values ($1, 'AMX-97OLD', current_date - 3, 50) returning id`,
+        [t97.amox],
+      )
+    ).id
+    await db.query(
+      `insert into stock_movement (item_id, batch_id, to_location_id, quantity, type, unit_cost)
+     values ($1, $2, $3, 4, 'receipt', 50)`,
+      [t97.amox, t97.old, t97.main],
+    )
+    await as(staff.pharmacist)
+    const first = (await one(`select stock_alert_check() as j`)).j
+    const second = (await one(`select stock_alert_check() as j`)).j
+    await asAdmin()
+    const n = async (kind, key) =>
+      await one(
+        `select count(*)::int as n, bool_and(urgent) as urgent,
+                count(*) filter (where recipient_role = 'manager')::int as manager
+           from notification where kind = $1 and params ->> 'key' like $2`,
+        [kind, key],
+      )
+    const low = await n('stock_low', `low:${t97.amox}:%`)
+    const soon = await n('stock_expiring', 'expiring:%')
+    const soonBatch = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'stock_expiring' and params ->> 'batchNo' = 'AMX-97S'`,
+      )
+    ).n
+    const old = await n('stock_expired', `expired:${t97.old}:%`)
+    const summary = await n('stock_summary', 'summary:%')
+    if (
+      first.low < 1 ||
+      first.expiring < 1 ||
+      first.expired < 1 ||
+      second.created !== 0 ||
+      low.n !== 2 ||
+      low.manager !== 1 ||
+      soonBatch !== 2 ||
+      soon.n < 2 ||
+      old.n !== 2 ||
+      !old.urgent ||
+      summary.n !== 2 ||
+      summary.manager !== 1
+    )
+      throw new Error(JSON.stringify({ first, second, low, soon, soonBatch, old, summary }))
+    return `low ${first.low}, expiring ${first.expiring}, expired ${first.expired}: one notice each to the manager and the pharmacy; again: 0`
+  },
+)
+await step('0097 F: totals, margin, message to the manager, the expiry window', async () => {
+  await as(staff.pharmacist)
+  const tot = (await one(`select stock_totals() as j`)).j
+  const sales = (await one(`select stock_sales(current_date, current_date) as j`)).j
+  await as(d2)
+  const room = (await one(`select stock_totals($1) as j`, [t83.office])).j
+  await asAdmin()
+  const notHolder = await codeAs(d3, `select stock_totals($1)`, [t83.office])
+  await as(staff.nurse)
+  await db.query(`select message_manager('Please order gloves 97')`)
+  await asAdmin()
+  const short = await codeAs(staff.nurse, `select message_manager('hi')`)
+  const msg = await one(
+    `select recipient_role::text as r, params from notification where kind = 'staff_message'
+      and params ->> 'text' = 'Please order gloves 97'`,
+  )
+  await as(staff.manager)
+  await db.query(`select save_setting('stock.expiry_days', '60'::jsonb)`)
+  const days60 = (await one(`select stock_expiry_days() as n`)).n
+  const ov = (await one(`select stock_overview() as j`)).j
+  await asAdmin()
+  const bad = await codeAs(staff.manager, `select save_setting('stock.expiry_days', '0'::jsonb)`)
+  await as(staff.manager)
+  await db.query(`select save_setting('stock.expiry_days', '30'::jsonb)`)
+  await asAdmin()
+  if (
+    !(Number(tot.inventory_cost) > 0) ||
+    !(Number(tot.selling_value) > 0) ||
+    tot.expired_units < 4 ||
+    tot.expiring_30 < 1 ||
+    tot.low < 1 ||
+    tot.expiry_days !== 30 ||
+    room.inventory_cost !== null ||
+    room.items < 1 ||
+    notHolder !== '42501' ||
+    !(Number(sales.revenue) > 0) ||
+    Number(sales.margin) !== Number(sales.revenue) - Number(sales.cost) ||
+    msg?.r !== 'manager' ||
+    msg.params.fromId !== staff.nurse ||
+    short !== '22023' ||
+    days60 !== 60 ||
+    ov.expiryDays !== 60 ||
+    bad !== '22023'
+  )
+    throw new Error(JSON.stringify({ tot, room, notHolder, sales, msg, short, days60, bad }))
+  return `inventory ${tot.inventory_cost} at cost, ${tot.selling_value} to sell; margin ${sales.margin}; message to the managers; window 60 then 30`
+})
 
 finish()
 

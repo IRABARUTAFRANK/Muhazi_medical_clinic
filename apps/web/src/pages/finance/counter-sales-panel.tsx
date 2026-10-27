@@ -34,8 +34,9 @@ const COUNTER_METHODS: CounterPaymentMethod[] = ['cash', 'momo', 'airtel', 'card
 
 /**
  * Counter sales at the cashier: a walk-in buyer without a visit pays FIRST, then collects the
- * medicines at the pharmacy. The pharmacy writes the sale (number, lines, cash prices); here the
- * cashier takes the whole total with a receipt, or cancels a sale the buyer no longer wants.
+ * medicines at the pharmacy. The pharmacist usually takes the payment at the pharmacy desk; the
+ * sales sent here unpaid wait in this list: the cashier takes the whole total with a receipt, or
+ * cancels a sale the buyer no longer wants.
  * Below, the sales paid and still to collect at the pharmacy (the receipt can be printed again).
  */
 export function CounterSalesPanel({

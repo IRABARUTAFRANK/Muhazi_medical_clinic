@@ -6,9 +6,10 @@ import { useSession } from '@/store/session'
 
 /**
  * Counter sales (migration 0083): a walk-in buyer without a visit pays FIRST, then collects.
- * The pharmacy writes the sale (S-YYMMDD-NNN, cash prices), the cashier takes the payment (a
- * receipt RCT-…, counted in the day's cash like any payment), then the pharmacy hands the
- * medicines over (earliest expiry first, never expired). A patient on a visit is different: what
+ * The pharmacy writes the sale (S-YYMMDD-NNN, cash prices) and takes the payment itself (since
+ * 20261207 the pharmacist may, for counter sales only; or the cashier, when the sale is sent
+ * there): a receipt RCT-…, counted in the receiver's own cash count and in the day's revenue.
+ * Then the pharmacy hands the medicines over (earliest expiry first, never expired). A patient on a visit is different: what
  * they get joins the visit's bill and they pay once at the end.
  *
  * Live: create_counter_sale, counter_sales, take_counter_payment, hand_over_counter_sale,
@@ -250,7 +251,10 @@ export function useCounterSaleActions() {
     },
     onSuccess: refresh,
   })
-  /** The cashier takes the whole total (momo, airtel, card and bank need a reference). */
+  /**
+   * The whole total is taken (momo, airtel, card and bank need a reference): by the pharmacist
+   * at the pharmacy desk or by the cashier; the payment records who received it.
+   */
   const pay = useMutation({
     mutationFn: async (i: {
       saleId: string

@@ -252,6 +252,52 @@ export function useWording() {
           title: t('notify.stockLow', { item: p.item ?? '', onHand: num(p.onHand) }),
           body: t('notify.stockLowBody', { level: num(p.level) }),
         }
+      // the pharmacy's daily check (0097): a batch near or past its date, and the day's summary
+      case 'stock_expiring':
+        return {
+          title: t('notify.stockExpiring', { item: p.item ?? '', count: num(p.days) }),
+          body: t('notify.stockExpiringBody', {
+            batch: p.batchNo ?? '',
+            quantity: num(p.quantity),
+            date: p.expiry ? formatDate(new Date(p.expiry)) : '',
+          }),
+        }
+      case 'stock_expired':
+        return {
+          title: t('notify.stockExpired', { item: p.item ?? '', quantity: num(p.quantity) }),
+          body: t('notify.stockExpiredBody', {
+            batch: p.batchNo ?? '',
+            date: p.expiry ? formatDate(new Date(p.expiry)) : '',
+            value: rwf(p.value),
+          }),
+        }
+      case 'stock_summary':
+        return {
+          title: t('notify.stockSummary'),
+          body: joinParts([
+            num(p.low) ? t('notify.stockSummaryLow', { count: num(p.low) }) : null,
+            num(p.expiring)
+              ? t('notify.stockSummaryExpiring', { count: num(p.expiring), days: num(p.days) })
+              : null,
+            num(p.expired) ? t('notify.stockSummaryExpired', { count: num(p.expired) }) : null,
+          ]),
+        }
+      case 'rx_part_given':
+        return {
+          title: t('notify.rxPartGiven', {
+            item: p.item ?? '',
+            name: p.name ?? '',
+            given: num(p.given),
+            quantity: num(p.quantity),
+          }),
+          body: t('notify.rxPartGivenBody', { count: num(p.remaining) }),
+        }
+      case 'staff_message':
+        // a free note to the manager: the text as written, from whom
+        return {
+          title: t('notify.staffMessage', { from: p.from ?? '' }),
+          body: n.body ?? p.text ?? null,
+        }
       case 'room_stock_low':
         return {
           title: t('notify.roomStockLow', {

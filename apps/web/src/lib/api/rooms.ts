@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DayRange } from './lab'
 import { apiError, isMissingFunction, sampleRefusal } from './errors'
 import {
@@ -571,45 +571,85 @@ export function useHoldsStore() {
   return { holds: stores.length > 0, stores, isLoading: q.isLoading }
 }
 
+/** One store's stock, batch by batch (store_stock). */
+async function fetchStoreStock(locationId: string): Promise<StoreStock> {
+  if (!supabase) return sampleStoreStock(locationId)
+  const { data, error } = await supabase.rpc('store_stock', { p_location_id: locationId })
+  if (error) throw apiError(error)
+  const d = data as StoreStock
+  return {
+    ...d,
+    store: { ...d.store, holders: d.store.holders ?? [] },
+    value: numOrNull(d.value),
+    items: (d.items ?? []).map((i) => ({
+      ...i,
+      packSize: numOrNull(i.packSize),
+      onHand: num(i.onHand),
+      usable: num(i.usable),
+      expired: num(i.expired),
+      expiringSoon: num(i.expiringSoon),
+      minLevel: numOrNull(i.minLevel),
+      price: numOrNull(i.price),
+      value: numOrNull(i.value),
+      batches: (i.batches ?? []).map((b) => ({
+        ...b,
+        quantity: num(b.quantity),
+        unitCost: numOrNull(b.unitCost),
+      })),
+    })),
+    onTheWay: (d.onTheWay ?? []).map((n) => ({
+      ...n,
+      lines: num(n.lines),
+      units: num(n.units),
+    })),
+  }
+}
+
+const storeStockQuery = (locationId: string | null) => ({
+  queryKey: [...KEY, 'store', locationId] as const,
+  enabled: !!locationId,
+  refetchInterval: 60_000,
+  queryFn: () => fetchStoreStock(locationId!),
+})
+
 /** One store's stock, batch by batch (its holders, the pharmacy, the manager). */
 export function useStoreStock(locationId: string | null) {
-  return useQuery({
-    queryKey: [...KEY, 'store', locationId],
-    enabled: !!locationId,
-    refetchInterval: 60_000,
-    queryFn: async (): Promise<StoreStock> => {
-      if (!supabase) return sampleStoreStock(locationId!)
-      const { data, error } = await supabase.rpc('store_stock', { p_location_id: locationId })
-      if (error) throw apiError(error)
-      const d = data as StoreStock
-      return {
-        ...d,
-        store: { ...d.store, holders: d.store.holders ?? [] },
-        value: numOrNull(d.value),
-        items: (d.items ?? []).map((i) => ({
-          ...i,
-          packSize: numOrNull(i.packSize),
-          onHand: num(i.onHand),
-          usable: num(i.usable),
-          expired: num(i.expired),
-          expiringSoon: num(i.expiringSoon),
-          minLevel: numOrNull(i.minLevel),
-          price: numOrNull(i.price),
-          value: numOrNull(i.value),
-          batches: (i.batches ?? []).map((b) => ({
-            ...b,
-            quantity: num(b.quantity),
-            unitCost: numOrNull(b.unitCost),
-          })),
-        })),
-        onTheWay: (d.onTheWay ?? []).map((n) => ({
-          ...n,
-          lines: num(n.lines),
-          units: num(n.units),
-        })),
-      }
-    },
+  return useQuery(storeStockQuery(locationId))
+}
+
+/** One item's batches in a store. */
+export interface ItemStoreBatches {
+  storeId: string
+  store: string
+  isRoom: boolean
+  batches: StoreBatch[]
+}
+
+/**
+ * One item's batches in each of the given stores (the stock page's item panel), from the same
+ * cache as each store's stock: stores where the item has none are left out.
+ */
+export function useItemBatches(itemId: string | null, locationIds: readonly string[]) {
+  const results = useQueries({
+    queries: locationIds.map((id) => ({ ...storeStockQuery(itemId ? id : null) })),
   })
+  const stores: ItemStoreBatches[] = []
+  for (const r of results) {
+    const d = r.data
+    const it = d?.items.find((x) => x.itemId === itemId)
+    if (!d || !it || it.batches.length === 0) continue
+    stores.push({
+      storeId: d.store.id,
+      store: d.store.name,
+      isRoom: d.store.isRoom,
+      batches: it.batches,
+    })
+  }
+  return {
+    stores,
+    isLoading: results.some((r) => r.isLoading),
+    error: results.find((r) => r.error)?.error ?? null,
+  }
 }
 
 /** Refill requests: the pharmacy and the manager see all, holders those of their stores. */

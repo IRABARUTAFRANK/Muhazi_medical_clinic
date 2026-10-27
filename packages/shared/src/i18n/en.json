@@ -2522,7 +2522,7 @@
     "counterSalePaid": "Counter sale {{number}} is paid ({{amount}})",
     "byPerson": "by {{by}}",
     "refundDueItem": "{{item}} returned",
-    "stockLowBody": "Order level {{level}}. See Stock → To order.",
+    "stockLowBody": "Reorder point {{level}}. See Stock (filter Low).",
     "roomStockLowBody": "Below the store's minimum of {{min}}. Ask the pharmacy for a refill.",
     "roomStockLoss_one": "{{store}}: {{count}} unit of {{item}} written off or missing",
     "roomStockLoss_other": "{{store}}: {{count}} units of {{item}} written off or missing",
@@ -2555,7 +2555,23 @@
     "handoverLeft": "The handover of {{name}} has ended: {{leftName}} no longer works here",
     "desksPlaced_one": "{{count}} employee was placed in a department so they keep their desk",
     "desksPlaced_other": "{{count}} employees were placed in departments so they keep their desks",
-    "desksPlacedBody": "Departments now decide the desks each person uses. Check Employees and change any placement you do not want."
+    "desksPlacedBody": "Departments now decide the desks each person uses. Check Employees and change any placement you do not want.",
+    "stockExpiring_one": "{{item}} expires in {{count}} day",
+    "stockExpiring_other": "{{item}} expires in {{count}} days",
+    "stockExpiringBody": "Batch {{batch}}: {{quantity}} left, expiry {{date}}. Use it first or plan its return.",
+    "stockExpired": "Expired on the shelf: {{item}} ({{quantity}})",
+    "stockExpiredBody": "Batch {{batch}} expired on {{date}} ({{value}} at cost). Write it off so it is never given.",
+    "stockSummary": "Pharmacy stock today",
+    "stockSummaryLow_one": "{{count}} item below its reorder point",
+    "stockSummaryLow_other": "{{count}} items below their reorder point",
+    "stockSummaryExpiring_one": "{{count}} batch expiring within {{days}} days",
+    "stockSummaryExpiring_other": "{{count}} batches expiring within {{days}} days",
+    "stockSummaryExpired_one": "{{count}} expired batch still on the shelf",
+    "stockSummaryExpired_other": "{{count}} expired batches still on the shelf",
+    "rxPartGiven": "{{item}} for {{name}}: {{given}} of {{quantity}} given",
+    "rxPartGivenBody_one": "{{count}} still to give: the pharmacy gives it later in the visit, or marks it not given.",
+    "rxPartGivenBody_other": "{{count}} still to give: the pharmacy gives them later in the visit, or marks them not given.",
+    "staffMessage": "Message from {{from}}"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -3343,7 +3359,7 @@
     },
     "reorderSoon": "order soon",
     "tabs": {
-      "stock": "On hand",
+      "stock": "Stock",
       "pharmacy": "Pharmacy desk",
       "receive": "Receive",
       "send": "Between pharmacy stores",
@@ -3355,7 +3371,11 @@
       "deliveries": "Deliveries",
       "reorder": "To order",
       "rooms": "Room stores",
-      "mine": "My store"
+      "mine": "My store",
+      "prescriptions": "Prescriptions",
+      "walkin": "Walk-in sales",
+      "add": "Add stock",
+      "reports": "Reports"
     },
     "onHand": "Stock on hand",
     "itemCount_one": "{{count}} medicine",
@@ -4151,7 +4171,56 @@
     "sellCashTotal": "Cash price {{amount}}. The bill applies the patient's insurance, and the patient pays at the end of the visit.",
     "soldOnBill": "{{item}} handed over to {{patient}} and put on the visit's bill. Print the label.",
     "mostGivenIn": "Most handed over {{period}}",
-    "nothingYetIn": "Nothing handed over {{period}}."
+    "nothingYetIn": "Nothing handed over {{period}}.",
+    "part": {
+      "thePrescriber": "the prescriber",
+      "confirmRest_one": "The other {{count}} stays to give; {{doctor}} is told.",
+      "confirmRest_other": "The other {{count}} stay to give; {{doctor}} is told.",
+      "givenPart_one": "{{item}}: {{given}} handed over, {{count}} still to give. {{doctor}} is told.",
+      "givenPart_other": "{{item}}: {{given}} handed over, {{count}} still to give. {{doctor}} is told.",
+      "notGivenRestTitle_one": "Mark the other {{count}} {{item}} as not given to {{patient}}?",
+      "notGivenRestTitle_other": "Mark the other {{count}} {{item}} as not given to {{patient}}?",
+      "restNotGivenDone": "{{item}}: {{given}} given, the rest marked not given; {{doctor}} is told.",
+      "progress_one": "Given {{given}} of {{total}}: {{count}} still to give",
+      "progress_other": "Given {{given}} of {{total}}: {{count}} still to give",
+      "qtyLabel_one": "How many {{item}} to give now (up to {{count}})",
+      "qtyLabel_other": "How many {{item}} to give now (up to {{count}})",
+      "badAmount_one": "Give between 1 and {{count}}",
+      "badAmount_other": "Give between 1 and {{count}}",
+      "giveOf_one": "Give {{given}} of {{count}}",
+      "giveOf_other": "Give {{given}} of {{count}}",
+      "shortCanPart_one": "You can give the {{have}} here now: the rest of the {{count}} stays to give later in the visit, or is marked not given.",
+      "shortCanPart_other": "You can give the {{have}} here now: the rest of the {{count}} stays to give later in the visit, or is marked not given.",
+      "whyRest_one": "Why is the other {{count}} not given? {{doctor}} will be told.",
+      "whyRest_other": "Why are the other {{count}} not given? {{doctor}} will be told.",
+      "notGivenRest_one": "Rest not given ({{count}})",
+      "notGivenRest_other": "Rest not given ({{count}})"
+    },
+    "home": {
+      "addStock": "Add stock",
+      "messageManager": "Message the manager",
+      "messageTitle": "Send a message to the manager?",
+      "messageBody": "Every manager gets it in their notifications, with your name.",
+      "messageLabel": "Your message",
+      "messagePh": "e.g. Amoxicillin is almost finished: please order more.",
+      "messageSend": "Send",
+      "messageShort": "Write at least 3 characters.",
+      "messageSent": "Message sent to the manager.",
+      "revenue": "Revenue {{period}}",
+      "revenueSplit": "prescriptions {{rx}} · walk-in {{walkIn}}",
+      "withinDays_one": "within {{count}} day",
+      "withinDays_other": "within {{count}} days",
+      "expired": "Expired on the shelf",
+      "expiredUnit": "units · cost {{amount}}",
+      "writeOff": "write them off",
+      "inventory": "Stock value (cost)",
+      "sellsFor": "sells for {{amount}}",
+      "stockFine_one": "Nothing to reorder, nothing expired and nothing expiring in the next {{count}} day.",
+      "stockFine_other": "Nothing to reorder, nothing expired and nothing expiring in the next {{count}} days.",
+      "expiredTag": "expired",
+      "expiredLeft_one": "{{count}} unit to write off",
+      "expiredLeft_other": "{{count}} units to write off"
+    }
   },
   "queuePage": {
     "title": "My queue · {{desk}}",
@@ -5265,6 +5334,12 @@
     "reasons": {
       "left": "The buyer left without paying",
       "mistake": "Written by mistake"
+    },
+    "desk": {
+      "lead": "For a buyer without a visit: write the sale, take the payment here, hand the medicines over and give the receipt. A patient on a visit pays at the end of the visit instead.",
+      "payTitle": "Take the payment here",
+      "payHandPrint": "Take {{amount}}, hand over and print the receipt",
+      "payNote": "The payment counts in your own cash count and in the day’s revenue. Visit bills are still paid at the cashier."
     }
   },
   "myStore": {
@@ -6726,10 +6801,118 @@
     "f2b8b050": "The height must be between 20 and 250 cm.",
     "936ac589": "The arm circumference must be between 5 and 60 cm.",
     "bfaad0ce": "Only doctors, sonographers, nurses and managers keep a calendar.",
-    "abb6e23b": "Only doctors, sonographers, nurses and managers can be booked."
+    "abb6e23b": "Only doctors, sonographers, nurses and managers can be booked.",
+    "641d3981": "Stock is added into the main pharmacy; only the manager adds it to another store.",
+    "0c52507e": "The expiry window is a whole number of days between 1 and 365.",
+    "25e0efa8": "Too many messages in the last hour: try again later.",
+    "20afd965": "Write a message of 3 to 500 characters.",
+    "9e9e0b02": "A new item is a medicine or a supply.",
+    "a31cbeb6": "Only {{p1}} left to give of this medicine."
   },
   "panel": {
     "close": "Close",
     "openFull": "Open full page"
+  },
+  "stockPage": {
+    "totalsTitle": "Stock now",
+    "tiles": {
+      "cost": "Stock value (cost)",
+      "selling": "Value at selling price",
+      "items": "Items in stock",
+      "expired": "Expired on the shelf"
+    },
+    "units": {
+      "inDays_one": "within {{count}} day",
+      "inDays_other": "within {{count}} days",
+      "expiredCost": "units · {{value}} at cost"
+    },
+    "expiringList_one": "{{count}} batch expiring within {{days}} days",
+    "expiringList_other": "{{count}} batches expiring within {{days}} days",
+    "partsLabel": "Stock view",
+    "parts": {
+      "list": "Stock list"
+    },
+    "filterLabel": "Show",
+    "filter": {
+      "all": "All"
+    },
+    "status": {
+      "ok": "OK",
+      "low": "Low",
+      "expiring_one": "Expiring ({{count}} d)",
+      "expiring_other": "Expiring ({{count}} d)",
+      "expiringShort": "Expires soon",
+      "expired": "Expired"
+    },
+    "cols": {
+      "item": "Item",
+      "pharmacy": "In pharmacy",
+      "rooms": "In rooms",
+      "total": "Total",
+      "expiry": "Nearest expiry",
+      "status": "Status"
+    },
+    "kind": {
+      "medicine": "Medicine",
+      "supply": "Product"
+    },
+    "panel": {
+      "sellsAt": "sells at {{price}}",
+      "reorderPoint": "Reorder point",
+      "batches": "Batches by store",
+      "noBatches": "No batch in stock.",
+      "roomStore": "room store",
+      "actions": "Actions",
+      "level": "Reorder point",
+      "writeOff": "Write off",
+      "count": "Correct the count",
+      "levelLead": "The item shows as low, and the manager and the pharmacy are told, when the pharmacy’s stock falls to this number.",
+      "nothingHere": "None of it is in the pharmacy to write off. Room stores write off their own stock under My store."
+    },
+    "add": {
+      "title": "Add stock",
+      "lead": "One line per batch: the item (pick it, or create it as a medicine or a product), the batch number, expiry date, quantity, cost per unit and selling price. It goes into the main pharmacy today.",
+      "pickItem": "Choose the item",
+      "create": "New item",
+      "pickInstead": "Pick from the list",
+      "newName": "Line {{n}}: name of the new item",
+      "newNamePh": "e.g. Surgical gloves M",
+      "kind": "Kind",
+      "strength": "Strength",
+      "form": "Form",
+      "formPh": "tablet, syrup…",
+      "unit": "Unit",
+      "unitPh": "tab, bottle, pair…",
+      "quantity": "Quantity (units)",
+      "unitCost": "Cost per unit (RWF)",
+      "inBoxes": "Count in boxes (boxes × units per box)",
+      "lineSum": "{{units}} units · {{value}}",
+      "priceChanges": "The selling price changes from {{from}} to {{to}}.",
+      "note": "Note (optional)",
+      "notePh": "e.g. 2 boxes damaged, refused",
+      "total_one": "{{count}} line · {{units}} units · total cost {{value}}",
+      "total_other": "{{count}} lines · {{units}} units · total cost {{value}}",
+      "save": "Add to stock",
+      "confirmTitle_one": "Add {{count}} line to {{store}}?",
+      "confirmTitle_other": "Add {{count}} lines to {{store}}?",
+      "confirmBody": "{{units}} units, total cost {{value}}.",
+      "confirmNew_one": "{{count}} new item joins the clinic’s list at its selling price.",
+      "confirmNew_other": "{{count}} new items join the clinic’s list at their selling price.",
+      "confirmYes": "Yes, add",
+      "saved_one": "Stock added to {{store}}: {{count}} line, {{units}} units, total cost {{value}}.",
+      "saved_other": "Stock added to {{store}}: {{count}} lines, {{units}} units, total cost {{value}}.",
+      "priceIgnored": "The selling price was not changed: setting prices needs that right.",
+      "errors": {
+        "item": "Choose the item, or create a new one.",
+        "newName": "Give the new item a name.",
+        "batch": "Give the batch number written on the box.",
+        "boxes": "Give the number of boxes and the units in one box."
+      },
+      "batchPh": "as written on the box"
+    },
+    "received": "Stock received",
+    "salesByItem": "Sales by item",
+    "marginPct": "RWF · {{pct}} % of revenue",
+    "receiveAllHint": "Everything on the note arrived: confirm it in one click. A difference: open the note."
   }
 }

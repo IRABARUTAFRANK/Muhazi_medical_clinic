@@ -2531,7 +2531,7 @@
     "counterSalePaid": "Igurisha ryo ku irembo {{number}} ryishyuwe ({{amount}})",
     "byPerson": "na {{by}}",
     "refundDueItem": "{{item}} yagaruwe",
-    "stockLowBody": "Urugero rwo gutumiza ni {{level}}. Reba Ububiko → Ibyo gutumiza.",
+    "stockLowBody": "Urugero rwo kongera gutumiza ni {{level}}. Reba mu Bubiko (Bike).",
     "roomStockLowBody": "Biri munsi y’urugero rwa {{min}} rw’ubu bubiko. Saba farumasi imiti.",
     "roomStockLoss_one": "{{store}}: {{count}} ya {{item}} yavanywe mu bubiko cyangwa irabuze",
     "roomStockLoss_other": "{{store}}: {{count}} za {{item}} zavanywe mu bubiko cyangwa zirabuze",
@@ -2564,7 +2564,23 @@
     "handoverLeft": "Kwegurirwa {{name}} byarangiye: {{leftName}} ntagikora hano",
     "desksPlaced_one": "Umukozi {{count}} yashyizwe mu ishami kugira ngo agumane aho akorera",
     "desksPlaced_other": "Abakozi {{count}} bashyizwe mu mashami kugira ngo bagumane aho bakorera",
-    "desksPlacedBody": "Ubu amashami ni yo agena aho buri wese akorera. Reba Abakozi uhindure aho umuntu yashyizwe niba bidakwiye."
+    "desksPlacedBody": "Ubu amashami ni yo agena aho buri wese akorera. Reba Abakozi uhindure aho umuntu yashyizwe niba bidakwiye.",
+    "stockExpiring_one": "{{item}} izarangira mu munsi {{count}}",
+    "stockExpiring_other": "{{item}} izarangira mu minsi {{count}}",
+    "stockExpiringBody": "Lot {{batch}}: hasigaye {{quantity}}, irangira ku wa {{date}}. Ikoreshwe mbere cyangwa iteganyirizwe gusubizwa.",
+    "stockExpired": "Byarengeje igihe biri mu bubiko: {{item}} ({{quantity}})",
+    "stockExpiredBody": "Lot {{batch}} yarengeje igihe ku wa {{date}} ({{value}} ku giciro cyo kugura). Ivane mu bubiko kugira ngo idatangwa.",
+    "stockSummary": "Ububiko bwa farumasi uyu munsi",
+    "stockSummaryLow_one": "Igicuruzwa {{count}} kiri munsi y’urugero rwo kongera gutumiza",
+    "stockSummaryLow_other": "Ibicuruzwa {{count}} biri munsi y’urugero rwo kongera gutumiza",
+    "stockSummaryExpiring_one": "Lot {{count}} igiye kurangira mu minsi {{days}}",
+    "stockSummaryExpiring_other": "Lot {{count}} zigiye kurangira mu minsi {{days}}",
+    "stockSummaryExpired_one": "Lot {{count}} yarengeje igihe iracyari mu bubiko",
+    "stockSummaryExpired_other": "Lot {{count}} zarengeje igihe ziracyari mu bubiko",
+    "rxPartGiven": "{{item}} ya {{name}}: hatanzwe {{given}} kuri {{quantity}}",
+    "rxPartGivenBody_one": "Hasigaye {{count}} yo gutanga: farumasi iyitanga nyuma muri uku kwivuza, cyangwa ikerekana ko itatanzwe.",
+    "rxPartGivenBody_other": "Hasigaye {{count}} yo gutanga: farumasi iyitanga nyuma muri uku kwivuza, cyangwa ikerekana ko itatanzwe.",
+    "staffMessage": "Ubutumwa bwa {{from}}"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -3352,7 +3368,7 @@
     },
     "reorderSoon": "tumiza vuba",
     "tabs": {
-      "stock": "Ibihari",
+      "stock": "Ububiko",
       "pharmacy": "Farumasi",
       "receive": "Kwakira",
       "send": "Hagati y’ububiko bwa farumasi",
@@ -3364,7 +3380,11 @@
       "deliveries": "Ibyagemuwe",
       "reorder": "Ibyo gutumiza",
       "rooms": "Ububiko bw’ibyumba",
-      "mine": "Ububiko bwanjye"
+      "mine": "Ububiko bwanjye",
+      "prescriptions": "Urupapuro rw’imiti",
+      "walkin": "Igurisha ryo ku irembo",
+      "add": "Injiza mu bubiko",
+      "reports": "Raporo"
     },
     "onHand": "Ibiri mu bubiko",
     "itemCount_one": "umuti {{count}}",
@@ -4160,7 +4180,56 @@
     "sellCashTotal": "Igiciro gisanzwe {{amount}}. Fagitire ishyiraho ubwishingizi bw’umurwayi, akishyura kwivuza kurangiye.",
     "soldOnBill": "{{item}} yahawe {{patient}} kandi washyizwe kuri fagitire yo kwivuza. Cyapa akapapuro k’umuti.",
     "mostGivenIn": "Imiti yatanzwe cyane {{period}}",
-    "nothingYetIn": "Nta muti watanzwe {{period}}."
+    "nothingYetIn": "Nta muti watanzwe {{period}}.",
+    "part": {
+      "thePrescriber": "uwanditse imiti",
+      "confirmRest_one": "Hasigaye {{count}} yo gutanga nyuma; {{doctor}} arabimenyeshwa.",
+      "confirmRest_other": "Hasigaye {{count}} yo gutanga nyuma; {{doctor}} arabimenyeshwa.",
+      "givenPart_one": "{{item}}: hatanzwe {{given}}, hasigaye {{count}} yo gutanga. {{doctor}} arabimenyeshwa.",
+      "givenPart_other": "{{item}}: hatanzwe {{given}}, hasigaye {{count}} yo gutanga. {{doctor}} arabimenyeshwa.",
+      "notGivenRestTitle_one": "Andika ko {{count}} isigaye ya {{item}} idahawe {{patient}}?",
+      "notGivenRestTitle_other": "Andika ko {{count}} zisigaye za {{item}} zidahawe {{patient}}?",
+      "restNotGivenDone": "{{item}}: hatanzwe {{given}}, ibisigaye byanditswe ko bitatanzwe; {{doctor}} arabimenyeshwa.",
+      "progress_one": "Hatanzwe {{given}} kuri {{total}}: hasigaye {{count}} yo gutanga",
+      "progress_other": "Hatanzwe {{given}} kuri {{total}}: hasigaye {{count}} yo gutanga",
+      "qtyLabel_one": "Umubare wa {{item}} utanga ubu (kugeza kuri {{count}})",
+      "qtyLabel_other": "Umubare wa {{item}} utanga ubu (kugeza kuri {{count}})",
+      "badAmount_one": "Tanga hagati ya 1 na {{count}}",
+      "badAmount_other": "Tanga hagati ya 1 na {{count}}",
+      "giveOf_one": "Tanga {{given}} kuri {{count}}",
+      "giveOf_other": "Tanga {{given}} kuri {{count}}",
+      "shortCanPart_one": "Ushobora gutanga {{have}} zihari ubu: ibisigaye kuri {{count}} bizatangwa nyuma muri uku kwivuza, cyangwa byandikwe ko bitatanzwe.",
+      "shortCanPart_other": "Ushobora gutanga {{have}} zihari ubu: ibisigaye kuri {{count}} bizatangwa nyuma muri uku kwivuza, cyangwa byandikwe ko bitatanzwe.",
+      "whyRest_one": "Kuki {{count}} isigaye idatanzwe? {{doctor}} azabimenyeshwa.",
+      "whyRest_other": "Kuki {{count}} zisigaye zidatanzwe? {{doctor}} azabimenyeshwa.",
+      "notGivenRest_one": "Isigaye ntiyatanzwe ({{count}})",
+      "notGivenRest_other": "Izisigaye ntizatanzwe ({{count}})"
+    },
+    "home": {
+      "addStock": "Ongeraho mu bubiko",
+      "messageManager": "Andikira umuyobozi",
+      "messageTitle": "Wohereza ubutumwa ku muyobozi?",
+      "messageBody": "Buri muyobozi abubona mu Butumwa bwe, hamwe n’izina ryawe.",
+      "messageLabel": "Ubutumwa bwawe",
+      "messagePh": "urugero: Amoxicillin igiye gushira: mudufashe gutumiza indi.",
+      "messageSend": "Ohereza",
+      "messageShort": "Andika nibura inyuguti 3.",
+      "messageSent": "Ubutumwa bwoherejwe ku muyobozi.",
+      "revenue": "Amafaranga yinjiye {{period}}",
+      "revenueSplit": "imiti yanditswe {{rx}} · ku irembo {{walkIn}}",
+      "withinDays_one": "mu munsi {{count}}",
+      "withinDays_other": "mu minsi {{count}}",
+      "expired": "Byarengeje igihe biri mu bubiko",
+      "expiredUnit": "ibice · byaguzwe {{amount}}",
+      "writeOff": "bivane mu bubiko",
+      "inventory": "Agaciro k’ububiko (igiciro cyo kugura)",
+      "sellsFor": "bigurishwa {{amount}}",
+      "stockFine_one": "Nta byo gutumiza, nta byarengeje igihe kandi nta kigiye kurangira mu munsi {{count}} uri imbere.",
+      "stockFine_other": "Nta byo gutumiza, nta byarengeje igihe kandi nta kigiye kurangira mu minsi {{count}} iri imbere.",
+      "expiredTag": "yarengeje igihe",
+      "expiredLeft_one": "igice {{count}} cyo kuvana mu bubiko",
+      "expiredLeft_other": "ibice {{count}} byo kuvana mu bubiko"
+    }
   },
   "queuePage": {
     "title": "Umurongo wanjye · {{desk}}",
@@ -5274,6 +5343,12 @@
     "reasons": {
       "left": "Umuguzi yagiye atishyuye",
       "mistake": "Ryanditswe mu ikosa"
+    },
+    "desk": {
+      "lead": "Ku muguzi utari mu kwivuza: andika igurisha, wakire ubwishyu hano, utange imiti kandi umuhe inyemezabwishyu. Umurwayi uri kwivuza we yishyura kwivuza kurangiye.",
+      "payTitle": "Akira ubwishyu hano",
+      "payHandPrint": "Akira {{amount}}, utange imiti kandi ucape inyemezabwishyu",
+      "payNote": "Ubwishyu bubarirwa mu mafaranga wakiriye no mu yinjiye uyu munsi. Fagitire zo kwivuza zishyurirwa aho bakira ubwishyu."
     }
   },
   "myStore": {
@@ -6735,10 +6810,118 @@
     "f2b8b050": "Uburebure bugomba kuba hagati ya 20 na 250 cm.",
     "936ac589": "Umuzenguruko w’ukuboko ugomba kuba hagati ya 5 na 60 cm.",
     "bfaad0ce": "Abaganga, abakora ekografi, abaforomo n’abayobozi ni bo bonyine bagira ingengabihe.",
-    "abb6e23b": "Abaganga, abakora ekografi, abaforomo n’abayobozi ni bo bonyine bashobora guhabwa gahunda."
+    "abb6e23b": "Abaganga, abakora ekografi, abaforomo n’abayobozi ni bo bonyine bashobora guhabwa gahunda.",
+    "641d3981": "Ibiri mu bubiko byongerwa muri farumasi nkuru; umuyobozi wenyine ni we ubyongera mu bundi bubiko.",
+    "0c52507e": "Igihe cyo kuburira mbere y’itariki yo kurangira ni umubare wuzuye w’iminsi hagati ya 1 na 365.",
+    "25e0efa8": "Wohereje ubutumwa bwinshi mu isaha ishize: ongera ugerageze nyuma.",
+    "20afd965": "Andika ubutumwa bw’inyuguti 3 kugeza kuri 500.",
+    "9e9e0b02": "Ikintu gishya ni umuti cyangwa igikoresho.",
+    "a31cbeb6": "Hasigaye {{p1}} gusa zo gutanga kuri uyu muti."
   },
   "panel": {
     "close": "Funga",
     "openFull": "Fungura urupapuro rwose"
+  },
+  "stockPage": {
+    "totalsTitle": "Ibiri mu bubiko ubu",
+    "tiles": {
+      "cost": "Agaciro k’ububiko (igiciro cyo kugura)",
+      "selling": "Agaciro ku giciro cyo kugurisha",
+      "items": "Ibiri mu bubiko",
+      "expired": "Byarengeje igihe biri mu bubiko"
+    },
+    "units": {
+      "inDays_one": "mu munsi {{count}}",
+      "inDays_other": "mu minsi {{count}}",
+      "expiredCost": "ibice · {{value}} ku giciro cyo kugura"
+    },
+    "expiringList_one": "Lot {{count}} igiye kurangira mu minsi {{days}}",
+    "expiringList_other": "Lot {{count}} zigiye kurangira mu minsi {{days}}",
+    "partsLabel": "Uko ububiko bugaragara",
+    "parts": {
+      "list": "Urutonde rw’ibiri mu bubiko"
+    },
+    "filterLabel": "Erekana",
+    "filter": {
+      "all": "Byose"
+    },
+    "status": {
+      "ok": "Ni byiza",
+      "low": "Biri hasi",
+      "expiring_one": "Igiye kurangira (umunsi {{count}})",
+      "expiring_other": "Igiye kurangira (iminsi {{count}})",
+      "expiringShort": "Igiye kurangira",
+      "expired": "Yarengeje igihe"
+    },
+    "cols": {
+      "item": "Umuti / igikoresho",
+      "pharmacy": "Muri farumasi",
+      "rooms": "Mu byumba",
+      "total": "Byose hamwe",
+      "expiry": "Itariki yo kurangira yegereje",
+      "status": "Uko bimeze"
+    },
+    "kind": {
+      "medicine": "Umuti",
+      "supply": "Igikoresho"
+    },
+    "panel": {
+      "sellsAt": "kigurishwa {{price}}",
+      "reorderPoint": "Urugero rwo kongera gutumiza",
+      "batches": "Lot muri buri bubiko",
+      "noBatches": "Nta lot iri mu bubiko.",
+      "roomStore": "ububiko bw’icyumba",
+      "actions": "Ibikorwa",
+      "level": "Urugero rwo gutumiza",
+      "writeOff": "Kuvana mu bubiko",
+      "count": "Gukosora umubare",
+      "levelLead": "Iyo ibiri muri farumasi bigeze kuri uyu mubare, bigaragara ko biri hasi, umuyobozi na farumasi bakabimenyeshwa.",
+      "nothingHere": "Nta bihari muri farumasi byo kuvana mu bubiko. Ububiko bw’icyumba buvanamo ibyabwo muri Ububiko bwanjye."
+    },
+    "add": {
+      "title": "Injiza mu bubiko",
+      "lead": "Umurongo umwe kuri buri lot: umuti cyangwa igikoresho (uhitemo, cyangwa wandike igishya nk’umuti cyangwa igikoresho), nimero ya lot, itariki yo kurangira, umubare, igiciro cyo kugura kimwe n’igiciro cyo kugurisha. Byinjira muri farumasi nkuru uyu munsi.",
+      "pickItem": "Hitamo umuti cyangwa igikoresho",
+      "create": "Andika igishya",
+      "pickInstead": "Hitamo ku rutonde",
+      "newName": "Umurongo {{n}}: izina ry’igishya",
+      "newNamePh": "urugero: Gants zo kubaga M",
+      "kind": "Ubwoko",
+      "strength": "Ingano y’umuti",
+      "form": "Uko umeze",
+      "formPh": "ikinini, sirop…",
+      "unit": "Igipimo",
+      "unitPh": "ikinini, icupa…",
+      "quantity": "Umubare (ibice)",
+      "unitCost": "Igiciro cyo kugura kimwe (RWF)",
+      "inBoxes": "Bara mu dukarito (udukarito × ibice biri mu gakarito)",
+      "lineSum": "ibice {{units}} · {{value}}",
+      "priceChanges": "Igiciro cyo kugurisha kiva kuri {{from}} kikajya kuri {{to}}.",
+      "note": "Icyitonderwa (si ngombwa)",
+      "notePh": "urugero: udukarito 2 twangiritse, twanzwe",
+      "total_one": "umurongo {{count}} · ibice {{units}} · igiciro cyose {{value}}",
+      "total_other": "imirongo {{count}} · ibice {{units}} · igiciro cyose {{value}}",
+      "save": "Injiza mu bubiko",
+      "confirmTitle_one": "Injiza umurongo {{count}} muri {{store}}?",
+      "confirmTitle_other": "Injiza imirongo {{count}} muri {{store}}?",
+      "confirmBody": "Ibice {{units}}, igiciro cyose {{value}}.",
+      "confirmNew_one": "Igishya {{count}} cyongerwa ku rutonde rw’ivuriro n’igiciro cyacyo cyo kugurisha.",
+      "confirmNew_other": "Ibishya {{count}} byongerwa ku rutonde rw’ivuriro n’ibiciro byabyo byo kugurisha.",
+      "confirmYes": "Yego, injiza",
+      "saved_one": "Byinjijwe muri {{store}}: umurongo {{count}}, ibice {{units}}, igiciro cyose {{value}}.",
+      "saved_other": "Byinjijwe muri {{store}}: imirongo {{count}}, ibice {{units}}, igiciro cyose {{value}}.",
+      "priceIgnored": "Igiciro cyo kugurisha nticyahinduwe: gushyiraho ibiciro bisaba ubwo burenganzira.",
+      "errors": {
+        "item": "Hitamo umuti cyangwa igikoresho, cyangwa wandike igishya.",
+        "newName": "Andika izina ry’igishya.",
+        "batch": "Andika nimero ya lot iri ku gakarito.",
+        "boxes": "Andika umubare w’udukarito n’ibice biri mu gakarito kamwe."
+      },
+      "batchPh": "uko yanditse ku gakarito"
+    },
+    "received": "Ibyinjiye mu bubiko",
+    "salesByItem": "Ibyagurishijwe kuri buri kimwe",
+    "marginPct": "RWF · {{pct}} % by’ibyinjiye",
+    "receiveAllHint": "Ibiri ku rupapuro rwo kohereza byose byageze: emeza ukanze rimwe. Hari ikinyuranyo: fungura urupapuro."
   }
 }

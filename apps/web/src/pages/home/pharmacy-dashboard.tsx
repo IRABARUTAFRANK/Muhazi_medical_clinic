@@ -1,14 +1,18 @@
+import { useState } from 'react'
 import {
   AlertTriangle,
   ArrowRight,
   Ban,
+  CalendarX,
   Clock,
   Coins,
+  MessageSquare,
   PackageCheck,
   PackagePlus,
   Pill,
   RefreshCw,
   Users,
+  Wallet,
   Warehouse,
   Workflow,
 } from 'lucide-react'
@@ -25,6 +29,15 @@ import { Button, actionLink, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { isLowStock, usePharmacyQueue, usePharmacySummary, useStockOverview } from '@/lib/api/stock'
+import {
+  EXPIRY_WINDOW_DAYS,
+  expiresSoon,
+  useDailyStockAlertCheck,
+  usePharmacyActions,
+  useStockTotals,
+} from '@/lib/api/pharmacy'
+import { useConfirm } from '@/lib/confirm'
+import { Flash } from '@/components/ui/flash'
 import { cn } from '@/lib/utils'
 import { useCan, useSwitchedOff } from '@/lib/api/permissions'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
@@ -33,16 +46,18 @@ import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { PharmacyDesk, SellMedicineCard } from '../stock/pharmacy-desk'
-import { expiryState } from '../stock/stock-util'
 import { CallsPanel } from './calls-panel'
 import { MyQueuePanel } from './role-panels'
 import { DeskBlocks } from './home-desks'
 
 /**
- * Pharmacy dashboard (pharmacists): the hand-over desk in the manager design. Figures of the day,
- * the prescriptions waiting one card per patient (hand over, or "not given" with the reason the
- * doctor is told), patients sent to the pharmacy without a prescription, stock to reorder or
- * about to expire, what was not given and what goes out most today.
+ * Pharmacy dashboard (pharmacists): the hand-over desk in the manager design. Figures of the day
+ * (the revenue of prescriptions and walk-in sales) and of the stock (stock_totals: low, expiring
+ * within 30 days, expired on the shelf, inventory value), the prescriptions waiting one card per
+ * patient (hand over all or a part, or "not given" with the reason the doctor is told), the walk-in
+ * sales the pharmacist takes the payment of, patients sent to the pharmacy without a prescription,
+ * stock to reorder, expired or about to expire, what was not given and what goes out most today.
+ * "Message the manager" sends a notice to every manager; the stock notices are checked once a day.
  */
 export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -75,12 +90,54 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const others = openItems(board).filter((q) => !withRx.has(q.encounterId))
   const items = (stock?.items ?? []).filter((i) => i.active)
   const low = items.filter(isLowStock)
-  // expiring within 90 days, not yet expired (the stock page counts expired stock separately)
-  const expiring = items.filter((i) =>
-    i.expiringUnits != null
-      ? i.expiringUnits > 0
-      : expiryState(i.nextExpiry ?? i.earliestExpiry) === 'soon',
-  )
+  // the stock totals (stock_totals); an old database: counted from the overview
+  const { data: totalsRaw, refetch: refetchTotals } = useStockTotals(null)
+  const expiryDays = totalsRaw?.expiryDays ?? EXPIRY_WINDOW_DAYS
+  // the next batch expires within the window (stock.expiry_days, 30), not yet expired
+  const expiring = items.filter((i) => expiresSoon(i, expiryDays))
+  // expired batches still on the shelf: urgent until written off
+  const expired = items.filter((i) => i.expiredUnits > 0)
+  const totals = totalsRaw ?? {
+    inventoryCost: Math.round(items.reduce((n, i) => n + i.costValue, 0)),
+    sellingValue: Math.round(items.reduce((n, i) => n + i.onHand * (i.sellingPrice ?? 0), 0)),
+    items: items.length,
+    low: low.length,
+    expiring30: expiring.length,
+    expiredUnits: items.reduce((n, i) => n + i.expiredUnits, 0),
+    expiredCost: Math.round(items.reduce((n, i) => n + i.expiredUnits * (i.avgCost ?? 0), 0)),
+    expiryDays,
+  }
+  // the day's revenue: medicines on the visits' bills (prescriptions and sales) + walk-in sales
+  const walkIn = s?.counterSalesTotal ?? 0
+  const revenue = (s?.salesToday ?? 0) + walkIn
+  // the stock notices (low, expiring, expired, the daily summary): once a day per person
+  useDailyStockAlertCheck(true)
+  const { messageManager } = usePharmacyActions()
+  const confirm = useConfirm()
+  const [sent, setSent] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const askManager = async () => {
+    const r = await confirm({
+      title: t('pharmacy.home.messageTitle'),
+      body: t('pharmacy.home.messageBody'),
+      input: {
+        label: t('pharmacy.home.messageLabel'),
+        placeholder: t('pharmacy.home.messagePh'),
+        required: true,
+        multiline: true,
+        maxLength: 500,
+      },
+      confirmLabel: t('pharmacy.home.messageSend'),
+    })
+    if (!r.ok) return
+    if (r.value.length < 3) return setSent({ ok: false, text: t('pharmacy.home.messageShort') })
+    try {
+      await messageManager.mutateAsync(r.value)
+      setSent({ ok: true, text: t('pharmacy.home.messageSent') })
+    } catch (e) {
+      setSent({ ok: false, text: e instanceof Error ? e.message : String(e) })
+    }
+  }
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
@@ -111,6 +168,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               void refetch()
               void refetchLines()
               void refetchStock()
+              void refetchTotals()
             }}
             loading={isFetching}
             aria-label={t('dashboard.refresh')}
@@ -125,9 +183,17 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               className={buttonVariants({ size: 'md' })}
             >
               <PackagePlus size={16} aria-hidden="true" />
-              {t('pharmacy.receive')}
+              {t('pharmacy.home.addStock')}
             </StaffLink>
           )}
+          <Button
+            variant="tint-violet"
+            onClick={() => void askManager()}
+            loading={messageManager.isPending}
+          >
+            {!messageManager.isPending && <MessageSquare size={16} aria-hidden="true" />}
+            {t('pharmacy.home.messageManager')}
+          </Button>
           <StaffLink
             to="/app/stock"
             search={{ tab: 'stock' }}
@@ -138,9 +204,14 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
           </StaffLink>
           <PeriodCustom period={period} className="basis-full" />
         </div>
+        {sent && (
+          <Flash key={sent.text} tone={sent.ok ? 'success' : 'error'} onClose={() => setSent(null)}>
+            {sent.text}
+          </Flash>
+        )}
 
         {s && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fit,minmax(210px,1fr))]">
             <Kpi
               i={0}
               icon={Pill}
@@ -168,10 +239,13 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               i={2}
               icon={Coins}
               tint="navy"
-              label={t('pharmacy.tiles.sales')}
-              value={s.salesToday}
-              text={formatRwf(s.salesToday)}
-              unit={periodWord}
+              label={t('pharmacy.home.revenue', { period: periodWord })}
+              value={revenue}
+              text={formatRwf(revenue)}
+              unit={t('pharmacy.home.revenueSplit', {
+                rx: formatRwf(s.salesToday),
+                walkIn: formatRwf(walkIn),
+              })}
               to={link('pharmacy')}
             />
             <Kpi
@@ -188,10 +262,10 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               icon={AlertTriangle}
               tint="amber"
               label={t('stock.tiles.low')}
-              value={low.length}
+              value={totals.low}
               unit={t('stock.units.toReorder')}
               delta={
-                low.length > 0 ? { text: t('stock.reorderSoon'), good: false, up: null } : undefined
+                totals.low > 0 ? { text: t('stock.reorderSoon'), good: false, up: null } : undefined
               }
               to={stockLink}
             />
@@ -200,8 +274,32 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               icon={AlertTriangle}
               tint="coral"
               label={t('stock.tiles.expiring')}
-              value={expiring.length}
-              unit={t('stock.units.in90')}
+              value={totals.expiring30}
+              unit={t('pharmacy.home.withinDays', { count: expiryDays })}
+              to={stockLink}
+            />
+            <Kpi
+              i={6}
+              icon={CalendarX}
+              tint="coral"
+              label={t('pharmacy.home.expired')}
+              value={totals.expiredUnits}
+              unit={t('pharmacy.home.expiredUnit', { amount: formatRwf(totals.expiredCost) })}
+              delta={
+                totals.expiredUnits > 0
+                  ? { text: t('pharmacy.home.writeOff'), good: false, up: null }
+                  : undefined
+              }
+              to={stockLink}
+            />
+            <Kpi
+              i={7}
+              icon={Wallet}
+              tint="teal"
+              label={t('pharmacy.home.inventory')}
+              value={totals.inventoryCost}
+              text={formatRwf(totals.inventoryCost)}
+              unit={t('pharmacy.home.sellsFor', { amount: formatRwf(totals.sellingValue) })}
               to={stockLink}
             />
           </div>
@@ -234,14 +332,21 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                 icon={AlertTriangle}
                 tint="amber"
                 title={t('pharmacy.stockAlerts')}
-                right={String(low.length + expiring.length)}
+                right={String(expired.length + low.length + expiring.length)}
                 to={link('stock')}
               >
-                {low.length + expiring.length === 0 ? (
-                  <Empty>{t('pharmacy.stockFine')}</Empty>
+                {expired.length + low.length + expiring.length === 0 ? (
+                  <Empty>{t('pharmacy.home.stockFine', { count: expiryDays })}</Empty>
                 ) : (
                   <ListRows
                     rows={[
+                      // expired first: urgent until written off
+                      ...expired.slice(0, 6).map((i) => ({
+                        key: `expired-${i.id}`,
+                        pill: <Tag tint="coral">{t('pharmacy.home.expiredTag')}</Tag>,
+                        label: `${i.name}${i.strength ? ` ${i.strength}` : ''}`,
+                        value: t('pharmacy.home.expiredLeft', { count: i.expiredUnits }),
+                      })),
                       ...low.slice(0, 6).map((i) => ({
                         key: `low-${i.id}`,
                         pill: <Tag tint="amber">{t('stock.low')}</Tag>,
