@@ -40,13 +40,14 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        'border-border text-ink flex min-h-10 items-center justify-between gap-2 border-b px-4 py-2 text-[16px] font-semibold',
+        'border-border text-ink flex min-h-10 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b px-4 py-2 text-[16px] font-semibold',
         headerBand(hue),
         className,
       )}
       {...props}
     >
-      {/* icon and title stay together on the left; a trailing element is pushed right */}
+      {/* icon and title stay together on the left; a trailing element is pushed right (on a
+          narrow screen it wraps under the title instead of squeezing it) */}
       {IconC ? (
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <span

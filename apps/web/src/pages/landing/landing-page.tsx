@@ -93,7 +93,7 @@ export function LandingPage() {
       <section id="doctors" className="doctors-gradient scroll-mt-[56px] py-[72px]">
         <Wrap className="flex flex-col gap-6">
           <div className="flex flex-wrap items-end gap-6" data-reveal>
-            <div className="min-w-[280px] flex-1">
+            <div className="min-w-[min(280px,100%)] flex-1">
               <span className="eyebrow">{t('nav.findDoctor')}</span>
               <h2 className={h2}>{t('landing.doctors.title')}</h2>
               <p className={lead}>{t('landing.doctors.lead')}</p>

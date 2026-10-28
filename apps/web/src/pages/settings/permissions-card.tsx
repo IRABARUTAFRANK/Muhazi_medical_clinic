@@ -193,7 +193,7 @@ export function PermissionsCard() {
                     key={f}
                     className="border-grid hover:bg-hover flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 border-b px-3 py-1.5 transition-colors duration-120 last:border-b-0"
                   >
-                    <span className="min-w-[200px] flex-1">
+                    <span className="min-w-[min(200px,100%)] flex-1">
                       <span className="block font-medium">{t(`perms.f.${f}.name`)}</span>
                       <span className="text-ink-3 block text-xs">
                         {t(byRole ? 'perms.roleYes' : 'perms.roleNo', {

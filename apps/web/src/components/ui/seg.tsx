@@ -87,7 +87,10 @@ export function Seg<T extends string>({
             aria-pressed={on}
             onClick={() => onChange(o.value)}
             className={cn(
-              size === 'sm' ? 'min-h-7' : 'min-h-8',
+              // on a touch screen each segment is 44 px high (--tap, globals.css)
+              size === 'sm'
+                ? 'min-h-[max(1.75rem,var(--tap,0px))]'
+                : 'min-h-[max(2rem,var(--tap,0px))]',
               'focus-visible:ring-primary/20 relative inline-flex min-w-10 flex-none items-center justify-center rounded px-3 text-[13px] font-medium whitespace-nowrap transition-colors duration-120 focus-visible:ring-2 focus-visible:outline-none',
               on ? 'text-primary' : 'text-ink-2 hover:bg-hover hover:text-ink',
             )}

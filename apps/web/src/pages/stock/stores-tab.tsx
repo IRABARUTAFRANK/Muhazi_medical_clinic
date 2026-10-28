@@ -178,7 +178,7 @@ export function StoresTab({
                 className={cn(card, 'flex-row flex-wrap items-center p-3', closed && 'opacity-75')}
               >
                 <Store size={18} aria-hidden="true" className="text-ink-3" />
-                <span className="min-w-[200px] flex-1">
+                <span className="min-w-[min(200px,100%)] flex-1">
                   <span className={cn('block font-semibold', closed && 'text-ink-3 line-through')}>
                     {l.name}
                   </span>

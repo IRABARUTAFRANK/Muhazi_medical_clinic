@@ -146,7 +146,7 @@ function Waiting({
   }
   return (
     <div className="border-border flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3 py-2">
-      <span className="min-w-[200px] flex-1 text-[14px]">
+      <span className="min-w-[min(200px,100%)] flex-1 text-[14px]">
         <span className="block font-semibold">
           {h.mine
             ? t('handover.waiting', { name: h.toName })

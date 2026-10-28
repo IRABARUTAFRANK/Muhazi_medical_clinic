@@ -202,7 +202,7 @@ export function PrivacyNotice({
 
         {req?.status === 'pending' && (
           <div className="bg-amber-bg/70 flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-[13px]">
-            <span className="min-w-[200px] flex-1">
+            <span className="min-w-[min(200px,100%)] flex-1">
               <b className="block">{t('recordPrivacy.pending', { when: when(req.at) })}</b>
               <span className="text-ink-2">
                 {t('recordPrivacy.yourReason', { reason: req.reason })}
@@ -556,7 +556,7 @@ function LookedRow({ r }: { r: AccessLogRow }) {
     <Row
       className={cn('flex-wrap items-start gap-x-3 gap-y-1 py-2', r.emergency && 'bg-red-bg/50')}
     >
-      <span className="min-w-[200px] flex-1">
+      <span className="min-w-[min(200px,100%)] flex-1">
         <span className={cn('block font-semibold', r.emergency && 'text-red')}>
           {[r.actor ?? '—', role].filter(Boolean).join(' · ')}
         </span>

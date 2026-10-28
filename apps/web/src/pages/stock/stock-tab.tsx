@@ -239,7 +239,7 @@ function AlertsPanel({ onOpen }: { onOpen: (itemId: string) => void }) {
                   <KitPill tint="coral" icon={AlertTriangle}>
                     {formatDate(new Date(x.expiry))}
                   </KitPill>
-                  <span className="min-w-0 flex-1 wrap-break-word">
+                  <span className="min-w-[min(12rem,100%)] flex-1 wrap-break-word">
                     <b>{x.item}</b> × {formatNumber(x.quantity)}
                     <span className="text-ink-3">
                       {' · '}
@@ -267,7 +267,7 @@ function AlertsPanel({ onOpen }: { onOpen: (itemId: string) => void }) {
                   <KitPill tint="amber" icon={Clock}>
                     {t('stockShared.expiresIn', { count: x.days })}
                   </KitPill>
-                  <span className="min-w-0 flex-1 wrap-break-word">
+                  <span className="min-w-[min(12rem,100%)] flex-1 wrap-break-word">
                     <b>{x.item}</b> × {formatNumber(x.quantity)}
                     <span className="text-ink-3">
                       {' · '}
@@ -295,7 +295,7 @@ function AlertsPanel({ onOpen }: { onOpen: (itemId: string) => void }) {
                   <KitPill tint="amber" icon={Gauge}>
                     {t('stockShared.roomLowLine', { count: x.onHand, min: x.min })}
                   </KitPill>
-                  <span className="min-w-0 flex-1 wrap-break-word">
+                  <span className="min-w-[min(12rem,100%)] flex-1 wrap-break-word">
                     <b>{x.item}</b>
                     <span className="text-ink-3"> · {x.store}</span>
                   </span>
@@ -345,7 +345,7 @@ function StockList({
           query={query}
           onQuery={setQuery}
           placeholderKey="stock.search"
-          className="min-w-[220px] flex-1"
+          className="min-w-[min(220px,100%)] flex-1"
         />
         <Seg
           size="sm"

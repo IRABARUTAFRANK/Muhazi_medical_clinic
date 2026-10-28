@@ -13,7 +13,7 @@ interface TabletNavProps {
 }
 
 const tab =
-  'flex min-h-13 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md border-0 bg-transparent px-1 text-[12px] font-medium text-ink-2 no-underline transition-colors duration-120 hover:bg-hover hover:text-ink'
+  'flex min-h-13 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md border-0 bg-transparent px-0 min-[400px]:px-1 text-[11px] min-[400px]:text-[12px] font-medium text-ink-2 no-underline transition-colors duration-120 hover:bg-hover hover:text-ink'
 
 /** Tablet bottom bar: white with a 1 px top border, the same ≤ 5 items plus "More". */
 export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
@@ -23,7 +23,7 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
   return (
     <nav
       aria-label={t('common.mainNav')}
-      className="border-border bg-card pc:hidden flex flex-none gap-1 border-t px-2 py-1 pb-[max(4px,env(safe-area-inset-bottom))]"
+      className="border-border bg-card pc:hidden flex flex-none gap-0.5 border-t px-1 py-1 pb-[max(4px,env(safe-area-inset-bottom))] min-[400px]:gap-1 min-[400px]:px-2"
     >
       {shown.map((n) => {
         const active = n.id === activeId
@@ -35,7 +35,11 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
             className={cn(tab, active && 'bg-primary-tint text-primary')}
           >
             <NavIcon id={n.id} name={n.icon} size={20} />
-            <span className="max-w-full truncate">{t(n.labelKey)}</span>
+            {/* a two-word label (My prescriptions) wraps onto a second line; a word longer than the
+                tab (a very narrow phone) breaks rather than being cut off */}
+            <span className="line-clamp-2 max-w-full text-center leading-[1.15] wrap-break-word">
+              {t(n.labelKey)}
+            </span>
           </StaffLink>
         )
       })}

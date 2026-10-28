@@ -160,7 +160,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
 
       <Wrap className="flex flex-col gap-5 pt-8 pb-12">
         <div className="flex flex-wrap items-end gap-4">
-          <div className="min-w-[280px] flex-1">
+          <div className="min-w-[min(280px,100%)] flex-1">
             <h1 className="m-0 text-3xl font-extrabold tracking-[-0.01em]">{t('booking.title')}</h1>
             <p className="text-ink-2 mt-1 mb-0">{t('booking.lead')}</p>
           </div>
@@ -253,7 +253,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
             <section className="border-border bg-card flex min-w-0 flex-col gap-3 rounded-lg border p-4">
               <div className="flex flex-wrap items-center gap-3">
                 <Avatar name={selected.name} size="md" />
-                <span className="min-w-[200px] flex-1">
+                <span className="min-w-[min(200px,100%)] flex-1">
                   <b className="text-base">{selected.name}</b>
                   <span className="text-ink-2 block text-[13px]">
                     {selected.title}
@@ -309,7 +309,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                   <span className="bg-primary text-on-primary inline-flex size-11 flex-none items-center justify-center rounded-full">
                     <Calendar size={20} strokeWidth={2.5} aria-hidden="true" />
                   </span>
-                  <span className="min-w-[240px] flex-1">
+                  <span className="min-w-[min(240px,100%)] flex-1">
                     <b className="text-base">{t('booking.yourRequest')}</b>
                     <span className="text-ink-2 block tabular-nums">
                       {selected.name} · {pickLabel} ·{' '}
@@ -404,7 +404,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                 <span className="bg-green-bg text-green inline-flex size-11 flex-none items-center justify-center rounded-full">
                   <Check size={22} strokeWidth={3} aria-hidden="true" />
                 </span>
-                <span className="min-w-[240px] flex-1">
+                <span className="min-w-[min(240px,100%)] flex-1">
                   <b className="text-base">{t('booking.sentTitle', { ref: sentRef })}</b>
                   <span className="text-ink-2 block tabular-nums">
                     {t('booking.sentBody', { doctor: selected.name, when: pickLabel })}

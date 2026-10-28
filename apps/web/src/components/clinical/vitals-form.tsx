@@ -269,7 +269,7 @@ export function VitalsForm({
         {subtitle && <span className="text-ink-3 text-xs tabular-nums">{subtitle}</span>}
       </CardHeader>
       <form onSubmit={submit}>
-        <CardBody className="gap-4">
+        <CardBody className="@container gap-4">
           {lockedNote && (
             <p className="bg-violet-bg text-violet border-violet/30 m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-semibold">
               <Lock size={16} aria-hidden="true" className="mt-px flex-none" />
@@ -350,7 +350,7 @@ export function VitalsForm({
               </p>
             </div>
 
-            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid min-w-0 grid-cols-1 gap-3 @[18rem]:grid-cols-2 @[30rem]:grid-cols-3">
               {VITALS.map((v) => (
                 <Field
                   key={v.key}

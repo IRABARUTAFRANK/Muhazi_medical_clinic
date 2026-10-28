@@ -184,7 +184,7 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
         )}
         {error && <ErrorBox>{error.message}</ErrorBox>}
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-4">
           <Kpi
             i={0}
             icon={MessageSquare}

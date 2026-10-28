@@ -214,7 +214,7 @@ export function NewPatientForm({
               label={t('register.noId.label')}
               value={noId}
               onChange={(e) => setNoId(e.target.value as NoIdReason | '')}
-              wrapperClassName="w-72"
+              wrapperClassName="w-72 max-w-full"
             >
               <option value="">{t('register.noId.has')}</option>
               <option value="child">{t('register.noId.child')}</option>

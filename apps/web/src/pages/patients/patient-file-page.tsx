@@ -308,7 +308,7 @@ export function PatientFilePage({
             {!embedded && (
               <HeroHead icon={UserRound}>
                 <GlassAvatar>{initials(p)}</GlassAvatar>
-                <span className="min-w-[220px] flex-1">
+                <span className="min-w-[min(220px,100%)] flex-1">
                   <span className="block text-[24px] leading-8 font-semibold">
                     {p.surname} {p.given_names}
                   </span>
@@ -406,7 +406,7 @@ export function PatientFilePage({
             {/* Nurse first, reception completes: what is still missing, and the hand-over. */}
             {(missing.length > 0 || atReception) && (
               <CardBody className="bg-amber-bg/60 border-border flex-row flex-wrap items-center gap-3 border-t py-2.5 text-[13px]">
-                <span className="min-w-[220px] flex-1 font-semibold">
+                <span className="min-w-[min(220px,100%)] flex-1 font-semibold">
                   {missing.length > 0
                     ? t('files.lacks', {
                         missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
@@ -1154,7 +1154,7 @@ function Visits({
                 className="flex-wrap gap-x-4 gap-y-1 border-b-0 py-3"
                 style={{ '--i': i } as CSSProperties}
               >
-                <span className="min-w-[200px] flex-1">
+                <span className="min-w-[min(200px,100%)] flex-1">
                   <span className="block font-semibold tabular-nums">{when(v.arrivedAt)}</span>
                   <span className="text-ink-3 block text-xs">
                     {[

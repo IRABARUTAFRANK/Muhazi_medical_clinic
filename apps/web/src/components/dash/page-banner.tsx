@@ -46,7 +46,7 @@ export function PageBanner({
         <IconC size={20} strokeWidth={2} aria-hidden="true" />
       </span>
 
-      <div className="relative min-w-[200px] flex-1">
+      <div className="relative min-w-[min(200px,100%)] flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <h1 className="m-0 text-[24px] leading-8 font-semibold text-white">{title}</h1>
           {meta}

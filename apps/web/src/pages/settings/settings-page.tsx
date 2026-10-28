@@ -225,7 +225,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                     <sec.icon size={18} aria-hidden="true" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[14px] font-semibold whitespace-nowrap">
+                    <span className="block text-[14px] font-semibold">
                       {t(`settings.sections.${sec.id}.title`)}
                     </span>
                     <span

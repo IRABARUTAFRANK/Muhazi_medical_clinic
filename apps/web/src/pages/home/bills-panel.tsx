@@ -52,7 +52,9 @@ export function OpenBillsPanel({
                   <Pill tint="amber" icon={Receipt}>
                     {b.ticket ?? '—'}
                   </Pill>
-                  <span className="min-w-0 flex-1">
+                  {/* the name keeps 10 rem: in a narrow column the amount and the button go
+                      under it instead of cutting the name to a few letters */}
+                  <span className="min-w-[min(10rem,100%)] flex-1">
                     <span className="block truncate font-semibold">{b.name}</span>
                     <span className="text-ink-3 block truncate text-[13px]">
                       {b.file}

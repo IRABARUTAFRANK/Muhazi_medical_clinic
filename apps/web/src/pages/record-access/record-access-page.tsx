@@ -593,7 +593,7 @@ function LogRow({
           </span>
         )}
       </span>
-      <span className="flex flex-none flex-wrap items-center gap-1.5">
+      <span className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5">
         <Pill tint={VIA_TINT[row.via]} icon={row.emergency ? Siren : undefined}>
           {t(`recordAccess.via.${row.via}`)}
         </Pill>

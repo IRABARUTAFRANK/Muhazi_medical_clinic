@@ -220,7 +220,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
                       style={{ '--i': Math.min(i, 12) } as CSSProperties}
                     >
                       <td className={tableFirstCell}>
-                        <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
                           <Pill tint="amber" icon={Receipt}>
                             {b.ticket ?? '—'}
                           </Pill>
@@ -338,7 +338,7 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
                 return (
                   <tr key={d.encounterId} className={tableRow}>
                     <td className={tableFirstCell}>
-                      <span className="flex min-w-0 items-start gap-2.5">
+                      <span className="flex min-w-0 flex-wrap items-start gap-x-2.5 gap-y-1">
                         {look && d.status && (
                           <Pill tint={look.tint} icon={look.icon}>
                             {t(`cashierDesk.unpaid.status.${d.status}`)}

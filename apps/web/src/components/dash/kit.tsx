@@ -79,7 +79,9 @@ export function Kpi({
     : ''
   const className = cn(
     card,
-    'anim-enter relative gap-2 overflow-hidden',
+    // a container: a tile narrower than ~210 px (two per row on a phone) puts its icon above the
+    // label so the label keeps the tile's whole width
+    'anim-enter @container relative gap-2 overflow-hidden',
     tileClass[tint],
     to && linkCard,
   )
@@ -95,10 +97,13 @@ export function Kpi({
         </span>
       )}
       <span
-        className={cn('flex items-start gap-2 text-[13px] font-medium', to && 'pr-6 2xl:pr-16')}
+        className={cn(
+          'flex items-start gap-2 text-[13px] font-medium @max-[11rem]:flex-col @max-[11rem]:gap-1.5',
+          to && 'pr-6 2xl:pr-16 @max-[11rem]:pr-0',
+        )}
       >
         <IconChip icon={IconC} tint={tint} />
-        <span className="text-ink-2 min-w-0 flex-1 pt-1 [text-wrap:balance] [overflow-wrap:normal]">
+        <span className="text-ink-2 min-w-0 flex-1 pt-1 [text-wrap:balance] [overflow-wrap:normal] @max-[11rem]:pt-0">
           {label}
         </span>
       </span>

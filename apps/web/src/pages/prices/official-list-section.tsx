@@ -327,7 +327,7 @@ function ListLine({ list, compact }: { list: ReferenceList; compact?: boolean })
         !compact && 'border-navy/20 bg-blue-bg/50 rounded-md border px-3 py-2.5',
       )}
     >
-      <span className="min-w-[200px] flex-1">
+      <span className="min-w-[min(200px,100%)] flex-1">
         <span
           className={cn('text-ink block font-semibold', compact ? 'text-[14px]' : 'text-[16px]')}
         >

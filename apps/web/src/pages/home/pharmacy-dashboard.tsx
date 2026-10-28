@@ -149,7 +149,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
         {switchedOff('stock.write') && <NotAllowedNotice feature="stock.write" compact />}
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <div className="text-ink-2 flex min-w-[min(240px,100%)] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <span className="inline-flex items-center gap-1.5 font-semibold">
               <Pill size={16} aria-hidden="true" className="text-primary" />
               {t('pharmacy.desk')}

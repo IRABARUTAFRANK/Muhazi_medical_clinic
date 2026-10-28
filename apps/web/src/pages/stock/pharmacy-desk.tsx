@@ -380,7 +380,7 @@ function HandOverPanel({
             label={t('pharmacy.dispensingStore')}
             value={storeChoice ?? ''}
             onChange={(e) => setStoreChoice(e.target.value || null)}
-            wrapperClassName="min-w-[220px]"
+            wrapperClassName="min-w-[min(220px,100%)]"
           >
             <option value="">
               {t('pharmacy.mainStoreNamed', {

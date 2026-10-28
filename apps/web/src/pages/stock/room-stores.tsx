@@ -483,7 +483,7 @@ function RoomStoresList({
                   ) : (
                     <ChevronRight size={16} aria-hidden="true" />
                   )}
-                  <span className="min-w-[200px] flex-1">
+                  <span className="min-w-[min(200px,100%)] flex-1">
                     <span className="block font-semibold">{l.name}</span>
                     <span className="text-ink-3 flex items-center gap-1 text-[12px]">
                       <Users size={12} aria-hidden="true" />

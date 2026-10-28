@@ -162,13 +162,13 @@ export function InquiriesPanel({
                       {q.phone && (
                         <span className="mt-0.5 flex flex-wrap gap-3 text-[13px]">
                           <a
-                            className="text-primary font-semibold underline-offset-2 hover:underline"
+                            className="text-primary inline-flex items-center font-semibold underline-offset-2 hover:underline"
                             href={`tel:${intl(q.phone)}`}
                           >
                             {t('ops.inquiries.call')}
                           </a>
                           <a
-                            className="text-primary font-semibold underline-offset-2 hover:underline"
+                            className="text-primary inline-flex items-center font-semibold underline-offset-2 hover:underline"
                             href={`https://wa.me/${intl(q.phone).replace('+', '')}?text=${encodeURIComponent(t('ops.inquiries.message', { name: q.name }))}`}
                             target="_blank"
                             rel="noreferrer"
@@ -176,7 +176,7 @@ export function InquiriesPanel({
                             WhatsApp
                           </a>
                           <a
-                            className="text-primary font-semibold underline-offset-2 hover:underline"
+                            className="text-primary inline-flex items-center font-semibold underline-offset-2 hover:underline"
                             href={`sms:${intl(q.phone)}?body=${encodeURIComponent(t('ops.inquiries.message', { name: q.name }))}`}
                           >
                             SMS

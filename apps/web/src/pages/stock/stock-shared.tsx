@@ -84,7 +84,7 @@ export function LinesEditor({
   const set = (key: number, patch: Partial<DraftLine>) =>
     onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)))
   return (
-    <div className="flex flex-col gap-2">
+    <div className="@container flex flex-col gap-2">
       {lines.map((l, n) => {
         const avail = l.itemId && available ? available(l.itemId) : null
         const over = avail != null && Number(l.quantity) > avail
@@ -93,10 +93,12 @@ export function LinesEditor({
             key={l.key}
             className={cn(
               card,
-              'grid grid-cols-[minmax(0,1fr)_110px_auto] items-end gap-2 p-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]',
+              // narrow (a phone, a side panel): the item takes the whole row, quantity and bin under it
+              'grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 p-2 @md:grid-cols-[minmax(0,1fr)_140px_auto]',
             )}
           >
             <SearchSelect
+              wrapperClassName="col-span-2 @md:col-span-1"
               label={t('stockShared.lineN', { n: n + 1 })}
               value={l.itemId}
               onChange={(v) => set(l.key, { itemId: v })}
@@ -122,7 +124,7 @@ export function LinesEditor({
             </Button>
             {avail != null && (
               <p
-                className={`col-span-3 m-0 text-[12px] ${over ? 'text-red font-semibold' : 'text-ink-3'}`}
+                className={`col-span-2 m-0 text-[12px] @md:col-span-3 ${over ? 'text-red font-semibold' : 'text-ink-3'}`}
               >
                 {t(availableKey, { count: avail })}
               </p>

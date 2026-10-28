@@ -478,7 +478,7 @@ export function BedsPanel({
       {beds.length === 0 ? (
         <Empty icon={BedDouble}>{t('desk.nurse.noBeds')}</Empty>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
           {beds.map((b, k) => {
             const open = form?.bedId === b.id
             return (

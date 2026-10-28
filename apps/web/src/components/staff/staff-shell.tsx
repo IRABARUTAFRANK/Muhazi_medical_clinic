@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type NavItem, type StaffUser } from '@mmc/shared'
 import { useStaffSettings } from '@/lib/api/settings'
@@ -65,11 +65,12 @@ export function StaffShell({
 
   return (
     // Text size (Settings or the user menu) scales the whole staff screen; the height is divided
-    // by the zoom so the zoomed frame still fills exactly one screen.
+    // by the zoom so the zoomed frame still fills exactly one screen. --mmc-zoom keeps touch
+    // targets at 44 px on the screen whatever the zoom (globals.css, --tap).
     <div
       data-shell
       className="bg-surface text-ink relative flex flex-col overflow-hidden text-sm"
-      style={{ zoom, height: `calc(100dvh / ${zoom})` }}
+      style={{ zoom, height: `calc(100dvh / ${zoom})`, '--mmc-zoom': zoom } as CSSProperties}
     >
       {/* while locked, nothing behind the lock screen can be reached (keyboard or reader) */}
       <div className="contents" inert={locked} aria-hidden={locked || undefined}>
@@ -93,7 +94,7 @@ export function StaffShell({
         {tabletActions && (
           <div
             aria-label={t('common.quickActions')}
-            className="border-border bg-card pc:hidden grid flex-none grid-cols-2 gap-2 border-t px-3 py-2 sm:flex sm:px-4 [&>*]:h-auto [&>*]:min-h-8 [&>*]:min-w-0 [&>*]:py-1.5 [&>*]:whitespace-normal sm:[&>*]:flex-1"
+            className="border-border bg-card pc:hidden grid flex-none grid-cols-2 gap-2 border-t px-3 py-2 sm:flex sm:px-4 [&>*]:h-auto [&>*]:min-h-[max(2rem,var(--tap,0px))] [&>*]:min-w-0 [&>*]:py-1.5 [&>*]:whitespace-normal sm:[&>*]:flex-1"
           >
             {tabletActions}
           </div>

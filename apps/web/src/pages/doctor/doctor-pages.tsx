@@ -298,7 +298,7 @@ export function ResultsPage({ user }: { user: StaffUser }) {
                       <Pill tint={look.tint} icon={look.icon}>
                         {t(`lab.status.${o.status}`)}
                       </Pill>
-                      <span className="min-w-[200px] flex-1">
+                      <span className="min-w-[min(200px,100%)] flex-1">
                         <span className="block font-semibold">
                           {o.test}
                           <span className="text-ink-2 font-normal"> · {o.patient}</span>
@@ -421,7 +421,7 @@ export function PrescriptionsPage({ user }: { user: StaffUser }) {
                     <Pill tint={look.tint} icon={look.icon}>
                       {t(`doctorLists.rxTabs.${r.state}`)}
                     </Pill>
-                    <span className="min-w-[200px] flex-1">
+                    <span className="min-w-[min(200px,100%)] flex-1">
                       <span className="block font-semibold">
                         {r.item} × {r.quantity}
                         <span className="text-ink-2 font-normal"> · {r.patient}</span>

@@ -156,7 +156,7 @@ export function RefillRequestsList({
               )}
             >
               <div className="flex flex-wrap items-start gap-2">
-                <span className="min-w-[200px] flex-1">
+                <span className="min-w-[min(200px,100%)] flex-1">
                   <span className="block font-semibold">
                     {r.number} · {r.store}
                   </span>

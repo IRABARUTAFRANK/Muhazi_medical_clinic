@@ -15,7 +15,9 @@ import {
 import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
 import { Wrap } from './site-nav'
 
-const link = 'text-white/75 no-underline transition-colors hover:text-white'
+// on a touch screen each link is a 44 px row (the lists drop their gap so the footer keeps its rhythm)
+const link =
+  'text-white/75 no-underline transition-colors hover:text-white coarse:inline-flex coarse:min-h-11 coarse:items-center'
 const title = 'mb-4 text-xs font-bold tracking-[.12em] text-white/60 uppercase'
 
 /** Expanded public footer: about & contact, services, patient links, clinic links, opening hours. */
@@ -44,7 +46,7 @@ export function SiteFooter() {
             </span>
           </div>
           <p className="m-0 max-w-[420px] leading-relaxed">{t('landing.footer.about')}</p>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <ul className="coarse:gap-0 m-0 flex list-none flex-col gap-2 p-0">
             <li className="flex items-start gap-2.5">
               <MapPin size={16} className="mt-0.5 text-[#7BD36A]" aria-hidden="true" />
               <span>
@@ -95,7 +97,7 @@ export function SiteFooter() {
         {/* SERVICES */}
         <nav aria-label={t('landing.footer.services')}>
           <h3 className={title}>{t('landing.footer.services')}</h3>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <ul className="coarse:gap-0 m-0 flex list-none flex-col gap-2 p-0">
             {CATEGORY_IDS.map((id) => (
               <li key={id}>
                 <Link to="/book" search={{ category: id }} className={link}>
@@ -109,7 +111,7 @@ export function SiteFooter() {
         {/* PATIENTS */}
         <nav aria-label={t('landing.footer.patients')}>
           <h3 className={title}>{t('landing.footer.patients')}</h3>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <ul className="coarse:gap-0 m-0 flex list-none flex-col gap-2 p-0">
             <li>
               <Link to="/book" className={link}>
                 {t('nav.findDoctor')}
@@ -144,7 +146,7 @@ export function SiteFooter() {
         {/* CLINIC */}
         <nav aria-label={t('landing.footer.clinic')}>
           <h3 className={title}>{t('landing.footer.clinic')}</h3>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <ul className="coarse:gap-0 m-0 flex list-none flex-col gap-2 p-0">
             <li>
               <Link to="/" hash="signin" className={link}>
                 {t('landing.footer.staffArea')}

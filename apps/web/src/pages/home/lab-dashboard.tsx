@@ -107,7 +107,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
         {switchedOff('orders.write') && <NotAllowedNotice feature="orders.write" compact />}
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <div className="text-ink-2 flex min-w-[min(240px,100%)] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <span className="inline-flex items-center gap-1.5 font-semibold">
               <FlaskConical size={16} aria-hidden="true" className="text-primary" />
               {t('lab.bench')}
@@ -148,7 +148,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
         </div>
 
         {s && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
+          <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
             <Kpi
               i={0}
               icon={Hourglass}

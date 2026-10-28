@@ -147,7 +147,7 @@ export function ListBar({
   const { t } = useTranslation()
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      <label className="border-border bg-card focus-within:border-primary focus-within:ring-primary/20 flex h-9 min-w-[200px] flex-1 items-center gap-2 rounded-md border px-3 focus-within:ring-2">
+      <label className="border-border bg-card focus-within:border-primary focus-within:ring-primary/20 flex h-9 min-w-[min(200px,100%)] flex-1 items-center gap-2 rounded-md border px-3 focus-within:ring-2">
         <Search size={14} aria-hidden="true" className="text-ink-3 flex-none" />
         <input
           type="search"

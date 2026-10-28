@@ -217,7 +217,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 editing !== 'new' && editing?.id === x.id && 'bg-primary-tint/50',
               )}
             >
-              <span className="min-w-[200px] flex-1">
+              <span className="min-w-[min(200px,100%)] flex-1">
                 <span className="text-ink block font-semibold">
                   {treatmentName(x, i18n.language)}
                 </span>
@@ -436,7 +436,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 autoFocus
                 placeholder={t('prices.dept.namePh')}
                 onChange={(e) => setNewDept(e.target.value)}
-                wrapperClassName="min-w-[240px] flex-1"
+                wrapperClassName="min-w-[min(240px,100%)] flex-1"
               />
               <Button
                 variant="primary"
@@ -703,7 +703,7 @@ function InsurersSection({
   return (
     <>
       <div className="mt-2 flex flex-wrap items-end gap-3">
-        <div className="min-w-[260px] flex-1">
+        <div className="min-w-[min(260px,100%)] flex-1">
           <h2 className="m-0 text-[16px] font-semibold">{t('prices.insurers.title')}</h2>
           <p className="text-ink-2 m-0 mt-1 max-w-[720px]">{t('prices.insurers.lead')}</p>
         </div>
@@ -742,7 +742,7 @@ function InsurersSection({
               editingInsurer !== 'new' && editingInsurer?.id === i.id && 'bg-primary-tint/50',
             )}
           >
-            <span className="min-w-[200px] flex-1">
+            <span className="min-w-[min(200px,100%)] flex-1">
               <span className="block font-semibold">{i.name}</span>
               <span className="text-ink-3 text-xs">
                 {i.code} · {t(`prices.insurers.types.${i.type}`)}

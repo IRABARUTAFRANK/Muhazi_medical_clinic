@@ -96,7 +96,7 @@ export function HandedStrip({
           key={g.key}
           className="border-green bg-green-bg/60 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border px-3 py-2"
         >
-          <span className="min-w-[200px] flex-1 text-[14px]">
+          <span className="min-w-[min(200px,100%)] flex-1 text-[14px]">
             <span className="text-ink block font-semibold">
               {t(kind === 'sale' ? 'pharmacy.handedSale' : 'pharmacy.handedTo', {
                 name: g.patient.name,
@@ -232,9 +232,12 @@ export function LinesEditor({
   return (
     <div className="flex flex-col gap-2">
       {lines.map((l, i) => (
-        <div key={l.key} className="bg-surface/70 flex flex-col gap-1.5 rounded-md p-2">
-          <div className="grid grid-cols-[minmax(0,1fr)_96px_auto] items-end gap-2">
+        <div key={l.key} className="bg-surface/70 @container flex flex-col gap-1.5 rounded-md p-2">
+          {/* narrow (a phone, a side panel): the medicine takes the whole row, the quantity and
+              the bin go under it */}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 @md:grid-cols-[minmax(0,1fr)_96px_auto]">
             <SearchSelect
+              wrapperClassName="col-span-2 @md:col-span-1"
               label={i === 0 ? t('stock.cols.item') : ''}
               value={l.itemId}
               onChange={(v) => set(l.key, { itemId: v })}

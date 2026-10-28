@@ -145,7 +145,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
               <span className="text-ink-3 text-[13px]">{t('calls.next.noneWaiting')}</span>
             ) : (
               <span className="flex flex-wrap items-end gap-2">
-                <label className={cn(labelClass, 'min-w-[220px] flex-1')}>
+                <label className={cn(labelClass, 'min-w-[min(220px,100%)] flex-1')}>
                   {t('calls.next.pick')}
                   <select
                     className={control}

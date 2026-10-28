@@ -92,8 +92,9 @@ function HourRow({
               date: formatDayMonth(cell.date),
               time: formatHour(cell.hour),
             })}
+            // seven days share the width: no finger-size minimum width (each cell is 44 px high)
             className={cn(
-              'flex min-h-11 items-center justify-center gap-1 rounded-md border px-0 text-[10px] font-semibold sm:text-xs',
+              'flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-md border px-0 text-[10px] font-semibold sm:text-xs',
               selected && 'border-primary bg-primary text-on-primary',
               !selected &&
                 cell.state === 'free' &&

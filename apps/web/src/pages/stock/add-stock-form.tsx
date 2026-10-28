@@ -438,7 +438,7 @@ export function AddStockForm({
           </Select>
         )}
 
-        <div className="flex flex-col gap-2">
+        <div className="@container flex flex-col gap-2">
           {lines.map((l, k) => {
             const it = itemOf(l)
             const r = refOf(l)
@@ -455,7 +455,8 @@ export function AddStockForm({
                   badLine === l.key && 'border-red ring-red-bg ring-[3px]',
                 )}
               >
-                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-end gap-2">
+                {/* narrow (a phone): the item takes the whole row, its two buttons go under it */}
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 @md:grid-cols-[minmax(0,1fr)_auto_auto] [&>:first-child]:col-span-2 @md:[&>:first-child]:col-span-1">
                   {l.pick === 'new' ? (
                     <Field
                       label={t('stockPage.add.newName', { n: k + 1 })}
@@ -594,7 +595,7 @@ export function AddStockForm({
                     </p>
                   </div>
                 )}
-                <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-1 items-end gap-2 @xs:grid-cols-2 @lg:grid-cols-4">
                   <Field
                     label={t('stock.batchNo')}
                     value={l.batchNo}

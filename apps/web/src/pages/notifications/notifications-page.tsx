@@ -346,17 +346,20 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                       )}
                       style={{ '--i': Math.min(i, 12) } as CSSProperties}
                     >
-                      <input
-                        type="checkbox"
-                        aria-label={w.title}
-                        className="accent-primary mt-2 size-4 flex-none"
-                        checked={selected.includes(n.id)}
-                        onChange={(e) =>
-                          setSelected((s) =>
-                            e.target.checked ? [...s, n.id] : s.filter((x) => x !== n.id),
-                          )
-                        }
-                      />
+                      {/* on a touch screen the box sits in a 44 px target (negative margins keep the row) */}
+                      <label className="coarse:-mx-3.5 coarse:-mt-1.5 coarse:-mb-3.5 coarse:size-[var(--tap)] mt-2 flex flex-none items-center justify-center">
+                        <input
+                          type="checkbox"
+                          aria-label={w.title}
+                          className="accent-primary size-4 flex-none"
+                          checked={selected.includes(n.id)}
+                          onChange={(e) =>
+                            setSelected((s) =>
+                              e.target.checked ? [...s, n.id] : s.filter((x) => x !== n.id),
+                            )
+                          }
+                        />
+                      </label>
                       <IconChip icon={look.icon} tint={look.tint} />
                       <span className="min-w-0 flex-[1_1_200px]">
                         {/* the title opens the notice in the side panel */}

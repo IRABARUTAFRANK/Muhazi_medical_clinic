@@ -165,7 +165,11 @@ export function WaitingView({ period, dept, clinic }: ViewProps) {
         {forgotten > 0 && (
           <DashLink
             href="/app/visits"
-            className={cn(buttonVariants({ variant: 'tint-amber', size: 'sm' }), 'self-start')}
+            className={cn(
+              buttonVariants({ variant: 'tint-amber', size: 'sm' }),
+              // a long sentence (Kinyarwanda) wraps inside the button instead of running out of it
+              'h-auto min-h-8 self-start py-1 text-left whitespace-normal',
+            )}
           >
             <History size={16} aria-hidden="true" />
             {t('dashboard.forgottenHint', { count: forgotten })}

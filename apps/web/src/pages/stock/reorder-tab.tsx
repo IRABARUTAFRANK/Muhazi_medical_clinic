@@ -136,7 +136,7 @@ export function ReorderTab({
                   className="border-grid flex flex-col gap-2 border-b py-2.5 last:border-b-0"
                 >
                   <div className="flex flex-wrap items-start gap-3 text-[14px]">
-                    <span className="min-w-[200px] flex-1">
+                    <span className="min-w-[min(200px,100%)] flex-1">
                       <span className="block font-semibold">{x.item}</span>
                       <span className="text-ink-3 block text-[12px]">
                         {[

@@ -178,7 +178,7 @@ export function AccessRequestCard({
         <StaffLink
           to="/app/patient"
           search={{ id: row.patientId }}
-          className="text-ink hover:text-primary min-w-0 text-[14px] font-semibold no-underline"
+          className="text-ink hover:text-primary coarse:inline-flex coarse:min-h-[var(--tap)] coarse:items-center min-w-0 text-[14px] font-semibold no-underline"
         >
           {row.patient}
         </StaffLink>

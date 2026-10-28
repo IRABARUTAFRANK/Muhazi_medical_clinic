@@ -305,6 +305,9 @@ export function DataTable<T>({
                     aria-sort={on ? (sort!.desc ? 'descending' : 'ascending') : undefined}
                     className={cn(
                       th,
+                      // the first column (a name, a medicine) keeps a readable width: on a
+                      // phone the table scrolls sideways in its box instead of crushing it
+                      c === cols[0] && 'min-w-[10rem]',
                       c.align === 'right' && 'text-right',
                       c.wide && 'hidden sm:table-cell',
                     )}
@@ -374,7 +377,7 @@ export function DataTable<T>({
                           }}
                           className={cn(
                             tableLink,
-                            '-mx-2 h-auto min-h-7 max-w-full text-left whitespace-normal',
+                            '-mx-2 h-auto min-h-[max(1.75rem,var(--tap,0px))] max-w-full text-left whitespace-normal',
                           )}
                         >
                           {c.cell(r)}

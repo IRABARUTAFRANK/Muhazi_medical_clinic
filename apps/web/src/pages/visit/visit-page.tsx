@@ -312,7 +312,7 @@ export function VisitPage({
                 <span className="text-[24px] leading-8 font-semibold tabular-nums">
                   {header.ticket}
                 </span>
-                <span className="min-w-[200px] flex-1">
+                <span className="min-w-[min(200px,100%)] flex-1">
                   <span className="block text-[24px] leading-8 font-semibold">{header.name}</span>
                   <span className="block text-[13px] text-white/80 tabular-nums">
                     {header.fileNumber} · {header.ageSex}

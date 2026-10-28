@@ -334,7 +334,7 @@ export function TransferNoteView({
   return (
     <div className={cn(expandedSection, 'border-border flex flex-col gap-3 rounded-md border p-3')}>
       <div className="flex flex-wrap items-start gap-3">
-        <span className="min-w-[200px] flex-1">
+        <span className="min-w-[min(200px,100%)] flex-1">
           <span className="flex items-center gap-2 text-[16px] font-semibold">
             <Truck size={16} aria-hidden="true" className="text-primary flex-none" />
             {t(n.direction === 'to_room' ? 'roomStores.noteOut' : 'roomStores.noteReturn', {

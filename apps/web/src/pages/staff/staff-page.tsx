@@ -734,7 +734,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                             )}
                           >
                             <Avatar name={e.fullName} size="md" />
-                            <span className="min-w-[200px] flex-1">
+                            <span className="min-w-[min(200px,100%)] flex-1">
                               <span className="block font-semibold">
                                 {e.fullName}
                                 {self && (

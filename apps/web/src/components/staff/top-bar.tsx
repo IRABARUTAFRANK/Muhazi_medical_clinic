@@ -92,10 +92,12 @@ export function TopBar({ user, sync, onOpenSheet, title, group }: TopBarProps) {
       <div className="pc:flex hidden h-12 items-center gap-3 px-4">
         {/* the breadcrumb takes the free space, so nothing is cut while there is room */}
         <span className="text-ink-3 flex min-w-0 flex-1 items-center gap-1.5 text-[14px]">
-          <span className="truncate">{t('app.clinicName')}</span>
+          {/* the clinic's name is in the sidebar's header right beside it: on a small PC it gives
+              its room to the group and the page (long in Kinyarwanda) */}
+          <span className="hidden truncate xl:inline">{t('app.clinicName')}</span>
           {group && group !== title && (
             <>
-              <span className="text-ink-4" aria-hidden="true">
+              <span className="text-ink-4 hidden xl:inline" aria-hidden="true">
                 /
               </span>
               <span className="truncate">{group}</span>
@@ -103,7 +105,10 @@ export function TopBar({ user, sync, onOpenSheet, title, group }: TopBarProps) {
           )}
           {title && (
             <>
-              <span className="text-ink-4" aria-hidden="true">
+              <span
+                className={cn('text-ink-4', !(group && group !== title) && 'hidden xl:inline')}
+                aria-hidden="true"
+              >
                 /
               </span>
               <span className="text-ink truncate font-medium">{title}</span>

@@ -180,7 +180,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
         {/* TOOLBAR */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="text-ink-2 flex min-w-[240px] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <div className="text-ink-2 flex min-w-[min(240px,100%)] flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             {/* Today's date is in the banner; a week or month shows its span here. */}
             {range !== 'today' && (
               <span className="inline-flex items-center gap-1.5 font-semibold">
@@ -534,7 +534,10 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     {t('dashboard.bookings', { period: periodWord })}: {data.bookings.booked}{' '}
                     {t('dashboard.booked')} ·{' '}
                     {t('dashboard.noShowShort', { missed: data.bookings.missed })}
-                    <StaffLink to="/app/appointments" className="no-underline">
+                    <StaffLink
+                      to="/app/appointments"
+                      className="coarse:min-h-[var(--tap)] inline-flex items-center no-underline"
+                    >
                       <Badge tone={data.bookings.pending > 0 ? 'yellow' : 'green'} dot={false}>
                         {t('dashboard.pendingInquiries', { count: data.bookings.pending })} →
                       </Badge>
@@ -1014,7 +1017,7 @@ function CountCell({
           href={to}
           aria-label={label}
           title={label}
-          className="hover:text-primary focus-visible:ring-primary/45 decoration-ink-3/50 rounded px-0.5 text-inherit underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-[3px]"
+          className="hover:text-primary focus-visible:ring-primary/45 decoration-ink-3/50 coarse:inline-flex coarse:min-h-[var(--tap)] coarse:min-w-[var(--tap)] coarse:items-center coarse:justify-end rounded px-0.5 text-inherit underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-[3px]"
         >
           {formatNumber(n)}
         </DashLink>

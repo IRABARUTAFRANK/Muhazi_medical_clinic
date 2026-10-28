@@ -442,7 +442,7 @@ function FileGrid({
 
   return (
     <>
-      <ul className="m-0 grid list-none grid-cols-2 gap-2.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))] sm:gap-3">
+      <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))] sm:gap-3">
         {files.map((f) => (
           <li
             key={f.id}
@@ -484,7 +484,7 @@ function FileGrid({
                   }}
                   title={f.title}
                   aria-label={t('supportingFiles.viewer.openFile', { title: f.title })}
-                  className="text-ink block w-full truncate text-left text-[14px] font-semibold outline-none after:absolute after:inset-0 after:content-['']"
+                  className="text-ink line-clamp-2 w-full text-left text-[14px] leading-snug font-semibold wrap-break-word outline-none after:absolute after:inset-0 after:content-['']"
                 >
                   {f.title}
                 </button>

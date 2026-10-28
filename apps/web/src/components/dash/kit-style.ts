@@ -44,7 +44,9 @@ export const tableHead = 'text-ink-3 h-10 px-3 text-left text-[12px] font-normal
 export const tableRow =
   'border-grid hover:bg-hover h-10 border-b transition-colors duration-120 last:border-b-0'
 export const tableCell = 'px-3 py-1.5 align-middle text-[14px]'
-export const tableFirstCell = 'px-3 py-1.5 align-middle text-[14px] font-medium'
+/** The first column (a name, a patient) keeps a readable width: on a phone the table scrolls
+ *  sideways inside its box instead of crushing the name to a few letters per line. */
+export const tableFirstCell = 'min-w-[11rem] px-3 py-1.5 align-middle text-[14px] font-medium'
 /** The selected row (its panel or detail is open): primary tint at 50 %. */
 export const selectedRow = 'bg-primary-tint/50'
 /** An expanded section inside a card. */

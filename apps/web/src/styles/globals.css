@@ -23,6 +23,9 @@
   --text-3xl--line-height: 1.1;
 }
 
+/* Touch screens (phones, tablets): `coarse:` sizes what a finger presses. */
+@custom-variant coarse (@media (pointer: coarse));
+
 @theme inline {
   --font-sans: 'Inter Variable', var(--mmc-font);
 
@@ -110,6 +113,50 @@
   }
   svg {
     flex: none;
+  }
+  /* Touch screens: whatever a finger presses is at least 44 px on the screen (--tap; the staff
+     shell divides it by its text zoom, --mmc-zoom). In the base layer, so a component that sets
+     its own min-height keeps it (and uses `min-h-[max(…,var(--tap,0px))]` when it is smaller).
+     Links inside running text and the box of a checkbox keep their size: the label is the target. */
+  @media (pointer: coarse) {
+    :root {
+      --tap: 44px;
+    }
+    [data-shell] {
+      --tap: calc(44px / var(--mmc-zoom, 1));
+    }
+    button,
+    [role='button'],
+    [role='tab'],
+    select,
+    summary,
+    input:not([type='checkbox'], [type='radio'], [type='range'], [type='hidden'], [type='file']),
+    a.inline-flex,
+    a.flex,
+    label:has(> input[type='checkbox']),
+    label:has(> input[type='radio']) {
+      min-height: var(--tap);
+    }
+    button,
+    [role='button'],
+    select,
+    a.inline-flex {
+      min-width: var(--tap);
+    }
+  }
+}
+
+/* Touch screens: a control that sets a small min-height of its own (min-h-6 … min-h-10) still
+   gets the 44 px finger size (unlayered, so it wins over the utility). */
+@media (pointer: coarse) {
+  :is(button, a, select, summary, label, [role='button'], [role='tab']):is(
+    .min-h-6,
+    .min-h-7,
+    .min-h-8,
+    .min-h-9,
+    .min-h-10
+  ) {
+    min-height: var(--tap);
   }
 }
 
