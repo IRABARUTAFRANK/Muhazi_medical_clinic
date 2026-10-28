@@ -31,16 +31,18 @@ import {
  * document design standard (C7 PDF, C8 / Part B Excel):
  *
  * - PDF: an A4 portrait print document with the compact letterhead, a title block (report no.,
- *   printed, prepared by), key figures, a one or two sentence summary, one headed table per
- *   detail section with its total as the last row, the cash count on a day close, and
- *   "Prepared by" / "Checked by" signature lines. The footer (clinic, report no., printed by,
- *   page x of y) is printed in the page margin boxes. Only a table with more than 7 columns
- *   moves to its own A4 landscape pages (a CSS named page); small tables (3 columns or fewer)
- *   sit side by side in two columns; tables of 12 rows or fewer are never split.
- * - Excel: Arial 10, a "Summary" sheet first (key figures as Label | Value | Unit, the summary
- *   sentences, the cash count) then one sheet per table. Every sheet starts with the clinic,
- *   title, period and printed lines, the header on row 6 (frozen, filtered, repeated on print),
- *   typed cells (numbers, Kigali wall-clock dates), SUM() totals as the last row.
+ *   printed, prepared by), key figures as tinted tiles, a one or two sentence summary, one
+ *   headed table per detail section with its total as the last row, the cash count on a day
+ *   close, the notes on how the figures are counted, and "Prepared by" / "Checked by" signature
+ *   lines. The footer (clinic, report no., printed by, page x of y) is printed in the page
+ *   margin boxes. Only a table with more than 7 columns moves to its own A4 landscape pages (a
+ *   CSS named page); small tables (3 columns or fewer) sit side by side in two columns; tables
+ *   of 12 rows or fewer are never split.
+ * - Excel (v2): Arial 10, a "Summary" sheet first (key figures as Label | Value | Unit, the
+ *   summary sentences, the notes, the cash count) then one sheet per table. Every sheet starts
+ *   with the clinic (navy), title, period and printed lines, a thin navy band, the header on
+ *   row 6 (navy tint, bold, frozen, filtered, repeated on print), grid borders, light zebra
+ *   rows, typed cells (numbers, Kigali wall-clock dates), SUM() totals on a tint as the last row.
  */
 
 export type Cell = string | number | null | undefined | Date
@@ -122,6 +124,9 @@ export interface Report {
   figures?: ReportFigure[]
   /** One or two plain sentences under the key figures. */
   summaryText?: string
+  /** How the figures are counted: short sentences printed before the signatures (PDF) and on
+   *  the Summary sheet (Excel). */
+  notes?: { title: string; lines: string[] }
   /** Day close only: expected and counted cash (after the detail sections). */
   cashCount?: ReportTable
   doc: DocLabels
@@ -285,7 +290,14 @@ function pdfTable(t: ReportTable, total: string): string {
 
 /** Layout specific to management reports, on top of the shared document CSS. */
 const REPORT_CSS = `
-.summary-text { margin: 0 0 4pt; }
+.summary-text { margin: 0 0 6pt; padding: 4pt 7pt; background: var(--panel); border-left: 3pt solid var(--accent-2);
+  border-radius: 0 2pt 2pt 0; }
+/* how the figures are counted */
+.rp-notes { margin: 12pt 0 0; padding: 5pt 8pt; border: 0.5pt solid var(--hair); border-radius: 2pt; background: var(--panel);
+  font-size: var(--fs-small); color: var(--ink-2); break-inside: avoid; page-break-inside: avoid; }
+.rp-notes .rp-notes-h { font-weight: 700; color: var(--accent-ink); margin-bottom: 2pt; font-size: var(--fs-table); }
+.rp-notes ul { margin: 0; padding-left: 10pt; }
+.rp-notes li { margin: 0 0 1pt; }
 .table-note { margin: -1pt 0 3pt; }
 .nw { white-space: nowrap; }
 .dt td { overflow-wrap: break-word; }
@@ -311,6 +323,14 @@ const REPORT_CSS = `
 /* the signature lines never stand alone at the top of a page: the last rows come with them */
 .sig-wrap, .wide-tail { break-before: avoid; page-break-before: avoid; }
 `
+
+/** "How the figures are counted": the report's notes as a small boxed list. */
+const notesHtml = (r: Report) =>
+  r.notes?.lines.length
+    ? `<section class="rp-notes"><div class="rp-notes-h">${esc(r.notes.title)}</div><ul>${r.notes.lines
+        .map((x) => `<li>${esc(x)}</li>`)
+        .join('')}</ul></section>`
+    : ''
 
 /** One headed table. */
 const sectionHtml = (t: ReportTable, total: string, extra = '') => {
@@ -389,7 +409,9 @@ export function reportHtml(report: Report, opts: { autoPrint?: boolean } = {}): 
     report.summaryText ? `<p class="summary-text">${esc(report.summaryText)}</p>` : '',
     sections,
     cash ? sectionHtml(cash, w.total) : '',
-    last && isWidePdf(last) ? `<div class="wide-tail">${signatures}</div>` : signatures,
+    last && isWidePdf(last)
+      ? `<div class="wide-tail">${notesHtml(report)}${signatures}</div>`
+      : notesHtml(report) + signatures,
   ].join('')
 
   return documentHtml({
@@ -434,9 +456,12 @@ type Workbook = InstanceType<ExcelJSModule['Workbook']>
 type Worksheet = ReturnType<Workbook['addWorksheet']>
 type ExcelCell = ReturnType<Worksheet['getCell']>
 
-const BLACK = { argb: 'FF000000' }
-const thin = { style: 'thin' as const, color: BLACK }
-const medium = { style: 'medium' as const, color: BLACK }
+const HAIR = { argb: EXCEL.colors.hair }
+const NAVY = { argb: EXCEL.colors.navy }
+/** Light grey grid lines and the navy rules under the header and around the total. */
+const hairline = { style: 'thin' as const, color: HAIR }
+const navyRule = { style: 'medium' as const, color: NAVY }
+const cellBox = { top: hairline, left: hairline, bottom: hairline, right: hairline }
 
 /** A sheet name: no : \ / ? * [ ], 31 characters at most, unique in the workbook. */
 function sheetName(wb: Workbook, wanted: string): string {
@@ -536,14 +561,20 @@ const columnLetter = (n: number): string => {
   return s
 }
 
-/** Rows 1 to 4 of every sheet: clinic, title, period, printed (row 5 stays empty). */
-function sheetHead(ws: Worksheet, report: Report, legalName: string, at: Date) {
+/**
+ * Rows 1 to 5 of every sheet: clinic (navy, 14 pt), title (12 pt bold), period (bold), "Printed
+ * … by …" with the report no. (grey), then a thin navy band across the table's columns.
+ */
+function sheetHead(ws: Worksheet, report: Report, legalName: string, at: Date, columns = 3) {
   const l = report.doc
   const lines: [string, Partial<ExcelCell['font']>][] = [
     [legalName, EXCEL.clinicFont],
     [report.title, EXCEL.titleFont],
-    [`${report.words.period}: ${report.period}`, EXCEL.font],
-    [l.printedBy(docDateTime(at), report.producedBy), EXCEL.font],
+    [`${report.words.period}: ${report.period}`, { ...EXCEL.font, bold: true }],
+    [
+      `${l.printedBy(docDateTime(at), report.producedBy)}  ·  ${report.words.reportNo}: ${reportNumber(report)}`,
+      EXCEL.subFont,
+    ],
   ]
   lines.forEach(([text, font], i) => {
     const cell = ws.getCell(i + 1, 1)
@@ -551,21 +582,29 @@ function sheetHead(ws: Worksheet, report: Report, legalName: string, at: Date) {
     cell.font = { ...font }
     cell.alignment = { horizontal: 'left', vertical: 'middle' }
   })
+  ws.getRow(1).height = 22
+  ws.getRow(2).height = 18
+  // the letterhead band of the documents, as a thin navy row
+  ws.getRow(EXCEL.headerRow - 1).height = 4
+  for (let i = 1; i <= Math.max(columns, 1); i++)
+    ws.getCell(EXCEL.headerRow - 1, i).fill = EXCEL.fills.band
 }
 
-/** The header row: Arial 10 bold, no fill, medium black rule under it, wrapped, centred. */
+/** The header row: bold navy on a light navy tint, grey grid, a medium navy rule under it. */
 function headerRow(ws: Worksheet, row: number, labels: string[], right: boolean[]) {
   labels.forEach((label, i) => {
     const cell = ws.getCell(row, i + 1)
     cell.value = label
     cell.font = { ...EXCEL.headerFont }
+    cell.fill = EXCEL.fills.header
     cell.alignment = {
       horizontal: right[i] ? 'right' : 'left',
       vertical: 'middle',
       wrapText: true,
     }
-    cell.border = { bottom: medium }
+    cell.border = { ...cellBox, bottom: navyRule }
   })
+  ws.getRow(row).height = 30
 }
 
 /** A table from `row` (its header) down; returns the next free row. */
@@ -574,15 +613,22 @@ function writeTable(ws: Worksheet, row: number, t: ReportTable, total: string): 
   headerRow(ws, row, t.columns.map(headerLabel), right)
   const first = row + 1
   t.rows.forEach((r, ri) => {
-    t.columns.forEach((col, i) => writeCell(ws.getCell(first + ri, i + 1), r[i], col))
+    t.columns.forEach((col, i) => {
+      const cell = ws.getCell(first + ri, i + 1)
+      writeCell(cell, r[i], col)
+      cell.border = cellBox
+      // light zebra rows, as on the printed tables
+      if (ri % 2 === 1) cell.fill = EXCEL.fills.zebra
+    })
   })
   let next = first + t.rows.length
   if (t.totals?.length && t.rows.length) {
     const last = next - 1
     t.columns.forEach((col, i) => {
       const cell = ws.getCell(next, i + 1)
-      cell.font = { ...EXCEL.font, bold: true }
-      cell.border = { top: thin }
+      cell.font = { ...EXCEL.totalFont }
+      cell.fill = EXCEL.fills.total
+      cell.border = { ...cellBox, top: navyRule, bottom: navyRule }
       cell.alignment = { horizontal: i === 0 || !right[i] ? 'left' : 'right', vertical: 'top' }
       if (i === 0) cell.value = total
       else if (t.totals!.includes(i)) {
@@ -661,9 +707,9 @@ export async function buildWorkbook(report: Report): Promise<Workbook> {
   // ---- Summary: key figures (Label | Value | Unit), the summary sentences, the cash count
   const figures = report.figures ?? []
   const cash = report.cashCount?.rows.length ? report.cashCount : null
-  if (figures.length || report.summaryText || cash) {
+  if (figures.length || report.summaryText || cash || report.notes?.lines.length) {
     const ws = newSheet(wb, w.summarySheet, cash ? cash.columns.length : 3)
-    sheetHead(ws, report, legalName, at)
+    sheetHead(ws, report, legalName, at, cash ? cash.columns.length : 3)
     let row: number = EXCEL.headerRow
     const figColumns: ReportColumn[] = [
       { label: w.figure },
@@ -679,6 +725,12 @@ export async function buildWorkbook(report: Report): Promise<Workbook> {
         writeCell(v, f.value, figColumns[1])
         v.numFmt = Number.isInteger(f.value) || f.unit === 'RWF' ? EXCEL.fmt.count : '#,##0.0'
         writeCell(ws.getCell(row + 1 + i, 3), f.unit ?? '', figColumns[2])
+        for (let c = 1; c <= 3; c++) {
+          const cell = ws.getCell(row + 1 + i, c)
+          cell.border = cellBox
+          if (i % 2 === 1) cell.fill = EXCEL.fills.zebra
+        }
+        v.font = { ...EXCEL.font, bold: true }
       })
       ws.autoFilter = { from: { row, column: 1 }, to: { row, column: 3 } }
       row += figures.length + 2
@@ -686,13 +738,24 @@ export async function buildWorkbook(report: Report): Promise<Workbook> {
     if (report.summaryText) {
       const cell = ws.getCell(row, 1)
       cell.value = report.summaryText
-      cell.font = { ...EXCEL.font }
+      cell.font = { ...EXCEL.font, italic: true }
       row += 2
+    }
+    if (report.notes?.lines.length) {
+      const head = ws.getCell(row, 1)
+      head.value = report.notes.title
+      head.font = { ...EXCEL.headerFont }
+      report.notes.lines.forEach((x, i) => {
+        const cell = ws.getCell(row + 1 + i, 1)
+        cell.value = `• ${x}`
+        cell.font = { ...EXCEL.subFont }
+      })
+      row += report.notes.lines.length + 2
     }
     if (cash) {
       const title = ws.getCell(row, 1)
       title.value = cash.title
-      title.font = { ...EXCEL.titleFont }
+      title.font = { ...EXCEL.titleFont, size: 11 }
       writeTable(ws, row + 1, cash, w.total)
     }
     // widths: the figures and the cash count share columns A to C
@@ -717,7 +780,7 @@ export async function buildWorkbook(report: Report): Promise<Workbook> {
   // ---- one sheet per table
   for (const t of tablesOf(report)) {
     const ws = newSheet(wb, t.title, t.columns.length)
-    sheetHead(ws, report, legalName, at)
+    sheetHead(ws, report, legalName, at, t.columns.length)
     writeTable(ws, EXCEL.headerRow, t, w.total)
     ws.autoFilter = {
       from: { row: EXCEL.headerRow, column: 1 },

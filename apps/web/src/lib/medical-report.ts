@@ -3,6 +3,7 @@ import {
   DASH,
   allergyHtml,
   allergyList,
+  chipHtml,
   docDate,
   docDateTime,
   docStamp,
@@ -21,6 +22,7 @@ import {
   titleBlockHtml,
   toDate,
   type CellValue,
+  type ChipTone,
   type Column,
   type DocLabels,
   type Field,
@@ -223,7 +225,20 @@ export interface MedicalReportLabels {
 
 function medWords(t: TFn) {
   const k = (key: string, vars?: Record<string, unknown>) => t(`medReport.doc.${key}`, vars)
+  /** A newer key, with its English wording until the translation is merged. */
+  const kd = (key: string, en: string, vars: Record<string, unknown> = {}) => {
+    const full = `medReport.doc.${key}`
+    const v = t(full, { defaultValue: en, ...vars })
+    return v && v !== full ? v : en.replace(/{{(w+)}}/g, (_, n: string) => String(vars[n] ?? ''))
+  }
   return {
+    flagHigh: kd('flagHigh', 'High'),
+    flagLow: kd('flagLow', 'Low'),
+    validatedBanner: (date: string, name: string) =>
+      kd('validatedBanner', 'VALIDATED – {{date}} by {{name}}', { date, name }),
+    chipValidated: kd('chipValidated', 'Validated'),
+    chipPreliminary: kd('chipPreliminary', 'Preliminary'),
+    chipAmended: kd('chipAmended', 'Amended'),
     visitDate: k('visitDate'),
     age: k('age'),
     department: k('department'),
@@ -485,7 +500,13 @@ function diagnosesPiece(v: ReportVisit, c: Ctx, inVisit: boolean): Piece | null 
     { label: c.w.icd10, share: 14 },
     { label: c.w.status, share: 22 },
   ]
-  const rows: CellValue[][] = sorted.map((d) => [d.text, d.icd10, status(d)])
+  const tone = (d: ReportVisit['diagnoses'][number]): ChipTone =>
+    d.provisional ? 'warn' : d.primary ? 'info' : 'muted'
+  const rows: CellValue[][] = sorted.map((d) => [
+    d.text,
+    d.icd10 ? { html: `<strong>${esc(d.icd10)}</strong>` } : null,
+    chipCell(status(d), tone(d)),
+  ])
   return tablePiece(heading(c.l.diagnoses, inVisit), rows.length, (a, b, h) =>
     fixedTable(cols, rows.slice(a, b), { withHead: h }),
   )
@@ -559,20 +580,32 @@ function vitalsPiece(v: ReportVisit, c: Ctx, inVisit: boolean): Piece | null {
 const hasResult = (x: ReportTest) =>
   (x.value != null && x.value !== '') || !!x.findings?.trim() || !!x.impression?.trim()
 
-/** The flag cell: bold H / L, bold red CRIT (with who was notified), or PRELIMINARY. */
+/**
+ * The flag cell: a bordered chip with the letter and the word beside it ("H High", "L Low"),
+ * a red "CRIT" chip (with who was notified), or PRELIMINARY. The letter, the word and the bold
+ * weight carry the meaning in black and white; the colour only helps.
+ */
 function flagHtml(x: ReportTest, c: Ctx, preliminary: boolean): string {
   const parts: string[] = []
   if (x.flag === 'CRIT') {
-    parts.push('<strong class="alert flag-word">CRIT</strong>')
+    parts.push(`<strong class="flag-word">${chipHtml('CRIT', 'alert')}</strong>`)
     if (x.notified)
       parts.push(
         `<div class="small">${esc(c.w.notified(x.notified.name, docTime(x.notified.at)))}</div>`,
       )
-  } else if (x.flag) parts.push(`<strong>${esc(x.flag)}</strong>`)
+  } else if (x.flag)
+    parts.push(
+      `<strong>${chipHtml(x.flag, x.flag === 'H' ? 'warn' : 'info')}</strong> <span class="flag-txt">${esc(
+        x.flag === 'H' ? c.w.flagHigh : c.w.flagLow,
+      )}</span>`,
+    )
   if (preliminary && !x.verified && hasResult(x))
     parts.push(`<div class="prelim">${esc(c.w.preliminary)}</div>`)
   return parts.join('')
 }
+
+/** A status word as a chip, for a table cell. */
+const chipCell = (text: string, tone: ChipTone): CellValue => ({ html: chipHtml(text, tone) })
 
 /** One results row; a text-only result spans the Result, Unit and Reference range columns. */
 function resultRow(x: ReportTest, c: Ctx, opts: { preliminary: boolean; textInCell: boolean }) {
@@ -627,6 +660,17 @@ function proceduresPiece(v: ReportVisit, c: Ctx, inVisit: boolean): Piece | null
   )
 }
 
+const MED_TONE: Record<NonNullable<ReportMedicine['status']>, ChipTone> = {
+  new: 'info',
+  changed: 'warn',
+  stopped: 'muted',
+  given: 'ok',
+}
+
+/** The medicine's status as a chip ("New", "Given at clinic"), or nothing. */
+const medStatusCell = (m: ReportMedicine, w: Words): CellValue =>
+  m.status ? chipCell(w.medStatus(m.status), MED_TONE[m.status]) : null
+
 /** Structured medicine rows: Medicine | Dose | Route | Frequency | Duration | Qty | Status. */
 function medicineRow(m: ReportMedicine, w: Words): CellValue[] {
   const { name, qty } = splitQty(m)
@@ -637,7 +681,7 @@ function medicineRow(m: ReportMedicine, w: Words): CellValue[] {
     keepNumberPhrase(m.frequency),
     keepNumberPhrase(m.duration),
     qty,
-    m.status ? w.medStatus(m.status) : null,
+    medStatusCell(m, w),
   ]
 }
 
@@ -649,12 +693,7 @@ function medicineRowLegacy(m: ReportMedicine, w: Words): CellValue[] {
     .map((x) => x.trim())
     .filter(Boolean)
     .join(', ')
-  return [
-    keepNumberWithUnit(name),
-    keepNumberWithUnit(how) || null,
-    qty,
-    m.status ? w.medStatus(m.status) : null,
-  ]
+  return [keepNumberWithUnit(name), keepNumberWithUnit(how) || null, qty, medStatusCell(m, w)]
 }
 
 const isStructured = (m: ReportMedicine) => !!(m.dose || m.route || m.frequency || m.duration)
@@ -786,29 +825,43 @@ const allergiesOf = (text: string | null | undefined) =>
 // ---------------------------------------------------------------- the documents
 
 const MEDICAL_CSS = `
-h4.cap { font-size: var(--fs-sub); font-weight: 600; line-height: 1.2; margin: 8pt 0 2pt;
-  break-after: avoid; page-break-after: avoid; }
-h3.visit-h { font-size: var(--fs-h); font-weight: 600; border-top: 0.5pt solid var(--rule);
-  padding-top: 5pt; margin: 14pt 0 2pt; }
+h4.cap { font-size: var(--fs-sub); font-weight: 700; line-height: 1.2; color: var(--accent); margin: 8pt 0 3pt;
+  padding-bottom: 1.5pt; border-bottom: 0.5pt solid var(--hair); break-after: avoid; page-break-after: avoid; }
+/* a visit of the history: a navy-edged band with the date, department and clinician */
+h3.visit-h { font-size: var(--fs-h); font-weight: 700; color: var(--accent-ink); background: var(--tint);
+  border-left: 3pt solid var(--accent); border-radius: 0 2pt 2pt 0; padding: 3pt 6pt; margin: 16pt 0 3pt; }
 h3.visit-h.first { margin-top: 10pt; }
-h3.visit-h + h4.cap { margin-top: 4pt; }
+h3.visit-h + h4.cap { margin-top: 5pt; }
 table.dt.fixed { table-layout: fixed; }
 .dt.fixed td { overflow-wrap: break-word; }
 .dt.meds td:nth-child(5), .dt.meds td:nth-child(6) { white-space: nowrap; }
+.dt td .chip { white-space: normal; }
 .measured { margin: -3pt 0 6pt; }
 .results td.flag { white-space: normal; }
-.prelim { font-weight: 700; letter-spacing: 0.05em; font-size: var(--fs-table); line-height: 1.2; }
-.results td.flag .small { font-weight: 400; }
-.results tr.panel td { font-size: var(--fs-sub); font-weight: 600; padding-top: 6pt; border-bottom: 0.5pt solid var(--hair); }
+.results .flag-txt { font-size: var(--fs-small); color: var(--ink-2); }
+.prelim { font-weight: 700; letter-spacing: 0.05em; font-size: var(--fs-small); line-height: 1.2; color: var(--warn); margin-top: 1pt; }
+.results td.flag .small { font-weight: 400; margin-top: 1pt; }
+.dt.results tbody tr.panel > td { font-size: var(--fs-sub); font-weight: 700; color: var(--accent); background: transparent;
+  padding-top: 7pt; border-bottom: 0.75pt solid var(--accent-2); }
 .dt.vitals { width: auto; }
 .dt.vitals td, .dt.vitals th { white-space: nowrap; }
+.dt.vitals td { font-size: var(--fs-body); font-weight: 600; }
 .idg.lab-grid { --id-label: 34mm; grid-template-columns: var(--id-label) minmax(0, 1.5fr) calc(var(--id-label) + 5mm) minmax(0, 1fr); }
 .idg .nw { white-space: nowrap; }
-.idg.req { border-top: 0; padding-top: 0; margin-top: -2pt; }
+.idg.req { background: transparent; margin-top: -3pt; }
+.idg.req > .v:nth-child(2) { font-weight: 400; }
 .keep { break-inside: avoid; page-break-inside: avoid; }
 .keep > table.dt { margin-top: 0; }
-.banner { border: 1pt solid var(--rule); padding: 4pt; margin: 0 0 8pt; font-weight: 700; break-inside: avoid; }
-.banner.amended { color: var(--alert); border-color: var(--alert); }
+.banner { border: 1pt solid var(--rule); border-left-width: 4pt; border-radius: 2pt; padding: 4pt 6pt; margin: 0 0 8pt;
+  font-weight: 700; break-inside: avoid; }
+.banner.amended { color: var(--alert); border-color: var(--alert); background: var(--alert-bg); }
+.banner.prelim-banner { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+.banner.ok { color: var(--ok); border-color: var(--ok); background: var(--ok-bg); }
+/* imaging and text results: the conclusion stands out on a panel with a teal edge */
+.conclusion { background: var(--panel); border: 0.5pt solid var(--hair); border-left: 3pt solid var(--accent-2);
+  border-radius: 2pt; padding: 3pt 7pt 4pt; margin: 6pt 0 4pt; break-inside: avoid; }
+.conclusion h3 { margin-top: 2pt; }
+.conclusion p { font-weight: 600; margin: 0; }
 .copy-to { font-size: var(--fs-small); color: var(--ink-2); margin-top: 6pt; }
 .lab-notes { font-size: var(--fs-small); color: var(--ink-2); margin-top: 4pt; }
 .lab-notes p { margin: 0 0 2pt; }
@@ -1018,11 +1071,22 @@ function labReportHtml(d: MedicalReportDoc, l: MedicalReportLabels, ctx: Medical
   const verified = tests.length > 0 && tests.every((x) => x.verified || !hasResult(x))
   const anyResult = tests.some(hasResult)
   const reported = docDateTime(lab.reportedAt) || docDateTime(lab.validatedAt)
+  const amended = !!lab.amends || !!lab.amended
+  // the state of the report at a glance: Validated / Preliminary, Amended
+  const badges = [
+    anyResult
+      ? verified
+        ? chipHtml(w.chipValidated, 'ok')
+        : chipHtml(w.chipPreliminary, 'warn')
+      : '',
+    amended ? chipHtml(w.chipAmended, 'alert') : '',
+  ].join('')
 
   const head: string[] = [
     letterheadHtml(lh, dl),
     titleBlockHtml({
       title,
+      badges,
       meta: [
         [w.reportNo, docNo],
         [w.labNo, sampleId],
@@ -1063,7 +1127,12 @@ function labReportHtml(d: MedicalReportDoc, l: MedicalReportLabels, ctx: Medical
     )
   else if (lab.amended)
     head.push(`<div class="banner amended flag-word">${esc(w.amendedBannerNoDate)}</div>`)
-  if (anyResult && !verified) head.push(`<div class="banner">${esc(w.preliminaryBanner)}</div>`)
+  if (anyResult && !verified)
+    head.push(`<div class="banner prelim-banner">${esc(w.preliminaryBanner)}</div>`)
+  else if (anyResult && lab.validatedBy?.name && lab.validatedAt)
+    head.push(
+      `<div class="banner ok flag-word">${esc(w.validatedBanner(docDateTime(lab.validatedAt), lab.validatedBy.name))}</div>`,
+    )
 
   // measured results in a table, grouped by panel; text results as findings and conclusion
   const pieces: Piece[] = []
@@ -1101,7 +1170,9 @@ function labReportHtml(d: MedicalReportDoc, l: MedicalReportLabels, ctx: Medical
         `<h2>${esc(x.name)}</h2>` +
           (findings || impression
             ? (findings ? `<h3>${esc(w.findings)}</h3><p>${escLines(findings)}</p>` : '') +
-              (impression ? `<h3>${esc(l.conclusion)}</h3><p>${escLines(impression)}</p>` : '')
+              (impression
+                ? `<div class="conclusion"><h3>${esc(l.conclusion)}</h3><p>${escLines(impression)}</p></div>`
+                : '')
             : `<p>${esc(w.awaited)}</p>`),
       ),
     )

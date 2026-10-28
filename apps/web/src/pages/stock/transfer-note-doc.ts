@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  chipHtml,
   docDate,
   docDateTime,
   esc,
@@ -43,16 +44,41 @@ export function buildTransferNoteHtml(
       : n.status === 'cancelled'
         ? k('statusCancelled', { reason: n.cancelReason ?? '' })
         : k('statusOnTheWay')
+  // newer words, in English until the translations are merged
+  const kd = (key: string, en: string) => {
+    const v = t(`transferDoc.${key}`, { defaultValue: en })
+    return v && v !== `transferDoc.${key}` ? v : en
+  }
+  // the state at a glance under the title: Received / On the way / Cancelled, and a difference
+  const badges = [
+    n.status === 'received'
+      ? chipHtml(kd('chipReceived', 'Received'), 'ok')
+      : n.status === 'cancelled'
+        ? chipHtml(kd('chipCancelled', 'Cancelled'), 'alert')
+        : chipHtml(k('statusOnTheWay'), 'info'),
+    n.hasDifference || n.items.some((x) => x.received != null && x.received !== x.quantity)
+      ? chipHtml(kd('chipDifference', 'Difference on arrival'), 'warn')
+      : '',
+  ].join('')
   const showCost = n.items.some((x) => x.unitCost != null)
   const rows = n.items.map((x, i) => [
     i + 1,
-    x.item,
+    { html: `<strong>${esc(x.item)}</strong>` },
     x.batchNo ?? '',
     x.expiry ? docDate(x.expiry) : '',
     x.quantity,
-    x.received == null ? { html: '<span class="sig-line short"></span>' } : x.received,
+    x.received == null
+      ? { html: '<span class="sig-line short"></span>' }
+      : x.received !== x.quantity
+        ? { html: `<strong>${esc(String(x.received))}</strong>` }
+        : x.received,
     x.differenceReason
-      ? `${x.differenceAction === 'loss' ? k('loss') : k('backToSender')}: ${x.differenceReason}`
+      ? {
+          html: chipHtml(
+            `${x.differenceAction === 'loss' ? k('loss') : k('backToSender')}: ${x.differenceReason}`,
+            'warn',
+          ),
+        }
       : '',
     ...(showCost ? [x.value ?? null] : []),
   ])
@@ -69,7 +95,15 @@ export function buildTransferNoteHtml(
       { label: k('sent'), num: true, width: '16mm' },
       { label: k('received'), num: true, width: '20mm' },
       { label: k('difference') },
-      ...(showCost ? [{ label: k('value'), money: true, width: '22mm' }] : []),
+      ...(showCost
+        ? [
+            {
+              label: /RWF/.test(k('value')) ? k('value') : `${k('value')} (RWF)`,
+              money: true,
+              width: '24mm',
+            },
+          ]
+        : []),
     ],
     rows,
     {
@@ -95,6 +129,7 @@ export function buildTransferNoteHtml(
     titleBlockHtml({
       title,
       scope: `${n.from} → ${n.to}`,
+      badges,
       meta: [
         [labels.docNo, n.number],
         [k('sentAt'), docDateTime(n.sentAt)],
@@ -128,6 +163,7 @@ export function buildTransferNoteHtml(
       printedBy: o.printedBy,
       labels,
     },
+    css: '.dt td .chip { white-space: normal; }',
     body,
     lang: o.lang,
   })

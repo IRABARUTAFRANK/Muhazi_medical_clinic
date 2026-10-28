@@ -1,5 +1,6 @@
 import i18n from 'i18next'
 import {
+  chipHtml,
   documentHtml,
   docDateTime,
   docMoney,
@@ -17,8 +18,9 @@ import {
 /**
  * The payment receipt handed to the patient (document standard C5): an 80 mm roll, all text
  * pure black for thermal printers. Centred letterhead, title, receipt meta, patient, the items at
- * full price, the insurer / patient split, the total due, this payment, what is paid and still
- * due, the tax notice, who received the money and the opening hours.
+ * full price, the insurer / patient split, the total due (boxed), this payment, what is paid and
+ * still due (a PAID IN FULL or PART PAID chip), the tax notice, who received the money, the opening
+ * hours and the thank-you line. The visit no. is printed when the caller has it.
  *
  * `buildReceiptHtml` is pure (no window, no React); `openReceipt` writes it into a print window.
  */
@@ -40,6 +42,8 @@ export interface ReceiptLine {
 export interface ReceiptDoc {
   receiptNo: string | null
   invoiceNo: string | null
+  /** The visit's reference (V-…), printed when the caller has it. */
+  visitNo?: string | null
   at: Date
   /** The clinic's letterhead: the structured fields of `useLetterhead()` (older string fields kept). */
   clinic: {
@@ -104,6 +108,7 @@ export interface ReceiptText {
   statement: string
   receiptNo: string
   invoiceNo: string
+  visitNo: string
   cashier: string
   description: string
   qty: string
@@ -121,6 +126,8 @@ export interface ReceiptText {
   balanceDue: string
   change: string
   paidInFull: string
+  /** "PART PAID": something is paid and a balance is still due. */
+  partPaid: string
   taxNotice: string
   taxNoticeStatement: string
   ebmNo: string
@@ -132,11 +139,17 @@ export interface ReceiptText {
 /** The receipt wording from the translations (`receipt.*`). */
 export function receiptText(t: TFn): ReceiptText {
   const k = (key: string, vars?: Record<string, unknown>) => t(`receipt.${key}`, vars)
+  /** A newer key, with its English wording until the translation is merged. */
+  const kd = (key: string, en: string) => {
+    const v = t(`receipt.${key}`, { defaultValue: en })
+    return v && v !== `receipt.${key}` ? v : en
+  }
   return {
     title: k('title'),
     statement: k('statement'),
     receiptNo: k('receiptNo'),
     invoiceNo: k('invoiceNo'),
+    visitNo: kd('visitNo', 'Visit no.'),
     cashier: k('cashierName'),
     description: k('item'),
     qty: k('qty'),
@@ -156,6 +169,7 @@ export function receiptText(t: TFn): ReceiptText {
     balanceDue: k('balance'),
     change: k('change'),
     paidInFull: k('settled'),
+    partPaid: kd('chipPartial', 'PART PAID'),
     taxNotice: k('taxNotice'),
     taxNoticeStatement: k('taxNoticeStatement'),
     ebmNo: k('ebmNo'),
@@ -172,6 +186,7 @@ function textFromLegacy(l: ReceiptLabels): ReceiptText {
     statement: l.statement,
     receiptNo: l.receiptNo,
     invoiceNo: l.invoiceNo,
+    visitNo: 'Visit no.',
     cashier: l.cashier,
     description: l.item,
     qty: 'Qty',
@@ -190,6 +205,7 @@ function textFromLegacy(l: ReceiptLabels): ReceiptText {
     balanceDue: l.balance,
     change: 'Change',
     paidInFull: l.settled,
+    partPaid: 'PART PAID',
     taxNotice: 'This is a payment receipt, not an RRA tax invoice (EBM).',
     taxNoticeStatement: 'This statement is not an RRA tax invoice (EBM).',
     ebmNo: 'EBM invoice no.',
@@ -205,7 +221,7 @@ function letterheadOf(c: ReceiptDoc['clinic']): Letterhead {
     legalName: c.legalName ?? c.name,
     addressLine: c.addressLine !== undefined ? c.addressLine : c.address || null,
     phone: c.phone ?? null,
-    email: null,
+    email: c.email ?? null,
     tin: c.tin ?? null,
     mohLicence: c.mohLicence ?? null,
     fdaLicence: c.fdaLicence ?? null,
@@ -234,20 +250,24 @@ function coverPct(subtotal: number, insurer: number, given?: number | null): num
   return Math.abs((subtotal * pct) / 100 - insurer) < 1 ? pct : null
 }
 
-/** Receipt layout only (the shared parts come from `printBase`). */
+/** Receipt layout only (the shared parts come from `printBase`); pure black for thermal paper. */
 const RECEIPT_CSS = `
-.r-title { font-size: var(--fs-title); font-weight: 700; text-align: center; line-height: 1.2; margin: 0 0 5pt; }
+/* the title between two rules, the document's one strong mark */
+.r-title { font-size: var(--fs-title); font-weight: 700; text-align: center; line-height: 1.2; margin: 0 0 4pt;
+  padding: 1pt 0 3pt; border-bottom: 1pt solid #000; letter-spacing: 0.06em; text-transform: uppercase; }
 .kv { display: grid; grid-template-columns: var(--kv-label) minmax(0, 1fr); column-gap: 2mm; line-height: 1.3; }
 .kv .k { font-weight: 600; overflow-wrap: break-word; }
 /* one label width for every block, wide enough for the longest single word of the labels */
 :root { --kv-label: 24mm; }
 :root:lang(rw) { --kv-label: 31mm; }
 .kv .v { overflow-wrap: anywhere; }
-.r-block { padding: 4pt 0; border-top: 0.5pt solid #000; }
+.kv .v.strong { font-weight: 700; }
+/* thermal style: blocks parted by a dashed rule */
+.r-block { padding: 4pt 0; border-top: 0.75pt dashed #000; }
 .r-block:first-of-type, .r-block.r-due-only { border-top: 0; }
 table.rt { width: 100%; border-collapse: collapse; font-size: var(--fs-table); line-height: 1.25;
   font-variant-numeric: tabular-nums lining-nums; }
-.rt th { font-weight: 600; text-align: left; vertical-align: bottom; padding: 0 0 2pt; border-bottom: 0.5pt solid #000; line-height: 1.2; }
+.rt th { font-weight: 700; text-align: left; vertical-align: bottom; padding: 0 0 2pt; border-bottom: 0.75pt solid #000; line-height: 1.2; }
 .rt th.num { white-space: normal; }
 .rt td { vertical-align: top; padding: 1.5pt 0; }
 .rt th + th, .rt td + td { padding-left: 1.5mm; }
@@ -258,44 +278,89 @@ table.rt { width: 100%; border-collapse: collapse; font-size: var(--fs-table); l
 .sums td { padding: 1pt 0; }
 .sums td:first-child { width: 100%; }
 .sums td.num, .sums .pct { white-space: nowrap; }
-.sums tr.due td { border-top: 1pt solid #000; padding-top: 3pt; font-size: var(--fs-title); font-weight: 700; }
-.paid-full { text-align: center; font-size: var(--fs-title); margin: 4pt 0 0; }
+.sums tr.share td { font-weight: 600; }
+/* TOTAL DUE in a box: the one figure the patient looks for */
+.sums tr.due td { border-top: 1.5pt solid #000; border-bottom: 1.5pt solid #000; padding: 3pt 0; font-size: var(--fs-title); font-weight: 700; }
+.sums tr.balance td { font-weight: 700; }
+.r-status { text-align: center; margin: 5pt 0 0; }
+.r-status .chip { font-size: var(--fs-body); padding: 1pt 9pt; border-width: 1.25pt; letter-spacing: 0.08em; }
 .notice { font-size: var(--fs-small); line-height: 1.3; }
 .notice p { margin: 0; }
 .sign { display: flex; align-items: flex-end; gap: 2mm; margin-top: 4pt; }
 .sign.tall { margin-top: 7pt; }
 .sign .k { font-weight: 600; flex: none; }
-.sign .line { flex: 1; border-bottom: 0.5pt solid #000; height: 1.1em; }
+.sign .line { flex: 1; border-bottom: 0.75pt solid #000; height: 1.1em; }
 .sign.tall .line { height: 7mm; }
-.r-foot { text-align: center; font-size: var(--fs-small); line-height: 1.3; padding-top: 4pt; border-top: 0.5pt solid #000; margin-top: 6pt; }
+.r-foot { text-align: center; font-size: var(--fs-small); line-height: 1.35; padding-top: 4pt; border-top: 2.25pt double #000; margin-top: 6pt; }
+.r-foot .thanks { font-size: var(--fs-body); font-weight: 700; margin-top: 2pt; }
 `
+
+/** The receipt's money lines: full charges, the insurer's and the patient's shares, what is due. */
+export interface ReceiptSums {
+  /** Full charges before the insurer split. */
+  subtotal: number
+  /** The insurer's share (0 without an insurer). */
+  insurer: number
+  /** The patient's share (subtotal − insurer share). */
+  patient: number
+  /** The insurer's cover in percent, when the split is one whole percentage (else null). */
+  insurerPct: number | null
+  /** The patient's part in percent (100 − insurerPct), or null. */
+  patientPct: number | null
+  discount: number
+  /** What the patient owes: patient share − discount (never below 0). */
+  totalDue: number
+}
+
+/** The money lines of a receipt (pure, so the split can be checked). */
+export function receiptSums(
+  d: Pick<ReceiptDoc, 'total' | 'subtotal' | 'insurer' | 'discount'>,
+): ReceiptSums {
+  const insured = !!d.insurer && d.insurer.amount > 0
+  const insurer = insured ? d.insurer!.amount : 0
+  const subtotal = d.subtotal ?? d.total + insurer
+  const insurerPct = insured ? coverPct(subtotal, insurer, d.insurer!.pct) : null
+  const discount = Math.max(0, d.discount ?? 0)
+  return {
+    subtotal,
+    insurer,
+    patient: d.total,
+    insurerPct,
+    patientPct: insurerPct == null ? null : Math.round((100 - insurerPct) * 100) / 100,
+    discount,
+    totalDue: Math.max(0, d.total - discount),
+  }
+}
 
 /** The receipt's full HTML document (pure: no window). */
 export function buildReceiptHtml(
   d: ReceiptDoc,
   rt: ReceiptText,
   dl: DocLabels,
-  opts: { lang?: string; autoPrint?: boolean; printedBy?: string | null } = {},
+  opts: { lang?: string; autoPrint?: boolean; printedBy?: string | null; printedAt?: Date } = {},
 ): string {
   const lh = letterheadOf(d.clinic)
   // a receipt once anything is paid (also when reprinted without this payment); else a statement
   const isReceipt = !!d.payment || d.paid > 0
   const title = isReceipt ? rt.title : rt.statement
-  const kv = (label: string, value: string | null | undefined) =>
-    value ? `<div class="k">${esc(label)}:</div><div class="v">${esc(value)}</div>` : ''
+  const kv = (label: string, value: string | null | undefined, strong = false) =>
+    value
+      ? `<div class="k">${esc(label)}:</div><div class="v${strong ? ' strong' : ''}">${esc(value)}</div>`
+      : ''
 
-  // meta: receipt no., date, cashier, invoice no. (only when known)
+  // meta: receipt no., date, visit no., invoice no., cashier (only when known)
   const meta = [
-    kv(rt.receiptNo, d.receiptNo),
+    kv(rt.receiptNo, d.receiptNo, true),
     kv(dl.date, docDateTime(d.at)),
-    kv(rt.cashier, d.cashier),
+    kv(rt.visitNo, d.visitNo),
     kv(rt.invoiceNo, d.invoiceNo),
+    kv(rt.cashier, d.cashier),
   ].join('')
 
   // patient
   const insurerName = d.patient.insurer ?? (d.insurer?.name || null)
   const patient = [
-    kv(dl.name, d.patient.name),
+    kv(dl.name, d.patient.name, true),
     kv(dl.fileNo, d.patient.fileNumber),
     kv(dl.insurer, insurerName),
     insurerName ? kv(dl.memberNo, d.patient.memberNo) : '',
@@ -308,7 +373,8 @@ export function buildReceiptHtml(
     full ? (x.fullAmount ?? Math.round((x.unitPrice ?? 0) * x.quantity)) : x.amount
   const unit = (x: ReceiptLine) =>
     x.unitPrice != null ? x.unitPrice : x.quantity ? lineAmount(x) / x.quantity : lineAmount(x)
-  const insured = !!d.insurer && d.insurer.amount > 0
+  const sums = receiptSums(d)
+  const insured = sums.insurer > 0
   const amountHead = !full && insured ? rt.patientShareRwf : rt.amountRwf
   const items = `<table class="rt"><thead><tr><th>${esc(rt.description)}</th><th class="num">${esc(rt.qty)}</th>${full ? `<th class="num">${esc(rt.unitPrice)}</th>` : ''}<th class="num">${esc(amountHead)}</th></tr></thead>
 <tbody>${d.lines
@@ -321,29 +387,21 @@ export function buildReceiptHtml(
     .join('')}</tbody></table>`
 
   // totals: subtotal, insurer pays %, patient share (%), discount, total due
-  const insurerAmount = insured ? d.insurer!.amount : 0
-  const subtotal = d.subtotal ?? d.total + insurerAmount
-  const pct = insured ? coverPct(subtotal, insurerAmount, d.insurer!.pct) : null
-  const discount = Math.max(0, d.discount ?? 0)
-  const totalDue = Math.max(0, d.total - discount)
   // a trailing "(85%)" stays on the line of the word before it
   const labelHtml = (label: string) =>
     esc(label).replace(/\s*(\([^()]*\))$/, (_m, p: string) => `&nbsp;<span class="pct">${p}</span>`)
   const sum = (label: string, value: string, cls = '') =>
     `<tr${cls ? ` class="${cls}"` : ''}><td>${labelHtml(label)}</td><td class="num">${esc(value)}</td></tr>`
-  // without insurer or discount, TOTAL DUE is the only row: its own 1 pt rule is the only line
-  const dueOnly = !insured && !discount
-  const sums = `<table class="rt sums"><tbody>${[
-    dueOnly ? '' : sum(rt.subtotal, formatRwf(subtotal)),
-    insured ? sum(rt.insurerPays(d.insurer!.name, pct), `–${formatRwf(insurerAmount)}`) : '',
+  // without insurer or discount, TOTAL DUE is the only row: its own box is the only line
+  const dueOnly = !insured && !sums.discount
+  const sumsHtml = `<table class="rt sums"><tbody>${[
+    dueOnly ? '' : sum(rt.subtotal, formatRwf(sums.subtotal)),
     insured
-      ? sum(
-          rt.patientShare(pct == null ? null : Math.round((100 - pct) * 100) / 100),
-          formatRwf(d.total),
-        )
+      ? sum(rt.insurerPays(d.insurer!.name, sums.insurerPct), `–${formatRwf(sums.insurer)}`)
       : '',
-    discount ? sum(rt.discount, `–${formatRwf(discount)}`) : '',
-    sum(rt.totalDue, formatRwf(totalDue), 'due'),
+    insured ? sum(rt.patientShare(sums.patientPct), formatRwf(sums.patient), 'share') : '',
+    sums.discount ? sum(rt.discount, `–${formatRwf(sums.discount)}`) : '',
+    sum(rt.totalDue, formatRwf(sums.totalDue), 'due'),
   ].join('')}</tbody></table>`
 
   // this payment, what is paid so far and what is still due (or change)
@@ -353,22 +411,28 @@ export function buildReceiptHtml(
       : d.payment.method
     : ''
   const balance = d.balance
+  const status =
+    balance <= 0 && d.paid > 0
+      ? chipHtml(rt.paidInFull, 'ok')
+      : d.paid > 0 && balance > 0
+        ? chipHtml(rt.partPaid, 'warn')
+        : ''
   const payment = `<table class="rt sums"><tbody>${[
     d.payment ? sum(rt.paidNow(method), formatRwf(d.payment.amount)) : '',
     d.payment?.reference ? sum(rt.reference, d.payment.reference) : '',
     sum(rt.totalPaid, formatRwf(d.paid)),
-    balance < 0 ? sum(rt.change, formatRwf(-balance)) : sum(rt.balanceDue, formatRwf(balance)),
-  ].join('')}</tbody></table>${
-    balance <= 0 && d.paid > 0 ? `<p class="paid-full flag-word">${esc(rt.paidInFull)}</p>` : ''
-  }`
+    balance < 0
+      ? sum(rt.change, formatRwf(-balance), 'balance')
+      : sum(rt.balanceDue, formatRwf(balance), 'balance'),
+  ].join('')}</tbody></table>${status ? `<p class="r-status flag-word">${status}</p>` : ''}`
 
   const foot = [
     lh.openingHours ? `<div>${esc(dl.openingHours)}: ${esc(lh.openingHours)}</div>` : '',
     // the receipt has no page footer: who printed it (a reprint too) is said here
     opts.printedBy
-      ? `<div>${esc(dl.printedBy(docDateTime(new Date()), opts.printedBy))}</div>`
+      ? `<div>${esc(dl.printedBy(docDateTime(opts.printedAt ?? new Date()), opts.printedBy))}</div>`
       : '',
-    `<div>${esc(rt.thankYou(lh.legalName))}</div>`,
+    `<div class="thanks">${esc(rt.thankYou(lh.legalName))}</div>`,
   ].join('')
 
   const body = [
@@ -377,7 +441,7 @@ export function buildReceiptHtml(
     `<section class="r-block kv">${meta}</section>`,
     `<section class="r-block kv">${patient}</section>`,
     `<section class="r-block">${items}</section>`,
-    `<section class="r-block${dueOnly ? ' r-due-only' : ''}">${sums}</section>`,
+    `<section class="r-block${dueOnly ? ' r-due-only' : ''}">${sumsHtml}</section>`,
     `<section class="r-block">${payment}</section>`,
     `<section class="r-block notice"><p>${esc(isReceipt ? rt.taxNotice : rt.taxNoticeStatement)}</p>
 <div class="sign"><span class="k">${esc(rt.ebmNo)}:</span><span class="line"></span></div></section>`,
@@ -393,6 +457,7 @@ export function buildReceiptHtml(
       docNo: d.receiptNo,
       clinicName: lh.legalName,
       printedBy: opts.printedBy ?? null,
+      printedAt: opts.printedAt,
       labels: dl,
     },
     css: RECEIPT_CSS,

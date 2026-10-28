@@ -3807,6 +3807,14 @@
       "stock_one": "{{count}} medicine in stock, valued at {{value}} at cost; below reorder level: {{low}}.",
       "stock_other": "{{count}} medicines in stock, valued at {{value}} at cost; below reorder level: {{low}}.",
       "sales": "{{revenue}} sold in the period, with a margin of {{margin}}."
+    },
+    "notes": {
+      "title": "How the figures are counted",
+      "currency": "All amounts are in Rwandan francs (RWF). Dates and times are Kigali time.",
+      "totals": "Each Total row adds up the rows above it.",
+      "collected": "Collected: every payment taken on the day, before refunds; refunds are shown on their own.",
+      "cashDiff": "Cash count: difference = counted − expected; a shortfall carries a minus sign.",
+      "lowStock": "Below reorder level: unexpired units in the pharmacy at or below the item’s reorder level."
     }
   },
   "duration": {
@@ -3883,7 +3891,8 @@
     "printOutsideHint": "Only the medicines the patient buys at an outside pharmacy, with the prescriber’s name and signature.",
     "outsideTitle": "Prescription for an outside pharmacy",
     "outsideMedicines": "To buy at an outside pharmacy",
-    "outsideNote": "The clinic pharmacy does not give these medicines. Please buy them at any pharmacy."
+    "outsideNote": "The clinic pharmacy does not give these medicines. Please buy them at any pharmacy.",
+    "validUntil": "Valid until"
   },
   "visitConfirm": {
     "title": "Start a visit for {{name}}?",
@@ -4113,7 +4122,13 @@
       "notified": "Notified: {{name}}, {{time}}",
       "age": "Age",
       "visitNo": "Visit no.",
-      "amendedBannerNoDate": "AMENDED REPORT – replaces an earlier report"
+      "amendedBannerNoDate": "AMENDED REPORT – replaces an earlier report",
+      "flagHigh": "High",
+      "flagLow": "Low",
+      "validatedBanner": "VALIDATED – {{date}} by {{name}}",
+      "chipValidated": "Validated",
+      "chipPreliminary": "Preliminary",
+      "chipAmended": "Amended"
     }
   },
   "access": {
@@ -4446,7 +4461,9 @@
     "preparedBy": "Prepared by",
     "thankYou": "Thank you for choosing {{clinic}}.",
     "insurerSharePct": "Insurer share ({{pct}}%)",
-    "insurerShare": "Insurer share"
+    "insurerShare": "Insurer share",
+    "visitNo": "Visit no.",
+    "chipPartial": "PART PAID"
   },
   "dept": {
     "title": "My department · {{name}}",
@@ -5751,7 +5768,10 @@
     "sentBy": "Sent by",
     "receivedBy": "Received by",
     "loss": "Loss",
-    "backToSender": "Back to the sender"
+    "backToSender": "Back to the sender",
+    "chipReceived": "Received",
+    "chipCancelled": "Cancelled",
+    "chipDifference": "Difference on arrival"
   },
   "stockDelivery": {
     "lead": "Record a supplier’s delivery into the pharmacy: the supplier, the delivery note or invoice number, then one line per medicine with its batch, expiry date, quantity (in boxes or units) and cost.",

@@ -3816,6 +3816,14 @@
       "stock_one": "Umuti {{count}} uri mu bubiko, ufite agaciro ka {{value}} ku giciro cyo kugura; munsi y’urugero rwo kongera gutumiza: {{low}}.",
       "stock_other": "Imiti {{count}} iri mu bubiko, ifite agaciro ka {{value}} ku giciro cyo kugura; iri munsi y’urugero rwo kongera gutumiza: {{low}}.",
       "sales": "Hagurishijwe {{revenue}} muri iki gihe, inyungu ni {{margin}}."
+    },
+    "notes": {
+      "title": "Uko imibare ibarwa",
+      "currency": "Amafaranga yose ari mu mafaranga y’u Rwanda (RWF). Amatariki n’amasaha ni ay’i Kigali.",
+      "totals": "Umurongo w’igiteranyo uteranya imirongo iri hejuru yawo.",
+      "collected": "Byakiriwe: ubwishyu bwose bwakiriwe uwo munsi, mbere yo gusubiza amafaranga; amafaranga yasubijwe agaragazwa ukwayo.",
+      "cashDiff": "Kubara amafaranga yakiriwe: ikinyuranyo = ayabaruwe − ayari ategerejwe; ayabuze agira akamenyetso ka “−”.",
+      "lowStock": "Munsi y’urugero rwo kongera gutumiza: ibitararengeje igihe biri muri farumasi, bingana cyangwa biri munsi y’urugero rwo kongera gutumiza."
     }
   },
   "duration": {
@@ -3892,7 +3900,8 @@
     "printOutsideHint": "Imiti umurwayi agomba kugura kuri farumasi yo hanze gusa, iriho izina n’umukono by’uwayanditse.",
     "outsideTitle": "Urupapuro rw’imiti yo kugura hanze",
     "outsideMedicines": "Imiti yo kugura kuri farumasi yo hanze",
-    "outsideNote": "Farumasi y’ivuriro ntitanga iyi miti. Muyigure kuri farumasi iyo ari yo yose."
+    "outsideNote": "Farumasi y’ivuriro ntitanga iyi miti. Muyigure kuri farumasi iyo ari yo yose.",
+    "validUntil": "Rufite agaciro kugeza"
   },
   "visitConfirm": {
     "title": "Gutangira kwivuza kwa {{name}}?",
@@ -4122,7 +4131,13 @@
       "notified": "Yamenyeshejwe: {{name}}, {{time}}",
       "age": "Imyaka",
       "visitNo": "Nimero yo kwivuza",
-      "amendedBannerNoDate": "RAPORO YAKOSOWE – isimbura raporo yabanje"
+      "amendedBannerNoDate": "RAPORO YAKOSOWE – isimbura raporo yabanje",
+      "flagHigh": "Kiri hejuru",
+      "flagLow": "Kiri hasi",
+      "validatedBanner": "BYEMEJWE – ku wa {{date}} na {{name}}",
+      "chipValidated": "Byemejwe",
+      "chipPreliminary": "By’agateganyo",
+      "chipAmended": "Byakosowe"
     }
   },
   "access": {
@@ -4455,7 +4470,9 @@
     "preparedBy": "Byateguwe na",
     "thankYou": "Murakoze guhitamo {{clinic}}.",
     "insurerSharePct": "Ayo ubwishingizi bwishyura ({{pct}}%)",
-    "insurerShare": "Ayo ubwishingizi bwishyura"
+    "insurerShare": "Ayo ubwishingizi bwishyura",
+    "visitNo": "Nimero yo kwivuza",
+    "chipPartial": "BYISHYUWE IGICE"
   },
   "dept": {
     "title": "Ishami ryanjye · {{name}}",
@@ -5760,7 +5777,10 @@
     "sentBy": "Byoherejwe na",
     "receivedBy": "Byakiriwe na",
     "loss": "Igihombo",
-    "backToSender": "Byasubijwe uwabyohereje"
+    "backToSender": "Byasubijwe uwabyohereje",
+    "chipReceived": "Byakiriwe",
+    "chipCancelled": "Byahagaritswe",
+    "chipDifference": "Hari ikinyuranyo bigeze"
   },
   "stockDelivery": {
     "lead": "Andika ibyagemuwe n’uwagemuye bijya muri farumasi: uwagemuye, nimero y’urupapuro rw’ibyagemuwe cyangwa iya fagitire, hanyuma umurongo kuri buri muti na lot yawo, itariki yo kurangira, ingano (mu dukarito cyangwa mu bice) n’igiciro.",

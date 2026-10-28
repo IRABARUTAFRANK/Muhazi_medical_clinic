@@ -3807,6 +3807,14 @@
       "stock_one": "{{count}} médicament en stock, d’une valeur de {{value}} au coût ; sous le seuil : {{low}}.",
       "stock_other": "{{count}} médicaments en stock, d’une valeur de {{value}} au coût ; sous le seuil : {{low}}.",
       "sales": "{{revenue}} vendus sur la période, avec une marge de {{margin}}."
+    },
+    "notes": {
+      "title": "Comment les chiffres sont calculés",
+      "currency": "Tous les montants sont en francs rwandais (RWF). Les dates et heures sont à l’heure de Kigali.",
+      "totals": "Chaque ligne Total additionne les lignes au-dessus d’elle.",
+      "collected": "Encaissé : tous les paiements reçus dans la journée, avant remboursements ; les remboursements sont indiqués à part.",
+      "cashDiff": "Comptage de caisse : écart = compté − attendu ; un manque porte un signe moins.",
+      "lowStock": "Sous le seuil : unités non périmées à la pharmacie, égales ou inférieures au seuil de réapprovisionnement de l’article."
     }
   },
   "duration": {
@@ -3883,7 +3891,8 @@
     "printOutsideHint": "Seulement les médicaments que le patient achète dans une pharmacie extérieure, avec le nom et la signature du prescripteur.",
     "outsideTitle": "Ordonnance pour une pharmacie extérieure",
     "outsideMedicines": "À acheter dans une pharmacie extérieure",
-    "outsideNote": "La pharmacie de la clinique ne donne pas ces médicaments. Veuillez les acheter dans n’importe quelle pharmacie."
+    "outsideNote": "La pharmacie de la clinique ne donne pas ces médicaments. Veuillez les acheter dans n’importe quelle pharmacie.",
+    "validUntil": "Valable jusqu’au"
   },
   "visitConfirm": {
     "title": "Commencer une visite pour {{name}} ?",
@@ -4113,7 +4122,13 @@
       "notified": "Prévenu : {{name}}, {{time}}",
       "age": "Âge",
       "visitNo": "N° de visite",
-      "amendedBannerNoDate": "RAPPORT RECTIFIÉ – remplace un rapport antérieur"
+      "amendedBannerNoDate": "RAPPORT RECTIFIÉ – remplace un rapport antérieur",
+      "flagHigh": "Élevé",
+      "flagLow": "Bas",
+      "validatedBanner": "VALIDÉ – le {{date}} par {{name}}",
+      "chipValidated": "Validé",
+      "chipPreliminary": "Provisoire",
+      "chipAmended": "Modifié"
     }
   },
   "access": {
@@ -4446,7 +4461,9 @@
     "preparedBy": "Établi par",
     "thankYou": "Merci d'avoir choisi {{clinic}}.",
     "insurerSharePct": "Part de l'assureur ({{pct}} %)",
-    "insurerShare": "Part de l'assureur"
+    "insurerShare": "Part de l'assureur",
+    "visitNo": "N° de visite",
+    "chipPartial": "PAYÉ EN PARTIE"
   },
   "dept": {
     "title": "Mon service · {{name}}",
@@ -5751,7 +5768,10 @@
     "sentBy": "Envoyé par",
     "receivedBy": "Reçu par",
     "loss": "Perte",
-    "backToSender": "Retour à l’expéditeur"
+    "backToSender": "Retour à l’expéditeur",
+    "chipReceived": "Reçu",
+    "chipCancelled": "Annulé",
+    "chipDifference": "Écart à l’arrivée"
   },
   "stockDelivery": {
     "lead": "Enregistrez la livraison d’un fournisseur dans la pharmacie : le fournisseur, le numéro du bon de livraison ou de la facture, puis une ligne par médicament avec son lot, sa date d’expiration, sa quantité (en boîtes ou en unités) et son coût.",

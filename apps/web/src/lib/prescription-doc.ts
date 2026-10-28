@@ -2,14 +2,14 @@ import i18next from 'i18next'
 import {
   allergyHtml,
   allergyList,
-  cssString,
+  bottomLeftCss,
   docDate,
-  docDateTime,
   docNumber,
   docStamp,
   documentHtml,
   dobWithAge,
   esc,
+  footerLines,
   identityHtml,
   kigaliParts,
   letterheadHtml,
@@ -26,8 +26,8 @@ import {
 } from './doc-style'
 
 /**
- * The prescription a patient takes to any pharmacy (document design standard v1, C4): an A5
- * portrait page with the letterhead, the title block (prescription no. and date), the patient
+ * The prescription a patient takes to any pharmacy (document design standard v2, C4): an A5
+ * portrait page with the letterhead, the title block (prescription no., date and "valid until"), the patient
  * grid and allergy statement, the diagnosis, every medicine as a numbered two-line item (generic
  * name, strength and form with the quantity in figures and words; then the directions in plain
  * words), a closing line (total items, refill), and the prescriber's signature and stamp block.
@@ -138,6 +138,9 @@ export interface RxDocLabels {
   validity?: string
   asWritten?: string
 }
+
+/** A prescription is valid this many days from its date (the `rxDoc.validity` sentence). */
+export const RX_VALID_DAYS = 7
 
 const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other'] as const
 const FREQUENCIES = ['OD', 'BD', 'TDS', 'QID', 'Q8H', 'Q6H', 'NOCTE', 'PRN', 'STAT'] as const
@@ -512,6 +515,7 @@ const RX_EN: Record<string, string> = {
   refill: 'Refill',
   refillNo: 'No',
   refillYes: 'Yes, ×{{count}}',
+  validUntil: 'Valid until',
   directions: '{{verb}} {{dose}} {{route}} {{freq}} {{days}}',
   'verbs.default': 'Take',
   'words.units': 'units',
@@ -531,6 +535,8 @@ function closingHtml(o: {
   clinicName: string
   dl: DocLabels
   prescribedBy: string
+  /** "Valid for 7 days from date of issue", printed under the totals. */
+  validity?: string
   totals: [label: string, value: string][]
 }): string {
   const { prescriber: p, dl } = o
@@ -543,14 +549,16 @@ function closingHtml(o: {
   const pair = (k: string, html: string) =>
     `<span><span class="lbl">${esc(k)}:</span> ${html}</span>`
   return `<section class="rx-close"><div class="rx-sig-main">
-<div class="pairs rx-totals">${o.totals.map(([k, v]) => pair(k, esc(v))).join('')}</div>
+<div class="pairs rx-totals">${o.totals.map(([k, v]) => pair(k, esc(v))).join('')}</div>${
+    o.validity ? `<div class="rx-valid">${esc(o.validity)}</div>` : ''
+  }
 <div>${pair(o.prescribedBy, who)}</div>
 <div class="pairs">${pair(dl.registrationNo, reg ? esc(reg) : '<span class="rx-line reg"></span>')}${
     phone ? pair(dl.phone, esc(phone)) : ''
   }</div>
 <div class="rx-sig-row"><span class="lbl">${esc(dl.signature)}:</span><span class="rx-line"></span></div>
 <div class="rx-sig-row"><span class="lbl">${esc(dl.date)}:</span><span class="rx-line date"></span></div>
-</div><div class="rx-stamp"><span class="lbl">${esc(dl.stamp)}:</span></div></section>${
+</div><div class="rx-stamp"><span class="lbl">${esc(dl.stamp)}:</span><div class="rx-stamp-box"></div></div></section>${
     system ? `<p class="sig-note">${esc(dl.generated(system))}</p>` : ''
   }`
 }
@@ -563,32 +571,43 @@ const stringVars = (vars: Record<string, unknown>) =>
   )
 
 const CSS = `
+/* the medicines: "Rx" mark in the heading, numbered items with the quantity boxed on the right */
+h2.rx-h { display: flex; align-items: baseline; gap: 4pt; }
+.rx-mark { font-weight: 700; font-style: oblique; color: var(--accent-2); font-size: calc(var(--fs-h) + 2pt); line-height: 1; }
 ol.rx { list-style: none; margin: 0; padding: 0; }
-ol.rx > li { padding: 3.5pt 0 4pt; border-top: 0.5pt solid var(--hair); break-inside: avoid; page-break-inside: avoid; }
+ol.rx > li { padding: 4pt 0 4.5pt; border-top: 0.5pt solid var(--hair); break-inside: avoid; page-break-inside: avoid; }
 ol.rx > li.rx-first { border-top: 0; }
 .rx-l1 { display: flex; align-items: baseline; gap: 2mm; line-height: 1.25; }
-.rx-n { flex: none; width: 5mm; font-weight: 600; font-variant-numeric: tabular-nums lining-nums; }
-.rx-name { flex: 1; min-width: 0; font-weight: 600; }
-.rx-qty { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; }
-.rx-l2 { padding-left: 7mm; margin-top: 1pt; }
+.rx-n { flex: none; display: inline-block; width: 4.6mm; height: 4.6mm; line-height: 4.4mm; text-align: center; border-radius: 50%;
+  border: 0.75pt solid var(--accent); background: var(--tint); color: var(--accent-ink); font-size: var(--fs-small); font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums; }
+.rx-name { flex: 1; min-width: 0; font-weight: 700; color: var(--ink); }
+.rx-qty { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; font-size: var(--fs-table);
+  border: 0.5pt solid var(--hair); background: var(--panel); border-radius: 2pt; padding: 0.5pt 5pt; }
+.rx-qty .lbl { color: var(--ink-2); }
+.rx-words { color: var(--ink-2); }
+.rx-l2 { padding-left: 6.6mm; margin-top: 1.5pt; }
 .rx-dx { margin: 0 0 2pt; }
-.rx-out { margin: 0 0 2pt; font-style: italic; }
+.rx-out { margin: 0 0 4pt; font-weight: 600; border: 0.75pt solid var(--warn); border-left-width: 3pt; background: var(--warn-bg);
+  border-radius: 2pt; padding: 3pt 6pt; break-inside: avoid; }
 /* the last medicine, the closing line and the prescriber block never part: a page break always
    carries at least one medicine onto the signed page, and the block never stands alone */
 .rx-end { break-inside: avoid; page-break-inside: avoid; }
-/* closing line (0.75 pt rule) and the compact prescriber block, stamp space 35 x 25 mm right */
-.rx-close { display: flex; gap: 6mm; border-top: 0.75pt solid var(--rule); padding-top: 2.5pt; margin-top: 1pt; line-height: 1.2; }
+/* closing line (0.75 pt navy rule) and the compact prescriber block, stamp space 35 x 25 mm right */
+.rx-close { display: flex; gap: 6mm; border-top: 0.75pt solid var(--accent); padding-top: 3pt; margin-top: 1pt; line-height: 1.2; }
 .rx-sig-main { flex: 1; min-width: 0; }
 .rx-sig-main > div { margin: 0 0 1.5pt; }
-.rx-sig-main > .rx-totals { margin-bottom: 3pt; }
+.rx-sig-main > .rx-totals { margin-bottom: 1pt; }
+.rx-valid { font-size: var(--fs-small); font-weight: 600; color: var(--accent-ink); margin-bottom: 3pt !important; }
 .rx-qual { display: inline-block; }
 .rx-sig-row { display: flex; align-items: flex-end; gap: 2mm; }
 .rx-sig-row .lbl { flex: none; min-width: 16mm; }
-.rx-line { display: inline-block; flex: none; width: 50mm; height: 5mm; border-bottom: 0.5pt solid var(--rule); }
+.rx-line { display: inline-block; flex: none; width: 50mm; height: 5mm; border-bottom: 0.75pt solid var(--rule); }
 .rx-line.date { width: 30mm; height: 4.5mm; }
 .rx-line.reg { width: 30mm; height: 1.1em; vertical-align: bottom; }
-.rx-stamp { flex: none; width: var(--stamp-w); height: var(--stamp-h); }
-.rx-close + .sig-note { margin-top: 1pt; }
+.rx-stamp { flex: none; width: var(--stamp-w); }
+.rx-stamp-box { height: calc(var(--stamp-h) - 4mm); margin-top: 1pt; border: 0.75pt dashed var(--line); border-radius: 3pt; }
+.rx-close + .sig-note { margin-top: 2pt; }
 `
 
 /** The prescription's full HTML (A5 portrait), ready to print. */
@@ -647,7 +666,7 @@ export function buildPrescriptionHtml(
       .join(' ')
     const qty = Number(m.quantity)
     const inWords = quantityInWords(qty, lang)
-    return `<li${i === 0 ? ' class="rx-first"' : ''}><div class="rx-l1"><span class="rx-n">${i + 1}.</span><span class="rx-name">${esc(keepUnits(normaliseText(m.name.trim(), words)))}</span><span class="rx-qty"><span class="lbl">${esc(r('quantity'))}:</span> ${esc(docNumber(qty))}${inWords ? ` (${esc(inWords)})` : ''}</span></div>${
+    return `<li${i === 0 ? ' class="rx-first"' : ''}><div class="rx-l1"><span class="rx-n">${i + 1}</span><span class="rx-name">${esc(keepUnits(normaliseText(m.name.trim(), words)))}</span><span class="rx-qty"><span class="lbl">${esc(r('quantity'))}:</span> <strong>${esc(docNumber(qty))}</strong>${inWords ? ` <span class="rx-words">(${esc(inWords)})</span>` : ''}</span></div>${
       line2 ? `<div class="rx-l2">${esc(keepUnits(line2))}</div>` : ''
     }</li>`
   })
@@ -666,12 +685,13 @@ export function buildPrescriptionHtml(
       meta: [
         [r('number'), rxNo],
         [dl.date, docDate(d.date)],
+        [r('validUntil'), docDate(new Date(d.date.getTime() + RX_VALID_DAYS * 86_400_000))],
       ],
     }),
     identityHtml(left, right),
     allergyHtml(allergies, dl),
     dx ? runInHtml(r('diagnosis'), dx).replace('<p class="runin">', '<p class="runin rx-dx">') : '',
-    `<h2>${esc(r(d.outside ? 'outsideMedicines' : 'medicines'))}</h2>`,
+    `<h2 class="rx-h"><span class="rx-mark" aria-hidden="true">Rx</span>${esc(r(d.outside ? 'outsideMedicines' : 'medicines'))}</h2>`,
     d.outside ? `<p class="rx-out">${esc(r('outsideNote'))}</p>` : '',
     items.length > 1 ? `<ol class="rx">${items.slice(0, -1).join('')}</ol>` : '',
     `<div class="rx-end">`,
@@ -681,6 +701,7 @@ export function buildPrescriptionHtml(
       clinicName: lh.legalName,
       dl,
       prescribedBy: r('prescriber'),
+      validity: r('validity'),
       totals: [
         [r('totalItems'), String(d.medicines.length)],
         [r('refill'), refill],
@@ -689,10 +710,18 @@ export function buildPrescriptionHtml(
     `</div>`,
   ].join('')
 
-  // footer: "{Prescription no.}   Valid for 7 days from date of issue" over "Printed … by …"
-  const at = docDateTime(printedAt)
-  const printed = d.printedBy ? dl.printedBy(at, d.printedBy) : dl.printedAt(at)
-  const footer = `@page { @bottom-left { content: ${cssString(`${rxNo}   ${r('validity')}`)} "\\A" ${cssString(printed)}; } }`
+  // footer: "clinic · prescription no." over "Printed … by …"; the validity is printed in the
+  // body (meta box and closing line), and the A5 line has no room for the confidentiality note
+  const footer = `@page { ${bottomLeftCss(
+    'a5',
+    footerLines({
+      clinicName: lh.legalName,
+      docNo: rxNo,
+      printedBy: d.printedBy ?? null,
+      printedAt,
+      labels: dl,
+    }),
+  )} }`
 
   return documentHtml({
     base: {

@@ -11,7 +11,7 @@ import {
 } from './doc-style'
 
 /**
- * The dispensing labels (document standard v1, C6): one 70 x 40 mm sticker per medicine, all in
+ * The dispensing labels (document standard v2, C6): one 70 x 40 mm sticker per medicine, all in
  * pure black for thermal label printers. Fixed line budget inside 2 mm of padding:
  *   1. clinic name and Tel. (7.5 pt semibold)
  *   2. patient name (10 pt bold, the full width, at most 2 lines)
@@ -389,18 +389,21 @@ const CSS = `
 .lb-row { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; }
 .lb-row > :first-child { min-width: 0; }
 .lb-row > :last-child { flex: none; white-space: nowrap; }
-.lb-clinic { font-weight: 600; }
+.lb-clinic { font-weight: 700; padding-bottom: 0.4mm; border-bottom: 0.75pt solid #000000; }
+.lb-clinic > :last-child { font-weight: 600; }
 .lb-clinic > :first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .lb-big { font-size: 10pt; font-weight: 700; line-height: 1.1; }
-.lb-patient { padding-top: 0.3mm; border-top: 0.5pt solid #000000; }
+.lb-patient { padding-top: 0.2mm; }
+.lb-patient .lb-big { font-size: 10.5pt; letter-spacing: 0.01em; }
 .lb-patient .lb-big, .lb-med .lb-big { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.lb-aside { font-size: 7.5pt; font-weight: 400; }
-.lb-rw { font-size: 9.5pt; font-weight: 600; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.lb-aside { font-size: 7.5pt; font-weight: 700; border: 0.75pt solid #000000; border-radius: 1mm; padding: 0 1mm; }
+.lb-rw { font-size: 9.5pt; font-weight: 700; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .lb-2nd { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.lb-keep > .lb-keep-words { font-weight: 700; }
 .lb-keep { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .label.notes-1 .lb-keep { -webkit-line-clamp: 2; }
 .label.notes-0 .lb-keep { -webkit-line-clamp: 1; }
-.lb-foot { flex: none; padding-top: 0.4mm; }
+.lb-foot { flex: none; padding-top: 0.4mm; border-top: 0.5pt dashed #000000; }
 .lb-foot span { display: inline-block; white-space: nowrap; margin-right: 1.8mm; }
 .lb-foot span:last-child { margin-right: 0; }
 .label.drop-2nd .lb-2nd, .label.drop-alt .lb-alt { display: none; }
@@ -501,7 +504,7 @@ export function buildDispenseLabelsHtml(
 <div class="lb-row lb-med"><span class="lb-big">${esc(medicineName(x, w.second))}</span><span class="lb-aside">${esc(say(w.ui, 'qty', 'Qty'))}: ${esc(num(x.quantity))}</span></div>
 ${rw ? `<p class="lb-rw">${esc(rw)}</p>` : ''}
 ${second && second !== rw ? `<p class="lb-2nd">${esc(second)}</p>` : ''}
-<p class="lb-keep">${alt(keep, keep2)}.${notes.length ? ` <span class="lb-notes">${notes.join(' ')}</span>` : ''}</p>
+<p class="lb-keep"><span class="lb-keep-words">${alt(keep, keep2)}.</span>${notes.length ? ` <span class="lb-notes">${notes.join(' ')}</span>` : ''}</p>
 </div>
 <div class="lb-foot">${foot}</div>
 </div>`

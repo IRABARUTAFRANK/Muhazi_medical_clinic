@@ -56,6 +56,28 @@ const whenColumn = (
 const sentences = (...parts: (string | null | false | undefined)[]) =>
   parts.filter(Boolean).join(' ')
 
+/** The English wording of the notes, until the translations are merged. */
+const NOTES_EN: Record<string, string> = {
+  title: 'How the figures are counted',
+  currency: 'All amounts are in Rwandan francs (RWF). Dates and times are Kigali time.',
+  totals: 'Each Total row adds up the rows above it.',
+  collected:
+    'Collected: every payment taken on the day, before refunds; refunds are shown on their own.',
+  cashDiff: 'Cash count: difference = counted − expected; a shortfall carries a minus sign.',
+  lowStock:
+    'Below reorder level: unexpired units in the pharmacy at or below the item’s reorder level.',
+}
+
+/** "How the figures are counted": the shared lines, then the report's own. */
+function notesOf(t: TFn, ...own: (keyof typeof NOTES_EN | false | null | undefined)[]) {
+  const say = (key: string) => {
+    const v = t(`report.notes.${key}`, { defaultValue: NOTES_EN[key] })
+    return v && v !== `report.notes.${key}` ? v : (NOTES_EN[key] ?? key)
+  }
+  const keys = ['currency', 'totals', ...own.filter((k): k is string => !!k)]
+  return { title: say('title'), lines: keys.map(say) }
+}
+
 /** What every report shares: the document labels and the report wording. */
 function common(t: TFn, clinic: ClinicProfile, user: StaffUser) {
   const words: ReportWords = {
@@ -279,6 +301,7 @@ export function dashboardReport(
     period: periodOf(d.from, d.to, t),
     code: 'ACT',
     periodKey: periodKeyOf(d.from, d.to),
+    notes: notesOf(t),
     fileName: stem('activity-report', d.from, d.to),
     figures,
     summaryText: sentences(
@@ -417,6 +440,7 @@ export function cashierReport(
     period: docDate(day),
     code: 'DAY',
     periodKey: ymd(day),
+    notes: notesOf(t, 'collected', !!cashCount && 'cashDiff'),
     fileName: stem('day-close', day, day),
     figures,
     summaryText: sentences(
@@ -461,6 +485,7 @@ export function labReport(
     period: docDate(day),
     code: 'LAB',
     periodKey: ymd(day),
+    notes: notesOf(t),
     fileName: stem('laboratory', day, day),
     figures,
     summaryText: sentences(
@@ -579,6 +604,7 @@ export function stockReport(
     period: periodOf(from, to, t),
     code: 'STK',
     periodKey: periodKeyOf(from, to),
+    notes: notesOf(t, 'lowStock'),
     fileName: stem('stock', from, to),
     figures,
     summaryText: sentences(
