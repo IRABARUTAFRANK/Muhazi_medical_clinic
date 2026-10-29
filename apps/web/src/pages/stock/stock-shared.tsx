@@ -13,12 +13,62 @@ import {
   daysUntil,
   draftLine,
   expiryState,
+  tx,
   type DraftLine,
   type ItemStatus,
   type Msg,
+  type QtyMode,
 } from './stock-util'
 
 /** Small pieces the stock screens share: the message under a form, expiry marks, note lines. */
+
+/**
+ * Pieces or packs: the small toggle beside a quantity field (0102). The quantity typed is read
+ * in the chosen unit; packs × pieces per pack are the pieces the database takes.
+ */
+export function QtyModeToggle({
+  mode,
+  onChange,
+  disabled,
+  className,
+}: {
+  mode: QtyMode
+  onChange: (mode: QtyMode) => void
+  disabled?: boolean
+  className?: string
+}) {
+  const { t } = useTranslation()
+  const modes: QtyMode[] = ['pieces', 'packs']
+  return (
+    <span
+      role="radiogroup"
+      aria-label={tx(t, 'stockShared.packs.countIn', 'Count in')}
+      className={cn(
+        'border-border bg-surface inline-flex h-8 flex-none items-center gap-0.5 rounded-md border p-0.5',
+        className,
+      )}
+    >
+      {modes.map((m) => (
+        <button
+          key={m}
+          type="button"
+          role="radio"
+          aria-checked={mode === m}
+          disabled={disabled}
+          onClick={() => onChange(m)}
+          className={cn(
+            'h-7 rounded px-2 text-[12px] font-medium transition-colors duration-120 disabled:opacity-60',
+            mode === m
+              ? 'bg-card text-primary border-border border'
+              : 'text-ink-2 hover:bg-hover hover:text-ink border border-transparent',
+          )}
+        >
+          {tx(t, `stockShared.packs.${m}`, m === 'pieces' ? 'pieces' : 'packs')}
+        </button>
+      ))}
+    </span>
+  )
+}
 
 /** A flash under a form (success or error), closed by hand. */
 export function MsgFlash({ msg, onClose }: { msg: Msg | null; onClose: () => void }) {

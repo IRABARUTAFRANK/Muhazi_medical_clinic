@@ -10,6 +10,7 @@ import {
 } from './privacy'
 import { isRoomStore, sampleIsManager, sampleStock } from './stock'
 import { supabase } from '@/lib/supabase'
+import { useSession } from '@/store/session'
 import type { Sex, Station } from '@/lib/api/visits'
 
 /**
@@ -728,6 +729,19 @@ export function usePatientActions(id: string) {
 }
 
 // ---------------------------------------------------------------- clinical record of a visit
+/** A previous version of a diagnosis or a note (0104): what it said, who wrote it, who replaced it and why. */
+export interface RecordVersion {
+  text: string | null
+  icd10?: string | null
+  type?: 'primary' | 'secondary' | null
+  provisional?: boolean | null
+  /** When that version was written, and by whom. */
+  since: string | null
+  wroteBy: string | null
+  replacedAt: string
+  replacedBy: string | null
+  reason: string | null
+}
 export interface Diagnosis {
   id: string
   text: string
@@ -736,12 +750,43 @@ export interface Diagnosis {
   provisional: boolean
   at: string
   by: string | null
+  /** Who wrote it (0104): the author or the manager may change or remove it. */
+  byId?: string | null
+  /** Last changed (0104), with the reason; the previous versions in `history`. */
+  editedAt?: string | null
+  editedBy?: string | null
+  editReason?: string | null
+  /** Removed with a reason (0104): shown struck through, never counted. */
+  removedAt?: string | null
+  removedBy?: string | null
+  removeReason?: string | null
+  history?: RecordVersion[]
 }
 export interface ClinicalNote {
   id: string
   text: string
   at: string
   by: string | null
+  byId?: string | null
+  editedAt?: string | null
+  editedBy?: string | null
+  editReason?: string | null
+  history?: RecordVersion[]
+}
+/** The lock of a finished visit and the reader's edit window (0104 visit_edit_status). */
+export interface VisitEditLock {
+  closed: boolean
+  closedAt: string | null
+  closedBy: string | null
+  /** The reader holds an open edit window: until when. */
+  active: boolean
+  expiresAt: string | null
+  grantId: string | null
+  reason: string | null
+  /** The reader may ask for a code (a clinician who treated the patient, or the manager). */
+  canRequest: boolean
+  /** A code was e-mailed and not typed yet. */
+  pending: { requestedAt: string; codeUntil: string; triesLeft: number; reason?: string } | null
 }
 export interface Prescription {
   id: string
@@ -769,6 +814,8 @@ export interface Prescription {
   supplySetAt?: string | null
   supplySetBy?: string | null
   supplyReason?: string | null
+  /** The remainder of a partly given line sent outside: the original line (0104). */
+  splitFrom?: string | null
   givenAt?: string | null
   givenBy?: string | null
   /** The pharmacy could not hand it over, and why (migration 0056). */
@@ -898,6 +945,8 @@ export interface VisitClinical {
   view?: VisitView | null
   /** 0088: present when private: what the reader may ask for. */
   access?: PatientAccess
+  /** 0104: the lock of a finished visit and the reader's edit window (absent before 0104). */
+  editLock?: VisitEditLock | null
 }
 const EMPTY_CLINICAL: VisitClinical = {
   diagnoses: [],
@@ -947,22 +996,87 @@ const sampleClinicalPatient = (): NonNullable<VisitClinical['patient']> => ({
   weightAt: new Date().toISOString(),
 })
 const sampleVisitRefs = new Map<string, string>()
+/** The sample visit finished yesterday (0104): the lock, the code and the edit window. */
+export const SAMPLE_CLOSED_VISIT = 'e-done'
 const sampleVisit = (encounterId: string): DocVisit => {
   let ref = sampleVisitRefs.get(encounterId)
   if (!ref) {
     ref = `V-2026-${String(124 + sampleVisitRefs.size).padStart(6, '0')}`
     sampleVisitRefs.set(encounterId, ref)
   }
+  const closed = encounterId === SAMPLE_CLOSED_VISIT
   return {
     id: encounterId,
     reference: ref,
-    at: new Date(Date.now() - 45 * 60_000).toISOString(),
-    status: 'open',
-    closedAt: null,
+    at: new Date(Date.now() - (closed ? 26 * 60 : 45) * 60_000).toISOString(),
+    status: closed ? 'closed' : 'open',
+    closedAt: closed ? new Date(Date.now() - 25 * 60 * 60_000).toISOString() : null,
     service: 'consultation',
     department: null,
     referredBy: null,
   }
+}
+/**
+ * Sample edit windows (0104): the code is always 123456; a window lasts 30 minutes. The lock as
+ * visit_edit_status answers it, for the sample closed visit only.
+ */
+const sampleEditWindows = new Map<string, { expiresAt: string; reason: string }>()
+const sampleCodesAsked = new Map<string, { codeUntil: string; triesLeft: number; reason: string }>()
+export const SAMPLE_EDIT_CODE = '123456'
+export const sampleEditLock = (encounterId: string): VisitEditLock | null => {
+  const v = sampleVisit(encounterId)
+  if (v.status !== 'closed') return null
+  const w = sampleEditWindows.get(encounterId)
+  const active = !!w && new Date(w.expiresAt).getTime() > Date.now()
+  const asked = sampleCodesAsked.get(encounterId)
+  return {
+    closed: true,
+    closedAt: v.closedAt,
+    closedBy: 'Dr. Mukamana Béatrice',
+    active,
+    expiresAt: active ? w.expiresAt : null,
+    grantId: active ? `grant-${encounterId}` : null,
+    reason: active ? w.reason : null,
+    canRequest: true,
+    pending:
+      asked && new Date(asked.codeUntil).getTime() > Date.now() && asked.triesLeft > 0
+        ? { requestedAt: new Date().toISOString(), ...asked }
+        : null,
+  }
+}
+export const sampleRequestEditCode = (encounterId: string, reason: string) => {
+  sampleCodesAsked.set(encounterId, {
+    codeUntil: new Date(Date.now() + 10 * 60_000).toISOString(),
+    triesLeft: 5,
+    reason: reason.trim(),
+  })
+  sampleEditWindows.delete(encounterId)
+  return { grantId: `grant-${encounterId}`, masked: 'b•••@example.com' }
+}
+export const sampleVerifyEditCode = (encounterId: string, code: string) => {
+  const asked = sampleCodesAsked.get(encounterId)
+  if (!asked || new Date(asked.codeUntil).getTime() < Date.now())
+    throw apiError({
+      code: 'P0002',
+      message: 'no code was asked for this visit, or it has expired: ask for a new one',
+    })
+  if (asked.triesLeft <= 0)
+    throw apiError({ code: '42501', message: 'too many wrong codes: ask for a new one' })
+  // as the database answers a wrong code: counted, not refused
+  if (code.replace(/\s/g, '') !== SAMPLE_EDIT_CODE) {
+    asked.triesLeft -= 1
+    return { ok: false as const, triesLeft: asked.triesLeft }
+  }
+  const expiresAt = new Date(Date.now() + 30 * 60_000).toISOString()
+  sampleEditWindows.set(encounterId, { expiresAt, reason: asked.reason })
+  sampleCodesAsked.delete(encounterId)
+  return { ok: true as const, expiresAt }
+}
+/** Sample mode: the clinical record takes changes while open or inside an edit window. */
+const sampleMayWrite = (encounterId: string) => {
+  const lock = sampleEditLock(encounterId)
+  if (lock && !lock.active)
+    throw apiError({ code: 'P0002', message: 'visit not found or already closed' })
 }
 /** Sample prescription numbers: the last one per visit and the year's counter. */
 const sampleRx = new Map<string, PrescriptionNumber>()
@@ -1019,6 +1133,84 @@ sampleClinical.set('e-1', {
   ],
 })
 
+// The sample visit finished yesterday (0104): a diagnosis edited once, a note, one medicine
+// bought outside, a laboratory test with its result. Opened read-only until a code is typed.
+sampleClinical.set(SAMPLE_CLOSED_VISIT, {
+  ...EMPTY_CLINICAL,
+  diagnoses: [
+    {
+      id: 'd-done1',
+      text: 'Acute tonsillitis',
+      icd10: 'J03.9',
+      type: 'primary',
+      provisional: false,
+      at: sampleAgo(26 * 60),
+      by: 'Dr. Mukamana Béatrice',
+      byId: 'u-doc',
+      editedAt: sampleAgo(25 * 60 + 40),
+      editedBy: 'Dr. Mukamana Béatrice',
+      editReason: 'throat swab came back: bacterial, not viral',
+      history: [
+        {
+          text: 'Acute pharyngitis',
+          icd10: 'J02.9',
+          type: 'primary',
+          provisional: true,
+          since: sampleAgo(26 * 60),
+          wroteBy: 'Dr. Mukamana Béatrice',
+          replacedAt: sampleAgo(25 * 60 + 40),
+          replacedBy: 'Dr. Mukamana Béatrice',
+          reason: 'throat swab came back: bacterial, not viral',
+        },
+      ],
+    },
+  ],
+  notes: [
+    {
+      id: 'n-done1',
+      text: 'Sore throat for 3 days, fever 38.4 °C, tonsils swollen with exudate. No cough.',
+      at: sampleAgo(26 * 60),
+      by: 'Dr. Mukamana Béatrice',
+      byId: 'u-doc',
+    },
+  ],
+  orders: [
+    {
+      id: 'o-done1',
+      test: 'Throat swab',
+      category: 'lab',
+      station: 'laboratory',
+      status: 'verified',
+      reason: 'exudate on the tonsils',
+      at: sampleAgo(26 * 60 - 10),
+      result: {
+        findings: 'Group A streptococcus',
+        impression: 'Bacterial tonsillitis',
+        verified: true,
+        at: sampleAgo(25 * 60 + 50),
+        by: 'Niyonzima Aimable',
+      },
+    },
+  ],
+  patient: sampleClinicalPatient(),
+  visit: sampleVisit(SAMPLE_CLOSED_VISIT),
+  prescriptions: [
+    sampleRxLine({
+      id: 'rx-done1',
+      itemId: 'it-1',
+      item: 'Amoxicillin 500 mg',
+      quantity: 30,
+      frequency: 'TDS',
+      days: 10,
+      at: sampleAgo(25 * 60 + 30),
+      supply: 'outside',
+      pending: false,
+      supplySetAt: sampleAgo(25 * 60 + 30),
+      supplySetBy: 'Dr. Mukamana Béatrice',
+    }),
+  ],
+})
+
 export function useVisitClinical(encounterId: string) {
   return useQuery({
     queryKey: ['visit', encounterId, 'clinical'],
@@ -1027,13 +1219,14 @@ export function useVisitClinical(encounterId: string) {
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<VisitClinical> => {
       if (!supabase)
-        return (
-          sampleClinical.get(encounterId) ?? {
+        return {
+          ...(sampleClinical.get(encounterId) ?? {
             ...EMPTY_CLINICAL,
             patient: sampleClinicalPatient(),
             visit: sampleVisit(encounterId),
-          }
-        )
+          }),
+          editLock: sampleEditLock(encounterId),
+        }
       const { data, error } = await supabase.rpc('visit_clinical', { p_encounter_id: encounterId })
       if (error) throw apiError(error)
       const d = (data ?? EMPTY_CLINICAL) as VisitClinical
@@ -1193,6 +1386,7 @@ export function useClinicalActions(encounterId: string) {
   }
   const now = () => new Date().toISOString()
 
+  const sampleUser = () => useSession.getState().user
   const addDiagnosis = useMutation({
     mutationFn: async (i: {
       text: string
@@ -1201,6 +1395,7 @@ export function useClinicalActions(encounterId: string) {
       provisional: boolean
     }) => {
       if (!supabase) {
+        sampleMayWrite(encounterId)
         local().diagnoses.push({
           id: `d-${Date.now()}`,
           text: i.text,
@@ -1208,7 +1403,8 @@ export function useClinicalActions(encounterId: string) {
           type: i.type,
           provisional: i.provisional,
           at: now(),
-          by: null,
+          by: sampleUser()?.name ?? null,
+          byId: sampleUser()?.id ?? null,
         })
         return
       }
@@ -1225,10 +1421,125 @@ export function useClinicalActions(encounterId: string) {
   const addNote = useMutation({
     mutationFn: async (text: string) => {
       if (!supabase) {
-        local().notes.push({ id: `n-${Date.now()}`, text, at: now(), by: null })
+        sampleMayWrite(encounterId)
+        local().notes.push({
+          id: `n-${Date.now()}`,
+          text,
+          at: now(),
+          by: sampleUser()?.name ?? null,
+          byId: sampleUser()?.id ?? null,
+        })
         return
       }
       await call('add_clinical_note', { p_encounter_id: encounterId, p_text: text })
+    },
+    onSuccess: refresh,
+  })
+  /** A previous version, as the sample keeps it when a line is changed. */
+  const sampleVersion = (
+    from: { text: string; icd10?: string | null; type?: Diagnosis['type']; provisional?: boolean },
+    since: string,
+    wroteBy: string | null,
+    reason: string,
+  ): RecordVersion => ({
+    text: from.text,
+    icd10: from.icd10 ?? null,
+    type: from.type ?? null,
+    provisional: from.provisional ?? null,
+    since,
+    wroteBy,
+    replacedAt: now(),
+    replacedBy: sampleUser()?.name ?? null,
+    reason,
+  })
+  /**
+   * The author of a diagnosis (or the manager) changes it with a reason (0104 update_condition):
+   * the previous version stays in the history. While the visit is open or in an edit window.
+   */
+  const updateDiagnosis = useMutation({
+    mutationFn: async (i: {
+      id: string
+      text: string
+      icd10: string
+      type: 'primary' | 'secondary'
+      provisional: boolean
+      reason: string
+    }) => {
+      if (!supabase) {
+        sampleMayWrite(encounterId)
+        const d = local().diagnoses.find((x) => x.id === i.id)
+        if (!d) throw apiError({ code: 'P0002', message: 'diagnosis not found' })
+        if (i.reason.trim().length < 3)
+          throw apiError({ code: '22023', message: 'say why the diagnosis is changed' })
+        d.history = [
+          sampleVersion(d, d.editedAt ?? d.at, d.editedBy ?? d.by, i.reason.trim()),
+          ...(d.history ?? []),
+        ]
+        Object.assign(d, {
+          text: i.text.trim(),
+          icd10: i.icd10.trim().toUpperCase() || null,
+          type: i.type,
+          provisional: i.provisional,
+          editedAt: now(),
+          editedBy: sampleUser()?.name ?? null,
+          editReason: i.reason.trim(),
+        })
+        return
+      }
+      await call('update_condition', {
+        p_id: i.id,
+        p_text: i.text.trim(),
+        // an empty code clears it (null would keep the old one)
+        p_icd10: i.icd10.trim().toUpperCase(),
+        p_type: i.type,
+        p_provisional: i.provisional,
+        p_reason: i.reason.trim(),
+      })
+    },
+    onSuccess: refresh,
+  })
+  /** The author (or the manager) removes a diagnosis with a reason (0104 remove_condition). */
+  const removeDiagnosis = useMutation({
+    mutationFn: async (i: { id: string; reason: string }) => {
+      if (!supabase) {
+        sampleMayWrite(encounterId)
+        const d = local().diagnoses.find((x) => x.id === i.id)
+        if (!d) throw apiError({ code: 'P0002', message: 'diagnosis not found' })
+        if (i.reason.trim().length < 3)
+          throw apiError({ code: '22023', message: 'say why the diagnosis is removed' })
+        Object.assign(d, {
+          removedAt: now(),
+          removedBy: sampleUser()?.name ?? null,
+          removeReason: i.reason.trim(),
+        })
+        return
+      }
+      await call('remove_condition', { p_id: i.id, p_reason: i.reason.trim() })
+    },
+    onSuccess: refresh,
+  })
+  /** The author of a note (or the manager) changes its text with a reason (0104 update_note). */
+  const updateNote = useMutation({
+    mutationFn: async (i: { id: string; text: string; reason: string }) => {
+      if (!supabase) {
+        sampleMayWrite(encounterId)
+        const n = local().notes.find((x) => x.id === i.id)
+        if (!n) throw apiError({ code: 'P0002', message: 'note not found' })
+        if (i.reason.trim().length < 3)
+          throw apiError({ code: '22023', message: 'say why the note is changed' })
+        n.history = [
+          sampleVersion({ text: n.text }, n.editedAt ?? n.at, n.editedBy ?? n.by, i.reason.trim()),
+          ...(n.history ?? []),
+        ]
+        Object.assign(n, {
+          text: i.text.trim(),
+          editedAt: now(),
+          editedBy: sampleUser()?.name ?? null,
+          editReason: i.reason.trim(),
+        })
+        return
+      }
+      await call('update_note', { p_id: i.id, p_text: i.text.trim(), p_reason: i.reason.trim() })
     },
     onSuccess: refresh,
   })
@@ -1636,6 +1947,9 @@ export function useClinicalActions(encounterId: string) {
   return {
     addDiagnosis,
     addNote,
+    updateDiagnosis,
+    removeDiagnosis,
+    updateNote,
     prescribe,
     prescriptionNumber,
     setSupply,

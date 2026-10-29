@@ -32,7 +32,7 @@ import { matches, usePaged } from '@/lib/paging'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { cn } from '@/lib/utils'
 import { ExpiryMark, MsgFlash } from './stock-shared'
-import { errText, type Msg } from './stock-util'
+import { errText, packsText, type Msg } from './stock-util'
 
 /**
  * One room store's stock, medicine by medicine (batches on demand): what is usable, expired and
@@ -146,6 +146,11 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                       )}
                     >
                       {formatNumber(x.usable)}
+                      {packsText(t, x.usable, x.packSize) && (
+                        <span className="text-ink-3 block text-[12px] font-normal">
+                          {packsText(t, x.usable, x.packSize)}
+                        </span>
+                      )}
                       {x.low && (
                         <Badge
                           tone="red"

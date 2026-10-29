@@ -29,6 +29,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
+import { vitalName } from '@/lib/api/vitals'
 
 /**
  * Patient record privacy on the screens (migration 0088): the "Past records are private"
@@ -456,8 +457,7 @@ export function SafetySummaryCard({
               <span className="flex flex-wrap gap-1.5">
                 {summary.lastVitals.map((v) => (
                   <Chip key={v.code} title={[when(v.at), v.by].filter(Boolean).join(' · ')}>
-                    {t(`triage.vitals.${v.code}`, { defaultValue: v.code })}:{' '}
-                    <b className="ml-1 tabular-nums">{v.value ?? '—'}</b>
+                    {vitalName(v, t)}: <b className="ml-1 tabular-nums">{v.value ?? '—'}</b>
                     {v.unit ? `${NBSP}${v.unit}` : ''}
                   </Chip>
                 ))}

@@ -1,5 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { compareMedicineParts, medicineNameParts, tidyAmounts } from './medicine-name'
+import {
+  compareMedicineParts,
+  medicineNameParts,
+  packSizeIn,
+  splitPacks,
+  tidyAmounts,
+} from './medicine-name'
+
+describe('packs and pieces', () => {
+  it('reads the pack size the list writes', () => {
+    expect(packSizeIn('GAVISCON 260mg tablet B/20')).toBe(20)
+    expect(packSizeIn('NOSPA 40mg tablet B/100, B/20')).toBe(100)
+    expect(packSizeIn('MULTIVITAMIN Syrup 100ml')).toBeNull()
+    expect(packSizeIn(null)).toBeNull()
+  })
+
+  it('splits pieces into whole packs and the rest', () => {
+    expect(splitPacks(500, 20)).toEqual({ packs: 25, rest: 0, size: 20 })
+    expect(splitPacks(503, 20)).toEqual({ packs: 25, rest: 3, size: 20 })
+    // a bottle (one piece per pack) and fewer pieces than a pack: no packs to say
+    expect(splitPacks(12, 1)).toBeNull()
+    expect(splitPacks(12, null)).toBeNull()
+    expect(splitPacks(12, 20)).toBeNull()
+  })
+})
 
 const parts = (generic: string, presentation: string | null, unit: string | null) =>
   medicineNameParts({ generic, presentation, unit })

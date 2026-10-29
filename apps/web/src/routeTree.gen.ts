@@ -21,6 +21,7 @@ import { Route as AppBillsRouteImport } from './routes/app/bills'
 import { Route as AppCalendarRouteImport } from './routes/app/calendar'
 import { Route as AppChangePinRouteImport } from './routes/app/change-pin'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppDocumentsRouteImport } from './routes/app/documents'
 import { Route as AppHistoryRouteImport } from './routes/app/history'
 import { Route as AppLabRouteImport } from './routes/app/lab'
 import { Route as AppMyBookingsRouteImport } from './routes/app/my-bookings'
@@ -99,6 +100,11 @@ const AppChangePinRoute = AppChangePinRouteImport.update({
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocumentsRoute = AppDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => AppRoute,
 } as any)
 const AppHistoryRoute = AppHistoryRouteImport.update({
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/app/calendar': typeof AppCalendarRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/documents': typeof AppDocumentsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/lab': typeof AppLabRoute
   '/app/my-bookings': typeof AppMyBookingsRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/app/calendar': typeof AppCalendarRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/documents': typeof AppDocumentsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/lab': typeof AppLabRoute
   '/app/my-bookings': typeof AppMyBookingsRoute
@@ -275,6 +283,7 @@ export interface FileRoutesById {
   '/app/calendar': typeof AppCalendarRoute
   '/app/change-pin': typeof AppChangePinRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/documents': typeof AppDocumentsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/lab': typeof AppLabRoute
   '/app/my-bookings': typeof AppMyBookingsRoute
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/documents'
     | '/app/history'
     | '/app/lab'
     | '/app/my-bookings'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/documents'
     | '/app/history'
     | '/app/lab'
     | '/app/my-bookings'
@@ -375,6 +386,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/change-pin'
     | '/app/dashboard'
+    | '/app/documents'
     | '/app/history'
     | '/app/lab'
     | '/app/my-bookings'
@@ -488,6 +500,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/app/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/documents': {
+      id: '/app/documents'
+      path: '/documents'
+      fullPath: '/app/documents'
+      preLoaderRoute: typeof AppDocumentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/history': {
@@ -634,6 +653,7 @@ interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppChangePinRoute: typeof AppChangePinRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDocumentsRoute: typeof AppDocumentsRoute
   AppHistoryRoute: typeof AppHistoryRoute
   AppLabRoute: typeof AppLabRoute
   AppMyBookingsRoute: typeof AppMyBookingsRoute
@@ -664,6 +684,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppChangePinRoute: AppChangePinRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppDocumentsRoute: AppDocumentsRoute,
   AppHistoryRoute: AppHistoryRoute,
   AppLabRoute: AppLabRoute,
   AppMyBookingsRoute: AppMyBookingsRoute,

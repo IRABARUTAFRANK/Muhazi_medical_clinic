@@ -32,7 +32,15 @@ import { MedicinesSection } from '../prices/medicines-section'
 import { ItemPanel } from './item-panel'
 import { StatusTags } from './stock-shared'
 import { ReorderTab } from './reorder-tab'
-import { expiryState, itemName, itemStatuses, splitStock, type ItemStatus } from './stock-util'
+import {
+  expiryState,
+  itemName,
+  itemStatuses,
+  packPriceText,
+  packsText,
+  splitStock,
+  type ItemStatus,
+} from './stock-util'
 
 type Part = 'list' | 'order' | 'prices'
 type Filter = 'all' | ItemStatus
@@ -409,9 +417,19 @@ function StockList({
                         {[
                           i.code,
                           i.unit ? t('prices.meds.perUnit', { unit: i.unit }) : null,
+                          // the pack: pieces in one and, when set, the price of a whole one
+                          (i.packSize ?? 1) > 1
+                            ? t('stockPage.add.perBoxKnown', { count: i.packSize })
+                            : null,
+                          packPriceText(t, i, formatRwf),
                           i.kind === 'supply' ? t('stockPage.kind.supply') : null,
                           i.reorderLevel > 0
-                            ? t('stock.reorderAt', { count: i.reorderLevel })
+                            ? [
+                                t('stock.reorderAt', { count: i.reorderLevel }),
+                                packsText(t, i.reorderLevel, i.packSize),
+                              ]
+                                .filter(Boolean)
+                                .join(' = ')
                             : null,
                         ]
                           .filter(Boolean)
@@ -430,6 +448,11 @@ function StockList({
                       )}
                     >
                       {formatNumber(split.pharmacy)}
+                      {packsText(t, split.pharmacy, i.packSize) && (
+                        <span className="text-ink-3 block text-[12px] font-normal">
+                          {packsText(t, split.pharmacy, i.packSize)}
+                        </span>
+                      )}
                     </td>
                     <td
                       className={cn(
@@ -438,9 +461,19 @@ function StockList({
                       )}
                     >
                       {split.rooms ? formatNumber(split.rooms) : '—'}
+                      {split.rooms > 0 && packsText(t, split.rooms, i.packSize) && (
+                        <span className="text-ink-3 block text-[12px]">
+                          {packsText(t, split.rooms, i.packSize)}
+                        </span>
+                      )}
                     </td>
                     <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
                       {formatNumber(split.total)}
+                      {packsText(t, split.total, i.packSize) && (
+                        <span className="text-ink-3 block text-[12px]">
+                          {packsText(t, split.total, i.packSize)}
+                        </span>
+                      )}
                       {i.expiredUnits > 0 && (
                         <span className="text-red block text-[12px] font-semibold">
                           {t('stock.expired', { count: i.expiredUnits })}

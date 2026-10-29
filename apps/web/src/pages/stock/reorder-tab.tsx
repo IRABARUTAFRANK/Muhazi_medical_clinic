@@ -9,7 +9,7 @@ import { SearchSelect } from '@/components/ui/search-select'
 import { useReorderSuggestions, useStockActions, type StockItem } from '@/lib/api/stock'
 import { useConfirm } from '@/lib/confirm'
 import { MsgFlash } from './stock-shared'
-import { errText, itemName, type Msg } from './stock-util'
+import { errText, itemName, packsText, type Msg } from './stock-util'
 
 /**
  * The low-stock level ("show as low at") and the level to order up to, for one medicine. Used
@@ -163,7 +163,12 @@ export function ReorderTab({
                     </span>
                     <span className="text-right tabular-nums">
                       <span className="text-red block font-semibold">
-                        {t('stockReorder.onHand', { count: x.onHand })}
+                        {[
+                          t('stockReorder.onHand', { count: x.onHand }),
+                          packsText(t, x.onHand, x.packSize),
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
                       <span className="block text-[14px] font-semibold">
                         {x.suggestedBoxes != null && x.packSize

@@ -1,10 +1,12 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import {
   Banknote,
   Clock,
   HandCoins,
   PieChart,
+  Printer,
   Receipt,
+  ReceiptText,
   RefreshCw,
   Smartphone,
   UserRound,
@@ -26,7 +28,10 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { useReceiptsInPeriod } from '@/lib/api/analytics-receipts'
 import { useCashierSummary, useUnpaidDebts } from '@/lib/api/finance'
+import { useLetterhead } from '@/lib/report-parts'
+import { openReceiptsBatch } from '@/lib/reports/receipts-print'
 import { useHomeSummary } from '@/lib/api/home'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
@@ -88,6 +93,23 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
   const methodName = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
   // the manager's switch "Take payments": switched off, the cashier still sees the money
   const canTake = useCan(user)('payment.take')
+  // the receipts given in the period (0102): how many, for how much, and all of them printed
+  const receipts = useReceiptsInPeriod({ from: period.from, to: period.to })
+  const letterhead = useLetterhead()
+  const [printError, setPrintError] = useState<string | null>(null)
+  const printReceipts = () => {
+    setPrintError(null)
+    const rows = receipts.data?.receipts ?? []
+    const ok = openReceiptsBatch({
+      rows,
+      from: period.from,
+      to: period.to,
+      clinic: letterhead,
+      printedBy: user.name,
+    })
+    if (!ok) setPrintError(rows.length ? t('report.popupBlocked') : t('finance.nothingYet'))
+  }
+  const receiptsWord = t('analytics.views.receipts', { defaultValue: 'Receipts' })
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="home">
@@ -123,6 +145,19 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             <Clock size={16} aria-hidden="true" />
             {t('finance.dayClose')}
           </StaffLink>
+          <Button
+            variant="tint-grey"
+            size="md"
+            onClick={printReceipts}
+            disabled={!receipts.data || receipts.data.receipts.length === 0}
+            title={t('receipts.printAllHint', {
+              defaultValue: 'Every receipt of the period in one document, one per page',
+            })}
+          >
+            <Printer size={16} aria-hidden="true" />
+            {t('receipts.printAll', { defaultValue: 'Print all receipts' })}
+          </Button>
+          {printError && <span className="text-red text-[13px] font-semibold">{printError}</span>}
           <StaffLink
             to="/app/bills"
             className={buttonVariants({ variant: canTake ? 'primary' : 'default', size: 'md' })}
@@ -161,7 +196,19 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               unit="RWF"
               // "all time" has no period before it to compare with
               delta={range === 'all' ? undefined : delta(collected, s.previousTotal, true, t)}
-              to={link('revenue') ?? '/app/payments'}
+              to={link('collections') ?? link('revenue') ?? '/app/payments'}
+            />
+            <Kpi
+              i={1}
+              icon={ReceiptText}
+              tint="teal"
+              label={t('receipts.givenIn', {
+                period: periodWord,
+                defaultValue: 'Receipts {{period}}',
+              })}
+              value={receipts.data?.count ?? 0}
+              unit={formatRwf(receipts.data?.total ?? 0)}
+              to={link('receipts')}
             />
             <Kpi
               i={1}
@@ -170,6 +217,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               label={methodName('cash')}
               value={amountOf('cash')}
               unit="RWF"
+              to={link('methods')}
             />
             <Kpi
               i={2}
@@ -178,6 +226,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               label={methodName('momo')}
               value={amountOf('momo')}
               unit="RWF"
+              to={link('methods')}
             />
             <Kpi
               i={3}
@@ -186,6 +235,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               label={methodName('airtel')}
               value={amountOf('airtel')}
               unit="RWF"
+              to={link('methods')}
             />
             <Kpi
               i={4}
@@ -199,6 +249,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                   ? { text: t('finance.toCollect'), good: false, up: null }
                   : undefined
               }
+              to={link('openBills')}
             />
             <Kpi
               i={5}
@@ -226,7 +277,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                   tint="mint"
                   title={t('finance.byMethodIn', { period: periodWord })}
                   right={formatRwf(collected)}
-                  to={link('revenue', { by: 'method' }) ?? '/app/payments'}
+                  to={link('methods') ?? link('revenue', { by: 'method' }) ?? '/app/payments'}
                 >
                   {s.byMethod.length === 0 ? (
                     <Empty>{t('finance.nothingYet')}</Empty>
@@ -270,7 +321,8 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               icon={HandCoins}
               tint="violet"
               title={t('finance.payments')}
-              right={String(s?.count ?? 0)}
+              right={`${s?.count ?? 0} · ${receiptsWord}: ${receipts.data?.count ?? 0}`}
+              to={link('receipts')}
             >
               {!s || s.payments.length === 0 ? (
                 <Empty>{t('finance.nothingYet')}</Empty>
@@ -313,6 +365,18 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
           </div>
           {/* money still owed on visits already over: collected here when the patient comes back */}
           {((s?.debts ?? 0) > 0 || debts.length > 0) && <DebtsPanel canTake={canTake} />}
+          {(s?.refunded ?? 0) > 0 && link('refunds') && (
+            <Panel
+              i={3}
+              icon={HandCoins}
+              tint="coral"
+              title={t('analytics.revenue.refunded')}
+              right={formatRwf(s?.refunded ?? 0)}
+              to={link('refunds')}
+            >
+              <Empty>{t('finance.nothingYet')}</Empty>
+            </Panel>
+          )}
         </section>
         <DoctorCalendarsSection user={user} />
       </main>

@@ -19,6 +19,7 @@ import { journeyMedicineState, useVisitJourney, type Journey } from '@/lib/api/j
 import { card } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 import './visit-motion.css'
+import { vitalName } from '@/lib/api/vitals'
 
 const at = (iso: string | null) => (iso ? formatTime(new Date(iso)) : '')
 const day = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
@@ -190,7 +191,7 @@ export function VisitJourney({
               {j.vitals.map((v, i) => (
                 <Line
                   key={i}
-                  main={`${t(`triage.vitals.${v.code}`, { defaultValue: v.code })}: ${v.value ?? ''}${v.unit ? ` ${v.unit}` : ''}`}
+                  main={`${vitalName(v, t)}: ${v.value ?? ''}${v.unit ? ` ${v.unit}` : ''}`}
                   meta={[at(v.at), v.by].filter(Boolean).join(' · ')}
                 />
               ))}

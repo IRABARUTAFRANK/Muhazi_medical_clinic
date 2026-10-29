@@ -12,6 +12,7 @@ import { Flash } from '@/components/ui/flash'
 import { Select } from '@/components/ui/select'
 import { ShownList } from '@/components/ui/list-tools'
 import {
+  receiptLines,
   useCounterSaleActions,
   useCounterSales,
   type CounterPaymentMethod,
@@ -29,13 +30,14 @@ import { openCounterReceipt } from '../../finance/counter-receipt'
 import { useHanded } from './handed'
 import { useSearchParam } from './hooks'
 import { HandedStrip, LinesEditor, ReasonBox } from './parts'
+import { cashCost, packsText, piecesAndPacks, tx } from '../stock-util'
 import {
   dayOf,
   errText,
   itemName,
+  linePieces,
   needsReference,
   newLine,
-  qty,
   usableIn,
   type EditLine,
 } from './util'
@@ -98,14 +100,18 @@ function CounterSales({ user }: { user: StaffUser }) {
     (i) => i.active && i.sellingPrice != null && usableIn(i, storeId) > 0,
   )
   const byId = new Map(items.map((i) => [i.id, i]))
-  const chosen = lines.filter((l) => l.itemId && qty(l.quantity) > 0)
-  const total = chosen.reduce(
-    (s, l) => s + (byId.get(l.itemId)?.sellingPrice ?? 0) * qty(l.quantity),
-    0,
-  )
+  /** The pieces a line sells (typed in pieces or in packs). */
+  const pieces = (l: EditLine) => linePieces(l, byId.get(l.itemId)?.packSize)
+  const chosen = lines.filter((l) => l.itemId && pieces(l) > 0)
+  // whole packs at the pack price when the item has one, as the database charges them
+  const lineCost = (l: EditLine) => {
+    const i = byId.get(l.itemId)
+    return i ? cashCost(pieces(l), i) : { total: 0, byPack: false, packs: 0 }
+  }
+  const total = chosen.reduce((s, l) => s + lineCost(l).total, 0)
   const tooMany = chosen.some((l) => {
     const i = byId.get(l.itemId)
-    return !i || qty(l.quantity) > usableIn(i, storeId)
+    return !i || pieces(l) > usableIn(i, storeId)
   })
   const refMissing = needsReference(method) && reference.trim().length < 3
   const mobile = method === 'momo' || method === 'airtel'
@@ -123,7 +129,14 @@ function CounterSales({ user }: { user: StaffUser }) {
       cashier?: string | null
     },
   ) => {
-    const ok = openCounterReceipt(sale, pay, letterhead, t, printedBy)
+    // a line charged by the pack prints as "… · B/20 × packs at the pack price"
+    const ok = openCounterReceipt(
+      { ...sale, lines: receiptLines(sale.lines) },
+      pay,
+      letterhead,
+      t,
+      printedBy,
+    )
     if (!ok) setMsg({ ok: false, text: t('report.popupBlocked') })
   }
 
@@ -144,6 +157,7 @@ function CounterSales({ user }: { user: StaffUser }) {
           item: l.item,
           quantity: l.quantity,
           unit: it?.unit ?? null,
+          packSize: it?.packSize ?? null,
           dose: null,
           frequency: null,
           days: null,
@@ -202,7 +216,8 @@ function CounterSales({ user }: { user: StaffUser }) {
     setWorking(true)
     try {
       const s = await actions.create.mutateAsync({
-        lines: chosen.map((l) => ({ itemId: l.itemId, quantity: qty(l.quantity) })),
+        // always in pieces: packs × pieces per pack
+        lines: chosen.map((l) => ({ itemId: l.itemId, quantity: pieces(l) })),
         buyerName: buyer,
         buyerPhone: phone,
         locationId: storeChoice || null,
@@ -225,14 +240,19 @@ function CounterSales({ user }: { user: StaffUser }) {
         lines: chosen.map((l) => {
           const i = byId.get(l.itemId)
           const price = i?.sellingPrice ?? 0
+          const c = lineCost(l)
           return {
             itemId: l.itemId,
             item: i ? itemName(i) : l.itemId,
             unit: i?.unit ?? null,
-            quantity: qty(l.quantity),
+            quantity: pieces(l),
             unitPrice: price,
-            lineTotal: price * qty(l.quantity),
+            lineTotal: c.total,
             inStock: 0,
+            packSize: i?.packSize ?? null,
+            packs: c.byPack ? c.packs : null,
+            packPrice: c.byPack ? (i?.packPrice ?? null) : null,
+            byPack: c.byPack,
           }
         }),
       }
@@ -418,21 +438,39 @@ function CounterSales({ user }: { user: StaffUser }) {
             value: i.id,
             label: `${itemName(i)} · ${formatRwf(i.sellingPrice ?? 0)} · ${t('stock.inPharmacy', { count: usableIn(i, storeId) })}`,
           }))}
+          itemOf={(id) => byId.get(id)}
           below={(l) => {
             const i = byId.get(l.itemId)
             if (!i) return null
-            const n = qty(l.quantity)
+            const n = pieces(l)
             const have = usableIn(i, storeId)
+            const c = lineCost(l)
             return (
               <span
                 className={cn('text-[12px]', n > have ? 'text-red font-semibold' : 'text-ink-3')}
               >
                 {n > have
-                  ? t('counterSale.short', { count: have })
-                  : t('counterSale.lineTotal', {
-                      price: formatRwf(i.sellingPrice ?? 0),
-                      amount: formatRwf((i.sellingPrice ?? 0) * n),
-                    })}
+                  ? `${t('counterSale.short', { count: have })} · ${piecesAndPacks(t, have, i)}`
+                  : c.byPack
+                    ? tx(
+                        t,
+                        'counterSale.lineTotalPack',
+                        '{{packs}} × {{price}} per pack (pack price) · {{amount}}',
+                        {
+                          packs: c.packs,
+                          price: formatRwf(i.packPrice ?? 0),
+                          amount: formatRwf(c.total),
+                        },
+                      )
+                    : [
+                        t('counterSale.lineTotal', {
+                          price: formatRwf(i.sellingPrice ?? 0),
+                          amount: formatRwf(c.total),
+                        }),
+                        packsText(t, n, i.packSize),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
               </span>
             )
           }}
@@ -554,7 +592,13 @@ function CounterSales({ user }: { user: StaffUser }) {
                         {s.phone ? ` · ${s.phone}` : ''}
                       </span>
                       <span className="text-ink-3 block text-[12px]">
-                        {s.lines.map((l) => `${l.item} × ${l.quantity}`).join('; ')}
+                        {s.lines
+                          .map((l) =>
+                            l.byPack && l.packs
+                              ? `${l.item} × ${l.quantity} (${packsText(t, l.quantity, l.packSize) ?? ''} · ${tx(t, 'stockShared.packs.atPackPrice', 'pack price')})`
+                              : `${l.item} × ${l.quantity}`,
+                          )
+                          .join('; ')}
                       </span>
                       <span className="text-ink-3 block text-[12px]">
                         {[

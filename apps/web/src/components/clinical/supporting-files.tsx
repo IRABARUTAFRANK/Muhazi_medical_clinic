@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { FileText, Lock, Paperclip, Trash2, Upload } from 'lucide-react'
+import { ChevronDown, ChevronUp, FileText, Lock, Paperclip, Trash2, Upload, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
+import { Select } from '@/components/ui/select'
 import { Reveal } from '@/components/ui/reveal'
 import {
   FILE_ACCEPT,
@@ -44,6 +45,29 @@ const warnBox =
 /** The id of the visit page's "Attachments of this visit" card. */
 const VISIT_FILES_ID = 'visit-attachments'
 const msgOf = (x: unknown) => (x instanceof Error ? x.message : String(x))
+/** Whether the visit's documents are shown, kept while this tab stays on the visit. */
+const openKey = (encounterId: string) => `mmc.visit-files-open:${encounterId}`
+const readOpen = (encounterId: string): boolean => {
+  try {
+    return sessionStorage.getItem(openKey(encounterId)) === '1'
+  } catch {
+    return false
+  }
+}
+const writeOpen = (encounterId: string, open: boolean) => {
+  try {
+    sessionStorage.setItem(openKey(encounterId), open ? '1' : '0')
+  } catch {
+    // private window or storage off: the choice lasts the page only
+  }
+}
+/** A title from a file name: "echo_abdomen_2026.jpg" → "echo abdomen 2026". */
+const titleFromName = (name: string) =>
+  name
+    .replace(/\.[a-z0-9]+$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .slice(0, 160)
 
 /** A card's message line: what was done, or a warning (a stored copy left behind). */
 function MsgLine({ msg }: { msg: Msg | null }) {
@@ -220,9 +244,17 @@ export function VisitFilesCard({
   const { data } = useVisitFiles(encounterId, { patientId })
   const [attaching, setAttaching] = useState(false)
   const [msg, setMsg] = useState<Msg | null>(null)
+  // the cards are behind "View documents (N)": closed when the visit opens, open while this tab
+  // stays on the visit (session state)
+  const [open, setOpen] = useState(() => readOpen(encounterId))
   if (!data || !data.available) return null
   if (data.files.length === 0 && data.hidden === 0 && !data.canAttach && !msg) return null
   const canAttach = data.canAttach && !closed
+  const count = data.files.filter((f) => !f.removed).length
+  const show = (v: boolean) => {
+    setOpen(v)
+    writeOpen(encounterId, v)
+  }
 
   return (
     <Card id={VISIT_FILES_ID}>
@@ -230,8 +262,9 @@ export function VisitFilesCard({
         <span className="inline-flex items-center gap-2">
           <Paperclip size={16} aria-hidden="true" />
           {t('supportingFiles.titleVisit')}
-          {data.files.length > 0 && <Chip>{data.files.filter((f) => !f.removed).length}</Chip>}
+          {data.files.length > 0 && <Chip>{count}</Chip>}
         </span>
+        {/* "Attach a file" stays here while the documents are folded away */}
         {canAttach && !attaching && (
           <Button
             size="sm"
@@ -239,6 +272,7 @@ export function VisitFilesCard({
             onClick={() => {
               setMsg(null)
               setAttaching(true)
+              show(true)
             }}
           >
             <Upload size={14} aria-hidden="true" />
@@ -260,19 +294,43 @@ export function VisitFilesCard({
           />
         )}
         <MsgLine msg={msg} />
-        {data.files.length > 0 ? (
-          <FileGrid files={data.files} patientName={patientName} onMessage={setMsg} showTest />
-        ) : (
-          data.hidden === 0 && (
-            <p className="text-ink-3 m-0 text-[13px]">
-              {t(canAttach ? 'supportingFiles.emptyCanAttach' : 'supportingFiles.empty')}
-            </p>
-          )
+        <span>
+          <Button
+            size="sm"
+            variant={open ? 'ghost' : 'tint-violet'}
+            aria-expanded={open}
+            aria-controls={`${VISIT_FILES_ID}-list`}
+            onClick={() => show(!open)}
+          >
+            {open ? (
+              <ChevronUp size={14} aria-hidden="true" />
+            ) : (
+              <ChevronDown size={14} aria-hidden="true" />
+            )}
+            {open
+              ? t('supportingFiles.hideDocs')
+              : count > 0
+                ? t('supportingFiles.view', { count })
+                : t('supportingFiles.viewNone')}
+          </Button>
+        </span>
+        {open && (
+          <div id={`${VISIT_FILES_ID}-list`} className="flex flex-col gap-3">
+            {data.files.length > 0 ? (
+              <FileGrid files={data.files} patientName={patientName} onMessage={setMsg} showTest />
+            ) : (
+              data.hidden === 0 && (
+                <p className="text-ink-3 m-0 text-[13px]">
+                  {t(canAttach ? 'supportingFiles.emptyCanAttach' : 'supportingFiles.empty')}
+                </p>
+              )
+            )}
+            {closed && data.files.length > 0 && (
+              <p className="text-ink-3 m-0 text-[12px]">{t('supportingFiles.closedNote')}</p>
+            )}
+            <HiddenNote hidden={data.hidden} scope="visit" />
+          </div>
         )}
-        {closed && data.files.length > 0 && (
-          <p className="text-ink-3 m-0 text-[12px]">{t('supportingFiles.closedNote')}</p>
-        )}
-        <HiddenNote hidden={data.hidden} scope="visit" />
       </CardBody>
     </Card>
   )
@@ -562,7 +620,24 @@ function FileGrid({
   )
 }
 
-/** Choose the type, the file and a title; checks type and size before sending; asks first. */
+/** One file chosen, with its own type and title, and what happened to it. */
+interface Chosen {
+  key: string
+  file: File
+  kind: FileKind
+  title: string
+  preview: string | null
+  status: 'pending' | 'sending' | 'done' | 'failed'
+  /** Why it was not attached (checked before sending, or the server's refusal). */
+  error: string | null
+}
+
+/**
+ * Choose one or several files, a type (for all, changeable per file) and a title per file (from
+ * the file name, or the test's name); checks type and size before sending; asks once; sends them
+ * one after the other and says what happened to each. The ones that failed stay listed with why,
+ * to correct and send again; the ones attached are kept as done.
+ */
 function AttachForm({
   patientId,
   encounterId,
@@ -587,44 +662,71 @@ function AttachForm({
   const { attach } = useFileActions()
   const input = useRef<HTMLInputElement>(null)
   const [kind, setKind] = useState<FileKind>(defaultKind)
-  const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
-  const [title, setTitle] = useState(test ?? '')
+  const [rows, setRows] = useState<Chosen[]>([])
   const [note, setNote] = useState('')
   const [err, setErr] = useState<string | null>(null)
+  const [sending, setSending] = useState<{ n: number; total: number; file: string } | null>(null)
+  // "3 of 5 attached": shown after a round with failures (the rest can be sent again)
+  const [partial, setPartial] = useState<{ done: number; total: number } | null>(null)
 
-  // the picture chosen, shown small before sending (its link freed when it changes)
-  useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview])
+  // the pictures chosen, shown small before sending (their links freed when the form goes)
+  const previews = useRef<string[]>([])
+  useEffect(() => {
+    const list = previews.current
+    return () => list.forEach((u) => URL.revokeObjectURL(u))
+  }, [])
 
-  const choose = (f: File | null) => {
+  const choose = (list: FileList | null) => {
     setErr(null)
-    setFile(null)
-    setPreview(null)
-    if (!f) return
-    const bad = checkFile(f)
-    if (bad) {
-      setErr(t(`stockErrors.${bad}`))
-      if (input.current) input.current.value = ''
-      return
+    setPartial(null)
+    if (!list || list.length === 0) return
+    const added: Chosen[] = []
+    for (const f of Array.from(list)) {
+      const bad = checkFile(f)
+      const preview = !bad && isImage(f.type || '') ? URL.createObjectURL(f) : null
+      if (preview) previews.current.push(preview)
+      added.push({
+        key: `${f.name}|${f.size}|${f.lastModified}|${Math.random().toString(36).slice(2, 7)}`,
+        file: f,
+        kind,
+        // one file for a test: the test's name; else the file's own name
+        title: test && rows.length === 0 && list.length === 1 ? test : titleFromName(f.name),
+        preview,
+        status: bad ? 'failed' : 'pending',
+        error: bad ? t(`stockErrors.${bad}`) : null,
+      })
     }
-    setFile(f)
-    if (isImage(f.type || '')) setPreview(URL.createObjectURL(f))
+    setRows((s) => [...s, ...added])
+    if (input.current) input.current.value = ''
+  }
+  const dropRow = (key: string) => setRows((s) => s.filter((r) => r.key !== key))
+  const setRow = (key: string, patch: Partial<Chosen>) =>
+    setRows((s) => s.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+  /** The type chosen for all: every file not sent yet takes it. */
+  const chooseKind = (k: FileKind) => {
+    setKind(k)
+    setRows((s) => s.map((r) => (r.status === 'done' ? r : { ...r, kind: k })))
   }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!file) {
+    const todo = rows.filter((r) => r.status !== 'done')
+    if (todo.length === 0) {
       setErr(t('supportingFiles.chooseFirst'))
       return
     }
-    if (!title.trim()) {
-      setErr(t('stockErrors.titleNeeded'))
+    if (todo.some((r) => !r.title.trim())) {
+      setErr(t('supportingFiles.titlesNeeded'))
       return
     }
     setErr(null)
+    setPartial(null)
+    const one = todo.length === 1 ? todo[0]! : null
     if (
       !(await confirm({
-        title: t('supportingFiles.confirm.attachTitle', { title: title.trim(), name: patientName }),
+        title: one
+          ? t('supportingFiles.confirm.attachTitle', { title: one.title.trim(), name: patientName })
+          : t('supportingFiles.confirm.attachManyTitle', { count: todo.length, name: patientName }),
         body: test
           ? t('supportingFiles.confirm.attachBodyTest', { test })
           : t('supportingFiles.confirm.attachBody'),
@@ -632,23 +734,59 @@ function AttachForm({
       }))
     )
       return
-    try {
-      const done = await attach.mutateAsync({
-        patientId,
-        encounterId,
-        file,
-        kind,
-        title: title.trim(),
-        note: note.trim() || null,
-        serviceRequestId,
-      })
-      onDone({ text: t('supportingFiles.attached', { title: done.title, name: patientName }) })
-    } catch (x) {
-      setErr(msgOf(x))
+    // one after the other: each row says what happened to it
+    let done = 0
+    let lastTitle = ''
+    for (let i = 0; i < todo.length; i++) {
+      const r = todo[i]!
+      // a file refused before sending (type, size) is sent only once corrected: skip it
+      const bad = checkFile(r.file)
+      if (bad) {
+        setRow(r.key, { status: 'failed', error: t(`stockErrors.${bad}`) })
+        continue
+      }
+      setSending({ n: i + 1, total: todo.length, file: r.file.name })
+      setRow(r.key, { status: 'sending', error: null })
+      try {
+        const saved = await attach.mutateAsync({
+          patientId,
+          encounterId,
+          file: r.file,
+          kind: r.kind,
+          title: r.title.trim(),
+          note: note.trim() || null,
+          serviceRequestId,
+        })
+        setRow(r.key, { status: 'done', error: null })
+        done++
+        lastTitle = saved.title
+      } catch (x) {
+        setRow(r.key, { status: 'failed', error: msgOf(x) })
+      }
     }
+    setSending(null)
+    const already = rows.length - todo.length
+    if (done === todo.length) {
+      const total = done + already
+      onDone({
+        text:
+          total === 1
+            ? t('supportingFiles.attached', { title: lastTitle, name: patientName })
+            : t('supportingFiles.attachedMany', { count: total, name: patientName }),
+      })
+      return
+    }
+    setPartial({ done: done + already, total: rows.length })
   }
 
-  const busy = attach.isPending
+  const busy = sending !== null
+  const pending = rows.filter((r) => r.status !== 'done')
+  const statusClass: Record<Chosen['status'], string> = {
+    pending: 'text-ink-3',
+    sending: 'text-primary',
+    done: 'text-green',
+    failed: 'text-red',
+  }
   return (
     <Reveal focus block="nearest">
       <form
@@ -657,7 +795,7 @@ function AttachForm({
       >
         <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0" disabled={busy}>
           <legend className="text-ink-2 mb-1.5 p-0 text-[13px] font-semibold">
-            {t('supportingFiles.kind')}
+            {rows.length > 1 ? t('supportingFiles.kindAll') : t('supportingFiles.kind')}
           </legend>
           <span className="flex flex-wrap gap-1.5">
             {FILE_KINDS.map((k) => (
@@ -665,7 +803,7 @@ function AttachForm({
                 key={k}
                 type="button"
                 aria-pressed={kind === k}
-                onClick={() => setKind(k)}
+                onClick={() => chooseKind(k)}
                 className={cn(
                   'min-h-9 rounded-full border px-3 text-[13px] font-semibold',
                   kind === k
@@ -691,47 +829,114 @@ function AttachForm({
               ref={input}
               type="file"
               accept={FILE_ACCEPT}
+              multiple
               className="sr-only"
               disabled={busy}
-              onChange={(e) => choose(e.target.files?.[0] ?? null)}
+              onChange={(e) => choose(e.target.files)}
             />
-            {preview ? (
-              <img
-                src={preview}
-                alt=""
-                className="border-border size-14 shrink-0 rounded-md border object-cover"
-              />
-            ) : (
-              <span className="bg-primary-tint text-primary grid size-14 shrink-0 place-items-center rounded-md">
-                {file ? (
-                  <FileText size={22} aria-hidden="true" />
-                ) : (
-                  <Upload size={22} aria-hidden="true" />
-                )}
-              </span>
-            )}
+            <span className="bg-primary-tint text-primary grid size-14 shrink-0 place-items-center rounded-md">
+              <Upload size={22} aria-hidden="true" />
+            </span>
             <span className="min-w-[160px] flex-1">
               <span className="block font-semibold [overflow-wrap:anywhere]">
-                {file ? file.name : t('supportingFiles.choose')}
+                {rows.length === 0 ? t('supportingFiles.chooseMany') : t('supportingFiles.addMore')}
               </span>
               <span className="text-ink-3 block text-[12px]">
-                {file
-                  ? `${formatFileSize(file.size)} · ${t('supportingFiles.change')}`
-                  : t('supportingFiles.chooseHint')}
+                {t('supportingFiles.chooseHint')}
               </span>
             </span>
           </label>
         </div>
 
-        <Field
-          label={t('supportingFiles.fileTitle')}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={t('supportingFiles.fileTitlePh')}
-          maxLength={160}
-          disabled={busy}
-          required
-        />
+        {/* one line per file: thumbnail, title, type, what happened to it */}
+        {rows.length > 0 && (
+          <ul className="m-0 flex list-none flex-col gap-2 p-0" aria-live="polite">
+            {rows.map((r) => (
+              <li
+                key={r.key}
+                className={cn(
+                  'border-border bg-card grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 rounded-md border p-2.5 sm:grid-cols-[auto_minmax(0,2fr)_minmax(120px,1fr)_auto]',
+                  r.status === 'done' && 'border-green/40 bg-green-bg/40',
+                  r.status === 'failed' && 'border-red/40',
+                )}
+              >
+                {r.preview ? (
+                  <img
+                    src={r.preview}
+                    alt=""
+                    className="border-border size-12 shrink-0 rounded-md border object-cover"
+                  />
+                ) : (
+                  <span className="bg-primary-tint text-primary grid size-12 shrink-0 place-items-center rounded-md">
+                    <FileText size={20} aria-hidden="true" />
+                  </span>
+                )}
+                <span className="flex min-w-0 flex-col gap-1">
+                  {r.status === 'done' ? (
+                    <span className="block truncate font-semibold" title={r.title}>
+                      {r.title}
+                    </span>
+                  ) : (
+                    <Field
+                      label={<span className="sr-only">{t('supportingFiles.rowTitle')}</span>}
+                      value={r.title}
+                      onChange={(e) => setRow(r.key, { title: e.target.value })}
+                      placeholder={t('supportingFiles.fileTitlePh')}
+                      maxLength={160}
+                      disabled={busy}
+                      required
+                      className="h-9"
+                    />
+                  )}
+                  <span className="text-ink-3 block truncate text-[12px]" title={r.file.name}>
+                    {r.file.name} · {formatFileSize(r.file.size)}
+                  </span>
+                </span>
+                {r.status === 'done' ? (
+                  <span className="text-ink-2 self-center text-[13px]">
+                    {t(`supportingFiles.kinds.${r.kind}`)}
+                  </span>
+                ) : (
+                  <Select
+                    label={<span className="sr-only">{t('supportingFiles.rowKind')}</span>}
+                    value={r.kind}
+                    onChange={(e) => setRow(r.key, { kind: e.target.value as FileKind })}
+                    disabled={busy}
+                    className="h-9"
+                  >
+                    {FILE_KINDS.map((k) => (
+                      <option key={k} value={k}>
+                        {t(`supportingFiles.kinds.${k}`)}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+                <span className="col-span-2 flex items-center justify-between gap-2 sm:col-span-1 sm:flex-col sm:items-end sm:justify-start">
+                  <span className={cn('text-[12px] font-semibold', statusClass[r.status])}>
+                    {t(`supportingFiles.status.${r.status}`)}
+                  </span>
+                  {r.status !== 'done' && !busy && (
+                    <button
+                      type="button"
+                      onClick={() => dropRow(r.key)}
+                      aria-label={t('supportingFiles.rowRemove')}
+                      title={t('supportingFiles.rowRemove')}
+                      className="text-ink-3 hover:bg-hover hover:text-ink inline-flex size-7 items-center justify-center rounded"
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  )}
+                </span>
+                {r.error && (
+                  <span role="alert" className={cn(errorBox, 'col-span-full')}>
+                    {r.error}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
         <Field
           label={t('supportingFiles.note')}
           value={note}
@@ -741,25 +946,37 @@ function AttachForm({
           disabled={busy}
         />
 
-        {busy && file && (
+        {sending && (
           <div role="status" className="flex flex-col gap-1.5">
             <span className="text-ink-2 text-[13px] font-semibold">
-              {t('supportingFiles.sending', { file: file.name })}
+              {sending.total > 1
+                ? t('supportingFiles.sendingN', sending)
+                : t('supportingFiles.sending', { file: sending.file })}
             </span>
             <span className="bg-border relative block h-1.5 overflow-hidden rounded-full">
-              <span className="bg-primary absolute inset-y-0 left-0 w-1/3 animate-pulse rounded-full" />
+              <span
+                className="bg-primary absolute inset-y-0 left-0 rounded-full transition-[width]"
+                style={{
+                  width: `${Math.max(12, Math.round(((sending.n - 1) / sending.total) * 100))}%`,
+                }}
+              />
             </span>
           </div>
         )}
+        {partial && <p className={warnBox}>{t('supportingFiles.partial', partial)}</p>}
         {err && (
           <p role="alert" className={errorBox}>
             {err}
           </p>
         )}
         <span className="flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" loading={busy} disabled={!file}>
+          <Button type="submit" variant="primary" loading={busy} disabled={pending.length === 0}>
             {!busy && <Paperclip size={16} aria-hidden="true" />}
-            {t('supportingFiles.send')}
+            {partial
+              ? t('supportingFiles.sendAgain')
+              : pending.length > 1
+                ? t('supportingFiles.attachMany', { count: pending.length })
+                : t('supportingFiles.send')}
           </Button>
           <Button variant="ghost" onClick={onCancel} disabled={busy}>
             {t('supportingFiles.cancel')}

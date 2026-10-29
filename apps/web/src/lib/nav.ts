@@ -26,6 +26,7 @@ const GROUP_OF: Record<string, NavGroupId> = {
   patients: 'patients',
   history: 'patients',
   'record-access': 'patients',
+  documents: 'patients',
   bills: 'finance',
   payments: 'finance',
   prices: 'finance',
@@ -91,6 +92,8 @@ export const MANAGER_NAV: NavItem[] = [
   // the bookings made with the manager themself (they keep a calendar too, 0094)
   { id: 'my-bookings', labelKey: 'nav.myBookings', icon: 'calendar-check', to: '/app/my-bookings' },
   { id: 'patients', labelKey: 'nav.patients', icon: 'users', to: '/app/patients' },
+  // the documents of every patient treated in a period, printed together (0102)
+  { id: 'documents', labelKey: 'nav.documents', icon: 'file-text', to: '/app/documents' },
   { id: 'lab', labelKey: 'nav.worklist', icon: 'flask-conical', to: '/app/lab' },
   { id: 'bills', labelKey: 'nav.bills', icon: 'wallet', to: '/app/bills' },
   { id: 'payments', labelKey: 'nav.payments', icon: 'banknote', to: '/app/payments' },
@@ -191,6 +194,19 @@ const HEAD_ANALYTICS: NavItem = {
 const withHeadDashboard = (user: StaffUser, items: NavItem[]): NavItem[] =>
   user.dashboard === 'head' ? [items[0]!, HEAD_DASHBOARD, HEAD_ANALYTICS, ...items.slice(1)] : items
 
+/** Every desk dashboard has its own Analytics (0102): the figures behind its cards, in its own
+ *  order. Right after Home (a head's comes with their dashboard, see withHeadDashboard). */
+const DESK_ANALYTICS: NavItem = {
+  id: 'analytics',
+  labelKey: 'nav.analytics',
+  icon: 'bar-chart-3',
+  to: '/app/analytics',
+}
+const withDeskAnalytics = (user: StaffUser, items: NavItem[]): NavItem[] =>
+  user.dashboard === 'head' || items.some((n) => n.to === DESK_ANALYTICS.to)
+    ? items
+    : [items[0]!, DESK_ANALYTICS, ...items.slice(1)]
+
 /** Navigation items for the user: the role's menu, shaped by the desks they work at and by what
  *  the manager allows them (Settings → Who may do what). The manager's menu never changes. */
 export const navForUser = (user: StaffUser): NavItem[] =>
@@ -200,7 +216,10 @@ export const navForUser = (user: StaffUser): NavItem[] =>
         user,
         withRecordAccess(
           user,
-          withHeadDashboard(user, withSwitches(user, withDesks(user, navForStaff(user)))),
+          withDeskAnalytics(
+            user,
+            withHeadDashboard(user, withSwitches(user, withDesks(user, navForStaff(user)))),
+          ),
         ),
       )
 

@@ -1,19 +1,5 @@
 import { useId, useRef, type ComponentType } from 'react'
-import {
-  Boxes,
-  ChartColumn,
-  FlaskConical,
-  HeartPulse,
-  Hourglass,
-  ListOrdered,
-  type LucideIcon,
-  Pill,
-  Printer,
-  ShieldOff,
-  UserCheck,
-  Users,
-  Wallet,
-} from 'lucide-react'
+import { ChartColumn, Printer, ShieldOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CLINIC_PROFILE, type StaffUser } from '@mmc/shared'
 import { card } from '@/components/dash/kit-style'
@@ -23,46 +9,46 @@ import { ReportButtons } from '@/components/dash/report-buttons'
 import { Button } from '@/components/ui/button'
 import { controlClass } from '@/components/ui/field'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { useAnalyticsAccess, type AnalyticsView } from '@/lib/api/analytics'
+import { canOpenView, useAnalyticsAccess, type AnalyticsView } from '@/lib/api/analytics'
 import { useClinicInfo } from '@/lib/api/public'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { SERIES_CSS } from './charts'
 import { ExportContext, LoadError, ViewSkeleton, type ReportBuilder } from './kit'
+import { PatientsDocuments } from './patients-documents'
 import type { AnalyticsSearch, UpdateSearch } from './search'
+import { DEPARTMENT_VIEWS, groupName, structureFor, VIEW_ICONS, viewName } from './structure'
 import { useUrlPeriod } from './url-period'
 import type { ViewProps } from './view-props'
+import { CashDeskView } from './views/cash-desk-view'
+import { DeskWorkView } from './views/desk-work-view'
 import { LabView } from './views/lab-view'
+import { OutsideView } from './views/outside-view'
 import { PharmacyView } from './views/pharmacy-view'
+import { ReceiptsView } from './views/receipts-view'
 import { RevenueView } from './views/revenue-view'
 import { StaffView } from './views/staff-view'
 import { StockView } from './views/stock-view'
 import { TriageView } from './views/triage-view'
 import { TreatmentsView, VisitsView } from './views/visits-view'
 import { WaitingView } from './views/waiting-view'
+import { WalkInView } from './views/walk-in-view'
 
-/** The views, grouped as the side list shows them. */
-const GROUPS: { key: string; views: AnalyticsView[] }[] = [
-  { key: 'money', views: ['revenue'] },
-  { key: 'people', views: ['staff'] },
-  { key: 'patients', views: ['visits', 'treatments'] },
-  { key: 'desks', views: ['lab', 'pharmacy', 'triage'] },
-  { key: 'stock', views: ['stock'] },
-  { key: 'waiting', views: ['waiting'] },
-]
-
-const ICONS: Record<AnalyticsView, LucideIcon> = {
-  revenue: Wallet,
-  staff: Users,
-  visits: UserCheck,
-  treatments: ListOrdered,
-  lab: FlaskConical,
-  pharmacy: Pill,
-  triage: HeartPulse,
-  stock: Boxes,
-  waiting: Hourglass,
+/** The "Patients' documents" view: the same panel as the page under Patients. */
+function DocumentsView({ user, access, period, search, update, dept }: ViewProps) {
+  return (
+    <PatientsDocuments
+      user={user}
+      access={access}
+      period={period}
+      search={search}
+      update={update}
+      dept={dept}
+    />
+  )
 }
 
+/** The component of each view; a component shared by several reads `view`. */
 const VIEWS: Record<AnalyticsView, ComponentType<ViewProps>> = {
   revenue: RevenueView,
   staff: StaffView,
@@ -73,14 +59,41 @@ const VIEWS: Record<AnalyticsView, ComponentType<ViewProps>> = {
   triage: TriageView,
   stock: StockView,
   waiting: WaitingView,
+  receipts: ReceiptsView,
+  documents: DocumentsView,
+  collections: CashDeskView,
+  methods: CashDeskView,
+  openBills: CashDeskView,
+  refunds: CashDeskView,
+  handovers: PharmacyView,
+  walkIn: WalkInView,
+  expiry: StockView,
+  outside: OutsideView,
+  tests: LabView,
+  turnaround: LabView,
+  verification: LabView,
+  byTest: LabView,
+  myPatients: DeskWorkView,
+  vitals: DeskWorkView,
+  waitingNow: DeskWorkView,
+  diagnoses: DeskWorkView,
+  prescriptions: DeskWorkView,
+  orders: DeskWorkView,
+  tasks: DeskWorkView,
+  registrations: DeskWorkView,
+  bookings: DeskWorkView,
+  arrivals: DeskWorkView,
 }
 
 /**
  * Analytics: the detailed views behind the dashboard cards, one at a time (never one long page).
- * The manager sees the whole clinic, or one department, with money; the head or assistant of a
- * department sees that department and no money. The server decides (analytics_access): a view
- * not listed there is not offered. Everything is in the address (view, period, department, the
- * detail open), so a dashboard card links straight to it and Back closes a detail.
+ * Each dashboard has its own structure (0102): the views of that dashboard, in its order, and
+ * its first card's view by default. The manager sees the whole clinic, or one department, with
+ * money; the head or assistant of a department sees that department and no money; the cash
+ * desk, the pharmacy, the laboratory, the doctor, the nurse and reception see their own desk's
+ * figures and their own work. The server decides (analytics_access): a view not listed there
+ * is not offered. Everything is in the address (view, period, department, the detail open), so
+ * a dashboard card links straight to it and Back closes a detail.
  */
 export function AnalyticsPage({
   user,
@@ -100,15 +113,9 @@ export function AnalyticsPage({
   const sectionId = useId()
   const deptId = useId()
 
-  const allowed = access?.views ?? []
-  const fallbackView: AnalyticsView | undefined = access
-    ? access.manager && allowed.includes('revenue')
-      ? 'revenue'
-      : allowed.includes('staff')
-        ? 'staff'
-        : allowed[0]
-    : undefined
-  const view = search.view && allowed.includes(search.view) ? search.view : fallbackView
+  const structure = access ? structureFor(access) : { groups: [], first: undefined }
+  const view =
+    search.view && access && canOpenView(access, search.view) ? search.view : structure.first
   // the department: the manager, the one picked (or the whole clinic); a head, theirs
   const departments = access?.departments ?? []
   const dept = access
@@ -116,13 +123,8 @@ export function AnalyticsPage({
       ? (departments.find((d) => d.id === search.dept)?.id ?? null)
       : (departments.find((d) => d.id === search.dept)?.id ?? departments[0]?.id ?? null)
     : null
-  // a department filters the people, visits, treatments and waiting views
-  const deptMatters =
-    view === 'staff' ||
-    view === 'visits' ||
-    view === 'treatments' ||
-    view === 'waiting' ||
-    view === 'triage'
+  // a department filters the people, visits, treatments, waiting and documents views
+  const deptMatters = !!view && DEPARTMENT_VIEWS.includes(view)
   const showDept =
     deptMatters && (access?.manager ? departments.length > 0 : departments.length > 1)
 
@@ -138,10 +140,7 @@ export function AnalyticsPage({
 
   const View = view ? VIEWS[view] : null
   const clinic = info?.profile ?? CLINIC_PROFILE
-  const groups = GROUPS.map((g) => ({
-    ...g,
-    views: g.views.filter((v) => allowed.includes(v)),
-  })).filter((g) => g.views.length > 0)
+  const groups = structure.groups
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="analytics">
@@ -153,7 +152,7 @@ export function AnalyticsPage({
             icon={ChartColumn}
             tint="teal"
             title={t('analytics.title')}
-            lead={`${view ? `${t(`analytics.views.${view}`)} · ` : ''}${period.label}`}
+            lead={`${view ? `${viewName(view, t)} · ` : ''}${period.label}`}
           />
           <ActionRow>
             <PeriodSeg period={period} className="max-w-full flex-wrap" />
@@ -187,10 +186,10 @@ export function AnalyticsPage({
                 {groups.map((g) => (
                   <div key={g.key} className="flex flex-col gap-0.5">
                     <span className="text-ink-3 px-2 pb-0.5 text-[12px] font-medium">
-                      {t(`analytics.groups.${g.key}`)}
+                      {groupName(g.key, t)}
                     </span>
                     {g.views.map((v) => {
-                      const Icon = ICONS[v]
+                      const Icon = VIEW_ICONS[v]
                       const on = v === view
                       return (
                         <button
@@ -204,7 +203,7 @@ export function AnalyticsPage({
                           )}
                         >
                           <Icon size={16} aria-hidden="true" className="flex-none" />
-                          <span className="min-w-0 flex-1">{t(`analytics.views.${v}`)}</span>
+                          <span className="min-w-0 flex-1">{viewName(v, t)}</span>
                         </button>
                       )
                     })}
@@ -226,10 +225,10 @@ export function AnalyticsPage({
                     className={cn(controlClass, 'w-full max-w-full')}
                   >
                     {groups.map((g) => (
-                      <optgroup key={g.key} label={t(`analytics.groups.${g.key}`)}>
+                      <optgroup key={g.key} label={groupName(g.key, t)}>
                         {g.views.map((v) => (
                           <option key={v} value={v}>
-                            {t(`analytics.views.${v}`)}
+                            {viewName(v, t)}
                           </option>
                         ))}
                       </optgroup>
@@ -268,6 +267,7 @@ export function AnalyticsPage({
                   key={`${view}-${dept ?? 'all'}`}
                   user={user}
                   access={access}
+                  view={view}
                   period={period}
                   search={search}
                   update={update}

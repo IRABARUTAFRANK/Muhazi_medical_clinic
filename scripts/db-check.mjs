@@ -7689,7 +7689,8 @@ await step(
       status !== 'verified' ||
       consOnly !== '42501/no_desk' ||
       ownTest !== '42501/no_desk' ||
-      ownImg !== 'ok' ||
+      // 0102: the requester never enters a result, even while no department gives the desk
+      ownImg !== '42501/no_desk' ||
       otherImg !== '42501/no_desk' ||
       !mineFlag ||
       sample !== '42501/no_desk' ||
@@ -12929,6 +12930,1156 @@ await step('0101 C: a wrong "Seen" is corrected when the update runs', async () 
   return 'no visit, past → did not come; no visit, coming → confirmed; left unseen → cancelled'
 })
 
+// ---------------------------------------------------------------- 0102 vital signs the clinic chooses
+// 0092's check re-ran 20261203 (the old record_vitals) after every migration: 0102 applies again
+// on top of it, as it would in a database updated file by file (it is idempotent).
+await step('0102: the migration applies again on top of the re-run older ones', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261213090000_vitals_custom.sql'), 'utf8'),
+  )
+})
+const vitals102 = async (enc) => {
+  // the view answers whoever may read vital signs (the nurse), not the bare connection
+  await as(staff.nurse)
+  const rows = (
+    await db.query(
+      `select code, value_num::text as v, unit, label, id from visit_vitals where encounter_id = $1 order by code`,
+      [enc],
+    )
+  ).rows
+  await asAdmin()
+  return rows
+}
+await step(
+  '0102 A: a measurement of the new catalogue and a custom one are saved and read back',
+  async () => {
+    const v = await visit87('Vitals102')
+    await as(staff.nurse)
+    await db.query(`select record_vitals($1, $2::jsonb)`, [
+      v.enc,
+      JSON.stringify({
+        glucose_mmol: '5.6',
+        pain: { value: 4 },
+        custom_blood_ketones: { value: 1.2, unit: 'mmol/L', label: 'Blood ketones' },
+      }),
+    ])
+    const rows = await vitals102(v.enc)
+    const g = rows.find((r) => r.code === 'glucose_mmol')
+    const pn = rows.find((r) => r.code === 'pain')
+    const c = rows.find((r) => r.code === 'custom_blood_ketones')
+    if (
+      rows.length !== 3 ||
+      g?.unit !== 'mmol/L' ||
+      g?.v !== '5.6' ||
+      pn?.unit !== '/10' ||
+      c?.unit !== 'mmol/L' ||
+      c?.label !== 'Blood ketones' ||
+      !c?.id
+    )
+      throw new Error(json88(rows))
+    return 'glucose 5.6 mmol/L (unit from the catalogue), pain 4 /10, custom "Blood ketones" 1.2 mmol/L with id'
+  },
+)
+await step(
+  '0102 B: remove_vital takes a measurement off with a reason; the audit keeps the value',
+  async () => {
+    const v = await visit87('Remove102')
+    await as(staff.nurse)
+    await db.query(`select record_vitals($1, $2::jsonb)`, [
+      v.enc,
+      JSON.stringify({
+        temp: '37.1',
+        custom_blood_ketones: { value: 1.2, unit: 'mmol/L', label: 'Blood ketones' },
+      }),
+    ])
+    const id = (await vitals102(v.enc)).find((r) => r.code === 'custom_blood_ketones').id
+    const r = {}
+    r.short = await codeAs(staff.nurse, `select remove_vital($1, 'no')`, [id])
+    r.unknown = await codeAs(staff.nurse, `select remove_vital($1, 'wrong patient')`, [
+      crypto.randomUUID(),
+    ])
+    r.ok = await codeAs(staff.nurse, `select remove_vital($1, 'typed on the wrong patient')`, [id])
+    r.again = await codeAs(staff.nurse, `select remove_vital($1, 'typed on the wrong patient')`, [
+      id,
+    ])
+    const left = (await vitals102(v.enc)).map((x) => x.code)
+    const row = await one(
+      `select deleted_at is not null as gone, remove_reason, removed_by from observation where id = $1`,
+      [id],
+    )
+    const audit = await one(
+      `select count(*)::int as n, max(before ->> 'value') as value, max(reason) as reason
+       from audit_event where entity = 'observation' and entity_id = $1 and action = 'delete'`,
+      [id],
+    )
+    if (
+      r.short !== '22023' ||
+      r.unknown !== 'P0002' ||
+      r.ok !== null ||
+      r.again !== '22023' ||
+      left.join(',') !== 'temp' ||
+      !row.gone ||
+      row.remove_reason !== 'typed on the wrong patient' ||
+      row.removed_by !== staff.nurse ||
+      audit.n !== 1 ||
+      audit.value !== '1.2' ||
+      audit.reason !== 'typed on the wrong patient'
+    )
+      throw new Error(json88({ r, left, row, audit }))
+    return 'short reason and unknown id refused; removed with reason; gone from visit_vitals; audited with the value; a second removal refused'
+  },
+)
+await step(
+  '0102 C: a value outside the catalogue limits, an unknown code, a custom one without a name are refused',
+  async () => {
+    const v = await visit87('Range102')
+    const r = {}
+    r.glucose = await codeAs(
+      staff.nurse,
+      `select record_vitals($1, '{"glucose_mmol":"99"}'::jsonb)`,
+      [v.enc],
+    )
+    r.pain = await codeAs(staff.nurse, `select record_vitals($1, '{"pain":"11"}'::jsonb)`, [v.enc])
+    r.gcs = await codeAs(staff.nurse, `select record_vitals($1, '{"gcs":{"value":2}}'::jsonb)`, [
+      v.enc,
+    ])
+    r.unknown = await codeAs(staff.nurse, `select record_vitals($1, '{"xyz":"1"}'::jsonb)`, [v.enc])
+    r.noName = await codeAs(
+      staff.nurse,
+      `select record_vitals($1, '{"custom_abc":{"value":1}}'::jsonb)`,
+      [v.enc],
+    )
+    r.badCode = await codeAs(
+      staff.nurse,
+      `select record_vitals($1, '{"custom_Bad Code":{"value":1,"label":"x"}}'::jsonb)`,
+      [v.enc],
+    )
+    r.ok = await codeAs(
+      staff.nurse,
+      `select record_vitals($1, '{"pain":"10","gcs":"15","fhr":"240","glucose_mgdl":{"value":"1100"}}'::jsonb)`,
+      [v.enc],
+    )
+    const rows = await vitals102(v.enc)
+    if (
+      r.glucose !== '22023' ||
+      r.pain !== '22023' ||
+      r.gcs !== '22023' ||
+      r.unknown !== '22023' ||
+      r.noName !== '22023' ||
+      r.badCode !== '22023' ||
+      r.ok !== null ||
+      rows.length !== 4
+    )
+      throw new Error(json88({ r, rows }))
+    return 'glucose 99, pain 11, GCS 2, code xyz, custom without a name, bad custom code refused; the limits themselves accepted'
+  },
+)
+await step('0102 D: the default set is saved by the manager and read by every nurse', async () => {
+  const r = {}
+  await as(staff.nurse)
+  r.before = (await one(`select vitals_setting() as s`)).s.codes
+  r.nurseSaves = await codeAs(staff.nurse, `select save_vitals_setting('["temp"]'::jsonb)`)
+  r.unknown = await codeAs(staff.manager, `select save_vitals_setting('["temp","nope"]'::jsonb)`)
+  r.empty = await codeAs(staff.manager, `select save_vitals_setting('[]'::jsonb)`)
+  r.twice = await codeAs(staff.manager, `select save_vitals_setting('["temp","temp"]'::jsonb)`)
+  r.ok = await codeAs(
+    staff.manager,
+    `select save_vitals_setting('["temp","pulse","glucose_mmol","bmi"]'::jsonb)`,
+  )
+  await as(staff.nurse)
+  r.after = (await one(`select vitals_setting() as s`)).s.codes
+  await asAdmin()
+  r.audited = (
+    await one(
+      `select count(*)::int as n from audit_event where action = 'settings' and after ->> 'key' = 'vitals.default'`,
+    )
+  ).n
+  if (
+    r.before.join(',') !== 'bp_sys,bp_dia,pulse,temp,resp,spo2,weight,height,muac' ||
+    r.nurseSaves !== '42501' ||
+    r.unknown !== '22023' ||
+    r.empty !== '22023' ||
+    r.twice !== '22023' ||
+    r.ok !== null ||
+    r.after.join(',') !== 'temp,pulse,glucose_mmol,bmi' ||
+    r.audited < 1
+  )
+    throw new Error(json88(r))
+  return "the nine by default; the nurse may not save; unknown, empty and repeated codes refused; the manager's order read back; audited"
+})
+
+// ---------------------------------------------------------------- 0105 receipts of a period, patients' documents, analytics per dashboard
+const t102r = {}
+const json102r = (x) => JSON.stringify(x)
+await step(
+  '0105 A: receipts_in_period — the period sorted by time with the receipt data; filters by method and cashier; the cashier sees it; a nurse is refused',
+  async () => {
+    const p = await visitAt('Receipts 102')
+    await as(staff.manager)
+    const cons = (
+      await one(`select upsert_service(null, 'Consultation 102R', 'consultation', 4000) as id`)
+    ).id
+    await as(d1)
+    await db.query(`select take_patient($1)`, [p.queue])
+    await db.query(`select add_charge($1, 'consultation', $2)`, [p.enc, cons])
+    await db.query(`select add_diagnosis($1, 'Malaria 102R', 'B54')`, [p.enc])
+    await db.query(`select finish_station($1, 'consultation', 'cashier')`, [p.enc])
+    await as(staff.cashier)
+    const r1 = (await one(`select take_payment($1, 'momo', 1500, 'MP102') as r`, [p.enc])).r
+    const r2 = (await one(`select take_payment($1, 'cash', 2500) as r`, [p.enc])).r
+    t102r.enc = p.enc
+    await asAdmin()
+    t102r.day = (await one(`select (now() at time zone 'Africa/Kigali')::date::text as d`)).d
+    await as(staff.manager)
+    const all = (await one(`select receipts_in_period($1, $1) as j`, [t102r.day])).j
+    const momo = (await one(`select receipts_in_period($1, $1, null, 'momo') as j`, [t102r.day])).j
+    const byCashier = (
+      await one(`select receipts_in_period($1, $1, $2) as j`, [t102r.day, staff.cashier])
+    ).j
+    await as(staff.cashier)
+    const mine = (await one(`select receipts_in_period($1, $1) as j`, [t102r.day])).j
+    const refused = await tryAs(staff.nurse, `select receipts_in_period($1, $1)`, [t102r.day])
+    await asAdmin()
+    const ours = all.receipts.filter((x) => x.encounterId === p.enc)
+    const sorted = all.receipts.every((x, i, a) => i === 0 || a[i - 1].at <= x.at)
+    const r = {
+      ours: ours.map((x) => [x.receiptNo, x.method, x.amount, x.paid, x.balance, x.patient.name]),
+      lines: ours[0]?.lines,
+      total: ours[0]?.total,
+      count: all.count,
+      sum: all.total,
+      sorted,
+      momoOnly: momo.receipts.every((x) => x.method === 'momo'),
+      momoHasOurs: momo.receipts.some((x) => x.receiptNo === r1.receipt),
+      cashierOnly: byCashier.receipts.every((x) => x.cashierId === staff.cashier),
+      mine: mine.count,
+      refused,
+    }
+    if (
+      ours.length !== 2 ||
+      ours[0].receiptNo !== r1.receipt ||
+      ours[1].receiptNo !== r2.receipt ||
+      Number(ours[0].paid) !== 1500 ||
+      Number(ours[0].balance) !== 2500 ||
+      Number(ours[1].paid) !== 4000 ||
+      Number(ours[1].balance) !== 0 ||
+      ours[0].patient.name !== 'Mutoni Receipts 102' ||
+      ours[0].lines.length !== 1 ||
+      Number(ours[0].lines[0].unitPrice) !== 4000 ||
+      Number(ours[0].total) !== 4000 ||
+      all.count !== all.receipts.length ||
+      !sorted ||
+      !r.momoOnly ||
+      !r.momoHasOurs ||
+      !r.cashierOnly ||
+      byCashier.receipts.length < 2 ||
+      mine.count < 2 ||
+      !/not allowed/.test(refused)
+    )
+      throw new Error(json102r(r))
+    return `${all.count} receipts · RWF ${all.total}; momo ${momo.count}; cashier ${byCashier.count}; nurse refused`
+  },
+)
+await step(
+  '0105 B: visits_in_period — the manager sees the period with doctor, diagnosis and status; filters (closed only, doctor, search); a head their department; reception refused',
+  async () => {
+    await as(staff.manager)
+    const q = `select visits_in_period($1, $1, $2, $3, $4, $5, $6, $7) as j`
+    const all = (await one(q, [t102r.day, null, null, null, null, false, null])).j
+    const closedOnly = (await one(q, [t102r.day, null, null, null, null, true, null])).j
+    const byDoc = (await one(q, [t102r.day, null, d1, null, null, false, null])).j
+    const otherDoc = (await one(q, [t102r.day, null, d2, null, null, false, null])).j
+    const search = (await one(q, [t102r.day, null, null, null, null, false, 'receipts 102'])).j
+    const head = await (async () => {
+      await as(t86.head)
+      try {
+        return (await one(`select visits_in_period($1, $1) as j`, [t102r.day])).j
+      } catch (e) {
+        return { error: e.code }
+      }
+    })()
+    const headElsewhere = await tryAs(t86.head, `select visits_in_period($1, $1, $2)`, [
+      t102r.day,
+      t102r.deptOther ?? '00000000-0000-0000-0000-000000000000',
+    ])
+    const reception = await tryAs(staff.receptionist, `select visits_in_period($1, $1)`, [
+      t102r.day,
+    ])
+    await asAdmin()
+    const mine = all.visits.find((v) => v.id === t102r.enc)
+    const r = {
+      count: all.count,
+      mine: mine && [mine.patient.name, mine.doctor?.name, mine.diagnosis, mine.status],
+      closedOnly: closedOnly.visits.every((v) => v.status === 'closed'),
+      closedHasMine: closedOnly.visits.some((v) => v.id === t102r.enc),
+      byDoc:
+        byDoc.visits.every((v) => v.doctor?.id === d1) &&
+        byDoc.visits.some((v) => v.id === t102r.enc),
+      otherDoc: otherDoc.visits.some((v) => v.id === t102r.enc),
+      search: search.visits.map((v) => v.patient.name),
+      options: Object.keys(all.options),
+      headCount: head.count ?? head.error,
+      headDept: head.department,
+      headElsewhere,
+      reception,
+    }
+    if (
+      !mine ||
+      mine.patient.name !== 'Mutoni Receipts 102' ||
+      mine.doctor?.id !== d1 ||
+      mine.diagnosis !== 'Malaria 102R' ||
+      mine.status !== 'closed' ||
+      !r.closedOnly ||
+      !r.closedHasMine ||
+      !r.byDoc ||
+      r.otherDoc ||
+      search.visits.length !== 1 ||
+      !all.options.doctors.some((d) => d.id === d1) ||
+      head.error ||
+      head.department !== t86.dept ||
+      !/not allowed/.test(headElsewhere) ||
+      !/not allowed/.test(reception)
+    )
+      throw new Error(json102r(r))
+    return `${all.count} visits; closed only, by doctor and search filter; head: own department (${head.count}); reception refused`
+  },
+)
+await step(
+  '0105 C: visit_documents reads each visit through visit_clinical and logs the opening of a closed visit once, as a single opening does',
+  async () => {
+    await asAdmin()
+    const pid = (await one(`select patient_id from encounter where id = $1`, [t102r.enc]))
+      .patient_id
+    const logOf = async () =>
+      (
+        await db.query(
+          `select actor_id, via, what from record_access_entry where patient_id = $1 and encounter_id = $2 order by at`,
+          [pid, t102r.enc],
+        )
+      ).rows
+    const before = await logOf()
+    await as(staff.manager)
+    const docs = (await one(`select visit_documents(array[$1]::uuid[]) as j`, [t102r.enc])).j
+    await asAdmin()
+    const after = await logOf()
+    // the same visit opened on its screen right after: the same log line (half an hour), no second one
+    await as(staff.manager)
+    await one(`select visit_clinical($1) as j`, [t102r.enc])
+    await asAdmin()
+    const again = await logOf()
+    const cashier = await tryAs(staff.cashier, `select visit_documents(array[$1]::uuid[])`, [
+      t102r.enc,
+    ])
+    const d = docs[0]
+    const r = {
+      n: docs.length,
+      view: d?.clinical?.view,
+      private: d?.private,
+      patient: d?.patient?.name,
+      charges: d?.charges?.length,
+      diagnoses: d?.clinical?.diagnoses?.length,
+      vitals: Array.isArray(d?.vitals),
+      logged: after.length - before.length,
+      again: again.length - after.length,
+      entry: after[after.length - 1],
+      cashier,
+    }
+    if (
+      docs.length !== 1 ||
+      d.clinical.view !== 'manager' ||
+      d.private ||
+      d.patient.name !== 'Mutoni Receipts 102' ||
+      d.charges.length !== 1 ||
+      d.clinical.diagnoses.length !== 1 ||
+      !Array.isArray(d.vitals) ||
+      r.logged !== 1 ||
+      r.again !== 0 ||
+      r.entry.actor_id !== staff.manager ||
+      r.entry.via !== 'manager' ||
+      r.entry.what !== 'visit' ||
+      !/not allowed/.test(cashier)
+    )
+      throw new Error(json102r(r))
+    return 'one visit → one log line (manager, visit); the visit screen right after adds none; the cashier refused'
+  },
+)
+await step(
+  '0105 D: analytics_access keeps "views" as before and names each dashboard and its views; desk_analytics gives the doctor their own work',
+  async () => {
+    const access = async (who) => {
+      await as(who)
+      return (await one(`select analytics_access() as j`)).j
+    }
+    const m = await access(staff.manager)
+    const c = await access(staff.cashier)
+    // a plain doctor (d1 leads a department by now, so is a head)
+    const d = await access(t86.nobody)
+    const n = await access(staff.nurse)
+    const r = await access(staff.receptionist)
+    const ph = await access(staff.pharmacist)
+    const lab = await access(staff.lab_tech)
+    const h = await access(t86.head)
+    await as(d1)
+    const work = (await one(`select desk_analytics($1, $1) as j`, [t102r.day])).j
+    await as(staff.cashier)
+    const cashWork = (await one(`select desk_analytics($1, $1) as j`, [t102r.day])).j
+    await asAdmin()
+    const res = {
+      manager: [
+        m.dashboard,
+        m.views.includes('revenue'),
+        m.views.includes('receipts'),
+        m.dashboardViews[0],
+      ],
+      cashier: [c.dashboard, c.views.length, c.dashboardViews],
+      doctor: [d.dashboard, d.views.length, d.dashboardViews[0]],
+      nurse: [n.dashboard, n.dashboardViews.includes('vitals')],
+      reception: [r.dashboard, r.dashboardViews.includes('arrivals')],
+      pharmacy: [ph.dashboard, ph.dashboardViews.includes('outside')],
+      lab: [lab.dashboard, lab.dashboardViews.includes('turnaround')],
+      head: [h.dashboard, h.views, h.dashboardViews[0]],
+      work: [
+        work.counts.patientsSeen,
+        work.counts.diagnoses,
+        work.records.length,
+        !!work.bookings,
+        !!work.tasks,
+      ],
+      cashWork: [cashWork.counts.payments, Object.keys(cashWork.counts).length],
+    }
+    if (
+      m.dashboard !== 'manager' ||
+      !m.views.includes('revenue') ||
+      !m.views.includes('receipts') ||
+      m.dashboardViews[0] !== 'visits' ||
+      c.dashboard !== 'cashier' ||
+      c.views.length !== 0 ||
+      json102r(c.dashboardViews) !==
+        json102r(['collections', 'receipts', 'methods', 'openBills', 'refunds']) ||
+      d.dashboard !== 'doctor' ||
+      d.views.length !== 0 ||
+      d.dashboardViews[0] !== 'myPatients' ||
+      n.dashboard !== 'nurse' ||
+      !n.dashboardViews.includes('vitals') ||
+      r.dashboard !== 'reception' ||
+      !r.dashboardViews.includes('arrivals') ||
+      ph.dashboard !== 'pharmacy' ||
+      !ph.dashboardViews.includes('outside') ||
+      lab.dashboard !== 'lab' ||
+      !lab.dashboardViews.includes('turnaround') ||
+      h.dashboard !== 'head' ||
+      json102r(h.views) !== json102r(['staff', 'visits', 'treatments', 'waiting']) ||
+      h.dashboardViews[0] !== 'visits' ||
+      !(Number(work.counts.patientsSeen) >= 1) ||
+      !(Number(work.counts.diagnoses) >= 1) ||
+      !work.records.some((x) => x.encounterId === t102r.enc && x.kind === 'diagnoses') ||
+      work.records.some((x) => x.amount != null) ||
+      typeof work.bookings.booked !== 'number' ||
+      typeof work.tasks.open !== 'number' ||
+      'payments' in cashWork.counts
+    )
+      throw new Error(json102r(res))
+    return `manager · cashier · doctor · nurse · reception · pharmacy · lab · head named; the doctor's own work: ${work.counts.patientsSeen} seen, ${work.counts.diagnoses} diagnoses; no money`
+  },
+)
+
+// ---------------------------------------------------------------- 0104 (visit_edit_lock): a finished visit is locked
+// the 0089 and 0092 steps re-ran older migrations (old add_diagnosis, record_result…): put the
+// 20261212 definitions back (it runs twice, as in a database updated file by file)
+await step('0104: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261212090000_visit_edit_lock.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+const tLock = {}
+/** The service role, as the `visit-edit-code` edge function calls the database. */
+const asService = async () => {
+  await db.exec(
+    `reset role; select set_config('request.jwt.claim.sub', '', false); select set_config('request.jwt.claims', '', false); select set_config('request.jwt.claim.role', 'service_role', false); set role service_role;`,
+  )
+}
+const endService = async () => {
+  await db.exec(`reset role; select set_config('request.jwt.claim.role', '', false);`)
+  await asAdmin()
+}
+/** A code made for `who` the way the edge function asks for it: the grant id and the plain code. */
+const codeFor = async (enc, who, reason = 'lab result changes the diagnosis') => {
+  await asService()
+  const j = (await one(`select request_visit_edit($1, $2, $3) as j`, [enc, reason, who])).j
+  await endService()
+  return j
+}
+/** A visit closed by its doctor: diagnosis, finished; the manager ends it if money was still due. */
+const closedVisit = async (given) => {
+  const v = await visitAt(given)
+  await as(d1)
+  await db.query(`select take_patient($1)`, [v.queue])
+  tLock.dx = (await one(`select add_diagnosis($1, 'Malaria', 'B54', 'primary') as id`, [v.enc])).id
+  tLock.note = (await one(`select add_clinical_note($1, 'Fever for two days') as id`, [v.enc])).id
+  await db.query(`select finish_visit($1)`, [v.enc])
+  await asAdmin()
+  let st = (await one(`select status from encounter where id = $1`, [v.enc])).status
+  if (st !== 'closed') {
+    await as(staff.manager)
+    await db.query(`select end_visit($1, 'test 102')`, [v.enc])
+    await asAdmin()
+    st = (await one(`select status from encounter where id = $1`, [v.enc])).status
+  }
+  if (st !== 'closed') throw new Error(`visit not closed: ${st}`)
+  return v
+}
+await step(
+  '0104 A: a finished visit refuses every change without a code; the manager too',
+  async () => {
+    tLock.v = await closedVisit('Lock 102')
+    const enc = tLock.v.enc
+    const r = {
+      dx: await hintAs(d1, `select add_diagnosis($1, 'Late', 'A01', 'secondary')`, [enc]),
+      note: await hintAs(d1, `select add_clinical_note($1, 'late note')`, [enc]),
+      rx: await hintAs(
+        d1,
+        `select prescribe($1, null, 1, null, null, null, null, null, 'outside', null, null, 'Vitamin C')`,
+        [enc],
+      ),
+      edit: await hintAs(
+        d1,
+        `select update_condition($1, 'Severe malaria', null, null, null, 'x')`,
+        [tLock.dx],
+      ),
+      manager: await hintAs(staff.manager, `select add_diagnosis($1, 'Late', 'A01', 'secondary')`, [
+        enc,
+      ]),
+      vitals: await hintAs(d1, `select record_vitals($1, '{"temp": 38}')`, [enc]),
+    }
+    await as(d1)
+    const status = (await one(`select visit_edit_status($1) as j`, [enc])).j
+    const active = (await one(`select visit_edit_active($1) as a`, [enc])).a
+    await asAdmin()
+    if (
+      Object.values(r).some((x) => x !== 'P0002/') ||
+      active !== false ||
+      status.closed !== true ||
+      status.active !== false ||
+      status.canRequest !== true ||
+      status.pending !== null
+    )
+      throw new Error(JSON.stringify({ r, active, status }))
+    return `diagnosis, note, medicine, edit, vitals: ${r.dx}; manager: ${r.manager}; status closed, no window`
+  },
+)
+await step(
+  '0104 B: the code: never to the browser, e-mailed by the service role, 5 tries, then a 30-minute window',
+  async () => {
+    const enc = tLock.v.enc
+    // from the browser (authenticated): a grant is made, the code is not returned
+    await as(d1)
+    const browser = (await one(`select request_visit_edit($1, 'wrong icd code') as j`, [enc])).j
+    await asAdmin()
+    // the service role names the person and receives the code (the edge function e-mails it)
+    const made = await codeFor(enc, d1)
+    // someone who did not treat the patient: refused (even through the service role)
+    await asService()
+    const stranger = await db
+      .query(`select request_visit_edit($1, 'curious', $2)`, [enc, d2])
+      .then(() => 'ok')
+      .catch((e) => `${e.code}/${String(e.message).split('\n')[0]}`)
+    await endService()
+    const short = await hintAs(d1, `select request_visit_edit($1, 'x')`, [enc])
+    const row = await one(
+      `select code_hash, attempts, verified_at from visit_edit_grant where id = $1`,
+      [made.id],
+    )
+    // five wrong codes end the grant: each one is counted (answered, not refused), the sixth refused
+    const wrong = []
+    await as(d1)
+    for (let i = 0; i < 5; i++)
+      wrong.push((await one(`select verify_visit_edit($1, '000000') as j`, [enc])).j.triesLeft)
+    wrong.push(await tryAs(d1, `select verify_visit_edit($1, '000000')`, [enc]))
+    const again = await codeFor(enc, d1)
+    const right = await tryAs(d1, `select verify_visit_edit($1, $2)`, [enc, again.code])
+    await as(d1)
+    const status = (await one(`select visit_edit_status($1) as j`, [enc])).j
+    const active = (await one(`select visit_edit_active($1) as a`, [enc])).a
+    await as(d2)
+    const other = (await one(`select visit_edit_active($1) as a`, [enc])).a
+    await asAdmin()
+    const grant = await one(
+      `select verified_at, expires_at, extract(epoch from (expires_at - verified_at))::int as secs from visit_edit_grant where id = $1`,
+      [again.id],
+    )
+    const audit = (
+      await one(
+        `select count(*)::int as n from audit_event where entity = 'encounter' and entity_id = $1 and after ->> 'visit_edit_grant' = $2`,
+        [enc, again.id],
+      )
+    ).n
+    tLock.grant = again.id
+    if (
+      browser.code != null ||
+      browser.email != null ||
+      !browser.id ||
+      !/^\d{6}$/.test(made.code ?? '') ||
+      !made.id ||
+      stranger !==
+        '42501/only a clinician who treated the patient in this visit (or the manager) may edit it after it is finished' ||
+      short !== '22023/' ||
+      row.code_hash === made.code ||
+      row.attempts !== 0 ||
+      row.verified_at !== null ||
+      wrong[0] !== 4 ||
+      wrong[3] !== 1 ||
+      wrong[4] !== 0 ||
+      wrong[5] !== 'too many wrong codes: ask for a new one' ||
+      right !== 'ok' ||
+      active !== true ||
+      other !== false ||
+      status.active !== true ||
+      status.grantId !== again.id ||
+      grant.secs !== 1800 ||
+      audit < 2
+    )
+      throw new Error(
+        JSON.stringify({
+          browser,
+          made,
+          stranger,
+          short,
+          row,
+          wrong,
+          right,
+          status,
+          other,
+          grant,
+          audit,
+        }),
+      )
+    return `browser: no code; service: 6 digits (hash kept); stranger: refused; 5 wrong codes then "${wrong[5]}"; right code: window of ${grant.secs / 60} min, ${audit} audit rows`
+  },
+)
+await step(
+  '0104 C: inside the window every change is taken and written in the audit with the grant; after it, locked again',
+  async () => {
+    const enc = tLock.v.enc
+    await as(d1)
+    const dx2 = (
+      await one(`select add_diagnosis($1, 'Typhoid', 'A01.0', 'secondary') as id`, [enc])
+    ).id
+    const note2 = (await one(`select add_clinical_note($1, 'added after close') as id`, [enc])).id
+    const rx = (
+      await one(
+        `select prescribe($1, null, 10, '1 tab', 'oral', 'OD', 10, null, 'outside', null, null, 'Vitamin C 102') as j`,
+        [enc],
+      )
+    ).j
+    await db.query(`select record_vitals($1, '{"temp": 38.2}')`, [enc])
+    await db.query(
+      `select update_condition($1, 'Severe malaria', 'B50.0', null, null, 'the smear came back') as j`,
+      [tLock.dx],
+    )
+    const clinic = await hintAs(
+      d1,
+      `select prescribe($1, $2, 5, null, null, null, null, null, 'pharmacy')`,
+      [enc, t97.amox],
+    )
+    await as(d1)
+    const vc = (await one(`select visit_clinical($1) as j`, [enc])).j
+    await asAdmin()
+    const audit = (
+      await db.query(
+        `select entity, action from audit_event where after ->> 'visit_edit_grant' = $1 and reason like 'finished visit edited under grant%' order by at`,
+        [tLock.grant],
+      )
+    ).rows
+    const atPharmacy = (
+      await one(
+        `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'pharmacy' and finished_at is null`,
+        [enc],
+      )
+    ).n
+    // the window ends
+    await db.query(
+      `update visit_edit_grant set expires_at = now() - interval '1 second' where id = $1`,
+      [tLock.grant],
+    )
+    const after = await hintAs(d1, `select add_clinical_note($1, 'too late')`, [enc])
+    await as(d1)
+    const status = (await one(`select visit_edit_status($1) as j`, [enc])).j
+    await asAdmin()
+    const kinds = audit.map((a) => `${a.entity}:${a.action}`)
+    if (
+      !dx2 ||
+      !note2 ||
+      rx.supply !== 'outside' ||
+      clinic !== '22023/' ||
+      atPharmacy !== 0 ||
+      vc.editLock?.active !== true ||
+      vc.diagnoses.find((d) => d.id === tLock.dx)?.text !== 'Severe malaria' ||
+      !kinds.includes('condition:create') ||
+      !kinds.includes('observation:create') ||
+      !kinds.includes('medication_request:create') ||
+      !kinds.includes('condition:update') ||
+      after !== 'P0002/' ||
+      status.active !== false
+    )
+      throw new Error(
+        JSON.stringify({
+          dx2,
+          note2,
+          rx,
+          clinic,
+          atPharmacy,
+          kinds,
+          after,
+          status,
+          lock: vc.editLock,
+        }),
+      )
+    return `${kinds.length} audit rows under the grant (${[...new Set(kinds)].join(', ')}); clinic medicine: ${clinic}; after the window: ${after}`
+  },
+)
+await step(
+  '0104 D: a diagnosis is edited or removed and a note edited by its author (or the manager), with a reason; the history keeps every version',
+  async () => {
+    const v = await visitAt('Hist 102')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [v.queue])
+    const dx = (await one(`select add_diagnosis($1, 'Malaria', 'B54', 'primary') as id`, [v.enc]))
+      .id
+    const dx2 = (
+      await one(`select add_diagnosis($1, 'Anaemia', 'D64.9', 'secondary') as id`, [v.enc])
+    ).id
+    const note = (await one(`select add_clinical_note($1, 'Fever, chills') as id`, [v.enc])).id
+    const r = {
+      other: await hintAs(d2, `select update_condition($1, 'X', null, null, null, 'not mine')`, [
+        dx,
+      ]),
+      noReason: await hintAs(d1, `select update_condition($1, 'X', null, null, null, '')`, [dx]),
+      same: await hintAs(
+        d1,
+        `select update_condition($1, 'Malaria', null, null, null, 'nothing')`,
+        [dx],
+      ),
+    }
+    await as(d1)
+    await db.query(
+      `select update_condition($1, 'Severe malaria', 'B50.0', null, true, 'smear positive')`,
+      [dx],
+    )
+    await db.query(`select update_condition($1, null, '', null, false, 'confirmed')`, [dx])
+    await db.query(`select update_note($1, 'Fever, chills, headache', 'forgot the headache')`, [
+      note,
+    ])
+    await db.query(`select remove_condition($1, 'haemoglobin was normal')`, [dx2])
+    await as(staff.manager)
+    await db.query(`select update_note($1, 'Fever, chills, headache for two days', 'clarified')`, [
+      note,
+    ])
+    await as(d1)
+    const vc = (await one(`select visit_clinical($1) as j`, [v.enc])).j
+    await asAdmin()
+    const d = vc.diagnoses.find((x) => x.id === dx)
+    const gone = vc.diagnoses.find((x) => x.id === dx2)
+    const n = vc.notes.find((x) => x.id === note)
+    const removedRow = await one(`select deleted_at, edit_reason from condition where id = $1`, [
+      dx2,
+    ])
+    // the record of care still has its primary diagnosis: the visit closes as usual
+    await as(d1)
+    await db.query(`select finish_visit($1)`, [v.enc])
+    await asAdmin()
+    if (
+      r.other !== '42501/' ||
+      r.noReason !== '22023/' ||
+      r.same !== '22023/' ||
+      d.text !== 'Severe malaria' ||
+      d.icd10 !== null ||
+      d.provisional !== false ||
+      d.editReason !== 'confirmed' ||
+      !d.editedAt ||
+      d.history.length !== 2 ||
+      d.history[0].text !== 'Severe malaria' ||
+      d.history[0].icd10 !== 'B50.0' ||
+      d.history[0].reason !== 'confirmed' ||
+      d.history[1].text !== 'Malaria' ||
+      d.history[1].icd10 !== 'B54' ||
+      d.history[1].reason !== 'smear positive' ||
+      !gone.removedAt ||
+      gone.removeReason !== 'haemoglobin was normal' ||
+      removedRow.deleted_at === null ||
+      n.text !== 'Fever, chills, headache for two days' ||
+      n.editReason !== 'clarified' ||
+      n.history.length !== 2 ||
+      n.history[1].text !== 'Fever, chills' ||
+      n.history[0].text !== 'Fever, chills, headache'
+    )
+      throw new Error(JSON.stringify({ r, d, gone, removedRow, n }))
+    tLock.hist = v
+    return `${d.history.length} versions of the diagnosis, ${n.history.length} of the note (one by the manager); removed: ${gone.removeReason}`
+  },
+)
+await step('0104 E: a finished visit keeps its primary diagnosis', async () => {
+  const v = tLock.hist
+  await asAdmin()
+  const st = (await one(`select status from encounter where id = $1`, [v.enc])).status
+  if (st !== 'closed') {
+    await as(staff.manager)
+    await db.query(`select end_visit($1, 'test 102')`, [v.enc])
+    await asAdmin()
+  }
+  const dx = (
+    await one(
+      `select id from condition where encounter_id = $1 and type = 'primary' and deleted_at is null`,
+      [v.enc],
+    )
+  ).id
+  const made = await codeFor(v.enc, d1, 'wrong diagnosis')
+  const opened = await tryAs(d1, `select verify_visit_edit($1, $2)`, [v.enc, made.code])
+  const r = {
+    remove: await codeAs(d1, `select remove_condition($1, 'wrong')`, [dx]),
+    demote: await codeAs(
+      d1,
+      `select update_condition($1, null, null, 'secondary', null, 'wrong')`,
+      [dx],
+    ),
+  }
+  await as(d1)
+  await db.query(`select add_diagnosis($1, 'Typhoid fever', 'A01.0', 'primary')`, [v.enc])
+  const removed = await codeAs(d1, `select remove_condition($1, 'typhoid, not malaria')`, [dx])
+  await asAdmin()
+  if (opened !== 'ok' || r.remove !== '23514' || r.demote !== '23514' || removed !== null)
+    throw new Error(JSON.stringify({ opened, r, removed }))
+  return `last primary: remove ${r.remove}, demote ${r.demote}; with a new primary written: removed`
+})
+await step(
+  '0104 F: a result is entered by the laboratory, never by the clinician who asked for it; the manager corrects',
+  async () => {
+    // a doctor of Consultation only (d1 may have been placed in a laboratory department above)
+    const doc = await newStaff('doc.lock102', 'Dr. Lock 102', 'doctor', 'Consultation 4')
+    const v = await visitAt('Result 102')
+    await as(doc)
+    await db.query(`select take_patient($1)`, [v.queue])
+    await db.query(`select add_diagnosis($1, 'Fever', 'R50.9', 'primary')`, [v.enc])
+    await asAdmin()
+    const svc = await one(`select id from service where service_group = 'lab' and active limit 1`)
+    // the order itself, written as the doctor's (no price needed for this check)
+    const req = (
+      await one(
+        `insert into service_request (encounter_id, category, service_id, priority, station, requester_id)
+         values ($1, 'lab', $2, 3, 'laboratory', $3) returning id`,
+        [v.enc, svc.id, doc],
+      )
+    ).id
+    await as(doc)
+    const vc = (await one(`select visit_clinical($1) as j`, [v.enc])).j
+    const r = {
+      mine: vc.orders.find((o) => o.id === req)?.mine,
+      doctor: await hintAs(doc, `select record_result($1, 'Positive', 'Malaria', true)`, [req]),
+      lab: await hintAs(
+        staff.lab_tech,
+        `select record_result($1, 'Negative', 'No malaria', true)`,
+        [req],
+      ),
+      doctorCorrect: await hintAs(
+        doc,
+        `select correct_result($1, 'Positive', 'Malaria', 'I know better')`,
+        [req],
+      ),
+      manager: await hintAs(
+        staff.manager,
+        `select correct_result($1, 'Positive', 'Malaria', 'relabelled')`,
+        [req],
+      ),
+    }
+    if (
+      r.mine !== true ||
+      r.doctor !== '42501/no_desk' ||
+      r.lab !== 'ok' ||
+      r.doctorCorrect !== '42501/no_desk' ||
+      r.manager !== 'ok'
+    )
+      throw new Error(JSON.stringify(r))
+    return `requester: ${r.doctor} (enter) / ${r.doctorCorrect} (correct); laboratory: ${r.lab}; manager corrects: ${r.manager}`
+  },
+)
+
+// ---------------------------------------------------------------- 0103 (20261214): packs and pieces; the rest of a prescription
+// Earlier checks re-ran older migrations after every file: the 0103 definitions go back on top
+// (the migration is idempotent).
+const t103 = {}
+await step('0103: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261214090000_packs_and_pieces.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step(
+  '0103 A: a whole-pack walk-in sale is charged at the pack price; pieces at the piece price; stock leaves in pieces',
+  async () => {
+    // Amoxicillin 97 sells at 350 a capsule; a pack of 20 at 6,000 (not 7,000)
+    await as(staff.manager)
+    await db.query(`select set_pack_size($1, 20)`, [t97.amox])
+    const noSize = await hintAs(staff.manager, `select set_pack_price($1, 6000)`, [t97.gauze])
+    await as(staff.manager)
+    await db.query(`select set_pack_price($1, 6000)`, [t97.amox])
+    const nurse = await codeAs(staff.nurse, `select set_pack_price($1, 5000)`, [t97.amox])
+    await as(staff.pharmacist)
+    await db.query(`select add_stock($1::jsonb)`, [
+      JSON.stringify([
+        {
+          item_id: t97.amox,
+          batch_no: 'AMX-103',
+          expiry: t97.day.d,
+          quantity: 200,
+          unit_cost: 120,
+        },
+      ]),
+    ])
+    await asAdmin()
+    const item = await one(`select pack_size, pack_price from item where id = $1`, [t97.amox])
+    const before = (await one(`select usable_stock($1, $2) as n`, [t97.amox, t97.main])).n
+    await as(staff.pharmacist)
+    const whole = (
+      await one(`select create_counter_sale($1::jsonb, 'Packs 103') as j`, [
+        JSON.stringify([{ itemId: t97.amox, quantity: 40 }]),
+      ])
+    ).j
+    const loose = (
+      await one(`select create_counter_sale($1::jsonb, 'Pieces 103') as j`, [
+        JSON.stringify([{ itemId: t97.amox, quantity: 23 }]),
+      ])
+    ).j
+    const list = (await one(`select counter_sales('open') as j`)).j
+    await db.query(`select take_counter_payment($1, 'cash')`, [whole.id])
+    await db.query(`select hand_over_counter_sale($1)`, [whole.id])
+    await db.query(`select cancel_counter_sale($1, 'pieces 103 not taken')`, [loose.id])
+    const overview = (await one(`select stock_overview() as j`)).j
+    await asAdmin()
+    const after = (await one(`select usable_stock($1, $2) as n`, [t97.amox, t97.main])).n
+    const w = list.find((s) => s.id === whole.id)?.lines[0]
+    const l = list.find((s) => s.id === loose.id)?.lines[0]
+    const ov = overview.items.find((x) => x.id === t97.amox)
+    if (
+      noSize !== '22023/pack_size' ||
+      nurse !== '42501' ||
+      item.pack_size !== 20 ||
+      Number(item.pack_price) !== 6000 ||
+      Number(whole.total) !== 12000 ||
+      !w?.byPack ||
+      w.packs !== 2 ||
+      Number(w.packPrice) !== 6000 ||
+      w.quantity !== 40 ||
+      w.packSize !== 20 ||
+      Number(w.unitPrice) !== 350 ||
+      Number(loose.total) !== 8050 ||
+      l?.byPack ||
+      l?.packs != null ||
+      after !== before - 40 ||
+      ov?.packSize !== 20 ||
+      Number(ov?.packPrice) !== 6000
+    )
+      throw new Error(
+        JSON.stringify({
+          noSize,
+          nurse,
+          item,
+          whole,
+          w,
+          loose,
+          l,
+          before,
+          after,
+          ov,
+        }),
+      )
+    t103.amoxBefore = after
+    return `40 capsules = 2 packs × 6,000 = 12,000 (not 14,000); 23 capsules = 8,050; 40 pieces left the shelf`
+  },
+)
+await step(
+  '0103 B: a bill line of whole packs is written in packs at the pack price; pieces as before',
+  async () => {
+    const v = await visit87('Packs 103')
+    await as(staff.pharmacist)
+    const salesBefore = (await one(`select stock_sales(current_date, current_date) as j`)).j
+    const pack = (await one(`select sell_medicine($1, $2, 20) as j`, [v.enc, t97.amox])).j
+    const piece = (await one(`select sell_medicine($1, $2, 5) as j`, [v.enc, t97.amox])).j
+    const salesAfter = (await one(`select stock_sales(current_date, current_date) as j`)).j
+    await asAdmin()
+    const lines = (
+      await db.query(
+        `select l.description, l.quantity::text as q, l.unit_price::text as p, l.pack_size, l.patient_share::text as share
+         from invoice_line l where l.invoice_id = $1 and l.deleted_at is null order by l.created_at`,
+        [v.inv],
+      )
+    ).rows
+    const inv = await one(`select total::text as total from invoice where id = $1`, [v.inv])
+    const given = await one(
+      `select sum(m.quantity)::int as n from stock_movement m where m.item_id = $1 and m.type = 'dispense'
+        and m.medication_request_id in ($2, $3) and m.deleted_at is null`,
+      [t97.amox, pack.requestId, piece.requestId],
+    )
+    const name = 'Amoxicillin 97 500 mg'
+    const unitsBefore = Number(salesBefore.items.find((x) => x.item === name)?.units ?? 0)
+    const unitsAfter = Number(salesAfter.items.find((x) => x.item === name)?.units ?? 0)
+    if (
+      !pack.charged ||
+      !piece.charged ||
+      lines.length !== 2 ||
+      !/ · B\/20$/.test(lines[0].description) ||
+      Number(lines[0].q) !== 1 ||
+      Number(lines[0].p) !== 6000 ||
+      lines[0].pack_size !== 20 ||
+      Number(lines[0].share) !== 6000 ||
+      Number(lines[1].q) !== 5 ||
+      Number(lines[1].p) !== 350 ||
+      lines[1].pack_size !== null ||
+      Number(inv.total) !== 7750 ||
+      given.n !== 25 ||
+      unitsAfter - unitsBefore !== 25
+    )
+      throw new Error(
+        JSON.stringify({
+          pack,
+          piece,
+          lines,
+          inv,
+          given,
+          unitsBefore,
+          unitsAfter,
+        }),
+      )
+    return `"${lines[0].description}" × 1 at 6,000 and 5 × 350: bill 7,750; 25 capsules left the shelf; the sales report counts 25 pieces`
+  },
+)
+await step(
+  '0103 C: 30 prescribed, 12 given, rest not available: the prescriber sends only the 18 outside; the 12 stay charged',
+  async () => {
+    const v = await visitAt('Rest 103')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [v.queue])
+    await db.query(`select add_diagnosis($1, 'Tonsillitis', 'J03', 'primary')`, [v.enc])
+    const rx = (
+      await one(
+        `select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => 30, p_supply => 'pharmacy',
+                p_dose => '1 cap', p_frequency => 'TDS', p_duration_days => 10) as j`,
+        [v.enc, t97.amox],
+      )
+    ).j
+    await db.query(`select finish_visit($1)`, [v.enc])
+    await as(staff.pharmacist)
+    const q0 = (await one(`select pharmacy_queue() as j`)).j.lines.find(
+      (x) => x.requestId === rx.id,
+    )
+    const part = (await one(`select dispense_prescription($1, null, 12) as j`, [rx.id])).j
+    await db.query(`select rx_not_given($1, 'Out of stock')`, [rx.id])
+    await asAdmin()
+    const told = await one(
+      `select params from notification where kind = 'rx_not_given' and params ->> 'requestId' = $1`,
+      [rx.id],
+    )
+    await as(d1)
+    const out = (await one(`select rx_set_supply($1, 'outside', 'none left') as j`, [rx.id])).j
+    const again = (await one(`select rx_set_supply($1, 'outside') as j`, [rx.id])).j
+    await asAdmin()
+    const orig = await one(
+      `select supply, quantity::text as q, quantity_given, not_given_at is not null as ng, given_at is not null as g
+         from medication_request where id = $1`,
+      [rx.id],
+    )
+    const rest = await one(
+      `select supply, quantity::text as q, quantity_given, split_from, medicine_name, prescriber_id, cancelled_at
+         from medication_request where id = $1`,
+      [out.id],
+    )
+    const billed = (
+      await one(
+        `select coalesce(sum(l.quantity * coalesce(l.pack_size, 1)), 0)::int as n from invoice_line l
+          join medication_dispense d on d.id = l.source_id and l.source_type = 'medication_dispense'
+         where d.medication_request_id = $1 and l.deleted_at is null`,
+        [rx.id],
+      )
+    ).n
+    // back to the pharmacy: the rest waits there as its own line, then outside again
+    await as(d1)
+    const back = (await one(`select rx_set_supply($1, 'pharmacy') as j`, [rx.id])).j
+    await as(staff.pharmacist)
+    const q1 = (await one(`select pharmacy_queue() as j`)).j.lines.find(
+      (x) => x.requestId === out.id,
+    )
+    await as(d1)
+    const outAgain = (await one(`select rx_set_supply($1, 'outside') as j`, [out.id])).j
+    await as(staff.pharmacist)
+    const report = (await one(`select rx_bought_outside(current_date, current_date) as j`)).j
+    await asAdmin()
+    const amox = report.find((x) => x.itemId === t97.amox)
+    const pending = (
+      await one(
+        `select count(*)::int as n from medication_request m where m.encounter_id = $1 and rx_pending(m)`,
+        [v.enc],
+      )
+    ).n
+    if (
+      q0?.packSize !== 20 ||
+      Number(q0?.packPrice) !== 6000 ||
+      part.given !== 12 ||
+      part.remaining !== 18 ||
+      told?.params.quantity !== 30 ||
+      told?.params.given !== 12 ||
+      told?.params.remaining !== 18 ||
+      told?.params.outside !== true ||
+      out.supply !== 'outside' ||
+      out.splitFrom !== rx.id ||
+      out.quantity !== 18 ||
+      out.given !== 12 ||
+      out.id === rx.id ||
+      again.changed !== false ||
+      again.splitFrom !== rx.id ||
+      orig.supply !== 'pharmacy' ||
+      Number(orig.q) !== 30 ||
+      orig.quantity_given !== 12 ||
+      !orig.ng ||
+      orig.g ||
+      rest.supply !== 'outside' ||
+      Number(rest.q) !== 18 ||
+      rest.quantity_given !== 0 ||
+      rest.split_from !== rx.id ||
+      !rest.medicine_name ||
+      rest.prescriber_id !== d1 ||
+      billed !== 12 ||
+      back.id !== out.id ||
+      back.supply !== 'pharmacy' ||
+      !q1 ||
+      q1.remaining !== 18 ||
+      q1.splitFrom !== rx.id ||
+      outAgain.supply !== 'outside' ||
+      !amox ||
+      !(amox.notGiven >= 2) ||
+      pending !== 0
+    )
+      throw new Error(
+        JSON.stringify({
+          q0,
+          part,
+          told,
+          out,
+          again,
+          orig,
+          rest,
+          billed,
+          back,
+          q1,
+          outAgain,
+          amox,
+          pending,
+        }),
+      )
+    return `12 given and billed; 18 sent outside as their own line (split from the original); back to the pharmacy's list and out again; "bought outside" counts it`
+  },
+)
 finish()
 
 function finish() {

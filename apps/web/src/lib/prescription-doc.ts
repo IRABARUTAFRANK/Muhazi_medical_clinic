@@ -31,8 +31,10 @@ import {
  * grid and allergy statement, the diagnosis, every medicine as a numbered two-line item (generic
  * name, strength and form with the quantity in figures and words; then the directions in plain
  * words), a closing line (total items, refill), and the prescriber's signature and stamp block.
- * Medicines already given at the clinic are not printed (they stay on the medical report), so
- * they are never dispensed a second time.
+ * Medicines given at the clinic (at its pharmacy or in the room) are never printed, not even
+ * greyed: they stay on the medical report, so they are never dispensed a second time. Since 0104
+ * the clinical record prints one prescription only, with the medicines the patient buys at an
+ * outside pharmacy (`outside: true`); `givenHere` is kept for older callers and never printed.
  *
  * `buildPrescriptionHtml` is pure (testable, renderable from a script); `openPrescription`
  * writes it into a new window, which waits for the fonts and the logo and then prints.

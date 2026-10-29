@@ -7,6 +7,8 @@ import {
   FileText,
   FlaskConical,
   HandHeart,
+  History,
+  Pencil,
   Pill,
   Plus,
   Printer,
@@ -39,13 +41,17 @@ import {
   useItems,
   useRxStock,
   useVisitClinical,
+  type Diagnosis,
   type DocPerson,
   type Item,
   type Prescription,
   type PrescriptionState,
+  type RecordVersion,
   type RxSupply,
   type RxWarning,
 } from '@/lib/api/patients'
+import { VisitEditLock } from '@/components/clinical/visit-edit-lock'
+import { useEditWindow } from '@/components/clinical/edit-window'
 import { isRoomStore, useStockActions, useStockOverview } from '@/lib/api/stock'
 import { useHoldsStore, useStoreStock, type MyStore } from '@/lib/api/rooms'
 import { ApiError, errorKind } from '@/lib/api/errors'
@@ -58,6 +64,7 @@ import { cn } from '@/lib/utils'
 import { useCan, useSwitchedOff } from '@/lib/api/permissions'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import {
+  deskName,
   deskOfRequest,
   STATION_DESKS,
   TREATING_DESKS,
@@ -201,7 +208,13 @@ export function ClinicalCard({
   const can = useCan(user)
   const switchedOff = useSwitchedOff(user)
   const stock = useStockActions()
-  const readOnly = closed || !!lockedNote
+  // A finished visit is locked (0104): read-only until the person types the e-mailed code, which
+  // opens a 30-minute edit window (`editing`); `finished` keeps the wording of a closed bill.
+  const lock = data?.editLock ?? null
+  const { editing } = useEditWindow(lock)
+  const finished = closed || lock?.closed === true || data?.visit?.status === 'closed'
+  const locked = finished && !editing
+  const readOnly = locked || !!lockedNote
   // The desks a department of the person gives (or, where no department gives one, the role):
   // the clinical record is a treating desk's (Consultation, Dental, Nursing…), results are the
   // laboratory's or the ultrasound's, a hand-over taken back is the pharmacy's.
@@ -215,20 +228,22 @@ export function ClinicalCard({
   const lockedOut = !!lockedNote && (user.role === 'doctor' || user.role === 'nurse')
   const { data: deskInfo } = useMyDesks(user)
   /** Whose result is it: the laboratory or ultrasound desk of the test; a test done at another
-   *  desk (Nursing, Dental…) also that desk's clinical staff; the clinician's own test while no
-   *  department gives its desk ('mine' from visit_clinical; before 0085: anyone who orders tests).
-   *  As the database checks. */
+   *  desk (Nursing, Dental…) also that desk's clinical staff. Never the clinician who asked for
+   *  it (0104: the requester fallback is gone, in the database too). As the database checks. */
   const mayResult = (o: { station?: string | null; category: 'lab' | 'imaging' }) =>
     // the laboratory / ultrasound desk comes with the department, the switch with the manager
     (canDesk(deskOfRequest(o.station, o.category)) && can('orders.write')) ||
     (can('clinical.write') &&
       !['laboratory', 'ultrasound'].includes(o.station ?? 'laboratory') &&
-      canDesk(STATION_DESKS[o.station ?? ''] ?? [])) ||
-    (can('orders.write') &&
-      (!!deskInfo?.fallback ||
-        ((o as { mine?: boolean }).mine === true &&
-          !(deskInfo?.offered ?? []).includes(deskOfRequest(o.station, o.category)))))
-  const canResult = (o: Parameters<typeof mayResult>[0]) => !closed && !lockedOut && mayResult(o)
+      canDesk(STATION_DESKS[o.station ?? ''] ?? []))
+  const canResult = (o: Parameters<typeof mayResult>[0]) => !locked && !lockedOut && mayResult(o)
+  /** 0104: the manager (only) is told when no department gives the desk that does a test. */
+  const noDeskFor = (o: Parameters<typeof mayResult>[0]): string | null => {
+    const desk = deskOfRequest(o.station, o.category)
+    if (user.role !== 'manager' || !deskInfo || deskInfo.fallback) return null
+    if (!['laboratory', 'ultrasound'].includes(desk)) return null
+    return deskInfo.offered.includes(desk) ? null : deskName(desk, t)
+  }
   // A verified result is corrected with a reason, also after the visit ended.
   const canCorrect = (o: Parameters<typeof mayResult>[0]) =>
     user.role === 'manager' || (!lockedOut && mayResult(o))
@@ -240,6 +255,23 @@ export function ClinicalCard({
     correction: null as string | null,
   })
   const [mode, setMode] = useState<'note' | 'dx' | 'rx' | 'test' | null>(null)
+  // editing or removing a diagnosis, editing a note (0104): the line's form, with the reason
+  const [dxEdit, setDxEdit] = useState<{
+    id: string
+    text: string
+    icd10: string
+    type: 'primary' | 'secondary'
+    provisional: boolean
+    reason: string
+  } | null>(null)
+  const [dxRemove, setDxRemove] = useState<{ id: string; reason: string } | null>(null)
+  const [noteEdit, setNoteEdit] = useState<{ id: string; text: string; reason: string } | null>(
+    null,
+  )
+  // the previous versions unfolded, per line
+  const [versionsOf, setVersionsOf] = useState<string | null>(null)
+  /** The diagnoses still standing (a removed one stays in the record, struck through). */
+  const standing = (list: Diagnosis[]) => list.filter((d) => !d.removedAt)
   // the clinic pharmacy's usable stock, and the official list for medicines bought outside
   const { data: rxStock = null } = useRxStock(mode === 'rx')
   const { data: refs = [] } = useMedicineReference(mode === 'rx')
@@ -348,12 +380,8 @@ export function ClinicalCard({
   // the signed-in person's specialty and council registration (nulls before 0084)
   const { data: creds } = useMyCredentials(user.id)
   const [printingRx, setPrintingRx] = useState(false)
-  // every medicine still standing was given here: the patient has nothing to take to a pharmacy
-  const allGivenHere =
-    !!data &&
-    data.prescriptions.some((r) => !r.cancelledAt) &&
-    data.prescriptions.every((r) => r.cancelledAt || r.supply === 'room')
-  // medicines the patient buys at an outside pharmacy: their own print
+  // the printed prescription lists only the medicines the patient buys at an outside pharmacy
+  // (0104): those given at the clinic pharmacy or here stay on the medical report
   const hasOutside = !!data?.prescriptions.some((r) => !r.cancelledAt && r.supply === 'outside')
   /** A staff member as a document names them: specialty (else role), council registration. */
   const docPerson = (p: DocPerson) => ({
@@ -371,8 +399,10 @@ export function ClinicalCard({
     r.route ? t(`clinical.routes.${r.route}`, { defaultValue: r.route }) : null
   const frequencyWords = (r: Prescription) =>
     r.frequency ? t(`clinical.frequencies.${r.frequency}`, { defaultValue: r.frequency }) : null
-  const primaryDx = () =>
-    data ? (data.diagnoses.find((d) => d.type === 'primary') ?? data.diagnoses[0]) : undefined
+  const primaryDx = () => {
+    const list = data ? standing(data.diagnoses) : []
+    return list.find((d) => d.type === 'primary') ?? list[0]
+  }
 
   const printReport = () => {
     if (!data || !patient) return
@@ -431,7 +461,8 @@ export function ClinicalCard({
             vitalsBy: report?.vitalsBy ?? null,
             vitalsAt: report?.vitalsAt ?? null,
             notes: data.notes.map((n) => n.text),
-            diagnoses: data.diagnoses.map((d) => ({
+            // a removed diagnosis is not part of the record of care
+            diagnoses: standing(data.diagnoses).map((d) => ({
               text: d.text,
               icd10: d.icd10,
               primary: d.type === 'primary',
@@ -456,9 +487,9 @@ export function ClinicalCard({
     if (!ok) setLocalError(t('report.popupBlocked'))
   }
 
-  /** 'outside': the prescription for an outside pharmacy, only the medicines bought outside. */
-  const printRx = async (only: 'all' | 'outside' = 'all') => {
-    if (!data || !patient || printingRx) return
+  /** The prescription: only the medicines the patient buys at an outside pharmacy (0104). */
+  const printRx = async () => {
+    if (!data || !patient || printingRx || !hasOutside) return
     setLocalError(null)
     // the window opens on the click itself (a browser blocks one opened after a wait)
     const w = window.open('', '_blank')
@@ -482,9 +513,8 @@ export function ClinicalCard({
         days: r.days,
         instructions: r.instructions,
       })
-      const forPharmacy = covered.filter((r) =>
-        only === 'outside' ? r.supply === 'outside' : r.supply !== 'room',
-      )
+      // never a medicine given at the clinic pharmacy or here, not even greyed
+      const forPharmacy = covered.filter((r) => r.supply === 'outside')
       const dx = primaryDx()
       const p = data.patient
       // the clinician who wrote it, not whoever prints it
@@ -516,8 +546,8 @@ export function ClinicalCard({
         },
         diagnosis: dx ? { text: dx.text, icd10: dx.icd10, provisional: dx.provisional } : null,
         medicines: forPharmacy.map(toDoc),
-        givenHere: only === 'outside' ? [] : covered.filter((r) => r.supply === 'room').map(toDoc),
-        outside: only === 'outside',
+        givenHere: [],
+        outside: true,
         prescriber,
         printedBy: user.name,
       }
@@ -761,9 +791,12 @@ export function ClinicalCard({
       if (
         !(await confirm({
           title: t('confirm.visit.undoHere', { item: r.item, name }),
-          body: t(closed ? 'confirm.visit.undoHereClosedBody' : 'confirm.visit.undoHereOpenBody', {
-            reason: why,
-          }),
+          body: t(
+            finished ? 'confirm.visit.undoHereClosedBody' : 'confirm.visit.undoHereOpenBody',
+            {
+              reason: why,
+            },
+          ),
           confirmLabel: t('confirm.visit.undoHereYes'),
           tone: 'danger',
         }))
@@ -786,7 +819,7 @@ export function ClinicalCard({
     if (
       !(await confirm({
         title: t('confirm.visit.returnMedicine', { item: r.item, name }),
-        body: t(closed ? 'confirm.visit.returnClosedBody' : 'confirm.visit.returnOpenBody', {
+        body: t(finished ? 'confirm.visit.returnClosedBody' : 'confirm.visit.returnOpenBody', {
           reason: why,
         }),
         confirmLabel: t('confirm.visit.returnMedicineYes'),
@@ -846,8 +879,156 @@ export function ClinicalCard({
       ...o,
       services: o.services.includes(id) ? o.services.filter((x) => x !== id) : [...o.services, id],
     }))
+  /** The author of a line (or the manager) changes or removes it, with a reason (0104). */
+  const mayEditLine = (byId: string | null | undefined) =>
+    clinician && (isManager || (!!byId && byId === user.id))
+  const submitDxEdit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!dxEdit) return
+    if (dxEdit.reason.trim().length < 3 || !dxEdit.text.trim())
+      return setLocalError(t('clinical.errors.reason'))
+    if (
+      !(await confirm({
+        title: t('confirm.visit.editDx', { dx: dxEdit.text.trim(), name }),
+        body: t('confirm.visit.editDxBody', { reason: dxEdit.reason.trim() }),
+        confirmLabel: t('confirm.visit.changeYes'),
+      }))
+    )
+      return
+    void run(
+      () => actions.updateDiagnosis.mutateAsync(dxEdit).then(() => setDxEdit(null)),
+      t('clinical.dxUpdated'),
+    )
+  }
+  const submitDxRemove = async (d: Diagnosis) => {
+    if (!dxRemove || dxRemove.reason.trim().length < 3)
+      return setLocalError(t('clinical.errors.reason'))
+    if (
+      !(await confirm({
+        title: t('confirm.visit.removeDx', { dx: d.text, name }),
+        body: t('confirm.visit.removeDxBody', { reason: dxRemove.reason.trim() }),
+        confirmLabel: t('confirm.visit.removeYes'),
+        tone: 'danger',
+      }))
+    )
+      return
+    void run(
+      () =>
+        actions.removeDiagnosis
+          .mutateAsync({ id: d.id, reason: dxRemove.reason })
+          .then(() => setDxRemove(null)),
+      t('clinical.dxRemoved'),
+    )
+  }
+  const submitNoteEdit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!noteEdit) return
+    if (noteEdit.reason.trim().length < 3 || !noteEdit.text.trim())
+      return setLocalError(t('clinical.errors.reason'))
+    if (
+      !(await confirm({
+        title: t('confirm.visit.editNote', { name }),
+        body: t('confirm.visit.editDxBody', { reason: noteEdit.reason.trim() }),
+        confirmLabel: t('confirm.visit.changeYes'),
+      }))
+    )
+      return
+    void run(
+      () => actions.updateNote.mutateAsync(noteEdit).then(() => setNoteEdit(null)),
+      t('clinical.noteUpdated'),
+    )
+  }
+  /** "edited by … on …" under a changed line, and the fold-out of its previous versions. */
+  const editedMark = (
+    x: {
+      id: string
+      editedAt?: string | null
+      editedBy?: string | null
+      editReason?: string | null
+    },
+    history: RecordVersion[] | undefined,
+  ) => {
+    const versions = history ?? []
+    if (!x.editedAt && versions.length === 0) return null
+    const open = versionsOf === x.id
+    return (
+      <span className="mt-1 block text-xs">
+        {x.editedAt && (
+          <span className="text-orange block font-semibold">
+            <Pencil size={11} aria-hidden="true" className="mr-1 inline-block align-[-1px]" />
+            {t('clinical.editedBy', { name: x.editedBy ?? '', when: when(x.editedAt) })}
+            {x.editReason ? ` · ${t('clinical.editedWhy', { reason: x.editReason })}` : ''}
+          </span>
+        )}
+        {versions.length > 0 && (
+          <>
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setVersionsOf(open ? null : x.id)}
+              className="text-primary inline-flex items-center gap-1 bg-transparent p-0 font-semibold hover:underline"
+            >
+              <History size={12} aria-hidden="true" />
+              {t('clinical.previousVersions', { count: versions.length })}
+            </button>
+            {open && (
+              <ul className="border-border bg-surface mt-1 flex flex-col gap-1.5 rounded-md border px-3 py-2 pl-7">
+                {versions.map((v, i) => (
+                  <li key={i} className="text-ink-2">
+                    <span className="text-ink block whitespace-pre-wrap line-through">
+                      {[
+                        v.text,
+                        v.icd10,
+                        v.type ? t(`clinical.type.${v.type}`) : null,
+                        v.provisional ? t('clinical.provisional') : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                    <span className="text-ink-3 block">
+                      {[
+                        v.since
+                          ? t('clinical.versionWrote', {
+                              name: v.wroteBy ?? '',
+                              when: when(v.since),
+                            })
+                          : null,
+                        t('clinical.versionReplaced', {
+                          name: v.replacedBy ?? '',
+                          when: when(v.replacedAt),
+                          reason: v.reason ?? '',
+                        }),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </span>
+    )
+  }
+  /** The reason box of an edit or a removal, with its buttons. */
+  const reasonField = (
+    value: string,
+    onChange: (v: string) => void,
+    labelKey: string,
+    placeholderKey: string,
+  ) => (
+    <Field
+      label={t(labelKey)}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={t(placeholderKey)}
+      required
+      minLength={3}
+    />
+  )
   const finish = async () => {
-    if (!data?.diagnoses.some((d) => d.type === 'primary'))
+    if (!data || !standing(data.diagnoses).some((d) => d.type === 'primary'))
       return setLocalError(t('clinical.errors.needPrimary'))
     if (
       !(await confirm({
@@ -910,33 +1091,18 @@ export function ClinicalCard({
             </Button>
           )}
           {patient && data?.prescriptions.some((r) => !r.cancelledAt) && (
-            // every medicine given here: nothing would print for a pharmacy (a greyed button
-            // takes no pointer: the explanation sits on its wrapper)
+            // one print: only the medicines bought at an outside pharmacy (0104); every medicine
+            // given at the clinic: nothing to print (a greyed button takes no pointer: the
+            // explanation sits on its wrapper)
             <span
-              title={t(allGivenHere ? 'rxDoc.allGivenHere' : 'rxDoc.printHint')}
+              title={t(hasOutside ? 'rxDoc.printOutsideOnly' : 'rxDoc.nothingOutside')}
               className="inline-flex"
             >
-              <Button
-                size="sm"
-                onClick={() => void printRx()}
-                disabled={printingRx || allGivenHere}
-              >
+              <Button size="sm" onClick={() => void printRx()} disabled={printingRx || !hasOutside}>
                 <Printer size={14} aria-hidden="true" />
                 {t('rxDoc.print')}
               </Button>
             </span>
-          )}
-          {patient && hasOutside && (
-            // only the medicines the patient buys at an outside pharmacy (0100)
-            <Button
-              size="sm"
-              onClick={() => void printRx('outside')}
-              disabled={printingRx}
-              title={t('rxDoc.printOutsideHint')}
-            >
-              <Store size={14} aria-hidden="true" />
-              {t('rxDoc.printOutside')}
-            </Button>
           )}
         </span>
       </CardHeader>
@@ -978,12 +1144,23 @@ export function ClinicalCard({
       )}
       <CardBody className="gap-3">
         {error && <p className={errorBox}>{error.message}</p>}
-        {closed && (
-          <p className="bg-green-bg text-green border-green/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
-            {t('clinical.closedNote')}
-          </p>
+        {/* a finished visit is locked (0104): the code opens a 30-minute edit window */}
+        {finished && lock ? (
+          <VisitEditLock
+            encounterId={encounterId}
+            lock={lock}
+            patientName={patient?.name}
+            onDone={onDone}
+            onError={onError}
+          />
+        ) : (
+          finished && (
+            <p className="bg-green-bg text-green border-green/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
+              {t('clinical.closedNote')}
+            </p>
+          )
         )}
-        {lockedNote && !closed && (
+        {lockedNote && !finished && (
           <p className="bg-violet-bg text-violet border-violet/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
             {lockedNote}
           </p>
@@ -1426,39 +1603,253 @@ export function ClinicalCard({
           </CardBody>
         )}
       {data &&
-        data.notes.map((n) => (
-          <Row key={n.id} className="items-start gap-3 py-2">
-            <Badge tone="grey" dot={false} className="mt-0.5">
-              {t('clinical.note')}
-            </Badge>
-            <span className="min-w-0 flex-1">
-              <span className="block whitespace-pre-wrap">{n.text}</span>
-              <span className="text-ink-3 block text-xs">
-                {[when(n.at), n.by].filter(Boolean).join(' · ')}
-              </span>
-            </span>
-          </Row>
-        ))}
-      {data &&
-        data.diagnoses.map((d) => (
-          <Row key={d.id} className="gap-3 py-2">
-            <Badge tone={d.type === 'primary' ? 'blue' : 'grey'} dot={false}>
-              {t(`clinical.type.${d.type}`)}
-            </Badge>
-            <span className="min-w-0 flex-1">
-              <span className="block font-semibold">
-                {d.text}
-                {d.icd10 && <span className="text-ink-3 ml-2 text-xs">{d.icd10}</span>}
-                {d.provisional && (
-                  <span className="text-ink-3 ml-2 text-xs">({t('clinical.provisional')})</span>
+        data.notes.map((n) => {
+          const editingThis = noteEdit?.id === n.id
+          return (
+            <Row key={n.id} className="flex-wrap items-start gap-3 py-2">
+              <Badge tone="grey" dot={false} className="mt-0.5">
+                {t('clinical.note')}
+              </Badge>
+              <span className="min-w-0 flex-[1_1_14rem]">
+                {editingThis ? (
+                  <Reveal focus block="nearest">
+                    <form onSubmit={submitNoteEdit} className="flex flex-col gap-2">
+                      <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-semibold">
+                        {t('clinical.note')}
+                        <textarea
+                          value={noteEdit.text}
+                          onChange={(e) => setNoteEdit({ ...noteEdit, text: e.target.value })}
+                          rows={4}
+                          required
+                          className="border-border bg-card text-ink focus:border-primary rounded-md border px-3 py-2 text-[14px] font-normal outline-none"
+                        />
+                      </label>
+                      {reasonField(
+                        noteEdit.reason,
+                        (v) => setNoteEdit({ ...noteEdit, reason: v }),
+                        'clinical.editWhy',
+                        'clinical.editWhyPh',
+                      )}
+                      <span className="flex flex-wrap gap-2">
+                        <Button
+                          type="submit"
+                          size="sm"
+                          variant="primary"
+                          loading={actions.updateNote.isPending}
+                        >
+                          {t('clinical.saveChange')}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setNoteEdit(null)}>
+                          {t('staff.form.cancel')}
+                        </Button>
+                      </span>
+                    </form>
+                  </Reveal>
+                ) : (
+                  <>
+                    <span className="block whitespace-pre-wrap">{n.text}</span>
+                    <span className="text-ink-3 block text-xs">
+                      {[when(n.at), n.by].filter(Boolean).join(' · ')}
+                    </span>
+                    {editedMark(n, n.history)}
+                  </>
                 )}
               </span>
-              <span className="text-ink-3 block text-xs">
-                {[when(d.at), d.by].filter(Boolean).join(' · ')}
+              {!editingThis && mayEditLine(n.byId) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title={t('clinical.editNoteHint')}
+                  onClick={() => {
+                    setLocalError(null)
+                    setNoteEdit({ id: n.id, text: n.text, reason: '' })
+                  }}
+                >
+                  <Pencil size={14} aria-hidden="true" />
+                  {t('clinical.editLine')}
+                </Button>
+              )}
+            </Row>
+          )
+        })}
+      {data &&
+        data.diagnoses.map((d) => {
+          const editingThis = dxEdit?.id === d.id
+          const removingThis = dxRemove?.id === d.id
+          const removed = !!d.removedAt
+          return (
+            <Row key={d.id} className="flex-wrap items-start gap-3 py-2">
+              <Badge
+                tone={removed ? 'grey' : d.type === 'primary' ? 'blue' : 'grey'}
+                dot={false}
+                className="mt-0.5"
+              >
+                {t(`clinical.type.${d.type}`)}
+              </Badge>
+              <span className="min-w-0 flex-[1_1_14rem]">
+                {editingThis ? (
+                  <Reveal focus block="nearest">
+                    <form
+                      onSubmit={submitDxEdit}
+                      className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr]"
+                    >
+                      <Field
+                        label={t('clinical.dx')}
+                        value={dxEdit.text}
+                        onChange={(e) => setDxEdit({ ...dxEdit, text: e.target.value })}
+                        required
+                      />
+                      <Field
+                        label="ICD-10"
+                        value={dxEdit.icd10}
+                        onChange={(e) =>
+                          setDxEdit({ ...dxEdit, icd10: e.target.value.toUpperCase() })
+                        }
+                      />
+                      <Select
+                        label={t('clinical.dxType')}
+                        value={dxEdit.type}
+                        onChange={(e) =>
+                          setDxEdit({ ...dxEdit, type: e.target.value as 'primary' | 'secondary' })
+                        }
+                      >
+                        <option value="primary">{t('clinical.type.primary')}</option>
+                        <option value="secondary">{t('clinical.type.secondary')}</option>
+                      </Select>
+                      <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
+                        <input
+                          type="checkbox"
+                          className="accent-primary"
+                          checked={dxEdit.provisional}
+                          onChange={(e) => setDxEdit({ ...dxEdit, provisional: e.target.checked })}
+                        />
+                        {t('clinical.provisional')}
+                      </label>
+                      <span className="sm:col-span-2">
+                        {reasonField(
+                          dxEdit.reason,
+                          (v) => setDxEdit({ ...dxEdit, reason: v }),
+                          'clinical.editWhy',
+                          'clinical.editWhyPh',
+                        )}
+                      </span>
+                      <span className="col-span-full flex flex-wrap gap-2">
+                        <Button
+                          type="submit"
+                          size="sm"
+                          variant="primary"
+                          loading={actions.updateDiagnosis.isPending}
+                        >
+                          {t('clinical.saveChange')}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setDxEdit(null)}>
+                          {t('staff.form.cancel')}
+                        </Button>
+                      </span>
+                    </form>
+                  </Reveal>
+                ) : (
+                  <>
+                    <span className={cn('block font-semibold', removed && 'line-through')}>
+                      {d.text}
+                      {d.icd10 && <span className="text-ink-3 ml-2 text-xs">{d.icd10}</span>}
+                      {d.provisional && (
+                        <span className="text-ink-3 ml-2 text-xs">
+                          ({t('clinical.provisional')})
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-ink-3 block text-xs">
+                      {[when(d.at), d.by].filter(Boolean).join(' · ')}
+                    </span>
+                    {removed && (
+                      <span className="text-red mt-1 block text-xs font-semibold">
+                        <XCircle
+                          size={11}
+                          aria-hidden="true"
+                          className="mr-1 inline-block align-[-1px]"
+                        />
+                        {t('clinical.removedBy', {
+                          name: d.removedBy ?? '',
+                          when: when(d.removedAt!),
+                          reason: d.removeReason ?? '',
+                        })}
+                      </span>
+                    )}
+                    {editedMark(d, d.history)}
+                    {removingThis && (
+                      <Reveal focus block="nearest">
+                        <form
+                          className="mt-2 flex flex-col gap-2"
+                          onSubmit={(e) => {
+                            e.preventDefault()
+                            void submitDxRemove(d)
+                          }}
+                        >
+                          {reasonField(
+                            dxRemove.reason,
+                            (v) => setDxRemove({ ...dxRemove, reason: v }),
+                            'clinical.removeWhy',
+                            'clinical.editWhyPh',
+                          )}
+                          <p className="text-ink-3 m-0 text-xs">{t('clinical.removeHint')}</p>
+                          <span className="flex flex-wrap gap-2">
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="danger"
+                              loading={actions.removeDiagnosis.isPending}
+                            >
+                              {t('clinical.removeLine')}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setDxRemove(null)}>
+                              {t('staff.form.cancel')}
+                            </Button>
+                          </span>
+                        </form>
+                      </Reveal>
+                    )}
+                  </>
+                )}
               </span>
-            </span>
-          </Row>
-        ))}
+              {!removed && !editingThis && !removingThis && mayEditLine(d.byId) && (
+                <span className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title={t('clinical.editDxHint')}
+                    onClick={() => {
+                      setLocalError(null)
+                      setDxEdit({
+                        id: d.id,
+                        text: d.text,
+                        icd10: d.icd10 ?? '',
+                        type: d.type,
+                        provisional: d.provisional,
+                        reason: '',
+                      })
+                    }}
+                  >
+                    <Pencil size={14} aria-hidden="true" />
+                    {t('clinical.editLine')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title={t('clinical.removeDxHint')}
+                    onClick={() => {
+                      setLocalError(null)
+                      setDxRemove({ id: d.id, reason: '' })
+                    }}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                    {t('clinical.removeLine')}
+                  </Button>
+                </span>
+              )}
+            </Row>
+          )
+        })}
       {data &&
         data.prescriptions.map((r) => {
           const state = prescriptionState(r)
@@ -1469,7 +1860,7 @@ export function ClinicalCard({
           const tookOver = !readOnly && !wrote && !!holder && holder.split(', ').includes(user.name)
           const canCancel =
             ((state === 'waiting' && r.pending !== false) || state === 'outside') &&
-            !closed &&
+            !locked &&
             (isManager || wrote || tookOver) &&
             can('clinical.write')
           // the pharmacy undoes a hand-over (wrong medicine, brought back unopened)
@@ -1484,15 +1875,25 @@ export function ClinicalCard({
             (isManager || (wrote && givenToday)) &&
             can('clinical.write')
           // who gives it (0100): the prescriber, the colleague who took the patient over, the
-          // manager, or whoever treats the patient now; never once part of it was given
+          // manager, or whoever treats the patient now. A line partly handed over sends only its
+          // remainder outside, as a new line (0104 rx_set_supply, splitFrom = this line).
+          const given = r.quantityGiven ?? 0
+          const remaining = r.quantity - given
+          const splitChild =
+            given > 0
+              ? data.prescriptions.find((x) => x.splitFrom === r.id && !x.cancelledAt)
+              : undefined
           const mayDecide =
             can('clinical.write') &&
             canDesk(TREATING_DESKS) &&
-            (isManager || wrote || tookOver || !readOnly) &&
-            (r.quantityGiven ?? 0) === 0
+            (isManager || wrote || tookOver || !readOnly)
           const canOutside =
-            mayDecide && ((state === 'waiting' && r.pending !== false) || state === 'notGiven')
-          const canClinic = mayDecide && state === 'outside' && !!r.itemId && !closed
+            mayDecide &&
+            !splitChild &&
+            (given === 0 || remaining > 0) &&
+            ((state === 'waiting' && r.pending !== false) || state === 'notGiven')
+          // back to the clinic pharmacy needs the open bill: never once the visit is finished
+          const canClinic = mayDecide && state === 'outside' && !!r.itemId && !finished
           const asking = reasonFor?.id === r.id ? reasonFor : null
           const from = givenFrom(r)
           const returnedWhy = (r.notGivenReason ?? '').replace(/^returned:\s*/i, '')
@@ -1529,6 +1930,10 @@ export function ClinicalCard({
                       ? t('clinical.cancelledWhy', { reason: r.cancelReason ?? '' })
                       : null,
                     state === 'cancelled' ? r.cancelledBy : null,
+                    // "12 given · 18 outside": the remainder went outside as its own line
+                    splitChild
+                      ? t('clinical.splitLine', { given, outside: splitChild.quantity })
+                      : null,
                     state === 'outside' ? t('clinical.notCharged') : null,
                     state === 'outside' && r.supplySetBy
                       ? t('clinical.decidedBy', { name: r.supplySetBy })
@@ -1587,10 +1992,10 @@ export function ClinicalCard({
                           asking.kind === 'cancel'
                             ? 'clinical.cancelHint'
                             : asking.kind === 'undo'
-                              ? closed
+                              ? finished
                                 ? 'clinical.undoClosedHint'
                                 : 'clinical.undoOpenHint'
-                              : closed
+                              : finished
                                 ? 'clinical.returnClosedHint'
                                 : 'clinical.returnOpenHint',
                         )}
@@ -1711,6 +2116,22 @@ export function ClinicalCard({
                 <span className="text-ink-3 text-xs">· {t(`clinical.status.${o.status}`)}</span>
               </span>
               {o.reason && <span className="text-ink-3 block text-xs">{o.reason}</span>}
+              {/* 0104: no department gives the desk that does this test: the manager is told */}
+              {!o.result &&
+                o.status !== 'cancelled' &&
+                (() => {
+                  const desk = noDeskFor(o)
+                  return desk ? (
+                    <span className="text-orange mt-1 block text-xs font-semibold">
+                      <TriangleAlert
+                        size={12}
+                        aria-hidden="true"
+                        className="mr-1 inline-block align-[-1px]"
+                      />
+                      {t('clinical.noDeskForTest', { desk })}
+                    </span>
+                  ) : null
+                })()}
               {/* the image or printout the laboratory / ultrasound attached to the test */}
               <TestFilesChip
                 encounterId={encounterId}
@@ -1869,7 +2290,7 @@ export function ClinicalCard({
           </Row>
         ))}
 
-      {clinician && (
+      {clinician && !finished && (
         <CardBody className="border-border flex-row flex-wrap items-center gap-3 border-t">
           <Button
             variant="success"
@@ -1882,7 +2303,9 @@ export function ClinicalCard({
           <span
             className={cn(
               'text-xs',
-              data?.diagnoses.some((d) => d.type === 'primary') ? 'text-ink-3' : 'text-red',
+              data && standing(data.diagnoses).some((d) => d.type === 'primary')
+                ? 'text-ink-3'
+                : 'text-red',
             )}
           >
             {t('clinical.finishHint')}

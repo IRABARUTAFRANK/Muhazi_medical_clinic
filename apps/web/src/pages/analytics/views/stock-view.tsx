@@ -28,14 +28,15 @@ type Expiring = StockAlerts['expiring'][number]
  * pharmacy (the same rule as the stock screens), room stores below their minimum, batches expiring
  * within 90 days, with what to order. The period only drives the sales figure.
  */
-export function StockView({ access, period, search, update, clinic }: ViewProps) {
+export function StockView({ view, access, period, search, update, clinic }: ViewProps) {
   const { t } = useTranslation()
   const p = { from: period.from, to: period.to }
   const alertsQ = useStockAlerts()
   const reorder = useReorderSuggestions()
   const sales = useStockSales(p.from, p.to)
   const al = alertsQ.data
-  const by = pickBy<StockBy>(search.by, STOCK_BY, 'low')
+  // the pharmacy dashboard's Expiry view (0102) opens on the expiring batches
+  const by = pickBy<StockBy>(search.by, STOCK_BY, view === 'expiry' ? 'expiring' : 'low')
   const suggestion = new Map((reorder.data ?? []).map((r) => [r.itemId, r]))
   const items = sales.data?.items ?? []
   const money = access.manager

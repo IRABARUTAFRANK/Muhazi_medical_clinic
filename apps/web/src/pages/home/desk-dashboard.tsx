@@ -262,7 +262,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                     {/* The nurse registered them first; reception completes the file. */}
                     <FilesToCompletePanel i={1} />
                     <QueuePanel role={role} rows={waiting} />
-                    <StationsPanel d={data} to={link('waiting')} />
+                    <StationsPanel d={data} to={link('waiting') ?? link('waitingNow')} />
                   </>
                 )}
               </div>
@@ -386,7 +386,7 @@ function ReceptionTiles({
         value={x.registeredToday}
         unit={today}
         delta={vsYesterday(x.registeredToday, x.registeredYesterday)}
-        to={link('visits')}
+        to={link('visits') ?? link('registrations')}
       />
       <Kpi
         i={1}
@@ -396,7 +396,7 @@ function ReceptionTiles({
         value={x.visitsToday}
         unit={today}
         delta={vsYesterday(x.visitsToday, x.visitsYesterday)}
-        to={link('visits')}
+        to={link('visits') ?? link('arrivals')}
       />
       <Kpi
         i={2}
@@ -422,6 +422,7 @@ function ReceptionTiles({
               }
             : undefined
         }
+        to={link('waiting') ?? link('waitingNow')}
       />
       <Kpi
         i={4}
@@ -430,6 +431,7 @@ function ReceptionTiles({
         label={t('desk.tiles.appointments')}
         value={x.apptsToday}
         unit={today}
+        to={link('bookings') ?? link('visits')}
       />
       <Kpi
         i={5}
@@ -441,6 +443,7 @@ function ReceptionTiles({
         delta={
           x.inquiriesPending > 0 ? { text: t('desk.answerSoon'), good: false, up: null } : undefined
         }
+        to={link('bookings') ?? link('visits')}
       />
     </div>
   )
@@ -473,6 +476,7 @@ function NurseTiles({
             label={t(x.needVitals == null ? 'desk.tiles.triageWaiting' : 'desk.tiles.toMeasure')}
             value={x.needVitals ?? x.triageWaiting}
             unit={t('dashboard.units.now')}
+            to={link('triage') ?? link('waitingNow')}
           />
           <Kpi
             i={1}
@@ -484,7 +488,7 @@ function NurseTiles({
             delta={
               x.triageRed > 0 ? { text: t('desk.seeFirst'), good: false, up: null } : undefined
             }
-            to={link('triage')}
+            to={link('triage') ?? link('waitingNow')}
           />
           <Kpi
             i={2}
@@ -493,7 +497,7 @@ function NurseTiles({
             label={t('desk.tiles.yellow')}
             value={x.triageYellow}
             unit={t('dashboard.units.now')}
-            to={link('triage')}
+            to={link('triage') ?? link('waitingNow')}
           />
           <Kpi
             i={3}
@@ -510,7 +514,7 @@ function NurseTiles({
               good: null,
               up: diff === 0 ? null : diff > 0,
             }}
-            to={link('triage')}
+            to={link('triage') ?? link('vitals')}
           />
         </>
       )}

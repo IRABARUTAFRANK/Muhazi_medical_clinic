@@ -122,6 +122,10 @@ export type ApiErrorKind =
   | 'handoverNotYours'
   | 'handoverGone'
   | 'coverRetired'
+  // 0102: vital signs (a value outside the catalogue's limits, a custom one without a name)
+  | 'vitalRange'
+  | 'vitalName'
+  | 'vitalUnknown'
   // sample mode only (the database's own sentence is kept for these)
   | 'alreadyDone'
   | 'notFound'
@@ -189,6 +193,9 @@ const BY_HINT: Record<string, ApiErrorKind> = {
   handover_not_yours: 'handoverNotYours',
   handover_gone: 'handoverGone',
   cover_retired: 'coverRetired',
+  vital_range: 'vitalRange',
+  vital_name: 'vitalName',
+  vital_unknown: 'vitalUnknown',
 }
 
 /** An error from a database function, with its code and hint kept for the screens. */

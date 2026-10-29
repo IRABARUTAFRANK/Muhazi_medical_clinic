@@ -61,8 +61,14 @@ export interface StockItem {
   name: string
   strength: string | null
   unit: string | null
-  /** Units in one box (deliveries counted in boxes are converted with it). */
+  /** Pieces in one pack (deliveries counted in boxes are converted with it; 1 or empty: sold whole). */
   packSize?: number | null
+  /**
+   * The price of one whole pack (0102), when the manager set one: whole packs sold for cash are
+   * charged packs × packPrice instead of pieces × sellingPrice. Null: pieces × price.
+   */
+  packPrice?: number | null
+  /** The selling price of one piece. */
   sellingPrice: number | null
   reorderLevel: number
   /** Order up to this quantity (reorder suggestions); null: not set. */
@@ -117,6 +123,14 @@ export interface PharmacyLine {
   itemId: string
   item: string
   unit: string | null
+  /** Pieces in one pack (0102); the pack price when it applies to this line (cash-priced). */
+  packSize?: number | null
+  packPrice?: number | null
+  /** Whole packs the remaining quantity comes to, when charged at the pack price. */
+  packs?: number | null
+  /** The rest of a partly given line the prescriber sent back to the pharmacy (0102). */
+  splitFrom?: string | null
+  /** Prescribed pieces. */
   quantity: number
   dose: string | null
   frequency: string | null
@@ -125,7 +139,7 @@ export interface PharmacyLine {
   prescriber: string | null
   prescriberId: string | null
   at: string
-  /** The cash price per unit (kept as before). */
+  /** The cash price per piece (kept as before). */
   price: number | null
   cashPrice: number | null
   /** The price on the visit's insurer list (the cash price without an insurer). */
@@ -261,6 +275,8 @@ export interface AddStockLineInput {
   unitCost: number
   /** The selling price per unit: sets the price of a new item, updates a changed one. */
   sellPrice?: number | null
+  /** Pieces in one pack, when the line was counted in boxes: an item without one takes it. */
+  packSize?: number | null
 }
 export interface AddStockResult {
   lines: { itemId: string; batchId: string | null; quantity: number }[]
@@ -351,6 +367,9 @@ export interface StockAlerts {
     onHand: number
     level: number
     maxLevel: number | null
+    /** Pieces in one pack and the piece unit (0102), to say the packs beside the pieces. */
+    packSize?: number | null
+    unit?: string | null
   }[]
   roomLow: {
     storeId: string
@@ -459,13 +478,14 @@ const sampleItems: StockItem[] = [
     strength: '500 mg',
     unit: 'cap',
     packSize: 100,
+    packPrice: 27000,
     sellingPrice: 300,
     reorderLevel: 150,
     maxLevel: 1000,
-    onHand: 1240,
-    costValue: 148800,
+    onHand: 1052,
+    costValue: 126240,
     avgCost: 120,
-    byLocation: { 'l-main': 1000, 'l-pharm': 200, 'l-cons': 40 },
+    byLocation: { 'l-main': 1000, 'l-pharm': 12, 'l-cons': 40 },
     earliestExpiry: '2027-06-30',
     expiredUnits: 0,
     active: true,
@@ -476,7 +496,8 @@ const sampleItems: StockItem[] = [
     name: 'Paracetamol',
     strength: '500 mg',
     unit: 'tab',
-    packSize: 1000,
+    packSize: 20,
+    packPrice: 900,
     sellingPrice: 50,
     reorderLevel: 1000,
     maxLevel: 3000,
@@ -495,6 +516,7 @@ const sampleItems: StockItem[] = [
     strength: '20/120 mg',
     unit: 'tab',
     packSize: 24,
+    packPrice: null,
     sellingPrice: 500,
     reorderLevel: 150,
     maxLevel: 480,
@@ -896,6 +918,7 @@ export function useStockOverview() {
         items: (d.items ?? []).map((i) => ({
           ...i,
           packSize: numOrNull(i.packSize),
+          packPrice: numOrNull(i.packPrice),
           sellingPrice: numOrNull(i.sellingPrice),
           reorderLevel: num(i.reorderLevel),
           maxLevel: numOrNull(i.maxLevel),
@@ -958,6 +981,10 @@ const toLine = (l: Partial<PharmacyLine> & Record<string, unknown>): PharmacyLin
   return {
     ...(l as PharmacyLine),
     quantity,
+    packSize: numOrNull(l.packSize),
+    packPrice: numOrNull(l.packPrice),
+    packs: numOrNull(l.packs),
+    splitFrom: (l.splitFrom as string | null | undefined) ?? null,
     price,
     cashPrice: l.cashPrice === undefined ? price : numOrNull(l.cashPrice),
     payerPrice,
@@ -1210,6 +1237,8 @@ export function useStockAlerts() {
                   onHand: i.pharmacyUsable ?? 0,
                   level: i.reorderLevel,
                   maxLevel: i.maxLevel ?? null,
+                  packSize: i.packSize ?? null,
+                  unit: i.unit,
                 }))
             : [],
           roomLow: [],
@@ -1244,6 +1273,8 @@ export function useStockAlerts() {
           onHand: num(x.onHand),
           level: num(x.level),
           maxLevel: numOrNull(x.maxLevel),
+          packSize: numOrNull(x.packSize),
+          unit: x.unit ?? null,
         })),
         roomLow: (d.roomLow ?? []).map((x) => ({ ...x, onHand: num(x.onHand), min: num(x.min) })),
         expiring: (d.expiring ?? []).map((x) => ({
@@ -1628,6 +1659,8 @@ export function useStockActions() {
           const it = sampleItems.find((x) => x.id === itemId)
           if (it) {
             if (l.sellPrice != null) it.sellingPrice = l.sellPrice
+            // an item without a pack size takes the one the line was counted with
+            if (l.packSize && !it.packSize) it.packSize = l.packSize
             if (!it.earliestExpiry || l.expiry < it.earliestExpiry) it.earliestExpiry = l.expiry
             sampleBatchNo[itemId] = batch
           }
@@ -1665,6 +1698,7 @@ export function useStockActions() {
           quantity: l.quantity,
           unit_cost: l.unitCost,
           sell_price: l.sellPrice ?? null,
+          pack_size: l.packSize ?? null,
         })),
         p_location_id: i.locationId ?? null,
         p_note: i.note?.trim() || null,
@@ -1893,6 +1927,25 @@ export function useStockActions() {
     },
     onSuccess: refresh,
   })
+  /**
+   * The price of one whole pack (0102; the manager, or item_price.write): null clears it. The
+   * database refuses it while the item has no pack size above 1 (packSize).
+   */
+  const setPackPrice = useMutation({
+    mutationFn: async (i: { itemId: string; packPrice: number | null }) => {
+      if (!supabase) {
+        const it = sampleItems.find((x) => x.id === i.itemId)
+        if (it) {
+          if (i.packPrice != null && (it.packSize ?? 1) < 2)
+            throw sampleRefusal('packSize', '22023')
+          it.packPrice = i.packPrice
+        }
+        return null
+      }
+      return call('set_pack_price', { p_item_id: i.itemId, p_price: i.packPrice })
+    },
+    onSuccess: refreshAll,
+  })
   /** The shelf was counted: the store's stock becomes that count (difference kept with its reason). */
   const adjust = useMutation({
     mutationFn: (i: { itemId: string; locationId: string; counted: number; reason: string }) => {
@@ -1964,6 +2017,7 @@ export function useStockActions() {
     saveLocation,
     setMainPharmacy,
     setReorderLevel,
+    setPackPrice,
     adjust,
     setLocationActive,
   }

@@ -109,7 +109,8 @@
       "manage": "Gestion",
       "inbox": "Boîte de réception"
     },
-    "myBookings": "Mes rendez-vous"
+    "myBookings": "Mes rendez-vous",
+    "documents": "Documents des patients"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -1119,7 +1120,15 @@
       "spo2": "SpO₂",
       "weight": "Poids",
       "height": "Taille",
-      "muac": "PB (MUAC)"
+      "muac": "PB (MUAC)",
+      "glucose_mmol": "Glycémie",
+      "glucose_mgdl": "Glycémie (mg/dL)",
+      "pain": "Score de douleur",
+      "head_circ": "Périmètre crânien",
+      "urine_output": "Diurèse",
+      "gcs": "Score de Glasgow",
+      "fundal_height": "Hauteur utérine",
+      "fhr": "Rythme cardiaque fœtal"
     },
     "level": "Couleur de triage",
     "levels": {
@@ -1373,7 +1382,11 @@
       "hasStock": "{{name}} a encore du stock et ne peut pas être supprimé. Marquez-le comme plus utilisé, ou écoulez ou sortez d’abord son stock.",
       "addedNoStock": "« {{name}} » est maintenant dans la liste de la clinique, sans stock pour l’instant.",
       "addedHow": "Pour en avoir à la pharmacie, enregistrez la livraison dans Ajouter du stock : lot, date d’expiration et quantité.",
-      "addStockNow": "Ajouter du stock"
+      "addStockNow": "Ajouter du stock",
+      "packPrice": "Prix de la boîte (facultatif)",
+      "packPriceBad": "Le prix de la boîte est un nombre entier, 0 ou plus.",
+      "packPriceNeedsSize": "Le prix de la boîte demande d’abord les unités par boîte (2 ou plus). Un médicament vendu entier n’a pas de prix de boîte : son prix est le prix.",
+      "packHint2": "Le stock est tenu en unités (l’unité ci-dessus) ; la taille de boîte dit combien d’unités font une boîte, pour que chaque écran montre les deux (« 500 cp · 25 boîtes de 20 »). Un médicament vendu entier, comme un flacon de sirop, est à 1 avec l’unité « flacon ». Le prix de la boîte est le prix d’une boîte entière quand il diffère de unités × prix : les boîtes entières vendues au comptant sont facturées à ce prix, et la facture le dit."
     },
     "tools": {
       "open": "Outils du catalogue",
@@ -1853,6 +1866,18 @@
       "hours_other": "{{count}} heures sans activité",
       "saved": "Enregistré. Les écrans ouverts suivent les nouvelles heures en quelques minutes.",
       "revokeHint": "« Redemander à tous les appareils » met fin à la clé de chaque navigateur : la prochaine connexion de chacun demande un nouveau code par e-mail. Les écrans déjà connectés le restent."
+    },
+    "vitals": {
+      "title": "Constantes vitales",
+      "lead": "Cochez les mesures que l’infirmière voit en premier et classez-les dans l’ordre de prise. Toute autre mesure s’ajoute sur le patient avec « Ajouter une mesure ».",
+      "shown": "Affichées par défaut ({{count}})",
+      "others": "Autres mesures",
+      "up": "Monter",
+      "down": "Descendre",
+      "save": "Enregistrer le jeu par défaut",
+      "saved": "Jeu par défaut enregistré. Tous les formulaires de constantes l’affichent désormais.",
+      "none": "Cochez au moins une mesure.",
+      "bmiHint": "L’IMC est calculé à partir du poids et de la taille, jamais enregistré."
     }
   },
   "pin": {
@@ -2214,7 +2239,29 @@
     "typedMedicine": "Autre médicament (écrire son nom)",
     "typedName": "Nom du médicament",
     "typedNamePh": "p. ex. Ciprofloxacine collyre 0,3 %",
-    "writeMedicine": "Écrire « {{name}} » comme nom du médicament (pharmacie extérieure)"
+    "writeMedicine": "Écrire « {{name}} » comme nom du médicament (pharmacie extérieure)",
+    "editLine": "Modifier",
+    "removeLine": "Retirer",
+    "editDxHint": "Modifier ce diagnostic avec une raison ; l’ancien texte reste dans l’historique.",
+    "removeDxHint": "Retirer ce diagnostic avec une raison ; il reste visible, barré.",
+    "editNoteHint": "Modifier cette note avec une raison ; l’ancien texte reste dans l’historique.",
+    "editWhy": "Pourquoi ce changement ?",
+    "editWhyPh": "ex. le résultat du test, une faute de frappe",
+    "removeWhy": "Pourquoi le diagnostic est-il retiré ?",
+    "removeHint": "Le diagnostic reste dans le dossier, barré, avec votre nom et la raison ; il n’est plus compté.",
+    "saveChange": "Enregistrer le changement",
+    "editedBy": "modifié par {{name}} le {{when}}",
+    "editedWhy": "raison : {{reason}}",
+    "removedBy": "retiré par {{name}} le {{when}} : {{reason}}",
+    "previousVersions_one": "{{count}} version précédente",
+    "previousVersions_other": "{{count}} versions précédentes",
+    "versionWrote": "écrit par {{name}} le {{when}}",
+    "versionReplaced": "remplacé le {{when}} par {{name}} : {{reason}}",
+    "dxUpdated": "Diagnostic modifié.",
+    "dxRemoved": "Diagnostic retiré.",
+    "noteUpdated": "Note modifiée.",
+    "noDeskForTest": "Personne ne tient encore le poste {{desk}} : donnez le poste {{desk}} à un service dans Paramètres.",
+    "splitLine": "{{given}} donnés · {{outside}} à l’extérieur"
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -2367,7 +2414,10 @@
       "nothingChanged": "Rien n’a changé. Corrigez une valeur ou annulez.",
       "range": "{{name}} {{value}} {{unit}} est impossible : vérifiez le chiffre (entre {{min}} et {{max}} {{unit}}).",
       "bpOrder": "La pression diastolique (chiffre du bas) doit être plus petite que la systolique (chiffre du haut).",
-      "takerNotAllowed": "{{name}} n’est pas autorisé(e) à prendre les signes vitaux (le gestionnaire l’a désactivé) : choisissez une autre infirmière ou demandez au gestionnaire."
+      "takerNotAllowed": "{{name}} n’est pas autorisé(e) à prendre les signes vitaux (le gestionnaire l’a désactivé) : choisissez une autre infirmière ou demandez au gestionnaire.",
+      "customName": "Saisissez le nom de la mesure.",
+      "pickMeasurement": "Choisissez une mesure à ajouter.",
+      "notANumber": "{{name}} : « {{value}} » n’est pas un nombre."
     },
     "takenShort": "Constantes prises",
     "taken": "Constantes prises par {{name}} à {{time}}",
@@ -2378,7 +2428,32 @@
     "notTakenBanner": "Constantes pas encore prises pour cette visite. Prenez-les avant la consultation.",
     "noneShort": "Pas de constantes",
     "nurseSendsOn": "Vous enregistrez seulement les mesures : l'infirmier(ère) donne la couleur de triage et oriente le patient.",
-    "notSentOn": "Le patient n'a pas été orienté : {{message}}"
+    "notSentOn": "Le patient n'a pas été orienté : {{message}}",
+    "addMeasurement": "Ajouter une mesure",
+    "pickMeasurement": "Mesure",
+    "pickPh": "Choisir une mesure…",
+    "otherMeasurement": "Autre (saisir son nom)",
+    "customName": "Nom de la mesure",
+    "customNamePh": "ex. Cétones sanguines",
+    "customUnit": "Unité",
+    "customUnitPh": "ex. mmol/L",
+    "addRow": "Ajouter",
+    "remove": "Retirer",
+    "hide": "Masquer",
+    "removeSaved": "Retirer {{name}} des constantes de cette visite (avec un motif)",
+    "removeRow": "Masquer {{name}} (rien d’enregistré)",
+    "removeReason": "Pourquoi est-elle retirée ?",
+    "removeReasonPh": "ex. saisie sur le mauvais patient",
+    "removed": "{{name}} retiré des constantes de cette visite.",
+    "savedValue": "Enregistré : {{value}} à {{time}}",
+    "customRow": "Mesure personnalisée",
+    "bmiComputed": "(calculé à partir du poids et de la taille, non enregistré)",
+    "bmiNeeds": "nécessite le poids et la taille",
+    "confirm": {
+      "removeTitle": "Retirer {{name}} des constantes de {{patient}} ?",
+      "removeBody": "La valeur {{value}} reste dans le journal avec votre motif ; elle n’apparaît plus sur la visite.",
+      "removeYes": "Oui, retirer"
+    }
   },
   "ops": {
     "appts": {
@@ -3892,7 +3967,9 @@
     "outsideTitle": "Ordonnance pour une pharmacie extérieure",
     "outsideMedicines": "À acheter dans une pharmacie extérieure",
     "outsideNote": "La pharmacie de la clinique ne donne pas ces médicaments. Veuillez les acheter dans n’importe quelle pharmacie.",
-    "validUntil": "Valable jusqu’au"
+    "validUntil": "Valable jusqu’au",
+    "printOutsideOnly": "L’ordonnance ne liste que les médicaments que le patient achète dans une pharmacie extérieure ; ceux donnés à la clinique figurent sur le rapport médical.",
+    "nothingOutside": "Rien à imprimer : tous les médicaments sont donnés à la clinique."
   },
   "visitConfirm": {
     "title": "Commencer une visite pour {{name}} ?",
@@ -4349,7 +4426,16 @@
       "whyRest_one": "Pourquoi l’autre {{count}} n’est-il pas remis ? {{doctor}} sera prévenu.",
       "whyRest_other": "Pourquoi les {{count}} autres ne sont-ils pas remis ? {{doctor}} sera prévenu.",
       "notGivenRest_one": "Reste non remis ({{count}})",
-      "notGivenRest_other": "Reste non remis ({{count}})"
+      "notGivenRest_other": "Reste non remis ({{count}})",
+      "shortLine": "Prescrit {{need}} · en stock {{have}}",
+      "giveNow_one": "Donner {{count}} maintenant",
+      "giveNow_other": "Donner {{count}} maintenant",
+      "restNotAvailable_one": "Reste non disponible ({{count}})",
+      "restNotAvailable_other": "Reste non disponible ({{count}})",
+      "restNotAvailableTitle_one": "L’autre {{count}} {{item}} : non disponible pour {{patient}} ?",
+      "restNotAvailableTitle_other": "Les {{count}} autres {{item}} : non disponibles pour {{patient}} ?",
+      "restNotAvailableBody": "Ils sont marqués non donnés (rupture de stock) et {{doctor}} est informé de la quantité, pour que le reste soit acheté dans une pharmacie extérieure. Les {{given}} donnés restent sur la facture.",
+      "restSentBack": "Le reste d’un médicament donné en partie, renvoyé par le prescripteur."
     },
     "home": {
       "addStock": "Ajouter du stock",
@@ -4381,7 +4467,9 @@
     "sellChange": "Changer",
     "sellNoMatch": "Aucun patient en visite ne correspond. Seuls les patients présents dans la clinique maintenant sont trouvés ici.",
     "sellResults": "Patients trouvés",
-    "sellNobody": "Aucun patient n’est en visite maintenant."
+    "sellNobody": "Aucun patient n’est en visite maintenant.",
+    "packPriceUsed_one": "{{count}} boîte entière à {{price}} (prix de la boîte)",
+    "packPriceUsed_other": "{{count}} boîtes entières à {{price}} (prix de la boîte)"
   },
   "queuePage": {
     "title": "Ma file · {{desk}}",
@@ -4922,7 +5010,14 @@
       "clinic": "Faire donner {{item}} par la pharmacie de la clinique pour {{name}} ?",
       "clinicBody": "Il revient sur la liste de la pharmacie de la clinique ; il est facturé à la remise.",
       "clinicYes": "Oui, à la clinique",
-      "rxOutsideNote": "Les médicaments pour une pharmacie extérieure ne sont pas facturés : imprimez-les pour le patient."
+      "rxOutsideNote": "Les médicaments pour une pharmacie extérieure ne sont pas facturés : imprimez-les pour le patient.",
+      "editDx": "Modifier le diagnostic « {{dx}} » de {{name}} ?",
+      "editDxBody": "L’ancien texte reste dans l’historique du dossier avec votre raison : « {{reason}} ».",
+      "removeDx": "Retirer le diagnostic « {{dx}} » de {{name}} ?",
+      "removeDxBody": "Il reste dans le dossier, barré, avec votre raison : « {{reason}} ». Il n’est plus compté.",
+      "editNote": "Modifier cette note de {{name}} ?",
+      "changeYes": "Oui, modifier",
+      "removeYes": "Oui, retirer"
     },
     "staff": {
       "deactivate": {
@@ -5037,6 +5132,11 @@
         "revokeTitle": "Redemander un code à tous les appareils ?",
         "revokeBody": "La clé de chaque navigateur prend fin : la prochaine connexion de chacun demande un nouveau code par e-mail. Les écrans déjà connectés le restent.",
         "revokeYes": "Oui, redemander à tous"
+      },
+      "vitals": {
+        "title": "Changer les constantes par défaut ?",
+        "body": "Chaque infirmière et médecin verra le nouveau jeu dès son prochain formulaire.",
+        "yes": "Oui, enregistrer"
       }
     },
     "perms": {
@@ -5336,7 +5436,11 @@
       "PC": "Après le repas.",
       "SHAKE": "Bien agiter avant emploi.",
       "FRIDGE": "Conserver au réfrigérateur (2–8 °C)."
-    }
+    },
+    "packsOf_one": "{{count}} boîte de {{size}}",
+    "packsOf_other": "{{count}} boîtes de {{size}}",
+    "packsOfPlus_one": "{{count}} boîte de {{size}} + {{rest}}",
+    "packsOfPlus_other": "{{count}} boîtes de {{size}} + {{rest}}"
   },
   "stockErrors": {
     "noOpenBill": "Cette visite n'a pas de facture ouverte (elle est clôturée ou déjà réglée). Rien n'a été remis ni facturé.",
@@ -5401,7 +5505,10 @@
     "handoverPending": "Ce patient est déjà en cours de passation. Annulez-la d'abord.",
     "handoverNotYours": "Cette passation ne vous revient pas : seul le collègue choisi y répond, et seul l'expéditeur l'annule.",
     "handoverGone": "Cette passation n'est plus en attente : elle a reçu une réponse ou a été annulée, ou le patient est passé ailleurs. La liste est actualisée.",
-    "coverRetired": "Le remplacement n'est plus utilisé. Confiez le patient à un collègue depuis la visite."
+    "coverRetired": "Le remplacement n'est plus utilisé. Confiez le patient à un collègue depuis la visite.",
+    "vitalRange": "Cette mesure est en dehors de ce qu’un patient peut avoir : vérifiez le nombre.",
+    "vitalName": "Donnez un nom à la mesure personnalisée (60 caractères au plus, son unité 20 au plus).",
+    "vitalUnknown": "Mesure inconnue."
   },
   "cashierDesk": {
     "noMatch": "Rien ne correspond à votre recherche.",
@@ -5516,7 +5623,8 @@
       "payTitle": "Encaisser ici",
       "payHandPrint": "Encaisser {{amount}}, remettre et imprimer le reçu",
       "payNote": "Le paiement compte dans votre propre caisse et dans les recettes du jour. Les factures des visites se paient toujours à la caisse."
-    }
+    },
+    "lineTotalPack": "{{packs}} × {{price}} la boîte (prix de la boîte) · {{amount}}"
   },
   "myStore": {
     "title": "Mon stock",
@@ -5893,7 +6001,19 @@
     "openRooms": "Ouvrir Stocks de salle",
     "sendReasonPh": "ex. transfert du stock de l’ancien magasin principal",
     "useLead": "Stock de la pharmacie qui sort sans vente : expiré, abîmé, utilisé à un poste ou correction de comptage. Les stocks de salle sortent leur propre stock dans Mon stock.",
-    "counterRevenue": "Ventes au comptoir"
+    "counterRevenue": "Ventes au comptoir",
+    "packs": {
+      "of_one": "{{count}} boîte de {{size}}",
+      "of_other": "{{count}} boîtes de {{size}}",
+      "ofPlus_one": "{{count}} boîte de {{size}} + {{rest}}",
+      "ofPlus_other": "{{count}} boîtes de {{size}} + {{rest}}",
+      "equals": "{{packs}} × {{size}} = {{units}}",
+      "price": "boîte de {{size}} : {{price}}",
+      "countIn": "Compter en",
+      "pieces": "unités",
+      "packs": "boîtes",
+      "atPackPrice": "prix de la boîte"
+    }
   },
   "stockStores": {
     "lead": "La pharmacie est le magasin principal : chaque livraison y est reçue, puis envoyée aux stocks de salle. L’ancien magasin principal garde son historique : envoyez son stock à la pharmacie, puis fermez-le.",
@@ -5998,7 +6118,15 @@
       "patients": "Patients",
       "desks": "Postes",
       "stock": "Stock",
-      "waiting": "Attente"
+      "waiting": "Attente",
+      "clinical": "Clinique",
+      "documents": "Documents",
+      "payments": "Paiements",
+      "pharmacy": "Pharmacie",
+      "lab": "Laboratoire",
+      "mine": "Mon travail",
+      "records": "Mes dossiers",
+      "desk": "Le poste"
     },
     "views": {
       "revenue": "Recettes",
@@ -6009,7 +6137,31 @@
       "pharmacy": "Pharmacie",
       "triage": "Triage",
       "stock": "Stock",
-      "waiting": "Temps d'attente"
+      "waiting": "Temps d'attente",
+      "receipts": "Reçus",
+      "documents": "Documents des patients",
+      "collections": "Encaissements",
+      "methods": "Modes de paiement",
+      "openBills": "Factures ouvertes",
+      "refunds": "Remboursements",
+      "handovers": "Remises",
+      "walkIn": "Ventes au comptoir",
+      "expiry": "Péremption",
+      "outside": "Achetés à l’extérieur",
+      "tests": "Examens",
+      "turnaround": "Délai de rendu",
+      "verification": "Vérification",
+      "byTest": "Par examen",
+      "myPatients": "Mes patients vus",
+      "vitals": "Signes vitaux pris",
+      "waitingNow": "En attente maintenant",
+      "diagnoses": "Diagnostics",
+      "prescriptions": "Ordonnances",
+      "orders": "Examens demandés",
+      "tasks": "Tâches",
+      "registrations": "Enregistrements",
+      "bookings": "Rendez-vous",
+      "arrivals": "Arrivées"
     },
     "kinds": {
       "registered": "Enregistrés",
@@ -6621,7 +6773,8 @@
       "removeYes": "Oui, retirer",
       "purgeTitle": "Supprimer la copie stockée de « {{title}} » ({{name}}) ?",
       "purgeBody": "Le fichier a déjà été retiré du dossier. Sa copie est supprimée du stockage pour de bon et ne pourra plus jamais être ouverte.",
-      "purgeYes": "Oui, la supprimer"
+      "purgeYes": "Oui, la supprimer",
+      "attachManyTitle": "Joindre {{count}} fichiers à la visite de {{name}} ?"
     },
     "hiddenVisit_one": "{{count}} fichier de cette visite vous est privé.",
     "hiddenVisit_other": "{{count}} fichiers de cette visite vous sont privés.",
@@ -6653,7 +6806,28 @@
       "noPreview": "Ce fichier ne peut pas être affiché ici. Téléchargez-le pour l’ouvrir.",
       "recorded": "Ouverture enregistrée",
       "recordedHint": "L’image d’une visite passée ne s’affiche que lorsque vous l’ouvrez : l’ouverture est inscrite au journal des accès."
-    }
+    },
+    "view": "Voir les documents ({{count}})",
+    "viewNone": "Voir les documents",
+    "hideDocs": "Masquer les documents",
+    "attachMany": "Joindre {{count}} fichiers",
+    "chooseMany": "Choisir un ou plusieurs fichiers",
+    "addMore": "Ajouter d’autres fichiers",
+    "kindAll": "Type de chaque fichier (modifiable ci-dessous)",
+    "rowTitle": "Titre",
+    "rowKind": "Type",
+    "rowRemove": "Retirer ce fichier",
+    "status": {
+      "pending": "En attente",
+      "sending": "Envoi…",
+      "done": "Joint",
+      "failed": "Non joint"
+    },
+    "attachedMany": "{{count}} fichiers joints à la visite de {{name}}.",
+    "partial": "{{done}} fichiers sur {{total}} joints ; les autres sont listés avec le motif. Corrigez-les et renvoyez.",
+    "sendAgain": "Renvoyer les autres",
+    "sendingN": "Envoi de {{n}} sur {{total}} : {{file}}",
+    "titlesNeeded": "Chaque fichier doit avoir un titre."
   },
   "handover": {
     "title": "Confier à un collègue",
@@ -7034,7 +7208,23 @@
     "9ca9150e": "Ce médicament s’achète dans une pharmacie extérieure : la clinique ne le remet pas.",
     "942424e3": "Ce médicament n’est pas vendu à la clinique : il ne peut être acheté qu’à l’extérieur.",
     "6b5fd4a1": "Ce médicament a déjà été remis ou annulé : il reste tel quel.",
-    "3ab9b692": "Écrivez le nom du médicament à acheter à l’extérieur."
+    "3ab9b692": "Écrivez le nom du médicament à acheter à l’extérieur.",
+    "1250b5a3": "Cette visite est encore en cours : elle se modifie sans code.",
+    "f96f1e67": "Seul un soignant qui a pris en charge le patient pendant cette visite (ou le gestionnaire) peut la modifier une fois terminée.",
+    "f834fabe": "Dites pourquoi la visite terminée est modifiée.",
+    "b9f31c34": "Trop de codes demandés pour cette visite : attendez dix minutes.",
+    "33a6138f": "Aucun code n’a été demandé pour cette visite, ou il a expiré : demandez-en un nouveau.",
+    "a67c9d35": "Trop de codes erronés : demandez-en un nouveau.",
+    "f8f298df": "Diagnostic introuvable.",
+    "31b050c2": "Seul le soignant qui a écrit le diagnostic (ou le gestionnaire) peut le modifier.",
+    "6859a267": "Dites pourquoi le diagnostic est modifié.",
+    "0b685f85": "Dites pourquoi le diagnostic est retiré.",
+    "60cc8286": "Rien n’a changé.",
+    "d8e999b0": "Une visite terminée garde un diagnostic principal : écrivez d’abord le nouveau.",
+    "ce1437a1": "Note introuvable.",
+    "2380398b": "Seul le soignant qui a écrit la note (ou le gestionnaire) peut la modifier.",
+    "61a5de54": "Dites pourquoi la note est modifiée.",
+    "82c10481": "La visite est terminée : un médicament ajouté maintenant ne peut être qu’acheté à l’extérieur."
   },
   "panel": {
     "close": "Fermer",
@@ -7191,5 +7381,148 @@
     "history": "Historique du rendez-vous",
     "movedTo": "déplacé au {{when}}",
     "seeAll": "Voir tous mes rendez-vous"
+  },
+  "visitLock": {
+    "closedTitle": "Cette visite est terminée",
+    "closedWhen": "Terminée le {{date}} à {{time}}.",
+    "closedWhenBy": "Terminée le {{date}} à {{time}} par {{name}}.",
+    "closedHow": "Le dossier est en lecture seule. Pour le modifier, appuyez sur « Modifier cette visite », donnez la raison et saisissez le code reçu par e-mail.",
+    "notYours": "Seul un soignant qui a pris en charge le patient pendant cette visite (ou le gestionnaire) peut la modifier.",
+    "edit": "Modifier cette visite",
+    "panelSubtitle": "{{name}} · un code est envoyé à votre e-mail",
+    "explain": "Donnez la raison, puis saisissez le code à 6 chiffres reçu par e-mail. La visite est alors modifiable pendant 30 minutes ; chaque changement est inscrit dans le journal avec votre nom et cette raison. Le code est exigé de tous, gestionnaire compris.",
+    "why": "Pourquoi la visite terminée doit-elle être modifiée ?",
+    "whyPh": "ex. le résultat du laboratoire change le diagnostic",
+    "reasonNeeded": "Écrivez d’abord la raison (3 lettres au moins).",
+    "send": "M’envoyer le code",
+    "sent": "Un code a été envoyé à {{email}}. Il est valable 10 minutes (5 essais).",
+    "pendingNote": "Un code a déjà été envoyé à votre e-mail (valable jusqu’à {{time}}) : saisissez-le ci-dessous, ou envoyez-en un nouveau.",
+    "code": "Le code à 6 chiffres de l’e-mail",
+    "codeFormat": "Le code a 6 chiffres.",
+    "open": "Ouvrir la fenêtre de modification",
+    "resend": "Renvoyer le code",
+    "opened": "Modification autorisée jusqu’à {{time}}.",
+    "activeTitle": "Modification autorisée jusqu’à {{time}} ({{left}})",
+    "minutesLeft_one": "{{count}} minute restante",
+    "minutesLeft_other": "{{count}} minutes restantes",
+    "underMinute": "moins d’une minute restante",
+    "activeBody": "Chaque changement est inscrit dans le journal avec votre raison : « {{reason}} ». Passé ce délai, la visite se verrouille à nouveau.",
+    "expired": "La fenêtre de modification est terminée : la visite est à nouveau verrouillée.",
+    "notDeployed": "Le service des codes n’est pas encore installé (la fonction visit-edit-code n’est pas déployée) : le code ne peut pas être envoyé.",
+    "sendFailed": "Le code n’a pas pu être envoyé par e-mail. Réessayez, ou prévenez le gestionnaire.",
+    "wrongTries_one": "Code erroné : encore {{count}} essai.",
+    "wrongTries_other": "Code erroné : encore {{count}} essais.",
+    "lastTry": "Code erroné : c’était le dernier essai. Renvoyez le code pour en recevoir un nouveau."
+  },
+  "vitals": {
+    "bmi": "IMC"
+  },
+  "receipts": {
+    "title": "Reçus",
+    "reportTitle": "Reçus de la période",
+    "count": "Reçus",
+    "givenIn": "Reçus {{period}}",
+    "nReceipts": "{{count}} reçus",
+    "printAll": "Imprimer tous les reçus",
+    "printAllHint": "Tous les reçus de la période dans un seul document, un par page",
+    "allMethods": "Tous les modes",
+    "allCashiers": "Tous les caissiers",
+    "mineNote": "Les reçus que vous avez donnés.",
+    "cols": {
+      "bill": "N° de facture",
+      "balance": "Reste dû"
+    },
+    "summary": "{{count}} reçus pour {{amount}}.",
+    "coverLine": "{{count}} reçus · {{amount}} · {{period}} · imprimé par {{name}}"
+  },
+  "cashDesk": {
+    "byMethod": "Encaissements par mode de paiement",
+    "byDay": "Encaissements par jour",
+    "dayTable": "Jour par jour",
+    "chartAria": "Encaissements par jour, {{period}}",
+    "figuresNote": "Tous les paiements reçus sur la période, avant remboursements.",
+    "openNote": "Les factures ouvertes sont celles d’aujourd’hui, pas de la période.",
+    "nPayments": "{{count}} paiements",
+    "nRefunds": "{{count}} remboursements"
+  },
+  "documents": {
+    "title": "Documents des patients",
+    "lead": "Les documents de tous les patients soignés sur une période, imprimés ensemble.",
+    "cardLead": "Les rapports médicaux de tous les patients soignés sur la période, filtrés par service, médecin, prestation ou assureur, imprimés en un seul document ou exportés en liste.",
+    "open": "Ouvrir",
+    "found": "{{count}} trouvés",
+    "filters": "Filtres",
+    "visitsTitle": "Visites soignées",
+    "closedVisits": "Visites clôturées",
+    "openVisits": "Visites ouvertes",
+    "patients": "Patients",
+    "reports": "Rapports médicaux",
+    "service": "Prestation",
+    "closedOnly": "Visites clôturées seulement",
+    "allDoctors": "Tous les médecins",
+    "allServices": "Toutes les prestations",
+    "allInsurers": "Tous les assureurs et comptant",
+    "printAll": "Imprimer tous les rapports médicaux",
+    "exportHint": "Excel et PDF ci-dessus exportent cette liste.",
+    "openVisit": "Ouvrir la visite",
+    "logNote": "Chaque dossier imprimé ici est journalisé comme une ouverture des dossiers passés du patient, comme sur l’écran de la visite.",
+    "allPrivate": "Ces dossiers sont confidentiels : rien à imprimer.",
+    "hidden": "{{count}} visites ne sont pas imprimées : leurs dossiers sont confidentiels.",
+    "coverLine": "{{count}} rapports médicaux · {{period}} · imprimé par {{name}}",
+    "summary": "{{count}} visites sur la période, {{closed}} clôturées.",
+    "limit": "Les 2 000 premières visites sont listées : réduisez la période.",
+    "cols": {
+      "visitNo": "N° de visite",
+      "doctor": "Médecin",
+      "diagnosis": "Diagnostic",
+      "status": "Statut"
+    },
+    "status": {
+      "closed": "Clôturée",
+      "open": "Ouverte"
+    }
+  },
+  "deskWork": {
+    "chartAria": "{{what}} par jour, {{period}}",
+    "waitingNote": "Qui attend à chaque poste en ce moment ; les temps d’attente de la période sont dans les analyses du gestionnaire.",
+    "longest": "Attente la plus longue",
+    "forgotten": "D’un jour précédent",
+    "overdue": "En retard",
+    "doneByMe": "Faites par moi",
+    "task": "Tâche",
+    "due": "Échéance",
+    "givenBy": "Donnée par",
+    "busiestHour": "Heure la plus chargée",
+    "byHour": "Arrivées par heure de la journée",
+    "visitsByDay": "Visites par jour",
+    "mine": "Les miens",
+    "wholeDesk": "Tout le poste",
+    "patients": "Patients",
+    "mineNote": "Votre propre travail sur la période, d’après les dossiers.",
+    "records": "Dossiers",
+    "what": "Quoi",
+    "open": "Ouvertes",
+    "hour": "Heure"
+  },
+  "walkIn": {
+    "saleNo": "N° de vente",
+    "buyer": "Acheteur",
+    "items": "Articles",
+    "handed": "Ventes remises",
+    "toHandOver": "Payées, à remettre",
+    "buyers": "Acheteurs",
+    "note": "L’acheteur au comptoir paie d’abord à la caisse, puis retire à la pharmacie."
+  },
+  "outside": {
+    "lines": "Lignes achetées à l’extérieur",
+    "patients": "Patients",
+    "afterNotGiven": "Après « non remis »",
+    "medicines": "Médicaments",
+    "note": "Médicaments prescrits ici que le patient a dû acheter ailleurs : ceux à envisager de commander.",
+    "inClinic": "Un médicament de la clinique",
+    "notHeld": "Non tenu par la clinique",
+    "times": "Fois",
+    "units": "Unités",
+    "last": "Dernière fois"
   }
 }

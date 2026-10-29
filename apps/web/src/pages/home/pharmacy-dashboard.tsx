@@ -73,6 +73,10 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   // pharmacy); for anyone else they stay plain, and the stock tiles open the stock page
   const link = useAnalyticsLink(periodSearch(period))
   const stockLink = link('stock') ?? '/app/stock'
+  // the pharmacy's own analytics (0102): hand-overs, walk-in sales, expiry
+  const handoversLink = (extra?: { by: string }) =>
+    link('pharmacy', extra) ?? link('handovers', extra)
+  const expiryLink = link('expiry') ?? stockLink
   const { data: s, refetch, isFetching, dataUpdatedAt } = usePharmacySummary(days)
   const { data: lines = [], refetch: refetchLines } = usePharmacyQueue()
   const { data: stock, refetch: refetchStock } = useStockOverview()
@@ -225,6 +229,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               delta={
                 s.lines > 0 ? { text: t('pharmacy.serveSoon'), good: false, up: null } : undefined
               }
+              to={handoversLink()}
             />
             <Kpi
               i={1}
@@ -236,7 +241,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                 count: s.patientsServedToday,
                 period: periodWord,
               })}
-              to={link('staff', { kind: 'medicinesGiven' })}
+              to={link('staff', { kind: 'medicinesGiven' }) ?? handoversLink()}
             />
             <Kpi
               i={2}
@@ -249,7 +254,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                 rx: formatRwf(s.salesToday),
                 walkIn: formatRwf(walkIn),
               })}
-              to={link('pharmacy')}
+              to={link('walkIn') ?? link('pharmacy')}
             />
             <Kpi
               i={3}
@@ -258,7 +263,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               label={t('pharmacy.tiles.notGiven')}
               value={s.notGivenToday}
               unit={periodWord}
-              to={link('pharmacy', { by: 'notGiven' })}
+              to={handoversLink({ by: 'notGiven' })}
             />
             <Kpi
               i={4}
@@ -279,7 +284,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               label={t('stock.tiles.expiring')}
               value={totals.expiring30}
               unit={t('pharmacy.home.withinDays', { count: expiryDays })}
-              to={stockLink}
+              to={expiryLink}
             />
             <Kpi
               i={6}
@@ -293,7 +298,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                   ? { text: t('pharmacy.home.writeOff'), good: false, up: null }
                   : undefined
               }
-              to={stockLink}
+              to={expiryLink}
             />
             <Kpi
               i={7}
@@ -385,7 +390,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                   tint="coral"
                   title={t('pharmacy.notGivenToday', { period: periodWord })}
                   right={String(s.notGiven.length)}
-                  to={link('pharmacy', { by: 'notGiven' })}
+                  to={handoversLink({ by: 'notGiven' })}
                 >
                   <ListRows
                     rows={s.notGiven.slice(0, 6).map((n, i) => ({
@@ -404,7 +409,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
                   tint="violet"
                   title={t('pharmacy.mostGivenIn', { period: periodWord })}
                   right={t('pharmacy.givenCount', { count: s.dispensedToday })}
-                  to={link('pharmacy')}
+                  to={handoversLink()}
                 >
                   {s.topToday.length === 0 && (
                     <Empty>{t('pharmacy.nothingYetIn', { period: periodWord })}</Empty>

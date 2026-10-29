@@ -71,6 +71,23 @@ export function perUnit(q: PharmacyLine): { total: number; insurer: number; pati
   return { total: q.lineTotal / n, insurer: q.insurerShare / n, patient: q.patientShare / n }
 }
 
+/**
+ * What `n` pieces of a line cost on the bill, as the database charges them (0102): whole packs
+ * at the item's pack price when the line is cash-priced and has one, else pieces × the price;
+ * the insurer's share rounded on the line total, the patient paying the rest.
+ */
+export function costOf(
+  q: PharmacyLine,
+  n: number,
+): { total: number; insurer: number; patient: number; byPack: boolean; packs: number } {
+  if (!q.priced || n <= 0) return { total: 0, insurer: 0, patient: 0, byPack: false, packs: 0 }
+  const size = q.packSize ?? 1
+  const byPack = q.packPrice != null && size > 1 && n % size === 0
+  const total = byPack ? (n / size) * (q.packPrice ?? 0) : Math.round(perUnit(q).total * n)
+  const insurer = Math.round((total * num(q.coveragePct)) / 100)
+  return { total, insurer, patient: total - insurer, byPack, packs: byPack ? n / size : 0 }
+}
+
 export interface DispensePartResult {
   charged: boolean
   dispenseId: string | null

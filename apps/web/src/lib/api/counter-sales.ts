@@ -23,11 +23,60 @@ export interface CounterSaleLine {
   itemId: string
   item: string
   unit: string | null
+  /** Pieces sold (the stock leaves in pieces). */
   quantity: number
+  /** The price of one piece. */
   unitPrice: number
   lineTotal: number
   /** Unexpired units in the sale's store now. */
   inStock: number
+  /** Pieces in one pack (0102). */
+  packSize?: number | null
+  /** Charged as whole packs at the item's pack price: how many, and the price of one pack. */
+  packs?: number | null
+  packPrice?: number | null
+  byPack?: boolean
+}
+
+/**
+ * The lines as the receipt prints them: a line charged by the pack reads "Amoxicillin 500 mg ·
+ * B/20 × 2 at the pack price", so quantity × unit price is the line total on paper too.
+ */
+export const receiptLines = (lines: readonly CounterSaleLine[]): CounterSaleLine[] =>
+  lines.map((l) =>
+    l.byPack && l.packs && l.packPrice != null
+      ? {
+          ...l,
+          item: `${l.item} · B/${l.packSize ?? ''}`,
+          quantity: l.packs,
+          unitPrice: l.packPrice,
+          unit: null,
+        }
+      : l,
+  )
+
+/** Sample mode: a cash line's total as the database charges it (whole packs at the pack price). */
+const sampleLineCost = (
+  it: { sellingPrice: number | null; packSize?: number | null; packPrice?: number | null },
+  quantity: number,
+): Pick<CounterSaleLine, 'lineTotal' | 'packs' | 'packPrice' | 'byPack' | 'packSize'> => {
+  const size = it.packSize ?? 1
+  const byPack = it.packPrice != null && size > 1 && quantity % size === 0
+  return byPack
+    ? {
+        lineTotal: (quantity / size) * (it.packPrice ?? 0),
+        packs: quantity / size,
+        packPrice: it.packPrice ?? null,
+        byPack: true,
+        packSize: size,
+      }
+    : {
+        lineTotal: (it.sellingPrice ?? 0) * quantity,
+        packs: null,
+        packPrice: null,
+        byPack: false,
+        packSize: it.packSize ?? null,
+      }
 }
 export interface CounterSale {
   id: string
@@ -95,12 +144,18 @@ const sampleSales: CounterSale[] = [
         unit: 'tab',
         quantity: 20,
         unitPrice: 50,
-        lineTotal: 1000,
+        lineTotal: 900,
         inStock: 500,
+        packSize: 20,
+        packs: 1,
+        packPrice: 900,
+        byPack: true,
       },
     ],
   },
 ]
+// the sample sale above is one whole pack at the pack price
+sampleSales[0]!.total = 900
 /** The sales waiting at the cashier (sample mode: cashier_summary's counterToPay). */
 export const sampleCounterToPay = () =>
   sampleSales
@@ -161,6 +216,10 @@ export function useCounterSales(
           unitPrice: num(l.unitPrice),
           lineTotal: num(l.lineTotal),
           inStock: num(l.inStock),
+          packSize: l.packSize == null ? null : num(l.packSize),
+          packs: l.packs == null ? null : num(l.packs),
+          packPrice: l.packPrice == null ? null : num(l.packPrice),
+          byPack: !!l.byPack,
         })),
       }))
     },
@@ -208,8 +267,8 @@ export function useCounterSaleActions() {
             unit: it.unit,
             quantity: l.quantity,
             unitPrice: it.sellingPrice,
-            lineTotal: it.sellingPrice * l.quantity,
             inStock: sampleStock.usable(l.itemId, loc),
+            ...sampleLineCost(it, l.quantity),
           }
         })
         const s: CounterSale = {

@@ -33,6 +33,8 @@ export interface DispenseLabel {
   quantity: number
   /** Selling unit ("tab", "cap", "sachet"); gives the form when `form` is not known. */
   unit: string | null
+  /** Pieces in one pack (0102): the label says "20 tablets (1 pack of 20)" when 2 or more. */
+  packSize?: number | null
   /** As prescribed: "4 tab", "1/2 tablet", "5 ml", "10 U". */
   dose: string | null
   /** A frequency code (OD, BD, TDS, QID, Q8H, Q6H, NOCTE, PRN, STAT) or free text. */
@@ -272,6 +274,39 @@ function amountText(p: { n: number; unit: string }, t: TFn, lang: string): strin
   return shown === String(count) ? text : text.replace(String(count), shown)
 }
 
+/**
+ * "20 tablets (1 pack of 20)", "23 tablets (1 pack of 20 + 3)", "100 ml": the quantity handed
+ * over in pieces, with the whole packs it comes to when the item is sold by the pack.
+ */
+export function quantityText(x: DispenseLabel, t: TFn, lang = 'en'): string {
+  const n = x.quantity
+  const unit = (x.unit ?? '').trim()
+  const pieces =
+    unit && unitKey(unit)
+      ? amountText({ n, unit }, t, lang)
+      : plainUnits(`${num(n)} ${unit}`.trim())
+  const size = x.packSize ?? 1
+  if (size < 2 || n < size) return pieces
+  const packs = Math.floor(n / size)
+  const rest = n - packs * size
+  const inPacks = rest
+    ? say(
+        t,
+        'packsOfPlus',
+        '{{count}} pack of {{size}} + {{rest}}',
+        { count: packs, size, rest },
+        '{{count}} packs of {{size}} + {{rest}}',
+      )
+    : say(
+        t,
+        'packsOf',
+        '{{count}} pack of {{size}}',
+        { count: packs, size },
+        '{{count}} packs of {{size}}',
+      )
+  return `${pieces} (${inPacks})`
+}
+
 /** The frequency code of a typed frequency ("bd", "BID" → "BD"), or null for free text. */
 function freqCode(f: string | null | undefined): string | null {
   const c = (f ?? '').trim().toUpperCase().replace(/[\s.]/g, '')
@@ -397,6 +432,7 @@ const CSS = `
 .lb-patient .lb-big { font-size: 10.5pt; letter-spacing: 0.01em; }
 .lb-patient .lb-big, .lb-med .lb-big { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .lb-aside { font-size: 7.5pt; font-weight: 700; border: 0.75pt solid #000000; border-radius: 1mm; padding: 0 1mm; }
+.lb-row > .lb-aside { white-space: normal; max-width: 46%; text-align: right; }
 .lb-rw { font-size: 9.5pt; font-weight: 700; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .lb-2nd { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .lb-keep > .lb-keep-words { font-weight: 700; }
@@ -501,7 +537,7 @@ export function buildDispenseLabelsHtml(
 <div class="lb-main">
 <div class="lb-row lb-clinic"><span>${esc(d.clinic.name)}</span>${tel ? `<span>${esc(say(w.ui, 'tel', 'Tel.'))}: ${esc(tel)}</span>` : ''}</div>
 <div class="lb-patient"><span class="lb-big">${esc(d.patient.name)}</span></div>
-<div class="lb-row lb-med"><span class="lb-big">${esc(medicineName(x, w.second))}</span><span class="lb-aside">${esc(say(w.ui, 'qty', 'Qty'))}: ${esc(num(x.quantity))}</span></div>
+<div class="lb-row lb-med"><span class="lb-big">${esc(medicineName(x, w.second))}</span><span class="lb-aside">${esc(say(w.ui, 'qty', 'Qty'))}: ${esc(quantityText(x, w.second, secondLang))}</span></div>
 ${rw ? `<p class="lb-rw">${esc(rw)}</p>` : ''}
 ${second && second !== rw ? `<p class="lb-2nd">${esc(second)}</p>` : ''}
 <p class="lb-keep"><span class="lb-keep-words">${alt(keep, keep2)}.</span>${notes.length ? ` <span class="lb-notes">${notes.join(' ')}</span>` : ''}</p>

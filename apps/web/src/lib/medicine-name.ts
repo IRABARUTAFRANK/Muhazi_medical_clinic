@@ -291,3 +291,23 @@ export function compareMedicineParts(a: MedicineNameParts, b: MedicineNameParts)
 
 /** A name typed by the clinic, tidied the same way: "Amoxicillin 500mg" → "Amoxicillin 500 mg". */
 export const tidyName = (s: string) => tidyAmounts(s.replace(/\s+/g, ' ').trim())
+
+/** The pieces in one pack as the list writes it ("… tablet B/20" → 20); null when not said. */
+export const packSizeIn = (presentation: string | null | undefined): number | null => {
+  const m = /\bB\s*\/\s*(\d+)\b/i.exec(presentation ?? '')
+  return m ? Number(m[1]) : null
+}
+
+/**
+ * Pieces as whole packs and the rest: 503 tablets in packs of 20 are 25 packs + 3. Null when the
+ * item has no pack (one piece per pack) or fewer pieces than one pack.
+ */
+export function splitPacks(
+  units: number,
+  packSize: number | null | undefined,
+): { packs: number; rest: number; size: number } | null {
+  const size = packSize ?? 1
+  if (!Number.isFinite(units) || size < 2 || units < size) return null
+  const packs = Math.floor(units / size)
+  return { packs, rest: units - packs * size, size }
+}

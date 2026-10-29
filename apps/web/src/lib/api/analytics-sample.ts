@@ -1,6 +1,7 @@
 import { addDays, isoDate, type StaffUser } from '@mmc/shared'
 import { useSession } from '@/store/session'
 import { ApiError } from './errors'
+import { DASHBOARD_VIEWS, dashboardOf, headDashboardViews } from './analytics'
 import type {
   ActivityKind,
   ActivityPerson,
@@ -514,13 +515,31 @@ export function sampleAccess(user: StaffUser | null): AnalyticsAccess {
         'stock',
         'waiting',
       ],
+      dashboard: 'manager',
+      dashboardViews: [...DASHBOARD_VIEWS.manager],
       fallback: false,
     }
   if (user?.dashboard === 'head') {
     const d = headDepartment(user)
-    return { manager, departments: [strip(d)], views: viewsFor(d.desks), fallback: false }
+    return {
+      manager,
+      departments: [strip(d)],
+      views: viewsFor(d.desks),
+      dashboard: 'head',
+      dashboardViews: headDashboardViews(d.desks),
+      fallback: false,
+    }
   }
-  return { manager: false, departments: [], views: [], fallback: false }
+  // the desk dashboards (0102): their own views, the data checked by each desk's own functions
+  const dashboard = dashboardOf(user)
+  return {
+    manager: false,
+    departments: [],
+    views: [],
+    dashboard,
+    dashboardViews: dashboard && dashboard !== 'head' ? [...DASHBOARD_VIEWS[dashboard]] : [],
+    fallback: false,
+  }
 }
 
 const notAllowed = () =>

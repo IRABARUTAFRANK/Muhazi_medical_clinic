@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { DashboardRange } from '@/lib/api/dashboard'
 import {
+  canOpenView,
   useAnalyticsAccess,
   type ActivityKind,
   type AnalyticsAccess,
@@ -39,10 +40,11 @@ export const periodSearch = (p: {
   p.range === 'custom' ? { range: 'custom', from: p.from, to: p.to } : { range: p.range }
 
 /** The link builder for a person's access (exported for tests and for pages that already hold
- *  the access): undefined when that view is not theirs, so the card stays a plain card. */
+ *  the access): undefined when that view is not theirs (neither granted by the server nor a view
+ *  of their own dashboard, 0102), so the card stays a plain card. */
 export function analyticsLinker(access: AnalyticsAccess | undefined, base: AnalyticsSearch = {}) {
   return (view: AnalyticsView, extra: AnalyticsSearch = {}): string | undefined => {
-    if (!access || !access.views.includes(view)) return undefined
+    if (!access || !canOpenView(access, view)) return undefined
     // a head sees their own department: say which, so the page opens on it
     // (a key present but undefined in base or extra must not wipe it out)
     const s: AnalyticsSearch = { ...base, ...extra }

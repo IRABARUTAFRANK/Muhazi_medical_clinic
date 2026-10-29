@@ -80,8 +80,14 @@ export const qty = (s: string): number => {
 export interface EditLine {
   key: string
   itemId: string
+  /** As typed: pieces, or whole packs when `mode` is 'packs' (0102). */
   quantity: string
+  mode?: 'pieces' | 'packs'
 }
+
+/** The pieces a line means: packs × pieces per pack when typed in packs. */
+export const linePieces = (l: EditLine, packSize: number | null | undefined): number =>
+  l.mode === 'packs' ? qty(l.quantity) * Math.max(1, packSize ?? 1) : qty(l.quantity)
 
 let lineSeq = 0
 /** An empty line for a lines editor. */
@@ -89,4 +95,5 @@ export const newLine = (itemId = '', quantity = ''): EditLine => ({
   key: `l${++lineSeq}`,
   itemId,
   quantity,
+  mode: 'pieces',
 })

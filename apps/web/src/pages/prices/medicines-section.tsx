@@ -29,11 +29,13 @@ import { sampleStock, useStockOverview } from '@/lib/api/stock'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { useSessionCanDesk } from '@/components/clinical/session-desks'
+import { packPriceText, tx } from '../stock/stock-util'
 
 /**
- * The number of units in one box of a medicine (deliveries counted in boxes are converted with
- * it). Saved by the checked function set_pack_size (the pharmacy and the manager); empty means
- * one unit per box.
+ * The number of pieces in one pack of a medicine (a box of 20 tablets, a strip of 10; deliveries
+ * counted in boxes are converted with it; stock is held in pieces). Saved by the checked function
+ * set_pack_size (the pharmacy and the manager); empty means one piece per pack: a medicine sold
+ * whole, like a bottle, has 1 and the unit "bottle".
  */
 async function savePackSize(itemId: string, packSize: number | null) {
   if (!itemId) return
@@ -47,6 +49,22 @@ async function savePackSize(itemId: string, packSize: number | null) {
     p_item_id: itemId,
     p_pack: packSize ?? 1,
   })
+  throwIf(error)
+}
+
+/**
+ * The price of one whole pack (0102), when it differs from pieces × the price: whole packs sold
+ * for cash are charged at it. Saved by set_pack_price (the manager, or the price right); empty
+ * clears it.
+ */
+async function savePackPrice(itemId: string, packPrice: number | null) {
+  if (!itemId) return
+  if (!supabase) {
+    const it = sampleStock.items.find((x) => x.id === itemId)
+    if (it) it.packPrice = packPrice
+    return
+  }
+  const { error } = await supabase.rpc('set_pack_price', { p_item_id: itemId, p_price: packPrice })
   throwIf(error)
 }
 
@@ -75,6 +93,9 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
   const mayAddStock = isManager || canDesk('pharmacy')
   const [query, setQuery] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
+  // the pack (pieces in one, the pack price) lives on the stock list
+  const { data: stock } = useStockOverview()
+  const packOf = (id: string) => stock?.items.find((i) => i.id === id)
   const q = query.trim().toLowerCase()
   const shown = meds.filter(
     (m) =>
@@ -201,7 +222,15 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
                     {m.strength ? ` ${m.strength}` : ''}
                   </span>
                   <span className="text-ink-3 text-xs">
-                    {[m.code, m.form, m.unit ? t('prices.meds.perUnit', { unit: m.unit }) : null]
+                    {[
+                      m.code,
+                      m.form,
+                      m.unit ? t('prices.meds.perUnit', { unit: m.unit }) : null,
+                      (packOf(m.id)?.packSize ?? 1) > 1
+                        ? t('stockPage.add.perBoxKnown', { count: packOf(m.id)?.packSize })
+                        : null,
+                      packOf(m.id) ? packPriceText(t, packOf(m.id)!, formatRwf) : null,
+                    ]
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
@@ -262,6 +291,12 @@ function MedicineForm({
     : null
   const [packSize, setPackSize] = useState<string | null>(null)
   const pack = packSize ?? (knownPack && knownPack > 0 ? String(knownPack) : '')
+  // the price of one whole pack (0102), optional
+  const knownPackPrice = medicine
+    ? (stock?.items.find((i) => i.id === medicine.id)?.packPrice ?? null)
+    : null
+  const [packPrice, setPackPrice] = useState<string | null>(null)
+  const packPriceField = packPrice ?? (knownPackPrice != null ? String(knownPackPrice) : '')
   const [error, setError] = useState<string | null>(null)
   // a new medicine can be taken from the RHIA list: its code keeps the list's details with it
   const {
@@ -295,6 +330,19 @@ function MedicineForm({
       return setError(t('prices.errors.price'))
     const ps = pack.trim() === '' ? null : Number(pack)
     if (ps != null && (!Number.isInteger(ps) || ps < 1)) return setError(t('prices.meds.packBad'))
+    const pp = packPriceField.trim() === '' ? null : Number(packPriceField)
+    if (pp != null && (!Number.isInteger(pp) || pp < 0))
+      return setError(
+        tx(t, 'prices.meds.packPriceBad', 'The pack price is a whole number, 0 or more.'),
+      )
+    if (pp != null && (ps ?? 1) < 2)
+      return setError(
+        tx(
+          t,
+          'prices.meds.packPriceNeedsSize',
+          'A pack price needs the units per box first (2 or more). A medicine sold whole has no pack price: its price is the price.',
+        ),
+      )
     const label = `${name.trim()}${strength.trim() ? ` ${strength.trim()}` : ''}`
     if (
       !(await confirm({
@@ -323,6 +371,10 @@ function MedicineForm({
       })
       if (ps !== knownPack) {
         await savePackSize(id || medicine?.id || '', ps)
+        void qc.invalidateQueries({ queryKey: ['stock'] })
+      }
+      if (pp !== knownPackPrice) {
+        await savePackPrice(id || medicine?.id || '', pp)
         void qc.invalidateQueries({ queryKey: ['stock'] })
       }
       onSaved(name.trim(), id || medicine?.id || null)
@@ -442,15 +494,34 @@ function MedicineForm({
               required
             />
           </div>
-          <Field
-            label={t('prices.meds.packSize')}
-            inputMode="numeric"
-            value={pack}
-            placeholder="100"
-            onChange={(e) => setPackSize(e.target.value.replace(/[^\d]/g, ''))}
-            wrapperClassName="sm:max-w-xs"
-          />
-          <p className="text-ink-3 m-0 -mt-1 text-[12px]">{t('prices.meds.packHint')}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field
+              label={t('prices.meds.packSize')}
+              inputMode="numeric"
+              value={pack}
+              placeholder="100"
+              onChange={(e) => setPackSize(e.target.value.replace(/[^\d]/g, ''))}
+            />
+            <Field
+              label={tx(t, 'prices.meds.packPrice', 'Pack price (optional)')}
+              inputMode="numeric"
+              value={packPriceField}
+              placeholder={
+                pack.trim() !== '' && price.trim() !== ''
+                  ? String(Number(pack) * Number(price))
+                  : '—'
+              }
+              onChange={(e) => setPackPrice(e.target.value.replace(/[^\d]/g, ''))}
+            />
+          </div>
+          <p className="text-ink-3 m-0 -mt-1 text-[12px]">
+            {t('prices.meds.packHint')}{' '}
+            {tx(
+              t,
+              'prices.meds.packHint2',
+              'Stock is held in pieces (the unit above); the box size says how many pieces make one pack, so every screen can show both ("500 tab · 25 packs of 20"). A medicine sold whole, like a bottle of syrup, is 1 with the unit "bottle". The pack price is the price of one whole pack when it differs from pieces × price: whole packs sold for cash are charged at it, and the bill says so.',
+            )}
+          </p>
           <label className="border-border flex items-start gap-3 rounded-md border p-3">
             <input
               type="checkbox"

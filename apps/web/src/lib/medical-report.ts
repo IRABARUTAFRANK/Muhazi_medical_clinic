@@ -6,6 +6,7 @@ import {
   chipHtml,
   docDate,
   docDateTime,
+  docNumber,
   docStamp,
   docTime,
   documentHtml,
@@ -13,6 +14,7 @@ import {
   esc,
   escLines,
   identityHtml,
+  keyFiguresHtml,
   letterheadHtml,
   makeDocLabels,
   openPrintWindow,
@@ -888,6 +890,46 @@ export function buildMedicalReportHtml(
 ): string {
   const layout = d.layout ?? (d.title ? 'lab' : 'medical')
   if (layout === 'lab') return labReportHtml(d, l, ctx)
+  const p = medicalReportParts(d, l, ctx)
+  return documentHtml({
+    base: {
+      page: 'a4',
+      title: p.title,
+      docNo: p.docNo,
+      clinicName: p.clinicName,
+      printedBy: p.printedBy,
+      printedAt: p.now,
+      medical: true,
+      identity: p.identity,
+      labels: p.dl,
+      fonts: ctx.fonts,
+    },
+    css: MEDICAL_CSS,
+    body: p.body,
+    lang: ctx.lang,
+    autoPrint: ctx.autoPrint,
+  })
+}
+
+/** The pieces of a medical report or history, without the document wrapper. */
+interface ReportParts {
+  title: string
+  docNo: string
+  clinicName: string
+  printedBy: string | null
+  now: Date
+  identity: { name: string; fileNo: string | null; dob: string | null }
+  dl: DocLabels
+  body: string
+}
+
+/** The one-visit report or the history, laid out (letterhead to signature) but not wrapped:
+ *  one document prints it alone; the documents of a period join several (the batch below). */
+function medicalReportParts(
+  d: MedicalReportDoc,
+  l: MedicalReportLabels,
+  ctx: MedicalReportContext,
+): ReportParts {
   const now = ctx.now ?? new Date()
   const dl = makeDocLabels(ctx.t)
   const w = medWords(ctx.t)
@@ -1005,25 +1047,133 @@ export function buildMedicalReportHtml(
   const body = [...head, ...withSignature(pieces, signature)]
   if (d.copyTo?.trim()) body.push(`<p class="copy-to">${esc(c.w.copyTo)}: ${esc(d.copyTo)}</p>`)
 
+  return {
+    title,
+    docNo,
+    clinicName: lh.legalName,
+    printedBy,
+    now,
+    identity: {
+      name: d.patient.name,
+      fileNo: d.patient.fileNumber,
+      dob: docDate(d.patient.birthDate ?? null) || null,
+    },
+    dl,
+    body: body.join(''),
+  }
+}
+
+// ---------------------------------------------------------------- several reports in one document
+
+/** The cover of the documents of a period: what the list says, in the reader's language. */
+export interface ReportsBatchCover {
+  /** "Patients' documents". */
+  title: string
+  /** "N medical reports · period · printed by …". */
+  summary: string
+  periodWord: string
+  periodLabel: string
+  /** The filters in words ("Department: Dental", "Doctor: …"), printed in the meta box. */
+  filters: [label: string, value: string | null | undefined][]
+  /** Key figures: reports, patients. */
+  reportsLabel: string
+  patientsLabel: string
+  /** Column labels of the list. */
+  columns: {
+    no: string
+    date: string
+    patient: string
+    file: string
+    doctor: string
+    diagnosis: string
+  }
+  /** "N visits could not be printed: their records are private." (left out when 0). */
+  hidden?: string | null
+}
+
+const BATCH_CSS = `
+.mr-cover .dt { margin-top: 8pt; }
+.mr-copy { break-before: page; page-break-before: always; }
+.mr-copy .mr-no { font-size: var(--fs-small); color: var(--ink-2); text-align: right; margin: 0 0 4pt; }
+`
+
+/**
+ * The medical reports of several visits in ONE document (the manager's "Print all medical
+ * reports"): a cover page listing them, then each report on its own page(s), laid out exactly
+ * as the single report is. The running identity strip is left out (the patient changes from one
+ * report to the next); each report carries its own patient block. Pure (no window).
+ */
+export function buildMedicalReportsBatchHtml(
+  docs: MedicalReportDoc[],
+  l: MedicalReportLabels,
+  ctx: MedicalReportContext,
+  cover: ReportsBatchCover,
+  printedBy: string | null,
+): string {
+  const now = ctx.now ?? new Date()
+  const dl = makeDocLabels(ctx.t)
+  const parts = docs.map((d) => medicalReportParts(d, l, ctx))
+  const first = docs[0]
+  const lh = first ? letterheadOf(first.clinic) : null
+  const patients = new Set(docs.map((d) => d.patient.fileNumber || d.patient.name)).size
+  const c = cover.columns
+  const list = tableHtml(
+    [
+      { label: c.no, width: '30mm' },
+      { label: c.date, width: '28mm' },
+      { label: c.patient },
+      { label: c.file, width: '24mm' },
+      { label: c.doctor, width: '36mm' },
+      { label: c.diagnosis },
+    ],
+    docs.map((d, i) => {
+      const v = d.visits[0]
+      const main = v?.diagnoses.find((x) => x.primary) ?? v?.diagnoses[0]
+      return [
+        parts[i]!.docNo,
+        v ? (v.at ? docDateTime(v.at) : v.date) : null,
+        d.patient.name,
+        d.patient.fileNumber,
+        v?.doctor ?? null,
+        main ? `${main.text}${main.icd10 ? ` (${main.icd10})` : ''}` : null,
+      ]
+    }),
+  )
+  const coverHtml = [
+    lh ? letterheadHtml(lh, dl) : '',
+    titleBlockHtml({
+      title: cover.title,
+      scope: cover.summary,
+      meta: [[cover.periodWord, cover.periodLabel], ...cover.filters],
+    }),
+    keyFiguresHtml([
+      { label: cover.reportsLabel, value: docNumber(docs.length), tone: 'teal' },
+      { label: cover.patientsLabel, value: docNumber(patients), tone: 'navy' },
+    ]),
+    cover.hidden ? `<p class="alert">${esc(cover.hidden)}</p>` : '',
+    list,
+  ].join('')
+  const copies = parts
+    .map(
+      (p, i) =>
+        `<section class="mr-copy"><p class="mr-no">${esc(p.docNo)} · ${i + 1} / ${parts.length}</p>${p.body}</section>`,
+    )
+    .join('')
   return documentHtml({
     base: {
       page: 'a4',
-      title,
-      docNo,
-      clinicName: lh.legalName,
+      title: cover.title,
+      docNo: null,
+      clinicName: lh?.legalName ?? '',
       printedBy,
       printedAt: now,
       medical: true,
-      identity: {
-        name: d.patient.name,
-        fileNo: d.patient.fileNumber,
-        dob: docDate(d.patient.birthDate ?? null) || null,
-      },
+      identity: null,
       labels: dl,
       fonts: ctx.fonts,
     },
-    css: MEDICAL_CSS,
-    body: body.join(''),
+    css: MEDICAL_CSS + BATCH_CSS,
+    body: `<section class="mr-cover">${coverHtml}</section>${copies}`,
     lang: ctx.lang,
     autoPrint: ctx.autoPrint,
   })

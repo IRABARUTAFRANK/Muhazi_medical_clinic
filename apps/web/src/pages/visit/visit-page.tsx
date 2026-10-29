@@ -25,6 +25,7 @@ import { EmptyNote } from '@/components/clinical/empty-note'
 import { GlassPill, HeroHead } from '@/components/clinical/hero-head'
 import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
 import { VitalsForm } from '@/components/clinical/vitals-form'
+import { bmiOf, vitalName } from '@/lib/api/vitals'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
@@ -187,6 +188,8 @@ export function VisitPage({
   const mayVitals =
     can('vitals.write') && (canDesk('triage') || !header?.stations.includes('triage'))
   const weight = vitals.find((v) => v.code === 'weight')
+  // the body mass index from weight and height (0102): shown, never saved
+  const bmi = bmiOf(weight?.value, vitals.find((v) => v.code === 'height')?.value)
   // the latest vital sign measured: who measured it and when, for the medical report
   const latestVital = vitals.reduce<Vital | null>((a, v) => (!a || v.at > a.at ? v : a), null)
   // A finished visit opens read-only (it stays in the patient file).
@@ -369,11 +372,16 @@ export function VisitPage({
                   </Badge>
                 )}
                 {vitals.map((v) => (
-                  <Chip key={v.code} title={vitalSource(v)}>
-                    {t(`triage.vitals.${v.code}`)}: <b className="ml-1 tabular-nums">{v.value}</b>
+                  <Chip key={v.id} title={vitalSource(v)}>
+                    {vitalName(v, t)}: <b className="ml-1 tabular-nums">{v.value}</b>
                     {v.unit ? ` ${v.unit}` : ''}
                   </Chip>
                 ))}
+                {bmi != null && (
+                  <Chip title={t('vitalsForm.bmiComputed')}>
+                    {t('vitals.bmi')}: <b className="ml-1 tabular-nums">{bmi}</b> kg/m²
+                  </Chip>
+                )}
                 <span className="flex-1" />
                 {!addingVitals && !closed && mayVitals && (
                   <Button size="sm" onClick={() => setAddingVitals(true)}>
@@ -459,6 +467,7 @@ export function VisitPage({
                 encounterId={encounterId}
                 title={t('vitalsForm.addTitle', { name: header.name })}
                 mode="add"
+                existing={vitals}
                 onCancel={() => setAddingVitals(false)}
                 onSaved={() => {
                   setAddingVitals(false)
@@ -519,7 +528,7 @@ export function VisitPage({
                     vitals: [...vitals]
                       .sort((a, b) => a.at.localeCompare(b.at))
                       .map((v) => ({
-                        label: t(`triage.vitals.${v.code}`),
+                        label: vitalName(v, t),
                         value: `${v.value}${v.unit ? ` ${v.unit}` : ''}`,
                         code: v.code,
                         unit: v.unit,

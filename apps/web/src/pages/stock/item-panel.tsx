@@ -31,6 +31,8 @@ import {
   expiryState,
   itemName,
   itemStatuses,
+  packPriceText,
+  packsText,
   pharmacySide,
   splitStock,
   type Msg,
@@ -79,9 +81,13 @@ export function ItemPanel({
           ? [
               item.code,
               item.unit ? t('prices.meds.perUnit', { unit: item.unit }) : null,
+              (item.packSize ?? 1) > 1
+                ? t('stockPage.add.perBoxKnown', { count: item.packSize })
+                : null,
               item.sellingPrice != null
                 ? t('stockPage.panel.sellsAt', { price: formatRwf(item.sellingPrice) })
                 : t('prices.noPrice'),
+              packPriceText(t, item, formatRwf),
             ]
               .filter(Boolean)
               .join(' · ')
@@ -116,13 +122,20 @@ function ItemBody({
   const split = splitStock(item, locations)
   const showCost = item.costShown !== false
   const [action, setAction] = useState<Action>('level')
-  const figures: { label: string; value: string; tone?: string }[] = [
-    { label: t('stockPage.cols.pharmacy'), value: formatNumber(split.pharmacy) },
-    { label: t('stockPage.cols.rooms'), value: formatNumber(split.rooms) },
-    { label: t('stockPage.cols.total'), value: formatNumber(split.total) },
+  // pieces, with the whole packs they come to under them (0102)
+  const packs = (n: number) => packsText(t, n, item.packSize)
+  const figures: { label: string; value: string; tone?: string; sub?: string | null }[] = [
+    {
+      label: t('stockPage.cols.pharmacy'),
+      value: formatNumber(split.pharmacy),
+      sub: packs(split.pharmacy),
+    },
+    { label: t('stockPage.cols.rooms'), value: formatNumber(split.rooms), sub: packs(split.rooms) },
+    { label: t('stockPage.cols.total'), value: formatNumber(split.total), sub: packs(split.total) },
     {
       label: t('stockPage.panel.reorderPoint'),
       value: item.reorderLevel > 0 ? formatNumber(item.reorderLevel) : '—',
+      sub: item.reorderLevel > 0 ? packs(item.reorderLevel) : null,
     },
     ...(showCost
       ? [
@@ -163,7 +176,10 @@ function ItemBody({
         {figures.map((f) => (
           <div key={f.label} className={cn(card, 'gap-0.5 p-3')}>
             <dt className="text-ink-3 text-[12px]">{f.label}</dt>
-            <dd className={cn('m-0 text-[18px] font-semibold tabular-nums', f.tone)}>{f.value}</dd>
+            <dd className={cn('m-0 text-[18px] font-semibold tabular-nums', f.tone)}>
+              {f.value}
+              {f.sub && <span className="text-ink-3 block text-[12px] font-normal">{f.sub}</span>}
+            </dd>
           </div>
         ))}
       </dl>

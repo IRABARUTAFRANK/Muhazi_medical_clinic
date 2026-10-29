@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import type { StaffUser } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { apiError, isMissingFunction } from './errors'
@@ -30,7 +31,11 @@ import {
 
 // ------------------------------------------------------------------ vocabulary
 
-/** The views, in the order the page lists them. */
+/**
+ * The views. The first nine are the manager's and the heads' (0086); the others belong to the
+ * desk dashboards (0102): the cash desk, the pharmacy, the laboratory, the doctor's and nurse's
+ * own work, reception. Each dashboard lists its own in its own order (analytics_access).
+ */
 export const ANALYTICS_VIEWS = [
   'revenue',
   'staff',
@@ -41,10 +46,120 @@ export const ANALYTICS_VIEWS = [
   'triage',
   'stock',
   'waiting',
+  // the manager and the heads (0102)
+  'receipts',
+  'documents',
+  // the cash desk
+  'collections',
+  'methods',
+  'openBills',
+  'refunds',
+  // the pharmacy
+  'handovers',
+  'walkIn',
+  'expiry',
+  'outside',
+  // the laboratory
+  'tests',
+  'turnaround',
+  'verification',
+  'byTest',
+  // the doctor's and nurse's desk, reception
+  'myPatients',
+  'vitals',
+  'waitingNow',
+  'diagnoses',
+  'prescriptions',
+  'orders',
+  'tasks',
+  'registrations',
+  'bookings',
+  'arrivals',
 ] as const
 export type AnalyticsView = (typeof ANALYTICS_VIEWS)[number]
 export const isAnalyticsView = (v: unknown): v is AnalyticsView =>
   typeof v === 'string' && (ANALYTICS_VIEWS as readonly string[]).includes(v)
+
+/** The dashboards, each with its own Analytics structure. */
+export const ANALYTICS_DASHBOARDS = [
+  'manager',
+  'head',
+  'cashier',
+  'pharmacy',
+  'lab',
+  'doctor',
+  'nurse',
+  'reception',
+] as const
+export type AnalyticsDashboard = (typeof ANALYTICS_DASHBOARDS)[number]
+const isDashboard = (v: unknown): v is AnalyticsDashboard =>
+  typeof v === 'string' && (ANALYTICS_DASHBOARDS as readonly string[]).includes(v)
+
+/**
+ * The views of each desk dashboard, in the dashboard's order (the same list as analytics_access
+ * gives; used before 0102 and in sample mode). The manager's and a head's come from the server
+ * (a head's depend on the department's desks).
+ */
+export const DASHBOARD_VIEWS: Record<Exclude<AnalyticsDashboard, 'head'>, AnalyticsView[]> = {
+  manager: [
+    'visits',
+    'waiting',
+    'revenue',
+    'receipts',
+    'staff',
+    'treatments',
+    'stock',
+    'lab',
+    'pharmacy',
+    'triage',
+    'documents',
+  ],
+  cashier: ['collections', 'receipts', 'methods', 'openBills', 'refunds'],
+  pharmacy: ['handovers', 'walkIn', 'stock', 'expiry', 'outside'],
+  lab: ['tests', 'turnaround', 'verification', 'byTest'],
+  doctor: ['myPatients', 'waitingNow', 'diagnoses', 'prescriptions', 'orders', 'tasks'],
+  nurse: ['myPatients', 'vitals', 'waitingNow', 'tasks'],
+  reception: ['registrations', 'bookings', 'waitingNow', 'arrivals'],
+}
+
+/** The dashboard of a signed-in person, from their role (the server says the same). */
+export function dashboardOf(user: StaffUser | null): AnalyticsDashboard | null {
+  if (!user) return null
+  if (user.role === 'manager' || user.dashboard === 'manager') return 'manager'
+  if (user.dashboard === 'head') return 'head'
+  switch (user.role) {
+    case 'cashier':
+      return 'cashier'
+    case 'pharmacist':
+      return 'pharmacy'
+    case 'lab_tech':
+      return 'lab'
+    case 'doctor':
+      return 'doctor'
+    case 'nurse':
+      return 'nurse'
+    case 'receptionist':
+      return 'reception'
+    default:
+      return null
+  }
+}
+
+/** A head's views in the department section's order (patients, waiting, the lab, people, services…). */
+export const headDashboardViews = (desks: string[]): AnalyticsView[] => [
+  'visits',
+  'waiting',
+  ...(desks.some((x) => x === 'laboratory' || x === 'ultrasound') ? (['lab'] as const) : []),
+  'staff',
+  'treatments',
+  ...(desks.includes('pharmacy') ? (['pharmacy', 'stock'] as const) : []),
+  ...(desks.includes('triage') ? (['triage'] as const) : []),
+  'documents',
+]
+
+/** May this person open the view: listed by the server, or a view of their own dashboard. */
+export const canOpenView = (access: AnalyticsAccess | undefined, view: AnalyticsView): boolean =>
+  !!access && (access.views.includes(view) || access.dashboardViews.includes(view))
 
 /** The kinds of work, in display order (staff_activity.kinds). */
 export const WORK_KINDS = [
@@ -127,8 +242,12 @@ export interface AnalyticsAccess {
   manager: boolean
   /** The manager: every active department (to pick one). A head: the ones they lead. */
   departments: AnalyticsDepartment[]
-  /** The views this person may open, in page order; [] = no Analytics. */
+  /** The views the server grants the manager and the heads (0086); [] for everyone else. */
   views: AnalyticsView[]
+  /** The dashboard this person has (0102; null = none). */
+  dashboard: AnalyticsDashboard | null
+  /** That dashboard's views, in the dashboard's order (0102): the page's structure. */
+  dashboardViews: AnalyticsView[]
   /** Before 0086: computed from the role, not by the server. */
   fallback: boolean
 }
@@ -1018,6 +1137,17 @@ const userIsManager = () => {
   return !!u && (u.role === 'manager' || u.dashboard === 'manager')
 }
 
+/** A dashboard's views when the server does not list them (before 0102): the fixed lists, a
+ *  head's from the desks of their departments. */
+function fallbackDashboardViews(
+  dashboard: AnalyticsDashboard | null,
+  desks: string[],
+): AnalyticsView[] {
+  if (!dashboard) return []
+  if (dashboard === 'head') return headDashboardViews(desks)
+  return [...DASHBOARD_VIEWS[dashboard]]
+}
+
 /** Calls a 0086 function: its data, or null when the database is older (PGRST202). */
 async function call(fn: string, args: Record<string, unknown>): Promise<unknown | null> {
   const { data, error } = await supabase!.rpc(fn, args)
@@ -1043,6 +1173,7 @@ export function useAnalyticsAccess(enabled = true) {
       const user = useSession.getState().user
       if (!supabase) return sampleAccess(user)
       const data = await call('analytics_access', {})
+      const dashboard = dashboardOf(user)
       if (data == null) {
         const manager = userIsManager()
         const head = !manager && user?.dashboard === 'head'
@@ -1050,22 +1181,37 @@ export function useAnalyticsAccess(enabled = true) {
           manager,
           departments: [],
           views: manager
-            ? [...ANALYTICS_VIEWS]
+            ? ANALYTICS_VIEWS.slice(0, 9)
             : head
               ? ['staff', 'visits', 'treatments', 'waiting']
               : [],
+          dashboard,
+          dashboardViews: fallbackDashboardViews(dashboard, []),
           fallback: true,
         }
       }
       const d = obj(data)
+      const departments = arr(d.departments).map((x) => ({
+        id: s0(x.id),
+        name: s0(x.name),
+        desks: Array.isArray(x.desks) ? (x.desks as unknown[]).map(String) : [],
+      }))
+      // a database between 0086 and 0102 names no dashboard: the role says which
+      const served = isDashboard(d.dashboard) ? d.dashboard : dashboard
+      const servedViews = Array.isArray(d.dashboardViews)
+        ? (d.dashboardViews as unknown[]).filter(isAnalyticsView)
+        : null
       return {
         manager: !!d.manager,
-        departments: arr(d.departments).map((x) => ({
-          id: s0(x.id),
-          name: s0(x.name),
-          desks: Array.isArray(x.desks) ? (x.desks as unknown[]).map(String) : [],
-        })),
+        departments,
         views: Array.isArray(d.views) ? (d.views as unknown[]).filter(isAnalyticsView) : [],
+        dashboard: served,
+        dashboardViews:
+          servedViews ??
+          fallbackDashboardViews(
+            served,
+            departments.flatMap((x) => x.desks),
+          ),
         fallback: false,
       }
     },
@@ -1179,6 +1325,198 @@ export function useWaitTimeStats(
         p_department: departmentId,
       })
       return data == null ? emptyWaitTimes(period) : toWaitTimeStats(data)
+    },
+  })
+}
+
+// ------------------------------------------------------------------ the desk dashboards (0102)
+
+/** One record of the signed-in person's own work (desk_analytics). */
+export interface DeskRecord {
+  at: string
+  kind: WorkKind
+  encounterId: string | null
+  patientName: string | null
+  fileNumber: string | null
+  what: string | null
+}
+/**
+ * The figures of a desk dashboard's analytics: the signed-in person's own work (their records,
+ * no money), and the desk's registrations, visits and arrivals by hour, bookings and tasks.
+ */
+export interface DeskAnalytics extends Versioned {
+  from: string
+  to: string
+  counts: Record<string, number>
+  days: { day: string; kind: WorkKind; n: number }[]
+  /** Newest first, at most 500. */
+  records: DeskRecord[]
+  registrations: { day: string; n: number }[]
+  visits: { day: string; n: number }[]
+  /** Arrivals per hour of the day (Kigali), 24 entries. */
+  arrivals: number[]
+  bookings: {
+    booked: number
+    kept: number
+    missed: number
+    pending: number
+    cancelled: number
+    byDay: { day: string; booked: number; kept: number; missed: number }[]
+  }
+  tasks: { open: number; overdue: number; done: number; doneByMe: number }
+}
+
+const isWorkKind = (v: unknown): v is WorkKind =>
+  typeof v === 'string' && (WORK_KINDS as readonly string[]).includes(v)
+
+export function toDeskAnalytics(data: unknown): DeskAnalytics {
+  const d = obj(data)
+  const b = obj(d.bookings)
+  const k = obj(d.tasks)
+  const hours = arr(d.arrivals)
+  const byHour = Array.from({ length: 24 }, () => 0)
+  for (const h of hours) {
+    const i = n0(h.hour)
+    if (i >= 0 && i < 24) byHour[i] = n0(h.count)
+  }
+  const days = (v: unknown) => arr(v).map((x) => ({ day: s0(x.day), n: n0(x.n) }))
+  return {
+    needsUpdate: false,
+    from: s0(d.from),
+    to: s0(d.to),
+    counts: counts(d.counts),
+    days: arr(d.days)
+      .filter((x) => isWorkKind(x.kind))
+      .map((x) => ({ day: s0(x.day), kind: x.kind as WorkKind, n: n0(x.n) })),
+    records: arr(d.records)
+      .filter((x) => isWorkKind(x.kind))
+      .map((x) => ({
+        at: s0(x.at),
+        kind: x.kind as WorkKind,
+        encounterId: sn(x.encounterId),
+        patientName: sn(x.patientName),
+        fileNumber: sn(x.fileNumber),
+        what: sn(x.what),
+      })),
+    registrations: days(d.registrations),
+    visits: days(d.visits),
+    arrivals: byHour,
+    bookings: {
+      booked: n0(b.booked),
+      kept: n0(b.kept),
+      missed: n0(b.missed),
+      pending: n0(b.pending),
+      cancelled: n0(b.cancelled),
+      byDay: arr(b.byDay).map((x) => ({
+        day: s0(x.day),
+        booked: n0(x.booked),
+        kept: n0(x.kept),
+        missed: n0(x.missed),
+      })),
+    },
+    tasks: { open: n0(k.open), overdue: n0(k.overdue), done: n0(k.done), doneByMe: n0(k.doneByMe) },
+  }
+}
+
+export const emptyDeskAnalytics = (p: AnalyticsPeriod, needsUpdate = true): DeskAnalytics => ({
+  ...toDeskAnalytics({}),
+  needsUpdate,
+  from: p.from,
+  to: p.to,
+})
+
+/** Sample mode: a small desk, the same figures from one render to the next. */
+function sampleDeskAnalytics(p: AnalyticsPeriod, user: StaffUser | null): DeskAnalytics {
+  const day = 86_400_000
+  const a = Date.parse(`${p.from}T00:00:00Z`)
+  const b = Date.parse(`${p.to}T00:00:00Z`)
+  const n = Math.max(1, Math.min(92, Math.round((b - a) / day) + 1))
+  const iso = (t: number) => new Date(t).toISOString().slice(0, 10)
+  const dayAt = (i: number) => iso(a + i * day)
+  const seed = (i: number, k: number) => ((i * 7 + k * 13 + 5) % 9) + 1
+  const role = user?.role ?? 'doctor'
+  const kinds: WorkKind[] =
+    role === 'nurse'
+      ? ['vitals', 'patientsSeen', 'tasksDone']
+      : role === 'receptionist'
+        ? ['registered']
+        : ['patientsSeen', 'diagnoses', 'prescriptions', 'orders', 'tasksDone']
+  const days = Array.from({ length: n }, (_, i) =>
+    kinds.map((kind, k) => ({ day: dayAt(i), kind, n: seed(i, k) })),
+  ).flat()
+  const counts: Record<string, number> = {}
+  for (const x of days) counts[x.kind] = (counts[x.kind] ?? 0) + x.n
+  const names = ['Mukamana Alice', 'Rukundo Kevin', 'Uwase Claudine', 'Hakizimana Emmanuel']
+  const what: Record<string, string[]> = {
+    diagnoses: ['B54 Malaria', 'J06.9 Upper respiratory infection', 'A09 Gastroenteritis'],
+    prescriptions: ['Amoxicillin 500 mg · 1 cap', 'Paracetamol 500 mg · 2 tab'],
+    orders: ['Malaria RDT', 'Full blood count'],
+    patientsSeen: ['V-2026-000124', 'V-2026-000131'],
+    registered: ['MMC-000131', 'MMC-000132'],
+    vitals: ['Temp 38.2 °C', 'BP 128/84'],
+    tasksDone: ['Injection', 'Dressing'],
+  }
+  const records: DeskRecord[] = []
+  for (let i = n - 1; i >= 0 && records.length < 60; i--)
+    kinds.forEach((kind, k) => {
+      const at = new Date(a + i * day + (9 + k) * 3_600_000 + seed(i, k) * 60_000)
+      if (at.getTime() > Date.now()) return
+      records.push({
+        at: at.toISOString(),
+        kind,
+        encounterId: `e-${(i + k) % 4}`,
+        patientName: names[(i + k) % names.length]!,
+        fileNumber: `MMC-00012${(i + k) % 9}`,
+        what: what[kind]?.[(i + k) % (what[kind]?.length ?? 1)] ?? null,
+      })
+    })
+  records.sort((x, y) => y.at.localeCompare(x.at))
+  const reg = Array.from({ length: n }, (_, i) => ({ day: dayAt(i), n: seed(i, 3) + 4 }))
+  const vis = Array.from({ length: n }, (_, i) => ({ day: dayAt(i), n: seed(i, 4) * 4 + 20 }))
+  const curve = [0, 0, 0, 0, 0, 0, 1, 4, 9, 12, 11, 8, 5, 6, 8, 6, 4, 2, 1, 0, 0, 0, 0, 0]
+  const byDay = Array.from({ length: n }, (_, i) => {
+    const booked = seed(i, 5) + 2
+    const missed = i % 3 === 0 ? 1 : 0
+    return { day: dayAt(i), booked, kept: booked - missed, missed }
+  })
+  const sum = (k: 'booked' | 'kept' | 'missed') => byDay.reduce((s, x) => s + x[k], 0)
+  return {
+    needsUpdate: false,
+    from: p.from,
+    to: p.to,
+    counts,
+    days,
+    records,
+    registrations: reg,
+    visits: vis,
+    arrivals: curve.map((c) => c * n),
+    bookings: {
+      booked: sum('booked'),
+      kept: sum('kept'),
+      missed: sum('missed'),
+      pending: 3,
+      cancelled: 1,
+      byDay,
+    },
+    tasks: { open: 4, overdue: 1, done: 6 * n, doneByMe: 2 * n },
+  }
+}
+
+/**
+ * The desk dashboards' analytics (0102): the signed-in person's own work in the period, the
+ * desk's registrations, visits, arrivals, bookings and tasks. Any employee, for their own
+ * dashboard. Before 0102: empty with `needsUpdate`.
+ */
+export function useDeskAnalytics(period: AnalyticsPeriod, enabled = true) {
+  const userId = useSession((s) => s.user?.id ?? null)
+  return useQuery({
+    queryKey: ['analytics', 'desk', userId, period.from, period.to] as const,
+    enabled: enabled && !!userId,
+    staleTime: STALE,
+    queryFn: async (): Promise<DeskAnalytics> => {
+      if (!supabase) return sampleDeskAnalytics(period, useSession.getState().user)
+      const data = await call('desk_analytics', { p_from: period.from, p_to: period.to })
+      return data == null ? emptyDeskAnalytics(period) : toDeskAnalytics(data)
     },
   })
 }

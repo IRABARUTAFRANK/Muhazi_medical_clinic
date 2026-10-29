@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-27T19:57:45.023Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-29T05:58:29.565Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -46722,6 +46722,3399 @@ begin
     and v_q.station not in ('reception', 'triage', 'cashier', 'pharmacy');
   return jsonb_build_object('encounterId', v_q.encounter_id, 'station', v_q.station);
 end
+$$;
+
+
+-- ============================================================ 20261212090000_visit_edit_lock.sql
+-- 0104 · A finished visit is locked; editing it needs an e-mailed code. Diagnoses and notes can
+-- be corrected with a reason (history kept). Results are entered only by the desk that does the
+-- test, never by the clinician who asked for it.
+--
+-- 1. A closed visit is not editable as such. To change it the clinician presses "Edit this
+--    visit", gives a reason and receives a 6-digit code by e-mail (edge function
+--    `visit-edit-code`, which calls request_visit_edit with the service role: the code never
+--    reaches the browser). verify_visit_edit checks the code (5 tries, valid 10 minutes) and
+--    opens a 30-minute edit window (visit_edit_grant). While the window is open, the paths that
+--    refuse a closed visit accept it, and every change is written in the audit with the grant.
+--    No code is needed while the visit is open (also when the patient is at the lab, the pharmacy
+--    or the cashier: the visit stays open then). The manager uses the code too (no bypass); a
+--    verified result is still corrected with correct_result as before.
+-- 2. update_condition / remove_condition / update_note: the author (or the manager) changes or
+--    removes a diagnosis, or changes a note, with a reason, while the visit is open or in an edit
+--    window. The audit trigger of the tables keeps every previous version (audit_event rows with
+--    before / after); the row itself carries the reason (edit_reason). The record shows "edited
+--    by … on …" and the previous versions. A finished visit keeps its primary diagnosis.
+-- 3. record_result / correct_result: the requester fallback ("my own test while no department
+--    gives the laboratory") is gone: a doctor never enters the result of a test they asked for.
+
+-- ---------------------------------------------------------------- the grants
+create table if not exists visit_edit_grant (
+  id uuid primary key default gen_random_uuid(),
+  encounter_id uuid not null references encounter (id),
+  user_id uuid not null references profiles (id),
+  reason text not null,
+  code_hash text not null,
+  requested_at timestamptz not null default now(),
+  verified_at timestamptz,
+  expires_at timestamptz,
+  attempts integer not null default 0
+);
+create index if not exists visit_edit_grant_user_idx on visit_edit_grant (user_id, encounter_id, requested_at desc);
+create index if not exists visit_edit_grant_encounter_idx on visit_edit_grant (encounter_id, expires_at desc);
+comment on table visit_edit_grant is 'An e-mailed code to edit a finished visit: hashed code, 5 tries, valid 10 minutes; once verified a 30-minute edit window. Written and read through functions only.';
+alter table visit_edit_grant enable row level security;
+revoke all on visit_edit_grant from anon, authenticated;
+
+alter table condition add column if not exists edit_reason text;
+alter table observation add column if not exists edit_reason text;
+comment on column condition.edit_reason is 'Why the diagnosis was last changed or removed (0104); the previous versions are in audit_event.';
+comment on column observation.edit_reason is 'Why the note was last changed (0104); the previous versions are in audit_event.';
+
+/** The hash kept for a code: salted with the grant id, so equal codes never hash the same. */
+create or replace function visit_edit_hash(p_grant uuid, p_code text)
+returns text
+language sql immutable
+as $$
+  select encode(sha256(convert_to(p_grant::text || ':' || coalesce(p_code, ''), 'UTF8')), 'hex')
+$$;
+
+/** The edit window of a person on a visit, when one is open now (verified and not expired). */
+create or replace function visit_edit_grant_id(p_encounter_id uuid, p_user uuid default auth.uid())
+returns uuid
+language sql stable security definer set search_path = public
+as $$
+  select g.id from visit_edit_grant g
+  where g.encounter_id = p_encounter_id and g.user_id = p_user
+    and g.verified_at is not null and g.expires_at > now()
+  order by g.expires_at desc limit 1
+$$;
+
+/** True while the signed-in person holds an open edit window on this visit. */
+create or replace function visit_edit_active(p_encounter_id uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select visit_edit_grant_id(p_encounter_id) is not null
+$$;
+
+/** The visit takes changes: open, or finished and inside the person's edit window. */
+create or replace function visit_open_or_editing(p_encounter_id uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (select 1 from encounter e
+                 where e.id = p_encounter_id and e.deleted_at is null
+                   and (e.status = 'open' or visit_edit_active(e.id)))
+$$;
+
+/** Who may ask to edit a finished visit: the manager, or a clinician who took part in it. */
+create or replace function may_request_visit_edit(p_encounter_id uuid, p_user uuid default auth.uid())
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (select 1 from profiles p
+                 where p.id = p_user and p.active
+                   and (p.role = 'manager'
+                        or (staff_perm(p_user, 'clinical.write') and took_part(p_encounter_id, p_user))))
+$$;
+
+/** What an audit row of a change made inside an edit window carries. */
+create or replace function visit_edit_tag(p_encounter_id uuid)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce((select jsonb_build_object('visit_edit_grant', g.id, 'afterClose', true, 'editReason', g.reason)
+                   from visit_edit_grant g where g.id = visit_edit_grant_id(p_encounter_id)), '{}'::jsonb)
+$$;
+
+/**
+ * A change made to a finished visit inside an edit window is written in the audit with the
+ * grant (the person, the reason given for the code, what changed). Nothing while the visit is
+ * open: the tables' own audit trigger records the ordinary work.
+ */
+create or replace function note_visit_edit(p_encounter_id uuid, p_action audit_action, p_entity text, p_entity_id uuid, p_after jsonb default null)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_g visit_edit_grant%rowtype;
+begin
+  if exists (select 1 from encounter where id = p_encounter_id and status = 'open') then
+    return;
+  end if;
+  select * into v_g from visit_edit_grant where id = visit_edit_grant_id(p_encounter_id);
+  if not found then
+    return;
+  end if;
+  insert into audit_event (actor_id, action, entity, entity_id, after, reason)
+  values (auth.uid(), p_action, p_entity, p_entity_id,
+          coalesce(p_after, '{}'::jsonb) || jsonb_build_object('visit_edit_grant', v_g.id, 'afterClose', true, 'encounter', p_encounter_id),
+          'finished visit edited under grant ' || v_g.id || ': ' || v_g.reason);
+end
+$$;
+
+/**
+ * Step 1 of editing a finished visit: a 6-digit code is made for the caller and its hash kept.
+ * The plain code is returned ONLY to the service role (the `visit-edit-code` edge function,
+ * which verified the caller's session and e-mails it to them); the browser never sees it. The
+ * service role names the person (p_user_id); anyone else is auth.uid(). At most 5 codes per
+ * person and visit in 10 minutes.
+ */
+create or replace function request_visit_edit(p_encounter_id uuid, p_reason text, p_user_id uuid default null)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_service boolean := current_user = 'service_role' or auth.role() = 'service_role';
+  v_user uuid := case when v_service then p_user_id else auth.uid() end;
+  v_e encounter%rowtype;
+  v_code text;
+  v_id uuid := gen_random_uuid();
+  v_email text;
+  v_recent integer;
+begin
+  if v_user is null then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into v_e from encounter where id = p_encounter_id and deleted_at is null;
+  if not found then
+    raise exception 'visit not found' using errcode = 'P0002', hint = 'not_found';
+  end if;
+  if v_e.status = 'open' then
+    raise exception 'this visit is still open: it is edited without a code' using errcode = '22023';
+  end if;
+  if not may_request_visit_edit(p_encounter_id, v_user) then
+    raise exception 'only a clinician who treated the patient in this visit (or the manager) may edit it after it is finished'
+      using errcode = '42501';
+  end if;
+  if length(trim(coalesce(p_reason, ''))) < 3 then
+    raise exception 'say why the finished visit is edited' using errcode = '22023';
+  end if;
+  select count(*) into v_recent from visit_edit_grant
+  where user_id = v_user and encounter_id = p_encounter_id and requested_at > now() - interval '10 minutes';
+  if v_recent >= 5 then
+    raise exception 'too many codes were asked for this visit: wait ten minutes' using errcode = '42501';
+  end if;
+  -- six digits from the random bits of a uuid (gen_random_uuid draws from the strong source)
+  v_code := lpad(((('x' || left(replace(gen_random_uuid()::text, '-', ''), 8))::bit(32)::bigint) % 1000000)::text, 6, '0');
+  insert into visit_edit_grant (id, encounter_id, user_id, reason, code_hash)
+  values (v_id, p_encounter_id, v_user, trim(p_reason), visit_edit_hash(v_id, v_code));
+  select email into v_email from profiles where id = v_user;
+  insert into audit_event (actor_id, action, entity, entity_id, after, reason)
+  values (v_user, 'update', 'encounter', p_encounter_id,
+          jsonb_build_object('visit_edit_grant', v_id, 'step', 'code_requested'),
+          'edit of a finished visit asked: ' || trim(p_reason));
+  return jsonb_build_object('id', v_id, 'codeUntil', now() + interval '10 minutes',
+                            'email', case when v_service then v_email end,
+                            'code', case when v_service then v_code end);
+end
+$$;
+-- the edge function calls it with the service role
+grant execute on function request_visit_edit(uuid, text, uuid) to service_role;
+
+/**
+ * Step 2: the person types the code they received. The latest code asked (not older than 10
+ * minutes) is checked; 5 wrong tries end it. Right: a 30-minute edit window on the visit opens.
+ * A wrong code answers {ok: false, triesLeft} instead of raising, so the try is counted (an
+ * exception would roll the count back); no code waiting, or the tries spent, is refused.
+ */
+create or replace function verify_visit_edit(p_encounter_id uuid, p_code text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_g visit_edit_grant%rowtype;
+  v_until timestamptz;
+  v_left integer;
+begin
+  if auth.uid() is null then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into v_g from visit_edit_grant
+  where encounter_id = p_encounter_id and user_id = auth.uid() and verified_at is null
+  order by requested_at desc limit 1
+  for update;
+  if not found or v_g.requested_at < now() - interval '10 minutes' then
+    raise exception 'no code was asked for this visit, or it has expired: ask for a new one' using errcode = 'P0002';
+  end if;
+  if v_g.attempts >= 5 then
+    raise exception 'too many wrong codes: ask for a new one' using errcode = '42501';
+  end if;
+  if v_g.code_hash <> visit_edit_hash(v_g.id, regexp_replace(coalesce(p_code, ''), '\s', '', 'g')) then
+    update visit_edit_grant set attempts = attempts + 1 where id = v_g.id;
+    v_left := 5 - v_g.attempts - 1;
+    insert into audit_event (actor_id, action, entity, entity_id, after, reason)
+    values (auth.uid(), 'update', 'encounter', p_encounter_id,
+            jsonb_build_object('visit_edit_grant', v_g.id, 'step', 'wrong_code', 'triesLeft', v_left),
+            'wrong code for the edit of a finished visit');
+    return jsonb_build_object('ok', false, 'triesLeft', v_left);
+  end if;
+  v_until := now() + interval '30 minutes';
+  update visit_edit_grant set verified_at = now(), expires_at = v_until, attempts = attempts + 1 where id = v_g.id;
+  insert into audit_event (actor_id, action, entity, entity_id, after, reason)
+  values (auth.uid(), 'update', 'encounter', p_encounter_id,
+          jsonb_build_object('visit_edit_grant', v_g.id, 'step', 'window_opened', 'until', v_until),
+          'edit window opened on a finished visit: ' || v_g.reason);
+  return jsonb_build_object('ok', true, 'grantId', v_g.id, 'expiresAt', v_until);
+end
+$$;
+
+/** The lock as the screen shows it: closed?, my window (until when), may I ask, a code waiting. */
+create or replace function visit_edit_status(p_encounter_id uuid)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select jsonb_build_object(
+    'closed', e.status = 'closed',
+    'closedAt', e.closed_at,
+    'closedBy', (select full_name from profiles where id = e.closed_by),
+    'active', g.id is not null,
+    'expiresAt', g.expires_at,
+    'grantId', g.id,
+    'reason', g.reason,
+    'canRequest', e.status = 'closed' and may_request_visit_edit(e.id, auth.uid()),
+    -- a code e-mailed and not typed yet (none while a window is open)
+    'pending', (select jsonb_build_object('requestedAt', p.requested_at,
+                                          'codeUntil', p.requested_at + interval '10 minutes',
+                                          'triesLeft', 5 - p.attempts, 'reason', p.reason)
+                from visit_edit_grant p
+                where g.id is null
+                  and p.encounter_id = e.id and p.user_id = auth.uid() and p.verified_at is null
+                  and p.requested_at > now() - interval '10 minutes' and p.attempts < 5
+                order by p.requested_at desc limit 1))
+  from encounter e
+  left join visit_edit_grant g on g.id = visit_edit_grant_id(e.id)
+  where e.id = p_encounter_id and e.deleted_at is null and auth.uid() is not null
+$$;
+
+-- ---------------------------------------------------------------- the paths that refused a closed visit
+-- Who holds the patient: in an edit window the grant holder works on the visit (the grant was
+-- given only to someone who treated the patient, or the manager).
+create or replace function assert_may_work_on(p_encounter_id uuid, p_routing boolean default false)
+returns void
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_ok boolean := case when p_routing then may_route(p_encounter_id) else may_work_on(p_encounter_id) end;
+begin
+  if v_ok then
+    return;
+  end if;
+  if visit_edit_active(p_encounter_id) then
+    return;
+  end if;
+  -- a missing or finished visit is reported by the caller
+  if not exists (select 1 from encounter where id = p_encounter_id and status = 'open') then
+    return;
+  end if;
+  raise exception 'this patient is with %: they must send the patient to you, or ask for your help',
+    coalesce(patient_holder(p_encounter_id), 'another desk') using errcode = '42501';
+end
+$$;
+
+create or replace function add_clinical_note(p_encounter_id uuid, p_text text)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare v_id uuid;
+begin
+  if not has_perm('clinical.write') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform assert_desk(treating_desks(), 'treatment');
+  perform assert_may_work_on(p_encounter_id);
+  if length(trim(coalesce(p_text, ''))) < 2 then
+    raise exception 'the note is empty' using errcode = '22023';
+  end if;
+  if not visit_open_or_editing(p_encounter_id) then
+    raise exception 'visit not found or already closed' using errcode = 'P0002';
+  end if;
+  insert into observation (encounter_id, code, value_text) values (p_encounter_id, 'note', trim(p_text))
+  returning id into v_id;
+  perform note_visit_edit(p_encounter_id, 'create', 'observation', v_id, jsonb_build_object('text', trim(p_text)));
+  return v_id;
+end
+$$;
+
+create or replace function add_diagnosis(p_encounter_id uuid, p_text text, p_icd10 text default null, p_type condition_type default 'primary', p_provisional boolean default false)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare v_id uuid;
+begin
+  if not has_perm('clinical.write') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform assert_desk(treating_desks(), 'treatment');
+  perform assert_may_work_on(p_encounter_id);
+  if length(trim(coalesce(p_text, ''))) < 2 then
+    raise exception 'the diagnosis needs a description' using errcode = '22023';
+  end if;
+  -- an HIV diagnosis (ICD-10 B20–B24) is written by the people allowed to see HIV results
+  if upper(trim(coalesce(p_icd10, ''))) ~ '^B2[0-4]' and not has_perm('sensitive.read') then
+    raise exception 'an HIV diagnosis is recorded by the people allowed to see HIV results'
+      using errcode = '42501', hint = 'not_permitted';
+  end if;
+  if not visit_open_or_editing(p_encounter_id) then
+    raise exception 'visit not found or already closed' using errcode = 'P0002';
+  end if;
+  insert into condition (encounter_id, text, icd10_code, type, provisional)
+  values (p_encounter_id, trim(p_text), nullif(upper(trim(coalesce(p_icd10, ''))), ''), p_type, p_provisional)
+  returning id into v_id;
+  perform note_visit_edit(p_encounter_id, 'create', 'condition', v_id,
+                          jsonb_build_object('text', trim(p_text), 'icd10', nullif(upper(trim(coalesce(p_icd10, ''))), ''),
+                                             'type', p_type, 'provisional', p_provisional));
+  return v_id;
+end
+$$;
+
+/**
+ * The author of a diagnosis (or the manager) changes it with a reason, while the visit is open
+ * or inside an edit window. A null argument keeps the value (an empty ICD-10 clears it). The
+ * previous version stays in the audit (the table's trigger); the row says why it changed.
+ */
+create or replace function update_condition(p_id uuid, p_text text default null, p_icd10 text default null, p_type condition_type default null, p_provisional boolean default null, p_reason text default null)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_c condition%rowtype;
+  v_e encounter%rowtype;
+  v_text text;
+  v_icd text;
+  v_type condition_type;
+  v_prov boolean;
+begin
+  if not has_perm('clinical.write') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform assert_desk(treating_desks(), 'treatment');
+  select * into v_c from condition where id = p_id and deleted_at is null for update;
+  if not found then
+    raise exception 'diagnosis not found' using errcode = 'P0002';
+  end if;
+  select * into v_e from encounter where id = v_c.encounter_id;
+  if not (is_manager() or v_c.created_by = auth.uid()) then
+    raise exception 'only the clinician who wrote the diagnosis (or the manager) can change it' using errcode = '42501';
+  end if;
+  if not visit_open_or_editing(v_c.encounter_id) then
+    raise exception 'visit not found or already closed' using errcode = 'P0002';
+  end if;
+  if length(trim(coalesce(p_reason, ''))) < 3 then
+    raise exception 'say why the diagnosis is changed' using errcode = '22023';
+  end if;
+  v_text := trim(coalesce(p_text, v_c.text));
+  if length(v_text) < 2 then
+    raise exception 'the diagnosis needs a description' using errcode = '22023';
+  end if;
+  v_icd := case when p_icd10 is null then v_c.icd10_code else nullif(upper(trim(p_icd10)), '') end;
+  if coalesce(v_icd, '') ~ '^B2[0-4]' and not has_perm('sensitive.read') then
+    raise exception 'an HIV diagnosis is recorded by the people allowed to see HIV results'
+      using errcode = '42501', hint = 'not_permitted';
+  end if;
+  v_type := coalesce(p_type, v_c.type);
+  v_prov := coalesce(p_provisional, v_c.provisional);
+  if v_text = v_c.text and v_icd is not distinct from v_c.icd10_code and v_type = v_c.type and v_prov = v_c.provisional then
+    raise exception 'nothing changed' using errcode = '22023';
+  end if;
+  -- a finished visit keeps a primary diagnosis (the rule for closing still holds)
+  if v_e.status = 'closed' and v_c.type = 'primary' and v_type <> 'primary'
+     and v_e.type in ('opd', 'dental', 'procedure', 'observation')
+     and not exists (select 1 from condition x where x.encounter_id = v_c.encounter_id and x.id <> v_c.id
+                     and x.type = 'primary' and x.deleted_at is null) then
+    raise exception 'a finished visit keeps a primary diagnosis: write the new one first' using errcode = '23514';
+  end if;
+  update condition
+  set text = v_text, icd10_code = v_icd, type = v_type, provisional = v_prov, edit_reason = trim(p_reason)
+  where id = p_id;
+  perform note_visit_edit(v_c.encounter_id, 'update', 'condition', p_id,
+                          jsonb_build_object('text', v_text, 'icd10', v_icd, 'type', v_type, 'provisional', v_prov,
+                                             'reason', trim(p_reason)));
+  return jsonb_build_object('id', p_id, 'text', v_text, 'icd10', v_icd, 'type', v_type, 'provisional', v_prov);
+end
+$$;
+
+/** The author (or the manager) removes a diagnosis with a reason: hidden, kept in the record's history. */
+create or replace function remove_condition(p_id uuid, p_reason text)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_c condition%rowtype;
+  v_e encounter%rowtype;
+begin
+  if not has_perm('clinical.write') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform assert_desk(treating_desks(), 'treatment');
+  select * into v_c from condition where id = p_id and deleted_at is null for update;
+  if not found then
+    raise exception 'diagnosis not found' using errcode = 'P0002';
+  end if;
+  select * into v_e from encounter where id = v_c.encounter_id;
+  if not (is_manager() or v_c.created_by = auth.uid()) then
+    raise exception 'only the clinician who wrote the diagnosis (or the manager) can change it' using errcode = '42501';
+  end if;
+  if not visit_open_or_editing(v_c.encounter_id) then
+    raise exception 'visit not found or already closed' using errcode = 'P0002';
+  end if;
+  if length(trim(coalesce(p_reason, ''))) < 3 then
+    raise exception 'say why the diagnosis is removed' using errcode = '22023';
+  end if;
+  if v_e.status = 'closed' and v_c.type = 'primary'
+     and v_e.type in ('opd', 'dental', 'procedure', 'observation')
+     and not exists (select 1 from condition x where x.encounter_id = v_c.encounter_id and x.id <> v_c.id
+                     and x.type = 'primary' and x.deleted_at is null) then
+    raise exception 'a finished visit keeps a primary diagnosis: write the new one first' using errcode = '23514';
+  end if;
+  update condition set deleted_at = now(), edit_reason = trim(p_reason) where id = p_id;
+  perform note_visit_edit(v_c.encounter_id, 'delete', 'condition', p_id,
+                          jsonb_build_object('text', v_c.text, 'icd10', v_c.icd10_code, 'type', v_c.type,
+                                             'reason', trim(p_reason)));
+end
+$$;
+
+/** The author of a note (or the manager) changes its text with a reason; the old text is kept. */
+create or replace function update_note(p_id uuid, p_text text, p_reason text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_o observation%rowtype;
+begin
+  if not has_perm('clinical.write') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform assert_desk(treating_desks(), 'treatment');
+  select * into v_o from observation where id = p_id and code = 'note' and deleted_at is null for update;
+  if not found then
+    raise exception 'note not found' using errcode = 'P0002';
+  end if;
+  if not (is_manager() or coalesce(v_o.performer_id, v_o.created_by) = auth.uid() or v_o.created_by = auth.uid()) then
+    raise exception 'only the clinician who wrote the note (or the manager) can change it' using errcode = '42501';
+  end if;
+  if not visit_open_or_editing(v_o.encounter_id) then
+    raise exception 'visit not found or already closed' using errcode = 'P0002';
+  end if;
+  if length(trim(coalesce(p_reason, ''))) < 3 then
+    raise exception 'say why the note is changed' using errcode = '22023';
+  end if;
+  if length(trim(coalesce(p_text, ''))) < 2 then
+    raise exception 'the note is empty' using errcode = '22023';
+  end if;
+  if trim(p_text) = v_o.value_text then
+    raise exception 'nothing changed' using errcode = '22023';
+  end if;
+  update observation set value_text = trim(p_text), edit_reason = trim(p_reason) where id = p_id;
+  perform note_visit_edit(v_o.encounter_id, 'update', 'observation', p_id,
+                          jsonb_build_object('text', trim(p_text), 'reason', trim(p_reason)));
+  return jsonb_build_object('id', p_id, 'text', trim(p_text));
+end
+$$;
+
+-- Prescribing: a closed visit (in an edit window) takes only medicines bought outside: nothing
+-- is charged to the posted bill, nothing waits at the pharmacy, nothing is taken from a store.
+create or replace function prescribe(
+  p_encounter_id uuid, p_item_id uuid, p_quantity numeric, p_dose text default null, p_route text default null,
+  p_frequency text default null, p_duration_days integer default null, p_instructions text default null,
+  p_supply text default 'pharmacy', p_station station default null, p_location_id uuid default null,
+  p_medicine_name text default null, p_reference_code text default null
+)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_charged boolean := false;
+  v_loc uuid;
+  v_taken boolean := false;
+  v_qty integer;
+  v_supply text := coalesce(p_supply, 'pharmacy');
+  v_code text := nullif(trim(coalesce(p_reference_code, '')), '');
+  v_name text;
+  v_generic text;
+  v_rule text;
+  v_warn jsonb := '[]'::jsonb;
+  v_closed boolean;
+begin
+  if not has_perm('clinical.write') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform assert_desk(treating_desks(), 'treatment');
+  perform assert_may_work_on(p_encounter_id);
+  if p_quantity is null or p_quantity <= 0 then
+    raise exception 'quantity must be more than zero' using errcode = '22023';
+  end if;
+  if v_supply not in ('pharmacy', 'room', 'outside') then
+    raise exception 'unknown supply' using errcode = '22023';
+  end if;
+  if not visit_open_or_editing(p_encounter_id) then
+    raise exception 'visit not found or already closed' using errcode = 'P0002';
+  end if;
+  select e.status = 'closed' into v_closed from encounter e where e.id = p_encounter_id;
+  if v_closed and v_supply <> 'outside' then
+    raise exception 'the visit is finished: a medicine added now can only be bought outside' using errcode = '22023';
+  end if;
+  if p_item_id is null then
+    -- not a clinic medicine: only for an outside pharmacy, named (or taken from the official list)
+    if v_supply <> 'outside' then
+      raise exception 'this medicine is not sold at the clinic: it can only be bought outside' using errcode = '22023';
+    end if;
+    if v_code is not null then
+      select r.generic, r.prescribing_rule into v_generic, v_rule from medicine_reference r where r.code = v_code;
+      if not found then
+        raise exception 'medicine not found' using errcode = 'P0002';
+      end if;
+      v_warn := coalesce(rx_rule_warnings(v_rule, auth.uid()), '[]'::jsonb);
+    end if;
+    v_name := coalesce(nullif(trim(coalesce(p_medicine_name, '')), ''), v_generic);
+    if v_name is null then
+      raise exception 'write the name of the medicine to buy outside' using errcode = '22023';
+    end if;
+  else
+    if not exists (select 1 from item where id = p_item_id and deleted_at is null) then
+      raise exception 'medicine not found' using errcode = 'P0002';
+    end if;
+    v_warn := coalesce(rx_warnings(p_item_id, auth.uid()), '[]'::jsonb);
+    if v_supply = 'outside' then
+      -- the print keeps its name even if the catalogue changes
+      v_name := item_label(p_item_id);
+      v_code := coalesce(v_code, (select i.code from item i where i.id = p_item_id
+                                    and exists (select 1 from medicine_reference r where r.code = i.code)));
+    else
+      v_code := null;
+    end if;
+  end if;
+  if v_supply = 'room' then
+    -- Given here: only from a store that holds enough unexpired units; never given without stock.
+    v_qty := ceil(p_quantity)::integer;
+    v_loc := room_store_for(auth.uid(), p_item_id, v_qty, p_location_id, p_station);
+    if v_loc is null then
+      raise exception 'not enough of this medicine (not expired) in %: prescribe it for the pharmacy instead',
+        case when p_location_id is null then 'a store you may give from' else 'that store' end
+        using errcode = 'MS003', hint = 'room_short';
+    end if;
+  end if;
+  insert into medication_request (encounter_id, item_id, dose, route, frequency, duration_days, quantity,
+                                  instructions, supply, given_at, given_by, medicine_name, reference_code,
+                                  supply_set_at, supply_set_by)
+  values (p_encounter_id, p_item_id, nullif(trim(coalesce(p_dose, '')), ''), nullif(trim(coalesce(p_route, '')), ''),
+          nullif(trim(coalesce(p_frequency, '')), ''), p_duration_days, p_quantity,
+          nullif(trim(coalesce(p_instructions, '')), ''), v_supply,
+          case when v_supply = 'room' then now() end, case when v_supply = 'room' then auth.uid() end,
+          v_name, v_code, now(), auth.uid())
+  returning id into v_id;
+  if v_supply = 'room' then
+    perform give_from_store(p_item_id, v_loc, v_qty, v_id, 'given in the room');
+    v_taken := true;
+    -- on the bill at the medicine's price (no price: given free); a closed bill refuses (MS001)
+    begin
+      perform add_charge_internal(p_encounter_id, coalesce(p_station, 'consultation'::station), null, p_item_id, p_quantity,
+                         null, null, null, null, 'medication_request', v_id);
+      v_charged := true;
+    exception when sqlstate 'P0002' then
+      v_charged := false;
+    end;
+  elsif v_supply = 'pharmacy'
+        and not exists (select 1 from queue_entry where encounter_id = p_encounter_id and station = 'pharmacy'
+                        and finished_at is null and deleted_at is null) then
+    insert into queue_entry (encounter_id, station, ticket_no)
+    values (p_encounter_id, 'pharmacy', (select ticket_no from queue_entry where encounter_id = p_encounter_id order by created_at limit 1));
+  end if;
+  -- 'outside': nothing charged, nothing taken, nothing queued
+  perform note_visit_edit(p_encounter_id, 'create', 'medication_request', v_id,
+                          jsonb_build_object('item', v_name, 'itemId', p_item_id, 'quantity', p_quantity, 'supply', v_supply));
+  return jsonb_build_object('id', v_id, 'supply', v_supply, 'charged', v_charged,
+                            'stockTaken', v_taken, 'locationId', v_loc, 'medicineName', v_name,
+                            'warnings', v_warn);
+end
+$$;
+
+-- A test on a finished visit (edit window): the order is written and charged as usual; a bill
+-- already posted refuses the charge (MS001), as for any charge after the visit.
+create or replace function order_test(p_encounter_id uuid, p_service_id uuid, p_reason text default null, p_priority integer default 3)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_group service_group;
+  v_cat request_category;
+  v_station station;
+begin
+  if not has_perm('orders.write') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform assert_desk(treating_desks() || array['laboratory', 'ultrasound'], 'ordering tests');
+  perform assert_may_work_on(p_encounter_id);
+  select s.service_group,
+         coalesce(c.order_station, case when s.service_group = 'imaging' then 'ultrasound'::station else 'laboratory'::station end)
+  into v_group, v_station
+  from service s left join service_category c on c.id = s.category_id
+  where s.id = p_service_id and s.active and s.deleted_at is null;
+  if v_group is null then
+    raise exception 'unknown service' using errcode = '22023';
+  end if;
+  v_cat := case when v_station = 'ultrasound' then 'imaging'::request_category else 'lab'::request_category end;
+  if not visit_open_or_editing(p_encounter_id) then
+    raise exception 'visit not found or already closed' using errcode = 'P0002';
+  end if;
+  insert into service_request (encounter_id, category, service_id, reason, priority, station)
+  values (p_encounter_id, v_cat, p_service_id, nullif(trim(coalesce(p_reason, '')), ''), least(5, greatest(1, p_priority)), v_station)
+  returning id into v_id;
+  perform add_charge_internal(p_encounter_id, v_station, p_service_id, null, 1, null, null, null, null, 'service_request', v_id);
+  if not exists (select 1 from queue_entry where encounter_id = p_encounter_id and station = v_station and finished_at is null) then
+    insert into queue_entry (encounter_id, station, ticket_no, priority)
+    values (p_encounter_id, v_station, (select ticket_no from queue_entry where encounter_id = p_encounter_id order by created_at limit 1), least(5, greatest(1, p_priority)));
+  end if;
+  perform note_visit_edit(p_encounter_id, 'create', 'service_request', v_id,
+                          jsonb_build_object('serviceId', p_service_id, 'station', v_station));
+  return v_id;
+end
+$$;
+
+-- record_vitals: redefined in 20261213090000_vitals_custom.sql with the edit window (visit_edit_active).
+
+-- Files: added while the visit is open, or inside an edit window.
+create or replace function may_attach_file(p_encounter_id uuid, p_service_request_id uuid default null)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(auth.uid() is not null
+    and exists (select 1 from encounter e
+                where e.id = p_encounter_id and e.deleted_at is null
+                  and (e.status = 'open' or visit_edit_active(e.id)))
+    and (p_service_request_id is null
+         or exists (select 1 from service_request r
+                    where r.id = p_service_request_id and r.encounter_id = p_encounter_id
+                      and r.deleted_at is null and r.status <> 'cancelled'))
+    and (
+      ((has_perm('clinical.write') or has_perm('orders.write')) and clinical_reader()
+       and (may_work_on(p_encounter_id) or visit_edit_active(p_encounter_id)))
+      or (has_perm('orders.write')
+          and exists (select 1 from service_request r
+                      where r.encounter_id = p_encounter_id and r.deleted_at is null
+                        and r.status <> 'cancelled'
+                        and (p_service_request_id is null or r.id = p_service_request_id)
+                        and may_use_desk(request_desk(r.station, r.category))))
+    ), false)
+$$;
+
+create or replace function attach_file(
+  p_encounter_id uuid,
+  p_path text,
+  p_kind text,
+  p_title text,
+  p_mime text,
+  p_size integer,
+  p_service_request_id uuid default null,
+  p_note text default null
+)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_e encounter%rowtype;
+  v_ext text := lower(substring(coalesce(p_path, '') from '\.([a-zA-Z]+)$'));
+  v_obj_found boolean := false;
+  v_obj_size bigint;
+  v_obj_mime text;
+  v_f patient_file_doc%rowtype;
+  v_req service_request%rowtype;
+  v_to uuid;
+  v_name text;
+  v_file text;
+  v_me text;
+  v_test text;
+begin
+  if auth.uid() is null then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into v_e from encounter where id = p_encounter_id and deleted_at is null;
+  if not found then
+    raise exception 'visit not found' using errcode = 'P0002', hint = 'not_found';
+  end if;
+  if v_e.status <> 'open' and not visit_edit_active(v_e.id) then
+    raise exception 'files are added while the visit is open' using errcode = '22023', hint = 'file_visit_closed';
+  end if;
+  if coalesce(p_kind, '') not in ('ultrasound', 'lab', 'scan', 'referral', 'photo', 'other') then
+    raise exception 'unknown kind of file' using errcode = '22023', hint = 'file_kind';
+  end if;
+  if length(trim(coalesce(p_title, ''))) = 0 or length(trim(p_title)) > 200 then
+    raise exception 'give the file a title' using errcode = '22023', hint = 'title_needed';
+  end if;
+  if not file_mime_ok(p_mime) then
+    raise exception 'only photos (JPEG, PNG, WebP) and PDF files' using errcode = '22023', hint = 'file_type';
+  end if;
+  if p_size is null or p_size <= 0 or p_size > file_max_bytes() then
+    raise exception 'the file is larger than 10 MB' using errcode = '22023', hint = 'file_too_big';
+  end if;
+  if file_path_encounter(p_path) is distinct from p_encounter_id
+     or split_part(p_path, '/', 1) <> v_e.patient_id::text
+     or not file_ext_ok(p_mime, v_ext) then
+    raise exception 'the file is not stored where this visit''s files go' using errcode = '22023', hint = 'file_path';
+  end if;
+  if p_service_request_id is not null then
+    select * into v_req from service_request
+    where id = p_service_request_id and encounter_id = p_encounter_id and deleted_at is null;
+    if not found or v_req.status = 'cancelled' then
+      raise exception 'this test is not one of the visit' using errcode = '22023', hint = 'wrong_test';
+    end if;
+  end if;
+  if not may_attach_file(p_encounter_id, p_service_request_id) then
+    raise exception 'not allowed: only the people working on the visit add files'
+      using errcode = '42501', hint = 'not_on_visit';
+  end if;
+  -- On Supabase: the file must be in the bucket, with the size and type said.
+  if to_regclass('storage.objects') is not null then
+    execute 'select true, (metadata ->> ''size'')::bigint, metadata ->> ''mimetype''
+             from storage.objects where bucket_id = ''patient-files'' and name = $1'
+      into v_obj_found, v_obj_size, v_obj_mime using p_path;
+    if not coalesce(v_obj_found, false) then
+      raise exception 'the file did not arrive: send it again' using errcode = '22023', hint = 'not_uploaded';
+    end if;
+    if v_obj_size is not null and v_obj_size > file_max_bytes() then
+      raise exception 'the file is larger than 10 MB' using errcode = '22023', hint = 'file_too_big';
+    end if;
+    if v_obj_mime is not null and not file_mime_ok(v_obj_mime) then
+      raise exception 'only photos (JPEG, PNG, WebP) and PDF files' using errcode = '22023', hint = 'file_type';
+    end if;
+  end if;
+  insert into patient_file_doc (patient_id, encounter_id, service_request_id, kind, title, note,
+                                storage_path, mime_type, size_bytes, uploaded_by)
+  values (v_e.patient_id, p_encounter_id, p_service_request_id, p_kind, trim(p_title),
+          nullif(trim(coalesce(p_note, '')), ''), p_path, p_mime,
+          coalesce(v_obj_size::integer, p_size), auth.uid())
+  returning * into v_f;
+  insert into audit_event (actor_id, action, entity, entity_id, after)
+  values (auth.uid(), 'create', 'patient_file_doc', v_f.id,
+          jsonb_build_object('patient', v_f.patient_id, 'encounter', v_f.encounter_id, 'kind', v_f.kind,
+                             'title', v_f.title, 'mime', v_f.mime_type, 'size', v_f.size_bytes)
+          || visit_edit_tag(p_encounter_id));
+  -- the laboratory or ultrasound added a file to a test: its requester is told, or the colleague
+  -- who took the patient over since (as the result notices do)
+  if v_req.id is not null and v_req.requester_id is not null then
+    v_to := result_recipient(v_req.encounter_id, v_req.requester_id);
+  end if;
+  if v_to is not null and v_to <> auth.uid() then
+    select p.surname || ' ' || p.given_names, p.file_number into v_name, v_file
+    from patient p where p.id = v_e.patient_id;
+    select full_name into v_me from profiles where id = auth.uid();
+    select s.name_en into v_test from service s where s.id = v_req.service_id;
+    insert into notification (kind, params, title, body, link, urgent, recipient_user, created_by)
+    values ('file_attached',
+            jsonb_build_object('fileId', v_f.id, 'patientId', v_e.patient_id, 'encounterId', v_e.id,
+                               'name', v_name, 'file', v_file, 'by', v_me, 'title', v_f.title,
+                               'kind', v_f.kind, 'test', v_test),
+            'File added to a test',
+            coalesce(v_me, '') || ' added "' || v_f.title || '" to ' || coalesce(v_test, 'a test') || ' of ' || coalesce(v_name, ''),
+            '/app/visit?encounter=' || v_e.id, false, v_to, auth.uid());
+  end if;
+  return file_doc_json(v_f, 'visit');
+end
+$$;
+
+-- ---------------------------------------------------------------- results: never by the requester
+create or replace function record_result(
+  p_request_id uuid,
+  p_findings text,
+  p_impression text,
+  p_verify boolean default true
+)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_req service_request%rowtype;
+  v_test text;
+  v_name text;
+  v_station station;
+  v_q queue_entry%rowtype;
+  v_tests text;
+  v_to uuid;
+begin
+  select * into v_req from service_request where id = p_request_id and deleted_at is null;
+  if not found then
+    raise exception 'test order not found' using errcode = 'P0002';
+  end if;
+  -- Lab / ultrasound results: the laboratory or ultrasound desk; an order done at another desk
+  -- (Nursing, Dental…): the clinical staff of that desk too. Never the clinician who asked for
+  -- the test (0104).
+  if not ((may_use_desk(request_desk(v_req.station, v_req.category))
+               and (request_desk(v_req.station, v_req.category) not in ('laboratory', 'ultrasound')
+                    or has_perm('orders.write')))
+          or (has_perm('clinical.write') and coalesce(v_req.station, 'laboratory') not in ('laboratory', 'ultrasound')
+              and may_use_any_desk(station_desks(v_req.station)))) then
+    if may_use_desk(request_desk(v_req.station, v_req.category)) and not has_perm('orders.write') then
+      raise exception 'you may not work on tests (the manager has not allowed it)'
+        using errcode = '42501', hint = 'not_permitted';
+    end if;
+    perform assert_desk(array[request_desk(v_req.station, v_req.category)]);
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_req.status = 'cancelled' then
+    raise exception 'this test was marked "not done": order it again if it is done after all' using errcode = '22023';
+  end if;
+  if nullif(trim(coalesce(p_findings, '')), '') is null and nullif(trim(coalesce(p_impression, '')), '') is null then
+    raise exception 'write the findings or the conclusion' using errcode = '22023';
+  end if;
+  if exists (select 1 from diagnostic_report where service_request_id = p_request_id
+             and deleted_at is null and verified_at is not null) then
+    raise exception 'this result is verified: correct it, giving the reason' using errcode = '22023';
+  end if;
+  insert into diagnostic_report (service_request_id, findings, impression, verified_by, verified_at)
+  values (p_request_id, nullif(trim(coalesce(p_findings, '')), ''), nullif(trim(coalesce(p_impression, '')), ''),
+          case when p_verify then auth.uid() end, case when p_verify then now() end)
+  on conflict (service_request_id) do update
+  set findings = excluded.findings, impression = excluded.impression,
+      verified_by = excluded.verified_by, verified_at = excluded.verified_at, updated_at = now();
+  update service_request set status = case when p_verify then 'verified'::request_status else 'resulted'::request_status end
+  where id = p_request_id;
+  -- Tell the doctor who ordered it (0088: or the colleague they handed the patient over to).
+  v_to := result_recipient(v_req.encounter_id, v_req.requester_id);
+  if v_to is not null and v_to is distinct from auth.uid() then
+    select s.name_en into v_test from service s where s.id = v_req.service_id;
+    select p.surname || ' ' || p.given_names into v_name
+    from encounter e join patient p on p.id = e.patient_id where e.id = v_req.encounter_id;
+    insert into notification (kind, params, link, recipient_user, created_by)
+    values ('result',
+            jsonb_build_object('test', v_test, 'name', v_name,
+                               'impression', nullif(trim(coalesce(p_impression, '')), ''),
+                               'verified', p_verify),
+            '/app/visit?encounter=' || v_req.encounter_id,
+            v_to, auth.uid());
+  end if;
+  -- Last result of this desk written: the patient goes back to the doctor.
+  v_station := coalesce(v_req.station, case when v_req.category = 'imaging' then 'ultrasound'::station else 'laboratory'::station end);
+  perform after_desk_tests(v_req.encounter_id, v_station, v_req.requester_id);
+end
+$$;
+
+create or replace function correct_result(
+  p_request_id uuid,
+  p_findings text,
+  p_impression text,
+  p_reason text
+)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_req service_request%rowtype;
+  v_rep diagnostic_report%rowtype;
+  v_test text;
+  v_name text;
+  v_to uuid;
+begin
+  select * into v_req from service_request where id = p_request_id and deleted_at is null;
+  if not found then
+    raise exception 'test order not found' using errcode = 'P0002';
+  end if;
+  -- the manager, the desk of the test, or the clinical staff of a desk that did it itself;
+  -- never the clinician who asked for the test (0104)
+  if not (is_manager() or (may_use_desk(request_desk(v_req.station, v_req.category))
+               and (request_desk(v_req.station, v_req.category) not in ('laboratory', 'ultrasound')
+                    or has_perm('orders.write')))
+          or (has_perm('clinical.write') and coalesce(v_req.station, 'laboratory') not in ('laboratory', 'ultrasound')
+              and may_use_any_desk(station_desks(v_req.station)))) then
+    if may_use_desk(request_desk(v_req.station, v_req.category)) and not has_perm('orders.write') then
+      raise exception 'you may not work on tests (the manager has not allowed it)'
+        using errcode = '42501', hint = 'not_permitted';
+    end if;
+    perform assert_desk(array[request_desk(v_req.station, v_req.category)]);
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if length(trim(coalesce(p_reason, ''))) < 3 then
+    raise exception 'say why the result is corrected' using errcode = '22023';
+  end if;
+  if nullif(trim(coalesce(p_findings, '')), '') is null and nullif(trim(coalesce(p_impression, '')), '') is null then
+    raise exception 'write the findings or the conclusion' using errcode = '22023';
+  end if;
+  select * into v_rep from diagnostic_report where service_request_id = p_request_id and deleted_at is null for update;
+  if not found or v_rep.verified_at is null then
+    raise exception 'only a verified result is corrected; edit the result instead' using errcode = '22023';
+  end if;
+  insert into report_correction (report_id, old_findings, old_impression, old_verified_by, old_verified_at, reason)
+  values (v_rep.id, v_rep.findings, v_rep.impression, v_rep.verified_by, v_rep.verified_at, trim(p_reason));
+  perform set_config('mmc.correcting_report', v_rep.id::text, true);
+  update diagnostic_report
+  set findings = nullif(trim(coalesce(p_findings, '')), ''), impression = nullif(trim(coalesce(p_impression, '')), ''),
+      verified_by = auth.uid(), verified_at = now(), corrected_at = now(), correction_reason = trim(p_reason),
+      updated_at = now()
+  where id = v_rep.id;
+  perform set_config('mmc.correcting_report', '', true);
+  -- The doctor who ordered the test is told the result changed (0088: or the colleague they
+  -- handed the patient over to).
+  v_to := result_recipient(v_req.encounter_id, v_req.requester_id);
+  if v_to is not null and v_to is distinct from auth.uid() then
+    select s.name_en into v_test from service s where s.id = v_req.service_id;
+    select p.surname || ' ' || p.given_names into v_name
+    from encounter e join patient p on p.id = e.patient_id where e.id = v_req.encounter_id;
+    insert into notification (kind, params, link, recipient_user, urgent, created_by)
+    values ('result',
+            jsonb_build_object('test', v_test, 'name', v_name,
+                               'impression', nullif(trim(coalesce(p_impression, '')), ''),
+                               'verified', true, 'corrected', true, 'reason', trim(p_reason)),
+            '/app/visit?encounter=' || v_req.encounter_id,
+            v_to, true, auth.uid());
+  end if;
+end
+$$;
+
+-- ---------------------------------------------------------------- the record, with its history
+/**
+ * The previous versions of a diagnosis or a note, from the table's audit trigger: one entry per
+ * change of the text (or code, type, provisional), newest first: what it said, who wrote that
+ * version and when, who replaced it, when and why.
+ */
+create or replace function record_history(p_entity text, p_id uuid)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'text', coalesce(a.before ->> 'text', a.before ->> 'value_text'),
+      'icd10', a.before ->> 'icd10_code',
+      'type', a.before ->> 'type',
+      'provisional', (a.before ->> 'provisional')::boolean,
+      'since', coalesce(a.before ->> 'updated_at', a.before ->> 'created_at'),
+      'wroteBy', (select full_name from profiles
+                  where id = coalesce(nullif(a.before ->> 'updated_by', '')::uuid, nullif(a.before ->> 'created_by', '')::uuid)),
+      'replacedAt', a.at,
+      'replacedBy', (select full_name from profiles where id = a.actor_id),
+      'reason', a.after ->> 'edit_reason') order by a.at desc), '[]'::jsonb)
+  from audit_event a
+  where a.entity = p_entity and a.entity_id = p_id and a.action = 'update'
+    and (a.after ->> 'deleted_at') is null
+    and (a.before ->> 'text' is distinct from a.after ->> 'text'
+         or a.before ->> 'value_text' is distinct from a.after ->> 'value_text'
+         or a.before ->> 'icd10_code' is distinct from a.after ->> 'icd10_code'
+         or a.before ->> 'type' is distinct from a.after ->> 'type'
+         or a.before ->> 'provisional' is distinct from a.after ->> 'provisional')
+$$;
+
+create or replace function visit_clinical(p_encounter_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_view text;
+  v_patient uuid;
+  v_closed boolean;
+  v_safe boolean;
+begin
+  -- clinicians; the lab and the pharmacy read the record too (their orders and prescriptions)
+  if not clinical_reader() then
+    return null;
+  end if;
+  select e.patient_id, e.status = 'closed' into v_patient, v_closed
+  from encounter e where e.id = p_encounter_id and e.deleted_at is null;
+  if v_patient is null then
+    return null;
+  end if;
+  v_view := visit_view(p_encounter_id);
+  if v_view is null then
+    v_safe := patient_level(v_patient) <> 'identity';
+    return jsonb_build_object(
+      'diagnoses', '[]'::jsonb, 'notes', '[]'::jsonb, 'prescriptions', '[]'::jsonb, 'orders', '[]'::jsonb,
+      'patient', (select jsonb_build_object('id', p.id,
+                    'allergies', case when v_safe then p.allergies end,
+                    'bloodGroup', case when v_safe then p.blood_group end,
+                    'notes', case when v_safe then p.notes end,
+                    'flags', case when v_safe then p.flags else '{}'::jsonb end)
+                  || case when v_safe then doc_patient(p.id, p_encounter_id)
+                          else doc_patient(p.id, p_encounter_id) - 'allergies' - 'allergiesNone' - 'bloodGroup'
+                               - 'weightKg' - 'weightAt' end
+                  from patient p where p.id = v_patient),
+      'visit', doc_visit(p_encounter_id),
+      'private', true,
+      'view', null,
+      'access', patient_access(v_patient));
+  end if;
+  if v_closed then
+    perform log_record_access(v_patient, p_encounter_id, v_view, 'visit');
+  end if;
+  return jsonb_build_object(
+    -- removed diagnoses stay, marked (removedAt), so the record shows what was written and withdrawn
+    'diagnoses', coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'text', c.text, 'icd10', c.icd10_code, 'type', c.type, 'provisional', c.provisional, 'at', c.created_at,
+        'by', (select full_name from profiles where id = c.created_by), 'byId', c.created_by,
+        'editedAt', case when c.deleted_at is null and c.edit_reason is not null then c.updated_at end,
+        'editedBy', case when c.deleted_at is null and c.edit_reason is not null then (select full_name from profiles where id = c.updated_by) end,
+        'editReason', case when c.deleted_at is null then c.edit_reason end,
+        'removedAt', c.deleted_at,
+        'removedBy', case when c.deleted_at is not null then (select full_name from profiles where id = c.updated_by) end,
+        'removeReason', case when c.deleted_at is not null then c.edit_reason end,
+        'history', record_history('condition', c.id)) order by c.created_at)
+      from condition c where c.encounter_id = p_encounter_id and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read'))), '[]'::jsonb),
+    'notes', coalesce((select jsonb_agg(jsonb_build_object('id', o.id, 'text', o.value_text, 'at', o.effective_at,
+        'by', (select full_name from profiles where id = o.performer_id), 'byId', coalesce(o.performer_id, o.created_by),
+        'editedAt', case when o.edit_reason is not null then o.updated_at end,
+        'editedBy', case when o.edit_reason is not null then (select full_name from profiles where id = o.updated_by) end,
+        'editReason', o.edit_reason,
+        'history', record_history('observation', o.id)) order by o.effective_at)
+      from observation o where o.encounter_id = p_encounter_id and o.code = 'note' and o.deleted_at is null), '[]'::jsonb),
+    'prescriptions', coalesce((select jsonb_agg(jsonb_build_object('id', m.id, 'by', (select full_name from profiles where id = coalesce(m.prescriber_id, m.created_by)), 'item', rx_label(m), 'dose', m.dose, 'route', m.route,
+        'frequency', m.frequency, 'days', m.duration_days, 'quantity', m.quantity, 'instructions', m.instructions, 'at', m.created_at,
+        'dispensed', m.supply = 'room' or exists (select 1 from medication_dispense d where d.medication_request_id = m.id and d.deleted_at is null),
+        'supply', m.supply, 'givenAt', m.given_at, 'givenBy', (select full_name from profiles where id = m.given_by),
+        'notGivenAt', m.not_given_at, 'notGivenReason', m.not_given_reason,
+        'prescriberId', coalesce(m.prescriber_id, m.created_by), 'pending', rx_pending(m),
+        'cancelledAt', m.cancelled_at, 'cancelReason', m.cancel_reason,
+        'cancelledBy', (select full_name from profiles where id = m.cancelled_by),
+        'itemId', m.item_id, 'referenceCode', m.reference_code, 'quantityGiven', coalesce(m.quantity_given, 0),
+        'supplySetAt', m.supply_set_at, 'supplySetBy', (select full_name from profiles where id = m.supply_set_by),
+        'supplyReason', m.supply_reason,
+        -- 0104: the remainder of a partly given line sent outside points at the original (split_from)
+        'splitFrom', m.split_from,
+        'prescriber', doc_person(coalesce(m.prescriber_id, m.created_by))) order by m.created_at)
+      from medication_request m where m.encounter_id = p_encounter_id and m.deleted_at is null), '[]'::jsonb),
+    -- HIV tests (like the diagnoses above) only for the people allowed to see them
+    'orders', coalesce((select jsonb_agg(jsonb_build_object('id', r.id, 'test', s.name_en, 'category', r.category, 'station', coalesce(r.station, case when r.category = 'imaging' then 'ultrasound'::station else 'laboratory'::station end), 'status', r.status, 'reason', r.reason, 'at', r.created_at, 'mine', coalesce(r.requester_id = auth.uid(), false),
+        'result', (select jsonb_build_object('findings', d.findings, 'impression', d.impression, 'verified', d.verified_at is not null,
+          'corrected', d.corrected_at is not null, 'correctionReason', d.correction_reason,
+          'at', coalesce(d.verified_at, d.updated_at), 'by', (select full_name from profiles where id = coalesce(d.verified_by, d.created_by)),
+          'byPerson', doc_person(coalesce(d.verified_by, d.created_by)))
+          from diagnostic_report d where d.service_request_id = r.id and d.deleted_at is null)) order by r.created_at)
+      from service_request r join service s on s.id = r.service_id
+      where r.encounter_id = p_encounter_id and r.deleted_at is null
+        and (has_perm('sensitive.read') or not sensitive_service(s.id))), '[]'::jsonb),
+    'patient', (select jsonb_build_object('id', p.id, 'allergies', p.allergies, 'bloodGroup', p.blood_group, 'notes', p.notes, 'flags', p.flags)
+                       || doc_patient(p.id, e.id)
+      from encounter e join patient p on p.id = e.patient_id where e.id = p_encounter_id),
+    'visit', doc_visit(p_encounter_id),
+    'private', false,
+    'view', v_view,
+    -- 0104: the lock of a finished visit and the reader's edit window
+    'editLock', visit_edit_status(p_encounter_id)
+  );
+end
+$$;
+
+
+-- ============================================================ 20261213090000_vitals_custom.sql
+-- 0102 Vital signs the clinic chooses: a catalogue of measurements with units and limits, custom
+-- measurements with a typed name, a default set (and order) the manager picks in Settings, and a
+-- measurement removed from a visit with a reason (kept, in the audit).
+--
+-- * vital_type: the catalogue (the nine of before plus blood glucose in mmol/L and mg/dL, pain
+--   score, head circumference, urine output, Glasgow coma score, fundal height, fetal heart rate).
+--   BMI is computed on the screens from weight and height, never stored.
+-- * observation.label: the typed name of a custom measurement (code 'custom_<slug>');
+--   observation.remove_reason / removed_by: a measurement removed with remove_vital.
+-- * record_vitals accepts a number as before, or {"value", "unit", "label"} per code; the limits
+--   of the catalogue are checked here as the form checks them.
+-- * remove_vital(p_id, p_reason): soft removal, audited.
+-- * vitals_setting() / save_vitals_setting(p_codes): the clinic's default set, setting 'vitals.default'.
+-- * visit_vitals: every measurement of the catalogue and the custom ones, with id and label.
+
+-- ---------------------------------------------------------------- 1. the catalogue
+create table if not exists vital_type (
+  code text primary key,
+  unit text not null,
+  min_value numeric not null,
+  max_value numeric not null,
+  sort smallint not null default 100,
+  check (min_value < max_value)
+);
+comment on table vital_type is 'The measurements the vital signs form knows: unit and the values a living patient can have.';
+insert into vital_type (code, unit, min_value, max_value, sort) values
+  ('bp_sys', 'mmHg', 40, 300, 10),
+  ('bp_dia', 'mmHg', 20, 200, 20),
+  ('pulse', 'bpm', 20, 250, 30),
+  ('temp', '°C', 30, 44, 40),
+  ('resp', '/min', 4, 100, 50),
+  ('spo2', '%', 40, 100, 60),
+  ('weight', 'kg', 0.3, 350, 70),
+  ('height', 'cm', 20, 250, 80),
+  ('muac', 'cm', 5, 60, 90),
+  ('glucose_mmol', 'mmol/L', 0.5, 60, 100),
+  ('glucose_mgdl', 'mg/dL', 10, 1100, 110),
+  ('pain', '/10', 0, 10, 120),
+  ('head_circ', 'cm', 20, 70, 130),
+  ('urine_output', 'mL', 0, 10000, 140),
+  ('gcs', '/15', 3, 15, 150),
+  ('fundal_height', 'cm', 5, 60, 160),
+  ('fhr', 'bpm', 60, 240, 170)
+on conflict (code) do update set unit = excluded.unit, min_value = excluded.min_value,
+  max_value = excluded.max_value, sort = excluded.sort;
+alter table vital_type enable row level security;
+drop policy if exists vital_type_read on vital_type;
+create policy vital_type_read on vital_type for select to authenticated using (true);
+revoke all on vital_type from anon;
+grant select on vital_type to authenticated;
+
+alter table observation add column if not exists label text;
+alter table observation add column if not exists remove_reason text;
+alter table observation add column if not exists removed_by uuid;
+
+-- ---------------------------------------------------------------- 2. the default set
+/** The measurements the nurse sees by default, in order ('bmi' = the computed body mass index). */
+create or replace function vitals_setting()
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select jsonb_build_object(
+    'codes', coalesce((select value -> 'codes' from setting where key = 'vitals.default'),
+                      '["bp_sys","bp_dia","pulse","temp","resp","spo2","weight","height","muac"]'::jsonb),
+    'catalogue', (select jsonb_agg(jsonb_build_object('code', code, 'unit', unit, 'min', min_value, 'max', max_value)
+                                   order by sort) from vital_type)
+  )
+$$;
+
+create or replace function save_vitals_setting(p_codes jsonb)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_code text;
+  v_n integer := 0;
+begin
+  if not has_perm('settings.write') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if jsonb_typeof(p_codes) <> 'array' or jsonb_array_length(p_codes) = 0 or jsonb_array_length(p_codes) > 40 then
+    raise exception 'the default set is a list of measurements' using errcode = '22023', hint = 'vital_unknown';
+  end if;
+  for v_code in select value #>> '{}' from jsonb_array_elements(p_codes) loop
+    if v_code <> 'bmi' and not exists (select 1 from vital_type where code = v_code) then
+      raise exception 'unknown measurement %', coalesce(v_code, '?') using errcode = '22023', hint = 'vital_unknown';
+    end if;
+    v_n := v_n + 1;
+  end loop;
+  if (select count(distinct value #>> '{}') from jsonb_array_elements(p_codes)) <> v_n then
+    raise exception 'unknown measurement %', 'twice' using errcode = '22023', hint = 'vital_unknown';
+  end if;
+  insert into setting (key, value, changed_by, changed_at)
+  values ('vitals.default', jsonb_build_object('codes', p_codes), auth.uid(), now())
+  on conflict (key) do update set value = excluded.value, changed_by = excluded.changed_by, changed_at = now();
+  insert into audit_event (actor_id, action, entity, entity_id, after)
+  values (auth.uid(), 'settings', 'setting', null, jsonb_build_object('key', 'vitals.default', 'codes', p_codes));
+end
+$$;
+revoke all on function vitals_setting(), save_vitals_setting(jsonb) from public, anon;
+grant execute on function vitals_setting(), save_vitals_setting(jsonb) to authenticated;
+
+-- ---------------------------------------------------------------- 3. record_vitals
+-- (from 20261203090000_guide_fixes) a number per code as before, or {"value","unit","label"};
+-- the catalogue's limits; custom measurements ('custom_<slug>') with their typed name.
+create or replace function record_vitals(
+  p_encounter_id uuid,
+  p_vitals jsonb,
+  p_triage triage_level default null,
+  p_next_station station default null,
+  p_reason text default null,
+  p_measured_by uuid default null,
+  p_measured_at timestamptz default null
+)
+returns text
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_ticket text;
+  v_key text;
+  v_raw jsonb;
+  v_val numeric;
+  v_unit text;
+  v_label text;
+  v_type vital_type%rowtype;
+  v_count integer := 0;
+  v_by uuid := coalesce(p_measured_by, auth.uid());
+  v_at timestamptz := coalesce(p_measured_at, now());
+  v_arrived timestamptz;
+  v_at_triage boolean;
+begin
+  if not has_perm('vitals.write') then
+    raise exception 'you may not record vital signs (the manager has not allowed it)' using errcode = '42501', hint = 'not_permitted';
+  end if;
+  -- open, or finished and inside the person's edit window (20261212 visit_edit_lock)
+  select arrived_at into v_arrived from encounter
+  where id = p_encounter_id and deleted_at is null and (status = 'open' or visit_edit_active(id));
+  if not found then
+    raise exception 'visit not found or already closed' using errcode = 'P0002';
+  end if;
+  select exists (select 1 from queue_entry where encounter_id = p_encounter_id and station = 'triage'
+                 and finished_at is null and deleted_at is null) into v_at_triage;
+  -- At triage: the people of a department that does triage (when none does, as before).
+  if v_at_triage then
+    perform assert_desk(array['triage'], 'triage');
+  end if;
+  -- Sending on from triage is for whoever may work on the patient (as with "Send on"): reception
+  -- that sent the patient to triage, or a nurse other than the one named, records only.
+  if v_at_triage and p_next_station is not null and not may_route(p_encounter_id) then
+    if current_role_key() = 'receptionist' then
+      raise exception 'this patient is with %: record the measurements without choosing where they go next; the nurse there sends them on',
+        coalesce(patient_holder(p_encounter_id), 'triage') using errcode = '42501';
+    end if;
+    perform assert_may_work_on(p_encounter_id, true);
+  end if;
+  -- Without clinical rights the person typing must name who measured.
+  if not has_perm('clinical.write') and (p_measured_by is null or p_measured_by = auth.uid()) then
+    raise exception 'choose the nurse who took the measurements' using errcode = '22023';
+  end if;
+  if not exists (select 1 from profiles where id = v_by and active) then
+    raise exception 'unknown staff member for "measured by"' using errcode = '22023';
+  end if;
+  -- the person named as having measured must be allowed to record vital signs themselves
+  if v_by <> auth.uid() and not staff_perm(v_by, 'vitals.write') then
+    raise exception 'the person named as "measured by" is not allowed to take vital signs'
+      using errcode = '42501', hint = 'not_permitted';
+  end if;
+  if v_at > now() + interval '5 minutes' then
+    raise exception 'the measurement time is in the future' using errcode = '22023';
+  end if;
+  if v_at < v_arrived - interval '1 hour' then
+    raise exception 'the measurement time is before the patient arrived' using errcode = '22023';
+  end if;
+
+  for v_key, v_raw in select key, value from jsonb_each(coalesce(p_vitals, '{}'::jsonb)) loop
+    v_unit := null;
+    v_label := null;
+    if jsonb_typeof(v_raw) = 'object' then
+      v_val := nullif(trim(v_raw ->> 'value'), '')::numeric;
+      v_unit := nullif(trim(v_raw ->> 'unit'), '');
+      v_label := nullif(trim(v_raw ->> 'label'), '');
+    else
+      v_val := nullif(trim(v_raw #>> '{}'), '')::numeric;
+    end if;
+    if v_val is null then
+      continue;
+    end if;
+    select * into v_type from vital_type where code = v_key;
+    if found then
+      -- the same limits as the form (newborn to adult, critically ill included): outside them it
+      -- is a typing mistake
+      case v_key
+        when 'bp_sys' then
+          if v_val not between 40 and 300 then
+            raise exception 'the systolic blood pressure must be between 40 and 300 mmHg' using errcode = '22023';
+          end if;
+        when 'bp_dia' then
+          if v_val not between 20 and 200 then
+            raise exception 'the diastolic blood pressure must be between 20 and 200 mmHg' using errcode = '22023';
+          end if;
+        when 'pulse' then
+          if v_val not between 20 and 250 then
+            raise exception 'the pulse must be between 20 and 250 per minute' using errcode = '22023';
+          end if;
+        when 'temp' then
+          if v_val not between 30 and 44 then
+            raise exception 'the temperature must be between 30 and 44 °C' using errcode = '22023';
+          end if;
+        when 'resp' then
+          if v_val not between 4 and 100 then
+            raise exception 'the breathing rate must be between 4 and 100 per minute' using errcode = '22023';
+          end if;
+        when 'spo2' then
+          if v_val not between 40 and 100 then
+            raise exception 'the oxygen saturation must be between 40 and 100 %%' using errcode = '22023';
+          end if;
+        when 'weight' then
+          if v_val not between 0.3 and 350 then
+            raise exception 'the weight must be between 0.3 and 350 kg' using errcode = '22023';
+          end if;
+        when 'height' then
+          if v_val not between 20 and 250 then
+            raise exception 'the height must be between 20 and 250 cm' using errcode = '22023';
+          end if;
+        when 'muac' then
+          if v_val not between 5 and 60 then
+            raise exception 'the arm circumference must be between 5 and 60 cm' using errcode = '22023';
+          end if;
+        else
+          if v_val not between v_type.min_value and v_type.max_value then
+            raise exception 'the measurement % must be between % and % %', v_key, v_type.min_value, v_type.max_value, v_type.unit
+              using errcode = '22023', hint = 'vital_range';
+          end if;
+      end case;
+      v_unit := v_type.unit;
+      v_label := null;
+    elsif v_key ~ '^custom_[a-z0-9_]{1,40}$' then
+      -- a custom measurement: its typed name, its unit as typed (or none)
+      if v_label is null or length(v_label) > 60 then
+        raise exception 'write the name of the measurement' using errcode = '22023', hint = 'vital_name';
+      end if;
+      if v_unit is not null and length(v_unit) > 20 then
+        raise exception 'the unit is 20 characters at most' using errcode = '22023', hint = 'vital_name';
+      end if;
+      if abs(v_val) > 1000000 then
+        raise exception 'the measurement % must be between % and % %', v_key, -1000000, 1000000, coalesce(v_unit, '')
+          using errcode = '22023', hint = 'vital_range';
+      end if;
+    else
+      raise exception 'unknown measurement %', v_key using errcode = '22023', hint = 'vital_unknown';
+    end if;
+    insert into observation (encounter_id, code, value_num, unit, label, performer_id, effective_at)
+    values (p_encounter_id, v_key, v_val, v_unit, v_label, v_by, v_at);
+    v_count := v_count + 1;
+  end loop;
+  if v_count = 0 then
+    raise exception 'enter at least one measurement' using errcode = '22023';
+  end if;
+
+  if v_by <> auth.uid() then
+    insert into audit_event (actor_id, action, entity, entity_id, after, reason)
+    values (auth.uid(), 'create', 'observation', p_encounter_id,
+            jsonb_build_object('measured_by', v_by, 'measured_at', v_at, 'count', v_count),
+            'vitals entered on behalf of the person who measured');
+  end if;
+  perform note_visit_edit(p_encounter_id, 'create', 'observation', p_encounter_id,
+                          jsonb_build_object('vitals', p_vitals, 'measured_by', v_by, 'measured_at', v_at));
+
+  if p_triage is not null then
+    update encounter set triage_level = p_triage, triage_reason = coalesce(p_reason, triage_reason)
+    where id = p_encounter_id;
+    -- the colour reorders the places where the patient waits (red first)
+    update queue_entry set priority = case p_triage when 'red' then 1 when 'yellow' then 2 else 3 end
+    where encounter_id = p_encounter_id and finished_at is null and started_at is null and deleted_at is null;
+  end if;
+
+  select ticket_no into v_ticket from queue_entry where encounter_id = p_encounter_id order by created_at limit 1;
+
+  -- At triage: close the triage turn and send the patient on. Later (e.g. the doctor typing
+  -- the nurse's paper sheet): measurements only, the patient stays where they are.
+  if v_at_triage and p_next_station is not null then
+    update queue_entry set finished_at = now()
+    where encounter_id = p_encounter_id and station = 'triage' and finished_at is null;
+    insert into queue_entry (encounter_id, station, ticket_no, priority)
+    values (p_encounter_id, p_next_station, v_ticket,
+            case coalesce(p_triage, 'green') when 'red' then 1 when 'yellow' then 2 else 3 end);
+  end if;
+  return v_ticket;
+end
+$$;
+
+-- ---------------------------------------------------------------- 4. remove_vital
+/**
+ * A measurement taken off a visit's vital signs (a wrong line, the wrong patient): the row stays
+ * with who removed it and why, and the audit keeps the value. Anyone who records vital signs on
+ * an open visit; the manager on any visit.
+ */
+create or replace function remove_vital(p_id uuid, p_reason text)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_row observation%rowtype;
+  v_status text;
+begin
+  if not (has_perm('vitals.write') or is_manager()) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if length(trim(coalesce(p_reason, ''))) < 3 then
+    raise exception 'write the reason first' using errcode = '22023', hint = 'reason_needed';
+  end if;
+  select * into v_row from observation where id = p_id and code <> 'note';
+  if not found then
+    raise exception 'measurement not found' using errcode = 'P0002', hint = 'not_found';
+  end if;
+  if v_row.deleted_at is not null then
+    raise exception 'this measurement was already removed' using errcode = '22023', hint = 'already_removed';
+  end if;
+  select status::text into v_status from encounter where id = v_row.encounter_id and deleted_at is null;
+  -- open, or finished and inside the person's edit window (20261212); the manager always
+  if v_status is distinct from 'open' and not visit_edit_active(v_row.encounter_id) and not is_manager() then
+    raise exception 'the visit is closed' using errcode = '42501', hint = 'visit_closed';
+  end if;
+  update observation
+     set deleted_at = now(), removed_by = auth.uid(), remove_reason = trim(p_reason),
+         updated_at = now(), updated_by = auth.uid()
+   where id = p_id;
+  insert into audit_event (actor_id, action, entity, entity_id, before, after, reason)
+  values (auth.uid(), 'delete', 'observation', p_id,
+          jsonb_build_object('encounter_id', v_row.encounter_id, 'code', v_row.code, 'value', v_row.value_num,
+                             'unit', v_row.unit, 'label', v_row.label, 'measured_at', v_row.effective_at,
+                             'measured_by', v_row.performer_id),
+          jsonb_build_object('removed', true), trim(p_reason));
+  perform note_visit_edit(v_row.encounter_id, 'delete', 'observation', p_id,
+                          jsonb_build_object('code', v_row.code, 'value', v_row.value_num, 'reason', trim(p_reason)));
+end
+$$;
+revoke all on function remove_vital(uuid, text) from public, anon;
+grant execute on function remove_vital(uuid, text) to authenticated;
+
+-- ---------------------------------------------------------------- 5. visit_vitals
+-- (from 20261130090000_patient_privacy) every measurement, not only the nine; with id and label.
+create or replace view visit_vitals with (security_invoker = false) as
+  select distinct on (o.encounter_id, o.code)
+         o.encounter_id, o.code, o.value_num, o.unit, o.effective_at,
+         pm.full_name as measured_by, pe.full_name as entered_by,
+         o.id, o.label
+  from observation o
+  join encounter e on e.id = o.encounter_id and e.deleted_at is null
+  left join profiles pm on pm.id = o.performer_id
+  left join profiles pe on pe.id = o.created_by
+  where o.deleted_at is null
+    and o.code <> 'note' and o.value_num is not null
+    and (has_perm('clinical.read') or has_perm('vitals.write'))
+    and (e.status = 'open' or visit_view(o.encounter_id) is not null)
+  order by o.encounter_id, o.code, o.effective_at desc;
+revoke all on visit_vitals from anon;
+grant select on visit_vitals to authenticated;
+
+
+-- ============================================================ 20261214090000_packs_and_pieces.sql
+-- 0102 · Packs and pieces, and the rest of a prescription the pharmacy cannot give.
+--
+-- Frank (owner): a medicine comes as a pack (a box of 20 tablets, a bottle of 100 ml, a strip of
+-- 10) and the patient buys pieces or whole packs. One rule from the shelf to the bill:
+--
+--   * The item has a unit (the piece: tablet, capsule, sachet, ml, vial, bottle…) and pack_size
+--     (pieces in one pack). A medicine sold whole (a bottle) is pack_size 1 with unit "bottle".
+--   * Stock is held and moved in PIECES everywhere: add_stock, dispense_prescription,
+--     sell_medicine, the counter sales, the transfer notes, the counts and the write-offs all take
+--     piece quantities (as before). The screens show the packs beside them ("503 tablets · 25
+--     packs + 3").
+--   * The selling price is per piece. item.pack_price (new, optional) is the price of ONE WHOLE
+--     PACK: when a cash-priced line comes to whole packs, the line is charged packs × pack_price
+--     instead of pieces × price (pack_charge). An insurer's own list price stays per piece.
+--   * On the bill such a line is written "Amoxicillin 500 mg · B/20" with quantity = packs and
+--     unit_price = the pack price (so every reader's quantity × unit price still holds), and
+--     invoice_line.pack_size keeps the pieces per pack (units = quantity × pack_size). A counter
+--     sale line keeps its quantity in pieces (the stock movements read it) and records packs and
+--     pack_price beside line_total.
+--   * set_pack_price(item, price | null): the manager (or item_price.write) sets or clears it;
+--     refused while the item has no pack size above 1 (hint pack_size).
+--   * add_stock: a line may say pack_size (the "count in boxes" helper): an item without one
+--     takes it; a medicine new from the official list takes the list's "B/20" (pack_size_in).
+--   * The readers say the pack: stock_overview (packPrice), stock_alerts.low (packSize),
+--     pharmacy_queue (packSize, packPrice when it applies, packs, splitFrom), counter_sales
+--     (packs, packPrice, packSize, byPack). stock_sales counts units = quantity × pack_size.
+--
+-- The rest of a prescription the pharmacy cannot give (0097 allowed a part hand-over):
+--
+--   * rx_not_given on a partly given line tells the prescriber the quantity prescribed, given and
+--     remaining, and that the rest may go to an outside pharmacy (outside = true).
+--   * rx_set_supply(line, 'outside') on a PARTLY GIVEN line no longer refuses: it sends only the
+--     REMAINDER outside. The given part stays recorded and charged on the original line (closed
+--     as "not given" for the rest if it was still waiting) and a new outside line holds the rest
+--     (quantity = prescribed − given, medication_request.split_from = the original). Called again
+--     on the original, the decision applies to that remainder line ('pharmacy' brings the rest
+--     back to the pharmacy's list). rx_bought_outside counts such a remainder as "after the
+--     pharmacy had none".
+
+-- ---------------------------------------------------------------- columns
+alter table item add column if not exists pack_price numeric(12, 0)
+  check (pack_price is null or pack_price >= 0);
+alter table counter_sale_line add column if not exists packs integer;
+alter table counter_sale_line add column if not exists pack_price numeric(12, 0);
+-- a bill line charged by the pack: quantity = packs, unit_price = the pack price, pack_size = pieces in one
+alter table invoice_line add column if not exists pack_size integer;
+alter table medication_request add column if not exists split_from uuid references medication_request (id);
+create index if not exists medication_request_split_from_idx on medication_request (split_from)
+  where split_from is not null;
+
+-- ---------------------------------------------------------------- helpers
+-- "ZYMAFLUOR Tablet 1MG B/100" → 100: the pieces in one pack as the official list writes them.
+create or replace function pack_size_in(p_text text)
+returns integer
+language sql immutable
+as $$
+  select nullif((regexp_match(coalesce(p_text, ''), 'B\s*/\s*(\d+)', 'i'))[1], '')::integer
+$$;
+
+-- What a line of p_units pieces of an item costs at p_unit_price a piece: whole packs at the
+-- item's pack price when one is set and the line is cash-priced (p_cash), else pieces × price.
+create or replace function pack_charge(p_item_id uuid, p_units numeric, p_unit_price numeric, p_cash boolean)
+returns table (by_pack boolean, packs integer, pack_size integer, pack_price numeric, total numeric)
+language plpgsql stable
+as $$
+declare
+  v_size integer;
+  v_price numeric;
+begin
+  select i.pack_size, i.pack_price into v_size, v_price from item i where i.id = p_item_id;
+  by_pack := coalesce(p_cash, false) and v_price is not null and coalesce(v_size, 1) > 1
+             and p_units is not null and p_units > 0 and p_units = round(p_units)
+             and (p_units::integer % v_size) = 0;
+  pack_size := v_size;
+  if by_pack then
+    packs := p_units::integer / v_size;
+    pack_price := v_price;
+    total := packs * v_price;
+  else
+    packs := null;
+    pack_price := null;
+    total := round(round(coalesce(p_unit_price, 0)) * coalesce(p_units, 0));
+  end if;
+  return next;
+end
+$$;
+
+-- ---------------------------------------------------------------- the pack price (Prices › Medicines)
+create or replace function set_pack_price(p_item_id uuid, p_price numeric)
+returns numeric
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_pack integer;
+begin
+  if not (has_perm('item_price.write') or is_manager()) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if p_price is not null and p_price < 0 then
+    raise exception 'the price must be zero or more' using errcode = '22023';
+  end if;
+  select pack_size into v_pack from item where id = p_item_id and deleted_at is null;
+  if not found then
+    raise exception 'medicine not found' using errcode = 'P0002';
+  end if;
+  if p_price is not null and coalesce(v_pack, 1) < 2 then
+    raise exception 'say how many units are in one box' using errcode = '22023', hint = 'pack_size';
+  end if;
+  update item set pack_price = round(p_price), updated_at = now() where id = p_item_id;
+  return round(p_price);
+end
+$$;
+
+-- guard_item (from 20261208090000_reference_list_versions): the pack price too.
+create or replace function guard_item()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- the checked (security definer) functions run as their owner, not as the API roles
+  if current_user::text not in ('authenticated', 'anon') then
+    return coalesce(new, old);
+  end if;
+  if tg_op = 'DELETE' then
+    raise exception 'a medicine is deleted with the Delete button (the manager)' using errcode = '42501';
+  end if;
+  if tg_op = 'UPDATE' and (
+       new.deleted_at is distinct from old.deleted_at or new.active is distinct from old.active
+       or new.reorder_level is distinct from old.reorder_level or new.max_level is distinct from old.max_level
+       or new.code is distinct from old.code or new.pack_size is distinct from old.pack_size
+       or new.pack_price is distinct from old.pack_price
+       or new.reference_removed_at is distinct from old.reference_removed_at) then
+    raise exception 'deleting, switching off, the code, the box size and the stock levels change only through their screens'
+      using errcode = '42501';
+  end if;
+  return new;
+end
+$$;
+
+-- ---------------------------------------------------------------- the bill charges whole packs at the pack price
+-- add_charge_internal (from 20261123090000_dispensing_fixes): an item line that comes to whole
+-- packs, cash-priced, without a typed price or a discount, is charged packs × pack_price.
+create or replace function add_charge_internal(
+  p_encounter_id uuid,
+  p_office station,
+  p_service_id uuid default null,
+  p_item_id uuid default null,
+  p_quantity numeric default 1,
+  p_manual_price numeric default null,
+  p_manual_reason text default null,
+  p_performed_by uuid default null,
+  p_entered_for uuid default null,
+  p_source_type text default null,
+  p_source_id uuid default null,
+  p_discount_pct numeric default 0,
+  p_discount_reason text default null
+)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_invoice invoice%rowtype;
+  v_plan uuid;
+  v_group service_group;
+  v_desc text;
+  v_price numeric;
+  v_unit numeric;
+  v_fallback boolean;
+  v_pct numeric := 0;
+  v_origin price_origin := 'preset';
+  v_line_total numeric;
+  v_insurer numeric;
+  v_line_id uuid;
+  v_allow_manual boolean := false;
+  v_max_discount numeric := 0;
+  v_discount numeric := coalesce(p_discount_pct, 0);
+  v_qty numeric := p_quantity;
+  v_pack integer;
+  v_pk record;
+begin
+  if (p_service_id is null) = (p_item_id is null) then
+    raise exception 'give a service or an item, not both' using errcode = '22023';
+  end if;
+  select * into v_invoice from invoice where encounter_id = p_encounter_id;
+  if not found or v_invoice.status <> 'draft' then
+    -- its own code: a missing price (P0002) may be handed over free, a closed bill never
+    raise exception 'no open bill for this visit: the bill was already closed' using errcode = 'MS001', hint = 'no_open_bill';
+  end if;
+
+  if p_service_id is not null then
+    select s.name_en, s.service_group, s.allow_manual_price, s.max_discount_pct
+    into v_desc, v_group, v_allow_manual, v_max_discount
+    from service s where s.id = p_service_id and (s.active or p_source_type = 'bed_stay');
+  else
+    select i.name_generic || coalesce(' ' || i.strength, ''), 'pharmacy'::service_group, false, 0
+    into v_desc, v_group, v_allow_manual, v_max_discount
+    from item i where i.id = p_item_id and i.active;
+    v_origin := 'pharmacy';
+  end if;
+  if v_desc is null then
+    raise exception 'unknown or inactive service/item' using errcode = '22023';
+  end if;
+
+  if p_manual_price is not null then
+    if not (v_allow_manual or p_source_type = 'bed_stay' or has_perm('charge.manual')) then
+      raise exception 'a typed price is not allowed for this service' using errcode = '42501';
+    end if;
+    if nullif(trim(coalesce(p_manual_reason, '')), '') is null then
+      raise exception 'a reason is required for a typed price' using errcode = '22023';
+    end if;
+    v_price := p_manual_price;
+    v_origin := 'manual';
+  else
+    select pf.price, pf.fallback into v_price, v_fallback
+    from price_for(p_service_id, p_item_id, v_invoice.payer_id) pf;
+    if v_price is null then
+      raise exception 'no price found for this service/item' using errcode = 'P0002';
+    end if;
+  end if;
+
+  -- Discount: within the treatment's allowance, or the manager; always with a reason.
+  if v_discount < 0 or v_discount > 100 then
+    raise exception 'discount must be between 0 and 100 %%' using errcode = '22023';
+  end if;
+  if v_discount > 0 then
+    if v_discount > v_max_discount and not is_manager() then
+      raise exception 'the discount on this treatment may not exceed %%%', v_max_discount using errcode = '42501';
+    end if;
+    if nullif(trim(coalesce(p_discount_reason, '')), '') is null then
+      raise exception 'a reason is required for a discount' using errcode = '22023';
+    end if;
+  end if;
+  v_unit := round(v_price * (100 - v_discount) / 100);
+
+  -- 0102: whole packs of a cash-priced medicine at the item's pack price: the line is written in
+  -- packs ("… · B/20", quantity = packs, unit price = the pack price, pack_size = pieces in one)
+  if p_item_id is not null and p_manual_price is null and v_discount = 0 then
+    select * into v_pk
+    from pack_charge(p_item_id, p_quantity, v_unit, v_invoice.payer_id is null or coalesce(v_fallback, false));
+    if v_pk.by_pack then
+      v_qty := v_pk.packs;
+      v_unit := v_pk.pack_price;
+      v_price := v_pk.pack_price;
+      v_pack := v_pk.pack_size;
+      v_desc := v_desc || ' · B/' || v_pk.pack_size;
+    end if;
+  end if;
+
+  select c.plan_id into v_plan from coverage c where c.id = v_invoice.coverage_id;
+  v_pct := coalesce(coverage_pct_for(v_plan, v_group), 0);
+  v_line_total := round(v_unit * v_qty);
+  v_insurer := round(v_line_total * v_pct / 100);
+
+  insert into invoice_line (
+    invoice_id, service_id, item_id, description, quantity, unit_price, list_price, discount_pct,
+    discount_reason, coverage_pct, patient_share, insurer_share, office, performed_by, entered_for,
+    source_type, source_id, price_origin, manual_reason, pack_size
+  ) values (
+    v_invoice.id, p_service_id, p_item_id, v_desc, v_qty, v_unit, v_price, v_discount,
+    nullif(trim(coalesce(p_discount_reason, '')), ''), v_pct, v_line_total - v_insurer, v_insurer,
+    p_office, coalesce(p_performed_by, auth.uid()), p_entered_for, p_source_type, p_source_id,
+    v_origin, p_manual_reason, v_pack
+  ) returning id into v_line_id;
+
+  perform recompute_invoice(v_invoice.id);
+  return v_line_id;
+end
+$$;
+
+-- ---------------------------------------------------------------- counter sales in packs or pieces
+-- create_counter_sale (from 20261124090000_stores_and_stock): quantities in pieces; a line that
+-- comes to whole packs is charged at the pack price (packs and pack_price kept on the line).
+create or replace function create_counter_sale(
+  p_lines jsonb, p_buyer_name text default null, p_buyer_phone text default null,
+  p_location_id uuid default null, p_note text default null
+)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_loc uuid := coalesce(p_location_id, main_pharmacy());
+  v_id uuid;
+  v_number text;
+  v_line record;
+  v_price numeric;
+  v_total numeric := 0;
+  v_usable integer;
+  v_pk record;
+begin
+  if not stock_admin() then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_loc is null or not exists (select 1 from stock_location where id = v_loc and type = 'pharmacy' and active and deleted_at is null) then
+    raise exception 'choose an open pharmacy store' using errcode = '22023';
+  end if;
+  v_number := day_number('S', 'counter-sale');
+  insert into counter_sale (number, buyer_name, buyer_phone, location_id, note)
+  values (v_number, nullif(trim(coalesce(p_buyer_name, '')), ''), nullif(trim(coalesce(p_buyer_phone, '')), ''), v_loc,
+          nullif(trim(coalesce(p_note, '')), ''))
+  returning id into v_id;
+  for v_line in select * from note_lines(p_lines) loop
+    if not exists (select 1 from item where id = v_line.item_id and active and deleted_at is null) then
+      raise exception 'medicine not found or switched off' using errcode = 'P0002';
+    end if;
+    select pf.price into v_price from price_for(null, v_line.item_id, null) pf;
+    if v_price is null then
+      raise exception '% has no selling price: set it first', item_label(v_line.item_id) using errcode = '22023', hint = 'no_price';
+    end if;
+    -- never sold from expired stock
+    v_usable := usable_stock(v_line.item_id, v_loc);
+    if v_usable < v_line.quantity then
+      raise exception 'only % of % (not expired) in the pharmacy', v_usable, item_label(v_line.item_id)
+        using errcode = '23514', hint = 'short';
+    end if;
+    -- whole packs at the pack price when the item has one; pieces × price otherwise
+    select * into v_pk from pack_charge(v_line.item_id, v_line.quantity, round(v_price), true);
+    insert into counter_sale_line (sale_id, item_id, quantity, unit_price, line_total, packs, pack_price)
+    values (v_id, v_line.item_id, v_line.quantity, round(v_price), v_pk.total,
+            case when v_pk.by_pack then v_pk.packs end, case when v_pk.by_pack then v_pk.pack_price end);
+    v_total := v_total + v_pk.total;
+  end loop;
+  update counter_sale set total = v_total where id = v_id;
+  insert into notification (kind, params, link, recipient_stations, created_by)
+  values ('counter_sale_to_pay', jsonb_build_object('number', v_number, 'amount', v_total,
+                                                    'buyer', nullif(trim(coalesce(p_buyer_name, '')), ''), 'saleId', v_id),
+          '/app/bills?sale=' || v_id, array['cashier'::station], auth.uid());
+  return jsonb_build_object('id', v_id, 'number', v_number, 'total', v_total, 'status', 'open');
+end
+$$;
+
+-- counter_sales (from 20261124090000_stores_and_stock): each line says its packs, when charged so.
+create or replace function counter_sales(p_status text default null, p_from date default null, p_to date default null)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', s.id, 'number', s.number, 'status', s.status, 'buyer', s.buyer_name, 'phone', s.buyer_phone,
+      'storeId', s.location_id, 'store', l.name, 'total', s.total, 'note', s.note,
+      'at', s.created_at, 'by', (select full_name from profiles where id = s.created_by),
+      'paidAt', s.paid_at, 'receipt', pa.receipt_no, 'method', pa.method,
+      'cashier', (select full_name from profiles where id = pa.cashier_id),
+      'handedOverAt', s.handed_over_at, 'handedOverBy', (select full_name from profiles where id = s.handed_over_by),
+      'cancelledAt', s.cancelled_at, 'cancelReason', s.cancel_reason,
+      'lines', coalesce((select jsonb_agg(jsonb_build_object(
+          'itemId', x.item_id, 'item', item_label(x.item_id), 'unit', i.selling_unit, 'quantity', x.quantity,
+          'unitPrice', x.unit_price, 'lineTotal', x.line_total,
+          'packSize', i.pack_size, 'packs', x.packs, 'packPrice', x.pack_price, 'byPack', x.packs is not null,
+          'inStock', usable_stock(x.item_id, s.location_id)) order by i.name_generic)
+        from counter_sale_line x join item i on i.id = x.item_id where x.sale_id = s.id and x.deleted_at is null), '[]'::jsonb)
+    ) order by s.created_at desc), '[]'::jsonb)
+  from counter_sale s
+  join stock_location l on l.id = s.location_id
+  left join payment pa on pa.id = s.payment_id
+  where s.deleted_at is null
+    and (stock_admin() or has_perm('payment.take') or has_perm('billing.read'))
+    and (p_status is null or s.status = p_status)
+    and ((p_from is null and (s.status in ('open', 'paid') or s.created_at > now() - interval '7 days'))
+         or (p_from is not null and (s.created_at at time zone 'Africa/Kigali')::date between p_from and coalesce(p_to, p_from)))
+$$;
+
+-- ---------------------------------------------------------------- the pharmacy desk says the packs
+-- pharmacy_queue (from 20261207090000_pharmacy_simplified): packSize, the pack price when it
+-- applies (cash-priced), the packs the remaining quantity comes to, and splitFrom (the rest of a
+-- partly given line sent back to the pharmacy).
+create or replace function pharmacy_queue(p_location_id uuid default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_loc uuid;
+  v_stores jsonb;
+  v_lines jsonb;
+  v_patients jsonb;
+begin
+  -- the pharmacy and the manager only: the list carries allergies, prescriptions and bill amounts
+  if not (may_use_desk('pharmacy') or is_manager()) then
+    return jsonb_build_object('locationId', null, 'stores', '[]'::jsonb, 'lines', '[]'::jsonb, 'patients', '[]'::jsonb);
+  end if;
+  if p_location_id is not null then
+    if not exists (select 1 from stock_location where id = p_location_id and type = 'pharmacy'
+                   and active and deleted_at is null) then
+      raise exception 'choose an open pharmacy store' using errcode = '22023';
+    end if;
+    v_loc := p_location_id;
+  else
+    v_loc := main_pharmacy();
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'name', l.name, 'isMain', l.id = main_pharmacy())
+                            order by (l.id = main_pharmacy()) desc, l.created_at), '[]'::jsonb)
+  into v_stores
+  from stock_location l where l.type = 'pharmacy' and l.active and l.deleted_at is null;
+
+  with lines as (
+    select m.id, m.encounter_id, m.created_at, m.split_from, p.id as patient_id,
+           p.surname || ' ' || p.given_names as patient, p.file_number, p.sex, p.birth_date, p.allergies,
+           (select q.ticket_no from queue_entry q where q.encounter_id = m.encounter_id order by q.created_at limit 1) as ticket,
+           m.item_id, i.name_generic || coalesce(' ' || i.strength, '') as item, i.selling_unit, i.pack_size,
+           -- the pack price counts only for a cash-priced line (no insurer, or the insurer has no own price)
+           case when inv.payer_id is null or coalesce(pp.fallback, false) then i.pack_price end as pack_price,
+           i.prescribing_rule, m.quantity, m.quantity_given, m.dose, m.frequency, m.duration_days, m.instructions,
+           pr.id as prescriber_id, pr.full_name as prescriber, pr.specialty,
+           py.name as payer, cp.price as cash_price, pp.price as payer_price, pp.fallback,
+           cov.pct,
+           pc.total as line_total, pc.packs,
+           doctor_holds(m.encounter_id) as holds
+    from medication_request m
+    join encounter e on e.id = m.encounter_id and e.status = 'open'
+    join patient p on p.id = e.patient_id
+    join item i on i.id = m.item_id
+    left join invoice inv on inv.encounter_id = e.id
+    left join payer py on py.id = inv.payer_id
+    left join profiles pr on pr.id = coalesce(m.prescriber_id, m.created_by)
+    left join lateral (select pf.price from price_for(null, m.item_id, null) pf) cp on true
+    left join lateral (select pf.price, pf.fallback from price_for(null, m.item_id, inv.payer_id) pf) pp on true
+    left join lateral (select coalesce(coverage_pct_for((select c.plan_id from coverage c where c.id = inv.coverage_id),
+                                                        'pharmacy'::service_group), 0) as pct) cov on true
+    left join lateral (select k.total, case when k.by_pack then k.packs end as packs
+                       from pack_charge(m.item_id, greatest(m.quantity - m.quantity_given, 0), pp.price,
+                                        inv.payer_id is null or coalesce(pp.fallback, false)) k) pc on true
+    where rx_pending(m)
+  ), priced as (
+    select l.*, round(coalesce(case when l.payer_price is null then 0 else l.line_total end, 0) * l.pct / 100) as insurer_share
+    from lines l
+  )
+  select
+    coalesce(jsonb_agg(jsonb_build_object(
+      'requestId', x.id, 'encounterId', x.encounter_id, 'patientId', x.patient_id, 'patient', x.patient,
+      'file', x.file_number, 'ticket', x.ticket,
+      'itemId', x.item_id, 'item', x.item, 'unit', x.selling_unit,
+      'packSize', x.pack_size, 'packPrice', x.pack_price, 'packs', x.packs, 'splitFrom', x.split_from,
+      'quantity', x.quantity, 'given', x.quantity_given,
+      'remaining', ceil(x.quantity)::integer - x.quantity_given, 'dose', x.dose, 'frequency', x.frequency, 'days', x.duration_days,
+      'instructions', x.instructions, 'prescriber', x.prescriber, 'prescriberId', x.prescriber_id, 'at', x.created_at,
+      -- the cash price (as before) and what the bill will say
+      'price', x.cash_price, 'cashPrice', x.cash_price, 'payerPrice', x.payer_price,
+      'priced', x.payer_price is not null, 'payer', x.payer, 'coveragePct', x.pct,
+      'lineTotal', case when x.payer_price is null then 0 else coalesce(x.line_total, 0) end, 'insurerShare', x.insurer_share,
+      'patientShare', case when x.payer_price is null then 0 else coalesce(x.line_total, 0) end - x.insurer_share,
+      -- the stock of the store chosen at the desk
+      'locationId', v_loc, 'pharmacyLocationId', v_loc,
+      'onHandPharmacy', case when v_loc is null then 0 else usable_stock(x.item_id, v_loc) end,
+      'expiredInPharmacy', (select coalesce(sum(s.quantity), 0)::integer from stock_on_hand s
+                            where s.item_id = x.item_id and s.location_id = v_loc and s.quantity > 0
+                              and s.expiry < current_date),
+      'onHandElsewhere', (select coalesce(sum(s.quantity), 0)::integer from stock_on_hand s
+                          join stock_location l on l.id = s.location_id
+                          where s.item_id = x.item_id and l.id is distinct from v_loc and l.active and l.deleted_at is null
+                            and s.quantity > 0 and (s.expiry is null or s.expiry >= current_date)),
+      'doctorHolds', x.holds,
+      -- the pharmacist's check
+      'sex', x.sex, 'birthDate', x.birth_date,
+      'ageYears', case when x.birth_date is not null then extract(year from age(current_date, x.birth_date))::integer end,
+      'allergies', x.allergies,
+      'prescribingRule', x.prescribing_rule, 'prescriberSpecialty', x.specialty,
+      'ruleOk', rx_rule_ok(x.prescribing_rule, x.specialty)
+    ) order by x.created_at), '[]'::jsonb)
+  into v_lines
+  from priced x;
+
+  with lines as (
+    select m.encounter_id, min(m.created_at) as first_at, count(*)::integer as n,
+           sum(case when pp.price is null then 0 else pc.total end) as total,
+           sum(round(case when pp.price is null then 0 else pc.total end * cov.pct / 100)) as insurer
+    from medication_request m
+    join encounter e on e.id = m.encounter_id and e.status = 'open'
+    left join invoice inv on inv.encounter_id = e.id
+    left join lateral (select pf.price, pf.fallback from price_for(null, m.item_id, inv.payer_id) pf) pp on true
+    left join lateral (select coalesce(coverage_pct_for((select c.plan_id from coverage c where c.id = inv.coverage_id),
+                                                        'pharmacy'::service_group), 0) as pct) cov on true
+    left join lateral (select k.total from pack_charge(m.item_id, greatest(m.quantity - m.quantity_given, 0), pp.price,
+                                                       inv.payer_id is null or coalesce(pp.fallback, false)) k) pc on true
+    where rx_pending(m)
+    group by m.encounter_id
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'encounterId', l.encounter_id, 'patientId', p.id, 'patient', p.surname || ' ' || p.given_names,
+      'file', p.file_number,
+      'ticket', (select q.ticket_no from queue_entry q where q.encounter_id = l.encounter_id order by q.created_at limit 1),
+      'sex', p.sex, 'birthDate', p.birth_date,
+      'ageYears', case when p.birth_date is not null then extract(year from age(current_date, p.birth_date))::integer end,
+      'ageMonths', case when p.birth_date is not null
+                        then (extract(year from age(current_date, p.birth_date)) * 12
+                              + extract(month from age(current_date, p.birth_date)))::integer end,
+      'allergies', p.allergies, 'payer', py.name,
+      'lines', l.n, 'total', l.total, 'insurerShare', l.insurer, 'patientShare', l.total - l.insurer,
+      'balance', invoice_balance(inv.id),
+      'doctorHolds', doctor_holds(l.encounter_id)
+    ) order by l.first_at), '[]'::jsonb)
+  into v_patients
+  from lines l
+  join encounter e on e.id = l.encounter_id
+  join patient p on p.id = e.patient_id
+  left join invoice inv on inv.encounter_id = e.id
+  left join payer py on py.id = inv.payer_id;
+
+  return jsonb_build_object('locationId', v_loc, 'stores', v_stores, 'lines', v_lines, 'patients', v_patients);
+end
+$$;
+
+-- ---------------------------------------------------------------- the stock readers say the pack
+-- stock_overview (from 20261207090000_pharmacy_simplified): packPrice beside packSize.
+create or replace function stock_overview()
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_admin boolean := stock_admin();
+  v_vis uuid[] := visible_stores();
+  v_main uuid := main_pharmacy();
+  v_transit uuid := (select id from stock_location where type::text = 'transit' and deleted_at is null limit 1);
+  v_locations jsonb;
+  v_days integer := stock_expiry_days();
+  v_items jsonb;
+begin
+  if not (v_admin or has_perm('stock.read') or cardinality(v_vis) > 0) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', l.id, 'name', l.name, 'type', l.type, 'department', d.name, 'active', l.active,
+      'isMain', l.id = v_main, 'isRoom', is_room_type(l.type), 'held', holds_store(auth.uid(), l.id),
+      'holders', store_holders(l.id)
+    ) order by l.active desc, l.type, l.name), '[]'::jsonb)
+  into v_locations
+  from stock_location l left join department d on d.id = l.department_id
+  where l.deleted_at is null and l.type::text <> 'transit' and (v_vis is null or l.id = any (v_vis));
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', i.id, 'code', i.code, 'name', i.name_generic, 'strength', i.strength, 'unit', i.selling_unit,
+      'packSize', i.pack_size, 'packPrice', i.pack_price,
+      'sellingPrice', (select pf.price from price_for(null, i.id, null) pf),
+      'reorderLevel', i.reorder_level, 'maxLevel', i.max_level,
+      'onHand', coalesce(t.on_hand, 0),
+      'usable', coalesce(t.usable, 0),
+      'costValue', case when v_admin then coalesce(t.cost_value, 0) end,
+      'avgCost', case when v_admin and coalesce(t.on_hand, 0) > 0 then round(t.cost_value / t.on_hand, 2) end,
+      'byLocation', coalesce(t.by_location, '{}'::jsonb),
+      'byLocationUsable', coalesce(t.by_location_usable, '{}'::jsonb),
+      'earliestExpiry', t.earliest_expiry,
+      'nextExpiry', t.next_expiry,
+      'expiredUnits', coalesce(t.expired, 0),
+      'expiringUnits', coalesce(t.expiring, 0),
+      'inTransit', case when v_admin then coalesce(t.in_transit, 0) end,
+      'pharmacyUsable', case when v_admin then coalesce(t.pharmacy_usable, 0) end,
+      'low', i.reorder_level > 0 and coalesce(t.pharmacy_usable, 0) <= i.reorder_level,
+      'active', i.active, 'kind', i.kind
+    ) order by i.name_generic), '[]'::jsonb)
+  into v_items
+  from item i
+  left join lateral (
+    select sum(s.quantity)::integer as on_hand,
+           sum(s.quantity) filter (where s.expiry is null or s.expiry >= current_date)::integer as usable,
+           sum(s.quantity * coalesce(b.unit_cost, 0)) as cost_value,
+           min(s.expiry) filter (where s.quantity > 0) as earliest_expiry,
+           min(s.expiry) filter (where s.quantity > 0 and s.expiry >= current_date) as next_expiry,
+           sum(s.quantity) filter (where s.quantity > 0 and s.expiry < current_date)::integer as expired,
+           sum(s.quantity) filter (where s.quantity > 0 and s.expiry between current_date and current_date + v_days)::integer as expiring,
+           (select jsonb_object_agg(x.location_id::text, x.q) from (
+              select s2.location_id, sum(s2.quantity)::integer as q from stock_on_hand s2
+              where s2.item_id = i.id and s2.location_id is distinct from v_transit
+                and (v_vis is null or s2.location_id = any (v_vis))
+              group by s2.location_id having sum(s2.quantity) <> 0) x) as by_location,
+           (select jsonb_object_agg(x.location_id::text, x.q) from (
+              select s2.location_id, sum(s2.quantity)::integer as q from stock_on_hand s2
+              where s2.item_id = i.id and s2.location_id is distinct from v_transit
+                and (v_vis is null or s2.location_id = any (v_vis))
+                and (s2.expiry is null or s2.expiry >= current_date)
+              group by s2.location_id having sum(s2.quantity) <> 0) x) as by_location_usable,
+           (select coalesce(sum(s3.quantity), 0)::integer from stock_on_hand s3
+             where s3.item_id = i.id and s3.location_id = v_transit) as in_transit,
+           (select coalesce(sum(s4.quantity), 0)::integer from stock_on_hand s4
+              join stock_location l4 on l4.id = s4.location_id
+             where s4.item_id = i.id and l4.type = 'pharmacy' and l4.active and l4.deleted_at is null
+               and s4.quantity > 0 and (s4.expiry is null or s4.expiry >= current_date)) as pharmacy_usable
+    from stock_on_hand s left join batch b on b.id = s.batch_id
+    where s.item_id = i.id and s.location_id is distinct from v_transit
+      and (v_vis is null or s.location_id = any (v_vis))
+  ) t on true
+  where i.deleted_at is null;
+
+  return jsonb_build_object('locations', v_locations, 'items', v_items, 'admin', v_admin, 'mainPharmacyId', v_main, 'expiryDays', v_days,
+                            'transit', case when v_admin then jsonb_build_object(
+                              'units', (select coalesce(sum(s.quantity), 0) from stock_on_hand s where s.location_id = v_transit),
+                              'value', (select coalesce(sum(s.quantity * coalesce(b.unit_cost, 0)), 0) from stock_on_hand s
+                                        left join batch b on b.id = s.batch_id where s.location_id = v_transit),
+                              'notes', (select count(*) from stock_transfer where status = 'in_transit')) end);
+end
+$$;
+
+-- stock_alerts (from 20261207090000_pharmacy_simplified): the low list says the pack size too.
+create or replace function stock_alerts()
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_admin boolean := stock_admin();
+  v_vis uuid[] := visible_stores();
+  v_days integer := stock_expiry_days();
+begin
+  return jsonb_build_object(
+    'expiryDays', v_days,
+    -- the pharmacy: unexpired units at or below the reorder level
+    'low', case when v_admin then coalesce((
+      select jsonb_agg(jsonb_build_object('itemId', r.item_id, 'item', item_label(r.item_id), 'code', r.code,
+                                          'onHand', r.on_hand, 'level', r.reorder_level,
+                                          'maxLevel', (select max_level from item where id = r.item_id),
+                                          'packSize', (select pack_size from item where id = r.item_id),
+                                          'unit', (select selling_unit from item where id = r.item_id))
+                       order by r.on_hand::numeric / greatest(r.reorder_level, 1), r.name_generic)
+      from items_below_reorder r), '[]'::jsonb) else '[]'::jsonb end,
+    -- a room store below the minimum set for it
+    'roomLow', coalesce((
+      select jsonb_agg(jsonb_build_object('storeId', l.id, 'store', l.name, 'itemId', m.item_id, 'item', item_label(m.item_id),
+                                          'onHand', usable_stock(m.item_id, l.id), 'min', m.min_level)
+                       order by l.name)
+      from store_item_level m join stock_location l on l.id = m.location_id and l.active and l.deleted_at is null
+      where (v_vis is null or l.id = any (v_vis)) and usable_stock(m.item_id, l.id) < m.min_level), '[]'::jsonb),
+    -- expiring within the window (stock.expiry_days) (not expired yet), batch by batch
+    'expiring', coalesce((
+      select jsonb_agg(jsonb_build_object('storeId', l.id, 'store', l.name, 'itemId', s.item_id, 'item', item_label(s.item_id),
+                                          'batchNo', b.batch_no, 'expiry', s.expiry, 'quantity', s.quantity,
+                                          'days', s.expiry - current_date)
+                       order by s.expiry, l.name)
+      from stock_on_hand s join stock_location l on l.id = s.location_id and l.deleted_at is null and l.type::text <> 'transit'
+      left join batch b on b.id = s.batch_id
+      where s.quantity > 0 and s.expiry between current_date and current_date + v_days
+        and (v_vis is null or l.id = any (v_vis))), '[]'::jsonb),
+    -- already expired: to write off (or send back to the pharmacy)
+    'expired', coalesce((
+      select jsonb_agg(jsonb_build_object('storeId', l.id, 'store', l.name, 'itemId', s.item_id, 'item', item_label(s.item_id),
+                                          'batchNo', b.batch_no, 'expiry', s.expiry, 'quantity', s.quantity)
+                       order by s.expiry, l.name)
+      from stock_on_hand s join stock_location l on l.id = s.location_id and l.deleted_at is null and l.type::text <> 'transit'
+      left join batch b on b.id = s.batch_id
+      where s.quantity > 0 and s.expiry < current_date
+        and (v_vis is null or l.id = any (v_vis))), '[]'::jsonb)
+  );
+end
+$$;
+
+-- stock_sales (from 20261207090000_pharmacy_simplified): a bill line written in packs counts its
+-- pieces (quantity × pack_size); the revenue is what the line charged.
+create or replace function stock_sales(p_from date, p_to date)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  with sold as (
+    select l.item_id, (l.quantity * coalesce(l.pack_size, 1))::numeric as units, round(l.quantity * l.unit_price) as revenue
+    from invoice_line l
+    join invoice inv on inv.id = l.invoice_id and inv.status <> 'credited'
+    where l.deleted_at is null and l.item_id is not null
+      and (l.created_at at time zone 'Africa/Kigali')::date between p_from and p_to
+    union all
+    select x.item_id, x.quantity, x.line_total
+    from counter_sale_line x join counter_sale s on s.id = x.sale_id
+    where x.deleted_at is null and s.deleted_at is null and s.status = 'handed_over'
+      and (s.handed_over_at at time zone 'Africa/Kigali')::date between p_from and p_to
+  ), per_item as (
+    select i.name_generic || coalesce(' ' || i.strength, '') as name,
+           sum(s.units) as units,
+           sum(s.revenue) as revenue,
+           round(sum(s.units) * coalesce((
+             select sum(coalesce(m.unit_cost, b.unit_cost) * m.quantity) / nullif(sum(m.quantity), 0)
+             from stock_movement m join batch b on b.id = m.batch_id
+             where m.item_id = i.id and m.type = 'receipt' and m.deleted_at is null and b.deleted_at is null), 0), 2) as cost
+    from sold s join item i on i.id = s.item_id
+    group by i.id, i.name_generic, i.strength
+  )
+  select jsonb_build_object(
+    'items', coalesce((select jsonb_agg(jsonb_build_object(
+        'item', x.name, 'units', x.units, 'revenue', x.revenue, 'cost', x.cost, 'margin', x.revenue - x.cost
+      ) order by x.revenue desc) from per_item x), '[]'::jsonb),
+    'revenue', (select coalesce(sum(revenue), 0) from per_item),
+    'cost', (select coalesce(sum(cost), 0) from per_item),
+    'margin', (select coalesce(sum(revenue - cost), 0) from per_item),
+    'counterRevenue', (select coalesce(sum(s.total), 0) from counter_sale s
+                       where s.deleted_at is null and s.status = 'handed_over'
+                         and (s.handed_over_at at time zone 'Africa/Kigali')::date between p_from and p_to),
+    'received', (select coalesce(sum(m.quantity * coalesce(m.unit_cost, b.unit_cost, 0)), 0)
+                 from stock_movement m left join batch b on b.id = m.batch_id
+                 where m.deleted_at is null and m.type = 'receipt' and (m.moved_at at time zone 'Africa/Kigali')::date between p_from and p_to),
+    'consumed', (select coalesce(sum(m.quantity * coalesce(b.unit_cost, 0)), 0) from stock_movement m left join batch b on b.id = m.batch_id
+                 where m.deleted_at is null and m.type = 'consumption' and (m.moved_at at time zone 'Africa/Kigali')::date between p_from and p_to),
+    -- everything held, in every store and on the way
+    'stockValue', (select coalesce(sum(s.quantity * coalesce(b.unit_cost, 0)), 0) from stock_on_hand s
+                   left join batch b on b.id = s.batch_id where s.quantity > 0)
+  )
+  where has_perm('stock.read') and stock_admin()
+$$;
+
+-- ---------------------------------------------------------------- add stock: the pack size follows
+-- add_stock (from 20261208090000_reference_list_versions): a line may say pack_size (counted in
+-- boxes): an item without one takes it; a medicine new from the official list takes the list's
+-- "B/20". Quantities stay in pieces.
+create or replace function add_stock(p_lines jsonb, p_location_id uuid default null, p_note text default null)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_main uuid := main_pharmacy();
+  v_loc uuid;
+  v_id uuid;
+  v_number text;
+  v_line jsonb;
+  v_n integer;
+  v_item uuid;
+  v_new jsonb;
+  v_kind text;
+  v_name text;
+  v_strength text;
+  v_code text;
+  v_ref medicine_reference%rowtype;
+  v_created boolean;
+  v_qty numeric;
+  v_units integer;
+  v_cost numeric;
+  v_sell numeric;
+  v_price numeric;
+  v_expiry date;
+  v_batch uuid;
+  v_line_cost numeric;
+  v_updated boolean;
+  v_ignored boolean;
+  v_pack integer;
+  v_price_right boolean := has_perm('item_price.write') or has_perm('catalogue.write');
+  v_out jsonb := '[]'::jsonb;
+  v_total numeric := 0;
+  v_state text;
+  v_msg text;
+  v_hint text;
+begin
+  if not stock_manager() then
+    perform assert_stock_write();
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  v_loc := coalesce(p_location_id, v_main);
+  if v_loc is null then
+    raise exception 'no pharmacy store yet: create one under Stock' using errcode = 'P0002';
+  end if;
+  if v_loc is distinct from v_main and not is_manager() then
+    raise exception 'stock is added into the main pharmacy (another store: the manager)' using errcode = '42501';
+  end if;
+  if not exists (select 1 from stock_location where id = v_loc and deleted_at is null and type::text <> 'transit') then
+    raise exception 'store not found' using errcode = 'P0002';
+  end if;
+  if p_lines is null or jsonb_typeof(p_lines) <> 'array' or jsonb_array_length(p_lines) = 0 then
+    raise exception 'add at least one medicine' using errcode = '22023';
+  end if;
+  v_number := day_number('GRN', 'goods-receipt');
+  insert into goods_receipt (supplier_id, received_on, note, number, reference, delivered_on, location_id, supplier_name)
+  values (null, now(), nullif(trim(coalesce(p_note, '')), ''), v_number, null,
+          (now() at time zone 'Africa/Kigali')::date, v_loc, null)
+  returning id into v_id;
+
+  for v_line, v_n in select x.value, x.ordinality from jsonb_array_elements(p_lines) with ordinality as x loop
+    begin
+      v_created := false;
+      v_updated := false;
+      v_ignored := false;
+      v_ref := null;
+      v_item := nullif(v_line ->> 'item_id', '')::uuid;
+      v_new := case when jsonb_typeof(v_line -> 'new_item') = 'object' then v_line -> 'new_item' end;
+      v_sell := nullif(v_line ->> 'sell_price', '')::numeric;
+      -- 0102: the pieces in one pack, when the line was counted in boxes
+      v_pack := nullif(v_line ->> 'pack_size', '')::integer;
+      if v_pack is not null and v_pack < 1 then
+        raise exception 'units per box: 1 or more' using errcode = '22023';
+      end if;
+      if v_sell is not null and v_sell < 0 then
+        raise exception 'the price must be zero or more' using errcode = '22023';
+      end if;
+      if v_item is null and v_new is not null then
+        v_kind := coalesce(nullif(v_new ->> 'kind', ''), 'medicine');
+        if v_kind not in ('medicine', 'supply') then
+          raise exception 'a new item is a medicine or a supply' using errcode = '22023';
+        end if;
+        v_name := trim(coalesce(v_new ->> 'name', ''));
+        v_strength := nullif(trim(coalesce(v_new ->> 'strength', '')), '');
+        if length(v_name) < 2 then
+          raise exception 'the medicine needs a name' using errcode = '22023';
+        end if;
+        -- 0098: picked from the official list: the item carries the list's code (its insurer
+        -- price and its prescribing rule follow the list)
+        v_code := nullif(upper(trim(coalesce(v_new ->> 'code', ''))), '');
+        if v_code is not null then
+          select * into v_ref from medicine_reference where code = v_code;
+          if not found then
+            raise exception 'this medicine is not on the reference list' using errcode = 'P0002';
+          end if;
+          select id into v_item from item where code = v_code;
+          if v_item is not null then
+            update item set deleted_at = null, active = true where id = v_item and (deleted_at is not null or not active);
+          end if;
+          -- 0102: the list's "B/20" is the pack size, unless the line says it
+          v_pack := coalesce(v_pack, pack_size_in(v_ref.presentation));
+        end if;
+        -- the same name (and strength) already on the list: that item
+        if v_item is null then
+          select id into v_item from item
+          where deleted_at is null and lower(name_generic) = lower(v_name)
+            and lower(coalesce(strength, '')) = lower(coalesce(v_strength, ''))
+          order by active desc, created_at
+          limit 1;
+        end if;
+        if v_item is null then
+          insert into item (code, name_generic, strength, form, unit, selling_unit, active, kind, pack_size)
+          values (coalesce(v_code, case when v_kind = 'supply' then 'SUP-' else 'MED-' end
+                    || lpad(next_number('item_code', 0)::text, 4, '0')),
+                  v_name, v_strength, nullif(trim(coalesce(v_new ->> 'form', '')), ''),
+                  nullif(trim(coalesce(v_new ->> 'unit', '')), ''), nullif(trim(coalesce(v_new ->> 'unit', '')), ''),
+                  true, v_kind, v_pack)
+          returning id into v_item;
+          if v_code is not null then
+            update item set prescribing_rule = v_ref.prescribing_rule, atc_group = v_ref.atc_group,
+                            name_brand = v_ref.presentation, source = v_ref.source
+            where id = v_item;
+          end if;
+          v_created := true;
+        end if;
+      end if;
+      if v_item is null then
+        raise exception 'choose the medicine' using errcode = '22023';
+      end if;
+      if not exists (select 1 from item where id = v_item and deleted_at is null) then
+        raise exception 'medicine not found' using errcode = 'P0002';
+      end if;
+      -- an item without a pack size takes the one the line was counted with
+      if v_pack is not null then
+        update item set pack_size = v_pack where id = v_item and pack_size is null;
+      end if;
+      v_qty := nullif(v_line ->> 'quantity', '')::numeric;
+      if v_qty is null or v_qty <= 0 then
+        raise exception 'quantity must be more than zero' using errcode = '22023';
+      end if;
+      if v_qty <> round(v_qty) then
+        raise exception 'the quantity must come to whole units' using errcode = '22023';
+      end if;
+      v_units := v_qty::integer;
+      v_cost := nullif(v_line ->> 'unit_cost', '')::numeric;
+      if v_cost is null or v_cost < 0 then
+        raise exception 'the cost per unit must be zero or more' using errcode = '22023';
+      end if;
+      v_expiry := nullif(v_line ->> 'expiry', '')::date;
+      -- the selling price: a new item (or one without a price) takes it; a different price needs the right
+      if v_sell is not null then
+        select pf.price into v_price from price_for(null, v_item, null) pf;
+        if v_price is null or v_created then
+          perform set_cash_price(v_item, v_sell);
+          v_updated := true;
+        elsif round(v_sell) <> v_price then
+          if v_price_right then
+            perform set_cash_price(v_item, v_sell);
+            v_updated := true;
+          else
+            v_ignored := true;
+          end if;
+        end if;
+      end if;
+      v_batch := receive_batch(v_item, v_loc, v_units, v_cost, v_line ->> 'batch_no', v_expiry, null, null, v_id);
+      v_line_cost := round(round(v_cost, 2) * v_units, 2);
+      insert into goods_receipt_line (receipt_id, item_id, batch_id, batch_no, expiry, unit, packs, pack_size, units,
+                                      unit_cost, pack_cost, line_cost)
+      select v_id, v_item, b.id, b.batch_no, b.expiry, 'unit', v_units, 1, v_units, round(v_cost, 2), null, v_line_cost
+      from batch b where b.id = v_batch;
+      v_total := v_total + v_line_cost;
+      v_out := v_out || jsonb_build_array(jsonb_build_object(
+        'item_id', v_item, 'batch_id', v_batch, 'quantity', v_units, 'line_cost', v_line_cost,
+        'created', v_created, 'price_updated', v_updated, 'price_ignored', v_ignored,
+        'pack_size', (select pack_size from item where id = v_item)));
+    exception when others then
+      get stacked diagnostics v_state = returned_sqlstate, v_msg = message_text, v_hint = pg_exception_hint;
+      raise exception 'line %: %', v_n, v_msg using errcode = v_state, hint = coalesce(nullif(v_hint, ''), 'line');
+    end;
+  end loop;
+  update goods_receipt set total_cost = v_total where id = v_id;
+  perform stock_alert_run();
+  return jsonb_build_object('lines', v_out, 'total_cost', v_total, 'id', v_id, 'number', v_number, 'location_id', v_loc);
+end
+$$;
+
+-- ---------------------------------------------------------------- the rest of an over-quantity prescription
+-- rx_not_given (from 20261210090000_outside_prescriptions): the prescriber is told what was
+-- prescribed, given and remaining; the rest may always go to an outside pharmacy.
+create or replace function rx_not_given(p_medication_request_id uuid, p_reason text)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_m medication_request%rowtype;
+  v_item text;
+  v_name text;
+  v_left integer;
+  v_main uuid := main_pharmacy();
+begin
+  perform assert_desk(array['pharmacy'], 'the pharmacy');
+  if length(trim(coalesce(p_reason, ''))) < 2 then
+    raise exception 'say why the medicine is not given' using errcode = '22023';
+  end if;
+  select * into v_m from medication_request where id = p_medication_request_id for update;
+  if not found or not rx_pending(v_m) then
+    raise exception 'this medicine is no longer waiting at the pharmacy' using errcode = 'P0002';
+  end if;
+  update medication_request
+  set not_given_at = now(), not_given_by = auth.uid(), not_given_reason = trim(p_reason)
+  where id = v_m.id;
+  v_item := rx_label(v_m);
+  v_left := ceil(v_m.quantity)::integer - coalesce(v_m.quantity_given, 0);
+  select p.surname || ' ' || p.given_names into v_name
+  from encounter e join patient p on p.id = e.patient_id where e.id = v_m.encounter_id;
+  if coalesce(v_m.prescriber_id, v_m.created_by) is not null
+     and coalesce(v_m.prescriber_id, v_m.created_by) is distinct from auth.uid() then
+    insert into notification (kind, params, link, recipient_user, created_by)
+    values ('rx_not_given', jsonb_build_object('item', v_item, 'name', v_name, 'reason', trim(p_reason),
+                                               'quantity', ceil(v_m.quantity)::integer,
+                                               'given', coalesce(v_m.quantity_given, 0),
+                                               'remaining', v_left,
+                                               'unit', (select selling_unit from item where id = v_m.item_id),
+                                               'requestId', v_m.id,
+                                               -- the pharmacy has not enough (unexpired) for what remains
+                                               'noStock', v_main is null or usable_stock(v_m.item_id, v_main) < v_left,
+                                               -- the prescriber may send what remains to an outside pharmacy
+                                               'outside', true),
+            '/app/visit?encounter=' || v_m.encounter_id, coalesce(v_m.prescriber_id, v_m.created_by), auth.uid());
+  end if;
+  perform after_pharmacy(v_m.encounter_id);
+end
+$$;
+
+-- rx_set_supply (from 20261210090000_outside_prescriptions): a partly given line sends only its
+-- remainder outside (a new line, split_from = the original); the given part stays charged.
+create or replace function rx_set_supply(p_request_id uuid, p_supply text, p_reason text default null)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_m medication_request%rowtype;
+  v_rest medication_request%rowtype;
+  v_open boolean;
+  v_was_waiting boolean;
+  v_name text;
+  v_left integer;
+  v_given integer;
+  v_remaining integer;
+  v_rest_id uuid;
+begin
+  if not has_perm('clinical.write') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform assert_desk(treating_desks(), 'treatment');
+  if p_supply is null or p_supply not in ('pharmacy', 'outside') then
+    raise exception 'unknown supply' using errcode = '22023';
+  end if;
+  select * into v_m from medication_request where id = p_request_id and deleted_at is null for update;
+  if not found then
+    raise exception 'prescription not found' using errcode = 'P0002';
+  end if;
+  select e.status = 'open' into v_open from encounter e where e.id = v_m.encounter_id;
+  -- as prescribing: the doctor treating the patient (or the prescriber, or the manager)
+  if not (is_manager() or coalesce(v_m.prescriber_id, v_m.created_by) = auth.uid()
+          or (v_open and may_work_on(v_m.encounter_id))) then
+    if v_open then
+      perform assert_may_work_on(v_m.encounter_id);
+    end if;
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_m.cancelled_at is not null or v_m.given_at is not null or v_m.supply = 'room' then
+    raise exception 'this medicine was already given or cancelled: it stays as it is' using errcode = 'P0002';
+  end if;
+  v_given := coalesce(v_m.quantity_given, 0);
+  v_remaining := ceil(v_m.quantity)::integer - v_given;
+  -- a hand-over of before 0097 (no quantity kept): the whole line was given
+  if v_given = 0 and v_m.not_given_at is null and exists (
+       select 1 from medication_dispense d where d.medication_request_id = v_m.id and d.deleted_at is null) then
+    raise exception 'this medicine was already given or cancelled: it stays as it is' using errcode = 'P0002';
+  end if;
+
+  -- 0102: part of it was handed over: the decision is about the REST. The rest already has its
+  -- own line (sent outside before): the decision applies to that line.
+  if v_given > 0 then
+    if v_remaining <= 0 then
+      raise exception 'this medicine was already given or cancelled: it stays as it is' using errcode = 'P0002';
+    end if;
+    select * into v_rest from medication_request
+    where split_from = v_m.id and deleted_at is null and cancelled_at is null
+    order by created_at desc limit 1;
+    if found then
+      return rx_set_supply(v_rest.id, p_supply, p_reason) || jsonb_build_object('splitFrom', v_m.id, 'given', v_given);
+    end if;
+    if p_supply = 'outside' then
+      if not v_open then
+        raise exception 'visit not found or already closed' using errcode = 'P0002';
+      end if;
+      v_was_waiting := rx_pending(v_m);
+      -- still waiting at the pharmacy: the original closes for the rest (the given part stays)
+      if v_was_waiting then
+        update medication_request
+        set not_given_at = now(), not_given_by = auth.uid(),
+            not_given_reason = coalesce(nullif(trim(coalesce(p_reason, '')), ''), 'the rest is bought at an outside pharmacy')
+        where id = v_m.id;
+      end if;
+      insert into medication_request (encounter_id, item_id, dose, route, frequency, duration_days, quantity,
+                                      instructions, allergy_override_reason, supply, prescriber_id, medicine_name,
+                                      reference_code, supply_set_at, supply_set_by, supply_reason, split_from)
+      values (v_m.encounter_id, v_m.item_id, v_m.dose, v_m.route, v_m.frequency, v_m.duration_days,
+              v_m.quantity - v_given, v_m.instructions, v_m.allergy_override_reason, 'outside',
+              coalesce(v_m.prescriber_id, v_m.created_by),
+              coalesce(nullif(trim(coalesce(v_m.medicine_name, '')), ''), item_label(v_m.item_id)),
+              coalesce(v_m.reference_code, (select i.code from item i where i.id = v_m.item_id
+                                              and exists (select 1 from medicine_reference r where r.code = i.code))),
+              now(), auth.uid(), nullif(trim(coalesce(p_reason, '')), ''), v_m.id)
+      returning id into v_rest_id;
+      if v_was_waiting then
+        select p.surname || ' ' || p.given_names into v_name
+        from encounter e join patient p on p.id = e.patient_id where e.id = v_m.encounter_id;
+        insert into notification (kind, params, link, recipient_stations, created_by)
+        values ('rx_outside',
+                jsonb_build_object('item', rx_label(v_m), 'name', v_name,
+                                   'by', (select full_name from profiles where id = auth.uid()),
+                                   'reason', nullif(trim(coalesce(p_reason, '')), ''), 'requestId', v_m.id,
+                                   'quantity', v_remaining, 'given', v_given),
+                '/app/visit?encounter=' || v_m.encounter_id, array['pharmacy'::station], auth.uid());
+        perform after_pharmacy(v_m.encounter_id);
+      end if;
+      select count(*)::integer into v_left from medication_request m
+      where m.encounter_id = v_m.encounter_id and rx_pending(m);
+      return jsonb_build_object('id', v_rest_id, 'supply', 'outside', 'changed', true, 'pending', v_left,
+                                'splitFrom', v_m.id, 'quantity', v_remaining, 'given', v_given);
+    end if;
+    -- back to the pharmacy: the rest waits on the original line again (below)
+  end if;
+
+  if v_m.supply = p_supply then
+    return jsonb_build_object('id', v_m.id, 'supply', v_m.supply, 'changed', false,
+                              'pending', (select count(*)::integer from medication_request m
+                                          where m.encounter_id = v_m.encounter_id and rx_pending(m)));
+  end if;
+  v_was_waiting := rx_pending(v_m);
+  if p_supply = 'pharmacy' then
+    if v_m.item_id is null then
+      raise exception 'this medicine is not sold at the clinic: it can only be bought outside' using errcode = '22023';
+    end if;
+    if not v_open then
+      raise exception 'visit not found or already closed' using errcode = 'P0002';
+    end if;
+    -- back to the pharmacy's list (a "not given" of before is cleared: the pharmacy tries again)
+    update medication_request
+    set supply = 'pharmacy', not_given_at = null, not_given_by = null, not_given_reason = null,
+        supply_set_at = now(), supply_set_by = auth.uid(),
+        supply_reason = nullif(trim(coalesce(p_reason, '')), '')
+    where id = v_m.id;
+    if not exists (select 1 from queue_entry where encounter_id = v_m.encounter_id and station = 'pharmacy'
+                   and finished_at is null and deleted_at is null) then
+      insert into queue_entry (encounter_id, station, ticket_no)
+      values (v_m.encounter_id, 'pharmacy',
+              (select ticket_no from queue_entry where encounter_id = v_m.encounter_id order by created_at limit 1));
+    end if;
+  else
+    update medication_request
+    set supply = 'outside', medicine_name = coalesce(nullif(trim(coalesce(medicine_name, '')), ''), item_label(item_id)),
+        reference_code = coalesce(reference_code, (select i.code from item i where i.id = v_m.item_id
+                                                     and exists (select 1 from medicine_reference r where r.code = i.code))),
+        supply_set_at = now(), supply_set_by = auth.uid(),
+        supply_reason = nullif(trim(coalesce(p_reason, '')), '')
+    where id = v_m.id;
+    -- it was on the pharmacy's list: the pharmacy is told it left
+    if v_was_waiting then
+      select p.surname || ' ' || p.given_names into v_name
+      from encounter e join patient p on p.id = e.patient_id where e.id = v_m.encounter_id;
+      insert into notification (kind, params, link, recipient_stations, created_by)
+      values ('rx_outside',
+              jsonb_build_object('item', rx_label(v_m), 'name', v_name,
+                                 'by', (select full_name from profiles where id = auth.uid()),
+                                 'reason', nullif(trim(coalesce(p_reason, '')), ''), 'requestId', v_m.id),
+              '/app/visit?encounter=' || v_m.encounter_id, array['pharmacy'::station], auth.uid());
+    end if;
+    -- nothing left at the pharmacy: the patient goes on (back, cashier, or the visit closes)
+    if v_open then
+      perform after_pharmacy(v_m.encounter_id);
+    end if;
+  end if;
+  select count(*)::integer into v_left from medication_request m
+  where m.encounter_id = v_m.encounter_id and rx_pending(m);
+  return jsonb_build_object('id', v_m.id, 'supply', p_supply, 'changed', true, 'pending', v_left,
+                            'splitFrom', v_m.split_from);
+end
+$$;
+
+-- rx_bought_outside (from 20261210090000_outside_prescriptions): the remainder of a partly given
+-- line counts as sent outside after the pharmacy had none.
+create or replace function rx_bought_outside(p_from date, p_to date)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+begin
+  if not (has_perm('stock.read') and stock_admin()) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if p_to < p_from then
+    raise exception 'the end of the period is before its start' using errcode = '22023';
+  end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+        'name', x.name, 'itemId', x.item_id, 'referenceCode', x.code, 'inClinic', x.item_id is not null,
+        'times', x.times, 'quantity', x.quantity, 'patients', x.patients, 'lastAt', x.last_at,
+        'notGiven', x.not_given)
+      order by x.times desc, x.quantity desc, x.name)
+    from (
+      select min(rx_label(m)) as name, m.item_id, min(m.reference_code) as code,
+             count(*)::integer as times, sum(m.quantity) as quantity,
+             count(distinct e.patient_id)::integer as patients, max(m.created_at) as last_at,
+             -- sent outside after the pharmacy had none (the whole line, or the rest of a part hand-over)
+             count(*) filter (where m.not_given_at is not null or m.split_from is not null)::integer as not_given
+      from medication_request m join encounter e on e.id = m.encounter_id
+      where m.deleted_at is null and m.supply = 'outside' and m.cancelled_at is null
+        and (m.created_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      group by m.item_id, case when m.item_id is null then lower(coalesce(m.reference_code, rx_label(m))) end
+    ) x), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- grants
+-- (functions replaced with the same arguments keep their grants)
+revoke all on function pack_size_in(text), pack_charge(uuid, numeric, numeric, boolean) from public, anon, authenticated;
+revoke all on function set_pack_price(uuid, numeric) from public, anon;
+grant execute on function set_pack_price(uuid, numeric) to authenticated;
+
+
+-- ============================================================ 20261215090000_receipts_and_documents.sql
+-- 0105 · Receipts of a period, patients' documents of a period, analytics per dashboard.
+--
+-- The owner asked for three things:
+--   * A  RECEIPTS. The cashier's home and the manager's dashboard show how many receipts were
+--        given in the period and for how much, print them all in one document and export the
+--        list. receipts_in_period() returns every payment of the period with what the receipt
+--        builder needs (the same lines, shares and totals as the receipt printed at the cash
+--        desk), sorted by time, filtered by cashier and payment method. The manager and anyone
+--        who reads the bills see the whole desk; someone who only takes payments sees their own.
+--   * B  PATIENTS' DOCUMENTS. The manager prints the medical reports of every patient treated in
+--        a period. visits_in_period() lists the visits with the filters of the page (department,
+--        doctor, service, insurer, only closed visits, a search); visit_documents() returns what
+--        each report needs. It reads every visit through visit_clinical(), the same function the
+--        visit screen uses, so every opening of a closed visit is logged in record_access_entry
+--        exactly as a single opening is (0088). The manager sees everything; a head of department
+--        the visits of their department (analytics_scope, as the Analytics page already does).
+--   * C  ANALYTICS PER DASHBOARD. analytics_access() now lists views for every dashboard, not
+--        only the manager's and the heads': the cashier's money, the pharmacy's hand-overs and
+--        stock, the laboratory's tests, the doctor's and nurse's own work, reception's arrivals
+--        and bookings. desk_analytics() gives those dashboards their figures: the signed-in
+--        person's own work (no money, their own records only), and the desk's bookings, arrivals
+--        and registrations by day. Money and other people's work stay with the manager.
+--
+-- Errcodes: 42501 not allowed.
+
+-- ---------------------------------------------------------------- A receipts of a period
+create or replace function receipts_in_period(
+  p_from date default null,
+  p_to date default null,
+  p_cashier uuid default null,
+  p_method text default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_me uuid := auth.uid();
+  v_all boolean := is_manager() or has_perm('billing.read');
+  v_take boolean := has_perm('payment.take');
+  v_cashier uuid := p_cashier;
+  v_rows jsonb;
+  v_by_method jsonb;
+  v_by_cashier jsonb;
+  v_cashiers jsonb;
+begin
+  if v_me is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  if not (v_all or v_take) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  -- someone who only takes payments (reception by exception) sees the receipts they gave
+  if not v_all then
+    v_cashier := v_me;
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+
+  select coalesce(jsonb_agg(r.j order by r.at, r.id), '[]'::jsonb) into v_rows
+  from (
+    select pa.paid_at as at, pa.id, jsonb_build_object(
+        'id', pa.id,
+        'receiptNo', pa.receipt_no,
+        'invoiceNo', coalesce(i.number, cs.number),
+        'visitNo', e.reference,
+        'encounterId', e.id,
+        'counterSaleId', cs.id,
+        'at', pa.paid_at,
+        'method', pa.method::text,
+        'amount', pa.amount,
+        'reference', pa.reference,
+        'cashierId', pa.cashier_id,
+        'cashier', pr.full_name,
+        'counted', pa.day_close_id is not null,
+        'patient', jsonb_build_object(
+          'name', coalesce(p.surname || ' ' || p.given_names, cs.buyer_name, ''),
+          'fileNumber', coalesce(p.file_number, ''),
+          'insurer', py.name,
+          'memberNo', cv.member_number),
+        'lines', case when i.id is not null then
+            coalesce((select jsonb_agg(jsonb_build_object(
+                        'description', l.description, 'quantity', l.quantity, 'unitPrice', l.unit_price,
+                        'fullAmount', round(l.unit_price * l.quantity), 'amount', l.patient_share)
+                      order by l.created_at)
+                      from invoice_line l where l.invoice_id = i.id and l.deleted_at is null), '[]'::jsonb)
+          else
+            coalesce((select jsonb_agg(jsonb_build_object(
+                        'description', it.name_generic || coalesce(' ' || it.strength, ''), 'quantity', x.quantity,
+                        'unitPrice', x.unit_price, 'fullAmount', x.line_total, 'amount', x.line_total)
+                      order by x.created_at)
+                      from counter_sale_line x join item it on it.id = x.item_id
+                      where x.sale_id = cs.id and x.deleted_at is null), '[]'::jsonb)
+          end,
+        'subtotal', coalesce(i.total, cs.total, 0),
+        'total', coalesce(i.patient_share, cs.total, 0),
+        'insurerAmount', coalesce(i.insurer_share, 0),
+        'insurerPct', pl.coverage_pct,
+        -- what was paid on the bill up to this payment, and what was still due after it
+        'paid', paid.amount,
+        'balance', coalesce(i.patient_share, cs.total, 0) - paid.amount
+      ) as j
+    from payment pa
+    left join invoice i on i.id = pa.invoice_id
+    left join encounter e on e.id = i.encounter_id
+    left join patient p on p.id = e.patient_id
+    left join payer py on py.id = i.payer_id and py.type <> 'cash'
+    left join coverage cv on cv.id = i.coverage_id
+    left join plan pl on pl.id = cv.plan_id
+    left join counter_sale cs on cs.id = pa.counter_sale_id
+    left join profiles pr on pr.id = pa.cashier_id
+    cross join lateral (
+      select coalesce(sum(p2.amount), 0) as amount from payment p2
+      where p2.deleted_at is null
+        and ((pa.invoice_id is not null and p2.invoice_id = pa.invoice_id)
+             or (pa.counter_sale_id is not null and p2.counter_sale_id = pa.counter_sale_id))
+        and (p2.paid_at < pa.paid_at or (p2.paid_at = pa.paid_at and p2.id <= pa.id))
+    ) paid
+    where pa.deleted_at is null
+      and (pa.paid_at at time zone 'Africa/Kigali')::date between v_from and v_to
+      and (v_cashier is null or pa.cashier_id = v_cashier)
+      and (p_method is null or pa.method::text = p_method)
+    order by pa.paid_at, pa.id
+    limit 2000
+  ) r;
+
+  select coalesce(jsonb_agg(jsonb_build_object('method', m.method, 'count', m.n, 'amount', m.amount) order by m.amount desc), '[]'::jsonb)
+  into v_by_method
+  from (select pa.method::text as method, count(*) as n, sum(pa.amount) as amount
+        from payment pa
+        where pa.deleted_at is null
+          and (pa.paid_at at time zone 'Africa/Kigali')::date between v_from and v_to
+          and (v_cashier is null or pa.cashier_id = v_cashier)
+          and (p_method is null or pa.method::text = p_method)
+        group by pa.method) m;
+
+  select coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name, 'count', c.n, 'amount', c.amount) order by c.amount desc), '[]'::jsonb)
+  into v_by_cashier
+  from (select pa.cashier_id as id, coalesce(pr.full_name, '—') as name, count(*) as n, sum(pa.amount) as amount
+        from payment pa left join profiles pr on pr.id = pa.cashier_id
+        where pa.deleted_at is null
+          and (pa.paid_at at time zone 'Africa/Kigali')::date between v_from and v_to
+          and (v_cashier is null or pa.cashier_id = v_cashier)
+          and (p_method is null or pa.method::text = p_method)
+        group by pa.cashier_id, pr.full_name) c;
+
+  -- the cashiers of the period (for the filter), before the cashier filter is applied
+  select coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name) order by c.name), '[]'::jsonb)
+  into v_cashiers
+  from (select distinct pa.cashier_id as id, pr.full_name as name
+        from payment pa join profiles pr on pr.id = pa.cashier_id
+        where pa.deleted_at is null
+          and (pa.paid_at at time zone 'Africa/Kigali')::date between v_from and v_to
+          and (v_all or pa.cashier_id = v_me)) c;
+
+  return jsonb_build_object(
+    'from', v_from,
+    'to', v_to,
+    'scope', case when v_all then 'desk' else 'mine' end,
+    'count', jsonb_array_length(v_rows),
+    'total', (select coalesce(sum((x ->> 'amount')::numeric), 0) from jsonb_array_elements(v_rows) x),
+    'byMethod', v_by_method,
+    'byCashier', v_by_cashier,
+    'cashiers', v_cashiers,
+    'receipts', v_rows);
+end
+$$;
+revoke all on function receipts_in_period(date, date, uuid, text) from public, anon;
+grant execute on function receipts_in_period(date, date, uuid, text) to authenticated;
+
+-- ---------------------------------------------------------------- B patients' documents
+-- The visits of a period with the page's filters. The manager: the whole clinic or one
+-- department; a head or assistant of a department: that department (analytics_scope refuses
+-- everyone else). The options list what the period holds, before the other filters.
+create or replace function visits_in_period(
+  p_from date default null,
+  p_to date default null,
+  p_department uuid default null,
+  p_doctor uuid default null,
+  p_service text default null,
+  p_insurer uuid default null,
+  p_closed_only boolean default false,
+  p_search text default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  s record;
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_q text := nullif(trim(coalesce(p_search, '')), '');
+  v_result jsonb;
+  v_rows jsonb;
+  v_options jsonb;
+begin
+  select * into s from analytics_scope(p_department);
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+
+  with base as (
+  select e.id, e.reference, e.arrived_at, e.closed_at, e.status::text as status, e.service,
+         p.id as patient_id, p.surname || ' ' || p.given_names as patient, p.file_number,
+         d.id as department_id, d.name as department,
+         doc.id as doctor_id, doc.full_name as doctor,
+         c.text as diagnosis, c.icd10_code as icd10,
+         ins.id as insurer_id, ins.name as insurer
+  from encounter e
+  join patient p on p.id = e.patient_id
+  left join lateral (
+    select q.department_id from queue_entry q
+    where q.encounter_id = e.id and q.deleted_at is null and q.department_id is not null
+    order by q.created_at desc limit 1
+  ) qd on true
+  left join department d on d.id = qd.department_id
+  left join lateral (
+    select pr.id, pr.full_name from profiles pr
+    where pr.id = coalesce(
+      (select c0.created_by from condition c0 where c0.encounter_id = e.id and c0.deleted_at is null
+       order by c0.created_at limit 1),
+      (select q.taken_by from queue_entry q
+       where q.encounter_id = e.id and q.deleted_at is null and q.taken_by is not null
+         and q.station not in ('reception', 'triage', 'cashier', 'pharmacy')
+       order by coalesce(q.started_at, q.created_at) limit 1))
+  ) doc on true
+  left join lateral (
+    select c1.text, c1.icd10_code from condition c1
+    where c1.encounter_id = e.id and c1.deleted_at is null
+    order by (c1.type = 'primary') desc, c1.created_at limit 1
+  ) c on true
+  left join lateral (
+    select py.id, py.name from coverage cv
+    join payer py on py.id = cv.payer_id and py.type <> 'cash'
+    where cv.id = coalesce((select i.coverage_id from invoice i where i.encounter_id = e.id and i.deleted_at is null limit 1),
+                           e.coverage_id)
+  ) ins on true
+  where e.deleted_at is null
+    and (e.arrived_at at time zone 'Africa/Kigali')::date between v_from and v_to
+    and (s.s_department is null or exists (
+      select 1 from queue_entry q where q.encounter_id = e.id and q.deleted_at is null
+        and (q.department_id = s.s_department or q.station = any (s.s_stations))))
+  )
+  select jsonb_build_object(
+    'options', jsonb_build_object(
+      'departments', coalesce((select jsonb_agg(jsonb_build_object('id', x.department_id, 'name', x.department) order by x.department)
+                               from (select distinct department_id, department from base where department_id is not null) x), '[]'::jsonb),
+      'doctors', coalesce((select jsonb_agg(jsonb_build_object('id', x.doctor_id, 'name', x.doctor) order by x.doctor)
+                           from (select distinct doctor_id, doctor from base where doctor_id is not null) x), '[]'::jsonb),
+      'services', coalesce((select jsonb_agg(x.service order by x.service)
+                            from (select distinct service from base where service is not null) x), '[]'::jsonb),
+      'insurers', coalesce((select jsonb_agg(jsonb_build_object('id', x.insurer_id, 'name', x.insurer) order by x.insurer)
+                            from (select distinct insurer_id, insurer from base where insurer_id is not null) x), '[]'::jsonb)),
+    'rows', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', b.id, 'reference', b.reference, 'at', b.arrived_at, 'closedAt', b.closed_at, 'status', b.status,
+        'service', b.service,
+        'patient', jsonb_build_object('id', b.patient_id, 'name', b.patient, 'fileNumber', b.file_number),
+        'doctor', case when b.doctor_id is null then null else jsonb_build_object('id', b.doctor_id, 'name', b.doctor) end,
+        'department', case when b.department_id is null then null else jsonb_build_object('id', b.department_id, 'name', b.department) end,
+        'diagnosis', b.diagnosis, 'icd10', b.icd10,
+        'insurer', b.insurer
+      ) order by b.arrived_at, b.id)
+      from (select * from base b
+            where (p_doctor is null or b.doctor_id = p_doctor)
+              and (p_service is null or b.service = p_service)
+              and (p_insurer is null or b.insurer_id = p_insurer)
+              and (not p_closed_only or b.status = 'closed')
+              and (v_q is null or b.patient ilike '%' || v_q || '%' or b.file_number ilike '%' || v_q || '%'
+                   or coalesce(b.reference, '') ilike '%' || v_q || '%' or coalesce(b.diagnosis, '') ilike '%' || v_q || '%')
+            order by b.arrived_at, b.id
+            limit 2000) b), '[]'::jsonb))
+  into v_result;
+  v_options := v_result -> 'options';
+  v_rows := v_result -> 'rows';
+
+  return jsonb_build_object(
+    'from', v_from,
+    'to', v_to,
+    'manager', s.s_manager,
+    'department', s.s_department,
+    'count', jsonb_array_length(v_rows),
+    'closed', (select count(*) from jsonb_array_elements(v_rows) x where x ->> 'status' = 'closed'),
+    'open', (select count(*) from jsonb_array_elements(v_rows) x where x ->> 'status' = 'open'),
+    'options', v_options,
+    'visits', v_rows);
+end
+$$;
+revoke all on function visits_in_period(date, date, uuid, uuid, text, uuid, boolean, text) from public, anon;
+grant execute on function visits_in_period(date, date, uuid, uuid, text, uuid, boolean, text) to authenticated;
+
+-- What the medical report of each visit needs, at most 300 visits at a time. Each visit is read
+-- with visit_clinical(): the record the reader is allowed to see, and the opening of a closed
+-- visit logged the way a single opening is (0088). A visit the reader may not see comes back
+-- private (its lists empty), as on the visit screen; the page says how many were left out.
+create or replace function visit_documents(p_encounter_ids uuid[])
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_out jsonb := '[]'::jsonb;
+  v_c jsonb;
+  v_private boolean;
+  v_n integer := 0;
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  if not clinical_reader() then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  foreach v_id in array coalesce(p_encounter_ids, '{}'::uuid[]) loop
+    v_n := v_n + 1;
+    exit when v_n > 300;
+    v_c := visit_clinical(v_id);
+    if v_c is null then
+      continue;
+    end if;
+    v_private := coalesce((v_c ->> 'private')::boolean, false);
+    v_out := v_out || jsonb_build_array(jsonb_build_object(
+      'id', v_id,
+      'clinical', v_c,
+      'private', v_private,
+      'patient', (select jsonb_build_object('id', p.id, 'name', p.surname || ' ' || p.given_names, 'fileNumber', p.file_number)
+                  from encounter e join patient p on p.id = e.patient_id where e.id = v_id),
+      'vitals', case when v_private then '[]'::jsonb else coalesce((
+        select jsonb_agg(jsonb_build_object('code', v.code, 'label', v.label, 'value', v.value_num, 'text', v.value_text,
+                                            'unit', v.unit, 'at', v.effective_at, 'by', v.by) order by v.effective_at)
+        from (select distinct on (o.code) o.code, o.label, o.value_num, o.value_text, o.unit, o.effective_at, pr.full_name as by
+              from observation o left join profiles pr on pr.id = o.performer_id
+              where o.encounter_id = v_id and o.deleted_at is null and o.code <> 'note'
+              order by o.code, o.effective_at desc) v), '[]'::jsonb) end,
+      'charges', case when v_private then '[]'::jsonb else coalesce((
+        select jsonb_agg(jsonb_build_object('description', l.description, 'quantity', l.quantity) order by l.created_at)
+        from invoice i join invoice_line l on l.invoice_id = i.id
+        where i.encounter_id = v_id and i.deleted_at is null and l.deleted_at is null), '[]'::jsonb) end));
+  end loop;
+  return v_out;
+end
+$$;
+revoke all on function visit_documents(uuid[]) from public, anon;
+grant execute on function visit_documents(uuid[]) to authenticated;
+
+-- ---------------------------------------------------------------- C analytics per dashboard
+-- The figures of the desk dashboards' analytics: the signed-in person's own work (their own
+-- records, no money, HIV tests without the patient), and the desk's registrations, visits,
+-- arrivals by hour, bookings and tasks. Any active employee, for their own dashboard.
+create or replace function desk_analytics(p_from date default null, p_to date default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_me uuid := auth.uid();
+  v_start timestamptz;
+  v_end timestamptz;
+  v_result jsonb;
+begin
+  if v_me is null or not exists (select 1 from profiles where id = v_me and active) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+  v_start := (v_from::timestamp) at time zone 'Africa/Kigali';
+  v_end := ((v_to + 1)::timestamp) at time zone 'Africa/Kigali';
+
+  with ev as (
+    select x.at, x.kind, x.encounter_id, case when x.kind = 'hivTests' then null else x.patient_id end as patient_id, x.what
+    from analytics_staff_events(v_start, v_end, false) x
+    where x.user_id = v_me
+  )
+  select jsonb_build_object(
+    'from', v_from,
+    'to', v_to,
+    'counts', coalesce((select jsonb_object_agg(k.kind, k.n) from (select kind, count(*) as n from ev group by kind) k), '{}'::jsonb),
+    'days', coalesce((select jsonb_agg(jsonb_build_object('day', d.day, 'kind', d.kind, 'n', d.n) order by d.day, d.kind)
+                      from (select (at at time zone 'Africa/Kigali')::date as day, kind, count(*) as n
+                            from ev group by 1, 2) d), '[]'::jsonb),
+    'records', coalesce((select jsonb_agg(jsonb_build_object(
+                           'at', x.at, 'kind', x.kind, 'encounterId', x.encounter_id,
+                           'patientName', p.surname || ' ' || p.given_names, 'fileNumber', p.file_number, 'what', x.what)
+                         order by x.at desc)
+                         from (select * from ev order by at desc limit 500) x
+                         left join patient p on p.id = x.patient_id), '[]'::jsonb),
+    'registrations', coalesce((select jsonb_agg(jsonb_build_object('day', r.day, 'n', r.n) order by r.day)
+                               from (select (x.created_at at time zone 'Africa/Kigali')::date as day, count(*) as n
+                                     from patient x where x.deleted_at is null and x.created_at >= v_start and x.created_at < v_end
+                                     group by 1) r), '[]'::jsonb),
+    'visits', coalesce((select jsonb_agg(jsonb_build_object('day', r.day, 'n', r.n) order by r.day)
+                        from (select (e.arrived_at at time zone 'Africa/Kigali')::date as day, count(*) as n
+                              from encounter e where e.deleted_at is null and e.arrived_at >= v_start and e.arrived_at < v_end
+                              group by 1) r), '[]'::jsonb),
+    'arrivals', coalesce((select jsonb_agg(jsonb_build_object('hour', h.h, 'count', h.n) order by h.h)
+                          from (select extract(hour from e.arrived_at at time zone 'Africa/Kigali')::int as h, count(*) as n
+                                from encounter e where e.deleted_at is null and e.arrived_at >= v_start and e.arrived_at < v_end
+                                group by 1) h), '[]'::jsonb),
+    'bookings', (with ap as (
+                   select a.status::text as status, (coalesce(a.starts_at, a.created_at) at time zone 'Africa/Kigali')::date as day
+                   from appointment a
+                   where a.deleted_at is null and coalesce(a.starts_at, a.created_at) >= v_start and coalesce(a.starts_at, a.created_at) < v_end)
+                 select jsonb_build_object(
+                   'booked', (select count(*) from ap where status in ('confirmed', 'arrived', 'in_progress', 'completed', 'no_show')),
+                   'kept', (select count(*) from ap where status in ('arrived', 'in_progress', 'completed')),
+                   'missed', (select count(*) from ap where status = 'no_show'),
+                   'pending', (select count(*) from ap where status = 'inquiry'),
+                   'cancelled', (select count(*) from ap where status in ('cancelled', 'declined', 'rejected')),
+                   'byDay', coalesce((select jsonb_agg(jsonb_build_object('day', d.day, 'booked', d.booked, 'kept', d.kept, 'missed', d.missed) order by d.day)
+                                      from (select day,
+                                                   count(*) filter (where status in ('confirmed', 'arrived', 'in_progress', 'completed', 'no_show')) as booked,
+                                                   count(*) filter (where status in ('arrived', 'in_progress', 'completed')) as kept,
+                                                   count(*) filter (where status = 'no_show') as missed
+                                            from ap group by day) d), '[]'::jsonb))),
+    'tasks', (select jsonb_build_object(
+                'open', count(*) filter (where k.done_at is null),
+                'overdue', count(*) filter (where k.done_at is null and k.due_at is not null and k.due_at < now()),
+                'done', count(*) filter (where k.done_at is not null and k.done_at >= v_start and k.done_at < v_end),
+                'doneByMe', count(*) filter (where k.done_by = v_me and k.done_at >= v_start and k.done_at < v_end))
+              from internal_task k
+              where k.deleted_at is null
+                and (k.assigned_to = v_me or k.created_by = v_me or k.done_by = v_me
+                     or (k.assigned_to is null and k.assigned_role is not null and task_for_me(k.assigned_role)))))
+  into v_result;
+  return v_result;
+end
+$$;
+revoke all on function desk_analytics(date, date) from public, anon;
+grant execute on function desk_analytics(date, date) to authenticated;
+
+-- What the signed-in person may open on the Analytics page. "views" stays what it was (the
+-- manager's views, a head's views of their department; nobody else's), so the links and the
+-- checks of 0086 keep working. "dashboard" names the dashboard the person has and
+-- "dashboardViews" lists that dashboard's views in the dashboard's order: the Analytics page
+-- takes its structure from them. The desk views read desk_analytics() and the desk summaries,
+-- which check their own rights; money and other people's work stay with the manager.
+create or replace function analytics_access()
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_manager boolean := is_manager();
+  v_deps jsonb;
+  v_desks text[];
+  v_views text[] := '{}';
+  v_dash text;
+  v_dash_views text[] := '{}';
+  v_role text;
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  if v_manager then
+    select coalesce(jsonb_agg(jsonb_build_object('id', d.id, 'name', d.name, 'desks', to_jsonb(coalesce(d.services, '{}')))
+                              order by d.sort_order, d.name), '[]'::jsonb)
+    into v_deps
+    from department d where d.deleted_at is null and d.active;
+    v_views := array['revenue', 'staff', 'visits', 'treatments', 'lab', 'pharmacy', 'triage', 'stock', 'waiting', 'receipts', 'documents'];
+    v_dash := 'manager';
+    -- the manager dashboard's order: patients, waiting, money, people, treatments, stock, the desks, documents
+    v_dash_views := array['visits', 'waiting', 'revenue', 'receipts', 'staff', 'treatments', 'stock', 'lab', 'pharmacy', 'triage', 'documents'];
+  else
+    select coalesce(jsonb_agg(jsonb_build_object('id', d.id, 'name', d.name, 'desks', to_jsonb(coalesce(d.services, '{}')))
+                              order by d.sort_order, d.name), '[]'::jsonb)
+    into v_deps
+    from staff_department sd
+    join department d on d.id = sd.department_id and d.deleted_at is null
+    join profiles p on p.id = sd.profile_id and p.active
+    where sd.profile_id = auth.uid() and sd.position in ('head', 'assistant');
+    if jsonb_array_length(v_deps) > 0 then
+      select coalesce(array_agg(distinct x), '{}') into v_desks
+      from jsonb_array_elements(v_deps) dep, jsonb_array_elements_text(dep -> 'desks') x;
+      v_views := array['staff', 'visits', 'treatments']
+        || case when v_desks && array['laboratory', 'ultrasound'] then array['lab'] else '{}'::text[] end
+        || case when 'pharmacy' = any (v_desks) then array['pharmacy'] else '{}'::text[] end
+        || case when 'triage' = any (v_desks) then array['triage'] else '{}'::text[] end
+        || case when 'pharmacy' = any (v_desks) then array['stock'] else '{}'::text[] end
+        || array['waiting'];
+      v_dash := 'head';
+      -- the department section's order: patients, waiting, orders (the lab), people, services
+      v_dash_views := array['visits', 'waiting']
+        || case when v_desks && array['laboratory', 'ultrasound'] then array['lab'] else '{}'::text[] end
+        || array['staff', 'treatments']
+        || case when 'pharmacy' = any (v_desks) then array['pharmacy', 'stock'] else '{}'::text[] end
+        || case when 'triage' = any (v_desks) then array['triage'] else '{}'::text[] end
+        || array['documents'];
+    else
+      select p.role::text into v_role from profiles p where p.id = auth.uid() and p.active;
+      v_dash := case v_role
+        when 'cashier' then 'cashier'
+        when 'pharmacist' then 'pharmacy'
+        when 'lab_tech' then 'lab'
+        when 'sonographer' then 'lab'
+        when 'doctor' then 'doctor'
+        when 'nurse' then 'nurse'
+        when 'receptionist' then 'reception'
+        else null
+      end;
+      v_dash_views := case v_dash
+        when 'cashier' then array['collections', 'receipts', 'methods', 'openBills', 'refunds']
+        when 'pharmacy' then array['handovers', 'walkIn', 'stock', 'expiry', 'outside']
+        when 'lab' then array['tests', 'turnaround', 'verification', 'byTest']
+        when 'doctor' then array['myPatients', 'waitingNow', 'diagnoses', 'prescriptions', 'orders', 'tasks']
+        when 'nurse' then array['myPatients', 'vitals', 'waitingNow', 'tasks']
+        when 'reception' then array['registrations', 'bookings', 'waitingNow', 'arrivals']
+        else '{}'::text[]
+      end;
+    end if;
+  end if;
+  return jsonb_build_object(
+    'manager', v_manager,
+    'departments', v_deps,
+    'views', to_jsonb(v_views),
+    'dashboard', v_dash,
+    'dashboardViews', to_jsonb(v_dash_views));
+end
+$$;
+revoke all on function analytics_access() from public, anon;
+grant execute on function analytics_access() to authenticated;
+
+
+-- ============================================================ 20261216090000_vital_labels.sql
+-- 0106 · Custom measurements by name everywhere.
+--
+-- 0102 (vitals_custom) lets a nurse record a measurement of her own ("Other": a typed name and
+-- unit, code custom_<slug>, observation.label). The patient file, the visit journey and the safety
+-- summary now carry that label, so the screens and the printed report show "Fundal height" or the
+-- typed name instead of the code.
+
+-- patient_file (from 20261203090000_guide_fixes): + label on each vital.
+create or replace function patient_file(p_patient_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_patient jsonb;
+  v_visits jsonb;
+  v_vitals jsonb;
+  v_conditions jsonb;
+  v_bills jsonb;
+  v_doc jsonb;
+  v_reader boolean := clinical_reader();
+  v_via text;
+  v_treating uuid;
+  v_level text;
+  v_past_seen boolean;
+  v_views jsonb;
+  v_extra_filled jsonb;
+begin
+  if not has_perm('patient.read') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select to_jsonb(p) - 'photo_blob_id' - 'merged_into' - 'guardian_patient_id' into v_patient
+  from patient p where p.id = p_patient_id and p.deleted_at is null;
+  if v_patient is null then
+    raise exception 'patient not found' using errcode = 'P0002';
+  end if;
+  -- worked out once for the whole file (the visits' loop reuses them)
+  v_via := history_via(p_patient_id);
+  v_treating := treating_visit(p_patient_id);
+  v_level := case when v_via is not null then 'full' when v_treating is not null then 'summary' else 'identity' end;
+
+  -- how each visit may be seen (null: private)
+  select coalesce(jsonb_object_agg(e.id::text, s.view) filter (where s.view is not null), '{}'::jsonb),
+         coalesce(bool_or(s.view is not null and e.status = 'closed'), false)
+  into v_views, v_past_seen
+  from encounter e
+  cross join lateral (select case when v_reader then visit_view_with(e.id, v_via, true) end as view) s
+  where e.patient_id = p_patient_id and e.deleted_at is null;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', e.id, 'reference', e.reference, 'arrivedAt', e.arrived_at, 'status', e.status, 'type', e.type,
+      'triage', e.triage_level,
+      'triageReason', case when s.view is not null then e.triage_reason end,
+      'practitioner', (select names from practitioner where id = e.practitioner_id),
+      'stations', (select coalesce(jsonb_agg(distinct q.station::text), '[]'::jsonb) from queue_entry q where q.encounter_id = e.id and q.deleted_at is null),
+      'currentStation', (select q.station from queue_entry q where q.encounter_id = e.id and q.finished_at is null and q.deleted_at is null order by q.created_at desc limit 1),
+      'diagnosis', case when s.view is not null then
+        (select c.text from condition c where c.encounter_id = e.id and c.type = 'primary' and c.deleted_at is null and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read')) order by c.created_at desc limit 1) end,
+      'total', (select i.total from invoice i where i.encounter_id = e.id),
+      'balance', (select invoice_balance(i.id) from invoice i where i.encounter_id = e.id),
+      'billStatus', (select i.status from invoice i where i.encounter_id = e.id),
+      'closedAt', e.closed_at,
+      'private', s.view is null,
+      'view', s.view
+    ) order by e.arrived_at desc), '[]'::jsonb) into v_visits
+  from encounter e cross join lateral (select v_views ->> e.id::text as view) s
+  where e.patient_id = p_patient_id and e.deleted_at is null;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'encounterId', o.encounter_id, 'code', o.code, 'label', o.label, 'value', o.value_num, 'text', o.value_text,
+      'unit', o.unit, 'at', o.effective_at, 'by', (select full_name from profiles where id = o.performer_id)
+    ) order by o.effective_at desc), '[]'::jsonb) into v_vitals
+  -- the visits one may see; whoever types the nurse's sheet (vitals.write) also sees what is
+  -- recorded on the open visit (0019), never a past one
+  from observation o
+  where o.deleted_at is null and o.code <> 'note'
+    and (v_views ? o.encounter_id::text
+         or (has_perm('vitals.write')
+             and o.encounter_id in (select e.id from encounter e
+                                    where e.patient_id = p_patient_id and e.status = 'open' and e.deleted_at is null)));
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', c.id, 'encounterId', c.encounter_id, 'text', c.text, 'icd10', c.icd10_code, 'type', c.type,
+      'provisional', c.provisional, 'at', c.created_at, 'by', (select full_name from profiles where id = c.created_by)
+    ) order by c.created_at desc), '[]'::jsonb) into v_conditions
+  from condition c
+  where v_views ? c.encounter_id::text and c.deleted_at is null and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read'));
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'invoiceId', i.id, 'encounterId', i.encounter_id, 'number', i.number, 'status', i.status,
+      'total', i.total, 'patientShare', i.patient_share, 'insurerShare', i.insurer_share,
+      'balance', invoice_balance(i.id), 'payer', (select name from payer where id = i.payer_id),
+      'at', i.created_at
+    ) order by i.created_at desc), '[]'::jsonb) into v_bills
+  from invoice i join encounter e on e.id = i.encounter_id
+  where e.patient_id = p_patient_id and i.deleted_at is null;
+
+  -- the private extra fields that have a value (the keys only; the form locks them)
+  select coalesce(jsonb_agg(k order by k), '[]'::jsonb) into v_extra_filled
+  from unnest(private_extra_keys()) k
+  where nullif(trim(coalesce(v_patient -> 'extra' ->> k, '')), '') is not null;
+
+  v_doc := doc_patient(p_patient_id, null);
+  if v_level = 'identity' then
+    v_patient := v_patient || jsonb_build_object('allergies', null, 'allergies_none', null,
+                                                 'blood_group', null, 'notes', null,
+                                                 -- the manager's "medical" extra fields go too
+                                                 'extra', coalesce(v_patient -> 'extra', '{}'::jsonb) - private_extra_keys(),
+                                                 -- the safety marks go; "VIP" is not one
+                                                 'flags', jsonb_strip_nulls(jsonb_build_object('vip', v_patient -> 'flags' -> 'vip')));
+    v_doc := v_doc - 'allergies' - 'allergiesNone' - 'bloodGroup' - 'weightKg' - 'weightAt';
+  end if;
+
+  if v_past_seen then
+    perform log_record_access(p_patient_id, null, coalesce(v_via, 'own'), 'file');
+  end if;
+
+  return jsonb_build_object('patient', v_patient, 'visits', v_visits, 'vitals', v_vitals,
+                            'conditions', v_conditions, 'bills', v_bills,
+                            'document', v_doc,
+                            'safetyHidden', v_level = 'identity',
+                            'extra_filled', v_extra_filled,
+                            'summary', case when v_level <> 'identity' then patient_safety_summary(p_patient_id) end,
+                            'access', patient_access_with(p_patient_id, v_via, v_treating));
+end
+$$;
+
+-- visit_journey (from 20261210090000_outside_prescriptions): + label on each vital.
+create or replace function visit_journey(p_encounter_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_steps jsonb;
+  v_vitals jsonb := '[]'::jsonb;
+  v_dx jsonb := '[]'::jsonb;
+  v_meds jsonb := '[]'::jsonb;
+  v_tests jsonb := '[]'::jsonb;
+  v_charges jsonb;
+  v_payments jsonb;
+  v_bill jsonb;
+  v_enc encounter%rowtype;
+  v_view text;
+  v_handovers jsonb;
+begin
+  if not has_perm('patient.read') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into v_enc from encounter where id = p_encounter_id and deleted_at is null;
+  if not found then
+    raise exception 'visit not found' using errcode = 'P0002';
+  end if;
+  v_view := case when clinical_reader() then visit_view(p_encounter_id) end;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'station', q.station, 'queuedAt', q.created_at, 'calledAt', q.called_at, 'startedAt', q.started_at,
+      'finishedAt', q.finished_at, 'takenBy', tb.full_name, 'assignedTo', asg.full_name,
+      'referredBy', rb.full_name, 'note', case when v_view is not null then q.referral_note end,
+      'enteredBy', eb.full_name,
+      'service', q.service, 'department', (select d.name from department d where d.id = q.department_id)
+    ) order by q.created_at), '[]'::jsonb) into v_steps
+  from queue_entry q
+  left join profiles tb on tb.id = q.taken_by
+  left join profiles asg on asg.id = q.assigned_to
+  left join profiles rb on rb.id = q.referred_by
+  left join profiles eb on eb.id = q.entered_by
+  where q.encounter_id = p_encounter_id and q.deleted_at is null;
+
+  if v_view is not null then
+    select coalesce(jsonb_agg(jsonb_build_object(
+        'code', o.code, 'label', o.label, 'value', o.value_num, 'unit', o.unit, 'at', o.effective_at,
+        'by', (select full_name from profiles where id = o.performer_id)
+      ) order by o.effective_at), '[]'::jsonb) into v_vitals
+    from observation o where o.encounter_id = p_encounter_id and o.deleted_at is null and o.code <> 'note';
+
+    select coalesce(jsonb_agg(jsonb_build_object(
+        'text', c.text, 'icd10', c.icd10_code, 'type', c.type, 'provisional', c.provisional, 'at', c.created_at,
+        'by', (select full_name from profiles where id = c.created_by)
+      ) order by c.created_at), '[]'::jsonb) into v_dx
+    from condition c where c.encounter_id = p_encounter_id and c.deleted_at is null and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read'));
+
+    select coalesce(jsonb_agg(jsonb_build_object(
+        'item', rx_label(m), 'quantity', m.quantity, 'dose', m.dose,
+        'frequency', m.frequency, 'days', m.duration_days, 'supply', m.supply, 'givenAt', m.given_at,
+        'givenBy', (select full_name from profiles where id = m.given_by), 'at', m.created_at,
+        'by', (select full_name from profiles where id = m.created_by),
+        'dispensed', exists (select 1 from medication_dispense d where d.medication_request_id = m.id and d.deleted_at is null),
+        'notGivenAt', m.not_given_at, 'notGivenReason', m.not_given_reason,
+        'notGivenBy', (select full_name from profiles where id = m.not_given_by),
+        'cancelledAt', m.cancelled_at, 'cancelReason', m.cancel_reason,
+        'cancelledBy', (select full_name from profiles where id = m.cancelled_by)
+      ) order by m.created_at), '[]'::jsonb) into v_meds
+    from medication_request m
+    where m.encounter_id = p_encounter_id and m.deleted_at is null;
+
+    select coalesce(jsonb_agg(jsonb_build_object(
+        'test', s.name_en, 'status', r.status, 'priority', r.priority, 'at', r.created_at,
+        'by', (select full_name from profiles where id = r.created_by),
+        'result', (select coalesce(dr.impression, dr.findings) from diagnostic_report dr where dr.service_request_id = r.id and dr.deleted_at is null order by dr.created_at desc limit 1)
+      ) order by r.created_at), '[]'::jsonb) into v_tests
+    from service_request r left join service s on s.id = r.service_id
+    where r.encounter_id = p_encounter_id and r.deleted_at is null;
+
+    if v_enc.status = 'closed' then
+      perform log_record_access(v_enc.patient_id, p_encounter_id, v_view, 'journey');
+    end if;
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'description', l.description, 'quantity', l.quantity, 'unitPrice', l.unit_price,
+      'total', round(l.quantity * l.unit_price), 'office', l.office, 'at', l.created_at,
+      'by', (select full_name from profiles where id = l.entered_by)
+    ) order by l.created_at), '[]'::jsonb) into v_charges
+  from invoice_line l join invoice i on i.id = l.invoice_id
+  where i.encounter_id = p_encounter_id and l.deleted_at is null;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'amount', p.amount, 'method', p.method, 'reference', p.reference, 'at', p.paid_at,
+      'by', (select full_name from profiles where id = p.cashier_id)
+    ) order by p.paid_at), '[]'::jsonb) into v_payments
+  from payment p join invoice i on i.id = p.invoice_id
+  where i.encounter_id = p_encounter_id and p.deleted_at is null;
+
+  select jsonb_build_object('status', b.status, 'total', b.total, 'balance', b.balance, 'paid', b.paid,
+                            'number', b.number, 'settledBy', b.settled_by, 'settledAt', b.settled_at)
+  into v_bill from visit_bill b where b.encounter_id = p_encounter_id;
+
+  -- who handed the patient over to whom (20261129090000_handover); the note and the reason are
+  -- clinical: for the two colleagues and those who may see this visit's record
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', h.id, 'station', h.station, 'at', h.created_at, 'from', f.full_name, 'to', t.full_name,
+      'note', case when v_view is not null or auth.uid() in (h.from_user, h.to_user) then h.note end,
+      'status', h.status, 'answeredAt', h.answered_at,
+      'answeredBy', (select full_name from profiles where id = h.answered_by),
+      'reason', case when v_view is not null or auth.uid() in (h.from_user, h.to_user) then h.reason end
+    ) order by h.created_at), '[]'::jsonb) into v_handovers
+  from patient_handover h
+  join profiles f on f.id = h.from_user
+  join profiles t on t.id = h.to_user
+  where h.encounter_id = p_encounter_id and h.deleted_at is null;
+
+  return jsonb_build_object(
+    'encounterId', v_enc.id, 'arrivedAt', v_enc.arrived_at, 'status', v_enc.status, 'closedAt', v_enc.closed_at,
+    'triage', v_enc.triage_level,
+    'triageReason', case when v_view is not null then v_enc.triage_reason end,
+    'closedBy', (select full_name from profiles where id = v_enc.closed_by),
+    -- the track: treatment finished, why the patient left, what they came for
+    'treatmentDoneAt', v_enc.clinical_done_at, 'leftReason', v_enc.left_reason, 'service', v_enc.service,
+    'steps', v_steps, 'vitals', v_vitals, 'diagnoses', v_dx, 'medicines', v_meds, 'tests', v_tests,
+    'charges', v_charges, 'payments', v_payments, 'bill', v_bill, 'handovers', v_handovers,
+    'private', v_view is null
+  );
+end
+$$;
+
+-- patient_safety_summary (from 20261210090000_outside_prescriptions): + label on the last vitals.
+create or replace function patient_safety_summary(p_patient_id uuid)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select jsonb_build_object(
+    'allergies', p.allergies,
+    'allergiesNone', coalesce(p.allergies_none, false) and p.allergies is null,
+    'bloodGroup', p.blood_group,
+    'alerts', p.notes,
+    'flags', p.flags,
+    -- long-lasting conditions: a chronic ICD-10 group, or the same diagnosis on two visits
+    'chronic', coalesce((
+      select jsonb_agg(jsonb_build_object('text', x.text, 'icd10', x.icd10_code, 'since', x.first_at, 'lastAt', x.created_at)
+                       order by x.created_at desc)
+      from (
+        select distinct on (lower(c.text)) c.text, c.icd10_code, c.created_at,
+               min(c.created_at) over (partition by lower(c.text)) as first_at
+        from condition c join encounter e on e.id = c.encounter_id and e.deleted_at is null
+        where e.patient_id = p.id and c.deleted_at is null
+          and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read'))
+          and (coalesce(c.icd10_code, '') ~ '^(I1[0-5]|I25|I50|E0[3-5]|E1[0-4]|J4[45]|G40|N18|B18|B2[0-4]|F2[0-9]|F3[1-3])'
+               or (select count(distinct c2.encounter_id) from condition c2
+                   join encounter e2 on e2.id = c2.encounter_id and e2.deleted_at is null
+                   where e2.patient_id = p.id and c2.deleted_at is null and lower(c2.text) = lower(c.text)) >= 2)
+        order by lower(c.text), c.created_at desc
+      ) x), '[]'::jsonb),
+    -- medicines of the open visit, and those still running (prescribed days not over)
+    'medications', coalesce((
+      select jsonb_agg(jsonb_build_object(
+          'item', rx_label(m), 'dose', m.dose, 'frequency', m.frequency,
+          'days', m.duration_days, 'at', m.created_at, 'outside', m.supply = 'outside',
+          'until', case when m.duration_days is not null then m.created_at + make_interval(days => m.duration_days) end,
+          'by', (select full_name from profiles where id = coalesce(m.prescriber_id, m.created_by)))
+        order by m.created_at desc)
+      from medication_request m
+      join encounter e on e.id = m.encounter_id and e.deleted_at is null
+      where e.patient_id = p.id and m.deleted_at is null and m.cancelled_at is null
+        and (m.not_given_at is null or m.supply = 'outside')
+        and m.created_at > now() - interval '180 days'
+        and (e.status = 'open' or m.created_at + make_interval(days => coalesce(m.duration_days, 0)) >= now())), '[]'::jsonb),
+    'lastVitals', coalesce((
+      select jsonb_agg(jsonb_build_object('code', v.code, 'label', v.label, 'value', v.value_num, 'unit', v.unit, 'at', v.effective_at,
+                                          'by', (select full_name from profiles where id = v.performer_id))
+                       order by v.code)
+      from (
+        select distinct on (o.code) o.code, o.label, o.value_num, o.unit, o.effective_at, o.performer_id
+        from observation o join encounter e on e.id = o.encounter_id and e.deleted_at is null
+        where e.patient_id = p.id and o.deleted_at is null and o.code <> 'note' and o.value_num is not null
+        order by o.code, o.effective_at desc
+      ) v), '[]'::jsonb),
+    'lastVisitAt', (select max(e.arrived_at) from encounter e where e.patient_id = p.id and e.deleted_at is null)
+  )
+  from patient p where p.id = p_patient_id
 $$;
 
 

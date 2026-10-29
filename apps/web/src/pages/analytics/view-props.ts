@@ -1,5 +1,5 @@
 import type { ClinicProfile, StaffUser } from '@mmc/shared'
-import type { AnalyticsAccess } from '@/lib/api/analytics'
+import type { AnalyticsAccess, AnalyticsView } from '@/lib/api/analytics'
 import type { Period } from '@/lib/period'
 import type { AnalyticsSearch, UpdateSearch } from './search'
 
@@ -7,6 +7,9 @@ import type { AnalyticsSearch, UpdateSearch } from './search'
 export interface ViewProps {
   user: StaffUser
   access: AnalyticsAccess
+  /** The view open (a component shared by several views reads it: the lab's 'tests' and
+   *  'turnaround', the stock's 'stock' and 'expiry'). */
+  view: AnalyticsView
   period: Period
   search: AnalyticsSearch
   update: UpdateSearch

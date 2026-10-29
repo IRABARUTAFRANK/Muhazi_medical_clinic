@@ -84,6 +84,8 @@ export interface SafetySummary {
   /** The last value of each vital sign. */
   lastVitals: {
     code: string
+    /** A custom measurement: the name typed (0102). */
+    label?: string | null
     value: number | null
     unit: string | null
     at: string

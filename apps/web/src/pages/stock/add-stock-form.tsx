@@ -32,7 +32,15 @@ import {
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 import { MsgFlash } from './stock-shared'
-import { errText, itemName, mainPharmacy, pharmacyStores, todayIso, type Msg } from './stock-util'
+import {
+  errText,
+  itemName,
+  mainPharmacy,
+  packsText,
+  pharmacyStores,
+  todayIso,
+  type Msg,
+} from './stock-util'
 
 /** Where a field filled by itself came from: the RHIA list, the item, its last delivery. */
 type Filled = 'list' | 'item' | 'delivery' | 'average'
@@ -384,10 +392,13 @@ export function AddStockForm({
             : undefined,
         batchNo: l.batchNo.trim(),
         expiry: l.expiry,
+        // always in pieces (boxes × pieces per box)
         quantity: quantityOf(l),
         unitCost: Number(l.unitCost),
         // an existing item: only a price that changes is sent
         sellPrice: it && price === it.sellingPrice ? null : price,
+        // the pieces per box, for an item that has none yet (the list's B/20 fills it too)
+        packSize: Number(l.perBox) > 1 ? Number(l.perBox) : null,
       }
     })
     try {
@@ -677,10 +688,15 @@ export function AddStockForm({
                   )}
                   {q > 0 && (
                     <span className="text-ink-2 tabular-nums">
-                      {t('stockPage.add.lineSum', {
-                        units: formatNumber(q),
-                        value: formatRwf(Math.round(costOf(l))),
-                      })}
+                      {[
+                        t('stockPage.add.lineSum', {
+                          units: formatNumber(q),
+                          value: formatRwf(Math.round(costOf(l))),
+                        }),
+                        packsText(t, q, Number(l.perBox) > 1 ? Number(l.perBox) : it?.packSize),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </span>
                   )}
                   {priceChanges && (

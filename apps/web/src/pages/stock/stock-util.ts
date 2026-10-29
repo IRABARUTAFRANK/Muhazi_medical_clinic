@@ -1,7 +1,116 @@
-import { isoDate } from '@mmc/shared'
+import type { TFunction } from 'i18next'
+import { formatNumber, isoDate } from '@mmc/shared'
 import type { StockItem, StockLocation, StoreHolder } from '@/lib/api/stock'
 import { isLowStock, isRoomStore } from '@/lib/api/stock'
 import { EXPIRY_WINDOW_DAYS } from '@/lib/api/pharmacy'
+import { splitPacks } from '@/lib/medicine-name'
+
+// ---------------------------------------------------------------- packs and pieces
+/**
+ * A translation with its English wording as the default, for the keys of this change while they
+ * wait to be merged into the language files ({ one, other } for a count).
+ */
+export const tx = (
+  t: TFunction,
+  key: string,
+  en: string | { one: string; other: string },
+  vars: Record<string, unknown> = {},
+): string =>
+  typeof en === 'string'
+    ? t(key, { defaultValue: en, ...vars })
+    : t(key, { defaultValue: en.one, defaultValue_other: en.other, ...vars })
+
+/** How a quantity is typed: in pieces (tablets, ml…) or in whole packs. */
+export type QtyMode = 'pieces' | 'packs'
+
+/** An item sold by the pack: 2 or more pieces in one. */
+export const hasPacks = (i: { packSize?: number | null } | null | undefined): boolean =>
+  (i?.packSize ?? 1) > 1
+
+/** "25 packs of 20", "25 packs of 20 + 3"; null when the item has no pack or fewer than one. */
+export function packsText(
+  t: TFunction,
+  units: number,
+  packSize: number | null | undefined,
+): string | null {
+  const p = splitPacks(units, packSize)
+  if (!p) return null
+  return p.rest > 0
+    ? tx(
+        t,
+        'stockShared.packs.ofPlus',
+        {
+          one: '{{count}} pack of {{size}} + {{rest}}',
+          other: '{{count}} packs of {{size}} + {{rest}}',
+        },
+        { count: p.packs, size: p.size, rest: p.rest },
+      )
+    : tx(
+        t,
+        'stockShared.packs.of',
+        { one: '{{count}} pack of {{size}}', other: '{{count}} packs of {{size}}' },
+        { count: p.packs, size: p.size },
+      )
+}
+
+/** "503 tab" (the piece unit when the item has one). */
+export const unitsText = (units: number, unit: string | null | undefined): string =>
+  unit ? `${formatNumber(units)} ${unit}` : formatNumber(units)
+
+/** "503 tab · 25 packs of 20 + 3": the pieces first, the packs beside them. */
+export function piecesAndPacks(
+  t: TFunction,
+  units: number,
+  i: { unit?: string | null; packSize?: number | null } | null | undefined,
+): string {
+  const packs = packsText(t, units, i?.packSize)
+  const pieces = unitsText(units, i?.unit)
+  return packs ? `${pieces} · ${packs}` : pieces
+}
+
+/** "2 × 20 = 40 tab": what a number of packs comes to in pieces. */
+export const packsEquals = (
+  t: TFunction,
+  packs: number,
+  packSize: number,
+  unit: string | null | undefined,
+): string =>
+  tx(t, 'stockShared.packs.equals', '{{packs}} × {{size}} = {{units}}', {
+    packs,
+    size: packSize,
+    units: unitsText(packs * packSize, unit),
+  })
+
+/** "pack {{price}}": the pack price beside the piece price in a row's sub-text. */
+export const packPriceText = (
+  t: TFunction,
+  i: { packPrice?: number | null; packSize?: number | null },
+  money: (n: number) => string,
+): string | null =>
+  i.packPrice != null && hasPacks(i)
+    ? tx(t, 'stockShared.packs.price', 'pack of {{size}}: {{price}}', {
+        size: i.packSize,
+        price: money(i.packPrice),
+      })
+    : null
+
+/** The pieces a typed quantity means: packs × pack size, or the pieces themselves. */
+export const piecesOf = (typed: number, mode: QtyMode, packSize: number | null | undefined) =>
+  mode === 'packs' ? typed * Math.max(1, packSize ?? 1) : typed
+
+/**
+ * What a cash sale of `units` pieces costs: whole packs at the pack price when the item has one
+ * (the database charges the same way), else pieces × the piece price.
+ */
+export function cashCost(
+  units: number,
+  i: { sellingPrice: number | null; packSize?: number | null; packPrice?: number | null },
+): { total: number; byPack: boolean; packs: number } {
+  const size = i.packSize ?? 1
+  const byPack = i.packPrice != null && size > 1 && units > 0 && units % size === 0
+  if (byPack) return { total: (units / size) * i.packPrice!, byPack, packs: units / size }
+  return { total: (i.sellingPrice ?? 0) * units, byPack: false, packs: 0 }
+}
 
 /**
  * The six tabs of the stock page (the pharmacy and the manager), and "My store" for room

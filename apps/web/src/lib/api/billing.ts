@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Triage } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import { sampleVitalsOf } from './vitals'
 import type { Sex, Station } from '@/lib/api/visits'
 import { apiError } from './errors'
 
@@ -32,9 +33,13 @@ export interface VisitHeader {
 }
 
 export interface Vital {
+  /** The observation row (remove_vital takes it off the visit). */
+  id: string
   code: string
   value: number
   unit: string | null
+  /** The typed name of a custom measurement (code custom_…). */
+  label: string | null
   /** When it was measured (may be earlier than when it was typed). */
   at: string
   /** Who measured (the nurse) and who typed it in, when known. */
@@ -249,21 +254,16 @@ export function useVisitVitals(encounterId: string) {
     refetchOnWindowFocus: true,
     enabled: encounterId !== '',
     queryFn: async (): Promise<Vital[]> => {
-      if (!supabase) {
-        return [
-          { code: 'bp_sys', value: 128, unit: 'mmHg', at: new Date().toISOString() },
-          { code: 'bp_dia', value: 84, unit: 'mmHg', at: new Date().toISOString() },
-          { code: 'temp', value: 38.2, unit: '°C', at: new Date().toISOString() },
-          { code: 'pulse', value: 96, unit: 'bpm', at: new Date().toISOString() },
-        ]
-      }
+      if (!supabase) return sampleVitalsOf(encounterId)
       const { data, error } = await supabase
         .from('visit_vitals')
-        .select('code, value_num, unit, effective_at, measured_by, entered_by')
+        .select('id, code, value_num, unit, label, effective_at, measured_by, entered_by')
         .eq('encounter_id', encounterId)
       if (error) throw apiError(error)
       return (
         data as {
+          id: string | null
+          label: string | null
           code: string
           value_num: number | string
           unit: string | null
@@ -272,9 +272,12 @@ export function useVisitVitals(encounterId: string) {
           entered_by: string | null
         }[]
       ).map((v) => ({
+        // a database older than 0102 has no id (nothing to remove) and no label
+        id: v.id ?? `${v.code}@${v.effective_at}`,
         code: v.code,
         value: Number(v.value_num),
         unit: v.unit,
+        label: v.label ?? null,
         at: v.effective_at,
         measuredBy: v.measured_by,
         enteredBy: v.entered_by,

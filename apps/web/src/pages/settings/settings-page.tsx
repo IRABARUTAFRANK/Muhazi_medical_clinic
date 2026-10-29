@@ -38,6 +38,7 @@ import { FlowCard } from './flow-card'
 import { PatientFieldsCard } from './patient-fields-card'
 import { PermissionsCard } from './permissions-card'
 import { SessionCard } from './session-card'
+import { VitalsCard } from './vitals-card'
 
 /** The settings are split into sections; one is shown at a time (remembered on this device). */
 type SectionId = 'clinic' | 'hours' | 'beds' | 'security' | 'access' | 'patient' | 'display'
@@ -346,6 +347,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
 
             {section === 'beds' && <BedsCard />}
             {section === 'hours' && <FlowCard />}
+            {section === 'hours' && <VitalsCard />}
 
             {section === 'security' && (
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

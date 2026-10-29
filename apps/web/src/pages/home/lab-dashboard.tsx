@@ -63,6 +63,9 @@ export function LabDashboard({ user }: { user: StaffUser }) {
   // the laboratory figures open the Analytics page (the manager, a head whose department has the
   // laboratory); for anyone else they stay plain
   const link = useAnalyticsLink(periodSearch(period))
+  // the laboratory's own analytics (0102): tests, turnaround, verification, by test
+  const labLink = (own: 'tests' | 'turnaround' | 'verification' | 'byTest') =>
+    link('lab') ?? link(own)
   const { data: s, refetch, isFetching, dataUpdatedAt } = useLabSummary(days)
   const { data: open = [] } = useLabWorklist('open')
   const { data: done = [] } = useLabWorklist('done')
@@ -156,6 +159,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               label={t('lab.tiles.waiting')}
               value={s.waiting}
               unit={t('lab.units.sample')}
+              to={labLink('tests')}
             />
             <Kpi
               i={1}
@@ -164,6 +168,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               label={t('lab.tiles.inProcess')}
               value={s.inProcess}
               unit={t('dashboard.units.now')}
+              to={labLink('verification')}
             />
             <Kpi
               i={2}
@@ -175,6 +180,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               delta={
                 s.toVerify > 0 ? { text: t('lab.verifySoon'), good: false, up: null } : undefined
               }
+              to={labLink('verification')}
             />
             <Kpi
               i={3}
@@ -183,7 +189,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               label={t('lab.tiles.done')}
               value={s.doneToday}
               unit={periodWord}
-              to={link('lab')}
+              to={labLink('tests')}
             />
             <Kpi
               i={4}
@@ -193,6 +199,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               value={s.urgent}
               unit={t('dashboard.units.now')}
               delta={s.urgent > 0 ? { text: t('desk.seeFirst'), good: false, up: null } : undefined}
+              to={labLink('tests')}
             />
             <Kpi
               i={5}
@@ -202,7 +209,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               value={s.turnaroundMin}
               text={formatDuration(s.turnaroundMin, t)}
               unit=""
-              to={link('lab')}
+              to={labLink('turnaround')}
             />
           </div>
         )}
@@ -252,6 +259,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
                   icon={ListOrdered}
                   tint="violet"
                   title={t('lab.mostOrdered')}
+                  toLabel={t('analytics.views.byTest', { defaultValue: 'By test' })}
                   right={t('lab.orderedToday', { count: s.orderedToday, period: periodWord })}
                   to={link('lab')}
                 >
@@ -315,7 +323,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             tint="coral"
             title={t('lab.notDoneToday', { period: periodWord })}
             right={String(s!.notDone!.length)}
-            to={link('lab')}
+            to={labLink('verification')}
           >
             <ListRows
               rows={s!.notDone!.map((x) => ({

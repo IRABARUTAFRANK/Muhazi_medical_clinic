@@ -33,6 +33,8 @@ export interface Journey {
   }[]
   vitals: {
     code: string
+    /** A custom measurement: the name typed (0102). */
+    label?: string | null
     value: number | string | null
     unit: string | null
     at: string

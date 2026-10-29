@@ -240,7 +240,9 @@ export function explain(h: HistoryItem, t: TFn): Explained {
       break
     }
     case 'observation': {
-      const what = t(`triage.vitals.${r('code')}`, { defaultValue: r('code') })
+      const what =
+        r('label') ||
+        t(`triage.vitals.${r('code')}`, { defaultValue: r('code').replace(/^custom_/, '') })
       const v = `${r('value_num') || r('value_text')}${row.unit ? ` ${r('unit')}` : ''}`
       sentence = say(h.action === 'create' ? 'vital' : 'vitalEdit', { what, value: v })
       if (names.performer && h.actor && names.performer !== h.actor)

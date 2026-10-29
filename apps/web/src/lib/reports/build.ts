@@ -1,6 +1,8 @@
 import { formatRwf, type ClinicProfile, type StaffUser } from '@mmc/shared'
 import i18n from '@/i18n'
 import { categoryName } from '@/lib/api/catalogue'
+import type { ReceiptsInPeriod } from '@/lib/api/analytics-receipts'
+import type { VisitsInPeriod } from '@/lib/api/analytics-documents'
 import type { DashboardData } from '@/lib/api/dashboard'
 import type { CashierSummary } from '@/lib/api/finance'
 import type { LabOrder, LabSummary } from '@/lib/api/lab'
@@ -699,5 +701,169 @@ export function stockReport(
         ],
       },
     ],
+  }
+}
+
+/** The receipts of a period (0102): the list as the cash desk's "Export the list (Excel)". */
+export function receiptsReport(
+  r: ReceiptsInPeriod,
+  filters: { cashier?: string | null; method?: string | null },
+  clinic: ClinicProfile,
+  user: StaffUser,
+  t: TFn,
+): Report {
+  const base = common(t, clinic, user)
+  const method = base.doc.method
+  const tx = (key: string, en: string, vars?: Record<string, unknown>) =>
+    t(key, { defaultValue: en, ...(vars ?? {}) })
+  const day = r.from === r.to ? r.from : null
+  const when = (values: (string | null | undefined)[]) =>
+    day
+      ? whenColumn(values, day, t('report.cols.time'), t('report.cols.dateTime'))
+      : ({ label: t('report.cols.dateTime'), kind: 'datetime' } as ReportColumn)
+  const figures: ReportFigure[] = [
+    { label: tx('receipts.count', 'Receipts'), value: r.count },
+    { label: t('report.fig.collected'), value: r.total, unit: 'RWF' },
+    ...r.byMethod
+      .slice(0, 3)
+      .map((m) => ({ label: method(m.method), value: m.amount, unit: 'RWF' })),
+  ]
+  const tables: ReportTable[] = [
+    {
+      title: tx('receipts.title', 'Receipts'),
+      note: [
+        filters.cashier ? `${t('report.cols.cashier')}: ${filters.cashier}` : null,
+        filters.method ? `${t('report.cols.method')}: ${method(filters.method)}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      columns: [
+        { label: t('report.cols.receiptNo'), nowrap: true },
+        when(r.receipts.map((x) => x.at)),
+        { label: t('finance.cols.patient') },
+        { label: t('report.cols.file'), under: true },
+        { label: tx('receipts.cols.bill', 'Bill no.'), nowrap: true },
+        { label: t('report.cols.method'), nowrap: true },
+        { label: t('report.cols.reference') },
+        { label: t('report.cols.cashier'), nowrap: true },
+        { label: t('report.cols.amount'), kind: 'money' },
+        { label: tx('receipts.cols.balance', 'Still due'), kind: 'money' },
+      ],
+      rows: r.receipts.map((x) => [
+        x.receiptNo,
+        x.at,
+        x.patient.name,
+        x.patient.fileNumber,
+        x.invoiceNo,
+        method(x.method),
+        x.reference,
+        x.cashier,
+        x.amount,
+        x.balance,
+      ]),
+      totals: [8],
+    },
+    {
+      title: t('report.t.collections'),
+      columns: [
+        { label: t('report.cols.method') },
+        { label: t('report.cols.count'), kind: 'number' },
+        { label: t('report.cols.amount'), kind: 'money' },
+      ],
+      rows: r.byMethod.map((x) => [method(x.method), x.count, x.amount]),
+      totals: [1, 2],
+    },
+    {
+      title: t('finance.byCashier'),
+      columns: [
+        { label: t('report.cols.cashier') },
+        { label: t('report.cols.count'), kind: 'number' },
+        { label: t('report.cols.amount'), kind: 'money' },
+      ],
+      rows: r.byCashier.map((x) => [x.name, x.count, x.amount]),
+      totals: [1, 2],
+    },
+  ]
+  return {
+    ...base,
+    title: tx('receipts.reportTitle', 'Receipts of the period'),
+    period: periodOf(r.from, r.to, t),
+    code: 'RCT',
+    periodKey: periodKeyOf(r.from, r.to),
+    notes: notesOf(t, 'collected'),
+    fileName: stem('receipts', r.from, r.to),
+    figures,
+    summaryText: tx('receipts.summary', '{{count}} receipts for {{amount}}.', {
+      count: r.count,
+      amount: formatRwf(r.total),
+    }),
+    sections: [{ name: tx('receipts.title', 'Receipts'), tables }],
+  }
+}
+
+/** The visits of a period (0102): the patients' documents list as an Excel / PDF report. */
+export function visitsListReport(
+  v: VisitsInPeriod,
+  filters: string[],
+  clinic: ClinicProfile,
+  user: StaffUser,
+  t: TFn,
+): Report {
+  const base = common(t, clinic, user)
+  const tx = (key: string, en: string, vars?: Record<string, unknown>) =>
+    t(key, { defaultValue: en, ...(vars ?? {}) })
+  const status = (s: string) =>
+    s === 'closed' ? tx('documents.status.closed', 'Closed') : tx('documents.status.open', 'Open')
+  const figures: ReportFigure[] = [
+    { label: t('dashboard.tiles.visits'), value: v.count },
+    { label: tx('documents.closedVisits', 'Closed visits'), value: v.closed },
+    { label: tx('documents.openVisits', 'Open visits'), value: v.open },
+    {
+      label: tx('documents.patients', 'Patients'),
+      value: new Set(v.visits.map((x) => x.patient.id)).size,
+    },
+  ]
+  const tables: ReportTable[] = [
+    {
+      title: tx('documents.visitsTitle', 'Visits treated'),
+      note: filters.join(' · '),
+      columns: [
+        { label: t('report.cols.dateTime'), kind: 'datetime' },
+        { label: tx('documents.cols.visitNo', 'Visit no.'), nowrap: true },
+        { label: t('finance.cols.patient') },
+        { label: t('report.cols.file'), under: true },
+        { label: tx('documents.cols.doctor', 'Doctor') },
+        { label: t('analytics.department') },
+        { label: tx('documents.cols.diagnosis', 'Diagnosis') },
+        { label: base.doc.insurer },
+        { label: tx('documents.cols.status', 'Status'), nowrap: true },
+      ],
+      rows: v.visits.map((x) => [
+        x.at,
+        x.reference,
+        x.patient.name,
+        x.patient.fileNumber,
+        x.doctor?.name ?? null,
+        x.department?.name ?? null,
+        x.diagnosis ? `${x.diagnosis}${x.icd10 ? ` (${x.icd10})` : ''}` : null,
+        x.insurer,
+        status(x.status),
+      ]),
+    },
+  ]
+  return {
+    ...base,
+    title: tx('documents.title', 'Patients’ documents'),
+    period: periodOf(v.from, v.to, t),
+    code: 'DOC',
+    periodKey: periodKeyOf(v.from, v.to),
+    notes: notesOf(t),
+    fileName: stem('patients-documents', v.from, v.to),
+    figures,
+    summaryText: tx('documents.summary', '{{count}} visits in the period, {{closed}} closed.', {
+      count: v.count,
+      closed: v.closed,
+    }),
+    sections: [{ name: tx('documents.visitsTitle', 'Visits treated'), tables }],
   }
 }

@@ -31,7 +31,7 @@ import {
   type PharmacyPatient,
   type StockItem,
 } from '@/lib/api/stock'
-import { partOf, perUnit, usePharmacyActions, withoutDone } from '@/lib/api/pharmacy'
+import { costOf, partOf, usePharmacyActions, withoutDone } from '@/lib/api/pharmacy'
 import { cn } from '@/lib/utils'
 import { Field, controlClass } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
@@ -40,6 +40,17 @@ import type { OpenStock, StockPreset } from './stock-page'
 import { batchOnLabel, fetchDispensedBatches, useHanded } from './pharmacy/handed'
 import { AllergyBox, HandedStrip, ReasonBox } from './pharmacy/parts'
 import { ageText, errText, itemName, qty, sexText, usableIn } from './pharmacy/util'
+import { QtyModeToggle } from './stock-shared'
+import {
+  cashCost,
+  hasPacks,
+  packsEquals,
+  packsText,
+  piecesAndPacks,
+  piecesOf,
+  tx,
+  type QtyMode,
+} from './stock-util'
 import { CounterSalesPanel } from './pharmacy/counter-sales'
 import { RoomStoresSummary } from './pharmacy/room-summary'
 import { NoDeskNotice } from '@/components/clinical/desk-gate'
@@ -129,8 +140,10 @@ function HandOverPanel({
   const [msg, setMsg] = useState<Msg>(null)
   const [refusing, setRefusing] = useState<string | null>(null)
   const [giving, setGiving] = useState<string | null>(null)
-  // the quantity typed for a line (left out: what remains, or what the store holds when short)
+  // the quantity typed for a line (left out: what remains, or what the store holds when short),
+  // in pieces or in whole packs (0102)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
+  const [modes, setModes] = useState<Record<string, QtyMode>>({})
 
   const stores = desk?.stores ?? []
   const storeId =
@@ -140,16 +153,35 @@ function HandOverPanel({
     null
   const storeName = stores.find((s) => s.id === storeId)?.name ?? null
   const allLines = withoutDone(desk?.lines ?? [])
-  /** What remains to give on a line, and the quantity to give now (typed, else the default). */
+  /** The pack size of a line's medicine (the queue says it; else the stock list). */
+  const packOf = (q: PharmacyLine) =>
+    q.packSize ?? stock?.items.find((i) => i.id === q.itemId)?.packSize ?? null
+  /**
+   * What remains to give on a line, and the quantity to give now (typed in pieces or packs, else
+   * the default: all that remains, or what the store holds when short), always as pieces.
+   */
   const plan = (q: PharmacyLine) => {
     const part = partOf(q)
+    const size = packOf(q)
+    const mode: QtyMode = hasPacks({ packSize: size }) ? (modes[q.requestId] ?? 'pieces') : 'pieces'
     const fallback = Math.min(part.remaining, Math.max(q.onHandPharmacy, 0)) || part.remaining
     const typed = amounts[q.requestId]
-    const n = typed == null ? fallback : qty(typed)
-    return { ...part, n, typed: typed ?? String(fallback) }
+    const typedN = typed == null ? fallback : qty(typed)
+    const n = typed == null ? fallback : piecesOf(typedN, mode, size)
+    return { ...part, n, typed: typed ?? String(fallback), mode, size, typedN }
   }
-  /** What the patient pays for `n` units of a line (their share after the insurer). */
-  const shareOf = (q: PharmacyLine, n: number) => Math.round(perUnit(q).patient * n)
+  /** What the patient pays for `n` pieces of a line (their share after the insurer). */
+  const shareOf = (q: PharmacyLine, n: number) => costOf(q, n).patient
+  /** Switching pieces ↔ packs keeps the quantity: 40 tablets become 2 packs of 20, and back. */
+  const switchMode = (q: PharmacyLine, m: QtyMode) => {
+    const p = plan(q)
+    const size = Math.max(1, p.size ?? 1)
+    setModes((x) => ({ ...x, [q.requestId]: m }))
+    setAmounts((a) => ({
+      ...a,
+      [q.requestId]: m === 'packs' ? String(Math.max(1, Math.floor(p.n / size))) : String(p.n),
+    }))
+  }
   const lines = encounterId ? allLines.filter((q) => q.encounterId === encounterId) : allLines
   // one card per visit, in the desk's order (the longest waiting first)
   const order = [...new Set(lines.map((q) => q.encounterId))]
@@ -209,6 +241,11 @@ function HandOverPanel({
         delete rest[q.requestId]
         return rest
       })
+      setModes((x) => {
+        const rest = { ...x }
+        delete rest[q.requestId]
+        return rest
+      })
       const batches = await fetchDispensedBatches(r.dispenseId, q.itemId, r.quantity)
       addHanded(
         { key: q.encounterId, kind: 'visit', patient: { name: q.patient, fileNumber: q.file } },
@@ -216,6 +253,7 @@ function HandOverPanel({
           item: q.item,
           quantity: r.quantity,
           unit: q.unit,
+          packSize: packOf(q),
           dose: q.dose,
           frequency: q.frequency,
           days: q.days,
@@ -320,20 +358,43 @@ function HandOverPanel({
     setMsg({ ok: true, text: t('pharmacy.allGiven', { patient: first.patient }) })
   }
 
-  const notGiven = async (q: PharmacyLine, reason: string, cardLines: number) => {
+  const notGiven = async (
+    q: PharmacyLine,
+    reason: string,
+    cardLines: number,
+    /** "Rest not available": the rest is out of stock; the prescriber may send it outside (0102). */
+    outOfStock = false,
+  ) => {
     // after a part: "not given" closes only what remains (the part given stays on the bill)
     const { given, remaining } = partOf(q)
+    const doctor = q.prescriber ?? t('pharmacy.part.thePrescriber')
     if (
       !(await confirm({
-        title:
-          given > 0
+        title: outOfStock
+          ? tx(
+              t,
+              'pharmacy.part.restNotAvailableTitle',
+              {
+                one: 'The other {{count}} {{item}}: not available for {{patient}}?',
+                other: 'The other {{count}} {{item}}: not available for {{patient}}?',
+              },
+              { count: remaining, item: q.item, patient: q.patient },
+            )
+          : given > 0
             ? t('pharmacy.part.notGivenRestTitle', {
                 count: remaining,
                 item: q.item,
                 patient: q.patient,
               })
             : t('confirm.stock.notGivenTitle', { item: q.item, patient: q.patient }),
-        body: t('confirm.stock.notGivenBody', { reason }),
+        body: outOfStock
+          ? tx(
+              t,
+              'pharmacy.part.restNotAvailableBody',
+              'They are marked not given (out of stock) and {{doctor}} is told the quantity, so the rest can be bought at an outside pharmacy. The {{given}} given stay on the bill.',
+              { doctor, given },
+            )
+          : t('confirm.stock.notGivenBody', { reason }),
         confirmLabel: t('confirm.stock.notGivenYes'),
         tone: 'danger',
       }))
@@ -419,14 +480,8 @@ function HandOverPanel({
                 // what is still to give on the card (a part already given is on the bill)
                 const left = (q: PharmacyLine) => partOf(q).remaining
                 const share = cardLines.reduce((s, q) => s + shareOf(q, left(q)), 0)
-                const insurer = cardLines.reduce(
-                  (s, q) => s + Math.round(perUnit(q).insurer * left(q)),
-                  0,
-                )
-                const total = cardLines.reduce(
-                  (s, q) => s + Math.round(perUnit(q).total * left(q)),
-                  0,
-                )
+                const insurer = cardLines.reduce((s, q) => s + costOf(q, left(q)).insurer, 0)
+                const total = cardLines.reduce((s, q) => s + costOf(q, left(q)).total, 0)
                 const anyShort = cardLines.some((q) => q.onHandPharmacy < left(q))
                 const holds = patient?.doctorHolds ?? cardLines.some((q) => q.doctorHolds)
                 const payer = patient?.payer ?? first.payer
@@ -512,6 +567,8 @@ function HandOverPanel({
                       const badAmount = p.n < 1 || p.n > p.remaining || p.n > q.onHandPharmacy
                       const isPart = p.n > 0 && p.n < p.remaining
                       const where = elsewhere(q)
+                      const lineCost = costOf(q, p.remaining)
+                      const packInfo = { unit: q.unit, packSize: p.size }
                       // the other pharmacy stores hold enough to make up what this one lacks
                       const sendCovers = q.onHandPharmacy + where.sendable >= p.remaining
                       const sendLink = (
@@ -536,7 +593,22 @@ function HandOverPanel({
                               <span className="text-ink block text-[14px]">
                                 <b>{q.item}</b> × {p.prescribed}
                                 {q.unit ? ` ${q.unit}` : ''}
+                                {packsText(t, p.prescribed, p.size) && (
+                                  <span className="text-ink-3">
+                                    {' '}
+                                    ({packsText(t, p.prescribed, p.size)})
+                                  </span>
+                                )}
                               </span>
+                              {q.splitFrom && (
+                                <span className="text-ink-3 block text-[12px]">
+                                  {tx(
+                                    t,
+                                    'pharmacy.part.restSentBack',
+                                    'The rest of a medicine given in part, sent back by the prescriber.',
+                                  )}
+                                </span>
+                              )}
                               {p.given > 0 && (
                                 <span className="text-amber block text-[12px] font-semibold">
                                   {t('pharmacy.part.progress', {
@@ -583,15 +655,13 @@ function HandOverPanel({
                                 <>
                                   <span className="block font-semibold tabular-nums">
                                     {t('pharmacy.patientShare', {
-                                      amount: formatRwf(shareOf(q, p.remaining)),
+                                      amount: formatRwf(lineCost.patient),
                                     })}
                                   </span>
-                                  {q.insurerShare > 0 && (
+                                  {lineCost.insurer > 0 && (
                                     <span className="text-ink-3 block text-[12px] tabular-nums">
                                       {t('pharmacy.insurerShare', {
-                                        amount: formatRwf(
-                                          Math.round(perUnit(q).insurer * p.remaining),
-                                        ),
+                                        amount: formatRwf(lineCost.insurer),
                                         pct: q.coveragePct,
                                       })}
                                     </span>
@@ -604,6 +674,20 @@ function HandOverPanel({
                                       q.payerPrice !== q.cashPrice &&
                                       ` · ${t('pharmacy.payerEach', { payer: q.payer, amount: formatRwf(q.payerPrice) })}`}
                                   </span>
+                                  {/* whole packs at the pack price: the bill says which was used */}
+                                  {lineCost.byPack && q.packPrice != null && (
+                                    <span className="text-teal block text-[12px] font-semibold tabular-nums">
+                                      {tx(
+                                        t,
+                                        'pharmacy.packPriceUsed',
+                                        {
+                                          one: '{{count}} whole pack at {{price}} (pack price)',
+                                          other: '{{count}} whole packs at {{price}} (pack price)',
+                                        },
+                                        { count: lineCost.packs, price: formatRwf(q.packPrice) },
+                                      )}
+                                    </span>
+                                  )}
                                 </>
                               ) : (
                                 <span className="text-amber block font-semibold">
@@ -622,6 +706,8 @@ function HandOverPanel({
                                       store: storeName,
                                     })
                                   : t('stock.inPharmacy', { count: q.onHandPharmacy })}
+                                {packsText(t, q.onHandPharmacy, p.size) &&
+                                  ` · ${packsText(t, q.onHandPharmacy, p.size)}`}
                               </span>
                               {(q.expiredInPharmacy ?? 0) > 0 && (
                                 <span className="text-red block text-[12px] font-semibold">
@@ -631,7 +717,7 @@ function HandOverPanel({
                             </span>
                             {canDispense && (
                               <span className="flex flex-wrap items-center gap-1">
-                                {/* how many to give now: all that remains, or a part */}
+                                {/* how many to give now: all that remains, or a part; in pieces or packs */}
                                 <input
                                   className={cn(
                                     controlClass,
@@ -656,6 +742,18 @@ function HandOverPanel({
                                     count: p.remaining,
                                   })}
                                 />
+                                {hasPacks(packInfo) && (
+                                  <QtyModeToggle
+                                    mode={p.mode}
+                                    disabled={busy || holds || none}
+                                    onChange={(m) => switchMode(q, m)}
+                                  />
+                                )}
+                                {p.mode === 'packs' && p.typedN > 0 && (
+                                  <span className="text-ink-2 w-full text-[12px] font-medium tabular-nums">
+                                    {packsEquals(t, p.typedN, p.size ?? 1, q.unit)}
+                                  </span>
+                                )}
                                 <Button
                                   size="sm"
                                   variant={cardLines.length > 1 ? 'tint-mint' : 'success'}
@@ -700,6 +798,73 @@ function HandOverPanel({
                               room store comes back only by a return note of its holders. */}
                           {short && canDispense && (
                             <div className="border-red/30 bg-red-bg text-red m-0 flex flex-col gap-1.5 rounded-md border px-2.5 py-1.5 text-[14px] font-medium">
+                              {/* 0102: the over-quantity flow in two clicks: give what is here,
+                                  then mark the rest not available (the prescriber is told the
+                                  quantity and may send it to an outside pharmacy) */}
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span className="text-ink text-[15px] font-semibold">
+                                  {tx(
+                                    t,
+                                    'pharmacy.part.shortLine',
+                                    'Prescribed {{need}} · in stock {{have}}',
+                                    {
+                                      need: piecesAndPacks(t, p.prescribed, packInfo),
+                                      have: piecesAndPacks(t, q.onHandPharmacy, packInfo),
+                                    },
+                                  )}
+                                </span>
+                                {!none && (
+                                  <Button
+                                    size="sm"
+                                    variant="success"
+                                    disabled={busy || holds}
+                                    loading={giving === q.requestId}
+                                    onClick={() =>
+                                      void askGive(
+                                        q,
+                                        patient,
+                                        cardLines.length,
+                                        Math.min(q.onHandPharmacy, p.remaining),
+                                      )
+                                    }
+                                  >
+                                    <Pill size={14} aria-hidden="true" />
+                                    {tx(
+                                      t,
+                                      'pharmacy.part.giveNow',
+                                      { one: 'Give {{count}} now', other: 'Give {{count}} now' },
+                                      { count: Math.min(q.onHandPharmacy, p.remaining) },
+                                    )}
+                                  </Button>
+                                )}
+                                {p.given > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="tint-coral"
+                                    disabled={busy}
+                                    loading={actions.notGiven.isPending}
+                                    onClick={() =>
+                                      void notGiven(
+                                        q,
+                                        t('pharmacy.reasons.outOfStock'),
+                                        cardLines.length,
+                                        true,
+                                      )
+                                    }
+                                  >
+                                    <Ban size={14} aria-hidden="true" />
+                                    {tx(
+                                      t,
+                                      'pharmacy.part.restNotAvailable',
+                                      {
+                                        one: 'Rest not available ({{count}})',
+                                        other: 'Rest not available ({{count}})',
+                                      },
+                                      { count: p.remaining },
+                                    )}
+                                  </Button>
+                                )}
+                              </span>
                               <span className="flex flex-wrap items-center gap-2">
                                 <span className="min-w-0 flex-1">
                                   {sendCovers
@@ -927,6 +1092,8 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
   const [storeChoice, setStoreChoice] = useState('')
   const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState('')
+  // the quantity typed in pieces or in whole packs (0102): the sale is always in pieces
+  const [mode, setMode] = useState<QtyMode>('pieces')
   const [instructions, setInstructions] = useState('')
   const [msg, setMsg] = useState<Msg>(null)
   const stores = desk?.stores ?? []
@@ -939,7 +1106,9 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
   const inStore = (i: StockItem) => usableIn(i, storeId)
   const items = (stock?.items ?? []).filter((i) => i.active && inStore(i) > 0)
   const item = items.find((i) => i.id === itemId)
-  const q = Number(quantity)
+  const typedN = Number(quantity)
+  const q = item && hasPacks(item) ? piecesOf(typedN, mode, item.packSize) : typedN
+  const cost = item ? cashCost(q, item) : null
   const sell = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
@@ -976,6 +1145,7 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
           item: name,
           quantity: q,
           unit: item.unit,
+          packSize: item.packSize ?? null,
           dose: null,
           frequency: null,
           days: null,
@@ -992,6 +1162,7 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
       })
       setItemId('')
       setQuantity('')
+      setMode('pieces')
       setInstructions('')
     } catch (err) {
       setMsg({ ok: false, text: errText(err) })
@@ -1031,7 +1202,10 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
           <SearchSelect
             label={t('stock.cols.item')}
             value={itemId}
-            onChange={setItemId}
+            onChange={(v) => {
+              setItemId(v)
+              setMode('pieces')
+            }}
             required
             emptyLabel={t('visit.add.pickItem')}
             options={items.map((i) => ({
@@ -1039,14 +1213,34 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
               label: `${itemName(i)} · ${i.sellingPrice == null ? t('prices.noPrice') : formatRwf(i.sellingPrice)} · ${t('stock.inPharmacy', { count: inStore(i) })}`,
             }))}
           />
-          <Field
-            label={t('stock.quantity')}
-            inputMode="numeric"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ''))}
-            required
-          />
+          <div className="flex items-end gap-2">
+            <Field
+              label={
+                mode === 'packs' ? tx(t, 'stockShared.packs.packs', 'packs') : t('stock.quantity')
+              }
+              inputMode="numeric"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ''))}
+              required
+              wrapperClassName="min-w-0 flex-1"
+            />
+            {item && hasPacks(item) && (
+              <QtyModeToggle mode={mode} onChange={setMode} className="mb-0.5" />
+            )}
+          </div>
         </div>
+        {item && (
+          <p className="text-ink-3 m-0 -mt-1 text-[12px]">
+            {[
+              piecesAndPacks(t, inStore(item), item),
+              mode === 'packs' && typedN > 0
+                ? packsEquals(t, typedN, item.packSize ?? 1, item.unit)
+                : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        )}
         <Field
           label={t('pharmacy.sellHow')}
           value={instructions}
@@ -1064,7 +1258,22 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
               ? t('pharmacy.sellShort', { count: inStore(item) })
               : item.sellingPrice == null
                 ? t('pharmacy.sellNoPrice')
-                : t('pharmacy.sellCashTotal', { amount: formatRwf(item.sellingPrice * q) })}
+                : [
+                    t('pharmacy.sellCashTotal', { amount: formatRwf(cost?.total ?? 0) }),
+                    cost?.byPack
+                      ? tx(
+                          t,
+                          'pharmacy.packPriceUsed',
+                          {
+                            one: '{{count}} whole pack at {{price}} (pack price)',
+                            other: '{{count}} whole packs at {{price}} (pack price)',
+                          },
+                          { count: cost.packs, price: formatRwf(item.packPrice ?? 0) },
+                        )
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
           </p>
         )}
         {msg && (

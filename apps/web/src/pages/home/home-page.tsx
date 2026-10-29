@@ -139,7 +139,11 @@ function RoleHome({ user, mode }: HomePageProps) {
   const setOverride = useSyncStore((s) => s.setOverride)
   // a head of department: "Seen" opens their own work on the Analytics page (others: no link)
   const link = useAnalyticsLink(periodSearch(period))
-  const seenLink = link('staff', { person: user.id, kind: 'patientsSeen' })
+  // a head: their own work on the Analytics page; a doctor: their own dashboard's analytics (0102)
+  const seenLink = link('staff', { person: user.id, kind: 'patientsSeen' }) ?? link('myPatients')
+  const waitingLink = link('waiting') ?? link('waitingNow')
+  const ordersLink = link('staff', { person: user.id, kind: 'orders' }) ?? link('orders')
+  const tasksLink = link('tasks')
 
   useEffect(() => {
     if (mode === 'offline') {
@@ -269,6 +273,9 @@ function RoleHome({ user, mode }: HomePageProps) {
           now={now}
           periodWord={periodWord}
           seenLink={seenLink}
+          waitingLink={waitingLink}
+          ordersLink={ordersLink}
+          tasksLink={tasksLink}
         />
 
         {/* Bookings to accept right under the tiles while there is something to answer (a notice
@@ -324,6 +331,9 @@ function RoleTiles({
   now,
   periodWord,
   seenLink,
+  waitingLink,
+  ordersLink,
+  tasksLink,
 }: {
   role: HomeRole
   summary: HomeSummary | undefined
@@ -332,8 +342,12 @@ function RoleTiles({
   now: { inClinic: number; bedsOccupied: number; bedsTotal: number }
   /** "today", "this week"…: what the counted tiles cover. */
   periodWord: string
-  /** The person's own work on the Analytics page (heads of department only). */
+  /** The person's own work on the Analytics page (heads of department, and every desk's own
+   *  analytics since 0102). */
   seenLink?: string
+  waitingLink?: string
+  ordersLink?: string
+  tasksLink?: string
 }) {
   const { t } = useTranslation()
   const unitNow = t('dashboard.units.now')
@@ -353,6 +367,7 @@ function RoleTiles({
           label={t('roleHome.tiles.waiting')}
           value={counts.waiting}
           unit={unitNow}
+          to={waitingLink}
         />
         <Kpi
           i={1}
@@ -361,6 +376,7 @@ function RoleTiles({
           label={t('roleHome.tiles.inProgress')}
           value={counts.inProgress}
           unit={unitNow}
+          to={waitingLink}
         />
         <Kpi
           i={2}
@@ -381,6 +397,7 @@ function RoleTiles({
           delta={
             toReview > 0 ? { text: t('roleHome.reviewSoon'), good: false, up: null } : undefined
           }
+          to={ordersLink}
         />
         <Kpi
           i={4}
@@ -460,6 +477,7 @@ function RoleTiles({
           label={t('roleHome.tiles.waiting')}
           value={counts.waiting}
           unit={unitNow}
+          to={waitingLink}
         />
         <Kpi
           i={1}
@@ -468,6 +486,7 @@ function RoleTiles({
           label={t('roleHome.tiles.inClinic')}
           value={now.inClinic}
           unit={unitNow}
+          to={tasksLink}
         />
         <Kpi
           i={2}

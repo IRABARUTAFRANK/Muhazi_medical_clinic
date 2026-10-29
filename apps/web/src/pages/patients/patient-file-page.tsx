@@ -72,6 +72,7 @@ import {
 import { privacyNoticeShown, privacyOn } from '@/components/clinical/record-privacy-rules'
 import { PatientFilesSection } from '@/components/clinical/supporting-files'
 import { MergeCard } from './merge-card'
+import { vitalName } from '@/lib/api/vitals'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'files' | 'bills'
 const TABS: Tab[] = ['overview', 'visits', 'clinical', 'files', 'bills']
@@ -1300,8 +1301,7 @@ function Clinical({
           )}
           {[...latest.values()].map((v) => (
             <Chip key={v.code}>
-              {t(`triage.vitals.${v.code}`)}:{' '}
-              <b className="ml-1 tabular-nums">{v.value ?? v.text}</b>
+              {vitalName(v, t)}: <b className="ml-1 tabular-nums">{v.value ?? v.text}</b>
               {v.unit ? ` ${v.unit}` : ''}
             </Chip>
           ))}

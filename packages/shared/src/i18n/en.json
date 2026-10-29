@@ -109,7 +109,8 @@
       "manage": "Management",
       "inbox": "Inbox"
     },
-    "myBookings": "My bookings"
+    "myBookings": "My bookings",
+    "documents": "Patients’ documents"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -1119,7 +1120,15 @@
       "spo2": "SpO₂",
       "weight": "Weight",
       "height": "Height",
-      "muac": "MUAC"
+      "muac": "MUAC",
+      "glucose_mmol": "Blood glucose",
+      "glucose_mgdl": "Blood glucose (mg/dL)",
+      "pain": "Pain score",
+      "head_circ": "Head circumference",
+      "urine_output": "Urine output",
+      "gcs": "Glasgow coma score",
+      "fundal_height": "Fundal height",
+      "fhr": "Fetal heart rate"
     },
     "level": "Triage colour",
     "levels": {
@@ -1373,7 +1382,11 @@
       "hasStock": "{{name}} still has stock and cannot be deleted. Mark it as no longer used, or use or write off its stock first.",
       "addedNoStock": "“{{name}}” is now in the clinic’s list, with no stock yet.",
       "addedHow": "To have some at the pharmacy, record the delivery in Add stock: batch, expiry date and quantity.",
-      "addStockNow": "Add stock for it"
+      "addStockNow": "Add stock for it",
+      "packPrice": "Pack price (optional)",
+      "packPriceBad": "The pack price is a whole number, 0 or more.",
+      "packPriceNeedsSize": "A pack price needs the units per box first (2 or more). A medicine sold whole has no pack price: its price is the price.",
+      "packHint2": "Stock is held in pieces (the unit above); the box size says how many pieces make one pack, so every screen can show both (\"500 tab · 25 packs of 20\"). A medicine sold whole, like a bottle of syrup, is 1 with the unit \"bottle\". The pack price is the price of one whole pack when it differs from pieces × price: whole packs sold for cash are charged at it, and the bill says so."
     },
     "tools": {
       "open": "Catalogue tools",
@@ -1853,6 +1866,18 @@
       "hours_other": "{{count}} hours without activity",
       "saved": "Saved. Open screens follow the new hours within a few minutes.",
       "revokeHint": "“Ask every device again” ends every browser's key: everyone's next sign-in needs a new e-mailed code. Screens already signed in stay signed in."
+    },
+    "vitals": {
+      "title": "Vital signs",
+      "lead": "Tick the measurements the nurse sees first, and put them in the order they are taken. Any other one is added on the patient with “Add a measurement”.",
+      "shown": "Shown by default ({{count}})",
+      "others": "Other measurements",
+      "up": "Move up",
+      "down": "Move down",
+      "save": "Save the default set",
+      "saved": "Default set saved. Every vitals form shows it from now.",
+      "none": "Tick at least one measurement.",
+      "bmiHint": "BMI is computed from weight and height and never saved."
     }
   },
   "pin": {
@@ -2214,7 +2239,29 @@
     "typedMedicine": "Another medicine (write its name)",
     "typedName": "Name of the medicine",
     "typedNamePh": "e.g. Ciprofloxacin eye drops 0.3%",
-    "writeMedicine": "Write “{{name}}” as the medicine name (outside pharmacy)"
+    "writeMedicine": "Write “{{name}}” as the medicine name (outside pharmacy)",
+    "editLine": "Edit",
+    "removeLine": "Remove",
+    "editDxHint": "Change this diagnosis with a reason; the previous text stays in the history.",
+    "removeDxHint": "Remove this diagnosis with a reason; it stays visible, struck through.",
+    "editNoteHint": "Change this note with a reason; the previous text stays in the history.",
+    "editWhy": "Why is it changed?",
+    "editWhyPh": "e.g. the test result, a typing mistake",
+    "removeWhy": "Why is the diagnosis removed?",
+    "removeHint": "The diagnosis stays in the record, struck through, with your name and reason; it is no longer counted.",
+    "saveChange": "Save the change",
+    "editedBy": "edited by {{name}} on {{when}}",
+    "editedWhy": "reason: {{reason}}",
+    "removedBy": "removed by {{name}} on {{when}}: {{reason}}",
+    "previousVersions_one": "{{count}} previous version",
+    "previousVersions_other": "{{count}} previous versions",
+    "versionWrote": "written by {{name}} on {{when}}",
+    "versionReplaced": "replaced on {{when}} by {{name}}: {{reason}}",
+    "dxUpdated": "Diagnosis changed.",
+    "dxRemoved": "Diagnosis removed.",
+    "noteUpdated": "Note changed.",
+    "noDeskForTest": "No one holds the {{desk}} desk yet: give a department the {{desk}} desk in Settings.",
+    "splitLine": "{{given}} given · {{outside}} outside"
   },
   "adjust": {
     "mode": "How to enter it",
@@ -2367,7 +2414,10 @@
       "nothingChanged": "Nothing changed. Correct a value, or cancel.",
       "range": "{{name}} {{value}} {{unit}} is not possible: check the number (between {{min}} and {{max}} {{unit}}).",
       "bpOrder": "The diastolic pressure (lower number) must be smaller than the systolic (upper number).",
-      "takerNotAllowed": "{{name}} is not allowed to take vital signs (the manager switched it off): choose another nurse or ask the manager."
+      "takerNotAllowed": "{{name}} is not allowed to take vital signs (the manager switched it off): choose another nurse or ask the manager.",
+      "customName": "Type the name of the measurement.",
+      "pickMeasurement": "Choose a measurement to add.",
+      "notANumber": "{{name}}: “{{value}}” is not a number."
     },
     "takenShort": "Vitals taken",
     "taken": "Vitals taken by {{name}} at {{time}}",
@@ -2378,7 +2428,32 @@
     "notTakenBanner": "Vitals not taken yet for this visit. Record them before the consultation.",
     "noneShort": "No vitals yet",
     "nurseSendsOn": "You record the measurements only: the nurse gives the triage colour and sends the patient on.",
-    "notSentOn": "The patient was not sent on: {{message}}"
+    "notSentOn": "The patient was not sent on: {{message}}",
+    "addMeasurement": "Add a measurement",
+    "pickMeasurement": "Measurement",
+    "pickPh": "Choose a measurement…",
+    "otherMeasurement": "Other (type its name)",
+    "customName": "Name of the measurement",
+    "customNamePh": "e.g. Blood ketones",
+    "customUnit": "Unit",
+    "customUnitPh": "e.g. mmol/L",
+    "addRow": "Add",
+    "remove": "Remove",
+    "hide": "Hide",
+    "removeSaved": "Remove {{name}} from this visit’s vitals (with a reason)",
+    "removeRow": "Hide {{name}} (nothing saved yet)",
+    "removeReason": "Why is it removed?",
+    "removeReasonPh": "e.g. typed on the wrong patient",
+    "removed": "{{name}} removed from this visit’s vitals.",
+    "savedValue": "Saved: {{value}} at {{time}}",
+    "customRow": "Custom measurement",
+    "bmiComputed": "(computed from weight and height, not saved)",
+    "bmiNeeds": "needs weight and height",
+    "confirm": {
+      "removeTitle": "Remove {{name}} from {{patient}}’s vitals?",
+      "removeBody": "The value {{value}} stays in the audit with your reason; it no longer shows on the visit.",
+      "removeYes": "Yes, remove"
+    }
   },
   "ops": {
     "appts": {
@@ -3892,7 +3967,9 @@
     "outsideTitle": "Prescription for an outside pharmacy",
     "outsideMedicines": "To buy at an outside pharmacy",
     "outsideNote": "The clinic pharmacy does not give these medicines. Please buy them at any pharmacy.",
-    "validUntil": "Valid until"
+    "validUntil": "Valid until",
+    "printOutsideOnly": "The prescription lists only the medicines the patient buys at an outside pharmacy; those given at the clinic are on the medical report.",
+    "nothingOutside": "Nothing to print: every medicine is given at the clinic."
   },
   "visitConfirm": {
     "title": "Start a visit for {{name}}?",
@@ -4349,7 +4426,16 @@
       "whyRest_one": "Why is the other {{count}} not given? {{doctor}} will be told.",
       "whyRest_other": "Why are the other {{count}} not given? {{doctor}} will be told.",
       "notGivenRest_one": "Rest not given ({{count}})",
-      "notGivenRest_other": "Rest not given ({{count}})"
+      "notGivenRest_other": "Rest not given ({{count}})",
+      "shortLine": "Prescribed {{need}} · in stock {{have}}",
+      "giveNow_one": "Give {{count}} now",
+      "giveNow_other": "Give {{count}} now",
+      "restNotAvailable_one": "Rest not available ({{count}})",
+      "restNotAvailable_other": "Rest not available ({{count}})",
+      "restNotAvailableTitle_one": "The other {{count}} {{item}}: not available for {{patient}}?",
+      "restNotAvailableTitle_other": "The other {{count}} {{item}}: not available for {{patient}}?",
+      "restNotAvailableBody": "They are marked not given (out of stock) and {{doctor}} is told the quantity, so the rest can be bought at an outside pharmacy. The {{given}} given stay on the bill.",
+      "restSentBack": "The rest of a medicine given in part, sent back by the prescriber."
     },
     "home": {
       "addStock": "Add stock",
@@ -4381,7 +4467,9 @@
     "sellChange": "Change",
     "sellNoMatch": "No patient on a visit matches. Only patients who are in the clinic now can be found here.",
     "sellResults": "Patients found",
-    "sellNobody": "No patient is on a visit now."
+    "sellNobody": "No patient is on a visit now.",
+    "packPriceUsed_one": "{{count}} whole pack at {{price}} (pack price)",
+    "packPriceUsed_other": "{{count}} whole packs at {{price}} (pack price)"
   },
   "queuePage": {
     "title": "My queue · {{desk}}",
@@ -4922,7 +5010,14 @@
       "clinic": "Give {{item}} at the clinic pharmacy for {{name}}?",
       "clinicBody": "It goes back to the clinic pharmacy’s list; it is charged when the pharmacy hands it over.",
       "clinicYes": "Yes, give at the clinic",
-      "rxOutsideNote": "Medicines for an outside pharmacy are not charged: print them for the patient."
+      "rxOutsideNote": "Medicines for an outside pharmacy are not charged: print them for the patient.",
+      "editDx": "Change the diagnosis “{{dx}}” of {{name}}?",
+      "editDxBody": "The previous text stays in the record’s history with your reason: “{{reason}}”.",
+      "removeDx": "Remove the diagnosis “{{dx}}” of {{name}}?",
+      "removeDxBody": "It stays in the record, struck through, with your reason: “{{reason}}”. It is no longer counted.",
+      "editNote": "Change this note of {{name}}?",
+      "changeYes": "Yes, change",
+      "removeYes": "Yes, remove"
     },
     "staff": {
       "deactivate": {
@@ -5037,6 +5132,11 @@
         "revokeTitle": "Ask every device for a new code?",
         "revokeBody": "Every browser's key ends: everyone's next sign-in needs a new e-mailed code. Screens already signed in stay signed in.",
         "revokeYes": "Yes, ask every device again"
+      },
+      "vitals": {
+        "title": "Change the default vital signs?",
+        "body": "Every nurse and doctor sees the new set from their next form.",
+        "yes": "Yes, save"
       }
     },
     "perms": {
@@ -5336,7 +5436,11 @@
       "PC": "After food.",
       "SHAKE": "Shake well before use.",
       "FRIDGE": "Keep in the fridge (2–8 °C)."
-    }
+    },
+    "packsOf_one": "{{count}} pack of {{size}}",
+    "packsOf_other": "{{count}} packs of {{size}}",
+    "packsOfPlus_one": "{{count}} pack of {{size}} + {{rest}}",
+    "packsOfPlus_other": "{{count}} packs of {{size}} + {{rest}}"
   },
   "stockErrors": {
     "noOpenBill": "This visit has no open bill (it is closed or already settled). Nothing was handed over or charged.",
@@ -5401,7 +5505,10 @@
     "handoverPending": "This patient is already being handed over. Cancel that first.",
     "handoverNotYours": "This handover is not yours: only the colleague it was sent to answers it, and only the sender cancels it.",
     "handoverGone": "This handover is no longer waiting: it was answered or cancelled, or the patient has moved on. The list is refreshed.",
-    "coverRetired": "Cover is no longer used. Hand the patient over to a colleague from the visit."
+    "coverRetired": "Cover is no longer used. Hand the patient over to a colleague from the visit.",
+    "vitalRange": "This measurement is outside what a patient can have: check the number.",
+    "vitalName": "Give the custom measurement a name (60 characters at most, its unit 20 at most).",
+    "vitalUnknown": "Unknown measurement."
   },
   "cashierDesk": {
     "noMatch": "Nothing matches your search.",
@@ -5516,7 +5623,8 @@
       "payTitle": "Take the payment here",
       "payHandPrint": "Take {{amount}}, hand over and print the receipt",
       "payNote": "The payment counts in your own cash count and in the day’s revenue. Visit bills are still paid at the cashier."
-    }
+    },
+    "lineTotalPack": "{{packs}} × {{price}} per pack (pack price) · {{amount}}"
   },
   "myStore": {
     "title": "My store",
@@ -5893,7 +6001,19 @@
     "openRooms": "Open Room stores",
     "sendReasonPh": "e.g. moving the old main store’s stock",
     "useLead": "Pharmacy stock leaving without a sale: expired, damaged, used at a desk or a count correction. Room stores write off their own stock under My store.",
-    "counterRevenue": "Counter sales"
+    "counterRevenue": "Counter sales",
+    "packs": {
+      "of_one": "{{count}} pack of {{size}}",
+      "of_other": "{{count}} packs of {{size}}",
+      "ofPlus_one": "{{count}} pack of {{size}} + {{rest}}",
+      "ofPlus_other": "{{count}} packs of {{size}} + {{rest}}",
+      "equals": "{{packs}} × {{size}} = {{units}}",
+      "price": "pack of {{size}}: {{price}}",
+      "countIn": "Count in",
+      "pieces": "pieces",
+      "packs": "packs",
+      "atPackPrice": "pack price"
+    }
   },
   "stockStores": {
     "lead": "The pharmacy is the main store: every delivery is received there, then sent to the room stores. The old main store keeps its history: send its stock to the pharmacy, then close it.",
@@ -5998,7 +6118,15 @@
       "patients": "Patients",
       "desks": "Desks",
       "stock": "Stock",
-      "waiting": "Waiting"
+      "waiting": "Waiting",
+      "clinical": "Clinical",
+      "documents": "Documents",
+      "payments": "Payments",
+      "pharmacy": "Pharmacy",
+      "lab": "Laboratory",
+      "mine": "My work",
+      "records": "My records",
+      "desk": "The desk"
     },
     "views": {
       "revenue": "Revenue",
@@ -6009,7 +6137,31 @@
       "pharmacy": "Pharmacy",
       "triage": "Triage",
       "stock": "Stock",
-      "waiting": "Waiting times"
+      "waiting": "Waiting times",
+      "receipts": "Receipts",
+      "documents": "Patients’ documents",
+      "collections": "Collections",
+      "methods": "Payment methods",
+      "openBills": "Open bills",
+      "refunds": "Refunds",
+      "handovers": "Hand-overs",
+      "walkIn": "Walk-in sales",
+      "expiry": "Expiry",
+      "outside": "Bought outside",
+      "tests": "Tests",
+      "turnaround": "Turnaround",
+      "verification": "Verification",
+      "byTest": "By test",
+      "myPatients": "My patients seen",
+      "vitals": "Vital signs taken",
+      "waitingNow": "Waiting now",
+      "diagnoses": "Diagnoses",
+      "prescriptions": "Prescriptions",
+      "orders": "Tests requested",
+      "tasks": "Tasks",
+      "registrations": "Registrations",
+      "bookings": "Bookings",
+      "arrivals": "Arrivals"
     },
     "kinds": {
       "registered": "Registered",
@@ -6621,7 +6773,8 @@
       "removeYes": "Yes, remove",
       "purgeTitle": "Delete the stored copy of \"{{title}}\" ({{name}})?",
       "purgeBody": "The file was already removed from the record. Its copy is deleted from storage for good and can never be opened again.",
-      "purgeYes": "Yes, delete it"
+      "purgeYes": "Yes, delete it",
+      "attachManyTitle": "Attach {{count}} files to {{name}}’s visit?"
     },
     "hiddenVisit_one": "{{count}} file of this visit is private to you.",
     "hiddenVisit_other": "{{count}} files of this visit are private to you.",
@@ -6653,7 +6806,28 @@
       "noPreview": "This file cannot be shown here. Download it to open it.",
       "recorded": "Opening is recorded",
       "recordedHint": "A picture of a past visit is shown only when you open it: the opening is recorded in the access log."
-    }
+    },
+    "view": "View documents ({{count}})",
+    "viewNone": "View documents",
+    "hideDocs": "Hide documents",
+    "attachMany": "Attach {{count}} files",
+    "chooseMany": "Choose one or several files",
+    "addMore": "Add more files",
+    "kindAll": "Type of every file (change one below)",
+    "rowTitle": "Title",
+    "rowKind": "Type",
+    "rowRemove": "Take this file out",
+    "status": {
+      "pending": "Waiting",
+      "sending": "Sending…",
+      "done": "Attached",
+      "failed": "Not attached"
+    },
+    "attachedMany": "{{count}} files attached to {{name}}’s visit.",
+    "partial": "{{done}} of {{total}} files attached; the others are listed with why. Correct them and send again.",
+    "sendAgain": "Send the rest again",
+    "sendingN": "Sending {{n}} of {{total}}: {{file}}",
+    "titlesNeeded": "Every file needs a title."
   },
   "handover": {
     "title": "Hand over to a colleague",
@@ -7034,7 +7208,23 @@
     "9ca9150e": "This medicine is bought at an outside pharmacy: the clinic does not give it.",
     "942424e3": "This medicine is not sold at the clinic: it can only be bought outside.",
     "6b5fd4a1": "This medicine was already given or cancelled: it stays as it is.",
-    "3ab9b692": "Write the name of the medicine to buy outside."
+    "3ab9b692": "Write the name of the medicine to buy outside.",
+    "1250b5a3": "This visit is still open: it is edited without a code.",
+    "f96f1e67": "Only a clinician who treated the patient in this visit (or the manager) may edit it after it is finished.",
+    "f834fabe": "Say why the finished visit is edited.",
+    "b9f31c34": "Too many codes were asked for this visit: wait ten minutes.",
+    "33a6138f": "No code was asked for this visit, or it has expired: ask for a new one.",
+    "a67c9d35": "Too many wrong codes: ask for a new one.",
+    "f8f298df": "Diagnosis not found.",
+    "31b050c2": "Only the clinician who wrote the diagnosis (or the manager) can change it.",
+    "6859a267": "Say why the diagnosis is changed.",
+    "0b685f85": "Say why the diagnosis is removed.",
+    "60cc8286": "Nothing changed.",
+    "d8e999b0": "A finished visit keeps a primary diagnosis: write the new one first.",
+    "ce1437a1": "Note not found.",
+    "2380398b": "Only the clinician who wrote the note (or the manager) can change it.",
+    "61a5de54": "Say why the note is changed.",
+    "82c10481": "The visit is finished: a medicine added now can only be bought outside."
   },
   "panel": {
     "close": "Close",
@@ -7191,5 +7381,148 @@
     "history": "History of the booking",
     "movedTo": "moved to {{when}}",
     "seeAll": "See all my bookings"
+  },
+  "visitLock": {
+    "closedTitle": "This visit is finished",
+    "closedWhen": "Finished on {{date}} at {{time}}.",
+    "closedWhenBy": "Finished on {{date}} at {{time}} by {{name}}.",
+    "closedHow": "The record is read-only. To change it, press “Edit this visit”, give the reason and type the code you receive by e-mail.",
+    "notYours": "Only a clinician who treated the patient in this visit (or the manager) can edit it.",
+    "edit": "Edit this visit",
+    "panelSubtitle": "{{name}} · a code is sent to your e-mail",
+    "explain": "Give the reason, then type the 6-digit code you receive by e-mail. The visit can then be edited for 30 minutes; every change is written in the audit with your name and this reason. The code is needed for everyone, the manager too.",
+    "why": "Why does the finished visit need a change?",
+    "whyPh": "e.g. the laboratory result changes the diagnosis",
+    "reasonNeeded": "Write the reason first (at least 3 letters).",
+    "send": "Send me the code",
+    "sent": "A code was sent to {{email}}. It is valid for 10 minutes (5 tries).",
+    "pendingNote": "A code was already sent to your e-mail (valid until {{time}}): type it below, or send a new one.",
+    "code": "The 6-digit code from the e-mail",
+    "codeFormat": "The code has 6 digits.",
+    "open": "Open the edit window",
+    "resend": "Send the code again",
+    "opened": "Editing allowed until {{time}}.",
+    "activeTitle": "Editing allowed until {{time}} ({{left}})",
+    "minutesLeft_one": "{{count}} minute left",
+    "minutesLeft_other": "{{count}} minutes left",
+    "underMinute": "less than a minute left",
+    "activeBody": "Every change is written in the audit with your reason: “{{reason}}”. After that time the visit locks again.",
+    "expired": "The edit window has ended: the visit is locked again.",
+    "notDeployed": "The code service is not set up yet (the visit-edit-code function is not deployed): the code cannot be sent.",
+    "sendFailed": "The code could not be e-mailed. Try again, or tell the manager.",
+    "wrongTries_one": "Wrong code: {{count}} more try.",
+    "wrongTries_other": "Wrong code: {{count}} more tries.",
+    "lastTry": "Wrong code: that was the last try. Send the code again to get a new one."
+  },
+  "vitals": {
+    "bmi": "BMI"
+  },
+  "receipts": {
+    "title": "Receipts",
+    "reportTitle": "Receipts of the period",
+    "count": "Receipts",
+    "givenIn": "Receipts {{period}}",
+    "nReceipts": "{{count}} receipts",
+    "printAll": "Print all receipts",
+    "printAllHint": "Every receipt of the period in one document, one per page",
+    "allMethods": "All methods",
+    "allCashiers": "All cashiers",
+    "mineNote": "The receipts you gave.",
+    "cols": {
+      "bill": "Bill no.",
+      "balance": "Still due"
+    },
+    "summary": "{{count}} receipts for {{amount}}.",
+    "coverLine": "{{count}} receipts · {{amount}} · {{period}} · printed by {{name}}"
+  },
+  "cashDesk": {
+    "byMethod": "Collections by payment method",
+    "byDay": "Collections by day",
+    "dayTable": "Day by day",
+    "chartAria": "Collections by day, {{period}}",
+    "figuresNote": "Every payment taken in the period, before refunds.",
+    "openNote": "Open bills are of now, not of the period.",
+    "nPayments": "{{count}} payments",
+    "nRefunds": "{{count}} refunds"
+  },
+  "documents": {
+    "title": "Patients’ documents",
+    "lead": "The documents of every patient treated in a period, printed together.",
+    "cardLead": "The medical reports of every patient treated in the period, filtered by department, doctor, service or insurer, printed in one document or exported as a list.",
+    "open": "Open",
+    "found": "{{count}} found",
+    "filters": "Filters",
+    "visitsTitle": "Visits treated",
+    "closedVisits": "Closed visits",
+    "openVisits": "Open visits",
+    "patients": "Patients",
+    "reports": "Medical reports",
+    "service": "Service",
+    "closedOnly": "Only closed visits",
+    "allDoctors": "All doctors",
+    "allServices": "All services",
+    "allInsurers": "All insurers and cash",
+    "printAll": "Print all medical reports",
+    "exportHint": "Excel and PDF above export this list.",
+    "openVisit": "Open the visit",
+    "logNote": "Every record printed here is logged as an opening of that patient’s past records, as on the visit screen.",
+    "allPrivate": "These records are private: nothing to print.",
+    "hidden": "{{count}} visits are not printed: their records are private.",
+    "coverLine": "{{count}} medical reports · {{period}} · printed by {{name}}",
+    "summary": "{{count}} visits in the period, {{closed}} closed.",
+    "limit": "The first 2,000 visits are listed: narrow the period.",
+    "cols": {
+      "visitNo": "Visit no.",
+      "doctor": "Doctor",
+      "diagnosis": "Diagnosis",
+      "status": "Status"
+    },
+    "status": {
+      "closed": "Closed",
+      "open": "Open"
+    }
+  },
+  "deskWork": {
+    "chartAria": "{{what}} by day, {{period}}",
+    "waitingNote": "Who waits at each desk right now; the waiting times of the period are on the manager’s Analytics.",
+    "longest": "Longest wait",
+    "forgotten": "From an earlier day",
+    "overdue": "Overdue",
+    "doneByMe": "Done by me",
+    "task": "Task",
+    "due": "Due",
+    "givenBy": "Given by",
+    "busiestHour": "Busiest hour",
+    "byHour": "Arrivals by hour of the day",
+    "visitsByDay": "Visits by day",
+    "mine": "Mine",
+    "wholeDesk": "Whole desk",
+    "patients": "Patients",
+    "mineNote": "Your own work in the period, as the records say.",
+    "records": "Records",
+    "what": "What",
+    "open": "Open",
+    "hour": "Hour"
+  },
+  "walkIn": {
+    "saleNo": "Sale no.",
+    "buyer": "Buyer",
+    "items": "Items",
+    "handed": "Sales handed over",
+    "toHandOver": "Paid, to hand over",
+    "buyers": "Buyers",
+    "note": "A walk-in buyer pays at the cash desk first, then collects at the pharmacy."
+  },
+  "outside": {
+    "lines": "Lines bought outside",
+    "patients": "Patients",
+    "afterNotGiven": "After “not given”",
+    "medicines": "Medicines",
+    "note": "Medicines prescribed here that the patient had to buy elsewhere: the ones to consider ordering.",
+    "inClinic": "A medicine of the clinic",
+    "notHeld": "Not held by the clinic",
+    "times": "Times",
+    "units": "Units",
+    "last": "Last"
   }
 }

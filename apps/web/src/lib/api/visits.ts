@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ROLE_HOME, type QueueRow, type Role, type StaffUser, type Triage } from '@mmc/shared'
-import { supabase } from '@/lib/supabase'
+import i18n from '@/i18n'
+import { reportSessionRefused, supabase } from '@/lib/supabase'
+import { sampleSaveVitals, type VitalEntry, type VitalsInput } from './vitals'
 import { sampleHandoverOnQueue } from './handover'
+import { sampleRequestEditCode, sampleVerifyEditCode } from './patients'
 import { apiError } from './errors'
 
 /**
@@ -343,7 +346,8 @@ export function useVisitActions() {
       measuredAt,
     }: {
       encounterId: string
-      vitals: Record<string, string>
+      /** A typed number per catalogue code; a custom measurement carries its unit and name (0104). */
+      vitals: VitalsInput
       /** Omitted when vitals are added later (the patient stays where they are). */
       triage?: Triage | null
       nextStation?: Station | null
@@ -354,13 +358,18 @@ export function useVisitActions() {
       measuredAt?: string | null
     }): Promise<string> => {
       if (!supabase) {
+        sampleSaveVitals(vitals, { measuredBy, measuredAt })
         const row = sampleQueue.find((r) => r.encounterId === encounterId)
         if (row && nextStation) row.station = nextStation
         return row?.ticket ?? 'A-000'
       }
-      const clean: Record<string, number> = {}
+      const clean: Record<string, number | VitalEntry> = {}
       for (const [k, v] of Object.entries(vitals)) {
-        const n = Number(v)
+        if (typeof v !== 'string') {
+          clean[k] = v
+          continue
+        }
+        const n = Number(v.replace(',', '.'))
         if (v.trim() !== '' && Number.isFinite(n)) clean[k] = n
       }
       const { data, error } = await supabase.rpc('record_vitals', {
@@ -801,4 +810,82 @@ export function useNextPatient(user: StaffUser): QueueItem | undefined {
     (q) => q.canWork !== false && !q.takenBy && !q.startedAt && !q.finishedAt,
   )
   return sortQueue(free, 'urgent')[0]
+}
+
+// ---------------------------------------------------------------- editing a finished visit (0104)
+/**
+ * A finished visit is locked. The clinician who treated the patient (or the manager) asks for a
+ * code with a reason: the `visit-edit-code` edge function checks the session, has the database
+ * make the code (request_visit_edit, hash kept; the browser never sees the code) and e-mails it.
+ * Typed back (verify_visit_edit: 5 tries, 10 minutes), it opens a 30-minute edit window; the
+ * record (visit_clinical.editLock) says until when. Sample mode: the code is 123456.
+ */
+export function useVisitEditActions(encounterId: string) {
+  const qc = useQueryClient()
+  const refresh = () => void qc.invalidateQueries({ queryKey: ['visit', encounterId] })
+
+  const requestCode = useMutation({
+    mutationFn: async (reason: string): Promise<{ grantId: string; masked: string | null }> => {
+      if (!supabase) return sampleRequestEditCode(encounterId, reason)
+      const { data, error } = await supabase.functions.invoke('visit-edit-code', {
+        body: { action: 'request', encounter_id: encounterId, reason: reason.trim() },
+      })
+      if (error) {
+        // supabase-js wraps non-2xx responses; the function's own message is in the body
+        const ctx = (error as { context?: Response }).context
+        if (!ctx || typeof ctx.status !== 'number' || ctx.status === 404)
+          throw new Error(i18n.t('visitLock.notDeployed'))
+        const payload = (await ctx.json().catch(() => null)) as {
+          error?: string
+          code?: string | null
+          hint?: string | null
+          reason?: string
+        } | null
+        // the sign-in is not approved by the database (0081): sign in again with the code
+        if (ctx.status === 401 && payload?.reason) {
+          reportSessionRefused(payload.reason)
+          throw new Error(i18n.t('login.ended.security'))
+        }
+        if (payload?.error === 'code_send_failed') throw new Error(i18n.t('visitLock.sendFailed'))
+        // a database refusal (who may edit, too many codes…) in the person's language
+        if (payload?.error)
+          throw apiError({
+            code: payload.code ?? null,
+            hint: payload.hint ?? null,
+            message: payload.error,
+          })
+        throw apiError(error)
+      }
+      const r = data as { ok?: boolean; grantId?: string; masked?: string } | null
+      if (!r?.ok || !r.grantId) throw new Error(i18n.t('visitLock.sendFailed'))
+      return { grantId: r.grantId, masked: r.masked ?? null }
+    },
+    onSuccess: refresh,
+  })
+
+  const verifyCode = useMutation({
+    mutationFn: async (code: string): Promise<{ expiresAt: string }> => {
+      let r: { ok?: boolean; expiresAt?: string; triesLeft?: number } | null
+      if (!supabase) r = sampleVerifyEditCode(encounterId, code)
+      else {
+        const { data, error } = await supabase.rpc('verify_visit_edit', {
+          p_encounter_id: encounterId,
+          p_code: code.replace(/\s/g, ''),
+        })
+        if (error) throw apiError(error)
+        r = data as typeof r
+      }
+      // a wrong code is counted by the database (5 tries), not refused: said here
+      if (!r?.ok || !r.expiresAt) {
+        const left = Number(r?.triesLeft ?? 0)
+        throw new Error(
+          left > 0 ? i18n.t('visitLock.wrongTries', { count: left }) : i18n.t('visitLock.lastTry'),
+        )
+      }
+      return { expiresAt: r.expiresAt }
+    },
+    onSuccess: refresh,
+  })
+
+  return { requestCode, verifyCode }
 }

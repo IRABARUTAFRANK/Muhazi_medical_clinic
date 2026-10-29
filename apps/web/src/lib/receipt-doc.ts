@@ -7,9 +7,13 @@ import {
   docNumber,
   esc,
   formatRwf,
+  keyFiguresHtml,
+  letterheadHtml,
   makeDocLabels,
   openPrintWindow,
   receiptLetterheadHtml,
+  tableHtml,
+  titleBlockHtml,
   type DocLabels,
   type Letterhead,
   type TFn,
@@ -339,6 +343,35 @@ export function buildReceiptHtml(
   dl: DocLabels,
   opts: { lang?: string; autoPrint?: boolean; printedBy?: string | null; printedAt?: Date } = {},
 ): string {
+  const { title, body } = receiptBodyHtml(d, rt, dl, opts)
+  return documentHtml({
+    base: {
+      page: 'receipt',
+      title,
+      docNo: d.receiptNo,
+      clinicName: letterheadOf(d.clinic).legalName,
+      printedBy: opts.printedBy ?? null,
+      printedAt: opts.printedAt,
+      labels: dl,
+    },
+    css: RECEIPT_CSS,
+    body,
+    lang: opts.lang,
+    autoPrint: opts.autoPrint,
+  })
+}
+
+/**
+ * The receipt's body (letterhead to thank-you line) and its title, without the document
+ * wrapper: one receipt prints it on the 80 mm roll, the receipts of a period print one copy
+ * per page on A4 (`buildReceiptsBatchHtml`).
+ */
+export function receiptBodyHtml(
+  d: ReceiptDoc,
+  rt: ReceiptText,
+  dl: DocLabels,
+  opts: { printedBy?: string | null; printedAt?: Date } = {},
+): { title: string; body: string } {
   const lh = letterheadOf(d.clinic)
   // a receipt once anything is paid (also when reprinted without this payment); else a statement
   const isReceipt = !!d.payment || d.paid > 0
@@ -450,18 +483,129 @@ export function buildReceiptHtml(
     `<footer class="r-foot">${foot}</footer>`,
   ].join('\n')
 
+  return { title, body }
+}
+
+/** The receipts of a period in one document: a cover (figures and the list), then one receipt
+ *  per page, each in its 80 mm width, as the cash desk printed it. Pure (no window). */
+const BATCH_CSS = `
+.r-cover .dt { margin-top: 8pt; }
+.r-copy { width: 80mm; margin: 0 auto; padding: 3mm 4mm; border: 0.5pt solid var(--hair);
+  break-before: page; page-break-before: always; break-inside: avoid; page-break-inside: avoid;
+  --fs-title: 11pt; --fs-clinic: 11pt; --fs-h: 9pt; --fs-sub: 9pt; --fs-body: 9pt; --fs-table: 9pt; --fs-small: 8pt;
+  --logo: 14mm; --ink: #000000; --ink-2: #000000; --hair: #000000;
+  font-size: var(--fs-body); line-height: 1.38; color: #000000; }
+.r-copy .r-no { font-size: 8pt; text-align: right; color: #000000; margin: 0 0 3pt; }
+`
+
+export interface ReceiptsBatchCover {
+  /** "Receipts of the period". */
+  title: string
+  /** "Period", then "24/10/2026" or "01/10/2026 to 24/10/2026". */
+  periodWord: string
+  periodLabel: string
+  /** "N receipts". */
+  countLabel: string
+  /** "RWF total". */
+  totalLabel: string
+  /** The cashier and the payment method filters, in words (left out when not filtered). */
+  cashier?: string | null
+  method?: string | null
+  /** Column labels of the list. */
+  columns: {
+    no: string
+    time: string
+    patient: string
+    file: string
+    method: string
+    cashier: string
+    amount: string
+  }
+  /** "Cashier: …", "Method: …". */
+  cashierLabel: string
+  methodLabel: string
+  /** The counter line "N receipts · RWF total · period · printed by". */
+  summary: string
+}
+
+export function buildReceiptsBatchHtml(
+  docs: ReceiptDoc[],
+  rt: ReceiptText,
+  dl: DocLabels,
+  cover: ReceiptsBatchCover,
+  opts: { lang?: string; autoPrint?: boolean; printedBy?: string | null; printedAt?: Date } = {},
+): string {
+  const first = docs[0]
+  const lh = first ? letterheadOf(first.clinic) : null
+  const total = docs.reduce((s, d) => s + (d.payment?.amount ?? 0), 0)
+  const figures = keyFiguresHtml([
+    { label: cover.countLabel, value: docNumber(docs.length), tone: 'teal' },
+    { label: cover.totalLabel, value: formatRwf(total), tone: 'violet' },
+    ...(cover.cashier
+      ? [{ label: cover.cashierLabel, value: cover.cashier, tone: 'navy' as const }]
+      : []),
+    ...(cover.method
+      ? [{ label: cover.methodLabel, value: cover.method, tone: 'mint' as const }]
+      : []),
+  ])
+  const c = cover.columns
+  const list = tableHtml(
+    [
+      { label: c.no, width: '26mm' },
+      { label: c.time, width: '28mm' },
+      { label: c.patient },
+      { label: c.file, width: '24mm' },
+      { label: c.method, width: '22mm' },
+      { label: c.cashier, width: '34mm' },
+      { label: c.amount, money: true, width: '24mm' },
+    ],
+    docs.map((d) => [
+      d.receiptNo,
+      docDateTime(d.at),
+      d.patient.name,
+      d.patient.fileNumber,
+      d.payment
+        ? METHOD_CODES.has(d.payment.method)
+          ? dl.method(d.payment.method)
+          : d.payment.method
+        : null,
+      d.cashier,
+      d.payment?.amount ?? 0,
+    ]),
+    { totals: [{ cells: [dl.total, null, null, null, null, null, total], grand: true }] },
+  )
+  const coverHtml = [
+    lh ? letterheadHtml(lh, dl) : '',
+    titleBlockHtml({
+      title: cover.title,
+      scope: cover.summary,
+      meta: [
+        [cover.periodWord, cover.periodLabel],
+        [cover.cashierLabel, cover.cashier],
+        [cover.methodLabel, cover.method],
+      ],
+    }),
+    figures,
+    list,
+  ].join('')
+  const copies = docs
+    .map((d, i) => {
+      const { body } = receiptBodyHtml(d, rt, dl, opts)
+      return `<section class="r-copy"><p class="r-no">${i + 1} / ${docs.length}</p>${body}</section>`
+    })
+    .join('\n')
   return documentHtml({
     base: {
-      page: 'receipt',
-      title,
-      docNo: d.receiptNo,
-      clinicName: lh.legalName,
+      page: 'a4',
+      title: cover.title,
+      docNo: null,
+      clinicName: lh?.legalName ?? '',
       printedBy: opts.printedBy ?? null,
       printedAt: opts.printedAt,
       labels: dl,
     },
-    css: RECEIPT_CSS,
-    body,
+    css: RECEIPT_CSS + BATCH_CSS,
+    body: `<section class="r-cover">${coverHtml}</section>${copies}`,
     lang: opts.lang,
     autoPrint: opts.autoPrint,
   })

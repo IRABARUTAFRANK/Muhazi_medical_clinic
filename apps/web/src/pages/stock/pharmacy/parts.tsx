@@ -14,7 +14,9 @@ import { SearchSelect } from '@/components/ui/search-select'
 import { card } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 import { useHanded, type HandedGroup } from './handed'
-import { newLine, type EditLine } from './util'
+import { QtyModeToggle } from '../stock-shared'
+import { hasPacks, packsEquals, tx } from '../stock-util'
+import { newLine, qty, type EditLine } from './util'
 
 /**
  * The patient's allergies, shown first and in red when there are any: the pharmacist checks
@@ -219,56 +221,89 @@ export function LinesEditor({
   onChange,
   options,
   below,
+  itemOf,
 }: {
   lines: EditLine[]
   onChange: (lines: EditLine[]) => void
   options: { value: string; label: string }[]
   /** Under each line: price, stock, the batches it takes… */
   below?: (l: EditLine) => ReactNode
+  /** The item of a line (its pack size and unit): shows the pieces/packs toggle (0102). */
+  itemOf?: (itemId: string) => { packSize?: number | null; unit?: string | null } | undefined
 }) {
   const { t } = useTranslation()
   const set = (key: string, patch: Partial<EditLine>) =>
     onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)))
   return (
     <div className="flex flex-col gap-2">
-      {lines.map((l, i) => (
-        <div key={l.key} className="bg-surface/70 @container flex flex-col gap-1.5 rounded-md p-2">
-          {/* narrow (a phone, a side panel): the medicine takes the whole row, the quantity and
-              the bin go under it */}
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 @md:grid-cols-[minmax(0,1fr)_96px_auto]">
-            <SearchSelect
-              wrapperClassName="col-span-2 @md:col-span-1"
-              label={i === 0 ? t('stock.cols.item') : ''}
-              value={l.itemId}
-              onChange={(v) => set(l.key, { itemId: v })}
-              emptyLabel={t('visit.add.pickItem')}
-              options={options.filter(
-                (o) => o.value === l.itemId || !lines.some((x) => x.itemId === o.value),
+      {lines.map((l, i) => {
+        const item = l.itemId ? itemOf?.(l.itemId) : undefined
+        const packs = hasPacks(item)
+        const mode = packs ? (l.mode ?? 'pieces') : 'pieces'
+        return (
+          <div
+            key={l.key}
+            className="bg-surface/70 @container flex flex-col gap-1.5 rounded-md p-2"
+          >
+            {/* narrow (a phone, a side panel): the medicine takes the whole row, the quantity and
+                the bin go under it */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-end gap-2 @md:grid-cols-[minmax(0,1fr)_96px_auto_auto]">
+              <SearchSelect
+                wrapperClassName="col-span-3 @md:col-span-1"
+                label={i === 0 ? t('stock.cols.item') : ''}
+                value={l.itemId}
+                onChange={(v) => set(l.key, { itemId: v, mode: 'pieces' })}
+                emptyLabel={t('visit.add.pickItem')}
+                options={options.filter(
+                  (o) => o.value === l.itemId || !lines.some((x) => x.itemId === o.value),
+                )}
+              />
+              <Field
+                label={
+                  i === 0
+                    ? mode === 'packs'
+                      ? tx(t, 'stockShared.packs.packs', 'packs')
+                      : t('stock.quantity')
+                    : ''
+                }
+                inputMode="numeric"
+                value={l.quantity}
+                onChange={(e) => set(l.key, { quantity: e.target.value.replace(/[^\d]/g, '') })}
+                aria-label={
+                  mode === 'packs' ? tx(t, 'stockShared.packs.packs', 'packs') : t('stock.quantity')
+                }
+              />
+              {packs ? (
+                <QtyModeToggle
+                  mode={mode}
+                  onChange={(m) => set(l.key, { mode: m })}
+                  className="mb-0.5"
+                />
+              ) : (
+                <span />
               )}
-            />
-            <Field
-              label={i === 0 ? t('stock.quantity') : ''}
-              inputMode="numeric"
-              value={l.quantity}
-              onChange={(e) => set(l.key, { quantity: e.target.value.replace(/[^\d]/g, '') })}
-              aria-label={t('stock.quantity')}
-            />
-            <Button
-              size="icon"
-              variant="ghost"
-              title={t('pharmacy.removeLine')}
-              aria-label={t('pharmacy.removeLine')}
-              disabled={lines.length === 1 && !l.itemId}
-              onClick={() =>
-                onChange(lines.length === 1 ? [newLine()] : lines.filter((x) => x.key !== l.key))
-              }
-            >
-              <Trash2 size={16} aria-hidden="true" />
-            </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                title={t('pharmacy.removeLine')}
+                aria-label={t('pharmacy.removeLine')}
+                disabled={lines.length === 1 && !l.itemId}
+                onClick={() =>
+                  onChange(lines.length === 1 ? [newLine()] : lines.filter((x) => x.key !== l.key))
+                }
+              >
+                <Trash2 size={16} aria-hidden="true" />
+              </Button>
+            </div>
+            {mode === 'packs' && qty(l.quantity) > 0 && item && (
+              <span className="text-ink-2 text-[12px] font-medium tabular-nums">
+                {packsEquals(t, qty(l.quantity), item.packSize ?? 1, item.unit)}
+              </span>
+            )}
+            {l.itemId && below?.(l)}
           </div>
-          {l.itemId && below?.(l)}
-        </div>
-      ))}
+        )
+      })}
       <Button size="sm" className="self-start" onClick={() => onChange([...lines, newLine()])}>
         <Plus size={14} aria-hidden="true" />
         {t('pharmacy.addLine')}

@@ -1,26 +1,17 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { AnalyticsPage } from '@/pages/analytics/analytics-page'
 import { validateAnalyticsSearch, type UpdateSearch } from '@/pages/analytics/search'
 import { useSession } from '@/store/session'
 
 /**
- * Analytics: the detailed views behind the dashboard cards. The same people as the dashboard
- * (the manager, and heads or assistants of a department); the server then decides what each may
- * see (analytics_access). Everything else is in the address, e.g.
+ * Analytics: the detailed views behind the dashboard cards. Every dashboard has its own (0102):
+ * the manager's and the heads' as before, the cash desk's, the pharmacy's, the laboratory's, the
+ * doctor's, the nurse's and reception's; the server decides what each may see (analytics_access)
+ * and each view's data function checks its own rights. Everything else is in the address, e.g.
  *   /app/analytics?view=revenue&range=custom&from=2026-09-26&to=2026-10-25&day=2026-10-21
  */
 export const Route = createFileRoute('/app/analytics')({
   validateSearch: validateAnalyticsSearch,
-  beforeLoad: () => {
-    const user = useSession.getState().user
-    if (
-      user &&
-      user.role !== 'manager' &&
-      user.dashboard !== 'manager' &&
-      user.dashboard !== 'head'
-    )
-      throw redirect({ to: '/app' })
-  },
   component: AnalyticsRoute,
 })
 

@@ -10,6 +10,7 @@ import {
   Clock,
   History,
   Coins,
+  FileText,
   FlaskConical,
   HeartPulse,
   Landmark,
@@ -22,6 +23,7 @@ import {
   PieChart,
   Printer,
   Receipt,
+  ReceiptText,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -81,7 +83,11 @@ import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { usePeriod } from '@/lib/period'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { useReceiptsInPeriod } from '@/lib/api/analytics-receipts'
+import { useVisitsInPeriod } from '@/lib/api/analytics-documents'
 import { methodLabel, useDashboard, type RevenuePoint } from '@/lib/api/dashboard'
+import { useLetterhead } from '@/lib/report-parts'
+import { openReceiptsBatch } from '@/lib/reports/receipts-print'
 import type { ActivityKind } from '@/lib/api/analytics'
 import { categoryName } from '@/lib/api/catalogue'
 import { useDailyStockAlertCheck } from '@/lib/api/pharmacy'
@@ -171,6 +177,26 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   // outside it are refused), so a head keeps the panel's "Details" link to their department.
   const personLink = (id: string | null, kind?: ActivityKind) =>
     id && isManager ? link('staff', { person: id, ...(kind ? { kind } : {}) }) : undefined
+  // the receipts given in the period and the patients' documents (0102): the manager only
+  const receipts = useReceiptsInPeriod({ from: period.from, to: period.to }, {}, isManager)
+  const docs = useVisitsInPeriod({ from: period.from, to: period.to }, {}, canManage)
+  const letterhead = useLetterhead()
+  const [printError, setPrintError] = useState<string | null>(null)
+  const printReceipts = () => {
+    setPrintError(null)
+    const rows = receipts.data?.receipts ?? []
+    const ok = openReceiptsBatch({
+      rows,
+      from: period.from,
+      to: period.to,
+      clinic: letterhead,
+      printedBy: user.name,
+    })
+    if (!ok) setPrintError(rows.length ? t('report.popupBlocked') : t('finance.nothingYet'))
+  }
+  const documentsHref = `/app/documents?${new URLSearchParams(
+    Object.entries(periodSearch(period)).filter((e): e is [string, string] => !!e[1]),
+  ).toString()}`
 
   return (
     <StaffShell user={user} nav={nav} activeId={activeId}>
@@ -316,6 +342,20 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   to={link('revenue') ?? '/app/payments'}
                 />
               )}
+              {isManager && receipts.data && (
+                <Kpi
+                  i={4}
+                  icon={ReceiptText}
+                  tint="teal"
+                  label={t('receipts.givenIn', {
+                    period: periodWord,
+                    defaultValue: 'Receipts {{period}}',
+                  })}
+                  value={receipts.data.count}
+                  unit={formatRwf(receipts.data.total)}
+                  to={link('receipts')}
+                />
+              )}
               {isManager && data.tiles.openBills != null && (
                 <Kpi
                   i={4}
@@ -373,8 +413,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   className={cn(
                     'grid grid-cols-1 gap-4',
                     FEATURES.insurance
-                      ? 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]'
-                      : 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]',
+                      ? 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]'
+                      : 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]',
                   )}
                 >
                   <Panel
@@ -430,6 +470,53 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                           }))}
                         />
                       </div>
+                    </div>
+                  </Panel>
+                  <Panel
+                    i={4}
+                    icon={ReceiptText}
+                    tint="teal"
+                    title={t('receipts.givenIn', {
+                      period: periodWord,
+                      defaultValue: 'Receipts {{period}}',
+                    })}
+                    right={
+                      receipts.data
+                        ? `${formatNumber(receipts.data.count)} · ${formatRwf(receipts.data.total)}`
+                        : undefined
+                    }
+                    to={link('receipts')}
+                  >
+                    {receipts.data && receipts.data.byMethod.length > 0 ? (
+                      <HBarList
+                        subject="money"
+                        colors={METHOD_COLORS}
+                        labelWidth="minmax(72px,96px)"
+                        rows={receipts.data.byMethod.map((m) => ({
+                          icon: methodIcon(m.method),
+                          label: t(`visit.payment.methods.${m.method}`, {
+                            defaultValue: methodLabel(m.method),
+                          }),
+                          value: m.amount,
+                          display: `${formatNumber(m.count)} · ${formatNumber(m.amount)}`,
+                        }))}
+                      />
+                    ) : (
+                      <Empty>{t('finance.nothingYet')}</Empty>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="tint-grey"
+                        size="sm"
+                        onClick={printReceipts}
+                        disabled={!receipts.data || receipts.data.receipts.length === 0}
+                      >
+                        <Printer size={14} aria-hidden="true" />
+                        {t('receipts.printAll', { defaultValue: 'Print all receipts' })}
+                      </Button>
+                      {printError && (
+                        <span className="text-red text-[13px] font-semibold">{printError}</span>
+                      )}
                     </div>
                   </Panel>
                   {/* What insurers owe: only once the clinic works with insurers. */}
@@ -545,6 +632,56 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   </div>
                 </Panel>
               </div>
+              {/* the documents of every patient treated in the period, printed together (0102) */}
+              <Panel
+                i={4}
+                icon={FileText}
+                tint="navy"
+                id="documents"
+                title={t('documents.title', { defaultValue: 'Patients’ documents' })}
+                right={
+                  docs.data
+                    ? t('documents.found', {
+                        count: docs.data.count,
+                        defaultValue: '{{count}} found',
+                      })
+                    : undefined
+                }
+                to={documentsHref}
+                toLabel={t('documents.open', { defaultValue: 'Open' })}
+              >
+                <p className="text-ink-2 m-0 text-[14px]">
+                  {t('documents.cardLead', {
+                    defaultValue:
+                      'The medical reports of every patient treated in the period, filtered by department, doctor, service or insurer, printed in one document or exported as a list.',
+                  })}
+                </p>
+                {docs.data && (
+                  <div className="text-ink-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+                    <span>
+                      {t('dashboard.tiles.visits')}:{' '}
+                      <b className="text-ink">{formatNumber(docs.data.count)}</b>
+                    </span>
+                    <span>
+                      {t('documents.closedVisits', { defaultValue: 'Closed visits' })}:{' '}
+                      <b className="text-ink">{formatNumber(docs.data.closed)}</b>
+                    </span>
+                    <span>
+                      {t('documents.patients', { defaultValue: 'Patients' })}:{' '}
+                      <b className="text-ink">
+                        {formatNumber(new Set(docs.data.visits.map((v) => v.patient.id)).size)}
+                      </b>
+                    </span>
+                  </div>
+                )}
+                <StaffLink
+                  to={documentsHref}
+                  className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'self-start')}
+                >
+                  <Printer size={14} aria-hidden="true" />
+                  {t('documents.printAll', { defaultValue: 'Print all medical reports' })}
+                </StaffLink>
+              </Panel>
               {/* Who did what: its own full-width row, so every count shows */}
               <Panel
                 i={3}
