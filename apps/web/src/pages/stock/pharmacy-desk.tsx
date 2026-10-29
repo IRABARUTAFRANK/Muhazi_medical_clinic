@@ -31,7 +31,8 @@ import {
   type PharmacyPatient,
   type StockItem,
 } from '@/lib/api/stock'
-import { costOf, partOf, usePharmacyActions, withoutDone } from '@/lib/api/pharmacy'
+import { costOf, partOf, perUnit, usePharmacyActions, withoutDone } from '@/lib/api/pharmacy'
+import { priceQuantity, saleModeOf, type Packaging } from '@/lib/pack-pricing'
 import { cn } from '@/lib/utils'
 import { Field, controlClass } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
@@ -48,7 +49,10 @@ import {
   packsText,
   piecesAndPacks,
   piecesOf,
+  priceLineText,
+  saleModeText,
   tx,
+  wholePacksText,
   type QtyMode,
 } from './stock-util'
 import { CounterSalesPanel } from './pharmacy/counter-sales'
@@ -156,6 +160,29 @@ function HandOverPanel({
   /** The pack size of a line's medicine (the queue says it; else the stock list). */
   const packOf = (q: PharmacyLine) =>
     q.packSize ?? stock?.items.find((i) => i.id === q.itemId)?.packSize ?? null
+  /** How a line's medicine is packed and sold (0107: the queue says it; else the stock list). */
+  const packagingOf = (q: PharmacyLine): Packaging & { unit?: string | null } => {
+    const it = stock?.items.find((i) => i.id === q.itemId)
+    return {
+      packSize: packOf(q),
+      saleMode: q.saleMode ?? it?.saleMode ?? null,
+      packPrice: q.packPrice ?? it?.packPrice ?? null,
+      packUnit: q.packUnit ?? it?.packUnit ?? null,
+      unit: q.unit,
+    }
+  }
+  /** A medicine sold only by the whole pack (0107): given in whole packs. */
+  const packOnly = (q: PharmacyLine) => saleModeOf(packagingOf(q)) === 'pack'
+  /**
+   * What a line gives by default: what remains; sold only by the whole pack, up to whole packs
+   * (the database's due: 10 remaining in boxes of 8 → 16).
+   */
+  const dueOf = (q: PharmacyLine) => {
+    const { remaining } = partOf(q)
+    const size = packOf(q)
+    if (q.due != null) return Math.max(remaining, q.due)
+    return packOnly(q) && size && size > 1 ? Math.ceil(remaining / size) * size : remaining
+  }
   /**
    * What remains to give on a line, and the quantity to give now (typed in pieces or packs, else
    * the default: all that remains, or what the store holds when short), always as pieces.
@@ -163,12 +190,33 @@ function HandOverPanel({
   const plan = (q: PharmacyLine) => {
     const part = partOf(q)
     const size = packOf(q)
-    const mode: QtyMode = hasPacks({ packSize: size }) ? (modes[q.requestId] ?? 'pieces') : 'pieces'
-    const fallback = Math.min(part.remaining, Math.max(q.onHandPharmacy, 0)) || part.remaining
+    const only = packOnly(q) && hasPacks({ packSize: size })
+    const due = dueOf(q)
+    // sold only by the whole pack: typed in packs
+    const mode: QtyMode = only
+      ? 'packs'
+      : hasPacks({ packSize: size })
+        ? (modes[q.requestId] ?? 'pieces')
+        : 'pieces'
+    const have = Math.max(q.onHandPharmacy, 0)
+    // all that is due, or what the store holds when short (whole packs for a pack-only medicine)
+    const short = only && size ? Math.floor(have / size) * size : have
+    const fallback = Math.min(due, short) || due
     const typed = amounts[q.requestId]
-    const typedN = typed == null ? fallback : qty(typed)
+    const typedN =
+      typed == null ? (mode === 'packs' && size ? fallback / size : fallback) : qty(typed)
     const n = typed == null ? fallback : piecesOf(typedN, mode, size)
-    return { ...part, n, typed: typed ?? String(fallback), mode, size, typedN }
+    return {
+      ...part,
+      n,
+      typed: typed ?? String(typedN),
+      mode,
+      size,
+      typedN,
+      due,
+      only,
+      whole: !only || (!!size && n % size === 0),
+    }
   }
   /** What the patient pays for `n` pieces of a line (their share after the insurer). */
   const shareOf = (q: PharmacyLine, n: number) => costOf(q, n).patient
@@ -265,7 +313,7 @@ function HandOverPanel({
         // the last medicine: the patient goes on, and pays everything at the end of the visit
         const handedShare = groups
           .find((g) => g.lines[0]?.encounterId === q.encounterId)
-          ?.lines.reduce((s, x) => s + shareOf(x, partOf(x).remaining), 0)
+          ?.lines.reduce((s, x) => s + shareOf(x, dueOf(x)), 0)
         updateHanded(q.encounterId, {
           done: true,
           toPay:
@@ -337,7 +385,7 @@ function HandOverPanel({
 
   const giveAll = async (cardLines: PharmacyLine[], patient: PharmacyPatient | null) => {
     const first = cardLines[0]!
-    const share = cardLines.reduce((s, q) => s + shareOf(q, partOf(q).remaining), 0)
+    const share = cardLines.reduce((s, q) => s + shareOf(q, dueOf(q)), 0)
     if (
       !(await confirm({
         title: t('confirm.stock.handOverAllTitle', {
@@ -354,7 +402,7 @@ function HandOverPanel({
       return
     setMsg(null)
     for (const [i, q] of cardLines.entries())
-      if ((await give(q, patient, partOf(q).remaining, i === cardLines.length - 1)) == null) return
+      if ((await give(q, patient, dueOf(q), i === cardLines.length - 1)) == null) return
     setMsg({ ok: true, text: t('pharmacy.allGiven', { patient: first.patient }) })
   }
 
@@ -478,7 +526,7 @@ function HandOverPanel({
               {shown.map(({ patient, lines: cardLines }, gi) => {
                 const first = cardLines[0]!
                 // what is still to give on the card (a part already given is on the bill)
-                const left = (q: PharmacyLine) => partOf(q).remaining
+                const left = (q: PharmacyLine) => dueOf(q)
                 const share = cardLines.reduce((s, q) => s + shareOf(q, left(q)), 0)
                 const insurer = cardLines.reduce((s, q) => s + costOf(q, left(q)).insurer, 0)
                 const total = cardLines.reduce((s, q) => s + costOf(q, left(q)).total, 0)
@@ -562,13 +610,20 @@ function HandOverPanel({
                     {cardLines.map((q) => {
                       const p = plan(q)
                       // not enough for all that remains: a part can still be given (what is here)
-                      const short = q.onHandPharmacy < p.remaining
-                      const none = q.onHandPharmacy <= 0
-                      const badAmount = p.n < 1 || p.n > p.remaining || p.n > q.onHandPharmacy
+                      const short = q.onHandPharmacy < p.due
+                      const none =
+                        q.onHandPharmacy <= 0 || (p.only && !!p.size && q.onHandPharmacy < p.size)
+                      const badAmount = p.n < 1 || p.n > p.due || p.n > q.onHandPharmacy || !p.whole
                       const isPart = p.n > 0 && p.n < p.remaining
                       const where = elsewhere(q)
-                      const lineCost = costOf(q, p.remaining)
-                      const packInfo = { unit: q.unit, packSize: p.size }
+                      const lineCost = costOf(q, p.due)
+                      const pk = packagingOf(q)
+                      const packInfo = { unit: q.unit, packSize: p.size, packUnit: pk.packUnit }
+                      // what the quantity to give now costs, by how it is sold (0107)
+                      const priced = priceQuantity(pk, p.n, {
+                        cash: q.packPrice != null,
+                        piecePrice: perUnit(q).total,
+                      })
                       // the other pharmacy stores hold enough to make up what this one lacks
                       const sendCovers = q.onHandPharmacy + where.sendable >= p.remaining
                       const sendLink = (
@@ -593,13 +648,33 @@ function HandOverPanel({
                               <span className="text-ink block text-[14px]">
                                 <b>{q.item}</b> × {p.prescribed}
                                 {q.unit ? ` ${q.unit}` : ''}
-                                {packsText(t, p.prescribed, p.size) && (
+                                {packsText(t, p.prescribed, p.size, pk.packUnit) && (
                                   <span className="text-ink-3">
                                     {' '}
-                                    ({packsText(t, p.prescribed, p.size)})
+                                    ({packsText(t, p.prescribed, p.size, pk.packUnit)})
                                   </span>
                                 )}
                               </span>
+                              {p.size && (
+                                <span className="text-ink-3 block text-[12px]">
+                                  {saleModeText(t, pk)}
+                                </span>
+                              )}
+                              {/* sold only by the whole pack: the last pack is given whole */}
+                              {p.only && p.due > p.remaining && (
+                                <span className="text-teal block text-[12px] font-semibold">
+                                  {tx(
+                                    t,
+                                    'packaging.dueWhole',
+                                    'Sold only by the whole pack: give {{due}} ({{packs}}) for the {{remaining}} prescribed.',
+                                    {
+                                      due: p.due,
+                                      packs: packsText(t, p.due, p.size, pk.packUnit) ?? '',
+                                      remaining: p.remaining,
+                                    },
+                                  )}
+                                </span>
+                              )}
                               {q.splitFrom && (
                                 <span className="text-ink-3 block text-[12px]">
                                   {tx(
@@ -674,18 +749,11 @@ function HandOverPanel({
                                       q.payerPrice !== q.cashPrice &&
                                       ` · ${t('pharmacy.payerEach', { payer: q.payer, amount: formatRwf(q.payerPrice) })}`}
                                   </span>
-                                  {/* whole packs at the pack price: the bill says which was used */}
-                                  {lineCost.byPack && q.packPrice != null && (
+                                  {/* whole packs at the pack price, pieces at the piece
+                                      price: the line of what is given now, as the bill says it */}
+                                  {p.n > 0 && (priced.packs > 0 || p.size) && (
                                     <span className="text-teal block text-[12px] font-semibold tabular-nums">
-                                      {tx(
-                                        t,
-                                        'pharmacy.packPriceUsed',
-                                        {
-                                          one: '{{count}} whole pack at {{price}} (pack price)',
-                                          other: '{{count}} whole packs at {{price}} (pack price)',
-                                        },
-                                        { count: lineCost.packs, price: formatRwf(q.packPrice) },
-                                      )}
+                                      {priceLineText(t, priced, pk, formatRwf)}
                                     </span>
                                   )}
                                 </>
@@ -706,8 +774,8 @@ function HandOverPanel({
                                       store: storeName,
                                     })
                                   : t('stock.inPharmacy', { count: q.onHandPharmacy })}
-                                {packsText(t, q.onHandPharmacy, p.size) &&
-                                  ` · ${packsText(t, q.onHandPharmacy, p.size)}`}
+                                {packsText(t, q.onHandPharmacy, p.size, pk.packUnit) &&
+                                  ` · ${packsText(t, q.onHandPharmacy, p.size, pk.packUnit)}`}
                               </span>
                               {(q.expiredInPharmacy ?? 0) > 0 && (
                                 <span className="text-red block text-[12px] font-semibold">
@@ -745,9 +813,15 @@ function HandOverPanel({
                                 {hasPacks(packInfo) && (
                                   <QtyModeToggle
                                     mode={p.mode}
+                                    packsOnly={p.only}
                                     disabled={busy || holds || none}
                                     onChange={(m) => switchMode(q, m)}
                                   />
+                                )}
+                                {!p.whole && p.n > 0 && (
+                                  <span className="text-red w-full text-[12px] font-semibold">
+                                    {wholePacksText(t, p.n, pk)}
+                                  </span>
                                 )}
                                 {p.mode === 'packs' && p.typedN > 0 && (
                                   <span className="text-ink-2 w-full text-[12px] font-medium tabular-nums">
@@ -824,7 +898,9 @@ function HandOverPanel({
                                         q,
                                         patient,
                                         cardLines.length,
-                                        Math.min(q.onHandPharmacy, p.remaining),
+                                        p.only && p.size
+                                          ? Math.floor(q.onHandPharmacy / p.size) * p.size
+                                          : Math.min(q.onHandPharmacy, p.remaining),
                                       )
                                     }
                                   >
@@ -833,7 +909,12 @@ function HandOverPanel({
                                       t,
                                       'pharmacy.part.giveNow',
                                       { one: 'Give {{count}} now', other: 'Give {{count}} now' },
-                                      { count: Math.min(q.onHandPharmacy, p.remaining) },
+                                      {
+                                        count:
+                                          p.only && p.size
+                                            ? Math.floor(q.onHandPharmacy / p.size) * p.size
+                                            : Math.min(q.onHandPharmacy, p.remaining),
+                                      },
                                     )}
                                   </Button>
                                 )}
@@ -1109,10 +1190,14 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
   const typedN = Number(quantity)
   const q = item && hasPacks(item) ? piecesOf(typedN, mode, item.packSize) : typedN
   const cost = item ? cashCost(q, item) : null
+  // sold only by the whole pack (0107): typed in packs; pieces that are not whole packs refused
+  const only = !!item && saleModeOf(item) === 'pack'
+  const notWhole = !!cost && q > 0 && !cost.ok
   const sell = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
     if (!encounterId || !item || !Number.isFinite(q) || q <= 0) return
+    if (notWhole) return setMsg({ ok: false, text: wholePacksText(t, q, item) })
     const who = patients.find((p) => p.encounterId === encounterId)?.name ?? ''
     const name = itemName(item)
     if (
@@ -1204,7 +1289,8 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
             value={itemId}
             onChange={(v) => {
               setItemId(v)
-              setMode('pieces')
+              const it = items.find((i) => i.id === v)
+              setMode(it && saleModeOf(it) === 'pack' ? 'packs' : 'pieces')
             }}
             required
             emptyLabel={t('visit.add.pickItem')}
@@ -1225,7 +1311,12 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
               wrapperClassName="min-w-0 flex-1"
             />
             {item && hasPacks(item) && (
-              <QtyModeToggle mode={mode} onChange={setMode} className="mb-0.5" />
+              <QtyModeToggle
+                mode={only ? 'packs' : mode}
+                packsOnly={only}
+                onChange={setMode}
+                className="mb-0.5"
+              />
             )}
           </div>
         </div>
@@ -1233,6 +1324,7 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
           <p className="text-ink-3 m-0 -mt-1 text-[12px]">
             {[
               piecesAndPacks(t, inStore(item), item),
+              hasPacks(item) ? saleModeText(t, item) : null,
               mode === 'packs' && typedN > 0
                 ? packsEquals(t, typedN, item.packSize ?? 1, item.unit)
                 : null,
@@ -1251,29 +1343,23 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
           <p
             className={cn(
               'm-0 text-[14px] font-semibold',
-              q > inStore(item) ? 'text-red' : 'text-ink-2',
+              q > inStore(item) || notWhole ? 'text-red' : 'text-ink-2',
             )}
           >
             {q > inStore(item)
               ? t('pharmacy.sellShort', { count: inStore(item) })
-              : item.sellingPrice == null
-                ? t('pharmacy.sellNoPrice')
-                : [
-                    t('pharmacy.sellCashTotal', { amount: formatRwf(cost?.total ?? 0) }),
-                    cost?.byPack
-                      ? tx(
-                          t,
-                          'pharmacy.packPriceUsed',
-                          {
-                            one: '{{count}} whole pack at {{price}} (pack price)',
-                            other: '{{count}} whole packs at {{price}} (pack price)',
-                          },
-                          { count: cost.packs, price: formatRwf(item.packPrice ?? 0) },
-                        )
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
+              : notWhole
+                ? wholePacksText(t, q, item)
+                : item.sellingPrice == null
+                  ? t('pharmacy.sellNoPrice')
+                  : [
+                      t('pharmacy.sellCashTotal', { amount: formatRwf(cost?.total ?? 0) }),
+                      cost && hasPacks(item)
+                        ? `(${priceLineText(t, cost, item, formatRwf)})`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
           </p>
         )}
         {msg && (
@@ -1286,7 +1372,7 @@ function SellMedicine({ patients }: { patients: VisitPatient[] }) {
           variant="success"
           className="self-start"
           loading={actions.sell.isPending}
-          disabled={!encounterId || (!!item && q > inStore(item))}
+          disabled={!encounterId || (!!item && q > inStore(item)) || notWhole}
         >
           <ShoppingBag size={16} aria-hidden="true" />
           {t('pharmacy.sell')}

@@ -123,7 +123,7 @@ function ItemBody({
   const showCost = item.costShown !== false
   const [action, setAction] = useState<Action>('level')
   // pieces, with the whole packs they come to under them (0102)
-  const packs = (n: number) => packsText(t, n, item.packSize)
+  const packs = (n: number) => packsText(t, n, item.packSize, item.packUnit)
   const figures: { label: string; value: string; tone?: string; sub?: string | null }[] = [
     {
       label: t('stockPage.cols.pharmacy'),

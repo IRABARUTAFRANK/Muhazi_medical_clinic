@@ -5879,7 +5879,9 @@
     "backToSender": "Retour à l’expéditeur",
     "chipReceived": "Reçu",
     "chipCancelled": "Annulé",
-    "chipDifference": "Écart à l’arrivée"
+    "chipDifference": "Écart à l’arrivée",
+    "costValue": "Coût (RWF)",
+    "sellValue": "Au prix de vente (RWF)"
   },
   "stockDelivery": {
     "lead": "Enregistrez la livraison d’un fournisseur dans la pharmacie : le fournisseur, le numéro du bon de livraison ou de la facture, puis une ligne par médicament avec son lot, sa date d’expiration, sa quantité (en boîtes ou en unités) et son coût.",
@@ -7224,7 +7226,12 @@
     "ce1437a1": "Note introuvable.",
     "2380398b": "Seul le soignant qui a écrit la note (ou le gestionnaire) peut la modifier.",
     "61a5de54": "Dites pourquoi la note est modifiée.",
-    "82c10481": "La visite est terminée : un médicament ajouté maintenant ne peut être qu’acheté à l’extérieur."
+    "82c10481": "La visite est terminée : un médicament ajouté maintenant ne peut être qu’acheté à l’extérieur.",
+    "0fc913e4": "{{p1}} se vend seulement par conditionnement entier de {{p2}} : {{p3}} n’est pas un nombre entier de conditionnements.",
+    "edb7106b": "Seule la pharmacie ouvre un conditionnement de {{p1}} : envoyez des conditionnements entiers.",
+    "1ff2c034": "Indiquez comment il se vend : à l’unité, par conditionnement ou les deux.",
+    "f5cca4c2": "Indiquez le prix d’une unité.",
+    "2debc019": "Indiquez le prix d’un conditionnement."
   },
   "panel": {
     "close": "Fermer",
@@ -7524,5 +7531,106 @@
     "times": "Fois",
     "units": "Unités",
     "last": "Dernière fois"
+  },
+  "packaging": {
+    "addLead": "Une ligne par lot : l’article (choisissez-le, ou créez-le comme médicament ou produit), son conditionnement et sa façon d’être vendu, le numéro de lot, la date d’expiration, la quantité et le coût. Il entre aujourd’hui dans la pharmacie principale.",
+    "readOnlyStock": "Vous ajoutez le stock ; le conditionnement et les prix restent tels quels (seuls le gestionnaire ou le pharmacien les changent).",
+    "fromList": "Rempli depuis la liste officielle (son conditionnement et son tarif) : changez ce qui diffère à la clinique.",
+    "fromItem": "Tel qu’enregistré pour cet article : un changement ici met l’article à jour.",
+    "qtyPacks": "Quantité · {{pack}} de {{size}}",
+    "qtyPieces": "Quantité ({{piece}})",
+    "costPack": "Coût d’un(e) {{pack}} (RWF)",
+    "costPiece": "Coût d’un(e) {{piece}} (RWF)",
+    "costPer": "Coût par",
+    "perPieceShort": "par {{piece}}",
+    "perPackShort": "par {{pack}}",
+    "costTotal": "coût {{value}}",
+    "changes": "L’article change : {{from}} → {{to}}",
+    "errors": {
+      "packSize": "Indiquez combien d’unités contient un conditionnement (2 ou plus).",
+      "piecePrice": "Indiquez le prix d’une unité (un nombre entier, 0 ou plus).",
+      "packPrice": "Indiquez le prix d’un conditionnement (un nombre entier, 0 ou plus)."
+    },
+    "perPack": "{{price}} le/la {{pack}}",
+    "perPiece": "{{price}} le/la {{unit}}",
+    "title": "Conditionnement et façon de vendre",
+    "readOnly": "Seuls le gestionnaire ou une personne autorisée à fixer les prix changent le conditionnement et les prix.",
+    "packageLabel": "Conditionnement",
+    "kind": {
+      "pieces": "À l’unité seulement",
+      "pack": "Un conditionnement de plusieurs unités"
+    },
+    "packSize": "Unités par conditionnement",
+    "packUnit": "Le conditionnement est un(e)",
+    "unit": "Une unité est un(e)",
+    "piecesHint": "Pas de conditionnement : il est stocké, compté et vendu par {{piece}}.",
+    "howSold": "Façon de vendre",
+    "mode": {
+      "piece": "À l’unité",
+      "pack": "Par conditionnement seulement",
+      "both": "Les deux"
+    },
+    "piecePrice": "Prix d’un(e) {{piece}} (RWF)",
+    "packPrice": "Prix d’un(e) {{pack}} (RWF)",
+    "explain": {
+      "piece": "Vendu par {{piece}} : un(e) {{pack}} saisi(e) compte pour {{size}} unités au prix unitaire.",
+      "pack": "Vendu seulement par {{pack}} entier(ère) : une quantité qui n’est pas en conditionnements entiers est refusée. Un(e) {{piece}} vaut {{derived}} (pour les assureurs et la valeur du stock).",
+      "both": "Les conditionnements entiers au prix du conditionnement, les unités restantes au prix unitaire : 1 {{pack}} + 3 = prix du conditionnement + 3 × prix unitaire."
+    },
+    "atSellingPrice": "valeur au prix de vente {{value}}",
+    "splitPack": "Ouvrir un(e) {{pack}} (envoyer des unités : la pharmacie seulement)",
+    "packOfWord": "{{count}} × {{word}} de {{size}}",
+    "soldPiecesOnly": "À l’unité seulement, vendu à l’unité",
+    "wholePacksOnly": "Vendu seulement par conditionnement entier ({{pack}}) : {{pieces}} n’est pas un nombre entier de conditionnements. Donnez {{below}} ou {{above}}.",
+    "pack": "conditionnement",
+    "piece": "unité",
+    "costCol": "Coût",
+    "sellCol": "Au prix de vente",
+    "storeValues": "Ce que contient chaque stock",
+    "storeCol": "Stock",
+    "storeValuesHint": "Stock utilisable (non expiré). Le coût est le coût moyen ; la valeur de vente compte les conditionnements entiers au prix du conditionnement et les unités au prix unitaire.",
+    "dueWhole": "Vendu seulement par conditionnement entier : donnez {{due}} ({{packs}}) pour les {{remaining}} prescrits.",
+    "sold": {
+      "piece": "Vendu à l’unité",
+      "pack": "Vendu seulement par conditionnement entier",
+      "both": "Vendu par conditionnement ou à l’unité"
+    },
+    "packOf": {
+      "box_one": "{{count}} boîte de {{size}}",
+      "box_other": "{{count}} boîtes de {{size}}",
+      "strip_one": "{{count}} plaquette de {{size}}",
+      "strip_other": "{{count}} plaquettes de {{size}}",
+      "blister_one": "{{count}} blister de {{size}}",
+      "blister_other": "{{count}} blisters de {{size}}",
+      "bottle_one": "{{count}} flacon de {{size}}",
+      "bottle_other": "{{count}} flacons de {{size}}",
+      "sachet_one": "{{count}} sachet de {{size}}",
+      "sachet_other": "{{count}} sachets de {{size}}",
+      "tube_one": "{{count}} tube de {{size}}",
+      "tube_other": "{{count}} tubes de {{size}}",
+      "carton_one": "{{count}} carton de {{size}}",
+      "carton_other": "{{count}} cartons de {{size}}"
+    },
+    "word": {
+      "box": "boîte",
+      "strip": "plaquette",
+      "blister": "blister",
+      "bottle": "flacon",
+      "sachet": "sachet",
+      "tube": "tube",
+      "carton": "carton"
+    },
+    "pieceWord": {
+      "tablet": "comprimé",
+      "capsule": "gélule",
+      "sachet": "sachet",
+      "ampoule": "ampoule",
+      "vial": "fiole",
+      "bottle": "flacon",
+      "tube": "tube",
+      "suppository": "suppositoire",
+      "piece": "unité",
+      "ml": "ml"
+    }
   }
 }

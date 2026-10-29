@@ -695,6 +695,16 @@ const sampleMedicines: Medicine[] = [
     cashPrice: 500,
     active: true,
   },
+  {
+    id: 'it-6',
+    code: 'SYR100',
+    name: 'Cough syrup',
+    strength: '100 ml',
+    form: 'syrup',
+    unit: 'bottle',
+    cashPrice: 1500,
+    active: true,
+  },
 ]
 const MEDS = ['catalogue', 'medicines'] as const
 

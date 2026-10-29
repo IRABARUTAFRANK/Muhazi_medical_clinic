@@ -33,6 +33,7 @@ import { SearchSelect } from '@/components/ui/search-select'
 import {
   useBoughtOutside,
   useStockMovements,
+  useStockOverview,
   useStockSales,
   type StockItem,
   type StockLocation,
@@ -44,7 +45,9 @@ import { usePeriod } from '@/lib/period'
 import { stockReport } from '@/lib/reports/build'
 import { cn } from '@/lib/utils'
 import { DeliveriesList } from './delivery-form'
-import { itemName } from './stock-util'
+import { itemName, tx } from './stock-util'
+import { sellValueOf } from '@/lib/pack-pricing'
+import { usableIn } from './pharmacy/util'
 
 type Part = 'sales' | 'moves' | 'deliveries' | 'outside'
 
@@ -360,7 +363,102 @@ function Sales() {
           })}
         </p>
       </Panel>
+      <StoreValues />
     </div>
+  )
+}
+
+/**
+ * What each store holds now (0107): the usable pieces, their cost and their value at selling
+ * price (whole packs at the pack price, as the transfer notes and "My store" value them).
+ */
+function StoreValues() {
+  const { t } = useTranslation()
+  const { data } = useStockOverview()
+  if (!data) return null
+  const rows = data.locations
+    .filter((l) => l.active !== false && l.type !== 'main_store')
+    .map((l) => {
+      let units = 0
+      let cost = 0
+      let sell = 0
+      for (const i of data.items) {
+        const q = usableIn(i, l.id)
+        if (q <= 0) continue
+        units += q
+        cost += q * (i.avgCost ?? 0)
+        sell += sellValueOf(i, q)
+      }
+      return { id: l.id, name: l.name, units, cost, sell }
+    })
+    .filter((r) => r.units > 0)
+  if (rows.length === 0) return null
+  const sum = (k: 'units' | 'cost' | 'sell') => rows.reduce((s, r) => s + r[k], 0)
+  return (
+    <Panel
+      i={3}
+      icon={Warehouse}
+      tint="navy"
+      title={tx(t, 'packaging.storeValues', 'What each store holds')}
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[14px]">
+          <thead className="bg-surface">
+            <tr className="border-border border-b">
+              <th className={tableHead}>{tx(t, 'packaging.storeCol', 'Store')}</th>
+              <th className={cn(tableHead, 'text-right')}>{t('stock.sales.units')}</th>
+              {data.admin && (
+                <th className={cn(tableHead, 'text-right')}>
+                  {tx(t, 'packaging.costCol', 'Cost')}
+                </th>
+              )}
+              <th className={cn(tableHead, 'text-right')}>
+                {tx(t, 'packaging.sellCol', 'At selling price')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className={tableRow}>
+                <td className={tableFirstCell}>{r.name}</td>
+                <td className={cn(tableCell, 'text-right tabular-nums')}>
+                  {formatNumber(r.units)}
+                </td>
+                {data.admin && (
+                  <td className={cn(tableCell, 'text-right tabular-nums')}>
+                    {formatNumber(Math.round(r.cost))}
+                  </td>
+                )}
+                <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                  {formatNumber(Math.round(r.sell))}
+                </td>
+              </tr>
+            ))}
+            <tr className="border-border bg-surface border-t font-semibold">
+              <td className={tableFirstCell}>{t('report.total')}</td>
+              <td className={cn(tableCell, 'text-right tabular-nums')}>
+                {formatNumber(sum('units'))}
+              </td>
+              {data.admin && (
+                <td className={cn(tableCell, 'text-right tabular-nums')}>
+                  {formatNumber(Math.round(sum('cost')))}
+                </td>
+              )}
+              <td className={cn(tableCell, 'text-right tabular-nums')}>
+                {formatNumber(Math.round(sum('sell')))}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="text-ink-3 m-0 text-[13px]">
+        {tx(
+          t,
+          'packaging.storeValuesHint',
+          'Usable stock (not expired). The cost is the average cost; the selling value counts whole packs at the pack price and the pieces at the piece price.',
+        )}
+      </p>
+    </Panel>
   )
 }
 

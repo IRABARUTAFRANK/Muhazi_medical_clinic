@@ -24,49 +24,20 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/confirm'
-import { errorKind, throwIf } from '@/lib/api/errors'
-import { sampleStock, useStockOverview } from '@/lib/api/stock'
-import { supabase } from '@/lib/supabase'
+import { errorKind } from '@/lib/api/errors'
+import { useStockActions, useStockOverview } from '@/lib/api/stock'
 import { useSession } from '@/store/session'
 import { useSessionCanDesk } from '@/components/clinical/session-desks'
-import { packPriceText, tx } from '../stock/stock-util'
-
-/**
- * The number of pieces in one pack of a medicine (a box of 20 tablets, a strip of 10; deliveries
- * counted in boxes are converted with it; stock is held in pieces). Saved by the checked function
- * set_pack_size (the pharmacy and the manager); empty means one piece per pack: a medicine sold
- * whole, like a bottle, has 1 and the unit "bottle".
- */
-async function savePackSize(itemId: string, packSize: number | null) {
-  if (!itemId) return
-  if (!supabase) {
-    // sample mode: the stock list shows it
-    const it = sampleStock.items.find((x) => x.id === itemId)
-    if (it) it.packSize = packSize
-    return
-  }
-  const { error } = await supabase.rpc('set_pack_size', {
-    p_item_id: itemId,
-    p_pack: packSize ?? 1,
-  })
-  throwIf(error)
-}
-
-/**
- * The price of one whole pack (0102), when it differs from pieces × the price: whole packs sold
- * for cash are charged at it. Saved by set_pack_price (the manager, or the price right); empty
- * clears it.
- */
-async function savePackPrice(itemId: string, packPrice: number | null) {
-  if (!itemId) return
-  if (!supabase) {
-    const it = sampleStock.items.find((x) => x.id === itemId)
-    if (it) it.packPrice = packPrice
-    return
-  }
-  const { error } = await supabase.rpc('set_pack_price', { p_item_id: itemId, p_price: packPrice })
-  throwIf(error)
-}
+import { packPriceText, saleModeText } from '../stock/stock-util'
+import {
+  emptyPack,
+  packChanged,
+  packDraftOf,
+  packInput,
+  packProblem,
+  type PackDraft,
+} from '../stock/pack-draft'
+import { PackagingFields } from '../stock/packaging-fields'
 
 const errorBox =
   'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
@@ -229,6 +200,7 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
                       (packOf(m.id)?.packSize ?? 1) > 1
                         ? t('stockPage.add.perBoxKnown', { count: packOf(m.id)?.packSize })
                         : null,
+                      packOf(m.id) ? saleModeText(t, packOf(m.id)!) : null,
                       packOf(m.id) ? packPriceText(t, packOf(m.id)!, formatRwf) : null,
                     ]
                       .filter(Boolean)
@@ -280,23 +252,23 @@ function MedicineForm({
   const [name, setName] = useState(medicine?.name ?? '')
   const [strength, setStrength] = useState(medicine?.strength ?? '')
   const [form, setForm] = useState(medicine?.form ?? '')
-  const [unit, setUnit] = useState(medicine?.unit ?? '')
-  const [price, setPrice] = useState(medicine?.cashPrice != null ? String(medicine.cashPrice) : '')
   const [active, setActive] = useState(medicine?.active ?? true)
-  // the box size, read from the stock list (the medicines list does not carry it)
+  // the package and how it is sold (0107), read from the stock list (the medicines list does not
+  // carry them): pieces only or a pack of N; by the piece, only by the whole pack, or both
   const { data: stock } = useStockOverview()
+  const stockActions = useStockActions()
   const qc = useQueryClient()
-  const knownPack = medicine
-    ? (stock?.items.find((i) => i.id === medicine.id)?.packSize ?? null)
-    : null
-  const [packSize, setPackSize] = useState<string | null>(null)
-  const pack = packSize ?? (knownPack && knownPack > 0 ? String(knownPack) : '')
-  // the price of one whole pack (0102), optional
-  const knownPackPrice = medicine
-    ? (stock?.items.find((i) => i.id === medicine.id)?.packPrice ?? null)
-    : null
-  const [packPrice, setPackPrice] = useState<string | null>(null)
-  const packPriceField = packPrice ?? (knownPackPrice != null ? String(knownPackPrice) : '')
+  const known = medicine ? stock?.items.find((i) => i.id === medicine.id) : undefined
+  const [typed, setPack] = useState<PackDraft | null>(null)
+  const pack: PackDraft =
+    typed ??
+    (known
+      ? packDraftOf({ ...known, sellingPrice: medicine?.cashPrice ?? known.sellingPrice })
+      : {
+          ...emptyPack(),
+          unit: medicine?.unit ?? '',
+          piecePrice: medicine?.cashPrice != null ? String(medicine.cashPrice) : '',
+        })
   const [error, setError] = useState<string | null>(null)
   // a new medicine can be taken from the RHIA list: its code keeps the list's details with it
   const {
@@ -316,33 +288,26 @@ function MedicineForm({
     setName(p ? (p.brand ? `${p.genericOnly} (${p.brand})` : p.genericOnly) : '')
     setStrength(p?.strengthText ?? '')
     setForm(p?.form ?? '')
-    setUnit(readableUnit(r?.unit ?? null))
-    setPrice(r?.price == null ? '' : String(r.price))
-    setPackSize(p?.pack ? String(p.pack) : null)
+    // the list's pack ("B/20") and its tariff as the price of one piece
+    setPack({
+      ...emptyPack(),
+      kind: p?.pack && p.pack > 1 ? 'pack' : 'pieces',
+      packSize: p?.pack && p.pack > 1 ? String(p.pack) : '',
+      packUnit: p?.pack && p.pack > 1 ? 'box' : '',
+      unit: readableUnit(r?.unit ?? null),
+      piecePrice: r?.price == null ? '' : String(Math.round(r.price)),
+    })
   }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
-    const p = Number(price)
     if (name.trim().length < 2) return setError(t('prices.meds.errors.name'))
-    if (!Number.isFinite(p) || p < 0 || price.trim() === '')
-      return setError(t('prices.errors.price'))
-    const ps = pack.trim() === '' ? null : Number(pack)
-    if (ps != null && (!Number.isInteger(ps) || ps < 1)) return setError(t('prices.meds.packBad'))
-    const pp = packPriceField.trim() === '' ? null : Number(packPriceField)
-    if (pp != null && (!Number.isInteger(pp) || pp < 0))
-      return setError(
-        tx(t, 'prices.meds.packPriceBad', 'The pack price is a whole number, 0 or more.'),
-      )
-    if (pp != null && (ps ?? 1) < 2)
-      return setError(
-        tx(
-          t,
-          'prices.meds.packPriceNeedsSize',
-          'A pack price needs the units per box first (2 or more). A medicine sold whole has no pack price: its price is the price.',
-        ),
-      )
+    const problem = packProblem(t, pack)
+    if (problem) return setError(problem)
+    const pk = packInput(pack)
+    // the cash price of one piece (a pack-only medicine: the pack price / pieces in one)
+    const p = pk.piecePrice ?? 0
     const label = `${name.trim()}${strength.trim() ? ` ${strength.trim()}` : ''}`
     if (
       !(await confirm({
@@ -364,17 +329,14 @@ function MedicineForm({
         name,
         strength,
         form,
-        unit,
+        unit: pk.unit ?? '',
         price: Math.round(p),
         active,
         code: medicine ? undefined : code || undefined,
       })
-      if (ps !== knownPack) {
-        await savePackSize(id || medicine?.id || '', ps)
-        void qc.invalidateQueries({ queryKey: ['stock'] })
-      }
-      if (pp !== knownPackPrice) {
-        await savePackPrice(id || medicine?.id || '', pp)
+      const itemId = id || medicine?.id || ''
+      if (itemId && (!known || packChanged(pack, known))) {
+        await stockActions.setPackaging.mutateAsync({ itemId, ...pk })
         void qc.invalidateQueries({ queryKey: ['stock'] })
       }
       onSaved(name.trim(), id || medicine?.id || null)
@@ -472,56 +434,13 @@ function MedicineForm({
               onChange={(e) => setStrength(e.target.value)}
             />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field
-              label={t('prices.meds.form')}
-              value={form}
-              placeholder={t('prices.meds.formPh')}
-              onChange={(e) => setForm(e.target.value)}
-            />
-            <Field
-              label={t('prices.meds.unit')}
-              value={unit}
-              placeholder={t('prices.meds.unitPh')}
-              onChange={(e) => setUnit(e.target.value)}
-            />
-            <Field
-              label={t('prices.meds.price')}
-              inputMode="numeric"
-              value={price}
-              placeholder="500"
-              onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field
-              label={t('prices.meds.packSize')}
-              inputMode="numeric"
-              value={pack}
-              placeholder="100"
-              onChange={(e) => setPackSize(e.target.value.replace(/[^\d]/g, ''))}
-            />
-            <Field
-              label={tx(t, 'prices.meds.packPrice', 'Pack price (optional)')}
-              inputMode="numeric"
-              value={packPriceField}
-              placeholder={
-                pack.trim() !== '' && price.trim() !== ''
-                  ? String(Number(pack) * Number(price))
-                  : '—'
-              }
-              onChange={(e) => setPackPrice(e.target.value.replace(/[^\d]/g, ''))}
-            />
-          </div>
-          <p className="text-ink-3 m-0 -mt-1 text-[12px]">
-            {t('prices.meds.packHint')}{' '}
-            {tx(
-              t,
-              'prices.meds.packHint2',
-              'Stock is held in pieces (the unit above); the box size says how many pieces make one pack, so every screen can show both ("500 tab · 25 packs of 20"). A medicine sold whole, like a bottle of syrup, is 1 with the unit "bottle". The pack price is the price of one whole pack when it differs from pieces × price: whole packs sold for cash are charged at it, and the bill says so.',
-            )}
-          </p>
+          <Field
+            label={t('prices.meds.form')}
+            value={form}
+            placeholder={t('prices.meds.formPh')}
+            onChange={(e) => setForm(e.target.value)}
+          />
+          <PackagingFields idPrefix="med" value={pack} onChange={setPack} />
           <label className="border-border flex items-start gap-3 rounded-md border p-3">
             <input
               type="checkbox"

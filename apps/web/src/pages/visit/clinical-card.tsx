@@ -54,6 +54,8 @@ import { VisitEditLock } from '@/components/clinical/visit-edit-lock'
 import { useEditWindow } from '@/components/clinical/edit-window'
 import { isRoomStore, useStockActions, useStockOverview } from '@/lib/api/stock'
 import { useHoldsStore, useStoreStock, type MyStore } from '@/lib/api/rooms'
+import { priceQuantity } from '@/lib/pack-pricing'
+import { priceLineText, saleModeText, wholePacksText } from '@/pages/stock/stock-util'
 import { ApiError, errorKind } from '@/lib/api/errors'
 import { TestFilesChip } from '@/components/clinical/supporting-files'
 import { registrationText, useMyCredentials } from '@/lib/api/staff'
@@ -2413,6 +2415,33 @@ function RoomStoreChoice({
         <span className="text-ink-3 text-xs">{t('clinical.roomStock.noStores')}</span>
       )}
       {stockLine}
+      {/* 0107: how the medicine is sold, and what the quantity is charged (cash price) */}
+      {row && quantity > 0 && <GivenHereCharge row={row} quantity={quantity} />}
     </div>
+  )
+}
+
+/** "1 box of 8 × 1,200 = 1,200", or "sold only by the whole box: give 8 or 16". */
+function GivenHereCharge({
+  row,
+  quantity,
+}: {
+  row: NonNullable<ReturnType<typeof useStoreStock>['data']>['items'][number]
+  quantity: number
+}) {
+  const { t } = useTranslation()
+  const item = { ...row, sellingPrice: row.price }
+  const p = priceQuantity(item, quantity)
+  if (!p.ok)
+    return (
+      <span className="text-red text-[13px] font-semibold">
+        {wholePacksText(t, quantity, item)}
+      </span>
+    )
+  if (!row.packSize || row.packSize < 2 || row.price == null) return null
+  return (
+    <span className="text-teal text-[13px] font-medium tabular-nums">
+      {saleModeText(t, item)} · {priceLineText(t, p, item, formatRwf)}
+    </span>
   )
 }

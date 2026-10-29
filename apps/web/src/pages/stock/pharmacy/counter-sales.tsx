@@ -30,7 +30,13 @@ import { openCounterReceipt } from '../../finance/counter-receipt'
 import { useHanded } from './handed'
 import { useSearchParam } from './hooks'
 import { HandedStrip, LinesEditor, ReasonBox } from './parts'
-import { cashCost, packsText, piecesAndPacks, tx } from '../stock-util'
+import {
+  breakdownText,
+  cashCost,
+  piecesAndPacks,
+  priceLineText,
+  wholePacksText,
+} from '../stock-util'
 import {
   dayOf,
   errText,
@@ -103,15 +109,13 @@ function CounterSales({ user }: { user: StaffUser }) {
   /** The pieces a line sells (typed in pieces or in packs). */
   const pieces = (l: EditLine) => linePieces(l, byId.get(l.itemId)?.packSize)
   const chosen = lines.filter((l) => l.itemId && pieces(l) > 0)
-  // whole packs at the pack price when the item has one, as the database charges them
-  const lineCost = (l: EditLine) => {
-    const i = byId.get(l.itemId)
-    return i ? cashCost(pieces(l), i) : { total: 0, byPack: false, packs: 0 }
-  }
+  // priced by how the medicine is sold (0107), as the database charges it: whole packs at the
+  // pack price, the pieces at the piece price
+  const lineCost = (l: EditLine) => cashCost(pieces(l), byId.get(l.itemId) ?? {})
   const total = chosen.reduce((s, l) => s + lineCost(l).total, 0)
   const tooMany = chosen.some((l) => {
     const i = byId.get(l.itemId)
-    return !i || pieces(l) > usableIn(i, storeId)
+    return !i || pieces(l) > usableIn(i, storeId) || !lineCost(l).ok
   })
   const refMissing = needsReference(method) && reference.trim().length < 3
   const mobile = method === 'momo' || method === 'airtel'
@@ -251,8 +255,9 @@ function CounterSales({ user }: { user: StaffUser }) {
             inStock: 0,
             packSize: i?.packSize ?? null,
             packs: c.byPack ? c.packs : null,
-            packPrice: c.byPack ? (i?.packPrice ?? null) : null,
+            packPrice: c.byPack ? c.packPrice : null,
             byPack: c.byPack,
+            pieces: c.pieces,
           }
         }),
       }
@@ -447,30 +452,16 @@ function CounterSales({ user }: { user: StaffUser }) {
             const c = lineCost(l)
             return (
               <span
-                className={cn('text-[12px]', n > have ? 'text-red font-semibold' : 'text-ink-3')}
+                className={cn(
+                  'text-[12px]',
+                  n > have || !c.ok ? 'text-red font-semibold' : 'text-ink-2 font-medium',
+                )}
               >
                 {n > have
                   ? `${t('counterSale.short', { count: have })} · ${piecesAndPacks(t, have, i)}`
-                  : c.byPack
-                    ? tx(
-                        t,
-                        'counterSale.lineTotalPack',
-                        '{{packs}} × {{price}} per pack (pack price) · {{amount}}',
-                        {
-                          packs: c.packs,
-                          price: formatRwf(i.packPrice ?? 0),
-                          amount: formatRwf(c.total),
-                        },
-                      )
-                    : [
-                        t('counterSale.lineTotal', {
-                          price: formatRwf(i.sellingPrice ?? 0),
-                          amount: formatRwf(c.total),
-                        }),
-                        packsText(t, n, i.packSize),
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
+                  : !c.ok
+                    ? wholePacksText(t, n, i)
+                    : priceLineText(t, c, i, formatRwf)}
               </span>
             )
           }}
@@ -595,8 +586,16 @@ function CounterSales({ user }: { user: StaffUser }) {
                         {s.lines
                           .map((l) =>
                             l.byPack && l.packs
-                              ? `${l.item} × ${l.quantity} (${packsText(t, l.quantity, l.packSize) ?? ''} · ${tx(t, 'stockShared.packs.atPackPrice', 'pack price')})`
-                              : `${l.item} × ${l.quantity}`,
+                              ? `${l.item} × ${breakdownText(
+                                  t,
+                                  {
+                                    packs: l.packs,
+                                    pieces: l.pieces ?? l.quantity - l.packs * (l.packSize ?? 1),
+                                    size: l.packSize ?? null,
+                                  },
+                                  l,
+                                )}`
+                              : `${l.item} × ${l.quantity}${l.unit ? ` ${l.unit}` : ''}`,
                           )
                           .join('; ')}
                       </span>

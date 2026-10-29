@@ -426,7 +426,7 @@ function StockList({
                           i.reorderLevel > 0
                             ? [
                                 t('stock.reorderAt', { count: i.reorderLevel }),
-                                packsText(t, i.reorderLevel, i.packSize),
+                                packsText(t, i.reorderLevel, i.packSize, i.packUnit),
                               ]
                                 .filter(Boolean)
                                 .join(' = ')
@@ -448,9 +448,9 @@ function StockList({
                       )}
                     >
                       {formatNumber(split.pharmacy)}
-                      {packsText(t, split.pharmacy, i.packSize) && (
+                      {packsText(t, split.pharmacy, i.packSize, i.packUnit) && (
                         <span className="text-ink-3 block text-[12px] font-normal">
-                          {packsText(t, split.pharmacy, i.packSize)}
+                          {packsText(t, split.pharmacy, i.packSize, i.packUnit)}
                         </span>
                       )}
                     </td>
@@ -461,17 +461,17 @@ function StockList({
                       )}
                     >
                       {split.rooms ? formatNumber(split.rooms) : '—'}
-                      {split.rooms > 0 && packsText(t, split.rooms, i.packSize) && (
+                      {split.rooms > 0 && packsText(t, split.rooms, i.packSize, i.packUnit) && (
                         <span className="text-ink-3 block text-[12px]">
-                          {packsText(t, split.rooms, i.packSize)}
+                          {packsText(t, split.rooms, i.packSize, i.packUnit)}
                         </span>
                       )}
                     </td>
                     <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
                       {formatNumber(split.total)}
-                      {packsText(t, split.total, i.packSize) && (
+                      {packsText(t, split.total, i.packSize, i.packUnit) && (
                         <span className="text-ink-3 block text-[12px]">
-                          {packsText(t, split.total, i.packSize)}
+                          {packsText(t, split.total, i.packSize, i.packUnit)}
                         </span>
                       )}
                       {i.expiredUnits > 0 && (

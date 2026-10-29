@@ -32,7 +32,7 @@ import { matches, usePaged } from '@/lib/paging'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { cn } from '@/lib/utils'
 import { ExpiryMark, MsgFlash } from './stock-shared'
-import { errText, packsText, type Msg } from './stock-util'
+import { errText, packPriceText, packsText, saleModeText, tx, type Msg } from './stock-util'
 
 /**
  * One room store's stock, medicine by medicine (batches on demand): what is usable, expired and
@@ -51,6 +51,9 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
   const items = (data?.items ?? []).filter((x) => matches(query, x.item, x.code))
   const paged = usePaged(items, 15, `${query}|${locationId}`)
   const showValue = data?.value != null
+  // 0107: the stock at selling price (whole packs at the pack price), for everyone who sees it
+  const showSell = data?.sellValue != null
+  const cols = 4 + (showValue ? 1 : 0) + (showSell ? 1 : 0)
 
   const saveMin = async (itemId: string, item: string, raw: string) => {
     setMsg(null)
@@ -81,7 +84,18 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
       tint="mint"
       title={t('myStore.stockTitle', { store: data?.store.name ?? '' })}
       right={
-        showValue ? t('myStore.valueRight', { value: formatRwf(Math.round(data!.value!)) }) : null
+        [
+          showValue
+            ? t('myStore.valueRight', { value: formatRwf(Math.round(data!.value!)) })
+            : null,
+          showSell
+            ? tx(t, 'packaging.atSellingPrice', 'value at selling price {{value}}', {
+                value: formatRwf(Math.round(data!.sellValue!)),
+              })
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ') || null
       }
     >
       {error && <p className="text-red m-0 text-[14px]">{error.message}</p>}
@@ -102,6 +116,11 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                 {showValue && (
                   <th className={cn(tableHead, 'hidden text-right md:table-cell')}>
                     {t('stock.cols.value')}
+                  </th>
+                )}
+                {showSell && (
+                  <th className={cn(tableHead, 'hidden text-right md:table-cell')}>
+                    {tx(t, 'packaging.sellCol', 'At selling price')}
                   </th>
                 )}
               </tr>
@@ -131,6 +150,10 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                               x.price != null
                                 ? t('myStore.priceEach', { price: formatRwf(x.price) })
                                 : t('prices.noPrice'),
+                              x.packSize && x.packSize > 1
+                                ? saleModeText(t, { ...x, sellingPrice: x.price })
+                                : null,
+                              packPriceText(t, x, formatRwf),
                             ]
                               .filter(Boolean)
                               .join(' · ')}
@@ -146,9 +169,9 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                       )}
                     >
                       {formatNumber(x.usable)}
-                      {packsText(t, x.usable, x.packSize) && (
+                      {packsText(t, x.usable, x.packSize, x.packUnit) && (
                         <span className="text-ink-3 block text-[12px] font-normal">
-                          {packsText(t, x.usable, x.packSize)}
+                          {packsText(t, x.usable, x.packSize, x.packUnit)}
                         </span>
                       )}
                       {x.low && (
@@ -222,10 +245,15 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
                         {x.value == null ? '—' : formatNumber(Math.round(x.value))}
                       </td>
                     )}
+                    {showSell && (
+                      <td className={cn(tableCell, 'hidden text-right tabular-nums md:table-cell')}>
+                        {x.sellValue == null ? '—' : formatNumber(Math.round(x.sellValue))}
+                      </td>
+                    )}
                   </tr>
                   {openItem === x.itemId && (
                     <tr className="border-grid border-b">
-                      <td colSpan={showValue ? 5 : 4} className={cn(expandedSection, 'px-3 py-2')}>
+                      <td colSpan={cols} className={cn(expandedSection, 'px-3 py-2')}>
                         {x.batches.length === 0 ? (
                           <span className="text-ink-3 text-[12px]">{t('myStore.noBatches')}</span>
                         ) : (

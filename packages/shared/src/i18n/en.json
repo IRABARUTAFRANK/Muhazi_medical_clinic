@@ -5879,7 +5879,9 @@
     "backToSender": "Back to the sender",
     "chipReceived": "Received",
     "chipCancelled": "Cancelled",
-    "chipDifference": "Difference on arrival"
+    "chipDifference": "Difference on arrival",
+    "costValue": "Cost (RWF)",
+    "sellValue": "At selling price (RWF)"
   },
   "stockDelivery": {
     "lead": "Record a supplier’s delivery into the pharmacy: the supplier, the delivery note or invoice number, then one line per medicine with its batch, expiry date, quantity (in boxes or units) and cost.",
@@ -7224,7 +7226,12 @@
     "ce1437a1": "Note not found.",
     "2380398b": "Only the clinician who wrote the note (or the manager) can change it.",
     "61a5de54": "Say why the note is changed.",
-    "82c10481": "The visit is finished: a medicine added now can only be bought outside."
+    "82c10481": "The visit is finished: a medicine added now can only be bought outside.",
+    "0fc913e4": "{{p1}} is sold only in whole packs of {{p2}}: {{p3}} is not a whole number of packs.",
+    "edb7106b": "Only the pharmacy opens a pack of {{p1}}: send whole packs.",
+    "1ff2c034": "Say how it is sold: by the piece, by the pack or both.",
+    "f5cca4c2": "Say the price of one piece.",
+    "2debc019": "Say the price of one pack."
   },
   "panel": {
     "close": "Close",
@@ -7524,5 +7531,106 @@
     "times": "Times",
     "units": "Units",
     "last": "Last"
+  },
+  "packaging": {
+    "addLead": "One line per batch: the item (pick it, or create it as a medicine or a product), its package and how it is sold, the batch number, expiry date, quantity and cost. It goes into the main pharmacy today.",
+    "readOnlyStock": "You add the stock; the package and the prices stay as they are (only the manager or the pharmacist changes them).",
+    "fromList": "Filled from the official list (its pack and tariff): change what differs at the clinic.",
+    "fromItem": "As saved for this item: a change here updates the item.",
+    "qtyPacks": "Quantity · {{pack}} of {{size}}",
+    "qtyPieces": "Quantity ({{piece}})",
+    "costPack": "Cost of one {{pack}} (RWF)",
+    "costPiece": "Cost of one {{piece}} (RWF)",
+    "costPer": "Cost per",
+    "perPieceShort": "per {{piece}}",
+    "perPackShort": "per {{pack}}",
+    "costTotal": "cost {{value}}",
+    "changes": "The item changes: {{from}} → {{to}}",
+    "errors": {
+      "packSize": "Say how many pieces are in one pack (2 or more).",
+      "piecePrice": "Say the price of one piece (a whole number, 0 or more).",
+      "packPrice": "Say the price of one pack (a whole number, 0 or more)."
+    },
+    "perPack": "{{price}} a {{pack}}",
+    "perPiece": "{{price}} a {{unit}}",
+    "title": "Package and how it is sold",
+    "readOnly": "Only the manager or a person allowed to set prices changes the package and the prices.",
+    "packageLabel": "Package",
+    "kind": {
+      "pieces": "Pieces only",
+      "pack": "A pack of pieces"
+    },
+    "packSize": "Pieces in one pack",
+    "packUnit": "The pack is a",
+    "unit": "One piece is a",
+    "piecesHint": "No pack: it is stocked, counted and sold by the {{piece}}.",
+    "howSold": "How it is sold",
+    "mode": {
+      "piece": "By the piece",
+      "pack": "By the pack only",
+      "both": "Both"
+    },
+    "piecePrice": "Price of one {{piece}} (RWF)",
+    "packPrice": "Price of one {{pack}} (RWF)",
+    "explain": {
+      "piece": "Sold by the {{piece}}: a {{pack}} typed counts as {{size}} pieces at the piece price.",
+      "pack": "Sold only by the whole {{pack}}: a quantity that is not whole packs is refused. One {{piece}} is worth {{derived}} (for insurers and the stock value).",
+      "both": "Whole packs at the pack price, the pieces left at the piece price: 1 {{pack}} + 3 = pack price + 3 × piece price."
+    },
+    "atSellingPrice": "value at selling price {{value}}",
+    "splitPack": "Split a {{pack}} (send loose pieces: the pharmacy only)",
+    "packOfWord": "{{count}} × {{word}} of {{size}}",
+    "soldPiecesOnly": "Pieces only, sold by the piece",
+    "wholePacksOnly": "Sold only by the whole pack ({{pack}}): {{pieces}} is not whole packs. Give {{below}} or {{above}}.",
+    "pack": "pack",
+    "piece": "piece",
+    "costCol": "Cost",
+    "sellCol": "At selling price",
+    "storeValues": "What each store holds",
+    "storeCol": "Store",
+    "storeValuesHint": "Usable stock (not expired). The cost is the average cost; the selling value counts whole packs at the pack price and the pieces at the piece price.",
+    "dueWhole": "Sold only by the whole pack: give {{due}} ({{packs}}) for the {{remaining}} prescribed.",
+    "sold": {
+      "piece": "Sold by the piece",
+      "pack": "Sold only by the whole pack",
+      "both": "Sold by the pack or by the piece"
+    },
+    "packOf": {
+      "box_one": "{{count}} box of {{size}}",
+      "box_other": "{{count}} boxes of {{size}}",
+      "strip_one": "{{count}} strip of {{size}}",
+      "strip_other": "{{count}} strips of {{size}}",
+      "blister_one": "{{count}} blister of {{size}}",
+      "blister_other": "{{count}} blisters of {{size}}",
+      "bottle_one": "{{count}} bottle of {{size}}",
+      "bottle_other": "{{count}} bottles of {{size}}",
+      "sachet_one": "{{count}} sachet of {{size}}",
+      "sachet_other": "{{count}} sachets of {{size}}",
+      "tube_one": "{{count}} tube of {{size}}",
+      "tube_other": "{{count}} tubes of {{size}}",
+      "carton_one": "{{count}} carton of {{size}}",
+      "carton_other": "{{count}} cartons of {{size}}"
+    },
+    "word": {
+      "box": "box",
+      "strip": "strip",
+      "blister": "blister",
+      "bottle": "bottle",
+      "sachet": "sachet",
+      "tube": "tube",
+      "carton": "carton"
+    },
+    "pieceWord": {
+      "tablet": "tablet",
+      "capsule": "capsule",
+      "sachet": "sachet",
+      "ampoule": "ampoule",
+      "vial": "vial",
+      "bottle": "bottle",
+      "tube": "tube",
+      "suppository": "suppository",
+      "piece": "piece",
+      "ml": "ml"
+    }
   }
 }

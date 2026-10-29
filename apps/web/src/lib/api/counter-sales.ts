@@ -3,6 +3,7 @@ import { apiError, isMissingFunction, sampleRefusal } from './errors'
 import { sampleStock } from './stock'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
+import { priceQuantity, type Packaging, type SaleMode } from '@/lib/pack-pricing'
 
 /**
  * Counter sales (migration 0083): a walk-in buyer without a visit pays FIRST, then collects.
@@ -36,6 +37,10 @@ export interface CounterSaleLine {
   packs?: number | null
   packPrice?: number | null
   byPack?: boolean
+  /** How it is sold and the pack's word (0107); the pieces charged beside the whole packs. */
+  saleMode?: SaleMode | null
+  packUnit?: string | null
+  pieces?: number | null
 }
 
 /**
@@ -43,40 +48,48 @@ export interface CounterSaleLine {
  * B/20 × 2 at the pack price", so quantity × unit price is the line total on paper too.
  */
 export const receiptLines = (lines: readonly CounterSaleLine[]): CounterSaleLine[] =>
-  lines.map((l) =>
-    l.byPack && l.packs && l.packPrice != null
-      ? {
-          ...l,
-          item: `${l.item} · B/${l.packSize ?? ''}`,
-          quantity: l.packs,
-          unitPrice: l.packPrice,
-          unit: null,
-        }
-      : l,
-  )
+  lines.flatMap((l) => {
+    if (!(l.byPack && l.packs && l.packPrice != null)) return [l]
+    // 0107: the whole packs at the pack price, and the pieces left at the piece price
+    const rest = l.pieces ?? Math.max(0, l.quantity - l.packs * (l.packSize ?? 1))
+    const packLine: CounterSaleLine = {
+      ...l,
+      item: `${l.item} · B/${l.packSize ?? ''}`,
+      quantity: l.packs,
+      unitPrice: l.packPrice,
+      lineTotal: l.packs * l.packPrice,
+      unit: null,
+    }
+    return rest > 0
+      ? [
+          packLine,
+          { ...l, quantity: rest, lineTotal: l.lineTotal - packLine.lineTotal, byPack: false },
+        ]
+      : [packLine]
+  })
 
 /** Sample mode: a cash line's total as the database charges it (whole packs at the pack price). */
 const sampleLineCost = (
-  it: { sellingPrice: number | null; packSize?: number | null; packPrice?: number | null },
+  it: Packaging,
   quantity: number,
-): Pick<CounterSaleLine, 'lineTotal' | 'packs' | 'packPrice' | 'byPack' | 'packSize'> => {
-  const size = it.packSize ?? 1
-  const byPack = it.packPrice != null && size > 1 && quantity % size === 0
-  return byPack
-    ? {
-        lineTotal: (quantity / size) * (it.packPrice ?? 0),
-        packs: quantity / size,
-        packPrice: it.packPrice ?? null,
-        byPack: true,
-        packSize: size,
-      }
-    : {
-        lineTotal: (it.sellingPrice ?? 0) * quantity,
-        packs: null,
-        packPrice: null,
-        byPack: false,
-        packSize: it.packSize ?? null,
-      }
+): Pick<
+  CounterSaleLine,
+  'lineTotal' | 'packs' | 'packPrice' | 'byPack' | 'packSize' | 'saleMode' | 'packUnit' | 'pieces'
+> => {
+  // the same rule as the database (0107): by how the medicine is sold
+  const p = priceQuantity(it, quantity)
+  if (!p.ok)
+    throw new Error(`sold only in whole packs of ${p.size}: ${quantity} is not whole packs`)
+  return {
+    lineTotal: p.total,
+    packs: p.packs > 0 ? p.packs : null,
+    packPrice: p.packs > 0 ? p.packPrice : null,
+    byPack: p.packs > 0,
+    packSize: it.packSize ?? null,
+    saleMode: p.mode,
+    packUnit: it.packUnit ?? null,
+    pieces: p.pieces,
+  }
 }
 export interface CounterSale {
   id: string
@@ -150,6 +163,9 @@ const sampleSales: CounterSale[] = [
         packs: 1,
         packPrice: 900,
         byPack: true,
+        saleMode: 'both',
+        packUnit: 'box',
+        pieces: 0,
       },
     ],
   },
@@ -220,6 +236,9 @@ export function useCounterSales(
           packs: l.packs == null ? null : num(l.packs),
           packPrice: l.packPrice == null ? null : num(l.packPrice),
           byPack: !!l.byPack,
+          saleMode: l.saleMode ?? null,
+          packUnit: l.packUnit ?? null,
+          pieces: l.pieces == null ? null : num(l.pieces),
         })),
       }))
     },

@@ -5888,7 +5888,9 @@
     "backToSender": "Byasubijwe uwabyohereje",
     "chipReceived": "Byakiriwe",
     "chipCancelled": "Byahagaritswe",
-    "chipDifference": "Hari ikinyuranyo bigeze"
+    "chipDifference": "Hari ikinyuranyo bigeze",
+    "costValue": "Igiciro cyaguzwe (RWF)",
+    "sellValue": "Ku giciro cyo kugurisha (RWF)"
   },
   "stockDelivery": {
     "lead": "Andika ibyagemuwe n’uwagemuye bijya muri farumasi: uwagemuye, nimero y’urupapuro rw’ibyagemuwe cyangwa iya fagitire, hanyuma umurongo kuri buri muti na lot yawo, itariki yo kurangira, ingano (mu dukarito cyangwa mu bice) n’igiciro.",
@@ -7233,7 +7235,12 @@
     "ce1437a1": "Inyandiko ntiyabonetse.",
     "2380398b": "Uwanditse inyandiko gusa (cyangwa umuyobozi) ni we ushobora kuyihindura.",
     "61a5de54": "Vuga impamvu inyandiko ihinduwe.",
-    "82c10481": "Kwivuza kwararangiye: umuti wongewemo ubu ushobora kugurwa hanze gusa."
+    "82c10481": "Kwivuza kwararangiye: umuti wongewemo ubu ushobora kugurwa hanze gusa.",
+    "0fc913e4": "{{p1}} igurishwa gusa ku dupaki twuzuye twa {{p2}}: {{p3}} si umubare wuzuye w’udupaki.",
+    "edb7106b": "Farumasi yonyine ni yo ifungura agapaki ka {{p1}}: ohereza udupaki twuzuye.",
+    "1ff2c034": "Vuga uko kigurishwa: ku gice, ku gapaki cyangwa byombi.",
+    "f5cca4c2": "Vuga igiciro cy’igice kimwe.",
+    "2debc019": "Vuga igiciro cy’agapaki kamwe."
   },
   "panel": {
     "close": "Funga",
@@ -7533,5 +7540,106 @@
     "times": "Inshuro",
     "units": "Ibice",
     "last": "Bwa nyuma"
+  },
+  "packaging": {
+    "addLead": "Umurongo umwe kuri buri lot: igicuruzwa (gihitemo, cyangwa ugikore nk’umuti cyangwa igikoresho), uko gipfunyitse n’uko kigurishwa, nimero ya lot, itariki yo kurangira, ingano n’igiciro cyaguzwe. Kijya muri farumasi nkuru uyu munsi.",
+    "readOnlyStock": "Wongera ibiri mu bubiko; uko gipfunyitse n’ibiciro biguma uko biri (umuyobozi cyangwa umufarumasiye ni bo bonyine babihindura).",
+    "fromList": "Byujujwe bivuye ku rutonde rwemewe (uko upfunyitse n’igiciro cyawo): hindura ibitandukanye ku ivuriro.",
+    "fromItem": "Uko byabitswe kuri iki gicuruzwa: guhindura hano bihindura igicuruzwa.",
+    "qtyPacks": "Ingano · {{pack}} cya {{size}}",
+    "qtyPieces": "Ingano ({{piece}})",
+    "costPack": "Igiciro cyaguzwe {{pack}} kimwe (RWF)",
+    "costPiece": "Igiciro cyaguzwe {{piece}} kimwe (RWF)",
+    "costPer": "Igiciro kuri",
+    "perPieceShort": "kuri {{piece}}",
+    "perPackShort": "kuri {{pack}}",
+    "costTotal": "igiciro cyaguzwe {{value}}",
+    "changes": "Igicuruzwa kirahinduka: {{from}} → {{to}}",
+    "errors": {
+      "packSize": "Vuga ibice biri mu gapaki kamwe (2 cyangwa birenga).",
+      "piecePrice": "Vuga igiciro cy’igice kimwe (umubare wuzuye, 0 cyangwa hejuru).",
+      "packPrice": "Vuga igiciro cy’agapaki kamwe (umubare wuzuye, 0 cyangwa hejuru)."
+    },
+    "perPack": "{{price}} kuri {{pack}}",
+    "perPiece": "{{price}} kuri {{unit}}",
+    "title": "Uko gipfunyitse n’uko kigurishwa",
+    "readOnly": "Umuyobozi cyangwa uwemerewe gushyiraho ibiciro ni bo bonyine bahindura uko gipfunyitse n’ibiciro.",
+    "packageLabel": "Uko gipfunyitse",
+    "kind": {
+      "pieces": "Ibice gusa",
+      "pack": "Agapaki k’ibice"
+    },
+    "packSize": "Ibice biri mu gapaki kamwe",
+    "packUnit": "Agapaki ni",
+    "unit": "Igice kimwe ni",
+    "piecesHint": "Nta gapaki: kibikwa, kibarwa kandi kigurishwa ku {{piece}}.",
+    "howSold": "Uko kigurishwa",
+    "mode": {
+      "piece": "Ku gice",
+      "pack": "Ku gapaki gusa",
+      "both": "Byombi"
+    },
+    "piecePrice": "Igiciro cya {{piece}} kimwe (RWF)",
+    "packPrice": "Igiciro cya {{pack}} kimwe (RWF)",
+    "explain": {
+      "piece": "Kigurishwa ku {{piece}}: {{pack}} cyanditswe kibarwa nk’ibice {{size}} ku giciro cy’igice.",
+      "pack": "Kigurishwa gusa ku {{pack}} cyuzuye: ingano itari udupaki twuzuye iranzwa. {{piece}} kimwe gifite agaciro ka {{derived}} (ku bwishingizi no ku gaciro k’ibiri mu bubiko).",
+      "both": "Udupaki twuzuye ku giciro cy’agapaki, ibice bisigaye ku giciro cy’igice: {{pack}} 1 + 3 = igiciro cy’agapaki + 3 × igiciro cy’igice."
+    },
+    "atSellingPrice": "agaciro ku giciro cyo kugurisha {{value}}",
+    "splitPack": "Fungura {{pack}} (ohereza ibice: farumasi yonyine)",
+    "packOfWord": "{{count}} × {{word}} cya {{size}}",
+    "soldPiecesOnly": "Ibice gusa, bigurishwa ku gice",
+    "wholePacksOnly": "Kigurishwa gusa ku gapaki cyuzuye ({{pack}}): {{pieces}} si udupaki twuzuye. Tanga {{below}} cyangwa {{above}}.",
+    "pack": "agapaki",
+    "piece": "igice",
+    "costCol": "Igiciro cyaguzwe",
+    "sellCol": "Ku giciro cyo kugurisha",
+    "storeValues": "Ibiri muri buri bubiko",
+    "storeCol": "Ububiko",
+    "storeValuesHint": "Ibikoreshwa (bitarengeje igihe). Igiciro cyaguzwe ni impuzandengo; agaciro ko kugurisha kabara udupaki twuzuye ku giciro cy’agapaki n’ibice ku giciro cy’igice.",
+    "dueWhole": "Kigurishwa gusa ku gapaki cyuzuye: tanga {{due}} ({{packs}}) ku {{remaining}} byanditswe.",
+    "sold": {
+      "piece": "Kigurishwa ku gice",
+      "pack": "Kigurishwa gusa ku gapaki cyuzuye",
+      "both": "Kigurishwa ku gapaki cyangwa ku gice"
+    },
+    "packOf": {
+      "box_one": "agakarito {{count}} ka {{size}}",
+      "box_other": "udukarito {{count}} twa {{size}}",
+      "strip_one": "urupapuro {{count}} rw’ibinini {{size}}",
+      "strip_other": "impapuro {{count}} z’ibinini {{size}}",
+      "blister_one": "blister {{count}} ya {{size}}",
+      "blister_other": "blister {{count}} za {{size}}",
+      "bottle_one": "icupa {{count}} rya {{size}}",
+      "bottle_other": "amacupa {{count}} ya {{size}}",
+      "sachet_one": "agasashe {{count}} ka {{size}}",
+      "sachet_other": "udusashe {{count}} twa {{size}}",
+      "tube_one": "tube {{count}} ya {{size}}",
+      "tube_other": "tube {{count}} za {{size}}",
+      "carton_one": "ikarito {{count}} ya {{size}}",
+      "carton_other": "amakarito {{count}} ya {{size}}"
+    },
+    "word": {
+      "box": "agakarito",
+      "strip": "urupapuro rw’ibinini",
+      "blister": "agapaki k’ibinini",
+      "bottle": "icupa",
+      "sachet": "agasashe",
+      "tube": "agatubu",
+      "carton": "ikarito"
+    },
+    "pieceWord": {
+      "tablet": "ikinini",
+      "capsule": "kapsile",
+      "sachet": "agasashe",
+      "ampoule": "ampule",
+      "vial": "agacupa",
+      "bottle": "icupa",
+      "tube": "agatubu",
+      "suppository": "suppositoire",
+      "piece": "igice",
+      "ml": "ml"
+    }
   }
 }

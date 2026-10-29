@@ -13,6 +13,7 @@ import { Reveal } from '@/components/ui/reveal'
 import { SearchSelect } from '@/components/ui/search-select'
 import { card } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
+import { saleModeOf, type Packaging } from '@/lib/pack-pricing'
 import { useHanded, type HandedGroup } from './handed'
 import { QtyModeToggle } from '../stock-shared'
 import { hasPacks, packsEquals, tx } from '../stock-util'
@@ -229,7 +230,9 @@ export function LinesEditor({
   /** Under each line: price, stock, the batches it takes… */
   below?: (l: EditLine) => ReactNode
   /** The item of a line (its pack size and unit): shows the pieces/packs toggle (0102). */
-  itemOf?: (itemId: string) => { packSize?: number | null; unit?: string | null } | undefined
+  itemOf?: (
+    itemId: string,
+  ) => (Packaging & { packSize?: number | null; unit?: string | null }) | undefined
 }) {
   const { t } = useTranslation()
   const set = (key: string, patch: Partial<EditLine>) =>
@@ -239,7 +242,9 @@ export function LinesEditor({
       {lines.map((l, i) => {
         const item = l.itemId ? itemOf?.(l.itemId) : undefined
         const packs = hasPacks(item)
-        const mode = packs ? (l.mode ?? 'pieces') : 'pieces'
+        // sold only by the whole pack (0107): typed in packs
+        const only = packs && saleModeOf(item) === 'pack'
+        const mode = only ? 'packs' : packs ? (l.mode ?? 'pieces') : 'pieces'
         return (
           <div
             key={l.key}
@@ -252,7 +257,12 @@ export function LinesEditor({
                 wrapperClassName="col-span-3 @md:col-span-1"
                 label={i === 0 ? t('stock.cols.item') : ''}
                 value={l.itemId}
-                onChange={(v) => set(l.key, { itemId: v, mode: 'pieces' })}
+                onChange={(v) =>
+                  set(l.key, {
+                    itemId: v,
+                    mode: saleModeOf(itemOf?.(v)) === 'pack' ? 'packs' : 'pieces',
+                  })
+                }
                 emptyLabel={t('visit.add.pickItem')}
                 options={options.filter(
                   (o) => o.value === l.itemId || !lines.some((x) => x.itemId === o.value),
@@ -276,6 +286,7 @@ export function LinesEditor({
               {packs ? (
                 <QtyModeToggle
                   mode={mode}
+                  packsOnly={only}
                   onChange={(m) => set(l.key, { mode: m })}
                   className="mb-0.5"
                 />

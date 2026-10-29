@@ -27,7 +27,7 @@ import { useConfirm } from '@/lib/confirm'
 import { usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 import { MsgFlash } from './stock-shared'
-import { errText, type Msg } from './stock-util'
+import { errText, packsText, type Msg } from './stock-util'
 
 const TONE: Record<RefillStatus, 'yellow' | 'green' | 'red' | 'grey'> = {
   open: 'yellow',
@@ -188,6 +188,14 @@ export function RefillRequestsList({
                   <li key={l.itemId} className="flex flex-wrap gap-x-3">
                     <span className="min-w-[160px] flex-1 font-semibold">
                       {l.item} × {formatNumber(l.quantity)}
+                      {l.unit ? ` ${l.unit}` : ''}
+                      {/* asked in packs (0107): the packs beside the pieces */}
+                      {packsText(t, l.quantity, l.packSize, l.packUnit) && (
+                        <span className="text-ink-3 font-normal">
+                          {' '}
+                          ({packsText(t, l.quantity, l.packSize, l.packUnit)})
+                        </span>
+                      )}
                     </span>
                     <span
                       className={cn(

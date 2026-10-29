@@ -42,9 +42,13 @@ import { cn } from '@/lib/utils'
 import { RefillRequestsList } from './refill-requests'
 import { RoomStoreStock, RoomStoreUse } from './room-store-parts'
 import { holdersText } from './stock-util'
+import { packSizeOf } from '@/lib/pack-pricing'
 import { LinesEditor, MsgFlash } from './stock-shared'
 import {
   cleanLines,
+  draftNotWhole,
+  draftPieces,
+  wholePacksText,
   draftLine,
   errText,
   itemName,
@@ -62,7 +66,7 @@ const ROOM_TYPES: RoomStoreType[] = ['room', 'nursing', 'lab', 'theatre']
 /** What the send form starts with (a refill request, or a store chosen in the list). */
 interface SendPreset {
   storeId?: string
-  lines?: { itemId: string; quantity: number }[]
+  lines?: { itemId: string; quantity: number; mode?: 'pieces' | 'packs' | null }[]
   requestId?: string
   requestNumber?: string
 }
@@ -103,7 +107,7 @@ export function RoomStoresTab({
   const prepare = (r: RefillRequest) => {
     setPreset({
       storeId: r.storeId,
-      lines: r.lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity })),
+      lines: r.lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity, mode: l.mode })),
       requestId: r.id,
       requestNumber: r.number,
     })
@@ -219,7 +223,13 @@ function SendNoteForm({
   const from = chosenFrom || (mainPharmacy(locations, mainId)?.id ?? '')
   const [lines, setLines] = useState<DraftLine[]>(() =>
     preset.lines?.length
-      ? preset.lines.map((l) => draftLine(l.itemId, String(l.quantity)))
+      ? preset.lines.map((l) => {
+          // a request typed in packs comes back in packs (0107)
+          const size = packSizeOf(items.find((i) => i.id === l.itemId))
+          return l.mode === 'packs' && size && l.quantity % size === 0
+            ? draftLine(l.itemId, String(l.quantity / size), 'packs')
+            : draftLine(l.itemId, String(l.quantity))
+        })
       : [draftLine()],
   )
   const [note, setNote] = useState('')
@@ -237,8 +247,15 @@ function SendNoteForm({
     e.preventDefault()
     setMsg(null)
     if (!to) return setMsg({ ok: false, text: t('stock.errors.store') })
-    const clean = cleanLines(lines)
+    const itemOf = (id: string) => items.find((i) => i.id === id)
+    const clean = cleanLines(lines, itemOf)
     if (clean.length === 0) return setMsg({ ok: false, text: t('myStore.errors.lines') })
+    const bad = lines.find((l) => draftNotWhole(l, itemOf(l.itemId)))
+    if (bad)
+      return setMsg({
+        ok: false,
+        text: wholePacksText(t, draftPieces(bad, itemOf(bad.itemId)), itemOf(bad.itemId)!),
+      })
     for (const l of clean) {
       const it = items.find((i) => i.id === l.itemId)
       const have = usableIn(it, from)
@@ -340,6 +357,8 @@ function SendNoteForm({
                 )
               }
               availableKey="roomStores.availableToSend"
+              itemOf={(id) => items.find((i) => i.id === id)}
+              canSplit
             />
             <p className="text-ink-3 m-0 text-[12px]">{t('roomStores.fefoHint')}</p>
             <Field

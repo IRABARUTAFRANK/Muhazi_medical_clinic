@@ -39,7 +39,16 @@ import { useConfirm } from '@/lib/confirm'
 import { usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 import { ExpiryMark, MsgFlash } from './stock-shared'
-import { errText, type Msg } from './stock-util'
+import {
+  errText,
+  packCountText,
+  packsText,
+  packWord,
+  pieceWord,
+  tx,
+  unitsText,
+  type Msg,
+} from './stock-util'
 import { useTransferNotePrint } from './transfer-note-doc'
 
 /** The state of a note as a badge. */
@@ -171,6 +180,12 @@ export function TransferNotesList({
                         `${formatDate(new Date(n.sentAt))} ${formatTime(new Date(n.sentAt))}`,
                         n.sentBy,
                         n.units != null ? t('roomStores.unitsCount', { count: n.units }) : null,
+                        // 0107: the value at selling price, as written on the note
+                        n.sellValue != null && n.sellValue > 0
+                          ? tx(t, 'packaging.atSellingPrice', 'value at selling price {{value}}', {
+                              value: formatRwf(n.sellValue),
+                            })
+                          : null,
                         n.requestNumber,
                       ]
                         .filter(Boolean)
@@ -247,6 +262,7 @@ export function TransferNoteView({
   if (!n) return null
   const open = n.status === 'in_transit'
   const showCost = n.items.some((x) => x.unitCost != null)
+  const showSell = n.items.some((x) => x.sellValue != null)
   const draftOf = (lineId: string, sent: number): LineDraft =>
     drafts[lineId] ?? { received: String(sent), reason: '', action: 'returned' }
   const setDraft = (lineId: string, sent: number, patch: Partial<LineDraft>) =>
@@ -411,7 +427,12 @@ export function TransferNoteView({
               <th className={cn(tableHead, 'text-right')}>{t('roomStores.receivedCol')}</th>
               {showCost && (
                 <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
-                  {t('stock.cols.value')}
+                  {tx(t, 'packaging.costCol', 'Cost')}
+                </th>
+              )}
+              {showSell && (
+                <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
+                  {tx(t, 'packaging.sellCol', 'At selling price')}
                 </th>
               )}
             </tr>
@@ -424,6 +445,22 @@ export function TransferNoteView({
                 <tr key={x.lineId} className={cn(tableRow, 'h-auto align-top')}>
                   <td className={tableFirstCell}>
                     {x.item}
+                    {/* 0107: the package and the prices as they were when it was sent */}
+                    {(x.packSize || x.unitPrice != null) && (
+                      <span className="text-ink-3 block text-[12px] font-normal">
+                        {[
+                          x.packSize ? packCountText(t, 1, x.packSize, x.packUnit) : null,
+                          x.packPrice != null && x.packSize && x.saleMode !== 'piece'
+                            ? `${formatRwf(x.packPrice)} / ${packWord(t, x.packUnit)}`
+                            : null,
+                          x.unitPrice != null
+                            ? `${formatRwf(x.unitPrice)} / ${pieceWord(t, x.unit)}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    )}
                     {x.differenceReason && (
                       <span className="text-amber block text-[12px] font-normal">
                         {t(
@@ -465,7 +502,17 @@ export function TransferNoteView({
                     <ExpiryMark date={x.expiry} />
                   </td>
                   <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
-                    {formatNumber(x.quantity)}
+                    {unitsText(x.quantity, x.unit)}
+                    {x.packSize && packsText(t, x.quantity, x.packSize, x.packUnit) && (
+                      <span
+                        className={cn(
+                          'block text-[12px]',
+                          x.inPacks ? 'text-teal' : 'text-ink-3 font-normal',
+                        )}
+                      >
+                        {packsText(t, x.quantity, x.packSize, x.packUnit)}
+                      </span>
+                    )}
                   </td>
                   <td className={cn(tableCell, 'text-right tabular-nums')}>
                     {byLine && open && n.canReceive ? (
@@ -497,15 +544,32 @@ export function TransferNoteView({
                       {x.value == null ? '—' : formatRwf(Math.round(x.value))}
                     </td>
                   )}
+                  {showSell && (
+                    <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
+                      {x.sellValue == null ? '—' : formatRwf(Math.round(x.sellValue))}
+                    </td>
+                  )}
                 </tr>
               )
             })}
           </tbody>
         </table>
       </div>
-      {showCost && n.value != null && (
-        <p className="text-ink-2 m-0 text-[14px]">
-          {t('roomStores.noteValue', { value: formatRwf(Math.round(n.value)) })}
+      {((showCost && n.value != null) || (showSell && n.sellValue != null)) && (
+        <p className="text-ink-2 m-0 text-[14px] font-medium tabular-nums">
+          {[
+            t('roomStores.unitsCount', { count: n.items.reduce((s, x) => s + x.quantity, 0) }),
+            showCost && n.value != null
+              ? t('roomStores.noteValue', { value: formatRwf(Math.round(n.value)) })
+              : null,
+            showSell && n.sellValue != null
+              ? tx(t, 'packaging.atSellingPrice', 'value at selling price {{value}}', {
+                  value: formatRwf(Math.round(n.sellValue)),
+                })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
       )}
 

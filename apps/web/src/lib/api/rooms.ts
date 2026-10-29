@@ -12,6 +12,7 @@ import {
 } from './stock'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
+import { sellValueOf, type SaleMode } from '@/lib/pack-pricing'
 
 /**
  * Room stores (migration 0083): a doctor's office, the dental room, the maternity ward. The
@@ -67,6 +68,12 @@ export interface StoreStockItem {
   code: string
   unit: string | null
   packSize: number | null
+  /** How it is sold, the pack's word and price (0107). */
+  saleMode?: SaleMode | null
+  packUnit?: string | null
+  packPrice?: number | null
+  /** The usable stock at selling price: whole packs at the pack price (0107). */
+  sellValue?: number | null
   onHand: number
   usable: number
   expired: number
@@ -108,6 +115,8 @@ export interface StoreStock {
   onTheWay: OnTheWayNote[]
   /** Pharmacy and manager only. */
   value: number | null
+  /** The usable stock at selling price (0107): everyone who sees the store. */
+  sellValue?: number | null
 }
 
 export type RefillStatus = 'open' | 'fulfilled' | 'declined' | 'cancelled'
@@ -135,6 +144,11 @@ export interface RefillRequest {
     /** Unexpired units in the main pharmacy / in the store now. */
     inPharmacy: number
     inStore: number
+    /** How it was typed, and the package (0107). */
+    mode?: 'pieces' | 'packs' | null
+    packSize?: number | null
+    packUnit?: string | null
+    saleMode?: SaleMode | null
   }[]
 }
 
@@ -167,6 +181,8 @@ export interface TransferNote {
   units?: number
   /** Pharmacy and manager only. */
   value: number | null
+  /** The value at selling price, as the lines were written (0107). */
+  sellValue?: number | null
   /** I may confirm its receipt / cancel it now. */
   canReceive: boolean
   canCancel: boolean
@@ -187,6 +203,18 @@ export interface TransferNoteLine {
   differenceReason: string | null
   unitCost: number | null
   value: number | null
+  /**
+   * The package and the prices as they were when the line was written (0107): pieces in one pack,
+   * the pack's word, how it was sold, typed in packs, the piece and pack prices, and the value
+   * at selling price.
+   */
+  packSize?: number | null
+  packUnit?: string | null
+  saleMode?: SaleMode | null
+  inPacks?: boolean
+  unitPrice?: number | null
+  packPrice?: number | null
+  sellValue?: number | null
 }
 export interface TransferNoteDetail extends TransferNote {
   items: TransferNoteLine[]
@@ -199,6 +227,8 @@ export interface TransferTotals {
   lines: number
   units: number
   value: number
+  /** At selling price (0107). */
+  sellValue?: number | null
 }
 export interface ReceiptResult {
   id: string
@@ -252,7 +282,12 @@ export interface RoomStoreSummary {
 
 export interface NoteLineInput {
   itemId: string
+  /** Always in pieces. */
   quantity: number
+  /** How it was typed (0107): the note shows "4 boxes of 8" when typed in packs. */
+  mode?: 'pieces' | 'packs'
+  /** A pack-only medicine sent in pieces: "split a pack" (the pharmacy only). */
+  split?: boolean
 }
 export interface ReceiptLineInput {
   lineId: string
@@ -367,6 +402,7 @@ const totals = (n: TransferNoteDetail): TransferTotals => ({
   lines: new Set(n.items.map((i) => i.itemId)).size,
   units: n.items.reduce((s, i) => s + i.quantity, 0),
   value: n.items.reduce((s, i) => s + (i.value ?? 0), 0),
+  sellValue: n.items.reduce((s, i) => s + (i.sellValue ?? 0), 0),
 })
 const sampleMayWork = (locationId: string) => sampleIsManager() || sampleStock.holds(locationId)
 
@@ -414,6 +450,10 @@ function sampleStoreStock(id: string): StoreStock {
         code: i.code,
         unit: i.unit,
         packSize: i.packSize ?? null,
+        saleMode: i.saleMode ?? null,
+        packUnit: i.packUnit ?? null,
+        packPrice: i.packPrice ?? null,
+        sellValue: Math.round(sellValueOf(i, q)),
         onHand: q,
         usable: q,
         expired: 0,
@@ -461,6 +501,7 @@ function sampleStoreStock(id: string): StoreStock {
         units: totals(n).units,
       })),
     value: admin ? items.reduce((s, i) => s + (i.value ?? 0), 0) : null,
+    sellValue: items.reduce((s, i) => s + (i.sellValue ?? 0), 0),
   }
 }
 
@@ -516,10 +557,19 @@ function sampleNote(
         differenceReason: null,
         unitCost: it?.avgCost ?? null,
         value: x.quantity * (it?.avgCost ?? 0),
+        // the package and the prices of the day (0107)
+        packSize: it?.packSize && it.packSize >= 2 ? it.packSize : null,
+        packUnit: it?.packUnit ?? null,
+        saleMode: it?.saleMode ?? 'piece',
+        inPacks: x.mode === 'packs',
+        unitPrice: it?.sellingPrice ?? null,
+        packPrice: it?.saleMode && it.saleMode !== 'piece' ? (it.packPrice ?? null) : null,
+        sellValue: Math.round(sellValueOf(it, x.quantity)),
       }
     }),
   }
   n.value = n.items.reduce((s, i) => s + (i.value ?? 0), 0)
+  n.sellValue = n.items.reduce((s, i) => s + (i.sellValue ?? 0), 0)
   sampleNotes.unshift(n)
   return n
 }
@@ -581,9 +631,12 @@ async function fetchStoreStock(locationId: string): Promise<StoreStock> {
     ...d,
     store: { ...d.store, holders: d.store.holders ?? [] },
     value: numOrNull(d.value),
+    sellValue: numOrNull(d.sellValue),
     items: (d.items ?? []).map((i) => ({
       ...i,
       packSize: numOrNull(i.packSize),
+      packPrice: numOrNull(i.packPrice),
+      sellValue: numOrNull(i.sellValue),
       onHand: num(i.onHand),
       usable: num(i.usable),
       expired: num(i.expired),
@@ -701,6 +754,7 @@ const toNote = <T extends TransferNote>(n: T): T => ({
   lines: n.lines == null ? undefined : num(n.lines),
   units: n.units == null ? undefined : num(n.units),
   value: numOrNull(n.value),
+  sellValue: numOrNull(n.sellValue),
   hasDifference: !!n.hasDifference,
 })
 
@@ -769,6 +823,11 @@ export function useTransferNote(id: string | null) {
           received: numOrNull(l.received),
           unitCost: numOrNull(l.unitCost),
           value: numOrNull(l.value),
+          packSize: numOrNull(l.packSize),
+          unitPrice: numOrNull(l.unitPrice),
+          packPrice: numOrNull(l.packPrice),
+          sellValue: numOrNull(l.sellValue),
+          inPacks: !!l.inPacks,
         })),
       }
     },
@@ -1098,6 +1157,10 @@ export function useRoomStoreActions() {
               item: sampleStock.label(l.itemId),
               unit: it?.unit ?? null,
               quantity: l.quantity,
+              mode: l.mode ?? 'pieces',
+              packSize: it?.packSize ?? null,
+              packUnit: it?.packUnit ?? null,
+              saleMode: it?.saleMode ?? null,
               inPharmacy: sampleStock.usable(l.itemId, 'l-pharm'),
               inStore: sampleStock.usable(l.itemId, i.locationId),
             }
@@ -1186,7 +1249,13 @@ export function useRoomStoreActions() {
         p_note: i.note?.trim() || null,
         p_from_location_id: i.fromLocationId ?? null,
       })
-      return { ...d, lines: num(d.lines), units: num(d.units), value: num(d.value) }
+      return {
+        ...d,
+        lines: num(d.lines),
+        units: num(d.units),
+        value: num(d.value),
+        sellValue: numOrNull(d.sellValue),
+      }
     },
     onSuccess: refresh,
   })
@@ -1206,7 +1275,7 @@ export function useRoomStoreActions() {
           i.lines ??
           sampleStock.items
             .filter((x) => (x.byLocation[i.locationId] ?? 0) > 0)
-            .map((x) => ({ itemId: x.id, quantity: x.byLocation[i.locationId]! }))
+            .map((x) => ({ itemId: x.id, quantity: x.byLocation[i.locationId]! }) as NoteLineInput)
         return totals(sampleNote('to_pharmacy', i.locationId, 'l-pharm', lines, i.note))
       }
       const d = await rpc<TransferTotals>('return_to_pharmacy', {

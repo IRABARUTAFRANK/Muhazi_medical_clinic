@@ -8,10 +8,15 @@ import { Select } from '@/components/ui/select'
 import { SearchSelect } from '@/components/ui/search-select'
 import { useStockActions, type StockOverview } from '@/lib/api/stock'
 import { useConfirm } from '@/lib/confirm'
-import { MsgFlash } from './stock-shared'
+import { MsgFlash, QtyModeToggle } from './stock-shared'
+import { packSizeOf } from '@/lib/pack-pricing'
 import {
   errText,
   itemName,
+  packCountText,
+  piecesAndPacks,
+  unitsText,
+  type QtyMode,
   mainPharmacy,
   pharmacySide,
   pharmacyStores,
@@ -64,6 +69,11 @@ export function BetweenStoresForm({
   const [chosenFrom, setFrom] = useState('')
   const from = chosenFrom || (fullest ?? sources.find((l) => l.id !== to)?.id ?? '')
   const [quantity, setQuantity] = useState('')
+  // 0107: typed in packs or in pieces as the medicine is packed; moved in pieces
+  const [mode, setMode] = useState<QtyMode>('pieces')
+  const size = packSizeOf(item)
+  const typedMode: QtyMode = size ? mode : 'pieces'
+  const pieces = (Number(quantity) || 0) * (typedMode === 'packs' && size ? size : 1)
   const [reason, setReason] = useState('')
   const [msg, setMsg] = useState<Msg | null>(null)
   const available = usableIn(item, from)
@@ -72,7 +82,7 @@ export function BetweenStoresForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
-    const q = Number(quantity)
+    const q = pieces
     if (!itemId) return setMsg({ ok: false, text: t('stock.errors.item') })
     if (!from || !to || from === to) return setMsg({ ok: false, text: t('stock.errors.store') })
     if (!Number.isInteger(q) || q <= 0)
@@ -148,17 +158,29 @@ export function BetweenStoresForm({
                   </option>
                 ))}
             </Select>
-            <Field
-              label={t('stock.quantity')}
-              inputMode="numeric"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ''))}
-              required
-            />
+            <span className="flex items-end gap-1.5">
+              <Field
+                label={t('stock.quantity')}
+                inputMode="numeric"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ''))}
+                required
+                wrapperClassName="min-w-0 flex-1"
+              />
+              {size && <QtyModeToggle mode={typedMode} onChange={setMode} className="mb-0.5" />}
+            </span>
           </div>
           {item && (
             <p className="text-ink-3 m-0 text-[13px]">
               {t('stock.availableHere', { count: available })}
+              {size ? ` · ${piecesAndPacks(t, available, item)}` : ''}
+              {typedMode === 'packs' && size && pieces > 0 && (
+                <span className="text-ink-2 font-medium">
+                  {' '}
+                  · {packCountText(t, Number(quantity), size, item.packUnit)} ={' '}
+                  {unitsText(pieces, item.unit)}
+                </span>
+              )}
             </p>
           )}
           {item && available === 0 && inRooms.length > 0 && (

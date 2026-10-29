@@ -4,6 +4,7 @@ import { apiError, isMissingFunction, sampleRefusal } from './errors'
 import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
+import { packSizeOf, saleModeOf, type SaleMode } from '@/lib/pack-pricing'
 
 /**
  * Medicine stock: what is on hand in each store, cost and selling price, deliveries received into
@@ -68,6 +69,13 @@ export interface StockItem {
    * charged packs × packPrice instead of pieces × sellingPrice. Null: pieces × price.
    */
   packPrice?: number | null
+  /**
+   * How it is sold (0107): by the piece, only by the whole pack, or both (whole packs at the pack
+   * price, the pieces left at the piece price). Missing on an older database.
+   */
+  saleMode?: SaleMode | null
+  /** The pack's word (box, strip, blister…), when the item has a pack. */
+  packUnit?: string | null
   /** The selling price of one piece. */
   sellingPrice: number | null
   reorderLevel: number
@@ -128,6 +136,16 @@ export interface PharmacyLine {
   packPrice?: number | null
   /** Whole packs the remaining quantity comes to, when charged at the pack price. */
   packs?: number | null
+  /** How the medicine is sold and the pack's word (0107). */
+  saleMode?: SaleMode | null
+  packUnit?: string | null
+  /**
+   * What is given by default (0107): what remains, or, for a medicine sold only by the whole
+   * pack, up to whole packs (10 remaining in boxes of 8: 16).
+   */
+  due?: number | null
+  /** The pieces charged at the piece price beside the whole packs (packs). */
+  restPieces?: number | null
   /** The rest of a partly given line the prescriber sent back to the pharmacy (0102). */
   splitFrom?: string | null
   /** Prescribed pieces. */
@@ -277,6 +295,18 @@ export interface AddStockLineInput {
   sellPrice?: number | null
   /** Pieces in one pack, when the line was counted in boxes: an item without one takes it. */
   packSize?: number | null
+  /**
+   * The package and how it is sold (0107), said on the line: a new item takes them; a known item
+   * changes only for a person with the price right. sellPrice is then the piece price (not sent
+   * for 'pack': derived), packPrice the price of one pack, packUnit the pack's word.
+   */
+  saleMode?: SaleMode | null
+  packPrice?: number | null
+  packUnit?: string | null
+  /** The piece's word (tablet, bottle…), when it changes. */
+  unit?: string | null
+  /** The cost of one pack, instead of unitCost (the database divides it by the pack size). */
+  packCost?: number | null
 }
 export interface AddStockResult {
   lines: { itemId: string; batchId: string | null; quantity: number }[]
@@ -477,8 +507,11 @@ const sampleItems: StockItem[] = [
     name: 'Amoxicillin',
     strength: '500 mg',
     unit: 'cap',
+    // packed in boxes of 100, sold by the capsule
     packSize: 100,
-    packPrice: 27000,
+    packPrice: null,
+    saleMode: 'piece',
+    packUnit: 'box',
     sellingPrice: 300,
     reorderLevel: 150,
     maxLevel: 1000,
@@ -496,8 +529,11 @@ const sampleItems: StockItem[] = [
     name: 'Paracetamol',
     strength: '500 mg',
     unit: 'tab',
+    // a box of 20 at 900, or tablets at 50
     packSize: 20,
     packPrice: 900,
+    saleMode: 'both',
+    packUnit: 'box',
     sellingPrice: 50,
     reorderLevel: 1000,
     maxLevel: 3000,
@@ -515,8 +551,11 @@ const sampleItems: StockItem[] = [
     name: 'Artemether-lumefantrine',
     strength: '20/120 mg',
     unit: 'tab',
+    // a full course: sold only by the whole box of 24 (12,000; 500 a tablet)
     packSize: 24,
-    packPrice: null,
+    packPrice: 12000,
+    saleMode: 'pack',
+    packUnit: 'box',
     sellingPrice: 500,
     reorderLevel: 150,
     maxLevel: 480,
@@ -528,12 +567,36 @@ const sampleItems: StockItem[] = [
     expiredUnits: 0,
     active: true,
   },
+  {
+    id: 'it-6',
+    code: 'SYR100',
+    name: 'Cough syrup',
+    strength: '100 ml',
+    // pieces only: a bottle, no pack
+    unit: 'bottle',
+    packSize: null,
+    packPrice: null,
+    saleMode: 'piece',
+    packUnit: null,
+    sellingPrice: 1500,
+    reorderLevel: 10,
+    maxLevel: 60,
+    onHand: 40,
+    costValue: 36000,
+    avgCost: 900,
+    byLocation: { 'l-pharm': 40 },
+    earliestExpiry: '2027-03-31',
+    expiredUnits: 0,
+    active: true,
+    kind: 'medicine',
+  },
 ]
 /** The batch number of each sample item (the latest added). */
 const sampleBatchNo: Record<string, string> = {
   'it-1': 'B261020-001',
   'it-2': 'B260901-004',
   'it-3': 'B260715-002',
+  'it-6': 'B261001-007',
 }
 
 const line = (
@@ -563,11 +626,30 @@ const line = (
     | 'prescribingRule'
   > & { payer?: string; coveragePct?: number },
 ): PharmacyLine => {
-  const total = Math.round((l.price ?? 0) * l.quantity)
+  const it = sampleItems.find((x) => x.id === l.itemId)
+  // an insured line keeps the insurer's price per piece; a cash line is priced by the pack (0107)
+  const cash = !l.payer
+  const mode = saleModeOf(it)
+  const size = packSizeOf(it)
+  const due = mode === 'pack' && size ? Math.ceil(l.quantity / size) * size : l.quantity
+  const packs =
+    cash && size && it?.packPrice != null && mode !== 'piece' ? Math.floor(due / size) : 0
+  const rest = due - packs * (size ?? 0)
+  const total =
+    packs > 0
+      ? packs * (it?.packPrice ?? 0) + Math.round((l.price ?? 0) * rest)
+      : Math.round((l.price ?? 0) * due)
   const pct = l.coveragePct ?? 0
   const insurer = Math.round((total * pct) / 100)
   return {
     ...l,
+    packSize: it?.packSize ?? null,
+    packPrice: cash && mode !== 'piece' ? (it?.packPrice ?? null) : null,
+    saleMode: mode,
+    packUnit: it?.packUnit ?? null,
+    due,
+    packs: packs > 0 ? packs : null,
+    restPieces: packs > 0 ? rest : null,
     prescriberId: 'u-doc',
     cashPrice: l.price,
     payerPrice: l.price,
@@ -637,6 +719,31 @@ const sampleQueue: PharmacyLine[] = [
     ageYears: 7,
     allergies: null,
     prescribingRule: 'PED',
+  }),
+  // a cash line of a medicine sold both ways: 1 box of 20 + 3 tablets
+  line({
+    requestId: 'rx-2b',
+    encounterId: 'e-2',
+    patientId: 'p-2',
+    patient: 'Habimana Eric',
+    file: 'MMC-000131',
+    ticket: 'A-014',
+    itemId: 'it-2',
+    item: 'Paracetamol 500 mg',
+    unit: 'tab',
+    quantity: 23,
+    dose: '1 tab',
+    frequency: 'three times a day',
+    days: 5,
+    instructions: null,
+    prescriber: 'Dr. Ndayisaba Félix',
+    at: ago(8),
+    price: 50,
+    sex: 'male',
+    birthDate: '2019-08-02',
+    ageYears: 7,
+    allergies: null,
+    prescribingRule: null,
   }),
 ]
 const sampleMoves: StockMovement[] = [
@@ -919,6 +1026,8 @@ export function useStockOverview() {
           ...i,
           packSize: numOrNull(i.packSize),
           packPrice: numOrNull(i.packPrice),
+          saleMode: i.saleMode ?? null,
+          packUnit: i.packUnit ?? null,
           sellingPrice: numOrNull(i.sellingPrice),
           reorderLevel: num(i.reorderLevel),
           maxLevel: numOrNull(i.maxLevel),
@@ -984,6 +1093,10 @@ const toLine = (l: Partial<PharmacyLine> & Record<string, unknown>): PharmacyLin
     packSize: numOrNull(l.packSize),
     packPrice: numOrNull(l.packPrice),
     packs: numOrNull(l.packs),
+    saleMode: (l.saleMode as SaleMode | null | undefined) ?? null,
+    packUnit: (l.packUnit as string | null | undefined) ?? null,
+    due: numOrNull(l.due),
+    restPieces: numOrNull(l.restPieces),
     splitFrom: (l.splitFrom as string | null | undefined) ?? null,
     price,
     cashPrice: l.cashPrice === undefined ? price : numOrNull(l.cashPrice),
@@ -1658,7 +1771,19 @@ export function useStockActions() {
           if (!itemId) continue
           const it = sampleItems.find((x) => x.id === itemId)
           if (it) {
-            if (l.sellPrice != null) it.sellingPrice = l.sellPrice
+            if (l.saleMode) {
+              // the package and how it is sold (a known item: the pharmacy and the manager)
+              const size = l.packSize && l.packSize >= 2 ? l.packSize : null
+              const mode = size ? l.saleMode : 'piece'
+              it.packSize = size
+              it.saleMode = mode
+              it.packPrice = mode === 'piece' ? null : (l.packPrice ?? null)
+              it.packUnit = size ? (l.packUnit ?? it.packUnit ?? null) : null
+              if (l.unit?.trim()) it.unit = l.unit.trim()
+              if (mode === 'pack' && size && l.packPrice != null)
+                it.sellingPrice = Math.round(l.packPrice / size)
+              else if (l.sellPrice != null) it.sellingPrice = l.sellPrice
+            } else if (l.sellPrice != null) it.sellingPrice = l.sellPrice
             // an item without a pack size takes the one the line was counted with
             if (l.packSize && !it.packSize) it.packSize = l.packSize
             if (!it.earliestExpiry || l.expiry < it.earliestExpiry) it.earliestExpiry = l.expiry
@@ -1676,7 +1801,10 @@ export function useStockActions() {
             reason: i.note?.trim() || null,
           })
           out.lines.push({ itemId, batchId: `b-${itemId}`, quantity: l.quantity })
-          out.totalCost += l.quantity * l.unitCost
+          out.totalCost +=
+            l.packCost != null && l.packSize
+              ? (l.quantity * l.packCost) / l.packSize
+              : l.quantity * l.unitCost
         }
         return out
       }
@@ -1699,6 +1827,16 @@ export function useStockActions() {
           unit_cost: l.unitCost,
           sell_price: l.sellPrice ?? null,
           pack_size: l.packSize ?? null,
+          // 0107: the package and how it is sold (an older database ignores them)
+          ...(l.saleMode
+            ? {
+                sale_mode: l.saleMode,
+                pack_price: l.packPrice ?? null,
+                pack_unit: l.packUnit?.trim() || null,
+                unit: l.unit?.trim() || null,
+              }
+            : {}),
+          ...(l.packCost != null ? { pack_cost: l.packCost } : {}),
         })),
         p_location_id: i.locationId ?? null,
         p_note: i.note?.trim() || null,
@@ -1946,6 +2084,50 @@ export function useStockActions() {
     },
     onSuccess: refreshAll,
   })
+  /**
+   * The package and how it is sold (0107; the manager, or the price right): pieces only (packSize
+   * null) or a pack of packSize; by the piece, only by the whole pack, or both; the piece price
+   * (derived for 'pack') and the pack price.
+   */
+  const setPackaging = useMutation({
+    mutationFn: async (i: {
+      itemId: string
+      packSize: number | null
+      saleMode: SaleMode
+      piecePrice: number | null
+      packPrice: number | null
+      unit?: string | null
+      packUnit?: string | null
+    }) => {
+      if (!supabase) {
+        const it = sampleItems.find((x) => x.id === i.itemId)
+        if (it) {
+          const size = i.packSize && i.packSize >= 2 ? i.packSize : null
+          if (i.saleMode !== 'piece' && !size) throw sampleRefusal('packSize', '22023')
+          it.packSize = size
+          it.saleMode = size ? i.saleMode : 'piece'
+          it.packPrice = it.saleMode === 'piece' ? null : i.packPrice
+          it.packUnit = size ? i.packUnit?.trim() || it.packUnit || null : null
+          if (i.unit?.trim()) it.unit = i.unit.trim()
+          it.sellingPrice =
+            it.saleMode === 'pack' && size && i.packPrice != null
+              ? Math.round(i.packPrice / size)
+              : i.piecePrice
+        }
+        return null
+      }
+      return call('set_item_packaging', {
+        p_item_id: i.itemId,
+        p_pack_size: i.packSize,
+        p_sale_mode: i.saleMode,
+        p_piece_price: i.piecePrice,
+        p_pack_price: i.packPrice,
+        p_unit: i.unit?.trim() || null,
+        p_pack_unit: i.packUnit?.trim() || null,
+      })
+    },
+    onSuccess: refreshAll,
+  })
   /** The shelf was counted: the store's stock becomes that count (difference kept with its reason). */
   const adjust = useMutation({
     mutationFn: (i: { itemId: string; locationId: string; counted: number; reason: string }) => {
@@ -2018,6 +2200,7 @@ export function useStockActions() {
     setMainPharmacy,
     setReorderLevel,
     setPackPrice,
+    setPackaging,
     adjust,
     setLocationActive,
   }

@@ -31,60 +31,74 @@ import {
 } from '@/lib/api/stock'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
-import { MsgFlash } from './stock-shared'
+import { useSession } from '@/store/session'
+import { MsgFlash, QtyModeToggle } from './stock-shared'
+import {
+  emptyPack,
+  packChanged,
+  packDraftOf,
+  packInput,
+  packProblem,
+  packSummary,
+  type PackDraft,
+} from './pack-draft'
+import { PackagingFields } from './packaging-fields'
 import {
   errText,
   itemName,
   mainPharmacy,
+  packCountText,
   packsText,
   pharmacyStores,
   todayIso,
+  packWord,
+  pieceWord,
+  tx,
+  unitsText,
   type Msg,
+  type QtyMode,
 } from './stock-util'
 
 /** Where a field filled by itself came from: the RHIA list, the item, its last delivery. */
 type Filled = 'list' | 'item' | 'delivery' | 'average'
-type AutoField = 'sellPrice' | 'perBox' | 'unitCost'
 
 interface ALine {
   key: number
   /** A clinic item id, "ref:<code>" (a medicine of the RHIA list) or "new" (typed here). */
   pick: string
-  /** The fields filled when the item was picked (cleared as soon as one is typed over). */
-  auto: Partial<Record<AutoField, Filled>>
+  /** Where the package and the prices came from, and the cost (cleared once the cost is typed). */
+  packFrom?: Filled
+  costFrom?: Filled
   newName: string
   newStrength: string
   newForm: string
-  newUnit: string
   newKind: 'medicine' | 'supply'
+  /** The package and how it is sold (0107): filled from the item or the list, changeable. */
+  pack: PackDraft
   batchNo: string
   expiry: string
+  /** As typed: pieces, or whole packs (qtyIn 'packs'). */
   quantity: string
-  /** The boxes × units-per-box helper fills the quantity. */
-  inBoxes: boolean
-  boxes: string
-  perBox: string
-  unitCost: string
-  sellPrice: string
+  qtyIn: QtyMode
+  /** The cost as typed: of one piece, or of one pack (costPer 'pack'). */
+  cost: string
+  costPer: 'piece' | 'pack'
 }
 let lineKey = 1
-const newLine = (pick = '', sellPrice = ''): ALine => ({
+const newLine = (pick = '', pack: PackDraft = emptyPack()): ALine => ({
   key: lineKey++,
   pick,
-  auto: {},
   newName: '',
   newStrength: '',
   newForm: '',
-  newUnit: '',
   newKind: 'medicine',
+  pack,
   batchNo: '',
   expiry: '',
   quantity: '',
-  inBoxes: false,
-  boxes: '',
-  perBox: '',
-  unitCost: '',
-  sellPrice,
+  qtyIn: pack.kind === 'pack' ? 'packs' : 'pieces',
+  cost: '',
+  costPer: 'piece',
 })
 
 const digits = (s: string) => s.replace(/[^\d]/g, '')
@@ -113,13 +127,21 @@ async function lastBatchCost(itemId: string): Promise<number | null> {
 /** A cost as the field takes it: no grouping, at most 2 decimals ("1200.5"). */
 const costText = (n: number) => String(Math.round(n * 100) / 100)
 
+/** The pieces in one pack the line says (null: pieces only). */
+const sizeOf = (l: ALine): number | null => {
+  const n = Number(l.pack.packSize)
+  return l.pack.kind === 'pack' && Number.isInteger(n) && n >= 2 ? n : null
+}
+
 /**
  * Add stock: what arrived at the pharmacy, one line per batch. Each line names the item (picked
  * from the clinic's items or the RHIA list, or created here as a medicine or a product), its
- * batch number, expiry date (never in the past), the quantity (typed, or boxes × units per box),
- * the cost per unit and the selling price (filled from the item; a change updates the item's
- * price). No supplier, no delivery note, no date: it is today. The manager may choose another
- * pharmacy store; everyone else adds into the main pharmacy.
+ * package and how it is sold (0107: pieces only or a pack of N; by the piece, only by the whole
+ * pack, or both, with the prices that apply), its batch number, expiry date (never in the past),
+ * the quantity (in pieces or in packs) and the cost (of one piece or of one pack). A known item's
+ * package and prices change only for the manager and the pharmacist (the price right); anyone
+ * else sees them as they are. No supplier, no delivery note, no date: it is today. The manager
+ * may choose another pharmacy store; everyone else adds into the main pharmacy.
  */
 export function AddStockForm({
   items,
@@ -138,6 +160,8 @@ export function AddStockForm({
   const qc = useQueryClient()
   const actions = useStockActions()
   const confirm = useConfirm()
+  // the price right (item_price.write): the manager and the pharmacist
+  const mayPrice = useSession((s) => s.user?.role === 'manager' || s.user?.role === 'pharmacist')
   const { data: reference = [] } = useMedicineReference(true)
   const { data: medicines = [] } = useMedicines()
   // the clinic's medicines whose code left the current official list
@@ -152,7 +176,7 @@ export function AddStockForm({
   const [note, setNote] = useState('')
   const [lines, setLines] = useState<ALine[]>(() => {
     const it = items.find((i) => i.id === preset?.item)
-    return [newLine(it?.id ?? '', it?.sellingPrice != null ? String(it.sellingPrice) : '')]
+    return [it ? { ...newLine(it.id, packDraftOf(it)), packFrom: 'item' } : newLine()]
   })
   const [msg, setMsg] = useState<Msg | null>(null)
   const [badLine, setBadLine] = useState<number | null>(null)
@@ -195,13 +219,12 @@ export function AddStockForm({
   const refOf = (l: ALine) =>
     l.pick.startsWith('ref:') ? reference.find((r) => r.code === l.pick.slice(4)) : undefined
   const isNew = (l: ALine) => l.pick === 'new' || l.pick.startsWith('ref:')
+  /** A known item the person may not re-price: its package and prices are shown, not edited. */
+  const locked = (l: ALine) => !isNew(l) && !mayPrice
   const set = (key: number, patch: Partial<ALine>) => {
     setBadLine(null)
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)))
   }
-  /** A field typed by hand: it is no longer "filled from …". */
-  const type = (l: ALine, field: AutoField, text: string) =>
-    set(l.key, { [field]: text, auto: { ...l.auto, [field]: undefined } })
   /** A filled field: a small note after its label ("from the list") and a light teal tint. */
   const filledLabel = (text: string, from?: Filled): ReactNode =>
     from ? (
@@ -215,61 +238,57 @@ export function AddStockForm({
       text
     )
   const filledClass = (from?: Filled) => (from ? 'bg-primary-tint border-primary/40' : undefined)
-  /**
-   * Picking fills what can be known, for the pharmacist to change only what differs:
-   *   a clinic item: its selling price, its box size, the cost per unit of its last delivery
-   *     (or, without one, the average cost of the stock);
-   *   a medicine new from the RHIA list: the list's tariff as the selling price (owner,
-   *     2026-10-27: filled, to be changed when the clinic's cash price differs) and the box size
-   *     the list gives ("B/20").
-   */
-  /** The clinic name the list suggests: "Acetazolamide (Diamox)", "250 mg", "tablet", "tablet". */
+  /** The clinic name the list suggests: "Acetazolamide (Diamox)", "250 mg", "tablet". */
   const listNames = (r: MedicineRef) => {
     const p = medicineRefParts(r)
     return {
       newName: p.brand ? `${p.genericOnly} (${p.brand})` : (p.genericOnly ?? r.generic),
       newStrength: p.strengthText ?? '',
       newForm: p.form ?? '',
-      newUnit: readableUnit(r.unit) || '',
     }
   }
+  /**
+   * Picking fills what can be known, for the pharmacist to change only what differs:
+   *   a clinic item: its package, how it is sold and its prices, the cost per unit of its last
+   *     delivery (or, without one, the average cost of the stock);
+   *   a medicine new from the RHIA list: the list's pack ("B/20") and its tariff as the price of
+   *     one piece (owner, 2026-10-27: filled, to be changed when the clinic's cash price differs).
+   */
   const pick = (key: number, value: string) => {
     const it = items.find((i) => i.id === value)
     const r = value.startsWith('ref:') ? reference.find((x) => x.code === value.slice(4)) : null
-    const auto: ALine['auto'] = {}
-    let sellPrice = ''
-    let perBox = ''
-    let unitCost = ''
+    let pack = emptyPack()
+    let packFrom: Filled | undefined
+    let cost = ''
+    let costFrom: Filled | undefined
     if (it) {
-      if (it.sellingPrice != null) {
-        sellPrice = String(it.sellingPrice)
-        auto.sellPrice = 'item'
-      }
-      if (it.packSize && it.packSize > 1) {
-        perBox = String(it.packSize)
-        auto.perBox = 'item'
-      }
+      pack = packDraftOf(it)
+      packFrom = 'item'
       if (it.avgCost != null && it.avgCost > 0) {
-        unitCost = costText(it.avgCost)
-        auto.unitCost = 'average'
+        cost = costText(it.avgCost)
+        costFrom = 'average'
       }
     } else if (r) {
-      if (r.price != null) {
-        sellPrice = String(Math.round(r.price))
-        auto.sellPrice = 'list'
+      const size = medicineRefParts(r).pack
+      pack = {
+        ...emptyPack(),
+        kind: size && size > 1 ? 'pack' : 'pieces',
+        packSize: size && size > 1 ? String(size) : '',
+        packUnit: size && size > 1 ? 'box' : '',
+        unit: readableUnit(r.unit) || '',
+        piecePrice: r.price != null ? String(Math.round(r.price)) : '',
       }
-      const pack = medicineRefParts(r).pack
-      if (pack && pack > 1) {
-        perBox = String(pack)
-        auto.perBox = 'list'
-      }
+      packFrom = 'list'
     }
     set(key, {
       pick: value,
-      sellPrice,
-      perBox,
-      unitCost,
-      auto,
+      pack,
+      packFrom,
+      cost,
+      costFrom,
+      costPer: 'piece',
+      qtyIn: pack.kind === 'pack' ? 'packs' : 'pieces',
+      quantity: '',
       // a list medicine: its name and details fill fields the pharmacist may still change
       ...(r ? listNames(r) : {}),
     })
@@ -281,22 +300,32 @@ export function AddStockForm({
         queryFn: () => lastBatchCost(it.id),
         staleTime: 60_000,
       })
-      .then((cost) => {
-        if (cost == null) return
+      .then((c) => {
+        if (c == null) return
         setLines((ls) =>
           ls.map((l) =>
             // only while the line still names this item and the cost was not typed
-            l.key === key && l.pick === it.id && (l.unitCost === '' || l.auto.unitCost)
-              ? { ...l, unitCost: costText(cost), auto: { ...l.auto, unitCost: 'delivery' } }
+            l.key === key && l.pick === it.id && (l.cost === '' || l.costFrom)
+              ? { ...l, cost: costText(c), costPer: 'piece', costFrom: 'delivery' }
               : l,
           ),
         )
       })
       .catch(() => {})
   }
-  const quantityOf = (l: ALine) =>
-    l.inBoxes ? Number(l.boxes || 0) * Number(l.perBox || 0) : Number(l.quantity || 0)
-  const costOf = (l: ALine) => quantityOf(l) * Number(l.unitCost || 0)
+  /** The pieces the line adds (packs × pieces in one when typed in packs). */
+  const quantityOf = (l: ALine) => {
+    const q = Number(l.quantity || 0)
+    const size = sizeOf(l)
+    return l.qtyIn === 'packs' && size ? q * size : q
+  }
+  /** The cost of one piece (a pack's cost / the pieces in one). */
+  const pieceCostOf = (l: ALine) => {
+    const c = Number(l.cost || 0)
+    const size = sizeOf(l)
+    return l.costPer === 'pack' && size ? c / size : c
+  }
+  const costOf = (l: ALine) => quantityOf(l) * pieceCostOf(l)
   const filled = lines.filter((l) => l.pick)
   const totalUnits = filled.reduce((s, l) => s + quantityOf(l), 0)
   const totalCost = filled.reduce((s, l) => s + costOf(l), 0)
@@ -313,19 +342,17 @@ export function AddStockForm({
       if (!l.pick) return bad(t('stockPage.add.errors.item'))
       if ((l.pick === 'new' || l.pick.startsWith('ref:')) && l.newName.trim().length < 2)
         return bad(t('stockPage.add.errors.newName'))
+      if (!locked(l)) {
+        const p = packProblem(t, l.pack)
+        if (p) return bad(p)
+      }
       if (!l.batchNo.trim()) return bad(t('stockPage.add.errors.batch'))
       if (!l.expiry) return bad(t('stock.errors.expiry'))
       if (l.expiry < today) return bad(t('stockDelivery.errors.past'))
       const q = quantityOf(l)
-      if (l.inBoxes && (!Number(l.boxes) || !Number(l.perBox)))
-        return bad(t('stockPage.add.errors.boxes'))
       if (!Number.isInteger(q) || q <= 0) return bad(t('stock.errors.quantity'))
-      const c = Number(l.unitCost)
-      if (l.unitCost === '' || !Number.isFinite(c) || c < 0) return bad(t('stock.errors.cost'))
-      if (isNew(l)) {
-        const p = Number(l.sellPrice)
-        if (l.sellPrice === '' || !Number.isFinite(p) || p < 0) return bad(t('prices.errors.price'))
-      }
+      const c = Number(l.cost)
+      if (l.cost === '' || !Number.isFinite(c) || c < 0) return bad(t('stock.errors.cost'))
       // the same batch of the same item twice: one expiry date only
       if (!isNew(l)) {
         const id = `${l.pick}|${l.batchNo.trim().toUpperCase()}`
@@ -365,7 +392,8 @@ export function AddStockForm({
       const r = refOf(l)
       const p = r ? medicineRefParts(r) : null
       const it = itemOf(l)
-      const price = l.sellPrice.trim() === '' ? null : Math.round(Number(l.sellPrice))
+      const pk = packInput(l.pack)
+      const size = sizeOf(l)
       return {
         itemId: it?.id,
         newItem: r
@@ -376,7 +404,7 @@ export function AddStockForm({
                 (p?.brand ? `${p.genericOnly} (${p.brand})` : (p?.genericOnly ?? r.generic)),
               strength: l.newStrength.trim() || p?.strengthText || null,
               form: l.newForm.trim() || p?.form || null,
-              unit: l.newUnit.trim() || readableUnit(r.unit) || null,
+              unit: pk.unit || readableUnit(r.unit) || null,
               kind: 'medicine',
               // the item keeps the list's code: its insurer price and prescribing rule follow the list
               code: r.code,
@@ -386,19 +414,27 @@ export function AddStockForm({
                 name: l.newName.trim(),
                 strength: l.newStrength.trim() || null,
                 form: l.newForm.trim() || null,
-                unit: l.newUnit.trim() || null,
+                unit: pk.unit,
                 kind: l.newKind,
               }
             : undefined,
         batchNo: l.batchNo.trim(),
         expiry: l.expiry,
-        // always in pieces (boxes × pieces per box)
+        // always in pieces (packs × pieces per pack)
         quantity: quantityOf(l),
-        unitCost: Number(l.unitCost),
-        // an existing item: only a price that changes is sent
-        sellPrice: it && price === it.sellingPrice ? null : price,
-        // the pieces per box, for an item that has none yet (the list's B/20 fills it too)
-        packSize: Number(l.perBox) > 1 ? Number(l.perBox) : null,
+        unitCost: Math.round(pieceCostOf(l) * 100) / 100,
+        packCost: l.costPer === 'pack' && size ? Number(l.cost) : null,
+        // the package and how it is sold: a known item the person may not re-price keeps its own
+        ...(locked(l)
+          ? { sellPrice: null, packSize: size }
+          : {
+              saleMode: pk.saleMode,
+              packSize: pk.packSize,
+              sellPrice: pk.saleMode === 'pack' ? null : pk.piecePrice,
+              packPrice: pk.packPrice,
+              packUnit: pk.packUnit,
+              unit: pk.unit,
+            }),
       }
     })
     try {
@@ -431,7 +467,13 @@ export function AddStockForm({
 
   return (
     <Panel i={1} icon={PackagePlus} tint="amber" title={t('stockPage.add.title')}>
-      <p className="text-ink-2 m-0 text-[14px]">{t('stockPage.add.lead')}</p>
+      <p className="text-ink-2 m-0 text-[14px]">
+        {tx(
+          t,
+          'packaging.addLead',
+          'One line per batch: the item (pick it, or create it as a medicine or a product), its package and how it is sold, the batch number, expiry date, quantity and cost. It goes into the main pharmacy today.',
+        )}
+      </p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
         {isManager && stores.length > 1 && (
           <Select
@@ -455,8 +497,10 @@ export function AddStockForm({
             const r = refOf(l)
             const rd = r ? medicineRefDisplay(r, t) : null
             const q = quantityOf(l)
-            const priceChanges =
-              it && l.sellPrice !== '' && Number(l.sellPrice) !== (it.sellingPrice ?? -1)
+            const size = sizeOf(l)
+            const pk = packInput(l.pack)
+            const piece = pieceWord(t, pk.unit)
+            const changes = it && !locked(l) && packChanged(l.pack, it)
             return (
               <div
                 key={l.key}
@@ -491,10 +535,11 @@ export function AddStockForm({
                     onClick={() =>
                       set(l.key, {
                         pick: l.pick === 'new' ? '' : 'new',
-                        sellPrice: '',
-                        perBox: l.auto.perBox ? '' : l.perBox,
-                        unitCost: l.auto.unitCost ? '' : l.unitCost,
-                        auto: {},
+                        pack: emptyPack(),
+                        packFrom: undefined,
+                        qtyIn: 'pieces',
+                        cost: l.costFrom ? '' : l.cost,
+                        costFrom: undefined,
                       })
                     }
                   >
@@ -522,7 +567,7 @@ export function AddStockForm({
                   </p>
                 )}
                 {l.pick === 'new' && (
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <Select
                       label={t('stockPage.add.kind')}
                       value={l.newKind}
@@ -542,12 +587,6 @@ export function AddStockForm({
                       value={l.newForm}
                       placeholder={t('stockPage.add.formPh')}
                       onChange={(e) => set(l.key, { newForm: e.target.value })}
-                    />
-                    <Field
-                      label={t('stockPage.add.unit')}
-                      value={l.newUnit}
-                      placeholder={t('stockPage.add.unitPh')}
-                      onChange={(e) => set(l.key, { newUnit: e.target.value })}
                     />
                   </div>
                 )}
@@ -575,7 +614,7 @@ export function AddStockForm({
                 {r && (
                   // the clinic's name for it: filled from the list, free to change before saving
                   <div className="flex flex-col gap-1.5">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))]">
                       <Field
                         label={t('stockPage.add.clinicName')}
                         value={l.newName}
@@ -594,17 +633,49 @@ export function AddStockForm({
                         placeholder={t('stockPage.add.formPh')}
                         onChange={(e) => set(l.key, { newForm: e.target.value })}
                       />
-                      <Field
-                        label={t('stockPage.add.unit')}
-                        value={l.newUnit}
-                        placeholder={t('stockPage.add.unitPh')}
-                        onChange={(e) => set(l.key, { newUnit: e.target.value })}
-                      />
                     </div>
                     <p className="text-ink-3 m-0 text-[12.5px]">
                       {t('stockPage.add.clinicNameHint')}
                     </p>
                   </div>
+                )}
+                {l.pick && (
+                  <PackagingFields
+                    idPrefix={`add-${l.key}`}
+                    value={l.pack}
+                    onChange={(pack) =>
+                      set(l.key, {
+                        pack,
+                        // pieces only: the quantity and the cost are in pieces
+                        ...(pack.kind === 'pieces' ? { qtyIn: 'pieces', costPer: 'piece' } : {}),
+                      })
+                    }
+                    readOnly={locked(l)}
+                    current={it}
+                    readOnlyNote={tx(
+                      t,
+                      'packaging.readOnlyStock',
+                      'You add the stock; the package and the prices stay as they are (only the manager or the pharmacist changes them).',
+                    )}
+                    hint={
+                      l.packFrom ? (
+                        <span className="text-primary inline-flex items-center gap-1 text-[12px]">
+                          <WandSparkles size={12} aria-hidden="true" />
+                          {l.packFrom === 'list'
+                            ? tx(
+                                t,
+                                'packaging.fromList',
+                                'Filled from the official list (its pack and tariff): change what differs at the clinic.',
+                              )
+                            : tx(
+                                t,
+                                'packaging.fromItem',
+                                'As saved for this item: a change here updates the item.',
+                              )}
+                        </span>
+                      ) : undefined
+                    }
+                  />
                 )}
                 <div className="grid grid-cols-1 items-end gap-2 @xs:grid-cols-2 @lg:grid-cols-4">
                   <Field
@@ -620,90 +691,117 @@ export function AddStockForm({
                     value={l.expiry}
                     onChange={(e) => set(l.key, { expiry: e.target.value })}
                   />
-                  {l.inBoxes ? (
-                    <div className="col-span-2 grid grid-cols-2 gap-2">
-                      <Field
-                        label={t('stockDelivery.boxCount')}
-                        inputMode="numeric"
-                        value={l.boxes}
-                        onChange={(e) => set(l.key, { boxes: digits(e.target.value) })}
-                      />
-                      <Field
-                        label={filledLabel(t('stockDelivery.packSize'), l.auto.perBox)}
-                        inputMode="numeric"
-                        value={l.perBox}
-                        placeholder={it?.packSize ? String(it.packSize) : '100'}
-                        className={filledClass(l.auto.perBox)}
-                        onChange={(e) => type(l, 'perBox', digits(e.target.value))}
-                      />
-                    </div>
-                  ) : (
+                  <div className="flex items-end gap-1.5">
                     <Field
-                      label={t('stockPage.add.quantity')}
+                      wrapperClassName="min-w-0 flex-1"
+                      label={
+                        l.qtyIn === 'packs' && size
+                          ? tx(t, 'packaging.qtyPacks', 'Quantity · {{pack}} of {{size}}', {
+                              size,
+                              pack: packWord(t, pk.packUnit),
+                            })
+                          : tx(t, 'packaging.qtyPieces', 'Quantity ({{piece}})', { piece })
+                      }
                       inputMode="numeric"
                       value={l.quantity}
                       onChange={(e) => set(l.key, { quantity: digits(e.target.value) })}
                     />
-                  )}
-                  <Field
-                    label={filledLabel(t('stockPage.add.unitCost'), l.auto.unitCost)}
-                    inputMode="decimal"
-                    value={l.unitCost}
-                    className={filledClass(l.auto.unitCost)}
-                    onChange={(e) => type(l, 'unitCost', decimal(e.target.value))}
-                  />
-                  <Field
-                    label={filledLabel(t('stockDelivery.sellingPrice'), l.auto.sellPrice)}
-                    inputMode="numeric"
-                    value={l.sellPrice}
-                    placeholder={t('stockDelivery.sellingPricePh')}
-                    className={filledClass(l.auto.sellPrice)}
-                    onChange={(e) => type(l, 'sellPrice', digits(e.target.value))}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
-                  <label className="text-ink-2 inline-flex items-center gap-1.5">
-                    <input
-                      type="checkbox"
-                      checked={l.inBoxes}
+                    {size && (
+                      <QtyModeToggle
+                        mode={l.qtyIn}
+                        className="mb-0.5"
+                        onChange={(m) => {
+                          // switching keeps the quantity: 3 boxes of 8 become 24 pieces, and back
+                          const pieces = quantityOf(l)
+                          set(l.key, {
+                            qtyIn: m,
+                            quantity:
+                              pieces > 0
+                                ? String(
+                                    m === 'packs' ? Math.max(1, Math.floor(pieces / size)) : pieces,
+                                  )
+                                : l.quantity,
+                          })
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-end gap-1.5">
+                    <Field
+                      wrapperClassName="min-w-0 flex-1"
+                      label={filledLabel(
+                        l.costPer === 'pack' && size
+                          ? tx(t, 'packaging.costPack', 'Cost of one {{pack}} (RWF)', {
+                              pack: packWord(t, pk.packUnit),
+                            })
+                          : tx(t, 'packaging.costPiece', 'Cost of one {{piece}} (RWF)', { piece }),
+                        l.costFrom,
+                      )}
+                      inputMode="decimal"
+                      value={l.cost}
+                      className={filledClass(l.costFrom)}
                       onChange={(e) =>
-                        set(l.key, {
-                          inBoxes: e.target.checked,
-                          quantity: e.target.checked ? l.quantity : String(q || ''),
-                        })
+                        set(l.key, { cost: decimal(e.target.value), costFrom: undefined })
                       }
                     />
-                    {t('stockPage.add.inBoxes')}
-                    {!l.inBoxes && l.perBox && (
-                      <span className="text-ink-3">
-                        · {t('stockPage.add.perBoxKnown', { count: Number(l.perBox) })}
-                      </span>
+                    {size && (
+                      <select
+                        aria-label={tx(t, 'packaging.costPer', 'Cost per')}
+                        value={l.costPer}
+                        onChange={(e) => {
+                          const per = e.target.value as ALine['costPer']
+                          const c = Number(l.cost)
+                          // the same cost, said for the other unit
+                          set(l.key, {
+                            costPer: per,
+                            cost:
+                              l.cost === '' || !Number.isFinite(c)
+                                ? l.cost
+                                : costText(per === 'pack' ? c * size : c / size),
+                          })
+                        }}
+                        className="border-border bg-surface text-ink-2 mb-0.5 h-8 rounded-md border px-1.5 text-[12px] font-medium"
+                      >
+                        <option value="piece">
+                          {tx(t, 'packaging.perPieceShort', 'per {{piece}}', { piece })}
+                        </option>
+                        <option value="pack">
+                          {tx(t, 'packaging.perPackShort', 'per {{pack}}', {
+                            pack: packWord(t, pk.packUnit),
+                          })}
+                        </option>
+                      </select>
                     )}
-                  </label>
-                  {Object.values(l.auto).some(Boolean) && (
-                    <span className="text-primary inline-flex items-center gap-1">
-                      <WandSparkles size={12} aria-hidden="true" />
-                      {t('stockPage.add.filledHint')}
-                    </span>
-                  )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
                   {q > 0 && (
-                    <span className="text-ink-2 tabular-nums">
+                    <span className="text-ink-2 font-medium tabular-nums">
                       {[
-                        t('stockPage.add.lineSum', {
-                          units: formatNumber(q),
+                        l.qtyIn === 'packs' && size
+                          ? `${packCountText(t, Number(l.quantity), size, pk.packUnit)} = ${unitsText(q, pk.unit)}`
+                          : unitsText(q, pk.unit),
+                        l.qtyIn !== 'packs' ? packsText(t, q, size, pk.packUnit) : null,
+                        tx(t, 'packaging.costTotal', 'cost {{value}}', {
                           value: formatRwf(Math.round(costOf(l))),
                         }),
-                        packsText(t, q, Number(l.perBox) > 1 ? Number(l.perBox) : it?.packSize),
                       ]
                         .filter(Boolean)
                         .join(' · ')}
                     </span>
                   )}
-                  {priceChanges && (
+                  {changes && (
                     <span className="text-amber font-medium">
-                      {t('stockPage.add.priceChanges', {
-                        from: it.sellingPrice == null ? '—' : formatRwf(it.sellingPrice),
-                        to: formatRwf(Number(l.sellPrice)),
+                      {tx(t, 'packaging.changes', 'The item changes: {{from}} → {{to}}', {
+                        from: packSummary(t, it),
+                        to: packSummary(t, {
+                          packSize: pk.packSize,
+                          saleMode: pk.saleMode,
+                          packPrice: pk.packPrice,
+                          sellingPrice: pk.piecePrice,
+                          unit: pk.unit,
+                          packUnit: pk.packUnit,
+                        }),
                       })}
                     </span>
                   )}

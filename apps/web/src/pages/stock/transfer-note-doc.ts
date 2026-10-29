@@ -22,6 +22,16 @@ import {
 import { useClinicInfo } from '@/lib/api/public'
 import type { TransferNoteDetail } from '@/lib/api/rooms'
 import { useSession } from '@/store/session'
+import { formatRwf } from '@mmc/shared'
+import type { TFunction } from 'i18next'
+import {
+  packCountText,
+  packsText,
+  packWord,
+  pieceWord,
+  saleModeText,
+  unitsText,
+} from './stock-util'
 
 /**
  * The printed transfer note (T-…) that goes with the medicines from the pharmacy to a room
@@ -61,12 +71,42 @@ export function buildTransferNoteHtml(
       : '',
   ].join('')
   const showCost = n.items.some((x) => x.unitCost != null)
+  // 0107: the value at selling price of each line, as it was when the note was written
+  const showSell = n.items.some((x) => x.sellValue != null)
+  const tt = t as unknown as TFunction
+  /** "box of 8 · sold by the pack or by the piece · 1,500 a box · 200 a tablet". */
+  const packageLine = (x: (typeof n.items)[number]): string =>
+    [
+      x.packSize ? packCountText(tt, 1, x.packSize, x.packUnit) : null,
+      x.packSize
+        ? saleModeText(tt, { packSize: x.packSize, saleMode: x.saleMode, packPrice: x.packPrice })
+        : null,
+      x.packPrice != null && x.packSize && x.saleMode !== 'piece'
+        ? `${formatRwf(x.packPrice)} / ${packWord(tt, x.packUnit)}`
+        : null,
+      x.unitPrice != null ? `${formatRwf(x.unitPrice)} / ${pieceWord(tt, x.unit)}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  /** "32 tablet" and, under it, "4 boxes of 8" (typed in packs) or the packs it makes. */
+  const sentCell = (x: (typeof n.items)[number]) => {
+    const packs = x.packSize ? packsText(tt, x.quantity, x.packSize, x.packUnit) : null
+    return packs
+      ? {
+          html: `<strong>${esc(unitsText(x.quantity, x.unit))}</strong><br><span class="small">${esc(packs)}</span>`,
+        }
+      : unitsText(x.quantity, x.unit)
+  }
   const rows = n.items.map((x, i) => [
     i + 1,
-    { html: `<strong>${esc(x.item)}</strong>` },
+    {
+      html: `<strong>${esc(x.item)}</strong>${
+        packageLine(x) ? `<br><span class="small">${esc(packageLine(x))}</span>` : ''
+      }`,
+    },
     x.batchNo ?? '',
     x.expiry ? docDate(x.expiry) : '',
-    x.quantity,
+    sentCell(x),
     x.received == null
       ? { html: '<span class="sig-line short"></span>' }
       : x.received !== x.quantity
@@ -81,6 +121,7 @@ export function buildTransferNoteHtml(
         }
       : '',
     ...(showCost ? [x.value ?? null] : []),
+    ...(showSell ? [x.sellValue ?? null] : []),
   ])
   const units = n.items.reduce((s, x) => s + x.quantity, 0)
   const received = n.items.every((x) => x.received != null)
@@ -92,13 +133,22 @@ export function buildTransferNoteHtml(
       { label: k('medicine') },
       { label: k('batch'), width: '24mm' },
       { label: k('expiry'), width: '22mm' },
-      { label: k('sent'), num: true, width: '16mm' },
+      { label: k('sent'), num: true, width: '24mm' },
       { label: k('received'), num: true, width: '20mm' },
       { label: k('difference') },
       ...(showCost
         ? [
             {
-              label: /RWF/.test(k('value')) ? k('value') : `${k('value')} (RWF)`,
+              label: kd('costValue', 'Cost (RWF)'),
+              money: true,
+              width: '22mm',
+            },
+          ]
+        : []),
+      ...(showSell
+        ? [
+            {
+              label: kd('sellValue', 'At selling price (RWF)'),
               money: true,
               width: '24mm',
             },
@@ -119,6 +169,9 @@ export function buildTransferNoteHtml(
             received,
             '',
             ...(showCost ? [n.value ?? null] : []),
+            ...(showSell
+              ? [n.sellValue ?? n.items.reduce((s, x) => s + (x.sellValue ?? 0), 0)]
+              : []),
           ],
         },
       ],

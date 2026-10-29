@@ -14080,6 +14080,623 @@ await step(
     return `12 given and billed; 18 sent outside as their own line (split from the original); back to the pharmacy's list and out again; "bought outside" counts it`
   },
 )
+// ---------------------------------------------------------------- 0107 (20261217): the package and how a medicine is sold
+// The 0103 checks above ran that migration again (its definitions went back on top): this one
+// goes back on top first (it is idempotent too).
+const t107 = {}
+const mig107 = async () =>
+  db.exec(
+    await readFile(path.join(migrationsDir, '20261217090000_packaging_and_charging.sql'), 'utf8'),
+  )
+/** The bill lines of a visit, in order. */
+const lines107 = async (inv) =>
+  (
+    await db.query(
+      `select l.description, l.quantity::text as q, l.unit_price::text as p, l.pack_size
+         from invoice_line l where l.invoice_id = $1 and l.deleted_at is null and l.item_id is not null
+        order by l.created_at, l.pack_size nulls last`,
+      [inv],
+    )
+  ).rows.map((l) => ({ ...l, q: Number(l.q), p: Number(l.p) }))
+await step(
+  '0107: existing items: pack + pack price → both, pack alone → piece; run again, a choice made since is kept',
+  async () => {
+    await mig107()
+    await as(staff.manager)
+    const mk = async (name, price) =>
+      (await one(`select upsert_item(null, $1, $2, null, 'tablet', 'tab') as id`, [name, price])).id
+    t107.oldBoth = await mk('Old both 107', 50)
+    t107.oldBox = await mk('Old box 107', 40)
+    t107.oldPiece = await mk('Old piece 107', 30)
+    await asAdmin()
+    // as 0103 left them: a pack of 20 with a pack price, a pack of 24 without, no pack
+    await db.query(`update item set pack_size = 20, pack_price = 900 where id = $1`, [t107.oldBoth])
+    await db.query(`update item set pack_size = 24, pack_price = null where id = $1`, [t107.oldBox])
+    // the database before 0107: no sale_mode
+    await db.query(`alter table item drop column sale_mode`)
+    await mig107()
+    const mode = async (id) =>
+      (await one(`select sale_mode from item where id = $1`, [id])).sale_mode
+    const first = {
+      both: await mode(t107.oldBoth),
+      box: await mode(t107.oldBox),
+      piece: await mode(t107.oldPiece),
+      amox: await mode(t97.amox),
+    }
+    // chosen since: sold only by the box; the migration runs again and keeps it
+    await as(staff.pharmacist)
+    await db.query(`select set_item_packaging($1, 24, 'pack', null, 1000, null, 'box')`, [
+      t107.oldBox,
+    ])
+    await asAdmin()
+    await mig107()
+    const again = await one(
+      `select sale_mode, pack_price::text as pp, pack_unit,
+              (select pf.price from price_for(null, i.id, null) pf)::text as piece
+         from item i where i.id = $1`,
+      [t107.oldBox],
+    )
+    const bad = await codeAs(staff.manager, `select set_pack_size($1, 1)`, [t107.oldBox])
+    const after1 = await one(`select sale_mode, pack_price, pack_unit from item where id = $1`, [
+      t107.oldBox,
+    ])
+    if (
+      first.both !== 'both' ||
+      first.box !== 'piece' ||
+      first.piece !== 'piece' ||
+      first.amox !== 'both' ||
+      again.sale_mode !== 'pack' ||
+      Number(again.pp) !== 1000 ||
+      again.pack_unit !== 'box' ||
+      Number(again.piece) !== 42 ||
+      bad !== null ||
+      after1.sale_mode !== 'piece' ||
+      after1.pack_price !== null ||
+      after1.pack_unit !== null
+    )
+      throw new Error(JSON.stringify({ first, again, bad, after1 }))
+    return `pack 20 + pack price → both; pack 24 alone and no pack → piece; "only by the box" kept on a second run (piece price 1,000 / 24 = 42); pack size 1 → by the piece`
+  },
+)
+await step(
+  '0107 A: pieces only: added with no pack (40 bottles), sold by the piece at the counter and to a visit',
+  async () => {
+    await as(staff.pharmacist)
+    const r = (
+      await one(`select add_stock($1::jsonb) as j`, [
+        JSON.stringify([
+          {
+            new_item: {
+              name: 'Cough syrup 107',
+              strength: '100 ml',
+              unit: 'bottle',
+              kind: 'medicine',
+            },
+            batch_no: 'CS-107',
+            expiry: t97.day.d,
+            quantity: 40,
+            unit_cost: 900,
+            sale_mode: 'piece',
+            pack_size: null,
+            sell_price: 1500,
+          },
+        ]),
+      ])
+    ).j
+    t107.syrup = r.lines[0].item_id
+    const sale = (
+      await one(`select create_counter_sale($1::jsonb, 'Syrup 107') as j`, [
+        JSON.stringify([{ itemId: t107.syrup, quantity: 3 }]),
+      ])
+    ).j
+    await db.query(`select cancel_counter_sale($1, 'syrup 107 test')`, [sale.id])
+    const v = await visit87('Syrup 107')
+    await as(staff.pharmacist)
+    const sold = (await one(`select sell_medicine($1, $2, 2) as j`, [v.enc, t107.syrup])).j
+    const overview = (await one(`select stock_overview() as j`)).j
+    await asAdmin()
+    const it = await one(
+      `select pack_size, sale_mode, pack_price, selling_unit,
+              (select pf.price from price_for(null, i.id, null) pf)::text as price
+         from item i where i.id = $1`,
+      [t107.syrup],
+    )
+    const bill = await lines107(v.inv)
+    const ov = overview.items.find((x) => x.id === t107.syrup)
+    if (
+      !r.lines[0].created ||
+      it.pack_size !== null ||
+      it.sale_mode !== 'piece' ||
+      it.pack_price !== null ||
+      it.selling_unit !== 'bottle' ||
+      Number(it.price) !== 1500 ||
+      Number(sale.total) !== 4500 ||
+      !sold.charged ||
+      bill.length !== 1 ||
+      bill[0].q !== 2 ||
+      bill[0].p !== 1500 ||
+      bill[0].pack_size !== null ||
+      ov?.saleMode !== 'piece' ||
+      ov?.usable !== 38
+    )
+      throw new Error(JSON.stringify({ r, it, sale, sold, bill, ov }))
+    return `new item, no pack, 1,500 a bottle: 3 at the counter = 4,500; 2 to a visit = 2 × 1,500; 38 bottles left`
+  },
+)
+await step(
+  '0107 B: by the pack only (box of 8 at 1,200): added in boxes; 3 tablets refused, 2 boxes sold at the pack price',
+  async () => {
+    await as(staff.pharmacist)
+    const r = (
+      await one(`select add_stock($1::jsonb) as j`, [
+        JSON.stringify([
+          {
+            new_item: {
+              name: 'Paracetamol 107',
+              strength: '500 mg',
+              unit: 'tablet',
+              kind: 'medicine',
+            },
+            batch_no: 'PB-107',
+            expiry: t97.day.d,
+            quantity: 160,
+            // the cost of one box: 800 (100 a tablet)
+            pack_cost: 800,
+            sale_mode: 'pack',
+            pack_size: 8,
+            pack_unit: 'box',
+            pack_price: 1200,
+          },
+        ]),
+      ])
+    ).j
+    t107.pack = r.lines[0].item_id
+    await asAdmin()
+    const it = await one(
+      `select pack_size, sale_mode, pack_price::text as pp, pack_unit,
+              (select pf.price from price_for(null, i.id, null) pf)::text as piece
+         from item i where i.id = $1`,
+      [t107.pack],
+    )
+    const grl = await one(
+      `select unit, packs, pack_size, units, unit_cost::text as uc, pack_cost::text as pc, line_cost::text as lc
+         from goods_receipt_line where receipt_id = $1`,
+      [r.id],
+    )
+    const three = await hintAs(
+      staff.pharmacist,
+      `select create_counter_sale($1::jsonb, 'Three 107')`,
+      [JSON.stringify([{ itemId: t107.pack, quantity: 3 }])],
+    )
+    let msg = ''
+    await as(staff.pharmacist)
+    try {
+      await db.query(`select create_counter_sale($1::jsonb)`, [
+        JSON.stringify([{ itemId: t107.pack, quantity: 3 }]),
+      ])
+    } catch (e) {
+      msg = String(e.message)
+    }
+    const two = (
+      await one(`select create_counter_sale($1::jsonb, 'Two boxes 107') as j`, [
+        JSON.stringify([{ itemId: t107.pack, quantity: 16 }]),
+      ])
+    ).j
+    const list = (await one(`select counter_sales('open') as j`)).j
+    await db.query(`select cancel_counter_sale($1, 'boxes 107 test')`, [two.id])
+    await asAdmin()
+    const v = await visit87('Box 107')
+    const sell3 = await hintAs(staff.pharmacist, `select sell_medicine($1, $2, 3)`, [
+      v.enc,
+      t107.pack,
+    ])
+    await as(staff.pharmacist)
+    const sell8 = (await one(`select sell_medicine($1, $2, 8) as j`, [v.enc, t107.pack])).j
+    await asAdmin()
+    const bill = await lines107(v.inv)
+    const line = list.find((s) => s.id === two.id)?.lines[0]
+    if (
+      !r.lines[0].created ||
+      r.lines[0].sale_mode !== 'pack' ||
+      it.pack_size !== 8 ||
+      it.sale_mode !== 'pack' ||
+      Number(it.pp) !== 1200 ||
+      it.pack_unit !== 'box' ||
+      Number(it.piece) !== 150 ||
+      grl.unit !== 'box' ||
+      Number(grl.packs) !== 20 ||
+      grl.pack_size !== 8 ||
+      grl.units !== 160 ||
+      Number(grl.uc) !== 100 ||
+      Number(grl.pc) !== 800 ||
+      Number(grl.lc) !== 16000 ||
+      three !== '22023/whole_packs' ||
+      !/sold only in whole packs of 8: 3 is not a whole number of packs/.test(msg) ||
+      Number(two.total) !== 2400 ||
+      line?.packs !== 2 ||
+      Number(line?.packPrice) !== 1200 ||
+      line?.packSize !== 8 ||
+      line?.pieces !== 0 ||
+      line?.saleMode !== 'pack' ||
+      line?.packUnit !== 'box' ||
+      sell3 !== '22023/whole_packs' ||
+      !sell8.charged ||
+      bill.length !== 1 ||
+      !/ · B\/8$/.test(bill[0].description) ||
+      bill[0].q !== 1 ||
+      bill[0].p !== 1200 ||
+      bill[0].pack_size !== 8
+    )
+      throw new Error(JSON.stringify({ r, it, grl, three, msg, two, line, sell3, sell8, bill }))
+    return `20 boxes at 800 a box (100 a tablet, 16,000); piece price 1,200 / 8 = 150; 3 tablets refused; 2 boxes = 2,400; "· B/8" × 1 at 1,200 on the bill`
+  },
+)
+await step(
+  '0107 C: both (box of 8 at 1,500, 200 a tablet): 1 box + 3 tablets = 2,100 at the counter and on the bill',
+  async () => {
+    await as(staff.manager)
+    t107.both = (
+      await one(
+        `select upsert_item(null, 'Ibuprofen 107', 200, '400 mg', 'tablet', 'tablet') as id`,
+      )
+    ).id
+    await as(staff.pharmacist)
+    const set = (
+      await one(`select set_item_packaging($1, 8, 'both', 200, 1500, 'tablet', 'box') as j`, [
+        t107.both,
+      ])
+    ).j
+    await db.query(`select add_stock($1::jsonb) as j`, [
+      JSON.stringify([
+        { item_id: t107.both, batch_no: 'IB-107', expiry: t97.day.d, quantity: 80, unit_cost: 90 },
+      ]),
+    ])
+    const sale = (
+      await one(`select create_counter_sale($1::jsonb, 'Both 107') as j`, [
+        JSON.stringify([{ itemId: t107.both, quantity: 11 }]),
+      ])
+    ).j
+    const loose = (
+      await one(`select create_counter_sale($1::jsonb, 'Loose 107') as j`, [
+        JSON.stringify([{ itemId: t107.both, quantity: 5 }]),
+      ])
+    ).j
+    const list = (await one(`select counter_sales('open') as j`)).j
+    await db.query(`select cancel_counter_sale($1, 'both 107 test')`, [sale.id])
+    await db.query(`select cancel_counter_sale($1, 'loose 107 test')`, [loose.id])
+    await asAdmin()
+    const v = await visit87('Both 107')
+    await as(staff.pharmacist)
+    const sold = (await one(`select sell_medicine($1, $2, 11) as j`, [v.enc, t107.both])).j
+    await asAdmin()
+    const bill = await lines107(v.inv)
+    const inv = await one(`select total::text as total from invoice where id = $1`, [v.inv])
+    const line = list.find((s) => s.id === sale.id)?.lines[0]
+    // a nurse has no price right; the item stays as it is
+    const nurse = await codeAs(
+      staff.nurse,
+      `select set_item_packaging($1, 10, 'pack', null, 999, null, null)`,
+      [t107.both],
+    )
+    const noPack = await hintAs(
+      staff.pharmacist,
+      `select set_item_packaging($1, null, 'pack', null, 999, null, null)`,
+      [t107.both],
+    )
+    const noPrice = await codeAs(
+      staff.pharmacist,
+      `select set_item_packaging($1, 8, 'both', null, 1500, null, null)`,
+      [t107.both],
+    )
+    if (
+      set.saleMode !== 'both' ||
+      set.packSize !== 8 ||
+      Number(set.packPrice) !== 1500 ||
+      Number(set.piecePrice) !== 200 ||
+      Number(sale.total) !== 2100 ||
+      Number(loose.total) !== 1000 ||
+      line?.packs !== 1 ||
+      line?.pieces !== 3 ||
+      Number(line?.lineTotal) !== 2100 ||
+      !sold.charged ||
+      bill.length !== 2 ||
+      !/ · B\/8$/.test(bill[0].description) ||
+      bill[0].q !== 1 ||
+      bill[0].p !== 1500 ||
+      bill[1].q !== 3 ||
+      bill[1].p !== 200 ||
+      bill[1].pack_size !== null ||
+      Number(inv.total) !== 2100 ||
+      nurse !== '42501' ||
+      noPack !== '22023/pack_size' ||
+      noPrice !== '22023'
+    )
+      throw new Error(
+        JSON.stringify({ set, sale, loose, line, sold, bill, inv, nurse, noPack, noPrice }),
+      )
+    return `1 box + 3 tablets = 1,500 + 3 × 200 = 2,100 (two bill lines); 5 tablets = 1,000; the nurse may not change it; "by the pack" needs a pack, "both" a piece price`
+  },
+)
+await step(
+  '0107 D: add stock without the price right: the package and prices of a known item stay as they are',
+  async () => {
+    await except87(t85.nurse, 'stock.write', true)
+    await as(t85.nurse)
+    const r = (
+      await one(`select add_stock($1::jsonb) as j`, [
+        JSON.stringify([
+          {
+            item_id: t107.both,
+            batch_no: 'IB-107B',
+            expiry: t97.day.d,
+            quantity: 8,
+            unit_cost: 90,
+            sale_mode: 'pack',
+            pack_size: 8,
+            pack_price: 1,
+          },
+        ]),
+      ])
+    ).j
+    await asAdmin()
+    await except87(t85.nurse, 'stock.write', null)
+    const it = await one(`select sale_mode, pack_price::text as pp from item where id = $1`, [
+      t107.both,
+    ])
+    if (
+      !r.lines[0].price_ignored ||
+      r.lines[0].packaging_updated ||
+      it.sale_mode !== 'both' ||
+      Number(it.pp) !== 1500
+    )
+      throw new Error(JSON.stringify({ r, it }))
+    return 'the 8 tablets are added; "by the pack at 1" is not applied (price_ignored)'
+  },
+)
+await step(
+  '0107 E: the hand-over of a pack-only medicine: 10 prescribed → due 2 boxes (16); 10 refused, 16 given and billed 2 × 1,200',
+  async () => {
+    const v = await visitAt('Hand 107')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [v.queue])
+    await db.query(`select add_diagnosis($1, 'Fever', 'R50.9', 'primary')`, [v.enc])
+    const rx = (
+      await one(
+        `select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => 10, p_supply => 'pharmacy',
+                p_dose => '1 tab', p_frequency => 'TDS', p_duration_days => 3) as j`,
+        [v.enc, t107.pack],
+      )
+    ).j
+    await db.query(`select finish_visit($1)`, [v.enc])
+    await as(staff.pharmacist)
+    const q = (await one(`select pharmacy_queue() as j`)).j.lines.find((x) => x.requestId === rx.id)
+    await asAdmin()
+    const ten = await hintAs(staff.pharmacist, `select dispense_prescription($1, null, 10)`, [
+      rx.id,
+    ])
+    const all = await hintAs(staff.pharmacist, `select dispense_prescription($1)`, [rx.id])
+    const more = await hintAs(staff.pharmacist, `select dispense_prescription($1, null, 24)`, [
+      rx.id,
+    ])
+    await as(staff.pharmacist)
+    const given = (await one(`select dispense_prescription($1, null, 16) as j`, [rx.id])).j
+    await asAdmin()
+    const inv = (await one(`select id from invoice where encounter_id = $1`, [v.enc])).id
+    const bill = await lines107(inv)
+    const m = await one(
+      `select quantity_given, given_at is not null as done from medication_request where id = $1`,
+      [rx.id],
+    )
+    if (
+      q?.saleMode !== 'pack' ||
+      q?.due !== 16 ||
+      q?.packs !== 2 ||
+      Number(q?.lineTotal) !== 2400 ||
+      q?.packUnit !== 'box' ||
+      ten !== '22023/whole_packs' ||
+      all !== '22023/whole_packs' ||
+      more !== '22023/more_than_remaining' ||
+      given.given !== 16 ||
+      given.remaining !== 0 ||
+      !given.charged ||
+      bill.length !== 1 ||
+      bill[0].q !== 2 ||
+      bill[0].p !== 1200 ||
+      m.quantity_given !== 16 ||
+      !m.done
+    )
+      throw new Error(JSON.stringify({ q, ten, all, more, given, bill, m }))
+    return `the desk says 2 boxes (16) for 2,400; 10 tablets refused; 24 is more than the last box; 16 given, 2 × 1,200 billed, the line is done`
+  },
+)
+await step(
+  '0107 F: a pack-only medicine sent to a room store in pieces; given there: 3 refused, 1 box charged at the pack price',
+  async () => {
+    await as(staff.pharmacist)
+    const note = (
+      await one(`select send_to_room($1, $2::jsonb, null, null, $3) as j`, [
+        t82.room,
+        JSON.stringify([{ itemId: t107.pack, quantity: 16 }]),
+        t97.main,
+      ])
+    ).j
+    await as(d1)
+    await db.query(`select confirm_receipt($1)`, [note.id])
+    const store = (await one(`select store_stock($1) as j`, [t82.room])).j
+    await asAdmin()
+    const row = store.items.find((x) => x.itemId === t107.pack)
+    const v = await visitAt('Room 107')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [v.queue])
+    await asAdmin()
+    const three = await hintAs(
+      d1,
+      `select prescribe($1, $2, 3, null, null, null, null, null, 'room', 'consultation', $3)`,
+      [v.enc, t107.pack, t82.room],
+    )
+    await as(d1)
+    const given = (
+      await one(
+        `select prescribe($1, $2, 8, null, null, null, null, null, 'room', 'consultation', $3) as j`,
+        [v.enc, t107.pack, t82.room],
+      )
+    ).j
+    const after = (await one(`select store_stock($1) as j`, [t82.room])).j
+    await asAdmin()
+    const left = after.items.find((x) => x.itemId === t107.pack)
+    const inv = (await one(`select id from invoice where encounter_id = $1`, [v.enc])).id
+    const bill = await lines107(inv)
+    if (
+      row?.usable !== 16 ||
+      row?.saleMode !== 'pack' ||
+      row?.packSize !== 8 ||
+      row?.packUnit !== 'box' ||
+      three !== '22023/whole_packs' ||
+      !given.charged ||
+      !given.stockTaken ||
+      left?.usable !== 8 ||
+      bill.length !== 1 ||
+      !/ · B\/8$/.test(bill[0].description) ||
+      bill[0].q !== 1 ||
+      bill[0].p !== 1200
+    )
+      throw new Error(JSON.stringify({ row, three, given, left, bill }))
+    return `16 tablets (2 boxes) received in the room store; given there: 3 refused, 8 = 1 box at 1,200; 8 left`
+  },
+)
+await step(
+  '0107 G: a transfer note in packs and in pieces keeps the cost and the selling prices of the day',
+  async () => {
+    await as(staff.pharmacist)
+    const sent = (
+      await one(`select send_to_room($1, $2::jsonb, null, null, $3) as j`, [
+        t82.room,
+        JSON.stringify([
+          // 2 boxes of 8 of Ibuprofen 107 (sold both ways), 3 bottles of syrup (pieces only)
+          { itemId: t107.both, quantity: 16, mode: 'packs' },
+          { itemId: t107.syrup, quantity: 3, mode: 'pieces' },
+        ]),
+        t97.main,
+      ])
+    ).j
+    // the price changes after: the note keeps the price of the day it was written
+    await db.query(`select set_item_packaging($1, 8, 'both', 250, 1800, null, null)`, [t107.both])
+    const note = (await one(`select transfer_note($1) as j`, [sent.id])).j
+    const list = (await one(`select transfer_notes() as j`)).j
+    await as(d1)
+    await db.query(`select confirm_receipt($1)`, [sent.id])
+    const store = (await one(`select store_stock($1) as j`, [t82.room])).j
+    const holderNote = (await one(`select transfer_note($1) as j`, [sent.id])).j
+    await asAdmin()
+    // the 16 may come from two batches: one line each
+    const ibs = note.items.filter((x) => x.itemId === t107.both)
+    const ib = ibs[0]
+    const ibQ = ibs.reduce((s, x) => s + x.quantity, 0)
+    const ibSell = ibs.reduce((s, x) => s + Number(x.sellValue), 0)
+    const sy = note.items.find((x) => x.itemId === t107.syrup)
+    const row = store.items.find((x) => x.itemId === t107.both)
+    const listed = list.find((x) => x.id === sent.id)
+    if (
+      Number(sent.units) !== 19 ||
+      Number(sent.sellValue) !== 7500 ||
+      Number(sent.value) !== 4140 ||
+      ibQ !== 16 ||
+      ib?.packSize !== 8 ||
+      ib?.inPacks !== true ||
+      Number(ib?.unitPrice) !== 200 ||
+      Number(ib?.packPrice) !== 1500 ||
+      ibSell !== 3000 ||
+      ib?.packUnit !== 'box' ||
+      Number(ib?.unitCost) !== 90 ||
+      sy?.inPacks !== false ||
+      sy?.packSize !== null ||
+      Number(sy?.unitPrice) !== 1500 ||
+      Number(sy?.sellValue) !== 4500 ||
+      Number(note.sellValue) !== 7500 ||
+      Number(note.value) !== 4140 ||
+      Number(listed?.sellValue) !== 7500 ||
+      Number(holderNote.sellValue) !== 7500 ||
+      holderNote.value !== null ||
+      row?.usable !== 16 ||
+      Number(row?.sellValue) !== 3600 ||
+      !(Number(store.sellValue) >= 3600)
+    )
+      throw new Error(JSON.stringify({ sent, note, listed, row, holderNote: holderNote.value }))
+    return `2 boxes of 8 (16) + 3 bottles: cost 4,140, at selling price 7,500 (1,500 a box, 1,500 a bottle), kept after the price became 1,800; the room store values the 16 at today's 2 × 1,800`
+  },
+)
+await step(
+  '0107 H: a pack-only medicine moves in whole packs: 3 tablets refused (asked or sent), the pharmacy may split a pack; a return may bring loose pieces',
+  async () => {
+    const ask3 = await hintAs(d1, `select request_refill($1, $2::jsonb)`, [
+      t82.room,
+      JSON.stringify([{ itemId: t107.pack, quantity: 3 }]),
+    ])
+    const askSplit = await hintAs(d1, `select request_refill($1, $2::jsonb)`, [
+      t82.room,
+      JSON.stringify([{ itemId: t107.pack, quantity: 3, split: true }]),
+    ])
+    await as(d1)
+    const asked = (
+      await one(`select request_refill($1, $2::jsonb) as j`, [
+        t82.room,
+        JSON.stringify([{ itemId: t107.pack, quantity: 16, mode: 'packs' }]),
+      ])
+    ).j
+    await asAdmin()
+    const send3 = await hintAs(
+      staff.pharmacist,
+      `select send_to_room($1, $2::jsonb, null, null, $3)`,
+      [t82.room, JSON.stringify([{ itemId: t107.pack, quantity: 3 }]), t97.main],
+    )
+    await as(staff.pharmacist)
+    const requests = (await one(`select refill_requests('open') as j`)).j
+    const split = (
+      await one(`select send_to_room($1, $2::jsonb, null, null, $3) as j`, [
+        t82.room,
+        JSON.stringify([{ itemId: t107.pack, quantity: 3, mode: 'pieces', split: true }]),
+        t97.main,
+      ])
+    ).j
+    const fill = (
+      await one(`select send_to_room($1, $2::jsonb, $3, null, $4) as j`, [
+        t82.room,
+        JSON.stringify([{ itemId: t107.pack, quantity: 16, mode: 'packs' }]),
+        asked.id,
+        t97.main,
+      ])
+    ).j
+    const splitNote = (await one(`select transfer_note($1) as j`, [split.id])).j
+    await as(d1)
+    await db.query(`select confirm_receipt($1)`, [split.id])
+    await db.query(`select confirm_receipt($1)`, [fill.id])
+    const back = (
+      await one(`select return_to_pharmacy($1, $2::jsonb, 'opened box') as j`, [
+        t82.room,
+        JSON.stringify([{ itemId: t107.pack, quantity: 3, mode: 'pieces' }]),
+      ])
+    ).j
+    await asAdmin()
+    const rq = requests.find((x) => x.id === asked.id)?.lines[0]
+    const sl = splitNote.items[0]
+    if (
+      ask3 !== '22023/whole_packs' ||
+      askSplit !== '42501/split_pack' ||
+      send3 !== '22023/whole_packs' ||
+      rq?.mode !== 'packs' ||
+      rq?.packSize !== 8 ||
+      rq?.saleMode !== 'pack' ||
+      Number(split.units) !== 3 ||
+      sl?.inPacks !== false ||
+      Number(sl?.sellValue) !== 450 ||
+      Number(fill.units) !== 16 ||
+      Number(fill.sellValue) !== 2400 ||
+      Number(back.units) !== 3
+    )
+      throw new Error(JSON.stringify({ ask3, askSplit, send3, rq, split, sl, fill, back }))
+    return `asked or sent as 3 tablets: refused (whole boxes of 8); a holder may not split; the pharmacy splits (3 = 450 at 1,200 a box); 2 boxes requested and sent (2,400); 3 loose tablets come back`
+  },
+)
 finish()
 
 function finish() {

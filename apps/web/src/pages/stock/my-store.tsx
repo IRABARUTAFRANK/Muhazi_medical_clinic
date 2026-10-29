@@ -30,6 +30,9 @@ import { RoomStoreStock, RoomStoreUse } from './room-store-parts'
 import { LinesEditor, MsgFlash } from './stock-shared'
 import {
   cleanLines,
+  draftNotWhole,
+  draftPieces,
+  wholePacksText,
   draftLine,
   errText,
   itemName,
@@ -276,11 +279,19 @@ function RefillForm({ store }: { store: MyStore }) {
   const options = (overview?.items ?? [])
     .filter((i) => i.active)
     .map((i) => ({ value: i.id, label: itemName(i) }))
+  // the package of each medicine (0107): asked in packs or pieces, a pack-only one in packs
+  const itemOf = (id: string) => overview?.items.find((i) => i.id === id)
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
-    const clean = cleanLines(lines)
+    const clean = cleanLines(lines, itemOf)
     if (clean.length === 0) return setMsg({ ok: false, text: t('myStore.errors.lines') })
+    const bad = lines.find((l) => draftNotWhole(l, itemOf(l.itemId)))
+    if (bad)
+      return setMsg({
+        ok: false,
+        text: wholePacksText(t, draftPieces(bad, itemOf(bad.itemId)), itemOf(bad.itemId)!),
+      })
     if (
       !(await confirm({
         title: t('confirm.rooms.refillTitle', { count: clean.length, store: store.name }),
@@ -311,6 +322,7 @@ function RefillForm({ store }: { store: MyStore }) {
         options={options}
         available={(id) => inStore.find((x) => x.itemId === id)?.usable ?? 0}
         availableKey="myStore.inMyStore"
+        itemOf={itemOf}
       />
       <Field
         label={t('stock.reason')}
@@ -342,9 +354,14 @@ function ReturnForm({ store }: { store: MyStore }) {
   const [lines, setLines] = useState<DraftLine[]>(() => [draftLine()])
   const [note, setNote] = useState('')
   const [msg, setMsg] = useState<Msg | null>(null)
+  // the package of each medicine (0107): sent back in packs or pieces (loose pieces may come back)
+  const itemOf = (id: string) => {
+    const x = items.find((i) => i.itemId === id)
+    return x ? { ...x, sellingPrice: x.price } : undefined
+  }
   const send = async (all: boolean) => {
     setMsg(null)
-    const clean = all ? null : cleanLines(lines)
+    const clean = all ? null : cleanLines(lines, itemOf)
     if (clean && clean.length === 0) return setMsg({ ok: false, text: t('myStore.errors.lines') })
     for (const l of clean ?? []) {
       const have = items.find((x) => x.itemId === l.itemId)?.onHand ?? 0
@@ -398,6 +415,8 @@ function ReturnForm({ store }: { store: MyStore }) {
         options={options}
         available={(id) => items.find((x) => x.itemId === id)?.onHand ?? 0}
         availableKey="myStore.inMyStore"
+        itemOf={itemOf}
+        piecesOk
       />
       <Field
         label={t('stock.reason')}

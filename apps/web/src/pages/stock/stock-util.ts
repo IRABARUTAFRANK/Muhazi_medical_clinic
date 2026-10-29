@@ -4,6 +4,15 @@ import type { StockItem, StockLocation, StoreHolder } from '@/lib/api/stock'
 import { isLowStock, isRoomStore } from '@/lib/api/stock'
 import { EXPIRY_WINDOW_DAYS } from '@/lib/api/pharmacy'
 import { splitPacks } from '@/lib/medicine-name'
+import {
+  knownPackWord,
+  PIECE_WORDS,
+  packSizeOf,
+  priceQuantity,
+  saleModeOf,
+  type Packaging,
+  type PricedQuantity,
+} from '@/lib/pack-pricing'
 
 // ---------------------------------------------------------------- packs and pieces
 /**
@@ -27,14 +36,58 @@ export type QtyMode = 'pieces' | 'packs'
 export const hasPacks = (i: { packSize?: number | null } | null | undefined): boolean =>
   (i?.packSize ?? 1) > 1
 
-/** "25 packs of 20", "25 packs of 20 + 3"; null when the item has no pack or fewer than one. */
+/**
+ * "2 boxes of 8", "1 strip of 10", "3 × bag of 8" (a word typed by hand), "2 packs of 8" (no
+ * word): whole packs in the item's pack word (0107).
+ */
+export function packCountText(
+  t: TFunction,
+  count: number,
+  size: number,
+  word?: string | null,
+): string {
+  const known = knownPackWord(word)
+  if (known) {
+    // the English wording until the translations are merged ("2 boxes of 8")
+    const plural = known === 'box' ? 'boxes' : `${known}s`
+    return tx(
+      t,
+      `packaging.packOf.${known}`,
+      { one: `{{count}} ${known} of {{size}}`, other: `{{count}} ${plural} of {{size}}` },
+      { count, size },
+    )
+  }
+  const typed = (word ?? '').trim()
+  if (typed)
+    return tx(t, 'packaging.packOfWord', '{{count}} × {{word}} of {{size}}', {
+      count,
+      size,
+      word: typed,
+    })
+  return tx(
+    t,
+    'stockShared.packs.of',
+    { one: '{{count}} pack of {{size}}', other: '{{count}} packs of {{size}}' },
+    { count, size },
+  )
+}
+
+/**
+ * "25 packs of 20", "25 packs of 20 + 3", "62 boxes of 8 + 7" (with the item's pack word); null
+ * when the item has no pack or fewer than one.
+ */
 export function packsText(
   t: TFunction,
   units: number,
   packSize: number | null | undefined,
+  packUnit?: string | null,
 ): string | null {
   const p = splitPacks(units, packSize)
   if (!p) return null
+  if (packUnit?.trim()) {
+    const packs = packCountText(t, p.packs, p.size, packUnit)
+    return p.rest > 0 ? `${packs} + ${formatNumber(p.rest)}` : packs
+  }
   return p.rest > 0
     ? tx(
         t,
@@ -61,9 +114,10 @@ export const unitsText = (units: number, unit: string | null | undefined): strin
 export function piecesAndPacks(
   t: TFunction,
   units: number,
-  i: { unit?: string | null; packSize?: number | null } | null | undefined,
+  i:
+    { unit?: string | null; packSize?: number | null; packUnit?: string | null } | null | undefined,
 ): string {
-  const packs = packsText(t, units, i?.packSize)
+  const packs = packsText(t, units, i?.packSize, i?.packUnit)
   const pieces = unitsText(units, i?.unit)
   return packs ? `${pieces} · ${packs}` : pieces
 }
@@ -84,32 +138,96 @@ export const packsEquals = (
 /** "pack {{price}}": the pack price beside the piece price in a row's sub-text. */
 export const packPriceText = (
   t: TFunction,
-  i: { packPrice?: number | null; packSize?: number | null },
+  i: Packaging,
   money: (n: number) => string,
 ): string | null =>
-  i.packPrice != null && hasPacks(i)
+  i.packPrice != null && hasPacks(i) && saleModeOf(i) !== 'piece'
     ? tx(t, 'stockShared.packs.price', 'pack of {{size}}: {{price}}', {
         size: i.packSize,
         price: money(i.packPrice),
       })
     : null
 
+/** "By the piece", "By the box only", "By the box or the piece": how the item is sold. */
+export function saleModeText(t: TFunction, i: Packaging): string {
+  const mode = saleModeOf(i)
+  if (!packSizeOf(i)) return tx(t, 'packaging.soldPiecesOnly', 'Pieces only, sold by the piece')
+  return t(`packaging.sold.${mode}`, {
+    defaultValue:
+      mode === 'pack'
+        ? 'Sold only by the whole pack'
+        : mode === 'both'
+          ? 'Sold by the pack or by the piece'
+          : 'Sold by the piece',
+  })
+}
+
+/**
+ * "1 box of 8 + 3 tablet": what a priced quantity is made of (whole packs at the pack price, the
+ * pieces left at the piece price); pieces only: "3 bottle".
+ */
+export function breakdownText(
+  t: TFunction,
+  p: Pick<PricedQuantity, 'packs' | 'pieces' | 'size'>,
+  i: { unit?: string | null; packUnit?: string | null } | null | undefined,
+): string {
+  const parts: string[] = []
+  if (p.packs > 0 && p.size) parts.push(packCountText(t, p.packs, p.size, i?.packUnit))
+  if (p.pieces > 0 || parts.length === 0) parts.push(unitsText(p.pieces, i?.unit))
+  return parts.join(' + ')
+}
+
+/** "1 box of 8 × 1,500 + 3 tablet × 200 = 2,100": the price line of a priced quantity. */
+export function priceLineText(
+  t: TFunction,
+  p: PricedQuantity,
+  i: { unit?: string | null; packUnit?: string | null } | null | undefined,
+  money: (n: number) => string,
+): string {
+  const parts: string[] = []
+  if (p.packs > 0 && p.size && p.packPrice != null)
+    parts.push(`${packCountText(t, p.packs, p.size, i?.packUnit)} × ${money(p.packPrice)}`)
+  if (p.pieces > 0 || parts.length === 0)
+    parts.push(`${unitsText(p.pieces, i?.unit)} × ${money(p.piecePrice)}`)
+  return `${parts.join(' + ')} = ${money(p.total)}`
+}
+
+/**
+ * "Paracetamol 500 mg is sold only in whole boxes of 8: give 8 or 16": said before the database
+ * refuses a quantity that is not whole packs.
+ */
+export function wholePacksText(
+  t: TFunction,
+  pieces: number,
+  i: Packaging & { packUnit?: string | null },
+): string {
+  const size = packSizeOf(i) ?? 1
+  const below = Math.floor(pieces / size) * size
+  const above = below + size
+  return tx(
+    t,
+    'packaging.wholePacksOnly',
+    'Sold only by the whole pack ({{pack}}): {{pieces}} is not whole packs. Give {{below}} or {{above}}.',
+    {
+      pack: packCountText(t, 1, size, i.packUnit),
+      pieces: formatNumber(pieces),
+      below: formatNumber(below > 0 ? below : size),
+      above: formatNumber(below > 0 ? above : size * 2),
+    },
+  )
+}
+
 /** The pieces a typed quantity means: packs × pack size, or the pieces themselves. */
 export const piecesOf = (typed: number, mode: QtyMode, packSize: number | null | undefined) =>
   mode === 'packs' ? typed * Math.max(1, packSize ?? 1) : typed
 
 /**
- * What a cash sale of `units` pieces costs: whole packs at the pack price when the item has one
- * (the database charges the same way), else pieces × the piece price.
+ * What a cash sale of `units` pieces costs, by how the item is sold (0107; the database charges
+ * the same way): whole packs at the pack price, pieces at the piece price.
  */
-export function cashCost(
-  units: number,
-  i: { sellingPrice: number | null; packSize?: number | null; packPrice?: number | null },
-): { total: number; byPack: boolean; packs: number } {
-  const size = i.packSize ?? 1
-  const byPack = i.packPrice != null && size > 1 && units > 0 && units % size === 0
-  if (byPack) return { total: (units / size) * i.packPrice!, byPack, packs: units / size }
-  return { total: (i.sellingPrice ?? 0) * units, byPack: false, packs: 0 }
+export function cashCost(units: number, i: Packaging): PricedQuantity & { byPack: boolean } {
+  const p = priceQuantity(i, units)
+  return { ...p, byPack: p.packs > 0 }
 }
 
 /**
@@ -252,24 +370,65 @@ export const splitStock = (i: StockItem, locations: StockLocation[]) => {
 export interface DraftLine {
   key: number
   itemId: string
+  /** As typed: pieces, or whole packs (mode 'packs', 0107). */
   quantity: string
+  mode?: QtyMode
+  /** A pack-only medicine sent in pieces: a pack is split (the pharmacy only). */
+  split?: boolean
 }
 let nextKey = 1
-export const draftLine = (itemId = '', quantity = ''): DraftLine => ({
+export const draftLine = (itemId = '', quantity = '', mode: QtyMode = 'pieces'): DraftLine => ({
   key: nextKey++,
   itemId,
   quantity,
+  mode,
 })
 
-/** Lines filled in (a medicine and a quantity above zero), merged by medicine. */
-export function cleanLines(lines: DraftLine[]): { itemId: string; quantity: number }[] {
-  const by = new Map<string, number>()
+/** The package of a note line's medicine (0107). */
+export type LineItem = Packaging & { unit?: string | null; packUnit?: string | null }
+
+/** The pieces a note line means: packs × pieces in one when typed in packs. */
+export const draftPieces = (l: DraftLine, item: LineItem | null | undefined): number => {
+  const q = Number(l.quantity)
+  if (!Number.isInteger(q) || q <= 0) return 0
+  const size = packSizeOf(item)
+  return l.mode === 'packs' && size ? q * size : q
+}
+
+/**
+ * A pack-only medicine asked in pieces that are not whole packs (not split, not a return): the
+ * database refuses it (0107).
+ */
+export const draftNotWhole = (
+  l: DraftLine,
+  item: LineItem | null | undefined,
+  piecesOk = false,
+): boolean => {
+  const size = packSizeOf(item)
+  const n = draftPieces(l, item)
+  return !piecesOk && !l.split && saleModeOf(item) === 'pack' && !!size && n > 0 && n % size !== 0
+}
+
+/**
+ * Lines filled in (a medicine and a quantity above zero), merged by medicine, in pieces; with how
+ * they were typed (packs) and whether a pack is split.
+ */
+export function cleanLines(
+  lines: DraftLine[],
+  itemOf?: (itemId: string) => LineItem | null | undefined,
+): { itemId: string; quantity: number; mode: QtyMode; split?: boolean }[] {
+  const by = new Map<string, { quantity: number; mode: QtyMode; split?: boolean }>()
   for (const l of lines) {
-    const q = Number(l.quantity)
-    if (!l.itemId || !Number.isInteger(q) || q <= 0) continue
-    by.set(l.itemId, (by.get(l.itemId) ?? 0) + q)
+    const q = draftPieces(l, itemOf?.(l.itemId))
+    if (!l.itemId || q <= 0) continue
+    const was = by.get(l.itemId)
+    by.set(l.itemId, {
+      quantity: (was?.quantity ?? 0) + q,
+      mode: was?.mode === 'packs' || l.mode === 'packs' ? 'packs' : 'pieces',
+      ...(was?.split || l.split ? { split: true } : {}),
+    })
   }
-  return [...by].map(([itemId, quantity]) => ({ itemId, quantity }))
+  return [...by].map(([itemId, x]) => ({ itemId, ...x }))
 }
 
 /** "Dr Kamanzi, Maternity department". */
@@ -280,3 +439,18 @@ export const holdersText = (holders: StoreHolder[] | undefined, none: string): s
         .filter(Boolean)
         .join(', ')
     : none
+
+/** The pack's word in the reader's language: "box" → "boîte" (a word typed by hand as written). */
+export const packWord = (t: TFunction, w: string | null | undefined): string => {
+  const k = knownPackWord(w)
+  if (k) return t(`packaging.word.${k}`, { defaultValue: k })
+  return w?.trim() || tx(t, 'packaging.pack', 'pack')
+}
+
+/** The piece's word in the reader's language: "tablet" → "comprimé" (others as written). */
+export const pieceWord = (t: TFunction, w: string | null | undefined): string => {
+  const k = (w ?? '').trim().toLowerCase()
+  if ((PIECE_WORDS as readonly string[]).includes(k))
+    return t(`packaging.pieceWord.${k}`, { defaultValue: k })
+  return w?.trim() || tx(t, 'packaging.piece', 'piece')
+}

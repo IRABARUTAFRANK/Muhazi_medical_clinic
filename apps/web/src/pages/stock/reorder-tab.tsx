@@ -165,7 +165,12 @@ export function ReorderTab({
                       <span className="text-red block font-semibold">
                         {[
                           t('stockReorder.onHand', { count: x.onHand }),
-                          packsText(t, x.onHand, x.packSize),
+                          packsText(
+                            t,
+                            x.onHand,
+                            x.packSize,
+                            items.find((i) => i.id === x.itemId)?.packUnit,
+                          ),
                         ]
                           .filter(Boolean)
                           .join(' · ')}

@@ -5,6 +5,7 @@ import { isLowStock, sampleStock, type PharmacyLine } from './stock'
 import { kigaliToday } from '@/lib/clock'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
+import { priceQuantity } from '@/lib/pack-pricing'
 
 /**
  * The simplified pharmacy (migration 20261207090000): what the pharmacy desk adds to stock.ts.
@@ -72,20 +73,49 @@ export function perUnit(q: PharmacyLine): { total: number; insurer: number; pati
 }
 
 /**
- * What `n` pieces of a line cost on the bill, as the database charges them (0102): whole packs
- * at the item's pack price when the line is cash-priced and has one, else pieces × the price;
- * the insurer's share rounded on the line total, the patient paying the rest.
+ * What `n` pieces of a line cost on the bill, as the database charges them (0107,
+ * price_quantity): by how the medicine is sold — whole packs at the pack price and the pieces
+ * left at the piece price when the line is cash-priced (the desk then sends the pack price), else
+ * pieces × the price; the insurer's share rounded on each bill line, the patient paying the rest.
+ * `ok` false: a medicine sold only by the whole pack, asked in pieces that are not whole packs.
  */
 export function costOf(
   q: PharmacyLine,
   n: number,
-): { total: number; insurer: number; patient: number; byPack: boolean; packs: number } {
-  if (!q.priced || n <= 0) return { total: 0, insurer: 0, patient: 0, byPack: false, packs: 0 }
-  const size = q.packSize ?? 1
-  const byPack = q.packPrice != null && size > 1 && n % size === 0
-  const total = byPack ? (n / size) * (q.packPrice ?? 0) : Math.round(perUnit(q).total * n)
-  const insurer = Math.round((total * num(q.coveragePct)) / 100)
-  return { total, insurer, patient: total - insurer, byPack, packs: byPack ? n / size : 0 }
+): {
+  total: number
+  insurer: number
+  patient: number
+  byPack: boolean
+  packs: number
+  pieces: number
+  ok: boolean
+} {
+  const p = priceQuantity(
+    {
+      packSize: q.packSize,
+      saleMode: q.saleMode ?? (q.packPrice != null ? 'both' : 'piece'),
+      packPrice: q.packPrice,
+    },
+    n,
+    { cash: q.packPrice != null, piecePrice: perUnit(q).total },
+  )
+  if (!q.priced || n <= 0)
+    return { total: 0, insurer: 0, patient: 0, byPack: false, packs: 0, pieces: 0, ok: p.ok }
+  const pct = num(q.coveragePct)
+  // the bill writes the whole packs and the pieces as two lines, each with its insurer share
+  const packPart = p.packs * (p.packPrice ?? 0)
+  const insurer =
+    Math.round((packPart * pct) / 100) + Math.round(((p.total - packPart) * pct) / 100)
+  return {
+    total: p.total,
+    insurer,
+    patient: p.total - insurer,
+    byPack: p.packs > 0,
+    packs: p.packs,
+    pieces: p.pieces,
+    ok: p.ok,
+  }
 }
 
 export interface DispensePartResult {
@@ -118,7 +148,8 @@ export function usePharmacyActions() {
       locationId?: string | null
     }): Promise<DispensePartResult> => {
       const { remaining } = partOf(i.line)
-      const n = Math.min(i.quantity, remaining)
+      // a medicine sold only by the whole pack: the last pack may pass what remains (due, 0107)
+      const n = Math.min(i.quantity, Math.max(remaining, i.line.due ?? remaining))
       if (!supabase) {
         if (i.line.doctorHolds) throw sampleRefusal('doctorHolds', 'MS002')
         const loc = i.locationId ?? 'l-pharm'
@@ -130,7 +161,7 @@ export function usePharmacyActions() {
           charged: i.line.priced,
           dispenseId: `d-${Date.now()}`,
           quantity: n,
-          remaining: remaining - n,
+          remaining: Math.max(0, remaining - n),
         }
       }
       const args: Record<string, unknown> = {
@@ -138,7 +169,7 @@ export function usePharmacyActions() {
         p_location_id: i.locationId ?? null,
       }
       // the whole remainder: no quantity (an old database knows no p_quantity)
-      if (n < remaining) args.p_quantity = n
+      if (n !== remaining) args.p_quantity = n
       const { data, error } = await supabase.rpc('dispense_prescription', args)
       if (error) throw apiError(error)
       const d = (data ?? {}) as {
@@ -152,7 +183,7 @@ export function usePharmacyActions() {
         charged: !!d.charged,
         dispenseId: d.dispenseId ?? null,
         quantity: n,
-        remaining: d.remaining == null ? remaining - n : num(d.remaining),
+        remaining: d.remaining == null ? Math.max(0, remaining - n) : num(d.remaining),
       }
     },
     onSuccess: refresh,
