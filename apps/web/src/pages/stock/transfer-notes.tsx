@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatNumber, formatRwf, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
+import { PeriodFilter } from '@/components/dash/period-filter'
 import {
   expandedSection,
   selectedRow,
@@ -37,6 +38,7 @@ import {
 } from '@/lib/api/rooms'
 import { useConfirm } from '@/lib/confirm'
 import { usePaged } from '@/lib/paging'
+import { usePeriod } from '@/lib/period'
 import { cn } from '@/lib/utils'
 import { ExpiryMark, MsgFlash } from './stock-shared'
 import {
@@ -103,11 +105,15 @@ export function TransferNotesList({
 }) {
   const { t } = useTranslation()
   const [status, setStatus] = useState<TransferStatus | 'all'>(initialStatus)
+  // the days the notes were sent (all time by default: a note on the way stays in sight)
+  const period = usePeriod('all')
+  const days = period.range === 'all' ? {} : { from: period.from, to: period.to }
   const { data: notes = [], isLoading } = useTransferNotes({
     status: status === 'all' ? null : status,
     locationId,
+    ...days,
   })
-  const paged = usePaged(notes, 10, `${status}|${locationId}`)
+  const paged = usePaged(notes, 10, `${status}|${locationId}|${period.from}|${period.to}`)
   const actions = useRoomStoreActions()
   const [rowMsg, setRowMsg] = useState<Msg | null>(null)
   const [receiving, setReceiving] = useState<string | null>(null)
@@ -153,6 +159,7 @@ export function TransferNotesList({
           </option>
         ))}
       </Select>
+      <PeriodFilter period={period} />
       {isLoading ? null : paged.total === 0 ? (
         <Empty icon={Truck}>{t('roomStores.noNotes')}</Empty>
       ) : (

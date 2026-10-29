@@ -4,7 +4,7 @@ import type { Sex } from '@/lib/api/visits'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import type { DocPerson } from '@/lib/api/patients'
-import { apiError } from './errors'
+import { apiError, isMissingFunction } from './errors'
 
 /**
  * Laboratory (migration 0036): the worklist of tests ordered for this person's bench (lab for lab
@@ -208,6 +208,32 @@ export function useLabWorklist(scope: 'open' | 'done') {
       const { data, error } = await supabase.rpc('lab_worklist', { p_scope: scope })
       if (error) throw apiError(error)
       return (data as LabOrder[]) ?? []
+    },
+  })
+}
+
+/**
+ * Results given in a period (the worklist's Done tab); nothing = today. The days need
+ * lab_worklist(p_scope, p_from, p_to): an older database gives today's only, and says so.
+ */
+export function useLabDone(period: DayRange | null) {
+  return useQuery({
+    queryKey: ['lab', 'worklist', 'done', period?.from ?? null, period?.to ?? null],
+    refetchInterval: 20_000,
+    queryFn: async (): Promise<{ rows: LabOrder[]; todayOnly: boolean }> => {
+      if (!supabase) return { rows: sampleBench(sampleDone), todayOnly: false }
+      if (period) {
+        const { data, error } = await supabase.rpc('lab_worklist', {
+          p_scope: 'done',
+          p_from: period.from,
+          p_to: period.to,
+        })
+        if (!error) return { rows: (data as LabOrder[]) ?? [], todayOnly: false }
+        if (!isMissingFunction(error)) throw apiError(error)
+      }
+      const { data, error } = await supabase.rpc('lab_worklist', { p_scope: 'done' })
+      if (error) throw apiError(error)
+      return { rows: (data as LabOrder[]) ?? [], todayOnly: !!period }
     },
   })
 }

@@ -84,11 +84,12 @@ export function ActionRowEnd() {
   return <span className="hidden flex-1 sm:block" aria-hidden="true" />
 }
 
-/** Small glass tag on the hero's meta row ("12 patients", "3 waiting"): white at 20 %. */
+/** Small glass tag on the hero's meta row ("12 patients", "3 waiting"): white at 20 % on a hero
+ *  band, a grey tag when a page shows it elsewhere (.banner-chip, globals.css). */
 export function BannerChip({ icon: IconC, children }: { icon?: LucideIcon; children: ReactNode }) {
   return (
-    <span className="inline-flex min-h-6 items-center gap-1 rounded border border-white/25 bg-white/20 px-2 py-0.5 text-[12px] leading-tight font-medium text-white tabular-nums">
-      {IconC && <IconC size={12} aria-hidden="true" className="text-white/80" />}
+    <span className="banner-chip inline-flex min-h-6 items-center gap-1 rounded border px-2 py-0.5 text-[12px] leading-tight font-medium tabular-nums">
+      {IconC && <IconC size={12} aria-hidden="true" className="opacity-80" />}
       {children}
     </span>
   )

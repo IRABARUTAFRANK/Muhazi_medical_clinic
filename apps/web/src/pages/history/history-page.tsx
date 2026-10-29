@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
-import { usePeriod } from '@/lib/period'
+import { useSearchPeriod } from '@/lib/period'
 import {
   Activity,
   ArrowRightLeft,
@@ -72,7 +72,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
   // The manager sees everyone's work and can pick a person; everyone else sees their own.
   const isManager = user.role === 'manager'
   const { data: employees = [] } = useEmployees()
-  const period = usePeriod('today')
+  const period = useSearchPeriod('today')
   const [actor, setActor] = useState('')
   const [group, setGroup] = useState<HistoryGroup | ''>('')
 

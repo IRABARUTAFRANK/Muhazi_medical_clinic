@@ -327,12 +327,17 @@ export function cashierReport(
   clinic: ClinicProfile,
   user: StaffUser,
   t: TFn,
+  /** The days of the Payments page (one day: the day close; several: the payments of the period). */
+  period?: { from: string; to: string },
 ): Report {
   const base = common(t, clinic, user)
   const method = base.doc.method
   const day = s.day.slice(0, 10)
+  const from = period?.from ?? day
+  const to = period?.to ?? day
+  const oneDay = from === to
   const when = (values: (string | null | undefined)[]) =>
-    whenColumn(values, day, t('report.cols.time'), t('report.cols.dateTime'))
+    whenColumn(values, oneDay ? day : '', t('report.cols.time'), t('report.cols.dateTime'))
 
   const figures: ReportFigure[] = [
     { label: t('report.fig.collected'), value: s.total, unit: 'RWF' },
@@ -342,9 +347,9 @@ export function cashierReport(
     { label: t('report.fig.outstanding'), value: s.openDue, unit: 'RWF' },
   ]
 
-  // cash count: one row per cashier and payment method, from the day closes
+  // cash count: one row per cashier and payment method, from the day closes (one day only)
   const cashRows: Cell[][] = []
-  for (const c of s.closes ?? []) {
+  for (const c of oneDay ? (s.closes ?? []) : []) {
     const methods = [...new Set([...Object.keys(c.expected), ...Object.keys(c.counted)])]
     for (const m of methods) {
       const expected = c.expected[m] ?? 0
@@ -438,12 +443,12 @@ export function cashierReport(
 
   return {
     ...base,
-    title: t('report.titles.dayClose'),
-    period: docDate(day),
+    title: t(oneDay ? 'report.titles.dayClose' : 'report.titles.payments'),
+    period: periodOf(from, to, t),
     code: 'DAY',
-    periodKey: ymd(day),
+    periodKey: periodKeyOf(from, to),
     notes: notesOf(t, 'collected', !!cashCount && 'cashDiff'),
-    fileName: stem('day-close', day, day),
+    fileName: stem(oneDay ? 'day-close' : 'payments', from, to),
     figures,
     summaryText: sentences(
       t('report.summary.collected', { count: s.count, amount: formatRwf(s.total) }),

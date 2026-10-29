@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-29T12:03:54.944Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-10-29T13:32:59.953Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -53302,6 +53302,2515 @@ as $$
     and ((p_from is null and (s.status in ('open', 'paid') or s.created_at > now() - interval '7 days'))
          or (p_from is not null and (s.created_at at time zone 'Africa/Kigali')::date between p_from and coalesce(p_to, p_from)))
 $$;
+
+
+-- ============================================================ 20261220090000_reports_patients.sql
+-- 0110 · Report centre: the patients reports.
+--
+-- The owner: "The manager must be able to print all patients' names and other columns, filtered
+-- as he wants, e.g. which patients visited the clinic in this period, and choose the columns."
+-- The report centre (/app/reports) prints every report as a table; these functions give it the
+-- rows of the three patients reports. Each checks the rights again (a report never shows more
+-- than the screens do), works in Kigali days, and returns its rows as jsonb.
+--
+--   * A  PATIENTS WHO VISITED (report_patients_visited): one row per patient with a visit in the
+--        period: identity (national ID masked except for the manager), address, insurer, first
+--        and last visit, number of visits, the departments and desks visited, the doctors seen,
+--        new or returning, the clinic's own fields (patient.fields; the private ones only to the
+--        manager and the heads in charge of the patient), and, when asked (p_clinical), the
+--        diagnoses of the visits whose record the reader may see.
+--   * B  VISITS (report_visits): one row per visit: number, time, patient, age at the visit, sex,
+--        type, route (the desks in order), doctor, triage colour, status (open / finished / left
+--        before being seen), insurer, the money (billed, insurer and patient shares, paid,
+--        balance: the manager and whoever reads the bills only) and, when asked, the primary
+--        diagnosis.
+--        A and B: the manager (the whole clinic or one department); a head or assistant head of a
+--        department, their department's visits (analytics_scope, as Analytics and the patients'
+--        documents); everyone else is refused. A diagnosis is given only for a visit the reader
+--        may see (visit_view, 0088: the manager, the head in charge, the clinician who treated
+--        it); an HIV diagnosis only with sensitive.read; every closed visit whose diagnosis is
+--        given is written in the access log ('visit'), as the patients' documents do.
+--   * C  NEW REGISTRATIONS (report_new_registrations): the files created in the period: identity,
+--        address, ID document present, registered by and when, the required fields still missing
+--        (patient_missing_with, 0108). The manager, the heads and assistants, and reception (the
+--        receptionist role): identity only (level 1), no clinical data.
+--   * D  report_patients_options(): the filters' choices (departments, doctors, services,
+--        insurers, districts, who registered files) for whoever may run one of these reports.
+--
+-- Errcodes: 42501 not allowed (not signed in, not the manager / a head / reception).
+
+-- ---------------------------------------------------------------- helpers
+-- An ID number shown masked ("11••••••••••312"): the manager sees it whole.
+create or replace function report_mask_id(p text)
+returns text
+language sql immutable
+as $$
+  select case when p is null or length(p) < 6 then p
+              else left(p, 2) || repeat('•', length(p) - 5) || right(p, 3) end
+$$;
+
+-- The age band of the reports: under 5, 5–14, 15–24, 25–49, 50–64, 65 and over.
+create or replace function report_age_band(p_age integer)
+returns text
+language sql immutable
+as $$
+  select case when p_age is null then null
+              when p_age < 5 then 'u5' when p_age < 15 then '5-14' when p_age < 25 then '15-24'
+              when p_age < 50 then '25-49' when p_age < 65 then '50-64' else '65+' end
+$$;
+
+-- The visits of a period the reader may count, with what the reports print about each: status,
+-- department, doctor, insurer, the desks in order, first visit ever. analytics_scope refuses
+-- everyone but the manager and the heads (and assistants) of a department, and limits a head to
+-- their department. Visit filters (p_f): department, desk, doctor, service, insurer, status.
+create or replace function report_visit_set(p_from date, p_to date, p_f jsonb)
+returns table (
+  encounter_id uuid,
+  reference text,
+  arrived_at timestamptz,
+  closed_at timestamptz,
+  status text,
+  visit_type text,
+  triage text,
+  service text,
+  patient_id uuid,
+  department_id uuid,
+  department text,
+  doctor_id uuid,
+  doctor text,
+  insurer_id uuid,
+  insurer text,
+  stations text[],
+  first_visit boolean
+)
+language plpgsql stable security definer set search_path = public
+as $$
+#variable_conflict use_column
+declare
+  s record;
+  v_dep uuid := nullif(p_f ->> 'department', '')::uuid;
+  v_desk text := nullif(p_f ->> 'desk', '');
+  v_doctor uuid := nullif(p_f ->> 'doctor', '')::uuid;
+  v_service text := nullif(p_f ->> 'service', '');
+  v_insurer uuid := nullif(p_f ->> 'insurer', '')::uuid;
+  v_status text := nullif(p_f ->> 'status', '');
+begin
+  select * into s from analytics_scope(v_dep);
+  return query
+  with base as (
+    select e.id as encounter_id, e.reference, e.arrived_at, e.closed_at,
+           case when e.status = 'open' then 'open'
+                when visit_was_seen(e.id) then 'finished'
+                else 'left_unseen' end as status,
+           e.type::text as visit_type, e.triage_level::text as triage, e.service, e.patient_id,
+           d.id as department_id, d.name as department,
+           doc.id as doctor_id, doc.full_name as doctor,
+           ins.id as insurer_id, ins.name as insurer,
+           coalesce((select array_agg(x.station::text order by x.first_at)
+                     from (select q.station, min(q.created_at) as first_at from queue_entry q
+                           where q.encounter_id = e.id and q.deleted_at is null
+                           group by q.station) x), '{}'::text[]) as stations,
+           not exists (select 1 from encounter e0
+                       where e0.patient_id = e.patient_id and e0.deleted_at is null
+                         and e0.arrived_at < e.arrived_at) as first_visit
+    from encounter e
+    left join lateral (
+      select q.department_id from queue_entry q
+      where q.encounter_id = e.id and q.deleted_at is null and q.department_id is not null
+      order by q.created_at desc limit 1
+    ) qd on true
+    left join department d on d.id = qd.department_id
+    left join lateral (
+      select pr.id, pr.full_name from profiles pr
+      where pr.id = coalesce(
+        (select c0.created_by from condition c0 where c0.encounter_id = e.id and c0.deleted_at is null
+         order by c0.created_at limit 1),
+        (select q.taken_by from queue_entry q
+         where q.encounter_id = e.id and q.deleted_at is null and q.taken_by is not null
+           and q.station not in ('reception', 'triage', 'cashier', 'pharmacy')
+         order by coalesce(q.started_at, q.created_at) limit 1))
+    ) doc on true
+    left join lateral (
+      select py.id, py.name from coverage cv
+      join payer py on py.id = cv.payer_id and py.type <> 'cash'
+      where cv.id = coalesce((select i.coverage_id from invoice i where i.encounter_id = e.id and i.deleted_at is null limit 1),
+                             e.coverage_id)
+    ) ins on true
+    where e.deleted_at is null
+      and (e.arrived_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      and (s.s_department is null or exists (
+        select 1 from queue_entry q where q.encounter_id = e.id and q.deleted_at is null
+          and (q.department_id = s.s_department or q.station = any (s.s_stations))))
+  )
+  select b.encounter_id, b.reference, b.arrived_at, b.closed_at, b.status, b.visit_type, b.triage,
+         b.service, b.patient_id, b.department_id, b.department, b.doctor_id, b.doctor,
+         b.insurer_id, b.insurer, b.stations, b.first_visit
+  from base b
+  where (v_desk is null or v_desk = any (b.stations))
+    and (v_doctor is null or b.doctor_id = v_doctor)
+    and (v_service is null or b.service = v_service)
+    and (v_insurer is null or b.insurer_id = v_insurer)
+    and (v_status is null or b.status = v_status);
+end
+$$;
+revoke all on function report_visit_set(date, date, jsonb) from public, anon, authenticated;
+
+-- The primary diagnosis of a visit as the reader may see it (null: none, or not theirs to see).
+create or replace function report_visit_diagnosis(p_encounter_id uuid, p_sensitive boolean)
+returns text
+language sql stable security definer set search_path = public
+as $$
+  select c.text || coalesce(' (' || c.icd10_code || ')', '')
+  from condition c
+  where c.encounter_id = p_encounter_id and c.deleted_at is null
+    and (p_sensitive or coalesce(c.icd10_code, '') !~ '^B2[0-4]')
+  order by (c.type = 'primary') desc, c.created_at
+  limit 1
+$$;
+revoke all on function report_visit_diagnosis(uuid, boolean) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------- A patients who visited
+create or replace function report_patients_visited(
+  p_from date default null,
+  p_to date default null,
+  p_filters jsonb default '{}'::jsonb,
+  p_clinical boolean default false
+)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_f jsonb := coalesce(p_filters, '{}'::jsonb);
+  v_manager boolean := is_manager();
+  v_sex text := nullif(v_f ->> 'sex', '');
+  v_band text := nullif(v_f ->> 'ageBand', '');
+  v_kind text := nullif(v_f ->> 'kind', '');
+  v_district text := nullif(trim(coalesce(v_f ->> 'district', '')), '');
+  v_q text := nullif(trim(coalesce(v_f ->> 'search', '')), '');
+  v_sensitive boolean := has_perm('sensitive.read');
+  v_private text[] := private_extra_keys();
+  v_rows jsonb;
+  v_count integer;
+  r record;
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+
+  with v as (
+    select x.*,
+           -- how the reader sees the visit's record (asked only for the diagnoses)
+           case when p_clinical then visit_view(x.encounter_id) end as via
+    from report_visit_set(v_from, v_to, v_f) x
+  ),
+  per as (
+    select v.patient_id,
+           min(v.arrived_at) as first_at, max(v.arrived_at) as last_at,
+           count(distinct v.encounter_id)::int as visits,
+           bool_or(v.first_visit) as is_new,
+           array_remove(array_agg(distinct v.department), null) as departments,
+           array_remove(array_agg(distinct s.station), null) as desks,
+           array_remove(array_agg(distinct v.doctor), null) as doctors,
+           (array_agg(v.insurer order by v.arrived_at desc) filter (where v.insurer is not null))[1] as insurer,
+           case when p_clinical then
+             array_remove(array_agg(distinct case when v.via is not null
+                                                  then report_visit_diagnosis(v.encounter_id, v_sensitive) end), null)
+           end as diagnoses
+    from v
+    left join lateral unnest(v.stations) as s(station) on true
+    group by v.patient_id
+  ),
+  pt as (
+    select p.*, per.first_at, per.last_at, per.visits, per.is_new, per.departments, per.desks,
+           per.doctors, per.insurer, per.diagnoses,
+           extract(year from age(v_to, p.birth_date))::int as age_years
+    from per join patient p on p.id = per.patient_id
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'patientId', pt.id,
+      'fileNumber', pt.file_number,
+      'surname', pt.surname,
+      'givenNames', pt.given_names,
+      'sex', pt.sex::text,
+      'age', pt.age_years,
+      'ageBand', report_age_band(pt.age_years),
+      'birthDate', pt.birth_date,
+      'phone', pt.phone_1,
+      'phone2', pt.phone_2,
+      'nationalId', case when v_manager then coalesce(pt.national_id, pt.id_number)
+                         else report_mask_id(coalesce(pt.national_id, pt.id_number)) end,
+      'province', pt.province,
+      'district', pt.district,
+      'sector', pt.sector,
+      'cell', pt.cell,
+      'village', pt.village,
+      'insurer', pt.insurer,
+      'firstVisit', pt.first_at,
+      'lastVisit', pt.last_at,
+      'visits', pt.visits,
+      'isNew', pt.is_new,
+      'departments', to_jsonb(pt.departments),
+      'desks', to_jsonb(pt.desks),
+      'doctors', to_jsonb(pt.doctors),
+      'diagnoses', case when p_clinical then to_jsonb(coalesce(pt.diagnoses, '{}'::text[])) end,
+      -- the clinic's own fields; the private ones to the manager and the heads in charge only
+      'extra', case
+        when v_manager then coalesce(pt.extra, '{}'::jsonb)
+        when p_clinical and history_via(pt.id) is not null then coalesce(pt.extra, '{}'::jsonb)
+        else coalesce(pt.extra, '{}'::jsonb) - v_private end
+    ) order by lower(pt.surname), lower(pt.given_names), pt.file_number), '[]'::jsonb),
+    count(*)::int
+  into v_rows, v_count
+  from (
+    select * from pt
+    where (v_sex is null or pt.sex::text = v_sex)
+      and (v_band is null or report_age_band(pt.age_years) = v_band)
+      and (v_kind is null or (v_kind = 'new') = pt.is_new)
+      and (v_district is null or lower(coalesce(pt.district, '')) = lower(v_district))
+      and (v_q is null or (pt.surname || ' ' || pt.given_names) ilike '%' || v_q || '%'
+           or (pt.given_names || ' ' || pt.surname) ilike '%' || v_q || '%'
+           or coalesce(pt.file_number, '') ilike '%' || v_q || '%'
+           or coalesce(pt.phone_1, '') ilike '%' || v_q || '%')
+    order by lower(pt.surname), lower(pt.given_names), pt.file_number
+    limit 5000
+  ) pt;
+
+  -- the diagnoses of past visits were read: one line per visit in the access log (0088)
+  if p_clinical then
+    for r in
+      select x.patient_id, x.encounter_id, visit_view(x.encounter_id) as via
+      from report_visit_set(v_from, v_to, v_f) x
+      where x.status <> 'open'
+        and x.patient_id in (select (j ->> 'patientId')::uuid from jsonb_array_elements(v_rows) j)
+        and exists (select 1 from condition c where c.encounter_id = x.encounter_id and c.deleted_at is null)
+    loop
+      if r.via is not null then
+        perform log_record_access(r.patient_id, r.encounter_id, r.via, 'visit');
+      end if;
+    end loop;
+  end if;
+
+  return jsonb_build_object(
+    'from', v_from,
+    'to', v_to,
+    'manager', v_manager,
+    'count', v_count,
+    'truncated', v_count >= 5000,
+    'rows', v_rows);
+end
+$$;
+revoke all on function report_patients_visited(date, date, jsonb, boolean) from public, anon;
+grant execute on function report_patients_visited(date, date, jsonb, boolean) to authenticated;
+
+-- ---------------------------------------------------------------- B visits
+create or replace function report_visits(
+  p_from date default null,
+  p_to date default null,
+  p_filters jsonb default '{}'::jsonb,
+  p_clinical boolean default false
+)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_f jsonb := coalesce(p_filters, '{}'::jsonb);
+  v_manager boolean := is_manager();
+  v_money boolean := is_manager() or has_perm('billing.read');
+  v_sex text := nullif(v_f ->> 'sex', '');
+  v_band text := nullif(v_f ->> 'ageBand', '');
+  v_kind text := nullif(v_f ->> 'kind', '');
+  v_district text := nullif(trim(coalesce(v_f ->> 'district', '')), '');
+  v_q text := nullif(trim(coalesce(v_f ->> 'search', '')), '');
+  v_sensitive boolean := has_perm('sensitive.read');
+  v_rows jsonb;
+  v_count integer;
+  r record;
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+
+  with v as (
+    select x.*, p.surname || ' ' || p.given_names as patient, p.file_number, p.sex::text as sex,
+           p.district, p.phone_1,
+           extract(year from age((x.arrived_at at time zone 'Africa/Kigali')::date, p.birth_date))::int as age_years,
+           case when p_clinical then visit_view(x.encounter_id) end as via,
+           i.id as invoice_id, i.total, i.insurer_share, i.patient_share
+    from report_visit_set(v_from, v_to, v_f) x
+    join patient p on p.id = x.patient_id
+    left join invoice i on i.encounter_id = x.encounter_id and i.deleted_at is null
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', v.encounter_id,
+      'reference', v.reference,
+      'at', v.arrived_at,
+      'closedAt', v.closed_at,
+      'status', v.status,
+      'type', v.visit_type,
+      'service', v.service,
+      'triage', v.triage,
+      'patientId', v.patient_id,
+      'patient', v.patient,
+      'fileNumber', v.file_number,
+      'sex', v.sex,
+      'age', v.age_years,
+      'ageBand', report_age_band(v.age_years),
+      'district', v.district,
+      'route', to_jsonb(v.stations),
+      'department', v.department,
+      'doctor', v.doctor,
+      'insurer', v.insurer,
+      'isNew', v.first_visit,
+      'diagnosis', case when p_clinical and v.via is not null
+                        then report_visit_diagnosis(v.encounter_id, v_sensitive) end,
+      'billed', case when v_money then coalesce(v.total, 0) end,
+      'insurerShare', case when v_money then coalesce(v.insurer_share, 0) end,
+      'patientShare', case when v_money then coalesce(v.patient_share, 0) end,
+      'paid', case when v_money then
+          coalesce((select sum(pa.amount) from payment pa where pa.invoice_id = v.invoice_id and pa.deleted_at is null), 0)
+          - coalesce((select sum(rf.amount) from refund rf where rf.invoice_id = v.invoice_id and rf.deleted_at is null), 0) end,
+      'balance', case when v_money then coalesce(invoice_balance(v.invoice_id), 0) end
+    ) order by v.arrived_at, v.encounter_id), '[]'::jsonb),
+    count(*)::int
+  into v_rows, v_count
+  from (
+    select * from v
+    where (v_sex is null or v.sex = v_sex)
+      and (v_band is null or report_age_band(v.age_years) = v_band)
+      and (v_kind is null or (v_kind = 'new') = v.first_visit)
+      and (v_district is null or lower(coalesce(v.district, '')) = lower(v_district))
+      and (v_q is null or v.patient ilike '%' || v_q || '%'
+           or coalesce(v.file_number, '') ilike '%' || v_q || '%'
+           or coalesce(v.reference, '') ilike '%' || v_q || '%'
+           or coalesce(v.phone_1, '') ilike '%' || v_q || '%')
+    order by v.arrived_at, v.encounter_id
+    limit 5000
+  ) v;
+
+  -- the diagnoses of past visits were read: one line per visit in the access log (0088)
+  if p_clinical then
+    for r in
+      select x.patient_id, x.encounter_id, visit_view(x.encounter_id) as via
+      from report_visit_set(v_from, v_to, v_f) x
+      where x.status <> 'open'
+        and x.encounter_id in (select (j ->> 'id')::uuid from jsonb_array_elements(v_rows) j
+                               where j ->> 'diagnosis' is not null)
+    loop
+      if r.via is not null then
+        perform log_record_access(r.patient_id, r.encounter_id, r.via, 'visit');
+      end if;
+    end loop;
+  end if;
+
+  return jsonb_build_object(
+    'from', v_from,
+    'to', v_to,
+    'manager', v_manager,
+    'money', v_money,
+    'count', v_count,
+    'truncated', v_count >= 5000,
+    'rows', v_rows);
+end
+$$;
+revoke all on function report_visits(date, date, jsonb, boolean) from public, anon;
+grant execute on function report_visits(date, date, jsonb, boolean) to authenticated;
+
+-- ---------------------------------------------------------------- C new registrations
+-- May run the registrations report: the manager, a head or assistant of a department, reception.
+create or replace function report_registrations_reader()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select auth.uid() is not null and (
+    is_manager()
+    or current_role_key() = 'receptionist'
+    or exists (select 1 from staff_department sd
+               join department d on d.id = sd.department_id and d.deleted_at is null
+               join profiles p on p.id = sd.profile_id and p.active
+               where sd.profile_id = auth.uid() and sd.position in ('head', 'assistant')))
+$$;
+revoke all on function report_registrations_reader() from public, anon, authenticated;
+
+create or replace function report_new_registrations(
+  p_from date default null,
+  p_to date default null,
+  p_filters jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_f jsonb := coalesce(p_filters, '{}'::jsonb);
+  v_manager boolean := is_manager();
+  v_by uuid := nullif(v_f ->> 'registeredBy', '')::uuid;
+  v_missing boolean := coalesce((v_f ->> 'missingOnly')::boolean, false);
+  v_sex text := nullif(v_f ->> 'sex', '');
+  v_q text := nullif(trim(coalesce(v_f ->> 'search', '')), '');
+  v_rows jsonb;
+  v_count integer;
+begin
+  if not report_registrations_reader() then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+
+  with st as (select patient_builtins() as b, patient_fields() as f),
+  x as (
+    select p.*, rb.full_name as registered_by,
+           extract(year from age(v_to, p.birth_date))::int as age_years,
+           patient_missing_with(p, st.b, st.f) as missing,
+           patient_has_id(p) as has_id
+    from patient p
+    cross join st
+    left join profiles rb on rb.id = p.created_by
+    where p.deleted_at is null and p.merged_into is null
+      and (p.created_at at time zone 'Africa/Kigali')::date between v_from and v_to
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'patientId', x.id,
+      'fileNumber', x.file_number,
+      'surname', x.surname,
+      'givenNames', x.given_names,
+      'sex', x.sex::text,
+      'age', x.age_years,
+      'birthDate', x.birth_date,
+      'phone', x.phone_1,
+      'district', x.district,
+      'sector', x.sector,
+      'cell', x.cell,
+      'village', x.village,
+      'hasId', x.has_id,
+      'idType', x.id_type,
+      'registeredById', x.created_by,
+      'registeredBy', x.registered_by,
+      'registeredAt', x.created_at,
+      'missing', to_jsonb(x.missing)
+    ) order by x.created_at, x.file_number), '[]'::jsonb),
+    count(*)::int
+  into v_rows, v_count
+  from (
+    select * from x
+    where (v_by is null or x.created_by = v_by)
+      and (not v_missing or cardinality(x.missing) > 0)
+      and (v_sex is null or x.sex::text = v_sex)
+      and (v_q is null or (x.surname || ' ' || x.given_names) ilike '%' || v_q || '%'
+           or coalesce(x.file_number, '') ilike '%' || v_q || '%'
+           or coalesce(x.phone_1, '') ilike '%' || v_q || '%')
+    order by x.created_at, x.file_number
+    limit 5000
+  ) x;
+
+  return jsonb_build_object(
+    'from', v_from,
+    'to', v_to,
+    'manager', v_manager,
+    'count', v_count,
+    'truncated', v_count >= 5000,
+    'rows', v_rows);
+end
+$$;
+revoke all on function report_new_registrations(date, date, jsonb) from public, anon;
+grant execute on function report_new_registrations(date, date, jsonb) to authenticated;
+
+-- ---------------------------------------------------------------- D the filters' choices
+create or replace function report_patients_options()
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_manager boolean := is_manager();
+begin
+  if not report_registrations_reader() then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return jsonb_build_object(
+    -- the manager: every department (a closed one still has its past visits), the active first;
+    -- a head: their own (as analytics_scope reads them)
+    'departments', coalesce((
+      select jsonb_agg(jsonb_build_object('id', d.id, 'name', d.name)
+                       order by d.active desc, d.sort_order, d.name)
+      from department d
+      where d.deleted_at is null
+        and case when v_manager then true
+                 else exists (select 1 from staff_department sd
+                              where sd.department_id = d.id and sd.profile_id = auth.uid()
+                                and sd.position in ('head', 'assistant')) end), '[]'::jsonb),
+    'doctors', coalesce((
+      select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.full_name) order by p.full_name)
+      from profiles p
+      where p.active and p.deleted_at is null and p.role in ('doctor', 'sonographer')), '[]'::jsonb),
+    'services', coalesce((
+      select jsonb_agg(x.service order by x.service)
+      from (select distinct e.service from encounter e
+            where e.service is not null and e.deleted_at is null) x), '[]'::jsonb),
+    'insurers', coalesce((
+      select jsonb_agg(jsonb_build_object('id', py.id, 'name', py.name) order by py.name)
+      from payer py where py.type <> 'cash' and py.deleted_at is null), '[]'::jsonb),
+    'districts', coalesce((
+      select jsonb_agg(x.district order by x.district)
+      from (select distinct initcap(trim(p.district)) as district from patient p
+            where nullif(trim(coalesce(p.district, '')), '') is not null and p.deleted_at is null) x), '[]'::jsonb),
+    'registrars', coalesce((
+      select jsonb_agg(jsonb_build_object('id', pr.id, 'name', pr.full_name) order by pr.full_name)
+      from profiles pr
+      where pr.id in (select distinct p.created_by from patient p where p.created_by is not null)), '[]'::jsonb));
+end
+$$;
+revoke all on function report_patients_options() from public, anon;
+grant execute on function report_patients_options() to authenticated;
+
+
+-- ============================================================ 20261221090000_reports_finance_staff.sql
+-- 0111 · The report centre: the finance and staff reports.
+--
+-- Frank: every report is a table the person filters, whose columns they choose, with totals, groups
+-- and subtotals, printed (PDF) and exported (Excel); each role prints its own reports. The report
+-- centre (/app/reports) runs one function per report below; the web filters the rows further
+-- (method, kind, insurer, search…) and adds the totals. Each function checks the rights again: a
+-- report never shows more than the person may see on the screens.
+--
+--   report_payments      Revenue: one row per payment received (bills, debts, walk-in sales), with
+--                        what was later given back from it (refunds are spread over the bill's
+--                        payments, the latest payment first).
+--   report_charges       Revenue by service: one row per charge line of the final bills and of the
+--                        walk-in sales (optionally the bills of visits still open).
+--   report_bills         One row per bill: shares, paid, given back, credited, balance, status.
+--   report_debts         Visits that ended (or an earlier day's visit with nothing left to do) with
+--                        money still due, as on the cash desk's "Unpaid bills".
+--   report_refunds       Money given back.
+--   report_counter_sales Walk-in sales (pharmacy and room stores).
+--   report_cash_counts   The day closes, one row per cashier, day and payment method.
+--   report_claims        What each insurer owes, per visit (final bills with an insurer share).
+--   report_employees     The employees.
+--   report_filter_options  The choices of the report filters (cashiers, staff, departments,
+--                        insurers, stores, categories), within the person's rights.
+--   Staff activity runs the existing staff_activity() (0086): the manager, or a head for their
+--   department; money only for the manager.
+--
+-- Rights (money): the manager and anyone who reads the bills (billing.read: the cashier, reception)
+-- see everything. Someone who only takes payments (payment.take), and the pharmacy that takes the
+-- money of its walk-in sales, see their own payments, refunds and cash counts. Walk-in sales: the
+-- pharmacy desk sees the pharmacy's sales; a room-store holder with "Sell to walk-in buyers from my
+-- store" the sales of the stores they hold. A head (or assistant head) of a department sees the
+-- charges of their department. Employees: the manager, every column; a head, the people of their
+-- department without phone and e-mail. Anyone else: 42501.
+--
+-- Dates are Kigali days. Errcodes: 42501 not allowed.
+
+-- ---------------------------------------------------------------- who may read the money
+-- 'all' (the manager, billing.read), 'mine' (payment.take, the pharmacy taking walk-in payments:
+-- their own rows), null (nobody). Internal.
+create or replace function report_money_reach()
+returns text
+language sql stable security definer set search_path = public
+as $$
+  select case
+    when auth.uid() is null then null
+    when is_manager() or has_perm('billing.read') then 'all'
+    when has_perm('payment.take') or pharmacy_takes_money() then 'mine'
+    else null
+  end
+$$;
+revoke all on function report_money_reach() from public, anon, authenticated;
+
+-- The departments the signed-in person heads or assists (active departments and person). Internal.
+create or replace function report_my_head_departments()
+returns uuid[]
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(array_agg(sd.department_id order by d.sort_order, d.name), '{}')
+  from staff_department sd
+  join department d on d.id = sd.department_id and d.deleted_at is null
+  join profiles me on me.id = sd.profile_id and me.active and me.deleted_at is null
+  where sd.profile_id = auth.uid() and sd.position in ('head', 'assistant')
+$$;
+revoke all on function report_my_head_departments() from public, anon, authenticated;
+
+-- The department a charge line counts for (as revenue_analysis, 0086): the service's department;
+-- a medicine or supply, the pharmacy's. Internal.
+create or replace function report_pharmacy_department()
+returns uuid
+language sql stable security definer set search_path = public
+as $$
+  select d.id from department d
+  where d.active and d.deleted_at is null and 'pharmacy' = any (d.services)
+  order by d.sort_order, d.name limit 1
+$$;
+revoke all on function report_pharmacy_department() from public, anon, authenticated;
+
+-- ---------------------------------------------------------------- 1 revenue: the payments
+-- One row per payment taken in the period (not cancelled). kind: 'visit' (a visit's bill), 'debt'
+-- (paid after the visit was closed), 'pharmacy' (a walk-in sale of a pharmacy store), 'walkin' (a
+-- walk-in sale of a room store). refunded: what was given back from this payment (the bill's
+-- refunds, taken from its latest payments first), so net = amount − refunded.
+create or replace function report_payments(p_from date default null, p_to date default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_me uuid := auth.uid();
+  v_reach text := report_money_reach();
+  v_rows jsonb;
+begin
+  if v_reach is null then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+  select coalesce(jsonb_agg(x.j order by x.at, x.id), '[]'::jsonb) into v_rows
+  from (
+    select pa.paid_at as at, pa.id, jsonb_build_object(
+        'id', pa.id,
+        'at', pa.paid_at,
+        'receiptNo', pa.receipt_no,
+        'billNo', coalesce(i.number, i.provisional_no, cs.number),
+        'visitNo', e.reference,
+        'encounterId', e.id,
+        'counterSaleId', cs.id,
+        'patient', coalesce(p.surname || ' ' || p.given_names, cs.buyer_name),
+        'fileNumber', p.file_number,
+        'kind', case
+                  when cs.id is not null then case when is_room_type(l.type) then 'walkin' else 'pharmacy' end
+                  when e.closed_at is not null and pa.paid_at > e.closed_at then 'debt'
+                  else 'visit'
+                end,
+        'method', pa.method::text,
+        'reference', pa.reference,
+        'amount', pa.amount,
+        'refunded', case when pa.invoice_id is null then 0 else greatest(0, least(pa.amount,
+          coalesce((select sum(r.amount) from refund r where r.invoice_id = pa.invoice_id and r.deleted_at is null), 0)
+          - coalesce((select sum(p2.amount) from payment p2
+                      where p2.invoice_id = pa.invoice_id and p2.deleted_at is null
+                        and (p2.paid_at > pa.paid_at or (p2.paid_at = pa.paid_at and p2.id > pa.id))), 0))) end,
+        'cashierId', pa.cashier_id,
+        'cashier', pr.full_name,
+        'insurerId', py.id,
+        'insurer', py.name,
+        'store', l.name,
+        'counted', pa.day_close_id is not null
+      ) as j
+    from payment pa
+    left join invoice i on i.id = pa.invoice_id
+    left join encounter e on e.id = i.encounter_id
+    left join patient p on p.id = e.patient_id
+    left join payer py on py.id = i.payer_id and py.type <> 'cash'
+    left join counter_sale cs on cs.id = pa.counter_sale_id
+    left join stock_location l on l.id = cs.location_id
+    left join profiles pr on pr.id = pa.cashier_id
+    where pa.deleted_at is null
+      and (pa.paid_at at time zone 'Africa/Kigali')::date between v_from and v_to
+      and (v_reach = 'all' or pa.cashier_id = v_me)
+    order by pa.paid_at, pa.id
+    limit 20000
+  ) x;
+  return jsonb_build_object('from', v_from, 'to', v_to, 'scope', v_reach, 'rows', v_rows);
+end
+$$;
+revoke all on function report_payments(date, date) from public, anon;
+grant execute on function report_payments(date, date) to authenticated;
+
+-- ---------------------------------------------------------------- 2 revenue by service: the charges
+-- One row per charge line: the lines of the final bills (posted or credited, dated when the bill
+-- was posted) and of the paid walk-in sales (dated when paid); with p_open also the bills of visits
+-- still open and the walk-in sales not yet paid (dated when charged). quantity is as charged (a bill
+-- line by the pack: packs; a walk-in sale line: pieces), units always the pieces; total is the
+-- line's amount (a walk-in line: its line_total, packs at the pack price). The manager and
+-- billing.read: every department (or p_department); a head or assistant head: their departments only.
+create or replace function report_charges(
+  p_from date default null,
+  p_to date default null,
+  p_department uuid default null,
+  p_open boolean default false
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_all boolean := auth.uid() is not null and (is_manager() or has_perm('billing.read'));
+  v_heads uuid[] := report_my_head_departments();
+  v_scope uuid[];
+  v_pharmacy uuid := report_pharmacy_department();
+  v_open boolean := coalesce(p_open, false);
+  v_rows jsonb;
+begin
+  if auth.uid() is null or not (v_all or cardinality(v_heads) > 0) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if not v_all and p_department is not null and not (p_department = any (v_heads)) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  -- null = every department (and the lines of none)
+  v_scope := case when p_department is not null then array[p_department]
+                  when v_all then null
+                  else v_heads end;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+
+  with lines as (
+    select l.id, 'bill' as source,
+           case when i.status = 'draft' then l.created_at else coalesce(i.posted_at, l.created_at) end as at,
+           l.created_at as charged_at,
+           coalesce(i.number, i.provisional_no) as bill_no, i.status::text as bill_status,
+           e.reference as visit_no, e.id as encounter_id,
+           p.surname || ' ' || p.given_names as patient, p.file_number,
+           l.description, l.service_id, l.item_id, coalesce(sv.code, it.code) as code,
+           c.id as category_id,
+           case when l.item_id is not null then case when it.kind = 'supply' then 'supply' else 'medicine' end
+                else coalesce(c.base_group::text, 'other') end as category_key,
+           c.name_en as category_en, c.name_kin as category_kin, c.name_fr as category_fr,
+           case when l.item_id is not null then v_pharmacy else sv.department_id end as department_id,
+           l.office::text as desk, null::text as store,
+           l.quantity::numeric as quantity, l.pack_size, l.quantity * coalesce(l.pack_size, 1) as units,
+           l.unit_price, coalesce(l.list_price, l.unit_price) as list_price,
+           case when coalesce(l.list_price, l.unit_price) > l.unit_price
+                then round((l.list_price - l.unit_price) * l.quantity) else 0 end as discount,
+           l.discount_pct, l.discount_reason,
+           round(l.unit_price * l.quantity) as total, l.insurer_share, l.patient_share,
+           py.id as insurer_id, py.name as insurer,
+           l.entered_by as entered_by_id
+    from invoice_line l
+    join invoice i on i.id = l.invoice_id and i.deleted_at is null
+    join encounter e on e.id = i.encounter_id
+    join patient p on p.id = e.patient_id
+    left join service sv on sv.id = l.service_id
+    left join service_category c on c.id = sv.category_id
+    left join item it on it.id = l.item_id
+    left join payer py on py.id = i.payer_id and py.type <> 'cash'
+    where l.deleted_at is null
+      and (i.status in ('posted', 'credited') or (v_open and i.status = 'draft'))
+    union all
+    select x.id, 'sale',
+           case when s.status = 'open' then x.created_at else coalesce(s.paid_at, x.created_at) end,
+           x.created_at,
+           s.number, s.status, null, null,
+           s.buyer_name, null,
+           item_label(x.item_id), null, x.item_id, it.code,
+           null, case when it.kind = 'supply' then 'supply' else 'medicine' end,
+           null, null, null,
+           case when is_room_type(st.type) then st.department_id else v_pharmacy end,
+           case when is_room_type(st.type) then null else 'pharmacy' end, st.name,
+           x.quantity::numeric, x.pack_size, x.quantity::numeric,
+           x.unit_price, x.unit_price, 0, 0, null,
+           x.line_total, 0, x.line_total,
+           null, null,
+           s.created_by
+    from counter_sale_line x
+    join counter_sale s on s.id = x.sale_id and s.deleted_at is null
+    join stock_location st on st.id = s.location_id
+    left join item it on it.id = x.item_id
+    where x.deleted_at is null
+      and (s.status in ('paid', 'handed_over') or (v_open and s.status = 'open'))
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', k.id, 'source', k.source, 'at', k.at, 'chargedAt', k.charged_at,
+      'billNo', k.bill_no, 'billStatus', k.bill_status, 'visitNo', k.visit_no, 'encounterId', k.encounter_id,
+      'patient', k.patient, 'fileNumber', k.file_number,
+      'description', k.description, 'serviceId', k.service_id, 'itemId', k.item_id, 'code', k.code,
+      'categoryId', k.category_id, 'categoryKey', k.category_key,
+      'categoryEn', k.category_en, 'categoryKin', k.category_kin, 'categoryFr', k.category_fr,
+      'departmentId', k.department_id, 'department', d.name, 'desk', k.desk, 'store', k.store,
+      'quantity', k.quantity, 'packSize', k.pack_size, 'units', k.units,
+      'unitPrice', k.unit_price, 'listPrice', k.list_price,
+      'discount', k.discount, 'discountPct', k.discount_pct, 'discountReason', k.discount_reason,
+      'total', k.total, 'insurerShare', k.insurer_share, 'patientShare', k.patient_share,
+      'insurerId', k.insurer_id, 'insurer', k.insurer,
+      'enteredById', k.entered_by_id, 'enteredBy', pr.full_name
+    ) order by k.at, k.id), '[]'::jsonb)
+  into v_rows
+  from (
+    select * from lines
+    where (lines.at at time zone 'Africa/Kigali')::date between v_from and v_to
+      and (v_scope is null or lines.department_id = any (v_scope))
+    order by lines.at, lines.id
+    limit 20000
+  ) k
+  left join department d on d.id = k.department_id
+  left join profiles pr on pr.id = k.entered_by_id;
+  return jsonb_build_object('from', v_from, 'to', v_to,
+                            'scope', case when v_scope is null then 'all' else 'department' end,
+                            'departments', to_jsonb(coalesce(v_scope, '{}')), 'rows', v_rows);
+end
+$$;
+revoke all on function report_charges(date, date, uuid, boolean) from public, anon;
+grant execute on function report_charges(date, date, uuid, boolean) to authenticated;
+
+-- ---------------------------------------------------------------- 3 bills
+-- One row per bill with charges, dated when posted (a bill of a visit still open: when the visit
+-- began). status: open (visit still open), paid (nothing left to pay), part (part paid), unpaid,
+-- credited. The manager and billing.read.
+create or replace function report_bills(p_from date default null, p_to date default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_rows jsonb;
+begin
+  if auth.uid() is null or not (is_manager() or has_perm('billing.read')) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', b.id, 'billNo', b.bill_no, 'at', b.at, 'visitAt', b.visit_at, 'postedAt', b.posted_at,
+      'visitNo', b.visit_no, 'encounterId', b.encounter_id, 'visitOpen', b.visit_open,
+      'patient', b.patient, 'fileNumber', b.file_number,
+      'insurerId', b.insurer_id, 'insurer', b.insurer, 'memberNo', b.member_no,
+      'total', b.total, 'insurerShare', b.insurer_share, 'patientShare', b.patient_share,
+      'paid', b.paid, 'refunded', b.refunded, 'credited', b.credited, 'balance', b.balance,
+      'lines', b.lines,
+      'status', case when b.invoice_status = 'credited' then 'credited'
+                     when b.balance <= 0 then 'paid'
+                     when b.invoice_status = 'draft' and b.visit_open then 'open'
+                     when b.paid - b.refunded > 0 then 'part'
+                     else 'unpaid' end
+    ) order by b.at, b.id), '[]'::jsonb)
+  into v_rows
+  from (
+    select i.id, coalesce(i.number, i.provisional_no) as bill_no, i.status::text as invoice_status,
+           coalesce(i.posted_at, e.arrived_at) as at, e.arrived_at as visit_at, i.posted_at,
+           e.reference as visit_no, e.id as encounter_id, e.status = 'open' as visit_open,
+           p.surname || ' ' || p.given_names as patient, p.file_number,
+           py.id as insurer_id, py.name as insurer, cv.member_number as member_no,
+           i.total, i.insurer_share, i.patient_share,
+           coalesce((select sum(y.amount) from payment y where y.invoice_id = i.id and y.deleted_at is null), 0) as paid,
+           coalesce((select sum(r.amount) from refund r where r.invoice_id = i.id and r.deleted_at is null), 0) as refunded,
+           coalesce((select sum(c.patient_amount) from credit_note c where c.invoice_id = i.id and c.deleted_at is null), 0) as credited,
+           invoice_balance(i.id) as balance,
+           (select count(*) from invoice_line l where l.invoice_id = i.id and l.deleted_at is null) as lines
+    from invoice i
+    join encounter e on e.id = i.encounter_id and e.deleted_at is null
+    join patient p on p.id = e.patient_id
+    left join payer py on py.id = i.payer_id and py.type <> 'cash'
+    left join coverage cv on cv.id = i.coverage_id
+    where i.deleted_at is null and i.total > 0
+      and (coalesce(i.posted_at, e.arrived_at) at time zone 'Africa/Kigali')::date between v_from and v_to
+    order by coalesce(i.posted_at, e.arrived_at), i.id
+    limit 20000
+  ) b;
+  return jsonb_build_object('from', v_from, 'to', v_to, 'rows', v_rows);
+end
+$$;
+revoke all on function report_bills(date, date) from public, anon;
+grant execute on function report_bills(date, date) to authenticated;
+
+-- ---------------------------------------------------------------- 4 unpaid bills (debts)
+-- The visits of the period (by the day they began) that ended with money due, and the visits of
+-- earlier days still open with money due and nothing left to do (the rule of unpaid_debts). The
+-- manager and billing.read.
+create or replace function report_debts(p_from date default null, p_to date default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_rows jsonb;
+begin
+  if auth.uid() is null or not (is_manager() or has_perm('billing.read')) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+  select coalesce(jsonb_agg(x.j order by x.at desc, x.id), '[]'::jsonb) into v_rows
+  from (
+    select coalesce(e.arrived_at, e.created_at) as at, e.id, jsonb_build_object(
+        'id', e.id, 'encounterId', e.id, 'patientId', p.id,
+        'patient', p.surname || ' ' || p.given_names, 'fileNumber', p.file_number,
+        'phone', coalesce(p.phone_1, p.phone_2),
+        'visitNo', e.reference, 'visitAt', coalesce(e.arrived_at, e.created_at), 'closedAt', e.closed_at,
+        'billNo', coalesce(i.number, i.provisional_no),
+        'insurerId', py.id, 'insurer', py.name,
+        'total', i.patient_share,
+        'paid', (select coalesce(sum(y.amount), 0) from payment y where y.invoice_id = i.id and y.deleted_at is null),
+        'due', invoice_balance(i.id),
+        'days', v_today - (coalesce(e.closed_at, e.arrived_at, e.created_at) at time zone 'Africa/Kigali')::date,
+        'status', case when e.status = 'open' then 'open' when e.left_reason is not null then 'left' else 'closed' end,
+        'reason', e.left_reason,
+        'closedBy', pr.full_name
+      ) as j
+    from encounter e
+    join invoice i on i.encounter_id = e.id and i.deleted_at is null and i.status <> 'credited'
+    join patient p on p.id = e.patient_id
+    left join payer py on py.id = i.payer_id and py.type <> 'cash'
+    left join profiles pr on pr.id = e.closed_by
+    where e.deleted_at is null and invoice_balance(i.id) > 0
+      and (coalesce(e.arrived_at, e.created_at) at time zone 'Africa/Kigali')::date between v_from and v_to
+      and (e.status = 'closed'
+           or (e.status = 'open'
+               and (coalesce(e.arrived_at, e.created_at) at time zone 'Africa/Kigali')::date < v_today
+               and not visit_work_left(e.id)))
+    order by coalesce(e.arrived_at, e.created_at) desc, e.id
+    limit 20000
+  ) x;
+  return jsonb_build_object('from', v_from, 'to', v_to, 'rows', v_rows);
+end
+$$;
+revoke all on function report_debts(date, date) from public, anon;
+grant execute on function report_debts(date, date) to authenticated;
+
+-- ---------------------------------------------------------------- 5 refunds
+-- Money given back in the period. The manager and billing.read: every refund; payment.take: their own.
+create or replace function report_refunds(p_from date default null, p_to date default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_me uuid := auth.uid();
+  v_reach text := report_money_reach();
+  v_rows jsonb;
+begin
+  if v_reach is null then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+  select coalesce(jsonb_agg(x.j order by x.at, x.id), '[]'::jsonb) into v_rows
+  from (
+    select r.refunded_at as at, r.id, jsonb_build_object(
+        'id', r.id, 'at', r.refunded_at, 'amount', r.amount, 'method', r.method::text,
+        'reference', r.reference, 'reason', r.reason,
+        'patient', p.surname || ' ' || p.given_names, 'fileNumber', p.file_number,
+        'visitNo', e.reference, 'encounterId', e.id, 'billNo', coalesce(i.number, i.provisional_no),
+        'cashierId', r.cashier_id, 'cashier', pr.full_name
+      ) as j
+    from refund r
+    join invoice i on i.id = r.invoice_id
+    join encounter e on e.id = i.encounter_id
+    join patient p on p.id = e.patient_id
+    left join profiles pr on pr.id = r.cashier_id
+    where r.deleted_at is null
+      and (r.refunded_at at time zone 'Africa/Kigali')::date between v_from and v_to
+      and (v_reach = 'all' or r.cashier_id = v_me)
+    order by r.refunded_at, r.id
+    limit 20000
+  ) x;
+  return jsonb_build_object('from', v_from, 'to', v_to, 'scope', v_reach, 'rows', v_rows);
+end
+$$;
+revoke all on function report_refunds(date, date) from public, anon;
+grant execute on function report_refunds(date, date) to authenticated;
+
+-- ---------------------------------------------------------------- 6 walk-in sales
+-- The counter sales written in the period. The manager and billing.read: every store; the
+-- pharmacy desk and the pharmacist: the pharmacy's sales; a holder with stock.sell_walkin: the
+-- sales of the stores they hold.
+create or replace function report_counter_sales(p_from date default null, p_to date default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_me uuid := auth.uid();
+  v_all boolean := v_me is not null and (is_manager() or has_perm('billing.read'));
+  v_pharm boolean := v_me is not null and (stock_admin() or pharmacy_takes_money());
+  v_rooms boolean := v_me is not null and has_perm('stock.sell_walkin');
+  v_rows jsonb;
+begin
+  if not (v_all or v_pharm or v_rooms) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+  select coalesce(jsonb_agg(x.j order by x.at, x.id), '[]'::jsonb) into v_rows
+  from (
+    select s.created_at as at, s.id, jsonb_build_object(
+        'id', s.id, 'number', s.number, 'at', s.created_at, 'status', s.status,
+        'buyer', s.buyer_name, 'phone', s.buyer_phone,
+        'storeId', l.id, 'store', l.name, 'roomStore', is_room_type(l.type),
+        'total', s.total, 'note', s.note,
+        'lines', (select count(*) from counter_sale_line x where x.sale_id = s.id and x.deleted_at is null),
+        'units', (select coalesce(sum(x.quantity), 0) from counter_sale_line x where x.sale_id = s.id and x.deleted_at is null),
+        'items', (select string_agg(item_label(x.item_id) || ' × ' || x.quantity, '; ' order by x.created_at, x.id)
+                  from counter_sale_line x where x.sale_id = s.id and x.deleted_at is null),
+        'paidAt', s.paid_at, 'method', pa.method::text, 'receiptNo', pa.receipt_no, 'reference', pa.reference,
+        'cashierId', pa.cashier_id, 'cashier', pc.full_name,
+        'sellerId', s.created_by, 'seller', ps.full_name,
+        'handedOverAt', s.handed_over_at, 'handedOverBy', ph.full_name,
+        'cancelledAt', s.cancelled_at, 'cancelReason', s.cancel_reason
+      ) as j
+    from counter_sale s
+    join stock_location l on l.id = s.location_id
+    left join payment pa on pa.id = s.payment_id and pa.deleted_at is null
+    left join profiles pc on pc.id = pa.cashier_id
+    left join profiles ps on ps.id = s.created_by
+    left join profiles ph on ph.id = s.handed_over_by
+    where s.deleted_at is null
+      and (s.created_at at time zone 'Africa/Kigali')::date between v_from and v_to
+      and (v_all
+           or (v_pharm and not is_room_type(l.type))
+           or (v_rooms and is_room_type(l.type) and holds_store(v_me, l.id)))
+    order by s.created_at, s.id
+    limit 20000
+  ) x;
+  return jsonb_build_object('from', v_from, 'to', v_to,
+                            'scope', case when v_all then 'all' else 'stores' end, 'rows', v_rows);
+end
+$$;
+revoke all on function report_counter_sales(date, date) from public, anon;
+grant execute on function report_counter_sales(date, date) to authenticated;
+
+-- ---------------------------------------------------------------- 7 cash counts
+-- The day closes of the period, one row per cashier, day and payment method: expected (payments
+-- less refunds), counted, difference (counted − expected). The manager and billing.read: everyone;
+-- payment.take and the pharmacy: their own.
+create or replace function report_cash_counts(p_from date default null, p_to date default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_me uuid := auth.uid();
+  v_reach text := report_money_reach();
+  v_rows jsonb;
+begin
+  if v_reach is null then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', c.id::text || ':' || c.method, 'closeId', c.id, 'day', c.date, 'at', c.updated_at,
+      'cashierId', c.cashier_id, 'cashier', c.cashier, 'method', c.method,
+      'expected', c.expected, 'counted', c.counted, 'difference', c.counted - c.expected,
+      'variance', c.variance, 'note', c.note
+    ) order by c.date, c.cashier, c.method), '[]'::jsonb)
+  into v_rows
+  from (
+    select d.id, d.date, d.updated_at, d.cashier_id, pr.full_name as cashier, d.variance, d.note, m.method,
+           coalesce(nullif(d.expected ->> m.method, '')::numeric, 0) as expected,
+           coalesce(nullif(d.counted ->> m.method, '')::numeric, 0) as counted
+    from day_close d
+    left join profiles pr on pr.id = d.cashier_id
+    cross join lateral (
+      select k as method from jsonb_object_keys(case when jsonb_typeof(d.expected) = 'object' then d.expected else '{}'::jsonb end) k
+      union
+      select k from jsonb_object_keys(case when jsonb_typeof(d.counted) = 'object' then d.counted else '{}'::jsonb end) k
+    ) m
+    where d.deleted_at is null and d.date between v_from and v_to
+      and (v_reach = 'all' or d.cashier_id = v_me)
+    order by d.date, pr.full_name, m.method
+    limit 20000
+  ) c;
+  return jsonb_build_object('from', v_from, 'to', v_to, 'scope', v_reach, 'rows', v_rows);
+end
+$$;
+revoke all on function report_cash_counts(date, date) from public, anon;
+grant execute on function report_cash_counts(date, date) to authenticated;
+
+-- ---------------------------------------------------------------- 8 insurer claims
+-- The final bills of the period (dated when posted) with an insurer share: what each insurer owes,
+-- per visit, and where its claim stands. The manager and billing.read.
+create or replace function report_claims(p_from date default null, p_to date default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_rows jsonb;
+begin
+  if auth.uid() is null or not (is_manager() or has_perm('billing.read')) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+  select coalesce(jsonb_agg(x.j order by x.insurer, x.at, x.id), '[]'::jsonb) into v_rows
+  from (
+    select py.name as insurer, i.posted_at as at, i.id, jsonb_build_object(
+        'id', i.id, 'insurerId', py.id, 'insurer', py.name,
+        'patient', p.surname || ' ' || p.given_names, 'fileNumber', p.file_number,
+        'memberNo', coalesce(cl.member_number, cv.member_number),
+        'visitNo', e.reference, 'encounterId', e.id, 'visitAt', e.arrived_at,
+        'billNo', i.number, 'postedAt', i.posted_at, 'billStatus', i.status::text,
+        'total', i.total, 'insurerShare', i.insurer_share, 'patientShare', i.patient_share,
+        'coveragePct', pl.coverage_pct,
+        'claimed', coalesce(cl.amount, i.insurer_share),
+        'status', coalesce(cl.status::text, 'open'),
+        'batchNo', cb.number, 'rejection', cl.rejection_reason
+      ) as j
+    from invoice i
+    join payer py on py.id = i.payer_id and py.type <> 'cash'
+    join encounter e on e.id = i.encounter_id
+    join patient p on p.id = e.patient_id
+    left join coverage cv on cv.id = i.coverage_id
+    left join plan pl on pl.id = cv.plan_id
+    left join claim cl on cl.invoice_id = i.id and cl.deleted_at is null
+    left join claim_batch cb on cb.id = cl.batch_id
+    where i.deleted_at is null and i.status in ('posted', 'credited') and i.insurer_share > 0
+      and (i.posted_at at time zone 'Africa/Kigali')::date between v_from and v_to
+    order by py.name, i.posted_at, i.id
+    limit 20000
+  ) x;
+  return jsonb_build_object('from', v_from, 'to', v_to, 'rows', v_rows);
+end
+$$;
+revoke all on function report_claims(date, date) from public, anon;
+grant execute on function report_claims(date, date) to authenticated;
+
+-- ---------------------------------------------------------------- 9 employees
+-- The employees (former ones, deleted, are left out as on the Employees page). The manager: every
+-- employee and column (or one department's people). A head or assistant head: the people of their
+-- departments, without phone, e-mail and username.
+create or replace function report_employees(p_department uuid default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_manager boolean := auth.uid() is not null and is_manager();
+  v_heads uuid[] := report_my_head_departments();
+  v_scope uuid[];
+  v_rows jsonb;
+begin
+  if auth.uid() is null or not (v_manager or cardinality(v_heads) > 0) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if not v_manager and p_department is not null and not (p_department = any (v_heads)) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  v_scope := case when p_department is not null then array[p_department]
+                  when v_manager then null
+                  else v_heads end;
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', p.id, 'staffId', p.staff_id, 'fullName', p.full_name,
+      'username', case when v_manager then p.username end,
+      'role', p.role::text, 'specialty', p.specialty,
+      'departments', coalesce((
+        select jsonb_agg(jsonb_build_object('id', d.id, 'name', d.name, 'position', sd.position)
+                         order by (sd.department_id = p.department_id) desc, d.sort_order, d.name)
+        from staff_department sd join department d on d.id = sd.department_id and d.deleted_at is null
+        where sd.profile_id = p.id), '[]'::jsonb),
+      'desks', to_jsonb(desks_of(p.id)),
+      'phone', case when v_manager then p.phone end,
+      'email', case when v_manager then p.email end,
+      'registrationNo', p.registration_no, 'registrationBody', p.registration_body,
+      'active', p.active, 'deactivatedAt', p.deactivated_at, 'createdAt', p.created_at,
+      'lastSignInAt', p.last_sign_in_at, 'mustChangePin', p.must_change_pin
+    ) order by p.active desc, p.full_name), '[]'::jsonb)
+  into v_rows
+  from profiles p
+  where p.deleted_at is null
+    and (v_scope is null or exists (select 1 from staff_department sd
+                                    where sd.profile_id = p.id and sd.department_id = any (v_scope)));
+  return jsonb_build_object('scope', case when v_manager then 'all' else 'department' end,
+                            'departments', to_jsonb(coalesce(v_scope, '{}')), 'rows', v_rows);
+end
+$$;
+revoke all on function report_employees(uuid) from public, anon;
+grant execute on function report_employees(uuid) to authenticated;
+
+-- ---------------------------------------------------------------- the filters' choices
+-- What the report filters offer, within the person's rights: the cashiers (who took a payment,
+-- gave money back or counted cash; only themselves for payment.take), the staff (everyone for the
+-- manager and billing.read, a head's departments, else themselves), the departments, the insurers,
+-- the stores of walk-in sales and the service categories.
+create or replace function report_filter_options()
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_manager boolean := v_me is not null and is_manager();
+  v_all boolean := v_me is not null and (is_manager() or has_perm('billing.read'));
+  v_heads uuid[] := report_my_head_departments();
+  v_pharm boolean := v_me is not null and (stock_admin() or pharmacy_takes_money());
+  v_rooms boolean := v_me is not null and has_perm('stock.sell_walkin');
+begin
+  if v_me is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  return jsonb_build_object(
+    'cashiers', coalesce((
+      select jsonb_agg(jsonb_build_object('id', pr.id, 'name', pr.full_name) order by pr.full_name)
+      from profiles pr
+      where (v_all or pr.id = v_me)
+        and (exists (select 1 from payment y where y.cashier_id = pr.id)
+             or exists (select 1 from refund r where r.cashier_id = pr.id)
+             or exists (select 1 from day_close d where d.cashier_id = pr.id))), '[]'::jsonb),
+    'staff', coalesce((
+      select jsonb_agg(jsonb_build_object('id', pr.id, 'name', pr.full_name, 'role', pr.role::text,
+                                          'active', pr.active and pr.deleted_at is null)
+                       order by pr.full_name)
+      from profiles pr
+      where v_all or pr.id = v_me
+         or exists (select 1 from staff_department sd where sd.profile_id = pr.id and sd.department_id = any (v_heads))),
+      '[]'::jsonb),
+    'departments', coalesce((
+      select jsonb_agg(jsonb_build_object('id', d.id, 'name', d.name) order by d.sort_order, d.name)
+      from department d
+      where d.deleted_at is null and ((v_all and d.active) or d.id = any (v_heads))), '[]'::jsonb),
+    'insurers', coalesce((
+      select jsonb_agg(jsonb_build_object('id', py.id, 'name', py.name) order by py.name)
+      from payer py where py.deleted_at is null and py.type <> 'cash'), '[]'::jsonb),
+    'stores', coalesce((
+      select jsonb_agg(jsonb_build_object('id', l.id, 'name', l.name, 'roomStore', is_room_type(l.type))
+                       order by is_room_type(l.type), l.name)
+      from stock_location l
+      where l.deleted_at is null and (l.type = 'pharmacy' or is_room_type(l.type))
+        and (v_all
+             or (v_pharm and not is_room_type(l.type))
+             or (v_rooms and is_room_type(l.type) and holds_store(v_me, l.id)))), '[]'::jsonb),
+    'categories', coalesce((
+      select jsonb_agg(jsonb_build_object('id', c.id, 'key', coalesce(c.base_group::text, 'other'),
+                                          'nameEn', c.name_en, 'nameKin', c.name_kin, 'nameFr', c.name_fr)
+                       order by c.sort, c.name_en)
+      from service_category c where c.deleted_at is null), '[]'::jsonb)
+  );
+end
+$$;
+revoke all on function report_filter_options() from public, anon;
+grant execute on function report_filter_options() to authenticated;
+
+
+-- ============================================================ 20261222090000_reports_stock_clinical.sql
+-- 0112 · The report centre: the stock / pharmacy and clinical reports.
+--
+-- Frank (owner): "all stock that we have, those that were sold in the past three months or any
+-- other timeframe, and all other kinds of reports that may be made." Every report of the report
+-- centre (/app/reports) is a table the person filters; these functions give its rows (one jsonb
+-- array, camelCase keys) and check the rights again: a report never shows more than the screens.
+--
+-- STOCK / PHARMACY (stock is in pieces everywhere; the web shows the packs beside them)
+--   report_stock_options()                     the stores the caller may report on
+--   report_stock_on_hand(store, by store, days) 1 · one row per medicine (per store when asked)
+--   report_stock_sold(from, to, store, channel, split)
+--                                              2 · medicines handed over to visits, given here,
+--                                                  sold to walk-in buyers: pieces, revenue at the
+--                                                  prices charged, cost of goods, margin
+--   report_stock_movements(from, to, store, type) 3 · the ledger: every movement of the period
+--   report_stock_deliveries(from, to, store)   4 · delivery lines received (GRN), single receipts
+--   report_stock_transfers(from, to, store, status) 5 · transfer and return note lines
+--   report_stock_expiry(store, within, expired only) 6 · batch by batch: expired and expiring
+--   report_stock_to_order(store)               7 · low stock: what to order (pharmacy), to refill
+--                                                  (room stores)
+--   report_stock_write_offs(from, to, store)   8 · write-offs, count differences, lost on the way
+--   report_stock_outside(from, to)             9 · prescribed but bought outside
+-- Rights (as the stock screens): the manager and the pharmacy desk (stock_admin) see every store
+-- and the money at cost (cost value, cost of goods, margin, unit cost); a store holder sees the
+-- stores they hold (1, 2, 3, 6, 8; 4 for the stores they receive into with stock.write), never the
+-- costs. 5, 7 and 9: the manager and the pharmacy desk.
+--
+-- CLINICAL (0088 privacy: a report gives what its reader may see on the screens)
+--   report_clinical_options()                  the clinicians, departments and practitioners the
+--                                                  caller may filter by (and their scope)
+--   report_patients_seen(from, to, clinician, department) 10 · one row per visit and clinician
+--   report_diagnoses(from, to, department, doctor) 11 · cases per diagnosis (ICD-10), new and
+--                                                  follow-up, by sex and age band
+--   report_prescriptions(from, to, supply, prescriber) 12 · one row per prescribed medicine
+--   report_tests(from, to, desk, status, requester) 13 · one row per test (laboratory, ultrasound)
+--   report_vitals(from, to, taker)             14 · one row per set of vital signs
+--   report_bookings(from, to, status, practitioner, source) 15 · bookings and arrivals
+-- Rights: the manager — everything; the HEAD of a department (not the assistant, 0088) — the
+-- visits of their departments (visit_departments); a clinician — their own work (the patients they
+-- saw, the diagnoses they wrote, their prescriptions, the tests they asked for, the vital signs
+-- they took or typed); the laboratory / ultrasound desk — the tests of their desk; the pharmacy
+-- desk — the prescriptions; reception — the bookings; a practitioner — their own bookings.
+--
+-- Errcodes: 42501 not allowed, 22023 the end of the period is before its start.
+
+-- ---------------------------------------------------------------- helpers
+-- The departments the caller is the HEAD of (assistant heads do not see full records, 0088).
+create or replace function report_head_departments()
+returns uuid[]
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(array_agg(sd.department_id), '{}'::uuid[])
+  from staff_department sd
+  join profiles me on me.id = sd.profile_id and me.active
+  join department d on d.id = sd.department_id and d.deleted_at is null
+  where sd.profile_id = auth.uid() and sd.position = 'head'
+$$;
+
+-- A period is checked the same way everywhere.
+create or replace function report_assert_period(p_from date, p_to date)
+returns void
+language plpgsql immutable
+as $$
+begin
+  if p_from is null or p_to is null or p_to < p_from then
+    raise exception 'the end of the period is before its start' using errcode = '22023';
+  end if;
+end
+$$;
+
+-- The reader of a stock report: the manager or the pharmacy desk, or a store holder.
+create or replace function report_assert_stock(p_location_id uuid default null)
+returns void
+language plpgsql stable security definer set search_path = public
+as $$
+begin
+  if not (stock_admin() or coalesce(cardinality(visible_stores()), 0) > 0) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if p_location_id is not null and not may_see_store(p_location_id) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+end
+$$;
+
+-- ---------------------------------------------------------------- stock: the stores
+create or replace function report_stock_options()
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_vis uuid[] := visible_stores();
+begin
+  perform report_assert_stock();
+  return jsonb_build_object(
+    'admin', stock_admin(),
+    'mainPharmacyId', main_pharmacy(),
+    'stores', coalesce((
+      select jsonb_agg(jsonb_build_object('id', l.id, 'name', l.name, 'type', l.type, 'active', l.active,
+                                          'isRoom', is_room_type(l.type), 'isMain', l.is_main)
+                       order by l.active desc, (l.type::text = 'pharmacy') desc, l.name)
+      from stock_location l
+      where l.deleted_at is null and l.type::text <> 'transit' and (v_vis is null or l.id = any (v_vis))
+    ), '[]'::jsonb));
+end
+$$;
+
+-- ---------------------------------------------------------------- 1 · stock on hand
+-- One row per medicine (all the caller's stores together), or per medicine and store (p_by_store,
+-- a chosen store, or a store holder). A medicine with a reorder level and nothing left still shows
+-- (it is to order). p_days: the "expiring soon" window (default: the setting stock.expiry_days).
+create or replace function report_stock_on_hand(
+  p_location_id uuid default null, p_by_store boolean default false, p_days integer default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_admin boolean := stock_admin();
+  v_vis uuid[] := visible_stores();
+  v_days integer := greatest(coalesce(p_days, stock_expiry_days()), 0);
+  v_split boolean := coalesce(p_by_store, false) or p_location_id is not null or not stock_admin();
+  v_main uuid := main_pharmacy();
+  v_stores uuid[];
+begin
+  perform report_assert_stock(p_location_id);
+  select coalesce(array_agg(l.id), '{}'::uuid[]) into v_stores
+  from stock_location l
+  where l.deleted_at is null and l.type::text <> 'transit'
+    and (v_vis is null or l.id = any (v_vis))
+    and (p_location_id is null or l.id = p_location_id);
+  return coalesce((
+    with s as (
+      select s.item_id, s.location_id, s.quantity, s.expiry, coalesce(b.unit_cost, 0) as cost
+      from stock_on_hand s left join batch b on b.id = s.batch_id
+      where s.location_id = any (v_stores) and s.quantity <> 0
+    ), per as (
+      select s.item_id, case when v_split then s.location_id end as location_id,
+             sum(s.quantity)::integer as on_hand,
+             coalesce(sum(s.quantity) filter (where s.expiry is null or s.expiry >= current_date), 0)::integer as usable,
+             coalesce(sum(s.quantity) filter (where s.expiry < current_date), 0)::integer as expired,
+             coalesce(sum(s.quantity) filter (where s.expiry between current_date and current_date + v_days), 0)::integer
+               as expiring,
+             min(s.expiry) filter (where s.quantity > 0 and s.expiry >= current_date) as next_expiry,
+             min(s.expiry) filter (where s.quantity > 0) as earliest_expiry,
+             sum(s.quantity * s.cost) as cost_value
+      from s group by 1, 2
+    ), keys as (
+      select p.item_id, p.location_id from per p
+      union
+      select i.id, case when v_split then v_main end
+      from item i
+      where v_admin and i.active and i.deleted_at is null and i.reorder_level > 0
+        and (not v_split or v_main = any (v_stores))
+      union
+      select m.item_id, case when v_split then m.location_id end
+      from store_item_level m join item i on i.id = m.item_id and i.deleted_at is null
+      where m.location_id = any (v_stores)
+    )
+    select jsonb_agg(jsonb_build_object(
+        'itemId', i.id, 'code', i.code, 'name', i.name_generic || coalesce(' ' || i.strength, ''),
+        'generic', i.name_generic, 'brand', i.name_brand, 'strength', i.strength, 'form', i.form,
+        'unit', i.selling_unit, 'packSize', case when coalesce(i.pack_size, 1) >= 2 then i.pack_size end,
+        'packUnit', i.pack_unit, 'saleMode', i.sale_mode, 'kind', i.kind, 'group', i.atc_group,
+        'active', i.active,
+        'storeId', k.location_id, 'store', l.name, 'storeType', l.type,
+        'onHand', coalesce(p.on_hand, 0), 'usable', coalesce(p.usable, 0), 'expired', coalesce(p.expired, 0),
+        'expiring', coalesce(p.expiring, 0), 'nextExpiry', p.next_expiry, 'earliestExpiry', p.earliest_expiry,
+        'level', x.level, 'low', x.low,
+        'price', pr.price, 'packPrice', case when i.sale_mode <> 'piece' then i.pack_price end,
+        'costValue', case when v_admin then round(coalesce(p.cost_value, 0), 2) end,
+        'sellValue', round(sell_value(coalesce(p.usable, 0), pr.price, i.pack_price, i.pack_size, i.sale_mode))
+      ) order by i.name_generic, i.strength, l.name)
+    from keys k
+    join item i on i.id = k.item_id and i.deleted_at is null
+    left join per p on p.item_id = k.item_id and p.location_id is not distinct from k.location_id
+    left join stock_location l on l.id = k.location_id
+    left join store_item_level m on m.location_id = k.location_id and m.item_id = k.item_id
+    left join lateral (select pf.price from price_for(null, i.id, null) pf) pr on true
+    cross join lateral (
+      select case
+               when not v_split then nullif(i.reorder_level, 0)
+               when l.type::text = 'pharmacy' then nullif(i.reorder_level, 0)
+               when is_room_type(l.type) then m.min_level
+             end as level,
+             case
+               when not v_split then exists (select 1 from items_below_reorder r where r.item_id = i.id)
+               when l.type::text = 'pharmacy' then i.reorder_level > 0 and coalesce(p.usable, 0) <= i.reorder_level
+               when is_room_type(l.type) then m.min_level is not null and coalesce(p.usable, 0) < m.min_level
+               else false
+             end as low
+    ) x
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 2 · medicines sold and given
+-- What left the stock to patients in the period, by channel:
+--   handover  the pharmacy handed it over to a visit (medication_dispense still standing: a medicine
+--             returned leaves the list); revenue = its bill lines (source medication_dispense)
+--   here      given in a room from a room store (consumption of a prescription line, not put back);
+--             revenue = its bill lines (source medication_request)
+--   walkin    a walk-in sale handed over (counter_sale); revenue = the sale lines
+-- Revenue is at the prices charged (patient and insurer shares together); a bill credited in full
+-- counts nothing. Cost of goods = the pieces at the cost of the batches they came from.
+-- p_split: one row per medicine, channel and store (else one row per medicine).
+create or replace function report_stock_sold(
+  p_from date, p_to date, p_location_id uuid default null, p_channel text default null, p_split boolean default false
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_admin boolean := stock_admin();
+  v_vis uuid[] := visible_stores();
+  v_split boolean := coalesce(p_split, false);
+begin
+  perform report_assert_stock(p_location_id);
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    with ev as (
+      select d.item_id,
+             (select m.from_location_id from stock_movement m
+              where m.dispense_id = d.id and m.type = 'dispense' and m.deleted_at is null limit 1) as location_id,
+             'handover'::text as channel, d.quantity::numeric as pieces,
+             (select coalesce(sum(m.quantity * coalesce(m.unit_cost, b.unit_cost, 0)), 0)
+              from stock_movement m left join batch b on b.id = m.batch_id
+              where m.dispense_id = d.id and m.type = 'dispense' and m.deleted_at is null) as cost,
+             (select coalesce(sum(round(l.quantity * l.unit_price)), 0)
+              from invoice_line l join invoice inv on inv.id = l.invoice_id and inv.status <> 'credited'
+              where l.source_type = 'medication_dispense' and l.source_id = d.id and l.deleted_at is null) as revenue
+      from medication_dispense d
+      where d.deleted_at is null and (d.created_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      union all
+      select g.item_id, g.location_id, 'here', g.pieces, g.cost,
+             (select coalesce(sum(round(l.quantity * l.unit_price)), 0)
+              from invoice_line l join invoice inv on inv.id = l.invoice_id and inv.status <> 'credited'
+              where l.source_type = 'medication_request' and l.source_id = g.request_id and l.deleted_at is null)
+      from (
+        select m.medication_request_id as request_id, m.item_id, m.from_location_id as location_id,
+               sum(m.quantity)::numeric as pieces, sum(m.quantity * coalesce(m.unit_cost, b.unit_cost, 0)) as cost
+        from stock_movement m left join batch b on b.id = m.batch_id
+        where m.deleted_at is null and m.type = 'consumption' and m.medication_request_id is not null
+          and (m.moved_at at time zone 'Africa/Kigali')::date between p_from and p_to
+          and not exists (select 1 from stock_movement r
+                          where r.medication_request_id = m.medication_request_id and r.type = 'return'
+                            and r.dispense_id is null and r.deleted_at is null)
+        group by 1, 2, 3
+      ) g
+      union all
+      select x.item_id, s.location_id, 'walkin', x.pieces,
+             (select coalesce(sum(h.quantity * coalesce(h.unit_cost, 0)), 0)
+              from counter_sale_held(s.id) h where h.item_id = x.item_id),
+             x.revenue
+      from counter_sale s
+      join (select sale_id, item_id, sum(quantity)::numeric as pieces, sum(line_total) as revenue
+            from counter_sale_line where deleted_at is null group by 1, 2) x on x.sale_id = s.id
+      where s.deleted_at is null and s.status = 'handed_over'
+        and (s.handed_over_at at time zone 'Africa/Kigali')::date between p_from and p_to
+    ), seen as (
+      select * from ev
+      where (v_vis is null or ev.location_id = any (v_vis))
+        and (p_location_id is null or ev.location_id = p_location_id)
+        and (p_channel is null or p_channel = '' or ev.channel = p_channel)
+    ), agg as (
+      select item_id, case when v_split then channel end as channel,
+             case when v_split then location_id end as location_id,
+             case when count(distinct location_id) = 1 then min(location_id::text)::uuid end as only_store,
+             sum(pieces) as pieces,
+             coalesce(sum(pieces) filter (where channel = 'handover'), 0) as handover,
+             coalesce(sum(pieces) filter (where channel = 'here'), 0) as here,
+             coalesce(sum(pieces) filter (where channel = 'walkin'), 0) as walkin,
+             count(*)::integer as times,
+             sum(revenue) as revenue, sum(cost) as cost
+      from seen group by 1, 2, 3
+    )
+    select jsonb_agg(jsonb_build_object(
+        'itemId', i.id, 'code', i.code, 'name', i.name_generic || coalesce(' ' || i.strength, ''),
+        'unit', i.selling_unit, 'packSize', case when coalesce(i.pack_size, 1) >= 2 then i.pack_size end,
+        'packUnit', i.pack_unit, 'kind', i.kind, 'group', i.atc_group,
+        'channel', a.channel, 'storeId', coalesce(a.location_id, a.only_store), 'store', l.name,
+        'pieces', a.pieces, 'handover', a.handover, 'here', a.here, 'walkin', a.walkin, 'times', a.times,
+        'revenue', round(a.revenue),
+        'cost', case when v_admin then round(a.cost, 2) end,
+        'margin', case when v_admin then round(a.revenue - a.cost, 2) end
+      ) order by a.revenue desc, i.name_generic, l.name)
+    from agg a
+    join item i on i.id = a.item_id
+    left join stock_location l on l.id = coalesce(a.location_id, a.only_store)
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 3 · stock movements (the ledger)
+-- Every movement of the period in the caller's stores, with its kind:
+--   received (a delivery), transfer, dispensed (handed over to a visit), sold (a walk-in sale),
+--   returned (back into a store), given_here, written_off (a write-off, or lost on the way),
+--   count (a count correction, up or down).
+-- With a store chosen, change = + what came in, − what went out (the net change of the store).
+create or replace function report_stock_movements(
+  p_from date, p_to date, p_location_id uuid default null, p_type text default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_admin boolean := stock_admin();
+begin
+  perform report_assert_stock(p_location_id);
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    select jsonb_agg(x.j order by x.at desc) from (
+      select m.moved_at as at, jsonb_build_object(
+          'id', m.id, 'at', m.moved_at, 'kind', k.kind, 'type', m.type,
+          'itemId', m.item_id, 'name', i.name_generic || coalesce(' ' || i.strength, ''), 'code', i.code,
+          'unit', i.selling_unit, 'packSize', case when coalesce(i.pack_size, 1) >= 2 then i.pack_size end,
+          'packUnit', i.pack_unit,
+          'batch', b.batch_no, 'expiry', b.expiry,
+          'fromId', m.from_location_id, 'from', lf.name, 'toId', m.to_location_id, 'to', lt.name,
+          'quantity', m.quantity,
+          'change', case when p_location_id is null then null
+                         when m.to_location_id = p_location_id then m.quantity else -m.quantity end,
+          'reason', nullif(regexp_replace(coalesce(m.reason, ''), '^count: ', ''), ''),
+          'document', coalesce((select t.number from stock_transfer t where t.id = m.stock_transfer_id),
+                               (select g.number from goods_receipt g where g.id = m.goods_receipt_id),
+                               (select cs.number from counter_sale cs where cs.id = m.counter_sale_id)),
+          'by', pr.full_name,
+          'unitCost', case when v_admin then coalesce(m.unit_cost, b.unit_cost) end,
+          'value', case when v_admin then round(m.quantity * coalesce(m.unit_cost, b.unit_cost, 0), 2) end
+        ) as j
+      from stock_movement m
+      join item i on i.id = m.item_id
+      left join batch b on b.id = m.batch_id
+      left join stock_location lf on lf.id = m.from_location_id
+      left join stock_location lt on lt.id = m.to_location_id
+      left join profiles pr on pr.id = m.created_by
+      cross join lateral (
+        select case
+                 when m.type = 'receipt' then 'received'
+                 when m.type = 'transfer' then 'transfer'
+                 when m.type = 'dispense' and m.counter_sale_id is not null then 'sold'
+                 when m.type = 'dispense' then 'dispensed'
+                 when m.type = 'return' then 'returned'
+                 when m.type = 'consumption' and m.medication_request_id is not null then 'given_here'
+                 when m.type = 'consumption' then 'written_off'
+                 when m.type = 'adjustment' and coalesce(m.reason, '') like 'count:%' then 'count'
+                 else 'written_off'
+               end as kind
+      ) k
+      where m.deleted_at is null
+        and (m.moved_at at time zone 'Africa/Kigali')::date between p_from and p_to
+        and (p_location_id is null or m.from_location_id = p_location_id or m.to_location_id = p_location_id)
+        and (p_type is null or p_type = '' or k.kind = p_type)
+        and (v_admin or holds_store(auth.uid(), m.from_location_id) or holds_store(auth.uid(), m.to_location_id))
+      order by m.moved_at desc
+      limit 5000
+    ) x
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 4 · deliveries received
+-- One row per delivery line (GRN), and per single receipt made without a delivery note. The
+-- manager and the pharmacy desk: every store, with the costs; a store holder who receives
+-- (stock.write, e.g. the laboratory's reagents): their stores, without the costs.
+create or replace function report_stock_deliveries(p_from date, p_to date, p_location_id uuid default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_admin boolean := stock_admin();
+begin
+  perform report_assert_stock(p_location_id);
+  if not (v_admin or has_perm('stock.write')) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    select jsonb_agg(x.j order by x.at desc, x.name) from (
+      select g.received_on as at, i.name_generic as name, jsonb_build_object(
+          'id', gl.id, 'at', g.received_on, 'deliveredOn', g.delivered_on, 'number', g.number,
+          'reference', g.reference, 'supplier', coalesce(g.supplier_name, s.name),
+          'storeId', g.location_id, 'store', l.name,
+          'itemId', i.id, 'code', i.code, 'name', i.name_generic || coalesce(' ' || i.strength, ''),
+          'unit', i.selling_unit, 'packUnit', i.pack_unit,
+          'packSize', case when gl.pack_size >= 2 then gl.pack_size
+                           when coalesce(i.pack_size, 1) >= 2 then i.pack_size end,
+          'packs', case when gl.unit = 'box' then gl.packs end,
+          'batch', gl.batch_no, 'expiry', gl.expiry, 'pieces', gl.units,
+          'unitCost', case when v_admin then gl.unit_cost end,
+          'packCost', case when v_admin then gl.pack_cost end,
+          'lineCost', case when v_admin then gl.line_cost end,
+          'by', pr.full_name, 'note', g.note
+        ) as j
+      from goods_receipt g
+      join goods_receipt_line gl on gl.receipt_id = g.id and gl.deleted_at is null
+      join item i on i.id = gl.item_id
+      left join supplier s on s.id = g.supplier_id
+      left join stock_location l on l.id = g.location_id
+      left join profiles pr on pr.id = g.created_by
+      where g.deleted_at is null
+        and (g.received_on at time zone 'Africa/Kigali')::date between p_from and p_to
+        and (p_location_id is null or g.location_id = p_location_id)
+        and (v_admin or holds_store(auth.uid(), g.location_id))
+      union all
+      select m.moved_at, i.name_generic, jsonb_build_object(
+          'id', m.id, 'at', m.moved_at, 'deliveredOn', null, 'number', null, 'reference', null,
+          'supplier', coalesce(s.name, nullif(m.reason, '')),
+          'storeId', m.to_location_id, 'store', l.name,
+          'itemId', i.id, 'code', i.code, 'name', i.name_generic || coalesce(' ' || i.strength, ''),
+          'unit', i.selling_unit, 'packUnit', i.pack_unit,
+          'packSize', case when coalesce(i.pack_size, 1) >= 2 then i.pack_size end, 'packs', null,
+          'batch', b.batch_no, 'expiry', b.expiry, 'pieces', m.quantity,
+          'unitCost', case when v_admin then coalesce(m.unit_cost, b.unit_cost) end,
+          'packCost', null,
+          'lineCost', case when v_admin then round(m.quantity * coalesce(m.unit_cost, b.unit_cost, 0), 2) end,
+          'by', pr.full_name, 'note', null
+        )
+      from stock_movement m
+      join item i on i.id = m.item_id
+      left join batch b on b.id = m.batch_id
+      left join supplier s on s.id = b.supplier_id
+      left join stock_location l on l.id = m.to_location_id
+      left join profiles pr on pr.id = m.created_by
+      where m.deleted_at is null and m.type = 'receipt' and m.goods_receipt_id is null
+        and (m.moved_at at time zone 'Africa/Kigali')::date between p_from and p_to
+        and (p_location_id is null or m.to_location_id = p_location_id)
+        and (v_admin or holds_store(auth.uid(), m.to_location_id))
+    ) x
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 5 · transfers to stores
+-- One row per line of a transfer note (pharmacy → room store) or return note (room store →
+-- pharmacy) sent in the period, with the prices of the day it was written (0107): the manager and
+-- the pharmacy desk.
+create or replace function report_stock_transfers(
+  p_from date, p_to date, p_location_id uuid default null, p_status text default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+begin
+  if not stock_admin() then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+        'id', x.id, 'number', t.number, 'direction', t.direction, 'status', t.status, 'at', t.sent_at,
+        'fromId', t.from_location_id, 'from', lf.name, 'toId', t.to_location_id, 'to', lt.name,
+        'itemId', i.id, 'code', i.code, 'name', i.name_generic || coalesce(' ' || i.strength, ''),
+        'unit', i.selling_unit, 'packUnit', i.pack_unit,
+        'packSize', case when coalesce(x.pack_size, i.pack_size, 1) >= 2 then coalesce(x.pack_size, i.pack_size) end,
+        'inPacks', x.in_packs, 'batch', b.batch_no, 'expiry', b.expiry,
+        'pieces', x.quantity, 'received', x.received_quantity,
+        'costValue', round(x.quantity * x.unit_cost, 2),
+        'sellValue', round(sell_value(x.quantity, x.unit_price, x.pack_price, x.pack_size, x.sale_mode)),
+        'sentBy', (select full_name from profiles where id = t.created_by),
+        'receivedBy', (select full_name from profiles where id = t.received_by), 'receivedAt', t.confirmed_at,
+        'difference', x.difference_action, 'differenceReason', x.difference_reason,
+        'cancelReason', t.cancel_reason
+      ) order by t.sent_at desc, t.number, i.name_generic)
+    from stock_transfer t
+    join stock_transfer_line x on x.transfer_id = t.id and x.deleted_at is null
+    join item i on i.id = x.item_id
+    left join batch b on b.id = x.batch_id
+    join stock_location lf on lf.id = t.from_location_id
+    join stock_location lt on lt.id = t.to_location_id
+    where t.deleted_at is null
+      and (t.sent_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      and (p_location_id is null or t.from_location_id = p_location_id or t.to_location_id = p_location_id)
+      and (p_status is null or p_status = '' or t.status = p_status)
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 6 · expiring and expired
+-- Batch by batch in the caller's stores: p_within = expiring within so many days (the expired
+-- included), p_expired_only = only what has expired. status: expired / soon (within the setting
+-- stock.expiry_days) / ok.
+create or replace function report_stock_expiry(
+  p_location_id uuid default null, p_within integer default null, p_expired_only boolean default false
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_admin boolean := stock_admin();
+  v_vis uuid[] := visible_stores();
+  v_days integer := stock_expiry_days();
+begin
+  perform report_assert_stock(p_location_id);
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+        'itemId', i.id, 'code', i.code, 'name', i.name_generic || coalesce(' ' || i.strength, ''),
+        'unit', i.selling_unit, 'packSize', case when coalesce(i.pack_size, 1) >= 2 then i.pack_size end,
+        'packUnit', i.pack_unit, 'kind', i.kind,
+        'batch', b.batch_no, 'storeId', s.location_id, 'store', l.name, 'storeType', l.type,
+        'expiry', s.expiry, 'daysLeft', s.expiry - current_date,
+        'status', case when s.expiry < current_date then 'expired'
+                       when s.expiry <= current_date + v_days then 'soon' else 'ok' end,
+        'pieces', s.quantity,
+        'costValue', case when v_admin then round(s.quantity * coalesce(b.unit_cost, 0), 2) end,
+        'sellValue', round(sell_value(s.quantity, pr.price, i.pack_price, i.pack_size, i.sale_mode))
+      ) order by s.expiry nulls last, i.name_generic, l.name)
+    from stock_on_hand s
+    join item i on i.id = s.item_id
+    join stock_location l on l.id = s.location_id and l.deleted_at is null and l.type::text <> 'transit'
+    left join batch b on b.id = s.batch_id
+    left join lateral (select pf.price from price_for(null, i.id, null) pf) pr on true
+    where s.quantity > 0 and s.expiry is not null
+      and (v_vis is null or s.location_id = any (v_vis))
+      and (p_location_id is null or s.location_id = p_location_id)
+      and (not coalesce(p_expired_only, false) or s.expiry < current_date)
+      and (p_within is null or s.expiry <= current_date + greatest(p_within, 0))
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 7 · low stock: what to order
+-- The pharmacy (all open pharmacy stores together): the medicines at or below their reorder level,
+-- with what to order (reorder_suggestions: up to the maximum level, else twice the level or two
+-- months of use), the last supplier and cost. Each room store: the medicines under the store's
+-- minimum, with a refill up to twice the minimum. The manager and the pharmacy desk.
+create or replace function report_stock_to_order(p_location_id uuid default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_type text;
+begin
+  if not stock_admin() then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if p_location_id is not null then
+    select l.type::text into v_type from stock_location l where l.id = p_location_id and l.deleted_at is null;
+  end if;
+  return coalesce((
+    select jsonb_agg(z.j order by z.scope, z.ratio, z.name) from (
+      select 'a'::text as scope, (x ->> 'onHand')::numeric / greatest((x ->> 'level')::numeric, 1) as ratio,
+             i.name_generic as name,
+             x || jsonb_build_object('name', x ->> 'item', 'packUnit', i.pack_unit, 'kind', i.kind,
+                                     'storeId', null, 'store', null, 'scope', 'pharmacy',
+                                     'packSize', case when coalesce(i.pack_size, 1) >= 2 then i.pack_size end) as j
+      from jsonb_array_elements(reorder_suggestions()) x
+      join item i on i.id = (x ->> 'itemId')::uuid
+      where p_location_id is null or v_type = 'pharmacy'
+      union all
+      select 'b', u.q::numeric / greatest(m.min_level, 1), i.name_generic,
+             jsonb_build_object(
+               'itemId', i.id, 'name', i.name_generic || coalesce(' ' || i.strength, ''), 'code', i.code,
+               'unit', i.selling_unit, 'packUnit', i.pack_unit, 'kind', i.kind,
+               'packSize', case when coalesce(i.pack_size, 1) >= 2 then i.pack_size end,
+               'storeId', l.id, 'store', l.name, 'scope', 'room',
+               'onHand', u.q, 'level', m.min_level, 'maxLevel', null, 'inRooms', null, 'monthlyUse', null,
+               'suggested', greatest(0, 2 * m.min_level - u.q),
+               'lastSupplier', null,
+               'lastCost', (select coalesce(mv.unit_cost, b.unit_cost) from stock_movement mv
+                            left join batch b on b.id = mv.batch_id
+                            where mv.item_id = i.id and mv.type = 'receipt' and mv.deleted_at is null
+                            order by mv.moved_at desc limit 1),
+               'lastReceivedAt', null, 'estimatedCost', null)
+      from store_item_level m
+      join stock_location l on l.id = m.location_id and l.active and l.deleted_at is null
+      join item i on i.id = m.item_id and i.active and i.deleted_at is null
+      cross join lateral (select usable_stock(m.item_id, m.location_id) as q) u
+      where u.q < m.min_level and (p_location_id is null or m.location_id = p_location_id)
+    ) z
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 8 · write-offs and count differences
+-- What left (or came back into) a store other than by being given or sold: written off with a
+-- reason (expired, damaged…), a count correction (up or down), lost on the way (a transfer note
+-- received with less). quantity: − out of the store, + into it.
+create or replace function report_stock_write_offs(p_from date, p_to date, p_location_id uuid default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_admin boolean := stock_admin();
+begin
+  perform report_assert_stock(p_location_id);
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+        'id', m.id, 'at', m.moved_at,
+        'kind', case when m.type = 'consumption' then 'written_off'
+                     when coalesce(m.reason, '') like 'count:%' then 'count' else 'lost' end,
+        'itemId', i.id, 'code', i.code, 'name', i.name_generic || coalesce(' ' || i.strength, ''),
+        'unit', i.selling_unit, 'packSize', case when coalesce(i.pack_size, 1) >= 2 then i.pack_size end,
+        'packUnit', i.pack_unit, 'itemKind', i.kind,
+        'batch', b.batch_no, 'expiry', b.expiry,
+        'storeId', coalesce(m.from_location_id, m.to_location_id), 'store', l.name,
+        'quantity', case when m.to_location_id is not null then m.quantity else -m.quantity end,
+        'reason', nullif(regexp_replace(coalesce(m.reason, ''), '^count: ', ''), ''),
+        'costValue', case when v_admin then round(case when m.to_location_id is not null then 1 else -1 end
+                                                  * m.quantity * coalesce(m.unit_cost, b.unit_cost, 0), 2) end,
+        'by', pr.full_name
+      ) order by m.moved_at desc)
+    from stock_movement m
+    join item i on i.id = m.item_id
+    left join batch b on b.id = m.batch_id
+    left join stock_location l on l.id = coalesce(m.from_location_id, m.to_location_id)
+    left join profiles pr on pr.id = m.created_by
+    where m.deleted_at is null
+      and ((m.type = 'consumption' and m.medication_request_id is null) or m.type = 'adjustment')
+      and (m.moved_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      and (p_location_id is null or coalesce(m.from_location_id, m.to_location_id) = p_location_id)
+      and (v_admin or holds_store(auth.uid(), coalesce(m.from_location_id, m.to_location_id)))
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 9 · bought outside
+-- The medicines prescribed to be bought outside (supply 'outside', not cancelled) in the period:
+-- how many times, how much, for how many patients, by whom, and how often the pharmacy had none.
+-- The manager and the pharmacy desk.
+create or replace function report_stock_outside(p_from date, p_to date)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+begin
+  if not stock_admin() then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+        'name', x.name, 'itemId', x.item_id, 'code', x.code, 'inClinic', x.item_id is not null,
+        'unit', x.unit, 'times', x.times, 'quantity', x.quantity, 'patients', x.patients,
+        'prescribers', x.prescribers, 'lastAt', x.last_at, 'notGiven', x.not_given
+      ) order by x.times desc, x.quantity desc, x.name)
+    from (
+      select min(rx_label(m)) as name, m.item_id, coalesce(min(i.code), min(m.reference_code)) as code,
+             min(i.selling_unit) as unit,
+             count(*)::integer as times, sum(m.quantity) as quantity,
+             count(distinct e.patient_id)::integer as patients,
+             string_agg(distinct pr.full_name, ', ') as prescribers,
+             max(m.created_at) as last_at,
+             count(*) filter (where m.not_given_at is not null or m.split_from is not null)::integer as not_given
+      from medication_request m
+      join encounter e on e.id = m.encounter_id
+      left join item i on i.id = m.item_id
+      left join profiles pr on pr.id = coalesce(m.prescriber_id, m.created_by)
+      where m.deleted_at is null and m.supply = 'outside' and m.cancelled_at is null
+        and (m.created_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      group by m.item_id, case when m.item_id is null then lower(coalesce(m.reference_code, rx_label(m))) end
+    ) x
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- clinical: who the caller may filter by
+-- scope: all (the manager), departments (a head: their departments' visits, and their own work),
+-- own (a clinician, reception, a practitioner: their own). clinicians: the staff (names only, as on
+-- every screen: the rows stay within the scope); departments: all (manager) or the ones they head;
+-- practitioners: the bookable calendars the caller may read (manager and reception: all; a
+-- practitioner: their own).
+create or replace function report_clinical_options()
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_mgr boolean := is_manager();
+  v_heads uuid[] := report_head_departments();
+  v_rec boolean := may_use_desk('reception');
+begin
+  if v_me is null then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return jsonb_build_object(
+    'scope', case when v_mgr then 'all' when cardinality(v_heads) > 0 then 'departments' else 'own' end,
+    'me', v_me,
+    'clinicians', coalesce((
+      select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.full_name, 'role', p.role) order by p.full_name)
+      from profiles p
+      where p.active and p.deleted_at is null and p.role::text <> 'cashier'
+    ), '[]'::jsonb),
+    'departments', coalesce((
+      select jsonb_agg(jsonb_build_object('id', d.id, 'name', d.name) order by d.name)
+      from department d
+      where d.deleted_at is null and d.active and (v_mgr or d.id = any (v_heads))
+    ), '[]'::jsonb),
+    'practitioners', coalesce((
+      select jsonb_agg(jsonb_build_object('id', pr.id, 'name', coalesce(pr.title || ' ', '') || pr.names,
+                                          'userId', pr.user_id) order by pr.names)
+      from practitioner pr
+      where pr.deleted_at is null and pr.active and (v_mgr or v_rec or pr.user_id = v_me)
+    ), '[]'::jsonb));
+end
+$$;
+
+-- The reader of a clinical report: the manager, a head, or a clinical reader (their own work).
+create or replace function report_assert_clinical()
+returns void
+language plpgsql stable security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null
+     or not (is_manager() or cardinality(report_head_departments()) > 0 or clinical_reader()) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+end
+$$;
+
+-- ---------------------------------------------------------------- 10 · patients seen
+-- One row per visit (arrived in the period) and clinician who saw the patient: took them at a
+-- treating desk (consultation, dental, theatre, nursing, beds) or the ultrasound desk, or wrote a
+-- diagnosis. prescriptions / tests: what that clinician prescribed and asked for in the visit.
+-- outcome: referred (that clinician handed the patient on to another treating desk or colleague),
+-- open (still in the clinic), left (closed before the clinical work was finished: no primary
+-- diagnosis, or the visit says why the patient left), finished.
+-- Rows: the manager all; a head the visits of their departments; everyone their own.
+create or replace function report_patients_seen(
+  p_from date, p_to date, p_clinician uuid default null, p_department uuid default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_mgr boolean := is_manager();
+  v_heads uuid[] := report_head_departments();
+begin
+  perform report_assert_clinical();
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    with enc as (
+      select e.id, e.patient_id, e.arrived_at, e.reference, e.status, e.clinical_done_at, e.left_reason
+      from encounter e
+      where e.deleted_at is null and (e.arrived_at at time zone 'Africa/Kigali')::date between p_from and p_to
+    ), seen as (
+      select q.encounter_id, q.taken_by as clinician_id, min(coalesce(q.started_at, q.created_at)) as seen_at,
+             (array_agg(q.station::text order by q.created_at))[1] as station
+      from queue_entry q join enc on enc.id = q.encounter_id
+      where q.deleted_at is null and q.taken_by is not null
+        and q.station in ('consultation', 'dental', 'theatre', 'nursing', 'beds', 'ultrasound')
+      group by 1, 2
+      union all
+      select c.encounter_id, c.created_by, min(c.created_at), null
+      from condition c join enc on enc.id = c.encounter_id
+      where c.deleted_at is null and c.created_by is not null
+        and not exists (select 1 from queue_entry q
+                        where q.encounter_id = c.encounter_id and q.deleted_at is null and q.taken_by = c.created_by
+                          and q.station in ('consultation', 'dental', 'theatre', 'nursing', 'beds', 'ultrasound'))
+      group by 1, 2
+    ), r as (
+      select s.*, e.patient_id, e.arrived_at, e.reference, e.status, e.clinical_done_at, e.left_reason,
+             visit_departments(e.id) as depts
+      from seen s join enc e on e.id = s.encounter_id
+    )
+    select jsonb_agg(jsonb_build_object(
+        'encounterId', r.encounter_id, 'visitAt', r.arrived_at, 'seenAt', r.seen_at, 'reference', r.reference,
+        'patientId', p.id, 'patient', p.surname || ' ' || p.given_names, 'fileNo', p.file_number, 'sex', p.sex,
+        'age', case when p.birth_date is not null
+                    then extract(year from age((r.arrived_at at time zone 'Africa/Kigali')::date, p.birth_date))::integer end,
+        'clinicianId', r.clinician_id, 'clinician', pr.full_name, 'clinicianRole', pr.role, 'desk', r.station,
+        'department', (select string_agg(d.name, ', ' order by d.name) from department d where d.id = any (r.depts)),
+        'diagnosis', (select string_agg(coalesce(c.icd10_code || ' ', '') || c.text, '; '
+                                        order by (c.type = 'primary') desc, c.created_at)
+                      from condition c where c.encounter_id = r.encounter_id and c.deleted_at is null),
+        'prescriptions', (select count(*) from medication_request m
+                          where m.encounter_id = r.encounter_id and m.deleted_at is null and m.cancelled_at is null
+                            and coalesce(m.prescriber_id, m.created_by) = r.clinician_id)::integer,
+        'tests', (select count(*) from service_request x
+                  where x.encounter_id = r.encounter_id and x.deleted_at is null
+                    and x.requester_id = r.clinician_id)::integer,
+        'outcome', case
+            when exists (select 1 from queue_entry q2
+                         where q2.encounter_id = r.encounter_id and q2.deleted_at is null
+                           and q2.referred_by = r.clinician_id and q2.taken_by is distinct from r.clinician_id
+                           and q2.station in ('consultation', 'dental', 'theatre', 'nursing', 'beds')) then 'referred'
+            when r.status = 'open' and r.clinical_done_at is null then 'open'
+            when r.left_reason is not null
+                 or (r.clinical_done_at is null
+                     and not exists (select 1 from condition c where c.encounter_id = r.encounter_id
+                                     and c.deleted_at is null and c.type = 'primary')) then 'left'
+            else 'finished' end
+      ) order by r.arrived_at desc, p.surname, pr.full_name)
+    from r
+    join patient p on p.id = r.patient_id
+    join profiles pr on pr.id = r.clinician_id
+    where (v_mgr or r.clinician_id = v_me or r.depts && v_heads)
+      and (p_clinician is null or r.clinician_id = p_clinician)
+      and (p_department is null or p_department = any (r.depts))
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 11 · diagnoses (ICD-10)
+-- Cases per diagnosis (its ICD-10 code, else its words) in the visits that arrived in the period:
+-- a case = a visit with that diagnosis; new = the patient had not had it in an earlier visit,
+-- follow-up = they had; by sex and age band (age on the day of the visit). The manager all; a
+-- head their departments' visits; a doctor the diagnoses they wrote.
+create or replace function report_diagnoses(
+  p_from date, p_to date, p_department uuid default null, p_doctor uuid default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_mgr boolean := is_manager();
+  v_heads uuid[] := report_head_departments();
+begin
+  perform report_assert_clinical();
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    with c as (
+      select c.encounter_id, upper(nullif(trim(c.icd10_code), '')) as code, trim(c.text) as text, c.type,
+             c.created_by, e.patient_id, e.arrived_at, p.sex::text as sex,
+             case when p.birth_date is not null
+                  then extract(year from age((e.arrived_at at time zone 'Africa/Kigali')::date, p.birth_date))::integer end
+               as age,
+             visit_departments(e.id) as depts
+      from condition c
+      join encounter e on e.id = c.encounter_id and e.deleted_at is null
+      join patient p on p.id = e.patient_id
+      where c.deleted_at is null and (e.arrived_at at time zone 'Africa/Kigali')::date between p_from and p_to
+    ), v as (
+      select c.*, coalesce(c.code, lower(c.text)) as k,
+             exists (select 1 from condition c2 join encounter e2 on e2.id = c2.encounter_id and e2.deleted_at is null
+                     where e2.patient_id = c.patient_id and e2.arrived_at < c.arrived_at and c2.deleted_at is null
+                       and coalesce(upper(nullif(trim(c2.icd10_code), '')), lower(trim(c2.text)))
+                           = coalesce(c.code, lower(c.text))) as follow_up
+      from c
+      where (v_mgr or c.created_by = v_me or c.depts && v_heads)
+        and (p_doctor is null or c.created_by = p_doctor)
+        and (p_department is null or p_department = any (c.depts))
+    )
+    select jsonb_agg(jsonb_build_object(
+        'code', x.code, 'diagnosis', x.text, 'cases', x.cases, 'patients', x.patients,
+        'newCases', x.new_cases, 'followUp', x.follow_up, 'primary', x.prim,
+        'female', x.female, 'male', x.male, 'otherSex', x.cases - x.female - x.male,
+        'age0to4', x.a0, 'age5to14', x.a5, 'age15to24', x.a15, 'age25to49', x.a25, 'age50plus', x.a50,
+        'ageUnknown', x.au
+      ) order by x.cases desc, x.text)
+    from (
+      select v.k, min(v.code) as code, mode() within group (order by v.text) as text,
+             count(distinct v.encounter_id)::integer as cases,
+             count(distinct v.patient_id)::integer as patients,
+             count(distinct v.encounter_id) filter (where not v.follow_up)::integer as new_cases,
+             count(distinct v.encounter_id) filter (where v.follow_up)::integer as follow_up,
+             count(distinct v.encounter_id) filter (where v.type = 'primary')::integer as prim,
+             count(distinct v.encounter_id) filter (where v.sex = 'female')::integer as female,
+             count(distinct v.encounter_id) filter (where v.sex = 'male')::integer as male,
+             count(distinct v.encounter_id) filter (where v.age < 5)::integer as a0,
+             count(distinct v.encounter_id) filter (where v.age between 5 and 14)::integer as a5,
+             count(distinct v.encounter_id) filter (where v.age between 15 and 24)::integer as a15,
+             count(distinct v.encounter_id) filter (where v.age between 25 and 49)::integer as a25,
+             count(distinct v.encounter_id) filter (where v.age >= 50)::integer as a50,
+             count(distinct v.encounter_id) filter (where v.age is null)::integer as au
+      from v group by v.k
+    ) x
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 12 · prescriptions
+-- One row per prescribed medicine (prescription line) written in the period: how it is supplied
+-- (the clinic's pharmacy, given here from a room store, bought outside) and where it stands
+-- (given, part given, waiting, not given: the pharmacy had none, bought outside, cancelled). The
+-- manager all; a head their departments' visits; the pharmacy desk all; a prescriber their own.
+create or replace function report_prescriptions(
+  p_from date, p_to date, p_supply text default null, p_prescriber uuid default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_mgr boolean := is_manager();
+  v_heads uuid[] := report_head_departments();
+  v_rx boolean := may_use_desk('pharmacy');
+begin
+  if not v_rx then
+    perform report_assert_clinical();
+  end if;
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+        'id', m.id, 'at', m.created_at, 'encounterId', e.id, 'reference', e.reference,
+        'patientId', p.id, 'patient', p.surname || ' ' || p.given_names, 'fileNo', p.file_number,
+        'itemId', m.item_id, 'medicine', rx_label(m), 'code', coalesce(i.code, m.reference_code),
+        'unit', i.selling_unit, 'packSize', case when coalesce(i.pack_size, 1) >= 2 then i.pack_size end,
+        'packUnit', i.pack_unit,
+        'quantity', m.quantity,
+        'given', case when m.supply = 'room' then case when m.given_at is not null then m.quantity else 0 end
+                      when m.supply = 'pharmacy' then coalesce(m.quantity_given, 0) end,
+        'supply', m.supply, 'status', st.status,
+        'prescriberId', coalesce(m.prescriber_id, m.created_by), 'prescriber', pr.full_name,
+        'dose', nullif(concat_ws(' · ', nullif(m.dose, ''), nullif(m.frequency, ''),
+                                 case when m.duration_days is not null then m.duration_days || ' d' end,
+                                 nullif(m.route, '')), ''),
+        'instructions', m.instructions,
+        'reason', coalesce(m.cancel_reason, m.not_given_reason, m.supply_reason)
+      ) order by m.created_at desc, p.surname)
+    from medication_request m
+    join encounter e on e.id = m.encounter_id and e.deleted_at is null
+    join patient p on p.id = e.patient_id
+    left join item i on i.id = m.item_id
+    left join profiles pr on pr.id = coalesce(m.prescriber_id, m.created_by)
+    cross join lateral (
+      select case
+               when m.cancelled_at is not null then 'cancelled'
+               when m.supply = 'outside' then 'outside'
+               when m.supply = 'room' then case when m.given_at is not null then 'given' else 'waiting' end
+               when m.not_given_at is not null then 'not_given'
+               when m.given_at is not null or coalesce(m.quantity_given, 0) >= ceil(m.quantity) then 'given'
+               when coalesce(m.quantity_given, 0) > 0 then 'part'
+               else 'waiting'
+             end as status
+    ) st
+    where m.deleted_at is null
+      and (m.created_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      and (v_mgr or v_rx or coalesce(m.prescriber_id, m.created_by) = v_me
+           or (cardinality(v_heads) > 0 and visit_departments(e.id) && v_heads))
+      and (p_supply is null or p_supply = '' or m.supply = p_supply)
+      and (p_prescriber is null or coalesce(m.prescriber_id, m.created_by) = p_prescriber)
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 13 · tests and exams
+-- One row per test asked in the period: its desk (laboratory, ultrasound, or the desk it is done
+-- at), when the sample was taken (the first move past "ordered"), the result written and
+-- validated, the turnaround (asked → validated, else → written, in minutes) and the result (its
+-- conclusion, else its findings: only for the manager, a head in charge, the clinician who asked
+-- for it and the desk that did it). Rows: the manager all; a head their departments' visits; the
+-- laboratory / ultrasound desk the tests of their desk; a clinician the tests they asked for.
+create or replace function report_tests(
+  p_from date, p_to date, p_desk text default null, p_status text default null, p_requester uuid default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_mgr boolean := is_manager();
+  v_heads uuid[] := report_head_departments();
+  v_lab boolean := may_use_desk('laboratory') and has_perm('orders.read');
+  v_us boolean := may_use_desk('ultrasound') and has_perm('orders.read');
+begin
+  if not (v_lab or v_us) then
+    perform report_assert_clinical();
+  end if;
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+        'id', r.id, 'at', r.created_at, 'encounterId', e.id, 'reference', e.reference,
+        'test', s.name_en, 'testFr', s.name_fr, 'testRw', s.name_kin, 'category', r.category, 'desk', k.desk,
+        'urgent', r.priority <= 2, 'sampleId', r.sample_id,
+        'patientId', p.id, 'patient', p.surname || ' ' || p.given_names, 'fileNo', p.file_number,
+        'requesterId', r.requester_id, 'requester', rq.full_name, 'status', r.status,
+        'sampleAt', (select min(a.at) from audit_event a
+                     where a.entity = 'service_request' and a.entity_id = r.id
+                       and a.after ->> 'status' in ('collected', 'in_process', 'resulted', 'verified')),
+        'resultAt', d.created_at, 'verifiedAt', d.verified_at,
+        'resultBy', (select full_name from profiles where id = coalesce(d.verified_by, d.created_by)),
+        'turnaround', case when d.id is not null
+                           then round(extract(epoch from coalesce(d.verified_at, d.created_at) - r.created_at) / 60) end,
+        'corrected', d.corrected_at is not null,
+        'result', case when v.ok then coalesce(nullif(trim(d.impression), ''), nullif(trim(d.findings), '')) end
+      ) order by r.created_at desc)
+    from service_request r
+    join encounter e on e.id = r.encounter_id and e.deleted_at is null
+    join patient p on p.id = e.patient_id
+    join service s on s.id = r.service_id
+    left join diagnostic_report d on d.service_request_id = r.id and d.deleted_at is null
+    left join profiles rq on rq.id = r.requester_id
+    cross join lateral (
+      select case when r.station is not null then r.station::text
+                  when r.category = 'imaging' then 'ultrasound' else 'laboratory' end as desk
+    ) k
+    cross join lateral (
+      select v_mgr or r.requester_id = v_me
+             or (k.desk = 'laboratory' and v_lab) or (k.desk = 'ultrasound' and v_us)
+             or (cardinality(v_heads) > 0 and visit_departments(e.id) && v_heads) as ok
+    ) v
+    where r.deleted_at is null and v.ok
+      and (r.created_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      and (p_desk is null or p_desk = '' or k.desk = p_desk)
+      and (p_status is null or p_status = '' or r.status::text = p_status)
+      and (p_requester is null or r.requester_id = p_requester)
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 14 · vital signs taken
+-- One row per set of vital signs measured in the period (the measurements saved together: visit,
+-- time, who measured, who typed them). flags: the measurements outside the usual adult limits
+-- (temperature ≥ 37.5 or < 35.5 °C, SpO2 < 94 %, blood pressure ≥ 140/90 or systolic < 90 mmHg;
+-- from 12 years: pulse > 100 or < 50, breathing > 24 or < 10 a minute). The values and flags are
+-- clinical (the web offers them to clinical readers). Rows: the manager all; a head their
+-- departments' visits; everyone the sets they measured or typed.
+create or replace function report_vitals(p_from date, p_to date, p_taker uuid default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_mgr boolean := is_manager();
+  v_heads uuid[] := report_head_departments();
+begin
+  if not has_perm('vitals.write') then
+    perform report_assert_clinical();
+  end if;
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    with sets as (
+      select o.encounter_id, o.effective_at, o.performer_id, o.created_by,
+             count(*)::integer as n, jsonb_object_agg(o.code, o.value_num) as vals
+      from observation o
+      where o.deleted_at is null and o.removed_by is null and o.value_num is not null
+        and (o.code in (select vt.code from vital_type vt) or o.code like 'custom\_%')
+        and (o.effective_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      group by 1, 2, 3, 4
+    ), r as (
+      select s.*, e.patient_id, e.reference,
+             (select case when p.birth_date is not null
+                          then extract(year from age((s.effective_at at time zone 'Africa/Kigali')::date, p.birth_date))::integer end
+              from patient p where p.id = e.patient_id) as age
+      from sets s join encounter e on e.id = s.encounter_id and e.deleted_at is null
+      where (v_mgr or s.performer_id = v_me or s.created_by = v_me
+             or (cardinality(v_heads) > 0 and visit_departments(e.id) && v_heads))
+        and (p_taker is null or s.performer_id = p_taker)
+    )
+    select jsonb_agg(jsonb_build_object(
+        'encounterId', r.encounter_id, 'at', r.effective_at, 'reference', r.reference,
+        'patientId', p.id, 'patient', p.surname || ' ' || p.given_names, 'fileNo', p.file_number,
+        'sex', p.sex, 'age', r.age,
+        'measuredById', r.performer_id, 'measuredBy', mb.full_name,
+        'enteredById', r.created_by, 'enteredBy', eb.full_name,
+        'onBehalf', r.created_by is distinct from r.performer_id,
+        'count', r.n, 'values', r.vals, 'flags', f.flags
+      ) order by r.effective_at desc)
+    from r
+    join patient p on p.id = r.patient_id
+    left join profiles mb on mb.id = r.performer_id
+    left join profiles eb on eb.id = r.created_by
+    cross join lateral (
+      select coalesce(jsonb_agg(x.flag), '[]'::jsonb) as flags from (
+        select 'temp_high' as flag where (r.vals ->> 'temp')::numeric >= 37.5
+        union all select 'temp_low' where (r.vals ->> 'temp')::numeric < 35.5
+        union all select 'spo2_low' where (r.vals ->> 'spo2')::numeric < 94
+        union all select 'bp_high' where (r.vals ->> 'bp_sys')::numeric >= 140 or (r.vals ->> 'bp_dia')::numeric >= 90
+        union all select 'bp_low' where (r.vals ->> 'bp_sys')::numeric < 90
+        union all select 'pulse_high' where coalesce(r.age, 99) >= 12 and (r.vals ->> 'pulse')::numeric > 100
+        union all select 'pulse_low' where coalesce(r.age, 99) >= 12 and (r.vals ->> 'pulse')::numeric < 50
+        union all select 'resp_high' where coalesce(r.age, 99) >= 12 and (r.vals ->> 'resp')::numeric > 24
+        union all select 'resp_low' where coalesce(r.age, 99) >= 12 and (r.vals ->> 'resp')::numeric < 10
+      ) x
+    ) f
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- 15 · bookings and arrivals
+-- One row per booking of the period (its time, else the preferred time, else when it was asked):
+-- the patient or the contact, the phone, the practitioner, the service, the status as reception
+-- says it (requested, approved, confirmed, arrived, with_clinician, seen, left_unseen, no_show,
+-- cancelled, declined), where it came from (online = the website, reception, phone) and when the
+-- patient arrived. The manager and reception: all; a practitioner: their own bookings.
+create or replace function report_bookings(
+  p_from date, p_to date, p_status text default null, p_practitioner uuid default null, p_source text default null
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_mgr boolean := is_manager();
+  v_rec boolean := may_use_desk('reception');
+  v_mine uuid[] := coalesce((select array_agg(pr.id) from practitioner pr
+                             where pr.user_id = auth.uid() and pr.deleted_at is null), '{}'::uuid[]);
+begin
+  if auth.uid() is null or not (v_mgr or v_rec or cardinality(v_mine) > 0) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  perform report_assert_period(p_from, p_to);
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+        'id', a.id, 'at', coalesce(a.starts_at, a.preferred_at), 'createdAt', a.created_at,
+        'reference', a.reference,
+        'patientId', p.id, 'patient', coalesce(p.surname || ' ' || p.given_names, a.contact_name),
+        'fileNo', p.file_number, 'phone', coalesce(p.phone_1, a.contact_phone),
+        'practitionerId', a.practitioner_id, 'bookedWith', coalesce(pr.title || ' ', '') || pr.names,
+        'service', a.category, 'status', st.status, 'source', a.source,
+        'arrivedAt', e.arrived_at, 'encounterId', e.id,
+        'reason', a.reason,
+        'cancelReason', case when a.cancel_reason like 'left_unseen%'
+                             then nullif(regexp_replace(a.cancel_reason, '^left_unseen:?\s*', ''), '')
+                             else a.cancel_reason end
+      ) order by coalesce(a.starts_at, a.preferred_at, a.created_at))
+    from appointment a
+    left join patient p on p.id = a.patient_id
+    left join practitioner pr on pr.id = a.practitioner_id
+    left join lateral (select e.id, e.arrived_at from encounter e
+                       where e.appointment_id = a.id and e.deleted_at is null
+                       order by e.arrived_at limit 1) e on true
+    cross join lateral (
+      select case a.status::text
+               when 'inquiry' then 'requested'
+               when 'in_progress' then 'with_clinician'
+               when 'completed' then 'seen'
+               when 'rejected' then 'declined'
+               when 'cancelled' then case when coalesce(a.cancel_reason, '') like 'left_unseen%'
+                                          then 'left_unseen' else 'cancelled' end
+               else a.status::text
+             end as status
+    ) st
+    where a.deleted_at is null
+      and (coalesce(a.starts_at, a.preferred_at, a.created_at) at time zone 'Africa/Kigali')::date between p_from and p_to
+      and (v_mgr or v_rec or a.practitioner_id = any (v_mine))
+      and (p_status is null or p_status = '' or st.status = p_status)
+      and (p_practitioner is null or a.practitioner_id = p_practitioner)
+      and (p_source is null or p_source = '' or a.source::text = p_source)
+  ), '[]'::jsonb);
+end
+$$;
+
+-- ---------------------------------------------------------------- who may call what
+revoke all on function report_head_departments(), report_assert_period(date, date), report_assert_stock(uuid),
+  report_assert_clinical()
+  from public, anon, authenticated;
+revoke all on function report_stock_options(), report_stock_on_hand(uuid, boolean, integer),
+  report_stock_sold(date, date, uuid, text, boolean), report_stock_movements(date, date, uuid, text),
+  report_stock_deliveries(date, date, uuid), report_stock_transfers(date, date, uuid, text),
+  report_stock_expiry(uuid, integer, boolean), report_stock_to_order(uuid),
+  report_stock_write_offs(date, date, uuid), report_stock_outside(date, date),
+  report_clinical_options(), report_patients_seen(date, date, uuid, uuid), report_diagnoses(date, date, uuid, uuid),
+  report_prescriptions(date, date, text, uuid), report_tests(date, date, text, text, uuid),
+  report_vitals(date, date, uuid), report_bookings(date, date, text, uuid, text)
+  from public, anon;
+grant execute on function report_stock_options(), report_stock_on_hand(uuid, boolean, integer),
+  report_stock_sold(date, date, uuid, text, boolean), report_stock_movements(date, date, uuid, text),
+  report_stock_deliveries(date, date, uuid), report_stock_transfers(date, date, uuid, text),
+  report_stock_expiry(uuid, integer, boolean), report_stock_to_order(uuid),
+  report_stock_write_offs(date, date, uuid), report_stock_outside(date, date),
+  report_clinical_options(), report_patients_seen(date, date, uuid, uuid), report_diagnoses(date, date, uuid, uuid),
+  report_prescriptions(date, date, text, uuid), report_tests(date, date, text, text, uuid),
+  report_vitals(date, date, uuid), report_bookings(date, date, text, uuid, text)
+  to authenticated;
+
+
+-- ============================================================ 20261223090000_lab_worklist_period.sql
+-- 0113 · The lab worklist's "Done" tab follows the period chosen (Today · This week · This month ·
+-- All time · Custom), as every other list of results; before, it gave today's only.
+--
+-- lab_worklist(p_scope, p_from, p_to): 'open' as before (the days are not read); 'done' gives the
+-- results given (verified, or written) between p_from and p_to, both days included, Kigali time.
+-- Without days: today, as before (lab_worklist('done') keeps working).
+--
+-- The rows, rights and order are those of 20261203090000_guide_fixes. The old one-argument
+-- function is dropped so that a call with one argument has a single match.
+
+drop function if exists lab_worklist(text);
+
+create or replace function lab_worklist(p_scope text default 'open', p_from date default null, p_to date default null)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(jsonb_agg(x.j order by x.prio, x.at), '[]'::jsonb)
+  from (
+    select r.priority as prio, r.created_at as at, doc_patient(p.id, e.id) || jsonb_build_object(
+      'id', r.id, 'encounterId', r.encounter_id, 'patientId', p.id,
+      'patient', p.surname || ' ' || p.given_names, 'fileNumber', p.file_number,
+      'sex', p.sex, 'birthDate', p.birth_date,
+      'ticket', (select q.ticket_no from queue_entry q where q.encounter_id = r.encounter_id order by q.created_at limit 1),
+      'triage', e.triage_level,
+      'test', s.name_en, 'category', r.category, 'status', r.status, 'priority', r.priority,
+      'reason', r.reason, 'orderedAt', r.created_at,
+      'orderedBy', (select full_name from profiles where id = r.requester_id),
+      'findings', d.findings, 'impression', d.impression, 'verified', d.verified_at is not null,
+      'corrected', d.corrected_at is not null,
+      'resultAt', coalesce(d.verified_at, d.updated_at),
+      'resultBy', (select full_name from profiles where id = coalesce(d.verified_by, d.created_by)),
+      'resultByPerson', doc_person(coalesce(d.verified_by, d.created_by)),
+      'visitReference', e.reference, 'visitAt', e.arrived_at
+    ) as j
+    from service_request r
+    join encounter e on e.id = r.encounter_id and (p_scope = 'done' or e.status = 'open')
+    join patient p on p.id = e.patient_id
+    join service s on s.id = r.service_id
+    left join diagnostic_report d on d.service_request_id = r.id and d.deleted_at is null
+    where r.deleted_at is null and has_perm('orders.read')
+      and r.category in (select unnest(my_test_categories())) and coalesce(r.station, case when r.category = 'imaging' then 'ultrasound'::station else 'laboratory'::station end) in ('laboratory', 'ultrasound')
+      -- HIV tests: the people allowed to see them, and the desk that runs them (the laboratory and
+      -- ultrasound staff do their work whatever their rights)
+      and (has_perm('sensitive.read') or may_use_desk(request_desk(r.station, r.category))
+           or not sensitive_service(s.id))
+      and case when p_scope = 'done'
+            then r.status in ('resulted', 'verified')
+                 and (coalesce(d.verified_at, d.updated_at) at time zone 'Africa/Kigali')::date
+                     between coalesce(p_from, (now() at time zone 'Africa/Kigali')::date)
+                         and coalesce(p_to, p_from, (now() at time zone 'Africa/Kigali')::date)
+            else r.status not in ('verified', 'cancelled') end
+  ) x
+$$;
+
+grant execute on function lab_worklist(text, date, date) to authenticated;
+revoke execute on function lab_worklist(text, date, date) from anon, public;
 
 
 -- ============================================================ seed.sql

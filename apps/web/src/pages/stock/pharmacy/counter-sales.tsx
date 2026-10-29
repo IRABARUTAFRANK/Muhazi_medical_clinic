@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Ban, HandCoins, Hourglass, PackageCheck, Printer, Receipt, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatRwf, formatTime } from '@mmc/shared'
+import { formatDate, formatRwf, formatTime } from '@mmc/shared'
 import type { StaffUser } from '@mmc/shared'
 import { Empty, Panel, SectionTitle } from '@/components/dash/kit'
+import { PeriodFilter } from '@/components/dash/period-filter'
 import { card, selectedRow } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,10 +20,13 @@ import {
   type CounterSale,
 } from '@/lib/api/counter-sales'
 import { useCan } from '@/lib/api/permissions'
+import { useStoreStock } from '@/lib/api/rooms'
 import { usePharmacyDesk, useStockOverview } from '@/lib/api/stock'
 import { useSessionCanDesk } from '@/components/clinical/session-desks'
 import { useConfirm } from '@/lib/confirm'
 import { useNow } from '@/lib/hooks'
+import type { Packaging } from '@/lib/pack-pricing'
+import { usePeriod } from '@/lib/period'
 import { useLetterhead, usePrintedBy } from '@/lib/report-parts'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/store/session'
@@ -61,21 +65,152 @@ type Msg = { ok: boolean; text: string } | null
 export function CounterSalesPanel() {
   const user = useSession((s) => s.user)
   if (!user) return null
-  return <CounterSales user={user} />
+  return <PharmacyCounter user={user} />
 }
 
-function CounterSales({ user }: { user: StaffUser }) {
+/** A medicine the store may sell: how it is sold and priced, and its unexpired units there. */
+interface Offered extends Packaging {
+  id: string
+  /** "Amoxicillin 500 mg" */
+  name: string
+  usable: number
+}
+
+function PharmacyCounter({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   // the pharmacy desk takes the payment of its own counter sales (take_counter_payment)
   const canDesk = useSessionCanDesk()
   const canTake = useCan(user)('payment.take') || canDesk('pharmacy')
-  const letterhead = useLetterhead()
-  const printedBy = usePrintedBy()
-  const now = useNow(60_000)
-  const today = dayOf(now)
   const { data: stock } = useStockOverview()
   const { data: desk } = usePharmacyDesk(null)
-  const { data: sales = [] } = useCounterSales(null)
+  const [storeChoice, setStoreChoice] = useState('')
+  const stores = desk?.stores ?? []
+  const storeId =
+    storeChoice ||
+    desk?.locationId ||
+    stock?.mainPharmacyId ||
+    stock?.locations.find((l) => l.type === 'pharmacy')?.id ||
+    ''
+  const known = stock?.items
+    .filter((i) => i.active && i.sellingPrice != null)
+    .map((i) => ({ ...i, name: itemName(i), usable: usableIn(i, storeId) }))
+  return (
+    <CounterSales
+      user={user}
+      canTake={canTake}
+      locationId={storeChoice || null}
+      known={known}
+      // a room store's sales are its holder's (My store): the pharmacy does not hand them over
+      showSale={(s) => !s.roomStore}
+      picker={
+        stores.length > 1 && (
+          <Select
+            label={t('pharmacy.dispensingStore')}
+            value={storeChoice}
+            onChange={(e) => setStoreChoice(e.target.value)}
+          >
+            <option value="">
+              {t('pharmacy.mainStoreNamed', {
+                name: stores.find((s) => s.isMain)?.name ?? t('pharmacy.mainStore'),
+              })}
+            </option>
+            {stores
+              .filter((s) => !s.isMain)
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+          </Select>
+        )
+      }
+    />
+  )
+}
+
+/**
+ * Walk-in buyers from a room store (My store, 0109): its holder sells the store's medicines to a
+ * buyer without a visit when the manager allows it ("Sell to walk-in buyers from my store").
+ * Without "Take payments" the buyer pays at the cashier; the holder is told, then hands over.
+ */
+export function RoomCounterSales({
+  user,
+  store,
+  i,
+}: {
+  user: StaffUser
+  store: { id: string; name: string }
+  i?: number
+}) {
+  const canTake = useCan(user)('payment.take')
+  const { data } = useStoreStock(store.id)
+  const known = data?.items
+    .filter((x) => x.price != null)
+    .map((x) => ({
+      id: x.itemId,
+      name: x.item,
+      unit: x.unit,
+      packSize: x.packSize,
+      saleMode: x.saleMode ?? null,
+      packUnit: x.packUnit ?? null,
+      packPrice: x.packPrice ?? null,
+      sellingPrice: x.price,
+      usable: x.usable,
+    }))
+  return (
+    <CounterSales
+      user={user}
+      canTake={canTake}
+      locationId={store.id}
+      known={known}
+      showSale={(s) => s.storeId === store.id}
+      room={store.name}
+      i={i}
+    />
+  )
+}
+
+function CounterSales({
+  user,
+  canTake,
+  locationId,
+  known,
+  showSale,
+  picker,
+  room,
+  i: panelIndex = 3,
+}: {
+  user: StaffUser
+  /** Takes the payment here (else the sale goes to the cashier). */
+  canTake: boolean
+  /** The store sold from (null: the pharmacy desk's own). */
+  locationId: string | null
+  /** The medicines with a price (undefined while loading). */
+  known: Offered[] | undefined
+  /** The sales of this counter. */
+  showSale: (s: CounterSale) => boolean
+  /** Choosing the pharmacy store, when there are several. */
+  picker?: ReactNode
+  /** A room store's name (My store): its own title and words. */
+  room?: string
+  i?: number
+}) {
+  const { t } = useTranslation()
+  const letterhead = useLetterhead()
+  const printedBy = usePrintedBy()
+  // a new render each minute: "today" moves on at midnight
+  useNow(60_000)
+  // the finished sales listed: those of the period (today by default)
+  const period = usePeriod('today')
+  const oneDay = period.from === period.to
+  // the open and paid ones, plus the last days; another period loads its own days
+  const { data: allSales = [] } = useCounterSales(null)
+  const { data: allPeriodSales = [] } = useCounterSales(
+    null,
+    period.range === 'today' ? null : { from: period.from, to: period.to },
+  )
+  const sales = allSales.filter(showSale)
+  const periodSales = allPeriodSales.filter(showSale)
   const actions = useCounterSaleActions()
   const confirm = useConfirm()
   const addHanded = useHanded((s) => s.add)
@@ -85,7 +220,6 @@ function CounterSales({ user }: { user: StaffUser }) {
   const [buyer, setBuyer] = useState('')
   const [phone, setPhone] = useState('')
   const [note, setNote] = useState('')
-  const [storeChoice, setStoreChoice] = useState('')
   const [method, setMethod] = useState<CounterPaymentMethod>('cash')
   const [reference, setReference] = useState('')
   const [payerPhone, setPayerPhone] = useState('')
@@ -94,18 +228,9 @@ function CounterSales({ user }: { user: StaffUser }) {
   const [paying, setPaying] = useState<string | null>(null)
   const [working, setWorking] = useState(false)
 
-  const stores = desk?.stores ?? []
-  const storeId =
-    storeChoice ||
-    desk?.locationId ||
-    stock?.mainPharmacyId ||
-    stock?.locations.find((l) => l.type === 'pharmacy')?.id ||
-    ''
   // only medicines with a price and unexpired units in the store are offered
-  const items = (stock?.items ?? []).filter(
-    (i) => i.active && i.sellingPrice != null && usableIn(i, storeId) > 0,
-  )
-  const byId = new Map(items.map((i) => [i.id, i]))
+  const items = (known ?? []).filter((i) => i.usable > 0)
+  const byId = new Map((known ?? []).map((i) => [i.id, i]))
   /** The pieces a line sells (typed in pieces or in packs). */
   const pieces = (l: EditLine) => linePieces(l, byId.get(l.itemId)?.packSize)
   const chosen = lines.filter((l) => l.itemId && pieces(l) > 0)
@@ -115,8 +240,10 @@ function CounterSales({ user }: { user: StaffUser }) {
   const total = chosen.reduce((s, l) => s + lineCost(l).total, 0)
   const tooMany = chosen.some((l) => {
     const i = byId.get(l.itemId)
-    return !i || pieces(l) > usableIn(i, storeId) || !lineCost(l).ok
+    return !i || pieces(l) > i.usable || !lineCost(l).ok
   })
+  const inStore = (count: number) =>
+    room ? t('myStore.inMyStore', { count }) : t('stock.inPharmacy', { count })
   const refMissing = needsReference(method) && reference.trim().length < 3
   const mobile = method === 'momo' || method === 'airtel'
   const ready = chosen.length > 0 && !tooMany
@@ -150,7 +277,7 @@ function CounterSales({ user }: { user: StaffUser }) {
       const batchNos = [...new Set(l.batches.map((b) => b.batchNo).filter(Boolean))]
       const expiries = l.batches.map((b) => b.expiry).filter(Boolean) as string[]
       expiries.sort()
-      const it = stock?.items.find((x) => x.id === l.itemId)
+      const it = byId.get(l.itemId)
       addHanded(
         {
           key: r.id,
@@ -224,7 +351,7 @@ function CounterSales({ user }: { user: StaffUser }) {
         lines: chosen.map((l) => ({ itemId: l.itemId, quantity: pieces(l) })),
         buyerName: buyer,
         buyerPhone: phone,
-        locationId: storeChoice || null,
+        locationId,
         note,
       })
       if (!payNow) {
@@ -247,7 +374,7 @@ function CounterSales({ user }: { user: StaffUser }) {
           const c = lineCost(l)
           return {
             itemId: l.itemId,
-            item: i ? itemName(i) : l.itemId,
+            item: i ? i.name : l.itemId,
             unit: i?.unit ?? null,
             quantity: pieces(l),
             unitPrice: price,
@@ -387,24 +514,38 @@ function CounterSales({ user }: { user: StaffUser }) {
     }
   }
 
-  // waiting ones first (to pay, to hand over), then today's finished ones
+  // waiting ones first (to pay, to hand over), then the finished ones of the period
   const rank = (s: CounterSale) => (s.status === 'paid' ? 0 : s.status === 'open' ? 1 : 2)
-  const shown = sales
-    .filter((s) => s.status === 'open' || s.status === 'paid' || s.at.slice(0, 10) === today)
+  const waiting = (s: CounterSale) => s.status === 'open' || s.status === 'paid'
+  const inPeriod = (s: CounterSale) => {
+    const d = dayOf(new Date(s.at).getTime())
+    return d >= period.from && d <= period.to
+  }
+  const finished = (period.range === 'today' ? sales : periodSales).filter(
+    (s) => !waiting(s) && inPeriod(s),
+  )
+  const shown = [...sales.filter(waiting), ...finished]
+    .filter((s, i, all) => all.findIndex((x) => x.id === s.id) === i)
     .sort((a, b) => rank(a) - rank(b) || b.at.localeCompare(a.at))
   const toPay = sales.filter((s) => s.status === 'open').length
   const toHand = sales.filter((s) => s.status === 'paid').length
 
   return (
     <Panel
-      i={3}
+      i={panelIndex}
       icon={Receipt}
       tint="teal"
-      title={t('counterSale.title')}
+      title={room ? t('counterSale.room.title', { store: room }) : t('counterSale.title')}
       right={t('counterSale.waiting', { toPay, toHand })}
     >
       <p className="text-ink-2 m-0 text-[14px]">
-        {canTake ? t('counterSale.desk.lead') : t('counterSale.lead')}
+        {room
+          ? canTake
+            ? t('counterSale.room.deskLead')
+            : t('counterSale.room.lead')
+          : canTake
+            ? t('counterSale.desk.lead')
+            : t('counterSale.lead')}
       </p>
       {msg && (
         <Flash key={msg.text} tone={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>
@@ -416,39 +557,23 @@ function CounterSales({ user }: { user: StaffUser }) {
         onBlocked={() => setMsg({ ok: false, text: t('report.popupBlocked') })}
       />
       <div className="flex flex-col gap-3">
-        {stores.length > 1 && (
-          <Select
-            label={t('pharmacy.dispensingStore')}
-            value={storeChoice}
-            onChange={(e) => setStoreChoice(e.target.value)}
-          >
-            <option value="">
-              {t('pharmacy.mainStoreNamed', {
-                name: stores.find((s) => s.isMain)?.name ?? t('pharmacy.mainStore'),
-              })}
-            </option>
-            {stores
-              .filter((s) => !s.isMain)
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-          </Select>
+        {picker}
+        {known && items.length === 0 && (
+          <p className="text-ink-3 m-0 text-[14px]">{t('counterSale.room.none')}</p>
         )}
         <LinesEditor
           lines={lines}
           onChange={setLines}
           options={items.map((i) => ({
             value: i.id,
-            label: `${itemName(i)} · ${formatRwf(i.sellingPrice ?? 0)} · ${t('stock.inPharmacy', { count: usableIn(i, storeId) })}`,
+            label: `${i.name} · ${formatRwf(i.sellingPrice ?? 0)} · ${inStore(i.usable)}`,
           }))}
           itemOf={(id) => byId.get(id)}
           below={(l) => {
             const i = byId.get(l.itemId)
             if (!i) return null
             const n = pieces(l)
-            const have = usableIn(i, storeId)
+            const have = i.usable
             const c = lineCost(l)
             return (
               <span
@@ -560,9 +685,12 @@ function CounterSales({ user }: { user: StaffUser }) {
         )}
       </div>
 
-      <SectionTitle icon={Receipt}>{t('counterSale.listTitle')}</SectionTitle>
+      <SectionTitle icon={Receipt}>
+        {t('counterSale.listTitleIn', { period: t(`dashboard.period.${period.range}`) })}
+      </SectionTitle>
+      <PeriodFilter period={period} />
       {shown.length === 0 ? (
-        <Empty icon={Receipt}>{t('counterSale.none')}</Empty>
+        <Empty icon={Receipt}>{t('counterSale.noneIn')}</Empty>
       ) : (
         <ShownList items={shown} step={5}>
           {(list) => (
@@ -601,7 +729,10 @@ function CounterSales({ user }: { user: StaffUser }) {
                       </span>
                       <span className="text-ink-3 block text-[12px]">
                         {[
-                          formatTime(new Date(s.at)),
+                          // another day than the period's one: its date too
+                          oneDay && dayOf(new Date(s.at).getTime()) === period.to
+                            ? formatTime(new Date(s.at))
+                            : `${formatDate(new Date(s.at))} ${formatTime(new Date(s.at))}`,
                           s.by,
                           s.receipt && t('counterSale.receipt', { receipt: s.receipt }),
                           s.cancelReason && t('counterSale.why', { reason: s.cancelReason }),

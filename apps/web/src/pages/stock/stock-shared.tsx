@@ -70,7 +70,7 @@ export function QtyModeToggle({
           disabled={disabled}
           onClick={() => onChange(m)}
           className={cn(
-            'h-7 rounded px-2 text-[12px] font-medium transition-colors duration-120 disabled:opacity-60',
+            'disabled:text-ink-3 h-7 rounded px-2 text-[12px] font-medium transition-colors duration-120 disabled:cursor-not-allowed',
             mode === m
               ? 'bg-card text-primary border-border border'
               : 'text-ink-2 hover:bg-hover hover:text-ink border border-transparent',

@@ -17,13 +17,12 @@ import {
   formatNumber,
   formatRwf,
   formatTime,
-  isoDate,
   type StaffUser,
 } from '@mmc/shared'
 import { Empty, Kpi, Panel, SectionTitle } from '@/components/dash/kit'
 import { tableCell, tableFirstCell, tableHead, tableRow } from '@/components/dash/kit-style'
 import { ActionRow } from '@/components/dash/page-banner'
-import { PeriodFilter } from '@/components/dash/period-filter'
+import { PeriodCustom, PeriodFilter, PeriodSeg } from '@/components/dash/period-filter'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { Badge } from '@/components/ui/badge'
 import { Pager } from '@/components/ui/list-tools'
@@ -39,9 +38,8 @@ import {
   type StockLocation,
 } from '@/lib/api/stock'
 import { useClinicInfo } from '@/lib/api/public'
-import { useNow } from '@/lib/hooks'
 import { usePaged } from '@/lib/paging'
-import { usePeriod } from '@/lib/period'
+import { usePeriod, type Period } from '@/lib/period'
 import { stockReport } from '@/lib/reports/build'
 import { cn } from '@/lib/utils'
 import { DeliveriesList } from './delivery-form'
@@ -78,29 +76,17 @@ export function StockReports({
         ? initialPart
         : 'sales',
   )
-  const now = useNow(60_000)
   const { data: info } = useClinicInfo()
-  // the report covers a chosen month (this month: up to today)
-  const [reportMonth, setReportMonth] = useState(() => isoDate(new Date()).slice(0, 7))
-  const [ry, rm] = reportMonth.split('-').map(Number)
-  const reportFrom = isoDate(new Date(ry!, rm! - 1, 1))
-  const monthEnd = isoDate(new Date(ry!, rm!, 0))
-  const reportTo = monthEnd < isoDate(new Date(now)) ? monthEnd : isoDate(new Date(now))
+  // one period for the printed report and every part (this month by default)
+  const period = usePeriod('month')
+  const reportFrom = period.from
+  const reportTo = period.to
   const { data: reportMoves = [] } = useStockMovements(reportFrom, reportTo, null)
   const { data: reportSales } = useStockSales(reportFrom, reportTo)
   return (
     <div className="flex flex-col gap-4">
       <ActionRow>
-        <label className="border-border bg-card flex h-9 items-center gap-2 rounded-md border px-3 text-[14px]">
-          <span className="text-ink-3 text-[13px]">{t('stock.reportMonth')}</span>
-          <input
-            type="month"
-            value={reportMonth}
-            max={isoDate(new Date()).slice(0, 7)}
-            onChange={(e) => e.target.value && setReportMonth(e.target.value)}
-            className="bg-transparent outline-none"
-          />
-        </label>
+        <PeriodSeg period={period} className="max-w-full flex-wrap" />
         <ReportButtons
           build={() =>
             stockReport(
@@ -116,6 +102,7 @@ export function StockReports({
           }
         />
       </ActionRow>
+      <PeriodCustom period={period} />
       <Seg
         label={t('stock.tabs.reports')}
         value={part}
@@ -128,10 +115,10 @@ export function StockReports({
         ]}
         className="self-start"
       />
-      {part === 'sales' && <Sales />}
-      {part === 'moves' && <Movements items={items} locations={locations} />}
-      {part === 'deliveries' && <DeliveriesList focusId={focusDelivery} />}
-      {part === 'outside' && <BoughtOutsideList />}
+      {part === 'sales' && <Sales period={period} />}
+      {part === 'moves' && <Movements items={items} locations={locations} period={period} />}
+      {part === 'deliveries' && <DeliveriesList focusId={focusDelivery} period={period} />}
+      {part === 'outside' && <BoughtOutsideList period={period} />}
     </div>
   )
 }
@@ -140,12 +127,16 @@ export function StockReports({
 export function Movements({
   items,
   locations,
+  period: shared,
 }: {
   items: StockItem[]
   locations: StockLocation[]
+  /** The period of the Reports tab (its own filter otherwise). */
+  period?: Period
 }) {
   const { t } = useTranslation()
-  const period = usePeriod('month')
+  const own = usePeriod('month')
+  const period = shared ?? own
   const { from, to } = period
   const [itemId, setItemId] = useState('')
   const [locationId, setLocationId] = useState('')
@@ -159,7 +150,7 @@ export function Movements({
       title={t('stock.movesTitle')}
       right={String(moves.length)}
     >
-      <PeriodFilter period={period} />
+      {!shared && <PeriodFilter period={period} />}
       <div className="grid grid-cols-1 gap-3 sm:max-w-3xl sm:grid-cols-2">
         <SearchSelect
           label={t('stockPage.cols.item')}
@@ -252,16 +243,14 @@ export function Movements({
 }
 
 /* ---------------------------------------------------------------- sales and value */
-function Sales() {
+function Sales({ period }: { period: Period }) {
   const { t } = useTranslation()
-  const period = usePeriod('month')
   const { data } = useStockSales(period.from, period.to)
   const revenue = data?.revenue ?? 0
   const cost = data?.cost ?? 0
   const margin = data?.margin ?? revenue - cost
   return (
     <div className="flex flex-col gap-4">
-      <PeriodFilter period={period} />
       <SectionTitle icon={Coins}>{t('stock.tabs.sales')}</SectionTitle>
       <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Kpi
@@ -464,13 +453,11 @@ function StoreValues() {
 
 /* ---------------------------------------------------------------- bought outside (0100) */
 /** "Prescribed but bought outside": what patients had to buy elsewhere, most asked first. */
-function BoughtOutsideList() {
+function BoughtOutsideList({ period }: { period: Period }) {
   const { t } = useTranslation()
-  const period = usePeriod('month')
   const { data: rows = [], isLoading } = useBoughtOutside(period.from, period.to)
   return (
     <div className="flex flex-col gap-4">
-      <PeriodFilter period={period} />
       <Panel
         i={1}
         icon={Store}

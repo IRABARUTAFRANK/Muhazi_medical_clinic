@@ -334,7 +334,9 @@
   --hero-to: var(--mmc-deep-teal);
 }
 .hero-mint {
-  --hero-from: #10b981;
+  /* the mint dot (#10b981) under white text was 2.5:1: the hero starts deeper, so the white/20
+     glass chips and white/85 leads read too (3.5:1 and more) */
+  --hero-from: #04805b;
   --hero-to: var(--mmc-deep-mint);
 }
 .hero-amber {
@@ -342,11 +344,11 @@
   --hero-to: var(--mmc-deep-amber);
 }
 .hero-coral {
-  --hero-from: #ef4444;
+  --hero-from: #dc2626;
   --hero-to: var(--mmc-deep-coral);
 }
 .hero-violet {
-  --hero-from: #8b5cf6;
+  --hero-from: #7c3aed;
   --hero-to: var(--mmc-deep-violet);
 }
 .hero-navy {
@@ -354,12 +356,25 @@
   --hero-to: var(--mmc-deep-navy);
 }
 .hero-rose {
-  --hero-from: #ec4899;
+  --hero-from: #db2777;
   --hero-to: var(--mmc-deep-rose);
 }
 .hero-grey {
   --hero-from: var(--mmc-hue-grey);
   --hero-to: var(--mmc-deep-grey);
+}
+
+/* The small tag of a page banner's meta row (BannerChip): white glass on a hero band, a grey tag
+   anywhere else, so it never ends up white on a white page */
+.banner-chip {
+  color: var(--mmc-text-2);
+  background-color: var(--mmc-hover);
+  border-color: var(--mmc-border);
+}
+.hero .banner-chip {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 /* Sidebar group blocks: each group on its own light tint, its label and active item in the hue */

@@ -68,7 +68,7 @@ export function VisitTrack({
                 className={cn(
                   'mt-0.5 inline-flex size-5 flex-none items-center justify-center rounded-full',
                   s.state === 'done' && 'bg-green-dot text-white',
-                  s.state === 'now' && 'bg-primary anim-pulse-dot text-white',
+                  s.state === 'now' && 'bg-primary anim-pulse-dot text-on-primary',
                   s.state === 'next' && 'bg-hover text-ink-3',
                 )}
               >

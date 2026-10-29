@@ -22,7 +22,11 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
   const q = useCashierSummary(day)
   const s = q.data
   // the payments route reads it loosely (no validateSearch): typed as a plain object
-  const toDay: { day?: string } = { day }
+  const toDay: { range: 'custom'; from: string; to: string } = {
+    range: 'custom',
+    from: day,
+    to: day,
+  }
   return (
     <Drawer
       icon={CalendarDays}
@@ -35,7 +39,7 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
       }
       onClose={onClose}
       actions={
-        // the Payments page opens on this day (?day=), not on today
+        // the Payments page opens on this day (Custom, from = to = the day), not on today
         <Link
           to="/app/payments"
           search={toDay}

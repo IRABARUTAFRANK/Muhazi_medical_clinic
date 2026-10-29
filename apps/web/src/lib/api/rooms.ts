@@ -1,3 +1,4 @@
+import { isoDate } from '@mmc/shared'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DayRange } from './lab'
 import { apiError, isMissingFunction, sampleRefusal } from './errors'
@@ -777,6 +778,8 @@ export function useTransferNotes(f: TransferNotesFilter = {}) {
             (n) =>
               (!f.status || n.status === f.status) &&
               (!f.locationId || n.fromId === f.locationId || n.toId === f.locationId) &&
+              (!f.from || isoDate(new Date(n.sentAt)) >= f.from) &&
+              (!f.to || isoDate(new Date(n.sentAt)) <= f.to) &&
               (sampleIsAdmin() || sampleStock.holds(n.fromId) || sampleStock.holds(n.toId)),
           )
           .map((n) => {

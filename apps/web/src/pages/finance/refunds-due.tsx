@@ -29,15 +29,18 @@ export function RefundsDuePanel({ i, canTake }: { i: number; canTake: boolean })
   const { data: list = [], error: loadError } = useRefundsDue()
   const [notice, setNotice] = useState<string | null>(null)
   const total = list.reduce((s, r) => s + r.amount, 0)
-  // shown only when something is to give back (or the list could not be read)
-  if (list.length === 0 && !loadError && !notice) return null
+  // always on the Bills page: empty, it says where a refund comes from
   return (
     <Panel
       i={i}
       icon={Undo2}
       tint="amber"
       title={t('cashierDesk.refunds.title')}
-      right={t('cashierDesk.refunds.total', { count: list.length, amount: formatRwf(total) })}
+      right={
+        list.length > 0
+          ? t('cashierDesk.refunds.total', { count: list.length, amount: formatRwf(total) })
+          : undefined
+      }
     >
       <p className="text-ink-2 m-0 text-[14px]">{t('cashierDesk.refunds.lead')}</p>
       {loadError && (
@@ -49,7 +52,7 @@ export function RefundsDuePanel({ i, canTake }: { i: number; canTake: boolean })
         </p>
       )}
       {list.length === 0 ? (
-        <Empty>{t('cashierDesk.refunds.none')}</Empty>
+        <Empty>{t('cashierDesk.refunds.noneHelp')}</Empty>
       ) : (
         <div className="flex flex-col">
           {list.map((r) => (

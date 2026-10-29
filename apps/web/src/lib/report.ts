@@ -53,9 +53,10 @@ export interface ReportColumn {
   width?: number
   /**
    * money → "12,500" (RWF in the header); number → "1,234"; date → dd/mm/yyyy;
-   * datetime → dd/mm/yyyy HH:mm; time → HH:mm (single-day reports: the date is in "Period").
+   * datetime → dd/mm/yyyy HH:mm; time → HH:mm (single-day reports: the date is in "Period");
+   * percent → "12.5 %" (the value is in percent: 12.5).
    */
-  kind?: 'text' | 'number' | 'money' | 'date' | 'datetime' | 'time'
+  kind?: 'text' | 'number' | 'money' | 'date' | 'datetime' | 'time' | 'percent'
   align?: 'left' | 'right'
   /** A negative value prints bold with a "–" sign (cash count difference). */
   boldNegative?: boolean
@@ -70,6 +71,15 @@ export interface ReportColumn {
   /** PDF only: the value never wraps (short status words, names of a few words). */
   nowrap?: boolean
 }
+/**
+ * How a column is totalled (report centre tables): sum, count of the non-empty values, average,
+ * or 'value' (the total is given in `totalValues`, e.g. a weighted average or a count of "Yes").
+ * In Excel, sum / count / avg are SUBTOTAL() formulas (they follow the sheet's filter and skip
+ * the subtotal rows); 'value' is written as it is.
+ */
+export type ReportTotalKind = 'sum' | 'count' | 'avg' | 'value'
+/** A row of a grouped table: a group's heading, its subtotal, or a detail row (the default). */
+export type ReportRowKind = 'row' | 'group' | 'subtotal'
 export interface ReportTable {
   title: string
   /** One short line under the heading (what the table shows). */
@@ -78,6 +88,23 @@ export interface ReportTable {
   rows: Cell[][]
   /** Columns (by index) summed in a last "Total" row. */
   totals?: number[]
+  /**
+   * Explicit totals, one entry per column (null: no total); when given, `totals` is ignored.
+   * The values are `totalValues` when given, else computed from the detail rows.
+   */
+  totalKinds?: (ReportTotalKind | null | undefined)[]
+  /** The totals row's values (one per column), when the caller computed them. */
+  totalValues?: Cell[]
+  /** Where the totals row goes: under the last row (default), at the top, both, or none. */
+  totalsAt?: 'bottom' | 'top' | 'both' | 'none'
+  /** The totals row's label (default: the report's "Total"). */
+  totalLabel?: string
+  /**
+   * One per row: 'group' prints the row's first cell as a heading across the table (tinted,
+   * bold); 'subtotal' prints the row as the group's subtotal (tinted, bold; in Excel SUBTOTAL()
+   * formulas over the group's rows). Without it every row is a detail row.
+   */
+  rowKinds?: ReportRowKind[]
 }
 /** A key figure: a typed value with its unit ("RWF" prints as "RWF 71,270"). */
 export interface ReportFigure {
@@ -137,6 +164,18 @@ export interface Report {
   printedAt?: Date
   /** Interface language of the wording (html lang). */
   lang?: string
+  /**
+   * The filters chosen, printed after the period on the title's scope line (and on the Excel
+   * title band): "Period: … · Method: Cash, MTN MoMo · Cashier: all".
+   */
+  filters?: { label: string; value: string }[]
+  /** The whole PDF in A4 landscape (a wide report centre table); default portrait. */
+  orientation?: 'portrait' | 'landscape'
+  /**
+   * A report of a moment, not of a period (stock on hand, employees): `period` holds the date
+   * and time printed and `words.period` its word ("As of"), printed without a colon.
+   */
+  asOf?: boolean
 }
 /** The labels the report buttons pass (older wording); the report carries its own words. */
 export interface ReportButtonLabels {
@@ -150,7 +189,7 @@ export interface ReportButtonLabels {
 export const reportNumber = (r: Pick<Report, 'code' | 'periodKey'>) =>
   `RPT-${r.code}-${r.periodKey}`
 
-const isNumKind = (k: ReportColumn['kind']) => k === 'money' || k === 'number'
+const isNumKind = (k: ReportColumn['kind']) => k === 'money' || k === 'number' || k === 'percent'
 const isDateKind = (k: ReportColumn['kind']) => k === 'date' || k === 'datetime' || k === 'time'
 const isRight = (c: ReportColumn) =>
   c.align === 'right' || (c.align !== 'left' && isNumKind(c.kind))
@@ -193,10 +232,53 @@ const isWidePdf = (t: ReportTable) => pdfColumns(t).length > MAX_PORTRAIT_COLUMN
 /** The Excel sheet prints landscape (more than 7 columns). */
 const isWideSheet = (t: ReportTable) => t.columns.length > MAX_PORTRAIT_COLUMNS
 const isHalf = (t: ReportTable) => pdfColumns(t).length <= MAX_HALF_COLUMNS
-const keepWhole = (t: ReportTable) => t.rows.length + (t.totals?.length ? 1 : 0) <= MAX_KEEP_ROWS
+
+/** Where the table's totals row goes (none when it has no totals). */
+function totalsPlace(t: ReportTable): { top: boolean; bottom: boolean } {
+  const any = t.totalKinds ? t.totalKinds.some(Boolean) : !!t.totals?.length
+  const at = t.totalsAt ?? 'bottom'
+  return {
+    top: any && (at === 'top' || at === 'both'),
+    bottom: any && (at === 'bottom' || at === 'both'),
+  }
+}
+const keepWhole = (t: ReportTable) => {
+  const p = totalsPlace(t)
+  return t.rows.length + (p.top ? 1 : 0) + (p.bottom ? 1 : 0) <= MAX_KEEP_ROWS
+}
+const isDetailRow = (t: ReportTable, ri: number) => (t.rowKinds?.[ri] ?? 'row') === 'row'
 
 const sumColumn = (t: ReportTable, i: number) =>
   t.rows.reduce<number>((s, r) => s + (typeof r[i] === 'number' ? (r[i] as number) : 0), 0)
+
+/**
+ * A column's total over some values: the sum, the count of the non-empty values, or the average
+ * of the numbers (null when there is none). 'value' and no kind: null (the caller gives it).
+ */
+export function totalOf(kind: ReportTotalKind | null | undefined, values: Cell[]): number | null {
+  if (!kind || kind === 'value') return null
+  if (kind === 'count') return values.filter((v) => v != null && v !== '').length
+  const nums = values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+  const sum = nums.reduce((s, n) => s + n, 0)
+  if (kind === 'sum') return sum
+  return nums.length ? sum / nums.length : null
+}
+
+/** The totals row's value in column i: the caller's, else computed from the detail rows. */
+function totalCell(t: ReportTable, i: number): Cell {
+  if (t.totalValues && t.totalValues[i] !== undefined) return t.totalValues[i]
+  return totalOf(
+    t.totalKinds?.[i],
+    t.rows.filter((_, ri) => isDetailRow(t, ri)).map((r) => r[i]),
+  )
+}
+
+/** "Period: 01/10/2026 to 28/10/2026 · Method: Cash, MTN MoMo · Cashier: all". */
+const scopeLine = (r: Report) =>
+  [
+    r.asOf ? `${r.words.period} ${r.period}` : `${r.words.period}: ${r.period}`,
+    ...(r.filters ?? []).map((f) => `${f.label}: ${f.value}`),
+  ].join(' · ')
 
 /** "RWF 71,270", "18 min", "3 of 10" or "6". */
 export function figureText(f: ReportFigure): string {
@@ -224,6 +306,7 @@ function pdfCell(c: Cell, col: ReportColumn | undefined): CellValue {
     if (text) return keep(text)
   }
   if (typeof c === 'number') {
+    if (kind === 'percent') return { html: esc(`${signed(c, docNumber)} %`) }
     if (kind !== 'money' && kind !== 'number') return keep(String(c))
     const text = esc(signed(c, kind === 'money' ? docMoney : docNumber))
     return { html: col?.boldNegative && c < 0 ? `<strong>${text}</strong>` : text }
@@ -259,21 +342,28 @@ function pdfTable(t: ReportTable, total: string): string {
     )
     .join('')
   const body = t.rows
-    .map(
-      (r) =>
-        `<tr>${cols
-          .map((p) => {
-            const under = p.under
-              .map((u) => pdfCell(r[u.index], u.col))
-              .filter((v) => v != null && v !== '')
-              .map((v) => cellHtml(v, ''))
-            return `<td${attr(p)}>${cellHtml(pdfCell(r[p.index], p.col), DASH)}${subs(under)}</td>`
-          })
-          .join('')}</tr>`,
-    )
+    .map((r, ri) => {
+      const kind = t.rowKinds?.[ri] ?? 'row'
+      // a group's heading: its first cell across the whole table
+      if (kind === 'group')
+        return `<tr class="grp"><td colspan="${cols.length}">${textHtml(String(r[0] ?? ''))}</td></tr>`
+      return `<tr${kind === 'subtotal' ? ' class="total sub"' : ''}>${cols
+        .map((p) => {
+          const under =
+            kind === 'row'
+              ? p.under
+                  .map((u) => pdfCell(r[u.index], u.col))
+                  .filter((v) => v != null && v !== '')
+                  .map((v) => cellHtml(v, ''))
+              : []
+          return `<td${attr(p)}>${cellHtml(pdfCell(r[p.index], p.col), kind === 'row' ? DASH : '')}${subs(under)}</td>`
+        })
+        .join('')}</tr>`
+    })
     .join('')
-  const totals = t.totals?.length
-    ? `<tr class="total grand">${cols
+  const totalsRow = () => {
+    if (!t.totalKinds)
+      return `<tr class="total grand">${cols
         .map((p, i) => {
           const v =
             i === 0
@@ -284,8 +374,19 @@ function pdfTable(t: ReportTable, total: string): string {
           return `<td${attr(p)}>${v}</td>`
         })
         .join('')}</tr>`
-    : ''
-  return `<table class="dt"><thead><tr>${head}</tr></thead><tbody>${body}${totals}</tbody></table>`
+    const label = esc(t.totalLabel ?? total)
+    return `<tr class="total grand">${cols
+      .map((p, i) => {
+        const value = t.totalKinds![p.index] ? totalCell(t, p.index) : null
+        const shown = value == null || value === '' ? '' : cellHtml(pdfCell(value, p.col), '')
+        return `<td${attr(p)}>${i === 0 ? (shown ? `${label}: ${shown}` : label) : shown}</td>`
+      })
+      .join('')}</tr>`
+  }
+  const place = totalsPlace(t)
+  // totals at the top: their own body between the header and the rows (never repeated)
+  const top = place.top ? `<tbody class="tt">${totalsRow()}</tbody>` : ''
+  return `<table class="dt"><thead><tr>${head}</tr></thead>${top}<tbody>${body}${place.bottom ? totalsRow() : ''}</tbody></table>`
 }
 
 /** Layout specific to management reports, on top of the shared document CSS. */
@@ -322,6 +423,13 @@ const REPORT_CSS = `
 .wide-tail { page: wide; }
 /* the signature lines never stand alone at the top of a page: the last rows come with them */
 .sig-wrap, .wide-tail { break-before: avoid; page-break-before: avoid; }
+/* report centre tables: a group's heading across the table, its subtotal, the totals on top */
+.dt tbody tr.grp > td { background: var(--tint); color: var(--accent-ink); font-weight: 700;
+  border-top: 0.75pt solid var(--accent-2); border-bottom: 0.5pt solid var(--hair); padding-top: 4pt; }
+.dt tr.grp { break-after: avoid; page-break-after: avoid; }
+.dt tbody tr.total.sub > td { background: var(--panel); color: var(--ink); font-weight: 700;
+  border-top: 0.75pt solid var(--line); border-bottom: 0.75pt solid var(--line); }
+.dt tbody.tt tr.total > td { border-top: 0; }
 `
 
 /** "How the figures are counted": the report's notes as a small boxed list. */
@@ -332,9 +440,9 @@ const notesHtml = (r: Report) =>
         .join('')}</ul></section>`
     : ''
 
-/** One headed table. */
-const sectionHtml = (t: ReportTable, total: string, extra = '') => {
-  const cls = ['rs', isWidePdf(t) ? 'wide' : '', keepWhole(t) ? 'keep' : '', extra]
+/** One headed table (a landscape document needs no landscape page of its own for it). */
+const sectionHtml = (t: ReportTable, total: string, extra = '', landscape = false) => {
+  const cls = ['rs', isWidePdf(t) && !landscape ? 'wide' : '', keepWhole(t) ? 'keep' : '', extra]
     .filter(Boolean)
     .join(' ')
   return `<section class="${cls}"><h2>${esc(t.title)}</h2>${
@@ -347,13 +455,13 @@ const sectionHtml = (t: ReportTable, total: string, extra = '') => {
  * two short ones are kept whole together; with one long table, the long one goes on the left so
  * it can run on to the next page in its own column. Two long small tables each take a half row.
  */
-function sectionsHtml(tables: ReportTable[], total: string): string {
+function sectionsHtml(tables: ReportTable[], total: string, landscape = false): string {
   const out: string[] = []
   for (let i = 0; i < tables.length; i++) {
     const a = tables[i]
     if (!a) continue
     if (!isHalf(a)) {
-      out.push(sectionHtml(a, total))
+      out.push(sectionHtml(a, total, '', landscape))
       continue
     }
     const next = tables[i + 1]
@@ -381,7 +489,8 @@ export function reportHtml(report: Report, opts: { autoPrint?: boolean } = {}): 
     })
   const tables = tablesOf(report)
   const cash = report.cashCount?.rows.length ? report.cashCount : null
-  const sections = sectionsHtml(tables, w.total)
+  const landscape = report.orientation === 'landscape'
+  const sections = sectionsHtml(tables, w.total, landscape)
   const last = cash ?? tables[tables.length - 1]
   const signatures = signatureHtml(
     [
@@ -396,7 +505,7 @@ export function reportHtml(report: Report, opts: { autoPrint?: boolean } = {}): 
     letterheadHtml(lh, l, 'compact'),
     titleBlockHtml({
       title: report.title,
-      scope: `${w.period}: ${report.period}`,
+      scope: scopeLine(report),
       meta: [
         [w.reportNo, no],
         [w.printed, docDateTime(at)],
@@ -408,15 +517,15 @@ export function reportHtml(report: Report, opts: { autoPrint?: boolean } = {}): 
       : '',
     report.summaryText ? `<p class="summary-text">${esc(report.summaryText)}</p>` : '',
     sections,
-    cash ? sectionHtml(cash, w.total) : '',
-    last && isWidePdf(last)
+    cash ? sectionHtml(cash, w.total, '', landscape) : '',
+    last && isWidePdf(last) && !landscape
       ? `<div class="wide-tail">${notesHtml(report)}${signatures}</div>`
       : notesHtml(report) + signatures,
   ].join('')
 
   return documentHtml({
     base: {
-      page: 'a4',
+      page: landscape ? 'a4-landscape' : 'a4',
       title: report.title,
       docNo: no,
       clinicName: lh.legalName,
@@ -523,6 +632,8 @@ const excelFmt = (col: ReportColumn | undefined): string | undefined => {
       return EXCEL.fmt.datetime
     case 'time':
       return TIME_FMT
+    case 'percent':
+      return '#,##0.0" %"'
     default:
       return undefined
   }
@@ -570,7 +681,8 @@ function sheetHead(ws: Worksheet, report: Report, legalName: string, at: Date, c
   const lines: [string, Partial<ExcelCell['font']>][] = [
     [legalName, EXCEL.clinicFont],
     [report.title, EXCEL.titleFont],
-    [`${report.words.period}: ${report.period}`, { ...EXCEL.font, bold: true }],
+    // the period, then the filters chosen (report centre)
+    [scopeLine(report), { ...EXCEL.font, bold: true }],
     [
       `${l.printedBy(docDateTime(at), report.producedBy)}  ·  ${report.words.reportNo}: ${reportNumber(report)}`,
       EXCEL.subFont,
@@ -607,21 +719,139 @@ function headerRow(ws: Worksheet, row: number, labels: string[], right: boolean[
   ws.getRow(row).height = 30
 }
 
-/** A table from `row` (its header) down; returns the next free row. */
-function writeTable(ws: Worksheet, row: number, t: ReportTable, total: string): number {
+/** SUBTOTAL() function numbers: they follow the sheet's filter and skip other SUBTOTAL cells. */
+const SUBTOTAL_FN: Partial<Record<ReportTotalKind, number>> = { avg: 1, count: 3, sum: 9 }
+/** A group's heading row (teal wash, bold teal) and its subtotal row (panel, bold navy). */
+const GROUP_FILL = {
+  type: 'pattern' as const,
+  pattern: 'solid' as const,
+  fgColor: { argb: 'FFEEF6F9' },
+}
+const SUBTOTAL_FILL = {
+  type: 'pattern' as const,
+  pattern: 'solid' as const,
+  fgColor: { argb: 'FFF2F5F9' },
+}
+const tealRule = { style: 'thin' as const, color: { argb: EXCEL.colors.teal } }
+const thinNavy = { style: 'thin' as const, color: NAVY }
+
+/** The number format of a total: an average keeps one decimal (money stays whole). */
+const totalFmt = (col: ReportColumn, kind: ReportTotalKind | null | undefined) =>
+  kind === 'count'
+    ? EXCEL.fmt.count
+    : kind === 'avg' && col.kind !== 'money'
+      ? col.kind === 'percent'
+        ? '#,##0.0" %"'
+        : '#,##0.0'
+      : (excelFmt(col) ?? EXCEL.fmt.count)
+
+/** A value as text for the totals row's first cell ("Total: 57"). */
+const plainText = (v: Cell, col: ReportColumn) =>
+  typeof v === 'number' ? (col.kind === 'money' ? docMoney(v) : docNumber(v)) : String(v ?? '')
+
+/** The totals row of a report centre table (explicit totals), at `at`, over rows first..last. */
+function totalsRowExcel(
+  ws: Worksheet,
+  at: number,
+  t: ReportTable,
+  total: string,
+  first: number,
+  last: number,
+  right: boolean[],
+) {
+  const label = t.totalLabel ?? total
+  t.columns.forEach((col, i) => {
+    const cell = ws.getCell(at, i + 1)
+    cell.font = { ...EXCEL.totalFont }
+    cell.fill = EXCEL.fills.total
+    cell.border = { ...cellBox, top: navyRule, bottom: navyRule }
+    cell.alignment = { horizontal: i === 0 || !right[i] ? 'left' : 'right', vertical: 'top' }
+    const kind = t.totalKinds?.[i]
+    const value = kind ? totalCell(t, i) : null
+    const has = value != null && value !== ''
+    if (i === 0) {
+      cell.value = has ? `${label}: ${plainText(value, col)}` : label
+      return
+    }
+    if (!has) return
+    const fn = kind ? SUBTOTAL_FN[kind] : undefined
+    if (fn && typeof value === 'number') {
+      const L = columnLetter(i + 1)
+      cell.value = { formula: `SUBTOTAL(${fn},${L}${first}:${L}${last})`, result: value }
+    } else cell.value = typeof value === 'number' ? value : String(value)
+    cell.numFmt = totalFmt(col, kind)
+  })
+}
+
+/**
+ * A table from `row` down; returns the next free row and the row of its header. Totals at the
+ * top go on `row`, above the header (the header's filter then never sorts them into the rows);
+ * a group's heading and subtotal rows are styled, the subtotals SUBTOTAL() formulas.
+ */
+function writeTable(
+  ws: Worksheet,
+  row: number,
+  t: ReportTable,
+  total: string,
+): { next: number; header: number } {
   const right = t.columns.map(isRight)
-  headerRow(ws, row, t.columns.map(headerLabel), right)
-  const first = row + 1
+  const place = totalsPlace(t)
+  const explicit = !!t.totalKinds && t.rows.length > 0
+  const header = explicit && place.top ? row + 1 : row
+  headerRow(ws, header, t.columns.map(headerLabel), right)
+  const first = header + 1
+  // light zebra rows, as on the printed tables, counted again in each group
+  let zebra = 0
+  let groupStart = first
   t.rows.forEach((r, ri) => {
+    const at = first + ri
+    const kind = t.rowKinds?.[ri] ?? 'row'
+    if (kind === 'group') {
+      groupStart = at + 1
+      zebra = 0
+    }
     t.columns.forEach((col, i) => {
-      const cell = ws.getCell(first + ri, i + 1)
+      const cell = ws.getCell(at, i + 1)
+      if (kind === 'group') {
+        if (i === 0) cell.value = excelText(String(r[0] ?? ''))
+        cell.font = { ...EXCEL.font, bold: true, color: { argb: EXCEL.colors.teal } }
+        cell.fill = GROUP_FILL
+        cell.border = { ...cellBox, top: tealRule }
+        cell.alignment = { horizontal: 'left', vertical: 'middle' }
+        return
+      }
       writeCell(cell, r[i], col)
+      if (kind === 'subtotal') {
+        const k = t.totalKinds?.[i]
+        const fn = k ? SUBTOTAL_FN[k] : undefined
+        const v = r[i]
+        if (i > 0 && fn && typeof v === 'number' && at > groupStart) {
+          const L = columnLetter(i + 1)
+          cell.value = { formula: `SUBTOTAL(${fn},${L}${groupStart}:${L}${at - 1})`, result: v }
+          cell.numFmt = totalFmt(col, k)
+        }
+        cell.font = { ...EXCEL.totalFont }
+        cell.fill = SUBTOTAL_FILL
+        cell.border = { ...cellBox, top: thinNavy, bottom: thinNavy }
+        return
+      }
       cell.border = cellBox
-      // light zebra rows, as on the printed tables
-      if (ri % 2 === 1) cell.fill = EXCEL.fills.zebra
+      if (zebra % 2 === 1) cell.fill = EXCEL.fills.zebra
     })
+    if (kind === 'row') zebra++
   })
   let next = first + t.rows.length
+  if (t.totalKinds) {
+    if (explicit) {
+      const last = next - 1
+      if (place.top) totalsRowExcel(ws, row, t, total, first, last, right)
+      if (place.bottom) {
+        totalsRowExcel(ws, next, t, total, first, last, right)
+        next++
+      }
+    }
+    return { next, header }
+  }
   if (t.totals?.length && t.rows.length) {
     const last = next - 1
     t.columns.forEach((col, i) => {
@@ -639,7 +869,7 @@ function writeTable(ws: Worksheet, row: number, t: ReportTable, total: string): 
     })
     next++
   }
-  return next
+  return { next, header }
 }
 
 /** Column widths: text = longest value + 2 (10 to 50), numbers 14, date-time 17. */
@@ -660,6 +890,7 @@ function printSetup(
   legalName: string,
   at: Date,
   landscape: boolean,
+  titleRow: number = EXCEL.headerRow,
 ) {
   ws.pageSetup = {
     paperSize: 9,
@@ -668,7 +899,7 @@ function printSetup(
     fitToWidth: 1,
     fitToHeight: 0,
     margins: { ...EXCEL.margins },
-    printTitlesRow: `${EXCEL.headerRow}:${EXCEL.headerRow}`,
+    printTitlesRow: `${titleRow}:${titleRow}`,
   }
   ws.headerFooter.oddFooter = excelFooter({
     clinicName: legalName,
@@ -781,13 +1012,28 @@ export async function buildWorkbook(report: Report): Promise<Workbook> {
   for (const t of tablesOf(report)) {
     const ws = newSheet(wb, t.title, t.columns.length)
     sheetHead(ws, report, legalName, at, t.columns.length)
-    writeTable(ws, EXCEL.headerRow, t, w.total)
+    const { header } = writeTable(ws, EXCEL.headerRow, t, w.total)
+    // totals at the top: the totals and the header stay in view
+    if (header !== EXCEL.headerRow)
+      ws.views = [{ state: 'frozen', ySplit: header, showGridLines: true }]
     ws.autoFilter = {
-      from: { row: EXCEL.headerRow, column: 1 },
-      to: { row: EXCEL.headerRow, column: t.columns.length },
+      from: { row: header, column: 1 },
+      to: { row: header, column: t.columns.length },
     }
-    setWidths(ws, t.columns, t.rows)
-    printSetup(ws, report, legalName, at, isWideSheet(t))
+    // a group's heading may run over the next cells: the widths follow the detail rows
+    setWidths(
+      ws,
+      t.columns,
+      t.rows.filter((_, ri) => isDetailRow(t, ri)),
+    )
+    printSetup(
+      ws,
+      report,
+      legalName,
+      at,
+      isWideSheet(t) || report.orientation === 'landscape',
+      header,
+    )
   }
 
   if (!wb.worksheets.length) {

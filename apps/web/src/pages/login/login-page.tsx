@@ -386,7 +386,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
               </button>
               <button
                 type="button"
-                className="text-primary font-semibold disabled:opacity-50"
+                className="text-primary disabled:text-ink-3 font-semibold disabled:cursor-not-allowed"
                 disabled={cooldown > 0 || (askPin && !resendPin.trim())}
                 onClick={() => void resend()}
               >

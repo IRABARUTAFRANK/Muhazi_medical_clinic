@@ -16,7 +16,7 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { usePeriod } from '@/lib/period'
+import { useSearchPeriod } from '@/lib/period'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import {
   CLINIC_HOURS,
@@ -117,7 +117,7 @@ function RoleHome({ user, mode }: HomePageProps) {
   const { data: info } = useClinicInfo()
   const { data: status } = useClinicStatus(info?.hours ?? CLINIC_HOURS)
   // the figures of the chosen period (today by default; lists of what waits now stay "now")
-  const period = usePeriod('today')
+  const period = useSearchPeriod('today')
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
   const periodWord = t(`dashboard.period.${period.range}`)
   const { data: summary, error, refetch, isFetching, dataUpdatedAt } = useHomeSummary(days)

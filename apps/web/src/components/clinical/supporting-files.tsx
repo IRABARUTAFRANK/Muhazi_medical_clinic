@@ -178,7 +178,7 @@ export function PatientFilesSection({
                     className={cn(
                       'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
                       kind === k
-                        ? 'border-primary bg-primary text-white'
+                        ? 'border-primary bg-primary text-on-primary'
                         : 'border-border bg-card text-ink-2 hover:bg-hover',
                     )}
                   >
@@ -807,7 +807,7 @@ function AttachForm({
                 className={cn(
                   'min-h-9 rounded-full border px-3 text-[13px] font-semibold',
                   kind === k
-                    ? 'border-primary bg-primary text-white'
+                    ? 'border-primary bg-primary text-on-primary'
                     : 'border-border bg-card text-ink-2 hover:bg-hover',
                 )}
               >

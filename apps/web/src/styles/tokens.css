@@ -24,7 +24,9 @@
   --mmc-text: #1f2328;
   --mmc-text-2: #4b5563; /* secondary text, sidebar items */
   --mmc-text-3: #6b7280; /* captions, table headers: 4.8:1 on white */
-  --mmc-text-4: #9ca3af; /* muted: placeholders, disabled, decorative icons only */
+  /* muted: placeholders, disabled, decorative icons only; still 3:1 on white, the page and the
+     grey hover / disabled fill (3.2:1), so a placeholder never fades into its box */
+  --mmc-text-4: #838a96;
 
   /* Semantic — the health palette, flat. ALWAYS paired with an icon, dot or word, never colour
      alone. Each hue is a light tint (-bg) with a 1 px border in the same hue for tags, tiles and
@@ -84,14 +86,16 @@
   --mmc-hero-teal: #1f6f8b;
   /* Deep end of each hue's hero gradient (page banners, panel headers): white text on both ends */
   --mmc-deep-teal: #134a5e;
-  --mmc-deep-mint: #047857;
+  --mmc-deep-mint: #065f46;
   --mmc-deep-amber: #92400e;
-  --mmc-deep-coral: #b91c1c;
+  --mmc-deep-coral: #991b1b;
   --mmc-deep-violet: #5b21b6;
   --mmc-deep-navy: #1e3a8a;
   --mmc-deep-rose: #9d174d;
   --mmc-deep-grey: #334155;
-  --mmc-hue-amber: #d97706; /* the amber hero starts darker than the dot so white text reads */
+  /* Each hero starts dark enough that white text, white/85 leads and the white/20 glass chips
+     read at 3:1 or more on its lightest corner */
+  --mmc-hue-amber: #b45309;
   --mmc-hue-grey: #64748b;
 
   /* Type */
@@ -126,7 +130,7 @@
   --mmc-text: #e6e8eb;
   --mmc-text-2: #b3bac3;
   --mmc-text-3: #9aa3ad;
-  --mmc-text-4: #6b7380;
+  --mmc-text-4: #7a8290; /* 4.2:1 on the dim hover fill, 4.6:1 on the dim card */
   --mmc-primary: #5cb3d0;
   --mmc-primary-hover: #7cc4dc;
   --mmc-primary-tint: #16303a;

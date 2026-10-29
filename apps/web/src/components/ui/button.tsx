@@ -17,14 +17,15 @@ import { cn } from '@/lib/utils'
  *   export, open), `tint-blue` (information), `tint-violet` (laboratory), `tint-rose`;
  * - `ghost` has no border and only a hover tint.
  * Keyboard focus shows a teal border and a 2 px teal/20 ring. Loading dims the label and swaps
- * the icon for a spinner while the width stays put; disabled is 50 % and inert. On a phone a long
+ * the icon for a spinner while the width stays put; disabled turns grey (the grey tint with
+ * grey text, 4:1, so its label stays readable) and inert. On a phone a long
  * label wraps inside the button (it grows taller, never wider than its box) and on a touch
  * screen it is at least 44 px high (--tap, globals.css).
  * `buttonVariants` is exported so links can look like buttons; `actionLink` and `tableLink` are
  * the classes of a link that acts (open, view, edit) in text and inside a table row.
  */
 export const buttonVariants = cva(
-  'inline-flex max-w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border font-medium whitespace-nowrap select-none max-sm:h-auto max-sm:min-h-[max(var(--btn-h),var(--tap,0px))] max-sm:py-1.5 max-sm:text-center max-sm:whitespace-normal transition-[color,background-color,border-color,box-shadow,transform,filter] duration-120 ease-out active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-busy:pointer-events-none aria-busy:opacity-85',
+  'inline-flex max-w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border font-medium whitespace-nowrap select-none max-sm:h-auto max-sm:min-h-[max(var(--btn-h),var(--tap,0px))] max-sm:py-1.5 max-sm:text-center max-sm:whitespace-normal transition-[color,background-color,border-color,box-shadow,transform,filter] duration-120 ease-out active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:outline-none disabled:pointer-events-none disabled:border-border disabled:bg-hover disabled:bg-none disabled:text-ink-3 disabled:shadow-none aria-busy:pointer-events-none aria-busy:opacity-85',
   {
     variants: {
       variant: {
@@ -42,8 +43,9 @@ export const buttonVariants = cva(
         // solid gradients: white (or dark, on amber) text, darker border, 4 % lighter on hover
         primary:
           'border-[#185b72] bg-[linear-gradient(180deg,#2a7f9c_0%,#1f6f8b_100%)] text-white hover:brightness-[1.04]',
+        // a deeper mint than the dot: white reads at 3.9–5.5:1 (it was 2.5:1 on #10b981)
         success:
-          'border-[#0e9f70] bg-[linear-gradient(180deg,#19b58a_0%,#10b981_100%)] text-white hover:brightness-[1.04]',
+          'border-[#065f46] bg-[linear-gradient(180deg,#0d9466_0%,#047857_100%)] text-white hover:brightness-[1.04]',
         'danger-solid':
           'border-[#dc2626] bg-[linear-gradient(180deg,#f05252_0%,#ef4444_100%)] text-white hover:brightness-[1.04]',
         warning:

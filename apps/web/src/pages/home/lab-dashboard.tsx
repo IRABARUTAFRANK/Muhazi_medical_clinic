@@ -15,7 +15,7 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { usePeriod } from '@/lib/period'
+import { periodHref, useSearchPeriod } from '@/lib/period'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { formatDuration } from '@/lib/duration'
 import { formatDate, formatNumber, formatTime, type StaffUser } from '@mmc/shared'
@@ -29,8 +29,9 @@ import { AccessApprovalsPanel } from '@/components/privacy/approvals'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ListBar, ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
+import { DashLink } from '@/components/dash/dash-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { useLabSummary, useLabWorklist } from '@/lib/api/lab'
+import { useLabDone, useLabSummary, useLabWorklist } from '@/lib/api/lab'
 import { useStockAlerts, useStockOverview } from '@/lib/api/stock'
 import { openItems, stationFor, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
@@ -57,7 +58,7 @@ export function LabDashboard({ user }: { user: StaffUser }) {
   const switchedOff = useSwitchedOff(user)
   const now = useNow()
   // the figures of the chosen period (today by default; lists of what waits now stay "now")
-  const period = usePeriod('today')
+  const period = useSearchPeriod('today')
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
   const periodWord = t(`dashboard.period.${period.range}`)
   // the laboratory figures open the Analytics page (the manager, a head whose department has the
@@ -68,7 +69,11 @@ export function LabDashboard({ user }: { user: StaffUser }) {
     link('lab') ?? link(own)
   const { data: s, refetch, isFetching, dataUpdatedAt } = useLabSummary(days)
   const { data: open = [] } = useLabWorklist('open')
-  const { data: done = [] } = useLabWorklist('done')
+  // the results given in the period (today by default)
+  const { data: doneGot } = useLabDone(days)
+  const done = doneGot?.rows ?? []
+  // an older database gives today's results only
+  const doneWord = doneGot?.todayOnly ? t('dashboard.period.today') : periodWord
   // the lab's queue, or the ultrasound queue for sonographers; someone else working here (a
   // doctor or nurse whose department is the Laboratory or Ultrasound) sees the queue of that desk
   const { has } = useHomeDesks(user)
@@ -143,10 +148,14 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               {t('lab.stock')}
             </StaffLink>
           )}
-          <StaffLink to="/app/lab" className={buttonVariants({ variant: 'primary', size: 'md' })}>
+          {/* the worklist's "Done" opens on the same period */}
+          <DashLink
+            href={periodHref('/app/lab', period)}
+            className={buttonVariants({ variant: 'primary', size: 'md' })}
+          >
             <ClipboardList size={16} aria-hidden="true" />
             {t('lab.openWorklist')}
-          </StaffLink>
+          </DashLink>
           <PeriodCustom period={period} className="basis-full" />
         </div>
 
@@ -336,17 +345,19 @@ export function LabDashboard({ user }: { user: StaffUser }) {
         )}
 
         <section className="flex flex-col gap-3">
-          <SectionTitle icon={CircleCheck}>{t('lab.doneToday')}</SectionTitle>
+          <SectionTitle icon={CircleCheck}>
+            {t('lab.tabs.doneIn', { period: doneWord })}
+          </SectionTitle>
           <Panel
             i={1}
             icon={CircleCheck}
             tint="mint"
-            title={t('lab.resultsGiven')}
+            title={t('lab.resultsGivenIn', { period: doneWord })}
             right={String(done.length)}
             to={link('staff', { kind: 'results' })}
           >
             {done.length === 0 ? (
-              <Empty>{t('lab.noneDone')}</Empty>
+              <Empty>{t('lab.noneDoneIn', { period: doneWord })}</Empty>
             ) : (
               <ShownList items={done} step={5}>
                 {(shown) => (

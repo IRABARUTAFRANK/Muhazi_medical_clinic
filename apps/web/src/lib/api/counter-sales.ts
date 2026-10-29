@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiError, isMissingFunction, sampleRefusal } from './errors'
-import { sampleStock } from './stock'
+import { isRoomStore, sampleStock } from './stock'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { priceQuantity, type Packaging, type SaleMode } from '@/lib/pack-pricing'
@@ -99,6 +99,8 @@ export interface CounterSale {
   phone: string | null
   storeId: string
   store: string
+  /** Sold from a room store by its holder (0109), not by the pharmacy. */
+  roomStore?: boolean
   total: number
   note: string | null
   at: string
@@ -298,6 +300,7 @@ export function useCounterSaleActions() {
           phone: i.buyerPhone?.trim() || null,
           storeId: loc,
           store: sampleStock.locations.find((l) => l.id === loc)?.name ?? '',
+          roomStore: sampleStock.locations.some((l) => l.id === loc && isRoomStore(l)),
           total: lines.reduce((t, l) => t + l.lineTotal, 0),
           note: i.note?.trim() || null,
           at: new Date().toISOString(),

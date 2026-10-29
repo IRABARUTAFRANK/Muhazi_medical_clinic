@@ -43,8 +43,7 @@ import {
 } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
-import type { CustomRange } from '@/lib/api/dashboard'
-import { usePeriod, type Period } from '@/lib/period'
+import { useSearchPeriod, type Period } from '@/lib/period'
 import { cn } from '@/lib/utils'
 import { OpenNextButton } from '../home/open-next'
 import { MyQueuePanel } from '../home/role-panels'
@@ -189,24 +188,12 @@ export function QueuePage({ user }: { user: StaffUser }) {
 /* ---------------------------------------------------------------- tests & results */
 
 /**
- * The period bar of the two lists, opening on the last 7 days (as Custom), so on a Monday the
- * results of last Friday's tests are still there.
+ * The period bar of the two lists, kept in the address, opening on the last 7 days (as Custom),
+ * so on a Monday the results of last Friday's tests are still there.
  */
 function useLastWeekPeriod(): Period {
-  const { t } = useTranslation()
-  const base = usePeriod('custom')
-  const [custom, setCustom] = useState<CustomRange>(() => {
-    const today = new Date()
-    return { from: isoDate(addDays(today, -6)), to: isoDate(today) }
-  })
-  if (base.range !== 'custom') return base
-  const [fy, fm, fd] = custom.from.split('-').map(Number)
-  const [ty, tm, td] = custom.to.split('-').map(Number)
-  const label = t('dashboard.rangeLabels.week', {
-    from: formatDate(new Date(fy!, fm! - 1, fd!)),
-    to: formatDate(new Date(ty!, tm! - 1, td!)),
-  })
-  return { ...base, custom, setCustom, from: custom.from, to: custom.to, label }
+  const today = new Date()
+  return useSearchPeriod('custom', { from: isoDate(addDays(today, -6)), to: isoDate(today) })
 }
 
 /** An older database could only give the last 90 days. */

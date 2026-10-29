@@ -22,7 +22,7 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { usePeriod } from '@/lib/period'
+import { useSearchPeriod } from '@/lib/period'
 import { rowSignature, useChanged } from '@/lib/motion'
 import type { DashboardRange } from '@/lib/api/dashboard'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
@@ -104,7 +104,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   const { t } = useTranslation()
   const now = new Date()
   // the figures of the chosen period (today by default; lists of what waits now stay "now")
-  const period = usePeriod('today')
+  const period = useSearchPeriod('today')
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
   const { data, error, isFetching, refetch, dataUpdatedAt } = useDeskSummary(days)
   // the figures open their detailed view on the Analytics page when the person may see it

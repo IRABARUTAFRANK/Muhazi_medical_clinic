@@ -758,7 +758,7 @@ export function FileViewer({
                 href={pageUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cn(topBtn, 'bg-primary hover:bg-primary/90 px-4')}
+                className={cn(topBtn, 'bg-[#1f6f8b] px-4 hover:bg-[#185b72]')}
               >
                 <ExternalLink size={18} aria-hidden="true" />
                 {t('supportingFiles.openPdf')}
@@ -844,7 +844,7 @@ export function FileViewer({
           {expired && (
             <button
               type="button"
-              className={cn(topBtn, 'bg-primary hover:bg-primary/90')}
+              className={cn(topBtn, 'bg-[#1f6f8b] hover:bg-[#185b72]')}
               onClick={() => void link.refetch()}
               title={t('supportingFiles.openAgain')}
             >

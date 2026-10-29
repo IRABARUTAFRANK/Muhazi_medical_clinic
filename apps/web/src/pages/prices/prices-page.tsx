@@ -1201,7 +1201,7 @@ function TreatmentForm({
                       className={cn(
                         'inline-flex min-h-8 items-center gap-1.5 rounded-md border px-3 text-[14px] font-medium',
                         on
-                          ? 'border-primary bg-primary text-white'
+                          ? 'border-primary bg-primary text-on-primary'
                           : 'border-border bg-card text-ink-2 hover:bg-hover',
                       )}
                     >

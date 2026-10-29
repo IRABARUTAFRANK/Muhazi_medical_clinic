@@ -187,7 +187,7 @@ export function WhereNextCard({
                 className={cn(
                   'flex min-h-9 items-center gap-2 rounded-md border px-3 text-left text-[14px] font-semibold transition-colors',
                   on
-                    ? 'border-primary bg-primary text-white'
+                    ? 'border-primary bg-primary text-on-primary'
                     : 'border-border bg-card text-ink-2 hover:bg-hover',
                 )}
               >

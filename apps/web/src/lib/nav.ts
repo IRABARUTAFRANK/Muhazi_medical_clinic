@@ -3,6 +3,8 @@ import { desksNow, desksReady, TREATING_DESKS, type DeskId, type MyDesks } from 
 import { permsNow, permsReady } from '@/lib/api/permissions'
 import { isRoomStore, sampleStock } from '@/lib/api/stock'
 import { queryClient } from '@/lib/query-client'
+import { reportsFor } from '@/lib/reports/catalog'
+import { buildReportContext } from '@/lib/reports/context'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 
@@ -32,6 +34,7 @@ const GROUP_OF: Record<string, NavGroupId> = {
   prices: 'finance',
   stock: 'stock',
   analytics: 'manage',
+  reports: 'manage',
   staff: 'manage',
   settings: 'manage',
   notifications: 'inbox',
@@ -84,6 +87,8 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'layout-dashboard', to: '/app/dashboard' },
   // the detailed views behind the dashboard cards (one view at a time)
   { id: 'analytics', labelKey: 'nav.analytics', icon: 'bar-chart-3', to: '/app/analytics' },
+  // the report centre: every report as a table to filter, print and export (0110)
+  { id: 'reports', labelKey: 'nav.reports', icon: 'printer', to: '/app/reports' },
   { id: 'register', labelKey: 'nav.register', icon: 'user-plus', to: '/app/register' },
   { id: 'vitals', labelKey: 'nav.triage', icon: 'activity', to: '/app/vitals' },
   { id: 'visits', labelKey: 'nav.inClinic', icon: 'stethoscope', to: '/app/visits' },
@@ -216,12 +221,43 @@ export const navForUser = (user: StaffUser): NavItem[] =>
         user,
         withRecordAccess(
           user,
-          withDeskAnalytics(
+          withReports(
             user,
-            withHeadDashboard(user, withSwitches(user, withDesks(user, navForStaff(user)))),
+            withDeskAnalytics(
+              user,
+              withHeadDashboard(user, withSwitches(user, withDesks(user, navForStaff(user)))),
+            ),
           ),
         ),
       )
+
+/** The report centre (0110): the reports the person may run, printed as tables. */
+const REPORTS: NavItem = {
+  id: 'reports',
+  labelKey: 'nav.reports',
+  icon: 'printer',
+  to: '/app/reports',
+}
+/**
+ * Reports, right after Analytics, for whoever has at least one report: their rights read from
+ * the same answers as the rest of the menu (the switches, the desks, the room stores held).
+ */
+function withReports(user: StaffUser, items: NavItem[]): NavItem[] {
+  if (items.some((n) => n.to === REPORTS.to)) return items
+  const may = permsNow(user)
+  const desks = desksNow(user)
+  const ctx = buildReportContext(user, {
+    can: (f) => may.has(f as never),
+    canDesk: (d) => desks.includes(d as DeskId),
+    holdsStore: holdsRoomStore(user),
+    sample: !supabase,
+  })
+  if (reportsFor(ctx).length === 0) return items
+  const at = items.findIndex((n) => n.to === '/app/analytics')
+  const history = items.findIndex((n) => n.to === '/app/history')
+  const cut = at >= 0 ? at + 1 : history >= 0 ? history : items.length
+  return [...items.slice(0, cut), REPORTS, ...items.slice(cut)]
+}
 
 /** Whoever the manager allowed to answer the requests to see past records (Settings → Who may
  *  do what, records.approve; 0095) gets Record access, before History and the notices. */

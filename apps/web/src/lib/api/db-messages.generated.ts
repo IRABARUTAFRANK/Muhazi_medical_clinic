@@ -143,7 +143,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^call reception, the nurses or a colleague$/, 'dbErrors.35c23da4', 0], // call_next
   [/^only the pharmacy confirms what came back$/, 'dbErrors.56d945ce', 0], // confirm_receipt
   [/^signed out after (.+?) hours without activity$/, 'dbErrors.59565a6b', 1], // check_request
-  [/^the end of the period is before its start$/, 'dbErrors.93857009', 0], // my_bookings, rx_bought_outside
+  [/^the end of the period is before its start$/, 'dbErrors.93857009', 0], // my_bookings, report_assert_period, rx_bought_outside
   [/^the weight must be between 0\.3 and 350 kg$/, 'dbErrors.7028b3a6', 0], // record_vitals
   [/^this appointment can no longer be changed$/, 'dbErrors.87b51b7d', 0], // set_appointment_outcome
   [/^a category with this name already exists$/, 'dbErrors.af608345', 0], // save_category

@@ -22,7 +22,14 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { CLINIC_PROFILE, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
+import {
+  CLINIC_PROFILE,
+  formatDate,
+  formatRwf,
+  formatTime,
+  isoDate,
+  type StaffUser,
+} from '@mmc/shared'
 import { Empty, IconChip, Kpi, Panel, Pill, SectionTitle } from '@/components/dash/kit'
 import {
   tableCell,
@@ -32,6 +39,7 @@ import {
   type Tint,
 } from '@/components/dash/kit-style'
 import { ActionRow, ActionRowEnd, BannerChip, PageBanner } from '@/components/dash/page-banner'
+import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
@@ -52,6 +60,7 @@ import { cashierReport } from '@/lib/reports/build'
 import { useHomeSummary } from '@/lib/api/home'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged } from '@/lib/paging'
+import { useSearchPeriod } from '@/lib/period'
 import { cn } from '@/lib/utils'
 import { useCan, useSwitchedOff } from '@/lib/api/permissions'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
@@ -410,21 +419,21 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
 }
 
 /**
- * Payments of a day and the day close: totals by method and by cashier, every payment with its
- * receipt and reference, filters and search, and a printable summary.
+ * Payments of a period (today by default) and the day close: totals by method and by cashier,
+ * every payment with its receipt and reference, filters and search, and a printable summary.
  */
 export function PaymentsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
-  // the Revenue view's "Open payments of this day" opens this page with ?day=YYYY-MM-DD
-  const search = useSearch({ strict: false }) as { day?: unknown }
-  const [day, setDay] = useState(() =>
-    typeof search.day === 'string' &&
-    /^\d{4}-\d{2}-\d{2}$/.test(search.day) &&
-    search.day <= today()
-      ? search.day
-      : today(),
+  // the period every page filters by, kept in the address; the Revenue view's "Open payments of
+  // this day" opens it on that day (Custom, from = to; an older ?day= link too)
+  const period = useSearchPeriod('today')
+  // the day close (what each person holds, the counts) is about one day: the period's last
+  const oneDay = period.from === period.to
+  const day = period.to
+  const { data: s, error: loadError } = useCashierSummary(
+    day,
+    oneDay ? null : { from: period.from, to: period.to },
   )
-  const { data: s, error: loadError } = useCashierSummary(day)
   const { data: info } = useClinicInfo()
   const [method, setMethod] = useState<string>('all')
   const [query, setQuery] = useState('')
@@ -449,7 +458,10 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
   )
   // counter sales of the day (and some days before, for a sale paid later): to print the
   // receipt again with its lines
-  const { data: daySales = [] } = useCounterSales(null, { from: daysBefore(day, 14), to: day })
+  const { data: daySales = [] } = useCounterSales(null, {
+    from: daysBefore(period.from, 14),
+    to: day,
+  })
   const letterhead = useLetterhead()
   const printedBy = usePrintedBy()
   const reprintCounter = (p: CashPayment) => {
@@ -476,7 +488,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
     )
     if (!ok) setCashError(t('report.popupBlocked'))
   }
-  const paged = usePaged(payments, 20, `${day}|${method}|${query}`)
+  const paged = usePaged(payments, 20, `${period.from}|${day}|${method}|${query}`)
   // printing the day close lists every payment, not only the page on screen
   const [printing, setPrinting] = useState(false)
   useEffect(() => {
@@ -502,8 +514,10 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
   const [cashNotice, setCashNotice] = useState<string | null>(null)
   const [cashError, setCashError] = useState<string | null>(null)
   // the count's answer lives here: saving refreshes the day, and the panel starts again from the
-  // saved count, so a message kept inside it would vanish at once
-  const [countMsg, setCountMsg] = useState<CountMsg | null>(null)
+  // saved count, so a message kept inside it would vanish at once (another day: no message)
+  const [countMsgOf, setCountMsgOf] = useState<{ day: string; msg: CountMsg } | null>(null)
+  const countMsg = countMsgOf?.day === day ? countMsgOf.msg : null
+  const setCountMsg = (msg: CountMsg | null) => setCountMsgOf(msg ? { day, msg } : null)
   // what the day holds: the payments less the money given back, as the cash count expects
   const refundedOf = (m: string) =>
     (s?.refunds ?? []).filter((r) => r.method === m).reduce((sum, r) => sum + r.amount, 0)
@@ -515,6 +529,9 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
     `${t('finance.paymentsCount', { count })}${
       refunded > 0 ? ` · ${t('finance.afterRefunds', { amount: formatRwf(refunded) })}` : ''
     }`
+  // one day: the time of each payment; a longer period: its date too
+  const whenOf = (at: string) =>
+    oneDay ? formatTime(new Date(at)) : `${formatDate(new Date(at))} · ${formatTime(new Date(at))}`
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="payments">
@@ -523,44 +540,47 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           icon={HandCoins}
           tint="mint"
           title={t('finance.paymentsTitle')}
-          lead={t('finance.paymentsLead')}
+          lead={t('finance.paymentsLeadPeriod')}
           meta={
             <>
-              <BannerChip icon={CalendarDays}>{formatDate(new Date(day))}</BannerChip>
+              <BannerChip icon={CalendarDays}>{period.label}</BannerChip>
               <BannerChip icon={HandCoins}>{formatRwf(dayTotal)}</BannerChip>
             </>
           }
         />
         <ActionRow>
-          <label className="border-border bg-card text-ink flex h-9 items-center gap-2 rounded-md border px-3 text-[14px]">
-            <CalendarDays size={16} aria-hidden="true" className="text-ink-3" />
-            <span className="sr-only">{t('finance.day')}</span>
-            <input
-              type="date"
-              value={day}
-              max={today()}
-              onChange={(e) => {
-                setDay(e.target.value || today())
-                setCountMsg(null)
-              }}
-              className="bg-transparent outline-none"
-            />
-          </label>
+          <PeriodSeg period={period} className="max-w-full flex-wrap" />
           <ReportButtons
-            build={() => (s ? cashierReport(s, info?.profile ?? CLINIC_PROFILE, user, t) : null)}
+            build={() =>
+              s
+                ? cashierReport(s, info?.profile ?? CLINIC_PROFILE, user, t, {
+                    from: period.from,
+                    to: period.to,
+                  })
+                : null
+            }
           />
           <Button variant="tint-grey" onClick={() => setPrinting(true)}>
             <Printer size={16} aria-hidden="true" />
-            {t('finance.printDay')}
+            {t(oneDay ? 'finance.printDay' : 'finance.printPeriod')}
           </Button>
           <ActionRowEnd />
         </ActionRow>
+        <PeriodCustom period={period} className="print:hidden" />
 
         {loadError && <LoadError message={loadError.message} />}
+        {/* a database older than the periods (0078) gives today's figures, and says so */}
+        {s?.todayOnly && (
+          <p className="border-yellow/25 bg-yellow-bg text-yellow m-0 rounded-md border px-3 py-2 text-[14px] font-medium print:hidden">
+            {t('finance.periodNeedsUpdate')}
+          </p>
+        )}
 
         {/* Day close: totals by method, then the day */}
         <section className="flex flex-col gap-3">
-          <SectionTitle icon={Wallet}>{t('finance.byMethod')}</SectionTitle>
+          <SectionTitle icon={Wallet}>
+            {t('finance.byMethodIn', { period: t(`dashboard.period.${period.range}`) })}
+          </SectionTitle>
           <div className="pc:grid-cols-[repeat(auto-fit,minmax(150px,1fr))] grid grid-cols-1 gap-3 sm:grid-cols-2">
             {methods.map((m, i) => (
               <Kpi
@@ -578,7 +598,11 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
               i={methods.length}
               icon={HandCoins}
               tint="navy"
-              label={t('finance.dayTotal', { day: formatDate(new Date(day)) })}
+              label={
+                oneDay
+                  ? t('finance.dayTotal', { day: formatDate(new Date(day)) })
+                  : t('finance.periodTotal', { period: period.label })
+              }
               value={dayTotal}
               text={formatRwf(dayTotal)}
               unit={[
@@ -685,7 +709,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                             'text-ink-2 whitespace-nowrap tabular-nums',
                           )}
                         >
-                          {formatTime(new Date(p.at))}
+                          {whenOf(p.at)}
                         </td>
                         <td className={tableCell}>
                           <span className="block font-medium">
@@ -753,7 +777,8 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                                 <Printer size={14} aria-hidden="true" />
                               </Button>
                             )}
-                            {(isManager || (p.mine && !p.counted && day === today())) && (
+                            {(isManager ||
+                              (p.mine && !p.counted && isoDate(new Date(p.at)) === today())) && (
                               <Button
                                 size="sm"
                                 variant="tint-coral"
@@ -829,7 +854,13 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
             {cashError ?? cashNotice}
           </Flash>
         )}
-        {s && (
+        {s && !oneDay && (
+          <p className="border-border bg-surface text-ink-2 m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] print:hidden">
+            <CalendarDays size={16} aria-hidden="true" className="text-ink-3 mt-0.5 flex-none" />
+            {t('finance.countOneDay')}
+          </p>
+        )}
+        {s && oneDay && (
           <CountCashPanel
             // the day's figures arrive after the page opens: start again from the saved count
             key={`${day}|${JSON.stringify((s.closes ?? []).find((c) => c.mine)?.counted ?? {})}`}
@@ -892,7 +923,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                   className="border-grid hover:bg-hover flex min-h-10 flex-wrap items-center gap-3 border-b py-2 text-[14px] transition-colors duration-120 last:border-b-0"
                 >
                   <Pill tint="amber" icon={Clock}>
-                    {formatTime(new Date(r.at))}
+                    {whenOf(r.at)}
                   </Pill>
                   <span className="min-w-[180px] flex-1">
                     <span className="block font-medium">

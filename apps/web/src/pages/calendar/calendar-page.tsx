@@ -248,7 +248,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                 <span
                   className={cn(
                     'inline-flex size-8 flex-none items-center justify-center rounded',
-                    on ? 'bg-violet text-white' : 'bg-hover text-ink-2',
+                    on ? 'bg-violet text-card' : 'bg-hover text-ink-2',
                   )}
                 >
                   <Icon size={18} aria-hidden="true" />

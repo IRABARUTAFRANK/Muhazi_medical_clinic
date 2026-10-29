@@ -15,7 +15,7 @@ import { PeriodFilter } from '@/components/dash/period-filter'
 import { Button } from '@/components/ui/button'
 import { Pager } from '@/components/ui/list-tools'
 import { useDeliveries, useDeliveryDetail } from '@/lib/api/stock'
-import { usePeriod } from '@/lib/period'
+import { usePeriod, type Period } from '@/lib/period'
 import { usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 
@@ -26,9 +26,17 @@ import { cn } from '@/lib/utils'
 
 /* ---------------------------------------------------------------- deliveries received */
 /** Every delivery received in a period, each opening its lines. */
-export function DeliveriesList({ focusId }: { focusId?: string }) {
+export function DeliveriesList({
+  focusId,
+  period: shared,
+}: {
+  focusId?: string
+  /** The period of the Reports tab (its own filter otherwise). */
+  period?: Period
+}) {
   const { t } = useTranslation()
-  const period = usePeriod('month')
+  const own = usePeriod('month')
+  const period = shared ?? own
   const { data: list = [], isLoading } = useDeliveries({ from: period.from, to: period.to })
   const [open, setOpen] = useState<string | null>(focusId ?? null)
   const paged = usePaged(list, 12, `${period.from}|${period.to}`)
@@ -44,7 +52,7 @@ export function DeliveriesList({ focusId }: { focusId?: string }) {
         value: formatRwf(Math.round(total)),
       })}
     >
-      <PeriodFilter period={period} />
+      {!shared && <PeriodFilter period={period} />}
       {open && !list.some((d) => d.id === open) && (
         <DeliveryDetailView id={open} onClose={() => setOpen(null)} />
       )}

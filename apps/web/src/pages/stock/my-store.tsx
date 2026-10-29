@@ -25,6 +25,7 @@ import { useStockActions, useStockOverview } from '@/lib/api/stock'
 import { useCan } from '@/lib/api/permissions'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
+import { RoomCounterSales } from './pharmacy/counter-sales'
 import { RefillRequestsList } from './refill-requests'
 import { RoomStoreStock, RoomStoreUse } from './room-store-parts'
 import { LinesEditor, MsgFlash } from './stock-shared'
@@ -211,7 +212,15 @@ export function MyStoreTab({
         {action === 'count' && <CountForm key={store.id} store={store} />}
         {action === 'writeOff' && <WriteOffForm key={store.id} store={store} />}
         {action === 'receive' && <LabReceiveForm key={store.id} store={store} />}
+        {!can('stock.sell_walkin') && (
+          <p className="text-ink-3 m-0 text-[13px]">{t('counterSale.room.askManager')}</p>
+        )}
       </Panel>
+
+      {/* walk-in buyers from this store: only when the manager allows it (0109) */}
+      {can('stock.sell_walkin') && (
+        <RoomCounterSales key={`sale-${store.id}`} user={user} store={store} i={3} />
+      )}
 
       <RoomStoreStock key={`stock-${store.id}`} locationId={store.id} i={3} />
       <RefillRequestsList key={`rq-${store.id}`} locationId={store.id} pharmacy={false} i={4} />

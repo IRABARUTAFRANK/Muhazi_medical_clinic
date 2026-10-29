@@ -42,7 +42,7 @@ import {
 import { useEmployees } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { useAgo } from '@/lib/notice-wording'
-import { usePeriod } from '@/lib/period'
+import { useSearchPeriod } from '@/lib/period'
 import { cn } from '@/lib/utils'
 
 const VIAS: readonly AccessLogVia[] = ['own', 'head', 'request', 'emergency', 'manager']
@@ -342,7 +342,7 @@ const dayAfterIso = (day: string) => {
 
 function AccessLogPanel() {
   const { t } = useTranslation()
-  const period = usePeriod('month')
+  const period = useSearchPeriod('month')
   const { data: employees = [] } = useEmployees()
   const [actor, setActor] = useState('')
   const [via, setVia] = useState<AccessLogVia | ''>('')

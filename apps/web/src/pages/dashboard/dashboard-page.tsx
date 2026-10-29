@@ -80,7 +80,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ShowMore } from '@/components/ui/list-tools'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
-import { usePeriod } from '@/lib/period'
+import { periodHref, useSearchPeriod } from '@/lib/period'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useReceiptsInPeriod } from '@/lib/api/analytics-receipts'
@@ -136,7 +136,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   const now = new Date()
   const canManage = user.dashboard === 'manager' || user.role === 'manager'
   const [role] = useState<DashboardRole>(view ?? (canManage ? 'manager' : 'head'))
-  const period = usePeriod('today')
+  const period = useSearchPeriod('today')
   const { range, custom } = period
   const isManager = canManage && role === 'manager'
   const { data, isFetching, error, refetch, dataUpdatedAt } = useDashboard(range, isManager, custom)
@@ -339,7 +339,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   unit="RWF"
                   delta={delta(data.tiles.revenue, data.tiles.revenuePrev ?? 0, true, t)}
                   spark={data.revenue30d.slice(-10).map((r) => r.amount)}
-                  to={link('revenue') ?? '/app/payments'}
+                  to={link('revenue') ?? periodHref('/app/payments', period)}
                 />
               )}
               {isManager && receipts.data && (

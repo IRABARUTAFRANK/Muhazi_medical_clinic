@@ -1377,11 +1377,11 @@ export function ClinicalCard({
                               if (refused?.key === line.key) setRefused(null)
                             }}
                             className={cn(
-                              'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50',
+                              'disabled:bg-hover disabled:text-ink-3 inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold disabled:cursor-not-allowed',
                               line.supply === k
                                 ? k === 'outside'
-                                  ? 'border-orange bg-orange text-white'
-                                  : 'border-primary bg-primary text-white'
+                                  ? 'border-orange bg-orange text-card'
+                                  : 'border-primary bg-primary text-on-primary'
                                 : 'border-border bg-card text-ink-2 hover:bg-hover',
                             )}
                           >
@@ -1495,7 +1495,7 @@ export function ClinicalCard({
                               className={cn(
                                 'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
                                 on
-                                  ? 'border-primary bg-primary text-white'
+                                  ? 'border-primary bg-primary text-on-primary'
                                   : 'border-border bg-card text-ink-2 hover:bg-hover',
                               )}
                             >

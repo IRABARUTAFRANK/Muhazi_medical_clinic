@@ -15171,6 +15171,1127 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0110 report centre: the patients reports
+const t110 = {}
+const json110 = (x) => JSON.stringify(x)
+/** The result of a statement run as someone, or its error code. */
+const asJson110 = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    return (await one(sql, params)).j
+  } catch (e) {
+    return { error: e.code ?? String(e.message).split('\n')[0] }
+  } finally {
+    await asAdmin()
+  }
+}
+await step(
+  '0110 A: patients who visited — the manager sees every column (ID whole, diagnoses logged once per past visit); filters; nothing logged without the diagnoses',
+  async () => {
+    await asAdmin()
+    t110.d1Name = (await one('select full_name from profiles where id = $1', [d1])).full_name
+    t110.patient = (
+      await one(`select patient_id from encounter where id = $1`, [t102r.enc])
+    ).patient_id
+    // a national ID to see masked or whole
+    await db.query(`update patient set national_id = '1199180012345012' where id = $1`, [
+      t110.patient,
+    ])
+    const logOf = async () =>
+      (
+        await db.query(
+          `select actor_id, via, what from record_access_entry where patient_id = $1 and encounter_id = $2`,
+          [t110.patient, t102r.enc],
+        )
+      ).rows
+    await db.query(`delete from record_access_entry where patient_id = $1`, [t110.patient])
+    const q = `select report_patients_visited($1, $1, $2::jsonb, $3) as j`
+    const plain = await asJson110(staff.manager, q, [t102r.day, '{}', false])
+    const afterPlain = await logOf()
+    const clinical = await asJson110(staff.manager, q, [t102r.day, '{}', true])
+    const afterClinical = await logOf()
+    const female = await asJson110(staff.manager, q, [t102r.day, '{"sex":"other"}', false])
+    const search = await asJson110(staff.manager, q, [
+      t102r.day,
+      JSON.stringify({ search: 'Receipts 102' }),
+      false,
+    ])
+    const byDoctor = await asJson110(staff.manager, q, [
+      t102r.day,
+      JSON.stringify({ doctor: d1 }),
+      false,
+    ])
+    const otherDoctor = await asJson110(staff.manager, q, [
+      t102r.day,
+      JSON.stringify({ doctor: d2 }),
+      false,
+    ])
+    const row = plain.rows?.find((x) => x.patientId === t110.patient)
+    const dx = clinical.rows?.find((x) => x.patientId === t110.patient)
+    const r = {
+      count: plain.count,
+      row: row && [row.surname, row.nationalId, row.visits, row.doctors, row.desks, row.isNew],
+      plainDx: row?.diagnoses,
+      dx: dx?.diagnoses,
+      afterPlain: afterPlain.length,
+      afterClinical,
+      female: female.rows?.some((x) => x.patientId === t110.patient),
+      search: search.rows?.map((x) => x.patientId),
+      byDoctor: byDoctor.rows?.some((x) => x.patientId === t110.patient),
+      otherDoctor: otherDoctor.rows?.some((x) => x.patientId === t110.patient),
+    }
+    if (
+      !row ||
+      row.nationalId !== '1199180012345012' ||
+      row.visits < 1 ||
+      !row.doctors.includes(t110.d1Name) ||
+      !row.desks.includes('consultation') ||
+      row.diagnoses != null ||
+      !dx?.diagnoses?.includes('Malaria 102R (B54)') ||
+      afterPlain.length !== 0 ||
+      afterClinical.length !== 1 ||
+      afterClinical[0].actor_id !== staff.manager ||
+      afterClinical[0].via !== 'manager' ||
+      afterClinical[0].what !== 'visit' ||
+      r.female ||
+      search.rows.length !== 1 ||
+      !r.byDoctor ||
+      r.otherDoctor
+    )
+      throw new Error(json110(r))
+    return `${plain.count} patients; ID whole; diagnoses only when asked (1 log line); sex, search and doctor filters`
+  },
+)
+await step(
+  '0110 B: patients who visited — a head their department (ID masked, diagnoses only where they may see, and then logged); another department, reception and a nurse refused',
+  async () => {
+    await asAdmin()
+    await db.query(`delete from record_access_entry where patient_id = $1`, [t110.patient])
+    const q = `select report_patients_visited($1, $1, $2::jsonb, $3) as j`
+    const head = await asJson110(t86.head, q, [t102r.day, '{}', true])
+    const headLog = (
+      await db.query(
+        `select count(*)::int as n from record_access_entry where patient_id = $1 and actor_id = $2`,
+        [t110.patient, t86.head],
+      )
+    ).rows[0].n
+    const elsewhere = await asJson110(t86.head, q, [
+      t102r.day,
+      JSON.stringify({ department: t102r.deptOther ?? '00000000-0000-0000-0000-000000000000' }),
+      false,
+    ])
+    const reception = await asJson110(staff.receptionist, q, [t102r.day, '{}', false])
+    const nurse = await asJson110(staff.nurse, q, [t102r.day, '{}', false])
+    const row = head.rows?.find((x) => x.patientId === t110.patient)
+    const r = {
+      head: head.error ?? head.count,
+      row: row && [row.nationalId, row.diagnoses],
+      headLog,
+      elsewhere,
+      reception,
+      nurse,
+    }
+    // diagnoses given to the head ⇔ the opening logged for the head
+    const given = (row?.diagnoses ?? []).length > 0
+    if (
+      head.error ||
+      !row ||
+      row.nationalId !== '11•••••••••••012' ||
+      given !== headLog > 0 ||
+      elsewhere.error !== '42501' ||
+      reception.error !== '42501' ||
+      nurse.error !== '42501'
+    )
+      throw new Error(json110(r))
+    return `head: ${head.count} patient(s) of the department, ID masked, diagnoses ${given ? 'given and logged' : 'not theirs: none, nothing logged'}; elsewhere, reception, nurse refused`
+  },
+)
+await step(
+  '0110 C: visits — one row per visit with status, route, money for the manager only, the primary diagnosis when asked; status filter; reception refused',
+  async () => {
+    const q = `select report_visits($1, $1, $2::jsonb, $3) as j`
+    const all = await asJson110(staff.manager, q, [t102r.day, '{}', true])
+    const finished = await asJson110(staff.manager, q, [t102r.day, '{"status":"finished"}', false])
+    const open = await asJson110(staff.manager, q, [t102r.day, '{"status":"open"}', false])
+    const head = await asJson110(t86.head, q, [t102r.day, '{}', false])
+    const reception = await asJson110(staff.receptionist, q, [t102r.day, '{}', false])
+    const v = all.rows?.find((x) => x.id === t102r.enc)
+    const hv = head.rows?.find((x) => x.id === t102r.enc)
+    const r = {
+      v: v && [v.status, v.route, v.doctor, v.diagnosis, v.billed, v.paid, v.balance, v.isNew],
+      finished: finished.rows?.some((x) => x.id === t102r.enc),
+      open: open.rows?.some((x) => x.id === t102r.enc),
+      head: hv && [hv.billed, hv.paid, hv.diagnosis],
+      reception,
+    }
+    if (
+      !v ||
+      v.status !== 'finished' ||
+      !v.route.includes('consultation') ||
+      v.doctor !== t110.d1Name ||
+      v.diagnosis !== 'Malaria 102R (B54)' ||
+      Number(v.billed) !== 4000 ||
+      Number(v.paid) !== 4000 ||
+      Number(v.balance) !== 0 ||
+      !r.finished ||
+      r.open ||
+      !hv ||
+      hv.billed != null ||
+      hv.diagnosis != null ||
+      reception.error !== '42501'
+    )
+      throw new Error(json110(r))
+    return 'finished, route, doctor, 4,000 billed and paid, diagnosis; head: no money; reception refused'
+  },
+)
+await step(
+  '0110 D: new registrations — reception and the manager see the files of the period (identity only, missing fields); a nurse is refused; the options',
+  async () => {
+    const q = `select report_new_registrations($1, $1, $2::jsonb) as j`
+    const rec = await asJson110(staff.receptionist, q, [t102r.day, '{}'])
+    const mgr = await asJson110(staff.manager, q, [t102r.day, '{}'])
+    const missingOnly = await asJson110(staff.manager, q, [t102r.day, '{"missingOnly":true}'])
+    const byOther = await asJson110(staff.manager, q, [
+      t102r.day,
+      JSON.stringify({ registeredBy: staff.cashier }),
+    ])
+    const head = await asJson110(t86.head, q, [t102r.day, '{}'])
+    const nurse = await asJson110(staff.nurse, q, [t102r.day, '{}'])
+    const optsMgr = await asJson110(staff.manager, `select report_patients_options() as j`)
+    const optsHead = await asJson110(t86.head, `select report_patients_options() as j`)
+    const optsNurse = await asJson110(staff.nurse, `select report_patients_options() as j`)
+    const keys = new Set((rec.rows ?? []).flatMap((x) => Object.keys(x)))
+    const r = {
+      rec: rec.error ?? rec.count,
+      mgr: mgr.error ?? mgr.count,
+      keys: [...keys],
+      missingOnly: missingOnly.rows?.every((x) => x.missing.length > 0),
+      byOther: byOther.count,
+      head: head.error ?? head.count,
+      nurse,
+      optsMgr: optsMgr.departments?.length,
+      optsHead: optsHead.departments?.map((d) => d.id),
+      optsNurse,
+    }
+    if (
+      rec.error ||
+      rec.count < 1 ||
+      mgr.count !== rec.count ||
+      keys.has('diagnoses') ||
+      keys.has('diagnosis') ||
+      !keys.has('missing') ||
+      !keys.has('hasId') ||
+      !r.missingOnly ||
+      byOther.count !== 0 ||
+      head.error ||
+      nurse.error !== '42501' ||
+      !optsMgr.departments?.some((d) => d.id === t86.dept) ||
+      optsHead.departments?.length !== 1 ||
+      optsHead.departments[0].id !== t86.dept ||
+      optsNurse.error !== '42501'
+    )
+      throw new Error(json110(r))
+    return `${rec.count} files today (reception = manager), identity and missing fields only; nurse refused; options per reader`
+  },
+)
+
+// ---------------------------------------------------------------- 0111: report centre — finance and staff reports
+const t111 = { from: '2000-01-01', to: '2100-01-01' }
+await step('0111: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261221090000_reports_finance_staff.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step(
+  '0111 A: revenue — the manager sees every payment with what was given back; the pharmacy its own; a doctor is refused',
+  async () => {
+    const wide = [t111.from, t111.to]
+    await as(staff.manager)
+    const all = (await one(`select report_payments($1, $2) as j`, wide)).j
+    await as(staff.pharmacist)
+    const ph = (await one(`select report_payments($1, $2) as j`, wide)).j
+    const nobody = await codeAs(t86.member, `select report_payments($1, $2)`, wide)
+    await asAdmin()
+    const want = await one(
+      `select count(*)::int as n, coalesce(sum(amount), 0)::numeric as amount,
+              count(*) filter (where cashier_id = $1)::int as mine
+         from payment where deleted_at is null`,
+      [staff.pharmacist],
+    )
+    // what was given back, bill by bill, can never be more than what was paid on it
+    const back = await one(
+      `select coalesce(sum(least(r.n, p.n)), 0)::numeric as n
+         from (select invoice_id, sum(amount) as n from refund where deleted_at is null group by 1) r
+         join (select invoice_id, sum(amount) as n from payment where deleted_at is null group by 1) p
+           using (invoice_id)`,
+    )
+    const sum = (xs, k) => xs.reduce((s, x) => s + Number(x[k]), 0)
+    const walkin = all.rows.find((r) => r.counterSaleId === t109.sale)
+    const kinds = new Set(all.rows.map((r) => r.kind))
+    if (
+      all.scope !== 'all' ||
+      all.rows.length !== want.n ||
+      sum(all.rows, 'amount') !== Number(want.amount) ||
+      sum(all.rows, 'refunded') !== Number(back.n) ||
+      all.rows.some((r) => Number(r.refunded) > Number(r.amount)) ||
+      !walkin ||
+      walkin.kind !== 'walkin' ||
+      !kinds.has('visit') ||
+      ph.scope !== 'mine' ||
+      ph.rows.length !== want.mine ||
+      ph.rows.some((r) => r.cashierId !== staff.pharmacist) ||
+      nobody !== '42501'
+    )
+      throw new Error(
+        JSON.stringify({
+          scope: all.scope,
+          n: all.rows.length,
+          want,
+          back,
+          walkin,
+          ph: ph.rows.length,
+          nobody,
+        }),
+      )
+    return `${want.n} payments, ${Number(want.amount).toLocaleString('en')} RWF, ${Number(back.n).toLocaleString('en')} given back; kinds ${[...kinds].sort().join(', ')}; the pharmacist ${ph.rows.length}`
+  },
+)
+await step(
+  '0111 B: revenue by service — every final line once, open bills on request; a head their department only',
+  async () => {
+    const wide = [t111.from, t111.to]
+    await as(staff.manager)
+    const fin = (await one(`select report_charges($1, $2) as j`, wide)).j
+    const open = (await one(`select report_charges($1, $2, null, true) as j`, wide)).j
+    // internal: signed-in people cannot call it
+    const internal = await codeAs(staff.manager, `select report_pharmacy_department()`)
+    await asAdmin()
+    const pharmacy = (await one(`select report_pharmacy_department() as id`)).id
+    // the head of Analytics 86 is made assistant head of the department with the most charges
+    const counts = new Map()
+    for (const r of fin.rows)
+      if (r.departmentId && r.departmentId !== pharmacy)
+        counts.set(r.departmentId, (counts.get(r.departmentId) ?? 0) + 1)
+    const busiest = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+    await member85(t86.head, busiest, 'assistant')
+    await as(t86.head)
+    const head = (await one(`select report_charges($1, $2) as j`, wide)).j
+    const one86 = (await one(`select report_charges($1, $2, $3) as j`, [...wide, t86.dept])).j
+    await asAdmin()
+    await db.query(`delete from staff_department where profile_id = $1 and department_id = $2`, [
+      t86.head,
+      busiest,
+    ])
+    // no longer their department: refused
+    const otherDept = await codeAs(t86.head, `select report_charges($1, $2, $3)`, [
+      ...wide,
+      busiest,
+    ])
+    const member = await codeAs(t86.member, `select report_charges($1, $2)`, wide)
+    const want = await one(
+      `select
+         (select count(*)::int from invoice_line l join invoice i on i.id = l.invoice_id and i.deleted_at is null
+           where l.deleted_at is null and i.status in ('posted', 'credited')) as bill,
+         (select count(*)::int from invoice_line l join invoice i on i.id = l.invoice_id and i.deleted_at is null
+           where l.deleted_at is null and i.status = 'draft') as draft,
+         (select count(*)::int from counter_sale_line x join counter_sale s on s.id = x.sale_id and s.deleted_at is null
+           where x.deleted_at is null and s.status in ('paid', 'handed_over')) as sale,
+         (select count(*)::int from counter_sale_line x join counter_sale s on s.id = x.sale_id and s.deleted_at is null
+           where x.deleted_at is null and s.status = 'open') as saleOpen`,
+    )
+    const of = (j, src) => j.rows.filter((r) => r.source === src).length
+    const ids = new Set(fin.rows.map((r) => r.id))
+    const billItems = fin.rows.filter((r) => r.source === 'bill' && r.itemId)
+    // a bill line: price × quantity (packs at the pack price), units = the pieces; a walk-in sale:
+    // its lines add up to the sale (packs at the pack price, the rest by the piece)
+    const bad = fin.rows.find(
+      (r) =>
+        (r.source === 'bill' &&
+          (Number(r.total) !== Math.round(Number(r.unitPrice) * Number(r.quantity)) ||
+            Number(r.units) !== Number(r.quantity) * (r.packSize ?? 1))) ||
+        (r.source === 'sale' && Number(r.units) !== Number(r.quantity)),
+    )
+    const saleTotals = new Map()
+    for (const r of fin.rows.filter((x) => x.source === 'sale'))
+      saleTotals.set(r.billNo, (saleTotals.get(r.billNo) ?? 0) + Number(r.total))
+    const salesOff = (
+      await db.query(
+        `select number, total from counter_sale where deleted_at is null and status in ('paid', 'handed_over')`,
+      )
+    ).rows.filter((s) => saleTotals.get(s.number) !== Number(s.total))
+    if (
+      of(fin, 'bill') !== want.bill ||
+      of(fin, 'sale') !== want.sale ||
+      ids.size !== fin.rows.length ||
+      of(open, 'bill') !== want.bill + want.draft ||
+      of(open, 'sale') !== want.sale + want.saleopen ||
+      billItems.some((r) => r.departmentId !== pharmacy) ||
+      bad ||
+      salesOff.length ||
+      internal !== '42501' ||
+      !busiest ||
+      head.scope !== 'department' ||
+      head.rows.length !== counts.get(busiest) ||
+      head.rows.some((r) => r.departmentId !== t86.dept && r.departmentId !== busiest) ||
+      one86.rows.some((r) => r.departmentId !== t86.dept) ||
+      otherDept !== '42501' ||
+      member !== '42501'
+    )
+      throw new Error(
+        JSON.stringify({
+          want,
+          bill: of(fin, 'bill'),
+          sale: of(fin, 'sale'),
+          open: open.rows.length,
+          bad,
+          salesOff,
+          internal,
+          head: head.rows.length,
+          otherDept,
+          member,
+        }),
+      )
+    return `${want.bill} bill lines + ${want.sale} sale lines (+${want.draft + want.saleopen} still open), each sale adds up; medicines count for the pharmacy; an assistant head the ${head.rows.length} of their department; once removed, and a member: refused`
+  },
+)
+await step(
+  '0111 C: bills, unpaid bills and claims follow the cash desk; refused without billing.read',
+  async () => {
+    const wide = [t111.from, t111.to]
+    await as(staff.manager)
+    const bills = (await one(`select report_bills($1, $2) as j`, wide)).j
+    const debts = (await one(`select report_debts($1, $2) as j`, wide)).j
+    const desk = (await one(`select unpaid_debts() as j`)).j
+    const claims = (await one(`select report_claims($1, $2) as j`, wide)).j
+    await asAdmin()
+    const balances = new Map(
+      (
+        await db.query(
+          `select i.id, invoice_balance(i.id) as b from invoice i where i.deleted_at is null and i.total > 0`,
+        )
+      ).rows.map((r) => [r.id, Number(r.b)]),
+    )
+    const nClaims = (
+      await one(
+        `select count(*)::int as n from invoice i join payer py on py.id = i.payer_id and py.type <> 'cash'
+          where i.deleted_at is null and i.status in ('posted', 'credited') and i.insurer_share > 0`,
+      )
+    ).n
+    const refused = [
+      await codeAs(t86.member, `select report_bills($1, $2)`, wide),
+      await codeAs(t86.member, `select report_debts($1, $2)`, wide),
+      await codeAs(t86.member, `select report_claims($1, $2)`, wide),
+    ]
+    const wrongBalance = bills.rows.find((b) => Number(b.balance) !== balances.get(b.id))
+    const wrongStatus = bills.rows.find(
+      (b) => b.status !== 'credited' && Number(b.balance) <= 0 !== (b.status === 'paid'),
+    )
+    const mine = debts.rows.map((d) => d.encounterId).sort()
+    const theirs = desk.map((d) => d.encounterId).sort()
+    if (
+      bills.rows.length !== balances.size ||
+      wrongBalance ||
+      wrongStatus ||
+      JSON.stringify(mine) !== JSON.stringify(theirs) ||
+      debts.rows.some((d) => !(Number(d.due) > 0)) ||
+      claims.rows.length !== nClaims ||
+      claims.rows.some((c) => !(Number(c.insurerShare) > 0) || !c.insurer) ||
+      refused.some((x) => x !== '42501')
+    )
+      throw new Error(
+        JSON.stringify({
+          bills: bills.rows.length,
+          balances: balances.size,
+          wrongBalance,
+          wrongStatus,
+          mine,
+          theirs,
+          claims: claims.rows.length,
+          nClaims,
+          refused,
+        }),
+      )
+    return `${bills.rows.length} bills (balance and status as the cash desk); ${mine.length} unpaid as on "Unpaid bills"; ${claims.rows.length} insurer claims; a doctor: refused`
+  },
+)
+await step(
+  '0111 D: refunds and cash counts — everyone’s for the manager, their own for a payment taker; difference = counted − expected',
+  async () => {
+    const wide = [t111.from, t111.to]
+    await as(staff.manager)
+    const refunds = (await one(`select report_refunds($1, $2) as j`, wide)).j
+    const counts = (await one(`select report_cash_counts($1, $2) as j`, wide)).j
+    await as(staff.pharmacist)
+    const phCounts = (await one(`select report_cash_counts($1, $2) as j`, wide)).j
+    const phRefunds = (await one(`select report_refunds($1, $2) as j`, wide)).j
+    const nobody = await codeAs(t86.member, `select report_cash_counts($1, $2)`, wide)
+    await asAdmin()
+    const want = await one(
+      `select (select count(*)::int from refund where deleted_at is null) as refunds,
+              (select coalesce(sum(amount), 0)::numeric from refund where deleted_at is null) as back,
+              (select count(*)::int from day_close d
+                 cross join lateral (
+                   select k from jsonb_object_keys(case when jsonb_typeof(d.expected) = 'object' then d.expected else '{}' end) k
+                   union
+                   select k from jsonb_object_keys(case when jsonb_typeof(d.counted) = 'object' then d.counted else '{}' end) k) m
+                where d.deleted_at is null) as lines,
+              (select count(*)::int from day_close where deleted_at is null) as closes`,
+    )
+    const sum = (xs, k) => xs.reduce((s, x) => s + Number(x[k]), 0)
+    if (
+      refunds.rows.length !== want.refunds ||
+      sum(refunds.rows, 'amount') !== Number(want.back) ||
+      counts.rows.length !== want.lines ||
+      new Set(counts.rows.map((c) => c.closeId)).size !== want.closes ||
+      counts.rows.some((c) => Number(c.difference) !== Number(c.counted) - Number(c.expected)) ||
+      phCounts.scope !== 'mine' ||
+      phCounts.rows.some((c) => c.cashierId !== staff.pharmacist) ||
+      phRefunds.rows.some((r) => r.cashierId !== staff.pharmacist) ||
+      nobody !== '42501'
+    )
+      throw new Error(
+        JSON.stringify({
+          want,
+          refunds: refunds.rows.length,
+          counts: counts.rows.length,
+          ph: phCounts,
+          nobody,
+        }),
+      )
+    return `${want.refunds} refunds (${Number(want.back).toLocaleString('en')} RWF); ${want.closes} day closes in ${want.lines} method lines; the pharmacist only their own; a doctor: refused`
+  },
+)
+await step(
+  '0111 E: walk-in sales — the pharmacy sees the pharmacy’s, a holder with the switch their store’s, others are refused',
+  async () => {
+    const wide = [t111.from, t111.to]
+    await as(staff.manager)
+    const all = (await one(`select report_counter_sales($1, $2) as j`, wide)).j
+    await db.query(`select set_staff_permission($1, 'stock.sell_walkin', true)`, [d2])
+    await as(staff.pharmacist)
+    const ph = (await one(`select report_counter_sales($1, $2) as j`, wide)).j
+    await as(d2)
+    const holder = (await one(`select report_counter_sales($1, $2) as j`, wide)).j
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'stock.sell_walkin', null)`, [d2])
+    const without = await codeAs(d2, `select report_counter_sales($1, $2)`, wide)
+    const nobody = await codeAs(t86.member, `select report_counter_sales($1, $2)`, wide)
+    await asAdmin()
+    const want = await one(
+      `select count(*)::int as n,
+              count(*) filter (where not is_room_type(l.type))::int as pharmacy,
+              count(*) filter (where s.location_id = $1)::int as store
+         from counter_sale s join stock_location l on l.id = s.location_id where s.deleted_at is null`,
+      [t109.store],
+    )
+    const sale = all.rows.find((s) => s.id === t109.sale)
+    if (
+      all.rows.length !== want.n ||
+      ph.rows.length !== want.pharmacy ||
+      ph.rows.some((s) => s.roomStore) ||
+      holder.rows.length !== want.store ||
+      holder.rows.some((s) => s.storeId !== t109.store) ||
+      !sale ||
+      sale.status !== 'handed_over' ||
+      Number(sale.total) !== 3000 ||
+      !sale.items ||
+      without !== '42501' ||
+      nobody !== '42501'
+    )
+      throw new Error(
+        JSON.stringify({
+          want,
+          all: all.rows.length,
+          ph: ph.rows.length,
+          holder: holder.rows.length,
+          sale,
+          without,
+          nobody,
+        }),
+      )
+    return `${want.n} sales; the pharmacist ${ph.rows.length} of the pharmacy; d2 the ${holder.rows.length} of their store; without the switch or the store: refused`
+  },
+)
+await step(
+  '0111 F: employees and filter choices — the manager every column; a head their department without phone or e-mail',
+  async () => {
+    await as(staff.manager)
+    const all = (await one(`select report_employees() as j`)).j
+    const opts = (await one(`select report_filter_options() as j`)).j
+    await as(t86.head)
+    const head = (await one(`select report_employees() as j`)).j
+    const headOpts = (await one(`select report_filter_options() as j`)).j
+    await as(staff.pharmacist)
+    const phOpts = (await one(`select report_filter_options() as j`)).j
+    await asAdmin()
+    const other = (
+      await one(`select id from department where id <> $1 and deleted_at is null limit 1`, [
+        t86.dept,
+      ])
+    ).id
+    const otherDept = await codeAs(t86.head, `select report_employees($1)`, [other])
+    const member = await codeAs(t86.member, `select report_employees()`)
+    const want = await one(
+      `select (select count(*)::int from profiles where deleted_at is null) as n,
+              (select count(distinct sd.profile_id)::int from staff_department sd
+                 join profiles p on p.id = sd.profile_id and p.deleted_at is null
+                where sd.department_id = $1) as dept`,
+      [t86.dept],
+    )
+    const manager = all.rows.find((e) => e.id === staff.manager)
+    if (
+      all.scope !== 'all' ||
+      all.rows.length !== want.n ||
+      !all.rows.some((e) => e.username) ||
+      !manager ||
+      manager.role !== 'manager' ||
+      head.scope !== 'department' ||
+      head.rows.length !== want.dept ||
+      !head.rows.some((e) => e.id === t86.member) ||
+      head.rows.some((e) => e.phone || e.email || e.username) ||
+      !opts.cashiers.length ||
+      !opts.departments.length ||
+      headOpts.departments.length !== 1 ||
+      headOpts.departments[0].id !== t86.dept ||
+      phOpts.cashiers.some((c) => c.id !== staff.pharmacist) ||
+      otherDept !== '42501' ||
+      member !== '42501'
+    )
+      throw new Error(
+        JSON.stringify({
+          all: all.rows.length,
+          want,
+          head: head.rows,
+          headOpts: headOpts.departments,
+          phOpts: phOpts.cashiers,
+          otherDept,
+          member,
+        }),
+      )
+    return `${want.n} employees for the manager; the head ${head.rows.length} of their department, no phone or e-mail; choices within rights; a member: refused`
+  },
+)
+
+// ---------------------------------------------------------------- 0112: report centre — stock and clinical reports
+const t112 = {}
+await step('0112: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261222090000_reports_stock_clinical.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step(
+  '0112 1: stock on hand — the manager all stores with costs, a holder their store only',
+  async () => {
+    await as(staff.manager)
+    const opts = (await one(`select report_stock_options() as j`)).j
+    const all = (await one(`select report_stock_on_hand() as j`)).j
+    const byStore = (await one(`select report_stock_on_hand(null, true) as j`)).j
+    await as(staff.pharmacist)
+    const ph = (await one(`select report_stock_on_hand() as j`)).j
+    await as(d2)
+    const mine = (await one(`select report_stock_on_hand() as j`)).j
+    const mineOpts = (await one(`select report_stock_options() as j`)).j
+    const other = await codeAs(d2, `select report_stock_on_hand($1)`, [opts.mainPharmacyId])
+    const nobody = await codeAs(staff.receptionist, `select report_stock_on_hand()`)
+    await asAdmin()
+    const syrup = mine.find((r) => r.itemId === t107.syrup)
+    const held = new Set(mineOpts.stores.map((s) => s.id))
+    if (
+      !opts.admin ||
+      !all.length ||
+      all.some((r) => r.costValue == null || r.storeId != null) ||
+      !byStore.some((r) => r.storeId === t109.store) ||
+      !ph.length ||
+      mine.some((r) => !held.has(r.storeId) || r.costValue != null) ||
+      !syrup ||
+      syrup.storeId !== t109.store ||
+      mineOpts.admin ||
+      !held.has(t109.store) ||
+      held.has(opts.mainPharmacyId) ||
+      other !== '42501' ||
+      nobody !== '42501'
+    )
+      throw new Error(JSON.stringify({ opts, mine, mineOpts, other, nobody, n: all.length }))
+    t112.sample = all.slice(0, 2)
+    return `manager ${all.length} medicines (${byStore.length} by store), d2 ${mine.length} in Ward 109 (syrup ${syrup.onHand}), no costs; others refused`
+  },
+)
+await step(
+  '0112 2: medicines sold and given — channels, money for the manager only, the holder sees their store',
+  async () => {
+    await asAdmin()
+    t112.today = (await one(`select (now() at time zone 'Africa/Kigali')::date::text as d`)).d
+    const d = t112.today
+    await as(staff.manager)
+    const all = (await one(`select report_stock_sold($1, $1) as j`, [d])).j
+    const split = (await one(`select report_stock_sold($1, $1, null, null, true) as j`, [d])).j
+    const walk = (await one(`select report_stock_sold($1, $1, null, 'walkin') as j`, [d])).j
+    await as(d2)
+    const mine = (await one(`select report_stock_sold($1, $1) as j`, [d])).j
+    const bad = await codeAs(staff.manager, `select report_stock_sold($1::date, $1::date - 1)`, [d])
+    await asAdmin()
+    const syrup = mine.find((r) => r.itemId === t107.syrup)
+    const channels = new Set(split.map((r) => r.channel))
+    if (
+      !all.length ||
+      all.some((r) => r.cost == null || r.margin == null || r.channel != null) ||
+      !channels.has('handover') ||
+      !channels.has('walkin') ||
+      walk.some((r) => Number(r.handover) !== 0 || Number(r.here) !== 0) ||
+      !syrup ||
+      Number(syrup.walkin) < 2 ||
+      Number(syrup.revenue) < 3000 ||
+      mine.some((r) => r.cost != null || Number(r.handover) !== 0) ||
+      bad !== '22023'
+    )
+      throw new Error(JSON.stringify({ all: all.slice(0, 3), channels: [...channels], mine, bad }))
+    const rev = all.reduce((s, r) => s + Number(r.revenue), 0)
+    return `${all.length} medicines, revenue ${rev}; channels ${[...channels].join('/')}; d2: syrup ${syrup.walkin} sold for ${syrup.revenue}, no costs`
+  },
+)
+await step(
+  '0112 3: stock movements — the kinds, the net change of a store equals its stock',
+  async () => {
+    const d = t112.today
+    await as(staff.manager)
+    const ward = (await one(`select report_stock_movements($1, $1, $2) as j`, [d, t109.store])).j
+    const sold = (await one(`select report_stock_movements($1, $1, null, 'sold') as j`, [d])).j
+    await asAdmin()
+    const left = (
+      await one(
+        `select coalesce(sum(quantity), 0)::int as n from stock_on_hand where location_id = $1`,
+        [t109.store],
+      )
+    ).n
+    const net = ward.reduce((s, r) => s + Number(r.change), 0)
+    await as(d2)
+    const mine = (await one(`select report_stock_movements($1, $1) as j`, [d])).j
+    const notMine = await codeAs(d2, `select report_stock_movements($1, $1, $2)`, [
+      d,
+      t112.mainPharmacy ?? (await one(`select main_pharmacy() as id`)).id,
+    ])
+    await asAdmin()
+    const kinds = new Set(ward.map((r) => r.kind))
+    if (
+      net !== left ||
+      !kinds.has('transfer') ||
+      !kinds.has('sold') ||
+      sold.some((r) => r.kind !== 'sold' || !/^S-/.test(r.document ?? '')) ||
+      mine.some((r) => r.unitCost != null) ||
+      notMine !== '42501'
+    )
+      throw new Error(
+        JSON.stringify({ net, left, kinds: [...kinds], notMine, sold: sold.slice(0, 2) }),
+      )
+    return `Ward 109: ${ward.length} movements, net ${net} = ${left} in the store; walk-in sales ${sold.length}; d2 ${mine.length} lines without costs`
+  },
+)
+await step(
+  '0112 4–9: deliveries, transfers, expiry, to order, write-offs, bought outside — the manager; the holder only what is theirs',
+  async () => {
+    const d = t112.today
+    await as(staff.manager)
+    const del = (await one(`select report_stock_deliveries('2020-01-01', $1) as j`, [d])).j
+    const tr = (await one(`select report_stock_transfers('2020-01-01', $1) as j`, [d])).j
+    const exp = (await one(`select report_stock_expiry(null, 3650) as j`)).j
+    const expired = (await one(`select report_stock_expiry(null, null, true) as j`)).j
+    const order = (await one(`select report_stock_to_order() as j`)).j
+    const wo = (await one(`select report_stock_write_offs('2020-01-01', $1) as j`, [d])).j
+    const out = (await one(`select report_stock_outside('2020-01-01', $1) as j`, [d])).j
+    await as(staff.pharmacist)
+    const phOrder = (await one(`select report_stock_to_order() as j`)).j
+    const refused = [
+      await codeAs(d2, `select report_stock_transfers('2020-01-01', $1)`, [d]),
+      await codeAs(d2, `select report_stock_to_order()`),
+      await codeAs(d2, `select report_stock_outside('2020-01-01', $1)`, [d]),
+      await codeAs(staff.receptionist, `select report_stock_write_offs('2020-01-01', $1)`, [d]),
+    ]
+    await as(d2)
+    const myExp = (await one(`select report_stock_expiry() as j`)).j
+    const myWo = (await one(`select report_stock_write_offs('2020-01-01', $1) as j`, [d])).j
+    await asAdmin()
+    const held = new Set(
+      (
+        await db.query(
+          `select location_id from stock_location_holder where profile_id = $1 and deleted_at is null`,
+          [d2],
+        )
+      ).rows.map((r) => r.location_id),
+    )
+    if (
+      !del.length ||
+      del.some((r) => !r.pieces) ||
+      !tr.length ||
+      tr.some((r) => r.costValue == null || r.sellValue == null) ||
+      !exp.length ||
+      expired.some((r) => r.status !== 'expired') ||
+      !wo.length ||
+      !wo.some((r) => r.kind === 'count') ||
+      !Array.isArray(order) ||
+      phOrder.length !== order.length ||
+      !out.length ||
+      refused.some((c) => c !== '42501') ||
+      myExp.some((r) => !held.has(r.storeId) || r.costValue != null) ||
+      myWo.some((r) => !held.has(r.storeId) || r.costValue != null)
+    )
+      throw new Error(
+        JSON.stringify({
+          del: del.length,
+          tr: tr.length,
+          exp: exp.length,
+          wo: wo.slice(0, 2),
+          order: order.length,
+          out,
+          refused,
+        }),
+      )
+    return `deliveries ${del.length}, transfer lines ${tr.length}, batches ${exp.length} (${expired.length} expired), to order ${order.length}, write-offs ${wo.length}, outside ${out.length}; d2 refused 5/7/9`
+  },
+)
+await step(
+  '0112 10–15: a clinical scenario (a department with its head, two visits of one patient)',
+  async () => {
+    await asAdmin()
+    const keepDoctor = staff.doctor
+    t112.head = await mkUser('h.112', 'Head 112', 'doctor')
+    staff.doctor = keepDoctor
+    t112.dept = (
+      await one(
+        `insert into department (name, roles) values ('Reports 112', '{doctor}') returning id`,
+      )
+    ).id
+    await db.query(
+      `insert into staff_department (profile_id, department_id, position) values ($1, $3, 'head'), ($2, $3, 'member')`,
+      [t112.head, d3, t112.dept],
+    )
+    t112.patient = (
+      await one(
+        `insert into patient (surname, given_names, sex, birth_date) values ('Report', 'Patient 112', 'female', current_date - interval '30 years') returning id`,
+      )
+    ).id
+    // an earlier visit with the same diagnosis (the later one is a follow-up)
+    const mkVisit = async (daysAgo) => {
+      const e = (
+        await one(
+          `insert into encounter (patient_id, arrived_at, status, closed_at, clinical_done_at)
+         values ($1, now() - ($2 || ' days')::interval, 'open', null,
+                 now() - ($2 || ' days')::interval + interval '1 hour') returning id`,
+          [t112.patient, String(daysAgo)],
+        )
+      ).id
+      await db.query(
+        `insert into queue_entry (encounter_id, station, ticket_no, taken_by, department_id, started_at, finished_at, created_at)
+       values ($1, 'consultation', 'R-112', $2, $3, now() - ($4 || ' days')::interval, now() - ($4 || ' days')::interval + interval '1 hour',
+               now() - ($4 || ' days')::interval)`,
+        [e, d3, t112.dept, String(daysAgo)],
+      )
+      await db.query(
+        `insert into condition (encounter_id, icd10_code, text, type, created_by) values ($1, 'B54', 'Malaria 112', 'primary', $2)`,
+        [e, d3],
+      )
+      return e
+    }
+    t112.visitOld = await mkVisit(20)
+    t112.visit = await mkVisit(0)
+    const e = t112.visit
+    await db.query(
+      `insert into medication_request (encounter_id, item_id, quantity, prescriber_id, created_by, supply)
+     values ($1, $2, 3, $3, $3, 'pharmacy')`,
+      [e, t107.syrup, d3],
+    )
+    const svc = (await one(`select id from service order by code limit 1`)).id
+    t112.test = (
+      await one(
+        `insert into service_request (encounter_id, category, service_id, status, requester_id, station, created_at)
+       values ($1, 'lab', $2, 'ordered', $3, 'laboratory', now() - interval '50 minutes') returning id`,
+        [e, svc, d3],
+      )
+    ).id
+    await db.query(`update service_request set status = 'collected' where id = $1`, [t112.test])
+    await db.query(
+      `insert into diagnostic_report (service_request_id, findings, impression, verified_by, verified_at, created_by)
+     values ($1, 'Thick film', 'Positive 112', $2, now(), $2)`,
+      [t112.test, staff.lab_tech],
+    )
+    await db.query(`update service_request set status = 'verified' where id = $1`, [t112.test])
+    // vital signs measured by the nurse, typed by reception: a fever
+    await db.query(
+      `insert into observation (encounter_id, code, value_num, unit, performer_id, created_by, effective_at)
+     values ($1, 'temp', 38.6, '°C', $2, $3, now() - interval '30 minutes'),
+            ($1, 'pulse', 88, 'bpm', $2, $3, now() - interval '30 minutes')`,
+      [e, staff.nurse, staff.receptionist],
+    )
+    // a booking with Dr. Three
+    t112.prac =
+      (await one(`select id from practitioner where user_id = $1 and deleted_at is null`, [d3]))
+        ?.id ??
+      (
+        await one(
+          `insert into practitioner (code, user_id, names, title) values ('P112', $1, 'Three', 'Dr.') returning id`,
+          [d3],
+        )
+      ).id
+    t112.booking = (
+      await one(
+        `insert into appointment (patient_id, practitioner_id, starts_at, status, source)
+       values ($1, $2, now() + interval '1 hour', 'confirmed', 'online') returning id`,
+        [t112.patient, t112.prac],
+      )
+    ).id
+    await db.query(
+      `update encounter set status = 'closed', closed_at = arrived_at + interval '2 hours' where id = any ($1)`,
+      [[t112.visitOld, t112.visit]],
+    )
+    return 'department, head, member, 2 visits, a test, vitals, a booking'
+  },
+)
+await step(
+  '0112 10: patients seen — own for a clinician, the department for its head, all for the manager',
+  async () => {
+    const from = (await one(`select ((now() at time zone 'Africa/Kigali')::date - 60)::text as d`))
+      .d
+    const to = t112.today
+    t112.from = from
+    const run = async (who, args = '') => (
+      await as(who),
+      (await one(`select report_patients_seen($1, $2${args}) as j`, [from, to])).j
+    )
+    const mine = await run(d3)
+    const head = await run(t112.head)
+    const other = await run(d1)
+    const mgr = await run(staff.manager)
+    await as(staff.manager)
+    const byD3 = (await one(`select report_patients_seen($1, $2, $3) as j`, [from, to, d3])).j
+    const byDept = (
+      await one(`select report_patients_seen($1, $2, null, $3) as j`, [from, to, t112.dept])
+    ).j
+    const refused = await codeAs(staff.cashier, `select report_patients_seen($1, $2)`, [from, to])
+    await asAdmin()
+    const row = mine.find((r) => r.encounterId === t112.visit)
+    if (
+      !row ||
+      mine.some((r) => r.clinicianId !== d3) ||
+      !/B54 Malaria 112/.test(row.diagnosis ?? '') ||
+      row.prescriptions !== 1 ||
+      row.tests !== 1 ||
+      row.outcome !== 'finished' ||
+      row.age !== 30 ||
+      !head.some((r) => r.encounterId === t112.visit) ||
+      head.some(
+        (r) => r.clinicianId !== t112.head && !(r.department ?? '').includes('Reports 112'),
+      ) ||
+      other.some((r) => r.encounterId === t112.visit) ||
+      !mgr.some((r) => r.encounterId === t112.visit) ||
+      byD3.some((r) => r.clinicianId !== d3) ||
+      byDept.length !== 2 ||
+      refused !== '42501'
+    )
+      throw new Error(
+        JSON.stringify({
+          row,
+          head: head.length,
+          other: other.length,
+          byDept: byDept.length,
+          refused,
+        }),
+      )
+    return `Dr. Three ${mine.length} (B54, 1 medicine, 1 test, finished); the head ${head.length}; Dr. One none of them; manager ${mgr.length}`
+  },
+)
+await step(
+  '0112 11: diagnoses — new and follow-up, by sex and age band; a doctor only their own',
+  async () => {
+    const q = `select report_diagnoses($1, $2) as j`
+    await as(t112.head)
+    const head = (await one(q, [t112.from, t112.today])).j
+    await as(d1)
+    const other = (await one(q, [t112.from, t112.today])).j
+    await as(staff.manager)
+    const dept = (
+      await one(`select report_diagnoses($1, $2, $3) as j`, [t112.from, t112.today, t112.dept])
+    ).j
+    await asAdmin()
+    const m = head.find((r) => r.diagnosis === 'Malaria 112')
+    if (
+      !m ||
+      m.code !== 'B54' ||
+      m.cases !== 2 ||
+      m.patients !== 1 ||
+      m.newCases !== 1 ||
+      m.followUp !== 1 ||
+      m.female !== 2 ||
+      m.age25to49 !== 2 ||
+      other.some((r) => r.diagnosis === 'Malaria 112') ||
+      dept.length !== 1
+    )
+      throw new Error(JSON.stringify({ m, dept }))
+    return 'B54 Malaria 112: 2 cases (1 new, 1 follow-up), 2 women aged 25–49; not in Dr. One’s list'
+  },
+)
+await step(
+  '0112 12–13: prescriptions and tests — the prescriber, the pharmacy, the laboratory, not another doctor',
+  async () => {
+    const p = [t112.from, t112.today]
+    const rx = async (who) => (
+      await as(who),
+      (await one(`select report_prescriptions($1, $2) as j`, p)).j
+    )
+    const ts = async (who) => (await as(who), (await one(`select report_tests($1, $2) as j`, p)).j)
+    const rxD3 = await rx(d3)
+    const rxPh = await rx(staff.pharmacist)
+    const rxD1 = await rx(d1)
+    const tD3 = await ts(d3)
+    const tLab = await ts(staff.lab_tech)
+    const tD1 = await ts(d1)
+    const tHead = await ts(t112.head)
+    await as(staff.manager)
+    const verified = (await one(`select report_tests($1, $2, 'laboratory', 'verified') as j`, p)).j
+    await asAdmin()
+    const r = rxD3.find((x) => x.encounterId === t112.visit)
+    const t = tD3.find((x) => x.id === t112.test)
+    const lab = tLab.find((x) => x.id === t112.test)
+    if (
+      !r ||
+      r.status !== 'waiting' ||
+      r.supply !== 'pharmacy' ||
+      rxD3.some((x) => x.prescriberId !== d3) ||
+      !rxPh.some((x) => x.id === r.id) ||
+      rxD1.some((x) => x.id === r.id) ||
+      !t ||
+      t.result !== 'Positive 112' ||
+      !t.sampleAt ||
+      t.turnaround < 45 ||
+      !lab ||
+      lab.result !== 'Positive 112' ||
+      tD1.some((x) => x.id === t112.test) ||
+      !tHead.some((x) => x.id === t112.test) ||
+      !verified.some((x) => x.id === t112.test)
+    )
+      throw new Error(JSON.stringify({ r, t, lab }))
+    return `prescription waiting at the pharmacy (seen by Dr. Three, the pharmacy); test verified in ${t.turnaround} min, result to the requester, the lab and the head; Dr. One sees neither`
+  },
+)
+await step(
+  '0112 14–15: vital signs (measured by / typed by, the fever flagged) and bookings (reception, the practitioner)',
+  async () => {
+    const p = [t112.from, t112.today]
+    const vs = async (who) => (await as(who), (await one(`select report_vitals($1, $2) as j`, p)).j)
+    const vNurse = await vs(staff.nurse)
+    const vRec = await vs(staff.receptionist)
+    const vD1 = await vs(d1)
+    const until = (await one(`select ((now() at time zone 'Africa/Kigali')::date + 1)::text as d`))
+      .d
+    const bk = async (who) => (
+      await as(who),
+      (await one(`select report_bookings($1, $2) as j`, [t112.from, until])).j
+    )
+    const bRec = await bk(staff.receptionist)
+    const bD3 = await bk(d3)
+    const bLab = await codeAs(staff.lab_tech, `select report_bookings($1, $2)`, [t112.from, until])
+    // a practitioner who also works at reception sees every booking, as on the Bookings page
+    await as(d3)
+    const d3Reception = (await one(`select may_use_desk('reception') as r`)).r
+    await as(staff.manager)
+    const bOnline = (
+      await one(`select report_bookings($1, $2, 'confirmed', $3, 'online') as j`, [
+        t112.from,
+        until,
+        t112.prac,
+      ])
+    ).j
+    await asAdmin()
+    const v = vNurse.find((x) => x.encounterId === t112.visit)
+    const b = bD3.find((x) => x.id === t112.booking)
+    if (
+      !v ||
+      v.count !== 2 ||
+      !v.onBehalf ||
+      !v.flags.includes('temp_high') ||
+      Number(v.values.temp) !== 38.6 ||
+      !vRec.some((x) => x.encounterId === t112.visit) ||
+      vD1.some((x) => x.encounterId === t112.visit) ||
+      !bRec.some((x) => x.id === t112.booking) ||
+      !b ||
+      b.status !== 'confirmed' ||
+      b.source !== 'online' ||
+      (!d3Reception && bD3.some((x) => x.practitionerId !== t112.prac)) ||
+      bLab !== '42501' ||
+      bOnline.length !== 1
+    )
+      throw new Error(
+        JSON.stringify({
+          rec: vRec.some((x) => x.encounterId === t112.visit),
+          d1: vD1.some((x) => x.encounterId === t112.visit),
+          bRec: bRec.some((x) => x.id === t112.booking),
+          b: !!b,
+          others: bD3.filter((x) => x.practitionerId !== t112.prac).length,
+          bLab,
+          bOnline: bOnline.length,
+        }),
+      )
+    return 'set of 2 measured by the nurse, typed by reception, fever flagged; the booking for reception and Dr. Three; the lab refused'
+  },
+)
+
+// ---------------------------------------------------------------- 0113: the lab's Done tab by period
+await step('0113: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261223090000_lab_worklist_period.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step(
+  '0113: lab_worklist(done) gives the results of the days asked; without days, today',
+  async () => {
+    await as(staff.lab_tech)
+    const today = (await one(`select lab_worklist('done') as w`)).w
+    const r = today.find((x) => x.verified)
+    if (!r) throw new Error('no verified result today to move')
+    // the result given three days ago
+    await asAdmin()
+    await db.query(
+      `update diagnostic_report set verified_at = verified_at - interval '3 days' where service_request_id = $1`,
+      [r.id],
+    )
+    const day = (n) => `(now() at time zone 'Africa/Kigali')::date - ${n}`
+    await as(staff.lab_tech)
+    const todayAfter = (await one(`select lab_worklist('done') as w`)).w
+    const week = (await one(`select lab_worklist('done', ${day(6)}, ${day(0)}) as w`)).w
+    const twoDays = (await one(`select lab_worklist('done', ${day(1)}, ${day(0)}) as w`)).w
+    const thatDay = (await one(`select lab_worklist('done', ${day(3)}) as w`)).w
+    const open = (await one(`select lab_worklist('open', ${day(30)}, ${day(0)}) as w`)).w
+    const openPlain = (await one(`select lab_worklist() as w`)).w
+    await asAdmin()
+    await db.query(
+      `update diagnostic_report set verified_at = verified_at + interval '3 days' where service_request_id = $1`,
+      [r.id],
+    )
+    const has = (list) => list.some((x) => x.id === r.id)
+    if (
+      has(todayAfter) ||
+      !has(week) ||
+      has(twoDays) ||
+      !has(thatDay) ||
+      open.length !== openPlain.length
+    )
+      throw new Error(
+        JSON.stringify({
+          todayAfter: has(todayAfter),
+          week: has(week),
+          twoDays: has(twoDays),
+          thatDay: has(thatDay),
+          open: [open.length, openPlain.length],
+        }),
+      )
+    return `a result of 3 days ago: not today, in the last 7 days (${week.length}), not in the last 2, on its day; open list unchanged (${open.length})`
+  },
+)
+
 finish()
 
 function finish() {

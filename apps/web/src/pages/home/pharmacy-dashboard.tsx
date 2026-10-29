@@ -17,7 +17,7 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { usePeriod } from '@/lib/period'
+import { useSearchPeriod } from '@/lib/period'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { IdentityBanner } from '@/components/dash/identity-banner'
@@ -66,7 +66,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   // receiving and managing stock follow the manager's switch; handing over stays
   const switchedOff = useSwitchedOff(user)
   // the figures of the chosen period (today by default; lists of what waits now stay "now")
-  const period = usePeriod('today')
+  const period = useSearchPeriod('today')
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
   const periodWord = t(`dashboard.period.${period.range}`)
   // the pharmacy figures open the Analytics page (the manager, a head whose department has the

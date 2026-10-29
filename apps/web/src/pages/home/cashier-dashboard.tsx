@@ -23,6 +23,7 @@ import { Empty, Kpi, Panel, SectionTitle } from '@/components/dash/kit'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { delta, greetingFor } from '@/components/dash/kit-style'
 import { periodSearch, useAnalyticsLink } from '@/components/dash/analytics-links'
+import { DashLink } from '@/components/dash/dash-link'
 import { NoticesPanel } from '@/components/dash/notices-panel'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ShownList } from '@/components/ui/list-tools'
@@ -35,7 +36,7 @@ import { openReceiptsBatch } from '@/lib/reports/receipts-print'
 import { useHomeSummary } from '@/lib/api/home'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
-import { usePeriod } from '@/lib/period'
+import { periodHref, useSearchPeriod } from '@/lib/period'
 import { isLive } from '@/lib/supabase'
 import { MyQueuePanel } from './role-panels'
 import { CallsPanel } from './calls-panel'
@@ -60,7 +61,7 @@ const METHOD_COLORS = ['var(--mmc-green-dot)', 'var(--mmc-yellow-dot)', 'var(--m
 export function CashierDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   // the money of the chosen period (today = the one-day summary, as before)
-  const period = usePeriod('today')
+  const period = useSearchPeriod('today')
   const {
     data: s,
     error,
@@ -141,10 +142,14 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
           >
             {!isFetching && <RefreshCw size={16} aria-hidden="true" />}
           </Button>
-          <StaffLink to="/app/payments" className={buttonVariants({ size: 'md' })}>
+          {/* the Payments page opens on the same period */}
+          <DashLink
+            href={periodHref('/app/payments', period)}
+            className={buttonVariants({ size: 'md' })}
+          >
             <Clock size={16} aria-hidden="true" />
             {t('finance.dayClose')}
-          </StaffLink>
+          </DashLink>
           <Button
             variant="tint-grey"
             size="md"
@@ -196,7 +201,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               unit="RWF"
               // "all time" has no period before it to compare with
               delta={range === 'all' ? undefined : delta(collected, s.previousTotal, true, t)}
-              to={link('collections') ?? link('revenue') ?? '/app/payments'}
+              to={link('collections') ?? link('revenue') ?? periodHref('/app/payments', period)}
             />
             <Kpi
               i={1}
@@ -277,7 +282,11 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                   tint="mint"
                   title={t('finance.byMethodIn', { period: periodWord })}
                   right={formatRwf(collected)}
-                  to={link('methods') ?? link('revenue', { by: 'method' }) ?? '/app/payments'}
+                  to={
+                    link('methods') ??
+                    link('revenue', { by: 'method' }) ??
+                    periodHref('/app/payments', period)
+                  }
                 >
                   {s.byMethod.length === 0 ? (
                     <Empty>{t('finance.nothingYet')}</Empty>
