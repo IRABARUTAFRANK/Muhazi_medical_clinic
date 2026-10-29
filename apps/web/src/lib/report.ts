@@ -419,6 +419,14 @@ const REPORT_CSS = `
 @page wide { size: A4 landscape; margin: 15mm 18mm 20mm; }
 .rs.wide { page: wide; }
 .rs.wide > h2:first-child { margin-top: 0; }
+/* on screen (the preview before printing) a wide section shows as its own landscape sheet, centred
+   on the portrait one, instead of running off its right edge; on a narrow screen it scrolls */
+@media screen {
+  .rs.wide { --wide-w: min(297mm, 100vw - 24px); box-sizing: border-box; width: var(--wide-w);
+    margin: 10mm 0 10mm calc(50% - var(--wide-w) / 2); padding: 12mm 18mm; background: #ffffff;
+    border-radius: 2px; box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10);
+    overflow-x: auto; }
+}
 /* the signature lines stay on the last landscape page when the report ends with a wide table */
 .wide-tail { page: wide; }
 /* the signature lines never stand alone at the top of a page: the last rows come with them */
