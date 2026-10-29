@@ -43,6 +43,11 @@ export interface DayAppointment {
   rebooked?: boolean
   /** The visit opened by the arrival (0065). */
   encounterId?: string | null
+  /**
+   * 0108: what the booked patient's file still needs (files.missing keys, extra:<key> for the
+   * clinic's own fields); null or absent when there is no file yet.
+   */
+  missing?: string[] | null
 }
 
 /** One booking in full (appointment_detail). */
@@ -180,6 +185,23 @@ const sampleAppts: DayAppointment[] = [
     doctor: 'Dr. Ndayisaba Félix',
     reason: 'Tooth pain',
     late: true,
+    missing: ['national_id', 'extra:church'],
+  },
+  {
+    // a website request booked with the name and phone only: the file is made on arrival
+    id: 'ap-4',
+    time: '11:30',
+    startsAt: at(11, 30),
+    status: 'confirmed',
+    patientId: null,
+    fileNumber: null,
+    name: 'Ingabire Diane',
+    phone: '0788555444',
+    doctor: 'Dr. Mukamana Béatrice',
+    reason: 'Fever and headache',
+    source: 'online',
+    late: false,
+    missing: null,
   },
   {
     id: 'ap-3',
@@ -359,19 +381,84 @@ export function useDeskOps() {
     return data as T
   }
 
+  /**
+   * The booked patient is here: a visit opens. A booking without a file (0108) names the file
+   * found for it (patientId) or brings the registration form (registration, by column name): the
+   * file is made with the arrival, or not at all.
+   */
   const arrived = useMutation({
-    mutationFn: async (id: string): Promise<{ encounterId: string; existing: boolean }> => {
+    mutationFn: async (i: {
+      id: string
+      patientId?: string
+      registration?: Record<string, unknown>
+    }): Promise<{
+      encounterId: string
+      existing: boolean
+      fileNumber: string | null
+      newFile: boolean
+    }> => {
       if (!supabase) {
-        const a = sampleAppts.find((x) => x.id === id)
-        if (a) a.status = 'arrived'
-        return { encounterId: 'e-1', existing: false }
+        const a = sampleAppts.find((x) => x.id === i.id)
+        if (a) {
+          a.status = 'arrived'
+          if (!a.patientId) {
+            a.patientId = i.patientId ?? 'p-1'
+            a.fileNumber = i.patientId ? a.fileNumber : 'MMC-000143'
+            a.missing = []
+          }
+        }
+        return {
+          encounterId: 'e-1',
+          existing: false,
+          fileNumber: a?.fileNumber ?? null,
+          newFile: !!i.registration,
+        }
       }
-      const v = await call<{ encounter_id: string; existing?: boolean }>('appointment_arrived', {
-        p_appointment_id: id,
-      })
-      return { encounterId: v.encounter_id, existing: !!v.existing }
+      const v = await call<{
+        encounter_id: string
+        existing?: boolean
+        file_number?: string | null
+        new_file?: boolean
+      }>(
+        'appointment_arrived',
+        // only what is needed: a linked booking arrives the same way on a database before 0108
+        i.patientId || i.registration
+          ? {
+              p_appointment_id: i.id,
+              p_patient_id: i.patientId ?? null,
+              p_registration: i.registration ?? null,
+            }
+          : { p_appointment_id: i.id },
+      )
+      return {
+        encounterId: v.encounter_id,
+        existing: !!v.existing,
+        fileNumber: v.file_number ?? null,
+        newFile: !!v.new_file,
+      }
     },
     onSuccess: refresh,
+  })
+  /**
+   * A website request booked with the name and phone the person gave (0108): no file yet, it is
+   * made when the patient arrives.
+   */
+  const bookWithoutFile = useMutation({
+    mutationFn: async (i: { id: string; doctorUserId: string; startsAt: string }) => {
+      if (!supabase) return
+      await call('approve_inquiry_auto', {
+        p_appointment_id: i.id,
+        p_patient_id: null,
+        p_practitioner_user: i.doctorUserId,
+        p_starts_at: i.startsAt,
+        p_without_file: true,
+      })
+    },
+    onSuccess: () => {
+      refresh()
+      void qc.invalidateQueries({ queryKey: ['inquiries'] })
+      void qc.invalidateQueries({ queryKey: ['public'] })
+    },
   })
   const outcome = useMutation({
     mutationFn: async (i: { id: string; status: 'no_show' | 'cancelled'; reason?: string }) => {
@@ -539,6 +626,7 @@ export function useDeskOps() {
   })
   return {
     arrived,
+    bookWithoutFile,
     outcome,
     createTask,
     completeTask,

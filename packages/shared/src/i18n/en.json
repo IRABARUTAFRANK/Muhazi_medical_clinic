@@ -1878,6 +1878,10 @@
       "saved": "Default set saved. Every vitals form shows it from now.",
       "none": "Tick at least one measurement.",
       "bmiHint": "BMI is computed from weight and height and never saved."
+    },
+    "patientSection": {
+      "title": "Patient file and vital signs",
+      "hint": "Fields to record, required ones, vital signs"
     }
   },
   "pin": {
@@ -2625,7 +2629,17 @@
       "phone": "phone",
       "national_id": "national ID",
       "address": "address",
-      "age": "age or date of birth"
+      "age": "age or date of birth",
+      "phone_2": "other phone",
+      "email": "e-mail",
+      "province": "province",
+      "district": "district",
+      "cell": "cell",
+      "village": "village",
+      "occupation": "occupation",
+      "marital_status": "marital status",
+      "ubudehe_category": "Ubudehe category",
+      "emergency": "emergency contact"
     },
     "sendToReception": "Reception will complete the file ({{missing}}) before the doctor.",
     "stillMissing": "The file still needs {{missing}}: reception can complete it later.",
@@ -4027,7 +4041,8 @@
         "ordersWrite": "request tests and write results",
         "appointmentApprove": "answer booking requests",
         "stockWrite": "manage stock",
-        "recordsApprove": "answer record-access requests"
+        "recordsApprove": "answer record-access requests",
+        "stockSellWalkin": "sell to walk-in buyers from your store"
       }
     },
     "f": {
@@ -4066,6 +4081,10 @@
       "records.approve": {
         "name": "Answer record-access requests",
         "hint": "Approve or refuse colleagues’ requests to see a patient’s past records. By default only the manager answers."
+      },
+      "stock.sell_walkin": {
+        "name": "Sell to walk-in buyers from my store",
+        "hint": "For someone who holds a room store (My store): sell its medicines to a buyer without a visit. The pharmacy desk sells from the pharmacy without this switch. Usually given to one person as an exception."
       }
     },
     "desks": {
@@ -7231,7 +7250,21 @@
     "edb7106b": "Only the pharmacy opens a pack of {{p1}}: send whole packs.",
     "1ff2c034": "Say how it is sold: by the piece, by the pack or both.",
     "f5cca4c2": "Say the price of one piece.",
-    "2debc019": "Say the price of one pack."
+    "2debc019": "Say the price of one pack.",
+    "1027fa42": "A passport or other ID number has 6 to 20 letters or digits.",
+    "138192ce": "A patient with this ID number already exists: {{p1}}.",
+    "8f618beb": "The age is a number of years from 0 to 130.",
+    "6f27ce8c": "This booking already has a patient file.",
+    "097b9ed9": "A required field cannot be emptied: {{p1}}.",
+    "c8c04db0": "A field is shown, hidden or required.",
+    "3be2d3b3": "The Ubudehe category is 1, 2, 3 or 4.",
+    "257bce66": "The date of birth is in the future.",
+    "f65170ae": "Give the date of birth or the age.",
+    "0d504460": "The e-mail address is not valid.",
+    "4751a0a4": "Fill in the required fields: {{p1}}.",
+    "df1edfcb": "Unknown patient field: {{p1}}.",
+    "d4abdfed": "Unknown marital status.",
+    "5dfde301": "Unknown ID type."
   },
   "panel": {
     "close": "Close",
@@ -7631,6 +7664,122 @@
       "suppository": "suppository",
       "piece": "piece",
       "ml": "ml"
+    }
+  },
+  "patientFields": {
+    "choose": "Choose…",
+    "id": {
+      "kind": "ID document",
+      "kinds": {
+        "national_id": "National ID",
+        "passport": "Passport",
+        "other": "Other ID (refugee card, residence permit…)",
+        "child": "No ID: child",
+        "not_issued": "No ID: not issued yet",
+        "foreigner": "No ID: foreign national"
+      },
+      "number": {
+        "national_id": "National ID number",
+        "passport": "Passport number",
+        "other": "ID number"
+      },
+      "count": "{{n}}/{{max}}",
+      "cut": "Only 16 digits: the rest of the pasted number was left out. Check it.",
+      "nationalHint_one": "{{count}} digit to go (16 digits; spaces are dropped)",
+      "nationalHint_other": "{{count}} digits to go (16 digits; spaces are dropped)",
+      "otherHint": "6 to 20 letters or digits, as on the document.",
+      "noneHint": "The file says why there is no ID, so it is not asked again."
+    },
+    "labels": {
+      "email": "E-mail",
+      "province": "Province",
+      "marital_status": "Marital status"
+    },
+    "provinces": {
+      "kigali": "Kigali City",
+      "northern": "Northern Province",
+      "southern": "Southern Province",
+      "eastern": "Eastern Province",
+      "western": "Western Province"
+    },
+    "marital": {
+      "single": "Single",
+      "married": "Married",
+      "widowed": "Widowed",
+      "divorced": "Divorced",
+      "separated": "Separated"
+    },
+    "more_one": "More details ({{count}} more field)",
+    "more_other": "More details ({{count}} more fields)",
+    "errors": {
+      "names": "Write the surname and the given names (2 letters at least).",
+      "sex": "Choose the sex (Unknown if it is not known).",
+      "age": "Give the date of birth or the age.",
+      "future": "The date of birth is in the future.",
+      "ageRange": "The age is a number of years from 0 to 130.",
+      "nationalId_one": "The national ID has 16 digits; this one has {{count}}.",
+      "nationalId_other": "The national ID has 16 digits; this one has {{count}}.",
+      "idNumber": "A passport or other ID number has 6 to 20 letters or digits.",
+      "email": "The e-mail address is not valid.",
+      "required": "Fill in the required fields: {{fields}}."
+    },
+    "quickHint": "Emergency or the nurse’s quick file: the clinic’s required fields can be completed later (the file goes to “Files to complete”).",
+    "requiredHint": "required by the clinic",
+    "arrival": {
+      "title": "Register {{name}}: arrived for a booking",
+      "hint": "Booking: {{booking}}. Fill in the file with the clinic’s fields; it is created when you save, and the visit starts at once.",
+      "submit": "Create the file and start the visit",
+      "noFile": "{{name}} has no patient file yet.",
+      "findLead": "This patient may already have a file: search by name, phone, file number or national ID and use it, so no second file is made. Otherwise register the patient below.",
+      "search": "This patient already has a file? Search",
+      "noMatch": "No file found with this search.",
+      "useFile": "Use this file",
+      "newLead": "No file yet: register the patient with the clinic’s fields.",
+      "register": "Register the patient",
+      "noFileYet": "No file yet: made on arrival",
+      "buttonHint": "The patient is here: find their file or register them, then the visit opens.",
+      "doneNew": "File {{file}} created for {{name}}; the visit is open and the patient is in the queue.",
+      "doneLinked": "{{name}} ({{file}}) has arrived; the visit is open and the patient is in the queue."
+    },
+    "booking": {
+      "noFile": "{{name}}: no file yet, made when the patient arrives",
+      "chooseFile": "Choose a file instead",
+      "orLater": "Not sure who it is yet?",
+      "withoutFile": "Book now; make the file when the patient arrives"
+    },
+    "builtin": {
+      "national_id": "ID document (national ID, passport…)",
+      "phone_1": "Phone",
+      "phone_2": "Other phone",
+      "email": "E-mail",
+      "province": "Province",
+      "district": "District",
+      "sector": "Sector",
+      "cell": "Cell",
+      "village": "Village",
+      "occupation": "Occupation",
+      "marital_status": "Marital status",
+      "ubudehe_category": "Ubudehe category",
+      "emergency": "Next of kin (emergency contact: name and phone)"
+    },
+    "settings": {
+      "lead": "What every patient file records. The registration form, a booked patient’s arrival and Edit details follow these settings: a hidden field is not asked, a required one must be filled before the file is saved.",
+      "builtinTitle": "Standard fields",
+      "builtinHint": "Show, hide or require each one. Required: registration stops until it is filled (except an emergency or the nurse’s quick file, completed later).",
+      "core": "Surname · Given names · Sex · Date of birth or age",
+      "coreState": "Always shown and required",
+      "states": {
+        "shown": "Show",
+        "hidden": "Hide",
+        "required": "Required"
+      },
+      "extraTitle": "The clinic’s own fields",
+      "up": "Move {{name}} up",
+      "down": "Move {{name}} down",
+      "required": "Required",
+      "requiredHint": "asked at registration and needed on every file (shown as missing on older files)",
+      "confirmRequired": "Required from now on: {{names}}.",
+      "saved": "Saved. Registration and Edit details now follow these fields."
     }
   }
 }

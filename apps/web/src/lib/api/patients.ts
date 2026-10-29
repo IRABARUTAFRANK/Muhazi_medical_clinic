@@ -12,6 +12,7 @@ import { isRoomStore, sampleIsManager, sampleStock } from './stock'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import type { Sex, Station } from '@/lib/api/visits'
+import { withDefaults, type BuiltinStates } from '@/lib/patient-rules'
 
 /**
  * The patient register and the patient file. Every patient the clinic registers stays in
@@ -132,6 +133,13 @@ export interface PatientRecord {
   national_id: string | null
   /** Why there is no national ID (child, not issued yet, foreign national), if so. */
   no_national_id?: 'child' | 'not_issued' | 'foreigner' | null
+  /** 0108: the ID document (null before: a national ID); a passport or other ID's number. */
+  id_type?: 'national_id' | 'passport' | 'other' | null
+  id_number?: string | null
+  /** 0108: e-mail, province (code, see patient-rules PROVINCES) and marital status. */
+  email?: string | null
+  province?: string | null
+  marital_status?: string | null
   phone_1: string | null
   phone_2: string | null
   preferred_channel: string
@@ -163,6 +171,8 @@ export interface PatientFieldDef {
   options?: string[]
   /** Medical: shown only to whoever treats the patient now and full-history readers (privacy). */
   private?: boolean
+  /** 0108: asked at registration and needed on every file (the list's order is the forms' order). */
+  required?: boolean
 }
 
 export interface PatientVisit {
@@ -688,6 +698,31 @@ export async function setNoNationalId(patientId: string, reason: NoIdReason | nu
   if (error) throw apiError(error)
 }
 
+/** Sample mode: the plain fields Edit details changes. */
+const SAMPLE_TEXT_FIELDS = [
+  'surname',
+  'given_names',
+  'sex',
+  'birth_date',
+  'id_type',
+  'national_id',
+  'id_number',
+  'no_national_id',
+  'phone_1',
+  'phone_2',
+  'email',
+  'province',
+  'district',
+  'sector',
+  'cell',
+  'village',
+  'occupation',
+  'marital_status',
+  'ubudehe_category',
+  'emergency_name',
+  'emergency_phone',
+] as const
+
 export function usePatientActions(id: string) {
   const qc = useQueryClient()
   const update = useMutation({
@@ -701,6 +736,13 @@ export function usePatientActions(id: string) {
       if (!supabase) {
         const f = sampleFileCache.get(id)
         if (f && fields.extra && typeof fields.extra === 'object') f.patient.extra = fields.extra
+        // the identity and contact details as typed (the database cleans and checks them)
+        if (f)
+          for (const k of SAMPLE_TEXT_FIELDS)
+            if (k in fields) {
+              const v = fields[k]
+              Object.assign(f.patient, { [k]: v === '' || v == null ? null : v })
+            }
         if (f) {
           const text = typeof fields.allergies === 'string' ? fields.allergies.trim() : ''
           if (text) Object.assign(f.patient, { allergies: text, allergies_none: false })
@@ -1964,7 +2006,7 @@ export function useClinicalActions(encounterId: string) {
 // ---------------------------------------------------------------- custom fields of the file
 let sampleFields: PatientFieldDef[] = [
   { key: 'next_of_kin', label: 'Next of kin', type: 'text' },
-  { key: 'church', label: 'Church / community', type: 'text' },
+  { key: 'church', label: 'Church / community', type: 'text', required: true },
   {
     key: 'chronic',
     label: 'Chronic condition',
@@ -2056,6 +2098,51 @@ export function useSavePatientFields() {
       if (error) throw apiError(error)
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: FIELDS_KEY }),
+  })
+}
+
+// ---------------------------------------------------------------- built-in fields (0108)
+let sampleBuiltins: Partial<BuiltinStates> = { national_id: 'required', phone_1: 'required' }
+const BUILTINS_KEY = ['settings', 'patient.builtins'] as const
+
+/**
+ * Which built-in fields the registration form and Edit details show, hide or require (setting
+ * `patient.builtins`); the defaults keep the file as it was on a database before 0108.
+ */
+export function usePatientBuiltins() {
+  return useQuery({
+    queryKey: BUILTINS_KEY,
+    staleTime: 60_000,
+    queryFn: async (): Promise<BuiltinStates> => {
+      if (!supabase) return withDefaults(sampleBuiltins)
+      const { data, error } = await supabase.rpc('patient_builtins')
+      if (error) {
+        if (isMissingFunction(error)) return withDefaults({})
+        throw apiError(error)
+      }
+      return withDefaults(data)
+    },
+  })
+}
+
+/** Manager: shown, hidden or required per built-in field. */
+export function useSavePatientBuiltins() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (states: BuiltinStates) => {
+      if (!supabase) {
+        sampleBuiltins = { ...states }
+        return
+      }
+      const { error } = await supabase.rpc('save_patient_builtins', { p_value: states })
+      if (error) throw apiError(error)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: BUILTINS_KEY })
+      // what the files still need follows the settings
+      void qc.invalidateQueries({ queryKey: ['files-to-complete'] })
+      void qc.invalidateQueries({ queryKey: ['appointments'] })
+    },
   })
 }
 

@@ -51,6 +51,9 @@ const SECTIONS: { id: SectionId; icon: LucideIcon; tint: Tint }[] = [
   { id: 'patient', icon: ClipboardList, tint: 'violet' },
   { id: 'display', icon: ALargeSmall, tint: 'mint' },
 ]
+/** The menu's title and hint of a section ("patient" also holds the vital signs, 0108). */
+const sectionKey = (id: SectionId) =>
+  id === 'patient' ? 'settings.patientSection' : `settings.sections.${id}`
 const SECTION_KEY = 'mmc.settings.section'
 const readSection = (): SectionId => {
   try {
@@ -227,7 +230,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[14px] font-semibold">
-                      {t(`settings.sections.${sec.id}.title`)}
+                      {t(`${sectionKey(sec.id)}.title`)}
                     </span>
                     <span
                       className={cn(
@@ -235,7 +238,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                         on ? 'text-primary/80' : 'text-ink-3',
                       )}
                     >
-                      {t(`settings.sections.${sec.id}.hint`)}
+                      {t(`${sectionKey(sec.id)}.hint`)}
                     </span>
                   </span>
                 </button>
@@ -347,7 +350,6 @@ export function SettingsPage({ user }: { user: StaffUser }) {
 
             {section === 'beds' && <BedsCard />}
             {section === 'hours' && <FlowCard />}
-            {section === 'hours' && <VitalsCard />}
 
             {section === 'security' && (
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -357,6 +359,8 @@ export function SettingsPage({ user }: { user: StaffUser }) {
 
             {section === 'access' && <PermissionsCard />}
             {section === 'patient' && <PatientFieldsCard />}
+            {/* the vital signs the forms show: with what the patient file records (0108) */}
+            {section === 'patient' && <VitalsCard />}
 
             {section === 'display' && (
               <>

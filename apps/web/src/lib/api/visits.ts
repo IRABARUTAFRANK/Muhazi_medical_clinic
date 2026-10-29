@@ -5,7 +5,7 @@ import { reportSessionRefused, supabase } from '@/lib/supabase'
 import { sampleSaveVitals, type VitalEntry, type VitalsInput } from './vitals'
 import { sampleHandoverOnQueue } from './handover'
 import { sampleRequestEditCode, sampleVerifyEditCode } from './patients'
-import { apiError } from './errors'
+import { apiError, isMissingFunction } from './errors'
 
 /**
  * Patient journey (MoH workflow): registration at any station → triage (vitals + colour) →
@@ -156,6 +156,14 @@ export interface NewPatient {
   phone?: string
   nationalId?: string
   sector?: string
+  /**
+   * 0108: the rest of the registration form by column name (id_type, id_number, no_national_id,
+   * phone_2, email, province, district, cell, village, occupation, marital_status,
+   * ubudehe_category, emergency_name, emergency_phone, extra).
+   */
+  more?: Record<string, unknown>
+  /** An emergency: the clinic's required fields are completed later (Files to complete). */
+  emergency?: boolean
 }
 export interface VisitOptions {
   emergency: boolean
@@ -449,7 +457,7 @@ export function useVisitActions() {
         })
         return { patientId: id, fileNumber }
       }
-      const { data, error } = await supabase.rpc('register_patient_file', {
+      const args = {
         p_surname: patient.surname.trim(),
         p_given_names: patient.givenNames.trim(),
         p_sex: patient.sex,
@@ -458,9 +466,33 @@ export function useVisitActions() {
         p_phone: patient.phone?.trim() || null,
         p_national_id: patient.nationalId?.trim() || null,
         p_sector: patient.sector?.trim() || null,
+      }
+      // 0108: the whole form, checked against the clinic's required fields
+      let { data, error } = await supabase.rpc('register_patient_file', {
+        ...args,
+        p_fields: patient.more ?? null,
+        p_emergency: !!patient.emergency,
       })
+      // a database before 0108: the short form, then what it knows of the rest
+      const old = !!error && isMissingFunction(error)
+      if (old) ({ data, error } = await supabase.rpc('register_patient_file', args))
       if (error) throw apiError(error)
       const r = data as { patient_id: string; file_number: string }
+      if (old && patient.more) {
+        const { error: e2 } = await supabase.rpc('update_patient', {
+          p_patient_id: r.patient_id,
+          p_fields: patient.more,
+        })
+        if (e2) throw apiError(e2)
+        const why = patient.more.no_national_id
+        if (typeof why === 'string' && why) {
+          const { error: e3 } = await supabase.rpc('set_no_national_id', {
+            p_patient_id: r.patient_id,
+            p_reason: why,
+          })
+          if (e3) throw apiError(e3)
+        }
+      }
       return { patientId: r.patient_id, fileNumber: r.file_number }
     },
     onSuccess: refresh,

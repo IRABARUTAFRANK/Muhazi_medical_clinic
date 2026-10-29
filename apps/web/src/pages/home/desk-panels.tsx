@@ -45,6 +45,9 @@ import { focusAttr, useFocusFirst } from '@/lib/notice-focus'
 import { FOCUS_PANEL } from '@/lib/notice-target'
 import { cn } from '@/lib/utils'
 import { StartVisitConfirm } from '@/components/clinical/start-visit-confirm'
+import { ArrivalFileCard } from '@/components/clinical/arrival-file-card'
+import { useMissingLabel } from '@/components/clinical/use-field-settings'
+import { Flash } from '@/components/ui/flash'
 
 const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const errorLine = 'bg-red-bg text-red m-0 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold'
@@ -81,7 +84,9 @@ const apptTint: Record<string, Tint> = {
 
 /**
  * The day's booked patients. "Arrived" opens a visit and queues the patient at triage, so the
- * nurse sees them at once; No-show and Cancel (with a reason) close the booking.
+ * nurse sees them at once; No-show and Cancel (with a reason) close the booking. A booking
+ * without a file (0108) first finds the patient's file or registers them with the clinic's
+ * fields; a linked file that still lacks details says so, with "Complete the file".
  */
 export function AppointmentsPanel({
   i = 1,
@@ -125,9 +130,13 @@ export function AppointmentsPanel({
 
   // "Arrived" starts the visit (ticket, triage queue, a new bill): asked first.
   const [arriving, setArriving] = useState<DayAppointment | null>(null)
+  // a booking without a file: the file is found or registered first (0108)
+  const [filing, setFiling] = useState<DayAppointment | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const missingLabel = useMissingLabel()
   const arrive = (a: DayAppointment) =>
     void run(async () => {
-      const v = await ops.arrived.mutateAsync(a.id)
+      const v = await ops.arrived.mutateAsync({ id: a.id })
       setArriving(null)
       if (v.existing) void navigate({ to: '/app/visit', search: { encounter: v.encounterId } })
     })
@@ -168,6 +177,11 @@ export function AppointmentsPanel({
       right={t('ops.appts.toCome', { count: waiting.length })}
     >
       {error && <p className={errorLine}>{error}</p>}
+      {notice && (
+        <Flash key={notice} onClose={() => setNotice(null)}>
+          {notice}
+        </Flash>
+      )}
       {!isLoading && rows.length === 0 ? (
         <Empty>{t('desk.receptionist.noAppointments')}</Empty>
       ) : (
@@ -196,6 +210,11 @@ export function AppointmentsPanel({
                       ) : (
                         <span className="block truncate font-semibold">{a.name}</span>
                       )}
+                      {open && !a.patientId && (
+                        <span className="text-amber block text-[12px] font-semibold">
+                          {t('patientFields.arrival.noFileYet')}
+                        </span>
+                      )}
                       <span className="text-ink-3 block truncate text-[13px]">
                         {[a.doctor, a.reason, a.phone].filter(Boolean).join(' · ')}
                       </span>
@@ -216,8 +235,17 @@ export function AppointmentsPanel({
                           <Button
                             size="sm"
                             variant="primary"
-                            onClick={() => setArriving(a)}
-                            disabled={!a.patientId || arriving?.id === a.id}
+                            onClick={() => {
+                              setNotice(null)
+                              if (a.patientId) {
+                                setFiling(null)
+                                setArriving(a)
+                              } else {
+                                setArriving(null)
+                                setFiling(a)
+                              }
+                            }}
+                            disabled={arriving?.id === a.id || filing?.id === a.id}
                             title={
                               a.patientId
                                 ? t(
@@ -225,7 +253,7 @@ export function AppointmentsPanel({
                                       ? 'ops.appts.arrivedHint'
                                       : 'ops.appts.arrivedHintDesk',
                                   )
-                                : t('ops.appts.registerFirst')
+                                : t('patientFields.arrival.buttonHint')
                             }
                           >
                             {t('ops.appts.arrived')}
@@ -286,6 +314,50 @@ export function AppointmentsPanel({
                           />
                         )
                       ))}
+                    {/* the booked file still lacks what the clinic needs: completed from here */}
+                    {open && a.patientId && (a.missing?.length ?? 0) > 0 && (
+                      <span className="bg-amber-bg/60 flex basis-full flex-wrap items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px]">
+                        <span className="text-amber min-w-0 flex-1 font-semibold">
+                          {t('files.lacks', {
+                            missing: (a.missing ?? []).map(missingLabel).join(', '),
+                          })}
+                        </span>
+                        <OpenFileLink
+                          patientId={a.patientId}
+                          tab="complete"
+                          className={buttonVariants({ size: 'sm' })}
+                        >
+                          <FilePen size={14} aria-hidden="true" />
+                          {t('files.complete')}
+                        </OpenFileLink>
+                      </span>
+                    )}
+                    {filing?.id === a.id && (
+                      <ArrivalFileCard
+                        appt={a}
+                        desk={triageFirst ? 'triage' : 'consultation'}
+                        onCancel={() => setFiling(null)}
+                        onArrived={(v) => {
+                          setFiling(null)
+                          setNotice(
+                            t(
+                              v.newFile
+                                ? 'patientFields.arrival.doneNew'
+                                : 'patientFields.arrival.doneLinked',
+                              {
+                                name: v.name,
+                                file: v.fileNumber ?? '',
+                              },
+                            ),
+                          )
+                          if (v.existing)
+                            void navigate({
+                              to: '/app/visit',
+                              search: { encounter: v.encounterId },
+                            })
+                        }}
+                      />
+                    )}
                     {arriving?.id === a.id && (
                       <Reveal block="nearest">
                         <StartVisitConfirm
@@ -788,6 +860,7 @@ function StayForm({
  */
 export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
   const { t } = useTranslation()
+  const missingLabel = useMissingLabel()
   const { data: files = [] } = useFilesToComplete()
   const atReception = files.filter((f) => f.station === 'reception').length
   return (
@@ -813,7 +886,7 @@ export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
                     <span className="block truncate font-semibold">{f.name}</span>
                     <span className="text-ink-3 block truncate text-[13px]">
                       {t('files.lacks', {
-                        missing: f.missing.map((m) => t(`files.missing.${m}`)).join(', '),
+                        missing: f.missing.map(missingLabel).join(', '),
                       })}
                       {f.station
                         ? ` · ${t('files.now', { station: t(`register.stations.${f.station}`) })}`

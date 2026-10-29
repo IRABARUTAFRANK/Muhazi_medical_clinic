@@ -138,9 +138,11 @@ export function sampleSaveVitals(
 ) {
   const rows = sampleVitalsOf('')
   const at = o.measuredAt ?? new Date().toISOString()
-  const who = o.measuredBy
-    ? (o.takers?.find((p) => p.id === o.measuredBy)?.name ?? null)
-    : (me()?.name ?? null)
+  // the person typing names themselves ("Me"): the same as naming nobody
+  const who =
+    o.measuredBy && o.measuredBy !== me()?.id
+      ? (o.takers?.find((p) => p.id === o.measuredBy)?.name ?? null)
+      : (me()?.name ?? null)
   for (const [code, raw] of Object.entries(vitals)) {
     const entry: VitalEntry | null =
       typeof raw === 'string'

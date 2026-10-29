@@ -14697,6 +14697,480 @@ await step(
     return `asked or sent as 3 tablets: refused (whole boxes of 8); a holder may not split; the pharmacy splits (3 = 450 at 1,200 a box); 2 boxes requested and sent (2,400); 3 loose tablets come back`
   },
 )
+// ---------------------------------------------------------------- 0108: reception and the patient file's fields
+const t108 = {}
+/** A booking from the website: a name and a phone, no patient file. */
+const booking108 = async (name, phone, minutes) => {
+  await asAdmin()
+  const pr = (await one(`select ensure_practitioner($1) as id`, [d2])).id
+  return (
+    await one(
+      `insert into appointment (practitioner_id, starts_at, status, source, contact_name, contact_phone, reason)
+       values ($1, now() + make_interval(mins => $4), 'confirmed', 'online', $2, $3, 'Fever 108') returning id`,
+      [pr, name, phone, minutes],
+    )
+  ).id
+}
+const patients108 = async () => (await one(`select count(*)::int as n from patient`)).n
+// (the checks above ran older migrations again: this one is applied again too, which also shows
+// it runs on a database that already has it)
+await step('0108: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261218090000_reception_and_fields.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step(
+  '0108 A: a booking without a file does not arrive without one (no bare file)',
+  async () => {
+    t108.appt = await booking108('Uwase Bare', '0788108100', 41)
+    const before = await patients108()
+    const bare = await tryAs(staff.receptionist, `select appointment_arrived($1)`, [t108.appt])
+    const noAge = await tryAs(
+      staff.receptionist,
+      `select appointment_arrived($1, null, $2::jsonb)`,
+      [
+        t108.appt,
+        JSON.stringify({
+          surname: 'Uwase',
+          given_names: 'Bare',
+          sex: 'female',
+          phone_1: '0788108100',
+        }),
+      ],
+    )
+    const after = await patients108()
+    const a = await one(`select status::text, patient_id from appointment where id = $1`, [
+      t108.appt,
+    ])
+    if (
+      !/register the patient first/.test(bare) ||
+      !/date of birth or the age/.test(noAge) ||
+      after !== before ||
+      a.status !== 'confirmed' ||
+      a.patient_id
+    )
+      throw new Error(JSON.stringify({ bare, noAge, before, after, a }))
+    return 'refused without a file; refused with an incomplete form; no file made'
+  },
+)
+await step(
+  '0108 B: arrival with the registration form makes a complete file, linked, visit opened',
+  async () => {
+    await as(staff.manager)
+    await db.query(
+      `select save_patient_builtins('{"national_id":"required","phone_1":"required","email":"shown"}'::jsonb)`,
+    )
+    const form = {
+      surname: 'Uwase',
+      given_names: 'Arrived 108',
+      sex: 'female',
+      age_years: 29,
+      phone_1: '0788 108 101',
+      sector: 'Kiramuruzi',
+      email: 'Uwase.108@Example.rw',
+    }
+    const before = await patients108()
+    const lacking = await tryAs(
+      staff.receptionist,
+      `select appointment_arrived($1, null, $2::jsonb)`,
+      [t108.appt, JSON.stringify(form)],
+    )
+    const mid = await patients108()
+    await as(staff.receptionist)
+    const v = (
+      await one(`select appointment_arrived($1, null, $2::jsonb) as v`, [
+        t108.appt,
+        JSON.stringify({ ...form, id_type: 'national_id', national_id: '1 1997 7 0108101 0 12' }),
+      ])
+    ).v
+    await asAdmin()
+    const a = await one(`select status::text, patient_id from appointment where id = $1`, [
+      t108.appt,
+    ])
+    const p = await one(
+      `select national_id, id_type, phone_1, email, file_number, patient_missing(p) as missing from patient p where id = $1`,
+      [a.patient_id],
+    )
+    const e = await one(`select status::text, appointment_id from encounter where id = $1`, [
+      v.encounter_id,
+    ])
+    const again = await tryAs(
+      staff.receptionist,
+      `select appointment_arrived($1, null, $2::jsonb)`,
+      [t108.appt, JSON.stringify(form)],
+    )
+    if (
+      !/fill in the required fields: national ID/.test(lacking) ||
+      mid !== before ||
+      a.status !== 'arrived' ||
+      a.patient_id !== v.patient_id ||
+      !v.new_file ||
+      p.national_id !== '1199770108101012' ||
+      p.id_type !== 'national_id' ||
+      p.phone_1 !== '0788108101' ||
+      p.email !== 'uwase.108@example.rw' ||
+      p.missing.length !== 0 ||
+      e.status !== 'open' ||
+      e.appointment_id !== t108.appt ||
+      !/not waiting|already has a patient file/.test(again)
+    )
+      throw new Error(JSON.stringify({ lacking, before, mid, a, v, p, e, again }))
+    t108.patient = a.patient_id
+    return `refused without the required national ID (no file); then ${p.file_number} made with the arrival, nothing missing`
+  },
+)
+await step('0108 C: a booking without a file may be linked to an existing file', async () => {
+  const appt = await booking108('Uwase Linked', '0788108102', 52)
+  const other = await booking108('Someone Else', '0788108103', 63)
+  await asAdmin()
+  const fresh = (
+    await one(
+      `insert into patient (surname, given_names, sex, birth_date, phone_1, national_id)
+       values ('Habimana', 'Linked 108', 'male', '1990-01-01', '0788108102', '1199080108102033') returning id`,
+    )
+  ).id
+  await as(staff.receptionist)
+  const v = (await one(`select appointment_arrived($1, $2) as v`, [appt, fresh])).v
+  await asAdmin()
+  const a = await one(`select status::text, patient_id from appointment where id = $1`, [appt])
+  const gone = await tryAs(staff.receptionist, `select appointment_arrived($1, $2)`, [
+    other,
+    '00000000-0000-0000-0000-000000000108',
+  ])
+  if (
+    a.status !== 'arrived' ||
+    a.patient_id !== fresh ||
+    v.new_file ||
+    !/patient not found/.test(gone)
+  )
+    throw new Error(JSON.stringify({ a, v, gone }))
+  t108.linked = appt
+  t108.other = other
+  return 'linked to the chosen file, no new file; an unknown file refused'
+})
+await step(
+  '0108 C2: a request booked without a file; the day list says what a file still needs',
+  async () => {
+    await asAdmin()
+    const req = (
+      await one(
+        `insert into appointment (starts_at, status, source, contact_name, contact_phone, reason)
+         values (now() + interval '2 days 74 minutes', 'inquiry', 'online', 'Ingabire Web', '0788108109', 'Check-up')
+         returning id`,
+      )
+    ).id
+    await as(staff.receptionist)
+    const pid = (
+      await one(
+        `select approve_inquiry_auto($1, null, $2, now() + interval '2 days 74 minutes', true) as id`,
+        [req, d2],
+      )
+    ).id
+    const day = (
+      await one(
+        `select appointments_day((select (starts_at at time zone 'Africa/Kigali')::date from appointment where id = $1)) as d`,
+        [t108.linked],
+      )
+    ).d
+    await asAdmin()
+    const a = await one(`select status::text, patient_id from appointment where id = $1`, [req])
+    const linked = day.find((x) => x.id === t108.linked)
+    const other = day.find((x) => x.id === t108.other)
+    if (
+      pid !== null ||
+      a.status !== 'approved' ||
+      a.patient_id !== null ||
+      JSON.stringify(linked?.missing) !== '["address"]' ||
+      other?.missing !== null
+    )
+      throw new Error(JSON.stringify({ pid, a, linked, other }))
+    return 'booked with the name and phone only; the linked file still needs: address; no file: nothing listed'
+  },
+)
+await step(
+  '0108 D: national ID exactly 16 digits; passport or other ID 6 to 20 letters or digits',
+  async () => {
+    const r = {}
+    r.long = await tryAs(
+      staff.receptionist,
+      `select register_patient_file('Ndayisaba', 'Long 108', 'male', null, 40, null, '11998800123456789')`,
+    )
+    r.short = await tryAs(staff.receptionist, `select update_patient($1, $2::jsonb)`, [
+      t108.patient,
+      JSON.stringify({ national_id: '119977010810101' }),
+    ])
+    r.passportBad = await tryAs(
+      staff.receptionist,
+      `select register_patient_file('Smith', 'Pass 108', 'male', null, 40, '0788108104', null, null, $1::jsonb)`,
+      [JSON.stringify({ id_type: 'passport', id_number: 'X1' })],
+    )
+    await as(staff.receptionist)
+    const pass = (
+      await one(
+        `select register_patient_file('Smith', 'Pass 108', 'male', null, 40, '0788108104', null, null, $1::jsonb) as r`,
+        [JSON.stringify({ id_type: 'passport', id_number: 'pa 1234-567' })],
+      )
+    ).r
+    await db.query(`select update_patient($1, $2::jsonb)`, [
+      t108.patient,
+      JSON.stringify({ national_id: '1 1997 7 0108101 0 12' }),
+    ])
+    r.dup = await tryAs(staff.receptionist, `select update_patient($1, $2::jsonb)`, [
+      pass.patient_id,
+      JSON.stringify({ id_type: 'national_id', national_id: '1199770108101012' }),
+    ])
+    await asAdmin()
+    const p = await one(`select id_type, id_number, national_id from patient where id = $1`, [
+      pass.patient_id,
+    ])
+    const kept = await one(`select national_id from patient where id = $1`, [t108.patient])
+    const old = await one(
+      `select count(*)::int as n from patient where national_id is not null and national_id !~ '^[0-9]{16}$'`,
+    )
+    if (
+      !/16 digits/.test(r.long) ||
+      !/16 digits/.test(r.short) ||
+      !/6 to 20 letters or digits/.test(r.passportBad) ||
+      !/already exists/.test(r.dup) ||
+      p.id_type !== 'passport' ||
+      p.id_number !== 'PA1234567' ||
+      p.national_id !== null ||
+      kept.national_id !== '1199770108101012' ||
+      old.n !== 0
+    )
+      throw new Error(JSON.stringify({ r, p, kept, old }))
+    return '17 and 15 digits refused (create and edit); passport PA1234567 kept upper case; "X1" refused; a national ID on two files refused'
+  },
+)
+await step('0108 E: reception may be named as the one who measured', async () => {
+  await as(staff.receptionist)
+  const f = (
+    await one(
+      `select register_patient_file('Mukamana', 'Vitals 108', 'female', null, 35, '0788108105', null, null, $1::jsonb) as r`,
+      [JSON.stringify({ national_id: '1199170108105044' })],
+    )
+  ).r
+  const enc = (
+    await one(`select open_encounter($1, 'opd', 'reception', null) as id`, [f.patient_id])
+  ).id
+  const nobody = await tryAs(
+    staff.receptionist,
+    `select record_vitals($1, '{"pulse":"80"}'::jsonb)`,
+    [enc],
+  )
+  const me = await tryAs(
+    staff.receptionist,
+    `select record_vitals($1, '{"pulse":"82"}'::jsonb, null, null, null, $2)`,
+    [enc, staff.receptionist],
+  )
+  const o = await one(
+    `select count(*)::int as n, bool_and(performer_id = $2) as by_rec, bool_and(created_by = $2) as typed_by_rec
+     from observation where encounter_id = $1 and deleted_at is null`,
+    [enc, staff.receptionist],
+  )
+  if (!/choose the nurse/.test(nobody) || me !== 'ok' || o.n !== 1 || !o.by_rec || !o.typed_by_rec)
+    throw new Error(JSON.stringify({ nobody, me, o }))
+  return 'naming nobody still asks; "Me" saves her as the one who measured (and typed)'
+})
+await step(
+  '0108 F: a required custom field is enforced when a file is made, kept on edit',
+  async () => {
+    await asAdmin()
+    t108.fields = (await one(`select value from setting where key = 'patient.fields'`))?.value ?? []
+    await as(staff.manager)
+    await db.query(`select save_patient_builtins('{}'::jsonb)`)
+    await db.query(`select save_setting('patient.fields', $1::jsonb)`, [
+      JSON.stringify([
+        { key: 'religion', label: 'Religion', type: 'text', required: true },
+        { key: 'kin', label: 'Next of kin', type: 'text' },
+      ]),
+    ])
+    const before = await patients108()
+    const lacking = await tryAs(
+      staff.receptionist,
+      `select register_patient_file('Required', 'Field 108', 'female', null, 30, '0788108106')`,
+    )
+    const mid = await patients108()
+    await as(staff.receptionist)
+    const ok = (
+      await one(
+        `select register_patient_file('Required', 'Field 108', 'female', null, 30, '0788108106', null, null, $1::jsonb) as r`,
+        [JSON.stringify({ extra: { religion: 'Catholic', kin: '  ' } })],
+      )
+    ).r
+    const urgent = (
+      await one(
+        `select register_patient_file('Urgent', 'Field 108', 'male', null, 50, null, null, null, null, true) as r`,
+      )
+    ).r
+    const emptied = await tryAs(staff.receptionist, `select update_patient($1, $2::jsonb)`, [
+      ok.patient_id,
+      JSON.stringify({ extra: { religion: '' } }),
+    ])
+    // an older file without the value may still be edited (it stays listed as missing)
+    const older = await tryAs(staff.receptionist, `select update_patient($1, $2::jsonb)`, [
+      urgent.patient_id,
+      JSON.stringify({ phone_1: '0788108107' }),
+    ])
+    await asAdmin()
+    const p = await one(`select extra from patient where id = $1`, [ok.patient_id])
+    const m = await one(`select patient_missing(p) as m from patient p where id = $1`, [
+      urgent.patient_id,
+    ])
+    const bad = await tryAs(staff.manager, `select save_patient_builtins($1::jsonb)`, [
+      JSON.stringify({ blood: 'required' }),
+    ])
+    // the clinic's settings as they were
+    await as(staff.manager)
+    await db.query(`select save_setting('patient.fields', $1::jsonb)`, [
+      JSON.stringify(t108.fields),
+    ])
+    await db.query(`select save_patient_builtins('{}'::jsonb)`)
+    await asAdmin()
+    if (
+      !/fill in the required fields: Religion/.test(lacking) ||
+      mid !== before ||
+      p.extra.religion !== 'Catholic' ||
+      'kin' in p.extra ||
+      !/cannot be emptied: Religion/.test(emptied) ||
+      older !== 'ok' ||
+      !m.m.includes('extra:religion') ||
+      !/unknown patient field/.test(bad)
+    )
+      throw new Error(JSON.stringify({ lacking, before, mid, p, emptied, older, m, bad }))
+    return 'refused without Religion (no file); saved with it; the emergency file lists it as missing; emptying refused'
+  },
+)
+
+// ---------------------------------------------------------------- 0109: walk-in buyers from a room store
+const t109 = {}
+await step('0109: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261219090000_room_store_walkin.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step(
+  '0109 A: a room store holder sells to a walk-in buyer only with the manager’s switch',
+  async () => {
+    // a room store held by d2, with 5 bottles of the pieces-only syrup of 0107
+    await as(staff.manager)
+    t109.store = (await one(`select save_location(null, 'Ward 109', 'room') as id`)).id
+    await db.query(`select set_store_holders($1, $2, $3)`, [t109.store, [d2], []])
+    await db.query(`select set_staff_permission($1, 'payment.take', null)`, [staff.cashier])
+    await as(staff.pharmacist)
+    const note = (
+      await one(`select send_to_room($1, $2::jsonb) as j`, [
+        t109.store,
+        JSON.stringify([{ itemId: t107.syrup, quantity: 5 }]),
+      ])
+    ).j
+    await as(d2)
+    await db.query(`select confirm_receipt($1)`, [note.id])
+    const lines = JSON.stringify([{ itemId: t107.syrup, quantity: 2 }])
+    // without the switch: refused, with the reason
+    const before = await hintAs(
+      d2,
+      `select create_counter_sale($1::jsonb, 'Walk-in 109', null, $2)`,
+      [lines, t109.store],
+    )
+    // the manager gives the switch to d2 only
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'stock.sell_walkin', true)`, [d2])
+    await as(d2)
+    const mine = (await one(`select my_permissions() as j`)).j
+    const sale = (
+      await one(`select create_counter_sale($1::jsonb, 'Walk-in 109', null, $2) as j`, [
+        lines,
+        t109.store,
+      ])
+    ).j
+    t109.sale = sale.id
+    // a doctor without "Take payments" does not take the money: the sale waits at the cashier
+    const pay = await codeAs(d2, `select take_counter_payment($1, 'cash')`, [sale.id])
+    await as(staff.cashier)
+    const paid = (await one(`select take_counter_payment($1, 'cash') as j`, [sale.id])).j
+    await asAdmin()
+    const told = await one(
+      `select count(*)::int as n from notification
+        where kind = 'counter_sale_paid' and recipient_user = $1 and params ->> 'saleId' = $2::text`,
+      [d2, sale.id],
+    )
+    await as(d2)
+    const handed = (await one(`select hand_over_counter_sale($1) as j`, [sale.id])).j
+    await asAdmin()
+    const left = (await one(`select usable_stock($1, $2) as n`, [t107.syrup, t109.store])).n
+    if (
+      before !== '42501/not_permitted' ||
+      !mine.includes('stock.sell_walkin') ||
+      Number(sale.total) !== 3000 ||
+      pay !== '42501' ||
+      paid.status !== 'paid' ||
+      told.n !== 1 ||
+      handed.status !== 'handed_over' ||
+      Number(left) !== 3
+    )
+      throw new Error(JSON.stringify({ before, mine, sale, pay, paid, told, handed, left }))
+    return 'refused without the switch; with it 2 bottles = 3,000, paid at the cashier, the seller told, handed over; 3 left'
+  },
+)
+await step(
+  '0109 B: the switch is not enough without holding the store; the pharmacy desk does not sell from a room store',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'stock.sell_walkin', true)`, [d1])
+    const lines = JSON.stringify([{ itemId: t107.syrup, quantity: 1 }])
+    const notHolder = await hintAs(d1, `select create_counter_sale($1::jsonb, null, null, $2)`, [
+      lines,
+      t109.store,
+    ])
+    const pharmacist = await hintAs(
+      staff.pharmacist,
+      `select create_counter_sale($1::jsonb, null, null, $2)`,
+      [lines, t109.store],
+    )
+    // too many for the store: the store's own words
+    const tooMany = await codeAs(d2, `select create_counter_sale($1::jsonb, null, null, $2)`, [
+      JSON.stringify([{ itemId: t107.syrup, quantity: 9 }]),
+      t109.store,
+    ])
+    // the manager may sell from any store
+    await as(staff.manager)
+    const byManager = (
+      await one(`select create_counter_sale($1::jsonb, 'Manager 109', null, $2) as j`, [
+        lines,
+        t109.store,
+      ])
+    ).j
+    await db.query(`select set_staff_permission($1, 'stock.sell_walkin', null)`, [d1])
+    // the seller cancels an unpaid sale of the store
+    await as(d2)
+    await db.query(`select cancel_counter_sale($1, 'test 109 over')`, [byManager.id])
+    // the list: the seller sees the store's sales, a doctor without rights does not
+    const seen = (await one(`select counter_sales() as j`)).j
+    await as(d1)
+    const notSeen = (await one(`select counter_sales() as j`)).j
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'stock.sell_walkin', null)`, [d2])
+    await asAdmin()
+    const mineRow = seen.find((x) => x.id === t109.sale)
+    if (
+      notHolder !== '42501/not_permitted' ||
+      pharmacist !== '42501/not_permitted' ||
+      tooMany !== '23514' ||
+      byManager.status !== 'open' ||
+      !mineRow ||
+      mineRow.roomStore !== true ||
+      notSeen.some((x) => x.id === t109.sale)
+    )
+      throw new Error(JSON.stringify({ notHolder, pharmacist, tooMany, byManager, mineRow }))
+    return 'not a holder: refused; the pharmacist: refused; 9 > 3: refused; the manager sells; the seller sees and cancels'
+  },
+)
+
 finish()
 
 function finish() {

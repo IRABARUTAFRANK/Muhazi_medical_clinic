@@ -25,6 +25,7 @@ import {
 } from '@/lib/api/vitals'
 import { formatTime } from '@mmc/shared'
 import { cn } from '@/lib/utils'
+import { useMissingLabel } from './use-field-settings'
 
 /**
  * One line of the form: a measurement of the catalogue (unit and limits known) or a custom one
@@ -54,8 +55,6 @@ const rowOf = (code: string, custom?: { label: string; unit: string }): Row => {
   return { code, unit: custom?.unit ?? '', label: custom?.label ?? null, placeholder: '' }
 }
 const LEVELS: readonly Triage[] = ['red', 'yellow', 'green']
-/** Roles who measure themselves; anyone else types in what a nurse measured. */
-const MEASURERS = ['nurse', 'doctor', 'manager']
 /** The server's answer when this person may not send the patient on (another nurse's patient). */
 const REFUSED = /this patient is with|not allowed|may not|only the (nurse|triage)|another nurse/i
 /** "Other": a measurement typed by name. */
@@ -134,7 +133,8 @@ export function VitalsForm({
   const removeVital = useRemoveVital()
   const { data: takers = [] } = useVitalsTakers()
   const { data: setting } = useVitalsSetting()
-  const measuresSelf = MEASURERS.includes(user.role)
+  // what the file still needs, the clinic's own fields by their names (0108)
+  const missingLabel = useMissingLabel()
   const defaults = (setting?.codes ?? []).filter((c) => c !== BMI_CODE)
   const showBmi = (setting?.codes ?? []).includes(BMI_CODE)
   // lines the person added or took off the form (a default line without a saved value)
@@ -174,8 +174,9 @@ export function VitalsForm({
   const [colourSet, setColourSet] = useState(false)
   const [next, setNext] = useState<Station>(defaultNext)
   const [reason, setReason] = useState('')
-  // "Measured by": me when I measure; otherwise the nurse who wrote the paper sheet.
-  const [measuredBy, setMeasuredBy] = useState<string>(measuresSelf ? 'me' : '')
+  // "Measured by": me (whoever is signed in, reception included: she may measure too), or the
+  // nurse who wrote the paper sheet. Who typed it is recorded apart (the observation's author).
+  const [measuredBy, setMeasuredBy] = useState<string>('me')
   const [measuredAt, setMeasuredAt] = useState(nowHHMM)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -378,7 +379,8 @@ export function VitalsForm({
         triage: sends || (colourOnly && colourSet) ? level : null,
         nextStation: sends ? next : null,
         reason: sends ? reason : '',
-        measuredBy: fromPaper ? measuredBy : null,
+        // always named: the database accepts reception as the one who measured only when said
+        measuredBy: fromPaper ? measuredBy : user.id,
         measuredAt: at,
       })
       onSaved(ticket, sends ? next : null)
@@ -451,10 +453,7 @@ export function VitalsForm({
                 className="w-full min-w-0 truncate"
                 required
               >
-                {!measuresSelf && <option value="">{t('vitalsForm.pickNurse')}</option>}
-                {measuresSelf && (
-                  <option value="me">{t('vitalsForm.me', { name: user.name })}</option>
-                )}
+                <option value="me">{t('vitalsForm.me', { name: user.name })}</option>
                 {others.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -689,7 +688,7 @@ export function VitalsForm({
                   {missing && missing.length > 0 && (
                     <p className="text-amber bg-amber-bg col-span-full m-0 rounded-md px-3 py-2 text-xs font-semibold">
                       {t(next === 'reception' ? 'files.sendToReception' : 'files.stillMissing', {
-                        missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
+                        missing: missing.map(missingLabel).join(', '),
                       })}
                     </p>
                   )}

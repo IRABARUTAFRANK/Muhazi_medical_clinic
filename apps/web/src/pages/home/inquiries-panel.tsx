@@ -25,6 +25,7 @@ import {
   type OpenInquiry,
 } from '@/lib/api/home'
 import { useFindPatients } from '@/lib/api/visits'
+import { useDeskOps } from '@/lib/api/desk-ops'
 import { useConfirm } from '@/lib/confirm'
 import { focusAttr, useFocusFirst } from '@/lib/notice-focus'
 import { FOCUS_PANEL } from '@/lib/notice-target'
@@ -328,9 +329,12 @@ function BookForm({
 }) {
   const { t } = useTranslation()
   const actions = useHomeActions()
+  const ops = useDeskOps()
   const confirm = useConfirm()
   const { data: doctors = [] } = useBookableDoctors()
   const start = q ? (q.startsAt ?? q.preferredAt) : null
+  // 0108: a website request booked with its name and phone only; the file is made on arrival
+  const [withoutFile, setWithoutFile] = useState(false)
   const [patientId, setPatientId] = useState(q?.patientId ?? prefill?.patientId ?? '')
   const [patientLabel, setPatientLabel] = useState(
     q?.patientId
@@ -363,7 +367,7 @@ function BookForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!patientId) return setError(t('ops.inquiries.errors.patient'))
+    if (!patientId && !(q && withoutFile)) return setError(t('ops.inquiries.errors.patient'))
     if (!doctorUserId) return setError(t('ops.inquiries.errors.doctor'))
     if (!day || !time) return setError(t('ops.inquiries.errors.when'))
     const at = new Date(`${day}T${time}:00`)
@@ -379,7 +383,13 @@ function BookForm({
     )
       return
     try {
-      if (q)
+      if (q && withoutFile && !patientId)
+        await ops.bookWithoutFile.mutateAsync({
+          id: q.id,
+          doctorUserId,
+          startsAt: at.toISOString(),
+        })
+      else if (q)
         await actions.approveInquiry.mutateAsync({
           id: q.id,
           patientId,
@@ -407,7 +417,22 @@ function BookForm({
     >
       <div className="flex flex-col gap-1.5">
         <span className="text-ink-2 text-[13px] font-semibold">{t('ops.inquiries.patient')}</span>
-        {patientId ? (
+        {!patientId && q && withoutFile ? (
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="border-amber/30 bg-amber-bg text-amber inline-flex min-h-5 items-center gap-1 rounded border px-1.5 py-0.5 text-[12px] font-medium">
+              <UserRound size={14} aria-hidden="true" />
+              {t('patientFields.booking.noFile', { name: q.name })}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="tint-grey"
+              onClick={() => setWithoutFile(false)}
+            >
+              {t('patientFields.booking.chooseFile')}
+            </Button>
+          </span>
+        ) : patientId ? (
           <span className="flex flex-wrap items-center gap-2">
             <span className="border-green/25 bg-green-bg text-green inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[11px] leading-none font-medium">
               <Check size={14} aria-hidden="true" />
@@ -466,6 +491,15 @@ function BookForm({
                 {t('ops.inquiries.registerNow')}
               </button>
             </span>
+            {q && (
+              <span className="text-ink-3 text-[12px]">
+                {t('patientFields.booking.orLater')}{' '}
+                <button type="button" className={actionLink} onClick={() => setWithoutFile(true)}>
+                  <CalendarCheck size={12} aria-hidden="true" />
+                  {t('patientFields.booking.withoutFile')}
+                </button>
+              </span>
+            )}
             {registering && !onRegister && (
               <NewPatientForm
                 fileOnly={{ onSaved: register.onSaved, onCancel: () => setRegistering(false) }}
@@ -540,11 +574,15 @@ function BookForm({
         type="submit"
         variant="primary"
         className="self-start"
-        loading={actions.approveInquiry.isPending || actions.bookAppointment.isPending}
+        loading={
+          actions.approveInquiry.isPending ||
+          actions.bookAppointment.isPending ||
+          ops.bookWithoutFile.isPending
+        }
       >
-        {!actions.approveInquiry.isPending && !actions.bookAppointment.isPending && (
-          <CalendarCheck size={16} aria-hidden="true" />
-        )}
+        {!actions.approveInquiry.isPending &&
+          !actions.bookAppointment.isPending &&
+          !ops.bookWithoutFile.isPending && <CalendarCheck size={16} aria-hidden="true" />}
         {t('ops.inquiries.confirmBook')}
       </Button>
     </form>

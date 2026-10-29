@@ -1344,6 +1344,10 @@
       "saved": "Ibipimo by’ibanze byabitswe. Buri fomu y’ibipimo izabyerekana kuva ubu.",
       "none": "Shyira akamenyetso nibura ku gipimo kimwe.",
       "bmiHint": "BMI ibarwa hakurikijwe ibiro n’uburebure, ntibikwa."
+    },
+    "patientSection": {
+      "title": "Dosiye y’umurwayi n’ibipimo",
+      "hint": "Ibice byandikwa, ibitegetswe, ibipimo"
     }
   },
   "pin": {
@@ -2629,7 +2633,17 @@
       "phone": "telefoni",
       "national_id": "indangamuntu",
       "address": "aho atuye",
-      "age": "imyaka cyangwa itariki y’amavuko"
+      "age": "imyaka cyangwa itariki y’amavuko",
+      "phone_2": "indi telefoni",
+      "email": "imeyili",
+      "province": "intara",
+      "district": "akarere",
+      "cell": "akagari",
+      "village": "umudugudu",
+      "occupation": "umwuga",
+      "marital_status": "irangamimerere",
+      "ubudehe_category": "icyiciro cy’Ubudehe",
+      "emergency": "uwo guhamagara mu byihutirwa"
     },
     "sendToReception": "Umwakiranyi azuzuza dosiye ({{missing}}) mbere yo kujya kwa muganga.",
     "stillMissing": "Dosiye iracyabura {{missing}}: umwakiranyi ashobora kuyuzuza nyuma.",
@@ -4036,7 +4050,8 @@
         "ordersWrite": "gusaba ibizamini no kwandika ibisubizo",
         "appointmentApprove": "gusubiza ubusabe bwa gahunda",
         "stockWrite": "gucunga ububiko",
-        "recordsApprove": "gusubiza ubusabe bwo kureba dosiye"
+        "recordsApprove": "gusubiza ubusabe bwo kureba dosiye",
+        "stockSellWalkin": "kugurisha abaguzi baje kugura gusa ibiri mu bubiko bwawe"
       }
     },
     "f": {
@@ -4075,6 +4090,10 @@
       "records.approve": {
         "name": "Gusubiza ubusabe bwo kureba dosiye",
         "hint": "Kwemera cyangwa kwanga ubusabe bwa bagenzi bawe bwo kureba amakuru ya kera y’umurwayi. Ubusanzwe umuyobozi wenyine ni we usubiza."
+      },
+      "stock.sell_walkin": {
+        "name": "Kugurisha abaguzi baje kugura gusa ibiri mu bubiko bwanjye",
+        "hint": "Ku ufite ububiko bwo mu cyumba (Ububiko bwanjye): kugurisha imiti yabwo umuguzi utari kwivuza. Farumasi igurisha ibiri muri farumasi idakeneye ubu burenganzira. Akenshi buhabwa umuntu umwe gusa ku giti cye."
       }
     },
     "desks": {
@@ -7240,7 +7259,21 @@
     "edb7106b": "Farumasi yonyine ni yo ifungura agapaki ka {{p1}}: ohereza udupaki twuzuye.",
     "1ff2c034": "Vuga uko kigurishwa: ku gice, ku gapaki cyangwa byombi.",
     "f5cca4c2": "Vuga igiciro cy’igice kimwe.",
-    "2debc019": "Vuga igiciro cy’agapaki kamwe."
+    "2debc019": "Vuga igiciro cy’agapaki kamwe.",
+    "1027fa42": "Nimero ya pasiporo cyangwa y’ikindi cyangombwa igira inyuguti cyangwa imibare 6 kugeza kuri 20.",
+    "138192ce": "Hari umurwayi usanzwe ufite iyi nimero y’icyangombwa: {{p1}}.",
+    "8f618beb": "Imyaka igomba kuba hagati ya 0 na 130.",
+    "6f27ce8c": "Iyi gahunda isanzwe ifite dosiye y’umurwayi.",
+    "097b9ed9": "Igice gitegetswe ntigishobora gusibwamo ibirimo: {{p1}}.",
+    "c8c04db0": "Igice kiragaragazwa, kigahishwa cyangwa kigategekwa.",
+    "3be2d3b3": "Icyiciro cy’Ubudehe ni 1, 2, 3 cyangwa 4.",
+    "257bce66": "Itariki y’amavuko iri mu gihe kizaza.",
+    "f65170ae": "Andika itariki y’amavuko cyangwa imyaka.",
+    "0d504460": "Imeyili yanditswe nabi.",
+    "4751a0a4": "Uzuza ibice bitegetswe: {{p1}}.",
+    "df1edfcb": "Igice cya dosiye kitazwi: {{p1}}.",
+    "d4abdfed": "Irangamimerere ritazwi.",
+    "5dfde301": "Ubwoko bw’icyangombwa butazwi."
   },
   "panel": {
     "close": "Funga",
@@ -7640,6 +7673,122 @@
       "suppository": "suppositoire",
       "piece": "igice",
       "ml": "ml"
+    }
+  },
+  "patientFields": {
+    "choose": "Hitamo…",
+    "id": {
+      "kind": "Icyangombwa kimuranga",
+      "kinds": {
+        "national_id": "Indangamuntu",
+        "passport": "Pasiporo",
+        "other": "Ikindi cyangombwa (ikarita y’impunzi, uruhushya rwo gutura…)",
+        "child": "Nta ndangamuntu: ni umwana",
+        "not_issued": "Nta ndangamuntu: ntarayihabwa",
+        "foreigner": "Nta ndangamuntu: ni umunyamahanga"
+      },
+      "number": {
+        "national_id": "Nimero y’indangamuntu",
+        "passport": "Nimero ya pasiporo",
+        "other": "Nimero y’icyangombwa"
+      },
+      "count": "{{n}}/{{max}}",
+      "cut": "Imibare 16 gusa: indi mibare y’inomero washyizemo yavuyemo. Yigenzure.",
+      "nationalHint_one": "Hasigaye umubare {{count}} (imibare 16; utwanya tuvamo)",
+      "nationalHint_other": "Hasigaye imibare {{count}} (imibare 16; utwanya tuvamo)",
+      "otherHint": "Inyuguti cyangwa imibare 6 kugeza kuri 20, nk’uko biri ku cyangombwa.",
+      "noneHint": "Dosiye ivuga impamvu nta ndangamuntu ihari, bityo ntizongera gusabwa."
+    },
+    "labels": {
+      "email": "Imeyili",
+      "province": "Intara",
+      "marital_status": "Irangamimerere"
+    },
+    "provinces": {
+      "kigali": "Umujyi wa Kigali",
+      "northern": "Intara y’Amajyaruguru",
+      "southern": "Intara y’Amajyepfo",
+      "eastern": "Intara y’Iburasirazuba",
+      "western": "Intara y’Iburengerazuba"
+    },
+    "marital": {
+      "single": "Ingaragu",
+      "married": "Arubatse",
+      "widowed": "Umupfakazi",
+      "divorced": "Yahawe gatanya",
+      "separated": "Batandukanye (nta gatanya)"
+    },
+    "more_one": "Andi makuru (igice {{count}} cy’inyongera)",
+    "more_other": "Andi makuru (ibice {{count}} by’inyongera)",
+    "errors": {
+      "names": "Andika izina ry’umuryango n’andi mazina (nibura inyuguti 2).",
+      "sex": "Hitamo igitsina (Ntibizwi niba kitazwi).",
+      "age": "Andika itariki y’amavuko cyangwa imyaka.",
+      "future": "Itariki y’amavuko iri mu gihe kizaza.",
+      "ageRange": "Imyaka igomba kuba hagati ya 0 na 130.",
+      "nationalId_one": "Indangamuntu igira imibare 16; iyi ifite umubare {{count}} gusa.",
+      "nationalId_other": "Indangamuntu igira imibare 16; iyi ifite imibare {{count}}.",
+      "idNumber": "Nimero ya pasiporo cyangwa y’ikindi cyangombwa igira inyuguti cyangwa imibare 6 kugeza kuri 20.",
+      "email": "Imeyili yanditswe nabi.",
+      "required": "Uzuza ibice bitegetswe: {{fields}}."
+    },
+    "quickHint": "Byihutirwa cyangwa dosiye yihuse y’umuforomo: ibice ivuriro ritegeka bishobora kuzuzwa nyuma (dosiye ijya muri “Dosiye zo kuzuza”).",
+    "requiredHint": "ni ngombwa ku ivuriro",
+    "arrival": {
+      "title": "Andika {{name}}: yageze aje kuri gahunda",
+      "hint": "Gahunda: {{booking}}. Uzuza dosiye ukoresheje ibice by’ivuriro; ifungurwa iyo ubitse, kwivuza guhita gutangira.",
+      "submit": "Fungura dosiye utangire kwivuza",
+      "noFile": "{{name}} nta dosiye y’umurwayi arafite.",
+      "findLead": "Uyu murwayi ashobora kuba asanzwe afite dosiye: yishakishe ukoresheje izina, telefoni, nimero ya dosiye cyangwa indangamuntu uyikoreshe, kugira ngo hatabaho dosiye ya kabiri. Bitabaye ibyo, mwandike hepfo.",
+      "search": "Uyu murwayi asanzwe afite dosiye? Shakisha",
+      "noMatch": "Nta dosiye ibonetse muri ubu bushakashatsi.",
+      "useFile": "Koresha iyi dosiye",
+      "newLead": "Nta dosiye arafite: mwandike ukoresheje ibice by’ivuriro.",
+      "register": "Andika umurwayi",
+      "noFileYet": "Nta dosiye arafite: ifungurwa ageze",
+      "buttonHint": "Umurwayi yageze: shaka dosiye ye cyangwa umwandike, hanyuma kwivuza gutangire.",
+      "doneNew": "Dosiye {{file}} ya {{name}} yafunguwe; kwivuza kwatangiye kandi umurwayi ari ku murongo.",
+      "doneLinked": "{{name}} ({{file}}) yageze; kwivuza kwatangiye kandi umurwayi ari ku murongo."
+    },
+    "booking": {
+      "noFile": "{{name}}: nta dosiye arafite, izafungurwa ageze",
+      "chooseFile": "Ahubwo hitamo dosiye",
+      "orLater": "Ntuzi neza uwo ari we?",
+      "withoutFile": "Shyiraho gahunda ubu; dosiye ifungurwe umurwayi ageze"
+    },
+    "builtin": {
+      "national_id": "Icyangombwa kimuranga (indangamuntu, pasiporo…)",
+      "phone_1": "Telefoni",
+      "phone_2": "Indi telefoni",
+      "email": "Imeyili",
+      "province": "Intara",
+      "district": "Akarere",
+      "sector": "Umurenge",
+      "cell": "Akagari",
+      "village": "Umudugudu",
+      "occupation": "Umwuga",
+      "marital_status": "Irangamimerere",
+      "ubudehe_category": "Icyiciro cy’Ubudehe",
+      "emergency": "Umuntu wa hafi (uwo guhamagara mu byihutirwa: izina na telefoni)"
+    },
+    "settings": {
+      "lead": "Ibyandikwa kuri buri dosiye y’umurwayi. Ifishi yo kwandika umurwayi, kugera k’umurwayi ufite gahunda na “Hindura amakuru” bikurikiza aya mabwiriza: igice cyahishwe ntikibazwa, igice gitegetswe kigomba kuzuzwa mbere yo kubika dosiye.",
+      "builtinTitle": "Ibice bisanzwe",
+      "builtinHint": "Erekana, hisha cyangwa utegeke buri gice. Gitegetswe: kwandika umurwayi ntibikomeza kitujujwe (uretse ibyihutirwa cyangwa dosiye yihuse y’umuforomo, byuzuzwa nyuma).",
+      "core": "Izina ry’umuryango · Andi mazina · Igitsina · Itariki y’amavuko cyangwa imyaka",
+      "coreState": "Bihora bigaragara kandi bitegetswe",
+      "states": {
+        "shown": "Erekana",
+        "hidden": "Hisha",
+        "required": "Gitegetswe"
+      },
+      "extraTitle": "Ibice by’ivuriro ubwaryo",
+      "up": "Zamura {{name}}",
+      "down": "Manura {{name}}",
+      "required": "Gitegetswe",
+      "requiredHint": "kibazwa mu kwandika umurwayi kandi gikenewe kuri buri dosiye (ku madosiye ya kera kigaragara nk’ikibura)",
+      "confirmRequired": "Bitegetswe guhera ubu: {{names}}.",
+      "saved": "Byabitswe. Kwandika umurwayi no guhindura amakuru ya dosiye ubu bikurikiza ibi bice."
     }
   }
 }

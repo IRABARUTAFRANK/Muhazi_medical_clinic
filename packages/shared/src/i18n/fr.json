@@ -1878,6 +1878,10 @@
       "saved": "Jeu par défaut enregistré. Tous les formulaires de constantes l’affichent désormais.",
       "none": "Cochez au moins une mesure.",
       "bmiHint": "L’IMC est calculé à partir du poids et de la taille, jamais enregistré."
+    },
+    "patientSection": {
+      "title": "Dossier patient et constantes",
+      "hint": "Champs à noter, obligatoires, constantes vitales"
     }
   },
   "pin": {
@@ -2625,7 +2629,17 @@
       "phone": "téléphone",
       "national_id": "carte d'identité",
       "address": "adresse",
-      "age": "âge ou date de naissance"
+      "age": "âge ou date de naissance",
+      "phone_2": "autre téléphone",
+      "email": "e-mail",
+      "province": "province",
+      "district": "district",
+      "cell": "cellule",
+      "village": "village",
+      "occupation": "profession",
+      "marital_status": "situation matrimoniale",
+      "ubudehe_category": "catégorie Ubudehe",
+      "emergency": "contact d’urgence"
     },
     "sendToReception": "L'accueil complétera le dossier ({{missing}}) avant le médecin.",
     "stillMissing": "Le dossier manque encore de {{missing}} : l'accueil pourra le compléter plus tard.",
@@ -4027,7 +4041,8 @@
         "ordersWrite": "demander des examens et saisir les résultats",
         "appointmentApprove": "répondre aux demandes de rendez-vous",
         "stockWrite": "gérer le stock",
-        "recordsApprove": "répondre aux demandes d’accès aux dossiers"
+        "recordsApprove": "répondre aux demandes d’accès aux dossiers",
+        "stockSellWalkin": "vendre aux clients de passage depuis votre stock"
       }
     },
     "f": {
@@ -4066,6 +4081,10 @@
       "records.approve": {
         "name": "Répondre aux demandes d’accès aux dossiers",
         "hint": "Accepter ou refuser les demandes des collègues de voir les dossiers antérieurs d’un patient. Par défaut, seul le gestionnaire répond."
+      },
+      "stock.sell_walkin": {
+        "name": "Vendre aux clients de passage depuis mon stock",
+        "hint": "Pour qui tient un stock de salle (Mon stock) : vendre ses médicaments à un acheteur sans visite. La pharmacie vend depuis la pharmacie sans cet interrupteur. Souvent donné à une seule personne, en exception."
       }
     },
     "desks": {
@@ -7231,7 +7250,21 @@
     "edb7106b": "Seule la pharmacie ouvre un conditionnement de {{p1}} : envoyez des conditionnements entiers.",
     "1ff2c034": "Indiquez comment il se vend : à l’unité, par conditionnement ou les deux.",
     "f5cca4c2": "Indiquez le prix d’une unité.",
-    "2debc019": "Indiquez le prix d’un conditionnement."
+    "2debc019": "Indiquez le prix d’un conditionnement.",
+    "1027fa42": "Un numéro de passeport ou d’une autre pièce a de 6 à 20 lettres ou chiffres.",
+    "138192ce": "Un patient avec ce numéro de pièce existe déjà : {{p1}}.",
+    "8f618beb": "L’âge est un nombre d’années de 0 à 130.",
+    "6f27ce8c": "Ce rendez-vous a déjà un dossier patient.",
+    "097b9ed9": "Un champ obligatoire ne peut pas être vidé : {{p1}}.",
+    "c8c04db0": "Un champ est affiché, masqué ou obligatoire.",
+    "3be2d3b3": "La catégorie Ubudehe est 1, 2, 3 ou 4.",
+    "257bce66": "La date de naissance est dans le futur.",
+    "f65170ae": "Indiquez la date de naissance ou l’âge.",
+    "0d504460": "L’adresse e-mail n’est pas valide.",
+    "4751a0a4": "Remplissez les champs obligatoires : {{p1}}.",
+    "df1edfcb": "Champ du dossier inconnu : {{p1}}.",
+    "d4abdfed": "Situation matrimoniale inconnue.",
+    "5dfde301": "Type de pièce d’identité inconnu."
   },
   "panel": {
     "close": "Fermer",
@@ -7631,6 +7664,122 @@
       "suppository": "suppositoire",
       "piece": "unité",
       "ml": "ml"
+    }
+  },
+  "patientFields": {
+    "choose": "Choisir…",
+    "id": {
+      "kind": "Pièce d’identité",
+      "kinds": {
+        "national_id": "Carte d’identité nationale",
+        "passport": "Passeport",
+        "other": "Autre pièce (carte de réfugié, titre de séjour…)",
+        "child": "Sans pièce : enfant",
+        "not_issued": "Sans pièce : pas encore délivrée",
+        "foreigner": "Sans pièce : étranger"
+      },
+      "number": {
+        "national_id": "Numéro de la carte d’identité",
+        "passport": "Numéro de passeport",
+        "other": "Numéro de la pièce"
+      },
+      "count": "{{n}}/{{max}}",
+      "cut": "16 chiffres seulement : le reste du numéro collé a été laissé de côté. Vérifiez-le.",
+      "nationalHint_one": "Encore {{count}} chiffre (16 chiffres ; les espaces sont retirés)",
+      "nationalHint_other": "Encore {{count}} chiffres (16 chiffres ; les espaces sont retirés)",
+      "otherHint": "6 à 20 lettres ou chiffres, comme sur la pièce.",
+      "noneHint": "Le dossier indique pourquoi il n’y a pas de pièce : elle n’est plus demandée."
+    },
+    "labels": {
+      "email": "E-mail",
+      "province": "Province",
+      "marital_status": "Situation matrimoniale"
+    },
+    "provinces": {
+      "kigali": "Ville de Kigali",
+      "northern": "Province du Nord",
+      "southern": "Province du Sud",
+      "eastern": "Province de l’Est",
+      "western": "Province de l’Ouest"
+    },
+    "marital": {
+      "single": "Célibataire",
+      "married": "Marié(e)",
+      "widowed": "Veuf, veuve",
+      "divorced": "Divorcé(e)",
+      "separated": "Séparé(e)"
+    },
+    "more_one": "Plus de détails ({{count}} champ de plus)",
+    "more_other": "Plus de détails ({{count}} champs de plus)",
+    "errors": {
+      "names": "Écrivez le nom et les prénoms (2 lettres au moins).",
+      "sex": "Choisissez le sexe (Inconnu s’il n’est pas connu).",
+      "age": "Indiquez la date de naissance ou l’âge.",
+      "future": "La date de naissance est dans le futur.",
+      "ageRange": "L’âge est un nombre d’années de 0 à 130.",
+      "nationalId_one": "La carte d’identité nationale a 16 chiffres ; celle-ci en a {{count}}.",
+      "nationalId_other": "La carte d’identité nationale a 16 chiffres ; celle-ci en a {{count}}.",
+      "idNumber": "Un numéro de passeport ou d’une autre pièce a de 6 à 20 lettres ou chiffres.",
+      "email": "L’adresse e-mail n’est pas valide.",
+      "required": "Remplissez les champs obligatoires : {{fields}}."
+    },
+    "quickHint": "Urgence ou dossier rapide de l’infirmier : les champs obligatoires de la clinique peuvent être complétés plus tard (le dossier va dans « Dossiers à compléter »).",
+    "requiredHint": "obligatoire pour la clinique",
+    "arrival": {
+      "title": "Enregistrer {{name}} : arrivé(e) pour un rendez-vous",
+      "hint": "Rendez-vous : {{booking}}. Remplissez le dossier avec les champs de la clinique ; il est créé à l’enregistrement et la visite commence aussitôt.",
+      "submit": "Créer le dossier et commencer la visite",
+      "noFile": "{{name}} n’a pas encore de dossier patient.",
+      "findLead": "Ce patient a peut-être déjà un dossier : cherchez par nom, téléphone, n° de dossier ou carte d’identité et utilisez-le, pour ne pas créer un second dossier. Sinon, enregistrez le patient ci-dessous.",
+      "search": "Ce patient a déjà un dossier ? Chercher",
+      "noMatch": "Aucun dossier trouvé avec cette recherche.",
+      "useFile": "Utiliser ce dossier",
+      "newLead": "Pas encore de dossier : enregistrez le patient avec les champs de la clinique.",
+      "register": "Enregistrer le patient",
+      "noFileYet": "Pas encore de dossier : créé à l’arrivée",
+      "buttonHint": "Le patient est là : trouvez son dossier ou enregistrez-le, puis la visite s’ouvre.",
+      "doneNew": "Dossier {{file}} créé pour {{name}} ; la visite est ouverte et le patient est dans la file.",
+      "doneLinked": "{{name}} ({{file}}) est arrivé(e) ; la visite est ouverte et le patient est dans la file."
+    },
+    "booking": {
+      "noFile": "{{name}} : pas encore de dossier, créé à l’arrivée du patient",
+      "chooseFile": "Choisir plutôt un dossier",
+      "orLater": "Pas encore sûr de qui il s’agit ?",
+      "withoutFile": "Réserver maintenant ; créer le dossier à l’arrivée du patient"
+    },
+    "builtin": {
+      "national_id": "Pièce d’identité (carte nationale, passeport…)",
+      "phone_1": "Téléphone",
+      "phone_2": "Autre téléphone",
+      "email": "E-mail",
+      "province": "Province",
+      "district": "District",
+      "sector": "Secteur",
+      "cell": "Cellule",
+      "village": "Village",
+      "occupation": "Profession",
+      "marital_status": "Situation matrimoniale",
+      "ubudehe_category": "Catégorie Ubudehe",
+      "emergency": "Proche à prévenir (contact d’urgence : nom et téléphone)"
+    },
+    "settings": {
+      "lead": "Ce que chaque dossier patient enregistre. Le formulaire d’enregistrement, l’arrivée d’un patient sur rendez-vous et « Modifier » suivent ces réglages : un champ masqué n’est pas demandé, un champ obligatoire doit être rempli avant d’enregistrer le dossier.",
+      "builtinTitle": "Champs standard",
+      "builtinHint": "Affichez, masquez ou rendez obligatoire chacun d’eux. Obligatoire : l’enregistrement s’arrête tant qu’il n’est pas rempli (sauf une urgence ou le dossier rapide de l’infirmier, complétés plus tard).",
+      "core": "Nom · Prénoms · Sexe · Date de naissance ou âge",
+      "coreState": "Toujours affichés et obligatoires",
+      "states": {
+        "shown": "Afficher",
+        "hidden": "Masquer",
+        "required": "Obligatoire"
+      },
+      "extraTitle": "Les champs propres à la clinique",
+      "up": "Monter {{name}}",
+      "down": "Descendre {{name}}",
+      "required": "Obligatoire",
+      "requiredHint": "demandé à l’enregistrement et exigé sur chaque dossier (indiqué comme manquant sur les anciens dossiers)",
+      "confirmRequired": "Obligatoires désormais : {{names}}.",
+      "saved": "Enregistré. L’enregistrement et la modification du dossier suivent maintenant ces champs."
     }
   }
 }

@@ -30,7 +30,6 @@ import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
-import { Select } from '@/components/ui/select'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
@@ -47,7 +46,7 @@ import {
   allergiesForDoc,
 } from '@/lib/api/patients'
 import { registrationText, useMyCredentials } from '@/lib/api/staff'
-import { type Sex, type VisitResult } from '@/lib/api/visits'
+import { type VisitResult } from '@/lib/api/visits'
 import { useDeskOps } from '@/lib/api/desk-ops'
 import { useStaffSettings } from '@/lib/api/settings'
 import { VisitJourney } from '@/components/clinical/visit-journey'
@@ -73,6 +72,24 @@ import { privacyNoticeShown, privacyOn } from '@/components/clinical/record-priv
 import { PatientFilesSection } from '@/components/clinical/supporting-files'
 import { MergeCard } from './merge-card'
 import { vitalName } from '@/lib/api/vitals'
+import {
+  CoreFields,
+  DetailFields,
+  type SetDraft,
+} from '@/components/clinical/patient-details-fields'
+import { useFieldSettings, useMissingLabel } from '@/components/clinical/use-field-settings'
+import {
+  NO_ID_KINDS,
+  asFile,
+  draftOf,
+  draftPayload,
+  draftProblem,
+  fileMissing,
+  groupNationalId,
+  idKindOf,
+  requiredMissing,
+  type PatientDraft,
+} from '@/lib/patient-rules'
 
 type Tab = 'overview' | 'visits' | 'clinical' | 'files' | 'bills'
 const TABS: Tab[] = ['overview', 'visits', 'clinical', 'files', 'bills']
@@ -229,7 +246,10 @@ export function PatientFilePage({
     b.arrivedAt.localeCompare(a.arrivedAt),
   )[0]
   const p = data?.patient
-  const missing = p ? missingOf(p) : []
+  // what the file still needs: the clinic's settings (0108), as patient_missing() says it
+  const { states: fieldStates, defs: fieldDefs } = useFieldSettings()
+  const missingLabel = useMissingLabel()
+  const missing = p ? fileMissing(p, fieldStates, fieldDefs) : []
   const atReception = openVisit?.currentStation === 'reception'
 
   const sendToDoctor = async () => {
@@ -409,9 +429,7 @@ export function PatientFilePage({
               <CardBody className="bg-amber-bg/60 border-border flex-row flex-wrap items-center gap-3 border-t py-2.5 text-[13px]">
                 <span className="min-w-[min(220px,100%)] flex-1 font-semibold">
                   {missing.length > 0
-                    ? t('files.lacks', {
-                        missing: missing.map((m) => t(`files.missing.${m}`)).join(', '),
-                      })
+                    ? t('files.lacks', { missing: missing.map(missingLabel).join(', ') })
                     : t('files.completeNow')}
                 </span>
                 {missing.length > 0 && !editing && (
@@ -598,18 +616,6 @@ export function PatientFilePage({
   )
 }
 
-/** Same rule as patient_missing() in the database (migration 0023). */
-const missingOf = (p: PatientRecord): string[] => {
-  const out: string[] = []
-  if (!p.phone_1?.trim()) out.push('phone')
-  const adult =
-    !p.birth_date || new Date(p.birth_date) <= new Date(Date.now() - 16 * 365.25 * 86_400_000)
-  if (!p.national_id && !p.no_national_id && adult) out.push('national_id')
-  if (!p.sector?.trim()) out.push('address')
-  if (!p.birth_date) out.push('age')
-  return out
-}
-
 const initials = (p: PatientRecord) =>
   `${p.surname[0] ?? ''}${p.given_names[0] ?? ''}`.toUpperCase()
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
@@ -627,6 +633,11 @@ function Overview({ file, embedded }: { file: PatientFile; embedded?: boolean })
   const { t } = useTranslation()
   const p = file.patient
   const f = (k: string) => t(`file.fields.${k}`)
+  const { states } = useFieldSettings()
+  // a field the clinic hid is left out, unless the file already holds a value for it
+  const shown = (k: keyof typeof states, value: unknown) =>
+    states[k] !== 'hidden' || (value != null && value !== '')
+  const idKind = idKindOf(p)
   return (
     // one column in the 600 px side panel, two on the whole page
     <div className={cn('grid grid-cols-1 gap-4', !embedded && 'pc:grid-cols-2')}>
@@ -636,12 +647,24 @@ function Overview({ file, embedded }: { file: PatientFile; embedded?: boolean })
         </CardHeader>
         <CardBody className={cn('grid grid-cols-2 gap-x-4 gap-y-3', !embedded && 'sm:grid-cols-3')}>
           <Info label={f('file_number')} value={p.file_number} />
-          <Info
-            label={f('national_id')}
-            value={
-              p.national_id ?? (p.no_national_id ? t(`register.noId.${p.no_national_id}`) : null)
-            }
-          />
+          {shown('national_id', p.national_id ?? p.id_number ?? p.no_national_id) && (
+            <Info
+              label={
+                idKind === 'passport' || idKind === 'other'
+                  ? t(`patientFields.id.kinds.${idKind}`)
+                  : f('national_id')
+              }
+              value={
+                idKind === 'passport' || idKind === 'other'
+                  ? p.id_number
+                  : p.national_id
+                    ? groupNationalId(p.national_id)
+                    : p.no_national_id
+                      ? t(`register.noId.${p.no_national_id}`)
+                      : null
+              }
+            />
+          )}
           <Info label={f('sex')} value={t(`register.sexes.${p.sex}`)} />
           <Info
             label={f('birth_date')}
@@ -651,13 +674,44 @@ function Overview({ file, embedded }: { file: PatientFile; embedded?: boolean })
                 : null
             }
           />
-          <Info label={f('phone_1')} value={p.phone_1} />
-          <Info label={f('phone_2')} value={p.phone_2} />
-          <Info label={f('district')} value={p.district} />
-          <Info label={f('sector')} value={p.sector} />
-          <Info label={f('cell')} value={[p.cell, p.village].filter(Boolean).join(' · ')} />
-          <Info label={f('occupation')} value={p.occupation} />
-          <Info label={f('ubudehe_category')} value={p.ubudehe_category} />
+          {shown('phone_1', p.phone_1) && <Info label={f('phone_1')} value={p.phone_1} />}
+          {shown('phone_2', p.phone_2) && <Info label={f('phone_2')} value={p.phone_2} />}
+          {shown('email', p.email) && (
+            <Info label={t('patientFields.labels.email')} value={p.email} />
+          )}
+          {shown('province', p.province) && (
+            <Info
+              label={t('patientFields.labels.province')}
+              value={
+                p.province
+                  ? t(`patientFields.provinces.${p.province}`, { defaultValue: p.province })
+                  : null
+              }
+            />
+          )}
+          {shown('district', p.district) && <Info label={f('district')} value={p.district} />}
+          {shown('sector', p.sector) && <Info label={f('sector')} value={p.sector} />}
+          {(shown('cell', p.cell) || shown('village', p.village)) && (
+            <Info label={f('cell')} value={[p.cell, p.village].filter(Boolean).join(' · ')} />
+          )}
+          {shown('occupation', p.occupation) && (
+            <Info label={f('occupation')} value={p.occupation} />
+          )}
+          {shown('marital_status', p.marital_status) && (
+            <Info
+              label={t('patientFields.labels.marital_status')}
+              value={
+                p.marital_status
+                  ? t(`patientFields.marital.${p.marital_status}`, {
+                      defaultValue: p.marital_status,
+                    })
+                  : null
+              }
+            />
+          )}
+          {shown('ubudehe_category', p.ubudehe_category) && (
+            <Info label={f('ubudehe_category')} value={p.ubudehe_category} />
+          )}
           <Info label={f('language')} value={p.language} />
           <Info label={f('registered')} value={when(p.created_at)} />
         </CardBody>
@@ -856,6 +910,12 @@ function MoreInfo({
   )
 }
 
+/**
+ * Edit details. The fields follow Settings › Patient fields (0108): hidden ones are left out (and
+ * left as they are), required ones are starred and block saving with what is missing; the ID by
+ * its type (national ID: exactly 16 digits). The medical part (blood group, allergies, notes)
+ * stays with the people who may see it.
+ */
 function EditForm({
   patient: p,
   safetyHidden = false,
@@ -874,57 +934,38 @@ function EditForm({
   const { t } = useTranslation()
   const actions = usePatientActions(p.id)
   const confirm = useConfirm()
-  const { data: defs = [] } = usePatientFields()
+  const { states, defs } = useFieldSettings()
+  const missingLabel = useMissingLabel()
   const f = (k: string) => t(`file.fields.${k}`)
-  const [v, setV] = useState<Record<string, string>>({
-    surname: p.surname,
-    given_names: p.given_names,
-    sex: p.sex,
-    birth_date: p.birth_date ?? '',
-    age_years: '',
-    national_id: p.national_id ?? '',
-    phone_1: p.phone_1 ?? '',
-    phone_2: p.phone_2 ?? '',
-    district: p.district ?? '',
-    sector: p.sector ?? '',
-    cell: p.cell ?? '',
-    village: p.village ?? '',
-    occupation: p.occupation ?? '',
-    ubudehe_category: p.ubudehe_category == null ? '' : String(p.ubudehe_category),
-    emergency_name: p.emergency_name ?? '',
-    emergency_phone: p.emergency_phone ?? '',
+  const [draft, setDraft] = useState<PatientDraft>(() => draftOf(p, defs))
+  const set: SetDraft = (k, v) => setDraft((d) => ({ ...d, [k]: v }))
+  const setExtra = (k: string, v: string) =>
+    setDraft((d) => ({ ...d, extra: { ...d.extra, [k]: v } }))
+  const [med, setMed] = useState({
     blood_group: p.blood_group ?? '',
     allergies: p.allergies ?? '',
     notes: p.notes ?? '',
   })
-  const [extra, setExtra] = useState<Record<string, string>>({ ...(p.extra ?? {}) })
-  const [noId, setNoId] = useState<NoIdReason | ''>(p.no_national_id ?? '')
   // "No known allergies" (0084): ticked, the allergy text is cleared and cannot be typed
   const [allergiesNone, setAllergiesNone] = useState(!!p.allergies_none)
-  const set = (k: string, val: string) => setV((s) => ({ ...s, [k]: val }))
-  const setX = (k: string, val: string) => setExtra((s) => ({ ...s, [k]: val }))
-  const text = (k: string, more: Record<string, unknown> = {}) => (
-    <Field
-      key={k}
-      label={f(k)}
-      value={v[k] ?? ''}
-      onChange={(e) => set(k, e.target.value)}
-      {...more}
-    />
-  )
   const defKeys = new Set(defs.flatMap((d) => [d.key, d.label]))
-  const adHocKeys = Object.keys(extra).filter((k) => !defKeys.has(k))
-  const valueOf = (d: PatientFieldDef) => extra[d.key] ?? extra[d.label] ?? ''
+  const adHocKeys = Object.keys(draft.extra).filter((k) => !defKeys.has(k))
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     onError(null)
-    // the same check as the register form, before the database refuses in its own words
-    if (!noId && v.national_id && v.national_id.replace(/\D/g, '').length !== 16)
-      return onError(t('register.errors.nationalIdFormat'))
+    // the same checks as the register form, before the database refuses in its own words
+    const problem = draftProblem(draft, states)
+    if (problem) return onError(t(problem.key, problem.values))
+    const missing = requiredMissing(asFile(draft), states, defs, draft.age_years)
+    if (missing.length > 0)
+      return onError(
+        t('patientFields.errors.required', { fields: missing.map(missingLabel).join(', ') }),
+      )
     if (
       !(await confirm({
         title: t('confirm.desks.patient.save', {
-          name: `${v.surname ?? ''} ${v.given_names ?? ''}`.trim(),
+          name: `${draft.surname} ${draft.given_names}`.trim(),
         }),
         body: t('confirm.desks.patient.saveBody'),
         confirmLabel: t('confirm.desks.patient.saveYes'),
@@ -932,21 +973,19 @@ function EditForm({
     )
       return
     try {
-      const fields: Record<string, string | number | boolean | null | Record<string, string>> = {
-        ...v,
-        allergies_none: allergiesNone,
-      }
-      if (allergiesNone) fields.allergies = ''
-      if (!v.birth_date && v.age_years) fields.age_years = Number(v.age_years)
-      else delete fields.age_years
-      const merged = { ...extra }
+      // a field saved under its label before keys existed now lives under its key
+      const extra = { ...draft.extra }
       for (const d of defs) {
-        const byLabel = merged[d.label]
-        if (merged[d.key] === undefined && byLabel !== undefined) merged[d.key] = byLabel
-        if (d.key !== d.label) delete merged[d.label]
+        if (extra[d.key] === undefined && extra[d.label] !== undefined)
+          extra[d.key] = extra[d.label]!
+        if (d.key !== d.label) delete extra[d.label]
       }
-      fields.extra = Object.fromEntries(Object.entries(merged).filter(([, val]) => val.trim()))
-      if (noId) delete fields.national_id
+      const fields = {
+        ...draftPayload({ ...draft, extra }, states),
+        ...med,
+        allergies_none: allergiesNone,
+      } as Record<string, string | number | boolean | null | Record<string, string>>
+      if (allergiesNone) fields.allergies = ''
       // what this person cannot see is left as it is (never cleared by an empty field)
       if (safetyHidden) {
         delete fields.blood_group
@@ -955,7 +994,10 @@ function EditForm({
         delete fields.notes
       }
       await actions.update.mutateAsync(fields)
-      if (noId !== (p.no_national_id ?? '')) await setNoNationalId(p.id, noId || null)
+      // the "no ID" reason (also said by update_patient from 0108; a database before needs this)
+      const why = (NO_ID_KINDS as string[]).includes(draft.id_kind) ? draft.id_kind : null
+      if (states.national_id !== 'hidden' && why !== (p.no_national_id ?? null))
+        await setNoNationalId(p.id, why as NoIdReason | null)
       onDone()
     } catch (err) {
       onError(err instanceof Error ? err.message : String(err))
@@ -966,64 +1008,56 @@ function EditForm({
       <CardHeader icon={Pencil}>
         <span>{t('file.editTitle')}</span>
       </CardHeader>
-      <form onSubmit={(e) => void submit(e)}>
+      <form onSubmit={(e) => void submit(e)} noValidate>
         <CardBody className="gap-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {text('surname', { required: true })}
-            {text('given_names', { required: true })}
-            <Select
-              label={f('sex')}
-              value={v.sex}
-              onChange={(e) => set('sex', e.target.value as Sex)}
-            >
-              {(['female', 'male', 'other', 'unknown'] as Sex[]).map((s) => (
-                <option key={s} value={s}>
-                  {t(`register.sexes.${s}`)}
-                </option>
+          <CoreFields draft={draft} set={set} />
+          <DetailFields
+            draft={draft}
+            set={set}
+            setExtra={setExtra}
+            states={states}
+            defs={defs}
+            mode="edit"
+            // the "medical" fields are not sent at the identity level: one that already holds a
+            // value is locked (update_patient keeps it anyway); an empty one may be filled in
+            extraLocked={(d) =>
+              safetyHidden && d.private && extraFilled.includes(d.key) ? (
+                <Field key={d.key} label={d.label} value={t('file.privateField')} disabled />
+              ) : null
+            }
+          />
+          {safetyHidden && defs.some((d) => d.private) && (
+            <p className="text-ink-3 m-0 text-xs">{t('file.privateFill')}</p>
+          )}
+          {adHocKeys.length > 0 && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {adHocKeys.map((k) => (
+                <Field
+                  key={k}
+                  label={k}
+                  value={draft.extra[k] ?? ''}
+                  onChange={(e) => setExtra(k, e.target.value)}
+                />
               ))}
-            </Select>
-            {text('birth_date', { type: 'date', max: new Date().toISOString().slice(0, 10) })}
-            <Field
-              label={t('register.ageYears')}
-              inputMode="numeric"
-              value={v.age_years ?? ''}
-              onChange={(e) => {
-                set('age_years', e.target.value.replace(/\D/g, '').slice(0, 3))
-                set('birth_date', '')
-              }}
-              placeholder={t('register.agePh')}
-            />
-            {text('national_id', { inputMode: 'numeric', disabled: !!noId })}
-            <Select
-              label={t('register.noId.label')}
-              value={noId}
-              onChange={(e) => setNoId(e.target.value as NoIdReason | '')}
-            >
-              <option value="">{t('register.noId.has')}</option>
-              <option value="child">{t('register.noId.child')}</option>
-              <option value="not_issued">{t('register.noId.not_issued')}</option>
-              <option value="foreigner">{t('register.noId.foreigner')}</option>
-            </Select>
-            {text('phone_1', { type: 'tel' })}
-            {text('phone_2', { type: 'tel' })}
-            {text('district')}
-            {text('sector')}
-            {text('cell')}
-            {text('village')}
-            {text('occupation')}
-            {text('ubudehe_category', { inputMode: 'numeric' })}
-            {!safetyHidden && text('blood_group', { placeholder: 'O+' })}
-            {text('emergency_name')}
-            {text('emergency_phone', { type: 'tel' })}
-          </div>
+            </div>
+          )}
           {safetyHidden ? (
             <SafetyHiddenNote />
           ) : (
             <>
+              <h3 className="text-ink-2 m-0 mt-2 text-[12px] font-medium">{t('file.medical')}</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Field
+                  label={f('blood_group')}
+                  value={med.blood_group}
+                  onChange={(e) => setMed((m) => ({ ...m, blood_group: e.target.value }))}
+                  placeholder="O+"
+                />
+              </div>
               <Field
                 label={f('allergies')}
-                value={v.allergies ?? ''}
-                onChange={(e) => set('allergies', e.target.value)}
+                value={med.allergies}
+                onChange={(e) => setMed((m) => ({ ...m, allergies: e.target.value }))}
                 placeholder={t('file.allergiesPh')}
                 className="border-red/60"
                 disabled={allergiesNone}
@@ -1036,49 +1070,25 @@ function EditForm({
                   checked={allergiesNone}
                   onChange={(e) => {
                     setAllergiesNone(e.target.checked)
-                    if (e.target.checked) set('allergies', '')
+                    if (e.target.checked) setMed((m) => ({ ...m, allergies: '' }))
                   }}
                 />
                 {t('file.allergiesNone')}
               </label>
               <p className="text-ink-3 m-0 -mt-2 text-xs">{t('file.allergiesNoneHint')}</p>
-              {text('notes')}
+              <Field
+                label={f('notes')}
+                value={med.notes}
+                onChange={(e) => setMed((m) => ({ ...m, notes: e.target.value }))}
+              />
             </>
           )}
-
-          {defs.length + adHocKeys.length > 0 && (
-            <>
-              <h3 className="text-ink-2 m-0 mt-2 text-[12px] font-medium">{t('file.more')}</h3>
-              {/* the "medical" fields are not sent at the identity level: one that already
-                  holds a value is locked (update_patient keeps it anyway); an empty one may be
-                  filled in */}
-              {safetyHidden && defs.some((d) => d.private) && (
-                <p className="text-ink-3 m-0 text-xs">{t('file.privateFill')}</p>
-              )}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {defs.map((d) =>
-                  safetyHidden && d.private && extraFilled.includes(d.key) ? (
-                    <Field key={d.key} label={d.label} value={t('file.privateField')} disabled />
-                  ) : (
-                    <CustomInput
-                      key={d.key}
-                      def={d}
-                      value={valueOf(d)}
-                      onChange={(val) => setX(d.key, val)}
-                    />
-                  ),
-                )}
-                {adHocKeys.map((k) => (
-                  <Field
-                    key={k}
-                    label={k}
-                    value={extra[k] ?? ''}
-                    onChange={(e) => setX(k, e.target.value)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
+          <p className="text-ink-3 m-0 text-[12px]">
+            <span aria-hidden="true" className="text-red font-semibold">
+              *
+            </span>{' '}
+            {t('patientFields.requiredHint')}
+          </p>
           <div className="flex gap-2">
             <Button type="submit" variant="primary" loading={actions.update.isPending}>
               <Check size={16} aria-hidden="true" />
@@ -1088,41 +1098,6 @@ function EditForm({
         </CardBody>
       </form>
     </Card>
-  )
-}
-
-/** One input for a manager-defined field, by its type. */
-function CustomInput({
-  def,
-  value,
-  onChange,
-}: {
-  def: PatientFieldDef
-  value: string
-  onChange: (v: string) => void
-}) {
-  const { t } = useTranslation()
-  if (def.type === 'choice' || def.type === 'yesno') {
-    const options = def.type === 'yesno' ? [t('common.yes'), t('common.no')] : (def.options ?? [])
-    return (
-      <Select label={def.label} value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">—</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </Select>
-    )
-  }
-  return (
-    <Field
-      label={def.label}
-      type={def.type === 'date' ? 'date' : 'text'}
-      inputMode={def.type === 'number' ? 'decimal' : undefined}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
   )
 }
 
