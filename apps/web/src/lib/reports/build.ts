@@ -68,6 +68,37 @@ const NOTES_EN: Record<string, string> = {
   cashDiff: 'Cash count: difference = counted − expected; a shortfall carries a minus sign.',
   lowStock:
     'Below reorder level: unexpired units in the pharmacy at or below the item’s reorder level.',
+  visits:
+    'Visits: every visit opened in the period, whatever its state now. Visits by type of service counts each desk a visit went through, so its total can be higher than the number of visits.',
+  registered: 'Patients registered: new patient files created in the period.',
+  revenue:
+    'Revenue: every payment taken in the period, before refunds. Outstanding on open bills: what is still due on the bills open at the time of printing, whatever the period.',
+  previous: 'Previous period: the same number of days immediately before the period.',
+  bookings:
+    'Bookings: appointments whose date falls in the period. Did not come: marked as no-show. Requests pending: website requests not yet answered.',
+  topTreatments:
+    'Most frequent treatments: the treatments and medicines charged in the period, by number of times; the amount is what was charged, after discounts.',
+  revenueByDay: 'Revenue by day: Net = collected on the day − refunds given that day.',
+  beds: 'Beds occupied: at the moment the report was printed.',
+  expiring:
+    'Medicines expiring: batches whose expiry date falls within 30, 60 or 90 days of today; each horizon includes the shorter ones.',
+  staffWork:
+    'Work by employee: what each person recorded in the period — Registrations (files created), Vitals (sets of vital signs), Patients (visits treated), Results (results entered), Medicines given (hand-overs), Charges (treatments added), Payments (payments taken) and Collected (their amount). Last sign-in is the most recent one, whatever the period.',
+  waitingNow: 'Waiting now: patients in a queue at the moment of printing.',
+  byMethod:
+    'Collections by payment method: the payments of the period by how they were paid, before refunds.',
+  refundsTable:
+    'Refunds: money given back in the period, with who gave it back and why; it reduces the net of the day.',
+  labFigures:
+    'Waiting: ordered, sample not yet taken. In process: sample taken. To verify: result written, not yet verified. Done: results given on the day. Urgent: priority 1 or 2 still waiting. Turnaround: average minutes from the order to the result.',
+  stockValue:
+    'Value at cost: unexpired units × the unit cost of their batch; expired units are left out. On hand counts every unit in the clinic’s stores.',
+  stockSales:
+    'Sold and given: units handed over to patients or sold to walk-in buyers in the period, at the prices charged; the cost is that of the batches used; margin = revenue − cost.',
+  receipts:
+    'One row per receipt given in the period; Still due is what remained on the bill after that payment.',
+  visitsList:
+    'One row per visit opened in the period. Closed: finished visits. The diagnosis shown is the main one, only to those allowed to see it.',
 }
 
 /** "How the figures are counted": the shared lines, then the report's own. */
@@ -303,7 +334,22 @@ export function dashboardReport(
     period: periodOf(d.from, d.to, t),
     code: 'ACT',
     periodKey: periodKeyOf(d.from, d.to),
-    notes: notesOf(t),
+    notes: notesOf(
+      t,
+      'visits',
+      'registered',
+      !manager && 'waitingNow',
+      manager && 'revenue',
+      manager && 'previous',
+      manager && 'byMethod',
+      manager && 'topTreatments',
+      manager && 'revenueByDay',
+      'bookings',
+      'beds',
+      'lowStock',
+      'expiring',
+      'staffWork',
+    ),
     fileName: stem('activity-report', d.from, d.to),
     figures,
     summaryText: sentences(
@@ -447,7 +493,7 @@ export function cashierReport(
     period: periodOf(from, to, t),
     code: 'DAY',
     periodKey: periodKeyOf(from, to),
-    notes: notesOf(t, 'collected', !!cashCount && 'cashDiff'),
+    notes: notesOf(t, 'collected', 'byMethod', 'refundsTable', !!cashCount && 'cashDiff'),
     fileName: stem(oneDay ? 'day-close' : 'payments', from, to),
     figures,
     summaryText: sentences(
@@ -492,7 +538,7 @@ export function labReport(
     period: docDate(day),
     code: 'LAB',
     periodKey: ymd(day),
-    notes: notesOf(t),
+    notes: notesOf(t, 'labFigures'),
     fileName: stem('laboratory', day, day),
     figures,
     summaryText: sentences(
@@ -611,7 +657,7 @@ export function stockReport(
     period: periodOf(from, to, t),
     code: 'STK',
     periodKey: periodKeyOf(from, to),
-    notes: notesOf(t, 'lowStock'),
+    notes: notesOf(t, 'stockValue', 'lowStock', 'stockSales'),
     fileName: stem('stock', from, to),
     figures,
     summaryText: sentences(
@@ -795,7 +841,7 @@ export function receiptsReport(
     period: periodOf(r.from, r.to, t),
     code: 'RCT',
     periodKey: periodKeyOf(r.from, r.to),
-    notes: notesOf(t, 'collected'),
+    notes: notesOf(t, 'collected', 'receipts'),
     fileName: stem('receipts', r.from, r.to),
     figures,
     summaryText: tx('receipts.summary', '{{count}} receipts for {{amount}}.', {
@@ -862,7 +908,7 @@ export function visitsListReport(
     period: periodOf(v.from, v.to, t),
     code: 'DOC',
     periodKey: periodKeyOf(v.from, v.to),
-    notes: notesOf(t),
+    notes: notesOf(t, 'visitsList'),
     fileName: stem('patients-documents', v.from, v.to),
     figures,
     summaryText: tx('documents.summary', '{{count}} visits in the period, {{closed}} closed.', {

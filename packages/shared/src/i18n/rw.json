@@ -3921,7 +3921,25 @@
       "totals": "Umurongo w’igiteranyo uteranya imirongo iri hejuru yawo.",
       "collected": "Byakiriwe: ubwishyu bwose bwakiriwe uwo munsi, mbere yo gusubiza amafaranga; amafaranga yasubijwe agaragazwa ukwayo.",
       "cashDiff": "Kubara amafaranga yakiriwe: ikinyuranyo = ayabaruwe − ayari ategerejwe; ayabuze agira akamenyetso ka “−”.",
-      "lowStock": "Munsi y’urugero rwo kongera gutumiza: ibitararengeje igihe biri muri farumasi, bingana cyangwa biri munsi y’urugero rwo kongera gutumiza."
+      "lowStock": "Munsi y’urugero rwo kongera gutumiza: ibitararengeje igihe biri muri farumasi, bingana cyangwa biri munsi y’urugero rwo kongera gutumiza.",
+      "visits": "Kwivuza: buri kwivuza kwatangiye muri icyo gihe, uko kumeze ubu kose. Kwivuza ku bwoko bwa serivisi kubara buri homa kwivuza kwanyuzemo; igiteranyo cyako gishobora kurenga umubare w’abivuje.",
+      "registered": "Abarwayi banditswe: amadosiye mashya y’abarwayi yafunguwe muri icyo gihe.",
+      "revenue": "Amafaranga yinjiye: ubwishyu bwose bwakiriwe muri icyo gihe, mbere y’ayasubijwe. Asigaye kuri fagitire zikiri gufungura: ayataracyishyurwa kuri fagitire zikiri gufungura igihe cyo gucapa, uko igihe cyatoranyijwe kiri kose.",
+      "previous": "Igihe cyabanje: umubare umwe w’iminsi ibanziriza icyo gihe.",
+      "bookings": "Gahunda zo kwivuza: gahunda zifite itariki iri muri icyo gihe. Ntiyaje: izashyizweho ko umurwayi ataje. Ibyifuzo bitegereje: ibyasabwe ku rubuga bitarasubizwa.",
+      "topTreatments": "Ubuvuzi bukunze gutangwa: ubuvuzi n’imiti byishyujwe muri icyo gihe, hakurikijwe inshuro; amafaranga ni ayishyujwe, kugabanyirizwa kuvuyemo.",
+      "revenueByDay": "Amafaranga ku munsi: Asigaye = ayakiriwe uwo munsi − ayasubijwe uwo munsi.",
+      "beds": "Ibitanda birimo abarwayi: ku gihe raporo yacapwe.",
+      "expiring": "Imiti igiye kurangira igihe: udutsiko tw’imiti itariki yo kurangira iri mu minsi 30, 60 cyangwa 90 iri imbere; buri gihe gikubiyemo ibigufi.",
+      "staffWork": "Akazi ka buri mukozi: ibyo buri wese yanditse muri icyo gihe — Kwandikwa (amadosiye yafunguwe), Ibipimo by’ibanze (inshuro byafashwe), Abarwayi (abivuje yavuye), Ibisubizo (ibyanditswe), Imiti yatanzwe, Ibyishyujwe (ubuvuzi bwongewe), Ubwishyu (ubwakiriwe) n’Amafaranga yakiriwe. Kwinjira bwa nyuma ni ubwa vuba cyane, igihe icyo ari cyo cyose.",
+      "waitingNow": "Bategereje ubu: abarwayi bari ku murongo igihe cyo gucapa.",
+      "byMethod": "Ubwishyu ku buryo bwishyuwe: ubwishyu bw’icyo gihe hakurikijwe uko bwishyuwe, mbere y’ayasubijwe.",
+      "refundsTable": "Ayasubijwe: amafaranga yasubijwe muri icyo gihe, n’uwayasubije n’impamvu; agabanya asigaye y’umunsi.",
+      "labFigures": "Bitegereje: byasabwe, icyitegererezo kitarafatwa. Biri gukorwa: icyitegererezo cyafashwe. Bigomba kugenzurwa: igisubizo cyanditswe kitaragenzurwa. Byarangiye: ibisubizo byatanzwe uwo munsi. Byihutirwa: ibifite icyiciro cya 1 cyangwa 2 bikiri gutegereza. Igihe bitwara: iminota ku kigereranyo kuva byasabwe kugeza igisubizo gitanzwe.",
+      "stockValue": "Agaciro ku giciro cyo kugura: ibitararangira igihe × igiciro cy’akatsiko kabyo; ibyarangiye igihe ntibibarwa. Ibihari bibara buri kintu kiri mu bubiko bwose bw’ivuriro.",
+      "stockSales": "Byagurishijwe n’ibyatanzwe: ibyahawe abarwayi cyangwa byagurishijwe abaguzi baje kugura gusa muri icyo gihe, ku biciro byishyujwe; igiciro ni icy’udutsiko twakoreshejwe; inyungu = amafaranga yinjiye − igiciro.",
+      "receipts": "Umurongo umwe kuri buri nyemezabwishyu yatanzwe muri icyo gihe; Asigaye ni ayari asigaye kuri fagitire nyuma y’ubwo bwishyu.",
+      "visitsList": "Umurongo umwe kuri buri kwivuza kwatangiye muri icyo gihe. Byarangiye: kwivuza kwarangiye. Indwara yagaragajwe ni iy’ibanze, igaragarira gusa ababifitiye uburenganzira."
     }
   },
   "duration": {

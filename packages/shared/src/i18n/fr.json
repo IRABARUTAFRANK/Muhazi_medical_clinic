@@ -3912,7 +3912,25 @@
       "totals": "Chaque ligne Total additionne les lignes au-dessus d’elle.",
       "collected": "Encaissé : tous les paiements reçus dans la journée, avant remboursements ; les remboursements sont indiqués à part.",
       "cashDiff": "Comptage de caisse : écart = compté − attendu ; un manque porte un signe moins.",
-      "lowStock": "Sous le seuil : unités non périmées à la pharmacie, égales ou inférieures au seuil de réapprovisionnement de l’article."
+      "lowStock": "Sous le seuil : unités non périmées à la pharmacie, égales ou inférieures au seuil de réapprovisionnement de l’article.",
+      "visits": "Visites : chaque visite ouverte dans la période, quel que soit son état actuel. Visites par type de service compte chaque poste traversé par une visite ; son total peut donc dépasser le nombre de visites.",
+      "registered": "Patients enregistrés : nouveaux dossiers de patients créés dans la période.",
+      "revenue": "Recettes : tous les paiements encaissés dans la période, avant remboursements. Restant dû sur factures ouvertes : ce qui reste à payer sur les factures ouvertes au moment de l’impression, quelle que soit la période.",
+      "previous": "Période précédente : le même nombre de jours juste avant la période.",
+      "bookings": "Rendez-vous : les rendez-vous dont la date tombe dans la période. Pas venu : marqués absents. Demandes en attente : demandes du site web pas encore traitées.",
+      "topTreatments": "Soins les plus fréquents : les soins et médicaments facturés dans la période, par nombre de fois ; le montant est ce qui a été facturé, remises déduites.",
+      "revenueByDay": "Recettes par jour : Net = encaissé le jour − remboursements donnés ce jour-là.",
+      "beds": "Lits occupés : au moment de l’impression du rapport.",
+      "expiring": "Médicaments arrivant à expiration : lots dont la date d’expiration tombe dans les 30, 60 ou 90 jours à venir ; chaque horizon comprend les plus courts.",
+      "staffWork": "Travail par employé : ce que chaque personne a enregistré dans la période — Enregistrements (dossiers créés), Signes vitaux (séries prises), Patients (visites traitées), Résultats (résultats saisis), Médicaments remis, Facturations (soins ajoutés), Paiements (paiements encaissés) et Encaissé (leur montant). Dernière connexion est la plus récente, quelle que soit la période.",
+      "waitingNow": "En attente maintenant : patients dans une file au moment de l’impression.",
+      "byMethod": "Encaissements par moyen de paiement : les paiements de la période selon leur moyen, avant remboursements.",
+      "refundsTable": "Remboursements : argent rendu dans la période, avec qui l’a rendu et pourquoi ; il réduit le net du jour.",
+      "labFigures": "En attente : demandé, prélèvement pas encore fait. En cours : prélèvement fait. À vérifier : résultat écrit, pas encore vérifié. Terminés : résultats rendus dans la journée. Urgents : priorité 1 ou 2 encore en attente. Délai : minutes moyennes entre la demande et le résultat.",
+      "stockValue": "Valeur au coût : unités non expirées × coût unitaire de leur lot ; les unités expirées sont exclues. En stock compte toutes les unités dans les stocks de la clinique.",
+      "stockSales": "Vendus et remis : unités remises aux patients ou vendues aux clients de passage dans la période, aux prix facturés ; le coût est celui des lots utilisés ; marge = recettes − coût.",
+      "receipts": "Une ligne par reçu délivré dans la période ; Reste dû est ce qui restait sur la facture après ce paiement.",
+      "visitsList": "Une ligne par visite ouverte dans la période. Clôturées : visites terminées. Le diagnostic affiché est le principal, visible seulement par les personnes autorisées."
     }
   },
   "duration": {

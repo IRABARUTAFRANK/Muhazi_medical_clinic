@@ -426,6 +426,11 @@ const REPORT_CSS = `
     margin: 10mm 0 10mm calc(50% - var(--wide-w) / 2); padding: 12mm 18mm; background: #ffffff;
     border-radius: 2px; box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10);
     overflow-x: auto; }
+  /* the notes and signatures that follow a wide table stay on its sheet (as on the printed page) */
+  .wide-tail { --wide-w: min(297mm, 100vw - 24px); box-sizing: border-box; width: var(--wide-w);
+    margin: 0 0 10mm calc(50% - var(--wide-w) / 2); padding: 0 18mm 12mm; background: #ffffff;
+    border-radius: 0 0 2px 2px; box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10); }
+  .rs.wide:has(+ .wide-tail) { margin-bottom: 0; border-radius: 2px 2px 0 0; padding-bottom: 4mm; }
 }
 /* the signature lines stay on the last landscape page when the report ends with a wide table */
 .wide-tail { page: wide; }
