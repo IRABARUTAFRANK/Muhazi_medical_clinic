@@ -15,14 +15,17 @@ export function useMediaQuery(query: string): boolean {
 
 /**
  * A desktop monitor shows more pixels than a laptop or a tablet, so the same 14 px text looks
- * small and the page floats in empty space. The staff screen scales up a step on a wide screen
- * (1,280 px and more) and another on a very wide one (1,700 px and more); the person's own text
- * size (Settings › Display) multiplies it. The public site does the same in CSS (.theme-public).
+ * small and the page floats in empty space. The staff screen scales up with the screen's width
+ * (the owner wants the big, four-tiles look of a 1,366 px monitor on every large screen):
+ * 1,280 px and more ×1.15, 1,600 px and more ×1.3, 1,900 px and more ×1.4. The person's own
+ * text size (Settings › Display) multiplies it. The public site does the same in CSS
+ * (.theme-public, brand.css).
  */
 export function useScreenScale(): number {
   const wide = useMediaQuery('(min-width: 1280px)')
-  const veryWide = useMediaQuery('(min-width: 1700px)')
-  return veryWide ? 1.15 : wide ? 1.08 : 1
+  const wider = useMediaQuery('(min-width: 1600px)')
+  const widest = useMediaQuery('(min-width: 1900px)')
+  return widest ? 1.4 : wider ? 1.3 : wide ? 1.15 : 1
 }
 
 /** PC layout from 901 px (left rail); tablet layout below (bottom bar). */
