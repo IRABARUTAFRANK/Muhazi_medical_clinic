@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, type NavItem, type StaffUser } from '@mmc/shared'
 import { useStaffSettings } from '@/lib/api/settings'
 import { appNow } from '@/lib/clock'
-import { useDayNames } from '@/lib/hooks'
+import { useDayNames, useScreenScale } from '@/lib/hooks'
 import { usePrefsSync } from '@/lib/prefs-sync'
 import { TEXT_ZOOM, usePrefs } from '@/store/prefs'
 import { useSession } from '@/store/session'
@@ -52,7 +52,9 @@ export function StaffShell({
   }, [sessionHours])
   const [sheet, setSheet] = useState(false)
   const barCount = useBarCount()
-  const zoom = TEXT_ZOOM[usePrefs((s) => s.textSize)] ?? 1
+  // the person's text size × the step a wide monitor adds (lib/hooks.ts useScreenScale)
+  const screenScale = useScreenScale()
+  const zoom = Math.round((TEXT_ZOOM[usePrefs((s) => s.textSize)] ?? 1) * screenScale * 1000) / 1000
   // Text size, theme and language follow the person to every device.
   usePrefsSync(user.id)
   // ?focus=<kind>:<id> from a notice: that item comes into view, outlined (lib/notice-focus.ts)

@@ -9,7 +9,10 @@ import { cn } from '@/lib/utils'
 import { LangSwitch } from './lang-switch'
 
 export const Wrap = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('mx-auto w-full max-w-[1180px] px-4 sm:px-8', className)} {...props} />
+  <div
+    className={cn('mx-auto w-full max-w-[1180px] px-4 sm:px-8 2xl:max-w-[1280px]', className)}
+    {...props}
+  />
 )
 
 /** Smooth scrolling to a section, unless the visitor asked the system for less motion. */

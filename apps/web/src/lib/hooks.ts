@@ -13,6 +13,18 @@ export function useMediaQuery(query: string): boolean {
   )
 }
 
+/**
+ * A desktop monitor shows more pixels than a laptop or a tablet, so the same 14 px text looks
+ * small and the page floats in empty space. The staff screen scales up a step on a wide screen
+ * (1,280 px and more) and another on a very wide one (1,700 px and more); the person's own text
+ * size (Settings › Display) multiplies it. The public site does the same in CSS (.theme-public).
+ */
+export function useScreenScale(): number {
+  const wide = useMediaQuery('(min-width: 1280px)')
+  const veryWide = useMediaQuery('(min-width: 1700px)')
+  return veryWide ? 1.15 : wide ? 1.08 : 1
+}
+
 /** PC layout from 901 px (left rail); tablet layout below (bottom bar). */
 export const useIsPc = (): boolean => useMediaQuery('(min-width: 901px)')
 

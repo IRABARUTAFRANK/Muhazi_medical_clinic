@@ -610,3 +610,23 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------- desktop monitors
+   A desktop monitor shows more pixels than a laptop or a tablet, so the public site looked
+   small and floated in empty space on it. From 1,280 px the whole site scales up a step, from
+   1,700 px another (the staff screens do the same in staff-shell.tsx, useScreenScale). */
+@media (min-width: 1280px) {
+  .theme-public {
+    zoom: 1.08;
+  }
+}
+@media (min-width: 1700px) {
+  .theme-public {
+    zoom: 1.15;
+  }
+}
+@media print {
+  .theme-public {
+    zoom: 1;
+  }
+}
