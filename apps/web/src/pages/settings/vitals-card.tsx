@@ -80,73 +80,81 @@ export function VitalsCard() {
       </CardHeader>
       <CardBody className="gap-3">
         <p className="text-ink-2 m-0 text-[14px]">{t('settings.vitals.lead')}</p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-ink-2 text-[13px] font-semibold">
-              {t('settings.vitals.shown', { count: chosen.length })}
-            </span>
-            <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
-              {chosen.map((code, i) => (
-                <li key={code} className={cn(rowClass, 'border-green/40 bg-green-bg/40')}>
-                  <span className="text-ink-3 w-5 text-right text-[12px] tabular-nums">
-                    {i + 1}.
-                  </span>
-                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="accent-primary"
-                      checked
-                      onChange={() => toggle(code)}
-                      disabled={save.isPending}
-                    />
-                    <span className="min-w-0 truncate font-semibold">{vitalName({ code }, t)}</span>
-                    <span className="text-ink-3 text-[12px]">{unitOf(code)}</span>
-                  </label>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={t('settings.vitals.up')}
-                    title={t('settings.vitals.up')}
-                    disabled={i === 0 || save.isPending}
-                    onClick={() => move(code, -1)}
-                  >
-                    <ArrowUp size={16} aria-hidden="true" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={t('settings.vitals.down')}
-                    title={t('settings.vitals.down')}
-                    disabled={i === chosen.length - 1 || save.isPending}
-                    onClick={() => move(code, 1)}
-                  >
-                    <ArrowDown size={16} aria-hidden="true" />
-                  </Button>
-                </li>
-              ))}
-            </ol>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-ink-2 text-[13px] font-semibold">
-              {t('settings.vitals.others')}
-            </span>
-            <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-              {others.map((code) => (
-                <li key={code} className={rowClass}>
-                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="accent-primary"
-                      checked={false}
-                      onChange={() => toggle(code)}
-                      disabled={save.isPending}
-                    />
-                    <span className="min-w-0 truncate">{vitalName({ code }, t)}</span>
-                    <span className="text-ink-3 text-[12px]">{unitOf(code)}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
+        {/* two columns only when the card itself is wide enough for the names to stay whole
+            (a large text size on a desktop monitor narrows it) */}
+        <div className="@container">
+          <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-ink-2 text-[13px] font-semibold">
+                {t('settings.vitals.shown', { count: chosen.length })}
+              </span>
+              <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
+                {chosen.map((code, i) => (
+                  <li key={code} className={cn(rowClass, 'border-green/40 bg-green-bg/40')}>
+                    <span className="text-ink-3 w-5 text-right text-[12px] tabular-nums">
+                      {i + 1}.
+                    </span>
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="accent-primary"
+                        checked
+                        onChange={() => toggle(code)}
+                        disabled={save.isPending}
+                      />
+                      <span className="min-w-0 flex-1 font-semibold">{vitalName({ code }, t)}</span>
+                      <span className="text-ink-3 shrink-0 text-[12px] whitespace-nowrap">
+                        {unitOf(code)}
+                      </span>
+                    </label>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={t('settings.vitals.up')}
+                      title={t('settings.vitals.up')}
+                      disabled={i === 0 || save.isPending}
+                      onClick={() => move(code, -1)}
+                    >
+                      <ArrowUp size={16} aria-hidden="true" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={t('settings.vitals.down')}
+                      title={t('settings.vitals.down')}
+                      disabled={i === chosen.length - 1 || save.isPending}
+                      onClick={() => move(code, 1)}
+                    >
+                      <ArrowDown size={16} aria-hidden="true" />
+                    </Button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-ink-2 text-[13px] font-semibold">
+                {t('settings.vitals.others')}
+              </span>
+              <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+                {others.map((code) => (
+                  <li key={code} className={rowClass}>
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="accent-primary"
+                        checked={false}
+                        onChange={() => toggle(code)}
+                        disabled={save.isPending}
+                      />
+                      <span className="min-w-0 flex-1">{vitalName({ code }, t)}</span>
+                      <span className="text-ink-3 shrink-0 text-[12px] whitespace-nowrap">
+                        {unitOf(code)}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
         {error && (
