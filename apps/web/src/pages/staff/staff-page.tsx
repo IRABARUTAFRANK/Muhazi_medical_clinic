@@ -752,7 +752,16 @@ export function StaffPage({ user }: { user: StaffUser }) {
                             <Avatar name={e.fullName} size="md" />
                             <span className="min-w-[min(200px,100%)] flex-1">
                               <span className="block font-semibold">
-                                {e.fullName}
+                                {/* the name opens the employee's file: details and documents */}
+                                <button
+                                  type="button"
+                                  className="text-ink hover:text-primary cursor-pointer rounded border-0 bg-transparent p-0 text-left font-semibold underline-offset-2 hover:underline"
+                                  title={t('staffDocs.button')}
+                                  aria-expanded={docsFor?.id === e.id}
+                                  onClick={() => setDocsFor(e)}
+                                >
+                                  {e.fullName}
+                                </button>
                                 {self && (
                                   <span className="text-ink-3 ml-2 text-xs font-medium">
                                     ({t('staff.you')})
@@ -887,7 +896,50 @@ export function StaffPage({ user }: { user: StaffUser }) {
           }
         >
           {docsFor && (
-            <StaffDocumentsPanel key={docsFor.id} profileId={docsFor.id} name={docsFor.fullName} />
+            <>
+              {/* the employee's file at a glance, above the documents */}
+              <div className="border-border bg-surface mb-3 flex items-start gap-3 rounded-md border p-3">
+                <Avatar name={docsFor.fullName} size="md" />
+                <span className="min-w-0 flex-1 text-[13px]">
+                  <span className="text-ink block text-[15px] font-semibold">
+                    {docsFor.fullName}
+                  </span>
+                  <span className="text-ink-3 block tabular-nums">
+                    {[
+                      docsFor.staffId,
+                      employeeRole(docsFor, t),
+                      registrationText(docsFor) &&
+                        t('staff.registrationShort', { reg: registrationText(docsFor) }),
+                      docsFor.username,
+                      docsFor.email,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                  {desksOfEmployee(docsFor) && (
+                    <span className="text-ink-2 block">
+                      {desksText(desksOfEmployee(docsFor)!, t)}
+                    </span>
+                  )}
+                  <span className="text-ink-3 block">
+                    {docsFor.lastSignInAt
+                      ? t('staff.lastSignIn', {
+                          when: `${formatDate(new Date(docsFor.lastSignInAt))} ${formatTime(new Date(docsFor.lastSignInAt))}`,
+                        })
+                      : t('staff.neverSignedIn')}
+                  </span>
+                </span>
+                <Button size="sm" onClick={() => openEdit(docsFor)} disabled={!docsFor.active}>
+                  <Pencil size={15} aria-hidden="true" />
+                  {t('staff.edit')}
+                </Button>
+              </div>
+              <StaffDocumentsPanel
+                key={docsFor.id}
+                profileId={docsFor.id}
+                name={docsFor.fullName}
+              />
+            </>
           )}
         </SidePanel>
 

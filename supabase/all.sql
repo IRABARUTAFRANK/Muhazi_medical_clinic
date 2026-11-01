@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-11-01T21:51:23.784Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-11-01T22:15:47.323Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -57925,6 +57925,18 @@ grant execute on function staff_documents(uuid),
   staff_document_open(uuid), remove_staff_document(uuid, text), staff_documents_expiring(integer),
   staff_file_object_insert_ok(text), staff_file_object_read_ok(text), staff_file_object_delete_ok(text)
   to authenticated;
+
+
+-- ============================================================ 20261227090000_staff_documents_volatile.sql
+-- 0117 · Employee documents: opening the list writes the access log, so the function is not
+-- read-only.
+--
+-- staff_documents() (0116) was declared `stable`; the API then calls it in a read-only
+-- transaction, and its audit line (log_staff_document_access → audit_event) failed with
+-- "cannot execute INSERT in a read-only transaction" the first time the manager opened an
+-- employee's documents. The body is unchanged: only the volatility is corrected.
+
+alter function staff_documents(uuid) volatile;
 
 
 -- ============================================================ seed.sql

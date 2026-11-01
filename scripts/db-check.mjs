@@ -17814,6 +17814,17 @@ await expectError(
   /this document was removed/,
 )
 
+// ---------------------------------------------------------------- 0117: opening the documents is not read-only
+await step('0117: staff_documents() is volatile (its access-log line can be written)', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261227090000_staff_documents_volatile.sql'), 'utf8'),
+  )
+  const v = (await one(`select provolatile as v from pg_proc where proname = 'staff_documents'`)).v
+  if (v !== 'v') throw new Error('volatility ' + v)
+  return 'volatile'
+})
+
 finish()
 
 function finish() {
