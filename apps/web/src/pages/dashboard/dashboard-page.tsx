@@ -39,7 +39,6 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
-  FEATURES,
   addDays,
   formatDate,
   formatDayMonth,
@@ -66,6 +65,7 @@ import {
   type AnalyticsSearch,
 } from '@/components/dash/analytics-links'
 import { NoticesPanel } from '@/components/dash/notices-panel'
+import { ExpiringDocumentsPanel } from '@/pages/staff/staff-documents'
 import { AccessApprovalsPanel } from '@/components/privacy/approvals'
 import {
   avatarTint,
@@ -92,6 +92,7 @@ import type { ActivityKind } from '@/lib/api/analytics'
 import { categoryName } from '@/lib/api/catalogue'
 import { useDailyStockAlertCheck } from '@/lib/api/pharmacy'
 import { useClinicInfo } from '@/lib/api/public'
+import { useInsuranceEnabled } from '@/lib/api/settings'
 import { useDeactivationReminders } from '@/lib/api/staff'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { dashboardReport } from '@/lib/reports/build'
@@ -132,6 +133,8 @@ interface DashboardPageProps {
 
 export function DashboardPage({ user, view }: DashboardPageProps) {
   const { t, i18n } = useTranslation()
+  // what insurers owe: only once the clinic works with insurers (Settings → Insurance)
+  const insurance = useInsuranceEnabled()
   const dayNames = useDayNames()
   const now = new Date()
   const canManage = user.dashboard === 'manager' || user.role === 'manager'
@@ -402,6 +405,8 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             {/* requests to see past records, emergency accesses to review (0088) */}
             <AccessApprovalsPanel user={user} />
             <NoticesPanel limit={4} />
+            {/* the employees' licences and contracts expiring within 60 days (0116) */}
+            {user.role === 'manager' && <ExpiringDocumentsPanel />}
             {/* calls and help requests addressed to the manager */}
             <CallsPanel user={user} />
 
@@ -412,7 +417,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 <div
                   className={cn(
                     'grid grid-cols-1 gap-4',
-                    FEATURES.insurance
+                    insurance
                       ? 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]'
                       : 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]',
                   )}
@@ -520,7 +525,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                     </div>
                   </Panel>
                   {/* What insurers owe: only once the clinic works with insurers. */}
-                  {FEATURES.insurance && (
+                  {insurance && (
                     <Panel
                       i={3}
                       icon={Landmark}

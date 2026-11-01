@@ -36,8 +36,10 @@ import {
   linkFresh,
   useFileActions,
   useFileLink,
+  type OpenedFile,
   type PatientFileDoc,
 } from '@/lib/api/files'
+import type { VisitView } from '@/lib/api/privacy'
 import { useConfirm } from '@/lib/confirm'
 import { useNow } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
@@ -59,15 +61,52 @@ const errorBox =
 /** A card's message line: what was done, or a warning (a stored copy left behind). */
 export type Msg = { text: string; warn?: boolean }
 
+/**
+ * What the viewer needs of a file: a patient's supporting file (PatientFileDoc) and an
+ * employee's document (StaffDocument, 0116) both fit.
+ */
+export type ViewerFile = Pick<
+  PatientFileDoc,
+  'id' | 'title' | 'note' | 'sizeBytes' | 'uploadedBy' | 'uploadedAt' | 'canRemove' | 'removed'
+> & {
+  kind: string
+  mimeType: string
+  /** The test it belongs to (a patient's file). */
+  test?: string | null
+  /** How the person sees the visit (a patient's file); 'visit' shows live thumbnails. */
+  view?: VisitView
+}
+/**
+ * Where the files come from when they are not a patient's (the employee documents of 0116):
+ * how a link is asked for, how one is removed, what its kind is called.
+ */
+export interface ViewerSource {
+  /** The file's 5-minute link. */
+  open: (fileId: string) => Promise<OpenedFile>
+  /** Removes the file with a reason; the message for the card's line. */
+  remove?: (file: ViewerFile, reason: string) => Promise<Msg>
+  /** The word for the kind of file (the meta line). */
+  kindLabel?: (file: ViewerFile) => string
+  /** The "Are you sure?" title of a removal. */
+  confirmTitle?: (file: ViewerFile) => string
+  /** The sentence under the remove form (who may remove); null for none. */
+  removeRule?: string | null
+  /** The reason field's words ("Why remove this document?" and its example). */
+  reasonLabel?: string
+  reasonPlaceholder?: string
+}
+
 const isPdf = (mime: string) => mime === 'application/pdf'
 const EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
   'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
 }
 /** The name a download is saved under: the title, without the characters a disk refuses. */
-const fileName = (f: PatientFileDoc) =>
+const fileName = (f: ViewerFile) =>
   `${
     f.title
       .replace(/[\\/:*?"<>|]+/g, ' ')
@@ -127,7 +166,17 @@ function usePageUrl(url: string | null): string | null {
  * scan of today's visit, else a tile with the type. A past visit's picture is not loaded before
  * the person opens it: opening it is a recorded look.
  */
-export function FileThumb({ file, small = false }: { file: PatientFileDoc; small?: boolean }) {
+export function FileThumb({
+  file,
+  small = false,
+  recorded: recordedLook = true,
+}: {
+  file: ViewerFile
+  small?: boolean
+  /** Whether opening the picture is a recorded look ("Opening is recorded" under the icon);
+   *  false for one's own employee documents (0116). */
+  recorded?: boolean
+}) {
   const { t } = useTranslation()
   const picture = isImage(file.mimeType)
   const live = picture && file.view === 'visit' && !file.removed
@@ -147,7 +196,7 @@ export function FileThumb({ file, small = false }: { file: PatientFileDoc; small
     )
   const pdf = isPdf(file.mimeType)
   const Icon = pdf ? FileText : picture ? ImageIcon : FileIcon
-  const recorded = picture && !live && !file.removed
+  const recorded = picture && !live && !file.removed && recordedLook
   return (
     <span
       className={cn(
@@ -181,11 +230,15 @@ export function FileThumb({ file, small = false }: { file: PatientFileDoc; small
 export function RemoveForm({
   file,
   patientName,
+  source,
   onDone,
   onCancel,
 }: {
-  file: PatientFileDoc
+  file: ViewerFile
+  /** Whose file it is (a patient, or an employee for a document of 0116). */
   patientName: string
+  /** Files that are not a patient's: their own way of removing (see ViewerSource). */
+  source?: ViewerSource
   onDone: (message: Msg) => void
   onCancel: () => void
 }) {
@@ -193,7 +246,9 @@ export function RemoveForm({
   const confirm = useConfirm()
   const { remove } = useFileActions()
   const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const rule = source ? source.removeRule : t('supportingFiles.removeRule')
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -205,7 +260,9 @@ export function RemoveForm({
     setErr(null)
     if (
       !(await confirm({
-        title: t('supportingFiles.confirm.removeTitle', { title: file.title, name: patientName }),
+        title:
+          source?.confirmTitle?.(file) ??
+          t('supportingFiles.confirm.removeTitle', { title: file.title, name: patientName }),
         body: t('supportingFiles.confirm.removeBody', { reason: why }),
         confirmLabel: t('supportingFiles.confirm.removeYes'),
         tone: 'danger',
@@ -213,6 +270,11 @@ export function RemoveForm({
     )
       return
     try {
+      if (source?.remove) {
+        setBusy(true)
+        onDone(await source.remove(file, why))
+        return
+      }
       const done = await remove.mutateAsync({ fileId: file.id, reason: why })
       // the row is removed; its copy in storage may not be (the manager finishes it)
       onDone(
@@ -222,6 +284,8 @@ export function RemoveForm({
       )
     } catch (x) {
       setErr(msgOf(x))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -232,10 +296,10 @@ export function RemoveForm({
         className="border-red/40 bg-red-bg/40 flex flex-col gap-2 rounded-md border p-3"
       >
         <Field
-          label={t('supportingFiles.removeReason')}
+          label={source?.reasonLabel ?? t('supportingFiles.removeReason')}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder={t('supportingFiles.removeReasonPh')}
+          placeholder={source?.reasonPlaceholder ?? t('supportingFiles.removeReasonPh')}
           maxLength={300}
           required
         />
@@ -245,15 +309,15 @@ export function RemoveForm({
           </p>
         )}
         <span className="flex flex-wrap gap-2">
-          <Button type="submit" size="sm" variant="danger" loading={remove.isPending}>
-            {!remove.isPending && <Trash2 size={14} aria-hidden="true" />}
+          <Button type="submit" size="sm" variant="danger" loading={remove.isPending || busy}>
+            {!(remove.isPending || busy) && <Trash2 size={14} aria-hidden="true" />}
             {t('supportingFiles.removeSend')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onCancel}>
             {t('supportingFiles.cancel')}
           </Button>
         </span>
-        <p className="text-ink-3 m-0 text-[12px]">{t('supportingFiles.removeRule')}</p>
+        {rule && <p className="text-ink-3 m-0 text-[12px]">{rule}</p>}
       </form>
     </Reveal>
   )
@@ -531,13 +595,17 @@ export function FileViewer({
   files,
   startId,
   patientName,
+  source,
   onClose,
   onMessage,
 }: {
   /** The files one may open (not removed), in the order of the cards. */
-  files: PatientFileDoc[]
+  files: ViewerFile[]
   startId: string
+  /** Whose files they are (a patient, or an employee for the documents of 0116). */
   patientName: string
+  /** Files that are not a patient's: how a link is asked for and how one is removed. */
+  source?: ViewerSource
   onClose: () => void
   /** The card's message line (the result of a removal). */
   onMessage?: (message: Msg | null) => void
@@ -554,7 +622,7 @@ export function FileViewer({
   const found = files.findIndex((f) => f.id === currentId)
   const index = found >= 0 ? found : 0
   const file = files[index] ?? null
-  const link = useFileLink(file?.id ?? null)
+  const link = useFileLink(file?.id ?? null, true, source?.open)
   const fresh = linkFresh(link.data, now)
   const loading = !fresh && link.isFetching
   const expired = !!link.data && !fresh && !link.isFetching
@@ -666,7 +734,7 @@ export function FileViewer({
   const name = fileName(file)
   const KindIcon = pdf ? FileText : picture ? ImageIcon : FileIcon
   const meta = [
-    t(`supportingFiles.kinds.${file.kind}`),
+    source?.kindLabel?.(file) ?? t(`supportingFiles.kinds.${file.kind}`),
     file.test ? t('supportingFiles.forTest', { test: file.test }) : null,
     t('supportingFiles.addedBy', {
       name: file.uploadedBy ?? t('supportingFiles.someone'),
@@ -892,6 +960,7 @@ export function FileViewer({
             <RemoveForm
               file={file}
               patientName={patientName}
+              source={source}
               onDone={(m) => {
                 setRemoving(false)
                 onMessage?.(m)

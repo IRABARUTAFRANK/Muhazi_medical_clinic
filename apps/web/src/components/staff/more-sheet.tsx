@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import {
+  FolderLock,
   KeyRound,
   LayoutDashboard,
   Lock,
@@ -211,6 +212,18 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
           >
             <ActionIcon icon={KeyRound} />
             <RowText label={t('common.changePin')} hint={t('common.changePinHint')} />
+          </button>
+          {/* the licence, contract and other papers the clinic keeps for the person (0116) */}
+          <button
+            type="button"
+            className={cn(row, tint.teal)}
+            onClick={() => {
+              onClose()
+              actions.myDocuments()
+            }}
+          >
+            <ActionIcon icon={FolderLock} />
+            <RowText label={t('common.myDocuments')} hint={t('common.myDocumentsHint')} />
           </button>
           <button type="button" className={cn(row, tint.red)} onClick={actions.signOut}>
             <ActionIcon icon={LogOut} />

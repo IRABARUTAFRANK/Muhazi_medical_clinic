@@ -124,7 +124,8 @@ export interface OpenedFile {
   id: string
   /** A link valid 5 minutes (sample mode: an object URL). */
   url: string
-  mimeType: FileMime
+  /** A FileMime for a patient's file; an employee's document (0116) may also be a Word file. */
+  mimeType: string
   title: string
   expiresAt: string
 }
@@ -678,13 +679,19 @@ export const linkFresh = (f: OpenedFile | null | undefined, now = Date.now()) =>
  * minutes). Only enable it where opening is not a recorded look (a file of today's visit: the
  * thumbnails), or when the person opened the file (the viewer).
  */
-export function useFileLink(fileId: string | null, enabled = true) {
+export function useFileLink(
+  fileId: string | null,
+  enabled = true,
+  /** How the link is asked for: a patient's file by default; an employee's document (0116)
+   *  gives its own opener (lib/api/staff-documents). */
+  open: (fileId: string) => Promise<OpenedFile> = openFileLink,
+) {
   const qc = useQueryClient()
   return useQuery({
     queryKey: fileLinkKey(fileId ?? ''),
     enabled: enabled && !!fileId,
     queryFn: async () => {
-      const o = await openFileLink(fileId!)
+      const o = await open(fileId!)
       // opening a past visit's file is logged
       void qc.invalidateQueries({ queryKey: ['privacy'] })
       return o

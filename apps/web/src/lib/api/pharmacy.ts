@@ -146,6 +146,8 @@ export function usePharmacyActions() {
       line: PharmacyLine
       quantity: number
       locationId?: string | null
+      /** The cash price was confirmed with the insurer (the 'ask' rule, 0115). */
+      confirm?: boolean
     }): Promise<DispensePartResult> => {
       const { remaining } = partOf(i.line)
       // a medicine sold only by the whole pack: the last pack may pass what remains (due, 0107)
@@ -170,7 +172,10 @@ export function usePharmacyActions() {
       }
       // the whole remainder: no quantity (an old database knows no p_quantity)
       if (n !== remaining) args.p_quantity = n
-      const { data, error } = await supabase.rpc('dispense_prescription', args)
+      const { data, error } = await supabase.rpc(
+        i.confirm ? 'dispense_prescription_confirmed' : 'dispense_prescription',
+        args,
+      )
       if (error) throw apiError(error)
       const d = (data ?? {}) as {
         charged?: boolean

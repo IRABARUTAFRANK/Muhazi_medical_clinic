@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useConfirm } from '@/lib/confirm'
+import { ApiError } from '@/lib/api/errors'
 import { formatRwf, formatTime } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
 import { card } from '@/components/dash/kit-style'
@@ -283,7 +284,31 @@ function HandOverPanel({
   ): Promise<number | null> => {
     setGiving(q.requestId)
     try {
-      const r = await dispensePart.mutateAsync({ line: q, quantity: n, locationId: storeChoice })
+      const dispense = (confirmed = false) =>
+        dispensePart.mutateAsync({
+          line: q,
+          quantity: n,
+          locationId: storeChoice,
+          confirm: confirmed,
+        })
+      let r: Awaited<ReturnType<typeof dispense>>
+      try {
+        r = await dispense()
+      } catch (e) {
+        // not on the insurer's list and the insurer wants to be asked (0115): confirm, then once more
+        if (!(e instanceof ApiError && e.hint === 'ask_insurer')) throw e
+        if (
+          !(await confirm({
+            title: t('confirm.visit.askInsurer', { item: q.item, insurer: q.payer ?? '' }),
+            body: t('confirm.visit.askInsurerBody', {
+              price: formatRwf(Math.round((q.cashPrice ?? 0) * n)),
+            }),
+            confirmLabel: t('confirm.visit.askInsurerYes'),
+          }))
+        )
+          return null
+        r = await dispense(true)
+      }
       setAmounts((a) => {
         const rest = { ...a }
         delete rest[q.requestId]
@@ -749,6 +774,26 @@ function HandOverPanel({
                                       q.payerPrice !== q.cashPrice &&
                                       ` · ${t('pharmacy.payerEach', { payer: q.payer, amount: formatRwf(q.payerPrice) })}`}
                                   </span>
+                                  {/* the insurer has no price for it (0115): its rule */}
+                                  {q.payer && q.priceSource === 'cash' && (
+                                    <span
+                                      className={cn(
+                                        'block text-[12px] font-semibold',
+                                        q.notListedRule === 'cash_covered'
+                                          ? 'text-amber'
+                                          : 'text-red',
+                                      )}
+                                    >
+                                      {t(
+                                        q.notListedRule === 'not_covered'
+                                          ? 'pharmacy.notListed.notCovered'
+                                          : q.notListedRule === 'ask'
+                                            ? 'pharmacy.notListed.ask'
+                                            : 'pharmacy.notListed.cash',
+                                        { payer: q.payer },
+                                      )}
+                                    </span>
+                                  )}
                                   {/* whole packs at the pack price, pieces at the piece
                                       price: the line of what is given now, as the bill says it */}
                                   {p.n > 0 && (priced.packs > 0 || p.size) && (

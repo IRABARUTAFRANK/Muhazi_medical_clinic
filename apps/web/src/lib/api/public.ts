@@ -4,6 +4,7 @@ import {
   CLINIC,
   CLINIC_HOURS,
   CLINIC_PROFILE,
+  FEATURES,
   INSURERS,
   PRACTITIONERS,
   SERVICES,
@@ -235,8 +236,14 @@ export function usePayers() {
 export interface ClinicInfo {
   profile: ClinicProfile
   hours: ClinicHours
+  /** The clinic works with insurers (insurance.enabled is on and an insurer is active, 0115). */
+  insurance: boolean
 }
-const SAMPLE_INFO: ClinicInfo = { profile: CLINIC_PROFILE, hours: CLINIC_HOURS }
+const SAMPLE_INFO: ClinicInfo = {
+  profile: CLINIC_PROFILE,
+  hours: CLINIC_HOURS,
+  insurance: FEATURES.insurance && INSURERS.length > 0,
+}
 
 export function useClinicInfo() {
   return useQuery({
@@ -246,10 +253,15 @@ export function useClinicInfo() {
         async () => {
           const { data, error } = await supabase!.rpc('public_clinic_info')
           if (error) throw error
-          const d = (data ?? {}) as { profile?: Partial<ClinicProfile>; hours?: ClinicHours }
+          const d = (data ?? {}) as {
+            profile?: Partial<ClinicProfile>
+            hours?: ClinicHours
+            insurance?: boolean
+          }
           return {
             profile: { ...CLINIC_PROFILE, ...(d.profile ?? {}) },
             hours: d.hours?.days ? d.hours : CLINIC_HOURS,
+            insurance: d.insurance === true,
           }
         },
         () => SAMPLE_INFO,

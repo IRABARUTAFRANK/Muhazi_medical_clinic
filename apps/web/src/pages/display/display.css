@@ -1,0 +1,458 @@
+/*
+ * The waiting-room screen (a TV, 1366×768 to 1920×1080; readable on a tablet). Dark, high
+ * contrast, in the clinic's brand: the navy of the logo, the gold of its sun for the tickets,
+ * the green of its hills for "results ready". Every size follows the screen (vh / vw) and the
+ * number of desk columns (--cols), so nothing ever scrolls on a TV.
+ */
+.display-root {
+  --cols: 3;
+  --dp-gold: #f6c544;
+  --dp-green: #37a935;
+  --dp-sky: #7fd0ff;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  background:
+    radial-gradient(900px 500px at 92% -10%, rgba(57, 169, 223, 0.35), transparent 60%),
+    radial-gradient(800px 500px at -6% 110%, rgba(55, 169, 53, 0.35), transparent 60%),
+    linear-gradient(160deg, #0b2252 0%, #0f2f6e 55%, #10306a 100%);
+  font-family: var(--mmc-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- header ---------- */
+.display-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+  padding: 1.2vh 2vw;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.18);
+}
+.display-logo {
+  width: 6.4vh;
+  height: 6.4vh;
+  border-radius: 9999px;
+  object-fit: cover;
+  flex: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+.display-clinic {
+  font-size: min(3.6vh, 2.2vw);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.display-sub {
+  font-size: min(2.2vh, 1.3vw);
+  opacity: 0.8;
+}
+.display-clock {
+  margin-left: auto;
+  text-align: right;
+  line-height: 1.05;
+}
+.display-time {
+  font-size: min(5.4vh, 3.4vw);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.display-date {
+  font-size: min(2.1vh, 1.3vw);
+  opacity: 0.85;
+}
+
+/* ---------- desks ---------- */
+.display-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: 1.4vw;
+  padding: 1.6vh 2vw;
+}
+.display-desk {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.6vh;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+.display-desk-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1vw;
+  padding: 1.2vh 1.4vw;
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: min(3.4vh, calc(8vw / var(--cols)));
+  font-weight: 800;
+  line-height: 1.1;
+}
+.display-count {
+  flex: none;
+  font-size: min(2.1vh, calc(4.6vw / var(--cols)));
+  font-weight: 600;
+  padding: 0.5vh 0.9vw;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.16);
+  white-space: nowrap;
+}
+.display-now {
+  flex: none;
+  padding: 1.4vh 1.4vw 1.2vh;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.display-label {
+  font-size: min(2vh, calc(4.4vw / var(--cols)));
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.display-ticket {
+  font-size: min(11vh, calc(26vw / var(--cols)));
+  font-weight: 900;
+  line-height: 1;
+  color: var(--dp-gold);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.display-name {
+  font-size: min(5vh, calc(10vw / var(--cols)));
+  font-weight: 800;
+  line-height: 1.12;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.display-go {
+  margin-top: 0.8vh;
+  font-size: min(3.4vh, calc(7vw / var(--cols)));
+  font-weight: 700;
+  color: var(--dp-sky);
+  line-height: 1.15;
+}
+.display-go-person {
+  font-size: min(2.4vh, calc(5vw / var(--cols)));
+  font-weight: 500;
+  opacity: 0.9;
+}
+.display-earlier {
+  margin-top: 0.8vh;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6vh 1vw;
+  font-size: min(2.2vh, calc(4.8vw / var(--cols)));
+  opacity: 0.85;
+}
+.display-earlier span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.display-earlier b {
+  color: var(--dp-gold);
+}
+.display-next {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1vh 1.4vw 1vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.display-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+  padding: 0.75vh 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: min(3.1vh, calc(6.4vw / var(--cols)));
+  line-height: 1.2;
+}
+.display-row:last-child {
+  border-bottom: 0;
+}
+.display-row b {
+  flex: none;
+  color: var(--dp-gold);
+  font-weight: 800;
+  min-width: 4.5ch;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.display-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.display-dot {
+  flex: none;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+.display-dot-1 {
+  background: #ef4444;
+}
+.display-dot-2 {
+  background: #f59e0b;
+}
+.display-dot-3 {
+  background: #10b981;
+}
+.display-urgent {
+  flex: none;
+  font-size: 0.6em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.15em 0.6em;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+.display-empty {
+  opacity: 0.7;
+  font-size: min(2.6vh, calc(5.4vw / var(--cols)));
+  padding: 1vh 0;
+}
+
+/* ---------- results strip and the message ---------- */
+.display-foot {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.22);
+}
+.display-results {
+  flex: 0 1 auto;
+  max-width: 64%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+  padding: 1.2vh 2vw;
+  background: linear-gradient(90deg, rgba(55, 169, 53, 0.55), rgba(55, 169, 53, 0.15));
+  overflow: hidden;
+}
+.display-results-title {
+  flex: none;
+  font-size: min(2.6vh, 1.6vw);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.display-results-hint {
+  display: block;
+  font-size: 0.7em;
+  font-weight: 500;
+  opacity: 0.85;
+}
+.display-chips {
+  display: flex;
+  gap: 0.8vw;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.display-chip {
+  flex: none;
+  padding: 0.7vh 1vw;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0b2252;
+  font-size: min(2.6vh, 1.5vw);
+  font-weight: 700;
+}
+.display-chip b {
+  color: #1f6f3f;
+}
+.display-message {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 1.2vh 2vw;
+  font-size: min(2.6vh, 1.5vw);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+}
+.display-message span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- a new call: the whole "now" block pulses and the ticket glows ---------- */
+@keyframes display-call {
+  0% {
+    background: rgba(246, 197, 68, 0);
+  }
+  12% {
+    background: rgba(246, 197, 68, 0.45);
+  }
+  28% {
+    background: rgba(246, 197, 68, 0.08);
+  }
+  44% {
+    background: rgba(246, 197, 68, 0.45);
+  }
+  60% {
+    background: rgba(246, 197, 68, 0.08);
+  }
+  76% {
+    background: rgba(246, 197, 68, 0.35);
+  }
+  100% {
+    background: rgba(246, 197, 68, 0);
+  }
+}
+@keyframes display-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 0 rgba(246, 197, 68, 0);
+    transform: scale(1);
+  }
+  50% {
+    text-shadow: 0 0 28px rgba(246, 197, 68, 0.9);
+    transform: scale(1.04);
+  }
+}
+.display-now.is-new {
+  animation: display-call 6s ease-out 1;
+}
+.display-now.is-new .display-ticket {
+  animation: display-glow 1.2s ease-in-out 5;
+  transform-origin: left center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .display-now.is-new,
+  .display-now.is-new .display-ticket {
+    animation: none;
+    background: rgba(246, 197, 68, 0.25);
+  }
+}
+
+/* ---------- the start overlay and messages ---------- */
+.display-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 34, 82, 0.86);
+  backdrop-filter: blur(6px);
+  z-index: 10;
+}
+.display-overlay-card {
+  max-width: min(640px, 90vw);
+  text-align: center;
+  padding: 4vh 4vw;
+  border-radius: 2vh;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.display-overlay-card h1 {
+  font-size: min(4.6vh, 3vw);
+  margin: 0 0 1vh;
+}
+.display-overlay-card p {
+  font-size: min(2.6vh, 1.6vw);
+  opacity: 0.9;
+  margin: 0 0 3vh;
+}
+.display-start {
+  font-size: min(3.4vh, 2vw);
+  font-weight: 800;
+  padding: 1.6vh 3vw;
+  border-radius: 9999px;
+  border: 0;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, #37a935 0%, #2a8a2a 100%);
+  box-shadow: 0 12px 28px rgba(55, 169, 53, 0.35);
+}
+.display-start:hover {
+  filter: brightness(1.06);
+}
+.display-sound {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5vw;
+  padding: 0.8vh 1vw;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: min(2vh, 1.2vw);
+  font-weight: 600;
+  cursor: pointer;
+}
+.display-offline {
+  flex: none;
+  padding: 0.8vh 1vw;
+  border-radius: 9999px;
+  background: rgba(239, 68, 68, 0.85);
+  font-size: min(2vh, 1.2vw);
+  font-weight: 700;
+}
+.display-notice {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4vh 6vw;
+  font-size: min(4vh, 2.4vw);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* ---------- tablets and phones: one column, the page may scroll ---------- */
+@media (max-width: 900px) {
+  .display-root {
+    --cols: 1;
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
+  }
+  .display-main {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+  .display-desk {
+    min-height: 40vh;
+  }
+  .display-foot {
+    flex-direction: column;
+  }
+  .display-chips {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+  .display-message {
+    white-space: normal;
+  }
+}

@@ -57,6 +57,10 @@ import { useHoldsStore, useStoreStock, type MyStore } from '@/lib/api/rooms'
 import { priceQuantity } from '@/lib/pack-pricing'
 import { priceLineText, saleModeText, wholePacksText } from '@/pages/stock/stock-util'
 import { ApiError, errorKind } from '@/lib/api/errors'
+import { useVisitBill } from '@/lib/api/billing'
+import { tariffLine, useInsurerTariff } from '@/lib/api/insurers'
+import { useInsuranceEnabled } from '@/lib/api/settings'
+import { insurerLineText, insurerLineTone } from '@/lib/insurer-price'
 import { TestFilesChip } from '@/components/clinical/supporting-files'
 import { registrationText, useMyCredentials } from '@/lib/api/staff'
 import { stationFor, type Station } from '@/lib/api/visits'
@@ -203,6 +207,10 @@ export function ClinicalCard({
   const { data, error, refetch } = useVisitClinical(encounterId)
   const actions = useClinicalActions(encounterId)
   const { data: items = [] } = useItems()
+  // the visit's insurer (0115): what it pays for each medicine, said under the line
+  const insurance = useInsuranceEnabled()
+  const payerId = useVisitBill(encounterId).data?.payerId ?? null
+  const { data: tariff } = useInsurerTariff(insurance ? payerId : null)
   const { data: treatments = [] } = useTreatments(true)
   // Orderable treatments, grouped by the desk that carries them out.
   const tests = treatments.filter((x) => x.orderStation)
@@ -1291,6 +1299,38 @@ export function ClinicalCard({
                           <Badge tone={note.tone} className="self-start" aria-live="polite">
                             {note.text}
                           </Badge>
+                        ) : null
+                      })()}
+                      {/* on an insurer: its price for the medicine and the split (0115) */}
+                      {(() => {
+                        if (
+                          !tariff ||
+                          !line.item ||
+                          outsideOnly(line.item) ||
+                          line.supply === 'outside'
+                        )
+                          return null
+                        const row = tariffLine(tariff, { itemId: line.item })
+                        const text = insurerLineText(
+                          t,
+                          row,
+                          tariff.name,
+                          Number(line.quantity) || 1,
+                        )
+                        const tone = insurerLineTone(row)
+                        return text ? (
+                          <span
+                            className={cn(
+                              'text-[13px] font-semibold',
+                              tone === 'teal'
+                                ? 'text-teal'
+                                : tone === 'red'
+                                  ? 'text-red'
+                                  : 'text-amber',
+                            )}
+                          >
+                            {text}
+                          </span>
                         ) : null
                       })()}
                       {line.item === TYPED && (

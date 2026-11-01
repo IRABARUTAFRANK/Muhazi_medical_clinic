@@ -13,8 +13,10 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^this category still has (.+?) treatment\(s\): move them to another category first$/, 'dbErrors.67568016', 1], // delete_category
   [/^this medicine is bought at an outside pharmacy: the clinic does not give it$/, 'dbErrors.9ca9150e', 0], // dispense_prescription
   [/^a medicine on a posted bill is taken back by the pharmacist or the manager$/, 'dbErrors.012c5edf', 0], // return_medicine
+  [/^not allowed: an employee sees their own documents, the manager everyone's$/, 'dbErrors.888650d3', 0], // staff_documents
   [/^only the clinician who wrote the diagnosis \(or the manager\) can change it$/, 'dbErrors.31b050c2', 0], // remove_condition, update_condition
   [/^only the manager, or a head for their own department, can send messages$/, 'dbErrors.cdc4fb66', 0], // send_notification
+  [/^the rule for a line without a price is cash_covered, not_covered or ask$/, 'dbErrors.a588956d', 0], // upsert_payer
   [/^this test was marked "not done": order it again if it is done after all$/, 'dbErrors.d5d5700e', 0], // record_result
   [/^money is still due \((.+?) RWF\): take the payment first, or ask the manager$/, 'dbErrors.141acc9e', 1], // end_visit
   [/^no code was asked for this visit, or it has expired: ask for a new one$/, 'dbErrors.33a6138f', 0], // verify_visit_edit
@@ -36,6 +38,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only doctors, sonographers, nurses and managers keep a calendar$/, 'dbErrors.bfaad0ce', 0], // save_calendar
   [/^this medicine was already given or cancelled: it stays as it is$/, 'dbErrors.6b5fd4a1', 0], // rx_set_supply
   [/^only the pharmacy \(or the manager\) sends stock to a room store$/, 'dbErrors.37f09728', 0], // send_to_room
+  [/^not allowed: only the manager removes an employee's documents$/, 'dbErrors.4b7a938c', 0], // remove_staff_document
   [/^only doctors, sonographers, nurses and managers can be booked$/, 'dbErrors.abb6e23b', 0], // ensure_practitioner
   [/^the expiry window is a whole number of days between 1 and 365$/, 'dbErrors.0c52507e', 0], // save_setting
   [/^too many requests for this phone today; please call reception$/, 'dbErrors.810d2ad5', 0], // create_appointment_inquiry
@@ -53,10 +56,12 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a medicine given on another day is put back by the manager$/, 'dbErrors.686cc9cc', 0], // undo_given_here
   [/^a medicine is deleted with the Delete button \(the manager\)$/, 'dbErrors.723bf2d6', 0], // guard_item
   [/^each line needs a medicine and a whole quantity above zero$/, 'dbErrors.190d862f', 0], // note_lines, request_refill
+  [/^not allowed: only the manager adds an employee's documents$/, 'dbErrors.e622f10e', 0], // add_staff_document
   [/^sign-in not approved: sign in again with the e-mailed code$/, 'dbErrors.5cc5c060', 0], // check_request, mark_pin_changed, record_sign_in, …
   [/^too many codes were asked for this visit: wait ten minutes$/, 'dbErrors.b9f31c34', 0], // request_visit_edit
   [/^you may not take payments \(the manager has not allowed it\)$/, 'dbErrors.fd6af5fe', 0], // take_counter_payment, take_payment
   [/^automatic charges are made by the desk that does the work$/, 'dbErrors.b9366b99', 0], // add_charge
+  [/^not allowed: only the manager sees the documents expiring$/, 'dbErrors.33c23713', 0], // staff_documents_expiring
   [/^only the person who gave it \(or the manager\) puts it back$/, 'dbErrors.59c7579c', 0], // undo_given_here
   [/^only the pharmacy \(or the manager\) cancels a note it sent$/, 'dbErrors.00a8d6e8', 0], // cancel_transfer
   [/^prescriptions are written with the prescription form only$/, 'dbErrors.742b059a', 0], // guard_medication_request
@@ -75,6 +80,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a payment of another day is cancelled by the manager$/, 'dbErrors.56c50d9e', 0], // void_payment
   [/^a prescription is not deleted: the doctor cancels it$/, 'dbErrors.df956bc2', 0], // guard_medication_request
   [/^a request to every doctor is left for another doctor$/, 'dbErrors.7fdd4de2', 0], // respond_help
+  [/^no row of the list matches a treatment or a medicine$/, 'dbErrors.6c0f8be3', 0], // import_price_list
   [/^not allowed: the manager reads the record access log$/, 'dbErrors.6ffee40d', 0], // record_access_log
   [/^only a patient already sent to (.+?) can be called there$/, 'dbErrors.127f3a31', 1], // answer_call
   [/^only the doctor of this calendar accepts the booking$/, 'dbErrors.afbe8a94', 0], // accept_appointment
@@ -134,6 +140,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only a medicine given here is put back here$/, 'dbErrors.a1741a01', 0], // undo_given_here
   [/^the practitioner does not work at that time$/, 'dbErrors.bfdfdfe1', 0], // create_appointment_inquiry
   [/^this call was already answered or cancelled$/, 'dbErrors.bb89a226', 0], // answer_call
+  [/^this screen key is not known or was revoked$/, 'dbErrors.342cdbff', 0], // display_board
   [/^a submitted claim batch cannot be reopened$/, 'dbErrors.e0453e4d', 0], // guard_submitted_batch
   [/^bed stays have their own built-in category$/, 'dbErrors.42373ee2', 0], // save_category
   [/^choose the nurse who took the measurements$/, 'dbErrors.63ee378a', 0], // record_vitals
@@ -154,9 +161,12 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^charge not found or bill already posted$/, 'dbErrors.ffcee653', 0], // void_charge
   [/^flow\.triage_first must be true or false$/, 'dbErrors.d4fd33e8', 0], // save_setting
   [/^give the expiry date written on the box$/, 'dbErrors.a4a537bf', 0], // receive_batch
+  [/^insurance\.enabled must be true or false$/, 'dbErrors.ccd93097', 0], // save_setting
   [/^lines of a posted invoice cannot change$/, 'dbErrors.7605b40b', 0], // guard_posted_invoice_lines
   [/^the price of a night cannot be negative$/, 'dbErrors.4cee318d', 0], // save_bed, set_bed_count
   [/^this booking already has a patient file$/, 'dbErrors.6f27ce8c', 0], // appointment_arrived
+  [/^this patient has already left this desk$/, 'dbErrors.9800fbfe', 0], // call_patient
+  [/^this screen is not known or was revoked$/, 'dbErrors.a3109bfa', 0], // revoke_display_screen, save_display_screen
   [/^too many wrong codes: ask for a new one$/, 'dbErrors.a67c9d35', 0], // verify_visit_edit
   [/^you already have a booking at that time$/, 'dbErrors.9e1f26ad', 0], // accept_appointment
   [/^a reason is required for a typed price$/, 'dbErrors.1d3f4f34', 0], // add_charge_internal
@@ -201,7 +211,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^write the findings or the conclusion$/, 'dbErrors.42ac37c9', 0], // correct_result, record_result
   [/^a reason is required for a discount$/, 'dbErrors.e4a08c28', 0], // add_charge_internal
   [/^cash, MTN MoMo or Airtel Money only$/, 'dbErrors.b5dc6a37', 0], // refund_payment
-  [/^give a service or an item, not both$/, 'dbErrors.9bbb9d28', 0], // add_charge_internal
+  [/^give a service or an item, not both$/, 'dbErrors.9bbb9d28', 0], // add_charge_internal, set_insurer_price
   [/^that person does not work at triage$/, 'dbErrors.262c8d2f', 0], // begin_visit
   [/^the quantity must be more than zero$/, 'dbErrors.c4581db5', 0], // sell_medicine
   [/^trust_days must be between 0 and 90$/, 'dbErrors.51a74868', 0], // save_setting
@@ -232,8 +242,9 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^say why the payment is cancelled$/, 'dbErrors.b51b0c3b', 0], // void_payment
   [/^the minimum must be zero or more$/, 'dbErrors.cf43555e', 0], // set_store_min
   [/^this patient is already in a bed$/, 'dbErrors.ae436dd1', 0], // admit_to_bed
+  [/^this patient is not waiting at (.+?)$/, 'dbErrors.f45d52da', 1], // call_patient_at
   [/^this store is kept by the system$/, 'dbErrors.b04ff339', 0], // save_location, set_location_active
-  [/^unknown or inactive service\/item$/, 'dbErrors.377e78c4', 0], // add_charge_internal
+  [/^unknown or inactive service\/item$/, 'dbErrors.377e78c4', 0], // add_charge_internal, set_insurer_price
   [/^choose a person or a department$/, 'dbErrors.fef9c567', 0], // assign_store_holder
   [/^choose who may see the calendar$/, 'dbErrors.719b354e', 0], // save_calendar
   [/^detail too large \(8 KB at most\)$/, 'dbErrors.3c551f18', 0], // report_client_event
@@ -262,11 +273,11 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the count must be zero or more$/, 'dbErrors.a76c43a4', 0], // adjust_stock
   [/^the file to keep was not found$/, 'dbErrors.218e63a2', 0], // merge_patients
   [/^the level must be zero or more$/, 'dbErrors.22d59505', 0], // set_reorder_level
-  [/^the price must be zero or more$/, 'dbErrors.2a3b65c5', 0], // add_stock, apply_item_packaging, set_pack_price, …
+  [/^the price must be zero or more$/, 'dbErrors.2a3b65c5', 0], // add_stock, apply_item_packaging, set_insurer_price, …
   [/^this request is no longer open$/, 'dbErrors.8a6b2dd4', 0], // cancel_refill, decline_refill, send_to_room
   [/^choose an open pharmacy store$/, 'dbErrors.09f3f21a', 0], // create_counter_sale, dispense_fefo, dispense_prescription, …
   [/^choose where the patient goes$/, 'dbErrors.3bd0dd03', 0], // send_to_stations
-  [/^give the date the list starts$/, 'dbErrors.dd744cc3', 0], // import_reference_list
+  [/^give the date the list starts$/, 'dbErrors.dd744cc3', 0], // import_price_list, import_reference_list
   [/^patient\.fields must be a list$/, 'dbErrors.8d9a82e2', 0], // save_setting
   [/^say why the note is cancelled$/, 'dbErrors.70dd6c48', 0], // cancel_transfer
   [/^say why the sale is cancelled$/, 'dbErrors.6c0d4e0a', 0], // cancel_counter_sale
@@ -274,6 +285,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the national ID has 16 digits$/, 'dbErrors.6f192e5c', 0], // patient_identity
   [/^use record_result for results$/, 'dbErrors.e9fc6b2b', 0], // set_request_status
   [/^cannot post an empty invoice$/, 'dbErrors.e6759543', 0], // post_invoice_now
+  [/^choose at least one language$/, 'dbErrors.9e14d924', 0], // save_display_screen
   [/^the manager keeps every desk$/, 'dbErrors.f8a5683f', 0], // set_role_desk
   [/^the price cannot be negative$/, 'dbErrors.fa080192', 0], // bill_bed_nights
   [/^no open bill for this visit$/, 'dbErrors.5c566a02', 0], // set_visit_payer
@@ -290,9 +302,9 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^count in boxes or in units$/, 'dbErrors.52e68280', 0], // receive_delivery
   [/^emergency access not found$/, 'dbErrors.cf92dadb', 0], // review_emergency_access
   [/^say the price of one piece$/, 'dbErrors.f5cca4c2', 0], // apply_item_packaging
-  [/^the list has too many rows$/, 'dbErrors.0371e135', 0], // import_reference_list
+  [/^the list has too many rows$/, 'dbErrors.0371e135', 0], // import_price_list, import_reference_list
   [/^the treatment needs a name$/, 'dbErrors.36e748b9', 0], // upsert_service
-  [/^this patient was sent to (.+?)$/, 'dbErrors.93d04886', 1], // take_patient
+  [/^this patient was sent to (.+?)$/, 'dbErrors.93d04886', 1], // call_patient, take_patient
   [/^add at least one medicine$/, 'dbErrors.4bef06b3', 0], // add_stock, note_lines, receive_delivery, …
   [/^give a list of treatments$/, 'dbErrors.3e9f8fd8', 0], // bulk_add_services
   [/^quantity must be positive$/, 'dbErrors.69f73443', 0], // dispense_fefo
@@ -309,12 +321,14 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^choose the patient file$/, 'dbErrors.10e1c611', 0], // approve_inquiry, book_appointment
   [/^extra must be an object$/, 'dbErrors.c25b7e9d', 0], // create_patient_file, register_patient_file, update_patient
   [/^give back at most (.+?) RWF$/, 'dbErrors.b06db456', 1], // refund_payment
+  [/^the message is too long$/, 'dbErrors.31dc43d9', 0], // save_display_screen
   [/^this note was already (.+?)$/, 'dbErrors.7a52aafe', 1], // cancel_transfer, confirm_receipt
   [/^this sale was cancelled$/, 'dbErrors.93a0ade5', 0], // take_counter_payment
   [/^transfer note not found$/, 'dbErrors.824ffb2b', 0], // cancel_transfer, confirm_receipt, transfer_note
   [/^unknown patient field (.+?)$/, 'dbErrors.df1edfcb', 1], // save_patient_builtins
   [/^cash cannot be deleted$/, 'dbErrors.2f6d57a9', 0], // delete_payer
   [/^cash is not an insurer$/, 'dbErrors.6e01eb87', 0], // upsert_payer
+  [/^give the screen a name$/, 'dbErrors.021838e4', 0], // save_display_screen
   [/^no bill for this visit$/, 'dbErrors.9c4a340e', 0], // refund_payment, take_payment
   [/^prescription not found$/, 'dbErrors.46ac332f', 0], // cancel_prescription, dispense_prescription, return_medicine, …
   [/^the store needs a name$/, 'dbErrors.fff6f888', 0], // save_location
@@ -322,16 +336,16 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^unknown marital status$/, 'dbErrors.d4abdfed', 0], // patient_check_details
   [/^full name is required$/, 'dbErrors.1dde2d39', 0], // create_appointment_inquiry
   [/^nobody is in this bed$/, 'dbErrors.acef1841', 0], // discharge_bed, extend_bed_stay
-  [/^queue entry not found$/, 'dbErrors.d1f8c0d2', 0], // take_patient
+  [/^queue entry not found$/, 'dbErrors.d1f8c0d2', 0], // call_patient, take_patient
   [/^say what must be done$/, 'dbErrors.54393c79', 0], // create_task
   [/^take the vitals first$/, 'dbErrors.55dbbba4', 0], // send_from_triage
   [/^a reason is required$/, 'dbErrors.f33d287e', 0], // void_charge
   [/^department not found$/, 'dbErrors.b86f7a99', 0], // analytics_scope, assign_store_holder, bulk_add_services, …
-  [/^give the list a name$/, 'dbErrors.d6ff72fe', 0], // import_reference_list
+  [/^give the list a name$/, 'dbErrors.d6ff72fe', 0], // import_price_list, import_reference_list, start_insurer_tariff
   [/^room store not found$/, 'dbErrors.fb0e8bbe', 0], // room_store_summary, save_room_store
   [/^test order not found$/, 'dbErrors.8a617326', 0], // correct_result, record_result
   [/^the lines are a list$/, 'dbErrors.18d283bc', 0], // confirm_receipt
-  [/^the list has no rows$/, 'dbErrors.4f0bcaa5', 0], // import_reference_list
+  [/^the list has no rows$/, 'dbErrors.4f0bcaa5', 0], // import_price_list, import_reference_list
   [/^this bed is not free$/, 'dbErrors.4714e02b', 0], // admit_to_bed
   [/^unknown kind of work$/, 'dbErrors.945df340', 0], // staff_activity_detail
   [/^unknown practitioner$/, 'dbErrors.701c8aca', 0], // create_appointment_inquiry
@@ -341,15 +355,16 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^invalid preferences$/, 'dbErrors.28af7fa1', 0], // save_my_prefs
   [/^treatment not found$/, 'dbErrors.198e4413', 0], // delete_service, set_service_category, set_service_department, …
   [/^a bed needs a name$/, 'dbErrors.b23ff426', 0], // save_bed
-  [/^already taken by (.+?)$/, 'dbErrors.f474865c', 1], // take_patient
+  [/^already taken by (.+?)$/, 'dbErrors.f474865c', 1], // call_patient, take_patient
   [/^category not found$/, 'dbErrors.75188350', 0], // delete_category, save_category, set_service_category
   [/^employee not found$/, 'dbErrors.bc322bff', 0], // retire_staff
   [/^medicine not found$/, 'dbErrors.2ebcebc8', 0], // add_stock, apply_item_packaging, delete_item, …
   [/^unknown adjustment$/, 'dbErrors.7ef19bda', 0], // adjust_prices
+  [/^unknown language (.+?)$/, 'dbErrors.07e0078a', 1], // save_display_screen
   [/^already dispensed$/, 'dbErrors.17b7fdbc', 0], // dispense_prescription
   [/^approve or refuse$/, 'dbErrors.1779e4aa', 0], // answer_record_access
   [/^choose the doctor$/, 'dbErrors.138aa8a0', 0], // approve_inquiry
-  [/^insurer not found$/, 'dbErrors.b8d140db', 0], // delete_payer, upsert_payer
+  [/^insurer not found$/, 'dbErrors.b8d140db', 0], // delete_payer, import_price_list, insurer_tariff_rows, …
   [/^invoice not found$/, 'dbErrors.441e654f', 0], // post_invoice_now
   [/^patient not found$/, 'dbErrors.0b3172fb', 0], // appointment_arrived, patient_file, record_access_check, …
   [/^request not found$/, 'dbErrors.ef08028e', 0], // answer_record_access
@@ -366,7 +381,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^note not found$/, 'dbErrors.ce1437a1', 0], // update_note
   [/^nothing to end$/, 'dbErrors.68af7d37', 0], // cancel_call
   [/^sale not found$/, 'dbErrors.d3cea71f', 0], // cancel_counter_sale, take_counter_payment
-  [/^unknown desk (.+?)$/, 'dbErrors.96eaa90b', 1], // set_role_desk
+  [/^unknown desk (.+?)$/, 'dbErrors.96eaa90b', 1], // save_display_screen, set_role_desk
   [/^unknown reason$/, 'dbErrors.086d3295', 0], // patient_identity, set_no_national_id
   [/^unknown supply$/, 'dbErrors.d6d017fb', 0], // prescribe, rx_set_supply
   [/^bed not found$/, 'dbErrors.af019ac6', 0], // remove_bed, save_bed

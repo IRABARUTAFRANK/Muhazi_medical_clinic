@@ -7,6 +7,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  FolderLock,
   IdCard,
   KeyRound,
   Lightbulb,
@@ -23,6 +24,7 @@ import {
   Wand2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useSearch } from '@tanstack/react-router'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
 import { PageBanner } from '@/components/dash/page-banner'
 import { Avatar } from '@/components/ui/avatar'
@@ -83,6 +85,7 @@ import { matches } from '@/lib/paging'
 import { heroBand } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
 import { RegistrationField } from './registration-field'
+import { StaffDocumentsPanel } from './staff-documents'
 import {
   registrationError,
   registrationForRole,
@@ -318,6 +321,19 @@ export function StaffPage({ user }: { user: StaffUser }) {
   const confirm = useConfirm()
   const [editing, setEditing] = useState<Employee | 'new' | null>(null)
   const [resetFor, setResetFor] = useState<Employee | null>(null)
+  // The employee whose documents (licence, contract…) are open in the drawer (0116); the
+  // dashboard's "Documents expiring" opens it with ?documents=<id>.
+  const search = useSearch({ strict: false }) as { documents?: string }
+  const wanted = search.documents ?? null
+  const [docsId, setDocsId] = useState<string | null>(wanted)
+  // a new ?documents= while the page is open (a second row of the dashboard's panel)
+  const [seenWanted, setSeenWanted] = useState(wanted)
+  if (wanted !== seenWanted) {
+    setSeenWanted(wanted)
+    if (wanted) setDocsId(wanted)
+  }
+  const docsFor = docsId ? (employees.find((e) => e.id === docsId) ?? null) : null
+  const setDocsFor = (e: Employee | null) => setDocsId(e?.id ?? null)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -797,6 +813,16 @@ export function StaffPage({ user }: { user: StaffUser }) {
                                 <Pencil size={15} aria-hidden="true" />
                                 {t('staff.edit')}
                               </Button>
+                              {/* the employee's documents: licence, contract… (0116) */}
+                              <Button
+                                size="sm"
+                                variant="tint-blue"
+                                aria-expanded={docsFor?.id === e.id}
+                                onClick={() => setDocsFor(e)}
+                              >
+                                <FolderLock size={15} aria-hidden="true" />
+                                {t('staffDocs.button')}
+                              </Button>
                               {/* one's own PIN is changed from the menu, not reset here */}
                               {!self && (
                                 <Button
@@ -846,6 +872,24 @@ export function StaffPage({ user }: { user: StaffUser }) {
             ))}
           </>
         )}
+
+        {/* the employee's document file (0116): licence, contract, ID, certificates… */}
+        <SidePanel
+          open={docsFor !== null}
+          onClose={() => setDocsFor(null)}
+          hue="blue"
+          icon={FolderLock}
+          title={docsFor ? t('staffDocs.of', { name: docsFor.fullName }) : ''}
+          subtitle={
+            docsFor
+              ? [docsFor.staffId, employeeRole(docsFor, t)].filter(Boolean).join(' · ')
+              : undefined
+          }
+        >
+          {docsFor && (
+            <StaffDocumentsPanel key={docsFor.id} profileId={docsFor.id} name={docsFor.fullName} />
+          )}
+        </SidePanel>
 
         {pending && (
           <ConfirmCodeDialog

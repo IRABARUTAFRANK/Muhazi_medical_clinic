@@ -5,6 +5,7 @@ import {
   ArrowRight,
   ArrowRightLeft,
   BedDouble,
+  BellRing,
   Building2,
   CalendarCheck,
   CalendarDays,
@@ -47,6 +48,7 @@ import { FOCUS_PANEL } from '@/lib/notice-target'
 import { navForUser } from '@/lib/nav'
 import { BookingAnswer } from './booking-answer'
 import { useTakePatient } from '@/lib/api/visits'
+import { useCallPatient } from '@/lib/api/display'
 import { useConfirm } from '@/lib/confirm'
 import { useSessionCan } from '@/components/clinical/session-desks'
 import { HandoverBadge } from '@/components/clinical/handover-badge'
@@ -106,6 +108,9 @@ export function MyQueuePanel({
     service?: string | null
     /** 0088: handed over by a colleague (waiting for an answer, or taken). */
     handover?: QueueHandover | null
+    /** 0114: told to come on the waiting-room screen, when. */
+    calledAt?: string | null
+    startedAt?: string | null
   })[]
   counts: QueueCounts
   rowAction: 'open' | 'call'
@@ -113,7 +118,26 @@ export function MyQueuePanel({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const take = useTakePatient()
+  const call = useCallPatient()
   const confirm = useConfirm()
+  // "Call" / "Call again": the waiting-room screen tells the patient to come (0114)
+  const callToScreen = async (q: { queueId?: string; name: string; ticket: string }) => {
+    if (!q.queueId) return
+    if (
+      !(await confirm({
+        title: t('confirm.nextPatient.call.title', { name: q.name, ticket: q.ticket }),
+        body: t('confirm.nextPatient.call.body'),
+        confirmLabel: t('confirm.nextPatient.call.yes'),
+      }))
+    )
+      return
+    setError(null)
+    try {
+      await call.mutateAsync({ queueId: q.queueId })
+    } catch (e) {
+      setError(describe(e))
+    }
+  }
   // a patient at triage opens on the triage form for whoever may record vital signs
   const can = useSessionCan()
   const me = useSession((s) => s.user?.id)
@@ -265,15 +289,34 @@ export function MyQueuePanel({
                       {t('access.view')}
                     </Button>
                   ) : q.encounterId ? (
-                    <Button
-                      size="sm"
-                      variant={i === 0 ? 'primary' : 'default'}
-                      loading={take.isPending && take.variables === q.queueId}
-                      onClick={() => void takeAndOpen(q)}
-                    >
-                      <HandHelping size={14} aria-hidden="true" />
-                      {t(q.takenBy ? 'common.open' : 'home.take')}
-                    </Button>
+                    <span className="flex flex-wrap gap-1.5">
+                      <Button
+                        size="sm"
+                        variant={i === 0 ? 'primary' : 'default'}
+                        loading={take.isPending && take.variables === q.queueId}
+                        onClick={() => void takeAndOpen(q)}
+                      >
+                        <HandHelping size={14} aria-hidden="true" />
+                        {t(q.takenBy ? 'common.open' : 'home.take')}
+                      </Button>
+                      {/* waiting: tell them on the waiting-room screen to come (0114) */}
+                      {rowAction === 'call' && q.queueId && !q.takenBy && !q.startedAt && (
+                        <Button
+                          size="sm"
+                          variant="tint-amber"
+                          loading={
+                            call.isPending &&
+                            'queueId' in (call.variables ?? {}) &&
+                            (call.variables as { queueId: string }).queueId === q.queueId
+                          }
+                          onClick={() => void callToScreen(q)}
+                          title={t('nextPatient.callHint')}
+                        >
+                          <BellRing size={14} aria-hidden="true" />
+                          {t(q.calledAt ? 'nextPatient.callAgain' : 'common.call')}
+                        </Button>
+                      )}
+                    </span>
                   ) : (
                     <StaffLink
                       to="/app/queue"

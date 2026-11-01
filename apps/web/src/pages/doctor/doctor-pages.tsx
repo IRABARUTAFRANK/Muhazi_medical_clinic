@@ -21,6 +21,7 @@ import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { PeriodFilter } from '@/components/dash/period-filter'
 import { buttonVariants } from '@/components/ui/button'
 import { OpenFileLink } from '@/components/clinical/file-panel'
+import { NextPatientPanel } from '@/components/clinical/next-patient-panel'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
@@ -166,6 +167,8 @@ export function QueuePage({ user }: { user: StaffUser }) {
         >
           <OpenNextButton user={user} />
         </PageBanner>
+        {/* who to see next: Take opens the visit, Call tells them on the waiting-room screen (0114) */}
+        <NextPatientPanel station={station} />
         <ListBar
           query={query}
           onQuery={setQuery}

@@ -113,6 +113,11 @@ export type ApiErrorKind =
   | 'filesUnavailable'
   | 'sessionExpired'
   | 'storageNotDeleted'
+  // 0116: employee document files (licence, contract…), the manager and the employee only
+  | 'staffDocType'
+  | 'staffDocsUnavailable'
+  | 'staffDocPrivate'
+  | 'staffDocManagerOnly'
   // 0088: handing a patient over to a colleague; cover retired
   | 'handoverNotHolder'
   | 'handoverNotColleague'
@@ -126,6 +131,8 @@ export type ApiErrorKind =
   | 'vitalRange'
   | 'vitalName'
   | 'vitalUnknown'
+  // 0115: a line the insurer has no price for, to confirm with the insurer first
+  | 'askInsurer'
   // sample mode only (the database's own sentence is kept for these)
   | 'alreadyDone'
   | 'notFound'
@@ -134,6 +141,7 @@ const BY_CODE: Record<string, ApiErrorKind> = {
   MS001: 'noOpenBill',
   MS002: 'doctorHolds',
   MS003: 'roomShort',
+  MS004: 'askInsurer',
 }
 
 const BY_HINT: Record<string, ApiErrorKind> = {
@@ -196,6 +204,7 @@ const BY_HINT: Record<string, ApiErrorKind> = {
   vital_range: 'vitalRange',
   vital_name: 'vitalName',
   vital_unknown: 'vitalUnknown',
+  ask_insurer: 'askInsurer',
 }
 
 /** An error from a database function, with its code and hint kept for the screens. */

@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CLINIC_HOURS, CLINIC_PROFILE, type ClinicHours, type ClinicProfile } from '@mmc/shared'
+import {
+  CLINIC_HOURS,
+  CLINIC_PROFILE,
+  FEATURES,
+  type ClinicHours,
+  type ClinicProfile,
+} from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { apiError } from './errors'
 
@@ -84,21 +90,71 @@ let sampleHours = DEFAULT_SESSION_HOURS
 export const sampleSessionHours = () => sampleHours
 const STAFF_KEY = ['settings', 'staff'] as const
 
+export interface StaffSettings {
+  sessionHours: number
+  triageFirst: boolean
+  /** The manager switched insurance on (setting insurance.enabled, 0115). */
+  insuranceEnabled: boolean
+  /** …and at least one insurer is active: the public site and the booking form show insurers. */
+  insuranceActive: boolean
+}
+
 /** Settings every signed-in staff member needs (no settings.read required). */
 export function useStaffSettings() {
   return useQuery({
     queryKey: STAFF_KEY,
     staleTime: 5 * 60_000,
-    queryFn: async (): Promise<{ sessionHours: number; triageFirst: boolean }> => {
-      if (!supabase) return { sessionHours: sampleHours, triageFirst: sampleTriageFirst }
+    queryFn: async (): Promise<StaffSettings> => {
+      if (!supabase)
+        return {
+          sessionHours: sampleHours,
+          triageFirst: sampleTriageFirst,
+          insuranceEnabled: sampleInsurance,
+          insuranceActive: sampleInsurance,
+        }
       const { data, error } = await supabase.rpc('staff_settings')
       if (error) throw apiError(error)
-      const d = data as { session_hours?: number; triage_first?: boolean } | null
+      const d = data as {
+        session_hours?: number
+        triage_first?: boolean
+        insurance_enabled?: boolean
+        insurance_active?: boolean
+      } | null
       const h = Number(d?.session_hours)
       return {
         sessionHours: Number.isFinite(h) && h >= 1 && h <= 12 ? h : DEFAULT_SESSION_HOURS,
         triageFirst: d?.triage_first === true,
+        insuranceEnabled: d?.insurance_enabled === true,
+        insuranceActive: d?.insurance_active === true,
       }
+    },
+  })
+}
+
+/** Is insurance switched on (the Who pays card, the insurer prices, the claims figures)? */
+export function useInsuranceEnabled(): boolean {
+  return useStaffSettings().data?.insuranceEnabled ?? false
+}
+
+let sampleInsurance: boolean = FEATURES.insurance
+/** Manager: the clinic works with insurers (setting insurance.enabled). */
+export function useSaveInsuranceSetting() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!supabase) {
+        sampleInsurance = enabled
+        return
+      }
+      const { error } = await supabase.rpc('save_setting', {
+        p_key: 'insurance.enabled',
+        p_value: enabled,
+      })
+      if (error) throw apiError(error)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: STAFF_KEY })
+      void qc.invalidateQueries({ queryKey: ['public'] })
     },
   })
 }

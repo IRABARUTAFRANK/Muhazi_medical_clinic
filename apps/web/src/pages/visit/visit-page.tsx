@@ -18,8 +18,9 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FEATURES, formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
+import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { LeftButton } from '@/components/clinical/left-button'
+import { NextPatientPanel } from '@/components/clinical/next-patient-panel'
 import { OpenFileLink } from '@/components/clinical/file-panel'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { GlassPill, HeroHead } from '@/components/clinical/hero-head'
@@ -64,6 +65,10 @@ import { openReceipt } from '@/lib/receipt-doc'
 import { useLetterhead } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
 import { useVisitClinical } from '@/lib/api/patients'
+import { useInsuranceEnabled } from '@/lib/api/settings'
+import { tariffLine, useInsurerTariff, type InsurerTariff } from '@/lib/api/insurers'
+import { insurerLineText, insurerLineTone } from '@/lib/insurer-price'
+import { ApiError } from '@/lib/api/errors'
 import { VisitRecordGate, VisitSafetySummary } from '@/components/clinical/record-privacy'
 import { VisitFilesCard } from '@/components/clinical/supporting-files'
 
@@ -161,10 +166,15 @@ export function VisitPage({
   const { data: treatments = [] } = useTreatments(true)
   const { data: myDepartments = [] } = useMyDepartments(user.id)
   const { data: insurers = [] } = useInsurers(true)
+  // insurance on (Settings → Insurance): the Who pays card and the insurer's prices (0115)
+  const insurance = useInsuranceEnabled()
+  const { data: tariff } = useInsurerTariff(insurance ? bill?.payerId : null)
   const actions = useBillingActions(encounterId)
   const [member, setMember] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  // after Finish / send-on at a treating desk: the next patient to take or call (0114)
+  const [offerNext, setOfferNext] = useState(false)
   // the payment just taken, for its receipt
   const [lastPayment, setLastPayment] = useState<{
     receipt: string | null
@@ -357,6 +367,7 @@ export function VisitPage({
                     onDone={(m) => {
                       setActionError(null)
                       setDone(m)
+                      setOfferNext(true)
                     }}
                   />
                 )}
@@ -486,6 +497,10 @@ export function VisitPage({
               <Flash key={done} onClose={() => setDone(null)}>
                 {done}
               </Flash>
+            )}
+            {/* the patient was sent on or has left: who is next for this desk (0114) */}
+            {offerNext && treats && !isReception && !isCashier && (
+              <NextPatientPanel station={myStation} onClose={() => setOfferNext(false)} />
             )}
 
             {/* the pharmacy desk hands this patient's medicines over here (read only to others
@@ -625,7 +640,7 @@ export function VisitPage({
               {!isReception && (
                 <div className="flex flex-col gap-4">
                   {/* Who pays: only once the clinic works with insurers */}
-                  {FEATURES.insurance && (
+                  {insurance && (
                     <Card>
                       <CardHeader icon={ShieldCheck} hue="mint">
                         <span>{t('visit.payer.title')}</span>
@@ -707,6 +722,12 @@ export function VisitPage({
                               <s className="text-ink-3 ml-1">{formatRwf(c.listPrice)}</s>
                             )}
                           </span>
+                          {/* priced at the insurer's price: the cash price beside it (0115) */}
+                          {c.cashPrice != null && c.cashPrice !== c.listPrice && (
+                            <span className="text-ink-3 text-xs tabular-nums">
+                              {t('visit.charges.cashPrice', { price: formatRwf(c.cashPrice) })}
+                            </span>
+                          )}
                           <span className="font-semibold tabular-nums">
                             {formatRwf(Math.round(c.unitPrice * c.quantity))}
                           </span>
@@ -768,6 +789,7 @@ export function VisitPage({
                     onDone={(m) => {
                       setActionError(null)
                       setDone(m)
+                      setOfferNext(true)
                     }}
                     onError={setActionError}
                   />
@@ -865,6 +887,7 @@ export function VisitPage({
                             description: c.description,
                             quantity: c.quantity,
                             unitPrice: c.unitPrice,
+                            cashPrice: c.cashPrice ?? undefined,
                             fullAmount: Math.round(c.unitPrice * c.quantity),
                             amount: c.patientShare,
                           })),
@@ -917,6 +940,8 @@ export function VisitPage({
                     office={myStation}
                     payerId={bill?.payerId ?? null}
                     coveragePct={currentInsurer?.coveragePct ?? 0}
+                    tariff={tariff ?? null}
+                    insurerName={currentInsurer?.name ?? bill?.payerName ?? null}
                     isManager={user.role === 'manager'}
                     // only a finished bill closes the form (not one still loading or unreadable)
                     disabled={!!bill && bill.status !== null && bill.status !== 'draft'}
@@ -1246,6 +1271,8 @@ function AddChargeCard({
   office,
   payerId,
   coveragePct,
+  tariff,
+  insurerName,
   isManager,
   disabled,
   onAdd,
@@ -1259,6 +1286,9 @@ function AddChargeCard({
   office: Station
   payerId: string | null
   coveragePct: number
+  /** The insurer's tariff (0115): the price of each treatment, its source and the split. */
+  tariff: InsurerTariff | null
+  insurerName: string | null
   isManager: boolean
   disabled: boolean
   onAdd: (input: {
@@ -1273,6 +1303,9 @@ function AddChargeCard({
     discountReason?: string
     manualPrice?: number | null
     coveragePct: number
+    cashPrice?: number | null
+    /** The cash price was confirmed with the insurer (the 'ask' rule). */
+    confirm?: boolean
   }) => Promise<void>
 }) {
   const { t, i18n } = useTranslation()
@@ -1295,18 +1328,24 @@ function AddChargeCard({
 
   const selected = treatments.find((x) => x.id === serviceId)
   const picked = selected
+  // the insurer's line (0115): its price, where it comes from and its coverage; else as before
+  const row = payerId && selected ? tariffLine(tariff, { serviceId: selected.id }) : undefined
   const listPrice = selected
-    ? payerId && selected.payerPrices[payerId] != null
-      ? selected.payerPrices[payerId]!
-      : (selected.cashPrice ?? 0)
+    ? (row?.price ??
+      (payerId && selected.payerPrices[payerId] != null
+        ? selected.payerPrices[payerId]!
+        : (selected.cashPrice ?? 0)))
     : 0
+  const linePct = row ? row.coveragePct : coveragePct
   const adj = resolveAdjust(mode, discount, listPrice)
   const d = adj.discountPct
   const manual = adj.manualPrice
   const q = Number(quantity) || 1
   const unit = adj.unit
   const total = Math.round(unit * q)
-  const insurer = Math.round((total * coveragePct) / 100)
+  const insurer = Math.round((total * linePct) / 100)
+  const insurerNote = payerId && row ? insurerLineText(t, row, insurerName ?? '', q) : null
+  const noteTone = insurerLineTone(row)
   const maxDiscount = selected?.maxDiscountPct ?? 0
   const overMax = d > maxDiscount && !isManager
   const mayTypePrice = isManager || !!selected?.allowManualPrice
@@ -1350,20 +1389,44 @@ function AddChargeCard({
       }))
     )
       return
-    setBusy(true)
-    try {
-      await onAdd({
-        encounterId: '',
-        office,
-        serviceId: selected?.id,
-        description: selected?.nameEn ?? '',
-        listPrice,
-        quantity: q,
-        discountPct: d,
-        discountReason: reason,
-        manualPrice: manual,
-        coveragePct,
+    // not on the insurer's list and the insurer wants to be asked: confirm before it is charged
+    const askInsurer = async () =>
+      confirm({
+        title: t('confirm.visit.askInsurer', {
+          item: treatmentName(picked, i18n.language),
+          insurer: insurerName ?? '',
+        }),
+        body: t('confirm.visit.askInsurerBody', { price: formatRwf(total) }),
+        confirmLabel: t('confirm.visit.askInsurerYes'),
       })
+    let confirmed = false
+    if (row?.ask) {
+      if (!(await askInsurer())) return
+      confirmed = true
+    }
+    setBusy(true)
+    const input = {
+      encounterId: '',
+      office,
+      serviceId: selected?.id,
+      description: selected?.nameEn ?? '',
+      listPrice,
+      quantity: q,
+      discountPct: d,
+      discountReason: reason,
+      manualPrice: manual,
+      coveragePct: linePct,
+      cashPrice: selected?.cashPrice ?? null,
+      confirm: confirmed,
+    }
+    try {
+      try {
+        await onAdd(input)
+      } catch (e) {
+        // the database asks (the tariff on screen was older): confirm, then once more
+        if (!(e instanceof ApiError && e.hint === 'ask_insurer') || !(await askInsurer())) throw e
+        await onAdd({ ...input, confirm: true })
+      }
       setServiceId('')
       setDiscount('')
       setReason('')
@@ -1480,8 +1543,19 @@ function AddChargeCard({
                 <span className="text-ink-3 mr-1 line-through">{formatRwf(listPrice)}</span>
               )}
               {t('visit.add.preview', { unit: formatRwf(unit), total: formatRwf(total) })}
-              {coveragePct > 0 &&
+              {linePct > 0 &&
                 ` · ${t('visit.charges.split', { patient: formatRwf(total - insurer), insurer: formatRwf(insurer) })}`}
+            </p>
+          )}
+          {/* the insurer's price and where it comes from (0115) */}
+          {picked && insurerNote && (
+            <p
+              className={cn(
+                'm-0 text-[13px] font-semibold',
+                noteTone === 'teal' ? 'text-teal' : noteTone === 'red' ? 'text-red' : 'text-amber',
+              )}
+            >
+              {insurerNote}
             </p>
           )}
           {error && (

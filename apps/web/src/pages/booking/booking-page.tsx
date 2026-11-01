@@ -3,7 +3,6 @@ import { Calendar, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 import {
   CATEGORY_FILTERS,
-  FEATURES,
   MAX_WEEKS_AHEAD,
   buildCalendar,
   formatDayMonth,
@@ -24,7 +23,7 @@ import { Field } from '@/components/ui/field'
 import { SiteFooter } from '@/components/public/site-footer'
 import { SiteNav, Wrap } from '@/components/public/site-nav'
 import { inquiryErrorKey, sendInquiry } from '@/lib/api/inquiries'
-import { bookedFor, useBookedSlots, usePractitioners } from '@/lib/api/public'
+import { bookedFor, useBookedSlots, useClinicInfo, usePractitioners } from '@/lib/api/public'
 import { appNow, kigaliTime } from '@/lib/clock'
 import { useDayNames } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
@@ -44,6 +43,8 @@ interface BookingPageProps {
  */
 export function BookingPage({ category, onCategoryChange, doctor }: BookingPageProps) {
   const { t } = useTranslation()
+  // the insurance field once the clinic works with insurers (Settings → Insurance, an active insurer)
+  const insurance = useClinicInfo().data?.insurance ?? false
   const dayNames = useDayNames()
   const now = appNow()
 
@@ -364,9 +365,9 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                       placeholder={t('booking.reasonPh')}
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      wrapperClassName={FEATURES.insurance ? undefined : 'sm:col-span-1'}
+                      wrapperClassName={insurance ? undefined : 'sm:col-span-1'}
                     />
-                    {FEATURES.insurance && (
+                    {insurance && (
                       <Field
                         label={t('booking.insurance')}
                         placeholder={t('booking.insurancePh')}

@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import {
   ArrowUpRight,
   Ban,
+  BellRing,
   CircleCheck,
   Clock,
   FlaskConical,
@@ -22,6 +23,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { controlClass, labelClass } from '@/components/ui/field'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useLabActions, type LabOrder, type TestStatus } from '@/lib/api/lab'
+import { useCallPatient } from '@/lib/api/display'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/confirm'
 import { openMedicalReport } from '@/lib/medical-report'
@@ -72,6 +74,8 @@ export function LabOrderRow({
 }) {
   const { t } = useTranslation()
   const actions = useLabActions()
+  // "Call": the waiting-room screen tells the patient to come to the bench (0114)
+  const call = useCallPatient()
   // The steps of a laboratory test are the laboratory desk's, of an imaging one the ultrasound
   // desk's (a department of the person gives it). Someone without it sees the test, not the steps.
   // An order done at another desk: that desk's staff work it (the database checks).
@@ -282,6 +286,40 @@ export function LabOrderRow({
             >
               <FlaskConical size={14} aria-hidden="true" />
               {t('lab.analysing')}
+            </Button>
+          )}
+          {mayWork && !desk && (o.status === 'ordered' || o.status === 'collected') && (
+            <Button
+              size="sm"
+              variant="tint-amber"
+              loading={
+                call.isPending &&
+                'encounterId' in (call.variables ?? {}) &&
+                (call.variables as { encounterId: string }).encounterId === o.encounterId
+              }
+              onClick={async () => {
+                if (
+                  !(await confirm({
+                    title: t('confirm.nextPatient.call.title', {
+                      name: o.patient,
+                      ticket: o.ticket ?? '',
+                    }),
+                    body: t('lab.callHint'),
+                    confirmLabel: t('confirm.nextPatient.call.yes'),
+                  }))
+                )
+                  return
+                void run(() =>
+                  call.mutateAsync({
+                    encounterId: o.encounterId,
+                    station: o.category === 'imaging' ? 'ultrasound' : 'laboratory',
+                  }),
+                )
+              }}
+              title={t('lab.callHint')}
+            >
+              <BellRing size={14} aria-hidden="true" />
+              {t('common.call')}
             </Button>
           )}
           {mayWork && o.status !== 'verified' && o.status !== 'cancelled' && !open && (

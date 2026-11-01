@@ -19,7 +19,6 @@ import {
   CLINIC,
   CLINIC_HOURS,
   CLINIC_PROFILE,
-  FEATURES,
   LANGS,
   formatPhone,
   hoursRows,
@@ -62,6 +61,8 @@ export function LandingPage() {
   const { data: lines = [] } = useServiceLines()
   const { data: payers = [] } = usePayers()
   const { data: info } = useClinicInfo()
+  // the clinic works with insurers (Settings → Insurance, an active insurer)
+  const insurance = info?.insurance ?? false
   const profile = info?.profile ?? CLINIC_PROFILE
   const hours = info?.hours ?? CLINIC_HOURS
   const { data: booked } = useBookedSlots(startOfDay(now), 21)
@@ -211,7 +212,7 @@ export function LandingPage() {
           className="blob anim-drift -bottom-40 left-[-4%] size-[360px] bg-[#6CCB5F]"
         />
         <Wrap className="relative flex flex-col gap-8">
-          {FEATURES.insurance && payers.length > 0 ? (
+          {insurance && payers.length > 0 ? (
             <>
               <div data-reveal>
                 <span className="eyebrow !text-[#9FE39A]">{t('nav.insurance')}</span>
@@ -371,6 +372,8 @@ function Hero({
   insurers: number
 }) {
   const { t } = useTranslation()
+  // the insurance badge and count once the clinic works with insurers
+  const insurance = useClinicInfo().data?.insurance ?? false
   return (
     <section className="hero-photo relative overflow-hidden text-white">
       {/* The clinic's photo behind the whole slogan area: slow zoom, navy tint from the left
@@ -413,8 +416,8 @@ function Hero({
           <div className="flex flex-wrap gap-3 pt-1">
             <FloatBadge icon={FlaskConical} label={t('landing.badges.lab')} />
             <FloatBadge
-              icon={FEATURES.insurance ? ShieldCheck : Wallet}
-              label={t(FEATURES.insurance ? 'landing.badges.insurance' : 'landing.badges.payment')}
+              icon={insurance ? ShieldCheck : Wallet}
+              label={t(insurance ? 'landing.badges.insurance' : 'landing.badges.payment')}
               className="[animation-delay:-2s]"
             />
             <FloatBadge
@@ -426,7 +429,7 @@ function Hero({
           <div className="mt-2 grid grid-cols-2 gap-x-8 gap-y-5 sm:flex sm:flex-wrap sm:gap-10">
             <CountStat to={serviceLines} label={t('landing.stats.serviceLines')} />
             <Stat value={hoursLabel} label={t('landing.stats.hours')} />
-            {FEATURES.insurance && insurers > 0 && (
+            {insurance && insurers > 0 && (
               <CountStat to={insurers} label={t('landing.stats.insurers')} />
             )}
             <CountStat to={LANGS.length} label={t('landing.stats.languages')} />

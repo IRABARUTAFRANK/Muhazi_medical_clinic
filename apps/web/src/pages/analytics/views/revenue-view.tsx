@@ -13,7 +13,8 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FEATURES, formatNumber, formatRwf } from '@mmc/shared'
+import { formatNumber, formatRwf } from '@mmc/shared'
+import { useInsuranceEnabled } from '@/lib/api/settings'
 import { Hint, Kpi, Panel } from '@/components/dash/kit'
 import { delta } from '@/components/dash/kit-style'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -281,6 +282,8 @@ function Breakdown({
   selectedDay: string | null
 }) {
   const { t, i18n } = useTranslation()
+  // the patient / insurer columns once the clinic works with insurers (Settings → Insurance)
+  const insurance = useInsuranceEnabled()
   const T = d.totals
   const empty = <Quiet>{t('analytics.noData')}</Quiet>
   const money = (v: number | null | undefined) => num(v == null ? null : Math.round(v))
@@ -495,7 +498,7 @@ function Breakdown({
   if (by === 'payer')
     return (
       <>
-        {!FEATURES.insurance && <Hint>{t('analytics.revenue.allCash')}</Hint>}
+        {!insurance && <Hint>{t('analytics.revenue.allCash')}</Hint>}
         <DataTable
           rows={d.byPayer}
           rowKey={(r) => r.payerId ?? r.type}
@@ -512,7 +515,7 @@ function Breakdown({
               cell: (r) => num(r.bills),
               sort: (r) => r.bills,
             },
-            ...(FEATURES.insurance
+            ...(insurance
               ? [
                   {
                     key: 'patient',

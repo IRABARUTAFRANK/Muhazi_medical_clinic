@@ -50,6 +50,11 @@ export interface Vital {
 export interface Charge {
   id: string
   description: string
+  /** The treatment or medicine of the line (0115; absent on an older database). */
+  serviceId?: string | null
+  itemId?: string | null
+  /** The cash price on the day, when the line is priced otherwise (an insurer's price). */
+  cashPrice?: number | null
   quantity: number
   unitPrice: number
   listPrice: number
@@ -323,6 +328,10 @@ interface ChargeRow {
   office: Station
   entered_by_name: string | null
   created_at: string
+  /** 0115 (absent before). */
+  service_id?: string | null
+  item_id?: string | null
+  cash_price?: number | string | null
 }
 
 export function useVisitBill(encounterId: string) {
@@ -374,6 +383,9 @@ export function useVisitBill(encounterId: string) {
         charges: ((lines ?? []) as ChargeRow[]).map((c) => ({
           id: c.id,
           description: c.description,
+          serviceId: c.service_id ?? null,
+          itemId: c.item_id ?? null,
+          cashPrice: c.cash_price == null ? null : Number(c.cash_price),
           quantity: Number(c.quantity),
           unitPrice: Number(c.unit_price),
           listPrice: Number(c.list_price ?? c.unit_price),
@@ -407,6 +419,10 @@ export interface AddChargeInput {
   /** A different price per unit (allowed when the treatment permits it, or for the manager). */
   manualPrice?: number | null
   coveragePct?: number
+  /** Sample mode: the cash price, when the line is priced at the insurer's. */
+  cashPrice?: number | null
+  /** The cash price was confirmed with the insurer (the 'ask' rule, 0115). */
+  confirm?: boolean
 }
 
 export function useBillingActions(encounterId: string) {
@@ -432,6 +448,9 @@ export function useBillingActions(encounterId: string) {
         b.charges.push({
           id: `c-${Math.random().toString(36).slice(2, 8)}`,
           description: input.description ?? input.serviceId ?? input.itemId ?? '',
+          serviceId: input.serviceId ?? null,
+          itemId: input.itemId ?? null,
+          cashPrice: input.cashPrice ?? null,
           quantity: input.quantity,
           unitPrice: unit,
           listPrice: input.listPrice ?? 0,
@@ -447,7 +466,7 @@ export function useBillingActions(encounterId: string) {
         recompute(b)
         return
       }
-      const { error } = await supabase.rpc('add_charge', {
+      const { error } = await supabase.rpc(input.confirm ? 'add_charge_confirmed' : 'add_charge', {
         p_encounter_id: encounterId,
         p_office: input.office,
         p_service_id: input.serviceId ?? null,

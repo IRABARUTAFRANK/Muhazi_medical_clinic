@@ -16292,6 +16292,1528 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0114: the waiting-room screen
+await step('0114: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261224090000_waiting_screen.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+const t114 = {}
+await step(
+  '0114: the manager registers a screen and gets its key once; the list never shows the key',
+  async () => {
+    await as(staff.manager)
+    const made = (
+      await one(
+        `select save_display_screen(null, 'Waiting room TV', '{consultation,laboratory}', true, true, '{rw,en}', 'Welcome') as j`,
+      )
+    ).j
+    if (!made.id || typeof made.key !== 'string' || made.key.length !== 64)
+      throw new Error(JSON.stringify(made))
+    t114.screen = made.id
+    t114.key = made.key
+    const list = (await one(`select display_screens() as j`)).j
+    const mine = list.find((s) => s.id === made.id)
+    if (!mine || mine.key !== undefined || mine.name !== 'Waiting room TV' || !mine.active)
+      throw new Error(JSON.stringify(mine))
+    if (mine.desks.join() !== 'consultation,laboratory' || mine.languages.join() !== 'rw,en')
+      throw new Error(JSON.stringify(mine))
+    // a change keeps the key (none is returned); a wrong desk or language is refused
+    const changed = (
+      await one(
+        `select save_display_screen($1, 'Waiting room TV 1', '{consultation,laboratory}', true, false, '{rw}', null) as j`,
+        [made.id],
+      )
+    ).j
+    if (changed.key !== undefined) throw new Error('a change gave a key')
+    const badDesk = await hintAs(
+      staff.manager,
+      `select save_display_screen(null, 'X', '{kitchen}', true, true, '{rw}', null)`,
+    )
+    const badLang = await hintAs(
+      staff.manager,
+      `select save_display_screen(null, 'X', '{}', true, true, '{de}', null)`,
+    )
+    const noName = await hintAs(
+      staff.manager,
+      `select save_display_screen(null, '  ', '{}', true, true, '{rw}', null)`,
+    )
+    // only the manager (settings.write)
+    const rec = await codeAs(
+      staff.receptionist,
+      `select save_display_screen(null, 'X', '{}', true, true, '{rw}', null)`,
+    )
+    const recList = await codeAs(staff.receptionist, `select display_screens()`)
+    if (
+      badDesk !== '22023/screen_desk' ||
+      badLang !== '22023/screen_language' ||
+      noName !== '22023/screen_name' ||
+      rec !== '42501' ||
+      recList !== '42501'
+    )
+      throw new Error(JSON.stringify({ badDesk, badLang, noName, rec, recList }))
+    return `key of ${made.key.length} characters, shown once; refusals ${badDesk}, ${badLang}, ${noName}, ${rec}`
+  },
+)
+await step(
+  '0114: the TV reads the board with its key as a visitor; a wrong or revoked key is refused',
+  async () => {
+    await as(null, 'anon')
+    const b = (await one(`select display_board($1) as j`, [t114.key])).j
+    if (
+      b.clinic !== 'Muhazi Medical Clinic' ||
+      typeof b.version !== 'number' ||
+      !b.now ||
+      b.desks.map((d) => d.station).join() !== 'consultation,laboratory' ||
+      b.languages.join() !== 'rw' ||
+      b.chime !== false ||
+      !Array.isArray(b.results)
+    )
+      throw new Error(JSON.stringify({ ...b, desks: b.desks.map((d) => d.station) }))
+    // nothing clinical in the payload
+    const text = JSON.stringify(b)
+    if (/triage|reason|findings|impression|note/i.test(text)) throw new Error('clinical word')
+    const wrong = await hintAs(null, `select display_board('0000')`)
+    // the visitor may not use the staff functions
+    let anonStaff = ''
+    await as(null, 'anon')
+    try {
+      await db.query(`select display_screens()`)
+    } catch (e) {
+      anonStaff = e.code
+    }
+    let anonCall = ''
+    try {
+      await db.query(`select call_patient(gen_random_uuid())`)
+    } catch (e) {
+      anonCall = e.code
+    }
+    // a second screen, revoked: its key stops at once
+    await as(staff.manager)
+    const second = (
+      await one(`select save_display_screen(null, 'Old TV', '{}', true, true, '{fr}', null) as j`)
+    ).j
+    await db.query(`select revoke_display_screen($1)`, [second.id])
+    const revoked = await hintAs(null, `select display_board($1)`, [second.key])
+    const again = await hintAs(staff.manager, `select revoke_display_screen($1)`, [second.id])
+    await as(staff.manager)
+    const list = (await one(`select display_screens() as j`)).j
+    const old = list.find((s) => s.id === second.id)
+    if (
+      wrong !== '42501/screen_unknown' ||
+      revoked !== '42501/screen_unknown' ||
+      again !== 'P0002/screen_unknown' ||
+      anonStaff !== '42501' ||
+      anonCall !== '42501' ||
+      !old ||
+      old.active ||
+      !old.revokedAt
+    )
+      throw new Error(JSON.stringify({ wrong, revoked, again, anonStaff, anonCall, old }))
+    await asAdmin()
+    return `board read as a visitor (version ${b.version}); wrong key ${wrong}; revoked key ${revoked}; staff functions ${anonStaff}`
+  },
+)
+await step('0114: next: red and yellow first, then arrival; the first five', async () => {
+  await asAdmin()
+  const mk = async (surname, given, phone) =>
+    (
+      await one(
+        `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
+         values ($1, $2, 'female', '1990-01-01', $3, true, true, true) returning id`,
+        [surname, given, phone],
+      )
+    ).id
+  t114.green = { patient: await mk('Uwase', 'Claire', '0788114001') }
+  t114.yellow = { patient: await mk('Mukandori', 'Josiane', '0788114002') }
+  t114.red = { patient: await mk('Habimana', 'Eric', '0788114003') }
+  await as(staff.receptionist)
+  for (const [who, prio] of [
+    ['green', 3],
+    ['yellow', 2],
+    ['red', 1],
+  ]) {
+    const x = t114[who]
+    x.enc = (
+      await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [x.patient])
+    ).id
+    await asAdmin()
+    const q = await one(
+      `update queue_entry set priority = $2 where encounter_id = $1 and station = 'consultation' and finished_at is null
+       returning id, ticket_no`,
+      [x.enc, prio],
+    )
+    x.queue = q.id
+    x.ticket = q.ticket_no
+    await as(staff.receptionist)
+  }
+  await as(null, 'anon')
+  const b = (await one(`select display_board($1) as j`, [t114.key])).j
+  t114.version = b.version
+  const cons = b.desks.find((d) => d.station === 'consultation')
+  // earlier steps left patients waiting here too: the colours are in order, and among them the
+  // red one (the newest) before the yellow, the yellow before the green (if it is still shown)
+  const at = (who) => cons.next.findIndex((n) => n.ticket === t114[who].ticket)
+  if (cons.next.length > 5) throw new Error(`${cons.next.length} shown`)
+  const prios = cons.next.map((n) => n.priority)
+  if (prios.some((p, i) => i > 0 && p < prios[i - 1])) throw new Error(JSON.stringify(cons.next))
+  if (at('red') < 0 || at('yellow') < 0 || at('red') > at('yellow'))
+    throw new Error(JSON.stringify(cons.next))
+  if (at('green') >= 0 && at('green') < at('yellow')) throw new Error(JSON.stringify(cons.next))
+  const red = cons.next[at('red')]
+  if (red.priority !== 1 || red.name !== 'Habimana Eric') throw new Error(JSON.stringify(red))
+  if (cons.waiting < 3) throw new Error(`waiting ${cons.waiting}`)
+  await asAdmin()
+  return `${cons.next.map((n) => `${n.ticket} (${n.priority})`).join(', ')}; ${cons.waiting} waiting`
+})
+await step(
+  '0114: Call: the patient shows in "now" with the room and who called; again renews it; only the desk may call',
+  async () => {
+    await asAdmin()
+    t114.doctorName = (
+      await one(`select full_name from profiles where id = $1`, [staff.doctor])
+    ).full_name
+    await as(staff.doctor)
+    const c = (await one(`select call_patient($1) as j`, [t114.red.queue])).j
+    if (c.ticket !== t114.red.ticket || !c.calledAt) throw new Error(JSON.stringify(c))
+    await as(null, 'anon')
+    const b = (await one(`select display_board($1) as j`, [t114.key])).j
+    const cons = b.desks.find((d) => d.station === 'consultation')
+    const now = cons.now[0]
+    if (
+      !now ||
+      now.ticket !== t114.red.ticket ||
+      now.name !== 'Habimana Eric' ||
+      now.room !== 'Consultation 1' ||
+      now.person !== t114.doctorName ||
+      now.started !== false ||
+      cons.next.some((n) => n.ticket === t114.red.ticket)
+    )
+      throw new Error(JSON.stringify(cons))
+    if (b.version === t114.version) throw new Error('version unchanged after a call')
+    t114.version = b.version
+    // call again: a newer time, same place
+    await asAdmin()
+    await db.query(
+      `update queue_entry set called_at = called_at - interval '5 minutes' where id = $1`,
+      [t114.red.queue],
+    )
+    const before = (await one(`select called_at from queue_entry where id = $1`, [t114.red.queue]))
+      .called_at
+    await as(staff.doctor)
+    await db.query(`select call_patient($1)`, [t114.red.queue])
+    await asAdmin()
+    const after = await one(`select called_at, called_by from queue_entry where id = $1`, [
+      t114.red.queue,
+    ])
+    if (!(new Date(after.called_at) > new Date(before)) || after.called_by !== staff.doctor)
+      throw new Error('call again did not renew')
+    // reception, the cashier: not their patient
+    const rec = await codeAs(staff.receptionist, `select call_patient($1)`, [t114.yellow.queue])
+    const cash = await codeAs(staff.cashier, `select call_patient($1)`, [t114.yellow.queue])
+    const gone = await codeAs(staff.doctor, `select call_patient(gen_random_uuid())`)
+    if (rec !== '42501' || cash !== '42501' || gone !== 'P0002')
+      throw new Error(JSON.stringify({ rec, cash, gone }))
+    return `${now.ticket} → ${now.room} (${now.person}); version ${t114.version}; reception ${rec}, cashier ${cash}`
+  },
+)
+await step(
+  '0114: Take sets called_at too: a patient taken without being called shows on the screen',
+  async () => {
+    await as(staff.doctor)
+    await db.query(`select take_patient($1)`, [t114.yellow.queue])
+    await asAdmin()
+    const q = await one(`select called_at, started_at, taken_by from queue_entry where id = $1`, [
+      t114.yellow.queue,
+    ])
+    if (!q.called_at || !q.started_at || q.taken_by !== staff.doctor)
+      throw new Error(JSON.stringify(q))
+    await as(null, 'anon')
+    const b = (await one(`select display_board($1) as j`, [t114.key])).j
+    const cons = b.desks.find((d) => d.station === 'consultation')
+    const row = cons.now.find((n) => n.ticket === t114.yellow.ticket)
+    if (
+      !row ||
+      row.started !== true ||
+      row.room !== 'Consultation 1' ||
+      row.person !== t114.doctorName
+    )
+      throw new Error(JSON.stringify(cons.now))
+    if (b.version === t114.version) throw new Error('version unchanged after a take')
+    t114.version = b.version
+    await asAdmin()
+    return `${row.ticket} with ${row.person} (${row.room}), called at ${q.called_at.toISOString?.() ?? q.called_at}`
+  },
+)
+await step(
+  '0114: results ready: a result verified in the last hour shows the ticket; an older one not; never an HIV test',
+  async () => {
+    await asAdmin()
+    const svc = await one(`select id from service where code = 'LAB-MRDT'`)
+    const hiv = await one(`select id from service where code = 'LAB-HIV'`)
+    const req = await one(
+      `insert into service_request (encounter_id, category, service_id, status, requester_id)
+       values ($1, 'lab', $2, 'verified', $3) returning id`,
+      [t114.green.enc, svc.id, staff.doctor],
+    )
+    await db.query(
+      `insert into diagnostic_report (service_request_id, findings, impression, verified_by, verified_at)
+       values ($1, 'negative', 'No malaria', $2, now())`,
+      [req.id, staff.lab_tech],
+    )
+    await as(null, 'anon')
+    let b = (await one(`select display_board($1) as j`, [t114.key])).j
+    const hit = b.results.find((r) => r.ticket === t114.green.ticket)
+    if (!hit || hit.name !== 'Uwase Claire') throw new Error(JSON.stringify(b.results))
+    if (JSON.stringify(b.results).includes('malaria')) throw new Error('the test leaked')
+    // verified two hours ago: no longer on the strip
+    await asAdmin()
+    await db.query(
+      `update diagnostic_report set verified_at = now() - interval '2 hours' where service_request_id = $1`,
+      [req.id],
+    )
+    await as(null, 'anon')
+    b = (await one(`select display_board($1) as j`, [t114.key])).j
+    if (b.results.some((r) => r.ticket === t114.green.ticket))
+      throw new Error('an old result shown')
+    // an HIV test verified just now: never on the screen
+    await asAdmin()
+    const req2 = await one(
+      `insert into service_request (encounter_id, category, service_id, status, requester_id)
+       values ($1, 'lab', $2, 'verified', $3) returning id`,
+      [t114.green.enc, hiv.id, staff.doctor],
+    )
+    await db.query(
+      `insert into diagnostic_report (service_request_id, findings, impression, verified_by, verified_at)
+       values ($1, 'non-reactive', null, $2, now())`,
+      [req2.id, staff.lab_tech],
+    )
+    await as(null, 'anon')
+    b = (await one(`select display_board($1) as j`, [t114.key])).j
+    if (b.results.some((r) => r.ticket === t114.green.ticket))
+      throw new Error('an HIV result shown')
+    await asAdmin()
+    return `${hit.ticket} · ${hit.name} on the strip; 2 hours old: gone; HIV: never`
+  },
+)
+await step(
+  '0114: a screen without names shows tickets only; no desks chosen = every desk with patients',
+  async () => {
+    await as(staff.manager)
+    const made = (
+      await one(
+        `select save_display_screen(null, 'Corridor', '{}', false, true, '{rw,en,fr}', null) as j`,
+      )
+    ).j
+    await asAdmin()
+    // a fresh result for the names check
+    await db.query(
+      `update diagnostic_report set verified_at = now()
+     where service_request_id in (select id from service_request where encounter_id = $1 and service_id = (select id from service where code = 'LAB-MRDT'))`,
+      [t114.green.enc],
+    )
+    await as(null, 'anon')
+    const b = (await one(`select display_board($1) as j`, [made.key])).j
+    const names = [...b.desks.flatMap((d) => [...d.now, ...d.next]), ...b.results].map(
+      (x) => x.name,
+    )
+    if (names.length === 0 || names.some((n) => n !== null)) throw new Error(JSON.stringify(names))
+    if (b.showNames !== false || !b.desks.some((d) => d.station === 'consultation'))
+      throw new Error(JSON.stringify(b.desks.map((d) => d.station)))
+    const cons = b.desks.find((d) => d.station === 'consultation')
+    if (!cons.now.some((n) => n.ticket === t114.red.ticket))
+      throw new Error('the called patient is missing')
+    await asAdmin()
+    return `${names.length} rows, no name; desks ${b.desks.map((d) => d.station).join(', ')}`
+  },
+)
+await step(
+  '0114: next_for_me: the patient sent to me by name first, then the most urgent at my desk',
+  async () => {
+    await as(staff.doctor)
+    let n = (await one(`select next_for_me('consultation') as j`)).j
+    // the red one was called but not taken: still the most urgent to take, unless an earlier
+    // step left a patient sent to this doctor by name (those come first)
+    if (!n || (n.ticket !== t114.red.ticket && n.assignedToMe !== true))
+      throw new Error(JSON.stringify(n))
+    if (n.ticket === t114.red.ticket && (n.assignedToMe !== false || !n.calledAt))
+      throw new Error(JSON.stringify(n))
+    // a new patient sent to this doctor by name comes first, whatever the colour
+    await asAdmin()
+    const p = (
+      await one(
+        `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
+         values ('Nshimiyimana', 'Patrick', 'male', '1984-05-05', '0788114004', true, true, true) returning id`,
+      )
+    ).id
+    await as(staff.receptionist)
+    const v = (await one(`select open_encounter($1, 'opd', 'reception', null) as id`, [p])).id
+    await db.query(
+      `select refer_patient($1, 'reception', 'consultation', $2, 'asked for Dr. Mukamana')`,
+      [v, staff.doctor],
+    )
+    // (an emergency, so it also comes before any patient sent to the doctor by an earlier step)
+    await asAdmin()
+    await db.query(
+      `update queue_entry set priority = 1 where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+      [v],
+    )
+    await as(staff.doctor)
+    n = (await one(`select next_for_me('consultation') as j`)).j
+    if (!n || n.encounterId !== v || n.assignedToMe !== true || n.name !== 'Nshimiyimana Patrick')
+      throw new Error(JSON.stringify(n))
+    const mine = n
+    // taken: the next one is a patient sent to me by name, else the red one; the referral note
+    // is not in the answer
+    await db.query(`select take_patient($1)`, [mine.queueId])
+    const after = (await one(`select next_for_me('consultation') as j`)).j
+    if (
+      !after ||
+      after.queueId === mine.queueId ||
+      (after.ticket !== t114.red.ticket && !after.assignedToMe)
+    )
+      throw new Error(JSON.stringify(after))
+    if ('note' in mine || 'referralNote' in mine) throw new Error('the referral note leaked')
+    // the cashier is offered nobody from the doctors' desk
+    const cash = (await one(`select next_for_me('consultation') as j`)).j
+    await as(staff.cashier)
+    const cashier = (await one(`select next_for_me('cashier') as j`)).j
+    await asAdmin()
+    return `${mine.ticket} · ${mine.name} (sent to me, emergency) first; then ${after.ticket}${after.assignedToMe ? ' (sent to me earlier)' : ' (red)'}; cashier: ${cashier === null ? 'nobody' : cashier.ticket}; ${cash ? 'doctor still has someone' : ''}`
+  },
+)
+await step('0114: call_patient_at: from the laboratory worklist, by visit and desk', async () => {
+  await asAdmin()
+  let q = await one(
+    `select q.id, q.encounter_id from queue_entry q join encounter e on e.id = q.encounter_id
+     where q.station = 'laboratory' and q.finished_at is null and q.deleted_at is null and e.status = 'open'
+     order by q.created_at desc limit 1`,
+  )
+  if (!q) {
+    q = await one(
+      `insert into queue_entry (encounter_id, station, ticket_no) values ($1, 'laboratory', $2) returning id, encounter_id`,
+      [t114.green.enc, t114.green.ticket],
+    )
+  }
+  await as(staff.lab_tech)
+  const c = (await one(`select call_patient_at($1, 'laboratory') as j`, [q.encounter_id])).j
+  if (c.queueId !== q.id || c.station !== 'laboratory') throw new Error(JSON.stringify(c))
+  const none = await hintAs(staff.lab_tech, `select call_patient_at($1, 'ultrasound')`, [
+    q.encounter_id,
+  ])
+  await as(null, 'anon')
+  const b = (await one(`select display_board($1) as j`, [t114.key])).j
+  const lab = b.desks.find((d) => d.station === 'laboratory')
+  if (!lab.now.some((n) => n.id === q.id)) throw new Error(JSON.stringify(lab))
+  if (none !== 'P0002/call_not_waiting') throw new Error(none)
+  await asAdmin()
+  return `${c.ticket} called to the laboratory; not waiting at ultrasound: ${none}`
+})
+
+// ---------------------------------------------------------------- 0115: insurer tariffs (MMI)
+await step('0115: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261225090000_insurer_tariffs.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+const t115 = {}
+await step(
+  '0115 A: the manager switches insurance on and activates MMI (follows the list, cash covered)',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select save_setting('insurance.enabled', 'true'::jsonb)`)
+    const s = (await one(`select staff_settings() as s`)).s
+    const mmi = await one(`select id from payer where code = 'MMI'`)
+    t115.mmi = mmi.id
+    await db.query(
+      `select upsert_payer($1, 'MMI', 'mmi', 85, '{"dental": 50}'::jsonb, true, 'MMI', true, 'cash_covered')`,
+      [t115.mmi],
+    )
+    const row = await one(
+      `select active, follows_reference_list, not_listed_rule from payer where id = $1`,
+      [t115.mmi],
+    )
+    const plan = await one(`select coverage_pct from insurer_plans where id = $1`, [t115.mmi])
+    await as(null, 'anon')
+    const pub = (await one(`select public_clinic_info() as j`)).j
+    const payers = await one(`select count(*)::int as n from public_payers where code = 'MMI'`)
+    await asAdmin()
+    if (
+      s.insurance_enabled !== true ||
+      s.insurance_active !== true ||
+      !row.active ||
+      !row.follows_reference_list ||
+      row.not_listed_rule !== 'cash_covered' ||
+      Number(plan.coverage_pct) !== 85 ||
+      pub.insurance !== true ||
+      payers.n !== 1
+    )
+      throw new Error(JSON.stringify({ s, row, plan, pub: pub.insurance, payers }))
+    return 'insurance.enabled on · MMI active, 85 %, follows the official list · the public site sees it'
+  },
+)
+await step(
+  '0115 B: the test lines: a 50,000 service, a 2,000 medicine, a 700 medicine on no list',
+  async () => {
+    await asAdmin()
+    const cash = (
+      await one(
+        `select id from price_list where payer_id is null and deleted_at is null order by effective_from desc limit 1`,
+      )
+    ).id
+    t115.svc = (
+      await one(
+        `insert into service (code, name_en, name_fr, service_group) values ('T115-SVC', 'Tariff test service 115', 'Acte test 115', 'procedure') returning id`,
+      )
+    ).id
+    t115.med = (
+      await one(
+        `insert into item (code, name_generic, strength, form, unit, pack_size, selling_unit) values ('T115MED', 'Tariffmed 115', '10 mg', 'tablet', 'tab', 100, 'tab') returning id`,
+      )
+    ).id
+    t115.not = (
+      await one(
+        `insert into item (code, name_generic, form, unit, pack_size, selling_unit) values ('T115NOT', 'Unlisted 115', 'tablet', 'tab', 100, 'tab') returning id`,
+      )
+    ).id
+    await db.query(
+      `insert into price_list_item (price_list_id, service_id, price) values ($1, $2, 50000)`,
+      [cash, t115.svc],
+    )
+    await db.query(
+      `insert into price_list_item (price_list_id, item_id, price) values ($1, $2, 2000)`,
+      [cash, t115.med],
+    )
+    await db.query(
+      `insert into price_list_item (price_list_id, item_id, price) values ($1, $2, 700)`,
+      [cash, t115.not],
+    )
+    const svc = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t115.svc,
+      t115.mmi,
+    ])
+    if (Number(svc.price) !== 50000 || svc.source !== 'cash') throw new Error(JSON.stringify(svc))
+    return 'before any tariff: MMI pays on the cash price (source cash)'
+  },
+)
+await step(
+  '0115 C: the dry run matches by code and by name, says what is new, and stores nothing',
+  async () => {
+    await as(staff.manager)
+    const before = (
+      await one(`select count(*)::int as n from price_list where payer_id = $1`, [t115.mmi])
+    ).n
+    const r = (
+      await one(
+        `select import_price_list($1, 'MMI tariff 2026', current_date, $2::jsonb, true) as r`,
+        [
+          t115.mmi,
+          JSON.stringify([
+            { row: 2, kind: null, code: 't115-svc', name: null, price: '40,000' },
+            { row: 3, kind: 'item', code: null, name: 'tariffmed 115 10 MG', price: 1000 },
+            { row: 4, kind: null, code: 'NOPE-999', name: 'Nothing here', price: 5 },
+            { row: 5, kind: 'service', code: 'T115-SVC', name: null, price: 'abc' },
+          ]),
+        ],
+      )
+    ).r
+    const after = (
+      await one(`select count(*)::int as n from price_list where payer_id = $1`, [t115.mmi])
+    ).n
+    const reasons = r.unmatched.map((u) => `${u.row}:${u.reason}`).join(' ')
+    if (
+      r.dryRun !== true ||
+      r.matched !== 2 ||
+      r.unmatched.length !== 2 ||
+      reasons !== '4:not_found 5:bad_price' ||
+      r.new !== 2 ||
+      r.changed !== 0 ||
+      r.id !== null ||
+      after !== before
+    )
+      throw new Error(JSON.stringify({ r, before, after }))
+    return `matched 2 (code, name) · unmatched ${reasons} · new 2 · nothing stored`
+  },
+)
+await step(
+  '0115 D: the real import makes the list: MMI prices 40,000 and 1,000 (source tariff)',
+  async () => {
+    await as(staff.manager)
+    const r = (
+      await one(
+        `select import_price_list($1, 'MMI tariff 2026', current_date, $2::jsonb, false) as r`,
+        [
+          t115.mmi,
+          JSON.stringify([
+            { row: 2, kind: null, code: 'T115-SVC', name: null, price: 40000 },
+            { row: 3, kind: null, code: 'T115MED', name: 'Tariffmed 115', price: 1000 },
+          ]),
+        ],
+      )
+    ).r
+    await asAdmin()
+    const svc = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t115.svc,
+      t115.mmi,
+    ])
+    const med = await one(`select price, source from price_source_for(null, $1, $2)`, [
+      t115.med,
+      t115.mmi,
+    ])
+    const cash = await one(`select price, source from price_source_for($1, null, null)`, [t115.svc])
+    const old = await one(`select price, fallback from price_for($1, null, $2)`, [
+      t115.svc,
+      t115.mmi,
+    ])
+    const audit = await one(
+      `select count(*)::int as n from audit_event where entity = 'price_list' and entity_id = $1 and action = 'create'`,
+      [r.id],
+    )
+    if (
+      r.dryRun !== false ||
+      !r.id ||
+      r.matched !== 2 ||
+      Number(svc.price) !== 40000 ||
+      svc.source !== 'tariff' ||
+      Number(med.price) !== 1000 ||
+      med.source !== 'tariff' ||
+      Number(cash.price) !== 50000 ||
+      cash.source !== 'cash' ||
+      Number(old.price) !== 40000 ||
+      old.fallback !== false ||
+      audit.n < 1
+    )
+      throw new Error(JSON.stringify({ r, svc, med, cash, old, audit }))
+    t115.list = r.id
+    return 'MMI 40,000 / 1,000 (tariff) · cash 50,000 · price_for unchanged · audited'
+  },
+)
+await step(
+  '0115 E: the bill on MMI: 40,000 at 85 % → patient 6,000, MMI 34,000; the medicine 150 / 850',
+  async () => {
+    const v = await visitAt('Tariff 115')
+    t115.visit = v.enc
+    await as(staff.cashier)
+    await db.query(`select set_visit_payer($1, $2, 'MMI-115-0001')`, [v.enc, t115.mmi])
+    await asAdmin()
+    await db.query(`select add_charge_internal($1, 'consultation', $2, null, 1)`, [v.enc, t115.svc])
+    await db.query(`select add_charge_internal($1, 'pharmacy', null, $2, 1)`, [v.enc, t115.med])
+    const lines = (
+      await db.query(
+        `select l.service_id, l.item_id, l.unit_price, l.coverage_pct, l.patient_share, l.insurer_share, c.cash_price
+       from invoice_line l join invoice i on i.id = l.invoice_id
+       join visit_charges c on c.id = l.id
+       where i.encounter_id = $1 and l.deleted_at is null order by l.created_at`,
+        [v.enc],
+      )
+    ).rows
+    const bill = await one(
+      `select total, patient_share, insurer_share from invoice where encounter_id = $1`,
+      [v.enc],
+    )
+    const s = lines.find((l) => l.service_id === t115.svc)
+    const m = lines.find((l) => l.item_id === t115.med)
+    if (
+      !s ||
+      !m ||
+      Number(s.unit_price) !== 40000 ||
+      Number(s.coverage_pct) !== 85 ||
+      Number(s.patient_share) !== 6000 ||
+      Number(s.insurer_share) !== 34000 ||
+      Number(s.cash_price) !== 50000 ||
+      Number(m.unit_price) !== 1000 ||
+      Number(m.patient_share) !== 150 ||
+      Number(m.insurer_share) !== 850 ||
+      Number(m.cash_price) !== 2000 ||
+      Number(bill.total) !== 41000 ||
+      Number(bill.patient_share) !== 6150 ||
+      Number(bill.insurer_share) !== 34850
+    )
+      throw new Error(JSON.stringify({ lines, bill }))
+    return 'service 40,000 → 6,000 / 34,000 (cash 50,000 beside it) · medicine 1,000 → 150 / 850 · bill 41,000 = 6,150 + 34,850'
+  },
+)
+await step(
+  '0115 F: a cash patient is unchanged: 50,000 and 2,000, nothing for an insurer',
+  async () => {
+    const v = await visitAt('Cash 115')
+    t115.cashVisit = v.enc
+    await asAdmin()
+    await db.query(`select add_charge_internal($1, 'consultation', $2, null, 1)`, [v.enc, t115.svc])
+    await db.query(`select add_charge_internal($1, 'pharmacy', null, $2, 1)`, [v.enc, t115.med])
+    const bill = await one(
+      `select total, patient_share, insurer_share from invoice where encounter_id = $1`,
+      [v.enc],
+    )
+    if (
+      Number(bill.total) !== 52000 ||
+      Number(bill.patient_share) !== 52000 ||
+      Number(bill.insurer_share) !== 0
+    )
+      throw new Error(JSON.stringify(bill))
+    return 'cash bill 52,000, all for the patient'
+  },
+)
+await step(
+  '0115 G: not_listed_rule: cash_covered splits the cash price; not_covered leaves it all to the patient',
+  async () => {
+    await asAdmin()
+    await db.query(`select add_charge_internal($1, 'pharmacy', null, $2, 1)`, [
+      t115.visit,
+      t115.not,
+    ])
+    const covered = await one(
+      `select l.unit_price, l.coverage_pct, l.patient_share, l.insurer_share from invoice_line l join invoice i on i.id = l.invoice_id
+     where i.encounter_id = $1 and l.item_id = $2 and l.deleted_at is null order by l.created_at desc limit 1`,
+      [t115.visit, t115.not],
+    )
+    await as(staff.manager)
+    await db.query(
+      `select upsert_payer($1, 'MMI', 'mmi', 85, '{"dental": 50}'::jsonb, true, 'MMI', null, 'not_covered')`,
+      [t115.mmi],
+    )
+    await asAdmin()
+    await db.query(`select add_charge_internal($1, 'pharmacy', null, $2, 1)`, [
+      t115.visit,
+      t115.not,
+    ])
+    const not = await one(
+      `select l.unit_price, l.coverage_pct, l.patient_share, l.insurer_share from invoice_line l join invoice i on i.id = l.invoice_id
+     where i.encounter_id = $1 and l.item_id = $2 and l.deleted_at is null order by l.created_at desc limit 1`,
+      [t115.visit, t115.not],
+    )
+    await as(staff.manager)
+    const rows = (await one(`select insurer_tariff_rows($1) as r`, [t115.mmi])).r
+    await asAdmin()
+    const row = rows.rows.find((x) => x.id === t115.not)
+    if (
+      Number(covered.unit_price) !== 700 ||
+      Number(covered.coverage_pct) !== 85 ||
+      Number(covered.patient_share) !== 105 ||
+      Number(covered.insurer_share) !== 595 ||
+      Number(not.unit_price) !== 700 ||
+      Number(not.coverage_pct) !== 0 ||
+      Number(not.patient_share) !== 700 ||
+      Number(not.insurer_share) !== 0 ||
+      rows.notListedRule !== 'not_covered' ||
+      !row ||
+      row.source !== 'cash' ||
+      row.coveragePct !== 0 ||
+      row.patientShare !== 700
+    )
+      throw new Error(JSON.stringify({ covered, not, rule: rows.notListedRule, row }))
+    return 'cash_covered: 700 → 105 / 595 · not_covered: 700 → 700 / 0 (the table says so too)'
+  },
+)
+await step(
+  '0115 H: the ask rule refuses an added treatment (ask_insurer) until confirmed; an order is not held',
+  async () => {
+    await as(staff.manager)
+    await db.query(
+      `select upsert_payer($1, 'MMI', 'mmi', 85, '{"dental": 50}'::jsonb, true, 'MMI', null, 'ask')`,
+      [t115.mmi],
+    )
+    await asAdmin()
+    let refused = null
+    try {
+      await db.query(`select add_charge_internal($1, 'pharmacy', null, $2, 1)`, [
+        t115.visit,
+        t115.not,
+      ])
+    } catch (e) {
+      refused = String(e.message).split('\n')[0]
+    }
+    const n0 = (
+      await one(
+        `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id where i.encounter_id = $1 and l.item_id = $2 and l.deleted_at is null`,
+        [t115.visit, t115.not],
+      )
+    ).n
+    // confirmed: the transaction setting add_charge_confirmed / dispense_prescription_confirmed set
+    await db.exec(
+      `begin; select set_config('mmc.confirm_insurer', 'on', true);
+     select add_charge_internal('${t115.visit}', 'pharmacy', null, '${t115.not}', 1); commit;`,
+    )
+    // an automatic charge (an order) takes the cash price with the coverage, no question asked
+    await db.query(
+      `select add_charge_internal($1, 'laboratory', null, $2, 1, null, null, null, null, 'service_request', null)`,
+      [t115.visit, t115.not],
+    )
+    const lines = (
+      await db.query(
+        `select l.source_type, l.coverage_pct, l.patient_share from invoice_line l join invoice i on i.id = l.invoice_id
+       where i.encounter_id = $1 and l.item_id = $2 and l.deleted_at is null order by l.created_at`,
+        [t115.visit, t115.not],
+      )
+    ).rows
+    await as(staff.manager)
+    const rows = (await one(`select insurer_tariff_rows($1) as r`, [t115.mmi])).r
+    const row = rows.rows.find((x) => x.id === t115.not)
+    await db.query(
+      `select upsert_payer($1, 'MMI', 'mmi', 85, '{"dental": 50}'::jsonb, true, 'MMI', null, 'cash_covered')`,
+      [t115.mmi],
+    )
+    await asAdmin()
+    if (
+      !refused ||
+      !/confirm the cash price/.test(refused) ||
+      n0 !== 2 ||
+      lines.length !== 4 ||
+      Number(lines[2].coverage_pct) !== 85 ||
+      Number(lines[2].patient_share) !== 105 ||
+      lines[3].source_type !== 'service_request' ||
+      Number(lines[3].coverage_pct) !== 85 ||
+      !row ||
+      row.ask !== true
+    )
+      throw new Error(JSON.stringify({ refused, n0, lines, row }))
+    return `refused: ${refused} · confirmed → 105 / 595 · an order charged without asking`
+  },
+)
+await step(
+  '0115 I: an insurer that follows the official list prices a listed medicine from it (source reference)',
+  async () => {
+    await asAdmin()
+    const ref = await one(`select price, source from price_source_for(null, $1, $2)`, [
+      t98.item,
+      t115.mmi,
+    ])
+    await as(staff.manager)
+    await db.query(
+      `select upsert_payer($1, 'MMI', 'mmi', 85, '{"dental": 50}'::jsonb, true, 'MMI', false, null)`,
+      [t115.mmi],
+    )
+    await asAdmin()
+    const off = await one(`select price, source from price_source_for(null, $1, $2)`, [
+      t98.item,
+      t115.mmi,
+    ])
+    await as(staff.manager)
+    await db.query(
+      `select upsert_payer($1, 'MMI', 'mmi', 85, '{"dental": 50}'::jsonb, true, 'MMI', true, null)`,
+      [t115.mmi],
+    )
+    await asAdmin()
+    if (
+      Number(ref.price) !== 1000 ||
+      ref.source !== 'reference' ||
+      Number(off.price) !== 1300 ||
+      off.source !== 'cash'
+    )
+      throw new Error(JSON.stringify({ ref, off }))
+    return 'follows: 1,000 (reference) · not following: 1,300 (cash)'
+  },
+)
+await step(
+  '0115 J: a second list from tomorrow supersedes: today 40,000, tomorrow 45,000; the first list ends today',
+  async () => {
+    await as(staff.manager)
+    const r = (
+      await one(
+        `select import_price_list($1, 'MMI tariff 2027', current_date + 1, $2::jsonb, false) as r`,
+        [
+          t115.mmi,
+          JSON.stringify([{ row: 1, kind: 'service', code: 'T115-SVC', name: null, price: 45000 }]),
+        ],
+      )
+    ).r
+    await asAdmin()
+    const today = await one(`select price from price_source_for($1, null, $2)`, [
+      t115.svc,
+      t115.mmi,
+    ])
+    const tomorrow = await one(
+      `select price from price_source_for($1, null, $2, current_date + 1)`,
+      [t115.svc, t115.mmi],
+    )
+    const first = await one(
+      `select effective_to = current_date as ends_today from price_list where id = $1`,
+      [t115.list],
+    )
+    await as(staff.manager)
+    const rows = (await one(`select insurer_tariff_rows($1) as r`, [t115.mmi])).r
+    await asAdmin()
+    const lists = rows.lists
+      .map((l) => `${l.name}:${l.inEffect ? 'now' : l.future ? 'future' : 'past'}`)
+      .join(' ')
+    if (
+      r.changed !== 1 ||
+      r.closed !== 1 ||
+      Number(today.price) !== 40000 ||
+      Number(tomorrow.price) !== 45000 ||
+      first.ends_today !== true ||
+      lists !== 'MMI tariff 2027:future MMI tariff 2026:now'
+    )
+      throw new Error(JSON.stringify({ r, today, tomorrow, first, lists }))
+    t115.list2 = r.id
+    return `today 40,000 · tomorrow 45,000 · lists: ${lists}`
+  },
+)
+await step(
+  '0115 K: set_insurer_price edits one line of the current list; null takes the own price away',
+  async () => {
+    await as(staff.manager)
+    const list = (
+      await one(`select set_insurer_price($1, $2, null, 42000) as id`, [t115.mmi, t115.svc])
+    ).id
+    await asAdmin()
+    const edited = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t115.svc,
+      t115.mmi,
+    ])
+    const tomorrow = await one(
+      `select price from price_source_for($1, null, $2, current_date + 1)`,
+      [t115.svc, t115.mmi],
+    )
+    await as(staff.manager)
+    await db.query(`select set_insurer_price($1, $2, null, null)`, [t115.mmi, t115.svc])
+    await asAdmin()
+    const gone = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t115.svc,
+      t115.mmi,
+    ])
+    await as(staff.manager)
+    await db.query(`select set_insurer_price($1, $2, null, 40000)`, [t115.mmi, t115.svc])
+    await asAdmin()
+    const back = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t115.svc,
+      t115.mmi,
+    ])
+    if (
+      list !== t115.list ||
+      Number(edited.price) !== 42000 ||
+      edited.source !== 'tariff' ||
+      Number(tomorrow.price) !== 45000 ||
+      Number(gone.price) !== 50000 ||
+      gone.source !== 'cash' ||
+      Number(back.price) !== 40000 ||
+      back.source !== 'tariff'
+    )
+      throw new Error(JSON.stringify({ list, edited, tomorrow, gone, back }))
+    return '42,000 on the current list (tomorrow still 45,000) · removed → cash 50,000 · back to 40,000'
+  },
+)
+await step(
+  '0115 L: insurer_tariff_rows for a doctor: every line with both prices, the source and the split',
+  async () => {
+    await as(staff.doctor)
+    const r = (await one(`select insurer_tariff_rows($1) as r`, [t115.mmi])).r
+    const svc = r.rows.find((x) => x.kind === 'service' && x.id === t115.svc)
+    const med = r.rows.find((x) => x.kind === 'item' && x.id === t115.med)
+    const not = r.rows.find((x) => x.kind === 'item' && x.id === t115.not)
+    const services = r.rows.filter((x) => x.kind === 'service').length
+    const items = r.rows.filter((x) => x.kind === 'item').length
+    await asAdmin()
+    if (
+      r.code !== 'MMI' ||
+      r.followsReferenceList !== true ||
+      r.notListedRule !== 'cash_covered' ||
+      Number(r.coveragePct) !== 85 ||
+      !svc ||
+      svc.cashPrice !== 50000 ||
+      svc.price !== 40000 ||
+      svc.source !== 'tariff' ||
+      svc.coveragePct !== 85 ||
+      svc.patientShare !== 6000 ||
+      svc.insurerShare !== 34000 ||
+      !med ||
+      med.price !== 1000 ||
+      med.source !== 'tariff' ||
+      med.patientShare !== 150 ||
+      !not ||
+      not.price !== 700 ||
+      not.source !== 'cash' ||
+      not.coveragePct !== 85 ||
+      not.ask !== false ||
+      services < 5 ||
+      items < 3 ||
+      r.lists.length !== 2
+    )
+      throw new Error(JSON.stringify({ svc, med, not, services, items, lists: r.lists.length }))
+    return `${services} treatments and ${items} medicines · 50,000 → MMI 40,000 (tariff) 6,000 / 34,000 · 2 lists`
+  },
+)
+await step(
+  "0115 M: set_visit_payer re-prices a cash bill at the insurer's price, and back",
+  async () => {
+    await as(staff.cashier)
+    await db.query(`select set_visit_payer($1, $2, 'MMI-115-0002')`, [t115.cashVisit, t115.mmi])
+    await asAdmin()
+    const on = await one(
+      `select total, patient_share, insurer_share from invoice where encounter_id = $1`,
+      [t115.cashVisit],
+    )
+    await as(staff.cashier)
+    await db.query(`select set_visit_payer($1, null)`, [t115.cashVisit])
+    await asAdmin()
+    const off = await one(
+      `select total, patient_share, insurer_share from invoice where encounter_id = $1`,
+      [t115.cashVisit],
+    )
+    if (
+      Number(on.total) !== 41000 ||
+      Number(on.patient_share) !== 6150 ||
+      Number(on.insurer_share) !== 34850 ||
+      Number(off.total) !== 52000 ||
+      Number(off.patient_share) !== 52000 ||
+      Number(off.insurer_share) !== 0
+    )
+      throw new Error(JSON.stringify({ on, off }))
+    return 'cash 52,000 → MMI 41,000 (6,150 / 34,850) → cash 52,000'
+  },
+)
+await expectError(
+  '0115 N: a cashier may not upload a tariff',
+  async () => {
+    await as(staff.cashier)
+    await db.query(
+      `select import_price_list($1, 'x', current_date, '[{"code":"T115-SVC","price":1}]'::jsonb, true)`,
+      [t115.mmi],
+    )
+  },
+  /not allowed/i,
+)
+await expectError(
+  '0115 N: a cashier may not set an insurer price',
+  async () => {
+    await as(staff.cashier)
+    await db.query(`select set_insurer_price($1, $2, null, 1)`, [t115.mmi, t115.svc])
+  },
+  /not allowed/i,
+)
+await expectError(
+  '0115 N: a cashier may not switch insurance',
+  async () => {
+    await as(staff.cashier)
+    await db.query(`select save_setting('insurance.enabled', 'false'::jsonb)`)
+  },
+  /not allowed/i,
+)
+await expectError(
+  '0115 N: the insurance switch is true or false',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select save_setting('insurance.enabled', '"yes"'::jsonb)`)
+  },
+  /true or false/i,
+)
+await step("0115 O: pharmacy_queue says where each line's price comes from", async () => {
+  await as(staff.pharmacist)
+  const q = (await one(`select pharmacy_queue() as q`)).q
+  await asAdmin()
+  const bad = q.lines.filter((l) => !('priceSource' in l) || !('notListedRule' in l))
+  if (bad.length) throw new Error(`${bad.length} line(s) without priceSource`)
+  return `${q.lines.length} line(s), each with priceSource and notListedRule`
+})
+
+// ---------------------------------------------------------------- 0116: employee document files
+await step('0116: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261226090000_staff_documents.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+const t116 = {}
+/** A storage rule answered as one person (an approved session, as Storage asks). */
+const rule116 = async (who, sql, params, approved = true) => {
+  if (approved) await asApproved(who)
+  else await as(who)
+  try {
+    return (await one(sql, params)).b
+  } finally {
+    await asAdmin()
+  }
+}
+const path116 = (profile, ext = 'pdf') => `${profile}/${crypto.randomUUID()}.${ext}`
+const kigali116 = (n) => `((now() at time zone 'Africa/Kigali')::date + ${n})`
+/** Sends a file to the bucket as one person (the stub of Supabase Storage of 0089 E, with the
+ *  policies of this migration): null, or the refusal. */
+const put116 = async (who, name, size = 120000, mime = 'application/pdf') => {
+  await asApproved(who)
+  try {
+    await db.query(
+      `insert into storage.objects (bucket_id, name, metadata) values ('staff-files', $1, $2)`,
+      [name, JSON.stringify({ size, mimetype: mime })],
+    )
+    return null
+  } catch (e) {
+    return e.code ?? String(e.message)
+  } finally {
+    await asAdmin()
+  }
+}
+/** Deletes a file from the bucket as one person: how many rows went. */
+const drop116 = async (who, name) => {
+  await asApproved(who)
+  try {
+    return (await db.query(`delete from storage.objects where name = $1 returning id`, [name])).rows
+      .length
+  } finally {
+    await asAdmin()
+  }
+}
+await step(
+  '0116: the private bucket staff-files and its three policies (the Storage stub of 0089 E)',
+  async () => {
+    await asAdmin()
+    const bucket = await one(
+      `select public, file_size_limit::int as max, allowed_mime_types as types from storage.buckets where id = 'staff-files'`,
+    )
+    const policies = (
+      await db.query(
+        `select policyname from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'staff_files_%' order by 1`,
+      )
+    ).rows.map((x) => x.policyname)
+    if (
+      !bucket ||
+      bucket.public !== false ||
+      bucket.max !== 10485760 ||
+      bucket.types.length !== 6 ||
+      policies.join(',') !== 'staff_files_delete,staff_files_insert,staff_files_select'
+    )
+      throw new Error(JSON.stringify({ bucket, policies }))
+    return `private, 10 MB, ${bucket.types.length} types; policies: ${policies.join(', ')}`
+  },
+)
+await step(
+  '0116 A: the manager sends and adds a licence (expires in 20 days), a contract and an ID for the nurse, an expired contract for the doctor',
+  async () => {
+    await asAdmin()
+    // the people of this check are at work (earlier steps deactivate and reactivate them)
+    await db.query(`update profiles set active = true where id = any($1::uuid[])`, [
+      [staff.nurse, staff.doctor, staff.receptionist, staff.manager],
+    ])
+    t116.licPath = path116(staff.nurse)
+    t116.contractPath = path116(staff.nurse, 'docx')
+    t116.idPath = path116(staff.nurse, 'jpg')
+    t116.docContractPath = path116(staff.doctor)
+    const sent = {
+      lic: await put116(staff.manager, t116.licPath, 120000),
+      contract: await put116(
+        staff.manager,
+        t116.contractPath,
+        240000,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ),
+      id: await put116(staff.manager, t116.idPath, 800000, 'image/jpeg'),
+      doc: await put116(staff.manager, t116.docContractPath, 100000),
+      // the nurse cannot send a file, nor the doctor; the manager not without the approved session
+      nurse: await put116(staff.nurse, path116(staff.nurse)),
+      doctor: await put116(staff.doctor, path116(staff.nurse)),
+    }
+    if (sent.lic || sent.contract || sent.id || sent.doc || !sent.nurse || !sent.doctor)
+      throw new Error(JSON.stringify(sent))
+    await as(staff.manager)
+    t116.lic = (
+      await one(
+        `select add_staff_document($1, 'licence', 'Nursing licence NCNM', $2, 'application/pdf', 120000, ${kigali116(20)}, 'Renewed every year') as d`,
+        [staff.nurse, t116.licPath],
+      )
+    ).d
+    t116.contract = (
+      await one(
+        `select add_staff_document($1, 'contract', 'Employment contract 2026', $2, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 240000, ${kigali116(300)}, null) as d`,
+        [staff.nurse, t116.contractPath],
+      )
+    ).d
+    t116.idDoc = (
+      await one(
+        `select add_staff_document($1, 'id', 'National ID', $2, 'image/jpeg', 800000, null, null) as d`,
+        [staff.nurse, t116.idPath],
+      )
+    ).d
+    t116.docContract = (
+      await one(
+        `select add_staff_document($1, 'contract', 'Contract 2024-2026', $2, 'application/pdf', 100000, ${kigali116(-1)}, null) as d`,
+        [staff.doctor, t116.docContractPath],
+      )
+    ).d
+    if (
+      t116.lic.kind !== 'licence' ||
+      t116.lic.daysLeft !== 20 ||
+      t116.lic.expired !== false ||
+      !t116.lic.canRemove ||
+      t116.lic.uploadedById !== staff.manager ||
+      t116.lic.profileName !== 'Nyirahabimana Chantal' ||
+      t116.docContract.expired !== true ||
+      t116.idDoc.expiresOn !== null
+    )
+      throw new Error(JSON.stringify({ lic: t116.lic, doc: t116.docContract }))
+    return `licence ${t116.lic.daysLeft} days left, contract, ID; the doctor's contract expired (${t116.docContract.daysLeft})`
+  },
+)
+await step(
+  '0116 A: the rules on what is added (kind, title, type, size, path, employee)',
+  async () => {
+    await as(staff.manager)
+    const bad = async (sql, params, re) => {
+      try {
+        await db.query(sql, params)
+      } catch (e) {
+        if (re.test(String(e.message))) return true
+        throw e
+      }
+      throw new Error('accepted: ' + sql)
+    }
+    const r = {}
+    r.kind = await bad(
+      `select add_staff_document($1, 'passport', 'x', $2, 'application/pdf', 100, null, null)`,
+      [staff.nurse, path116(staff.nurse)],
+      /unknown kind/,
+    )
+    r.title = await bad(
+      `select add_staff_document($1, 'other', '  ', $2, 'application/pdf', 100, null, null)`,
+      [staff.nurse, path116(staff.nurse)],
+      /give the document a title/,
+    )
+    r.type = await bad(
+      `select add_staff_document($1, 'other', 'Setup', $2, 'application/x-msdownload', 100, null, null)`,
+      [staff.nurse, path116(staff.nurse, 'exe')],
+      /only PDF, photos/,
+    )
+    r.size = await bad(
+      `select add_staff_document($1, 'other', 'Big', $2, 'application/pdf', 20000000, null, null)`,
+      [staff.nurse, path116(staff.nurse)],
+      /larger than 10 MB/,
+    )
+    r.path = await bad(
+      `select add_staff_document($1, 'other', 'Elsewhere', $2, 'application/pdf', 100, null, null)`,
+      [staff.nurse, path116(staff.doctor)],
+      /not stored where this employee/,
+    )
+    r.ext = await bad(
+      `select add_staff_document($1, 'other', 'Wrong extension', $2, 'application/pdf', 100, null, null)`,
+      [staff.nurse, path116(staff.nurse, 'docx')],
+      /not stored where this employee/,
+    )
+    r.nobody = await bad(
+      `select add_staff_document($1, 'other', 'Nobody', $2, 'application/pdf', 100, null, null)`,
+      [crypto.randomUUID(), path116(crypto.randomUUID())],
+      /employee not found/,
+    )
+    r.twice = await bad(
+      `select add_staff_document($1, 'other', 'Same path', $2, 'application/pdf', 100, null, null)`,
+      [staff.nurse, t116.licPath],
+      /duplicate key|unique/,
+    )
+    r.notSent = await bad(
+      `select add_staff_document($1, 'other', 'Never sent', $2, 'application/pdf', 100, null, null)`,
+      [staff.nurse, path116(staff.nurse)],
+      /did not arrive/,
+    )
+    return Object.keys(r).join(', ') + ' refused'
+  },
+)
+await step(
+  '0116 B: the nurse sees her own 3 documents (read only); the manager sees them too',
+  async () => {
+    await as(staff.nurse)
+    const mine = (await one(`select staff_documents() as l`)).l
+    const mineById = (await one(`select staff_documents($1) as l`, [staff.nurse])).l
+    await as(staff.manager)
+    const mgr = (await one(`select staff_documents($1) as l`, [staff.nurse])).l
+    if (
+      mine.documents.length !== 3 ||
+      mineById.documents.length !== 3 ||
+      mine.canAdd !== false ||
+      mine.documents.some((d) => d.canRemove) ||
+      mine.profileName !== 'Nyirahabimana Chantal' ||
+      mgr.documents.length !== 3 ||
+      mgr.canAdd !== true ||
+      !mgr.documents.every((d) => d.canRemove) ||
+      mgr.documents[0].id !== t116.idDoc.id
+    )
+      throw new Error(JSON.stringify({ mine, mgr }))
+    return `nurse: 3, cannot add or remove; manager: 3, newest first, can add and remove`
+  },
+)
+await expectError(
+  "0116 B: the doctor is refused the nurse's documents",
+  async () => {
+    await as(staff.doctor)
+    await db.query(`select staff_documents($1)`, [staff.nurse])
+  },
+  /an employee sees their own documents/,
+)
+await expectError(
+  "0116 B: the receptionist is refused the nurse's documents",
+  async () => {
+    await as(staff.receptionist)
+    await db.query(`select staff_documents($1)`, [staff.nurse])
+  },
+  /an employee sees their own documents/,
+)
+await expectError(
+  '0116 B: the nurse cannot add a document to her own file',
+  async () => {
+    await as(staff.nurse)
+    await db.query(
+      `select add_staff_document($1, 'other', 'My own', $2, 'application/pdf', 100, null, null)`,
+      [staff.nurse, path116(staff.nurse)],
+    )
+  },
+  /only the manager adds/,
+)
+await expectError(
+  '0116 B: the nurse cannot remove her own document',
+  async () => {
+    await as(staff.nurse)
+    await db.query(`select remove_staff_document($1, 'I do not want it there')`, [t116.lic.id])
+  },
+  /only the manager removes/,
+)
+await expectError(
+  '0116 B: a visitor gets nothing',
+  async () => {
+    await as(null, 'anon')
+    await db.query(`select staff_documents($1)`, [staff.nurse])
+  },
+  /not allowed|permission denied/,
+)
+await step(
+  "0116 C: the manager's looks at another person's documents are in the audit log (once per half hour); one's own are not",
+  async () => {
+    // the manager already listed the nurse's documents a moment ago (0116 B): that look is the
+    // only line of it in the half hour
+    await as(staff.manager)
+    await db.query(`select staff_documents($1)`, [staff.nurse])
+    await db.query(`select staff_documents($1)`, [staff.nurse])
+    await db.query(`select staff_documents($1)`, [staff.doctor])
+    await db.query(`select staff_documents()`)
+    const open = (await one(`select staff_document_open($1) as o`, [t116.lic.id])).o
+    await db.query(`select staff_document_open($1)`, [t116.lic.id])
+    await as(staff.nurse)
+    await db.query(`select staff_documents()`)
+    await db.query(`select staff_document_open($1)`, [t116.idDoc.id])
+    await asAdmin()
+    const lines = (
+      await one(
+        `select coalesce(jsonb_agg(jsonb_build_object('who', actor_id, 'what', entity_id, 'why', reason) order by id), '[]'::jsonb) as l
+         from audit_event where entity = 'staff_document' and action = 'read'`,
+      )
+    ).l
+    const flat = (l) => l.map((x) => [x.who, x.what, x.why].join(' ')).join('; ')
+    const mine = flat(lines)
+    const expected = flat([
+      { who: staff.manager, what: staff.nurse, why: 'list' },
+      { who: staff.manager, what: staff.doctor, why: 'list' },
+      { who: staff.manager, what: t116.lic.id, why: 'open' },
+    ])
+    if (
+      mine !== expected ||
+      open.bucket !== 'staff-files' ||
+      open.path !== t116.licPath ||
+      open.expiresIn !== 300
+    )
+      throw new Error(JSON.stringify({ mine, expected, open }))
+    return `3 lines: the nurse's list, the doctor's list, the licence opened; the nurse's own looks wrote none`
+  },
+)
+await expectError(
+  "0116 C: the doctor cannot open the nurse's licence (not found to him)",
+  async () => {
+    await as(staff.doctor)
+    await db.query(`select staff_document_open($1)`, [t116.lic.id])
+  },
+  /document not found/,
+)
+await step(
+  '0116 D: the expiring list: the licence (20 days) and the expired contract; the far contract only when asked',
+  async () => {
+    await as(staff.manager)
+    const soon = (await one(`select staff_documents_expiring() as l`)).l
+    const far = (await one(`select staff_documents_expiring(365) as l`)).l
+    const none = (await one(`select staff_documents_expiring(0) as l`)).l
+    const ids = (l) => l.map((x) => x.id)
+    if (
+      !ids(soon).includes(t116.lic.id) ||
+      !ids(soon).includes(t116.docContract.id) ||
+      ids(soon).includes(t116.contract.id) ||
+      ids(soon).includes(t116.idDoc.id) ||
+      !ids(far).includes(t116.contract.id) ||
+      ids(none).includes(t116.lic.id) ||
+      !ids(none).includes(t116.docContract.id) ||
+      soon[0].id !== t116.docContract.id ||
+      soon[0].expired !== true ||
+      soon.find((x) => x.id === t116.lic.id).daysLeft !== 20 ||
+      soon.find((x) => x.id === t116.lic.id).profileName !== 'Nyirahabimana Chantal'
+    )
+      throw new Error(JSON.stringify({ soon, far, none }))
+    return `60 days: ${soon.length} (expired first); 365 days: ${far.length}; 0 days: the expired only`
+  },
+)
+await expectError(
+  '0116 D: the nurse is refused the expiring list',
+  async () => {
+    await as(staff.nurse)
+    await db.query(`select staff_documents_expiring()`)
+  },
+  /only the manager sees/,
+)
+await step(
+  '0116 E: the Storage rules: the manager sends and reads (after opening), the owner reads, nobody else',
+  async () => {
+    const ins = `select staff_file_object_insert_ok($1) as b`
+    const read = `select staff_file_object_read_ok($1) as b`
+    const del = `select staff_file_object_delete_ok($1) as b`
+    const fresh = path116(staff.nurse)
+    const r = {}
+    r.insMgr = await rule116(staff.manager, ins, [fresh])
+    r.insMgrNoApproval = await rule116(staff.manager, ins, [fresh], false)
+    r.insNurse = await rule116(staff.nurse, ins, [fresh])
+    r.insDoctor = await rule116(staff.doctor, ins, [fresh])
+    r.insBadName = await rule116(staff.manager, ins, [`${staff.nurse}/licence.pdf`])
+    r.insExe = await rule116(staff.manager, ins, [path116(staff.nurse, 'exe')])
+    r.insNobody = await rule116(staff.manager, ins, [path116(crypto.randomUUID())])
+    r.insRegistered = await rule116(staff.manager, ins, [t116.licPath])
+    // the manager opened the licence a moment ago (0116 C): its link may be signed; the ID not yet
+    r.readMgrOpened = await rule116(staff.manager, read, [t116.licPath])
+    r.readMgrNotOpened = await rule116(staff.manager, read, [t116.idPath])
+    r.readMgrFresh = await rule116(staff.manager, read, [fresh])
+    r.readOwner = await rule116(staff.nurse, read, [t116.idPath])
+    r.readOwnerNoApproval = await rule116(staff.nurse, read, [t116.idPath], false)
+    r.readDoctor = await rule116(staff.doctor, read, [t116.licPath])
+    r.readReception = await rule116(staff.receptionist, read, [t116.licPath])
+    r.delMgrLive = await rule116(staff.manager, del, [t116.licPath])
+    r.delMgrFresh = await rule116(staff.manager, del, [fresh])
+    r.delNurse = await rule116(staff.nurse, del, [fresh])
+    const want = {
+      insMgr: true,
+      insMgrNoApproval: false,
+      insNurse: false,
+      insDoctor: false,
+      insBadName: false,
+      insExe: false,
+      insNobody: false,
+      insRegistered: false,
+      readMgrOpened: true,
+      readMgrNotOpened: false,
+      readMgrFresh: true,
+      readOwner: true,
+      readOwnerNoApproval: false,
+      readDoctor: false,
+      readReception: false,
+      delMgrLive: false,
+      delMgrFresh: true,
+      delNurse: false,
+    }
+    const wrong = Object.keys(want).filter((k) => r[k] !== want[k])
+    if (wrong.length) throw new Error('wrong: ' + wrong.map((k) => `${k}=${r[k]}`).join(', '))
+    return `${Object.keys(want).length} answers right (the manager reads another's file only after opening it; the owner at once)`
+  },
+)
+await expectError(
+  '0116 F: removing needs a reason',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select remove_staff_document($1, ' ')`, [t116.idDoc.id])
+  },
+  /say why the document is removed/,
+)
+await step(
+  '0116 F: the manager removes the ID with a reason: the nurse no longer sees it; the manager sees it removed; Storage lets the manager delete it',
+  async () => {
+    await as(staff.manager)
+    const gone = (
+      await one(`select remove_staff_document($1, 'Wrong person''s card scanned') as r`, [
+        t116.idDoc.id,
+      ])
+    ).r
+    const mgr = (await one(`select staff_documents($1) as l`, [staff.nurse])).l
+    await as(staff.nurse)
+    const mine = (await one(`select staff_documents() as l`)).l
+    const removedRow = mgr.documents.find((d) => d.id === t116.idDoc.id)
+    const del = await rule116(staff.manager, `select staff_file_object_delete_ok($1) as b`, [
+      t116.idPath,
+    ])
+    const readRemovedMgr = await rule116(
+      staff.manager,
+      `select staff_file_object_read_ok($1) as b`,
+      [t116.idPath],
+    )
+    const readRemovedOwner = await rule116(
+      staff.nurse,
+      `select staff_file_object_read_ok($1) as b`,
+      [t116.idPath],
+    )
+    // the file itself: the nurse's delete does nothing, the manager's takes it out; a live one stays
+    const droppedByNurse = await drop116(staff.nurse, t116.idPath)
+    const droppedLive = await drop116(staff.manager, t116.licPath)
+    const dropped = await drop116(staff.manager, t116.idPath)
+    await asAdmin()
+    const left = (
+      await one(`select count(*)::int as n from storage.objects where name = $1`, [t116.idPath])
+    ).n
+    const managerName = (
+      await one(`select full_name as n from profiles where id = $1`, [staff.manager])
+    ).n
+    const audit = (
+      await one(
+        `select count(*)::int as n from audit_event where entity = 'staff_document' and entity_id = $1 and action = 'update'`,
+        [t116.idDoc.id],
+      )
+    ).n
+    if (
+      gone.path !== t116.idPath ||
+      !gone.removedAt ||
+      mine.documents.length !== 2 ||
+      mine.removed !== 1 ||
+      mgr.documents.length !== 3 ||
+      !removedRow ||
+      !removedRow.removed ||
+      removedRow.removeReason !== "Wrong person's card scanned" ||
+      removedRow.removedBy !== managerName ||
+      removedRow.canRemove ||
+      mgr.documents[2].id !== t116.idDoc.id ||
+      del !== true ||
+      readRemovedMgr !== true ||
+      readRemovedOwner !== false ||
+      droppedByNurse !== 0 ||
+      droppedLive !== 0 ||
+      dropped !== 1 ||
+      left !== 0 ||
+      audit < 1
+    )
+      throw new Error(
+        JSON.stringify({
+          gone,
+          mine: mine.documents.length,
+          removedRow,
+          del,
+          readRemovedMgr,
+          readRemovedOwner,
+          droppedByNurse,
+          droppedLive,
+          dropped,
+          left,
+          audit,
+        }),
+      )
+    return `removed with the reason; nurse sees 2; manager sees 3 with the removed one last; only the manager deletes the file, only a removed one; audited`
+  },
+)
+await expectError(
+  '0116 F: a removed document is not removed twice, nor opened',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select remove_staff_document($1, 'again')`, [t116.idDoc.id])
+  },
+  /already removed/,
+)
+await expectError(
+  '0116 F: a removed document cannot be opened',
+  async () => {
+    await as(staff.nurse)
+    await db.query(`select staff_document_open($1)`, [t116.idDoc.id])
+  },
+  /this document was removed/,
+)
+
 finish()
 
 function finish() {

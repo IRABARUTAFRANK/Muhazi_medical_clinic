@@ -41,6 +41,8 @@ export interface ReceiptLine {
   unitPrice?: number
   /** Full line amount before the insurer split (default unitPrice × quantity). */
   fullAmount?: number
+  /** The cash price per unit, printed beside the insurer's when the line is priced otherwise (0115). */
+  cashPrice?: number
 }
 
 export interface ReceiptDoc {
@@ -117,6 +119,9 @@ export interface ReceiptText {
   description: string
   qty: string
   unitPrice: string
+  /** "Cash price" and "MMI price": the two columns of a line priced at the insurer's price. */
+  cashPrice: string
+  insurerPrice: (name: string) => string
   amountRwf: string
   patientShareRwf: string
   subtotal: string
@@ -158,6 +163,11 @@ export function receiptText(t: TFn): ReceiptText {
     description: k('item'),
     qty: k('qty'),
     unitPrice: k('unitPrice'),
+    cashPrice: kd('cashPrice', 'Cash price'),
+    insurerPrice: (name) => {
+      const v = t('receipt.insurerPrice', { name, defaultValue: `${name} price` })
+      return v && v !== 'receipt.insurerPrice' ? v : `${name} price`
+    },
     amountRwf: k('amountRwf'),
     patientShareRwf: k('patientShareRwf'),
     subtotal: k('subtotal'),
@@ -195,6 +205,8 @@ function textFromLegacy(l: ReceiptLabels): ReceiptText {
     description: l.item,
     qty: 'Qty',
     unitPrice: 'Unit price',
+    cashPrice: 'Cash price',
+    insurerPrice: (name) => `${name} price`,
     amountRwf: `${l.amount} (RWF)`,
     patientShareRwf: `${l.patientPays} (RWF)`,
     subtotal: 'Subtotal',
@@ -409,13 +421,20 @@ export function receiptBodyHtml(
   const sums = receiptSums(d)
   const insured = sums.insurer > 0
   const amountHead = !full && insured ? rt.patientShareRwf : rt.amountRwf
-  const items = `<table class="rt"><thead><tr><th>${esc(rt.description)}</th><th class="num">${esc(rt.qty)}</th>${full ? `<th class="num">${esc(rt.unitPrice)}</th>` : ''}<th class="num">${esc(amountHead)}</th></tr></thead>
+  // a line priced at the insurer's price: the cash price beside it, the unit price named after the insurer
+  const cashCol = full && d.lines.some((x) => x.cashPrice != null && x.cashPrice !== unit(x))
+  const unitHead = cashCol && insured ? rt.insurerPrice(d.insurer!.name) : rt.unitPrice
+  const items = `<table class="rt"><thead><tr><th>${esc(rt.description)}</th><th class="num">${esc(rt.qty)}</th>${
+    cashCol ? `<th class="num">${esc(rt.cashPrice)}</th>` : ''
+  }${full ? `<th class="num">${esc(unitHead)}</th>` : ''}<th class="num">${esc(amountHead)}</th></tr></thead>
 <tbody>${d.lines
     .map(
       (x) =>
         `<tr><td class="desc">${esc(x.description)}</td><td class="num">${esc(docNumber(x.quantity))}</td>${
-          full ? `<td class="num">${esc(docMoney(unit(x)))}</td>` : ''
-        }<td class="num">${esc(docMoney(lineAmount(x)))}</td></tr>`,
+          cashCol
+            ? `<td class="num">${x.cashPrice == null ? '' : esc(docMoney(x.cashPrice))}</td>`
+            : ''
+        }${full ? `<td class="num">${esc(docMoney(unit(x)))}</td>` : ''}<td class="num">${esc(docMoney(lineAmount(x)))}</td></tr>`,
     )
     .join('')}</tbody></table>`
 

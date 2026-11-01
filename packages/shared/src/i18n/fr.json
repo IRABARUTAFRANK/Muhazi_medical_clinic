@@ -55,7 +55,9 @@
     "lockNowHint": "Vous quittez le poste : votre PIN le rouvre",
     "changePin": "Changer mon PIN",
     "changePinHint": "Choisir un nouveau PIN",
-    "chooseTime": "Choisissez une heure"
+    "chooseTime": "Choisissez une heure",
+    "myDocuments": "Mes documents",
+    "myDocumentsHint": "Licence, contrat et autres papiers gardés pour vous"
   },
   "days": {
     "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
@@ -1226,7 +1228,10 @@
         "publicNote": "Le site public garde son bandeau « assurances bientôt » tant que FEATURES.insurance n'est pas activé dans le code."
       },
       "parked": "Les assurances sont désactivées : la clinique ne travaille pas encore avec un assureur, tous les patients paient comptant ou par mobile money. Les tarifs et couvertures apparaîtront ici au premier partenariat.",
-      "confirmDelete": "Supprimer l'assureur « {{name}} » ? Les factures passées le gardent."
+      "confirmDelete": "Supprimer l'assureur « {{name}} » ? Les factures passées le gardent.",
+      "saved": "{{name}} enregistré.",
+      "nowOn": "{{name}} est actif : il peut être choisi sur une visite.",
+      "nowOff": "{{name}} est désactivé."
     },
     "errors": {
       "name": "Un nom est requis.",
@@ -1555,6 +1560,109 @@
       },
       "removeFile": "Retirer",
       "fileChange": "Mauvais fichier ? Cliquez ici pour en choisir un autre, ou Retirez-le. Rien n’est enregistré avant Vérifier la liste et Utiliser cette liste."
+    },
+    "tariff": {
+      "lead": "Chaque assureur paie sur sa propre liste de prix lorsqu’il en publie une (téléversée ici, comme la liste officielle des médicaments), sur la liste officielle des médicaments lorsqu’il la suit, ou sur le prix comptant de la clinique. Sa couverture s’applique à ce prix.",
+      "activeHint": "Seul un assureur actif peut être choisi sur une visite et figure sur le site public.",
+      "followsList": "Suit la liste officielle des médicaments (RHIA)",
+      "followsListHint": "Un médicament sans prix propre sur la liste de cet assureur prend le prix de la liste officielle.",
+      "coversHint": "Le pourcentage s’applique au prix de l’assureur pour la ligne (par groupe lorsqu’il est défini).",
+      "notListed": "Un soin ou un médicament sans prix chez l’assureur",
+      "rules": {
+        "cash_covered": "Prix comptant, couvert",
+        "not_covered": "Non couvert",
+        "ask": "Demander d’abord"
+      },
+      "rulesHint": {
+        "cash_covered": "{{name}} paie sa couverture sur le prix comptant de la clinique.",
+        "not_covered": "Le patient paie le prix comptant de la clinique en entier ; {{name}} ne paie rien sur cette ligne.",
+        "ask": "La ligne est refusée tant que la personne n’a pas confirmé le prix comptant avec {{name}} (Ajouter un soin, la remise à la pharmacie). Les demandes d’examens et les nuits de lit prennent le prix comptant avec la couverture."
+      },
+      "show": "Afficher le tarif de {{name}}",
+      "hide": "Masquer le tarif",
+      "listsCount_one": "{{count}} liste de prix",
+      "listsCount_other": "{{count}} listes de prix",
+      "search": "Rechercher",
+      "searchPh": "consultation, amoxicilline, DEN-EXT…",
+      "kind": "Afficher",
+      "kinds": {
+        "all": "Tout",
+        "service": "Soins",
+        "item": "Médicaments et fournitures"
+      },
+      "ownOnly": "Seulement les lignes avec un prix de l’assureur ({{count}})",
+      "tableHint": "Le prix sur lequel {{name}} paie, d’où il vient, la couverture de la ligne et ce que paient le patient et {{name}}. Modifiez un prix sur place ; videz-le pour revenir à la liste officielle ou au prix comptant.",
+      "noRows": "Aucune ligne ne correspond.",
+      "col": {
+        "line": "Soin ou médicament",
+        "cash": "Prix comptant",
+        "insurer": "Prix {{name}}",
+        "covered": "Couvert",
+        "patient": "Le patient paie",
+        "insurerPays": "{{name}} paie",
+        "file": {
+          "code": "Code",
+          "name": "Nom",
+          "price": "Prix",
+          "kind": "Type"
+        }
+      },
+      "sources": {
+        "tariff": "Liste de l’assureur",
+        "reference": "Liste officielle",
+        "cash": "Prix comptant",
+        "none": "Pas de prix"
+      },
+      "askMark": "demander d’abord",
+      "editPrice": "Modifier le prix de l’assureur",
+      "noOwnPrice": "aucun",
+      "priceSaved": "Prix {{name}} de {{item}} : {{price}}.",
+      "priceRemoved": "{{name}} n’a plus de prix propre pour {{item}}.",
+      "upload": "Téléverser la liste de prix de {{name}}",
+      "uploadHint": "Un fichier Excel (.xlsx) ou un CSV avec une colonne code ou nom et une colonne prix ; une colonne type (soin / médicament) aide quand les deux sont dans une même feuille. Les soins sont reconnus par le code ou le nom, les médicaments par leur code officiel ou leur nom.",
+      "fileHint": ".xlsx ou .csv",
+      "namePh": "p. ex. Tarif {{name}} 2026",
+      "useFrom": "Utiliser à partir du",
+      "newList": "Nouveau tarif à partir d’une date",
+      "newListTitle": "Une nouvelle liste de prix à partir d’une date",
+      "newListHint": "La liste en vigueur se termine la veille. Copiez ses prix pour en changer quelques-uns, ou partez d’une liste vide.",
+      "copyCurrent": "Copier les prix de la liste en vigueur",
+      "startList": "Démarrer la liste le {{date}}",
+      "started": "{{name}} démarre le {{date}}.",
+      "currentList": "En vigueur : {{name}} (depuis le {{date}})",
+      "confirmTitle": "Utiliser « {{name}} » comme liste de prix de {{insurer}} à partir du {{date}} ?",
+      "confirmBody": "{{count}} lignes deviennent les prix de l’assureur ; la liste en vigueur se termine la veille et est conservée.",
+      "done": "{{name}} est la liste de prix de {{insurer}} à partir du {{date}} ({{count}} lignes).",
+      "previewTitle": "{{name}} — vérification pour {{insurer}}",
+      "comparedWith": "Comparé avec {{name}} ({{count}} lignes)",
+      "firstList": "La première liste de l’assureur",
+      "kept": "{{count}} lignes sur {{total}} correspondent à un soin ou à un médicament.",
+      "tile": {
+        "matched": "Reconnues",
+        "new": "Nouveaux prix",
+        "changed": "Prix modifiés",
+        "unchanged": "Inchangés",
+        "unmatched": "Non reconnues"
+      },
+      "unmatchedTitle": "Lignes non reconnues",
+      "allMatched": "Chaque ligne correspond à un soin ou à un médicament.",
+      "unmatchedHint": "Ces lignes sont laissées de côté. Donnez au soin ou au médicament le même code ou nom dans Prix, puis téléversez à nouveau, ou saisissez le prix dans le tableau.",
+      "reasons": {
+        "not_found": "aucun soin ni médicament avec ce code ou ce nom",
+        "ambiguous": "plusieurs correspondent à ce nom : utilisez le code",
+        "bad_price": "le prix n’est pas un nombre supérieur ou égal à zéro",
+        "no_name": "ni code ni nom",
+        "duplicate": "déjà sur une ligne précédente",
+        "not_a_row": "pas une ligne de la liste"
+      },
+      "history": "Listes de prix de cet assureur",
+      "fromTo": "Du {{from}} au {{to}}",
+      "past": "Passée",
+      "err": {
+        "noneMatched": "Aucune ligne de la liste ne correspond à un soin ou à un médicament."
+      },
+      "theInsurer": "l’assureur",
+      "publicNote": "L’assurance s’active dans Paramètres › Clinique et contacts ; le site public affiche alors les assureurs actifs."
     }
   },
   "visit": {
@@ -1584,7 +1692,8 @@
       "total": "Total",
       "patientPays": "Le patient paie",
       "insurerPays": "{{name}} paie",
-      "remove": "Retirer le frais"
+      "remove": "Retirer le frais",
+      "cashPrice": "prix comptant {{price}}"
     },
     "add": {
       "title": "Ajouter un soin",
@@ -1692,7 +1801,15 @@
         "reason": "Dites pourquoi l’argent est rendu."
       }
     },
-    "leftWhy": "Parti sans payer : {{reason}}"
+    "leftWhy": "Parti sans payer : {{reason}}",
+    "insurerPrice": {
+      "priced": "Prix {{insurer}} {{price}} · le patient paie {{patient}} · {{insurer}} paie {{insurerPays}}",
+      "reference": "Prix de la liste officielle {{price}} · le patient paie {{patient}} · {{insurer}} paie {{insurerPays}}",
+      "cashCovered": "Pas sur la liste de {{insurer}} — prix comptant {{price}} · le patient paie {{patient}} · {{insurer}} paie {{insurerPays}}",
+      "notCovered": "Pas sur la liste de {{insurer}} — non couvert : le patient paie {{price}}",
+      "ask": "Pas sur la liste de {{insurer}} — confirmez d’abord avec {{insurer}} (prix comptant {{price}} : patient {{patient}}, {{insurer}} {{insurerPays}})",
+      "none": "Pas encore de prix"
+    }
   },
   "settings": {
     "title": "Paramètres de la clinique",
@@ -1882,6 +1999,17 @@
     "patientSection": {
       "title": "Dossier patient et constantes",
       "hint": "Champs à noter, obligatoires, constantes vitales"
+    },
+    "insurance": {
+      "title": "Assurance",
+      "lead": "La clinique travaille-t-elle avec des assureurs ? Désactivé, chaque patient paie en espèces ou par mobile money.",
+      "on": "L’assurance est activée",
+      "onHint": "Les visites peuvent être sur un assureur ; la page Prix gère les assureurs et leurs tarifs.",
+      "off": "L’assurance est désactivée",
+      "offHint": "Chaque patient paie le montant entier à la caisse.",
+      "saved": "Enregistré.",
+      "pricesNote": "Les assureurs, ce que chacun couvre et leurs listes de prix se gèrent sous",
+      "pricesLink": "Prix › Assureurs"
     }
   },
   "pin": {
@@ -3342,7 +3470,8 @@
     "slipTitleDesk": "Rapport – {{desk}}",
     "resultsGivenIn": "Résultats rendus {{period}}",
     "noneDoneIn": "Aucun résultat rendu {{period}}.",
-    "periodNeedsUpdate": "Les autres périodes demandent la dernière mise à jour de la base de données. Les résultats ci-dessous sont ceux d’aujourd’hui."
+    "periodNeedsUpdate": "Les autres périodes demandent la dernière mise à jour de la base de données. Les résultats ci-dessous sont ceux d’aujourd’hui.",
+    "callHint": "L’écran de la salle d’attente dit au patient de venir au laboratoire"
   },
   "finance": {
     "desk": "Caisse",
@@ -4515,7 +4644,12 @@
     "sellResults": "Patients trouvés",
     "sellNobody": "Aucun patient n’est en visite maintenant.",
     "packPriceUsed_one": "{{count}} boîte entière à {{price}} (prix de la boîte)",
-    "packPriceUsed_other": "{{count}} boîtes entières à {{price}} (prix de la boîte)"
+    "packPriceUsed_other": "{{count}} boîtes entières à {{price}} (prix de la boîte)",
+    "notListed": {
+      "cash": "Pas sur la liste de {{payer}} : le prix comptant, avec la couverture",
+      "notCovered": "Pas sur la liste de {{payer}} : non couvert, le patient paie tout",
+      "ask": "Pas sur la liste de {{payer}} : confirmez avec {{payer}} avant de remettre"
+    }
   },
   "queuePage": {
     "title": "Ma file · {{desk}}",
@@ -4597,7 +4731,9 @@
     "insurerSharePct": "Part de l'assureur ({{pct}} %)",
     "insurerShare": "Part de l'assureur",
     "visitNo": "N° de visite",
-    "chipPartial": "PAYÉ EN PARTIE"
+    "chipPartial": "PAYÉ EN PARTIE",
+    "cashPrice": "Prix comptant",
+    "insurerPrice": "Prix {{name}}"
   },
   "dept": {
     "title": "Mon service · {{name}}",
@@ -4943,7 +5079,32 @@
       "adjustTitle_one": "Appliquer {{change}} au prix de {{count}} soin de la catégorie {{group}} ?",
       "adjustTitle_other": "Appliquer {{change}} au prix de {{count}} soins de la catégorie {{group}} ?",
       "adjustAllTitle_one": "Appliquer {{change}} au prix de {{count}} soin ?",
-      "adjustAllTitle_other": "Appliquer {{change}} au prix des {{count}} soins ?"
+      "adjustAllTitle_other": "Appliquer {{change}} au prix des {{count}} soins ?",
+      "insurerOn": {
+        "title": "Activer {{name}} ?",
+        "body": "L’assureur peut être choisi sur une visite et figure sur le site public.",
+        "yes": "Oui, activer"
+      },
+      "insurerOff": {
+        "title": "Désactiver {{name}} ?",
+        "body": "Il ne pourra plus être choisi sur les nouvelles visites ; les factures déjà à son nom le gardent.",
+        "yes": "Oui, désactiver"
+      },
+      "followsOn": {
+        "title": "{{name}} suit la liste officielle des médicaments ?",
+        "body": "Un médicament sans prix propre prend le prix de la liste officielle."
+      },
+      "followsOff": {
+        "title": "{{name}} cesse de suivre la liste officielle ?",
+        "body": "Un médicament sans prix propre prend le prix comptant, selon la règle de l’assureur."
+      },
+      "ruleTitle": "{{name}} : « {{rule}} » pour une ligne sans prix ?",
+      "priceTitle": "Fixer le prix {{name}} de {{item}} à {{price}} ?",
+      "priceRemoveTitle": "Retirer le prix {{name}} de {{item}} ?",
+      "priceBody": "Il s’applique aux lignes ajoutées à partir de maintenant ; les factures déjà faites gardent leurs prix.",
+      "newTariffTitle": "Démarrer une nouvelle liste de prix de {{name}} le {{date}} ?",
+      "newTariffCopyBody": "Les prix en vigueur y sont copiés ; la liste en vigueur se termine la veille.",
+      "newTariffEmptyBody": "Elle démarre vide : tant qu’aucun prix n’est saisi ou téléversé, la liste officielle ou le prix comptant s’applique."
     },
     "visit": {
       "thisPatient": "ce patient",
@@ -5063,7 +5224,10 @@
       "removeDxBody": "Il reste dans le dossier, barré, avec votre raison : « {{reason}} ». Il n’est plus compté.",
       "editNote": "Modifier cette note de {{name}} ?",
       "changeYes": "Oui, modifier",
-      "removeYes": "Oui, retirer"
+      "removeYes": "Oui, retirer",
+      "askInsurer": "{{item}} n’est pas sur la liste de {{insurer}}. Facturer le prix comptant ?",
+      "askInsurerBody": "Confirmez d’abord avec {{insurer}}. Le prix comptant ({{price}}) est partagé selon la couverture de l’assureur.",
+      "askInsurerYes": "Oui, confirmé avec l’assureur"
     },
     "staff": {
       "deactivate": {
@@ -5183,6 +5347,17 @@
         "title": "Changer les constantes par défaut ?",
         "body": "Chaque infirmière et médecin verra le nouveau jeu dès son prochain formulaire.",
         "yes": "Oui, enregistrer"
+      },
+      "insurance": {
+        "on": {
+          "title": "Activer l’assurance ?",
+          "body": "L’écran de visite demande qui paie, la page Prix affiche les assureurs et leurs tarifs, et le site public nomme les partenaires actifs."
+        },
+        "off": {
+          "title": "Désactiver l’assurance ?",
+          "body": "Chaque nouvelle visite est payée en entier à la caisse. Les factures déjà au nom d’un assureur le gardent."
+        },
+        "yes": "Oui, continuer"
       }
     },
     "perms": {
@@ -5379,7 +5554,31 @@
       "seenBody": "Il est marqué comme vu et reste deux jours dans votre boîte de résultats. Vous le retrouvez toujours dans la visite."
     },
     "reasonLabel": "Motif",
-    "reasonPh": "Indiquez pourquoi en quelques mots"
+    "reasonPh": "Indiquez pourquoi en quelques mots",
+    "display": {
+      "create": {
+        "title": "Créer l’écran « {{name}} » ?",
+        "body": "Son lien n’est montré qu’une fois ; ouvrez-le sur le téléviseur.",
+        "yes": "Oui, créer"
+      },
+      "save": {
+        "title": "Enregistrer les changements de « {{name}} » ?",
+        "body": "Le téléviseur les suit dans quelques secondes.",
+        "yes": "Oui, enregistrer"
+      },
+      "revoke": {
+        "title": "Révoquer l’écran « {{name}} » ?",
+        "body": "Le téléviseur n’affichera plus rien ; ajoutez un nouvel écran pour un nouveau lien.",
+        "yes": "Oui, révoquer"
+      }
+    },
+    "nextPatient": {
+      "call": {
+        "title": "Appeler {{name}} ({{ticket}}) à l’écran ?",
+        "body": "L’écran de la salle d’attente lui dit de venir dans votre salle, avec une sonnerie.",
+        "yes": "Oui, appeler"
+      }
+    }
   },
   "doc": {
     "docNo": "N° du document",
@@ -5554,7 +5753,12 @@
     "coverRetired": "Le remplacement n'est plus utilisé. Confiez le patient à un collègue depuis la visite.",
     "vitalRange": "Cette mesure est en dehors de ce qu’un patient peut avoir : vérifiez le nombre.",
     "vitalName": "Donnez un nom à la mesure personnalisée (60 caractères au plus, son unité 20 au plus).",
-    "vitalUnknown": "Mesure inconnue."
+    "vitalUnknown": "Mesure inconnue.",
+    "staffDocType": "Seuls les PDF, les photos (JPEG, PNG, WebP) et les documents Word peuvent être ajoutés.",
+    "staffDocsUnavailable": "Les documents des employés ne peuvent pas encore être ajoutés : la mise à jour de la base de données qui les ajoute n'est pas installée.",
+    "staffDocPrivate": "Ces documents ne vous sont pas accessibles. Seuls le gestionnaire et l'employé peuvent les ouvrir.",
+    "staffDocManagerOnly": "Seul le gestionnaire ajoute ou retire les documents d'un employé.",
+    "askInsurer": "Ceci n’est pas sur la liste de l’assureur. Confirmez d’abord le prix comptant avec l’assureur."
   },
   "cashierDesk": {
     "noMatch": "Rien ne correspond à votre recherche.",
@@ -7301,7 +7505,22 @@
     "4751a0a4": "Remplissez les champs obligatoires : {{p1}}.",
     "df1edfcb": "Champ du dossier inconnu : {{p1}}.",
     "d4abdfed": "Situation matrimoniale inconnue.",
-    "5dfde301": "Type de pièce d’identité inconnu."
+    "5dfde301": "Type de pièce d’identité inconnu.",
+    "888650d3": "Vous n'y êtes pas autorisé : un employé voit ses propres documents, le gestionnaire ceux de tous.",
+    "4b7a938c": "Seul le gestionnaire retire les documents d'un employé.",
+    "e622f10e": "Seul le gestionnaire ajoute les documents d'un employé.",
+    "33c23713": "Seul le gestionnaire voit les documents qui expirent.",
+    "a588956d": "La règle pour une ligne sans prix est : prix comptant couvert, non couvert, ou demander d’abord.",
+    "6c0f8be3": "Aucune ligne de la liste ne correspond à un soin ou à un médicament.",
+    "ccd93097": "L’interrupteur d’assurance est activé ou désactivé.",
+    "342cdbff": "Cette clé d’écran est inconnue ou a été révoquée.",
+    "9800fbfe": "Ce patient a déjà quitté ce poste.",
+    "a3109bfa": "Cet écran est inconnu ou a été révoqué.",
+    "f45d52da": "Ce patient n’attend pas à {{1}}.",
+    "9e14d924": "Choisissez au moins une langue.",
+    "31dc43d9": "Le message est trop long.",
+    "021838e4": "Donnez un nom à l’écran.",
+    "07e0078a": "Langue inconnue : {{1}}."
   },
   "panel": {
     "close": "Fermer",
@@ -8851,5 +9070,173 @@
         "registrations": "Dossiers créés sur la période ; les informations manquantes suivent les réglages du dossier patient (Paramètres › Dossier patient)."
       }
     }
+  },
+  "staffDocs": {
+    "title": "Documents",
+    "button": "Documents",
+    "of": "Documents de {{name}}",
+    "lead": "La licence, le contrat signé et les autres documents importants de {{name}}, gardés dans l'espace privé de la clinique. Seuls le gestionnaire et {{name}} peuvent les ouvrir ; chaque consultation par le gestionnaire est enregistrée.",
+    "leadOwn": "Votre licence, votre contrat et les autres documents que la clinique garde pour vous. Seuls vous et le gestionnaire pouvez les ouvrir.",
+    "myTitle": "Mes documents",
+    "empty": "Aucun document pour le moment.",
+    "emptyCanAdd": "Aucun document pour le moment. Appuyez sur « Ajouter des documents » pour envoyer la licence, le contrat ou un autre papier.",
+    "add": "Ajouter des documents",
+    "kind": "Type de document",
+    "kindAll": "Type de chaque document (modifiable ci-dessous)",
+    "kinds": {
+      "licence": "Licence",
+      "contract": "Contrat",
+      "id": "Pièce d'identité",
+      "certificate": "Certificat / diplôme",
+      "cv": "CV",
+      "other": "Autre"
+    },
+    "chooseMany": "Choisir un ou plusieurs fichiers",
+    "addMore": "Ajouter d'autres fichiers",
+    "chooseHint": "PDF, photo (JPEG, PNG, WebP) ou Word (.doc, .docx), 10 Mo au plus chacun",
+    "rowTitle": "Titre",
+    "rowKind": "Type",
+    "rowExpiry": "Expire le",
+    "rowNote": "Note (facultatif)",
+    "rowRemove": "Retirer ce fichier",
+    "fileTitlePh": "Par exemple : licence d'exercice NCNM 2026",
+    "notePh": "Par exemple : renouvelée chaque année en mars",
+    "expiryHint": "Licence ou contrat : la date de fin. Le gestionnaire est prévenu 60 jours avant.",
+    "expiresOn": "Expire le {{date}}",
+    "expiredOn": "Expiré le {{date}}",
+    "expiredShort": "Expiré",
+    "expiresToday": "Expire aujourd'hui",
+    "expiresIn_one": "Expire dans {{count}} jour",
+    "expiresIn_other": "Expire dans {{count}} jours",
+    "noExpiry": "Sans date d'expiration",
+    "addedBy": "ajouté par {{name}} le {{when}}",
+    "someone": "un collègue",
+    "send": "Ajouter le document",
+    "sendMany": "Ajouter {{count}} documents",
+    "sendAgain": "Renvoyer le reste",
+    "sending": "Envoi de {{file}}… Gardez cette page ouverte.",
+    "sendingN": "Envoi {{n}} sur {{total}} : {{file}}",
+    "status": {
+      "pending": "En attente",
+      "sending": "Envoi…",
+      "done": "Ajouté",
+      "failed": "Non ajouté"
+    },
+    "partial": "{{done}} documents sur {{total}} ajoutés ; les autres sont listés avec la raison. Corrigez-les et renvoyez.",
+    "chooseFirst": "Choisissez d'abord le fichier.",
+    "titlesNeeded": "Chaque document doit avoir un titre.",
+    "added": "« {{title}} » est maintenant dans le dossier de {{name}}.",
+    "addedMany": "{{count}} documents ajoutés au dossier de {{name}}.",
+    "cancel": "Annuler",
+    "view": "Voir",
+    "remove": "Retirer",
+    "removeReason": "Pourquoi retirer ce document ?",
+    "removeReasonPh": "Par exemple : mauvaise personne, remplacé par la licence renouvelée",
+    "removed": "« {{title}} » a été retiré. Le dossier garde qui l'a retiré, quand et pourquoi.",
+    "removedRow": "Retiré par {{name}} le {{when}}. Raison : {{reason}}",
+    "removeRule": "Seul le gestionnaire retire un document, toujours avec une raison ; le dossier garde qui, quand et pourquoi.",
+    "storageLeft": "« {{title}} » est retiré du dossier, mais sa copie stockée n'a pas pu être supprimée. Appuyez sur « Supprimer la copie stockée » pour terminer.",
+    "storageLeftRow": "La copie stockée est toujours là.",
+    "purge": "Supprimer la copie stockée",
+    "purged": "La copie stockée de « {{title}} » est supprimée.",
+    "confirm": {
+      "addTitle": "Ajouter « {{title}} » au dossier de {{name}} ?",
+      "addManyTitle": "Ajouter {{count}} documents au dossier de {{name}} ?",
+      "addBody": "Le document est gardé dans l'espace privé de la clinique. Seuls le gestionnaire et {{name}} peuvent l'ouvrir.",
+      "addYes": "Oui, ajouter",
+      "removeTitle": "Retirer « {{title}} » du dossier de {{name}} ?",
+      "purgeTitle": "Supprimer la copie stockée de « {{title}} » ({{name}}) ?",
+      "purgeBody": "Le document a déjà été retiré du dossier. Sa copie est supprimée du stockage pour de bon et ne pourra plus être ouverte.",
+      "purgeYes": "Oui, la supprimer"
+    },
+    "recorded": "Chaque consultation des documents d'un employé par le gestionnaire est enregistrée.",
+    "unavailable": "Les documents des employés ne sont pas encore activés : la mise à jour de la base de données qui les ajoute n'est pas installée.",
+    "removedCount_one": "{{count}} document retiré est listé en dernier.",
+    "removedCount_other": "{{count}} documents retirés sont listés en dernier.",
+    "count_one": "{{count}} document",
+    "count_other": "{{count}} documents",
+    "openFile": "Ouvrir {{title}}",
+    "expiring": {
+      "title": "Documents qui expirent",
+      "days60": "≤ 60 jours",
+      "empty": "Aucune licence ni aucun contrat n'expire dans les 60 prochains jours.",
+      "hint": "Licences et contrats expirés ou se terminant dans 60 jours. Ouvrez l'employé pour ajouter le document renouvelé.",
+      "row": "{{name}} · {{kind}}"
+    }
+  },
+  "display": {
+    "title": "Salle d’attente",
+    "now": "Maintenant",
+    "next": "Suivants",
+    "comeTo": "Venez à {{room}}",
+    "with": "avec {{person}}",
+    "waiting_one": "{{count}} en attente",
+    "waiting_other": "{{count}} en attente",
+    "resultsReady": "Résultats prêts",
+    "resultsHint": "Demandez au guichet",
+    "nobody": "Personne n’attend pour le moment",
+    "noOneCalled": "Personne n’a encore été appelé",
+    "start": "Démarrer l’écran",
+    "startLead": "Appuyez une fois pour que l’écran puisse sonner et remplir le téléviseur.",
+    "soundOn": "Son activé",
+    "soundOff": "Son coupé",
+    "unknown": "Cet écran n’est pas enregistré, ou sa clé a été révoquée. Demandez un nouveau lien au gestionnaire (Paramètres › Écrans de salle d’attente).",
+    "noKey": "Cette adresse n’a pas de clé d’écran. Demandez le lien de l’écran au gestionnaire.",
+    "offline": "Connexion perdue — dernière mise à jour affichée"
+  },
+  "displayScreens": {
+    "title": "Écrans de salle d’attente",
+    "lead": "Un téléviseur côté attente montre qui est appelé, où aller, qui est le suivant, et les résultats prêts. Enregistrez chaque écran ici, puis ouvrez son lien sur le téléviseur (le lien n’est montré qu’une fois).",
+    "add": "Ajouter un écran",
+    "name": "Nom de l’écran",
+    "namePh": "Téléviseur de la salle d’attente",
+    "desks": "Guichets affichés",
+    "desksHint": "Aucun choisi : tous les guichets ayant des patients.",
+    "showNames": "Afficher le nom complet des patients",
+    "chime": "Sonner quand un patient est appelé",
+    "languages": "Langues (l’une après l’autre, toutes les 6 secondes)",
+    "message": "Message (facultatif)",
+    "messagePh": "Gardez votre ticket, s’il vous plaît.",
+    "save": "Créer l’écran",
+    "saveChanges": "Enregistrer les changements",
+    "linkTitle": "Le lien de « {{name}} » — affiché une seule fois",
+    "linkLead": "Ouvrez cette adresse dans le navigateur du téléviseur (Chrome, plein écran) et appuyez sur Démarrer. Elle ne sera plus montrée : si elle est perdue, révoquez l’écran et ajoutez-le à nouveau.",
+    "openOnTv": "À ouvrir sur le téléviseur : cette adresse, telle quelle (la clé en fait partie).",
+    "copy": "Copier le lien",
+    "copied": "Copié",
+    "revoke": "Révoquer",
+    "edit": "Modifier",
+    "revoked": "Révoqué",
+    "active": "Actif",
+    "none": "Aucun écran pour l’instant.",
+    "allDesks": "Tous les guichets",
+    "names": "Noms complets",
+    "ticketsOnly": "Tickets seulement",
+    "withChime": "Sonnerie",
+    "noChime": "Silencieux",
+    "saved": "Écran enregistré ; le téléviseur suit dans quelques secondes.",
+    "revokedDone": "Écran révoqué : son lien ne fonctionne plus.",
+    "createdBy": "Ajouté par {{name}} le {{date}}",
+    "hint": "L’écran ne montre jamais rien de médical : seulement les tickets, les noms (si choisis), la salle où aller et « résultats prêts ». Les tests VIH n’apparaissent jamais.",
+    "errors": {
+      "screen_name": "Donnez un nom à l’écran.",
+      "screen_desk": "Guichet inconnu.",
+      "screen_language": "Choisissez au moins une langue.",
+      "screen_message": "Le message est trop long (300 caractères au plus).",
+      "screen_unknown": "Cet écran est inconnu ou a été révoqué."
+    }
+  },
+  "nextPatient": {
+    "title": "Patient suivant",
+    "lead": "D’abord celui qui vous est envoyé nommément, puis ceux de votre service, puis le plus urgent, puis l’ordre d’arrivée.",
+    "waitingAt": "{{ticket}} · {{name}} attend pour {{desk}}",
+    "sentToYou": "envoyé à vous nommément",
+    "calledAt": "appelé à {{time}}",
+    "waitingCount_one": "{{count}} en attente à ce guichet",
+    "waitingCount_other": "{{count}} en attente à ce guichet",
+    "callAgain": "Rappeler",
+    "later": "Plus tard",
+    "called": "{{ticket}} appelé : l’écran de la salle d’attente lui dit de venir.",
+    "callHint": "L’écran de la salle d’attente dit au patient de venir dans votre salle"
   }
 }

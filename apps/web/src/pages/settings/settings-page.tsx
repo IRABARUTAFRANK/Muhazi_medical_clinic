@@ -34,7 +34,9 @@ import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { BedsCard } from './beds-card'
+import { DisplayScreensCard } from './display-screens-card'
 import { FlowCard } from './flow-card'
+import { InsuranceCard } from './insurance-card'
 import { PatientFieldsCard } from './patient-fields-card'
 import { PermissionsCard } from './permissions-card'
 import { SessionCard } from './session-card'
@@ -282,6 +284,8 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                 </Card>
               </form>
             )}
+            {/* the clinic works with insurers (0115) */}
+            {section === 'clinic' && <InsuranceCard />}
 
             {section === 'hours' && draft && (
               <form onSubmit={submit} className="flex flex-col gap-4">
@@ -404,6 +408,8 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                     <Shortcut to="/app/staff" icon={<Users size={18} />} label={t('staff.title')} />
                   </CardBody>
                 </Card>
+                {/* the TVs at the waiting side (0114) */}
+                <DisplayScreensCard />
               </>
             )}
 

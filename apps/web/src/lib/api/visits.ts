@@ -4,6 +4,7 @@ import i18n from '@/i18n'
 import { reportSessionRefused, supabase } from '@/lib/supabase'
 import { sampleSaveVitals, type VitalEntry, type VitalsInput } from './vitals'
 import { sampleHandoverOnQueue } from './handover'
+import { sampleCalledAt } from './display'
 import { sampleRequestEditCode, sampleVerifyEditCode } from './patients'
 import { apiError, isMissingFunction } from './errors'
 
@@ -539,6 +540,8 @@ export interface QueueItem extends QueueRow {
   queuedAt: string
   startedAt: string | null
   finishedAt: string | null
+  /** Told to come on the waiting-room screen (0114): when, if at all. */
+  calledAt?: string | null
   /** Set when the patient waits at several desks at once; the first doctor who takes them wins. */
   poolId: string | null
   /** Who took (started) the patient here, if anyone. */
@@ -650,6 +653,7 @@ const toItem = (r: BoardRow): QueueItem => ({
   queuedAt: r.queued_at,
   startedAt: r.started_at,
   finishedAt: r.finished_at,
+  calledAt: r.called_at ?? null,
   poolId: r.pool_id ?? null,
   takenBy: r.taken_by_name ?? null,
   takenById: r.taken_by ?? null,
@@ -740,6 +744,7 @@ export function useQueueBoard(station: Station | 'all', role: Role) {
           station: station === 'all' ? ('consultation' as Station) : station,
           poolId: i === 1 ? 'pool-sample' : null,
           takenBy: null,
+          calledAt: sampleCalledAt(`q-${station}-${i}`),
           priority: 3,
           queuedAt: new Date(Date.now() - q.waitMin * 60_000).toISOString(),
           startedAt: null,

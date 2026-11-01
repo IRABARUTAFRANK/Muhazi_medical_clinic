@@ -22,7 +22,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   CATEGORY_IDS,
-  FEATURES,
   formatNumber,
   formatRwf,
   isoDate,
@@ -43,16 +42,12 @@ import { SidePanel } from '@/components/ui/side-panel'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { allowanceAsPct, type AdjustMode } from '@/lib/adjust'
 import {
-  PAYER_TYPES,
-  SERVICE_GROUPS,
   useCatalogueActions,
   useInsurers,
   treatmentName,
   useServiceBilling,
   useTreatments,
   type Insurer,
-  type PayerType,
-  type ServiceGroup,
   categoryName,
   groupOfCategory,
   handlingLabel,
@@ -64,6 +59,8 @@ import { CatalogueTools } from './catalogue-tools'
 import { CategoriesCard } from './categories-card'
 import { MedicinesSection } from './medicines-section'
 import { OfficialListSection } from './official-list-section'
+import { InsurersSection } from './insurers-section'
+import { useInsuranceEnabled } from '@/lib/api/settings'
 import { useDepartmentActions, useDepartments, type Department } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -75,7 +72,6 @@ const errorBox =
   'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
 /** The forms open in a side panel; the panel's footer submits them by this id. */
 const TREATMENT_FORM = 'treatment-form'
-const INSURER_FORM = 'insurer-form'
 
 /** Each department card gets its own colour, in this order. */
 const DEPT_TINTS: Tint[] = ['teal', 'violet', 'mint', 'amber', 'coral', 'navy']
@@ -99,7 +95,7 @@ const DEPT_TEXT: Record<Tint, string> = {
 /**
  * Manager: the treatment catalogue (what the clinic treats, the price, the discount a
  * clinician may give), with search, duplicate, show/hide, delete and bulk price changes.
- * Insurers appear only once the clinic switches insurance on (FEATURES.insurance).
+ * Insurers and their tariffs appear only once the manager switches insurance on (Settings).
  */
 export function PricesPage({ user }: { user: StaffUser }) {
   const { t, i18n } = useTranslation()
@@ -107,9 +103,10 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const { data: insurers = [], error: iError } = useInsurers()
   const actions = useCatalogueActions()
   const confirm = useConfirm()
+  // insurance on (Settings → Insurance): the insurers, their tariffs and prices on the treatments
+  const insurance = useInsuranceEnabled()
   const [editing, setEditing] = useState<Treatment | 'new' | null>(null)
   const [copyFrom, setCopyFrom] = useState<Treatment | null>(null)
-  const [editingInsurer, setEditingInsurer] = useState<Insurer | 'new' | null>(null)
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [managingCats, setManagingCats] = useState(false)
@@ -155,7 +152,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const monthStart = isoDate(new Date(today.getFullYear(), today.getMonth(), 1))
   const { data: billing = {} } = useServiceBilling(monthStart, isoDate(today))
 
-  const activeInsurers = FEATURES.insurance ? insurers.filter((i) => i.active) : []
+  const activeInsurers = insurance ? insurers.filter((i) => i.active) : []
   const q = query.trim().toLowerCase()
   const visible = treatments.filter(
     (x) =>
@@ -379,8 +376,8 @@ export function PricesPage({ user }: { user: StaffUser }) {
         <PageBanner
           icon={Receipt}
           tint="amber"
-          title={t(FEATURES.insurance ? 'prices.title' : 'prices.titleCash')}
-          lead={t(FEATURES.insurance ? 'prices.lead' : 'prices.leadCash')}
+          title={t(insurance ? 'prices.title' : 'prices.titleCash')}
+          lead={t(insurance ? 'prices.lead' : 'prices.leadCash')}
         >
           <Button variant="tint-grey" onClick={() => openPanel('adjust', adjusting)}>
             <SlidersHorizontal size={18} aria-hidden="true" />
@@ -650,28 +647,15 @@ export function PricesPage({ user }: { user: StaffUser }) {
         {/* The official medicine list (RHIA): the insurers' tariff, uploaded by the manager */}
         <OfficialListSection onNotice={setNotice} />
 
-        {/* Insurers: only once the clinic works with insurers */}
-        {FEATURES.insurance ? (
+        {/* Insurers and their tariffs: only once the clinic works with insurers (Settings → Insurance) */}
+        {insurance ? (
           <InsurersSection
             insurers={insurers}
-            activeCount={activeInsurers.length}
-            editingInsurer={editingInsurer}
-            setEditingInsurer={setEditingInsurer}
-            onDelete={async (i) => {
-              if (
-                !(await confirm({
-                  title: t('confirm.prices.deleteInsurerTitle', { name: i.name }),
-                  body: t('confirm.prices.deleteInsurerBody'),
-                  confirmLabel: t('confirm.prices.deleteYes'),
-                  tone: 'danger',
-                }))
-              )
-                return
-              void run(
-                () => actions.deleteInsurer.mutateAsync(i.id),
-                t('prices.deleted', { name: i.name }),
-              )
+            onNotice={(text) => {
+              setActionError(null)
+              setNotice(text)
             }}
+            onError={setActionError}
           />
         ) : (
           <Card>
@@ -685,103 +669,6 @@ export function PricesPage({ user }: { user: StaffUser }) {
     </StaffShell>
   )
 }
-
-function InsurersSection({
-  insurers,
-  activeCount,
-  editingInsurer,
-  setEditingInsurer,
-  onDelete,
-}: {
-  insurers: Insurer[]
-  activeCount: number
-  editingInsurer: Insurer | 'new' | null
-  setEditingInsurer: (i: Insurer | 'new' | null) => void
-  onDelete: (i: Insurer) => Promise<void>
-}) {
-  const { t } = useTranslation()
-  return (
-    <>
-      <div className="mt-2 flex flex-wrap items-end gap-3">
-        <div className="min-w-[min(260px,100%)] flex-1">
-          <h2 className="m-0 text-[16px] font-semibold">{t('prices.insurers.title')}</h2>
-          <p className="text-ink-2 m-0 mt-1 max-w-[720px]">{t('prices.insurers.lead')}</p>
-        </div>
-        <Button onClick={() => setEditingInsurer('new')}>
-          <Plus size={18} aria-hidden="true" />
-          {t('prices.insurers.new')}
-        </Button>
-      </div>
-
-      {editingInsurer && (
-        <InsurerForm
-          key={editingInsurer === 'new' ? 'new' : editingInsurer.id}
-          insurer={editingInsurer === 'new' ? null : editingInsurer}
-          onClose={() => setEditingInsurer(null)}
-        />
-      )}
-
-      <Card>
-        <CardHeader icon={ShieldCheck} className={headerBand('navy')}>
-          <span className="min-w-0 flex-1">{t('prices.insurers.list')}</span>
-          <span className="text-ink-3 text-xs">
-            {t('prices.insurers.activeCount', { count: activeCount })}
-          </span>
-        </CardHeader>
-        {insurers.length === 0 && (
-          <CardBody>
-            <p className="text-ink-3 m-0 text-[13px]">{t('prices.insurers.none')}</p>
-          </CardBody>
-        )}
-        {insurers.map((i) => (
-          <Row
-            key={i.id}
-            className={cn(
-              'flex-wrap gap-x-4 gap-y-1 py-2',
-              !i.active && 'opacity-60',
-              editingInsurer !== 'new' && editingInsurer?.id === i.id && 'bg-primary-tint/50',
-            )}
-          >
-            <span className="min-w-[min(200px,100%)] flex-1">
-              <span className="block font-semibold">{i.name}</span>
-              <span className="text-ink-3 text-xs">
-                {i.code} · {t(`prices.insurers.types.${i.type}`)}
-              </span>
-            </span>
-            <span className="font-semibold tabular-nums">
-              {t('prices.insurers.covers', { pct: i.coveragePct })}
-            </span>
-            {Object.entries(i.pctByGroup).map(([g, pct]) => (
-              <Chip key={g}>
-                {t(`prices.groups.${g}`)}: {pct}%
-              </Chip>
-            ))}
-            {i.active ? (
-              <Badge tone="green">{t('prices.insurers.active')}</Badge>
-            ) : (
-              <Badge tone="grey">{t('prices.insurers.inactive')}</Badge>
-            )}
-            <Button size="sm" onClick={() => setEditingInsurer(i)}>
-              <Pencil size={14} aria-hidden="true" />
-              {t('prices.edit')}
-            </Button>
-            <Button
-              size="sm"
-              variant="tint-coral"
-              title={t('prices.delete')}
-              aria-label={t('prices.delete')}
-              onClick={() => void onDelete(i)}
-            >
-              <Trash2 size={14} aria-hidden="true" />
-            </Button>
-          </Row>
-        ))}
-      </Card>
-    </>
-  )
-}
-
-/* ---------------------------------------------------------------- bulk price change */
 
 function AdjustPricesCard({
   onClose,
@@ -1337,166 +1224,3 @@ function TreatmentForm({
 }
 
 /* ---------------------------------------------------------------- insurer form */
-
-function InsurerForm({ insurer, onClose }: { insurer: Insurer | null; onClose: () => void }) {
-  const { t } = useTranslation()
-  const actions = useCatalogueActions()
-  const confirm = useConfirm()
-  const [name, setName] = useState(insurer?.name ?? '')
-  const [code, setCode] = useState(insurer?.code ?? '')
-  const [type, setType] = useState<PayerType>(insurer?.type ?? 'private')
-  const [coverage, setCoverage] = useState(String(insurer?.coveragePct ?? 80))
-  const [active, setActive] = useState(insurer?.active ?? true)
-  const [byGroup, setByGroup] = useState<Record<string, string>>(
-    Object.fromEntries(
-      SERVICE_GROUPS.map((g) => [
-        g,
-        insurer?.pctByGroup[g] != null ? String(insurer.pctByGroup[g]) : '',
-      ]),
-    ),
-  )
-  const [error, setError] = useState<string | null>(null)
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    const c = Number(coverage)
-    if (!name.trim()) return setError(t('prices.errors.name'))
-    if (!Number.isFinite(c) || c < 0 || c > 100) return setError(t('prices.errors.coverage'))
-    const pctByGroup: Partial<Record<ServiceGroup, number>> = {}
-    for (const g of SERVICE_GROUPS) {
-      const v = byGroup[g]?.trim()
-      if (v) {
-        const n = Number(v)
-        if (!Number.isFinite(n) || n < 0 || n > 100) return setError(t('prices.errors.coverage'))
-        pctByGroup[g] = n
-      }
-    }
-    if (
-      !(await confirm({
-        title: t(insurer ? 'confirm.prices.saveInsurerTitle' : 'confirm.prices.addInsurerTitle', {
-          name: name.trim(),
-          pct: c,
-        }),
-        confirmLabel: t('confirm.prices.saveYes'),
-      }))
-    )
-      return
-    try {
-      await actions.saveInsurer.mutateAsync({
-        id: insurer?.id,
-        code,
-        name,
-        type,
-        coveragePct: c,
-        pctByGroup,
-        active,
-      })
-      onClose()
-    } catch (err) {
-      setError(t('prices.errors.generic', { message: err instanceof Error ? err.message : '' }))
-    }
-  }
-
-  return (
-    <SidePanel
-      open
-      onClose={onClose}
-      hue="mint"
-      icon={ShieldCheck}
-      title={
-        insurer ? t('prices.insurers.editTitle', { name: insurer.name }) : t('prices.insurers.new')
-      }
-      subtitle={
-        insurer ? `${insurer.code} · ${t(`prices.insurers.types.${insurer.type}`)}` : undefined
-      }
-      footer={
-        <>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('staff.form.cancel')}
-          </Button>
-          <Button
-            type="submit"
-            form={INSURER_FORM}
-            variant="primary"
-            disabled={actions.saveInsurer.isPending}
-          >
-            {actions.saveInsurer.isPending ? t('settings.saving') : t('prices.form.save')}
-          </Button>
-        </>
-      }
-    >
-      <form id={INSURER_FORM} onSubmit={(e) => void submit(e)}>
-        <CardBody className="gap-3 p-0">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-            <Field
-              label={t('prices.insurers.form.name')}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-            <Field
-              label={t('prices.insurers.form.code')}
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="RAMA"
-            />
-            <Select
-              label={t('prices.insurers.form.type')}
-              value={type}
-              onChange={(e) => setType(e.target.value as PayerType)}
-            >
-              {PAYER_TYPES.map((p) => (
-                <option key={p} value={p}>
-                  {t(`prices.insurers.types.${p}`)}
-                </option>
-              ))}
-            </Select>
-            <Field
-              label={t('prices.insurers.form.coverage')}
-              inputMode="numeric"
-              value={coverage}
-              onChange={(e) => setCoverage(e.target.value.replace(/[^\d.]/g, '').slice(0, 5))}
-              required
-            />
-          </div>
-          <span className="text-ink-2 text-[14px] font-semibold">
-            {t('prices.insurers.form.byGroup')}
-          </span>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            {SERVICE_GROUPS.map((g) => (
-              <Field
-                key={g}
-                label={t(`prices.groups.${g}`)}
-                inputMode="numeric"
-                value={byGroup[g] ?? ''}
-                onChange={(e) =>
-                  setByGroup((s) => ({
-                    ...s,
-                    [g]: e.target.value.replace(/[^\d.]/g, '').slice(0, 5),
-                  }))
-                }
-                placeholder={`${coverage || 0}%`}
-              />
-            ))}
-          </div>
-          <label className="flex min-h-9 items-center gap-2 text-[14px] font-medium">
-            <input
-              type="checkbox"
-              className="accent-primary size-[18px]"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-            />
-            {t('prices.insurers.form.active')}
-          </label>
-          <p className="text-ink-3 m-0 text-xs">{t('prices.insurers.form.publicNote')}</p>
-          {error && (
-            <p role="alert" className={errorBox}>
-              {error}
-            </p>
-          )}
-        </CardBody>
-      </form>
-    </SidePanel>
-  )
-}

@@ -314,6 +314,10 @@ export interface Insurer {
   coveragePct: number
   /** Per-group overrides, e.g. {"dental": 50}. */
   pctByGroup: Partial<Record<ServiceGroup, number>>
+  /** Medicines without an own price take the official list's price (RHIA). */
+  followsReferenceList: boolean
+  /** A treatment or medicine the insurer has no price for (0115). */
+  notListedRule: 'cash_covered' | 'not_covered' | 'ask'
 }
 
 export interface InsurerInput {
@@ -324,10 +328,13 @@ export interface InsurerInput {
   coveragePct: number
   pctByGroup: Partial<Record<ServiceGroup, number>>
   active: boolean
+  /** Left out: unchanged (a new insurer: by its kind / cash_covered). */
+  followsReferenceList?: boolean
+  notListedRule?: Insurer['notListedRule']
 }
 
 // ---------------------------------------------------------------- sample data
-const sampleTreatments: Treatment[] = [
+export const sampleTreatments: Treatment[] = [
   {
     id: 't-1',
     code: 'CONS-GEN',
@@ -409,7 +416,7 @@ const sampleTreatments: Treatment[] = [
     departmentNames: [],
   },
 ]
-const sampleInsurers: Insurer[] = [
+export const sampleInsurers: Insurer[] = [
   {
     id: 'i-1',
     code: 'RAMA',
@@ -419,6 +426,8 @@ const sampleInsurers: Insurer[] = [
     planId: 'pl-1',
     coveragePct: 85,
     pctByGroup: {},
+    followsReferenceList: true,
+    notListedRule: 'cash_covered',
   },
   {
     id: 'i-2',
@@ -429,6 +438,21 @@ const sampleInsurers: Insurer[] = [
     planId: 'pl-2',
     coveragePct: 90,
     pctByGroup: {},
+    followsReferenceList: true,
+    notListedRule: 'cash_covered',
+  },
+  // the first partner (0115): its own tariff, the official list for the other medicines
+  {
+    id: 'i-3',
+    code: 'MMI',
+    name: 'MMI',
+    type: 'mmi',
+    active: true,
+    planId: 'pl-3',
+    coveragePct: 85,
+    pctByGroup: { dental: 50 },
+    followsReferenceList: true,
+    notListedRule: 'cash_covered',
   },
 ]
 
@@ -664,7 +688,7 @@ export interface Medicine {
   cashPrice: number | null
   active: boolean
 }
-const sampleMedicines: Medicine[] = [
+export const sampleMedicines: Medicine[] = [
   {
     id: 'it-1',
     code: 'AMOX500',
@@ -1132,6 +1156,9 @@ interface InsurerRow {
   plan_id: string | null
   coverage_pct: number | string | null
   pct_by_group: Record<string, number | string> | null
+  /** 0115 (absent on an older database). */
+  follows_reference_list?: boolean | null
+  not_listed_rule?: string | null
 }
 
 const INSURERS = ['catalogue', 'insurers'] as const
@@ -1156,6 +1183,12 @@ export function useInsurers(onlyActive = false) {
         pctByGroup: Object.fromEntries(
           Object.entries(r.pct_by_group ?? {}).map(([k, v]) => [k, Number(v)]),
         ) as Partial<Record<ServiceGroup, number>>,
+        followsReferenceList:
+          r.follows_reference_list ?? ['rssb_rama', 'mmi', 'cbhi'].includes(r.type),
+        notListedRule:
+          r.not_listed_rule === 'not_covered' || r.not_listed_rule === 'ask'
+            ? r.not_listed_rule
+            : 'cash_covered',
       }))
     },
   })
@@ -1269,6 +1302,11 @@ export function useCatalogueActions() {
           planId: existing?.planId ?? 'pl-new',
           coveragePct: input.coveragePct,
           pctByGroup: input.pctByGroup,
+          followsReferenceList:
+            input.followsReferenceList ??
+            existing?.followsReferenceList ??
+            ['rssb_rama', 'mmi', 'cbhi'].includes(input.type),
+          notListedRule: input.notListedRule ?? existing?.notListedRule ?? 'cash_covered',
         }
         if (existing) Object.assign(existing, i)
         else sampleInsurers.push(i)
@@ -1282,6 +1320,8 @@ export function useCatalogueActions() {
         p_pct_by_group: input.pctByGroup,
         p_active: input.active,
         p_code: input.code?.trim() || null,
+        p_follows_reference_list: input.followsReferenceList ?? null,
+        p_not_listed_rule: input.notListedRule ?? null,
       })
       if (error) throw apiError(error)
       return String(data)

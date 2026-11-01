@@ -111,6 +111,9 @@ export function SidePanel({
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key === 'Escape') {
+        // a dialog opened above the panel through a portal (the file viewer of the employee
+        // documents) is in the React tree but not in the panel: it takes Escape, not the panel
+        if (e.target instanceof Node && panel.current && !panel.current.contains(e.target)) return
         e.stopPropagation()
         e.preventDefault()
         onClose()

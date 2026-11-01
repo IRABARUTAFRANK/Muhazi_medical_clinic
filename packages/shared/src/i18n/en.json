@@ -55,7 +55,9 @@
     "lockNowHint": "Away from the desk: your PIN opens it again",
     "changePin": "Change my PIN",
     "changePinHint": "Choose a new PIN",
-    "chooseTime": "Choose a time"
+    "chooseTime": "Choose a time",
+    "myDocuments": "My documents",
+    "myDocumentsHint": "Licence, contract and other papers kept for you"
   },
   "days": {
     "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -1226,7 +1228,10 @@
         "publicNote": "The public site keeps its \"insurance coming soon\" band until FEATURES.insurance is switched on in the code."
       },
       "parked": "Insurers are switched off: the clinic does not work with an insurer yet, so all patients pay cash or mobile money. Insurer prices and coverage will appear here when the first partnership starts.",
-      "confirmDelete": "Delete the insurer \"{{name}}\"? Past bills keep it."
+      "confirmDelete": "Delete the insurer \"{{name}}\"? Past bills keep it.",
+      "saved": "{{name}} saved.",
+      "nowOn": "{{name}} is active: it can be chosen on a visit.",
+      "nowOff": "{{name}} is switched off."
     },
     "errors": {
       "name": "A name is required.",
@@ -1555,6 +1560,109 @@
       },
       "removeFile": "Remove",
       "fileChange": "Wrong file? Click here to choose another one, or Remove it. Nothing is saved before Check the list and Use this list."
+    },
+    "tariff": {
+      "lead": "Each insurer pays on its own price list when it publishes one (uploaded here, like the official medicine list), on the official medicine list when it follows it, or on the clinic’s cash price. Its coverage applies to that price.",
+      "activeHint": "Only an active insurer can be chosen on a visit and is named on the public site.",
+      "followsList": "Follows the official medicine list (RHIA)",
+      "followsListHint": "A medicine without a price of its own on this insurer’s list takes the official list’s price.",
+      "coversHint": "The percentage applies to the insurer’s price of the line (per group when set).",
+      "notListed": "A treatment or medicine the insurer has no price for",
+      "rules": {
+        "cash_covered": "Cash price, covered",
+        "not_covered": "Not covered",
+        "ask": "Ask first"
+      },
+      "rulesHint": {
+        "cash_covered": "{{name}} pays its coverage on the clinic’s cash price.",
+        "not_covered": "The patient pays the clinic’s cash price in full; {{name}} pays nothing on that line.",
+        "ask": "The line is refused until the person confirms the cash price with {{name}} (Add a treatment, the pharmacy hand-over). Orders and bed nights take the cash price with the coverage."
+      },
+      "show": "Show the tariff of {{name}}",
+      "hide": "Hide the tariff",
+      "listsCount_one": "{{count}} price list",
+      "listsCount_other": "{{count}} price lists",
+      "search": "Search",
+      "searchPh": "consultation, amoxicillin, DEN-EXT…",
+      "kind": "Show",
+      "kinds": {
+        "all": "All",
+        "service": "Treatments",
+        "item": "Medicines and supplies"
+      },
+      "ownOnly": "Only lines with an insurer price ({{count}})",
+      "tableHint": "The price {{name}} pays on, where it comes from, the coverage of the line and what the patient and {{name}} pay. Edit a price in place; empty it to go back to the official list or the cash price.",
+      "noRows": "No line matches.",
+      "col": {
+        "line": "Treatment or medicine",
+        "cash": "Cash price",
+        "insurer": "{{name}} price",
+        "covered": "Covered",
+        "patient": "Patient pays",
+        "insurerPays": "{{name}} pays",
+        "file": {
+          "code": "Code",
+          "name": "Name",
+          "price": "Price",
+          "kind": "Type"
+        }
+      },
+      "sources": {
+        "tariff": "Insurer’s list",
+        "reference": "Official list",
+        "cash": "Cash price",
+        "none": "No price"
+      },
+      "askMark": "ask first",
+      "editPrice": "Edit the insurer’s price",
+      "noOwnPrice": "none",
+      "priceSaved": "{{name}} price of {{item}}: {{price}}.",
+      "priceRemoved": "{{name}} has no own price for {{item}} any more.",
+      "upload": "Upload the price list of {{name}}",
+      "uploadHint": "An Excel file (.xlsx) or a CSV with a code or name column and a price column; a type column (treatment / medicine) helps when both are in one sheet. Treatments are matched by code or name, medicines by their official code or name.",
+      "fileHint": ".xlsx or .csv",
+      "namePh": "e.g. {{name}} tariff 2026",
+      "useFrom": "Use from",
+      "newList": "New tariff from a date",
+      "newListTitle": "A new price list from a date",
+      "newListHint": "The list in effect ends the day before. Copy its prices to change a few, or start empty.",
+      "copyCurrent": "Copy the prices of the list in effect",
+      "startList": "Start the list on {{date}}",
+      "started": "{{name}} starts on {{date}}.",
+      "currentList": "In effect: {{name}} (from {{date}})",
+      "confirmTitle": "Use “{{name}}” as the price list of {{insurer}} from {{date}}?",
+      "confirmBody": "{{count}} lines become the insurer’s prices; the list in effect ends the day before and is kept.",
+      "done": "{{name}} is the price list of {{insurer}} from {{date}} ({{count}} lines).",
+      "previewTitle": "{{name}} — check for {{insurer}}",
+      "comparedWith": "Compared with {{name}} ({{count}} lines)",
+      "firstList": "The insurer’s first list",
+      "kept": "{{count}} of {{total}} rows match a treatment or a medicine.",
+      "tile": {
+        "matched": "Matched",
+        "new": "New prices",
+        "changed": "Changed prices",
+        "unchanged": "Unchanged",
+        "unmatched": "Not matched"
+      },
+      "unmatchedTitle": "Rows not matched",
+      "allMatched": "Every row matched a treatment or a medicine.",
+      "unmatchedHint": "These rows are left out. Give the treatment or medicine the same code or name in Prices, then upload again, or type the price in the table.",
+      "reasons": {
+        "not_found": "no treatment or medicine with this code or name",
+        "ambiguous": "several match this name: use the code",
+        "bad_price": "the price is not a number zero or more",
+        "no_name": "no code and no name",
+        "duplicate": "already on an earlier row",
+        "not_a_row": "not a row of the list"
+      },
+      "history": "Price lists of this insurer",
+      "fromTo": "From {{from}} to {{to}}",
+      "past": "Past",
+      "err": {
+        "noneMatched": "No row of the list matches a treatment or a medicine."
+      },
+      "theInsurer": "the insurer",
+      "publicNote": "Insurance is switched on under Settings › Clinic and contacts; the public site then names the active insurers."
     }
   },
   "visit": {
@@ -1584,7 +1692,8 @@
       "total": "Total",
       "patientPays": "Patient pays",
       "insurerPays": "{{name}} pays",
-      "remove": "Remove charge"
+      "remove": "Remove charge",
+      "cashPrice": "cash price {{price}}"
     },
     "add": {
       "title": "Add a treatment",
@@ -1692,7 +1801,15 @@
         "reason": "Say why the money is given back."
       }
     },
-    "leftWhy": "Left without paying: {{reason}}"
+    "leftWhy": "Left without paying: {{reason}}",
+    "insurerPrice": {
+      "priced": "{{insurer}} price {{price}} · patient pays {{patient}} · {{insurer}} pays {{insurerPays}}",
+      "reference": "Official list price {{price}} · patient pays {{patient}} · {{insurer}} pays {{insurerPays}}",
+      "cashCovered": "Not on {{insurer}}’s list — cash price {{price}} · patient pays {{patient}} · {{insurer}} pays {{insurerPays}}",
+      "notCovered": "Not on {{insurer}}’s list — not covered: the patient pays {{price}}",
+      "ask": "Not on {{insurer}}’s list — confirm with {{insurer}} first (cash price {{price}}: patient {{patient}}, {{insurer}} {{insurerPays}})",
+      "none": "No price yet"
+    }
   },
   "settings": {
     "title": "Clinic settings",
@@ -1882,6 +1999,17 @@
     "patientSection": {
       "title": "Patient file and vital signs",
       "hint": "Fields to record, required ones, vital signs"
+    },
+    "insurance": {
+      "title": "Insurance",
+      "lead": "Does the clinic work with insurers? Off, every patient pays cash or mobile money.",
+      "on": "Insurance is on",
+      "onHint": "Visits can be on an insurer; the Prices page manages the insurers and their tariffs.",
+      "off": "Insurance is off",
+      "offHint": "Every patient pays the full amount at the cashier.",
+      "saved": "Saved.",
+      "pricesNote": "The insurers, what each covers and their price lists are managed under",
+      "pricesLink": "Prices › Insurers"
     }
   },
   "pin": {
@@ -3342,7 +3470,8 @@
     "slipTitleDesk": "{{desk}} report",
     "resultsGivenIn": "Results given {{period}}",
     "noneDoneIn": "No result given {{period}}.",
-    "periodNeedsUpdate": "Other periods need the latest database update. The results below are today's."
+    "periodNeedsUpdate": "Other periods need the latest database update. The results below are today's.",
+    "callHint": "The waiting-room screen tells the patient to come to the laboratory"
   },
   "finance": {
     "desk": "Cash desk",
@@ -4515,7 +4644,12 @@
     "sellResults": "Patients found",
     "sellNobody": "No patient is on a visit now.",
     "packPriceUsed_one": "{{count}} whole pack at {{price}} (pack price)",
-    "packPriceUsed_other": "{{count}} whole packs at {{price}} (pack price)"
+    "packPriceUsed_other": "{{count}} whole packs at {{price}} (pack price)",
+    "notListed": {
+      "cash": "Not on {{payer}}’s list: the cash price, with the coverage",
+      "notCovered": "Not on {{payer}}’s list: not covered, the patient pays it all",
+      "ask": "Not on {{payer}}’s list: confirm with {{payer}} before handing over"
+    }
   },
   "queuePage": {
     "title": "My queue · {{desk}}",
@@ -4597,7 +4731,9 @@
     "insurerSharePct": "Insurer share ({{pct}}%)",
     "insurerShare": "Insurer share",
     "visitNo": "Visit no.",
-    "chipPartial": "PART PAID"
+    "chipPartial": "PART PAID",
+    "cashPrice": "Cash price",
+    "insurerPrice": "{{name}} price"
   },
   "dept": {
     "title": "My department · {{name}}",
@@ -4943,7 +5079,32 @@
       "adjustTitle_one": "Change the price of {{count}} {{group}} treatment by {{change}}?",
       "adjustTitle_other": "Change the price of {{count}} {{group}} treatments by {{change}}?",
       "adjustAllTitle_one": "Change the price of {{count}} treatment by {{change}}?",
-      "adjustAllTitle_other": "Change the price of all {{count}} treatments by {{change}}?"
+      "adjustAllTitle_other": "Change the price of all {{count}} treatments by {{change}}?",
+      "insurerOn": {
+        "title": "Switch {{name}} on?",
+        "body": "The insurer can be chosen on a visit and is named on the public site.",
+        "yes": "Yes, switch on"
+      },
+      "insurerOff": {
+        "title": "Switch {{name}} off?",
+        "body": "It cannot be chosen on new visits; bills already on it keep it.",
+        "yes": "Yes, switch off"
+      },
+      "followsOn": {
+        "title": "{{name}} follows the official medicine list?",
+        "body": "A medicine without an own price takes the official list’s price."
+      },
+      "followsOff": {
+        "title": "{{name}} stops following the official list?",
+        "body": "A medicine without an own price takes the cash price, by the insurer’s rule."
+      },
+      "ruleTitle": "{{name}}: “{{rule}}” for a line without a price?",
+      "priceTitle": "Set the {{name}} price of {{item}} to {{price}}?",
+      "priceRemoveTitle": "Remove the {{name}} price of {{item}}?",
+      "priceBody": "It applies to the lines added from now; bills already made keep their prices.",
+      "newTariffTitle": "Start a new price list of {{name}} on {{date}}?",
+      "newTariffCopyBody": "The prices in effect are copied into it; the list in effect ends the day before.",
+      "newTariffEmptyBody": "It starts empty: until prices are typed or uploaded, the official list or the cash price applies."
     },
     "visit": {
       "thisPatient": "this patient",
@@ -5063,7 +5224,10 @@
       "removeDxBody": "It stays in the record, struck through, with your reason: “{{reason}}”. It is no longer counted.",
       "editNote": "Change this note of {{name}}?",
       "changeYes": "Yes, change",
-      "removeYes": "Yes, remove"
+      "removeYes": "Yes, remove",
+      "askInsurer": "{{item}} is not on {{insurer}}’s list. Charge the cash price?",
+      "askInsurerBody": "Confirm with {{insurer}} first. The cash price ({{price}}) is split with the insurer’s coverage.",
+      "askInsurerYes": "Yes, confirmed with the insurer"
     },
     "staff": {
       "deactivate": {
@@ -5183,6 +5347,17 @@
         "title": "Change the default vital signs?",
         "body": "Every nurse and doctor sees the new set from their next form.",
         "yes": "Yes, save"
+      },
+      "insurance": {
+        "on": {
+          "title": "Switch insurance on?",
+          "body": "The visit screen asks who pays, the Prices page shows the insurers and their tariffs, and the public site names the active partners."
+        },
+        "off": {
+          "title": "Switch insurance off?",
+          "body": "Every new visit is paid in full at the cashier. Bills already on an insurer keep it."
+        },
+        "yes": "Yes, continue"
       }
     },
     "perms": {
@@ -5379,7 +5554,31 @@
       "seenBody": "It is marked as seen and stays in your results inbox for two days. You can still find it in the visit."
     },
     "reasonLabel": "Reason",
-    "reasonPh": "Say why in a few words"
+    "reasonPh": "Say why in a few words",
+    "display": {
+      "create": {
+        "title": "Create the screen “{{name}}”?",
+        "body": "Its link is shown once; open it on the TV.",
+        "yes": "Yes, create"
+      },
+      "save": {
+        "title": "Save the changes to “{{name}}”?",
+        "body": "The TV follows them within a few seconds.",
+        "yes": "Yes, save"
+      },
+      "revoke": {
+        "title": "Revoke the screen “{{name}}”?",
+        "body": "The TV shows nothing from then on; add a new screen for a new link.",
+        "yes": "Yes, revoke"
+      }
+    },
+    "nextPatient": {
+      "call": {
+        "title": "Call {{name}} ({{ticket}}) to the screen?",
+        "body": "The waiting-room screen tells them to come to your room, with a ding.",
+        "yes": "Yes, call"
+      }
+    }
   },
   "doc": {
     "docNo": "Document no.",
@@ -5554,7 +5753,12 @@
     "coverRetired": "Cover is no longer used. Hand the patient over to a colleague from the visit.",
     "vitalRange": "This measurement is outside what a patient can have: check the number.",
     "vitalName": "Give the custom measurement a name (60 characters at most, its unit 20 at most).",
-    "vitalUnknown": "Unknown measurement."
+    "vitalUnknown": "Unknown measurement.",
+    "staffDocType": "Only PDF, photos (JPEG, PNG, WebP) and Word documents can be added.",
+    "staffDocsUnavailable": "Employee documents cannot be added yet: the database update that adds them is not installed.",
+    "staffDocPrivate": "These documents are not yours to see. Only the manager and the employee can open them.",
+    "staffDocManagerOnly": "Only the manager adds or removes an employee's documents.",
+    "askInsurer": "This is not on the insurer’s list. Confirm the cash price with the insurer first."
   },
   "cashierDesk": {
     "noMatch": "Nothing matches your search.",
@@ -7301,7 +7505,22 @@
     "4751a0a4": "Fill in the required fields: {{p1}}.",
     "df1edfcb": "Unknown patient field: {{p1}}.",
     "d4abdfed": "Unknown marital status.",
-    "5dfde301": "Unknown ID type."
+    "5dfde301": "Unknown ID type.",
+    "888650d3": "You are not allowed: an employee sees their own documents, the manager everyone's.",
+    "4b7a938c": "Only the manager removes an employee's documents.",
+    "e622f10e": "Only the manager adds an employee's documents.",
+    "33c23713": "Only the manager sees the documents expiring.",
+    "a588956d": "The rule for a line without a price is: cash price covered, not covered, or ask first.",
+    "6c0f8be3": "No row of the list matches a treatment or a medicine.",
+    "ccd93097": "The insurance switch is on or off.",
+    "342cdbff": "This screen key is not known or was revoked.",
+    "9800fbfe": "This patient has already left this desk.",
+    "a3109bfa": "This screen is not known or was revoked.",
+    "f45d52da": "This patient is not waiting at {{1}}.",
+    "9e14d924": "Choose at least one language.",
+    "31dc43d9": "The message is too long.",
+    "021838e4": "Give the screen a name.",
+    "07e0078a": "Unknown language {{1}}."
   },
   "panel": {
     "close": "Close",
@@ -8851,5 +9070,173 @@
         "registrations": "Files created in the period; the missing details follow the patient file settings (Settings › Patient file)."
       }
     }
+  },
+  "staffDocs": {
+    "title": "Documents",
+    "button": "Documents",
+    "of": "Documents of {{name}}",
+    "lead": "The licence, the contract signed and the other crucial documents of {{name}}, kept in the clinic's private storage. Only the manager and {{name}} can open them; every look by the manager is recorded.",
+    "leadOwn": "Your licence, your contract and the other documents the clinic keeps for you. Only you and the manager can open them.",
+    "myTitle": "My documents",
+    "empty": "No document yet.",
+    "emptyCanAdd": "No document yet. Press \"Add documents\" to upload the licence, the contract or another paper.",
+    "add": "Add documents",
+    "kind": "Type of document",
+    "kindAll": "Type of every document (change one below)",
+    "kinds": {
+      "licence": "Licence",
+      "contract": "Contract",
+      "id": "Identity document",
+      "certificate": "Certificate / diploma",
+      "cv": "CV",
+      "other": "Other"
+    },
+    "chooseMany": "Choose one or several files",
+    "addMore": "Add more files",
+    "chooseHint": "PDF, photo (JPEG, PNG, WebP) or Word (.doc, .docx), up to 10 MB each",
+    "rowTitle": "Title",
+    "rowKind": "Type",
+    "rowExpiry": "Expires on",
+    "rowNote": "Note (optional)",
+    "rowRemove": "Take this file out",
+    "fileTitlePh": "For example: NCNM practising licence 2026",
+    "notePh": "For example: renewed every year in March",
+    "expiryHint": "A licence or a contract: the date it ends. The manager is warned 60 days before.",
+    "expiresOn": "Expires on {{date}}",
+    "expiredOn": "Expired on {{date}}",
+    "expiredShort": "Expired",
+    "expiresToday": "Expires today",
+    "expiresIn_one": "Expires in {{count}} day",
+    "expiresIn_other": "Expires in {{count}} days",
+    "noExpiry": "No expiry date",
+    "addedBy": "added by {{name}} on {{when}}",
+    "someone": "a colleague",
+    "send": "Add the document",
+    "sendMany": "Add {{count}} documents",
+    "sendAgain": "Send the rest again",
+    "sending": "Sending {{file}}… Keep this page open.",
+    "sendingN": "Sending {{n}} of {{total}}: {{file}}",
+    "status": {
+      "pending": "Waiting",
+      "sending": "Sending…",
+      "done": "Added",
+      "failed": "Not added"
+    },
+    "partial": "{{done}} of {{total}} documents added; the others are listed with why. Correct them and send again.",
+    "chooseFirst": "Choose the file first.",
+    "titlesNeeded": "Every document needs a title.",
+    "added": "\"{{title}}\" is now in the file of {{name}}.",
+    "addedMany": "{{count}} documents added to the file of {{name}}.",
+    "cancel": "Cancel",
+    "view": "View",
+    "remove": "Remove",
+    "removeReason": "Why remove this document?",
+    "removeReasonPh": "For example: wrong person, replaced by the renewed licence",
+    "removed": "\"{{title}}\" was removed. The record keeps who removed it, when and why.",
+    "removedRow": "Removed by {{name}} on {{when}}. Reason: {{reason}}",
+    "removeRule": "Only the manager removes a document, always with a reason; the record keeps who, when and why.",
+    "storageLeft": "\"{{title}}\" is removed from the record, but its stored copy could not be deleted. Press \"Delete the stored copy\" to finish.",
+    "storageLeftRow": "The stored copy is still there.",
+    "purge": "Delete the stored copy",
+    "purged": "The stored copy of \"{{title}}\" is deleted.",
+    "confirm": {
+      "addTitle": "Add \"{{title}}\" to the file of {{name}}?",
+      "addManyTitle": "Add {{count}} documents to the file of {{name}}?",
+      "addBody": "The document is kept in the clinic's private storage. Only the manager and {{name}} can open it.",
+      "addYes": "Yes, add",
+      "removeTitle": "Remove \"{{title}}\" from the file of {{name}}?",
+      "purgeTitle": "Delete the stored copy of \"{{title}}\" ({{name}})?",
+      "purgeBody": "The document was already removed from the record. Its copy is deleted from storage for good and can never be opened again.",
+      "purgeYes": "Yes, delete it"
+    },
+    "recorded": "Every look at an employee's documents by the manager is recorded.",
+    "unavailable": "Employee documents are not switched on yet: the database update that adds them is not installed.",
+    "removedCount_one": "{{count}} removed document is listed last.",
+    "removedCount_other": "{{count}} removed documents are listed last.",
+    "count_one": "{{count}} document",
+    "count_other": "{{count}} documents",
+    "openFile": "Open {{title}}",
+    "expiring": {
+      "title": "Documents expiring",
+      "days60": "≤ 60 days",
+      "empty": "No licence or contract expires in the next 60 days.",
+      "hint": "Licences and contracts expired or ending within 60 days. Open the employee to add the renewed document.",
+      "row": "{{name}} · {{kind}}"
+    }
+  },
+  "display": {
+    "title": "Waiting room",
+    "now": "Now",
+    "next": "Next",
+    "comeTo": "Come to {{room}}",
+    "with": "with {{person}}",
+    "waiting_one": "{{count}} waiting",
+    "waiting_other": "{{count}} waiting",
+    "resultsReady": "Results ready",
+    "resultsHint": "Ask at the desk",
+    "nobody": "Nobody is waiting right now",
+    "noOneCalled": "Nobody called yet",
+    "start": "Start the screen",
+    "startLead": "Press once so the screen can play its chime and fill the TV.",
+    "soundOn": "Sound on",
+    "soundOff": "Sound off",
+    "unknown": "This screen is not registered, or its key was revoked. Ask the manager for a new link (Settings › Waiting-room screens).",
+    "noKey": "This address has no screen key. Ask the manager for the screen’s link.",
+    "offline": "Connection lost — showing the last update"
+  },
+  "displayScreens": {
+    "title": "Waiting-room screens",
+    "lead": "A TV at the waiting side shows who is called, where to go and who is next, and whose results are ready. Register each screen here, then open its link on the TV (the link is shown once).",
+    "add": "Add a screen",
+    "name": "Screen name",
+    "namePh": "Waiting room TV",
+    "desks": "Desks shown",
+    "desksHint": "None chosen: every desk with patients.",
+    "showNames": "Show the patients’ full names",
+    "chime": "Ding when a patient is called",
+    "languages": "Languages (one after the other, every 6 seconds)",
+    "message": "Message line (optional)",
+    "messagePh": "Please keep your ticket.",
+    "save": "Create the screen",
+    "saveChanges": "Save changes",
+    "linkTitle": "The link of “{{name}}” — shown once",
+    "linkLead": "Open this address in the TV’s browser (Chrome, full screen) and press Start. It is not shown again: if it is lost, revoke the screen and add it again.",
+    "openOnTv": "Open on the TV: this address, exactly as it is (the key is in it).",
+    "copy": "Copy the link",
+    "copied": "Copied",
+    "revoke": "Revoke",
+    "edit": "Change",
+    "revoked": "Revoked",
+    "active": "Active",
+    "none": "No screen yet.",
+    "allDesks": "Every desk",
+    "names": "Full names",
+    "ticketsOnly": "Tickets only",
+    "withChime": "Chime",
+    "noChime": "Silent",
+    "saved": "Screen saved; the TV follows within a few seconds.",
+    "revokedDone": "Screen revoked: its link no longer works.",
+    "createdBy": "Added by {{name}} on {{date}}",
+    "hint": "The screen never shows anything medical: only tickets, names (if chosen), the room to go to and “results ready”. HIV tests never appear.",
+    "errors": {
+      "screen_name": "Give the screen a name.",
+      "screen_desk": "Unknown desk.",
+      "screen_language": "Choose at least one language.",
+      "screen_message": "The message is too long (300 characters at most).",
+      "screen_unknown": "This screen is not known or was revoked."
+    }
+  },
+  "nextPatient": {
+    "title": "Next patient",
+    "lead": "Sent to you by name first, then your department’s, then the most urgent, then arrival.",
+    "waitingAt": "{{ticket}} · {{name}} is waiting for {{desk}}",
+    "sentToYou": "sent to you by name",
+    "calledAt": "called at {{time}}",
+    "waitingCount_one": "{{count}} waiting at this desk",
+    "waitingCount_other": "{{count}} waiting at this desk",
+    "callAgain": "Call again",
+    "later": "Later",
+    "called": "{{ticket}} called: the waiting-room screen tells them to come.",
+    "callHint": "The waiting-room screen tells the patient to come to your room"
   }
 }

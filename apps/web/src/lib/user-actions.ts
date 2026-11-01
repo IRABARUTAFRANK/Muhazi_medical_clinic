@@ -33,5 +33,7 @@ export function useUserActions() {
      *  activity have passed (then the tab signs out). */
     lock: () => useSession.getState().lock(),
     changePin: () => void navigate({ to: '/app/change-pin' }),
+    /** The documents the clinic keeps for the person (licence, contract…), read only (0116). */
+    myDocuments: () => void navigate({ to: '/app/my-documents' }),
   }
 }

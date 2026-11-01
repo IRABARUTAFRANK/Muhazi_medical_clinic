@@ -56,12 +56,13 @@ export const telHref = (p: string): string => `tel:+250${intl(p)}`
 export const whatsappHref = (p: string): string => `https://wa.me/250${intl(p)}`
 
 /**
- * Features the clinic has not switched on yet. `insurance` stays off until the clinic signs its
- * first insurer: the public site then shows a "coming soon" band instead of partner names, and
- * the booking form hides the insurance field.
+ * Sample-mode defaults of the clinic's switches. Live, `insurance` is the setting
+ * `insurance.enabled` the manager switches on in Settings (0115): the public site shows the
+ * partners' names and the booking form its insurance field only when it is on and an insurer is
+ * active. On here so the sample screens show the insurer prices.
  */
 export const FEATURES = {
-  insurance: false,
+  insurance: true,
 } as const
 
 /** Sample insurer names; empty until the clinic has partners (live: `public_payers`). */
