@@ -3,6 +3,7 @@
  *   manage-staff     manager actions (needs the caller's session → JWT verified by the gateway)
  *   staff-otp        PIN-gated sign-in code request (public endpoint, --no-verify-jwt)
  *   send-auth-email  Auth "Send Email" hook (called by Supabase Auth, --no-verify-jwt)
+ *   visit-edit-code  e-mails the code that unlocks a finished visit (checks the session itself)
  *
  *   SUPABASE_ACCESS_TOKEN=sbp_… node scripts/supabase-deploy.mjs [function …]
  *   (the token can live in the root .env)
@@ -35,9 +36,19 @@ const FUNCTIONS = {
   'manage-staff': [],
   'staff-otp': ['--no-verify-jwt'],
   'send-auth-email': ['--no-verify-jwt'],
+  // checks the caller's session itself (admin.auth.getUser), so the gateway does not
+  'visit-edit-code': ['--no-verify-jwt'],
 }
-const wanted = process.argv.slice(2).filter((a) => a in FUNCTIONS)
-const names = wanted.length ? wanted : Object.keys(FUNCTIONS)
+const asked = process.argv.slice(2)
+const unknown = asked.filter((a) => !(a in FUNCTIONS))
+if (unknown.length) {
+  // a wrong name must not deploy everything else by mistake
+  console.error(
+    `Unknown function(s): ${unknown.join(', ')}. Known: ${Object.keys(FUNCTIONS).join(', ')}`,
+  )
+  process.exit(1)
+}
+const names = asked.length ? asked : Object.keys(FUNCTIONS)
 
 let failed = 0
 for (const name of names) {
