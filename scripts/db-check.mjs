@@ -18909,6 +18909,94 @@ await step('0123: files to complete: today by default, earlier days only when as
   return `yesterday's file only under its own date; today's list and the menu count agree (${people})`
 })
 
+// ---------------------------------------------------------------- 0124: the menu counts what is still to do
+await step('0124: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20270104090000_pending_counts.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step('0124: My queue goes down by exactly one when the doctor takes a patient', async () => {
+  const { docA, v } = globalThis.t121
+  const count = async () => (await as(docA), (await one(`select nav_counts() as j`)).j.queue ?? 0)
+  const before = await count()
+  await asAdmin()
+  const q = await one(
+    `select id from queue_entry where encounter_id = $1 and station = 'consultation'
+       and finished_at is null and started_at is null and deleted_at is null
+     order by created_at desc limit 1`,
+    [v[0]],
+  )
+  await as(docA)
+  await db.query(`select take_patient($1)`, [q.id])
+  const after = await count()
+  // looking at the queue changes nothing: reading it again gives the same number
+  await as(docA)
+  await one(`select count(*) as n from queue_board`)
+  const again = await count()
+  await asAdmin()
+  if (before - after !== 1 || again !== after)
+    throw new Error(JSON.stringify({ before, after, again }))
+  return `${before} → ${after} after one Take; reading the queue leaves it at ${again}`
+})
+await step(
+  '0124: My bookings counts today’s bookings still to see; each one taken or seen leaves it',
+  async () => {
+    const { docA } = globalThis.t121
+    await asAdmin()
+    const prac =
+      (await one(`select id from practitioner where user_id = $1 and deleted_at is null`, [docA]))
+        ?.id ??
+      (
+        await one(
+          `insert into practitioner (code, user_id, names, title) values ('P124', $1, 'A 124', 'Dr.') returning id`,
+          [docA],
+        )
+      ).id
+    const today = `kigali_midnight() + interval '12 hours'`
+    const mine = async () => (
+      await as(docA),
+      (await one(`select nav_counts() as j`)).j.myBookings ?? 0
+    )
+    const desk = async () => (
+      await as(staff.receptionist),
+      (await one(`select nav_counts() as j`)).j.bookings ?? 0
+    )
+    const m0 = await mine()
+    const r0 = await desk()
+    await asAdmin()
+    const ids = []
+    const statuses = ['confirmed', 'arrived', 'in_progress', 'completed', 'cancelled']
+    for (const [k, status] of statuses.entries())
+      ids.push(
+        (
+          await one(
+            `insert into appointment (practitioner_id, starts_at, status, source, contact_name, contact_phone)
+           values ($1, ${today} + make_interval(mins => $3), $2, 'reception', 'Booked 124', '0788124124')
+           returning id`,
+            [prac, status, 7 * k + 3],
+          )
+        ).id,
+      )
+    const m1 = await mine()
+    const r1 = await desk()
+    // the confirmed one arrives, then is taken
+    await asAdmin()
+    await db.query(`update appointment set status = 'arrived' where id = $1`, [ids[0]])
+    const r2 = await desk()
+    await asAdmin()
+    await db.query(`update appointment set status = 'in_progress' where id = $1`, [ids[0]])
+    const m2 = await mine()
+    await asAdmin()
+    // confirmed + arrived are still to see (2); in progress, completed, cancelled are not
+    if (m1 - m0 !== 2 || m2 - m0 !== 1) throw new Error(`my bookings ${m0} → ${m1} → ${m2}`)
+    // reception: only the confirmed one is still to come in; its arrival leaves the count
+    if (r1 - r0 !== 1 || r2 - r0 !== 0) throw new Error(`bookings ${r0} → ${r1} → ${r2}`)
+    return `my bookings +2 (confirmed, arrived) → +1 after one is taken; reception +1 → +0 after the arrival`
+  },
+)
+
 finish()
 
 function finish() {
