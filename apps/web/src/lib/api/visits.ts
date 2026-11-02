@@ -614,7 +614,7 @@ export interface QueueHandover {
   answeredAt: string | null
 }
 
-interface BoardRow {
+export interface BoardRow {
   queue_id: string
   encounter_id: string
   station: Station
@@ -669,7 +669,7 @@ const ageOf = (birth: string | null): string => {
 const minutesSince = (iso: string): number =>
   Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000))
 
-const toItem = (r: BoardRow): QueueItem => ({
+export const toItem = (r: BoardRow): QueueItem => ({
   queueId: r.queue_id,
   encounterId: r.encounter_id,
   patientId: r.patient_id,
@@ -824,7 +824,8 @@ export const queueCounts = (items: readonly QueueItem[]) => ({
 })
 
 /** Rows still waiting or in progress, for the queue card. */
-export const openItems = (items: readonly QueueItem[]) => items.filter((i) => !i.finishedAt)
+export const openItems = <T extends QueueItem>(items: readonly T[]): T[] =>
+  items.filter((i) => !i.finishedAt)
 
 const TRIAGE_RANK: Record<string, number> = { red: 0, yellow: 1, green: 2 }
 /** Queue order chosen by the user: urgent first, longest waiting, latest arrival, or by name. */
@@ -844,11 +845,11 @@ export const sortQueue = (
   })
 
 /** One row per shared patient (sent to several desks at once); other rows unchanged. */
-export const onePerPool = (items: readonly QueueItem[]) => {
+export const onePerPool = <T extends QueueItem>(items: readonly T[]): T[] => {
   // the row that tells the most: the desk that took the patient, else one I may take
-  const rank = (r: QueueItem) =>
+  const rank = (r: T) =>
     r.startedAt ? 0 : r.finishedAt ? 3 : r.forMe && r.canWork !== false ? 1 : 2
-  const best = new Map<string, QueueItem>()
+  const best = new Map<string, T>()
   for (const r of items)
     if (r.poolId && (!best.has(r.poolId) || rank(r) < rank(best.get(r.poolId)!)))
       best.set(r.poolId, r)

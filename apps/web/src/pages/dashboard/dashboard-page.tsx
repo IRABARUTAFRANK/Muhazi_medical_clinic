@@ -54,6 +54,7 @@ import { DoctorCalendarsSection } from '@/components/calendar/doctor-calendars-s
 import { DepartmentSection } from './department-section'
 import { CallsPanel } from '@/pages/home/calls-panel'
 import { ToAcceptSection } from '@/pages/home/role-panels'
+import { MyDeskPanel } from '@/pages/home/my-desk-panel'
 import { HBarList } from '@/components/charts/hbar'
 import { IdentityBanner } from '@/components/dash/identity-banner'
 import { StationTile } from '@/components/dash/station-tile'
@@ -279,6 +280,10 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             {t('dashboard.loadFailed', { message: error.message })}
           </p>
         )}
+
+        {/* The manager who also works at a desk (0120): their own waiting patients (sent to them
+            by name, or at the desk their profile names), apart from the clinic's totals below */}
+        {isManager && <MyDeskPanel user={user} />}
 
         {/* A head of department: their own department first (people, desks, work). */}
         {!isManager && (

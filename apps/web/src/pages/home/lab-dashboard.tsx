@@ -33,13 +33,16 @@ import { DashLink } from '@/components/dash/dash-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useLabDone, useLabSummary, useLabWorklist } from '@/lib/api/lab'
 import { useStockAlerts, useStockOverview } from '@/lib/api/stock'
-import { openItems, stationFor, useQueueBoard } from '@/lib/api/visits'
+import { stationFor } from '@/lib/api/visits'
+import { useMySummary } from '@/lib/api/my'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
 import { isLive } from '@/lib/supabase'
 import { LabOrderRow } from '../lab/lab-parts'
-import { ErrorBox, MyQueuePanel, ToAcceptPanel } from './role-panels'
+import { ErrorBox, ToAcceptPanel } from './role-panels'
+import { MyWorkPanel, WaitingForMePanel } from './my-panels'
+import { WORK_OF } from './my-work'
 import { useHomeSummary } from '@/lib/api/home'
 import { CallsPanel } from './calls-panel'
 import { DeskBlocks } from './home-desks'
@@ -49,8 +52,10 @@ import { useHomeDesks } from './home-desks-rules'
 
 /**
  * Laboratory dashboard (lab technicians; sonographers for imaging): the bench in the manager
- * design. Figures of the day, the worklist (urgent first: sample taken → result → verify), the
- * patients queued at the lab, what is most ordered today and the results already given.
+ * design. The bench's figures (the samples waiting, in process, to verify: the desk's own
+ * queue), the results I gave (0120: mine, with my work), the worklist (urgent first: sample
+ * taken → result → verify), the patients waiting for me, what is most ordered and the results
+ * the bench gave.
  */
 export function LabDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -68,6 +73,8 @@ export function LabDashboard({ user }: { user: StaffUser }) {
   const labLink = (own: 'tests' | 'turnaround' | 'verification' | 'byTest') =>
     link('lab') ?? link(own)
   const { data: s, refetch, isFetching, dataUpdatedAt } = useLabSummary(days)
+  // my own queue and my own work (0120)
+  const { data: my, refetch: refetchMine } = useMySummary(days)
   const { data: open = [] } = useLabWorklist('open')
   // the results given in the period (today by default)
   const { data: doneGot } = useLabDone(days)
@@ -81,8 +88,6 @@ export function LabDashboard({ user }: { user: StaffUser }) {
     user.role === 'lab_tech' ? stationFor(user) : has('laboratory') ? 'laboratory' : 'ultrasound'
   // the laboratory's shelves go with the laboratory desk (not ultrasound)
   const labDesk = user.dbRole !== 'sonographer' && has('laboratory')
-  const { data: queue = [] } = useQueueBoard(desk, user.role)
-  const rows = openItems(queue)
   const [query, setQuery] = useState('')
   // a sonographer keeps a calendar: the bookings made with them wait for their answer
   const { data: home } = useHomeSummary()
@@ -132,7 +137,10 @@ export function LabDashboard({ user }: { user: StaffUser }) {
           <Button
             variant="tint-grey"
             size="icon"
-            onClick={() => void refetch()}
+            onClick={() => {
+              void refetch()
+              void refetchMine()
+            }}
             loading={isFetching}
             aria-label={t('dashboard.refresh')}
             title={t('dashboard.refresh')}
@@ -195,10 +203,21 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               i={3}
               icon={CircleCheck}
               tint="mint"
-              label={t('lab.tiles.done')}
-              value={s.doneToday}
+              label={t('my.tiles.resultsByMe')}
+              value={my?.work.results ?? 0}
               unit={periodWord}
-              to={labLink('tests')}
+              delta={
+                my && (my.work.results ?? 0) !== (my.workPrev.results ?? 0)
+                  ? {
+                      text: t('desk.vsBefore', {
+                        change: `${(my.work.results ?? 0) > (my.workPrev.results ?? 0) ? '+' : '−'}${Math.abs((my.work.results ?? 0) - (my.workPrev.results ?? 0))}`,
+                      }),
+                      good: null,
+                      up: (my.work.results ?? 0) > (my.workPrev.results ?? 0),
+                    }
+                  : undefined
+              }
+              to={link('staff', { person: user.id, kind: 'results' }) ?? labLink('verification')}
             />
             <Kpi
               i={4}
@@ -252,15 +271,20 @@ export function LabDashboard({ user }: { user: StaffUser }) {
               )}
             </Panel>
             <div className="flex min-w-0 flex-col gap-4">
-              <MyQueuePanel
-                title={desk === 'ultrasound' ? t('lab.queueUltrasound') : t('lab.queue')}
-                rows={rows}
-                counts={{
-                  waiting: rows.filter((r) => !r.startedAt).length,
-                  inProgress: rows.filter((r) => r.startedAt).length,
-                  done: s?.served ?? 0,
-                }}
+              {/* the patients waiting for me: sent to me by name, then the bench's queue (0120) */}
+              <WaitingForMePanel
+                summary={my}
                 rowAction="call"
+                title={desk === 'ultrasound' ? t('lab.queueUltrasound') : t('lab.queue')}
+                done={my?.work.results ?? s?.served ?? 0}
+              />
+              <MyWorkPanel
+                summary={my}
+                periodWord={periodWord}
+                kinds={WORK_OF.lab}
+                link={link}
+                user={user}
+                i={2}
               />
               {s && (
                 <Panel

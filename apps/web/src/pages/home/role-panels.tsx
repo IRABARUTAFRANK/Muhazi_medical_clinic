@@ -93,8 +93,16 @@ export function MyQueuePanel({
   rows,
   counts,
   rowAction,
+  i: index = 1,
+  note,
+  tint = 'amber',
 }: {
   title: string
+  /** The panel's place in the stagger (default 1). */
+  i?: number
+  /** A line above the list (0120: "Sent to me by name 1 · at my desks 3"). */
+  note?: ReactNode
+  tint?: Tint
   rows: (QueueRow & {
     queueId?: string
     poolId?: string | null
@@ -111,6 +119,8 @@ export function MyQueuePanel({
     /** 0114: told to come on the waiting-room screen, when. */
     calledAt?: string | null
     startedAt?: string | null
+    /** 0120: sent to me by name (assigned to me, or handed over to me): the row says so. */
+    byName?: boolean
   })[]
   counts: QueueCounts
   rowAction: 'open' | 'call'
@@ -179,13 +189,14 @@ export function MyQueuePanel({
   const changed = useChanged(rows, (q) => q.queueId ?? q.ticket, rowSignature)
   return (
     <Panel
-      i={1}
+      i={index}
       icon={Users}
-      tint="amber"
+      tint={tint}
       title={title}
       right={`${t('home.waiting', { count: counts.waiting })} · ${t('home.inProgress', { count: counts.inProgress })} · ${t('home.done', { count: counts.done })}`}
     >
       {error && <ErrorBox>{error}</ErrorBox>}
+      {note}
       {rows.length === 0 ? (
         <Empty>{t('home.emptyQueueTitle')}</Empty>
       ) : (
@@ -234,6 +245,13 @@ export function MyQueuePanel({
                         <span className="text-blue inline-flex items-center gap-1 font-semibold">
                           <Users size={12} aria-hidden="true" />
                           {t('home.sharedQueue')}
+                        </span>
+                      )}
+                      {/* sent to me by name (0120): first in the list, marked */}
+                      {q.byName && (
+                        <span className="text-primary inline-flex items-center gap-1 font-semibold">
+                          <UserRoundCheck size={12} aria-hidden="true" />
+                          {t('my.sentToYou')}
                         </span>
                       )}
                       {q.referredBy && (

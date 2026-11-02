@@ -1,16 +1,17 @@
 import { useEffect, type ReactNode } from 'react'
 import {
   Banknote,
-  BedDouble,
   CalendarDays,
   CircleCheck,
   ClipboardCheck,
   Clock,
   FlaskConical,
+  ListTodo,
   MessageSquare,
   Receipt,
   RefreshCw,
   Stethoscope,
+  UserRoundCheck,
   Users,
   Wallet,
   Workflow,
@@ -19,12 +20,8 @@ import { useTranslation } from 'react-i18next'
 import { useSearchPeriod } from '@/lib/period'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import {
-  CLINIC_HOURS,
-  CLINIC_NOW,
-  CLINIC_NOW_QUIET,
   ROLE_HOME,
   demoNow,
-  formatNumber,
   formatTime,
   type HomeMode,
   type HomeRole,
@@ -42,15 +39,8 @@ import { Icon } from '@/components/ui/icon'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { useHomeSummary, type HomeSummary } from '@/lib/api/home'
-import { useClinicStatus, useClinicInfo } from '@/lib/api/public'
-import {
-  mineElsewhere,
-  onePerPool,
-  openItems,
-  queueCounts,
-  stationFor,
-  useQueueBoard,
-} from '@/lib/api/visits'
+import { useMySummary, type MySummary } from '@/lib/api/my'
+import { stationFor } from '@/lib/api/visits'
 import { useCan } from '@/lib/api/permissions'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
@@ -60,12 +50,14 @@ import { CashierDashboard } from './cashier-dashboard'
 import { HandoverPanel } from './handover-panel'
 import { DeskDashboard } from './desk-dashboard'
 import { LabDashboard } from './lab-dashboard'
-import { ErrorBox, MyQueuePanel, RolePanels, ToAcceptSection } from './role-panels'
+import { ErrorBox, RolePanels, ToAcceptSection } from './role-panels'
 import { CallsPanel } from './calls-panel'
 import { DeskOrdersPanel } from './desk-orders-panel'
 import { PharmacyDashboard } from './pharmacy-dashboard'
 import { DeskBlocks } from './home-desks'
 import { actionShown, homeKindFor, useHomeDesks } from './home-desks-rules'
+import { MyWorkPanel, WaitingForMePanel } from './my-panels'
+import { WORK_OF } from './my-work'
 import { OpenNextButton } from './open-next'
 
 interface HomePageProps {
@@ -114,21 +106,24 @@ function RoleHome({ user, mode }: HomePageProps) {
     ),
   }
   const empty = mode === 'empty'
-  const { data: info } = useClinicInfo()
-  const { data: status } = useClinicStatus(info?.hours ?? CLINIC_HOURS)
   // the figures of the chosen period (today by default; lists of what waits now stay "now")
   const period = useSearchPeriod('today')
   const days = period.range === 'today' ? null : { from: period.from, to: period.to }
   const periodWord = t(`dashboard.period.${period.range}`)
   const { data: summary, error, refetch, isFetching, dataUpdatedAt } = useHomeSummary(days)
-  const sampleNow = empty ? CLINIC_NOW_QUIET : CLINIC_NOW
-  const now = isLive
-    ? {
-        inClinic: status?.waiting ?? 0,
-        bedsOccupied: summary?.beds.filter((b) => b.state === 'occupied').length ?? 0,
-        bedsTotal: summary?.beds.filter((b) => b.state !== 'out_of_service').length ?? 0,
-      }
-    : sampleNow
+  // my own queue and my own work (0120): sent to me by name first, then my desks
+  const { data: myGot, refetch: refetchMine } = useMySummary(days)
+  // the quiet-morning design: nobody waits, nothing done yet
+  const my: MySummary | undefined =
+    empty && myGot
+      ? {
+          ...myGot,
+          waiting: [],
+          counts: { sentToMe: 0, atMyDesks: 0, inProgress: 0 },
+          work: {},
+          workPrev: {},
+        }
+      : myGot
   // the desk's own name (live: from the profile; no sample "Consultation 1")
   const station =
     user.role === 'doctor' && user.station
@@ -156,31 +151,17 @@ function RoleHome({ user, mode }: HomePageProps) {
     return () => setOverride(null)
   }, [mode, setOverride])
 
-  // Live: today's queue at this user's station (reception sees every station).
-  const myStation = role === 'receptionist' ? 'all' : stationFor(user)
-  const { data: live = [] } = useQueueBoard(myStation, user.role)
-  // also the patients at other desks that are theirs: sent to them by name, or to a section they
-  // work in (a doctor of Nursing, a nurse of Consultation)
-  const { data: everyone = [] } = useQueueBoard('all', user.role)
-  const elsewhere = myStation === 'all' ? [] : mineElsewhere(everyone, myStation)
-  // a patient sent to several desks at once (all mine) is one row
-  const rows = isLive ? onePerPool([...openItems(live), ...elsewhere]) : empty ? [] : home.queue
-  // the tiles count the patients this person may work on (not those sent to a colleague)
-  const counts = isLive
-    ? (() => {
-        const c = queueCounts(
-          onePerPool([...live, ...elsewhere]).filter((r) => r.canWork !== false),
-        )
-        // a doctor's "Seen": the patients this doctor took and finished, not the desk's
-        if (user.role === 'doctor')
-          c.done =
-            summary?.seenToday ??
-            everyone.filter((r) => r.finishedAt && r.takenById === user.id).length
-        return c
-      })()
-    : empty
-      ? { waiting: 0, inProgress: 0, done: 0 }
-      : home.counts
+  // the tiles count MY patients (0120): sent to me by name, or waiting at my desks for anyone,
+  // and the ones I took; "Seen": the patients I saw in the period, never the desk's
+  const counts = my
+    ? {
+        waiting: my.counts.sentToMe + my.counts.atMyDesks,
+        inProgress: my.counts.inProgress,
+        done: my.work.patientsSeen ?? summary?.seenToday ?? 0,
+      }
+    : { waiting: 0, inProgress: 0, done: 0 }
+  // the kinds of my work this home lists first: the doctor's, or the desk's
+  const kinds = WORK_OF[role === 'doctor' ? 'doctor' : role === 'nurse' ? 'nurse' : 'reception']
 
   // "Open next patient" takes the next patient of the desk and opens the visit.
   const takesNext = (id: string) => id === 'openNext' && user.role === 'doctor'
@@ -236,7 +217,10 @@ function RoleHome({ user, mode }: HomePageProps) {
           <Button
             variant="tint-grey"
             size="icon"
-            onClick={() => void refetch()}
+            onClick={() => {
+              void refetch()
+              void refetchMine()
+            }}
             loading={isFetching}
             aria-label={t('dashboard.refresh')}
             title={t('dashboard.refresh')}
@@ -269,8 +253,8 @@ function RoleHome({ user, mode }: HomePageProps) {
         <RoleTiles
           role={role}
           summary={summary}
+          my={my}
           counts={counts}
-          now={now}
           periodWord={periodWord}
           seenLink={seenLink}
           waitingLink={waitingLink}
@@ -285,35 +269,52 @@ function RoleHome({ user, mode }: HomePageProps) {
         {/* Patients a colleague hands over to me (Take / Decline), and mine waiting (0088) */}
         <HandoverPanel />
 
-        {/* THE WORK OF THE DAY */}
+        {/* WAITING FOR ME: sent to me by name first, then my desks' queue (0120) */}
         <section className="flex flex-col gap-3">
-          <SectionTitle icon={Workflow}>{t(`roleHome.section.${role}`)}</SectionTitle>
+          <SectionTitle icon={UserRoundCheck}>{t('my.section')}</SectionTitle>
           <div className="pc:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
-            <MyQueuePanel
-              title={t('home.myQueue', { station })}
-              rows={rows}
-              counts={counts}
+            <WaitingForMePanel
+              summary={my}
               rowAction={home.rowAction}
+              title={t('home.myQueue', { station })}
+              done={counts.done}
             />
-            {summary && (
-              <div className="flex min-w-0 flex-col gap-4">
-                <CallsPanel user={user} />
-                {/* orders sent to this doctor's desk (dental, minor surgery, consultation…) */}
-                {user.role === 'doctor' && (
-                  <DeskOrdersPanel
-                    station={stationFor(user)}
-                    title={t('desk.ordersAt', { desk: station })}
-                    hideEmpty
-                  />
-                )}
-                {/* a head of department: colleagues asking to see past records */}
-                <AccessApprovalsPanel user={user} />
-                <NoticesPanel limit={4} />
-                <RolePanels role={role} data={summary} />
-              </div>
-            )}
+            <div className="flex min-w-0 flex-col gap-4">
+              <MyWorkPanel
+                summary={my}
+                periodWord={periodWord}
+                kinds={kinds}
+                link={link}
+                user={user}
+                i={2}
+              />
+              <CallsPanel user={user} />
+              {/* orders sent to this doctor's desk (dental, minor surgery, consultation…) */}
+              {user.role === 'doctor' && (
+                <DeskOrdersPanel
+                  station={stationFor(user)}
+                  title={t('desk.ordersAt', { desk: station })}
+                  hideEmpty
+                />
+              )}
+            </div>
           </div>
         </section>
+
+        {/* THE WORK OF THE DAY: my results, my calendar, my notices */}
+        {summary && (
+          <section className="flex flex-col gap-3">
+            <SectionTitle icon={role === 'doctor' ? Workflow : ListTodo}>
+              {t(`roleHome.section.${role}`)}
+            </SectionTitle>
+            <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
+              <RolePanels role={role} data={summary} />
+              {/* a head of department: colleagues asking to see past records */}
+              <AccessApprovalsPanel user={user} />
+              <NoticesPanel limit={4} />
+            </div>
+          </section>
+        )}
         {/* the desks the person's departments give besides this one (the lab, the pharmacy…) */}
         <DeskBlocks user={user} kind="doctor" />
         <DoctorCalendarsSection user={user} />
@@ -327,8 +328,8 @@ function RoleHome({ user, mode }: HomePageProps) {
 function RoleTiles({
   role,
   summary,
+  my,
   counts,
-  now,
   periodWord,
   seenLink,
   waitingLink,
@@ -337,9 +338,10 @@ function RoleTiles({
 }: {
   role: HomeRole
   summary: HomeSummary | undefined
+  /** My own figures (0120). No average waiting time on the tiles: the waiting times are on
+   *  the Analytics page. */
+  my: MySummary | undefined
   counts: { waiting: number; inProgress: number; done: number }
-  /** No average waiting time on the tiles: the waiting times are on the Analytics page. */
-  now: { inClinic: number; bedsOccupied: number; bedsTotal: number }
   /** "today", "this week"…: what the counted tiles cover. */
   periodWord: string
   /** The person's own work on the Analytics page (heads of department, and every desk's own
@@ -352,6 +354,10 @@ function RoleTiles({
   const { t } = useTranslation()
   const unitNow = t('dashboard.units.now')
   const unitToday = periodWord
+  // "2 sent to you by name" under the waiting tile when there are some
+  const sent = my?.counts.sentToMe ?? 0
+  const sentDelta =
+    sent > 0 ? { text: t('my.sentToMe', { count: sent }), good: null, up: null } : undefined
   let tiles: ReactNode
   if (role === 'doctor') {
     // verified results the doctor has not seen yet
@@ -367,6 +373,7 @@ function RoleTiles({
           label={t('roleHome.tiles.waiting')}
           value={counts.waiting}
           unit={unitNow}
+          delta={sentDelta}
           to={waitingLink}
         />
         <Kpi
@@ -457,17 +464,13 @@ function RoleTiles({
           value={summary?.paidToday.amount ?? 0}
           unit="RWF"
         />
-        <Kpi
-          i={4}
-          icon={Users}
-          tint="navy"
-          label={t('roleHome.tiles.inClinic')}
-          value={now.inClinic}
-          unit={unitNow}
-        />
       </>
     )
   } else {
+    // the other desks on this home (a nurse or receptionist without their usual desk): my
+    // queue, what I did, my tasks; nothing of the clinic
+    const done = my?.work.patientsSeen ?? 0
+    const tasks = summary?.tasks.length ?? 0
     tiles = (
       <>
         <Kpi
@@ -477,24 +480,35 @@ function RoleTiles({
           label={t('roleHome.tiles.waiting')}
           value={counts.waiting}
           unit={unitNow}
+          delta={sentDelta}
           to={waitingLink}
         />
         <Kpi
           i={1}
-          icon={Users}
-          tint="navy"
-          label={t('roleHome.tiles.inClinic')}
-          value={now.inClinic}
+          icon={Stethoscope}
+          tint="teal"
+          label={t('roleHome.tiles.inProgress')}
+          value={counts.inProgress}
           unit={unitNow}
-          to={tasksLink}
+          to={waitingLink}
         />
         <Kpi
           i={2}
-          icon={BedDouble}
-          tint="teal"
-          label={t('dashboard.tiles.beds')}
-          value={now.bedsOccupied}
-          unit={`/ ${formatNumber(now.bedsTotal)} ${t('dashboard.units.beds')}`}
+          icon={CircleCheck}
+          tint="mint"
+          label={t('roleHome.tiles.seen')}
+          value={done}
+          unit={unitToday}
+          to={seenLink}
+        />
+        <Kpi
+          i={3}
+          icon={ListTodo}
+          tint="violet"
+          label={t('home.tasksDue')}
+          value={tasks}
+          unit={unitNow}
+          to={tasksLink}
         />
       </>
     )

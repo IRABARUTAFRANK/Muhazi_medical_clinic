@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-11-02T03:51:56.962Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-11-02T04:52:41.101Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -58992,6 +58992,448 @@ end
 $$;
 revoke all on function display_board(text) from public;
 grant execute on function display_board(text) to anon, authenticated;
+
+
+-- ============================================================ 20261231090000_personal_dashboards.sql
+-- 0120 · Every staff dashboard is personal: "Waiting for me" and "My work".
+--
+-- The owner stood at triage with one patient waiting and the home said "2 waiting": the tile was
+-- the clinic's figure. The rule now: everyone's home shows THEIR OWN patients and THEIR OWN work;
+-- the clinic's figures stay on the manager dashboard (and a head's department view).
+--
+-- my_summary(p_from, p_to) gives the signed-in person, and nobody else:
+--   waiting   the patients that are theirs right now: sent to them by name (assigned, or a
+--             handover waiting for their answer) FIRST, then the queue of their own desks (the
+--             sections they serve, and the desk their profile names), nobody else's patient; the
+--             rows are queue_board rows, so the home's Take / Call work unchanged;
+--   counts    sentToMe · atMyDesks · inProgress (taken by me);
+--   work      what they did in the period, by kind, as "Who did what" counts it
+--             (analytics_staff_events, user_id = me): registered, vitals, patientsSeen,
+--             diagnoses, prescriptions, orders, results, procedures, medicinesGiven, charges,
+--             admissions, tasksDone…, plus visitsStarted (visits I opened); and the same for the
+--             period before (workPrev) for the arrows;
+--   money     only for the people who take payments (and the manager): my payments (count,
+--             amount, by method), my refunds, my walk-in sales. A cashier gets no clinical kind.
+-- The old functions (desk_summary, home_summary, lab_summary, cashier_summary, pharmacy_summary,
+-- dashboard_summary) are unchanged: the manager keeps the clinic.
+--
+-- The manager also works at a desk sometimes (profiles.station = 'Triage'): their list is what is
+-- sent to them by name and the queue of that desk only, so they see their own queue apart from the
+-- clinic totals.
+
+-- ---------------------------------------------------------------- the desk a profile names
+-- "Consultation 1", "Triage", "Laboratoire", "Dental"… → the station, as the app reads it
+-- (stationFor); null when the text names no desk.
+create or replace function station_named(p_text text)
+returns station
+language sql immutable
+as $$
+  select case
+    when p_text is null then null
+    when p_text ilike '%dent%' then 'dental'
+    when p_text ilike '%lab%' then 'laboratory'
+    when p_text ilike '%ultra%' or p_text ilike '%echo%' then 'ultrasound'
+    when p_text ilike '%pharm%' or p_text ilike '%farum%' then 'pharmacy'
+    when p_text ilike '%theat%' or p_text ilike '%surg%' then 'theatre'
+    when p_text ilike '%triage%' then 'triage'
+    when p_text ilike '%nurs%' then 'nursing'
+    when p_text ilike '%recep%' then 'reception'
+    when p_text ilike '%cash%' or p_text ilike '%caiss%' then 'cashier'
+    when p_text ilike '%consult%' then 'consultation'
+    else null
+  end::station
+$$;
+
+-- The signed-in person's own desk: the one their profile names, else their role's usual desk
+-- (a doctor: consultation; a nurse: triage); the manager has none unless the profile names one.
+create or replace function my_home_station()
+returns station
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(
+    station_named(p.station),
+    case p.role
+      when 'receptionist' then 'reception'
+      when 'cashier' then 'cashier'
+      when 'nurse' then 'triage'
+      when 'doctor' then 'consultation'
+      when 'lab_tech' then 'laboratory'
+      when 'sonographer' then 'ultrasound'
+      when 'pharmacist' then 'pharmacy'
+      else null
+    end::station)
+  from profiles p where p.id = auth.uid() and p.active
+$$;
+revoke all on function station_named(text), my_home_station() from public, anon;
+grant execute on function station_named(text), my_home_station() to authenticated;
+
+-- ---------------------------------------------------------------- my summary
+create or replace function my_summary(p_from date default null, p_to date default null)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_role role_key := current_role_key();
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_from date := coalesce(p_from, v_today);
+  v_to date := coalesce(p_to, p_from, v_today);
+  v_len integer;
+  v_start timestamptz;
+  v_end timestamptz;
+  v_pstart timestamptz;
+  v_pend timestamptz;
+  v_station station := my_home_station();
+  v_manager boolean := is_manager();
+  -- money is the business of whoever takes payments (and the manager)
+  v_money boolean := has_perm('payment.take') or is_manager();
+  -- the cash desk has no business with clinical kinds
+  v_kinds text[] := case when v_role = 'cashier'
+                         then array['registered', 'charges', 'payments', 'refunds', 'voided', 'handovers']
+                         else null end;
+  v_waiting jsonb;
+  v_counts jsonb;
+  v_work jsonb;
+  v_prev jsonb;
+  v_money_j jsonb := null;
+begin
+  if v_role is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  if v_to < v_from then
+    select v_to, v_from into v_from, v_to;
+  end if;
+  v_len := v_to - v_from + 1;
+  v_start := (v_from::timestamp) at time zone 'Africa/Kigali';
+  v_end := ((v_to + 1)::timestamp) at time zone 'Africa/Kigali';
+  v_pstart := ((v_from - v_len)::timestamp) at time zone 'Africa/Kigali';
+  v_pend := v_start;
+
+  -- WAITING FOR ME: by name first (assigned to me, handed over to me and not answered yet), then
+  -- my desks' queue (nobody named: the sections I serve, or the desk my profile names; a patient
+  -- sent to a department only for its members), plus the patients I took and have not finished.
+  -- The manager's queue is only what is sent to them by name and their own desk, never the clinic.
+  select coalesce(jsonb_agg(to_jsonb(b) || jsonb_build_object('by_name', x.by_name)
+                            order by x.by_name desc, (b.started_at is not null) desc, b.priority, b.queued_at),
+                  '[]'::jsonb)
+  into v_waiting
+  from queue_board b
+  cross join lateral (
+    select coalesce(b.assigned_to = v_me, false)
+           or coalesce(b.handover_status = 'pending' and b.handover_to = v_me, false) as by_name
+  ) x
+  where b.finished_at is null
+    and (
+      x.by_name
+      or coalesce(b.taken_by = v_me, false)
+      or (b.assigned_to is null and b.taken_by is null
+          and ((not v_manager and serves_station(v_me, b.station, b.service))
+               or b.station = v_station)
+          and (b.department_id is null
+               or exists (select 1 from profiles me where me.id = v_me and me.department_id = b.department_id)
+               or exists (select 1 from staff_department sd
+                          where sd.profile_id = v_me and sd.department_id = b.department_id)))
+    );
+
+  select jsonb_build_object(
+    'sentToMe', count(*) filter (where (r ->> 'by_name')::boolean and r ->> 'started_at' is null),
+    'atMyDesks', count(*) filter (where not (r ->> 'by_name')::boolean and r ->> 'started_at' is null),
+    'inProgress', count(*) filter (where r ->> 'started_at' is not null)
+  ) into v_counts
+  from jsonb_array_elements(v_waiting) r;
+
+  -- MY WORK: the kinds of "Who did what", mine only, this period and the one before.
+  select coalesce(jsonb_object_agg(k.kind, k.n), '{}'::jsonb) into v_work
+  from (select kind, count(*) as n
+        from analytics_staff_events(v_start, v_end, v_money)
+        where user_id = v_me and (v_kinds is null or kind = any (v_kinds))
+        group by kind) k;
+  select coalesce(jsonb_object_agg(k.kind, k.n), '{}'::jsonb) into v_prev
+  from (select kind, count(*) as n
+        from analytics_staff_events(v_pstart, v_pend, v_money)
+        where user_id = v_me and (v_kinds is null or kind = any (v_kinds))
+        group by kind) k;
+  -- the visits I opened (reception's work; not a kind of Who did what)
+  v_work := v_work || jsonb_build_object('visitsStarted',
+    (select count(*) from encounter e where e.deleted_at is null and e.created_by = v_me
+      and e.arrived_at >= v_start and e.arrived_at < v_end));
+  v_prev := v_prev || jsonb_build_object('visitsStarted',
+    (select count(*) from encounter e where e.deleted_at is null and e.created_by = v_me
+      and e.arrived_at >= v_pstart and e.arrived_at < v_pend));
+
+  -- MY MONEY: what I took, by method; what I gave back; the walk-in sales I handed over.
+  if v_money then
+    select jsonb_build_object(
+      'payments', jsonb_build_object(
+        'count', (select count(*) from payment y where y.deleted_at is null and y.cashier_id = v_me and y.paid_at >= v_start and y.paid_at < v_end),
+        'amount', (select coalesce(sum(y.amount), 0) from payment y where y.deleted_at is null and y.cashier_id = v_me and y.paid_at >= v_start and y.paid_at < v_end),
+        'prevAmount', (select coalesce(sum(y.amount), 0) from payment y where y.deleted_at is null and y.cashier_id = v_me and y.paid_at >= v_pstart and y.paid_at < v_pend),
+        'prevCount', (select count(*) from payment y where y.deleted_at is null and y.cashier_id = v_me and y.paid_at >= v_pstart and y.paid_at < v_pend)),
+      'byMethod', coalesce((
+        select jsonb_agg(jsonb_build_object('method', m.method, 'amount', m.amount, 'count', m.n) order by m.amount desc)
+        from (select y.method::text as method, sum(y.amount) as amount, count(*) as n from payment y
+              where y.deleted_at is null and y.cashier_id = v_me and y.paid_at >= v_start and y.paid_at < v_end
+              group by y.method) m), '[]'::jsonb),
+      'refunds', jsonb_build_object(
+        'count', (select count(*) from refund r where r.deleted_at is null and r.cashier_id = v_me and r.refunded_at >= v_start and r.refunded_at < v_end),
+        'amount', (select coalesce(sum(r.amount), 0) from refund r where r.deleted_at is null and r.cashier_id = v_me and r.refunded_at >= v_start and r.refunded_at < v_end)),
+      'sales', jsonb_build_object(
+        'count', (select count(*) from counter_sale s where s.deleted_at is null and s.handed_over_by = v_me and s.handed_over_at >= v_start and s.handed_over_at < v_end),
+        'total', (select coalesce(sum(s.total), 0) from counter_sale s where s.deleted_at is null and s.handed_over_by = v_me and s.handed_over_at >= v_start and s.handed_over_at < v_end))
+    ) into v_money_j;
+  end if;
+
+  return jsonb_build_object(
+    'from', v_from,
+    'to', v_to,
+    'role', v_role,
+    'station', v_station,
+    'desks', to_jsonb(my_desk_list()),
+    'waiting', v_waiting,
+    'counts', v_counts,
+    'work', v_work,
+    'workPrev', v_prev,
+    'money', v_money_j
+  );
+end
+$$;
+revoke all on function my_summary(date, date) from public, anon;
+grant execute on function my_summary(date, date) to authenticated;
+
+
+-- ============================================================ 20270101090000_nav_counts.sql
+-- 0121 · Counts on the menu: "My queue 2", "My bookings 4", like the red count on Notifications.
+--
+-- The owner: "On the sidebar, like the red notification count, I see that I have 2 patients in my
+-- queue, or 4 bookings today, and the other entries where it applies — everything except Calendar."
+--
+-- nav_counts() gives the signed-in person a small object of plain counts (no names, no amounts),
+-- read every 20 seconds by the menu. Only the keys that apply to the person are in it; the app
+-- puts each one on its menu entry:
+--   queue            patients waiting for me: sent to me by name (assigned, or a handover waiting
+--                    for my answer), then my desks' queue nobody has taken (as my home's "Waiting
+--                    for me" counts it, my_summary 0120); not yet started. Doctors and nurses.
+--   inClinic         patients at my desks now (waiting or with me); the manager and reception:
+--                    every open visit.
+--   results          results back for me (after a handover: for the colleague who took the
+--                    patient) and not marked seen, last 7 days.
+--   prescriptions    my prescriptions still waiting at the pharmacy (open visits).
+--   myBookings       my bookings today (whoever keeps a calendar).
+--   bookings         today's bookings with every doctor + the requests still to answer (reception,
+--                    the manager, whoever may answer booking requests).
+--   worklist         tests waiting at the laboratory / ultrasound desks I use (not yet verified).
+--   pharmacy         the pharmacy desk: patients with medicines to hand over + walk-in sales paid
+--                    and not handed over yet.
+--   stock            a room-store holder (no pharmacy desk): delivery notes to confirm + walk-in
+--                    sales paid at my store and not handed over yet.
+--   bills            open bills with something still to pay (the cash desk, the manager).
+--   payments         walk-in sales waiting to be paid (whoever takes payments; not the manager).
+--   recordAccess     requests to see past records waiting for an answer (the manager and whoever
+--                    may answer them); the manager also counts emergency accesses not reviewed.
+--   documents        staff licences and contracts expiring within 60 days or expired (manager).
+--   filesToComplete  patient files with something missing (reception).
+-- The visibility rules are those of the pages the entries open; every count is a count(*).
+
+create or replace function nav_counts()
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_role role_key := current_role_key();
+  v_manager boolean := is_manager();
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_start timestamptz;
+  v_end timestamptz;
+  v_desks text[] := my_desk_list();
+  v_station station;
+  -- a doctor's or nurse's desk: consultation, dental, nursing, triage…
+  v_treat boolean;
+  v_pharmacy boolean;
+  v_out jsonb := '{}'::jsonb;
+  v_n integer;
+begin
+  if v_me is null or v_role is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  v_start := (v_today::timestamp) at time zone 'Africa/Kigali';
+  v_end := ((v_today + 1)::timestamp) at time zone 'Africa/Kigali';
+  v_station := my_home_station();
+  v_treat := not v_manager and v_role not in ('receptionist', 'cashier')
+             and v_desks && (treating_desks() || array['triage']);
+  v_pharmacy := not v_manager and 'pharmacy' = any (v_desks);
+
+  -- MY QUEUE and THE PATIENTS AT MY DESKS (the rule of my_summary's "Waiting for me")
+  if v_treat and has_perm('queue.read') and has_perm('patient.read') then
+    with mine as (
+      select q.encounter_id, q.started_at
+      from queue_entry q
+      join encounter e on e.id = q.encounter_id and e.status = 'open' and e.deleted_at is null
+      where q.deleted_at is null and q.finished_at is null
+        and (q.assigned_to = v_me
+             or q.taken_by = v_me
+             or exists (select 1 from patient_handover h
+                        where h.queue_id = q.id and h.status = 'pending' and h.to_user = v_me
+                          and h.deleted_at is null)
+             or (q.assigned_to is null and q.taken_by is null
+                 and (serves_station(v_me, q.station, coalesce(q.service, e.service))
+                      or q.station = v_station)
+                 and (q.department_id is null
+                      or exists (select 1 from profiles me where me.id = v_me and me.department_id = q.department_id)
+                      or exists (select 1 from staff_department sd
+                                 where sd.profile_id = v_me and sd.department_id = q.department_id))))
+    )
+    select jsonb_build_object(
+             'queue', count(*) filter (where started_at is null),
+             'inClinic', count(distinct encounter_id))
+    into v_out
+    from mine;
+  elsif (v_manager or v_role = 'receptionist') and has_perm('patient.read') then
+    v_out := jsonb_build_object('inClinic',
+      (select count(*) from encounter e where e.status = 'open' and e.deleted_at is null));
+  end if;
+
+  -- RESULTS FOR ME and MY PRESCRIPTIONS AT THE PHARMACY: whoever has those menu entries (a doctor
+  -- at a treating desk; anyone a department of theirs gives a doctor's desk; as the menu decides)
+  if not v_manager
+     and ((v_role = 'doctor' and v_desks && treating_desks())
+          or exists (select 1 from unnest(array['consultation', 'dental', 'surgery', 'circ']) d(desk)
+                     where desk_via(v_me, d.desk) = 'department')) then
+    select count(*) into v_n
+    from diagnostic_report d
+    join service_request r on r.id = d.service_request_id and r.deleted_at is null
+    where d.deleted_at is null and d.reviewed_at is null
+      and r.status in ('resulted', 'verified')
+      and d.updated_at > now() - interval '7 days'
+      -- cheap first: my own request, or a visit handed over to me
+      and (r.requester_id = v_me
+           or exists (select 1 from patient_handover h where h.encounter_id = r.encounter_id
+                      and h.to_user = v_me and h.status = 'taken' and h.deleted_at is null))
+      and result_recipient(r.encounter_id, r.requester_id) = v_me;
+    v_out := v_out || jsonb_build_object('results', v_n);
+
+    select count(*) into v_n
+    from medication_request m
+    join encounter e on e.id = m.encounter_id and e.status = 'open' and e.deleted_at is null
+    where coalesce(m.prescriber_id, m.created_by) = v_me and rx_pending(m);
+    v_out := v_out || jsonb_build_object('prescriptions', v_n);
+  end if;
+
+  -- MY BOOKINGS TODAY (whoever keeps a calendar)
+  if has_perm('appointment.accept') or v_manager then
+    select count(*) into v_n
+    from appointment a
+    join practitioner pr on pr.id = a.practitioner_id and pr.user_id = v_me and pr.deleted_at is null
+    where a.deleted_at is null
+      and a.status in ('approved', 'confirmed', 'arrived', 'in_progress', 'completed')
+      and a.starts_at >= v_start and a.starts_at < v_end;
+    if v_n > 0 or exists (select 1 from practitioner pr where pr.user_id = v_me and pr.deleted_at is null) then
+      v_out := v_out || jsonb_build_object('myBookings', v_n);
+    end if;
+  end if;
+
+  -- TODAY'S BOOKINGS + THE REQUESTS TO ANSWER (reception's Bookings page)
+  if v_manager or v_role = 'receptionist' or has_perm('appointment.approve') then
+    v_out := v_out || jsonb_build_object('bookings',
+      (select count(*) from appointment a
+       where a.deleted_at is null
+         and ((a.status in ('approved', 'confirmed', 'arrived', 'in_progress', 'completed')
+               and a.starts_at >= v_start and a.starts_at < v_end)
+              or a.status = 'inquiry')));
+  end if;
+
+  -- THE LABORATORY / ULTRASOUND WORKLIST (the rule of lab_worklist, open)
+  if not v_manager and v_desks && array['laboratory', 'ultrasound'] and has_perm('orders.read') then
+    v_out := v_out || jsonb_build_object('worklist',
+      (select count(*)
+       from service_request r
+       join encounter e on e.id = r.encounter_id and e.status = 'open'
+       where r.deleted_at is null
+         and r.status not in ('verified', 'cancelled')
+         and r.category = any (my_test_categories())
+         and coalesce(r.station, case when r.category = 'imaging' then 'ultrasound'::station
+                                      else 'laboratory'::station end) in ('laboratory', 'ultrasound')
+         and (has_perm('sensitive.read') or may_use_desk(request_desk(r.station, r.category))
+              or not sensitive_service(r.service_id))));
+  end if;
+
+  -- THE PHARMACY: patients with medicines to hand over + walk-in sales paid, not handed over
+  if v_pharmacy then
+    v_out := v_out || jsonb_build_object('pharmacy',
+      (select count(distinct m.encounter_id)
+       from medication_request m
+       join encounter e on e.id = m.encounter_id and e.status = 'open'
+       where rx_pending(m))
+      + (select count(*) from counter_sale s
+         join stock_location l on l.id = s.location_id
+         where s.deleted_at is null and s.status = 'paid' and not is_room_type(l.type)));
+  elsif not v_manager and exists (
+      select 1 from stock_location l
+      where l.active and l.deleted_at is null and is_room_type(l.type) and holds_store(v_me, l.id)) then
+    -- A ROOM STORE (a doctor's office, the ward): delivery notes to confirm + walk-in sales to give
+    v_out := v_out || jsonb_build_object('stock',
+      (select count(*) from stock_transfer t
+       where t.deleted_at is null and t.status = 'in_transit' and t.direction = 'to_room'
+         and holds_store(v_me, t.to_location_id))
+      + (select count(*) from counter_sale s
+         join stock_location l on l.id = s.location_id
+         where s.deleted_at is null and s.status = 'paid' and is_room_type(l.type)
+           and holds_store(v_me, s.location_id)));
+  end if;
+
+  -- MONEY: open bills (as cashier_summary counts them) and walk-in sales waiting to be paid
+  if v_manager or v_role = 'cashier' or has_perm('payment.take') then
+    v_out := v_out || jsonb_build_object('bills',
+      (select count(*) from invoice i join encounter e on e.id = i.encounter_id
+       where i.deleted_at is null and i.status = 'draft' and e.status = 'open'
+         and invoice_balance(i.id) > 0));
+  end if;
+  if not v_manager and (v_role = 'cashier' or has_perm('payment.take')) then
+    v_out := v_out || jsonb_build_object('payments',
+      (select count(*) from counter_sale s where s.deleted_at is null and s.status = 'open'));
+  end if;
+
+  -- RECORD ACCESS: requests waiting for an answer (record_access_requests 'pending')
+  if v_manager or has_perm('records.approve') then
+    v_out := v_out || jsonb_build_object('recordAccess',
+      (select count(*) from record_access_request r
+       join encounter e on e.id = r.encounter_id and e.status = 'open'
+       where r.kind = 'request' and r.status = 'pending' and r.requested_by <> v_me
+         and r.created_at > now() - interval '90 days')
+      + case when v_manager then
+          (select count(*) from record_access_request r
+           where r.kind = 'emergency' and r.reviewed_at is null
+             and r.created_at > now() - interval '90 days')
+        else 0 end);
+  end if;
+
+  -- STAFF DOCUMENTS expiring within 60 days, or expired (staff_documents_expiring)
+  if v_manager then
+    v_out := v_out || jsonb_build_object('documents',
+      (select count(*) from staff_document d
+       join profiles p on p.id = d.profile_id and p.active
+       where d.deleted_at is null and d.kind in ('licence', 'contract')
+         and d.expires_on is not null and d.expires_on <= staff_doc_today() + 60));
+  end if;
+
+  -- FILES TO COMPLETE (reception; the rule of files_to_complete)
+  if v_role = 'receptionist' and has_perm('patient.read') then
+    v_out := v_out || jsonb_build_object('filesToComplete',
+      (with s as (select patient_builtins() as b, patient_fields() as f)
+       select count(distinct p.id)
+       from patient p
+       cross join s
+       left join encounter e on e.patient_id = p.id and e.status = 'open' and e.deleted_at is null
+       where p.deleted_at is null and p.merged_into is null
+         and (e.id is not null or p.created_at > now() - interval '2 days')
+         and cardinality(patient_missing_with(p, s.b, s.f)) > 0));
+  end if;
+
+  return v_out;
+end
+$$;
+revoke all on function nav_counts() from public, anon;
+grant execute on function nav_counts() to authenticated;
 
 
 -- ============================================================ seed.sql

@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import type { NavItem, StaffUser, SyncState } from '@mmc/shared'
 import { LangSwitch } from '@/components/public/lang-switch'
 import { Button } from '@/components/ui/button'
+import { navCountOf, navLinkLabel, useNavCounts } from '@/lib/api/nav-counts'
 import { groupNav } from '@/lib/nav'
 import { useUserActions } from '@/lib/user-actions'
 import { cn } from '@/lib/utils'
@@ -77,6 +78,7 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
   const manager = user.role === 'manager'
   const dashboard = manager || user.dashboard === 'head'
   const groups = groupNav(nav)
+  const { data: counts } = useNavCounts()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -137,12 +139,13 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
                   to={n.to}
                   onClick={onClose}
                   aria-current={n.id === activeId ? 'page' : undefined}
+                  aria-label={navLinkLabel(t, t(n.labelKey), navCountOf(n, counts))}
                   className={cn(
                     'rail-item flex min-h-16 flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[12px] font-medium no-underline',
                     n.id === activeId && 'shadow-card',
                   )}
                 >
-                  <NavIcon id={n.id} name={n.icon} size={20} />
+                  <NavIcon id={n.id} name={n.icon} size={20} count={navCountOf(n, counts)} />
                   <span className="max-w-full leading-tight">{t(n.labelKey)}</span>
                 </StaffLink>
               ))}

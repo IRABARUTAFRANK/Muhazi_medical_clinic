@@ -12,7 +12,6 @@ import {
   Pill,
   RefreshCw,
   Users,
-  Wallet,
   Warehouse,
   Workflow,
 } from 'lucide-react'
@@ -42,22 +41,26 @@ import { cn } from '@/lib/utils'
 import { useCan, useSwitchedOff } from '@/lib/api/permissions'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { openItems, useQueueBoard } from '@/lib/api/visits'
+import { useMySummary } from '@/lib/api/my'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
 import { PharmacyDesk, SellMedicineCard } from '../stock/pharmacy-desk'
 import { CallsPanel } from './calls-panel'
-import { MyQueuePanel } from './role-panels'
+import { MyWorkPanel, WaitingForMePanel } from './my-panels'
+import { WORK_OF } from './my-work'
 import { DeskBlocks } from './home-desks'
 
 /**
- * Pharmacy dashboard (pharmacists): the hand-over desk in the manager design. Figures of the day
- * (the revenue of prescriptions and walk-in sales) and of the stock (stock_totals: low, expiring
- * within 30 days, expired on the shelf, inventory value), the prescriptions waiting one card per
- * patient (hand over all or a part, or "not given" with the reason the doctor is told), the walk-in
- * sales the pharmacist takes the payment of, patients sent to the pharmacy without a prescription,
- * stock to reorder, expired or about to expire, what was not given and what goes out most today.
- * "Message the manager" sends a notice to every manager; the stock notices are checked once a day.
+ * Pharmacy dashboard (pharmacists): the hand-over desk in the manager design, personal since
+ * 0120. The desk's queue (the prescriptions waiting), what I handed over and my walk-in sales
+ * (my work), the store's alerts (stock_totals: low, expiring within 30 days, expired on the
+ * shelf), the prescriptions waiting one card per patient (hand over all or a part, or "not
+ * given" with the reason the doctor is told), the walk-in sales the pharmacist takes the
+ * payment of, the patients waiting for me without a prescription, stock to reorder, expired or
+ * about to expire, what was not given and what goes out most. The pharmacy's revenue and the
+ * inventory's value are the manager's. "Message the manager" sends a notice to every manager;
+ * the stock notices are checked once a day.
  */
 export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -78,9 +81,10 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
     link('pharmacy', extra) ?? link('handovers', extra)
   const expiryLink = link('expiry') ?? stockLink
   const { data: s, refetch, isFetching, dataUpdatedAt } = usePharmacySummary(days)
+  // my own queue and my own work (0120)
+  const { data: my, refetch: refetchMine } = useMySummary(days)
   const { data: lines = [], refetch: refetchLines } = usePharmacyQueue()
   const { data: stock, refetch: refetchStock } = useStockOverview()
-  const { data: board = [] } = useQueueBoard('pharmacy', user.role)
   const { data: everyone = [] } = useQueueBoard('all', user.role)
   // every patient in the clinic now (one per visit), for a sale without a prescription
   const inClinic = [...new Map(openItems(everyone).map((q) => [q.encounterId, q])).values()].map(
@@ -92,9 +96,12 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
       where: t(`register.stations.${q.station}`),
     }),
   )
-  // At the pharmacy desk without a medicine to hand over (sent to buy something, to ask…).
+  // Waiting for me without a medicine to hand over (sent to buy something, to ask…): the
+  // prescriptions have their own cards
   const withRx = new Set(lines.map((l) => l.encounterId))
-  const others = openItems(board).filter((q) => !withRx.has(q.encounterId))
+  const others = my
+    ? { ...my, waiting: my.waiting.filter((q) => !withRx.has(q.encounterId)) }
+    : undefined
   const items = (stock?.items ?? []).filter((i) => i.active)
   const low = items.filter(isLowStock)
   // the stock totals (stock_totals); an old database: counted from the overview
@@ -114,9 +121,6 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
     expiredCost: Math.round(items.reduce((n, i) => n + i.expiredUnits * (i.avgCost ?? 0), 0)),
     expiryDays,
   }
-  // the day's revenue: medicines on the visits' bills (prescriptions and sales) + walk-in sales
-  const walkIn = s?.counterSalesTotal ?? 0
-  const revenue = (s?.salesToday ?? 0) + walkIn
   // the stock notices (low, expiring, expired, the daily summary): once a day per person
   useDailyStockAlertCheck(true)
   const { messageManager } = usePharmacyActions()
@@ -173,6 +177,7 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
             onClick={() => {
               // the figures, the hand-over list and the stock together
               void refetch()
+              void refetchMine()
               void refetchLines()
               void refetchStock()
               void refetchTotals()
@@ -235,25 +240,25 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               i={1}
               icon={PackageCheck}
               tint="mint"
-              label={t('pharmacy.tiles.given')}
-              value={s.dispensedToday}
-              unit={t('pharmacy.units.patientsServed', {
-                count: s.patientsServedToday,
-                period: periodWord,
-              })}
-              to={link('staff', { kind: 'medicinesGiven' }) ?? handoversLink()}
+              label={t('my.tiles.givenByMe')}
+              value={my?.work.medicinesGiven ?? 0}
+              unit={periodWord}
+              to={link('staff', { person: user.id, kind: 'medicinesGiven' }) ?? handoversLink()}
             />
             <Kpi
               i={2}
               icon={Coins}
               tint="navy"
-              label={t('pharmacy.home.revenue', { period: periodWord })}
-              value={revenue}
-              text={formatRwf(revenue)}
-              unit={t('pharmacy.home.revenueSplit', {
-                rx: formatRwf(s.salesToday),
-                walkIn: formatRwf(walkIn),
-              })}
+              label={t('my.tiles.salesByMe')}
+              value={my?.work.handovers ?? my?.money?.sales.count ?? 0}
+              unit={
+                my?.money
+                  ? formatRwf(my.money.sales.total)
+                  : t('pharmacy.units.patientsServed', {
+                      count: s.patientsServedToday,
+                      period: periodWord,
+                    })
+              }
               to={link('walkIn') ?? link('pharmacy')}
             />
             <Kpi
@@ -300,16 +305,6 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               }
               to={expiryLink}
             />
-            <Kpi
-              i={7}
-              icon={Wallet}
-              tint="teal"
-              label={t('pharmacy.home.inventory')}
-              value={totals.inventoryCost}
-              text={formatRwf(totals.inventoryCost)}
-              unit={t('pharmacy.home.sellsFor', { amount: formatRwf(totals.sellingValue) })}
-              to={stockLink}
-            />
           </div>
         )}
 
@@ -321,20 +316,25 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
             <div className="flex min-w-0 flex-col gap-4">
               <PharmacyDesk canDispense />
               <SellMedicineCard patients={inClinic} />
-              {others.length > 0 && (
-                <MyQueuePanel
-                  title={t('pharmacy.atDesk')}
-                  rows={others}
-                  counts={{
-                    waiting: others.filter((r) => !r.startedAt).length,
-                    inProgress: others.filter((r) => r.startedAt).length,
-                    done: 0,
-                  }}
+              {/* waiting for me without a prescription: sent to me by name, or at my desk (0120) */}
+              {(others?.waiting.length ?? 0) > 0 && (
+                <WaitingForMePanel
+                  summary={others}
                   rowAction="open"
+                  title={t('pharmacy.atDesk')}
+                  done={my?.work.medicinesGiven ?? 0}
                 />
               )}
             </div>
             <div className="flex min-w-0 flex-col gap-4">
+              <MyWorkPanel
+                summary={my}
+                periodWord={periodWord}
+                kinds={WORK_OF.pharmacy}
+                link={link}
+                user={user}
+                i={1}
+              />
               <Panel
                 i={2}
                 icon={AlertTriangle}

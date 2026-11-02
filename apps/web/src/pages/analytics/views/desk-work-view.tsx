@@ -12,6 +12,7 @@ import {
   Siren,
   Stethoscope,
   UserPlus,
+  UserRoundCheck,
   Users,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -25,8 +26,9 @@ import {
   type DeskRecord,
   type WorkKind,
 } from '@/lib/api/analytics'
-import { useDeskSummary } from '@/lib/api/desk'
 import { useOpenTasks } from '@/lib/api/desk-ops'
+import { useMySummary } from '@/lib/api/my'
+import { onePerPool, openItems } from '@/lib/api/visits'
 import type { ReportTable } from '@/lib/report'
 import { bucketsOf, sumBy } from '../buckets'
 import { Legend, SERIES, StackedBars } from '../charts'
@@ -73,7 +75,8 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
   const { t } = useTranslation()
   const p = { from: period.from, to: period.to }
   const q = useDeskAnalytics(p)
-  const desk = useDeskSummary(p)
+  // my own queue (0120), for "Waiting now"
+  const myQ = useMySummary(null, { enabled: view === 'waitingNow' })
   const tasks = useOpenTasks()
   const d = q.data
 
@@ -95,12 +98,36 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
     tx(t, 'deskWork.chartAria', '{{what}} by day, {{period}}', { what, period: period.label })
 
   if (view === 'waitingNow') {
-    const s = desk.data
-    if (desk.error) return <LoadError error={desk.error} />
-    if (!s) return <ViewSkeleton />
-    const stations = s.stations.filter((x) => x.waiting + x.busy + x.forgotten > 0)
-    const waiting = stations.reduce((a, x) => a + x.waiting, 0)
-    const busy = stations.reduce((a, x) => a + x.busy, 0)
+    // my own waiting (0120): sent to me by name, or at my desks; never the clinic's queue
+    const m = myQ.data
+    if (myQ.error) return <LoadError error={myQ.error} />
+    if (!m) return <ViewSkeleton />
+    if (m.needsUpdate) return <NeedsUpdate />
+    const rows = onePerPool(openItems(m.waiting))
+    const midnight = new Date()
+    midnight.setHours(0, 0, 0, 0)
+    // one line per desk of mine: waiting, being seen by me, longest wait, from an earlier day
+    const byDesk = new Map<
+      string,
+      { station: string; waiting: number; busy: number; longest: number | null; forgotten: number }
+    >()
+    for (const r of rows) {
+      const d = byDesk.get(r.station) ?? {
+        station: r.station,
+        waiting: 0,
+        busy: 0,
+        longest: null,
+        forgotten: 0,
+      }
+      if (r.startedAt) d.busy += 1
+      else {
+        d.waiting += 1
+        d.longest = Math.max(d.longest ?? 0, r.waitMin)
+        if (new Date(r.queuedAt) < midnight) d.forgotten += 1
+      }
+      byDesk.set(r.station, d)
+    }
+    const stations = [...byDesk.values()]
     const forgotten = stations.reduce((a, x) => a + x.forgotten, 0)
     return (
       <>
@@ -109,24 +136,24 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
             i={0}
             icon={Hourglass}
             tint="amber"
-            label={t('dashboard.tiles.waiting')}
-            value={waiting}
+            label={t('my.tiles.waitingForMe')}
+            value={m.counts.sentToMe + m.counts.atMyDesks}
             unit={t('dashboard.units.now')}
           />
           <Kpi
             i={1}
-            icon={Users}
-            tint="teal"
-            label={t('roleHome.tiles.inProgress')}
-            value={busy}
+            icon={UserRoundCheck}
+            tint="violet"
+            label={t('my.tiles.sentToMe')}
+            value={m.counts.sentToMe}
             unit={t('dashboard.units.now')}
           />
           <Kpi
             i={2}
             icon={Users}
-            tint="navy"
-            label={t('desk.tiles.inClinic')}
-            value={s.tiles.inClinic}
+            tint="teal"
+            label={t('roleHome.tiles.inProgress')}
+            value={m.counts.inProgress}
             unit={t('dashboard.units.now')}
           />
           {forgotten > 0 && (
@@ -140,14 +167,8 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
             />
           )}
         </Figures>
-        <Hint>
-          {tx(
-            t,
-            'deskWork.waitingNote',
-            'Who waits at each desk right now; the waiting times of the period are on the manager’s Analytics.',
-          )}
-        </Hint>
-        <Panel i={1} icon={Hourglass} tint="amber" title={t('dashboard.queueNow')}>
+        <Hint>{t('my.waitingNote')}</Hint>
+        <Panel i={1} icon={Hourglass} tint="amber" title={t('my.waitingForMe')}>
           <DataTable
             rows={stations}
             rowKey={(r) => r.station}
@@ -189,8 +210,37 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
                 sort: (r) => r.forgotten,
               },
             ]}
-            empty={<Quiet>{t('dashboard.noQueue')}</Quiet>}
-            caption={t('dashboard.queueNow')}
+            empty={<Quiet>{t('home.emptyQueueTitle')}</Quiet>}
+            caption={t('my.waitingForMe')}
+          />
+        </Panel>
+        <Panel i={2} icon={Users} tint="teal" title={t('my.waitingList')}>
+          <DataTable
+            rows={rows}
+            rowKey={(r) => r.queueId}
+            cols={[
+              { key: 'ticket', label: t('home.cols.ticket'), cell: (r) => <b>{r.ticket}</b> },
+              { key: 'name', label: t('home.cols.patient'), cell: (r) => r.name },
+              {
+                key: 'station',
+                label: t('analytics.department'),
+                cell: (r) => stationName(r.station, t),
+              },
+              {
+                key: 'by',
+                label: t('my.tiles.sentToMe'),
+                cell: (r) => (r.byName ? t('common.yes') : '—'),
+              },
+              {
+                key: 'wait',
+                label: t('home.cols.waiting'),
+                align: 'right',
+                cell: (r) => (r.startedAt ? t('visits.inProgress') : minutes(r.waitMin, t)),
+                sort: (r) => r.waitMin,
+              },
+            ]}
+            empty={<Quiet>{t('home.emptyQueueTitle')}</Quiet>}
+            caption={t('my.waitingList')}
           />
         </Panel>
       </>

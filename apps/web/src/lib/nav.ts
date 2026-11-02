@@ -1,5 +1,6 @@
 import { ROLE_HOME, type NavItem, type StaffUser } from '@mmc/shared'
 import { desksNow, desksReady, TREATING_DESKS, type DeskId, type MyDesks } from '@/lib/api/desks'
+import type { NavCountKey } from '@/lib/api/nav-counts'
 import { permsNow, permsReady } from '@/lib/api/permissions'
 import { isRoomStore, sampleStock } from '@/lib/api/stock'
 import { queryClient } from '@/lib/query-client'
@@ -213,8 +214,11 @@ const withDeskAnalytics = (user: StaffUser, items: NavItem[]): NavItem[] =>
     : [items[0]!, DESK_ANALYTICS, ...items.slice(1)]
 
 /** Navigation items for the user: the role's menu, shaped by the desks they work at and by what
- *  the manager allows them (Settings → Who may do what). The manager's menu never changes. */
-export const navForUser = (user: StaffUser): NavItem[] =>
+ *  the manager allows them (Settings → Who may do what). The manager's menu never changes. Each
+ *  entry carries the key of the count it shows (withCounts). */
+export const navForUser = (user: StaffUser): NavItem[] => withCounts(user, menuOf(user))
+
+const menuOf = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
     ? MANAGER_NAV
     : withMyStore(
@@ -230,6 +234,45 @@ export const navForUser = (user: StaffUser): NavItem[] =>
           ),
         ),
       )
+
+/* ---------------------------------------------------------------- counts (migration 0121) */
+
+/** The count each entry shows (nav_counts): the entry's page is where that work is. Calendar,
+ *  History, Settings and the like show none; Notifications has its own unread count. */
+const COUNT_OF: Record<string, NavCountKey> = {
+  '/app/queue': 'queue',
+  '/app/visits': 'inClinic',
+  '/app/results': 'results',
+  '/app/prescriptions': 'prescriptions',
+  '/app/my-bookings': 'myBookings',
+  '/app/appointments': 'bookings',
+  '/app/lab': 'worklist',
+  '/app/bills': 'bills',
+  '/app/payments': 'payments',
+  '/app/record-access': 'recordAccess',
+  // the licences and contracts expiring are on the employees page
+  '/app/staff': 'documents',
+}
+
+/** The count key of one entry. A nurse has no "My queue": her queue is the triage screen. The
+ *  stock page is the pharmacy desk (medicines to hand over) or, for a room-store holder, My store
+ *  (notes to confirm). Reception's files to complete are on its home page. */
+function countKeyOf(user: StaffUser, n: NavItem, hasQueue: boolean): NavCountKey | undefined {
+  if (n.to === '/app/stock') return n.labelKey === 'nav.myStore' ? 'stock' : 'pharmacy'
+  if (n.to === '/app/vitals') return user.role === 'nurse' && !hasQueue ? 'queue' : undefined
+  if (n.to === '/app') return user.role === 'receptionist' ? 'filesToComplete' : undefined
+  return COUNT_OF[n.to]
+}
+
+/** Each entry with its count key. The database sends only the counts that apply to the person,
+ *  so an entry whose count does not apply to them shows nothing. */
+function withCounts(user: StaffUser, items: NavItem[]): NavItem[] {
+  const hasQueue = items.some((n) => n.to === '/app/queue')
+  return items.map((n) => {
+    const countKey = countKeyOf(user, n, hasQueue)
+    return countKey ? { ...n, countKey } : n
+  })
+}
 
 /** The report centre (0110): the reports the person may run, printed as tables. */
 const REPORTS: NavItem = {

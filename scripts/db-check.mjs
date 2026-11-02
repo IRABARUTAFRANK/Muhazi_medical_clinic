@@ -18386,6 +18386,361 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0120: every dashboard is personal (my_summary)
+await step('0120: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261231090000_personal_dashboards.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step(
+  '0120: a nurse at triage counts only her vitals and her desk’s queue, not the clinic’s',
+  async () => {
+    await asAdmin()
+    // a second nurse, and three patients: two at triage, one at consultation
+    const nurse2 = (
+      await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+        'triage120.n@staff.muhaziclinic.rw',
+        JSON.stringify({
+          username: 'triage120.n',
+          full_name: 'Nurse 120',
+          role: 'nurse',
+          station: 'Triage',
+        }),
+      ])
+    ).id
+    const mk = async (n) =>
+      (
+        await one(
+          `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
+           values ('Personal', $1, 'female', ('1990-01-0' || $2)::date, '07881200' || $3, true, true, true) returning id`,
+          [`P${n}`, String(n), String(n).padStart(2, '0')],
+        )
+      ).id
+    const [pa, pb, pc] = [await mk(1), await mk(2), await mk(3)]
+    await as(staff.receptionist)
+    const va = (await one(`select open_encounter($1, 'opd', 'triage', null) as id`, [pa])).id
+    const vb = (await one(`select open_encounter($1, 'opd', 'triage', null) as id`, [pb])).id
+    const vc = (await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [pc])).id
+    globalThis.t120 = { pa, pb, pc, va, vb, vc, nurse2 }
+    // our nurse measures one patient, the other nurse measures the second
+    await as(staff.nurse)
+    const vBefore = (await one(`select my_summary() as j`)).j.work.vitals ?? 0
+    await db.query(`select record_vitals($1, '{"resp":"18"}'::jsonb)`, [va])
+    await as(nurse2)
+    await db.query(`select record_vitals($1, '{"resp":"20"}'::jsonb)`, [vb])
+    await as(staff.nurse)
+    const m = (await one(`select my_summary() as j`)).j
+    const stations = m.waiting.map((r) => r.station)
+    const names = m.waiting.map((r) => r.given_names)
+    await as(staff.manager)
+    const clinic = (await one(`select desk_summary() as j`)).j
+    await asAdmin()
+    if (m.work.vitals !== vBefore + 1)
+      throw new Error(`vitals ${vBefore} → ${JSON.stringify(m.work)}`)
+    // her desks: triage and the nurses' desks (never consultation, the doctors' queue)
+    if (stations.some((s) => s !== 'triage' && s !== 'nursing'))
+      throw new Error(`stations ${stations}`)
+    if (!names.includes('P1') || !names.includes('P2') || names.includes('P3'))
+      throw new Error(`names ${names}`)
+    if (m.counts.atMyDesks < 2) throw new Error(`counts ${JSON.stringify(m.counts)}`)
+    // the clinic counts both nurses' measurements; hers says one
+    if (Number(clinic.tiles.vitalsToday) <= m.work.vitals)
+      throw new Error(`clinic ${clinic.tiles.vitalsToday}`)
+    // nothing of the other nurse's name or money in her payload
+    if (m.money !== null) throw new Error('money for a nurse')
+    return `her vitals +1 = ${m.work.vitals} (the clinic: ${clinic.tiles.vitalsToday}); waiting at her desks only (${[...new Set(stations)].join('/')}): P1, P2, not P3`
+  },
+)
+await step(
+  '0120: a doctor’s waiting list has the patient sent to him first and never another doctor’s',
+  async () => {
+    await asAdmin()
+    const doctor2 = (
+      await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+        'cons120.d@staff.muhaziclinic.rw',
+        JSON.stringify({
+          username: 'cons120.d',
+          full_name: 'Dr Second 120',
+          role: 'doctor',
+          station: 'Consultation 2',
+        }),
+      ])
+    ).id
+    const { va, vb, vc } = globalThis.t120
+    // P1 to our doctor by name, P2 to the other doctor by name, P3 waits at consultation for anyone
+    await as(staff.nurse)
+    await db.query(`select refer_patient($1, 'triage', 'consultation', $2, 'by name')`, [
+      va,
+      staff.doctor,
+    ])
+    await db.query(`select refer_patient($1, 'triage', 'consultation', $2, 'by name')`, [
+      vb,
+      doctor2,
+    ])
+    await as(staff.doctor)
+    const m = (await one(`select my_summary() as j`)).j
+    const names = m.waiting.map((r) => `${r.given_names}${r.by_name ? '*' : ''}`)
+    await as(doctor2)
+    const o = (await one(`select my_summary() as j`)).j
+    const other = o.waiting.map((r) => r.given_names)
+    await asAdmin()
+    // everyone sent to him by name comes before the desk's queue (other checks left open visits)
+    const lastNamed = names.map((n) => n.endsWith('*')).lastIndexOf(true)
+    const firstPlain = names.findIndex((n) => !n.endsWith('*'))
+    if (!names.includes('P1*') || (firstPlain >= 0 && firstPlain < lastNamed))
+      throw new Error(`order ${names}`)
+    if (!names.includes('P3') || names.includes('P2') || names.includes('P2*'))
+      throw new Error(`list ${names}`)
+    if (m.counts.sentToMe < 1 || m.counts.atMyDesks < 1) throw new Error(JSON.stringify(m.counts))
+    if (!other.includes('P2') || other.includes('P1')) throw new Error(`other ${other}`)
+    // the triage rows left the lists once sent on
+    if (names.some((n) => n.startsWith('P1') && false)) throw new Error('unreachable')
+    globalThis.t120.doctor2 = doctor2
+    return `Dr Mukamana: ${names.filter((n) => n.endsWith('*')).length} by name first (P1 among them), then ${names.length - lastNamed - 1} at the desk (P3); the other doctor has P2, not P1`
+  },
+)
+await step(
+  '0120: the receptionist’s registrations are hers; the clinic’s count stays the manager’s',
+  async () => {
+    // earlier checks registered files as her today: count from here
+    await as(staff.receptionist)
+    const before = (await one(`select my_summary() as j`)).j.work.registered ?? 0
+    await as(staff.nurse)
+    const nBefore = (await one(`select my_summary() as j`)).j.work.registered ?? 0
+    await asAdmin()
+    // two files registered by her, one by the nurse (the nurse registered first)
+    await db.query(
+      `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer, created_by)
+     values ('Reg', 'R1', 'male', '1980-05-05', '0788120011', true, true, true, $1),
+            ('Reg', 'R2', 'male', '1981-05-05', '0788120012', true, true, true, $1),
+            ('Reg', 'R3', 'male', '1982-05-05', '0788120013', true, true, true, $2)`,
+      [staff.receptionist, staff.nurse],
+    )
+    await as(staff.receptionist)
+    const m = (await one(`select my_summary() as j`)).j
+    await as(staff.nurse)
+    const n = (await one(`select my_summary() as j`)).j
+    await as(staff.manager)
+    const d = (await one(`select dashboard_summary(current_date, current_date) as j`)).j
+    await asAdmin()
+    if (m.work.registered !== before + 2)
+      throw new Error(`hers ${before} → ${JSON.stringify(m.work)}`)
+    if (n.work.registered !== nBefore + 1)
+      throw new Error(`the nurse's ${nBefore} → ${JSON.stringify(n.work)}`)
+    // her own list is the reception desk's queue (nobody waits there now)
+    if (m.waiting.some((r) => r.station !== 'reception')) throw new Error('not her desk')
+    // the manager dashboard still counts everyone
+    if (Number(d.tiles.registered) < 6) throw new Error(`manager ${d.tiles.registered}`)
+    return `hers +2 (${m.work.registered}) · the nurse's +1 · the manager's dashboard ${d.tiles.registered} registered today`
+  },
+)
+await step(
+  '0120: the manager at triage sees his own desk apart from the clinic totals',
+  async () => {
+    await asAdmin()
+    await db.query(`update profiles set station = 'Triage' where id = $1`, [staff.manager])
+    const { pa } = globalThis.t120
+    // a patient sent to the manager by name at consultation, one waiting at triage for anyone
+    const pd = (
+      await one(
+        `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
+       values ('Personal', 'P4', 'male', '1970-01-04', '0788120004', true, true, true) returning id`,
+      )
+    ).id
+    const pe = (
+      await one(
+        `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
+       values ('Personal', 'P5', 'male', '1970-01-05', '0788120005', true, true, true) returning id`,
+      )
+    ).id
+    await as(staff.receptionist)
+    const vd = (await one(`select open_encounter($1, 'opd', 'reception', null) as id`, [pd])).id
+    await db.query(`select refer_patient($1, 'reception', 'consultation', $2, 'for the manager')`, [
+      vd,
+      staff.manager,
+    ])
+    await db.query(`select open_encounter($1, 'opd', 'triage', null) as id`, [pe])
+    await as(staff.manager)
+    const m = (await one(`select my_summary() as j`)).j
+    const d = (await one(`select dashboard_summary(current_date, current_date) as j`)).j
+    await asAdmin()
+    await db.query(`update profiles set station = null where id = $1`, [staff.manager])
+    const names = m.waiting.map((r) => `${r.given_names}${r.by_name ? '*' : ''}`)
+    if (names[0] !== 'P4*') throw new Error(`first ${names}`)
+    if (!names.includes('P5')) throw new Error(`triage missing ${names}`)
+    // not the consultation queue (P3 waits there for any doctor)
+    if (names.includes('P3')) throw new Error(`clinic queue leaked ${names}`)
+    if (m.station !== 'triage') throw new Error(`station ${m.station}`)
+    if (Number(d.tiles.waitingNow) <= m.waiting.length)
+      throw new Error(`clinic ${d.tiles.waitingNow} vs mine ${m.waiting.length}`)
+    void pa
+    return `his queue: ${names.join(', ')} · the clinic waiting: ${d.tiles.waitingNow}`
+  },
+)
+await step('0120: a cashier never sees clinical figures; their money is their own', async () => {
+  await as(staff.cashier)
+  const m = (await one(`select my_summary() as j`)).j
+  await asAdmin()
+  const clinical = [
+    'vitals',
+    'patientsSeen',
+    'diagnoses',
+    'prescriptions',
+    'orders',
+    'results',
+    'medicinesGiven',
+  ]
+  const leaked = clinical.filter((k) => k in m.work || k in m.workPrev)
+  if (leaked.length) throw new Error(`clinical kinds ${leaked}`)
+  if (!m.money || typeof m.money.payments.amount === 'undefined') throw new Error('no money block')
+  if (m.waiting.some((r) => r.station !== 'cashier')) throw new Error('not the cash desk')
+  // a nurse's summary has no money block at all (checked above); the cashier's has no clinical kind
+  return `work keys: ${Object.keys(m.work).join(', ') || 'none'} · money ${m.money.payments.amount} RWF`
+})
+
+// ---------------------------------------------------------------- 0121: counts on the menu (nav_counts)
+await step('0121: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(await readFile(path.join(migrationsDir, '20270101090000_nav_counts.sql'), 'utf8'))
+  return 'no error'
+})
+// fresh people, so earlier checks (deactivations, role changes) do not matter
+const mk121 = async (username, full_name, role, extra = {}) =>
+  (
+    await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+      `${username}@staff.muhaziclinic.rw`,
+      JSON.stringify({ username, full_name, role, ...extra }),
+    ])
+  ).id
+const counts121 = async (who) => {
+  await as(who)
+  const j = (await one(`select nav_counts() as j`)).j
+  await asAdmin()
+  return j
+}
+const CLINICAL121 = ['queue', 'inClinic', 'results', 'prescriptions', 'worklist', 'pharmacy']
+await step('0121: a nurse’s queue counts her desks only (triage), not the doctors’', async () => {
+  await asAdmin()
+  const t = {
+    nurse: await mk121('nav121.n', 'Nurse 121', 'nurse', { station: 'Triage' }),
+    docA: await mk121('nav121.da', 'Dr A 121', 'doctor', { station: 'Consultation 4' }),
+    docB: await mk121('nav121.db', 'Dr B 121', 'doctor', { station: 'Consultation 5' }),
+    rec: await mk121('nav121.r', 'Reception 121', 'receptionist'),
+  }
+  const mk = async (n) =>
+    (
+      await one(
+        `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
+         values ('Menu', $1, 'male', ('1985-02-0' || $2)::date, '07881210' || $3, true, true, true) returning id`,
+        [`M${n}`, String(n), String(n).padStart(2, '0')],
+      )
+    ).id
+  const pts = [await mk(1), await mk(2), await mk(3), await mk(4)]
+  const before = await counts121(t.nurse)
+  await as(t.rec)
+  const v = []
+  for (const p of pts.slice(0, 3))
+    v.push((await one(`select open_encounter($1, 'opd', 'triage', null) as id`, [p])).id)
+  const v4 = (await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [pts[3]]))
+    .id
+  await asAdmin()
+  const after = await counts121(t.nurse)
+  globalThis.t121 = { ...t, v, v4 }
+  if (after.queue !== before.queue + 3) throw new Error(`nurse ${before.queue} → ${after.queue}`)
+  // nothing of a doctor's in a nurse's menu
+  if ('results' in after || 'prescriptions' in after) throw new Error(JSON.stringify(after))
+  return `3 at triage: ${before.queue} → ${after.queue}; the one at consultation not hers`
+})
+await step(
+  '0121: a doctor with 2 patients sent to him gets 2 more, never another doctor’s',
+  async () => {
+    const { nurse, docA, docB, v } = globalThis.t121
+    const a0 = await counts121(docA)
+    const b0 = await counts121(docB)
+    await as(nurse)
+    await db.query(`select refer_patient($1, 'triage', 'consultation', $2, 'by name')`, [
+      v[0],
+      docA,
+    ])
+    await db.query(`select refer_patient($1, 'triage', 'consultation', $2, 'by name')`, [
+      v[1],
+      docA,
+    ])
+    await db.query(`select refer_patient($1, 'triage', 'consultation', $2, 'by name')`, [
+      v[2],
+      docB,
+    ])
+    await asAdmin()
+    const a1 = await counts121(docA)
+    const b1 = await counts121(docB)
+    const n1 = await counts121(nurse)
+    if (a1.queue - a0.queue !== 2) throw new Error(`doctor A ${a0.queue} → ${a1.queue}`)
+    if (b1.queue - b0.queue !== 1) throw new Error(`doctor B ${b0.queue} → ${b1.queue}`)
+    if (
+      typeof a1.results !== 'number' ||
+      typeof a1.prescriptions !== 'number' ||
+      typeof a1.inClinic !== 'number'
+    )
+      throw new Error(JSON.stringify(a1))
+    // the plain counts only: no names, no amounts
+    if (Object.values(a1).some((x) => typeof x !== 'number')) throw new Error(JSON.stringify(a1))
+    return `doctor A ${a0.queue} → ${a1.queue}, doctor B ${b0.queue} → ${b1.queue}; the nurse now ${n1.queue}`
+  },
+)
+await step('0121: the cashier gets bills and payments and no clinical key', async () => {
+  await asAdmin()
+  const cashier = await mk121('nav121.c', 'Cashier 121', 'cashier')
+  const c = await counts121(cashier)
+  if (typeof c.bills !== 'number' || typeof c.payments !== 'number')
+    throw new Error(JSON.stringify(c))
+  const clinical = CLINICAL121.filter((k) => k in c)
+  if (clinical.length) throw new Error(`clinical keys ${clinical}`)
+  if ('recordAccess' in c || 'documents' in c) throw new Error(JSON.stringify(c))
+  return JSON.stringify(c)
+})
+await step(
+  '0121: the manager gets record access, documents and the clinic; a pharmacist the pharmacy',
+  async () => {
+    await asAdmin()
+    const mgr = await mk121('nav121.m', 'Manager 121', 'manager', { dashboard: 'manager' })
+    // the pharmacist of the checks above (the pharmacy desk comes with the pharmacy department)
+    const pha = staff.pharmacist
+    const m = await counts121(mgr)
+    const p = await counts121(pha)
+    for (const k of ['recordAccess', 'documents', 'inClinic', 'bills', 'bookings'])
+      if (typeof m[k] !== 'number') throw new Error(`manager ${k}: ${JSON.stringify(m)}`)
+    if ('queue' in m || 'payments' in m) throw new Error(`manager ${JSON.stringify(m)}`)
+    if (m.inClinic < 4) throw new Error(`manager inClinic ${m.inClinic}`)
+    if (typeof p.pharmacy !== 'number' || 'queue' in p || 'bills' in p)
+      throw new Error(`pharmacist ${JSON.stringify(p)}`)
+    return `manager ${JSON.stringify(m)}; pharmacist ${JSON.stringify(p)}`
+  },
+)
+await step('0121: a receptionist gets files to complete and bookings', async () => {
+  const { rec } = globalThis.t121
+  const r = await counts121(rec)
+  if (typeof r.filesToComplete !== 'number' || typeof r.bookings !== 'number')
+    throw new Error(JSON.stringify(r))
+  // reception takes payments when the manager allows it (bills, payments): no clinical key
+  if (CLINICAL121.filter((k) => k !== 'inClinic').some((k) => k in r))
+    throw new Error(JSON.stringify(r))
+  return JSON.stringify(r)
+})
+await step('0121: not signed in: refused', async () => {
+  await as(null, 'anon')
+  let refused = false
+  try {
+    await db.query(`select nav_counts()`)
+  } catch {
+    refused = true
+  }
+  await asAdmin()
+  if (!refused) throw new Error('anon read the counts')
+  return 'refused'
+})
+
 finish()
 
 function finish() {

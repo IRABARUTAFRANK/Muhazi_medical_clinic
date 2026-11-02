@@ -10,6 +10,8 @@ import {
   RefreshCw,
   Smartphone,
   UserRound,
+  UserRoundCheck,
+  Users,
   Wallet,
   Workflow,
   type LucideIcon,
@@ -34,12 +36,13 @@ import { useCashierSummary, useUnpaidDebts } from '@/lib/api/finance'
 import { useLetterhead } from '@/lib/report-parts'
 import { openReceiptsBatch } from '@/lib/reports/receipts-print'
 import { useHomeSummary } from '@/lib/api/home'
-import { openItems, useQueueBoard } from '@/lib/api/visits'
+import { useMySummary } from '@/lib/api/my'
 import { navForUser } from '@/lib/nav'
 import { periodHref, useSearchPeriod } from '@/lib/period'
 import { isLive } from '@/lib/supabase'
-import { MyQueuePanel } from './role-panels'
 import { CallsPanel } from './calls-panel'
+import { MyWorkPanel, WaitingForMePanel } from './my-panels'
+import { WORK_OF } from './my-work'
 import { DebtsPanel } from '@/pages/finance/finance-pages'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { useCan } from '@/lib/api/permissions'
@@ -53,10 +56,11 @@ const METHOD_ICON: Record<string, LucideIcon> = {
 const METHOD_COLORS = ['var(--mmc-green-dot)', 'var(--mmc-yellow-dot)', 'var(--mmc-red-dot)']
 
 /**
- * Finance (cashier) dashboard in the manager design: what came in over the chosen period (today by
- * default) and how (cash, MTN MoMo, Airtel Money), against the period before; the bills still to
- * collect with "Take payment"; every payment of the period with its receipt; the patients waiting
- * at the cashier. The day close stays on the Payments page, one day at a time.
+ * Finance (cashier) dashboard in the manager design, personal since 0120: what I took over the
+ * chosen period (today by default) and how (cash, MTN MoMo, Airtel Money), against the period
+ * before; the patients waiting at my desk; the bills still to collect with "Take payment" (the
+ * desk's tool); my payments of the period with their receipts. The desk's total and the
+ * clinic's money are the manager's. The day close stays on the Payments page, one day at a time.
  */
 export function CashierDashboard({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -78,24 +82,47 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
   // the manager opens the money on the Analytics page; a cashier keeps the payments page
   const link = useAnalyticsLink(periodSearch(period))
   const { data: home } = useHomeSummary()
-  const { data: queue = [] } = useQueueBoard('cashier', user.role)
-  const rows = openItems(queue)
+  // my own money and my own queue (0120)
+  const { data: my, refetch: refetchMine } = useMySummary(
+    period.range === 'today' ? null : { from: period.from, to: period.to },
+  )
   // an earlier day's visit still open with money due is an unpaid bill, not an open bill of
   // today: listed once, under Unpaid bills
   const { data: debts = [] } = useUnpaidDebts()
   const earlier = new Set(debts.filter((d) => d.status === 'open').map((d) => d.encounterId))
   const bills = (home?.openBills ?? []).filter((b) => !earlier.has(b.encounterId))
-  // what came in less the money given back, as the cash count expects
+  // what I took less the money I gave back, as my cash count expects; the refunds come by
+  // method from the desk summary (mine only)
   const refundedOf = (m: string) =>
-    (s?.refunds ?? []).filter((r) => r.method === m).reduce((sum, r) => sum + r.amount, 0)
+    (s?.refunds ?? []).filter((r) => r.method === m && r.mine).reduce((sum, r) => sum + r.amount, 0)
   const amountOf = (m: string) =>
-    (s?.byMethod.find((x) => x.method === m)?.amount ?? 0) - refundedOf(m)
-  const collected = (s?.total ?? 0) - (s?.refunded ?? 0)
+    (my?.money?.byMethod.find((x) => x.method === m)?.amount ?? 0) - refundedOf(m)
+  const collected = (my?.money?.payments.amount ?? 0) - (my?.money?.refunds.amount ?? 0)
+  const collectedBefore = my?.money?.payments.prevAmount ?? 0
   const methodName = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
   // the manager's switch "Take payments": switched off, the cashier still sees the money
   const canTake = useCan(user)('payment.take')
   // the receipts given in the period (0102): how many, for how much, and all of them printed
-  const receipts = useReceiptsInPeriod({ from: period.from, to: period.to })
+  const receiptsGot = useReceiptsInPeriod({ from: period.from, to: period.to })
+  // mine only: the receipts I gave
+  const receipts = {
+    ...receiptsGot,
+    data: receiptsGot.data
+      ? (() => {
+          const rows = receiptsGot.data.receipts.filter(
+            (r) => !r.cashierId || r.cashierId === user.id,
+          )
+          return {
+            ...receiptsGot.data,
+            receipts: rows,
+            count: rows.length,
+            total: rows.reduce((n, r) => n + r.amount, 0),
+          }
+        })()
+      : undefined,
+  }
+  // my payments of the period (the desk's other cashiers are not my business)
+  const myPayments = (s?.payments ?? []).filter((p) => p.mine !== false)
   const letterhead = useLetterhead()
   const [printError, setPrintError] = useState<string | null>(null)
   const printReceipts = () => {
@@ -135,7 +162,10 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
           <Button
             variant="tint-grey"
             size="icon"
-            onClick={() => void refetch()}
+            onClick={() => {
+              void refetch()
+              void refetchMine()
+            }}
             loading={isFetching}
             aria-label={t('dashboard.refresh')}
             title={t('dashboard.refresh')}
@@ -190,27 +220,33 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
           </p>
         )}
 
-        {s && (
+        {s && my && (
           <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] sm:gap-3">
             <Kpi
               i={0}
-              icon={HandCoins}
+              icon={UserRound}
               tint="violet"
-              label={t('finance.tiles.collectedIn', { period: periodWord })}
+              label={t('my.tiles.collectedByMe', { period: periodWord })}
               value={collected}
               unit="RWF"
               // "all time" has no period before it to compare with
-              delta={range === 'all' ? undefined : delta(collected, s.previousTotal, true, t)}
+              delta={range === 'all' ? undefined : delta(collected, collectedBefore, true, t)}
               to={link('collections') ?? link('revenue') ?? periodHref('/app/payments', period)}
+            />
+            <Kpi
+              i={1}
+              icon={HandCoins}
+              tint="mint"
+              label={t('my.tiles.paymentsByMe')}
+              value={my.money?.payments.count ?? 0}
+              unit={periodWord}
+              to={link('collections') ?? periodHref('/app/payments', period)}
             />
             <Kpi
               i={1}
               icon={ReceiptText}
               tint="teal"
-              label={t('receipts.givenIn', {
-                period: periodWord,
-                defaultValue: 'Receipts {{period}}',
-              })}
+              label={t('my.tiles.receiptsByMe', { period: periodWord })}
               value={receipts.data?.count ?? 0}
               unit={formatRwf(receipts.data?.total ?? 0)}
               to={link('receipts')}
@@ -244,6 +280,14 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             />
             <Kpi
               i={4}
+              icon={Users}
+              tint="amber"
+              label={t('my.tiles.waitingForMe')}
+              value={my.counts.sentToMe + my.counts.atMyDesks}
+              unit={t('dashboard.units.now')}
+            />
+            <Kpi
+              i={5}
               icon={Receipt}
               tint="navy"
               label={t('finance.tiles.openBills')}
@@ -256,31 +300,35 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
               }
               to={link('openBills')}
             />
-            <Kpi
-              i={5}
-              icon={UserRound}
-              tint="teal"
-              label={t('finance.tiles.mine')}
-              value={s.mine}
-              unit="RWF"
-            />
           </div>
         )}
 
-        {/* calls and help requests addressed to the cash desk */}
-        <CallsPanel user={user} />
-
+        {/* WAITING FOR ME: the patients at my desk, then what I took (0120) */}
         <section className="flex flex-col gap-3">
-          <SectionTitle icon={Workflow}>{t('finance.section')}</SectionTitle>
+          <SectionTitle icon={UserRoundCheck}>{t('my.section')}</SectionTitle>
           <div className="pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
-            <OpenBillsPanel bills={bills} canTake={canTake} />
+            <WaitingForMePanel
+              summary={my}
+              rowAction="open"
+              title={t('home.myQueue', { station: t('register.stations.cashier') })}
+              // the patients I took the payment of (not the number of payments)
+              done={s?.scope === 'mine' ? (s.served ?? 0) : (my?.money?.payments.count ?? 0)}
+            />
             <div className="flex min-w-0 flex-col gap-4">
-              {s && (
+              <MyWorkPanel
+                summary={my}
+                periodWord={periodWord}
+                kinds={WORK_OF.cashier}
+                link={link}
+                user={user}
+                i={2}
+              />
+              {s && my && (
                 <Panel
-                  i={2}
+                  i={3}
                   icon={PieChart}
                   tint="mint"
-                  title={t('finance.byMethodIn', { period: periodWord })}
+                  title={t('my.byMethod', { period: periodWord })}
                   right={formatRwf(collected)}
                   to={
                     link('methods') ??
@@ -288,7 +336,7 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                     periodHref('/app/payments', period)
                   }
                 >
-                  {s.byMethod.length === 0 ? (
+                  {(my.money?.byMethod.length ?? 0) === 0 ? (
                     <Empty>{t('finance.nothingYet')}</Empty>
                   ) : (
                     <HBarList
@@ -305,38 +353,33 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                   )}
                 </Panel>
               )}
-              <MyQueuePanel
-                title={t('home.myQueue', { station: t('register.stations.cashier') })}
-                rows={rows}
-                counts={{
-                  waiting: rows.filter((r) => !r.startedAt).length,
-                  inProgress: rows.filter((r) => r.startedAt).length,
-                  // patients finished at this desk today (not the number of payments)
-                  done: s?.served ?? s?.count ?? 0,
-                }}
-                rowAction="open"
-              />
+              {/* calls and help requests addressed to the cash desk */}
+              <CallsPanel user={user} />
             </div>
           </div>
         </section>
 
+        {/* THE DESK'S TOOLS: the bills to collect, then my payments of the period */}
         <section className="flex flex-col gap-3">
-          <SectionTitle icon={HandCoins}>
-            {t('finance.paymentsIn', { period: periodWord })}
-          </SectionTitle>
+          <SectionTitle icon={Workflow}>{t('finance.section')}</SectionTitle>
+          <OpenBillsPanel bills={bills} canTake={canTake} />
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <SectionTitle icon={HandCoins}>{t('my.paymentsIn', { period: periodWord })}</SectionTitle>
           <div className="pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
             <Panel
               i={1}
               icon={HandCoins}
               tint="violet"
-              title={t('finance.payments')}
-              right={`${s?.count ?? 0} · ${receiptsWord}: ${receipts.data?.count ?? 0}`}
+              title={t('my.payments')}
+              right={`${myPayments.length} · ${receiptsWord}: ${receipts.data?.count ?? 0}`}
               to={link('receipts')}
             >
-              {!s || s.payments.length === 0 ? (
+              {myPayments.length === 0 ? (
                 <Empty>{t('finance.nothingYet')}</Empty>
               ) : (
-                <ShownList items={s.payments} step={6}>
+                <ShownList items={myPayments} step={6}>
                   {(shown) => (
                     <div className="flex flex-col">
                       {shown.map((p, i) => {
@@ -374,13 +417,13 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
           </div>
           {/* money still owed on visits already over: collected here when the patient comes back */}
           {((s?.debts ?? 0) > 0 || debts.length > 0) && <DebtsPanel canTake={canTake} />}
-          {(s?.refunded ?? 0) > 0 && link('refunds') && (
+          {(my?.money?.refunds.amount ?? 0) > 0 && link('refunds') && (
             <Panel
               i={3}
               icon={HandCoins}
               tint="coral"
               title={t('analytics.revenue.refunded')}
-              right={formatRwf(s?.refunded ?? 0)}
+              right={formatRwf(my?.money?.refunds.amount ?? 0)}
               to={link('refunds')}
             >
               <Empty>{t('finance.nothingYet')}</Empty>

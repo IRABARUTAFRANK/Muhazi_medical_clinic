@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import type { NavItem, StaffUser } from '@mmc/shared'
 import { Avatar } from '@/components/ui/avatar'
+import { navCountOf, navLinkLabel, useNavCounts } from '@/lib/api/nav-counts'
 import { groupNav } from '@/lib/nav'
 import { roleLabel } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { StaffLink } from './staff-link'
-import { NavIcon } from './nav-icon'
+import { CountPill, NavIcon } from './nav-icon'
 
 interface RailProps {
   nav: NavItem[]
@@ -26,11 +27,14 @@ interface RailProps {
  * label, the active item a white pill with the hue's text and a 3 px bar at its left (the hue
  * fades in over 160 ms); 10 px between groups; a group with nothing for this person is not
  * drawn. The menu scrolls inside itself when the screen is short; the signed-in person and the
- * clock stay at the bottom on white with a rule above.
+ * clock stay at the bottom on white with a rule above. An entry with something in it carries its
+ * count at the end of the row (0121): a red pill for what waits for the person (My queue, the
+ * worklist…), a white one for information (In the clinic, bookings…).
  */
 export function Rail({ nav, activeId, clock, user }: RailProps) {
   const { t } = useTranslation()
   const groups = groupNav(nav)
+  const { data: counts } = useNavCounts()
   return (
     <nav
       aria-label={t('common.mainNav')}
@@ -65,16 +69,19 @@ export function Rail({ nav, activeId, clock, user }: RailProps) {
             <div className="flex flex-col gap-0.5">
               {g.items.map((n) => {
                 const active = n.id === activeId
+                const count = navCountOf(n, counts)
                 return (
                   <StaffLink
                     key={n.id}
                     to={n.to}
                     aria-current={active ? 'page' : undefined}
+                    aria-label={navLinkLabel(t, t(n.labelKey), count)}
                     className="rail-item focus-visible:ring-primary/20 flex min-h-9 items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[14px] leading-tight font-medium no-underline focus-visible:ring-2 focus-visible:outline-none"
                   >
                     <NavIcon id={n.id} name={n.icon} size={18} ring="ring-card" />
                     {/* a long label (Kinyarwanda) wraps by word instead of being cut */}
                     <span className="min-w-0 [overflow-wrap:normal]">{t(n.labelKey)}</span>
+                    {count && <CountPill count={count} />}
                   </StaffLink>
                 )
               })}

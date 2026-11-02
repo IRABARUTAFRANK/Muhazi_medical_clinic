@@ -129,6 +129,8 @@ export interface NavItem {
   labelKey: string
   to: string
   icon: string
+  /** The count shown on the entry (the web app's nav_counts key, 0121): 'queue', 'bookings'… */
+  countKey?: string
 }
 export interface QuickAction {
   id: string
