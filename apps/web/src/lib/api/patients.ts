@@ -80,7 +80,41 @@ export interface DocVisit {
   /** The department the patient was last sent to. */
   department: string | null
   referredBy: string | null
+  /** 0125: finished with no diagnosis found, and why. */
+  noDiagnosis?: NoDiagnosis | null
+  /** 0125: the next booking (the one made from this visit first), printed on the documents. */
+  nextAppointment?: NextAppointment | null
 }
+
+/** Why a visit was finished without a diagnosis (0125). */
+export const NO_DIAGNOSIS_KINDS = [
+  'no_disease',
+  'check_up',
+  'results_pending',
+  'referred',
+  'other',
+] as const
+export type NoDiagnosisKind = (typeof NO_DIAGNOSIS_KINDS)[number]
+export interface NoDiagnosis {
+  kind: NoDiagnosisKind
+  note: string | null
+  at: string | null
+  by: string | null
+}
+export interface NextAppointment {
+  id: string
+  at: string
+  status: string
+  with: string | null
+  title: string | null
+  reason: string | null
+  fromThisVisit: boolean
+}
+
+/** Sample mode: the reason no diagnosis was found, per visit. */
+const sampleNoDx = new Map<string, NoDiagnosis>()
+/** Sample mode: the next appointment booked from a visit (lib/api/follow-up.ts writes it). */
+export const sampleNextAppointment = new Map<string, NextAppointment>()
 
 /**
  * The allergy text the document builders take: the allergies, "none" when "no known allergies"
@@ -1056,6 +1090,8 @@ const sampleVisit = (encounterId: string): DocVisit => {
     service: 'consultation',
     department: null,
     referredBy: null,
+    noDiagnosis: sampleNoDx.get(encounterId) ?? null,
+    nextAppointment: sampleNextAppointment.get(encounterId) ?? null,
   }
 }
 /**
@@ -1260,15 +1296,23 @@ export function useVisitClinical(encounterId: string) {
     refetchInterval: 15_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<VisitClinical> => {
-      if (!supabase)
+      if (!supabase) {
+        const c = sampleClinical.get(encounterId) ?? {
+          ...EMPTY_CLINICAL,
+          patient: sampleClinicalPatient(),
+          visit: sampleVisit(encounterId),
+        }
         return {
-          ...(sampleClinical.get(encounterId) ?? {
-            ...EMPTY_CLINICAL,
-            patient: sampleClinicalPatient(),
-            visit: sampleVisit(encounterId),
-          }),
+          ...c,
+          // the reason no diagnosis was found and the follow-up booked, as they are now
+          visit: {
+            ...(c.visit ?? sampleVisit(encounterId)),
+            noDiagnosis: sampleNoDx.get(encounterId) ?? null,
+            nextAppointment: sampleNextAppointment.get(encounterId) ?? null,
+          },
           editLock: sampleEditLock(encounterId),
         }
+      }
       const { data, error } = await supabase.rpc('visit_clinical', { p_encounter_id: encounterId })
       if (error) throw apiError(error)
       const d = (data ?? EMPTY_CLINICAL) as VisitClinical
@@ -1448,6 +1492,8 @@ export function useClinicalActions(encounterId: string) {
           by: sampleUser()?.name ?? null,
           byId: sampleUser()?.id ?? null,
         })
+        // a primary diagnosis written: "no diagnosis found" no longer stands (0125)
+        if (i.type === 'primary') sampleNoDx.delete(encounterId)
         return
       }
       await call('add_diagnosis', {
@@ -1892,10 +1938,31 @@ export function useClinicalActions(encounterId: string) {
     },
     onSuccess: refresh,
   })
+  /** Finish; with `noDiagnosis` when no diagnosis was found (0125: the reason is kept). */
   const finishVisit = useMutation({
-    mutationFn: async () => {
-      if (!supabase) return
-      await call('finish_visit', { p_encounter_id: encounterId })
+    mutationFn: async (i?: { noDiagnosis?: NoDiagnosisKind | null; note?: string | null }) => {
+      const kind = i?.noDiagnosis ?? null
+      const note = i?.note?.trim() || null
+      if (!supabase) {
+        if (kind) {
+          if (kind === 'other' && (note?.length ?? 0) < 3)
+            throw apiError({ code: '22023', message: 'say why no diagnosis was found' })
+          sampleNoDx.set(encounterId, {
+            kind,
+            note,
+            at: now(),
+            by: sampleUser()?.name ?? null,
+          })
+        }
+        return
+      }
+      // the extra arguments only when needed: a database before 0125 still finishes as before
+      await call(
+        'finish_visit',
+        kind
+          ? { p_encounter_id: encounterId, p_no_diagnosis: kind, p_no_diagnosis_note: note }
+          : { p_encounter_id: encounterId },
+      )
     },
     onSuccess: refresh,
   })

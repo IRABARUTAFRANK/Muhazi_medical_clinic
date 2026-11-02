@@ -1,8 +1,13 @@
-import { CalendarCheck, CircleAlert, FolderOpen, Stethoscope } from 'lucide-react'
+import { useState } from 'react'
+import { CalendarCheck, CalendarSync, CircleAlert, FolderOpen, Stethoscope } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { FollowUpForm } from '@/components/clinical/follow-up-form'
+import { Flash } from '@/components/ui/flash'
+import { changeable } from '@/lib/api/follow-up'
+import { useSession } from '@/store/session'
 import { card } from '@/components/dash/kit-style'
 import { SidePanel } from '@/components/ui/side-panel'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -32,11 +37,17 @@ const TONE: Record<string, 'blue' | 'green' | 'yellow' | 'red' | 'grey'> = {
 export function AppointmentDetail({ id, onClose }: { id: string | null; onClose: () => void }) {
   const { t } = useTranslation()
   const { data: a, isLoading, error } = useAppointmentDetail(id)
+  const user = useSession((s) => s.user)
+  // 0125: "Change booking" (time, person, reason, note) with the booking form
+  const [changing, setChanging] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const rows: [string, string | null | undefined][] = a
     ? [
         [t('ops.detail.when'), when(a.startsAt)],
         [t('ops.detail.doctor'), a.doctor],
         [t('ops.detail.reason'), a.reason],
+        [t('followUp.note'), a.note],
+        [t('followUp.change.lastWhy'), a.changeReason],
         [t('ops.detail.service'), a.category],
         [
           t('ops.detail.patient'),
@@ -85,6 +96,34 @@ export function AppointmentDetail({ id, onClose }: { id: string | null; onClose:
           </p>
         )}
         {isLoading && <p className="text-ink-3 m-0 text-[13px]">…</p>}
+        {notice && (
+          <Flash key={notice} onClose={() => setNotice(null)}>
+            {notice}
+          </Flash>
+        )}
+        {a && user && changing === a.id && a.startsAt && (
+          <FollowUpForm
+            user={user}
+            patient={{
+              id: a.patientId ?? a.id,
+              name: a.patientName ?? a.contactName ?? '',
+              fileNumber: a.patientFile,
+              phone: a.patientPhone ?? a.contactPhone,
+            }}
+            change={{
+              id: a.id,
+              startsAt: a.startsAt,
+              withUserId: a.doctorUserId,
+              reason: a.reason,
+              note: a.note ?? null,
+            }}
+            onDone={(m) => {
+              setChanging(null)
+              setNotice(m)
+            }}
+            onCancel={() => setChanging(null)}
+          />
+        )}
         {a && (
           <>
             <dl
@@ -103,6 +142,12 @@ export function AppointmentDetail({ id, onClose }: { id: string | null; onClose:
                 ))}
             </dl>
             <div className="flex flex-wrap gap-2">
+              {changeable(a.status) && a.startsAt && changing !== a.id && (
+                <Button size="sm" variant="tint-violet" onClick={() => setChanging(a.id)}>
+                  <CalendarSync size={14} aria-hidden="true" />
+                  {t('followUp.change.button')}
+                </Button>
+              )}
               {a.patientId && (
                 <StaffLink
                   to="/app/patient"

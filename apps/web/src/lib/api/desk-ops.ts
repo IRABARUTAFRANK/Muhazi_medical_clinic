@@ -54,6 +54,9 @@ export interface DayAppointment {
 export interface AppointmentDetail {
   id: string
   status: string
+  /** 0125: the note of the person who booked, the reason of the last move. */
+  note?: string | null
+  changeReason?: string | null
   source: string | null
   reference: string | null
   startsAt: string | null

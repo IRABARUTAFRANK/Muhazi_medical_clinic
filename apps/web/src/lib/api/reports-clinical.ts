@@ -1,4 +1,5 @@
 import { addDays, isoDate } from '@mmc/shared'
+import { dxText } from '@/lib/no-diagnosis'
 import type { ReportContext, ReportPeriod } from '@/lib/reports/defs/types'
 import { reportCall } from './reports-options'
 
@@ -186,7 +187,7 @@ export const BOOKING_STATUSES: readonly BookingStatus[] = [
   'cancelled',
   'declined',
 ]
-export type BookingSource = 'online' | 'reception' | 'phone'
+export type BookingSource = 'online' | 'reception' | 'phone' | 'clinician'
 export interface BookingRow {
   id: string
   at: string | null
@@ -249,30 +250,38 @@ export interface SeenArgs {
   clinician: string | null
   department: string | null
 }
-export const loadPatientsSeen = (a: SeenArgs, ctx: ReportContext) =>
-  ctx.sample
-    ? Promise.resolve(samplePatientsSeen(a, ctx))
-    : rpcRows<PatientSeenRow>('report_patients_seen', {
-        p_from: a.period.from,
-        p_to: a.period.to,
-        p_clinician: a.clinician,
-        p_department: a.department,
-      })
+/** 0125: a visit finished with no diagnosis found reads "No diagnosis — <reason>". */
+const withDxWords = <R extends { diagnosis: string | null }>(rows: R[]): R[] =>
+  rows.map((r) => ({ ...r, diagnosis: dxText(r.diagnosis) }) as R)
+
+export const loadPatientsSeen = async (a: SeenArgs, ctx: ReportContext) =>
+  withDxWords(
+    ctx.sample
+      ? samplePatientsSeen(a, ctx)
+      : await rpcRows<PatientSeenRow>('report_patients_seen', {
+          p_from: a.period.from,
+          p_to: a.period.to,
+          p_clinician: a.clinician,
+          p_department: a.department,
+        }),
+  )
 
 export interface DiagnosesArgs {
   period: ReportPeriod
   department: string | null
   doctor: string | null
 }
-export const loadDiagnoses = (a: DiagnosesArgs, ctx: ReportContext) =>
-  ctx.sample
-    ? Promise.resolve(sampleDiagnoses(a, ctx))
-    : rpcRows<DiagnosisRow>('report_diagnoses', {
-        p_from: a.period.from,
-        p_to: a.period.to,
-        p_department: a.department,
-        p_doctor: a.doctor,
-      })
+export const loadDiagnoses = async (a: DiagnosesArgs, ctx: ReportContext) =>
+  withDxWords(
+    ctx.sample
+      ? sampleDiagnoses(a, ctx)
+      : await rpcRows<DiagnosisRow>('report_diagnoses', {
+          p_from: a.period.from,
+          p_to: a.period.to,
+          p_department: a.department,
+          p_doctor: a.doctor,
+        }),
+  )
 
 export interface PrescriptionsArgs {
   period: ReportPeriod
@@ -629,6 +638,10 @@ function sampleOptions(ctx: ReportContext): ClinicalOptions {
   }
 }
 
+/** Sample: some visits were finished with no diagnosis found (0125). */
+const noDxSample = (encounterId: string) =>
+  [...encounterId].reduce((n, c) => n + c.charCodeAt(0), 0) % 9 === 0
+
 function samplePatientsSeen(a: SeenArgs, ctx: ReportContext): PatientSeenRow[] {
   return sampleVisits(a.period)
     .filter((v) => visible(ctx, v))
@@ -649,7 +662,12 @@ function samplePatientsSeen(a: SeenArgs, ctx: ReportContext): PatientSeenRow[] {
       clinicianRole: v.clinician.role,
       desk: v.clinician.desk,
       department: DEPARTMENTS.find((d) => d.id === v.clinician.department)?.name ?? null,
-      diagnosis: v.clinician.role === 'nurse' ? null : `${v.dx[0]} ${v.dx[1]}`,
+      diagnosis:
+        v.clinician.role === 'nurse'
+          ? null
+          : noDxSample(v.encounterId)
+            ? '[no-dx:check_up] BP control'
+            : `${v.dx[0]} ${v.dx[1]}`,
       prescriptions: v.rx.length,
       tests: v.tests.length,
       outcome: v.outcome,
@@ -662,11 +680,11 @@ function sampleDiagnoses(a: DiagnosesArgs, ctx: ReportContext): DiagnosisRow[] {
     if (v.clinician.role === 'nurse' || !visible(ctx, v)) continue
     if (a.doctor && v.clinician.id !== a.doctor) continue
     if (a.department && v.clinician.department !== a.department) continue
-    const [code, text] = v.dx
+    const [code, text] = noDxSample(v.encounterId) ? ['[no-dx:check_up]', '[no-dx:check_up]'] : v.dx
     const r =
       rows.get(code) ??
       ({
-        code,
+        code: code.startsWith('[no-dx:') ? null : code,
         diagnosis: text,
         cases: 0,
         patients: 0,

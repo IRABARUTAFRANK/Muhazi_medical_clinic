@@ -57,7 +57,9 @@
     "changePinHint": "Choisir un nouveau PIN",
     "chooseTime": "Choisissez une heure",
     "myDocuments": "Mes documents",
-    "myDocumentsHint": "Licence, contrat et autres papiers gardés pour vous"
+    "myDocumentsHint": "Licence, contrat et autres papiers gardés pour vous",
+    "myProfile": "Mon profil",
+    "myProfileHint": "Vos informations, documents, travail et accès"
   },
   "days": {
     "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
@@ -2042,6 +2044,18 @@
       "saved": "Enregistré.",
       "pricesNote": "Les assureurs, ce que chacun couvre et leurs listes de prix se gèrent sous",
       "pricesLink": "Prix › Assureurs"
+    },
+    "colleague": {
+      "title": "Rendez-vous pris pour un collègue",
+      "lead": "Un médecin ou un infirmier peut réserver un patient avec un collègue. Pour soi-même, c’est toujours confirmé tout de suite.",
+      "ask": "Le collègue accepte",
+      "askHint": "Le collègue est invité à accepter, comme pour les rendez-vous de l’accueil.",
+      "direct": "Confirmé tout de suite",
+      "directHint": "Le rendez-vous est confirmé et le collègue est prévenu.",
+      "askTitle": "Demander au collègue d’accepter ?",
+      "askBody": "Un rendez-vous pris pour un collègue attend sa réponse.",
+      "directTitle": "Confirmer tout de suite les rendez-vous pour un collègue ?",
+      "directBody": "Le collègue ne les accepte plus ; il est prévenu par une notification."
     }
   },
   "pin": {
@@ -2129,7 +2143,8 @@
       "visits": "Visites",
       "clinical": "Clinique",
       "bills": "Factures",
-      "files": "Pièces jointes"
+      "files": "Pièces jointes",
+      "bookings": "Rendez-vous"
     },
     "identity": "Identité et contact",
     "medical": "Résumé médical",
@@ -2767,7 +2782,8 @@
         "online": "Site web",
         "reception": "Accueil",
         "phone": "Appel",
-        "walk_in": "Sans rendez-vous"
+        "walk_in": "Sans rendez-vous",
+        "clinician": "Réservé par un soignant"
       },
       "service": "Service"
     },
@@ -2950,7 +2966,11 @@
     "staffMessage": "Message de {{from}}",
     "rxNotGivenOutside": "Ouvrez la visite pour l’envoyer à une pharmacie extérieure.",
     "rxOutside": "{{item}} pour {{name}} : acheté dans une pharmacie extérieure",
-    "noUnread": "Aucune nouvelle notification. Celles déjà lues sont dans Toutes les notifications."
+    "noUnread": "Aucune nouvelle notification. Celles déjà lues sont dans Toutes les notifications.",
+    "bookedForYou": "{{by}} a pris un rendez-vous pour {{name}} avec vous",
+    "bookingChanged": "{{by}} a déplacé le rendez-vous de {{name}}",
+    "bookingLeft": "{{by}} a confié le rendez-vous de {{name}} à un collègue",
+    "bookingNow": "Maintenant {{when}} (avant {{from}})"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -7199,6 +7219,7 @@
     "52464355": "Il n’y a aucun stock de pharmacie ouvert où l’envoyer.",
     "67568016": "Cette catégorie contient encore {{p1}} service(s) : déplacez-les d’abord dans une autre catégorie.",
     "75188350": "La catégorie est introuvable.",
+    "77308620": "Le réglage des rendez-vous pour un collègue doit être activé ou désactivé.",
     "93857009": "La fin de la période est avant son début.",
     "00523f7c": "Ce rendez-vous est introuvable ou n’attend pas le médecin.",
     "00a8d6e8": "Seule la pharmacie (ou le responsable) peut annuler un bon de transfert qu’elle a envoyé.",
@@ -7575,7 +7596,29 @@
     "021838e4": "Donnez un nom à l’écran.",
     "07e0078a": "Langue inconnue : {{1}}.",
     "408fb117": "La voix parle anglais ou français.",
-    "c18acfde": "L’appel est dit 1 à 3 fois."
+    "c18acfde": "L’appel est dit 1 à 3 fois.",
+    "e80bc03d": "Non autorisé : les rendez-vous sont pris par les soignants, l’accueil et le gestionnaire.",
+    "9a40bea3": "Cette visite a un diagnostic principal : retirez-le avant de dire qu’aucun n’a été trouvé.",
+    "027a1055": "Non autorisé : un employé ne voit que son propre profil.",
+    "bb0431ec": "Motif inconnu pour terminer sans diagnostic.",
+    "f1302d30": "Seul le gestionnaire modifie le profil d’un employé.",
+    "b937f557": "Seul le gestionnaire tient des notes sur un employé.",
+    "3c8e0b36": "Le contrat se termine avant la date d’embauche.",
+    "ec167c0e": "Le motif ou la note est trop long.",
+    "f4aeb90a": "La date de la note n’est pas valide.",
+    "dd67df72": "Cette visite n’est pas celle du patient.",
+    "0c2f37ce": "Dites pourquoi aucun diagnostic n’a été trouvé.",
+    "c3f20b9d": "La date de naissance n’est pas valide.",
+    "de30e9e5": "Le numéro de téléphone n’est pas valide.",
+    "b2e622fe": "Dites pourquoi la note est retirée.",
+    "290cbef7": "Type de contrat inconnu.",
+    "22dbda19": "Type de note inconnu.",
+    "2ffc90db": "Écrivez la note.",
+    "9c469c31": "Sexe inconnu.",
+    "99bcd654": "Non autorisé : un rendez-vous est modifié par son médecin, l’accueil ou le gestionnaire.",
+    "6197a26c": "Ce rendez-vous ne peut plus être modifié.",
+    "2dd3cc49": "Dites pourquoi le rendez-vous est déplacé.",
+    "f0c2044d": "Rendez-vous introuvable."
   },
   "panel": {
     "close": "Fermer",
@@ -8793,7 +8836,8 @@
       "source": {
         "online": "Site web",
         "reception": "Accueil",
-        "phone": "Téléphone"
+        "phone": "Téléphone",
+        "clinician": "Soignant"
       },
       "unit": {
         "min": "min"
@@ -9415,5 +9459,210 @@
     "earlierTitle_other": "Des jours précédents ({{count}})",
     "earlierHint": "Encore là depuis un jour précédent : hors du compte du jour. Terminez ou clôturez leurs visites.",
     "since": "depuis le {{date}}"
+  },
+  "followUp": {
+    "bookFollowUp": "Prendre un rendez-vous de suivi",
+    "bookAppointment": "Prendre un rendez-vous",
+    "newBooking": "Nouveau rendez-vous",
+    "newLead": "Trouvez le dossier du patient, puis choisissez avec qui, le jour et une heure libre.",
+    "title": "Prochain rendez-vous de {{name}}",
+    "patient": "Patient",
+    "noPhone": "Aucun numéro de téléphone dans le dossier",
+    "with": "Avec qui",
+    "me": "Moi",
+    "withMe": "vous",
+    "withName": "avec {{name}}",
+    "day": "Jour",
+    "quick": {
+      "today": "Aujourd’hui",
+      "tomorrow": "Demain",
+      "week": "Dans une semaine",
+      "twoWeeks": "Dans 2 semaines"
+    },
+    "time": "Heure",
+    "freeCount_one": "{{count}} heure libre · {{minutes}} min chacune",
+    "freeCount_other": "{{count}} heures libres · {{minutes}} min chacune",
+    "slot": {
+      "taken": "Déjà pris",
+      "past": "Déjà passée"
+    },
+    "dayOff": "Jour de congé pour {{who}} : choisissez un autre jour.",
+    "notWorking": "Pas d’heures de travail ce jour-là : choisissez un autre jour.",
+    "full": "Toutes les heures de ce jour sont prises : choisissez un autre jour.",
+    "noHours": "Aucune heure de travail n’est enregistrée dans le calendrier de {{who}} : toute heure peut être choisie.",
+    "bookedAt": "Déjà pris ce jour-là : {{times}}.",
+    "reason": "Motif",
+    "reasonFor": "Suivi : {{diagnosis}}",
+    "note": "Note",
+    "notePh": "ex. venir à jeun, apporter les résultats",
+    "selfHint": "Avec vous : confirmé tout de suite, dans vos rendez-vous.",
+    "askHint": "{{who}} est invité(e) à l’accepter.",
+    "directHint": "Confirmé tout de suite ; {{who}} est prévenu(e).",
+    "tellPatient": "Le patient ne reçoit aucun message : dites-lui le jour et l’heure.",
+    "submit": "Réserver",
+    "errors": {
+      "patient": "Choisissez le dossier du patient.",
+      "who": "Choisissez avec qui.",
+      "when": "Choisissez le jour et une heure libre.",
+      "why": "Dites pourquoi le rendez-vous est déplacé."
+    },
+    "confirm": {
+      "title": "Réserver {{name}} avec {{who}} le {{when}} ?",
+      "self": "Il entre dans vos rendez-vous, confirmé.",
+      "ask": "{{who}} est invité(e) à l’accepter ; l’accueil le voit dans Rendez-vous.",
+      "direct": "Il est confirmé tout de suite et {{who}} est prévenu(e).",
+      "yes": "Réserver"
+    },
+    "doneConfirmed": "{{name}} a rendez-vous avec {{who}} le {{when}} (confirmé).",
+    "doneAsked": "{{name}} a rendez-vous avec {{who}} le {{when}} ; {{who}} est invité(e) à accepter.",
+    "nextLine": "{{when}} · avec {{who}}",
+    "nextLabel": "Prochain rendez-vous",
+    "waitingAccept": "en attente d’acceptation",
+    "upcoming": "Rendez-vous à venir",
+    "earlier": "Rendez-vous passés",
+    "noneUpcoming": "Aucun rendez-vous à venir.",
+    "noneEarlier": "Aucun rendez-vous passé.",
+    "bookedByLine": "Réservé par {{name}} · {{when}}",
+    "fromVisit": "depuis la visite {{reference}}",
+    "change": {
+      "button": "Modifier le rendez-vous",
+      "submit": "Enregistrer la modification",
+      "why": "Pourquoi est-il déplacé ?",
+      "whyPh": "ex. le médecin est au bloc, le patient l’a demandé",
+      "confirm": "Modifier le rendez-vous de {{name}} : avec {{who}} le {{when}} ?",
+      "bodySame": "Le jour et la personne restent ; le motif et la note changent.",
+      "bodyMoved": "Le rendez-vous garde son numéro ; son historique montre l’ancienne et la nouvelle heure et pourquoi. L’autre partie est prévenue.",
+      "yes": "Modifier",
+      "done": "Le rendez-vous de {{name}} est maintenant avec {{who}} le {{when}}.",
+      "doneAsked": "Le rendez-vous de {{name}} est maintenant avec {{who}} le {{when}} ; {{who}} est invité(e) à accepter.",
+      "lastWhy": "Dernier déplacement"
+    },
+    "otherDate": "Une autre date"
+  },
+  "noDx": {
+    "title": "Aucun diagnostic trouvé",
+    "lead": "Il n’y a pas de diagnostic principal. Dites pourquoi, et la visite peut être terminée.",
+    "kinds": {
+      "no_disease": "Aucune maladie trouvée",
+      "check_up": "Suivi / contrôle seulement",
+      "results_pending": "Résultats en attente",
+      "referred": "Orienté ailleurs",
+      "other": "Autre (à préciser)"
+    },
+    "note": "Note (facultative)",
+    "noteOther": "Pourquoi aucun diagnostic n’a été trouvé",
+    "notePh": "ex. contrôle de la tension, test du paludisme négatif",
+    "needNote": "Écrivez pourquoi aucun diagnostic n’a été trouvé.",
+    "finish": "Terminer sans diagnostic",
+    "addDiagnosis": "Écrire plutôt un diagnostic",
+    "confirm": "Terminer la visite de {{name}} sans diagnostic ?",
+    "confirmBody": "Gardé sur la visite et dans les rapports : {{reason}}. Un diagnostic écrit plus tard le remplace.",
+    "finished": "Visite terminée sans diagnostic.",
+    "line": "Aucun diagnostic — {{reason}}",
+    "clearsHint": "Écrire plus tard un diagnostic principal remplace ceci.",
+    "finishHint": "Un diagnostic principal, ou « Aucun diagnostic trouvé » avec le motif, est nécessaire pour terminer."
+  },
+  "staffProfile": {
+    "open": "Ouvrir le profil complet",
+    "back": "Retour aux employés",
+    "you": "Vous",
+    "readOnly": "Lecture seule : le gestionnaire modifie ces informations.",
+    "changeInEmployees": "Modifier dans Employés",
+    "changeInEmployeesHint": "Le rôle, l’e-mail, le PIN et la désactivation se changent dans Employés (ils demandent le code envoyé par e-mail).",
+    "tabs": {
+      "overview": "Aperçu",
+      "documents": "Documents",
+      "work": "Travail",
+      "access": "Accès",
+      "notes": "Notes"
+    },
+    "sections": {
+      "work": "Rôle et travail",
+      "contact": "Contact et informations personnelles",
+      "employment": "Emploi"
+    },
+    "f": {
+      "role": "Rôle",
+      "staffId": "ID du personnel",
+      "username": "Nom d’utilisateur",
+      "departments": "Services",
+      "desks": "Postes",
+      "registration": "Numéro d’inscription",
+      "registrationExpires": "Fin de l’inscription",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "emergency": "Contact d’urgence",
+      "emergencyName": "Contact d’urgence (nom)",
+      "emergencyPhone": "Contact d’urgence (téléphone)",
+      "address": "Adresse",
+      "birthDate": "Date de naissance",
+      "sex": "Sexe",
+      "nationalId": "Carte d’identité",
+      "hiredOn": "Date d’embauche",
+      "contractType": "Contrat",
+      "contractEnd": "Fin du contrat",
+      "status": "Statut",
+      "created": "Compte créé",
+      "updated": "Informations modifiées le"
+    },
+    "contracts": {
+      "permanent": "Permanent",
+      "contract": "Contrat à durée déterminée",
+      "intern": "Stagiaire",
+      "volunteer": "Bénévole"
+    },
+    "noDepartment": "Aucun service",
+    "age_one": "{{count}} an",
+    "age_other": "{{count}} ans",
+    "expired": "Expiré",
+    "expiresIn_one": "Se termine dans {{count}} jour",
+    "expiresIn_other": "Se termine dans {{count}} jours",
+    "privateHint": "La carte d’identité, l’adresse et les notes ne sont vues que par le gestionnaire et l’employé ; chaque consultation du gestionnaire est enregistrée.",
+    "edit": "Modifier les informations",
+    "editTitle": "Informations de {{name}}",
+    "codeFieldsHint": "Le rôle, l’e-mail, le PIN et la désactivation se changent dans Employés.",
+    "save": "Enregistrer",
+    "saved": "Informations enregistrées.",
+    "confirmSave": "Enregistrer les informations de {{name}} ?",
+    "confirmSaveBody": "La modification est enregistrée dans le journal.",
+    "workTitle": "Travail · {{period}}",
+    "access": {
+      "role": "Rôle",
+      "devices": "Navigateurs de confiance",
+      "devicesNote": "Connexion sans nouveau code",
+      "failed": "PIN erronés (30 jours)",
+      "pin": "PIN changé",
+      "rights": "Ce qu’il peut faire",
+      "changeRights": "Qui peut faire quoi",
+      "exception": "Exception accordée · {{by}} · {{when}}",
+      "signIns": "Dernières connexions",
+      "pinSet": "Choisi par l’employé"
+    },
+    "notes": {
+      "title": "Notes du gestionnaire",
+      "add": "Ajouter une note",
+      "kind": "Type de note",
+      "kinds": {
+        "note": "Note",
+        "warning": "Avertissement",
+        "training": "Formation",
+        "leave": "Congé",
+        "praise": "Félicitations"
+      },
+      "date": "Date",
+      "body": "Note",
+      "bodyPh": "Ce qui s’est passé, ce qui a été convenu…",
+      "privateHint": "Vue par le gestionnaire seulement, pas par l’employé ; chaque note est enregistrée dans le journal.",
+      "needBody": "Écrivez la note.",
+      "save": "Enregistrer la note",
+      "none": "Aucune note pour l’instant.",
+      "by": "par {{name}}",
+      "removeTitle": "Retirer cette note ?",
+      "removeBody": "Elle quitte le profil ; le journal la garde.",
+      "removeWhy": "Pourquoi est-elle retirée ?",
+      "removeYes": "Retirer",
+      "removed_one": "{{count}} note retirée (dans le journal)",
+      "removed_other": "{{count}} notes retirées (dans le journal)"
+    }
   }
 }

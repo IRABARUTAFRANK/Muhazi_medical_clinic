@@ -203,6 +203,37 @@ export function useWording() {
           title: t('notify.bookedArrived', { name: p.name ?? '' }),
           body: t(p.triage ? 'notify.bookedArrivedTriage' : 'notify.bookedArrivedDesk'),
         }
+      // 0125: a colleague booked a patient in my calendar (confirmed at once, the manager's choice)
+      case 'booked_for_you':
+        return {
+          title: t('notify.bookedForYou', { name: p.name ?? '', by: p.by ?? '' }),
+          body: p.when
+            ? t('notify.apptWhen', {
+                when: `${formatDate(new Date(p.when))} ${formatTime(new Date(p.when))}`,
+              })
+            : null,
+        }
+      // 0125: a booking moved (by its doctor: reception is told; by reception: the doctor)
+      case 'booking_changed':
+        return {
+          title: t(p.left ? 'notify.bookingLeft' : 'notify.bookingChanged', {
+            name: p.name ?? '',
+            by: p.by ?? '',
+          }),
+          body: [
+            p.when
+              ? t('notify.bookingNow', {
+                  when: `${formatDate(new Date(p.when))} ${formatTime(new Date(p.when))}`,
+                  from: p.from
+                    ? `${formatDate(new Date(p.from))} ${formatTime(new Date(p.from))}`
+                    : '—',
+                })
+              : null,
+            p.why ? t('notify.apptReason', { reason: p.why }) : null,
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        }
       case 'appt_confirmed':
         return {
           title: t('notify.apptConfirmed', { name: p.name ?? '', doctor: p.doctor ?? '' }),

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRightLeft, CornerDownLeft, Send, Wallet } from 'lucide-react'
+import { ArrowRightLeft, CalendarPlus, CornerDownLeft, Send, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { WhoPicker } from '@/components/clinical/send-patient-card'
 import { SECTION_ICON } from '@/components/clinical/service-icons'
@@ -32,9 +32,12 @@ export function WhereNextCard({
   isReception,
   closed = false,
   patientName,
+  onBook,
   onDone,
   onError,
 }: {
+  /** 0125: open "Book a follow-up" (the patient's next appointment), when the person may book. */
+  onBook?: () => void
   encounterId: string
   /** For the question asked before the patient is sent on. */
   patientName?: string
@@ -269,17 +272,26 @@ export function WhereNextCard({
           </div>
         )}
 
-        {!isReception && (
-          <div className="border-border border-t pt-3">
-            <Button
-              variant="tint-mint"
-              disabled={sending}
-              onClick={() => void toCashier()}
-              className="justify-start"
-            >
-              <Wallet size={18} aria-hidden="true" />
-              {t('visit.next.toCashier')}
-            </Button>
+        {(!isReception || onBook) && (
+          <div className="border-border flex flex-wrap gap-2 border-t pt-3">
+            {!isReception && (
+              <Button
+                variant="tint-mint"
+                disabled={sending}
+                onClick={() => void toCashier()}
+                className="justify-start"
+              >
+                <Wallet size={18} aria-hidden="true" />
+                {t('visit.next.toCashier')}
+              </Button>
+            )}
+            {/* the patient must come back: their next appointment, before they leave */}
+            {onBook && (
+              <Button variant="tint-violet" onClick={onBook} className="justify-start">
+                <CalendarPlus size={18} aria-hidden="true" />
+                {t('followUp.bookFollowUp')}
+              </Button>
+            )}
           </div>
         )}
       </CardBody>

@@ -30,7 +30,7 @@ import { PageBanner } from '@/components/dash/page-banner'
 import { Avatar } from '@/components/ui/avatar'
 import { Reveal } from '@/components/ui/reveal'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
@@ -39,6 +39,7 @@ import { Select } from '@/components/ui/select'
 import { SidePanel } from '@/components/ui/side-panel'
 import { Flash } from '@/components/ui/flash'
 import { StaffShell } from '@/components/staff/staff-shell'
+import { StaffLink } from '@/components/staff/staff-link'
 import { useTreatments } from '@/lib/api/catalogue'
 import {
   DB_ROLES,
@@ -929,10 +930,21 @@ export function StaffPage({ user }: { user: StaffUser }) {
                       : t('staff.neverSignedIn')}
                   </span>
                 </span>
-                <Button size="sm" onClick={() => openEdit(docsFor)} disabled={!docsFor.active}>
-                  <Pencil size={15} aria-hidden="true" />
-                  {t('staff.edit')}
-                </Button>
+                <span className="flex flex-col gap-2">
+                  {/* 0125: the whole profile (details, documents, work, access, notes) */}
+                  <StaffLink
+                    to="/app/staff/profile"
+                    search={{ id: docsFor.id }}
+                    className={buttonVariants({ size: 'sm', variant: 'primary' })}
+                  >
+                    <IdCard size={15} aria-hidden="true" />
+                    {t('staffProfile.open')}
+                  </StaffLink>
+                  <Button size="sm" onClick={() => openEdit(docsFor)} disabled={!docsFor.active}>
+                    <Pencil size={15} aria-hidden="true" />
+                    {t('staff.edit')}
+                  </Button>
+                </span>
               </div>
               <StaffDocumentsPanel
                 key={docsFor.id}

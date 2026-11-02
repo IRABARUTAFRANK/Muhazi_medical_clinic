@@ -80,6 +80,8 @@ export interface ReceiptDoc {
   paid: number
   balance: number
   cashier: string
+  /** 0125: the patient's next appointment, printed under the patient ("Next appointment: …"). */
+  nextAppointment?: { label: string; text: string } | null
 }
 
 /**
@@ -409,6 +411,7 @@ export function receiptBodyHtml(
     kv(dl.fileNo, d.patient.fileNumber),
     kv(dl.insurer, insurerName),
     insurerName ? kv(dl.memberNo, d.patient.memberNo) : '',
+    d.nextAppointment ? kv(d.nextAppointment.label, d.nextAppointment.text, true) : '',
   ].join('')
 
   // items at full price when the caller gives them, else the patient's share of each line

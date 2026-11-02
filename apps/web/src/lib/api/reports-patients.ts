@@ -1,3 +1,4 @@
+import { dxText } from '@/lib/no-diagnosis'
 import { supabase } from '@/lib/supabase'
 import { apiError } from './errors'
 import type { PatientFieldDef } from './patients'
@@ -186,7 +187,8 @@ const toVisit = (x: Raw): VisitReportRow => ({
   doctor: sn(x.doctor),
   insurer: sn(x.insurer),
   isNew: !!x.isNew,
-  diagnosis: sn(x.diagnosis),
+  // 0125: "No diagnosis — <reason>" for a visit finished with none found
+  diagnosis: dxText(sn(x.diagnosis)),
   billed: nn(x.billed),
   insurerShare: nn(x.insurerShare),
   patientShare: nn(x.patientShare),

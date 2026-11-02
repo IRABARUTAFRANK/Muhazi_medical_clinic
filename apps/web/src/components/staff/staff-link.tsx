@@ -25,6 +25,11 @@ export function StaffLink({ to, search, ...rest }: StaffLinkProps) {
     return <Link to="/app/vitals" search={search} {...rest} />
   if (to === '/app/patient' && search && 'id' in search)
     return <Link to="/app/patient" search={search} {...rest} />
+  // 0125: an employee's profile (`{ id }`; none: one's own)
+  if (to === '/app/staff/profile') {
+    const id = search && 'id' in search ? search.id : undefined
+    return <Link to="/app/staff/profile" search={id ? { id } : {}} {...rest} />
+  }
   if (to === '/app/stock') {
     // `{ tab }` opens a tab of the stock page (e.g. the pharmacy's "Receive stock")
     const tab = search && 'tab' in search && !('id' in search) ? search.tab : undefined

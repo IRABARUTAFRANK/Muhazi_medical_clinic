@@ -120,6 +120,10 @@ export interface ReportVisit {
   plan?: string | null
   /** yyyy-mm-dd or ISO. */
   followUp?: string | null
+  /** 0125: the next appointment in words ("12/11/2026 09:30 · with Dr. …"), printed under Follow-up. */
+  nextAppointment?: string | null
+  /** 0125: no diagnosis was found, in words ("No diagnosis — Follow-up / check-up only"). */
+  noDiagnosis?: string | null
 }
 
 /** Laboratory request and validation details (result report, C3). */
@@ -490,6 +494,9 @@ const heading = (text: string, inVisit: boolean) =>
   inVisit ? `<h4 class="cap">${esc(text)}</h4>` : `<h2>${esc(text)}</h2>`
 
 function diagnosesPiece(v: ReportVisit, c: Ctx, inVisit: boolean): Piece | null {
+  // 0125: finished with no diagnosis found: the reason stands in the diagnoses' place
+  if (!v.diagnoses.length && v.noDiagnosis)
+    return paraPiece(heading(c.l.diagnoses, inVisit) + `<p>${esc(v.noDiagnosis)}</p>`)
   if (!v.diagnoses.length) return null
   const sorted = [...v.diagnoses].sort((a, b) => Number(b.primary) - Number(a.primary))
   const status = (d: ReportVisit['diagnoses'][number]) => {
@@ -739,6 +746,9 @@ function advicePiece(v: ReportVisit, c: Ctx, inVisit: boolean): Piece | null {
     (v.plan?.trim() ? `<p>${escLines(v.plan.trim())}</p>` : '') +
     (v.followUp
       ? `<p><span class="lbl">${esc(c.w.followUp)}:</span> ${esc(docDate(v.followUp))}</p>`
+      : '') +
+    (v.nextAppointment
+      ? `<p><span class="lbl">${esc(c.w.followUp)}:</span> ${esc(v.nextAppointment)}</p>`
       : '')
   const html = advice + (planBody ? heading(c.w.plan, inVisit) + planBody : '')
   return html ? paraPiece(html) : null

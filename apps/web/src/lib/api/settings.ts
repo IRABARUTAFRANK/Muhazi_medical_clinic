@@ -97,6 +97,8 @@ export interface StaffSettings {
   insuranceEnabled: boolean
   /** …and at least one insurer is active: the public site and the booking form show insurers. */
   insuranceActive: boolean
+  /** 0125: a booking made for a colleague waits for their answer (true) or is confirmed at once. */
+  colleagueAccept: boolean
 }
 
 /** Settings every signed-in staff member needs (no settings.read required). */
@@ -111,6 +113,7 @@ export function useStaffSettings() {
           triageFirst: sampleTriageFirst,
           insuranceEnabled: sampleInsurance,
           insuranceActive: sampleInsurance,
+          colleagueAccept: sampleColleagueAccept,
         }
       const { data, error } = await supabase.rpc('staff_settings')
       if (error) throw apiError(error)
@@ -119,6 +122,7 @@ export function useStaffSettings() {
         triage_first?: boolean
         insurance_enabled?: boolean
         insurance_active?: boolean
+        colleague_accept?: boolean
       } | null
       const h = Number(d?.session_hours)
       return {
@@ -126,6 +130,8 @@ export function useStaffSettings() {
         triageFirst: d?.triage_first === true,
         insuranceEnabled: d?.insurance_enabled === true,
         insuranceActive: d?.insurance_active === true,
+        // absent before 0125: the colleague is asked, as before
+        colleagueAccept: d?.colleague_accept !== false,
       }
     },
   })
@@ -156,6 +162,27 @@ export function useSaveInsuranceSetting() {
       void qc.invalidateQueries({ queryKey: STAFF_KEY })
       void qc.invalidateQueries({ queryKey: ['public'] })
     },
+  })
+}
+
+let sampleColleagueAccept = true
+/** Manager (0125): a booking a clinician makes for a colleague waits for the colleague's answer,
+ *  or is confirmed at once (setting booking.colleague_accept). */
+export function useSaveColleagueAccept() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (ask: boolean) => {
+      if (!supabase) {
+        sampleColleagueAccept = ask
+        return
+      }
+      const { error } = await supabase.rpc('save_setting', {
+        p_key: 'booking.colleague_accept',
+        p_value: ask,
+      })
+      if (error) throw apiError(error)
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: STAFF_KEY }),
   })
 }
 

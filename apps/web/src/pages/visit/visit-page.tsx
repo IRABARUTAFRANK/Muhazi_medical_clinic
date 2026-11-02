@@ -3,6 +3,8 @@ import { Link } from '@tanstack/react-router'
 import {
   Activity,
   ArrowLeft,
+  CalendarCheck,
+  CalendarPlus,
   CheckCircle2,
   FolderOpen,
   Footprints,
@@ -71,6 +73,9 @@ import { insurerLineText, insurerLineTone } from '@/lib/insurer-price'
 import { ApiError } from '@/lib/api/errors'
 import { VisitRecordGate, VisitSafetySummary } from '@/components/clinical/record-privacy'
 import { VisitFilesCard } from '@/components/clinical/supporting-files'
+import { FollowUpForm } from '@/components/clinical/follow-up-form'
+import { usePatientBookings } from '@/lib/api/follow-up'
+import { Reveal } from '@/components/ui/reveal'
 
 const errorBox =
   'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
@@ -161,7 +166,30 @@ export function VisitPage({
   const { data: header, isLoading, error } = useVisitHeader(encounterId)
   const { data: vitals = [] } = useVisitVitals(encounterId)
   // 0088: a visit whose clinical record this person may not see (its vital signs come empty)
-  const recordPrivate = useVisitClinical(encounterId).data?.private === true
+  const { data: clinical } = useVisitClinical(encounterId)
+  const recordPrivate = clinical?.private === true
+  // 0125: book the patient's next appointment from the visit ("Book a follow-up")
+  const [booking, setBooking] = useState(false)
+  // the next appointment: the one booked from this visit, else the patient's next one (the
+  // cashier and reception read it from the patient's bookings: it goes on the receipt)
+  const { data: patientBookings } = usePatientBookings(header?.patientId ?? null)
+  const comingBooking = (patientBookings?.rows ?? [])
+    .filter((b) => b.upcoming && (b.status === 'approved' || b.status === 'confirmed'))
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0]
+  const nextAppt =
+    clinical?.visit?.nextAppointment ??
+    (comingBooking
+      ? {
+          id: comingBooking.id,
+          at: comingBooking.startsAt,
+          status: comingBooking.status,
+          with: comingBooking.with,
+          title: comingBooking.title,
+          reason: comingBooking.reason,
+          fromThisVisit: comingBooking.fromEncounter === encounterId,
+        }
+      : null)
+  const primaryDx = (clinical?.diagnoses ?? []).find((d) => d.type === 'primary' && !d.removedAt)
   const { data: bill } = useVisitBill(encounterId)
   const { data: treatments = [] } = useTreatments(true)
   const { data: myDepartments = [] } = useMyDepartments(user.id)
@@ -194,6 +222,10 @@ export function VisitPage({
   const switchedOff = useSwitchedOff(user)
   // The desks I have (the clinical record, the pharmacy, nurse tasks), not my bare role.
   const treats = canDesk(TREATING_DESKS)
+  // who books a patient (book_follow_up): a treating desk, vital signs, reception, the manager
+  const mayBook =
+    !isCashier &&
+    (user.role === 'manager' || treats || can('vitals.write') || can('appointment.approve'))
   // Vital signs: the manager's switch; a patient waiting at triage also needs the triage desk.
   const mayVitals =
     can('vitals.write') && (canDesk('triage') || !header?.stations.includes('triage'))
@@ -359,6 +391,27 @@ export function VisitPage({
                     {t('visit.take')}
                   </Button>
                 )}
+                {mayBook && (
+                  <Button
+                    size="sm"
+                    variant="tint-violet"
+                    aria-expanded={booking}
+                    onClick={() => setBooking((b) => !b)}
+                  >
+                    <CalendarPlus size={14} aria-hidden="true" />
+                    {t('followUp.bookFollowUp')}
+                  </Button>
+                )}
+                {nextAppt && (
+                  <Chip title={nextAppt.reason ?? undefined}>
+                    <CalendarCheck size={14} aria-hidden="true" className="text-violet mr-1" />
+                    {t('followUp.nextLine', {
+                      when: `${formatDate(new Date(nextAppt.at))} ${formatTime(new Date(nextAppt.at))}`,
+                      who: nextAppt.with ?? '',
+                    })}
+                    {nextAppt.status === 'approved' && ` · ${t('followUp.waitingAccept')}`}
+                  </Chip>
+                )}
                 {!closed && (
                   <LeftButton
                     encounterId={encounterId}
@@ -408,6 +461,36 @@ export function VisitPage({
               )}
             </Card>
 
+            {booking && mayBook && (
+              <Reveal focus>
+                <Card>
+                  <CardHeader icon={CalendarPlus} hue="violet">
+                    <span>{t('followUp.title', { name: header.name })}</span>
+                  </CardHeader>
+                  <CardBody>
+                    <FollowUpForm
+                      user={user}
+                      patient={{
+                        id: header.patientId,
+                        name: header.name,
+                        fileNumber: header.fileNumber,
+                        phone: clinical?.patient?.phone ?? null,
+                      }}
+                      encounterId={encounterId}
+                      reason={
+                        primaryDx ? t('followUp.reasonFor', { diagnosis: primaryDx.text }) : ''
+                      }
+                      onDone={(m) => {
+                        setBooking(false)
+                        setActionError(null)
+                        setDone(m)
+                      }}
+                      onCancel={() => setBooking(false)}
+                    />
+                  </CardBody>
+                </Card>
+              </Reveal>
+            )}
             {!closed && switchedOff('vitals.write') && vitals.length === 0 && (
               <NotAllowedNotice feature="vitals.write" compact />
             )}
@@ -786,6 +869,7 @@ export function VisitPage({
                     myStation={myStation}
                     isReception={isReception}
                     closed={closed || locked}
+                    onBook={mayBook ? () => setBooking(true) : undefined}
                     onDone={(m) => {
                       setActionError(null)
                       setDone(m)
@@ -883,6 +967,15 @@ export function VisitPage({
                             insurer: bill.payerName,
                             memberNo: bill.memberNo ?? null,
                           },
+                          nextAppointment: nextAppt
+                            ? {
+                                label: t('followUp.nextLabel'),
+                                text: t('followUp.nextLine', {
+                                  when: `${formatDate(new Date(nextAppt.at))} ${formatTime(new Date(nextAppt.at))}`,
+                                  who: nextAppt.with ?? '',
+                                }),
+                              }
+                            : null,
                           lines: bill.charges.map((c) => ({
                             description: c.description,
                             quantity: c.quantity,

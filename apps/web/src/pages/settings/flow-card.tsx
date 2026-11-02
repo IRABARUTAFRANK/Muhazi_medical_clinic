@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Activity, CircleAlert, DoorOpen, Route } from 'lucide-react'
+import { Activity, CalendarCheck, CircleAlert, DoorOpen, MessageSquare, Route } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Hint, IconChip } from '@/components/dash/kit'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Flash } from '@/components/ui/flash'
-import { useSaveFlowSetting, useStaffSettings } from '@/lib/api/settings'
+import { useSaveColleagueAccept, useSaveFlowSetting, useStaffSettings } from '@/lib/api/settings'
 import { useConfirm } from '@/lib/confirm'
 import { card } from '@/components/dash/kit-style'
 import { lift } from '@/components/clinical/lift'
@@ -99,7 +99,100 @@ export function FlowCard() {
         )}
         {done && <Flash onClose={() => setDone(false)}>{t('settings.flow.saved')}</Flash>}
         <Hint>{t('settings.flow.vitalsNote')}</Hint>
+        <ColleagueBookings />
       </CardBody>
     </Card>
+  )
+}
+
+/**
+ * 0125: a doctor or nurse who books a patient for a colleague: the colleague is asked to accept
+ * (default, as for reception's bookings), or the booking is confirmed at once and they are told.
+ * A booking made for oneself is always confirmed at once.
+ */
+function ColleagueBookings() {
+  const { t } = useTranslation()
+  const { data } = useStaffSettings()
+  const save = useSaveColleagueAccept()
+  const confirm = useConfirm()
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const current = data?.colleagueAccept ?? true
+
+  const choose = async (v: boolean) => {
+    if (v === current) return
+    if (
+      !(await confirm({
+        title: t(v ? 'settings.colleague.askTitle' : 'settings.colleague.directTitle'),
+        body: t(v ? 'settings.colleague.askBody' : 'settings.colleague.directBody'),
+        confirmLabel: t('confirm.settings.flow.yes'),
+      }))
+    )
+      return
+    setDone(false)
+    setError(null)
+    try {
+      await save.mutateAsync(v)
+      setDone(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  return (
+    <section className="border-border flex flex-col gap-3 border-t pt-3">
+      <h3 className="text-ink m-0 flex items-center gap-2 text-[15px] font-semibold">
+        <IconChip icon={CalendarCheck} tint="violet" size="sm" />
+        {t('settings.colleague.title')}
+      </h3>
+      <p className="text-ink-2 m-0 text-[14px]">{t('settings.colleague.lead')}</p>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {([true, false] as const).map((v) => {
+          const on = current === v
+          return (
+            <button
+              key={String(v)}
+              type="button"
+              aria-pressed={on}
+              disabled={save.isPending}
+              onClick={() => void choose(v)}
+              className={cn(
+                card,
+                lift,
+                'gap-1 p-3 text-left',
+                on && 'border-violet/40 bg-violet-bg',
+              )}
+            >
+              <span
+                className={cn(
+                  'flex items-center gap-2 text-[16px] font-semibold',
+                  on && 'text-violet',
+                )}
+              >
+                <IconChip
+                  icon={v ? MessageSquare : CalendarCheck}
+                  tint={on ? 'violet' : 'teal'}
+                  size="sm"
+                />
+                {t(v ? 'settings.colleague.ask' : 'settings.colleague.direct')}
+              </span>
+              <span className="text-ink-2 text-[14px]">
+                {t(v ? 'settings.colleague.askHint' : 'settings.colleague.directHint')}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {error && (
+        <p
+          role="alert"
+          className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[14px] font-medium"
+        >
+          <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
+          {error}
+        </p>
+      )}
+      {done && <Flash onClose={() => setDone(false)}>{t('settings.flow.saved')}</Flash>}
+    </section>
   )
 }

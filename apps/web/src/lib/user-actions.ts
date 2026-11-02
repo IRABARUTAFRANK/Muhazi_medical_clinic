@@ -35,5 +35,7 @@ export function useUserActions() {
     changePin: () => void navigate({ to: '/app/change-pin' }),
     /** The documents the clinic keeps for the person (licence, contract…), read only (0116). */
     myDocuments: () => void navigate({ to: '/app/my-documents' }),
+    /** The person's own profile (0125), read only. */
+    myProfile: () => void navigate({ to: '/app/staff/profile', search: {} }),
   }
 }

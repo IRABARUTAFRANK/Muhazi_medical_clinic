@@ -2,6 +2,7 @@ import { useState, type CSSProperties, type FormEvent } from 'react'
 import {
   Activity,
   ArrowLeft,
+  CalendarPlus,
   Check,
   FileText,
   FlaskConical,
@@ -71,6 +72,8 @@ import {
 import { privacyNoticeShown, privacyOn } from '@/components/clinical/record-privacy-rules'
 import { PatientFilesSection } from '@/components/clinical/supporting-files'
 import { MergeCard } from './merge-card'
+import { PatientBookings } from '@/components/clinical/patient-bookings'
+import { TREATING_DESKS, useCanDesk } from '@/lib/api/desks'
 import { vitalName } from '@/lib/api/vitals'
 import {
   CoreFields,
@@ -91,8 +94,8 @@ import {
   type PatientDraft,
 } from '@/lib/patient-rules'
 
-type Tab = 'overview' | 'visits' | 'clinical' | 'files' | 'bills'
-const TABS: Tab[] = ['overview', 'visits', 'clinical', 'files', 'bills']
+type Tab = 'overview' | 'visits' | 'bookings' | 'clinical' | 'files' | 'bills'
+const TABS: Tab[] = ['overview', 'visits', 'bookings', 'clinical', 'files', 'bills']
 const errorBox =
   'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
 
@@ -129,7 +132,11 @@ export function PatientFilePage({
   const { t } = useTranslation()
   const { data, isLoading, error } = usePatientFile(patientId)
   const [tab, setTab] = useState<Tab>(
-    TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'overview',
+    TABS.includes(initialTab as Tab)
+      ? (initialTab as Tab)
+      : initialTab === 'book'
+        ? 'bookings'
+        : 'overview',
   )
   // "complete" comes from reception's "Files to complete" list: open the form straight away.
   const [editing, setEditing] = useState(initialTab === 'complete')
@@ -144,6 +151,14 @@ export function PatientFilePage({
   const [confirming, setConfirming] = useState(false)
   const mayStart = useCan(user)('visit.start')
   const mayVitals = useCan(user)('vitals.write')
+  // 0125: who books the patient (book_follow_up): a treating desk, vital signs, reception, the manager
+  const canDesk = useCanDesk(user)
+  const mayApprove = useCan(user)('appointment.approve')
+  const mayBook =
+    user.role !== 'cashier' &&
+    (user.role === 'manager' || canDesk(TREATING_DESKS) || mayVitals || mayApprove)
+  // the header's "Book an appointment" opens the form on the Bookings tab
+  const [bookNow, setBookNow] = useState(initialTab === 'book')
   // The medical report holds diagnoses: clinicians and the manager only.
   const mayReport = user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager'
   const letterhead = useLetterhead()
@@ -380,6 +395,18 @@ export function PatientFilePage({
                   {t('medReport.history')}
                 </Button>
               )}
+              {mayBook && (
+                <Button
+                  variant="tint-violet"
+                  onClick={() => {
+                    setBookNow(true)
+                    setTab('bookings')
+                  }}
+                >
+                  <CalendarPlus size={16} aria-hidden="true" />
+                  {t('followUp.bookAppointment')}
+                </Button>
+              )}
               <Button onClick={() => setEditing((e) => !e)}>
                 <Pencil size={16} aria-hidden="true" />
                 {t(editing ? 'staff.form.cancel' : 'file.edit')}
@@ -601,6 +628,20 @@ export function PatientFilePage({
               />
             )}
             {tab === 'bills' && <Bills file={data} />}
+            {tab === 'bookings' && (
+              <PatientBookings
+                key={bookNow ? 'book' : 'list'}
+                user={user}
+                mayBook={mayBook}
+                startOpen={bookNow}
+                patient={{
+                  id: p.id,
+                  name: `${p.surname} ${p.given_names}`,
+                  fileNumber: p.file_number,
+                  phone: p.phone_1,
+                }}
+              />
+            )}
           </div>
         </>
       )}

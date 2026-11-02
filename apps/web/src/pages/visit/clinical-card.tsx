@@ -3,6 +3,7 @@ import { SearchSelect } from '@/components/ui/search-select'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import {
   CheckCircle2,
+  CircleSlash,
   ClipboardList,
   FileText,
   FlaskConical,
@@ -41,6 +42,8 @@ import {
   useItems,
   useRxStock,
   useVisitClinical,
+  NO_DIAGNOSIS_KINDS,
+  type NoDiagnosisKind,
   type Diagnosis,
   type DocPerson,
   type Item,
@@ -80,6 +83,8 @@ import {
 import { openMedicalReport, type ReportMedicine } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
+import { Seg } from '@/components/ui/seg'
+import { noDiagnosisText } from '@/lib/no-diagnosis'
 
 const errorBox =
   'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
@@ -353,6 +358,8 @@ export function ClinicalCard({
     urgent: false,
   })
   const [localError, setLocalError] = useState<string | null>(null)
+  // 0125: no primary diagnosis at Finish: "No diagnosis found" and why
+  const [noDx, setNoDx] = useState<{ kind: NoDiagnosisKind; note: string } | null>(null)
   const confirm = useConfirm()
   const name = patient?.name || t('confirm.visit.thisPatient')
   const isManager = user.role === 'manager'
@@ -486,6 +493,14 @@ export function ClinicalCard({
             })),
             treatments: report?.treatments ?? [],
             medicines,
+            // 0125: no diagnosis found (its reason), and the next appointment booked
+            noDiagnosis: data.visit?.noDiagnosis ? noDiagnosisText(data.visit.noDiagnosis) : null,
+            nextAppointment: data.visit?.nextAppointment
+              ? t('followUp.nextLine', {
+                  when: when(data.visit.nextAppointment.at),
+                  who: data.visit.nextAppointment.with ?? '',
+                })
+              : null,
           },
         ],
         comment: comment.trim() || null,
@@ -1038,8 +1053,13 @@ export function ClinicalCard({
     />
   )
   const finish = async () => {
-    if (!data || !standing(data.diagnoses).some((d) => d.type === 'primary'))
-      return setLocalError(t('clinical.errors.needPrimary'))
+    if (!data) return
+    // no primary diagnosis: the clinician says none was found, and why (0125), instead of a block
+    if (!standing(data.diagnoses).some((d) => d.type === 'primary')) {
+      setLocalError(null)
+      setNoDx((x) => x ?? { kind: 'no_disease', note: '' })
+      return
+    }
     if (
       !(await confirm({
         title: t('confirm.visit.finish', { name }),
@@ -1049,6 +1069,26 @@ export function ClinicalCard({
     )
       return
     void run(() => actions.finishVisit.mutateAsync(), t('clinical.finished'))
+  }
+
+  /** Finish with no diagnosis found: the reason is kept on the visit and printed in the reports. */
+  const finishNoDx = async () => {
+    if (!noDx) return
+    if (noDx.kind === 'other' && noDx.note.trim().length < 3)
+      return setLocalError(t('noDx.needNote'))
+    const reason = noDiagnosisText({ kind: noDx.kind, note: noDx.note.trim() || null })
+    if (
+      !(await confirm({
+        title: t('noDx.confirm', { name }),
+        body: t('noDx.confirmBody', { reason }),
+        confirmLabel: t('confirm.visit.finishYes'),
+      }))
+    )
+      return
+    void run(async () => {
+      await actions.finishVisit.mutateAsync({ noDiagnosis: noDx.kind, note: noDx.note })
+      setNoDx(null)
+    }, t('noDx.finished'))
   }
 
   // A clinician without the right to request tests (a nurse, by default) is told why the button
@@ -2332,6 +2372,63 @@ export function ClinicalCard({
           </Row>
         ))}
 
+      {/* finished with no diagnosis found (0125): the reason, by whom and when */}
+      {data?.visit?.noDiagnosis && (
+        <CardBody className="border-border bg-amber-bg/50 flex-row flex-wrap items-center gap-2 border-t py-2.5 text-[14px]">
+          <CircleSlash size={16} aria-hidden="true" className="text-amber" />
+          <span className="font-semibold">{noDiagnosisText(data.visit.noDiagnosis)}</span>
+          <span className="text-ink-3 text-xs">
+            {[
+              data.visit.noDiagnosis.by,
+              data.visit.noDiagnosis.at ? when(data.visit.noDiagnosis.at) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+          <span className="text-ink-3 basis-full text-xs">{t('noDx.clearsHint')}</span>
+        </CardBody>
+      )}
+      {clinician && !finished && noDx && (
+        <CardBody className="border-border gap-3 border-t">
+          <Reveal focus>
+            <div className="border-amber/40 bg-amber-bg/40 flex flex-col gap-3 rounded-md border p-3">
+              <span className="flex items-center gap-2 text-[15px] font-semibold">
+                <CircleSlash size={16} aria-hidden="true" className="text-amber" />
+                {t('noDx.title')}
+              </span>
+              <p className="text-ink-2 m-0 text-[14px]">{t('noDx.lead')}</p>
+              <Seg
+                label={t('noDx.title')}
+                value={noDx.kind}
+                onChange={(k) => setNoDx({ ...noDx, kind: k })}
+                options={NO_DIAGNOSIS_KINDS.map((k) => ({ value: k, label: t(`noDx.kinds.${k}`) }))}
+                className="self-start"
+              />
+              <Field
+                label={t(noDx.kind === 'other' ? 'noDx.noteOther' : 'noDx.note')}
+                value={noDx.note}
+                maxLength={500}
+                required={noDx.kind === 'other'}
+                placeholder={t('noDx.notePh')}
+                onChange={(e) => setNoDx({ ...noDx, note: e.target.value })}
+              />
+              <span className="flex flex-wrap gap-2">
+                <Button
+                  variant="success"
+                  onClick={() => void finishNoDx()}
+                  loading={actions.finishVisit.isPending}
+                >
+                  <CheckCircle2 size={16} aria-hidden="true" />
+                  {t('noDx.finish')}
+                </Button>
+                <Button variant="ghost" onClick={() => setNoDx(null)}>
+                  {t('noDx.addDiagnosis')}
+                </Button>
+              </span>
+            </div>
+          </Reveal>
+        </CardBody>
+      )}
       {clinician && !finished && (
         <CardBody className="border-border flex-row flex-wrap items-center gap-3 border-t">
           <Button
@@ -2350,7 +2447,7 @@ export function ClinicalCard({
                 : 'text-red',
             )}
           >
-            {t('clinical.finishHint')}
+            {t('noDx.finishHint')}
           </span>
         </CardBody>
       )}

@@ -44,6 +44,7 @@ import { Route as AppStockRouteImport } from './routes/app/stock'
 import { Route as AppVisitRouteImport } from './routes/app/visit'
 import { Route as AppVisitsRouteImport } from './routes/app/visits'
 import { Route as AppVitalsRouteImport } from './routes/app/vitals'
+import { Route as AppStaffProfileRouteImport } from './routes/app/staff_.profile'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -220,6 +221,11 @@ const AppVitalsRoute = AppVitalsRouteImport.update({
   path: '/vitals',
   getParentRoute: () => AppRoute,
 } as any)
+const AppStaffProfileRoute = AppStaffProfileRouteImport.update({
+  id: '/staff_/profile',
+  path: '/staff/profile',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -257,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/app/visits': typeof AppVisitsRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
+  '/app/staff/profile': typeof AppStaffProfileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -293,6 +300,7 @@ export interface FileRoutesByTo {
   '/app/visits': typeof AppVisitsRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app': typeof AppIndexRoute
+  '/app/staff/profile': typeof AppStaffProfileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -331,6 +339,7 @@ export interface FileRoutesById {
   '/app/visits': typeof AppVisitsRoute
   '/app/vitals': typeof AppVitalsRoute
   '/app/': typeof AppIndexRoute
+  '/app/staff_/profile': typeof AppStaffProfileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -370,6 +379,7 @@ export interface FileRouteTypes {
     | '/app/visits'
     | '/app/vitals'
     | '/app/'
+    | '/app/staff/profile'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -406,6 +416,7 @@ export interface FileRouteTypes {
     | '/app/visits'
     | '/app/vitals'
     | '/app'
+    | '/app/staff/profile'
   id:
     | '__root__'
     | '/'
@@ -443,6 +454,7 @@ export interface FileRouteTypes {
     | '/app/visits'
     | '/app/vitals'
     | '/app/'
+    | '/app/staff_/profile'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -700,6 +712,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppVitalsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/staff_/profile': {
+      id: '/app/staff_/profile'
+      path: '/staff/profile'
+      fullPath: '/app/staff/profile'
+      preLoaderRoute: typeof AppStaffProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -734,6 +753,7 @@ interface AppRouteChildren {
   AppVisitsRoute: typeof AppVisitsRoute
   AppVitalsRoute: typeof AppVitalsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppStaffProfileRoute: typeof AppStaffProfileRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -767,6 +787,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppVisitsRoute: AppVisitsRoute,
   AppVitalsRoute: AppVitalsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppStaffProfileRoute: AppStaffProfileRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

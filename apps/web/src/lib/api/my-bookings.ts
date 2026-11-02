@@ -29,6 +29,8 @@ export interface MyBookingStep {
   startsAt: string | null
   /** The time changed at this step. */
   moved: boolean
+  /** 0125: why the booking was moved (change_booking). */
+  why?: string | null
 }
 
 export interface MyBooking {
@@ -37,6 +39,10 @@ export interface MyBooking {
   startsAt: string
   endsAt: string | null
   reason: string | null
+  /** 0125: the note of the person who booked (book_follow_up, change_booking). */
+  note?: string | null
+  /** 0125: the visit the booking was made from (a follow-up). */
+  fromEncounter?: string | null
   category: string | null
   source: string | null
   reference: string | null

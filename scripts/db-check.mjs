@@ -18997,6 +18997,542 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0125: book from the visit, no diagnosis, the employee profile
+await step('0125: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20270105090000_book_nodx_staff.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+const at125 = (days, hhmm) =>
+  `(((now() at time zone 'Africa/Kigali')::date + ${days}) + time '${hhmm}') at time zone 'Africa/Kigali'`
+await step('0125: set up two doctors with calendars, a patient and a visit', async () => {
+  await asAdmin()
+  const t = {
+    docX: await mk121('fu125.x', 'Dr X 125', 'doctor', { station: 'Consultation 6' }),
+    docY: await mk121('fu125.y', 'Dr Y 125', 'doctor', { station: 'Consultation 7' }),
+    rec: await mk121('fu125.r', 'Reception 125', 'receptionist'),
+    cashier: await mk121('fu125.c', 'Cashier 125', 'cashier'),
+  }
+  const hours = JSON.stringify(
+    Object.fromEntries(['0', '1', '2', '3', '4', '5', '6'].map((d) => [d, [['07:00', '19:00']]])),
+  )
+  for (const [k, u] of [
+    ['X', t.docX],
+    ['Y', t.docY],
+  ])
+    await db.query(
+      `insert into practitioner (code, user_id, names, slot_minutes, working_hours, calendar_visibility, active)
+       values ($1, $2, $3, 30, $4::jsonb, 'staff', true)`,
+      [`p125${k.toLowerCase()}`, u, `Dr ${k} 125`, hours],
+    )
+  const mkP = async (n) =>
+    (
+      await one(
+        `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
+         values ('Follow', $1, 'female', ('1990-03-0' || $2)::date, '07881250' || $2 || '0', true, true, true) returning id`,
+        [`F${n}`, String(n)],
+      )
+    ).id
+  t.p1 = await mkP(1)
+  t.p2 = await mkP(2)
+  t.p3 = await mkP(3)
+  await as(t.rec)
+  t.v1 = (await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [t.p1])).id
+  t.v2 = (await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [t.p2])).id
+  await asAdmin()
+  for (const v of [t.v1, t.v2]) {
+    const q = await one(
+      `select id from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null
+       order by created_at desc limit 1`,
+      [v],
+    )
+    await as(t.docX)
+    await db.query(`select take_patient($1)`, [q.id])
+  }
+  await asAdmin()
+  globalThis.t125 = t
+  return 'Dr X and Dr Y work 07:00–19:00 every day; Dr X took two visits'
+})
+await step(
+  '0125: a doctor books a follow-up for himself → confirmed, in his My bookings',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    const r = (
+      await one(
+        `select book_follow_up($1, $2, ${at125(1, '10:00')}, 'Follow-up: malaria', 'fasting', $3) as j`,
+        [t.p1, t.docX, t.v1],
+      )
+    ).j
+    const mine = (await one(`select my_bookings() as j`)).j
+    const slots = (
+      await one(`select free_slots($1, ((now() at time zone 'Africa/Kigali')::date + 1)) as j`, [
+        t.docX,
+      ])
+    ).j
+    const doc = (await one(`select visit_clinical($1) -> 'visit' as j`, [t.v1])).j
+    const pb = (await one(`select patient_bookings($1) as j`, [t.p1])).j
+    await asAdmin()
+    const row = await one(
+      `select status, source, from_encounter, accepted_by from appointment where id = $1`,
+      [r.id],
+    )
+    if (r.status !== 'confirmed' || row.status !== 'confirmed' || row.source !== 'clinician')
+      throw new Error(JSON.stringify(row))
+    if (row.from_encounter !== t.v1 || row.accepted_by !== t.docX)
+      throw new Error('visit or acceptance missing')
+    const m = mine.rows.find((x) => x.id === r.id)
+    if (!m || m.note !== 'fasting' || m.fromEncounter !== t.v1)
+      throw new Error('not in my_bookings')
+    const ten = slots.slots.find((s) => s.time === '10:00')
+    if (!ten || ten.state !== 'taken') throw new Error(`10:00 ${JSON.stringify(ten)}`)
+    if (!slots.slots.some((s) => s.state === 'free')) throw new Error('no free slot')
+    if (doc.nextAppointment?.id !== r.id) throw new Error('doc_visit has no next appointment')
+    if (!pb.some((x) => x.id === r.id && x.upcoming)) throw new Error('not in the patient file')
+    t.b1 = r.id
+    return `confirmed (source clinician), in My bookings, 10:00 taken in free_slots, printed as next appointment`
+  },
+)
+await step(
+  '0125: booking for another doctor → approved, the colleague gets “to accept”',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    const r = (
+      await one(`select book_follow_up($1, $2, ${at125(1, '11:00')}, 'Second opinion') as j`, [
+        t.p1,
+        t.docY,
+      ])
+    ).j
+    await asAdmin()
+    const n = await one(
+      `select count(*)::int as n from notification where kind = 'to_accept' and recipient_user = $1
+       and params ->> 'appointment' = $2`,
+      [t.docY, r.id],
+    )
+    if (r.status !== 'approved' || n.n !== 1) throw new Error(`${r.status} · ${n.n} notice(s)`)
+    await as(t.docY)
+    await db.query(`select accept_appointment($1)`, [r.id])
+    await asAdmin()
+    const after = await one(`select status from appointment where id = $1`, [r.id])
+    if (after.status !== 'confirmed') throw new Error(after.status)
+    return 'approved → Dr Y notified → accepted: confirmed'
+  },
+)
+await step(
+  '0125: the manager’s “confirmed at once” setting: no accept step, the colleague is told',
+  async () => {
+    const t = globalThis.t125
+    await as(staff.manager)
+    await db.query(`select save_setting('booking.colleague_accept', 'false'::jsonb)`)
+    await as(t.docX)
+    const r = (
+      await one(`select book_follow_up($1, $2, ${at125(2, '09:00')}) as j`, [t.p2, t.docY])
+    ).j
+    await as(staff.manager)
+    await db.query(`select save_setting('booking.colleague_accept', 'true'::jsonb)`)
+    await asAdmin()
+    const n = await one(
+      `select count(*)::int as n from notification where kind = 'booked_for_you' and recipient_user = $1`,
+      [t.docY],
+    )
+    if (r.status !== 'confirmed' || n.n !== 1) throw new Error(`${r.status} · ${n.n}`)
+    return 'confirmed at once; Dr Y told (booked_for_you)'
+  },
+)
+await expectError(
+  '0125: a time outside the calendar’s hours is refused',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(`select book_follow_up($1, $2, ${at125(1, '21:00')})`, [t.p1, t.docX])
+  },
+  /does not work at that time/,
+)
+await expectError(
+  '0125: a time in the past is refused',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(`select book_follow_up($1, $2, ${at125(-1, '10:00')})`, [t.p1, t.docX])
+  },
+  /in the past/,
+)
+await expectError(
+  '0125: a time already taken is refused',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(`select book_follow_up($1, $2, ${at125(1, '10:15')})`, [t.p2, t.docX])
+  },
+  /already has a booking/,
+)
+await expectError(
+  '0125: a cashier cannot book',
+  async () => {
+    const t = globalThis.t125
+    await as(t.cashier)
+    await db.query(`select book_follow_up($1, $2, ${at125(1, '14:00')})`, [t.p1, t.docX])
+  },
+  /not allowed/,
+)
+await expectError(
+  '0125: finish_visit without a diagnosis and without a reason is refused',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(`select finish_visit($1)`, [t.v1])
+  },
+  /primary diagnosis is required/,
+)
+await expectError(
+  '0125: “Other” needs the reason written',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(`select finish_visit($1, 'other', '')`, [t.v1])
+  },
+  /say why no diagnosis was found/,
+)
+await step('0125: finish_visit with “Follow-up / check-up only” is accepted', async () => {
+  const t = globalThis.t125
+  await as(t.docX)
+  await db.query(`select finish_visit($1, 'check_up', 'BP control')`, [t.v1])
+  await asAdmin()
+  const e = await one(
+    `select status, clinical_done_at, no_diagnosis_kind, no_diagnosis_note, no_diagnosis_by from encounter where id = $1`,
+    [t.v1],
+  )
+  if (e.no_diagnosis_kind !== 'check_up' || e.no_diagnosis_by !== t.docX)
+    throw new Error(JSON.stringify(e))
+  if (e.status !== 'closed' && !e.clinical_done_at) throw new Error('not finished')
+  return `finished (${e.status}) · no diagnosis: check_up · “${e.no_diagnosis_note}”`
+})
+await step('0125: the no-diagnosis visit shows in the reports with its reason', async () => {
+  const t = globalThis.t125
+  const today = `(now() at time zone 'Africa/Kigali')::date`
+  await as(staff.manager)
+  const dx = (await one(`select report_diagnoses(${today}, ${today}) as j`)).j
+  const seen = (await one(`select report_patients_seen(${today}, ${today}) as j`)).j
+  await asAdmin()
+  const row = dx.find((r) => r.diagnosis === '[no-dx:check_up]')
+  if (!row || row.cases < 1)
+    throw new Error(`diagnoses: ${JSON.stringify(dx.map((r) => r.diagnosis))}`)
+  const s = seen.find((r) => r.encounterId === t.v1)
+  if (!s || s.diagnosis !== '[no-dx:check_up] BP control' || s.outcome === 'left')
+    throw new Error(`seen: ${JSON.stringify(s)}`)
+  return `Diagnoses: ${row.cases} case(s) “[no-dx:check_up]”; Patients seen: “${s.diagnosis}”, ${s.outcome}`
+})
+await step('0125: a primary diagnosis written later clears the “no diagnosis” reason', async () => {
+  const t = globalThis.t125
+  await as(t.docX)
+  await db.query(`select set_no_diagnosis($1, 'results_pending')`, [t.v2])
+  await asAdmin()
+  const before = (await one(`select no_diagnosis_kind as k from encounter where id = $1`, [t.v2])).k
+  await as(t.docX)
+  await db.query(`select add_diagnosis($1, 'Malaria', 'B54', 'primary', false)`, [t.v2])
+  await asAdmin()
+  const after = (await one(`select no_diagnosis_kind as k from encounter where id = $1`, [t.v2])).k
+  if (before !== 'results_pending' || after !== null) throw new Error(`${before} → ${after}`)
+  return 'results_pending → cleared by the primary diagnosis'
+})
+await expectError(
+  '0125: “no diagnosis” is refused while a primary diagnosis stands',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(`select set_no_diagnosis($1, 'no_disease')`, [t.v2])
+  },
+  /has a primary diagnosis/,
+)
+await step('0125: removing the last primary diagnosis with the reason none stands', async () => {
+  const t = globalThis.t125
+  await asAdmin()
+  const c = await one(
+    `select id from condition where encounter_id = $1 and type = 'primary' and deleted_at is null`,
+    [t.v2],
+  )
+  await as(t.docX)
+  await db.query(
+    `select remove_condition_none_found($1, 'wrong patient file', 'referred', 'Sent to CHUK')`,
+    [c.id],
+  )
+  await asAdmin()
+  const e = await one(
+    `select no_diagnosis_kind as k, no_diagnosis_note as n from encounter where id = $1`,
+    [t.v2],
+  )
+  if (e.k !== 'referred') throw new Error(JSON.stringify(e))
+  return `removed; no diagnosis: ${e.k} (${e.n})`
+})
+await step('0125: save_staff_profile: the manager writes, audited', async () => {
+  const t = globalThis.t125
+  await as(staff.manager)
+  const r = (
+    await one(
+      `select save_staff_profile($1, '0788 125 125', 'Mama X', '0788000125', 'Kayonza', '1985-05-05', 'male',
+                                 '1198580000000125', '2024-01-02', 'contract', '2027-01-01', '2027-06-30') as j`,
+      [t.docX],
+    )
+  ).j
+  await asAdmin()
+  const hr = await one(`select national_id, contract_type from staff_hr where profile_id = $1`, [
+    t.docX,
+  ])
+  const ph = await one(`select phone from profiles where id = $1`, [t.docX])
+  const aud = await one(
+    `select count(*)::int as n from audit_event where entity = 'staff_profile' and action = 'update' and entity_id = $1`,
+    [t.docX],
+  )
+  if (hr.contract_type !== 'contract' || ph.phone !== '0788 125 125' || aud.n < 1)
+    throw new Error(JSON.stringify({ hr, ph, aud }))
+  return `saved (${r.changed.join(', ')}) · audited`
+})
+await expectError(
+  '0125: an employee cannot change a profile (even their own)',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(`select save_staff_profile($1, '0788000001')`, [t.docX])
+  },
+  /only the manager/,
+)
+await step('0125: the employee reads his own profile, without the manager’s notes', async () => {
+  const t = globalThis.t125
+  await as(staff.manager)
+  await db.query(`select add_staff_note($1, 'training', 'Attended the IMCI refresher')`, [t.docX])
+  await as(t.docX)
+  const p = (await one(`select staff_profile() as j`)).j
+  await asAdmin()
+  if (p.id !== t.docX || p.hr.nationalId !== '1198580000000125' || p.notes !== null || p.canEdit)
+    throw new Error(JSON.stringify({ id: p.id, notes: p.notes, canEdit: p.canEdit }))
+  return `own profile: ${p.fullName} · ${p.hr.contractType} · notes hidden`
+})
+await expectError(
+  '0125: another employee cannot read the profile',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docY)
+    await db.query(`select staff_profile($1)`, [t.docX])
+  },
+  /only their own profile/,
+)
+await expectError(
+  '0125: notes are the manager’s only',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(`select add_staff_note($1, 'note', 'self note')`, [t.docX])
+  },
+  /only the manager/,
+)
+await step('0125: the manager’s read of a profile is logged (once per half hour)', async () => {
+  const t = globalThis.t125
+  await asAdmin()
+  const n0 = (
+    await one(
+      `select count(*)::int as n from audit_event where entity = 'staff_profile' and action = 'read' and entity_id = $1`,
+      [t.docX],
+    )
+  ).n
+  await as(staff.manager)
+  const p = (await one(`select staff_profile($1) as j`, [t.docX])).j
+  await one(`select staff_profile($1) as j`, [t.docX])
+  await asAdmin()
+  const n1 = (
+    await one(
+      `select count(*)::int as n from audit_event where entity = 'staff_profile' and action = 'read' and entity_id = $1`,
+      [t.docX],
+    )
+  ).n
+  if (n1 - n0 !== 1) throw new Error(`${n0} → ${n1}`)
+  if (!Array.isArray(p.notes) || p.notes.length !== 1) throw new Error('manager sees no notes')
+  return `${n0} → ${n1} after two reads; the manager sees ${p.notes.length} note`
+})
+await step('0125: the employee sees his own work (Work tab)', async () => {
+  const t = globalThis.t125
+  await as(t.docX)
+  const d = (await one(`select staff_activity_detail($1) as j`, [t.docX])).j
+  await asAdmin()
+  if (d.person.id !== t.docX) throw new Error('no person')
+  return `own work: ${Object.values(d.counts).reduce((a, b) => a + b, 0)} record(s) today`
+})
+await step(
+  '0125: My bookings counts the coming bookings still to see (3 weeks), not only today',
+  async () => {
+    await asAdmin()
+    const docZ = await mk121('fu125.z', 'Dr Z 125', 'doctor', { station: 'Consultation 8' })
+    const pr = (
+      await one(
+        `insert into practitioner (code, user_id, names, slot_minutes, working_hours, active)
+       values ('p125z', $1, 'Dr Z 125', 30, '{}'::jsonb, true) returning id`,
+        [docZ],
+      )
+    ).id
+    const count = async () => (
+      await as(docZ),
+      (await one(`select nav_counts() as j`)).j.myBookings ?? 0
+    )
+    const before = await count()
+    await asAdmin()
+    for (const [days, status] of [
+      [2, 'confirmed'],
+      [2, 'cancelled'],
+      [3, 'completed'],
+      [28, 'confirmed'],
+    ])
+      await db.query(
+        `insert into appointment (practitioner_id, starts_at, status, source, contact_name, contact_phone)
+       values ($1, ${at125(days, '10:00')} + ($2 || ' minutes')::interval, $3, 'reception', 'Count 125', '0788125999')`,
+        [pr, String(days), status],
+      )
+    const after = await count()
+    await asAdmin()
+    if (after - before !== 1) throw new Error(`${before} → ${after}`)
+    return `${before} → ${after}: the confirmed one in 2 days; cancelled, completed and the one in 4 weeks left out`
+  },
+)
+await expectError(
+  '0125: moving a booking needs the reason',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(`select change_booking($1, ${at125(1, '10:30')})`, [t.b1])
+  },
+  /say why the booking is moved/,
+)
+await step(
+  '0125: the doctor moves his booking: same id, reception told, the history says why',
+  async () => {
+    const t = globalThis.t125
+    await asAdmin()
+    const n0 = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'booking_changed' and recipient_role = 'receptionist'`,
+      )
+    ).n
+    await as(t.docX)
+    const r = (
+      await one(
+        `select change_booking($1, ${at125(1, '10:30')}, null, null, null, 'Theatre in the morning') as j`,
+        [t.b1],
+      )
+    ).j
+    const mine = (await one(`select my_bookings() as j`)).j
+    await asAdmin()
+    const n1 = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'booking_changed' and recipient_role = 'receptionist'`,
+      )
+    ).n
+    const b = mine.rows.find((x) => x.id === t.b1)
+    if (r.id !== t.b1 || r.status !== 'confirmed' || !r.moved) throw new Error(JSON.stringify(r))
+    if (n1 - n0 !== 1) throw new Error(`reception notices ${n0} → ${n1}`)
+    if (!b.history.some((h) => h.moved && h.why === 'Theatre in the morning'))
+      throw new Error('history')
+    return 'moved to 10:30, still confirmed, reception told, history keeps the reason'
+  },
+)
+await step(
+  '0125: reception moves it: the doctor is told; reason and note change without a move',
+  async () => {
+    const t = globalThis.t125
+    await asAdmin()
+    const n0 = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'booking_changed' and recipient_user = $1`,
+        [t.docX],
+      )
+    ).n
+    await as(t.rec)
+    await db.query(
+      `select change_booking($1, ${at125(1, '14:00')}, null, null, null, 'Patient asked for the afternoon')`,
+      [t.b1],
+    )
+    await as(t.docX)
+    await db.query(
+      `select change_booking($1, null, null, 'Follow-up: malaria (day 3)', 'bring the card')`,
+      [t.b1],
+    )
+    await asAdmin()
+    const n1 = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'booking_changed' and recipient_user = $1`,
+        [t.docX],
+      )
+    ).n
+    const a = await one(`select reason, note, status from appointment where id = $1`, [t.b1])
+    if (n1 - n0 !== 1 || a.note !== 'bring the card' || a.status !== 'confirmed')
+      throw new Error(JSON.stringify({ n0, n1, a }))
+    return 'doctor told once; reason and note changed, still confirmed'
+  },
+)
+await expectError(
+  '0125: a booking is not moved onto a time already taken',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    await db.query(
+      `select change_booking($1, ${at125(1, '11:00')}, $2, null, null, 'Dr Y sees it')`,
+      [t.b1, t.docY],
+    )
+  },
+  /already has a booking/,
+)
+await expectError(
+  '0125: a cashier cannot change a booking',
+  async () => {
+    const t = globalThis.t125
+    await as(t.cashier)
+    await db.query(`select change_booking($1, ${at125(1, '15:00')}, null, null, null, 'why not')`, [
+      t.b1,
+    ])
+  },
+  /not allowed/,
+)
+await step(
+  '0125: given to a colleague, the booking waits for that colleague’s answer',
+  async () => {
+    const t = globalThis.t125
+    await as(t.docX)
+    const r = (
+      await one(
+        `select change_booking($1, ${at125(1, '15:00')}, $2, null, null, 'Dr Y follows the case') as j`,
+        [t.b1, t.docY],
+      )
+    ).j
+    await asAdmin()
+    const n = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'to_accept' and recipient_user = $1 and params ->> 'appointment' = $2`,
+        [t.docY, t.b1],
+      )
+    ).n
+    const left = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'booking_changed' and recipient_user = $1 and params ->> 'left' = 'true'`,
+        [t.docX],
+      )
+    ).n
+    if (r.status !== 'approved' || n !== 1) throw new Error(`${r.status} · ${n}`)
+    void left
+    return 'approved for Dr Y, who is asked to accept'
+  },
+)
+await expectError(
+  '0125: a completed booking cannot be changed',
+  async () => {
+    const t = globalThis.t125
+    await asAdmin()
+    await db.query(`update appointment set status = 'completed' where id = $1`, [t.b1])
+    await as(staff.manager)
+    await db.query(`select change_booking($1, null, null, 'x')`, [t.b1])
+  },
+  /can no longer be changed/,
+)
+
 finish()
 
 function finish() {

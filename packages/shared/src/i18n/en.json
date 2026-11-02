@@ -57,7 +57,9 @@
     "changePinHint": "Choose a new PIN",
     "chooseTime": "Choose a time",
     "myDocuments": "My documents",
-    "myDocumentsHint": "Licence, contract and other papers kept for you"
+    "myDocumentsHint": "Licence, contract and other papers kept for you",
+    "myProfile": "My profile",
+    "myProfileHint": "Your details, documents, work and access"
   },
   "days": {
     "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -2042,6 +2044,18 @@
       "saved": "Saved.",
       "pricesNote": "The insurers, what each covers and their price lists are managed under",
       "pricesLink": "Prices › Insurers"
+    },
+    "colleague": {
+      "title": "Bookings made for a colleague",
+      "lead": "A doctor or a nurse can book a patient with a colleague. Booked for oneself, it is always confirmed at once.",
+      "ask": "The colleague accepts",
+      "askHint": "The colleague is asked to accept, as for reception’s bookings.",
+      "direct": "Confirmed at once",
+      "directHint": "The booking is confirmed and the colleague is told.",
+      "askTitle": "Ask the colleague to accept?",
+      "askBody": "A booking made for a colleague waits for their answer.",
+      "directTitle": "Confirm bookings for a colleague at once?",
+      "directBody": "The colleague no longer accepts them; they are told by a notice."
     }
   },
   "pin": {
@@ -2129,7 +2143,8 @@
       "visits": "Visits",
       "clinical": "Clinical",
       "bills": "Bills",
-      "files": "Attachments"
+      "files": "Attachments",
+      "bookings": "Bookings"
     },
     "identity": "Identity & contact",
     "medical": "Medical summary",
@@ -2767,7 +2782,8 @@
         "online": "Website",
         "reception": "Reception",
         "phone": "Phone call",
-        "walk_in": "Walk-in"
+        "walk_in": "Walk-in",
+        "clinician": "Booked by a clinician"
       },
       "service": "Service"
     },
@@ -2950,7 +2966,11 @@
     "staffMessage": "Message from {{from}}",
     "rxNotGivenOutside": "Open the visit to send it to an outside pharmacy.",
     "rxOutside": "{{item}} for {{name}}: bought at an outside pharmacy",
-    "noUnread": "No new notification. Read ones are under All notifications."
+    "noUnread": "No new notification. Read ones are under All notifications.",
+    "bookedForYou": "{{by}} booked {{name}} with you",
+    "bookingChanged": "{{by}} moved the booking of {{name}}",
+    "bookingLeft": "{{by}} gave the booking of {{name}} to a colleague",
+    "bookingNow": "Now {{when}} (was {{from}})"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -7199,6 +7219,7 @@
     "52464355": "There is no open pharmacy store to send it to.",
     "67568016": "this category still has {{p1}} treatment(s): move them to another category first",
     "75188350": "The category was not found.",
+    "77308620": "The colleague-booking setting must be on or off.",
     "93857009": "The end of the period is before its start.",
     "00523f7c": "This appointment was not found or is not waiting for the doctor.",
     "00a8d6e8": "Only the pharmacy (or the manager) can cancel a transfer note it sent.",
@@ -7575,7 +7596,29 @@
     "021838e4": "Give the screen a name.",
     "07e0078a": "Unknown language {{1}}.",
     "408fb117": "The voice speaks English or French.",
-    "c18acfde": "The call is said 1 to 3 times."
+    "c18acfde": "The call is said 1 to 3 times.",
+    "e80bc03d": "Not allowed: bookings are made by the people who treat patients, reception and the manager.",
+    "9a40bea3": "This visit has a primary diagnosis: remove it before saying none was found.",
+    "027a1055": "Not allowed: an employee sees only their own profile.",
+    "bb0431ec": "Unknown reason for finishing without a diagnosis.",
+    "f1302d30": "Only the manager changes an employee’s profile.",
+    "b937f557": "Only the manager keeps notes on an employee.",
+    "3c8e0b36": "The contract ends before the date hired.",
+    "ec167c0e": "The reason or the note is too long.",
+    "f4aeb90a": "The date of the note is not valid.",
+    "dd67df72": "This visit is not the patient’s.",
+    "0c2f37ce": "Say why no diagnosis was found.",
+    "c3f20b9d": "The date of birth is not valid.",
+    "de30e9e5": "The phone number is not valid.",
+    "b2e622fe": "Say why the note is removed.",
+    "290cbef7": "Unknown contract type.",
+    "22dbda19": "Unknown kind of note.",
+    "2ffc90db": "Write the note.",
+    "9c469c31": "Unknown sex.",
+    "99bcd654": "Not allowed: a booking is changed by its doctor, reception or the manager.",
+    "6197a26c": "This booking can no longer be changed.",
+    "2dd3cc49": "Say why the booking is moved.",
+    "f0c2044d": "Booking not found."
   },
   "panel": {
     "close": "Close",
@@ -8793,7 +8836,8 @@
       "source": {
         "online": "Website",
         "reception": "Reception",
-        "phone": "Phone"
+        "phone": "Phone",
+        "clinician": "Clinician"
       },
       "unit": {
         "min": "min"
@@ -9415,5 +9459,210 @@
     "earlierTitle_other": "From earlier days ({{count}})",
     "earlierHint": "Still here from an earlier day: not in today's count. Finish or close their visits.",
     "since": "since {{date}}"
+  },
+  "followUp": {
+    "bookFollowUp": "Book a follow-up",
+    "bookAppointment": "Book an appointment",
+    "newBooking": "New booking",
+    "newLead": "Find the patient’s file, then choose with whom, the day and a free time.",
+    "title": "Next appointment for {{name}}",
+    "patient": "Patient",
+    "noPhone": "No phone number on the file",
+    "with": "With whom",
+    "me": "Me",
+    "withMe": "you",
+    "withName": "with {{name}}",
+    "day": "Day",
+    "quick": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "week": "In a week",
+      "twoWeeks": "In 2 weeks"
+    },
+    "time": "Time",
+    "freeCount_one": "{{count}} free time · {{minutes}} min each",
+    "freeCount_other": "{{count}} free times · {{minutes}} min each",
+    "slot": {
+      "taken": "Already booked",
+      "past": "Already past"
+    },
+    "dayOff": "A day off for {{who}}: choose another day.",
+    "notWorking": "No working hours that day: choose another day.",
+    "full": "Every time of that day is taken: choose another day.",
+    "noHours": "No working hours are saved in the calendar of {{who}}: any time may be chosen.",
+    "bookedAt": "Already booked that day: {{times}}.",
+    "reason": "Reason",
+    "reasonFor": "Follow-up: {{diagnosis}}",
+    "note": "Note",
+    "notePh": "e.g. come fasting, bring the results",
+    "selfHint": "Booked with you: confirmed at once, in your bookings.",
+    "askHint": "{{who}} is asked to accept it.",
+    "directHint": "Confirmed at once; {{who}} is told.",
+    "tellPatient": "The patient gets no message: tell them the day and time.",
+    "submit": "Book",
+    "errors": {
+      "patient": "Choose the patient’s file.",
+      "who": "Choose with whom.",
+      "when": "Choose the day and a free time.",
+      "why": "Say why the booking is moved."
+    },
+    "confirm": {
+      "title": "Book {{name}} with {{who}} on {{when}}?",
+      "self": "It goes into your bookings, confirmed.",
+      "ask": "{{who}} is asked to accept it; reception sees it in Bookings.",
+      "direct": "It is confirmed at once and {{who}} is told.",
+      "yes": "Book"
+    },
+    "doneConfirmed": "{{name}} is booked with {{who}} on {{when}} (confirmed).",
+    "doneAsked": "{{name}} is booked with {{who}} on {{when}}; {{who}} is asked to accept.",
+    "nextLine": "{{when}} · with {{who}}",
+    "nextLabel": "Next appointment",
+    "waitingAccept": "waiting to be accepted",
+    "upcoming": "Bookings to come",
+    "earlier": "Earlier bookings",
+    "noneUpcoming": "No booking to come.",
+    "noneEarlier": "No earlier booking.",
+    "bookedByLine": "Booked by {{name}} · {{when}}",
+    "fromVisit": "from visit {{reference}}",
+    "change": {
+      "button": "Change booking",
+      "submit": "Save the change",
+      "why": "Why is it moved?",
+      "whyPh": "e.g. the doctor is in theatre, the patient asked",
+      "confirm": "Change the booking of {{name}}: with {{who}} on {{when}}?",
+      "bodySame": "The day and the person stay; the reason and the note change.",
+      "bodyMoved": "The booking keeps its number; its history shows the old and the new time and why. The other side is told.",
+      "yes": "Change",
+      "done": "The booking of {{name}} is now with {{who}} on {{when}}.",
+      "doneAsked": "The booking of {{name}} is now with {{who}} on {{when}}; {{who}} is asked to accept.",
+      "lastWhy": "Last moved because"
+    },
+    "otherDate": "Another date"
+  },
+  "noDx": {
+    "title": "No diagnosis found",
+    "lead": "There is no primary diagnosis. Say why, and the visit can be finished.",
+    "kinds": {
+      "no_disease": "No disease found",
+      "check_up": "Follow-up / check-up only",
+      "results_pending": "Results pending",
+      "referred": "Referred elsewhere",
+      "other": "Other (write it)"
+    },
+    "note": "Note (optional)",
+    "noteOther": "Why no diagnosis was found",
+    "notePh": "e.g. blood pressure control, malaria test negative",
+    "needNote": "Write why no diagnosis was found.",
+    "finish": "Finish without a diagnosis",
+    "addDiagnosis": "Write a diagnosis instead",
+    "confirm": "Finish the visit of {{name}} with no diagnosis?",
+    "confirmBody": "Kept on the visit and in the reports: {{reason}}. A diagnosis written later replaces it.",
+    "finished": "Visit finished with no diagnosis found.",
+    "line": "No diagnosis — {{reason}}",
+    "clearsHint": "Writing a primary diagnosis later replaces this.",
+    "finishHint": "A primary diagnosis, or “No diagnosis found” with the reason, is needed to finish."
+  },
+  "staffProfile": {
+    "open": "Open the full profile",
+    "back": "Back to employees",
+    "you": "You",
+    "readOnly": "Read only: the manager changes these details.",
+    "changeInEmployees": "Change in Employees",
+    "changeInEmployeesHint": "The role, the e-mail, the PIN and deactivation are changed in Employees (they need the e-mailed code).",
+    "tabs": {
+      "overview": "Overview",
+      "documents": "Documents",
+      "work": "Work",
+      "access": "Access",
+      "notes": "Notes"
+    },
+    "sections": {
+      "work": "Role and work",
+      "contact": "Contact and personal details",
+      "employment": "Employment"
+    },
+    "f": {
+      "role": "Role",
+      "staffId": "Staff ID",
+      "username": "Username",
+      "departments": "Departments",
+      "desks": "Desks",
+      "registration": "Registration number",
+      "registrationExpires": "Registration expires",
+      "email": "E-mail",
+      "phone": "Phone",
+      "emergency": "Emergency contact",
+      "emergencyName": "Emergency contact (name)",
+      "emergencyPhone": "Emergency contact (phone)",
+      "address": "Address",
+      "birthDate": "Date of birth",
+      "sex": "Sex",
+      "nationalId": "National ID",
+      "hiredOn": "Date hired",
+      "contractType": "Contract",
+      "contractEnd": "Contract ends",
+      "status": "Status",
+      "created": "Account made",
+      "updated": "Details last changed"
+    },
+    "contracts": {
+      "permanent": "Permanent",
+      "contract": "Fixed-term contract",
+      "intern": "Intern",
+      "volunteer": "Volunteer"
+    },
+    "noDepartment": "No department",
+    "age_one": "{{count}} year old",
+    "age_other": "{{count}} years old",
+    "expired": "Expired",
+    "expiresIn_one": "Ends in {{count}} day",
+    "expiresIn_other": "Ends in {{count}} days",
+    "privateHint": "The national ID, the address and the notes are seen by the manager and the employee only; each look of the manager is logged.",
+    "edit": "Edit details",
+    "editTitle": "Details of {{name}}",
+    "codeFieldsHint": "The role, the e-mail, the PIN and deactivation are changed in Employees.",
+    "save": "Save",
+    "saved": "Details saved.",
+    "confirmSave": "Save the details of {{name}}?",
+    "confirmSaveBody": "The change is recorded in the activity log.",
+    "workTitle": "Work · {{period}}",
+    "access": {
+      "role": "Role",
+      "devices": "Trusted browsers",
+      "devicesNote": "Sign in without a new code",
+      "failed": "Wrong PINs (30 days)",
+      "pin": "PIN changed",
+      "rights": "What they may do",
+      "changeRights": "Who may do what",
+      "exception": "Exception · {{by}} · {{when}}",
+      "signIns": "Last sign-ins",
+      "pinSet": "Chosen by the employee"
+    },
+    "notes": {
+      "title": "The manager’s notes",
+      "add": "Add a note",
+      "kind": "Kind of note",
+      "kinds": {
+        "note": "Note",
+        "warning": "Warning",
+        "training": "Training",
+        "leave": "Leave",
+        "praise": "Praise"
+      },
+      "date": "Date",
+      "body": "Note",
+      "bodyPh": "What happened, what was agreed…",
+      "privateHint": "Seen by the manager only, not by the employee; each note is recorded in the activity log.",
+      "needBody": "Write the note.",
+      "save": "Save the note",
+      "none": "No note yet.",
+      "by": "by {{name}}",
+      "removeTitle": "Remove this note?",
+      "removeBody": "It leaves the profile; the activity log keeps it.",
+      "removeWhy": "Why is it removed?",
+      "removeYes": "Remove",
+      "removed_one": "{{count}} note removed (in the activity log)",
+      "removed_other": "{{count}} notes removed (in the activity log)"
+    }
   }
 }

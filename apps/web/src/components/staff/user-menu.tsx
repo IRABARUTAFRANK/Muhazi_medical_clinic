@@ -135,6 +135,19 @@ export function UserMenu({ user, onOpenSheet }: UserMenuProps) {
               <span>{t('common.changePin')}</span>
               <span className="text-ink-3 text-[12px]">{t('common.changePinHint')}</span>
             </button>
+            {/* the person's own profile: details, documents, work, access (0125) */}
+            <button
+              type="button"
+              role="menuitem"
+              className={itemClass}
+              onClick={() => {
+                setOpen(false)
+                actions.myProfile()
+              }}
+            >
+              <span>{t('common.myProfile')}</span>
+              <span className="text-ink-3 text-[12px]">{t('common.myProfileHint')}</span>
+            </button>
             {/* the licence, contract and other papers the clinic keeps for the person (0116) */}
             <button
               type="button"

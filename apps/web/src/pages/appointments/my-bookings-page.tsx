@@ -2,6 +2,8 @@ import { useState, type CSSProperties } from 'react'
 import {
   CalendarCheck,
   CalendarClock,
+  CalendarPlus,
+  CalendarSync,
   CalendarDays,
   CalendarRange,
   CalendarX,
@@ -30,6 +32,10 @@ import { navForUser } from '@/lib/nav'
 import { useOpenFile } from '@/lib/panel-url'
 import { cn } from '@/lib/utils'
 import { BookingAnswer } from '@/pages/home/booking-answer'
+import { FollowUpForm } from '@/components/clinical/follow-up-form'
+import { Flash } from '@/components/ui/flash'
+import { Reveal } from '@/components/ui/reveal'
+import { changeable } from '@/lib/api/follow-up'
 import { ErrorBox } from '@/pages/home/role-panels'
 
 /*
@@ -83,6 +89,9 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
   const { data, isLoading, error } = useMyBookings()
   const [selected, setSelected] = useState<string | null>(focus ?? null)
   const [answerError, setAnswerError] = useState<string | null>(null)
+  // 0125: a booking made here (a patient found by a file search) and the message after it
+  const [adding, setAdding] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const rows = data?.rows ?? []
   const today = startOfDay(new Date())
@@ -167,6 +176,10 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
           title={t('myBookings.title')}
           lead={t('myBookings.lead')}
         >
+          <Button variant="primary" aria-expanded={adding} onClick={() => setAdding((a) => !a)}>
+            <CalendarPlus size={16} aria-hidden="true" />
+            {t('followUp.newBooking')}
+          </Button>
           <StaffLink
             to="/app/calendar"
             className={buttonVariants({ variant: 'tint-grey', size: 'md' })}
@@ -183,6 +196,26 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
           </p>
         )}
         {error && <ErrorBox>{error.message}</ErrorBox>}
+        {notice && (
+          <Flash key={notice} onClose={() => setNotice(null)}>
+            {notice}
+          </Flash>
+        )}
+        {adding && (
+          <Reveal focus>
+            <Panel i={0} icon={CalendarPlus} tint="violet" title={t('followUp.newBooking')}>
+              <p className="text-ink-2 m-0 text-[14px]">{t('followUp.newLead')}</p>
+              <FollowUpForm
+                user={user}
+                onDone={(m) => {
+                  setAdding(false)
+                  setNotice(m)
+                }}
+                onCancel={() => setAdding(false)}
+              />
+            </Panel>
+          </Reveal>
+        )}
 
         <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-4">
           <Kpi
@@ -311,9 +344,14 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
         </div>
 
         <BookingPanel
+          user={user}
           booking={open}
           slotMinutes={data?.slotMinutes}
           onClose={() => setSelected(null)}
+          onChanged={(m) => {
+            setSelected(null)
+            setNotice(m)
+          }}
         />
       </main>
     </StaffShell>
@@ -322,23 +360,30 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
 
 /** One booking beside the list: who, when, why, who booked it, and every step since. */
 function BookingPanel({
+  user,
   booking: b,
   slotMinutes,
   onClose,
+  onChanged,
 }: {
+  user: StaffUser
   booking: MyBooking | null
   slotMinutes?: number
   onClose: () => void
+  onChanged: (message: string) => void
 }) {
   const { t } = useTranslation()
   const openFile = useOpenFile()
   const [error, setError] = useState<string | null>(null)
+  // 0125: "Change booking": the same form as a new booking, on this one
+  const [changing, setChanging] = useState<string | null>(null)
   const rows: [string, string | null | undefined][] = b
     ? [
         [t('ops.detail.when'), when(b.startsAt)],
         [t('ops.detail.patient'), b.fileNumber ? `${b.fileNumber} · ${b.name}` : b.name],
         [t('ops.detail.phone'), b.phone],
         [t('ops.detail.reason'), b.reason],
+        [t('followUp.note'), b.note],
         [t('ops.detail.service'), b.category],
         [
           t('ops.detail.source'),
@@ -411,7 +456,36 @@ function BookingPanel({
                 </div>
               ))}
           </dl>
+          {changing === b.id && (
+            <FollowUpForm
+              user={user}
+              patient={{
+                id: b.patientId ?? b.id,
+                name: b.name,
+                fileNumber: b.fileNumber,
+                phone: b.phone,
+              }}
+              change={{
+                id: b.id,
+                startsAt: b.startsAt,
+                withUserId: user.id,
+                reason: b.reason,
+                note: b.note ?? null,
+              }}
+              onDone={(m) => {
+                setChanging(null)
+                onChanged(m)
+              }}
+              onCancel={() => setChanging(null)}
+            />
+          )}
           <div className="flex flex-wrap gap-2">
+            {changeable(b.status) && changing !== b.id && (
+              <Button size="sm" variant="tint-violet" onClick={() => setChanging(b.id)}>
+                <CalendarSync size={14} aria-hidden="true" />
+                {t('followUp.change.button')}
+              </Button>
+            )}
             {b.patientId && (
               <Button
                 size="sm"
@@ -453,6 +527,7 @@ function BookingPanel({
                         {t('myBookings.movedTo', { when: when(h.startsAt) })}
                       </span>
                     )}
+                    {h.why && <span className="text-ink-2 block text-[13px]">“{h.why}”</span>}
                     <span className="text-ink-3 block text-[13px]">
                       {[when(h.at), h.by].filter(Boolean).join(' · ')}
                     </span>

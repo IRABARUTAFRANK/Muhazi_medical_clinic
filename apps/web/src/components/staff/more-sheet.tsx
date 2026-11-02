@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import {
   FolderLock,
+  IdCard,
   KeyRound,
   LayoutDashboard,
   Lock,
@@ -215,6 +216,18 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
           >
             <ActionIcon icon={KeyRound} />
             <RowText label={t('common.changePin')} hint={t('common.changePinHint')} />
+          </button>
+          {/* the person's own profile (0125) */}
+          <button
+            type="button"
+            className={cn(row, tint.teal)}
+            onClick={() => {
+              onClose()
+              actions.myProfile()
+            }}
+          >
+            <ActionIcon icon={IdCard} />
+            <RowText label={t('common.myProfile')} hint={t('common.myProfileHint')} />
           </button>
           {/* the licence, contract and other papers the clinic keeps for the person (0116) */}
           <button

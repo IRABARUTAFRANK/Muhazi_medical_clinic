@@ -882,7 +882,10 @@ const bookingWord = (s: BookingStatus) =>
     }[s],
   )
 const sourceWord = (s: BookingSource) =>
-  w(`${C}.source.${s}`, { online: 'Website', reception: 'Reception', phone: 'Phone' }[s])
+  w(
+    `${C}.source.${s}`,
+    { online: 'Website', reception: 'Reception', phone: 'Phone', clinician: 'Clinician' }[s],
+  )
 const serviceWord = (s: string | null) =>
   s ? String(i18n.t(`categories.${s}`, { defaultValue: s })) : null
 const SEEN: readonly BookingStatus[] = ['arrived', 'with_clinician', 'seen', 'left_unseen']
@@ -917,7 +920,7 @@ const bookings: AnyReportDef = {
       key: 'source',
       label: `${C}.f.source`,
       kind: 'select',
-      options: keyOptions(`${C}.source`, ['online', 'reception', 'phone']),
+      options: keyOptions(`${C}.source`, ['online', 'reception', 'phone', 'clinician']),
     },
     searchFilter,
   ],
@@ -952,7 +955,7 @@ const bookings: AnyReportDef = {
         period: f.period,
         status: one(f, 'status', BOOKING_STATUSES),
         practitioner: selected(f, 'practitioner'),
-        source: one(f, 'source', ['online', 'reception', 'phone'] as const),
+        source: one(f, 'source', ['online', 'reception', 'phone', 'clinician'] as const),
       },
       ctx,
     )
