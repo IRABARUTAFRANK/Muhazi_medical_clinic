@@ -662,8 +662,7 @@
     "custom": {
       "month": "Un mois",
       "or": "ou des dates",
-      "year": "Une année",
-      "noData": "aucune visite"
+      "year": "Une année"
     },
     "longestShort": "le premier attend depuis {{time}}",
     "noneTaken": "personne encore pris en charge aujourd’hui",

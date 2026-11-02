@@ -51,10 +51,8 @@ export function PeriodCustom({ period, className }: { period: Period; className?
       from: `${y}-01-01`,
       to: `${y}-12-31` > today ? today : `${y}-12-31`,
     })
-  const thisYear = Number(today.slice(0, 4))
-  const dataYears = new Set(years)
-  const oldest = Math.min(2000, ...years)
-  const allYears = Array.from({ length: thisYear - oldest + 1 }, (_, k) => thisYear - k)
+  // the clinic's years, newest first: from the first visit's year to this one (grows each 1 January)
+  const allYears = [...years].reverse()
   // the year whose whole span (this year: up to today) is chosen now
   const chosenYear = allYears.find(
     (y) =>
@@ -63,7 +61,6 @@ export function PeriodCustom({ period, className }: { period: Period; className?
   )
   return (
     <div className={cn('flex flex-wrap items-end gap-3', className)}>
-      {/* every year, newest first: from this year back to 2000 (or the first visit, if older) */}
       <Select
         label={t('dashboard.custom.year')}
         value={chosenYear ? String(chosenYear) : ''}
@@ -74,7 +71,6 @@ export function PeriodCustom({ period, className }: { period: Period; className?
         {allYears.map((y) => (
           <option key={y} value={y}>
             {y}
-            {dataYears.has(y) ? '' : ` · ${t('dashboard.custom.noData')}`}
           </option>
         ))}
       </Select>

@@ -75,12 +75,15 @@ describe('This year', () => {
     expect(to).toBe(now)
   })
 
-  it('the quick year buttons: the years with data, at least last year and this one', () => {
+  it('the year list: from the first visit’s year to this one, growing each new year', () => {
     const now = new Date(2027, 1, 3)
-    expect(yearsFrom(null, now)).toEqual([2026, 2027])
-    expect(yearsFrom(2027, now)).toEqual([2026, 2027])
-    expect(yearsFrom(2024, now)).toEqual([2024, 2025, 2026, 2027])
-    // at most the last 8
-    expect(yearsFrom(2001, now)).toHaveLength(8)
+    // no visit yet: this year only
+    expect(yearsFrom(null, now)).toEqual([2027])
+    expect(yearsFrom(2027, now)).toEqual([2027])
+    // records since 2026: 2026 and 2027; nothing before the clinic's records
+    expect(yearsFrom(2026, now)).toEqual([2026, 2027])
+    expect(yearsFrom(2026, new Date(2026, 5, 1))).toEqual([2026])
+    // every year since the first, however many
+    expect(yearsFrom(2015, now)).toHaveLength(13)
   })
 })

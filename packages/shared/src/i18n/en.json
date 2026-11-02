@@ -662,8 +662,7 @@
     "custom": {
       "month": "A month",
       "or": "or dates",
-      "year": "A year",
-      "noData": "no visits"
+      "year": "A year"
     },
     "longestShort": "first in line waiting {{time}}",
     "noneTaken": "nobody taken yet today",

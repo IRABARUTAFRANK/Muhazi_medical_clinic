@@ -255,9 +255,14 @@ const toRevenuePoints = (rows: unknown): RevenuePoint[] =>
  * first visit to this year, at least last year and this one (at most the last 8). Sample mode, or
  * a person who may not read visits: last year and this year.
  */
+/**
+ * The years the clinic has records for: from the year of the first visit (this year when there
+ * is none yet) up to this year. A new year joins the list on 1 January by itself; no year before
+ * the clinic's records is offered.
+ */
 export function yearsFrom(first: number | null, now = new Date()): number[] {
   const y = now.getFullYear()
-  const start = Math.max(y - 7, Math.min(y - 1, first ?? y - 1))
+  const start = Math.min(y, first ?? y)
   return Array.from({ length: y - start + 1 }, (_, i) => start + i)
 }
 
