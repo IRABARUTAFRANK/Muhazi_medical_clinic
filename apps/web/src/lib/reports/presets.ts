@@ -1,4 +1,4 @@
-import type { CustomRange, DashboardRange } from '@/lib/api/dashboard'
+import { DASHBOARD_RANGES, type CustomRange, type DashboardRange } from '@/lib/api/dashboard'
 import type { ReportChoices } from './run'
 
 /**
@@ -16,7 +16,7 @@ export interface ReportPreset {
 
 const key = (userId: string, reportId: string) => `mmc.reports.preset.${userId}.${reportId}`
 
-const RANGES: readonly DashboardRange[] = ['today', 'week', 'month', 'all', 'custom']
+const RANGES = DASHBOARD_RANGES
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 
 /** The saved preset, checked piece by piece (anything odd is left out). */

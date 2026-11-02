@@ -510,7 +510,8 @@
       "week": "This week",
       "month": "This month",
       "custom": "Custom",
-      "all": "All time"
+      "all": "All time",
+      "year": "This year"
     },
     "rangeLabels": {
       "week": "{{from}} – {{to}}",
@@ -547,7 +548,8 @@
       "week": "this week",
       "month": "this month",
       "all": "all time",
-      "custom": "in this period"
+      "custom": "in this period",
+      "year": "this year"
     },
     "vsPrevious": "{{change}} vs last period",
     "queueNow": "Queue now · patients per desk",
@@ -659,7 +661,8 @@
     "oct": "Oct",
     "custom": {
       "month": "A month",
-      "or": "or dates"
+      "or": "or dates",
+      "year": "A year"
     },
     "longestShort": "first in line waiting {{time}}",
     "noneTaken": "nobody taken yet today",
@@ -9400,5 +9403,16 @@
     "documents_other": "{{count}} documents expiring",
     "filesToComplete_one": "{{count}} file to complete",
     "filesToComplete_other": "{{count}} files to complete"
+  },
+  "daily": {
+    "today": "Today",
+    "earlier": "Earlier",
+    "unread": "unread",
+    "earlierShort_one": "{{count}} from earlier days",
+    "earlierShort_other": "{{count}} from earlier days",
+    "earlierTitle_one": "From earlier days ({{count}})",
+    "earlierTitle_other": "From earlier days ({{count}})",
+    "earlierHint": "Still here from an earlier day: not in today's count. Finish or close their visits.",
+    "since": "since {{date}}"
   }
 }

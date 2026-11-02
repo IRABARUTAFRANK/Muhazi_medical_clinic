@@ -20,85 +20,131 @@ export interface Notice {
   urgent: boolean
   read: boolean
   sender: string | null
+  /** Of today (Kigali, 0122): only today's unread notices make the red count. */
+  today: boolean
 }
 
+/** The notices of a person: the red count is today's unread only (0122); the older unread ones
+ *  stay in the list ("Earlier", a small "unread" mark) and are counted apart. */
+export interface NoticeList {
+  unread: number
+  unreadEarlier: number
+  items: Notice[]
+}
+
+/** "2026-11-02": the clinic's day (Kigali) of a time. */
+export const kigaliDayOf = (d: Date): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Kigali' }).format(d)
+
+/** Is this time today in Kigali? */
+export const isKigaliToday = (iso: string, now: Date = new Date()): boolean => {
+  const d = new Date(iso)
+  return !Number.isNaN(d.getTime()) && kigaliDayOf(d) === kigaliDayOf(now)
+}
+
+/** The counts of a list (sample mode, a database before 0122): today's unread, older unread. */
+export const countNotices = (items: Notice[]): NoticeList => ({
+  unread: items.filter((n) => !n.read && n.today).length,
+  unreadEarlier: items.filter((n) => !n.read && !n.today).length,
+  items,
+})
+
+/** Does this notice start a group ("Today" / "Earlier") in a list ordered newest first? */
+export const startsDayGroup = (items: Pick<Notice, 'today'>[], k: number): boolean =>
+  k === 0 || items[k - 1]!.today !== items[k]!.today
+
 const KEY = ['notifications'] as const
-let sample: Notice[] = [
-  {
-    id: 'n0',
-    at: new Date(Date.now() - 6 * 60_000).toISOString(),
-    kind: 'handover',
-    params: {
-      by: 'Dr. Uwase Aline',
-      ticket: 'A-015',
-      name: 'Ingabire Diane',
-      station: 'consultation',
-      note: 'Called to theatre. Malaria test done (negative); please review the urine test and decide on treatment.',
+let sample: Notice[] = (
+  [
+    {
+      id: 'n0',
+      at: new Date(Date.now() - 6 * 60_000).toISOString(),
+      kind: 'handover',
+      params: {
+        by: 'Dr. Uwase Aline',
+        ticket: 'A-015',
+        name: 'Ingabire Diane',
+        station: 'consultation',
+        note: 'Called to theatre. Malaria test done (negative); please review the urine test and decide on treatment.',
+      },
+      title: null,
+      body: null,
+      link: '/app/visit?encounter=e-consultation-3',
+      urgent: true,
+      read: false,
+      sender: 'Dr. Uwase Aline',
     },
-    title: null,
-    body: null,
-    link: '/app/visit?encounter=e-consultation-3',
-    urgent: true,
-    read: false,
-    sender: 'Dr. Uwase Aline',
-  },
-  {
-    // the sample doctor's booking to accept (home.ts sample 'ta-1'): answered in the notice
-    id: 'n-acc',
-    at: new Date(Date.now() - 5 * 60_000).toISOString(),
-    kind: 'to_accept',
-    params: { name: 'Hakizimana Emmanuel', when: null, appointment: 'ta-1' },
-    title: null,
-    body: null,
-    link: '/app',
-    urgent: false,
-    read: false,
-    sender: null,
-  },
-  {
-    id: 'n1',
-    at: new Date(Date.now() - 4 * 60_000).toISOString(),
-    kind: 'queue',
-    params: { ticket: 'A-019', name: 'Uwase Claudine', station: 'triage', triage: null },
-    title: null,
-    body: null,
-    link: '/app/vitals',
-    urgent: false,
-    read: false,
-    sender: null,
-  },
-  {
-    id: 'n2',
-    at: new Date(Date.now() - 25 * 60_000).toISOString(),
-    kind: 'message',
-    params: {},
-    title: 'Staff meeting at 16:00',
-    body: 'All heads of department, bring this week’s report.',
-    link: null,
-    urgent: false,
-    read: false,
-    sender: 'Mugabo Théogène',
-  },
-  {
-    id: 'n3',
-    at: new Date(Date.now() - 70 * 60_000).toISOString(),
-    kind: 'task',
-    params: { title: 'Injection: ceftriaxone 1 g IM', name: 'Mugisha Kevin', due: null },
-    title: null,
-    body: null,
-    link: '/app/visit?encounter=e-1',
-    urgent: false,
-    read: true,
-    sender: 'Dr. Mukamana Béatrice',
-  },
-]
+    {
+      // the sample doctor's booking to accept (home.ts sample 'ta-1'): answered in the notice
+      id: 'n-acc',
+      at: new Date(Date.now() - 5 * 60_000).toISOString(),
+      kind: 'to_accept',
+      params: { name: 'Hakizimana Emmanuel', when: null, appointment: 'ta-1' },
+      title: null,
+      body: null,
+      link: '/app',
+      urgent: false,
+      read: false,
+      sender: null,
+    },
+    {
+      id: 'n1',
+      at: new Date(Date.now() - 4 * 60_000).toISOString(),
+      kind: 'queue',
+      params: { ticket: 'A-019', name: 'Uwase Claudine', station: 'triage', triage: null },
+      title: null,
+      body: null,
+      link: '/app/vitals',
+      urgent: false,
+      read: false,
+      sender: null,
+    },
+    {
+      id: 'n2',
+      at: new Date(Date.now() - 25 * 60_000).toISOString(),
+      kind: 'message',
+      params: {},
+      title: 'Staff meeting at 16:00',
+      body: 'All heads of department, bring this week’s report.',
+      link: null,
+      urgent: false,
+      read: false,
+      sender: 'Mugabo Théogène',
+    },
+    {
+      id: 'n3',
+      at: new Date(Date.now() - 70 * 60_000).toISOString(),
+      kind: 'task',
+      params: { title: 'Injection: ceftriaxone 1 g IM', name: 'Mugisha Kevin', due: null },
+      title: null,
+      body: null,
+      link: '/app/visit?encounter=e-1',
+      urgent: false,
+      read: true,
+      sender: 'Dr. Mukamana Béatrice',
+    },
+    {
+      // left unread yesterday: listed under "Earlier", not in the red count
+      id: 'n4',
+      at: new Date(Date.now() - 26 * 60 * 60_000).toISOString(),
+      kind: 'message',
+      params: {},
+      title: 'Pharmacy closes at 18:00 on Saturday',
+      body: 'Send the last prescriptions before 17:30.',
+      link: null,
+      urgent: false,
+      read: false,
+      sender: 'Mugabo Théogène',
+    },
+  ] as Omit<Notice, 'today'>[]
+).map((n) => ({ ...n, today: isKigaliToday(n.at) }))
 
 export function useNotifications(limit = 40) {
   return useQuery({
     queryKey: [...KEY, limit],
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
-    queryFn: async (): Promise<{ unread: number; items: Notice[] }> => {
+    queryFn: async (): Promise<NoticeList> => {
       if (!supabase) {
         // the sample handover and booking notices are for the sample doctor only
         const items = sample.filter(
@@ -106,12 +152,19 @@ export function useNotifications(limit = 40) {
             !(n.kind.startsWith('handover') || n.kind === 'to_accept') ||
             useSession.getState().user?.role === 'doctor',
         )
-        return { unread: items.filter((n) => !n.read).length, items }
+        return countNotices(items.map((n) => ({ ...n, today: isKigaliToday(n.at) })))
       }
       const { data, error } = await supabase.rpc('my_notifications', { p_limit: limit })
       if (error) throw apiError(error)
-      const d = data as { unread: number; items: Notice[] }
-      return { unread: Number(d.unread), items: d.items ?? [] }
+      const d = data as { unread: number; unreadEarlier?: number; items: Notice[] }
+      const items = (d.items ?? []).map((n) => ({
+        ...n,
+        today: typeof n.today === 'boolean' ? n.today : isKigaliToday(n.at),
+      }))
+      // a database before 0122 counts 30 days: count today's here
+      return typeof d.unreadEarlier === 'number'
+        ? { unread: Number(d.unread), unreadEarlier: Number(d.unreadEarlier), items }
+        : countNotices(items)
     },
   })
 }
@@ -152,6 +205,7 @@ export function useNotificationActions() {
             urgent: !!i.urgent,
             read: true,
             sender: null,
+            today: true,
           },
           ...sample,
         ]

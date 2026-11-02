@@ -3,6 +3,7 @@ import { ROLE_HOME, type HomeRole, type StaffUser } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { apiError, isMissingFunction } from './errors'
+import { isKigaliToday } from './notifications'
 import type { DayRange } from './lab'
 import { stationFor, toItem, type BoardRow, type QueueItem, type Station } from './visits'
 
@@ -18,6 +19,8 @@ import { stationFor, toItem, type BoardRow, type QueueItem, type Station } from 
 export interface MyQueueItem extends QueueItem {
   /** Sent to me by name (assigned to me, or a handover waiting for my answer). */
   byName: boolean
+  /** Joined the queue on an earlier day and still open (0122): shown apart, not counted. */
+  earlier: boolean
 }
 
 export interface MyMoney {
@@ -37,7 +40,8 @@ export interface MySummary {
   station: Station | null
   desks: string[]
   waiting: MyQueueItem[]
-  counts: { sentToMe: number; atMyDesks: number; inProgress: number }
+  /** Today's (0122); `earlier`: the patients still here from an earlier day, shown apart. */
+  counts: { sentToMe: number; atMyDesks: number; inProgress: number; earlier: number }
   /** My work in the period, by kind (analytics.kinds.*; plus visitsStarted). */
   work: Record<string, number>
   /** The same for the period just before (the arrows). */
@@ -65,14 +69,22 @@ function toSummary(d: Record<string, unknown>): MySummary {
     role: String(d.role ?? ''),
     station: (d.station as Station | null) ?? null,
     desks: (d.desks as string[]) ?? [],
-    waiting: ((d.waiting as (BoardRow & { by_name?: boolean })[]) ?? []).map((r) => ({
-      ...toItem(r),
-      byName: !!r.by_name,
-    })),
+    waiting: ((d.waiting as (BoardRow & { by_name?: boolean; earlier?: boolean })[]) ?? []).map(
+      (r) => ({
+        ...toItem(r),
+        byName: !!r.by_name,
+        // a database before 0122: from the time the patient joined the queue
+        earlier:
+          typeof r.earlier === 'boolean'
+            ? r.earlier
+            : !!r.queued_at && !isKigaliToday(String(r.queued_at)),
+      }),
+    ),
     counts: {
       sentToMe: n0(obj(d.counts).sentToMe),
       atMyDesks: n0(obj(d.counts).atMyDesks),
       inProgress: n0(obj(d.counts).inProgress),
+      earlier: n0(obj(d.counts).earlier),
     },
     work: counts(d.work),
     workPrev: counts(d.workPrev),
@@ -144,8 +156,31 @@ function sampleSummary(user: StaffUser): MySummary {
     forMe: true,
     canWork: true,
     byName: named && i === 0,
+    earlier: false,
     handover: null,
   }))
+  // the clinicians' sample: one patient left in the queue since yesterday (shown apart)
+  if (named && waiting.length > 0) {
+    const first = waiting[0]!
+    waiting.push({
+      ...first,
+      queueId: 'q-mine-old',
+      encounterId: `e-${station}-old`,
+      patientId: `p-${station}-old`,
+      fileNumber: 'MMC-000098',
+      insurer: 'MMC-000098',
+      ticket: 'C-041',
+      name: 'Nshimiyimana Jean',
+      ageSex: '52 · M',
+      triage: 'green',
+      priority: 3,
+      waitMin: 19 * 60,
+      queuedAt: new Date(Date.now() - 26 * 60 * 60_000).toISOString(),
+      byName: false,
+      earlier: true,
+      vitalsAt: new Date(Date.now() - 26 * 60 * 60_000).toISOString(),
+    })
+  }
   const dbRole = user.dbRole ?? user.role
   const money = user.role === 'cashier' || user.role === 'manager'
   return {
@@ -156,9 +191,10 @@ function sampleSummary(user: StaffUser): MySummary {
     desks: [],
     waiting,
     counts: {
-      sentToMe: waiting.filter((r) => r.byName).length,
-      atMyDesks: waiting.filter((r) => !r.byName).length,
+      sentToMe: waiting.filter((r) => r.byName && !r.earlier).length,
+      atMyDesks: waiting.filter((r) => !r.byName && !r.earlier).length,
       inProgress: user.role === 'cashier' ? 1 : 0,
+      earlier: waiting.filter((r) => r.earlier).length,
     },
     work: SAMPLE_WORK[user.role] ?? {},
     workPrev: SAMPLE_PREV[user.role] ?? {},
@@ -184,7 +220,7 @@ const empty = (): MySummary => ({
   station: null,
   desks: [],
   waiting: [],
-  counts: { sentToMe: 0, atMyDesks: 0, inProgress: 0 },
+  counts: { sentToMe: 0, atMyDesks: 0, inProgress: 0, earlier: 0 },
   work: {},
   workPrev: {},
   money: null,

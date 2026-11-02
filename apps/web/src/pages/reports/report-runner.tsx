@@ -15,7 +15,7 @@ import { CLINIC_PROFILE } from '@mmc/shared'
 import { IconChip } from '@/components/dash/kit'
 import { card, sectionTitle } from '@/components/dash/kit-style'
 import { Button } from '@/components/ui/button'
-import type { DashboardRange } from '@/lib/api/dashboard'
+import { DASHBOARD_RANGES, type DashboardRange } from '@/lib/api/dashboard'
 import { useClinicInfo } from '@/lib/api/public'
 import { docDate, docNumber } from '@/lib/doc-style'
 import { usePeriod } from '@/lib/period'
@@ -44,7 +44,7 @@ import { GROUP_LOOK } from './report-look'
 import { ReportLayout } from './report-layout'
 import { ReportFigures, ReportPreview } from './report-preview'
 
-const RANGES: readonly DashboardRange[] = ['today', 'week', 'month', 'all', 'custom']
+const RANGES = DASHBOARD_RANGES
 
 /** A value that follows `value` once it has stopped changing for `ms` (typing a search). */
 function useDebounced<T>(value: T, ms: number): T {

@@ -95,6 +95,7 @@ export function MyQueuePanel({
   rowAction,
   i: index = 1,
   note,
+  footer,
   tint = 'amber',
 }: {
   title: string
@@ -102,6 +103,8 @@ export function MyQueuePanel({
   i?: number
   /** A line above the list (0120: "Sent to me by name 1 · at my desks 3"). */
   note?: ReactNode
+  /** Under the list (0122: the patients still here from an earlier day). */
+  footer?: ReactNode
   tint?: Tint
   rows: (QueueRow & {
     queueId?: string
@@ -352,6 +355,7 @@ export function MyQueuePanel({
           )}
         </ShownList>
       )}
+      {footer}
       <StaffLink to="/app/visits" className={cn(actionLink, 'self-start text-[13px]')}>
         {t('desk.allInClinic')}
         <ArrowRight size={14} aria-hidden="true" />

@@ -517,7 +517,8 @@
       "week": "Iki cyumweru",
       "month": "Uku kwezi",
       "custom": "Igihe uhisemo",
-      "all": "Kuva mu ntangiriro"
+      "all": "Kuva mu ntangiriro",
+      "year": "Uyu mwaka"
     },
     "sections": {
       "today": "Imibare",
@@ -575,7 +576,8 @@
       "week": "iki cyumweru",
       "month": "uku kwezi",
       "all": "kuva mu ntangiriro",
-      "custom": "muri iki gihe"
+      "custom": "muri iki gihe",
+      "year": "uyu mwaka"
     },
     "vsPrevious": "{{change}} ugereranyije n’igihe gishize",
     "queueNow": "Umurongo ubu · abarwayi kuri buri hantu bakorera",
@@ -668,7 +670,8 @@
     "oct": "Ukwakira",
     "custom": {
       "month": "Ukwezi",
-      "or": "cyangwa amatariki"
+      "or": "cyangwa amatariki",
+      "year": "Umwaka"
     },
     "longestShort": "uwa mbere amaze gutegereza {{time}}",
     "noneTaken": "nta we urakirwa uyu munsi",
@@ -9409,5 +9412,16 @@
     "documents_other": "inyandiko {{count}} zigiye kurangira",
     "filesToComplete_one": "dosiye {{count}} yo kuzuza",
     "filesToComplete_other": "dosiye {{count}} zo kuzuza"
+  },
+  "daily": {
+    "today": "Uyu munsi",
+    "earlier": "Mbere",
+    "unread": "bitarasomwa",
+    "earlierShort_one": "{{count}} yo mu minsi ishize",
+    "earlierShort_other": "{{count}} yo mu minsi ishize",
+    "earlierTitle_one": "Bo mu minsi ishize ({{count}})",
+    "earlierTitle_other": "Bo mu minsi ishize ({{count}})",
+    "earlierHint": "Baracyari hano kuva ku munsi wabanje: ntibabarwa mu by'uyu munsi. Murangize cyangwa mufunge kwivuza kwabo.",
+    "since": "kuva ku wa {{date}}"
   }
 }

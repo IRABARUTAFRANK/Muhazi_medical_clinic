@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Bell, BellRing, CheckCheck, Inbox, Megaphone, Send, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +6,12 @@ import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { controlClass, Field, labelClass } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
-import { useNotificationActions, useNotifications, type Notice } from '@/lib/api/notifications'
+import {
+  startsDayGroup,
+  useNotificationActions,
+  useNotifications,
+  type Notice,
+} from '@/lib/api/notifications'
 import { useAgo, useWording } from '@/lib/notice-wording'
 import { useOpenNotice } from '@/lib/notice-target'
 import { NoticeBookingAnswer } from '@/pages/home/booking-answer'
@@ -14,10 +19,12 @@ import { DB_ROLES, useDepartments, useEmployees, useLeadDepartments } from '@/li
 import { useConfirm } from '@/lib/confirm'
 import { headerBand } from '@/components/dash/kit-style'
 import { cn } from '@/lib/utils'
+import { EarlierUnreadMark, NoticeDayHeading } from './notice-day'
 
 /**
  * Bell in the staff top bar. Each person sees only what is for them (their name, role,
- * department, or everyone); the count shows the unread ones. Clicking a notice marks it read and
+ * department, or everyone); the count shows today's unread ones (0122: a notice of an earlier
+ * day left unread is listed under "Earlier" with a small mark). Clicking a notice marks it read and
  * opens the screen it is about. The manager can also write to everyone, a role, a department
  * (or its heads) or one person.
  */
@@ -33,6 +40,8 @@ export function NotificationBell({ user }: { user: StaffUser }) {
   const ago = useAgo()
   const word = useWording()
   const unread = data?.unread ?? 0
+  // every unread one (today's and older): what "Mark all read" marks
+  const unreadAll = unread + (data?.unreadEarlier ?? 0)
   const items = data?.items ?? []
   // the manager writes to anyone; a head or assistant head to their own department(s)
   const leads = useLeadDepartments(user)
@@ -112,7 +121,7 @@ export function NotificationBell({ user }: { user: StaffUser }) {
             >
               <X size={16} aria-hidden="true" />
             </button>
-            {unread > 0 && (
+            {unreadAll > 0 && (
               <button
                 type="button"
                 className="text-primary hover:bg-hover inline-flex h-8 items-center gap-1 rounded-md px-2 text-[13px] font-medium whitespace-nowrap"
@@ -121,7 +130,7 @@ export function NotificationBell({ user }: { user: StaffUser }) {
                 onClick={async () => {
                   if (
                     !(await confirm({
-                      title: t('confirm.notices.markAll.title', { count: unread }),
+                      title: t('confirm.notices.markAll.title', { count: unreadAll }),
                       body: t('confirm.notices.markAll.body'),
                       confirmLabel: t('confirm.notices.markAll.yes'),
                     }))
@@ -162,62 +171,67 @@ export function NotificationBell({ user }: { user: StaffUser }) {
             )}
             {items.map((n, k) => {
               const w = word(n)
+              // today's unread: dot and bold; an older unread one: a small "unread" mark
+              const fresh = !n.read && n.today
               return (
-                <div
-                  key={n.id}
-                  // a new (unread) notice slides in; read ones are simply there
-                  className={cn(
-                    'border-grid border-b last:border-b-0',
-                    !n.read && k < 8 && 'anim-slide-in',
-                  )}
-                  style={{ '--i': k } as CSSProperties}
-                >
-                  <button
-                    type="button"
-                    onClick={() => openNotice(n)}
-                    className="hover:bg-hover flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors duration-120"
+                <Fragment key={n.id}>
+                  {startsDayGroup(items, k) && <NoticeDayHeading today={n.today} />}
+                  <div
+                    // a new (unread) notice slides in; read ones are simply there
+                    className={cn(
+                      'border-grid border-b last:border-b-0',
+                      fresh && k < 8 && 'anim-slide-in',
+                    )}
+                    style={{ '--i': k } as CSSProperties}
                   >
-                    {/* unread: a dot (red when urgent), not a tinted row */}
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        'mt-1.5 size-1.5 flex-none rounded-full',
-                        n.read ? 'bg-transparent' : n.urgent ? 'bg-red-dot' : 'bg-primary',
-                      )}
-                    />
-                    <span className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => openNotice(n)}
+                      className="hover:bg-hover flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors duration-120"
+                    >
+                      {/* unread: a dot (red when urgent), not a tinted row */}
                       <span
-                        className={cn('block text-[14px] leading-snug', !n.read && 'font-semibold')}
-                      >
-                        {n.kind === 'message' && (
-                          <Megaphone
-                            size={13}
-                            aria-hidden="true"
-                            className="text-yellow mr-1 inline"
-                          />
+                        aria-hidden="true"
+                        className={cn(
+                          'mt-1.5 size-1.5 flex-none rounded-full',
+                          !fresh ? 'bg-transparent' : n.urgent ? 'bg-red-dot' : 'bg-primary',
                         )}
-                        {w.title}
-                      </span>
-                      {w.body && (
-                        <span className="text-ink-2 mt-0.5 block text-[13px] leading-snug">
-                          {w.body}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={cn('block text-[14px] leading-snug', fresh && 'font-semibold')}
+                        >
+                          {n.kind === 'message' && (
+                            <Megaphone
+                              size={13}
+                              aria-hidden="true"
+                              className="text-yellow mr-1 inline"
+                            />
+                          )}
+                          {w.title}
                         </span>
-                      )}
-                      <span className="text-ink-3 mt-1 block text-[12px]">
-                        {ago(n.at)}
-                        {n.kind === 'message' && n.sender
-                          ? ` · ${t('notify.from', { name: n.sender })}`
-                          : ''}
+                        {w.body && (
+                          <span className="text-ink-2 mt-0.5 block text-[13px] leading-snug">
+                            {w.body}
+                          </span>
+                        )}
+                        <span className="text-ink-3 mt-1 flex flex-wrap items-center gap-1.5 text-[12px]">
+                          {!n.read && !n.today && <EarlierUnreadMark />}
+                          {ago(n.at)}
+                          {n.kind === 'message' && n.sender
+                            ? ` · ${t('notify.from', { name: n.sender })}`
+                            : ''}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                  {/* a booking to accept is answered here (Accept / Another time / Decline) */}
-                  <NoticeBookingAnswer
-                    notice={n}
-                    className="px-3 pb-2.5 pl-7"
-                    onLeave={() => setOpen(false)}
-                  />
-                </div>
+                    </button>
+                    {/* a booking to accept is answered here (Accept / Another time / Decline) */}
+                    <NoticeBookingAnswer
+                      notice={n}
+                      className="px-3 pb-2.5 pl-7"
+                      onLeave={() => setOpen(false)}
+                    />
+                  </div>
+                </Fragment>
               )
             })}
           </div>

@@ -5,6 +5,7 @@ import {
   ArrowUp,
   BedDouble,
   Banknote,
+  CalendarClock,
   CircleCheck,
   ClipboardList,
   FlaskConical,
@@ -24,11 +25,13 @@ import {
   Users,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatNumber, formatRwf, type StaffUser } from '@mmc/shared'
+import { formatDate, formatNumber, formatRwf, type StaffUser } from '@mmc/shared'
 import { DashLink } from '@/components/dash/dash-link'
+import { StaffLink } from '@/components/staff/staff-link'
+import { buttonVariants } from '@/components/ui/button'
 import { Empty, Hint, IconChip, Panel } from '@/components/dash/kit'
 import { card, tileClass, type Tint } from '@/components/dash/kit-style'
-import type { MySummary } from '@/lib/api/my'
+import type { MyQueueItem, MySummary } from '@/lib/api/my'
 import { onePerPool, openItems } from '@/lib/api/visits'
 import { cn } from '@/lib/utils'
 import { MyQueuePanel } from './role-panels'
@@ -58,10 +61,15 @@ export function WaitingForMePanel({
   done?: number
 }) {
   const { t } = useTranslation()
-  const rows = summary ? onePerPool(openItems(summary.waiting)) : []
-  const c = summary?.counts ?? { sentToMe: 0, atMyDesks: 0, inProgress: 0 }
+  const all = summary ? onePerPool(openItems(summary.waiting)) : []
+  // today's patients in the list and the counts; those still here from an earlier day apart
+  // (0122: "From earlier days (n)")
+  const rows = all.filter((r) => !r.earlier)
+  const earlier = all.filter((r) => r.earlier)
+  const c = summary?.counts ?? { sentToMe: 0, atMyDesks: 0, inProgress: 0, earlier: 0 }
   return (
     <MyQueuePanel
+      footer={earlier.length > 0 ? <EarlierPatients rows={earlier} /> : undefined}
       i={i}
       title={title ?? t('my.waitingForMe')}
       rows={rows}
@@ -88,6 +96,46 @@ export function WaitingForMePanel({
         ) : undefined
       }
     />
+  )
+}
+
+/**
+ * "From earlier days (n)": the patients who joined my queue on an earlier day and are still
+ * open. Not in today's counts, never dropped: each opens its visit (to finish or close it).
+ */
+function EarlierPatients({ rows }: { rows: MyQueueItem[] }) {
+  const { t } = useTranslation()
+  return (
+    <details className="border-yellow-dot/40 bg-yellow-bg/50 rounded-md border px-3 py-2">
+      <summary className="text-yellow flex cursor-pointer items-center gap-1.5 text-[14px] font-semibold">
+        <CalendarClock size={14} aria-hidden="true" />
+        {t('daily.earlierTitle', { count: rows.length })}
+      </summary>
+      <p className="text-ink-2 m-0 mt-1 text-[13px]">{t('daily.earlierHint')}</p>
+      <div className="mt-1 flex flex-col">
+        {rows.map((q) => (
+          <div
+            key={q.queueId ?? q.ticket}
+            className="border-grid flex min-h-9 flex-wrap items-center gap-2 border-b py-1 text-[14px] last:border-b-0"
+          >
+            <span className="text-ink-2 font-semibold tabular-nums">{q.ticket}</span>
+            <span className="min-w-[120px] flex-1 truncate font-medium">{q.name}</span>
+            <span className="text-ink-3 text-[13px]">
+              {t('daily.since', { date: q.queuedAt ? formatDate(new Date(q.queuedAt)) : '' })}
+            </span>
+            {q.encounterId && (
+              <StaffLink
+                to="/app/visit"
+                search={{ encounter: q.encounterId }}
+                className={buttonVariants({ size: 'sm' })}
+              >
+                {t('common.open')}
+              </StaffLink>
+            )}
+          </div>
+        ))}
+      </div>
+    </details>
   )
 }
 

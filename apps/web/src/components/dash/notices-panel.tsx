@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { Fragment, type CSSProperties } from 'react'
 import {
   ArrowRightLeft,
   Bell,
@@ -20,11 +20,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
-import { useNotificationActions, useNotifications } from '@/lib/api/notifications'
+import { startsDayGroup, useNotificationActions, useNotifications } from '@/lib/api/notifications'
 import { useConfirm } from '@/lib/confirm'
 import { useAgo, useWording } from '@/lib/notice-wording'
 import { useOpenNotice } from '@/lib/notice-target'
 import { cn } from '@/lib/utils'
+import { EarlierUnreadMark, NoticeDayHeading } from '@/components/staff/notice-day'
 import { Empty, IconChip, Panel } from './kit'
 import type { Tint } from './kit-style'
 
@@ -71,10 +72,11 @@ export function NoticesPanel({
   const confirm = useConfirm()
   const ago = useAgo()
   const word = useWording()
-  const items = [...(data?.items ?? [])]
-    .sort((a, b) => Number(a.read) - Number(b.read))
-    .slice(0, limit)
+  // today's first (unread first), then the earlier ones (0122: grouped "Today" / "Earlier")
+  const rank = (n: { read: boolean; today: boolean }) => (n.today ? 0 : 2) + (n.read ? 1 : 0)
+  const items = [...(data?.items ?? [])].sort((a, b) => rank(a) - rank(b)).slice(0, limit)
   const unread = data?.unread ?? 0
+  const unreadAll = unread + (data?.unreadEarlier ?? 0)
   // the exact place a notice is about (a visit, a booking on Home…), marked read on the way
   const { open } = useOpenNotice()
   return (
@@ -92,44 +94,52 @@ export function NoticesPanel({
         <div className="flex flex-col">
           {items.map((n, k) => {
             const w = word(n)
+            const fresh = !n.read && n.today
             const look = n.urgent
               ? { icon: Siren, tint: 'coral' as Tint }
               : (LOOK[n.kind] ?? LOOK.message!)
             return (
-              <button
-                key={n.id}
-                type="button"
-                onClick={() => open(n)}
-                // a new (unread) notice slides in; read ones are simply there
-                className={cn(
-                  'border-grid hover:bg-hover flex w-full items-start gap-3 border-b py-2 text-left transition-colors duration-120 last:border-b-0',
-                  !n.read && 'anim-slide-in',
+              <Fragment key={n.id}>
+                {startsDayGroup(items, k) && (
+                  <NoticeDayHeading today={n.today} className="-mx-1 rounded px-2" />
                 )}
-                style={{ '--i': k } as CSSProperties}
-              >
-                <IconChip icon={look.icon} tint={look.tint} size="sm" />
-                <span className="min-w-0 flex-1">
-                  <span
-                    className={cn(
-                      'flex items-center gap-1.5 text-[14px] leading-snug',
-                      !n.read && 'font-semibold',
-                    )}
-                  >
-                    {/* unread: a teal dot, not a tinted row */}
-                    {!n.read && (
-                      <span
-                        aria-hidden="true"
-                        className="bg-primary size-1.5 flex-none rounded-full"
-                      />
-                    )}
-                    <span className="min-w-0">{w.title}</span>
-                  </span>
-                  {w.body && (
-                    <span className="text-ink-2 block truncate text-[13px]">{w.body}</span>
+                <button
+                  type="button"
+                  onClick={() => open(n)}
+                  // a new (unread) notice slides in; read ones are simply there
+                  className={cn(
+                    'border-grid hover:bg-hover flex w-full items-start gap-3 border-b py-2 text-left transition-colors duration-120 last:border-b-0',
+                    fresh && 'anim-slide-in',
                   )}
-                  <span className="text-ink-3 block text-[12px]">{ago(n.at)}</span>
-                </span>
-              </button>
+                  style={{ '--i': k } as CSSProperties}
+                >
+                  <IconChip icon={look.icon} tint={look.tint} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        'flex items-center gap-1.5 text-[14px] leading-snug',
+                        fresh && 'font-semibold',
+                      )}
+                    >
+                      {/* today's unread: a teal dot, not a tinted row */}
+                      {fresh && (
+                        <span
+                          aria-hidden="true"
+                          className="bg-primary size-1.5 flex-none rounded-full"
+                        />
+                      )}
+                      <span className="min-w-0">{w.title}</span>
+                    </span>
+                    {w.body && (
+                      <span className="text-ink-2 block truncate text-[13px]">{w.body}</span>
+                    )}
+                    <span className="text-ink-3 flex flex-wrap items-center gap-1.5 text-[12px]">
+                      {!n.read && !n.today && <EarlierUnreadMark />}
+                      {ago(n.at)}
+                    </span>
+                  </span>
+                </button>
+              </Fragment>
             )
           })}
         </div>
@@ -141,14 +151,14 @@ export function NoticesPanel({
         >
           {t('notices.manage')} →
         </StaffLink>
-        {unread > 0 && (
+        {unreadAll > 0 && (
           <Button
             size="sm"
             variant="ghost"
             onClick={async () => {
               if (
                 !(await confirm({
-                  title: t('confirm.notices.markAll.title', { count: unread }),
+                  title: t('confirm.notices.markAll.title', { count: unreadAll }),
                   body: t('confirm.notices.markAll.body'),
                   confirmLabel: t('confirm.notices.markAll.yes'),
                 }))

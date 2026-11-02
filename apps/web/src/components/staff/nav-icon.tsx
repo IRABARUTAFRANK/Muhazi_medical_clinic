@@ -28,7 +28,14 @@ export function NavIcon({
     <span className="relative inline-flex">
       <Icon name={name} size={size} />
       {id === 'notifications' && <UnreadBadge ring={ring} />}
-      {id !== 'notifications' && count && (
+      {/* only some from earlier days (0122): a small grey dot, no number on the icon */}
+      {id !== 'notifications' && count && count.n === 0 && (
+        <span
+          aria-hidden="true"
+          className={cn('bg-ink-3 absolute -top-1 -right-1 size-2 rounded-full ring-2', ring)}
+        />
+      )}
+      {id !== 'notifications' && count && count.n > 0 && (
         <span
           aria-hidden="true"
           className={cn(
@@ -44,17 +51,32 @@ export function NavIcon({
   )
 }
 
-/** The count beside the label in the PC sidebar: a pill at the end of the row. */
+/** The count beside the label in the PC sidebar: a pill at the end of the row (today's), and
+ *  a small dashed grey one for what is still open from an earlier day (0122). */
 export function CountPill({ count }: { count: NavCount }) {
+  const { t } = useTranslation()
   return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        'ml-auto inline-flex min-w-5 flex-none items-center justify-center rounded-full px-1.5 text-[12px] leading-5 font-semibold tabular-nums',
-        count.urgent ? 'bg-red-dot text-white' : 'bg-card text-ink-2 ring-border ring-1',
+    <span className="ml-auto inline-flex flex-none items-center gap-1">
+      {!!count.earlier && (
+        <span
+          aria-hidden="true"
+          title={t('daily.earlierShort', { count: count.earlier })}
+          className="text-ink-3 border-ink-3/60 inline-flex min-w-5 items-center justify-center rounded-full border border-dashed px-1 text-[11px] leading-4 font-semibold tabular-nums"
+        >
+          +{countText(count.earlier)}
+        </span>
       )}
-    >
-      {countText(count.n)}
+      {count.n > 0 && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[12px] leading-5 font-semibold tabular-nums',
+            count.urgent ? 'bg-red-dot text-white' : 'bg-card text-ink-2 ring-border ring-1',
+          )}
+        >
+          {countText(count.n)}
+        </span>
+      )}
     </span>
   )
 }

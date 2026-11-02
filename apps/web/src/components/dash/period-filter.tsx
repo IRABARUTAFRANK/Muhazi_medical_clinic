@@ -2,11 +2,12 @@ import { useTranslation } from 'react-i18next'
 import { isoDate } from '@mmc/shared'
 import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
-import type { DashboardRange } from '@/lib/api/dashboard'
+import { useDataYears, type DashboardRange } from '@/lib/api/dashboard'
+import { buttonVariants } from '@/components/ui/button'
 import type { Period } from '@/lib/period'
 import { cn } from '@/lib/utils'
 
-/** The five choices, for a toolbar. */
+/** The six choices, for a toolbar. */
 export function PeriodSeg({ period, className }: { period: Period; className?: string }) {
   const { t } = useTranslation()
   return (
@@ -19,6 +20,7 @@ export function PeriodSeg({ period, className }: { period: Period; className?: s
         { value: 'today', label: t('dashboard.ranges.today') },
         { value: 'week', label: t('dashboard.ranges.week') },
         { value: 'month', label: t('dashboard.ranges.month') },
+        { value: 'year', label: t('dashboard.ranges.year') },
         { value: 'all', label: t('dashboard.ranges.all') },
         { value: 'custom', label: t('dashboard.ranges.custom') },
       ]}
@@ -26,9 +28,11 @@ export function PeriodSeg({ period, className }: { period: Period; className?: s
   )
 }
 
-/** "Custom": a whole month, or two dates. Shown only while Custom is chosen. */
+/** "Custom": a whole year (quick buttons: the years that have data), a whole month, or two
+ *  dates. Shown only while Custom is chosen. */
 export function PeriodCustom({ period, className }: { period: Period; className?: string }) {
   const { t } = useTranslation()
+  const years = useDataYears()
   if (period.range !== 'custom') return null
   const { custom, setCustom } = period
   const today = isoDate(new Date())
@@ -41,8 +45,38 @@ export function PeriodCustom({ period, className }: { period: Period; className?
       to: isoDate(last > new Date() ? new Date() : last),
     })
   }
+  // a whole year: 1 January to 31 December (this year: up to today)
+  const pickYear = (y: number) =>
+    setCustom({
+      from: `${y}-01-01`,
+      to: `${y}-12-31` > today ? today : `${y}-12-31`,
+    })
   return (
     <div className={cn('flex flex-wrap items-end gap-3', className)}>
+      <div role="group" aria-label={t('dashboard.custom.year')} className="flex flex-col gap-1">
+        <span className="text-ink-2 text-[13px] font-medium">{t('dashboard.custom.year')}</span>
+        <span className="flex flex-wrap gap-1.5">
+          {years.map((y) => {
+            const on =
+              custom.from === `${y}-01-01` &&
+              (custom.to === `${y}-12-31` || (custom.to === today && today.startsWith(`${y}-`)))
+            return (
+              <button
+                key={y}
+                type="button"
+                aria-pressed={on}
+                onClick={() => pickYear(y)}
+                className={cn(
+                  buttonVariants({ size: 'sm', variant: on ? 'primary' : 'default' }),
+                  'h-10 tabular-nums',
+                )}
+              >
+                {y}
+              </button>
+            )
+          })}
+        </span>
+      </div>
       <Field
         label={t('dashboard.custom.month')}
         type="month"

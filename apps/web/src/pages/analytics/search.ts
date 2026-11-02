@@ -4,7 +4,7 @@ import {
   type ActivityKind,
   type AnalyticsView,
 } from '@/lib/api/analytics'
-import type { DashboardRange } from '@/lib/api/dashboard'
+import { DASHBOARD_RANGES, type DashboardRange } from '@/lib/api/dashboard'
 
 /**
  * The address of the Analytics page: which view is open, the period, the department, and the
@@ -34,7 +34,7 @@ export interface AnalyticsSearch {
   group?: string
 }
 
-const RANGES: readonly DashboardRange[] = ['today', 'week', 'month', 'all', 'custom']
+const RANGES = DASHBOARD_RANGES
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const ID = /^[\w-]{1,64}$/
 const BY = /^[A-Za-z]{1,24}$/

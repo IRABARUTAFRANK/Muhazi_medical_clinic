@@ -119,7 +119,7 @@ function RoleHome({ user, mode }: HomePageProps) {
       ? {
           ...myGot,
           waiting: [],
-          counts: { sentToMe: 0, atMyDesks: 0, inProgress: 0 },
+          counts: { sentToMe: 0, atMyDesks: 0, inProgress: 0, earlier: 0 },
           work: {},
           workPrev: {},
         }

@@ -27,6 +27,7 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
   const { data: counts } = useNavCounts()
   const waitingInside = rest.reduce((sum, n) => {
     const c = navCountOf(n, counts)
+    // today's only (0122): what is left from earlier days is shown on the entry itself
     return c?.urgent ? sum + c.n : sum
   }, 0)
   const { data: notices } = useNotifications()

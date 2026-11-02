@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { Fragment, useState, type CSSProperties } from 'react'
 import {
   ArrowRightLeft,
   Bell,
@@ -34,6 +34,7 @@ import { Composer } from '@/components/staff/notification-bell'
 import { useLeadDepartments } from '@/lib/api/staff'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
+  startsDayGroup,
   useNotificationActions,
   useNotifications,
   useSentNotifications,
@@ -46,6 +47,7 @@ import { useOpenNotice } from '@/lib/notice-target'
 import { NoticeBookingAnswer } from '@/pages/home/booking-answer'
 import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
+import { EarlierUnreadMark, NoticeDayHeading } from '@/components/staff/notice-day'
 
 type Filter = 'all' | 'unread' | 'urgent' | 'patients' | 'messages'
 
@@ -100,7 +102,9 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
   const panel = useSidePanelState<Notice>((n) => n.id)
   const items = data?.items ?? []
   const inPanel = panel.item ? (items.find((x) => x.id === panel.item!.id) ?? panel.item) : null
+  // the red count: today's unread (0122); "Unread" and "Mark all read" take the older ones too
   const unread = data?.unread ?? 0
+  const unreadAll = unread + (data?.unreadEarlier ?? 0)
 
   const filtered = items.filter((n) =>
     filter === 'unread'
@@ -136,7 +140,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
   const notice = useOpenNotice()
   const counts: Record<Filter, number> = {
     all: items.length,
-    unread,
+    unread: unreadAll,
     urgent: items.filter((n) => n.urgent).length,
     patients: items.filter((n) => n.kind !== 'message').length,
     messages: items.filter((n) => n.kind === 'message').length,
@@ -154,11 +158,11 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
         >
           <Button
             variant="tint-mint"
-            disabled={unread === 0 || actions.markRead.isPending}
+            disabled={unreadAll === 0 || actions.markRead.isPending}
             onClick={() =>
               void ask(
                 {
-                  title: t('confirm.notices.markAll.title', { count: unread }),
+                  title: t('confirm.notices.markAll.title', { count: unreadAll }),
                   body: t('confirm.notices.markAll.body'),
                   confirmLabel: t('confirm.notices.markAll.yes'),
                 },
@@ -336,100 +340,107 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                 {paged.slice.map((n, i) => {
                   const w = word(n)
                   const look = lookOf(n)
+                  // today's unread: tinted, bold, a dot; an older unread one: a small mark
+                  const fresh = !n.read && n.today
                   return (
-                    <div
-                      key={n.id}
-                      className={cn(
-                        'border-grid anim-enter flex flex-wrap items-start gap-3 border-b py-3 last:border-b-0',
-                        !n.read && 'bg-primary-tint/30 -mx-2 rounded-md px-2',
-                        panel.isOpen(n) && 'bg-primary-tint/50 -mx-2 rounded-md px-2',
+                    <Fragment key={n.id}>
+                      {startsDayGroup(paged.slice, i) && (
+                        <NoticeDayHeading today={n.today} className="-mx-2 rounded-md" />
                       )}
-                      style={{ '--i': Math.min(i, 12) } as CSSProperties}
-                    >
-                      {/* on a touch screen the box sits in a 44 px target (negative margins keep the row) */}
-                      <label className="coarse:-mx-3.5 coarse:-mt-1.5 coarse:-mb-3.5 coarse:size-[var(--tap)] mt-2 flex flex-none items-center justify-center">
-                        <input
-                          type="checkbox"
-                          aria-label={w.title}
-                          className="accent-primary size-4 flex-none"
-                          checked={selected.includes(n.id)}
-                          onChange={(e) =>
-                            setSelected((s) =>
-                              e.target.checked ? [...s, n.id] : s.filter((x) => x !== n.id),
-                            )
-                          }
-                        />
-                      </label>
-                      <IconChip icon={look.icon} tint={look.tint} />
-                      <span className="min-w-0 flex-[1_1_200px]">
-                        {/* the title opens the notice in the side panel */}
-                        <button
-                          type="button"
-                          onClick={() => panel.show(n)}
-                          className={cn(
-                            'hover:text-primary flex items-center gap-2 text-left text-[14px] outline-none hover:underline focus-visible:underline',
-                            !n.read ? 'font-semibold' : 'font-medium',
+                      <div
+                        className={cn(
+                          'border-grid anim-enter flex flex-wrap items-start gap-3 border-b py-3 last:border-b-0',
+                          fresh && 'bg-primary-tint/30 -mx-2 rounded-md px-2',
+                          panel.isOpen(n) && 'bg-primary-tint/50 -mx-2 rounded-md px-2',
+                        )}
+                        style={{ '--i': Math.min(i, 12) } as CSSProperties}
+                      >
+                        {/* on a touch screen the box sits in a 44 px target (negative margins keep the row) */}
+                        <label className="coarse:-mx-3.5 coarse:-mt-1.5 coarse:-mb-3.5 coarse:size-[var(--tap)] mt-2 flex flex-none items-center justify-center">
+                          <input
+                            type="checkbox"
+                            aria-label={w.title}
+                            className="accent-primary size-4 flex-none"
+                            checked={selected.includes(n.id)}
+                            onChange={(e) =>
+                              setSelected((s) =>
+                                e.target.checked ? [...s, n.id] : s.filter((x) => x !== n.id),
+                              )
+                            }
+                          />
+                        </label>
+                        <IconChip icon={look.icon} tint={look.tint} />
+                        <span className="min-w-0 flex-[1_1_200px]">
+                          {/* the title opens the notice in the side panel */}
+                          <button
+                            type="button"
+                            onClick={() => panel.show(n)}
+                            className={cn(
+                              'hover:text-primary flex items-center gap-2 text-left text-[14px] outline-none hover:underline focus-visible:underline',
+                              fresh ? 'font-semibold' : 'font-medium',
+                            )}
+                          >
+                            {fresh && <span className="bg-primary size-2 flex-none rounded-full" />}
+                            {w.title}
+                            {!n.read && !n.today && <EarlierUnreadMark />}
+                          </button>
+                          {w.body && (
+                            <span className="text-ink-2 block text-[14px] leading-snug">
+                              {w.body}
+                            </span>
                           )}
-                        >
-                          {!n.read && <span className="bg-primary size-2 flex-none rounded-full" />}
-                          {w.title}
-                        </button>
-                        {w.body && (
-                          <span className="text-ink-2 block text-[14px] leading-snug">
-                            {w.body}
+                          <span className="text-ink-3 mt-1 block text-[13px]">
+                            {ago(n.at)}
+                            {n.sender ? ` · ${t('notify.from', { name: n.sender })}` : ''}
                           </span>
-                        )}
-                        <span className="text-ink-3 mt-1 block text-[13px]">
-                          {ago(n.at)}
-                          {n.sender ? ` · ${t('notify.from', { name: n.sender })}` : ''}
                         </span>
-                      </span>
-                      <span className="ml-auto flex flex-none flex-wrap justify-end gap-1 pl-7 sm:pl-0">
-                        {notice.target(n) && (
-                          <Button size="sm" variant="info" onClick={() => notice.open(n)}>
-                            {t('common.open')}
-                          </Button>
-                        )}
-                        {!n.read && (
+                        <span className="ml-auto flex flex-none flex-wrap justify-end gap-1 pl-7 sm:pl-0">
+                          {notice.target(n) && (
+                            <Button size="sm" variant="info" onClick={() => notice.open(n)}>
+                              {t('common.open')}
+                            </Button>
+                          )}
+                          {!n.read && (
+                            <Button
+                              size="sm"
+                              variant="tint-mint"
+                              aria-label={t('notices.markRead')}
+                              title={t('notices.markRead')}
+                              onClick={() =>
+                                void ask(
+                                  {
+                                    title: t('confirm.notices.markOne.title', { title: w.title }),
+                                    confirmLabel: t('confirm.notices.markAll.yes'),
+                                  },
+                                  () => actions.markRead.mutateAsync([n.id]),
+                                )
+                              }
+                            >
+                              <CheckCheck size={14} aria-hidden="true" />
+                            </Button>
+                          )}
                           <Button
                             size="sm"
-                            variant="tint-mint"
-                            aria-label={t('notices.markRead')}
-                            title={t('notices.markRead')}
+                            variant="tint-coral"
+                            aria-label={t('notices.remove')}
+                            title={t('notices.remove')}
                             onClick={() =>
                               void ask(
                                 {
-                                  title: t('confirm.notices.markOne.title', { title: w.title }),
-                                  confirmLabel: t('confirm.notices.markAll.yes'),
+                                  title: t('confirm.notices.hideOne.title', { title: w.title }),
+                                  body: t('confirm.notices.hide.body'),
+                                  confirmLabel: t('confirm.notices.hide.yes'),
+                                  tone: 'danger',
                                 },
-                                () => actions.markRead.mutateAsync([n.id]),
+                                () => actions.hide.mutateAsync([n.id]),
                               )
                             }
                           >
-                            <CheckCheck size={14} aria-hidden="true" />
+                            <EyeOff size={14} aria-hidden="true" />
                           </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="tint-coral"
-                          aria-label={t('notices.remove')}
-                          title={t('notices.remove')}
-                          onClick={() =>
-                            void ask(
-                              {
-                                title: t('confirm.notices.hideOne.title', { title: w.title }),
-                                body: t('confirm.notices.hide.body'),
-                                confirmLabel: t('confirm.notices.hide.yes'),
-                                tone: 'danger',
-                              },
-                              () => actions.hide.mutateAsync([n.id]),
-                            )
-                          }
-                        >
-                          <EyeOff size={14} aria-hidden="true" />
-                        </Button>
-                      </span>
-                    </div>
+                        </span>
+                      </div>
+                    </Fragment>
                   )
                 })}
               </div>

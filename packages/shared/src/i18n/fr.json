@@ -510,7 +510,8 @@
       "week": "Cette semaine",
       "month": "Ce mois",
       "custom": "Personnalisé",
-      "all": "Depuis le début"
+      "all": "Depuis le début",
+      "year": "Cette année"
     },
     "rangeLabels": {
       "week": "{{from}} – {{to}}",
@@ -547,7 +548,8 @@
       "week": "cette semaine",
       "month": "ce mois",
       "all": "depuis le début",
-      "custom": "sur cette période"
+      "custom": "sur cette période",
+      "year": "cette année"
     },
     "vsPrevious": "{{change}} vs période préc.",
     "queueNow": "File actuelle · patients par poste",
@@ -659,7 +661,8 @@
     "oct": "oct.",
     "custom": {
       "month": "Un mois",
-      "or": "ou des dates"
+      "or": "ou des dates",
+      "year": "Une année"
     },
     "longestShort": "le premier attend depuis {{time}}",
     "noneTaken": "personne encore pris en charge aujourd’hui",
@@ -9400,5 +9403,16 @@
     "documents_other": "{{count}} documents qui expirent",
     "filesToComplete_one": "{{count}} dossier à compléter",
     "filesToComplete_other": "{{count}} dossiers à compléter"
+  },
+  "daily": {
+    "today": "Aujourd'hui",
+    "earlier": "Plus tôt",
+    "unread": "non lu",
+    "earlierShort_one": "{{count}} des jours précédents",
+    "earlierShort_other": "{{count}} des jours précédents",
+    "earlierTitle_one": "Des jours précédents ({{count}})",
+    "earlierTitle_other": "Des jours précédents ({{count}})",
+    "earlierHint": "Encore là depuis un jour précédent : hors du compte du jour. Terminez ou clôturez leurs visites.",
+    "since": "depuis le {{date}}"
   }
 }

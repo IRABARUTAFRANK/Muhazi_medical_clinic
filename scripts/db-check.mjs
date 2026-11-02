@@ -8659,11 +8659,11 @@ await step('0086: waiting now: joined today; older open entries are forgotten', 
     (await call86(staff.manager, `select wait_time_stats() as j`)).desks.find(
       (x) => x.station === 'consultation',
     )
+  // midnight-safe (0122): the entry of today is never before today's midnight (Kigali); the old
+  // one is yesterday noon; the dashboard is asked for the clinic's today, not the server's date
+  const KDAY = "(now() at time zone 'Africa/Kigali')::date"
   const before = await today()
-  const dashBefore = await call86(
-    staff.manager,
-    `select dashboard_summary(current_date, current_date) as j`,
-  )
+  const dashBefore = await call86(staff.manager, `select dashboard_summary(${KDAY}, ${KDAY}) as j`)
   await asAdmin()
   const now = (
     await one(`insert into patient (surname, given_names) values ('Analytics', 'Now') returning id`)
@@ -8674,20 +8674,27 @@ await step('0086: waiting now: joined today; older open entries are forgotten', 
   const eNow = (await one(`insert into encounter (patient_id) values ($1) returning id`, [now])).id
   const eOld = (
     await one(
-      `insert into encounter (patient_id, arrived_at) values ($1, now() - interval '1 day') returning id`,
+      `insert into encounter (patient_id, arrived_at) values ($1, kigali_midnight() - interval '12 hours') returning id`,
       [old],
     )
   ).id
   await db.query(
     `insert into queue_entry (encounter_id, station, ticket_no, created_at) values
-     ($1, 'consultation', 'N86', now() - interval '20 minutes'), ($2, 'consultation', 'O86', now() - interval '1 day')`,
+     ($1, 'consultation', 'N86', greatest(kigali_midnight(), now() - interval '20 minutes')),
+     ($2, 'consultation', 'O86', kigali_midnight() - interval '12 hours')`,
     [eNow, eOld],
   )
-  const after = await today()
-  const dash = await call86(
-    staff.manager,
-    `select dashboard_summary(current_date, current_date) as j`,
+  // how long our entry of today has waited, in whole minutes (20, or less just after midnight)
+  const waited = Number(
+    (
+      await one(
+        'select floor(extract(epoch from now() - created_at) / 60)::int as m from queue_entry where encounter_id = $1',
+        [eNow],
+      )
+    ).m,
   )
+  const after = await today()
+  const dash = await call86(staff.manager, `select dashboard_summary(${KDAY}, ${KDAY}) as j`)
   const tile = dash.waitByStation.find((x) => x.station === 'consultation')
   await db.query(`update queue_entry set finished_at = now() where encounter_id in ($1, $2)`, [
     eNow,
@@ -8702,7 +8709,7 @@ await step('0086: waiting now: joined today; older open entries are forgotten', 
   if (
     after.waitingNow !== before.waitingNow + 1 ||
     after.forgotten !== before.forgotten + 1 ||
-    after.longestNow < 20 ||
+    after.longestNow < waited ||
     dash.tiles.waitingNow !== dashBefore.tiles.waitingNow + 1 ||
     dash.tiles.forgottenNow !== dashBefore.tiles.forgottenNow + 1 ||
     'avgWaitMin' in dash.tiles ||
@@ -18739,6 +18746,141 @@ await step('0121: not signed in: refused', async () => {
   await asAdmin()
   if (!refused) throw new Error('anon read the counts')
   return 'refused'
+})
+
+// ---------------------------------------------------------------- 0122: the counts are for the day
+await step('0122: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(await readFile(path.join(migrationsDir, '20270102090000_daily_counts.sql'), 'utf8'))
+  return 'no error'
+})
+// Midnight-safe: today = today noon (Kigali), or now when it is not noon yet; yesterday = yesterday
+// noon. Never "20 minutes ago", which is yesterday between 00:00 and 00:20.
+const TODAY122 = `least(now(), kigali_midnight() + interval '12 hours')`
+const YESTERDAY122 = `kigali_midnight() - interval '12 hours'`
+const mk122 = async (username, full_name, role, extra = {}) =>
+  (
+    await one(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [
+      `${username}@staff.muhaziclinic.rw`,
+      JSON.stringify({ username, full_name, role, ...extra }),
+    ])
+  ).id
+const call122 = async (who, sql) => {
+  await as(who)
+  const j = (await one(`${sql} as j`)).j
+  await asAdmin()
+  return j
+}
+await step(
+  '0122: a notice from yesterday is not in the red count but is still listed',
+  async () => {
+    await asAdmin()
+    // a person no role-wide notice reaches much (a cashier), and the whole list (200)
+    const reader = await mk122('day122.r', 'Reader 122', 'cashier')
+    const before = await call122(reader, `select my_notifications(200)`)
+    const t = (
+      await one(
+        `insert into notification (kind, title, body, recipient_user, created_at)
+       values ('message', 'Today 122', 'x', $1, ${TODAY122}) returning id`,
+        [reader],
+      )
+    ).id
+    const y = (
+      await one(
+        `insert into notification (kind, title, body, recipient_user, created_at)
+       values ('message', 'Yesterday 122', 'x', $1, ${YESTERDAY122}) returning id`,
+        [reader],
+      )
+    ).id
+    const after = await call122(reader, `select my_notifications(200)`)
+    const it = (id) => after.items.find((n) => n.id === id)
+    if (after.unread !== before.unread + 1)
+      throw new Error(`unread ${before.unread} → ${after.unread}`)
+    if (after.unreadEarlier !== (before.unreadEarlier ?? 0) + 1)
+      throw new Error(`unreadEarlier ${before.unreadEarlier} → ${after.unreadEarlier}`)
+    if (!it(t) || it(t).today !== true || it(t).read) throw new Error(JSON.stringify(it(t)))
+    if (!it(y) || it(y).today !== false || it(y).read) throw new Error(JSON.stringify(it(y)))
+    // read the old one: the red count does not move, the earlier count goes down
+    await as(reader)
+    await db.query(`select mark_notifications_read($1::uuid[])`, [[y]])
+    const read = await call122(reader, `select my_notifications(200)`)
+    if (read.unread !== after.unread || read.unreadEarlier !== after.unreadEarlier - 1)
+      throw new Error(JSON.stringify({ unread: read.unread, earlier: read.unreadEarlier }))
+    return `red count ${before.unread} → ${after.unread} (today's only); earlier unread ${after.unreadEarlier}; both listed`
+  },
+)
+await step(
+  '0122: a queue entry from yesterday of an open visit is apart ("earlier"); today’s is counted',
+  async () => {
+    await asAdmin()
+    const doc = await mk122('day122.d', 'Dr Day 122', 'doctor', { station: 'Consultation 8' })
+    const mgr = await mk122('day122.m', 'Manager 122', 'manager', { dashboard: 'manager' })
+    const n0 = await call122(doc, `select nav_counts()`)
+    const s0 = await call122(doc, `select my_summary()`)
+    const m0 = await call122(mgr, `select nav_counts()`)
+    const pt = async (g) =>
+      (
+        await one(`insert into patient (surname, given_names) values ('Daily', $1) returning id`, [
+          g,
+        ])
+      ).id
+    const pToday = await pt('Today122')
+    const pOld = await pt('Old122')
+    const eToday = (
+      await one(
+        `insert into encounter (patient_id, arrived_at) values ($1, ${TODAY122}) returning id`,
+        [pToday],
+      )
+    ).id
+    const eOld = (
+      await one(
+        `insert into encounter (patient_id, arrived_at) values ($1, ${YESTERDAY122}) returning id`,
+        [pOld],
+      )
+    ).id
+    await db.query(
+      `insert into queue_entry (encounter_id, station, ticket_no, assigned_to, created_at) values
+       ($1, 'consultation', 'T122', $3, ${TODAY122}), ($2, 'consultation', 'Y122', $3, ${YESTERDAY122})`,
+      [eToday, eOld, doc],
+    )
+    const n1 = await call122(doc, `select nav_counts()`)
+    const s1 = await call122(doc, `select my_summary()`)
+    const m1 = await call122(mgr, `select nav_counts()`)
+    const row = (g) => s1.waiting.find((r) => r.given_names === g)
+    const firstOld = s1.waiting.findIndex((r) => r.earlier)
+    // tidy up: the two visits end
+    await db.query(`update queue_entry set finished_at = now() where encounter_id in ($1, $2)`, [
+      eToday,
+      eOld,
+    ])
+    await db.query(
+      `update encounter set status = 'closed', closed_at = now() where id in ($1, $2)`,
+      [eToday, eOld],
+    )
+    const d = (a, b, k) => (b[k] ?? 0) - (a[k] ?? 0)
+    if (d(n0, n1, 'queue') !== 1 || d(n0, n1, 'queueEarlier') !== 1)
+      throw new Error(`menu ${JSON.stringify(n0)} → ${JSON.stringify(n1)}`)
+    if (d(n0, n1, 'inClinic') !== 1 || d(n0, n1, 'inClinicEarlier') !== 1)
+      throw new Error(`menu ${JSON.stringify(n0)} → ${JSON.stringify(n1)}`)
+    if (Object.values(n1).some((x) => typeof x !== 'number')) throw new Error(JSON.stringify(n1))
+    if (d(s0.counts, s1.counts, 'sentToMe') !== 1 || d(s0.counts, s1.counts, 'earlier') !== 1)
+      throw new Error(`home ${JSON.stringify(s0.counts)} → ${JSON.stringify(s1.counts)}`)
+    if (!row('Today122') || row('Today122').earlier !== false) throw new Error('today row')
+    if (!row('Old122') || row('Old122').earlier !== true) throw new Error('old row')
+    // the rows of an earlier day come after today's
+    if (s1.waiting.slice(firstOld).some((r) => !r.earlier)) throw new Error('order')
+    if (d(m0, m1, 'inClinic') !== 1 || d(m0, m1, 'inClinicEarlier') !== 1)
+      throw new Error(`manager ${JSON.stringify(m0)} → ${JSON.stringify(m1)}`)
+    return `doctor: queue +${d(n0, n1, 'queue')} today, +${d(n0, n1, 'queueEarlier')} earlier; home sentToMe +1, earlier +1; manager in clinic +1 / earlier +1`
+  },
+)
+await step('0122: no "earlier" key when nothing is left from an earlier day', async () => {
+  await asAdmin()
+  const doc = await mk122('day122.d2', 'Dr Fresh 122', 'doctor', { station: 'Consultation 9' })
+  const n = await call122(doc, `select nav_counts()`)
+  const zero = Object.entries(n).filter(([k, v]) => k.endsWith('Earlier') && v === 0)
+  if (zero.length) throw new Error(JSON.stringify(n))
+  return JSON.stringify(n)
 })
 
 finish()

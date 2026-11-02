@@ -26,7 +26,18 @@ import { apiError } from './errors'
  * and net, and revenuePeriod follows the chosen period. Older databases (before 0086) still answer
  * the old shape: the mapping below fills the new fields so the screens need no second branch.
  */
-export type DashboardRange = 'today' | 'week' | 'month' | 'all' | 'custom'
+export type DashboardRange = 'today' | 'week' | 'month' | 'year' | 'all' | 'custom'
+/** Every period, in the selector's order (an address or a saved preset is checked against it). */
+export const DASHBOARD_RANGES: readonly DashboardRange[] = [
+  'today',
+  'week',
+  'month',
+  'year',
+  'all',
+  'custom',
+]
+export const isDashboardRange = (v: unknown): v is DashboardRange =>
+  (DASHBOARD_RANGES as readonly unknown[]).includes(v)
 /** A chosen period (custom range): ISO dates, both included. */
 export interface CustomRange {
   from: string
@@ -142,7 +153,9 @@ export function rangeDates(
   if (range === 'today') return { from: now, to: now }
   if (range === 'all') return { from: parseDay(ALL_TIME_FROM), to: now }
   if (range === 'custom' && custom) return { from: parseDay(custom.from), to: parseDay(custom.to) }
-  // this week / this month run up to today, so the previous period compared has as many days
+  // this week / this month / this year run up to today, so the previous period compared has as
+  // many days
+  if (range === 'year') return { from: new Date(now.getFullYear(), 0, 1), to: now }
   if (range === 'week') {
     const monday = addDays(now, -((now.getDay() + 6) % 7))
     return { from: monday, to: now }
@@ -236,6 +249,37 @@ const toRevenuePoints = (rows: unknown): RevenuePoint[] =>
       net: r.net == null ? amount - refunds : Number(r.net),
     }
   })
+
+/**
+ * The years that have data, for the quick year buttons of Custom: from the year of the clinic's
+ * first visit to this year, at least last year and this one (at most the last 8). Sample mode, or
+ * a person who may not read visits: last year and this year.
+ */
+export function yearsFrom(first: number | null, now = new Date()): number[] {
+  const y = now.getFullYear()
+  const start = Math.max(y - 7, Math.min(y - 1, first ?? y - 1))
+  return Array.from({ length: y - start + 1 }, (_, i) => start + i)
+}
+
+export function useDataYears(): number[] {
+  const { data } = useQuery({
+    queryKey: ['data-years'],
+    staleTime: 60 * 60_000,
+    queryFn: async (): Promise<number | null> => {
+      if (!supabase) return null
+      const { data, error } = await supabase
+        .from('encounter')
+        .select('arrived_at')
+        .is('deleted_at', null)
+        .order('arrived_at', { ascending: true })
+        .limit(1)
+      if (error || !data?.[0]) return null
+      const d = new Date(String((data[0] as { arrived_at: string }).arrived_at))
+      return Number.isNaN(d.getTime()) ? null : d.getFullYear()
+    },
+  })
+  return yearsFrom(data ?? null)
+}
 
 export function useDashboard(range: DashboardRange, manager: boolean, custom?: CustomRange | null) {
   return useQuery({

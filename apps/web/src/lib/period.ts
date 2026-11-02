@@ -2,7 +2,12 @@ import { useState } from 'react'
 import { useLocation, useRouter } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { formatDate, isoDate } from '@mmc/shared'
-import { rangeDates, type CustomRange, type DashboardRange } from '@/lib/api/dashboard'
+import {
+  DASHBOARD_RANGES,
+  rangeDates,
+  type CustomRange,
+  type DashboardRange,
+} from '@/lib/api/dashboard'
 
 export interface Period {
   range: DashboardRange
@@ -34,8 +39,9 @@ const thisMonth = (): CustomRange => {
 }
 
 /**
- * The period every dashboard and report filters by: Today · This week · This month · All time ·
- * Custom (a month, or two dates). The week and the month run up to today.
+ * The period every dashboard and report filters by: Today · This week · This month · This year ·
+ * All time · Custom (a year, a month, or two dates). The week, the month and the year run up to
+ * today.
  */
 export function usePeriod(initial: DashboardRange = 'today'): Period {
   const labelOf = usePeriodLabel()
@@ -47,7 +53,7 @@ export function usePeriod(initial: DashboardRange = 'today'): Period {
 }
 
 type Search = Record<string, unknown>
-const RANGES: readonly DashboardRange[] = ['today', 'week', 'month', 'all', 'custom']
+const RANGES = DASHBOARD_RANGES
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const isoOf = (v: unknown) =>
   typeof v === 'string' && ISO.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`))
