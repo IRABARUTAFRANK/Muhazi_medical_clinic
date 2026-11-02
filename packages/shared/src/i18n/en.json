@@ -7520,7 +7520,9 @@
     "9e14d924": "Choose at least one language.",
     "31dc43d9": "The message is too long.",
     "021838e4": "Give the screen a name.",
-    "07e0078a": "Unknown language {{1}}."
+    "07e0078a": "Unknown language {{1}}.",
+    "408fb117": "The voice speaks English or French.",
+    "c18acfde": "The call is said 1 to 3 times."
   },
   "panel": {
     "close": "Close",
@@ -9182,7 +9184,19 @@
     "soundOff": "Sound off",
     "unknown": "This screen is not registered, or its key was revoked. Ask the manager for a new link (Settings › Waiting-room screens).",
     "noKey": "This address has no screen key. Ask the manager for the screen’s link.",
-    "offline": "Connection lost — showing the last update"
+    "offline": "Connection lost — showing the last update",
+    "voice": {
+      "call": "Ticket {{ticket}}. {{name}}. Please come to {{room}}.",
+      "callNoName": "Ticket {{ticket}}. Please come to {{room}}.",
+      "results": "Results ready for ticket {{ticket}}, {{name}}. Please go to the laboratory.",
+      "resultsNoName": "Results ready for ticket {{ticket}}. Please go to the laboratory."
+    },
+    "speaking": "Speaking…",
+    "ticker": {
+      "next": "{{desk}} — next: {{list}}",
+      "nobody": "{{desk}} — nobody waiting",
+      "results": "Results ready: {{list}}"
+    }
   },
   "displayScreens": {
     "title": "Waiting-room screens",
@@ -9223,8 +9237,25 @@
       "screen_desk": "Unknown desk.",
       "screen_language": "Choose at least one language.",
       "screen_message": "The message is too long (300 characters at most).",
-      "screen_unknown": "This screen is not known or was revoked."
-    }
+      "screen_unknown": "This screen is not known or was revoked.",
+      "screen_voice_lang": "The voice speaks English or French.",
+      "screen_voice_repeat": "The call is said 1 to 3 times."
+    },
+    "voice": "Say the call aloud (the browser’s voice)",
+    "voiceLang": "Voice language",
+    "voiceLangHint": "Browsers have no Kinyarwanda voice; names are read as written.",
+    "voiceLangs": {
+      "en": "English",
+      "fr": "French"
+    },
+    "voiceRepeat": "Say it",
+    "voiceTimes_one": "{{count}} time",
+    "voiceTimes_other": "{{count}} times",
+    "ticker": "Scrolling line at the bottom (who is next, results ready, the message)",
+    "voiceOn": "Voice {{lang}} ×{{count}}",
+    "voiceOff": "No voice",
+    "tickerOn": "Scrolling line",
+    "tickerOff": "No scrolling line"
   },
   "nextPatient": {
     "title": "Next patient",

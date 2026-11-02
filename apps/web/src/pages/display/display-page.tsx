@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Volume2, VolumeX, WifiOff } from 'lucide-react'
+import { AudioLines, Volume2, VolumeX, WifiOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '@mmc/shared'
 import i18n from '@/i18n'
@@ -8,18 +8,26 @@ import { ApiError } from '@/lib/api/errors'
 import { useMediaQuery, useNow } from '@/lib/hooks'
 import { usePrefs } from '@/store/prefs'
 import { cn } from '@/lib/utils'
+import { canSpeak, createAnnouncer, spokenTicket, type Announcer } from './speech'
 import './display.css'
 
 /*
  * The waiting-room screen: a TV at the waiting side (migration 0114). One column per desk with
  * the patient just called in very large type (ticket, full name, "come to Consultation 1 · Dr.
  * X"), the next five waiting (red and yellow first), and a strip of the results ready. Reads
- * the board every 3 seconds; a new call flashes and dings (Web Audio, unlocked by the Start
- * button once). The languages rotate every 6 seconds. Nothing scrolls on a TV.
+ * the board every 3 seconds; a new call flashes, dings (Web Audio, unlocked by the Start
+ * button once) and, from 0118, is said aloud by the browser's voice (English or French, 1 to 3
+ * times; a result ready is announced after the calls). A line scrolls at the bottom with who is
+ * next, the results ready and the message. The languages rotate every 6 seconds. Nothing
+ * scrolls on a TV.
  */
 
 const LANG_EVERY_MS = 6_000
 const FLASH_MS = 6_000
+/** The voice starts once the chime has rung. */
+const CHIME_MS = 1_100
+/** The scrolling line's speed. */
+const TICKER_PX_PER_S = 75
 const SOUND_KEY = 'mmc.display.sound'
 /** Intl locales for the clock and the date (Kinyarwanda falls back to the English pattern). */
 const LOCALE: Record<Lang, string> = { rw: 'rw-RW', en: 'en-GB', fr: 'fr-FR' }
@@ -51,6 +59,32 @@ function ding(ctx: AudioContext) {
   note(1174.7, 0.22, 0.9, 0.5)
 }
 
+type TFixed = ReturnType<typeof i18n.getFixedT>
+
+/**
+ * Which entries of a list are new since the last board read, found while rendering (state
+ * derived from a changed prop, as the queue rows' flash): the first read is not news; `stamp`
+ * counts the times something new appeared, for the effects that ding, speak and end the flash.
+ */
+function useNews(sig: string | null, ids: readonly string[]) {
+  const [state, setState] = useState<{
+    sig: string | null
+    seen: string[]
+    fresh: string[]
+    stamp: number
+  }>({ sig: null, seen: [], fresh: [], stamp: 0 })
+  if (sig !== null && state.sig !== sig) {
+    const news = state.sig === null ? [] : ids.filter((id) => !state.seen.includes(id))
+    setState({
+      sig,
+      seen: [...ids],
+      fresh: news.length ? news : state.fresh,
+      stamp: news.length ? state.stamp + 1 : state.stamp,
+    })
+  }
+  return [state, setState] as const
+}
+
 export function DisplayPage({ screenKey }: { screenKey: string }) {
   const { t: tUi } = useTranslation()
   const uiLang = usePrefs((s) => s.lang)
@@ -69,10 +103,13 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
   const lang = langs[li % langs.length] ?? 'en'
   const t = i18n.getFixedT(lang)
 
-  // sound: the manager's switch for the screen, and this TV's own on/off (remembered here)
+  // sound: the manager's switches for the screen (chime, voice), and this TV's own on/off
+  // (remembered here), which covers both
   const [sound, setSound] = useState(readSound)
   const [started, setStarted] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
   const audio = useRef<AudioContext | null>(null)
+  const announcer = useRef<Announcer | null>(null)
   const start = () => {
     try {
       const Ctx = window.AudioContext
@@ -81,12 +118,15 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     } catch {
       /* no audio: the screen still works */
     }
+    // the voice needs the same gesture; where the browser cannot speak there is no announcer
+    if (canSpeak() && !announcer.current) announcer.current = createAnnouncer(setSpeaking)
     void document.documentElement.requestFullscreen?.().catch(() => undefined)
     setStarted(true)
   }
   const toggleSound = () => {
     const next = !sound
     setSound(next)
+    if (!next) announcer.current?.stop()
     try {
       localStorage.setItem(SOUND_KEY, next ? 'on' : 'off')
     } catch {
@@ -94,48 +134,87 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     }
   }
 
-  // A new call: an entry of "now" not seen before (or called again). Found while rendering,
-  // from the board's content (state derived from a changed prop, as the queue rows' flash):
-  // the fresh entries flash, and `stamp` tells the effect below to ding once per new call.
-  const nowSig = data
-    ? data.desks.flatMap((d) => d.now.map((n) => `${n.id}:${n.calledAt}`)).join('|')
-    : null
-  const [calls, setCalls] = useState<{
-    sig: string | null
-    seen: Map<string, string>
-    fresh: string[]
-    stamp: number
-  }>({ sig: null, seen: new Map(), fresh: [], stamp: 0 })
-  if (data && calls.sig !== nowSig) {
-    const current = new Map<string, string>()
-    for (const d of data.desks) for (const n of d.now) current.set(n.id, n.calledAt)
-    // the first board read is not a call
-    const news =
-      calls.sig === null
-        ? []
-        : Array.from(current)
-            .filter(([id, at]) => calls.seen.get(id) !== at)
-            .map(([id]) => id)
-    setCalls({
-      sig: nowSig,
-      seen: current,
-      fresh: news.length ? news : calls.fresh,
-      stamp: news.length ? calls.stamp + 1 : calls.stamp,
-    })
-  }
-  const fresh = new Set(calls.fresh)
+  // A new call: an entry of "now" not seen before (or called again: its id and time make the key).
+  const nowEntries = data
+    ? data.desks.flatMap((d) => d.now.map((n) => ({ key: `${n.id}:${n.calledAt}`, n, desk: d })))
+    : []
+  const [calls, setCalls] = useNews(
+    data ? nowEntries.map((e) => e.key).join('|') : null,
+    nowEntries.map((e) => e.key),
+  )
+  const fresh = new Set(calls.fresh.map((k) => k.slice(0, k.indexOf(':'))))
   const chimeOn = (data?.chime ?? false) && sound
+  const voiceOn = (data?.voice ?? false) && sound && started
+  const voiceLang = data?.voiceLang === 'fr' ? 'fr' : 'en'
+  const voiceRepeat = data?.voiceRepeat ?? 2
   const dinged = useRef(0)
   useEffect(() => {
     if (!calls.stamp) return
     if (dinged.current !== calls.stamp) {
       dinged.current = calls.stamp
       if (chimeOn && audio.current) ding(audio.current)
+      if (voiceOn && announcer.current) {
+        // "Ticket A 0 1 4. Habimana Eric. Please come to Consultation 2." after the chime
+        const tv = i18n.getFixedT(voiceLang)
+        for (const key of calls.fresh) {
+          const e = nowEntries.find((x) => x.key === key)
+          if (!e) continue
+          const room =
+            e.n.room ?? tv(`register.stations.${e.desk.station}`, { defaultValue: e.desk.station })
+          const vars = { ticket: spokenTicket(e.n.ticket), name: e.n.name ?? '', room }
+          announcer.current.say(
+            {
+              text: tv(e.n.name ? 'display.voice.call' : 'display.voice.callNoName', vars),
+              lang: voiceLang,
+              repeat: voiceRepeat,
+              priority: 'call',
+            },
+            chimeOn ? CHIME_MS : 0,
+          )
+        }
+      }
     }
     // the flash ends a few seconds after the call
     const id = window.setTimeout(() => setCalls((c) => ({ ...c, fresh: [] })), FLASH_MS)
     return () => window.clearTimeout(id)
-  }, [calls.stamp, chimeOn])
+    // the entries are read at the moment of the call only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calls.stamp, chimeOn, voiceOn, voiceLang, voiceRepeat, setCalls])
+
+  // A result ready, new since the last read: said after the calls (lower priority), once.
+  const results = data?.results ?? []
+  const [news] = useNews(
+    data ? results.map((r) => r.id).join('|') : null,
+    results.map((r) => r.id),
+  )
+  const spokenResults = useRef(0)
+  useEffect(() => {
+    if (!news.stamp || spokenResults.current === news.stamp) return
+    spokenResults.current = news.stamp
+    if (!voiceOn || !announcer.current) return
+    const tv = i18n.getFixedT(voiceLang)
+    for (const id of news.fresh) {
+      const r = results.find((x) => x.id === id)
+      if (!r || !r.ticket) continue
+      announcer.current.say(
+        {
+          text: tv(r.name ? 'display.voice.results' : 'display.voice.resultsNoName', {
+            ticket: spokenTicket(r.ticket),
+            name: r.name ?? '',
+          }),
+          lang: voiceLang,
+          repeat: 1,
+          priority: 'result',
+        },
+        0,
+      )
+    }
+    // the results are read at the moment they appear only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [news.stamp, voiceOn, voiceLang])
+
+  // nothing is left talking when the page goes
+  useEffect(() => () => announcer.current?.stop(), [])
 
   const unknown = error instanceof ApiError && error.hint === 'screen_unknown'
   const offline = !unknown && isError && data != null
@@ -171,7 +250,13 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
             {t('display.offline')}
           </span>
         )}
-        {data?.chime && (
+        {speaking && (
+          <span className="display-speaking" role="status">
+            <AudioLines size={18} aria-hidden="true" />
+            {t('display.speaking')}
+          </span>
+        )}
+        {(data?.chime || data?.voice) && (
           <button
             type="button"
             className="display-sound"
@@ -212,6 +297,7 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
       )}
 
       {data && <Foot data={data} t={t} />}
+      {data?.ticker && <Ticker data={data} langs={langs} />}
 
       {!started && data && !unknown && (
         <div className="display-overlay">
@@ -227,8 +313,6 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     </div>
   )
 }
-
-type TFixed = ReturnType<typeof i18n.getFixedT>
 
 /** One desk: the patient just called (large), the earlier calls (small), the next five. */
 function DeskColumn({ desk, fresh, t }: { desk: BoardDesk; fresh: Set<string>; t: TFixed }) {
@@ -263,7 +347,7 @@ function DeskColumn({ desk, fresh, t }: { desk: BoardDesk; fresh: Set<string>; t
         {earlier.length > 0 && (
           <div className="display-earlier">
             {earlier.slice(0, 2).map((n) => (
-              <span key={n.id} className={cn(fresh.has(n.id) && 'is-new')}>
+              <span key={n.id}>
                 <b>{n.ticket}</b>
                 {n.name ? ` ${n.name}` : ''} → {n.room ?? deskName}
               </span>
@@ -294,9 +378,10 @@ function DeskColumn({ desk, fresh, t }: { desk: BoardDesk; fresh: Set<string>; t
   )
 }
 
-/** The results-ready strip and the clinic's message line. */
+/** The results-ready strip and, without the scrolling line, the clinic's message line. */
 function Foot({ data, t }: { data: DisplayBoard; t: TFixed }) {
-  if (data.results.length === 0 && !data.message) return null
+  const message = data.ticker ? null : data.message
+  if (data.results.length === 0 && !message) return null
   return (
     <footer className="display-foot">
       {data.results.length > 0 && (
@@ -315,11 +400,100 @@ function Foot({ data, t }: { data: DisplayBoard; t: TFixed }) {
           </div>
         </div>
       )}
-      {data.message && (
+      {message && (
         <div className="display-message">
-          <span>{data.message}</span>
+          <span>{message}</span>
         </div>
       )}
     </footer>
+  )
+}
+
+/** One item of the scrolling line: a desk's next patients, the results, or the message. */
+interface TickerItem {
+  key: string
+  lead: string
+  /** "A-015 Ingabire Diane" pieces, the ticket in gold. */
+  parts: { ticket: string; name: string | null }[]
+}
+
+/** The scrolling line's items, in one language. */
+function tickerItems(data: DisplayBoard, lang: Lang): TickerItem[] {
+  const t = i18n.getFixedT(lang)
+  const items: TickerItem[] = []
+  for (const d of data.desks) {
+    const desk = t(`register.stations.${d.station}`, { defaultValue: d.station })
+    items.push(
+      d.next.length === 0
+        ? { key: `${lang}-${d.station}`, lead: t('display.ticker.nobody', { desk }), parts: [] }
+        : {
+            key: `${lang}-${d.station}`,
+            lead: t('display.ticker.next', { desk, list: '' }).replace(/\s*$/, ''),
+            parts: d.next.map((n) => ({ ticket: n.ticket, name: n.name })),
+          },
+    )
+  }
+  if (data.results.length > 0)
+    items.push({
+      key: `${lang}-results`,
+      lead: t('display.ticker.results', { list: '' }).replace(/\s*$/, ''),
+      parts: data.results.slice(0, 8).map((r) => ({ ticket: r.ticket ?? '—', name: r.name })),
+    })
+  if (data.message) items.push({ key: `${lang}-message`, lead: data.message, parts: [] })
+  return items
+}
+
+/**
+ * The scrolling line (0118): the text in every language of the screen, one after the other,
+ * copied twice so the loop is seamless; the speed is fixed (pixels per second), so the lap
+ * takes as long as the text is wide. It never pauses.
+ */
+function Ticker({ data, langs }: { data: DisplayBoard; langs: Lang[] }) {
+  const copy = useRef<HTMLSpanElement>(null)
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const el = copy.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0
+      setWidth((prev) => (Math.abs(prev - w) > 1 ? w : prev))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const items = langs.flatMap((l) => tickerItems(data, l))
+  if (items.length === 0) return null
+  const seconds = Math.max(20, Math.round(width / TICKER_PX_PER_S))
+  const line = (
+    <>
+      {items.map((it) => (
+        <span key={it.key} className="inline-flex items-center">
+          <span>{it.lead}</span>
+          {it.parts.map((p, i) => (
+            <span key={`${it.key}-${i}`} className="ml-[0.4em]">
+              <b>{p.ticket}</b>
+              {p.name ? ` ${p.name}` : ''}
+              {i < it.parts.length - 1 ? ' ·' : ''}
+            </span>
+          ))}
+          <span className="display-ticker-sep" aria-hidden="true">
+            ▸
+          </span>
+        </span>
+      ))}
+    </>
+  )
+  return (
+    <div className="display-ticker" aria-hidden="true">
+      <div
+        className="display-ticker-track"
+        style={{ '--ticker-s': `${seconds}s` } as CSSProperties}
+      >
+        <span ref={copy} className="display-ticker-copy">
+          {line}
+        </span>
+        <span className="display-ticker-copy">{line}</span>
+      </div>
+    </div>
   )
 }

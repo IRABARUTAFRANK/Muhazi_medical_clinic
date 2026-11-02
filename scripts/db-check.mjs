@@ -17825,6 +17825,141 @@ await step('0117: staff_documents() is volatile (its access-log line can be writ
   return 'volatile'
 })
 
+// ---------------------------------------------------------------- 0118: the waiting-room screen speaks; the scrolling line
+await step('0118: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261228090000_waiting_screen_voice.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+const t118 = {}
+await step(
+  '0118: a screen made with the seven arguments of 0114 speaks English twice and scrolls (the defaults)',
+  async () => {
+    await as(staff.manager)
+    const made = (
+      await one(
+        `select save_display_screen(null, 'Voice TV', '{consultation}', true, true, '{en,fr}', 'Welcome') as j`,
+      )
+    ).j
+    if (!made.id || typeof made.key !== 'string' || made.key.length !== 64)
+      throw new Error(JSON.stringify(made))
+    t118.screen = made.id
+    t118.key = made.key
+    const s = (await one(`select display_screens() as j`)).j.find((x) => x.id === made.id)
+    if (!s || s.voice !== true || s.voiceLang !== 'en' || s.voiceRepeat !== 2 || s.ticker !== true)
+      throw new Error(JSON.stringify(s))
+    await as(null, 'anon')
+    const b = (await one(`select display_board($1) as j`, [made.key])).j
+    if (b.voice !== true || b.voiceLang !== 'en' || b.voiceRepeat !== 2 || b.ticker !== true)
+      throw new Error(
+        JSON.stringify({ voice: b.voice, lang: b.voiceLang, n: b.voiceRepeat, ticker: b.ticker }),
+      )
+    t118.version = b.version
+    await asAdmin()
+    return `voice ${b.voiceLang} ×${b.voiceRepeat}, ticker ${b.ticker}; version ${b.version}`
+  },
+)
+await step(
+  '0118: the four settings are saved and reach the TV; a change of them changes the board version',
+  async () => {
+    await as(staff.manager)
+    const changed = (
+      await one(
+        `select save_display_screen($1, 'Voice TV', '{consultation}', true, true, '{en,fr}', 'Welcome', false, 'fr', 3, false) as j`,
+        [t118.screen],
+      )
+    ).j
+    if (changed.key !== undefined) throw new Error('a change gave a key')
+    const s = (await one(`select display_screens() as j`)).j.find((x) => x.id === t118.screen)
+    if (
+      !s ||
+      s.voice !== false ||
+      s.voiceLang !== 'fr' ||
+      s.voiceRepeat !== 3 ||
+      s.ticker !== false
+    )
+      throw new Error(JSON.stringify(s))
+    await as(null, 'anon')
+    const b = (await one(`select display_board($1) as j`, [t118.key])).j
+    if (b.voice !== false || b.voiceLang !== 'fr' || b.voiceRepeat !== 3 || b.ticker !== false)
+      throw new Error(
+        JSON.stringify({ voice: b.voice, lang: b.voiceLang, n: b.voiceRepeat, ticker: b.ticker }),
+      )
+    if (b.version === t118.version) throw new Error('version unchanged')
+    // a new screen with the voice on in French, said once
+    await as(staff.manager)
+    const made = (
+      await one(
+        `select save_display_screen(null, 'Voice TV 2', '{}', true, true, '{fr}', null, true, 'fr', 1, true) as j`,
+      )
+    ).j
+    await as(null, 'anon')
+    const b2 = (await one(`select display_board($1) as j`, [made.key])).j
+    if (b2.voice !== true || b2.voiceLang !== 'fr' || b2.voiceRepeat !== 1 || b2.ticker !== true)
+      throw new Error(JSON.stringify({ voice: b2.voice, lang: b2.voiceLang, n: b2.voiceRepeat }))
+    await asAdmin()
+    return `voice off · fr ×3 · no line (version ${b.version}); second screen fr ×1`
+  },
+)
+await step(
+  '0118: a voice other than English or French, or said 0 or 4 times, is refused',
+  async () => {
+    const lang = await hintAs(
+      staff.manager,
+      `select save_display_screen(null, 'X', '{}', true, true, '{rw}', null, true, 'rw', 2, true)`,
+    )
+    const many = await hintAs(
+      staff.manager,
+      `select save_display_screen(null, 'X', '{}', true, true, '{rw}', null, true, 'en', 4, true)`,
+    )
+    const none = await hintAs(
+      staff.manager,
+      `select save_display_screen(null, 'X', '{}', true, true, '{rw}', null, true, 'en', 0, true)`,
+    )
+    const old = await hintAs(
+      staff.manager,
+      `select save_display_screen($1, 'Voice TV', '{consultation}', true, true, '{en,fr}', 'Welcome')`,
+      [t118.screen],
+    )
+    const rec = await codeAs(
+      staff.receptionist,
+      `select save_display_screen(null, 'X', '{}', true, true, '{rw}', null, true, 'en', 2, true)`,
+    )
+    // the direct column rules hold too
+    let col = ''
+    await asAdmin()
+    try {
+      await db.query(`update display_screen set voice_lang = 'de' where id = $1`, [t118.screen])
+    } catch (e) {
+      col = e.code
+    }
+    if (
+      lang !== '22023/screen_voice_lang' ||
+      many !== '22023/screen_voice_repeat' ||
+      none !== '22023/screen_voice_repeat' ||
+      old !== 'ok' ||
+      rec !== '42501' ||
+      col !== '23514'
+    )
+      throw new Error(JSON.stringify({ lang, many, none, old, rec, col }))
+    // the old seven-argument change (the function of 0114) leaves the voice and the line as they are
+    await as(staff.manager)
+    const s = (await one(`select display_screens() as j`)).j.find((x) => x.id === t118.screen)
+    if (
+      !s ||
+      s.voice !== false ||
+      s.voiceLang !== 'fr' ||
+      s.voiceRepeat !== 3 ||
+      s.ticker !== false
+    )
+      throw new Error(JSON.stringify(s))
+    await asAdmin()
+    return `rw ${lang}; ×4 ${many}; ×0 ${none}; seven arguments still ${old} (voice and line untouched); receptionist ${rec}; column rule ${col}`
+  },
+)
+
 finish()
 
 function finish() {

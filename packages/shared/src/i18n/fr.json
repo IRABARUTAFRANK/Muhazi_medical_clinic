@@ -7520,7 +7520,9 @@
     "9e14d924": "Choisissez au moins une langue.",
     "31dc43d9": "Le message est trop long.",
     "021838e4": "Donnez un nom à l’écran.",
-    "07e0078a": "Langue inconnue : {{1}}."
+    "07e0078a": "Langue inconnue : {{1}}.",
+    "408fb117": "La voix parle anglais ou français.",
+    "c18acfde": "L’appel est dit 1 à 3 fois."
   },
   "panel": {
     "close": "Fermer",
@@ -9182,7 +9184,19 @@
     "soundOff": "Son coupé",
     "unknown": "Cet écran n’est pas enregistré, ou sa clé a été révoquée. Demandez un nouveau lien au gestionnaire (Paramètres › Écrans de salle d’attente).",
     "noKey": "Cette adresse n’a pas de clé d’écran. Demandez le lien de l’écran au gestionnaire.",
-    "offline": "Connexion perdue — dernière mise à jour affichée"
+    "offline": "Connexion perdue — dernière mise à jour affichée",
+    "voice": {
+      "call": "Ticket {{ticket}}. {{name}}. Veuillez vous présenter à {{room}}.",
+      "callNoName": "Ticket {{ticket}}. Veuillez vous présenter à {{room}}.",
+      "results": "Résultats prêts pour le ticket {{ticket}}, {{name}}. Veuillez vous rendre au laboratoire.",
+      "resultsNoName": "Résultats prêts pour le ticket {{ticket}}. Veuillez vous rendre au laboratoire."
+    },
+    "speaking": "Annonce en cours…",
+    "ticker": {
+      "next": "{{desk}} — suivants : {{list}}",
+      "nobody": "{{desk}} — personne en attente",
+      "results": "Résultats prêts : {{list}}"
+    }
   },
   "displayScreens": {
     "title": "Écrans de salle d’attente",
@@ -9223,8 +9237,25 @@
       "screen_desk": "Guichet inconnu.",
       "screen_language": "Choisissez au moins une langue.",
       "screen_message": "Le message est trop long (300 caractères au plus).",
-      "screen_unknown": "Cet écran est inconnu ou a été révoqué."
-    }
+      "screen_unknown": "Cet écran est inconnu ou a été révoqué.",
+      "screen_voice_lang": "La voix parle anglais ou français.",
+      "screen_voice_repeat": "L’appel est répété 1 à 3 fois."
+    },
+    "voice": "Annoncer l’appel à voix haute (voix du navigateur)",
+    "voiceLang": "Langue de la voix",
+    "voiceLangHint": "Les navigateurs n’ont pas de voix en kinyarwanda ; les noms sont lus tels qu’écrits.",
+    "voiceLangs": {
+      "en": "Anglais",
+      "fr": "Français"
+    },
+    "voiceRepeat": "Répéter",
+    "voiceTimes_one": "{{count}} fois",
+    "voiceTimes_other": "{{count}} fois",
+    "ticker": "Ligne défilante en bas (les suivants, résultats prêts, le message)",
+    "voiceOn": "Voix {{lang}} ×{{count}}",
+    "voiceOff": "Sans voix",
+    "tickerOn": "Ligne défilante",
+    "tickerOff": "Sans ligne défilante"
   },
   "nextPatient": {
     "title": "Patient suivant",

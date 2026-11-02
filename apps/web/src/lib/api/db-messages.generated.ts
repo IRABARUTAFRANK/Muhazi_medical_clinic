@@ -222,6 +222,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the date of birth is in the future$/, 'dbErrors.257bce66', 0], // create_patient_file, update_patient
   [/^the delivery date is in the future$/, 'dbErrors.d6655a84', 0], // receive_delivery
   [/^the doctor cancelled this medicine$/, 'dbErrors.25402734', 0], // dispense_prescription
+  [/^the voice speaks English or French$/, 'dbErrors.408fb117', 0], // save_display_screen
   [/^this medicine was already put back$/, 'dbErrors.ed36662c', 0], // undo_given_here
   [/^you cannot delete your own account$/, 'dbErrors.1e07203d', 0], // retire_staff
   [/^another bed already has this name$/, 'dbErrors.edca5024', 0], // save_bed
@@ -281,6 +282,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^patient\.fields must be a list$/, 'dbErrors.8d9a82e2', 0], // save_setting
   [/^say why the note is cancelled$/, 'dbErrors.70dd6c48', 0], // cancel_transfer
   [/^say why the sale is cancelled$/, 'dbErrors.6c0d4e0a', 0], // cancel_counter_sale
+  [/^the call is said 1 to 3 times$/, 'dbErrors.c18acfde', 0], // save_display_screen
   [/^the cost must be zero or more$/, 'dbErrors.a125b838', 0], // receive_delivery
   [/^the national ID has 16 digits$/, 'dbErrors.6f192e5c', 0], // patient_identity
   [/^use record_result for results$/, 'dbErrors.e9fc6b2b', 0], // set_request_status

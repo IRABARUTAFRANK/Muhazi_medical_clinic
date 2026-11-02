@@ -4,6 +4,11 @@ import { supabase } from '@/lib/supabase'
 import type { Station } from '@/lib/api/visits'
 import { apiError } from './errors'
 
+/** The languages the browser's voice can say (0118): no Kinyarwanda voice exists. */
+export type VoiceLang = 'en' | 'fr'
+export const VOICE_LANGS: readonly VoiceLang[] = ['en', 'fr']
+export const VOICE_REPEATS = [1, 2, 3] as const
+
 /**
  * The waiting-room screen (migration 0114). A TV at the waiting side opens /display?key=… and
  * reads `display_board(key)` as a visitor: per desk who was just called (and where to go), who
@@ -54,6 +59,12 @@ export interface DisplayBoard {
   chime: boolean
   languages: Lang[]
   showNames: boolean
+  /** 0118: the call is said aloud by the browser's voice, in English or French, 1 to 3 times. */
+  voice: boolean
+  voiceLang: VoiceLang
+  voiceRepeat: number
+  /** 0118: the scrolling line at the bottom. */
+  ticker: boolean
   /** Changes whenever the board does (a quick "something new?" check). */
   version: number
   /** The time at the clinic when the board was read. */
@@ -114,7 +125,8 @@ function sampleBoard(): DisplayBoard {
         name: 'Mutesi Aline',
         room: 'Laboratory',
         person: 'Uwera Diane',
-        calledAt: at(140),
+        // a fixed time (the hour), so this entry is never taken for a new call
+        calledAt: new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000).toISOString(),
         started: true,
       },
     ],
@@ -139,6 +151,10 @@ function sampleBoard(): DisplayBoard {
     clinic: 'Muhazi Medical Clinic',
     desks: [consultation, laboratory, pharmacy],
     results: [
+      // a new result every minute, so the announcement of a result can be heard
+      ...(tick % 3 === 2
+        ? [{ id: `r-${Math.floor(tick / 3)}`, ticket: 'A-003', name: 'Uwase Claudine', at: at(0) }]
+        : []),
       { id: 'r-1', ticket: 'A-005', name: 'Ingabire Diane', at: at(300) },
       { id: 'r-2', ticket: 'A-008', name: 'Mugisha Yves', at: at(900) },
     ],
@@ -146,6 +162,10 @@ function sampleBoard(): DisplayBoard {
     chime: true,
     languages: ['rw', 'en', 'fr'],
     showNames: true,
+    voice: true,
+    voiceLang: 'en',
+    voiceRepeat: 2,
+    ticker: true,
     version: tick,
     now: new Date().toISOString(),
   }
@@ -179,6 +199,10 @@ export interface DisplayScreen {
   chime: boolean
   languages: Lang[]
   message: string | null
+  voice: boolean
+  voiceLang: VoiceLang
+  voiceRepeat: number
+  ticker: boolean
   active: boolean
   createdAt: string
   createdBy: string | null
@@ -192,6 +216,10 @@ export interface DisplayScreenInput {
   chime: boolean
   languages: Lang[]
   message: string
+  voice: boolean
+  voiceLang: VoiceLang
+  voiceRepeat: number
+  ticker: boolean
 }
 
 const SCREENS_KEY = ['display', 'screens'] as const
@@ -204,6 +232,10 @@ const sampleScreens: DisplayScreen[] = [
     chime: true,
     languages: ['rw', 'en', 'fr'],
     message: 'Please keep your ticket.',
+    voice: true,
+    voiceLang: 'en',
+    voiceRepeat: 2,
+    ticker: true,
     active: true,
     createdAt: new Date(Date.now() - 6 * 86_400_000).toISOString(),
     createdBy: 'Mugabo Théogène',
@@ -248,6 +280,10 @@ export function useDisplayScreenActions() {
           chime: i.chime,
           languages: i.languages,
           message: i.message.trim() || null,
+          voice: i.voice,
+          voiceLang: i.voiceLang,
+          voiceRepeat: i.voiceRepeat,
+          ticker: i.ticker,
           active: true,
           createdAt: new Date().toISOString(),
           createdBy: 'Mugabo Théogène',
@@ -255,6 +291,7 @@ export function useDisplayScreenActions() {
         })
         return { id, key: 'sample'.padEnd(64, '0') }
       }
+      // all eleven arguments: the 0118 function (the seven-argument one of 0114 stays for older callers)
       const { data, error } = await supabase.rpc('save_display_screen', {
         p_id: i.id ?? null,
         p_name: i.name,
@@ -263,6 +300,10 @@ export function useDisplayScreenActions() {
         p_chime: i.chime,
         p_languages: i.languages,
         p_message: i.message.trim() || null,
+        p_voice: i.voice,
+        p_voice_lang: i.voiceLang,
+        p_voice_repeat: i.voiceRepeat,
+        p_ticker: i.ticker,
       })
       if (error) throw apiError(error)
       return data as { id: string; key?: string }

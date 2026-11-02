@@ -7529,7 +7529,9 @@
     "9e14d924": "Hitamo nibura ururimi rumwe.",
     "31dc43d9": "Ubutumwa ni burebure cyane.",
     "021838e4": "Ha iyi mugaragaza izina.",
-    "07e0078a": "Ururimi {{1}} ntiruzwi."
+    "07e0078a": "Ururimi {{1}} ntiruzwi.",
+    "408fb117": "Ijwi rivuga Icyongereza cyangwa Igifaransa.",
+    "c18acfde": "Guhamagara bivugwa inshuro 1 kugeza kuri 3."
   },
   "panel": {
     "close": "Funga",
@@ -9191,7 +9193,19 @@
     "soundOff": "Ijwi rirazimye",
     "unknown": "Iyi mugaragaza ntiyanditswe, cyangwa urufunguzo rwayo rwahagaritswe. Saba umuyobozi link nshya (Igenamiterere › Mugaragaza zo mu cyumba cyo gutegerereza).",
     "noKey": "Iyi aderesi nta rufunguzo rwa mugaragaza ifite. Saba umuyobozi link ya mugaragaza.",
-    "offline": "Interineti yabuze — ibigaragara ni ibya nyuma"
+    "offline": "Interineti yabuze — ibigaragara ni ibya nyuma",
+    "voice": {
+      "call": "Itike {{ticket}}. {{name}}. Nyamuneka jya kuri {{room}}.",
+      "callNoName": "Itike {{ticket}}. Nyamuneka jya kuri {{room}}.",
+      "results": "Ibisubizo by’itike {{ticket}}, {{name}}, biteguye. Nyamuneka jya muri laboratwari.",
+      "resultsNoName": "Ibisubizo by’itike {{ticket}} biteguye. Nyamuneka jya muri laboratwari."
+    },
+    "speaking": "Iravuga…",
+    "ticker": {
+      "next": "{{desk}} — abakurikira: {{list}}",
+      "nobody": "{{desk}} — nta wutegereje",
+      "results": "Ibisubizo biteguye: {{list}}"
+    }
   },
   "displayScreens": {
     "title": "Mugaragaza zo mu cyumba cyo gutegerereza",
@@ -9232,8 +9246,25 @@
       "screen_desk": "Aho bakorera ntihazwi.",
       "screen_language": "Hitamo nibura ururimi rumwe.",
       "screen_message": "Ubutumwa ni burebure cyane (inyuguti 300 nyinshi).",
-      "screen_unknown": "Iyi mugaragaza ntizwi cyangwa yahagaritswe."
-    }
+      "screen_unknown": "Iyi mugaragaza ntizwi cyangwa yahagaritswe.",
+      "screen_voice_lang": "Ijwi rivuga Icyongereza cyangwa Igifaransa.",
+      "screen_voice_repeat": "Guhamagara bivugwa inshuro 1 kugeza kuri 3."
+    },
+    "voice": "Vuga uhamagara n’ijwi (ijwi rya navigateur)",
+    "voiceLang": "Ururimi rw’ijwi",
+    "voiceLangHint": "Navigateur nta jwi ry’Ikinyarwanda ifite; amazina asomwa uko yanditse.",
+    "voiceLangs": {
+      "en": "Icyongereza",
+      "fr": "Igifaransa"
+    },
+    "voiceRepeat": "Kuvuga",
+    "voiceTimes_one": "inshuro {{count}}",
+    "voiceTimes_other": "inshuro {{count}}",
+    "ticker": "Umurongo unyerera hasi (abakurikira, ibisubizo biteguye, ubutumwa)",
+    "voiceOn": "Ijwi {{lang}} ×{{count}}",
+    "voiceOff": "Nta jwi rivuga",
+    "tickerOn": "Umurongo unyerera",
+    "tickerOff": "Nta murongo unyerera"
   },
   "nextPatient": {
     "title": "Umurwayi ukurikira",

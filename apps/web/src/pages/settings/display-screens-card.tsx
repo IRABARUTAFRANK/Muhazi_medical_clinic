@@ -11,8 +11,11 @@ import {
   displayLink,
   useDisplayScreenActions,
   useDisplayScreens,
+  VOICE_LANGS,
+  VOICE_REPEATS,
   type DisplayScreen,
   type DisplayScreenInput,
+  type VoiceLang,
 } from '@/lib/api/display'
 import { ApiError } from '@/lib/api/errors'
 import { STATIONS, type Station } from '@/lib/api/visits'
@@ -27,6 +30,8 @@ const SCREEN_ERRORS = [
   'screen_language',
   'screen_message',
   'screen_unknown',
+  'screen_voice_lang',
+  'screen_voice_repeat',
 ]
 
 const emptyDraft = (): DisplayScreenInput => ({
@@ -36,6 +41,10 @@ const emptyDraft = (): DisplayScreenInput => ({
   chime: true,
   languages: ['rw', 'en', 'fr'],
   message: '',
+  voice: true,
+  voiceLang: 'en',
+  voiceRepeat: 2,
+  ticker: true,
 })
 
 /**
@@ -265,6 +274,60 @@ export function DisplayScreensCard() {
                 onChange={(e) => setDraft({ ...draft, message: e.target.value })}
               />
             </label>
+            {/* the voice (0118): the browser says the call after the chime; and the scrolling line */}
+            <div className="border-border flex flex-col gap-2 border-t pt-3">
+              <label className={checkRow}>
+                <input
+                  type="checkbox"
+                  className="accent-primary"
+                  checked={draft.voice}
+                  onChange={(e) => setDraft({ ...draft, voice: e.target.checked })}
+                />
+                {t('displayScreens.voice')}
+              </label>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className={labelClass}>
+                  {t('displayScreens.voiceLang')}
+                  <select
+                    className={cn(controlClass, 'w-full font-normal')}
+                    value={draft.voiceLang}
+                    disabled={!draft.voice}
+                    onChange={(e) => setDraft({ ...draft, voiceLang: e.target.value as VoiceLang })}
+                  >
+                    {VOICE_LANGS.map((l) => (
+                      <option key={l} value={l}>
+                        {t(`displayScreens.voiceLangs.${l}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={labelClass}>
+                  {t('displayScreens.voiceRepeat')}
+                  <select
+                    className={cn(controlClass, 'w-full font-normal')}
+                    value={draft.voiceRepeat}
+                    disabled={!draft.voice}
+                    onChange={(e) => setDraft({ ...draft, voiceRepeat: Number(e.target.value) })}
+                  >
+                    {VOICE_REPEATS.map((n) => (
+                      <option key={n} value={n}>
+                        {t('displayScreens.voiceTimes', { count: n })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <span className="text-ink-3 text-[13px]">{t('displayScreens.voiceLangHint')}</span>
+              <label className={checkRow}>
+                <input
+                  type="checkbox"
+                  className="accent-primary"
+                  checked={draft.ticker}
+                  onChange={(e) => setDraft({ ...draft, ticker: e.target.checked })}
+                />
+                {t('displayScreens.ticker')}
+              </label>
+            </div>
             {error && (
               <p
                 role="alert"
@@ -326,6 +389,13 @@ export function DisplayScreensCard() {
                         : t('displayScreens.allDesks'),
                       t(s.showNames ? 'displayScreens.names' : 'displayScreens.ticketsOnly'),
                       t(s.chime ? 'displayScreens.withChime' : 'displayScreens.noChime'),
+                      s.voice
+                        ? t('displayScreens.voiceOn', {
+                            lang: t(`displayScreens.voiceLangs.${s.voiceLang}`),
+                            count: s.voiceRepeat,
+                          })
+                        : t('displayScreens.voiceOff'),
+                      t(s.ticker ? 'displayScreens.tickerOn' : 'displayScreens.tickerOff'),
                       s.languages.map((l) => l.toUpperCase()).join(' · '),
                       s.message ? `“${s.message}”` : null,
                     ]
@@ -355,6 +425,10 @@ export function DisplayScreensCard() {
                           chime: s.chime,
                           languages: s.languages,
                           message: s.message ?? '',
+                          voice: s.voice ?? true,
+                          voiceLang: s.voiceLang ?? 'en',
+                          voiceRepeat: s.voiceRepeat ?? 2,
+                          ticker: s.ticker ?? true,
                         })
                       }}
                     >
