@@ -671,7 +671,8 @@
     "custom": {
       "month": "Ukwezi",
       "or": "cyangwa amatariki",
-      "year": "Umwaka"
+      "year": "Umwaka",
+      "noData": "nta kwivuza"
     },
     "longestShort": "uwa mbere amaze gutegereza {{time}}",
     "noneTaken": "nta we urakirwa uyu munsi",

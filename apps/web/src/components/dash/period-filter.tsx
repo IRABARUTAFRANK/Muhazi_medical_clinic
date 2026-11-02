@@ -2,8 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { isoDate } from '@mmc/shared'
 import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
+import { Select } from '@/components/ui/select'
 import { useDataYears, type DashboardRange } from '@/lib/api/dashboard'
-import { buttonVariants } from '@/components/ui/button'
 import type { Period } from '@/lib/period'
 import { cn } from '@/lib/utils'
 
@@ -51,32 +51,33 @@ export function PeriodCustom({ period, className }: { period: Period; className?
       from: `${y}-01-01`,
       to: `${y}-12-31` > today ? today : `${y}-12-31`,
     })
+  const thisYear = Number(today.slice(0, 4))
+  const dataYears = new Set(years)
+  const oldest = Math.min(2000, ...years)
+  const allYears = Array.from({ length: thisYear - oldest + 1 }, (_, k) => thisYear - k)
+  // the year whose whole span (this year: up to today) is chosen now
+  const chosenYear = allYears.find(
+    (y) =>
+      custom.from === `${y}-01-01` &&
+      (custom.to === `${y}-12-31` || (custom.to === today && today.startsWith(`${y}-`))),
+  )
   return (
     <div className={cn('flex flex-wrap items-end gap-3', className)}>
-      <div role="group" aria-label={t('dashboard.custom.year')} className="flex flex-col gap-1">
-        <span className="text-ink-2 text-[13px] font-medium">{t('dashboard.custom.year')}</span>
-        <span className="flex flex-wrap gap-1.5">
-          {years.map((y) => {
-            const on =
-              custom.from === `${y}-01-01` &&
-              (custom.to === `${y}-12-31` || (custom.to === today && today.startsWith(`${y}-`)))
-            return (
-              <button
-                key={y}
-                type="button"
-                aria-pressed={on}
-                onClick={() => pickYear(y)}
-                className={cn(
-                  buttonVariants({ size: 'sm', variant: on ? 'primary' : 'default' }),
-                  'h-10 tabular-nums',
-                )}
-              >
-                {y}
-              </button>
-            )
-          })}
-        </span>
-      </div>
+      {/* every year, newest first: from this year back to 2000 (or the first visit, if older) */}
+      <Select
+        label={t('dashboard.custom.year')}
+        value={chosenYear ? String(chosenYear) : ''}
+        onChange={(e) => e.target.value && pickYear(Number(e.target.value))}
+        wrapperClassName="w-36"
+      >
+        <option value="">—</option>
+        {allYears.map((y) => (
+          <option key={y} value={y}>
+            {y}
+            {dataYears.has(y) ? '' : ` · ${t('dashboard.custom.noData')}`}
+          </option>
+        ))}
+      </Select>
       <Field
         label={t('dashboard.custom.month')}
         type="month"
