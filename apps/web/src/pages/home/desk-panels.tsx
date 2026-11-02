@@ -21,6 +21,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import { formatDayMonth, formatRwf, formatTime, isoDate, type Role } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
+import { PeriodFilter } from '@/components/dash/period-filter'
+import { usePeriod } from '@/lib/period'
 import { type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { controlClass, labelClass } from '@/components/ui/field'
@@ -861,7 +863,11 @@ function StayForm({
 export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
   const { t } = useTranslation()
   const missingLabel = useMissingLabel()
-  const { data: files = [] } = useFilesToComplete()
+  // today's files; an earlier day only when the period asks for it (0123)
+  const period = usePeriod('today')
+  const { data: files = [] } = useFilesToComplete(
+    period.range === 'today' ? null : { from: period.from, to: period.to },
+  )
   const atReception = files.filter((f) => f.station === 'reception').length
   return (
     <Panel
@@ -871,6 +877,7 @@ export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
       title={t('files.title')}
       right={t('files.count', { count: files.length, here: atReception })}
     >
+      <PeriodFilter period={period} />
       {files.length === 0 ? (
         <Empty>{t('files.none')}</Empty>
       ) : (

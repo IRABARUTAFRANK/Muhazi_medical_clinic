@@ -18883,6 +18883,32 @@ await step('0122: no "earlier" key when nothing is left from an earlier day', as
   return JSON.stringify(n)
 })
 
+// ---------------------------------------------------------------- 0123: files to complete, today's only
+await step('0123: files to complete: today by default, earlier days only when asked', async () => {
+  await asAdmin()
+  await db.exec(await readFile(path.join(migrationsDir, '20270103090000_files_today.sql'), 'utf8'))
+  await as(staff.nurse)
+  const v = await one(`select register_patient('Old', 'File One23', 'female', null, 30) as v`)
+  const pid = v.v.patient_id
+  await asAdmin()
+  const yesterdayNoon = `((now() at time zone 'Africa/Kigali')::date::timestamp at time zone 'Africa/Kigali') - interval '12 hours'`
+  await db.query(`update patient set created_at = ${yesterdayNoon} where id = $1`, [pid])
+  await db.query(`update encounter set arrived_at = ${yesterdayNoon} where patient_id = $1`, [pid])
+  const yday = `((now() at time zone 'Africa/Kigali')::date - 1)`
+  await as(staff.receptionist)
+  const today = (await one(`select files_to_complete() as l`)).l
+  const earlier = (await one(`select files_to_complete_in(${yday}, ${yday}) as l`)).l
+  const counts = (await one(`select nav_counts() as j`)).j
+  const inToday = today.some((f) => f.patientId === pid)
+  const inEarlier = earlier.some((f) => f.patientId === pid)
+  if (inToday || !inEarlier) throw new Error(JSON.stringify({ inToday, inEarlier }))
+  // the menu counts people; the list may show a patient once per open visit
+  const people = new Set(today.map((f) => f.patientId)).size
+  if ((counts.filesToComplete ?? 0) !== people)
+    throw new Error(`count ${counts.filesToComplete} people ${people}`)
+  return `yesterday's file only under its own date; today's list and the menu count agree (${people})`
+})
+
 finish()
 
 function finish() {

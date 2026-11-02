@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
-import { apiError } from './errors'
+import { apiError, isMissingFunction } from './errors'
 import { withLeftUnseen } from './booking-status'
 
 /**
@@ -345,16 +345,25 @@ const sampleFiles: FileToComplete[] = [
   },
 ]
 
-/** Files the nurse started (name, sex, age) that reception must complete. */
-export function useFilesToComplete() {
+/**
+ * Files the nurse started (name, sex, age) that reception must complete: today's (0123); other
+ * days only when a period is asked for. An older database (before 0123) gives its own list.
+ */
+export function useFilesToComplete(period?: { from: string; to: string } | null) {
   return useQuery({
-    queryKey: ['files-to-complete'],
+    queryKey: ['files-to-complete', period?.from ?? null, period?.to ?? null],
     refetchInterval: 30_000,
     queryFn: async (): Promise<FileToComplete[]> => {
       if (!supabase) return sampleFiles
-      const { data, error } = await supabase.rpc('files_to_complete')
-      if (error) throw apiError(error)
-      return (data as FileToComplete[]) ?? []
+      const { data, error } = await supabase.rpc('files_to_complete_in', {
+        p_from: period?.from ?? null,
+        p_to: period?.to ?? null,
+      })
+      if (!error) return (data as FileToComplete[]) ?? []
+      if (!isMissingFunction(error)) throw apiError(error)
+      const old = await supabase.rpc('files_to_complete')
+      if (old.error) throw apiError(old.error)
+      return (old.data as FileToComplete[]) ?? []
     },
   })
 }
