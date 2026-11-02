@@ -144,3 +144,47 @@ export function useServiceStaff(service: ServiceId | 'triage' | null) {
     },
   })
 }
+
+/** The service whose people a desk shows in sample mode (Nursing: nursing; Theatre: surgery). */
+const DESK_SERVICE: Partial<Record<Station, ServiceId>> = {
+  consultation: 'consultation',
+  dental: 'dental',
+  laboratory: 'laboratory',
+  ultrasound: 'ultrasound',
+  nursing: 'nursing',
+  theatre: 'surgery',
+  pharmacy: 'pharmacy',
+}
+
+/**
+ * Who works at this desk now (0119): the vitals form's "Anyone at Consultation / Dr …" once
+ * the nurse has chosen where the patient goes. The same shape as a service's staff; a desk
+ * with several services (Nursing: nursing, family planning, HIV) lists all of them.
+ */
+export function useStationStaff(station: Station | null) {
+  return useQuery({
+    queryKey: ['station-staff', station],
+    enabled: !!station,
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<ServiceStaff> => {
+      if (!supabase) {
+        const service = DESK_SERVICE[station!]
+        return service
+          ? { ...sampleStaff(service), station: station! }
+          : { service: 'nursing', station: station!, sectionWaiting: 0, staff: [] }
+      }
+      const { data, error } = await supabase.rpc('station_staff', { p_station: station })
+      if (error) throw apiError(error)
+      const d = data as ServiceStaff
+      return {
+        ...d,
+        sectionWaiting: Number(d.sectionWaiting),
+        staff: (d.staff ?? []).map((p) => ({
+          ...p,
+          waiting: Number(p.waiting),
+          seeing: Number(p.seeing),
+        })),
+      }
+    },
+  })
+}

@@ -37,6 +37,9 @@ export interface BoardNext {
   name: string | null
   /** 1 red, 2 yellow, 3 green. */
   priority: 1 | 2 | 3
+  /** 0119: the doctor the patient was sent to by name, and that doctor's room (else null). */
+  person?: string | null
+  room?: string | null
 }
 export interface BoardDesk {
   station: Station
@@ -112,6 +115,9 @@ function sampleBoard(): DisplayBoard {
       ticket: q.ticket,
       name: q.name,
       priority: prio(q.triage),
+      // the first one was sent to a doctor by name (0119)
+      person: i === 0 ? 'Dr. Habineza Jean' : null,
+      room: i === 0 ? 'Consultation 2' : null,
     })),
     waiting: waiting.length + 2,
   }
@@ -181,7 +187,17 @@ export function useDisplayBoard(key: string) {
     retry: (count, e) =>
       !(e instanceof Error && 'hint' in e && e.hint === 'screen_unknown') && count < 3,
     queryFn: async (): Promise<DisplayBoard> => {
-      if (!supabase) return sampleBoard()
+      // sample mode: any key shows the sample board; the key "empty" a clinic with nobody waiting
+      if (!supabase) {
+        const b = sampleBoard()
+        return key === 'empty'
+          ? {
+              ...b,
+              desks: b.desks.map((d) => ({ ...d, now: [], next: [], waiting: 0 })),
+              results: [],
+            }
+          : b
+      }
       const { data, error } = await supabase.rpc('display_board', { p_key: key })
       if (error) throw apiError(error)
       return data as DisplayBoard

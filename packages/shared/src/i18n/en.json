@@ -1994,7 +1994,36 @@
       "save": "Save the default set",
       "saved": "Default set saved. Every vitals form shows it from now.",
       "none": "Tick at least one measurement.",
-      "bmiHint": "BMI is computed from weight and height and never saved."
+      "bmiHint": "BMI is computed from weight and height and never saved.",
+      "manage": {
+        "nameNeeded": "Type the name of the measurement.",
+        "rangeNumbers": "The lowest and highest values are numbers.",
+        "rangeOrder": "The lowest value must be below the highest.",
+        "changed": "{{name}} changed.",
+        "added": "{{name}} added to the measurements. Tick it to put it in the default set.",
+        "retired": "{{name}} retired. It no longer shows on the forms; what was recorded stays.",
+        "restored": "{{name}} shown again.",
+        "edit": "Change {{name}} (name, unit, range)",
+        "retire": "Retire {{name}}",
+        "text": "Text",
+        "number": "Number",
+        "editTitle": "Change {{name}}",
+        "addTitle": "New measurement",
+        "name": "Name",
+        "unit": "Unit (optional)",
+        "kind": "Type",
+        "min": "Lowest value",
+        "max": "Highest value",
+        "rangeHint": "Optional: the values a patient can have. A figure outside them is refused as a typing mistake.",
+        "textHint": "Words rather than a figure (e.g. a blood group, a urine dipstick).",
+        "saveChange": "Save the change",
+        "add": "Add",
+        "retiredTitle": "Retired measurements ({{count}})",
+        "showAgain": "Show again",
+        "showAgainOf": "Show {{name}} again",
+        "retiredHint": "A retired measurement is hidden from the forms; everything recorded with it stays in the patient files.",
+        "builtinHint": "Built-in measurements (blood pressure, pulse, temperature…) cannot be retired: leave them out of the default set instead. Your own measurements are changed with the pencil and retired with the bin once they are out of the default set."
+      }
     },
     "patientSection": {
       "title": "Patient file and vital signs",
@@ -2549,7 +2578,8 @@
       "takerNotAllowed": "{{name}} is not allowed to take vital signs (the manager switched it off): choose another nurse or ask the manager.",
       "customName": "Type the name of the measurement.",
       "pickMeasurement": "Choose a measurement to add.",
-      "notANumber": "{{name}}: “{{value}}” is not a number."
+      "notANumber": "{{name}}: “{{value}}” is not a number.",
+      "textTooLong": "{{name}}: 200 characters at most."
     },
     "takenShort": "Vitals taken",
     "taken": "Vitals taken by {{name}} at {{time}}",
@@ -2585,7 +2615,12 @@
       "removeTitle": "Remove {{name}} from {{patient}}’s vitals?",
       "removeBody": "The value {{value}} stays in the audit with your reason; it no longer shows on the visit.",
       "removeYes": "Yes, remove"
-    }
+    },
+    "whoAt": "Who at {{desk}}?",
+    "anyoneAt": "Anyone at {{desk}}",
+    "nobodyAt": "Nobody is set up for {{desk}} yet: the patient waits there for anyone.",
+    "sendToPerson": "Save and send to {{name}}",
+    "textRow": "Words, not a figure"
   },
   "ops": {
     "appts": {
@@ -5227,7 +5262,8 @@
       "removeYes": "Yes, remove",
       "askInsurer": "{{item}} is not on {{insurer}}’s list. Charge the cash price?",
       "askInsurerBody": "Confirm with {{insurer}} first. The cash price ({{price}}) is split with the insurer’s coverage.",
-      "askInsurerYes": "Yes, confirmed with the insurer"
+      "askInsurerYes": "Yes, confirmed with the insurer",
+      "vitalsSendPerson": "The patient is for {{name}}: their “Next patient” offer and the waiting-room screen name them."
     },
     "staff": {
       "deactivate": {
@@ -5346,7 +5382,10 @@
       "vitals": {
         "title": "Change the default vital signs?",
         "body": "Every nurse and doctor sees the new set from their next form.",
-        "yes": "Yes, save"
+        "yes": "Yes, save",
+        "retireTitle": "Retire {{name}}?",
+        "retireBody": "It no longer shows in Settings, on the vitals form or in “Add a measurement”. Everything already recorded keeps showing. You can show it again later.",
+        "retireYes": "Yes, retire it"
       },
       "insurance": {
         "on": {
@@ -5758,7 +5797,17 @@
     "staffDocsUnavailable": "Employee documents cannot be added yet: the database update that adds them is not installed.",
     "staffDocPrivate": "These documents are not yours to see. Only the manager and the employee can open them.",
     "staffDocManagerOnly": "Only the manager adds or removes an employee's documents.",
-    "askInsurer": "This is not on the insurer’s list. Confirm the cash price with the insurer first."
+    "askInsurer": "This is not on the insurer’s list. Confirm the cash price with the insurer first.",
+    "vitalKind": "A measurement is a number or a text.",
+    "vitalRangeOrder": "The lowest value must be below the highest.",
+    "vitalExists": "A measurement with this name already exists.",
+    "vitalExistsRetired": "A measurement with this name is retired: show it again instead of adding it.",
+    "vitalBuiltin": "A built-in measurement cannot be changed or retired: leave it out of the default set instead.",
+    "vitalRetired": "This measurement is retired: show it again first.",
+    "vitalNotRetired": "This measurement is not retired.",
+    "vitalInDefault": "This measurement is in the default set: untick it and save the set first.",
+    "vitalText": "A text measurement is 200 characters at most.",
+    "notAtDesk": "That person does not work at the chosen desk today: choose someone else, or anyone there."
   },
   "cashierDesk": {
     "noMatch": "Nothing matches your search.",
@@ -9196,7 +9245,16 @@
       "next": "{{desk}} — next: {{list}}",
       "nobody": "{{desk}} — nobody waiting",
       "results": "Results ready: {{list}}"
-    }
+    },
+    "latestCall": "Latest call",
+    "noCallYet": "No call yet today",
+    "earlierCalls": "Earlier",
+    "beingSeen": "Being seen",
+    "moreWaiting_one": "and {{count}} more waiting",
+    "moreWaiting_other": "and {{count}} more waiting",
+    "noPatients": "No patient waiting",
+    "noPatientsLead": "The desks are free — please go to reception.",
+    "position": "Desk {{n}} of {{total}}"
   },
   "displayScreens": {
     "title": "Waiting-room screens",

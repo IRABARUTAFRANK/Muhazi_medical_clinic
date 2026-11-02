@@ -1345,7 +1345,36 @@
       "save": "Bika ibipimo by’ibanze",
       "saved": "Ibipimo by’ibanze byabitswe. Buri fomu y’ibipimo izabyerekana kuva ubu.",
       "none": "Shyira akamenyetso nibura ku gipimo kimwe.",
-      "bmiHint": "BMI ibarwa hakurikijwe ibiro n’uburebure, ntibikwa."
+      "bmiHint": "BMI ibarwa hakurikijwe ibiro n’uburebure, ntibikwa.",
+      "manage": {
+        "nameNeeded": "Andika izina ry’igipimo.",
+        "rangeNumbers": "Agaciro gato cyane n’akanini cyane ni imibare.",
+        "rangeOrder": "Agaciro gato cyane kagomba kuba munsi y’akanini cyane.",
+        "changed": "{{name}} cyahinduwe.",
+        "added": "{{name}} cyongewe ku bipimo. Shyiraho akamenyetso kugira ngo kijye mu bipimo by’ibanze.",
+        "retired": "{{name}} cyahishwe. Ntikigaragara kuri fomu; ibyanditswe bikomeza kubaho.",
+        "restored": "{{name}} cyongeye kugaragara.",
+        "edit": "Hindura {{name}} (izina, unit, agaciro)",
+        "retire": "Hisha {{name}}",
+        "text": "Amagambo",
+        "number": "Umubare",
+        "editTitle": "Hindura {{name}}",
+        "addTitle": "Igipimo gishya",
+        "name": "Izina",
+        "unit": "Unit (si itegetswe)",
+        "kind": "Ubwoko",
+        "min": "Agaciro gato cyane",
+        "max": "Agaciro kanini cyane",
+        "rangeHint": "Si itegetswe: agaciro umurwayi ashobora kugira. Umubare uri hanze yako wangwa nk’ikosa ryo kwandika.",
+        "textHint": "Amagambo aho kuba umubare (urugero: ubwoko bw’amaraso, igipimo cy’inkari).",
+        "saveChange": "Bika impinduka",
+        "add": "Ongeraho",
+        "retiredTitle": "Ibipimo byahishwe ({{count}})",
+        "showAgain": "Ongera ugaragaze",
+        "showAgainOf": "Ongera ugaragaze {{name}}",
+        "retiredHint": "Igipimo cyahishwe ntikigaragara kuri fomu; ibyanditswe byose bikomeza kuba muri dosiye z’abarwayi.",
+        "builtinHint": "Ibipimo biza na sisitemu (umuvuduko w’amaraso, umutima, ubushyuhe…) ntibihishwa: bisige hanze y’ibipimo by’ibanze. Ibipimo wiyongereyeho bihindurwa n’ikaramu kandi bigahishwa n’agatebo iyo bitakiri mu bipimo by’ibanze."
+      }
     },
     "patientSection": {
       "title": "Dosiye y’umurwayi n’ibipimo",
@@ -2553,7 +2582,8 @@
       "takerNotAllowed": "{{name}} ntiyemerewe gufata ibipimo (umuyobozi yabifunze): hitamo undi muforomo cyangwa ubaze umuyobozi.",
       "customName": "Andika izina ry’igipimo.",
       "pickMeasurement": "Hitamo igipimo cyo kongeraho.",
-      "notANumber": "{{name}}: “{{value}}” si umubare."
+      "notANumber": "{{name}}: “{{value}}” si umubare.",
+      "textTooLong": "{{name}}: inyuguti 200 ntarengwa."
     },
     "takenShort": "Ibipimo byafashwe",
     "taken": "Ibipimo byafashwe na {{name}} saa {{time}}",
@@ -2589,7 +2619,12 @@
       "removeTitle": "Kuraho {{name}} mu bipimo bya {{patient}}?",
       "removeBody": "Agaciro {{value}} kaguma mu nyandiko z’igenzura hamwe n’impamvu yawe; ntikazongera kugaragara ku ruzinduko.",
       "removeYes": "Yego, kuraho"
-    }
+    },
+    "whoAt": "Nde kuri {{desk}}?",
+    "anyoneAt": "Uwo ari we wese kuri {{desk}}",
+    "nobodyAt": "Nta muntu urashyirwa kuri {{desk}}: umurwayi ahategereza uwo ari we wese.",
+    "sendToPerson": "Bika wohereze kwa {{name}}",
+    "textRow": "Amagambo, si umubare"
   },
   "ops": {
     "appts": {
@@ -5236,7 +5271,8 @@
       "removeYes": "Yego, kuraho",
       "askInsurer": "{{item}} ntiri ku rutonde rwa {{insurer}}. Kwishyuza igiciro cy’amafaranga?",
       "askInsurerBody": "Banza ubimenye kwa {{insurer}}. Igiciro cy’amafaranga ({{price}}) kigabanywa hakurikijwe umugabane w’ubwishingizi.",
-      "askInsurerYes": "Yego, byemejwe n’ikigo cy’ubwishingizi"
+      "askInsurerYes": "Yego, byemejwe n’ikigo cy’ubwishingizi",
+      "vitalsSendPerson": "Umurwayi ni uwa {{name}}: “Umurwayi ukurikira” we n’ecran y’aho batagerereza bimugaragaza."
     },
     "staff": {
       "deactivate": {
@@ -5355,7 +5391,10 @@
       "vitals": {
         "title": "Guhindura ibipimo by’ibanze?",
         "body": "Buri muforomo na muganga azabona ibipimo bishya kuva kuri fomu ikurikira.",
-        "yes": "Yego, bika"
+        "yes": "Yego, bika",
+        "retireTitle": "Hisha {{name}}?",
+        "retireBody": "Ntikizongera kugaragara mu Igenamiterere, kuri fomu y’ibipimo by’ibanze cyangwa muri “Ongeraho igipimo”. Ibyanditswe byose bikomeza kugaragara. Uzashobora kongera kukigaragaza nyuma.",
+        "retireYes": "Yego, gihishe"
       },
       "insurance": {
         "on": {
@@ -5767,7 +5806,17 @@
     "staffDocsUnavailable": "Inyandiko z'abakozi ntizirashobora kongerwaho: ivugurura ry'ububiko bw'amakuru ribizana ntiriratangizwa.",
     "staffDocPrivate": "Izi nyandiko ntiwemerewe kuzireba. Umuyobozi n'umukozi ni bo bonyine bashobora kuzifungura.",
     "staffDocManagerOnly": "Umuyobozi ni we wenyine wongeraho cyangwa akuraho inyandiko z'umukozi.",
-    "askInsurer": "Ibi ntibiri ku rutonde rw’ikigo cy’ubwishingizi. Banza wemeze igiciro cy’amafaranga n’ikigo cy’ubwishingizi."
+    "askInsurer": "Ibi ntibiri ku rutonde rw’ikigo cy’ubwishingizi. Banza wemeze igiciro cy’amafaranga n’ikigo cy’ubwishingizi.",
+    "vitalKind": "Igipimo ni umubare cyangwa amagambo.",
+    "vitalRangeOrder": "Agaciro gato cyane kagomba kuba munsi y’akanini cyane.",
+    "vitalExists": "Igipimo gifite iri zina kirahari.",
+    "vitalExistsRetired": "Igipimo gifite iri zina cyahishwe: ongera ukigaragaze aho kucyongeraho.",
+    "vitalBuiltin": "Igipimo kiza na sisitemu ntigihindurwa cyangwa ngo gihishwe: gisige hanze y’ibipimo by’ibanze.",
+    "vitalRetired": "Iki gipimo cyahishwe: banza ukigaragaze.",
+    "vitalNotRetired": "Iki gipimo ntabwo cyahishwe.",
+    "vitalInDefault": "Iki gipimo kiri mu bipimo by’ibanze: banza ukure akamenyetso ubike.",
+    "vitalText": "Igipimo cy’amagambo ni inyuguti 200 ntarengwa.",
+    "notAtDesk": "Uwo muntu ntakora aho wahisemo uyu munsi: hitamo undi, cyangwa uwo ari we wese."
   },
   "cashierDesk": {
     "noMatch": "Nta kintu gihuye n’ibyo washatse.",
@@ -9205,7 +9254,16 @@
       "next": "{{desk}} — abakurikira: {{list}}",
       "nobody": "{{desk}} — nta wutegereje",
       "results": "Ibisubizo biteguye: {{list}}"
-    }
+    },
+    "latestCall": "Uwahamagawe ubu",
+    "noCallYet": "Nta muntu urahamagarwa uyu munsi",
+    "earlierCalls": "Abahamagawe mbere",
+    "beingSeen": "Ari kwitabwaho",
+    "moreWaiting_one": "n’undi {{count}} utegereje",
+    "moreWaiting_other": "n’abandi {{count}} bategereje",
+    "noPatients": "Nta murwayi utegereje",
+    "noPatientsLead": "Aho bakorera hose ni ubusa — nyamuneka jya aho bakirira abarwayi.",
+    "position": "Aho bakorera {{n}} muri {{total}}"
   },
   "displayScreens": {
     "title": "Mugaragaza zo mu cyumba cyo gutegerereza",

@@ -17960,6 +17960,432 @@ await step(
   },
 )
 
+// ---------------------------------------------------------------- 0119: send to a person from the vitals form; the measurements managed in Settings
+await step('0119: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261229090000_vitals_send_person.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+const t119 = {}
+const json119 = (x) => JSON.stringify(x)
+/** A second doctor of Consultation (staff.doctor stays the first). */
+const doctor119 = async (username, name) => {
+  await asAdmin()
+  const r = await one(
+    `insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`,
+    [
+      `${username}@staff.muhaziclinic.rw`,
+      JSON.stringify({ username, full_name: name, role: 'doctor', station: 'Consultation 2' }),
+    ],
+  )
+  return r.id
+}
+await step(
+  '0119 A: the nurse sends the patient to a named doctor: assigned to them, in their queue and not in the other doctor’s, the notice to them alone',
+  async () => {
+    t119.doc2 = await doctor119('d.vit119', 'Dr. Vitals 119')
+    await asAdmin()
+    const serves = await one(
+      `select serves_station($1, 'consultation') as a, serves_station($2, 'consultation') as b`,
+      [staff.doctor, t119.doc2],
+    )
+    if (!serves.a || !serves.b)
+      throw new Error('setup: a doctor does not serve consultation ' + json119(serves))
+    const v = await visit87('Send119', { triage: true })
+    t119.enc = v.enc
+    await as(staff.nurse)
+    await db.query(
+      `select record_vitals_to($1, '{"temp":"37.2","pulse":"80"}'::jsonb, 'green', 'consultation', null, null, null, $2)`,
+      [v.enc, staff.doctor],
+    )
+    await asAdmin()
+    const q = await one(
+      `select assigned_to, finished_at is null as open from queue_entry
+       where encounter_id = $1 and station = 'consultation' and deleted_at is null order by created_at desc limit 1`,
+      [v.enc],
+    )
+    const triageClosed = await one(
+      `select bool_and(finished_at is not null) as closed from queue_entry where encounter_id = $1 and station = 'triage'`,
+      [v.enc],
+    )
+    const notice = await one(
+      `select kind, recipient_user, recipient_stations from notification
+       where kind in ('queue', 'referral') and (params ->> 'name') like 'Switch Send119%' order by created_at desc limit 1`,
+    )
+    const docName = (await one(`select full_name from profiles where id = $1`, [staff.doctor]))
+      .full_name
+    await as(staff.doctor)
+    const mine = await one(
+      `select for_me, assigned_name from queue_board where encounter_id = $1 and station = 'consultation'`,
+      [v.enc],
+    )
+    const first = (
+      await one(
+        `select encounter_id from queue_board where station = 'consultation' and finished_at is null and for_me
+         order by priority, queued_at limit 1`,
+      )
+    )?.encounter_id
+    await as(t119.doc2)
+    const other = await one(
+      `select for_me from queue_board where encounter_id = $1 and station = 'consultation'`,
+      [v.enc],
+    )
+    // station_staff counts the patient as waiting for the first doctor
+    await as(staff.nurse)
+    const staffList = (await one(`select station_staff('consultation') as j`)).j
+    const me = staffList.staff.find((p) => p.id === staff.doctor)
+    const him = staffList.staff.find((p) => p.id === t119.doc2)
+    await asAdmin()
+    if (
+      q.assigned_to !== staff.doctor ||
+      !q.open ||
+      !triageClosed.closed ||
+      notice.kind !== 'queue' ||
+      notice.recipient_user !== staff.doctor ||
+      notice.recipient_stations !== null ||
+      mine.for_me !== true ||
+      mine.assigned_name !== docName ||
+      other.for_me === true ||
+      !me ||
+      Number(me.waiting) < 1 ||
+      !him ||
+      Number(him.waiting) !== 0
+    )
+      throw new Error(json119({ q, triageClosed, notice, mine, first, other, me, him }))
+    return `assigned to Dr. Mukamana; for_me true for her, false for Dr. Vitals 119; queue notice to her alone; station_staff: she waits for ${me.waiting}, he for 0`
+  },
+)
+await step(
+  '0119 B: an unknown, an inactive or a wrong-desk person is refused; the old send_from_triage still works; send_from_triage_to names a person',
+  async () => {
+    const r = {}
+    const v = await visit87('Refuse119', { triage: true })
+    r.unknown = await hintAs(
+      staff.nurse,
+      `select record_vitals_to($1, '{"temp":"37"}'::jsonb, 'green', 'consultation', null, null, null, $2)`,
+      [v.enc, crypto.randomUUID()],
+    )
+    r.wrongDesk = await hintAs(
+      staff.nurse,
+      `select record_vitals_to($1, '{"temp":"37"}'::jsonb, 'green', 'consultation', null, null, null, $2)`,
+      [v.enc, staff.pharmacist],
+    )
+    await as(staff.manager)
+    await db.query(`select set_profile_active($1, false)`, [t119.doc2])
+    r.inactive = await hintAs(
+      staff.nurse,
+      `select record_vitals_to($1, '{"temp":"37"}'::jsonb, 'green', 'consultation', null, null, null, $2)`,
+      [v.enc, t119.doc2],
+    )
+    await as(staff.manager)
+    await db.query(`select set_profile_active($1, true)`, [t119.doc2])
+    // the measurements were not saved by the refused calls: the patient is still at triage
+    await asAdmin()
+    const still = await one(
+      `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'triage' and finished_at is null`,
+      [v.enc],
+    )
+    // measurements only, then the old four-argument send
+    r.record = await codeAs(staff.nurse, `select record_vitals($1, '{"temp":"37"}'::jsonb)`, [
+      v.enc,
+    ])
+    r.sendOld = await hintAs(staff.nurse, `select send_from_triage($1, 'yellow', 'consultation')`, [
+      v.enc,
+    ])
+    await asAdmin()
+    const q1 = await one(
+      `select assigned_to from queue_entry where encounter_id = $1 and station = 'consultation' and deleted_at is null`,
+      [v.enc],
+    )
+    // the five-argument send names a person
+    const w = await visit87('Send119b', { triage: true })
+    await as(staff.nurse)
+    await db.query(`select record_vitals($1, '{"temp":"36.9"}'::jsonb)`, [w.enc])
+    r.sendWrong = await hintAs(
+      staff.nurse,
+      `select send_from_triage_to($1, 'green', 'consultation', null, $2)`,
+      [w.enc, staff.pharmacist],
+    )
+    r.sendPerson = await hintAs(
+      staff.nurse,
+      `select send_from_triage_to($1, 'green', 'consultation', 'headache', $2)`,
+      [w.enc, t119.doc2],
+    )
+    await asAdmin()
+    const q2 = await one(
+      `select assigned_to from queue_entry where encounter_id = $1 and station = 'consultation' and deleted_at is null`,
+      [w.enc],
+    )
+    if (
+      r.unknown !== '22023/not_at_desk' ||
+      r.wrongDesk !== '22023/not_at_desk' ||
+      r.inactive !== '22023/not_at_desk' ||
+      still.n !== 1 ||
+      r.record !== null ||
+      r.sendOld !== 'ok' ||
+      q1.assigned_to !== null ||
+      r.sendPerson !== 'ok' ||
+      r.sendWrong !== '22023/not_at_desk' ||
+      q2.assigned_to !== t119.doc2
+    )
+      throw new Error(json119({ r, still, q1, q2 }))
+    return 'unknown, pharmacist at consultation, inactive doctor: not_at_desk; four arguments: sent for anyone; five: assigned to Dr. Vitals 119'
+  },
+)
+await step(
+  '0119 C: the manager adds a measurement (a number with a range, a text), a duplicate name is refused, a custom one is renamed, a built-in one is not; the nurse may not',
+  async () => {
+    const r = {}
+    r.nurse = await codeAs(
+      staff.nurse,
+      `select save_vital_type(null, 'Peak flow', 'L/min', 'number', 50, 900)`,
+    )
+    await as(staff.manager)
+    const made = (
+      await one(`select save_vital_type(null, 'Peak flow', 'L/min', 'number', 50, 900) as j`)
+    ).j
+    const text = (await one(`select save_vital_type(null, 'Urine dipstick', '', 'text') as j`)).j
+    await asAdmin()
+    // "Blood ketones" (typed on a patient in 0102, in the catalogue since the migration re-ran; else added now)
+    const bk0 = await hintAs(
+      staff.manager,
+      `select save_vital_type(null, 'Blood ketones', 'mmol/L')`,
+    )
+    // the same name again, however written: the same code
+    r.dup = await hintAs(staff.manager, `select save_vital_type(null, 'Blood Ketones', 'mmol/L')`)
+    r.noName = await hintAs(staff.manager, `select save_vital_type(null, '  ', 'x')`)
+    r.badKind = await hintAs(staff.manager, `select save_vital_type(null, 'Thing', '', 'date')`)
+    r.badRange = await hintAs(
+      staff.manager,
+      `select save_vital_type(null, 'Thing', '', 'number', 10, 5)`,
+    )
+    r.builtin = await hintAs(
+      staff.manager,
+      `select save_vital_type('temp', 'Temperature', 'K', 'number', 200, 400)`,
+    )
+    r.rename = await hintAs(
+      staff.manager,
+      `select save_vital_type('custom_peak_flow', 'Peak expiratory flow', 'L/min', 'number', 60, 800)`,
+    )
+    r.unknown = await hintAs(staff.manager, `select save_vital_type('custom_nope', 'Nope', '')`)
+    await as(staff.nurse)
+    const types = (await one(`select vital_types() as j`)).j
+    const pf = types.find((x) => x.code === 'custom_peak_flow')
+    const ud = types.find((x) => x.code === 'custom_urine_dipstick')
+    const bk = types.find((x) => x.code === 'custom_blood_ketones')
+    const temp = types.find((x) => x.code === 'temp')
+    await asAdmin()
+    const audit = await one(
+      `select count(*)::int as n from audit_event where entity = 'vital_type' and after ->> 'code' = 'custom_peak_flow'`,
+    )
+    if (
+      r.nurse !== '42501' ||
+      made.code !== 'custom_peak_flow' ||
+      made.custom !== true ||
+      text.code !== 'custom_urine_dipstick' ||
+      text.kind !== 'text' ||
+      r.dup !== '23505/vital_exists' ||
+      r.noName !== '22023/vital_name' ||
+      r.badKind !== '22023/vital_kind' ||
+      r.badRange !== '22023/vital_range_order' ||
+      r.builtin !== '22023/vital_builtin' ||
+      r.rename !== 'ok' ||
+      r.unknown !== '22023/vital_unknown' ||
+      pf?.name !== 'Peak expiratory flow' ||
+      Number(pf?.min) !== 60 ||
+      Number(pf?.max) !== 800 ||
+      pf?.retired !== false ||
+      ud?.kind !== 'text' ||
+      !['ok', '23505/vital_exists'].includes(bk0) ||
+      bk?.name !== 'Blood ketones' ||
+      bk?.custom !== true ||
+      temp?.custom !== false ||
+      temp?.unit !== '°C' ||
+      audit.n !== 2
+    )
+      throw new Error(json119({ r, made, text, pf, ud, bk, temp, audit }))
+    return 'nurse 42501; Peak flow and Urine dipstick (text) added; duplicate, empty name, bad kind, upside-down range, built-in, unknown refused; renamed with its range; audited twice'
+  },
+)
+await step(
+  '0119 D: a managed measurement on a patient: the range checked, the manager’s name and unit kept; a text one keeps its words; one typed by name joins the catalogue',
+  async () => {
+    const v = await visit87('Managed119')
+    t119.managedEnc = v.enc
+    const r = {}
+    r.high = await hintAs(
+      staff.nurse,
+      `select record_vitals($1, '{"custom_peak_flow":{"value":1000}}'::jsonb)`,
+      [v.enc],
+    )
+    r.ok = await codeAs(
+      staff.nurse,
+      `select record_vitals($1, '{"custom_peak_flow":"400","custom_urine_dipstick":{"text":"protein +"},"custom_lactate":{"value":1.1,"unit":"mmol/L","label":"Lactate"}}'::jsonb)`,
+      [v.enc],
+    )
+    const rows = await vitals102(v.enc)
+    await as(staff.nurse)
+    const ud = await one(
+      `select value_text, value_num, label from visit_measurements where encounter_id = $1 and code = 'custom_urine_dipstick'`,
+      [v.enc],
+    )
+    const lactate = (await one(`select vital_types() as j`)).j.find(
+      (x) => x.code === 'custom_lactate',
+    )
+    await asAdmin()
+    const pf = rows.find((x) => x.code === 'custom_peak_flow')
+    if (
+      r.high !== '22023/vital_range' ||
+      r.ok !== null ||
+      pf?.v !== '400' ||
+      pf?.unit !== 'L/min' ||
+      pf?.label !== 'Peak expiratory flow' ||
+      ud?.value_text !== 'protein +' ||
+      ud?.value_num !== null ||
+      ud?.label !== 'Urine dipstick' ||
+      lactate?.name !== 'Lactate' ||
+      lactate?.unit !== 'mmol/L' ||
+      lactate?.custom !== true
+    )
+      throw new Error(json119({ r, pf, ud, lactate, rows }))
+    return 'peak flow 1000 refused (60–800), 400 L/min saved as "Peak expiratory flow"; dipstick "protein +" as text; "Lactate" typed by name is now in the catalogue'
+  },
+)
+await step(
+  '0119 E: retiring: refused in the default set and for a built-in one; after unticking it leaves the form’s list, what was recorded stays, "show again" brings it back; the nurse may not',
+  async () => {
+    const r = {}
+    await as(staff.manager)
+    const codes = (await one(`select vitals_setting() as s`)).s.codes
+    await db.query(`select save_vitals_setting($1::jsonb)`, [
+      JSON.stringify([...codes, 'custom_peak_flow']),
+    ])
+    r.inDefault = await hintAs(staff.manager, `select retire_vital_type('custom_peak_flow')`)
+    r.builtin = await hintAs(staff.manager, `select retire_vital_type('pulse')`)
+    r.unknown = await hintAs(staff.manager, `select retire_vital_type('custom_nope')`)
+    r.nurse = await codeAs(staff.nurse, `select retire_vital_type('custom_lactate')`)
+    await as(staff.manager)
+    await db.query(`select save_vitals_setting($1::jsonb)`, [JSON.stringify(codes)])
+    r.ok = await hintAs(staff.manager, `select retire_vital_type('custom_peak_flow')`)
+    r.again = await hintAs(staff.manager, `select retire_vital_type('custom_peak_flow')`)
+    r.renameRetired = await hintAs(
+      staff.manager,
+      `select save_vital_type('custom_peak_flow', 'Peak flow', 'L/min')`,
+    )
+    r.addRetired = await hintAs(staff.manager, `select save_vital_type(null, 'Peak flow', 'L/min')`)
+    await as(staff.nurse)
+    const setting = (await one(`select vitals_setting() as s`)).s
+    const inForm = setting.catalogue.some((x) => x.code === 'custom_peak_flow')
+    const flagged = (await one(`select vital_types() as j`)).j.find(
+      (x) => x.code === 'custom_peak_flow',
+    )
+    await asAdmin()
+    // what was recorded with it is still read
+    const kept = (await vitals102(t119.managedEnc)).find((x) => x.code === 'custom_peak_flow')
+    // typed by name again while retired: saved as "Other" (its typed name), the catalogue row untouched
+    r.typed = await codeAs(
+      staff.nurse,
+      `select record_vitals($1, '{"custom_peak_flow":{"value":410,"label":"Peak flow"}}'::jsonb)`,
+      [t119.managedEnc],
+    )
+    r.restoreNurse = await codeAs(staff.nurse, `select restore_vital_type('custom_peak_flow')`)
+    r.restore = await hintAs(staff.manager, `select restore_vital_type('custom_peak_flow')`)
+    r.restoreAgain = await hintAs(staff.manager, `select restore_vital_type('custom_peak_flow')`)
+    await as(staff.nurse)
+    const back = (await one(`select vitals_setting() as s`)).s.catalogue.find(
+      (x) => x.code === 'custom_peak_flow',
+    )
+    await asAdmin()
+    const audit = await one(
+      `select count(*)::int as n from audit_event where entity = 'vital_type' and (after ->> 'code' = 'custom_peak_flow') and action in ('delete', 'update')`,
+    )
+    if (
+      r.inDefault !== '22023/vital_in_default' ||
+      r.builtin !== '22023/vital_builtin' ||
+      r.unknown !== '22023/vital_unknown' ||
+      r.nurse !== '42501' ||
+      r.ok !== 'ok' ||
+      r.again !== '22023/vital_retired' ||
+      r.renameRetired !== '22023/vital_retired' ||
+      r.addRetired !== '23505/vital_exists_retired' ||
+      inForm ||
+      flagged?.retired !== true ||
+      kept?.v !== '400' ||
+      r.typed !== null ||
+      r.restoreNurse !== '42501' ||
+      r.restore !== 'ok' ||
+      r.restoreAgain !== '22023/vital_not_retired' ||
+      back?.name !== 'Peak expiratory flow' ||
+      audit.n < 3
+    )
+      throw new Error(json119({ r, inForm, flagged, kept, back, audit }))
+    return 'in the default set, built-in, unknown, nurse refused; retired: gone from the form list, flagged, the 400 L/min still read, a second retire and a rename refused; restored by the manager only; audited'
+  },
+)
+
+// ---------------------------------------------------------------- 0119: the TV says who will see each waiting patient
+await step('0119: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20261230090000_waiting_screen_slides.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+await step(
+  '0119: a waiting patient sent to a doctor by name shows the doctor and the room; others show nothing',
+  async () => {
+    await as(staff.manager)
+    const made = (
+      await one(
+        `select save_display_screen(null, 'Slides TV', '{consultation}', true, true, '{en}', null) as j`,
+      )
+    ).j
+    await asAdmin()
+    const p1 = (
+      await one(
+        `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
+         values ('Mukamana', 'Slides', 'female', '1991-02-02', '0788119001', true, true, true) returning id`,
+      )
+    ).id
+    const p2 = (
+      await one(
+        `insert into patient (surname, given_names, sex, birth_date, phone_1, consent_treatment, consent_messages, consent_insurer)
+         values ('Habimana', 'Slides', 'male', '1981-03-03', '0788119002', true, true, true) returning id`,
+      )
+    ).id
+    const doctorName = (await one(`select full_name from profiles where id = $1`, [staff.doctor]))
+      .full_name
+    await as(staff.receptionist)
+    const v1 = (await one(`select open_encounter($1, 'opd', 'reception', null) as id`, [p1])).id
+    await db.query(`select refer_patient($1, 'reception', 'consultation', $2, 'by name')`, [
+      v1,
+      staff.doctor,
+    ])
+    const v2 = (await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [p2])).id
+    // both urgent, so they come first among the five shown
+    await asAdmin()
+    await db.query(
+      `update queue_entry set priority = 1 where encounter_id in ($1, $2) and station = 'consultation' and finished_at is null`,
+      [v1, v2],
+    )
+    await as(null, 'anon')
+    const b = (await one(`select display_board($1) as j`, [made.key])).j
+    const cons = b.desks.find((d) => d.station === 'consultation')
+    const named = cons.next.find((n) => n.name === 'Mukamana Slides')
+    const plain = cons.next.find((n) => n.name === 'Habimana Slides')
+    if (!named || named.person !== doctorName || named.room !== 'Consultation 1')
+      throw new Error(JSON.stringify(named))
+    if (!plain || plain.person !== null || plain.room !== null)
+      throw new Error(JSON.stringify(plain))
+    // nothing clinical in the payload
+    if (/triage|reason|findings|note/i.test(JSON.stringify(b))) throw new Error('clinical word')
+    await asAdmin()
+    return `${named.ticket} → ${named.person} (${named.room}); ${plain.ticket} → nobody named`
+  },
+)
+
 finish()
 
 function finish() {

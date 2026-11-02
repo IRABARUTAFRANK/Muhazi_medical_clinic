@@ -1,11 +1,12 @@
 /*
  * The waiting-room screen (a TV, 1366×768 to 1920×1080; readable on a tablet). Dark, high
  * contrast, in the clinic's brand: the navy of the logo, the gold of its sun for the tickets,
- * the green of its hills for "results ready". Every size follows the screen (vh / vw) and the
- * number of desk columns (--cols), so nothing ever scrolls on a TV.
+ * the green of its hills for "results ready". From 0119 the page is a call banner on top (the
+ * latest call, huge) and ONE desk card under it, turning every few seconds like a slideshow:
+ * ten desks never shrink into ten columns. Every size follows the screen (vh / vw), so nothing
+ * ever scrolls on a TV.
  */
 .display-root {
-  --cols: 3;
   --dp-gold: #f6c544;
   --dp-green: #37a935;
   --dp-sky: #7fd0ff;
@@ -29,26 +30,26 @@
   display: flex;
   align-items: center;
   gap: 2vw;
-  padding: 1.2vh 2vw;
+  padding: 1vh 2vw;
   border-bottom: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(0, 0, 0, 0.18);
 }
 .display-logo {
-  width: 6.4vh;
-  height: 6.4vh;
+  width: 6vh;
+  height: 6vh;
   border-radius: 9999px;
   object-fit: cover;
   flex: none;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
 }
 .display-clinic {
-  font-size: min(3.6vh, 2.2vw);
+  font-size: min(3.4vh, 2.2vw);
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.01em;
 }
 .display-sub {
-  font-size: min(2.2vh, 1.3vw);
+  font-size: min(2.1vh, 1.3vw);
   opacity: 0.8;
 }
 .display-clock {
@@ -57,132 +58,248 @@
   line-height: 1.05;
 }
 .display-time {
-  font-size: min(5.4vh, 3.4vw);
+  font-size: min(5vh, 3.4vw);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 .display-date {
-  font-size: min(2.1vh, 1.3vw);
+  font-size: min(2vh, 1.3vw);
   opacity: 0.85;
 }
 
-/* ---------- desks ---------- */
-.display-main {
+/* ---------- the stage: banner, earlier calls, the desk card ---------- */
+.display-stage {
   flex: 1 1 auto;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-  gap: 1.4vw;
-  padding: 1.6vh 2vw;
-}
-.display-desk {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 1.6vh;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  gap: 1.2vh;
+  padding: 1.4vh 2vw;
+}
+
+/* the latest call */
+.display-banner {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 2.4vw;
+  padding: 1.6vh 2.4vw;
+  border-radius: 2vh;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   overflow: hidden;
 }
-.display-desk-head {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1vw;
-  padding: 1.2vh 1.4vw;
-  background: rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-  font-size: min(3.4vh, calc(8vw / var(--cols)));
-  font-weight: 800;
-  line-height: 1.1;
-}
-.display-count {
-  flex: none;
-  font-size: min(2.1vh, calc(4.6vw / var(--cols)));
-  font-weight: 600;
-  padding: 0.5vh 0.9vw;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.16);
-  white-space: nowrap;
-}
-.display-now {
-  flex: none;
-  padding: 1.4vh 1.4vw 1.2vh;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-}
-.display-label {
-  font-size: min(2vh, calc(4.4vw / var(--cols)));
+.display-banner-label {
+  grid-column: 1 / -1;
+  font-size: min(2vh, 1.3vw);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   opacity: 0.75;
 }
-.display-ticket {
-  font-size: min(11vh, calc(26vw / var(--cols)));
+.display-banner-ticket {
+  font-size: min(17vh, 13vw);
+  font-weight: 900;
+  line-height: 0.95;
+  color: var(--dp-gold);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.display-banner-body {
+  min-width: 0;
+}
+.display-banner-name {
+  font-size: min(7.5vh, 4.6vw);
+  font-weight: 800;
+  line-height: 1.08;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.display-banner-go {
+  margin-top: 0.8vh;
+  font-size: min(4.6vh, 2.9vw);
+  font-weight: 700;
+  color: var(--dp-sky);
+  line-height: 1.15;
+}
+.display-banner-go small {
+  display: block;
+  font-size: 0.68em;
+  font-weight: 500;
+  opacity: 0.9;
+}
+.display-banner-empty {
+  grid-column: 1 / -1;
+  font-size: min(5vh, 3vw);
+  font-weight: 600;
+  opacity: 0.6;
+  padding: 2vh 0;
+}
+
+/* the two or three earlier calls */
+.display-prev {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 1.4vw;
+  overflow: hidden;
+  font-size: min(2.6vh, 1.6vw);
+  opacity: 0.9;
+  padding: 0 1vw;
+}
+.display-prev-label {
+  flex: none;
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.display-prev span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.display-prev b {
+  color: var(--dp-gold);
+}
+
+/* the desk card of the moment */
+.display-slide {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 2vh;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  animation: display-slide-in 0.6s ease-out 1;
+}
+@keyframes display-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(4vw);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.display-slide-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 1.4vw;
+  padding: 1.2vh 2vw;
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.display-slide-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: min(5vh, 3.2vw);
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.display-slide-count {
+  flex: none;
+  font-size: min(2.4vh, 1.5vw);
+  font-weight: 600;
+  padding: 0.6vh 1vw;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.16);
+  white-space: nowrap;
+}
+.display-slide-pos {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5vw;
+  font-size: min(2vh, 1.3vw);
+  opacity: 0.8;
+}
+.display-slide-dot {
+  width: 1.1vh;
+  height: 1.1vh;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.display-slide-dot.is-on {
+  background: var(--dp-gold);
+}
+.display-slide-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 2vw;
+  padding: 1.4vh 2vw;
+}
+.display-slide-col {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.display-label {
+  font-size: min(2vh, 1.3vw);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin-bottom: 0.6vh;
+}
+.display-now-ticket {
+  font-size: min(9vh, 6vw);
   font-weight: 900;
   line-height: 1;
   color: var(--dp-gold);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
-.display-name {
-  font-size: min(5vh, calc(10vw / var(--cols)));
+.display-now-name {
+  font-size: min(4.4vh, 2.8vw);
   font-weight: 800;
-  line-height: 1.12;
+  line-height: 1.1;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
-.display-go {
-  margin-top: 0.8vh;
-  font-size: min(3.4vh, calc(7vw / var(--cols)));
-  font-weight: 700;
+.display-now-go {
+  margin-top: 0.6vh;
+  font-size: min(2.8vh, 1.8vw);
+  font-weight: 600;
   color: var(--dp-sky);
-  line-height: 1.15;
+  line-height: 1.2;
 }
-.display-go-person {
-  font-size: min(2.4vh, calc(5vw / var(--cols)));
-  font-weight: 500;
-  opacity: 0.9;
-}
-.display-earlier {
-  margin-top: 0.8vh;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6vh 1vw;
-  font-size: min(2.2vh, calc(4.8vw / var(--cols)));
-  opacity: 0.85;
-}
-.display-earlier span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-.display-earlier b {
-  color: var(--dp-gold);
-}
-.display-next {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 1vh 1.4vw 1vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+.display-empty {
+  opacity: 0.7;
+  font-size: min(2.8vh, 1.8vw);
+  padding: 1vh 0;
 }
 .display-row {
   display: flex;
   align-items: center;
-  gap: 0.8vw;
-  padding: 0.6vh 0;
+  gap: 1vw;
+  padding: 0.9vh 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  /* five rows of two-line names fit under the "now" block at 768 px with the scrolling line */
-  font-size: min(2.7vh, calc(6.4vw / var(--cols)));
+  font-size: min(3.6vh, 2.3vw);
   line-height: 1.15;
 }
-.display-row:last-child {
+.display-row:last-of-type {
   border-bottom: 0;
 }
 .display-row b {
@@ -193,20 +310,36 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.display-row-name {
+.display-row-main {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2vh;
+}
+.display-row-name {
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+  min-width: 0;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-weight: 600;
-  line-height: 1.15;
+}
+.display-row-to {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.62em;
+  color: var(--dp-sky);
+  font-weight: 600;
 }
 .display-dot {
   flex: none;
-  width: 1.2em;
-  height: 1.2em;
+  width: 1.1em;
+  height: 1.1em;
   border-radius: 9999px;
   border: 2px solid rgba(255, 255, 255, 0.7);
 }
@@ -221,7 +354,7 @@
 }
 .display-urgent {
   flex: none;
-  font-size: 0.6em;
+  font-size: 0.55em;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -229,10 +362,32 @@
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.16);
 }
-.display-empty {
-  opacity: 0.7;
-  font-size: min(2.6vh, calc(5.4vw / var(--cols)));
-  padding: 1vh 0;
+.display-more {
+  margin-top: 0.6vh;
+  font-size: min(2.4vh, 1.5vw);
+  opacity: 0.8;
+}
+.display-calm {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1vh;
+  padding: 4vh 4vw;
+}
+.display-calm h2 {
+  margin: 0 0 1.5vh;
+  font-size: min(6vh, 3.8vw);
+  font-weight: 800;
+  line-height: 1.2;
+}
+.display-calm p {
+  margin: 0;
+  font-size: min(3vh, 1.9vw);
+  line-height: 1.3;
+  opacity: 0.8;
 }
 
 /* ---------- results strip and the message ---------- */
@@ -251,13 +406,13 @@
   display: flex;
   align-items: center;
   gap: 1vw;
-  padding: 1.2vh 2vw;
+  padding: 1vh 2vw;
   background: linear-gradient(90deg, rgba(55, 169, 53, 0.55), rgba(55, 169, 53, 0.15));
   overflow: hidden;
 }
 .display-results-title {
   flex: none;
-  font-size: min(2.6vh, 1.6vw);
+  font-size: min(2.5vh, 1.6vw);
   font-weight: 800;
   line-height: 1.1;
 }
@@ -276,11 +431,11 @@
 }
 .display-chip {
   flex: none;
-  padding: 0.7vh 1vw;
+  padding: 0.6vh 1vw;
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.92);
   color: #0b2252;
-  font-size: min(2.6vh, 1.5vw);
+  font-size: min(2.5vh, 1.5vw);
   font-weight: 700;
 }
 .display-chip b {
@@ -291,8 +446,8 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  padding: 1.2vh 2vw;
-  font-size: min(2.6vh, 1.5vw);
+  padding: 1vh 2vw;
+  font-size: min(2.5vh, 1.5vw);
   font-weight: 600;
   line-height: 1.25;
   overflow: hidden;
@@ -300,11 +455,12 @@
 .display-message span {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* ---------- a new call: the whole "now" block pulses and the ticket glows ---------- */
+/* ---------- a new call: the banner pulses and the ticket glows ---------- */
 @keyframes display-call {
   0% {
     background: rgba(246, 197, 68, 0);
@@ -339,17 +495,20 @@
     transform: scale(1.04);
   }
 }
-.display-now.is-new {
+.display-banner.is-new {
   animation: display-call 6s ease-out 1;
 }
-.display-now.is-new .display-ticket {
+.display-banner.is-new .display-banner-ticket {
   animation: display-glow 1.2s ease-in-out 5;
   transform-origin: left center;
 }
 @media (prefers-reduced-motion: reduce) {
-  .display-now.is-new,
-  .display-now.is-new .display-ticket {
+  .display-banner.is-new,
+  .display-banner.is-new .display-banner-ticket,
+  .display-slide {
     animation: none;
+  }
+  .display-banner.is-new {
     background: rgba(246, 197, 68, 0.25);
   }
 }
@@ -361,8 +520,8 @@
   white-space: nowrap;
   background: rgba(0, 0, 0, 0.32);
   border-top: 1px solid rgba(255, 255, 255, 0.16);
-  padding: 0.8vh 0;
-  font-size: min(3vh, 1.7vw);
+  padding: 0.7vh 0;
+  font-size: min(2.8vh, 1.7vw);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -498,30 +657,56 @@
   line-height: 1.3;
 }
 
-/* ---------- tablets and phones: one column, the page may scroll ---------- */
+/* ---------- tablets and phones: banner on top, the card under it; the page may scroll ---------- */
 @media (max-width: 900px) {
   .display-root {
-    --cols: 1;
     height: auto;
     min-height: 100dvh;
     overflow: auto;
   }
-  .display-main {
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .display-stage {
     padding: 12px;
+    gap: 12px;
   }
-  .display-desk {
-    min-height: 40vh;
+  .display-banner {
+    grid-template-columns: 1fr;
+    row-gap: 6px;
+  }
+  .display-banner-ticket {
+    font-size: 20vw;
+  }
+  .display-banner-name {
+    font-size: 8vw;
+  }
+  .display-banner-go {
+    font-size: 5.5vw;
+  }
+  .display-slide {
+    min-height: 60vh;
+  }
+  .display-slide-body {
+    grid-template-columns: 1fr;
+  }
+  .display-slide-title {
+    font-size: 7vw;
+  }
+  .display-now-ticket {
+    font-size: 14vw;
+  }
+  .display-now-name {
+    font-size: 6.5vw;
+  }
+  .display-row {
+    font-size: 5vw;
   }
   .display-foot {
     flex-direction: column;
   }
+  .display-results {
+    max-width: none;
+  }
   .display-chips {
     flex-wrap: wrap;
-    white-space: normal;
-  }
-  .display-message {
     white-space: normal;
   }
 }

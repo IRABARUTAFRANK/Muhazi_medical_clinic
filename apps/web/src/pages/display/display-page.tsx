@@ -3,26 +3,33 @@ import { AudioLines, Volume2, VolumeX, WifiOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '@mmc/shared'
 import i18n from '@/i18n'
-import { useDisplayBoard, type BoardDesk, type DisplayBoard } from '@/lib/api/display'
+import {
+  useDisplayBoard,
+  type BoardDesk,
+  type BoardNow,
+  type DisplayBoard,
+} from '@/lib/api/display'
 import { ApiError } from '@/lib/api/errors'
-import { useMediaQuery, useNow } from '@/lib/hooks'
+import { useNow } from '@/lib/hooks'
 import { usePrefs } from '@/store/prefs'
 import { cn } from '@/lib/utils'
 import { canSpeak, createAnnouncer, spokenTicket, type Announcer } from './speech'
 import './display.css'
 
 /*
- * The waiting-room screen: a TV at the waiting side (migration 0114). One column per desk with
- * the patient just called in very large type (ticket, full name, "come to Consultation 1 · Dr.
- * X"), the next five waiting (red and yellow first), and a strip of the results ready. Reads
- * the board every 3 seconds; a new call flashes, dings (Web Audio, unlocked by the Start
- * button once) and, from 0118, is said aloud by the browser's voice (English or French, 1 to 3
- * times; a result ready is announced after the calls). A line scrolls at the bottom with who is
- * next, the results ready and the message. The languages rotate every 6 seconds. Nothing
- * scrolls on a TV.
+ * The waiting-room screen: a TV at the waiting side (migration 0114). On top the latest call as
+ * one big statement (ticket, full name, "come to Consultation 1 · with Dr. X"), with the two or
+ * three earlier calls under it; then ONE desk card at a time, turning every 6 seconds like a
+ * slideshow (0119: ten desks never shrink into ten columns): who is being seen, the three next
+ * by urgency with the doctor they will see, "and N more waiting". Reads the board every 3
+ * seconds; a new call flashes, dings (Web Audio, unlocked by the Start button once) and is said
+ * aloud (0118); a result ready is announced after the calls. A strip of results ready and a
+ * scrolling line close the page. The languages rotate every 6 seconds. Nothing scrolls on a TV.
  */
 
 const LANG_EVERY_MS = 6_000
+/** One desk card after the other. */
+const SLIDE_EVERY_MS = 6_000
 const FLASH_MS = 6_000
 /** The voice starts once the chime has rung. */
 const CHIME_MS = 1_100
@@ -85,6 +92,13 @@ function useNews(sig: string | null, ids: readonly string[]) {
   return [state, setState] as const
 }
 
+/** A call with its desk, for the banner and the voice. */
+interface Call {
+  key: string
+  n: BoardNow
+  desk: BoardDesk
+}
+
 export function DisplayPage({ screenKey }: { screenKey: string }) {
   const { t: tUi } = useTranslation()
   const uiLang = usePrefs((s) => s.lang)
@@ -134,37 +148,38 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     }
   }
 
-  // A new call: an entry of "now" not seen before (or called again: its id and time make the key).
-  const nowEntries = data
-    ? data.desks.flatMap((d) => d.now.map((n) => ({ key: `${n.id}:${n.calledAt}`, n, desk: d })))
-    : []
-  const [calls, setCalls] = useNews(
-    data ? nowEntries.map((e) => e.key).join('|') : null,
-    nowEntries.map((e) => e.key),
+  // Every call of the day, newest first (the banner shows the first, the row under it the next).
+  const calls: Call[] = (data?.desks ?? [])
+    .flatMap((d) => d.now.map((n) => ({ key: `${n.id}:${n.calledAt}`, n, desk: d })))
+    .sort((a, b) => b.n.calledAt.localeCompare(a.n.calledAt))
+  // A new call: an entry not seen before (or called again: its id and time make the key).
+  const [news, setNews] = useNews(
+    data ? calls.map((c) => c.key).join('|') : null,
+    calls.map((c) => c.key),
   )
-  const fresh = new Set(calls.fresh.map((k) => k.slice(0, k.indexOf(':'))))
+  const freshKeys = new Set(news.fresh)
   const chimeOn = (data?.chime ?? false) && sound
   const voiceOn = (data?.voice ?? false) && sound && started
   const voiceLang = data?.voiceLang === 'fr' ? 'fr' : 'en'
   const voiceRepeat = data?.voiceRepeat ?? 2
   const dinged = useRef(0)
   useEffect(() => {
-    if (!calls.stamp) return
-    if (dinged.current !== calls.stamp) {
-      dinged.current = calls.stamp
+    if (!news.stamp) return
+    if (dinged.current !== news.stamp) {
+      dinged.current = news.stamp
       if (chimeOn && audio.current) ding(audio.current)
       if (voiceOn && announcer.current) {
         // "Ticket A 0 1 4. Habimana Eric. Please come to Consultation 2." after the chime
         const tv = i18n.getFixedT(voiceLang)
-        for (const key of calls.fresh) {
-          const e = nowEntries.find((x) => x.key === key)
-          if (!e) continue
+        for (const key of news.fresh) {
+          const c = calls.find((x) => x.key === key)
+          if (!c) continue
           const room =
-            e.n.room ?? tv(`register.stations.${e.desk.station}`, { defaultValue: e.desk.station })
-          const vars = { ticket: spokenTicket(e.n.ticket), name: e.n.name ?? '', room }
+            c.n.room ?? tv(`register.stations.${c.desk.station}`, { defaultValue: c.desk.station })
+          const vars = { ticket: spokenTicket(c.n.ticket), name: c.n.name ?? '', room }
           announcer.current.say(
             {
-              text: tv(e.n.name ? 'display.voice.call' : 'display.voice.callNoName', vars),
+              text: tv(c.n.name ? 'display.voice.call' : 'display.voice.callNoName', vars),
               lang: voiceLang,
               repeat: voiceRepeat,
               priority: 'call',
@@ -175,25 +190,25 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
       }
     }
     // the flash ends a few seconds after the call
-    const id = window.setTimeout(() => setCalls((c) => ({ ...c, fresh: [] })), FLASH_MS)
+    const id = window.setTimeout(() => setNews((c) => ({ ...c, fresh: [] })), FLASH_MS)
     return () => window.clearTimeout(id)
-    // the entries are read at the moment of the call only
+    // the calls are read at the moment they arrive only
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calls.stamp, chimeOn, voiceOn, voiceLang, voiceRepeat, setCalls])
+  }, [news.stamp, chimeOn, voiceOn, voiceLang, voiceRepeat, setNews])
 
   // A result ready, new since the last read: said after the calls (lower priority), once.
   const results = data?.results ?? []
-  const [news] = useNews(
+  const [resultNews] = useNews(
     data ? results.map((r) => r.id).join('|') : null,
     results.map((r) => r.id),
   )
   const spokenResults = useRef(0)
   useEffect(() => {
-    if (!news.stamp || spokenResults.current === news.stamp) return
-    spokenResults.current = news.stamp
+    if (!resultNews.stamp || spokenResults.current === resultNews.stamp) return
+    spokenResults.current = resultNews.stamp
     if (!voiceOn || !announcer.current) return
     const tv = i18n.getFixedT(voiceLang)
-    for (const id of news.fresh) {
+    for (const id of resultNews.fresh) {
       const r = results.find((x) => x.id === id)
       if (!r || !r.ticket) continue
       announcer.current.say(
@@ -211,10 +226,21 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     }
     // the results are read at the moment they appear only
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [news.stamp, voiceOn, voiceLang])
+  }, [resultNews.stamp, voiceOn, voiceLang])
 
   // nothing is left talking when the page goes
   useEffect(() => () => announcer.current?.stop(), [])
+
+  // the slideshow: the desks with a patient, one at a time, whatever the voice is doing
+  const busyDesks = (data?.desks ?? []).filter((d) => d.now.length > 0 || d.next.length > 0)
+  const [slide, setSlide] = useState(0)
+  const slides = busyDesks.length
+  useEffect(() => {
+    if (slides < 2) return
+    const id = window.setInterval(() => setSlide((i) => i + 1), SLIDE_EVERY_MS)
+    return () => window.clearInterval(id)
+  }, [slides])
+  const current = slides ? busyDesks[slide % slides] : undefined
 
   const unknown = error instanceof ApiError && error.hint === 'screen_unknown'
   const offline = !unknown && isError && data != null
@@ -232,12 +258,9 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     month: 'long',
     timeZone: 'Africa/Kigali',
   }).format(now)
-  // a tablet or a phone: one column, and the sizes follow (the page may scroll there)
-  const narrow = useMediaQuery('(max-width: 900px)')
-  const cols = narrow ? 1 : Math.max(1, Math.min(data?.desks.length ?? 1, 4))
 
   return (
-    <div className="display-root" style={{ '--cols': cols } as CSSProperties} lang={lang}>
+    <div className="display-root" lang={lang}>
       <header className="display-head">
         <img src="/logo.jpg" alt="" className="display-logo" />
         <div className="min-w-0">
@@ -286,13 +309,23 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
         <p className="display-notice" aria-busy="true">
           …
         </p>
-      ) : data.desks.length === 0 ? (
-        <p className="display-notice">{t('display.nobody')}</p>
       ) : (
-        <main className="display-main">
-          {data.desks.map((d) => (
-            <DeskColumn key={d.station} desk={d} fresh={fresh} t={t} />
-          ))}
+        <main className="display-stage">
+          <Banner calls={calls} fresh={freshKeys} t={t} />
+          {current ? (
+            <DeskSlide
+              key={current.station}
+              desk={current}
+              index={slide % slides}
+              total={slides}
+              t={t}
+            />
+          ) : (
+            <section className="display-slide display-calm">
+              <h2>{t('display.noPatients')}</h2>
+              <p>{t('display.noPatientsLead')}</p>
+            </section>
+          )}
         </main>
       )}
 
@@ -314,65 +347,139 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
   )
 }
 
-/** One desk: the patient just called (large), the earlier calls (small), the next five. */
-function DeskColumn({ desk, fresh, t }: { desk: BoardDesk; fresh: Set<string>; t: TFixed }) {
-  const [first, ...earlier] = desk.now
-  const deskName = t(`register.stations.${desk.station}`, { defaultValue: desk.station })
+const deskNameOf = (desk: BoardDesk, t: TFixed) =>
+  t(`register.stations.${desk.station}`, { defaultValue: desk.station })
+
+/** The latest call, huge, and the two or three before it in a thin row. */
+function Banner({ calls, fresh, t }: { calls: Call[]; fresh: Set<string>; t: TFixed }) {
+  const [latest, ...earlier] = calls
   return (
-    <section className="display-desk" aria-label={deskName}>
-      <h2 className="display-desk-head">
-        <span className="truncate">{deskName}</span>
-        <span className="display-count">{t('display.waiting', { count: desk.waiting })}</span>
-      </h2>
-      <div className={cn('display-now', first && fresh.has(first.id) && 'is-new')}>
-        <div className="display-label">{t('display.now')}</div>
-        {first ? (
+    <>
+      <section
+        className={cn('display-banner', latest && fresh.has(latest.key) && 'is-new')}
+        aria-live="polite"
+      >
+        <div className="display-banner-label">{t('display.latestCall')}</div>
+        {latest ? (
           <>
-            <div className="display-ticket">{first.ticket}</div>
-            {first.name && <div className="display-name">{first.name}</div>}
-            <div className="display-go">
-              {first.started
-                ? `${first.room ?? deskName}${first.person ? ` · ${first.person}` : ''}`
-                : t('display.comeTo', { room: first.room ?? deskName })}
-              {!first.started && first.person && (
-                <div className="display-go-person">
-                  {t('display.with', { person: first.person })}
-                </div>
-              )}
+            <div className="display-banner-ticket">{latest.n.ticket}</div>
+            <div className="display-banner-body">
+              {latest.n.name && <div className="display-banner-name">{latest.n.name}</div>}
+              <div className="display-banner-go">
+                {latest.n.started
+                  ? `${t('display.beingSeen')} · ${latest.n.room ?? deskNameOf(latest.desk, t)}`
+                  : t('display.comeTo', { room: latest.n.room ?? deskNameOf(latest.desk, t) })}
+                {latest.n.person && <small>{t('display.with', { person: latest.n.person })}</small>}
+              </div>
             </div>
           </>
         ) : (
-          <div className="display-empty">{t('display.noOneCalled')}</div>
+          <div className="display-banner-empty">{t('display.noCallYet')}</div>
         )}
-        {earlier.length > 0 && (
-          <div className="display-earlier">
-            {earlier.slice(0, 2).map((n) => (
-              <span key={n.id}>
-                <b>{n.ticket}</b>
-                {n.name ? ` ${n.name}` : ''} → {n.room ?? deskName}
-              </span>
+      </section>
+      {earlier.length > 0 && (
+        <div className="display-prev">
+          <span className="display-prev-label">{t('display.earlierCalls')}</span>
+          {earlier.slice(0, 3).map((c) => (
+            <span key={c.key}>
+              <b>{c.n.ticket}</b>
+              {c.n.name ? ` ${c.n.name}` : ''} → {c.n.room ?? deskNameOf(c.desk, t)}
+            </span>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+/** One desk's card: who is being seen, the three next by urgency, how many more wait. */
+function DeskSlide({
+  desk,
+  index,
+  total,
+  t,
+}: {
+  desk: BoardDesk
+  index: number
+  total: number
+  t: TFixed
+}) {
+  const deskName = deskNameOf(desk, t)
+  const seen = desk.now.find((n) => n.started) ?? desk.now[0]
+  const next = desk.next.slice(0, 3)
+  const more = Math.max(0, desk.waiting - next.length)
+  return (
+    <section className="display-slide" aria-label={deskName}>
+      <div className="display-slide-head">
+        <h2 className="display-slide-title">{deskName}</h2>
+        <span className="display-slide-count">{t('display.waiting', { count: desk.waiting })}</span>
+        {total > 1 && (
+          <span
+            className="display-slide-pos"
+            aria-label={t('display.position', { n: index + 1, total })}
+          >
+            {Array.from({ length: Math.min(total, 12) }, (_, i) => (
+              <span key={i} className={cn('display-slide-dot', i === index % 12 && 'is-on')} />
             ))}
-          </div>
+            <span>
+              {index + 1} / {total}
+            </span>
+          </span>
         )}
       </div>
-      <div className="display-next">
-        <div className="display-label">{t('display.next')}</div>
-        {desk.next.length === 0 ? (
-          <div className="display-empty">{t('display.nobody')}</div>
-        ) : (
-          desk.next.map((n) => (
-            <div key={n.id} className="display-row">
-              <span className={cn('display-dot', `display-dot-${n.priority}`)} aria-hidden="true" />
-              <b>{n.ticket}</b>
-              <span className="display-row-name">{n.name ?? ''}</span>
-              {n.priority < 3 && (
-                <span className="display-urgent">
-                  {t(`triage.levels.${n.priority === 1 ? 'red' : 'yellow'}`)}
+      <div className="display-slide-body">
+        <div className="display-slide-col">
+          <div className="display-label">{t('display.now')}</div>
+          {seen ? (
+            <>
+              <div className="display-now-ticket">{seen.ticket}</div>
+              {seen.name && <div className="display-now-name">{seen.name}</div>}
+              <div className="display-now-go">
+                {[
+                  seen.person ? t('display.with', { person: seen.person }) : null,
+                  seen.room ?? deskName,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+            </>
+          ) : (
+            <div className="display-empty">{t('display.noOneCalled')}</div>
+          )}
+        </div>
+        <div className="display-slide-col">
+          <div className="display-label">{t('display.next')}</div>
+          {next.length === 0 ? (
+            <div className="display-empty">{t('display.nobody')}</div>
+          ) : (
+            next.map((n) => (
+              <div key={n.id} className="display-row">
+                <span
+                  className={cn('display-dot', `display-dot-${n.priority}`)}
+                  aria-hidden="true"
+                />
+                <b>{n.ticket}</b>
+                {/* the name on one line, who will see them under it */}
+                <span className="display-row-main">
+                  <span className="display-row-name">
+                    {n.name ?? ''}
+                    {n.priority < 3 && (
+                      <span className="display-urgent">
+                        {t(`triage.levels.${n.priority === 1 ? 'red' : 'yellow'}`)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="display-row-to">
+                    → {n.person ? `${n.person}${n.room ? ` · ${n.room}` : ''}` : deskName}
+                  </span>
                 </span>
-              )}
-            </div>
-          ))
-        )}
+              </div>
+            ))
+          )}
+          {more > 0 && (
+            <div className="display-more">{t('display.moreWaiting', { count: more })}</div>
+          )}
+        </div>
       </div>
     </section>
   )

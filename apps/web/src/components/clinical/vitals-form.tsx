@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select'
 import { useVisitHeader, type Vital } from '@/lib/api/billing'
 import { ApiError } from '@/lib/api/errors'
 import { useConfirm } from '@/lib/confirm'
+import { useStationStaff } from '@/lib/api/services'
 import { SEND_FROM_TRIAGE, useVisitActions, useVitalsTakers, type Station } from '@/lib/api/visits'
 import {
   BMI_CODE,
@@ -17,46 +18,63 @@ import {
   bmiOf,
   customVitalCode,
   isCustomVital,
+  typeIn,
   useRemoveVital,
   useVitalsSetting,
   vitalName,
-  vitalType,
+  vitalValue,
+  type VitalKind,
+  type VitalType,
   type VitalsInput,
 } from '@/lib/api/vitals'
 import { formatTime } from '@mmc/shared'
 import { cn } from '@/lib/utils'
+import { WhoPicker } from './send-patient-card'
 import { useMissingLabel } from './use-field-settings'
 
 /**
- * One line of the form: a measurement of the catalogue (unit and limits known) or a custom one
- * (the typed name and unit). Outside the limits it is a typing mistake (450 mmHg, 67 °C) and the
- * form refuses it.
+ * One line of the form: a measurement of the catalogue (unit and limits known; the clinic's own
+ * ones carry the manager's name, and may be words rather than a figure) or a custom one typed
+ * by name (the typed name and unit). A figure outside the limits is a typing mistake (450 mmHg,
+ * 67 °C) and the form refuses it.
  */
 interface Row {
   code: string
   unit: string
-  /** The typed name of a custom measurement. */
+  /** The name of a custom measurement (typed, or the manager's). */
   label: string | null
+  kind: VitalKind
   min?: number
   max?: number
   placeholder: string
 }
-const rowOf = (code: string, custom?: { label: string; unit: string }): Row => {
-  const type = vitalType(code)
+const rowOf = (
+  catalogue: readonly VitalType[],
+  code: string,
+  custom?: { label: string; unit: string },
+): Row => {
+  const type = typeIn(catalogue, code)
   if (type)
     return {
       code,
       unit: type.unit,
-      label: null,
+      label: type.name,
+      kind: type.kind,
       min: type.min,
       max: type.max,
       placeholder: type.placeholder,
     }
-  return { code, unit: custom?.unit ?? '', label: custom?.label ?? null, placeholder: '' }
+  return {
+    code,
+    unit: custom?.unit ?? '',
+    label: custom?.label ?? null,
+    kind: 'number',
+    placeholder: '',
+  }
 }
 const LEVELS: readonly Triage[] = ['red', 'yellow', 'green']
 /** The server's answer when this person may not send the patient on (another nurse's patient). */
-const REFUSED = /this patient is with|not allowed|may not|only the (nurse|triage)|another nurse/i
+const REFUSED = /not yours|another|is with|only the|cannot send|not at triage|already/i
 /** "Other": a measurement typed by name. */
 const OTHER = 'other'
 
@@ -84,10 +102,13 @@ const num = (s: string) => Number(s.trim().replace(',', '.'))
  *
  * The lines shown are the clinic's default set (Settings › Vital signs, in the manager's order)
  * plus whatever was already measured on this visit; "Add a measurement" brings any other one of
- * the catalogue, or a custom one by name. A saved measurement is corrected in its box or taken
- * off the visit with a reason (kept in the audit).
+ * the catalogue (the clinic's own included), or a custom one by name. A saved measurement is
+ * corrected in its box or taken off the visit with a reason (kept in the audit).
  *
- * mode "triage": also the triage colour and the next station (closes the triage turn).
+ * mode "triage": also the triage colour and where the patient goes next (closes the triage
+ * turn): the desk, and anyone there or one person who works there today, with how many
+ * patients each has (0119). Sent to a person, the patient is theirs: their "Next patient"
+ * offer and the waiting-room screen name them.
  * mode "add": measurements only (e.g. the doctor typing the nurse's sheet later).
  *
  * Only the nurse who has the patient sends them on. Reception typing the nurse's paper sheet once
@@ -135,6 +156,8 @@ export function VitalsForm({
   const { data: setting } = useVitalsSetting()
   // what the file still needs, the clinic's own fields by their names (0108)
   const missingLabel = useMissingLabel()
+  // the measurements the form offers: the built-in ones and the clinic's own (retired ones left out)
+  const catalogue = setting?.catalogue ?? VITAL_CATALOGUE
   const defaults = (setting?.codes ?? []).filter((c) => c !== BMI_CODE)
   const showBmi = (setting?.codes ?? []).includes(BMI_CODE)
   // lines the person added or took off the form (a default line without a saved value)
@@ -146,14 +169,17 @@ export function VitalsForm({
     if (rows.some((r) => r.code === code) || dropped.includes(code)) continue
     const e = saved.get(code)
     rows.push(
-      e && isCustomVital(code)
-        ? rowOf(code, { label: e.label ?? '', unit: e.unit ?? '' })
-        : rowOf(code),
+      e && isCustomVital(code) && !typeIn(catalogue, code)
+        ? rowOf(catalogue, code, { label: e.label ?? '', unit: e.unit ?? '' })
+        : rowOf(catalogue, code),
     )
   }
   for (const r of added) if (!rows.some((x) => x.code === r.code)) rows.push(r)
   // what is typed (a box left untouched shows the saved value)
-  const initial = (code: string) => String(saved.get(code)?.value ?? '')
+  const initial = (code: string) => {
+    const e = saved.get(code)
+    return e ? vitalValue(e) : ''
+  }
   const [typed, setTyped] = useState<Record<string, string>>({})
   const valueOf = (code: string) => typed[code] ?? initial(code)
   const taken = existing.length > 0
@@ -173,6 +199,8 @@ export function VitalsForm({
   const colourOnly = mode === 'add' && !taken
   const [colourSet, setColourSet] = useState(false)
   const [next, setNext] = useState<Station>(defaultNext)
+  // the person at that desk the patient is for ('' = anyone there)
+  const [toUser, setToUser] = useState('')
   const [reason, setReason] = useState('')
   // "Measured by": me (whoever is signed in, reception included: she may measure too), or the
   // nurse who wrote the paper sheet. Who typed it is recorded apart (the observation's author).
@@ -188,21 +216,29 @@ export function VitalsForm({
   const fromPaper = measuredBy !== 'me'
   const others = takers.filter((p) => p.id !== user.id)
   const confirm = useConfirm()
+  // who works at the chosen desk today (reception has nobody to choose)
+  const { data: deskStaff, isLoading: deskLoading } = useStationStaff(
+    sends && next !== 'reception' ? next : null,
+  )
+  const person = deskStaff?.staff.find((p) => p.id === toUser) ?? null
+  const deskName = (s: Station) => t(`register.stations.${s}`)
   // the patient's name for the question asked before saving (cached on the visit page)
   const { data: header } = useVisitHeader(encounterId)
   const patient = header?.name || t('confirm.visit.thisPatient')
   const ask = (title: string, body: string, yes: string) =>
     confirm({ title, body, confirmLabel: yes })
+  // where the patient goes, for the question: the desk, or the person there
+  const target = person ? `${deskName(next)} · ${person.name}` : deskName(next)
   const sendBody = () =>
     t('confirm.visit.vitalsSendBody', {
       level: t(`home.triage.${level}`),
-      desk: t(`register.stations.${next}`),
-    })
+      desk: deskName(next),
+    }) + (person ? ` ${t('confirm.visit.vitalsSendPerson', { name: person.name })}` : '')
   const nameOf = (r: Row) => vitalName(r, t)
   const labelOf = (r: Row) => (r.unit ? `${nameOf(r)} (${r.unit})` : nameOf(r))
   // the body mass index from what is typed or saved (shown, never saved)
   const bmi = bmiOf(num(valueOf('weight')), num(valueOf('height')))
-  const notShown = VITAL_CATALOGUE.filter((v) => !rows.some((r) => r.code === v.code))
+  const notShown = catalogue.filter((v) => !rows.some((r) => r.code === v.code))
 
   /** A refusal to send on: switch to measurements only; any other error is shown as it is. */
   const failed = (err: unknown, sending: boolean) => {
@@ -216,6 +252,8 @@ export function VitalsForm({
           name: others.find((p) => p.id === measuredBy)?.name ?? '',
         }),
       )
+    // the person chosen no longer works at that desk: the refusal, not "measurements only"
+    if (err instanceof ApiError && err.kind === 'notAtDesk') return setError(message)
     if (sending && REFUSED.test(message)) setRefused(message)
     else setError(t('triage.errors.generic', { message }))
   }
@@ -228,13 +266,13 @@ export function VitalsForm({
       if (!name) return setError(t('vitalsForm.errors.customName'))
       const code = customVitalCode(name)
       if (!rows.some((r) => r.code === code))
-        setAdded((s) => [...s, rowOf(code, { label: name, unit: customUnit.trim() })])
+        setAdded((s) => [...s, rowOf(catalogue, code, { label: name, unit: customUnit.trim() })])
       setDropped((s) => s.filter((c) => c !== code))
       setCustomName('')
       setCustomUnit('')
     } else {
       if (!pick) return setError(t('vitalsForm.errors.pickMeasurement'))
-      if (!rows.some((r) => r.code === pick)) setAdded((s) => [...s, rowOf(pick)])
+      if (!rows.some((r) => r.code === pick)) setAdded((s) => [...s, rowOf(catalogue, pick)])
       setDropped((s) => s.filter((c) => c !== pick))
     }
     setPick('')
@@ -253,7 +291,7 @@ export function VitalsForm({
       const answer = await confirm({
         title: t('vitalsForm.confirm.removeTitle', { name: nameOf(r), patient }),
         body: t('vitalsForm.confirm.removeBody', {
-          value: `${e.value}${e.unit ? ` ${e.unit}` : ''}`,
+          value: `${vitalValue(e)}${e.unit ? ` ${e.unit}` : ''}`,
         }),
         confirmLabel: t('vitalsForm.confirm.removeYes'),
         tone: 'danger',
@@ -288,10 +326,7 @@ export function VitalsForm({
     if (sendOnOnly) {
       if (
         !(await ask(
-          t('confirm.visit.vitalsSendOn', {
-            name: patient,
-            desk: t(`register.stations.${next}`),
-          }),
+          t('confirm.visit.vitalsSendOn', { name: patient, desk: target }),
           sendBody(),
           t('confirm.visit.sendYes'),
         ))
@@ -303,6 +338,7 @@ export function VitalsForm({
           triage: level,
           nextStation: next,
           reason,
+          toUser: person ? person.id : null,
         })
         onSaved(ticket, next)
       } catch (err) {
@@ -313,10 +349,15 @@ export function VitalsForm({
     if (taken && changedKeys.length === 0) return setError(t('vitalsForm.errors.nothingChanged'))
     if (!rows.some((r) => valueOf(r.code).trim() !== ''))
       return setError(t('triage.errors.noVitals'))
-    // a number that no patient can have is a typing mistake
+    // a number that no patient can have is a typing mistake (a text measurement is words)
     for (const r of rows) {
       const raw = valueOf(r.code).trim()
       if (raw === '') continue
+      if (r.kind === 'text') {
+        if (raw.length > 200)
+          return setError(t('vitalsForm.errors.textTooLong', { name: nameOf(r) }))
+        continue
+      }
       const n = num(raw)
       if (!Number.isFinite(n) || (r.min != null && r.max != null && (n < r.min || n > r.max)))
         return setError(
@@ -346,10 +387,7 @@ export function VitalsForm({
     if (
       !(await (sends
         ? ask(
-            t('confirm.visit.vitalsSend', {
-              name: patient,
-              desk: t(`register.stations.${next}`),
-            }),
+            t('confirm.visit.vitalsSend', { name: patient, desk: target }),
             `${measured} ${sendBody()}`,
             t('confirm.visit.vitalsSendYes'),
           )
@@ -363,14 +401,17 @@ export function VitalsForm({
     )
       return
     // Once taken, only the corrected values are saved again. A custom measurement carries its
-    // unit and typed name; one of the catalogue just its number.
+    // unit and typed name; a text one its words; one of the catalogue just its number.
     const vitals: VitalsInput = {}
     for (const r of rows) {
       const raw = valueOf(r.code).trim()
       if (raw === '' || (taken && !changedKeys.includes(r.code))) continue
-      vitals[r.code] = isCustomVital(r.code)
-        ? { value: num(raw), unit: r.unit || null, label: r.label }
-        : raw
+      vitals[r.code] =
+        r.kind === 'text'
+          ? { value: null, text: raw, unit: r.unit || null, label: r.label }
+          : isCustomVital(r.code)
+            ? { value: num(raw), unit: r.unit || null, label: r.label }
+            : raw
     }
     try {
       const ticket = await actions.recordVitals.mutateAsync({
@@ -382,6 +423,7 @@ export function VitalsForm({
         // always named: the database accepts reception as the one who measured only when said
         measuredBy: fromPaper ? measuredBy : user.id,
         measuredAt: at,
+        toUser: sends && person ? person.id : null,
       })
       onSaved(ticket, sends ? next : null)
     } catch (err) {
@@ -485,8 +527,9 @@ export function VitalsForm({
                   <li key={r.code} className="flex min-w-0 flex-col gap-1">
                     <Field
                       label={labelOf(r)}
-                      inputMode="decimal"
+                      inputMode={r.kind === 'text' ? 'text' : 'decimal'}
                       placeholder={r.placeholder}
+                      maxLength={r.kind === 'text' ? 200 : undefined}
                       value={valueOf(r.code)}
                       onChange={(e) => setTyped((s) => ({ ...s, [r.code]: e.target.value }))}
                     />
@@ -494,12 +537,14 @@ export function VitalsForm({
                       <span className="text-ink-3 min-w-0 truncate">
                         {e
                           ? t('vitalsForm.savedValue', {
-                              value: `${e.value}${e.unit ? ` ${e.unit}` : ''}`,
+                              value: `${vitalValue(e)}${e.unit ? ` ${e.unit}` : ''}`,
                               time: formatTime(new Date(e.at)),
                             })
-                          : isCustomVital(r.code)
-                            ? t('vitalsForm.customRow')
-                            : ''}
+                          : r.kind === 'text'
+                            ? t('vitalsForm.textRow')
+                            : isCustomVital(r.code)
+                              ? t('vitalsForm.customRow')
+                              : ''}
                       </span>
                       {!lockedNote && (
                         <button
@@ -555,7 +600,8 @@ export function VitalsForm({
                     <option value="">{t('vitalsForm.pickPh')}</option>
                     {notShown.map((v) => (
                       <option key={v.code} value={v.code}>
-                        {t(`triage.vitals.${v.code}`)} ({v.unit})
+                        {vitalName(v, t)}
+                        {v.unit ? ` (${v.unit})` : ''}
                       </option>
                     ))}
                     <option value={OTHER}>{t('vitalsForm.otherMeasurement')}</option>
@@ -671,11 +717,15 @@ export function VitalsForm({
                   <Select
                     label={t('triage.nextStation')}
                     value={next}
-                    onChange={(e) => setNext(e.target.value as Station)}
+                    onChange={(e) => {
+                      setNext(e.target.value as Station)
+                      // another desk: other people
+                      setToUser('')
+                    }}
                   >
                     {SEND_FROM_TRIAGE.map((s) => (
                       <option key={s} value={s}>
-                        {t(`register.stations.${s}`)}
+                        {deskName(s)}
                       </option>
                     ))}
                   </Select>
@@ -691,6 +741,21 @@ export function VitalsForm({
                         missing: missing.map(missingLabel).join(', '),
                       })}
                     </p>
+                  )}
+                  {/* anyone at that desk, or one person who works there, with their load (0119) */}
+                  {next !== 'reception' && (
+                    <div className="col-span-full">
+                      <WhoPicker
+                        name={`vitals-to-${encounterId}`}
+                        title={t('vitalsForm.whoAt', { desk: deskName(next) })}
+                        anyone={t('vitalsForm.anyoneAt', { desk: deskName(next) })}
+                        data={deskStaff}
+                        loading={deskLoading}
+                        value={toUser}
+                        onChange={setToUser}
+                        empty={t('vitalsForm.nobodyAt', { desk: deskName(next) })}
+                      />
+                    </div>
                   )}
                 </div>
               </>
@@ -722,7 +787,11 @@ export function VitalsForm({
                 loading={actions.recordVitals.isPending || actions.sendFromTriage.isPending}
               >
                 <Send size={18} aria-hidden="true" />
-                {t(sendOnOnly ? 'vitalsForm.sendOn' : sends ? 'triage.send' : 'vitalsForm.save')}
+                {person
+                  ? t(sendOnOnly ? 'sendPatient.goToPerson' : 'vitalsForm.sendToPerson', {
+                      name: person.name,
+                    })
+                  : t(sendOnOnly ? 'vitalsForm.sendOn' : sends ? 'triage.send' : 'vitalsForm.save')}
               </Button>
             )}
             {onCancel && (

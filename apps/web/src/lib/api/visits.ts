@@ -353,6 +353,7 @@ export function useVisitActions() {
       reason,
       measuredBy,
       measuredAt,
+      toUser,
     }: {
       encounterId: string
       /** A typed number per catalogue code; a custom measurement carries its unit and name (0104). */
@@ -365,11 +366,16 @@ export function useVisitActions() {
       measuredBy?: string | null
       /** When it was measured (from the paper sheet); omitted = now. */
       measuredAt?: string | null
+      /** The person at the next desk the patient is for (0119); omitted = anyone there. */
+      toUser?: string | null
     }): Promise<string> => {
       if (!supabase) {
         sampleSaveVitals(vitals, { measuredBy, measuredAt })
         const row = sampleQueue.find((r) => r.encounterId === encounterId)
-        if (row && nextStation) row.station = nextStation
+        if (row && nextStation) {
+          row.station = nextStation
+          row.assignedTo = toUser ?? null
+        }
         return row?.ticket ?? 'A-000'
       }
       const clean: Record<string, number | VitalEntry> = {}
@@ -381,7 +387,7 @@ export function useVisitActions() {
         const n = Number(v.replace(',', '.'))
         if (v.trim() !== '' && Number.isFinite(n)) clean[k] = n
       }
-      const { data, error } = await supabase.rpc('record_vitals', {
+      const args = {
         p_encounter_id: encounterId,
         p_vitals: clean,
         p_triage: triage ?? null,
@@ -389,37 +395,57 @@ export function useVisitActions() {
         p_reason: reason?.trim() || null,
         p_measured_by: measuredBy ?? null,
         p_measured_at: measuredAt ?? null,
+      }
+      // 0119: to a person at the next desk; a database before it takes the desk alone
+      let { data, error } = await supabase.rpc('record_vitals_to', {
+        ...args,
+        p_to_user: toUser ?? null,
       })
+      if (error && !toUser && isMissingFunction(error))
+        ({ data, error } = await supabase.rpc('record_vitals', args))
       if (error) throw apiError(error)
       return String(data)
     },
     onSuccess: refresh,
   })
 
-  /** Triage when the vitals were already taken: colour and next station, nothing measured again. */
+  /** Triage when the vitals were already taken: colour and next station (and the person there,
+   *  0119), nothing measured again. */
   const sendFromTriage = useMutation({
     mutationFn: async ({
       encounterId,
       triage,
       nextStation,
       reason,
+      toUser,
     }: {
       encounterId: string
       triage: Triage
       nextStation: Station
       reason?: string
+      /** The person at the next desk the patient is for; omitted = anyone there. */
+      toUser?: string | null
     }): Promise<string> => {
       if (!supabase) {
         const row = sampleQueue.find((r) => r.encounterId === encounterId)
-        if (row) row.station = nextStation
+        if (row) {
+          row.station = nextStation
+          row.assignedTo = toUser ?? null
+        }
         return row?.ticket ?? 'A-000'
       }
-      const { data, error } = await supabase.rpc('send_from_triage', {
+      const args = {
         p_encounter_id: encounterId,
         p_triage: triage,
         p_next_station: nextStation,
         p_reason: reason?.trim() || null,
+      }
+      let { data, error } = await supabase.rpc('send_from_triage_to', {
+        ...args,
+        p_to_user: toUser ?? null,
       })
+      if (error && !toUser && isMissingFunction(error))
+        ({ data, error } = await supabase.rpc('send_from_triage', args))
       if (error) throw apiError(error)
       return String(data)
     },
@@ -741,7 +767,14 @@ export function useQueueBoard(station: Station | 'all', role: Role) {
           encounterId: `e-${station}-${i}`,
           patientId: `p-${station}-${i}`,
           fileNumber: `MMC-00013${i}`,
-          station: station === 'all' ? ('consultation' as Station) : station,
+          // the whole clinic: the nurse's first two patients wait at triage (her own desk, where
+          // the vitals form sends them on), the rest at consultation
+          station:
+            station === 'all'
+              ? roleKey === 'nurse' && i < 2
+                ? ('triage' as Station)
+                : ('consultation' as Station)
+              : station,
           poolId: i === 1 ? 'pool-sample' : null,
           takenBy: null,
           calledAt: sampleCalledAt(`q-${station}-${i}`),

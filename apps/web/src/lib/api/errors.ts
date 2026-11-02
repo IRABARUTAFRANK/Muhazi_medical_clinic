@@ -131,6 +131,17 @@ export type ApiErrorKind =
   | 'vitalRange'
   | 'vitalName'
   | 'vitalUnknown'
+  // 0119: the measurements managed in Settings; the person chosen must work at the next desk
+  | 'vitalKind'
+  | 'vitalRangeOrder'
+  | 'vitalExists'
+  | 'vitalExistsRetired'
+  | 'vitalBuiltin'
+  | 'vitalRetired'
+  | 'vitalNotRetired'
+  | 'vitalInDefault'
+  | 'vitalText'
+  | 'notAtDesk'
   // 0115: a line the insurer has no price for, to confirm with the insurer first
   | 'askInsurer'
   // sample mode only (the database's own sentence is kept for these)
@@ -205,6 +216,16 @@ const BY_HINT: Record<string, ApiErrorKind> = {
   vital_name: 'vitalName',
   vital_unknown: 'vitalUnknown',
   ask_insurer: 'askInsurer',
+  vital_kind: 'vitalKind',
+  vital_range_order: 'vitalRangeOrder',
+  vital_exists: 'vitalExists',
+  vital_exists_retired: 'vitalExistsRetired',
+  vital_builtin: 'vitalBuiltin',
+  vital_retired: 'vitalRetired',
+  vital_not_retired: 'vitalNotRetired',
+  vital_in_default: 'vitalInDefault',
+  vital_text: 'vitalText',
+  not_at_desk: 'notAtDesk',
 }
 
 /** An error from a database function, with its code and hint kept for the screens. */
@@ -282,6 +303,13 @@ export const isMissingFunction = (e: DbErrorLike | null | undefined): boolean =>
   (e.code === 'PGRST202' ||
     /could not find the function|schema cache/i.test(e.message ?? '') ||
     /function .* does not exist/i.test(e.message ?? ''))
+
+/** The database is older than the view or table (PostgREST: not in the schema cache). */
+export const isMissingRelation = (e: DbErrorLike | null | undefined): boolean =>
+  !!e &&
+  (e.code === 'PGRST205' ||
+    e.code === '42P01' ||
+    /could not find the table|relation .* does not exist/i.test(e.message ?? ''))
 
 /** The kind of a thrown error, when it is a known database refusal. */
 export const errorKind = (e: unknown): ApiErrorKind | null =>

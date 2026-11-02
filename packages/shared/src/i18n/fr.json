@@ -1994,7 +1994,36 @@
       "save": "Enregistrer le jeu par défaut",
       "saved": "Jeu par défaut enregistré. Tous les formulaires de constantes l’affichent désormais.",
       "none": "Cochez au moins une mesure.",
-      "bmiHint": "L’IMC est calculé à partir du poids et de la taille, jamais enregistré."
+      "bmiHint": "L’IMC est calculé à partir du poids et de la taille, jamais enregistré.",
+      "manage": {
+        "nameNeeded": "Saisissez le nom de la mesure.",
+        "rangeNumbers": "Les valeurs la plus basse et la plus haute sont des nombres.",
+        "rangeOrder": "La valeur la plus basse doit être sous la plus haute.",
+        "changed": "{{name}} modifiée.",
+        "added": "{{name}} ajoutée aux mesures. Cochez-la pour la mettre dans le jeu par défaut.",
+        "retired": "{{name}} archivée. Elle n’apparaît plus sur les formulaires ; ce qui a été enregistré reste.",
+        "restored": "{{name}} réaffichée.",
+        "edit": "Modifier {{name}} (nom, unité, plage)",
+        "retire": "Archiver {{name}}",
+        "text": "Texte",
+        "number": "Nombre",
+        "editTitle": "Modifier {{name}}",
+        "addTitle": "Nouvelle mesure",
+        "name": "Nom",
+        "unit": "Unité (facultatif)",
+        "kind": "Type",
+        "min": "Valeur la plus basse",
+        "max": "Valeur la plus haute",
+        "rangeHint": "Facultatif : les valeurs qu’un patient peut avoir. Un chiffre en dehors est refusé comme faute de frappe.",
+        "textHint": "Des mots plutôt qu’un chiffre (p. ex. un groupe sanguin, une bandelette urinaire).",
+        "saveChange": "Enregistrer la modification",
+        "add": "Ajouter",
+        "retiredTitle": "Mesures archivées ({{count}})",
+        "showAgain": "Réafficher",
+        "showAgainOf": "Réafficher {{name}}",
+        "retiredHint": "Une mesure archivée est masquée des formulaires ; tout ce qui a été enregistré avec reste dans les dossiers des patients.",
+        "builtinHint": "Les mesures intégrées (tension, pouls, température…) ne s’archivent pas : laissez-les hors du jeu par défaut. Vos propres mesures se modifient avec le crayon et s’archivent avec la corbeille une fois hors du jeu par défaut."
+      }
     },
     "patientSection": {
       "title": "Dossier patient et constantes",
@@ -2549,7 +2578,8 @@
       "takerNotAllowed": "{{name}} n’est pas autorisé(e) à prendre les signes vitaux (le gestionnaire l’a désactivé) : choisissez une autre infirmière ou demandez au gestionnaire.",
       "customName": "Saisissez le nom de la mesure.",
       "pickMeasurement": "Choisissez une mesure à ajouter.",
-      "notANumber": "{{name}} : « {{value}} » n’est pas un nombre."
+      "notANumber": "{{name}} : « {{value}} » n’est pas un nombre.",
+      "textTooLong": "{{name}} : 200 caractères au plus."
     },
     "takenShort": "Constantes prises",
     "taken": "Constantes prises par {{name}} à {{time}}",
@@ -2585,7 +2615,12 @@
       "removeTitle": "Retirer {{name}} des constantes de {{patient}} ?",
       "removeBody": "La valeur {{value}} reste dans le journal avec votre motif ; elle n’apparaît plus sur la visite.",
       "removeYes": "Oui, retirer"
-    }
+    },
+    "whoAt": "Qui à {{desk}} ?",
+    "anyoneAt": "N’importe qui à {{desk}}",
+    "nobodyAt": "Personne n’est encore affecté à {{desk}} : le patient y attend n’importe qui.",
+    "sendToPerson": "Enregistrer et envoyer à {{name}}",
+    "textRow": "Des mots, pas un chiffre"
   },
   "ops": {
     "appts": {
@@ -5227,7 +5262,8 @@
       "removeYes": "Oui, retirer",
       "askInsurer": "{{item}} n’est pas sur la liste de {{insurer}}. Facturer le prix comptant ?",
       "askInsurerBody": "Confirmez d’abord avec {{insurer}}. Le prix comptant ({{price}}) est partagé selon la couverture de l’assureur.",
-      "askInsurerYes": "Oui, confirmé avec l’assureur"
+      "askInsurerYes": "Oui, confirmé avec l’assureur",
+      "vitalsSendPerson": "Le patient est pour {{name}} : sa proposition « Patient suivant » et l’écran de la salle d’attente le nomment."
     },
     "staff": {
       "deactivate": {
@@ -5346,7 +5382,10 @@
       "vitals": {
         "title": "Changer les constantes par défaut ?",
         "body": "Chaque infirmière et médecin verra le nouveau jeu dès son prochain formulaire.",
-        "yes": "Oui, enregistrer"
+        "yes": "Oui, enregistrer",
+        "retireTitle": "Archiver {{name}} ?",
+        "retireBody": "Elle n’apparaît plus dans les réglages, sur le formulaire des constantes ni dans « Ajouter une mesure ». Tout ce qui est déjà enregistré reste visible. Vous pourrez la réafficher plus tard.",
+        "retireYes": "Oui, archiver"
       },
       "insurance": {
         "on": {
@@ -5758,7 +5797,17 @@
     "staffDocsUnavailable": "Les documents des employés ne peuvent pas encore être ajoutés : la mise à jour de la base de données qui les ajoute n'est pas installée.",
     "staffDocPrivate": "Ces documents ne vous sont pas accessibles. Seuls le gestionnaire et l'employé peuvent les ouvrir.",
     "staffDocManagerOnly": "Seul le gestionnaire ajoute ou retire les documents d'un employé.",
-    "askInsurer": "Ceci n’est pas sur la liste de l’assureur. Confirmez d’abord le prix comptant avec l’assureur."
+    "askInsurer": "Ceci n’est pas sur la liste de l’assureur. Confirmez d’abord le prix comptant avec l’assureur.",
+    "vitalKind": "Une mesure est un nombre ou un texte.",
+    "vitalRangeOrder": "La valeur la plus basse doit être sous la plus haute.",
+    "vitalExists": "Une mesure de ce nom existe déjà.",
+    "vitalExistsRetired": "Une mesure de ce nom est archivée : réaffichez-la au lieu de l’ajouter.",
+    "vitalBuiltin": "Une mesure intégrée ne se modifie ni ne s’archive : laissez-la hors du jeu par défaut.",
+    "vitalRetired": "Cette mesure est archivée : réaffichez-la d’abord.",
+    "vitalNotRetired": "Cette mesure n’est pas archivée.",
+    "vitalInDefault": "Cette mesure est dans le jeu par défaut : décochez-la et enregistrez le jeu d’abord.",
+    "vitalText": "Une mesure en texte fait 200 caractères au plus.",
+    "notAtDesk": "Cette personne ne travaille pas à ce poste aujourd’hui : choisissez quelqu’un d’autre, ou n’importe qui."
   },
   "cashierDesk": {
     "noMatch": "Rien ne correspond à votre recherche.",
@@ -9196,7 +9245,16 @@
       "next": "{{desk}} — suivants : {{list}}",
       "nobody": "{{desk}} — personne en attente",
       "results": "Résultats prêts : {{list}}"
-    }
+    },
+    "latestCall": "Dernier appel",
+    "noCallYet": "Aucun appel pour l’instant",
+    "earlierCalls": "Appelés avant",
+    "beingSeen": "En consultation",
+    "moreWaiting_one": "et {{count}} autre en attente",
+    "moreWaiting_other": "et {{count}} autres en attente",
+    "noPatients": "Aucun patient en attente",
+    "noPatientsLead": "Les guichets sont libres — adressez-vous à l’accueil.",
+    "position": "Guichet {{n}} sur {{total}}"
   },
   "displayScreens": {
     "title": "Écrans de salle d’attente",

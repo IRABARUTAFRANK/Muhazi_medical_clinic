@@ -26,7 +26,7 @@ import { EmptyNote } from '@/components/clinical/empty-note'
 import { GlassPill, HeroHead } from '@/components/clinical/hero-head'
 import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
 import { VitalsForm } from '@/components/clinical/vitals-form'
-import { bmiOf, vitalName } from '@/lib/api/vitals'
+import { bmiOf, vitalName, vitalValue } from '@/lib/api/vitals'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
@@ -384,7 +384,7 @@ export function VisitPage({
                 )}
                 {vitals.map((v) => (
                   <Chip key={v.id} title={vitalSource(v)}>
-                    {vitalName(v, t)}: <b className="ml-1 tabular-nums">{v.value}</b>
+                    {vitalName(v, t)}: <b className="ml-1 tabular-nums">{vitalValue(v)}</b>
                     {v.unit ? ` ${v.unit}` : ''}
                   </Chip>
                 ))}
@@ -544,7 +544,7 @@ export function VisitPage({
                       .sort((a, b) => a.at.localeCompare(b.at))
                       .map((v) => ({
                         label: vitalName(v, t),
-                        value: `${v.value}${v.unit ? ` ${v.unit}` : ''}`,
+                        value: `${vitalValue(v)}${v.unit ? ` ${v.unit}` : ''}`,
                         code: v.code,
                         unit: v.unit,
                       })),
