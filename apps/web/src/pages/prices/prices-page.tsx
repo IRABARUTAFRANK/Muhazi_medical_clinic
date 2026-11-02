@@ -815,9 +815,9 @@ function AdjustPricesCard({
             </Select>
           </div>
           {valid && rows.length > 0 && (
-            <div className="border-border overflow-x-auto rounded-md border">
+            <div className="border-border max-h-[55vh] overflow-auto overscroll-contain rounded-md border">
               <table className="w-full text-[14px] tabular-nums">
-                <thead className="bg-surface text-ink-2 text-left">
+                <thead className="bg-surface text-ink-2 sticky top-0 z-1 text-left">
                   <tr>
                     <th className="px-3 py-2 font-semibold">{t('prices.adjust.cols.treatment')}</th>
                     <th className="px-3 py-2 text-right font-semibold">

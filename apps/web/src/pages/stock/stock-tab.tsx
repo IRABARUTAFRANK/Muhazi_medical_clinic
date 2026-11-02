@@ -374,9 +374,9 @@ function StockList({
       {paged.total === 0 ? (
         <Empty icon={Package}>{t('stock.empty')}</Empty>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-h-[55vh] overflow-auto overscroll-contain">
           <table className="w-full border-collapse text-[14px]">
-            <thead className="bg-surface">
+            <thead className="bg-surface sticky top-0 z-1">
               <tr className="border-border border-b">
                 <th className={tableHead}>{t('stockPage.cols.item')}</th>
                 <th className={cn(tableHead, 'text-right')}>{t('stockPage.cols.pharmacy')}</th>

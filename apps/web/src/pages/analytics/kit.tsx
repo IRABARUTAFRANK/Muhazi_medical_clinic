@@ -291,10 +291,10 @@ export function DataTable<T>({
   const th = cn(tableHead, 'border-border border-b')
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <div className="max-w-full overflow-x-auto">
+      <div className="max-h-[70vh] max-w-full overflow-auto overscroll-contain">
         <table className="w-full border-collapse text-[14px]">
           <caption className="sr-only">{caption}</caption>
-          <thead className="bg-surface">
+          <thead className="bg-surface sticky top-0 z-1">
             <tr>
               {cols.map((c) => {
                 const on = sort?.key === c.key

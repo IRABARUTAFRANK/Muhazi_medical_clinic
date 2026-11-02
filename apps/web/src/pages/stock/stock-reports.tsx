@@ -304,9 +304,9 @@ function Sales({ period }: { period: Period }) {
         {!data || data.items.length === 0 ? (
           <Empty icon={Coins}>{t('stock.sales.none')}</Empty>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-[55vh] overflow-auto overscroll-contain">
             <table className="w-full border-collapse text-[14px]">
-              <thead className="bg-surface">
+              <thead className="bg-surface sticky top-0 z-1">
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('stockPage.cols.item')}</th>
                   <th className={cn(tableHead, 'text-right')}>{t('stock.sales.units')}</th>
@@ -390,9 +390,9 @@ function StoreValues() {
       tint="navy"
       title={tx(t, 'packaging.storeValues', 'What each store holds')}
     >
-      <div className="overflow-x-auto">
+      <div className="max-h-[55vh] overflow-auto overscroll-contain">
         <table className="w-full border-collapse text-[14px]">
-          <thead className="bg-surface">
+          <thead className="bg-surface sticky top-0 z-1">
             <tr className="border-border border-b">
               <th className={tableHead}>{tx(t, 'packaging.storeCol', 'Store')}</th>
               <th className={cn(tableHead, 'text-right')}>{t('stock.sales.units')}</th>
@@ -471,9 +471,9 @@ function BoughtOutsideList({ period }: { period: Period }) {
             {isLoading ? t('doctorLists.loading') : t('stock.outside.none')}
           </Empty>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-[55vh] overflow-auto overscroll-contain">
             <table className="w-full border-collapse text-[14px]">
-              <thead className="bg-surface">
+              <thead className="bg-surface sticky top-0 z-1">
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('stockPage.cols.item')}</th>
                   <th className={cn(tableHead, 'text-right')}>{t('stock.outside.times')}</th>

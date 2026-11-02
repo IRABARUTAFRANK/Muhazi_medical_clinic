@@ -250,7 +250,7 @@ function Batches({
             {s.store}
             {s.isRoom && <Badge tone="blue">{t('stockPage.panel.roomStore')}</Badge>}
           </div>
-          <div className="overflow-x-auto">
+          <div className="max-h-[55vh] overflow-auto overscroll-contain">
             <table className="w-full border-collapse text-[14px]">
               <thead>
                 <tr className="border-border border-b">

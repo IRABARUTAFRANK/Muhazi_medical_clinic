@@ -207,9 +207,9 @@ export function BillsPage({ user }: { user: StaffUser }) {
           {paged.total === 0 ? (
             <Empty>{t('home.noOpenBills')}</Empty>
           ) : (
-            <div className="-mx-4 overflow-x-auto px-4">
+            <div className="-mx-4 max-h-[55vh] overflow-auto overscroll-contain px-4">
               <table className="w-full border-collapse">
-                <thead className="bg-surface">
+                <thead className="bg-surface sticky top-0 z-1">
                   <tr>
                     <th className={tableHead}>{t('finance.cols.patient')}</th>
                     <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
@@ -330,9 +330,9 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
       {paged.total === 0 ? (
         <Empty>{t(debts.length === 0 ? 'cashierDesk.unpaid.none' : 'cashierDesk.noMatch')}</Empty>
       ) : (
-        <div className="-mx-4 overflow-x-auto px-4">
+        <div className="-mx-4 max-h-[55vh] overflow-auto overscroll-contain px-4">
           <table className="w-full border-collapse">
-            <thead className="bg-surface">
+            <thead className="bg-surface sticky top-0 z-1">
               <tr>
                 <th className={tableHead}>{t('finance.cols.patient')}</th>
                 <th className={cn(tableHead, 'text-right')}>{t('finance.cols.amount')}</th>
@@ -679,9 +679,9 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
           {paged.total === 0 ? (
             <Empty>{t('finance.nothingYet')}</Empty>
           ) : (
-            <div className="-mx-4 overflow-x-auto px-4">
+            <div className="-mx-4 max-h-[55vh] overflow-auto overscroll-contain px-4">
               <table className="w-full border-collapse">
-                <thead className="bg-surface">
+                <thead className="bg-surface sticky top-0 z-1">
                   <tr>
                     <th className={tableHead}>{t('finance.cols.time')}</th>
                     <th className={tableHead}>{t('finance.cols.patient')}</th>

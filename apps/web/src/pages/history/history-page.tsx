@@ -175,7 +175,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
           {!q.isLoading && items.length === 0 && <Empty icon={History}>{t('history.empty')}</Empty>}
           {items.length > 0 && (
             // the table: when, the kind of work, what happened (with its details), who did it
-            <div className="-mx-4 overflow-x-auto">
+            <div className="-mx-4 max-h-[55vh] overflow-auto overscroll-contain">
               <table className="w-full min-w-[640px] border-collapse">
                 <thead>
                   <tr className="border-grid bg-surface border-b">

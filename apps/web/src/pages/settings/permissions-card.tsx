@@ -74,7 +74,7 @@ export function PermissionsCard() {
               {notice}
             </Flash>
           )}
-          <div className="border-border overflow-x-auto rounded-md border">
+          <div className="border-border max-h-[55vh] overflow-auto overscroll-contain rounded-md border">
             <table className="w-full min-w-[760px] border-collapse text-[14px]">
               <thead>
                 <tr className="border-border bg-surface border-b">

@@ -442,9 +442,9 @@ function PreviewPanel({
           ) : (
             <ShownList items={preview.changed} step={15} footerClassName="pt-1">
               {(rows) => (
-                <div className="border-border overflow-x-auto rounded-md border">
+                <div className="border-border max-h-[55vh] overflow-auto overscroll-contain rounded-md border">
                   <table className="w-full border-collapse">
-                    <thead className="bg-surface">
+                    <thead className="bg-surface sticky top-0 z-1">
                       <tr>
                         <th className={tableHead}>{t('prices.refList.colMedicine')}</th>
                         <th className={cn(tableHead, 'text-right')}>

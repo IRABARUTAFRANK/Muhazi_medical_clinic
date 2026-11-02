@@ -103,9 +103,9 @@ export function RoomStoreStock({ locationId, i = 2 }: { locationId: string; i?: 
       {isLoading ? null : paged.total === 0 ? (
         <Empty icon={Package}>{t('myStore.empty')}</Empty>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-h-[55vh] overflow-auto overscroll-contain">
           <table className="w-full border-collapse text-[14px]">
-            <thead className="bg-surface">
+            <thead className="bg-surface sticky top-0 z-1">
               <tr className="border-border border-b">
                 <th className={tableHead}>{t('stock.cols.item')}</th>
                 <th className={cn(tableHead, 'text-right')}>{t('myStore.usable')}</th>
@@ -363,9 +363,9 @@ export function RoomStoreUse({ locationId, i = 3 }: { locationId: string; i?: nu
           {data.items.length === 0 ? (
             <Empty>{t('stock.noMoves')}</Empty>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[55vh] overflow-auto overscroll-contain">
               <table className="w-full border-collapse text-[14px]">
-                <thead className="bg-surface">
+                <thead className="bg-surface sticky top-0 z-1">
                   <tr className="border-border border-b">
                     <th className={tableHead}>{t('stock.cols.item')}</th>
                     {(

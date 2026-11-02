@@ -1127,8 +1127,37 @@ export function documentHtml(o: {
   return `<!doctype html><html lang="${esc(o.lang ?? 'en')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(windowTitle)}</title>${fontHead(b.fonts)}<style>${printBase(b)}${o.css ?? ''}</style></head><body class="page-${b.page}"><div class="screen-hint">${esc(l.printHint)}</div><main class="sheet">${o.body}${fallback}</main><script>${printScript(b.page, o.autoPrint !== false)}</script></body></html>`
 }
 
-/** Opens a new window with the document and lets its script print it. False when blocked. */
+/**
+ * Prints the document. A document that prints itself (a receipt, a report…) is printed from a
+ * hidden frame on the page the person is on: the print dialog opens at once, with no new tab to
+ * close (the cashier's Print goes straight to the printer dialog). A preview (no auto print)
+ * opens in a new window to be read. False when the browser blocked it.
+ */
 export function openPrintWindow(html: string): boolean {
+  if (html.includes('window.print();')) {
+    try {
+      const f = document.createElement('iframe')
+      f.setAttribute('aria-hidden', 'true')
+      f.tabIndex = -1
+      // in the page but out of sight; a frame of size 0 prints blank in some browsers
+      f.style.cssText =
+        'position:fixed;right:0;bottom:0;width:210mm;height:297mm;border:0;opacity:0;pointer-events:none;'
+      document.body.appendChild(f)
+      const d = f.contentDocument
+      const w = f.contentWindow
+      if (!d || !w) throw new Error('no frame')
+      // the frame goes once printing is over (or after 10 minutes at most)
+      const done = () => setTimeout(() => f.remove(), 500)
+      w.addEventListener('afterprint', done, { once: true })
+      setTimeout(() => f.isConnected && f.remove(), 600_000)
+      d.open()
+      d.write(html)
+      d.close()
+      return true
+    } catch {
+      // fall back to a window below
+    }
+  }
   const w = window.open('', '_blank')
   if (!w) return false
   w.document.open()

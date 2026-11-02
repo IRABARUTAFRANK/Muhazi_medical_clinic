@@ -144,9 +144,9 @@ function DeliveryDetailView({ id, onClose }: { id: string; onClose: () => void }
           <X size={16} aria-hidden="true" />
         </Button>
       </div>
-      <div className="overflow-x-auto">
+      <div className="max-h-[55vh] overflow-auto overscroll-contain">
         <table className="w-full border-collapse text-[14px]">
-          <thead className="bg-surface">
+          <thead className="bg-surface sticky top-0 z-1">
             <tr className="border-border border-b">
               <th className={tableHead}>{t('stock.cols.item')}</th>
               <th className={tableHead}>{t('stock.batchNo')}</th>

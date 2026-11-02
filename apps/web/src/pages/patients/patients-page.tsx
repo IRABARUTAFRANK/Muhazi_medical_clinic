@@ -103,7 +103,7 @@ export function PatientsPage({ user, initialQuery }: { user: StaffUser; initialQ
               <EmptyNote>{t('patients.none')}</EmptyNote>
             </CardBody>
           )}
-          <div className="overflow-x-auto">
+          <div className="max-h-[55vh] overflow-auto overscroll-contain">
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr className="text-ink-3 bg-surface text-left text-[12px] whitespace-nowrap">

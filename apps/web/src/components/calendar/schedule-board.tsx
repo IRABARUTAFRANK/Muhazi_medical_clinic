@@ -137,7 +137,7 @@ export function ScheduleBoard({
       </div>
 
       {/* Tablets and PCs: the week as a table. */}
-      <div className="border-border hidden overflow-x-auto rounded-md border sm:block">
+      <div className="border-border hidden max-h-[55vh] overflow-auto overscroll-contain rounded-md border sm:block">
         <table className="w-full min-w-[600px] border-collapse text-[12px] md:text-[13px]">
           <thead>
             <tr className="bg-surface">
