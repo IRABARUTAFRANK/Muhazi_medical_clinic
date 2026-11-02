@@ -42,7 +42,8 @@ export function NotificationBell({ user }: { user: StaffUser }) {
   const unread = data?.unread ?? 0
   // every unread one (today's and older): what "Mark all read" marks
   const unreadAll = unread + (data?.unreadEarlier ?? 0)
-  const items = data?.items ?? []
+  // the bell lists only what is still unread; everything else is on the Notifications page
+  const items = (data?.items ?? []).filter((n) => !n.read)
   // the manager writes to anyone; a head or assistant head to their own department(s)
   const leads = useLeadDepartments(user)
   const canSend = user.role === 'manager' || leads.length > 0
@@ -166,7 +167,7 @@ export function NotificationBell({ user }: { user: StaffUser }) {
           <div className="min-h-0 flex-1 overflow-auto">
             {items.length === 0 && (
               <p className="text-ink-3 m-0 px-4 py-8 text-center text-[13px]">
-                {t('notify.empty')}
+                {t('notify.noUnread')}
               </p>
             )}
             {items.map((n, k) => {

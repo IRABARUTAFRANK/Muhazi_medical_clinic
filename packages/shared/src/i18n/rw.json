@@ -2958,7 +2958,8 @@
     "rxPartGivenBody_other": "Hasigaye {{count}} yo gutanga: farumasi iyitanga nyuma muri uku kwivuza, cyangwa ikerekana ko itatanzwe.",
     "staffMessage": "Ubutumwa bwa {{from}}",
     "rxNotGivenOutside": "Fungura kwivuza kwe kugira ngo uwohereze kuri farumasi yo hanze.",
-    "rxOutside": "{{item}} ya {{name}}: izagurirwa kuri farumasi yo hanze"
+    "rxOutside": "{{item}} ya {{name}}: izagurirwa kuri farumasi yo hanze",
+    "noUnread": "Nta butumwa bushya. Ubwasomwe buri mu Butumwa bwose."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"

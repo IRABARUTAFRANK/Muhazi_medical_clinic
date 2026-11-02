@@ -2949,7 +2949,8 @@
     "rxPartGivenBody_other": "{{count}} restent à donner : la pharmacie les donne plus tard pendant la visite, ou les marque non donnés.",
     "staffMessage": "Message de {{from}}",
     "rxNotGivenOutside": "Ouvrez la visite pour l’envoyer à une pharmacie extérieure.",
-    "rxOutside": "{{item}} pour {{name}} : acheté dans une pharmacie extérieure"
+    "rxOutside": "{{item}} pour {{name}} : acheté dans une pharmacie extérieure",
+    "noUnread": "Aucune nouvelle notification. Celles déjà lues sont dans Toutes les notifications."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"

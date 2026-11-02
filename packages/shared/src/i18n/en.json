@@ -2949,7 +2949,8 @@
     "rxPartGivenBody_other": "{{count}} still to give: the pharmacy gives them later in the visit, or marks them not given.",
     "staffMessage": "Message from {{from}}",
     "rxNotGivenOutside": "Open the visit to send it to an outside pharmacy.",
-    "rxOutside": "{{item}} for {{name}}: bought at an outside pharmacy"
+    "rxOutside": "{{item}} for {{name}}: bought at an outside pharmacy",
+    "noUnread": "No new notification. Read ones are under All notifications."
   },
   "identity": {
     "aria": "Signed in: {{name}}"
