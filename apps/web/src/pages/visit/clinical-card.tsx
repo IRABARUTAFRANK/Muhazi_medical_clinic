@@ -68,7 +68,8 @@ import { TestFilesChip } from '@/components/clinical/supporting-files'
 import { registrationText, useMyCredentials } from '@/lib/api/staff'
 import { stationFor, type Station } from '@/lib/api/visits'
 import { buildPrescriptionHtml, type RxDoc, type RxDocMedicine } from '@/lib/prescription-doc'
-import { roleLabel } from '@/lib/roles'
+import { isDoctorUser, roleLabel } from '@/lib/roles'
+import { ForDoctorsNote } from '@/components/clinical/record-privacy'
 import { cn } from '@/lib/utils'
 import { useCan, useSwitchedOff } from '@/lib/api/permissions'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
@@ -392,6 +393,10 @@ export function ClinicalCard({
 
   const letterhead = useLetterhead()
   const reportLabels = useMedicalReportLabels()
+  // 0126: patient records are for doctors: someone who is not one sees their desk's part of an
+  // open visit (view 'desk'), without the medical report
+  const deskView = data?.view === 'desk'
+  const doctor = isDoctorUser(user) && !deskView
   const [reporting, setReporting] = useState(openReport)
   const [comment, setComment] = useState('')
   // the signed-in person's specialty and council registration (nulls before 0084)
@@ -1052,10 +1057,15 @@ export function ClinicalCard({
       minLength={3}
     />
   )
+  const hasPrimary =
+    !!data &&
+    (standing(data.diagnoses).some((d) => d.type === 'primary') ||
+      data.hasPrimaryDiagnosis === true)
   const finish = async () => {
     if (!data) return
     // no primary diagnosis: the clinician says none was found, and why (0125), instead of a block
-    if (!standing(data.diagnoses).some((d) => d.type === 'primary')) {
+    // (0126: a desk view knows there is one without its words)
+    if (!hasPrimary) {
       setLocalError(null)
       setNoDx((x) => x ?? { kind: 'no_disease', note: '' })
       return
@@ -1129,7 +1139,7 @@ export function ClinicalCard({
               {t('file.fields.blood_group')} {data.patient.bloodGroup}
             </Badge>
           )}
-          {patient && data && (
+          {patient && data && doctor && (
             <Button
               size="sm"
               variant={reporting ? 'primary' : 'default'}
@@ -1162,7 +1172,12 @@ export function ClinicalCard({
           <NotAllowedNotice feature="clinical.write" compact />
         </CardBody>
       )}
-      {reporting && patient && data && (
+      {deskView && (
+        <CardBody className="border-border border-b py-2.5">
+          <ForDoctorsNote desk />
+        </CardBody>
+      )}
+      {reporting && doctor && patient && data && (
         <CardBody className="bg-primary-tint/40 border-border anim-enter gap-2 border-b">
           <p className="m-0 text-[14px] font-semibold">{t('medReport.panelTitle')}</p>
           <p className="text-ink-2 m-0 text-[13px]">{t('medReport.panelLead')}</p>
@@ -2439,14 +2454,7 @@ export function ClinicalCard({
             <CheckCircle2 size={16} aria-hidden="true" />
             {t('clinical.finish')}
           </Button>
-          <span
-            className={cn(
-              'text-xs',
-              data && standing(data.diagnoses).some((d) => d.type === 'primary')
-                ? 'text-ink-3'
-                : 'text-red',
-            )}
-          >
+          <span className={cn('text-xs', hasPrimary ? 'text-ink-3' : 'text-red')}>
             {t('noDx.finishHint')}
           </span>
         </CardBody>

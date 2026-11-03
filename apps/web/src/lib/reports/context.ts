@@ -5,6 +5,7 @@ import { DESKS, type DeskId } from '@/lib/api/desks'
 import { MANAGED_FEATURES, useCan, type Feature } from '@/lib/api/permissions'
 import { useMyStores } from '@/lib/api/rooms'
 import { supabase } from '@/lib/supabase'
+import { isDoctorUser } from '@/lib/roles'
 import { useSession } from '@/store/session'
 import type { ReportContext } from './defs/types'
 
@@ -13,9 +14,6 @@ import type { ReportContext } from './defs/types'
  * from the same answers read during render). Each report's `allowed` reads it; its database
  * function checks the same rights again, so a report never shows more than the screens do.
  */
-
-/** Roles that read clinical records: a doctor's own patients only is enforced by the database. */
-const CLINICAL_ROLES: readonly string[] = ['doctor', 'nurse', 'lab_tech']
 
 export function buildReportContext(
   user: StaffUser,
@@ -35,8 +33,9 @@ export function buildReportContext(
     can: parts.can,
     canDesk: parts.canDesk,
     holdsStore: parts.holdsStore,
-    clinical:
-      isManager || isHead || CLINICAL_ROLES.includes(user.role) || user.dbRole === 'sonographer',
+    // 0126: patient records are for doctors (the role, or marked by the manager): the clinical
+    // reports and columns (diagnoses, prescriptions' doses, results). The database checks again.
+    clinical: isDoctorUser(user),
     sample: parts.sample,
   }
 }

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { samplePermsOf } from './permissions'
 import { apiError, isMissingFunction, sampleRefusal } from './errors'
 import { supabase } from '@/lib/supabase'
+import { isDoctorUser } from '@/lib/roles'
 import { useSession } from '@/store/session'
 
 /**
@@ -21,8 +22,9 @@ import { useSession } from '@/store/session'
 export type AccessLevel = 'identity' | 'summary' | 'full'
 /** How the whole history is seen. */
 export type AccessVia = 'manager' | 'head' | 'request' | 'emergency'
-/** How one visit's clinical record is seen: 'visit' = today's, working on it; 'own' = treated it. */
-export type VisitView = 'visit' | 'own' | AccessVia
+/** How one visit's clinical record is seen: 'visit' = today's, working on it; 'own' = treated it;
+ *  'desk' (0126) = someone who is not a doctor working on the open visit: their desk's part only. */
+export type VisitView = 'visit' | 'own' | 'desk' | AccessVia
 /** How past records were opened (the access log). */
 export type AccessLogVia = 'own' | AccessVia
 export type AccessRequestStatus = 'pending' | 'approved' | 'refused' | 'cancelled'
@@ -59,6 +61,8 @@ export interface PatientAccess {
   request: AccessRequestBrief | null
   /** True when the database is older than 0088 (no privacy: everything visible). */
   legacy?: boolean
+  /** 0126: the reader is a doctor (patient records are for doctors); absent before 0126. */
+  doctor?: boolean
 }
 
 /** The safety summary (level 2). */
@@ -337,10 +341,13 @@ export function sampleAccess(
   visits: { id: string; status: 'open' | 'closed' }[],
 ): PatientAccess {
   const u = me()
+  // 0126: patient records are for doctors (the role, or marked by the manager)
+  const doctor = !u || isDoctorUser(u)
   const open = visits.find((v) => v.status === 'open') ?? null
   const past = visits.filter((v) => v.status === 'closed').length
-  const via: AccessVia | null =
-    !u || u.role === 'manager'
+  const via: AccessVia | null = !doctor
+    ? null
+    : !u || u.role === 'manager'
       ? 'manager'
       : sampleIsHead()
         ? 'head'
@@ -360,12 +367,14 @@ export function sampleAccess(
     ownVisits: 0,
     hiddenVisits: hidden,
     canRequest:
+      doctor &&
       !!treating &&
       !via &&
       hidden > 0 &&
       (!mine || mine.status === 'refused' || mine.status === 'cancelled'),
-    canEmergency: !!treating && !via && hidden > 0,
-    canSeeLog: !u || u.role === 'manager' || sampleIsHead(),
+    canEmergency: doctor && !!treating && !via && hidden > 0,
+    canSeeLog: doctor && (!u || u.role === 'manager' || sampleIsHead()),
+    doctor,
     request: mine
       ? {
           id: mine.id,
@@ -386,6 +395,8 @@ export function sampleVisitView(
   access: PatientAccess,
   visit: { id: string; status: 'open' | 'closed' },
 ): VisitView | null {
+  // 0126: a visit's record is for doctors (their desk's part comes from visit_clinical)
+  if (access.doctor === false) return null
   if (visit.status === 'open') {
     const u = me()
     if (!u || u.role === 'manager' || access.treatingEncounterId === visit.id) return 'visit'

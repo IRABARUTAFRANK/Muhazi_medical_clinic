@@ -198,6 +198,17 @@ await step('auth users â†’ profiles trigger', async () => {
   const r = await one(`select count(*)::int as n, bool_and(active) as active from profiles`)
   return `${r.n} profiles`
 })
+// 0126: patient records are for doctors. The manager of these checks is a doctor (the owner marks
+// himself in Employees → profile), as the 0088… steps below assume the manager reads the records;
+// the 0126 steps at the end check a manager who is not one.
+await step('0126: the test manager is marked a doctor (set_staff_doctor)', async () => {
+  await as(staff.manager)
+  const r = (
+    await one(`select set_staff_doctor($1, true, 'RMDC/T/0001', 'RMDC') as j`, [staff.manager])
+  ).j
+  if (!r.isDoctor) throw new Error(JSON.stringify(r))
+  return 'is_doctor'
+})
 
 await step(
   'sign-in logic: record_sign_in stamps, audits and refuses deactivated accounts',
@@ -4016,9 +4027,11 @@ await step(
     const before = await labOf(a.enc)
     await db.query(`select retire_staff($1, $2)`, [doc, staff.manager])
     const after = await labOf(a.enc)
-    await as(staff.lab_tech)
     for (const p of [a, b]) {
+      // 0126: the clinical tables are for doctors: the test is looked up as the admin
+      await asAdmin()
       const req = (await one(`select id from service_request where encounter_id = $1`, [p.enc])).id
+      await as(staff.lab_tech)
       await db.query(`select record_result($1, 'Negative', 'No malaria', true)`, [req])
     }
     await asAdmin()
@@ -9446,7 +9459,9 @@ await step(
     await role87('nurse', 'records.approve', true)
     r.nurseMine = await mine(staff.nurse)
     r.managerMine = await mine(staff.manager)
-    r.approve = (await j88(staff.nurse, answer, [t88.req, true, null]))?.status
+    // 0126: the switch does not make a nurse an approver (not a doctor); the manager approves
+    r.nurseWithSwitch = (await j88(staff.nurse, answer, [t88.req, true, null]))?.error
+    r.approve = (await j88(staff.manager, answer, [t88.req, true, null]))?.status
     r.late = (await j88(staff.manager, answer, [t88.req, false, 'No']))?.error
     r.othersCleared = (await notices88('access_request', t88.req)).length
     r.answerNotice = (await notices88('access_answer', t88.req)).map((n) => n.recipient_user)
@@ -9519,6 +9534,7 @@ await step(
       r.refuseNoReason !== '22023/reason_needed' ||
       r.nurseBefore !== '42501/not_approver' ||
       !r.nurseMine ||
+      r.nurseWithSwitch !== '42501/not_approver' ||
       !r.managerMine ||
       r.approve !== 'approved' ||
       r.late !== '22023/already_answered' ||
@@ -9535,9 +9551,9 @@ await step(
       r.closed.v2 !== 'own' ||
       r.closed.active !== false ||
       !r.notices2.manager ||
-      !r.notices2.nurse ||
+      r.notices2.nurse ||
       r.notices2.head ||
-      json88(r.notices2.roles) !== json88(['manager', 'nurse']) ||
+      json88(r.notices2.roles) !== json88(['manager']) ||
       r.nurseAfter ||
       r.cancel !== 'P0002/not_found' ||
       r.refused !== 'refused' ||
@@ -9546,7 +9562,7 @@ await step(
       r.canAgain !== true
     )
       throw new Error(json88(r))
-    return 'asked with a reason → the manager told, not the head; head answers only with the right (exception), a nurse with the switch; access ended at closing; refusal says why'
+    return 'asked with a reason → the manager told, not the head; head answers only with the right (exception); a nurse not even with the switch (0126: not a doctor); access ended at closing; refusal says why'
   },
 )
 await step(
@@ -10278,8 +10294,9 @@ await step(
       r.reception.attachTo !== null ||
       r.manager.files !== 4 ||
       r.manager.attachTo !== t89.v2 ||
-      r.sono.files !== 3 ||
-      r.sono.hidden !== 1 ||
+      // 0126: not a doctor: only the file of the test her desk runs
+      r.sono.files !== 1 ||
+      r.sono.hidden !== 3 ||
       r.sonoTest.files !== 1 ||
       r.sonoTest.canAttach !== true ||
       r.sonoTest.max !== 10485760 ||
@@ -11014,13 +11031,14 @@ await step(
     r.row = await one(`select station, via_return, queue_id from patient_handover where id = $1`, [
       t88h.h5,
     ])
-    // the lab taking the sample is not the patient leaving Dr. A
-    await as(staff.lab_tech)
+    // the lab taking the sample is not the patient leaving Dr. A (0126: the test is looked up as
+    // the admin; the clinical tables are for doctors)
     const req = (
       await one(`select id from service_request where encounter_id = $1 and deleted_at is null`, [
         t88h.enc3,
       ])
     ).id
+    await as(staff.lab_tech)
     r.collect = await hintAs(staff.lab_tech, `select set_request_status($1, 'collected')`, [req])
     await asAdmin()
     r.stillPending = (
@@ -19531,6 +19549,634 @@ await expectError(
     await db.query(`select change_booking($1, null, null, 'x')`, [t.b1])
   },
   /can no longer be changed/,
+)
+
+// ---------------------------------------------------------------- 0126: patient records are for doctors
+await step('0126: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20270106090000_doctors_only_records.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+const t126 = {}
+const json126 = (x) => JSON.stringify(x)
+/** An open visit of the patient at Consultation 126, taken by `doctor`. */
+const ov126 = async (pid, doctor) => {
+  await asAdmin()
+  const enc = (await one(`insert into encounter (patient_id) values ($1) returning id`, [pid])).id
+  await db.query(
+    `insert into queue_entry (encounter_id, station, ticket_no, department_id, taken_by, started_at)
+     values ($1, 'consultation', 'D126', $2, $3, now())`,
+    [enc, t126.dept, doctor],
+  )
+  return enc
+}
+await step(
+  '0126 seed: a patient with a past visit and an open one (Dr 126); a nurse, the lab, the pharmacy, a head nurse, a manager who is not a doctor',
+  async () => {
+    t126.dept = await dept85('Consultation 126', ['consultation'])
+    t126.labDept = await dept85('Laboratory 126', ['laboratory'])
+    t126.rxDept = await dept85('Pharmacy 126', ['pharmacy'])
+    t126.doc = await newStaff('d126.doc', 'Dr. Treats 126', 'doctor', 'Consultation 1')
+    t126.doc2 = await newStaff('d126.doc2', 'Dr. Other 126', 'doctor', 'Consultation 1')
+    t126.headN = await newStaff('d126.head', 'Head Nurse 126', 'nurse')
+    t126.nurse = await newStaff('d126.nurse', 'Nurse 126', 'nurse')
+    t126.lab = await newStaff('d126.lab', 'Lab 126', 'lab_tech')
+    t126.rx = await newStaff('d126.rx', 'Pharmacist 126', 'pharmacist')
+    t126.mgr = await newStaff('d126.mgr', 'Manager 126', 'manager')
+    await member85(t126.doc, t126.dept)
+    await member85(t126.doc2, t126.dept)
+    await member85(t126.headN, t126.dept, 'head')
+    await member85(t126.lab, t126.labDept)
+    await member85(t126.rx, t126.rxDept)
+    await asAdmin()
+    t126.pid = (
+      await one(
+        `insert into patient (surname, given_names, sex, allergies, blood_group, notes)
+         values ('Doctors', 'Only 126', 'female', 'Sulfa', 'B+', 'Epileptic: seizure alert') returning id`,
+      )
+    ).id
+    const item = (await one(`select id from item where code = 'AMOX500'`)).id
+    t126.service = (
+      await one(
+        `select id from service where deleted_at is null and coalesce(name_en, '') not ilike '%hiv%'
+         and coalesce(code, '') not ilike '%hiv%' order by code limit 1`,
+      )
+    ).id
+    // the past visit, treated by Dr 126
+    t126.v0 = await ov126(t126.pid, t126.doc)
+    await db.query(
+      `insert into condition (encounter_id, icd10_code, text, type, created_by)
+       values ($1, 'I10', 'Essential hypertension 126', 'primary', $2)`,
+      [t126.v0, t126.doc],
+    )
+    await db.query(
+      `insert into observation (encounter_id, code, value_text, performer_id, created_by)
+       values ($1, 'note', 'Past note 126', $2, $2)`,
+      [t126.v0, t126.doc],
+    )
+    const sr0 = (
+      await one(
+        `insert into service_request (encounter_id, category, service_id, station, requester_id, reason)
+         values ($1, 'lab', $2, 'laboratory', $3, 'Past reason 126') returning id`,
+        [t126.v0, t126.service, t126.doc],
+      )
+    ).id
+    await db.query(
+      `insert into diagnostic_report (service_request_id, findings, impression, verified_at)
+       values ($1, 'Past finding 126', 'Past result 126', now())`,
+      [sr0],
+    )
+    await close88(t126.v0)
+    // the visit today: Dr 126 treats; the nurse measured and wrote a note; a test at the lab; two
+    // medicines (one for the pharmacy, one given in the room)
+    t126.v1 = await ov126(t126.pid, t126.doc)
+    await db.query(
+      `insert into condition (encounter_id, icd10_code, text, type, created_by)
+       values ($1, 'B54', 'Malaria 126', 'primary', $2)`,
+      [t126.v1, t126.doc],
+    )
+    await db.query(
+      `insert into observation (encounter_id, code, value_text, performer_id, created_by)
+       values ($1, 'note', 'Doctor note 126', $2, $2), ($1, 'note', 'Nurse note 126', $3, $3)`,
+      [t126.v1, t126.doc, t126.nurse],
+    )
+    await db.query(
+      `insert into observation (encounter_id, code, value_num, unit, performer_id, created_by)
+       values ($1, 'temp', 38.6, '°C', $2, $2)`,
+      [t126.v1, t126.nurse],
+    )
+    await db.query(
+      `insert into medication_request (encounter_id, item_id, quantity, duration_days, supply, prescriber_id, created_by)
+       values ($1, $2, 15, 5, 'pharmacy', $3, $3), ($1, $2, 1, 1, 'room', $3, $3)`,
+      [t126.v1, item, t126.doc],
+    )
+    t126.sr = (
+      await one(
+        `insert into service_request (encounter_id, category, service_id, station, requester_id, reason)
+         values ($1, 'lab', $2, 'laboratory', $3, 'Fever for 3 days 126') returning id`,
+        [t126.v1, t126.service, t126.doc],
+      )
+    ).id
+    // the nurse has the patient at triage (her desk part)
+    await db.query(
+      `insert into queue_entry (encounter_id, station, ticket_no, taken_by, started_at)
+       values ($1, 'triage', 'T126', $2, now())`,
+      [t126.v1, t126.nurse],
+    )
+    // two files on the open visit: one of the test (the lab's), one of the wound (clinical)
+    t126.fileLab = path89(t126.pid, t126.v1)
+    t126.fileWound = path89(t126.pid, t126.v1)
+    await db.query(
+      `insert into patient_file_doc (patient_id, encounter_id, service_request_id, kind, title, storage_path, mime_type, size_bytes, uploaded_by)
+       values ($1, $2, $3, 'photo', 'Lab slide 126', $4, 'image/jpeg', 1000, $6),
+              ($1, $2, null, 'photo', 'Wound photo 126', $5, 'image/jpeg', 1000, $6)`,
+      [t126.pid, t126.v1, t126.sr, t126.fileLab, t126.fileWound, t126.doc],
+    )
+    const r = await one(
+      `select is_doctor($1) as doc, is_doctor($2) as mgr, is_doctor($3) as mgrDoc, is_doctor($4) as nurse`,
+      [t126.doc, t126.mgr, staff.manager, t126.nurse],
+    )
+    if (!r.doc || r.mgr || !r.mgrdoc || r.nurse) throw new Error(json126(r))
+    return 'Dr 126 is a doctor by role; the new manager is not; the manager of these checks was marked one'
+  },
+)
+await step(
+  '0126: set_staff_doctor — the manager only, a registration number to turn it on; a doctor by role stays one',
+  async () => {
+    const r = {}
+    r.nurse = await hintAs(t126.nurse, `select set_staff_doctor($1, true, 'RMDC/1/26')`, [
+      t126.nurse,
+    ])
+    r.noNumber = await hintAs(staff.manager, `select set_staff_doctor($1, true, '  ')`, [t126.mgr])
+    r.byRole = await hintAs(staff.manager, `select set_staff_doctor($1, false)`, [t126.doc])
+    await asAdmin()
+    r.still = (await one(`select is_doctor($1) as b`, [t126.mgr])).b
+    if (
+      r.nurse !== '42501/not_manager' ||
+      r.noNumber !== '22023/registration_needed' ||
+      r.byRole !== '22023/doctor_by_role' ||
+      r.still
+    )
+      throw new Error(json126(r))
+    return 'a nurse refused; no registration number refused; the role doctor cannot be unmarked'
+  },
+)
+await step(
+  '0126: a manager who is not a doctor: no record (visit, past visits, results, documents, reports, log), no request',
+  async () => {
+    const r = {}
+    const f = await j88(t126.mgr, `select patient_file($1) as j`, [t126.pid])
+    r.file = {
+      level: f.access.level,
+      doctor: f.access.doctor,
+      canRequest: f.access.canRequest,
+      private: f.visits.map((v) => v.private),
+      dx: f.visits.map((v) => v.diagnosis),
+      conditions: f.conditions.length,
+    }
+    const c0 = await j88(t126.mgr, `select visit_clinical($1) as j`, [t126.v0])
+    const c1 = await j88(t126.mgr, `select visit_clinical($1) as j`, [t126.v1])
+    r.v0 = {
+      private: c0.private,
+      forDoctors: c0.forDoctors,
+      dx: c0.diagnoses.length,
+      nodx: c0.visit.noDiagnosis,
+    }
+    r.v1 = {
+      private: c1.private,
+      forDoctors: c1.forDoctors,
+      dx: c1.diagnoses.length,
+      notes: c1.notes.length,
+    }
+    r.results = (await j88(t126.mgr, `select patient_results($1) as j`, [t126.pid])).length
+    const jr = await j88(t126.mgr, `select visit_journey($1) as j`, [t126.v0])
+    r.journey = { private: jr.private, dx: jr.diagnoses.length, tests: jr.tests.length }
+    r.documents = await hintAs(t126.mgr, `select visit_documents(array[$1]::uuid[])`, [t126.v0])
+    r.diagnoses = await hintAs(
+      t126.mgr,
+      `select report_diagnoses((now() at time zone 'Africa/Kigali')::date, (now() at time zone 'Africa/Kigali')::date)`,
+    )
+    r.prescriptions = await hintAs(
+      t126.mgr,
+      `select report_prescriptions((now() at time zone 'Africa/Kigali')::date, (now() at time zone 'Africa/Kigali')::date)`,
+    )
+    r.log = await hintAs(t126.mgr, `select record_access_log()`)
+    r.whoLooked = await hintAs(t126.mgr, `select patient_access_log($1)`, [t126.pid])
+    r.requests = (await j88(t126.mgr, `select record_access_requests('all') as j`)).length
+    await as(t126.mgr)
+    r.tables = await one(
+      `select (select count(*)::int from condition where encounter_id in ($1, $2)) as c,
+                (select count(*)::int from observation where encounter_id in ($1, $2) and code = 'note') as n,
+                (select count(*)::int from service_request where encounter_id in ($1, $2)) as s`,
+      [t126.v0, t126.v1],
+    )
+    await asAdmin()
+    if (
+      r.file.level !== 'identity' ||
+      r.file.doctor !== false ||
+      r.file.canRequest !== false ||
+      r.file.private.some((p) => !p) ||
+      r.file.dx.some((d) => d !== null) ||
+      r.file.conditions !== 0 ||
+      !r.v0.private ||
+      !r.v0.forDoctors ||
+      r.v0.dx !== 0 ||
+      !r.v1.private ||
+      !r.v1.forDoctors ||
+      r.v1.dx !== 0 ||
+      r.v1.notes !== 0 ||
+      r.results !== 0 ||
+      !r.journey.private ||
+      r.journey.dx !== 0 ||
+      r.journey.tests !== 0 ||
+      r.documents !== '42501/not_doctor' ||
+      r.diagnoses !== '42501/not_doctor' ||
+      r.prescriptions !== '42501/not_doctor' ||
+      r.log !== '42501/' ||
+      r.whoLooked !== '42501/' ||
+      r.requests !== 0 ||
+      r.tables.c !== 0 ||
+      r.tables.n !== 0 ||
+      r.tables.s !== 0
+    )
+      throw new Error(json126(r))
+    return 'every visit private, no diagnosis, results, journey, documents, reports, access log; the tables give nothing'
+  },
+)
+await step(
+  '0126: …but he keeps identity, the visits list, the money, the counts and the patients-seen report without the diagnosis',
+  async () => {
+    const r = {}
+    const f = await j88(t126.mgr, `select patient_file($1) as j`, [t126.pid])
+    r.identity = [
+      f.patient.surname,
+      f.patient.given_names,
+      !!f.patient.file_number || f.patient.file_number === null,
+    ]
+    r.visits = f.visits.length
+    r.bills = Array.isArray(f.bills)
+    r.stations = f.visits.every((v) => Array.isArray(v.stations))
+    const p = await j88(
+      t126.mgr,
+      `select visits_in_period((now() at time zone 'Africa/Kigali')::date, (now() at time zone 'Africa/Kigali')::date) as j`,
+    )
+    const row = p.visits.find((v) => v.id === t126.v0)
+    r.period = { found: !!row, doctor: row?.doctor?.name, dx: row?.diagnosis ?? null }
+    const seen = await j88(
+      t126.mgr,
+      `select report_patients_seen((now() at time zone 'Africa/Kigali')::date, (now() at time zone 'Africa/Kigali')::date) as j`,
+    )
+    const s0 = Array.isArray(seen) ? seen.find((x) => x.encounterId === t126.v0) : null
+    r.seen = { ok: Array.isArray(seen), found: !!s0, dx: s0?.diagnosis ?? null }
+    const seenDoc = await j88(
+      staff.manager,
+      `select report_patients_seen((now() at time zone 'Africa/Kigali')::date, (now() at time zone 'Africa/Kigali')::date) as j`,
+    )
+    r.seenDoc = seenDoc.find((x) => x.encounterId === t126.v0)?.diagnosis ?? null
+    r.nav = await j88(t126.mgr, `select nav_counts() as j`)
+    if (
+      r.identity[0] !== 'Doctors' ||
+      r.visits !== 2 ||
+      !r.bills ||
+      !r.stations ||
+      !r.period.found ||
+      r.period.doctor !== 'Dr. Treats 126' ||
+      r.period.dx !== null ||
+      !r.seen.ok ||
+      !r.seen.found ||
+      r.seen.dx !== null ||
+      !/hypertension 126/.test(r.seenDoc ?? '') ||
+      r.nav.error ||
+      'recordAccess' in r.nav ||
+      'results' in r.nav
+    )
+      throw new Error(json126(r))
+    return 'name, 2 visits with desks and bills, the period list with its doctor (no diagnosis), patients seen without the diagnosis'
+  },
+)
+await step(
+  '0126: marked a doctor, the same manager sees the records; audited, told to the other managers; unmarked, they close again',
+  async () => {
+    const r = {}
+    await as(staff.manager)
+    r.on = (
+      await one(`select set_staff_doctor($1, true, 'RMDC/A/0126', 'RMDC') as j`, [t126.mgr])
+    ).j
+    await asAdmin()
+    r.audit = (
+      await one(
+        `select count(*)::int as n from audit_event
+         where entity = 'profiles' and entity_id = $1 and action = 'settings' and after ->> 'key' = 'staff_doctor'
+           and (after ->> 'on')::boolean and after ->> 'registration_no' = 'RMDC/A/0126'`,
+        [t126.mgr],
+      )
+    ).n
+    r.notice = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'staff_doctor' and recipient_user = $1
+         and params ->> 'profileId' = $1::text`,
+        [t126.mgr],
+      )
+    ).n
+    r.toSelf = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'staff_doctor' and recipient_user = $1
+         and params ->> 'profileId' = $2`,
+        [staff.manager, t126.mgr],
+      )
+    ).n
+    const f = await j88(t126.mgr, `select patient_file($1) as j`, [t126.pid])
+    r.file = {
+      level: f.access.level,
+      v0: f.visits.find((v) => v.id === t126.v0).view,
+      conditions: f.conditions.length,
+    }
+    r.dx0 = (await j88(t126.mgr, `select visit_clinical($1) as j`, [t126.v0])).diagnoses.length
+    r.docs = (
+      await j88(t126.mgr, `select visit_documents(array[$1]::uuid[]) as j`, [t126.v0])
+    ).length
+    r.report = Array.isArray(
+      await j88(
+        t126.mgr,
+        `select report_diagnoses((now() at time zone 'Africa/Kigali')::date, (now() at time zone 'Africa/Kigali')::date) as j`,
+      ),
+    )
+    r.profile = (await j88(staff.manager, `select staff_profile($1) as j`, [t126.mgr])).isDoctor
+    await as(t126.mgr)
+    r.session = (await one(`select my_session_profile() as j`)).j.is_doctor
+    await as(staff.manager)
+    r.dirRow = (
+      await one(`select is_doctor from staff_directory where id = $1`, [t126.mgr])
+    ).is_doctor
+    r.off = (await one(`select set_staff_doctor($1, false) as j`, [t126.mgr])).j.isDoctor
+    await asAdmin()
+    const g = await j88(t126.mgr, `select patient_file($1) as j`, [t126.pid])
+    r.after = { level: g.access.level, private: g.visits.every((v) => v.private) }
+    if (
+      !r.on.isDoctor ||
+      r.audit !== 1 ||
+      r.notice !== 1 ||
+      r.toSelf !== 0 ||
+      r.file.level !== 'full' ||
+      r.file.v0 !== 'manager' ||
+      r.file.conditions < 2 ||
+      r.dx0 !== 1 ||
+      r.docs !== 1 ||
+      !r.report ||
+      r.profile !== true ||
+      r.session !== true ||
+      r.dirRow !== true ||
+      r.off !== false ||
+      r.after.level !== 'identity' ||
+      !r.after.private
+    )
+      throw new Error(json126(r))
+    return 'full history as the manager-doctor; one audit line; the other manager told; the session, profile and list say so; unmarked: private again'
+  },
+)
+await step(
+  "0126: a head of department who is not a doctor no longer sees the department's records",
+  async () => {
+    const r = {}
+    await asAdmin()
+    r.heads = (await one(`select heads_in_charge($1) as a`, [t126.pid])).a
+    const f = await j88(t126.headN, `select patient_file($1) as j`, [t126.pid])
+    r.file = { level: f.access.level, v0: f.visits.find((v) => v.id === t126.v0).private }
+    r.via = await j88(t126.headN, `select to_jsonb(history_via($1)) as j`, [t126.pid])
+    r.whoLooked = await hintAs(t126.headN, `select patient_access_log($1)`, [t126.pid])
+    if (
+      r.heads.includes(t126.headN) ||
+      r.file.level === 'full' ||
+      !r.file.v0 ||
+      r.via !== null ||
+      r.whoLooked !== '42501/'
+    )
+      throw new Error(json126(r))
+    return 'not among the heads in charge; the past visit private; no "Who looked"'
+  },
+)
+await step(
+  "0126: the nurse on the open visit: vital signs, her own note and the safety summary; not the diagnosis nor the doctor's note",
+  async () => {
+    const r = {}
+    const c = await j88(t126.nurse, `select visit_clinical($1) as j`, [t126.v1])
+    r.c = {
+      view: c.view,
+      forDoctors: c.forDoctors,
+      private: c.private,
+      dx: c.diagnoses.length,
+      notes: c.notes.map((n) => n.text),
+      allergies: c.patient?.allergies,
+      alerts: c.patient?.notes,
+      primary: c.hasPrimaryDiagnosis,
+      pharmacyLines: c.prescriptions.filter((p) => p.supply === 'pharmacy').length,
+      orders: c.orders.length,
+    }
+    await as(t126.nurse)
+    r.vitals = (
+      await one(`select count(*)::int as n from visit_vitals where encounter_id = $1`, [t126.v1])
+    ).n
+    r.table = (
+      await one(`select count(*)::int as n from condition where encounter_id = $1`, [t126.v1])
+    ).n
+    await asAdmin()
+    const f = await j88(t126.nurse, `select patient_file($1) as j`, [t126.pid])
+    r.file = {
+      level: f.access.level,
+      summary: f.summary?.allergies,
+      conditions: f.conditions.length,
+      v1: f.visits.find((v) => v.id === t126.v1).private,
+    }
+    r.ask = await hintAs(t126.nurse, `select request_record_access($1, 'I need the history')`, [
+      t126.pid,
+    ])
+    r.emergency = await hintAs(t126.nurse, `select emergency_record_access($1, 'Seizure now')`, [
+      t126.pid,
+    ])
+    if (
+      r.c.view !== 'desk' ||
+      !r.c.forDoctors ||
+      r.c.private !== false ||
+      r.c.dx !== 0 ||
+      json126(r.c.notes) !== json126(['Nurse note 126']) ||
+      r.c.allergies !== 'Sulfa' ||
+      !/seizure/.test(r.c.alerts ?? '') ||
+      r.c.primary !== true ||
+      r.c.pharmacyLines !== 0 ||
+      r.c.orders !== 0 ||
+      r.vitals < 1 ||
+      r.table !== 0 ||
+      r.file.level !== 'summary' ||
+      r.file.summary !== 'Sulfa' ||
+      r.file.conditions !== 0 ||
+      r.file.v1 !== true ||
+      r.ask !== '42501/not_doctor' ||
+      r.emergency !== '42501/not_doctor'
+    )
+      throw new Error(json126(r))
+    return "desk view: her note, the allergies and alerts, the vital signs; no diagnosis, no doctor's note, no test; she cannot ask for access"
+  },
+)
+await step(
+  '0126: the laboratory sees its test with the reason, not the diagnosis; the pharmacy the medicine lines, not the diagnosis',
+  async () => {
+    const r = {}
+    const l = await j88(t126.lab, `select visit_clinical($1) as j`, [t126.v1])
+    r.lab = {
+      view: l.view,
+      dx: l.diagnoses.length,
+      notes: l.notes.length,
+      rx: l.prescriptions.length,
+      orders: l.orders.map((o) => o.reason),
+    }
+    const w = await j88(t126.lab, `select lab_worklist('open') as j`)
+    r.worklist = w.find((x) => x.id === t126.sr)?.reason ?? null
+    const p = await j88(t126.rx, `select visit_clinical($1) as j`, [t126.v1])
+    r.rx = {
+      view: p.view,
+      dx: p.diagnoses.length,
+      notes: p.notes.length,
+      orders: p.orders.length,
+      lines: p.prescriptions.length,
+      item: p.prescriptions[0]?.item ?? null,
+    }
+    // the manager who is not a doctor may open the worklist to run the clinic: no reason, no result
+    const m = await j88(t126.mgr, `select lab_worklist('open') as j`)
+    const mrow = m.find((x) => x.id === t126.sr)
+    r.mgrRow = mrow ? { reason: mrow.reason, findings: mrow.findings } : null
+    if (
+      r.lab.view !== 'desk' ||
+      r.lab.dx !== 0 ||
+      r.lab.notes !== 0 ||
+      r.lab.rx !== 0 ||
+      json126(r.lab.orders) !== json126(['Fever for 3 days 126']) ||
+      r.worklist !== 'Fever for 3 days 126' ||
+      r.rx.view !== 'desk' ||
+      r.rx.dx !== 0 ||
+      r.rx.notes !== 0 ||
+      r.rx.orders !== 0 ||
+      r.rx.lines !== 2 ||
+      !r.rx.item ||
+      (r.mgrRow && (r.mgrRow.reason !== null || r.mgrRow.findings !== null))
+    )
+      throw new Error(json126(r))
+    return 'lab: its test and the reason; pharmacy: 2 medicine lines; neither the diagnosis nor the notes'
+  },
+)
+await step(
+  "0126: the approvers are doctors only (a nurse given the right is not one); a doctor's request goes to doctors",
+  async () => {
+    const r = {}
+    await except87(t126.nurse, 'records.approve', true)
+    await asAdmin()
+    const a = (await one(`select request_approvers($1, $2) as a`, [t126.pid, t126.doc])).a
+    r.approvers = {
+      manager: a.includes(staff.manager),
+      nurse: a.includes(t126.nurse),
+      mgr: a.includes(t126.mgr),
+      allDoctors: (await one(`select bool_and(is_doctor(x)) as b from unnest($1::uuid[]) x`, [a]))
+        .b,
+    }
+    r.nurseAnswers = (await j88(t126.nurse, `select record_access_requests('pending') as j`)).length
+    const q = await j88(t126.doc2, `select request_record_access($1, 'Second look 126') as j`, [
+      t126.pid,
+    ])
+    r.doc2 = q.error ?? 'ok'
+    // Dr 126 treats the patient now: he asks; the notices go to doctors
+    const q2 = await j88(t126.doc, `select request_record_access($1, 'Second look 126') as j`, [
+      t126.pid,
+    ])
+    r.ask = q2.error ?? q2.id
+    const told = (
+      await db.query(
+        `select recipient_user as u, is_doctor(recipient_user) as d from notification
+         where kind = 'access_request' and params ->> 'requestId' = $1`,
+        [q2.id ?? '00000000-0000-0000-0000-000000000000'],
+      )
+    ).rows
+    r.told = { n: told.length, doctors: told.every((x) => x.d) }
+    r.nurseAnswer = await hintAs(t126.nurse, `select answer_record_access($1, true)`, [q2.id])
+    r.managerAnswer = await hintAs(staff.manager, `select answer_record_access($1, true)`, [q2.id])
+    await except87(t126.nurse, 'records.approve', null)
+    if (
+      !r.approvers.manager ||
+      r.approvers.nurse ||
+      r.approvers.mgr ||
+      !r.approvers.allDoctors ||
+      r.nurseAnswers !== 0 ||
+      r.doc2 !== '42501/not_treating' ||
+      typeof r.ask !== 'string' ||
+      r.ask.includes('/') ||
+      r.told.n < 1 ||
+      !r.told.doctors ||
+      r.nurseAnswer !== '42501/not_approver' ||
+      r.managerAnswer !== 'ok'
+    )
+      throw new Error(json126(r))
+    return `approvers: the manager-doctor, never the nurse or the non-doctor manager; ${r.told.n} doctor(s) told; the nurse cannot answer`
+  },
+)
+await step(
+  "0126: the patient-files storage: a non-doctor is refused a clinical attachment; the lab reads its test's file; the manager-doctor all",
+  async () => {
+    const read = `select file_object_read_ok($1) as b`
+    const r = {}
+    r.mgrWound = await rule89(t126.mgr, read, [t126.fileWound])
+    r.mgrLab = await rule89(t126.mgr, read, [t126.fileLab])
+    r.nurseWound = await rule89(t126.nurse, read, [t126.fileWound])
+    r.labLab = await rule89(t126.lab, read, [t126.fileLab])
+    r.labWound = await rule89(t126.lab, read, [t126.fileWound])
+    r.docWound = await rule89(staff.manager, read, [t126.fileWound])
+    const lf = await j88(t126.lab, `select list_visit_files($1) as j`, [t126.v1])
+    r.labList = lf.files.map((x) => `${x.title}:${x.view}`)
+    await asAdmin()
+    const woundId = (
+      await one(`select id from patient_file_doc where storage_path = $1`, [t126.fileWound])
+    ).id
+    r.mgrOpen = await hintAs(t126.mgr, `select file_open($1)`, [woundId])
+    if (
+      r.mgrWound !== false ||
+      r.mgrLab !== false ||
+      r.nurseWound !== false ||
+      r.labLab !== true ||
+      r.labWound !== false ||
+      r.docWound !== true ||
+      json126(r.labList) !== json126(['Lab slide 126:desk']) ||
+      r.mgrOpen !== '42501/private'
+    )
+      throw new Error(json126(r))
+    return 'manager (not a doctor) and nurse refused; the lab reads its slide only; the manager-doctor reads the wound photo'
+  },
+)
+await step(
+  '0126: History and the audit table — the doctor mark shows; a manager who is not a doctor reads no clinical words',
+  async () => {
+    const r = {}
+    const h = await j88(
+      staff.manager,
+      `select activity_history(now() - interval '1 hour', now() + interval '1 minute', null, 'admin', 500, 0) as j`,
+    )
+    r.mark = h.items.some((i) => i.row?.key === 'staff_doctor')
+    const c = await j88(
+      t126.mgr,
+      `select activity_history(now() - interval '1 hour', now() + interval '1 minute', null, 'clinical', 500, 0) as j`,
+    )
+    r.items = c.items.length
+    r.words = c.items.filter(
+      (i) =>
+        i.row?.text ||
+        i.row?.findings ||
+        i.row?.impression ||
+        i.row?.reason ||
+        (i.changes ?? []).some((x) => ['text', 'findings', 'impression', 'reason'].includes(x.f)),
+    ).length
+    await as(t126.mgr)
+    r.table = (
+      await one(
+        `select count(*)::int as n from audit_event where entity in ('condition', 'diagnostic_report', 'observation')`,
+      )
+    ).n
+    await as(staff.manager)
+    r.tableDoc = (
+      await one(
+        `select count(*)::int as n from audit_event where entity in ('condition', 'diagnostic_report', 'observation')`,
+      )
+    ).n
+    await asAdmin()
+    r.recordHistory = await hintAs(t126.nurse, `select record_history('condition', $1)`, [t126.pid])
+    if (
+      !r.mark ||
+      r.items < 1 ||
+      r.words !== 0 ||
+      r.table !== 0 ||
+      r.tableDoc < 1 ||
+      r.recordHistory !== '42501/'
+    )
+      throw new Error(json126(r))
+    return `the mark in History (Settings); ${r.items} clinical lines without words for the non-doctor manager; the audit table's clinical lines for doctors`
+  },
 )
 
 finish()

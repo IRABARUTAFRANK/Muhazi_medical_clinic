@@ -53,6 +53,8 @@ export interface Employee {
   registrationNo: string | null
   /** The council that registered the person (RMDC, NCNM, NPC, RAHPC…). */
   registrationBody: string | null
+  /** 0126: marked a doctor by the manager (sees patient records; the role 'doctor' is one anyway). */
+  isDoctor?: boolean
   /** The desks the person may use now (0085: the role's ceiling and their departments). Null
    *  before 0085 and in sample mode: compute them with desksFor (lib/api/desks). */
   desks?: string[] | null
@@ -184,6 +186,8 @@ const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
   specialty: u.role === 'doctor' ? 'General practitioner' : null,
   registrationBody: SAMPLE_REGISTRATION[u.role as DbRole]?.[0] ?? null,
   registrationNo: SAMPLE_REGISTRATION[u.role as DbRole]?.[1] ?? null,
+  // 0126: the sample manager is a doctor (General doctor)
+  isDoctor: !!u.isDoctor,
   staffId: u.staffId ?? null,
   email: u.email ?? null,
   username: u.username,
@@ -240,6 +244,8 @@ interface DirectoryRow {
   /** 0084 (absent before). */
   registration_no?: string | null
   registration_body?: string | null
+  /** 0126 (absent before). */
+  is_doctor?: boolean | null
   /** 0085 (absent before). */
   desks?: string[] | null
   kept_desks?: string[] | null
@@ -281,6 +287,7 @@ export function useEmployees() {
         specialty: r.specialty ?? null,
         registrationNo: r.registration_no ?? null,
         registrationBody: r.registration_body ?? null,
+        isDoctor: r.is_doctor ?? false,
         desks: r.desks ?? null,
         keptDesks: r.kept_desks ?? null,
         // Before migration 0051 only the main department exists.

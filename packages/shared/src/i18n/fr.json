@@ -2970,7 +2970,11 @@
     "bookedForYou": "{{by}} a pris un rendez-vous pour {{name}} avec vous",
     "bookingChanged": "{{by}} a déplacé le rendez-vous de {{name}}",
     "bookingLeft": "{{by}} a confié le rendez-vous de {{name}} à un collègue",
-    "bookingNow": "Maintenant {{when}} (avant {{from}})"
+    "bookingNow": "Maintenant {{when}} (avant {{from}})",
+    "staffDoctorOn": "{{by}} a marqué {{name}} comme médecin",
+    "staffDoctorOnBody": "Voit les dossiers médicaux désormais.",
+    "staffDoctorOff": "{{by}} a retiré la marque de médecin à {{name}}",
+    "staffDoctorOffBody": "Ne voit plus les dossiers médicaux."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -3215,7 +3219,9 @@
       "handoverDeclined": "A refusé de prendre en charge {{patient}}.",
       "handoverCancelled": "A annulé la passation de {{patient}}.",
       "handoverLapsed": "La passation de {{patient}} est terminée : le patient est parti ailleurs.",
-      "handoverEdit": "A modifié la passation de {{patient}}."
+      "handoverEdit": "A modifié la passation de {{patient}}.",
+      "doctorOn": "A marqué {{target}} comme médecin (voit les dossiers médicaux).",
+      "doctorOff": "A retiré la marque de médecin à {{target}} (ne voit plus les dossiers médicaux)."
     },
     "line": {
       "reason": "Motif : {{value}}",
@@ -3241,7 +3247,8 @@
       "confirmed": "Confirmé avec le code envoyé au gérant par e-mail",
       "nightly": "Prix par nuit : {{value}}",
       "department": "Département : {{value}}",
-      "deptStaff": "Ses employés restent en poste, désormais sans département."
+      "deptStaff": "Ses employés restent en poste, désormais sans département.",
+      "registration": "Inscription : {{value}}"
     },
     "fields": {
       "surname": "Nom",
@@ -5831,7 +5838,10 @@
     "vitalNotRetired": "Cette mesure n’est pas archivée.",
     "vitalInDefault": "Cette mesure est dans le jeu par défaut : décochez-la et enregistrez le jeu d’abord.",
     "vitalText": "Une mesure en texte fait 200 caractères au plus.",
-    "notAtDesk": "Cette personne ne travaille pas à ce poste aujourd’hui : choisissez quelqu’un d’autre, ou n’importe qui."
+    "notAtDesk": "Cette personne ne travaille pas à ce poste aujourd’hui : choisissez quelqu’un d’autre, ou n’importe qui.",
+    "notDoctor": "Les dossiers médicaux sont réservés aux médecins : seul un médecin peut faire ceci.",
+    "registrationNeeded": "Saisissez le numéro d’inscription pour marquer un médecin.",
+    "doctorByRole": "Un médecin par son rôle reste médecin : changez plutôt le rôle dans Employés."
   },
   "cashierDesk": {
     "noMatch": "Rien ne correspond à votre recherche.",
@@ -7618,7 +7628,8 @@
     "99bcd654": "Non autorisé : un rendez-vous est modifié par son médecin, l’accueil ou le gestionnaire.",
     "6197a26c": "Ce rendez-vous ne peut plus être modifié.",
     "2dd3cc49": "Dites pourquoi le rendez-vous est déplacé.",
-    "f0c2044d": "Rendez-vous introuvable."
+    "f0c2044d": "Rendez-vous introuvable.",
+    "403a42c7": "Répondez oui ou non."
   },
   "panel": {
     "close": "Fermer",
@@ -9664,5 +9675,36 @@
       "removed_one": "{{count}} note retirée (dans le journal)",
       "removed_other": "{{count}} notes retirées (dans le journal)"
     }
+  },
+  "forDoctors": {
+    "title": "Les dossiers médicaux sont réservés aux médecins",
+    "lead": "Les notes, diagnostics, ordonnances, résultats d’examens, pièces jointes, documents médicaux et visites passées ne sont montrés qu’aux médecins.",
+    "leadName": "Le dossier médical de {{name}} n’est montré qu’aux médecins : notes, diagnostics, ordonnances, résultats d’examens, pièces jointes, documents médicaux et visites passées.",
+    "still": "Vous voyez toujours l’identité et les coordonnées du patient, le numéro de dossier, les visites (dates et postes), les factures et les paiements.",
+    "ask": "Si vous êtes médecin, demandez au responsable de vous marquer comme tel sur votre profil d’employé, avec votre numéro d’inscription.",
+    "askManager": "Si vous êtes médecin, cochez « Médecin (voit les dossiers médicaux) » sur votre propre profil d’employé (Employés → votre profil), avec votre numéro d’inscription.",
+    "deskPart": "Vous voyez la partie de cette visite qui concerne votre poste : ce que vous avez écrit, les examens ou médicaments de votre poste et le résumé de sécurité. Le diagnostic, les notes des autres et les visites passées sont réservés aux médecins."
+  },
+  "doctorMark": {
+    "badge": "Médecin",
+    "title": "Dossiers médicaux",
+    "switch": "Médecin (voit les dossiers médicaux)",
+    "byRole": "Médecin par son rôle : voit les dossiers médicaux. Pour le changer, changez le rôle dans Employés.",
+    "onHint": "Marqué médecin : voit les dossiers médicaux. Inscription : {{number}}.",
+    "offHint": "Pas médecin : ne voit pas les dossiers médicaux (notes, diagnostics, ordonnances, résultats, pièces jointes, documents médicaux, visites passées).",
+    "formLead": "Être médecin ouvre les dossiers médicaux. Saisissez le numéro d’inscription à l’ordre des médecins.",
+    "number": "Numéro d’inscription",
+    "body": "Ordre",
+    "save": "Marquer comme médecin",
+    "what": "Seuls les médecins voient les dossiers médicaux. Le changement est inscrit dans l’Historique et les autres responsables sont prévenus.",
+    "numberNeeded": "Saisissez le numéro d’inscription (au moins 3 caractères).",
+    "confirmOn": "Marquer {{name}} comme médecin ?",
+    "confirmOnBody": "Cette personne verra les dossiers médicaux : notes, diagnostics, ordonnances, résultats, pièces jointes, documents médicaux et, selon les règles habituelles, les visites passées.",
+    "confirmOnYes": "Oui, marquer comme médecin",
+    "confirmOff": "Retirer la marque de médecin à {{name}} ?",
+    "confirmOffBody": "Cette personne ne verra plus les dossiers médicaux. Son identité, ses postes et ses droits restent tels quels.",
+    "confirmOffYes": "Oui, la retirer",
+    "doneOn": "{{name}} est marqué médecin et voit maintenant les dossiers médicaux.",
+    "doneOff": "{{name}} n’est plus marqué médecin et ne voit plus les dossiers médicaux."
   }
 }

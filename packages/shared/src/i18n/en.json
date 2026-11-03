@@ -2970,7 +2970,11 @@
     "bookedForYou": "{{by}} booked {{name}} with you",
     "bookingChanged": "{{by}} moved the booking of {{name}}",
     "bookingLeft": "{{by}} gave the booking of {{name}} to a colleague",
-    "bookingNow": "Now {{when}} (was {{from}})"
+    "bookingNow": "Now {{when}} (was {{from}})",
+    "staffDoctorOn": "{{by}} marked {{name}} a doctor",
+    "staffDoctorOnBody": "Sees patient records from now on.",
+    "staffDoctorOff": "{{by}} took the doctor mark away from {{name}}",
+    "staffDoctorOffBody": "No longer sees patient records."
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -3215,7 +3219,9 @@
       "handoverDeclined": "Declined to take over {{patient}}.",
       "handoverCancelled": "Cancelled the handover of {{patient}}.",
       "handoverLapsed": "The handover of {{patient}} ended: the patient moved on.",
-      "handoverEdit": "Changed the handover of {{patient}}."
+      "handoverEdit": "Changed the handover of {{patient}}.",
+      "doctorOn": "Marked {{target}} a doctor (sees patient records).",
+      "doctorOff": "Took the doctor mark away from {{target}} (no longer sees patient records)."
     },
     "line": {
       "reason": "Reason: {{value}}",
@@ -3241,7 +3247,8 @@
       "confirmed": "Confirmed with the code sent to the manager by e-mail",
       "nightly": "Price per night: {{value}}",
       "department": "Department: {{value}}",
-      "deptStaff": "Its employees stay employed, now without a department."
+      "deptStaff": "Its employees stay employed, now without a department.",
+      "registration": "Registration: {{value}}"
     },
     "fields": {
       "surname": "Surname",
@@ -5831,7 +5838,10 @@
     "vitalNotRetired": "This measurement is not retired.",
     "vitalInDefault": "This measurement is in the default set: untick it and save the set first.",
     "vitalText": "A text measurement is 200 characters at most.",
-    "notAtDesk": "That person does not work at the chosen desk today: choose someone else, or anyone there."
+    "notAtDesk": "That person does not work at the chosen desk today: choose someone else, or anyone there.",
+    "notDoctor": "Patient records are for doctors: only a doctor may do this.",
+    "registrationNeeded": "Type the registration number to mark a doctor.",
+    "doctorByRole": "A doctor by role stays a doctor: change the role in Employees instead."
   },
   "cashierDesk": {
     "noMatch": "Nothing matches your search.",
@@ -7618,7 +7628,8 @@
     "99bcd654": "Not allowed: a booking is changed by its doctor, reception or the manager.",
     "6197a26c": "This booking can no longer be changed.",
     "2dd3cc49": "Say why the booking is moved.",
-    "f0c2044d": "Booking not found."
+    "f0c2044d": "Booking not found.",
+    "403a42c7": "Say yes or no."
   },
   "panel": {
     "close": "Close",
@@ -9664,5 +9675,36 @@
       "removed_one": "{{count}} note removed (in the activity log)",
       "removed_other": "{{count}} notes removed (in the activity log)"
     }
+  },
+  "forDoctors": {
+    "title": "Patient records are for doctors",
+    "lead": "Notes, diagnoses, prescriptions, test results, attachments, medical documents and past visits are shown to doctors only.",
+    "leadName": "The medical record of {{name}} is shown to doctors only: notes, diagnoses, prescriptions, test results, attachments, medical documents and past visits.",
+    "still": "You still see the patient’s identity and contact, the file number, the visits (dates and desks), the bills and payments.",
+    "ask": "If you are a doctor, ask the manager to mark you as one on your employee profile, with your registration number.",
+    "askManager": "If you are a doctor, tick “Doctor (sees patient records)” on your own employee profile (Employees → your profile), with your registration number.",
+    "deskPart": "You see the part of this visit your desk works on: what you wrote, your desk’s tests or medicines and the safety summary. The diagnosis, the others’ notes and the past visits are for doctors."
+  },
+  "doctorMark": {
+    "badge": "Doctor",
+    "title": "Patient records",
+    "switch": "Doctor (sees patient records)",
+    "byRole": "A doctor by role: sees patient records. To change it, change the role in Employees.",
+    "onHint": "Marked a doctor: sees patient records. Registration: {{number}}.",
+    "offHint": "Not a doctor: does not see patient records (notes, diagnoses, prescriptions, results, attachments, medical documents, past visits).",
+    "formLead": "Being a doctor opens the patient records. Type the registration number of the medical council.",
+    "number": "Registration number",
+    "body": "Council",
+    "save": "Mark as a doctor",
+    "what": "Only doctors see patient records. The change is written in History and the other managers are told.",
+    "numberNeeded": "Type the registration number (at least 3 characters).",
+    "confirmOn": "Mark {{name}} as a doctor?",
+    "confirmOnBody": "They will see patient records: notes, diagnoses, prescriptions, results, attachments, medical documents and, by the usual rules, past visits.",
+    "confirmOnYes": "Yes, mark as a doctor",
+    "confirmOff": "Take the doctor mark away from {{name}}?",
+    "confirmOffBody": "They will no longer see patient records. Their identity, desks and rights stay as they are.",
+    "confirmOffYes": "Yes, take it away",
+    "doneOn": "{{name}} is marked a doctor and now sees patient records.",
+    "doneOff": "{{name}} is no longer marked a doctor and no longer sees patient records."
   }
 }

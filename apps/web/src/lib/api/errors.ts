@@ -142,6 +142,10 @@ export type ApiErrorKind =
   | 'vitalInDefault'
   | 'vitalText'
   | 'notAtDesk'
+  // 0126: patient records are for doctors; marking a doctor needs the registration number
+  | 'notDoctor'
+  | 'registrationNeeded'
+  | 'doctorByRole'
   // 0115: a line the insurer has no price for, to confirm with the insurer first
   | 'askInsurer'
   // sample mode only (the database's own sentence is kept for these)
@@ -226,6 +230,9 @@ const BY_HINT: Record<string, ApiErrorKind> = {
   vital_in_default: 'vitalInDefault',
   vital_text: 'vitalText',
   not_at_desk: 'notAtDesk',
+  not_doctor: 'notDoctor',
+  registration_needed: 'registrationNeeded',
+  doctor_by_role: 'doctorByRole',
 }
 
 /** An error from a database function, with its code and hint kept for the screens. */

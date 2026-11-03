@@ -177,6 +177,16 @@ export function explain(h: HistoryItem, t: TFn): Explained {
         break
       }
       const act = r('manage_staff')
+      // 0126: the manager marked the employee a doctor (sees patient records), or took it away
+      if (r('key') === 'staff_doctor') {
+        sentence = say(row.on === false ? 'doctorOff' : 'doctorOn', { target })
+        if (row.on !== false)
+          line(
+            'registration',
+            [r('registration_body'), r('registration_no')].filter(Boolean).join(' · '),
+          )
+        break
+      }
       if (act === 'set_active' || (!act && row.active !== undefined))
         sentence = say(row.active === false ? 'staffOff' : 'staffOn', { target })
       else if (act === 'reset_pin') sentence = say('staffPin', { target })

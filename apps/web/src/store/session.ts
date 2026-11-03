@@ -44,6 +44,8 @@ export interface ProfileJson {
   must_change_pin: boolean
   staff_id: string | null
   email: string | null
+  /** 0126 (my_session_profile): a doctor: the role, or marked by the manager. */
+  is_doctor?: boolean | null
 }
 
 export const toStaffUser = (p: ProfileJson): StaffUser => ({
@@ -64,6 +66,8 @@ export const toStaffUser = (p: ProfileJson): StaffUser => ({
   staffId: p.staff_id ?? undefined,
   email: p.email ?? undefined,
   dbRole: p.role,
+  // 0126: sees patient records; before the profile says it, the role decides
+  isDoctor: typeof p.is_doctor === 'boolean' ? p.is_doctor : p.role === 'doctor',
 })
 
 export type SignInResult =

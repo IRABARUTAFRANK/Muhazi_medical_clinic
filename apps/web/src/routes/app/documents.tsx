@@ -1,12 +1,14 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { PatientsDocumentsPage } from '@/pages/analytics/patients-documents-page'
 import { validateAnalyticsSearch, type UpdateSearch } from '@/pages/analytics/search'
+import { isDoctorUser } from '@/lib/roles'
 import { useSession } from '@/store/session'
 
 /**
  * Patients' documents (0102): the visits treated in a period, filtered, and their medical
  * reports printed together. The manager (the whole clinic) and the heads of a department
- * (their department); the server refuses everyone else (analytics_scope).
+ * (their department); the server refuses everyone else (analytics_scope). 0126: medical
+ * documents are patient records: doctors only (visit_documents refuses the others).
  */
 export const Route = createFileRoute('/app/documents')({
   validateSearch: validateAnalyticsSearch,
@@ -14,9 +16,8 @@ export const Route = createFileRoute('/app/documents')({
     const user = useSession.getState().user
     if (
       user &&
-      user.role !== 'manager' &&
-      user.dashboard !== 'manager' &&
-      user.dashboard !== 'head'
+      (!isDoctorUser(user) ||
+        (user.role !== 'manager' && user.dashboard !== 'manager' && user.dashboard !== 'head'))
     )
       throw redirect({ to: '/app' })
   },

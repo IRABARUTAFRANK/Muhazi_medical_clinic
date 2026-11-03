@@ -14,6 +14,7 @@ import {
   Pencil,
   Phone,
   ShieldCheck,
+  Stethoscope,
   Trash2,
   UserCog,
   UserRound,
@@ -151,6 +152,13 @@ export function StaffProfilePage({
                   </span>
                 </span>
                 <GlassPill>{t(p.active ? 'staff.active' : 'staff.deactivated')}</GlassPill>
+                {/* 0126: sees patient records */}
+                {p.isDoctor && (
+                  <GlassPill>
+                    <Stethoscope size={13} aria-hidden="true" />
+                    {t('doctorMark.badge')}
+                  </GlassPill>
+                )}
                 {p.self && <GlassPill>{t('staffProfile.you')}</GlassPill>}
               </HeroHead>
               <CardBody className="flex-row flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
@@ -340,6 +348,8 @@ function Overview({ p }: { p: StaffProfile }) {
         </CardBody>
       </Card>
 
+      <DoctorCard p={p} />
+
       <Card className="anim-enter" style={{ '--i': 1 } as CSSProperties}>
         <CardHeader icon={Phone} hue="teal">
           <span>{t('staffProfile.sections.contact')}</span>
@@ -413,6 +423,170 @@ function Overview({ p }: { p: StaffProfile }) {
 }
 
 /** The manager writes the personnel details (save_staff_profile; audited). */
+/**
+ * 0126: patient records are for doctors. The manager marks an employee (or himself) a doctor, with
+ * the registration number of the medical council; a doctor by role is one anyway. Audited (History)
+ * and told to the other managers.
+ */
+function DoctorCard({ p }: { p: StaffProfile }) {
+  const { t } = useTranslation()
+  const confirm = useConfirm()
+  const { setDoctor } = useStaffProfileActions(p.id)
+  const byRole = p.role === 'doctor'
+  const on = !!p.isDoctor
+  const [form, setForm] = useState(false)
+  // a nurse's or a pharmacist's council number is not a doctor's: start empty unless it is RMDC
+  const medical = !p.registrationBody || /rmdc|medical/i.test(p.registrationBody)
+  const [no, setNo] = useState(medical ? (p.registrationNo ?? '') : '')
+  const [body, setBody] = useState(medical ? (p.registrationBody ?? 'RMDC') : 'RMDC')
+  const [err, setErr] = useState<string | null>(null)
+  const [done, setDone] = useState<string | null>(null)
+  // a database before 0126 says nothing about it
+  if (p.isDoctor === undefined) return null
+  const turnOn = async (e: FormEvent) => {
+    e.preventDefault()
+    if (no.trim().length < 3) {
+      setErr(t('doctorMark.numberNeeded'))
+      return
+    }
+    if (
+      !(await confirm({
+        title: t('doctorMark.confirmOn', { name: p.fullName }),
+        body: t('doctorMark.confirmOnBody'),
+        confirmLabel: t('doctorMark.confirmOnYes'),
+      }))
+    )
+      return
+    setErr(null)
+    try {
+      await setDoctor.mutateAsync({ on: true, registrationNo: no, registrationBody: body })
+      setForm(false)
+      setDone(t('doctorMark.doneOn', { name: p.fullName }))
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : String(x))
+    }
+  }
+  const turnOff = async () => {
+    if (
+      !(await confirm({
+        title: t('doctorMark.confirmOff', { name: p.fullName }),
+        body: t('doctorMark.confirmOffBody'),
+        confirmLabel: t('doctorMark.confirmOffYes'),
+        tone: 'danger',
+      }))
+    )
+      return
+    setErr(null)
+    try {
+      await setDoctor.mutateAsync({ on: false, registrationNo: '', registrationBody: '' })
+      setDone(t('doctorMark.doneOff', { name: p.fullName }))
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : String(x))
+    }
+  }
+  const editable = p.canEdit && !byRole
+  return (
+    <Card className="anim-enter">
+      <CardHeader icon={Stethoscope} hue="violet">
+        <span>{t('doctorMark.title')}</span>
+        {on && (
+          <Badge tone="green" icon={<Stethoscope size={12} aria-hidden="true" />}>
+            {t('doctorMark.badge')}
+          </Badge>
+        )}
+      </CardHeader>
+      <CardBody className="gap-3">
+        {done && (
+          <Flash key={done} onClose={() => setDone(null)}>
+            {done}
+          </Flash>
+        )}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          disabled={!editable || setDoctor.isPending}
+          onClick={() => (on ? void turnOff() : setForm((f) => !f))}
+          className="flex min-w-0 items-start gap-3 text-left disabled:cursor-default"
+        >
+          <span
+            className={cn(
+              'relative mt-0.5 inline-flex h-6 w-11 flex-none items-center rounded-full border transition-colors',
+              on ? 'border-primary bg-primary' : 'border-border bg-hover',
+              !editable && 'opacity-60',
+            )}
+          >
+            <span
+              className={cn(
+                'bg-card absolute top-0.5 size-[18px] rounded-full shadow transition-transform',
+                on ? 'translate-x-[22px]' : 'translate-x-0.5',
+              )}
+            />
+          </span>
+          <span className="min-w-0">
+            <span className="text-ink block text-[16px] font-semibold">
+              {t('doctorMark.switch')}
+            </span>
+            <span className="text-ink-2 block text-[14px]">
+              {byRole
+                ? t('doctorMark.byRole')
+                : on
+                  ? t('doctorMark.onHint', {
+                      number:
+                        [p.registrationBody, p.registrationNo].filter(Boolean).join(' · ') || '—',
+                    })
+                  : t('doctorMark.offHint')}
+            </span>
+          </span>
+        </button>
+        {form && editable && !on && (
+          <Reveal focus>
+            <form
+              onSubmit={(e) => void turnOn(e)}
+              className="border-violet/40 bg-violet-bg/40 flex flex-col gap-3 rounded-md border p-3"
+            >
+              <p className="text-ink-2 m-0 text-[14px]">{t('doctorMark.formLead')}</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field
+                  label={t('doctorMark.number')}
+                  value={no}
+                  required
+                  minLength={3}
+                  maxLength={60}
+                  placeholder="RMDC/A/2019/0457"
+                  onChange={(e) => setNo(e.target.value)}
+                />
+                <Field
+                  label={t('doctorMark.body')}
+                  value={body}
+                  maxLength={60}
+                  placeholder="RMDC"
+                  onChange={(e) => setBody(e.target.value)}
+                />
+              </div>
+              <span className="flex flex-wrap gap-2">
+                <Button type="submit" variant="primary" loading={setDoctor.isPending}>
+                  <Stethoscope size={16} aria-hidden="true" />
+                  {t('doctorMark.save')}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setForm(false)}>
+                  {t('staff.form.cancel')}
+                </Button>
+              </span>
+            </form>
+          </Reveal>
+        )}
+        {err && (
+          <p role="alert" className={errorBox}>
+            {err}
+          </p>
+        )}
+        <p className="text-ink-3 m-0 text-[13px]">{t('doctorMark.what')}</p>
+      </CardBody>
+    </Card>
+  )
+}
+
 function HrForm({
   p,
   onDone,

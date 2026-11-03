@@ -17,6 +17,7 @@ import {
   Plus,
   RefreshCw,
   ShieldCheck,
+  Stethoscope,
   Trash2,
   UserCheck,
   UserPlus,
@@ -792,6 +793,16 @@ export function StaffPage({ user }: { user: StaffUser }) {
                               )}
                             </span>
                             <Chip>{employeeRole(e, t)}</Chip>
+                            {/* 0126: sees patient records (the role, or marked by the manager) */}
+                            {(e.role === 'doctor' || e.isDoctor) && (
+                              <Badge
+                                tone="green"
+                                dot={false}
+                                icon={<Stethoscope size={12} aria-hidden="true" />}
+                              >
+                                {t('doctorMark.badge')}
+                              </Badge>
+                            )}
                             {positionIn(e, g.key) !== 'member' && (
                               <Badge
                                 tone={positionIn(e, g.key) === 'head' ? 'blue' : 'grey'}

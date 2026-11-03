@@ -2979,7 +2979,11 @@
     "bookedForYou": "{{by}} yagushyiriyeho gahunda na {{name}}",
     "bookingChanged": "{{by}} yimuye gahunda ya {{name}}",
     "bookingLeft": "{{by}} yahaye mugenzi we gahunda ya {{name}}",
-    "bookingNow": "Ubu ni {{when}} (yari {{from}})"
+    "bookingNow": "Ubu ni {{when}} (yari {{from}})",
+    "staffDoctorOn": "{{by}} yanditse {{name}} nka muganga",
+    "staffDoctorOnBody": "Guhera ubu abona amakuru y’abarwayi.",
+    "staffDoctorOff": "{{by}} yakuyeho ko {{name}} ari muganga",
+    "staffDoctorOffBody": "Ntakibona amakuru y’abarwayi."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -3224,7 +3228,9 @@
       "handoverDeclined": "Yanze kwakira {{patient}}.",
       "handoverCancelled": "Yahagaritse kwegurira mugenzi we {{patient}}.",
       "handoverLapsed": "Kwegurira mugenzi {{patient}} byarangiye: umurwayi yagiye ahandi.",
-      "handoverEdit": "Yahinduye uko yeguriye mugenzi we {{patient}}."
+      "handoverEdit": "Yahinduye uko yeguriye mugenzi we {{patient}}.",
+      "doctorOn": "Yanditse {{target}} nka muganga (abona amakuru y’abarwayi).",
+      "doctorOff": "Yakuyeho ko {{target}} ari muganga (ntakibona amakuru y’abarwayi)."
     },
     "line": {
       "reason": "Impamvu: {{value}}",
@@ -3250,7 +3256,8 @@
       "confirmed": "Byemejwe hakoreshejwe kode yoherejwe umuyobozi kuri imeyili",
       "nightly": "Igiciro cy’ijoro: {{value}}",
       "department": "Ishami: {{value}}",
-      "deptStaff": "Abakozi baryo bakomeza akazi, ubu nta shami bafite."
+      "deptStaff": "Abakozi baryo bakomeza akazi, ubu nta shami bafite.",
+      "registration": "Nimero y’urugaga: {{value}}"
     },
     "fields": {
       "surname": "Izina ry’umuryango",
@@ -5840,7 +5847,10 @@
     "vitalNotRetired": "Iki gipimo ntabwo cyahishwe.",
     "vitalInDefault": "Iki gipimo kiri mu bipimo by’ibanze: banza ukure akamenyetso ubike.",
     "vitalText": "Igipimo cy’amagambo ni inyuguti 200 ntarengwa.",
-    "notAtDesk": "Uwo muntu ntakora aho wahisemo uyu munsi: hitamo undi, cyangwa uwo ari we wese."
+    "notAtDesk": "Uwo muntu ntakora aho wahisemo uyu munsi: hitamo undi, cyangwa uwo ari we wese.",
+    "notDoctor": "Amakuru y’umurwayi areba muganga gusa: muganga wenyine ni we wemerewe gukora ibi.",
+    "registrationNeeded": "Andika nimero y’urugaga kugira ngo wandike muganga.",
+    "doctorByRole": "Muganga ku mwanya we akomeza kuba muganga: hindura umwanya mu Bakozi."
   },
   "cashierDesk": {
     "noMatch": "Nta kintu gihuye n’ibyo washatse.",
@@ -7627,7 +7637,8 @@
     "99bcd654": "Ntabwo wemerewe: gahunda ihindurwa na muganga wayo, aho bakirira abarwayi cyangwa umuyobozi.",
     "6197a26c": "Iyi gahunda ntigishobora guhindurwa.",
     "2dd3cc49": "Vuga impamvu gahunda yimuwe.",
-    "f0c2044d": "Gahunda ntiyabonetse."
+    "f0c2044d": "Gahunda ntiyabonetse.",
+    "403a42c7": "Vuga yego cyangwa oya."
   },
   "panel": {
     "close": "Funga",
@@ -9673,5 +9684,36 @@
       "removed_one": "Icyanditswe {{count}} cyakuweho (kiri mu rutonde rw’ibikorwa)",
       "removed_other": "Ibyanditswe {{count}} byakuweho (biri mu rutonde rw’ibikorwa)"
     }
+  },
+  "forDoctors": {
+    "title": "Amakuru y’umurwayi areba muganga gusa",
+    "lead": "Ibyanditswe na muganga, indwara yagaragaye, urupapuro rw’imiti, ibisubizo by’ibizamini, inyandiko z’inyongera, raporo za muganga n’amakuru ya kera byerekwa muganga gusa.",
+    "leadName": "Amakuru y’ubuvuzi ya {{name}} yerekwa muganga gusa: ibyanditswe, indwara yagaragaye, urupapuro rw’imiti, ibisubizo by’ibizamini, inyandiko z’inyongera, raporo za muganga n’amakuru ya kera.",
+    "still": "Ukomeza kubona umwirondoro w’umurwayi n’aho abarizwa, nimero ya dosiye, inshuro yivuje (amatariki n’aho yakiriwe), fagitire n’ubwishyu.",
+    "ask": "Niba uri muganga, saba umuyobozi akwandike nka muganga ku mwirondoro wawe w’umukozi, hamwe na nimero y’urugaga.",
+    "askManager": "Niba uri muganga, emeza “Muganga (abona amakuru y’abarwayi)” ku mwirondoro wawe w’umukozi (Abakozi → umwirondoro wawe), hamwe na nimero y’urugaga.",
+    "deskPart": "Ubona igice cy’uku kwivuza kireba aho ukorera: ibyo wanditse, ibizamini cyangwa imiti bireba aho ukorera n’incamake y’ibyo kwitondera. Indwara yagaragaye, ibyanditswe n’abandi n’amakuru ya kera bireba muganga."
+  },
+  "doctorMark": {
+    "badge": "Muganga",
+    "title": "Amakuru y’abarwayi",
+    "switch": "Muganga (abona amakuru y’abarwayi)",
+    "byRole": "Ni muganga ku mwanya we: abona amakuru y’abarwayi. Kubihindura, hindura umwanya mu Bakozi.",
+    "onHint": "Yanditswe nka muganga: abona amakuru y’abarwayi. Nimero y’urugaga: {{number}}.",
+    "offHint": "Si muganga: ntabona amakuru y’abarwayi (ibyanditswe, indwara yagaragaye, urupapuro rw’imiti, ibisubizo, inyandiko z’inyongera, raporo za muganga, amakuru ya kera).",
+    "formLead": "Kuba muganga bifungura amakuru y’abarwayi. Andika nimero y’urugaga rw’abaganga.",
+    "number": "Nimero y’urugaga",
+    "body": "Urugaga",
+    "save": "Andika nka muganga",
+    "what": "Muganga wenyine ni we ubona amakuru y’abarwayi. Ihinduka ryandikwa mu Mateka kandi abandi bayobozi bakabimenyeshwa.",
+    "numberNeeded": "Andika nimero y’urugaga (nibura inyuguti 3).",
+    "confirmOn": "Kwandika {{name}} nka muganga?",
+    "confirmOnBody": "Azabona amakuru y’abarwayi: ibyanditswe, indwara yagaragaye, urupapuro rw’imiti, ibisubizo, inyandiko z’inyongera, raporo za muganga n’amakuru ya kera, akurikije amategeko asanzwe.",
+    "confirmOnYes": "Yego, andika nka muganga",
+    "confirmOff": "Gukuraho ko {{name}} ari muganga?",
+    "confirmOffBody": "Ntazongera kubona amakuru y’abarwayi. Umwirondoro we, aho akorera n’uburenganzira bwe bigumaho uko biri.",
+    "confirmOffYes": "Yego, bikureho",
+    "doneOn": "{{name}} yanditswe nka muganga, ubu abona amakuru y’abarwayi.",
+    "doneOff": "{{name}} ntakiri muganga mu buryo bwanditswe, ntakibona amakuru y’abarwayi."
   }
 }

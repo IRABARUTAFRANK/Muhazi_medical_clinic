@@ -411,6 +411,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^bed not found$/, 'dbErrors.af019ac6', 0], // remove_bed, save_bed
   [/^managers only$/, 'dbErrors.dca63001', 0], // retire_staff_preview, set_profile_active, update_profile
   [/^not signed in$/, 'dbErrors.9ad3d400', 0], // activity_history, analytics_access, hide_notifications, …
+  [/^say yes or no$/, 'dbErrors.403a42c7', 0], // set_staff_doctor
   [/^write a title$/, 'dbErrors.6534cfc8', 0], // send_notification
   [/^unknown kind$/, 'dbErrors.4cc14562', 0], // report_client_event
   [/^not allowed$/, 'dbErrors.574b2820', 0], // accept_appointment, add_charge, add_clinical_note, …

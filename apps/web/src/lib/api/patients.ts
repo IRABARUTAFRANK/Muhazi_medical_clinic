@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import type { Sex, Station } from '@/lib/api/visits'
 import { withDefaults, type BuiltinStates } from '@/lib/patient-rules'
+import { isDoctorUser } from '@/lib/roles'
 
 /**
  * The patient register and the patient file. Every patient the clinic registers stays in
@@ -1023,6 +1024,16 @@ export interface VisitClinical {
   access?: PatientAccess
   /** 0104: the lock of a finished visit and the reader's edit window (absent before 0104). */
   editLock?: VisitEditLock | null
+  /**
+   * 0126: patient records are for doctors. True for someone who is not a doctor: a private visit
+   * says "Patient records are for doctors"; a desk view (view 'desk') carries only the desk's part.
+   */
+  forDoctors?: boolean
+  /** 0126 (view 'desk'): the parts of the visit this person's desks work on. */
+  desk?: { pharmacy: boolean; treating: boolean; laboratory: boolean; ultrasound: boolean }
+  /** 0126 (view 'desk'): finishing needs to know, without the words. */
+  hasPrimaryDiagnosis?: boolean
+  hasNoDiagnosis?: boolean
 }
 const EMPTY_CLINICAL: VisitClinical = {
   diagnoses: [],
@@ -1289,6 +1300,54 @@ sampleClinical.set(SAMPLE_CLOSED_VISIT, {
   ],
 })
 
+/**
+ * 0126, sample mode: what visit_clinical gives someone who is not a doctor. A finished visit is
+ * private ("for doctors"); an open one is the desk's part: what they wrote, the pharmacy's
+ * medicines, a treating desk's medicines given in the room, the laboratory's / ultrasound's tests,
+ * the safety fields. The live database does the same (visit_clinical_desk).
+ */
+const sampleForDesk = (c: VisitClinical, encounterId: string): VisitClinical => {
+  const user = useSession.getState().user
+  if (!user || isDoctorUser(user)) return c
+  const role = user.dbRole ?? user.role
+  const closed = c.visit?.status === 'closed' || encounterId === SAMPLE_CLOSED_VISIT
+  // a manager who is not a doctor runs the clinic: no desk part (as visit_desk_working)
+  if (closed || role === 'receptionist' || role === 'cashier' || role === 'manager')
+    return {
+      ...EMPTY_CLINICAL,
+      patient: c.patient,
+      visit: c.visit,
+      private: true,
+      view: null,
+      forDoctors: true,
+    }
+  const pharmacy = role === 'pharmacist'
+  const treating = role === 'nurse'
+  const laboratory = role === 'lab_tech'
+  const ultrasound = role === 'sonographer'
+  const runs = (o: TestOrder) =>
+    (laboratory &&
+      (o.station ?? (o.category === 'imaging' ? 'ultrasound' : 'laboratory')) === 'laboratory') ||
+    (ultrasound &&
+      (o.station ?? (o.category === 'imaging' ? 'ultrasound' : 'laboratory')) === 'ultrasound')
+  return {
+    ...c,
+    diagnoses: c.diagnoses.filter((d) => d.byId === user.id),
+    notes: c.notes.filter((n) => n.byId === user.id),
+    prescriptions: c.prescriptions.filter(
+      (p) => p.prescriberId === user.id || pharmacy || (treating && p.supply === 'room'),
+    ),
+    orders: c.orders.filter(runs),
+    visit: c.visit ? { ...c.visit, noDiagnosis: null } : c.visit,
+    private: false,
+    view: 'desk',
+    forDoctors: true,
+    desk: { pharmacy, treating, laboratory, ultrasound },
+    hasPrimaryDiagnosis: c.diagnoses.some((d) => d.type === 'primary' && !d.removedAt),
+    hasNoDiagnosis: !!c.visit?.noDiagnosis,
+  }
+}
+
 export function useVisitClinical(encounterId: string) {
   return useQuery({
     queryKey: ['visit', encounterId, 'clinical'],
@@ -1302,16 +1361,19 @@ export function useVisitClinical(encounterId: string) {
           patient: sampleClinicalPatient(),
           visit: sampleVisit(encounterId),
         }
-        return {
-          ...c,
-          // the reason no diagnosis was found and the follow-up booked, as they are now
-          visit: {
-            ...(c.visit ?? sampleVisit(encounterId)),
-            noDiagnosis: sampleNoDx.get(encounterId) ?? null,
-            nextAppointment: sampleNextAppointment.get(encounterId) ?? null,
+        return sampleForDesk(
+          {
+            ...c,
+            // the reason no diagnosis was found and the follow-up booked, as they are now
+            visit: {
+              ...(c.visit ?? sampleVisit(encounterId)),
+              noDiagnosis: sampleNoDx.get(encounterId) ?? null,
+              nextAppointment: sampleNextAppointment.get(encounterId) ?? null,
+            },
+            editLock: sampleEditLock(encounterId),
           },
-          editLock: sampleEditLock(encounterId),
-        }
+          encounterId,
+        )
       }
       const { data, error } = await supabase.rpc('visit_clinical', { p_encounter_id: encounterId })
       if (error) throw apiError(error)

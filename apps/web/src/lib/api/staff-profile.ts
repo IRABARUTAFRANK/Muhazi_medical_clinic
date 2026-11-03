@@ -85,6 +85,10 @@ export interface StaffProfile {
   pinChangedAt: string | null
   registrationNo: string | null
   registrationBody: string | null
+  /** 0126: a doctor sees patient records: the role 'doctor', or marked by the manager. */
+  isDoctor?: boolean
+  /** 0126: marked a doctor by the manager (set_staff_doctor). */
+  doctorMarked?: boolean
   departments: { id: string; name: string; position: 'member' | 'assistant' | 'head' }[]
   desks: string[]
   hr: StaffHr
@@ -132,6 +136,10 @@ const ymd = (years: number, m: number, d: number) => {
 const sampleHr = new Map<string, StaffHr>()
 const sampleNotes = new Map<string, StaffNote[]>()
 const samplePhones = new Map<string, string | null>()
+/** 0126: the doctor marks set in this tab (the sample manager is a General doctor, marked). */
+const sampleDoctorMarks = new Map<string, { on: boolean; no: string | null; body: string | null }>([
+  ['u-mgr', { on: true, no: 'RMDC/A/2015/0123', body: 'RMDC' }],
+])
 
 function sampleProfile(id: string): StaffProfile {
   const me = useSession.getState().user
@@ -146,6 +154,7 @@ function sampleProfile(id: string): StaffProfile {
   const name = s?.name ?? e?.fullName ?? 'Employee'
   const role = s?.dbRole ?? s?.role ?? e?.role ?? 'nurse'
   const doctor = role === 'doctor'
+  const mark = sampleDoctorMarks.get(id)
   const hr =
     sampleHr.get(id) ??
     ({
@@ -195,7 +204,7 @@ function sampleProfile(id: string): StaffProfile {
     username: s?.username ?? e?.username ?? 'staff',
     staffId: s?.staffId ?? e?.staffId ?? null,
     role,
-    specialty: doctor ? 'General practitioner' : null,
+    specialty: doctor ? 'General practitioner' : mark?.on ? 'General doctor' : null,
     station: s?.station ?? null,
     dashboard: s?.dashboard ?? null,
     email: s?.email ?? e?.email ?? null,
@@ -208,8 +217,11 @@ function sampleProfile(id: string): StaffProfile {
     lastSignInAt: ago(0, 7),
     mustChangePin: false,
     pinChangedAt: ago(90),
-    registrationNo: doctor ? 'RMDC/A/2019/0457' : role === 'nurse' ? 'NCNM/RN/2018/1120' : null,
-    registrationBody: doctor ? 'RMDC' : role === 'nurse' ? 'NCNM' : null,
+    registrationNo:
+      mark?.no ?? (doctor ? 'RMDC/A/2019/0457' : role === 'nurse' ? 'NCNM/RN/2018/1120' : null),
+    registrationBody: mark?.body ?? (doctor ? 'RMDC' : role === 'nurse' ? 'NCNM' : null),
+    isDoctor: doctor || !!mark?.on,
+    doctorMarked: !!mark?.on,
     departments: doctor
       ? [{ id: 'd-opd', name: 'Outpatient consultation', position: 'member' }]
       : role === 'nurse'
@@ -352,5 +364,46 @@ export function useStaffProfileActions(id: string) {
     },
     onSuccess: refresh,
   })
-  return { save, addNote, removeNote }
+  // 0126: the manager marks the employee (or himself) a doctor, with the registration number
+  const setDoctor = useMutation({
+    mutationFn: async (i: { on: boolean; registrationNo: string; registrationBody: string }) => {
+      const no = i.registrationNo.trim()
+      if (!supabase) {
+        if (useSession.getState().user?.role !== 'manager')
+          throw apiError({
+            code: '42501',
+            hint: 'not_manager',
+            message: 'not allowed: the manager marks who is a doctor',
+          })
+        if (i.on && no.length < 3)
+          throw apiError({
+            code: '22023',
+            hint: 'registration_needed',
+            message: 'the registration number is needed to mark a doctor',
+          })
+        const old = sampleDoctorMarks.get(id)
+        sampleDoctorMarks.set(id, {
+          on: i.on,
+          no: i.on ? no : (old?.no ?? null),
+          body: i.on ? i.registrationBody.trim() || old?.body || null : (old?.body ?? null),
+        })
+        const me = useSession.getState().user
+        if (me?.id === id) useSession.setState({ user: { ...me, isDoctor: i.on } })
+        return
+      }
+      const { error } = await supabase.rpc('set_staff_doctor', {
+        p_profile: id,
+        p_on: i.on,
+        p_registration_no: no || null,
+        p_registration_body: i.registrationBody.trim() || null,
+      })
+      if (error) throw apiError(error)
+    },
+    onSuccess: () => {
+      refresh()
+      // the manager marking himself: the menu and the screens follow at once
+      void qc.invalidateQueries({ queryKey: ['session-profile'] })
+    },
+  })
+  return { save, addNote, removeNote, setDoctor }
 }

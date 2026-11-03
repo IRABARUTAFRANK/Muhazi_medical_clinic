@@ -43,6 +43,8 @@ export const STAFF: readonly StaffUser[] = [
     name: 'Mugabo Théogène',
     role: 'manager',
     dashboard: 'manager',
+    // 0126: the sample manager is a doctor (General doctor): the owner's sample shows everything
+    isDoctor: true,
     email: 't.mugabo@example.com',
   },
   {

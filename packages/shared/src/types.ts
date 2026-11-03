@@ -85,6 +85,11 @@ export interface StaffUser {
   mustChangePin?: boolean
   /** The role in the database when it differs in detail from the UI role (e.g. 'sonographer'). */
   dbRole?: string
+  /**
+   * 0126: a doctor sees patient records: the role 'doctor', or marked a doctor by the manager
+   * (a manager who is a doctor). Undefined before the profile is read: the role decides.
+   */
+  isDoctor?: boolean
 }
 
 export interface Practitioner {

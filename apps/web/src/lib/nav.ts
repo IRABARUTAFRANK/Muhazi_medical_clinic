@@ -6,6 +6,7 @@ import { isRoomStore, sampleStock } from '@/lib/api/stock'
 import { queryClient } from '@/lib/query-client'
 import { reportsFor } from '@/lib/reports/catalog'
 import { buildReportContext } from '@/lib/reports/context'
+import { isDoctorUser } from '@/lib/roles'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 
@@ -216,7 +217,15 @@ const withDeskAnalytics = (user: StaffUser, items: NavItem[]): NavItem[] =>
 /** Navigation items for the user: the role's menu, shaped by the desks they work at and by what
  *  the manager allows them (Settings → Who may do what). The manager's menu never changes. Each
  *  entry carries the key of the count it shows (withCounts). */
-export const navForUser = (user: StaffUser): NavItem[] => withCounts(user, menuOf(user))
+export const navForUser = (user: StaffUser): NavItem[] =>
+  withCounts(user, forDoctorsOnly(user, menuOf(user)))
+
+/** 0126: patient records are for doctors: the Patients' documents, Record access and the results
+ *  of the tests one asked for leave the menu of someone who is not a doctor (the routes and the
+ *  database refuse them too). */
+const DOCTORS_ONLY = new Set(['/app/documents', '/app/record-access', '/app/results'])
+const forDoctorsOnly = (user: StaffUser, items: NavItem[]): NavItem[] =>
+  isDoctorUser(user) ? items : items.filter((n) => !DOCTORS_ONLY.has(n.to.split('?')[0]!))
 
 const menuOf = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
@@ -474,6 +483,7 @@ function holdsRoomStore(user: StaffUser): boolean {
  * be opened by typing its address. The database still refuses the data either way.
  */
 export async function menuAllows(user: StaffUser, path: string): Promise<boolean> {
+  if (DOCTORS_ONLY.has(path) && !isDoctorUser(user)) return false
   if (user.dashboard === 'manager' || user.role === 'manager') return true
   await Promise.all([
     permsReady(user).catch(() => null),

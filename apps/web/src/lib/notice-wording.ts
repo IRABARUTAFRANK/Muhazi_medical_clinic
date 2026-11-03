@@ -449,6 +449,20 @@ export function useWording() {
           }),
           body: joinParts([p.title ? quoted(p.title) : null, p.name, p.file]),
         }
+      // 0126: the manager marked an employee a doctor (sees patient records), or took it away
+      case 'staff_doctor':
+        return String(p.on) === 'false'
+          ? {
+              title: t('notify.staffDoctorOff', { by: p.by ?? '', name: p.name ?? '' }),
+              body: t('notify.staffDoctorOffBody'),
+            }
+          : {
+              title: t('notify.staffDoctorOn', { by: p.by ?? '', name: p.name ?? '' }),
+              body: joinParts([
+                [p.registrationBody, p.registrationNo].filter(Boolean).join(' ') || null,
+                t('notify.staffDoctorOnBody'),
+              ]),
+            }
       default:
         return { title: n.title ?? '', body: n.body }
     }

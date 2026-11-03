@@ -1,6 +1,15 @@
 import type { TFunction } from 'i18next'
 import type { StaffUser } from '@mmc/shared'
 
+/**
+ * 0126: patient records (notes, diagnoses, prescriptions history, results, attachments, medical
+ * documents, past visits) are for doctors: the role 'doctor', or an employee the manager marked a
+ * doctor (a manager who is a doctor). The database decides; the screens follow.
+ */
+export const isDoctorUser = (
+  user: Pick<StaffUser, 'role' | 'dbRole' | 'isDoctor'> | null | undefined,
+) => !!user && (user.isDoctor ?? (user.dbRole ?? user.role) === 'doctor')
+
 /** Emergency registration queues the patient for treatment on the spot: treating staff only. */
 export const canRegisterEmergency = (user: StaffUser) =>
   user.role !== 'receptionist' && user.role !== 'cashier'

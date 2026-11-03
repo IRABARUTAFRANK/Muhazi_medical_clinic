@@ -55,7 +55,7 @@ import { VisitTrack } from '@/components/clinical/visit-track'
 import { navForUser } from '@/lib/nav'
 import { ShownList } from '@/components/ui/list-tools'
 import { Flash } from '@/components/ui/flash'
-import { canRegisterEmergency } from '@/lib/roles'
+import { canRegisterEmergency, isDoctorUser } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { SendPatientCard } from '@/components/clinical/send-patient-card'
 import { useCan } from '@/lib/api/permissions'
@@ -64,6 +64,7 @@ import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { roleLabel } from '@/lib/roles'
 import { useConfirm } from '@/lib/confirm'
 import {
+  ForDoctorsNote,
   PrivacyNotice,
   SafetyHiddenNote,
   SafetySummaryCard,
@@ -159,8 +160,11 @@ export function PatientFilePage({
     (user.role === 'manager' || canDesk(TREATING_DESKS) || mayVitals || mayApprove)
   // the header's "Book an appointment" opens the form on the Bookings tab
   const [bookNow, setBookNow] = useState(initialTab === 'book')
-  // The medical report holds diagnoses: clinicians and the manager only.
-  const mayReport = user.role === 'doctor' || user.role === 'nurse' || user.role === 'manager'
+  // 0126: patient records are for doctors (the database says so for this patient; before it has,
+  // the person's profile): the Clinical and Files tabs and the medical report.
+  const doctor = data?.access?.doctor ?? isDoctorUser(user)
+  // The medical report holds diagnoses: doctors only (0126).
+  const mayReport = doctor
   const letterhead = useLetterhead()
   const reportLabels = useMedicalReportLabels()
   const { data: allResults = [] } = usePatientResults(patientId)
@@ -503,7 +507,7 @@ export function PatientFilePage({
           </Card>
 
           {/* past records private: request / emergency access, or the access in force */}
-          {privacyNoticeShown(data.access) && (
+          {privacyNoticeShown(data.access) && doctor && (
             <PrivacyNotice
               patientId={p.id}
               patientName={`${p.surname} ${p.given_names}`}
@@ -593,13 +597,16 @@ export function PatientFilePage({
             {tab === 'visits' && (
               <Visits file={data} openId={openVisit?.id ?? null} canReport={mayReport} />
             )}
-            {tab === 'clinical' && recordLocked(data.access) && (
+            {(tab === 'clinical' || tab === 'files') && !doctor && (
+              <ForDoctorsNote name={`${p.surname} ${p.given_names}`} />
+            )}
+            {tab === 'clinical' && doctor && recordLocked(data.access) && (
               <LockedRecord
                 name={`${p.surname} ${p.given_names}`}
                 canRequest={!!data.access?.canRequest}
               />
             )}
-            {tab === 'clinical' && !recordLocked(data.access) && (
+            {tab === 'clinical' && doctor && !recordLocked(data.access) && (
               <>
                 {(data.access?.hiddenVisits ?? 0) > 0 && (
                   <p className="text-ink-3 m-0 flex items-center gap-1.5 text-[13px]">
@@ -614,13 +621,13 @@ export function PatientFilePage({
                 />
               </>
             )}
-            {tab === 'files' && recordLocked(data.access) && (
+            {tab === 'files' && doctor && recordLocked(data.access) && (
               <LockedRecord
                 name={`${p.surname} ${p.given_names}`}
                 canRequest={!!data.access?.canRequest}
               />
             )}
-            {tab === 'files' && !recordLocked(data.access) && (
+            {tab === 'files' && doctor && !recordLocked(data.access) && (
               <PatientFilesSection
                 patientId={patientId}
                 patientName={`${p.surname} ${p.given_names}`}

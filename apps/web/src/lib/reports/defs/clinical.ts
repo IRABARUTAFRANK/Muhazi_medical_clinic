@@ -51,8 +51,15 @@ const C = 'reports.clinical'
 
 /** Reads clinical reports beyond their own work: the manager and the heads. */
 const wide = (ctx: ReportContext) => ctx.isManager || ctx.isHead
-/** A clinician, the manager or a head. */
+/** A doctor (0126: patient records are for doctors), the manager or a head. The database leaves
+ *  the clinical columns out for someone who is not a doctor. */
 const clinicalReader = (ctx: ReportContext) => wide(ctx) || ctx.clinical
+/** The vital signs are not records (0126): the doctors, the manager, a head, and the nurses and
+ *  the laboratory as before (reception, who types the nurse's sheet, sees her own sets only). */
+const vitalsReader = (ctx: ReportContext) =>
+  clinicalReader(ctx) ||
+  ['nurse', 'lab_tech'].includes(ctx.user.role) ||
+  ctx.user.dbRole === 'sonographer'
 
 // ---------------------------------------------------------------- words of the cells
 
@@ -308,7 +315,8 @@ const diagnoses: AnyReportDef = {
   title: `${C}.dx.title`,
   description: `${C}.dx.description`,
   code: 'DX',
-  allowed: (ctx) => wide(ctx) || ctx.user.role === 'doctor' || ctx.user.dbRole === 'doctor',
+  // 0126: diagnoses are records: doctors (their own, a head-doctor's departments, the manager-doctor)
+  allowed: (ctx) => ctx.clinical,
   filters: [
     periodFilter('month'),
     departmentFilter,
@@ -455,7 +463,8 @@ const prescriptions: AnyReportDef = {
   title: `${C}.rx.title`,
   description: `${C}.rx.description`,
   code: 'RX',
-  allowed: (ctx) => clinicalReader(ctx) || ctx.canDesk('pharmacy'),
+  // 0126: a doctor, or the pharmacy's own desk (not the manager's right to every desk)
+  allowed: (ctx) => ctx.clinical || (!ctx.isManager && ctx.canDesk('pharmacy')),
   filters: [
     periodFilter('month'),
     {
@@ -647,6 +656,7 @@ const tests: AnyReportDef = {
     {
       key: 'result',
       label: `${C}.col.result`,
+      // 0126: results are records: doctors only
       sensitive: true,
       default: true,
       value: (r) => r.result,
@@ -744,7 +754,7 @@ const vitals: AnyReportDef = {
       key: 'abnormalOnly',
       label: `${C}.f.abnormalOnly`,
       kind: 'toggle',
-      allowed: (ctx) => ctx.clinical,
+      allowed: vitalsReader,
     },
     searchFilter,
   ],
@@ -780,21 +790,21 @@ const vitals: AnyReportDef = {
       label: `${C}.col.abnormal`,
       kind: 'number',
       total: 'sum',
-      sensitive: true,
+      allowed: vitalsReader,
       default: true,
       value: (r) => r.flags?.length ?? 0,
     },
     {
       key: 'flags',
       label: `${C}.col.flags`,
-      sensitive: true,
+      allowed: vitalsReader,
       default: true,
       value: (r) => (r.flags ?? []).map(flagWord).join(', '),
     },
     {
       key: 'bp',
       label: `${C}.col.bp`,
-      sensitive: true,
+      allowed: vitalsReader,
       nowrap: true,
       value: (r) =>
         vital(r, 'bp_sys') != null ? `${vital(r, 'bp_sys')}/${vital(r, 'bp_dia') ?? '–'}` : null,
@@ -803,34 +813,35 @@ const vitals: AnyReportDef = {
       key: 'pulse',
       label: `${C}.col.pulse`,
       kind: 'number',
-      sensitive: true,
+      allowed: vitalsReader,
       value: (r) => vital(r, 'pulse'),
     },
     {
       key: 'temp',
       label: `${C}.col.temp`,
       kind: 'number',
-      sensitive: true,
+      allowed: vitalsReader,
       value: (r) => vital(r, 'temp'),
     },
     {
       key: 'spo2',
       label: `${C}.col.spo2`,
       kind: 'number',
-      sensitive: true,
+      allowed: vitalsReader,
       value: (r) => vital(r, 'spo2'),
     },
     {
       key: 'weight',
       label: `${C}.col.weight`,
       kind: 'number',
-      sensitive: true,
+      allowed: vitalsReader,
       value: (r) => vital(r, 'weight'),
     },
   ],
   async load(f, ctx) {
     let rows = await loadVitals({ period: f.period, taker: selected(f, 'taker') }, ctx)
-    if (ctx.clinical && switchedOn(f, 'abnormalOnly')) rows = rows.filter((r) => r.flags?.length)
+    if (vitalsReader(ctx) && switchedOn(f, 'abnormalOnly'))
+      rows = rows.filter((r) => r.flags?.length)
     return search(rows, f, (r) => [r.patient, r.fileNo, r.measuredBy, r.enteredBy])
   },
   figures: (rows: VitalsRow[]) => [

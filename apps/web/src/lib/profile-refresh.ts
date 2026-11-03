@@ -35,6 +35,7 @@ export function useProfileRefresh() {
         'email',
         'name',
         'dbRole',
+        'isDoctor',
       ] as const
     ).some((k) => (next[k] ?? null) !== (user[k] ?? null))
     if (changed) useSession.setState({ user: { ...user, ...next } })

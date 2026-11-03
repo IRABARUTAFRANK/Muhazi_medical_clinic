@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Siren,
+  Stethoscope,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime } from '@mmc/shared'
@@ -30,6 +31,8 @@ import { supabase } from '@/lib/supabase'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 import { vitalName } from '@/lib/api/vitals'
+import { isDoctorUser } from '@/lib/roles'
+import { useSession } from '@/store/session'
 
 /**
  * Patient record privacy on the screens (migration 0088): the "Past records are private"
@@ -615,6 +618,10 @@ export function VisitRecordGate({
   children: ReactNode
 }) {
   const { data } = useVisitClinical(encounterId)
+  const user = useSession((s) => s.user)
+  // 0126: patient records are for doctors: one clear state instead of the request buttons
+  if (data?.private && (data.forDoctors || (!supabase && !isDoctorUser(user))))
+    return <ForDoctorsNote name={patientName} />
   const samplePatient = !supabase ? SAMPLE_PAST[encounterId] : undefined
   if (samplePatient)
     return (
@@ -635,6 +642,57 @@ export function VisitRecordGate({
     )
   if (data?.private) return <PrivateVisitPlain />
   return <>{children}</>
+}
+
+/**
+ * 0126: patient records are for doctors. Shown instead of the clinical parts to someone who is
+ * not a doctor (a manager who is not one, a nurse, the desks): one clear state, never taken for a
+ * fault. `desk`: on an open visit they work on, above the part of it that is theirs (their own
+ * notes, their desk's tests or medicines, the safety summary).
+ */
+export function ForDoctorsNote({
+  desk = false,
+  name,
+  className,
+}: {
+  desk?: boolean
+  name?: string
+  className?: string
+}) {
+  const { t } = useTranslation()
+  const user = useSession((s) => s.user)
+  const manager = user?.role === 'manager' || user?.dashboard === 'manager'
+  if (desk)
+    return (
+      <p
+        className={cn(
+          'bg-violet-bg/60 text-ink m-0 flex items-start gap-2 rounded-md px-3 py-2 text-[13px]',
+          className,
+        )}
+      >
+        <Stethoscope size={16} aria-hidden="true" className="text-violet mt-0.5 shrink-0" />
+        <span>
+          <b className="text-violet">{t('forDoctors.title')}</b> · {t('forDoctors.deskPart')}
+        </span>
+      </p>
+    )
+  return (
+    <Card className={cn('border-violet/40 anim-enter', className)}>
+      <CardBody className="gap-2.5">
+        <p className="text-violet m-0 flex items-start gap-2 text-[17px] font-semibold">
+          <Stethoscope size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
+          {t('forDoctors.title')}
+        </p>
+        <p className="text-ink m-0 text-[15px]">
+          {name ? t('forDoctors.leadName', { name }) : t('forDoctors.lead')}
+        </p>
+        <p className="text-ink-2 m-0 text-[14px]">{t('forDoctors.still')}</p>
+        <p className="bg-violet-bg/60 text-ink m-0 rounded-md px-3 py-2 text-[14px] font-medium">
+          {t(manager ? 'forDoctors.askManager' : 'forDoctors.ask')}
+        </p>
+      </CardBody>
+    </Card>
+  )
 }
 
 function PrivateVisitPlain() {
