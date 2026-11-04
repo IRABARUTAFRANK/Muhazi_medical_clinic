@@ -1687,11 +1687,25 @@ export function useClinicalActions(encounterId: string) {
   const now = () => new Date().toISOString()
 
   const sampleUser = () => useSession.getState().user
+  /** 0130: the visit's next definitive diagnosis is primary when none stands yet (as the database). */
+  const sampleNextType = (): 'primary' | 'secondary' =>
+    local().diagnoses.some(
+      (x) => !x.removedAt && x.type === 'primary' && stageOf(x) === 'definitive',
+    )
+      ? 'secondary'
+      : 'primary'
+  /** 0130: the primary removed (or made a possible one): the oldest definitive one takes it. */
+  const sampleSettlePrimary = () => {
+    const left = local().diagnoses.filter((x) => !x.removedAt && stageOf(x) === 'definitive')
+    if (left.length && !left.some((x) => x.type === 'primary'))
+      [...left].sort((a, b) => a.at.localeCompare(b.at))[0]!.type = 'primary'
+  }
   const addDiagnosis = useMutation({
     mutationFn: async (i: {
       text: string
       icd10?: string
-      type: 'primary' | 'secondary'
+      /** 0130: none sent: the first definitive diagnosis of the visit is the primary one. */
+      type?: 'primary' | 'secondary'
       provisional: boolean
       /** 0127: step 3 or step 5 (default: from provisional). */
       stage?: DiagnosisStage
@@ -1720,23 +1734,24 @@ export function useClinicalActions(encounterId: string) {
           })
         }
         const differential = stage === 'differential'
+        const type = differential ? 'secondary' : (i.type ?? sampleNextType())
         local().diagnoses.push({
           ...base,
           id: `d-${Date.now()}`,
-          type: differential ? 'secondary' : i.type,
+          type,
           provisional: differential,
           stage,
           differentialId: dd,
         })
         // a primary diagnosis written: "no diagnosis found" no longer stands (0125)
-        if (!differential && i.type === 'primary') sampleNoDx.delete(encounterId)
+        if (type === 'primary') sampleNoDx.delete(encounterId)
         return
       }
       const res = await supabase.rpc('add_visit_diagnosis', {
         p_encounter_id: encounterId,
         p_text: i.text,
         p_icd10: i.icd10 || null,
-        p_type: i.type,
+        p_type: i.type ?? null,
         p_stage: stage,
         p_also_differential: !!i.alsoDifferential,
       })
@@ -1747,7 +1762,7 @@ export function useClinicalActions(encounterId: string) {
         p_encounter_id: encounterId,
         p_text: i.text,
         p_icd10: i.icd10 || null,
-        p_type: i.type,
+        p_type: i.type ?? 'primary',
         p_provisional: stage === 'differential',
       })
     },
@@ -1755,7 +1770,7 @@ export function useClinicalActions(encounterId: string) {
   })
   /** 0127: a differential confirmed: the definitive diagnosis (step 5) linked to it. */
   const confirmDifferential = useMutation({
-    mutationFn: async (i: { id: string; type: 'primary' | 'secondary' }) => {
+    mutationFn: async (i: { id: string; type?: 'primary' | 'secondary' }) => {
       if (!supabase) {
         sampleMayWrite(encounterId)
         const c = local()
@@ -1767,11 +1782,12 @@ export function useClinicalActions(encounterId: string) {
             message: 'this diagnosis is already confirmed',
             hint: 'already_confirmed',
           })
+        const type = i.type ?? sampleNextType()
         c.diagnoses.push({
           id: `d-${Date.now()}`,
           text: d.text,
           icd10: d.icd10,
-          type: i.type,
+          type,
           provisional: false,
           stage: 'definitive',
           differentialId: d.id,
@@ -1779,10 +1795,10 @@ export function useClinicalActions(encounterId: string) {
           by: sampleUser()?.name ?? null,
           byId: sampleUser()?.id ?? null,
         })
-        if (i.type === 'primary') sampleNoDx.delete(encounterId)
+        if (type === 'primary') sampleNoDx.delete(encounterId)
         return
       }
-      await call('confirm_differential', { p_id: i.id, p_type: i.type })
+      await call('confirm_differential', { p_id: i.id, p_type: i.type ?? null })
     },
     onSuccess: refresh,
   })
@@ -1871,8 +1887,9 @@ export function useClinicalActions(encounterId: string) {
     mutationFn: async (i: {
       id: string
       text: string
-      icd10: string
-      type: 'primary' | 'secondary'
+      /** 0130: not asked any more: undefined keeps the code (and the type) as they are. */
+      icd10?: string
+      type?: 'primary' | 'secondary'
       provisional: boolean
       reason: string
     }) => {
@@ -1888,21 +1905,22 @@ export function useClinicalActions(encounterId: string) {
         ]
         Object.assign(d, {
           text: i.text.trim(),
-          icd10: i.icd10.trim().toUpperCase() || null,
-          type: i.type,
+          icd10: i.icd10 == null ? d.icd10 : i.icd10.trim().toUpperCase() || null,
+          type: i.provisional ? 'secondary' : (i.type ?? d.type),
           provisional: i.provisional,
           editedAt: now(),
           editedBy: sampleUser()?.name ?? null,
           editReason: i.reason.trim(),
         })
+        sampleSettlePrimary()
         return
       }
       await call('update_condition', {
         p_id: i.id,
         p_text: i.text.trim(),
-        // an empty code clears it (null would keep the old one)
-        p_icd10: i.icd10.trim().toUpperCase(),
-        p_type: i.type,
+        // an empty code clears it, null keeps the old one (0130: the screen sends none)
+        p_icd10: i.icd10 == null ? null : i.icd10.trim().toUpperCase(),
+        p_type: i.type ?? null,
         p_provisional: i.provisional,
         p_reason: i.reason.trim(),
       })
@@ -1923,6 +1941,7 @@ export function useClinicalActions(encounterId: string) {
           removedBy: sampleUser()?.name ?? null,
           removeReason: i.reason.trim(),
         })
+        sampleSettlePrimary()
         return
       }
       await call('remove_condition', { p_id: i.id, p_reason: i.reason.trim() })

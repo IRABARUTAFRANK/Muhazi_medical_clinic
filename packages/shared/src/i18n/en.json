@@ -2489,7 +2489,17 @@
     "dxRemoved": "Diagnosis removed.",
     "noteUpdated": "Note changed.",
     "noDeskForTest": "No one holds the {{desk}} desk yet: give a department the {{desk}} desk in Settings.",
-    "splitLine": "{{given}} given · {{outside}} outside"
+    "splitLine": "{{given}} given · {{outside}} outside",
+    "dxHintAuto": "The diagnosis is the disease or problem you found after examining the patient, e.g. “Uncomplicated malaria”. The first one written is the primary diagnosis, the next ones are secondary. Tick “provisional” when you are still waiting for results.",
+    "testPick": "Test or exam",
+    "testPickEmpty": "Choose a test or exam…",
+    "testPickHint": "Type a few letters to find it; pick as many as you need, one after the other.",
+    "testsChosen_one": "{{count}} test chosen",
+    "testsChosen_other": "{{count}} tests chosen",
+    "testNoneChosen": "No test chosen yet: pick them in the list above.",
+    "testRemove": "Remove {{test}}",
+    "testNoPrice": "no price",
+    "testsTotal": "Total: {{amount}}"
   },
   "adjust": {
     "mode": "How to enter it",
@@ -9926,27 +9936,34 @@
     "requiredEmpty": "Needed to finish",
     "complaint": {
       "title": "1 · Complaint and history",
-      "hint": "What the patient says brings them, in their words; how the illness went; the past visits when it is not the first time."
+      "hint": "What the patient says brings them, in their words; how the illness went; the past visits when it is not the first time.",
+      "short": "Complaint & history"
     },
     "exam": {
       "title": "2 · Physical examination",
-      "hint": "What you found when examining the patient."
+      "hint": "What you found when examining the patient.",
+      "short": "Examination"
     },
     "differential": {
       "title": "3 · Differential diagnosis",
-      "hint": "The possible diagnoses after the examination, not yet confirmed. Confirm one when it is found."
+      "hint": "The possible diagnoses after the examination, not yet confirmed. Confirm one when it is found.",
+      "short": "Differential"
     },
     "tests": {
       "title": "4 · Paraclinical exams",
-      "hint": "Laboratory tests and other exams to find the diagnosis; their results come here."
+      "hint": "Laboratory tests and other exams to find the diagnosis; their results come here.",
+      "short": "Paraclinical"
     },
     "definitive": {
       "title": "5 · Definitive diagnosis",
-      "hint": "The confirmed diagnoses: one primary, the others secondary. One the laboratory found may be added here. Or say why none was found."
+      "hint": "The confirmed diagnoses: one primary, the others secondary. One the laboratory found may be added here. Or say why none was found.",
+      "short": "Definitive diagnosis",
+      "hintAuto": "The confirmed diagnoses. The first one written is the primary diagnosis, the next ones are secondary; if the primary one is removed, the next one takes its place. Or say why none was found."
     },
     "plan": {
       "title": "6 · Treatment plan",
-      "hint": "The plan, the medicines, and the orders to the nurses: medical acts and drugs to give, for one nurse or all."
+      "hint": "The plan, the medicines, and the orders to the nurses: medical acts and drugs to give, for one nurse or all.",
+      "short": "Treatment plan"
     },
     "sections": {
       "complaint": "Chief complaint",
@@ -10001,7 +10018,13 @@
     "openOrders_one": "The order to the nurses not carried out yet stays open: {{list}}.",
     "openOrders_other": "The orders to the nurses not carried out yet stay open: {{list}}.",
     "needComplaint": "Write the chief complaint (step 1) before finishing the visit.",
-    "finishHint": "Needed: the chief complaint, and a definitive primary diagnosis or “No diagnosis found” with the reason."
+    "finishHint": "Needed: the chief complaint, and a definitive primary diagnosis or “No diagnosis found” with the reason.",
+    "barLabel": "The six steps of the visit",
+    "stepOf": "Step {{n}} of {{total}}",
+    "previous": "Previous: {{title}}",
+    "next": "Next: {{title}}",
+    "toFinishShort": "To finish:",
+    "goFinish": "Finish the visit (step 6)"
   },
   "pastHistory": {
     "title_one": "Past history: {{count}} earlier visit",

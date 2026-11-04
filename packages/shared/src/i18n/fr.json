@@ -2489,7 +2489,17 @@
     "dxRemoved": "Diagnostic retiré.",
     "noteUpdated": "Note modifiée.",
     "noDeskForTest": "Personne ne tient encore le poste {{desk}} : donnez le poste {{desk}} à un service dans Paramètres.",
-    "splitLine": "{{given}} donnés · {{outside}} à l’extérieur"
+    "splitLine": "{{given}} donnés · {{outside}} à l’extérieur",
+    "dxHintAuto": "Le diagnostic est la maladie ou le problème trouvé après l’examen du patient, ex. « Paludisme simple ». Le premier inscrit est le diagnostic principal, les suivants sont secondaires. Cochez « provisoire » si vous attendez encore des résultats.",
+    "testPick": "Examen",
+    "testPickEmpty": "Choisir un examen…",
+    "testPickHint": "Tapez quelques lettres pour le trouver ; choisissez-en autant qu’il faut, l’un après l’autre.",
+    "testsChosen_one": "{{count}} examen choisi",
+    "testsChosen_other": "{{count}} examens choisis",
+    "testNoneChosen": "Aucun examen choisi : choisissez-les dans la liste ci-dessus.",
+    "testRemove": "Retirer {{test}}",
+    "testNoPrice": "sans prix",
+    "testsTotal": "Total : {{amount}}"
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -9926,27 +9936,34 @@
     "requiredEmpty": "Nécessaire pour terminer",
     "complaint": {
       "title": "1 · Plainte et anamnèse",
-      "hint": "Ce que le patient dit souffrir, avec ses mots ; l’histoire de la maladie ; les consultations passées si ce n’est pas la première fois."
+      "hint": "Ce que le patient dit souffrir, avec ses mots ; l’histoire de la maladie ; les consultations passées si ce n’est pas la première fois.",
+      "short": "Plainte et anamnèse"
     },
     "exam": {
       "title": "2 · Examen physique",
-      "hint": "Ce que vous avez trouvé à l’examen du patient."
+      "hint": "Ce que vous avez trouvé à l’examen du patient.",
+      "short": "Examen"
     },
     "differential": {
       "title": "3 · Diagnostic différentiel",
-      "hint": "Les diagnostics possibles après l’examen, pas encore confirmés. Confirmez-en un quand il est établi."
+      "hint": "Les diagnostics possibles après l’examen, pas encore confirmés. Confirmez-en un quand il est établi.",
+      "short": "Différentiel"
     },
     "tests": {
       "title": "4 · Examens paracliniques",
-      "hint": "Analyses de laboratoire et autres examens pour trouver le diagnostic ; leurs résultats arrivent ici."
+      "hint": "Analyses de laboratoire et autres examens pour trouver le diagnostic ; leurs résultats arrivent ici.",
+      "short": "Paracliniques"
     },
     "definitive": {
       "title": "5 · Diagnostic définitif",
-      "hint": "Les diagnostics confirmés : un principal, les autres secondaires. Un diagnostic trouvé par le laboratoire peut être ajouté ici. Ou dites pourquoi aucun n’a été trouvé."
+      "hint": "Les diagnostics confirmés : un principal, les autres secondaires. Un diagnostic trouvé par le laboratoire peut être ajouté ici. Ou dites pourquoi aucun n’a été trouvé.",
+      "short": "Diagnostic définitif",
+      "hintAuto": "Les diagnostics confirmés. Le premier inscrit est le diagnostic principal, les suivants sont secondaires ; si le principal est retiré, le suivant prend sa place. Ou dites pourquoi aucun n’a été trouvé."
     },
     "plan": {
       "title": "6 · Plan de traitement",
-      "hint": "Le plan, les médicaments et les prescriptions aux infirmiers : actes médicaux et médicaments à administrer, pour un infirmier ou tous."
+      "hint": "Le plan, les médicaments et les prescriptions aux infirmiers : actes médicaux et médicaments à administrer, pour un infirmier ou tous.",
+      "short": "Plan de traitement"
     },
     "sections": {
       "complaint": "Motif de consultation",
@@ -10001,7 +10018,13 @@
     "openOrders_one": "La prescription aux infirmiers pas encore exécutée reste ouverte : {{list}}.",
     "openOrders_other": "Les prescriptions aux infirmiers pas encore exécutées restent ouvertes : {{list}}.",
     "needComplaint": "Notez le motif de consultation (étape 1) avant de terminer la consultation.",
-    "finishHint": "Nécessaire : le motif de consultation, et un diagnostic définitif principal ou « Aucun diagnostic trouvé » avec la raison."
+    "finishHint": "Nécessaire : le motif de consultation, et un diagnostic définitif principal ou « Aucun diagnostic trouvé » avec la raison.",
+    "barLabel": "Les six étapes de la consultation",
+    "stepOf": "Étape {{n}} sur {{total}}",
+    "previous": "Précédent : {{title}}",
+    "next": "Suivant : {{title}}",
+    "toFinishShort": "Pour terminer :",
+    "goFinish": "Terminer la consultation (étape 6)"
   },
   "pastHistory": {
     "title_one": "Antécédents : {{count}} consultation précédente",

@@ -21322,6 +21322,250 @@ await step('0129: the migration runs again on a database that already has it', a
   return 'no error'
 })
 
+// @@t130-begin
+// ---------------------------------------------------------------- 0130 cancelling an outside medicine, the primary diagnosis
+const t130 = {}
+const json130 = (x) => JSON.stringify(x)
+// the 0100… steps re-ran older migrations: put the 0130 definitions back (it runs twice)
+await step('0130: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270110090000_rx_cancel_outside.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+await step(
+  '0130 seed: an open visit written by Dr Elsewhere 127 (an outside line, a pharmacy line), then taken by Dr 127 without a hand-over; Dr Away 130 of the same department',
+  async () => {
+    t130.away = await newStaff('d130.away', 'Dr. Away 130', 'doctor', 'Consultation 1')
+    await member85(t130.away, t127.dept)
+    t130.v = await t127.ov(t127.doc2)
+    await as(t127.doc2)
+    const rx = async (supply, qty, name = null) =>
+      (
+        await one(
+          `select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => $3, p_supply => $4,
+                    p_medicine_name => $5, p_dose => '1 tab', p_frequency => 'BD', p_duration_days => 5) as j`,
+          [t130.v, name ? null : t127.item, qty, supply, name],
+        )
+      ).j
+    t130.out = (await rx('outside', 10)).id
+    t130.outTyped = (await rx('outside', 1, 'Ear drops 130')).id
+    t130.ph = (await rx('pharmacy', 6)).id
+    // the patient goes on to Dr 127 (taken from the queue, no hand-over)
+    await asAdmin()
+    await db.query(
+      `update queue_entry set taken_by = $2 where encounter_id = $1 and finished_at is null`,
+      [t130.v, t127.doc],
+    )
+    const holder = (await one(`select patient_holder($1) as h`, [t130.v])).h
+    const handover = (
+      await one(`select count(*)::int as n from patient_handover where encounter_id = $1`, [t130.v])
+    ).n
+    if (holder !== 'Dr. Steps 127' || handover !== 0) throw new Error(json130({ holder, handover }))
+    return `holder ${holder}; 2 outside lines, 1 at the pharmacy; no hand-over`
+  },
+)
+await step(
+  '0130 A: the doctor who has the patient now cancels the outside line (refused before 0130) — cancelled, not on the bill, gone from the printed outside prescription; a doctor not on the visit and a nurse are refused',
+  async () => {
+    const r = {}
+    r.away = await hintAs(t130.away, `select cancel_prescription($1, 'not mine 130')`, [t130.out])
+    r.nurse = await hintAs(t127.nurseA, `select cancel_prescription($1, 'not mine 130')`, [
+      t130.out,
+    ])
+    await as(t127.doc)
+    r.c = (
+      await one(`select cancel_prescription($1, 'patient has it at home 130') as j`, [t130.out])
+    ).j
+    r.twice = await hintAs(t127.doc, `select cancel_prescription($1, 'again 130')`, [t130.out])
+    await as(t127.doc)
+    const vc = (await one(`select visit_clinical($1) as j`, [t130.v])).j
+    const doc = (await one(`select prescription_number($1) as j`, [t130.v])).j
+    await asAdmin()
+    const line = vc.prescriptions.find((x) => x.id === t130.out)
+    // what the printed outside prescription lists: its lines, still standing, bought outside
+    const printed = vc.prescriptions
+      .filter((x) => !x.cancelledAt && x.supply === 'outside' && doc.lineIds.includes(x.id))
+      .map((x) => x.id)
+    r.billed = (
+      await one(
+        `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id
+          where i.encounter_id = $1 and l.deleted_at is null and l.item_id is not null`,
+        [t130.v],
+      )
+    ).n
+    r.told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'rx_cancelled' and params ->> 'reason' = 'patient has it at home 130'`,
+      )
+    ).n
+    if (
+      r.away !== '42501/' ||
+      r.nurse === 'ok' ||
+      !line?.cancelledAt ||
+      line.cancelReason !== 'patient has it at home 130' ||
+      line.cancelledBy !== 'Dr. Steps 127' ||
+      r.twice !== 'P0002/' ||
+      printed.includes(t130.out) ||
+      !printed.includes(t130.outTyped) ||
+      r.billed !== 0 ||
+      r.told !== 0 ||
+      r.c.pending !== 1
+    )
+      throw new Error(json130({ ...r, line, printed }))
+    return `cancelled by ${line.cancelledBy}; printed outside lines ${printed.length} (the typed one); bill lines ${r.billed}; another doctor ${r.away}, a nurse ${r.nurse.split('/')[0]}`
+  },
+)
+await step(
+  '0130 B: the prescriber still cancels an outside line; the doctor who has the patient cancels a pharmacy line not yet handed over (the pharmacy is told)',
+  async () => {
+    await as(t127.doc2)
+    const own = (
+      await one(`select cancel_prescription($1, 'written twice 130') as j`, [t130.outTyped])
+    ).j
+    await as(t127.doc)
+    const ph = (
+      await one(`select cancel_prescription($1, 'not needed any more 130') as j`, [t130.ph])
+    ).j
+    await asAdmin()
+    const rows = (
+      await db.query(
+        `select id, cancelled_at is not null as c from medication_request where encounter_id = $1`,
+        [t130.v],
+      )
+    ).rows
+    const told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'rx_cancelled' and params ->> 'reason' = 'not needed any more 130'`,
+      )
+    ).n
+    if (!rows.every((x) => x.c) || own.pending !== 1 || ph.pending !== 0 || told !== 1)
+      throw new Error(json130({ rows, own, ph, told }))
+    return `all ${rows.length} lines cancelled; pending ${ph.pending}; pharmacy told ${told}`
+  },
+)
+await step(
+  '0130 C: the primary diagnosis is the first definitive one (no type sent); a confirmed differential and later ones are secondary; an old screen that sends a type is obeyed',
+  async () => {
+    t130.v2 = await t127.ov(t127.doc)
+    await as(t127.doc)
+    const add = async (text, stage = 'definitive') =>
+      (
+        await one(`select add_visit_diagnosis($1, $2, null, null, $3) as id`, [
+          t130.v2,
+          text,
+          stage,
+        ])
+      ).id
+    t130.a = await add('Malaria 130')
+    t130.b = await add('Anaemia 130')
+    const dd = await add('Typhoid 130', 'differential')
+    t130.c = (await one(`select confirm_differential($1) as id`, [dd])).id
+    // an older screen sends the type: obeyed
+    const old = (
+      await one(
+        `select add_visit_diagnosis($1, 'Old screen 130', null, 'secondary', 'definitive') as id`,
+        [t130.v2],
+      )
+    ).id
+    await asAdmin()
+    const rows = (
+      await db.query(
+        `select id, text, type::text, stage from condition where encounter_id = $1 and deleted_at is null order by created_at, id`,
+        [t130.v2],
+      )
+    ).rows
+    const of = (id) => rows.find((x) => x.id === id)
+    const primaries = rows.filter((x) => x.type === 'primary').map((x) => x.text)
+    if (
+      of(t130.a)?.type !== 'primary' ||
+      of(t130.b)?.type !== 'secondary' ||
+      of(dd)?.type !== 'secondary' ||
+      of(t130.c)?.type !== 'secondary' ||
+      of(old)?.type !== 'secondary' ||
+      primaries.length !== 1
+    )
+      throw new Error(json130(rows))
+    return `primary ${primaries[0]}; ${rows.length - 1} others secondary`
+  },
+)
+await step(
+  '0130 D: the primary removed — the next oldest definitive one becomes primary (not a differential); a primary turned back into a possible diagnosis hands it on; finish_visit finds it',
+  async () => {
+    await as(t127.doc)
+    await db.query(`select remove_condition($1, 'wrong, the test was negative 130')`, [t130.a])
+    const after1 = await one(
+      `select text, type::text from condition where encounter_id = $1 and deleted_at is null and type = 'primary'`,
+      [t130.v2],
+    )
+    await as(t127.doc)
+    await db.query(
+      `select update_condition($1, null, null, null, true, 'only possible after all 130')`,
+      [t130.b],
+    )
+    const after2 = (
+      await db.query(
+        `select text, type::text, stage from condition where encounter_id = $1 and deleted_at is null and type = 'primary'`,
+        [t130.v2],
+      )
+    ).rows
+    await as(t127.doc)
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever 130')`, [t130.v2])
+    await db.query(`select finish_visit($1)`, [t130.v2])
+    await asAdmin()
+    const e = await one(`select status::text from encounter where id = $1`, [t130.v2])
+    if (
+      after1?.text !== 'Anaemia 130' ||
+      after2.length !== 1 ||
+      after2[0].text !== 'Typhoid 130' ||
+      after2[0].stage !== 'definitive' ||
+      e.status !== 'closed'
+    )
+      throw new Error(json130({ after1, after2, e }))
+    return `after removing: ${after1.text}; after the change: ${after2[0].text}; visit ${e.status}`
+  },
+)
+await step(
+  '0130 E: a finished visit — removing its primary is refused only when no definitive diagnosis would be left',
+  async () => {
+    // the visit is finished: Dr 127 opens the 30-minute edit window (the e-mailed code, 0104)
+    await asAdmin()
+    await db.query(
+      `insert into visit_edit_grant (encounter_id, user_id, reason, code_hash, verified_at, expires_at)
+       values ($1, $2, 'correct the diagnosis 130', 'x', now(), now() + interval '30 minutes')`,
+      [t130.v2, t127.doc],
+    )
+    await as(t127.doc)
+    const active = (await one(`select visit_edit_active($1) as a`, [t130.v2])).a
+    await asAdmin()
+    if (!active) throw new Error('no edit window')
+    const primary = (
+      await one(
+        `select id from condition where encounter_id = $1 and deleted_at is null and type = 'primary'`,
+        [t130.v2],
+      )
+    ).id
+    const r = {}
+    r.first = await hintAs(t127.doc, `select remove_condition($1, 'changed my mind 130')`, [
+      primary,
+    ])
+    const next = await one(
+      `select id, text from condition where encounter_id = $1 and deleted_at is null and type = 'primary'`,
+      [t130.v2],
+    )
+    r.last = await hintAs(t127.doc, `select remove_condition($1, 'changed my mind 130')`, [
+      next?.id,
+    ])
+    if (r.first !== 'ok' || !next || r.last !== '23514/') throw new Error(json130({ r, next }))
+    return `first removed (${next.text} became primary); the last one refused (${r.last})`
+  },
+)
+// @@t130-end
+
 finish()
 
 function finish() {

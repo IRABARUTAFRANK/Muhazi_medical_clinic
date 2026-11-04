@@ -1986,7 +1986,17 @@
     "dxRemoved": "Indwara yagaragaye yakuweho.",
     "noteUpdated": "Inyandiko yahinduwe.",
     "noDeskForTest": "Nta wurakora kuri {{desk}}: ha ishami aho bakorera {{desk}} mu Igenamiterere.",
-    "splitLine": "{{given}} yatanzwe · {{outside}} yo hanze"
+    "splitLine": "{{given}} yatanzwe · {{outside}} yo hanze",
+    "dxHintAuto": "Indwara yagaragaye ni indwara cyangwa ikibazo wabonye nyuma yo gusuzuma umurwayi, urugero “Malariya yoroheje”. Iya mbere yanditswe ni yo y’ingenzi, izikurikiraho ni iz’inyongera. Shyira akamenyetso kuri “By’agateganyo” igihe ugitegereje ibisubizo.",
+    "testPick": "Ikizamini",
+    "testPickEmpty": "Hitamo ikizamini…",
+    "testPickHint": "Andika inyuguti nke kugira ngo ukibone; hitamo ibyo ukeneye byose, kimwe nyuma y’ikindi.",
+    "testsChosen_one": "Ikizamini {{count}} cyahiswemo",
+    "testsChosen_other": "Ibizamini {{count}} byahiswemo",
+    "testNoneChosen": "Nta kizamini kirahitwamo: bihitemo ku rutonde ruri hejuru.",
+    "testRemove": "Kuraho {{test}}",
+    "testNoPrice": "nta giciro",
+    "testsTotal": "Igiteranyo: {{amount}}"
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -9935,27 +9945,34 @@
     "requiredEmpty": "Birakenewe kugira ngo urangize",
     "complaint": {
       "title": "1 · Icyamuzanye n’amateka y’uburwayi",
-      "hint": "Icyo umurwayi avuga cyamuzanye, mu magambo ye; uko uburwayi bwagenze; ubwo yivuje mbere niba atari ubwa mbere."
+      "hint": "Icyo umurwayi avuga cyamuzanye, mu magambo ye; uko uburwayi bwagenze; ubwo yivuje mbere niba atari ubwa mbere.",
+      "short": "Icyamuzanye"
     },
     "exam": {
       "title": "2 · Isuzuma ry’umubiri",
-      "hint": "Ibyo wabonye usuzuma umurwayi."
+      "hint": "Ibyo wabonye usuzuma umurwayi.",
+      "short": "Isuzuma"
     },
     "differential": {
       "title": "3 · Indwara zishoboka",
-      "hint": "Indwara zishoboka nyuma y’isuzuma, zitaremezwa. Emeza imwe iyo yagaragaye."
+      "hint": "Indwara zishoboka nyuma y’isuzuma, zitaremezwa. Emeza imwe iyo yagaragaye.",
+      "short": "Indwara zishoboka"
     },
     "tests": {
       "title": "4 · Ibizamini",
-      "hint": "Ibizamini bya laboratwari n’ibindi bizamini byo kumenya indwara; ibisubizo byabyo biza hano."
+      "hint": "Ibizamini bya laboratwari n’ibindi bizamini byo kumenya indwara; ibisubizo byabyo biza hano.",
+      "short": "Ibizamini"
     },
     "definitive": {
       "title": "5 · Indwara yemejwe",
-      "hint": "Indwara zemejwe: imwe y’ingenzi, izindi z’inyongera. Iyo laboratwari yabonye ishobora kongerwa hano. Cyangwa uvuge impamvu nta ndwara yabonetse."
+      "hint": "Indwara zemejwe: imwe y’ingenzi, izindi z’inyongera. Iyo laboratwari yabonye ishobora kongerwa hano. Cyangwa uvuge impamvu nta ndwara yabonetse.",
+      "short": "Indwara yemejwe",
+      "hintAuto": "Indwara zemejwe. Iya mbere yanditswe ni yo y’ingenzi, izikurikiraho ni iz’inyongera; iy’ingenzi ivanyweho, ikurikiyeho ifata umwanya wayo. Cyangwa uvuge impamvu nta ndwara yabonetse."
     },
     "plan": {
       "title": "6 · Gahunda yo kuvura",
-      "hint": "Gahunda, imiti, n’amategeko ku baforomo: ibikorwa by’ubuvuzi n’imiti yo guha umurwayi, ku muforomo umwe cyangwa bose."
+      "hint": "Gahunda, imiti, n’amategeko ku baforomo: ibikorwa by’ubuvuzi n’imiti yo guha umurwayi, ku muforomo umwe cyangwa bose.",
+      "short": "Gahunda yo kuvura"
     },
     "sections": {
       "complaint": "Icyamuzanye",
@@ -10010,7 +10027,13 @@
     "openOrders_one": "Itegeko ku baforomo ritarashyirwa mu bikorwa riguma rifunguye: {{list}}.",
     "openOrders_other": "Amategeko ku baforomo atarashyirwa mu bikorwa aguma afunguye: {{list}}.",
     "needComplaint": "Andika icyamuzanye (intambwe ya 1) mbere yo kurangiza kwivuza.",
-    "finishHint": "Birakenewe: icyamuzanye, n’indwara y’ingenzi yemejwe cyangwa “Nta ndwara yabonetse” n’impamvu."
+    "finishHint": "Birakenewe: icyamuzanye, n’indwara y’ingenzi yemejwe cyangwa “Nta ndwara yabonetse” n’impamvu.",
+    "barLabel": "Intambwe esheshatu zo kwivuza",
+    "stepOf": "Intambwe ya {{n}} kuri {{total}}",
+    "previous": "Ibanza: {{title}}",
+    "next": "Ikurikira: {{title}}",
+    "toFinishShort": "Kugira ngo urangize:",
+    "goFinish": "Rangiza kwivuza (intambwe ya 6)"
   },
   "pastHistory": {
     "title_one": "Amakuru ya kera: kwivuza {{count}} kwabanje",

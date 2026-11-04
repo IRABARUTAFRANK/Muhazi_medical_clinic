@@ -85,6 +85,7 @@ export function SearchSelect({
   limit = 60,
   onWrite,
   writeLabel,
+  adder = false,
 }: {
   label: ReactNode
   value: string
@@ -103,6 +104,11 @@ export function SearchSelect({
   onWrite?: (text: string) => void
   /** The words of that row, with the text typed. */
   writeLabel?: (text: string) => string
+  /**
+   * A picker that adds to a list shown elsewhere (the tests of a visit, 0130): the field stays on
+   * its empty label, and the popover has no "empty" row to choose.
+   */
+  adder?: boolean
 }) {
   const { t } = useTranslation()
   const id = useId()
@@ -124,7 +130,8 @@ export function SearchSelect({
   const shown = hits.slice(0, limit)
   if (open && chosen && !shown.includes(chosen)) shown.unshift(chosen)
   const empty: SearchOption = { value: '', label: emptyLabel }
-  const base: SearchOption[] = open && !required && !words.length ? [empty, ...shown] : shown
+  const base: SearchOption[] =
+    open && !required && !adder && !words.length ? [empty, ...shown] : shown
   // the "write it" row, last, whenever something is typed and the page accepts a written name
   const writeRow: SearchOption | null =
     open && onWrite && query.trim().length >= 2

@@ -188,6 +188,16 @@ describe('prescription', () => {
     expect(html).not.toContain('Paracetamol')
     expect(html.match(/<span class="rx-n">/g)).toHaveLength(1)
   })
+
+  it('0130: no allergy section on the prescription', () => {
+    const html = buildPrescriptionHtml(
+      rx(),
+      { t, lang: 'en' },
+      { autoPrint: false, printedAt: at, fonts },
+    )
+    expect(html).not.toContain('class="allergy-line"')
+    expect(html).not.toContain('class="allergy-box"')
+  })
 })
 
 const receipt = (over: Partial<ReceiptDoc> = {}): ReceiptDoc => ({

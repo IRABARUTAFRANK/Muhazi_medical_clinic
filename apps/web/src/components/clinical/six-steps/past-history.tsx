@@ -80,7 +80,6 @@ export function PastHistoryPanel({
           {(safety.chronic ?? []).map((c) => (
             <Badge key={c.text} tone="orange" dot={false}>
               {t('pastHistory.longTerm')}: {c.text}
-              {c.icd10 ? ` (${c.icd10})` : ''}
             </Badge>
           ))}
           {safety.alerts && (
@@ -102,7 +101,8 @@ export function PastHistoryPanel({
 function PastVisitRow({ visit: v, open: first }: { visit: PastVisit; open: boolean }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(first)
-  const dx = v.diagnoses.map((d) => `${d.text}${d.icd10 ? ` (${d.icd10})` : ''}`).join('; ')
+  // 0130: the visit screen shows no ICD-10 code
+  const dx = v.diagnoses.map((d) => d.text).join('; ')
   const dxText = dx || (v.noDiagnosis ? noDiagnosisText(v.noDiagnosis) : t('pastHistory.noDx'))
   return (
     <li className="border-border bg-card list-none rounded-md border">

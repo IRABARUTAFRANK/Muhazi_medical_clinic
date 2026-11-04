@@ -1,7 +1,5 @@
 import i18next from 'i18next'
 import {
-  allergyHtml,
-  allergyList,
   bottomLeftCss,
   docDate,
   docNumber,
@@ -27,8 +25,9 @@ import {
 
 /**
  * The prescription a patient takes to any pharmacy (document design standard v2, C4): an A5
- * portrait page with the letterhead, the title block (prescription no., date and "valid until"), the patient
- * grid and allergy statement, the diagnosis, every medicine as a numbered two-line item (generic
+ * portrait page with the letterhead, the title block (prescription no., date and "valid until"),
+ * the patient grid, the diagnosis (no allergy section since 0130: the owner asked; the allergies
+ * stay on the visit's safety banner and step 1), every medicine as a numbered two-line item (generic
  * name, strength and form with the quantity in figures and words; then the directions in plain
  * words), a closing line (total items, refill), and the prescriber's signature and stamp block.
  * Medicines given at the clinic (at its pharmacy or in the room) are never printed, not even
@@ -80,8 +79,6 @@ export interface RxDoc {
     sex?: RxSex | null
     /** "62 kg" or 62. */
     weight?: string | number | null
-    /** Free text (", " separated; "none" = recorded as none) or a list; null = not recorded. */
-    allergies?: string | string[] | null
     phone?: string | null
     insurer?: string | null
     memberNo?: string | null
@@ -673,9 +670,6 @@ export function buildPrescriptionHtml(
     }</li>`
   })
 
-  const allergies = Array.isArray(d.patient.allergies)
-    ? d.patient.allergies
-    : allergyList(d.patient.allergies ?? null)
   const [left, right] = patientFields(d, dl, t)
   const dx = diagnosisText(d.diagnosis, t)
   const refill = d.refills ? r('refillYes', { count: d.refills }) : r('refillNo')
@@ -691,7 +685,6 @@ export function buildPrescriptionHtml(
       ],
     }),
     identityHtml(left, right),
-    allergyHtml(allergies, dl),
     dx ? runInHtml(r('diagnosis'), dx).replace('<p class="runin">', '<p class="runin rx-dx">') : '',
     `<h2 class="rx-h"><span class="rx-mark" aria-hidden="true">Rx</span>${esc(r(d.outside ? 'outsideMedicines' : 'medicines'))}</h2>`,
     d.outside ? `<p class="rx-out">${esc(r('outsideNote'))}</p>` : '',

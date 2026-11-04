@@ -1,4 +1,5 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { SearchSelect } from '@/components/ui/search-select'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import {
@@ -18,6 +19,7 @@ import {
   Store,
   Trash2,
   TriangleAlert,
+  X,
   XCircle,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +33,7 @@ import { Select } from '@/components/ui/select'
 import {
   medicineRuleText,
   treatmentName,
+  type Treatment,
   useMedicineReference,
   medicineRefOption,
   sortMedicineRefs,
@@ -93,7 +96,8 @@ import { Seg } from '@/components/ui/seg'
 import { noDiagnosisText } from '@/lib/no-diagnosis'
 import { sixStepsOfVisit } from '@/lib/six-steps-report'
 import { NurseOrderRow } from '@/components/clinical/nurse-order-row'
-import { StepCard, type StepKey } from '@/components/clinical/six-steps/step-card'
+import { StepBar, StepSlide } from '@/components/clinical/six-steps/step-card'
+import { STEP_KEYS, stepNumber, type StepKey } from '@/components/clinical/six-steps/steps'
 import { SectionEditor } from '@/components/clinical/six-steps/section-editor'
 import { PastHistoryPanel } from '@/components/clinical/six-steps/past-history'
 import { NurseOrdersStep } from '@/components/clinical/six-steps/nurse-orders-step'
@@ -291,13 +295,29 @@ export function ClinicalCard({
   })
   // 0127: the step whose messages (errors, prescribing notes) are shown under it
   const [msgStep, setMsgStep] = useState<StepKey | 'finish'>('finish')
+  // 0130: the six steps are shown one at a time (a slide); the one shown is in the URL (?step=3),
+  // so a reload keeps it
+  const { step: stepInUrl } = useSearch({ from: '/app/visit' })
+  const navigate = useNavigate({ from: '/app/visit' })
+  const step = stepNumber(stepInUrl)
+  const [stepDir, setStepDir] = useState<1 | -1>(1)
+  const barRef = useRef<HTMLDivElement>(null)
+  const goStep = (n: number) => {
+    if (n === step) return
+    setStepDir(n > step ? 1 : -1)
+    void navigate({ search: (prev) => ({ ...prev, step: n }), replace: true, resetScroll: false })
+    // changed from the bottom of a long step: the bar comes back into view
+    const bar = barRef.current
+    if (bar && bar.getBoundingClientRect().top < 0) {
+      const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      bar.scrollIntoView({ block: 'start', behavior: still ? 'auto' : 'smooth' })
+    }
+  }
   const [mode, setMode] = useState<'note' | 'dd' | 'dx' | 'rx' | 'test' | null>(null)
   // editing or removing a diagnosis, editing a note (0104): the line's form, with the reason
   const [dxEdit, setDxEdit] = useState<{
     id: string
     text: string
-    icd10: string
-    type: 'primary' | 'secondary'
     provisional: boolean
     reason: string
   } | null>(null)
@@ -315,14 +335,9 @@ export function ClinicalCard({
 
   // small forms
   const [note, setNote] = useState('')
-  const [dx, setDx] = useState({
-    text: '',
-    icd10: '',
-    type: 'primary' as 'primary' | 'secondary',
-    provisional: false,
-    /** 0127 step 5: also written in the differential list (found by the laboratory). */
-    also: false,
-  })
+  // 0130: no ICD-10 code, no type (the first definitive diagnosis is the primary one, in the
+  // database), no "also in the differential list"
+  const [dx, setDx] = useState({ text: '', provisional: false })
   const [rx, setRx] = useState<RxLine[]>([emptyLine()])
   // the same medicine written twice: said once, kept on the second press
   const [twiceOk, setTwiceOk] = useState('')
@@ -594,12 +609,12 @@ export function ClinicalCard({
           birthDate: p?.birthDate ?? null,
           sex: p?.sex ?? null,
           weight: p?.weightKg ?? patient.weight ?? null,
-          allergies: allergiesForDoc(p),
           phone: p?.phone ?? null,
           insurer: p?.insurer ?? null,
           memberNo: p?.memberNo ?? null,
         },
-        diagnosis: dx ? { text: dx.text, icd10: dx.icd10, provisional: dx.provisional } : null,
+        // 0130: no ICD-10 code (the visit no longer asks for one)
+        diagnosis: dx ? { text: dx.text, provisional: dx.provisional } : null,
         medicines: forPharmacy.map(toDoc),
         givenHere: [],
         outside: true,
@@ -669,31 +684,26 @@ export function ClinicalCard({
           .mutateAsync({
             ...dx,
             ...(stepper
-              ? {
-                  stage: differential ? ('differential' as const) : ('definitive' as const),
-                  alsoDifferential: !differential && dx.also,
-                }
+              ? { stage: differential ? ('differential' as const) : ('definitive' as const) }
               : {}),
           })
-          .then(() =>
-            setDx({ text: '', icd10: '', type: 'secondary', provisional: false, also: false }),
-          ),
+          .then(() => setDx({ text: '', provisional: false })),
       t(differential ? 'sixSteps.ddSaved' : 'clinical.dxSaved'),
     )
   }
-  /** 0127: a possible diagnosis confirmed: written in step 5, primary when there is none yet. */
+  /** 0127: a possible diagnosis confirmed: written in step 5, primary when there is none yet
+   *  (0130: the database decides). */
   const confirmDd = async (d: Diagnosis) => {
-    const type: 'primary' | 'secondary' = hasPrimary ? 'secondary' : 'primary'
     if (
       !(await confirm({
         title: t('sixSteps.confirmQ', { dx: d.text, name }),
-        body: t(type === 'primary' ? 'sixSteps.confirmPrimary' : 'sixSteps.confirmSecondary'),
+        body: t(hasPrimary ? 'sixSteps.confirmSecondary' : 'sixSteps.confirmPrimary'),
         confirmLabel: t('sixSteps.confirmYes'),
       }))
     )
       return
     void run(
-      () => actions.confirmDifferential.mutateAsync({ id: d.id, type }),
+      () => actions.confirmDifferential.mutateAsync({ id: d.id }),
       t('sixSteps.confirmed', { dx: d.text }),
     )
   }
@@ -843,6 +853,7 @@ export function ClinicalCard({
   }
   /** The prescriber sends a line to an outside pharmacy, or back to the clinic pharmacy (0100). */
   const decideSupply = async (r: Prescription, to: 'pharmacy' | 'outside') => {
+    setMsgStep('plan')
     const out = to === 'outside'
     if (
       !(await confirm({
@@ -859,6 +870,7 @@ export function ClinicalCard({
   }
   /** Cancel a line still waiting at the pharmacy, or take a handed-over one back. */
   const submitReason = async (r: Prescription) => {
+    setMsgStep('plan')
     const why = reason.trim()
     if (!reasonFor || why.length < 3) return setLocalError(t('clinical.errors.reason'))
     if (reasonFor.kind === 'cancel') {
@@ -974,6 +986,30 @@ export function ClinicalCard({
       ...o,
       services: o.services.includes(id) ? o.services.filter((x) => x !== id) : [...o.services, id],
     }))
+  const addTest = (id: string) =>
+    setOrder((o) => (o.services.includes(id) ? o : { ...o, services: [...o.services, id] }))
+  // 0130: the tests of the desks this person may ask, as one list grouped by desk; the price the
+  // visit pays (the insurer's when it has one, else the cash price)
+  const testPrice = (s: Treatment): number | null =>
+    (payerId ? s.payerPrices[payerId] : undefined) ?? s.cashPrice
+  const testDesks = desks.filter((g) => !deskStaff || clinician || g === station)
+  const testOptions = testDesks.flatMap((g) =>
+    tests
+      .filter((s) => s.orderStation === g && !order.services.includes(s.id))
+      .map((s) => {
+        const price = testPrice(s)
+        return {
+          value: s.id,
+          label: treatmentName(s, i18n.language),
+          group: t(`register.stations.${g}`, { defaultValue: g }),
+          hint: price != null ? formatRwf(price) : undefined,
+          keywords: [s.code, s.nameEn, s.nameFr, s.nameKin].filter(Boolean).join(' '),
+        }
+      }),
+  )
+  const chosenTests = order.services
+    .map((id) => tests.find((x) => x.id === id))
+    .filter((x): x is Treatment => !!x)
   /** The author of a line (or the manager) changes or removes it, with a reason (0104). */
   const mayEditLine = (byId: string | null | undefined) =>
     clinician && (isManager || (!!byId && byId === user.id))
@@ -1073,7 +1109,6 @@ export function ClinicalCard({
                     <span className="text-ink block whitespace-pre-wrap line-through">
                       {[
                         v.text,
-                        v.icd10,
                         v.type ? t(`clinical.type.${v.type}`) : null,
                         v.provisional ? t('clinical.provisional') : null,
                       ]
@@ -1145,14 +1180,17 @@ export function ClinicalCard({
       setNoDx(null)
       setMsgStep('complaint')
       setLocalError(t('sixSteps.needComplaint'))
-      document.getElementById('step-complaint')?.scrollIntoView({ behavior: 'smooth' })
+      if (stepper) goStep(1)
+      else document.getElementById('step-complaint')?.scrollIntoView({ behavior: 'smooth' })
       return
     }
     // no primary diagnosis: the clinician says none was found, and why (0125), instead of a block
-    // (0126: a desk view knows there is one without its words)
+    // (0126: a desk view knows there is one without its words); in step 5
     if (!hasPrimary) {
       setLocalError(null)
+      setMsgStep('definitive')
       setNoDx((x) => x ?? { kind: 'no_disease', note: '' })
+      if (stepper) goStep(5)
       return
     }
     if (
@@ -1241,10 +1279,14 @@ export function ClinicalCard({
       </form>
     </Reveal>
   )
+  // 0130: the diagnosis in words only: no ICD-10 code, no primary / secondary (the first
+  // definitive diagnosis of the visit is the primary one), no "also in the differential list"
   const dxForm = (
     <Reveal focus block="nearest">
-      <form onSubmit={submitDx} className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr_auto]">
-        <p className="text-ink-3 col-span-full m-0 text-xs">{t('clinical.dxHint')}</p>
+      <form onSubmit={submitDx} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+        {!stepper && (
+          <p className="text-ink-3 col-span-full m-0 text-xs">{t('clinical.dxHintAuto')}</p>
+        )}
         <Field
           label={t('clinical.dx')}
           value={dx.text}
@@ -1252,39 +1294,8 @@ export function ClinicalCard({
           placeholder={t('clinical.dxPh')}
           required
         />
-        <Field
-          label="ICD-10"
-          value={dx.icd10}
-          onChange={(e) => setDx({ ...dx, icd10: e.target.value.toUpperCase() })}
-          placeholder="B54"
-        />
-        {/* step 3: a possible diagnosis has no type (it is never the primary one) */}
-        {mode === 'dd' ? (
-          <span className="hidden sm:block" />
-        ) : (
-          <Select
-            label={t('clinical.dxType')}
-            value={dx.type}
-            onChange={(e) => setDx({ ...dx, type: e.target.value as 'primary' | 'secondary' })}
-          >
-            <option value="primary">{t('clinical.type.primary')}</option>
-            <option value="secondary">{t('clinical.type.secondary')}</option>
-          </Select>
-        )}
-        <div className="flex items-end gap-2">
-          {stepper ? (
-            mode === 'dx' && (
-              <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
-                <input
-                  type="checkbox"
-                  className="accent-primary"
-                  checked={dx.also}
-                  onChange={(e) => setDx({ ...dx, also: e.target.checked })}
-                />
-                {t('sixSteps.alsoDifferential')}
-              </label>
-            )
-          ) : (
+        <div className="flex flex-wrap items-end gap-3">
+          {!stepper && (
             <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
               <input
                 type="checkbox"
@@ -1299,18 +1310,11 @@ export function ClinicalCard({
             {t(mode === 'dd' ? 'sixSteps.saveDifferential' : 'clinical.saveDx')}
           </Button>
         </div>
-        <ul className="text-ink-3 col-span-full m-0 flex flex-col gap-0.5 pl-4 text-xs">
-          <li>{t('clinical.icdHint')}</li>
-          <li>
-            {t(
-              !stepper
-                ? 'clinical.provisionalHint'
-                : mode === 'dd'
-                  ? 'sixSteps.differentialHint'
-                  : 'sixSteps.alsoDifferentialHint',
-            )}
-          </li>
-        </ul>
+        {(!stepper || mode === 'dd') && (
+          <p className="text-ink-3 col-span-full m-0 text-xs">
+            {t(stepper ? 'sixSteps.differentialHint' : 'clinical.provisionalHint')}
+          </p>
+        )}
       </form>
     </Reveal>
   )
@@ -1548,46 +1552,71 @@ export function ClinicalCard({
     <Reveal block="nearest">
       <form onSubmit={submitOrder} className="flex flex-col gap-3">
         <p className="text-ink-3 m-0 text-xs">{t('clinical.testHint')}</p>
-        {desks
-          .filter((g) => !deskStaff || clinician || g === station)
-          .map((g) => {
-            const list = tests.filter((s) => s.orderStation === g)
-            if (list.length === 0) return null
-            return (
-              <fieldset key={g} className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-                <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
-                  {t(`register.stations.${g}`, { defaultValue: g })}
-                </legend>
-                <div className="flex flex-wrap gap-2">
-                  {list.map((s) => {
-                    const on = order.services.includes(s.id)
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        role="checkbox"
-                        aria-checked={on}
-                        onClick={() => toggleTest(s.id)}
-                        className={cn(
-                          'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
-                          on
-                            ? 'border-primary bg-primary text-on-primary'
-                            : 'border-border bg-card text-ink-2 hover:bg-hover',
-                        )}
-                      >
-                        {on ? (
-                          <CheckCircle2 size={14} aria-hidden="true" />
-                        ) : (
-                          <FlaskConical size={14} aria-hidden="true" />
-                        )}
-                        {treatmentName(s, i18n.language)}
-                      </button>
-                    )
-                  })}
-                </div>
-              </fieldset>
-            )
-          })}
+        {/* 0130: one searchable list grouped by desk (Laboratory, Ultrasound…), not every test
+            spread out; the tests chosen are listed under it with their price */}
+        {testOptions.length + chosenTests.length > 0 && (
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <SearchSelect
+              label={t('clinical.testPick')}
+              value=""
+              onChange={(id) => {
+                if (id) addTest(id)
+              }}
+              emptyLabel={t('clinical.testPickEmpty')}
+              options={testOptions}
+              adder
+            />
+            <span className="text-ink-3 text-xs">{t('clinical.testPickHint')}</span>
+          </div>
+        )}
+        {chosenTests.length > 0 ? (
+          <ul
+            className="border-border divide-border m-0 flex flex-col divide-y rounded-md border p-0"
+            aria-label={t('clinical.testsChosen', { count: chosenTests.length })}
+          >
+            {chosenTests.map((s) => {
+              const price = testPrice(s)
+              const label = treatmentName(s, i18n.language)
+              return (
+                <li key={s.id} className="anim-enter flex list-none items-center gap-3 px-3 py-2">
+                  <FlaskConical size={15} aria-hidden="true" className="text-primary flex-none" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-semibold">{label}</span>
+                    <span className="text-ink-3 block text-xs">
+                      {t(`register.stations.${s.orderStation}`, {
+                        defaultValue: s.orderStation ?? '',
+                      })}
+                    </span>
+                  </span>
+                  <span className="text-ink-2 text-[13px] font-semibold whitespace-nowrap tabular-nums">
+                    {price != null ? formatRwf(price) : t('clinical.testNoPrice')}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="px-2"
+                    aria-label={t('clinical.testRemove', { test: label })}
+                    title={t('clinical.testRemove', { test: label })}
+                    onClick={() => toggleTest(s.id)}
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </Button>
+                </li>
+              )
+            })}
+            {chosenTests.length > 1 && (
+              <li className="bg-hover/40 flex list-none items-center justify-end gap-2 px-3 py-2 text-[13px] font-semibold">
+                {t('clinical.testsTotal', {
+                  amount: formatRwf(chosenTests.reduce((sum, x) => sum + (testPrice(x) ?? 0), 0)),
+                })}
+              </li>
+            )}
+          </ul>
+        ) : (
+          tests.length > 0 && (
+            <p className="text-ink-3 m-0 text-[13px]">{t('clinical.testNoneChosen')}</p>
+          )
+        )}
         {tests.length === 0 && <EmptyNote>{t('clinical.noTests')}</EmptyNote>}
         <Field
           label={t('clinical.reason')}
@@ -1767,34 +1796,14 @@ export function ClinicalCard({
         <span className="min-w-0 flex-[1_1_14rem]">
           {editingThis ? (
             <Reveal focus block="nearest">
-              <form
-                onSubmit={submitDxEdit}
-                className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr]"
-              >
+              {/* 0130: the words only (the code and the type are no longer asked) */}
+              <form onSubmit={submitDxEdit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field
                   label={t('clinical.dx')}
                   value={dxEdit.text}
                   onChange={(e) => setDxEdit({ ...dxEdit, text: e.target.value })}
                   required
                 />
-                <Field
-                  label="ICD-10"
-                  value={dxEdit.icd10}
-                  onChange={(e) => setDxEdit({ ...dxEdit, icd10: e.target.value.toUpperCase() })}
-                />
-                {/* 0127: a possible diagnosis has no type; its step changes by Confirm */}
-                {!differential && (
-                  <Select
-                    label={t('clinical.dxType')}
-                    value={dxEdit.type}
-                    onChange={(e) =>
-                      setDxEdit({ ...dxEdit, type: e.target.value as 'primary' | 'secondary' })
-                    }
-                  >
-                    <option value="primary">{t('clinical.type.primary')}</option>
-                    <option value="secondary">{t('clinical.type.secondary')}</option>
-                  </Select>
-                )}
                 {!stepper && (
                   <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
                     <input
@@ -1806,7 +1815,7 @@ export function ClinicalCard({
                     {t('clinical.provisional')}
                   </label>
                 )}
-                <span className="sm:col-span-2">
+                <span className="col-span-full">
                   {reasonField(
                     dxEdit.reason,
                     (v) => setDxEdit({ ...dxEdit, reason: v }),
@@ -1833,7 +1842,6 @@ export function ClinicalCard({
             <>
               <span className={cn('block font-semibold', removed && 'line-through')}>
                 {d.text}
-                {d.icd10 && <span className="text-ink-3 ml-2 text-xs">{d.icd10}</span>}
                 {d.provisional && !stepper && (
                   <span className="text-ink-3 ml-2 text-xs">({t('clinical.provisional')})</span>
                 )}
@@ -1925,14 +1933,7 @@ export function ClinicalCard({
               onClick={() => {
                 setLocalError(null)
                 setMsgStep(stageOf(d) === 'differential' ? 'differential' : 'definitive')
-                setDxEdit({
-                  id: d.id,
-                  text: d.text,
-                  icd10: d.icd10 ?? '',
-                  type: d.type,
-                  provisional: d.provisional,
-                  reason: '',
-                })
+                setDxEdit({ id: d.id, text: d.text, provisional: d.provisional, reason: '' })
               }}
             >
               <Pencil size={14} aria-hidden="true" />
@@ -1963,10 +1964,14 @@ export function ClinicalCard({
     // database checks through the hand-over since 0091)
     const wrote = r.prescriberId ? r.prescriberId === user.id : !!r.by && r.by === user.name
     const tookOver = !readOnly && !wrote && !!holder && holder.split(', ').includes(user.name)
+    // 0130: as the database: also the one who sent it outside, and a doctor working on the open
+    // visit (the one who has the patient now); before, the button showed and the database refused
+    const sentItOutside = state === 'outside' && !!r.supplySetBy && r.supplySetBy === user.name
+    const treatingNow = doctor && clinician && !finished
     const canCancel =
       ((state === 'waiting' && r.pending !== false) || state === 'outside') &&
       !locked &&
-      (isManager || wrote || tookOver) &&
+      (isManager || wrote || tookOver || sentItOutside || treatingNow) &&
       can('clinical.write')
     // the pharmacy undoes a hand-over (wrong medicine, brought back unopened)
     const canReturn = state === 'given' && r.supply !== 'room' && canDesk('pharmacy')
@@ -2260,6 +2265,7 @@ export function ClinicalCard({
               className="mt-2 flex flex-col gap-2"
               onSubmit={async (e) => {
                 e.preventDefault()
+                setMsgStep('tests')
                 const correcting = result.correction !== null
                 if (
                   !(await confirm({
@@ -2463,9 +2469,13 @@ export function ClinicalCard({
                 ) : (
                   <CircleDashed size={15} aria-hidden="true" className="text-red" />
                 )}
-                <a href={`#step-${x.step}`} className="text-inherit no-underline hover:underline">
+                <button
+                  type="button"
+                  onClick={() => goStep(STEP_KEYS.indexOf(x.step as StepKey) + 1)}
+                  className="cursor-pointer bg-transparent p-0 text-left font-semibold text-inherit hover:underline"
+                >
                   {t(x.key)}
-                </a>
+                </button>
               </li>
             ))}
             {openOrders.length > 0 && (
@@ -2496,7 +2506,7 @@ export function ClinicalCard({
     ) : null
 
   /** The messages under the step they belong to (the last one acted on). */
-  const msgIn = (step: StepKey | 'finish') => (msgStep === step ? messages : null)
+  const msgIn = (k: StepKey | 'finish') => (msgStep === k ? messages : null)
   const section = (k: SectionKey, rows: number, template?: string) => (
     <SectionEditor
       section={k}
@@ -2519,149 +2529,214 @@ export function ClinicalCard({
   const definitive = diagnoses.filter((d) => stageOf(d) === 'definitive')
   const live = (list: Diagnosis[]) => standing(list).length > 0
   const nurseOrders = data?.nurseOrders ?? []
-  const steps = stepper && data && (
-    <CardBody className="border-border border-t px-2 pt-4 sm:px-4">
-      <ol className="m-0 p-0">
-        <StepCard n={1} step="complaint" done={!!data.sections?.complaint} required>
-          {section('complaint', 1)}
-          {section('hpi', 4)}
-          <PastHistoryPanel
-            encounterId={encounterId}
-            patientId={patientId ?? data.patient?.id ?? null}
-            patientName={name}
-            onMessage={onDone}
-          />
-          {msgIn('complaint')}
-        </StepCard>
-        <StepCard
-          n={2}
-          step="exam"
-          done={!!data.sections?.exam}
-          aside={
-            !readOnly &&
-            tabBtn('note', t('clinical.addNote'), <ClipboardList size={14} aria-hidden="true" />)
-          }
-        >
-          {section('exam', 6, t('sixSteps.examTemplate'))}
-          {mode === 'note' && noteForm}
-          {data.notes.length > 0 && (
-            <div className="flex flex-col">
-              <span className="text-ink-2 text-[13px] font-semibold">
-                {t('sixSteps.otherNotes')}
-              </span>
-              <div className="border-border -mx-3 border-t sm:-mx-4">
-                {data.notes.map(renderNote)}
+  // 0130: the six steps as slides under a bar (the owner: "like a slide, not that long")
+  const stepStates = [
+    { step: 'complaint' as const, done: !!data?.sections?.complaint, required: true },
+    { step: 'exam' as const, done: !!data?.sections?.exam },
+    { step: 'differential' as const, done: live(differentials) },
+    { step: 'tests' as const, done: (data?.orders.length ?? 0) > 0 },
+    { step: 'definitive' as const, done: dxOrReason, required: true },
+    {
+      step: 'plan' as const,
+      done:
+        !!data?.sections?.plan ||
+        !!data?.prescriptions.some((r) => !r.cancelledAt) ||
+        nurseOrders.length > 0,
+    },
+  ]
+  const stepAside: Partial<Record<StepKey, ReactNode>> = {
+    exam:
+      !readOnly &&
+      tabBtn('note', t('clinical.addNote'), <ClipboardList size={14} aria-hidden="true" />),
+    differential:
+      !readOnly &&
+      tabBtn('dd', t('sixSteps.addDifferential'), <Plus size={14} aria-hidden="true" />),
+    tests:
+      !readOnly &&
+      tabBtn('test', t('clinical.addTest'), <FlaskConical size={14} aria-hidden="true" />),
+    definitive:
+      !readOnly &&
+      tabBtn('dx', t('sixSteps.addDefinitive'), <Stethoscope size={14} aria-hidden="true" />),
+  }
+  const stepBody: Record<StepKey, ReactNode> = data
+    ? {
+        complaint: (
+          <>
+            {section('complaint', 1)}
+            {section('hpi', 4)}
+            <PastHistoryPanel
+              encounterId={encounterId}
+              patientId={patientId ?? data.patient?.id ?? null}
+              patientName={name}
+              onMessage={onDone}
+            />
+            {msgIn('complaint')}
+          </>
+        ),
+        exam: (
+          <>
+            {section('exam', 6, t('sixSteps.examTemplate'))}
+            {mode === 'note' && noteForm}
+            {data.notes.length > 0 && (
+              <div className="flex flex-col">
+                <span className="text-ink-2 text-[13px] font-semibold">
+                  {t('sixSteps.otherNotes')}
+                </span>
+                <div className="border-border -mx-3 border-t sm:-mx-4">
+                  {data.notes.map(renderNote)}
+                </div>
               </div>
-            </div>
-          )}
-          {msgIn('exam')}
-        </StepCard>
-        <StepCard
-          n={3}
-          step="differential"
-          done={live(differentials)}
-          aside={
-            !readOnly &&
-            tabBtn('dd', t('sixSteps.addDifferential'), <Plus size={14} aria-hidden="true" />)
-          }
-        >
-          {mode === 'dd' && dxForm}
-          {differentials.length > 0 ? (
-            <div className="border-border -mx-3 border-t sm:-mx-4">
-              {differentials.map(renderDx)}
-            </div>
-          ) : (
-            <EmptyNote>{t('sixSteps.noDifferential')}</EmptyNote>
-          )}
-          {msgIn('differential')}
-        </StepCard>
-        <StepCard
-          n={4}
-          step="tests"
-          done={data.orders.length > 0}
-          aside={
-            !readOnly &&
-            tabBtn('test', t('clinical.addTest'), <FlaskConical size={14} aria-hidden="true" />)
-          }
-        >
-          {noTests && <p className="text-ink-3 m-0 text-xs">{t('clinical.testsWhoHint')}</p>}
-          {mode === 'test' && testForm}
-          {data.orders.length > 0 ? (
-            <div className="border-border -mx-3 border-t sm:-mx-4">
-              {data.orders.map(renderOrder)}
-            </div>
-          ) : (
-            <EmptyNote>{t('sixSteps.noTests')}</EmptyNote>
-          )}
-          {msgIn('tests')}
-        </StepCard>
-        <StepCard
-          n={5}
-          step="definitive"
-          done={dxOrReason}
-          required
-          aside={
-            !readOnly &&
-            tabBtn('dx', t('sixSteps.addDefinitive'), <Stethoscope size={14} aria-hidden="true" />)
-          }
-        >
-          {mode === 'dx' && dxForm}
-          {definitive.length > 0 ? (
-            <div className="border-border -mx-3 border-t sm:-mx-4">{definitive.map(renderDx)}</div>
-          ) : (
-            !data.visit?.noDiagnosis && <EmptyNote>{t('sixSteps.noDefinitive')}</EmptyNote>
-          )}
-          {noDxNotice && <div className="-mx-3 sm:-mx-4">{noDxNotice}</div>}
-          {noDxPanel && <div className="-mx-3 sm:-mx-4">{noDxPanel}</div>}
-          {msgIn('definitive')}
-        </StepCard>
-        <StepCard
-          n={6}
-          step="plan"
-          last
-          done={
-            !!data.sections?.plan ||
-            data.prescriptions.some((r) => !r.cancelledAt) ||
-            nurseOrders.length > 0
-          }
-        >
-          {section('plan', 4)}
-          <div className="flex flex-col gap-2">
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="text-ink-2 text-[13px] font-semibold">
-                {t('sixSteps.prescriptions')}
-              </span>
-              {!readOnly &&
-                tabBtn('rx', t('clinical.addRx'), <Pill size={14} aria-hidden="true" />)}
-            </span>
-            {mode === 'rx' && rxForm}
-            {data.prescriptions.length > 0 ? (
+            )}
+            {msgIn('exam')}
+          </>
+        ),
+        differential: (
+          <>
+            {mode === 'dd' && dxForm}
+            {differentials.length > 0 ? (
               <div className="border-border -mx-3 border-t sm:-mx-4">
-                {data.prescriptions.map(renderRx)}
+                {differentials.map(renderDx)}
               </div>
             ) : (
-              <EmptyNote>{t('sixSteps.noPrescriptions')}</EmptyNote>
+              <EmptyNote>{t('sixSteps.noDifferential')}</EmptyNote>
             )}
-          </div>
-          {msgIn('plan')}
-          <NurseOrdersStep
-            encounterId={encounterId}
-            orders={nurseOrders}
-            canOrder={clinician && doctor && !finished}
-            myId={user.id}
-            isManager={isManager}
-            patientName={name}
-            onDone={onDone}
-            onError={(m) => {
-              setMsgStep('plan')
-              setLocalError(m)
-            }}
-          />
-        </StepCard>
-      </ol>
+            {msgIn('differential')}
+          </>
+        ),
+        tests: (
+          <>
+            {noTests && <p className="text-ink-3 m-0 text-xs">{t('clinical.testsWhoHint')}</p>}
+            {mode === 'test' && testForm}
+            {data.orders.length > 0 ? (
+              <div className="border-border -mx-3 border-t sm:-mx-4">
+                {data.orders.map(renderOrder)}
+              </div>
+            ) : (
+              <EmptyNote>{t('sixSteps.noTests')}</EmptyNote>
+            )}
+            {msgIn('tests')}
+          </>
+        ),
+        definitive: (
+          <>
+            {mode === 'dx' && dxForm}
+            {definitive.length > 0 ? (
+              <div className="border-border -mx-3 border-t sm:-mx-4">
+                {definitive.map(renderDx)}
+              </div>
+            ) : (
+              !data.visit?.noDiagnosis && <EmptyNote>{t('sixSteps.noDefinitive')}</EmptyNote>
+            )}
+            {noDxNotice && <div className="-mx-3 sm:-mx-4">{noDxNotice}</div>}
+            {noDxPanel && <div className="-mx-3 sm:-mx-4">{noDxPanel}</div>}
+            {msgIn('definitive')}
+          </>
+        ),
+        plan: (
+          <>
+            {section('plan', 4)}
+            <div className="flex flex-col gap-2">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-ink-2 text-[13px] font-semibold">
+                  {t('sixSteps.prescriptions')}
+                </span>
+                {!readOnly &&
+                  tabBtn('rx', t('clinical.addRx'), <Pill size={14} aria-hidden="true" />)}
+              </span>
+              {mode === 'rx' && rxForm}
+              {data.prescriptions.length > 0 ? (
+                <div className="border-border -mx-3 border-t sm:-mx-4">
+                  {data.prescriptions.map(renderRx)}
+                </div>
+              ) : (
+                <EmptyNote>{t('sixSteps.noPrescriptions')}</EmptyNote>
+              )}
+            </div>
+            {msgIn('plan')}
+            <NurseOrdersStep
+              encounterId={encounterId}
+              orders={nurseOrders}
+              canOrder={clinician && doctor && !finished}
+              myId={user.id}
+              isManager={isManager}
+              patientName={name}
+              onDone={onDone}
+              onError={(m) => {
+                setMsgStep('plan')
+                setLocalError(m)
+              }}
+            />
+          </>
+        ),
+      }
+    : { complaint: null, exam: null, differential: null, tests: null, definitive: null, plan: null }
+  const shortTitle = (n: number) => t(`sixSteps.${STEP_KEYS[n - 1]}.short`)
+  const steps = stepper && data && (
+    <CardBody className="border-border gap-3 border-t px-2 pt-3 sm:px-4">
+      <div ref={barRef} className="flex min-w-0 scroll-mt-24 flex-col gap-2">
+        <StepBar steps={stepStates} current={step} onPick={goStep} />
+        {/* what finishing needs, near the bar (the Finish button is on step 6) */}
+        {clinician && !finished && (
+          <p className="text-ink-3 m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className="font-semibold">{t('sixSteps.toFinishShort')}</span>
+            {[
+              { ok: hasComplaint, n: 1 },
+              { ok: dxOrReason, n: 5 },
+            ].map((x) => (
+              <button
+                key={x.n}
+                type="button"
+                onClick={() => goStep(x.n)}
+                className={cn(
+                  'inline-flex cursor-pointer items-center gap-1 bg-transparent p-0 font-semibold hover:underline',
+                  x.ok ? 'text-green' : 'text-red',
+                )}
+              >
+                {x.ok ? (
+                  <CheckCircle2 size={13} aria-hidden="true" />
+                ) : (
+                  <CircleDashed size={13} aria-hidden="true" />
+                )}
+                {x.n} · {shortTitle(x.n)}
+              </button>
+            ))}
+            {step !== STEP_KEYS.length && (
+              <button
+                type="button"
+                onClick={() => goStep(STEP_KEYS.length)}
+                className="text-primary cursor-pointer bg-transparent p-0 font-semibold hover:underline"
+              >
+                {t('sixSteps.goFinish')}
+              </button>
+            )}
+          </p>
+        )}
+      </div>
+      {STEP_KEYS.map((k, i) => {
+        const n = i + 1
+        const st = stepStates[i]!
+        return (
+          <StepSlide
+            key={k}
+            n={n}
+            total={STEP_KEYS.length}
+            step={k}
+            done={st.done}
+            required={st.required}
+            active={n === step}
+            direction={stepDir}
+            aside={stepAside[k]}
+            prevTitle={n > 1 ? shortTitle(n - 1) : undefined}
+            nextTitle={n < STEP_KEYS.length ? shortTitle(n + 1) : undefined}
+            onPrev={n > 1 ? () => goStep(n - 1) : undefined}
+            onNext={n < STEP_KEYS.length ? () => goStep(n + 1) : undefined}
+          >
+            {stepBody[k]}
+          </StepSlide>
+        )
+      })}
     </CardBody>
   )
-
   return (
     <Card>
       <CardHeader hue="navy">
@@ -2840,7 +2915,7 @@ export function ClinicalCard({
       {stepper && msgStep === 'finish' && (localError || warnings.length > 0) && (
         <CardBody className="border-border border-t">{messages}</CardBody>
       )}
-      {finishBar}
+      {(!stepper || step === STEP_KEYS.length) && finishBar}
     </Card>
   )
 }
