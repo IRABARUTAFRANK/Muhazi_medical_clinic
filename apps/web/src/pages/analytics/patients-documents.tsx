@@ -187,6 +187,13 @@ export function PatientsDocuments({
       cell: (r) => r.doctor?.name ?? '—',
       sort: (r) => r.doctor?.name ?? null,
     },
+    // 0127: the patient's words (step 1)
+    {
+      key: 'complaint',
+      label: tx(t, 'documents.cols.complaint', 'Chief complaint'),
+      cell: (r) => r.complaint ?? '—',
+      sort: (r) => r.complaint ?? null,
+    },
     {
       key: 'diagnosis',
       label: tx(t, 'documents.cols.diagnosis', 'Diagnosis'),

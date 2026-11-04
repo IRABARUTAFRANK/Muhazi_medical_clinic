@@ -187,6 +187,27 @@ export function useWording() {
           }),
           body: [p.name, p.reason].filter(Boolean).join(' · ') || null,
         }
+      // 0127: an order of the doctor to the nurses (step 6), and what became of it
+      case 'nurse_order':
+        return {
+          title: t(p.kind === 'drug' ? 'notify.nurseOrderDrug' : 'notify.nurseOrderAct', {
+            title: p.title ?? '',
+          }),
+          body: joinParts([
+            p.name,
+            num(p.times) > 1 ? t('nurseOrders.times', { count: num(p.times) }) : null,
+            byText(p.by),
+          ]),
+        }
+      case 'nurse_order_done': {
+        const what = ['done', 'not_done', 'not_given', 'cancelled'].includes(String(p.what))
+          ? String(p.what)
+          : 'done'
+        return {
+          title: t(`notify.nurseOrder.${what}`, { by: p.by ?? '', title: p.title ?? '' }),
+          body: joinParts([p.name, quoted(p.reason)]),
+        }
+      }
       case 'inquiry':
         // the doctor named in the request is told too: reception books it, the doctor then accepts
         return {

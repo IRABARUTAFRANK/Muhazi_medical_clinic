@@ -2056,6 +2056,19 @@
       "askBody": "Un rendez-vous pris pour un collègue attend sa réponse.",
       "directTitle": "Confirmer tout de suite les rendez-vous pour un collègue ?",
       "directBody": "Le collègue ne les accepte plus ; il est prévenu par une notification."
+    },
+    "pastForDoctor": {
+      "title": "Les antécédents du patient pour le médecin traitant",
+      "lead": "À l’étape 1 d’une visite, le médecin peut voir le résumé des visites antérieures du patient : plainte, diagnostics, conduite à tenir, médicaments, résultats, allergies et maladies chroniques.",
+      "on": "Le médecin traitant les voit",
+      "onHint": "Un médecin qui travaille sur la visite ouverte du patient voit tout de suite les visites antérieures ; chaque ouverture est notée dans le journal des accès.",
+      "off": "Le médecin demande d’abord",
+      "offHint": "Comme avant : le médecin demande à voir les dossiers antérieurs, ou les ouvre en urgence avec une raison.",
+      "note": "Une personne qui n’est pas médecin ne voit jamais les antécédents du patient. Le gérant et les médecins qui y ont déjà accès le gardent dans les deux cas.",
+      "onTitle": "Laisser le médecin traitant voir les antécédents du patient ?",
+      "onBody": "Un médecin qui travaille sur la visite ouverte d’un patient verra les visites antérieures à l’étape 1. Chaque ouverture est notée dans le journal des accès.",
+      "offTitle": "Obliger le médecin à demander d’abord ?",
+      "offBody": "Le médecin traitant ne verra plus les visites antérieures tout de suite : il demande l’accès, ou les ouvre en urgence avec une raison."
     }
   },
   "pin": {
@@ -2203,7 +2216,8 @@
     "allergiesNoneHint": "Cochez quand le patient a été interrogé et n'a aucune allergie connue. C'est imprimé sur les ordonnances et les comptes rendus.",
     "allergiesNotRecorded": "Allergies pas encore enregistrées",
     "privateField": "Privé (médical)",
-    "privateFill": "Champs privés (médicaux) : vous ne voyez pas ce qui y est enregistré. Remplissez-en un seulement s’il est vide ; une valeur déjà présente est conservée."
+    "privateFill": "Champs privés (médicaux) : vous ne voyez pas ce qui y est enregistré. Remplissez-en un seulement s’il est vide ; une valeur déjà présente est conservée.",
+    "complaintLine": "Motif : {{text}}"
   },
   "clinical": {
     "title": "Dossier clinique",
@@ -2974,7 +2988,15 @@
     "staffDoctorOn": "{{by}} a marqué {{name}} comme médecin",
     "staffDoctorOnBody": "Voit les dossiers médicaux désormais.",
     "staffDoctorOff": "{{by}} a retiré la marque de médecin à {{name}}",
-    "staffDoctorOffBody": "Ne voit plus les dossiers médicaux."
+    "staffDoctorOffBody": "Ne voit plus les dossiers médicaux.",
+    "nurseOrderAct": "Acte à faire : {{title}}",
+    "nurseOrderDrug": "Médicament à administrer : {{title}}",
+    "nurseOrder": {
+      "done": "{{by}} a exécuté : {{title}}",
+      "not_done": "{{by}} n’exécutera pas la suite de : {{title}}",
+      "not_given": "{{by}} n’a pas pu administrer une prise de : {{title}}",
+      "cancelled": "{{by}} a annulé la prescription : {{title}}"
+    }
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -4446,7 +4468,20 @@
       "validatedBanner": "VALIDÉ – le {{date}} par {{name}}",
       "chipValidated": "Validé",
       "chipPreliminary": "Provisoire",
-      "chipAmended": "Modifié"
+      "chipAmended": "Modifié",
+      "step1": "Plainte et anamnèse",
+      "step2": "Examen physique",
+      "step3": "Diagnostic différentiel",
+      "step4": "Examens paracliniques",
+      "step5": "Diagnostic définitif",
+      "step6": "Plan de traitement",
+      "complaint": "Motif de consultation",
+      "nurseOrders": "Prescriptions aux infirmiers",
+      "order": "Prescription",
+      "how": "Modalités",
+      "confirmed": "Confirmé",
+      "notConfirmed": "Non confirmé",
+      "notRecorded": "Non renseigné"
     }
   },
   "access": {
@@ -6853,7 +6888,8 @@
       "head": "Chef de service",
       "request": "Demande acceptée",
       "emergency": "Urgence",
-      "manager": "Gérant"
+      "manager": "Gérant",
+      "treating": "Médecin traitant"
     },
     "what": {
       "file": "Dossier du patient",
@@ -6862,7 +6898,8 @@
       "results": "Résultats",
       "journey": "Parcours de la visite",
       "emergency": "Accès d’urgence ouvert",
-      "attachment": "Un fichier d’une visite antérieure"
+      "attachment": "Un fichier d’une visite antérieure",
+      "history": "Visites antérieures (étape 1)"
     },
     "status": {
       "pending": "En attente",
@@ -6940,7 +6977,8 @@
       "manager": "{{name}} est le gérant : le gérant peut lire tous les dossiers.",
       "head": "{{name}} dirige le service responsable de cette visite.",
       "request": "{{name}} a demandé à lire le dossier et la demande a été acceptée.",
-      "emergency": "{{name}} l’a ouvert en urgence, avec une raison ; le gérant le vérifie."
+      "emergency": "{{name}} l’a ouvert en urgence, avec une raison ; le gérant le vérifie.",
+      "treating": "{{name}} soigne le patient en ce moment ; la clinique permet au médecin traitant de voir les visites antérieures."
     }
   },
   "recordPrivacy": {
@@ -7038,14 +7076,16 @@
       "results": "Résultats",
       "journey": "Parcours de la visite",
       "emergency": "Ouverture d’urgence",
-      "attachment": "Un fichier d’une visite antérieure"
+      "attachment": "Un fichier d’une visite antérieure",
+      "history": "Visites antérieures (étape 1)"
     },
     "via": {
       "own": "Sa propre visite",
       "head": "Chef de service",
       "manager": "Gestionnaire",
       "request": "Demande acceptée",
-      "emergency": "Urgence"
+      "emergency": "Urgence",
+      "treating": "Médecin traitant"
     }
   },
   "supportingFiles": {
@@ -7226,6 +7266,8 @@
   },
   "dbErrors": {
     "25402734": "Le médecin a annulé ce médicament.",
+    "37902613": "Le réglage « antécédents pour le médecin traitant » doit être activé ou désactivé.",
+    "47437974": "Notez le motif de consultation (étape 1) avant de terminer la consultation.",
     "52464355": "Il n’y a aucun stock de pharmacie ouvert où l’envoyer.",
     "67568016": "Cette catégorie contient encore {{p1}} service(s) : déplacez-les d’abord dans une autre catégorie.",
     "75188350": "La catégorie est introuvable.",
@@ -7629,7 +7671,19 @@
     "6197a26c": "Ce rendez-vous ne peut plus être modifié.",
     "2dd3cc49": "Dites pourquoi le rendez-vous est déplacé.",
     "f0c2044d": "Rendez-vous introuvable.",
-    "403a42c7": "Répondez oui ou non."
+    "403a42c7": "Répondez oui ou non.",
+    "93d982f5": "Une consultation terminée garde son motif : écrivez plutôt le nouveau.",
+    "eb87057f": "Dites s’il s’agit d’un acte médical ou d’un médicament à administrer.",
+    "8e38ddd2": "Non autorisé : cette prescription est pour un autre infirmier.",
+    "108f4947": "Un diagnostic est soit possible (différentiel), soit définitif.",
+    "d8c88bcd": "Envoyez-la à un infirmier, ou à tous les infirmiers.",
+    "c7dd8d57": "Le nombre de fois est compris entre 1 et 60.",
+    "21358efa": "Ce diagnostic est déjà confirmé.",
+    "bb06dc38": "Choisissez le médicament dans le stock.",
+    "22d39b98": "Partie du dossier de consultation inconnue.",
+    "d118b87b": "L’heure indiquée n’est pas possible.",
+    "e159c113": "Cette prescription est déjà terminée.",
+    "2c7e8550": "Le texte est trop long."
   },
   "panel": {
     "close": "Fermer",
@@ -7880,7 +7934,8 @@
       "visitNo": "N° de visite",
       "doctor": "Médecin",
       "diagnosis": "Diagnostic",
-      "status": "Statut"
+      "status": "Statut",
+      "complaint": "Motif de consultation"
     },
     "status": {
       "closed": "Clôturée",
@@ -8727,7 +8782,8 @@
         "description": "Cas par diagnostic, nouveaux et de suivi, par sexe et tranche d’âge.",
         "note1": "Un cas est une visite avec ce diagnostic (son code CIM-10, sinon son libellé), parmi les visites arrivées sur la période.",
         "note2": "Nouveau : le patient ne l’avait pas eu lors d’une visite précédente ; suivi : il l’avait eu.",
-        "note3": "Âge le jour de la visite. Vous voyez les visites de vos services (chefs) ou les diagnostics que vous avez écrits."
+        "note3": "Âge le jour de la visite. Vous voyez les visites de vos services (chefs) ou les diagnostics que vous avez écrits.",
+        "note4": "Par défaut, ce sont les diagnostics définitifs (étape 5) qui sont comptés ; choisissez Différentiels pour les diagnostics possibles de l’étape 3."
       },
       "rx": {
         "title": "Prescriptions",
@@ -8776,7 +8832,9 @@
         "practitioner": "Avec",
         "source": "Provenance",
         "search": "Rechercher",
-        "searchHint": "Patient, n° de dossier, médicament, examen…"
+        "searchHint": "Patient, n° de dossier, médicament, examen…",
+        "dxStage": "Diagnostics",
+        "dxStageHint": "Définitifs : confirmés (étape 5). Différentiels : les possibles de l’étape 3."
       },
       "sex": {
         "female": "Femme",
@@ -8918,7 +8976,8 @@
         "source": "Provenance",
         "arrivedAt": "Arrivé à",
         "bookedOn": "Pris le",
-        "cancelReason": "Motif d’annulation"
+        "cancelReason": "Motif d’annulation",
+        "complaint": "Motif de consultation"
       },
       "g": {
         "clinician": "Par soignant",
@@ -8969,6 +9028,11 @@
         "arrived": "Arrivés",
         "seen": "Vus",
         "noShow": "Non venus"
+      },
+      "dxStage": {
+        "definitive": "Définitifs",
+        "differential": "Différentiels",
+        "all": "Les deux"
       }
     },
     "ui": {
@@ -9458,7 +9522,9 @@
     "documents_one": "{{count}} document qui expire",
     "documents_other": "{{count}} documents qui expirent",
     "filesToComplete_one": "{{count}} dossier à compléter",
-    "filesToComplete_other": "{{count}} dossiers à compléter"
+    "filesToComplete_other": "{{count}} dossiers à compléter",
+    "nurseOrders_one": "{{count}} prescription à exécuter",
+    "nurseOrders_other": "{{count}} prescriptions à exécuter"
   },
   "daily": {
     "today": "Aujourd'hui",
@@ -9706,5 +9772,207 @@
     "confirmOffYes": "Oui, la retirer",
     "doneOn": "{{name}} est marqué médecin et voit maintenant les dossiers médicaux.",
     "doneOff": "{{name}} n’est plus marqué médecin et ne voit plus les dossiers médicaux."
+  },
+  "nurseOrders": {
+    "homeTitle": "Prescriptions à exécuter",
+    "homePanel": "Des médecins : actes et médicaments à administrer",
+    "openCount_one": "{{count}} en cours",
+    "openCount_other": "{{count}} en cours",
+    "homeEmpty": "Aucune prescription ne vous attend.",
+    "openVisit": "Ouvrir la visite",
+    "homeHint": "Les prescriptions envoyées à vous par nom et celles envoyées à tous les infirmiers de votre poste. Notez chaque prise donnée, ou non donnée avec la raison : le médecin le voit aussitôt.",
+    "title": "Prescriptions aux infirmiers",
+    "add": "Prescrire aux infirmiers",
+    "none": "Aucune prescription aux infirmiers.",
+    "kindLabel": "Type de prescription",
+    "kindDrug": "Médicament à administrer",
+    "kindAct": "Acte médical",
+    "drugHint": "Un médicament du stock : l’infirmier le donne depuis sa réserve ; chaque prise donnée est sortie de la réserve et facturée.",
+    "actHint": "Une injection, un pansement, une perfusion, une nébulisation, une sonde… Choisissez le service pour le facturer à chaque fois.",
+    "what": "Ce qu’il faut faire",
+    "whatPh": "Injection IM de ceftriaxone 1 g",
+    "billAs": "Service facturé",
+    "notBilledChoice": "Non facturé",
+    "quantity": "Quantité à chaque fois",
+    "dose": "Dose",
+    "unit": "unité",
+    "unitsLabel": "Unités de la réserve à chaque fois ({{unit}})",
+    "howOften": "Fréquence",
+    "timesLabel": "Combien de fois",
+    "forWhom": "Pour qui",
+    "allNurses": "Tous les infirmiers",
+    "notesLabel": "Note pour l’infirmier",
+    "notesPh": "Vérifier d’abord le bracelet d’allergie",
+    "send": "Envoyer la prescription",
+    "sendQ": "Prescrire « {{what}} » pour {{name}} ?",
+    "sendToOne": "Elle va à {{name}}, qui est prévenu(e) aussitôt.",
+    "sendToAll": "Elle va à tous les infirmiers du poste de soins, prévenus aussitôt.",
+    "sendDrugBody": "Chaque prise donnée est sortie de la réserve de l’infirmier et facturée.",
+    "sendActBody": "Le service est facturé à chaque fois qu’il est fait.",
+    "sendYes": "Oui, envoyer",
+    "sentToOne": "« {{what}} » envoyé à {{name}}.",
+    "sentToAll": "« {{what}} » envoyé à tous les infirmiers.",
+    "errTimes": "Combien de fois : un nombre entier de 1 à 60.",
+    "errMedicine": "Choisissez le médicament dans le stock.",
+    "errAct": "Dites ce que l’infirmier doit faire, ou choisissez le service.",
+    "forNurse": "Pour {{name}}",
+    "forAll": "Pour tous les infirmiers",
+    "forYouTitle_one": "Prescription du médecin ({{count}})",
+    "forYouTitle_other": "Prescriptions du médecin ({{count}})",
+    "byWhen": "par {{name}}, {{when}}",
+    "billedAs": "facturé comme {{service}}",
+    "unitsEach_one": "{{count}} unité à chaque fois",
+    "unitsEach_other": "{{count}} unités à chaque fois",
+    "times_one": "{{count}} fois",
+    "times_other": "{{count}} fois",
+    "progressDrug_one": "Donné {{given}}/{{count}}",
+    "progressDrug_other": "Donné {{given}}/{{count}}",
+    "progressAct_one": "Fait {{given}}/{{count}}",
+    "progressAct_other": "Fait {{given}}/{{count}}",
+    "progressAria_one": "{{given}} donné(s), {{notGiven}} non donné(s), sur {{count}}",
+    "progressAria_other": "{{given}} donné(s), {{notGiven}} non donné(s), sur {{count}}",
+    "timesLog_one": "{{count}} administration notée",
+    "timesLog_other": "{{count}} administrations notées",
+    "doseGiven": "{{n}} : donné",
+    "doseNotGiven": "{{n}} : non donné",
+    "notBilled": "non facturé",
+    "endedWhy": "Arrêtée par {{name}} le {{when}} : {{reason}}",
+    "status": {
+      "open": "À faire",
+      "done": "Fait",
+      "not_done": "Non fait",
+      "cancelled": "Annulée"
+    },
+    "give_one": "Donner ({{n}}/{{count}})",
+    "give_other": "Donner ({{n}}/{{count}})",
+    "markDone_one": "Fait ({{n}}/{{count}})",
+    "markDone_other": "Fait ({{n}}/{{count}})",
+    "giveQ": "« {{what}} » pour {{name}} : donné maintenant ?",
+    "giveDrugBody_one": "Prise {{n}} sur {{count}}, par vous, maintenant. Le médicament est sorti de votre réserve et facturé.",
+    "giveDrugBody_other": "Prise {{n}} sur {{count}}, par vous, maintenant. Le médicament est sorti de votre réserve et facturé.",
+    "giveActBody_one": "Fois {{n}} sur {{count}}, par vous, maintenant.",
+    "giveActBody_other": "Fois {{n}} sur {{count}}, par vous, maintenant.",
+    "noteLabel": "Note (facultatif)",
+    "notePh": "Avec de l’eau ; température 38,5 °C",
+    "giveYes": "Oui, donné",
+    "doneYes": "Oui, fait",
+    "givenSaved": "« {{what}} » : donné, noté.",
+    "doneSaved": "« {{what}} » : fait, noté.",
+    "skip": "Non donné",
+    "skipQ": "« {{what}} » pour {{name}} : pas donné cette fois ?",
+    "skipBody": "Cette fois compte comme non donnée ; le médecin est prévenu avec la raison.",
+    "skipWhy": "Pourquoi n’a-t-il pas été donné ?",
+    "skipYes": "Oui, non donné",
+    "skipSaved": "« {{what}} » : non donné, le médecin est prévenu.",
+    "notDone": "Ne sera pas fait",
+    "notDoneQ": "« {{what}} » pour {{name}} : le reste ne sera pas fait ?",
+    "notDoneBody": "La prescription se termine comme non faite ; le médecin est prévenu avec la raison.",
+    "notDoneYes": "Oui, ne sera pas fait",
+    "notDoneSaved": "« {{what}} » : ne sera pas fait, le médecin est prévenu.",
+    "stopWhy": "Pourquoi ?",
+    "cancel": "Annuler la prescription",
+    "cancelQ": "Annuler « {{what}} » pour {{name}} ?",
+    "cancelBody": "Les infirmiers ne la voient plus à faire ; ce qui a déjà été donné reste noté.",
+    "cancelYes": "Oui, annuler",
+    "cancelled": "« {{what}} » : annulée."
+  },
+  "sixSteps": {
+    "cardTitle": "La consultation en six étapes",
+    "lead": "Travaillez dans l’ordre que vous voulez et revenez à n’importe quelle étape. Pour terminer : le motif de consultation (étape 1) et un diagnostic définitif, ou la raison de son absence (étape 5).",
+    "stepAria": "Étape {{n}} : {{title}}",
+    "done": "Fait",
+    "empty": "Rien encore",
+    "requiredEmpty": "Nécessaire pour terminer",
+    "complaint": {
+      "title": "1 · Plainte et anamnèse",
+      "hint": "Ce que le patient dit souffrir, avec ses mots ; l’histoire de la maladie ; les consultations passées si ce n’est pas la première fois."
+    },
+    "exam": {
+      "title": "2 · Examen physique",
+      "hint": "Ce que vous avez trouvé à l’examen du patient."
+    },
+    "differential": {
+      "title": "3 · Diagnostic différentiel",
+      "hint": "Les diagnostics possibles après l’examen, pas encore confirmés. Confirmez-en un quand il est établi."
+    },
+    "tests": {
+      "title": "4 · Examens paracliniques",
+      "hint": "Analyses de laboratoire et autres examens pour trouver le diagnostic ; leurs résultats arrivent ici."
+    },
+    "definitive": {
+      "title": "5 · Diagnostic définitif",
+      "hint": "Les diagnostics confirmés : un principal, les autres secondaires. Un diagnostic trouvé par le laboratoire peut être ajouté ici. Ou dites pourquoi aucun n’a été trouvé."
+    },
+    "plan": {
+      "title": "6 · Plan de traitement",
+      "hint": "Le plan, les médicaments et les prescriptions aux infirmiers : actes médicaux et médicaments à administrer, pour un infirmier ou tous."
+    },
+    "sections": {
+      "complaint": "Motif de consultation",
+      "hpi": "Histoire de la maladie actuelle",
+      "exam": "Résultats de l’examen",
+      "plan": "Plan"
+    },
+    "placeholders": {
+      "complaint": "Avec les mots du patient : « fièvre et maux de tête depuis 3 jours »",
+      "hpi": "Depuis quand, comment cela a commencé, ce qui améliore ou aggrave, ce qui a déjà été pris…",
+      "exam": "État général, puis par appareil : thorax, cœur, abdomen, neurologique…",
+      "plan": "Ce qui sera fait : traitement, conseils, quand revenir…"
+    },
+    "examTemplate": "Général : \nTête et cou : \nThorax : \nCœur : \nAbdomen : \nMembres : \nNeurologique : \nPeau : ",
+    "useTemplate": "Utiliser le modèle",
+    "save": "Enregistrer",
+    "notWritten": "Non rédigé.",
+    "saveQ": "Enregistrer « {{what}} » de {{name}} ?",
+    "clearQ": "Effacer « {{what}} » de {{name}} ?",
+    "sectionSaved": "« {{what}} » enregistré.",
+    "otherNotes": "Autres notes",
+    "addDifferential": "Ajouter un diagnostic possible",
+    "saveDifferential": "Ajouter à la liste",
+    "differentialHint": "Un diagnostic possible n’est pas compté dans les rapports tant qu’il n’est pas confirmé (étape 5).",
+    "noDifferential": "Aucun diagnostic possible noté pour l’instant.",
+    "possibleBadge": "Possible",
+    "confirmedBadge": "Confirmé",
+    "confirm": "Confirmer",
+    "confirmQ": "Confirmer {{dx}} pour {{name}} ?",
+    "confirmPrimary": "Il est inscrit à l’étape 5 comme diagnostic principal ; il reste dans la liste différentielle, marqué confirmé.",
+    "confirmSecondary": "Il est inscrit à l’étape 5 comme diagnostic secondaire (il y a déjà un principal) ; il reste dans la liste différentielle, marqué confirmé.",
+    "confirmYes": "Oui, confirmer",
+    "confirmed": "{{dx}} confirmé : il est à l’étape 5.",
+    "confirmedBy": "confirmé par {{name}} le {{when}}",
+    "fromDifferential": "issu de la liste différentielle",
+    "ddQ": "Ajouter {{dx}} aux diagnostics possibles de {{name}} ?",
+    "ddSaved": "Diagnostic possible ajouté.",
+    "addDefinitive": "Ajouter un diagnostic définitif",
+    "alsoDifferential": "Aussi dans la liste différentielle",
+    "alsoDifferentialHint": "Absent de la liste différentielle (trouvé par le laboratoire, par exemple) ? Cochez « Aussi dans la liste différentielle » pour garder un dossier complet.",
+    "noDefinitive": "Pas encore de diagnostic définitif.",
+    "noTests": "Aucun examen demandé.",
+    "prescriptions": "Médicaments",
+    "noPrescriptions": "Aucun médicament prescrit.",
+    "toFinish": "Pour terminer la consultation",
+    "needs": {
+      "complaint": "Le motif de consultation (étape 1)",
+      "diagnosis": "Un diagnostic définitif principal, ou la raison de son absence (étape 5)"
+    },
+    "openOrdersNote_one": "{{count}} prescription aux infirmiers est encore ouverte : elle n’empêche pas de terminer.",
+    "openOrdersNote_other": "{{count}} prescriptions aux infirmiers sont encore ouvertes : elles n’empêchent pas de terminer.",
+    "openOrders_one": "La prescription aux infirmiers pas encore exécutée reste ouverte : {{list}}.",
+    "openOrders_other": "Les prescriptions aux infirmiers pas encore exécutées restent ouvertes : {{list}}.",
+    "needComplaint": "Notez le motif de consultation (étape 1) avant de terminer la consultation.",
+    "finishHint": "Nécessaire : le motif de consultation, et un diagnostic définitif principal ou « Aucun diagnostic trouvé » avec la raison."
+  },
+  "pastHistory": {
+    "title_one": "Antécédents : {{count}} consultation précédente",
+    "title_other": "Antécédents : {{count}} consultations précédentes",
+    "firstVisit": "Première consultation à la clinique : pas d’antécédents.",
+    "logged": "Vous traitez le patient maintenant : cette ouverture est notée dans le journal des accès.",
+    "longTerm": "Chronique",
+    "noDx": "Aucun diagnostic noté",
+    "refused": {
+      "not_doctor": "Les antécédents sont réservés aux médecins.",
+      "setting_off": "La clinique demande au médecin de solliciter l’accès aux antécédents (ou de les ouvrir en urgence).",
+      "not_treating": "Les antécédents sont pour le médecin qui traite le patient maintenant ; demandez l’accès si vous en avez besoin."
+    }
   }
 }

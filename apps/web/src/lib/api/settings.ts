@@ -99,6 +99,9 @@ export interface StaffSettings {
   insuranceActive: boolean
   /** 0125: a booking made for a colleague waits for their answer (true) or is confirmed at once. */
   colleagueAccept: boolean
+  /** 0127: a doctor working on the patient's open visit sees the earlier visits in step 1
+   *  (setting records.history_for_treating_doctor; default on). */
+  historyForTreatingDoctor: boolean
 }
 
 /** Settings every signed-in staff member needs (no settings.read required). */
@@ -114,6 +117,7 @@ export function useStaffSettings() {
           insuranceEnabled: sampleInsurance,
           insuranceActive: sampleInsurance,
           colleagueAccept: sampleColleagueAccept,
+          historyForTreatingDoctor: sampleHistoryForTreating,
         }
       const { data, error } = await supabase.rpc('staff_settings')
       if (error) throw apiError(error)
@@ -123,6 +127,7 @@ export function useStaffSettings() {
         insurance_enabled?: boolean
         insurance_active?: boolean
         colleague_accept?: boolean
+        history_for_treating_doctor?: boolean
       } | null
       const h = Number(d?.session_hours)
       return {
@@ -132,6 +137,8 @@ export function useStaffSettings() {
         insuranceActive: d?.insurance_active === true,
         // absent before 0125: the colleague is asked, as before
         colleagueAccept: d?.colleague_accept !== false,
+        // absent before 0127: on, as the clinic's default
+        historyForTreatingDoctor: d?.history_for_treating_doctor !== false,
       }
     },
   })
@@ -183,6 +190,30 @@ export function useSaveColleagueAccept() {
       if (error) throw apiError(error)
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: STAFF_KEY }),
+  })
+}
+
+let sampleHistoryForTreating = true
+/** Manager (0127): the doctor treating the patient now sees the earlier visits in step 1 (each
+ *  opening in the access log), or asks for them as before (setting records.history_for_treating_doctor). */
+export function useSaveHistoryForTreatingDoctor() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (on: boolean) => {
+      if (!supabase) {
+        sampleHistoryForTreating = on
+        return
+      }
+      const { error } = await supabase.rpc('save_setting', {
+        p_key: 'records.history_for_treating_doctor',
+        p_value: on,
+      })
+      if (error) throw apiError(error)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: STAFF_KEY })
+      void qc.invalidateQueries({ queryKey: ['visit'] })
+    },
   })
 }
 

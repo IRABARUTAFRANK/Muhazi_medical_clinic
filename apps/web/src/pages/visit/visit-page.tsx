@@ -66,7 +66,7 @@ import { PharmacyDesk } from '@/pages/stock/pharmacy-desk'
 import { openReceipt } from '@/lib/receipt-doc'
 import { useLetterhead } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
-import { useVisitClinical } from '@/lib/api/patients'
+import { stageOf, useVisitClinical } from '@/lib/api/patients'
 import { useInsuranceEnabled } from '@/lib/api/settings'
 import { tariffLine, useInsurerTariff, type InsurerTariff } from '@/lib/api/insurers'
 import { insurerLineText, insurerLineTone } from '@/lib/insurer-price'
@@ -189,7 +189,10 @@ export function VisitPage({
           fromThisVisit: comingBooking.fromEncounter === encounterId,
         }
       : null)
-  const primaryDx = (clinical?.diagnoses ?? []).find((d) => d.type === 'primary' && !d.removedAt)
+  // 0127: the definitive primary diagnosis (step 5), never a possible one
+  const primaryDx = (clinical?.diagnoses ?? []).find(
+    (d) => d.type === 'primary' && !d.removedAt && stageOf(d) === 'definitive',
+  )
   const { data: bill } = useVisitBill(encounterId)
   const { data: treatments = [] } = useTreatments(true)
   const { data: myDepartments = [] } = useMyDepartments(user.id)

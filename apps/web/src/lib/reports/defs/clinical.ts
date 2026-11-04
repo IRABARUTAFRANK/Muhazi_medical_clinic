@@ -3,6 +3,7 @@ import { keyOptions, matches, searchText, selected, switchedOn } from '@/lib/api
 import {
   BOOKING_STATUSES,
   clinicalOptions,
+  DX_STAGES,
   loadBookings,
   loadDiagnoses,
   loadPatientsSeen,
@@ -16,6 +17,7 @@ import {
   type BookingSource,
   type BookingStatus,
   type DiagnosisRow,
+  type DxStage,
   type Outcome,
   type PatientSeenRow,
   type PrescriptionRow,
@@ -212,6 +214,14 @@ const patientsSeen: AnyReportDef = {
     { key: 'clinician', label: `${C}.col.clinician`, value: (r) => r.clinician },
     { key: 'desk', label: `${C}.col.desk`, value: (r) => deskWord(r.desk) },
     { key: 'department', label: `${C}.col.department`, value: (r) => r.department },
+    // 0127: step 1, the patient's words (doctors: the database leaves it out for the others)
+    {
+      key: 'complaint',
+      label: `${C}.col.complaint`,
+      sensitive: true,
+      default: true,
+      value: (r) => r.complaint ?? null,
+    },
     {
       key: 'diagnosis',
       label: `${C}.col.diagnosis`,
@@ -232,7 +242,7 @@ const patientsSeen: AnyReportDef = {
       label: `${C}.col.tests`,
       kind: 'number',
       total: 'sum',
-      default: true,
+      // 0127: off by default, the chief complaint shows instead (up to 9 columns)
       value: (r) => r.tests,
     },
     {
@@ -253,7 +263,7 @@ const patientsSeen: AnyReportDef = {
     )
     const o = one(f, 'outcome', OUTCOMES)
     if (o) rows = rows.filter((r) => r.outcome === o)
-    return search(rows, f, (r) => [r.patient, r.fileNo, r.reference, r.clinician])
+    return search(rows, f, (r) => [r.patient, r.fileNo, r.reference, r.clinician, r.complaint])
   },
   figures: (rows: PatientSeenRow[]) => [
     fig('visits', new Set(rows.map((r) => r.encounterId)).size),
@@ -321,6 +331,15 @@ const diagnoses: AnyReportDef = {
     periodFilter('month'),
     departmentFilter,
     personFilter('doctor', `${C}.f.doctor`, wide),
+    // 0127: the confirmed diagnoses (step 5) by default; the differential ones (step 3) on request
+    {
+      key: 'stage',
+      label: `${C}.f.dxStage`,
+      kind: 'select',
+      options: keyOptions(`${C}.dxStage`, DX_STAGES),
+      default: 'definitive',
+      hint: `${C}.f.dxStageHint`,
+    },
     searchFilter,
   ],
   columns: [
@@ -403,7 +422,13 @@ const diagnoses: AnyReportDef = {
   ],
   async load(f, ctx) {
     const rows = await loadDiagnoses(
-      { period: f.period, department: selected(f, 'department'), doctor: selected(f, 'doctor') },
+      {
+        period: f.period,
+        department: selected(f, 'department'),
+        doctor: selected(f, 'doctor'),
+        // '' (every one): both lists
+        stage: one<DxStage>(f, 'stage', DX_STAGES) ?? 'all',
+      },
       ctx,
     )
     return search(rows, f, (r) => [r.code, r.diagnosis])
@@ -433,7 +458,7 @@ const diagnoses: AnyReportDef = {
   ],
   defaultSort: { key: 'cases', dir: 'desc' },
   countLabel: `${C}.count.diagnoses`,
-  notes: [`${C}.dx.note1`, `${C}.dx.note2`, `${C}.dx.note3`],
+  notes: [`${C}.dx.note1`, `${C}.dx.note2`, `${C}.dx.note3`, `${C}.dx.note4`],
   wide: true,
 }
 

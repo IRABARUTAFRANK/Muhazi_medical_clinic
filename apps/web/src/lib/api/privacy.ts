@@ -25,8 +25,9 @@ export type AccessVia = 'manager' | 'head' | 'request' | 'emergency'
 /** How one visit's clinical record is seen: 'visit' = today's, working on it; 'own' = treated it;
  *  'desk' (0126) = someone who is not a doctor working on the open visit: their desk's part only. */
 export type VisitView = 'visit' | 'own' | 'desk' | AccessVia
-/** How past records were opened (the access log). */
-export type AccessLogVia = 'own' | AccessVia
+/** How past records were opened (the access log); 'treating' (0127): the doctor treating the
+ *  patient now saw the past visits in step 1 (the clinic's setting allows it). */
+export type AccessLogVia = 'own' | 'treating' | AccessVia
 export type AccessRequestStatus = 'pending' | 'approved' | 'refused' | 'cancelled'
 export type AccessRequestKind = 'request' | 'emergency'
 
@@ -146,7 +147,7 @@ export interface AccessLogRow {
   visitReference: string | null
   via: AccessLogVia
   /** 'attachment' (0089): a supporting file of a past visit was opened. */
-  what: 'file' | 'visit' | 'results' | 'journey' | 'emergency' | 'attachment'
+  what: 'file' | 'visit' | 'results' | 'journey' | 'emergency' | 'attachment' | 'history'
   requestId: string | null
   /** The reason of the request or emergency behind it. */
   reason: string | null

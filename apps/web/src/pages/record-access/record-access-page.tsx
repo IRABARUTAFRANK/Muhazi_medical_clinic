@@ -45,9 +45,10 @@ import { useAgo } from '@/lib/notice-wording'
 import { useSearchPeriod } from '@/lib/period'
 import { cn } from '@/lib/utils'
 
-const VIAS: readonly AccessLogVia[] = ['own', 'head', 'request', 'emergency', 'manager']
+const VIAS: readonly AccessLogVia[] = ['own', 'treating', 'head', 'request', 'emergency', 'manager']
 const VIA_TINT: Record<AccessLogVia, Tint> = {
   own: 'teal',
+  treating: 'amber',
   head: 'violet',
   request: 'mint',
   emergency: 'coral',

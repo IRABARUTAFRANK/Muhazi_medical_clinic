@@ -1753,6 +1753,8 @@ await step(
     await db.query(`select add_charge_internal($1, 'consultation', $2)`, [v.id, svc.id])
     await as(staff.doctor)
     await db.query(`select add_diagnosis($1, 'Malaria', 'B54', 'primary', false)`, [v.id])
+    // 0127: the chief complaint (step 1) is written before finishing
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [v.id])
     await db.query(`select finish_visit($1)`, [v.id])
     await asAdmin()
     const due = await one(`select invoice_balance(id) as b from invoice where encounter_id = $1`, [
@@ -2266,6 +2268,8 @@ await step(
       para,
     ])
     await db.query(`select add_charge($1, 'consultation', $2)`, [p.enc, cons])
+    // 0127: the chief complaint (step 1) is written before finishing
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [p.enc])
     await db.query(`select finish_visit($1)`, [p.enc])
     await asAdmin()
     const open = async () =>
@@ -3778,6 +3782,8 @@ await step(
     ])
     // sent to the pharmacy, then "Finish visit"
     await db.query(`select refer_patient($1, 'consultation', 'pharmacy')`, [p.enc])
+    // 0127: the chief complaint (step 1) is written before finishing
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [p.enc])
     await db.query(`select finish_visit($1)`, [p.enc])
     await asAdmin()
     const places = (
@@ -5693,6 +5699,10 @@ await step(
   async () => {
     await as(d1)
     await db.query(`select add_diagnosis($1, 'Diarrhoea', 'A09', 'primary')`, [t82.roomEnc])
+    // 0127: the chief complaint (step 1) is written before finishing
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [
+      t82.roomEnc,
+    ])
     await db.query(`select finish_visit($1)`, [t82.roomEnc])
     await asAdmin()
     const stations = await openStations82(t82.roomEnc)
@@ -12787,6 +12797,8 @@ await step(
     )
     await as(d1)
     const out = (await one(`select rx_set_supply($1, 'outside') as j`, [t100.clinic])).j
+    // 0127: the chief complaint (step 1) is written before finishing
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [t100.v.enc])
     await db.query(`select finish_visit($1)`, [t100.v.enc])
     await asAdmin()
     const row = await one(
@@ -12892,6 +12904,8 @@ await step(
     await db.query(`select take_patient($1)`, [b.queue])
     const taken = await status101(b.appt)
     await db.query(`select add_diagnosis($1, 'Malaria', 'B54', 'primary')`, [b.enc])
+    // 0127: the chief complaint (step 1) is written before finishing
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [b.enc])
     await db.query(`select finish_visit($1)`, [b.enc])
     await asAdmin()
     const done = await status101(b.appt)
@@ -13444,6 +13458,8 @@ const closedVisit = async (given) => {
   await db.query(`select take_patient($1)`, [v.queue])
   tLock.dx = (await one(`select add_diagnosis($1, 'Malaria', 'B54', 'primary') as id`, [v.enc])).id
   tLock.note = (await one(`select add_clinical_note($1, 'Fever for two days') as id`, [v.enc])).id
+  // 0127: the chief complaint (step 1) is written before finishing
+  await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [v.enc])
   await db.query(`select finish_visit($1)`, [v.enc])
   await asAdmin()
   let st = (await one(`select status from encounter where id = $1`, [v.enc])).status
@@ -13713,6 +13729,8 @@ await step(
     ])
     // the record of care still has its primary diagnosis: the visit closes as usual
     await as(d1)
+    // 0127: the chief complaint (step 1) is written before finishing
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [v.enc])
     await db.query(`select finish_visit($1)`, [v.enc])
     await asAdmin()
     if (
@@ -13994,6 +14012,8 @@ await step(
         [v.enc, t97.amox],
       )
     ).j
+    // 0127: the chief complaint (step 1) is written before finishing
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [v.enc])
     await db.query(`select finish_visit($1)`, [v.enc])
     await as(staff.pharmacist)
     const q0 = (await one(`select pharmacy_queue() as j`)).j.lines.find(
@@ -14492,6 +14512,8 @@ await step(
         [v.enc, t107.pack],
       )
     ).j
+    // 0127: the chief complaint (step 1) is written before finishing
+    await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [v.enc])
     await db.query(`select finish_visit($1)`, [v.enc])
     await as(staff.pharmacist)
     const q = (await one(`select pharmacy_queue() as j`)).j.lines.find((x) => x.requestId === rx.id)
@@ -19217,6 +19239,8 @@ await expectError(
 await step('0125: finish_visit with “Follow-up / check-up only” is accepted', async () => {
   const t = globalThis.t125
   await as(t.docX)
+  // 0127: the chief complaint (step 1) is written before finishing
+  await db.query(`select save_visit_section($1, 'complaint', 'Fever for two days')`, [t.v1])
   await db.query(`select finish_visit($1, 'check_up', 'BP control')`, [t.v1])
   await asAdmin()
   const e = await one(
@@ -20178,6 +20202,670 @@ await step(
     return `the mark in History (Settings); ${r.items} clinical lines without words for the non-doctor manager; the audit table's clinical lines for doctors`
   },
 )
+
+// @@t127-begin
+// ---------------------------------------------------------------- 0127 six steps
+const t127 = {}
+const json127 = (x) => JSON.stringify(x)
+// the 0100… steps re-ran older migrations: put the 0127 definitions back (it runs twice)
+await step('0127: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(await readFile(path.join(migrationsDir, '20270107090000_six_steps.sql'), 'utf8'))
+  return 'no error'
+})
+await step(
+  '0127 seed: a returning patient (a past visit with complaint, diagnosis, test result) and an open visit of Dr 127; two nurses of Nursing 127 (one holds the ward store)',
+  async () => {
+    t127.dept = await dept85('Consultation 127', ['consultation'])
+    t127.nursing = await dept85('Nursing 127', ['nursing'])
+    t127.doc = await newStaff('d127.doc', 'Dr. Steps 127', 'doctor', 'Consultation 1')
+    t127.doc2 = await newStaff('d127.doc2', 'Dr. Elsewhere 127', 'doctor', 'Consultation 1')
+    t127.nurseA = await newStaff('d127.na', 'Nurse A 127', 'nurse')
+    t127.nurseB = await newStaff('d127.nb', 'Nurse B 127', 'nurse')
+    await member85(t127.doc, t127.dept)
+    await member85(t127.doc2, t127.dept)
+    await member85(t127.nurseA, t127.nursing)
+    await member85(t127.nurseB, t127.nursing)
+    await asAdmin()
+    t127.pid = (
+      await one(
+        `insert into patient (surname, given_names, sex, allergies) values ('Steps', 'Six 127', 'male', 'Penicillin 127') returning id`,
+      )
+    ).id
+    const ov = async (taken) => {
+      await asAdmin()
+      const enc = (
+        await one(`insert into encounter (patient_id) values ($1) returning id`, [t127.pid])
+      ).id
+      await db.query(
+        `insert into invoice (encounter_id, status) select $1, 'draft' where not exists (select 1 from invoice where encounter_id = $1)`,
+        [enc],
+      )
+      await db.query(
+        `insert into queue_entry (encounter_id, station, ticket_no, department_id, taken_by, started_at)
+         values ($1, 'consultation', 'S127', $2, $3, now())`,
+        [enc, t127.dept, taken],
+      )
+      return enc
+    }
+    t127.ov = ov
+    // the past visit (a month ago): complaint, definitive diagnosis, plan, a test with its result
+    t127.v0 = await ov(t127.doc2)
+    await db.query(`update encounter set arrived_at = now() - interval '30 days' where id = $1`, [
+      t127.v0,
+    ])
+    await db.query(
+      `insert into visit_section (encounter_id, section, text, created_by)
+       values ($1, 'complaint', 'Cough for a week 127', $2), ($1, 'plan', 'Rest and fluids 127', $2)`,
+      [t127.v0, t127.doc2],
+    )
+    await db.query(
+      `insert into condition (encounter_id, icd10_code, text, type, stage, created_by)
+       values ($1, 'J20', 'Acute bronchitis 127', 'primary', 'definitive', $2),
+              ($1, null, 'Pneumonia 127', 'secondary', 'differential', $2)`,
+      [t127.v0, t127.doc2],
+    )
+    t127.service = (
+      await one(
+        `select id from service where deleted_at is null and active and coalesce(name_en, '') not ilike '%hiv%'
+         and coalesce(code, '') not ilike '%hiv%' order by code limit 1`,
+      )
+    ).id
+    const sr0 = (
+      await one(
+        `insert into service_request (encounter_id, category, service_id, station, requester_id)
+         values ($1, 'lab', $2, 'laboratory', $3) returning id`,
+        [t127.v0, t127.service, t127.doc2],
+      )
+    ).id
+    await db.query(
+      `insert into diagnostic_report (service_request_id, findings, impression, verified_at)
+       values ($1, 'Past finding 127', 'Past result 127', now())`,
+      [sr0],
+    )
+    await close88(t127.v0)
+    // the visit today, Dr 127 has the patient
+    t127.v1 = await ov(t127.doc)
+    // the ward store, held by nurse A, with amoxicillin
+    t127.item = (await one(`select id from item where code = 'AMOX500'`)).id
+    t127.store = (
+      await one(
+        `insert into stock_location (name, type) values ('Ward 127', 'nursing') returning id`,
+      )
+    ).id
+    await db.query(`insert into stock_location_holder (location_id, profile_id) values ($1, $2)`, [
+      t127.store,
+      t127.nurseA,
+    ])
+    await db.query(`select receive_batch($1, $2, 20, 100, 'B127', current_date + 365)`, [
+      t127.item,
+      t127.store,
+    ])
+    const n = (await one(`select usable_stock($1, $2) as n`, [t127.item, t127.store])).n
+    if (Number(n) !== 20) throw new Error(json127({ n }))
+    return 'past visit a month ago (closed); open visit taken by Dr 127; Ward 127 holds 20 amoxicillin'
+  },
+)
+await step(
+  '0127 A: the stage — a provisional diagnosis is a differential (never primary); the migration turns old provisional rows into differentials',
+  async () => {
+    await asAdmin()
+    // an old row: written provisional before 0127 (the stage trigger off, as before the migration)
+    await db.exec(`alter table condition disable trigger trg_condition_stage`)
+    const old = (
+      await one(
+        `insert into condition (encounter_id, text, type, provisional, stage)
+         values ($1, 'Old provisional 127', 'primary', true, 'definitive') returning id`,
+        [t127.v0],
+      )
+    ).id
+    await db.exec(`alter table condition enable trigger trg_condition_stage`)
+    await db.exec(await readFile(path.join(migrationsDir, '20270107090000_six_steps.sql'), 'utf8'))
+    const r = {}
+    r.old = await one(`select stage, type, provisional from condition where id = $1`, [old])
+    r.audit = (
+      await one(
+        `select count(*)::int as n from audit_event where entity = 'condition' and entity_id = $1 and action = 'update'`,
+        [old],
+      )
+    ).n
+    // an older writer saying only "provisional" (add_diagnosis of before 0127)
+    await as(t127.doc)
+    const viaOld = (
+      await one(`select add_diagnosis($1, 'Old way 127', null, 'primary', true) as id`, [t127.v1])
+    ).id
+    await asAdmin()
+    r.viaOld = await one(`select stage, type, provisional from condition where id = $1`, [viaOld])
+    r.bad = (
+      await one(
+        `select count(*)::int as n from condition
+          where (provisional and stage <> 'differential') or (stage = 'differential' and type = 'primary')
+             or (not provisional and stage = 'differential')`,
+      )
+    ).n
+    if (
+      r.old.stage !== 'differential' ||
+      r.old.type !== 'secondary' ||
+      !r.old.provisional ||
+      r.audit !== 0 ||
+      r.viaOld.stage !== 'differential' ||
+      r.viaOld.type !== 'secondary' ||
+      r.bad !== 0
+    )
+      throw new Error(json127(r))
+    return 'old provisional → differential (secondary), no audit line; add_diagnosis(…, provisional) → differential; no row out of step'
+  },
+)
+await step(
+  '0127 B: step 3 → 5 — two differentials; one confirmed (definitive primary, linked; the differential stays); confirmed twice refused; a definitive the lab found, put in the differential list too',
+  async () => {
+    const r = {}
+    await as(t127.doc)
+    t127.ddMal = (
+      await one(
+        `select add_visit_diagnosis($1, 'Malaria 127', 'B54', 'primary', 'differential') as id`,
+        [t127.v1],
+      )
+    ).id
+    t127.ddTyph = (
+      await one(
+        `select add_visit_diagnosis($1, 'Typhoid 127', 'A01.0', 'primary', 'differential') as id`,
+        [t127.v1],
+      )
+    ).id
+    t127.defMal = (await one(`select confirm_differential($1, 'primary') as id`, [t127.ddMal])).id
+    await asAdmin()
+    r.twice = await hintAs(t127.doc, `select confirm_differential($1)`, [t127.ddMal])
+    r.other = await hintAs(t127.doc2, `select confirm_differential($1)`, [t127.ddTyph])
+    await as(t127.doc)
+    t127.defUti = (
+      await one(
+        `select add_visit_diagnosis($1, 'Urinary infection 127', 'N39.0', 'secondary', 'definitive', true) as id`,
+        [t127.v1],
+      )
+    ).id
+    const vc = (await one(`select visit_clinical($1) as j`, [t127.v1])).j
+    await asAdmin()
+    const by = (id) => vc.diagnoses.find((d) => d.id === id)
+    r.def = by(t127.defMal)
+    r.dd = by(t127.ddMal)
+    r.uti = by(t127.defUti)
+    r.utiDd = r.uti ? by(r.uti.differentialId) : null
+    if (
+      r.def?.stage !== 'definitive' ||
+      r.def?.type !== 'primary' ||
+      r.def?.differentialId !== t127.ddMal ||
+      r.dd?.stage !== 'differential' ||
+      !r.dd?.provisional ||
+      r.twice !== '22023/already_confirmed' ||
+      r.other === 'ok' ||
+      r.uti?.stage !== 'definitive' ||
+      r.utiDd?.stage !== 'differential' ||
+      r.utiDd?.text !== 'Urinary infection 127'
+    )
+      throw new Error(json127(r))
+    return `confirmed (linked), twice ${r.twice}, a doctor not on the visit ${r.other}; the lab's finding in both lists`
+  },
+)
+await step(
+  '0127 C: steps 1, 2 and 6 texts — written, changed (history kept), a non-doctor sees only what they wrote',
+  async () => {
+    const r = {}
+    await as(t127.doc)
+    await db.query(`select save_visit_section($1, 'complaint', 'Headache and fever 127')`, [
+      t127.v1,
+    ])
+    await db.query(`select save_visit_section($1, 'hpi', 'Three days, worse at night 127')`, [
+      t127.v1,
+    ])
+    await db.query(`select save_visit_section($1, 'exam', 'T 38.9, no neck stiffness 127')`, [
+      t127.v1,
+    ])
+    await db.query(`select save_visit_section($1, 'plan', 'Treat malaria, review in 3 days 127')`, [
+      t127.v1,
+    ])
+    await db.query(`select save_visit_section($1, 'complaint', 'Headache, fever and chills 127')`, [
+      t127.v1,
+    ])
+    r.same = (
+      await one(`select save_visit_section($1, 'hpi', 'Three days, worse at night 127') as j`, [
+        t127.v1,
+      ])
+    ).j.changed
+    r.bad = await hintAs(t127.doc, `select save_visit_section($1, 'other', 'x')`, [t127.v1])
+    await as(t127.doc)
+    const vc = (await one(`select visit_clinical($1) as j`, [t127.v1])).j
+    await asAdmin()
+    r.complaint = vc.sections?.complaint?.text
+    r.versions = vc.sections?.complaint?.history?.length
+    r.exam = vc.sections?.exam?.text
+    r.hasComplaint = vc.hasComplaint
+    if (
+      r.complaint !== 'Headache, fever and chills 127' ||
+      r.versions !== 1 ||
+      !r.exam ||
+      r.same !== false ||
+      r.bad !== '22023/' ||
+      r.hasComplaint !== true
+    )
+      throw new Error(json127(r))
+    return 'complaint, history, exam, plan written; the complaint changed once (1 earlier version); the same text is no change'
+  },
+)
+await step(
+  '0127 D: finishing — refused without the chief complaint; refused with only a differential; taken with the reason none was found',
+  async () => {
+    const r = {}
+    // a visit with a definitive primary diagnosis and no complaint
+    const v2 = await t127.ov(t127.doc)
+    await as(t127.doc)
+    await db.query(
+      `select add_visit_diagnosis($1, 'Gastritis 127', 'K29', 'primary', 'definitive')`,
+      [v2],
+    )
+    await asAdmin()
+    r.noComplaint = await hintAs(t127.doc, `select finish_visit($1)`, [v2])
+    await as(t127.doc)
+    await db.query(`select save_visit_section($1, 'complaint', 'Epigastric pain 127')`, [v2])
+    await db.query(`select finish_visit($1)`, [v2])
+    await asAdmin()
+    r.v2 = (
+      await one(
+        `select (status = 'closed' or clinical_done_at is not null) as done from encounter where id = $1`,
+        [v2],
+      )
+    ).done
+    // a visit with a complaint and only a differential
+    const v3 = await t127.ov(t127.doc)
+    await as(t127.doc)
+    await db.query(`select save_visit_section($1, 'complaint', 'Tired 127')`, [v3])
+    await db.query(
+      `select add_visit_diagnosis($1, 'Anaemia 127', 'D64.9', 'primary', 'differential')`,
+      [v3],
+    )
+    await asAdmin()
+    r.onlyDd = await tryAs(t127.doc, `select finish_visit($1)`, [v3])
+    await as(t127.doc)
+    await db.query(`select finish_visit($1, 'results_pending', 'blood count tomorrow')`, [v3])
+    await asAdmin()
+    r.v3 = (await one(`select no_diagnosis_kind as k from encounter where id = $1`, [v3])).k
+    // a finished visit keeps its chief complaint
+    r.clear = await hintAs(t127.doc, `select save_visit_section($1, 'complaint', '')`, [v2])
+    if (
+      r.noComplaint !== '23514/complaint_needed' ||
+      !r.v2 ||
+      !/primary diagnosis is required/.test(r.onlyDd) ||
+      r.v3 !== 'results_pending' ||
+      r.clear === 'ok'
+    )
+      throw new Error(json127(r))
+    return `no complaint ${r.noComplaint}; a differential only: refused; no diagnosis found (results pending): finished; a finished visit's complaint stays (${r.clear})`
+  },
+)
+await step(
+  '0127 E: the past in step 1 — setting on: the treating doctor sees it, logged (treating/history); a doctor not on the visit and a nurse do not',
+  async () => {
+    const r = {}
+    const ph = await j88(t127.doc, `select visit_past_history($1) as j`, [t127.v1])
+    r.allowed = ph.allowed
+    r.via = ph.via
+    const past = (ph.visits ?? []).find((v) => v.id === t127.v0)
+    r.complaint = past?.complaint
+    r.dx = (past?.diagnoses ?? []).map((d) => d.text)
+    r.plan = past?.plan
+    r.test = (past?.tests ?? [])[0]?.impression
+    r.allergies = ph.safety?.allergies
+    await asAdmin()
+    r.log = (
+      await one(
+        `select count(*)::int as n from record_access_entry where actor_id = $1 and patient_id = $2 and via = 'treating' and what = 'history'`,
+        [t127.doc, t127.pid],
+      )
+    ).n
+    const other = await j88(t127.doc2, `select visit_past_history($1) as j`, [t127.v1])
+    r.other = [other.allowed, other.reason, (other.visits ?? []).length]
+    const nurse = await j88(t127.nurseA, `select visit_past_history($1) as j`, [t127.v1])
+    r.nurse = [nurse.allowed, nurse.reason, (nurse.visits ?? []).length]
+    r.setting = (await j88(t127.doc, `select staff_settings() as j`)).history_for_treating_doctor
+    if (
+      r.allowed !== true ||
+      r.via !== 'treating' ||
+      r.complaint !== 'Cough for a week 127' ||
+      json127(r.dx) !== json127(['Acute bronchitis 127']) ||
+      r.plan !== 'Rest and fluids 127' ||
+      r.test !== 'Past result 127' ||
+      r.allergies !== 'Penicillin 127' ||
+      r.log !== 1 ||
+      json127(r.other) !== json127([false, 'not_treating', 0]) ||
+      json127(r.nurse) !== json127([false, 'not_doctor', 0]) ||
+      r.setting !== true
+    )
+      throw new Error(json127(r))
+    return 'Dr 127 sees the past visit (complaint, definitive diagnosis only, plan, result, allergies), one log line; not on the visit: not_treating; a nurse: not_doctor'
+  },
+)
+await step(
+  '0127 F: the setting off (the manager only) — the treating doctor gets the request flow; on again',
+  async () => {
+    const r = {}
+    r.notManager = await hintAs(
+      t127.doc,
+      `select save_setting('records.history_for_treating_doctor', 'false'::jsonb)`,
+    )
+    r.bad = await hintAs(
+      staff.manager,
+      `select save_setting('records.history_for_treating_doctor', '"no"'::jsonb)`,
+    )
+    await as(staff.manager)
+    await db.query(`select save_setting('records.history_for_treating_doctor', 'false'::jsonb)`)
+    const off = await j88(t127.doc, `select visit_past_history($1) as j`, [t127.v1])
+    r.off = [off.allowed, off.reason, (off.visits ?? []).length, !!off.access]
+    // the manager (a doctor) keeps seeing it: 0088
+    const mgr = await j88(staff.manager, `select visit_past_history($1) as j`, [t127.v1])
+    r.mgr = [mgr.allowed, mgr.via]
+    await as(staff.manager)
+    await db.query(`select save_setting('records.history_for_treating_doctor', 'true'::jsonb)`)
+    const on = await j88(t127.doc, `select visit_past_history($1) as j`, [t127.v1])
+    r.on = on.allowed
+    if (
+      !/^42501/.test(r.notManager) ||
+      r.bad !== '22023/' ||
+      json127(r.off) !== json127([false, 'setting_off', 0, true]) ||
+      json127(r.mgr) !== json127([true, 'manager']) ||
+      r.on !== true
+    )
+      throw new Error(json127(r))
+    return 'off: setting_off with the request flow; the manager still sees it; on again'
+  },
+)
+await step(
+  '0127 G: nurse orders — the doctor gives an act to all nurses and a drug (3 times) to nurse A; a nurse and a manager who is not a doctor may not',
+  async () => {
+    const r = {}
+    await as(t127.doc)
+    t127.act = (
+      await one(
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'IM injection 127',
+                p_service_id => $2, p_quantity => 1) as j`,
+        [t127.v1, t127.service],
+      )
+    ).j
+    t127.drug = (
+      await one(
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'drug', p_item_id => $2, p_quantity => 1,
+                p_dose => '500 mg', p_route => 'oral', p_frequency => 'TDS', p_doses => 3, p_assigned_to => $3) as j`,
+        [t127.v1, t127.item, t127.nurseA],
+      )
+    ).j
+    await asAdmin()
+    r.nurse = await hintAs(
+      t127.nurseA,
+      `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Dressing')`,
+      [t127.v1],
+    )
+    r.mgr = await hintAs(
+      t126.mgr,
+      `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Dressing')`,
+      [t127.v1],
+    )
+    r.notNurse = await hintAs(
+      t127.doc,
+      `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Dressing', p_assigned_to => $2)`,
+      [t127.v1, t127.doc2],
+    )
+    r.noItem = await hintAs(
+      t127.doc,
+      `select create_nurse_order(p_encounter_id => $1, p_kind => 'drug')`,
+      [t127.v1],
+    )
+    const nurses = await j88(t127.doc, `select order_nurses() as j`)
+    r.list = [t127.nurseA, t127.nurseB, t127.doc, staff.manager].map((id) =>
+      nurses.some((n) => n.id === id),
+    )
+    r.tellA = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order' and recipient_user = $1`,
+        [t127.nurseA],
+      )
+    ).n
+    r.tellB = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order' and recipient_user = $1`,
+        [t127.nurseB],
+      )
+    ).n
+    if (
+      t127.act.text !== 'IM injection 127' ||
+      t127.drug.dosesPlanned !== 3 ||
+      t127.drug.assignedTo !== t127.nurseA ||
+      !/Amoxicillin/i.test(t127.drug.text) ||
+      r.nurse !== '42501/not_doctor' ||
+      r.mgr !== '42501/not_doctor' ||
+      r.notNurse !== '22023/not_nurse' ||
+      r.noItem !== '22023/item_needed' ||
+      json127(r.list) !== json127([true, true, false, false]) ||
+      r.tellA !== 2 ||
+      r.tellB !== 1
+    )
+      throw new Error(json127(r))
+    return 'act for all, drug for nurse A (told: A 2, B 1); a nurse and the non-doctor manager not_doctor; a doctor is no nurse; a drug needs its medicine'
+  },
+)
+await step(
+  '0127 H: each nurse sees hers — nurse A both, nurse B only the one for all nurses (Home list and menu count); B may not give A’s drug',
+  async () => {
+    const r = {}
+    const a = await j88(t127.nurseA, `select nurse_orders_for_me() as j`)
+    const b = await j88(t127.nurseB, `select nurse_orders_for_me() as j`)
+    r.a = a
+      .filter((o) => o.encounterId === t127.v1)
+      .map((o) => o.kind)
+      .sort()
+    r.b = b
+      .filter((o) => o.encounterId === t127.v1)
+      .map((o) => o.kind)
+      .sort()
+    r.patient = a.find((o) => o.encounterId === t127.v1)?.patient
+    r.countA = (await j88(t127.nurseA, `select nav_counts() as j`)).nurseOrders
+    r.countB = (await j88(t127.nurseB, `select nav_counts() as j`)).nurseOrders
+    r.bGives = await hintAs(t127.nurseB, `select give_nurse_order($1)`, [t127.drug.id])
+    if (
+      json127(r.a) !== json127(['act', 'drug']) ||
+      json127(r.b) !== json127(['act']) ||
+      r.patient !== 'Steps Six 127' ||
+      r.countA !== 2 ||
+      r.countB !== 1 ||
+      r.bGives !== '42501/not_yours'
+    )
+      throw new Error(json127(r))
+    return `A ${r.a.join('+')} (count ${r.countA}); B ${r.b.join('+')} (count ${r.countB}); B gives A's drug: ${r.bGives}`
+  },
+)
+await step(
+  '0127 I: doses — A gives 1 (taken from the ward store, billed), 1 not given with the reason, 1 given → done, the doctor told; B does the act (billed)',
+  async () => {
+    const r = {}
+    const stock = async () =>
+      Number((await one(`select usable_stock($1, $2) as n`, [t127.item, t127.store])).n)
+    const billed = async () =>
+      await one(
+        `select count(*)::int as n, coalesce(sum(l.quantity), 0)::int as q from invoice_line l join invoice i on i.id = l.invoice_id
+            where i.encounter_id = $1 and l.deleted_at is null and l.source_type = 'nurse_order'`,
+        [t127.v1],
+      )
+    await asAdmin()
+    const before = await stock()
+    await as(t127.nurseA)
+    const d1 = (await one(`select give_nurse_order($1, 'with water') as j`, [t127.drug.id])).j
+    await asAdmin()
+    r.after1 = before - (await stock())
+    r.bill1 = await billed()
+    r.skipNoReason = await hintAs(t127.nurseA, `select skip_nurse_dose($1, '')`, [t127.drug.id])
+    await as(t127.nurseA)
+    const d2 = (
+      await one(`select skip_nurse_dose($1, 'Patient vomiting 127') as j`, [t127.drug.id])
+    ).j
+    const d3 = (await one(`select give_nurse_order($1) as j`, [t127.drug.id])).j
+    await asAdmin()
+    r.after3 = before - (await stock())
+    r.d1 = [d1.given, d1.status, d1.charged]
+    r.d2 = [d2.given, d2.notGiven, d2.status]
+    r.d3 = [d3.given, d3.notGiven, d3.status, d3.doses.length]
+    r.again = await hintAs(t127.nurseA, `select give_nurse_order($1)`, [t127.drug.id])
+    r.told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order_done' and recipient_user = $1`,
+        [t127.doc],
+      )
+    ).n
+    r.moves = (
+      await one(`select count(*)::int as n from stock_movement where nurse_order_id = $1`, [
+        t127.drug.id,
+      ])
+    ).n
+    await as(t127.nurseB)
+    const act = (await one(`select give_nurse_order($1) as j`, [t127.act.id])).j
+    await asAdmin()
+    r.act = [act.status, act.given]
+    r.bill = await billed()
+    // the doctor sees the progress in step 6
+    const vc = await j88(t127.doc, `select visit_clinical($1) as j`, [t127.v1])
+    const drug = (vc.nurseOrders ?? []).find((o) => o.id === t127.drug.id)
+    r.doctorSees = [drug?.given, drug?.notGiven, drug?.dosesPlanned, drug?.status]
+    if (
+      r.after1 !== 1 ||
+      r.bill1.n !== 1 ||
+      json127(r.d1) !== json127([1, 'open', true]) ||
+      r.skipNoReason !== '22023/' ||
+      json127(r.d2) !== json127([1, 1, 'open']) ||
+      json127(r.d3) !== json127([2, 1, 'done', 3]) ||
+      r.after3 !== 2 ||
+      r.again !== '22023/order_over' ||
+      r.told < 2 ||
+      r.moves !== 2 ||
+      r.act[0] !== 'done' ||
+      r.bill.n !== (act.charged ? 3 : 2) ||
+      json127(r.doctorSees) !== json127([2, 1, 3, 'done'])
+    )
+      throw new Error(json127({ ...r, actCharged: act.charged }))
+    return `2 of 3 given (1 not given: vomiting), 2 taken from Ward 127, ${r.bill.n} bill lines; done; the doctor told ${r.told}×; the act ${act.charged ? 'billed' : 'not priced'}`
+  },
+)
+await step(
+  '0127 J: stopping — the doctor cancels his order, the nurse says one will not be done (reasons); another nurse may not',
+  async () => {
+    const r = {}
+    await as(t127.doc)
+    const o1 = (
+      await one(
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Nebulisation 127') as j`,
+        [t127.v1],
+      )
+    ).j
+    const o2 = (
+      await one(
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Dressing 127', p_assigned_to => $2) as j`,
+        [t127.v1, t127.nurseA],
+      )
+    ).j
+    r.cancel = (
+      await one(`select stop_nurse_order($1, 'Not needed any more') as j`, [o1.id])
+    ).j.status
+    await asAdmin()
+    r.other = await hintAs(t127.nurseB, `select stop_nurse_order($1, 'no time')`, [o2.id])
+    await as(t127.nurseA)
+    r.notDone = (
+      await one(`select stop_nurse_order($1, 'No dressing set left') as j`, [o2.id])
+    ).j.status
+    await asAdmin()
+    if (r.cancel !== 'cancelled' || r.other !== '42501/not_yours' || r.notDone !== 'not_done')
+      throw new Error(json127(r))
+    return 'cancelled by the doctor; not done by nurse A; nurse B refused'
+  },
+)
+await step(
+  '0127 K: the nurse’s desk view — her orders and the safety summary, never steps 1–5 (no complaint, no exam, no diagnosis)',
+  async () => {
+    const vc = await j88(t127.nurseA, `select visit_clinical($1) as j`, [t127.v1])
+    const r = {
+      view: vc.view,
+      orders: (vc.nurseOrders ?? []).length,
+      kinds: [...new Set((vc.nurseOrders ?? []).map((o) => o.kind))].sort(),
+      sections: Object.keys(vc.sections ?? {}),
+      dx: (vc.diagnoses ?? []).length,
+      allergies: vc.patient?.allergies,
+      hasComplaint: vc.hasComplaint,
+      words: JSON.stringify(vc).includes('Headache') || JSON.stringify(vc).includes('Malaria 127'),
+    }
+    if (
+      r.view !== 'desk' ||
+      r.orders < 3 ||
+      json127(r.kinds) !== json127(['act', 'drug']) ||
+      r.sections.length !== 0 ||
+      r.dx !== 0 ||
+      r.allergies !== 'Penicillin 127' ||
+      r.hasComplaint !== true ||
+      r.words
+    )
+      throw new Error(json127(r))
+    return `desk view: ${r.orders} orders, allergies; no texts of steps 1–5, no diagnosis`
+  },
+)
+await step(
+  '0127 L: reports follow the steps — diagnoses count definitive ones (differentials on request); patients seen, visits and the patient file carry the chief complaint',
+  async () => {
+    const r = {}
+    await as(staff.manager)
+    const def = (
+      await one(`select report_diagnoses(current_date - 1, current_date, null, $1) as j`, [
+        t127.doc,
+      ])
+    ).j
+    const dd = (
+      await one(
+        `select report_diagnoses_staged(current_date - 1, current_date, null, $1, 'differential') as j`,
+        [t127.doc],
+      )
+    ).j
+    const all = (
+      await one(
+        `select report_diagnoses_staged(current_date - 1, current_date, null, $1, 'all') as j`,
+        [t127.doc],
+      )
+    ).j
+    r.def = def.map((x) => x.diagnosis).sort()
+    r.dd = dd.map((x) => x.diagnosis).sort()
+    r.all = all.length
+    const seen = (
+      await one(`select report_patients_seen(current_date - 1, current_date, $1) as j`, [t127.doc])
+    ).j
+    r.seen = seen.find((x) => x.encounterId === t127.v1)?.complaint
+    const visits = (
+      await one(`select visits_in_period(current_date - 40, current_date, null, null) as j`)
+    ).j
+    r.visit = visits.visits.find((x) => x.id === t127.v0)?.complaint
+    r.visitDx = visits.visits.find((x) => x.id === t127.v0)?.diagnosis
+    const file = (await one(`select patient_file($1) as j`, [t127.pid])).j
+    r.file = file.visits.find((x) => x.id === t127.v1)?.complaint
+    r.fileDx = file.visits.find((x) => x.id === t127.v1)?.diagnosis
+    await asAdmin()
+    if (
+      !r.def.includes('Malaria 127') ||
+      r.def.includes('Typhoid 127') ||
+      !r.dd.includes('Typhoid 127') ||
+      r.dd.includes('Gastritis 127') ||
+      r.all < r.def.length ||
+      r.seen !== 'Headache, fever and chills 127' ||
+      r.visit !== 'Cough for a week 127' ||
+      r.visitDx !== 'Acute bronchitis 127' ||
+      r.file !== 'Headache, fever and chills 127' ||
+      r.fileDx !== 'Malaria 127'
+    )
+      throw new Error(json127(r))
+    return `definitive ${r.def.length} (no differential), differential ${r.dd.length}; the complaint in patients seen, visits and the file`
+  },
+)
+// @@t127-end
 
 finish()
 

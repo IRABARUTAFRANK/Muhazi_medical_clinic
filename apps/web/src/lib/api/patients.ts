@@ -9,6 +9,7 @@ import {
   type VisitView,
 } from './privacy'
 import { isRoomStore, sampleIsManager, sampleStock } from './stock'
+import { sampleVisitNurseOrders, type NurseOrder } from './nurse-orders'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import type { Sex, Station } from '@/lib/api/visits'
@@ -222,7 +223,10 @@ export interface PatientVisit {
   practitioner: string | null
   stations: Station[]
   currentStation: Station | null
+  /** The definitive primary diagnosis (0127: never a differential). */
   diagnosis: string | null
+  /** 0127: the chief complaint (step 1), when the reader may see the visit's record. */
+  complaint?: string | null
   total: number | null
   balance: number | null
   billStatus: string | null
@@ -441,6 +445,7 @@ const buildSampleFileBase = (id: string): PatientFile => {
         stations: ['triage', 'consultation', 'laboratory', 'cashier'],
         currentStation: r.openEncounterId ? 'consultation' : null,
         diagnosis: 'Malaria (uncomplicated)',
+        complaint: 'Fever and headache for 3 days',
         total: 18300,
         balance: r.balanceDue,
         billStatus: r.openEncounterId ? 'draft' : 'posted',
@@ -526,6 +531,7 @@ const buildSampleFile = (id: string): PatientFile => {
         stations: ['triage', 'consultation', 'pharmacy', 'cashier'],
         currentStation: null,
         diagnosis: 'Acute otitis media',
+        complaint: 'Ear pain for 2 days',
         total: 9500,
         balance: 0,
         billStatus: 'posted',
@@ -824,7 +830,12 @@ export interface Diagnosis {
   text: string
   icd10: string | null
   type: 'primary' | 'secondary'
+  /** Mirrors stage === 'differential' (the readers before 0127). */
   provisional: boolean
+  /** 0127: step 3 (a possible diagnosis) or step 5 (confirmed). Absent before: provisional. */
+  stage?: DiagnosisStage
+  /** 0127: a definitive diagnosis confirmed from the differential list: that differential. */
+  differentialId?: string | null
   at: string
   by: string | null
   /** Who wrote it (0104): the author or the manager may change or remove it. */
@@ -837,6 +848,23 @@ export interface Diagnosis {
   removedAt?: string | null
   removedBy?: string | null
   removeReason?: string | null
+  history?: RecordVersion[]
+}
+export type DiagnosisStage = 'differential' | 'definitive'
+/** The step of a diagnosis (0127), read from the provisional mark before 0127. */
+export const stageOf = (d: Pick<Diagnosis, 'stage' | 'provisional'>): DiagnosisStage =>
+  d.stage ?? (d.provisional ? 'differential' : 'definitive')
+/** The doctor's texts of a visit (0127, visit_section): steps 1, 2 and 6. */
+export type SectionKey = 'complaint' | 'hpi' | 'exam' | 'plan'
+export interface VisitSection {
+  id?: string
+  text: string
+  at: string
+  by: string | null
+  byId?: string | null
+  editedAt?: string | null
+  editedBy?: string | null
+  editReason?: string | null
   history?: RecordVersion[]
 }
 export interface ClinicalNote {
@@ -1034,6 +1062,12 @@ export interface VisitClinical {
   /** 0126 (view 'desk'): finishing needs to know, without the words. */
   hasPrimaryDiagnosis?: boolean
   hasNoDiagnosis?: boolean
+  /** 0127: the doctor's texts (steps 1, 2, 6); a desk view: only what the reader wrote. */
+  sections?: Partial<Record<SectionKey, VisitSection>>
+  /** 0127: the orders to the nurses (step 6); a desk view: the reader's. */
+  nurseOrders?: NurseOrder[]
+  /** 0127: finishing needs the chief complaint (a desk view knows without its words). */
+  hasComplaint?: boolean
 }
 const EMPTY_CLINICAL: VisitClinical = {
   diagnoses: [],
@@ -1172,21 +1206,117 @@ const sampleRx = new Map<string, PrescriptionNumber>()
 let sampleRxSeq = 122
 // The sample visit e-1 (the doctor's patient): one medicine waiting at the pharmacy, one bought
 // at an outside pharmacy (none at the clinic) and one the pharmacy could not give (out of stock).
+// 0127: the six steps filled — the complaint and its history, the examination, three possible
+// diagnoses (one confirmed by the malaria test), two tests with their results, the plan; the
+// orders to the nurses come from nurse-orders.ts.
+const sampleDoc = { by: 'Dr. Mukamana Béatrice', byId: 'u-doc' }
 sampleClinical.set('e-1', {
   ...EMPTY_CLINICAL,
+  sections: {
+    complaint: {
+      text: 'Fever, headache and chills for 3 days',
+      at: sampleAgo(40),
+      ...sampleDoc,
+    },
+    hpi: {
+      text: 'Fever since Sunday, worse at night, with chills and a frontal headache. Vomited twice yesterday. No cough, no diarrhoea. Took paracetamol at home with little effect. Lives near the lake; no bed net.',
+      at: sampleAgo(39),
+      ...sampleDoc,
+    },
+    exam: {
+      text: [
+        'General: tired, conscious, not pale, no jaundice. T 38.9 °C, pulse 104.',
+        'Chest: clear. Heart: no murmur.',
+        'Abdomen: soft, spleen just palpable, no tenderness.',
+        'Neuro: no neck stiffness.',
+      ].join('\n'),
+      at: sampleAgo(36),
+      ...sampleDoc,
+    },
+    plan: {
+      text: 'Treat uncomplicated malaria (artemether-lumefantrine 3 days). First dose of paracetamol here; fluids. Come back at once if vomiting or confusion. Review in 3 days with a new test if the fever goes on.',
+      at: sampleAgo(22),
+      ...sampleDoc,
+    },
+  },
   diagnoses: [
+    {
+      id: 'd-s0',
+      text: 'Uncomplicated malaria',
+      icd10: 'B50.9',
+      type: 'secondary',
+      provisional: true,
+      stage: 'differential',
+      at: sampleAgo(35),
+      ...sampleDoc,
+    },
+    {
+      id: 'd-s0b',
+      text: 'Typhoid fever',
+      icd10: 'A01.0',
+      type: 'secondary',
+      provisional: true,
+      stage: 'differential',
+      at: sampleAgo(35),
+      ...sampleDoc,
+    },
+    {
+      id: 'd-s0c',
+      text: 'Viral fever',
+      icd10: 'B34.9',
+      type: 'secondary',
+      provisional: true,
+      stage: 'differential',
+      at: sampleAgo(34),
+      ...sampleDoc,
+    },
     {
       id: 'd-s1',
       text: 'Uncomplicated malaria',
       icd10: 'B50.9',
       type: 'primary',
       provisional: false,
+      stage: 'definitive',
+      differentialId: 'd-s0',
       at: sampleAgo(30),
-      by: 'Dr. Mukamana Béatrice',
+      ...sampleDoc,
     },
   ],
   notes: [],
-  orders: [],
+  orders: [
+    {
+      id: 'o-s1',
+      test: 'Malaria rapid test (RDT)',
+      category: 'lab',
+      station: 'laboratory',
+      status: 'verified',
+      reason: 'Fever 3 days, lives near the lake',
+      at: sampleAgo(34),
+      result: {
+        findings: 'P. falciparum antigen: positive',
+        impression: 'Malaria RDT positive',
+        verified: true,
+        at: sampleAgo(31),
+        by: 'Uwera Diane',
+      },
+    },
+    {
+      id: 'o-s2',
+      test: 'Widal test',
+      category: 'lab',
+      station: 'laboratory',
+      status: 'verified',
+      reason: 'Fever, headache: typhoid?',
+      at: sampleAgo(34),
+      result: {
+        findings: 'O 1/40, H 1/40',
+        impression: 'Not significant',
+        verified: true,
+        at: sampleAgo(30),
+        by: 'Uwera Diane',
+      },
+    },
+  ],
   patient: sampleClinicalPatient(),
   visit: sampleVisit('e-1'),
   prescriptions: [
@@ -1226,6 +1356,19 @@ sampleClinical.set('e-1', {
 // bought outside, a laboratory test with its result. Opened read-only until a code is typed.
 sampleClinical.set(SAMPLE_CLOSED_VISIT, {
   ...EMPTY_CLINICAL,
+  sections: {
+    complaint: { text: 'Sore throat for 3 days', at: sampleAgo(26 * 60), ...sampleDoc },
+    exam: {
+      text: 'T 38.4 °C. Tonsils swollen with white exudate, tender neck glands. Chest clear.',
+      at: sampleAgo(26 * 60),
+      ...sampleDoc,
+    },
+    plan: {
+      text: 'Amoxicillin 10 days, bought outside. Salt-water gargles.',
+      at: sampleAgo(25 * 60 + 30),
+      ...sampleDoc,
+    },
+  },
   diagnoses: [
     {
       id: 'd-done1',
@@ -1334,6 +1477,12 @@ const sampleForDesk = (c: VisitClinical, encounterId: string): VisitClinical => 
     ...c,
     diagnoses: c.diagnoses.filter((d) => d.byId === user.id),
     notes: c.notes.filter((n) => n.byId === user.id),
+    // 0127: the doctor's texts are records: only what the reader wrote; the orders for them
+    sections: Object.fromEntries(
+      Object.entries(c.sections ?? {}).filter(([, s]) => s?.byId === user.id),
+    ),
+    nurseOrders: sampleVisitNurseOrders(encounterId, true),
+    hasComplaint: !!c.sections?.complaint,
     prescriptions: c.prescriptions.filter(
       (p) => p.prescriberId === user.id || pharmacy || (treating && p.supply === 'room'),
     ),
@@ -1371,6 +1520,9 @@ export function useVisitClinical(encounterId: string) {
               nextAppointment: sampleNextAppointment.get(encounterId) ?? null,
             },
             editLock: sampleEditLock(encounterId),
+            // 0127: the orders to the nurses, as they are now
+            nurseOrders: sampleVisitNurseOrders(encounterId),
+            hasComplaint: !!c.sections?.complaint,
           },
           encounterId,
         )
@@ -1541,29 +1693,138 @@ export function useClinicalActions(encounterId: string) {
       icd10?: string
       type: 'primary' | 'secondary'
       provisional: boolean
+      /** 0127: step 3 or step 5 (default: from provisional). */
+      stage?: DiagnosisStage
+      /** 0127: a definitive diagnosis also written in the differential list, for the record. */
+      alsoDifferential?: boolean
     }) => {
+      const stage: DiagnosisStage = i.stage ?? (i.provisional ? 'differential' : 'definitive')
       if (!supabase) {
         sampleMayWrite(encounterId)
-        local().diagnoses.push({
-          id: `d-${Date.now()}`,
+        const base = {
           text: i.text,
-          icd10: i.icd10 ?? null,
-          type: i.type,
-          provisional: i.provisional,
+          icd10: i.icd10?.trim().toUpperCase() || null,
           at: now(),
           by: sampleUser()?.name ?? null,
           byId: sampleUser()?.id ?? null,
+        }
+        let dd: string | null = null
+        if (stage === 'definitive' && i.alsoDifferential) {
+          dd = `d-${Date.now()}-dd`
+          local().diagnoses.push({
+            ...base,
+            id: dd,
+            type: 'secondary',
+            provisional: true,
+            stage: 'differential',
+          })
+        }
+        const differential = stage === 'differential'
+        local().diagnoses.push({
+          ...base,
+          id: `d-${Date.now()}`,
+          type: differential ? 'secondary' : i.type,
+          provisional: differential,
+          stage,
+          differentialId: dd,
         })
         // a primary diagnosis written: "no diagnosis found" no longer stands (0125)
-        if (i.type === 'primary') sampleNoDx.delete(encounterId)
+        if (!differential && i.type === 'primary') sampleNoDx.delete(encounterId)
         return
       }
+      const res = await supabase.rpc('add_visit_diagnosis', {
+        p_encounter_id: encounterId,
+        p_text: i.text,
+        p_icd10: i.icd10 || null,
+        p_type: i.type,
+        p_stage: stage,
+        p_also_differential: !!i.alsoDifferential,
+      })
+      if (!res.error) return
+      // a database before 0127: the provisional mark
+      if (!isMissingFunction(res.error)) throw apiError(res.error)
       await call('add_diagnosis', {
         p_encounter_id: encounterId,
         p_text: i.text,
         p_icd10: i.icd10 || null,
         p_type: i.type,
-        p_provisional: i.provisional,
+        p_provisional: stage === 'differential',
+      })
+    },
+    onSuccess: refresh,
+  })
+  /** 0127: a differential confirmed: the definitive diagnosis (step 5) linked to it. */
+  const confirmDifferential = useMutation({
+    mutationFn: async (i: { id: string; type: 'primary' | 'secondary' }) => {
+      if (!supabase) {
+        sampleMayWrite(encounterId)
+        const c = local()
+        const d = c.diagnoses.find((x) => x.id === i.id && !x.removedAt)
+        if (!d) throw apiError({ code: 'P0002', message: 'diagnosis not found' })
+        if (c.diagnoses.some((x) => x.differentialId === i.id && !x.removedAt))
+          throw apiError({
+            code: '22023',
+            message: 'this diagnosis is already confirmed',
+            hint: 'already_confirmed',
+          })
+        c.diagnoses.push({
+          id: `d-${Date.now()}`,
+          text: d.text,
+          icd10: d.icd10,
+          type: i.type,
+          provisional: false,
+          stage: 'definitive',
+          differentialId: d.id,
+          at: now(),
+          by: sampleUser()?.name ?? null,
+          byId: sampleUser()?.id ?? null,
+        })
+        if (i.type === 'primary') sampleNoDx.delete(encounterId)
+        return
+      }
+      await call('confirm_differential', { p_id: i.id, p_type: i.type })
+    },
+    onSuccess: refresh,
+  })
+  /** 0127: the doctor's text of a step (complaint, history, examination, plan); '' clears it. */
+  const saveSection = useMutation({
+    mutationFn: async (i: { section: SectionKey; text: string; reason?: string | null }) => {
+      const text = i.text.trim()
+      if (!supabase) {
+        sampleMayWrite(encounterId)
+        const c = local()
+        const sections = (c.sections ??= {})
+        const old = sections[i.section]
+        if (!text) {
+          delete sections[i.section]
+          return
+        }
+        if (old?.text === text) return
+        sections[i.section] = old
+          ? {
+              ...old,
+              text,
+              editedAt: now(),
+              editedBy: sampleUser()?.name ?? null,
+              editReason: i.reason?.trim() || null,
+              history: [
+                sampleVersion(
+                  { text: old.text },
+                  old.editedAt ?? old.at,
+                  old.editedBy ?? old.by,
+                  i.reason?.trim() ?? '',
+                ),
+                ...(old.history ?? []),
+              ],
+            }
+          : { text, at: now(), by: sampleUser()?.name ?? null, byId: sampleUser()?.id ?? null }
+        return
+      }
+      await call('save_visit_section', {
+        p_encounter_id: encounterId,
+        p_section: i.section,
+        p_text: text,
+        p_reason: i.reason?.trim() || null,
       })
     },
     onSuccess: refresh,
@@ -2006,6 +2267,13 @@ export function useClinicalActions(encounterId: string) {
       const kind = i?.noDiagnosis ?? null
       const note = i?.note?.trim() || null
       if (!supabase) {
+        // 0127: the chief complaint (step 1) is written before finishing
+        if (!local().sections?.complaint)
+          throw apiError({
+            code: '23514',
+            message: 'write the chief complaint (step 1) before finishing the visit',
+            hint: 'complaint_needed',
+          })
         if (kind) {
           if (kind === 'other' && (note?.length ?? 0) < 3)
             throw apiError({ code: '22023', message: 'say why no diagnosis was found' })
@@ -2117,6 +2385,8 @@ export function useClinicalActions(encounterId: string) {
   })
   return {
     addDiagnosis,
+    confirmDifferential,
+    saveSection,
     addNote,
     updateDiagnosis,
     removeDiagnosis,

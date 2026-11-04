@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Search,
   Siren,
+  Syringe,
   Stethoscope,
   UserPlus,
   UserRoundCheck,
@@ -61,6 +62,10 @@ import { TREATING_DESKS } from '@/lib/api/desks'
 import { DeskBlocks } from './home-desks'
 import { useHomeDesks } from './home-desks-rules'
 import { MyWorkPanel, WaitingForMePanel } from './my-panels'
+import { useState } from 'react'
+import { useMyNurseOrders } from '@/lib/api/nurse-orders'
+import { NurseOrderRow } from '@/components/clinical/nurse-order-row'
+import { Flash } from '@/components/ui/flash'
 import { WORK_OF, type LinkFn } from './my-work'
 
 export type DeskRole = 'receptionist' | 'nurse'
@@ -210,6 +215,9 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
 
             {/* Patients a colleague hands over to me (Take / Decline), and mine waiting (0088) */}
             {nurse && <HandoverPanel />}
+
+            {/* 0127: the doctors' orders to carry out (acts, drugs to give), mine first */}
+            {nurse && <NurseOrdersSection nursing={nursing} canAct={can('clinical.write')} />}
 
             {/* WAITING FOR ME: sent to me by name first, then my desks' queue */}
             <section className="flex flex-col gap-3">
@@ -563,5 +571,68 @@ function NursingOrdersPanel() {
         </ShownList>
       )}
     </Panel>
+  )
+}
+
+/**
+ * 0127: the orders of the doctors to carry out (step 6 of the visit): a medical act or a drug to
+ * give, sent to this nurse by name or to all the nurses of the nursing desk. Each time is recorded
+ * here (given, or not given with the reason); the visit opens beside it. Shown at the nursing
+ * desk, or whenever an order is sent to the nurse by name.
+ */
+function NurseOrdersSection({ nursing, canAct }: { nursing: boolean; canAct: boolean }) {
+  const { t } = useTranslation()
+  const { data: orders = [] } = useMyNurseOrders()
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  if (!nursing && orders.length === 0) return null
+  return (
+    <section className="flex flex-col gap-3">
+      <SectionTitle icon={Syringe}>{t('nurseOrders.homeTitle')}</SectionTitle>
+      <Panel
+        i={1}
+        id="home-nurse-orders"
+        icon={Syringe}
+        tint="violet"
+        title={t('nurseOrders.homePanel')}
+        right={t('nurseOrders.openCount', { count: orders.length })}
+      >
+        {error && <ErrorBox>{error}</ErrorBox>}
+        {message && !error && <Flash onClose={() => setMessage(null)}>{message}</Flash>}
+        {orders.length === 0 ? (
+          <Empty>{t('nurseOrders.homeEmpty')}</Empty>
+        ) : (
+          <ShownList items={orders} step={5}>
+            {(shown) => (
+              <div className="flex flex-col gap-2">
+                {shown.map((o) => (
+                  <div key={o.id} className="flex flex-col gap-1.5">
+                    <NurseOrderRow
+                      order={o}
+                      carryOut={canAct}
+                      showPatient
+                      onDone={(m) => {
+                        setError(null)
+                        setMessage(m)
+                      }}
+                      onError={setError}
+                    />
+                    <StaffLink
+                      to="/app/visit"
+                      search={{ encounter: o.encounterId }}
+                      className={cn(actionLink, 'self-start text-[13px]')}
+                    >
+                      {t('nurseOrders.openVisit')}
+                      <ArrowRight size={14} aria-hidden="true" />
+                    </StaffLink>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ShownList>
+        )}
+        <Hint>{t('nurseOrders.homeHint')}</Hint>
+      </Panel>
+    </section>
   )
 }

@@ -2056,6 +2056,19 @@
       "askBody": "A booking made for a colleague waits for their answer.",
       "directTitle": "Confirm bookings for a colleague at once?",
       "directBody": "The colleague no longer accepts them; they are told by a notice."
+    },
+    "pastForDoctor": {
+      "title": "The patient’s past for the treating doctor",
+      "lead": "In step 1 of a visit, the doctor can see the summary of the patient’s earlier visits: complaint, diagnoses, plan, medicines, results, allergies and long-term conditions.",
+      "on": "The treating doctor sees it",
+      "onHint": "A doctor working on the patient’s open visit sees the earlier visits at once; each opening is written to the access log.",
+      "off": "The doctor asks first",
+      "offHint": "As before: the doctor asks to see the past records, or opens them as an emergency with a reason.",
+      "note": "Someone who is not a doctor never sees the patient’s past. The manager and the doctors who already have access keep it either way.",
+      "onTitle": "Let the treating doctor see the patient’s past?",
+      "onBody": "A doctor working on a patient’s open visit will see the earlier visits in step 1. Each opening is written to the access log.",
+      "offTitle": "Make the doctor ask first?",
+      "offBody": "The treating doctor will no longer see the earlier visits at once: they ask for access, or open them as an emergency with a reason."
     }
   },
   "pin": {
@@ -2203,7 +2216,8 @@
     "allergiesNoneHint": "Tick it when the patient was asked and has no known allergy. It is printed on prescriptions and reports.",
     "allergiesNotRecorded": "Allergies not recorded yet",
     "privateField": "Private (medical)",
-    "privateFill": "Private (medical) fields: you do not see what is recorded in them. Fill one in only when it is empty; a value already there is kept."
+    "privateFill": "Private (medical) fields: you do not see what is recorded in them. Fill one in only when it is empty; a value already there is kept.",
+    "complaintLine": "Complaint: {{text}}"
   },
   "clinical": {
     "title": "Clinical record",
@@ -2974,7 +2988,15 @@
     "staffDoctorOn": "{{by}} marked {{name}} a doctor",
     "staffDoctorOnBody": "Sees patient records from now on.",
     "staffDoctorOff": "{{by}} took the doctor mark away from {{name}}",
-    "staffDoctorOffBody": "No longer sees patient records."
+    "staffDoctorOffBody": "No longer sees patient records.",
+    "nurseOrderAct": "Medical act to do: {{title}}",
+    "nurseOrderDrug": "Medicine to give: {{title}}",
+    "nurseOrder": {
+      "done": "{{by}} has carried out: {{title}}",
+      "not_done": "{{by}} will not carry out the rest of: {{title}}",
+      "not_given": "{{by}} could not give one time of: {{title}}",
+      "cancelled": "{{by}} cancelled the order: {{title}}"
+    }
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -4446,7 +4468,20 @@
       "validatedBanner": "VALIDATED – {{date}} by {{name}}",
       "chipValidated": "Validated",
       "chipPreliminary": "Preliminary",
-      "chipAmended": "Amended"
+      "chipAmended": "Amended",
+      "step1": "Complaint and history",
+      "step2": "Physical examination",
+      "step3": "Differential diagnosis",
+      "step4": "Paraclinical exams",
+      "step5": "Definitive diagnosis",
+      "step6": "Treatment plan",
+      "complaint": "Chief complaint",
+      "nurseOrders": "Orders to the nurses",
+      "order": "Order",
+      "how": "How",
+      "confirmed": "Confirmed",
+      "notConfirmed": "Not confirmed",
+      "notRecorded": "Not recorded"
     }
   },
   "access": {
@@ -6853,7 +6888,8 @@
       "head": "Head of department",
       "request": "Approved request",
       "emergency": "Emergency",
-      "manager": "Manager"
+      "manager": "Manager",
+      "treating": "Treating doctor"
     },
     "what": {
       "file": "Patient file",
@@ -6862,7 +6898,8 @@
       "results": "Results",
       "journey": "Visit track",
       "emergency": "Emergency access opened",
-      "attachment": "A file of a past visit"
+      "attachment": "A file of a past visit",
+      "history": "Past visits (step 1)"
     },
     "status": {
       "pending": "Waiting",
@@ -6940,7 +6977,8 @@
       "manager": "{{name}} is the manager: the manager may read every record.",
       "head": "{{name}} heads the department in charge of that visit.",
       "request": "{{name}} asked to read the record and the request was approved.",
-      "emergency": "{{name}} opened it as an emergency, with a reason; the manager reviews it."
+      "emergency": "{{name}} opened it as an emergency, with a reason; the manager reviews it.",
+      "treating": "{{name}} treats the patient now; the clinic lets the treating doctor see the past visits."
     }
   },
   "recordPrivacy": {
@@ -7038,14 +7076,16 @@
       "results": "Results",
       "journey": "Visit track",
       "emergency": "Emergency opening",
-      "attachment": "A file of a past visit"
+      "attachment": "A file of a past visit",
+      "history": "Past visits (step 1)"
     },
     "via": {
       "own": "Own visit",
       "head": "Head of department",
       "manager": "Manager",
       "request": "Approved request",
-      "emergency": "Emergency"
+      "emergency": "Emergency",
+      "treating": "Treating doctor"
     }
   },
   "supportingFiles": {
@@ -7226,6 +7266,8 @@
   },
   "dbErrors": {
     "25402734": "the doctor cancelled this medicine",
+    "37902613": "The setting “past history for the treating doctor” must be on or off.",
+    "47437974": "Write the chief complaint (step 1) before finishing the visit.",
     "52464355": "There is no open pharmacy store to send it to.",
     "67568016": "this category still has {{p1}} treatment(s): move them to another category first",
     "75188350": "The category was not found.",
@@ -7629,7 +7671,19 @@
     "6197a26c": "This booking can no longer be changed.",
     "2dd3cc49": "Say why the booking is moved.",
     "f0c2044d": "Booking not found.",
-    "403a42c7": "Say yes or no."
+    "403a42c7": "Say yes or no.",
+    "93d982f5": "A finished visit keeps its chief complaint: write the new one instead.",
+    "eb87057f": "Say whether it is a medical act or a drug to give.",
+    "8e38ddd2": "Not allowed: this order is for another nurse.",
+    "108f4947": "A diagnosis is either possible (differential) or definitive.",
+    "d8c88bcd": "Send it to a nurse, or to all the nurses.",
+    "c7dd8d57": "The number of times is between 1 and 60.",
+    "21358efa": "This diagnosis is already confirmed.",
+    "bb06dc38": "Choose the medicine from the stock.",
+    "22d39b98": "Unknown part of the visit record.",
+    "d118b87b": "The time given is not possible.",
+    "e159c113": "This order is already over.",
+    "2c7e8550": "The text is too long."
   },
   "panel": {
     "close": "Close",
@@ -7880,7 +7934,8 @@
       "visitNo": "Visit no.",
       "doctor": "Doctor",
       "diagnosis": "Diagnosis",
-      "status": "Status"
+      "status": "Status",
+      "complaint": "Chief complaint"
     },
     "status": {
       "closed": "Closed",
@@ -8727,7 +8782,8 @@
         "description": "Cases per diagnosis, new and follow-up, by sex and age band.",
         "note1": "A case is a visit with that diagnosis (its ICD-10 code, else its words), in the visits that arrived in the period.",
         "note2": "New: the patient had not had it in an earlier visit; follow-up: they had.",
-        "note3": "Age on the day of the visit. You see your departments’ visits (heads) or the diagnoses you wrote."
+        "note3": "Age on the day of the visit. You see your departments’ visits (heads) or the diagnoses you wrote.",
+        "note4": "By default the definitive diagnoses (step 5) are counted; choose Differential for the possible diagnoses of step 3."
       },
       "rx": {
         "title": "Prescriptions",
@@ -8776,7 +8832,9 @@
         "practitioner": "Booked with",
         "source": "Source",
         "search": "Search",
-        "searchHint": "Patient, file no., medicine, test…"
+        "searchHint": "Patient, file no., medicine, test…",
+        "dxStage": "Diagnoses",
+        "dxStageHint": "Definitive: confirmed (step 5). Differential: the possible ones of step 3."
       },
       "sex": {
         "female": "Female",
@@ -8918,7 +8976,8 @@
         "source": "Source",
         "arrivedAt": "Arrived at",
         "bookedOn": "Booked on",
-        "cancelReason": "Why cancelled"
+        "cancelReason": "Why cancelled",
+        "complaint": "Chief complaint"
       },
       "g": {
         "clinician": "By clinician",
@@ -8969,6 +9028,11 @@
         "arrived": "Arrived",
         "seen": "Seen",
         "noShow": "Did not come"
+      },
+      "dxStage": {
+        "definitive": "Definitive",
+        "differential": "Differential",
+        "all": "Both"
       }
     },
     "ui": {
@@ -9458,7 +9522,9 @@
     "documents_one": "{{count}} document expiring",
     "documents_other": "{{count}} documents expiring",
     "filesToComplete_one": "{{count}} file to complete",
-    "filesToComplete_other": "{{count}} files to complete"
+    "filesToComplete_other": "{{count}} files to complete",
+    "nurseOrders_one": "{{count}} order to carry out",
+    "nurseOrders_other": "{{count}} orders to carry out"
   },
   "daily": {
     "today": "Today",
@@ -9706,5 +9772,207 @@
     "confirmOffYes": "Yes, take it away",
     "doneOn": "{{name}} is marked a doctor and now sees patient records.",
     "doneOff": "{{name}} is no longer marked a doctor and no longer sees patient records."
+  },
+  "nurseOrders": {
+    "homeTitle": "Orders to carry out",
+    "homePanel": "From the doctors: acts and medicines to give",
+    "openCount_one": "{{count}} open",
+    "openCount_other": "{{count}} open",
+    "homeEmpty": "No order waiting for you.",
+    "openVisit": "Open the visit",
+    "homeHint": "The orders sent to you by name and those sent to all the nurses of your desk. Record each time given, or not given with the reason: the doctor sees it at once.",
+    "title": "Orders to the nurses",
+    "add": "Order for the nurses",
+    "none": "No order to the nurses.",
+    "kindLabel": "Kind of order",
+    "kindDrug": "Drug to give",
+    "kindAct": "Medical act",
+    "drugHint": "A medicine from the stock: the nurse gives it from her room store; each time given is taken from the store and billed.",
+    "actHint": "An injection, a dressing, an IV line, a nebulisation, a catheter… Choose the service to bill it each time it is done.",
+    "what": "What to do",
+    "whatPh": "IM injection of ceftriaxone 1 g",
+    "billAs": "Service billed",
+    "notBilledChoice": "Not billed",
+    "quantity": "Quantity each time",
+    "dose": "Dose",
+    "unit": "unit",
+    "unitsLabel": "Units from the store each time ({{unit}})",
+    "howOften": "How often",
+    "timesLabel": "How many times",
+    "forWhom": "For whom",
+    "allNurses": "All the nurses",
+    "notesLabel": "Note for the nurse",
+    "notesPh": "Check the allergy band first",
+    "send": "Send the order",
+    "sendQ": "Order “{{what}}” for {{name}}?",
+    "sendToOne": "It goes to {{name}}, who is told at once.",
+    "sendToAll": "It goes to all the nurses of the nursing desk, who are told at once.",
+    "sendDrugBody": "Each time given is taken from the nurse’s store and billed.",
+    "sendActBody": "The service is billed each time it is done.",
+    "sendYes": "Yes, send",
+    "sentToOne": "“{{what}}” sent to {{name}}.",
+    "sentToAll": "“{{what}}” sent to all the nurses.",
+    "errTimes": "How many times: a whole number from 1 to 60.",
+    "errMedicine": "Choose the medicine from the stock.",
+    "errAct": "Say what the nurse must do, or choose the service.",
+    "forNurse": "For {{name}}",
+    "forAll": "For all the nurses",
+    "forYouTitle_one": "Order from the doctor ({{count}})",
+    "forYouTitle_other": "Orders from the doctor ({{count}})",
+    "byWhen": "by {{name}}, {{when}}",
+    "billedAs": "billed as {{service}}",
+    "unitsEach_one": "{{count}} unit each time",
+    "unitsEach_other": "{{count}} units each time",
+    "times_one": "{{count}} time",
+    "times_other": "{{count}} times",
+    "progressDrug_one": "Given {{given}}/{{count}}",
+    "progressDrug_other": "Given {{given}}/{{count}}",
+    "progressAct_one": "Done {{given}}/{{count}}",
+    "progressAct_other": "Done {{given}}/{{count}}",
+    "progressAria_one": "{{given}} given, {{notGiven}} not given, of {{count}}",
+    "progressAria_other": "{{given}} given, {{notGiven}} not given, of {{count}}",
+    "timesLog_one": "{{count}} time recorded",
+    "timesLog_other": "{{count}} times recorded",
+    "doseGiven": "{{n}}: given",
+    "doseNotGiven": "{{n}}: not given",
+    "notBilled": "not billed",
+    "endedWhy": "Ended by {{name}} on {{when}}: {{reason}}",
+    "status": {
+      "open": "To do",
+      "done": "Done",
+      "not_done": "Not done",
+      "cancelled": "Cancelled"
+    },
+    "give_one": "Give ({{n}}/{{count}})",
+    "give_other": "Give ({{n}}/{{count}})",
+    "markDone_one": "Done ({{n}}/{{count}})",
+    "markDone_other": "Done ({{n}}/{{count}})",
+    "giveQ": "“{{what}}” for {{name}}: given now?",
+    "giveDrugBody_one": "Time {{n}} of {{count}}, by you, now. The medicine is taken from your store and billed.",
+    "giveDrugBody_other": "Time {{n}} of {{count}}, by you, now. The medicine is taken from your store and billed.",
+    "giveActBody_one": "Time {{n}} of {{count}}, by you, now.",
+    "giveActBody_other": "Time {{n}} of {{count}}, by you, now.",
+    "noteLabel": "Note (optional)",
+    "notePh": "With water; temperature 38.5 °C",
+    "giveYes": "Yes, given",
+    "doneYes": "Yes, done",
+    "givenSaved": "“{{what}}”: given, written down.",
+    "doneSaved": "“{{what}}”: done, written down.",
+    "skip": "Not given",
+    "skipQ": "“{{what}}” for {{name}}: not given this time?",
+    "skipBody": "This time counts as not given; the doctor is told with the reason.",
+    "skipWhy": "Why was it not given?",
+    "skipYes": "Yes, not given",
+    "skipSaved": "“{{what}}”: not given, the doctor is told.",
+    "notDone": "Will not be done",
+    "notDoneQ": "“{{what}}” for {{name}}: the rest will not be done?",
+    "notDoneBody": "The order ends as not done; the doctor is told with the reason.",
+    "notDoneYes": "Yes, will not be done",
+    "notDoneSaved": "“{{what}}”: will not be done, the doctor is told.",
+    "stopWhy": "Why?",
+    "cancel": "Cancel the order",
+    "cancelQ": "Cancel “{{what}}” for {{name}}?",
+    "cancelBody": "The nurses no longer see it to do; what was already given stays recorded.",
+    "cancelYes": "Yes, cancel",
+    "cancelled": "“{{what}}”: cancelled."
+  },
+  "sixSteps": {
+    "cardTitle": "The visit, in six steps",
+    "lead": "Work in any order and come back to any step. To finish: the chief complaint (step 1) and a definitive diagnosis or the reason none was found (step 5).",
+    "stepAria": "Step {{n}}: {{title}}",
+    "done": "Done",
+    "empty": "Nothing yet",
+    "requiredEmpty": "Needed to finish",
+    "complaint": {
+      "title": "1 · Complaint and history",
+      "hint": "What the patient says brings them, in their words; how the illness went; the past visits when it is not the first time."
+    },
+    "exam": {
+      "title": "2 · Physical examination",
+      "hint": "What you found when examining the patient."
+    },
+    "differential": {
+      "title": "3 · Differential diagnosis",
+      "hint": "The possible diagnoses after the examination, not yet confirmed. Confirm one when it is found."
+    },
+    "tests": {
+      "title": "4 · Paraclinical exams",
+      "hint": "Laboratory tests and other exams to find the diagnosis; their results come here."
+    },
+    "definitive": {
+      "title": "5 · Definitive diagnosis",
+      "hint": "The confirmed diagnoses: one primary, the others secondary. One the laboratory found may be added here. Or say why none was found."
+    },
+    "plan": {
+      "title": "6 · Treatment plan",
+      "hint": "The plan, the medicines, and the orders to the nurses: medical acts and drugs to give, for one nurse or all."
+    },
+    "sections": {
+      "complaint": "Chief complaint",
+      "hpi": "History of the present illness",
+      "exam": "Examination findings",
+      "plan": "Plan"
+    },
+    "placeholders": {
+      "complaint": "In the patient’s words: “fever and headache for 3 days”",
+      "hpi": "Since when, how it started, what makes it better or worse, what was already taken…",
+      "exam": "General condition, then by system: chest, heart, abdomen, neuro…",
+      "plan": "What will be done: treatment, advice, when to come back…"
+    },
+    "examTemplate": "General: \nHead and neck: \nChest: \nHeart: \nAbdomen: \nLimbs: \nNeuro: \nSkin: ",
+    "useTemplate": "Use the outline",
+    "save": "Save",
+    "notWritten": "Not written.",
+    "saveQ": "Save the {{what}} of {{name}}?",
+    "clearQ": "Clear the {{what}} of {{name}}?",
+    "sectionSaved": "{{what}} saved.",
+    "otherNotes": "Other notes",
+    "addDifferential": "Add a possible diagnosis",
+    "saveDifferential": "Add to the list",
+    "differentialHint": "A possible diagnosis is not counted in the reports until it is confirmed (step 5).",
+    "noDifferential": "No possible diagnosis written yet.",
+    "possibleBadge": "Possible",
+    "confirmedBadge": "Confirmed",
+    "confirm": "Confirm",
+    "confirmQ": "Confirm {{dx}} for {{name}}?",
+    "confirmPrimary": "It is written in step 5 as the primary diagnosis; it stays in the differential list, marked confirmed.",
+    "confirmSecondary": "It is written in step 5 as a secondary diagnosis (there is a primary one already); it stays in the differential list, marked confirmed.",
+    "confirmYes": "Yes, confirm",
+    "confirmed": "{{dx}} confirmed: it is in step 5.",
+    "confirmedBy": "confirmed by {{name}} on {{when}}",
+    "fromDifferential": "from the differential list",
+    "ddQ": "Add {{dx}} to the possible diagnoses of {{name}}?",
+    "ddSaved": "Possible diagnosis added.",
+    "addDefinitive": "Add a definitive diagnosis",
+    "alsoDifferential": "Also in the differential list",
+    "alsoDifferentialHint": "Not in the differential list (found by the laboratory, for example)? Tick “Also in the differential list” to keep the record complete.",
+    "noDefinitive": "No definitive diagnosis yet.",
+    "noTests": "No test ordered.",
+    "prescriptions": "Medicines",
+    "noPrescriptions": "No medicine written.",
+    "toFinish": "To finish the visit",
+    "needs": {
+      "complaint": "The chief complaint (step 1)",
+      "diagnosis": "A definitive primary diagnosis, or the reason none was found (step 5)"
+    },
+    "openOrdersNote_one": "{{count}} order to the nurses is still open: it does not stop finishing.",
+    "openOrdersNote_other": "{{count}} orders to the nurses are still open: they do not stop finishing.",
+    "openOrders_one": "The order to the nurses not carried out yet stays open: {{list}}.",
+    "openOrders_other": "The orders to the nurses not carried out yet stay open: {{list}}.",
+    "needComplaint": "Write the chief complaint (step 1) before finishing the visit.",
+    "finishHint": "Needed: the chief complaint, and a definitive primary diagnosis or “No diagnosis found” with the reason."
+  },
+  "pastHistory": {
+    "title_one": "Past history: {{count}} earlier visit",
+    "title_other": "Past history: {{count}} earlier visits",
+    "firstVisit": "First visit at the clinic: no past history.",
+    "logged": "You treat the patient now: this opening is written in the access log.",
+    "longTerm": "Long-term",
+    "noDx": "No diagnosis written",
+    "refused": {
+      "not_doctor": "The past records are for doctors.",
+      "setting_off": "The clinic asks the doctor to request access to the past records (or open them in an emergency).",
+      "not_treating": "The past records are for the doctor treating the patient now; ask for access if you need them."
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { addDays, isoDate } from '@mmc/shared'
 import { dxText } from '@/lib/no-diagnosis'
 import type { ReportContext, ReportPeriod } from '@/lib/reports/defs/types'
+import { ApiError } from './errors'
 import { reportCall } from './reports-options'
 
 /**
@@ -32,8 +33,10 @@ export interface PatientSeenRow {
   /** consultation, dental, theatre, nursing, beds, ultrasound (null: wrote a diagnosis only). */
   desk: string | null
   department: string | null
-  /** "B54 Malaria; J06.9 …" (clinical). */
+  /** "B54 Malaria; J06.9 …" (clinical): the definitive diagnoses (0127). */
   diagnosis: string | null
+  /** 0127: the chief complaint (step 1), for doctors. */
+  complaint?: string | null
   prescriptions: number
   tests: number
   outcome: Outcome
@@ -266,22 +269,36 @@ export const loadPatientsSeen = async (a: SeenArgs, ctx: ReportContext) =>
         }),
   )
 
+/** 0127: the definitive diagnoses (step 5, the default), the differential ones (step 3), or both. */
+export type DxStage = 'definitive' | 'differential' | 'all'
+export const DX_STAGES: readonly DxStage[] = ['definitive', 'differential', 'all']
 export interface DiagnosesArgs {
   period: ReportPeriod
   department: string | null
   doctor: string | null
+  stage?: DxStage
 }
-export const loadDiagnoses = async (a: DiagnosesArgs, ctx: ReportContext) =>
-  withDxWords(
-    ctx.sample
-      ? sampleDiagnoses(a, ctx)
-      : await rpcRows<DiagnosisRow>('report_diagnoses', {
-          p_from: a.period.from,
-          p_to: a.period.to,
-          p_department: a.department,
-          p_doctor: a.doctor,
-        }),
-  )
+export const loadDiagnoses = async (a: DiagnosesArgs, ctx: ReportContext) => {
+  if (ctx.sample) return withDxWords(sampleDiagnoses(a, ctx))
+  const args = {
+    p_from: a.period.from,
+    p_to: a.period.to,
+    p_department: a.department,
+    p_doctor: a.doctor,
+  }
+  const stage = a.stage ?? 'definitive'
+  // report_diagnoses counts the definitive ones (0127); the others ask report_diagnoses_staged,
+  // absent before 0127 (then: the diagnoses as the database counts them)
+  if (stage !== 'definitive')
+    try {
+      return withDxWords(
+        await rpcRows<DiagnosisRow>('report_diagnoses_staged', { ...args, p_stage: stage }),
+      )
+    } catch (e) {
+      if (!(e instanceof ApiError && e.code === 'PGRST202')) throw e
+    }
+  return withDxWords(await rpcRows<DiagnosisRow>('report_diagnoses', args))
+}
 
 export interface PrescriptionsArgs {
   period: ReportPeriod
@@ -668,53 +685,95 @@ function samplePatientsSeen(a: SeenArgs, ctx: ReportContext): PatientSeenRow[] {
           : noDxSample(v.encounterId)
             ? '[no-dx:check_up] BP control'
             : `${v.dx[0]} ${v.dx[1]}`,
+      complaint: v.clinician.role === 'nurse' ? null : complaintOf(v.dx[0]),
       prescriptions: v.rx.length,
       tests: v.tests.length,
       outcome: v.outcome,
     }))
 }
 
+/** Sample (0127): the patient's words for each sample diagnosis. */
+const COMPLAINTS: Record<string, string> = {
+  B54: 'Fever and headache for 3 days',
+  'J06.9': 'Cough and runny nose',
+  I10: 'Headache, came for BP control',
+  'K29.7': 'Burning pain in the stomach',
+  'N39.0': 'Pain when passing urine',
+  'E11.9': 'Thirsty, passes urine often',
+  A09: 'Diarrhoea and vomiting since yesterday',
+  'J18.9': 'Cough with fever, short of breath',
+  'K02.9': 'Toothache',
+  'K05.1': 'Bleeding gums',
+  'K04.7': 'Swollen jaw, tooth pain',
+}
+const complaintOf = (code: string) => COMPLAINTS[code] ?? 'Not feeling well'
+/** Sample (0127): what the doctor first thought it could be, beside each sample diagnosis. */
+const DIFFERENTIAL_OF: Record<string, [string, string]> = {
+  B54: ['A01.0', 'Typhoid fever'],
+  'J06.9': ['J18.9', 'Pneumonia'],
+  'K29.7': ['K25.9', 'Gastric ulcer'],
+  'N39.0': ['N20.0', 'Kidney stone'],
+  A09: ['A06.0', 'Amoebic dysentery'],
+  'J18.9': ['A15.0', 'Pulmonary tuberculosis'],
+  'K04.7': ['K05.2', 'Periodontal abscess'],
+}
+
 function sampleDiagnoses(a: DiagnosesArgs, ctx: ReportContext): DiagnosisRow[] {
   const rows = new Map<string, DiagnosisRow>()
+  const stage = a.stage ?? 'definitive'
   for (const v of sampleVisits(a.period)) {
     if (v.clinician.role === 'nurse' || !visible(ctx, v)) continue
     if (a.doctor && v.clinician.id !== a.doctor) continue
     if (a.department && v.clinician.department !== a.department) continue
-    const [code, text] = noDxSample(v.encounterId) ? ['[no-dx:check_up]', '[no-dx:check_up]'] : v.dx
-    const r =
-      rows.get(code) ??
-      ({
-        code: code.startsWith('[no-dx:') ? null : code,
-        diagnosis: text,
-        cases: 0,
-        patients: 0,
-        newCases: 0,
-        followUp: 0,
-        primary: 0,
-        female: 0,
-        male: 0,
-        otherSex: 0,
-        age0to4: 0,
-        age5to14: 0,
-        age15to24: 0,
-        age25to49: 0,
-        age50plus: 0,
-        ageUnknown: 0,
-      } satisfies DiagnosisRow)
-    r.cases++
-    r.primary++
-    if (v.followUp) r.followUp++
-    else r.newCases++
-    if (v.patient.sex === 'female') r.female++
-    else if (v.patient.sex === 'male') r.male++
-    else r.otherSex++
-    const age = v.patient.age
-    if (age < 5) r.age0to4++
-    else if (age < 15) r.age5to14++
-    else if (age < 25) r.age15to24++
-    else if (age < 50) r.age25to49++
-    else r.age50plus++
-    rows.set(code, r)
+    const noDx = noDxSample(v.encounterId)
+    const dd = noDx ? undefined : DIFFERENTIAL_OF[v.dx[0]]
+    // [code, text, a differential]
+    const found: [string, string, boolean][] = [
+      ...(stage !== 'differential'
+        ? [
+            noDx
+              ? (['[no-dx:check_up]', '[no-dx:check_up]', false] as [string, string, boolean])
+              : ([v.dx[0], v.dx[1], false] as [string, string, boolean]),
+          ]
+        : []),
+      ...(stage !== 'definitive' && dd ? [[dd[0], dd[1], true] as [string, string, boolean]] : []),
+    ]
+    for (const [code, text, differential] of found) {
+      const r =
+        rows.get(code) ??
+        ({
+          code: code.startsWith('[no-dx:') ? null : code,
+          diagnosis: text,
+          cases: 0,
+          patients: 0,
+          newCases: 0,
+          followUp: 0,
+          primary: 0,
+          female: 0,
+          male: 0,
+          otherSex: 0,
+          age0to4: 0,
+          age5to14: 0,
+          age15to24: 0,
+          age25to49: 0,
+          age50plus: 0,
+          ageUnknown: 0,
+        } satisfies DiagnosisRow)
+      r.cases++
+      if (!differential) r.primary++
+      if (v.followUp) r.followUp++
+      else r.newCases++
+      if (v.patient.sex === 'female') r.female++
+      else if (v.patient.sex === 'male') r.male++
+      else r.otherSex++
+      const age = v.patient.age
+      if (age < 5) r.age0to4++
+      else if (age < 15) r.age5to14++
+      else if (age < 25) r.age15to24++
+      else if (age < 50) r.age25to49++
+      else r.age50plus++
+      rows.set(code, r)
+    }
   }
   // a patient counted once per diagnosis
   for (const r of rows.values()) r.patients = Math.max(1, Math.round(r.cases * 0.85))

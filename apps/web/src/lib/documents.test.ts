@@ -300,6 +300,78 @@ describe('result report', () => {
   })
 })
 
+describe('medical report: the six steps (0127)', () => {
+  const labels = {
+    conclusion: 'Conclusion',
+    title: 'Medical report',
+    titleHistory: 'History',
+    diagnoses: 'Diagnoses',
+    medicines: 'Medicines',
+    vitals: 'Vital signs',
+    nothing: '—',
+  } as MedicalReportLabels
+  const doc = (visit: Record<string, unknown>) =>
+    buildMedicalReportHtml(
+      {
+        kind: 'visit',
+        clinic: { name: lh.legalName, address: '', contacts: '', ...lh },
+        patient: { name: 'P', fileNumber: 'F-1', ageSex: '' },
+        visits: [
+          {
+            date: '24/10/2026',
+            vitals: [],
+            notes: [],
+            diagnoses: [],
+            treatments: [],
+            medicines: [],
+            tests: [],
+            ...visit,
+          },
+        ],
+        author: { name: 'Dr A', title: 'Doctor' },
+      },
+      labels,
+      { t, now: at, autoPrint: false, fonts },
+    )
+  it('prints the six numbered headings in order, with the step of each part', () => {
+    const html = doc({
+      complaint: 'Fever and headache for 3 days',
+      history: 'Worse at night',
+      examination: 'T 38.9 °C, no neck stiffness',
+      differentials: [
+        { text: 'Malaria', icd10: 'B54', confirmed: true },
+        { text: 'Typhoid fever', icd10: 'A01.0', confirmed: false },
+      ],
+      tests: [{ name: 'Malaria RDT', findings: 'Positive', impression: null, verified: true }],
+      diagnoses: [{ text: 'Malaria', icd10: 'B54', primary: true, provisional: false }],
+      plan: 'Treat malaria, review in 3 days',
+      nurseOrders: [{ text: 'IM injection', how: 'IM · Once', status: 'Done 1/1' }],
+    })
+    const steps = [
+      '1. Complaint and history',
+      '2. Physical examination',
+      '3. Differential diagnosis',
+      '4. Paraclinical exams',
+      '5. Definitive diagnosis',
+      '6. Treatment plan',
+    ].map((s) => html.indexOf(s))
+    expect(steps.every((i) => i > 0)).toBe(true)
+    expect([...steps].sort((a, b) => a - b)).toEqual(steps)
+    expect(html).toContain('Fever and headache for 3 days')
+    expect(html).toContain('<span class="chip ok">Confirmed</span>')
+    expect(html).toContain('Typhoid fever')
+    expect(html).toContain('IM injection')
+    expect(html.indexOf('Treat malaria')).toBeGreaterThan(steps[5]!)
+  })
+  it('says a step with nothing written; a visit without the steps keeps the old layout', () => {
+    const html = doc({ complaint: 'Cough' })
+    expect(html).toContain('6. Treatment plan')
+    expect(html).toContain('Not recorded')
+    const old = doc({ notes: ['A note'] })
+    expect(old).not.toContain('1. Complaint and history')
+  })
+})
+
 describe('management report', () => {
   const report = (): Report => ({
     title: 'Cashier day close',

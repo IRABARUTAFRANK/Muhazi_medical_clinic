@@ -28,6 +28,8 @@ export const NAV_COUNT_KEYS = [
   'recordAccess',
   'documents',
   'filesToComplete',
+  // 0127: the doctors' orders to carry out (the nurse's Home)
+  'nurseOrders',
 ] as const
 export type NavCountKey = (typeof NAV_COUNT_KEYS)[number]
 export type NavCounts = Partial<Record<NavCountKey, number>> & {
@@ -44,6 +46,7 @@ const WAITING_FOR_ME: ReadonlySet<NavCountKey> = new Set<NavCountKey>([
   'stock',
   'payments',
   'recordAccess',
+  'nurseOrders',
 ])
 export const isWaitingForMe = (key: NavCountKey): boolean => WAITING_FOR_ME.has(key)
 
@@ -104,7 +107,7 @@ export function sampleNavCounts(user: Pick<StaffUser, 'role'>): NavCounts {
         earlier: { queue: 1, inClinic: 1 },
       }
     case 'nurse':
-      return { queue: 3, inClinic: 4, myBookings: 1 }
+      return { queue: 3, inClinic: 4, myBookings: 1, nurseOrders: 2 }
     case 'receptionist':
       return { inClinic: 9, bookings: 4, filesToComplete: 2 }
     case 'cashier':

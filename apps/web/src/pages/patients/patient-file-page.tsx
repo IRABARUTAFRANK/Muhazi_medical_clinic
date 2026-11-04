@@ -228,14 +228,20 @@ export function PatientFilePage({
             vitalsBy: measured?.by ?? null,
             vitalsAt: measured?.at ?? null,
             notes: [],
+            // 0127: step 1's complaint; the definitive diagnoses (step 5) and the differential
+            // ones (step 3, the provisional of before)
+            complaint: v.complaint ?? null,
             diagnoses: data.conditions
-              .filter((c) => c.encounterId === v.id)
+              .filter((c) => c.encounterId === v.id && !c.provisional)
               .map((c) => ({
                 text: c.text,
                 icd10: c.icd10,
                 primary: c.type === 'primary',
-                provisional: c.provisional,
+                provisional: false,
               })),
+            differentials: data.conditions
+              .filter((c) => c.encounterId === v.id && c.provisional)
+              .map((c) => ({ text: c.text, icd10: c.icd10 })),
             tests: allResults
               .filter((r) => r.encounterId === v.id)
               .map((r) => ({
@@ -1197,7 +1203,15 @@ function Visits({
                       {t('recordPrivacy.privateVisit')}
                     </span>
                   ) : (
-                    (v.diagnosis ?? <span className="text-ink-3">{t('file.noDiagnosis')}</span>)
+                    <>
+                      {/* 0127: the definitive diagnosis, and the patient's words (step 1) */}
+                      {v.diagnosis ?? <span className="text-ink-3">{t('file.noDiagnosis')}</span>}
+                      {v.complaint && (
+                        <span className="text-ink-3 block text-xs">
+                          {t('file.complaintLine', { text: v.complaint })}
+                        </span>
+                      )}
+                    </>
                   )}
                 </span>
                 <span className="font-semibold tabular-nums">

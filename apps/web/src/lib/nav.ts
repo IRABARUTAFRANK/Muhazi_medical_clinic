@@ -269,7 +269,13 @@ const COUNT_OF: Record<string, NavCountKey> = {
 function countKeyOf(user: StaffUser, n: NavItem, hasQueue: boolean): NavCountKey | undefined {
   if (n.to === '/app/stock') return n.labelKey === 'nav.myStore' ? 'stock' : 'pharmacy'
   if (n.to === '/app/vitals') return user.role === 'nurse' && !hasQueue ? 'queue' : undefined
-  if (n.to === '/app') return user.role === 'receptionist' ? 'filesToComplete' : undefined
+  // reception's files to complete; a nurse's orders to carry out (0127) are on her Home
+  if (n.to === '/app')
+    return user.role === 'receptionist'
+      ? 'filesToComplete'
+      : user.role === 'nurse'
+        ? 'nurseOrders'
+        : undefined
   return COUNT_OF[n.to]
 }
 

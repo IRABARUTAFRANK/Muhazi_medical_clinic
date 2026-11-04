@@ -124,6 +124,16 @@ export interface ReportVisit {
   nextAppointment?: string | null
   /** 0125: no diagnosis was found, in words ("No diagnosis — Follow-up / check-up only"). */
   noDiagnosis?: string | null
+  /**
+   * 0127, the six steps: the chief complaint (step 1, with `history` = the history of the present
+   * illness), the differential diagnoses (step 3; `diagnoses` are then the definitive ones of
+   * step 5), the orders to the nurses (step 6, with `plan`, the medicines and the treatments).
+   * When a visit has any of these (or `examination` / `plan`), its clinical part prints under
+   * the six numbered headings.
+   */
+  complaint?: string | null
+  differentials?: { text: string; icd10: string | null; confirmed?: boolean }[]
+  nurseOrders?: { text: string; how: string; status: string }[]
 }
 
 /** Laboratory request and validation details (result report, C3). */
@@ -315,6 +325,26 @@ function medWords(t: TFn) {
     performedBy: k('performedBy'),
     validatedBy: k('validatedBy'),
     notified: (name: string, time: string) => k('notified', { name, time }),
+    // 0127: the six steps of the visit
+    step: (n: number) =>
+      kd(
+        `step${n}`,
+        [
+          'Complaint and history',
+          'Physical examination',
+          'Differential diagnosis',
+          'Paraclinical exams',
+          'Definitive diagnosis',
+          'Treatment plan',
+        ][n - 1] ?? '',
+      ),
+    complaint: kd('complaint', 'Chief complaint'),
+    nurseOrders: kd('nurseOrders', 'Orders to the nurses'),
+    order: kd('order', 'Order'),
+    how: kd('how', 'How'),
+    confirmed: kd('confirmed', 'Confirmed'),
+    notConfirmed: kd('notConfirmed', 'Not confirmed'),
+    notRecorded: kd('notRecorded', 'Not recorded'),
   }
 }
 type Words = ReturnType<typeof medWords>
@@ -493,10 +523,15 @@ interface Ctx {
 const heading = (text: string, inVisit: boolean) =>
   inVisit ? `<h4 class="cap">${esc(text)}</h4>` : `<h2>${esc(text)}</h2>`
 
-function diagnosesPiece(v: ReportVisit, c: Ctx, inVisit: boolean): Piece | null {
+function diagnosesPiece(
+  v: ReportVisit,
+  c: Ctx,
+  inVisit: boolean,
+  title: string = c.l.diagnoses,
+): Piece | null {
   // 0125: finished with no diagnosis found: the reason stands in the diagnoses' place
   if (!v.diagnoses.length && v.noDiagnosis)
-    return paraPiece(heading(c.l.diagnoses, inVisit) + `<p>${esc(v.noDiagnosis)}</p>`)
+    return paraPiece(heading(title, inVisit) + `<p>${esc(v.noDiagnosis)}</p>`)
   if (!v.diagnoses.length) return null
   const sorted = [...v.diagnoses].sort((a, b) => Number(b.primary) - Number(a.primary))
   const status = (d: ReportVisit['diagnoses'][number]) => {
@@ -516,7 +551,7 @@ function diagnosesPiece(v: ReportVisit, c: Ctx, inVisit: boolean): Piece | null 
     d.icd10 ? { html: `<strong>${esc(d.icd10)}</strong>` } : null,
     chipCell(status(d), tone(d)),
   ])
-  return tablePiece(heading(c.l.diagnoses, inVisit), rows.length, (a, b, h) =>
+  return tablePiece(heading(title, inVisit), rows.length, (a, b, h) =>
     fixedTable(cols, rows.slice(a, b), { withHead: h }),
   )
 }
@@ -754,8 +789,108 @@ function advicePiece(v: ReportVisit, c: Ctx, inVisit: boolean): Piece | null {
   return html ? paraPiece(html) : null
 }
 
+/** 0127: the visit was recorded in the six steps (any of their own parts is there). */
+export const hasSixSteps = (v: ReportVisit) =>
+  !!(
+    v.complaint?.trim() ||
+    v.examination?.trim() ||
+    v.plan?.trim() ||
+    v.differentials?.length ||
+    v.nurseOrders?.length
+  )
+
+/** A step's heading: "3. Differential diagnosis". */
+const stepTitle = (n: number, c: Ctx) => `${n}. ${c.w.step(n)}`
+const notRecorded = (c: Ctx) => `<p class="small">${esc(c.w.notRecorded)}</p>`
+
+/**
+ * 0127: the clinical part of a visit under the six numbered headings: 1 the complaint and its
+ * history (and the notes), 2 the examination with the vital signs, 3 the differential diagnoses,
+ * 4 the tests and their results, 5 the definitive diagnoses (or why none was found), 6 the plan:
+ * its text, the treatments, the medicines, the orders to the nurses and the follow-up. A step with
+ * nothing written says so.
+ */
+function sixStepPieces(v: ReportVisit, c: Ctx, inVisit: boolean): Piece[] {
+  const h = (n: number) => heading(stepTitle(n, c), inVisit)
+  const out: (Piece | null)[] = []
+  // 1 complaint and history
+  const s1 =
+    runInHtml(c.w.complaint, v.complaint) +
+    runInHtml(c.w.history, v.history) +
+    v.notes
+      .filter((n) => n && n.trim())
+      .map((n) => `<p>${escLines(n.trim())}</p>`)
+      .join('')
+  out.push(paraPiece(h(1) + (s1 || notRecorded(c))))
+  // 2 examination (and the vital signs measured)
+  const exam = v.examination?.trim() ? `<p>${escLines(v.examination.trim())}</p>` : ''
+  const vitals = vitalsPiece(v, c, true)
+  out.push(paraPiece(h(2) + (exam || (vitals ? '' : notRecorded(c)))))
+  out.push(vitals)
+  // 3 differential diagnoses
+  const dd = v.differentials ?? []
+  if (dd.length) {
+    const cols: FixedColumn[] = [
+      { label: c.w.diagnosis, share: 64 },
+      { label: c.w.icd10, share: 14 },
+      { label: c.w.status, share: 22 },
+    ]
+    const rows: CellValue[][] = dd.map((d) => [
+      d.text,
+      d.icd10 ? { html: `<strong>${esc(d.icd10)}</strong>` } : null,
+      d.confirmed ? chipCell(c.w.confirmed, 'ok') : chipCell(c.w.notConfirmed, 'muted'),
+    ])
+    out.push(
+      tablePiece(h(3), rows.length, (a, b, w) =>
+        fixedTable(cols, rows.slice(a, b), { withHead: w }),
+      ),
+    )
+  } else out.push(paraPiece(h(3) + notRecorded(c)))
+  // 4 paraclinical exams
+  if (v.tests.length) {
+    const rows = v.tests.map((x) => resultRow(x, c, { preliminary: true, textInCell: true }))
+    out.push(tablePiece(h(4), rows.length, (a, b, w) => resultsTable(rows.slice(a, b), c, w)))
+  } else out.push(paraPiece(h(4) + notRecorded(c)))
+  // 5 definitive diagnoses
+  out.push(diagnosesPiece(v, c, inVisit, stepTitle(5, c)) ?? paraPiece(h(5) + notRecorded(c)))
+  // 6 the treatment plan
+  const plan = v.plan?.trim() ? `<p>${escLines(v.plan.trim())}</p>` : ''
+  const later =
+    (v.advice?.trim()
+      ? `<p><span class="lbl">${esc(c.w.advice)}:</span> ${escLines(v.advice.trim())}</p>`
+      : '') +
+    (v.followUp
+      ? `<p><span class="lbl">${esc(c.w.followUp)}:</span> ${esc(docDate(v.followUp))}</p>`
+      : '') +
+    (v.nextAppointment
+      ? `<p><span class="lbl">${esc(c.w.followUp)}:</span> ${esc(v.nextAppointment)}</p>`
+      : '')
+  const procedures = proceduresPiece(v, c, true)
+  const medicines = medicinesPiece(v, c, true)
+  const orders = v.nurseOrders ?? []
+  const empty = !plan && !procedures && !medicines && !orders.length && !later
+  out.push(paraPiece(h(6) + (plan || (empty ? notRecorded(c) : ''))))
+  out.push(procedures, medicines)
+  if (orders.length) {
+    const cols: FixedColumn[] = [
+      { label: c.w.order, share: 40 },
+      { label: c.w.how, share: 38 },
+      { label: c.w.status, share: 22 },
+    ]
+    const rows: CellValue[][] = orders.map((o) => [o.text, o.how || null, o.status])
+    out.push(
+      tablePiece(heading(c.w.nurseOrders, true), rows.length, (a, b, w) =>
+        fixedTable(cols, rows.slice(a, b), { withHead: w }),
+      ),
+    )
+  }
+  if (later) out.push(paraPiece(later))
+  return out.filter((p): p is Piece => !!p)
+}
+
 /** C1 items 5 to 11 of one visit; empty sections are left out. */
 function visitPieces(v: ReportVisit, c: Ctx, inVisit: boolean): Piece[] {
+  if (hasSixSteps(v)) return sixStepPieces(v, c, inVisit)
   return [
     diagnosesPiece(v, c, inVisit),
     summaryPiece(v, c, inVisit),

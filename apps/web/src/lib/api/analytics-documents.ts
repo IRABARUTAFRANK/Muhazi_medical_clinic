@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { formatDate } from '@mmc/shared'
 import type { MedicalReportDoc, ReportMedicine, ReportVisit } from '@/lib/medical-report'
 import type { LetterheadWithLegacy } from '@/lib/report-parts'
+import { sixStepsOfVisit } from '@/lib/six-steps-report'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { apiError, isMissingFunction } from './errors'
@@ -26,9 +27,12 @@ export interface VisitRow {
   patient: { id: string; name: string; fileNumber: string }
   doctor: { id: string; name: string } | null
   department: { id: string; name: string } | null
+  /** The definitive primary diagnosis (0127). */
   diagnosis: string | null
   icd10: string | null
   insurer: string | null
+  /** 0127: the chief complaint (step 1), for doctors. */
+  complaint?: string | null
 }
 export interface VisitsInPeriod {
   needsUpdate: boolean
@@ -122,6 +126,7 @@ export function toVisitsInPeriod(data: unknown): VisitsInPeriod {
         diagnosis: sn(x.diagnosis),
         icd10: sn(x.icd10),
         insurer: sn(x.insurer),
+        complaint: sn(x.complaint),
       }
     }),
   }
@@ -185,6 +190,14 @@ const SAMPLE_PATIENTS = [
   ['p-4', 'Hakizimana Emmanuel', 'MMC-000133'],
   ['p-5', 'Kayitesi Rose', 'MMC-000135'],
 ] as const
+/** Sample (0127): the patient's words, one per sample diagnosis. */
+const SAMPLE_COMPLAINTS = [
+  'Fever and headache for 3 days',
+  'Cough and runny nose',
+  'Diarrhoea and vomiting since yesterday',
+  'Toothache',
+  'Came for a check-up',
+]
 const SAMPLE_DX = [
   ['Malaria', 'B54'],
   ['Upper respiratory tract infection', 'J06.9'],
@@ -223,6 +236,7 @@ function sampleVisits(p: { from: string; to: string }, f: VisitFilters): VisitsI
         diagnosis: dx[0],
         icd10: dx[1],
         insurer: k % 4 === 1 ? 'RSSB (CBHI)' : null,
+        complaint: SAMPLE_COMPLAINTS[(k + dayNo) % SAMPLE_DX.length] ?? null,
       })
     }
   }
@@ -237,7 +251,8 @@ function sampleVisits(p: { from: string; to: string }, f: VisitFilters): VisitsI
       (!q ||
         v.patient.name.toLowerCase().includes(q) ||
         v.patient.fileNumber.toLowerCase().includes(q) ||
-        (v.diagnosis ?? '').toLowerCase().includes(q)),
+        (v.diagnosis ?? '').toLowerCase().includes(q) ||
+        (v.complaint ?? '').toLowerCase().includes(q)),
   )
   return {
     needsUpdate: false,
@@ -499,12 +514,9 @@ export function reportDocOf(
     vitalsBy: measured?.by ?? null,
     vitalsAt: measured?.at ?? null,
     notes: c.notes.map((n) => n.text),
-    diagnoses: c.diagnoses.map((x) => ({
-      text: x.text,
-      icd10: x.icd10,
-      primary: x.type === 'primary',
-      provisional: x.provisional,
-    })),
+    // 0127: the six steps (complaint, history, examination, differential and definitive
+    // diagnoses, plan, orders to the nurses)
+    ...sixStepsOfVisit(c, t),
     tests: c.orders.map((o) => ({
       name: o.test,
       findings: o.result?.findings ?? null,
