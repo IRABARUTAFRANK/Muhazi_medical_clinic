@@ -90,6 +90,11 @@ export interface StaffUser {
    * (a manager who is a doctor). Undefined before the profile is read: the role decides.
    */
   isDoctor?: boolean
+  /**
+   * 0128: also the clinic manager (profiles.is_manager). The role is then 'manager' in the UI (the
+   * manager's menu and home) while dbRole keeps the profession (doctor, administrator…).
+   */
+  isManager?: boolean
 }
 
 export interface Practitioner {
@@ -109,7 +114,7 @@ export interface Practitioner {
   daysOff?: string[]
   /** Short note the doctor shows with the calendar ("Theatre on Fridays"). */
   note?: string
-  /** Live data: the role behind the calendar (doctor, sonographer, nurse, manager). */
+  /** Live data: the profession behind the calendar (doctor, sonographer, nurse, midwife). */
   role?: string
 }
 

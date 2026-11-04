@@ -27,6 +27,8 @@ export interface HistoryItem {
   group: HistoryGroup
   actor: string | null
   actorRole: string | null
+  /** 0128: the actor is also the clinic manager (absent before). */
+  actorManager?: boolean | null
   actorStaffId: string | null
   patient: string | null
   /** The visit or the patient file the entry describes (0065). */

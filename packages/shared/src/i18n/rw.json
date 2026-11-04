@@ -136,7 +136,10 @@
     "view": "Uko {{role}} abibona",
     "withStation": "{{role}} · {{station}}",
     "lab_tech": "Laboratwari",
-    "pharmacist": "Umufarumasiye"
+    "pharmacist": "Umufarumasiye",
+    "midwife": "Umubyaza",
+    "administrator": "Ushinzwe ubutegetsi",
+    "clinicManager": "Umuyobozi w’ivuriro"
   },
   "sync": {
     "synced": "Byahujwe",
@@ -780,7 +783,9 @@
         "sonographer": "Akora ekografi kandi akandika raporo zayo.",
         "lab_tech": "Afata ibyitegererezo, akora ibizamini bya laboratwari kandi akandika ibisubizo.",
         "pharmacist": "Atanga imiti, agurisha ku irembo kandi agacunga ububiko.",
-        "manager": "Abona byose: amafaranga, abakozi, ibiciro, igenamiterere na raporo."
+        "manager": "Abona byose: amafaranga, abakozi, ibiciro, igenamiterere na raporo.",
+        "midwife": "Akurikirana abatwite n’ababyara, yita ku babyeyi n’abana; akora nk’umuforomo.",
+        "administrator": "Ashinzwe ubutegetsi bw’ivuriro; ntavura abarwayi. Akora ku kwakira abarwayi gusa iyo ishami rimushyizeyo."
       },
       "specialtyHint": "Icyo uyu mukozi azobereyemo. Bagenzi be barakibona, n’abarwayi bakakibona ku ngengabihe y’urubuga.",
       "specialtyDoctorHint": "Shyiramo ubuhanga bwihariye bwa muganga (Muganga rusange, Muganga w’amenyo, Umuganga ubaga…). Bagenzi be n’abarwayi barabubona, kandi igihe nta shami afite bwongeraho n’aho akorera habwo (Muganga w’amenyo → Amenyo).",
@@ -816,7 +821,17 @@
       "replacesAssistant": "{{name}} ni we mukuru wungirije wa {{dept}} ubu. Ishami rigira umukuru wungirije umwe: kubika bituma {{name}} aba umukozi usanzwe.",
       "assistantToMember": "{{name}}, umukuru wungirije wa {{dept}} ubu, azaba umukozi usanzwe.",
       "desksKept": "Byagumye nk’uko byari bimeze mbere y’uko amashami abigena: {{list}}. Shyira uyu mukozi mu ishami ribitanga, cyangwa ubihagarike hano.",
-      "keptStop": "Hagarika {{desk}}"
+      "keptStop": "Hagarika {{desk}}",
+      "profession": "Umwuga",
+      "specialtyNone": "Ntibwashyizweho",
+      "specialtyOther": "Ubundi (bwandike)",
+      "specialtyOtherLabel": "Ubundi buhanga bwihariye",
+      "specialtyOptional": "Ubuhanga bwihariye cyangwa izina ry’umwuga (si ngombwa)",
+      "isManager": "Ni n’umuyobozi w’ivuriro",
+      "isManagerHint": "Agenzura ivuriro ryose: imbonerahamwe, raporo, abakozi, ibiciro, igenamiterere n’amafaranga. Yakira abarwayi gusa aho amashami ari hepfo amushyira; abona dosiye z’abarwayi gusa niba ari muganga.",
+      "isManagerSelf": "Uri umuyobozi w’ivuriro: undi muyobozi ni we ushobora kubihindura, si wowe.",
+      "doesHere": "Ibyo akora hano",
+      "managerDesks": "Nk’umuyobozi w’ivuriro abona aho bakorera hose, ariko yakira abarwayi aha gusa."
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -851,7 +866,11 @@
       "alreadyDeleted": "Iyi konti yamaze gusibwa.",
       "notFound": "Uyu mukozi ntabonetse. Vugurura urupapuro.",
       "registrationNo": "Nimero y’urugaga ntigomba kurenza inyuguti 40.",
-      "registrationBody": "Andika izina ry’urugaga (inyuguti 60 ntarengwa)."
+      "registrationBody": "Andika izina ry’urugaga (inyuguti 60 ntarengwa).",
+      "noServiceTicked": "Hitamo nibura kimwe uyu mukozi akora muri {{dept}}.",
+      "servicesWrong": "Reba ibyo uyu mukozi akora muri buri shami: ibyo ishami ritanga gusa, nibura kimwe.",
+      "specialtyOther": "Andika ubuhanga bwihariye, cyangwa uhitemo mu rutonde.",
+      "lastClinicManager": "Uyu ni we muyobozi w’ivuriro wenyine. Banza uhitemo “Ni n’umuyobozi w’ivuriro” ku wundi mukozi."
     },
     "roles": {
       "receptionist": "Umwakiranyi",
@@ -861,7 +880,9 @@
       "sonographer": "Ukora ekografi",
       "lab_tech": "Umutekinisiye wa laboratwari",
       "pharmacist": "Umufarumasiye",
-      "manager": "Umuyobozi / nyir’ivuriro"
+      "manager": "Umuyobozi / nyir’ivuriro",
+      "midwife": "Umubyaza",
+      "administrator": "Ushinzwe ubutegetsi"
     },
     "lead2": "Konti z’abakozi, amashami yabo na PIN zabo.",
     "tabs": {
@@ -903,7 +924,7 @@
     },
     "dept": {
       "none": "Nta shami",
-      "lead": "Kora amashami y’ivuriro kandi uvuge imyanya ibarizwa muri buri shami. Abakozi bashyirwa mu ishami nk’umukuru, umukuru wungirije cyangwa umukozi usanzwe; umukuru abona imbonerahamwe y’ishami.",
+      "lead": "Kora amashami y’ivuriro, imyuga ibarizwa muri buri shami na serivisi ritanga. Abakozi bashyirwa mu ishami nk’umukuru, umukuru wungirije cyangwa umukozi usanzwe, n’ibyo bakoramo; umukuru abona imbonerahamwe y’ishami.",
       "new": "Ishami rishya",
       "empty": "Nta mashami arabaho.",
       "delete": "Siba ishami",
@@ -932,7 +953,21 @@
       "membersLabel_one": "Umukozi usanzwe",
       "membersLabel_other": "Abakozi basanzwe",
       "willLoseNew": "{{desk}} nta shami rirahatanga: nubika, abakozi basanzwe b’amashami ahatanga ni bo bonyine bazahakoresha. Abahakoresha ubu batari abakozi basanzwe: {{names}}. Abasanzwe bahakora bongerwamo nk’abakozi basanzwe niba nta kindi gihindutse kuri bo; uzamenyeshwa ku bandi.",
-      "willLoseDropped": "{{desk}}: aba bakozi basanzwe ntibazongera guhakoresha: {{names}}."
+      "willLoseDropped": "{{desk}}: aba bakozi basanzwe ntibazongera guhakoresha: {{names}}.",
+      "professions": "Imyuga yemewe",
+      "professionsShort": "Imyuga yemewe",
+      "professionsHint": "Abakozi b’iyi myuga gusa ni bo bashobora gushyirwa hano. Ntugire icyo uhitamo niba imyuga yose yemewe.",
+      "allProfessions": "Imyuga yose",
+      "managersRole": "Abayobozi b’ivuriro (umwuga uwo ari wo wose)",
+      "servicesGives": "Serivisi ritanga",
+      "servicesGivesShort": "Serivisi ritanga",
+      "whoDoesWhat": "Ni nde ukora iki",
+      "cols": {
+        "person": "Umukozi",
+        "position": "Urwego",
+        "does": "Ibyo akora hano"
+      },
+      "doesNothing": "nta na kimwe cyahiswemo"
     },
     "tempPin": "PIN y’agateganyo",
     "showPin": "Erekana PIN",
@@ -7692,7 +7727,10 @@
     "22d39b98": "Igice cy’amakuru yo kwivuza kitazwi.",
     "d118b87b": "Igihe cyatanzwe ntigishoboka.",
     "e159c113": "Iri tegeko ryamaze kurangira.",
-    "2c7e8550": "Inyandiko ni ndende cyane."
+    "2c7e8550": "Inyandiko ni ndende cyane.",
+    "348637e5": "Hitamo nibura serivisi imwe uyu mukozi akora muri {{p1}}.",
+    "dc82676e": "Ishami {{p1}} ntiritanga {{p2}}.",
+    "fc56c8a4": "Nimero y’urugaga ni ndende cyane (inyuguti 40 gusa)."
   },
   "panel": {
     "close": "Funga",
@@ -9689,7 +9727,8 @@
       "contractEnd": "Amasezerano arangira",
       "status": "Uko ahagaze",
       "created": "Konti yakozwe",
-      "updated": "Amakuru yahinduwe bwa nyuma"
+      "updated": "Amakuru yahinduwe bwa nyuma",
+      "profession": "Umwuga"
     },
     "contracts": {
       "permanent": "Uhoraho",
@@ -9749,7 +9788,9 @@
       "removeYes": "Kuraho",
       "removed_one": "Icyanditswe {{count}} cyakuweho (kiri mu rutonde rw’ibikorwa)",
       "removed_other": "Ibyanditswe {{count}} byakuweho (biri mu rutonde rw’ibikorwa)"
-    }
+    },
+    "recordsYes": "Arazibona (ni muganga)",
+    "recordsNo": "Ntazibona (si muganga)"
   },
   "forDoctors": {
     "title": "Amakuru y’umurwayi areba muganga gusa",
@@ -9983,5 +10024,19 @@
       "setting_off": "Ivuriro risaba muganga gusaba uburenganzira bwo kureba amakuru ya kera (cyangwa kuyareba mu buryo bwihutirwa).",
       "not_treating": "Amakuru ya kera ni aya muganga uvura umurwayi ubu; saba uburenganzira niba uyakeneye."
     }
+  },
+  "specialties": {
+    "generalPractitioner": "Muganga rusange",
+    "dentist": "Muganga w’amenyo",
+    "surgeon": "Muganga ubaga",
+    "gynaecologist": "Muganga w’abagore n’ababyeyi",
+    "paediatrician": "Muganga w’abana",
+    "radiologist": "Muganga w’amafoto y’imbere mu mubiri",
+    "ophthalmologist": "Muganga w’amaso",
+    "internist": "Muganga w’indwara zo mu nda n’umubiri",
+    "generalNurse": "Umuforomo rusange",
+    "anaestheticNurse": "Umuforomo utera ikinya",
+    "paediatricNurse": "Umuforomo w’abana",
+    "midwife": "Umubyaza"
   }
 }

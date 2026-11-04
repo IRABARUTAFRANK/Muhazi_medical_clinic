@@ -5,14 +5,16 @@ import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { isMissingFunction, throwIf } from './errors'
 import { permsReady, samplePermsOf, type Feature } from './permissions'
-import { sampleStaffData, type DbRole } from './staff'
+import { doesIn, sampleStaffData, type DbRole } from './staff'
 
 /**
- * The desks a person works at (migration 0085). The ROLE is the ceiling: what a person of that
- * role may ever use. The DEPARTMENTS a person works in decide which desks they actually get, among
- * those. When no department of the clinic gives a desk, the role alone decides it, as before.
- * The manager always has every desk. Money never comes from a desk (payment.take and the other
- * switches stay with the role); room stores ("My store") stay with their holders.
+ * The desks a person works at (migration 0085). The ROLE (the profession, 0128) is the ceiling:
+ * what a person of that profession may ever use. The DEPARTMENTS a person works in decide which
+ * desks they actually get, among those: the services ticked for them in each department ("Does
+ * here", 0128). When no department of the clinic gives a desk, the profession alone decides it, as
+ * before. The clinic manager has no desk as such since 0128: the desks of their departments, like
+ * anyone of their profession. Money never comes from a desk (payment.take and the other switches
+ * stay with the role); room stores ("My store") stay with their holders.
  *
  * Live: my_desks, desks_of (staff_directory.desks, my_session_profile().desks), may_use_desk,
  * role_desk_matrix, set_role_desk. A refusal at a desk: 42501 with hint 'no_desk'
@@ -70,6 +72,9 @@ export interface MyDesks {
 export const DEFAULT_CEILINGS: Record<Exclude<DbRole, 'manager'>, DeskId[]> = {
   doctor: [...DESKS],
   nurse: [...DESKS],
+  // 0128: the midwife, as the nurse; the administrator: reception only
+  midwife: [...DESKS],
+  administrator: ['reception'],
   lab_tech: ['laboratory', 'ultrasound'],
   sonographer: ['ultrasound'],
   pharmacist: ['pharmacy'],
@@ -87,10 +92,13 @@ export const ROLE_DESKS: Record<DbRole, DeskId[]> = {
   receptionist: ['reception', 'triage'],
   cashier: [],
   nurse: ['reception', 'triage', ...TREATING_DESKS],
+  midwife: ['reception', 'triage', ...TREATING_DESKS],
   doctor: ['reception', 'triage', ...TREATING_DESKS],
   sonographer: ['ultrasound'],
   lab_tech: ['laboratory'],
   pharmacist: ['pharmacy'],
+  administrator: ['reception'],
+  // an account of a database before 0128 (the manager is a flag since)
   manager: [...DESKS],
 }
 
@@ -178,8 +186,9 @@ const WORKLIST_DESKS: readonly DeskId[] = ['laboratory', 'ultrasound', 'pharmacy
  * vital signs, the clinical record); the worklists and the pharmacy come with the department.
  * The manager gets every desk.
  *
- *   role        the role chosen in the form
- *   services    the services of each department chosen (department.services)
+ *   role        the role (profession) chosen in the form
+ *   services    what the person does in each department chosen (0128: the ticked services the
+ *               department gives; all of them before 0128)
  *   ceiling     the role's ceiling (useRoleDeskMatrix().roles[role]; DEFAULT_CEILINGS while loading)
  *   offered     the desks some active department of the clinic gives (all departments' services)
  *   kept        the desks the employee kept on day one (staff_directory.kept_desks)
@@ -242,9 +251,11 @@ const sampleOffered = (): DeskId[] =>
 function sampleDesksOf(userId: string, role: DbRole): MyDesks {
   const { departments, employees } = sampleStaffData()
   const me = employees.find((e) => e.id === userId)
-  const services = (me?.departments ?? []).map(
-    (m) => departments.find((d) => d.id === m.departmentId)?.services ?? [],
-  )
+  // 0128: what the person does in each department (the ticked services it still gives)
+  const services = (me?.departments ?? []).map((m) => {
+    const d = departments.find((x) => x.id === m.departmentId)
+    return d ? doesIn(m, d) : []
+  })
   const offered = sampleOffered()
   // the sample switches decide reception, triage, the treating desks and the worklists too
   const perms = samplePermsOf(userId, role)

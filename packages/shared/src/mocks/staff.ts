@@ -41,9 +41,12 @@ export const STAFF: readonly StaffUser[] = [
     staffId: 'MMC-S-0005',
     username: 't.mugabo',
     name: 'Mugabo Théogène',
+    // 0128: a doctor (General practitioner) who is also the clinic manager: the manager's menu and
+    // home, the doctor's records; works at the desks of the departments placing him
     role: 'manager',
+    dbRole: 'doctor',
+    isManager: true,
     dashboard: 'manager',
-    // 0126: the sample manager is a doctor (General doctor): the owner's sample shows everything
     isDoctor: true,
     email: 't.mugabo@example.com',
   },

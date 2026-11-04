@@ -46,21 +46,34 @@ export interface ProfileJson {
   email: string | null
   /** 0126 (my_session_profile): a doctor: the role, or marked by the manager. */
   is_doctor?: boolean | null
+  /** 0128 (record_sign_in, my_session_profile): also the clinic manager. */
+  is_manager?: boolean | null
 }
+
+/** 0128: the clinic manager: the flag, or the role 'manager' of a database before 0128. */
+const managerOf = (p: ProfileJson): boolean =>
+  typeof p.is_manager === 'boolean' ? p.is_manager : p.role === 'manager'
 
 export const toStaffUser = (p: ProfileJson): StaffUser => ({
   id: p.id,
   username: p.username,
   name: p.full_name,
-  // Lab technicians and sonographers share the laboratory dashboard (lab vs imaging tests);
-  // pharmacists have the pharmacy dashboard.
-  role: HOME_ROLES.includes(p.role)
-    ? (p.role as Role)
-    : p.role === 'sonographer'
-      ? 'lab_tech'
-      : 'doctor',
+  // The clinic manager has the manager's menu and home whatever the profession (0128). Lab
+  // technicians and sonographers share the laboratory dashboard (lab vs imaging tests); pharmacists
+  // have the pharmacy dashboard; a midwife the nurse's, an administrator reception's.
+  role: managerOf(p)
+    ? 'manager'
+    : HOME_ROLES.includes(p.role)
+      ? (p.role as Role)
+      : p.role === 'sonographer'
+        ? 'lab_tech'
+        : p.role === 'midwife'
+          ? 'nurse'
+          : p.role === 'administrator'
+            ? 'receptionist'
+            : 'doctor',
   station: p.station ?? undefined,
-  dashboard: p.dashboard ?? undefined,
+  dashboard: managerOf(p) ? 'manager' : (p.dashboard ?? undefined),
   headOf: p.head_of ?? undefined,
   mustChangePin: p.must_change_pin,
   staffId: p.staff_id ?? undefined,
@@ -68,6 +81,7 @@ export const toStaffUser = (p: ProfileJson): StaffUser => ({
   dbRole: p.role,
   // 0126: sees patient records; before the profile says it, the role decides
   isDoctor: typeof p.is_doctor === 'boolean' ? p.is_doctor : p.role === 'doctor',
+  isManager: managerOf(p),
 })
 
 export type SignInResult =

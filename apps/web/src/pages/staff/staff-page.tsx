@@ -43,14 +43,16 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useTreatments } from '@/lib/api/catalogue'
 import {
-  DB_ROLES,
   EMAIL_RE,
   PIN_RE,
   POSITIONS,
+  PROFESSIONS,
   USERNAME_RE,
+  doesIn,
   generatePin,
   sendConfirmCode,
   suggestUsername,
+  takesProfession,
   useDepartmentActions,
   useDeactivationReminders,
   useDepartments,
@@ -63,9 +65,11 @@ import {
   type Employee,
   type EmployeeInput,
   type Position,
+  type Profession,
   positionIn,
   registrationText,
 } from '@/lib/api/staff'
+import { SPECIALTIES, professionLabel, specialtyLabel } from '@/lib/roles'
 import {
   DEFAULT_CEILINGS,
   DESKS,
@@ -101,15 +105,12 @@ type Translate = (key: string, opts?: Record<string, unknown>) => string
 /** The employee form's id: the panel's footer buttons submit it from outside the form. */
 const EMPLOYEE_FORM = 'employee-form'
 
-/** "Doctor · Dentist": the role with what the person is expert in, when set. */
-const employeeRole = (e: Pick<Employee, 'role' | 'specialty'>, t: Translate): string => {
-  const role = t(`staff.roles.${e.role}`)
-  const specialty = e.specialty?.trim()
-  // "Sonographer · Sonographer" says it once
-  return specialty && specialty.toLowerCase() !== role.toLowerCase()
-    ? t('roles.withStation', { role, station: specialty })
-    : role
-}
+/** "Doctor · Dentist · Clinic manager": the profession, what the person is expert in, and the
+ *  manager flag (0128). */
+const employeeRole = (
+  e: Pick<Employee, 'role' | 'specialty' | 'isManager'>,
+  t: Translate,
+): string => professionLabel(e, t)
 
 // The start of a word, and its end (SQL \m and \M), letters of any language counted.
 const WORD = '(?<![\\p{L}\\p{N}])'
@@ -143,7 +144,7 @@ const SPECIALTY_SECTIONS: readonly [RegExp, SectionId][] = [
  */
 function usualSections(role: DbRole, station: string, specialty: string): SectionId[] {
   if (role === 'sonographer') return ['ultrasound']
-  if (role === 'nurse') return ['triage', 'nursing', 'fp', 'hiv']
+  if (role === 'nurse' || role === 'midwife') return ['triage', 'nursing', 'fp', 'hiv']
   if (role === 'lab_tech') return ['laboratory']
   if (role === 'pharmacist') return ['pharmacy']
   if (role !== 'doctor') return []
@@ -160,22 +161,22 @@ function usualSections(role: DbRole, station: string, specialty: string): Sectio
   return SECTIONS.filter((x) => mine.has(x))
 }
 
-/** Usual specialties or titles offered per role; anything else may be typed. */
+/** Titles suggested (free text) for the professions without a list of specialties (0128). */
 const SPECIALTY_SUGGESTIONS: Partial<Record<DbRole, readonly string[]>> = {
-  doctor: [
-    'General practitioner',
-    'Dentist',
-    'Surgeon',
-    'Gynaecologist',
-    'Paediatrician',
-    'Internal medicine',
-    'Ophthalmologist',
-    'ENT specialist',
-  ],
-  nurse: ['Registered nurse', 'Midwife', 'Anaesthetic nurse', 'Nurse assistant'],
   lab_tech: ['Laboratory technician', 'Biomedical scientist'],
   sonographer: ['Sonographer', 'Radiographer'],
   pharmacist: ['Pharmacist', 'Pharmacy technician'],
+}
+
+/** The specialty choice of the form (0128): one of the profession's list, 'other' (typed), or ''. */
+const OTHER_SPECIALTY = 'other'
+const specialtyChoice = (role: DbRole, specialty: string): { choice: string; other: string } => {
+  const list = SPECIALTIES[role]
+  const s = specialty.trim()
+  if (!list) return { choice: '', other: s }
+  const known = list.find((x) => x.toLowerCase() === s.toLowerCase())
+  if (known) return { choice: known, other: '' }
+  return s ? { choice: OTHER_SPECIALTY, other: s } : { choice: '', other: '' }
 }
 
 interface Credentials {
@@ -371,7 +372,9 @@ export function StaffPage({ user }: { user: StaffUser }) {
     if (m === 'pin') return t('staff.errors.pin')
     if (m === 'email' || /valid e-mail/i.test(m)) return t('staff.errors.email')
     if (/delete your own account/i.test(m)) return t('staff.errors.deleteSelf')
-    if (/at least one manager/i.test(m)) return t('staff.errors.lastManager')
+    if (/at least one (active )?manager|own manager role/i.test(m))
+      return t('staff.errors.lastClinicManager')
+    if (/does not give|tick at least one service/i.test(m)) return t('staff.errors.servicesWrong')
     if (/already deleted/i.test(m)) return t('staff.errors.alreadyDeleted')
     if (/employee not found/i.test(m)) return t('staff.errors.notFound')
     return t('staff.errors.generic', { message: m })
@@ -464,14 +467,17 @@ export function StaffPage({ user }: { user: StaffUser }) {
   // computed the database's way; before 0085 nothing is shown (the role decides, as before).
   const { data: deskMatrix } = useRoleDeskMatrix()
   const desksOfEmployee = (e: Employee): DeskId[] | null => {
+    // (the role 'manager' of a database before 0128: every desk)
     if (!e.active || e.role === 'manager') return null
     if (e.desks) return e.desks.filter(isDesk)
     if (!deskMatrix || deskMatrix.fallback) return null
     return desksFor({
       role: e.role,
-      services: e.departments.map(
-        (m) => departments.find((d) => d.id === m.departmentId)?.services ?? [],
-      ),
+      // 0128: what the person does in each department
+      services: e.departments.map((m) => {
+        const d = departments.find((x) => x.id === m.departmentId)
+        return d ? doesIn(m, d) : []
+      }),
       ceiling: deskMatrix.roles[e.role],
       offered: offeredBy(departments),
     }).desks
@@ -553,8 +559,8 @@ export function StaffPage({ user }: { user: StaffUser }) {
                 <DeleteAccountCard
                   employee={deleting}
                   lastManager={
-                    deleting.role === 'manager' &&
-                    !employees.some((x) => x.id !== deleting.id && x.role === 'manager' && x.active)
+                    deleting.isManager &&
+                    !employees.some((x) => x.id !== deleting.id && x.isManager && x.active)
                   }
                   // Escape belongs to the code dialog while it is open
                   paused={pending !== null}
@@ -1114,7 +1120,7 @@ function DeleteAccountCard({
 
         {lastManager && (
           <p role="alert" className={errorBox}>
-            {t('staff.errors.lastManager')}
+            {t('staff.errors.lastClinicManager')}
           </p>
         )}
         <div className="flex flex-wrap gap-2">
@@ -1345,53 +1351,83 @@ function EmployeeForm({
   const [usernameTouched, setUsernameTouched] = useState(!isNew)
   const [email, setEmail] = useState(employee?.email ?? '')
   const [phone, setPhone] = useState(employee?.phone ?? '')
-  const [role, setRole] = useState<DbRole>(employee?.role ?? 'receptionist')
-  // Every department of the employee with the position held there; the first is the main one.
-  const [memberships, setMemberships] = useState<{ departmentId: string; position: Position }[]>(
-    () =>
-      (employee?.departments ?? []).map((m) => ({
+  // 0128: the PROFESSION (an account still saying 'manager' is a doctor: the database moves it so)
+  const [role, setRole] = useState<Profession>(
+    employee ? (employee.role === 'manager' ? 'doctor' : employee.role) : 'receptionist',
+  )
+  // "also the clinic manager"
+  const [isManager, setIsManager] = useState(employee?.isManager ?? false)
+  // Every department of the employee with the position held there and what they do there (0128,
+  // "Does here"); the first is the main one.
+  type Line = { departmentId: string; position: Position; services: string[] }
+  const [memberships, setMemberships] = useState<Line[]>(() =>
+    (employee?.departments ?? []).map((m) => {
+      const d = departments.find((x) => x.id === m.departmentId)
+      return {
         departmentId: m.departmentId,
         position: m.position,
-      })),
+        services: d ? doesIn(m, d) : (m.services ?? []),
+      }
+    }),
   )
-  const setMembership = (i: number, patch: Partial<{ departmentId: string; position: Position }>) =>
+  const setMembership = (i: number, patch: Partial<Line>) =>
     setMemberships((list) => list.map((m, j) => (j === i ? { ...m, ...patch } : m)))
+  const toggleService = (i: number, s: string) =>
+    setMemberships((list) =>
+      list.map((m, j) =>
+        j !== i
+          ? m
+          : {
+              ...m,
+              services: m.services.includes(s)
+                ? m.services.filter((x) => x !== s)
+                : [...m.services, s],
+            },
+      ),
+    )
   const [station, setStation] = useState(employee?.station ?? '')
-  const [specialty, setSpecialty] = useState(employee?.specialty ?? '')
-  // the professional council number printed on what the person signs (0084)
-  const [registration, setRegistration] = useState(() =>
-    registrationStart(employee, employee?.role ?? 'receptionist'),
-  )
+  // 0128: the specialty from the profession's list, or "Other" typed
+  const [spec, setSpec] = useState(() => specialtyChoice(role, employee?.specialty ?? ''))
+  const specList = SPECIALTIES[role]
+  const specialty = specList
+    ? spec.choice === OTHER_SPECIALTY
+      ? spec.other.trim()
+      : spec.choice
+    : spec.other.trim()
+  // the professional council number printed on what the person signs (0084; optional, 0128)
+  const [registration, setRegistration] = useState(() => registrationStart(employee, role))
   const [language, setLanguage] = useState<DbLang>(employee?.language ?? 'kin')
   const [pin, setPin] = useState(generatePin)
   const [error, setError] = useState<string | null>(null)
 
-  // Only departments this role belongs to (a department with no roles listed accepts all).
-  const fitting = departments.filter((d) => d.roles.length === 0 || d.roles.includes(role))
+  // Only departments that take this profession (a department with none ticked takes all).
+  const fitting = departments.filter((d) => takesProfession(d, role, isManager))
   const others = new Set([...takenUsernames].filter((u) => u !== employee?.username))
   const specialtyListId = useId()
   const suggestions = SPECIALTY_SUGGESTIONS[role] ?? []
-  // The chosen departments decide the services (and so the patients) that reach this person.
-  const chosenDepts = memberships
-    .map((m) => departments.find((d) => d.id === m.departmentId))
-    .filter((d): d is Department => !!d)
-  const services = SECTIONS.filter((s) => chosenDepts.some((d) => d.services.includes(s)))
+  // The chosen departments, and what the person does in each, decide the services (and so the
+  // patients) that reach this person.
+  const chosenLines = memberships
+    .map((m) => ({ m, d: departments.find((d) => d.id === m.departmentId) }))
+    .filter((x): x is { m: Line; d: Department } => !!x.d)
+  const chosenDepts = chosenLines.map((x) => x.d)
+  const ticked = chosenLines.map(({ m, d }) => d.services.filter((s) => m.services.includes(s)))
+  const services = SECTIONS.filter((s) => ticked.some((list) => list.includes(s)))
   const silent = chosenDepts.filter((d) => d.services.length === 0).map((d) => d.name)
   // with none, the usual desk of the role (a doctor's also follows the specialty and desk name)
   const shown = services.length ? services : usualSections(role, station, specialty)
 
-  // The desks the person will use, live (0085): the role is the ceiling, the chosen departments
-  // decide among it; a desk no department gives follows the role alone, as before. Before 0085
-  // the role decides everything.
+  // The desks the person will use, live (0085): the profession is the ceiling, what the person does
+  // in the chosen departments decides among it; a desk no department gives follows the profession
+  // alone, as before. Before 0085 the role decides everything. The clinic manager too (0128).
   const { data: deskMatrix } = useRoleDeskMatrix()
-  const ceiling: readonly DeskId[] | null =
-    role === 'manager' ? null : (deskMatrix?.roles[role] ?? DEFAULT_CEILINGS[role])
+  const ceiling: readonly DeskId[] = deskMatrix?.roles[role] ?? DEFAULT_CEILINGS[role]
   const offered = offeredBy(departments)
   const deskRule = deskMatrix?.fallback
     ? null
     : desksFor({
         role,
-        services: chosenDepts.map((d) => d.services),
+        services: ticked,
         ceiling,
         offered,
         // kept on day one while the role stays the same (0085)
@@ -1401,27 +1437,29 @@ function EmployeeForm({
   // desks with no department yet: the role decides them
   const byRoleDesks = deskRule ? canUse.filter((d) => deskRule.via[d] === 'role') : []
   // the role's usual desks that another department gives (not one chosen here)
-  const elsewhere =
-    deskRule && ceiling
-      ? ROLE_DESKS[role].filter(
-          (d) => ceiling.includes(d) && offered.includes(d) && !canUse.includes(d),
-        )
-      : []
+  // (0128: one a chosen department gives but left unticked is not "elsewhere")
+  const elsewhere = deskRule
+    ? ROLE_DESKS[role].filter(
+        (d) =>
+          ceiling.includes(d) &&
+          offered.includes(d) &&
+          !canUse.includes(d) &&
+          !chosenDepts.some((x) => x.services.includes(d)),
+      )
+    : []
   // a chosen department that gives nothing this role may use; and what the role may not use
-  const givesNothing =
-    role === 'manager'
-      ? []
-      : chosenDepts.filter((d) => departmentGivesNothing(role, d.services, ceiling))
-  const notForRole =
-    role === 'manager'
-      ? []
-      : DESKS.filter((x) =>
-          chosenDepts.some(
-            (d) =>
-              !givesNothing.includes(d) &&
-              desksOutsideCeiling(role, d.services, ceiling).includes(x),
-          ),
-        )
+  const givesNothing = chosenDepts.filter((d) => departmentGivesNothing(role, d.services, ceiling))
+  const notForRole = DESKS.filter((x) =>
+    chosenLines.some(
+      ({ m, d }) =>
+        !givesNothing.includes(d) &&
+        desksOutsideCeiling(
+          role,
+          d.services.filter((s) => m.services.includes(s)),
+          ceiling,
+        ).includes(x),
+    ),
+  )
   const roleName = t(`staff.roles.${role}`)
   const deskList = (list: readonly string[]) => list.map((d) => deskName(d, t)).join(', ')
 
@@ -1435,6 +1473,13 @@ function EmployeeForm({
     const chosen = memberships.filter((m) => m.departmentId)
     if (new Set(chosen.map((m) => m.departmentId)).size !== chosen.length)
       return setError(t('staff.errors.deptTwice'))
+    // 0128: at least one thing done in each department that gives services
+    const none = chosenLines.find(
+      ({ m, d }) => d.services.length > 0 && !d.services.some((s) => m.services.includes(s)),
+    )
+    if (none) return setError(t('staff.errors.noServiceTicked', { dept: none.d.name }))
+    if (spec.choice === OTHER_SPECIALTY && !spec.other.trim())
+      return setError(t('staff.errors.specialtyOther'))
     if (isNew && !PIN_RE.test(pin)) return setError(t('staff.errors.pin'))
     const regError = registrationError(registration)
     if (regError) return setError(t(regError))
@@ -1444,7 +1489,16 @@ function EmployeeForm({
         username,
         email,
         role,
-        departments: chosen,
+        isManager,
+        departments: chosen.map((m) => {
+          const d = departments.find((x) => x.id === m.departmentId)
+          return {
+            departmentId: m.departmentId,
+            position: m.position,
+            // only what the department gives, in its order
+            services: d ? d.services.filter((s) => m.services.includes(s)) : m.services,
+          }
+        }),
         station,
         language,
         phone,
@@ -1512,24 +1566,26 @@ function EmployeeForm({
       {/* Three separate ideas: what they may do, what they are expert in, where they work. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
+          {/* 0128: the profession; the clinic manager is a tick below */}
           <Select
-            label={t('staff.form.role')}
+            label={t('staff.form.profession')}
             value={role}
             onChange={(e) => {
-              const r = e.target.value as DbRole
+              const r = e.target.value as Profession
               setRole(r)
               setRegistration((v) => registrationForRole(v, r))
-              // departments that do not take this role are dropped
+              // the specialty follows the new profession's list (what was typed stays as Other)
+              setSpec(specialtyChoice(r, specialty))
+              // departments that do not take this profession are dropped
               setMemberships((list) =>
                 list.filter((m) => {
                   const d = departments.find((x) => x.id === m.departmentId)
-                  return !d || d.roles.length === 0 || d.roles.includes(r)
+                  return !d || takesProfession(d, r, isManager)
                 }),
               )
             }}
-            disabled={self}
           >
-            {DB_ROLES.map((r) => (
+            {PROFESSIONS.map((r) => (
               <option key={r} value={r}>
                 {t(`staff.roles.${r}`)}
               </option>
@@ -1538,35 +1594,99 @@ function EmployeeForm({
           <p className="text-ink-3 m-0 text-xs">{t(`staff.form.roleDoes.${role}`)}</p>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Field
-            label={t('staff.form.specialty')}
-            value={specialty}
-            placeholder={t('staff.form.specialtyPh')}
-            list={suggestions.length ? specialtyListId : undefined}
-            autoComplete="off"
-            onChange={(e) => setSpecialty(e.target.value)}
-          />
-          {suggestions.length > 0 && (
-            <datalist id={specialtyListId}>
-              {suggestions.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
+          {specList ? (
+            <>
+              <Select
+                label={t('staff.form.specialty')}
+                value={spec.choice}
+                onChange={(e) => setSpec((v) => ({ ...v, choice: e.target.value }))}
+              >
+                <option value="">{t('staff.form.specialtyNone')}</option>
+                {specList.map((s) => (
+                  <option key={s} value={s}>
+                    {specialtyLabel(s, t)}
+                  </option>
+                ))}
+                <option value={OTHER_SPECIALTY}>{t('staff.form.specialtyOther')}</option>
+              </Select>
+              {spec.choice === OTHER_SPECIALTY && (
+                <Field
+                  label={t('staff.form.specialtyOtherLabel')}
+                  value={spec.other}
+                  placeholder={t('staff.form.specialtyPh')}
+                  autoComplete="off"
+                  maxLength={80}
+                  onChange={(e) => setSpec((v) => ({ ...v, other: e.target.value }))}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <Field
+                label={t('staff.form.specialtyOptional')}
+                value={spec.other}
+                placeholder={t('staff.form.specialtyPh')}
+                list={suggestions.length ? specialtyListId : undefined}
+                autoComplete="off"
+                maxLength={80}
+                onChange={(e) => setSpec({ choice: '', other: e.target.value })}
+              />
+              {suggestions.length > 0 && (
+                <datalist id={specialtyListId}>
+                  {suggestions.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
+              )}
+            </>
           )}
           <p
             className={cn(
               'm-0 text-xs',
-              role === 'doctor' && !specialty.trim() ? 'text-amber font-semibold' : 'text-ink-3',
+              role === 'doctor' && !specialty ? 'text-amber font-semibold' : 'text-ink-3',
             )}
           >
             {t(
-              role === 'doctor' && !specialty.trim()
+              role === 'doctor' && !specialty
                 ? 'staff.form.specialtyDoctorHint'
                 : 'staff.form.specialtyHint',
             )}
           </p>
         </div>
       </div>
+      {/* 0128: "also the clinic manager": oversight of the whole clinic, on top of the profession */}
+      <label
+        className={cn(
+          'border-border flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2.5',
+          isManager && 'border-primary bg-primary-tint',
+          self && 'cursor-not-allowed opacity-80',
+        )}
+      >
+        <input
+          type="checkbox"
+          className="accent-primary mt-0.5 size-4.5 flex-none"
+          checked={isManager}
+          disabled={self}
+          onChange={(e) => {
+            const on = e.target.checked
+            setIsManager(on)
+            // a department that takes the clinic managers only (before 0128) is dropped
+            if (!on)
+              setMemberships((list) =>
+                list.filter((m) => {
+                  const d = departments.find((x) => x.id === m.departmentId)
+                  return !d || takesProfession(d, role, false)
+                }),
+              )
+          }}
+        />
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-[14px] font-semibold">{t('staff.form.isManager')}</span>
+          <span className="text-ink-3 text-xs">
+            {t(self ? 'staff.form.isManagerSelf' : 'staff.form.isManagerHint')}
+          </span>
+        </span>
+      </label>
       {showsRegistration(role, registration) && (
         <RegistrationField role={role} value={registration} onChange={setRegistration} />
       )}
@@ -1578,70 +1698,108 @@ function EmployeeForm({
         {memberships.length === 0 && (
           <p className="text-ink-3 m-0 text-xs">{t('staff.form.noDepartmentYet')}</p>
         )}
-        {memberships.map((m, i) => (
-          <div
-            key={i}
-            className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
-          >
-            <Select
-              label={i === 0 ? t('staff.form.mainDepartment') : t('staff.form.department')}
-              value={m.departmentId}
-              onChange={(e) => setMembership(i, { departmentId: e.target.value })}
+        {memberships.map((m, i) => {
+          const dept = departments.find((d) => d.id === m.departmentId)
+          return (
+            <div
+              key={i}
+              className="border-border grid grid-cols-1 items-end gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
             >
-              <option value="">{t('staff.form.pickDepartment')}</option>
-              {fitting
-                .filter(
-                  (d) =>
-                    d.id === m.departmentId || !memberships.some((x) => x.departmentId === d.id),
-                )
-                .map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
+              <Select
+                label={i === 0 ? t('staff.form.mainDepartment') : t('staff.form.department')}
+                value={m.departmentId}
+                onChange={(e) => {
+                  // 0128: a department chosen: everything it gives is ticked (untick what they do not do)
+                  const d = departments.find((x) => x.id === e.target.value)
+                  setMembership(i, {
+                    departmentId: e.target.value,
+                    services: d ? [...d.services] : [],
+                  })
+                }}
+              >
+                <option value="">{t('staff.form.pickDepartment')}</option>
+                {fitting
+                  .filter(
+                    (d) =>
+                      d.id === m.departmentId || !memberships.some((x) => x.departmentId === d.id),
+                  )
+                  .map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+              </Select>
+              <Select
+                label={t('staff.form.position')}
+                value={m.position}
+                onChange={(e) => setMembership(i, { position: e.target.value as Position })}
+                disabled={!m.departmentId}
+              >
+                {POSITIONS.map((p) => (
+                  <option key={p} value={p}>
+                    {t(`staff.positions.${p}`)}
                   </option>
                 ))}
-            </Select>
-            <Select
-              label={t('staff.form.position')}
-              value={m.position}
-              onChange={(e) => setMembership(i, { position: e.target.value as Position })}
-              disabled={!m.departmentId}
-            >
-              {POSITIONS.map((p) => (
-                <option key={p} value={p}>
-                  {t(`staff.positions.${p}`)}
-                </option>
+              </Select>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setMemberships((list) => list.filter((_, j) => j !== i))}
+                aria-label={t('staff.form.removeDepartment')}
+                title={t('staff.form.removeDepartment')}
+              >
+                <Trash2 size={16} aria-hidden="true" />
+              </Button>
+              {/* 0128: what the person does in this department, among what it gives */}
+              {dept && dept.services.length > 0 && (
+                <fieldset className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0 sm:col-span-3">
+                  <legend className="text-ink-2 mb-1 text-[13px] font-semibold">
+                    {t('staff.form.doesHere')}
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    {dept.services.map((s) => (
+                      <label
+                        key={s}
+                        className={cn(
+                          'border-border flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-2.5 text-[13px] font-semibold transition-colors',
+                          m.services.includes(s) && 'border-primary bg-primary-tint text-primary',
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-primary"
+                          checked={m.services.includes(s)}
+                          onChange={() => toggleService(i, s)}
+                        />
+                        {serviceLabel(s, t)}
+                      </label>
+                    ))}
+                  </div>
+                  {!dept.services.some((s) => m.services.includes(s)) && (
+                    <span role="alert" className="text-red text-xs font-semibold">
+                      {t('staff.errors.noServiceTicked', { dept: dept.name })}
+                    </span>
+                  )}
+                </fieldset>
+              )}
+              {/* one head and one assistant head per department: who this save moves down */}
+              {leadChanges(m, employee?.id, heads, assistants, dept?.name ?? '', t).map((line) => (
+                <p key={line} className={cn(warnBox, 'sm:col-span-3')}>
+                  {line}
+                </p>
               ))}
-            </Select>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setMemberships((list) => list.filter((_, j) => j !== i))}
-              aria-label={t('staff.form.removeDepartment')}
-              title={t('staff.form.removeDepartment')}
-            >
-              <Trash2 size={16} aria-hidden="true" />
-            </Button>
-            {/* one head and one assistant head per department: who this save moves down */}
-            {leadChanges(
-              m,
-              employee?.id,
-              heads,
-              assistants,
-              departments.find((d) => d.id === m.departmentId)?.name ?? '',
-              t,
-            ).map((line) => (
-              <p key={line} className={cn(warnBox, 'sm:col-span-3')}>
-                {line}
-              </p>
-            ))}
-          </div>
-        ))}
+            </div>
+          )
+        })}
         {fitting.some((d) => !memberships.some((x) => x.departmentId === d.id)) && (
           <Button
             type="button"
             className="self-start"
             onClick={() =>
-              setMemberships((list) => [...list, { departmentId: '', position: 'member' }])
+              setMemberships((list) => [
+                ...list,
+                { departmentId: '', position: 'member', services: [] },
+              ])
             }
           >
             <Plus size={16} aria-hidden="true" />
@@ -1653,9 +1811,13 @@ function EmployeeForm({
           className="bg-surface flex flex-col gap-1 rounded-md px-3 py-2 text-[14px]"
           aria-live="polite"
         >
-          <span className="font-semibold">
-            {role === 'manager' ? t('staff.form.desksManager') : desksText(canUse, t)}
-          </span>
+          <span className="font-semibold">{desksText(canUse, t)}</span>
+          {/* 0128: the manager oversees every desk but works only at these */}
+          {isManager && (
+            <span className="text-primary text-xs font-semibold">
+              {t('staff.form.managerDesks')}
+            </span>
+          )}
           {byRoleDesks.length > 0 && (
             <span className="text-ink-3 text-xs">
               {t('staff.form.desksByRole', { list: deskList(byRoleDesks) })}
@@ -2036,43 +2198,89 @@ function DepartmentsPanel({
               </CardHeader>
               <CardBody className="gap-2.5">
                 {d.description && <p className="text-ink-2 m-0 text-[14px]">{d.description}</p>}
-                <div className="flex flex-wrap gap-1.5">
+                {/* 0128: the professions that may be placed here */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <b className="text-[14px]">{t('staff.dept.professionsShort')}:</b>
                   {d.roles.length === 0 ? (
-                    <Chip>{t('staff.dept.allRoles')}</Chip>
+                    <Chip>{t('staff.dept.allProfessions')}</Chip>
                   ) : (
-                    d.roles.map((r) => <Chip key={r}>{t(`staff.roles.${r}`)}</Chip>)
+                    d.roles.map((r) => (
+                      <Chip key={r}>
+                        {r === 'manager' ? t('staff.dept.managersRole') : t(`staff.roles.${r}`)}
+                      </Chip>
+                    ))
                   )}
                 </div>
                 <p className="m-0 text-[14px]">
-                  <b>{t('staff.dept.servicesShort')}:</b>{' '}
+                  <b>{t('staff.dept.servicesGivesShort')}:</b>{' '}
                   {d.services.length > 0 ? (
                     d.services.map((s) => serviceLabel(s, t)).join(', ')
                   ) : (
                     <span className="text-ink-3">{t('staff.dept.noServices')}</span>
                   )}
                 </p>
-                <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 text-[14px]">
-                  <dt className="font-semibold">{t('staff.positions.head')}:</dt>
-                  <dd className="m-0">
-                    {head?.fullName ?? <span className="text-ink-3">{t('staff.dept.noHead')}</span>}
-                  </dd>
-                  <dt className="font-semibold">{t('staff.positions.assistant')}:</dt>
-                  <dd className="m-0">
-                    {assistant?.fullName ?? (
-                      <span className="text-ink-3">{t('staff.dept.noHead')}</span>
-                    )}
-                  </dd>
-                  <dt className="font-semibold">
-                    {t('staff.dept.membersLabel', { count: members.length })}:
-                  </dt>
-                  <dd className="m-0">
-                    {members.length > 0 ? (
-                      members.map((e) => e.fullName).join(', ')
-                    ) : (
-                      <span className="text-ink-3">{t('staff.dept.noMembers')}</span>
-                    )}
-                  </dd>
-                </dl>
+                {/* 0128: who does what here: the person, the position, what they do */}
+                <div className="flex flex-col gap-1">
+                  <b className="text-[14px]">{t('staff.dept.whoDoesWhat')}</b>
+                  {!head && (
+                    <span className="text-ink-3 text-xs">
+                      {t('staff.positions.head')}: {t('staff.dept.noHead')}
+                    </span>
+                  )}
+                  {people.length === 0 ? (
+                    <span className="text-ink-3 text-[13px]">{t('staff.dept.noMembers')}</span>
+                  ) : (
+                    <div className="border-border overflow-x-auto rounded-md border">
+                      <table className="w-full border-collapse text-left text-[13px]">
+                        <thead className="bg-surface text-ink-2">
+                          <tr>
+                            <th className="px-2.5 py-1.5 font-semibold">
+                              {t('staff.dept.cols.person')}
+                            </th>
+                            <th className="px-2.5 py-1.5 font-semibold">
+                              {t('staff.dept.cols.position')}
+                            </th>
+                            <th className="px-2.5 py-1.5 font-semibold">
+                              {t('staff.dept.cols.does')}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[head, assistant, ...members]
+                            .filter((e): e is Employee => !!e)
+                            .map((e) => {
+                              const m = e.departments.find((x) => x.departmentId === d.id)
+                              const does = m ? doesIn(m, d) : []
+                              return (
+                                <tr key={e.id} className="border-border border-t align-top">
+                                  <td className="px-2.5 py-1.5">
+                                    <span className="block font-semibold">{e.fullName}</span>
+                                    <span className="text-ink-3 block text-xs">
+                                      {employeeRole(e, t)}
+                                    </span>
+                                  </td>
+                                  <td className="px-2.5 py-1.5">
+                                    {t(`staff.positions.${positionIn(e, d.id)}`)}
+                                  </td>
+                                  <td className="px-2.5 py-1.5">
+                                    {d.services.length === 0 ? (
+                                      <span className="text-ink-3">—</span>
+                                    ) : does.length > 0 ? (
+                                      does.map((s) => serviceLabel(s, t)).join(', ')
+                                    ) : (
+                                      <span className="text-red font-semibold">
+                                        {t('staff.dept.doesNothing')}
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
                 <p className="text-ink-3 m-0 text-xs">
                   {t('staff.dept.members', { count: people.length })} ·{' '}
                   {t('staff.dept.treatments', {
@@ -2187,12 +2395,17 @@ function DepartmentForm({
   const options = DESKS.filter(
     (d) => d !== 'reception' || (deskMatrix && !deskMatrix.fallback) || services.includes(d),
   )
-  // the ticked roles that would get no desk at all from these services
+  // the ticked professions that would get no desk at all from these services
   const getNothing = roles.filter(
     (r) =>
       r !== 'manager' &&
       departmentGivesNothing(r, services, deskMatrix?.roles[r] ?? DEFAULT_CEILINGS[r]),
   )
+  // 0128: the professions; 'manager' (the clinic managers, before 0128) only while still ticked
+  const professionOptions: DbRole[] = [
+    ...PROFESSIONS,
+    ...(roles.includes('manager') ? (['manager'] as const) : []),
+  ]
   return (
     <Card className="border-primary anim-enter">
       <CardHeader hue="navy">
@@ -2224,11 +2437,10 @@ function DepartmentForm({
           </div>
           <fieldset className="m-0 border-0 p-0">
             <legend className="text-ink-2 mb-2 text-[14px] font-semibold">
-              {t('staff.dept.roles')}
+              {t('staff.dept.professions')}
             </legend>
             <div className="flex flex-wrap gap-2">
-              {/* the manager too: a leadership department holds the manager and the heads */}
-              {DB_ROLES.map((r) => (
+              {professionOptions.map((r) => (
                 <label
                   key={r}
                   className={cn(
@@ -2242,16 +2454,16 @@ function DepartmentForm({
                     checked={roles.includes(r)}
                     onChange={() => toggle(r)}
                   />
-                  {t(`staff.roles.${r}`)}
+                  {r === 'manager' ? t('staff.dept.managersRole') : t(`staff.roles.${r}`)}
                 </label>
               ))}
             </div>
-            <p className="text-ink-3 m-0 mt-2 text-xs">{t('staff.dept.rolesHint')}</p>
+            <p className="text-ink-3 m-0 mt-2 text-xs">{t('staff.dept.professionsHint')}</p>
           </fieldset>
           {/* the sections this department works in: its people take the patients sent there */}
           <fieldset className="m-0 border-0 p-0">
             <legend className="text-ink-2 mb-2 text-[14px] font-semibold">
-              {t('staff.dept.services')}
+              {t('staff.dept.servicesGives')}
             </legend>
             <div className="flex flex-wrap gap-2">
               {options.map((s) => (

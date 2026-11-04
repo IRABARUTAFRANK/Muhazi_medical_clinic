@@ -81,9 +81,10 @@ const RECORD_ACCESS: NavItem = {
 
 /**
  * Manager rail (the dashboard is the manager's home page, doc §12.3). The manager runs the
- * whole clinic and can work at any station, so every operation has its own entry, in the
- * order a patient moves: register → triage → in the clinic (open visits) → patient files,
- * then the clinic's own management (prices, employees, settings).
+ * whole clinic, so every operation has its own entry, in the order a patient moves: register →
+ * triage → in the clinic (open visits) → patient files, then the clinic's own management (prices,
+ * employees, settings). 0128: Register and Triage only with those desks, and a doctor's work when
+ * the manager's departments give a treating desk (managerMenu).
  */
 export const MANAGER_NAV: NavItem[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'layout-dashboard', to: '/app/dashboard' },
@@ -227,9 +228,29 @@ const DOCTORS_ONLY = new Set(['/app/documents', '/app/record-access', '/app/resu
 const forDoctorsOnly = (user: StaffUser, items: NavItem[]): NavItem[] =>
   isDoctorUser(user) ? items : items.filter((n) => !DOCTORS_ONLY.has(n.to.split('?')[0]!))
 
+/**
+ * 0128: the clinic manager oversees everything (the manager's menu) but works only at the desks of
+ * their departments, like anyone of their profession: Register needs reception, Triage needs triage;
+ * a doctor's desk adds My queue, Results and Prescriptions after Reports.
+ */
+function managerMenu(user: StaffUser): NavItem[] {
+  const { desks } = desksOfUser(user)
+  const has = (list: readonly DeskId[]) => list.some((d) => desks.includes(d))
+  const items = MANAGER_NAV.filter(
+    (n) =>
+      !(n.to === '/app/register' && !has(['reception'])) &&
+      !(n.to === '/app/vitals' && !has(['triage'])),
+  )
+  if (!has(TREATING_DESKS)) return items
+  const work = [doctorEntry('queue'), doctorEntry('results'), doctorEntry('prescriptions')]
+  const at = items.findIndex((n) => n.to === '/app/reports')
+  const cut = at >= 0 ? at + 1 : 1
+  return [...items.slice(0, cut), ...work, ...items.slice(cut)]
+}
+
 const menuOf = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
-    ? MANAGER_NAV
+    ? managerMenu(user)
     : withMyStore(
         user,
         withRecordAccess(

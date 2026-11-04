@@ -5,18 +5,28 @@ import i18n from '@/i18n'
 import { isLive, reportSessionRefused, supabase } from '@/lib/supabase'
 import { apiError } from './errors'
 
-/** All roles the database knows (doc §1.4); the UI has designed homes for five of them. */
+/** All roles the database knows (doc §1.4); the UI has designed homes for five of them. 0128: the
+ *  role is the PROFESSION; 'manager' stays for accounts of a database before 0128 only (the clinic
+ *  manager is a flag, Employee.isManager). */
 export const DB_ROLES = [
   'receptionist',
   'cashier',
   'nurse',
+  'midwife',
   'doctor',
   'sonographer',
   'lab_tech',
   'pharmacist',
+  'administrator',
   'manager',
 ] as const
 export type DbRole = (typeof DB_ROLES)[number]
+/** The professions offered in the employee form and the departments (0128): every role but the
+ *  old 'manager'. */
+export const PROFESSIONS: readonly Exclude<DbRole, 'manager'>[] = DB_ROLES.filter(
+  (r): r is Exclude<DbRole, 'manager'> => r !== 'manager',
+)
+export type Profession = Exclude<DbRole, 'manager'>
 export type DashboardRight = 'manager' | 'head' | null
 export type DbLang = 'kin' | 'en' | 'fr'
 export const POSITIONS = ['member', 'assistant', 'head'] as const
@@ -55,6 +65,8 @@ export interface Employee {
   registrationBody: string | null
   /** 0126: marked a doctor by the manager (sees patient records; the role 'doctor' is one anyway). */
   isDoctor?: boolean
+  /** 0128: also the clinic manager (the role 'manager' of a database before 0128 counts too). */
+  isManager: boolean
   /** The desks the person may use now (0085: the role's ceiling and their departments). Null
    *  before 0085 and in sample mode: compute them with desksFor (lib/api/desks). */
   desks?: string[] | null
@@ -70,7 +82,28 @@ export interface Membership {
   departmentId: string
   departmentName: string
   position: Position
+  /** 0128: the department's services this person does there ("Does here"); null before 0128
+   *  (then: all the department's services). */
+  services: string[] | null
 }
+
+/** What the person does in a department now: the ticked services the department still gives
+ *  (all of them before 0128). */
+export const doesIn = (
+  m: Pick<Membership, 'services'>,
+  d: Pick<Department, 'services'>,
+): string[] =>
+  m.services === null ? [...d.services] : d.services.filter((s) => m.services!.includes(s))
+
+/** May this profession (and the manager flag) be placed in the department? A department with no
+ *  profession ticked takes every one; one that still lists 'manager' (before 0128) takes the clinic
+ *  managers. */
+export const takesProfession = (
+  d: Pick<Department, 'roles'>,
+  role: DbRole,
+  isManager = false,
+): boolean =>
+  d.roles.length === 0 || d.roles.includes(role) || (isManager && d.roles.includes('manager'))
 
 /** The position an employee holds in one department ('member' when not in it). */
 export const positionIn = (e: Pick<Employee, 'departments'>, departmentId: string): Position =>
@@ -91,8 +124,11 @@ export interface EmployeeInput {
   username: string
   email: string
   role: DbRole
-  /** Every department with the position held there; the first is the main one. */
-  departments: { departmentId: string; position: Position }[]
+  /** 0128: "also the clinic manager". */
+  isManager?: boolean
+  /** Every department with the position held there and what the person does there (0128); the
+   *  first is the main one. */
+  departments: { departmentId: string; position: Position; services?: string[] }[]
   station?: string
   language?: DbLang
   phone?: string
@@ -172,7 +208,23 @@ export function suggestUsername(fullName: string, taken: ReadonlySet<string> = n
 }
 
 // ---------------------------------------------------------------- sample mode (no Supabase)
-const sampleDepartments: Department[] = []
+/** 0128: one sample department giving two services: the dentist (its head) does dental only, the
+ *  general doctor and the doctor-manager consultation only ("Does here"). */
+const sampleDepartments: Department[] = [
+  {
+    id: 'd-dental',
+    name: 'Dental',
+    description: 'Dental care and general consultations',
+    roles: ['doctor', 'nurse'],
+    services: ['consultation', 'dental'],
+  },
+]
+/** The sample placements (0128): who does what in the Dental department. */
+const SAMPLE_PLACEMENTS: Record<string, { position: Position; services: string[] }> = {
+  'u-head': { position: 'head', services: ['dental'] },
+  'u-doc': { position: 'member', services: ['consultation'] },
+  'u-mgr': { position: 'member', services: ['consultation'] },
+}
 /** Sample registrations by role (realistic council numbers). */
 const SAMPLE_REGISTRATION: Partial<Record<DbRole, [string, string]>> = {
   doctor: ['RMDC', '2017/0458'],
@@ -181,34 +233,49 @@ const SAMPLE_REGISTRATION: Partial<Record<DbRole, [string, string]>> = {
   lab_tech: ['RAHPC', '2018/0790'],
   sonographer: ['RAHPC', '2021/0154'],
 }
-const sampleEmployees: Employee[] = STAFF.map((u, i) => ({
-  id: u.id,
-  specialty: u.role === 'doctor' ? 'General practitioner' : null,
-  registrationBody: SAMPLE_REGISTRATION[u.role as DbRole]?.[0] ?? null,
-  registrationNo: SAMPLE_REGISTRATION[u.role as DbRole]?.[1] ?? null,
-  // 0126: the sample manager is a doctor (General doctor)
-  isDoctor: !!u.isDoctor,
-  staffId: u.staffId ?? null,
-  email: u.email ?? null,
-  username: u.username,
-  fullName: u.name,
-  role: u.role,
-  station: u.station ?? null,
-  dashboard: u.dashboard ?? null,
-  headOf: u.headOf ?? null,
-  language: 'kin',
-  phone: null,
-  active: true,
-  mustChangePin: i === 3,
-  tempPin: i === 3 ? '482915' : null,
-  lastSignInAt: i < 4 ? new Date(2026, 9, 15, 7 + i, 12).toISOString() : null,
-  deactivatedAt: null,
-  createdAt: new Date(2026, 8, 1).toISOString(),
-  departmentId: null,
-  departmentName: null,
-  position: 'member',
-  departments: [],
-}))
+const sampleEmployees: Employee[] = STAFF.map((u, i) => {
+  // 0128: the profession (the sample manager is a doctor), and the manager flag
+  const role = (u.dbRole ?? u.role) as DbRole
+  const placed = SAMPLE_PLACEMENTS[u.id]
+  const members: Membership[] = placed
+    ? [
+        {
+          departmentId: 'd-dental',
+          departmentName: 'Dental',
+          position: placed.position,
+          services: placed.services,
+        },
+      ]
+    : []
+  return {
+    id: u.id,
+    specialty: role === 'doctor' ? (u.id === 'u-head' ? 'Dentist' : 'General practitioner') : null,
+    registrationBody: SAMPLE_REGISTRATION[role]?.[0] ?? null,
+    registrationNo: SAMPLE_REGISTRATION[role]?.[1] ?? null,
+    isDoctor: !!u.isDoctor || role === 'doctor',
+    isManager: !!u.isManager,
+    staffId: u.staffId ?? null,
+    email: u.email ?? null,
+    username: u.username,
+    fullName: u.name,
+    role,
+    station: u.station ?? null,
+    dashboard: u.dashboard ?? null,
+    headOf: u.headOf ?? null,
+    language: 'kin',
+    phone: null,
+    active: true,
+    mustChangePin: i === 3,
+    tempPin: i === 3 ? '482915' : null,
+    lastSignInAt: i < 4 ? new Date(2026, 9, 15, 7 + i, 12).toISOString() : null,
+    deactivatedAt: null,
+    createdAt: new Date(2026, 8, 1).toISOString(),
+    departmentId: members[0]?.departmentId ?? null,
+    departmentName: members[0]?.departmentName ?? null,
+    position: members[0]?.position ?? 'member',
+    departments: members,
+  }
+})
 /** Sample mode: the departments and the employees as saved in memory (read by lib/api/desks). */
 export const sampleStaffData = (): {
   departments: readonly Department[]
@@ -240,12 +307,15 @@ interface DirectoryRow {
   department_name: string | null
   position: Position | null
   specialty?: string | null
-  departments?: { id: string; name: string; position: Position }[] | null
+  departments?:
+    { id: string; name: string; position: Position; services?: string[] | null }[] | null
   /** 0084 (absent before). */
   registration_no?: string | null
   registration_body?: string | null
   /** 0126 (absent before). */
   is_doctor?: boolean | null
+  /** 0128 (absent before). */
+  is_manager?: boolean | null
   /** 0085 (absent before). */
   desks?: string[] | null
   kept_desks?: string[] | null
@@ -288,6 +358,8 @@ export function useEmployees() {
         registrationNo: r.registration_no ?? null,
         registrationBody: r.registration_body ?? null,
         isDoctor: r.is_doctor ?? false,
+        // 0128: the flag; before it, the role 'manager'
+        isManager: typeof r.is_manager === 'boolean' ? r.is_manager : r.role === 'manager',
         desks: r.desks ?? null,
         keptDesks: r.kept_desks ?? null,
         // Before migration 0051 only the main department exists.
@@ -296,6 +368,7 @@ export function useEmployees() {
               departmentId: m.id,
               departmentName: m.name,
               position: m.position,
+              services: Array.isArray(m.services) ? m.services : null,
             }))
           : r.department_id
             ? [
@@ -303,6 +376,7 @@ export function useEmployees() {
                   departmentId: r.department_id,
                   departmentName: r.department_name ?? '',
                   position: r.position ?? 'member',
+                  services: null,
                 },
               ]
             : [],
@@ -367,10 +441,17 @@ const toBody = (e: EmployeeInput) => ({
   username: e.username.trim().toLowerCase(),
   email: e.email.trim().toLowerCase(),
   role: e.role,
-  // main department (older function) and every department with its position
+  // 0128: "also the clinic manager" (left out: unchanged)
+  ...(e.isManager !== undefined && { is_manager: e.isManager }),
+  // main department (older function) and every department with its position and what the person
+  // does there (0128)
   department_id: e.departments[0]?.departmentId ?? null,
   position: e.departments[0]?.position ?? 'member',
-  departments: e.departments.map((m) => ({ department_id: m.departmentId, position: m.position })),
+  departments: e.departments.map((m) => ({
+    department_id: m.departmentId,
+    position: m.position,
+    ...(m.services && { services: m.services }),
+  })),
   station: e.station?.trim() || null,
   language: e.language ?? 'kin',
   phone: e.phone?.trim() || null,
@@ -389,8 +470,11 @@ const toBody = (e: EmployeeInput) => ({
  */
 const sampleMembers = (input: EmployeeInput): Membership[] =>
   input.departments.map((m) => ({
-    ...m,
+    departmentId: m.departmentId,
+    position: m.position,
     departmentName: sampleDepartments.find((d) => d.id === m.departmentId)?.name ?? '',
+    services:
+      m.services ?? sampleDepartments.find((d) => d.id === m.departmentId)?.services ?? null,
   }))
 
 export function useStaffActions() {
@@ -435,8 +519,10 @@ export function useStaffActions() {
           username: input.username,
           fullName: input.fullName,
           role: input.role,
+          isManager: !!input.isManager,
+          isDoctor: input.role === 'doctor',
           station: input.station ?? null,
-          dashboard: input.role === 'manager' ? 'manager' : head ? 'head' : null,
+          dashboard: input.isManager ? 'manager' : head ? 'head' : null,
           headOf: head?.departmentName ?? null,
           language: input.language ?? 'kin',
           phone: input.phone ?? null,
@@ -480,6 +566,15 @@ export function useStaffActions() {
             username: input.username,
             email: input.email,
             role: input.role,
+            ...(input.isManager !== undefined && {
+              isManager: input.isManager,
+              dashboard: input.isManager
+                ? 'manager'
+                : members.some((m) => m.position === 'head')
+                  ? 'head'
+                  : null,
+            }),
+            isDoctor: input.role === 'doctor' || !!e.isDoctor,
             departmentId: members[0]?.departmentId ?? null,
             departmentName: members[0]?.departmentName ?? null,
             position: members[0]?.position ?? 'member',
@@ -597,6 +692,15 @@ export function useDepartmentActions() {
     }) => {
       if (!supabase) {
         const existing = d.id ? sampleDepartments.find((x) => x.id === d.id) : undefined
+        // 0128: a service the department starts giving is ticked for its members
+        if (existing) {
+          const added = d.services.filter((s) => !existing.services.includes(s))
+          if (added.length)
+            for (const e of sampleEmployees)
+              for (const m of e.departments)
+                if (m.departmentId === existing.id && m.services)
+                  m.services = [...m.services, ...added]
+        }
         if (existing)
           Object.assign(existing, {
             name: d.name,

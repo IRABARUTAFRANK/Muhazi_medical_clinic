@@ -1,7 +1,8 @@
 // Muhazi Medical Clinic System — Edge Function `manage-staff`
 // The only place that touches Supabase Auth with the service role. It lets the clinic manager
 // create employee accounts, edit them (name, username, e-mail, role, department and position,
-// specialty, professional registration number),
+// specialty, professional registration number, "also the clinic manager", what they do in each
+// department),
 // hand over or reset a PIN, and deactivate or reactivate an employee.
 //
 //   Deploy:  pnpm sb:deploy   (npx supabase functions deploy manage-staff …)
@@ -26,6 +27,10 @@ const ROLES = [
   'sonographer',
   'lab_tech',
   'pharmacist',
+  // 0128: two professions; 'manager' stays for an older app (the database reads it as a doctor who
+  // is also the clinic manager)
+  'midwife',
+  'administrator',
   'manager',
 ]
 const POSITIONS = ['head', 'assistant', 'member']
@@ -55,11 +60,18 @@ interface Assignment {
   position?: 'head' | 'assistant' | 'member'
   /** Every department of the employee with the position held there (main first). When absent,
    *  department_id / position above are the only one. */
-  departments?: { department_id: string; position?: 'head' | 'assistant' | 'member' }[]
+  departments?: {
+    department_id: string
+    position?: 'head' | 'assistant' | 'member'
+    /** 0128: the department's services this person does there (left out: all of them). */
+    services?: string[]
+  }[]
   language?: 'kin' | 'en' | 'fr'
   phone?: string | null
   /** Only for role manager: full dashboard. */
   dashboard?: 'manager' | 'head' | null
+  /** 0128: "also the clinic manager" (profiles.is_manager). Left out = unchanged. */
+  is_manager?: boolean
   /** Specialty or title shown with the role ("Minor surgery", "Midwife"). */
   specialty?: string | null
   /** Professional council registration number, printed on prescriptions (0084). Left out = unchanged. */
@@ -104,10 +116,12 @@ Deno.serve(async (req) => {
   if (callerError || !caller.user) return json(401, { error: 'session expired, sign in again' })
   const { data: me } = await admin
     .from('profiles')
-    .select('role, active, email')
+    .select('*')
     .eq('id', caller.user.id)
     .maybeSingle()
-  if (!me?.active || me.role !== 'manager') return json(403, { error: 'managers only' })
+  // 0128: the manager is a flag (is_manager); the role 'manager' before the migration
+  if (!me?.active || !(me.is_manager === true || me.role === 'manager'))
+    return json(403, { error: 'managers only' })
 
   // The session must be approved by the database (0081): opened by the e-mailed code or a valid
   // browser key, and active within the hours without activity. A PIN alone is not enough.
@@ -205,7 +219,12 @@ Deno.serve(async (req) => {
     const list = (
       a.departments ??
       (a.department_id ? [{ department_id: a.department_id, position: a.position }] : [])
-    ).map((m) => ({ department_id: m.department_id, position: m.position ?? 'member' }))
+    ).map((m) => ({
+      department_id: m.department_id,
+      position: m.position ?? 'member',
+      // 0128: passed on as given (the database checks them too)
+      ...(Array.isArray(m.services) && { services: m.services }),
+    }))
     if (!a.departments?.length && !a.department_id && (a.position ?? 'member') !== 'member')
       throw new Error('choose a department for a head or an assistant')
     const seen = new Set<string>()
@@ -216,16 +235,32 @@ Deno.serve(async (req) => {
       seen.add(m.department_id)
       const { data: d } = await admin
         .from('department')
-        .select('name, roles, deleted_at')
+        .select('name, roles, services, deleted_at')
         .eq('id', m.department_id)
         .maybeSingle()
       if (!d || d.deleted_at) throw new Error('department not found')
-      if (Array.isArray(d.roles) && d.roles.length && !d.roles.includes(a.role))
+      // 0128: a department that still lists 'manager' takes the clinic managers, whatever their profession
+      if (
+        Array.isArray(d.roles) &&
+        d.roles.length &&
+        !d.roles.includes(a.role) &&
+        !(a.is_manager && d.roles.includes('manager'))
+      )
         throw new Error(`this role does not belong to the department ${d.name}`)
+      // 0128: only services the department gives, at least one when it gives some
+      if (m.services) {
+        const gives: string[] = Array.isArray(d.services) ? d.services : []
+        if (m.services.some((x) => !gives.includes(x)))
+          throw new Error(
+            `the department ${d.name} does not give ${m.services.find((x) => !gives.includes(x))}`,
+          )
+        if (gives.length && !m.services.length)
+          throw new Error(`tick at least one service this person does in ${d.name}`)
+      }
       if (m.position === 'head' && !headOf) headOf = d.name
     }
     const main = list[0]
-    const dashboard = a.role === 'manager' ? 'manager' : headOf ? 'head' : null
+    const dashboard = a.role === 'manager' || a.is_manager ? 'manager' : headOf ? 'head' : null
     return {
       memberships: list,
       row: {
@@ -242,7 +277,7 @@ Deno.serve(async (req) => {
   }
   const saveMemberships = async (
     userId: string,
-    list: { department_id: string; position: string }[],
+    list: { department_id: string; position: string; services?: string[] }[],
   ) => {
     const { error } = await admin.rpc('set_staff_departments', {
       p_profile_id: userId,
@@ -327,6 +362,23 @@ Deno.serve(async (req) => {
       throw new Error(error.message)
   }
 
+  // 0128: "also the clinic manager", only when the request carries it. Saved apart from the rest
+  // so a database without migration 0128 (no such column) still saves the employee; the database
+  // keeps at least one manager.
+  const saveManager = async (userId: string, flag: boolean | undefined) => {
+    if (typeof flag !== 'boolean') return
+    const { error } = await admin.from('profiles').update({ is_manager: flag }).eq('id', userId)
+    if (
+      error &&
+      !(
+        error.code === 'PGRST204' ||
+        error.code === '42703' ||
+        (/column/i.test(error.message) && /is_manager/.test(error.message))
+      )
+    )
+      throw new Error(error.message)
+  }
+
   try {
     switch (body.action) {
       case 'create': {
@@ -384,6 +436,7 @@ Deno.serve(async (req) => {
           .eq('id', data.user.id)
         await saveMemberships(data.user.id, memberships)
         await saveRegistration(data.user.id, reg)
+        await saveManager(data.user.id, body.is_manager)
         const { data: created } = await admin
           .from('profiles')
           .select('staff_id')
@@ -396,6 +449,7 @@ Deno.serve(async (req) => {
         await audit('create', data.user.id, {
           username,
           role: a.role,
+          is_manager: body.is_manager,
           staff_id: created?.staff_id,
           replaced,
           ...reg,
@@ -419,7 +473,11 @@ Deno.serve(async (req) => {
         const email = body.email?.trim().toLowerCase()
         if (!EMAIL.test(email ?? ''))
           return json(400, { error: 'a valid e-mail address is required' })
-        if (body.user_id === caller.user.id && body.role !== 'manager')
+        // 0128: the manager is a flag (an older app sends the role 'manager')
+        if (
+          body.user_id === caller.user.id &&
+          (body.is_manager === false || (body.is_manager === undefined && body.role !== 'manager'))
+        )
           return json(400, { error: 'you cannot remove your own manager role' })
         const { row: a, memberships } = await assignment(body)
         const reg = registration(body)
@@ -464,6 +522,7 @@ Deno.serve(async (req) => {
         if (error) return json(400, { error: error.message })
         await saveMemberships(body.user_id, memberships)
         await saveRegistration(body.user_id, reg)
+        await saveManager(body.user_id, body.is_manager)
         await admin.auth.admin.updateUserById(body.user_id, {
           user_metadata: {
             username,
@@ -477,6 +536,7 @@ Deno.serve(async (req) => {
           username,
           email,
           role: a.role,
+          is_manager: body.is_manager,
           department_id: a.department_id,
           position: a.position,
           departments: memberships,

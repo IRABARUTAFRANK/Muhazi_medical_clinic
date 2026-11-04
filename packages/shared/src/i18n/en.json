@@ -127,7 +127,10 @@
     "view": "{{role}} view",
     "withStation": "{{role}} · {{station}}",
     "lab_tech": "Laboratory",
-    "pharmacist": "Pharmacist"
+    "pharmacist": "Pharmacist",
+    "midwife": "Midwife",
+    "administrator": "Administrator",
+    "clinicManager": "Clinic manager"
   },
   "sync": {
     "synced": "Synced",
@@ -776,7 +779,9 @@
         "sonographer": "Does ultrasound scans and writes their reports.",
         "lab_tech": "Takes samples, runs laboratory tests and enters the results.",
         "pharmacist": "Gives out medicines, sells at the counter and keeps the stock.",
-        "manager": "Sees everything: money, staff, prices, settings and reports."
+        "manager": "Sees everything: money, staff, prices, settings and reports.",
+        "midwife": "Follows pregnancies and births, cares for mothers and babies; works like a nurse.",
+        "administrator": "Runs the office side of the clinic; treats no patient. Works at reception only when a department places them there."
       },
       "specialtyHint": "What the person is expert in. Colleagues see it, and so do patients on the website calendar.",
       "specialtyDoctorHint": "Add the doctor's specialty (General practitioner, Dentist, Surgeon…). Colleagues and patients see it, and while the doctor has no department it also adds its section (Dentist → Dental).",
@@ -812,7 +817,17 @@
       "replacesAssistant": "{{name}} is assistant head of {{dept}} now. A department has one assistant head: saving makes {{name}} a member.",
       "assistantToMember": "{{name}}, assistant head of {{dept}} now, becomes a member.",
       "desksKept": "Kept as before departments decided: {{list}}. Place this person in a department that gives it, or stop it here.",
-      "keptStop": "Stop {{desk}}"
+      "keptStop": "Stop {{desk}}",
+      "profession": "Profession",
+      "specialtyNone": "Not set",
+      "specialtyOther": "Other (type it)",
+      "specialtyOtherLabel": "Other specialty",
+      "specialtyOptional": "Specialty or title (optional)",
+      "isManager": "Also the clinic manager",
+      "isManagerHint": "Oversees the whole clinic: dashboard, reports, employees, prices, settings and money. Takes patients only at the desks of the departments below; sees patient records only as a doctor.",
+      "isManagerSelf": "You are the clinic manager: another manager can change this, not you.",
+      "doesHere": "Does here",
+      "managerDesks": "As the clinic manager they also see every desk, but take patients only at these."
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -847,7 +862,11 @@
       "alreadyDeleted": "This account is already deleted.",
       "notFound": "This employee was not found. Refresh the page.",
       "registrationNo": "The registration number can have at most 40 characters.",
-      "registrationBody": "Write the name of the council (at most 60 characters)."
+      "registrationBody": "Write the name of the council (at most 60 characters).",
+      "noServiceTicked": "Tick at least one thing this person does in {{dept}}.",
+      "servicesWrong": "Check what the person does in each department: only what the department gives, at least one.",
+      "specialtyOther": "Type the specialty, or choose one from the list.",
+      "lastClinicManager": "This is the clinic's only manager. Tick “Also the clinic manager” for another employee first."
     },
     "roles": {
       "receptionist": "Receptionist",
@@ -857,7 +876,9 @@
       "sonographer": "Sonographer",
       "lab_tech": "Lab technician",
       "pharmacist": "Pharmacist",
-      "manager": "Manager / owner"
+      "manager": "Manager / owner",
+      "midwife": "Midwife",
+      "administrator": "Administrator"
     },
     "lead2": "Employee accounts, their departments and their PINs.",
     "tabs": {
@@ -899,7 +920,7 @@
     },
     "dept": {
       "none": "No department",
-      "lead": "Create the clinic’s departments and say which roles belong to each. Employees are then placed in a department as head, assistant head or member; the head gets the department dashboard.",
+      "lead": "Create the clinic’s departments, the professions that belong to each and the services it gives. Employees are then placed in a department as head, assistant head or member, with what they do there; the head gets the department dashboard.",
       "new": "New department",
       "empty": "No departments yet.",
       "delete": "Delete department",
@@ -928,7 +949,21 @@
       "membersLabel_one": "Member",
       "membersLabel_other": "Members",
       "willLoseNew": "{{desk}} is given by no department yet: once saved, only members of departments giving it use it. Using it now, not members: {{names}}. Those who work there as usual are added as members when nothing else changes for them; you are told about the others.",
-      "willLoseDropped": "{{desk}}: these members will no longer use it: {{names}}."
+      "willLoseDropped": "{{desk}}: these members will no longer use it: {{names}}.",
+      "professions": "Professions allowed",
+      "professionsShort": "Professions allowed",
+      "professionsHint": "Only employees of these professions can be placed here. Tick none to allow every profession.",
+      "allProfessions": "Every profession",
+      "managersRole": "Clinic managers (any profession)",
+      "servicesGives": "Services it gives",
+      "servicesGivesShort": "Services it gives",
+      "whoDoesWhat": "Who does what",
+      "cols": {
+        "person": "Person",
+        "position": "Position",
+        "does": "Does here"
+      },
+      "doesNothing": "nothing ticked"
     },
     "tempPin": "Temporary PIN",
     "showPin": "Show the PIN",
@@ -7683,7 +7718,10 @@
     "22d39b98": "Unknown part of the visit record.",
     "d118b87b": "The time given is not possible.",
     "e159c113": "This order is already over.",
-    "2c7e8550": "The text is too long."
+    "2c7e8550": "The text is too long.",
+    "348637e5": "Tick at least one service this person does in {{p1}}.",
+    "dc82676e": "The department {{p1}} does not give {{p2}}.",
+    "fc56c8a4": "The registration number is too long (40 characters at most)."
   },
   "panel": {
     "close": "Close",
@@ -9680,7 +9718,8 @@
       "contractEnd": "Contract ends",
       "status": "Status",
       "created": "Account made",
-      "updated": "Details last changed"
+      "updated": "Details last changed",
+      "profession": "Profession"
     },
     "contracts": {
       "permanent": "Permanent",
@@ -9740,7 +9779,9 @@
       "removeYes": "Remove",
       "removed_one": "{{count}} note removed (in the activity log)",
       "removed_other": "{{count}} notes removed (in the activity log)"
-    }
+    },
+    "recordsYes": "Sees them (a doctor)",
+    "recordsNo": "Does not see them (not a doctor)"
   },
   "forDoctors": {
     "title": "Patient records are for doctors",
@@ -9974,5 +10015,19 @@
       "setting_off": "The clinic asks the doctor to request access to the past records (or open them in an emergency).",
       "not_treating": "The past records are for the doctor treating the patient now; ask for access if you need them."
     }
+  },
+  "specialties": {
+    "generalPractitioner": "General practitioner",
+    "dentist": "Dentist",
+    "surgeon": "Surgeon",
+    "gynaecologist": "Gynaecologist / obstetrician",
+    "paediatrician": "Paediatrician",
+    "radiologist": "Radiologist",
+    "ophthalmologist": "Ophthalmologist",
+    "internist": "Internist",
+    "generalNurse": "General nurse",
+    "anaestheticNurse": "Anaesthetic nurse",
+    "paediatricNurse": "Paediatric nurse",
+    "midwife": "Midwife"
   }
 }

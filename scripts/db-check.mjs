@@ -607,18 +607,25 @@ await step(
     return 'approved with the doctor → confirmed → reception notified'
   },
 )
-await step('nurse may write but manager may not read HIV tests (sensitive)', async () => {
-  // 0085: written by the desk functions only; here as the owner, as the nurse
-  await as(staff.nurse, 'postgres')
-  await db.query(
-    `insert into hiv_test (encounter_id, patient_id, result) values ($1, $2, 'negative')`,
-    [encounterId, patientId],
-  )
-  await as(staff.manager)
-  const r = await one(`select count(*)::int as n from hiv_test`)
-  if (r.n !== 0) throw new Error(`manager saw ${r.n} rows`)
-  return 'manager sees 0 rows'
-})
+await step(
+  'nurse may write but reception may not read HIV tests (sensitive); the manager-doctor reads them (0128)',
+  async () => {
+    // 0085: written by the desk functions only; here as the owner, as the nurse
+    await as(staff.nurse, 'postgres')
+    await db.query(
+      `insert into hiv_test (encounter_id, patient_id, result) values ($1, $2, 'negative')`,
+      [encounterId, patientId],
+    )
+    await as(staff.receptionist)
+    const r = await one(`select count(*)::int as n from hiv_test`)
+    // 0128: the manager of these checks is a doctor by profession: the doctor's switches
+    // (sensitive.read) on top of the manager's
+    await as(staff.manager)
+    const m = await one(`select count(*)::int as n from hiv_test`)
+    if (r.n !== 0 || m.n !== 1) throw new Error(`reception saw ${r.n} rows, the manager ${m.n}`)
+    return 'reception sees 0 rows; the manager (a doctor) 1'
+  },
+)
 
 // ---------------------------------------------------------------- catalogue operations (0018)
 await step('manager saves lock time and patient fields; staff read lock time', async () => {
@@ -7807,7 +7814,7 @@ await step(
   },
 )
 await step(
-  '0085 D: a nurse in Pharmacy gets the pharmacy desk, never the money; the manager has every desk',
+  '0085 D: a nurse in Pharmacy gets the pharmacy desk, never the money; the manager has no desk as such (0128)',
   async () => {
     await as(staff.manager)
     t85.pharmacy = (
@@ -7854,8 +7861,9 @@ await step(
       returned !== '42501/' ||
       pharmacist ||
       otherNurse ||
-      mgr.desks.length !== 12 ||
-      mgr.via.pharmacy !== 'manager'
+      // 0128: no desk as the manager: the Pharmacy 85 desk is its members'
+      mgr.desks.includes('pharmacy') ||
+      Object.values(mgr.via).includes('manager')
     )
       throw new Error(
         json85({
@@ -7871,7 +7879,7 @@ await step(
           mgr,
         }),
       )
-    return 'nurse of Pharmacy 85: pharmacy desk and stores; payment and a posted-bill return refused; manager 12 desks'
+    return 'nurse of Pharmacy 85: pharmacy desk and stores; payment and a posted-bill return refused; the manager not at the pharmacy (0128)'
   },
 )
 await step(
@@ -9563,7 +9571,8 @@ await step(
       !r.notices2.manager ||
       r.notices2.nurse ||
       r.notices2.head ||
-      json88(r.notices2.roles) !== json88(['manager']) ||
+      // 0128: the manager is a doctor by profession
+      json88(r.notices2.roles) !== json88(['doctor']) ||
       r.nurseAfter ||
       r.cancel !== 'P0002/not_found' ||
       r.refused !== 'refused' ||
@@ -10215,6 +10224,7 @@ await step(
     r.kind = (await attach89(t88.docB, { enc: t89.v2, kind: 'xray' })).error
     r.closed = (await attach89(t88.docA, { enc: t89.v1 })).error
     r.again = (await attach89(t88.docB, { enc: t89.v2, path: b.path })).error
+    // 0128: the manager works only at the desks of his departments: not on this visit
     r.manager = (
       await attach89(staff.manager, { enc: t89.v2, kind: 'other', title: 'Consent' })
     ).error
@@ -10246,10 +10256,10 @@ await step(
       r.kind !== '22023/file_kind' ||
       r.closed !== '22023/file_visit_closed' ||
       r.again !== '23505/' ||
-      r.manager
+      r.manager !== '42501/not_on_visit'
     )
       throw new Error(json88(r))
-    return 'Dr B, the ultrasound desk (requester told) and the manager add; reception, cashier, Dr C, the laboratory refused; type, size, path, title checked'
+    return 'Dr B and the ultrasound desk (requester told) add; reception, cashier, Dr C, the laboratory and the manager (not on the visit, 0128) refused; type, size, path, title checked'
   },
 )
 await step(
@@ -10288,30 +10298,31 @@ await step(
     r.openMissing = (await j88(t88.docB, open, [crypto.randomUUID()])).error
     r.log = (await log88(t89.pid)).filter((x) => x.what === 'attachment').map((x) => x.via)
     if (
-      r.docB.files !== 3 ||
+      // 0128: three files (the manager, not on the visit, added none)
+      r.docB.files !== 2 ||
       r.docB.hidden !== 1 ||
       r.docB.attachTo !== t89.v2 ||
       r.docA.files !== 1 ||
       r.docA.titles[0] !== 'Referral letter from Kiziguro' ||
-      r.docA.hidden !== 3 ||
+      r.docA.hidden !== 2 ||
       r.docA.attachTo !== null ||
-      r.head.files !== 4 ||
+      r.head.files !== 3 ||
       r.head.hidden !== 0 ||
       r.assistant.files !== 0 ||
-      r.assistant.hidden !== 4 ||
+      r.assistant.hidden !== 3 ||
       r.reception.files !== 0 ||
-      r.reception.hidden !== 4 ||
+      r.reception.hidden !== 3 ||
       r.reception.attachTo !== null ||
-      r.manager.files !== 4 ||
-      r.manager.attachTo !== t89.v2 ||
+      r.manager.files !== 3 ||
+      r.manager.attachTo !== null ||
       // 0126: not a doctor: only the file of the test her desk runs
       r.sono.files !== 1 ||
-      r.sono.hidden !== 3 ||
+      r.sono.hidden !== 2 ||
       r.sonoTest.files !== 1 ||
       r.sonoTest.canAttach !== true ||
       r.sonoTest.max !== 10485760 ||
       r.docCVisit.files !== 0 ||
-      r.docCVisit.hidden !== 3 ||
+      r.docCVisit.hidden !== 2 ||
       r.docCVisit.canAttach !== false ||
       r.openBpast !== '42501/private' ||
       r.openRecPast !== '42501/private' ||
@@ -10326,7 +10337,7 @@ await step(
       r.log.includes('visit')
     )
       throw new Error(json88(r))
-    return `Dr B sees today's 3 of 4 (past private); Dr A his past file; head and manager all; reception none; log: ${r.log.join(', ')}`
+    return `Dr B sees today's 2 of 3 (past private); Dr A his past file; head and manager all; reception none; log: ${r.log.join(', ')}`
   },
 )
 await step(
@@ -11711,7 +11722,9 @@ await step('0094: the manager keeps their own calendar and is in "Calendar of"',
   const cashier = people.find((p) => p.userId === staff.cashier)
   await asAdmin()
   if (before.canKeep !== true || before.saved !== false) throw new Error(JSON.stringify(before))
-  if (!me || me.role !== 'manager' || me.saved !== true) throw new Error(JSON.stringify(me))
+  // 0128: the profession (doctor) and "also the clinic manager"
+  if (!me || me.role !== 'doctor' || me.isManager !== true || me.saved !== true)
+    throw new Error(JSON.stringify(me))
   if (!nurse || nurse.saved !== true || cashier) throw new Error('people list wrong')
   return `${people.length} people; the manager first, saved`
 })
@@ -15793,7 +15806,8 @@ await step(
       all.rows.length !== want.n ||
       !all.rows.some((e) => e.username) ||
       !manager ||
-      manager.role !== 'manager' ||
+      // 0128: the profession (the manager flag is not in the 0111 definition re-run above)
+      manager.role !== 'doctor' ||
       head.scope !== 'department' ||
       head.rows.length !== want.dept ||
       !head.rows.some((e) => e.id === t86.member) ||
@@ -19578,8 +19592,15 @@ await expectError(
 // ---------------------------------------------------------------- 0126: patient records are for doctors
 await step('0126: the migration runs again on a database that already has it', async () => {
   await asAdmin()
+  // 0128 added is_manager at the end of staff_directory: a view cannot lose a column, so the view
+  // is made again from 0126; then 0128, which changes several 0126 definitions (the manager is a
+  // flag, no longer a role), is put back on top, as in the live database
+  await db.exec(`drop view if exists staff_directory`)
   await db.exec(
     await readFile(path.join(migrationsDir, '20270106090000_doctors_only_records.sql'), 'utf8'),
+  )
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20270108090000_profession_manager.sql'), 'utf8'),
   )
   return 'no error'
 })
@@ -19608,7 +19629,9 @@ await step(
     t126.nurse = await newStaff('d126.nurse', 'Nurse 126', 'nurse')
     t126.lab = await newStaff('d126.lab', 'Lab 126', 'lab_tech')
     t126.rx = await newStaff('d126.rx', 'Pharmacist 126', 'pharmacist')
-    t126.mgr = await newStaff('d126.mgr', 'Manager 126', 'manager')
+    // 0128: a manager who is not a doctor: the administrator profession, also the clinic manager
+    t126.mgr = await newStaff('d126.mgr', 'Manager 126', 'administrator')
+    await db.query(`update profiles set is_manager = true where id = $1`, [t126.mgr])
     await member85(t126.doc, t126.dept)
     await member85(t126.doc2, t126.dept)
     await member85(t126.headN, t126.dept, 'head')
@@ -19707,24 +19730,29 @@ await step(
   },
 )
 await step(
-  '0126: set_staff_doctor — the manager only, a registration number to turn it on; a doctor by role stays one',
+  '0126: set_staff_doctor — the manager only, the registration number optional (0128); a doctor by role stays one',
   async () => {
     const r = {}
     r.nurse = await hintAs(t126.nurse, `select set_staff_doctor($1, true, 'RMDC/1/26')`, [
       t126.nurse,
     ])
-    r.noNumber = await hintAs(staff.manager, `select set_staff_doctor($1, true, '  ')`, [t126.mgr])
+    // 0128: the registration number is optional
+    r.noNumber = await hintAs(staff.manager, `select set_staff_doctor($1, true, '  ')`, [
+      t126.headN,
+    ])
+    r.noNumberOff = await hintAs(staff.manager, `select set_staff_doctor($1, false)`, [t126.headN])
     r.byRole = await hintAs(staff.manager, `select set_staff_doctor($1, false)`, [t126.doc])
     await asAdmin()
     r.still = (await one(`select is_doctor($1) as b`, [t126.mgr])).b
     if (
       r.nurse !== '42501/not_manager' ||
-      r.noNumber !== '22023/registration_needed' ||
+      r.noNumber !== 'ok' ||
+      r.noNumberOff !== 'ok' ||
       r.byRole !== '22023/doctor_by_role' ||
       r.still
     )
       throw new Error(json126(r))
-    return 'a nurse refused; no registration number refused; the role doctor cannot be unmarked'
+    return 'a nurse refused; marked without a registration number (optional); the role doctor cannot be unmarked'
   },
 )
 await step(
@@ -20132,13 +20160,16 @@ await step(
     r.nurseWound = await rule89(t126.nurse, read, [t126.fileWound])
     r.labLab = await rule89(t126.lab, read, [t126.fileLab])
     r.labWound = await rule89(t126.lab, read, [t126.fileWound])
-    r.docWound = await rule89(staff.manager, read, [t126.fileWound])
     const lf = await j88(t126.lab, `select list_visit_files($1) as j`, [t126.v1])
     r.labList = lf.files.map((x) => `${x.title}:${x.view}`)
     await asAdmin()
     const woundId = (
       await one(`select id from patient_file_doc where storage_path = $1`, [t126.fileWound])
     ).id
+    // 0128: not working on the visit, the manager-doctor opens it as the manager (logged) first
+    r.docBefore = await rule89(staff.manager, read, [t126.fileWound])
+    r.docOpen = await hintAs(staff.manager, `select file_open($1)`, [woundId])
+    r.docWound = await rule89(staff.manager, read, [t126.fileWound])
     r.mgrOpen = await hintAs(t126.mgr, `select file_open($1)`, [woundId])
     if (
       r.mgrWound !== false ||
@@ -20146,12 +20177,14 @@ await step(
       r.nurseWound !== false ||
       r.labLab !== true ||
       r.labWound !== false ||
+      r.docBefore !== false ||
+      r.docOpen !== 'ok' ||
       r.docWound !== true ||
       json126(r.labList) !== json126(['Lab slide 126:desk']) ||
       r.mgrOpen !== '42501/private'
     )
       throw new Error(json126(r))
-    return 'manager (not a doctor) and nurse refused; the lab reads its slide only; the manager-doctor reads the wound photo'
+    return 'manager (not a doctor) and nurse refused; the lab reads its slide only; the manager-doctor reads the wound photo once opened (logged)'
   },
 )
 await step(
@@ -20866,6 +20899,415 @@ await step(
   },
 )
 // @@t127-end
+
+// @@t128-begin
+// ---------------------------------------------------------------- 0128 the profession, the clinic manager, what each does in a department
+const t128 = {}
+const json128 = (x) => JSON.stringify(x)
+// the steps above re-ran older migrations: put the 0128 definitions back (it runs twice)
+await step('0128: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20270108090000_profession_manager.sql'), 'utf8'),
+  )
+  return 'no error'
+})
+/** A queue entry of a new patient waiting at `station` (nobody named, no department). */
+const wait128 = async (given, station) => {
+  await asAdmin()
+  const pid = (
+    await one(
+      `insert into patient (surname, given_names, sex) values ('Desk', $1, 'female') returning id`,
+      [given],
+    )
+  ).id
+  const enc = (await one(`insert into encounter (patient_id) values ($1) returning id`, [pid])).id
+  return (
+    await one(
+      `insert into queue_entry (encounter_id, station, ticket_no) values ($1, $2, 'P128') returning id`,
+      [enc, station],
+    )
+  ).id
+}
+const items128 = (dep, services, position = 'member') =>
+  JSON.stringify([
+    { department_id: dep, position, ...(services === undefined ? {} : { services }) },
+  ])
+await step(
+  '0128 A: a row still saying role manager becomes a doctor and clinic manager (the migration, and any later write)',
+  async () => {
+    const r = {}
+    t128.old = await newStaff('m128.old', 'Old Manager 128', 'nurse')
+    // as before 0128: the role 'manager' (the rule of 0128 switched off to plant it)
+    await db.exec(`alter table profiles disable trigger trg_profile_role_rules`)
+    await db.query(`update profiles set role = 'manager', dashboard = null where id = $1`, [
+      t128.old,
+    ])
+    await db.exec(`alter table profiles enable trigger trg_profile_role_rules`)
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270108090000_profession_manager.sql'), 'utf8'),
+    )
+    r.migrated = await one(`select role::text, is_manager, dashboard from profiles where id = $1`, [
+      t128.old,
+    ])
+    // an older manage-staff (or a script) creating an account with the role 'manager'
+    t128.mgr = await newStaff('m128.mgr', 'Manager Dentist 128', 'manager')
+    r.created = await one(`select role::text, is_manager, dashboard from profiles where id = $1`, [
+      t128.mgr,
+    ])
+    r.leftManager = (await one(`select count(*)::int as n from profiles where role = 'manager'`)).n
+    if (
+      json128(r.migrated) !== json128({ role: 'doctor', is_manager: true, dashboard: 'manager' }) ||
+      json128(r.created) !== json128({ role: 'doctor', is_manager: true, dashboard: 'manager' }) ||
+      r.leftManager !== 0
+    )
+      throw new Error(json128(r))
+    return 'role manager → doctor + clinic manager (dashboard manager); no row keeps the role'
+  },
+)
+await step(
+  "0128 B: the converted manager keeps the manager's screens: dashboard, settings, the employee list with the flag, the session",
+  async () => {
+    const r = {}
+    await as(t128.old)
+    r.isManager = (await one(`select is_manager() as b`)).b
+    r.isDoctor = (await one(`select is_doctor() as b`)).b
+    r.dash = !!(await one(`select dashboard_summary(current_date - 7, current_date) as d`)).d
+    await db.query(`select save_setting('security.lock', '{"idle_minutes": 30}'::jsonb)`)
+    r.setting = 'ok'
+    r.dir = await one(
+      `select role::text, is_manager, dashboard from staff_directory where id = $1`,
+      [t128.old],
+    )
+    const me = (await one(`select my_session_profile() as j`)).j
+    r.session = { role: me.role, isManager: me.is_manager, dashboard: me.dashboard }
+    r.profile = (await one(`select staff_profile($1) as j`, [t128.old])).j.isManager
+    // the manager's switches on top of the doctor's
+    r.perms = await one(
+      `select has_perm('staff.write') as staff, has_perm('clinical.write') as clinical, has_perm('payment.take') as pay`,
+    )
+    await asAdmin()
+    if (
+      !r.isManager ||
+      !r.isDoctor ||
+      !r.dash ||
+      json128(r.dir) !== json128({ role: 'doctor', is_manager: true, dashboard: 'manager' }) ||
+      json128(r.session) !== json128({ role: 'doctor', isManager: true, dashboard: 'manager' }) ||
+      r.profile !== true ||
+      !r.perms.staff ||
+      !r.perms.clinical
+    )
+      throw new Error(json128(r))
+    return `is_manager and is_doctor; dashboard, settings, staff list, session and profile say so; switches ${json128(r.perms)}`
+  },
+)
+await step(
+  '0128 C: an administrator who is also the clinic manager manages, but is no doctor: the records stay closed',
+  async () => {
+    const r = {}
+    t128.admin = await newStaff('m128.admin', 'Administrator 128', 'administrator')
+    await db.query(`update profiles set is_manager = true where id = $1`, [t128.admin])
+    await as(t128.admin)
+    r.isManager = (await one(`select is_manager() as b`)).b
+    r.isDoctor = (await one(`select is_doctor() as b`)).b
+    await db.query(`select save_setting('security.lock', '{"idle_minutes": 30}'::jsonb)`)
+    r.setting = 'ok'
+    r.staff = (await one(`select count(*)::int as n from staff_directory`)).n > 0
+    // oversight: every worklist to look at, the whole clinic in the counts
+    r.cats = (await one(`select my_test_categories()::text[] as c`)).c
+    const nav = (await one(`select nav_counts() as j`)).j
+    r.navQueue = 'queue' in nav
+    r.navInClinic = typeof nav.inClinic === 'number'
+    await asAdmin()
+    const f = await j88(t128.admin, `select patient_file($1) as j`, [t126.pid])
+    r.file = {
+      doctor: f.access?.doctor,
+      private: (f.visits ?? []).every((v) => v.private),
+      dx: (f.visits ?? []).filter((v) => v.diagnosis).length,
+    }
+    r.clinical = await j88(t128.admin, `select visit_clinical($1) as j`, [t126.v0])
+    if (
+      !r.isManager ||
+      r.isDoctor ||
+      !r.staff ||
+      json128(r.cats) !== json128(['lab', 'imaging']) ||
+      r.navQueue ||
+      !r.navInClinic ||
+      r.file.doctor !== false ||
+      !r.file.private ||
+      r.file.dx !== 0 ||
+      (r.clinical && !r.clinical.error && !r.clinical.private)
+    )
+      throw new Error(json128(r))
+    return 'manages (settings, employees, every worklist, In clinic); no doctor: visits private, no diagnosis'
+  },
+)
+await step('0128 D: a doctor without "also the clinic manager" does not manage', async () => {
+  t128.doc = await newStaff('m128.doc', 'Dr. Dentist 128', 'doctor', 'Dental')
+  const r = {}
+  r.setting = await hintAs(
+    t128.doc,
+    `select save_setting('security.lock', '{"idle_minutes": 30}'::jsonb)`,
+  )
+  r.desk = await hintAs(t128.doc, `select set_role_desk('nurse', 'pharmacy', true)`)
+  await as(t128.doc)
+  r.isManager = (await one(`select is_manager() as b`)).b
+  r.staffWrite = (await one(`select has_perm('staff.write') as b`)).b
+  await asAdmin()
+  if (r.setting === 'ok' || r.desk !== '42501/' || r.isManager || r.staffWrite)
+    throw new Error(json128(r))
+  return `settings ${r.setting}, desks ${r.desk}; no manager switch`
+})
+await step(
+  '0128 E: a department giving dental and consultation; the dentist and the manager do only dental there, a colleague consultation',
+  async () => {
+    t128.dep = await dept85('Dental 128', ['dental', 'consultation'], '{doctor,nurse}')
+    t128.colleague = await newStaff('m128.gp', 'Dr. General 128', 'doctor', 'Consultation 1')
+    await asAdmin()
+    await db.query(`select set_staff_departments($1, $2::jsonb)`, [
+      t128.doc,
+      items128(t128.dep, ['dental'], 'head'),
+    ])
+    await db.query(`select set_staff_departments($1, $2::jsonb)`, [
+      t128.mgr,
+      items128(t128.dep, ['dental']),
+    ])
+    await db.query(`select set_staff_departments($1, $2::jsonb)`, [
+      t128.colleague,
+      items128(t128.dep, ['consultation']),
+    ])
+    const rows = (
+      await db.query(
+        `select p.full_name, sd.services from staff_department sd join profiles p on p.id = sd.profile_id
+          where sd.department_id = $1 order by p.full_name`,
+        [t128.dep],
+      )
+    ).rows.map((x) => `${x.full_name}: ${x.services.join('+')}`)
+    const dir = await one(`select departments from staff_directory where id = $1`, [t128.doc])
+    if (
+      json128(rows) !==
+        json128([
+          'Dr. Dentist 128: dental',
+          'Dr. General 128: consultation',
+          'Manager Dentist 128: dental',
+        ]) ||
+      json128(dir.departments[0].services) !== json128(['dental'])
+    )
+      throw new Error(json128({ rows, dir }))
+    return rows.join('; ')
+  },
+)
+await step(
+  '0128 F: only dental ticked: may_use_desk dental yes, consultation no; only in the dental pool ("first free")',
+  async () => {
+    const r = {}
+    for (const [k, who] of [
+      ['doc', t128.doc],
+      ['mgr', t128.mgr],
+      ['gp', t128.colleague],
+    ]) {
+      await as(who)
+      r[k] = await one(
+        `select may_use_desk('dental') as dental, may_use_desk('consultation') as consultation`,
+      )
+    }
+    await as(t128.colleague)
+    const dental = (await one(`select station_staff('dental') as j`)).j.staff.map((x) => x.id)
+    const consult = (await one(`select station_staff('consultation') as j`)).j.staff.map(
+      (x) => x.id,
+    )
+    await asAdmin()
+    r.dentalPool = [t128.doc, t128.mgr, t128.colleague].map((x) => dental.includes(x))
+    r.consultPool = [t128.doc, t128.mgr, t128.colleague].map((x) => consult.includes(x))
+    if (
+      json128(r.doc) !== json128({ dental: true, consultation: false }) ||
+      json128(r.mgr) !== json128({ dental: true, consultation: false }) ||
+      json128(r.gp) !== json128({ dental: false, consultation: true }) ||
+      json128(r.dentalPool) !== json128([true, true, false]) ||
+      json128(r.consultPool) !== json128([false, false, true])
+    )
+      throw new Error(json128(r))
+    return 'the dentist and the manager: dental only; the colleague: consultation only'
+  },
+)
+await step(
+  '0128 G: the manager takes patients only at his desks (consultation refused, dental taken); he still sees every queue; his own counts',
+  async () => {
+    const r = {}
+    t128.qC = await wait128('Consult 128', 'consultation')
+    t128.qD = await wait128('Dental 128', 'dental')
+    r.consult = await hintAs(t128.mgr, `select take_patient($1)`, [t128.qC])
+    await as(t128.mgr)
+    r.board = await one(
+      `select count(*)::int as n, bool_or(can_work) filter (where queue_id = $1) as c,
+                bool_or(can_work) filter (where queue_id = $2) as d
+           from queue_board where queue_id in ($1, $2)`,
+      [t128.qC, t128.qD],
+    )
+    const nav = (await one(`select nav_counts() as j`)).j
+    r.nav = { queue: 'queue' in nav, inClinic: typeof nav.inClinic === 'number' }
+    const mine = (await one(`select my_desks() as j`)).j
+    r.via = mine.via
+    await asAdmin()
+    r.dental = await hintAs(t128.mgr, `select take_patient($1)`, [t128.qD])
+    r.takenBy = (await one(`select taken_by from queue_entry where id = $1`, [t128.qD])).taken_by
+    r.gp = await hintAs(t128.colleague, `select take_patient($1)`, [t128.qC])
+    if (
+      r.consult !== '42501/' ||
+      r.board.n !== 2 ||
+      r.board.c !== false ||
+      r.board.d !== true ||
+      !r.nav.queue ||
+      !r.nav.inClinic ||
+      Object.values(r.via).includes('manager') ||
+      r.via.dental !== 'department' ||
+      r.dental !== 'ok' ||
+      r.takenBy !== t128.mgr ||
+      r.gp !== 'ok'
+    )
+      throw new Error(json128(r))
+    return `consultation refused, dental taken; the board shows both; desks ${json128(r.via)}`
+  },
+)
+await expectError(
+  '0128 H: a service the department does not give is refused',
+  async () => {
+    await asAdmin()
+    await db.query(`select set_staff_departments($1, $2::jsonb)`, [
+      t128.doc,
+      items128(t128.dep, ['dental', 'laboratory'], 'head'),
+    ])
+  },
+  /does not give laboratory/,
+)
+await expectError(
+  '0128 H: none ticked in a department that gives services is refused',
+  async () => {
+    await asAdmin()
+    await db.query(`select set_staff_departments($1, $2::jsonb)`, [
+      t128.doc,
+      items128(t128.dep, [], 'head'),
+    ])
+  },
+  /tick at least one service/,
+)
+await step(
+  "0128 H: an older manage-staff (no services) keeps each placement's; a service the department starts giving is ticked for its members",
+  async () => {
+    await asAdmin()
+    await db.query(`select set_staff_departments($1, $2::jsonb)`, [
+      t128.doc,
+      items128(t128.dep, undefined, 'head'),
+    ])
+    const kept = (
+      await one(
+        `select services from staff_department where profile_id = $1 and department_id = $2`,
+        [t128.doc, t128.dep],
+      )
+    ).services
+    await as(staff.manager)
+    await db.query(`select upsert_department($1, 'Dental 128', null, '{doctor,nurse}', $2)`, [
+      t128.dep,
+      ['dental', 'consultation', 'surgery'],
+    ])
+    await asAdmin()
+    const after = (
+      await db.query(
+        `select profile_id, services from staff_department where department_id = $1 order by profile_id`,
+        [t128.dep],
+      )
+    ).rows
+    const docAfter = after.find((x) => x.profile_id === t128.doc).services
+    const gpAfter = after.find((x) => x.profile_id === t128.colleague).services
+    // back as it was
+    await as(staff.manager)
+    await db.query(`select upsert_department($1, 'Dental 128', null, '{doctor,nurse}', $2)`, [
+      t128.dep,
+      ['dental', 'consultation'],
+    ])
+    await asAdmin()
+    await db.query(
+      `update staff_department set services = array_remove(services, 'surgery') where department_id = $1`,
+      [t128.dep],
+    )
+    if (
+      json128(kept) !== json128(['dental']) ||
+      json128(docAfter) !== json128(['dental', 'surgery']) ||
+      json128(gpAfter) !== json128(['consultation', 'surgery'])
+    )
+      throw new Error(json128({ kept, docAfter, gpAfter }))
+    return `kept ${kept}; surgery added → ${docAfter} / ${gpAfter}`
+  },
+)
+await step('0128 I: the registration number is optional (a doctor mark without one)', async () => {
+  t128.nurse = await newStaff('m128.nurse', 'Nurse 128', 'nurse')
+  const on = await hintAs(staff.manager, `select set_staff_doctor($1, true)`, [t128.nurse])
+  const off = await hintAs(staff.manager, `select set_staff_doctor($1, false)`, [t128.nurse])
+  const reg = await one(`select registration_no from profiles where id = $1`, [t128.doc])
+  if (on !== 'ok' || off !== 'ok' || reg.registration_no !== null)
+    throw new Error(json128({ on, off, reg }))
+  return 'marked and unmarked without a number; a doctor without one is fine'
+})
+await step('0128 J: a midwife works at nursing (her department), like a nurse', async () => {
+  const r = {}
+  t128.nursing = await dept85('Maternity 128', ['nursing', 'fp'], '{nurse,midwife}')
+  t128.midwife = await newStaff('m128.mw', 'Midwife 128', 'midwife')
+  await asAdmin()
+  await db.query(`select set_staff_departments($1, $2::jsonb)`, [
+    t128.midwife,
+    items128(t128.nursing, ['nursing']),
+  ])
+  await as(t128.midwife)
+  r.desks = await one(
+    `select may_use_desk('nursing') as nursing, may_use_desk('fp') as fp, may_use_desk('consultation') as consultation`,
+  )
+  r.home = (await one(`select my_home_station()::text as s`)).s
+  r.clinical = (await one(`select has_perm('clinical.write') as b`)).b
+  r.pool = (await one(`select station_staff('nursing') as j`)).j.staff.some(
+    (x) => x.id === t128.midwife,
+  )
+  r.ceiling = (await one(`select my_desks() -> 'ceiling' as j`)).j.includes('nursing')
+  await asAdmin()
+  if (
+    json128(r.desks) !== json128({ nursing: true, fp: false, consultation: false }) ||
+    r.home !== 'nursing' ||
+    !r.clinical ||
+    !r.pool ||
+    !r.ceiling
+  )
+    throw new Error(json128(r))
+  return 'nursing (ticked), not family planning (not ticked) nor consultation; home Nursing; in the nursing pool'
+})
+await step(
+  '0128 K: notices to the managers reach the clinic managers; the clinic keeps one manager',
+  async () => {
+    await asAdmin()
+    const n = await one(
+      `insert into notification (kind, params, recipient_role) values ('test128', '{}', 'manager') returning *`,
+    )
+    const mine = (
+      await db.query(
+        `select x.id, notification_is_mine(n, x.id) as b from notification n, profiles x
+          where n.id = $1 and x.id in ($2, $3, $4)`,
+        [n.id, t128.mgr, t128.admin, t128.doc],
+      )
+    ).rows
+    await db.query(`delete from notification where id = $1`, [n.id])
+    const of = (id) => mine.find((x) => x.id === id)?.b
+    let last = null
+    try {
+      await db.query(`update profiles set is_manager = false where is_manager`)
+    } catch (e) {
+      last = e.hint ?? e.message
+    }
+    const left = (await one(`select count(*)::int as n from profiles where is_manager and active`))
+      .n
+    if (!of(t128.mgr) || !of(t128.admin) || of(t128.doc) || last !== 'last_manager' || left < 1)
+      throw new Error(json128({ mine, last, left }))
+    return `managers told, the doctor not; taking every manager away refused (${last}); ${left} managers`
+  },
+)
+// @@t128-end
 
 finish()
 

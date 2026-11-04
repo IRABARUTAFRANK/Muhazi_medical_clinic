@@ -127,7 +127,10 @@
     "view": "Vue {{role}}",
     "withStation": "{{role}} · {{station}}",
     "lab_tech": "Laboratoire",
-    "pharmacist": "Pharmacien"
+    "pharmacist": "Pharmacien",
+    "midwife": "Sage-femme",
+    "administrator": "Administrateur·rice",
+    "clinicManager": "Gestionnaire de la clinique"
   },
   "sync": {
     "synced": "Synchronisé",
@@ -776,7 +779,9 @@
         "sonographer": "Réalise les échographies et rédige leurs comptes rendus.",
         "lab_tech": "Prélève les échantillons, fait les analyses de laboratoire et saisit les résultats.",
         "pharmacist": "Délivre les médicaments, vend au comptoir et tient le stock.",
-        "manager": "Voit tout : argent, personnel, prix, réglages et rapports."
+        "manager": "Voit tout : argent, personnel, prix, réglages et rapports.",
+        "midwife": "Suit les grossesses et les accouchements, soigne les mères et les bébés ; travaille comme un·e infirmier·ère.",
+        "administrator": "S’occupe de l’administration de la clinique ; ne soigne pas de patient. Travaille à l’accueil seulement si un département l’y place."
       },
       "specialtyHint": "Ce en quoi la personne est experte. Les collègues le voient, et les patients aussi sur le calendrier du site.",
       "specialtyDoctorHint": "Ajoutez la spécialité du médecin (Médecin généraliste, Dentiste, Chirurgien…). Collègues et patients la voient, et tant que le médecin n'a pas de département elle ajoute aussi son service (Dentiste → Soins dentaires).",
@@ -812,7 +817,17 @@
       "replacesAssistant": "{{name}} est chef adjoint de {{dept}}. Un département a un seul chef adjoint : enregistrer fait de {{name}} un membre.",
       "assistantToMember": "{{name}}, chef adjoint de {{dept}}, devient membre.",
       "desksKept": "Gardé comme avant que les départements décident : {{list}}. Placez cette personne dans un département qui le donne, ou arrêtez-le ici.",
-      "keptStop": "Arrêter {{desk}}"
+      "keptStop": "Arrêter {{desk}}",
+      "profession": "Profession",
+      "specialtyNone": "Non indiquée",
+      "specialtyOther": "Autre (à saisir)",
+      "specialtyOtherLabel": "Autre spécialité",
+      "specialtyOptional": "Spécialité ou titre (facultatif)",
+      "isManager": "Aussi gestionnaire de la clinique",
+      "isManagerHint": "Supervise toute la clinique : tableau de bord, rapports, employés, prix, réglages et argent. Ne prend des patients qu’aux postes des départements ci-dessous ; ne voit les dossiers des patients que s’il est médecin.",
+      "isManagerSelf": "Vous êtes gestionnaire de la clinique : un autre gestionnaire peut le changer, pas vous.",
+      "doesHere": "Fait ici",
+      "managerDesks": "En tant que gestionnaire, cette personne voit aussi tous les postes, mais ne prend des patients qu’à ceux-ci."
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -847,7 +862,11 @@
       "alreadyDeleted": "Ce compte est déjà supprimé.",
       "notFound": "Employé introuvable. Actualisez la page.",
       "registrationNo": "Le numéro d'inscription ne peut dépasser 40 caractères.",
-      "registrationBody": "Écrivez le nom de l'ordre (60 caractères au plus)."
+      "registrationBody": "Écrivez le nom de l'ordre (60 caractères au plus).",
+      "noServiceTicked": "Cochez au moins une chose que cette personne fait dans {{dept}}.",
+      "servicesWrong": "Vérifiez ce que la personne fait dans chaque département : seulement ce que le département donne, au moins une chose.",
+      "specialtyOther": "Saisissez la spécialité, ou choisissez-en une dans la liste.",
+      "lastClinicManager": "C’est le seul gestionnaire de la clinique. Cochez d’abord « Aussi gestionnaire de la clinique » pour un autre employé."
     },
     "roles": {
       "receptionist": "Réceptionniste",
@@ -857,7 +876,9 @@
       "sonographer": "Échographiste",
       "lab_tech": "Technicien·ne de laboratoire",
       "pharmacist": "Pharmacien·ne",
-      "manager": "Gestionnaire / propriétaire"
+      "manager": "Gestionnaire / propriétaire",
+      "midwife": "Sage-femme",
+      "administrator": "Administrateur·rice"
     },
     "lead2": "Les comptes des employés, leurs départements et leurs codes PIN.",
     "tabs": {
@@ -899,7 +920,7 @@
     },
     "dept": {
       "none": "Sans service",
-      "lead": "Créez les services de la clinique et indiquez quels rôles en font partie. Les employés y sont placés comme chef, adjoint ou membre ; le chef a le tableau de bord du service.",
+      "lead": "Créez les services de la clinique, les professions qui en font partie et les prestations qu’ils donnent. Les employés y sont placés comme chef, adjoint ou membre, avec ce qu’ils y font ; le chef a le tableau de bord du service.",
       "new": "Nouveau service",
       "empty": "Aucun service pour l’instant.",
       "delete": "Supprimer le service",
@@ -928,7 +949,21 @@
       "membersLabel_one": "Membre",
       "membersLabel_other": "Membres",
       "willLoseNew": "{{desk}} n'est encore donné par aucun département : après l'enregistrement, seuls les membres des départements qui le donnent l'utilisent. L'utilisent maintenant sans être membres : {{names}}. Ceux qui y travaillent habituellement sont ajoutés comme membres si rien d'autre ne change pour eux ; vous serez informé pour les autres.",
-      "willLoseDropped": "{{desk}} : ces membres ne l'utiliseront plus : {{names}}."
+      "willLoseDropped": "{{desk}} : ces membres ne l'utiliseront plus : {{names}}.",
+      "professions": "Professions admises",
+      "professionsShort": "Professions admises",
+      "professionsHint": "Seuls les employés de ces professions peuvent être placés ici. Ne cochez rien pour les admettre toutes.",
+      "allProfessions": "Toutes les professions",
+      "managersRole": "Gestionnaires (toute profession)",
+      "servicesGives": "Services qu’il donne",
+      "servicesGivesShort": "Services qu’il donne",
+      "whoDoesWhat": "Qui fait quoi",
+      "cols": {
+        "person": "Personne",
+        "position": "Poste",
+        "does": "Fait ici"
+      },
+      "doesNothing": "rien de coché"
     },
     "tempPin": "PIN temporaire",
     "showPin": "Afficher le PIN",
@@ -7683,7 +7718,10 @@
     "22d39b98": "Partie du dossier de consultation inconnue.",
     "d118b87b": "L’heure indiquée n’est pas possible.",
     "e159c113": "Cette prescription est déjà terminée.",
-    "2c7e8550": "Le texte est trop long."
+    "2c7e8550": "Le texte est trop long.",
+    "348637e5": "Cochez au moins un service que cette personne fait dans {{p1}}.",
+    "dc82676e": "Le département {{p1}} ne donne pas {{p2}}.",
+    "fc56c8a4": "Le numéro d’enregistrement est trop long (40 caractères au plus)."
   },
   "panel": {
     "close": "Fermer",
@@ -9680,7 +9718,8 @@
       "contractEnd": "Fin du contrat",
       "status": "Statut",
       "created": "Compte créé",
-      "updated": "Informations modifiées le"
+      "updated": "Informations modifiées le",
+      "profession": "Profession"
     },
     "contracts": {
       "permanent": "Permanent",
@@ -9740,7 +9779,9 @@
       "removeYes": "Retirer",
       "removed_one": "{{count}} note retirée (dans le journal)",
       "removed_other": "{{count}} notes retirées (dans le journal)"
-    }
+    },
+    "recordsYes": "Les voit (médecin)",
+    "recordsNo": "Ne les voit pas (pas médecin)"
   },
   "forDoctors": {
     "title": "Les dossiers médicaux sont réservés aux médecins",
@@ -9974,5 +10015,19 @@
       "setting_off": "La clinique demande au médecin de solliciter l’accès aux antécédents (ou de les ouvrir en urgence).",
       "not_treating": "Les antécédents sont pour le médecin qui traite le patient maintenant ; demandez l’accès si vous en avez besoin."
     }
+  },
+  "specialties": {
+    "generalPractitioner": "Médecin généraliste",
+    "dentist": "Dentiste",
+    "surgeon": "Chirurgien·ne",
+    "gynaecologist": "Gynécologue-obstétricien·ne",
+    "paediatrician": "Pédiatre",
+    "radiologist": "Radiologue",
+    "ophthalmologist": "Ophtalmologue",
+    "internist": "Interniste",
+    "generalNurse": "Infirmier·ère généraliste",
+    "anaestheticNurse": "Infirmier·ère anesthésiste",
+    "paediatricNurse": "Infirmier·ère en pédiatrie",
+    "midwife": "Sage-femme"
   }
 }

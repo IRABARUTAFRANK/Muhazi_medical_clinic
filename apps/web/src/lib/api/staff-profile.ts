@@ -87,9 +87,19 @@ export interface StaffProfile {
   registrationBody: string | null
   /** 0126: a doctor sees patient records: the role 'doctor', or marked by the manager. */
   isDoctor?: boolean
-  /** 0126: marked a doctor by the manager (set_staff_doctor). */
+  /** 0126: marked a doctor by the manager (set_staff_doctor; kept for the rows marked before 0128). */
   doctorMarked?: boolean
-  departments: { id: string; name: string; position: 'member' | 'assistant' | 'head' }[]
+  /** 0128: also the clinic manager. */
+  isManager?: boolean
+  /** Each department, the position, what the person does there (services, 0128) among what it
+   *  gives. */
+  departments: {
+    id: string
+    name: string
+    position: 'member' | 'assistant' | 'head'
+    services?: string[] | null
+    gives?: string[] | null
+  }[]
   desks: string[]
   hr: StaffHr
   access: {
@@ -136,10 +146,8 @@ const ymd = (years: number, m: number, d: number) => {
 const sampleHr = new Map<string, StaffHr>()
 const sampleNotes = new Map<string, StaffNote[]>()
 const samplePhones = new Map<string, string | null>()
-/** 0126: the doctor marks set in this tab (the sample manager is a General doctor, marked). */
-const sampleDoctorMarks = new Map<string, { on: boolean; no: string | null; body: string | null }>([
-  ['u-mgr', { on: true, no: 'RMDC/A/2015/0123', body: 'RMDC' }],
-])
+/** 0126: the doctor marks set in this tab (0128: the sample manager is a doctor by profession). */
+const sampleDoctorMarks = new Map<string, { on: boolean; no: string | null; body: string | null }>()
 
 function sampleProfile(id: string): StaffProfile {
   const me = useSession.getState().user
@@ -204,7 +212,8 @@ function sampleProfile(id: string): StaffProfile {
     username: s?.username ?? e?.username ?? 'staff',
     staffId: s?.staffId ?? e?.staffId ?? null,
     role,
-    specialty: doctor ? 'General practitioner' : mark?.on ? 'General doctor' : null,
+    specialty:
+      e?.specialty ?? (doctor ? 'General practitioner' : mark?.on ? 'General doctor' : null),
     station: s?.station ?? null,
     dashboard: s?.dashboard ?? null,
     email: s?.email ?? e?.email ?? null,
@@ -222,11 +231,25 @@ function sampleProfile(id: string): StaffProfile {
     registrationBody: mark?.body ?? (doctor ? 'RMDC' : role === 'nurse' ? 'NCNM' : null),
     isDoctor: doctor || !!mark?.on,
     doctorMarked: !!mark?.on,
-    departments: doctor
-      ? [{ id: 'd-opd', name: 'Outpatient consultation', position: 'member' }]
-      : role === 'nurse'
-        ? [{ id: 'd-nur', name: 'Nursing', position: 'head' }]
-        : [],
+    isManager: !!(e?.isManager ?? s?.isManager),
+    // 0128: the sample departments with what the person does there
+    departments: e?.departments.length
+      ? e.departments.map((m) => {
+          const gives =
+            sampleStaffData().departments.find((d) => d.id === m.departmentId)?.services ?? []
+          return {
+            id: m.departmentId,
+            name: m.departmentName,
+            position: m.position,
+            services: m.services ?? gives,
+            gives,
+          }
+        })
+      : doctor
+        ? [{ id: 'd-opd', name: 'Outpatient consultation', position: 'member' }]
+        : role === 'nurse'
+          ? [{ id: 'd-nur', name: 'Nursing', position: 'head' }]
+          : [],
     desks: doctor ? ['consultation'] : role === 'nurse' ? ['triage', 'nursing'] : [],
     hr,
     access: {

@@ -40,6 +40,7 @@ import {
   type AccessRequestRow,
 } from '@/lib/api/privacy'
 import { useEmployees } from '@/lib/api/staff'
+import { professionLabel } from '@/lib/roles'
 import { navForUser } from '@/lib/nav'
 import { useAgo } from '@/lib/notice-wording'
 import { useSearchPeriod } from '@/lib/period'
@@ -402,7 +403,7 @@ function AccessLogPanel() {
             <option value="">{t('recordAccess.everyone')}</option>
             {employees.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.fullName} · {t(`staff.roles.${e.role}`, { defaultValue: e.role })}
+                {e.fullName} · {professionLabel(e, t)}
               </option>
             ))}
           </Select>

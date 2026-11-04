@@ -115,7 +115,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only the manager chooses the main pharmacy store$/, 'dbErrors.b079ee64', 0], // set_main_pharmacy
   [/^only the manager creates and changes room stores$/, 'dbErrors.6914039e', 0], // save_location, save_room_store
   [/^signed out: sign in again with the e-mailed code$/, 'dbErrors.320f14fe', 0], // check_request
-  [/^the clinic must keep at least one active manager$/, 'dbErrors.07387972', 0], // update_profile
+  [/^the clinic must keep at least one active manager$/, 'dbErrors.07387972', 0], // profile_role_rules, update_profile
   [/^the most to keep must be above the reorder level$/, 'dbErrors.b82c0f73', 0], // set_reorder_level
   [/^the new list cannot start before the current one$/, 'dbErrors.9c2126b1', 0], // import_reference_list
   [/^unknown reason for finishing without a diagnosis$/, 'dbErrors.bb0431ec', 0], // set_no_diagnosis
@@ -126,6 +126,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^that patient is at (.+?) \(not waiting for a doctor\)$/, 'dbErrors.37a8695a', 1], // answer_call
   [/^the pulse must be between 20 and 250 per minute$/, 'dbErrors.194d0d47', 0], // record_vitals_to
   [/^this appointment is not waiting for the patient$/, 'dbErrors.1b56fa84', 0], // appointment_arrived
+  [/^tick at least one service this person does in (.+?)$/, 'dbErrors.348637e5', 1], // set_staff_departments
   [/^a difference goes back \(returned\) or is a loss$/, 'dbErrors.5492db37', 0], // confirm_receipt
   [/^booking\.colleague_accept must be true or false$/, 'dbErrors.77308620', 0], // save_setting
   [/^nothing to give back: the bill is not overpaid$/, 'dbErrors.7fd89e00', 0], // refund_payment
@@ -157,6 +158,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a submitted claim batch cannot be reopened$/, 'dbErrors.e0453e4d', 0], // guard_submitted_batch
   [/^bed stays have their own built-in category$/, 'dbErrors.42373ee2', 0], // save_category
   [/^choose the nurse who took the measurements$/, 'dbErrors.63ee378a', 0], // record_vitals_to
+  [/^registration number: at most 40 characters$/, 'dbErrors.fc56c8a4', 0], // set_staff_doctor
   [/^the age is a number of years from 0 to 130$/, 'dbErrors.8f618beb', 0], // create_patient_file, update_patient
   [/^this medicine is not on the reference list$/, 'dbErrors.fba3d5d4', 0], // add_stock, receive_delivery
   [/^a diagnosis is differential or definitive$/, 'dbErrors.108f4947', 0], // add_visit_diagnosis
@@ -263,6 +265,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^say why the diagnosis is removed$/, 'dbErrors.0b685f85', 0], // remove_condition, remove_condition_none_found
   [/^say why the medicine is put back$/, 'dbErrors.ba7f14fb', 0], // undo_given_here
   [/^say why the payment is cancelled$/, 'dbErrors.b51b0c3b', 0], // void_payment
+  [/^the department (.+?) does not give (.+?)$/, 'dbErrors.dc82676e', 2], // set_staff_departments
   [/^the minimum must be zero or more$/, 'dbErrors.cf43555e', 0], // set_store_min
   [/^this patient is already in a bed$/, 'dbErrors.ae436dd1', 0], // admit_to_bed
   [/^this patient is not waiting at (.+?)$/, 'dbErrors.f45d52da', 1], // call_patient_at

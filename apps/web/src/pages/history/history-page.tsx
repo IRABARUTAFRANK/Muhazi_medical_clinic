@@ -40,6 +40,7 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { StaffLink } from '@/components/staff/staff-link'
 import { HISTORY_GROUPS, useActivityHistory, type HistoryGroup } from '@/lib/api/history'
 import { useEmployees } from '@/lib/api/staff'
+import { professionLabel } from '@/lib/roles'
 import { explain } from '@/lib/history-explain'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
@@ -123,7 +124,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                   <option value="">{t('history.everyone')}</option>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>
-                      {e.fullName} · {t(`staff.roles.${e.role}`)}
+                      {e.fullName} · {professionLabel(e, t)}
                     </option>
                   ))}
                 </Select>
@@ -287,7 +288,12 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                                 {h.actor ?? t('history.system')}
                               </span>
                               <span className="text-ink-3 block text-[12px]">
-                                {h.actorRole ? t(`staff.roles.${h.actorRole}`) : ''}
+                                {h.actorRole
+                                  ? professionLabel(
+                                      { role: h.actorRole, isManager: h.actorManager },
+                                      t,
+                                    )
+                                  : ''}
                                 {h.actorStaffId
                                   ? `${h.actorRole ? ' · ' : ''}${h.actorStaffId}`
                                   : ''}

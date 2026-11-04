@@ -117,7 +117,9 @@ export function sampleNavCounts(user: Pick<StaffUser, 'role'>): NavCounts {
     case 'lab_tech':
       return { worklist: 4 }
     case 'manager':
+      // 0128: the sample manager works at Consultation too (his own queue)
       return {
+        queue: 1,
         inClinic: 9,
         bookings: 4,
         myBookings: 1,

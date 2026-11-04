@@ -15,7 +15,7 @@ import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 
 /** The roles that keep a calendar and can be booked (calendar_role_ok). */
-const CALENDAR_ROLES = ['doctor', 'sonographer', 'nurse', 'manager']
+const CALENDAR_ROLES = ['doctor', 'sonographer', 'nurse', 'midwife', 'manager']
 
 export interface FollowUpPatient {
   id: string
