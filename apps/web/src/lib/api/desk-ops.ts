@@ -153,6 +153,10 @@ export interface OpenTask {
   by: string | null
   /** I gave this task (visit_tasks, 0063). */
   mine?: boolean
+  /** The nurse it was sent to by name; null = all the nurses (0131). */
+  forName?: string | null
+  /** It was sent to me by name (0131). */
+  forMe?: boolean
 }
 
 // the local calendar day (toISOString is UTC: between midnight and 02:00 it gave yesterday)
@@ -493,6 +497,8 @@ export function useDeskOps() {
       title: string
       dueAt?: string | null
       detail?: string
+      /** One nurse by name; null / undefined = all the nurses (0131). */
+      assignedTo?: string | null
     }) => {
       if (!supabase) {
         sampleTasks.push({
@@ -504,15 +510,25 @@ export function useDeskOps() {
           encounterId: i.encounterId,
           patient: null,
           by: null,
+          mine: true,
+          forName: i.assignedTo ? 'Nyirahabimana Chantal' : null,
         })
         return
       }
-      await call('create_task', {
+      const args = {
         p_encounter_id: i.encounterId,
         p_title: i.title,
         p_due_at: i.dueAt ?? null,
         p_detail: i.detail?.trim() || null,
+      }
+      const { error } = await supabase.rpc('create_task_for', {
+        ...args,
+        p_assigned_to: i.assignedTo || null,
       })
+      if (!error) return
+      // before 0131 is applied: only "all the nurses" exists
+      if (!isMissingFunction(error) || i.assignedTo) throw apiError(error)
+      await call('create_task', args)
     },
     onSuccess: refresh,
   })

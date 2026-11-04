@@ -21566,6 +21566,120 @@ await step(
 )
 // @@t130-end
 
+// @@t131-begin
+// ---------------------------------------------------------------- 0131 a task for all the nurses or one nurse
+const t131 = {}
+const json131 = (x) => JSON.stringify(x)
+await step('0131: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270111090000_nurse_task_for_whom.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+await step(
+  '0131 A: Dr 127 sends a task to Nurse A by name — only Nurse A sees it, is told, and may tick it',
+  async () => {
+    t131.v = await t127.ov(t127.doc)
+    await as(t127.doc)
+    t131.one = (
+      await one(
+        `select create_task_for($1, 'Injection 131 for A', now() + interval '1 hour', null, $2) as id`,
+        [t131.v, t127.nurseA],
+      )
+    ).id
+    const tasks = async (who) => {
+      await as(who)
+      const r = (await one(`select open_tasks() as j`)).j
+      await asAdmin()
+      return r.filter((k) => k.id === t131.one)
+    }
+    const r = {}
+    r.a = await tasks(t127.nurseA)
+    r.b = await tasks(t127.nurseB)
+    await asAdmin()
+    const row = await one(
+      `select assigned_role::text as role, assigned_to from internal_task where id = $1`,
+      [t131.one],
+    )
+    const told = (
+      await db.query(
+        `select recipient_user, recipient_role::text as role from notification where kind = 'task' and params->>'task' = $1`,
+        [t131.one],
+      )
+    ).rows
+    await as(t127.doc)
+    const vt = (await one(`select visit_tasks($1) as j`, [t131.v])).j.find((k) => k.id === t131.one)
+    await asAdmin()
+    r.cancelB = await hintAs(t127.nurseB, `select cancel_task($1, 'not mine 131')`, [t131.one])
+    r.done = await hintAs(t127.nurseA, `select complete_task($1)`, [t131.one])
+    if (
+      r.a.length !== 1 ||
+      r.a[0].forMe !== true ||
+      r.a[0].forName !== 'Nurse A 127' ||
+      r.b.length !== 0 ||
+      row.role !== null ||
+      row.assigned_to !== t127.nurseA ||
+      told.length !== 1 ||
+      told[0].recipient_user !== t127.nurseA ||
+      told[0].role !== null ||
+      vt?.forName !== 'Nurse A 127' ||
+      r.cancelB !== '42501/' ||
+      r.done !== 'ok'
+    )
+      throw new Error(json131({ r, row, told, vt }))
+    return `Nurse A sees it (for her), Nurse B does not and may not refuse it; one notice to Nurse A; done by Nurse A`
+  },
+)
+await step(
+  '0131 B: no nurse named — all the nurses see it as before; a doctor or the manager cannot be named',
+  async () => {
+    await as(t127.doc)
+    t131.all = (await one(`select create_task_for($1, 'Dressing 131 for all') as id`, [t131.v])).id
+    const sees = async (who) => {
+      await as(who)
+      const r = (await one(`select open_tasks() as j`)).j.find((k) => k.id === t131.all)
+      await asAdmin()
+      return r
+    }
+    const a = await sees(t127.nurseA)
+    const b = await sees(t127.nurseB)
+    const row = await one(
+      `select assigned_role::text as role, assigned_to from internal_task where id = $1`,
+      [t131.all],
+    )
+    const mgr = await newStaff('d131.mgr', 'Manager 131', 'manager')
+    const r = {
+      doctor: await hintAs(t127.doc, `select create_task_for($1, 'Wrong 131', null, null, $2)`, [
+        t131.v,
+        t127.doc2,
+      ]),
+      manager: await hintAs(t127.doc, `select create_task_for($1, 'Wrong 131', null, null, $2)`, [
+        t131.v,
+        mgr,
+      ]),
+      old: await hintAs(t127.doc, `select create_task($1, 'Old way 131')`, [t131.v]),
+    }
+    if (
+      !a ||
+      !b ||
+      a.forName !== null ||
+      (a.forMe !== false && a.forMe !== null) ||
+      row.role !== 'nurse' ||
+      row.assigned_to !== null ||
+      r.doctor !== '22023/not_nurse' ||
+      r.manager !== '22023/not_nurse' ||
+      r.old !== 'ok'
+    )
+      throw new Error(json131({ a, b, row, r }))
+    return `both nurses see it; naming a doctor or the manager refused (${r.doctor}); the old create_task still works`
+  },
+)
+// @@t131-end
+
 finish()
 
 function finish() {

@@ -2793,7 +2793,11 @@
       "notDone": "Ntibyakozwe",
       "notDoneWhy": "Kuki igikorwa kitashobotse gukorwa?",
       "withdraw": "Kuraho",
-      "withdrawWhy": "Kuki igikorwa gikuweho?"
+      "withdrawWhy": "Kuki igikorwa gikuweho?",
+      "forOne": "kuri {{name}}",
+      "forAll": "ku baforomo bose",
+      "forMe": "ni wowe",
+      "sentToOne": "Byoherejwe kuri {{name}}. {{name}} wenyine ni we ubibona kandi yabimenyeshejwe."
     },
     "beds": {
       "admit": "Kuryamisha umurwayi",
@@ -9934,7 +9938,14 @@
     "cancelQ": "Hagarika “{{what}}” kuri {{name}}?",
     "cancelBody": "Abaforomo ntibakiribona nk’iryo gukora; ibyamaze gutangwa biguma byanditswe.",
     "cancelYes": "Yego, hagarika",
-    "cancelled": "“{{what}}”: ryahagaritswe."
+    "cancelled": "“{{what}}”: ryahagaritswe.",
+    "allNursesHint": "Abaforomo bose barabibona; uwa mbere ufite umwanya arabikora.",
+    "oneNurse": "Umuforomo umwe",
+    "oneNurseHint": "Umuforomo uhisemo wenyine ni we ubibona kandi akabimenyeshwa.",
+    "whichNurse": "Umuforomo uwuhe",
+    "pickNurse": "Hitamo umuforomo",
+    "noNurses": "Nta muforomo ubonetse — byohereze ku baforomo bose",
+    "loadingNurses": "Turimo gushaka abaforomo…"
   },
   "sixSteps": {
     "cardTitle": "Kwivuza mu ntambwe esheshatu",

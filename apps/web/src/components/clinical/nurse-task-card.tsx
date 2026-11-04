@@ -5,7 +5,9 @@ import { formatTime } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
+import { NurseRecipient } from '@/components/clinical/nurse-recipient'
 import { useDeskOps, useVisitTasks } from '@/lib/api/desk-ops'
+import { useOrderNurses } from '@/lib/api/nurse-orders'
 import { useConfirm } from '@/lib/confirm'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -36,6 +38,10 @@ export function NurseTaskCard({
   const { data: mine = [] } = useVisitTasks(encounterId)
   const [title, setTitle] = useState('')
   const [time, setTime] = useState(inAnHour)
+  // '' = all the nurses; otherwise the one nurse it is for (0131)
+  const [forWhom, setForWhom] = useState('')
+  const { data: nurses = [] } = useOrderNurses(!nurse)
+  const [sentTo, setSentTo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const act = (fn: () => Promise<unknown>) => {
@@ -84,17 +90,19 @@ export function NurseTaskCard({
       d.setHours(Number(m[1]), Number(m[2]), 0, 0)
       dueAt = d.toISOString()
     }
+    const one = forWhom ? nurses.find((n) => n.id === forWhom) : undefined
     if (
       !(await confirm({
         title: t('confirm.visit.taskSend', { task: title.trim(), name }),
-        body: t('confirm.visit.taskSendBody'),
+        body: one ? t('ops.tasks.sentToOne', { name: one.name }) : t('confirm.visit.taskSendBody'),
         confirmLabel: t('confirm.visit.taskSendYes'),
       }))
     )
       return
     try {
-      await ops.createTask.mutateAsync({ encounterId, title, dueAt })
+      await ops.createTask.mutateAsync({ encounterId, title, dueAt, assignedTo: forWhom || null })
       setTitle('')
+      setSentTo(one?.name ?? null)
       setSaved(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -122,6 +130,7 @@ export function NurseTaskCard({
       {!nurse && (
         <form onSubmit={submit}>
           <CardBody className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[2fr_1fr_auto]">
+            <NurseRecipient value={forWhom} onChange={setForWhom} className="col-span-full" />
             <Field
               label={t('ops.tasks.what')}
               value={title}
@@ -146,7 +155,8 @@ export function NurseTaskCard({
                     : 'text-green col-span-full m-0 text-[13px] font-semibold'
                 }
               >
-                {error ?? t('ops.tasks.sent')}
+                {error ??
+                  (sentTo ? t('ops.tasks.sentToOne', { name: sentTo }) : t('ops.tasks.sent'))}
               </p>
             )}
           </CardBody>
@@ -163,9 +173,18 @@ export function NurseTaskCard({
           </span>
           <span className="flex-1">
             {x.title}
-            {x.by && (
-              <span className="text-ink-3 block text-xs">{t('ops.tasks.by', { name: x.by })}</span>
-            )}
+            <span className="text-ink-3 block text-xs">
+              {[
+                x.by && t('ops.tasks.by', { name: x.by }),
+                x.forMe
+                  ? t('ops.tasks.forMe')
+                  : x.forName
+                    ? t('ops.tasks.forOne', { name: x.forName })
+                    : t('ops.tasks.forAll'),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           </span>
           {nurse ? (
             <>

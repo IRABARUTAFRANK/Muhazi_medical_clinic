@@ -2789,7 +2789,11 @@
       "notDone": "Not done",
       "notDoneWhy": "Why could the task not be done?",
       "withdraw": "Withdraw",
-      "withdrawWhy": "Why is the task withdrawn?"
+      "withdrawWhy": "Why is the task withdrawn?",
+      "forOne": "for {{name}}",
+      "forAll": "for all the nurses",
+      "forMe": "for you",
+      "sentToOne": "Sent to {{name}}. Only {{name}} sees it and was told."
     },
     "beds": {
       "admit": "Admit a patient",
@@ -9925,7 +9929,14 @@
     "cancelQ": "Cancel “{{what}}” for {{name}}?",
     "cancelBody": "The nurses no longer see it to do; what was already given stays recorded.",
     "cancelYes": "Yes, cancel",
-    "cancelled": "“{{what}}”: cancelled."
+    "cancelled": "“{{what}}”: cancelled.",
+    "allNursesHint": "Every nurse sees it; the first free one does it.",
+    "oneNurse": "One nurse",
+    "oneNurseHint": "Only the nurse you choose sees it and is told.",
+    "whichNurse": "Which nurse",
+    "pickNurse": "Choose the nurse",
+    "noNurses": "No nurse found — send it to all the nurses",
+    "loadingNurses": "Loading the nurses…"
   },
   "sixSteps": {
     "cardTitle": "The visit, in six steps",

@@ -2789,7 +2789,11 @@
       "notDone": "Non fait",
       "notDoneWhy": "Pourquoi la tâche n’a-t-elle pas pu être faite ?",
       "withdraw": "Retirer",
-      "withdrawWhy": "Pourquoi la tâche est-elle retirée ?"
+      "withdrawWhy": "Pourquoi la tâche est-elle retirée ?",
+      "forOne": "pour {{name}}",
+      "forAll": "pour tous les infirmiers",
+      "forMe": "pour vous",
+      "sentToOne": "Envoyé à {{name}}. Seul(e) {{name}} la voit et a été prévenu(e)."
     },
     "beds": {
       "admit": "Installer un patient",
@@ -9925,7 +9929,14 @@
     "cancelQ": "Annuler « {{what}} » pour {{name}} ?",
     "cancelBody": "Les infirmiers ne la voient plus à faire ; ce qui a déjà été donné reste noté.",
     "cancelYes": "Oui, annuler",
-    "cancelled": "« {{what}} » : annulée."
+    "cancelled": "« {{what}} » : annulée.",
+    "allNursesHint": "Chaque infirmier la voit ; le premier disponible s’en charge.",
+    "oneNurse": "Un infirmier précis",
+    "oneNurseHint": "Seul l’infirmier choisi la voit et est prévenu.",
+    "whichNurse": "Quel infirmier",
+    "pickNurse": "Choisissez l’infirmier",
+    "noNurses": "Aucun infirmier trouvé — envoyez à tous les infirmiers",
+    "loadingNurses": "Chargement des infirmiers…"
   },
   "sixSteps": {
     "cardTitle": "La consultation en six étapes",

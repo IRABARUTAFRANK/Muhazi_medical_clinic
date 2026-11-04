@@ -8,6 +8,7 @@ import { SearchSelect } from '@/components/ui/search-select'
 import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import { NurseOrderRow } from '@/components/clinical/nurse-order-row'
+import { NurseRecipient } from '@/components/clinical/nurse-recipient'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { treatmentName, useTreatments } from '@/lib/api/catalogue'
 import { useItems } from '@/lib/api/patients'
@@ -167,6 +168,7 @@ export function NurseOrdersStep({
             onSubmit={submit}
             className="border-border bg-hover/40 flex flex-col gap-3 rounded-md border p-3"
           >
+            <NurseRecipient value={f.assignedTo} onChange={(v) => set({ assignedTo: v })} />
             <Seg
               label={t('nurseOrders.kindLabel')}
               value={f.kind}
@@ -241,7 +243,7 @@ export function NurseOrdersStep({
                 />
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
               <Select
                 label={t('clinical.route')}
                 value={f.route}
@@ -271,18 +273,6 @@ export function NurseOrdersStep({
                 onChange={(e) => set({ doses: e.target.value.replace(/[^\d]/g, '') })}
                 required
               />
-              <Select
-                label={t('nurseOrders.forWhom')}
-                value={f.assignedTo}
-                onChange={(e) => set({ assignedTo: e.target.value })}
-              >
-                <option value={ALL}>{t('nurseOrders.allNurses')}</option>
-                {nurses.map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {n.name}
-                  </option>
-                ))}
-              </Select>
             </div>
             <Field
               label={t('nurseOrders.notesLabel')}
