@@ -692,15 +692,8 @@ export function useDepartmentActions() {
     }) => {
       if (!supabase) {
         const existing = d.id ? sampleDepartments.find((x) => x.id === d.id) : undefined
-        // 0128: a service the department starts giving is ticked for its members
-        if (existing) {
-          const added = d.services.filter((s) => !existing.services.includes(s))
-          if (added.length)
-            for (const e of sampleEmployees)
-              for (const m of e.departments)
-                if (m.departmentId === existing.id && m.services)
-                  m.services = [...m.services, ...added]
-        }
+        // 0129: a service the department starts giving is ticked for nobody; the manager ticks it
+        // person by person (Does here)
         if (existing)
           Object.assign(existing, {
             name: d.name,

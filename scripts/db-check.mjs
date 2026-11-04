@@ -21192,9 +21192,13 @@ await expectError(
   /tick at least one service/,
 )
 await step(
-  "0128 H: an older manage-staff (no services) keeps each placement's; a service the department starts giving is ticked for its members",
+  "0128 H: an older manage-staff (no services) keeps each placement's; a service the department starts giving is ticked for nobody (0129)",
   async () => {
     await asAdmin()
+    // an earlier step re-runs 0128 (the live order); 0129 comes after it
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270109090000_new_service_unticked.sql'), 'utf8'),
+    )
     await db.query(`select set_staff_departments($1, $2::jsonb)`, [
       t128.doc,
       items128(t128.dep, undefined, 'head'),
@@ -21232,11 +21236,11 @@ await step(
     )
     if (
       json128(kept) !== json128(['dental']) ||
-      json128(docAfter) !== json128(['dental', 'surgery']) ||
-      json128(gpAfter) !== json128(['consultation', 'surgery'])
+      json128(docAfter) !== json128(['dental']) ||
+      json128(gpAfter) !== json128(['consultation'])
     )
       throw new Error(json128({ kept, docAfter, gpAfter }))
-    return `kept ${kept}; surgery added → ${docAfter} / ${gpAfter}`
+    return `kept ${kept}; surgery added to the department, nobody ticked: ${docAfter} / ${gpAfter}`
   },
 )
 await step('0128 I: the registration number is optional (a doctor mark without one)', async () => {
@@ -21308,6 +21312,15 @@ await step(
   },
 )
 // @@t128-end
+
+// ---------------------------------------------------------------- 0129: a new department service is ticked for nobody
+await step('0129: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20270109090000_new_service_unticked.sql'), 'utf8'),
+  )
+  return 'no error'
+})
 
 finish()
 
