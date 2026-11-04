@@ -21773,6 +21773,101 @@ await step(
 )
 // @@t132-end
 
+// @@t133-begin
+// ---------------------------------------------------------------- 0133 the doctor does it himself
+const t133 = {}
+const json133 = (x) => JSON.stringify(x)
+await step('0133: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(path.join(migrationsDir, '20270113090000_doctor_does_it.sql'), 'utf8')
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+await step(
+  '0133 A: "Me — I do it myself": the task is the doctor’s, nobody is told, the nurses do not see it, he ticks it Done',
+  async () => {
+    t133.v = await t127.ov(t127.doc)
+    await as(t127.doc)
+    const id = (
+      await one(`select create_task_for($1, 'Suture 133', null, null, $2) as id`, [
+        t133.v,
+        t127.doc,
+      ])
+    ).id
+    const mine = (await one(`select open_tasks() as j`)).j.find((k) => k.id === id)
+    await asAdmin()
+    const told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'task' and params->>'task' = $1`,
+        [id],
+      )
+    ).n
+    await as(t127.nurseA)
+    const nurseSees = (await one(`select open_tasks() as j`)).j.some((k) => k.id === id)
+    await asAdmin()
+    const done = await hintAs(t127.doc, `select complete_task($1)`, [id])
+    const row = await one(`select done_by from internal_task where id = $1`, [id])
+    if (!mine?.forMe || told !== 0 || nurseSees || done !== 'ok' || row.done_by !== t127.doc)
+      throw new Error(json133({ mine, told, nurseSees, done, row }))
+    return 'his own task: no notice, not on the nurses’ list, done by him'
+  },
+)
+await step(
+  '0133 B: an order to all the nurses — the doctor who gave it gives it himself from the nurses’ store; another doctor may not; an order for himself tells nobody',
+  async () => {
+    await as(t127.doc)
+    const order = (
+      await one(
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'drug', p_item_id => $2, p_quantity => 1,
+                p_route => 'oral', p_frequency => 'BD', p_doses => 2) as j`,
+        [t133.v, t127.item],
+      )
+    ).j.id
+    await asAdmin()
+    const before = (await one(`select usable_stock($1, $2) as n`, [t127.item, t127.store])).n
+    const r = {
+      other: await hintAs(t127.doc2, `select give_nurse_order($1)`, [order]),
+      give: await hintAs(t127.doc, `select give_nurse_order($1, 'gave it myself 133')`, [order]),
+    }
+    const after = (await one(`select usable_stock($1, $2) as n`, [t127.item, t127.store])).n
+    const dose = await one(
+      `select by_id, location_id, charged from nurse_order_dose where order_id = $1 and given order by n desc limit 1`,
+      [order],
+    )
+    await as(t127.doc)
+    const self = (
+      await one(
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Wound check 133', p_assigned_to => $2) as j`,
+        [t133.v, t127.doc],
+      )
+    ).j.id
+    await asAdmin()
+    const told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order' and params->>'orderId' = $1`,
+        [self],
+      )
+    ).n
+    r.selfDone = await hintAs(t127.doc, `select give_nurse_order($1)`, [self])
+    const st = (await one(`select status from nurse_order where id = $1`, [self])).status
+    if (
+      // refused: not his order (or, at the nursing desk, no store of his own: no fallback for him)
+      !r.other.startsWith('42501/') ||
+      r.give !== 'ok' ||
+      Number(before) - Number(after) !== 1 ||
+      dose?.by_id !== t127.doc ||
+      dose?.location_id !== t127.store ||
+      told !== 0 ||
+      r.selfDone !== 'ok' ||
+      st !== 'done'
+    )
+      throw new Error(json133({ r, before, after, dose, told, st }))
+    return `given by Dr 127 from Ward 127 (${before} → ${after}); Dr Elsewhere refused (${r.other}); his own order: no notice, done`
+  },
+)
+// @@t133-end
+
 finish()
 
 function finish() {

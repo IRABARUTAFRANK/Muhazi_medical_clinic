@@ -2793,7 +2793,12 @@
       "forOne": "pour {{name}}",
       "forAll": "pour tous les infirmiers",
       "forMe": "pour vous",
-      "sentToOne": "Envoyé à {{name}}. Seul(e) {{name}} la voit et a été prévenu(e)."
+      "sentToOne": "Envoyé à {{name}}. Seul(e) {{name}} la voit et a été prévenu(e).",
+      "keep": "Enregistrer — je le fais",
+      "keepYes": "Oui, je le fais",
+      "keepBody": "Vous le faites vous-même : aucun infirmier n’est prévenu. Appuyez sur Fait quand c’est fait.",
+      "kept": "Enregistré pour vous. Appuyez sur Fait quand c’est fait.",
+      "didIt": "Je l’ai fait moi-même"
     },
     "beds": {
       "admit": "Installer un patient",
@@ -9861,7 +9866,7 @@
     "send": "Envoyer la prescription",
     "sendQ": "Prescrire « {{what}} » pour {{name}} ?",
     "sendToOne": "Elle va à {{name}}, qui est prévenu(e) aussitôt.",
-    "sendToAll": "Elle va à tous les infirmiers du poste de soins, prévenus aussitôt.",
+    "sendToAll": "Elle va à tous les infirmiers, prévenus aussitôt.",
     "sendDrugBody": "Chaque prise donnée est sortie de la réserve de l’infirmier et facturée.",
     "sendActBody": "Le service est facturé à chaque fois qu’il est fait.",
     "sendYes": "Oui, envoyer",
@@ -9936,7 +9941,12 @@
     "whichNurse": "Quel infirmier",
     "pickNurse": "Choisissez l’infirmier",
     "noNurses": "Aucun infirmier trouvé — envoyez à tous les infirmiers",
-    "loadingNurses": "Chargement des infirmiers…"
+    "loadingNurses": "Chargement des infirmiers…",
+    "me": "Moi — je le fais moi-même",
+    "meHint": "Aucun infirmier n’est prévenu ; vous l’enregistrez fait ici.",
+    "sendToMe": "Vous le faites vous-même : aucun infirmier n’est prévenu. Enregistrez chaque fois avec Donné / Fait sur l’ordre ci-dessous.",
+    "keepYes": "Oui, je le fais",
+    "keptForMe": "« {{what}} » est à faire par vous : enregistrez chaque fois ci-dessous."
   },
   "sixSteps": {
     "cardTitle": "La consultation en six étapes",

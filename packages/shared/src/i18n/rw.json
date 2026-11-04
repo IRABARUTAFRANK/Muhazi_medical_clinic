@@ -2797,7 +2797,12 @@
       "forOne": "kuri {{name}}",
       "forAll": "ku baforomo bose",
       "forMe": "ni wowe",
-      "sentToOne": "Byoherejwe kuri {{name}}. {{name}} wenyine ni we ubibona kandi yabimenyeshejwe."
+      "sentToOne": "Byoherejwe kuri {{name}}. {{name}} wenyine ni we ubibona kandi yabimenyeshejwe.",
+      "keep": "Bika — ndabikora",
+      "keepYes": "Yego, ndabikora",
+      "keepBody": "Urabyikorera: nta muforomo ubimenyeshwa. Kanda Byakozwe nibimara gukorwa.",
+      "kept": "Byabikiwe wowe. Kanda Byakozwe nibimara gukorwa.",
+      "didIt": "Nabyikoreye"
     },
     "beds": {
       "admit": "Kuryamisha umurwayi",
@@ -9870,7 +9875,7 @@
     "send": "Ohereza itegeko",
     "sendQ": "Tegeka “{{what}}” kuri {{name}}?",
     "sendToOne": "Rijya kuri {{name}}, uhita abimenyeshwa.",
-    "sendToAll": "Rijya ku baforomo bose bakorera aho bavurira, bahita babimenyeshwa.",
+    "sendToAll": "Rijya ku baforomo bose, bahita babimenyeshwa.",
     "sendDrugBody": "Buri nshuro utanzwe uvanwa mu bubiko bw’umuforomo kandi ukishyurwa.",
     "sendActBody": "Serivisi yishyurwa buri gihe ikozwe.",
     "sendYes": "Yego, ohereza",
@@ -9945,7 +9950,12 @@
     "whichNurse": "Umuforomo uwuhe",
     "pickNurse": "Hitamo umuforomo",
     "noNurses": "Nta muforomo ubonetse — byohereze ku baforomo bose",
-    "loadingNurses": "Turimo gushaka abaforomo…"
+    "loadingNurses": "Turimo gushaka abaforomo…",
+    "me": "Njye — ndabyikorera",
+    "meHint": "Nta muforomo ubimenyeshwa; ni wowe ubyandika ko byakozwe hano.",
+    "sendToMe": "Urabyikorera: nta muforomo ubimenyeshwa. Andika buri gihe ukoresheje Byatanzwe / Byakozwe kuri iri tegeko hepfo.",
+    "keepYes": "Yego, ndabikora",
+    "keptForMe": "“{{what}}” ni wowe ubikora: andika buri gihe hepfo."
   },
   "sixSteps": {
     "cardTitle": "Kwivuza mu ntambwe esheshatu",

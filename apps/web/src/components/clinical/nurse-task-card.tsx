@@ -9,6 +9,7 @@ import { NurseRecipient } from '@/components/clinical/nurse-recipient'
 import { useDeskOps, useVisitTasks } from '@/lib/api/desk-ops'
 import { useOrderNurses } from '@/lib/api/nurse-orders'
 import { useConfirm } from '@/lib/confirm'
+import { useSession } from '@/store/session'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const inAnHour = () => {
@@ -38,10 +39,13 @@ export function NurseTaskCard({
   const { data: mine = [] } = useVisitTasks(encounterId)
   const [title, setTitle] = useState('')
   const [time, setTime] = useState(inAnHour)
-  // '' = all the nurses; otherwise the one nurse it is for (0131)
+  // '' = all the nurses; otherwise the one nurse it is for (0131), or me: I do it myself (0133)
   const [forWhom, setForWhom] = useState('')
+  const myId = useSession((st) => st.user?.id)
+  const self = !!myId && forWhom === myId
   const { data: nurses = [] } = useOrderNurses(!nurse)
   const [sentTo, setSentTo] = useState<string | null>(null)
+  const [kept, setKept] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const act = (fn: () => Promise<unknown>) => {
@@ -94,8 +98,12 @@ export function NurseTaskCard({
     if (
       !(await confirm({
         title: t('confirm.visit.taskSend', { task: title.trim(), name }),
-        body: one ? t('ops.tasks.sentToOne', { name: one.name }) : t('confirm.visit.taskSendBody'),
-        confirmLabel: t('confirm.visit.taskSendYes'),
+        body: self
+          ? t('ops.tasks.keepBody')
+          : one
+            ? t('ops.tasks.sentToOne', { name: one.name })
+            : t('confirm.visit.taskSendBody'),
+        confirmLabel: t(self ? 'ops.tasks.keepYes' : 'confirm.visit.taskSendYes'),
       }))
     )
       return
@@ -103,6 +111,7 @@ export function NurseTaskCard({
       await ops.createTask.mutateAsync({ encounterId, title, dueAt, assignedTo: forWhom || null })
       setTitle('')
       setSentTo(one?.name ?? null)
+      setKept(self)
       setSaved(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -130,7 +139,12 @@ export function NurseTaskCard({
       {!nurse && (
         <form onSubmit={submit}>
           <CardBody className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[2fr_1fr_auto]">
-            <NurseRecipient value={forWhom} onChange={setForWhom} className="col-span-full" />
+            <NurseRecipient
+              value={forWhom}
+              onChange={setForWhom}
+              selfId={myId}
+              className="col-span-full"
+            />
             <Field
               label={t('ops.tasks.what')}
               value={title}
@@ -145,7 +159,7 @@ export function NurseTaskCard({
               onChange={(e) => setTime(e.target.value)}
             />
             <Button type="submit" variant="primary" loading={ops.createTask.isPending}>
-              {t('ops.tasks.send')}
+              {t(self ? 'ops.tasks.keep' : 'ops.tasks.send')}
             </Button>
             {(error || saved) && (
               <p
@@ -156,7 +170,11 @@ export function NurseTaskCard({
                 }
               >
                 {error ??
-                  (sentTo ? t('ops.tasks.sentToOne', { name: sentTo }) : t('ops.tasks.sent'))}
+                  (kept
+                    ? t('ops.tasks.kept')
+                    : sentTo
+                      ? t('ops.tasks.sentToOne', { name: sentTo })
+                      : t('ops.tasks.sent'))}
               </p>
             )}
           </CardBody>
@@ -206,7 +224,20 @@ export function NurseTaskCard({
             </>
           ) : (
             <>
-              <span className="text-ink-3 text-xs">{t('ops.tasks.waitingNurse')}</span>
+              {!x.forMe && (
+                <span className="text-ink-3 text-xs">{t('ops.tasks.waitingNurse')}</span>
+              )}
+              {/* the doctor who gave it, or kept it for himself, does it himself (0133) */}
+              {(x.mine || x.forMe) && (
+                <Button
+                  size="sm"
+                  variant={x.forMe ? 'primary' : 'success'}
+                  loading={ops.completeTask.isPending}
+                  onClick={() => void done(x.id, x.title)}
+                >
+                  {t(x.forMe ? 'common.done' : 'ops.tasks.didIt')}
+                </Button>
+              )}
               {x.mine && (
                 <Button
                   size="sm"

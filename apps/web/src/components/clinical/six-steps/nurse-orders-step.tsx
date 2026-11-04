@@ -95,6 +95,8 @@ export function NurseOrdersStep({
     if (f.kind === 'act' && f.text.trim().length < 2 && !service)
       return setErr(t('nurseOrders.errAct'))
     const nurse = nurses.find((n) => n.id === f.assignedTo)
+    // "Me — I do it myself" (0133): the order is the doctor's; he records each time below
+    const self = f.assignedTo === myId
     const what =
       f.text.trim() ||
       (f.kind === 'drug'
@@ -106,7 +108,11 @@ export function NurseOrdersStep({
       !(await confirm({
         title: t('nurseOrders.sendQ', { what, name: patientName }),
         body: [
-          t(nurse ? 'nurseOrders.sendToOne' : 'nurseOrders.sendToAll', { name: nurse?.name ?? '' }),
+          self
+            ? t('nurseOrders.sendToMe')
+            : t(nurse ? 'nurseOrders.sendToOne' : 'nurseOrders.sendToAll', {
+                name: nurse?.name ?? '',
+              }),
           t('nurseOrders.times', { count: doses }),
           f.kind === 'drug'
             ? t('nurseOrders.sendDrugBody')
@@ -116,7 +122,7 @@ export function NurseOrdersStep({
         ]
           .filter(Boolean)
           .join(' '),
-        confirmLabel: t('nurseOrders.sendYes'),
+        confirmLabel: t(self ? 'nurseOrders.keepYes' : 'nurseOrders.sendYes'),
       }))
     )
       return
@@ -135,16 +141,23 @@ export function NurseOrdersStep({
         frequency: f.frequency,
         doses,
         assignedTo: f.assignedTo || null,
-        assignedName: nurse?.name ?? null,
+        assignedName: self ? null : (nurse?.name ?? null),
         notes: f.notes,
       })
       setF(emptyForm(f.kind))
       setAdding(false)
       onDone(
-        t(nurse ? 'nurseOrders.sentToOne' : 'nurseOrders.sentToAll', {
-          what,
-          name: nurse?.name ?? '',
-        }),
+        t(
+          self
+            ? 'nurseOrders.keptForMe'
+            : nurse
+              ? 'nurseOrders.sentToOne'
+              : 'nurseOrders.sentToAll',
+          {
+            what,
+            name: nurse?.name ?? '',
+          },
+        ),
       )
     } catch (x) {
       setErr(x instanceof Error ? x.message : String(x))
@@ -168,7 +181,11 @@ export function NurseOrdersStep({
             onSubmit={submit}
             className="border-border bg-hover/40 flex flex-col gap-3 rounded-md border p-3"
           >
-            <NurseRecipient value={f.assignedTo} onChange={(v) => set({ assignedTo: v })} />
+            <NurseRecipient
+              value={f.assignedTo}
+              onChange={(v) => set({ assignedTo: v })}
+              selfId={myId}
+            />
             <Seg
               label={t('nurseOrders.kindLabel')}
               value={f.kind}
@@ -291,7 +308,7 @@ export function NurseOrdersStep({
             <span className="flex flex-wrap gap-2">
               <Button type="submit" variant="primary" loading={actions.create.isPending}>
                 <Send size={14} aria-hidden="true" />
-                {t('nurseOrders.send')}
+                {t(f.assignedTo === myId ? 'ops.tasks.keep' : 'nurseOrders.send')}
               </Button>
               <Button variant="ghost" onClick={() => setAdding(false)}>
                 {t('staff.form.cancel')}
@@ -313,6 +330,8 @@ export function NurseOrdersStep({
           order={o}
           patientName={patientName}
           cancel={canOrder && (o.byId === myId || isManager)}
+          // the doctor who gave it may do it himself (0133): Given / Done like the nurse
+          carryOut={canOrder && o.byId === myId}
           onDone={onDone}
           onError={onError}
         />

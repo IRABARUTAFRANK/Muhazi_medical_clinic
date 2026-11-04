@@ -48,7 +48,8 @@ export function NurseOrderRow({
   order: NurseOrder
   /** For the questions before each action. */
   patientName?: string
-  /** The nurse records the times (her order, or one for all nurses at her desk). */
+  /** The nurse records the times (her order, or one for all nurses at her desk); also the doctor
+   * who gave it, doing it himself (0133). */
   carryOut?: boolean
   /** The doctor who gave it (or the manager) may cancel it. */
   cancel?: boolean
@@ -258,13 +259,16 @@ export function NurseOrderRow({
                 <CircleSlash size={14} aria-hidden="true" />
                 {t('nurseOrders.skip')}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => void stop(false)} disabled={busy}>
-                <Ban size={14} aria-hidden="true" />
-                {t('nurseOrders.notDone')}
-              </Button>
+              {/* the doctor doing his own order cancels it instead (below) */}
+              {!cancel && (
+                <Button size="sm" variant="ghost" onClick={() => void stop(false)} disabled={busy}>
+                  <Ban size={14} aria-hidden="true" />
+                  {t('nurseOrders.notDone')}
+                </Button>
+              )}
             </>
           )}
-          {cancel && !carryOut && (
+          {cancel && (
             <Button size="sm" variant="ghost" onClick={() => void stop(true)} disabled={busy}>
               <XCircle size={14} aria-hidden="true" />
               {t('nurseOrders.cancel')}

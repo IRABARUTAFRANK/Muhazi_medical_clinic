@@ -2793,7 +2793,12 @@
       "forOne": "for {{name}}",
       "forAll": "for all the nurses",
       "forMe": "for you",
-      "sentToOne": "Sent to {{name}}. Only {{name}} sees it and was told."
+      "sentToOne": "Sent to {{name}}. Only {{name}} sees it and was told.",
+      "keep": "Save — I do it",
+      "keepYes": "Yes, I do it",
+      "keepBody": "You do it yourself: no nurse is told. Press Done on it when it is done.",
+      "kept": "Saved for you. Press Done when you have done it.",
+      "didIt": "I did it myself"
     },
     "beds": {
       "admit": "Admit a patient",
@@ -9861,7 +9866,7 @@
     "send": "Send the order",
     "sendQ": "Order “{{what}}” for {{name}}?",
     "sendToOne": "It goes to {{name}}, who is told at once.",
-    "sendToAll": "It goes to all the nurses of the nursing desk, who are told at once.",
+    "sendToAll": "It goes to all the nurses, who are told at once.",
     "sendDrugBody": "Each time given is taken from the nurse’s store and billed.",
     "sendActBody": "The service is billed each time it is done.",
     "sendYes": "Yes, send",
@@ -9936,7 +9941,12 @@
     "whichNurse": "Which nurse",
     "pickNurse": "Choose the nurse",
     "noNurses": "No nurse found — send it to all the nurses",
-    "loadingNurses": "Loading the nurses…"
+    "loadingNurses": "Loading the nurses…",
+    "me": "Me — I do it myself",
+    "meHint": "No nurse is told; you record it done here.",
+    "sendToMe": "You do it yourself: no nurse is told. Record each time with Given / Done on the order below.",
+    "keepYes": "Yes, I do it",
+    "keptForMe": "“{{what}}” is yours to do: record each time below."
   },
   "sixSteps": {
     "cardTitle": "The visit, in six steps",
