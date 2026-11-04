@@ -8011,7 +8011,8 @@ await step(
     const nurseAfter = await tasks(staff.nurse)
     const docAfter = await tasks(t85.docLab)
     const bed = await hintAs(staff.nurse, `select bed_ready(gen_random_uuid())`)
-    // a nurse task on a visit: the doctor of Nursing 85 is told and may work on the patient; the
+    // a nurse task on a visit: the doctor of Nursing 85 may work on the patient but, since 0132, is not
+    // told ("all the nurses" = the employees whose role is Nurse); the
     // nurses outside it are not told
     const task = (
       await one(
@@ -8083,7 +8084,7 @@ await step(
       nurseAfter ||
       !docAfter ||
       bed !== '42501/no_desk' ||
-      told.doc !== 1 ||
+      told.doc !== 0 ||
       told.nurses !== 0 ||
       !docWorks ||
       directDone !== '42501' ||
@@ -8093,7 +8094,7 @@ await step(
       !session?.desks?.includes('laboratory')
     )
       throw new Error(json85(r))
-    return `reception: ${before} → ok as a member; emergency by a doctor outside: ok, ordinary: ${ordinary}; nurse tasks to Nursing 85 (told by name)`
+    return `reception: ${before} → ok as a member; emergency by a doctor outside: ok, ordinary: ${ordinary}; nurse tasks: Nursing 85 works on them, the doctor is not told (0132)`
   },
 )
 await step('0085 G: one head and one assistant per department; members many', async () => {
@@ -21679,6 +21680,98 @@ await step(
   },
 )
 // @@t131-end
+
+// @@t132-begin
+// ---------------------------------------------------------------- 0132 the nurses are the employees whose role is Nurse
+const t132 = {}
+const json132 = (x) => JSON.stringify(x)
+await step('0132: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(path.join(migrationsDir, '20270112090000_nurses_by_role.sql'), 'utf8')
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+await step(
+  '0132 A: a doctor who works at the nursing desk is not in Which nurse, cannot be named, and is not told of an "all the nurses" task',
+  async () => {
+    // Dr Nursing 132: a doctor placed in Nursing 127, nursing ticked on the placement
+    t132.doc = await newStaff('d132.dn', 'Dr. Nursing 132', 'doctor', 'Consultation 1')
+    await member85(t132.doc, t127.nursing)
+    await asAdmin()
+    await db
+      .query(
+        `update staff_department set services = array['nursing'] where profile_id = $1 and department_id = $2`,
+        [t132.doc, t127.nursing],
+      )
+      .catch(() => null)
+    const desk = await deskAs(t132.doc, 'nursing')
+    await as(t127.doc)
+    const list = (await one(`select order_nurses() as j`)).j
+    await asAdmin()
+    const ids = list.map((n) => n.id)
+    const v = await t127.ov(t127.doc)
+    const r = {
+      nameTask: await hintAs(t127.doc, `select create_task_for($1, 'Task 132', null, null, $2)`, [
+        v,
+        t132.doc,
+      ]),
+      nameOrder: await hintAs(
+        t127.doc,
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Dressing 132', p_assigned_to => $2)`,
+        [v, t132.doc],
+      ),
+      nurseOrder: await hintAs(
+        t127.doc,
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Dressing 132 B', p_assigned_to => $2)`,
+        [v, t127.nurseB],
+      ),
+    }
+    await as(t127.doc)
+    const all = (await one(`select create_task_for($1, 'All 132') as id`, [v])).id
+    const allOrder = (
+      await one(
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'All order 132') as j`,
+        [v],
+      )
+    ).j.id
+    await asAdmin()
+    const told = (
+      await db.query(
+        `select recipient_user from notification where kind = 'task' and params->>'task' = $1`,
+        [all],
+      )
+    ).rows.map((x) => x.recipient_user)
+    const toldOrder = (
+      await db.query(
+        `select recipient_user from notification where kind = 'nurse_order' and params->>'orderId' = $1`,
+        [allOrder],
+      )
+    ).rows.map((x) => x.recipient_user)
+    const nurses = (
+      await db.query(
+        `select id from profiles where role = 'nurse' and active and deleted_at is null`,
+      )
+    ).rows.map((x) => x.id)
+    const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x))
+    if (
+      ids.includes(t132.doc) ||
+      !ids.includes(t127.nurseA) ||
+      !ids.includes(t127.nurseB) ||
+      !sameSet(ids, nurses) ||
+      r.nameTask !== '22023/not_nurse' ||
+      r.nameOrder !== '22023/not_nurse' ||
+      r.nurseOrder !== 'ok' ||
+      told.includes(t132.doc) ||
+      toldOrder.includes(t132.doc) ||
+      !sameSet(told, nurses) ||
+      !sameSet(toldOrder, nurses)
+    )
+      throw new Error(json132({ desk, ids, nurses, r, told, toldOrder }))
+    return `nursing desk for the doctor: ${desk}; list = the ${ids.length} employees with the role Nurse; the doctor refused (${r.nameTask}); "all" told ${told.length} nurses`
+  },
+)
+// @@t132-end
 
 finish()
 

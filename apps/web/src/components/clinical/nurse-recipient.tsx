@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils'
 
 /**
  * "For whom" on everything a doctor sends to the nurses (a task, a step-6 order): two big
- * choices, "All the nurses" or "One nurse", and with the second the list of the nurses (a nurse,
- * or whoever works at the nursing desk; never the manager). value '' = all the nurses.
+ * choices, "All the nurses" or "One nurse", and with the second the list of the employees whose
+ * role is Nurse (0132; a doctor working at the nursing desk is not listed). value '' = all the nurses.
  */
 export function NurseRecipient({
   value,
