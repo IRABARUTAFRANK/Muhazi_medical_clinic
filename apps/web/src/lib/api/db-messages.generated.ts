@@ -172,7 +172,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a category with this name already exists$/, 'dbErrors.af608345', 0], // save_category
   [/^dashboard must be manager, head or empty$/, 'dbErrors.c360b741', 0], // update_profile
   [/^only the manager can merge patient files$/, 'dbErrors.04623b87', 0], // merge_patients
-  [/^send it to a nurse, or to all the nurses$/, 'dbErrors.d8c88bcd', 0], // create_nurse_order
+  [/^send it to a nurse, or to all the nurses$/, 'dbErrors.d8c88bcd', 0], // create_nurse_order, create_task_for
   [/^that colleague is not an active employee$/, 'dbErrors.c8abd0fd', 0], // refer_patient
   [/^the height must be between 20 and 250 cm$/, 'dbErrors.f2b8b050', 0], // record_vitals_to
   [/^charge not found or bill already posted$/, 'dbErrors.ffcee653', 0], // void_charge
@@ -373,7 +373,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^full name is required$/, 'dbErrors.1dde2d39', 0], // create_appointment_inquiry
   [/^nobody is in this bed$/, 'dbErrors.acef1841', 0], // discharge_bed, extend_bed_stay
   [/^queue entry not found$/, 'dbErrors.d1f8c0d2', 0], // call_patient, take_patient
-  [/^say what must be done$/, 'dbErrors.54393c79', 0], // create_nurse_order, create_task
+  [/^say what must be done$/, 'dbErrors.54393c79', 0], // create_nurse_order, create_task, create_task_for
   [/^take the vitals first$/, 'dbErrors.55dbbba4', 0], // send_from_triage_to
   [/^unknown contract type$/, 'dbErrors.290cbef7', 0], // save_staff_profile
   [/^a reason is required$/, 'dbErrors.f33d287e', 0], // void_charge
