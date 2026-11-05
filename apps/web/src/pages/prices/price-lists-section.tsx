@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Stethoscope,
   Table2,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react'
@@ -35,8 +36,16 @@ import {
 import { useConfirm } from '@/lib/confirm'
 import { PriceListFileError, readPriceListFile, type ParsedPriceList } from '@/lib/price-list-file'
 import { cn } from '@/lib/utils'
-import { day, errorBox, guessPayerColumn, guessPrivateColumn } from './price-list-kit'
+import {
+  day,
+  errorBox,
+  guessFollowColumn,
+  guessPayerColumn,
+  guessPrivateColumn,
+  useRemoveList,
+} from './price-list-kit'
 import { ColumnsCheck } from './price-list-columns'
+import { FileCheck } from './price-list-file-check'
 import { PriceListPreviewPanel } from './price-list-preview'
 import { FollowersPanel, LinesPanel } from './price-list-lines'
 import { BookSettingsPanel } from './price-list-settings'
@@ -85,6 +94,9 @@ export function PriceListsSection({
   const [privateColumn, setPrivateColumn] = useState('')
   const [payerColumn, setPayerColumn] = useState('')
   const [instructionsOf, setInstructionsOf] = useState('')
+  /** A new list: the column each insurer pays ('' : it does not use the list). */
+  const [follow, setFollow] = useState<Record<string, string>>({})
+  const removeList = useRemoveList(onNotice)
   /** The names suggested for the last file read (replaced when another file is chosen). */
   const suggested = useRef({ name: '', book: '' })
   /** The file being read: a read the manager no longer waits for is dropped. */
@@ -101,6 +113,31 @@ export function PriceListsSection({
   const insurer = insurers.find((i) => i.id === (book?.payerId ?? payerId))
   const columns = parsed?.columns ?? []
   const noteColumn = parsed?.layout.find((c) => c.role === 'note')?.label ?? null
+  /** The insurers that may pay a list (the active ones). */
+  const payers = insurers
+  /** The insurer has its own list of this kind (it does not use another one unless chosen). */
+  const hasOwnList = (payerId: string) =>
+    books.some((b) => b.scope === 'insurer' && b.payerId === payerId && b.kind === tab)
+  const choosingFollowers = target === NEW && effScope !== 'insurer' && columns.length > 0
+  /** The column the patients pay: the private column, or the insurer's own column. */
+  const mainColumn =
+    effScope === 'clinic'
+      ? privateColumn
+      : effScope === 'insurer'
+        ? payerColumn || (columns.length === 1 ? columns[0]!.key : '')
+        : ''
+  const mainLabel =
+    effScope === 'clinic' ? t('prices.lists.fc.privatePatients') : (insurer?.name ?? '')
+  /** Who pays each column, for "Compare with the file". */
+  const uses: Record<string, string[]> = {}
+  const addUse = (key: string | null | undefined, who: string) => {
+    if (key && who) (uses[key] ??= []).push(who)
+  }
+  addUse(mainColumn, mainLabel)
+  if (choosingFollowers) for (const i of payers) addUse(follow[i.id], i.name)
+  else if (book)
+    for (const f of book.followers)
+      if (!(effScope === 'insurer' && f.payerId === book.payerId)) addUse(f.column, f.payer)
   const grouped = useMemo(
     () =>
       SCOPES.map((s) => ({ scope: s, books: tabBooks.filter((b) => b.scope === s) })).filter(
@@ -141,6 +178,16 @@ export function PriceListsSection({
         : keep && cur && keys.includes(cur)
           ? cur
           : guessPayerColumn(p.columns, ins?.name),
+    )
+    // the column each insurer pays: what was chosen stays, the others are guessed from the names
+    setFollow((cur) =>
+      Object.fromEntries(
+        payers.map((i) => {
+          const was = cur[i.id]
+          if (keep && was !== undefined && (was === '' || keys.includes(was))) return [i.id, was]
+          return [i.id, hasOwnList(i.id) ? '' : guessFollowColumn(p.columns, i.type, i.name)]
+        }),
+      ),
     )
   }
 
@@ -258,8 +305,27 @@ export function PriceListsSection({
     )
       return
     setError(null)
+    // a new list: the insurers that pay one of its columns follow it once it is kept
+    const followers = choosingFollowers && target === NEW ? payers.filter((i) => follow[i.id]) : []
     try {
       const r = await actions.apply.mutateAsync(input())
+      const followed: string[] = []
+      const failed: string[] = []
+      if (r.bookId)
+        for (const i of followers) {
+          try {
+            await bookActions.follow.mutateAsync({
+              payerId: i.id,
+              payer: i.name,
+              bookId: r.bookId,
+              column: follow[i.id]!,
+              priority: null,
+            })
+            followed.push(i.name)
+          } catch (e) {
+            failed.push(`${i.name} (${e instanceof Error ? e.message : String(e)})`)
+          }
+        }
       removeFile()
       setName('')
       setBookName('')
@@ -268,6 +334,10 @@ export function PriceListsSection({
       onNotice(
         [
           t('prices.lists.done', { name: r.name, list: r.book.name, date: day(r.effectiveFrom) }),
+          followed.length > 0
+            ? t('prices.lists.pay.done', { count: followed.length, names: followed.join(', ') })
+            : '',
+          failed.length > 0 ? t('prices.lists.pay.failed', { names: failed.join('; ') }) : '',
           r.clinic.created > 0 ? t('prices.lists.doneCreated', { count: r.clinic.created }) : '',
           r.clinic.linked > 0 ? t('prices.lists.doneLinked', { count: r.clinic.linked }) : '',
           r.instructions
@@ -298,6 +368,22 @@ export function PriceListsSection({
     try {
       const n = await bookActions.applyListPrices.mutateAsync({ bookId: b.id, ids: null })
       onNotice(t('prices.lists.useListDone', { count: n, list: b.name }))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  /** "Remove the list": the list goes with the treatments it made (asked first). */
+  const remove = async (b: PriceListBook) => {
+    setError(null)
+    try {
+      if (!(await removeList.run(b))) return
+      if (target === b.id) {
+        setTarget(NEW)
+        reset()
+      }
+      if (linesOf?.id === b.id) setLinesOf(null)
+      if (followersOf?.id === b.id) setFollowersOf(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
@@ -367,6 +453,8 @@ export function PriceListsSection({
                 onSettings={() => setSettingsOf(b)}
                 onNewVersion={() => newVersionOf(b)}
                 onListPrices={() => void listPricesForAll(b)}
+                onRemove={() => void remove(b)}
+                removing={removeList.busy}
               />
             ))}
           </section>
@@ -579,6 +667,38 @@ export function PriceListsSection({
                 ))}
               </Select>
             )}
+            {choosingFollowers && payers.length > 0 && (
+              <fieldset className="border-border m-0 flex min-w-0 flex-col gap-2 rounded-md border px-3 pt-1 pb-3">
+                <legend className="text-ink inline-flex items-center gap-1.5 px-1 text-[14px] font-semibold">
+                  <ShieldCheck size={15} aria-hidden="true" className="text-navy-ink" />
+                  {t('prices.lists.pay.title')}
+                </legend>
+                <p className="text-ink-3 m-0 text-[13px]">{t('prices.lists.pay.hint')}</p>
+                <div className="grid gap-x-3 gap-y-2 sm:grid-cols-2">
+                  {payers.map((i) => (
+                    <Select
+                      key={i.id}
+                      label={
+                        hasOwnList(i.id) ? t('prices.lists.pay.ownList', { name: i.name }) : i.name
+                      }
+                      value={follow[i.id] ?? ''}
+                      onChange={(e) => {
+                        setFollow((f) => ({ ...f, [i.id]: e.target.value }))
+                        reset()
+                      }}
+                    >
+                      <option value="">{t('prices.lists.pay.none')}</option>
+                      {columns.map((c) => (
+                        <option key={c.key} value={c.key}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </Select>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            <FileCheck parsed={parsed} uses={uses} mainColumn={mainColumn} mainLabel={mainLabel} />
 
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_200px]">
               <Field
@@ -684,6 +804,8 @@ function BookRow({
   onSettings,
   onNewVersion,
   onListPrices,
+  onRemove,
+  removing,
 }: {
   book: PriceListBook
   onLines: () => void
@@ -691,6 +813,8 @@ function BookRow({
   onSettings: () => void
   onNewVersion: () => void
   onListPrices: () => void
+  onRemove: () => void
+  removing: boolean
 }) {
   const { t } = useTranslation()
   const cur = book.versions.find((v) => v.status === 'current') ?? null
@@ -786,6 +910,10 @@ function BookRow({
         <Button size="sm" variant="tint-grey" onClick={onNewVersion}>
           <Upload size={14} aria-hidden="true" />
           {t('prices.lists.newVersion')}
+        </Button>
+        <Button size="sm" variant="tint-coral" onClick={onRemove} disabled={removing}>
+          <Trash2 size={14} aria-hidden="true" />
+          {t('prices.lists.drop.button')}
         </Button>
       </div>
     </div>

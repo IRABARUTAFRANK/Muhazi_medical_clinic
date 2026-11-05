@@ -2025,13 +2025,19 @@
         "values": "Values",
         "readAs": "Read as",
         "readAsOf": "Read “{{column}}” as",
-        "nothing": "No line can be read with these columns: a name and a price are needed."
+        "nothing": "No line can be read with these columns: a name and a price are needed.",
+        "leftOut": "Left out:",
+        "why": {
+          "foreign": "prices for foreigners: the clinic charges Rwandans.",
+          "otherFacility": "prices of other kinds of facility: Muhazi is a general clinic.",
+          "both": "prices for foreigners and for other kinds of facility: the clinic charges Rwandans and is a general clinic."
+        }
       },
       "settingsTitle": "Settings: {{name}}",
       "saveSettings": "Save the settings",
       "settingsSaved": "{{name}}: the settings are saved.",
       "orderHint": "When two Ministry lists have the same line, the one with the smallest number gives its price.",
-      "deleteHint": "A list no insurer follows can be taken away. The clinic’s treatments made from it stay.",
+      "deleteHint": "Removing the list takes away its lines, the insurers’ use of it and the treatments it made.",
       "delete": "Take the list away",
       "deleteQ": "Take {{name}} away?",
       "deleteBody": "Its prices no longer apply. Its versions stay in the history.",
@@ -2066,7 +2072,108 @@
       "clinicOwn": "clinic price {{price}}",
       "followsList": "list price",
       "useList": "Use the list price",
-      "useListOne": "{{name}} follows the list again ({{price}})."
+      "useListOne": "{{name}} follows the list again ({{price}}).",
+      "drop": {
+        "button": "Remove the list",
+        "q": "Remove “{{name}}” completely?",
+        "body": {
+          "treatments": "Its lines go, the insurers’ exceptions written for it go, and the treatments it made are deleted (those already on a bill are hidden; the bills stay as they are). The clinic’s own treatments it priced keep today’s price as the clinic’s own.",
+          "medicines": "Its lines go and the insurers’ exceptions written for it go. The clinic’s medicines and their stock stay; those it priced keep today’s price as the clinic’s own."
+        },
+        "followers": "These insurers stop following it: {{names}}.",
+        "again": "You can upload a list again afterwards.",
+        "yes": "Remove the list",
+        "done": "“{{name}}” is removed.",
+        "deleted_one": "{{count}} treatment made from it is deleted.",
+        "deleted_other": "{{count}} treatments made from it are deleted.",
+        "hidden_one": "{{count}} already on a bill is hidden.",
+        "hidden_other": "{{count}} already on bills are hidden.",
+        "stopped": "Insurers that stopped following it: {{names}}.",
+        "kept": {
+          "treatments_one": "{{count}} treatment of the clinic keeps today’s price as its own.",
+          "treatments_other": "{{count}} treatments of the clinic keep today’s price as their own.",
+          "medicines_one": "{{count}} medicine of the clinic keeps today’s price as its own.",
+          "medicines_other": "{{count}} medicines of the clinic keep today’s price as their own."
+        }
+      },
+      "fc": {
+        "title": "Compared with the file",
+        "linesRead_one": "{{n}} line read",
+        "linesRead_other": "{{n}} lines read",
+        "notLines_one": "{{count}} row is not a line",
+        "notLines_other": "{{count}} rows are not lines",
+        "sheetsNotRead_one": "{{count}} sheet not read",
+        "sheetsNotRead_other": "{{count}} sheets not read",
+        "columnsLeftOut_one": "{{count}} price column left out",
+        "columnsLeftOut_other": "{{count}} price columns left out",
+        "toLook_one": "{{count}} line to look at",
+        "toLook_other": "{{count}} lines to look at",
+        "nothingToLook": "Nothing to look at",
+        "open": "Compare with the file",
+        "close": "Close the comparison",
+        "lead": "Everything read from the file, in the file’s order, to compare with the file open in Excel. Prices are rounded to the franc, as Excel shows them.",
+        "sheets": "Sheets",
+        "theFile": "The file",
+        "sheetRead_one": "{{n}} line read (column names on row {{row}})",
+        "sheetRead_other": "{{n}} lines read (column names on row {{row}})",
+        "rowsBelow_one": "{{n}} row written below the column names",
+        "rowsBelow_other": "{{n}} rows written below the column names",
+        "rowsIn_one": "{{n}} row written",
+        "rowsIn_other": "{{n}} rows written",
+        "state": {
+          "hidden": "Hidden in Excel: not read",
+          "noTable": "No column names found: not read"
+        },
+        "columns": "Price columns",
+        "column": "Column",
+        "usedFor": "Paid by",
+        "priced": "With a price",
+        "empty": "Empty",
+        "notNumber": "Not a number",
+        "zero": "Price 0",
+        "notUsed": "Nobody yet (kept on the list)",
+        "privatePatients": "Private patients",
+        "leftOut": {
+          "foreign": "Left out: prices for foreigners. The clinic charges Rwandans.",
+          "otherFacility": "Left out: price of another kind of facility. Muhazi is a general clinic."
+        },
+        "lines": "Lines ({{n}})",
+        "filter": {
+          "all_one": "All ({{n}})",
+          "all_other": "All ({{n}})",
+          "noMain_one": "No price for {{who}} ({{n}})",
+          "noMain_other": "No price for {{who}} ({{n}})",
+          "notNumber_one": "Not a number ({{n}})",
+          "notNumber_other": "Not a number ({{n}})",
+          "zero_one": "Price 0 ({{n}})",
+          "zero_other": "Price 0 ({{n}})",
+          "duplicate_one": "Same code twice ({{n}})",
+          "duplicate_other": "Same code twice ({{n}})"
+        },
+        "search": "Search a code or a name",
+        "noMatch": "No line matches.",
+        "more_one": "Show {{count}} more ({{left}} left)",
+        "more_other": "Show {{count}} more ({{left}} left)",
+        "skippedTitle_one": "{{count}} row that is not a line",
+        "skippedTitle_other": "{{count}} rows that are not lines",
+        "why": {
+          "heading": "Section title",
+          "note": "Note",
+          "header": "Column names again",
+          "noName": "No code and no name"
+        },
+        "codeRow": "Code · row",
+        "nameSection": "Name · section"
+      },
+      "pay": {
+        "title": "Which column each insurer pays",
+        "hint": "Guessed from the column names: RSSB (RAMA) and MMI pay “RAMA; MMI”, the private insurers pay “Private Insurances”. An insurer with its own tariff does not use this list unless you choose a column. You can change it later under Insurers.",
+        "none": "Does not use this list",
+        "ownList": "{{name}} (has its own tariff)",
+        "done_one": "{{names}} now follows it.",
+        "done_other": "{{names}} now follow it.",
+        "failed": "Not set, do it under Insurers: {{names}}."
+      }
     },
     "listPrice": {
       "follows": "MoH price",

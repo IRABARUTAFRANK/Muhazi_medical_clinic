@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  evalFormula,
   keyOf,
+  leftOutReason,
   mergeParts,
   monthIn,
   pdfToGrid,
@@ -8,6 +10,7 @@ import {
   readGrid,
   rereadPriceList,
   roleOfHeader,
+  shiftFormula,
   type Grid,
   type PdfItem,
 } from './price-list-file'
@@ -118,7 +121,8 @@ describe('published price list reader', () => {
     )!
     expect(p.lines.map((l) => l.code)).toEqual(['RHIC-DENT-017', 'RHIC-DENT-005', 'RHIC-PHYS-001'])
     expect(p.lines[1]!.note).toBe('NC')
-    expect(p.columns.map((c) => c.key)).toEqual(['general_clinics', 'polyclinic'])
+    // the polyclinics' price is left out: Muhazi is a general clinic
+    expect(p.columns.map((c) => c.key)).toEqual(['general_clinics'])
     expect(p.notes).toEqual(['NC: Not covered by Edencare unless special pre-auth guaranted'])
   })
 
@@ -253,5 +257,83 @@ describe('published price list reader', () => {
     const fixed = rereadPriceList(merged, { headerRow: 1, roles: { 3: 'note' } })!
     expect(fixed.lines).toHaveLength(4)
     expect(fixed.lines[0]!.note).toBe('ok')
+  })
+  it('leaves out the prices for foreigners, works out a shared formula and reports the sheet', () => {
+    const p = readGrid(
+      grid([
+        [
+          'RHIC',
+          'Procedure name',
+          'RAMA; MMI',
+          'Private Insurances',
+          'Privates (Non insured)',
+          'East Africa',
+          'Africans',
+          'Rest of the World',
+        ],
+        ['RHIC-A-001', 'Act one', 100, 200, { formula: 'D2/2', result: 100 }, 200, 320, 640],
+        ['RHIC-A-002', 'Act two', 300, 400, { sharedFormula: 'E2' }, 400, 640, 1280],
+        ['Total'],
+      ]),
+    )!
+    expect(p.columns.map((c) => c.label)).toEqual([
+      'RAMA; MMI',
+      'Private Insurances',
+      'Privates (Non insured)',
+    ])
+    expect(p.layout.filter((c) => c.leftOut).map((c) => [c.label, c.leftOut])).toEqual([
+      ['East Africa', 'foreign'],
+      ['Africans', 'foreign'],
+      ['Rest of the World', 'foreign'],
+    ])
+    expect(p.lines[1]!.prices).toEqual({
+      rama_mmi: 300,
+      private_insurances: 400,
+      privates_non_insured: 200,
+    })
+    expect(p.sheets[0]).toMatchObject({ state: 'read', headerRow: 1, rows: 3, lines: 2 })
+    expect(p.sheets[0]!.skipped).toEqual([{ row: 4, text: 'Total', why: 'note' }])
+    // chosen by hand, a column for foreigners is read
+    const back = rereadPriceList({ ...p, format: 'xlsx' }, { headerRow: 1, roles: { 5: 'price' } })!
+    expect(back.columns.map((c) => c.label)).toContain('East Africa')
+    expect(back.columns.map((c) => c.label)).not.toContain('Africans')
+  })
+
+  it('keeps the general clinics’ price and leaves out the other kinds of facility', () => {
+    const p = readGrid(
+      grid([
+        ['RHIC', 'Procedure name', 'General Clinics *', 'Polyclinic **', 'Hospitals ***'],
+        ['RHIC-DENT-001', 'Apexification', 79343, 83036, 88456],
+      ]),
+    )!
+    expect(p.columns.map((c) => c.label)).toEqual(['General Clinics *'])
+    expect(leftOutReason('Tertiary Health Facility', ['General Clinics'])).toBe('otherFacility')
+    expect(leftOutReason('Tertiary Health Facility', ['Primary Health Facility'])).toBeNull()
+    expect(leftOutReason('Private Insurances', ['General Clinics'])).toBeNull()
+    expect(leftOutReason('International insurers', [])).toBeNull()
+    // no general clinics' column: nothing is left out
+    const q = readGrid(
+      grid([
+        ['RHIC', 'Procedure name', 'Polyclinic', 'Hospitals'],
+        ['RHIC-DENT-001', 'Apexification', 1, 2],
+      ]),
+    )!
+    expect(q.columns).toHaveLength(2)
+  })
+
+  it('works out a formula the file kept no value for', () => {
+    expect(shiftFormula('F322/2', 48, 0)).toBe('F370/2')
+    expect(shiftFormula('$F$322*B1+ROUND(C1,0)', 2, 1)).toBe('$F$322*C3+ROUND(D3,0)')
+    const cells = new Map<number, unknown[]>([
+      [1, [10, 20, { formula: 'A1+B1' }]],
+      [2, [null, 'x']],
+    ])
+    expect(evalFormula('=ROUND(C1*1.18, 0)', cells)).toBe(35)
+    expect(evalFormula('=SUM(A1:B1)/2', cells)).toBe(15)
+    expect(evalFormula('=A2+5', cells)).toBe(5)
+    expect(evalFormula('=B2*2', cells)).toBeNull()
+    expect(evalFormula('=Sheet2!A1', cells)).toBeNull()
+    expect(evalFormula('=-(A1-B1)^2', cells)).toBe(100)
+    expect(evalFormula('=50%*A1+2^3^2', cells)).toBe(69)
   })
 })

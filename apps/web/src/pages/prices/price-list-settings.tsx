@@ -6,14 +6,13 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { SidePanel } from '@/components/ui/side-panel'
 import { usePriceListActions, type PriceListBook } from '@/lib/api/price-lists'
-import { useConfirm } from '@/lib/confirm'
-import { errorBox } from './price-list-kit'
+import { errorBox, useRemoveList } from './price-list-kit'
 
 /**
  * A list's settings (Prices › Published price lists › Settings): its name and publisher; for the
  * Ministry's list for the whole clinic, the column private patients pay and its order among the
  * clinic-wide lists (smallest first: the first with a line prices it); for an insurer's own list,
- * the column that insurer pays. A list no insurer follows can be taken away.
+ * the column that insurer pays. "Remove the list" takes it away with what it made (0136).
  */
 export function BookSettingsPanel({
   book,
@@ -25,8 +24,8 @@ export function BookSettingsPanel({
   onNotice: (text: string) => void
 }) {
   const { t } = useTranslation()
-  const confirm = useConfirm()
   const actions = usePriceListActions()
+  const removeList = useRemoveList(onNotice)
   const columns = book.versions.find((v) => v.status === 'current')?.columns ?? []
   const own = book.followers.find((f) => f.payerId === book.payerId)?.column ?? ''
   const [name, setName] = useState(book.name)
@@ -35,7 +34,7 @@ export function BookSettingsPanel({
   const [priority, setPriority] = useState(String(book.priority))
   const [payerColumn, setPayerColumn] = useState(own)
   const [error, setError] = useState<string | null>(null)
-  const busy = actions.saveBook.isPending || actions.saveSettings.isPending
+  const busy = actions.saveBook.isPending || actions.saveSettings.isPending || removeList.busy
 
   const save = async (e: FormEvent) => {
     e.preventDefault()
@@ -67,25 +66,9 @@ export function BookSettingsPanel({
   }
 
   const remove = async () => {
-    if (
-      !(await confirm({
-        title: t('prices.lists.deleteQ', { name: book.name }),
-        body: t('prices.lists.deleteBody'),
-        confirmLabel: t('prices.lists.deleteYes'),
-        tone: 'danger',
-      }))
-    )
-      return
     setError(null)
     try {
-      await actions.saveBook.mutateAsync({
-        id: book.id,
-        name: book.name,
-        publisher: book.publisher,
-        remove: true,
-      })
-      onNotice(t('prices.lists.deleted', { name: book.name }))
-      onClose()
+      if (await removeList.run(book)) onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }

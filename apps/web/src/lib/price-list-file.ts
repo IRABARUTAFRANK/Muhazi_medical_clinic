@@ -17,6 +17,13 @@
  * A PDF is read with pdf.js: its text is put back into rows and columns by position (the header's
  * columns; a row starts at its number or its code; a price or a name written a little lower
  * belongs to the row above). Text outside the rows is kept as a note.
+ *
+ * Two kinds of price column are left out by themselves (the clinic serves Rwandans and is a
+ * general clinic): the prices for foreigners ("East Africa", "Africans", "Rest of the World"), and,
+ * when the list has a "General Clinics" column, the prices of other kinds of facility ("Polyclinic",
+ * "Hospitals", "Tertiary Health Facility"). "Correct the columns" can read them back. A formula the
+ * file kept no value for ("=F322/2") is worked out from the cells it names, as Excel would. Every
+ * sheet is reported: read (its lines and the rows that are not lines), hidden, or without a table.
  */
 
 export type ListRole =
@@ -64,6 +71,31 @@ export interface ParsedPriceList {
   source: Grid
   /** Every sheet read (a list may keep its parts on several sheets). */
   sources: Grid[]
+  /** Every sheet of the file, in its order: what was read from it, or why it was not. */
+  sheets: SheetReport[]
+}
+
+/** Why a price column was left out by itself. */
+export type LeftOutReason = 'foreign' | 'otherFacility'
+
+/** A row below the column names that is not a line, and why. */
+export interface SkippedRow {
+  row: number
+  text: string
+  why: 'heading' | 'note' | 'header' | 'noName'
+}
+
+/** One sheet of the file: read (from which row, how many lines), hidden, or without a table. */
+export interface SheetReport {
+  name: string | null
+  state: 'read' | 'hidden' | 'noTable'
+  headerRow: number | null
+  /** Rows with something written in them (below the column names for a sheet read). */
+  rows: number
+  lines: number
+  skipped: SkippedRow[]
+  /** The price columns of the sheet left out by themselves. */
+  leftOut: { label: string; why: LeftOutReason }[]
 }
 
 /** What a column is read as; 'ignore': left out. */
@@ -87,6 +119,8 @@ export interface ColumnLayout {
   label: string
   role: ColumnRole
   samples: string[]
+  /** A price column left out by itself, and why. */
+  leftOut?: LeftOutReason
 }
 
 /** The manager's corrections: the row of the column names, and what some columns are. */
@@ -368,12 +402,36 @@ function findHeader(rows: Grid['rows']): number {
 const letterOf = (i: number): string =>
   (i >= 26 ? letterOf(Math.floor(i / 26) - 1) : '') + String.fromCharCode(65 + (i % 26))
 
+/** Prices for foreigners: the clinic charges Rwandans. */
+const FOREIGN =
+  /\b(east africa|east african|east africans|eac|e a c|africa|african|africans|afrique|africain|africains|rest of the world|rest of world|world|monde|foreign|foreigner|foreigners|etranger|etrangers|international|internationals|expatriate|expatriates|non rwandan|non rwandans|non residents?|diaspora|tourists?|abanyamahanga)\b/
+/** A price for general clinics (Muhazi is one). */
+const GENERAL_CLINIC =
+  /\b(general clinics?|clinique generale|cliniques generales|ivuriro rusange|amavuriro rusange)\b/
+/** A price for another kind or level of health facility. */
+const OTHER_FACILITY =
+  /\b(polyclinics?|polycliniques?|hospitals?|hopital|hopitaux|health facility|health facilities|health centers?|health centres?|health posts?|dispensary|dispensaries|referral|district|provincial|teaching|tertiary|secondary|primary|specialized|specialised|specialty clinics?)\b/
+
+/** Why a price column is not for the clinic's patients (null: it may be). */
+export function leftOutReason(label: string, labels: string[]): LeftOutReason | null {
+  const h = norm(label)
+  if (!h) return null
+  if (FOREIGN.test(h) && !/\b(insur|assur)[a-z]*\b/.test(h)) return 'foreign'
+  if (
+    !GENERAL_CLINIC.test(h) &&
+    OTHER_FACILITY.test(h) &&
+    labels.some((l) => GENERAL_CLINIC.test(norm(l)))
+  )
+    return 'otherFacility'
+  return null
+}
+
 /** How each column is read, from its header and from its values under it (or as corrected). */
 function planColumns(
   header: unknown[],
   data: unknown[][],
   roles: Record<number, ColumnRole> = {},
-): ColumnPlan[] {
+): { plans: ColumnPlan[]; leftOut: Map<number, LeftOutReason> } {
   const width = Math.max(header.length, ...data.map((r) => r.length))
   const plans: ColumnPlan[] = []
   for (let i = 0; i < width; i++) {
@@ -434,10 +492,256 @@ function planColumns(
     if (named) p.role = 'detail'
     named = true
   }
+  // the prices for foreigners and for other kinds of facility are left out (unless the manager
+  // chose them, or nothing else would be left)
+  const leftOut = new Map<number, LeftOutReason>()
+  const priced = plans.filter((p) => p.role === 'price')
+  const labels = priced.map((p) => p.label)
+  for (const p of priced) {
+    if (roles[p.index] === 'price') continue
+    const why = leftOutReason(p.label, labels)
+    if (why) leftOut.set(p.index, why)
+  }
+  if (leftOut.size === priced.length) leftOut.clear()
+  const kept = plans.filter((p) => !leftOut.has(p.index))
   // the price columns' keys
   const taken = new Set<string>()
-  for (const p of plans) if (p.role === 'price') p.key = keyOf(p.label, taken)
-  return plans
+  for (const p of kept) if (p.role === 'price') p.key = keyOf(p.label, taken)
+  return { plans: kept, leftOut }
+}
+
+// ---------------------------------------------------------------- formulas
+/** The cells of a sheet by row number (columns 0-based), to work out a formula. */
+type Cells = Map<number, unknown[]>
+
+const colOf = (letters: string) =>
+  [...letters].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1
+
+/**
+ * "F322/2" written in G322 and shared down to G370: "F370/2" (a reference with a $ stays). A
+ * function name such as LOG10 is not a reference.
+ */
+export function shiftFormula(formula: string, rows: number, cols: number): string {
+  return formula.replace(
+    /(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\d(])/g,
+    (m, dc: string, c: string, dr: string, r: string, at: number, all: string) => {
+      if (at > 0 && /[A-Za-z_.!]/.test(all[at - 1]!)) return m
+      const col = dc ? colOf(c) : colOf(c) + cols
+      const row = dr ? Number(r) : Number(r) + rows
+      if (col < 0 || row < 1) return m
+      return `${dc}${letterOf(col)}${dr}${row}`
+    },
+  )
+}
+
+type Token =
+  | { t: 'num'; v: number }
+  | { t: 'ref'; v: string }
+  | { t: 'fn'; v: string }
+  | { t: 'op'; v: string }
+
+function tokens(text: string): Token[] | null {
+  const out: Token[] = []
+  const re =
+    /\s*(?:(\d+(?:\.\d+)?(?:E[+-]?\d+)?)|(\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?)|([A-Z][A-Z0-9.]*)\(|([-+*/^(),%]))/giy
+  let at = 0
+  while (at < text.length) {
+    if (/^\s*$/.test(text.slice(at))) break
+    re.lastIndex = at
+    const m = re.exec(text)
+    if (!m) return null
+    if (m[1] != null) out.push({ t: 'num', v: Number(m[1]) })
+    else if (m[2] != null) out.push({ t: 'ref', v: m[2].toUpperCase().replace(/\$/g, '') })
+    else if (m[3] != null) out.push({ t: 'fn', v: m[3].toUpperCase() })
+    else out.push({ t: 'op', v: m[4]! })
+    at = re.lastIndex
+  }
+  return out
+}
+
+const FUNCTIONS: Record<string, (args: number[][]) => number> = {
+  SUM: (a) => a.flat().reduce((s, n) => s + n, 0),
+  MIN: (a) => Math.min(...a.flat()),
+  MAX: (a) => Math.max(...a.flat()),
+  AVERAGE: (a) => a.flat().reduce((s, n) => s + n, 0) / Math.max(1, a.flat().length),
+  ABS: (a) => Math.abs(a[0]![0]!),
+  ROUND: (a) => {
+    const f = 10 ** (a[1]?.[0] ?? 0)
+    return (Math.sign(a[0]![0]!) * Math.round(Math.abs(a[0]![0]!) * f)) / f
+  },
+  ROUNDUP: (a) => {
+    const f = 10 ** (a[1]?.[0] ?? 0)
+    return (Math.sign(a[0]![0]!) * Math.ceil(Math.abs(a[0]![0]!) * f - 1e-9)) / f
+  },
+  ROUNDDOWN: (a) => {
+    const f = 10 ** (a[1]?.[0] ?? 0)
+    return (Math.sign(a[0]![0]!) * Math.floor(Math.abs(a[0]![0]!) * f + 1e-9)) / f
+  },
+}
+
+/**
+ * Works out a formula of the sheet (numbers, cells of the same sheet, + − × ÷ ^ %, SUM, MIN, MAX,
+ * AVERAGE, ABS, ROUND, ROUNDUP, ROUNDDOWN). Null when it cannot (text, another sheet, an unknown
+ * function, a loop).
+ */
+export function evalFormula(formula: string, cells: Cells, depth = 0): number | null {
+  if (depth > 20 || /["!&<>=]/.test(formula.replace(/^=/, ''))) return null
+  const list = tokens(formula.replace(/^=/, ''))
+  if (!list || list.length === 0) return null
+  let i = 0
+  const peek = () => list[i]
+  const cellValue = (ref: string): number => {
+    const m = /^([A-Z]{1,3})(\d+)$/.exec(ref)
+    if (!m) throw new Error('ref')
+    const raw = cells.get(Number(m[2]))?.[colOf(m[1]!)]
+    const v = valueOf(raw, Number(m[2]), colOf(m[1]!), cells, depth + 1)
+    if (v === undefined) throw new Error('value')
+    return v
+  }
+  const range = (ref: string): number[] => {
+    const [a, b] = ref.split(':')
+    if (!b) return [cellValue(a!)]
+    const ma = /^([A-Z]{1,3})(\d+)$/.exec(a!)!
+    const mb = /^([A-Z]{1,3})(\d+)$/.exec(b)!
+    const out: number[] = []
+    for (let r = Math.min(+ma[2]!, +mb[2]!); r <= Math.max(+ma[2]!, +mb[2]!); r++)
+      for (
+        let c = Math.min(colOf(ma[1]!), colOf(mb[1]!));
+        c <= Math.max(colOf(ma[1]!), colOf(mb[1]!));
+        c++
+      )
+        out.push(cellValue(`${letterOf(c)}${r}`))
+    return out
+  }
+  const expect = (v: string) => {
+    const tk = list[i++]
+    if (!tk || tk.t !== 'op' || tk.v !== v) throw new Error('syntax')
+  }
+  const primary = (): number => {
+    const tk = list[i++]
+    if (!tk) throw new Error('end')
+    if (tk.t === 'num') return tk.v
+    if (tk.t === 'ref') {
+      if (tk.v.includes(':')) throw new Error('range')
+      return cellValue(tk.v)
+    }
+    if (tk.t === 'fn') {
+      const fn = FUNCTIONS[tk.v]
+      if (!fn) throw new Error('function')
+      const args: number[][] = []
+      if (!(peek()?.t === 'op' && peek()?.v === ')')) {
+        for (;;) {
+          const nx = peek()
+          if (nx?.t === 'ref' && nx.v.includes(':')) {
+            i++
+            args.push(range(nx.v))
+          } else args.push([sum()])
+          if (peek()?.t === 'op' && peek()?.v === ',') {
+            i++
+            continue
+          }
+          break
+        }
+      }
+      expect(')')
+      return fn(args)
+    }
+    if (tk.v === '(') {
+      const v = sum()
+      expect(')')
+      return v
+    }
+    // Excel: the sign goes before % and ^ (-2^2 = 4)
+    if (tk.v === '-') return -primary()
+    if (tk.v === '+') return primary()
+    throw new Error('syntax')
+  }
+  const percent = (): number => {
+    let v = primary()
+    while (peek()?.t === 'op' && peek()?.v === '%') {
+      i++
+      v /= 100
+    }
+    return v
+  }
+  // Excel works ^ out from the left (2^3^2 = 64)
+  const power = (): number => {
+    let v = percent()
+    while (peek()?.t === 'op' && peek()?.v === '^') {
+      i++
+      v = v ** percent()
+    }
+    return v
+  }
+  const product = (): number => {
+    let v = power()
+    for (let tk = peek(); tk?.t === 'op' && (tk.v === '*' || tk.v === '/'); tk = peek()) {
+      i++
+      const r = power()
+      v = tk.v === '*' ? v * r : v / r
+    }
+    return v
+  }
+  const sum = (): number => {
+    let v = product()
+    for (let tk = peek(); tk?.t === 'op' && (tk.v === '+' || tk.v === '-'); tk = peek()) {
+      i++
+      const r = product()
+      v = tk.v === '+' ? v + r : v - r
+    }
+    return v
+  }
+  try {
+    const v = sum()
+    if (i !== list.length || !Number.isFinite(v)) return null
+    return v
+  } catch {
+    return null
+  }
+}
+
+/**
+ * A cell as a number for a formula: an empty cell is 0, a number or a kept result, a formula
+ * worked out (a shared one from the cell that holds it); undefined when it is text.
+ */
+function valueOf(
+  raw: unknown,
+  row: number,
+  col: number,
+  cells: Cells,
+  depth: number,
+): number | undefined {
+  if (raw == null || raw === '') return 0
+  const own = formulaOf(raw, row, col, cells)
+  if (own != null) return evalFormula(own, cells, depth) ?? undefined
+  const p = priceOf(raw)
+  if (p == null) return 0
+  return typeof p === 'number' ? p : undefined
+}
+
+/** The formula of a cell with no value kept (a shared one moved to this cell), or null. */
+function formulaOf(raw: unknown, row: number, col: number, cells: Cells): string | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  if (typeof o.result === 'number') return null
+  if (typeof o.formula === 'string') return o.formula
+  if (typeof o.sharedFormula === 'string') {
+    const m = /^\$?([A-Z]{1,3})\$?(\d+)$/.exec(o.sharedFormula.toUpperCase())
+    if (!m) return null
+    const mRow = Number(m[2])
+    const mCol = colOf(m[1]!)
+    const master = cells.get(mRow)?.[mCol] as Record<string, unknown> | undefined
+    if (!master || typeof master.formula !== 'string') return null
+    return shiftFormula(master.formula, row - mRow, col - mCol)
+  }
+  return null
+}
+
+/** A price cell of a sheet: as priceOf, with a formula the file kept no value for worked out. */
+function priceIn(raw: unknown, row: number, col: number, cells: Cells): number | string | null {
+  const f = formulaOf(raw, row, col, cells)
+  if (f == null) return priceOf(raw)
+  return evalFormula(f, cells) ?? priceOf(raw) ?? `=${f}`
 }
 
 /** A heading row ("A. ALIMENTARY TRACT", "A01 .STOMATOLOGICAL PREPARATIONS", "DENTISTRY"). */
@@ -459,7 +763,8 @@ export function readGrid(
   const header = grid.rows[at]!
   const body = grid.rows.slice(at + 1)
   const data = body.slice(0, 3000).map((r) => r.cells)
-  const plans = planColumns(header.cells, data, options.roles)
+  const { plans, leftOut } = planColumns(header.cells, data, options.roles)
+  const cellsOf: Cells = new Map(grid.rows.map((r) => [r.n, r.cells]))
   const col = (role: ListRole) => plans.find((p) => p.role === role)
   const code = col('code')
   const name = col('name')
@@ -476,11 +781,13 @@ export function readGrid(
       .filter((v): v is string => !!v)
       .slice(0, 3)
     if (!label && samples.length === 0) continue
+    const why = leftOut.get(i)
     layout.push({
       index: i,
       label: label || letterOf(i),
       role: plans.find((p) => p.index === i)?.role ?? 'ignore',
       samples,
+      ...(why ? { leftOut: why } : {}),
     })
   }
   const headerKey = header.cells.map((c) => norm(cellText(c) ?? '')).join('|')
@@ -495,29 +802,44 @@ export function readGrid(
 
   const lines: PriceListLineInput[] = []
   const notes: string[] = [...(grid.notes ?? [])]
+  const skipped: SkippedRow[] = []
+  let rows = 0
   let heading: string | null = null
   for (const r of body) {
     const cells = r.cells
-    if (cells.map((c) => norm(cellText(c) ?? '')).join('|') === headerKey) continue
     const filled = cells.map(cellText).filter((t): t is string => !!t)
     if (filled.length === 0) continue
+    rows++
+    const shown = filled.join(' — ').slice(0, 200)
+    if (cells.map((c) => norm(cellText(c) ?? '')).join('|') === headerKey) {
+      skipped.push({ row: r.n, text: shown, why: 'header' })
+      continue
+    }
     const lineCode = text(cells, code)
     const lineName = text(cells, name)
     const linePrices: Record<string, number | string | null> = {}
     let anyPrice = false
     for (const p of prices) {
-      const v = priceOf(cells[p.index])
+      const v = priceIn(cells[p.index], r.n, p.index, cellsOf)
       linePrices[p.key!] = v
       if (v != null) anyPrice = true
     }
     if (!anyPrice && (!lineCode || !CODE_LIKE.test(lineCode))) {
       // a heading over the rows below it, or a note of the file
       const only = filled.length === 1 ? filled[0]! : null
-      if (only && isHeading(only)) heading = only
-      else notes.push(filled.join(' — '))
+      if (only && isHeading(only)) {
+        heading = only
+        skipped.push({ row: r.n, text: shown, why: 'heading' })
+      } else {
+        notes.push(filled.join(' — '))
+        skipped.push({ row: r.n, text: shown, why: 'note' })
+      }
       continue
     }
-    if (!lineCode && !lineName) continue
+    if (!lineCode && !lineName) {
+      skipped.push({ row: r.n, text: shown, why: 'noName' })
+      continue
+    }
     lines.push({
       row: r.n,
       code: lineCode ?? '',
@@ -555,8 +877,30 @@ export function readGrid(
     layout,
     source: grid,
     sources: [grid],
+    sheets: [
+      {
+        name: grid.name,
+        state: 'read',
+        headerRow: header.n,
+        rows,
+        lines: lines.length,
+        skipped,
+        leftOut: layout.flatMap((c) => (c.leftOut ? [{ label: c.label, why: c.leftOut }] : [])),
+      },
+    ],
   }
 }
+
+/** A sheet not read (hidden in Excel, or no column names found), for the report. */
+const notRead = (grid: Grid, state: 'hidden' | 'noTable'): SheetReport => ({
+  name: grid.name,
+  state,
+  headerRow: null,
+  rows: grid.rows.filter((r) => r.cells.some((c) => cellText(c) != null)).length,
+  lines: 0,
+  skipped: [],
+  leftOut: [],
+})
 
 /** The file read again with the manager's corrections (the row of the names, the columns). */
 export function rereadPriceList(
@@ -568,7 +912,13 @@ export function rereadPriceList(
   const part = readGrid(first!, options)
   if (!part) return null
   const others = rest.map((g) => readGrid(g)).filter((p): p is NonNullable<typeof p> => !!p)
-  return { ...mergeParts([part, ...others], parsed.format), from: part.from ?? parsed.from }
+  const merged = mergeParts([part, ...others], parsed.format)
+  // the sheets read again take their new report; the others (hidden, no table) stay as they were
+  const fresh = new Map(merged.sheets.map((s) => [s.name, s]))
+  const sheets = parsed.sheets.length
+    ? parsed.sheets.map((s) => (s.state === 'read' ? (fresh.get(s.name) ?? s) : s))
+    : merged.sheets
+  return { ...merged, sheets, from: part.from ?? parsed.from }
 }
 
 /** Medicines when the codes are ATC codes or the headers speak of drugs; treatments for RHIC. */
@@ -806,6 +1156,7 @@ export function mergeParts(
     columns,
     notes: [...new Set(parts.flatMap((p) => p.notes))].slice(0, 30),
     sources: parts.flatMap((p) => p.sources),
+    sheets: parts.flatMap((p) => p.sheets),
     sheet:
       parts.length > 1
         ? parts
@@ -821,6 +1172,8 @@ export function mergeParts(
 export async function readPriceListFile(file: File): Promise<ParsedPriceList> {
   const name = file.name.toLowerCase()
   let grids: Grid[]
+  /** The sheets hidden in Excel (not read; reported). */
+  let hidden = new Set<Grid>()
   let format: ParsedPriceList['format']
   try {
     if (name.endsWith('.pdf') || file.type === 'application/pdf') {
@@ -840,17 +1193,17 @@ export async function readPriceListFile(file: File): Promise<ParsedPriceList> {
       const ExcelJS = (await import('exceljs')).default
       const wb = new ExcelJS.Workbook()
       await wb.xlsx.load(await file.arrayBuffer())
-      grids = wb.worksheets
-        .filter((ws) => ws.state === 'visible')
-        .map((ws) => {
-          const rows: Grid['rows'] = []
-          ws.eachRow({ includeEmpty: false }, (r, n) => {
-            // exceljs rows are 1-based (index 0 is empty)
-            const v = r.values
-            rows.push({ n, cells: Array.isArray(v) ? v.slice(1) : [] })
-          })
-          return { name: ws.name, rows }
+      const sheets = wb.worksheets.map((ws) => {
+        const rows: Grid['rows'] = []
+        ws.eachRow({ includeEmpty: false }, (r, n) => {
+          // exceljs rows are 1-based (index 0 is empty)
+          const v = r.values
+          rows.push({ n, cells: Array.isArray(v) ? v.slice(1) : [] })
         })
+        return { grid: { name: ws.name, rows } as Grid, visible: ws.state === 'visible' }
+      })
+      grids = sheets.map((s) => s.grid)
+      hidden = new Set(sheets.filter((s) => !s.visible).map((s) => s.grid))
     } else {
       throw new PriceListFileError('type')
     }
@@ -858,10 +1211,25 @@ export async function readPriceListFile(file: File): Promise<ParsedPriceList> {
     if (e instanceof PriceListFileError) throw e
     throw new PriceListFileError('unreadable')
   }
-  const parts = grids.map((g) => readGrid(g)).filter((p): p is NonNullable<typeof p> => !!p)
+  // every sheet in the file's order: read, hidden in Excel (not read), or without a table
+  const parts: NonNullable<ReturnType<typeof readGrid>>[] = []
+  const sheets: SheetReport[] = []
+  for (const g of grids) {
+    if (hidden.has(g)) {
+      sheets.push(notRead(g, 'hidden'))
+      continue
+    }
+    const part = readGrid(g)
+    if (!part) {
+      sheets.push(notRead(g, 'noTable'))
+      continue
+    }
+    parts.push(part)
+    sheets.push(...part.sheets)
+  }
   if (parts.length === 0) throw new PriceListFileError('noHeader')
   const merged = mergeParts(parts, format)
   if (merged.lines.length === 0) throw new PriceListFileError('empty')
   // "Final Tariff Tables - Private FEB2026.xlsx": the month the file name says
-  return { ...merged, from: merged.from ?? monthIn(file.name) }
+  return { ...merged, sheets, from: merged.from ?? monthIn(file.name) }
 }

@@ -23059,6 +23059,211 @@ await step(
   },
 )
 // @@t135-end
+// @@t136-begin
+// ---------------------------------------------------------------- 0136 take a list away completely
+const t136 = {}
+const json136 = (x) => JSON.stringify(x)
+await step('0136: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270116090000_remove_price_lists.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+t136.cols = [
+  { key: 'rama_mmi', label: 'RAMA; MMI' },
+  { key: 'privates', label: 'Privates (Non insured)' },
+]
+t136.lines = [
+  {
+    row: 1,
+    code: 'RHIC-X136-001',
+    name: 'Wound dressing 136',
+    section: 'Nursing',
+    prices: { rama_mmi: 3000, privates: 2000 },
+  },
+  {
+    row: 2,
+    code: 'RHIC-X136-002',
+    name: 'Suture 136',
+    section: 'Minor Surgery',
+    prices: { rama_mmi: 9000, privates: 8000 },
+  },
+  {
+    row: 3,
+    code: 'RHIC-X136-003',
+    name: 'Injection 136',
+    section: 'Nursing',
+    prices: { rama_mmi: 1000, privates: 900 },
+  },
+]
+const upload136 = async (bookId) => {
+  await as(staff.manager)
+  const p = (
+    await one(
+      `select import_tariff($1, $2::jsonb, 'MoH 136', current_date, $3::jsonb, $4::jsonb, null, null, null, false) as j`,
+      [
+        bookId,
+        bookId
+          ? null
+          : json136({
+              name: 'MoH clinic tariff 136',
+              publisher: 'Ministry of Health',
+              kind: 'treatments',
+              scope: 'clinic',
+              privateColumn: 'privates',
+            }),
+        json136(t136.cols),
+        json136(t136.lines),
+      ],
+    )
+  ).j
+  await asAdmin()
+  return p
+}
+const svc136 = (code) =>
+  one(
+    `select s.id, s.code, s.active, s.deleted_at, s.list_book_id from service s
+     where s.tariff_code = $1 order by s.created_at limit 1`,
+    [code],
+  )
+await step(
+  '0136 A: a Ministry list for the whole clinic makes its treatments; the clinic’s own treatment with a line’s code takes the list’s price',
+  async () => {
+    await asAdmin()
+    t136.own = (
+      await one(
+        `insert into service (code, name_en, service_group, tariff_code) values ('OWN-136', 'Own injection 136', 'nursing', 'RHIC-X136-003') returning id`,
+      )
+    ).id
+    const p = await upload136(null)
+    t136.book = p.bookId
+    t136.s1 = (await svc136('RHIC-X136-001'))?.id
+    t136.s2 = (await svc136('RHIC-X136-002'))?.id
+    const own = await one(`select cash_price, own_price from catalogue_services where id = $1`, [
+      t136.own,
+    ])
+    if (
+      p.clinic.created !== 2 ||
+      !t136.s1 ||
+      !t136.s2 ||
+      Number(own.cash_price) !== 900 ||
+      own.own_price !== null
+    )
+      throw new Error(json136({ p: p.clinic, own }))
+    return '2 treatments made · Own injection 136 pays the list’s 900'
+  },
+)
+await step(
+  '0136 B: the list taken away — its insurer stops following it, its exceptions and treatments go (the used one hidden), the clinic’s own treatment keeps 900 as its own price',
+  async () => {
+    await asAdmin()
+    // the suture was used: a nurse's order
+    await db.query(
+      `insert into nurse_order (encounter_id, patient_id, kind, text, service_id)
+       select e.id, e.patient_id, 'act', 'Suture 136', $1 from encounter e order by e.created_at limit 1`,
+      [t136.s2],
+    )
+    await as(staff.manager)
+    await db.query(`select set_payer_tariff($1, $2, 'rama_mmi')`, [t134.eden, t136.book])
+    await db.query(
+      `select save_tariff_exception($1, 'RHIC-X136-001', 'not_covered', null, null, $2)`,
+      [t134.eden, t136.book],
+    )
+    const r = (await one(`select remove_tariff_book($1) as j`, [t136.book])).j
+    await asAdmin()
+    const s1 = await one(`select active, deleted_at from service where id = $1`, [t136.s1])
+    const s2 = await one(`select active, deleted_at from service where id = $1`, [t136.s2])
+    const own = await one(`select cash_price, own_price from catalogue_services where id = $1`, [
+      t136.own,
+    ])
+    const left = await one(
+      `select (select count(*) from payer_tariff where book_id = $1)::int as follows,
+              (select count(*) from tariff_exception where book_id = $1)::int as ex,
+              (select deleted_at is not null from tariff_book where id = $1) as gone`,
+      [t136.book],
+    )
+    if (
+      r.deleted !== 1 ||
+      r.hidden !== 1 ||
+      r.kept !== 1 ||
+      r.exceptions !== 1 ||
+      !r.followers.includes('Eden Care 134') ||
+      !s1.deleted_at ||
+      s1.active ||
+      s2.deleted_at ||
+      s2.active ||
+      Number(own.cash_price) !== 900 ||
+      Number(own.own_price) !== 900 ||
+      left.follows !== 0 ||
+      left.ex !== 0 ||
+      !left.gone
+    )
+      throw new Error(json136({ r, s1, s2, own, left }))
+    return '1 deleted · 1 hidden (used) · Eden Care stops · 1 exception gone · own 900 kept'
+  },
+)
+await step('0136 C: a cashier may not take a list away', async () => {
+  await asAdmin()
+  const other = (
+    await one(`select id from tariff_book where deleted_at is null order by created_at limit 1`)
+  ).id
+  const r = await hintAs(staff.cashier, `select remove_tariff_book($1)`, [other])
+  if (r !== '42501/') throw new Error(r)
+  return 'refused (42501)'
+})
+await step(
+  '0136 D: uploaded again — the deleted treatment comes back (same code), the hidden one is taken over and shown, the clinic’s own one is not copied',
+  async () => {
+    const p = await upload136(null)
+    t136.book2 = p.bookId
+    const s1 = await one(
+      `select code, active, deleted_at, list_book_id from service where id = $1`,
+      [t136.s1],
+    )
+    const s2 = await one(`select active, deleted_at, list_book_id from service where id = $1`, [
+      t136.s2,
+    ])
+    const copies = (
+      await one(
+        `select count(*)::int as n from service where tariff_code like 'RHIC-X136-%' and deleted_at is null`,
+      )
+    ).n
+    if (
+      p.clinic.created !== 1 ||
+      s1.deleted_at ||
+      !s1.active ||
+      s1.code !== 'RHIC-X136-001' ||
+      s1.list_book_id !== t136.book2 ||
+      s2.deleted_at ||
+      !s2.active ||
+      s2.list_book_id !== t136.book2 ||
+      copies !== 3
+    )
+      throw new Error(json136({ created: p.clinic.created, s1, s2, copies }))
+    return 'Wound dressing back as RHIC-X136-001 · Suture shown again · 3 treatments, no copy'
+  },
+)
+await step(
+  '0136 E: a treatment the clinic deleted itself is not made again by a new version of its list',
+  async () => {
+    await asAdmin()
+    await db.query(`update service set deleted_at = now(), active = false where id = $1`, [t136.s1])
+    const p = await upload136(t136.book2)
+    const n = (
+      await one(
+        `select count(*)::int as n from service where tariff_code = 'RHIC-X136-001' and deleted_at is null`,
+      )
+    ).n
+    if (p.clinic.created !== 0 || n !== 0)
+      throw new Error(json136({ created: p.clinic.created, n }))
+    return 'not made again'
+  },
+)
+// @@t136-end
 finish()
 
 function finish() {

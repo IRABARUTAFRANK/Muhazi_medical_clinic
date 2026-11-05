@@ -13,7 +13,8 @@ import { apiError, isMissingFunction } from './errors'
  * covered, covered with the insurer's approval, its own price, a note).
  * Live: `tariff_books`, `import_tariff` (dry run = the check), `tariff_lines`, `save_tariff_line`,
  * `remove_tariff_line`, `set_payer_tariff`, `save_tariff_exception`, `link_tariff_service`,
- * `save_tariff_book`. Sample: in memory.
+ * `save_tariff_book`, `remove_tariff_book` (0136: a list taken away with what it made). Sample: in
+ * memory.
  */
 
 export type ListKind = 'treatments' | 'medicines'
@@ -831,6 +832,23 @@ export function usePriceListImport() {
 }
 
 // ---------------------------------------------------------------- changes by hand
+/** What taking a list away did (remove_tariff_book). */
+export interface BookRemoved {
+  name: string
+  /** The insurers that stopped following it. */
+  followers: string[]
+  exceptions: number
+  links: number
+  /** Treatments made from it, never used: deleted. */
+  deleted: number
+  /** Treatments made from it, already used: hidden. */
+  hidden: number
+  /** The clinic's own prices of those treatments that went. */
+  ownPrices: number
+  /** The clinic's own treatments / medicines it priced: today's price kept as their own. */
+  kept: number
+}
+
 export interface SaveLineInput {
   versionId: string
   code: string
@@ -1013,6 +1031,35 @@ export function usePriceListActions() {
     },
     onSuccess: done,
   })
+  /**
+   * The list goes completely (0136): its insurers stop following it, its exceptions and links go,
+   * the treatments it made are deleted (hidden when already used), the clinic's own treatments it
+   * priced keep today's price as their own.
+   */
+  const removeBook = useMutation({
+    mutationFn: async (bookId: string): Promise<BookRemoved> => {
+      if (!supabase) {
+        const b = sampleBooks.find((x) => x.id === bookId)
+        if (!b) throw new Error(i18n.t('apiErrors.notFound'))
+        sampleBooks.splice(sampleBooks.indexOf(b), 1)
+        return {
+          name: b.name,
+          followers: b.followers.map((f) => f.payer),
+          exceptions: 0,
+          links: 0,
+          deleted: b.kind === 'treatments' ? b.linked : 0,
+          hidden: 0,
+          ownPrices: 0,
+          kept: 0,
+        }
+      }
+      const { data, error } = await supabase.rpc('remove_tariff_book', { p_id: bookId })
+      if (error && isMissingFunction(error)) throw notReady()
+      if (error) throw apiError(error)
+      return data as BookRemoved
+    },
+    onSuccess: done,
+  })
   /** The clinic's own prices of those treatments / medicines go: the list's price applies (all: null). */
   const applyListPrices = useMutation({
     mutationFn: async (i: { bookId: string; ids: string[] | null }): Promise<number> => {
@@ -1083,6 +1130,7 @@ export function usePriceListActions() {
     follow,
     saveException,
     saveBook,
+    removeBook,
     applyListPrices,
     linkLine,
     saveSettings,

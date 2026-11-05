@@ -2025,13 +2025,19 @@
         "values": "Valeurs",
         "readAs": "Lue comme",
         "readAsOf": "Lire « {{column}} » comme",
-        "nothing": "Aucune ligne ne peut être lue avec ces colonnes : il faut un nom et un prix."
+        "nothing": "Aucune ligne ne peut être lue avec ces colonnes : il faut un nom et un prix.",
+        "leftOut": "Ignorées :",
+        "why": {
+          "foreign": "prix pour les étrangers : la clinique facture des Rwandais.",
+          "otherFacility": "prix d’autres types d’établissement : Muhazi est une clinique générale.",
+          "both": "prix pour les étrangers et pour d’autres types d’établissement : la clinique facture des Rwandais et est une clinique générale."
+        }
       },
       "settingsTitle": "Réglages : {{name}}",
       "saveSettings": "Enregistrer les réglages",
       "settingsSaved": "{{name}} : les réglages sont enregistrés.",
       "orderHint": "Quand deux listes du Ministère ont la même ligne, celle au plus petit numéro donne son prix.",
-      "deleteHint": "Une liste qu’aucun assureur ne suit peut être retirée. Les soins de la clinique faits à partir d’elle restent.",
+      "deleteHint": "Retirer la liste enlève ses lignes, son usage par les assureurs et les soins faits à partir d’elle.",
       "delete": "Retirer la liste",
       "deleteQ": "Retirer {{name}} ?",
       "deleteBody": "Ses prix ne s’appliquent plus. Ses versions restent dans l’historique.",
@@ -2066,7 +2072,108 @@
       "clinicOwn": "prix de la clinique {{price}}",
       "followsList": "prix de la liste",
       "useList": "Prendre le prix de la liste",
-      "useListOne": "{{name}} suit à nouveau la liste ({{price}})."
+      "useListOne": "{{name}} suit à nouveau la liste ({{price}}).",
+      "drop": {
+        "button": "Retirer la liste",
+        "q": "Retirer complètement « {{name}} » ?",
+        "body": {
+          "treatments": "Ses lignes disparaissent, les exceptions des assureurs écrites pour elle aussi, et les soins faits à partir d’elle sont supprimés (ceux déjà sur une facture sont masqués ; les factures restent telles quelles). Les soins propres de la clinique qu’elle tarifait gardent le prix d’aujourd’hui comme prix de la clinique.",
+          "medicines": "Ses lignes disparaissent, ainsi que les exceptions des assureurs écrites pour elle. Les médicaments de la clinique et leur stock restent ; ceux qu’elle tarifait gardent le prix d’aujourd’hui comme prix de la clinique."
+        },
+        "followers": "Ces assureurs cessent de la suivre : {{names}}.",
+        "again": "Vous pourrez téléverser une liste à nouveau ensuite.",
+        "yes": "Retirer la liste",
+        "done": "« {{name}} » est retirée.",
+        "deleted_one": "{{count}} soin fait à partir d’elle est supprimé.",
+        "deleted_other": "{{count}} soins faits à partir d’elle sont supprimés.",
+        "hidden_one": "{{count}} déjà sur une facture est masqué.",
+        "hidden_other": "{{count}} déjà sur des factures sont masqués.",
+        "stopped": "Assureurs qui ont cessé de la suivre : {{names}}.",
+        "kept": {
+          "treatments_one": "{{count}} soin de la clinique garde le prix d’aujourd’hui comme le sien.",
+          "treatments_other": "{{count}} soins de la clinique gardent le prix d’aujourd’hui comme le leur.",
+          "medicines_one": "{{count}} médicament de la clinique garde le prix d’aujourd’hui comme le sien.",
+          "medicines_other": "{{count}} médicaments de la clinique gardent le prix d’aujourd’hui comme le leur."
+        }
+      },
+      "fc": {
+        "title": "Comparé au fichier",
+        "linesRead_one": "{{n}} ligne lue",
+        "linesRead_other": "{{n}} lignes lues",
+        "notLines_one": "{{count}} rangée n’est pas une ligne",
+        "notLines_other": "{{count}} rangées ne sont pas des lignes",
+        "sheetsNotRead_one": "{{count}} feuille non lue",
+        "sheetsNotRead_other": "{{count}} feuilles non lues",
+        "columnsLeftOut_one": "{{count}} colonne de prix ignorée",
+        "columnsLeftOut_other": "{{count}} colonnes de prix ignorées",
+        "toLook_one": "{{count}} ligne à regarder",
+        "toLook_other": "{{count}} lignes à regarder",
+        "nothingToLook": "Rien à signaler",
+        "open": "Comparer avec le fichier",
+        "close": "Fermer la comparaison",
+        "lead": "Tout ce qui a été lu dans le fichier, dans l’ordre du fichier, à comparer avec le fichier ouvert dans Excel. Les prix sont arrondis au franc, comme Excel les affiche.",
+        "sheets": "Feuilles",
+        "theFile": "Le fichier",
+        "sheetRead_one": "{{n}} ligne lue (noms des colonnes à la rangée {{row}})",
+        "sheetRead_other": "{{n}} lignes lues (noms des colonnes à la rangée {{row}})",
+        "rowsBelow_one": "{{n}} rangée écrite sous les noms des colonnes",
+        "rowsBelow_other": "{{n}} rangées écrites sous les noms des colonnes",
+        "rowsIn_one": "{{n}} rangée écrite",
+        "rowsIn_other": "{{n}} rangées écrites",
+        "state": {
+          "hidden": "Masquée dans Excel : non lue",
+          "noTable": "Aucun nom de colonne trouvé : non lue"
+        },
+        "columns": "Colonnes de prix",
+        "column": "Colonne",
+        "usedFor": "Payée par",
+        "priced": "Avec un prix",
+        "empty": "Vide",
+        "notNumber": "Pas un nombre",
+        "zero": "Prix 0",
+        "notUsed": "Personne encore (gardée sur la liste)",
+        "privatePatients": "Patients privés",
+        "leftOut": {
+          "foreign": "Ignorée : prix pour les étrangers. La clinique facture des Rwandais.",
+          "otherFacility": "Ignorée : prix d’un autre type d’établissement. Muhazi est une clinique générale."
+        },
+        "lines": "Lignes ({{n}})",
+        "filter": {
+          "all_one": "Toutes ({{n}})",
+          "all_other": "Toutes ({{n}})",
+          "noMain_one": "Sans prix pour {{who}} ({{n}})",
+          "noMain_other": "Sans prix pour {{who}} ({{n}})",
+          "notNumber_one": "Pas un nombre ({{n}})",
+          "notNumber_other": "Pas un nombre ({{n}})",
+          "zero_one": "Prix 0 ({{n}})",
+          "zero_other": "Prix 0 ({{n}})",
+          "duplicate_one": "Même code deux fois ({{n}})",
+          "duplicate_other": "Même code deux fois ({{n}})"
+        },
+        "search": "Chercher un code ou un nom",
+        "noMatch": "Aucune ligne ne correspond.",
+        "more_one": "Afficher {{count}} de plus ({{left}} restantes)",
+        "more_other": "Afficher {{count}} de plus ({{left}} restantes)",
+        "skippedTitle_one": "{{count}} rangée qui n’est pas une ligne",
+        "skippedTitle_other": "{{count}} rangées qui ne sont pas des lignes",
+        "why": {
+          "heading": "Titre de rubrique",
+          "note": "Remarque",
+          "header": "Noms des colonnes répétés",
+          "noName": "Ni code ni nom"
+        },
+        "codeRow": "Code · rangée",
+        "nameSection": "Nom · rubrique"
+      },
+      "pay": {
+        "title": "La colonne que paie chaque assureur",
+        "hint": "Devinée d’après les noms des colonnes : RSSB (RAMA) et MMI paient « RAMA; MMI », les assureurs privés paient « Private Insurances ». Un assureur qui a son propre tarif n’utilise pas cette liste sauf si vous choisissez une colonne. Vous pourrez le changer plus tard dans Assureurs.",
+        "none": "N’utilise pas cette liste",
+        "ownList": "{{name}} (a son propre tarif)",
+        "done_one": "{{names}} la suit désormais.",
+        "done_other": "{{names}} la suivent désormais.",
+        "failed": "Non réglé, faites-le dans Assureurs : {{names}}."
+      }
     },
     "listPrice": {
       "follows": "Prix du MoH",

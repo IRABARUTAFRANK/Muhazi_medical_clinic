@@ -36,6 +36,8 @@ export function ColumnsCheck({
   const [headerRow, setHeaderRow] = useState(String(parsed.headerRow))
   const [error, setError] = useState<string | null>(null)
   const roles = parsed.layout.filter((c) => c.role !== 'price' && c.role !== 'ignore')
+  /** The price columns left out by themselves (foreigners, another kind of facility). */
+  const leftOut = parsed.layout.filter((c) => c.leftOut)
 
   const reread = (header: number, changed?: { index: number; role: ColumnRole }) => {
     const map: Record<number, ColumnRole> = {}
@@ -94,6 +96,21 @@ export function ColumnsCheck({
           </Badge>
         ))}
       </span>
+      {leftOut.length > 0 && (
+        <span className="flex flex-wrap items-center gap-1">
+          <span className="text-ink-2">{t('prices.lists.cols.leftOut')}</span>
+          {leftOut.map((c) => (
+            <Badge key={c.index} tone="grey" title={t(`prices.lists.fc.leftOut.${c.leftOut!}`)}>
+              {c.label}
+            </Badge>
+          ))}
+          <span className="text-ink-3">
+            {t(
+              `prices.lists.cols.why.${leftOut.some((c) => c.leftOut === 'foreign') ? (leftOut.some((c) => c.leftOut === 'otherFacility') ? 'both' : 'foreign') : 'otherFacility'}`,
+            )}
+          </span>
+        </span>
+      )}
       {parsed.notes.length > 0 && (
         <span className="text-ink-2">
           {t('prices.lists.fileNotes')}{' '}
@@ -175,6 +192,11 @@ export function ColumnsCheck({
                           </option>
                         ))}
                       </select>
+                      {c.leftOut && (
+                        <span className="text-ink-3 mt-0.5 block text-[12px]">
+                          {t(`prices.lists.fc.leftOut.${c.leftOut}`)}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
