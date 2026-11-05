@@ -2556,7 +2556,7 @@
     },
     "lists": {
       "title": "Intonde z’ibiciro zisohorwa (MoH, RSSB, ibigo by’ubwishingizi)",
-      "lead": "Ibiciro Minisiteri y’Ubuzima, RSSB / RHIA n’ibigo by’ubwishingizi bisohora: urutonde rumwe rwa serivisi, urundi rw’imiti n’ibikoresho. Shyiraho buri verisiyo nshya; izabanje zirabikwa. Hitamo ibigo by’ubwishingizi bikurikiza urutonde n’inkingi y’ibiciro buri kimwe cyishyura, kandi wandike ibidasanzwe bya buri kigo (ntibyishingirwa, byishingirwa gusa iyo cyabyemeye, igiciro cyacyo bwite). Ibiciro by’ivuriro ubwaryo ntibihinduka.",
+      "lead": "Ibiciro bisohorwa na Minisiteri y’Ubuzima n’ibigo by’ubwishingizi, mu bice bibiri: serivisi, n’imiti n’ibikoresho. Urutonde rwa Minisiteri rukoreshwa mu ivuriro ryose: abarwayi batagira ubwishingizi bishyura igiciro cyarwo keretse ivuriro rishyizeho icyaryo, kandi serivisi zarwo zijya mu z’ivuriro. Urutonde rw’ikigo cy’ubwishingizi ni rwo icyo kigo cyishyura, hamwe n’ibidasanzwe byacyo. Buri verisiyo nshya irashyirwaho ikagenzurwa; izabanje zirabikwa.",
       "none": "Nta rutonde ruraboneka. Shyiraho urwa mbere hepfo.",
       "kinds": {
         "treatments": "Serivisi",
@@ -2609,7 +2609,8 @@
         "unit": "Igipimo",
         "note": "Amabwiriza",
         "number": "Nimero y’umurongo",
-        "price": "Igiciro"
+        "price": "Igiciro",
+        "ignore": "Isizwe"
       },
       "priceColumns_one": "Inkingi {{count}} y’ibiciro:",
       "priceColumns_other": "Inkingi {{count}} z’ibiciro:",
@@ -2792,7 +2793,136 @@
       "followSaved": "{{payer}} gikurikiza {{list}} kandi cyishyura inkingi yarwo “{{column}}”.",
       "followStopped": "{{payer}} ntikigikurikiza {{list}}.",
       "readPdf_one": "Umurongo {{n}} wasomwe muri PDF {{file}}",
-      "readPdf_other": "Imirongo {{n}} yasomwe muri PDF {{file}}"
+      "readPdf_other": "Imirongo {{n}} yasomwe muri PDF {{file}}",
+      "tabLabel": "Intonde za",
+      "tabTreatments_one": "Serivisi (urutonde {{count}})",
+      "tabTreatments_other": "Serivisi (intonde {{count}})",
+      "tabMedicines_one": "Imiti n’ibikoresho (urutonde {{count}})",
+      "tabMedicines_other": "Imiti n’ibikoresho (intonde {{count}})",
+      "tabHint": {
+        "treatments": "Ibiciro bya serivisi, ibikorwa n’ibizamini. Urutonde rwa Minisiteri rw’ivuriro ryose rugira buri murongo serivisi y’ivuriro.",
+        "medicines": "Ibiciro by’imiti n’ibikoresho. Bigena igiciro cy’imiti y’ivuriro hakurikijwe kode yayo."
+      },
+      "noneOf": {
+        "treatments": "Nta rutonde rwa serivisi ruraboneka. Shyiraho urwa mbere hepfo.",
+        "medicines": "Nta rutonde rw’imiti ruraboneka. Shyiraho urwa mbere hepfo."
+      },
+      "scopeTitle": {
+        "clinic": "Minisiteri y’Ubuzima — ivuriro ryose",
+        "insurer": "Intonde z’ibigo by’ubwishingizi",
+        "reference": "Abandi basohora intonde"
+      },
+      "uploadOf": {
+        "treatments": "Shyiraho urutonde rwa serivisi",
+        "medicines": "Shyiraho urutonde rw’imiti n’ibikoresho"
+      },
+      "looksLike": {
+        "treatments": "Iyi nyandiko isa n’urutonde rwa serivisi: yishyireho ahanditse Serivisi.",
+        "medicines": "Iyi nyandiko isa n’urutonde rw’imiti: yishyireho ahanditse Imiti n’ibikoresho."
+      },
+      "whose": "Ni urutonde rwa nde?",
+      "scope": {
+        "clinic": "Minisiteri y’Ubuzima — ivuriro ryose",
+        "insurer": "Ibiciro by’ikigo cy’ubwishingizi",
+        "reference": "Undi muntu urusohora"
+      },
+      "scopeOf": "Ibiciro bya {{payer}}",
+      "scopeHint": {
+        "clinic": {
+          "treatments": "Ikoreshwa mu ivuriro ryose: abarwayi batagira ubwishingizi bishyura igiciro cyarwo, kandi buri murongo uba serivisi y’ivuriro. Ivuriro rishobora gushyiraho igiciro cyaryo kuri buri imwe.",
+          "medicines": "Ikoreshwa mu ivuriro ryose: abarwayi batagira ubwishingizi bishyura igiciro cyarwo ku miti y’ivuriro ifite kode imwe, keretse ivuriro rishyizeho icyaryo."
+        },
+        "insurer": {
+          "treatments": "Ibiciro byemewe bya serivisi by’ikigo cy’ubwishingizi: abarwayi bacyo bishyuzwa ibi biciro kandi umugabane wacyo ubarirwa kuri byo. Amabwiriza nka “ntibyishingirwa” aba ibidasanzwe byacyo.",
+          "medicines": "Ibiciro byemewe by’imiti n’ibikoresho by’ikigo cy’ubwishingizi: abarwayi bacyo bishyuzwa ibi biciro kandi umugabane wacyo ubarirwa kuri byo."
+        },
+        "reference": {
+          "treatments": "Urutonde rwasohowe n’abandi (RSSB, RHIA…): ibigo by’ubwishingizi bihitamo kurukurikiza ahanditse Ibigo by’ubwishingizi.",
+          "medicines": "Urutonde rwasohowe n’abandi (RSSB, RHIA…): ibigo by’ubwishingizi bihitamo kurukurikiza ahanditse Ibigo by’ubwishingizi."
+        }
+      },
+      "insurer": "Ikigo cy’ubwishingizi",
+      "pickInsurer": "Hitamo ikigo cy’ubwishingizi",
+      "privateColumn": "Abarwayi batagira ubwishingizi bishyura inkingi",
+      "payerColumn": "Inkingi {{payer}} cyishyura",
+      "needInsurer": "Hitamo ikigo cy’ubwishingizi uru rutonde ari urwacyo.",
+      "needPrivate": "Hitamo inkingi abarwayi batagira ubwishingizi bishyura.",
+      "confirmCreate_one": "Umurongo {{count}} uba serivisi nshya y’ivuriro.",
+      "confirmCreate_other": "Imirongo {{count}} iba serivisi nshya z’ivuriro.",
+      "doneCreated_one": "Serivisi nshya {{count}} y’ivuriro.",
+      "doneCreated_other": "Serivisi nshya {{count}} z’ivuriro.",
+      "privatePays": "Abatagira ubwishingizi bishyura: {{column}}",
+      "orderN": "umwanya {{n}}",
+      "ownPricedN_one": "{{count}} ku giciro cy’ivuriro ubwaryo",
+      "ownPricedN_other": "{{count}} ku biciro by’ivuriro ubwaryo",
+      "useListAll": "Koresha igiciro cy’urutonde kuri byose",
+      "useListAllQ_one": "Ukoreshe igiciro cya {{list}} ku murongo {{count}}?",
+      "useListAllQ_other": "Ukoreshe ibiciro bya {{list}} ku mirongo {{count}}?",
+      "useListAllBody": "Ibiciro by’ivuriro kuri izi serivisi cyangwa iyi miti bivaho: abarwayi batagira ubwishingizi bishyura igiciro cy’urutonde, kandi verisiyo nshya y’urutonde irakihindura.",
+      "useListAllYes": "Yego, koresha igiciro cy’urutonde",
+      "useListDone_one": "Igiciro {{count}} cyongeye gukurikiza {{list}}.",
+      "useListDone_other": "Ibiciro {{count}} byongeye gukurikiza {{list}}.",
+      "settings": "Igenamiterere",
+      "cols": {
+        "open": "Kosora inkingi",
+        "close": "Funga inkingi",
+        "lead": "Buri nkingi y’inyandiko n’icyo isomwa nka cyo. Hindura imwe niba inyandiko ifite indi miterere: ihita yongera gusomwa.",
+        "headerRow": "Umurongo w’amazina y’inkingi",
+        "readAgain": "Ongera usome uhereye kuri uyu murongo",
+        "column": "Inkingi",
+        "values": "Ibirimo",
+        "readAs": "Isomwa nka",
+        "readAsOf": "Soma “{{column}}” nka",
+        "nothing": "Nta murongo ushobora gusomwa n’izi nkingi: hakenewe izina n’igiciro."
+      },
+      "settingsTitle": "Igenamiterere: {{name}}",
+      "saveSettings": "Bika igenamiterere",
+      "settingsSaved": "{{name}}: igenamiterere ryabitswe.",
+      "orderHint": "Iyo intonde ebyiri za Minisiteri zifite umurongo umwe, ifite nimero ntoya ni yo itanga igiciro cyayo.",
+      "deleteHint": "Urutonde nta kigo cy’ubwishingizi gikurikiza rushobora gukurwaho. Serivisi z’ivuriro zakomotse kuri rwo zigumaho.",
+      "delete": "Kuraho urutonde",
+      "deleteQ": "Ukureho {{name}}?",
+      "deleteBody": "Ibiciro byarwo ntibikoreshwa ukundi. Verisiyo zarwo zigumishwa mu mateka.",
+      "deleteYes": "Yego, rukureho",
+      "deleted": "{{name}} rwakuweho.",
+      "toCreateTitle_one": "Serivisi nshya {{count}} y’ivuriro",
+      "toCreateTitle_other": "Serivisi nshya {{count}} z’ivuriro",
+      "toCreateHint": "Imirongo itaraba muri serivisi z’ivuriro iba serivisi, mu cyiciro cy’igice cyayo; igiciro cyayo ni icy’urutonde kugeza ivuriro rishyizeho icyaryo.",
+      "toCreateNone": "Buri murongo usanzwe ari serivisi y’ivuriro.",
+      "ownPricesTitle_one": "Igiciro {{count}} cy’ivuriro gitandukanye n’urutonde",
+      "ownPricesTitle_other": "Ibiciro {{count}} by’ivuriro bitandukanye n’urutonde",
+      "ownPricesHint": "Igiciro cy’ivuriro kigumishwa. Umaze kubika urutonde, “Koresha igiciro cy’urutonde” bituma bikurikiza urutonde.",
+      "ownVsList": "ivuriro {{own}} · urutonde {{list}}",
+      "insurerOwnTitle": "{{payer}} cyishyura uru rutonde",
+      "insurerOwnHint": "Rukimara kubikwa, {{payer}} cyishyura inkingi “{{column}}”, mbere y’urundi rutonde urwo ari rwo rwose; umugabane wacyo ubarirwa kuri ibi biciro.",
+      "namesTitle": "Imirongo idafite kode",
+      "namesHint": "{{list}} zabonetse ku izina ku rutonde rwa Minisiteri · {{clinic}} zabonetse mu by’ivuriro · {{none}} zitabonetse: zihabwa kode yazo — zihuze n’intoki ahanditse Reba imirongo.",
+      "linkLine": "Huza n’iby’ivuriro",
+      "linkTitle": "Huza {{name}} ({{code}})",
+      "linkHint": {
+        "clinic": "Serivisi ihabwa kode y’umurongo: igiciro cyayo kiva kuri uru rutonde ku barwayi batagira ubwishingizi.",
+        "insurer": "Ikigo cy’ubwishingizi cyishyura igiciro cy’uyu murongo kuri iyo serivisi cyangwa uwo muti.",
+        "reference": "Ibigo by’ubwishingizi bikurikiza uru rutonde byishyura igiciro cy’uyu murongo kuri iyo serivisi cyangwa uwo muti."
+      },
+      "linkTreatment": "Serivisi y’ivuriro",
+      "linkMedicine": "Umuti w’ivuriro",
+      "pickClinic": "Hitamo kimwe",
+      "linkSave": "Huza",
+      "linked": "{{line}} yahujwe na {{name}}.",
+      "unlink": "Kuraho isano",
+      "unlinked": "{{name}} ntikigihujwe n’uyu murongo.",
+      "clinicOwn": "igiciro cy’ivuriro {{price}}",
+      "followsList": "igiciro cy’urutonde",
+      "useList": "Koresha igiciro cy’urutonde",
+      "useListOne": "{{name}} yongeye gukurikiza urutonde ({{price}})."
+    },
+    "listPrice": {
+      "follows": "Igiciro cya MoH",
+      "own": "Igiciro cy’ivuriro · MoH {{price}}",
+      "line": "Igiciro cy’urutonde rwa Minisiteri: {{price}} ({{list}}).",
+      "followsNow": "Iki giciro gikurikiza urutonde.",
+      "ownNow": "Igiciro kiri hejuru ni icy’ivuriro ubwaryo.",
+      "use": "Koresha igiciro cy’urutonde"
     }
   },
   "desk": {
@@ -8013,7 +8143,12 @@
     "803dfaa3": "Ha umurongo kode.",
     "cf508f19": "Ha umurongo izina.",
     "0efaaf29": "Urutonde rw’ibiciro ntirwabonetse.",
-    "46dcf294": "Umurongo ntiwabonetse."
+    "46dcf294": "Umurongo ntiwabonetse.",
+    "920d2292": "Hitamo inkingi abarwayi batagira ubwishingizi bishyura.",
+    "4ec0850d": "Umwanya ni umubare uri hagati ya 0 na 9999.",
+    "1d8baa49": "Hitamo ikigo cy’ubwishingizi uru rutonde ari urwacyo.",
+    "36d7a9d8": "Hitamo inkingi y’ibiciro by’ikigo cy’ubwishingizi.",
+    "083acf5a": "Vuga uwo urutonde ari urwe."
   },
   "panel": {
     "close": "Funga",

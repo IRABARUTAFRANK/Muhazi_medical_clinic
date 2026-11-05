@@ -282,6 +282,14 @@ export interface Treatment {
   /** Every department that gives this treatment (empty = none yet). */
   departmentIds: string[]
   departmentNames: string[]
+  /** 0135: its code on the published lists (the Ministry's RHIC code). */
+  tariffCode?: string | null
+  /** 0135: the price the clinic-wide list (Ministry of Health) gives a private patient. */
+  listPrice?: number | null
+  /** 0135: the clinic's own price (null: it follows the list). */
+  ownPrice?: number | null
+  /** 0135: the clinic-wide list that prices it. */
+  listName?: string | null
 }
 
 export interface TreatmentInput {
@@ -294,7 +302,8 @@ export interface TreatmentInput {
   /** The category chosen (its group is passed as `group`). */
   categoryId?: string
   bookingCategory?: CategoryId | null
-  cashPrice: number
+  /** null: no price of the clinic's own — it takes the clinic-wide list's price (0135). */
+  cashPrice: number | null
   maxDiscountPct: number
   allowManualPrice: boolean
   active: boolean
@@ -577,6 +586,27 @@ interface ServiceRow {
   department_names?: string[] | null
   category_id?: string | null
   order_station?: string | null
+  tariff_code?: string | null
+  list_price?: number | string | null
+  own_price?: number | string | null
+  list_name?: string | null
+}
+
+/** A number column of a view, or null. */
+const num = (v: number | string | null | undefined) => (v == null ? null : Number(v))
+
+/** Every row of a catalogue view: PostgREST answers 1,000 rows at most, so it is read by pages. */
+async function allRows<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>,
+) {
+  const rows: T[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await page(from, from + 999)
+    if (error) throw apiError(error as Parameters<typeof apiError>[0])
+    const got = (data ?? []) as T[]
+    rows.push(...got)
+    if (got.length < 1000) return rows
+  }
 }
 
 const TREATMENTS = ['catalogue', 'treatments'] as const
@@ -589,15 +619,19 @@ export function useTreatments(onlyActive = false) {
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<Treatment[]> => {
       if (!supabase) return sampleTreatments.filter((t) => !onlyActive || t.active)
-      let q = supabase
-        .from('catalogue_services')
-        .select('*')
-        .order('service_group')
-        .order('name_en')
-      if (onlyActive) q = q.eq('active', true)
-      const { data, error } = await q
-      if (error) throw apiError(error)
-      return (data as ServiceRow[]).map((r) => ({
+      const db = supabase
+      // a Ministry list adds hundreds of treatments: read them all, page by page
+      const rows = await allRows<ServiceRow>((from, to) => {
+        let q = db
+          .from('catalogue_services')
+          .select('*')
+          .order('service_group')
+          .order('name_en')
+          .order('id')
+        if (onlyActive) q = q.eq('active', true)
+        return q.range(from, to)
+      })
+      return rows.map((r) => ({
         id: r.id,
         code: r.code,
         nameEn: r.name_en,
@@ -626,6 +660,11 @@ export function useTreatments(onlyActive = false) {
         // Before migration 0048 only the main department exists.
         departmentIds: r.department_ids ?? (r.department_id ? [r.department_id] : []),
         departmentNames: r.department_names ?? (r.department_name ? [r.department_name] : []),
+        tariffCode: r.tariff_code ?? null,
+        listPrice: num(r.list_price),
+        // undefined: a database before 0135 (no own price column)
+        ownPrice: r.own_price === undefined ? undefined : num(r.own_price),
+        listName: r.list_name ?? null,
       }))
     },
   })
@@ -788,6 +827,10 @@ export interface Medicine {
   unit: string | null
   cashPrice: number | null
   active: boolean
+  /** 0135: the price the clinic-wide list gives a private patient; the clinic's own price; the list. */
+  listPrice?: number | null
+  ownPrice?: number | null
+  listName?: string | null
 }
 export const sampleMedicines: Medicine[] = [
   {
@@ -840,23 +883,24 @@ export function useMedicines() {
     queryFn: async (): Promise<Medicine[]> => {
       // a copy: the screens see the medicine just added
       if (!supabase) return sampleMedicines.map((m) => ({ ...m }))
-      const { data, error } = await supabase
-        .from('items_catalogue')
-        .select('id, code, name_generic, strength, form, unit, cash_price, active')
-        .order('name_generic')
-      if (error) throw apiError(error)
-      return (
-        data as {
-          id: string
-          code: string
-          name_generic: string
-          strength: string | null
-          form: string | null
-          unit: string | null
-          cash_price: number | string | null
-          active: boolean
-        }[]
-      ).map((r) => ({
+      const db = supabase
+      // every column (0135 adds the list price): an older database still answers
+      const rows = await allRows<{
+        id: string
+        code: string
+        name_generic: string
+        strength: string | null
+        form: string | null
+        unit: string | null
+        cash_price: number | string | null
+        active: boolean
+        list_price?: number | string | null
+        own_price?: number | string | null
+        list_name?: string | null
+      }>((from, to) =>
+        db.from('items_catalogue').select('*').order('name_generic').order('id').range(from, to),
+      )
+      return rows.map((r) => ({
         id: r.id,
         code: r.code,
         name: r.name_generic,
@@ -865,6 +909,9 @@ export function useMedicines() {
         unit: r.unit,
         cashPrice: r.cash_price == null ? null : Number(r.cash_price),
         active: r.active,
+        listPrice: num(r.list_price),
+        ownPrice: num(r.own_price),
+        listName: r.list_name ?? null,
       }))
     },
   })
@@ -1192,7 +1239,8 @@ export function useMedicineActions() {
       strength: string
       form: string
       unit: string
-      price: number
+      /** null: no price of the clinic's own — the clinic-wide list's price applies (0135). */
+      price: number | null
       active: boolean
       /** The RHIA list code when the medicine is taken from that list (it keeps the code, the
        *  prescribing rule and the group of the list); omitted for one typed by hand. */
@@ -1210,8 +1258,11 @@ export function useMedicineActions() {
           strength: m.strength.trim() || null,
           form: m.form.trim() || null,
           unit: m.unit.trim() || null,
-          cashPrice: m.price,
+          cashPrice: m.price ?? existing?.listPrice ?? null,
           active: m.active,
+          listPrice: existing?.listPrice ?? null,
+          ownPrice: m.price,
+          listName: existing?.listName ?? null,
         }
         if (existing) Object.assign(existing, row)
         else sampleMedicines.push(row)
@@ -1456,7 +1507,9 @@ export function useCatalogueActions() {
         p_id: treatment.id,
         p_name_en: treatment.nameEn,
         p_group: treatment.group,
-        p_cash_price: treatment.cashPrice ?? 0,
+        // a treatment that follows the clinic-wide list keeps following it (0135)
+        p_cash_price:
+          treatment.ownPrice !== undefined ? treatment.ownPrice : (treatment.cashPrice ?? 0),
         p_name_kin: treatment.nameKin,
         p_name_fr: treatment.nameFr,
         p_max_discount_pct: treatment.maxDiscountPct,

@@ -210,6 +210,17 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
                 <span className="text-primary text-[16px] font-semibold tabular-nums">
                   {m.cashPrice == null ? t('prices.noPrice') : formatRwf(m.cashPrice)}
                 </span>
+                {/* 0135: the Ministry's price, or the clinic's own beside it */}
+                {m.listPrice != null &&
+                  (m.ownPrice == null ? (
+                    <Badge tone="blue" title={m.listName ?? ''}>
+                      {t('prices.listPrice.follows')}
+                    </Badge>
+                  ) : (
+                    <Badge tone="yellow" title={m.listName ?? ''}>
+                      {t('prices.listPrice.own', { price: formatRwf(m.listPrice) })}
+                    </Badge>
+                  ))}
                 {!m.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
                 <span className="flex flex-wrap gap-1">
                   <Button size="sm" onClick={() => setEditing(m)}>
@@ -441,6 +452,40 @@ function MedicineForm({
             onChange={(e) => setForm(e.target.value)}
           />
           <PackagingFields idPrefix="med" value={pack} onChange={setPack} />
+          {medicine?.listPrice != null && (
+            <p className="border-navy/20 bg-blue-bg/60 text-ink-2 m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[13px]">
+              <span className="min-w-0 flex-1">
+                {t('prices.listPrice.line', {
+                  price: formatRwf(medicine.listPrice),
+                  list: medicine.listName ?? '',
+                })}{' '}
+                {packInput(pack).piecePrice === medicine.listPrice
+                  ? t('prices.listPrice.followsNow')
+                  : t('prices.listPrice.ownNow')}
+              </span>
+              {packInput(pack).piecePrice !== medicine.listPrice && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="tint-blue"
+                  onClick={() =>
+                    setPack(
+                      pack.kind === 'pack' && pack.saleMode === 'pack'
+                        ? {
+                            ...pack,
+                            packPrice: String(
+                              (medicine.listPrice ?? 0) * Math.max(1, Number(pack.packSize) || 1),
+                            ),
+                          }
+                        : { ...pack, piecePrice: String(medicine.listPrice) },
+                    )
+                  }
+                >
+                  {t('prices.listPrice.use')}
+                </Button>
+              )}
+            </p>
+          )}
           <label className="border-border flex items-start gap-3 rounded-md border p-3">
             <input
               type="checkbox"

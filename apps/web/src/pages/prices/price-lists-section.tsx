@@ -1,5 +1,17 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
-import { FileSpreadsheet, Library, ListChecks, ShieldCheck, Table2, Upload, X } from 'lucide-react'
+import {
+  Building2,
+  FileSpreadsheet,
+  Library,
+  ListChecks,
+  Pill,
+  Settings2,
+  ShieldCheck,
+  Stethoscope,
+  Table2,
+  Upload,
+  X,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber, isoDate } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
@@ -10,9 +22,12 @@ import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import type { Insurer } from '@/lib/api/catalogue'
 import {
+  SCOPES,
+  usePriceListActions,
   usePriceListImport,
   usePriceLists,
   type ListKind,
+  type ListScope,
   type PriceListBook,
   type PriceListImportInput,
   type PriceListPreview,
@@ -20,23 +35,26 @@ import {
 import { useConfirm } from '@/lib/confirm'
 import { PriceListFileError, readPriceListFile, type ParsedPriceList } from '@/lib/price-list-file'
 import { cn } from '@/lib/utils'
-import { day, errorBox } from './price-list-kit'
+import { day, errorBox, guessPayerColumn, guessPrivateColumn } from './price-list-kit'
+import { ColumnsCheck } from './price-list-columns'
 import { PriceListPreviewPanel } from './price-list-preview'
 import { FollowersPanel, LinesPanel } from './price-list-lines'
+import { BookSettingsPanel } from './price-list-settings'
 
 const ACCEPT =
   '.xlsx,.csv,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/pdf'
 /** The upload makes a new list. */
 const NEW = ''
+const MOH = 'Ministry of Health (MoH)'
 
 /**
- * Published price lists (Prices, after the official medicine list): the tariffs of treatments and
- * of medicines the Ministry of Health, RSSB / RHIA and the insurers publish. Each list shows its
- * version in use, the insurers that follow it (their price column) and how many of the clinic's
- * treatments or medicines are on it; "See the lines" opens the lines (edit one, add one, take
- * one out, an insurer's exceptions), "Insurers" says which insurers follow it and with which
- * column. The upload reads an Excel file, a CSV or a PDF, keeps every price column, and "Check
- * the list" shows everything that changes before "Keep this list from …".
+ * Published price lists (Prices): the tariffs of treatments and of medicines published by the
+ * Ministry of Health (for the whole clinic: private patients pay its private column, and a list of
+ * treatments makes every line a treatment of the clinic), by an insurer (its own tariff: that
+ * insurer pays it at once), or by another publisher (insurers choose to follow it). Two tabs, two
+ * uploads: Treatments & services, and Medicines & products. A file in any form (Excel, CSV, a PDF
+ * with text) is read, its columns can be corrected, and "Check the list" shows everything that
+ * changes before "Keep this list from …".
  */
 export function PriceListsSection({
   insurers,
@@ -49,36 +67,46 @@ export function PriceListsSection({
   const confirm = useConfirm()
   const { data: books = [], error: listError } = usePriceLists()
   const actions = usePriceListImport()
+  const bookActions = usePriceListActions()
   const fileInput = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const [tab, setTab] = useState<ListKind>('treatments')
   const [file, setFile] = useState<File | null>(null)
   const [parsed, setParsed] = useState<ParsedPriceList | null>(null)
   const [reading, setReading] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
   const [target, setTarget] = useState(NEW)
+  const [scope, setScope] = useState<ListScope>('clinic')
+  const [payerId, setPayerId] = useState('')
   const [bookName, setBookName] = useState('')
   const [publisher, setPublisher] = useState('')
-  const [kind, setKind] = useState<ListKind>('treatments')
   const [name, setName] = useState('')
   const [from, setFrom] = useState(() => isoDate(new Date()))
+  const [privateColumn, setPrivateColumn] = useState('')
+  const [payerColumn, setPayerColumn] = useState('')
   const [instructionsOf, setInstructionsOf] = useState('')
   /** The names suggested for the last file read (replaced when another file is chosen). */
   const suggested = useRef({ name: '', book: '' })
+  /** The file being read: a read the manager no longer waits for is dropped. */
+  const readToken = useRef(0)
   const [preview, setPreview] = useState<PriceListPreview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [linesOf, setLinesOf] = useState<PriceListBook | null>(null)
   const [followersOf, setFollowersOf] = useState<PriceListBook | null>(null)
-  const insurerList = insurers
+  const [settingsOf, setSettingsOf] = useState<PriceListBook | null>(null)
+  const tabBooks = useMemo(() => books.filter((b) => b.kind === tab), [books, tab])
   const book = books.find((b) => b.id === target) ?? null
   const current = book?.versions.find((v) => v.status === 'current') ?? null
-  const noteColumn = parsed?.roles.find((r) => r.role === 'note')?.label ?? null
+  const effScope: ListScope = book?.scope ?? scope
+  const insurer = insurers.find((i) => i.id === (book?.payerId ?? payerId))
+  const columns = parsed?.columns ?? []
+  const noteColumn = parsed?.layout.find((c) => c.role === 'note')?.label ?? null
   const grouped = useMemo(
     () =>
-      (['treatments', 'medicines'] as const).map((k) => ({
-        kind: k,
-        books: books.filter((b) => b.kind === k),
-      })),
-    [books],
+      SCOPES.map((s) => ({ scope: s, books: tabBooks.filter((b) => b.scope === s) })).filter(
+        (g) => g.books.length > 0,
+      ),
+    [tabBooks],
   )
 
   const reset = () => {
@@ -87,6 +115,7 @@ export function PriceListsSection({
   }
   /** The wrong file: forget it and what was read from it. */
   const removeFile = () => {
+    readToken.current++
     reset()
     setFileError(null)
     setParsed(null)
@@ -94,18 +123,36 @@ export function PriceListsSection({
     setInstructionsOf('')
     if (fileInput.current) fileInput.current.value = ''
   }
+  /** The columns of the file (read, or corrected): the private and the insurer's column again. */
+  const applyColumns = (p: ParsedPriceList, b: PriceListBook | null = book, keep = true) => {
+    const keys = p.columns.map((c) => c.key)
+    setPrivateColumn((cur) =>
+      b?.privateColumn && keys.includes(b.privateColumn)
+        ? b.privateColumn
+        : keep && cur && keys.includes(cur)
+          ? cur
+          : guessPrivateColumn(p.columns),
+    )
+    const own = b?.followers.find((f) => f.payerId === b.payerId)?.column
+    const ins = insurers.find((i) => i.id === (b?.payerId ?? payerId))
+    setPayerColumn((cur) =>
+      own && keys.includes(own)
+        ? own
+        : keep && cur && keys.includes(cur)
+          ? cur
+          : guessPayerColumn(p.columns, ins?.name),
+    )
+  }
 
   const choose = async (f: File | null) => {
-    reset()
-    setFileError(null)
-    setParsed(null)
+    removeFile()
+    const token = ++readToken.current
     setFile(f)
-    // whose instructions: said again for each file
-    setInstructionsOf('')
     if (!f) return
     setReading(true)
     try {
       const p = await readPriceListFile(f)
+      if (token !== readToken.current) return
       setParsed(p)
       const base = f.name.replace(/\.[a-z0-9]+$/i, '')
       // a name typed by hand stays; one suggested for the previous file is suggested again
@@ -114,10 +161,14 @@ export function PriceListsSection({
       if (target === NEW && (!bookName.trim() || bookName === suggested.current.book))
         setBookName(base.slice(0, 120))
       suggested.current = { name: nextName, book: base.slice(0, 120) }
-      if (p.kind && target === NEW) setKind(p.kind)
       // the month the file says; otherwise today (not the date of the previous file)
       setFrom(p.from ?? isoDate(new Date()))
+      applyColumns(p, book, false)
+      const owner = book?.payerId ?? payerId
+      if (effScope === 'insurer' && owner && p.layout.some((c) => c.role === 'note'))
+        setInstructionsOf(owner)
     } catch (e) {
+      if (token !== readToken.current) return
       const problem = e instanceof PriceListFileError ? e.problem : 'unreadable'
       setFileError(t(`prices.lists.fileErr.${problem}`))
     } finally {
@@ -125,14 +176,50 @@ export function PriceListsSection({
     }
   }
 
+  const switchTab = (k: ListKind) => {
+    if (k === tab) return
+    setTab(k)
+    setTarget(NEW)
+    removeFile()
+  }
+
+  const newVersionOf = (b: PriceListBook) => {
+    setTab(b.kind)
+    setTarget(b.id)
+    reset()
+    if (parsed) applyColumns(parsed, b)
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const publisherOf = () =>
+    effScope === 'insurer'
+      ? (insurer?.name ?? '')
+      : publisher.trim() || (effScope === 'clinic' ? MOH : '')
+
   const input = (): PriceListImportInput => ({
     bookId: target || null,
-    book: target ? null : { name: bookName.trim(), publisher: publisher.trim(), kind },
+    book: target
+      ? null
+      : {
+          name: bookName.trim(),
+          publisher: publisherOf(),
+          kind: tab,
+          scope,
+          payerId: scope === 'insurer' ? payerId || null : null,
+          privateColumn: scope === 'clinic' ? privateColumn || null : null,
+          payerColumn: scope === 'insurer' ? payerColumn || null : null,
+        },
+    settings: target
+      ? {
+          privateColumn: effScope === 'clinic' ? privateColumn || null : null,
+          payerColumn: effScope === 'insurer' ? payerColumn || null : null,
+        }
+      : null,
     name: name.trim(),
     effectiveFrom: from,
-    columns: parsed?.columns ?? [],
+    columns,
     lines: parsed?.lines ?? [],
-    instructionsPayerId: instructionsOf || null,
+    instructionsPayerId: noteColumn ? instructionsOf || null : null,
     fileName: file?.name ?? null,
     notes: parsed?.notes ?? [],
   })
@@ -140,10 +227,12 @@ export function PriceListsSection({
   const check = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!parsed || !name.trim() || !from || (!target && (!bookName.trim() || !publisher.trim()))) {
-      setError(t('prices.lists.needAll'))
-      return
-    }
+    if (!parsed || !name.trim() || !from || (!target && !bookName.trim()))
+      return setError(t('prices.lists.needAll'))
+    if (effScope === 'insurer' && !(book?.payerId ?? payerId))
+      return setError(t('prices.lists.needInsurer'))
+    if (effScope === 'clinic' && !privateColumn) return setError(t('prices.lists.needPrivate'))
+    if (!target && !publisherOf()) return setError(t('prices.lists.needAll'))
     try {
       setPreview(await actions.check.mutateAsync(input()))
     } catch (err) {
@@ -156,10 +245,14 @@ export function PriceListsSection({
     if (
       !(await confirm({
         title: t('prices.lists.confirmTitle', { name: preview.name, date: day(from) }),
-        body: t('prices.lists.confirmBody', {
-          count: preview.rows,
-          list: preview.book.name,
-        }),
+        body: [
+          t('prices.lists.confirmBody', { count: preview.rows, list: preview.book.name }),
+          preview.clinic.toCreate > 0
+            ? t('prices.lists.confirmCreate', { count: preview.clinic.toCreate })
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
         confirmLabel: t('prices.lists.confirmYes'),
       }))
     )
@@ -175,6 +268,7 @@ export function PriceListsSection({
       onNotice(
         [
           t('prices.lists.done', { name: r.name, list: r.book.name, date: day(r.effectiveFrom) }),
+          r.clinic.created > 0 ? t('prices.lists.doneCreated', { count: r.clinic.created }) : '',
           r.clinic.linked > 0 ? t('prices.lists.doneLinked', { count: r.clinic.linked }) : '',
           r.instructions
             ? t('prices.lists.doneExceptions', {
@@ -192,12 +286,24 @@ export function PriceListsSection({
     }
   }
 
-  const newVersionOf = (b: PriceListBook) => {
-    setTarget(b.id)
-    setKind(b.kind)
-    reset()
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const listPricesForAll = async (b: PriceListBook) => {
+    if (
+      !(await confirm({
+        title: t('prices.lists.useListAllQ', { count: b.ownPriced, list: b.name }),
+        body: t('prices.lists.useListAllBody'),
+        confirmLabel: t('prices.lists.useListAllYes'),
+      }))
+    )
+      return
+    try {
+      const n = await bookActions.applyListPrices.mutateAsync({ bookId: b.id, ids: null })
+      onNotice(t('prices.lists.useListDone', { count: n, list: b.name }))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
   }
+
+  const scopeLabel = (s: ListScope) => t(`prices.lists.scope.${s}`)
 
   return (
     <Card className="overflow-hidden">
@@ -206,33 +312,65 @@ export function PriceListsSection({
       </CardHeader>
       <CardBody className="flex flex-col gap-4">
         <p className="text-ink-2 m-0 text-[14px]">{t('prices.lists.lead')}</p>
+        <Seg
+          label={t('prices.lists.tabLabel')}
+          value={tab}
+          onChange={switchTab}
+          options={[
+            {
+              value: 'treatments',
+              label: t('prices.lists.tabTreatments', {
+                count: books.filter((b) => b.kind === 'treatments').length,
+              }),
+            },
+            {
+              value: 'medicines',
+              label: t('prices.lists.tabMedicines', {
+                count: books.filter((b) => b.kind === 'medicines').length,
+              }),
+            },
+          ]}
+          className="self-start"
+        />
+        <p className="text-ink-3 m-0 text-[13px]">{t(`prices.lists.tabHint.${tab}`)}</p>
         {listError && (
           <p role="alert" className={errorBox}>
             {listError.message}
           </p>
         )}
-        {books.length === 0 && !listError && (
-          <p className="text-ink-3 m-0 text-[14px]">{t('prices.lists.none')}</p>
+        {error && !preview && !parsed && (
+          <p role="alert" className={errorBox}>
+            {error}
+          </p>
         )}
-        {grouped.map(
-          (g) =>
-            g.books.length > 0 && (
-              <section key={g.kind} className="flex flex-col gap-2">
-                <h3 className="text-ink m-0 text-[15px] font-semibold">
-                  {t(`prices.lists.kinds.${g.kind}`)}
-                </h3>
-                {g.books.map((b) => (
-                  <BookRow
-                    key={b.id}
-                    book={b}
-                    onLines={() => setLinesOf(b)}
-                    onFollowers={() => setFollowersOf(b)}
-                    onNewVersion={() => newVersionOf(b)}
-                  />
-                ))}
-              </section>
-            ),
+        {tabBooks.length === 0 && !listError && (
+          <p className="text-ink-3 m-0 text-[14px]">{t(`prices.lists.noneOf.${tab}`)}</p>
         )}
+        {grouped.map((g) => (
+          <section key={g.scope} className="flex flex-col gap-2">
+            <h3 className="text-ink m-0 inline-flex items-center gap-2 text-[15px] font-semibold">
+              {g.scope === 'clinic' ? (
+                <Building2 size={16} aria-hidden="true" className="text-violet" />
+              ) : g.scope === 'insurer' ? (
+                <ShieldCheck size={16} aria-hidden="true" className="text-navy-ink" />
+              ) : (
+                <Library size={16} aria-hidden="true" className="text-ink-3" />
+              )}
+              {t(`prices.lists.scopeTitle.${g.scope}`)}
+            </h3>
+            {g.books.map((b) => (
+              <BookRow
+                key={b.id}
+                book={b}
+                onLines={() => setLinesOf(b)}
+                onFollowers={() => setFollowersOf(b)}
+                onSettings={() => setSettingsOf(b)}
+                onNewVersion={() => newVersionOf(b)}
+                onListPrices={() => void listPricesForAll(b)}
+              />
+            ))}
+          </section>
+        ))}
       </CardBody>
 
       <form
@@ -241,8 +379,12 @@ export function PriceListsSection({
         className="border-border bg-surface/60 flex scroll-mt-4 flex-col gap-3 border-t px-4 py-3"
       >
         <span className="text-violet inline-flex items-center gap-2 text-[15px] font-semibold">
-          <Upload size={16} aria-hidden="true" />
-          {t('prices.lists.upload')}
+          {tab === 'treatments' ? (
+            <Stethoscope size={16} aria-hidden="true" />
+          ) : (
+            <Pill size={16} aria-hidden="true" />
+          )}
+          {t(`prices.lists.uploadOf.${tab}`)}
         </span>
         <div className="flex flex-col gap-1">
           <span className="text-ink-2 text-[13px] font-medium">{t('prices.lists.file')}</span>
@@ -291,7 +433,22 @@ export function PriceListsSection({
             {fileError}
           </p>
         )}
-        {parsed && <ReadSummary parsed={parsed} fileName={file?.name ?? ''} />}
+        {parsed && parsed.kind && parsed.kind !== tab && (
+          <p className="border-amber/30 bg-amber-bg text-amber m-0 rounded-md border px-3 py-2 text-[13px] font-medium">
+            {t(`prices.lists.looksLike.${parsed.kind}`)}
+          </p>
+        )}
+        {parsed && (
+          <ColumnsCheck
+            parsed={parsed}
+            fileName={file?.name ?? ''}
+            onChange={(p) => {
+              setParsed(p)
+              applyColumns(p)
+              reset()
+            }}
+          />
+        )}
 
         {parsed && (
           <>
@@ -299,67 +456,130 @@ export function PriceListsSection({
               label={t('prices.lists.which')}
               value={target}
               onChange={(e) => {
+                const b = books.find((x) => x.id === e.target.value) ?? null
                 setTarget(e.target.value)
-                const b = books.find((x) => x.id === e.target.value)
-                if (b) setKind(b.kind)
+                applyColumns(parsed, b)
                 reset()
               }}
             >
               <option value={NEW}>{t('prices.lists.newList')}</option>
-              {books.map((b) => (
+              {tabBooks.map((b) => (
                 <option key={b.id} value={b.id}>
                   {t('prices.lists.newVersionOf', { name: b.name })}
                 </option>
               ))}
             </Select>
-            {target === NEW && (
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,220px)]">
-                <Field
-                  label={t('prices.lists.bookName')}
-                  value={bookName}
-                  maxLength={120}
-                  placeholder={t('prices.lists.bookNamePh')}
-                  onChange={(e) => {
-                    setBookName(e.target.value)
-                    reset()
-                  }}
-                />
-                <Field
-                  label={t('prices.lists.publisher')}
-                  value={publisher}
-                  maxLength={80}
-                  list="price-list-publishers"
-                  placeholder={t('prices.lists.publisherPh')}
-                  onChange={(e) => {
-                    setPublisher(e.target.value)
-                    reset()
-                  }}
-                />
-                <datalist id="price-list-publishers">
-                  {[
-                    'Ministry of Health (MoH)',
-                    'RSSB',
-                    'RHIA',
-                    ...insurerList.map((i) => i.name),
-                  ].map((p) => (
-                    <option key={p} value={p} />
-                  ))}
-                </datalist>
+
+            {target === NEW ? (
+              <>
                 <Seg
-                  label={t('prices.lists.kind')}
-                  value={kind}
-                  onChange={(k) => {
-                    setKind(k)
+                  label={t('prices.lists.whose')}
+                  value={scope}
+                  onChange={(s) => {
+                    setScope(s)
                     reset()
                   }}
-                  options={[
-                    { value: 'treatments', label: t('prices.lists.kinds.treatments') },
-                    { value: 'medicines', label: t('prices.lists.kinds.medicines') },
-                  ]}
+                  options={SCOPES.map((s) => ({ value: s, label: scopeLabel(s) }))}
                   className="self-start"
                 />
-              </div>
+                <p className="text-ink-3 m-0 -mt-1 text-[13px]">
+                  {t(`prices.lists.scopeHint.${scope}.${tab}`)}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,240px)]">
+                  <Field
+                    label={t('prices.lists.bookName')}
+                    value={bookName}
+                    maxLength={120}
+                    placeholder={t('prices.lists.bookNamePh')}
+                    onChange={(e) => {
+                      setBookName(e.target.value)
+                      reset()
+                    }}
+                  />
+                  {scope === 'insurer' ? (
+                    <Select
+                      label={t('prices.lists.insurer')}
+                      value={payerId}
+                      onChange={(e) => {
+                        setPayerId(e.target.value)
+                        const ins = insurers.find((i) => i.id === e.target.value)
+                        setPayerColumn(guessPayerColumn(parsed.columns, ins?.name))
+                        if (e.target.value && noteColumn) setInstructionsOf(e.target.value)
+                        reset()
+                      }}
+                    >
+                      <option value="">{t('prices.lists.pickInsurer')}</option>
+                      {insurers.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.name}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Field
+                      label={t('prices.lists.publisher')}
+                      value={publisher}
+                      maxLength={80}
+                      list="price-list-publishers"
+                      placeholder={scope === 'clinic' ? MOH : t('prices.lists.publisherPh')}
+                      onChange={(e) => {
+                        setPublisher(e.target.value)
+                        reset()
+                      }}
+                    />
+                  )}
+                  <datalist id="price-list-publishers">
+                    {[MOH, 'RSSB', 'RHIA', ...insurers.map((i) => i.name)].map((p) => (
+                      <option key={p} value={p} />
+                    ))}
+                  </datalist>
+                </div>
+              </>
+            ) : (
+              <p className="text-ink-2 m-0 text-[13px]">
+                <Badge
+                  tone={effScope === 'clinic' ? 'blue' : effScope === 'insurer' ? 'green' : 'grey'}
+                >
+                  {effScope === 'insurer' && book?.payer
+                    ? t('prices.lists.scopeOf', { payer: book.payer })
+                    : scopeLabel(effScope)}
+                </Badge>
+              </p>
             )}
+
+            {effScope === 'clinic' && columns.length > 0 && (
+              <Select
+                label={t('prices.lists.privateColumn')}
+                value={privateColumn}
+                onChange={(e) => {
+                  setPrivateColumn(e.target.value)
+                  reset()
+                }}
+              >
+                {columns.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            )}
+            {effScope === 'insurer' && columns.length > 1 && (
+              <Select
+                label={t('prices.lists.payerColumn', { payer: insurer?.name ?? '' })}
+                value={payerColumn}
+                onChange={(e) => {
+                  setPayerColumn(e.target.value)
+                  reset()
+                }}
+              >
+                {columns.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            )}
+
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_200px]">
               <Field
                 label={t('prices.lists.versionName')}
@@ -392,7 +612,7 @@ export function PriceListsSection({
                 }}
               >
                 <option value="">{t('prices.lists.instructionsNotes')}</option>
-                {insurerList.map((i) => (
+                {insurers.map((i) => (
                   <option key={i.id} value={i.id}>
                     {t('prices.lists.instructionsInsurer', { name: i.name })}
                   </option>
@@ -401,7 +621,7 @@ export function PriceListsSection({
             )}
           </>
         )}
-        {error && !preview && (
+        {error && !preview && parsed && (
           <p role="alert" className={errorBox}>
             {error}
           </p>
@@ -432,7 +652,7 @@ export function PriceListsSection({
       {linesOf && (
         <LinesPanel
           book={books.find((b) => b.id === linesOf.id) ?? linesOf}
-          insurers={insurerList}
+          insurers={insurers}
           onClose={() => setLinesOf(null)}
           onNotice={onNotice}
         />
@@ -440,8 +660,15 @@ export function PriceListsSection({
       {followersOf && (
         <FollowersPanel
           book={books.find((b) => b.id === followersOf.id) ?? followersOf}
-          insurers={insurerList}
+          insurers={insurers}
           onClose={() => setFollowersOf(null)}
+          onNotice={onNotice}
+        />
+      )}
+      {settingsOf && (
+        <BookSettingsPanel
+          book={books.find((b) => b.id === settingsOf.id) ?? settingsOf}
+          onClose={() => setSettingsOf(null)}
           onNotice={onNotice}
         />
       )}
@@ -449,72 +676,27 @@ export function PriceListsSection({
   )
 }
 
-/** What the reader found in the file: lines, where, the columns, the price columns, the notes. */
-function ReadSummary({ parsed, fileName }: { parsed: ParsedPriceList; fileName: string }) {
-  const { t } = useTranslation()
-  const roles = parsed.roles.filter((r) => r.role !== 'price')
-  return (
-    <div className="border-violet/20 bg-violet-bg/50 flex flex-col gap-1.5 rounded-md border px-3 py-2 text-[13px]">
-      <span className="text-ink font-semibold">
-        {parsed.format === 'pdf'
-          ? t('prices.lists.readPdf', {
-              count: parsed.lines.length,
-              n: formatNumber(parsed.lines.length),
-              file: fileName,
-            })
-          : t('prices.lists.read', {
-              count: parsed.lines.length,
-              n: formatNumber(parsed.lines.length),
-              row: parsed.headerRow,
-              sheet: parsed.sheet ?? fileName,
-            })}
-        {parsed.kind && ` · ${t(`prices.lists.kinds.${parsed.kind}`)}`}
-      </span>
-      <span className="flex flex-wrap items-center gap-1">
-        <span className="text-ink-2">{t('prices.lists.columnsFound')}</span>
-        {roles.map((r) => (
-          <Badge key={`${r.role}-${r.label}`} tone={r.role === 'number' ? 'grey' : 'green'}>
-            {t(`prices.lists.role.${r.role}`)}
-            {r.label && `: ${r.label}`}
-          </Badge>
-        ))}
-      </span>
-      <span className="flex flex-wrap items-center gap-1">
-        <span className="text-ink-2">
-          {t('prices.lists.priceColumns', { count: parsed.columns.length })}
-        </span>
-        {parsed.columns.map((c) => (
-          <Badge key={c.key} tone="blue">
-            {c.label}
-          </Badge>
-        ))}
-      </span>
-      {parsed.notes.length > 0 && (
-        <span className="text-ink-2">
-          {t('prices.lists.fileNotes')}{' '}
-          <span className="text-ink">{parsed.notes.slice(0, 3).join(' · ')}</span>
-        </span>
-      )}
-    </div>
-  )
-}
-
-/** One list: its version in use, the insurers that follow it, what is on it, and its actions. */
+/** One list: whose it is, its version in use, who follows it, what is on it, and its actions. */
 function BookRow({
   book,
   onLines,
   onFollowers,
+  onSettings,
   onNewVersion,
+  onListPrices,
 }: {
   book: PriceListBook
   onLines: () => void
   onFollowers: () => void
+  onSettings: () => void
   onNewVersion: () => void
+  onListPrices: () => void
 }) {
   const { t } = useTranslation()
   const cur = book.versions.find((v) => v.status === 'current') ?? null
   const earlier = book.versions.length - 1
-  const columnLabel = (key: string) => cur?.columns.find((c) => c.key === key)?.label ?? key
+  const columnLabel = (key: string | null) =>
+    (key && cur?.columns.find((c) => c.key === key)?.label) || key || ''
   return (
     <div className="border-border bg-card flex flex-col gap-2 rounded-md border px-3 py-2.5">
       <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
@@ -542,6 +724,15 @@ function BookRow({
           ))}
         {earlier > 0 && <Badge tone="grey">{t('prices.lists.earlier', { count: earlier })}</Badge>}
       </div>
+      {book.scope === 'clinic' && (
+        <div className="text-ink-2 flex flex-wrap items-center gap-1 text-[13px]">
+          <Building2 size={14} aria-hidden="true" className="text-violet" />
+          <span>
+            {t('prices.lists.privatePays', { column: columnLabel(book.privateColumn) })} ·{' '}
+            {t('prices.lists.orderN', { n: book.priority })}
+          </span>
+        </div>
+      )}
       <div className="text-ink-2 flex flex-wrap items-center gap-1 text-[13px]">
         <ShieldCheck size={14} aria-hidden="true" className="text-ink-3" />
         {book.followers.length === 0 ? (
@@ -557,15 +748,23 @@ function BookRow({
           </>
         )}
       </div>
-      <div className="text-ink-3 flex flex-wrap gap-x-3 text-[13px]">
+      <div className="text-ink-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
         <span>
           {t(
             book.kind === 'medicines' ? 'prices.lists.linkedMeds' : 'prices.lists.linkedTreatments',
-            {
-              count: book.linked,
-            },
+            { count: book.linked },
           )}
         </span>
+        {book.scope === 'clinic' && book.ownPriced > 0 && (
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <span className="text-amber font-medium">
+              {t('prices.lists.ownPricedN', { count: book.ownPriced })}
+            </span>
+            <Button size="sm" variant="tint-amber" onClick={onListPrices}>
+              {t('prices.lists.useListAll')}
+            </Button>
+          </span>
+        )}
         {book.exceptions > 0 && (
           <span>{t('prices.lists.exceptionsN', { count: book.exceptions })}</span>
         )}
@@ -579,6 +778,10 @@ function BookRow({
         <Button size="sm" variant="tint-blue" onClick={onFollowers} disabled={!cur}>
           <ShieldCheck size={14} aria-hidden="true" />
           {t('prices.lists.insurers')}
+        </Button>
+        <Button size="sm" variant="tint-grey" onClick={onSettings}>
+          <Settings2 size={14} aria-hidden="true" />
+          {t('prices.lists.settings')}
         </Button>
         <Button size="sm" variant="tint-grey" onClick={onNewVersion}>
           <Upload size={14} aria-hidden="true" />

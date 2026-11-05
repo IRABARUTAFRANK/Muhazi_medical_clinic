@@ -239,6 +239,23 @@ export function PricesPage({ user }: { user: StaffUser }) {
                     ? t('price.free')
                     : formatRwf(x.cashPrice)}
               </span>
+              {/* 0135: the Ministry's price, or the clinic's own beside it */}
+              {x.listPrice != null &&
+                (x.ownPrice == null ? (
+                  <Chip
+                    className="bg-blue-bg text-navy-ink border-transparent"
+                    title={x.listName ?? ''}
+                  >
+                    {t('prices.listPrice.follows')}
+                  </Chip>
+                ) : (
+                  <Chip
+                    className="bg-amber-bg text-amber border-transparent"
+                    title={x.listName ?? ''}
+                  >
+                    {t('prices.listPrice.own', { price: formatRwf(x.listPrice) })}
+                  </Chip>
+                ))}
               {used && used.count > 0 && (
                 <Chip
                   className="bg-violet-bg text-violet border-transparent"
@@ -698,7 +715,12 @@ function AdjustPricesCard({
     Number.isFinite(v) &&
     (mode === 'multiply' ? v > 0 && v <= 10 : mode === 'percent' ? v > -100 && v <= 900 : true)
   const affected = treatments.filter(
-    (x) => (!category || x.categoryId === category) && x.cashPrice != null && x.cashPrice > 0,
+    (x) =>
+      (!category || x.categoryId === category) &&
+      x.cashPrice != null &&
+      x.cashPrice > 0 &&
+      // a treatment following the Ministry's list keeps the list's price
+      (x.listPrice == null || x.ownPrice != null),
   )
   // The price after the change, before rounding; then rounded to the nearest step.
   const changed = (p: number) =>
@@ -1141,7 +1163,7 @@ function TreatmentForm({
               inputMode="numeric"
               value={price}
               onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))}
-              placeholder="8000"
+              placeholder={treatment?.listPrice != null ? String(treatment.listPrice) : '8000'}
               required
             />
             <AdjustField
@@ -1164,6 +1186,29 @@ function TreatmentForm({
               }
             />
           </div>
+          {treatment?.listPrice != null && (
+            <p className="border-navy/20 bg-blue-bg/60 text-ink-2 m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[13px]">
+              <span className="min-w-0 flex-1">
+                {t('prices.listPrice.line', {
+                  price: formatRwf(treatment.listPrice),
+                  list: treatment.listName ?? '',
+                })}{' '}
+                {String(treatment.listPrice) === price
+                  ? t('prices.listPrice.followsNow')
+                  : t('prices.listPrice.ownNow')}
+              </span>
+              {String(treatment.listPrice) !== price && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="tint-blue"
+                  onClick={() => setPrice(String(treatment.listPrice))}
+                >
+                  {t('prices.listPrice.use')}
+                </Button>
+              )}
+            </p>
+          )}
           {insurers.length > 0 && (
             <div className="flex flex-col gap-2">
               <span className="text-ink-2 text-[14px] font-semibold">

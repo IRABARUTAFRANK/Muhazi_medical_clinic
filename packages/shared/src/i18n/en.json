@@ -1708,7 +1708,7 @@
     },
     "lists": {
       "title": "Published price lists (MoH, RSSB, insurers)",
-      "lead": "The tariffs the Ministry of Health, RSSB / RHIA and the insurers publish: one list for treatments, one for medicines and products. Upload each new version; the earlier ones are kept. Choose which insurers follow a list and which price column they pay, and note each insurer’s exceptions (not covered, only with its approval, its own price). The clinic’s own prices do not change.",
+      "lead": "The tariffs published by the Ministry of Health and by the insurers, in two tabs: treatments & services, and medicines & products. A Ministry list applies to the whole clinic: private patients (no insurance) pay its price unless the clinic sets its own, and its treatments join the clinic’s. An insurer’s own list is what that insurer pays, with its exceptions. Each new version is uploaded and checked; the earlier ones are kept.",
       "none": "No list yet. Upload the first one below.",
       "kinds": {
         "treatments": "Treatments and services",
@@ -1761,7 +1761,8 @@
         "unit": "Unit",
         "note": "Instructions",
         "number": "Row number",
-        "price": "Price"
+        "price": "Price",
+        "ignore": "Left out"
       },
       "priceColumns_one": "{{count}} price column:",
       "priceColumns_other": "{{count}} price columns:",
@@ -1944,7 +1945,136 @@
       "followSaved": "{{payer}} follows {{list}} and pays its column “{{column}}”.",
       "followStopped": "{{payer}} no longer follows {{list}}.",
       "readPdf_one": "{{n}} line read from the PDF {{file}}",
-      "readPdf_other": "{{n}} lines read from the PDF {{file}}"
+      "readPdf_other": "{{n}} lines read from the PDF {{file}}",
+      "tabLabel": "Lists of",
+      "tabTreatments_one": "Treatments & services ({{count}} list)",
+      "tabTreatments_other": "Treatments & services ({{count}} lists)",
+      "tabMedicines_one": "Medicines & products ({{count}} list)",
+      "tabMedicines_other": "Medicines & products ({{count}} lists)",
+      "tabHint": {
+        "treatments": "Tariffs of treatments, acts and tests. A Ministry list for the whole clinic makes each line one of the clinic’s treatments.",
+        "medicines": "Tariffs of medicines and products. They price the clinic’s medicines by their code."
+      },
+      "noneOf": {
+        "treatments": "No list of treatments yet. Upload the first one below.",
+        "medicines": "No list of medicines yet. Upload the first one below."
+      },
+      "scopeTitle": {
+        "clinic": "Ministry of Health — the whole clinic",
+        "insurer": "Insurers’ own lists",
+        "reference": "Other publishers"
+      },
+      "uploadOf": {
+        "treatments": "Upload a list of treatments & services",
+        "medicines": "Upload a list of medicines & products"
+      },
+      "looksLike": {
+        "treatments": "This file looks like a list of treatments: upload it under Treatments & services.",
+        "medicines": "This file looks like a list of medicines: upload it under Medicines & products."
+      },
+      "whose": "Whose list is it?",
+      "scope": {
+        "clinic": "Ministry of Health — the whole clinic",
+        "insurer": "An insurer’s own tariff",
+        "reference": "Another publisher"
+      },
+      "scopeOf": "{{payer}}’s own tariff",
+      "scopeHint": {
+        "clinic": {
+          "treatments": "Used in the whole clinic: private patients (no insurance) pay its price, and every line becomes one of the clinic’s treatments. The clinic can still set its own price for any of them.",
+          "medicines": "Used in the whole clinic: private patients pay its price for the clinic’s medicines with the same code, unless the clinic sets its own."
+        },
+        "insurer": {
+          "treatments": "The insurer’s official tariff of treatments: its patients are charged these prices and the coverage is calculated on them. Instructions such as “not covered” become its exceptions.",
+          "medicines": "The insurer’s official tariff of medicines and products: its patients are charged these prices and the coverage is calculated on them."
+        },
+        "reference": {
+          "treatments": "A list published by someone else (RSSB, RHIA…): insurers choose to follow it under Insurers.",
+          "medicines": "A list published by someone else (RSSB, RHIA…): insurers choose to follow it under Insurers."
+        }
+      },
+      "insurer": "The insurer",
+      "pickInsurer": "Choose the insurer",
+      "privateColumn": "Private patients (no insurance) pay the column",
+      "payerColumn": "The column {{payer}} pays",
+      "needInsurer": "Choose the insurer whose list it is.",
+      "needPrivate": "Choose the column private patients pay.",
+      "confirmCreate_one": "{{count}} line becomes a new treatment of the clinic.",
+      "confirmCreate_other": "{{count}} lines become new treatments of the clinic.",
+      "doneCreated_one": "{{count}} new treatment of the clinic.",
+      "doneCreated_other": "{{count}} new treatments of the clinic.",
+      "privatePays": "Private patients pay: {{column}}",
+      "orderN": "order {{n}}",
+      "ownPricedN_one": "{{count}} at the clinic’s own price",
+      "ownPricedN_other": "{{count}} at the clinic’s own price",
+      "useListAll": "Use the list price for all",
+      "useListAllQ_one": "Use the price of {{list}} for {{count}} line?",
+      "useListAllQ_other": "Use the price of {{list}} for {{count}} lines?",
+      "useListAllBody": "The clinic’s own prices of these treatments or medicines go: private patients pay the list’s price, and a new version of the list changes it.",
+      "useListAllYes": "Yes, use the list price",
+      "useListDone_one": "{{count}} price follows {{list}} again.",
+      "useListDone_other": "{{count}} prices follow {{list}} again.",
+      "settings": "Settings",
+      "cols": {
+        "open": "Correct the columns",
+        "close": "Close the columns",
+        "lead": "Each column of the file and what it is read as. Change one if the file has another form: the file is read again at once.",
+        "headerRow": "Row of the column names",
+        "readAgain": "Read again from this row",
+        "column": "Column",
+        "values": "Values",
+        "readAs": "Read as",
+        "readAsOf": "Read “{{column}}” as",
+        "nothing": "No line can be read with these columns: a name and a price are needed."
+      },
+      "settingsTitle": "Settings: {{name}}",
+      "saveSettings": "Save the settings",
+      "settingsSaved": "{{name}}: the settings are saved.",
+      "orderHint": "When two Ministry lists have the same line, the one with the smallest number gives its price.",
+      "deleteHint": "A list no insurer follows can be taken away. The clinic’s treatments made from it stay.",
+      "delete": "Take the list away",
+      "deleteQ": "Take {{name}} away?",
+      "deleteBody": "Its prices no longer apply. Its versions stay in the history.",
+      "deleteYes": "Yes, take it away",
+      "deleted": "{{name}} is taken away.",
+      "toCreateTitle_one": "{{count}} new treatment for the clinic",
+      "toCreateTitle_other": "{{count}} new treatments for the clinic",
+      "toCreateHint": "The lines not yet among the clinic’s treatments become treatments, in the category of their section; their price is the list’s until the clinic sets its own.",
+      "toCreateNone": "Every line is already one of the clinic’s treatments.",
+      "ownPricesTitle_one": "{{count}} clinic price differs from the list",
+      "ownPricesTitle_other": "{{count}} clinic prices differ from the list",
+      "ownPricesHint": "The clinic’s own price is kept. After keeping the list, “Use the list price” makes them follow it.",
+      "ownVsList": "clinic {{own}} · list {{list}}",
+      "insurerOwnTitle": "{{payer}} pays this list",
+      "insurerOwnHint": "As soon as it is kept, {{payer}} pays the column “{{column}}”, before any other list; the coverage is calculated on these prices.",
+      "namesTitle": "Lines without a code",
+      "namesHint": "{{list}} found by name on the Ministry list · {{clinic}} found among the clinic’s · {{none}} not found: they get a code of their own — link them by hand under See the lines.",
+      "linkLine": "Link to the clinic’s",
+      "linkTitle": "Link {{name}} ({{code}})",
+      "linkHint": {
+        "clinic": "The treatment takes the line’s code: it is priced from this list for private patients.",
+        "insurer": "The insurer pays this line’s price for that treatment or medicine.",
+        "reference": "The insurers that follow this list pay this line’s price for that treatment or medicine."
+      },
+      "linkTreatment": "The clinic’s treatment",
+      "linkMedicine": "The clinic’s medicine",
+      "pickClinic": "Choose one",
+      "linkSave": "Link",
+      "linked": "{{line}} is linked to {{name}}.",
+      "unlink": "Unlink",
+      "unlinked": "{{name}} is no longer linked to this line.",
+      "clinicOwn": "clinic price {{price}}",
+      "followsList": "list price",
+      "useList": "Use the list price",
+      "useListOne": "{{name}} follows the list again ({{price}})."
+    },
+    "listPrice": {
+      "follows": "MoH price",
+      "own": "Clinic price · MoH {{price}}",
+      "line": "Ministry list price: {{price}} ({{list}}).",
+      "followsNow": "This price follows the list.",
+      "ownNow": "The price above is the clinic’s own.",
+      "use": "Use the list price"
     }
   },
   "visit": {
@@ -8004,7 +8134,12 @@
     "803dfaa3": "Give the line a code.",
     "cf508f19": "Give the line a name.",
     "0efaaf29": "Price list not found.",
-    "46dcf294": "Line not found."
+    "46dcf294": "Line not found.",
+    "920d2292": "Choose the column private patients pay.",
+    "4ec0850d": "The order is a number from 0 to 9999.",
+    "1d8baa49": "Choose the insurer whose list it is.",
+    "36d7a9d8": "Choose the insurer’s price column.",
+    "083acf5a": "Say whose list it is."
   },
   "panel": {
     "close": "Close",

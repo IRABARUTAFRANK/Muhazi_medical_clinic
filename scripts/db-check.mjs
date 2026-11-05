@@ -22525,6 +22525,540 @@ for (const [what, sql, params] of [
   })
 }
 // @@t134-end
+// @@t135-begin
+// ---------------------------------------------------------------- 0135 clinic-wide lists, insurers' own lists
+const t135 = {}
+const json135 = (x) => JSON.stringify(x)
+await step('0135: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270115090000_clinic_price_lists.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+t135.cols = [
+  { key: 'rama_mmi', label: 'RAMA; MMI' },
+  { key: 'privates', label: 'Privates (Non insured)' },
+]
+t135.lines = [
+  {
+    row: 1,
+    code: 'RHIC-CONS-135',
+    name: 'General consultation 135',
+    section: 'Consultation',
+    prices: { rama_mmi: 5000, privates: 6000 },
+  },
+  {
+    row: 2,
+    code: 'RLTC-HEMA-135',
+    name: 'Full blood count 135',
+    section: 'Hematology ',
+    prices: { rama_mmi: 6278, privates: 6278 },
+  },
+  {
+    row: 3,
+    code: 'RHIC-DENT-137',
+    name: 'Scaling 137',
+    section: 'Dentistry',
+    prices: { rama_mmi: 15000, privates: 16000 },
+  },
+  {
+    row: 4,
+    code: 'RHIC-DENT-135',
+    name: 'Root canal 135',
+    section: 'Dentistry',
+    prices: { rama_mmi: 50000, privates: 52000 },
+  },
+]
+await step(
+  '0135 A: the check of a Ministry list for the whole clinic says which lines become treatments (by category) and which clinic prices differ',
+  async () => {
+    await as(staff.manager)
+    const p = (
+      await one(
+        `select import_tariff(null, '{"name": "MoH clinic tariff 135", "publisher": "Ministry of Health", "kind": "treatments", "scope": "clinic", "privateColumn": "privates"}'::jsonb,
+                'MoH 2026', current_date, $1::jsonb, $2::jsonb) as j`,
+        [json135(t135.cols), json135(t135.lines)],
+      )
+    ).j
+    const refused = await hintAs(
+      staff.manager,
+      `select import_tariff(null, '{"name": "No column 135", "publisher": "MoH", "kind": "treatments", "scope": "clinic"}'::jsonb,
+              'x', current_date, $1::jsonb, $2::jsonb)`,
+      [json135(t135.cols), json135(t135.lines)],
+    )
+    await asAdmin()
+    const cats = Object.fromEntries(p.clinic.toCreateByCategory.map((c) => [c.category, c.count]))
+    const own = p.clinic.ownPrices.find((x) => x.id === t134.root)
+    if (
+      !p.dryRun ||
+      p.book.scope !== 'clinic' ||
+      p.clinic.toCreate !== 3 ||
+      cats['Consultation & treatments'] !== 1 ||
+      cats['Laboratory'] !== 1 ||
+      cats['Dental'] !== 1 ||
+      p.clinic.ownPriceCount !== 1 ||
+      Number(own?.own) !== 60000 ||
+      Number(own?.list) !== 52000 ||
+      refused !== '22023/'
+    )
+      throw new Error(json135({ p, refused }))
+    return '3 new treatments (consultation, laboratory, dental) · Root canal’s own 60,000 ≠ 52,000 · no private column refused'
+  },
+)
+await step(
+  '0135 B: kept — the lines become treatments priced from the list for private patients; the lab test goes to the lab desk; the clinic’s own price still wins',
+  async () => {
+    await as(staff.manager)
+    const p = (
+      await one(
+        `select import_tariff(null, '{"name": "MoH clinic tariff 135", "publisher": "Ministry of Health", "kind": "treatments", "scope": "clinic", "privateColumn": "privates"}'::jsonb,
+                'MoH 2026', current_date, $1::jsonb, $2::jsonb, null, null, null, false) as j`,
+        [json135(t135.cols), json135(t135.lines)],
+      )
+    ).j
+    t135.book = p.bookId
+    t135.v1 = p.versionId
+    await asAdmin()
+    const svc = async (code) =>
+      one(
+        `select s.id, s.service_group, s.list_book_id, c.cash_price, c.list_price, c.own_price, c.order_station, c.list_name
+         from service s join catalogue_services c on c.id = s.id where s.tariff_code = $1`,
+        [code],
+      )
+    const cons = await svc('RHIC-CONS-135')
+    const hema = await svc('RLTC-HEMA-135')
+    t135.cons = cons?.id
+    t135.hema = hema?.id
+    const root = await one(
+      `select cash_price, list_price, own_price from catalogue_services where id = $1`,
+      [t134.root],
+    )
+    const charge = await one(`select price, source from price_source_for($1, null, null)`, [
+      t135.cons,
+    ])
+    const pub = (
+      await one(
+        `select count(*)::int as n from service where list_book_id = $1 and booking_category is not null`,
+        [t135.book],
+      )
+    ).n
+    if (
+      p.clinic.created !== 3 ||
+      !cons ||
+      cons.list_book_id !== t135.book ||
+      Number(cons.cash_price) !== 6000 ||
+      Number(cons.list_price) !== 6000 ||
+      cons.own_price !== null ||
+      cons.list_name !== 'MoH clinic tariff 135' ||
+      !hema ||
+      hema.service_group !== 'lab' ||
+      hema.order_station !== 'laboratory' ||
+      Number(root.cash_price) !== 60000 ||
+      Number(root.list_price) !== 52000 ||
+      Number(charge.price) !== 6000 ||
+      charge.source !== 'cash' ||
+      pub !== 0
+    )
+      throw new Error(json135({ p, cons, hema, root, charge, pub }))
+    return 'consultation 6,000 from the list · blood count = a lab test at the laboratory · Root canal keeps 60,000 (list 52,000) · not on the public site'
+  },
+)
+await step(
+  '0135 C: saving a treatment at the list’s price does not freeze it; a different price is the clinic’s own; an empty price goes back to the list',
+  async () => {
+    await as(staff.manager)
+    const save = (price) =>
+      db.query(`select upsert_service($1, 'General consultation 135', 'consultation', $2)`, [
+        t135.cons,
+        price,
+      ])
+    await save(6000)
+    const same = (await one(`select own_cash_price($1, null) as p`, [t135.cons])).p
+    await save(7000)
+    const own = await one(
+      `select own_cash_price($1, null) as p, (select price from price_for($1, null, null)) as c`,
+      [t135.cons],
+    )
+    await save(null)
+    const back = await one(
+      `select own_cash_price($1, null) as p, (select price from price_for($1, null, null)) as c`,
+      [t135.cons],
+    )
+    const noList = await hintAs(
+      staff.manager,
+      `select upsert_service(null, 'No price 135', 'other', null)`,
+    )
+    await as(staff.manager)
+    const used = (
+      await one(`select use_list_prices($1, array[$2::uuid]) as n`, [t135.book, t134.root])
+    ).n
+    await asAdmin()
+    const root = await one(`select cash_price, own_price from catalogue_services where id = $1`, [
+      t134.root,
+    ])
+    if (
+      same !== null ||
+      Number(own.p) !== 7000 ||
+      Number(own.c) !== 7000 ||
+      back.p !== null ||
+      Number(back.c) !== 6000 ||
+      noList !== '22023/' ||
+      used !== 1 ||
+      Number(root.cash_price) !== 52000 ||
+      root.own_price !== null
+    )
+      throw new Error(json135({ same, own, back, noList, used, root }))
+    return 'at 6,000: follows the list · at 7,000: the clinic’s own · empty: back to 6,000 · Root canal back to the list (52,000)'
+  },
+)
+await step(
+  '0135 D: a Ministry list of medicines prices the clinic’s medicine by its code for private patients once its own price goes; a price equal to the list’s is not frozen',
+  async () => {
+    await as(staff.manager)
+    const p = (
+      await one(
+        `select import_tariff(null, '{"name": "MoH medicines 135", "publisher": "Ministry of Health", "kind": "medicines", "scope": "clinic", "privateColumn": "price"}'::jsonb,
+                'MoH medicines 2026', current_date, '[{"key": "price", "label": "PRICE"}]'::jsonb, $1::jsonb, null, null, null, false) as j`,
+        [
+          json135([
+            { row: 1, code: 'N05AA01134', name: 'Chlorpromazine 25mg', prices: { price: 150 } },
+          ]),
+        ],
+      )
+    ).j
+    t135.meds = p.bookId
+    const before = (await one(`select price from price_for(null, $1, null)`, [t134.med])).price
+    await db.query(`select use_list_prices($1)`, [t135.meds])
+    const after = (await one(`select price from price_for(null, $1, null)`, [t134.med])).price
+    await asAdmin()
+    await db.query(`select set_cash_price($1, 150)`, [t134.med])
+    const frozen = (await one(`select own_cash_price(null, $1) as p`, [t134.med])).p
+    const cat = await one(
+      `select cash_price, list_price, own_price from items_catalogue where id = $1`,
+      [t134.med],
+    )
+    if (
+      p.clinic.ownPriceCount !== 1 ||
+      Number(before) !== 900 ||
+      Number(after) !== 150 ||
+      frozen !== null ||
+      Number(cat.cash_price) !== 150 ||
+      Number(cat.list_price) !== 150 ||
+      cat.own_price !== null
+    )
+      throw new Error(json135({ p: p.clinic, before, after, frozen, cat }))
+    return 'Chlorpromazine: own 900 → list 150 after “use the list price”; a packaging save at 150 stays the list’s'
+  },
+)
+await step(
+  '0135 E: an insurer’s own list without codes — lines found by name on the Ministry list and among the clinic’s treatments; the rest linked by hand; the insurer pays it at once',
+  async () => {
+    await as(staff.manager)
+    const lines = [
+      { row: 2, code: '', name: 'General consultation 135', prices: { tariff: 4500 } },
+      { row: 3, code: '', name: 'Extraction adult 134', prices: { tariff: 20000 } },
+      { row: 4, code: '', name: 'Unknown act 135', prices: { tariff: 999 } },
+    ]
+    const book = json135({
+      name: 'Eden Care treatments 135',
+      publisher: 'Eden Care',
+      kind: 'treatments',
+      scope: 'insurer',
+      payerId: t134.eden,
+    })
+    const p = (
+      await one(
+        `select import_tariff(null, $1::jsonb, 'Eden 2026', current_date, '[{"key": "tariff", "label": "Tariff"}]'::jsonb, $2::jsonb, null, null, null, false) as j`,
+        [book, json135(lines)],
+      )
+    ).j
+    t135.eden = p.bookId
+    const follow = await one(
+      `select column_key, priority from payer_tariff where payer_id = $1 and book_id = $2`,
+      [t134.eden, t135.eden],
+    )
+    const cons = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t135.cons,
+      t134.eden,
+    ])
+    const dent = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t134.dent,
+      t134.eden,
+    ])
+    const unknown = p.names.notFound[0]
+    await db.query(`select link_tariff_line($1, $2, $3, null)`, [
+      t135.eden,
+      unknown?.code,
+      t134.root,
+    ])
+    const root = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t134.root,
+      t134.eden,
+    ])
+    const page = (await one(`select tariff_lines($1, 'unknown') as j`, [p.versionId])).j
+    await asAdmin()
+    if (
+      p.names.byList !== 1 ||
+      p.names.byClinic !== 1 ||
+      p.names.notFoundCount !== 1 ||
+      !/^L-[0-9A-F]{8}$/.test(unknown?.code ?? '') ||
+      follow?.column_key !== 'tariff' ||
+      follow?.priority !== 0 ||
+      Number(cons.price) !== 4500 ||
+      cons.source !== 'reference' ||
+      Number(dent.price) !== 20000 ||
+      Number(root.price) !== 999 ||
+      page.lines[0]?.clinic?.[0]?.id !== t134.root ||
+      page.lines[0]?.clinic?.[0]?.linked !== true
+    )
+      throw new Error(json135({ names: p.names, follow, cons, dent, root, page: page.lines }))
+    return `consultation found on the Ministry list (4,500), extraction found among the clinic’s (20,000), “Unknown act” → ${unknown.code} linked by hand to Root canal (999) · Eden follows it first`
+  },
+)
+await step(
+  '0135 F: the list of lists says whose list it is; the settings take a column the list has; keeping the Ministry list again makes no second treatment',
+  async () => {
+    await as(staff.manager)
+    const books = (await one(`select tariff_books() as j`)).j
+    const b = books.find((x) => x.id === t135.book)
+    const bad = await hintAs(staff.manager, `select save_tariff_book_settings($1, 'hospitals')`, [
+      t135.book,
+    ])
+    await as(staff.manager)
+    await db.query(`select save_tariff_book_settings($1, 'rama_mmi', 5)`, [t135.book])
+    const price = (await one(`select price from price_for($1, null, null)`, [t135.cons])).price
+    await db.query(`select save_tariff_book_settings($1, 'privates')`, [t135.book])
+    const again = (
+      await one(
+        `select import_tariff($1, null, 'MoH 2026 b', current_date, $2::jsonb, $3::jsonb, null, null, null, false) as j`,
+        [t135.book, json135(t135.cols), json135(t135.lines)],
+      )
+    ).j
+    await asAdmin()
+    const count = (
+      await one(`select count(*)::int as n from service where tariff_code = 'RHIC-CONS-135'`)
+    ).n
+    if (
+      !b ||
+      b.scope !== 'clinic' ||
+      b.privateColumn !== 'privates' ||
+      b.linked !== 4 ||
+      bad !== '22023/' ||
+      Number(price) !== 5000 ||
+      again.clinic.created !== 0 ||
+      count !== 1
+    )
+      throw new Error(json135({ b, bad, price, again: again.clinic, count }))
+    return 'clinic-wide, private column Privates (Non insured), 4 treatments on it · a missing column refused · RAMA; MMI → 5,000 · kept again: no second treatment'
+  },
+)
+for (const [what, sql, params] of [
+  ['use the list prices', `select use_list_prices($1)`, () => [t135.book]],
+  [
+    'link a line',
+    `select link_tariff_line($1, 'RHIC-CONS-135', $2, null)`,
+    () => [t135.book, t134.root],
+  ],
+  [
+    'change a list’s settings',
+    `select save_tariff_book_settings($1, 'privates')`,
+    () => [t135.book],
+  ],
+]) {
+  await step(`0135 G: a cashier may not ${what}`, async () => {
+    const r = await hintAs(staff.cashier, sql, params())
+    if (r !== '42501/') throw new Error(r)
+    return 'refused (42501)'
+  })
+}
+await step(
+  '0135 H: an insurer’s list with its own codes finds the Ministry-made treatment by name; two strengths of one medicine without codes stay two lines',
+  async () => {
+    await as(staff.manager)
+    const p = (
+      await one(
+        `select import_tariff(null, $1::jsonb, 'MMI 2026', current_date, '[{"key": "tariff", "label": "Tariff"}]'::jsonb, $2::jsonb, null, null, null, false) as j`,
+        [
+          json135({
+            name: 'MMI treatments 135',
+            publisher: 'MMI',
+            kind: 'treatments',
+            scope: 'insurer',
+            payerId: t134.mmi,
+          }),
+          json135([
+            { row: 1, code: 'MMI-135', name: 'General consultation 135', prices: { tariff: 4000 } },
+          ]),
+        ],
+      )
+    ).j
+    const cons = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t135.cons,
+      t134.mmi,
+    ])
+    const meds = (
+      await one(
+        `select import_tariff(null, $1::jsonb, 'MMI meds', current_date, '[{"key": "tariff", "label": "Tariff"}]'::jsonb, $2::jsonb) as j`,
+        [
+          json135({
+            name: 'MMI medicines 135',
+            publisher: 'MMI',
+            kind: 'medicines',
+            scope: 'insurer',
+            payerId: t134.mmi,
+          }),
+          json135([
+            {
+              row: 1,
+              code: '',
+              name: 'Amoxicillin 135',
+              detail: '500mg capsule',
+              prices: { tariff: 120 },
+            },
+            {
+              row: 2,
+              code: '',
+              name: 'Amoxicillin 135',
+              detail: '250mg/5ml syrup',
+              prices: { tariff: 2400 },
+            },
+          ]),
+        ],
+      )
+    ).j
+    await asAdmin()
+    if (
+      !p.clinic.byName.some((x) => x.id === t135.cons) ||
+      Number(cons.price) !== 4000 ||
+      cons.source !== 'reference' ||
+      meds.rows !== 2 ||
+      meds.errorCount !== 0 ||
+      meds.names.notFoundCount !== 2
+    )
+      throw new Error(
+        json135({
+          byName: p.clinic.byName,
+          cons,
+          meds: { rows: meds.rows, errors: meds.errors, names: meds.names },
+        }),
+      )
+    return 'MMI-135 “General consultation 135” → the Ministry-made treatment (MMI pays 4,000) · Amoxicillin capsule and syrup: 2 lines, 2 codes'
+  },
+)
+await step(
+  '0135 I: a line taken out of the Ministry list hides the treatment made from it, and shows it again when it is back',
+  async () => {
+    await asAdmin()
+    t135.cur = (
+      await one(`select id from tariff_version where book_id = $1 and status = 'current'`, [
+        t135.book,
+      ])
+    ).id
+    await as(staff.manager)
+    await db.query(`select remove_tariff_line($1, 'RLTC-HEMA-135')`, [t135.cur])
+    const out = (await one(`select active from service where id = $1`, [t135.hema])).active
+    await db.query(`select remove_tariff_line($1, 'RLTC-HEMA-135', true)`, [t135.cur])
+    const back = (await one(`select active from service where id = $1`, [t135.hema])).active
+    await asAdmin()
+    if (out !== false || back !== true) throw new Error(json135({ out, back }))
+    return 'blood count hidden while out of the list, shown again'
+  },
+)
+await step(
+  '0135 J: a version from next month with a renamed private column — today’s prices stay; its new line is made hidden until it starts',
+  async () => {
+    await as(staff.manager)
+    const p = (
+      await one(
+        `select import_tariff($1, '{"privateColumn": "private_2027"}'::jsonb, 'MoH 2027', current_date + 30,
+                '[{"key": "rama_mmi", "label": "RAMA; MMI"}, {"key": "private_2027", "label": "Private 2027"}]'::jsonb, $2::jsonb,
+                null, null, null, false) as j`,
+        [
+          t135.book,
+          json135([
+            {
+              row: 1,
+              code: 'RHIC-CONS-135',
+              name: 'General consultation 135',
+              section: 'Consultation',
+              prices: { rama_mmi: 5200, private_2027: 6500 },
+            },
+            {
+              row: 2,
+              code: 'RHIC-NEW-135',
+              name: 'New act 135',
+              section: 'Consultation',
+              prices: { rama_mmi: 1000, private_2027: 7000 },
+            },
+          ]),
+        ],
+      )
+    ).j
+    await asAdmin()
+    const today = (await one(`select price from price_for($1, null, null)`, [t135.cons])).price
+    const later = (
+      await one(`select price from price_for($1, null, null, current_date + 30)`, [t135.cons])
+    ).price
+    const made = await one(`select active from service where tariff_code = 'RHIC-NEW-135'`)
+    if (
+      p.clinic.created !== 1 ||
+      Number(today) !== 6000 ||
+      Number(later) !== 6500 ||
+      made?.active !== false
+    )
+      throw new Error(json135({ created: p.clinic.created, today, later, made }))
+    return 'today 6,000 (Privates of 2026) · from next month 6,500 (Private 2027) · “New act 135” made hidden'
+  },
+)
+await step(
+  '0135 K: linking a clinic treatment by hand to a Ministry line retires the treatment made from that line; the link shows and can be undone',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select link_tariff_line($1, 'RHIC-CONS-135', $2, null)`, [t135.book, t134.cons])
+    const page = (await one(`select tariff_lines($1, 'general consultation') as j`, [t135.cur])).j
+    await asAdmin()
+    const made = await one(`select active, deleted_at from service where id = $1`, [t135.cons])
+    const linked = await one(`select tariff_code from service where id = $1`, [t134.cons])
+    const chip = page.lines[0]?.clinic?.find((c) => c.id === t134.cons)
+    if (
+      made.active !== false ||
+      made.deleted_at === null ||
+      linked.tariff_code !== 'RHIC-CONS-135' ||
+      chip?.linked !== true ||
+      page.lines[0]?.clinic?.some((c) => c.id === t135.cons)
+    )
+      throw new Error(json135({ made, linked, page: page.lines }))
+    return '“Consultation by a general practitioner 134” now carries RHIC-CONS-135; the made one is retired; the chip can be unlinked'
+  },
+)
+await step(
+  '0135 L: hiding a treatment without a list price keeps the clinic’s own price',
+  async () => {
+    await as(staff.manager)
+    await db.query(
+      `select upsert_service(p_id => $1, p_name_en => 'Extraction adult 134', p_group => 'dental', p_cash_price => null, p_active => false)`,
+      [t134.dent],
+    )
+    await asAdmin()
+    const row = await one(
+      `select s.active, own_cash_price(s.id, null) as own from service s where s.id = $1`,
+      [t134.dent],
+    )
+    await as(staff.manager)
+    await db.query(
+      `select upsert_service(p_id => $1, p_name_en => 'Extraction adult 134', p_group => 'dental', p_cash_price => null, p_active => true)`,
+      [t134.dent],
+    )
+    await asAdmin()
+    if (row.active !== false || Number(row.own) !== 30000) throw new Error(json135(row))
+    return 'hidden, own price 30,000 kept (not 0)'
+  },
+)
+// @@t135-end
 finish()
 
 function finish() {

@@ -73,6 +73,9 @@ export function PriceListPreviewPanel({
       className="w-[760px]"
       title={t('prices.lists.previewTitle', { name: p.name })}
       subtitle={[
+        p.book.scope === 'insurer' && p.book.payer
+          ? t('prices.lists.scopeOf', { payer: p.book.payer })
+          : t(`prices.lists.scope.${p.book.scope}`),
         p.book.isNew
           ? t('prices.lists.previewNew', { list: p.book.name, publisher: p.book.publisher })
           : p.book.name,
@@ -310,6 +313,80 @@ export function PriceListPreviewPanel({
                 ))
               }
             </ShownList>
+          </Part>
+        )}
+
+        {p.book.scope === 'clinic' && p.book.kind === 'treatments' && (
+          <Part
+            title={t('prices.lists.toCreateTitle', { count: p.clinic.toCreate })}
+            hint={t('prices.lists.toCreateHint')}
+            empty={p.clinic.toCreate === 0 ? t('prices.lists.toCreateNone') : null}
+          >
+            <span className="flex flex-wrap gap-1">
+              {p.clinic.toCreateByCategory.map((c) => (
+                <Badge key={c.category} tone="green">
+                  {c.category} · {formatNumber(c.count)}
+                </Badge>
+              ))}
+            </span>
+          </Part>
+        )}
+
+        {p.book.scope === 'clinic' && p.clinic.ownPriceCount > 0 && (
+          <Part
+            title={t('prices.lists.ownPricesTitle', { count: p.clinic.ownPriceCount })}
+            hint={t('prices.lists.ownPricesHint')}
+          >
+            <ShownList items={p.clinic.ownPrices} step={8} footerClassName="pt-1">
+              {(rows) =>
+                rows.map((r) => (
+                  <Row key={r.id} className="flex-wrap gap-x-2 gap-y-1 px-0 py-1.5">
+                    <span className="min-w-[180px] flex-1">
+                      <span className="text-ink block text-[14px] font-medium">{r.name}</span>
+                      <span className="text-ink-3 text-[12px]">{r.code}</span>
+                    </span>
+                    <span className="text-ink-2 text-[13px] tabular-nums">
+                      {t('prices.lists.ownVsList', { own: price(r.own), list: price(r.list) })}
+                    </span>
+                  </Row>
+                ))
+              }
+            </ShownList>
+          </Part>
+        )}
+
+        {p.book.scope === 'insurer' && p.book.payer && (
+          <Part
+            title={t('prices.lists.insurerOwnTitle', { payer: p.book.payer })}
+            hint={t('prices.lists.insurerOwnHint', {
+              payer: p.book.payer,
+              column: label(p.book.payerColumn),
+            })}
+          />
+        )}
+
+        {(p.names.byList > 0 || p.names.byClinic > 0 || p.names.notFoundCount > 0) && (
+          <Part
+            title={t('prices.lists.namesTitle')}
+            hint={t('prices.lists.namesHint', {
+              list: p.names.byList,
+              clinic: p.names.byClinic,
+              none: p.names.notFoundCount,
+            })}
+          >
+            {p.names.notFound.length > 0 && (
+              <ShownList items={p.names.notFound} step={8} footerClassName="pt-1">
+                {(rows) =>
+                  rows.map((r) => (
+                    <Row key={r.code} className="flex-wrap gap-x-2 gap-y-1 px-0 py-1.5">
+                      <Badge tone="yellow">{t('prices.lists.rowN', { n: r.row })}</Badge>
+                      <span className="text-ink min-w-[160px] flex-1 text-[14px]">{r.name}</span>
+                      <span className="text-ink-3 text-[12px]">{r.code}</span>
+                    </Row>
+                  ))
+                }
+              </ShownList>
+            )}
           </Part>
         )}
 

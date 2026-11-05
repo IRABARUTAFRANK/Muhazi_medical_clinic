@@ -194,6 +194,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^too many wrong codes: ask for a new one$/, 'dbErrors.a67c9d35', 0], // verify_visit_edit
   [/^you already have a booking at that time$/, 'dbErrors.9e1f26ad', 0], // accept_appointment
   [/^a reason is required for a typed price$/, 'dbErrors.1d3f4f34', 0], // add_charge_internal
+  [/^choose the column private patients pay$/, 'dbErrors.920d2292', 0], // import_tariff
   [/^idle_minutes must be between 1 and 480$/, 'dbErrors.1918a44a', 0], // save_setting
   [/^only the version in use can be changed$/, 'dbErrors.5b0376e3', 0], // remove_tariff_line, save_tariff_line
   [/^payment not found or already cancelled$/, 'dbErrors.fc67f623', 0], // void_payment
@@ -232,13 +233,15 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only the manager can change the beds$/, 'dbErrors.b86ae747', 0], // remove_bed, save_bed, set_bed_count
   [/^say why the finished visit is edited$/, 'dbErrors.f834fabe', 0], // request_visit_edit
   [/^surname and given names are required$/, 'dbErrors.b328130a', 0], // create_patient_file
+  [/^the order is a number from 0 to 9999$/, 'dbErrors.4ec0850d', 0], // save_tariff_book_settings
   [/^the Ubudehe category is 1, 2, 3 or 4$/, 'dbErrors.3be2d3b3', 0], // patient_check_details
   [/^this feature cannot be switched here$/, 'dbErrors.7d9e0794', 0], // set_role_permission, set_staff_permission
-  [/^this price column is not in the list$/, 'dbErrors.b20730b2', 0], // set_payer_tariff
+  [/^this price column is not in the list$/, 'dbErrors.b20730b2', 0], // save_tariff_book_settings, set_payer_tariff
   [/^write the findings or the conclusion$/, 'dbErrors.42ac37c9', 0], // correct_result, record_result
   [/^a reason is required for a discount$/, 'dbErrors.e4a08c28', 0], // add_charge_internal
   [/^cash, MTN MoMo or Airtel Money only$/, 'dbErrors.b5dc6a37', 0], // refund_payment
-  [/^give a service or an item, not both$/, 'dbErrors.9bbb9d28', 0], // add_charge_internal, set_insurer_price
+  [/^choose the insurer whose list it is$/, 'dbErrors.1d8baa49', 0], // import_tariff
+  [/^give a service or an item, not both$/, 'dbErrors.9bbb9d28', 0], // add_charge_internal, link_tariff_line, set_insurer_price
   [/^that person does not work at triage$/, 'dbErrors.262c8d2f', 0], // begin_visit
   [/^the quantity must be more than zero$/, 'dbErrors.c4581db5', 0], // sell_medicine
   [/^this diagnosis is already confirmed$/, 'dbErrors.21358efa', 0], // confirm_differential
@@ -256,6 +259,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^this medicine was already put back$/, 'dbErrors.ed36662c', 0], // undo_given_here
   [/^you cannot delete your own account$/, 'dbErrors.1e07203d', 0], // retire_staff
   [/^another bed already has this name$/, 'dbErrors.edca5024', 0], // save_bed
+  [/^choose the insurer's price column$/, 'dbErrors.36d7a9d8', 0], // import_tariff
   [/^give the date of birth or the age$/, 'dbErrors.f65170ae', 0], // create_patient_file
   [/^say whether the insurer covers it$/, 'dbErrors.a1a28c10', 0], // save_tariff_exception
   [/^say why \(expired, damaged, used…\)$/, 'dbErrors.a259eb28', 0], // use_stock
@@ -279,7 +283,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^this patient is already in a bed$/, 'dbErrors.ae436dd1', 0], // admit_to_bed
   [/^this patient is not waiting at (.+?)$/, 'dbErrors.f45d52da', 1], // call_patient_at
   [/^this store is kept by the system$/, 'dbErrors.b04ff339', 0], // save_location, set_location_active
-  [/^unknown or inactive service\/item$/, 'dbErrors.377e78c4', 0], // add_charge_internal, link_tariff_service, set_insurer_price
+  [/^unknown or inactive service\/item$/, 'dbErrors.377e78c4', 0], // add_charge_internal, link_tariff_line, link_tariff_service, …
   [/^unknown part of the visit record$/, 'dbErrors.22d39b98', 0], // save_visit_section
   [/^choose a person or a department$/, 'dbErrors.fef9c567', 0], // assign_store_holder
   [/^choose who may see the calendar$/, 'dbErrors.719b354e', 0], // save_calendar
@@ -390,11 +394,12 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^unknown contract type$/, 'dbErrors.290cbef7', 0], // save_staff_profile
   [/^a reason is required$/, 'dbErrors.f33d287e', 0], // void_charge
   [/^department not found$/, 'dbErrors.b86f7a99', 0], // analytics_scope, assign_store_holder, bulk_add_services, …
-  [/^give the line a code$/, 'dbErrors.803dfaa3', 0], // link_tariff_service, save_tariff_exception, save_tariff_line
+  [/^give the line a code$/, 'dbErrors.803dfaa3', 0], // link_tariff_line, link_tariff_service, save_tariff_exception, …
   [/^give the line a name$/, 'dbErrors.cf508f19', 0], // save_tariff_line
   [/^give the list a name$/, 'dbErrors.d6ff72fe', 0], // import_price_list, import_reference_list, import_tariff, …
-  [/^price list not found$/, 'dbErrors.0efaaf29', 0], // import_tariff, remove_tariff_line, save_tariff_book, …
+  [/^price list not found$/, 'dbErrors.0efaaf29', 0], // import_tariff, link_tariff_line, remove_tariff_line, …
   [/^room store not found$/, 'dbErrors.fb0e8bbe', 0], // room_store_summary, save_room_store
+  [/^say whose list it is$/, 'dbErrors.083acf5a', 0], // import_tariff
   [/^test order not found$/, 'dbErrors.8a617326', 0], // correct_result, record_result
   [/^the lines are a list$/, 'dbErrors.18d283bc', 0], // confirm_receipt
   [/^the list has no rows$/, 'dbErrors.4f0bcaa5', 0], // import_price_list, import_reference_list, import_tariff

@@ -1,5 +1,17 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Pencil, Plus, RotateCcw, Save, ShieldCheck, ShieldOff, Table2, Trash2 } from 'lucide-react'
+import {
+  Link2,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Save,
+  ShieldCheck,
+  ShieldOff,
+  Table2,
+  Trash2,
+  Undo2,
+  X,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@mmc/shared'
 import { tableCell, tableHead, tableRow } from '@/components/dash/kit-style'
@@ -7,7 +19,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
+import { SearchSelect } from '@/components/ui/search-select'
 import { SidePanel } from '@/components/ui/side-panel'
+import { treatmentName, useMedicines, useTreatments } from '@/lib/api/catalogue'
 import type { Insurer } from '@/lib/api/catalogue'
 import {
   COVERS,
@@ -56,6 +70,7 @@ export function LinesPanel({
   const [limit, setLimit] = useState(PAGE)
   const [editing, setEditing] = useState<PriceListLine | 'new' | null>(null)
   const [excepting, setExcepting] = useState<PriceListLine | null>(null)
+  const [linking, setLinking] = useState<PriceListLine | null>(null)
   const [error, setError] = useState<string | null>(null)
   // the search runs a moment after typing stops
   useEffect(() => {
@@ -220,6 +235,18 @@ export function LinesPanel({
             onCancel={() => setEditing(null)}
           />
         )}
+        {linking && (
+          <LinkForm
+            key={linking.code}
+            book={book}
+            line={linking}
+            onDone={(text) => {
+              setLinking(null)
+              onNotice(text)
+            }}
+            onCancel={() => setLinking(null)}
+          />
+        )}
         {excepting && payer && (
           <ExceptionForm
             key={excepting.code}
@@ -244,7 +271,7 @@ export function LinesPanel({
                   </th>
                 ))}
                 {payer && <th className={tableHead}>{payer.name}</th>}
-                <th className={tableHead}>
+                <th className={cn(tableHead, 'bg-surface sticky right-0')}>
                   <span className="sr-only">{t('prices.lists.actions')}</span>
                 </th>
               </tr>
@@ -262,9 +289,14 @@ export function LinesPanel({
                     {l.note && <span className="text-ink-2 block text-[12px]">“{l.note}”</span>}
                     <span className="mt-0.5 flex flex-wrap gap-1">
                       {l.clinic.map((c) => (
-                        <Badge key={c.id} tone="green">
-                          {t('prices.lists.atClinicName', { name: c.name })}
-                        </Badge>
+                        <ClinicChip
+                          key={c.id}
+                          book={book}
+                          line={l}
+                          clinic={c}
+                          onNotice={onNotice}
+                          onError={setError}
+                        />
                       ))}
                       {l.edited && !l.removed && (
                         <Badge tone="yellow">
@@ -310,8 +342,21 @@ export function LinesPanel({
                       )}
                     </td>
                   )}
-                  <td className={cn(tableCell, 'whitespace-nowrap')}>
+                  <td className={cn(tableCell, 'bg-card sticky right-0 whitespace-nowrap')}>
                     <span className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title={t('prices.lists.linkLine')}
+                        onClick={() => {
+                          setEditing(null)
+                          setExcepting(null)
+                          setLinking(l)
+                        }}
+                      >
+                        <Link2 size={14} aria-hidden="true" />
+                        <span className="sr-only">{t('prices.lists.linkLine')}</span>
+                      </Button>
                       {payer && (
                         <Button
                           size="sm"
@@ -377,6 +422,175 @@ export function LinesPanel({
         )}
       </div>
     </SidePanel>
+  )
+}
+
+/**
+ * One of the clinic's treatments / medicines on a line: its name, and on the Ministry's list for the
+ * whole clinic whether it follows the list's price or has the clinic's own ("Use the list price");
+ * a link made by hand or by name can be undone.
+ */
+function ClinicChip({
+  book,
+  line,
+  clinic,
+  onNotice,
+  onError,
+}: {
+  book: PriceListBook
+  line: PriceListLine
+  clinic: PriceListLine['clinic'][number]
+  onNotice: (text: string) => void
+  onError: (text: string | null) => void
+}) {
+  const { t } = useTranslation()
+  const actions = usePriceListActions()
+  const listPrice = book.privateColumn ? line.prices[book.privateColumn] : null
+  const run = async (fn: () => Promise<unknown>, text: string) => {
+    onError(null)
+    try {
+      await fn()
+      onNotice(text)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : String(e))
+    }
+  }
+  return (
+    <span className="border-green/25 bg-green-bg text-green inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border px-1.5 py-0.5 text-[12px]">
+      <span className="font-medium">{t('prices.lists.atClinicName', { name: clinic.name })}</span>
+      {book.scope === 'clinic' &&
+        (clinic.ownPrice != null ? (
+          <>
+            <span className="text-amber">
+              · {t('prices.lists.clinicOwn', { price: price(clinic.ownPrice) })}
+            </span>
+            {listPrice != null && (
+              <button
+                type="button"
+                className="text-primary underline underline-offset-2"
+                onClick={() =>
+                  void run(
+                    () =>
+                      actions.applyListPrices.mutateAsync({ bookId: book.id, ids: [clinic.id] }),
+                    t('prices.lists.useListOne', { name: clinic.name, price: price(listPrice) }),
+                  )
+                }
+              >
+                {t('prices.lists.useList')}
+              </button>
+            )}
+          </>
+        ) : (
+          <span>· {t('prices.lists.followsList')}</span>
+        ))}
+      {clinic.linked && (
+        <button
+          type="button"
+          title={t('prices.lists.unlink')}
+          className="text-ink-3 hover:text-red inline-flex"
+          onClick={() =>
+            void run(
+              () =>
+                actions.linkLine.mutateAsync({
+                  bookId: book.id,
+                  code: line.code,
+                  serviceId: clinic.kind === 'service' ? clinic.id : null,
+                  itemId: clinic.kind === 'item' ? clinic.id : null,
+                  unlink: true,
+                }),
+              t('prices.lists.unlinked', { name: clinic.name }),
+            )
+          }
+        >
+          <X size={12} aria-hidden="true" />
+          <span className="sr-only">{t('prices.lists.unlink')}</span>
+        </button>
+      )}
+    </span>
+  )
+}
+
+/** A line linked by hand to one of the clinic's treatments (a list of treatments) or medicines. */
+function LinkForm({
+  book,
+  line,
+  onDone,
+  onCancel,
+}: {
+  book: PriceListBook
+  line: PriceListLine
+  onDone: (text: string) => void
+  onCancel: () => void
+}) {
+  const { t, i18n } = useTranslation()
+  const actions = usePriceListActions()
+  const treatments = useTreatments()
+  const medicines = useMedicines()
+  const [chosen, setChosen] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const options =
+    book.kind === 'treatments'
+      ? (treatments.data ?? []).map((x) => ({
+          value: x.id,
+          label: treatmentName(x, i18n.language),
+          hint: x.code,
+        }))
+      : (medicines.data ?? []).map((m) => ({
+          value: m.id,
+          label: [m.name, m.strength].filter(Boolean).join(' '),
+          hint: m.code,
+        }))
+  const label = options.find((o) => o.value === chosen)?.label ?? ''
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    if (!chosen) return setError(t('prices.lists.pickClinic'))
+    try {
+      await actions.linkLine.mutateAsync({
+        bookId: book.id,
+        code: line.code,
+        serviceId: book.kind === 'treatments' ? chosen : null,
+        itemId: book.kind === 'medicines' ? chosen : null,
+      })
+      onDone(t('prices.lists.linked', { line: line.name, name: label }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+  return (
+    <form
+      onSubmit={(e) => void save(e)}
+      className="border-green/30 bg-green-bg/40 flex flex-col gap-3 rounded-md border p-3"
+    >
+      <span className="text-ink text-[14px] font-semibold">
+        {t('prices.lists.linkTitle', { name: line.name, code: line.code })}
+      </span>
+      <p className="text-ink-3 m-0 text-[12px]">{t(`prices.lists.linkHint.${book.scope}`)}</p>
+      <SearchSelect
+        label={t(
+          book.kind === 'treatments' ? 'prices.lists.linkTreatment' : 'prices.lists.linkMedicine',
+        )}
+        value={chosen}
+        onChange={setChosen}
+        emptyLabel={t('prices.lists.pickClinic')}
+        options={options}
+      />
+      {error && (
+        <p role="alert" className={errorBox}>
+          {error}
+        </p>
+      )}
+      <span className="flex flex-wrap gap-2">
+        <Button type="submit" variant="primary" loading={actions.linkLine.isPending}>
+          <Link2 size={14} aria-hidden="true" />
+          {t('prices.lists.linkSave')}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          <Undo2 size={14} aria-hidden="true" />
+          {t('staff.form.cancel')}
+        </Button>
+      </span>
+    </form>
   )
 }
 

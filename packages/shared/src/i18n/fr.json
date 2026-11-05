@@ -1708,7 +1708,7 @@
     },
     "lists": {
       "title": "Listes de prix publiées (MoH, RSSB, assureurs)",
-      "lead": "Les tarifs que publient le Ministère de la Santé, la RSSB / RHIA et les assureurs : une liste pour les soins, une pour les médicaments et produits. Chargez chaque nouvelle version ; les précédentes sont gardées. Choisissez quels assureurs suivent une liste et quelle colonne de prix ils paient, et notez les exceptions de chaque assureur (non couvert, seulement avec son accord, son propre prix). Les prix propres de la clinique ne changent pas.",
+      "lead": "Les tarifs publiés par le Ministère de la Santé et par les assureurs, en deux onglets : soins et services, et médicaments et produits. Une liste du Ministère s’applique à toute la clinique : les patients privés (sans assurance) paient son prix sauf si la clinique fixe le sien, et ses soins rejoignent ceux de la clinique. La liste propre d’un assureur est ce que cet assureur paie, avec ses exceptions. Chaque nouvelle version est chargée et vérifiée ; les précédentes sont gardées.",
       "none": "Aucune liste pour l’instant. Chargez la première ci-dessous.",
       "kinds": {
         "treatments": "Soins et services",
@@ -1761,7 +1761,8 @@
         "unit": "Unité",
         "note": "Consignes",
         "number": "Numéro de ligne",
-        "price": "Prix"
+        "price": "Prix",
+        "ignore": "Ignorée"
       },
       "priceColumns_one": "{{count}} colonne de prix :",
       "priceColumns_other": "{{count}} colonnes de prix :",
@@ -1944,7 +1945,136 @@
       "followSaved": "{{payer}} suit {{list}} et paie sa colonne « {{column}} ».",
       "followStopped": "{{payer}} ne suit plus {{list}}.",
       "readPdf_one": "{{n}} ligne lue dans le PDF {{file}}",
-      "readPdf_other": "{{n}} lignes lues dans le PDF {{file}}"
+      "readPdf_other": "{{n}} lignes lues dans le PDF {{file}}",
+      "tabLabel": "Listes de",
+      "tabTreatments_one": "Soins et services ({{count}} liste)",
+      "tabTreatments_other": "Soins et services ({{count}} listes)",
+      "tabMedicines_one": "Médicaments et produits ({{count}} liste)",
+      "tabMedicines_other": "Médicaments et produits ({{count}} listes)",
+      "tabHint": {
+        "treatments": "Tarifs des soins, actes et examens. Une liste du Ministère pour toute la clinique fait de chaque ligne un soin de la clinique.",
+        "medicines": "Tarifs des médicaments et produits. Ils fixent le prix des médicaments de la clinique par leur code."
+      },
+      "noneOf": {
+        "treatments": "Aucune liste de soins pour l’instant. Chargez la première ci-dessous.",
+        "medicines": "Aucune liste de médicaments pour l’instant. Chargez la première ci-dessous."
+      },
+      "scopeTitle": {
+        "clinic": "Ministère de la Santé — toute la clinique",
+        "insurer": "Listes propres des assureurs",
+        "reference": "Autres éditeurs"
+      },
+      "uploadOf": {
+        "treatments": "Charger une liste de soins et services",
+        "medicines": "Charger une liste de médicaments et produits"
+      },
+      "looksLike": {
+        "treatments": "Ce fichier ressemble à une liste de soins : chargez-le sous Soins et services.",
+        "medicines": "Ce fichier ressemble à une liste de médicaments : chargez-le sous Médicaments et produits."
+      },
+      "whose": "À qui est cette liste ?",
+      "scope": {
+        "clinic": "Ministère de la Santé — toute la clinique",
+        "insurer": "Le tarif propre d’un assureur",
+        "reference": "Un autre éditeur"
+      },
+      "scopeOf": "Tarif propre de {{payer}}",
+      "scopeHint": {
+        "clinic": {
+          "treatments": "Utilisée dans toute la clinique : les patients privés (sans assurance) paient son prix, et chaque ligne devient un soin de la clinique. La clinique peut encore fixer son propre prix pour chacun.",
+          "medicines": "Utilisée dans toute la clinique : les patients privés paient son prix pour les médicaments de la clinique au même code, sauf si la clinique fixe le sien."
+        },
+        "insurer": {
+          "treatments": "Le tarif officiel des soins de l’assureur : ses patients paient ces prix et la couverture est calculée dessus. Les consignes comme « non couvert » deviennent ses exceptions.",
+          "medicines": "Le tarif officiel des médicaments et produits de l’assureur : ses patients paient ces prix et la couverture est calculée dessus."
+        },
+        "reference": {
+          "treatments": "Une liste publiée par un autre (RSSB, RHIA…) : les assureurs choisissent de la suivre sous Assureurs.",
+          "medicines": "Une liste publiée par un autre (RSSB, RHIA…) : les assureurs choisissent de la suivre sous Assureurs."
+        }
+      },
+      "insurer": "L’assureur",
+      "pickInsurer": "Choisir l’assureur",
+      "privateColumn": "Les patients privés (sans assurance) paient la colonne",
+      "payerColumn": "La colonne que paie {{payer}}",
+      "needInsurer": "Choisissez l’assureur à qui est cette liste.",
+      "needPrivate": "Choisissez la colonne que paient les patients privés.",
+      "confirmCreate_one": "{{count}} ligne devient un nouveau soin de la clinique.",
+      "confirmCreate_other": "{{count}} lignes deviennent de nouveaux soins de la clinique.",
+      "doneCreated_one": "{{count}} nouveau soin de la clinique.",
+      "doneCreated_other": "{{count}} nouveaux soins de la clinique.",
+      "privatePays": "Les patients privés paient : {{column}}",
+      "orderN": "ordre {{n}}",
+      "ownPricedN_one": "{{count}} au prix propre de la clinique",
+      "ownPricedN_other": "{{count}} au prix propre de la clinique",
+      "useListAll": "Prendre le prix de la liste pour tous",
+      "useListAllQ_one": "Prendre le prix de {{list}} pour {{count}} ligne ?",
+      "useListAllQ_other": "Prendre le prix de {{list}} pour {{count}} lignes ?",
+      "useListAllBody": "Les prix propres de la clinique pour ces soins ou médicaments disparaissent : les patients privés paient le prix de la liste, et une nouvelle version de la liste le change.",
+      "useListAllYes": "Oui, prendre le prix de la liste",
+      "useListDone_one": "{{count}} prix suit à nouveau {{list}}.",
+      "useListDone_other": "{{count}} prix suivent à nouveau {{list}}.",
+      "settings": "Réglages",
+      "cols": {
+        "open": "Corriger les colonnes",
+        "close": "Fermer les colonnes",
+        "lead": "Chaque colonne du fichier et ce qu’elle est lue comme. Changez-en une si le fichier a une autre forme : il est relu aussitôt.",
+        "headerRow": "Ligne des noms de colonnes",
+        "readAgain": "Relire depuis cette ligne",
+        "column": "Colonne",
+        "values": "Valeurs",
+        "readAs": "Lue comme",
+        "readAsOf": "Lire « {{column}} » comme",
+        "nothing": "Aucune ligne ne peut être lue avec ces colonnes : il faut un nom et un prix."
+      },
+      "settingsTitle": "Réglages : {{name}}",
+      "saveSettings": "Enregistrer les réglages",
+      "settingsSaved": "{{name}} : les réglages sont enregistrés.",
+      "orderHint": "Quand deux listes du Ministère ont la même ligne, celle au plus petit numéro donne son prix.",
+      "deleteHint": "Une liste qu’aucun assureur ne suit peut être retirée. Les soins de la clinique faits à partir d’elle restent.",
+      "delete": "Retirer la liste",
+      "deleteQ": "Retirer {{name}} ?",
+      "deleteBody": "Ses prix ne s’appliquent plus. Ses versions restent dans l’historique.",
+      "deleteYes": "Oui, la retirer",
+      "deleted": "{{name}} est retirée.",
+      "toCreateTitle_one": "{{count}} nouveau soin pour la clinique",
+      "toCreateTitle_other": "{{count}} nouveaux soins pour la clinique",
+      "toCreateHint": "Les lignes qui ne sont pas encore parmi les soins de la clinique deviennent des soins, dans la catégorie de leur rubrique ; leur prix est celui de la liste jusqu’à ce que la clinique fixe le sien.",
+      "toCreateNone": "Chaque ligne est déjà un soin de la clinique.",
+      "ownPricesTitle_one": "{{count}} prix de la clinique diffère de la liste",
+      "ownPricesTitle_other": "{{count}} prix de la clinique diffèrent de la liste",
+      "ownPricesHint": "Le prix propre de la clinique est gardé. Après avoir gardé la liste, « Prendre le prix de la liste » les fait la suivre.",
+      "ownVsList": "clinique {{own}} · liste {{list}}",
+      "insurerOwnTitle": "{{payer}} paie cette liste",
+      "insurerOwnHint": "Dès qu’elle est gardée, {{payer}} paie la colonne « {{column}} », avant toute autre liste ; la couverture est calculée sur ces prix.",
+      "namesTitle": "Lignes sans code",
+      "namesHint": "{{list}} trouvées par leur nom sur la liste du Ministère · {{clinic}} trouvées parmi celles de la clinique · {{none}} non trouvées : elles reçoivent un code à elles — reliez-les à la main sous Voir les lignes.",
+      "linkLine": "Relier à la clinique",
+      "linkTitle": "Relier {{name}} ({{code}})",
+      "linkHint": {
+        "clinic": "Le soin prend le code de la ligne : son prix vient de cette liste pour les patients privés.",
+        "insurer": "L’assureur paie le prix de cette ligne pour ce soin ou ce médicament.",
+        "reference": "Les assureurs qui suivent cette liste paient le prix de cette ligne pour ce soin ou ce médicament."
+      },
+      "linkTreatment": "Le soin de la clinique",
+      "linkMedicine": "Le médicament de la clinique",
+      "pickClinic": "En choisir un",
+      "linkSave": "Relier",
+      "linked": "{{line}} est reliée à {{name}}.",
+      "unlink": "Délier",
+      "unlinked": "{{name}} n’est plus reliée à cette ligne.",
+      "clinicOwn": "prix de la clinique {{price}}",
+      "followsList": "prix de la liste",
+      "useList": "Prendre le prix de la liste",
+      "useListOne": "{{name}} suit à nouveau la liste ({{price}})."
+    },
+    "listPrice": {
+      "follows": "Prix du MoH",
+      "own": "Prix de la clinique · MoH {{price}}",
+      "line": "Prix de la liste du Ministère : {{price}} ({{list}}).",
+      "followsNow": "Ce prix suit la liste.",
+      "ownNow": "Le prix ci-dessus est celui de la clinique.",
+      "use": "Prendre le prix de la liste"
     }
   },
   "visit": {
@@ -8004,7 +8134,12 @@
     "803dfaa3": "Donnez un code à la ligne.",
     "cf508f19": "Donnez un nom à la ligne.",
     "0efaaf29": "Liste de prix introuvable.",
-    "46dcf294": "Ligne introuvable."
+    "46dcf294": "Ligne introuvable.",
+    "920d2292": "Choisissez la colonne que paient les patients privés.",
+    "4ec0850d": "L’ordre est un nombre de 0 à 9999.",
+    "1d8baa49": "Choisissez l’assureur à qui est cette liste.",
+    "36d7a9d8": "Choisissez la colonne de prix de l’assureur.",
+    "083acf5a": "Dites à qui est cette liste."
   },
   "panel": {
     "close": "Fermer",

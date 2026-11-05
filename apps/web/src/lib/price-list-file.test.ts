@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   keyOf,
+  mergeParts,
   monthIn,
   pdfToGrid,
   priceOf,
   readGrid,
+  rereadPriceList,
   roleOfHeader,
   type Grid,
   type PdfItem,
@@ -201,5 +203,55 @@ describe('published price list reader', () => {
       prices: { new_price: 3985 },
     })
     expect(p.notes).toEqual(['Antiseptic Products — All Included in acts'])
+  })
+
+  it('reads the file again with the columns corrected and from another row', () => {
+    const g = grid([
+      ['TARIFF OF EDEN CARE 2026'],
+      ['Code', 'Name', 'Price', 'Old price', 'Remark'],
+      ['E-01', 'Consultation', 5000, 4500, 'Covered'],
+      ['E-02', 'Dressing', 3000, 2800, 'NC'],
+    ])
+    const first = readGrid(g)!
+    expect(first.columns.map((c) => c.key)).toEqual(['price', 'old_price'])
+    expect(first.layout.find((c) => c.label === 'Old price')?.role).toBe('price')
+    const parsed = { ...first, format: 'xlsx' as const }
+    // the old price is left out, the remark is the insurer's instruction
+    const fixed = rereadPriceList(parsed, { headerRow: 2, roles: { 3: 'ignore', 4: 'note' } })!
+    expect(fixed.columns).toEqual([{ key: 'price', label: 'Price' }])
+    expect(fixed.lines[1]).toMatchObject({
+      code: 'E-02',
+      name: 'Dressing',
+      note: 'NC',
+      prices: { price: 3000 },
+    })
+    expect(fixed.layout.find((c) => c.label === 'Old price')?.role).toBe('ignore')
+    // a list without codes: the name and the price are enough
+    const noCode = rereadPriceList(parsed, { headerRow: 2, roles: { 0: 'ignore', 3: 'ignore' } })!
+    expect(noCode.lines[0]).toMatchObject({
+      code: '',
+      name: 'Consultation',
+      prices: { price: 5000 },
+    })
+    // a row that is not the header reads nothing
+    expect(rereadPriceList(parsed, { headerRow: 99 })).toBeNull()
+  })
+
+  it('keeps every sheet when the columns of the first are corrected', () => {
+    const sheet = (name: string, code: string) =>
+      grid(
+        [
+          ['Code', 'Name', 'Price', 'Remark'],
+          [code + '-1', 'Act one ' + name, 100, 'ok'],
+          [code + '-2', 'Act two ' + name, 200, 'ok'],
+        ],
+        name,
+      )
+    const parts = [readGrid(sheet('A', 'A'))!, readGrid(sheet('B', 'B'))!]
+    const merged = mergeParts(parts, 'xlsx')
+    expect(merged.lines).toHaveLength(4)
+    const fixed = rereadPriceList(merged, { headerRow: 1, roles: { 3: 'note' } })!
+    expect(fixed.lines).toHaveLength(4)
+    expect(fixed.lines[0]!.note).toBe('ok')
   })
 })

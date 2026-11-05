@@ -58,6 +58,41 @@ export interface ParsedPriceList {
   /** yyyy-mm-dd: a month written in the title ("FEB2026", "JUNE 2026"), its first day. */
   from: string | null
   format: 'xlsx' | 'csv' | 'pdf'
+  /** Every column of the file with what it was read as, for "Correct the columns". */
+  layout: ColumnLayout[]
+  /** The rows the lines were read from (read again when the columns are corrected). */
+  source: Grid
+  /** Every sheet read (a list may keep its parts on several sheets). */
+  sources: Grid[]
+}
+
+/** What a column is read as; 'ignore': left out. */
+export type ColumnRole = ListRole | 'ignore'
+export const COLUMN_ROLES: ColumnRole[] = [
+  'code',
+  'name',
+  'price',
+  'section',
+  'unit',
+  'note',
+  'detail',
+  'altCode',
+  'number',
+  'ignore',
+]
+
+/** One column of the file: its header, a few values under it and what it is read as. */
+export interface ColumnLayout {
+  index: number
+  label: string
+  role: ColumnRole
+  samples: string[]
+}
+
+/** The manager's corrections: the row of the column names, and what some columns are. */
+export interface ReadOptions {
+  headerRow?: number
+  roles?: Record<number, ColumnRole>
 }
 
 export type PriceListFileProblem = 'type' | 'noHeader' | 'empty' | 'unreadable' | 'pdfNoText'
@@ -329,12 +364,30 @@ function findHeader(rows: Grid['rows']): number {
   return best
 }
 
-/** How each column is read, from its header and from its values under it. */
-function planColumns(header: unknown[], data: unknown[][]): ColumnPlan[] {
+/** "A", "B", … "AA": the spreadsheet letter of a column (0-based). */
+const letterOf = (i: number): string =>
+  (i >= 26 ? letterOf(Math.floor(i / 26) - 1) : '') + String.fromCharCode(65 + (i % 26))
+
+/** How each column is read, from its header and from its values under it (or as corrected). */
+function planColumns(
+  header: unknown[],
+  data: unknown[][],
+  roles: Record<number, ColumnRole> = {},
+): ColumnPlan[] {
   const width = Math.max(header.length, ...data.map((r) => r.length))
   const plans: ColumnPlan[] = []
   for (let i = 0; i < width; i++) {
     const label = cellText(header[i]) ?? ''
+    const chosen = roles[i]
+    if (chosen === 'ignore') continue
+    if (chosen) {
+      plans.push({
+        index: i,
+        role: chosen,
+        label: label || (chosen === 'price' ? 'Price' : letterOf(i)),
+      })
+      continue
+    }
     const values = data.map((r) => r[i]).filter((v) => cellText(v) != null)
     const nonEmpty = values.length
     if (nonEmpty === 0 && !label) continue
@@ -360,9 +413,13 @@ function planColumns(header: unknown[], data: unknown[][]): ColumnPlan[] {
     plans.push({ index: i, role, label: label || (role === 'price' ? 'Price' : '') })
     void unique
   }
-  // one code: the most distinct values (the left-most on a tie); the others are other codes
+  // one code: the one chosen by hand (the left-most), else the most distinct values (the left-most
+  // on a tie); the others are other codes
   const codes = plans.filter((p) => p.role === 'code')
-  if (codes.length > 1) {
+  const chosenCode = codes.find((p) => roles[p.index] === 'code')
+  if (chosenCode) {
+    for (const p of codes) if (p !== chosenCode) p.role = 'altCode'
+  } else if (codes.length > 1) {
     const distinct = (p: ColumnPlan) => {
       const vals = data.map((r) => cellText(r[p.index])).filter((v): v is string => !!v)
       return vals.length ? new Set(vals).size / vals.length : 0
@@ -389,21 +446,43 @@ const isHeading = (text: string) =>
   (/^[A-Z]\d{2}\b/.test(text) || /^[A-Z]\s*\.\s/.test(text) || text === text.toUpperCase()) &&
   !/:\s/.test(text)
 
-/** One sheet read with its header; null when it has none. */
-export function readGrid(grid: Grid): Omit<ParsedPriceList, 'format'> | null {
-  const at = findHeader(grid.rows)
+/** One sheet read with its header (found, or the row the manager chose); null when it has none. */
+export function readGrid(
+  grid: Grid,
+  options: ReadOptions = {},
+): Omit<ParsedPriceList, 'format'> | null {
+  const at =
+    options.headerRow != null
+      ? grid.rows.findIndex((r) => r.n === options.headerRow)
+      : findHeader(grid.rows)
   if (at < 0) return null
   const header = grid.rows[at]!
   const body = grid.rows.slice(at + 1)
-  const plans = planColumns(
-    header.cells,
-    body.slice(0, 3000).map((r) => r.cells),
-  )
+  const data = body.slice(0, 3000).map((r) => r.cells)
+  const plans = planColumns(header.cells, data, options.roles)
   const col = (role: ListRole) => plans.find((p) => p.role === role)
   const code = col('code')
   const name = col('name')
   const prices = plans.filter((p) => p.role === 'price')
+  // a line needs a name (the database refuses a line without one) and a price
   if (!name || prices.length === 0) return null
+  // every column, for "Correct the columns"
+  const width = Math.max(header.cells.length, ...data.map((r) => r.length))
+  const layout: ColumnLayout[] = []
+  for (let i = 0; i < width; i++) {
+    const label = cellText(header.cells[i]) ?? ''
+    const samples = data
+      .map((r) => cellText(r[i]))
+      .filter((v): v is string => !!v)
+      .slice(0, 3)
+    if (!label && samples.length === 0) continue
+    layout.push({
+      index: i,
+      label: label || letterOf(i),
+      role: plans.find((p) => p.index === i)?.role ?? 'ignore',
+      samples,
+    })
+  }
   const headerKey = header.cells.map((c) => norm(cellText(c) ?? '')).join('|')
   const text = (cells: unknown[], p: ColumnPlan | undefined) =>
     p ? cellText(cells[p.index]) : null
@@ -473,7 +552,23 @@ export function readGrid(grid: Grid): Omit<ParsedPriceList, 'format'> | null {
     notes: [...new Set(notes)].slice(0, 30),
     kind: kindOf(lines, plans),
     from,
+    layout,
+    source: grid,
+    sources: [grid],
   }
+}
+
+/** The file read again with the manager's corrections (the row of the names, the columns). */
+export function rereadPriceList(
+  parsed: ParsedPriceList,
+  options: ReadOptions,
+): ParsedPriceList | null {
+  // the corrections are made on the first sheet (the one shown); the other sheets are read as before
+  const [first, ...rest] = parsed.sources.length ? parsed.sources : [parsed.source]
+  const part = readGrid(first!, options)
+  if (!part) return null
+  const others = rest.map((g) => readGrid(g)).filter((p): p is NonNullable<typeof p> => !!p)
+  return { ...mergeParts([part, ...others], parsed.format), from: part.from ?? parsed.from }
 }
 
 /** Medicines when the codes are ATC codes or the headers speak of drugs; treatments for RHIC. */
@@ -710,6 +805,7 @@ export function mergeParts(
     lines: parts.flatMap((p) => p.lines),
     columns,
     notes: [...new Set(parts.flatMap((p) => p.notes))].slice(0, 30),
+    sources: parts.flatMap((p) => p.sources),
     sheet:
       parts.length > 1
         ? parts
@@ -762,7 +858,7 @@ export async function readPriceListFile(file: File): Promise<ParsedPriceList> {
     if (e instanceof PriceListFileError) throw e
     throw new PriceListFileError('unreadable')
   }
-  const parts = grids.map(readGrid).filter((p): p is NonNullable<typeof p> => !!p)
+  const parts = grids.map((g) => readGrid(g)).filter((p): p is NonNullable<typeof p> => !!p)
   if (parts.length === 0) throw new PriceListFileError('noHeader')
   const merged = mergeParts(parts, format)
   if (merged.lines.length === 0) throw new PriceListFileError('empty')

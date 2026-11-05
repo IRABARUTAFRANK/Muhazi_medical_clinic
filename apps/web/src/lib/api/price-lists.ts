@@ -17,6 +17,14 @@ import { apiError, isMissingFunction } from './errors'
  */
 
 export type ListKind = 'treatments' | 'medicines'
+/**
+ * Whose list: 'clinic' — the Ministry of Health's, for the whole clinic (private patients pay its
+ * private column; a list of treatments makes every line a treatment of the clinic); 'insurer' —
+ * one insurer's own tariff (that insurer follows it at once); 'reference' — another publisher's
+ * list that insurers may choose to follow.
+ */
+export type ListScope = 'clinic' | 'insurer' | 'reference'
+export const SCOPES: ListScope[] = ['clinic', 'insurer', 'reference']
 export type Cover = 'covered' | 'not_covered' | 'preauth'
 export const COVERS: Cover[] = ['covered', 'not_covered', 'preauth']
 
@@ -78,11 +86,18 @@ export interface PriceListBook {
   kind: ListKind
   payerId: string | null
   payer: string | null
+  scope: ListScope
+  /** A clinic-wide list: the column private patients pay. */
+  privateColumn: string | null
+  /** A clinic-wide list: its order among the clinic-wide lists (smallest first). */
+  priority: number
   versions: PriceListVersion[]
   followers: PriceListFollower[]
   exceptions: number
   /** The clinic's treatments or medicines on the version in use. */
   linked: number
+  /** A clinic-wide list: the clinic's treatments / medicines on it priced by the clinic itself. */
+  ownPriced: number
 }
 
 export interface PriceChange {
@@ -132,7 +147,17 @@ export interface PriceListPreview {
   dryRun: boolean
   bookId: string | null
   versionId: string | null
-  book: { name: string; publisher: string; kind: ListKind; isNew: boolean }
+  book: {
+    name: string
+    publisher: string
+    kind: ListKind
+    isNew: boolean
+    scope: ListScope
+    privateColumn: string | null
+    payerColumn: string | null
+    /** An insurer's own list: that insurer. */
+    payer: string | null
+  }
   name: string
   effectiveFrom: string
   columns: PriceListColumn[]
@@ -154,7 +179,33 @@ export interface PriceListPreview {
   errorCount: number
   warnings: RowProblem[]
   warningCount: number
-  clinic: { byCode: ClinicMatch[]; byName: ClinicMatch[]; gone: ClinicMatch[]; linked: number }
+  clinic: {
+    byCode: ClinicMatch[]
+    byName: ClinicMatch[]
+    gone: ClinicMatch[]
+    linked: number
+    /** A clinic-wide list of treatments: the lines that become new treatments of the clinic. */
+    toCreate: number
+    toCreateByCategory: { category: string; count: number }[]
+    created: number
+    /** The clinic's own prices that differ from the list's private price (the clinic's stay). */
+    ownPrices: {
+      id: string
+      kind: 'service' | 'item'
+      name: string
+      code: string
+      own: number
+      list: number | null
+    }[]
+    ownPriceCount: number
+  }
+  /** Lines without a code, found by their name. */
+  names: {
+    byList: number
+    byClinic: number
+    notFound: { row: number; name: string; code: string }[]
+    notFoundCount: number
+  }
   followers: {
     payerId: string
     payer: string
@@ -184,7 +235,17 @@ export interface PriceListPreview {
 export interface PriceListImportInput {
   /** A new version of this list; null: a new list (book). */
   bookId: string | null
-  book: { name: string; publisher: string; kind: ListKind } | null
+  book: {
+    name: string
+    publisher: string
+    kind: ListKind
+    scope: ListScope
+    payerId: string | null
+    privateColumn: string | null
+    payerColumn: string | null
+  } | null
+  /** A new version of an existing list: its private / insurer column for this version. */
+  settings?: { privateColumn: string | null; payerColumn: string | null } | null
   name: string
   /** yyyy-mm-dd */
   effectiveFrom: string
@@ -217,7 +278,16 @@ export interface PriceListLine {
   editedBy: string | null
   original: { added?: boolean; prices?: Record<string, number | null>; name?: string } | null
   removed: boolean
-  clinic: { id: string; name: string; active: boolean; linked: boolean }[]
+  clinic: {
+    id: string
+    kind: 'service' | 'item'
+    name: string
+    active: boolean
+    /** Linked by hand or by name on this list (not by its own code). */
+    linked: boolean
+    /** The clinic's own price (null: it takes the list's price). */
+    ownPrice: number | null
+  }[]
   exception: LineException | null
 }
 export interface LinesPage {
@@ -266,7 +336,17 @@ function samplePreview(i: PriceListImportInput, dryRun: boolean): PriceListPrevi
   const warnings: RowProblem[] = []
   const kept = new Map<string, PriceListLine>()
   for (const l of i.lines) {
-    const code = normCode(l.code)
+    const code =
+      normCode(l.code) ||
+      (l.name.trim()
+        ? `L-${Math.abs(
+            [...l.name.toLowerCase()].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 7),
+          )
+            .toString(16)
+            .toUpperCase()
+            .padStart(8, '0')
+            .slice(0, 8)}`
+        : '')
     const err = !code ? 'no_code' : !l.name.trim() ? 'no_name' : kept.has(code) ? 'duplicate' : null
     if (err) {
       errors.push({ row: l.row, code: err, value: l.code || null, name: l.name })
@@ -385,19 +465,37 @@ function samplePreview(i: PriceListImportInput, dryRun: boolean): PriceListPrevi
   if (!dryRun) {
     let b = book
     if (!b) {
+      const scope = i.book!.scope
+      const insurer =
+        scope === 'insurer' ? sampleInsurers.find((x) => x.id === i.book!.payerId) : null
       b = {
         id: `pl-${sampleBooks.length + 1}`,
         name: i.book!.name.trim(),
         publisher: i.book!.publisher.trim(),
         kind: i.book!.kind,
-        payerId: null,
-        payer: null,
+        payerId: insurer?.id ?? null,
+        payer: insurer?.name ?? null,
+        scope,
+        privateColumn: scope === 'clinic' ? i.book!.privateColumn : null,
+        priority: 10 * (sampleBooks.filter((x) => x.scope === 'clinic').length + 1),
         versions: [],
-        followers: [],
+        followers: insurer
+          ? [
+              {
+                payerId: insurer.id,
+                payer: insurer.name,
+                column: i.book!.payerColumn ?? i.columns[0]!.key,
+                priority: 0,
+              },
+            ]
+          : [],
         exceptions: 0,
         linked: 0,
+        ownPriced: 0,
       }
       sampleBooks.push(b)
+    } else if (b.scope === 'clinic' && i.settings?.privateColumn) {
+      b.privateColumn = i.settings.privateColumn
     }
     for (const v of b.versions) v.status = 'past'
     versionId = `${b.id}-v${b.versions.length + 1}`
@@ -449,6 +547,14 @@ function samplePreview(i: PriceListImportInput, dryRun: boolean): PriceListPrevi
       publisher: book?.publisher ?? i.book?.publisher ?? '',
       kind: book?.kind ?? i.book?.kind ?? 'treatments',
       isNew: !book,
+      scope: book?.scope ?? i.book?.scope ?? 'reference',
+      privateColumn: book?.privateColumn ?? i.book?.privateColumn ?? null,
+      payerColumn: i.book?.payerColumn ?? null,
+      payer:
+        book?.payer ??
+        (i.book?.scope === 'insurer'
+          ? (sampleInsurers.find((x) => x.id === i.book?.payerId)?.name ?? null)
+          : null),
     },
     name: i.name.trim(),
     effectiveFrom: i.effectiveFrom,
@@ -471,7 +577,25 @@ function samplePreview(i: PriceListImportInput, dryRun: boolean): PriceListPrevi
     errorCount: errors.length,
     warnings,
     warningCount: warnings.length,
-    clinic: { byCode: [], byName: [], gone: [], linked: 0 },
+    clinic: {
+      byCode: [],
+      byName: [],
+      gone: [],
+      linked: 0,
+      toCreate: 0,
+      toCreateByCategory: [],
+      created: 0,
+      ownPrices: [],
+      ownPriceCount: 0,
+    },
+    names: {
+      byList: 0,
+      byClinic: 0,
+      notFound: [...kept.values()]
+        .filter((l) => l.code.startsWith('L-'))
+        .map((l) => ({ row: l.row ?? 0, name: l.name, code: l.code })),
+      notFoundCount: [...kept.values()].filter((l) => l.code.startsWith('L-')).length,
+    },
     followers: (book?.followers ?? []).map((f) => ({
       payerId: f.payerId,
       payer: f.payer,
@@ -531,6 +655,10 @@ export function usePriceLists(enabled = true) {
         kind: b.kind === 'medicines' ? 'medicines' : 'treatments',
         payerId: (b.payerId as string | null) ?? null,
         payer: (b.payer as string | null) ?? null,
+        // before 0135 every list is one insurers may follow
+        scope: b.scope === 'clinic' || b.scope === 'insurer' ? b.scope : 'reference',
+        privateColumn: (b.privateColumn as string | null) ?? null,
+        priority: Number(b.priority ?? 100),
         versions: ((b.versions ?? []) as Record<string, unknown>[]).map(toVersion),
         followers: ((b.followers ?? []) as Record<string, unknown>[]).map((f) => ({
           payerId: String(f.payerId),
@@ -540,6 +668,7 @@ export function usePriceLists(enabled = true) {
         })),
         exceptions: Number(b.exceptions ?? 0),
         linked: Number(b.linked ?? 0),
+        ownPriced: Number(b.ownPriced ?? 0),
       }))
     },
   })
@@ -633,7 +762,11 @@ async function runImport(i: PriceListImportInput, dryRun: boolean): Promise<Pric
   if (!supabase) return samplePreview(i, dryRun)
   const { data, error } = await supabase.rpc('import_tariff', {
     p_book_id: i.bookId,
-    p_book: i.book,
+    p_book:
+      i.book ??
+      (i.settings
+        ? { privateColumn: i.settings.privateColumn, payerColumn: i.settings.payerColumn }
+        : null),
     p_name: i.name.trim(),
     p_from: i.effectiveFrom,
     p_columns: i.columns,
@@ -662,6 +795,17 @@ async function runImport(i: PriceListImportInput, dryRun: boolean): Promise<Pric
       byName: d.clinic?.byName ?? [],
       gone: d.clinic?.gone ?? [],
       linked: d.clinic?.linked ?? 0,
+      toCreate: d.clinic?.toCreate ?? 0,
+      toCreateByCategory: d.clinic?.toCreateByCategory ?? [],
+      created: d.clinic?.created ?? 0,
+      ownPrices: d.clinic?.ownPrices ?? [],
+      ownPriceCount: d.clinic?.ownPriceCount ?? 0,
+    },
+    names: {
+      byList: d.names?.byList ?? 0,
+      byClinic: d.names?.byClinic ?? 0,
+      notFound: d.names?.notFound ?? [],
+      notFoundCount: d.names?.notFoundCount ?? 0,
     },
     followers: d.followers ?? [],
     checks: {
@@ -869,5 +1013,78 @@ export function usePriceListActions() {
     },
     onSuccess: done,
   })
-  return { saveLine, removeLine, follow, saveException, saveBook }
+  /** The clinic's own prices of those treatments / medicines go: the list's price applies (all: null). */
+  const applyListPrices = useMutation({
+    mutationFn: async (i: { bookId: string; ids: string[] | null }): Promise<number> => {
+      if (!supabase) return i.ids?.length ?? 0
+      const { data, error } = await supabase.rpc('use_list_prices', {
+        p_book: i.bookId,
+        p_ids: i.ids,
+      })
+      if (error && isMissingFunction(error)) throw notReady()
+      if (error) throw apiError(error)
+      return Number(data ?? 0)
+    },
+    onSuccess: done,
+  })
+  /** This line of the list is that treatment / medicine of the clinic (or no longer: unlink). */
+  const linkLine = useMutation({
+    mutationFn: async (i: {
+      bookId: string
+      code: string
+      serviceId: string | null
+      itemId: string | null
+      unlink?: boolean
+    }) => {
+      if (!supabase) return
+      if (i.unlink)
+        await rpc('unlink_tariff_line', {
+          p_book: i.bookId,
+          p_service_id: i.serviceId,
+          p_item_id: i.itemId,
+        })
+      else
+        await rpc('link_tariff_line', {
+          p_book: i.bookId,
+          p_code: i.code,
+          p_service_id: i.serviceId,
+          p_item_id: i.itemId,
+        })
+    },
+    onSuccess: done,
+  })
+  /** A clinic-wide list's private column and order; an insurer's own list's column. */
+  const saveSettings = useMutation({
+    mutationFn: async (i: {
+      bookId: string
+      privateColumn: string | null
+      priority: number | null
+      payerColumn: string | null
+    }) => {
+      if (!supabase) {
+        const b = sampleBooks.find((x) => x.id === i.bookId)
+        if (b && i.privateColumn) b.privateColumn = i.privateColumn
+        if (b && i.priority != null) b.priority = i.priority
+        if (b && i.payerColumn && b.followers[0]) b.followers[0].column = i.payerColumn
+        return
+      }
+      await rpc('save_tariff_book_settings', {
+        p_id: i.bookId,
+        p_private_column: i.privateColumn,
+        p_priority: i.priority,
+        p_payer_column: i.payerColumn,
+      })
+    },
+    onSuccess: done,
+  })
+  return {
+    saveLine,
+    removeLine,
+    follow,
+    saveException,
+    saveBook,
+    applyListPrices,
+    linkLine,
+    saveSettings,
+  }
 }
