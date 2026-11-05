@@ -295,16 +295,27 @@ function HandOverPanel({
       try {
         r = await dispense()
       } catch (e) {
-        // not on the insurer's list and the insurer wants to be asked (0115): confirm, then once more
-        if (!(e instanceof ApiError && e.hint === 'ask_insurer')) throw e
+        // not on the insurer's list and the insurer wants to be asked (0115), or the insurer covers
+        // it only with its approval (0134): confirm, then once more
+        if (!(e instanceof ApiError && (e.hint === 'ask_insurer' || e.hint === 'insurer_preauth')))
+          throw e
+        const preauth = e.hint === 'insurer_preauth'
         if (
-          !(await confirm({
-            title: t('confirm.visit.askInsurer', { item: q.item, insurer: q.payer ?? '' }),
-            body: t('confirm.visit.askInsurerBody', {
-              price: formatRwf(Math.round((q.cashPrice ?? 0) * n)),
-            }),
-            confirmLabel: t('confirm.visit.askInsurerYes'),
-          }))
+          !(await confirm(
+            preauth
+              ? {
+                  title: t('confirm.visit.preauth', { item: q.item, insurer: q.payer ?? '' }),
+                  body: t('confirm.visit.preauthBody', { insurer: q.payer ?? '' }),
+                  confirmLabel: t('confirm.visit.preauthYes'),
+                }
+              : {
+                  title: t('confirm.visit.askInsurer', { item: q.item, insurer: q.payer ?? '' }),
+                  body: t('confirm.visit.askInsurerBody', {
+                    price: formatRwf(Math.round((q.cashPrice ?? 0) * n)),
+                  }),
+                  confirmLabel: t('confirm.visit.askInsurerYes'),
+                },
+          ))
         )
           return null
         r = await dispense(true)

@@ -18,8 +18,12 @@ import {
  * `start_insurer_tariff`. Sample: an in-memory MMI tariff.
  */
 
-/** Where a price comes from: the insurer's own list, the official list, the cash price, none. */
-export type PriceSource = 'tariff' | 'reference' | 'cash' | 'none'
+/**
+ * Where a price comes from: the insurer's own list, an official / published list, the cash price,
+ * none; 'excluded': the insurer's exception says it does not cover the line; 'preauth': it covers
+ * it only with its approval (0134).
+ */
+export type PriceSource = 'tariff' | 'reference' | 'cash' | 'none' | 'excluded' | 'preauth'
 
 /** What to do with a line the insurer has no price for (payer.not_listed_rule). */
 export const NOT_LISTED_RULES = ['cash_covered', 'not_covered', 'ask'] as const
@@ -44,6 +48,17 @@ export interface TariffRow {
   patientShare: number | null
   /** The 'ask' rule applies: the line is confirmed with the insurer before it is charged. */
   ask: boolean
+  /** 0134: covered only with the insurer's approval (asked before it is charged). */
+  preauth?: boolean
+  /** 0134: the line's code on the published lists, the list that prices it, the insurer's exception. */
+  listCode?: string | null
+  list?: string | null
+  lineNote?: string | null
+  exception?: {
+    cover: 'covered' | 'not_covered' | 'preauth'
+    price: number | null
+    note: string | null
+  } | null
 }
 
 export interface TariffList {

@@ -148,6 +148,8 @@ export type ApiErrorKind =
   | 'doctorByRole'
   // 0115: a line the insurer has no price for, to confirm with the insurer first
   | 'askInsurer'
+  // 0134: the insurer covers the line only with its approval (pre-authorisation)
+  | 'insurerPreauth'
   // sample mode only (the database's own sentence is kept for these)
   | 'alreadyDone'
   | 'notFound'
@@ -220,6 +222,7 @@ const BY_HINT: Record<string, ApiErrorKind> = {
   vital_name: 'vitalName',
   vital_unknown: 'vitalUnknown',
   ask_insurer: 'askInsurer',
+  insurer_preauth: 'insurerPreauth',
   vital_kind: 'vitalKind',
   vital_range_order: 'vitalRangeOrder',
   vital_exists: 'vitalExists',
@@ -278,7 +281,8 @@ export function apiError(e: DbErrorLike | null | undefined): ApiError {
   const m = /^line (\d+): ([\s\S]*)$/.exec(raw)
   const line = m ? Number(m[1]) : null
   const inner = m ? m[2]! : raw
-  let kind = (code && BY_CODE[code]) || (hint && BY_HINT[hint]) || null
+  // the hint is the more precise (MS004 is ask_insurer or insurer_preauth)
+  let kind = (hint && BY_HINT[hint]) || (code && BY_CODE[code]) || null
   // "… 3 unit(s) short": the number missing is kept in the translated sentence
   const short = /(\d+) unit\(s\) short/.exec(inner)
   const n = short ? Number(short[1]) : null

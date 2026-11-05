@@ -59,6 +59,7 @@ import { CatalogueTools } from './catalogue-tools'
 import { CategoriesCard } from './categories-card'
 import { MedicinesSection } from './medicines-section'
 import { OfficialListSection } from './official-list-section'
+import { PriceListsSection } from './price-lists-section'
 import { InsurersSection } from './insurers-section'
 import { useInsuranceEnabled } from '@/lib/api/settings'
 import { useDepartmentActions, useDepartments, type Department } from '@/lib/api/staff'
@@ -646,6 +647,9 @@ export function PricesPage({ user }: { user: StaffUser }) {
 
         {/* The official medicine list (RHIA): the insurers' tariff, uploaded by the manager */}
         <OfficialListSection onNotice={setNotice} />
+
+        {/* Published price lists (0134): MoH / RSSB / insurers' tariffs, who follows them, exceptions */}
+        <PriceListsSection insurers={insurers.filter((i) => i.active)} onNotice={setNotice} />
 
         {/* Insurers and their tariffs: only once the clinic works with insurers (Settings → Insurance) */}
         {insurance ? (

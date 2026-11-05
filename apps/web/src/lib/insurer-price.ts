@@ -25,6 +25,8 @@ export function insurerLineText(
     patient: formatRwf(price - insurerPays),
     insurerPays: formatRwf(insurerPays),
   }
+  if (row.source === 'excluded') return t('visit.insurerPrice.excluded', vars)
+  if (row.source === 'preauth' || row.preauth) return t('visit.insurerPrice.preauth', vars)
   if (row.source === 'tariff') return t('visit.insurerPrice.priced', vars)
   if (row.source === 'reference') return t('visit.insurerPrice.reference', vars)
   if (row.ask) return t('visit.insurerPrice.ask', vars)
@@ -35,6 +37,8 @@ export function insurerLineText(
 /** The tone of that sentence: the insurer's own price (teal), the cash price (amber), not covered (red). */
 export function insurerLineTone(row: TariffRow | undefined): 'teal' | 'amber' | 'red' | null {
   if (!row || row.price == null) return null
+  if (row.source === 'excluded') return 'red'
+  if (row.source === 'preauth' || row.preauth) return 'amber'
   if (row.source === 'tariff' || row.source === 'reference') return 'teal'
   if (row.ask || row.coveragePct === 0) return 'red'
   return 'amber'

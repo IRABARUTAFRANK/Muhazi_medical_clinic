@@ -1485,18 +1485,28 @@ function AddChargeCard({
       }))
     )
       return
-    // not on the insurer's list and the insurer wants to be asked: confirm before it is charged
-    const askInsurer = async () =>
-      confirm({
-        title: t('confirm.visit.askInsurer', {
-          item: treatmentName(picked, i18n.language),
-          insurer: insurerName ?? '',
-        }),
-        body: t('confirm.visit.askInsurerBody', { price: formatRwf(total) }),
-        confirmLabel: t('confirm.visit.askInsurerYes'),
-      })
+    // not on the insurer's list and the insurer wants to be asked, or the insurer covers it only
+    // with its approval (0134): confirm before it is charged
+    const askInsurer = async (preauth = !!row?.preauth) =>
+      preauth
+        ? confirm({
+            title: t('confirm.visit.preauth', {
+              item: treatmentName(picked, i18n.language),
+              insurer: insurerName ?? '',
+            }),
+            body: t('confirm.visit.preauthBody', { insurer: insurerName ?? '' }),
+            confirmLabel: t('confirm.visit.preauthYes'),
+          })
+        : confirm({
+            title: t('confirm.visit.askInsurer', {
+              item: treatmentName(picked, i18n.language),
+              insurer: insurerName ?? '',
+            }),
+            body: t('confirm.visit.askInsurerBody', { price: formatRwf(total) }),
+            confirmLabel: t('confirm.visit.askInsurerYes'),
+          })
     let confirmed = false
-    if (row?.ask) {
+    if (row?.ask || row?.preauth) {
       if (!(await askInsurer())) return
       confirmed = true
     }
@@ -1520,7 +1530,9 @@ function AddChargeCard({
         await onAdd(input)
       } catch (e) {
         // the database asks (the tariff on screen was older): confirm, then once more
-        if (!(e instanceof ApiError && e.hint === 'ask_insurer') || !(await askInsurer())) throw e
+        const asked =
+          e instanceof ApiError && (e.hint === 'ask_insurer' || e.hint === 'insurer_preauth')
+        if (!asked || !(await askInsurer(e.hint === 'insurer_preauth'))) throw e
         await onAdd({ ...input, confirm: true })
       }
       setServiceId('')

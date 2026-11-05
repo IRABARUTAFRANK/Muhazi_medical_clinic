@@ -167,7 +167,7 @@ export interface PharmacyLine {
   payer: string | null
   coveragePct: number
   /** Where the price comes from (0115): the insurer's tariff, the official list, the cash price. */
-  priceSource?: 'tariff' | 'reference' | 'cash' | null
+  priceSource?: 'tariff' | 'reference' | 'cash' | 'excluded' | 'preauth' | null
   /** The insurer's rule for a medicine it has no price for (0115). */
   notListedRule?: 'cash_covered' | 'not_covered' | 'ask' | null
   /** What the bill will say for this line: total, insurer share and what the patient pays. */

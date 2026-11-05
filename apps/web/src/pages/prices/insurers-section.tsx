@@ -402,11 +402,14 @@ function InsurerCard({
 
 /* ---------------------------------------------------------------- the tariff table */
 
-const SOURCE_TONE: Record<TariffRow['source'], 'green' | 'blue' | 'yellow' | 'grey'> = {
+const SOURCE_TONE: Record<TariffRow['source'], 'green' | 'blue' | 'yellow' | 'grey' | 'red'> = {
   tariff: 'green',
   reference: 'blue',
   cash: 'yellow',
   none: 'grey',
+  // 0134: the insurer's exception: not covered, or covered with its approval
+  excluded: 'red',
+  preauth: 'yellow',
 }
 
 function TariffTable({

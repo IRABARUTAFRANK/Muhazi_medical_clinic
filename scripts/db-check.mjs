@@ -21868,6 +21868,663 @@ await step(
 )
 // @@t133-end
 
+// @@t134-begin
+// ---------------------------------------------------------------- 0134 published price lists
+const t134 = {}
+const json134 = (x) => JSON.stringify(x)
+await step('0134: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270114090000_published_price_lists.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+await step(
+  '0134 A: a clinic treatment linked by name, one by its own code, a medicine; Eden Care 134 (80 %)',
+  async () => {
+    await asAdmin()
+    const cash = (
+      await one(
+        `select id from price_list where payer_id is null and deleted_at is null order by effective_from desc limit 1`,
+      )
+    ).id
+    const svc = async (code, name, price) => {
+      const id = (
+        await one(
+          `insert into service (code, name_en, service_group) values ($1, $2, 'dental') returning id`,
+          [code, name],
+        )
+      ).id
+      await db.query(
+        `insert into price_list_item (price_list_id, service_id, price) values ($1, $2, $3)`,
+        [cash, id, price],
+      )
+      return id
+    }
+    t134.cons = await svc('MUH-CONS-134', 'Consultation by a general practitioner 134', 10000)
+    t134.dent = await svc('RHIC-DENT-134', 'Extraction adult 134', 30000)
+    t134.root = await svc('RHIC-DENT-135', 'Root canal 135', 60000)
+    t134.med = (
+      await one(
+        `insert into item (code, name_generic, strength, form, unit, pack_size, selling_unit)
+         values ('N05AA01134', 'Chlorpromazine 134', '25 mg', 'injection', 'amp', 1, 'amp') returning id`,
+      )
+    ).id
+    await db.query(
+      `insert into price_list_item (price_list_id, item_id, price) values ($1, $2, 900)`,
+      [cash, t134.med],
+    )
+    await as(staff.manager)
+    t134.eden = (
+      await one(
+        `select upsert_payer(null, 'Eden Care 134', 'private', 80, '{}'::jsonb, true, 'EDEN134', false, 'cash_covered') as id`,
+      )
+    ).id
+    await asAdmin()
+    t134.mmi = t115.mmi
+    return 'Consultation 10,000 · Extraction 30,000 · Root canal 60,000 · Chlorpromazine 900 · Eden Care 134 at 80 %'
+  },
+)
+t134.moh = (prices) => [
+  {
+    row: 14,
+    code: 'rhic-cons-134',
+    name: 'Consultation by a general practitioner 134 ',
+    section: 'Consultation',
+    altCode: 'VCA.AA.ZZ',
+    prices: prices.cons,
+  },
+  {
+    row: 15,
+    code: 'RHIC-DENT-134',
+    name: 'Extraction adult 134',
+    section: 'Dentistry',
+    prices: prices.dent,
+  },
+  ...(prices.extra ?? []),
+]
+t134.cols = [
+  { key: 'rama_mmi', label: 'RAMA; MMI' },
+  { key: 'private_ins', label: 'Private Insurances' },
+]
+await step(
+  '0134 B: the check of a new list stores nothing and says what it found (rows left out, prices to look at, the clinic’s treatments by code and by name)',
+  async () => {
+    await as(staff.manager)
+    const lines = [
+      ...t134.moh({
+        cons: { rama_mmi: 8000, private_ins: 9000.4 },
+        dent: { rama_mmi: 22907.0140625, private_ins: '23,783' },
+      }),
+      { row: 16, code: '', name: 'No code 134', prices: { rama_mmi: 1 } },
+      { row: 17, code: 'RHIC-CONS-134', name: 'Twice 134', prices: { rama_mmi: 1 } },
+      {
+        row: 18,
+        code: 'RLTC-SERO-134',
+        name: 'Rubella 134',
+        prices: { rama_mmi: 0, private_ins: '{"sharedFormula":"G322"}' },
+      },
+    ]
+    const p = (
+      await one(
+        `select import_tariff(null, '{"name": "MoH private tariff 134", "publisher": "Ministry of Health", "kind": "treatments"}'::jsonb,
+                'Private facilities 2025-2027', current_date, $1::jsonb, $2::jsonb) as j`,
+        [json134(t134.cols), json134(lines)],
+      )
+    ).j
+    await asAdmin()
+    const stored = (await one(`select count(*)::int as n from tariff_book`)).n
+    const errs = p.errors.map((e) => e.code).sort()
+    const warns = p.warnings.map((w) => `${w.code}:${w.column}`).sort()
+    if (
+      !p.dryRun ||
+      p.rows !== 3 ||
+      p.total !== 5 ||
+      json134(errs) !== json134(['duplicate', 'no_code']) ||
+      json134(warns) !== json134(['bad_price:private_ins', 'zero_price:rama_mmi']) ||
+      p.clinic.byCode.length !== 1 ||
+      p.clinic.byCode[0].id !== t134.dent ||
+      p.clinic.byName.length !== 1 ||
+      p.clinic.byName[0].id !== t134.cons ||
+      p.new !== 3 ||
+      stored !== 0
+    )
+      throw new Error(json134({ p, stored }))
+    return `3 of 5 rows · left out: ${errs.join(', ')} · to look at: ${warns.join(', ')} · Extraction by code, Consultation by name · nothing stored`
+  },
+)
+await step(
+  '0134 C: the list is kept; the treatment found by name carries its code; MMI follows the RAMA; MMI column and pays 8,000 and 22,907',
+  async () => {
+    await as(staff.manager)
+    const p = (
+      await one(
+        `select import_tariff(null, '{"name": "MoH private tariff 134", "publisher": "Ministry of Health", "kind": "treatments"}'::jsonb,
+                'Private facilities 2025-2027', current_date, $1::jsonb, $2::jsonb, null, 'Final Tariff Tables 134.xlsx', 'NC: not covered', false) as j`,
+        [
+          json134(t134.cols),
+          json134(
+            t134.moh({
+              cons: { rama_mmi: 8000, private_ins: 9000 },
+              dent: { rama_mmi: 22907.0140625, private_ins: 23783 },
+            }),
+          ),
+        ],
+      )
+    ).j
+    t134.book = p.bookId
+    t134.v1 = p.versionId
+    await db.query(`select set_payer_tariff($1, $2, 'rama_mmi')`, [t134.mmi, t134.book])
+    await asAdmin()
+    const code = (await one(`select tariff_code from service where id = $1`, [t134.cons]))
+      .tariff_code
+    const cons = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t134.cons,
+      t134.mmi,
+    ])
+    const dent = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t134.dent,
+      t134.mmi,
+    ])
+    const cashP = await one(`select price, source from price_source_for($1, null, null)`, [
+      t134.cons,
+    ])
+    await as(staff.doctor)
+    const books = (await one(`select tariff_books() as j`)).j
+    await asAdmin()
+    const b = books.find((x) => x.id === t134.book)
+    if (
+      p.dryRun ||
+      code !== 'RHIC-CONS-134' ||
+      p.clinic.linked !== 1 ||
+      Number(cons.price) !== 8000 ||
+      cons.source !== 'reference' ||
+      Number(dent.price) !== 22907 ||
+      Number(cashP.price) !== 10000 ||
+      cashP.source !== 'cash' ||
+      !b ||
+      b.versions.length !== 1 ||
+      !b.versions[0].inEffect ||
+      b.followers[0]?.column !== 'rama_mmi' ||
+      b.linked !== 2
+    )
+      throw new Error(json134({ p, code, cons, dent, cashP, b }))
+    return 'kept (2 lines) · Consultation linked to RHIC-CONS-134 · MMI 8,000 / 22,907 (official list) · cash 10,000'
+  },
+)
+await step(
+  '0134 D: Eden Care’s instructions on the dental list become its exceptions: NC → not covered, “ask approval” → with its approval, the rest → a note',
+  async () => {
+    await as(staff.manager)
+    const cols = [
+      { key: 'general_clinics', label: 'General Clinics *' },
+      { key: 'polyclinic', label: 'Polyclinic **' },
+    ]
+    const lines = [
+      {
+        row: 2,
+        code: 'RHIC-DENT-134',
+        name: 'Extraction adult 134',
+        prices: { general_clinics: 22907, polyclinic: 23783 },
+        note: 'NC',
+      },
+      {
+        row: 3,
+        code: 'RHIC-DENT-135',
+        name: 'Root canal 135',
+        prices: { general_clinics: 50000, polyclinic: 52000 },
+        note: 'Dental surgeon and ask approval with x ray of tooth',
+      },
+      {
+        row: 4,
+        code: 'RHIC-DENT-136',
+        name: 'Filling 136',
+        prices: { general_clinics: 17000, polyclinic: 17800 },
+        note: 'Maximum 2 teeth a day',
+      },
+    ]
+    const dry = (
+      await one(
+        `select import_tariff(null, '{"name": "MoH dental 134", "publisher": "Ministry of Health", "kind": "treatments"}'::jsonb,
+                'Dental & physiotherapy', current_date, $1::jsonb, $2::jsonb, $3) as j`,
+        [json134(cols), json134(lines), t134.eden],
+      )
+    ).j
+    const p = (
+      await one(
+        `select import_tariff(null, '{"name": "MoH dental 134", "publisher": "Ministry of Health", "kind": "treatments"}'::jsonb,
+                'Dental & physiotherapy', current_date, $1::jsonb, $2::jsonb, $3, null, null, false) as j`,
+        [json134(cols), json134(lines), t134.eden],
+      )
+    ).j
+    t134.dental = p.bookId
+    t134.d1 = p.versionId
+    // Eden Care: the dental list first (polyclinic), then the MoH list (private insurances)
+    await db.query(`select set_payer_tariff($1, $2, 'polyclinic')`, [t134.eden, t134.dental])
+    await db.query(`select set_payer_tariff($1, $2, 'private_ins')`, [t134.eden, t134.book])
+    await asAdmin()
+    const ex = (
+      await db.query(
+        `select code, cover, note, source from tariff_exception where payer_id = $1 order by code`,
+        [t134.eden],
+      )
+    ).rows
+    const dent = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t134.dent,
+      t134.eden,
+    ])
+    const cons = await one(`select price, source from price_source_for($1, null, $2)`, [
+      t134.cons,
+      t134.eden,
+    ])
+    const i = dry.instructions
+    if (
+      i?.notCovered !== 1 ||
+      i.preauth !== 1 ||
+      i.notes !== 1 ||
+      i.follows !== false ||
+      json134(ex.map((e) => `${e.code}:${e.cover}`)) !==
+        json134(['RHIC-DENT-134:not_covered', 'RHIC-DENT-135:preauth', 'RHIC-DENT-136:covered']) ||
+      ex.some((e) => e.source !== 'upload') ||
+      Number(dent.price) !== 23783 ||
+      dent.source !== 'excluded' ||
+      Number(cons.price) !== 9000 ||
+      cons.source !== 'reference'
+    )
+      throw new Error(json134({ i, ex, dent, cons }))
+    return 'Eden Care: Extraction not covered (23,783 from the polyclinic column), Root canal with its approval, Filling a note · Consultation 9,000 from the MoH list'
+  },
+)
+await step(
+  '0134 E: the bill on Eden Care — a not-covered line is all for the patient; a line with approval is refused (insurer_preauth) until confirmed, then 80 %',
+  async () => {
+    const v = await visitAt('Eden 134')
+    t134.visit = v.enc
+    await as(staff.cashier)
+    await db.query(`select set_visit_payer($1, $2, 'EDEN-134-1')`, [v.enc, t134.eden])
+    await asAdmin()
+    await db.query(`select add_charge_internal($1, 'consultation', $2, null, 1)`, [
+      v.enc,
+      t134.dent,
+    ])
+    let hint = null
+    try {
+      await db.query(`select add_charge_internal($1, 'consultation', $2, null, 1)`, [
+        v.enc,
+        t134.root,
+      ])
+    } catch (e) {
+      hint = `${e.code}/${e.hint}`
+    }
+    await db.exec(
+      `begin; select set_config('mmc.confirm_insurer', 'on', true);
+       select add_charge_internal('${v.enc}', 'consultation', '${t134.root}', null, 1); commit;`,
+    )
+    const lines = (
+      await db.query(
+        `select l.service_id, l.unit_price, l.coverage_pct, l.patient_share, l.insurer_share
+         from invoice_line l join invoice i on i.id = l.invoice_id
+         where i.encounter_id = $1 and l.deleted_at is null order by l.created_at`,
+        [v.enc],
+      )
+    ).rows
+    const d = lines.find((l) => l.service_id === t134.dent)
+    const r = lines.find((l) => l.service_id === t134.root)
+    if (
+      hint !== 'MS004/insurer_preauth' ||
+      !d ||
+      Number(d.unit_price) !== 23783 ||
+      Number(d.coverage_pct) !== 0 ||
+      Number(d.patient_share) !== 23783 ||
+      Number(d.insurer_share) !== 0 ||
+      !r ||
+      Number(r.unit_price) !== 52000 ||
+      Number(r.coverage_pct) !== 80 ||
+      Number(r.insurer_share) !== 41600
+    )
+      throw new Error(json134({ hint, lines }))
+    return `Extraction 23,783 all for the patient · Root canal refused (${hint}) then 52,000 → Eden Care 41,600`
+  },
+)
+await step(
+  '0134 F: switching the visit to MMI re-prices both lines from MMI’s column; the exceptions of Eden Care no longer apply',
+  async () => {
+    await as(staff.cashier)
+    await db.query(`select set_visit_payer($1, $2, 'MMI-134-1')`, [t134.visit, t134.mmi])
+    await asAdmin()
+    const d = await one(
+      `select l.unit_price, l.coverage_pct from invoice_line l join invoice i on i.id = l.invoice_id
+       where i.encounter_id = $1 and l.service_id = $2 and l.deleted_at is null`,
+      [t134.visit, t134.dent],
+    )
+    if (Number(d.unit_price) !== 22907 || Number(d.coverage_pct) === 0) throw new Error(json134(d))
+    await as(staff.cashier)
+    await db.query(`select set_visit_payer($1, $2, 'EDEN-134-1')`, [t134.visit, t134.eden])
+    await asAdmin()
+    const back = await one(
+      `select l.unit_price, l.coverage_pct, l.insurer_share from invoice_line l join invoice i on i.id = l.invoice_id
+       where i.encounter_id = $1 and l.service_id = $2 and l.deleted_at is null`,
+      [t134.visit, t134.dent],
+    )
+    if (
+      Number(back.unit_price) !== 23783 ||
+      Number(back.coverage_pct) !== 0 ||
+      Number(back.insurer_share) !== 0
+    )
+      throw new Error(json134({ d, back }))
+    return `MMI: 22,907 covered ${d.coverage_pct} % · back on Eden Care: 23,783, not covered`
+  },
+)
+await step(
+  '0134 G: a new version from tomorrow — the check lists the price change per column, the line gone, the new line, MMI’s own price that differs; today keeps the old prices',
+  async () => {
+    await asAdmin()
+    // MMI's own price for the consultation on its tariff in effect tomorrow (0115) differs from the list
+    const ownList = (
+      await one(
+        `select id from price_list where payer_id = $1 and deleted_at is null
+           and effective_from <= current_date + 1 and (effective_to is null or effective_to >= current_date + 1)
+         order by effective_from desc, created_at desc limit 1`,
+        [t134.mmi],
+      )
+    ).id
+    const ownItem = (
+      await one(
+        `insert into price_list_item (price_list_id, service_id, price) values ($1, $2, 7000) returning id`,
+        [ownList, t134.cons],
+      )
+    ).id
+    await as(staff.manager)
+    const lines = [
+      {
+        row: 14,
+        code: 'RHIC-CONS-134',
+        name: 'Consultation by a general practitioner 134',
+        prices: { rama_mmi: 8500, private_ins: 9000 },
+      },
+      {
+        row: 20,
+        code: 'RHIC-NURS-134',
+        name: 'Dressing 134',
+        prices: { rama_mmi: 3000, private_ins: 3500 },
+      },
+    ]
+    const args = [json134(t134.cols), json134(lines), t134.book]
+    const dry = (
+      await one(
+        `select import_tariff($3, null, 'Private facilities v2', current_date + 1, $1::jsonb, $2::jsonb) as j`,
+        args,
+      )
+    ).j
+    const p = (
+      await one(
+        `select import_tariff($3, null, 'Private facilities v2', current_date + 1, $1::jsonb, $2::jsonb, null, null, null, false) as j`,
+        args,
+      )
+    ).j
+    t134.v2 = p.versionId
+    await asAdmin()
+    await db.query(`update price_list_item set deleted_at = now() where id = $1`, [ownItem])
+    const today = await one(`select price from price_source_for($1, null, $2)`, [
+      t134.cons,
+      t134.mmi,
+    ])
+    const tomorrow = await one(
+      `select price from price_source_for($1, null, $2, current_date + 1)`,
+      [t134.cons, t134.mmi],
+    )
+    const dentTomorrow = await one(
+      `select price, source from price_source_for($1, null, $2, current_date + 1)`,
+      [t134.dent, t134.mmi],
+    )
+    const own = dry.checks.ownPrices.find((x) => x.code === 'RHIC-CONS-134')
+    if (
+      dry.changedLines !== 1 ||
+      dry.changes !== 1 ||
+      dry.changed[0]?.column !== 'rama_mmi' ||
+      Number(dry.changed[0]?.old) !== 8000 ||
+      Number(dry.changed[0]?.new) !== 8500 ||
+      dry.removed !== 1 ||
+      dry.removedLines[0]?.code !== 'RHIC-DENT-134' ||
+      dry.removedLines[0]?.inClinic !== true ||
+      dry.new !== 1 ||
+      dry.followers.length !== 2 ||
+      !own ||
+      Number(own.own) !== 7000 ||
+      Number(own.list) !== 8500 ||
+      Number(today.price) !== 8000 ||
+      Number(tomorrow.price) !== 8500 ||
+      Number(dentTomorrow.price) !== 30000 ||
+      dentTomorrow.source !== 'cash'
+    )
+      throw new Error(json134({ dry, today, tomorrow, dentTomorrow }))
+    return 'RAMA; MMI 8,000 → 8,500 · Extraction left the list (in the clinic) · Dressing new · MMI’s own 7,000 ≠ 8,500 · today 8,000, tomorrow 8,500; Extraction tomorrow at the cash price'
+  },
+)
+await step(
+  '0134 H: a line changed by hand keeps the line as uploaded; a line taken out and put back; a past version cannot be changed',
+  async () => {
+    await as(staff.manager)
+    await db.query(
+      `select save_tariff_line($1, 'RHIC-CONS-134', 'Consultation by a general practitioner 134', '{"rama_mmi": 8600, "private_ins": "9,100"}'::jsonb, 'typed by the manager')`,
+      [t134.v2],
+    )
+    await db.query(
+      `select save_tariff_line($1, 'RHIC-ADD-134', 'Typed line 134', '{"rama_mmi": 100}'::jsonb, null, null, null, null, true)`,
+      [t134.v2],
+    )
+    const page = (await one(`select tariff_lines($1, 'consultation') as j`, [t134.v2])).j
+    await db.query(`select remove_tariff_line($1, 'RHIC-NURS-134')`, [t134.v2])
+    const afterRemove = (await one(`select tariff_lines($1) as j`, [t134.v2])).j
+    await db.query(`select remove_tariff_line($1, 'RHIC-NURS-134', true)`, [t134.v2])
+    await db.query(`select remove_tariff_line($1, 'RHIC-ADD-134')`, [t134.v2])
+    await asAdmin()
+    const past = await hintAs(
+      staff.manager,
+      `select save_tariff_line($1, 'RHIC-CONS-134', 'x', '{}'::jsonb)`,
+      [t134.v1],
+    )
+    const after = (
+      await db.query(
+        `select code, removed_at from tariff_line where version_id = $1 order by code`,
+        [t134.v2],
+      )
+    ).rows
+    const line = page.lines[0]
+    if (
+      page.total !== 1 ||
+      !line.edited ||
+      line.prices.rama_mmi !== 8600 ||
+      line.prices.private_ins !== 9100 ||
+      line.original?.prices?.rama_mmi !== 8500 ||
+      line.note !== 'typed by the manager' ||
+      !afterRemove.lines.find((l) => l.code === 'RHIC-NURS-134')?.removed ||
+      past !== '22023/' ||
+      json134(after.map((r) => `${r.code}:${r.removed_at ? 'out' : 'in'}`)) !==
+        json134(['RHIC-CONS-134:in', 'RHIC-NURS-134:in'])
+    )
+      throw new Error(json134({ page, afterRemove, past, after }))
+    return 'Consultation 8,500 → 8,600 (as uploaded kept) · Dressing out and back · the typed line deleted · the past version refused'
+  },
+)
+await step(
+  '0134 I: an exception typed for MMI (not covered) shows in its tariff table; an upload of instructions never overwrites a typed exception',
+  async () => {
+    await as(staff.manager)
+    await db.query(
+      `select save_tariff_exception($1, 'RHIC-CONS-134', 'not_covered', null, 'not in the contract')`,
+      [t134.mmi],
+    )
+    const rows = (await one(`select insurer_tariff_rows($1) as j`, [t134.mmi])).j
+    const row = rows.rows.find((r) => r.id === t134.cons)
+    await db.query(`select save_tariff_exception($1, 'RHIC-CONS-134', 'covered', null, null)`, [
+      t134.mmi,
+    ])
+    const gone = (
+      await one(
+        `select count(*)::int as n from tariff_exception where payer_id = $1 and code = 'RHIC-CONS-134'`,
+        [t134.mmi],
+      )
+    ).n
+    // Eden Care: the filling typed covered at 15,000; a new dental version says "NC" for it
+    await db.query(
+      `select save_tariff_exception($1, 'RHIC-DENT-136', 'covered', 15000, 'agreed price')`,
+      [t134.eden],
+    )
+    const p = (
+      await one(
+        `select import_tariff($1, null, 'Dental v2', current_date, $2::jsonb, $3::jsonb, $4, null, null, false) as j`,
+        [
+          t134.dental,
+          json134([
+            { key: 'general_clinics', label: 'General Clinics *' },
+            { key: 'polyclinic', label: 'Polyclinic **' },
+          ]),
+          json134([
+            {
+              code: 'RHIC-DENT-135',
+              name: 'Root canal 135',
+              prices: { general_clinics: 50000, polyclinic: 52000 },
+              note: 'Dental surgeon and ask approval',
+            },
+            {
+              code: 'RHIC-DENT-136',
+              name: 'Filling 136',
+              prices: { general_clinics: 17000, polyclinic: 17800 },
+              note: 'NC',
+            },
+          ]),
+          t134.eden,
+        ],
+      )
+    ).j
+    await asAdmin()
+    const ex = (
+      await db.query(
+        `select code, cover, price, source from tariff_exception where payer_id = $1 order by code`,
+        [t134.eden],
+      )
+    ).rows
+    const filling = ex.find((e) => e.code === 'RHIC-DENT-136')
+    if (
+      !row ||
+      row.exception?.cover !== 'not_covered' ||
+      row.coveragePct !== 0 ||
+      row.source !== 'excluded' ||
+      row.listCode !== 'RHIC-CONS-134' ||
+      row.list !== 'MoH private tariff 134' ||
+      !rows.books.some((b) => b.bookId === t134.book && b.label === 'RAMA; MMI') ||
+      gone !== 0 ||
+      p.instructions.keptTyped !== 1 ||
+      p.instructions.dropped !== 1 ||
+      filling?.cover !== 'covered' ||
+      Number(filling?.price) !== 15000 ||
+      filling?.source !== 'typed' ||
+      ex.some((e) => e.code === 'RHIC-DENT-134')
+    )
+      throw new Error(json134({ row, books: rows.books, gone, instr: p.instructions, ex }))
+    return 'MMI: Consultation not covered (excluded, 0 %) then taken away · Eden Care: typed Filling 15,000 kept against “NC”; Extraction’s exception gone with the line'
+  },
+)
+await step(
+  '0134 J: a list of medicines prices a medicine by its code for the insurer that follows it',
+  async () => {
+    await as(staff.manager)
+    const p = (
+      await one(
+        `select import_tariff(null, '{"name": "RSSB private medicines 134", "publisher": "RSSB", "kind": "medicines"}'::jsonb,
+                'June 2026', current_date, '[{"key": "new_price", "label": "NEW PRICE"}]'::jsonb, $1::jsonb, null, null, null, false) as j`,
+        [
+          json134([
+            {
+              row: 1,
+              code: 'N05AA01134',
+              name: 'Chlorpromazine (Largactyl) inj. 25mg/5ml',
+              unit: 'Ampoule',
+              prices: { new_price: '126' },
+            },
+          ]),
+        ],
+      )
+    ).j
+    t134.meds = p.bookId
+    await db.query(`select set_payer_tariff($1, $2, 'new_price')`, [t134.eden, t134.meds])
+    await asAdmin()
+    const m = await one(`select price, source from price_source_for(null, $1, $2)`, [
+      t134.med,
+      t134.eden,
+    ])
+    const svcFromMeds = await one(`select count(*)::int as n from tariff_price_for(null, $1, $2)`, [
+      t134.med,
+      t134.eden,
+    ])
+    if (
+      p.clinic.byCode.length !== 1 ||
+      Number(m.price) !== 126 ||
+      m.source !== 'reference' ||
+      svcFromMeds.n !== 1
+    )
+      throw new Error(json134({ p, m, svcFromMeds }))
+    return 'Chlorpromazine 134: Eden Care 126 from the RSSB list (cash 900)'
+  },
+)
+await step(
+  '0134 K: a column the list does not have is refused; a list an insurer follows cannot be taken away',
+  async () => {
+    const col = await hintAs(staff.manager, `select set_payer_tariff($1, $2, 'hospitals')`, [
+      t134.mmi,
+      t134.book,
+    ])
+    const del = await hintAs(staff.manager, `select save_tariff_book($1, 'x', 'y', true)`, [
+      t134.book,
+    ])
+    const dup = await hintAs(
+      staff.manager,
+      `select import_tariff(null, '{"name": "moh PRIVATE tariff 134", "publisher": "MoH", "kind": "treatments"}'::jsonb, 'x', current_date, '[{"key":"a","label":"A"}]'::jsonb, '[{"code":"A","name":"A"}]'::jsonb)`,
+    )
+    const early = await hintAs(
+      staff.manager,
+      `select import_tariff($1, null, 'x', current_date - 30, '[{"key":"a","label":"A"}]'::jsonb, '[{"code":"A","name":"A"}]'::jsonb)`,
+      [t134.book],
+    )
+    if (col !== '22023/' || del !== '22023/' || dup !== '22023/' || early !== '22023/')
+      throw new Error(json134({ col, del, dup, early }))
+    return 'column, delete, same name, a start before the version in use: all refused (22023)'
+  },
+)
+for (const [what, sql, params] of [
+  [
+    'upload a list',
+    `select import_tariff(null, '{"name": "Cashier 134", "publisher": "x", "kind": "treatments"}'::jsonb, 'x', current_date, '[{"key":"a","label":"A"}]'::jsonb, '[{"code":"A","name":"A"}]'::jsonb)`,
+    [],
+  ],
+  [
+    'make an insurer follow a list',
+    `select set_payer_tariff($1, $2, 'rama_mmi')`,
+    () => [t134.eden, t134.book],
+  ],
+  [
+    'type an exception',
+    `select save_tariff_exception($1, 'RHIC-CONS-134', 'not_covered')`,
+    () => [t134.eden],
+  ],
+  [
+    'change a line',
+    `select save_tariff_line($1, 'RHIC-CONS-134', 'x', '{}'::jsonb)`,
+    () => [t134.v2],
+  ],
+  ['link a treatment', `select link_tariff_service($1, 'RHIC-X')`, () => [t134.cons]],
+]) {
+  await step(`0134 L: a cashier may not ${what}`, async () => {
+    const r = await hintAs(staff.cashier, sql, typeof params === 'function' ? params() : params)
+    if (r !== '42501/') throw new Error(r)
+    return 'refused (42501)'
+  })
+}
+// @@t134-end
 finish()
 
 function finish() {
