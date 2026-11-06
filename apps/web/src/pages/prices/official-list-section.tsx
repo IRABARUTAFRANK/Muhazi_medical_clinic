@@ -21,12 +21,13 @@ import {
   ReferenceFileError,
   type ParsedReferenceFile,
 } from '@/lib/reference-file'
+import { DOCUMENT_ACCEPT } from '@/lib/document-grids'
 import { cn } from '@/lib/utils'
 
 const errorBox =
   'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
-const ACCEPT =
-  '.xlsx,.csv,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/pdf'
+/** Every kind of file a price list may come in (Excel, CSV, PDF, Word, OpenDocument, a web page). */
+const ACCEPT = DOCUMENT_ACCEPT
 
 /** "2026-06-01" → 01/06/2026 (a calendar day, no time zone shift). */
 const day = (iso: string) => (iso ? formatDate(new Date(`${iso.slice(0, 10)}T00:00:00`)) : '')

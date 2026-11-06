@@ -2367,10 +2367,10 @@
       "none": "Nta rutonde rurajyaho.",
       "past": "Intonde zabanje",
       "upload": "Shyiraho urutonde rushya",
-      "file": "Inyandiko y’urutonde (Excel cyangwa CSV)",
+      "file": "Inyandiko y’urutonde (Excel, CSV, PDF, Word…)",
       "reading": "Turasoma inyandiko…",
       "choose": "Hitamo inyandiko",
-      "fileHint": "Koresha inyandiko ya Excel (.xlsx) RHIA isohora. PDF ntishobora gusomwa neza.",
+      "fileHint": "Inyandiko RHIA itangaza: Excel (.xlsx, .xls), CSV, PDF ifite inyandiko cyangwa Word (.docx).",
       "read_one": "Umuti {{count}} wasomwe (imitwe iri ku murongo wa {{row}}, {{sheet}})",
       "read_other": "Imiti {{count}} yasomwe (imitwe iri ku murongo wa {{row}}, {{sheet}})",
       "columnsFound": "Inkingi zamenyekanye:",
@@ -2386,10 +2386,13 @@
       },
       "fileErr": {
         "pdf": "PDF ntishobora gusomwa neza. Shyiraho inyandiko ya Excel (.xlsx) RHIA isohorana n’urutonde.",
-        "type": "Ubu bwoko bw’inyandiko ntibushobora gusomwa. Shyiraho inyandiko ya Excel (.xlsx) cyangwa CSV.",
+        "type": "Ubu bwoko bw’inyandiko ntibushobora gusomwa. Shyiramo inyandiko ya Excel (.xlsx, .xls, .ods), CSV, PDF, Word (.docx, .odt) cyangwa paji y’urubuga (.html).",
         "noHeader": "Nta murongo w’imitwe ufite inkingi ya kode n’iy’izina rusange wabonetse. Iyi ni yo nyandiko y’urutonde rw’imiti?",
         "empty": "Inyandiko ifite imitwe ariko nta miti iri munsi yayo.",
-        "unreadable": "Inyandiko ntiyafungutse. Yongere uyibike nka .xlsx hanyuma wongere ugerageze."
+        "unreadable": "Inyandiko ntiyashoboye gufunguka. Yifungure, uyibike bundi bushya (urugero nka .xlsx cyangwa .docx) wongere ugerageze.",
+        "oldWord": "Iyi ni inyandiko ya Word ishaje (.doc) cyangwa RTF: yifungure muri Word, uyibike nka .docx cyangwa PDF, hanyuma ushyiremo iyo.",
+        "image": "Ifoto cyangwa ishusho nta nyandiko ifite yo gusoma. Saba inyandiko ya Excel, Word cyangwa PDF y’urutonde, cyangwa uyandike muri Excel.",
+        "pdfNoText": "Iyi PDF ni ishusho yafotowe: nta nyandiko ifite yo gusoma. Saba inyandiko ya Excel cyangwa Word, cyangwa PDF yakozwe muri yo."
       },
       "name": "Izina ry’urutonde",
       "namePh": "RHIA Ukuboza 2026",
@@ -2510,8 +2513,8 @@
       "priceSaved": "Igiciro cya {{name}} kuri {{item}}: {{price}}.",
       "priceRemoved": "{{name}} ntigifite igiciro cyayo kuri {{item}}.",
       "upload": "Shyiramo urutonde rw’ibiciro rwa {{name}}",
-      "uploadHint": "Dosiye ya Excel (.xlsx) cyangwa CSV ifite inkingi ya kode cyangwa izina n’inkingi y’igiciro; inkingi y’ubwoko (serivisi / umuti) ifasha iyo byombi biri ku rupapuro rumwe. Serivisi zimenywa na kode cyangwa izina, imiti na kode yayo yemewe cyangwa izina.",
-      "fileHint": ".xlsx cyangwa .csv",
+      "uploadHint": "Inyandiko ifite inkingi ya kode cyangwa y’izina n’inkingi y’igiciro: Excel (.xlsx, .xls, .ods), CSV, PDF ifite inyandiko, Word (.docx, .odt) cyangwa paji y’urubuga. Inkingi y’ubwoko (serivisi / umuti) ifasha iyo byombi biri ku rupapuro rumwe. Serivisi zimenyekana kuri kode cyangwa ku izina, imiti ku kode yayo yemewe cyangwa ku izina.",
+      "fileHint": "Excel, CSV, PDF, Word (.docx) cyangwa OpenDocument",
       "namePh": "urugero: Ibiciro bya {{name}} 2026",
       "useFrom": "Gukoreshwa guhera ku wa",
       "newList": "Ibiciro bishya guhera ku itariki",
@@ -2561,7 +2564,11 @@
         "upload": "Shyiramo urutonde rw’ibiciro rwacyo",
         "history": "Intonde zabanje ({{n}})"
       },
-      "noHistory": "Nta rutonde rw’ibiciro rw’iki kigo cy’ubwishingizi ruraboneka."
+      "noHistory": "Nta rutonde rw’ibiciro rw’iki kigo cy’ubwishingizi ruraboneka.",
+      "fileErr": {
+        "noHeader": "Nta murongo w’imitwe ufite inkingi ya kode cyangwa y’izina n’inkingi y’igiciro (“Price”, “Tarif”, “Prix”…) wabonetse. Urutonde rufite inkingi nyinshi z’ibiciro (General Clinics, Polyclinic…) rushyirwa muri Intonde z’ibiciro zisohorwa, nk’“Ibiciro by’ikigo cy’ubwishingizi”.",
+        "empty": "Inyandiko ifite umutwe ariko nta murongo uri munsi yawo."
+      }
     },
     "lists": {
       "title": "Intonde z’ibiciro zisohorwa (MoH, RSSB, ibigo by’ubwishingizi)",
@@ -2593,18 +2600,20 @@
       "insurers": "Ibigo by’ubwishingizi",
       "newVersion": "Shyiraho verisiyo nshya",
       "upload": "Shyiraho urutonde rw’ibiciro",
-      "file": "Inyandiko y’urutonde (Excel, CSV cyangwa PDF)",
+      "file": "Inyandiko y’urutonde (Excel, CSV, PDF, Word…)",
       "choose": "Hitamo inyandiko",
-      "fileHint": "Inyandiko uko yasohowe: ibiciro bya MoH (Excel), urutonde rwa RSSB (PDF), urutonde rw’ikigo cy’ubwishingizi. Buri nkingi y’ibiciro irabikwa.",
+      "fileHint": "Inyandiko uko yatangajwe: Excel (.xlsx, .xls, .ods), CSV cyangwa inyandiko isanzwe, PDF, Word (.docx, .odt) cyangwa paji y’urubuga (.html). Buri nkingi y’ibiciro iragumishwa.",
       "fileChange": "Si yo? Kanda hano uhitemo indi, cyangwa uyikureho. Nta kibikwa mbere ya Genzura urutonde na Bika uru rutonde.",
       "reading": "Turasoma inyandiko…",
       "removeFile": "Kuraho",
       "fileErr": {
-        "type": "Ubu bwoko bw’inyandiko ntibushobora gusomwa. Shyiraho inyandiko ya Excel (.xlsx), CSV cyangwa PDF.",
+        "type": "Ubu bwoko bw’inyandiko ntibushobora gusomwa. Shyiramo inyandiko ya Excel (.xlsx, .xls, .ods), CSV, PDF, Word (.docx, .odt) cyangwa paji y’urubuga (.html).",
         "noHeader": "Nta murongo w’imitwe ufite inkingi y’izina n’iy’igiciro wabonetse. Iyi ni urutonde rw’ibiciro koko?",
         "empty": "Inyandiko ifite imitwe ariko nta murongo uri munsi yayo.",
-        "unreadable": "Inyandiko ntiyafungutse. Yongere uyibike (.xlsx) hanyuma wongere ugerageze.",
-        "pdfNoText": "Iyi PDF ni ifoto yasikanwe: nta nyandiko ifite ishobora gusomwa. Saba inyandiko ya Excel, cyangwa PDF yakozwe muri yo."
+        "unreadable": "Inyandiko ntiyashoboye gufunguka. Yifungure, uyibike bundi bushya (urugero nka .xlsx cyangwa .docx) wongere ugerageze.",
+        "pdfNoText": "Iyi PDF ni ishusho yafotowe: nta nyandiko ifite yo gusoma. Saba inyandiko ya Excel cyangwa Word, cyangwa PDF yakozwe muri yo.",
+        "oldWord": "Iyi ni inyandiko ya Word ishaje (.doc) cyangwa RTF: yifungure muri Word, uyibike nka .docx cyangwa PDF, hanyuma ushyiremo iyo.",
+        "image": "Ifoto cyangwa ishusho nta nyandiko ifite yo gusoma. Saba inyandiko ya Excel, Word cyangwa PDF y’urutonde, cyangwa uyandike muri Excel."
       },
       "read_one": "Umurongo {{n}} wasomwe (imitwe iri ku murongo wa {{row}} wa {{sheet}})",
       "read_other": "Imirongo {{n}} yasomwe (imitwe iri ku murongo wa {{row}} wa {{sheet}})",

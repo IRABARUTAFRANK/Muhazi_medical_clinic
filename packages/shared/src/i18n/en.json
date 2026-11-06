@@ -1519,10 +1519,10 @@
       "none": "No list yet.",
       "past": "Earlier lists",
       "upload": "Upload a new list",
-      "file": "The list file (Excel or CSV)",
+      "file": "The list file (Excel, CSV, PDF, Word…)",
       "reading": "Reading the file…",
       "choose": "Choose a file",
-      "fileHint": "Use the Excel file (.xlsx) the RHIA publishes. A PDF cannot be read reliably.",
+      "fileHint": "The file the RHIA publishes: Excel (.xlsx, .xls), CSV, a PDF with text or Word (.docx).",
       "read_one": "{{count}} medicine read (header on row {{row}}, {{sheet}})",
       "read_other": "{{count}} medicines read (header on row {{row}}, {{sheet}})",
       "columnsFound": "Columns recognised:",
@@ -1538,10 +1538,13 @@
       },
       "fileErr": {
         "pdf": "A PDF cannot be read reliably. Please upload the Excel file (.xlsx) the RHIA publishes with the list.",
-        "type": "This kind of file cannot be read. Upload the Excel file (.xlsx) or a CSV.",
+        "type": "This kind of file cannot be read. Upload an Excel file (.xlsx, .xls, .ods), a CSV, a PDF, a Word file (.docx, .odt) or a web page (.html).",
         "noHeader": "No header row with a code column and a generic name column was found. Is this the medicine list?",
         "empty": "The file has a header but no medicines under it.",
-        "unreadable": "The file could not be opened. Save it again as .xlsx and try again."
+        "unreadable": "The file could not be opened. Open it, save it again (for example as .xlsx or .docx) and try again.",
+        "oldWord": "This is an old Word file (.doc) or an RTF: open it in Word, save it as .docx or as PDF, then upload that.",
+        "image": "A photo or a picture has no text to read. Ask for the Excel, Word or PDF file of the list, or type it into Excel.",
+        "pdfNoText": "This PDF is a scanned picture: it has no text to read. Ask for the Excel or Word file, or a PDF made from it."
       },
       "name": "Name of the list",
       "namePh": "RHIA December 2026",
@@ -1662,8 +1665,8 @@
       "priceSaved": "{{name}} price of {{item}}: {{price}}.",
       "priceRemoved": "{{name}} has no own price for {{item}} any more.",
       "upload": "Upload the price list of {{name}}",
-      "uploadHint": "An Excel file (.xlsx) or a CSV with a code or name column and a price column; a type column (treatment / medicine) helps when both are in one sheet. Treatments are matched by code or name, medicines by their official code or name.",
-      "fileHint": ".xlsx or .csv",
+      "uploadHint": "A file with a code or name column and a price column: Excel (.xlsx, .xls, .ods), CSV, a PDF with text, Word (.docx, .odt) or a web page. A type column (treatment / medicine) helps when both are in one sheet. Treatments are matched by code or name, medicines by their official code or name.",
+      "fileHint": "Excel, CSV, PDF, Word (.docx) or OpenDocument",
       "namePh": "e.g. {{name}} tariff 2026",
       "useFrom": "Use from",
       "newList": "New tariff from a date",
@@ -1713,7 +1716,11 @@
         "upload": "Upload its price list",
         "history": "Earlier lists ({{n}})"
       },
-      "noHistory": "No price list of this insurer yet."
+      "noHistory": "No price list of this insurer yet.",
+      "fileErr": {
+        "noHeader": "No header row with a code or name column and a price column (“Price”, “Tarif”, “Prix”…) was found. A list with several price columns (General Clinics, Polyclinic…) goes under Published price lists, as “An insurer’s own tariff”.",
+        "empty": "The file has a header but no line under it."
+      }
     },
     "lists": {
       "title": "Published price lists (MoH, RSSB, insurers)",
@@ -1745,18 +1752,20 @@
       "insurers": "Insurers",
       "newVersion": "Upload a new version",
       "upload": "Upload a price list",
-      "file": "The list file (Excel, CSV or PDF)",
+      "file": "The list file (Excel, CSV, PDF, Word…)",
       "choose": "Choose a file",
-      "fileHint": "The file as it was published: the MoH tariff (Excel), the RSSB list (PDF), an insurer’s list. Every price column is kept.",
+      "fileHint": "The file as it was published: Excel (.xlsx, .xls, .ods), CSV or text, PDF, Word (.docx, .odt) or a web page (.html). Every price column is kept.",
       "fileChange": "Wrong file? Click here to choose another one, or Remove it. Nothing is saved before Check the list and Keep this list.",
       "reading": "Reading the file…",
       "removeFile": "Remove",
       "fileErr": {
-        "type": "This kind of file cannot be read. Upload the Excel file (.xlsx), a CSV or a PDF.",
+        "type": "This kind of file cannot be read. Upload an Excel file (.xlsx, .xls, .ods), a CSV, a PDF, a Word file (.docx, .odt) or a web page (.html).",
         "noHeader": "No header row with a name column and a price column was found. Is this a price list?",
         "empty": "The file has a header but no line under it.",
-        "unreadable": "The file could not be opened. Save it again (.xlsx) and try again.",
-        "pdfNoText": "This PDF is a scanned picture: it has no text to read. Ask for the Excel file, or a PDF made from it."
+        "unreadable": "The file could not be opened. Open it, save it again (for example as .xlsx or .docx) and try again.",
+        "pdfNoText": "This PDF is a scanned picture: it has no text to read. Ask for the Excel or Word file, or a PDF made from it.",
+        "oldWord": "This is an old Word file (.doc) or an RTF: open it in Word, save it as .docx or as PDF, then upload that.",
+        "image": "A photo or a picture has no text to read. Ask for the Excel, Word or PDF file of the list, or type it into Excel."
       },
       "read_one": "{{n}} line read (header on row {{row}} of {{sheet}})",
       "read_other": "{{n}} lines read (header on row {{row}} of {{sheet}})",

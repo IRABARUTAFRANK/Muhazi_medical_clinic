@@ -1,7 +1,10 @@
+import { DocumentError, loadDocument } from '@/lib/document-grids'
+import { pdfToGrid } from '@/lib/price-list-file'
 import type { TariffLineInput } from '@/lib/api/insurers'
 
 /**
- * Reads an insurer's price list the manager uploads: an Excel file (.xlsx) or a .csv. The header
+ * Reads an insurer's price list the manager uploads, in any kind of file lib/document-grids reads
+ * (Excel .xlsx / .xls / .ods, CSV or text, a PDF with text, Word .docx / .odt, a web page). The header
  * row is found by its column names (case and accents do not matter: "Code", "Service",
  * "Désignation", "Tarif", "Prix MMI"…); the rows under it become { row, kind, code, name, price }.
  * A column naming the kind of line ("Type": medicine / service) is read when there is one; a
@@ -25,7 +28,8 @@ export interface ParsedTariffFile {
   title: string | null
 }
 
-export type TariffFileProblem = 'pdf' | 'type' | 'noHeader' | 'empty' | 'unreadable'
+export type TariffFileProblem =
+  'type' | 'noHeader' | 'empty' | 'unreadable' | 'pdfNoText' | 'oldWord' | 'image'
 
 export class TariffFileError extends Error {
   readonly problem: TariffFileProblem
@@ -119,6 +123,8 @@ function priceOf(raw: unknown): number | string | null {
   const s = cellText(raw)
   if (s == null) return null
   const n = s.replace(/rwf|frw|frs?/gi, '').replace(/[\s,]/g, '')
+  // "12.500" (a dot between the thousands, as in French) is 12 500: francs have no cents
+  if (/^\d{1,3}(\.\d{3})+$/.test(n)) return Number(n.replace(/\./g, ''))
   return /^\d+(\.\d+)?$/.test(n) ? Number(n) : s
 }
 
@@ -191,71 +197,14 @@ function readSheet(sheet: Sheet): ParsedTariffFile | null {
   }
 }
 
-/** A CSV (comma, semicolon or tab), quotes as in RFC 4180. */
-function csvRows(text: string): Sheet['rows'] {
-  const firstLine = text.split(/\r?\n/, 1)[0] ?? ''
-  const count = (ch: string) => firstLine.split(ch).length - 1
-  const sep = [';', '\t', ','].reduce((a, b) => (count(b) > count(a) ? b : a), ',')
-  const out: Sheet['rows'] = []
-  let row: string[] = []
-  let cell = ''
-  let quoted = false
-  let n = 1
-  const endRow = () => {
-    row.push(cell)
-    if (row.some((c) => c.trim() !== '')) out.push({ n, cells: row })
-    row = []
-    cell = ''
-    n++
-  }
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i]!
-    if (quoted) {
-      if (c === '"' && text[i + 1] === '"') {
-        cell += '"'
-        i++
-      } else if (c === '"') quoted = false
-      else cell += c
-    } else if (c === '"') quoted = true
-    else if (c === sep) {
-      row.push(cell)
-      cell = ''
-    } else if (c === '\n') endRow()
-    else if (c !== '\r') cell += c
-  }
-  if (cell !== '' || row.length) endRow()
-  return out
-}
-
 /** Reads the file the manager chose. Throws TariffFileError with what went wrong. */
 export async function readTariffFile(file: File): Promise<ParsedTariffFile> {
-  const name = file.name.toLowerCase()
-  if (name.endsWith('.pdf') || file.type === 'application/pdf') throw new TariffFileError('pdf')
   let sheets: Sheet[]
   try {
-    if (name.endsWith('.csv') || file.type === 'text/csv') {
-      // a CSV saved by Excel starts with the byte-order mark
-      const text = await file.text()
-      sheets = [{ name: null, rows: csvRows(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text) }]
-    } else if (name.endsWith('.xlsx')) {
-      const ExcelJS = (await import('exceljs')).default
-      const wb = new ExcelJS.Workbook()
-      await wb.xlsx.load(await file.arrayBuffer())
-      sheets = wb.worksheets.map((ws) => {
-        const rows: Sheet['rows'] = []
-        ws.eachRow({ includeEmpty: false }, (r, n) => {
-          // exceljs rows are 1-based (index 0 is empty)
-          const v = r.values
-          rows.push({ n, cells: Array.isArray(v) ? v.slice(1) : [] })
-        })
-        return { name: ws.name, rows }
-      })
-    } else {
-      throw new TariffFileError('type')
-    }
+    sheets = (await loadDocument(file, pdfToGrid)).grids
   } catch (e) {
-    if (e instanceof TariffFileError) throw e
-    throw new TariffFileError('unreadable')
+    const problem = e instanceof DocumentError ? e.problem : 'unreadable'
+    throw new TariffFileError(problem === 'noTable' ? 'noHeader' : problem)
   }
   // every sheet with a header counts (a tariff may keep its treatments and medicines apart)
   const parts = sheets.map(readSheet).filter((p): p is ParsedTariffFile => !!p)

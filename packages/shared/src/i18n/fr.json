@@ -1519,10 +1519,10 @@
       "none": "Aucune liste pour l’instant.",
       "past": "Listes précédentes",
       "upload": "Charger une nouvelle liste",
-      "file": "Le fichier de la liste (Excel ou CSV)",
+      "file": "Le fichier de la liste (Excel, CSV, PDF, Word…)",
       "reading": "Lecture du fichier…",
       "choose": "Choisir un fichier",
-      "fileHint": "Utilisez le fichier Excel (.xlsx) publié par la RHIA. Un PDF ne peut pas être lu de façon fiable.",
+      "fileHint": "Le fichier que publie le RHIA : Excel (.xlsx, .xls), CSV, un PDF avec du texte ou Word (.docx).",
       "read_one": "{{count}} médicament lu (en-tête à la ligne {{row}}, {{sheet}})",
       "read_other": "{{count}} médicaments lus (en-tête à la ligne {{row}}, {{sheet}})",
       "columnsFound": "Colonnes reconnues :",
@@ -1538,10 +1538,13 @@
       },
       "fileErr": {
         "pdf": "Un PDF ne peut pas être lu de façon fiable. Chargez le fichier Excel (.xlsx) que la RHIA publie avec la liste.",
-        "type": "Ce type de fichier ne peut pas être lu. Chargez le fichier Excel (.xlsx) ou un CSV.",
+        "type": "Ce type de fichier ne peut pas être lu. Téléversez un fichier Excel (.xlsx, .xls, .ods), un CSV, un PDF, un fichier Word (.docx, .odt) ou une page web (.html).",
         "noHeader": "Aucune ligne d’en-tête avec une colonne code et une colonne nom générique n’a été trouvée. Est-ce bien la liste des médicaments ?",
         "empty": "Le fichier a un en-tête mais aucun médicament en dessous.",
-        "unreadable": "Le fichier n’a pas pu être ouvert. Enregistrez-le à nouveau en .xlsx et réessayez."
+        "unreadable": "Le fichier n’a pas pu être ouvert. Ouvrez-le, enregistrez-le à nouveau (par exemple en .xlsx ou .docx) et réessayez.",
+        "oldWord": "C’est un ancien fichier Word (.doc) ou un RTF : ouvrez-le dans Word, enregistrez-le en .docx ou en PDF, puis téléversez celui-là.",
+        "image": "Une photo ou une image n’a pas de texte à lire. Demandez le fichier Excel, Word ou PDF de la liste, ou saisissez-la dans Excel.",
+        "pdfNoText": "Ce PDF est une image scannée : il n’a pas de texte à lire. Demandez le fichier Excel ou Word, ou un PDF fait à partir de lui."
       },
       "name": "Nom de la liste",
       "namePh": "RHIA décembre 2026",
@@ -1662,8 +1665,8 @@
       "priceSaved": "Prix {{name}} de {{item}} : {{price}}.",
       "priceRemoved": "{{name}} n’a plus de prix propre pour {{item}}.",
       "upload": "Téléverser la liste de prix de {{name}}",
-      "uploadHint": "Un fichier Excel (.xlsx) ou un CSV avec une colonne code ou nom et une colonne prix ; une colonne type (soin / médicament) aide quand les deux sont dans une même feuille. Les soins sont reconnus par le code ou le nom, les médicaments par leur code officiel ou leur nom.",
-      "fileHint": ".xlsx ou .csv",
+      "uploadHint": "Un fichier avec une colonne de code ou de nom et une colonne de prix : Excel (.xlsx, .xls, .ods), CSV, un PDF avec du texte, Word (.docx, .odt) ou une page web. Une colonne de type (soin / médicament) aide quand les deux sont sur une même feuille. Les soins sont reconnus par leur code ou leur nom, les médicaments par leur code officiel ou leur nom.",
+      "fileHint": "Excel, CSV, PDF, Word (.docx) ou OpenDocument",
       "namePh": "p. ex. Tarif {{name}} 2026",
       "useFrom": "Utiliser à partir du",
       "newList": "Nouveau tarif à partir d’une date",
@@ -1713,7 +1716,11 @@
         "upload": "Téléverser sa liste de prix",
         "history": "Listes précédentes ({{n}})"
       },
-      "noHistory": "Pas encore de liste de prix de cet assureur."
+      "noHistory": "Pas encore de liste de prix de cet assureur.",
+      "fileErr": {
+        "noHeader": "Aucune ligne d’en-tête avec une colonne de code ou de nom et une colonne de prix (« Price », « Tarif », « Prix »…) n’a été trouvée. Une liste avec plusieurs colonnes de prix (General Clinics, Polyclinic…) se téléverse dans Listes de prix publiées, comme « Le tarif propre d’un assureur ».",
+        "empty": "Le fichier a un en-tête mais aucune ligne en dessous."
+      }
     },
     "lists": {
       "title": "Listes de prix publiées (MoH, RSSB, assureurs)",
@@ -1745,18 +1752,20 @@
       "insurers": "Assureurs",
       "newVersion": "Charger une nouvelle version",
       "upload": "Charger une liste de prix",
-      "file": "Le fichier de la liste (Excel, CSV ou PDF)",
+      "file": "Le fichier de la liste (Excel, CSV, PDF, Word…)",
       "choose": "Choisir un fichier",
-      "fileHint": "Le fichier tel qu’il a été publié : le tarif du MoH (Excel), la liste de la RSSB (PDF), la liste d’un assureur. Chaque colonne de prix est gardée.",
+      "fileHint": "Le fichier tel qu’il a été publié : Excel (.xlsx, .xls, .ods), CSV ou texte, PDF, Word (.docx, .odt) ou une page web (.html). Chaque colonne de prix est gardée.",
       "fileChange": "Mauvais fichier ? Cliquez ici pour en choisir un autre, ou Retirez-le. Rien n’est enregistré avant Vérifier la liste et Garder cette liste.",
       "reading": "Lecture du fichier…",
       "removeFile": "Retirer",
       "fileErr": {
-        "type": "Ce type de fichier ne peut pas être lu. Chargez le fichier Excel (.xlsx), un CSV ou un PDF.",
+        "type": "Ce type de fichier ne peut pas être lu. Téléversez un fichier Excel (.xlsx, .xls, .ods), un CSV, un PDF, un fichier Word (.docx, .odt) ou une page web (.html).",
         "noHeader": "Aucune ligne d’en-tête avec une colonne nom et une colonne prix n’a été trouvée. Est-ce bien une liste de prix ?",
         "empty": "Le fichier a un en-tête mais aucune ligne en dessous.",
-        "unreadable": "Le fichier n’a pas pu être ouvert. Enregistrez-le à nouveau (.xlsx) et réessayez.",
-        "pdfNoText": "Ce PDF est une image scannée : il n’a pas de texte à lire. Demandez le fichier Excel, ou un PDF fait à partir de celui-ci."
+        "unreadable": "Le fichier n’a pas pu être ouvert. Ouvrez-le, enregistrez-le à nouveau (par exemple en .xlsx ou .docx) et réessayez.",
+        "pdfNoText": "Ce PDF est une image scannée : il n’a pas de texte à lire. Demandez le fichier Excel ou Word, ou un PDF fait à partir de lui.",
+        "oldWord": "C’est un ancien fichier Word (.doc) ou un RTF : ouvrez-le dans Word, enregistrez-le en .docx ou en PDF, puis téléversez celui-là.",
+        "image": "Une photo ou une image n’a pas de texte à lire. Demandez le fichier Excel, Word ou PDF de la liste, ou saisissez-la dans Excel."
       },
       "read_one": "{{n}} ligne lue (en-tête à la ligne {{row}} de {{sheet}})",
       "read_other": "{{n}} lignes lues (en-tête à la ligne {{row}} de {{sheet}})",

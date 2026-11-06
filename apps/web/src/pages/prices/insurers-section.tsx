@@ -53,14 +53,15 @@ import {
 } from '@/lib/api/insurers'
 import { useConfirm } from '@/lib/confirm'
 import { readTariffFile, TariffFileError, type ParsedTariffFile } from '@/lib/tariff-file'
+import { DOCUMENT_ACCEPT } from '@/lib/document-grids'
 import { cn } from '@/lib/utils'
 
 const errorBox =
   'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
 /** The form opens in a side panel; the panel's footer submits it by this id. */
 const INSURER_FORM = 'insurer-form'
-const ACCEPT =
-  '.xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv'
+/** Every kind of file a price list may come in (Excel, CSV, PDF, Word, OpenDocument, a web page). */
+const ACCEPT = DOCUMENT_ACCEPT
 
 /** "2026-06-01" → 01/06/2026 (a calendar day, no time zone shift). */
 const day = (iso: string) => (iso ? formatDate(new Date(`${iso.slice(0, 10)}T00:00:00`)) : '')
@@ -791,7 +792,14 @@ function ImportPanel({
       if (!name.trim() && p.title) setName(p.title.slice(0, 120))
     } catch (e) {
       const problem = e instanceof TariffFileError ? e.problem : 'unreadable'
-      setFileError(t(`prices.refList.fileErr.${problem}`))
+      // an insurer's list: its own words for a missing header or no line
+      setFileError(
+        t(
+          problem === 'noHeader' || problem === 'empty'
+            ? `prices.tariff.fileErr.${problem}`
+            : `prices.refList.fileErr.${problem}`,
+        ),
+      )
     } finally {
       setReading(false)
     }

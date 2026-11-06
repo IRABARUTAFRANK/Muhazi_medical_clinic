@@ -1,10 +1,11 @@
 /**
- * Reads the official medicine list (RHIA / RSSB) the manager uploads: the Excel file the body
- * publishes (.xlsx) or a .csv. The header row is found by its column names (case and accents do
+ * Reads the official medicine list (RHIA / RSSB) the manager uploads, in any kind of file
+ * lib/document-grids reads (Excel .xlsx / .xls / .ods, CSV or text, a PDF with text, Word .docx /
+ * .odt, a web page). The header row is found by its column names (case and accents do
  * not matter: "DRUG_CODE", "Generic description", "Désignation", "Prix"…); the rows under it
  * become { row, code, generic, presentation, rule, unit, price, group }. A heading line such as
  * "A01 .STOMATOLOGICAL PREPARATIONS" gives the ATC group of the rows below it when the file has
- * no group column. A PDF cannot be read reliably: the caller asks for the Excel file instead.
+ * no group column.
  */
 
 /** The columns of the list, in the order they are shown. */
@@ -44,7 +45,8 @@ export interface ParsedReferenceFile {
   title: string | null
 }
 
-export type ReferenceFileProblem = 'pdf' | 'type' | 'noHeader' | 'empty' | 'unreadable'
+export type ReferenceFileProblem =
+  'type' | 'noHeader' | 'empty' | 'unreadable' | 'pdfNoText' | 'oldWord' | 'image'
 
 export class ReferenceFileError extends Error {
   readonly problem: ReferenceFileProblem
@@ -123,6 +125,8 @@ function priceOf(raw: unknown): number | string | null {
   const s = cellText(raw)
   if (s == null) return null
   const n = s.replace(/rwf|frw|frs?/gi, '').replace(/[\s,]/g, '')
+  // "12.500" (a dot between the thousands, as in French) is 12 500: francs have no cents
+  if (/^\d{1,3}(\.\d{3})+$/.test(n)) return Number(n.replace(/\./g, ''))
   return /^\d+(\.\d+)?$/.test(n) ? Number(n) : s
 }
 
@@ -193,71 +197,14 @@ function readSheet(sheet: Sheet): ParsedReferenceFile | null {
   }
 }
 
-/** A CSV (comma, semicolon or tab), quotes as in RFC 4180. */
-function csvRows(text: string): Sheet['rows'] {
-  const firstLine = text.split(/\r?\n/, 1)[0] ?? ''
-  const count = (ch: string) => firstLine.split(ch).length - 1
-  const sep = [';', '\t', ','].reduce((a, b) => (count(b) > count(a) ? b : a), ',')
-  const out: Sheet['rows'] = []
-  let row: string[] = []
-  let cell = ''
-  let quoted = false
-  let n = 1
-  const endRow = () => {
-    row.push(cell)
-    if (row.some((c) => c.trim() !== '')) out.push({ n, cells: row })
-    row = []
-    cell = ''
-    n++
-  }
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i]!
-    if (quoted) {
-      if (c === '"' && text[i + 1] === '"') {
-        cell += '"'
-        i++
-      } else if (c === '"') quoted = false
-      else cell += c
-    } else if (c === '"') quoted = true
-    else if (c === sep) {
-      row.push(cell)
-      cell = ''
-    } else if (c === '\n') endRow()
-    else if (c !== '\r') cell += c
-  }
-  if (cell !== '' || row.length) endRow()
-  return out
-}
-
 /** Reads the file the manager chose. Throws ReferenceFileError with what went wrong. */
 export async function readReferenceFile(file: File): Promise<ParsedReferenceFile> {
-  const name = file.name.toLowerCase()
-  if (name.endsWith('.pdf') || file.type === 'application/pdf') throw new ReferenceFileError('pdf')
   let sheets: Sheet[]
   try {
-    if (name.endsWith('.csv') || file.type === 'text/csv') {
-      // a CSV saved by Excel starts with the byte-order mark
-      const text = await file.text()
-      sheets = [{ name: null, rows: csvRows(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text) }]
-    } else if (name.endsWith('.xlsx')) {
-      const ExcelJS = (await import('exceljs')).default
-      const wb = new ExcelJS.Workbook()
-      await wb.xlsx.load(await file.arrayBuffer())
-      sheets = wb.worksheets.map((ws) => {
-        const rows: Sheet['rows'] = []
-        ws.eachRow({ includeEmpty: false }, (r, n) => {
-          // exceljs rows are 1-based (index 0 is empty)
-          const v = r.values
-          rows.push({ n, cells: Array.isArray(v) ? v.slice(1) : [] })
-        })
-        return { name: ws.name, rows }
-      })
-    } else {
-      throw new ReferenceFileError('type')
-    }
+    sheets = (await loadDocument(file, pdfToGrid)).grids
   } catch (e) {
-    if (e instanceof ReferenceFileError) throw e
-    throw new ReferenceFileError('unreadable')
+    const problem = e instanceof DocumentError ? e.problem : 'unreadable'
+    throw new ReferenceFileError(problem === 'noTable' ? 'noHeader' : problem)
   }
   // the first sheet with a header (the list); the others are its legend and notes
   for (const s of sheets) {
@@ -269,3 +216,5 @@ export async function readReferenceFile(file: File): Promise<ParsedReferenceFile
   }
   throw new ReferenceFileError('noHeader')
 }
+import { DocumentError, loadDocument } from '@/lib/document-grids'
+import { pdfToGrid } from '@/lib/price-list-file'

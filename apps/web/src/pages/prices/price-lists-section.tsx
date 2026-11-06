@@ -35,6 +35,7 @@ import {
 } from '@/lib/api/price-lists'
 import { useConfirm } from '@/lib/confirm'
 import { PriceListFileError, readPriceListFile, type ParsedPriceList } from '@/lib/price-list-file'
+import { DOCUMENT_ACCEPT } from '@/lib/document-grids'
 import { cn } from '@/lib/utils'
 import {
   day,
@@ -51,8 +52,8 @@ import { PriceListPreviewPanel } from './price-list-preview'
 import { FollowersPanel, LinesPanel } from './price-list-lines'
 import { BookSettingsPanel } from './price-list-settings'
 
-const ACCEPT =
-  '.xlsx,.csv,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/pdf'
+/** Every kind of file a price list may come in (Excel, CSV, PDF, Word, OpenDocument, a web page). */
+const ACCEPT = DOCUMENT_ACCEPT
 /** The upload makes a new list. */
 const NEW = ''
 const MOH = 'Ministry of Health (MoH)'

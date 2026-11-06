@@ -1,7 +1,8 @@
 /**
  * Reads a published price list the manager uploads (Prices › Published price lists): the Ministry
- * of Health's tariff of treatments, RSSB / RHIA's list of medicines, an insurer's list. An Excel
- * file (.xlsx), a .csv or a PDF with text (not a scan).
+ * of Health's tariff of treatments, RSSB / RHIA's list of medicines, an insurer's list. Any kind of
+ * file lib/document-grids reads: Excel (.xlsx, .xls, .ods), CSV or text, a PDF with text (not a
+ * scan), Word (.docx, .odt), a web page.
  *
  * The header row is found by its column names (case, accents and punctuation do not matter):
  * the code ("RHIC", "DRUG_CODE", "ATC Code"; a second code column such as "ICHI CODE" is kept as
@@ -25,6 +26,17 @@
  * file kept no value for ("=F322/2") is worked out from the cells it names, as Excel would. Every
  * sheet is reported: read (its lines and the rows that are not lines), hidden, or without a table.
  */
+
+import {
+  DocumentError,
+  loadDocument,
+  type DocumentFormat,
+  type Grid,
+  type LoadedDocument,
+  type PdfItem,
+} from './document-grids'
+
+export type { Grid, PdfItem } from './document-grids'
 
 export type ListRole =
   'code' | 'altCode' | 'name' | 'detail' | 'section' | 'unit' | 'note' | 'number' | 'price'
@@ -64,7 +76,7 @@ export interface ParsedPriceList {
   kind: 'treatments' | 'medicines' | null
   /** yyyy-mm-dd: a month written in the title ("FEB2026", "JUNE 2026"), its first day. */
   from: string | null
-  format: 'xlsx' | 'csv' | 'pdf'
+  format: DocumentFormat
   /** Every column of the file with what it was read as, for "Correct the columns". */
   layout: ColumnLayout[]
   /** The rows the lines were read from (read again when the columns are corrected). */
@@ -129,7 +141,8 @@ export interface ReadOptions {
   roles?: Record<number, ColumnRole>
 }
 
-export type PriceListFileProblem = 'type' | 'noHeader' | 'empty' | 'unreadable' | 'pdfNoText'
+export type PriceListFileProblem =
+  'type' | 'noHeader' | 'empty' | 'unreadable' | 'pdfNoText' | 'oldWord' | 'image'
 
 export class PriceListFileError extends Error {
   readonly problem: PriceListFileProblem
@@ -138,16 +151,6 @@ export class PriceListFileError extends Error {
     this.name = 'PriceListFileError'
     this.problem = problem
   }
-}
-
-/** The rows of one sheet (or the CSV, or the PDF put back in rows): cells as they came. */
-export interface Grid {
-  name: string | null
-  rows: { n: number; cells: unknown[] }[]
-  /** Text found outside the rows (PDF). */
-  notes?: string[]
-  /** Text above the table (PDF). */
-  above?: string[]
 }
 
 // ---------------------------------------------------------------- words
@@ -294,6 +297,8 @@ export function priceOf(raw: unknown): number | string | null {
   if (s == null) return null
   const n = s.replace(/rwf|frw|frs?/gi, '').replace(/[\s,]/g, '')
   if (n === '' || n === '-') return null
+  // "12.500" (a dot between the thousands, as in French) is 12 500: francs have no cents
+  if (/^\d{1,3}(\.\d{3})+$/.test(n)) return Number(n.replace(/\./g, ''))
   return /^\d+(\.\d+)?$/.test(n) ? Number(n) : s
 }
 
@@ -940,14 +945,6 @@ function kindOf(
 }
 
 // ---------------------------------------------------------------- PDF
-/** A piece of text of a PDF page and where it is (points, y up). */
-export interface PdfItem {
-  page: number
-  x: number
-  y: number
-  w: number
-  text: string
-}
 
 /**
  * Text pieces of a PDF put back into a grid: the header line names the columns (a second line
@@ -1085,62 +1082,6 @@ export function pdfToGrid(items: PdfItem[]): Grid | null {
   }
 }
 
-// ---------------------------------------------------------------- CSV
-/** A CSV (comma, semicolon or tab), quotes as in RFC 4180. */
-function csvRows(text: string): Grid['rows'] {
-  const firstLine = text.split(/\r?\n/, 1)[0] ?? ''
-  const count = (ch: string) => firstLine.split(ch).length - 1
-  const sep = [';', '\t', ','].reduce((a, b) => (count(b) > count(a) ? b : a), ',')
-  const out: Grid['rows'] = []
-  let row: string[] = []
-  let cell = ''
-  let quoted = false
-  let n = 1
-  const endRow = () => {
-    row.push(cell)
-    if (row.some((c) => c.trim() !== '')) out.push({ n, cells: row })
-    row = []
-    cell = ''
-    n++
-  }
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i]!
-    if (quoted) {
-      if (c === '"' && text[i + 1] === '"') {
-        cell += '"'
-        i++
-      } else if (c === '"') quoted = false
-      else cell += c
-    } else if (c === '"') quoted = true
-    else if (c === sep) {
-      row.push(cell)
-      cell = ''
-    } else if (c === '\n') endRow()
-    else if (c !== '\r') cell += c
-  }
-  if (cell !== '' || row.length) endRow()
-  return out
-}
-
-/** The pieces of text of a PDF with their places (pdf.js, loaded only when a PDF is chosen). */
-async function pdfItems(data: ArrayBuffer): Promise<PdfItem[]> {
-  const pdfjs = await import('pdfjs-dist')
-  const worker = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
-  pdfjs.GlobalWorkerOptions.workerSrc = worker
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(data) }).promise
-  const out: PdfItem[] = []
-  for (let p = 1; p <= doc.numPages; p++) {
-    const page = await doc.getPage(p)
-    const content = await page.getTextContent()
-    for (const it of content.items) {
-      if (!('str' in it) || !it.str.trim()) continue
-      out.push({ page: p, x: it.transform[4], y: it.transform[5], w: it.width, text: it.str })
-    }
-  }
-  await doc.destroy()
-  return out
-}
-
 /** Merges what each sheet read (a list may keep its parts on several sheets). */
 export function mergeParts(
   parts: Omit<ParsedPriceList, 'format'>[],
@@ -1170,47 +1111,14 @@ export function mergeParts(
 
 /** Reads the file the manager chose. Throws PriceListFileError with what went wrong. */
 export async function readPriceListFile(file: File): Promise<ParsedPriceList> {
-  const name = file.name.toLowerCase()
-  let grids: Grid[]
-  /** The sheets hidden in Excel (not read; reported). */
-  let hidden = new Set<Grid>()
-  let format: ParsedPriceList['format']
+  let loaded: LoadedDocument
   try {
-    if (name.endsWith('.pdf') || file.type === 'application/pdf') {
-      format = 'pdf'
-      const items = await pdfItems(await file.arrayBuffer())
-      if (items.length === 0) throw new PriceListFileError('pdfNoText')
-      const grid = pdfToGrid(items)
-      if (!grid) throw new PriceListFileError('noHeader')
-      grids = [grid]
-    } else if (name.endsWith('.csv') || file.type === 'text/csv') {
-      format = 'csv'
-      // a CSV saved by Excel starts with the byte-order mark
-      const text = await file.text()
-      grids = [{ name: null, rows: csvRows(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text) }]
-    } else if (name.endsWith('.xlsx')) {
-      format = 'xlsx'
-      const ExcelJS = (await import('exceljs')).default
-      const wb = new ExcelJS.Workbook()
-      await wb.xlsx.load(await file.arrayBuffer())
-      const sheets = wb.worksheets.map((ws) => {
-        const rows: Grid['rows'] = []
-        ws.eachRow({ includeEmpty: false }, (r, n) => {
-          // exceljs rows are 1-based (index 0 is empty)
-          const v = r.values
-          rows.push({ n, cells: Array.isArray(v) ? v.slice(1) : [] })
-        })
-        return { grid: { name: ws.name, rows } as Grid, visible: ws.state === 'visible' }
-      })
-      grids = sheets.map((s) => s.grid)
-      hidden = new Set(sheets.filter((s) => !s.visible).map((s) => s.grid))
-    } else {
-      throw new PriceListFileError('type')
-    }
+    loaded = await loadDocument(file, pdfToGrid)
   } catch (e) {
-    if (e instanceof PriceListFileError) throw e
-    throw new PriceListFileError('unreadable')
+    const problem = e instanceof DocumentError ? e.problem : 'unreadable'
+    throw new PriceListFileError(problem === 'noTable' ? 'noHeader' : problem)
   }
+  const { grids, hidden, format } = loaded
   // every sheet in the file's order: read, hidden in Excel (not read), or without a table
   const parts: NonNullable<ReturnType<typeof readGrid>>[] = []
   const sheets: SheetReport[] = []
