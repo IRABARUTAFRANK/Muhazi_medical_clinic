@@ -34,6 +34,7 @@ import { Select } from '@/components/ui/select'
 import { SidePanel } from '@/components/ui/side-panel'
 import {
   PAYER_TYPES,
+  payerBodyOf,
   SERVICE_GROUPS,
   useCatalogueActions,
   type Insurer,
@@ -1297,6 +1298,9 @@ export function InsurerForm({
               required
             />
           </div>
+          {payerBodyOf(type) && (
+            <p className="text-navy-ink m-0 text-[13px]">{t('prices.insurers.form.rssbHint')}</p>
+          )}
           <span className="text-ink-2 text-[14px] font-semibold">
             {t('prices.insurers.form.byGroup')}
           </span>

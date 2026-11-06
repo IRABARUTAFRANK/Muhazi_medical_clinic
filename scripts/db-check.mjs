@@ -23264,6 +23264,247 @@ await step(
   },
 )
 // @@t136-end
+// @@t137-begin
+// ---------------------------------------------------------------- 0137 RSSB's lists are RAMA's and CBHI's
+const t137 = {}
+const json137 = (x) => JSON.stringify(x)
+await step('0137: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270117090000_rssb_schemes_share_lists.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+const import137 = async (bookId, book, cols, lines, instructionsPayer) => {
+  await as(staff.manager)
+  const p = (
+    await one(
+      `select import_tariff($1, $2::jsonb, 'RSSB 137', current_date, $3::jsonb, $4::jsonb, $5, null, null, false) as j`,
+      [bookId, book ? json137(book) : null, json137(cols), json137(lines), instructionsPayer],
+    )
+  ).j
+  await asAdmin()
+  return p
+}
+const source137 = (svc, payer) =>
+  one(`select price, source from price_source_for($1, null, $2)`, [svc, payer])
+await step(
+  '0137 A: RSSB’s list kept for RAMA — Mutuelle de santé follows it too, first, in its column, with the file’s “not covered”',
+  async () => {
+    await asAdmin()
+    t137.rama = (await one(`select id from payer where code = 'RAMA'`)).id
+    t137.cbhi = (await one(`select id from payer where code = 'CBHI'`)).id
+    t137.s1 = (
+      await one(
+        `insert into service (code, name_en, service_group, tariff_code) values ('RSSB-137-1', 'Act 137 one', 'procedure', 'RHIC-R137-001') returning id`,
+      )
+    ).id
+    t137.s2 = (
+      await one(
+        `insert into service (code, name_en, service_group, tariff_code) values ('RSSB-137-2', 'Act 137 two', 'procedure', 'RHIC-R137-002') returning id`,
+      )
+    ).id
+    t137.cols = [{ key: 'price', label: 'PRICE' }]
+    t137.lines = [
+      { row: 1, code: 'RHIC-R137-001', name: 'Act 137 one', prices: { price: 7000 }, note: null },
+      { row: 2, code: 'RHIC-R137-002', name: 'Act 137 two', prices: { price: 9000 }, note: 'NC' },
+    ]
+    const p = await import137(
+      null,
+      {
+        name: 'RSSB tariff 137',
+        publisher: 'RSSB',
+        kind: 'treatments',
+        scope: 'insurer',
+        payerId: t137.rama,
+        payerColumn: 'price',
+      },
+      t137.cols,
+      t137.lines,
+      t137.rama,
+    )
+    t137.book = p.bookId
+    const follows = (
+      await db.query(
+        `select payer_id, column_key, priority from payer_tariff where book_id = $1 order by priority`,
+        [t137.book],
+      )
+    ).rows
+    const cbhiRow = follows.find((f) => f.payer_id === t137.cbhi)
+    const ex = await one(
+      `select cover, source from tariff_exception where payer_id = $1 and code = 'RHIC-R137-002'`,
+      [t137.cbhi],
+    )
+    const one1 = await source137(t137.s1, t137.cbhi)
+    const two = await source137(t137.s2, t137.cbhi)
+    const mmi = await one(
+      `select count(*)::int as n from payer_tariff where book_id = $1 and payer_id = $2`,
+      [t137.book, t115.mmi],
+    )
+    if (
+      !cbhiRow ||
+      cbhiRow.column_key !== 'price' ||
+      cbhiRow.priority !== 0 ||
+      ex?.cover !== 'not_covered' ||
+      ex?.source !== 'upload' ||
+      Number(one1?.price) !== 7000 ||
+      two?.source !== 'excluded' ||
+      mmi.n !== 0
+    )
+      throw new Error(json137({ follows, ex, one1, two, mmi }))
+    return 'CBHI follows first (price) · Act 137 one 7,000 for CBHI · Act 137 two not covered for CBHI · MMI not added'
+  },
+)
+await step(
+  '0137 B: a new version with another column name and no instruction — both schemes pay the new column, the “not covered” goes for both',
+  async () => {
+    const cols = [{ key: 'new_price', label: 'NEW PRICE' }]
+    const lines = [
+      { row: 1, code: 'RHIC-R137-001', name: 'Act 137 one', prices: { new_price: 7500 } },
+      { row: 2, code: 'RHIC-R137-002', name: 'Act 137 two', prices: { new_price: 9500 } },
+    ]
+    await as(staff.manager)
+    await one(
+      `select import_tariff($1, '{"payerColumn": "new_price"}'::jsonb, 'RSSB 137 v2', current_date, $2::jsonb, $3::jsonb, $4, null, null, false) as j`,
+      [t137.book, json137(cols), json137(lines), t137.rama],
+    )
+    await asAdmin()
+    const col = await one(
+      `select column_key from payer_tariff where book_id = $1 and payer_id = $2`,
+      [t137.book, t137.cbhi],
+    )
+    const ex = await one(
+      `select count(*)::int as n from tariff_exception where payer_id = any($1) and code = 'RHIC-R137-002'`,
+      [[t137.rama, t137.cbhi]],
+    )
+    const a = await source137(t137.s1, t137.cbhi)
+    const b = await source137(t137.s2, t137.cbhi)
+    if (
+      col?.column_key !== 'new_price' ||
+      ex.n !== 0 ||
+      Number(a?.price) !== 7500 ||
+      Number(b?.price) !== 9500 ||
+      b?.source === 'excluded'
+    )
+      throw new Error(json137({ col, ex, a, b }))
+    return 'CBHI pays NEW PRICE: 7,500 and 9,500 · no exception left'
+  },
+)
+await step(
+  '0137 C: Mutuelle stopped following — a new version does not bring it back; a typed exception of CBHI stays its own',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select set_payer_tariff($1, $2, null)`, [t137.cbhi, t137.book])
+    await db.query(
+      `select save_tariff_exception($1, 'RHIC-R137-001', 'preauth', null, 'CBHI asks', $2)`,
+      [t137.cbhi, t137.book],
+    )
+    await asAdmin()
+    const lines = [
+      {
+        row: 1,
+        code: 'RHIC-R137-001',
+        name: 'Act 137 one',
+        prices: { new_price: 7600 },
+        note: 'NC',
+      },
+      { row: 2, code: 'RHIC-R137-002', name: 'Act 137 two', prices: { new_price: 9600 } },
+    ]
+    await as(staff.manager)
+    await one(
+      `select import_tariff($1, null, 'RSSB 137 v3', current_date, $2::jsonb, $3::jsonb, $4, null, null, false) as j`,
+      [t137.book, json137([{ key: 'new_price', label: 'NEW PRICE' }]), json137(lines), t137.rama],
+    )
+    await asAdmin()
+    const back = await one(
+      `select count(*)::int as n from payer_tariff where book_id = $1 and payer_id = $2`,
+      [t137.book, t137.cbhi],
+    )
+    const typed = await one(
+      `select cover, source, note from tariff_exception where payer_id = $1 and code = 'RHIC-R137-001'`,
+      [t137.cbhi],
+    )
+    const rama = await one(
+      `select cover from tariff_exception where payer_id = $1 and code = 'RHIC-R137-001'`,
+      [t137.rama],
+    )
+    if (
+      back.n !== 0 ||
+      typed?.source !== 'typed' ||
+      typed?.cover !== 'preauth' ||
+      rama?.cover !== 'not_covered'
+    )
+      throw new Error(json137({ back, typed, rama }))
+    return 'CBHI stays out · its typed “approval needed” kept · RAMA “not covered” from the file'
+  },
+)
+await step(
+  '0137 D: a new RSSB scheme added under Insurers follows RSSB’s list at once, with the file’s exceptions; a private insurer does not',
+  async () => {
+    await as(staff.manager)
+    t137.mut = (
+      await one(
+        `select upsert_payer(null, 'Mutuelle 137', 'cbhi', 90, '{}'::jsonb, true, 'MUT137', null, 'cash_covered') as id`,
+      )
+    ).id
+    t137.priv = (
+      await one(
+        `select upsert_payer(null, 'Private 137', 'private', 80, '{}'::jsonb, true, 'PRIV137', null, 'cash_covered') as id`,
+      )
+    ).id
+    await asAdmin()
+    const mut = await one(
+      `select column_key, priority from payer_tariff where book_id = $1 and payer_id = $2`,
+      [t137.book, t137.mut],
+    )
+    const ex = await one(
+      `select cover from tariff_exception where payer_id = $1 and code = 'RHIC-R137-001'`,
+      [t137.mut],
+    )
+    const priv = await one(
+      `select count(*)::int as n from payer_tariff where book_id = $1 and payer_id = $2`,
+      [t137.book, t137.priv],
+    )
+    const price = await source137(t137.s2, t137.mut)
+    if (
+      mut?.column_key !== 'new_price' ||
+      mut?.priority !== 0 ||
+      ex?.cover !== 'not_covered' ||
+      priv.n !== 0 ||
+      Number(price?.price) !== 9600
+    )
+      throw new Error(json137({ mut, ex, priv, price }))
+    return 'Mutuelle 137 follows (NEW PRICE, first) · “not covered” · 9,600 · Private 137 not added'
+  },
+)
+await step('0137 E: the lists say whose body they are (RSSB) and each follower’s', async () => {
+  await as(staff.manager)
+  const books = (await one(`select tariff_books() as j`)).j
+  await asAdmin()
+  const b = books.find((x) => x.id === t137.book)
+  const eden = books.find((x) => x.scope === 'insurer' && x.payerBody == null)
+  const f = b?.followers.find((x) => x.payerId === t137.mut)
+  if (b?.payerBody !== 'RSSB' || f?.body !== 'RSSB' || (eden && eden.payerBody !== null))
+    throw new Error(json137({ body: b?.payerBody, f, eden: eden?.payerBody }))
+  return 'payerBody RSSB · follower body RSSB · a private insurer’s list has none'
+})
+await step('0137 F: an insurer’s own list that is not RSSB’s is not shared', async () => {
+  await asAdmin()
+  const r = (
+    await db.query(
+      `select b.id, (select count(*)::int from payer_tariff pt where pt.book_id = b.id) as n
+       from tariff_book b join payer p on p.id = b.payer_id
+       where b.scope = 'insurer' and b.deleted_at is null and p.type not in ('rssb_rama', 'cbhi')`,
+    )
+  ).rows
+  const shared = await one(`select tariff_share_body($1, null, true) as n`, [r[0]?.id ?? null])
+  if (r.length === 0 || shared.n !== 0) throw new Error(json137({ r, shared }))
+  return `${r.length} other insurer list(s): nothing shared`
+})
+// @@t137-end
 finish()
 
 function finish() {

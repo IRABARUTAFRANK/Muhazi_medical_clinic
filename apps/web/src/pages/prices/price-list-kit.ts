@@ -1,5 +1,5 @@
 import { formatDate, formatNumber, formatRwf } from '@mmc/shared'
-import type { PayerType } from '@/lib/api/catalogue'
+import { payerBodyOf, type PayerType } from '@/lib/api/catalogue'
 import { useTranslation } from 'react-i18next'
 import {
   usePriceListActions,
@@ -46,9 +46,20 @@ export function guessFollowColumn(
   columns: PriceListColumn[],
   type: PayerType,
   name: string,
+  /** The list is RSSB's (its title, file or publisher says so): RAMA and Mutuelle pay its price. */
+  rssbList = false,
 ): string {
   const usable = columns.filter((c) => !/non.?insur|uninsur|non.?assur/i.test(c.label))
   const by = (re: RegExp) => usable.find((c) => re.test(c.label))?.key
+  if (rssbList) {
+    if (payerBodyOf(type) !== 'RSSB') return ''
+    return (
+      by(/\b(rama|rssb|cbhi|mutuel+e?s?)\b/i) ??
+      (usable.length === 1 ? usable[0]!.key : undefined) ??
+      by(/price|prix|tarif|tariff|amount|montant/i) ??
+      ''
+    )
+  }
   if (type === 'rssb_rama') return by(/\b(rama|rssb)\b/i) ?? ''
   if (type === 'mmi') return by(/\b(mmi|military)\b/i) ?? ''
   if (type === 'cbhi') return by(/\b(cbhi|mutuel+e?s?)\b/i) ?? ''
@@ -62,6 +73,10 @@ export function guessFollowColumn(
   }
   return ''
 }
+
+/** The file's title, name or publisher says the list is RSSB's ("… BY RSSB JUNE 2026"). */
+export const looksRssb = (...texts: (string | null | undefined)[]) =>
+  /\b(rssb|rwanda social security)\b/i.test(texts.filter(Boolean).join(' '))
 
 /** A price as Excel shows it in the file: rounded to the franc. */
 export const asInFile = (n: number) => formatNumber(Math.round(n))

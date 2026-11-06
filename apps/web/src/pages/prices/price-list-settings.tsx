@@ -82,9 +82,11 @@ export function BookSettingsPanel({
       icon={Settings2}
       title={t('prices.lists.settingsTitle', { name: book.name })}
       subtitle={
-        book.scope === 'insurer' && book.payer
-          ? t('prices.lists.scopeOf', { payer: book.payer })
-          : t(`prices.lists.scope.${book.scope}`)
+        book.scope === 'insurer' && book.payerBody
+          ? t('prices.lists.rssb.scope')
+          : book.scope === 'insurer' && book.payer
+            ? t('prices.lists.scopeOf', { payer: book.payer })
+            : t(`prices.lists.scope.${book.scope}`)
       }
       footer={
         <>
@@ -135,7 +137,11 @@ export function BookSettingsPanel({
         )}
         {book.scope === 'insurer' && columns.length > 0 && (
           <Select
-            label={t('prices.lists.payerColumn', { payer: book.payer ?? '' })}
+            label={
+              book.payerBody
+                ? t('prices.lists.rssb.column')
+                : t('prices.lists.payerColumn', { payer: book.payer ?? '' })
+            }
             value={payerColumn}
             onChange={(e) => setPayerColumn(e.target.value)}
           >

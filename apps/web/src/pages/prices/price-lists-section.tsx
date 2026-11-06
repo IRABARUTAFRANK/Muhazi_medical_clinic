@@ -21,7 +21,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
-import type { Insurer } from '@/lib/api/catalogue'
+import { payerBodyOf, type Insurer } from '@/lib/api/catalogue'
 import {
   SCOPES,
   usePriceListActions,
@@ -42,6 +42,7 @@ import {
   guessFollowColumn,
   guessPayerColumn,
   guessPrivateColumn,
+  looksRssb,
   useRemoveList,
 } from './price-list-kit'
 import { ColumnsCheck } from './price-list-columns'
@@ -101,6 +102,8 @@ export function PriceListsSection({
   const suggested = useRef({ name: '', book: '' })
   /** The file being read: a read the manager no longer waits for is dropped. */
   const readToken = useRef(0)
+  /** The name of the file read (it may say the list is RSSB's). */
+  const fileName = useRef('')
   const [preview, setPreview] = useState<PriceListPreview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [linesOf, setLinesOf] = useState<PriceListBook | null>(null)
@@ -111,13 +114,35 @@ export function PriceListsSection({
   const current = book?.versions.find((v) => v.status === 'current') ?? null
   const effScope: ListScope = book?.scope ?? scope
   const insurer = insurers.find((i) => i.id === (book?.payerId ?? payerId))
+  /**
+   * RSSB's list (0137): its insurer is one of RSSB's schemes, so it is the tariff of every RSSB
+   * scheme (RAMA and Mutuelle de santé): they all follow it, pay its column, get its instructions.
+   */
+  const ownerBody = effScope === 'insurer' ? (book?.payerBody ?? payerBodyOf(insurer?.type)) : null
+  const bodyOwners = ownerBody ? insurers.filter((i) => payerBodyOf(i.type) === ownerBody) : []
+  const ownersLabel =
+    bodyOwners.length > 1
+      ? bodyOwners.map((i) => i.name).join(', ')
+      : (insurer?.name ?? book?.payer ?? '')
+  /** The file says it is RSSB's list ("… BY RSSB JUNE 2026"). */
+  const rssbFile = !!parsed && looksRssb(parsed.title, file?.name, publisher)
+  const rssbInsurer =
+    insurers.find((i) => i.type === 'rssb_rama') ??
+    insurers.find((i) => payerBodyOf(i.type) === 'RSSB')
   const columns = parsed?.columns ?? []
   const noteColumn = parsed?.layout.find((c) => c.role === 'note')?.label ?? null
   /** The insurers that may pay a list (the active ones). */
   const payers = insurers
   /** The insurer has its own list of this kind (it does not use another one unless chosen). */
-  const hasOwnList = (payerId: string) =>
-    books.some((b) => b.scope === 'insurer' && b.payerId === payerId && b.kind === tab)
+  const hasOwnList = (payerId: string) => {
+    const body = payerBodyOf(insurers.find((i) => i.id === payerId)?.type)
+    return books.some(
+      (b) =>
+        b.scope === 'insurer' &&
+        b.kind === tab &&
+        (b.payerId === payerId || (!!body && b.payerBody === body)),
+    )
+  }
   const choosingFollowers = target === NEW && effScope !== 'insurer' && columns.length > 0
   /** The column the patients pay: the private column, or the insurer's own column. */
   const mainColumn =
@@ -126,8 +151,7 @@ export function PriceListsSection({
       : effScope === 'insurer'
         ? payerColumn || (columns.length === 1 ? columns[0]!.key : '')
         : ''
-  const mainLabel =
-    effScope === 'clinic' ? t('prices.lists.fc.privatePatients') : (insurer?.name ?? '')
+  const mainLabel = effScope === 'clinic' ? t('prices.lists.fc.privatePatients') : ownersLabel
   /** Who pays each column, for "Compare with the file". */
   const uses: Record<string, string[]> = {}
   const addUse = (key: string | null | undefined, who: string) => {
@@ -137,7 +161,11 @@ export function PriceListsSection({
   if (choosingFollowers) for (const i of payers) addUse(follow[i.id], i.name)
   else if (book)
     for (const f of book.followers)
-      if (!(effScope === 'insurer' && f.payerId === book.payerId)) addUse(f.column, f.payer)
+      if (!(
+        effScope === 'insurer' &&
+        (f.payerId === book.payerId || (!!book.payerBody && f.body === book.payerBody))
+      ))
+        addUse(f.column, f.payer)
   const grouped = useMemo(
     () =>
       SCOPES.map((s) => ({ scope: s, books: tabBooks.filter((b) => b.scope === s) })).filter(
@@ -185,7 +213,8 @@ export function PriceListsSection({
         payers.map((i) => {
           const was = cur[i.id]
           if (keep && was !== undefined && (was === '' || keys.includes(was))) return [i.id, was]
-          return [i.id, hasOwnList(i.id) ? '' : guessFollowColumn(p.columns, i.type, i.name)]
+          const rssb = looksRssb(p.title, fileName.current, publisher)
+          return [i.id, hasOwnList(i.id) ? '' : guessFollowColumn(p.columns, i.type, i.name, rssb)]
         }),
       ),
     )
@@ -194,6 +223,7 @@ export function PriceListsSection({
   const choose = async (f: File | null) => {
     removeFile()
     const token = ++readToken.current
+    fileName.current = f?.name ?? ''
     setFile(f)
     if (!f) return
     setReading(true)
@@ -240,7 +270,9 @@ export function PriceListsSection({
 
   const publisherOf = () =>
     effScope === 'insurer'
-      ? (insurer?.name ?? '')
+      ? ownerBody
+        ? ownerBody
+        : (insurer?.name ?? '')
       : publisher.trim() || (effScope === 'clinic' ? MOH : '')
 
   const input = (): PriceListImportInput => ({
@@ -573,6 +605,30 @@ export function PriceListsSection({
                 <p className="text-ink-3 m-0 -mt-1 text-[13px]">
                   {t(`prices.lists.scopeHint.${scope}.${tab}`)}
                 </p>
+                {rssbFile && scope !== 'insurer' && (
+                  <div className="border-navy-ink/20 bg-blue-bg/50 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[13px]">
+                    <ShieldCheck size={15} aria-hidden="true" className="text-navy-ink flex-none" />
+                    <span className="text-ink min-w-0 flex-1">{t('prices.lists.rssb.looks')}</span>
+                    {rssbInsurer ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="tint-blue"
+                        onClick={() => {
+                          setScope('insurer')
+                          setPayerId(rssbInsurer.id)
+                          setPayerColumn(guessPayerColumn(parsed.columns, rssbInsurer.name))
+                          if (noteColumn) setInstructionsOf(rssbInsurer.id)
+                          reset()
+                        }}
+                      >
+                        {t('prices.lists.rssb.make')}
+                      </Button>
+                    ) : (
+                      <span className="text-ink-3">{t('prices.lists.rssb.noneActive')}</span>
+                    )}
+                  </div>
+                )}
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,240px)]">
                   <Field
                     label={t('prices.lists.bookName')}
@@ -616,6 +672,12 @@ export function PriceListsSection({
                       }}
                     />
                   )}
+                  {scope === 'insurer' && ownerBody && (
+                    <p className="text-navy-ink m-0 inline-flex items-start gap-1.5 text-[13px] sm:col-span-2">
+                      <ShieldCheck size={14} aria-hidden="true" className="mt-0.5 flex-none" />
+                      {t('prices.lists.rssb.shared', { names: ownersLabel })}
+                    </p>
+                  )}
                   <datalist id="price-list-publishers">
                     {[MOH, 'RSSB', 'RHIA', ...insurers.map((i) => i.name)].map((p) => (
                       <option key={p} value={p} />
@@ -628,10 +690,17 @@ export function PriceListsSection({
                 <Badge
                   tone={effScope === 'clinic' ? 'blue' : effScope === 'insurer' ? 'green' : 'grey'}
                 >
-                  {effScope === 'insurer' && book?.payer
-                    ? t('prices.lists.scopeOf', { payer: book.payer })
-                    : scopeLabel(effScope)}
+                  {effScope === 'insurer' && book?.payerBody
+                    ? t('prices.lists.rssb.scope')
+                    : effScope === 'insurer' && book?.payer
+                      ? t('prices.lists.scopeOf', { payer: book.payer })
+                      : scopeLabel(effScope)}
                 </Badge>
+                {book?.payerBody && (
+                  <span className="text-navy-ink mt-1 block">
+                    {t('prices.lists.rssb.shared', { names: ownersLabel })}
+                  </span>
+                )}
               </p>
             )}
 
@@ -739,6 +808,13 @@ export function PriceListsSection({
                 ))}
               </Select>
             )}
+            {noteColumn &&
+              ownerBody &&
+              payerBodyOf(insurers.find((i) => i.id === instructionsOf)?.type) === ownerBody && (
+                <p className="text-ink-3 m-0 -mt-1 text-[13px]">
+                  {t('prices.lists.rssb.instructions', { names: ownersLabel })}
+                </p>
+              )}
           </>
         )}
         {error && !preview && parsed && (
@@ -762,6 +838,7 @@ export function PriceListsSection({
       {preview && (
         <PriceListPreviewPanel
           preview={preview}
+          payers={bodyOwners.length > 1 ? ownersLabel : null}
           from={from}
           busy={actions.apply.isPending}
           error={error}
@@ -854,6 +931,22 @@ function BookRow({
           <span>
             {t('prices.lists.privatePays', { column: columnLabel(book.privateColumn) })} ·{' '}
             {t('prices.lists.orderN', { n: book.priority })}
+          </span>
+        </div>
+      )}
+      {book.scope === 'insurer' && book.payerBody && (
+        <div className="text-navy-ink flex flex-wrap items-center gap-1 text-[13px] font-medium">
+          <ShieldCheck size={14} aria-hidden="true" />
+          <span>
+            {t('prices.lists.rssb.bookLine', {
+              names:
+                book.followers
+                  .filter((f) => f.body === book.payerBody)
+                  .map((f) => f.payer)
+                  .join(', ') ||
+                book.payer ||
+                '',
+            })}
           </span>
         </div>
       )}

@@ -2148,7 +2148,8 @@
         "coverage": "Cyishyura (% bya fagitire)",
         "byGroup": "Ibyo cyishyura kuri buri cyiciro (si ngombwa, bisimbura % rusange)",
         "active": "Kirakora — ivuriro rikorana n’iki kigo cy’ubwishingizi",
-        "publicNote": "Urubuga rusange rugumana itangazo “ubwishingizi buraza vuba” kugeza FEATURES.insurance ifunguwe muri kode."
+        "publicNote": "Urubuga rusange rugumana itangazo “ubwishingizi buraza vuba” kugeza FEATURES.insurance ifunguwe muri kode.",
+        "rssbHint": "Gicungwa na RSSB: intonde z’ibiciro za RSSB ni n’ibiciro byacyo (RAMA na Mituweli birazisangiye)."
       },
       "saved": "{{name}} byabitswe.",
       "nowOn": "{{name}} irakora: ishobora guhitwamo ku kwivuza.",
@@ -3015,12 +3016,24 @@
       },
       "pay": {
         "title": "Inkingi buri kigo cy’ubwishingizi cyishyura",
-        "hint": "Byakekwe hakurikijwe amazina y’inkingi: RSSB (RAMA) na MMI bishyura “RAMA; MMI”, ibigo by’ubwishingizi byigenga byishyura “Private Insurances”. Ikigo gifite ibiciro byacyo bwite ntigikoresha uru rutonde keretse uhisemo inkingi. Ushobora kubihindura nyuma muri Ibigo by’ubwishingizi.",
+        "hint": "Byakekwe hakurikijwe amazina y’inkingi: RSSB (RAMA) na MMI bishyura “RAMA; MMI”, ibigo by’ubwishingizi byigenga byishyura “Private Insurances”; urutonde rwa RSSB rwishyurwa na RSSB RAMA na Mituweli. Ikigo gifite ibiciro byacyo bwite ntigikoresha uru rutonde keretse uhisemo inkingi. Ushobora kubihindura nyuma muri Ibigo by’ubwishingizi.",
         "none": "Ntigikoresha uru rutonde",
         "ownList": "{{name}} (gifite ibiciro byacyo bwite)",
         "done_one": "{{names}} ubu gikurikiza uru rutonde.",
         "done_other": "{{names}} ubu bikurikiza uru rutonde.",
         "failed": "Ntibyashobotse, bikore muri Ibigo by’ubwishingizi: {{names}}."
+      },
+      "ownRow": "Ibiciro byacyo bwite: cyishyura inkingi y’urutonde, ihitwamo muri Igenamiterere.",
+      "rssb": {
+        "looks": "Uru rutonde ni urwa RSSB: ni ibiciro bya RAMA n’ibya Mituweli.",
+        "make": "Rugire ibiciro bya RSSB",
+        "noneActive": "Fungura RSSB RAMA cyangwa Mituweli muri Ibigo by’ubwishingizi kugira ngo urukoreshe nk’ibiciro byabyo.",
+        "shared": "RSSB icunga RAMA na Mituweli: uru rutonde ni ibiciro by’ibyo byombi. {{names}} byishyura inkingi yarwo kandi bihabwa amabwiriza yarwo; ikigo cya RSSB kizongerwaho nyuma na cyo kizarukurikiza.",
+        "scope": "Ibiciro bya RSSB (RAMA na Mituweli)",
+        "instructions": "Urutonde rwa RSSB: aya mabwiriza aba ibidasanzwe bya buri kigo cya RSSB ({{names}}).",
+        "bookLine": "Ibiciro bya RSSB: {{names}} byishyura ibi biciro.",
+        "ownRow": "Ibiciro bya RSSB: cyishyura inkingi y’urutonde, ihitwamo muri Igenamiterere.",
+        "column": "Inkingi ibigo bya RSSB byishyura (RAMA, Mituweli)"
       }
     },
     "listPrice": {

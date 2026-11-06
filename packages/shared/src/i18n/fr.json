@@ -1265,7 +1265,8 @@
         "coverage": "Couvre (% de la facture)",
         "byGroup": "Couverture par groupe (optionnel, remplace le % global)",
         "active": "Actif — la clinique travaille avec cet assureur",
-        "publicNote": "Le site public garde son bandeau « assurances bientôt » tant que FEATURES.insurance n'est pas activé dans le code."
+        "publicNote": "Le site public garde son bandeau « assurances bientôt » tant que FEATURES.insurance n'est pas activé dans le code.",
+        "rssbHint": "Géré par la RSSB : les listes de prix de la RSSB sont aussi son tarif (la RAMA et la Mutuelle de santé les partagent)."
       },
       "parked": "Les assurances sont désactivées : la clinique ne travaille pas encore avec un assureur, tous les patients paient comptant ou par mobile money. Les tarifs et couvertures apparaîtront ici au premier partenariat.",
       "confirmDelete": "Supprimer l'assureur « {{name}} » ? Les factures passées le gardent.",
@@ -2167,12 +2168,24 @@
       },
       "pay": {
         "title": "La colonne que paie chaque assureur",
-        "hint": "Devinée d’après les noms des colonnes : RSSB (RAMA) et MMI paient « RAMA; MMI », les assureurs privés paient « Private Insurances ». Un assureur qui a son propre tarif n’utilise pas cette liste sauf si vous choisissez une colonne. Vous pourrez le changer plus tard dans Assureurs.",
+        "hint": "Devinée d’après les noms des colonnes : RSSB (RAMA) et MMI paient « RAMA; MMI », les assureurs privés paient « Private Insurances » ; une liste de la RSSB est payée par RSSB RAMA et la Mutuelle de santé. Un assureur qui a son propre tarif n’utilise pas cette liste sauf si vous choisissez une colonne. Vous pourrez le changer plus tard dans Assureurs.",
         "none": "N’utilise pas cette liste",
         "ownList": "{{name}} (a son propre tarif)",
         "done_one": "{{names}} la suit désormais.",
         "done_other": "{{names}} la suivent désormais.",
         "failed": "Non réglé, faites-le dans Assureurs : {{names}}."
+      },
+      "ownRow": "Son propre tarif : il paie la colonne propre de la liste, choisie dans Réglages.",
+      "rssb": {
+        "looks": "Cette liste est celle de la RSSB : c’est le tarif de la RAMA et de la Mutuelle de santé.",
+        "make": "En faire le tarif de la RSSB",
+        "noneActive": "Activez RSSB RAMA ou la Mutuelle de santé dans Assureurs pour l’utiliser comme leur tarif.",
+        "shared": "La RSSB gère la RAMA et la Mutuelle de santé : cette liste est le tarif des deux. {{names}} paient sa colonne et reçoivent ses consignes ; un régime de la RSSB ajouté plus tard la suit aussi.",
+        "scope": "Tarif de la RSSB (RAMA et Mutuelle de santé)",
+        "instructions": "Liste de la RSSB : ces consignes deviennent les exceptions de chaque régime de la RSSB ({{names}}).",
+        "bookLine": "Tarif de la RSSB : {{names}} le paient.",
+        "ownRow": "Tarif de la RSSB : il paie la colonne propre de la liste, choisie dans Réglages.",
+        "column": "La colonne que paient les régimes de la RSSB (RAMA, Mutuelle de santé)"
       }
     },
     "listPrice": {

@@ -41,6 +41,7 @@ export function PriceListPreviewPanel({
   error,
   onClose,
   onKeep,
+  payers = null,
 }: {
   preview: PriceListPreview
   from: string
@@ -48,6 +49,8 @@ export function PriceListPreviewPanel({
   error: string | null
   onClose: () => void
   onKeep: () => void
+  /** RSSB's list (0137): every RSSB scheme pays it ("RSSB RAMA, Mutuelle de Santé (CBHI)"). */
+  payers?: string | null
 }) {
   const { t } = useTranslation()
   const label = (key: string | null | undefined) =>
@@ -73,9 +76,11 @@ export function PriceListPreviewPanel({
       className="w-[760px]"
       title={t('prices.lists.previewTitle', { name: p.name })}
       subtitle={[
-        p.book.scope === 'insurer' && p.book.payer
-          ? t('prices.lists.scopeOf', { payer: p.book.payer })
-          : t(`prices.lists.scope.${p.book.scope}`),
+        p.book.scope === 'insurer' && payers
+          ? t('prices.lists.rssb.scope')
+          : p.book.scope === 'insurer' && p.book.payer
+            ? t('prices.lists.scopeOf', { payer: p.book.payer })
+            : t(`prices.lists.scope.${p.book.scope}`),
         p.book.isNew
           ? t('prices.lists.previewNew', { list: p.book.name, publisher: p.book.publisher })
           : p.book.name,
@@ -357,9 +362,9 @@ export function PriceListPreviewPanel({
 
         {p.book.scope === 'insurer' && p.book.payer && (
           <Part
-            title={t('prices.lists.insurerOwnTitle', { payer: p.book.payer })}
+            title={t('prices.lists.insurerOwnTitle', { payer: payers ?? p.book.payer })}
             hint={t('prices.lists.insurerOwnHint', {
-              payer: p.book.payer,
+              payer: payers ?? p.book.payer,
               column: label(p.book.payerColumn),
             })}
           />

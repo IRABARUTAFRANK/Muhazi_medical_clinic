@@ -257,6 +257,13 @@ export function useCategoryActions() {
 export const PAYER_TYPES = ['rssb_rama', 'cbhi', 'mmi', 'private', 'employer'] as const
 export type PayerType = (typeof PAYER_TYPES)[number]
 
+/**
+ * Who runs a scheme (0137): RSSB runs RAMA (rssb_rama) and Mutuelle de santé (cbhi), so RSSB's
+ * price lists are the lists of both. MMI is not RSSB's (it is run under the Ministry of Defence).
+ */
+export const payerBodyOf = (type: PayerType | null | undefined): 'RSSB' | null =>
+  type === 'rssb_rama' || type === 'cbhi' ? 'RSSB' : null
+
 export interface Treatment {
   id: string
   code: string

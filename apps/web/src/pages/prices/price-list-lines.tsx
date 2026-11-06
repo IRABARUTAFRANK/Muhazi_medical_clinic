@@ -21,7 +21,7 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import { SearchSelect } from '@/components/ui/search-select'
 import { SidePanel } from '@/components/ui/side-panel'
-import { treatmentName, useMedicines, useTreatments } from '@/lib/api/catalogue'
+import { payerBodyOf, treatmentName, useMedicines, useTreatments } from '@/lib/api/catalogue'
 import type { Insurer } from '@/lib/api/catalogue'
 import {
   COVERS,
@@ -885,6 +885,11 @@ function FollowerRow({
   const { t } = useTranslation()
   const actions = usePriceListActions()
   const follower = book.followers.find((f) => f.payerId === insurer.id) ?? null
+  /** The list is this insurer's own (or its body's: RSSB's list for RAMA and Mutuelle, 0137). */
+  const owner =
+    book.scope === 'insurer' &&
+    (insurer.id === book.payerId ||
+      (!!book.payerBody && payerBodyOf(insurer.type) === book.payerBody))
   const [column, setColumn] = useState(follower?.column ?? '')
   const [order, setOrder] = useState(follower ? String(follower.priority) : '')
   const [error, setError] = useState<string | null>(null)
@@ -921,6 +926,13 @@ function FollowerRow({
           <Badge tone="grey">{t('prices.lists.doesNotFollow')}</Badge>
         )}
       </span>
+      {owner && (
+        <span className="text-navy-ink text-[13px]">
+          {book.payerBody && payerBodyOf(insurer.type) === book.payerBody
+            ? t('prices.lists.rssb.ownRow')
+            : t('prices.lists.ownRow')}
+        </span>
+      )}
       <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_110px_auto]">
         <Select
           label={t('prices.lists.payColumn')}

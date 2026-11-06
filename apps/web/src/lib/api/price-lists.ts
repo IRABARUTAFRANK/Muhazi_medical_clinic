@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import i18n from '@/i18n'
 import type { PriceListColumn, PriceListLineInput } from '@/lib/price-list-file'
-import { sampleInsurers } from './catalogue'
+import { payerBodyOf, sampleInsurers } from './catalogue'
 import { apiError, isMissingFunction } from './errors'
 
 /**
@@ -78,6 +78,8 @@ export interface PriceListFollower {
   payer: string
   column: string
   priority: number
+  /** Who runs the insurer (RSSB for RAMA and Mutuelle de santé), 0137. */
+  body: string | null
 }
 
 export interface PriceListBook {
@@ -87,6 +89,11 @@ export interface PriceListBook {
   kind: ListKind
   payerId: string | null
   payer: string | null
+  /**
+   * An insurer's own list: who runs its insurer (0137). RSSB: the list is the list of every RSSB
+   * scheme (RAMA and Mutuelle de santé): they all follow it, pay its column and get its instructions.
+   */
+  payerBody: string | null
   scope: ListScope
   /** A clinic-wide list: the column private patients pay. */
   privateColumn: string | null
@@ -469,6 +476,16 @@ function samplePreview(i: PriceListImportInput, dryRun: boolean): PriceListPrevi
       const scope = i.book!.scope
       const insurer =
         scope === 'insurer' ? sampleInsurers.find((x) => x.id === i.book!.payerId) : null
+      // RSSB's list: every RSSB scheme follows it (0137)
+      const body = insurer ? payerBodyOf(insurer.type) : null
+      const owners = insurer
+        ? [
+            insurer,
+            ...(body
+              ? sampleInsurers.filter((x) => x.id !== insurer.id && payerBodyOf(x.type) === body)
+              : []),
+          ]
+        : []
       b = {
         id: `pl-${sampleBooks.length + 1}`,
         name: i.book!.name.trim(),
@@ -476,20 +493,18 @@ function samplePreview(i: PriceListImportInput, dryRun: boolean): PriceListPrevi
         kind: i.book!.kind,
         payerId: insurer?.id ?? null,
         payer: insurer?.name ?? null,
+        payerBody: body,
         scope,
         privateColumn: scope === 'clinic' ? i.book!.privateColumn : null,
         priority: 10 * (sampleBooks.filter((x) => x.scope === 'clinic').length + 1),
         versions: [],
-        followers: insurer
-          ? [
-              {
-                payerId: insurer.id,
-                payer: insurer.name,
-                column: i.book!.payerColumn ?? i.columns[0]!.key,
-                priority: 0,
-              },
-            ]
-          : [],
+        followers: owners.map((x) => ({
+          payerId: x.id,
+          payer: x.name,
+          column: i.book!.payerColumn ?? i.columns[0]!.key,
+          priority: 0,
+          body: payerBodyOf(x.type),
+        })),
         exceptions: 0,
         linked: 0,
         ownPriced: 0,
@@ -524,9 +539,22 @@ function samplePreview(i: PriceListImportInput, dryRun: boolean): PriceListPrevi
       lines: [...kept.values()],
     })
     for (const v of b.versions.slice(1)) v.inEffect = false
-    if (payer)
+    // RSSB's list: the file's instructions are the exceptions of every RSSB scheme that follows it
+    const instructed = sampleInsurers.find((x) => x.id === payer)
+    const sharers =
+      payer && b.payerBody && payerBodyOf(instructed?.type) === b.payerBody
+        ? [
+            payer,
+            ...b.followers
+              .filter((f) => f.body === b.payerBody && f.payerId !== payer)
+              .map((f) => f.payerId),
+          ]
+        : payer
+          ? [payer]
+          : []
+    for (const who of sharers)
       for (const l of notes) {
-        const k = exKey(payer, l.code)
+        const k = exKey(who, l.code)
         if (sampleExceptions.get(k)?.source === 'typed') continue
         sampleExceptions.set(k, {
           cover: coverOf(l.note),
@@ -656,6 +684,7 @@ export function usePriceLists(enabled = true) {
         kind: b.kind === 'medicines' ? 'medicines' : 'treatments',
         payerId: (b.payerId as string | null) ?? null,
         payer: (b.payer as string | null) ?? null,
+        payerBody: (b.payerBody as string | null) ?? null,
         // before 0135 every list is one insurers may follow
         scope: b.scope === 'clinic' || b.scope === 'insurer' ? b.scope : 'reference',
         privateColumn: (b.privateColumn as string | null) ?? null,
@@ -666,6 +695,7 @@ export function usePriceLists(enabled = true) {
           payer: String(f.payer ?? ''),
           column: String(f.column ?? ''),
           priority: Number(f.priority ?? 0),
+          body: (f.body as string | null) ?? null,
         })),
         exceptions: Number(b.exceptions ?? 0),
         linked: Number(b.linked ?? 0),
@@ -964,6 +994,7 @@ export function usePriceListActions() {
             payer: i.payer,
             column: i.column,
             priority: i.priority ?? 10,
+            body: payerBodyOf(sampleInsurers.find((x) => x.id === i.payerId)?.type),
           })
         return
       }

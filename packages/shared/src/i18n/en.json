@@ -1265,7 +1265,8 @@
         "coverage": "Covers (% of the bill)",
         "byGroup": "Coverage per group (optional, overrides the overall %)",
         "active": "Active — the clinic works with this insurer",
-        "publicNote": "The public site keeps its \"insurance coming soon\" band until FEATURES.insurance is switched on in the code."
+        "publicNote": "The public site keeps its \"insurance coming soon\" band until FEATURES.insurance is switched on in the code.",
+        "rssbHint": "Run by RSSB: RSSB’s price lists are its tariff too (RAMA and Mutuelle de santé share them)."
       },
       "parked": "Insurers are switched off: the clinic does not work with an insurer yet, so all patients pay cash or mobile money. Insurer prices and coverage will appear here when the first partnership starts.",
       "confirmDelete": "Delete the insurer \"{{name}}\"? Past bills keep it.",
@@ -2167,12 +2168,24 @@
       },
       "pay": {
         "title": "Which column each insurer pays",
-        "hint": "Guessed from the column names: RSSB (RAMA) and MMI pay “RAMA; MMI”, the private insurers pay “Private Insurances”. An insurer with its own tariff does not use this list unless you choose a column. You can change it later under Insurers.",
+        "hint": "Guessed from the column names: RSSB (RAMA) and MMI pay “RAMA; MMI”, the private insurers pay “Private Insurances”; a list from RSSB is paid by RSSB RAMA and Mutuelle de santé. An insurer with its own tariff does not use this list unless you choose a column. You can change it later under Insurers.",
         "none": "Does not use this list",
         "ownList": "{{name}} (has its own tariff)",
         "done_one": "{{names}} now follows it.",
         "done_other": "{{names}} now follow it.",
         "failed": "Not set, do it under Insurers: {{names}}."
+      },
+      "ownRow": "Its own tariff: it pays the list’s own column, chosen in Settings.",
+      "rssb": {
+        "looks": "This list is RSSB’s: it is the tariff of RAMA and of Mutuelle de santé.",
+        "make": "Make it RSSB’s tariff",
+        "noneActive": "Switch on RSSB RAMA or Mutuelle de santé under Insurers to use it as their tariff.",
+        "shared": "RSSB runs RAMA and Mutuelle de santé: this list is the tariff of both. {{names}} pay its column and get its instructions; an RSSB scheme added later follows it too.",
+        "scope": "RSSB’s tariff (RAMA and Mutuelle de santé)",
+        "instructions": "RSSB’s list: these instructions become the exceptions of every RSSB scheme ({{names}}).",
+        "bookLine": "RSSB’s tariff: {{names}} pay it.",
+        "ownRow": "RSSB’s tariff: it pays the list’s own column, chosen in Settings.",
+        "column": "The column RSSB’s schemes pay (RAMA, Mutuelle de santé)"
       }
     },
     "listPrice": {
