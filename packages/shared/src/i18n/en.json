@@ -1619,7 +1619,7 @@
         "not_covered": "The patient pays the clinic’s cash price in full; {{name}} pays nothing on that line.",
         "ask": "The line is refused until the person confirms the cash price with {{name}} (Add a treatment, the pharmacy hand-over). Orders and bed nights take the cash price with the coverage."
       },
-      "show": "Show the tariff of {{name}}",
+      "show": "Open the tariff of {{name}}",
       "hide": "Hide the tariff",
       "listsCount_one": "{{count}} price list",
       "listsCount_other": "{{count}} price lists",
@@ -1705,7 +1705,15 @@
         "noneMatched": "No row of the list matches a treatment or a medicine."
       },
       "theInsurer": "the insurer",
-      "publicNote": "Insurance is switched on under Settings › Clinic and contacts; the public site then names the active insurers."
+      "publicNote": "Insurance is switched on under Settings › Clinic and contacts; the public site then names the active insurers.",
+      "showHint": "It opens in its own wide window: the prices, the upload of its price list, its earlier lists.",
+      "windowTitle": "Tariff of {{name}}",
+      "tabs": {
+        "prices": "Prices ({{n}})",
+        "upload": "Upload its price list",
+        "history": "Earlier lists ({{n}})"
+      },
+      "noHistory": "No price list of this insurer yet."
     },
     "lists": {
       "title": "Published price lists (MoH, RSSB, insurers)",

@@ -1619,7 +1619,7 @@
         "not_covered": "Le patient paie le prix comptant de la clinique en entier ; {{name}} ne paie rien sur cette ligne.",
         "ask": "La ligne est refusée tant que la personne n’a pas confirmé le prix comptant avec {{name}} (Ajouter un soin, la remise à la pharmacie). Les demandes d’examens et les nuits de lit prennent le prix comptant avec la couverture."
       },
-      "show": "Afficher le tarif de {{name}}",
+      "show": "Ouvrir le tarif de {{name}}",
       "hide": "Masquer le tarif",
       "listsCount_one": "{{count}} liste de prix",
       "listsCount_other": "{{count}} listes de prix",
@@ -1705,7 +1705,15 @@
         "noneMatched": "Aucune ligne de la liste ne correspond à un soin ou à un médicament."
       },
       "theInsurer": "l’assureur",
-      "publicNote": "L’assurance s’active dans Paramètres › Clinique et contacts ; le site public affiche alors les assureurs actifs."
+      "publicNote": "L’assurance s’active dans Paramètres › Clinique et contacts ; le site public affiche alors les assureurs actifs.",
+      "showHint": "Il s’ouvre dans sa propre grande fenêtre : les prix, le téléversement de sa liste de prix, ses listes précédentes.",
+      "windowTitle": "Tarif de {{name}}",
+      "tabs": {
+        "prices": "Prix ({{n}})",
+        "upload": "Téléverser sa liste de prix",
+        "history": "Listes précédentes ({{n}})"
+      },
+      "noHistory": "Pas encore de liste de prix de cet assureur."
     },
     "lists": {
       "title": "Listes de prix publiées (MoH, RSSB, assureurs)",

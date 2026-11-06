@@ -7,6 +7,7 @@ import {
   ListChecks,
   Pencil,
   Plus,
+  Maximize2,
   ShieldCheck,
   Table2,
   Trash2,
@@ -188,12 +189,10 @@ export function InsurersSection({
           </CardBody>
         </Card>
       )}
-      {insurers.map((i, n) => (
+      {insurers.map((i) => (
         <InsurerCard
           key={i.id}
           insurer={i}
-          // the first active insurer opens on its tariff
-          openAtStart={i.active && active[0]?.id === i.id && n < 3}
           onEdit={() => setEditing(i)}
           onDelete={() => void remove(i)}
           run={run}
@@ -207,13 +206,11 @@ export function InsurersSection({
 
 function InsurerCard({
   insurer,
-  openAtStart,
   onEdit,
   onDelete,
   run,
 }: {
   insurer: Insurer
-  openAtStart: boolean
   onEdit: () => void
   onDelete: () => void
   run: (fn: () => Promise<unknown>, done: string) => Promise<void>
@@ -221,8 +218,8 @@ function InsurerCard({
   const { t } = useTranslation()
   const actions = useCatalogueActions()
   const confirm = useConfirm()
-  const [open, setOpen] = useState(openAtStart)
-  const { data: tariff, error: tariffError } = useInsurerTariff(open ? insurer.id : null)
+  /** The tariff opens in its own wide window (it does not mix with the page). */
+  const [open, setOpen] = useState(false)
 
   /** One switch or the rule changed: the insurer is saved with everything else as it is. */
   const save = (
@@ -372,32 +369,117 @@ function InsurerCard({
           </span>
         </div>
 
-        {/* the tariff */}
+        {/* the tariff: in its own wide window */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant={open ? 'tint-grey' : 'tint-blue'} onClick={() => setOpen(!open)}>
-            <Table2 size={16} aria-hidden="true" />
-            {t(open ? 'prices.tariff.hide' : 'prices.tariff.show', { name: insurer.name })}
+          <Button variant="tint-blue" onClick={() => setOpen(true)}>
+            <Maximize2 size={16} aria-hidden="true" />
+            {t('prices.tariff.show', { name: insurer.name })}
           </Button>
-          {tariff && tariff.lists.length > 0 && (
-            <span className="text-ink-3 text-[13px]">
-              {t('prices.tariff.listsCount', { count: tariff.lists.length })}
-            </span>
-          )}
+          <span className="text-ink-3 text-[13px]">{t('prices.tariff.showHint')}</span>
         </div>
-        {open && tariffError && (
-          <p role="alert" className={errorBox}>
-            {tariffError.message}
+      </CardBody>
+      {open && <TariffWindow insurer={insurer} onClose={() => setOpen(false)} />}
+    </Card>
+  )
+}
+
+/* ---------------------------------------------------------------- the tariff window */
+
+type TariffTab = 'prices' | 'upload' | 'history'
+
+/**
+ * An insurer's tariff in its own wide window over the page (not inside the page, where it mixed
+ * with everything else): every treatment and medicine with the price the insurer pays, where it
+ * comes from, the coverage and the two shares (search, kind, its own prices only, edit in place);
+ * the upload of its price list; its earlier lists — one tab each. What is saved is said at the top
+ * of the window.
+ */
+function TariffWindow({ insurer, onClose }: { insurer: Insurer; onClose: () => void }) {
+  const { t } = useTranslation()
+  const { data: tariff, error, isLoading } = useInsurerTariff(insurer.id)
+  const [tab, setTab] = useState<TariffTab>('prices')
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  /** Runs a change and says in the window what was done (or the refusal). */
+  const run = async (fn: () => Promise<unknown>, done: string) => {
+    setMessage(null)
+    try {
+      await fn()
+      setMessage({ ok: true, text: done })
+    } catch (e) {
+      setMessage({ ok: false, text: e instanceof Error ? e.message : String(e) })
+    }
+  }
+  const lists = tariff?.lists ?? []
+  return (
+    <SidePanel
+      open
+      onClose={onClose}
+      hue="blue"
+      icon={Table2}
+      // wide: the tariff's six columns side by side
+      className="w-[1280px]"
+      padded={false}
+      title={t('prices.tariff.windowTitle', { name: insurer.name })}
+      subtitle={[
+        t(`prices.insurers.types.${insurer.type}`),
+        t('prices.insurers.covers', { pct: insurer.coveragePct }),
+        lists.length > 0 ? t('prices.tariff.listsCount', { count: lists.length }) : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+    >
+      <div className="border-border bg-card sticky top-0 z-2 flex flex-col gap-2 border-b px-4 py-3">
+        <Seg
+          label={t('prices.tariff.windowTitle', { name: insurer.name })}
+          value={tab}
+          onChange={(v) => {
+            setTab(v)
+            setMessage(null)
+          }}
+          options={[
+            {
+              value: 'prices',
+              label: t('prices.tariff.tabs.prices', {
+                n: formatNumber(tariff?.rows.length ?? 0),
+              }),
+            },
+            { value: 'upload', label: t('prices.tariff.tabs.upload') },
+            {
+              value: 'history',
+              label: t('prices.tariff.tabs.history', { n: formatNumber(lists.length) }),
+            },
+          ]}
+          className="self-start"
+        />
+        {message && (
+          <p
+            role={message.ok ? 'status' : 'alert'}
+            className={
+              message.ok
+                ? 'border-green/30 bg-green-bg text-green m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
+                : errorBox
+            }
+          >
+            {message.text}
           </p>
         )}
-      </CardBody>
-      {open && tariff && (
-        <>
-          <TariffTable insurer={insurer} rows={tariff.rows} run={run} />
-          <ImportPanel insurer={insurer} lists={tariff.lists} run={run} />
-          <ListsHistory lists={tariff.lists} />
-        </>
+      </div>
+      {error && (
+        <p role="alert" className={cn(errorBox, 'mx-4 mt-3')}>
+          {error.message}
+        </p>
       )}
-    </Card>
+      {isLoading && <p className="text-ink-3 m-0 px-4 py-3">{t('prices.lists.loading')}</p>}
+      {tariff && tab === 'prices' && <TariffTable insurer={insurer} rows={tariff.rows} run={run} />}
+      {tariff && tab === 'upload' && <ImportPanel insurer={insurer} lists={lists} run={run} />}
+      {tariff &&
+        tab === 'history' &&
+        (lists.length > 0 ? (
+          <ListsHistory lists={lists} />
+        ) : (
+          <p className="text-ink-3 m-0 px-4 py-3 text-[14px]">{t('prices.tariff.noHistory')}</p>
+        ))}
+    </SidePanel>
   )
 }
 
@@ -519,7 +601,7 @@ function TariffTable({
       ) : (
         <ShownList items={shown} step={25} footerClassName="pt-1">
           {(page) => (
-            <div className="border-border max-h-[55vh] overflow-auto overscroll-contain rounded-md border">
+            <div className="border-border max-h-[calc(100vh-250px)] min-h-[240px] overflow-auto overscroll-contain rounded-md border">
               <table className="w-full border-collapse">
                 <thead className="bg-surface sticky top-0 z-1">
                   <tr>

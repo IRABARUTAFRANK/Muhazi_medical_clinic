@@ -2467,7 +2467,7 @@
         "not_covered": "Umurwayi yishyura igiciro cy’amafaranga cyose; {{name}} ntacyo yishyura kuri uwo murongo.",
         "ask": "Umurongo wangwa kugeza umukozi yemeje igiciro cy’amafaranga kwa {{name}} (Ongeraho serivisi, gutanga imiti kuri farumasi). Ibizamini byasabwe n’amajoro ku gitanda bifata igiciro cy’amafaranga n’umugabane w’ubwishingizi."
       },
-      "show": "Erekana ibiciro bya {{name}}",
+      "show": "Fungura ibiciro bya {{name}}",
       "hide": "Hisha ibiciro",
       "listsCount_one": "Urutonde rw’ibiciro {{count}}",
       "listsCount_other": "Intonde z’ibiciro {{count}}",
@@ -2553,7 +2553,15 @@
         "noneMatched": "Nta murongo w’urutonde uhuye na serivisi cyangwa umuti."
       },
       "theInsurer": "ikigo cy’ubwishingizi",
-      "publicNote": "Ubwishingizi bufungurwa mu Igenamiterere › Ivuriro n’aho batubona; urubuga rugaragaza ibigo by’ubwishingizi bikora."
+      "publicNote": "Ubwishingizi bufungurwa mu Igenamiterere › Ivuriro n’aho batubona; urubuga rugaragaza ibigo by’ubwishingizi bikora.",
+      "showHint": "Bifungukira mu idirishya ryabyo rinini: ibiciro, gushyiramo urutonde rw’ibiciro rwacyo, intonde zacyo zabanje.",
+      "windowTitle": "Ibiciro bya {{name}}",
+      "tabs": {
+        "prices": "Ibiciro ({{n}})",
+        "upload": "Shyiramo urutonde rw’ibiciro rwacyo",
+        "history": "Intonde zabanje ({{n}})"
+      },
+      "noHistory": "Nta rutonde rw’ibiciro rw’iki kigo cy’ubwishingizi ruraboneka."
     },
     "lists": {
       "title": "Intonde z’ibiciro zisohorwa (MoH, RSSB, ibigo by’ubwishingizi)",
