@@ -18,9 +18,15 @@ import {
   sortMedicineRefs,
   useMedicineActions,
   useMedicineReference,
+  useInsurers,
   useMedicines,
   type Medicine,
 } from '@/lib/api/catalogue'
+import { useInsurerTariffActions } from '@/lib/api/insurers'
+import { usePriceListActions } from '@/lib/api/price-lists'
+import { useInsuranceEnabled } from '@/lib/api/settings'
+import { InsurerLinesFields } from './insurer-lines'
+import { useInsurerLines } from './insurer-lines-state'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/confirm'
@@ -281,6 +287,13 @@ function MedicineForm({
           piecePrice: medicine?.cashPrice != null ? String(medicine.cashPrice) : '',
         })
   const [error, setError] = useState<string | null>(null)
+  // each insurer on it: its own price, and the clinic's exception on it (0139)
+  const insurance = useInsuranceEnabled()
+  const { data: activeInsurers = [] } = useInsurers(true)
+  const insurers = insurance ? activeInsurers : []
+  const lines = useInsurerLines({ itemId: medicine?.id ?? null, insurers })
+  const tariffActions = useInsurerTariffActions()
+  const listActions = usePriceListActions()
   // a new medicine can be taken from the RHIA list: its code keeps the list's details with it
   const {
     data: reference = [],
@@ -349,6 +362,16 @@ function MedicineForm({
       if (itemId && (!known || packChanged(pack, known))) {
         await stockActions.setPackaging.mutateAsync({ itemId, ...pk })
         void qc.invalidateQueries({ queryKey: ['stock'] })
+      }
+      for (const c of itemId ? lines.changes() : []) {
+        if (c.price !== undefined)
+          await tariffActions.setPrice.mutateAsync({ payerId: c.payerId, itemId, price: c.price })
+        if (c.cover)
+          await listActions.saveException.mutateAsync({
+            payerId: c.payerId,
+            ...c.cover,
+            bookId: null,
+          })
       }
       onSaved(name.trim(), id || medicine?.id || null)
     } catch (err) {
@@ -485,6 +508,9 @@ function MedicineForm({
                 </Button>
               )}
             </p>
+          )}
+          {insurers.length > 0 && (
+            <InsurerLinesFields lines={lines} insurers={insurers} isNew={!medicine} />
           )}
           <label className="border-border flex items-start gap-3 rounded-md border p-3">
             <input

@@ -308,6 +308,17 @@ export function throwIf(error: DbErrorLike | null | undefined): void {
   if (error) throw apiError(error)
 }
 
+/**
+ * The database is older than the screen (its update not applied yet): the person is told so, and a
+ * step that can wait (the patient's insurer when a visit starts) is skipped.
+ */
+export class NotReadyError extends Error {
+  constructor() {
+    super(i18n.t('analytics.needsUpdate'))
+    this.name = 'NotReadyError'
+  }
+}
+
 /** The database is older than the function (PostgREST: no function with these arguments). */
 export const isMissingFunction = (e: DbErrorLike | null | undefined): boolean =>
   !!e &&

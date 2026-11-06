@@ -24,6 +24,8 @@ export const MANAGED_FEATURES = [
   'records.approve',
   // selling to walk-in buyers from a room store (My store) is given by the manager (0109)
   'stock.sell_walkin',
+  // changing how one line of an insured visit is charged for the patient (0139)
+  'charge.override',
 ] as const
 export type Feature = (typeof MANAGED_FEATURES)[number]
 
@@ -53,6 +55,8 @@ const DEFAULTS: Record<Feature, string[]> = {
   'records.approve': ['manager'],
   // no role by default: the manager gives it to a room store holder (0109)
   'stock.sell_walkin': ['manager'],
+  // not covered, as a private patient, another price or coverage on one line: the cashier and the manager
+  'charge.override': ['cashier', 'manager'],
 }
 const defaultsFor = (role: string) => MANAGED_FEATURES.filter((f) => DEFAULTS[f].includes(role))
 
@@ -71,6 +75,7 @@ export const FEATURE_KEY: Record<Feature, string> = {
   'stock.write': 'stockWrite',
   'records.approve': 'recordsApprove',
   'stock.sell_walkin': 'stockSellWalkin',
+  'charge.override': 'chargeOverride',
 }
 
 export interface PermissionException {

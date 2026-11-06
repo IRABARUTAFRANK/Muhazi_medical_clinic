@@ -3,7 +3,7 @@ import type { Triage } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { sampleVitalsOf } from './vitals'
 import type { Sex, Station } from '@/lib/api/visits'
-import { apiError, isMissingRelation } from './errors'
+import { apiError, isMissingFunction, isMissingRelation, NotReadyError } from './errors'
 
 /**
  * One visit on a station screen: who the patient is, the vitals from triage, who pays, and the
@@ -69,6 +69,17 @@ export interface Charge {
   office: Station
   enteredBy: string | null
   createdAt: string
+  /** Changed for this patient (0139): how, why, by whom and when; null: the insurer's rule. */
+  cover?: ChargeCover | null
+}
+
+/** How one line of an insured visit is charged for this patient (0139). */
+export type CoverMode = 'insurer' | 'not_covered' | 'private' | 'price' | 'coverage'
+export interface ChargeCover {
+  mode: Exclude<CoverMode, 'insurer'>
+  reason: string | null
+  by: string | null
+  at: string | null
 }
 
 export interface VisitBill {
@@ -354,16 +365,33 @@ export function useVisitBill(encounterId: string) {
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<VisitBill> => {
       if (!supabase) return { ...sampleBill(encounterId) }
-      const [{ data: bill, error: be }, { data: lines, error: le }] = await Promise.all([
+      const [{ data: bill, error: be }, { data: lines, error: le }, covers] = await Promise.all([
         supabase.from('visit_bill').select('*').eq('encounter_id', encounterId).maybeSingle(),
         supabase
           .from('visit_charges')
           .select('*')
           .eq('encounter_id', encounterId)
           .order('created_at'),
+        // what was changed for this patient (0139; nothing on an older database)
+        supabase
+          .from('visit_charge_covers')
+          .select('id, cover_mode, cover_reason, cover_by_name, cover_at')
+          .eq('encounter_id', encounterId)
+          .not('cover_mode', 'is', null),
       ])
       if (be) throw new Error(be.message)
       if (le) throw new Error(le.message)
+      const coverOf = new Map(
+        ((covers.error ? [] : covers.data) ?? []).map((c) => [
+          String(c.id),
+          {
+            mode: c.cover_mode as ChargeCover['mode'],
+            reason: (c.cover_reason as string | null) ?? null,
+            by: (c.cover_by_name as string | null) ?? null,
+            at: (c.cover_at as string | null) ?? null,
+          },
+        ]),
+      )
       const b = bill as BillRow | null
       return {
         invoiceId: b?.invoice_id ?? null,
@@ -409,6 +437,7 @@ export function useVisitBill(encounterId: string) {
           office: c.office,
           enteredBy: c.entered_by_name,
           createdAt: c.created_at,
+          cover: coverOf.get(c.id) ?? null,
         })),
       }
     },
@@ -507,6 +536,65 @@ export function useBillingActions(encounterId: string) {
         return
       }
       const { error } = await supabase.rpc('void_charge', { p_line_id: id, p_reason: reason })
+      if (error) throw apiError(error)
+    },
+    onSuccess: refresh,
+  })
+
+  /**
+   * One line charged otherwise for this patient (0139): not covered, as a private patient, another
+   * price or another coverage — or back to the insurer's rule. A reason is needed (not to go back).
+   */
+  const changeCover = useMutation({
+    mutationFn: async ({
+      id,
+      mode,
+      value,
+      reason,
+    }: {
+      id: string
+      mode: CoverMode
+      value?: number | null
+      reason?: string | null
+    }) => {
+      if (!supabase) {
+        const b = sampleBill(encounterId)
+        const c = b.charges.find((x) => x.id === id)
+        if (!c) return
+        const plan = b.coveragePct ?? 0
+        let unit = c.listPrice
+        let pct = plan
+        if (mode === 'not_covered') pct = 0
+        if (mode === 'private') {
+          pct = 0
+          unit = c.cashPrice ?? c.listPrice
+        }
+        if (mode === 'price') unit = Math.round(value ?? c.listPrice)
+        if (mode === 'coverage') pct = value ?? plan
+        const total = Math.round(unit * c.quantity)
+        c.unitPrice = unit
+        c.coveragePct = pct
+        c.insurerShare = Math.round((total * pct) / 100)
+        c.patientShare = total - c.insurerShare
+        c.cover =
+          mode === 'insurer'
+            ? null
+            : {
+                mode,
+                reason: reason?.trim() || null,
+                by: 'Sample cashier',
+                at: new Date().toISOString(),
+              }
+        recompute(b)
+        return
+      }
+      const { error } = await supabase.rpc('change_charge_cover', {
+        p_line: id,
+        p_mode: mode,
+        p_value: value ?? null,
+        p_reason: reason?.trim() || null,
+      })
+      if (error && isMissingFunction(error)) throw new NotReadyError()
       if (error) throw apiError(error)
     },
     onSuccess: refresh,
@@ -674,5 +762,14 @@ export function useBillingActions(encounterId: string) {
     },
     onSuccess: refresh,
   })
-  return { addCharge, voidCharge, setPayer, finishStation, sendTo, takePayment, refund }
+  return {
+    addCharge,
+    voidCharge,
+    changeCover,
+    setPayer,
+    finishStation,
+    sendTo,
+    takePayment,
+    refund,
+  }
 }

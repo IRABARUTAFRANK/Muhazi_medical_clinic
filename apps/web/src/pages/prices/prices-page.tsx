@@ -59,6 +59,9 @@ import { suggestNames } from '@/lib/medical-glossary'
 import { CatalogueTools } from './catalogue-tools'
 import { CategoriesCard } from './categories-card'
 import { MedicinesSection } from './medicines-section'
+import { InsurerLinesFields } from './insurer-lines'
+import { useInsurerLines } from './insurer-lines-state'
+import { usePriceListActions } from '@/lib/api/price-lists'
 import { useInsuranceEnabled } from '@/lib/api/settings'
 import { useDepartmentActions, useDepartments, type Department } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
@@ -956,14 +959,13 @@ function TreatmentForm({
   )
   const toggleDept = (id: string) =>
     setDepts((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))
-  const [payerPrices, setPayerPrices] = useState<Record<string, string>>(
-    Object.fromEntries(
-      insurers.map((i) => [
-        i.id,
-        base?.payerPrices[i.id] != null ? String(base.payerPrices[i.id]) : '',
-      ]),
-    ),
-  )
+  // each insurer on it: its own price, and the clinic's exception on it (0139)
+  const lines = useInsurerLines({
+    serviceId: treatment?.id ?? null,
+    insurers,
+    startPrices: base?.payerPrices ?? {},
+  })
+  const listActions = usePriceListActions()
   const [error, setError] = useState<string | null>(null)
 
   const p = Number(price)
@@ -1007,9 +1009,16 @@ function TreatmentForm({
         maxDiscountPct: pct,
         allowManualPrice: allowManual,
         active,
-        payerPrices,
+        payerPrices: Object.fromEntries(insurers.map((i) => [i.id, lines.priceOf(i.id)])),
         departmentIds: depts,
       })
+      for (const c of lines.changes())
+        if (c.cover)
+          await listActions.saveException.mutateAsync({
+            payerId: c.payerId,
+            ...c.cover,
+            bookId: null,
+          })
       onClose()
     } catch (err) {
       setError(t('prices.errors.generic', { message: err instanceof Error ? err.message : '' }))
@@ -1197,28 +1206,7 @@ function TreatmentForm({
             </p>
           )}
           {insurers.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <span className="text-ink-2 text-[14px] font-semibold">
-                {t('prices.form.insurerPrices')}
-              </span>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {insurers.map((i) => (
-                  <Field
-                    key={i.id}
-                    label={i.name}
-                    inputMode="numeric"
-                    value={payerPrices[i.id] ?? ''}
-                    onChange={(e) =>
-                      setPayerPrices((s) => ({
-                        ...s,
-                        [i.id]: e.target.value.replace(/[^\d]/g, ''),
-                      }))
-                    }
-                    placeholder={t('prices.form.sameAsCash')}
-                  />
-                ))}
-              </div>
-            </div>
+            <InsurerLinesFields lines={lines} insurers={insurers} isNew={!treatment} />
           )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="border-border flex items-start gap-3 rounded-md border p-3">

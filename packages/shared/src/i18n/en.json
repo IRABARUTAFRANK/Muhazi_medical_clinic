@@ -1230,8 +1230,6 @@
       "categoryNone": "Not shown on the public site",
       "cashPrice": "Cash price (RWF)",
       "maxDiscount": "Largest discount a clinician may give",
-      "insurerPrices": "Insurer prices (leave empty to use the cash price)",
-      "sameAsCash": "same as cash",
       "allowManual": "Clinician may type a different price (with a reason)",
       "active": "Active (can be charged)",
       "save": "Save",
@@ -2246,7 +2244,39 @@
       "use": "Use the list price"
     },
     "movedToLists": "The published price lists (Ministry of Health, RSSB, insurers), the insurers and the official medicine list have their own page under Management.",
-    "openLists": "Open Price lists & insurers"
+    "openLists": "Open Price lists & insurers",
+    "insurerLines": {
+      "title": "What each insurer pays",
+      "lead": "Each insurer pays its own price, else its price list’s, with its coverage. Set an exception here when an insurer does not cover this one, or covers it only with its approval.",
+      "covers": "covers {{pct}} %",
+      "now": "now {{price}} · {{why}}",
+      "from": {
+        "own": "its own price",
+        "list": "its price list",
+        "cash": {
+          "cash_covered": "no price of its own: the clinic’s, covered",
+          "not_covered": "no price of its own: the patient pays the clinic’s price",
+          "ask": "no price of its own: ask it first"
+        },
+        "excluded": "not covered: the patient pays it all",
+        "preauth": "only with its approval",
+        "none": "no price"
+      },
+      "onLine": "set on its list’s line {{code}}",
+      "cover": "How it covers this",
+      "mode": {
+        "covered": "Covered as usual",
+        "not_covered": "Not covered — the patient pays it all",
+        "preauth": "Only with {{name}}’s approval"
+      },
+      "price": "Its own price (RWF)",
+      "pricePh": "empty: its list’s",
+      "reason": "Why (optional)",
+      "reasonPh": "e.g. not in its plan",
+      "afterSave": "The insurers’ exceptions can be set once it is saved: open it again.",
+      "overrideNote": "Covered on this one",
+      "exception": "Exception"
+    }
   },
   "visit": {
     "back": "Back to my queue",
@@ -2394,6 +2424,35 @@
       "none": "No price yet",
       "excluded": "{{insurer}} does not cover this (its exception) — the patient pays {{price}}",
       "preauth": "{{insurer}} covers this only with its approval — confirm it first ({{price}}: patient {{patient}}, {{insurer}} {{insurerPays}})"
+    },
+    "cover": {
+      "open": "Change for this patient",
+      "title": "{{line}}: how it is charged for this patient",
+      "how": "How this line is charged",
+      "mode": {
+        "insurer": "As {{payer}} covers it",
+        "not_covered": "Not covered",
+        "private": "As a private patient",
+        "price": "At another price",
+        "coverage": "With another coverage"
+      },
+      "hint": {
+        "insurer": "{{payer}}’s price and coverage (the usual way).",
+        "not_covered": "{{payer}} pays nothing on it; the patient pays its price in full.",
+        "private": "The clinic’s price, as for a patient without insurance; the patient pays it all.",
+        "price": "Another price for this line; {{payer}} pays its coverage on it.",
+        "coverage": "Another percentage that {{payer}} pays on this line."
+      },
+      "price": "Price (RWF)",
+      "pct": "Coverage by {{payer}} (%)",
+      "reason": "Reason",
+      "reasonPh": "e.g. not in the patient’s plan",
+      "needPrice": "Type the price.",
+      "needPct": "Type a coverage between 0 and 100.",
+      "needReason": "Give the reason.",
+      "save": "Save for this patient",
+      "done": "{{line}}: {{how}} — saved for this patient.",
+      "doneBack": "{{line}}: back to {{payer}}’s price and coverage."
     }
   },
   "settings": {
@@ -2718,6 +2777,23 @@
       "done_one": "{{dup}} merged: {{count}} record moved to this file.",
       "done_other": "{{dup}} merged: {{count}} records moved to this file."
     }
+  },
+  "patientInsurance": {
+    "title": "Insurance",
+    "who": "Who pays for this patient",
+    "private": "Private patient (pays the clinic’s prices)",
+    "under": "{{name}} · covers {{pct}} %",
+    "member": "Member number",
+    "change": "Change",
+    "hint": "Every new visit of this patient starts under this insurer: its prices and coverage. One visit can still be changed on the visit page.",
+    "save": "Save",
+    "saved": "Saved: {{name}} pays for this patient’s visits.",
+    "savedPrivate": "Saved: a private patient (the clinic’s prices).",
+    "memberIs": "Member no. {{no}}",
+    "everyVisit": "Every new visit takes this insurer’s prices and coverage.",
+    "none": "Private patient: pays the clinic’s prices.",
+    "startUnder": "This visit starts under this insurer, kept for the next visits.",
+    "startPrivate": "A private patient: the clinic’s prices."
   },
   "file": {
     "back": "Back to patients",
@@ -4885,7 +4961,8 @@
         "appointmentApprove": "answer booking requests",
         "stockWrite": "manage stock",
         "recordsApprove": "answer record-access requests",
-        "stockSellWalkin": "sell to walk-in buyers from your store"
+        "stockSellWalkin": "sell to walk-in buyers from your store",
+        "chargeOverride": "change how a charge is covered for a patient"
       }
     },
     "f": {
@@ -4928,6 +5005,10 @@
       "stock.sell_walkin": {
         "name": "Sell to walk-in buyers from my store",
         "hint": "For someone who holds a room store (My store): sell its medicines to a buyer without a visit. The pharmacy desk sells from the pharmacy without this switch. Usually given to one person as an exception."
+      },
+      "charge.override": {
+        "name": "Change a charge’s cover for a patient",
+        "hint": "On a visit under an insurer: charge one line as not covered, as a private patient, at another price or with another coverage, with the reason. The cashier and the manager at first."
       }
     },
     "desks": {
@@ -8310,7 +8391,13 @@
     "4ec0850d": "The order is a number from 0 to 9999.",
     "1d8baa49": "Choose the insurer whose list it is.",
     "36d7a9d8": "Choose the insurer’s price column.",
-    "083acf5a": "Say whose list it is."
+    "083acf5a": "Say whose list it is.",
+    "f480211c": "The coverage must be between 0 and 100 %.",
+    "9ce308a1": "The member number is too long (60 characters at most).",
+    "cd1c72ff": "Say how the line is charged.",
+    "717c8baa": "This visit has no insurer: there is nothing to change on its lines.",
+    "f36c1aa7": "That charge was not found; refresh the page.",
+    "e10eb18e": "Give the reason."
   },
   "panel": {
     "close": "Close",

@@ -1636,6 +1636,35 @@
       "none": "Nta giciro kirashyirwaho",
       "excluded": "{{insurer}} ntikibyishingira (ikidasanzwe cyacyo) — umurwayi yishyura {{price}}",
       "preauth": "{{insurer}} kibyishingira gusa iyo cyabyemeye — banza ubyemeze ({{price}}: umurwayi {{patient}}, {{insurer}} {{insurerPays}})"
+    },
+    "cover": {
+      "open": "Hindura kuri uyu murwayi",
+      "title": "{{line}}: uko yishyuzwa uyu murwayi",
+      "how": "Uko uyu murongo wishyuzwa",
+      "mode": {
+        "insurer": "Ku giciro n’ikigero by’ubwishingizi bwa {{payer}}",
+        "not_covered": "Ntibyishingirwa",
+        "private": "Nk’umurwayi utagira ubwishingizi",
+        "price": "Ku kindi giciro",
+        "coverage": "N’ikindi kigero cy’ubwishingizi"
+      },
+      "hint": {
+        "insurer": "Igiciro n’ikigero by’ubwishingizi bwa {{payer}} (uko bisanzwe).",
+        "not_covered": "{{payer}} ntacyo yishyura kuri uyu murongo; umurwayi yishyura igiciro cyose.",
+        "private": "Igiciro cy’ivuriro, nk’umurwayi utagira ubwishingizi; umurwayi yishyura byose.",
+        "price": "Ikindi giciro kuri uyu murongo; ubwishingizi bwa {{payer}} bwishyura ikigero cyabwo kuri cyo.",
+        "coverage": "Ikindi kigero ubwishingizi bwa {{payer}} bwishyura kuri uyu murongo."
+      },
+      "price": "Igiciro (RWF)",
+      "pct": "Ikigero cy’ubwishingizi bwa {{payer}} (%)",
+      "reason": "Impamvu",
+      "reasonPh": "urugero: ntibiri mu masezerano y’umurwayi",
+      "needPrice": "Andika igiciro.",
+      "needPct": "Andika ikigero kiri hagati ya 0 na 100.",
+      "needReason": "Tanga impamvu.",
+      "save": "Bika kuri uyu murwayi",
+      "done": "{{line}}: {{how}} — byabitswe kuri uyu murwayi.",
+      "doneBack": "{{line}}: yasubijwe ku giciro n’ikigero by’ubwishingizi bwa {{payer}}."
     }
   },
   "patients": {
@@ -1673,6 +1702,23 @@
       "done_one": "{{dup}} yahujwe: ikintu {{count}} cyimuriwe muri iyi dosiye.",
       "done_other": "{{dup}} yahujwe: ibintu {{count}} byimuriwe muri iyi dosiye."
     }
+  },
+  "patientInsurance": {
+    "title": "Ubwishingizi",
+    "who": "Uwishyurira uyu murwayi",
+    "private": "Umurwayi utagira ubwishingizi (yishyura ibiciro by’ivuriro)",
+    "under": "{{name}} · yishyura {{pct}} %",
+    "member": "Nimero y’umunyamuryango",
+    "change": "Hindura",
+    "hint": "Buri kwivuza gushya kw’uyu murwayi gutangirana n’iki kigo cy’ubwishingizi: ibiciro byacyo n’ikigero cyacyo. Kwivuza kumwe gushobora guhindurwa ku rupapuro rw’uko kwivuza.",
+    "save": "Bika",
+    "saved": "Byabitswe: {{name}} yishyurira uyu murwayi iyo yivuje.",
+    "savedPrivate": "Byabitswe: umurwayi utagira ubwishingizi (ibiciro by’ivuriro).",
+    "memberIs": "Nimero y’umunyamuryango {{no}}",
+    "everyVisit": "Buri kwivuza gushya gufata ibiciro n’ikigero by’iki kigo cy’ubwishingizi.",
+    "none": "Umurwayi utagira ubwishingizi: yishyura ibiciro by’ivuriro.",
+    "startUnder": "Uku kwivuza gutangirana n’iki kigo cy’ubwishingizi, kandi kizakomeza no ku kwivuza gukurikira.",
+    "startPrivate": "Umurwayi utagira ubwishingizi: ibiciro by’ivuriro."
   },
   "file": {
     "back": "Subira ku barwayi",
@@ -2118,8 +2164,6 @@
       "category": "Icyiciro ku rubuga rusange (si ngombwa)",
       "categoryNone": "Ntigaragara ku rubuga rusange",
       "cashPrice": "Igiciro gisanzwe (RWF)",
-      "insurerPrices": "Ibiciro by’ubwishingizi (usige ubusa hakoreshwe igiciro gisanzwe)",
-      "sameAsCash": "kimwe n’igisanzwe",
       "save": "Bika"
     },
     "insurers": {
@@ -3094,7 +3138,39 @@
       "use": "Koresha igiciro cy’urutonde"
     },
     "movedToLists": "Intonde z’ibiciro zisohorwa (Minisiteri y’Ubuzima, RSSB, ibigo by’ubwishingizi), ibigo by’ubwishingizi n’urutonde rwemewe rw’imiti bifite paji yabyo muri Ubuyobozi.",
-    "openLists": "Fungura Intonde z’ibiciro n’ubwishingizi"
+    "openLists": "Fungura Intonde z’ibiciro n’ubwishingizi",
+    "insurerLines": {
+      "title": "Icyo buri kigo cy’ubwishingizi cyishyura",
+      "lead": "Buri kigo cy’ubwishingizi cyishyura igiciro cyacyo bwite, cyangwa icy’urutonde rwacyo rw’ibiciro, n’ikigero cyacyo. Shyira hano ikidasanzwe iyo ikigo kitabyishingira, cyangwa kibyishingira gusa iyo cyabyemeye.",
+      "covers": "yishyura {{pct}} %",
+      "now": "ubu {{price}} · {{why}}",
+      "from": {
+        "own": "igiciro cyacyo bwite",
+        "list": "urutonde rwacyo rw’ibiciro",
+        "cash": {
+          "cash_covered": "nta giciro cyacyo: icy’ivuriro, kirishingirwa",
+          "not_covered": "nta giciro cyacyo: umurwayi yishyura igiciro cy’ivuriro",
+          "ask": "nta giciro cyacyo: banza ukibaze"
+        },
+        "excluded": "ntibyishingirwa: umurwayi yishyura byose",
+        "preauth": "gusa iyo cyabyemeye",
+        "none": "nta giciro"
+      },
+      "onLine": "byashyizwe ku murongo {{code}} w’urutonde rwacyo",
+      "cover": "Uko cyabyishingira",
+      "mode": {
+        "covered": "Birishingirwa nk’uko bisanzwe",
+        "not_covered": "Ntibyishingirwa — umurwayi yishyura byose",
+        "preauth": "Gusa iyo {{name}} yabyemeye"
+      },
+      "price": "Igiciro cyacyo bwite (RWF)",
+      "pricePh": "ubusa: icy’urutonde rwacyo",
+      "reason": "Impamvu (si ngombwa)",
+      "reasonPh": "urugero: ntibiri mu masezerano yacyo",
+      "afterSave": "Ibidasanzwe by’ibigo by’ubwishingizi bishyirwaho bimaze kubikwa: ongera ubifungure.",
+      "overrideNote": "Birishingirwa kuri iki",
+      "exception": "Ikidasanzwe"
+    }
   },
   "desk": {
     "today": "Uyu munsi",
@@ -4894,7 +4970,8 @@
         "appointmentApprove": "gusubiza ubusabe bwa gahunda",
         "stockWrite": "gucunga ububiko",
         "recordsApprove": "gusubiza ubusabe bwo kureba dosiye",
-        "stockSellWalkin": "kugurisha abaguzi baje kugura gusa ibiri mu bubiko bwawe"
+        "stockSellWalkin": "kugurisha abaguzi baje kugura gusa ibiri mu bubiko bwawe",
+        "chargeOverride": "guhindura uko serivisi yishyurwa ku murwayi"
       }
     },
     "f": {
@@ -4937,6 +5014,10 @@
       "stock.sell_walkin": {
         "name": "Kugurisha abaguzi baje kugura gusa ibiri mu bubiko bwanjye",
         "hint": "Ku ufite ububiko bwo mu cyumba (Ububiko bwanjye): kugurisha imiti yabwo umuguzi utari kwivuza. Farumasi igurisha ibiri muri farumasi idakeneye ubu burenganzira. Akenshi buhabwa umuntu umwe gusa ku giti cye."
+      },
+      "charge.override": {
+        "name": "Guhindura uko serivisi yishyurwa ku murwayi",
+        "hint": "Mu kwivuza kw’umurwayi uri munsi y’ubwishingizi: kwishyuza umurongo umwe nk’utishyurwa n’ubwishingizi, nk’umurwayi utagira ubwishingizi, ku kindi giciro cyangwa n’ikindi kigero cy’ubwishingizi, ugaragaza impamvu. Uwakira ubwishyu n’umuyobozi mbere na mbere."
       }
     },
     "desks": {
@@ -8319,7 +8400,13 @@
     "4ec0850d": "Umwanya ni umubare uri hagati ya 0 na 9999.",
     "1d8baa49": "Hitamo ikigo cy’ubwishingizi uru rutonde ari urwacyo.",
     "36d7a9d8": "Hitamo inkingi y’ibiciro by’ikigo cy’ubwishingizi.",
-    "083acf5a": "Vuga uwo urutonde ari urwe."
+    "083acf5a": "Vuga uwo urutonde ari urwe.",
+    "f480211c": "Ikigero cy’ubwishingizi kigomba kuba hagati ya 0 na 100 %.",
+    "9ce308a1": "Nimero y’umunyamuryango ni ndende cyane (inyuguti 60 gusa).",
+    "cd1c72ff": "Vuga uko umurongo wishyuzwa.",
+    "717c8baa": "Uku kwivuza nta kigo cy’ubwishingizi gifite: nta cyo guhindura ku mirongo yako.",
+    "f36c1aa7": "Icyo cyishyurwa nticyabonetse; ongera ufungure urupapuro.",
+    "e10eb18e": "Tanga impamvu."
   },
   "panel": {
     "close": "Funga",

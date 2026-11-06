@@ -23616,6 +23616,288 @@ await step(
   },
 )
 // @@t138-end
+// @@t139-begin
+// ---------------------------------------------------------------- 0139 insured patients: the insurer's prices by default, exceptions
+const t139 = {}
+const json139 = (x) => JSON.stringify(x)
+await step('0139: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270119090000_insured_patients.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+/** A patient registered by reception (with the insurer when given), then a visit started for them. */
+const insuredVisit139 = async (given, payer, member) => {
+  await as(staff.receptionist)
+  const r = (
+    await one(`select register_patient_file('Uwase', $1, 'female', null, 6, null) as r`, [given])
+  ).r
+  if (payer)
+    await db.query(`select save_patient_insurance($1, $2, $3)`, [r.patient_id, payer, member])
+  const v = await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [
+    r.patient_id,
+  ])
+  await asAdmin()
+  const q = await one(
+    `select id from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+    [v.id],
+  )
+  return { patient: r.patient_id, enc: v.id, queue: q.id }
+}
+await step(
+  '0139 A: a patient registered under MMI — every new visit starts under MMI and a treatment takes MMI’s price and coverage',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select save_setting('insurance.enabled', 'true'::jsonb)`)
+    t139.svc = (
+      await one(`select upsert_service(null, 'Consultation 139', 'consultation', 5000) as id`)
+    ).id
+    await db.query(`select set_insurer_price($1, $2, null, 4000)`, [t115.mmi, t139.svc])
+    await asAdmin()
+    const v = await insuredVisit139('Insured 139', t115.mmi, 'MMI-139-001')
+    t139.v = v
+    await as(staff.receptionist)
+    const ins = (await one(`select patient_insurance($1) as j`, [v.patient])).j
+    await as(staff.doctor)
+    await db.query(`select take_patient($1)`, [v.queue])
+    await db.query(`select add_charge($1, 'consultation', $2)`, [v.enc, t139.svc])
+    await asAdmin()
+    const inv = await one(`select payer_id from invoice where encounter_id = $1`, [v.enc])
+    const line = await one(
+      `select l.id, l.unit_price, l.coverage_pct, l.insurer_share, l.patient_share from invoice_line l
+       join invoice i on i.id = l.invoice_id where i.encounter_id = $1 and l.deleted_at is null`,
+      [v.enc],
+    )
+    t139.line = line.id
+    if (
+      ins?.payerId !== t115.mmi ||
+      ins?.memberNumber !== 'MMI-139-001' ||
+      inv.payer_id !== t115.mmi ||
+      Number(line.unit_price) !== 4000 ||
+      Number(line.coverage_pct) !== 85 ||
+      Number(line.insurer_share) !== 3400 ||
+      Number(line.patient_share) !== 600
+    )
+      throw new Error(json139({ ins, inv, line }))
+    return 'MMI · MMI-139-001 · the visit is MMI’s · 4,000 at 85 %: MMI 3,400, patient 600'
+  },
+)
+await step(
+  '0139 B: the cashier changes the line for this patient — not covered, as a private patient, another price, another coverage, back to MMI’s',
+  async () => {
+    const show = async () =>
+      one(
+        `select c.unit_price, c.list_price, c.coverage_pct, c.insurer_share, c.patient_share, v.cover_mode, v.cover_reason, v.cover_by_name
+         from visit_charges c join visit_charge_covers v on v.id = c.id where c.id = $1`,
+        [t139.line],
+      )
+    const set = async (mode, value, reason) => {
+      await as(staff.cashier)
+      await db.query(`select change_charge_cover($1, $2, $3, $4)`, [t139.line, mode, value, reason])
+      await asAdmin()
+      return show()
+    }
+    const nc = await set('not_covered', null, 'Not in the patient’s plan')
+    const pr = await set('private', null, 'The patient asked to pay it')
+    const price = await set('price', 3500, 'Agreed with MMI')
+    const cov = await set('coverage', 50, 'Half covered this time')
+    const back = await set('insurer', null, null)
+    const inv = await one(
+      `select insurer_share, patient_share from invoice where encounter_id = $1`,
+      [t139.v.enc],
+    )
+    if (
+      Number(nc.insurer_share) !== 0 ||
+      Number(nc.patient_share) !== 4000 ||
+      nc.cover_mode !== 'not_covered' ||
+      nc.cover_by_name !== 'Mugisha Samuel' ||
+      Number(pr.unit_price) !== 5000 ||
+      Number(pr.insurer_share) !== 0 ||
+      pr.cover_mode !== 'private' ||
+      Number(price.unit_price) !== 3500 ||
+      Number(price.coverage_pct) !== 85 ||
+      Number(price.insurer_share) !== 2975 ||
+      Number(cov.unit_price) !== 4000 ||
+      Number(cov.coverage_pct) !== 50 ||
+      Number(cov.insurer_share) !== 2000 ||
+      back.cover_mode !== null ||
+      Number(back.unit_price) !== 4000 ||
+      Number(back.insurer_share) !== 3400 ||
+      Number(inv.insurer_share) !== 3400
+    )
+      throw new Error(json139({ nc, pr, price, cov, back, inv }))
+    return 'not covered: patient 4,000 · private: 5,000 all by the patient · 3,500: MMI 2,975 · 50 %: MMI 2,000 · back: MMI 3,400'
+  },
+)
+await step(
+  '0139 C: a nurse may not change a charge’s cover; the reason is needed; a cash visit has nothing to change',
+  async () => {
+    const nurse = await hintAs(
+      staff.nurse,
+      `select change_charge_cover($1, 'not_covered', null, 'x')`,
+      [t139.line],
+    )
+    const noReason = await hintAs(
+      staff.cashier,
+      `select change_charge_cover($1, 'not_covered', null, null)`,
+      [t139.line],
+    )
+    const cash = await insuredVisit139('Cash 139', null, null)
+    await as(staff.doctor)
+    await db.query(`select take_patient($1)`, [cash.queue])
+    await db.query(`select add_charge($1, 'consultation', $2)`, [cash.enc, t139.svc])
+    await asAdmin()
+    const cashLine = (
+      await one(
+        `select l.id from invoice_line l join invoice i on i.id = l.invoice_id where i.encounter_id = $1 and l.deleted_at is null`,
+        [cash.enc],
+      )
+    ).id
+    const cashTry = await hintAs(
+      staff.cashier,
+      `select change_charge_cover($1, 'not_covered', null, 'x')`,
+      [cashLine],
+    )
+    const managed = (await one(`select managed_permission('charge.override') as m`)).m
+    if (nurse !== '42501/' || noReason !== '22023/' || cashTry !== '22023/' || managed !== true)
+      throw new Error(json139({ nurse, noReason, cashTry, managed }))
+    return 'nurse refused (42501) · no reason refused · a cash visit refused · the feature can be switched'
+  },
+)
+await step('0139 D: a new payer for the visit puts the changed line back to its rule', async () => {
+  await as(staff.cashier)
+  await db.query(`select change_charge_cover($1, 'not_covered', null, 'Not in the plan')`, [
+    t139.line,
+  ])
+  await db.query(`select set_visit_payer($1, $2)`, [t139.v.enc, t115.mmi])
+  await asAdmin()
+  const l = await one(
+    `select cover_mode, cover_reason, insurer_share from invoice_line where id = $1`,
+    [t139.line],
+  )
+  if (l.cover_mode !== null || l.cover_reason !== null || Number(l.insurer_share) !== 3400)
+    throw new Error(json139(l))
+  return 'cover back to MMI’s rule: MMI 3,400'
+})
+await step(
+  '0139 E: insurance switched off — the insured patient’s visit is cash; no insurer — a private patient',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select save_setting('insurance.enabled', 'false'::jsonb)`)
+    await as(staff.receptionist)
+    const off = (
+      await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [t139.v.patient])
+    ).id
+    await as(staff.manager)
+    await db.query(`select save_setting('insurance.enabled', 'true'::jsonb)`)
+    await asAdmin()
+    const offPayer = (await one(`select payer_id from invoice where encounter_id = $1`, [off]))
+      .payer_id
+    await as(staff.receptionist)
+    const none = (await one(`select save_patient_insurance($1, null) as j`, [t139.v.patient])).j
+    const after = (
+      await one(`select open_encounter($1, 'opd', 'consultation', null) as id`, [t139.v.patient])
+    ).id
+    const ins = (await one(`select patient_insurance($1) as j`, [t139.v.patient])).j
+    await asAdmin()
+    const afterPayer = (await one(`select payer_id from invoice where encounter_id = $1`, [after]))
+      .payer_id
+    const refused = await hintAs(staff.nurse, `select save_patient_insurance($1, null)`, [
+      t139.v.patient,
+    ])
+    if (
+      offPayer !== null ||
+      none !== null ||
+      ins !== null ||
+      afterPayer !== null ||
+      !['42501/', 'ok'].includes(refused)
+    )
+      throw new Error(json139({ offPayer, none, ins, afterPayer, refused }))
+    return `switched off: cash · no insurer: cash · a nurse saving it: ${refused === 'ok' ? 'allowed (patient.write)' : 'refused'}`
+  },
+)
+await step(
+  '0139 F: what each insurer pays for a treatment, and why (for the treatment’s form)',
+  async () => {
+    await as(staff.manager)
+    const rows = (await one(`select insurer_prices_for($1, null) as j`, [t139.svc])).j
+    await asAdmin()
+    const mmi = rows.find((r) => r.payerId === t115.mmi)
+    const refused = await hintAs(staff.receptionist, `select insurer_prices_for($1, null)`, [
+      t139.svc,
+    ])
+    if (
+      !mmi ||
+      Number(mmi.price) !== 4000 ||
+      mmi.source !== 'tariff' ||
+      Number(mmi.ownPrice) !== 4000 ||
+      Number(mmi.coveragePct) !== 85
+    )
+      throw new Error(json139({ mmi, refused }))
+    return `MMI 4,000 (its own price) at 85 % · ${rows.length} insurer(s)`
+  },
+)
+await step(
+  '0139 G: the treatment’s form sets MMI “not covered” on it — the form shows it, the next bill charges it all to the patient; back to usual',
+  async () => {
+    await as(staff.manager)
+    const before = (await one(`select insurer_prices_for($1, null) as j`, [t139.svc])).j.find(
+      (r) => r.payerId === t115.mmi,
+    )
+    await db.query(
+      `select save_tariff_exception($1, $2, 'not_covered', null, 'Not in the plan', null)`,
+      [t115.mmi, before.code],
+    )
+    const ex = (await one(`select insurer_prices_for($1, null) as j`, [t139.svc])).j.find(
+      (r) => r.payerId === t115.mmi,
+    )
+    const v = await insuredVisit139('Excluded 139', t115.mmi, 'MMI-139-002')
+    await as(staff.doctor)
+    await db.query(`select take_patient($1)`, [v.queue])
+    await db.query(`select add_charge($1, 'consultation', $2)`, [v.enc, t139.svc])
+    await asAdmin()
+    const line = await one(
+      `select l.insurer_share, l.patient_share from invoice_line l join invoice i on i.id = l.invoice_id
+       where i.encounter_id = $1 and l.deleted_at is null and l.service_id = $2`,
+      [v.enc, t139.svc],
+    )
+    await as(staff.manager)
+    await db.query(`select save_tariff_exception($1, $2, 'covered', null, null, null)`, [
+      t115.mmi,
+      before.code,
+    ])
+    const back = (await one(`select insurer_prices_for($1, null) as j`, [t139.svc])).j.find(
+      (r) => r.payerId === t115.mmi,
+    )
+    await asAdmin()
+    const left = (
+      await one(
+        `select count(*)::int as n from tariff_exception where payer_id = $1 and code = $2`,
+        [t115.mmi, before.code],
+      )
+    ).n
+    if (
+      !before.code ||
+      ex.cover !== 'not_covered' ||
+      ex.source !== 'excluded' ||
+      ex.exceptionOwn !== true ||
+      ex.note !== 'Not in the plan' ||
+      !line ||
+      Number(line.insurer_share) !== 0 ||
+      Number(line.patient_share) <= 0 ||
+      back.cover !== null ||
+      back.source !== 'tariff' ||
+      left !== 0
+    )
+      throw new Error(json139({ before, ex, line, back, left }))
+    return `not covered: the patient pays ${Number(line.patient_share)} · back to MMI’s price ${Number(back.price)}`
+  },
+)
+// @@t139-end
 finish()
 
 function finish() {

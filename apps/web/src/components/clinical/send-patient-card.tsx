@@ -17,6 +17,10 @@ import { stationFor, useVisitActions, type Station, type VisitResult } from '@/l
 import { useReveal } from '@/lib/hooks'
 import { useConfirm } from '@/lib/confirm'
 import { SECTION_ICON } from './service-icons'
+import { PayFields, type PayChoice } from './patient-insurance'
+import { usePatientInsurance, useSavePatientInsurance } from '@/lib/api/patient-insurance'
+import { NotReadyError } from '@/lib/api/errors'
+import { useInsuranceEnabled } from '@/lib/api/settings'
 import { cn } from '@/lib/utils'
 
 /** The desks a person may start a visit with "I see this patient myself" (the database agrees). */
@@ -79,6 +83,15 @@ export function SendPatientCard({
   const [nurse, setNurse] = useState<string>('') // '' = any nurse at triage
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // who pays (0139): the patient's insurer, changed here before the visit starts under it
+  const insurance = useInsuranceEnabled()
+  const { data: stored } = usePatientInsurance(insurance ? patient.id : null)
+  const savePay = useSavePatientInsurance()
+  const [pay, setPay] = useState<PayChoice | null>(null)
+  const payNow: PayChoice = pay ?? {
+    payerId: stored?.payerId ?? '',
+    memberNumber: stored?.memberNumber ?? '',
+  }
   const { data: staff, isLoading: staffLoading } = useServiceStaff(service)
   const { data: nurses, isLoading: nursesLoading } = useServiceStaff(atTriage ? 'triage' : null)
   // it opens at the top of the page while the button pressed is lower: bring it into view, the
@@ -124,6 +137,22 @@ export function SendPatientCard({
     }
     if (!yes) return
     try {
+      // the insurer changed here: saved on the patient first, so the visit starts under it
+      if (
+        insurance &&
+        (payNow.payerId !== (stored?.payerId ?? '') ||
+          (!!payNow.payerId && payNow.memberNumber.trim() !== (stored?.memberNumber ?? '')))
+      )
+        await savePay
+          .mutateAsync({
+            patientId: patient.id,
+            payerId: payNow.payerId || null,
+            memberNumber: payNow.memberNumber,
+          })
+          // a database without the update: the visit starts as before (its payer on the visit page)
+          .catch((e: unknown) => {
+            if (!(e instanceof NotReadyError)) throw e
+          })
       const r = await actions.beginVisit.mutateAsync({
         patientId: patient.id,
         fileNumber: patient.fileNumber,
@@ -301,6 +330,17 @@ export function SendPatientCard({
           />
         )}
 
+        {insurance && (
+          <div className="flex flex-col gap-1">
+            <PayFields value={payNow} onChange={setPay} disabled={savePay.isPending} />
+            <span className="text-ink-3 text-[13px]">
+              {payNow.payerId
+                ? t('patientInsurance.startUnder')
+                : t('patientInsurance.startPrivate')}
+            </span>
+          </div>
+        )}
+
         <Field
           label={t('sendPatient.why')}
           value={note}
@@ -320,7 +360,7 @@ export function SendPatientCard({
           <Button
             variant={emergency ? 'danger' : 'primary'}
             size="lg"
-            loading={actions.beginVisit.isPending}
+            loading={actions.beginVisit.isPending || savePay.isPending}
             onClick={() => void start()}
           >
             {where}

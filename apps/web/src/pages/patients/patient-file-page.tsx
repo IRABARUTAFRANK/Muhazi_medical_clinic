@@ -28,6 +28,7 @@ import { Reveal } from '@/components/ui/reveal'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { GlassAvatar, GlassPill, HeroHead } from '@/components/clinical/hero-head'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
+import { PatientInsuranceCard } from '@/components/clinical/patient-insurance'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
@@ -114,6 +115,16 @@ const ageOf = (iso: string) => {
   if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) y -= 1
   return Math.max(0, y)
 }
+
+/** Who may change the insurer a patient is treated under (the database decides: patient.write, billing.write, the manager). */
+const INSURANCE_EDITORS: string[] = [
+  'receptionist',
+  'nurse',
+  'midwife',
+  'doctor',
+  'cashier',
+  'manager',
+]
 
 export function PatientFilePage({
   user,
@@ -591,6 +602,13 @@ export function PatientFilePage({
               />
             )}
             {tab === 'overview' && <Overview file={data} embedded={embedded} />}
+            {/* the insurer the patient is treated under (0139): every visit starts under it */}
+            {tab === 'overview' && (
+              <PatientInsuranceCard
+                patientId={patientId}
+                mayEdit={INSURANCE_EDITORS.includes(user.dbRole ?? user.role)}
+              />
+            )}
             {tab === 'overview' && data.access?.canSeeLog && !data.access.legacy && (
               <WhoLookedCard patientId={patientId} />
             )}

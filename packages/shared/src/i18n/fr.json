@@ -1230,8 +1230,6 @@
       "categoryNone": "Non affiché sur le site public",
       "cashPrice": "Prix comptant (RWF)",
       "maxDiscount": "Remise maximale du clinicien",
-      "insurerPrices": "Tarifs assureurs (vide = prix comptant)",
-      "sameAsCash": "comme le comptant",
       "allowManual": "Le clinicien peut saisir un autre prix (avec un motif)",
       "active": "Actif (peut être facturé)",
       "save": "Enregistrer",
@@ -2246,7 +2244,39 @@
       "use": "Prendre le prix de la liste"
     },
     "movedToLists": "Les listes de prix publiées (ministère de la Santé, RSSB, assureurs), les assureurs et la liste officielle des médicaments ont leur propre page dans Gestion.",
-    "openLists": "Ouvrir Listes de prix et assureurs"
+    "openLists": "Ouvrir Listes de prix et assureurs",
+    "insurerLines": {
+      "title": "Ce que paie chaque assureur",
+      "lead": "Chaque assureur paie son propre prix, sinon celui de sa liste, avec sa couverture. Mettez une exception ici quand un assureur ne couvre pas celui-ci, ou seulement avec son accord.",
+      "covers": "couvre {{pct}} %",
+      "now": "maintenant {{price}} · {{why}}",
+      "from": {
+        "own": "son propre prix",
+        "list": "sa liste de prix",
+        "cash": {
+          "cash_covered": "pas de prix à lui : celui de la clinique, couvert",
+          "not_covered": "pas de prix à lui : le patient paie le prix de la clinique",
+          "ask": "pas de prix à lui : le demander d’abord"
+        },
+        "excluded": "non couvert : le patient paie tout",
+        "preauth": "seulement avec son accord",
+        "none": "pas de prix"
+      },
+      "onLine": "fixée sur la ligne {{code}} de sa liste",
+      "cover": "Comment il le couvre",
+      "mode": {
+        "covered": "Couvert comme d’habitude",
+        "not_covered": "Non couvert — le patient paie tout",
+        "preauth": "Seulement avec l’accord de {{name}}"
+      },
+      "price": "Son propre prix (RWF)",
+      "pricePh": "vide : celui de sa liste",
+      "reason": "Pourquoi (facultatif)",
+      "reasonPh": "ex. hors de son plan",
+      "afterSave": "Les exceptions des assureurs se fixent une fois enregistré : rouvrez-le.",
+      "overrideNote": "Couvert pour celui-ci",
+      "exception": "Cas particulier"
+    }
   },
   "visit": {
     "back": "Retour à ma file",
@@ -2394,6 +2424,35 @@
       "none": "Pas encore de prix",
       "excluded": "{{insurer}} ne couvre pas ceci (son exception) — le patient paie {{price}}",
       "preauth": "{{insurer}} ne couvre ceci qu’avec son accord — confirmez-le d’abord ({{price}} : patient {{patient}}, {{insurer}} {{insurerPays}})"
+    },
+    "cover": {
+      "open": "Changer pour ce patient",
+      "title": "{{line}} : comment elle est facturée à ce patient",
+      "how": "Comment cette ligne est facturée",
+      "mode": {
+        "insurer": "Comme {{payer}} la couvre",
+        "not_covered": "Non couverte",
+        "private": "Comme patient privé",
+        "price": "À un autre prix",
+        "coverage": "Avec une autre couverture"
+      },
+      "hint": {
+        "insurer": "Le prix et la couverture de {{payer}} (comme d’habitude).",
+        "not_covered": "{{payer}} ne paie rien ; le patient paie tout le prix.",
+        "private": "Le prix de la clinique, comme pour un patient sans assurance ; le patient paie tout.",
+        "price": "Un autre prix pour cette ligne ; {{payer}} y paie sa couverture.",
+        "coverage": "Un autre pourcentage payé par {{payer}} sur cette ligne."
+      },
+      "price": "Prix (RWF)",
+      "pct": "Couverture de {{payer}} (%)",
+      "reason": "Raison",
+      "reasonPh": "ex. hors du plan du patient",
+      "needPrice": "Saisissez le prix.",
+      "needPct": "Saisissez une couverture entre 0 et 100.",
+      "needReason": "Donnez la raison.",
+      "save": "Enregistrer pour ce patient",
+      "done": "{{line}} : {{how}} — enregistré pour ce patient.",
+      "doneBack": "{{line}} : de nouveau au prix et à la couverture de {{payer}}."
     }
   },
   "settings": {
@@ -2718,6 +2777,23 @@
       "done_one": "{{dup}} fusionné : {{count}} élément déplacé dans ce dossier.",
       "done_other": "{{dup}} fusionné : {{count}} éléments déplacés dans ce dossier."
     }
+  },
+  "patientInsurance": {
+    "title": "Assurance",
+    "who": "Qui paie pour ce patient",
+    "private": "Patient privé (paie les prix de la clinique)",
+    "under": "{{name}} · couvre {{pct}} %",
+    "member": "Numéro de membre",
+    "change": "Changer",
+    "hint": "Chaque nouvelle visite de ce patient commence sous cet assureur : ses prix et sa couverture. Une visite peut encore être changée sur la page de la visite.",
+    "save": "Enregistrer",
+    "saved": "Enregistré : {{name}} paie les visites de ce patient.",
+    "savedPrivate": "Enregistré : un patient privé (les prix de la clinique).",
+    "memberIs": "Membre n° {{no}}",
+    "everyVisit": "Chaque nouvelle visite prend les prix et la couverture de cet assureur.",
+    "none": "Patient privé : paie les prix de la clinique.",
+    "startUnder": "Cette visite commence sous cet assureur, gardé pour les prochaines visites.",
+    "startPrivate": "Un patient privé : les prix de la clinique."
   },
   "file": {
     "back": "Retour aux patients",
@@ -4885,7 +4961,8 @@
         "appointmentApprove": "répondre aux demandes de rendez-vous",
         "stockWrite": "gérer le stock",
         "recordsApprove": "répondre aux demandes d’accès aux dossiers",
-        "stockSellWalkin": "vendre aux clients de passage depuis votre stock"
+        "stockSellWalkin": "vendre aux clients de passage depuis votre stock",
+        "chargeOverride": "changer la couverture d’une ligne pour un patient"
       }
     },
     "f": {
@@ -4928,6 +5005,10 @@
       "stock.sell_walkin": {
         "name": "Vendre aux clients de passage depuis mon stock",
         "hint": "Pour qui tient un stock de salle (Mon stock) : vendre ses médicaments à un acheteur sans visite. La pharmacie vend depuis la pharmacie sans cet interrupteur. Souvent donné à une seule personne, en exception."
+      },
+      "charge.override": {
+        "name": "Changer la couverture d’une ligne pour un patient",
+        "hint": "Sur une visite sous assurance : facturer une ligne comme non couverte, comme patient privé, à un autre prix ou avec une autre couverture, avec la raison. Le caissier et le gérant au départ."
       }
     },
     "desks": {
@@ -8310,7 +8391,13 @@
     "4ec0850d": "L’ordre est un nombre de 0 à 9999.",
     "1d8baa49": "Choisissez l’assureur à qui est cette liste.",
     "36d7a9d8": "Choisissez la colonne de prix de l’assureur.",
-    "083acf5a": "Dites à qui est cette liste."
+    "083acf5a": "Dites à qui est cette liste.",
+    "f480211c": "La couverture doit être entre 0 et 100 %.",
+    "9ce308a1": "Le numéro de membre est trop long (60 caractères au plus).",
+    "cd1c72ff": "Dites comment la ligne est facturée.",
+    "717c8baa": "Cette visite n’a pas d’assureur : rien à changer sur ses lignes.",
+    "f36c1aa7": "Ce frais est introuvable ; actualisez la page.",
+    "e10eb18e": "Donnez la raison."
   },
   "panel": {
     "close": "Fermer",

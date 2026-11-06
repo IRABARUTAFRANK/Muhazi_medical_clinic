@@ -15,10 +15,12 @@ import {
   Receipt,
   ShieldCheck,
   Stethoscope,
+  SlidersHorizontal,
   Trash2,
   Undo2,
   Wallet,
 } from 'lucide-react'
+import { ChargeCoverBadge, ChargeCoverEditor } from './charge-cover'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, formatTime, type StaffUser } from '@mmc/shared'
 import { LeftButton } from '@/components/clinical/left-button'
@@ -204,6 +206,8 @@ export function VisitPage({
   const [member, setMember] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  /** The line being charged otherwise for this patient (0139). */
+  const [coverOf, setCoverOf] = useState<string | null>(null)
   // after Finish / send-on at a treating desk: the next patient to take or call (0114)
   const [offerNext, setOfferNext] = useState(false)
   // the payment just taken, for its receipt
@@ -825,6 +829,19 @@ export function VisitPage({
                               })}
                             </Chip>
                           )}
+                          {/* an insured visit: this line charged otherwise for this patient (0139) */}
+                          {bill?.status === 'draft' && bill.payerId && can('charge.override') && (
+                            <Button
+                              size="sm"
+                              variant={coverOf === c.id ? 'tint-amber' : 'ghost'}
+                              aria-label={t('visit.cover.open')}
+                              title={t('visit.cover.open')}
+                              aria-expanded={coverOf === c.id}
+                              onClick={() => setCoverOf(coverOf === c.id ? null : c.id)}
+                            >
+                              <SlidersHorizontal size={16} aria-hidden="true" />
+                            </Button>
+                          )}
                           {/* not on a visit held by someone else or already over (the
                               database refuses it; lines from orders: the manager) */}
                           {bill?.status === 'draft' &&
@@ -840,6 +857,19 @@ export function VisitPage({
                                 <Trash2 size={16} aria-hidden="true" />
                               </Button>
                             )}
+                          {c.cover && <ChargeCoverBadge cover={c.cover} />}
+                          {coverOf === c.id && bill && (
+                            <ChargeCoverEditor
+                              encounterId={encounterId}
+                              charge={c}
+                              payerName={bill.payerName ?? ''}
+                              onClose={() => setCoverOf(null)}
+                              onDone={(text) => {
+                                setCoverOf(null)
+                                setDone(text)
+                              }}
+                            />
+                          )}
                         </Row>
                       ))
                     )}
