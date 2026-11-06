@@ -800,7 +800,8 @@ async function runImport(i: PriceListImportInput, dryRun: boolean): Promise<Pric
         : null),
     p_name: i.name.trim(),
     p_from: i.effectiveFrom,
-    p_columns: i.columns,
+    // the column's sheet and title are for the screen only
+    p_columns: i.columns.map(({ key, label }) => ({ key, label })),
     p_lines: linesPayload(i.lines),
     p_instructions_payer: i.instructionsPayerId,
     p_file_name: i.fileName,

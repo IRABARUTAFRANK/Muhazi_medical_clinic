@@ -114,7 +114,8 @@
       "inbox": "Boîte de réception"
     },
     "myBookings": "Mes rendez-vous",
-    "documents": "Documents des patients"
+    "documents": "Documents des patients",
+    "priceLists": "Listes de prix et assureurs"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -2034,8 +2035,8 @@
       "useListDone_other": "{{count}} prix suivent à nouveau {{list}}.",
       "settings": "Réglages",
       "cols": {
-        "open": "Corriger les colonnes",
-        "close": "Fermer les colonnes",
+        "open": "Choisir les feuilles et les colonnes",
+        "close": "Fermer les feuilles et les colonnes",
         "lead": "Chaque colonne du fichier et ce qu’elle est lue comme. Changez-en une si le fichier a une autre forme : il est relu aussitôt.",
         "headerRow": "Ligne des noms de colonnes",
         "readAgain": "Relire depuis cette ligne",
@@ -2141,7 +2142,8 @@
         "state": {
           "hidden": "Masquée dans Excel : non lue",
           "noTable": "Aucun nom de colonne trouvé : non lue",
-          "foreign": "Prix pour les étrangers : non lue (la clinique facture des Rwandais)"
+          "foreign": "Prix pour les étrangers : non lue (la clinique facture des Rwandais)",
+          "off": "Laissée de côté par vous : non lue"
         },
         "columns": "Colonnes de prix",
         "column": "Colonne",
@@ -2207,6 +2209,32 @@
         "bookLine": "Tarif de la RSSB : {{names}} le paient.",
         "ownRow": "Tarif de la RSSB : il paie la colonne propre de la liste, choisie dans Réglages.",
         "column": "La colonne que paient les régimes de la RSSB (RAMA, Mutuelle de santé)"
+      },
+      "sheets": {
+        "lead": "Chaque feuille et chaque colonne du fichier. Cochez les feuilles à lire ; dites si une feuille a les mêmes soins que les feuilles au-dessus (ses prix leur sont ajoutés) ou d’autres (ses lignes sont ajoutées) ; cochez les colonnes à garder et dites ce qu’est chacune. La liste est relue aussitôt.",
+        "nothing": "Rien ne peut être lu avec ces choix : il faut au moins une feuille avec une colonne de nom et une colonne de prix.",
+        "joinLabel": "Ses soins",
+        "join": {
+          "auto": "Décider par leurs codes",
+          "join": "Les mêmes que les feuilles au-dessus : ajouter ses prix aux leurs",
+          "add": "D’autres soins : ajouter ses lignes"
+        },
+        "joined": "Ses prix sont ajoutés aux mêmes soins au-dessus",
+        "keep": "Garder",
+        "keepOf": "Garder « {{column}} »",
+        "forWho": "Pour :",
+        "privatePatients": "les patients privés",
+        "privateInsurers": "les assureurs privés",
+        "notInsurer": "{{name}} (aucun assureur actif de la clinique)"
+      },
+      "dropAll": {
+        "button": "Retirer toutes les listes",
+        "q_one": "Retirer la liste de prix ({{count}}) ?",
+        "q_other": "Retirer les {{count}} listes de prix ?",
+        "body": "Soins : {{treatments}}, médicaments : {{medicines}}. Chaque liste part comme avec « Retirer la liste » : ses lignes, son usage par les assureurs, les exceptions écrites pour elle et les soins faits à partir d’elle (ceux déjà sur une facture sont masqués). Les soins et médicaments propres de la clinique gardent le prix d’aujourd’hui. Vous pourrez ensuite téléverser les listes à nouveau.",
+        "yes": "Retirer toutes les listes",
+        "done_one": "{{count}} liste retirée : {{deleted}} soins supprimés, {{hidden}} masqués (déjà sur des factures).",
+        "done_other": "{{count}} listes retirées : {{deleted}} soins supprimés, {{hidden}} masqués (déjà sur des factures)."
       }
     },
     "listPrice": {
@@ -2216,7 +2244,9 @@
       "followsNow": "Ce prix suit la liste.",
       "ownNow": "Le prix ci-dessus est celui de la clinique.",
       "use": "Prendre le prix de la liste"
-    }
+    },
+    "movedToLists": "Les listes de prix publiées (ministère de la Santé, RSSB, assureurs), les assureurs et la liste officielle des médicaments ont leur propre page dans Gestion.",
+    "openLists": "Ouvrir Listes de prix et assureurs"
   },
   "visit": {
     "back": "Retour à ma file",
@@ -10613,5 +10643,17 @@
     "anaestheticNurse": "Infirmier·ère anesthésiste",
     "paediatricNurse": "Infirmier·ère en pédiatrie",
     "midwife": "Sage-femme"
+  },
+  "priceListsPage": {
+    "title": "Listes de prix et assureurs",
+    "lead": "Les prix que d’autres publient et les assureurs avec qui la clinique travaille : téléversez le tarif du ministère, les listes de la RSSB et des assureurs dans tout type de fichier, choisissez leurs feuilles et colonnes et qui paie quelle colonne ; puis la couverture, les règles, les prix propres et les exceptions de chaque assureur.",
+    "parts": "Partie de la page",
+    "part": {
+      "lists": "Listes de prix publiées",
+      "insurers_one": "Assureurs ({{count}} actif)",
+      "insurers_other": "Assureurs ({{count}} actifs)",
+      "official": "Liste officielle des médicaments (RHIA)"
+    },
+    "officialLead": "La liste des médicaments que remboursent les assureurs (RHIA) : les assureurs qui la suivent paient ses prix pour les médicaments de la clinique de même code."
   }
 }

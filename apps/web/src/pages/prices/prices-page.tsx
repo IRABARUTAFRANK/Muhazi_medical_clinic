@@ -7,11 +7,11 @@ import {
   EyeOff,
   FolderPlus,
   Layers,
+  Library,
   Pencil,
   Plus,
   Receipt,
   Search,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Tag,
@@ -19,6 +19,7 @@ import {
   Trash2,
   Wrench,
 } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import {
   CATEGORY_IDS,
@@ -32,7 +33,7 @@ import { headerBand, tintClass, type Tint } from '@/components/dash/kit-style'
 import { PageBanner } from '@/components/dash/page-banner'
 import { AdjustField } from '@/components/ui/adjust-field'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
@@ -58,9 +59,6 @@ import { suggestNames } from '@/lib/medical-glossary'
 import { CatalogueTools } from './catalogue-tools'
 import { CategoriesCard } from './categories-card'
 import { MedicinesSection } from './medicines-section'
-import { OfficialListSection } from './official-list-section'
-import { PriceListsSection } from './price-lists-section'
-import { InsurersSection } from './insurers-section'
 import { useInsuranceEnabled } from '@/lib/api/settings'
 import { useDepartmentActions, useDepartments, type Department } from '@/lib/api/staff'
 import { navForUser } from '@/lib/nav'
@@ -662,30 +660,19 @@ export function PricesPage({ user }: { user: StaffUser }) {
         {/* Medicines and supplies with their price */}
         <MedicinesSection onNotice={setNotice} />
 
-        {/* The official medicine list (RHIA): the insurers' tariff, uploaded by the manager */}
-        <OfficialListSection onNotice={setNotice} />
-
-        {/* Published price lists (0134): MoH / RSSB / insurers' tariffs, who follows them, exceptions */}
-        <PriceListsSection insurers={insurers.filter((i) => i.active)} onNotice={setNotice} />
-
-        {/* Insurers and their tariffs: only once the clinic works with insurers (Settings → Insurance) */}
-        {insurance ? (
-          <InsurersSection
-            insurers={insurers}
-            onNotice={(text) => {
-              setActionError(null)
-              setNotice(text)
-            }}
-            onError={setActionError}
-          />
-        ) : (
-          <Card>
-            <CardBody className="flex-row items-center gap-3">
-              <ShieldCheck size={18} aria-hidden="true" className="text-ink-3 flex-none" />
-              <p className="text-ink-2 m-0 text-[14px]">{t('prices.insurers.parked')}</p>
-            </CardBody>
-          </Card>
-        )}
+        {/* the published price lists, the insurers and the official medicine list: their own page */}
+        <Card>
+          <CardBody className="flex-row flex-wrap items-center gap-3">
+            <Library size={18} aria-hidden="true" className="text-violet flex-none" />
+            <p className="text-ink-2 m-0 min-w-0 flex-1 text-[14px]">{t('prices.movedToLists')}</p>
+            <Link
+              to="/app/price-lists"
+              className={buttonVariants({ variant: 'tint-violet', size: 'sm' })}
+            >
+              {t('prices.openLists')}
+            </Link>
+          </CardBody>
+        </Card>
       </main>
     </StaffShell>
   )

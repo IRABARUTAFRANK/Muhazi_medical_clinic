@@ -1,6 +1,7 @@
 /** Sidebar and action icons by name (nav items store the name). */
 import {
   Activity,
+  Library,
   Bell,
   History,
   ArrowDown,
@@ -68,6 +69,7 @@ export const icons = {
   'calendar-days': CalendarDays,
   'calendar-check': CalendarCheck,
   receipt: Receipt,
+  library: Library,
   wallet: Wallet,
   'shopping-bag': ShoppingBag,
   lock: Lock,

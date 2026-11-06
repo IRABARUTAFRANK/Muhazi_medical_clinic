@@ -34,6 +34,8 @@ const GROUP_OF: Record<string, NavGroupId> = {
   bills: 'finance',
   payments: 'finance',
   prices: 'finance',
+  // the published price lists and the insurers: their own page under Management
+  'price-lists': 'manage',
   stock: 'stock',
   analytics: 'manage',
   reports: 'manage',
@@ -106,6 +108,7 @@ export const MANAGER_NAV: NavItem[] = [
   { id: 'bills', labelKey: 'nav.bills', icon: 'wallet', to: '/app/bills' },
   { id: 'payments', labelKey: 'nav.payments', icon: 'banknote', to: '/app/payments' },
   { id: 'prices', labelKey: 'nav.prices', icon: 'receipt', to: '/app/prices' },
+  { id: 'price-lists', labelKey: 'nav.priceLists', icon: 'library', to: '/app/price-lists' },
   { id: 'stock', labelKey: 'nav.stock', icon: 'package', to: '/app/stock' },
   { id: 'staff', labelKey: 'nav.staff', icon: 'id-card', to: '/app/staff' },
   RECORD_ACCESS,

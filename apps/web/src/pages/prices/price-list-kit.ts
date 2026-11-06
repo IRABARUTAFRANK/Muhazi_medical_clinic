@@ -1,5 +1,4 @@
 import { formatDate, formatNumber, formatRwf } from '@mmc/shared'
-import { payerBodyOf, type PayerType } from '@/lib/api/catalogue'
 import { useTranslation } from 'react-i18next'
 import {
   usePriceListActions,
@@ -9,6 +8,11 @@ import {
 } from '@/lib/api/price-lists'
 import { useConfirm } from '@/lib/confirm'
 import type { PriceListColumn } from '@/lib/price-list-file'
+import {
+  columnForInsurer,
+  columnForPrivatePatients,
+  type InsurerLike,
+} from '@/lib/price-list-payers'
 
 /** The red box of a refusal or a file problem. */
 export const errorBox =
@@ -25,55 +29,22 @@ export const price = (n: number | null | undefined) => (n == null ? '—' : form
 export const coverTone = (c: Cover) =>
   c === 'not_covered' ? ('red' as const) : c === 'preauth' ? ('yellow' as const) : ('blue' as const)
 
-/** The column a private patient pays: "Privates (Non insured)", "General Clinics", else the first. */
-export function guessPrivateColumn(columns: PriceListColumn[]): string {
-  const by = (re: RegExp) => columns.find((c) => re.test(c.label))?.key
-  return (
-    by(/non.?insur|uninsur|non.?assur/i) ??
-    by(/general clinic|clinique g/i) ??
-    by(/^privates?\b|private patient|cash|comptant/i) ??
-    columns[0]?.key ??
-    ''
-  )
-}
+/** The column a private patient pays: one naming them ("Privates (Non insured)", a sheet for "non insured"), else "General Clinics", else the first. */
+export const guessPrivateColumn = (columns: PriceListColumn[]): string =>
+  columnForPrivatePatients(columns)
 
 /**
- * The column an insurer pays on a list it follows, from the column names: RSSB / RAMA and MMI pay
- * "RAMA; MMI", a private insurer (or an employer) the column with its name, else "Private
- * Insurances"; CBHI a "CBHI" / "Mutuelle" column. '' when no column says (the manager chooses).
+ * The column an insurer pays on a list it follows, from what the columns name (lib/price-list-payers):
+ * "RAMA; MMI" is paid by RSSB RAMA and by MMI; a sheet "RAMA" titled "FOR RAMA, MMI, MIS/UR" by both;
+ * "Private Insurances" by the private insurers; an RSSB list by RSSB RAMA and Mutuelle de santé.
+ * '' when nothing says (the manager chooses).
  */
-export function guessFollowColumn(
+export const guessFollowColumn = (
   columns: PriceListColumn[],
-  type: PayerType,
-  name: string,
-  /** The list is RSSB's (its title, file or publisher says so): RAMA and Mutuelle pay its price. */
+  insurer: InsurerLike,
+  /** The list is RSSB's (its title, file or publisher says so). */
   rssbList = false,
-): string {
-  const usable = columns.filter((c) => !/non.?insur|uninsur|non.?assur/i.test(c.label))
-  const by = (re: RegExp) => usable.find((c) => re.test(c.label))?.key
-  if (rssbList) {
-    if (payerBodyOf(type) !== 'RSSB') return ''
-    return (
-      by(/\b(rama|rssb|cbhi|mutuel+e?s?)\b/i) ??
-      (usable.length === 1 ? usable[0]!.key : undefined) ??
-      by(/price|prix|tarif|tariff|amount|montant/i) ??
-      ''
-    )
-  }
-  if (type === 'rssb_rama') return by(/\b(rama|rssb)\b/i) ?? ''
-  // MMI pays RAMA's prices (the MoH tariff's column "RAMA; MMI", its sheet "RAMA")
-  if (type === 'mmi') return by(/\b(mmi|military)\b/i) ?? by(/\b(rama|rssb)\b/i) ?? ''
-  if (type === 'cbhi') return by(/\b(cbhi|mutuel+e?s?)\b/i) ?? ''
-  if (type === 'private' || type === 'employer') {
-    const first = name.trim().split(/\s+/)[0] ?? ''
-    const own =
-      first.length >= 3
-        ? usable.find((c) => c.label.toLowerCase().includes(first.toLowerCase()))?.key
-        : undefined
-    return own ?? by(/private insur|insurances?\b|assurances? priv/i) ?? ''
-  }
-  return ''
-}
+): string => columnForInsurer(columns, insurer, rssbList)
 
 /** The file's title, name or publisher says the list is RSSB's ("… BY RSSB JUNE 2026"). */
 export const looksRssb = (...texts: (string | null | undefined)[]) =>

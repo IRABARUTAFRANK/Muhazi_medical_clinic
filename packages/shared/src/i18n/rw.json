@@ -123,7 +123,8 @@
       "inbox": "Ubutumwa"
     },
     "myBookings": "Gahunda zanjye",
-    "documents": "Inyandiko z’abarwayi"
+    "documents": "Inyandiko z’abarwayi",
+    "priceLists": "Intonde z’ibiciro n’ubwishingizi"
   },
   "roles": {
     "receptionist": "Umwakiranyi",
@@ -2882,8 +2883,8 @@
       "useListDone_other": "Ibiciro {{count}} byongeye gukurikiza {{list}}.",
       "settings": "Igenamiterere",
       "cols": {
-        "open": "Kosora inkingi",
-        "close": "Funga inkingi",
+        "open": "Hitamo impapuro n’inkingi",
+        "close": "Funga impapuro n’inkingi",
         "lead": "Buri nkingi y’inyandiko n’icyo isomwa nka cyo. Hindura imwe niba inyandiko ifite indi miterere: ihita yongera gusomwa.",
         "headerRow": "Umurongo w’amazina y’inkingi",
         "readAgain": "Ongera usome uhereye kuri uyu murongo",
@@ -2989,7 +2990,8 @@
         "state": {
           "hidden": "Rwahishwe muri Excel: ntirwasomwe",
           "noTable": "Nta mazina y’inkingi yabonetse: ntirwasomwe",
-          "foreign": "Ibiciro by’abanyamahanga: ntirwasomwe (ivuriro ryishyuza Abanyarwanda)"
+          "foreign": "Ibiciro by’abanyamahanga: ntirwasomwe (ivuriro ryishyuza Abanyarwanda)",
+          "off": "Wayisize: ntiyasomwe"
         },
         "columns": "Inkingi z’ibiciro",
         "column": "Inkingi",
@@ -3055,6 +3057,32 @@
         "bookLine": "Ibiciro bya RSSB: {{names}} byishyura ibi biciro.",
         "ownRow": "Ibiciro bya RSSB: cyishyura inkingi y’urutonde, ihitwamo muri Igenamiterere.",
         "column": "Inkingi ibigo bya RSSB byishyura (RAMA, Mituweli)"
+      },
+      "sheets": {
+        "lead": "Buri rupapuro na buri nkingi y’inyandiko. Hitamo impapuro zisomwa; vuga niba urupapuro rufite serivisi zimwe n’izo ku mpapuro ziri hejuru yarwo (ibiciro byarwo byongerwa kuri zo) cyangwa izindi (imirongo yarwo yongerwaho); hitamo inkingi zigumishwa kandi uvuge buri imwe icyo ari cyo. Urutonde ruhita rwongera gusomwa.",
+        "nothing": "Nta kintu gishobora gusomwa n’aya mahitamo: hakenewe nibura urupapuro rumwe rufite inkingi y’izina n’inkingi y’igiciro.",
+        "joinLabel": "Serivisi zarwo",
+        "join": {
+          "auto": "Bihitwemo hakurikijwe kode zazo",
+          "join": "Ni zimwe n’izo ku mpapuro ziri hejuru: ongera ibiciro byarwo kuri zo",
+          "add": "Ni izindi serivisi: ongeraho imirongo yarwo"
+        },
+        "joined": "Ibiciro byarwo byongewe kuri serivisi zimwe ziri hejuru",
+        "keep": "Gumana",
+        "keepOf": "Gumana “{{column}}”",
+        "forWho": "Ni iya:",
+        "privatePatients": "abarwayi batagira ubwishingizi",
+        "privateInsurers": "ibigo by’ubwishingizi byigenga",
+        "notInsurer": "{{name}} (nta kigo cy’ubwishingizi gikora cy’ivuriro)"
+      },
+      "dropAll": {
+        "button": "Kuraho intonde zose",
+        "q_one": "Gukuraho urutonde rw’ibiciro ({{count}})?",
+        "q_other": "Gukuraho intonde z’ibiciro {{count}} zose?",
+        "body": "Serivisi: {{treatments}}, imiti: {{medicines}}. Buri rutonde ruvaho nk’uko “Kuraho urutonde” bigenda: imirongo yarwo, ikoreshwa ryarwo n’ibigo by’ubwishingizi, ibidasanzwe byanditswe kuri rwo na serivisi zakomotse kuri rwo (izamaze kujya kuri fagitire zirahishwa). Serivisi n’imiti by’ivuriro bigumana igiciro cy’uyu munsi. Nyuma ushobora kongera gushyiramo intonde.",
+        "yes": "Kuraho intonde zose",
+        "done_one": "Urutonde {{count}} rwakuweho: serivisi {{deleted}} zasibwe, {{hidden}} zahishwe (zari kuri fagitire).",
+        "done_other": "Intonde {{count}} zakuweho: serivisi {{deleted}} zasibwe, {{hidden}} zahishwe (zari kuri fagitire)."
       }
     },
     "listPrice": {
@@ -3064,7 +3092,9 @@
       "followsNow": "Iki giciro gikurikiza urutonde.",
       "ownNow": "Igiciro kiri hejuru ni icy’ivuriro ubwaryo.",
       "use": "Koresha igiciro cy’urutonde"
-    }
+    },
+    "movedToLists": "Intonde z’ibiciro zisohorwa (Minisiteri y’Ubuzima, RSSB, ibigo by’ubwishingizi), ibigo by’ubwishingizi n’urutonde rwemewe rw’imiti bifite paji yabyo muri Ubuyobozi.",
+    "openLists": "Fungura Intonde z’ibiciro n’ubwishingizi"
   },
   "desk": {
     "today": "Uyu munsi",
@@ -10622,5 +10652,17 @@
     "anaestheticNurse": "Umuforomo utera ikinya",
     "paediatricNurse": "Umuforomo w’abana",
     "midwife": "Umubyaza"
+  },
+  "priceListsPage": {
+    "title": "Intonde z’ibiciro n’ubwishingizi",
+    "lead": "Ibiciro abandi basohora n’ibigo by’ubwishingizi ivuriro rikorana na byo: shyiramo ibiciro bya Minisiteri, intonde za RSSB n’iz’ibigo by’ubwishingizi mu bwoko bwose bw’inyandiko, uhitemo impapuro n’inkingi zazo n’uwishyura buri nkingi; hanyuma ubwishingizi, amategeko, ibiciro byabyo n’ibidasanzwe bya buri kigo.",
+    "parts": "Igice cya paji",
+    "part": {
+      "lists": "Intonde z’ibiciro zisohorwa",
+      "insurers_one": "Ibigo by’ubwishingizi ({{count}} gikora)",
+      "insurers_other": "Ibigo by’ubwishingizi ({{count}} bikora)",
+      "official": "Urutonde rwemewe rw’imiti (RHIA)"
+    },
+    "officialLead": "Urutonde rw’imiti ibigo by’ubwishingizi byishyura (RHIA): ibigo birukurikiza byishyura ibiciro byarwo ku miti y’ivuriro ifite kode imwe."
   }
 }

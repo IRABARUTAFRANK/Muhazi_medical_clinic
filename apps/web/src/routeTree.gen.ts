@@ -32,6 +32,7 @@ import { Route as AppPatientRouteImport } from './routes/app/patient'
 import { Route as AppPatientsRouteImport } from './routes/app/patients'
 import { Route as AppPaymentsRouteImport } from './routes/app/payments'
 import { Route as AppPrescriptionsRouteImport } from './routes/app/prescriptions'
+import { Route as AppPriceListsRouteImport } from './routes/app/price-lists'
 import { Route as AppPricesRouteImport } from './routes/app/prices'
 import { Route as AppQueueRouteImport } from './routes/app/queue'
 import { Route as AppRecordAccessRouteImport } from './routes/app/record-access'
@@ -161,6 +162,11 @@ const AppPrescriptionsRoute = AppPrescriptionsRouteImport.update({
   path: '/prescriptions',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPriceListsRoute = AppPriceListsRouteImport.update({
+  id: '/price-lists',
+  path: '/price-lists',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricesRoute = AppPricesRouteImport.update({
   id: '/prices',
   path: '/prices',
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/app/patients': typeof AppPatientsRoute
   '/app/payments': typeof AppPaymentsRoute
   '/app/prescriptions': typeof AppPrescriptionsRoute
+  '/app/price-lists': typeof AppPriceListsRoute
   '/app/prices': typeof AppPricesRoute
   '/app/queue': typeof AppQueueRoute
   '/app/record-access': typeof AppRecordAccessRoute
@@ -287,6 +294,7 @@ export interface FileRoutesByTo {
   '/app/patients': typeof AppPatientsRoute
   '/app/payments': typeof AppPaymentsRoute
   '/app/prescriptions': typeof AppPrescriptionsRoute
+  '/app/price-lists': typeof AppPriceListsRoute
   '/app/prices': typeof AppPricesRoute
   '/app/queue': typeof AppQueueRoute
   '/app/record-access': typeof AppRecordAccessRoute
@@ -326,6 +334,7 @@ export interface FileRoutesById {
   '/app/patients': typeof AppPatientsRoute
   '/app/payments': typeof AppPaymentsRoute
   '/app/prescriptions': typeof AppPrescriptionsRoute
+  '/app/price-lists': typeof AppPriceListsRoute
   '/app/prices': typeof AppPricesRoute
   '/app/queue': typeof AppQueueRoute
   '/app/record-access': typeof AppRecordAccessRoute
@@ -366,6 +375,7 @@ export interface FileRouteTypes {
     | '/app/patients'
     | '/app/payments'
     | '/app/prescriptions'
+    | '/app/price-lists'
     | '/app/prices'
     | '/app/queue'
     | '/app/record-access'
@@ -403,6 +413,7 @@ export interface FileRouteTypes {
     | '/app/patients'
     | '/app/payments'
     | '/app/prescriptions'
+    | '/app/price-lists'
     | '/app/prices'
     | '/app/queue'
     | '/app/record-access'
@@ -441,6 +452,7 @@ export interface FileRouteTypes {
     | '/app/patients'
     | '/app/payments'
     | '/app/prescriptions'
+    | '/app/price-lists'
     | '/app/prices'
     | '/app/queue'
     | '/app/record-access'
@@ -628,6 +640,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPrescriptionsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/price-lists': {
+      id: '/app/price-lists'
+      path: '/price-lists'
+      fullPath: '/app/price-lists'
+      preLoaderRoute: typeof AppPriceListsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/prices': {
       id: '/app/prices'
       path: '/prices'
@@ -740,6 +759,7 @@ interface AppRouteChildren {
   AppPatientsRoute: typeof AppPatientsRoute
   AppPaymentsRoute: typeof AppPaymentsRoute
   AppPrescriptionsRoute: typeof AppPrescriptionsRoute
+  AppPriceListsRoute: typeof AppPriceListsRoute
   AppPricesRoute: typeof AppPricesRoute
   AppQueueRoute: typeof AppQueueRoute
   AppRecordAccessRoute: typeof AppRecordAccessRoute
@@ -774,6 +794,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPatientsRoute: AppPatientsRoute,
   AppPaymentsRoute: AppPaymentsRoute,
   AppPrescriptionsRoute: AppPrescriptionsRoute,
+  AppPriceListsRoute: AppPriceListsRoute,
   AppPricesRoute: AppPricesRoute,
   AppQueueRoute: AppQueueRoute,
   AppRecordAccessRoute: AppRecordAccessRoute,

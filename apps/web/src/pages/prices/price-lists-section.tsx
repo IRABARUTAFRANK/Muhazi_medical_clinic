@@ -215,7 +215,7 @@ export function PriceListsSection({
           const was = cur[i.id]
           if (keep && was !== undefined && (was === '' || keys.includes(was))) return [i.id, was]
           const rssb = looksRssb(p.title, fileName.current, publisher)
-          return [i.id, hasOwnList(i.id) ? '' : guessFollowColumn(p.columns, i.type, i.name, rssb)]
+          return [i.id, hasOwnList(i.id) ? '' : guessFollowColumn(p.columns, i, rssb)]
         }),
       ),
     )
@@ -407,6 +407,45 @@ export function PriceListsSection({
   }
 
   /** "Remove the list": the list goes with the treatments it made (asked first). */
+  /** "Remove every list": start again (every list goes with what it made, as one by one). */
+  const removeAll = async () => {
+    const n = books.length
+    if (n === 0) return
+    if (
+      !(await confirm({
+        title: t('prices.lists.dropAll.q', { count: n }),
+        body: t('prices.lists.dropAll.body', {
+          treatments: books.filter((b) => b.kind === 'treatments').length,
+          medicines: books.filter((b) => b.kind === 'medicines').length,
+        }),
+        confirmLabel: t('prices.lists.dropAll.yes'),
+        tone: 'danger',
+      }))
+    )
+      return
+    setError(null)
+    let deleted = 0
+    let hidden = 0
+    let done = 0
+    for (const b of books) {
+      try {
+        const r = await bookActions.removeBook.mutateAsync(b.id)
+        deleted += r.deleted
+        hidden += r.hidden
+        done++
+      } catch (e) {
+        setError(`${b.name}: ${e instanceof Error ? e.message : String(e)}`)
+        break
+      }
+    }
+    setTarget(NEW)
+    setLinesOf(null)
+    setFollowersOf(null)
+    setSettingsOf(null)
+    reset()
+    onNotice(t('prices.lists.dropAll.done', { count: done, deleted, hidden }))
+  }
+
   const remove = async (b: PriceListBook) => {
     setError(null)
     try {
@@ -428,6 +467,17 @@ export function PriceListsSection({
     <Card className="overflow-hidden">
       <CardHeader icon={Library} hue="violet">
         <span className="min-w-0 flex-1">{t('prices.lists.title')}</span>
+        {books.length > 0 && (
+          <Button
+            size="sm"
+            variant="tint-coral"
+            disabled={bookActions.removeBook.isPending}
+            onClick={() => void removeAll()}
+          >
+            <Trash2 size={14} aria-hidden="true" />
+            {t('prices.lists.dropAll.button')}
+          </Button>
+        )}
       </CardHeader>
       <CardBody className="flex flex-col gap-4">
         <p className="text-ink-2 m-0 text-[14px]">{t('prices.lists.lead')}</p>
@@ -563,6 +613,7 @@ export function PriceListsSection({
           <ColumnsCheck
             parsed={parsed}
             fileName={file?.name ?? ''}
+            insurers={insurers}
             onChange={(p) => {
               setParsed(p)
               applyColumns(p)

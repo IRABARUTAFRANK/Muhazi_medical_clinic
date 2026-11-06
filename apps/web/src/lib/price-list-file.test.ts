@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildPriceList,
+  defaultChoices,
   evalFormula,
   foreignSheet,
   keyOf,
@@ -9,6 +11,7 @@ import {
   pdfToGrid,
   priceOf,
   readGrid,
+  rebuildPriceList,
   rereadPriceList,
   roleOfHeader,
   shiftFormula,
@@ -220,10 +223,12 @@ describe('published price list reader', () => {
     const first = readGrid(g)!
     expect(first.columns.map((c) => c.key)).toEqual(['price', 'old_price'])
     expect(first.layout.find((c) => c.label === 'Old price')?.role).toBe('price')
-    const parsed = { ...first, format: 'xlsx' as const }
+    const parsed = mergeParts([first], 'xlsx')
     // the old price is left out, the remark is the insurer's instruction
     const fixed = rereadPriceList(parsed, { headerRow: 2, roles: { 3: 'ignore', 4: 'note' } })!
-    expect(fixed.columns).toEqual([{ key: 'price', label: 'Price' }])
+    expect(fixed.columns.map((c) => ({ key: c.key, label: c.label }))).toEqual([
+      { key: 'price', label: 'Price' },
+    ])
     expect(fixed.lines[1]).toMatchObject({
       code: 'E-02',
       name: 'Dressing',
@@ -295,7 +300,7 @@ describe('published price list reader', () => {
     expect(p.sheets[0]).toMatchObject({ state: 'read', headerRow: 1, rows: 3, lines: 2 })
     expect(p.sheets[0]!.skipped).toEqual([{ row: 4, text: 'Total', why: 'note' }])
     // chosen by hand, a column for foreigners is read
-    const back = rereadPriceList({ ...p, format: 'xlsx' }, { headerRow: 1, roles: { 5: 'price' } })!
+    const back = rereadPriceList(mergeParts([p], 'xlsx'), { headerRow: 1, roles: { 5: 'price' } })!
     expect(back.columns.map((c) => c.label)).toContain('East Africa')
     expect(back.columns.map((c) => c.label)).not.toContain('Africans')
   })
@@ -405,5 +410,76 @@ describe('published price list reader', () => {
       private_insurances_general_clinics: null,
     })
     expect(p.sheets.map((s) => !!s.joined)).toEqual([false, true])
+  })
+  it('builds the list again from the choices made for each sheet', () => {
+    const head = ['RHIC', 'Procedure name']
+    const rama = grid(
+      [
+        ['TARIFF FOR RAMA, MMI'],
+        [...head, 'Primary Health Facility *'],
+        ['A-001', 'Act one', 100],
+        ['A-002', 'Act two', 200],
+      ],
+      'RAMA',
+    )
+    const priv = grid(
+      [
+        ['TARIFF FOR PRIVATE INSURANCE'],
+        [...head, 'General Clinics *', 'Hospitals ***'],
+        ['A-001', 'Act one', 110, 150],
+        ['A-002', 'Act two', 220, 300],
+      ],
+      'Private Insurances',
+    )
+    const eac = grid(
+      [
+        ['TARIFF FOR CITIZENS FROM EAST AFRICA'],
+        [...head, 'General Clinics *'],
+        ['A-001', 'Act one', 110],
+      ],
+      'East Africa',
+    )
+    const grids = [rama, priv, eac]
+    const parsed = buildPriceList(grids, defaultChoices(grids, new Set()), 'xlsx', new Set())!
+    expect(parsed.sheets.map((s) => [s.name, s.state, s.use])).toEqual([
+      ['RAMA', 'read', true],
+      ['Private Insurances', 'read', true],
+      ['East Africa', 'foreign', false],
+    ])
+    expect(parsed.lines).toHaveLength(2)
+    expect(parsed.sheets[2]!.layout.map((c) => c.label)).toContain('General Clinics *')
+    // the second sheet's lines added instead of joined
+    const added = rebuildPriceList(
+      parsed,
+      parsed.choices.map((c, i) => (i === 1 ? { ...c, join: 'add' as const } : c)),
+    )!
+    expect(added.lines).toHaveLength(4)
+    // the first sheet left out
+    const second = rebuildPriceList(
+      parsed,
+      parsed.choices.map((c, i) => (i === 0 ? { ...c, use: false } : c)),
+    )!
+    expect(second.columns.map((c) => c.label)).toEqual(['General Clinics *'])
+    expect(second.sheets[0]!.state).toBe('off')
+    // the foreigners' sheet read after all
+    const all = rebuildPriceList(
+      parsed,
+      parsed.choices.map((c) => ({ ...c, use: true })),
+    )!
+    expect(all.sheets[2]!.state).toBe('read')
+    // a column kept by hand on one sheet: the hospitals' price
+    const kept = rereadPriceList(
+      parsed,
+      { headerRow: 2, roles: { 0: 'code', 1: 'name', 2: 'price', 3: 'price' } },
+      1,
+    )!
+    expect(kept.columns.map((c) => c.label)).toContain('Private Insurances · Hospitals ***')
+    // nothing left to read
+    expect(
+      rebuildPriceList(
+        parsed,
+        parsed.choices.map((c) => ({ ...c, use: false })),
+      ),
+    ).toBeNull()
   })
 })

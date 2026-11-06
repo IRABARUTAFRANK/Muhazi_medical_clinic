@@ -114,7 +114,8 @@
       "inbox": "Inbox"
     },
     "myBookings": "My bookings",
-    "documents": "Patients’ documents"
+    "documents": "Patients’ documents",
+    "priceLists": "Price lists & insurers"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -2034,8 +2035,8 @@
       "useListDone_other": "{{count}} prices follow {{list}} again.",
       "settings": "Settings",
       "cols": {
-        "open": "Correct the columns",
-        "close": "Close the columns",
+        "open": "Choose the sheets and columns",
+        "close": "Close the sheets and columns",
         "lead": "Each column of the file and what it is read as. Change one if the file has another form: the file is read again at once.",
         "headerRow": "Row of the column names",
         "readAgain": "Read again from this row",
@@ -2141,7 +2142,8 @@
         "state": {
           "hidden": "Hidden in Excel: not read",
           "noTable": "No column names found: not read",
-          "foreign": "Prices for foreigners: not read (the clinic charges Rwandans)"
+          "foreign": "Prices for foreigners: not read (the clinic charges Rwandans)",
+          "off": "Left out by you: not read"
         },
         "columns": "Price columns",
         "column": "Column",
@@ -2207,6 +2209,32 @@
         "bookLine": "RSSB’s tariff: {{names}} pay it.",
         "ownRow": "RSSB’s tariff: it pays the list’s own column, chosen in Settings.",
         "column": "The column RSSB’s schemes pay (RAMA, Mutuelle de santé)"
+      },
+      "sheets": {
+        "lead": "Every sheet and every column of the file. Tick the sheets to read; say whether a sheet has the same treatments as the sheets above it (its prices are added to them) or other ones (its lines are added); tick the columns to keep and say what each one is. The list is read again at once.",
+        "nothing": "Nothing can be read with these choices: at least one sheet needs a name column and a price column.",
+        "joinLabel": "Its treatments",
+        "join": {
+          "auto": "Decide by their codes",
+          "join": "The same as the sheets above: add its prices to them",
+          "add": "Other treatments: add its lines"
+        },
+        "joined": "Its prices are added to the same treatments above",
+        "keep": "Keep",
+        "keepOf": "Keep “{{column}}”",
+        "forWho": "For:",
+        "privatePatients": "private patients",
+        "privateInsurers": "the private insurers",
+        "notInsurer": "{{name}} (no active insurer of the clinic)"
+      },
+      "dropAll": {
+        "button": "Remove every list",
+        "q_one": "Remove the {{count}} price list?",
+        "q_other": "Remove all {{count}} price lists?",
+        "body": "Treatments: {{treatments}}, medicines: {{medicines}}. Each list goes as with “Remove the list”: its lines, the insurers’ use of it, the exceptions written for it and the treatments it made (those already on a bill are hidden). The clinic’s own treatments and medicines keep today’s price. You can then upload the lists again.",
+        "yes": "Remove every list",
+        "done_one": "{{count}} list removed: {{deleted}} treatments deleted, {{hidden}} hidden (already on bills).",
+        "done_other": "{{count}} lists removed: {{deleted}} treatments deleted, {{hidden}} hidden (already on bills)."
       }
     },
     "listPrice": {
@@ -2216,7 +2244,9 @@
       "followsNow": "This price follows the list.",
       "ownNow": "The price above is the clinic’s own.",
       "use": "Use the list price"
-    }
+    },
+    "movedToLists": "The published price lists (Ministry of Health, RSSB, insurers), the insurers and the official medicine list have their own page under Management.",
+    "openLists": "Open Price lists & insurers"
   },
   "visit": {
     "back": "Back to my queue",
@@ -10613,5 +10643,17 @@
     "anaestheticNurse": "Anaesthetic nurse",
     "paediatricNurse": "Paediatric nurse",
     "midwife": "Midwife"
+  },
+  "priceListsPage": {
+    "title": "Price lists & insurers",
+    "lead": "The prices others publish and the insurers the clinic works with: upload the Ministry’s tariff, RSSB’s and the insurers’ lists in any kind of file, choose their sheets and columns and who pays which column; then each insurer’s coverage, rules, own prices and exceptions.",
+    "parts": "Part of the page",
+    "part": {
+      "lists": "Published price lists",
+      "insurers_one": "Insurers ({{count}} active)",
+      "insurers_other": "Insurers ({{count}} active)",
+      "official": "Official medicine list (RHIA)"
+    },
+    "officialLead": "The list of medicines the insurers reimburse (RHIA): the insurers that follow it pay its prices for the clinic’s medicines with the same code."
   }
 }

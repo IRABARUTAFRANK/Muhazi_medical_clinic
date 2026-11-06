@@ -44,6 +44,8 @@ export type ListRole =
 export interface PriceListColumn {
   key: string
   label: string
+  /** The name and title of its sheet ("RAMA — … FOR RAMA, MMI, MIS/UR"): who the column is for. Not stored. */
+  hint?: string | null
 }
 
 /** One line sent to the database (row: the file's row, for the messages). */
@@ -85,6 +87,24 @@ export interface ParsedPriceList {
   sources: Grid[]
   /** Every sheet of the file, in its order: what was read from it, or why it was not. */
   sheets: SheetReport[]
+  /** Every sheet of the file as it came, and the manager's choices for each (rebuildPriceList). */
+  grids: Grid[]
+  choices: SheetChoice[]
+  /** The sheets hidden in Excel (their index). */
+  hiddenSheets: number[]
+}
+
+/** How a sheet's lines go with the sheets before it: its prices join the lines of the same code
+ * (the same treatments for other payers), its lines are added (other treatments), or decided by
+ * the codes (most of them already there: joined). */
+export type JoinMode = 'auto' | 'join' | 'add'
+
+/** The manager's choices for one sheet. */
+export interface SheetChoice {
+  use: boolean
+  join: JoinMode
+  headerRow?: number
+  roles?: Record<number, ColumnRole>
 }
 
 /** Why a price column was left out by itself. */
@@ -99,9 +119,18 @@ export interface SkippedRow {
 
 /** One sheet of the file: read (from which row, how many lines), hidden, or without a table. */
 export interface SheetReport {
+  /** Its place in the file (0: the first sheet). */
+  index: number
   name: string | null
-  /** foreign: the prices for foreigners (a sheet "East Africa", "Rest of the World"): not read */
-  state: 'read' | 'hidden' | 'noTable' | 'foreign'
+  /** The text above its table ("… TARIFF … FOR RAMA, MMI, MIS/UR"). */
+  title: string | null
+  /** read; not read: hidden in Excel, no table, the prices for foreigners, or left out by the manager */
+  state: 'read' | 'hidden' | 'noTable' | 'foreign' | 'off'
+  /** The manager reads it (or not), and how its lines go with the sheets before it. */
+  use: boolean
+  join: JoinMode
+  /** Its columns and what each is read as (also for a sheet not read, to choose it). */
+  layout: ColumnLayout[]
   headerRow: number | null
   /** Rows with something written in them (below the column names for a sheet read). */
   rows: number
@@ -781,7 +810,7 @@ const isHeading = (text: string) =>
 export function readGrid(
   grid: Grid,
   options: ReadOptions = {},
-): Omit<ParsedPriceList, 'format'> | null {
+): Omit<ParsedPriceList, 'format' | 'grids' | 'choices' | 'hiddenSheets'> | null {
   const at =
     options.headerRow != null
       ? grid.rows.findIndex((r) => r.n === options.headerRow)
@@ -912,8 +941,13 @@ export function readGrid(
     sources: [grid],
     sheets: [
       {
+        index: 0,
         name: grid.name,
+        title: title ? title.slice(0, 200) : null,
         state: 'read',
+        use: true,
+        join: 'auto',
+        layout,
         headerRow: header.n,
         rows,
         lines: lines.length,
@@ -926,9 +960,18 @@ export function readGrid(
 }
 
 /** A sheet not read (hidden in Excel, or no column names found), for the report. */
-const notRead = (grid: Grid, state: 'hidden' | 'noTable' | 'foreign'): SheetReport => ({
+const notRead = (
+  grid: Grid,
+  state: 'hidden' | 'noTable' | 'foreign' | 'off',
+  index = 0,
+): SheetReport => ({
+  index,
   name: grid.name,
+  title: sheetTitle(grid),
   state,
+  use: false,
+  join: 'auto',
+  layout: [],
   headerRow: null,
   rows: grid.rows.filter((r) => r.cells.some((c) => cellText(c) != null)).length,
   lines: 0,
@@ -937,23 +980,104 @@ const notRead = (grid: Grid, state: 'hidden' | 'noTable' | 'foreign'): SheetRepo
   zeros: 0,
 })
 
-/** The file read again with the manager's corrections (the row of the names, the columns). */
+/** The title of a sheet: the first long text of its first rows ("… TARIFF … FOR RAMA, MMI"). */
+export function sheetTitle(grid: Grid): string | null {
+  const texts = grid.rows
+    .slice(0, 6)
+    .flatMap((r) => [...new Set(r.cells.map(cellText).filter((x): x is string => !!x))])
+    .filter((x) => x.length > 8 && /[a-z]{3}/i.test(x))
+  const t = texts.find((x) => /tarif|tariff|list|liste|price|prix|\bfor\b/i.test(x)) ?? null
+  return t ? t.slice(0, 200) : null
+}
+
+/** The choices of a file just read: every visible sheet but the foreigners' is read, joined by its codes. */
+export function defaultChoices(grids: Grid[], hidden: Set<number>): SheetChoice[] {
+  return grids.map((g, i) => ({ use: !hidden.has(i) && !foreignSheet(g), join: 'auto' as const }))
+}
+
+/**
+ * The list made from the sheets as the manager chose them: each sheet used is read (with its own
+ * row of column names and columns), then joined to or added after the sheets before it; a sheet
+ * not used is still described (its columns), to be chosen. Null when no sheet gives a line.
+ */
+export function buildPriceList(
+  grids: Grid[],
+  choices: SheetChoice[],
+  format: DocumentFormat,
+  hidden: Set<number>,
+): ParsedPriceList | null {
+  const parts: NonNullable<ReturnType<typeof readGrid>>[] = []
+  const used: number[] = []
+  const sheets: SheetReport[] = []
+  grids.forEach((g, i) => {
+    const c = choices[i] ?? { use: false, join: 'auto' as const }
+    const part = readGrid(g, { headerRow: c.headerRow, roles: c.roles })
+    if (!c.use) {
+      const why = hidden.has(i) ? 'hidden' : foreignSheet(g) ? 'foreign' : 'off'
+      sheets.push({
+        ...notRead(g, why, i),
+        join: c.join,
+        layout: part?.layout ?? [],
+        headerRow: part?.headerRow ?? null,
+        title: part?.title ?? sheetTitle(g),
+      })
+      return
+    }
+    if (!part) {
+      sheets.push({ ...notRead(g, 'noTable', i), use: true, join: c.join })
+      return
+    }
+    parts.push(part)
+    used.push(i)
+    sheets.push({ ...part.sheets[0]!, index: i, use: true, join: c.join })
+  })
+  if (parts.length === 0) return null
+  const merged = mergeParts(
+    parts,
+    format,
+    used.map((i) => choices[i]!.join),
+  )
+  // which sheets were joined to the ones before them
+  const joinedAt = new Set(merged.sheets.filter((x) => x.joined).map((x) => x.name))
+  return {
+    ...merged,
+    sheets: sheets.map((x) =>
+      x.state === 'read' && joinedAt.has(x.name) ? { ...x, joined: true } : x,
+    ),
+    grids,
+    choices,
+    hiddenSheets: [...hidden],
+  }
+}
+
+/** The list made again after the manager changed the choices of the sheets. */
+export function rebuildPriceList(
+  parsed: ParsedPriceList,
+  choices: SheetChoice[],
+): ParsedPriceList | null {
+  const next = buildPriceList(parsed.grids, choices, parsed.format, new Set(parsed.hiddenSheets))
+  return next ? { ...next, from: next.from ?? parsed.from } : null
+}
+
+/**
+ * The file read again with the manager's corrections of one sheet (the row of its column names,
+ * what its columns are): the first sheet read unless another is named.
+ */
 export function rereadPriceList(
   parsed: ParsedPriceList,
   options: ReadOptions,
+  sheetIndex?: number,
 ): ParsedPriceList | null {
-  // the corrections are made on the first sheet (the one shown); the other sheets are read as before
-  const [first, ...rest] = parsed.sources.length ? parsed.sources : [parsed.source]
-  const part = readGrid(first!, options)
-  if (!part) return null
-  const others = rest.map((g) => readGrid(g)).filter((p): p is NonNullable<typeof p> => !!p)
-  const merged = mergeParts([part, ...others], parsed.format)
-  // the sheets read again take their new report; the others (hidden, no table) stay as they were
-  const fresh = new Map(merged.sheets.map((s) => [s.name, s]))
-  const sheets = parsed.sheets.length
-    ? parsed.sheets.map((s) => (s.state === 'read' ? (fresh.get(s.name) ?? s) : s))
-    : merged.sheets
-  return { ...merged, sheets, from: part.from ?? parsed.from }
+  const at =
+    sheetIndex ??
+    Math.max(
+      0,
+      parsed.choices.findIndex((c) => c.use),
+    )
+  const choices = parsed.choices.map((c, i) =>
+    i === at ? { ...c, headerRow: options.headerRow, roles: options.roles } : c,
+  )
+  return rebuildPriceList(parsed, choices)
 }
 
 /** Medicines when the codes are ATC codes or the headers speak of drugs; treatments for RHIC. */
@@ -1114,8 +1238,9 @@ export function pdfToGrid(items: PdfItem[]): Grid | null {
 
 /** Merges what each sheet read (a list may keep its parts on several sheets). */
 export function mergeParts(
-  parts: Omit<ParsedPriceList, 'format'>[],
+  parts: Omit<ParsedPriceList, 'format' | 'grids' | 'choices' | 'hiddenSheets'>[],
   format: ParsedPriceList['format'],
+  modes: JoinMode[] = [],
 ): ParsedPriceList {
   const first = parts[0]!
   const codeKey = (c: string) => c.replace(/\s+/g, '').toUpperCase()
@@ -1127,7 +1252,10 @@ export function mergeParts(
     const codes = p.lines.map((l) => codeKey(l.code)).filter(Boolean)
     const shared = codes.filter((c) => seen.has(c)).length
     for (const c of codes) seen.add(c)
-    return i > 0 && codes.length > 0 && shared / codes.length >= 0.5
+    const mode = modes[i] ?? 'auto'
+    if (i === 0 || mode === 'add') return false
+    if (mode === 'join') return true
+    return codes.length > 0 && shared / codes.length >= 0.5
   })
   const joined = joins.some(Boolean)
   const columns: PriceListColumn[] = []
@@ -1136,15 +1264,17 @@ export function mergeParts(
   const byCode = new Map<string, PriceListLineInput>()
   parts.forEach((p) => {
     const keyMap = new Map<string, string>()
+    // who the column is for: its sheet's name and title
+    const hint = [p.sheet, p.title].filter(Boolean).join(' — ') || null
     for (const c of p.columns) {
       if (joined) {
         const label = p.sheet ? `${p.sheet} · ${c.label}` : c.label
         const key = keyOf(label, taken)
         keyMap.set(c.key, key)
-        columns.push({ key, label })
+        columns.push({ key, label, hint })
       } else {
         keyMap.set(c.key, c.key)
-        if (!columns.some((x) => x.key === c.key)) columns.push(c)
+        if (!columns.some((x) => x.key === c.key)) columns.push({ ...c, hint })
       }
     }
     for (const l of p.lines) {
@@ -1164,6 +1294,9 @@ export function mergeParts(
   })
   return {
     ...first,
+    grids: parts.flatMap((p) => p.sources),
+    choices: parts.map((_, i) => ({ use: true, join: modes[i] ?? 'auto' })),
+    hiddenSheets: [],
     lines,
     columns,
     notes: [...new Set(parts.flatMap((p) => p.notes))].slice(0, 30),
@@ -1191,31 +1324,12 @@ export async function readPriceListFile(file: File): Promise<ParsedPriceList> {
     const problem = e instanceof DocumentError ? e.problem : 'unreadable'
     throw new PriceListFileError(problem === 'noTable' ? 'noHeader' : problem)
   }
-  const { grids, hidden, format } = loaded
-  // every sheet in the file's order: read, hidden in Excel (not read), or without a table
-  const parts: NonNullable<ReturnType<typeof readGrid>>[] = []
-  const sheets: SheetReport[] = []
-  for (const g of grids) {
-    if (hidden.has(g)) {
-      sheets.push(notRead(g, 'hidden'))
-      continue
-    }
-    // the clinic charges Rwandans: a sheet of prices for foreigners is left out
-    if (foreignSheet(g)) {
-      sheets.push(notRead(g, 'foreign'))
-      continue
-    }
-    const part = readGrid(g)
-    if (!part) {
-      sheets.push(notRead(g, 'noTable'))
-      continue
-    }
-    parts.push(part)
-    sheets.push(...part.sheets)
-  }
-  if (parts.length === 0) throw new PriceListFileError('noHeader')
-  const merged = mergeParts(parts, format)
-  if (merged.lines.length === 0) throw new PriceListFileError('empty')
+  const { grids, format } = loaded
+  const hidden = new Set(grids.flatMap((g, i) => (loaded.hidden.has(g) ? [i] : [])))
+  // every sheet in the file's order: read, hidden in Excel, without a table, or for foreigners
+  const built = buildPriceList(grids, defaultChoices(grids, hidden), format, hidden)
+  if (!built) throw new PriceListFileError('noHeader')
+  if (built.lines.length === 0) throw new PriceListFileError('empty')
   // "Final Tariff Tables - Private FEB2026.xlsx": the month the file name says
-  return { ...merged, sheets, from: merged.from ?? monthIn(file.name) }
+  return { ...built, from: built.from ?? monthIn(file.name) }
 }
