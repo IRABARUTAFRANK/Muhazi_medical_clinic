@@ -2140,7 +2140,8 @@
         "rowsIn_other": "{{n}} rows written",
         "state": {
           "hidden": "Hidden in Excel: not read",
-          "noTable": "No column names found: not read"
+          "noTable": "No column names found: not read",
+          "foreign": "Prices for foreigners: not read (the clinic charges Rwandans)"
         },
         "columns": "Price columns",
         "column": "Column",
@@ -2181,7 +2182,10 @@
           "noName": "No code and no name"
         },
         "codeRow": "Code · row",
-        "nameSection": "Name · section"
+        "nameSection": "Name · section",
+        "zeros_one": "{{n}} price of 0 read as no price",
+        "zeros_other": "{{n}} prices of 0 read as no price",
+        "joined": "Same treatments as the sheet before: its prices are added to them"
       },
       "pay": {
         "title": "Which column each insurer pays",

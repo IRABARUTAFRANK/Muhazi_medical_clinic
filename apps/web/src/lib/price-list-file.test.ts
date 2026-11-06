@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   evalFormula,
+  foreignSheet,
   keyOf,
   leftOutReason,
   mergeParts,
@@ -308,7 +309,19 @@ describe('published price list reader', () => {
     )!
     expect(p.columns.map((c) => c.label)).toEqual(['General Clinics *'])
     expect(leftOutReason('Tertiary Health Facility', ['General Clinics'])).toBe('otherFacility')
-    expect(leftOutReason('Tertiary Health Facility', ['Primary Health Facility'])).toBeNull()
+    // a primary health facility is the level of a general clinic: the higher levels are left out
+    expect(
+      leftOutReason('Tertiary Health Facility', [
+        'Primary Health Facility',
+        'Tertiary Health Facility',
+      ]),
+    ).toBe('otherFacility')
+    expect(
+      leftOutReason('Primary Health Facility', [
+        'Primary Health Facility',
+        'Tertiary Health Facility',
+      ]),
+    ).toBeNull()
     expect(leftOutReason('Private Insurances', ['General Clinics'])).toBeNull()
     expect(leftOutReason('International insurers', [])).toBeNull()
     // no general clinics' column: nothing is left out
@@ -335,5 +348,62 @@ describe('published price list reader', () => {
     expect(evalFormula('=Sheet2!A1', cells)).toBeNull()
     expect(evalFormula('=-(A1-B1)^2', cells)).toBe(100)
     expect(evalFormula('=50%*A1+2^3^2', cells)).toBe(69)
+  })
+  it('reads the full MoH tariff workbook: a sheet per payer joined by code, foreigners left out, a price of 0 is no price', () => {
+    const title = (who: string) => [
+      `RWANDA HEALTH SERVICES TARIFF IN PRIVATE FACILITIES 2025-2027 FOR ${who}`,
+    ]
+    const sheet = (name: string, who: string, head: string[], rows: unknown[][]) =>
+      grid([title(who), [], ['RHIC', 'Speciality', 'Procedure name', ...head], ...rows], name)
+    const rama = sheet(
+      'RAMA',
+      'RAMA, MMI, MIS/UR',
+      [
+        'Primary Health Facility *',
+        'Secondarly Health Facility **',
+        'Tertiary Health Facility ***',
+      ],
+      [
+        ['RHIC-A-001', 'Anaesthesia', 'Bier block', 40115, 41746, 43620],
+        ['RHIC-C-001', 'CT Surgery', 'Heart surgery', 0, 0, 900000],
+      ],
+    )
+    const privates = sheet(
+      'Private Insurances',
+      'PRIVATE INSURANCE AND NON INSURED RWANDANS',
+      ['General Clinics *', 'Polyclinic **', 'Hospitals ***'],
+      [
+        ['RHIC-A-001', 'Anaesthesia', 'Bier block', 43720, 45377, 47413],
+        ['RHIC-C-001', 'CT Surgery', 'Heart surgery', 0, 0, 990000],
+      ],
+    )
+    const eac = sheet(
+      'East Africa',
+      'CITIZENS FROM EAST AFRICA',
+      ['General Clinics *', 'Polyclinic **', 'Hospitals ***'],
+      [['RHIC-A-001', 'Anaesthesia', 'Bier block', 43720, 45377, 47413]],
+    )
+    expect(foreignSheet(eac)).toBe(true)
+    expect(foreignSheet(rama)).toBe(false)
+    expect(foreignSheet(privates)).toBe(false)
+    const parts = [readGrid(rama)!, readGrid(privates)!]
+    expect(parts[0]!.columns.map((c) => c.label)).toEqual(['Primary Health Facility *'])
+    expect(parts[0]!.sheets[0]!.zeros).toBe(1)
+    const p = mergeParts(parts, 'xlsx')
+    expect(p.columns.map((c) => c.label)).toEqual([
+      'RAMA · Primary Health Facility *',
+      'Private Insurances · General Clinics *',
+    ])
+    expect(p.lines).toHaveLength(2)
+    expect(p.lines[0]!.prices).toEqual({
+      rama_primary_health_facility: 40115,
+      private_insurances_general_clinics: 43720,
+    })
+    // not done at a general clinic: no price
+    expect(p.lines[1]!.prices).toEqual({
+      rama_primary_health_facility: null,
+      private_insurances_general_clinics: null,
+    })
+    expect(p.sheets.map((s) => !!s.joined)).toEqual([false, true])
   })
 })

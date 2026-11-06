@@ -2140,7 +2140,8 @@
         "rowsIn_other": "{{n}} rangées écrites",
         "state": {
           "hidden": "Masquée dans Excel : non lue",
-          "noTable": "Aucun nom de colonne trouvé : non lue"
+          "noTable": "Aucun nom de colonne trouvé : non lue",
+          "foreign": "Prix pour les étrangers : non lue (la clinique facture des Rwandais)"
         },
         "columns": "Colonnes de prix",
         "column": "Colonne",
@@ -2181,7 +2182,10 @@
           "noName": "Ni code ni nom"
         },
         "codeRow": "Code · rangée",
-        "nameSection": "Nom · rubrique"
+        "nameSection": "Nom · rubrique",
+        "zeros_one": "{{n}} prix de 0 lu comme sans prix",
+        "zeros_other": "{{n}} prix de 0 lus comme sans prix",
+        "joined": "Mêmes soins que la feuille précédente : ses prix leur sont ajoutés"
       },
       "pay": {
         "title": "La colonne que paie chaque assureur",

@@ -100,7 +100,8 @@ export interface SkippedRow {
 /** One sheet of the file: read (from which row, how many lines), hidden, or without a table. */
 export interface SheetReport {
   name: string | null
-  state: 'read' | 'hidden' | 'noTable'
+  /** foreign: the prices for foreigners (a sheet "East Africa", "Rest of the World"): not read */
+  state: 'read' | 'hidden' | 'noTable' | 'foreign'
   headerRow: number | null
   /** Rows with something written in them (below the column names for a sheet read). */
   rows: number
@@ -108,6 +109,11 @@ export interface SheetReport {
   skipped: SkippedRow[]
   /** The price columns of the sheet left out by themselves. */
   leftOut: { label: string; why: LeftOutReason }[]
+  /** Prices of 0 read as no price (Excel shows them "-": not done at this kind of facility). */
+  zeros: number
+  /** Its lines have the same codes as the sheet before it (the same list for other payers): its
+   * prices were joined to those lines. */
+  joined?: boolean
 }
 
 /** What a column is read as; 'ignore': left out. */
@@ -422,13 +428,29 @@ export function leftOutReason(label: string, labels: string[]): LeftOutReason | 
   const h = norm(label)
   if (!h) return null
   if (FOREIGN.test(h) && !/\b(insur|assur)[a-z]*\b/.test(h)) return 'foreign'
-  if (
-    !GENERAL_CLINIC.test(h) &&
-    OTHER_FACILITY.test(h) &&
-    labels.some((l) => GENERAL_CLINIC.test(norm(l)))
-  )
-    return 'otherFacility'
+  if (!GENERAL_CLINIC.test(h) && OTHER_FACILITY.test(h)) {
+    if (labels.some((l) => GENERAL_CLINIC.test(norm(l)))) return 'otherFacility'
+    // "Primary Health Facility *" is the level of a general clinic (its * is the general
+    // clinics' *): the secondary and tertiary levels are other kinds of facility
+    if (
+      !/\bprimary\b/.test(h) &&
+      labels.some((l) => /\bprimary\b/.test(norm(l)) && OTHER_FACILITY.test(norm(l)))
+    )
+      return 'otherFacility'
+  }
   return null
+}
+
+/** A sheet of prices for foreigners: its name or its title says so ("East Africa", "FOR CITIZENS OF THE REST OF THE WORLD"). */
+const FOREIGN_SHEET =
+  /\b(east africa|east african|east africans|eac|africans|other african|rest of the world|foreigners?|non rwandans?|etrangers?|citizens from|citizens of|abanyamahanga)\b/
+export function foreignSheet(grid: Grid): boolean {
+  if (grid.name && FOREIGN_SHEET.test(norm(grid.name))) return true
+  const top = grid.rows
+    .slice(0, 4)
+    .flatMap((r) => r.cells.map(cellText))
+    .filter((x): x is string => !!x && x.length > 12)
+  return top.some((x) => FOREIGN_SHEET.test(norm(x)) && /\b(tarif|tariff|price|prix)/i.test(x))
 }
 
 /** How each column is read, from its header and from its values under it (or as corrected). */
@@ -809,6 +831,7 @@ export function readGrid(
   const notes: string[] = [...(grid.notes ?? [])]
   const skipped: SkippedRow[] = []
   let rows = 0
+  let zeros = 0
   let heading: string | null = null
   for (const r of body) {
     const cells = r.cells
@@ -825,7 +848,12 @@ export function readGrid(
     const linePrices: Record<string, number | string | null> = {}
     let anyPrice = false
     for (const p of prices) {
-      const v = priceIn(cells[p.index], r.n, p.index, cellsOf)
+      let v = priceIn(cells[p.index], r.n, p.index, cellsOf)
+      // a price of 0 (Excel shows "-") is not a price: not done at this kind of facility
+      if (v === 0) {
+        v = null
+        zeros++
+      }
       linePrices[p.key!] = v
       if (v != null) anyPrice = true
     }
@@ -891,13 +919,14 @@ export function readGrid(
         lines: lines.length,
         skipped,
         leftOut: layout.flatMap((c) => (c.leftOut ? [{ label: c.label, why: c.leftOut }] : [])),
+        zeros,
       },
     ],
   }
 }
 
 /** A sheet not read (hidden in Excel, or no column names found), for the report. */
-const notRead = (grid: Grid, state: 'hidden' | 'noTable'): SheetReport => ({
+const notRead = (grid: Grid, state: 'hidden' | 'noTable' | 'foreign'): SheetReport => ({
   name: grid.name,
   state,
   headerRow: null,
@@ -905,6 +934,7 @@ const notRead = (grid: Grid, state: 'hidden' | 'noTable'): SheetReport => ({
   lines: 0,
   skipped: [],
   leftOut: [],
+  zeros: 0,
 })
 
 /** The file read again with the manager's corrections (the row of the names, the columns). */
@@ -1088,16 +1118,59 @@ export function mergeParts(
   format: ParsedPriceList['format'],
 ): ParsedPriceList {
   const first = parts[0]!
+  const codeKey = (c: string) => c.replace(/\s+/g, '').toUpperCase()
+  // a sheet whose codes are mostly those of the sheets before it is the same list for other
+  // payers (the MoH tariff: a sheet "RAMA", a sheet "Private Insurances"): its prices join the
+  // lines of the same code, and every price column is named after its sheet
+  const seen = new Set<string>()
+  const joins = parts.map((p, i) => {
+    const codes = p.lines.map((l) => codeKey(l.code)).filter(Boolean)
+    const shared = codes.filter((c) => seen.has(c)).length
+    for (const c of codes) seen.add(c)
+    return i > 0 && codes.length > 0 && shared / codes.length >= 0.5
+  })
+  const joined = joins.some(Boolean)
   const columns: PriceListColumn[] = []
-  for (const p of parts)
-    for (const c of p.columns) if (!columns.some((x) => x.key === c.key)) columns.push(c)
+  const taken = new Set<string>()
+  const lines: PriceListLineInput[] = []
+  const byCode = new Map<string, PriceListLineInput>()
+  parts.forEach((p) => {
+    const keyMap = new Map<string, string>()
+    for (const c of p.columns) {
+      if (joined) {
+        const label = p.sheet ? `${p.sheet} · ${c.label}` : c.label
+        const key = keyOf(label, taken)
+        keyMap.set(c.key, key)
+        columns.push({ key, label })
+      } else {
+        keyMap.set(c.key, c.key)
+        if (!columns.some((x) => x.key === c.key)) columns.push(c)
+      }
+    }
+    for (const l of p.lines) {
+      const prices = Object.fromEntries(
+        Object.entries(l.prices).map(([k, v]) => [keyMap.get(k) ?? k, v]),
+      )
+      const k = codeKey(l.code)
+      const into = joined && k ? byCode.get(k) : undefined
+      if (into) {
+        Object.assign(into.prices, prices)
+        continue
+      }
+      const line = { ...l, prices }
+      lines.push(line)
+      if (k && !byCode.has(k)) byCode.set(k, line)
+    }
+  })
   return {
     ...first,
-    lines: parts.flatMap((p) => p.lines),
+    lines,
     columns,
     notes: [...new Set(parts.flatMap((p) => p.notes))].slice(0, 30),
     sources: parts.flatMap((p) => p.sources),
-    sheets: parts.flatMap((p) => p.sheets),
+    sheets: parts.flatMap((p, i) =>
+      joins[i] ? p.sheets.map((x) => ({ ...x, joined: true })) : p.sheets,
+    ),
     sheet:
       parts.length > 1
         ? parts
@@ -1125,6 +1198,11 @@ export async function readPriceListFile(file: File): Promise<ParsedPriceList> {
   for (const g of grids) {
     if (hidden.has(g)) {
       sheets.push(notRead(g, 'hidden'))
+      continue
+    }
+    // the clinic charges Rwandans: a sheet of prices for foreigners is left out
+    if (foreignSheet(g)) {
+      sheets.push(notRead(g, 'foreign'))
       continue
     }
     const part = readGrid(g)

@@ -2988,7 +2988,8 @@
         "rowsIn_other": "Imirongo {{n}} yanditse",
         "state": {
           "hidden": "Rwahishwe muri Excel: ntirwasomwe",
-          "noTable": "Nta mazina y’inkingi yabonetse: ntirwasomwe"
+          "noTable": "Nta mazina y’inkingi yabonetse: ntirwasomwe",
+          "foreign": "Ibiciro by’abanyamahanga: ntirwasomwe (ivuriro ryishyuza Abanyarwanda)"
         },
         "columns": "Inkingi z’ibiciro",
         "column": "Inkingi",
@@ -3029,7 +3030,10 @@
           "noName": "Nta kode nta n’izina"
         },
         "codeRow": "Kode · umurongo",
-        "nameSection": "Izina · igice"
+        "nameSection": "Izina · igice",
+        "zeros_one": "Igiciro {{n}} cya 0 cyasomwe nk’igiciro kidahari",
+        "zeros_other": "Ibiciro {{n}} bya 0 byasomwe nk’ibiciro bidahari",
+        "joined": "Serivisi zimwe n’izo ku rupapuro rubanza: ibiciro byarwo byongewe kuri zo"
       },
       "pay": {
         "title": "Inkingi buri kigo cy’ubwishingizi cyishyura",

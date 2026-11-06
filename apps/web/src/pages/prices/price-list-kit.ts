@@ -61,7 +61,8 @@ export function guessFollowColumn(
     )
   }
   if (type === 'rssb_rama') return by(/\b(rama|rssb)\b/i) ?? ''
-  if (type === 'mmi') return by(/\b(mmi|military)\b/i) ?? ''
+  // MMI pays RAMA's prices (the MoH tariff's column "RAMA; MMI", its sheet "RAMA")
+  if (type === 'mmi') return by(/\b(mmi|military)\b/i) ?? by(/\b(rama|rssb)\b/i) ?? ''
   if (type === 'cbhi') return by(/\b(cbhi|mutuel+e?s?)\b/i) ?? ''
   if (type === 'private' || type === 'employer') {
     const first = name.trim().split(/\s+/)[0] ?? ''

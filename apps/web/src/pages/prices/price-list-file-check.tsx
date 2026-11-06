@@ -68,6 +68,10 @@ export function FileCheck({
       zero: parsed.lines.filter(zero).length,
       duplicate: parsed.lines.filter(isDuplicate).length,
     }
+    // each line once, whatever it needs a look for
+    const toLook = parsed.lines.filter(
+      (l) => noMain(l) || notNumber(l) || zero(l) || isDuplicate(l),
+    ).length
     const perColumn = cols.map((c) => {
       let priced = 0
       let empty = 0
@@ -83,7 +87,7 @@ export function FileCheck({
       }
       return { ...c, priced, empty, text, zeros }
     })
-    return { tests, counts, perColumn }
+    return { tests, counts, perColumn, toLook }
   }, [parsed.lines, cols, mainColumn])
 
   const leftOut = useMemo(() => {
@@ -93,8 +97,7 @@ export function FileCheck({
   }, [parsed.sheets])
   const skipped = parsed.sheets.flatMap((s) => s.skipped.map((r) => ({ ...r, sheet: s.name })))
   const notRead = parsed.sheets.filter((s) => s.state !== 'read')
-  const toLook =
-    check.counts.noMain + check.counts.notNumber + check.counts.zero + check.counts.duplicate
+  const toLook = check.toLook
 
   const lines = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -192,7 +195,10 @@ export function FileCheck({
                         {t('prices.lists.fc.rowsBelow', { count: s.rows, n: formatNumber(s.rows) })}
                         {s.skipped.length > 0 &&
                           ` · ${t('prices.lists.fc.notLines', { count: s.skipped.length })}`}
+                        {s.zeros > 0 &&
+                          ` · ${t('prices.lists.fc.zeros', { count: s.zeros, n: formatNumber(s.zeros) })}`}
                       </span>
+                      {s.joined && <Badge tone="blue">{t('prices.lists.fc.joined')}</Badge>}
                     </>
                   ) : (
                     <>

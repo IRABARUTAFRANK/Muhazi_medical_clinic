@@ -23505,6 +23505,117 @@ await step('0137 F: an insurer’s own list that is not RSSB’s is not shared',
   return `${r.length} other insurer list(s): nothing shared`
 })
 // @@t137-end
+// @@t138-begin
+// ---------------------------------------------------------------- 0138 a big price list within the time allowed
+const json138 = (x) => JSON.stringify(x)
+await step(
+  '0138: the faster check answers exactly as before (a Ministry list with links and own prices, an RSSB list, a list made again)',
+  async () => {
+    // the check of these lists with the definition before 0138 (the 0135 one, re-run above)…
+    const cases = [
+      [t135.book, t135.cols, t135.lines, { privateColumn: 'privates' }],
+      [t136.book2, t136.cols, t136.lines, { privateColumn: 'privates' }],
+      [
+        t137.book,
+        [{ key: 'new_price', label: 'NEW PRICE' }],
+        [
+          {
+            row: 1,
+            code: 'RHIC-R137-001',
+            name: 'Act 137 one',
+            prices: { new_price: 7700 },
+            note: 'NC',
+          },
+          { row: 2, code: 'RHIC-R137-002', name: 'Act 137 two', prices: { new_price: 9700 } },
+        ],
+        { payerColumn: 'new_price' },
+      ],
+    ]
+    const run = async () => {
+      const out = []
+      for (const [book, cols, lines, settings] of cases) {
+        await as(staff.manager)
+        out.push(
+          (
+            await one(
+              `select import_tariff($1, $4::jsonb, 'Check 138', current_date + 400, $2::jsonb, $3::jsonb) as j`,
+              [book, json138(cols), json138(lines), json138(settings)],
+            )
+          ).j,
+        )
+      }
+      await asAdmin()
+      return out
+    }
+    const before = await run()
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270118090000_price_list_speed.sql'), 'utf8'),
+    )
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270118090000_price_list_speed.sql'), 'utf8'),
+    )
+    const after = await run()
+    for (let k = 0; k < cases.length; k++)
+      if (json138(before[k]) !== json138(after[k]))
+        throw new Error(
+          `case ${k}: ${json138(before[k]).slice(0, 400)} ≠ ${json138(after[k]).slice(0, 400)}`,
+        )
+    const byCode = after[0].clinic.byCode.length
+    return `3 checks identical · ${byCode} treatment(s) of the clinic found by code on the Ministry list`
+  },
+)
+await step('0138: the indexes on the codes are there and used by a search by code', async () => {
+  await asAdmin()
+  const idx = (
+    await db.query(
+      `select indexname from pg_indexes where indexname in ('service_tariff_code_norm_idx', 'item_tariff_code_norm_idx', 'service_list_book_idx') order by 1`,
+    )
+  ).rows.map((r) => r.indexname)
+  // the test database is small: the planner would rather read the table; it must be able to use the index
+  await db.exec('analyze service; set enable_seqscan = off')
+  const plan = (
+    await db.query(
+      `explain select id from service where tariff_code_norm(coalesce(nullif(tariff_code, ''), code)) = 'RHIC-X136-002'`,
+    )
+  ).rows
+    .map((r) => r['QUERY PLAN'])
+    .join(' ')
+  await db.exec('reset enable_seqscan')
+  if (idx.length !== 3 || !/service_tariff_code_norm_idx/.test(plan))
+    throw new Error(json138({ idx, plan }))
+  return 'service and item code indexes · the search uses service_tariff_code_norm_idx'
+})
+await step(
+  '0138: a list taken away and kept again still brings its treatments back (the faster making of treatments)',
+  async () => {
+    await as(staff.manager)
+    await db.query(`select remove_tariff_book($1)`, [t136.book2])
+    const p = (
+      await one(
+        `select import_tariff(null, $1::jsonb, 'MoH 138', current_date, $2::jsonb, $3::jsonb, null, null, null, false) as j`,
+        [
+          json138({
+            name: 'MoH clinic tariff 138',
+            publisher: 'Ministry of Health',
+            kind: 'treatments',
+            scope: 'clinic',
+            privateColumn: 'privates',
+          }),
+          json138(t136.cols),
+          json138(t136.lines),
+        ],
+      )
+    ).j
+    await asAdmin()
+    const s2 = await one(`select active, deleted_at, list_book_id from service where id = $1`, [
+      t136.s2,
+    ])
+    if (s2.deleted_at || !s2.active || s2.list_book_id !== p.bookId)
+      throw new Error(json138({ s2, p: p.clinic }))
+    return `${p.clinic.created} made again · the used treatment taken over and shown`
+  },
+)
+// @@t138-end
 finish()
 
 function finish() {
