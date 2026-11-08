@@ -741,7 +741,8 @@ export function VisitPage({
                         )}
                       </CardHeader>
                       <CardBody className="gap-3">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                        {/* the payer on its own line, the member number and its Save button under it (0142) */}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:[&>:first-child]:col-span-full">
                           <Select
                             label={t('visit.payer.label')}
                             value={bill?.payerId ?? ''}

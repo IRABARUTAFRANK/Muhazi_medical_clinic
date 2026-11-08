@@ -414,7 +414,7 @@ export function PickBars({
           </>
         )
         const cls = cn(
-          'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-md px-2 py-1.5 @md:grid-cols-[minmax(96px,170px)_1fr_auto]',
+          'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-md px-2 py-1.5 @md:grid-cols-[minmax(96px,170px)_minmax(0,1fr)_auto]',
           on && 'bg-primary-tint ring-primary/30 ring-1',
         )
         return onPick ? (

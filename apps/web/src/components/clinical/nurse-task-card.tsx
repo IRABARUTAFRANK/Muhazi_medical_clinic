@@ -138,7 +138,7 @@ export function NurseTaskCard({
       )}
       {!nurse && (
         <form onSubmit={submit}>
-          <CardBody className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[2fr_1fr_auto]">
+          <CardBody className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
             <NurseRecipient
               value={forWhom}
               onChange={setForWhom}

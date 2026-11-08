@@ -2022,16 +2022,15 @@
     "editLine": "Hindura",
     "removeLine": "Kuraho",
     "editDxHint": "Hindura iyi ndwara yagaragaye utanga impamvu; inyandiko ya mbere iguma mu mateka.",
-    "removeDxHint": "Kuraho iyi ndwara yagaragaye utanga impamvu; igumaho igaragara, yaciweho umurongo.",
+    "removeDxHint": "Kuraho iyi ndwara yagaragaye utanga impamvu; iva ku rutonde, kandi amateka y’impinduka z’uku kwivuza arayibika.",
     "editNoteHint": "Hindura iyi nyandiko utanga impamvu; inyandiko ya mbere iguma mu mateka.",
     "editWhy": "Kuki bihinduwe?",
     "editWhyPh": "urugero: igisubizo cy’ikizamini, ikosa ryo kwandika",
     "removeWhy": "Kuki indwara yagaragaye ikuweho?",
-    "removeHint": "Indwara yagaragaye iguma mu nyandiko, yaciweho umurongo, hamwe n’izina ryawe n’impamvu; ntibarwa ukundi.",
+    "removeHint": "Indwara iva muri dosiye; amateka y’impinduka z’uku kwivuza arayibika hamwe n’izina ryawe n’impamvu.",
     "saveChange": "Bika impinduka",
     "editedBy": "byahinduwe na {{name}} ku wa {{when}}",
     "editedWhy": "impamvu: {{reason}}",
-    "removedBy": "byakuweho na {{name}} ku wa {{when}}: {{reason}}",
     "previousVersions_one": "Inyandiko ya mbere {{count}}",
     "previousVersions_other": "Inyandiko za mbere {{count}}",
     "versionWrote": "byanditswe na {{name}} ku wa {{when}}",
@@ -2075,7 +2074,8 @@
       "by": "na {{name}} ({{role}})",
       "ordered": "byategetswe na muganga",
       "notOrdered": "ntibyategetswe na muganga"
-    }
+    },
+    "noImagingHint": "Nta echographie cyangwa ikindi kizamini cy’amashusho kiri ku rutonde rw’ibiciro: bigaragara hano, munsi ya Echographie, iyo ubuvuzi buri mu cyiciro cy’Amashusho (Ibiciro → Ubuvuzi; urutonde rwa Minisiteri rushyira imirongo yarwo y’amashusho aho)."
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -6043,7 +6043,7 @@
       "editDx": "Uhindure indwara yagaragaye “{{dx}}” ya {{name}}?",
       "editDxBody": "Inyandiko ya mbere iguma mu mateka y’inyandiko hamwe n’impamvu yawe: “{{reason}}”.",
       "removeDx": "Ukureho indwara yagaragaye “{{dx}}” ya {{name}}?",
-      "removeDxBody": "Iguma mu nyandiko, yaciweho umurongo, hamwe n’impamvu yawe: “{{reason}}”. Ntibarwa ukundi.",
+      "removeDxBody": "Iva muri dosiye; amateka y’impinduka z’uku kwivuza arayibika hamwe n’impamvu yawe: “{{reason}}”. Ntikibarwa.",
       "editNote": "Uhindure iyi nyandiko ya {{name}}?",
       "changeYes": "Yego, hindura",
       "removeYes": "Yego, kuraho",

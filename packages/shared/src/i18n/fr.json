@@ -3097,16 +3097,15 @@
     "editLine": "Modifier",
     "removeLine": "Retirer",
     "editDxHint": "Modifier ce diagnostic avec une raison ; l’ancien texte reste dans l’historique.",
-    "removeDxHint": "Retirer ce diagnostic avec une raison ; il reste visible, barré.",
+    "removeDxHint": "Retirer ce diagnostic avec une raison ; il quitte la liste, et l’historique des modifications de la visite le garde.",
     "editNoteHint": "Modifier cette note avec une raison ; l’ancien texte reste dans l’historique.",
     "editWhy": "Pourquoi ce changement ?",
     "editWhyPh": "ex. le résultat du test, une faute de frappe",
     "removeWhy": "Pourquoi le diagnostic est-il retiré ?",
-    "removeHint": "Le diagnostic reste dans le dossier, barré, avec votre nom et la raison ; il n’est plus compté.",
+    "removeHint": "Le diagnostic quitte le dossier ; l’historique des modifications de la visite le garde avec votre nom et la raison.",
     "saveChange": "Enregistrer le changement",
     "editedBy": "modifié par {{name}} le {{when}}",
     "editedWhy": "raison : {{reason}}",
-    "removedBy": "retiré par {{name}} le {{when}} : {{reason}}",
     "previousVersions_one": "{{count}} version précédente",
     "previousVersions_other": "{{count}} versions précédentes",
     "versionWrote": "écrit par {{name}} le {{when}}",
@@ -3150,7 +3149,8 @@
       "by": "par {{name}} ({{role}})",
       "ordered": "ordonné par le médecin",
       "notOrdered": "non ordonné par le médecin"
-    }
+    },
+    "noImagingHint": "Aucune échographie ni autre examen d’imagerie n’est encore dans la liste des prix : ils apparaissent ici, sous Échographie, dès qu’un acte est dans la catégorie Imagerie (Prix → Actes ; la liste du Ministère y place ses lignes d’imagerie)."
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -6034,7 +6034,7 @@
       "editDx": "Modifier le diagnostic « {{dx}} » de {{name}} ?",
       "editDxBody": "L’ancien texte reste dans l’historique du dossier avec votre raison : « {{reason}} ».",
       "removeDx": "Retirer le diagnostic « {{dx}} » de {{name}} ?",
-      "removeDxBody": "Il reste dans le dossier, barré, avec votre raison : « {{reason}} ». Il n’est plus compté.",
+      "removeDxBody": "Il quitte le dossier ; l’historique des modifications de la visite le garde avec votre raison : « {{reason}} ». Il n’est plus compté.",
       "editNote": "Modifier cette note de {{name}} ?",
       "changeYes": "Oui, modifier",
       "removeYes": "Oui, retirer",

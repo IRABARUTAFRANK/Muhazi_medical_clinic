@@ -31,7 +31,7 @@ export function SiteFooter() {
   return (
     <footer className="footer-gradient relative mt-auto text-sm text-white/80">
       <div className="brand-bar h-1" aria-hidden="true" />
-      <Wrap className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1.2fr]">
+      <Wrap className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
         {/* ABOUT + CONTACT */}
         <div className="flex flex-col gap-4 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center gap-3">
@@ -173,7 +173,7 @@ export function SiteFooter() {
         {/* HOURS */}
         <div>
           <h3 className={title}>{t('landing.footer.hours')}</h3>
-          <dl className="m-0 grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 tabular-nums">
+          <dl className="m-0 grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-2 tabular-nums">
             {hoursRows(hours).map((h) => (
               <HoursRow
                 key={h.key}

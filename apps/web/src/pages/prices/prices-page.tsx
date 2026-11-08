@@ -509,7 +509,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
 
         {/* Search and filter */}
         <Card>
-          <CardBody className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[2fr_1fr_auto] lg:grid-cols-[2fr_1fr_auto_auto]">
+          <CardBody className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto]">
             <Field
               label={t('prices.search')}
               value={query}

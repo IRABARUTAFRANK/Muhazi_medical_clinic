@@ -916,7 +916,7 @@ function MoreInfo({
         {adding && (
           <form
             onSubmit={(e) => void add(e)}
-            className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_2fr_auto]"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]"
           >
             <Field
               label={t('file.fieldName')}

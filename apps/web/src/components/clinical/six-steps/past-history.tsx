@@ -129,7 +129,7 @@ function PastVisitRow({ visit: v, open: first }: { visit: PastVisit; open: boole
         </span>
       </button>
       {open && (
-        <dl className="m-0 grid grid-cols-1 gap-x-4 gap-y-1.5 px-3 pb-3 pl-8 text-[13px] sm:grid-cols-[10rem_1fr]">
+        <dl className="m-0 grid grid-cols-1 gap-x-4 gap-y-1.5 px-3 pb-3 pl-8 text-[13px] sm:grid-cols-[10rem_minmax(0,1fr)]">
           <dt className="text-ink-3 font-semibold">{t('sixSteps.sections.complaint')}</dt>
           <dd className="m-0">{v.complaint ?? '—'}</dd>
           <dt className="text-ink-3 font-semibold">{t('sixSteps.definitive.title')}</dt>

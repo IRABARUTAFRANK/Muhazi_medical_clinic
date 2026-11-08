@@ -184,7 +184,7 @@ export function CatalogueTools({
             {t('prices.tools.moveTitle')}
           </h4>
           <p className="text-ink-2 m-0 text-[14px]">{t('prices.tools.moveLead')}</p>
-          <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <Select
               label={t('prices.form.group')}
               value={moveCategory?.id ?? ''}

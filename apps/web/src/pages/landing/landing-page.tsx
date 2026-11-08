@@ -258,13 +258,13 @@ export function LandingPage() {
               {profile.sector}, {profile.district} · {profile.province}, {profile.country}
             </p>
           </div>
-          <div className="pc:grid-cols-[1fr_1fr_1.3fr] grid grid-cols-1 gap-4">
+          <div className="pc:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)] grid grid-cols-1 gap-4">
             <div className="card-glow bg-card flex flex-col gap-3 rounded-2xl p-6" data-reveal>
               <span className="icon-gradient inline-flex size-11 items-center justify-center rounded-xl text-white">
                 <Clock size={22} aria-hidden="true" />
               </span>
               <h3 className="m-0 text-lg font-bold">{t('landing.visit.hours')}</h3>
-              <div className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1.5 text-[15px] tabular-nums">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1.5 text-[15px] tabular-nums">
                 {hoursRows(hours).map((h) => (
                   <HoursRow
                     key={h.key}

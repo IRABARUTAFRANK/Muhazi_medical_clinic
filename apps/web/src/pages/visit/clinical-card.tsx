@@ -336,7 +336,8 @@ export function ClinicalCard({
   )
   // the previous versions unfolded, per line
   const [versionsOf, setVersionsOf] = useState<string | null>(null)
-  /** The diagnoses still standing (a removed one stays in the record, struck through). */
+  /** The diagnoses still standing (a removed one leaves the list: the visit's change log keeps
+   *  what was written, by whom it was withdrawn and why — 0142). */
   const standing = (list: Diagnosis[]) => list.filter((d) => !d.removedAt)
   // the clinic pharmacy's usable stock, and the official list for medicines bought outside
   const { data: rxStock = null } = useRxStock(mode === 'rx')
@@ -1333,7 +1334,10 @@ export function ClinicalCard({
   // definitive diagnosis of the visit is the primary one), no "also in the differential list"
   const dxForm = (
     <Reveal focus block="nearest">
-      <form onSubmit={submitDx} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+      <form
+        onSubmit={submitDx}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+      >
         {!stepper && (
           <p className="text-ink-3 col-span-full m-0 text-xs">{t('clinical.dxHintAuto')}</p>
         )}
@@ -1668,6 +1672,11 @@ export function ClinicalCard({
           )
         )}
         {tests.length === 0 && <EmptyNote>{t('clinical.noTests')}</EmptyNote>}
+        {/* 0142: the ultrasounds of the chooser are the treatments of a category ordered at the
+            ultrasound desk (the Imaging category): none yet, say so */}
+        {tests.length > 0 && !desks.includes('ultrasound') && (
+          <p className="text-ink-3 m-0 text-[13px]">{t('clinical.noImagingHint')}</p>
+        )}
         {/* 0141: who does an ultrasound — the desk, the doctor, a colleague */}
         {isDoctorUser(user) && chosenTests.some(isScan) && (
           <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
@@ -1868,7 +1877,6 @@ export function ClinicalCard({
   const renderDx = (d: Diagnosis) => {
     const editingThis = dxEdit?.id === d.id
     const removingThis = dxRemove?.id === d.id
-    const removed = !!d.removedAt
     // 0127: a possible diagnosis (step 3), and whether it was confirmed in step 5
     const differential = stepper && stageOf(d) === 'differential'
     const confirmedAs = differential
@@ -1878,19 +1886,11 @@ export function ClinicalCard({
     return (
       <Row key={d.id} className="flex-wrap items-start gap-3 py-2">
         {differential ? (
-          <Badge
-            tone={removed ? 'grey' : confirmedAs ? 'green' : 'orange'}
-            dot={false}
-            className="mt-0.5"
-          >
+          <Badge tone={confirmedAs ? 'green' : 'orange'} dot={false} className="mt-0.5">
             {t(confirmedAs ? 'sixSteps.confirmedBadge' : 'sixSteps.possibleBadge')}
           </Badge>
         ) : (
-          <Badge
-            tone={removed ? 'grey' : d.type === 'primary' ? 'blue' : 'grey'}
-            dot={false}
-            className="mt-0.5"
-          >
+          <Badge tone={d.type === 'primary' ? 'blue' : 'grey'} dot={false} className="mt-0.5">
             {t(`clinical.type.${d.type}`)}
           </Badge>
         )}
@@ -1941,7 +1941,7 @@ export function ClinicalCard({
             </Reveal>
           ) : (
             <>
-              <span className={cn('block font-semibold', removed && 'line-through')}>
+              <span className="block font-semibold">
                 {d.text}
                 {d.provisional && !stepper && (
                   <span className="text-ink-3 ml-2 text-xs">({t('clinical.provisional')})</span>
@@ -1962,20 +1962,6 @@ export function ClinicalCard({
                   .filter(Boolean)
                   .join(' · ')}
               </span>
-              {removed && (
-                <span className="text-red mt-1 block text-xs font-semibold">
-                  <XCircle
-                    size={11}
-                    aria-hidden="true"
-                    className="mr-1 inline-block align-[-1px]"
-                  />
-                  {t('clinical.removedBy', {
-                    name: d.removedBy ?? '',
-                    when: when(d.removedAt!),
-                    reason: d.removeReason ?? '',
-                  })}
-                </span>
-              )}
               {editedMark(d, d.history)}
               {removingThis && (
                 <Reveal focus block="nearest">
@@ -2012,7 +1998,7 @@ export function ClinicalCard({
             </>
           )}
         </span>
-        {differential && !removed && !confirmedAs && !editingThis && !removingThis && clinician && (
+        {differential && !confirmedAs && !editingThis && !removingThis && clinician && (
           <Button
             size="sm"
             variant="success"
@@ -2025,7 +2011,7 @@ export function ClinicalCard({
             {t('sixSteps.confirm')}
           </Button>
         )}
-        {!removed && !editingThis && !removingThis && mayEditLine(d.byId) && (
+        {!editingThis && !removingThis && mayEditLine(d.byId) && (
           <span className="flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -2656,7 +2642,7 @@ export function ClinicalCard({
       }}
     />
   )
-  const diagnoses = data ? data.diagnoses : []
+  const diagnoses = data ? standing(data.diagnoses) : []
   const differentials = diagnoses.filter((d) => stageOf(d) === 'differential')
   const definitive = diagnoses.filter((d) => stageOf(d) === 'definitive')
   const live = (list: Diagnosis[]) => standing(list).length > 0
@@ -3067,7 +3053,7 @@ export function ClinicalCard({
           </CardBody>
         )}
       {!stepper && data && data.notes.map(renderNote)}
-      {!stepper && data && data.diagnoses.map(renderDx)}
+      {!stepper && data && standing(data.diagnoses).map(renderDx)}
       {!stepper && data && data.prescriptions.map(renderRx)}
       {!stepper && data && data.orders.map(renderOrder)}
 

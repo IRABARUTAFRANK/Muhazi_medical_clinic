@@ -3097,16 +3097,15 @@
     "editLine": "Edit",
     "removeLine": "Remove",
     "editDxHint": "Change this diagnosis with a reason; the previous text stays in the history.",
-    "removeDxHint": "Remove this diagnosis with a reason; it stays visible, struck through.",
+    "removeDxHint": "Remove this diagnosis with a reason; it leaves the list, and the visit’s change log keeps it.",
     "editNoteHint": "Change this note with a reason; the previous text stays in the history.",
     "editWhy": "Why is it changed?",
     "editWhyPh": "e.g. the test result, a typing mistake",
     "removeWhy": "Why is the diagnosis removed?",
-    "removeHint": "The diagnosis stays in the record, struck through, with your name and reason; it is no longer counted.",
+    "removeHint": "The diagnosis leaves the record; the visit’s change log keeps it with your name and reason.",
     "saveChange": "Save the change",
     "editedBy": "edited by {{name}} on {{when}}",
     "editedWhy": "reason: {{reason}}",
-    "removedBy": "removed by {{name}} on {{when}}: {{reason}}",
     "previousVersions_one": "{{count}} previous version",
     "previousVersions_other": "{{count}} previous versions",
     "versionWrote": "written by {{name}} on {{when}}",
@@ -3150,7 +3149,8 @@
       "by": "by {{name}} ({{role}})",
       "ordered": "ordered by the doctor",
       "notOrdered": "not ordered by the doctor"
-    }
+    },
+    "noImagingHint": "No ultrasound or other imaging exam is in the price list yet: they appear here, under Ultrasound, once a treatment is in the Imaging category (Prices → Treatments; the Ministry’s list puts its imaging lines there)."
   },
   "adjust": {
     "mode": "How to enter it",
@@ -6034,7 +6034,7 @@
       "editDx": "Change the diagnosis “{{dx}}” of {{name}}?",
       "editDxBody": "The previous text stays in the record’s history with your reason: “{{reason}}”.",
       "removeDx": "Remove the diagnosis “{{dx}}” of {{name}}?",
-      "removeDxBody": "It stays in the record, struck through, with your reason: “{{reason}}”. It is no longer counted.",
+      "removeDxBody": "It leaves the record; the visit’s change log keeps it with your reason: “{{reason}}”. It is no longer counted.",
       "editNote": "Change this note of {{name}}?",
       "changeYes": "Yes, change",
       "removeYes": "Yes, remove",
