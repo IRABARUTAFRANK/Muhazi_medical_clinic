@@ -238,6 +238,22 @@ export function SettingsPage({ user }: { user: StaffUser }) {
               !wide && 'pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap',
             )}
           >
+            {/* the wide view toggle first (PC only): the menu as a row and the section across the page */}
+            <button
+              type="button"
+              onClick={toggleWide}
+              aria-pressed={wide}
+              className="text-ink-2 hover:bg-hover pc:flex border-border hidden items-center gap-3 rounded-md border border-dashed px-3 py-2 text-left text-[13px] font-semibold transition-colors duration-120"
+            >
+              <span className="bg-hover inline-flex size-9 flex-none items-center justify-center rounded-md">
+                {wide ? (
+                  <Minimize2 size={18} aria-hidden="true" />
+                ) : (
+                  <Maximize2 size={18} aria-hidden="true" />
+                )}
+              </span>
+              {t(wide ? 'settings.narrowView' : 'settings.wideView')}
+            </button>
             {SECTIONS.map((sec) => {
               const on = section === sec.id
               return (
@@ -277,24 +293,6 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                 </button>
               )
             })}
-            <button
-              type="button"
-              onClick={toggleWide}
-              aria-pressed={wide}
-              className={cn(
-                'text-ink-2 hover:bg-hover pc:flex hidden items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] font-semibold transition-colors duration-120',
-                !wide && 'pc:mt-auto',
-              )}
-            >
-              <span className="bg-hover inline-flex size-9 flex-none items-center justify-center rounded-md">
-                {wide ? (
-                  <Minimize2 size={18} aria-hidden="true" />
-                ) : (
-                  <Maximize2 size={18} aria-hidden="true" />
-                )}
-              </span>
-              {t(wide ? 'settings.narrowView' : 'settings.wideView')}
-            </button>
           </nav>
 
           <div className="flex min-w-0 flex-col gap-4">
