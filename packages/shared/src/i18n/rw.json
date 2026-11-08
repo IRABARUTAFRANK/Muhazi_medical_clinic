@@ -1513,8 +1513,6 @@
         "pickItem": "Banza uhitemo umuti cyangwa igikoresho."
       },
       "title": "Ongeraho ubuvuzi",
-      "search": "Shakisha",
-      "searchPh": "malariya, gukuramo iryinyo, RDT…",
       "treatment": "Ubuvuzi",
       "pick": "Hitamo ubuvuzi",
       "quantity": "Umubare",
@@ -1530,13 +1528,16 @@
       "pickItem": "Hitamo umuti cyangwa igikoresho",
       "searchItemPh": "amoxicillin, uturindantoki, ORS…",
       "medicinesElsewhere": "Imiti yandikirwa mu nyandiko z’ubuvuzi (Urupapuro rw’imiti); hano wongeramo ubuvuzi na serivisi.",
-      "myDept": "Ishami ryawe: {{name}}",
-      "otherDepts": "Andi mashami",
-      "onlyMine": "Ubuvuzi bwa {{name}} n’ubutari mu ishami.",
-      "allShown": "Amashami yose aragaragara.",
-      "showOthers": "Erekana andi mashami ({{count}})",
-      "hideOthers": "Ishami ryanjye gusa",
-      "otherWarning": "Ubu buvuzi ni ubw’irindi shami. Bwongereho gusa niba koko ari wowe ubutanze hano (urugero iyo nta mukozi w’iryo shami ufite umwanya)."
+      "otherWarning": "Ubu buvuzi ni ubw’irindi shami. Bwongereho gusa niba koko ari wowe ubutanze hano (urugero iyo nta mukozi w’iryo shami ufite umwanya).",
+      "otherGroup": "Ubundi buvuzi na serivisi",
+      "notCoveredGroup": "Ntibishyurwa na {{insurer}} — umurwayi arishyura",
+      "listHint": "Ubuvuzi bw’ishami ryawe buza mbere, hanyuma ubundi buvuzi bwose bw’ivuriro munsi ya Ubundi. Andika inyuguti nke kugira ngo ubushake.",
+      "listHintInsured": "Ibiciro bya {{insurer}} birerekanwa; itegeko ryayo ku murongo ryanditse munsi yawo, kandi ibyo idashyura biri ku iherezo (umurwayi arishyura).",
+      "cover": {
+        "ask": "banza wemeze na {{insurer}}",
+        "preauth": "gusa iyo {{insurer}} yabyemeye",
+        "notOnList": "ntibiri ku rutonde rwa {{insurer}}: igiciro cy’amafaranga"
+      }
     },
     "back": "Subira ku murongo wanjye",
     "notFound": "Uku kwivuza ntikwabonetse cyangwa kwarafunzwe.",
@@ -2077,7 +2078,12 @@
       "ordered": "byategetswe na muganga",
       "notOrdered": "ntibyategetswe na muganga"
     },
-    "noImagingHint": "Nta echographie cyangwa ikindi kizamini cy’amashusho kiri ku rutonde rw’ibiciro: bigaragara hano, munsi ya Echographie, iyo ubuvuzi buri mu cyiciro cy’Amashusho (Ibiciro → Ubuvuzi; urutonde rwa Minisiteri rushyira imirongo yarwo y’amashusho aho)."
+    "noImagingHint": "Nta echographie cyangwa ikindi kizamini cy’amashusho kiri ku rutonde rw’ibiciro: bigaragara hano, munsi ya Echographie, iyo ubuvuzi buri mu cyiciro cy’Amashusho (Ibiciro → Ubuvuzi; urutonde rwa Minisiteri rushyira imirongo yarwo y’amashusho aho).",
+    "medGroups": {
+      "clinic": "Imiti n’ibikoresho by’ivuriro",
+      "rhia": "Urutonde rwa RHIA — ntibigurishwa hano",
+      "notCovered": "Ntibishyurwa na {{insurer}} — umurwayi arishyura"
+    }
   },
   "adjust": {
     "mode": "Uko ubyandika",

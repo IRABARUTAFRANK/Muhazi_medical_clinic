@@ -2313,8 +2313,6 @@
     },
     "add": {
       "title": "Add a treatment",
-      "search": "Search",
-      "searchPh": "malaria, extraction, RDT…",
       "treatment": "Treatment",
       "pick": "Choose a treatment",
       "quantity": "Quantity",
@@ -2343,13 +2341,16 @@
       "pickItem": "Choose a medicine or supply",
       "searchItemPh": "amoxicillin, gloves, ORS…",
       "medicinesElsewhere": "Medicines are prescribed in the clinical record (Prescription); here you add treatments and services.",
-      "myDept": "Your department: {{name}}",
-      "otherDepts": "Other departments",
-      "onlyMine": "Treatments of {{name}} and those of no department.",
-      "allShown": "All departments are shown.",
-      "showOthers": "Show other departments ({{count}})",
-      "hideOthers": "Only my department",
-      "otherWarning": "This treatment belongs to another department. Add it only if you really give it here (for example when nobody from that department is free)."
+      "otherWarning": "This treatment belongs to another department. Add it only if you really give it here (for example when nobody from that department is free).",
+      "otherGroup": "Other treatments and services",
+      "notCoveredGroup": "Not covered by {{insurer}} — the patient pays",
+      "listHint": "Your department’s treatments come first, then every other treatment of the clinic under Other. Type a few letters to find one.",
+      "listHintInsured": "{{insurer}}’s prices are shown; its rule for a line is written under it, and what it does not cover is at the end (the patient pays).",
+      "cover": {
+        "ask": "confirm with {{insurer}} first",
+        "preauth": "only with {{insurer}}’s approval",
+        "notOnList": "not on {{insurer}}’s list: cash price"
+      }
     },
     "payment": {
       "title": "Payment",
@@ -3152,7 +3153,12 @@
       "ordered": "ordered by the doctor",
       "notOrdered": "not ordered by the doctor"
     },
-    "noImagingHint": "No ultrasound or other imaging exam is in the price list yet: they appear here, under Ultrasound, once a treatment is in the Imaging category (Prices → Treatments; the Ministry’s list puts its imaging lines there)."
+    "noImagingHint": "No ultrasound or other imaging exam is in the price list yet: they appear here, under Ultrasound, once a treatment is in the Imaging category (Prices → Treatments; the Ministry’s list puts its imaging lines there).",
+    "medGroups": {
+      "clinic": "The clinic’s medicines and products",
+      "rhia": "RHIA list — not sold here",
+      "notCovered": "Not covered by {{insurer}} — the patient pays"
+    }
   },
   "adjust": {
     "mode": "How to enter it",

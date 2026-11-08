@@ -2313,8 +2313,6 @@
     },
     "add": {
       "title": "Ajouter un soin",
-      "search": "Rechercher",
-      "searchPh": "paludisme, extraction, TDR…",
       "treatment": "Soin",
       "pick": "Choisir un soin",
       "quantity": "Quantité",
@@ -2343,13 +2341,16 @@
       "pickItem": "Choisissez un médicament ou une fourniture",
       "searchItemPh": "amoxicilline, gants, SRO…",
       "medicinesElsewhere": "Les médicaments se prescrivent dans le dossier clinique (Ordonnance) ; ici vous ajoutez les soins et services.",
-      "myDept": "Votre département : {{name}}",
-      "otherDepts": "Autres départements",
-      "onlyMine": "Soins de {{name}} et ceux sans département.",
-      "allShown": "Tous les départements sont affichés.",
-      "showOthers": "Voir les autres départements ({{count}})",
-      "hideOthers": "Seulement mon département",
-      "otherWarning": "Ce soin appartient à un autre département. Ajoutez-le seulement si vous le donnez vraiment ici (par exemple quand personne de ce département n’est libre)."
+      "otherWarning": "Ce soin appartient à un autre département. Ajoutez-le seulement si vous le donnez vraiment ici (par exemple quand personne de ce département n’est libre).",
+      "otherGroup": "Autres actes et services",
+      "notCoveredGroup": "Non couvert par {{insurer}} — le patient paie",
+      "listHint": "Les actes de votre service d’abord, puis tous les autres actes de la clinique sous Autres. Tapez quelques lettres pour en trouver un.",
+      "listHintInsured": "Les prix de {{insurer}} sont affichés ; sa règle pour une ligne est écrite dessous, et ce qu’il ne couvre pas est à la fin (le patient paie).",
+      "cover": {
+        "ask": "à confirmer d’abord avec {{insurer}}",
+        "preauth": "seulement avec l’accord de {{insurer}}",
+        "notOnList": "pas sur la liste de {{insurer}} : prix comptant"
+      }
     },
     "payment": {
       "title": "Paiement",
@@ -3152,7 +3153,12 @@
       "ordered": "ordonné par le médecin",
       "notOrdered": "non ordonné par le médecin"
     },
-    "noImagingHint": "Aucune échographie ni autre examen d’imagerie n’est encore dans la liste des prix : ils apparaissent ici, sous Échographie, dès qu’un acte est dans la catégorie Imagerie (Prix → Actes ; la liste du Ministère y place ses lignes d’imagerie)."
+    "noImagingHint": "Aucune échographie ni autre examen d’imagerie n’est encore dans la liste des prix : ils apparaissent ici, sous Échographie, dès qu’un acte est dans la catégorie Imagerie (Prix → Actes ; la liste du Ministère y place ses lignes d’imagerie).",
+    "medGroups": {
+      "clinic": "Médicaments et produits de la clinique",
+      "rhia": "Liste RHIA — non vendus ici",
+      "notCovered": "Non couvert par {{insurer}} — le patient paie"
+    }
   },
   "adjust": {
     "mode": "Comment le saisir",

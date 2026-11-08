@@ -36,6 +36,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
 import { Field } from '@/components/ui/field'
+import { SearchSelect, type SearchOption } from '@/components/ui/search-select'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
@@ -71,8 +72,13 @@ import { useLetterhead } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
 import { stageOf, useVisitClinical } from '@/lib/api/patients'
 import { useInsuranceEnabled } from '@/lib/api/settings'
-import { payerLine, usePayerLines } from '@/lib/api/insurers'
-import { insurerLineText, insurerLineTone } from '@/lib/insurer-price'
+import { payerLine, useInsurerTariff, usePayerLines } from '@/lib/api/insurers'
+import {
+  insurerLineRule,
+  insurerLineText,
+  insurerLineTone,
+  insurerRuleSub,
+} from '@/lib/insurer-price'
 import { ApiError } from '@/lib/api/errors'
 import { VisitRecordGate, VisitSafetySummary } from '@/components/clinical/record-privacy'
 import { VisitFilesCard } from '@/components/clinical/supporting-files'
@@ -1433,18 +1439,11 @@ function AddChargeCard({
 }) {
   const { t, i18n } = useTranslation()
   const [serviceId, setServiceId] = useState('')
-  const [showOthers, setShowOthers] = useState(false)
   const myIds = myDepartments.map((d) => d.id)
-  const myNames = myDepartments.map((d) => d.name).join(', ')
-  const isMine = (x: Treatment) =>
-    myIds.length === 0 ||
-    x.departmentIds.length === 0 ||
-    x.departmentIds.some((id) => myIds.includes(id))
   const [quantity, setQuantity] = useState('1')
   const [discount, setDiscount] = useState('')
   const [mode, setMode] = useState<AdjustMode>('pct')
   const [reason, setReason] = useState('')
-  const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const confirm = useConfirm()
@@ -1477,20 +1476,55 @@ function AddChargeCard({
   const manualRefused = manual != null && !mayTypePrice
   const modes: AdjustMode[] = mayTypePrice ? ['pct', 'rwf', 'x', 'price'] : ['pct', 'rwf', 'x']
   const changed = d > 0 || manual != null
-  const matching = treatments.filter((x) =>
-    query.trim() === ''
-      ? true
-      : `${x.nameEn} ${x.nameKin ?? ''} ${x.nameFr ?? ''} ${x.code}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
+  // 0143: one searchable list of every treatment: the person's departments first (each its own
+  // group), then "Other"; on an insurer, its price on the right, its rule as a second line, and
+  // what it does not cover in a last group (the patient pays). A treatment given by no department
+  // is under Other.
+  const { data: tariff } = useInsurerTariff(payerId)
+  const ruleOf = (id: string) =>
+    payerId ? insurerLineRule(tariff?.rows.find((r) => r.kind === 'service' && r.id === id)) : null
+  const priceOf = (x: Treatment) => {
+    const row = payerId
+      ? tariff?.rows.find((r) => r.kind === 'service' && r.id === x.id)
+      : undefined
+    return (
+      row?.price ??
+      (payerId && x.payerPrices[payerId] != null ? x.payerPrices[payerId]! : x.cashPrice)
+    )
+  }
+  const sorted = [...treatments].sort((a, b) =>
+    treatmentName(a, i18n.language).localeCompare(treatmentName(b, i18n.language)),
   )
-  const mine = matching.filter(isMine)
-  const others = myIds.length ? matching.filter((x) => !isMine(x)) : []
-  const option = (x: Treatment) => (
-    <option key={x.id} value={x.id}>
-      {treatmentName(x, i18n.language)} · {x.cashPrice == null ? '—' : formatRwf(x.cashPrice)}
-    </option>
-  )
+  const groupOf = (x: Treatment, rule: ReturnType<typeof insurerLineRule>) => {
+    if (rule === 'out') return t('visit.add.notCoveredGroup', { insurer: insurerName ?? '' })
+    const dept = myDepartments.find((d) => x.departmentIds.includes(d.id))
+    return dept ? dept.name : t('visit.add.otherGroup')
+  }
+  const groupRank = (g: string) =>
+    g === t('visit.add.notCoveredGroup', { insurer: insurerName ?? '' })
+      ? myDepartments.length + 1
+      : g === t('visit.add.otherGroup')
+        ? myDepartments.length
+        : myDepartments.findIndex((d) => d.name === g)
+  const treatmentOptions: SearchOption[] = sorted
+    .map((x) => {
+      const rule = ruleOf(x.id)
+      const price = priceOf(x)
+      return {
+        value: x.id,
+        label: treatmentName(x, i18n.language),
+        group: groupOf(x, rule),
+        hint: price == null ? '—' : formatRwf(price),
+        sub: insurerRuleSub(t, rule, insurerName ?? ''),
+        keywords: [x.code, x.nameEn, x.nameFr, x.nameKin].filter(Boolean).join(' '),
+      }
+    })
+    .sort((a, b) => groupRank(a.group!) - groupRank(b.group!))
+  const fromAnotherDept =
+    !!picked &&
+    myIds.length > 0 &&
+    picked.departmentIds.length > 0 &&
+    !picked.departmentIds.some((id) => myIds.includes(id))
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -1586,52 +1620,21 @@ function AddChargeCard({
       <form onSubmit={submit}>
         <CardBody className="gap-3">
           <p className="text-ink-3 m-0 text-xs">{t('visit.add.medicinesElsewhere')}</p>
-          <Field
-            label={t('visit.add.search')}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('visit.add.searchPh')}
-            disabled={disabled}
-          />
-          <Select
+          <SearchSelect
             label={t('visit.add.treatment')}
             value={serviceId}
-            onChange={(e) => setServiceId(e.target.value)}
+            onChange={setServiceId}
+            emptyLabel={t('visit.add.pick')}
+            options={treatmentOptions}
             disabled={disabled}
             required
-          >
-            <option value="">{t('visit.add.pick')}</option>
-            {showOthers && others.length > 0 ? (
-              <>
-                <optgroup label={t('visit.add.myDept', { name: myNames })}>
-                  {mine.map(option)}
-                </optgroup>
-                <optgroup label={t('visit.add.otherDepts')}>{others.map(option)}</optgroup>
-              </>
-            ) : (
-              mine.map(option)
-            )}
-          </Select>
-          {myIds.length > 0 && others.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-ink-3 text-xs">
-                {showOthers ? t('visit.add.allShown') : t('visit.add.onlyMine', { name: myNames })}
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  if (showOthers && others.some((x) => x.id === serviceId)) setServiceId('')
-                  setShowOthers(!showOthers)
-                }}
-              >
-                {showOthers
-                  ? t('visit.add.hideOthers')
-                  : t('visit.add.showOthers', { count: others.length })}
-              </Button>
-            </div>
-          )}
-          {myIds.length > 0 && showOthers && others.some((x) => x.id === serviceId) && (
+          />
+          <p className="text-ink-3 m-0 text-xs">
+            {payerId
+              ? t('visit.add.listHintInsured', { insurer: insurerName ?? '' })
+              : t('visit.add.listHint')}
+          </p>
+          {fromAnotherDept && (
             <p className="bg-amber-bg text-amber border-amber/30 m-0 rounded-md border px-3 py-2 text-[13px] font-semibold">
               {t('visit.add.otherWarning')}
             </p>

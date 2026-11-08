@@ -43,3 +43,33 @@ export function insurerLineTone(row: TariffRow | undefined): 'teal' | 'amber' | 
   if (row.ask || row.coveragePct === 0) return 'red'
   return 'amber'
 }
+
+/**
+ * 0143: where a line sits in a chooser when the visit is on an insurer, by the insurer's rule
+ * for it: 'out' — not covered (its own group at the end, the patient pays); 'ask' — confirmed
+ * with the insurer first; 'preauth' — only with its approval; 'cash' — not on its list, the
+ * cash price; 'in' — priced and covered; null — no insurer or no line.
+ */
+export function insurerLineRule(
+  row: TariffRow | undefined,
+): 'out' | 'ask' | 'preauth' | 'cash' | 'in' | null {
+  if (!row || row.price == null) return null
+  if (row.source === 'excluded') return 'out'
+  if (row.source === 'preauth' || row.preauth) return 'preauth'
+  if (row.source === 'tariff' || row.source === 'reference') return 'in'
+  if (row.ask) return 'ask'
+  if (row.coveragePct === 0) return 'out'
+  return 'cash'
+}
+
+/** The short second line of a chooser option for that rule (nothing when covered). */
+export function insurerRuleSub(
+  t: TFn,
+  rule: ReturnType<typeof insurerLineRule>,
+  insurer: string,
+): string | undefined {
+  if (rule === 'ask') return t('visit.add.cover.ask', { insurer })
+  if (rule === 'preauth') return t('visit.add.cover.preauth', { insurer })
+  if (rule === 'cash') return t('visit.add.cover.notOnList', { insurer })
+  return undefined
+}

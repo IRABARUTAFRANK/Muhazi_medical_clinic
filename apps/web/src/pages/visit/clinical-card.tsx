@@ -69,9 +69,14 @@ import { priceQuantity } from '@/lib/pack-pricing'
 import { priceLineText, saleModeText, wholePacksText } from '@/pages/stock/stock-util'
 import { ApiError, errorKind } from '@/lib/api/errors'
 import { useVisitBill } from '@/lib/api/billing'
-import { payerLine, usePayerLines } from '@/lib/api/insurers'
+import { payerLine, useInsurerTariff, usePayerLines } from '@/lib/api/insurers'
 import { useInsuranceEnabled } from '@/lib/api/settings'
-import { insurerLineText, insurerLineTone } from '@/lib/insurer-price'
+import {
+  insurerLineRule,
+  insurerLineText,
+  insurerLineTone,
+  insurerRuleSub,
+} from '@/lib/insurer-price'
 import { TestFilesChip } from '@/components/clinical/supporting-files'
 import { registrationText, useEmployees, useMyCredentials } from '@/lib/api/staff'
 import { stationFor, type Station } from '@/lib/api/visits'
@@ -394,15 +399,43 @@ export function ClinicalCard({
     return { tone: 'green', text: t('clinical.stock.in', { count: n }) }
   }
   const itemCodes = new Set(items.map((it) => it.code))
+  // 0143: every medicine and product of the clinic (no store, stock or category filter), then the
+  // official list's lines the clinic does not hold; on an insurer, its price on the right, its
+  // rule as a second line, and what it does not cover in a last group (the patient pays)
+  const { data: medTariff } = useInsurerTariff(insurance ? payerId : null)
+  const medRule = (id: string) =>
+    insurance && payerId
+      ? insurerLineRule(medTariff?.rows.find((r) => r.kind === 'item' && r.id === id))
+      : null
+  const medPrice = (id: string, cash: number | null | undefined) => {
+    const row =
+      insurance && payerId
+        ? medTariff?.rows.find((r) => r.kind === 'item' && r.id === id)
+        : undefined
+    return row?.price ?? cash ?? null
+  }
+  const notCoveredGroup = t('clinical.medGroups.notCovered', { insurer: insurerName })
   const medicineOptions = [
     { value: TYPED, label: t('clinical.typedMedicine') },
-    ...items.map((it) => ({
-      value: it.id,
-      label: [it.name, it.strength, it.form ? `· ${it.form}` : null].filter(Boolean).join(' '),
-    })),
+    ...items
+      .map((it) => {
+        const rule = medRule(it.id)
+        const price = medPrice(it.id, it.cashPrice)
+        return {
+          value: it.id,
+          label: [it.name, it.strength, it.form ? `· ${it.form}` : null].filter(Boolean).join(' '),
+          group: rule === 'out' ? notCoveredGroup : t('clinical.medGroups.clinic'),
+          hint: price == null ? undefined : formatRwf(price),
+          sub: insurerRuleSub(t, rule, insurerName),
+          keywords: it.code,
+          rank: rule === 'out' ? 2 : 0,
+        }
+      })
+      .sort((a, b) => a.rank - b.rank || a.label.localeCompare(b.label)),
     // the official list's medicines the clinic does not hold: for an outside pharmacy
     ...sortMedicineRefs(refs.filter((r) => !itemCodes.has(r.code))).map((r) => ({
       ...medicineRefOption(r, t, REF + r.code),
+      group: t('clinical.medGroups.rhia'),
       hint: t('clinical.stock.notSold'),
     })),
   ]
