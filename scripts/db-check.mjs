@@ -16366,6 +16366,43 @@ await step('0114: the migration runs again on a database that already has it', a
   return 'no error'
 })
 const t114 = {}
+await step('0142: a new link for a screen: a fresh key, the old link stops, audited', async () => {
+  await as(staff.manager)
+  const made = (
+    await one(
+      `select save_display_screen(null, 'Lost TV', '{consultation}', true, true, '{rw}', null) as j`,
+    )
+  ).j
+  const before = (await one(`select display_board($1) as j`, [made.key])).j
+  if (!before || typeof before !== 'object') throw new Error('no board before')
+  await as(staff.manager)
+  const renewed = (await one(`select renew_display_screen_key($1) as j`, [made.id])).j
+  if (renewed.id !== made.id || typeof renewed.key !== 'string' || renewed.key.length !== 64)
+    throw new Error(JSON.stringify(renewed))
+  if (renewed.key === made.key) throw new Error('same key')
+  const old = await hintAs(null, `select display_board($1)`, [made.key])
+  const fresh = (await one(`select display_board($1) as j`, [renewed.key])).j
+  if (!fresh || typeof fresh !== 'object') throw new Error('no board with the new key')
+  await as(staff.manager)
+  const audited = (
+    await one(
+      `select count(*)::int as n from audit_event where entity = 'display_screen' and entity_id = $1 and after->>'key' = 'new_link'`,
+      [made.id],
+    )
+  ).n
+  const rec = await codeAs(staff.receptionist, `select renew_display_screen_key($1)`, [made.id])
+  await as(staff.manager)
+  await db.query(`select revoke_display_screen($1)`, [made.id])
+  const gone = await hintAs(staff.manager, `select renew_display_screen_key($1)`, [made.id])
+  if (
+    old !== '42501/screen_unknown' ||
+    audited !== 1 ||
+    rec !== '42501' ||
+    gone !== 'P0002/screen_unknown'
+  )
+    throw new Error(JSON.stringify({ old, audited, rec, gone }))
+  return `new key; the old link refused (${old}); audited; receptionist ${rec}; revoked screen ${gone}`
+})
 await step(
   '0114: the manager registers a screen and gets its key once; the list never shows the key',
   async () => {

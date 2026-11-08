@@ -2711,7 +2711,9 @@
       "onBody": "Un médecin qui travaille sur la visite ouverte d’un patient verra les visites antérieures à l’étape 1. Chaque ouverture est notée dans le journal des accès.",
       "offTitle": "Obliger le médecin à demander d’abord ?",
       "offBody": "Le médecin traitant ne verra plus les visites antérieures tout de suite : il demande l’accès, ou les ouvre en urgence avec une raison."
-    }
+    },
+    "wideView": "Vue large",
+    "narrowView": "Vue normale"
   },
   "pin": {
     "changeTitle": "Choisissez votre propre PIN",
@@ -6390,6 +6392,11 @@
         "title": "Révoquer l’écran « {{name}} » ?",
         "body": "Le téléviseur n’affichera plus rien ; ajoutez un nouvel écran pour un nouveau lien.",
         "yes": "Oui, révoquer"
+      },
+      "renew": {
+        "title": "Un nouveau lien pour « {{name}} » ?",
+        "body": "L’ancien lien cesse de fonctionner tout de suite : ouvrez le nouveau sur cette TV. Le lien lui-même ne change pas avec le réseau — c’est l’adresse de ce site avec la clé de l’écran.",
+        "yes": "Oui, nouveau lien"
       }
     },
     "nextPatient": {
@@ -10146,7 +10153,7 @@
     "save": "Créer l’écran",
     "saveChanges": "Enregistrer les changements",
     "linkTitle": "Le lien de « {{name}} » — affiché une seule fois",
-    "linkLead": "Ouvrez cette adresse dans le navigateur du téléviseur (Chrome, plein écran) et appuyez sur Démarrer. Elle ne sera plus montrée : si elle est perdue, révoquez l’écran et ajoutez-le à nouveau.",
+    "linkLead": "Ouvrez cette adresse dans le navigateur de la TV (Chrome, plein écran) et appuyez sur Démarrer. Elle n’est plus montrée ensuite : si elle est perdue, appuyez sur Nouveau lien sur l’écran — l’ancien lien s’arrête et le nouveau est montré une fois.",
     "openOnTv": "À ouvrir sur le téléviseur : cette adresse, telle quelle (la clé en fait partie).",
     "copy": "Copier le lien",
     "copied": "Copié",
@@ -10187,7 +10194,9 @@
     "voiceOn": "Voix {{lang}} ×{{count}}",
     "voiceOff": "Sans voix",
     "tickerOn": "Ligne défilante",
-    "tickerOff": "Sans ligne défilante"
+    "tickerOff": "Sans ligne défilante",
+    "newLink": "Nouveau lien",
+    "newLinkHint": "Le lien n’est pas gardé (sa clé est rangée comme un mot de passe) : un nouveau lien remplace l’ancien, qui cesse de fonctionner."
   },
   "nextPatient": {
     "title": "Patient suivant",

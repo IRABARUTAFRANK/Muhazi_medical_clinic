@@ -341,7 +341,22 @@ export function useDisplayScreenActions() {
     },
     onSuccess: refresh,
   })
-  return { save, revoke }
+  /** 0142: a fresh key for a screen (the old link stops working); the new link, shown once. */
+  const renew = useMutation({
+    mutationFn: async (id: string): Promise<{ id: string; key: string }> => {
+      if (!supabase) {
+        const s = sampleScreens.find((x) => x.id === id && x.active)
+        if (!s)
+          throw apiError({ code: 'P0002', message: 'this screen is not known or was revoked' })
+        return { id, key: 'renewed'.padEnd(64, '1') }
+      }
+      const { data, error } = await supabase.rpc('renew_display_screen_key', { p_id: id })
+      if (error) throw apiError(error)
+      return data as { id: string; key: string }
+    },
+    onSuccess: refresh,
+  })
+  return { save, revoke, renew }
 }
 
 // ---------------------------------------------------------------- calling, and the next patient

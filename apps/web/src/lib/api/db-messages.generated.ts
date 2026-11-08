@@ -190,7 +190,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the price of a night cannot be negative$/, 'dbErrors.4cee318d', 0], // save_bed, set_bed_count
   [/^this booking already has a patient file$/, 'dbErrors.6f27ce8c', 0], // appointment_arrived
   [/^this patient has already left this desk$/, 'dbErrors.9800fbfe', 0], // call_patient
-  [/^this screen is not known or was revoked$/, 'dbErrors.a3109bfa', 0], // revoke_display_screen, save_display_screen
+  [/^this screen is not known or was revoked$/, 'dbErrors.a3109bfa', 0], // renew_display_screen_key, revoke_display_screen, save_display_screen
   [/^too many wrong codes: ask for a new one$/, 'dbErrors.a67c9d35', 0], // verify_visit_edit
   [/^you already have a booking at that time$/, 'dbErrors.9e1f26ad', 0], // accept_appointment
   [/^a reason is required for a typed price$/, 'dbErrors.1d3f4f34', 0], // add_charge_internal

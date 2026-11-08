@@ -78,13 +78,28 @@ export function PermissionsCard() {
           )}
           <div className="border-border max-h-[55vh] overflow-auto overscroll-contain rounded-md border">
             <table className="w-full min-w-[760px] border-collapse text-[14px]">
-              <thead>
+              {/* 0142: the roles stay in view while the list scrolls; the feature column while it
+                  scrolls sideways */}
+              <thead className="sticky top-0 z-20">
                 <tr className="border-border bg-surface border-b">
-                  <th scope="col" className={tableHead}>
+                  <th
+                    scope="col"
+                    className={cn(
+                      tableHead,
+                      'bg-surface sticky left-0 z-10 shadow-[inset_0_-1px_0_var(--color-border)]',
+                    )}
+                  >
                     {t('perms.feature')}
                   </th>
                   {MATRIX_ROLES.map((r) => (
-                    <th key={r} scope="col" className={cn(tableHead, 'px-2 text-center')}>
+                    <th
+                      key={r}
+                      scope="col"
+                      className={cn(
+                        tableHead,
+                        'bg-surface px-2 text-center shadow-[inset_0_-1px_0_var(--color-border)]',
+                      )}
+                    >
                       {t(`staff.roles.${r}`)}
                     </th>
                   ))}
@@ -93,7 +108,7 @@ export function PermissionsCard() {
               <tbody>
                 {MANAGED_FEATURES.map((f) => (
                   <tr key={f} className={tableRow}>
-                    <td className={tableFirstCell}>
+                    <td className={cn(tableFirstCell, 'bg-card sticky left-0 z-10')}>
                       <span className="block">{t(`perms.f.${f}.name`)}</span>
                       <span className="text-ink-3 block text-xs font-normal">
                         {t(`perms.f.${f}.hint`)}

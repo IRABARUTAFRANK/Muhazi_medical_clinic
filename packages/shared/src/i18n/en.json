@@ -2711,7 +2711,9 @@
       "onBody": "A doctor working on a patient’s open visit will see the earlier visits in step 1. Each opening is written to the access log.",
       "offTitle": "Make the doctor ask first?",
       "offBody": "The treating doctor will no longer see the earlier visits at once: they ask for access, or open them as an emergency with a reason."
-    }
+    },
+    "wideView": "Wide view",
+    "narrowView": "Normal view"
   },
   "pin": {
     "changeTitle": "Choose your own PIN",
@@ -6390,6 +6392,11 @@
         "title": "Revoke the screen “{{name}}”?",
         "body": "The TV shows nothing from then on; add a new screen for a new link.",
         "yes": "Yes, revoke"
+      },
+      "renew": {
+        "title": "A new link for “{{name}}”?",
+        "body": "The old link stops working at once: open the new one on that TV. The link itself does not change with the network — it is this site’s address with the screen’s key.",
+        "yes": "Yes, new link"
       }
     },
     "nextPatient": {
@@ -10146,7 +10153,7 @@
     "save": "Create the screen",
     "saveChanges": "Save changes",
     "linkTitle": "The link of “{{name}}” — shown once",
-    "linkLead": "Open this address in the TV’s browser (Chrome, full screen) and press Start. It is not shown again: if it is lost, revoke the screen and add it again.",
+    "linkLead": "Open this address in the TV’s browser (Chrome, full screen) and press Start. It is not shown again: if it is lost, press New link on the screen — the old link stops and the new one is shown once.",
     "openOnTv": "Open on the TV: this address, exactly as it is (the key is in it).",
     "copy": "Copy the link",
     "copied": "Copied",
@@ -10187,7 +10194,9 @@
     "voiceOn": "Voice {{lang}} ×{{count}}",
     "voiceOff": "No voice",
     "tickerOn": "Scrolling line",
-    "tickerOff": "No scrolling line"
+    "tickerOff": "No scrolling line",
+    "newLink": "New link",
+    "newLinkHint": "The link is not kept (its key is stored like a password): a new link replaces the old, which stops working."
   },
   "nextPatient": {
     "title": "Next patient",

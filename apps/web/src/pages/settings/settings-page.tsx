@@ -11,6 +11,8 @@ import {
   Clock,
   KeyRound,
   LayoutDashboard,
+  Maximize2,
+  Minimize2,
   Settings,
   ShieldCheck,
   type LucideIcon,
@@ -42,6 +44,14 @@ import { PermissionsCard } from './permissions-card'
 import { SessionCard } from './session-card'
 import { VitalsCard } from './vitals-card'
 
+const WIDE_KEY = 'mmc.settings.wide'
+const readWide = (): boolean => {
+  try {
+    return localStorage.getItem(WIDE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 /** The settings are split into sections; one is shown at a time (remembered on this device). */
 type SectionId = 'clinic' | 'hours' | 'beds' | 'security' | 'access' | 'patient' | 'display'
 const SECTIONS: { id: SectionId; icon: LucideIcon; tint: Tint }[] = [
@@ -106,6 +116,19 @@ export function SettingsPage({ user }: { user: StaffUser }) {
   const [seededFrom, setSeededFrom] = useState<ClinicSettings | null>(null)
   const [saved, setSaved] = useState(false)
   const [section, setSection] = useState<SectionId>(readSection)
+  // 0142: the wide view — the menu as a row on top, the section across the whole page (for the
+  // tables: who may do what, the hours); remembered on this device
+  const [wide, setWide] = useState<boolean>(readWide)
+  const toggleWide = () => {
+    setWide((w) => {
+      try {
+        localStorage.setItem(WIDE_KEY, w ? '0' : '1')
+      } catch {
+        /* private window: not remembered */
+      }
+      return !w
+    })
+  }
   const choose = (id: SectionId) => {
     setSection(id)
     setSaved(false)
@@ -200,13 +223,19 @@ export function SettingsPage({ user }: { user: StaffUser }) {
           </p>
         )}
 
-        <div className="pc:grid-cols-[280px_minmax(0,1fr)] grid grid-cols-1 items-start gap-5">
-          {/* Section menu: a column on PC, a scrolling row of tabs on tablets */}
+        <div
+          className={cn(
+            'grid grid-cols-1 items-start gap-5',
+            !wide && 'pc:grid-cols-[280px_minmax(0,1fr)]',
+          )}
+        >
+          {/* Section menu: a column on PC (a row of tabs in the wide view), a row on tablets */}
           <nav
             aria-label={t('settings.title')}
             className={cn(
               card,
-              'pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap flex-row flex-wrap gap-1 p-2',
+              'flex-row flex-wrap gap-1 p-2',
+              !wide && 'pc:sticky pc:top-0 pc:flex-col pc:flex-nowrap',
             )}
           >
             {SECTIONS.map((sec) => {
@@ -218,7 +247,8 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   aria-current={on ? 'page' : undefined}
                   onClick={() => choose(sec.id)}
                   className={cn(
-                    'pc:flex-none flex flex-[1_1_150px] items-center gap-3 rounded-md px-3 py-2 text-left transition-colors duration-120',
+                    'flex flex-[1_1_150px] items-center gap-3 rounded-md px-3 py-2 text-left transition-colors duration-120',
+                    !wide && 'pc:flex-none',
                     on ? 'bg-primary-tint text-primary' : 'text-ink hover:bg-hover',
                   )}
                 >
@@ -236,7 +266,8 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                     </span>
                     <span
                       className={cn(
-                        'pc:block hidden text-[12px] leading-snug',
+                        'hidden text-[12px] leading-snug',
+                        !wide && 'pc:block',
                         on ? 'text-primary/80' : 'text-ink-3',
                       )}
                     >
@@ -246,6 +277,24 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                 </button>
               )
             })}
+            <button
+              type="button"
+              onClick={toggleWide}
+              aria-pressed={wide}
+              className={cn(
+                'text-ink-2 hover:bg-hover pc:flex hidden items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] font-semibold transition-colors duration-120',
+                !wide && 'pc:mt-auto',
+              )}
+            >
+              <span className="bg-hover inline-flex size-9 flex-none items-center justify-center rounded-md">
+                {wide ? (
+                  <Minimize2 size={18} aria-hidden="true" />
+                ) : (
+                  <Maximize2 size={18} aria-hidden="true" />
+                )}
+              </span>
+              {t(wide ? 'settings.narrowView' : 'settings.wideView')}
+            </button>
           </nav>
 
           <div className="flex min-w-0 flex-col gap-4">
@@ -326,7 +375,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   <CardBody className="gap-3">
                     <p className="text-ink-2 m-0 text-[14px]">{t('settings.hours.lead')}</p>
                     <div className="flex flex-col">
-                      <div className="text-ink-3 border-border hidden h-10 grid-cols-[130px_180px_120px_120px] items-center gap-2 border-b text-[12px] font-normal sm:grid">
+                      <div className="text-ink-3 border-border hidden h-10 grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(96px,1fr)_minmax(96px,1fr)] items-center gap-2 border-b text-[12px] font-normal sm:grid">
                         <span>{t('settings.hours.day')}</span>
                         <span>{t('settings.hours.mode')}</span>
                         <span>{t('settings.hours.open')}</span>
@@ -451,7 +500,7 @@ function HoursRow({
   const { t } = useTranslation()
   const mode = modeOf(span)
   return (
-    <div className="border-grid hover:bg-hover grid min-h-10 grid-cols-[110px_minmax(0,1fr)] items-center gap-2 border-b py-1.5 transition-colors duration-120 last:border-b-0 sm:grid-cols-[130px_180px_120px_120px]">
+    <div className="border-grid hover:bg-hover grid min-h-10 grid-cols-[110px_minmax(0,1fr)] items-center gap-2 border-b py-1.5 transition-colors duration-120 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(96px,1fr)_minmax(96px,1fr)]">
       <span className="text-[14px] font-medium">{label}</span>
       <select
         aria-label={`${label} · ${t('settings.hours.mode')}`}

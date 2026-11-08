@@ -1459,7 +1459,9 @@
       "onBody": "Muganga uri kuvura umurwayi uri kwivuza azabona inshuro yaje kwivuza mbere mu ntambwe ya 1. Buri gufungura byandikwa mu rutonde rw’abareba amakuru.",
       "offTitle": "Gutegeka muganga kubanza gusaba?",
       "offBody": "Muganga umuvura ntazongera guhita abona inshuro umurwayi yaje kwivuza mbere: azasaba kuzireba, cyangwa azifungure mu buryo bwihutirwa atanze impamvu."
-    }
+    },
+    "wideView": "Igaragara rigari",
+    "narrowView": "Igaragara risanzwe"
   },
   "pin": {
     "changeTitle": "Hitamo PIN yawe bwite",
@@ -6399,6 +6401,11 @@
         "title": "Guhagarika mugaragaza “{{name}}”?",
         "body": "Televiziyo ntizongera kwerekana ikintu; ongeraho mugaragaza nshya kugira ngo ubone link nshya.",
         "yes": "Yego, hagarika"
+      },
+      "renew": {
+        "title": "Umurongo mushya wa “{{name}}”?",
+        "body": "Umurongo wa kera uhita uhagarara: fungura mushya kuri iyo TV. Umurongo ubwawo ntuhinduka n’umuyoboro — ni aderesi y’uru rubuga n’urufunguzo rw’icyuma.",
+        "yes": "Yego, umurongo mushya"
       }
     },
     "nextPatient": {
@@ -10155,7 +10162,7 @@
     "save": "Kora mugaragaza",
     "saveChanges": "Bika impinduka",
     "linkTitle": "Link ya “{{name}}” — igaragara rimwe gusa",
-    "linkLead": "Fungura iyi aderesi muri navigateur ya televiziyo (Chrome, mugaragaza yose) hanyuma ukande Tangira. Ntizongera kugaragara: iyo yatakaye, hagarika mugaragaza uyongere bundi bushya.",
+    "linkLead": "Fungura iyi aderesi muri navigateur ya TV (Chrome, ku mugaragaro wose) ukande Tangira. Ntiyongera kugaragara: iyo yabuze, kanda Umurongo mushya ku cyuma — umurongo wa kera urahagarara, mushya ugaragara rimwe.",
     "openOnTv": "Fungura kuri televiziyo: iyi aderesi nk’uko iri (urufunguzo ruri muri yo).",
     "copy": "Koporora link",
     "copied": "Byakoporowe",
@@ -10196,7 +10203,9 @@
     "voiceOn": "Ijwi {{lang}} ×{{count}}",
     "voiceOff": "Nta jwi rivuga",
     "tickerOn": "Umurongo unyerera",
-    "tickerOff": "Nta murongo unyerera"
+    "tickerOff": "Nta murongo unyerera",
+    "newLink": "Umurongo mushya",
+    "newLinkHint": "Umurongo ntubikwa (urufunguzo rwawo rubikwa nk’ijambo ry’ibanga): umurongo mushya usimbura uwa kera, ugahagarara."
   },
   "nextPatient": {
     "title": "Umurwayi ukurikira",

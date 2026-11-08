@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, CircleAlert, Copy, MonitorPlay, Plus, Tv, X } from 'lucide-react'
+import { Check, CircleAlert, Copy, Link2, MonitorPlay, Plus, Tv, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { LANGS, formatDate, type Lang } from '@mmc/shared'
 import { Hint, IconChip } from '@/components/dash/kit'
@@ -56,7 +56,7 @@ const emptyDraft = (): DisplayScreenInput => ({
 export function DisplayScreensCard() {
   const { t } = useTranslation()
   const { data: screens = [], error: loadError } = useDisplayScreens()
-  const { save, revoke } = useDisplayScreenActions()
+  const { save, revoke, renew } = useDisplayScreenActions()
   const confirm = useConfirm()
   const [draft, setDraft] = useState<DisplayScreenInput | null>(null)
   const [link, setLink] = useState<{ name: string; url: string } | null>(null)
@@ -114,6 +114,26 @@ export function DisplayScreensCard() {
     try {
       await revoke.mutateAsync(s.id)
       setNotice(t('displayScreens.revokedDone'))
+    } catch (e) {
+      setError(describe(e))
+    }
+  }
+  // 0142: the link again — a fresh key, the old link stops; shown once like at creation
+  const doRenew = async (s: DisplayScreen) => {
+    setError(null)
+    setNotice(null)
+    if (
+      !(await confirm({
+        title: t('confirm.display.renew.title', { name: s.name }),
+        body: t('confirm.display.renew.body'),
+        confirmLabel: t('confirm.display.renew.yes'),
+      }))
+    )
+      return
+    try {
+      const r = await renew.mutateAsync(s.id)
+      setDraft(null)
+      setLink({ name: s.name, url: displayLink(r.key) })
     } catch (e) {
       setError(describe(e))
     }
@@ -211,9 +231,9 @@ export function DisplayScreensCard() {
             />
             <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
               <legend className={cn(labelClass, 'mb-1')}>{t('displayScreens.desks')}</legend>
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="flex flex-wrap gap-x-5 gap-y-1.5">
                 {DESK_CHOICES.map((s) => (
-                  <label key={s} className={checkRow}>
+                  <label key={s} className={cn(checkRow, 'whitespace-nowrap')}>
                     <input
                       type="checkbox"
                       className="accent-primary"
@@ -226,7 +246,7 @@ export function DisplayScreensCard() {
               </div>
               <span className="text-ink-3 text-[13px]">{t('displayScreens.desksHint')}</span>
             </fieldset>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
               <label className={checkRow}>
                 <input
                   type="checkbox"
@@ -433,6 +453,16 @@ export function DisplayScreensCard() {
                       }}
                     >
                       {t('displayScreens.edit')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="tint-grey"
+                      title={t('displayScreens.newLinkHint')}
+                      loading={renew.isPending && renew.variables === s.id}
+                      onClick={() => void doRenew(s)}
+                    >
+                      <Link2 size={14} aria-hidden="true" />
+                      {t('displayScreens.newLink')}
                     </Button>
                     <Button
                       size="sm"
