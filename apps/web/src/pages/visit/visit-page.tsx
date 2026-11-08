@@ -59,6 +59,7 @@ import { ClinicalCard } from './clinical-card'
 import { WhereNextCard } from './where-next-card'
 import { VisitTrack } from '@/components/clinical/visit-track'
 import { useCan, useSwitchedOff } from '@/lib/api/permissions'
+import { isDoctorUser } from '@/lib/roles'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { STATION_DESKS, TREATING_DESKS, useCanDesk, useMyDesks } from '@/lib/api/desks'
 import { useVisitAccess } from '@/lib/api/calls'
@@ -660,7 +661,7 @@ export function VisitPage({
 
             {/* Doctor → nurse: tasks on this visit appear on the nurses' dashboard. Giving one
                 needs a desk that treats patients; the nurse works them at the nursing desk. */}
-            {(user.role === 'doctor' || user.role === 'manager') &&
+            {(isDoctorUser(user) || user.role === 'manager') &&
               treats &&
               can('clinical.write') &&
               !locked &&

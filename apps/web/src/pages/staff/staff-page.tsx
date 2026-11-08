@@ -70,6 +70,7 @@ import {
   registrationText,
 } from '@/lib/api/staff'
 import { SPECIALTIES, professionLabel, specialtyLabel } from '@/lib/roles'
+import { NON_TREATING_ROLES } from '@/lib/api/permissions'
 import {
   DEFAULT_CEILINGS,
   DESKS,
@@ -82,6 +83,7 @@ import {
   isDesk,
   useKeptDeskActions,
   useRoleDeskMatrix,
+  TREATING_DESKS,
   type DeskId,
 } from '@/lib/api/desks'
 import { SECTIONS, sectionName, type SectionId } from '@/lib/api/services'
@@ -321,6 +323,21 @@ export function StaffPage({ user }: { user: StaffUser }) {
   const { data: employees = [], isLoading, error } = useEmployees()
   const { data: departments = [] } = useDepartments()
   const actions = useStaffActions()
+  // 0141: "Works as the doctor here" is saved after the employee, department by department (the
+  // manager's own call; the employee's save itself goes through the confirmed function)
+  const applyDoctorHere = async (id: string, input: EmployeeInput, before: Employee | null) => {
+    for (const m of input.departments) {
+      const was =
+        before?.departments.find((x) => x.departmentId === m.departmentId)?.doctorHere === true
+      const now = m.doctorHere === true
+      if (was !== now)
+        await actions.setDoctorHere.mutateAsync({
+          profileId: id,
+          departmentId: m.departmentId,
+          on: now,
+        })
+    }
+  }
   const confirm = useConfirm()
   const [editing, setEditing] = useState<Employee | 'new' | null>(null)
   const [resetFor, setResetFor] = useState<Employee | null>(null)
@@ -660,6 +677,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                             pin: firstPin!,
                             confirmCode,
                           })
+                          await applyDoctorHere(r.id, input, null)
                           setCredentials({
                             title: t('staff.created.title', { name: input.fullName }),
                             staffId: r.staff_id ?? '',
@@ -669,6 +687,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                           })
                         } else {
                           await actions.update.mutateAsync({ id: editing.id, input, confirmCode })
+                          await applyDoctorHere(editing.id, input, editing)
                           setNotice(t('staff.saved', { name: input.fullName }))
                         }
                         setEditing(null)
@@ -1359,7 +1378,7 @@ function EmployeeForm({
   const [isManager, setIsManager] = useState(employee?.isManager ?? false)
   // Every department of the employee with the position held there and what they do there (0128,
   // "Does here"); the first is the main one.
-  type Line = { departmentId: string; position: Position; services: string[] }
+  type Line = { departmentId: string; position: Position; services: string[]; doctorHere: boolean }
   const [memberships, setMemberships] = useState<Line[]>(() =>
     (employee?.departments ?? []).map((m) => {
       const d = departments.find((x) => x.id === m.departmentId)
@@ -1367,9 +1386,14 @@ function EmployeeForm({
         departmentId: m.departmentId,
         position: m.position,
         services: d ? doesIn(m, d) : (m.services ?? []),
+        doctorHere: m.doctorHere === true,
       }
     }),
   )
+  // 0141: "Works as the doctor here": in a department that treats patients, not for the office
+  const mayBeDoctorHere = !NON_TREATING_ROLES.includes(role)
+  const treatsHere = (d: Department | undefined) =>
+    !!d && d.services.some((s) => (TREATING_DESKS as readonly string[]).includes(s))
   const setMembership = (i: number, patch: Partial<Line>) =>
     setMemberships((list) => list.map((m, j) => (j === i ? { ...m, ...patch } : m)))
   const toggleService = (i: number, s: string) =>
@@ -1497,6 +1521,7 @@ function EmployeeForm({
             position: m.position,
             // only what the department gives, in its order
             services: d ? d.services.filter((s) => m.services.includes(s)) : m.services,
+            doctorHere: m.doctorHere && treatsHere(d),
           }
         }),
         station,
@@ -1782,6 +1807,29 @@ function EmployeeForm({
                   )}
                 </fieldset>
               )}
+              {/* 0141: appointed the doctor of this department (every doctor power at its desks) */}
+              {mayBeDoctorHere && treatsHere(dept) && (
+                <label className="border-border flex items-start gap-3 rounded-md border p-3 sm:col-span-3">
+                  <input
+                    type="checkbox"
+                    className="accent-primary mt-0.5 size-[18px] flex-none"
+                    checked={m.doctorHere}
+                    onChange={(e) => setMembership(i, { doctorHere: e.target.checked })}
+                  />
+                  <span>
+                    <span className="block text-[14px] font-semibold">
+                      {t('staff.form.doctorHere')}
+                    </span>
+                    <span className="text-ink-3 block text-xs">
+                      {t(
+                        role === 'doctor'
+                          ? 'staff.form.doctorHereIsDoctor'
+                          : 'staff.form.doctorHereHint',
+                      )}
+                    </span>
+                  </span>
+                </label>
+              )}
               {/* one head and one assistant head per department: who this save moves down */}
               {leadChanges(m, employee?.id, heads, assistants, dept?.name ?? '', t).map((line) => (
                 <p key={line} className={cn(warnBox, 'sm:col-span-3')}>
@@ -1798,7 +1846,7 @@ function EmployeeForm({
             onClick={() =>
               setMemberships((list) => [
                 ...list,
-                { departmentId: '', position: 'member', services: [] },
+                { departmentId: '', position: 'member', services: [], doctorHere: false },
               ])
             }
           >

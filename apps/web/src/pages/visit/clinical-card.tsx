@@ -73,10 +73,10 @@ import { payerLine, usePayerLines } from '@/lib/api/insurers'
 import { useInsuranceEnabled } from '@/lib/api/settings'
 import { insurerLineText, insurerLineTone } from '@/lib/insurer-price'
 import { TestFilesChip } from '@/components/clinical/supporting-files'
-import { registrationText, useMyCredentials } from '@/lib/api/staff'
+import { registrationText, useEmployees, useMyCredentials } from '@/lib/api/staff'
 import { stationFor, type Station } from '@/lib/api/visits'
 import { buildPrescriptionHtml, type RxDoc, type RxDocMedicine } from '@/lib/prescription-doc'
-import { isDoctorUser, roleLabel } from '@/lib/roles'
+import { isDoctorUser, professionLabel, roleLabel } from '@/lib/roles'
 import { ForDoctorsNote } from '@/components/clinical/record-privacy'
 import { cn } from '@/lib/utils'
 import { useCan, useSwitchedOff } from '@/lib/api/permissions'
@@ -265,12 +265,18 @@ export function ClinicalCard({
   const deskStaff =
     !clinician && canDesk(['laboratory', 'ultrasound']) && !readOnly && can('orders.write')
   // a doctor or nurse locked out of this patient does not write results on it
-  const lockedOut = !!lockedNote && (user.role === 'doctor' || user.role === 'nurse')
+  const lockedOut = !!lockedNote && (isDoctorUser(user) || user.role === 'nurse')
   const { data: deskInfo } = useMyDesks(user)
   /** Whose result is it: the laboratory or ultrasound desk of the test; a test done at another
    *  desk (Nursing, Dental…) also that desk's clinical staff. Never the clinician who asked for
    *  it (0104: the requester fallback is gone, in the database too). As the database checks. */
-  const mayResult = (o: { station?: string | null; category: 'lab' | 'imaging' }) =>
+  const mayResult = (o: {
+    station?: string | null
+    category: 'lab' | 'imaging'
+    doerId?: string | null
+  }) =>
+    // 0141: the doctor the ultrasound is assigned to writes its findings
+    o.doerId === user.id ||
     // the laboratory / ultrasound desk comes with the department, the switch with the manager
     (canDesk(deskOfRequest(o.station, o.category)) && can('orders.write')) ||
     (can('clinical.write') &&
@@ -293,6 +299,8 @@ export function ClinicalCard({
     impression: '',
     verify: true,
     correction: null as string | null,
+    // 0141: the region examined (an ultrasound)
+    region: '',
   })
   // 0127: the step whose messages (errors, prescribing notes) are shown under it
   const [msgStep, setMsgStep] = useState<StepKey | 'finish'>('finish')
@@ -402,7 +410,15 @@ export function ClinicalCard({
     reason: '',
     send: true,
     urgent: false,
+    // 0141: who does an ultrasound: the ultrasound desk, me, or a doctor colleague (their id)
+    scanBy: 'desk' as 'desk' | 'me' | 'other',
+    scanDoctor: '',
   })
+  // 0141: the doctors who may do an ultrasound in the doctor's place (appointed ones too)
+  const { data: employees = [] } = useEmployees()
+  const scanDoctors = employees.filter(
+    (e) => e.active && e.id !== user.id && (e.isDoctor || e.role === 'doctor'),
+  )
   const [localError, setLocalError] = useState<string | null>(null)
   // 0125: no primary diagnosis at Finish: "No diagnosis found" and why
   const [noDx, setNoDx] = useState<{ kind: NoDiagnosisKind; note: string } | null>(null)
@@ -958,10 +974,18 @@ export function ClinicalCard({
       () => back,
     )
   }
+  const isScan = (s: Treatment) => s.group === 'imaging' || s.orderStation === 'ultrasound'
   const submitOrder = async (e: FormEvent) => {
     e.preventDefault()
     const chosen = tests.filter((x) => order.services.includes(x.id))
     if (chosen.length === 0) return setLocalError(t('clinical.errors.test'))
+    // 0141: an ultrasound done by a doctor: themselves or the colleague chosen; no queue at the desk
+    const scans = chosen.some(isScan)
+    const doer =
+      !scans || order.scanBy === 'desk' ? null : order.scanBy === 'me' ? user.id : order.scanDoctor
+    if (scans && order.scanBy === 'other' && !doer)
+      return setLocalError(t('clinical.errors.scanDoctor'))
+    if (doer && chosen.some((s) => !isScan(s))) return setLocalError(t('clinical.errors.scanOnly'))
     const list = chosen.map((s) => treatmentName(s, i18n.language)).join(', ')
     if (
       !(await confirm({
@@ -981,11 +1005,30 @@ export function ClinicalCard({
             tests: chosen.map((s) => ({ serviceId: s.id, name: s.nameEn, group: s.group })),
             reason: order.reason,
             // the lab registering its own test: the patient is already there
-            from: order.send && !deskStaff ? (station ?? stationFor(user)) : null,
+            from: order.send && !deskStaff && !doer ? (station ?? stationFor(user)) : null,
             urgent: order.urgent,
+            doer,
           })
-          .then(() => setOrder({ services: [], reason: '', send: true, urgent: false })),
-      t(order.send ? 'clinical.testsSent' : 'clinical.testsSaved', { count: chosen.length }),
+          .then(() =>
+            setOrder({
+              services: [],
+              reason: '',
+              send: true,
+              urgent: false,
+              scanBy: order.scanBy,
+              scanDoctor: order.scanDoctor,
+            }),
+          ),
+      t(
+        doer
+          ? doer === user.id
+            ? 'clinical.scanBy.savedMe'
+            : 'clinical.scanBy.savedOther'
+          : order.send
+            ? 'clinical.testsSent'
+            : 'clinical.testsSaved',
+        { count: chosen.length, name: scanDoctors.find((d) => d.id === doer)?.fullName ?? '' },
+      ),
     )
   }
   const toggleTest = (id: string) =>
@@ -1625,6 +1668,57 @@ export function ClinicalCard({
           )
         )}
         {tests.length === 0 && <EmptyNote>{t('clinical.noTests')}</EmptyNote>}
+        {/* 0141: who does an ultrasound — the desk, the doctor, a colleague */}
+        {isDoctorUser(user) && chosenTests.some(isScan) && (
+          <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+            <legend className="text-ink-2 mb-1 p-0 text-[13px] font-semibold">
+              {t('clinical.scanBy.title')}
+            </legend>
+            <div role="radiogroup" className="flex flex-wrap gap-2">
+              {(['desk', 'me', 'other'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={order.scanBy === m}
+                  onClick={() => setOrder({ ...order, scanBy: m })}
+                  className={cn(
+                    'flex min-w-[12rem] flex-1 items-start gap-2 rounded-md border px-3 py-2 text-left transition-colors',
+                    order.scanBy === m
+                      ? 'border-primary bg-primary-tint text-ink ring-primary/20 ring-2'
+                      : 'border-border bg-surface text-ink-2 hover:bg-hover',
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-semibold">
+                      {t(`clinical.scanBy.${m}`)}
+                    </span>
+                    <span className="text-ink-3 block text-xs">
+                      {t(`clinical.scanBy.${m}Hint`)}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            {order.scanBy === 'other' && (
+              <Select
+                label={t('clinical.scanBy.pick')}
+                value={order.scanDoctor}
+                onChange={(e) => setOrder({ ...order, scanDoctor: e.target.value })}
+                required
+              >
+                <option value="">
+                  {scanDoctors.length ? t('clinical.scanBy.pick') : t('clinical.scanBy.none')}
+                </option>
+                {scanDoctors.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.fullName}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </fieldset>
+        )}
         <Field
           label={t('clinical.reason')}
           value={order.reason}
@@ -2223,6 +2317,12 @@ export function ClinicalCard({
           {o.test} <span className="text-ink-3 text-xs">· {t(`clinical.status.${o.status}`)}</span>
         </span>
         {o.reason && <span className="text-ink-3 block text-xs">{o.reason}</span>}
+        {/* 0141: an ultrasound done by a doctor, not the desk */}
+        {o.doer && (
+          <span className="text-teal block text-xs font-semibold">
+            {t('clinical.scanDoneBy', { name: o.doer })}
+          </span>
+        )}
         {/* 0104: no department gives the desk that does this test: the manager is told */}
         {!o.result &&
           o.status !== 'cancelled' &&
@@ -2248,6 +2348,11 @@ export function ClinicalCard({
         />
         {o.result && (
           <span className="bg-green-bg/60 mt-1 block rounded-md px-2.5 py-1.5 text-[13px]">
+            {o.result.detail?.region && (
+              <span className="text-ink-2 block text-xs font-semibold">
+                {t('clinical.region')}: {o.result.detail.region}
+              </span>
+            )}
             {o.result.findings && <span className="block">{o.result.findings}</span>}
             {o.result.impression && (
               <span className="block font-semibold">{o.result.impression}</span>
@@ -2300,12 +2405,31 @@ export function ClinicalCard({
                 void run(
                   () =>
                     actions.recordResult
-                      .mutateAsync({ requestId: o.id, ...result })
+                      .mutateAsync({
+                        requestId: o.id,
+                        findings: result.findings,
+                        impression: result.impression,
+                        verify: result.verify,
+                        correction: result.correction,
+                        detail: result.region.trim() ? { region: result.region.trim() } : null,
+                      })
                       .then(() => setResultFor(null)),
                   t('clinical.resultSaved'),
                 )
               }}
             >
+              {/* 0141: an ultrasound: the region examined */}
+              {o.category === 'imaging' && (
+                <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
+                  {t('clinical.region')}
+                  <input
+                    className="border-border bg-card h-10 rounded-md border px-2.5 text-[14px] font-normal"
+                    placeholder={t('clinical.regionPh')}
+                    value={result.region}
+                    onChange={(e) => setResult({ ...result, region: e.target.value })}
+                  />
+                </label>
+              )}
               <label className="text-ink-2 flex flex-col gap-1 text-[13px] font-semibold">
                 {t('clinical.findings')}
                 <textarea
@@ -2375,6 +2499,7 @@ export function ClinicalCard({
               setResult({
                 findings: o.result?.findings ?? '',
                 impression: o.result?.impression ?? '',
+                region: o.result?.detail?.region ?? '',
                 verify: true,
                 correction: o.result?.verified ? '' : null,
               })
@@ -2879,6 +3004,36 @@ export function ClinicalCard({
 
       {/* 0127: the doctor's record, in six steps */}
       {steps}
+
+      {/* 0141: what the ward added to the bill (acts, medicines) besides the doctor's orders */}
+      {data && (data.extras?.length ?? 0) > 0 && (
+        <CardBody className="border-border gap-2 border-t">
+          <span className="text-ink flex items-center gap-2 text-[15px] font-semibold">
+            <ClipboardList size={16} aria-hidden="true" className="text-amber" />
+            {t('clinical.extras.title', { count: data.extras!.length })}
+          </span>
+          <ul className="m-0 flex list-none flex-col gap-1 p-0">
+            {data.extras!.map((x) => (
+              <li key={x.id} className="flex flex-wrap items-baseline gap-x-2 text-[14px]">
+                <span className="font-semibold">
+                  {x.quantity !== 1 ? `${x.quantity} × ` : ''}
+                  {x.description}
+                </span>
+                <span className="text-ink-3 text-xs">
+                  {[
+                    t('clinical.extras.by', {
+                      name: x.by ?? '',
+                      role: x.byRole ? professionLabel({ role: x.byRole }, t) : '',
+                    }),
+                    t(x.ordered ? 'clinical.extras.ordered' : 'clinical.extras.notOrdered'),
+                    when(x.at),
+                  ].join(' · ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </CardBody>
+      )}
 
       {/* the desk view (0126): the reader's part, as a list; first the orders for them (0127) */}
       {!stepper && data && nurseOrders.length > 0 && (

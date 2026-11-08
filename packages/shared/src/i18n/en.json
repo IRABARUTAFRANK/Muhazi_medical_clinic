@@ -828,7 +828,10 @@
       "isManagerHint": "Oversees the whole clinic: dashboard, reports, employees, prices, settings and money. Takes patients only at the desks of the departments below; sees patient records only as a doctor.",
       "isManagerSelf": "You are the clinic manager: another manager can change this, not you.",
       "doesHere": "Does here",
-      "managerDesks": "As the clinic manager they also see every desk, but take patients only at these."
+      "managerDesks": "As the clinic manager they also see every desk, but take patients only at these.",
+      "doctorHere": "Works as the doctor here",
+      "doctorHereHint": "Appointed by the manager: in this department the person has every doctor power — the record in six steps, diagnoses, orders to the nurses, tests, medicines, acts, finishing the visit — and the doctor’s switches. Their profession stays the same; elsewhere nothing changes.",
+      "doctorHereIsDoctor": "A doctor already has every doctor power here; the tick marks them the doctor of this department."
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -2931,7 +2934,9 @@
       "needPrimary": "Record a primary diagnosis before closing the visit.",
       "rxTwice": "{{names}} is written twice. Remove the extra line, or press Prescribe again to give both (each is charged).",
       "pickStore": "Choose the room store each medicine given here comes from.",
-      "reason": "Write the reason (at least 3 letters)."
+      "reason": "Write the reason (at least 3 letters).",
+      "scanDoctor": "Choose the doctor who does the ultrasound.",
+      "scanOnly": "An ultrasound done by a doctor is ordered on its own: order the other tests separately."
     },
     "dxHint": "The diagnosis is the disease or problem you found after examining the patient, e.g. “Uncomplicated malaria”. Primary = the main reason for this visit; secondary = other problems found. Tick “provisional” when you are still waiting for results.",
     "rxHint": "One block per medicine. Use “Add another medicine” for a combination (e.g. an antimalarial plus paracetamol). All of them go to the pharmacy together.",
@@ -3120,7 +3125,32 @@
     "testNoneChosen": "No test chosen yet: pick them in the list above.",
     "testRemove": "Remove {{test}}",
     "testNoPrice": "no price",
-    "testsTotal": "Total: {{amount}}"
+    "testsTotal": "Total: {{amount}}",
+    "scanBy": {
+      "title": "Who does the ultrasound",
+      "desk": "The ultrasound desk",
+      "deskHint": "The patient goes to the ultrasound desk and comes back with the result.",
+      "me": "Me — I do it myself",
+      "meHint": "No queue: the charge goes on the bill and you write the findings here.",
+      "other": "A colleague",
+      "otherHint": "The doctor you choose is told and writes the findings.",
+      "pick": "Choose the doctor",
+      "none": "No other doctor",
+      "savedMe_one": "Ultrasound to do yourself: write the findings under the test.",
+      "savedMe_other": "Ultrasounds to do yourself: write the findings under each test.",
+      "savedOther_one": "Ultrasound sent to {{name}}, who is told.",
+      "savedOther_other": "Ultrasounds sent to {{name}}, who is told."
+    },
+    "scanDoneBy": "Done by {{name}}",
+    "region": "Region examined",
+    "regionPh": "e.g. abdomen, pelvis, obstetric",
+    "extras": {
+      "title_one": "Added by the ward ({{count}})",
+      "title_other": "Added by the ward ({{count}})",
+      "by": "by {{name}} ({{role}})",
+      "ordered": "ordered by the doctor",
+      "notOrdered": "not ordered by the doctor"
+    }
   },
   "adjust": {
     "mode": "How to enter it",
@@ -3671,7 +3701,8 @@
       "not_done": "{{by}} will not carry out the rest of: {{title}}",
       "not_given": "{{by}} could not give one time of: {{title}}",
       "cancelled": "{{by}} cancelled the order: {{title}}"
-    }
+    },
+    "scanRequest": "Ultrasound to do: {{test}} · {{name}}"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -5021,7 +5052,8 @@
       "managerNote": "The manager always has every desk. Money (payments, bills) stays with the role and the switches above; room stores stay with their holders.",
       "on": "{{desk}} allowed for every {{role}}.",
       "off": "{{desk}} stopped for every {{role}}."
-    }
+    },
+    "neverTreats": "Never: reception, the cashier and the administrator treat no patient."
   },
   "medReport": {
     "open": "Medical report",
@@ -7951,6 +7983,7 @@
   "dbErrors": {
     "25402734": "the doctor cancelled this medicine",
     "37902613": "The setting “past history for the treating doctor” must be on or off.",
+    "39332635": "Reception, the cashier and the administrator do not treat patients: this feature cannot be switched on for them.",
     "47437974": "Write the chief complaint (step 1) before finishing the visit.",
     "52464355": "There is no open pharmacy store to send it to.",
     "67568016": "this category still has {{p1}} treatment(s): move them to another category first",
@@ -8397,7 +8430,11 @@
     "cd1c72ff": "Say how the line is charged.",
     "717c8baa": "This visit has no insurer: there is nothing to change on its lines.",
     "f36c1aa7": "That charge was not found; refresh the page.",
-    "e10eb18e": "Give the reason."
+    "e10eb18e": "Give the reason.",
+    "fc369004": "This visit’s record is not yours to read, so its prescription cannot be printed by you.",
+    "4431f9e0": "Only an ultrasound can be done by the doctor; other tests go to their desk.",
+    "b9f978f4": "This department treats no patient: nobody can be its doctor.",
+    "9bbd2911": "Place the person in that department first."
   },
   "panel": {
     "close": "Close",

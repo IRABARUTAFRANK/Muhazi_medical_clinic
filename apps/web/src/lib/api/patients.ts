@@ -980,9 +980,14 @@ export interface TestOrder {
   status: string
   reason: string | null
   at: string
+  /** 0141: an ultrasound done by a doctor (themselves or a colleague), not the ultrasound desk. */
+  doerId?: string | null
+  doer?: string | null
   result: {
     findings: string | null
     impression: string | null
+    /** 0141: the region examined (an ultrasound). */
+    detail?: { region?: string | null } | null
     verified: boolean
     corrected?: boolean
     correctionReason?: string | null
@@ -1068,6 +1073,24 @@ export interface VisitClinical {
   nurseOrders?: NurseOrder[]
   /** 0127: finishing needs the chief complaint (a desk view knows without its words). */
   hasComplaint?: boolean
+  /** 0141: what the ward added to the bill (acts, medicines) besides the doctor's orders. */
+  extras?: VisitExtra[]
+}
+
+/** A treatment or medicine put on the bill by someone other than a doctor (0141). */
+export interface VisitExtra {
+  id: string
+  description: string
+  quantity: number
+  unitPrice: number
+  kind: 'act' | 'medicine'
+  at: string
+  byId: string | null
+  by: string | null
+  byRole: string | null
+  office: string | null
+  /** A doctor's order of this visit asked for it. */
+  ordered: boolean
 }
 const EMPTY_CLINICAL: VisitClinical = {
   diagnoses: [],
@@ -2244,6 +2267,8 @@ export function useClinicalActions(encounterId: string) {
       from?: string | null
       /** Urgent: to the top of the lab's list (migration 0060). */
       urgent?: boolean
+      /** 0141: an ultrasound done by this doctor (themselves or a colleague): no queue at the desk. */
+      doer?: string | null
     }) => {
       if (!supabase) {
         i.tests.forEach((x, k) =>
@@ -2266,6 +2291,8 @@ export function useClinicalActions(encounterId: string) {
         p_from: i.from ?? null,
         // only when urgent, so a database without migration 0060 still takes the order
         ...(i.urgent ? { p_priority: 2 } : {}),
+        // 0141: the full function has no defaults: every parameter goes with the doer
+        ...(i.doer ? { p_priority: i.urgent ? 2 : 3, p_doer: i.doer } : {}),
       })
       if (!error) return
       // Database without migration 0044 yet: order one by one (the patient is not sent back).
@@ -2324,6 +2351,8 @@ export function useClinicalActions(encounterId: string) {
       verify: boolean
       /** The reason, when a verified result is corrected. */
       correction?: string | null
+      /** 0141: the region examined (an ultrasound). */
+      detail?: { region?: string | null } | null
     }) => {
       if (!supabase) {
         const o = local().orders.find((x) => x.id === i.requestId)
@@ -2354,6 +2383,7 @@ export function useClinicalActions(encounterId: string) {
         p_findings: i.findings || null,
         p_impression: i.impression || null,
         p_verify: i.verify,
+        ...(i.detail ? { p_detail: i.detail } : {}),
       })
     },
     onSuccess: refresh,

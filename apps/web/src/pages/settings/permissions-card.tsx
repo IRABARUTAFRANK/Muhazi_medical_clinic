@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, KeyRound, UserCog, X } from 'lucide-react'
+import { Check, KeyRound, Lock, UserCog, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Hint, IconChip } from '@/components/dash/kit'
 import { tableCell, tableFirstCell, tableHead, tableRow } from '@/components/dash/kit-style'
@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/select'
 import {
   MANAGED_FEATURES,
   MATRIX_ROLES,
+  neverTreats,
   usePermissionActions,
   usePermissionMatrix,
   type Feature,
@@ -48,7 +49,8 @@ export function PermissionsCard() {
     }
   }
   const has = (role: string, f: Feature) => matrix?.roles[role]?.includes(f) ?? false
-  const staff = employees.filter((e) => e.active && e.role !== 'manager')
+  // the clinic managers keep every feature (0128: a flag; before it, the role)
+  const staff = employees.filter((e) => e.active && e.role !== 'manager' && !e.isManager)
   const chosen = staff.find((e) => e.id === person)
   const exceptionOf = (id: string, f: Feature) =>
     matrix?.exceptions.find((x) => x.profileId === id && x.permission === f)
@@ -99,6 +101,19 @@ export function PermissionsCard() {
                     </td>
                     {MATRIX_ROLES.map((r) => {
                       const on = has(r, f)
+                      // 0141: reception, the cashier and the administrator treat no patient
+                      if (neverTreats(r, f))
+                        return (
+                          <td key={r} className={cn(tableCell, 'px-2 text-center')}>
+                            <span
+                              className="text-ink-3 inline-flex size-9 items-center justify-center"
+                              title={t('perms.neverTreats')}
+                              aria-label={`${t(`perms.f.${f}.name`)} · ${t(`staff.roles.${r}`)} · ${t('perms.neverTreats')}`}
+                            >
+                              <Lock size={14} aria-hidden="true" />
+                            </span>
+                          </td>
+                        )
                       return (
                         <td key={r} className={cn(tableCell, 'px-2 text-center')}>
                           <button
@@ -188,6 +203,7 @@ export function PermissionsCard() {
                 const byRole = has(chosen.role, f)
                 const value = ex ? (ex.allowed ? 'yes' : 'no') : 'role'
                 const effective = ex ? ex.allowed : byRole
+                const never = neverTreats(chosen.role, f)
                 return (
                   <div
                     key={f}
@@ -213,7 +229,16 @@ export function PermissionsCard() {
                     >
                       {t(effective ? 'perms.allowed' : 'perms.notAllowed')}
                     </Badge>
-                    <span className="flex flex-wrap gap-1" role="radiogroup">
+                    {never && (
+                      <span className="text-ink-3 inline-flex items-center gap-1 text-xs">
+                        <Lock size={12} aria-hidden="true" />
+                        {t('perms.neverTreats')}
+                      </span>
+                    )}
+                    <span
+                      className={cn('flex flex-wrap gap-1', never && 'hidden')}
+                      role="radiogroup"
+                    >
                       {(['role', 'yes', 'no'] as const).map((v) => (
                         <Button
                           key={v}

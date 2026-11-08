@@ -33,23 +33,43 @@ export type Feature = (typeof MANAGED_FEATURES)[number]
 export const MATRIX_ROLES: DbRole[] = [
   'receptionist',
   'nurse',
+  'midwife',
   'doctor',
   'cashier',
   'lab_tech',
   'sonographer',
   'pharmacist',
+  'administrator',
 ]
+
+/** 0141: the treating switches, never for the roles that treat no patient (the database refuses). */
+export const TREATING_FEATURES: readonly Feature[] = [
+  'charge.write',
+  'clinical.write',
+  'orders.write',
+]
+export const NON_TREATING_ROLES: readonly string[] = ['receptionist', 'cashier', 'administrator']
+export const neverTreats = (role: string, f: Feature) =>
+  NON_TREATING_ROLES.includes(role) && TREATING_FEATURES.includes(f)
 
 /** The clinic's defaults (also used before the database knows these settings). */
 const DEFAULTS: Record<Feature, string[]> = {
-  'payment.take': ['cashier', 'receptionist'],
-  'visit.start': ['receptionist', 'nurse', 'doctor', 'manager'],
-  'vitals.write': ['receptionist', 'nurse', 'doctor', 'manager'],
-  'charge.write': ['nurse', 'doctor', 'sonographer', 'lab_tech', 'pharmacist', 'manager'],
-  'clinical.write': ['nurse', 'doctor', 'manager'],
+  'payment.take': ['cashier', 'receptionist', 'administrator'],
+  'visit.start': ['receptionist', 'administrator', 'nurse', 'midwife', 'doctor', 'manager'],
+  'vitals.write': ['receptionist', 'administrator', 'nurse', 'midwife', 'doctor', 'manager'],
+  'charge.write': [
+    'nurse',
+    'midwife',
+    'doctor',
+    'sonographer',
+    'lab_tech',
+    'pharmacist',
+    'manager',
+  ],
+  'clinical.write': ['nurse', 'midwife', 'doctor', 'manager'],
   'orders.write': ['doctor', 'sonographer', 'lab_tech', 'manager'],
   // booking requests are reception's work; the manager oversees them (0068)
-  'appointment.approve': ['receptionist'],
+  'appointment.approve': ['receptionist', 'administrator'],
   'stock.write': ['lab_tech', 'pharmacist', 'manager'],
   // answering record-access requests is the manager's alone until they give the right (0095)
   'records.approve': ['manager'],

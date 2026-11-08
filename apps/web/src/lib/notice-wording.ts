@@ -187,6 +187,12 @@ export function useWording() {
           }),
           body: [p.name, p.reason].filter(Boolean).join(' · ') || null,
         }
+      // 0141: an ultrasound a colleague asks me to do
+      case 'scan_request':
+        return {
+          title: t('notify.scanRequest', { test: p.test ?? '', name: p.name ?? '' }),
+          body: joinParts([byText(p.by), p.reason]),
+        }
       // 0127: an order of the doctor to the nurses (step 6), and what became of it
       case 'nurse_order':
         return {

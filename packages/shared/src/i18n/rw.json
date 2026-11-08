@@ -832,7 +832,10 @@
       "isManagerHint": "Agenzura ivuriro ryose: imbonerahamwe, raporo, abakozi, ibiciro, igenamiterere n’amafaranga. Yakira abarwayi gusa aho amashami ari hepfo amushyira; abona dosiye z’abarwayi gusa niba ari muganga.",
       "isManagerSelf": "Uri umuyobozi w’ivuriro: undi muyobozi ni we ushobora kubihindura, si wowe.",
       "doesHere": "Ibyo akora hano",
-      "managerDesks": "Nk’umuyobozi w’ivuriro abona aho bakorera hose, ariko yakira abarwayi aha gusa."
+      "managerDesks": "Nk’umuyobozi w’ivuriro abona aho bakorera hose, ariko yakira abarwayi aha gusa.",
+      "doctorHere": "Akora nka muganga hano",
+      "doctorHereHint": "Ashyirwaho n’umuyobozi: muri iri shami uyu muntu afite ububasha bwose bwa muganga — dosiye mu ntambwe esheshatu, indwara zemejwe, amabwiriza ku baforomo, ibizamini, imiti, ibikorwa by’ubuvuzi, gusoza kwivuza — n’uburenganzira bwa muganga. Umwuga we ntuhinduka; ahandi nta kihinduka.",
+      "doctorHereIsDoctor": "Muganga asanzwe afite ububasha bwose hano; aka kamenyetso kamushyiraho nka muganga w’iri shami."
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -1856,7 +1859,9 @@
       "needPrimary": "Andika indwara y’ingenzi yagaragaye mbere yo gufunga kwivuza.",
       "rxTwice": "{{names}} yanditswe kabiri. Kuraho umurongo urenze, cyangwa wongere ukande Andika imiti kugira ngo yombi itangwe (buri umwe ushyirwa kuri fagitire).",
       "pickStore": "Hitamo ububiko bw’icyumba buri muti utangwa hano uvamo.",
-      "reason": "Andika impamvu (nibura inyuguti 3)."
+      "reason": "Andika impamvu (nibura inyuguti 3).",
+      "scanDoctor": "Hitamo muganga ukora echographie.",
+      "scanOnly": "Echographie ikorwa na muganga isabwa yonyine: saba ibindi bizamini ukwabyo."
     },
     "dxHint": "Indwara yagaragaye ni indwara cyangwa ikibazo wabonye nyuma yo gusuzuma umurwayi, urugero “Malariya yoroheje”. Iy’ingenzi = impamvu nyamukuru y’uku kwivuza; iyindi = ibindi bibazo byabonetse. Shyira akamenyetso kuri “By’agateganyo” igihe ugitegereje ibisubizo.",
     "rxHint": "Igice kimwe kuri buri muti. Koresha “Ongeraho undi muti” ku miti ifatanywa (urugero umuti wa malariya na parasetamoli). Yose yoherezwa muri farumasi icyarimwe.",
@@ -2045,7 +2050,32 @@
     "testNoneChosen": "Nta kizamini kirahitwamo: bihitemo ku rutonde ruri hejuru.",
     "testRemove": "Kuraho {{test}}",
     "testNoPrice": "nta giciro",
-    "testsTotal": "Igiteranyo: {{amount}}"
+    "testsTotal": "Igiteranyo: {{amount}}",
+    "scanBy": {
+      "title": "Ukora echographie",
+      "desk": "Aho bakorera echographie",
+      "deskHint": "Umurwayi ajya aho bakorera echographie akagaruka n’igisubizo.",
+      "me": "Njye — ndayikora ubwanjye",
+      "meHint": "Nta murongo: ikiguzi kijya kuri fagitire kandi wandika ibyo wabonye hano.",
+      "other": "Mugenzi wanjye",
+      "otherHint": "Muganga uhisemo aramenyeshwa akandika ibyo yabonye.",
+      "pick": "Hitamo muganga",
+      "none": "Nta wundi muganga",
+      "savedMe_one": "Echographie uzikorera: andika ibyo wabonye munsi y’ikizamini.",
+      "savedMe_other": "Echographie uzikorera: andika ibyo wabonye munsi ya buri kizamini.",
+      "savedOther_one": "Echographie yoherejwe kwa {{name}}, aramenyeshwa.",
+      "savedOther_other": "Echographie zoherejwe kwa {{name}}, aramenyeshwa."
+    },
+    "scanDoneBy": "Yakozwe na {{name}}",
+    "region": "Igice cyarebwe",
+    "regionPh": "urugero: inda, igitereko, gutwita",
+    "extras": {
+      "title_one": "Byongewemo n’abaforomo ({{count}})",
+      "title_other": "Byongewemo n’abaforomo ({{count}})",
+      "by": "na {{name}} ({{role}})",
+      "ordered": "byategetswe na muganga",
+      "notOrdered": "ntibyategetswe na muganga"
+    }
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -3680,7 +3710,8 @@
       "not_done": "{{by}} ntazakora ibisigaye kuri: {{title}}",
       "not_given": "{{by}} ntiyashoboye gutanga inshuro imwe ya: {{title}}",
       "cancelled": "{{by}} yahagaritse itegeko: {{title}}"
-    }
+    },
+    "scanRequest": "Echographie yo gukora: {{test}} · {{name}}"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -5030,7 +5061,8 @@
       "managerNote": "Umuyobozi ahora afite aho bakorera hose. Amafaranga (ubwishyu, fagitire) agumana n’umwanya n’ibyo wafunguye haruguru; ububiko bw’ibyumba bugumana ababushinzwe.",
       "on": "{{desk}} hemerewe buri {{role}}.",
       "off": "{{desk}} hahagaritswe kuri buri {{role}}."
-    }
+    },
+    "neverTreats": "Ntibishoboka: aho bakira abarwayi, uwakira ubwishyu n’umunyamabanga ntabwo bavura umurwayi."
   },
   "medReport": {
     "open": "Raporo ya muganga",
@@ -7960,6 +7992,7 @@
   "dbErrors": {
     "25402734": "Muganga yahagaritse uyu muti.",
     "37902613": "Igenamiterere “amakuru ya kera kuri muganga uvura” rigomba gufungurwa cyangwa gufungwa.",
+    "39332635": "Aho bakira abarwayi, uwakira ubwishyu n’umunyamabanga ntibavura umurwayi: iki gikorwa ntigishobora gufungurirwa bo.",
     "47437974": "Andika icyamuzanye (intambwe ya 1) mbere yo kurangiza kwivuza.",
     "52464355": "Nta bubiko bwa farumasi bufunguye bwo kubisubizamo.",
     "67568016": "Iki cyiciro kiracyarimo serivisi {{p1}}: banza uzimurire mu kindi cyiciro.",
@@ -8406,7 +8439,11 @@
     "cd1c72ff": "Vuga uko umurongo wishyuzwa.",
     "717c8baa": "Uku kwivuza nta kigo cy’ubwishingizi gifite: nta cyo guhindura ku mirongo yako.",
     "f36c1aa7": "Icyo cyishyurwa nticyabonetse; ongera ufungure urupapuro.",
-    "e10eb18e": "Tanga impamvu."
+    "e10eb18e": "Tanga impamvu.",
+    "fc369004": "Dosiye y’uku kwivuza si iyawe: ntushobora gucapa urupapuro rw’imiti rwayo.",
+    "4431f9e0": "Echographie gusa ni yo ishobora gukorwa na muganga; ibindi bizamini bijya aho bikorerwa.",
+    "b9f978f4": "Iri shami ntirivura umurwayi: nta wagirwa muganga waryo.",
+    "9bbd2911": "Banza ushyire uyu muntu muri iri shami."
   },
   "panel": {
     "close": "Funga",

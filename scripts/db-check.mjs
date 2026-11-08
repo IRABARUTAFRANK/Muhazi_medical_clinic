@@ -8217,10 +8217,13 @@ await step(
     await db.query(`select set_staff_permission($1, 'orders.write', null)`, [t85.docLab])
     r.restored = await deskAs(t85.docLab, 'laboratory')
     await as(staff.manager)
-    await db.query(`select set_staff_permission($1, 'orders.write', true)`, [staff.receptionist])
+    // 0141: reception never gets a treating switch (refused); the desk stays as before
+    r.receptionRefused = await hintAs(
+      staff.manager,
+      `select set_staff_permission($1, 'orders.write', true)`,
+      [staff.receptionist],
+    )
     r.allowedAdds = await deskAs(staff.receptionist, 'laboratory')
-    await as(staff.manager)
-    await db.query(`select set_staff_permission($1, 'orders.write', null)`, [staff.receptionist])
     await asAdmin()
     await db.query(`update department set active = false where id = $1`, [triage])
     if (
@@ -24023,6 +24026,394 @@ await step(
   },
 )
 // @@t140-end
+// @@t141-begin
+// ---------------------------------------------------------------- 0141 the doctor of a department, the ward's extras, the doctor's ultrasound, the bill for whoever treats
+const t141 = {}
+const json141 = (x) => JSON.stringify(x)
+await step('0141: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(path.join(migrationsDir, '20270121090000_doctor_here.sql'), 'utf8')
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+/** A visit of a new patient, taken at consultation by a doctor (as t127.ov, for another patient). */
+const ov141 = async (taken) => {
+  await asAdmin()
+  const enc = (await one(`insert into encounter (patient_id) values ($1) returning id`, [t141.pid]))
+    .id
+  await db.query(
+    `insert into invoice (encounter_id, status) select $1, 'draft' where not exists (select 1 from invoice where encounter_id = $1)`,
+    [enc],
+  )
+  await db.query(
+    `insert into queue_entry (encounter_id, station, ticket_no, department_id, taken_by, started_at)
+     values ($1, 'consultation', 'S141', $2, $3, now())`,
+    [enc, t127.dept, taken],
+  )
+  return enc
+}
+await step(
+  '0141 A: the manager appoints a nurse the doctor of her department — she is a doctor there (orders to nurses, the record as a doctor, the doctor’s switches); stopped, she is a nurse again',
+  async () => {
+    t141.pid = await patient85('Ward 141')
+    const before = {
+      doctor: await hintAs(t127.nurseA, `select case when is_doctor() then 1 else 1/0 end`),
+      orders: (
+        await (async () => {
+          await as(t127.nurseA)
+          const r = await one(`select has_perm('orders.write') as b`)
+          await asAdmin()
+          return r
+        })()
+      ).b,
+    }
+    const v = await ov141(t127.doc)
+    await asAdmin()
+    await db.query(
+      `insert into queue_entry (encounter_id, station, ticket_no, department_id, taken_by, started_at)
+       values ($1, 'nursing', 'S141', $2, $3, now())`,
+      [v, t127.nursing, t127.nurseA],
+    )
+    const refusedBefore = await hintAs(
+      t127.nurseA,
+      `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Dressing 141')`,
+      [v],
+    )
+    const r = {
+      notManager: await hintAs(t127.nurseA, `select set_staff_doctor_here($1, $2, true)`, [
+        t127.nurseA,
+        t127.nursing,
+      ]),
+      reception: await hintAs(staff.manager, `select set_staff_doctor_here($1, $2, true)`, [
+        staff.receptionist,
+        t127.nursing,
+      ]),
+      notPlaced: await hintAs(staff.manager, `select set_staff_doctor_here($1, $2, true)`, [
+        t127.doc2,
+        t127.nursing,
+      ]),
+      on: await hintAs(staff.manager, `select set_staff_doctor_here($1, $2, true)`, [
+        t127.nurseA,
+        t127.nursing,
+      ]),
+    }
+    t141.lab = await dept85('Laboratory 141', ['laboratory'])
+    await member85(t127.doc2, t141.lab)
+    r.noTreating = await hintAs(staff.manager, `select set_staff_doctor_here($1, $2, true)`, [
+      t127.doc2,
+      t141.lab,
+    ])
+    await as(t127.nurseA)
+    const now = await one(
+      `select is_doctor() as doctor, has_perm('orders.write') as orders, has_perm('charge.manual') as manual,
+              (my_session_profile() ->> 'is_doctor')::boolean as session,
+              visit_clinical($1) ->> 'view' as view, may_use_desk('nursing') as nursing, may_use_desk('consultation') as consultation`,
+      [v],
+    )
+    const order = (
+      await one(
+        `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_text => 'Dressing 141') as j`,
+        [v],
+      )
+    ).j
+    await as(staff.manager)
+    const dir = (await one(`select departments from staff_directory where id = $1`, [t127.nurseA]))
+      .departments
+    const audit = (
+      await one(
+        `select count(*)::int as n from audit_event where entity_id = $1 and after ->> 'key' = 'doctor_here'`,
+        [t127.nurseA],
+      )
+    ).n
+    r.off = await hintAs(staff.manager, `select set_staff_doctor_here($1, $2, false)`, [
+      t127.nurseA,
+      t127.nursing,
+    ])
+    await as(t127.nurseA)
+    const after = await one(
+      `select is_doctor() as doctor, has_perm('orders.write') as orders, visit_clinical($1) ->> 'view' as view`,
+      [v],
+    )
+    await asAdmin()
+    if (
+      before.doctor === 'ok' ||
+      before.orders !== false ||
+      !/not_doctor/.test(refusedBefore) ||
+      r.notManager !== '42501/' ||
+      !/not_clinical/.test(r.reception) ||
+      !/not_placed/.test(r.notPlaced) ||
+      r.on !== 'ok' ||
+      !/no_treating_desk/.test(r.noTreating) ||
+      now.doctor !== true ||
+      now.orders !== true ||
+      now.manual !== true ||
+      now.session !== true ||
+      now.view !== 'visit' ||
+      now.nursing !== true ||
+      now.consultation !== false ||
+      !order?.id ||
+      !dir.some((d) => d.name === 'Nursing 127' && d.doctorHere === true) ||
+      audit !== 1 ||
+      r.off !== 'ok' ||
+      after.doctor !== false ||
+      after.orders !== false ||
+      after.view !== 'desk'
+    )
+      throw new Error(
+        json141({ before, refusedBefore, r, now, order: order?.id, dir, audit, after }),
+      )
+    return 'appointed: a doctor at nursing (orders to nurses, the record, the doctor’s switches), not at consultation · stopped: a nurse again · reception, an unplaced person, a department without treatment refused'
+  },
+)
+await step(
+  '0141 B: reception, the cashier and the administrator never get the treating switches; a midwife is a nurse; the cashier’s page knows “Change a charge’s cover”',
+  async () => {
+    const r = {
+      roleOn: await hintAs(
+        staff.manager,
+        `select set_role_permission('receptionist', 'charge.write', true)`,
+      ),
+      roleOff: await hintAs(
+        staff.manager,
+        `select set_role_permission('receptionist', 'charge.write', false)`,
+      ),
+      adminOn: await hintAs(
+        staff.manager,
+        `select set_role_permission('administrator', 'clinical.write', true)`,
+      ),
+      personOn: await hintAs(
+        staff.manager,
+        `select set_staff_permission($1, 'orders.write', true)`,
+        [staff.cashier],
+      ),
+      personOff: await hintAs(
+        staff.manager,
+        `select set_staff_permission($1, 'orders.write', false)`,
+        [staff.cashier],
+      ),
+      nurseOn: await hintAs(
+        staff.manager,
+        `select set_staff_permission($1, 'orders.write', true)`,
+        [t127.nurseB],
+      ),
+    }
+    await asAdmin()
+    await db.query(
+      `delete from staff_permission where profile_id in ($1, $2) and permission = 'orders.write'`,
+      [staff.cashier, t127.nurseB],
+    )
+    const midwife = (await one(`select is_nurse_role($1) as b`, [t128.midwife])).b
+    await as(staff.cashier)
+    const perms = (await one(`select my_permissions() as j`)).j
+    await asAdmin()
+    if (
+      !/not_clinical/.test(r.roleOn) ||
+      r.roleOff !== 'ok' ||
+      !/not_clinical/.test(r.adminOn) ||
+      !/not_clinical/.test(r.personOn) ||
+      r.personOff !== 'ok' ||
+      r.nurseOn !== 'ok' ||
+      midwife !== true ||
+      !perms.includes('charge.override')
+    )
+      throw new Error(json141({ r, midwife, perms }))
+    return 'refused for reception, the administrator, the cashier (off stays possible) · a nurse: allowed · a midwife is a nurse · charge.override in my_permissions'
+  },
+)
+await step(
+  '0141 C: a nurse carrying out the doctor’s order adds what else the patient needs — on the bill and in the doctor’s record as the ward’s addition; she sees the bill',
+  async () => {
+    const v = await ov141(t127.doc)
+    await as(staff.manager)
+    t141.svc = (
+      await one(`select upsert_service(null, 'Wound dressing 141', 'consultation', 3000) as id`)
+    ).id
+    await as(t127.doc)
+    await db.query(
+      `select create_nurse_order(p_encounter_id => $1, p_kind => 'drug', p_item_id => $2, p_quantity => 1, p_route => 'oral', p_frequency => 'OD', p_doses => 1)`,
+      [v, t127.item],
+    )
+    await db.query(`select prescribe($1, $2, 10, '500 mg', 'oral', 'BD', 5, null, 'outside')`, [
+      v,
+      t127.item,
+    ])
+    await as(t127.nurseA)
+    const works = (await one(`select may_work_on($1) as b`, [v])).b
+    const charged = await hintAs(t127.nurseA, `select add_charge($1, 'nursing', $2)`, [v, t141.svc])
+    await as(t127.nurseA)
+    const nurseLines = (
+      await one(
+        `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id where i.encounter_id = $1`,
+        [v],
+      )
+    ).n
+    const nurseFile = (await one(`select patient_file($1) as j`, [t141.pid])).j.visits.find(
+      (x) => x.id === v,
+    )
+    await as(t127.doc)
+    const rec = (await one(`select visit_clinical($1) as j`, [v])).j
+    const docRx = await hintAs(t127.doc, `select prescription_number($1)`, [v])
+    await as(staff.lab_tech)
+    const labLines = (
+      await one(
+        `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id where i.encounter_id = $1`,
+        [v],
+      )
+    ).n
+    const labJourney = (await one(`select visit_journey($1) as j`, [v])).j
+    await as(staff.cashier)
+    const cashierLines = (
+      await one(
+        `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id where i.encounter_id = $1`,
+        [v],
+      )
+    ).n
+    const otherRx = await hintAs(t127.doc2, `select prescription_number($1)`, [v])
+    await asAdmin()
+    const extra = rec.extras?.[0]
+    if (
+      works !== true ||
+      charged !== 'ok' ||
+      nurseLines !== 1 ||
+      nurseFile?.total == null ||
+      rec.extras?.length !== 1 ||
+      extra.by !== 'Nurse A 127' ||
+      extra.byRole !== 'nurse' ||
+      extra.ordered !== false ||
+      extra.kind !== 'act' ||
+      docRx !== 'ok' ||
+      labLines !== 0 ||
+      labJourney.charges.length !== 0 ||
+      labJourney.bill !== null ||
+      cashierLines !== 1 ||
+      !/no_record/.test(otherRx)
+    )
+      throw new Error(
+        json141({
+          works,
+          charged,
+          nurseLines,
+          nurseFile,
+          extras: rec.extras,
+          docRx,
+          labLines,
+          labJourney: { c: labJourney.charges, b: labJourney.bill },
+          cashierLines,
+          otherRx,
+        }),
+      )
+    return 'the nurse works on the patient (the order), adds a dressing: on the bill, in the record “by Nurse A 127, not ordered” · she sees the bill, the lab does not, the cashier does · the prescription prints for its doctor, not for another'
+  },
+)
+await step(
+  '0141 D: an ultrasound done by the doctor himself or a colleague: no queue at the desk, the charge on the bill, the findings with the region examined',
+  async () => {
+    await as(staff.manager)
+    t141.us = (
+      await one(`select upsert_service(null, 'Abdominal ultrasound 141', 'imaging', 15000) as id`)
+    ).id
+    const v = await ov141(t127.doc)
+    await as(t127.doc)
+    const n = (
+      await one(
+        `select order_tests($1, $2::uuid[], 'Check the liver', 'consultation', 3, $3) as n`,
+        [v, [t141.us], t127.doc],
+      )
+    ).n
+    await asAdmin()
+    const req = await one(
+      `select id, status, assigned_to from service_request where encounter_id = $1 and service_id = $2`,
+      [v, t141.us],
+    )
+    const queued = (
+      await one(
+        `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'ultrasound'`,
+        [v],
+      )
+    ).n
+    const stillMine = (
+      await one(
+        `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'consultation' and finished_at is null`,
+        [v],
+      )
+    ).n
+    const line = (
+      await one(
+        `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id where i.encounter_id = $1 and l.service_id = $2 and l.deleted_at is null`,
+        [v, t141.us],
+      )
+    ).n
+    const written = await hintAs(
+      t127.doc,
+      `select record_result($1, 'Liver of normal size, no mass', 'Normal abdomen', true, '{"region": "Abdomen"}'::jsonb)`,
+      [req.id],
+    )
+    await as(t127.doc)
+    const rec = (await one(`select visit_clinical($1) as j`, [v])).j.orders.find(
+      (o) => o.id === req.id,
+    )
+    // a colleague does it: told, writes the findings although not on the visit
+    const n2 = (
+      await one(`select order_tests($1, $2::uuid[], 'Second look', 'consultation', 2, $3) as n`, [
+        v,
+        [t141.us],
+        t127.doc2,
+      ])
+    ).n
+    await asAdmin()
+    const req2 = await one(
+      `select id, status, assigned_to from service_request where encounter_id = $1 and service_id = $2 and assigned_to = $3`,
+      [v, t141.us, t127.doc2],
+    )
+    const told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'scan_request' and recipient_user = $1`,
+        [t127.doc2],
+      )
+    ).n
+    const colleague = await hintAs(
+      t127.doc2,
+      `select record_result($1, 'Nothing new', 'Normal', true, '{"region": "Abdomen"}'::jsonb)`,
+      [req2.id],
+    )
+    const r = {
+      labWithDoer: await hintAs(t127.doc, `select order_tests($1, $2::uuid[], null, null, 3, $3)`, [
+        v,
+        [t85.test],
+        t127.doc,
+      ]),
+      notDoctor: await hintAs(t127.doc, `select order_tests($1, $2::uuid[], null, null, 3, $3)`, [
+        v,
+        [t141.us],
+        t127.nurseA,
+      ]),
+    }
+    if (
+      n !== 1 ||
+      req.status !== 'in_process' ||
+      req.assigned_to !== t127.doc ||
+      queued !== 0 ||
+      stillMine !== 1 ||
+      line !== 1 ||
+      written !== 'ok' ||
+      rec?.doerId !== t127.doc ||
+      rec?.result?.detail?.region !== 'Abdomen' ||
+      rec?.status !== 'verified' ||
+      n2 !== 1 ||
+      req2?.status !== 'in_process' ||
+      told !== 1 ||
+      colleague !== 'ok' ||
+      !/not_imaging/.test(r.labWithDoer) ||
+      !/not_doctor/.test(r.notDoctor)
+    )
+      throw new Error(
+        json141({ n, req, queued, stillMine, line, written, rec, n2, req2, told, colleague, r }),
+      )
+    return 'done by the doctor: no ultrasound queue, charged, findings “Abdomen” written and verified · a colleague told and writing · a lab test or a nurse as doer refused'
+  },
+)
+// @@t141-end
 finish()
 
 function finish() {

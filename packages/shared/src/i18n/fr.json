@@ -828,7 +828,10 @@
       "isManagerHint": "Supervise toute la clinique : tableau de bord, rapports, employés, prix, réglages et argent. Ne prend des patients qu’aux postes des départements ci-dessous ; ne voit les dossiers des patients que s’il est médecin.",
       "isManagerSelf": "Vous êtes gestionnaire de la clinique : un autre gestionnaire peut le changer, pas vous.",
       "doesHere": "Fait ici",
-      "managerDesks": "En tant que gestionnaire, cette personne voit aussi tous les postes, mais ne prend des patients qu’à ceux-ci."
+      "managerDesks": "En tant que gestionnaire, cette personne voit aussi tous les postes, mais ne prend des patients qu’à ceux-ci.",
+      "doctorHere": "Fait le médecin ici",
+      "doctorHereHint": "Nommé par le gérant : dans ce service, la personne a tous les pouvoirs d’un médecin — le dossier en six étapes, les diagnostics, les ordres aux infirmiers, les examens, les médicaments, les actes, la clôture de la visite — et les droits du médecin. Sa profession ne change pas ; ailleurs rien ne change.",
+      "doctorHereIsDoctor": "Un médecin a déjà tous les pouvoirs ici ; la coche le désigne médecin de ce service."
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -2931,7 +2934,9 @@
       "needPrimary": "Enregistrez un diagnostic principal avant de clôturer.",
       "rxTwice": "{{names}} est écrit deux fois. Retirez la ligne en trop, ou appuyez à nouveau sur Prescrire pour donner les deux (chacune est facturée).",
       "pickStore": "Choisissez la réserve de salle d'où vient chaque médicament donné ici.",
-      "reason": "Écrivez la raison (au moins 3 lettres)."
+      "reason": "Écrivez la raison (au moins 3 lettres).",
+      "scanDoctor": "Choisissez le médecin qui fait l’échographie.",
+      "scanOnly": "Une échographie faite par un médecin se demande seule : demandez les autres examens à part."
     },
     "dxHint": "Le diagnostic est la maladie ou le problème trouvé après l’examen du patient, ex. « Paludisme simple ». Principal = la raison principale de la visite ; secondaire = autres problèmes trouvés. Cochez « provisoire » si vous attendez encore des résultats.",
     "rxHint": "Un bloc par médicament. Utilisez « Ajouter un médicament » pour une association (ex. un antipaludique plus du paracétamol). Tous partent ensemble à la pharmacie.",
@@ -3120,7 +3125,32 @@
     "testNoneChosen": "Aucun examen choisi : choisissez-les dans la liste ci-dessus.",
     "testRemove": "Retirer {{test}}",
     "testNoPrice": "sans prix",
-    "testsTotal": "Total : {{amount}}"
+    "testsTotal": "Total : {{amount}}",
+    "scanBy": {
+      "title": "Qui fait l’échographie",
+      "desk": "Le poste d’échographie",
+      "deskHint": "Le patient va au poste d’échographie et revient avec le résultat.",
+      "me": "Moi — je la fais moi-même",
+      "meHint": "Pas de file : les frais vont sur la facture et vous écrivez les résultats ici.",
+      "other": "Un collègue",
+      "otherHint": "Le médecin choisi est prévenu et écrit les résultats.",
+      "pick": "Choisir le médecin",
+      "none": "Aucun autre médecin",
+      "savedMe_one": "Échographie à faire vous-même : écrivez les résultats sous l’examen.",
+      "savedMe_other": "Échographies à faire vous-même : écrivez les résultats sous chaque examen.",
+      "savedOther_one": "Échographie envoyée à {{name}}, qui est prévenu.",
+      "savedOther_other": "Échographies envoyées à {{name}}, qui est prévenu."
+    },
+    "scanDoneBy": "Faite par {{name}}",
+    "region": "Région examinée",
+    "regionPh": "ex. abdomen, pelvis, obstétricale",
+    "extras": {
+      "title_one": "Ajouté par le service ({{count}})",
+      "title_other": "Ajoutés par le service ({{count}})",
+      "by": "par {{name}} ({{role}})",
+      "ordered": "ordonné par le médecin",
+      "notOrdered": "non ordonné par le médecin"
+    }
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -3671,7 +3701,8 @@
       "not_done": "{{by}} n’exécutera pas la suite de : {{title}}",
       "not_given": "{{by}} n’a pas pu administrer une prise de : {{title}}",
       "cancelled": "{{by}} a annulé la prescription : {{title}}"
-    }
+    },
+    "scanRequest": "Échographie à faire : {{test}} · {{name}}"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -5021,7 +5052,8 @@
       "managerNote": "Le gestionnaire a toujours tous les postes. L'argent (paiements, factures) reste lié au rôle et aux interrupteurs ci-dessus ; les stocks de salle restent à leurs détenteurs.",
       "on": "{{desk}} permis pour chaque {{role}}.",
       "off": "{{desk}} retiré pour chaque {{role}}."
-    }
+    },
+    "neverTreats": "Jamais : la réception, le caissier et l’administrateur ne soignent aucun patient."
   },
   "medReport": {
     "open": "Rapport médical",
@@ -7951,6 +7983,7 @@
   "dbErrors": {
     "25402734": "Le médecin a annulé ce médicament.",
     "37902613": "Le réglage « antécédents pour le médecin traitant » doit être activé ou désactivé.",
+    "39332635": "La réception, le caissier et l’administrateur ne soignent aucun patient : cette fonction ne peut pas leur être activée.",
     "47437974": "Notez le motif de consultation (étape 1) avant de terminer la consultation.",
     "52464355": "Il n’y a aucun stock de pharmacie ouvert où l’envoyer.",
     "67568016": "Cette catégorie contient encore {{p1}} service(s) : déplacez-les d’abord dans une autre catégorie.",
@@ -8397,7 +8430,11 @@
     "cd1c72ff": "Dites comment la ligne est facturée.",
     "717c8baa": "Cette visite n’a pas d’assureur : rien à changer sur ses lignes.",
     "f36c1aa7": "Ce frais est introuvable ; actualisez la page.",
-    "e10eb18e": "Donnez la raison."
+    "e10eb18e": "Donnez la raison.",
+    "fc369004": "Le dossier de cette visite n’est pas à vous : son ordonnance ne peut pas être imprimée par vous.",
+    "4431f9e0": "Seule une échographie peut être faite par le médecin ; les autres examens vont à leur poste.",
+    "b9f978f4": "Ce service ne soigne aucun patient : personne ne peut en être le médecin.",
+    "9bbd2911": "Placez d’abord la personne dans ce service."
   },
   "panel": {
     "close": "Fermer",

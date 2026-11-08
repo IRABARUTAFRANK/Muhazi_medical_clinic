@@ -85,6 +85,8 @@ export interface Membership {
   /** 0128: the department's services this person does there ("Does here"); null before 0128
    *  (then: all the department's services). */
   services: string[] | null
+  /** 0141: appointed the doctor of this department by the manager. */
+  doctorHere?: boolean
 }
 
 /** What the person does in a department now: the ticked services the department still gives
@@ -128,7 +130,13 @@ export interface EmployeeInput {
   isManager?: boolean
   /** Every department with the position held there and what the person does there (0128); the
    *  first is the main one. */
-  departments: { departmentId: string; position: Position; services?: string[] }[]
+  departments: {
+    departmentId: string
+    position: Position
+    services?: string[]
+    /** 0141: "Works as the doctor here" (saved after the employee, by the manager). */
+    doctorHere?: boolean
+  }[]
   station?: string
   language?: DbLang
   phone?: string
@@ -308,7 +316,14 @@ interface DirectoryRow {
   position: Position | null
   specialty?: string | null
   departments?:
-    { id: string; name: string; position: Position; services?: string[] | null }[] | null
+    | {
+        id: string
+        name: string
+        position: Position
+        services?: string[] | null
+        doctorHere?: boolean | null
+      }[]
+    | null
   /** 0084 (absent before). */
   registration_no?: string | null
   registration_body?: string | null
@@ -369,6 +384,7 @@ export function useEmployees() {
               departmentName: m.name,
               position: m.position,
               services: Array.isArray(m.services) ? m.services : null,
+              doctorHere: m.doctorHere === true,
             }))
           : r.department_id
             ? [
@@ -544,6 +560,35 @@ export function useStaffActions() {
     onSuccess: refresh,
   })
 
+  /** 0141: the manager appoints (or stops) the doctor of a department. */
+  const setDoctorHere = useMutation({
+    mutationFn: async ({
+      profileId,
+      departmentId,
+      on,
+    }: {
+      profileId: string
+      departmentId: string
+      on: boolean
+    }) => {
+      if (!supabase) {
+        const e = sampleEmployees.find((x) => x.id === profileId)
+        const m = e?.departments.find((x) => x.departmentId === departmentId)
+        if (!e || !m) throw new Error('not_found')
+        m.doctorHere = on
+        e.isDoctor = e.role === 'doctor' || e.departments.some((x) => x.doctorHere)
+        return
+      }
+      const { error } = await supabase.rpc('set_staff_doctor_here', {
+        p_profile_id: profileId,
+        p_department_id: departmentId,
+        p_on: on,
+      })
+      if (error) throw apiError(error)
+    },
+    onSuccess: refresh,
+  })
+
   const update = useMutation({
     mutationFn: async ({
       id,
@@ -659,7 +704,7 @@ export function useStaffActions() {
     onSuccess: refresh,
   })
 
-  return { create, update, resetPin, setActive, remove }
+  return { create, update, resetPin, setActive, remove, setDoctorHere }
 }
 
 /**
