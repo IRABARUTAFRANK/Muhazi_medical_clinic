@@ -70,7 +70,7 @@ import { useLetterhead } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
 import { stageOf, useVisitClinical } from '@/lib/api/patients'
 import { useInsuranceEnabled } from '@/lib/api/settings'
-import { tariffLine, useInsurerTariff, type InsurerTariff } from '@/lib/api/insurers'
+import { payerLine, usePayerLines } from '@/lib/api/insurers'
 import { insurerLineText, insurerLineTone } from '@/lib/insurer-price'
 import { ApiError } from '@/lib/api/errors'
 import { VisitRecordGate, VisitSafetySummary } from '@/components/clinical/record-privacy'
@@ -201,7 +201,6 @@ export function VisitPage({
   const { data: insurers = [] } = useInsurers(true)
   // insurance on (Settings → Insurance): the Who pays card and the insurer's prices (0115)
   const insurance = useInsuranceEnabled()
-  const { data: tariff } = useInsurerTariff(insurance ? bill?.payerId : null)
   const actions = useBillingActions(encounterId)
   const [member, setMember] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
@@ -1064,9 +1063,8 @@ export function VisitPage({
                     treatments={treatments.filter((x) => !x.orderStation && x.code !== 'BED-STAY')}
                     myDepartments={isManagerNav ? [] : myDepartments}
                     office={myStation}
-                    payerId={bill?.payerId ?? null}
+                    payerId={insurance ? (bill?.payerId ?? null) : null}
                     coveragePct={currentInsurer?.coveragePct ?? 0}
-                    tariff={tariff ?? null}
                     insurerName={currentInsurer?.name ?? bill?.payerName ?? null}
                     isManager={user.role === 'manager'}
                     // only a finished bill closes the form (not one still loading or unreadable)
@@ -1397,7 +1395,6 @@ function AddChargeCard({
   office,
   payerId,
   coveragePct,
-  tariff,
   insurerName,
   isManager,
   disabled,
@@ -1412,8 +1409,6 @@ function AddChargeCard({
   office: Station
   payerId: string | null
   coveragePct: number
-  /** The insurer's tariff (0115): the price of each treatment, its source and the split. */
-  tariff: InsurerTariff | null
   insurerName: string | null
   isManager: boolean
   disabled: boolean
@@ -1455,7 +1450,9 @@ function AddChargeCard({
   const selected = treatments.find((x) => x.id === serviceId)
   const picked = selected
   // the insurer's line (0115): its price, where it comes from and its coverage; else as before
-  const row = payerId && selected ? tariffLine(tariff, { serviceId: selected.id }) : undefined
+  // the insurer's line for the treatment chosen (0140): its price, where it comes from, the split
+  const { data: payerRows } = usePayerLines(payerId, selected ? [selected.id] : [])
+  const row = payerId && selected ? payerLine(payerRows, { serviceId: selected.id }) : undefined
   const listPrice = selected
     ? (row?.price ??
       (payerId && selected.payerPrices[payerId] != null

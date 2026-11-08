@@ -69,7 +69,7 @@ import { priceQuantity } from '@/lib/pack-pricing'
 import { priceLineText, saleModeText, wholePacksText } from '@/pages/stock/stock-util'
 import { ApiError, errorKind } from '@/lib/api/errors'
 import { useVisitBill } from '@/lib/api/billing'
-import { tariffLine, useInsurerTariff } from '@/lib/api/insurers'
+import { payerLine, usePayerLines } from '@/lib/api/insurers'
 import { useInsuranceEnabled } from '@/lib/api/settings'
 import { insurerLineText, insurerLineTone } from '@/lib/insurer-price'
 import { TestFilesChip } from '@/components/clinical/supporting-files'
@@ -238,8 +238,9 @@ export function ClinicalCard({
   const { data: items = [] } = useItems()
   // the visit's insurer (0115): what it pays for each medicine, said under the line
   const insurance = useInsuranceEnabled()
-  const payerId = useVisitBill(encounterId).data?.payerId ?? null
-  const { data: tariff } = useInsurerTariff(insurance ? payerId : null)
+  const bill = useVisitBill(encounterId).data
+  const payerId = bill?.payerId ?? null
+  const insurerName = bill?.payerName ?? ''
   const { data: treatments = [] } = useTreatments(true)
   // Orderable treatments, grouped by the desk that carries them out.
   const tests = treatments.filter((x) => x.orderStation)
@@ -339,6 +340,12 @@ export function ClinicalCard({
   // database), no "also in the differential list"
   const [dx, setDx] = useState({ text: '', provisional: false })
   const [rx, setRx] = useState<RxLine[]>([emptyLine()])
+  // what the insurer pays for the lines on screen (0140): the medicines prescribed, the tests offered
+  const { data: payerRows } = usePayerLines(
+    insurance ? payerId : null,
+    tests.map((x) => x.id),
+    rx.map((l) => l.item).filter((x): x is string => !!x && x !== TYPED),
+  )
   // the same medicine written twice: said once, kept on the second press
   const [twiceOk, setTwiceOk] = useState('')
   const setLine = (i: number, patch: Partial<RxLine>) =>
@@ -991,7 +998,7 @@ export function ClinicalCard({
   // 0130: the tests of the desks this person may ask, as one list grouped by desk; the price the
   // visit pays (the insurer's when it has one, else the cash price)
   const testPrice = (s: Treatment): number | null =>
-    (payerId ? s.payerPrices[payerId] : undefined) ?? s.cashPrice
+    payerId ? (payerLine(payerRows, { serviceId: s.id })?.price ?? s.cashPrice) : s.cashPrice
   const testDesks = desks.filter((g) => !deskStaff || clinician || g === station)
   const testOptions = testDesks.flatMap((g) =>
     tests
@@ -1359,10 +1366,10 @@ export function ClinicalCard({
                 })()}
                 {/* on an insurer: its price for the medicine and the split (0115) */}
                 {(() => {
-                  if (!tariff || !line.item || outsideOnly(line.item) || line.supply === 'outside')
+                  if (!payerId || !line.item || outsideOnly(line.item) || line.supply === 'outside')
                     return null
-                  const row = tariffLine(tariff, { itemId: line.item })
-                  const text = insurerLineText(t, row, tariff.name, Number(line.quantity) || 1)
+                  const row = payerLine(payerRows, { itemId: line.item })
+                  const text = insurerLineText(t, row, insurerName, Number(line.quantity) || 1)
                   const tone = insurerLineTone(row)
                   return text ? (
                     <span

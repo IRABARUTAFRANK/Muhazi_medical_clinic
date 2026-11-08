@@ -409,6 +409,51 @@ const num = (v: unknown): number | null =>
   v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v)
 const str = (v: unknown): string | null => (v == null ? null : String(v))
 
+const SOURCES: readonly PriceSource[] = [
+  'tariff',
+  'reference',
+  'cash',
+  'none',
+  'excluded',
+  'preauth',
+]
+const COVERS = ['covered', 'not_covered', 'preauth'] as const
+
+/** One line as the database gives it (insurer_tariff_rows, payer_lines), every source kept. */
+function toTariffRow(r: Record<string, unknown>): TariffRow {
+  const ex = r.exception as Record<string, unknown> | null | undefined
+  return {
+    kind: r.kind === 'item' ? 'item' : 'service',
+    id: String(r.id),
+    code: String(r.code ?? ''),
+    name: String(r.name ?? ''),
+    nameFr: str(r.nameFr),
+    nameKin: str(r.nameKin),
+    group: String(r.group ?? 'other') as ServiceGroup,
+    categoryId: str(r.categoryId),
+    cashPrice: num(r.cashPrice),
+    price: num(r.price),
+    // excluded / preauth: the insurer's exception (0134) — said on the visit as such
+    source: SOURCES.includes(r.source as PriceSource) ? (r.source as PriceSource) : 'none',
+    coveragePct: num(r.coveragePct) ?? 0,
+    insurerShare: num(r.insurerShare),
+    patientShare: num(r.patientShare),
+    ask: !!r.ask,
+    preauth: !!r.preauth,
+    listCode: str(r.listCode),
+    list: str(r.list),
+    lineNote: str(r.lineNote),
+    exception:
+      ex && COVERS.includes(ex.cover as (typeof COVERS)[number])
+        ? {
+            cover: ex.cover as (typeof COVERS)[number],
+            price: num(ex.price),
+            note: str(ex.note),
+          }
+        : null,
+  }
+}
+
 function toTariff(d: Record<string, unknown>): InsurerTariff {
   const list = <T>(v: unknown) => (Array.isArray(v) ? (v as T[]) : [])
   return {
@@ -426,25 +471,7 @@ function toTariff(d: Record<string, unknown>): InsurerTariff {
         Number(v),
       ]),
     ) as Partial<Record<ServiceGroup, number>>,
-    rows: list<Record<string, unknown>>(d.rows).map((r) => ({
-      kind: r.kind === 'item' ? 'item' : 'service',
-      id: String(r.id),
-      code: String(r.code ?? ''),
-      name: String(r.name ?? ''),
-      nameFr: str(r.nameFr),
-      nameKin: str(r.nameKin),
-      group: String(r.group ?? 'other') as ServiceGroup,
-      categoryId: str(r.categoryId),
-      cashPrice: num(r.cashPrice),
-      price: num(r.price),
-      source: (['tariff', 'reference', 'cash'] as const).includes(r.source as never)
-        ? (r.source as PriceSource)
-        : 'none',
-      coveragePct: num(r.coveragePct) ?? 0,
-      insurerShare: num(r.insurerShare),
-      patientShare: num(r.patientShare),
-      ask: !!r.ask,
-    })),
+    rows: list<Record<string, unknown>>(d.rows).map(toTariffRow),
     lists: list<Record<string, unknown>>(d.lists).map((l) => ({
       id: String(l.id),
       name: String(l.name ?? ''),
@@ -509,6 +536,53 @@ export function useInsurerTariff(payerId: string | null | undefined) {
       return toTariff((data ?? {}) as Record<string, unknown>)
     },
   })
+}
+
+/**
+ * What the insurer pays for the treatments and medicines on screen (0140: payer_lines): the same
+ * lines as its whole table, only those asked — the treatment chosen on a visit, the tests offered,
+ * the medicines prescribed. A database before 0140: read from the whole table.
+ */
+export function usePayerLines(
+  payerId: string | null | undefined,
+  serviceIds: readonly string[],
+  itemIds: readonly string[] = [],
+) {
+  const services = [...new Set(serviceIds)].sort()
+  const items = [...new Set(itemIds)].sort()
+  return useQuery({
+    queryKey: [...KEY, payerId ?? '', 'lines', services.join(','), items.join(',')],
+    enabled: !!payerId && services.length + items.length > 0,
+    staleTime: 60_000,
+    queryFn: async (): Promise<TariffRow[]> => {
+      const wanted = (r: TariffRow) =>
+        r.kind === 'service' ? services.includes(r.id) : items.includes(r.id)
+      if (!supabase) return sampleTariff(payerId!).rows.filter(wanted)
+      const { data, error } = await supabase.rpc('payer_lines', {
+        p_payer: payerId,
+        p_services: services,
+        p_items: items,
+      })
+      if (error && isMissingFunction(error)) {
+        const whole = await supabase.rpc('insurer_tariff_rows', { p_payer: payerId })
+        if (whole.error) throw apiError(whole.error)
+        return toTariff((whole.data ?? {}) as Record<string, unknown>).rows.filter(wanted)
+      }
+      if (error) throw apiError(error)
+      return (Array.isArray(data) ? (data as Record<string, unknown>[]) : []).map(toTariffRow)
+    },
+  })
+}
+
+/** The line of a treatment or a medicine among those read (undefined: not read yet, or none). */
+export function payerLine(
+  rows: readonly TariffRow[] | null | undefined,
+  pick: { serviceId?: string | null; itemId?: string | null },
+): TariffRow | undefined {
+  if (!rows) return undefined
+  if (pick.serviceId) return rows.find((r) => r.kind === 'service' && r.id === pick.serviceId)
+  if (pick.itemId) return rows.find((r) => r.kind === 'item' && r.id === pick.itemId)
+  return undefined
 }
 
 /** The lines as import_price_list reads them. */

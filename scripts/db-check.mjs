@@ -23898,6 +23898,131 @@ await step(
   },
 )
 // @@t139-end
+// @@t140-begin
+// ---------------------------------------------------------------- 0140 what an insurer pays for the lines on screen
+const json140 = (x) => JSON.stringify(x)
+await step('0140: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(path.join(migrationsDir, '20270120090000_payer_lines.sql'), 'utf8')
+  await db.exec(sql)
+  await db.exec(sql)
+  return 'no error'
+})
+await step(
+  '0140 A: every insurer’s table answers as before 0140, and the lines asked one by one answer as the table',
+  async () => {
+    // the definition before 0140 (from 0134), kept under another name for the comparison
+    const src = await readFile(
+      path.join(migrationsDir, '20270114090000_published_price_lists.sql'),
+      'utf8',
+    )
+    const m =
+      /create or replace function insurer_tariff_rows\(p_payer uuid\)[\s\S]*?\n\$\$;\n/.exec(src)
+    if (!m) throw new Error('the 0134 definition was not found')
+    await asAdmin()
+    await db.exec(
+      m[0].replace('function insurer_tariff_rows(', 'function insurer_tariff_rows_0134('),
+    )
+    const payers = (
+      await db.query(
+        `select id from payer where deleted_at is null and type <> 'cash' order by name`,
+      )
+    ).rows.map((r) => r.id)
+    const strip = ({ exception, ...rest }) => rest
+    let lines = 0
+    let asked = 0
+    let exceptions = 0
+    try {
+      for (const p of payers) {
+        await as(staff.manager)
+        const before = (await one(`select insurer_tariff_rows_0134($1) as j`, [p])).j
+        const after = (await one(`select insurer_tariff_rows($1) as j`, [p])).j
+        if (json140({ ...before, rows: null }) !== json140({ ...after, rows: null }))
+          throw new Error(
+            `${p}: ${json140({ ...before, rows: null }).slice(0, 300)} ≠ ${json140({ ...after, rows: null }).slice(0, 300)}`,
+          )
+        if (before.rows.length !== after.rows.length)
+          throw new Error(`${p}: ${before.rows.length} ≠ ${after.rows.length} lines`)
+        for (let k = 0; k < before.rows.length; k++) {
+          const b = before.rows[k]
+          const a = after.rows[k]
+          if (json140(strip(b)) !== json140(strip(a)))
+            throw new Error(`${p} line ${k}: ${json140(b)} ≠ ${json140(a)}`)
+          // an exception on the line's own code is the same; one on a linked list line is now shown too
+          if (b.exception && json140(b.exception) !== json140(a.exception))
+            throw new Error(`${p} exception: ${json140(b)} ≠ ${json140(a)}`)
+          if (a.exception) exceptions++
+          lines++
+        }
+        // a few treatments and medicines asked by id: the same lines
+        const svc = after.rows.filter((r) => r.kind === 'service').slice(0, 6)
+        const itm = after.rows.filter((r) => r.kind === 'item').slice(0, 4)
+        const got = (
+          await one(`select payer_lines($1, $2::uuid[], $3::uuid[]) as j`, [
+            p,
+            svc.map((r) => r.id),
+            itm.map((r) => r.id),
+          ])
+        ).j
+        const want = after.rows.filter((r) => svc.includes(r) || itm.includes(r))
+        if (json140(got) !== json140(want))
+          throw new Error(
+            `${p} asked: ${json140(got).slice(0, 400)} ≠ ${json140(want).slice(0, 400)}`,
+          )
+        asked += got.length
+      }
+    } finally {
+      await asAdmin()
+      await db.exec('drop function if exists insurer_tariff_rows_0134(uuid)')
+    }
+    return `${payers.length} insurer(s), ${lines} lines identical (${exceptions} with an exception) · ${asked} lines asked by id identical`
+  },
+)
+await step(
+  '0140 B: a treatment MMI does not cover — its line says so, with the exception; asked alone it matches the bill',
+  async () => {
+    await as(staff.manager)
+    const code = (await one(`select insurer_prices_for($1, null) as j`, [t139.svc])).j.find(
+      (r) => r.payerId === t115.mmi,
+    ).code
+    const plain = (
+      await one(`select payer_lines($1, $2::uuid[], '{}'::uuid[]) as j`, [t115.mmi, [t139.svc]])
+    ).j
+    await db.query(
+      `select save_tariff_exception($1, $2, 'not_covered', null, 'Not in the plan', null)`,
+      [t115.mmi, code],
+    )
+    const ex = (
+      await one(`select payer_lines($1, $2::uuid[], '{}'::uuid[]) as j`, [t115.mmi, [t139.svc]])
+    ).j
+    await db.query(`select save_tariff_exception($1, $2, 'covered', null, null, null)`, [
+      t115.mmi,
+      code,
+    ])
+    const none = (await one(`select payer_lines($1, '{}'::uuid[], '{}'::uuid[]) as j`, [t115.mmi]))
+      .j
+    await asAdmin()
+    const anon = await hintAs(null, `select payer_lines($1, null, null)`, [t115.mmi])
+    const p = plain[0]
+    const e = ex[0]
+    if (
+      plain.length !== 1 ||
+      Number(p.price) !== 4000 ||
+      p.source !== 'tariff' ||
+      Number(p.insurerShare) !== 3400 ||
+      ex.length !== 1 ||
+      e.source !== 'excluded' ||
+      Number(e.insurerShare) !== 0 ||
+      e.exception?.cover !== 'not_covered' ||
+      e.exception?.note !== 'Not in the plan' ||
+      none.length !== 0 ||
+      anon === 'ok'
+    )
+      throw new Error(json140({ plain, ex, none, anon }))
+    return `MMI 4,000 (3,400 by MMI) · not covered: MMI 0, exception shown · nothing asked: nothing · signed out: ${anon}`
+  },
+)
+// @@t140-end
 finish()
 
 function finish() {
