@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api/errors'
+import { useCan } from '@/lib/api/permissions'
 import { useVisitActions } from '@/lib/api/visits'
 import { useConfirm } from '@/lib/confirm'
 
 /*
  * "Patient has left": closes the visit and takes the patient off every queue. With money still
- * due, reception and the others are told to take the payment first; the manager may still
- * close it, giving the reason.
+ * due: the manager, and whoever holds "Let a patient go with money due" (0144), close it giving
+ * the reason — what is owed stays on the patient as a debt; the others are told to send the
+ * patient to the cashier.
  */
 export function LeftButton({
   encounterId,
@@ -32,6 +34,8 @@ export function LeftButton({
   const { endVisit } = useVisitActions()
   const [error, setError] = useState<string | null>(null)
   const confirm = useConfirm()
+  const can = useCan(user)
+  const mayLeaveOwing = user.role === 'manager' || can('visit.leave_owing')
 
   const leave = async () => {
     setError(null)
@@ -52,9 +56,11 @@ export function LeftButton({
       // the database's own (English) sentence tells the refusal apart whatever the language shown
       const raw = e instanceof ApiError ? e.serverMessage : m
       const due = /still due \((\d+)/.exec(raw)?.[1]
-      if (/say why|still due/.test(raw) && user.role === 'manager') {
+      const hint = e instanceof ApiError ? e.hint : null
+      if ((hint === 'leave_reason' || /say why/.test(raw)) && mayLeaveOwing) {
         const r = await confirm({
           title: t('visits.left.reasonPrompt', { amount: due ?? '' }),
+          body: t('visits.left.owingBody'),
           input: {
             label: t('confirm.reasonLabel'),
             placeholder: t('confirm.reasonPh'),
@@ -67,19 +73,16 @@ export function LeftButton({
         if (!r.ok) return
         try {
           await endVisit.mutateAsync({ encounterId, reason: r.value })
-          onDone?.(t('visits.left.done', { name }))
+          onDone?.(t('visits.left.doneOwing', { name, amount: due ?? '' }))
         } catch (e2) {
           setError(e2 instanceof Error ? e2.message : String(e2))
         }
         return
       }
-      // not the manager, money still due: say plainly where the patient goes and who may close it
+      // not allowed, money still due: say plainly where the patient goes and who may close it
       setError(
-        /take the payment first/.test(raw)
-          ? t('visits.left.unpaid', {
-              defaultValue:
-                'The patient has not paid yet: send them to the cashier. Only the manager can end a visit with money due.',
-            })
+        hint === 'leave_owing' || /take the payment first/.test(raw)
+          ? t('visits.left.unpaid', { amount: due ?? '' })
           : due
             ? t('visits.left.due', { amount: due })
             : m,

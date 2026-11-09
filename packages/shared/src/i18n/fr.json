@@ -1149,7 +1149,9 @@
     "submitFirst": "Enregistrer le patient",
     "duplicate": {
       "line": "Doublon possible : {{name}} {{file}} — ouvrir ce dossier plutôt ?"
-    }
+    },
+    "owes": "Doit {{amount}}",
+    "owesHint": "Encore dû d’une visite précédente : à encaisser au caissier."
   },
   "triage": {
     "title": "Constantes",
@@ -2383,7 +2385,8 @@
       },
       "settledClosed": "Tout est payé. Reçu {{receipt}}. La visite est terminée.",
       "settledOpen": "Payé à ce jour. Reçu {{receipt}}. La visite continue : ce qui sera ajouté sera payé à la fin.",
-      "settledDebt": "Tout est payé. Reçu {{receipt}}. La dette est réglée ; la visite reste terminée."
+      "settledDebt": "Tout est payé. Reçu {{receipt}}. La dette est réglée ; la visite reste terminée.",
+      "paidSoFarNote": "Payé jusqu’à présent : ce que les postes suivants ajoutent va sur cette même facture et se paie avant que le patient parte."
     },
     "next": {
       "title": "Prochaine étape pour ce patient",
@@ -3203,7 +3206,9 @@
       "done": "{{name}} est parti : la visite est clôturée.",
       "due": "{{amount}} RWF restent dus : encaissez d’abord, ou demandez au gérant.",
       "reasonPrompt": "{{amount}} RWF restent dus. Pourquoi le patient part-il sans payer ?",
-      "unpaid": "Le patient n’a pas encore payé : envoyez-le à la caisse. Seul le gestionnaire peut clore une visite avec un montant dû."
+      "unpaid": "{{amount}} RWF restent dus : envoyez le patient au caissier. Quelqu’un qui a « Laisser partir un patient qui doit de l’argent » (le gérant, le caissier, la réception) peut clore la visite avec une dette.",
+      "owingBody": "La visite se ferme ; le montant reste sur le patient comme une dette à encaisser à son retour. C’est écrit dans le journal d’audit avec votre nom.",
+      "doneOwing": "{{name}} est parti en devant {{amount}} RWF : la visite est close, la dette est sur son dossier."
     }
   },
   "desk": {
@@ -5001,7 +5006,8 @@
         "stockWrite": "gérer le stock",
         "recordsApprove": "répondre aux demandes d’accès aux dossiers",
         "stockSellWalkin": "vendre aux clients de passage depuis votre stock",
-        "chargeOverride": "changer la couverture d’une ligne pour un patient"
+        "chargeOverride": "changer la couverture d’une ligne pour un patient",
+        "visitLeaveOwing": "laisser partir un patient qui doit de l’argent"
       }
     },
     "f": {
@@ -5048,6 +5054,10 @@
       "charge.override": {
         "name": "Changer la couverture d’une ligne pour un patient",
         "hint": "Sur une visite sous assurance : facturer une ligne comme non couverte, comme patient privé, à un autre prix ou avec une autre couverture, avec la raison. Le caissier et le gérant au départ."
+      },
+      "visit.leave_owing": {
+        "name": "Laisser partir un patient qui doit de l’argent",
+        "hint": "Clore une visite alors qu’il reste à payer, en donnant la raison : le montant reste sur le patient comme une dette (« Encore dû » du caissier, « Doit… » du dossier, la réception à la prochaine arrivée). Le gérant, le caissier, la réception et les médecins au départ ; jamais l’administrateur."
       }
     },
     "desks": {
@@ -5061,7 +5071,8 @@
       "on": "{{desk}} permis pour chaque {{role}}.",
       "off": "{{desk}} retiré pour chaque {{role}}."
     },
-    "neverTreats": "Jamais : la réception, le caissier et l’administrateur ne soignent aucun patient."
+    "neverTreats": "Jamais : la réception, le caissier et l’administrateur ne soignent aucun patient.",
+    "neverMoney": "Jamais : l’administrateur ne laisse pas partir un patient qui doit de l’argent."
   },
   "medReport": {
     "open": "Rapport médical",
@@ -5671,7 +5682,8 @@
       "declined": "Passation refusée",
       "cancelled": "Passation annulée",
       "lapsed": "Passation terminée"
-    }
+    },
+    "paidSoFar": "Payé jusqu’ici"
   },
   "picker": {
     "search": "Tapez pour chercher parmi {{count}}…",

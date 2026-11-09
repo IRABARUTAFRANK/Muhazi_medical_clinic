@@ -3,6 +3,7 @@
 export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^handing over, not given, cancelling and the medicine or quantity change only through the pharmacy and prescription screens$/, 'dbErrors.1f7aa212', 0], // guard_medication_request
   [/^this patient is with (.+?): record the measurements without choosing where they go next; the nurse there sends them on$/, 'dbErrors.ed0c022b', 1], // record_vitals_to
+  [/^money is still due \((.+?) RWF\): take the payment first, or someone allowed may let the patient go with a debt$/, 'dbErrors.da828030', 1], // end_visit
   [/^only a clinician who treated the patient in this visit \(or the manager\) may edit it after it is finished$/, 'dbErrors.f96f1e67', 0], // request_visit_edit
   [/^deleting, switching off, the code, the box size and the stock levels change only through their screens$/, 'dbErrors.621ea696', 0], // guard_item
   [/^only the doctor who asked for the test, or who took the patient over, marks the result seen$/, 'dbErrors.ca6fef80', 0], // mark_result_reviewed
@@ -20,7 +21,6 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only the clinician who wrote the diagnosis \(or the manager\) can change it$/, 'dbErrors.31b050c2', 0], // remove_condition, remove_condition_none_found, update_condition
   [/^only the manager, or a head for their own department, can send messages$/, 'dbErrors.cdc4fb66', 0], // send_notification
   [/^the rule for a line without a price is cash_covered, not_covered or ask$/, 'dbErrors.a588956d', 0], // upsert_payer
-  [/^money is still due \((.+?) RWF\): take the payment first, or ask the manager$/, 'dbErrors.141acc9e', 1], // end_visit
   [/^no code was asked for this visit, or it has expired: ask for a new one$/, 'dbErrors.33a6138f', 0], // verify_visit_edit
   [/^the visit is finished: a medicine added now can only be bought outside$/, 'dbErrors.82c10481', 0], // prescribe
   [/^this medicine is not sold at the clinic: it can only be bought outside$/, 'dbErrors.942424e3', 0], // prescribe, rx_set_supply

@@ -1800,13 +1800,65 @@ await step(
     } catch (e) {
       refused = /still due/.test(e.message)
     }
+    // 0144: reception holds "Let a patient go with money due" by default: it was refused for
+    // the missing reason (hint leave_reason), not for the right; without the right: leave_owing;
+    // the administrator never, even granted
+    // hintAs is defined further down (a const): its copy for this early check
+    const hintAs45 = async (who, sql, params = []) => {
+      await as(who)
+      try {
+        await db.query(sql, params)
+        return 'ok'
+      } catch (e) {
+        return `${e.code}/${e.hint ?? ''}`
+      } finally {
+        await asAdmin()
+      }
+    }
+    const noReason = await hintAs45(staff.receptionist, `select end_visit($1)`, [v.id])
     await as(staff.manager)
+    await db.query(`select set_role_permission('receptionist', 'visit.leave_owing', false)`)
+    const noRight = await hintAs45(staff.receptionist, `select end_visit($1, 'left')`, [v.id])
+    await as(staff.manager)
+    await db.query(`select set_role_permission('receptionist', 'visit.leave_owing', true)`)
+    await asAdmin()
+    const admin144 = await mkUser('a144.admin', 'Administrator 144', 'administrator')
+    await as(staff.manager)
+    await db.query(`select set_role_permission('administrator', 'visit.leave_owing', true)`)
+    const admin = await hintAs45(admin144, `select end_visit($1, 'left')`, [v.id])
+    await as(staff.manager)
+    await db.query(`select set_role_permission('administrator', 'visit.leave_owing', false)`)
+    await as(staff.receptionist)
     await db.query(`select end_visit($1, 'left without paying, family will come')`, [v.id])
     await asAdmin()
     const e = await one(`select status, left_reason from encounter where id = $1`, [v.id])
-    if (!refused || e.status !== 'closed' || !e.left_reason)
-      throw new Error(JSON.stringify({ refused, e }))
-    return 'reception refused (money due); manager closed it with a reason'
+    const audited = (
+      await one(
+        `select count(*)::int as n from audit_event where entity = 'encounter' and entity_id = $1 and after->>'key' = 'left_owing'`,
+        [v.id],
+      )
+    ).n
+    // the hits need patient.read: as reception (the admin connection has no user)
+    await as(staff.receptionist)
+    const owed = (
+      await one(
+        `select coalesce(sum(balance_due), 0) as d from find_patients_at_reception((select file_number from patient where id = $1), 10) where id = $1`,
+        [patientId],
+      ).catch(() => ({ d: 'n/a' }))
+    ).d
+    await asAdmin()
+    if (
+      !refused ||
+      noReason !== '22023/leave_reason' ||
+      noRight !== '23514/leave_owing' ||
+      admin !== '23514/leave_owing' ||
+      e.status !== 'closed' ||
+      !e.left_reason ||
+      audited !== 1 ||
+      !(Number(owed) > 0)
+    )
+      throw new Error(JSON.stringify({ refused, noReason, noRight, admin, e, audited, owed }))
+    return `reception: no reason ${noReason}, without the right ${noRight}; administrator ${admin}; reception let the patient go with a reason, audited; find_patients owes ${owed}`
   },
 )
 
@@ -5714,20 +5766,19 @@ await step(
     await asAdmin()
     const stations = await openStations82(t82.roomEnc)
     // reception may not close it with money due; the manager may, with the reason
+    // 0144: reception holds "Let a patient go with money due": with a reason it closes the visit
     const rec = await codeAs(staff.receptionist, `select end_visit($1, 'went home')`, [t82.roomEnc])
-    await as(staff.manager)
-    await db.query(`select end_visit($1, 'left without paying')`, [t82.roomEnc])
     await as(staff.cashier)
     const list = (await one(`select unpaid_debts() as j`)).j
     await asAdmin()
     const row = list.find((x) => x.encounterId === t82.roomEnc)
     if (
       JSON.stringify(stations) !== '["cashier"]' ||
-      rec !== '23514' ||
+      rec !== null ||
       !row ||
       row.status !== 'left' ||
       Number(row.amount) !== 1000 ||
-      row.reason !== 'left without paying'
+      row.reason !== 'went home'
     )
       throw new Error(JSON.stringify({ stations, rec, row }))
     return `finish → cashier; left: listed as ${row.status}, ${row.amount} RWF`

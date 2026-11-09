@@ -1149,7 +1149,9 @@
     "submitFirst": "Register the patient",
     "duplicate": {
       "line": "Possible duplicate: {{name}} {{file}} — open the file instead?"
-    }
+    },
+    "owes": "Owes {{amount}}",
+    "owesHint": "Still owed from an earlier visit: collect at the cashier."
   },
   "triage": {
     "title": "Vitals",
@@ -2383,7 +2385,8 @@
       },
       "settledClosed": "Paid in full. Receipt {{receipt}}. The visit is finished.",
       "settledOpen": "Paid so far. Receipt {{receipt}}. The visit goes on: anything added later is charged and paid at the end.",
-      "settledDebt": "Paid in full. Receipt {{receipt}}. The debt is settled; the visit stays finished."
+      "settledDebt": "Paid in full. Receipt {{receipt}}. The debt is settled; the visit stays finished.",
+      "paidSoFarNote": "Paid up to now: what the next desks add goes on this same bill and is paid before the patient leaves."
     },
     "next": {
       "title": "Next step for this patient",
@@ -3203,7 +3206,9 @@
       "done": "{{name}} has left: the visit is closed.",
       "due": "{{amount}} RWF is still due: take the payment first, or ask the manager.",
       "reasonPrompt": "{{amount}} RWF is still due. Why does the patient leave without paying?",
-      "unpaid": "The patient has not paid yet: send them to the cashier. Only the manager can end a visit with money due."
+      "unpaid": "{{amount}} RWF is still due: send the patient to the cashier. Someone with “Let a patient go with money due” (the manager, the cashier, reception) may close the visit with a debt.",
+      "owingBody": "The visit closes; the amount stays on the patient as a debt to collect when they come back. It is written in the audit log with your name.",
+      "doneOwing": "{{name}} has left owing {{amount}} RWF: the visit is closed, the debt is on their file."
     }
   },
   "desk": {
@@ -5001,7 +5006,8 @@
         "stockWrite": "manage stock",
         "recordsApprove": "answer record-access requests",
         "stockSellWalkin": "sell to walk-in buyers from your store",
-        "chargeOverride": "change how a charge is covered for a patient"
+        "chargeOverride": "change how a charge is covered for a patient",
+        "visitLeaveOwing": "let a patient go with money due"
       }
     },
     "f": {
@@ -5048,6 +5054,10 @@
       "charge.override": {
         "name": "Change a charge’s cover for a patient",
         "hint": "On a visit under an insurer: charge one line as not covered, as a private patient, at another price or with another coverage, with the reason. The cashier and the manager at first."
+      },
+      "visit.leave_owing": {
+        "name": "Let a patient go with money due",
+        "hint": "End a visit while money is still owed, giving the reason: the amount stays on the patient as a debt (the cashier’s “Still owed”, the file’s “Owes…”, reception at the next arrival). The manager, the cashier, reception and the doctors at first; never the administrator."
       }
     },
     "desks": {
@@ -5061,7 +5071,8 @@
       "on": "{{desk}} allowed for every {{role}}.",
       "off": "{{desk}} stopped for every {{role}}."
     },
-    "neverTreats": "Never: reception, the cashier and the administrator treat no patient."
+    "neverTreats": "Never: reception, the cashier and the administrator treat no patient.",
+    "neverMoney": "Never: the administrator does not let a patient go with money due."
   },
   "medReport": {
     "open": "Medical report",
@@ -5671,7 +5682,8 @@
       "declined": "Handover declined",
       "cancelled": "Handover cancelled",
       "lapsed": "Handover ended"
-    }
+    },
+    "paidSoFar": "Paid so far"
   },
   "picker": {
     "search": "Type to search {{count}}…",

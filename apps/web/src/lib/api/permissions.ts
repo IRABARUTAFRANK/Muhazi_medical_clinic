@@ -26,6 +26,7 @@ export const MANAGED_FEATURES = [
   'stock.sell_walkin',
   // changing how one line of an insured visit is charged for the patient (0139)
   'charge.override',
+  'visit.leave_owing',
 ] as const
 export type Feature = (typeof MANAGED_FEATURES)[number]
 
@@ -51,6 +52,12 @@ export const TREATING_FEATURES: readonly Feature[] = [
 export const NON_TREATING_ROLES: readonly string[] = ['receptionist', 'cashier', 'administrator']
 export const neverTreats = (role: string, f: Feature) =>
   NON_TREATING_ROLES.includes(role) && TREATING_FEATURES.includes(f)
+/** 0144: letting a patient go with money due is never the administrator's (the database refuses). */
+export const neverMoney = (role: string, f: Feature) =>
+  role === 'administrator' && f === 'visit.leave_owing'
+/** Why a switch is never offered to a role (perms.neverTreats / perms.neverMoney), or null. */
+export const neverReason = (role: string, f: Feature): 'neverTreats' | 'neverMoney' | null =>
+  neverTreats(role, f) ? 'neverTreats' : neverMoney(role, f) ? 'neverMoney' : null
 
 /** The clinic's defaults (also used before the database knows these settings). */
 const DEFAULTS: Record<Feature, string[]> = {
@@ -77,6 +84,7 @@ const DEFAULTS: Record<Feature, string[]> = {
   'stock.sell_walkin': ['manager'],
   // not covered, as a private patient, another price or coverage on one line: the cashier and the manager
   'charge.override': ['cashier', 'manager'],
+  'visit.leave_owing': ['manager', 'cashier', 'receptionist', 'doctor'],
 }
 const defaultsFor = (role: string) => MANAGED_FEATURES.filter((f) => DEFAULTS[f].includes(role))
 
@@ -96,6 +104,7 @@ export const FEATURE_KEY: Record<Feature, string> = {
   'records.approve': 'recordsApprove',
   'stock.sell_walkin': 'stockSellWalkin',
   'charge.override': 'chargeOverride',
+  'visit.leave_owing': 'visitLeaveOwing',
 }
 
 export interface PermissionException {

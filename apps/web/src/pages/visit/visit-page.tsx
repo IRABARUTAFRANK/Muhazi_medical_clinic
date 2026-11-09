@@ -931,6 +931,7 @@ export function VisitPage({
                   (!closed || bill.balance !== 0) && (
                     <PaymentCard
                       bill={bill}
+                      open={!closed}
                       patientName={patientName}
                       onRefund={async (input) => {
                         setActionError(null)
@@ -1153,11 +1154,14 @@ function PaidMark({ bill }: { bill: VisitBill }) {
 
 function PaymentCard({
   bill,
+  open = false,
   patientName,
   onPay,
   onRefund,
 }: {
   bill: VisitBill
+  /** 0144: the visit is still open — what is paid is "so far", later desks add to the bill. */
+  open?: boolean
   /** For the question asked before money is taken or given back. */
   patientName: string
   onPay: (input: {
@@ -1331,6 +1335,9 @@ function PaymentCard({
           {bill.paid > 0 && (
             <p className="text-ink-2 m-0 text-[13px]">
               {t('visit.payment.alreadyPaid', { amount: formatRwf(bill.paid) })}
+              {open && settled && (
+                <span className="text-ink-3 block">{t('visit.payment.paidSoFarNote')}</span>
+              )}
             </p>
           )}
           {bill.total === 0 && <EmptyNote>{t('visit.payment.nothingYet')}</EmptyNote>}

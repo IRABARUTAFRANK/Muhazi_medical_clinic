@@ -228,7 +228,8 @@ function trackOf(j: Journey, now: number, t: TFn): Stop[] {
       key: `pay-${i}`,
       state: 'done',
       at: ms(p.at),
-      title: t('track.paid'),
+      // while the visit is open, a payment is "so far": later desks add to the same bill (0144)
+      title: t(closed ? 'track.paid' : 'track.paidSoFar'),
       detail: [formatRwf(Number(p.amount)), at(p.at)].filter(Boolean).join(' · '),
     }),
   )

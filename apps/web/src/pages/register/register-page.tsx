@@ -19,6 +19,7 @@ import type { StaffUser } from '@mmc/shared'
 import { PageBanner } from '@/components/dash/page-banner'
 import { card, tileClass } from '@/components/dash/kit-style'
 import { EmptyNote } from '@/components/clinical/empty-note'
+import { formatRwf } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -234,6 +235,11 @@ export function RegisterPage({ user }: { user: StaffUser }) {
                         <FolderOpen size={14} aria-hidden="true" />
                         {t('patients.openFile')}
                       </StaffLink>
+                      {p.balanceDue > 0 && (
+                        <Badge tone="red" title={t('register.owesHint')}>
+                          {t('register.owes', { amount: formatRwf(p.balanceDue) })}
+                        </Badge>
+                      )}
                       {p.hasOpenVisit ? (
                         <Badge
                           tone="blue"

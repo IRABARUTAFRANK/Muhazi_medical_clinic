@@ -11,7 +11,7 @@ import { Select } from '@/components/ui/select'
 import {
   MANAGED_FEATURES,
   MATRIX_ROLES,
-  neverTreats,
+  neverReason,
   usePermissionActions,
   usePermissionMatrix,
   type Feature,
@@ -117,13 +117,14 @@ export function PermissionsCard() {
                     {MATRIX_ROLES.map((r) => {
                       const on = has(r, f)
                       // 0141: reception, the cashier and the administrator treat no patient
-                      if (neverTreats(r, f))
+                      const never = neverReason(r, f)
+                      if (never)
                         return (
                           <td key={r} className={cn(tableCell, 'px-2 text-center')}>
                             <span
                               className="text-ink-3 inline-flex size-9 items-center justify-center"
-                              title={t('perms.neverTreats')}
-                              aria-label={`${t(`perms.f.${f}.name`)} · ${t(`staff.roles.${r}`)} · ${t('perms.neverTreats')}`}
+                              title={t(`perms.${never}`)}
+                              aria-label={`${t(`perms.f.${f}.name`)} · ${t(`staff.roles.${r}`)} · ${t(`perms.${never}`)}`}
                             >
                               <Lock size={14} aria-hidden="true" />
                             </span>
@@ -218,7 +219,7 @@ export function PermissionsCard() {
                 const byRole = has(chosen.role, f)
                 const value = ex ? (ex.allowed ? 'yes' : 'no') : 'role'
                 const effective = ex ? ex.allowed : byRole
-                const never = neverTreats(chosen.role, f)
+                const never = neverReason(chosen.role, f)
                 return (
                   <div
                     key={f}

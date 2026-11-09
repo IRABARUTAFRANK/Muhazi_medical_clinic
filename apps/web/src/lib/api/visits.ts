@@ -81,6 +81,8 @@ export interface PatientHit {
   birthDate: string | null
   phone: string | null
   hasOpenVisit: boolean
+  /** 0144: what the patient still owes on finished visits (0 before the migration). */
+  balanceDue: number
 }
 
 interface FindRow {
@@ -92,6 +94,7 @@ interface FindRow {
   birth_date: string | null
   phone_1: string | null
   has_open_visit: boolean
+  balance_due?: number | string | null
 }
 
 const samplePatients: PatientHit[] = [
@@ -104,6 +107,7 @@ const samplePatients: PatientHit[] = [
     birthDate: '1995-03-12',
     phone: '0788123456',
     hasOpenVisit: false,
+    balanceDue: 8000,
   },
   {
     id: 'p-2',
@@ -114,6 +118,7 @@ const samplePatients: PatientHit[] = [
     birthDate: '2018-07-01',
     phone: '0722987654',
     hasOpenVisit: true,
+    balanceDue: 0,
   },
 ]
 
@@ -131,7 +136,13 @@ export function useFindPatients(query: string) {
             .includes(needle),
         )
       }
-      const { data, error } = await supabase.rpc('find_patients', { p_query: q, p_limit: 10 })
+      // 0144: the hits with what each patient still owes; a database before 0144: without
+      let { data, error } = await supabase.rpc('find_patients_at_reception', {
+        p_query: q,
+        p_limit: 10,
+      })
+      if (error && isMissingFunction(error))
+        ({ data, error } = await supabase.rpc('find_patients', { p_query: q, p_limit: 10 }))
       if (error) throw apiError(error)
       return (data as FindRow[]).map((r) => ({
         id: r.id,
@@ -142,6 +153,7 @@ export function useFindPatients(query: string) {
         birthDate: r.birth_date,
         phone: r.phone_1,
         hasOpenVisit: r.has_open_visit,
+        balanceDue: Number(r.balance_due ?? 0),
       }))
     },
   })
@@ -256,6 +268,7 @@ export function useVisitActions() {
           birthDate: patient.birthDate ?? null,
           phone: patient.phone ?? null,
           hasOpenVisit: true,
+          balanceDue: 0,
         })
         return sampleVisit(id, file, visit)
       }
@@ -481,6 +494,7 @@ export function useVisitActions() {
           birthDate: patient.birthDate ?? null,
           phone: patient.phone ?? null,
           hasOpenVisit: false,
+          balanceDue: 0,
         })
         return { patientId: id, fileNumber }
       }

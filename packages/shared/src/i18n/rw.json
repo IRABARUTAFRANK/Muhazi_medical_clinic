@@ -1153,7 +1153,9 @@
     "submitFirst": "Andika umurwayi",
     "duplicate": {
       "line": "Birashoboka ko dosiye isanzweho: {{name}} {{file}} — fungura iyo dosiye aho kwandika indi?"
-    }
+    },
+    "owes": "Afite umwenda wa {{amount}}",
+    "owesHint": "Asigaye kwishyura kuva ku kwivuza kwabanje: byakirwa kwa uwakira ubwishyu."
   },
   "triage": {
     "title": "Ibipimo",
@@ -1599,7 +1601,8 @@
       },
       "settledClosed": "Byishyuwe byose. Inyemezabwishyu {{receipt}}. Kwivuza kwarangiye.",
       "settledOpen": "Ibyishyuwe kugeza ubu. Inyemezabwishyu {{receipt}}. Kwivuza kurakomeje: ibizongerwaho bizishyurwa ku iherezo.",
-      "settledDebt": "Byishyuwe byose. Inyemezabwishyu {{receipt}}. Umwenda warishyuwe; kwivuza kuguma kurangiye."
+      "settledDebt": "Byishyuwe byose. Inyemezabwishyu {{receipt}}. Umwenda warishyuwe; kwivuza kuguma kurangiye.",
+      "paidSoFarNote": "Ibyishyuwe kugeza ubu: ibyo aho bakorera bikurikira byongeraho bijya kuri iyi fagitire imwe bikishyurwa mbere y’uko umurwayi agenda."
     },
     "next": {
       "title": "Intambwe ikurikira y’uyu murwayi",
@@ -2128,7 +2131,9 @@
       "done": "{{name}} yagiye: kwivuza kwafunzwe.",
       "due": "Hasigaye kwishyurwa {{amount}} RWF: banza wakire ubwishyu, cyangwa ubaze umuyobozi.",
       "reasonPrompt": "Hasigaye kwishyurwa {{amount}} RWF. Kuki umurwayi agiye atishyuye?",
-      "unpaid": "Umurwayi ntarishyura: mwohereze aho bakira ubwishyu. Umuyobozi wenyine ni we ushobora gufunga kwivuza hasigaye amafaranga yo kwishyurwa."
+      "unpaid": "Hasigaye RWF {{amount}}: ohereza umurwayi kwa uwakira ubwishyu. Ufite “Kureka umurwayi akagenda afite amafaranga asigaye” (umuyobozi, uwakira ubwishyu, aho bakira abarwayi) ashobora gusoza kwivuza hasigaye umwenda.",
+      "owingBody": "Kwivuza kurasozwa; amafaranga aguma ku murwayi nk’umwenda uzishyurwa nagaruka. Byandikwa mu gitabo cy’igenzura hamwe n’izina ryawe.",
+      "doneOwing": "{{name}} yagiye afite umwenda wa RWF {{amount}}: kwivuza kwasojwe, umwenda uri kuri dosiye ye."
     }
   },
   "prices": {
@@ -5010,7 +5015,8 @@
         "stockWrite": "gucunga ububiko",
         "recordsApprove": "gusubiza ubusabe bwo kureba dosiye",
         "stockSellWalkin": "kugurisha abaguzi baje kugura gusa ibiri mu bubiko bwawe",
-        "chargeOverride": "guhindura uko serivisi yishyurwa ku murwayi"
+        "chargeOverride": "guhindura uko serivisi yishyurwa ku murwayi",
+        "visitLeaveOwing": "kureka umurwayi akagenda afite amafaranga asigaye"
       }
     },
     "f": {
@@ -5057,6 +5063,10 @@
       "charge.override": {
         "name": "Guhindura uko serivisi yishyurwa ku murwayi",
         "hint": "Mu kwivuza kw’umurwayi uri munsi y’ubwishingizi: kwishyuza umurongo umwe nk’utishyurwa n’ubwishingizi, nk’umurwayi utagira ubwishingizi, ku kindi giciro cyangwa n’ikindi kigero cy’ubwishingizi, ugaragaza impamvu. Uwakira ubwishyu n’umuyobozi mbere na mbere."
+      },
+      "visit.leave_owing": {
+        "name": "Kureka umurwayi akagenda afite amafaranga asigaye",
+        "hint": "Gusoza kwivuza hasigaye amafaranga yo kwishyura, utanga impamvu: ayo mafaranga aguma ku murwayi nk’umwenda (“Asigaye kwishyurwa” kwa uwakira ubwishyu, “Afite umwenda…” kuri dosiye, aho bakira abarwayi igihe azagaruka). Umuyobozi, uwakira ubwishyu, aho bakira abarwayi n’abaganga mu ntangiriro; umunyamabanga ntabwo na rimwe."
       }
     },
     "desks": {
@@ -5070,7 +5080,8 @@
       "on": "{{desk}} hemerewe buri {{role}}.",
       "off": "{{desk}} hahagaritswe kuri buri {{role}}."
     },
-    "neverTreats": "Ntibishoboka: aho bakira abarwayi, uwakira ubwishyu n’umunyamabanga ntabwo bavura umurwayi."
+    "neverTreats": "Ntibishoboka: aho bakira abarwayi, uwakira ubwishyu n’umunyamabanga ntabwo bavura umurwayi.",
+    "neverMoney": "Ntibishoboka: umunyamabanga ntareka umurwayi ngo agende afite amafaranga asigaye."
   },
   "medReport": {
     "open": "Raporo ya muganga",
@@ -5680,7 +5691,8 @@
       "declined": "Kwegurira byanzwe",
       "cancelled": "Kwegurira byahagaritswe",
       "lapsed": "Kwegurira byarangiye"
-    }
+    },
+    "paidSoFar": "Ibyishyuwe kugeza ubu"
   },
   "picker": {
     "search": "Andika ushakishe muri {{count}}…",
