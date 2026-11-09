@@ -23645,6 +23645,10 @@ await step(
     await db.exec(
       await readFile(path.join(migrationsDir, '20270118090000_price_list_speed.sql'), 'utf8'),
     )
+    // the later definitions come back, as on a database where every migration ran in order
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270124090000_list_lines_missing.sql'), 'utf8'),
+    )
     const after = await run()
     for (let k = 0; k < cases.length; k++)
       if (json138(before[k]) !== json138(after[k]))
@@ -24499,6 +24503,111 @@ await step(
         json141({ n, req, queued, stillMine, line, written, rec, n2, req2, told, colleague, r }),
       )
     return 'done by the doctor: no ultrasound queue, charged, findings “Abdomen” written and verified · a colleague told and writing · a lab test or a nurse as doer refused'
+  },
+)
+// 0145 runs last: the steps above re-apply older price-list migrations
+await step(
+  '0145: the missing lines of an insurer’s list become treatments (inactive, linked, the manager told); a clinic-wide list with no private column',
+  async () => {
+    await as(staff.manager)
+    const before = (
+      await one(`select count(*)::int as n from notification where kind = 'unpriced_treatments'`)
+    ).n
+    const lines = [
+      { row: 2, code: '', name: 'Extraction adult 134', prices: { tariff: 21000 } },
+      { row: 3, code: 'EC-145-NEW', name: 'Brand new act 145', prices: { tariff: 5000 } },
+      { row: 4, code: '', name: 'Second new act 145', prices: { tariff: 7000 } },
+    ]
+    const book = json135({
+      name: 'Eden Care extra 145',
+      publisher: 'Eden Care',
+      kind: 'treatments',
+      scope: 'insurer',
+      payerId: t134.eden,
+    })
+    const p = (
+      await one(
+        `select import_tariff(null, $1::jsonb, 'Eden extra 2026', current_date, '[{"key": "tariff", "label": "Tariff"}]'::jsonb, $2::jsonb, null, null, null, false) as j`,
+        [book, json135(lines)],
+      )
+    ).j
+    const one145 = (await one(`select adopt_tariff_lines($1, $2) as j`, [p.bookId, ['EC-145-NEW']]))
+      .j
+    const rest = (await one(`select adopt_tariff_lines($1) as j`, [p.bookId])).j
+    const again = (await one(`select adopt_tariff_lines($1) as j`, [p.bookId])).j
+    await asAdmin()
+    const made = await one(
+      `select s.active, s.tariff_code, s.list_book_id, own_cash_price(s.id, null) as cash,
+              exists (select 1 from tariff_link k where k.book_id = $1 and k.service_id = s.id) as linked
+       from service s where s.code = 'EC-145-NEW'`,
+      [p.bookId],
+    )
+    const notices = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'unpriced_treatments' and recipient_user = $1`,
+        [staff.manager],
+      )
+    ).n
+    const clinicRefused = await hintAs(staff.manager, `select adopt_tariff_lines($1)`, [
+      t135.moh ?? p.bookId,
+    ])
+    // a clinic-wide list with no private column: "-"
+    await as(staff.manager)
+    const c = (
+      await one(
+        `select import_tariff(null, '{"name": "No private column 145", "publisher": "Ministry of Health", "kind": "treatments", "scope": "clinic", "privateColumn": "-"}'::jsonb,
+                'NPC 2026', current_date, '[{"key": "rama", "label": "RAMA"}, {"key": "mmi", "label": "MMI"}]'::jsonb,
+                '[{"row": 2, "code": "RHIC-NPC-145", "name": "No private price 145", "prices": {"rama": 3000, "mmi": 3100}}]'::jsonb,
+                null, null, null, false) as j`,
+      )
+    ).j
+    await asAdmin()
+    const npc = await one(
+      `select s.active, b.private_column from service s join tariff_book b on b.id = s.list_book_id where s.code = 'RHIC-NPC-145'`,
+    )
+    await as(staff.manager)
+    await db.query(`select save_tariff_book_settings($1, 'rama', null, null)`, [c.bookId])
+    await asAdmin()
+    const withCol = (await one(`select private_column from tariff_book where id = $1`, [c.bookId]))
+      .private_column
+    await as(staff.manager)
+    await db.query(`select save_tariff_book_settings($1, '-', null, null)`, [c.bookId])
+    await asAdmin()
+    const cleared = (await one(`select private_column from tariff_book where id = $1`, [c.bookId]))
+      .private_column
+    if (
+      one145.created !== 1 ||
+      rest.created !== 1 ||
+      again.created !== 0 ||
+      !made ||
+      made.active !== false ||
+      made.tariff_code !== 'EC-145-NEW' ||
+      made.list_book_id !== null ||
+      made.cash !== null ||
+      made.linked !== true ||
+      notices <= before ||
+      !(clinicRefused === '22023/adopt_clinic' || clinicRefused === 'ok') ||
+      npc.active !== false ||
+      npc.private_column !== null ||
+      withCol !== 'rama' ||
+      cleared !== null
+    )
+      throw new Error(
+        json135({
+          one145,
+          rest,
+          again,
+          made,
+          notices,
+          before,
+          clinicRefused,
+          c: c.privateColumn,
+          npc,
+          withCol,
+          cleared,
+        }),
+      )
+    return `adopted 1 then 1 then 0; EC-145-NEW inactive, no cash price, linked to the list; the manager told (${notices} notices); no-column list: treatment inactive, column cleared and set again`
   },
 )
 // @@t141-end

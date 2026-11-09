@@ -2238,7 +2238,20 @@
         "yes": "Remove every list",
         "done_one": "{{count}} list removed: {{deleted}} treatments deleted, {{hidden}} hidden (already on bills).",
         "done_other": "{{count}} lists removed: {{deleted}} treatments deleted, {{hidden}} hidden (already on bills)."
-      }
+      },
+      "ownCashPrices": "No column — the clinic sets its own cash prices",
+      "ownCashPricesHint": "Every line still becomes a treatment and each insurer follows its column, but a treatment stays inactive until you give it a cash price (Treatments › the treatment, or Adjust prices for a whole category). You are told how many are waiting.",
+      "adoptLine": "Add as a treatment",
+      "adoptHint": "The clinic does not have this line: make it a treatment of the clinic, linked to this list — inactive, without a cash price, until the manager prices it.",
+      "adoptAll": "Add every missing line as a treatment",
+      "adoptAllHint": "The lines that match none of the clinic’s treatments become treatments: inactive, no cash price, this insurer’s price through the list. You are told how many to price.",
+      "adoptQ": "Add “{{name}}” to the clinic’s treatments?",
+      "adoptAllQ": "Add every missing line of this list to the clinic’s treatments?",
+      "adoptBody": "They are created inactive, without a cash price, linked to this list: the insurer’s price applies at once; cash patients can be charged once you set a price. The manager is told how many are waiting.",
+      "adoptYes": "Yes, add",
+      "adoptedDone_one": "{{count}} treatment added: inactive until it has a cash price.",
+      "adoptedDone_other": "{{count}} treatments added: inactive until they have a cash price.",
+      "adoptedNone": "Nothing to add: every line already matches a treatment of the clinic."
     },
     "listPrice": {
       "follows": "MoH price",
@@ -2281,7 +2294,8 @@
       "afterSave": "The insurers’ exceptions can be set once it is saved: open it again.",
       "overrideNote": "Covered on this one",
       "exception": "Exception"
-    }
+    },
+    "unpricedOnly": "Without a cash price ({{count}})"
   },
   "visit": {
     "back": "Back to my queue",
@@ -3715,7 +3729,10 @@
       "not_given": "{{by}} could not give one time of: {{title}}",
       "cancelled": "{{by}} cancelled the order: {{title}}"
     },
-    "scanRequest": "Ultrasound to do: {{test}} · {{name}}"
+    "scanRequest": "Ultrasound to do: {{test}} · {{name}}",
+    "unpricedTreatments_one": "{{count}} treatment has no cash price yet",
+    "unpricedTreatments_other": "{{count}} treatments have no cash price yet",
+    "unpricedTreatmentsBody": "Made from “{{list}}”: give them a price under Prices › Treatments (Without a cash price) so cash patients can be charged. Insured patients already pay their list."
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -8459,7 +8476,10 @@
     "fc369004": "This visit’s record is not yours to read, so its prescription cannot be printed by you.",
     "4431f9e0": "Only an ultrasound can be done by the doctor; other tests go to their desk.",
     "b9f978f4": "This department treats no patient: nobody can be its doctor.",
-    "9bbd2911": "Place the person in that department first."
+    "9bbd2911": "Place the person in that department first.",
+    "da828030": "Money is still due: take the payment first, or someone with “Let a patient go with money due” may close the visit with a debt.",
+    "af56f7e3": "Only a list of treatments has lines to add as treatments.",
+    "c3b95821": "A clinic-wide list makes its treatments itself: nothing to add by hand."
   },
   "panel": {
     "close": "Close",

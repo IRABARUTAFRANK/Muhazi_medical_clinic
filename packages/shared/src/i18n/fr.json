@@ -2238,7 +2238,20 @@
         "yes": "Retirer toutes les listes",
         "done_one": "{{count}} liste retirée : {{deleted}} soins supprimés, {{hidden}} masqués (déjà sur des factures).",
         "done_other": "{{count}} listes retirées : {{deleted}} soins supprimés, {{hidden}} masqués (déjà sur des factures)."
-      }
+      },
+      "ownCashPrices": "Aucune colonne — la clinique fixe ses propres prix comptant",
+      "ownCashPricesHint": "Chaque ligne devient quand même un acte et chaque assureur suit sa colonne, mais un acte reste inactif tant qu’il n’a pas de prix comptant (Actes › l’acte, ou Ajuster les prix pour toute une catégorie). On vous dit combien attendent.",
+      "adoptLine": "Ajouter comme acte",
+      "adoptHint": "La clinique n’a pas cette ligne : en faire un acte de la clinique, lié à cette liste — inactif, sans prix comptant, jusqu’à ce que le gérant le tarifie.",
+      "adoptAll": "Ajouter chaque ligne manquante comme acte",
+      "adoptAllHint": "Les lignes qui ne correspondent à aucun acte de la clinique deviennent des actes : inactifs, sans prix comptant, le prix de cet assureur par la liste. On vous dit combien tarifer.",
+      "adoptQ": "Ajouter « {{name}} » aux actes de la clinique ?",
+      "adoptAllQ": "Ajouter chaque ligne manquante de cette liste aux actes de la clinique ?",
+      "adoptBody": "Ils sont créés inactifs, sans prix comptant, liés à cette liste : le prix de l’assureur s’applique tout de suite ; les patients comptant pourront être facturés dès qu’un prix est fixé. Le gérant est prévenu du nombre en attente.",
+      "adoptYes": "Oui, ajouter",
+      "adoptedDone_one": "{{count}} acte ajouté : inactif tant qu’il n’a pas de prix comptant.",
+      "adoptedDone_other": "{{count}} actes ajoutés : inactifs tant qu’ils n’ont pas de prix comptant.",
+      "adoptedNone": "Rien à ajouter : chaque ligne correspond déjà à un acte de la clinique."
     },
     "listPrice": {
       "follows": "Prix du MoH",
@@ -2281,7 +2294,8 @@
       "afterSave": "Les exceptions des assureurs se fixent une fois enregistré : rouvrez-le.",
       "overrideNote": "Couvert pour celui-ci",
       "exception": "Cas particulier"
-    }
+    },
+    "unpricedOnly": "Sans prix comptant ({{count}})"
   },
   "visit": {
     "back": "Retour à ma file",
@@ -3715,7 +3729,10 @@
       "not_given": "{{by}} n’a pas pu administrer une prise de : {{title}}",
       "cancelled": "{{by}} a annulé la prescription : {{title}}"
     },
-    "scanRequest": "Échographie à faire : {{test}} · {{name}}"
+    "scanRequest": "Échographie à faire : {{test}} · {{name}}",
+    "unpricedTreatments_one": "{{count}} acte n’a pas encore de prix comptant",
+    "unpricedTreatments_other": "{{count}} actes n’ont pas encore de prix comptant",
+    "unpricedTreatmentsBody": "Issus de « {{list}} » : donnez-leur un prix sous Prix › Actes (Sans prix comptant) pour pouvoir facturer les patients comptant. Les assurés paient déjà leur liste."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -8459,7 +8476,10 @@
     "fc369004": "Le dossier de cette visite n’est pas à vous : son ordonnance ne peut pas être imprimée par vous.",
     "4431f9e0": "Seule une échographie peut être faite par le médecin ; les autres examens vont à leur poste.",
     "b9f978f4": "Ce service ne soigne aucun patient : personne ne peut en être le médecin.",
-    "9bbd2911": "Placez d’abord la personne dans ce service."
+    "9bbd2911": "Placez d’abord la personne dans ce service.",
+    "da828030": "Il reste à payer : encaissez d’abord, ou quelqu’un qui a « Laisser partir un patient qui doit de l’argent » peut clore la visite avec une dette.",
+    "af56f7e3": "Seule une liste d’actes a des lignes à ajouter comme actes.",
+    "c3b95821": "Une liste pour toute la clinique crée ses actes elle-même : rien à ajouter à la main."
   },
   "panel": {
     "close": "Fermer",

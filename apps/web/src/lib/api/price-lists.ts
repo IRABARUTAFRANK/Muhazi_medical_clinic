@@ -1107,6 +1107,20 @@ export function usePriceListActions() {
     onSuccess: done,
   })
   /** This line of the list is that treatment / medicine of the clinic (or no longer: unlink). */
+  /** 0145: the lines of an insurer's list the clinic does not have become its treatments
+   *  (inactive, no cash price, linked to the list); some codes, or every missing one. */
+  const adoptLines = useMutation({
+    mutationFn: async (i: { bookId: string; codes: string[] | null }): Promise<number> => {
+      if (!supabase) return i.codes ? i.codes.length : 0
+      const { data, error } = await supabase.rpc('adopt_tariff_lines', {
+        p_book: i.bookId,
+        p_codes: i.codes,
+      })
+      if (error) throw apiError(error)
+      return Number((data as { created?: number } | null)?.created ?? 0)
+    },
+    onSuccess: done,
+  })
   const linkLine = useMutation({
     mutationFn: async (i: {
       bookId: string
@@ -1165,6 +1179,7 @@ export function usePriceListActions() {
     removeBook,
     applyListPrices,
     linkLine,
+    adoptLines,
     saveSettings,
   }
 }

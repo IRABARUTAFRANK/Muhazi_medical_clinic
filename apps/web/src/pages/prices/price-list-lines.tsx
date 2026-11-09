@@ -60,6 +60,26 @@ export function LinesPanel({
   const confirm = useConfirm()
   const actions = usePriceListActions()
   const current = book.versions.find((v) => v.status === 'current') ?? book.versions[0]!
+  // 0145: a line the clinic does not have becomes a treatment of the clinic (inactive, no cash
+  // price, linked to this list); one, or every missing one
+  const canAdopt = book.scope !== 'clinic' && book.kind === 'treatments'
+  const adopt = async (codes: string[] | null, name?: string) => {
+    setError(null)
+    if (
+      !(await confirm({
+        title: codes ? t('prices.lists.adoptQ', { name: name ?? '' }) : t('prices.lists.adoptAllQ'),
+        body: t('prices.lists.adoptBody'),
+        confirmLabel: t('prices.lists.adoptYes'),
+      }))
+    )
+      return
+    try {
+      const n = await actions.adoptLines.mutateAsync({ bookId: book.id, codes })
+      onNotice(n > 0 ? t('prices.lists.adoptedDone', { count: n }) : t('prices.lists.adoptedNone'))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
   const [versionId, setVersionId] = useState(current.id)
   const version = book.versions.find((v) => v.id === versionId) ?? current
   const editable = version.status === 'current'
@@ -190,6 +210,20 @@ export function LinesPanel({
         {!editable && (
           <p className="text-ink-3 m-0 text-[13px]">{t('prices.lists.pastReadOnly')}</p>
         )}
+        {canAdopt && editable && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="tint-blue"
+              loading={actions.adoptLines.isPending}
+              onClick={() => void adopt(null)}
+            >
+              <Plus size={14} aria-hidden="true" />
+              {t('prices.lists.adoptAll')}
+            </Button>
+            <span className="text-ink-3 text-[13px]">{t('prices.lists.adoptAllHint')}</span>
+          </div>
+        )}
         {version.notes && (
           <p className="text-ink-2 bg-surface m-0 rounded-md px-3 py-2 text-[13px] whitespace-pre-line">
             {version.notes}
@@ -288,6 +322,17 @@ export function LinesPanel({
                     </span>
                     {l.note && <span className="text-ink-2 block text-[12px]">“{l.note}”</span>}
                     <span className="mt-0.5 flex flex-wrap gap-1">
+                      {canAdopt && editable && l.clinic.length === 0 && !l.removed && (
+                        <button
+                          type="button"
+                          className="border-primary/40 text-primary hover:bg-primary-tint inline-flex h-6 items-center gap-1 rounded border border-dashed bg-transparent px-2 text-[12px] font-semibold"
+                          title={t('prices.lists.adoptHint')}
+                          onClick={() => void adopt([l.code], l.name)}
+                        >
+                          <Plus size={12} aria-hidden="true" />
+                          {t('prices.lists.adoptLine')}
+                        </button>
+                      )}
                       {l.clinic.map((c) => (
                         <ClinicChip
                           key={c.id}

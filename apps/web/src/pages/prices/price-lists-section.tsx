@@ -770,7 +770,14 @@ export function PriceListsSection({
                     {c.label}
                   </option>
                 ))}
+                {/* 0145: a list with no price for private patients */}
+                <option value="-">{t('prices.lists.ownCashPrices')}</option>
               </Select>
+            )}
+            {effScope === 'clinic' && privateColumn === '-' && (
+              <p className="text-ink-2 bg-amber-bg border-amber/30 m-0 rounded-md border px-3 py-2 text-[13px]">
+                {t('prices.lists.ownCashPricesHint')}
+              </p>
             )}
             {effScope === 'insurer' && columns.length > 1 && (
               <Select

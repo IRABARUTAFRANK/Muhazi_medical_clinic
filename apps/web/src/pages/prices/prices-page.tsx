@@ -118,6 +118,7 @@ export function PricesPage({ user }: { user: StaffUser }) {
     return c ? categoryName(c, i18n.language) : t(`prices.groups.${x.group}`)
   }
   const [showHidden, setShowHidden] = useState(true)
+  const [unpricedOnly, setUnpricedOnly] = useState(false)
   const [adjusting, setAdjusting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -159,7 +160,9 @@ export function PricesPage({ user }: { user: StaffUser }) {
   const visible = treatments.filter(
     (x) =>
       (!categoryFilter || x.categoryId === categoryFilter) &&
-      (showHidden || x.active) &&
+      // 0145: the treatments still to price (made from a list, inactive until priced)
+      (!unpricedOnly || x.cashPrice == null) &&
+      (showHidden || unpricedOnly || x.active) &&
       (!q ||
         `${x.nameEn} ${x.nameKin ?? ''} ${x.nameFr ?? ''} ${x.code}`.toLowerCase().includes(q)),
   )
@@ -536,6 +539,17 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 onChange={(e) => setShowHidden(e.target.checked)}
               />
               {t('prices.showHidden')}
+            </label>
+            <label className="flex min-h-9 items-center gap-2 text-[14px] font-medium">
+              <input
+                type="checkbox"
+                className="accent-primary size-[18px]"
+                checked={unpricedOnly}
+                onChange={(e) => setUnpricedOnly(e.target.checked)}
+              />
+              {t('prices.unpricedOnly', {
+                count: treatments.filter((x) => x.cashPrice == null).length,
+              })}
             </label>
             <Seg
               label={t('prices.dept.viewBy')}

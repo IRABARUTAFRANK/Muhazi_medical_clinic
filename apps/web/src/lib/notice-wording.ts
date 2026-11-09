@@ -188,6 +188,12 @@ export function useWording() {
           body: [p.name, p.reason].filter(Boolean).join(' · ') || null,
         }
       // 0141: an ultrasound a colleague asks me to do
+      // 0145: treatments made from a list with no cash price yet
+      case 'unpriced_treatments':
+        return {
+          title: t('notify.unpricedTreatments', { count: Number(p.count ?? 0) }),
+          body: p.list ? t('notify.unpricedTreatmentsBody', { list: String(p.list) }) : null,
+        }
       case 'scan_request':
         return {
           title: t('notify.scanRequest', { test: p.test ?? '', name: p.name ?? '' }),

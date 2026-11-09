@@ -30,7 +30,8 @@ export function BookSettingsPanel({
   const own = book.followers.find((f) => f.payerId === book.payerId)?.column ?? ''
   const [name, setName] = useState(book.name)
   const [publisher, setPublisher] = useState(book.publisher)
-  const [privateColumn, setPrivateColumn] = useState(book.privateColumn ?? '')
+  // 0145: no column = the clinic sets its own cash prices ("-")
+  const [privateColumn, setPrivateColumn] = useState(book.privateColumn ?? '-')
   const [priority, setPriority] = useState(String(book.priority))
   const [payerColumn, setPayerColumn] = useState(own)
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +50,7 @@ export function BookSettingsPanel({
         })
       if (
         (book.scope === 'clinic' &&
-          (privateColumn !== (book.privateColumn ?? '') || priority !== String(book.priority))) ||
+          (privateColumn !== (book.privateColumn ?? '-') || priority !== String(book.priority))) ||
         (book.scope === 'insurer' && payerColumn !== own)
       )
         await actions.saveSettings.mutateAsync({
@@ -125,7 +126,11 @@ export function BookSettingsPanel({
                   {c.label}
                 </option>
               ))}
+              <option value="-">{t('prices.lists.ownCashPrices')}</option>
             </Select>
+            {privateColumn === '-' && (
+              <p className="text-ink-2 m-0 text-[13px]">{t('prices.lists.ownCashPricesHint')}</p>
+            )}
             <Field
               label={t('prices.lists.order')}
               inputMode="numeric"

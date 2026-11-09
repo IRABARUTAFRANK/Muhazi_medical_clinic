@@ -3170,7 +3170,20 @@
         "yes": "Kuraho intonde zose",
         "done_one": "Urutonde {{count}} rwakuweho: serivisi {{deleted}} zasibwe, {{hidden}} zahishwe (zari kuri fagitire).",
         "done_other": "Intonde {{count}} zakuweho: serivisi {{deleted}} zasibwe, {{hidden}} zahishwe (zari kuri fagitire)."
-      }
+      },
+      "ownCashPrices": "Nta nkingi — ivuriro rishyiraho ibiciro byaryo by’amafaranga",
+      "ownCashPricesHint": "Buri murongo uracyahinduka ubuvuzi kandi buri bwishingizi bugakurikira inkingi yabwo, ariko ubuvuzi buguma budakora kugeza buhawe igiciro cy’amafaranga (Ubuvuzi › ubwo buvuzi, cyangwa Guhindura ibiciro ku cyiciro cyose). Ubwirwa umubare utegereje.",
+      "adoptLine": "Ongeraho nk’ubuvuzi",
+      "adoptHint": "Ivuriro ntirifite uyu murongo: uwugire ubuvuzi bw’ivuriro, buhujwe n’uru rutonde — budakora, nta giciro cy’amafaranga, kugeza umuyobozi abushyizeho igiciro.",
+      "adoptAll": "Ongeraho buri murongo ubura nk’ubuvuzi",
+      "adoptAllHint": "Imirongo idahura n’ubuvuzi na bumwe bw’ivuriro ihinduka ubuvuzi: budakora, nta giciro cy’amafaranga, igiciro cy’ubu bwishingizi binyuze ku rutonde. Ubwirwa umubare wo gushyiraho ibiciro.",
+      "adoptQ": "Ongeraho “{{name}}” mu buvuzi bw’ivuriro?",
+      "adoptAllQ": "Ongeraho buri murongo ubura w’uru rutonde mu buvuzi bw’ivuriro?",
+      "adoptBody": "Bukorwa budakora, nta giciro cy’amafaranga, buhujwe n’uru rutonde: igiciro cy’ubwishingizi gihita gikurikizwa; abarwayi bishyura amafaranga bazishyuzwa iyo igiciro gishyizweho. Umuyobozi abwirwa umubare utegereje.",
+      "adoptYes": "Yego, ongeraho",
+      "adoptedDone_one": "Ubuvuzi {{count}} bwongewemo: budakora kugeza bufite igiciro cy’amafaranga.",
+      "adoptedDone_other": "Ubuvuzi {{count}} bwongewemo: budakora kugeza bufite igiciro cy’amafaranga.",
+      "adoptedNone": "Nta cyo kongeraho: buri murongo usanzwe uhura n’ubuvuzi bw’ivuriro."
     },
     "listPrice": {
       "follows": "Igiciro cya MoH",
@@ -3213,7 +3226,8 @@
       "afterSave": "Ibidasanzwe by’ibigo by’ubwishingizi bishyirwaho bimaze kubikwa: ongera ubifungure.",
       "overrideNote": "Birishingirwa kuri iki",
       "exception": "Ikidasanzwe"
-    }
+    },
+    "unpricedOnly": "Nta giciro cy’amafaranga ({{count}})"
   },
   "desk": {
     "today": "Uyu munsi",
@@ -3724,7 +3738,10 @@
       "not_given": "{{by}} ntiyashoboye gutanga inshuro imwe ya: {{title}}",
       "cancelled": "{{by}} yahagaritse itegeko: {{title}}"
     },
-    "scanRequest": "Echographie yo gukora: {{test}} · {{name}}"
+    "scanRequest": "Echographie yo gukora: {{test}} · {{name}}",
+    "unpricedTreatments_one": "Ubuvuzi {{count}} ntiburagira igiciro cy’amafaranga",
+    "unpricedTreatments_other": "Ubuvuzi {{count}} ntiburagira igiciro cy’amafaranga",
+    "unpricedTreatmentsBody": "Buturutse kuri “{{list}}”: buhe igiciro muri Ibiciro › Ubuvuzi (Nta giciro cy’amafaranga) kugira ngo abarwayi bishyura amafaranga bishyuzwe. Abafite ubwishingizi basanzwe bishyura urutonde rwabo."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -8468,7 +8485,10 @@
     "fc369004": "Dosiye y’uku kwivuza si iyawe: ntushobora gucapa urupapuro rw’imiti rwayo.",
     "4431f9e0": "Echographie gusa ni yo ishobora gukorwa na muganga; ibindi bizamini bijya aho bikorerwa.",
     "b9f978f4": "Iri shami ntirivura umurwayi: nta wagirwa muganga waryo.",
-    "9bbd2911": "Banza ushyire uyu muntu muri iri shami."
+    "9bbd2911": "Banza ushyire uyu muntu muri iri shami.",
+    "da828030": "Hasigaye amafaranga yo kwishyura: banza wakire ubwishyu, cyangwa ufite “Kureka umurwayi akagenda afite amafaranga asigaye” asoze kwivuza hasigaye umwenda.",
+    "af56f7e3": "Urutonde rw’ubuvuzi gusa ni rwo rufite imirongo yo kongeraho nk’ubuvuzi.",
+    "c3b95821": "Urutonde rw’ivuriro ryose rwikorera ubuvuzi bwarwo: nta cyo kongeraho n’intoki."
   },
   "panel": {
     "close": "Funga",

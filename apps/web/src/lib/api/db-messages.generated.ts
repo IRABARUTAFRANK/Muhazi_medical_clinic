@@ -73,6 +73,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^records\.history_for_treating_doctor must be true or false$/, 'dbErrors.37902613', 0], // save_setting
   [/^you may not start visits \(the manager has not allowed it\)$/, 'dbErrors.d9af705e', 0], // begin_visit, open_encounter, start_visit
   [/^a primary diagnosis is required before closing the visit$/, 'dbErrors.e4c9a0f6', 0], // close_encounter
+  [/^only a list of treatments has lines to add as treatments$/, 'dbErrors.af56f7e3', 0], // adopt_tariff_lines
   [/^the cash of that day is already counted: ask the manager$/, 'dbErrors.f64b8e4d', 0], // void_payment
   [/^the breathing rate must be between 4 and 100 per minute$/, 'dbErrors.da39329e', 0], // record_vitals_to
   [/^invoice (.+?) is posted and immutable; issue a credit note$/, 'dbErrors.e246a4c8', 1], // guard_posted_invoice
@@ -130,6 +131,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the pulse must be between 20 and 250 per minute$/, 'dbErrors.194d0d47', 0], // record_vitals_to
   [/^this appointment is not waiting for the patient$/, 'dbErrors.1b56fa84', 0], // appointment_arrived
   [/^tick at least one service this person does in (.+?)$/, 'dbErrors.348637e5', 1], // set_staff_departments
+  [/^a clinic-wide list makes its treatments itself$/, 'dbErrors.c3b95821', 0], // adopt_tariff_lines
   [/^a difference goes back \(returned\) or is a loss$/, 'dbErrors.5492db37', 0], // confirm_receipt
   [/^booking\.colleague_accept must be true or false$/, 'dbErrors.77308620', 0], // save_setting
   [/^nothing to give back: the bill is not overpaid$/, 'dbErrors.7fd89e00', 0], // refund_payment
@@ -402,7 +404,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^give the line a code$/, 'dbErrors.803dfaa3', 0], // link_tariff_line, link_tariff_service, save_tariff_exception, …
   [/^give the line a name$/, 'dbErrors.cf508f19', 0], // save_tariff_line
   [/^give the list a name$/, 'dbErrors.d6ff72fe', 0], // import_price_list, import_reference_list, import_tariff, …
-  [/^price list not found$/, 'dbErrors.0efaaf29', 0], // import_tariff, link_tariff_line, remove_tariff_book, …
+  [/^price list not found$/, 'dbErrors.0efaaf29', 0], // adopt_tariff_lines, import_tariff, link_tariff_line, …
   [/^room store not found$/, 'dbErrors.fb0e8bbe', 0], // room_store_summary, save_room_store
   [/^say whose list it is$/, 'dbErrors.083acf5a', 0], // import_tariff
   [/^test order not found$/, 'dbErrors.8a617326', 0], // correct_result
