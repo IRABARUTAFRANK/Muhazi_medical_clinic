@@ -10826,5 +10826,13 @@
       "official": "Liste officielle des médicaments (RHIA)"
     },
     "officialLead": "La liste des médicaments que remboursent les assureurs (RHIA) : les assureurs qui la suivent paient ses prix pour les médicaments de la clinique de même code."
+  },
+  "seo": {
+    "landingTitle": "Muhazi Medical Clinic — polyclinique privée à Kiramuruzi, Gatsibo",
+    "landingDescription": "Ouverte 24 h/24 : consultation, laboratoire, dentaire, échographie, soins infirmiers et planning familial à Kiramuruzi, district de Gatsibo. Trouvez un médecin et réservez.",
+    "bookTitle": "Prendre rendez-vous — Muhazi Medical Clinic",
+    "bookDescription": "Choisissez un service et un médecin à Muhazi Medical Clinic, Kiramuruzi, et demandez un horaire ; la clinique confirme par téléphone ou SMS.",
+    "loginTitle": "Connexion du personnel — Muhazi Medical Clinic",
+    "displayTitle": "Salle d’attente — Muhazi Medical Clinic"
   }
 }

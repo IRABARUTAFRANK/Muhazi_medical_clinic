@@ -1,7 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { StockPage, type StockFocus, type StockPreset } from '@/pages/stock/stock-page'
 import { STOCK_TABS, type Tab } from '@/pages/stock/stock-util'
-import { menuAllows } from '@/lib/nav'
 import { useSession } from '@/store/session'
 
 /** An id passed in the address (a medicine, a store, a note…), or nothing. */
@@ -16,7 +15,8 @@ export const Route = createFileRoute('/app/stock')({
   // the pharmacy desk, the manager, or someone holding a room store (My store); otherwise home
   beforeLoad: async () => {
     const user = useSession.getState().user
-    if (!user || !(await menuAllows(user, '/app/stock'))) throw redirect({ to: '/app' })
+    if (!user || !(await (await import('@/lib/nav')).menuAllows(user, '/app/stock')))
+      throw redirect({ to: '/app' })
   },
   // tab: which tab opens; item, location (receive into) and to (send to) fill in the form;
   // store, note, request, delivery: what a notification points to

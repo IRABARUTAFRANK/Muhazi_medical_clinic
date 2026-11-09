@@ -1,6 +1,6 @@
 import '@fontsource-variable/inter'
 import './styles/globals.css'
-import './i18n'
+import { initI18n } from './i18n'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -34,10 +34,13 @@ router.subscribe('onResolved', (e) => {
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Missing #root element')
 
-createRoot(rootElement).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  </StrictMode>,
-)
+// the chosen language's strings first (one file, not three), then the page
+void initI18n().then(() => {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </StrictMode>,
+  )
+})

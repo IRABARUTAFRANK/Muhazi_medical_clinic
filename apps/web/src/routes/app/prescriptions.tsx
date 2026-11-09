@@ -5,7 +5,6 @@ import type { StaffUser } from '@mmc/shared'
 import { NoDeskPage } from '@/components/clinical/desk-gate'
 import { TREATING_DESKS, useCanDesk } from '@/lib/api/desks'
 import { PrescriptionsPage } from '@/pages/doctor/doctor-pages'
-import { menuAllows } from '@/lib/nav'
 import { useSession } from '@/store/session'
 
 /**
@@ -16,7 +15,8 @@ import { useSession } from '@/store/session'
 export const Route = createFileRoute('/app/prescriptions')({
   beforeLoad: async () => {
     const user = useSession.getState().user
-    if (!user || !(await menuAllows(user, '/app/prescriptions'))) throw redirect({ to: '/app' })
+    if (!user || !(await (await import('@/lib/nav')).menuAllows(user, '/app/prescriptions')))
+      throw redirect({ to: '/app' })
   },
   component: Page,
 })

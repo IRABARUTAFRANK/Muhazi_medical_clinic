@@ -416,7 +416,11 @@ export function VisitPage({
                   </Button>
                 )}
                 {nextAppt && (
-                  <Chip title={nextAppt.reason ?? undefined}>
+                  <Chip
+                    title={nextAppt.reason ?? undefined}
+                    // the date, time and doctor wrap on a phone instead of running past the card (0146)
+                    className="h-auto max-w-full py-1 whitespace-normal"
+                  >
                     <CalendarCheck size={14} aria-hidden="true" className="text-violet mr-1" />
                     {t('followUp.nextLine', {
                       when: `${formatDate(new Date(nextAppt.at))} ${formatTime(new Date(nextAppt.at))}`,

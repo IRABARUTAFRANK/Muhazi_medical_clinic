@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { usePageMeta } from '@/lib/page-meta'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, CircleAlert, CircleCheck, Clock, KeyRound, Lock, MailCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -33,6 +34,7 @@ const CODE_RE = /^[0-9]{6}$/
  */
 export function LoginPage({ staffId }: { staffId: string }) {
   const { t } = useTranslation()
+  usePageMeta({ title: t('seo.loginTitle') })
   const navigate = useNavigate()
   const pending = useSession((s) => s.pending)
   const signIn = useSession((s) => s.signIn)

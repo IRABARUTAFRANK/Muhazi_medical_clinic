@@ -65,7 +65,8 @@ export function Seg<T extends string>({
       role="group"
       aria-label={label}
       className={cn(
-        'border-border bg-surface relative inline-flex max-w-full gap-0.5 overflow-x-auto rounded-md border p-0.5',
+        // the segments wrap on a narrow screen instead of scrolling out of the track (0146)
+        'border-border bg-surface relative inline-flex max-w-full flex-wrap gap-0.5 rounded-md border p-0.5',
         // grows when the buttons wrap onto a second row (long labels, French, Kinyarwanda)
         size === 'sm' ? 'min-h-8' : 'min-h-9',
         className,

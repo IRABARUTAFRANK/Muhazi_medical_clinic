@@ -4,6 +4,7 @@ import { usePermissionsRefresh } from '@/lib/api/permissions'
 import { useProfileRefresh } from '@/lib/profile-refresh'
 import { usePrefs } from '@/store/prefs'
 import { useSession } from '@/store/session'
+import { usePageMeta } from '@/lib/page-meta'
 
 /**
  * Staff area: requires a signed-in user; an employee who still holds a handed-over PIN is sent
@@ -22,6 +23,8 @@ export const Route = createFileRoute('/app')({
 
 function StaffLayout() {
   const theme = usePrefs((s) => s.theme)
+  // the staff area is never indexed; each page sets no title of its own, the shell's stands
+  usePageMeta({ title: 'Muhazi Medical Clinic — Clinic System' })
   // a role, desk or dashboard changed by the manager reaches this tab within a minute
   useProfileRefresh()
   // …and so does a switch of Settings → Who may do what (menus, pages, buttons)

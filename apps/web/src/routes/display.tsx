@@ -1,4 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { usePageMeta } from '@/lib/page-meta'
 import { DisplayPage } from '@/pages/display/display-page'
 
 /**
@@ -13,6 +15,8 @@ export const Route = createFileRoute('/display')({
 })
 
 function DisplayRoute() {
+  const { t } = useTranslation()
+  usePageMeta({ title: t('seo.displayTitle') })
   const { key } = Route.useSearch()
   return <DisplayPage screenKey={key} />
 }

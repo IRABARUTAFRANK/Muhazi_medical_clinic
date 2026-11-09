@@ -44,6 +44,7 @@ import {
 } from '@/lib/api/public'
 import { appNow } from '@/lib/clock'
 import { useCountUp, useReveal } from '@/lib/motion'
+import { usePageMeta } from '@/lib/page-meta'
 import { cn } from '@/lib/utils'
 import { HeroWave, PhoneIllustration } from './hero-art'
 import { RequestForm } from './request-form'
@@ -54,6 +55,11 @@ const lead = 'm-0 max-w-[640px] text-base text-ink-2'
 
 export function LandingPage() {
   const { t } = useTranslation()
+  usePageMeta({
+    title: t('seo.landingTitle'),
+    description: t('seo.landingDescription'),
+    index: true,
+  })
   const rootRef = useReveal<HTMLDivElement>()
   const now = appNow()
 

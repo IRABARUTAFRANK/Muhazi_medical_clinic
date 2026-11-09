@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { usePageMeta } from '@/lib/page-meta'
 import { isCategoryFilter, type CategoryFilter } from '@mmc/shared'
 import { BookingPage } from '@/pages/booking/booking-page'
 
@@ -22,6 +24,8 @@ export const Route = createFileRoute('/book')({
 })
 
 function BookRoute() {
+  const { t } = useTranslation()
+  usePageMeta({ title: t('seo.bookTitle'), description: t('seo.bookDescription'), index: true })
   const { category, doctor } = Route.useSearch()
   const navigate = useNavigate({ from: '/book' })
   const current: CategoryFilter = category ?? 'all'

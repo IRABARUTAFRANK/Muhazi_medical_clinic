@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /book
+Disallow: /app
+Disallow: /app/
+Disallow: /login
+Disallow: /display
+Sitemap: https://muhazimedicalclinicltd.vercel.app/sitemap.xml

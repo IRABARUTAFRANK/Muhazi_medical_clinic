@@ -10826,5 +10826,13 @@
       "official": "Official medicine list (RHIA)"
     },
     "officialLead": "The list of medicines the insurers reimburse (RHIA): the insurers that follow it pay its prices for the clinic’s medicines with the same code."
+  },
+  "seo": {
+    "landingTitle": "Muhazi Medical Clinic — private polyclinic in Kiramuruzi, Gatsibo",
+    "landingDescription": "Open 24 hours a day: consultation, laboratory, dental, ultrasound, nursing and family planning in Kiramuruzi, Gatsibo District. Find a doctor and book a time.",
+    "bookTitle": "Book a visit — Muhazi Medical Clinic",
+    "bookDescription": "Choose a service and a doctor at Muhazi Medical Clinic, Kiramuruzi, and ask for a time; the clinic confirms by phone or SMS.",
+    "loginTitle": "Staff sign in — Muhazi Medical Clinic",
+    "displayTitle": "Waiting room — Muhazi Medical Clinic"
   }
 }

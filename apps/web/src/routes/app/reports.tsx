@@ -1,6 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ReportsPage } from '@/pages/reports/reports-page'
-import { menuAllows } from '@/lib/nav'
 import { useSession } from '@/store/session'
 
 /**
@@ -15,7 +14,8 @@ export const Route = createFileRoute('/app/reports')({
   }),
   beforeLoad: async () => {
     const user = useSession.getState().user
-    if (user && !(await menuAllows(user, '/app/reports'))) throw redirect({ to: '/app' })
+    if (user && !(await (await import('@/lib/nav')).menuAllows(user, '/app/reports')))
+      throw redirect({ to: '/app' })
   },
   component: ReportsRoute,
 })
