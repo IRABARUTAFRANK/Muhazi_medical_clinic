@@ -1135,7 +1135,12 @@ function PaidMark({ bill }: { bill: VisitBill }) {
       <Badge tone="yellow">{t('visit.pay.pending', { amount: formatRwf(bill.balance) })}</Badge>
     )
   return (
-    <Badge tone="green" icon={<CheckCircle2 size={12} strokeWidth={3} />}>
+    <Badge
+      tone="green"
+      icon={<CheckCircle2 size={12} strokeWidth={3} />}
+      // the name and time wrap inside the card instead of running past its edge (0144)
+      className="h-auto max-w-full py-1 text-left whitespace-normal"
+    >
       {bill.settledBy
         ? t('visit.pay.paidBy', {
             name: bill.settledBy,
