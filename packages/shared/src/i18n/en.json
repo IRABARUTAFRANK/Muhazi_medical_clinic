@@ -2367,7 +2367,8 @@
         "preauth": "only with {{insurer}}’s approval",
         "notOnList": "not on {{insurer}}’s list: cash price"
       },
-      "coverTitle": "How {{payer}} is charged for this line"
+      "coverTitle": "How {{payer}} is charged for this line",
+      "loadFailed": "The clinic’s treatments could not be read ({{message}}). The list is empty for that reason: tell the manager."
     },
     "payment": {
       "title": "Payment",

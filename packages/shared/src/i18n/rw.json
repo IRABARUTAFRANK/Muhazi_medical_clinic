@@ -1540,7 +1540,8 @@
         "preauth": "gusa iyo {{insurer}} yabyemeye",
         "notOnList": "ntibiri ku rutonde rwa {{insurer}}: igiciro cy’amafaranga"
       },
-      "coverTitle": "Uko {{payer}} yishyuzwa uyu murongo"
+      "coverTitle": "Uko {{payer}} yishyuzwa uyu murongo",
+      "loadFailed": "Ubuvuzi bw’ivuriro ntibwashoboye gusomwa ({{message}}). Urutonde ni ubusa kubera iyo mpamvu: bwira umuyobozi."
     },
     "back": "Subira ku murongo wanjye",
     "notFound": "Uku kwivuza ntikwabonetse cyangwa kwarafunzwe.",

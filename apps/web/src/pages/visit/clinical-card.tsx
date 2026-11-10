@@ -246,7 +246,8 @@ export function ClinicalCard({
   const bill = useVisitBill(encounterId).data
   const payerId = bill?.payerId ?? null
   const insurerName = bill?.payerName ?? ''
-  const { data: treatments = [] } = useTreatments(true)
+  // 0148: a catalogue that cannot be read is said under the chooser (not "no test yet")
+  const { data: treatments = [], error: treatmentsError } = useTreatments(true)
   // Orderable treatments, grouped by the desk that carries them out.
   const tests = treatments.filter((x) => x.orderStation)
   const desks = [...new Set(tests.map((x) => x.orderStation!))]
@@ -1704,7 +1705,14 @@ export function ClinicalCard({
             <p className="text-ink-3 m-0 text-[13px]">{t('clinical.testNoneChosen')}</p>
           )
         )}
-        {tests.length === 0 && <EmptyNote>{t('clinical.noTests')}</EmptyNote>}
+        {tests.length === 0 &&
+          (treatmentsError ? (
+            <p role="alert" className="text-red m-0 text-[13px] font-semibold">
+              {t('visit.add.loadFailed', { message: treatmentsError.message })}
+            </p>
+          ) : (
+            <EmptyNote>{t('clinical.noTests')}</EmptyNote>
+          ))}
         {/* 0142: the ultrasounds of the chooser are the treatments of a category ordered at the
             ultrasound desk (the Imaging category): none yet, say so */}
         {tests.length > 0 && !desks.includes('ultrasound') && (

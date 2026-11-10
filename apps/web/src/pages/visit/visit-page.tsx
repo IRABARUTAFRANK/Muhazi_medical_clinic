@@ -204,7 +204,8 @@ export function VisitPage({
     (d) => d.type === 'primary' && !d.removedAt && stageOf(d) === 'definitive',
   )
   const { data: bill } = useVisitBill(encounterId)
-  const { data: treatments = [] } = useTreatments(true)
+  // 0148: a catalogue that cannot be read is said on the page (not an empty list)
+  const { data: treatments = [], error: treatmentsError } = useTreatments(true)
   const { data: myDepartments = [] } = useMyDepartments(user.id)
   const { data: insurers = [] } = useInsurers(true)
   // insurance on (Settings → Insurance): the Who pays card and the insurer's prices (0115)
@@ -1082,6 +1083,7 @@ export function VisitPage({
                     insurerName={currentInsurer?.name ?? bill?.payerName ?? null}
                     isManager={user.role === 'manager'}
                     mayOverride={can('charge.override')}
+                    loadError={treatmentsError ? describe(treatmentsError) : null}
                     // only a finished bill closes the form (not one still loading or unreadable)
                     disabled={!!bill && bill.status !== null && bill.status !== 'draft'}
                     onAdd={async (input) => {
@@ -1424,6 +1426,7 @@ function AddChargeCard({
   insurerName,
   isManager,
   mayOverride = false,
+  loadError = null,
   disabled,
   onAdd,
 }: {
@@ -1431,6 +1434,8 @@ function AddChargeCard({
   patientName: string
   /** 0147: may choose how the insurer is charged for the line (charge.override). */
   mayOverride?: boolean
+  /** 0148: the catalogue could not be read: said here, the list being empty for that reason. */
+  loadError?: string | null
   treatments: Treatment[]
   /** The employee's departments: their treatments (and those of no department) come first; the
    *  others only after "Show other departments". Empty = everything (manager, no department). */
@@ -1673,6 +1678,11 @@ function AddChargeCard({
       <form onSubmit={submit}>
         <CardBody className="gap-3">
           <p className="text-ink-3 m-0 text-xs">{t('visit.add.medicinesElsewhere')}</p>
+          {loadError && (
+            <p role="alert" className={errorBox}>
+              {t('visit.add.loadFailed', { message: loadError })}
+            </p>
+          )}
           <SearchSelect
             label={t('visit.add.treatment')}
             value={serviceId}

@@ -2367,7 +2367,8 @@
         "preauth": "seulement avec l’accord de {{insurer}}",
         "notOnList": "pas sur la liste de {{insurer}} : prix comptant"
       },
-      "coverTitle": "Comment {{payer}} est facturé pour cette ligne"
+      "coverTitle": "Comment {{payer}} est facturé pour cette ligne",
+      "loadFailed": "Les actes de la clinique n’ont pas pu être lus ({{message}}). La liste est vide pour cette raison : prévenez le gérant."
     },
     "payment": {
       "title": "Paiement",
