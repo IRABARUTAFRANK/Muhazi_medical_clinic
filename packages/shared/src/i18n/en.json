@@ -3013,8 +3013,8 @@
     "resultSaved": "Result saved; the person who requested it is told.",
     "icdHint": "ICD-10 is the international code of the disease (B54 = malaria, A01.0 = typhoid). It is optional; with it, reports count diseases the same way as the Ministry of Health.",
     "provisionalHint": "Tick “Provisional” when you suspect the disease but have not confirmed it yet (for example while waiting for a test). Leave it unticked when the diagnosis is confirmed.",
-    "testHint": "No diagnosis is needed: request what you need to find the cause. The patient goes to the desk that does it; the results are written into the file.",
-    "noTests": "No laboratory or ultrasound test is in the catalogue yet.",
+    "testHint": "No diagnosis is needed. A test goes to the desk that does it and its result comes back here; any other treatment chosen here goes straight on the bill.",
+    "noTests": "No treatment is in the catalogue yet (Prices › Treatments, or a Ministry list).",
     "reasonPh": "e.g. fever for 5 days, cause not found yet",
     "sendNow": "Send the patient now, and back to me when the results are ready",
     "saveTests_one": "Request the test",
@@ -3138,9 +3138,9 @@
     "noDeskForTest": "No one holds the {{desk}} desk yet: give a department the {{desk}} desk in Settings.",
     "splitLine": "{{given}} given · {{outside}} outside",
     "dxHintAuto": "The diagnosis is the disease or problem you found after examining the patient, e.g. “Uncomplicated malaria”. The first one written is the primary diagnosis, the next ones are secondary. Tick “provisional” when you are still waiting for results.",
-    "testPick": "Test or exam",
-    "testPickEmpty": "Choose a test or exam…",
-    "testPickHint": "Type a few letters to find it; pick as many as you need, one after the other.",
+    "testPick": "Test, exam or treatment",
+    "testPickEmpty": "Choose a test, exam or treatment…",
+    "testPickHint": "Type a few letters to find it; pick as many as you need. Your departments’ come first, then the Laboratory and Ultrasound tests, then every other treatment of the clinic. Medicines are in the Prescription.",
     "testsChosen_one": "{{count}} test chosen",
     "testsChosen_other": "{{count}} tests chosen",
     "testNoneChosen": "No test chosen yet: pick them in the list above.",
@@ -3177,7 +3177,14 @@
       "clinic": "The clinic’s medicines and products",
       "rhia": "RHIA list — not sold here",
       "notCovered": "Not covered by {{insurer}} — the patient pays"
-    }
+    },
+    "otherTreatmentsGroup": "Other treatments and services",
+    "plainChosenHint_one": "{{count}} of these is not a test: it goes on the bill, no desk.",
+    "plainChosenHint_other": "{{count}} of these are not tests: they go on the bill, no desk.",
+    "addTreatments_one": "Add {{count}} treatment to the bill",
+    "addTreatments_other": "Add {{count}} treatments to the bill",
+    "treatmentsAdded_one": "{{count}} treatment added to the bill.",
+    "treatmentsAdded_other": "{{count}} treatments added to the bill."
   },
   "adjust": {
     "mode": "How to enter it",
@@ -6083,7 +6090,12 @@
       "vitalsSendPerson": "The patient is for {{name}}: their “Next patient” offer and the waiting-room screen name them.",
       "preauth": "Has {{insurer}} approved {{item}}?",
       "preauthBody": "{{insurer}} covers this only with its approval (pre-authorisation). Charge it only once {{insurer}} has approved it.",
-      "preauthYes": "Yes, it is approved"
+      "preauthYes": "Yes, it is approved",
+      "treatments": {
+        "title": "Add to {{name}}’s bill?",
+        "body": "{{list}}",
+        "yes": "Yes, add"
+      }
     },
     "staff": {
       "deactivate": {

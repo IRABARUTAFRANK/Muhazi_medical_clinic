@@ -68,7 +68,7 @@ import { useHoldsStore, useStoreStock, type MyStore } from '@/lib/api/rooms'
 import { priceQuantity } from '@/lib/pack-pricing'
 import { priceLineText, saleModeText, wholePacksText } from '@/pages/stock/stock-util'
 import { ApiError, errorKind } from '@/lib/api/errors'
-import { useVisitBill } from '@/lib/api/billing'
+import { useBillingActions, useVisitBill } from '@/lib/api/billing'
 import { payerLine, useInsurerTariff, usePayerLines } from '@/lib/api/insurers'
 import { useInsuranceEnabled } from '@/lib/api/settings'
 import {
@@ -80,6 +80,7 @@ import {
 import { TestFilesChip } from '@/components/clinical/supporting-files'
 import { registrationText, useEmployees, useMyCredentials } from '@/lib/api/staff'
 import { stationFor, type Station } from '@/lib/api/visits'
+import { useMyDepartments } from '@/lib/api/staff'
 import { buildPrescriptionHtml, type RxDoc, type RxDocMedicine } from '@/lib/prescription-doc'
 import { isDoctorUser, professionLabel, roleLabel } from '@/lib/roles'
 import { ForDoctorsNote } from '@/components/clinical/record-privacy'
@@ -251,6 +252,11 @@ export function ClinicalCard({
   // Orderable treatments, grouped by the desk that carries them out.
   const tests = treatments.filter((x) => x.orderStation)
   const desks = [...new Set(tests.map((x) => x.orderStation!))]
+  // 0149: the treatments with no desk (charged on the bill from the same chooser); never
+  // medicines (the prescription has its own list) nor the bed night (the beds board)
+  const plainTreatments = treatments.filter((x) => !x.orderStation && x.code !== 'BED-STAY')
+  const { data: myDepartments = [] } = useMyDepartments(user.id)
+  const billing = useBillingActions(encounterId)
   const can = useCan(user)
   const switchedOff = useSwitchedOff(user)
   const stock = useStockActions()
@@ -1012,8 +1018,26 @@ export function ClinicalCard({
   const isScan = (s: Treatment) => s.group === 'imaging' || s.orderStation === 'ultrasound'
   const submitOrder = async (e: FormEvent) => {
     e.preventDefault()
-    const chosen = tests.filter((x) => order.services.includes(x.id))
-    if (chosen.length === 0) return setLocalError(t('clinical.errors.test'))
+    const picked = order.services
+      .map((id) => treatments.find((x) => x.id === id))
+      .filter((x): x is Treatment => !!x)
+    if (picked.length === 0) return setLocalError(t('clinical.errors.test'))
+    // 0149: a treatment without a desk is charged on the bill; only the tests go to a desk
+    const plain = picked.filter((x) => !x.orderStation)
+    const chosen = picked.filter((x) => !!x.orderStation)
+    if (chosen.length === 0) {
+      const listP = plain.map((s) => treatmentName(s, i18n.language)).join(', ')
+      if (
+        !(await confirm({
+          title: t('confirm.visit.treatments.title', { name }),
+          body: t('confirm.visit.treatments.body', { list: listP }),
+          confirmLabel: t('confirm.visit.treatments.yes'),
+        }))
+      )
+        return
+      void run(() => addPlain(plain), t('clinical.treatmentsAdded', { count: plain.length }))
+      return
+    }
     // 0141: an ultrasound done by a doctor: themselves or the colleague chosen; no queue at the desk
     const scans = chosen.some(isScan)
     const doer =
@@ -1021,7 +1045,7 @@ export function ClinicalCard({
     if (scans && order.scanBy === 'other' && !doer)
       return setLocalError(t('clinical.errors.scanDoctor'))
     if (doer && chosen.some((s) => !isScan(s))) return setLocalError(t('clinical.errors.scanOnly'))
-    const list = chosen.map((s) => treatmentName(s, i18n.language)).join(', ')
+    const list = picked.map((s) => treatmentName(s, i18n.language)).join(', ')
     if (
       !(await confirm({
         title: t('confirm.visit.tests', { name }),
@@ -1044,6 +1068,7 @@ export function ClinicalCard({
             urgent: order.urgent,
             doer,
           })
+          .then(() => addPlain(plain))
           .then(() =>
             setOrder({
               services: [],
@@ -1054,17 +1079,58 @@ export function ClinicalCard({
               scanDoctor: order.scanDoctor,
             }),
           ),
-      t(
-        doer
-          ? doer === user.id
-            ? 'clinical.scanBy.savedMe'
-            : 'clinical.scanBy.savedOther'
-          : order.send
-            ? 'clinical.testsSent'
-            : 'clinical.testsSaved',
-        { count: chosen.length, name: scanDoctors.find((d) => d.id === doer)?.fullName ?? '' },
-      ),
+      [
+        t(
+          doer
+            ? doer === user.id
+              ? 'clinical.scanBy.savedMe'
+              : 'clinical.scanBy.savedOther'
+            : order.send
+              ? 'clinical.testsSent'
+              : 'clinical.testsSaved',
+          { count: chosen.length, name: scanDoctors.find((d) => d.id === doer)?.fullName ?? '' },
+        ),
+        plain.length ? t('clinical.treatmentsAdded', { count: plain.length }) : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
     )
+  }
+  /** 0149: the treatments without a desk, one bill line each (the insurer asked once if its rule says so). */
+  const addPlain = async (plain: Treatment[]) => {
+    const office = station ?? stationFor(user)
+    for (const s of plain) {
+      const input = {
+        encounterId,
+        office,
+        serviceId: s.id,
+        description: s.nameEn,
+        listPrice: testPrice(s) ?? s.cashPrice ?? 0,
+        quantity: 1,
+        discountPct: 0,
+        coveragePct: Number(bill?.coveragePct ?? 0),
+        cashPrice: s.cashPrice ?? null,
+      }
+      try {
+        await billing.addCharge.mutateAsync(input)
+      } catch (e) {
+        const asked =
+          e instanceof ApiError && (e.hint === 'ask_insurer' || e.hint === 'insurer_preauth')
+        if (!asked) throw e
+        if (
+          !(await confirm({
+            title: t('confirm.visit.askInsurer', {
+              item: treatmentName(s, i18n.language),
+              insurer: insurerName,
+            }),
+            body: t('confirm.visit.askInsurerBody', { price: formatRwf(input.listPrice) }),
+            confirmLabel: t('confirm.visit.askInsurerYes'),
+          }))
+        )
+          throw e
+        await billing.addCharge.mutateAsync({ ...input, confirm: true })
+      }
+    }
   }
   const toggleTest = (id: string) =>
     setOrder((o) => ({
@@ -1076,25 +1142,60 @@ export function ClinicalCard({
   // 0130: the tests of the desks this person may ask, as one list grouped by desk; the price the
   // visit pays (the insurer's when it has one, else the cash price)
   const testPrice = (s: Treatment): number | null =>
-    payerId ? (payerLine(payerRows, { serviceId: s.id })?.price ?? s.cashPrice) : s.cashPrice
+    payerId
+      ? (medTariff?.rows.find((r) => r.kind === 'service' && r.id === s.id)?.price ??
+        payerLine(payerRows, { serviceId: s.id })?.price ??
+        s.cashPrice)
+      : s.cashPrice
   const testDesks = desks.filter((g) => !deskStaff || clinician || g === station)
-  const testOptions = testDesks.flatMap((g) =>
-    tests
-      .filter((s) => s.orderStation === g && !order.services.includes(s.id))
-      .map((s) => {
-        const price = testPrice(s)
-        return {
-          value: s.id,
-          label: treatmentName(s, i18n.language),
-          group: t(`register.stations.${g}`, { defaultValue: g }),
-          hint: price != null ? formatRwf(price) : undefined,
-          keywords: [s.code, s.nameEn, s.nameFr, s.nameKin].filter(Boolean).join(' '),
-        }
-      }),
-  )
+  const testOption = (s: Treatment, group: string) => {
+    const price = testPrice(s)
+    return {
+      value: s.id,
+      label: treatmentName(s, i18n.language),
+      group,
+      hint: price != null ? formatRwf(price) : undefined,
+      keywords: [s.code, s.nameEn, s.nameFr, s.nameKin].filter(Boolean).join(' '),
+    }
+  }
+  // 0149: one list — the person's departments (their tests and treatments), then the desks'
+  // tests (Laboratory, Ultrasound), then every other treatment of the clinic; a desk's staff
+  // registering their own test see that desk only
+  const placed = new Set<string>()
+  const byName = (a: Treatment, b: Treatment) =>
+    treatmentName(a, i18n.language).localeCompare(treatmentName(b, i18n.language))
+  const offered = (s: Treatment) => !order.services.includes(s.id) && !placed.has(s.id)
+  const testOptions = [
+    ...(clinician
+      ? myDepartments.flatMap((d) =>
+          [...tests, ...plainTreatments]
+            .filter((s) => s.departmentIds.includes(d.id) && offered(s))
+            .sort(byName)
+            .map((s) => (placed.add(s.id), testOption(s, d.name))),
+        )
+      : []),
+    ...testDesks.flatMap((g) =>
+      tests
+        .filter((s) => s.orderStation === g && offered(s))
+        .sort(byName)
+        .map(
+          (s) => (
+            placed.add(s.id),
+            testOption(s, t(`register.stations.${g}`, { defaultValue: g }))
+          ),
+        ),
+    ),
+    ...(clinician
+      ? plainTreatments
+          .filter(offered)
+          .sort(byName)
+          .map((s) => (placed.add(s.id), testOption(s, t('clinical.otherTreatmentsGroup'))))
+      : []),
+  ]
   const chosenTests = order.services
-    .map((id) => tests.find((x) => x.id === id))
+    .map((id) => treatments.find((x) => x.id === id))
     .filter((x): x is Treatment => !!x)
+  const chosenDeskTests = chosenTests.filter((x) => !!x.orderStation)
   /** The author of a line (or the manager) changes or removes it, with a reason (0104). */
   const mayEditLine = (byId: string | null | undefined) =>
     clinician && (isManager || (!!byId && byId === user.id))
@@ -1705,7 +1806,7 @@ export function ClinicalCard({
             <p className="text-ink-3 m-0 text-[13px]">{t('clinical.testNoneChosen')}</p>
           )
         )}
-        {tests.length === 0 &&
+        {treatments.length === 0 &&
           (treatmentsError ? (
             <p role="alert" className="text-red m-0 text-[13px] font-semibold">
               {t('visit.add.loadFailed', { message: treatmentsError.message })}
@@ -1775,33 +1876,44 @@ export function ClinicalCard({
           onChange={(e) => setOrder({ ...order, reason: e.target.value })}
           placeholder={t('clinical.reasonPh')}
         />
-        <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
-          <input
-            type="checkbox"
-            className="accent-primary size-[18px]"
-            checked={order.send}
-            onChange={(e) => setOrder({ ...order, send: e.target.checked })}
-          />
-          {t('clinical.sendNow')}
-        </label>
-        <label className="flex items-center gap-2 text-[13px] font-semibold">
-          <input
-            type="checkbox"
-            className="accent-red size-[18px]"
-            checked={order.urgent}
-            onChange={(e) => setOrder({ ...order, urgent: e.target.checked })}
-          />
-          {t('clinical.urgentOrder')}
-        </label>
+        {(chosenDeskTests.length > 0 || chosenTests.length === 0) && (
+          <>
+            <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
+              <input
+                type="checkbox"
+                className="accent-primary size-[18px]"
+                checked={order.send}
+                onChange={(e) => setOrder({ ...order, send: e.target.checked })}
+              />
+              {t('clinical.sendNow')}
+            </label>
+            <label className="flex items-center gap-2 text-[13px] font-semibold">
+              <input
+                type="checkbox"
+                className="accent-red size-[18px]"
+                checked={order.urgent}
+                onChange={(e) => setOrder({ ...order, urgent: e.target.checked })}
+              />
+              {t('clinical.urgentOrder')}
+            </label>
+          </>
+        )}
+        {chosenTests.length > chosenDeskTests.length && (
+          <p className="text-ink-3 m-0 text-xs">
+            {t('clinical.plainChosenHint', { count: chosenTests.length - chosenDeskTests.length })}
+          </p>
+        )}
         <Button
           type="submit"
           variant="primary"
           className="self-start"
           disabled={order.services.length === 0}
-          loading={actions.orderTests.isPending}
+          loading={actions.orderTests.isPending || billing.addCharge.isPending}
         >
           <FlaskConical size={16} aria-hidden="true" />
-          {t('clinical.saveTests', { count: order.services.length || 1 })}
+          {chosenTests.length > 0 && chosenDeskTests.length === 0
+            ? t('clinical.addTreatments', { count: chosenTests.length })
+            : t('clinical.saveTests', { count: order.services.length || 1 })}
         </Button>
       </form>
     </Reveal>

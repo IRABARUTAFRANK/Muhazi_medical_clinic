@@ -1924,8 +1924,8 @@
     "resultSaved": "Igisubizo cyabitswe; uwagisabye yamenyeshejwe.",
     "icdHint": "ICD-10 ni kode mpuzamahanga y’indwara (B54 = malariya, A01.0 = tifoyide). Si ngombwa; iyo ishyizwemo, raporo zibara indwara nk’uko Minisiteri y’Ubuzima ibikora.",
     "provisionalHint": "Shyira akamenyetso kuri “By’agateganyo” iyo ukeka indwara ariko utarayemeza (urugero utegereje ikizamini). Ntugashyireho iyo indwara yemejwe.",
-    "testHint": "Ntibisaba kubanza kumenya indwara: saba ibyo ukeneye kugira ngo umenye impamvu. Umurwayi ajya aho bikorerwa; ibisubizo byandikwa muri dosiye.",
-    "noTests": "Nta kizamini cya laboratwari cyangwa isuzuma rya ekografi kiri ku rutonde.",
+    "testHint": "Nta ndwara yemejwe ikenewe. Ikizamini kijya aho gikorerwa igisubizo kikagaruka hano; ubundi buvuzi uhisemo hano buhita bujya kuri fagitire.",
+    "noTests": "Nta buvuzi buri mu rutonde (Ibiciro › Ubuvuzi, cyangwa urutonde rwa Minisiteri).",
     "reasonPh": "urugero: umuriro iminsi 5, impamvu ntiramenyekana",
     "sendNow": "Ohereza umurwayi ubu, agaruke kuri njye ibisubizo nibimara kuboneka",
     "saveTests_one": "Saba ikizamini",
@@ -2049,9 +2049,9 @@
     "noDeskForTest": "Nta wurakora kuri {{desk}}: ha ishami aho bakorera {{desk}} mu Igenamiterere.",
     "splitLine": "{{given}} yatanzwe · {{outside}} yo hanze",
     "dxHintAuto": "Indwara yagaragaye ni indwara cyangwa ikibazo wabonye nyuma yo gusuzuma umurwayi, urugero “Malariya yoroheje”. Iya mbere yanditswe ni yo y’ingenzi, izikurikiraho ni iz’inyongera. Shyira akamenyetso kuri “By’agateganyo” igihe ugitegereje ibisubizo.",
-    "testPick": "Ikizamini",
-    "testPickEmpty": "Hitamo ikizamini…",
-    "testPickHint": "Andika inyuguti nke kugira ngo ukibone; hitamo ibyo ukeneye byose, kimwe nyuma y’ikindi.",
+    "testPick": "Ikizamini cyangwa ubuvuzi",
+    "testPickEmpty": "Hitamo ikizamini cyangwa ubuvuzi…",
+    "testPickHint": "Andika inyuguti nke kugira ngo ubishake; hitamo ibyo ukeneye byose. Iby’amashami yawe biza mbere, hanyuma ibizamini bya Laboratwari n’Echographie, hanyuma ubundi buvuzi bwose bw’ivuriro. Imiti iri mu Rupapuro rw’imiti.",
     "testsChosen_one": "Ikizamini {{count}} cyahiswemo",
     "testsChosen_other": "Ibizamini {{count}} byahiswemo",
     "testNoneChosen": "Nta kizamini kirahitwamo: bihitemo ku rutonde ruri hejuru.",
@@ -2088,7 +2088,14 @@
       "clinic": "Imiti n’ibikoresho by’ivuriro",
       "rhia": "Urutonde rwa RHIA — ntibigurishwa hano",
       "notCovered": "Ntibishyurwa na {{insurer}} — umurwayi arishyura"
-    }
+    },
+    "otherTreatmentsGroup": "Ubundi buvuzi na serivisi",
+    "plainChosenHint_one": "{{count}} muri ibi si ikizamini: kijya kuri fagitire, nta ho gikorerwa.",
+    "plainChosenHint_other": "{{count}} muri ibi si ibizamini: bijya kuri fagitire, nta ho bikorerwa.",
+    "addTreatments_one": "Ongeraho ubuvuzi {{count}} kuri fagitire",
+    "addTreatments_other": "Ongeraho ubuvuzi {{count}} kuri fagitire",
+    "treatmentsAdded_one": "Ubuvuzi {{count}} bwongewe kuri fagitire.",
+    "treatmentsAdded_other": "Ubuvuzi {{count}} bwongewe kuri fagitire."
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -6092,7 +6099,12 @@
       "vitalsSendPerson": "Umurwayi ni uwa {{name}}: “Umurwayi ukurikira” we n’ecran y’aho batagerereza bimugaragaza.",
       "preauth": "{{insurer}} cyemeye {{item}}?",
       "preauthBody": "{{insurer}} kibyishingira gusa iyo cyabanje kubyemera. Bishyuze ari uko {{insurer}} cyamaze kubyemera.",
-      "preauthYes": "Yego, cyabyemeye"
+      "preauthYes": "Yego, cyabyemeye",
+      "treatments": {
+        "title": "Ongeraho kuri fagitire ya {{name}}?",
+        "body": "{{list}}",
+        "yes": "Yego, ongeraho"
+      }
     },
     "staff": {
       "deactivate": {

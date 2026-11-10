@@ -3013,8 +3013,8 @@
     "resultSaved": "Résultat enregistré ; le médecin prescripteur est prévenu.",
     "icdHint": "La CIM-10 est le code international de la maladie (B54 = paludisme, A01.0 = typhoïde). Facultatif ; avec lui, les rapports comptent les maladies comme le Ministère de la Santé.",
     "provisionalHint": "Cochez « Provisoire » quand vous soupçonnez la maladie sans l’avoir confirmée (par exemple en attendant un examen). Laissez décoché quand le diagnostic est confirmé.",
-    "testHint": "Aucun diagnostic n’est nécessaire : demandez ce qu’il faut pour trouver la cause. Le patient va au poste qui le fait ; les résultats vont dans le dossier.",
-    "noTests": "Aucun examen de laboratoire ou d’échographie dans le catalogue pour l’instant.",
+    "testHint": "Aucun diagnostic n’est requis. Un examen va au poste qui le fait et son résultat revient ici ; tout autre acte choisi ici va directement sur la facture.",
+    "noTests": "Aucun acte n’est encore dans le catalogue (Prix › Actes, ou une liste du Ministère).",
     "reasonPh": "ex. fièvre depuis 5 jours, cause non trouvée",
     "sendNow": "Envoyer le patient maintenant, et me le renvoyer quand les résultats sont prêts",
     "saveTests_one": "Demander l’examen",
@@ -3138,9 +3138,9 @@
     "noDeskForTest": "Personne ne tient encore le poste {{desk}} : donnez le poste {{desk}} à un service dans Paramètres.",
     "splitLine": "{{given}} donnés · {{outside}} à l’extérieur",
     "dxHintAuto": "Le diagnostic est la maladie ou le problème trouvé après l’examen du patient, ex. « Paludisme simple ». Le premier inscrit est le diagnostic principal, les suivants sont secondaires. Cochez « provisoire » si vous attendez encore des résultats.",
-    "testPick": "Examen",
-    "testPickEmpty": "Choisir un examen…",
-    "testPickHint": "Tapez quelques lettres pour le trouver ; choisissez-en autant qu’il faut, l’un après l’autre.",
+    "testPick": "Examen ou acte",
+    "testPickEmpty": "Choisir un examen ou un acte…",
+    "testPickHint": "Tapez quelques lettres pour le trouver ; choisissez-en autant qu’il faut. Ceux de vos services d’abord, puis les examens du Laboratoire et de l’Échographie, puis tous les autres actes de la clinique. Les médicaments sont dans l’Ordonnance.",
     "testsChosen_one": "{{count}} examen choisi",
     "testsChosen_other": "{{count}} examens choisis",
     "testNoneChosen": "Aucun examen choisi : choisissez-les dans la liste ci-dessus.",
@@ -3177,7 +3177,14 @@
       "clinic": "Médicaments et produits de la clinique",
       "rhia": "Liste RHIA — non vendus ici",
       "notCovered": "Non couvert par {{insurer}} — le patient paie"
-    }
+    },
+    "otherTreatmentsGroup": "Autres actes et services",
+    "plainChosenHint_one": "{{count}} de ceux-ci n’est pas un examen : il va sur la facture, sans poste.",
+    "plainChosenHint_other": "{{count}} de ceux-ci ne sont pas des examens : ils vont sur la facture, sans poste.",
+    "addTreatments_one": "Ajouter {{count}} acte à la facture",
+    "addTreatments_other": "Ajouter {{count}} actes à la facture",
+    "treatmentsAdded_one": "{{count}} acte ajouté à la facture.",
+    "treatmentsAdded_other": "{{count}} actes ajoutés à la facture."
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -6083,7 +6090,12 @@
       "vitalsSendPerson": "Le patient est pour {{name}} : sa proposition « Patient suivant » et l’écran de la salle d’attente le nomment.",
       "preauth": "{{insurer}} a-t-il accepté {{item}} ?",
       "preauthBody": "{{insurer}} ne couvre ceci qu’avec son accord préalable. Facturez-le seulement quand {{insurer}} l’a accepté.",
-      "preauthYes": "Oui, c’est accepté"
+      "preauthYes": "Oui, c’est accepté",
+      "treatments": {
+        "title": "Ajouter à la facture de {{name}} ?",
+        "body": "{{list}}",
+        "yes": "Oui, ajouter"
+      }
     },
     "staff": {
       "deactivate": {
