@@ -3,6 +3,7 @@ import {
   AlarmClock,
   CalendarCheck,
   CalendarPlus,
+  CalendarX,
   Check,
   MessageSquare,
   Phone,
@@ -10,7 +11,7 @@ import {
   X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDate, formatTime, isoDate } from '@mmc/shared'
+import { formatDate, formatDayMonth, formatTime, isoDate, type DayKey } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { Button, actionLink } from '@/components/ui/button'
 import { Reveal } from '@/components/ui/reveal'
@@ -29,6 +30,8 @@ import {
 import { useFindPatients } from '@/lib/api/visits'
 import { useDeskOps } from '@/lib/api/desk-ops'
 import { useNow } from '@/lib/hooks'
+import { useFreeSlots } from '@/lib/api/follow-up'
+import { useStaffCalendars } from '@/lib/api/calendar'
 import { useConfirm } from '@/lib/confirm'
 import { focusAttr, useFocusFirst } from '@/lib/notice-focus'
 import { FOCUS_PANEL } from '@/lib/notice-target'
@@ -371,6 +374,33 @@ function BookForm({
   const [error, setError] = useState<string | null>(null)
   const [registering, setRegistering] = useState(false)
   const doctor = doctors.find((d) => d.userId === doctorUserId)
+  // 0154: the doctor's times for the day (working hours, days off, bookings): the form offers
+  // only what can be booked, and the next working days when the chosen day cannot be
+  const slots = useFreeSlots(doctorUserId || null, day || null)
+  const s = slots.data
+  const free = s?.slots.filter((x) => x.state === 'free') ?? []
+  const { data: calendars = [] } = useStaffCalendars()
+  const cal = calendars.find((c) => c.userId === doctorUserId)
+  const nextDays: string[] = []
+  if (cal && Object.keys(cal.hours).length > 0) {
+    const from = new Date(`${day || isoDate(new Date())}T12:00:00`)
+    for (let i = 1; i <= 28 && nextDays.length < 4; i++) {
+      const d = new Date(from.getTime() + i * 86_400_000)
+      const iso = isoDate(d)
+      if ((cal.hours[String(d.getDay()) as DayKey]?.length ?? 0) > 0 && !cal.daysOff.includes(iso))
+        nextDays.push(iso)
+    }
+  }
+  const shortDays = t('days.short', { returnObjects: true }) as unknown
+  const dayLabel = (iso: string) => {
+    const d = new Date(`${iso}T12:00:00`)
+    const wd = Array.isArray(shortDays) ? (shortDays as string[])[d.getDay()] : ''
+    return `${wd} ${formatDayMonth(d)}`
+  }
+  const pickDay = (d: string) => {
+    setDay(d)
+    setTime('')
+  }
   // "Uwase Claudine" → surname Uwase, given names Claudine (corrected in the form if needed).
   const [first, ...rest] = (q?.name ?? search).trim().split(/\s+/)
   const register: RegisterRequest = {
@@ -388,6 +418,9 @@ function BookForm({
     if (!patientId && !(q && withoutFile)) return setError(t('ops.inquiries.errors.patient'))
     if (!doctorUserId) return setError(t('ops.inquiries.errors.doctor'))
     if (!day || !time) return setError(t('ops.inquiries.errors.when'))
+    // a doctor with working hours: one of the free times, never a time outside them
+    if (s?.hasHours && !free.some((x) => x.time === time))
+      return setError(t('ops.inquiries.errors.freeTime'))
     const at = new Date(`${day}T${time}:00`)
     if (Number.isNaN(at.getTime())) return setError(t('ops.inquiries.errors.when'))
     const name = q?.name ?? patientLabel.split(' · ').slice(1).join(' · ')
@@ -553,18 +586,108 @@ function BookForm({
           onChange={(e) => setDay(e.target.value)}
           required
         />
-        <TimeSelect
-          label={t('ops.inquiries.time')}
-          value={time}
-          onChange={setTime}
-          step={doctor?.slotMinutes ?? 15}
-          day={day}
-          required
-        />
+        {/* 0154: the time among the doctor's free times of that day */}
+        <div className="col-span-2 flex flex-col gap-1.5">
+          <span className="text-ink-2 text-[13px] font-semibold">
+            {t('ops.inquiries.time')}
+            {s?.hasHours && !s.dayOff && free.length > 0 && (
+              <span className="text-ink-3 ml-2 font-normal">
+                {t('followUp.freeCount', { count: free.length, minutes: s.slotMinutes })}
+              </span>
+            )}
+          </span>
+          {!doctorUserId && (
+            <p className="text-ink-3 m-0 text-[13px]">{t('ops.inquiries.pickDoctorFirst')}</p>
+          )}
+          {doctorUserId && !day && (
+            <p className="text-ink-3 m-0 text-[13px]">{t('ops.inquiries.pickDayFirst')}</p>
+          )}
+          {slots.isLoading && <div className="skeleton h-9 rounded-md" aria-busy="true" />}
+          {slots.error && <p className={errorLine}>{describe(slots.error)}</p>}
+          {s && s.hasHours && s.dayOff && (
+            <p className="text-ink-2 m-0 flex items-center gap-2 text-[14px]">
+              <CalendarX size={16} aria-hidden="true" className="text-red" />
+              {t('followUp.dayOff', { who: doctor?.name ?? '' })}
+            </p>
+          )}
+          {s && s.hasHours && !s.dayOff && s.slots.length === 0 && (
+            <p className="text-ink-2 m-0 flex items-center gap-2 text-[14px]">
+              <CalendarX size={16} aria-hidden="true" className="text-red" />
+              {t('ops.inquiries.notThatDay', { who: doctor?.name ?? '' })}
+            </p>
+          )}
+          {s && s.hasHours && !s.dayOff && s.slots.length > 0 && (
+            <>
+              <div
+                className="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-1.5"
+                role="radiogroup"
+                aria-label={t('ops.inquiries.time')}
+              >
+                {s.slots.map((x) => {
+                  const on = time === x.time
+                  return (
+                    <button
+                      key={x.at}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      disabled={x.state !== 'free'}
+                      title={x.state === 'free' ? undefined : t(`followUp.slot.${x.state}`)}
+                      onClick={() => setTime(x.time)}
+                      className={cn(
+                        'h-9 rounded-md border text-[14px] font-semibold tabular-nums transition-colors',
+                        on
+                          ? 'border-primary bg-primary text-white'
+                          : x.state === 'free'
+                            ? 'border-border bg-card text-ink hover:bg-hover'
+                            : 'border-grid bg-surface text-ink-3 cursor-not-allowed line-through',
+                      )}
+                    >
+                      {x.time}
+                    </button>
+                  )
+                })}
+              </div>
+              {free.length === 0 && (
+                <p className="text-ink-2 m-0 text-[14px]">{t('followUp.full')}</p>
+              )}
+            </>
+          )}
+          {s && s.hasHours && (s.dayOff || free.length === 0) && nextDays.length > 0 && (
+            <span className="flex flex-wrap items-center gap-1.5 text-[13px]">
+              <span className="text-ink-3">{t('ops.inquiries.nextDays')}</span>
+              {nextDays.map((d) => (
+                <Button
+                  key={d}
+                  type="button"
+                  size="sm"
+                  variant="tint-grey"
+                  onClick={() => pickDay(d)}
+                >
+                  {dayLabel(d)}
+                </Button>
+              ))}
+            </span>
+          )}
+          {s && !s.hasHours && (
+            <>
+              <TimeSelect
+                label={t('ops.inquiries.time')}
+                value={time}
+                onChange={setTime}
+                step={doctor?.slotMinutes ?? 15}
+                day={day}
+                required
+              />
+              <p className="text-ink-3 m-0 text-[12px]">
+                {t('ops.inquiries.noHoursHint')}
+                {s.booked.length > 0 &&
+                  ` ${t('followUp.bookedAt', { times: s.booked.join(', ') })}`}
+              </p>
+            </>
+          )}
+        </div>
       </div>
-      {doctor && !doctor.hasHours && (
-        <p className="text-ink-3 m-0 text-[12px]">{t('ops.inquiries.noHoursHint')}</p>
-      )}
       {!q && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <Field

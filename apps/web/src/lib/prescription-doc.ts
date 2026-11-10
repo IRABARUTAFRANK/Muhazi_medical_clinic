@@ -92,6 +92,8 @@ export interface RxDoc {
   /** 0100: the prescription for an outside pharmacy: only the medicines the patient buys
    *  outside, under its own title and a line saying the clinic does not give them. */
   outside?: boolean
+  /** 0155: a sheet to write by hand: this many numbered empty lines instead of medicines. */
+  blankRows?: number
   prescriber: {
     name: string
     /** Qualification ("Medical doctor", "Clinical officer"). */
@@ -458,19 +460,22 @@ function patientFields(d: RxDoc, dl: DocLabels, t: TFn): [Field[], Field[]] {
           .replace(/^(\d+)\.0+$/, '$1')
   // weight is required for children under 12 and adults over 65 (a ruled blank to fill)
   const needsWeight = age == null || age < 12 || age > 65
+  // 0155: a sheet written by hand: whatever is not known is a ruled blank to fill
+  const hand = (d.blankRows ?? 0) > 0 && d.medicines.length === 0
   const left: Field[] = [
-    { label: dl.name, value: p.name },
-    dob ?? { label: dl.dateOfBirth, value: null },
+    { label: dl.name, value: p.name || null, blank: hand },
+    dob ?? { label: dl.dateOfBirth, value: null, blank: hand },
     {
       label: dl.sex,
       value: sex && sex !== 'unknown' ? t(`register.sexes.${sex}`, { defaultValue: sex }) : null,
+      blank: hand,
     },
-    { label: dl.weightKg, value: weight || null, blank: needsWeight },
+    { label: dl.weightKg, value: weight || null, blank: needsWeight || hand },
   ]
   const right: Field[] = [
-    { label: dl.fileNo, value: p.fileNumber },
-    { label: dl.phone, value: p.phone ?? null },
-    { label: dl.insurer, value: p.insurer ?? null },
+    { label: dl.fileNo, value: p.fileNumber || null, blank: hand },
+    { label: dl.phone, value: p.phone ?? null, blank: hand },
+    { label: dl.insurer, value: p.insurer ?? null, blank: hand },
     { label: dl.memberNo, value: p.memberNo ?? null },
   ]
   return [left, right]
@@ -607,6 +612,11 @@ ol.rx > li.rx-first { border-top: 0; }
 .rx-stamp { flex: none; width: var(--stamp-w); }
 .rx-stamp-box { height: calc(var(--stamp-h) - 4mm); margin-top: 1pt; border: 0.75pt dashed var(--line); border-radius: 3pt; }
 .rx-close + .sig-note { margin-top: 2pt; }
+/* 0155: the lines of a sheet written by hand */
+ol.rx > li.rx-blank { padding: 3pt 0 4pt; }
+.rx-write { display: block; min-height: 6.5mm; border-bottom: 0.5pt dotted var(--rule); }
+.rx-l2.rx-write { margin-top: 3pt; }
+.rx-write-qty { display: inline-block; width: 14mm; height: 1em; vertical-align: bottom; }
 `
 
 /** The prescription's full HTML (A5 portrait), ready to print. */
@@ -670,6 +680,12 @@ export function buildPrescriptionHtml(
     }</li>`
   })
 
+  // 0155: a sheet to write by hand: numbered empty lines (name and quantity, then directions)
+  const blank = d.medicines.length === 0 ? Math.max(0, Math.min(30, d.blankRows ?? 0)) : 0
+  for (let i = 0; i < blank; i++)
+    items.push(
+      `<li class="rx-blank${i === 0 ? ' rx-first' : ''}"><div class="rx-l1"><span class="rx-n">${i + 1}</span><span class="rx-name rx-write"></span><span class="rx-qty"><span class="lbl">${esc(r('quantity'))}:</span> <span class="rx-write-qty"></span></span></div><div class="rx-l2 rx-write"></div></li>`,
+    )
   const [left, right] = patientFields(d, dl, t)
   const dx = diagnosisText(d.diagnosis, t)
   const refill = d.refills ? r('refillYes', { count: d.refills }) : r('refillNo')
@@ -698,7 +714,7 @@ export function buildPrescriptionHtml(
       prescribedBy: r('prescriber'),
       validity: r('validity'),
       totals: [
-        [r('totalItems'), String(d.medicines.length)],
+        [r('totalItems'), blank > 0 ? '________' : String(d.medicines.length)],
         [r('refill'), refill],
       ],
     }),

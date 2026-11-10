@@ -85,6 +85,7 @@ import { registrationText, useEmployees, useMyCredentials } from '@/lib/api/staf
 import { stationFor, type Station } from '@/lib/api/visits'
 import { useMyDepartments } from '@/lib/api/staff'
 import { buildPrescriptionHtml, type RxDoc, type RxDocMedicine } from '@/lib/prescription-doc'
+import { BlankRxForm } from '@/components/clinical/blank-rx'
 import { isDoctorUser, professionLabel, roleLabel } from '@/lib/roles'
 import { ForDoctorsNote } from '@/components/clinical/record-privacy'
 import { cn } from '@/lib/utils'
@@ -513,6 +514,8 @@ export function ClinicalCard({
   // the signed-in person's specialty and council registration (nulls before 0084)
   const { data: creds } = useMyCredentials(user.id)
   const [printingRx, setPrintingRx] = useState(false)
+  // 0155: a prescription sheet to write by hand (empty lines), printed from the visit
+  const [blankRx, setBlankRx] = useState(false)
   // the printed prescription lists only the medicines the patient buys at an outside pharmacy
   // (0104): those given at the clinic pharmacy or here stay on the medical report
   const hasOutside = !!data?.prescriptions.some((r) => !r.cancelledAt && r.supply === 'outside')
@@ -3119,6 +3122,17 @@ export function ClinicalCard({
               {t('medReport.open')}
             </Button>
           )}
+          {patient && doctor && (
+            <Button
+              size="sm"
+              variant={blankRx ? 'default' : 'ghost'}
+              onClick={() => setBlankRx((b) => !b)}
+              title={t('rxDoc.blank.hint')}
+            >
+              <Printer size={14} aria-hidden="true" />
+              {t('rxDoc.blank.button')}
+            </Button>
+          )}
           {patient && data?.prescriptions.some((r) => !r.cancelledAt) && (
             // one print: only the medicines bought at an outside pharmacy (0104); every medicine
             // given at the clinic: nothing to print (a greyed button takes no pointer: the
@@ -3135,6 +3149,24 @@ export function ClinicalCard({
           )}
         </span>
       </CardHeader>
+      {blankRx && patient && (
+        <CardBody>
+          <BlankRxForm
+            user={user}
+            patient={{
+              name: patient.name,
+              fileNumber: patient.fileNumber,
+              birthDate: data?.patient?.birthDate ?? null,
+              sex: data?.patient?.sex ?? null,
+              weight: data?.patient?.weightKg ?? patient.weight ?? null,
+              phone: data?.patient?.phone ?? null,
+              insurer: data?.patient?.insurer ?? null,
+              memberNo: data?.patient?.memberNo ?? null,
+            }}
+            onClose={() => setBlankRx(false)}
+          />
+        </CardBody>
+      )}
       {/* the record is the manager's switch: said, not silently read only */}
       {!readOnly && canDesk(TREATING_DESKS) && switchedOff('clinical.write') && (
         <CardBody>

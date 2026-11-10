@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import {
+  Printer,
   Ban,
   CircleCheck,
   Clock,
@@ -21,6 +22,7 @@ import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { PeriodFilter } from '@/components/dash/period-filter'
 import { buttonVariants } from '@/components/ui/button'
 import { WideResult } from '@/components/clinical/wide-result'
+import { BlankRxForm } from '@/components/clinical/blank-rx'
 import { OpenFileLink } from '@/components/clinical/file-panel'
 import { NextPatientPanel } from '@/components/clinical/next-patient-panel'
 import { ListBar, Pager } from '@/components/ui/list-tools'
@@ -398,7 +400,11 @@ export function PrescriptionsPage({ user }: { user: StaffUser }) {
             </BannerChip>
           }
         />
-        <Panel i={1} icon={PillIcon} tint="violet" title={t('doctorLists.rxPanel')}>
+        {/* 0155: a prescription sheet to write by hand */}
+        <Panel i={1} icon={Printer} tint="violet" title={t('rxDoc.blank.title')}>
+          <BlankRxForm user={user} searchable />
+        </Panel>
+        <Panel i={2} icon={PillIcon} tint="violet" title={t('doctorLists.rxPanel')}>
           <PeriodFilter period={period} />
           {got?.cut && <PeriodCutNote />}
           <Tabs

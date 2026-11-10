@@ -3461,12 +3461,17 @@
       "errors": {
         "patient": "Hitamo dosiye y’umurwayi (cyangwa ubanze umwandike).",
         "doctor": "Hitamo umuganga.",
-        "when": "Hitamo umunsi n’isaha."
+        "when": "Hitamo umunsi n’isaha.",
+        "freeTime": "Hitamo imwe mu masaha afunguye ya muganga."
       },
       "service": "Serivisi: {{name}}",
       "call": "Hamagara",
       "message": "Muraho {{name}}, ni Muhazi Medical Clinic ku byerekeye gahunda mwasabye.",
-      "timePassed": "Igihe cyasabwe cyarenze: mwumvikane ikindi n’umuntu."
+      "timePassed": "Igihe cyasabwe cyarenze: mwumvikane ikindi n’umuntu.",
+      "pickDoctorFirst": "Hitamo muganga kugira ngo urebe amasaha ye afunguye.",
+      "pickDayFirst": "Hitamo umunsi.",
+      "notThatDay": "{{who}} ntakora uwo munsi: hitamo undi munsi.",
+      "nextDays": "Iminsi ikurikira akora:"
     },
     "tasks": {
       "count": "{{count}} bitarakorwa · {{overdue}} byakererewe",
@@ -4998,7 +5003,18 @@
     "outsideNote": "Farumasi y’ivuriro ntitanga iyi miti. Muyigure kuri farumasi iyo ari yo yose.",
     "validUntil": "Rufite agaciro kugeza",
     "printOutsideOnly": "Urupapuro rw’imiti rwandikwaho imiti umurwayi agura kuri farumasi yo hanze gusa; iyatanzwe ku kigo iri kuri raporo y’ubuvuzi.",
-    "nothingOutside": "Nta cyo gucapa: imiti yose itangirwa ku kigo."
+    "nothingOutside": "Nta cyo gucapa: imiti yose itangirwa ku kigo.",
+    "blank": {
+      "title": "Urupapuro rw’imiti rwo kwandikwaho n’ikaramu",
+      "button": "Urupapuro rw’imiti rutanditseho",
+      "hint": "Cyapa urupapuro rw’imiti rufite imirongo irimo ubusa, wandikeho imiti n’ikaramu.",
+      "lead": "Urupapuro rufite umutwe w’ivuriro, umurwayi, imirongo irimo ubusa ifite nimero, n’izina ryawe, nimero y’urugaga n’umukono wawe: ku miti wandika n’ikaramu.",
+      "patient": "Umurwayi (si itegeko)",
+      "noPatient": "Nta murwayi wahiswemo: izina na dosiye bisigara ubusa, byandikwa n’ikaramu.",
+      "rows": "Imirongo yo kwandikaho",
+      "rowCount": "Imirongo {{count}}",
+      "print": "Cyapa urupapuro rw’imiti"
+    }
   },
   "visitConfirm": {
     "title": "Gutangira kwivuza kwa {{name}}?",

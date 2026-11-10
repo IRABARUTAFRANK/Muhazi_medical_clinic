@@ -3457,12 +3457,17 @@
       "errors": {
         "patient": "Choisissez le dossier patient (ou enregistrez d’abord le patient).",
         "doctor": "Choisissez le médecin.",
-        "when": "Choisissez le jour et l’heure."
+        "when": "Choisissez le jour et l’heure.",
+        "freeTime": "Choisissez une des heures libres du médecin."
       },
       "service": "Service : {{name}}",
       "call": "Appeler",
       "message": "Bonjour {{name}}, ici Muhazi Medical Clinic au sujet de votre demande de rendez-vous.",
-      "timePassed": "L’heure demandée est passée : convenez d’une autre avec la personne."
+      "timePassed": "L’heure demandée est passée : convenez d’une autre avec la personne.",
+      "pickDoctorFirst": "Choisissez le médecin pour voir ses heures libres.",
+      "pickDayFirst": "Choisissez le jour.",
+      "notThatDay": "{{who}} ne travaille pas ce jour-là : choisissez un autre jour.",
+      "nextDays": "Prochains jours de travail :"
     },
     "tasks": {
       "count": "{{count}} ouvertes · {{overdue}} en retard",
@@ -4989,7 +4994,18 @@
     "outsideNote": "La pharmacie de la clinique ne donne pas ces médicaments. Veuillez les acheter dans n’importe quelle pharmacie.",
     "validUntil": "Valable jusqu’au",
     "printOutsideOnly": "L’ordonnance ne liste que les médicaments que le patient achète dans une pharmacie extérieure ; ceux donnés à la clinique figurent sur le rapport médical.",
-    "nothingOutside": "Rien à imprimer : tous les médicaments sont donnés à la clinique."
+    "nothingOutside": "Rien à imprimer : tous les médicaments sont donnés à la clinique.",
+    "blank": {
+      "title": "Ordonnance vierge à remplir à la main",
+      "button": "Ordonnance vierge",
+      "hint": "Imprimer une ordonnance avec des lignes vides, pour écrire les médicaments à la main.",
+      "lead": "La feuille porte l’en-tête de la clinique, le patient, des lignes vides numérotées et votre nom, votre numéro d’ordre et votre signature : pour les médicaments que vous écrivez au stylo.",
+      "patient": "Patient (facultatif)",
+      "noPatient": "Aucun patient choisi : le nom et le dossier restent vides, à écrire.",
+      "rows": "Lignes à remplir",
+      "rowCount": "{{count}} lignes",
+      "print": "Imprimer l’ordonnance vierge"
+    }
   },
   "visitConfirm": {
     "title": "Commencer une visite pour {{name}} ?",

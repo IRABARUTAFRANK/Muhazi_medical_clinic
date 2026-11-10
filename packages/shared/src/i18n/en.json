@@ -3457,12 +3457,17 @@
       "errors": {
         "patient": "Choose the patient file (or register the patient first).",
         "doctor": "Choose the doctor.",
-        "when": "Choose the day and the time."
+        "when": "Choose the day and the time.",
+        "freeTime": "Choose one of the doctor’s free times."
       },
       "service": "Service: {{name}}",
       "call": "Call",
       "message": "Hello {{name}}, this is Muhazi Medical Clinic about your appointment request.",
-      "timePassed": "The time asked for has passed: agree a new one with the person."
+      "timePassed": "The time asked for has passed: agree a new one with the person.",
+      "pickDoctorFirst": "Choose the doctor to see their free times.",
+      "pickDayFirst": "Choose the day.",
+      "notThatDay": "{{who}} does not work on that day: choose another day.",
+      "nextDays": "Next working days:"
     },
     "tasks": {
       "count": "{{count}} open · {{overdue}} late",
@@ -4989,7 +4994,18 @@
     "outsideNote": "The clinic pharmacy does not give these medicines. Please buy them at any pharmacy.",
     "validUntil": "Valid until",
     "printOutsideOnly": "The prescription lists only the medicines the patient buys at an outside pharmacy; those given at the clinic are on the medical report.",
-    "nothingOutside": "Nothing to print: every medicine is given at the clinic."
+    "nothingOutside": "Nothing to print: every medicine is given at the clinic.",
+    "blank": {
+      "title": "Blank prescription to write by hand",
+      "button": "Blank prescription",
+      "hint": "Print a prescription sheet with empty lines, to write the medicines by hand.",
+      "lead": "The sheet carries the clinic’s letterhead, the patient, numbered empty lines and your name, registration and signature: for the medicines you write with a pen.",
+      "patient": "Patient (optional)",
+      "noPatient": "No patient chosen: the name and file are left blank, to write.",
+      "rows": "Lines to write on",
+      "rowCount": "{{count}} lines",
+      "print": "Print the blank prescription"
+    }
   },
   "visitConfirm": {
     "title": "Start a visit for {{name}}?",

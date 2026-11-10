@@ -148,6 +148,33 @@ const rx = (over: Partial<RxDoc> = {}): RxDoc => ({
 })
 
 describe('prescription', () => {
+  // 0155: a sheet written by hand: numbered empty lines, ruled blanks for what is not known
+  it('blank sheet: numbered empty lines and ruled blanks for the patient', () => {
+    const html = buildPrescriptionHtml(
+      rx({
+        medicines: [],
+        givenHere: [],
+        blankRows: 6,
+        patient: {
+          name: '',
+          fileNumber: '',
+          ageSex: null,
+          birthDate: null,
+          sex: null,
+          weight: null,
+        },
+      }),
+      { t, lang: 'en' },
+      { autoPrint: false, printedAt: at, fonts },
+    )
+    expect(html.match(/class="rx-blank/g)?.length).toBe(6)
+    expect(html).toContain(
+      '<div class="k">Name:</div><div class="v"><span class="blank"></span></div>',
+    )
+    expect(html).toContain('Total items')
+    expect(html).not.toContain('Paracetamol')
+  })
+
   it('prints the validity, the quantity in words and never a medicine given here', () => {
     const html = buildPrescriptionHtml(
       rx(),
