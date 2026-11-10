@@ -1539,7 +1539,8 @@
         "ask": "banza wemeze na {{insurer}}",
         "preauth": "gusa iyo {{insurer}} yabyemeye",
         "notOnList": "ntibiri ku rutonde rwa {{insurer}}: igiciro cy’amafaranga"
-      }
+      },
+      "coverTitle": "Uko {{payer}} yishyuzwa uyu murongo"
     },
     "back": "Subira ku murongo wanjye",
     "notFound": "Uku kwivuza ntikwabonetse cyangwa kwarafunzwe.",

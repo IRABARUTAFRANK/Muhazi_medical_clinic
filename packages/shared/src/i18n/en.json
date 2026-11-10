@@ -2366,7 +2366,8 @@
         "ask": "confirm with {{insurer}} first",
         "preauth": "only with {{insurer}}’s approval",
         "notOnList": "not on {{insurer}}’s list: cash price"
-      }
+      },
+      "coverTitle": "How {{payer}} is charged for this line"
     },
     "payment": {
       "title": "Payment",

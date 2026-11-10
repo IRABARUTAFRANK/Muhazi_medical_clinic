@@ -464,6 +464,9 @@ export interface AddChargeInput {
   cashPrice?: number | null
   /** The cash price was confirmed with the insurer (the 'ask' rule, 0115). */
   confirm?: boolean
+  /** 0147: how the insurer is charged for this line, chosen while adding it (change_charge_cover
+   *  right after the line is added; needs charge.override). */
+  cover?: { mode: CoverMode; value?: number | null; reason: string }
 }
 
 export function useBillingActions(encounterId: string) {
@@ -504,25 +507,65 @@ export function useBillingActions(encounterId: string) {
           enteredBy: null,
           createdAt: new Date().toISOString(),
         })
+        // 0147: charged otherwise for this patient, chosen while adding
+        if (input.cover && input.cover.mode !== 'insurer') {
+          const c = b.charges[b.charges.length - 1]!
+          const { mode, value } = input.cover
+          let unit2 = c.unitPrice
+          let pct = c.coveragePct
+          if (mode === 'not_covered') pct = 0
+          if (mode === 'private') {
+            pct = 0
+            unit2 = c.cashPrice ?? c.listPrice
+          }
+          if (mode === 'price') unit2 = Math.round(value ?? c.listPrice)
+          if (mode === 'coverage') pct = value ?? pct
+          const total2 = Math.round(unit2 * c.quantity)
+          c.unitPrice = unit2
+          c.coveragePct = pct
+          c.insurerShare = Math.round((total2 * pct) / 100)
+          c.patientShare = total2 - c.insurerShare
+          c.cover = {
+            mode,
+            reason: input.cover.reason,
+            by: 'Sample cashier',
+            at: new Date().toISOString(),
+          }
+        }
         recompute(b)
         return
       }
-      const { error } = await supabase.rpc(input.confirm ? 'add_charge_confirmed' : 'add_charge', {
-        p_encounter_id: encounterId,
-        p_office: input.office,
-        p_service_id: input.serviceId ?? null,
-        p_item_id: input.itemId ?? null,
-        p_quantity: input.quantity,
-        p_manual_price: input.manualPrice ?? null,
-        p_manual_reason: input.manualPrice != null ? input.discountReason?.trim() || null : null,
-        p_performed_by: null,
-        p_entered_for: null,
-        p_source_type: null,
-        p_source_id: null,
-        p_discount_pct: input.manualPrice != null ? 0 : input.discountPct,
-        p_discount_reason: input.manualPrice != null ? null : input.discountReason?.trim() || null,
-      })
+      const { data, error } = await supabase.rpc(
+        input.confirm ? 'add_charge_confirmed' : 'add_charge',
+        {
+          p_encounter_id: encounterId,
+          p_office: input.office,
+          p_service_id: input.serviceId ?? null,
+          p_item_id: input.itemId ?? null,
+          p_quantity: input.quantity,
+          p_manual_price: input.manualPrice ?? null,
+          p_manual_reason: input.manualPrice != null ? input.discountReason?.trim() || null : null,
+          p_performed_by: null,
+          p_entered_for: null,
+          p_source_type: null,
+          p_source_id: null,
+          p_discount_pct: input.manualPrice != null ? 0 : input.discountPct,
+          p_discount_reason:
+            input.manualPrice != null ? null : input.discountReason?.trim() || null,
+        },
+      )
       if (error) throw apiError(error)
+      // 0147: the line is on the bill; now charged as chosen for this patient (audited, 0139)
+      if (input.cover && input.cover.mode !== 'insurer' && typeof data === 'string') {
+        const r = await supabase.rpc('change_charge_cover', {
+          p_line: data,
+          p_mode: input.cover.mode,
+          p_value: input.cover.value ?? null,
+          p_reason: input.cover.reason,
+        })
+        if (r.error && isMissingFunction(r.error)) throw new NotReadyError()
+        if (r.error) throw apiError(r.error)
+      }
     },
     onSuccess: refresh,
   })

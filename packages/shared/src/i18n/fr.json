@@ -2366,7 +2366,8 @@
         "ask": "à confirmer d’abord avec {{insurer}}",
         "preauth": "seulement avec l’accord de {{insurer}}",
         "notOnList": "pas sur la liste de {{insurer}} : prix comptant"
-      }
+      },
+      "coverTitle": "Comment {{payer}} est facturé pour cette ligne"
     },
     "payment": {
       "title": "Paiement",

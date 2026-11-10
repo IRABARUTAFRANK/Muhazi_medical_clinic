@@ -40,6 +40,7 @@ import { SearchSelect, type SearchOption } from '@/components/ui/search-select'
 import { Select } from '@/components/ui/select'
 import { StaffShell } from '@/components/staff/staff-shell'
 import {
+  type CoverMode,
   useBillingActions,
   useVisitBill,
   useVisitHeader,
@@ -1080,6 +1081,7 @@ export function VisitPage({
                     coveragePct={currentInsurer?.coveragePct ?? 0}
                     insurerName={currentInsurer?.name ?? bill?.payerName ?? null}
                     isManager={user.role === 'manager'}
+                    mayOverride={can('charge.override')}
                     // only a finished bill closes the form (not one still loading or unreadable)
                     disabled={!!bill && bill.status !== null && bill.status !== 'draft'}
                     onAdd={async (input) => {
@@ -1421,11 +1423,14 @@ function AddChargeCard({
   coveragePct,
   insurerName,
   isManager,
+  mayOverride = false,
   disabled,
   onAdd,
 }: {
   /** For the question asked before the treatment is charged. */
   patientName: string
+  /** 0147: may choose how the insurer is charged for the line (charge.override). */
+  mayOverride?: boolean
   treatments: Treatment[]
   /** The employee's departments: their treatments (and those of no department) come first; the
    *  others only after "Show other departments". Empty = everything (manager, no department). */
@@ -1455,6 +1460,13 @@ function AddChargeCard({
 }) {
   const { t, i18n } = useTranslation()
   const [serviceId, setServiceId] = useState('')
+  // 0147: how the insurer is charged for this line (as it covers it, as a private patient, not
+  // covered, at another price), chosen before the line is added
+  const [cover, setCover] = useState<{ mode: CoverMode; price: string; reason: string }>({
+    mode: 'insurer',
+    price: '',
+    reason: '',
+  })
   const myIds = myDepartments.map((d) => d.id)
   const [quantity, setQuantity] = useState('1')
   const [discount, setDiscount] = useState('')
@@ -1483,7 +1495,18 @@ function AddChargeCard({
   const q = Number(quantity) || 1
   const unit = adj.unit
   const total = Math.round(unit * q)
-  const insurer = Math.round((total * linePct) / 100)
+  const coverOn = !!payerId && !!selected && (mayOverride || isManager)
+  const coverMode: CoverMode = coverOn ? cover.mode : 'insurer'
+  const coverPrice = Number(cover.price) || 0
+  const effUnit =
+    coverMode === 'private'
+      ? (selected?.cashPrice ?? unit)
+      : coverMode === 'price'
+        ? coverPrice
+        : unit
+  const effTotal = Math.round(effUnit * q)
+  const effPct = coverMode === 'not_covered' || coverMode === 'private' ? 0 : linePct
+  const effInsurer = Math.round((effTotal * effPct) / 100)
   const insurerNote = payerId && row ? insurerLineText(t, row, insurerName ?? '', q) : null
   const noteTone = insurerLineTone(row)
   const maxDiscount = selected?.maxDiscountPct ?? 0
@@ -1550,6 +1573,10 @@ function AddChargeCard({
     if (manualRefused) return setError(t('visit.add.errors.noManual'))
     if (overMax) return setError(t('visit.add.errors.overMax', { pct: maxDiscount }))
     if (changed && !reason.trim()) return setError(t('visit.add.errors.reason'))
+    if (coverMode === 'price' && !(coverPrice > 0 || cover.price === '0'))
+      return setError(t('visit.cover.needPrice'))
+    if (coverMode !== 'insurer' && !cover.reason.trim())
+      return setError(t('visit.cover.needReason'))
     if (
       !(await confirm({
         title: t('confirm.visit.addCharge', {
@@ -1585,7 +1612,7 @@ function AddChargeCard({
             confirmLabel: t('confirm.visit.askInsurerYes'),
           })
     let confirmed = false
-    if (row?.ask || row?.preauth) {
+    if ((row?.ask || row?.preauth) && coverMode === 'insurer') {
       if (!(await askInsurer())) return
       confirmed = true
     }
@@ -1602,7 +1629,16 @@ function AddChargeCard({
       manualPrice: manual,
       coveragePct: linePct,
       cashPrice: selected?.cashPrice ?? null,
-      confirm: confirmed,
+      // charged otherwise for this patient: no question to the insurer, the cover applied after
+      confirm: confirmed || coverMode !== 'insurer',
+      cover:
+        coverMode !== 'insurer'
+          ? {
+              mode: coverMode,
+              value: coverMode === 'price' ? coverPrice : null,
+              reason: cover.reason.trim(),
+            }
+          : undefined,
     }
     try {
       try {
@@ -1618,6 +1654,7 @@ function AddChargeCard({
       setDiscount('')
       setReason('')
       setQuantity('1')
+      setCover({ mode: 'insurer', price: '', reason: '' })
     } catch {
       /* shown by the page */
     } finally {
@@ -1698,9 +1735,9 @@ function AddChargeCard({
               {changed && (
                 <span className="text-ink-3 mr-1 line-through">{formatRwf(listPrice)}</span>
               )}
-              {t('visit.add.preview', { unit: formatRwf(unit), total: formatRwf(total) })}
-              {linePct > 0 &&
-                ` · ${t('visit.charges.split', { patient: formatRwf(total - insurer), insurer: formatRwf(insurer) })}`}
+              {t('visit.add.preview', { unit: formatRwf(effUnit), total: formatRwf(effTotal) })}
+              {(effPct > 0 || coverMode !== 'insurer') &&
+                ` · ${t('visit.charges.split', { patient: formatRwf(effTotal - effInsurer), insurer: formatRwf(effInsurer) })}`}
             </p>
           )}
           {/* the insurer's price and where it comes from (0115) */}
@@ -1713,6 +1750,57 @@ function AddChargeCard({
             >
               {insurerNote}
             </p>
+          )}
+          {/* 0147: how the insurer is charged for this line — chosen here, applied right after
+              the line is added (change_charge_cover, audited) */}
+          {coverOn && (
+            <fieldset className="border-orange/30 bg-orange-bg/40 m-0 flex flex-col gap-1.5 rounded-md border px-3 py-2.5">
+              <legend className="text-ink px-1 text-[13px] font-semibold">
+                {t('visit.add.coverTitle', { payer: insurerName ?? '' })}
+              </legend>
+              {(['insurer', 'private', 'not_covered', 'price'] as const).map((m) => (
+                <label key={m} className="flex items-start gap-2 text-[14px]">
+                  <input
+                    type="radio"
+                    name="add-cover"
+                    className="accent-primary mt-0.5 size-[18px] flex-none"
+                    checked={cover.mode === m}
+                    onChange={() => setCover((c) => ({ ...c, mode: m }))}
+                  />
+                  <span>
+                    <span className="text-ink block font-medium">
+                      {t(`visit.cover.mode.${m}`, { payer: insurerName ?? '' })}
+                    </span>
+                    <span className="text-ink-3 block text-[13px]">
+                      {t(`visit.cover.hint.${m}`, { payer: insurerName ?? '' })}
+                    </span>
+                  </span>
+                </label>
+              ))}
+              {cover.mode === 'price' && (
+                <Field
+                  label={t('visit.cover.price')}
+                  inputMode="numeric"
+                  value={cover.price}
+                  wrapperClassName="w-[180px]"
+                  onChange={(e) =>
+                    setCover((c) => ({
+                      ...c,
+                      price: e.target.value.replace(/[^\d]/g, '').slice(0, 10),
+                    }))
+                  }
+                />
+              )}
+              {cover.mode !== 'insurer' && (
+                <Field
+                  label={t('visit.cover.reason')}
+                  placeholder={t('visit.cover.reasonPh')}
+                  value={cover.reason}
+                  maxLength={300}
+                  onChange={(e) => setCover((c) => ({ ...c, reason: e.target.value }))}
+                />
+              )}
+            </fieldset>
           )}
           {error && (
             <p role="alert" className={errorBox}>
