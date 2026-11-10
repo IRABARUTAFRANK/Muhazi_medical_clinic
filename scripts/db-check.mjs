@@ -21427,6 +21427,10 @@ await step('0130: the migration runs again on a database that already has it', a
   )
   await db.exec(sql)
   await db.exec(sql)
+  // the later definitions come back, as on a database where every migration ran in order
+  await db.exec(
+    await readFile(path.join(migrationsDir, '20270125090000_catalogue_fast.sql'), 'utf8'),
+  )
   return 'no error'
 })
 await step(
@@ -23645,9 +23649,15 @@ await step(
     await db.exec(
       await readFile(path.join(migrationsDir, '20270118090000_price_list_speed.sql'), 'utf8'),
     )
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270125090000_catalogue_fast.sql'), 'utf8'),
+    )
     // the later definitions come back, as on a database where every migration ran in order
     await db.exec(
       await readFile(path.join(migrationsDir, '20270124090000_list_lines_missing.sql'), 'utf8'),
+    )
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270125090000_catalogue_fast.sql'), 'utf8'),
     )
     const after = await run()
     for (let k = 0; k < cases.length; k++)
@@ -24608,6 +24618,33 @@ await step(
         }),
       )
     return `adopted 1 then 1 then 0; EC-145-NEW inactive, no cash price, linked to the list; the manager told (${notices} notices); no-column list: treatment inactive, column cleared and set again`
+  },
+)
+// 0148 runs last: the steps above re-apply older price-list migrations
+await step(
+  '0148: the catalogue read in one pass answers exactly as the three price functions did, for every treatment',
+  async () => {
+    await as(staff.manager)
+    const n = (await one(`select count(*)::int as n from catalogue_services`)).n
+    const diff = (
+      await one(
+        `select count(*)::int as n from catalogue_services v
+         where v.cash_price is distinct from (select pf.price from price_for(v.id, null, null) pf)
+            or v.list_price is distinct from (select cl.price from clinic_list_price(v.id, null) cl)
+            or v.list_id is distinct from (select cl.book_id from clinic_list_price(v.id, null) cl)
+            or v.own_price is distinct from own_cash_price(v.id, null)`,
+      )
+    ).n
+    const priced = (
+      await one(`select count(*)::int as n from catalogue_services where list_price is not null`)
+    ).n
+    const owned = (
+      await one(`select count(*)::int as n from catalogue_services where own_price is not null`)
+    ).n
+    await asAdmin()
+    if (n < 10 || diff !== 0 || priced < 1)
+      throw new Error(JSON.stringify({ n, diff, priced, owned }))
+    return `${n} treatments · ${priced} priced by a clinic-wide list · ${owned} with the clinic's own price · 0 differences`
   },
 )
 // @@t141-end
