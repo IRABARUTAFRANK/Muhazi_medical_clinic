@@ -59,7 +59,9 @@
     "myDocuments": "Mes documents",
     "myDocumentsHint": "Licence, contrat et autres papiers gardés pour vous",
     "myProfile": "Mon profil",
-    "myProfileHint": "Vos informations, documents, travail et accès"
+    "myProfileHint": "Vos informations, documents, travail et accès",
+    "noTimeToday": "Plus d’heure aujourd’hui",
+    "noTimeTodayHint": "Les heures de rendez-vous d’aujourd’hui sont passées (07:00–19:00). Choisissez un autre jour."
   },
   "days": {
     "short": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
@@ -277,7 +279,8 @@
         "taken": "Cette heure vient d’être prise ; choisissez-en une autre.",
         "past": "Ce jour ou cette heure est déjà passé.",
         "notWorking": "Le médecin ne travaille pas à cette heure ; choisissez-en une autre.",
-        "generic": "La demande n’a pas pu être envoyée. Vérifiez votre connexion ou appelez l’accueil."
+        "generic": "La demande n’a pas pu être envoyée. Vérifiez votre connexion ou appelez l’accueil.",
+        "hoursOver": "Les heures de rendez-vous d’aujourd’hui sont passées. Choisissez un autre jour."
       }
     },
     "insurance": {

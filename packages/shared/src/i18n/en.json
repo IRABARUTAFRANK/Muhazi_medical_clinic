@@ -59,7 +59,9 @@
     "myDocuments": "My documents",
     "myDocumentsHint": "Licence, contract and other papers kept for you",
     "myProfile": "My profile",
-    "myProfileHint": "Your details, documents, work and access"
+    "myProfileHint": "Your details, documents, work and access",
+    "noTimeToday": "No time left today",
+    "noTimeTodayHint": "Today’s booking hours are over (07:00–19:00). Choose another day."
   },
   "days": {
     "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -277,7 +279,8 @@
         "taken": "That time has just been taken; please pick another.",
         "past": "That day or time has already passed.",
         "notWorking": "The doctor does not work at that time; please pick another.",
-        "generic": "The request could not be sent. Check your connection or call reception."
+        "generic": "The request could not be sent. Check your connection or call reception.",
+        "hoursOver": "Today’s booking hours are over. Please choose another day."
       }
     },
     "insurance": {

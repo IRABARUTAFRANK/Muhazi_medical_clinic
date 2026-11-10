@@ -60,7 +60,9 @@
     "myDocuments": "Inyandiko zanjye",
     "myDocumentsHint": "Uruhushya, amasezerano n'izindi mpapuro ukubikiwe",
     "myProfile": "Umwirondoro wanjye",
-    "myProfileHint": "Amakuru yawe, inyandiko, akazi n’uburenganzira"
+    "myProfileHint": "Amakuru yawe, inyandiko, akazi n’uburenganzira",
+    "noTimeToday": "Nta saha isigaye uyu munsi",
+    "noTimeTodayHint": "Amasaha yo gufata gahunda y’uyu munsi yarangiye (07:00–19:00). Hitamo undi munsi."
   },
   "days": {
     "short": ["Cyu", "Mbe", "Kab", "Gat", "Kan", "Gnu", "Gnd"],
@@ -271,7 +273,8 @@
         "taken": "Iyo saha imaze gufatwa; hitamo indi.",
         "past": "Uwo munsi cyangwa iyo saha byarashize.",
         "notWorking": "Muganga ntakora kuri iyo saha; hitamo indi.",
-        "generic": "Ubusabe ntibwoherejwe. Reba interineti yawe cyangwa uhamagare aho bakirira abarwayi."
+        "generic": "Ubusabe ntibwoherejwe. Reba interineti yawe cyangwa uhamagare aho bakirira abarwayi.",
+        "hoursOver": "Amasaha yo gufata gahunda y’uyu munsi yarangiye. Hitamo undi munsi."
       }
     },
     "insurance": {

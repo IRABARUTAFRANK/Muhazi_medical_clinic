@@ -1,4 +1,4 @@
-import { demoNow } from '@mmc/shared'
+import { BOOKING_LAST_HOUR, demoNow } from '@mmc/shared'
 import { isLive } from './supabase'
 
 /** The real clock when connected to Supabase; the frozen demo clock on sample data. */
@@ -13,3 +13,13 @@ export const kigaliTime = (year: number, month: number, day: number, hour: numbe
 
 /** Today at the clinic, as yyyy-mm-dd. */
 export const kigaliToday = () => new Date(Date.now() + 2 * 3_600_000).toISOString().slice(0, 10)
+
+/** Minutes since midnight at the clinic (Kigali, UTC+2) for a clock reading. */
+export const kigaliMinutes = (nowMs: number) => {
+  const k = new Date(nowMs + 2 * 3_600_000)
+  return k.getUTCHours() * 60 + k.getUTCMinutes()
+}
+
+/** True when `day` is today at the clinic and the last booking hour has passed. */
+export const bookingHoursOver = (day: string | undefined, nowMs: number) =>
+  day === kigaliToday() && kigaliMinutes(nowMs) >= BOOKING_LAST_HOUR * 60

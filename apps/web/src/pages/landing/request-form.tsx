@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { kigaliTime, kigaliToday } from '@/lib/clock'
+import { bookingHoursOver, kigaliTime, kigaliToday } from '@/lib/clock'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { TimeSelect } from '@/components/ui/time-select'
@@ -37,6 +37,8 @@ export function RequestForm() {
     setError(null)
     if (fullName.trim().length < 3) return setError(t('landing.book.errors.name'))
     if (!RW_PHONE.test(cleanPhone(phone))) return setError(t('landing.book.errors.phone'))
+    // today after the last booking hour: nothing can be asked for today any more (0152)
+    if (bookingHoursOver(day, Date.now())) return setError(t('landing.book.errors.hoursOver'))
     // the clinic's time; today without a time means "today, as soon as possible"
     const [y, m, d] = day.split('-').map(Number)
     const [hh, mm] = (time || (day === kigaliToday() ? '' : '08:00')).split(':').map(Number)
