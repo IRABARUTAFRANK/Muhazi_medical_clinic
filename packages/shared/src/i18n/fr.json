@@ -10858,5 +10858,15 @@
     "openWide": "Ouvrir en grand",
     "wideAria": "Résultat de {{test}}, vue complète",
     "orderedBy": "demandé par {{name}}"
+  },
+  "closedFile": {
+    "title": "Dossier de visite — {{name}}",
+    "closed": "Terminée",
+    "closedOn": "close le {{when}}",
+    "by": "par {{name}}",
+    "diagnoses": "Diagnostic",
+    "hint": "Cette visite est terminée. Ouvrez-la pour lire le dossier et les résultats, imprimer le rapport, ou demander le code qui permet de la modifier. Quand le patient revient, une nouvelle visite est enregistrée à part.",
+    "open": "Ouvrir pour relire ou modifier",
+    "close": "Fermer le dossier"
   }
 }

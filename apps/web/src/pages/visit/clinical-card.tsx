@@ -3,6 +3,8 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { SearchSelect } from '@/components/ui/search-select'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import {
+  FolderClosed,
+  FolderOpen,
   CheckCircle2,
   CircleDashed,
   CircleSlash,
@@ -505,6 +507,8 @@ export function ClinicalCard({
   /** The open orders to the nurses (listed when the visit is finished; they do not stop it). */
   const openOrders = (data?.nurseOrders ?? []).filter((o) => o.status === 'open')
   const [reporting, setReporting] = useState(openReport)
+  // 0151: a finished visit is a closed file until someone opens it for review (or an edit code)
+  const [reviewing, setReviewing] = useState(false)
   const [comment, setComment] = useState('')
   // the signed-in person's specialty and council registration (nulls before 0084)
   const { data: creds } = useMyCredentials(user.id)
@@ -3033,6 +3037,64 @@ export function ClinicalCard({
       })}
     </CardBody>
   )
+  // 0151: a finished visit is a closed file — the patient's name, when it was closed, the
+  // diagnoses — opened for reading (or an edit code) on request; a new visit is its own record
+  if (stepper && finished && !editing && !reviewing && data) {
+    const closedAt = lock?.closedAt ?? data.visit?.closedAt ?? null
+    return (
+      <Card>
+        <CardHeader hue="grey">
+          <span className="inline-flex items-center gap-2">
+            <FolderClosed size={16} aria-hidden="true" />
+            {t('closedFile.title', { name: patient?.name ?? '' })}
+          </span>
+          <Badge tone="green" dot={false}>
+            {t('closedFile.closed')}
+          </Badge>
+        </CardHeader>
+        <CardBody className="gap-3">
+          <p className="text-ink-2 m-0 text-[14px]">
+            {[
+              closedAt ? t('closedFile.closedOn', { when: when(closedAt) }) : null,
+              lock?.closedBy ? t('closedFile.by', { name: lock.closedBy }) : null,
+              data.visit?.reference ?? null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+          {definitive.length > 0 ? (
+            <p className="m-0 text-[14px]">
+              <span className="text-ink-3">{t('closedFile.diagnoses')}: </span>
+              <span className="font-semibold">{definitive.map((d) => d.text).join(', ')}</span>
+            </p>
+          ) : data.visit?.noDiagnosis ? (
+            <p className="m-0 text-[14px] font-semibold">
+              {noDiagnosisText(data.visit.noDiagnosis)}
+            </p>
+          ) : null}
+          <p className="text-ink-3 m-0 text-[13px]">{t('closedFile.hint')}</p>
+          <span className="flex flex-wrap gap-2">
+            <Button variant="primary" onClick={() => setReviewing(true)}>
+              <FolderOpen size={16} aria-hidden="true" />
+              {t('closedFile.open')}
+            </Button>
+            {patient && doctor && (
+              <Button
+                variant="default"
+                onClick={() => {
+                  setReviewing(true)
+                  setReporting(true)
+                }}
+              >
+                <FileText size={16} aria-hidden="true" />
+                {t('medReport.open')}
+              </Button>
+            )}
+          </span>
+        </CardBody>
+      </Card>
+    )
+  }
   return (
     <Card>
       <CardHeader hue="navy">
@@ -3116,6 +3178,14 @@ export function ClinicalCard({
       )}
       <CardBody className="gap-3">
         {error && <p className={errorBox}>{error.message}</p>}
+        {stepper && finished && !editing && reviewing && (
+          <div className="flex justify-end">
+            <Button size="sm" variant="ghost" onClick={() => setReviewing(false)}>
+              <FolderClosed size={14} aria-hidden="true" />
+              {t('closedFile.close')}
+            </Button>
+          </div>
+        )}
         {/* a finished visit is locked (0104): the code opens a 30-minute edit window */}
         {finished && lock ? (
           <VisitEditLock

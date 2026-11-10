@@ -10858,5 +10858,15 @@
     "openWide": "Open wide",
     "wideAria": "Result of {{test}}, full view",
     "orderedBy": "ordered by {{name}}"
+  },
+  "closedFile": {
+    "title": "Visit file — {{name}}",
+    "closed": "Finished",
+    "closedOn": "closed {{when}}",
+    "by": "by {{name}}",
+    "diagnoses": "Diagnosis",
+    "hint": "This visit is finished. Open it to read the record and the results, print the report, or ask for the code that lets you edit it. When the patient comes back, a new visit is recorded on its own.",
+    "open": "Open for review or edit",
+    "close": "Close the file"
   }
 }

@@ -10867,5 +10867,15 @@
     "openWide": "Fungura mu buryo bugari",
     "wideAria": "Igisubizo cya {{test}}, mu buryo bwuzuye",
     "orderedBy": "byasabwe na {{name}}"
+  },
+  "closedFile": {
+    "title": "Dosiye yo kwivuza — {{name}}",
+    "closed": "Kwarangiye",
+    "closedOn": "kwasojwe {{when}}",
+    "by": "na {{name}}",
+    "diagnoses": "Indwara yemejwe",
+    "hint": "Uku kwivuza kwarangiye. Gufungura kugira ngo usome dosiye n’ibisubizo, ucape raporo, cyangwa usabe kode ikwemerera kuyihindura. Umurwayi nagaruka, kwivuza gushya kwandikwa ukwako.",
+    "open": "Fungura usome cyangwa uhindure",
+    "close": "Funga dosiye"
   }
 }
