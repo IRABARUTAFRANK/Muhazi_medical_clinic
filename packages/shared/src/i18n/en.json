@@ -3554,6 +3554,17 @@
       "source": "Asked",
       "byPhone": "by phone",
       "atDesk": "at the desk"
+    },
+    "overdue": {
+      "title": "Late and overdue",
+      "bookings": "Bookings past their time",
+      "requests": "Requests past their time",
+      "noBookings": "No booking past its time.",
+      "noRequests": "No request past its time.",
+      "notArrived": "Not arrived",
+      "notArrivedDay": "Never arrived",
+      "requestsHint": "The time these people asked for has passed: call them, book another time, or reject the request.",
+      "hint": "A booking is late 15 minutes after its time without the patient; a request, once the time asked for has passed. Reception is told once of each. Answer each one here: it then leaves this list."
     }
   },
   "files": {
@@ -3744,7 +3755,10 @@
     "scanRequest": "Ultrasound to do: {{test}} · {{name}}",
     "unpricedTreatments_one": "{{count}} treatment has no cash price yet",
     "unpricedTreatments_other": "{{count}} treatments have no cash price yet",
-    "unpricedTreatmentsBody": "Made from “{{list}}”: give them a price under Prices › Treatments (Without a cash price) so cash patients can be charged. Insured patients already pay their list."
+    "unpricedTreatmentsBody": "Made from “{{list}}”: give them a price under Prices › Treatments (Without a cash price) so cash patients can be charged. Insured patients already pay their list.",
+    "apptOverdue": "Time passed: {{name}}",
+    "apptOverdueRequest": "The time asked for has passed: book another time with the person or reject the request.",
+    "apptOverdueBooking": "The patient has not arrived: mark no-show, cancel, or book again."
   },
   "identity": {
     "aria": "Signed in: {{name}}"

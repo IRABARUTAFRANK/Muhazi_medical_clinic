@@ -3558,6 +3558,17 @@
       "source": "Yasabye",
       "byPhone": "kuri telefoni",
       "atDesk": "aho bakirira abarwayi"
+    },
+    "overdue": {
+      "title": "Izatinze n’izarenze",
+      "bookings": "Gahunda isaha yazo yarenze",
+      "requests": "Ibyifuzo isaha yabyo yarenze",
+      "noBookings": "Nta gahunda isaha yayo yarenze.",
+      "noRequests": "Nta cyifuzo isaha yacyo yarenze.",
+      "notArrived": "Ntaraza",
+      "notArrivedDay": "Ntiyigeze aza",
+      "requestsHint": "Isaha aba bantu basabye yarenze: bahamagare, ufate indi saha cyangwa wange icyifuzo.",
+      "hint": "Gahunda iba yatinze iminota 15 nyuma y’isaha yayo umurwayi ataraza; icyifuzo, isaha yasabwe irenze. Abakira abarwayi babimenyeshwa rimwe. Subiza buri kimwe hano: gihita kiva kuri uru rutonde."
     }
   },
   "files": {
@@ -3753,7 +3764,10 @@
     "scanRequest": "Echographie yo gukora: {{test}} · {{name}}",
     "unpricedTreatments_one": "Ubuvuzi {{count}} ntiburagira igiciro cy’amafaranga",
     "unpricedTreatments_other": "Ubuvuzi {{count}} ntiburagira igiciro cy’amafaranga",
-    "unpricedTreatmentsBody": "Buturutse kuri “{{list}}”: buhe igiciro muri Ibiciro › Ubuvuzi (Nta giciro cy’amafaranga) kugira ngo abarwayi bishyura amafaranga bishyuzwe. Abafite ubwishingizi basanzwe bishyura urutonde rwabo."
+    "unpricedTreatmentsBody": "Buturutse kuri “{{list}}”: buhe igiciro muri Ibiciro › Ubuvuzi (Nta giciro cy’amafaranga) kugira ngo abarwayi bishyura amafaranga bishyuzwe. Abafite ubwishingizi basanzwe bishyura urutonde rwabo.",
+    "apptOverdue": "Isaha yarenze: {{name}}",
+    "apptOverdueRequest": "Isaha yasabwe yarenze: mwumvikane indi saha cyangwa wange icyifuzo.",
+    "apptOverdueBooking": "Umurwayi ntiyaje: andika ko atagaragaye, uhagarike gahunda cyangwa ufate indi."
   },
   "identity": {
     "aria": "Winjiye: {{name}}"

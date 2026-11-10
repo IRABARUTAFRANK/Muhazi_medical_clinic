@@ -63,6 +63,13 @@ export function noticeTarget(n: Notice, role: string | undefined): string | null
       if (n.link?.startsWith('/app/visit')) return n.link
       return id ? focus('task', id) : n.link
     }
+    case 'appt_overdue': {
+      // 0153: the request in "Late and overdue" on the Bookings page; a booking, the panel itself
+      const id = text(p.appointment)
+      return String(p.request) === 'true' && id
+        ? `/app/appointments?focus=${focusKey('inquiry', id)}`
+        : '/app/appointments'
+    }
     case 'appt_confirmed': {
       // the booking's day on the Appointments page (declined ones already carry the day)
       const day = text(p.when) && kigaliDay(String(p.when))

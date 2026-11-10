@@ -3554,6 +3554,17 @@
       "source": "Demandé",
       "byPhone": "par téléphone",
       "atDesk": "à l’accueil"
+    },
+    "overdue": {
+      "title": "En retard et dépassés",
+      "bookings": "Rendez-vous dont l’heure est passée",
+      "requests": "Demandes dont l’heure est passée",
+      "noBookings": "Aucun rendez-vous dont l’heure est passée.",
+      "noRequests": "Aucune demande dont l’heure est passée.",
+      "notArrived": "Pas arrivé",
+      "notArrivedDay": "Jamais venu",
+      "requestsHint": "L’heure demandée par ces personnes est passée : appelez-les, réservez une autre heure ou refusez la demande.",
+      "hint": "Un rendez-vous est en retard 15 minutes après son heure sans le patient ; une demande, dès que l’heure demandée est passée. La réception en est avertie une fois. Répondez à chacun ici : il quitte alors cette liste."
     }
   },
   "files": {
@@ -3744,7 +3755,10 @@
     "scanRequest": "Échographie à faire : {{test}} · {{name}}",
     "unpricedTreatments_one": "{{count}} acte n’a pas encore de prix comptant",
     "unpricedTreatments_other": "{{count}} actes n’ont pas encore de prix comptant",
-    "unpricedTreatmentsBody": "Issus de « {{list}} » : donnez-leur un prix sous Prix › Actes (Sans prix comptant) pour pouvoir facturer les patients comptant. Les assurés paient déjà leur liste."
+    "unpricedTreatmentsBody": "Issus de « {{list}} » : donnez-leur un prix sous Prix › Actes (Sans prix comptant) pour pouvoir facturer les patients comptant. Les assurés paient déjà leur liste.",
+    "apptOverdue": "Heure passée : {{name}}",
+    "apptOverdueRequest": "L’heure demandée est passée : convenez d’une autre heure avec la personne ou refusez la demande.",
+    "apptOverdueBooking": "Le patient n’est pas venu : marquez l’absence, annulez ou réservez à nouveau."
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"

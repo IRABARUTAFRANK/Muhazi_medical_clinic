@@ -215,7 +215,7 @@ const SAMPLE_OPEN: OpenInquiry[] = INQUIRIES.map((q, i) => ({
   doctor: null,
   doctorUserId: null,
   startsAt: null,
-  preferredAt: new Date(Date.now() + (i + 1) * 86_400_000).toISOString(),
+  preferredAt: new Date(Date.now() + (i === 1 ? -1 : i + 1) * 86_400_000).toISOString(),
   createdAt: new Date().toISOString(),
   insurer: null,
   patientId: i === 0 ? 'p-1' : null,
@@ -223,6 +223,12 @@ const SAMPLE_OPEN: OpenInquiry[] = INQUIRIES.map((q, i) => ({
   patientName: i === 0 ? 'Mukamana Alice' : null,
   matches: i === 0 ? 1 : 0,
 }))
+
+/** 0153: the time asked for (booked or preferred) is already past, on the clock given. */
+export const requestTimePassed = (q: OpenInquiry, now: number) => {
+  const w = q.startsAt ?? q.preferredAt
+  return !!w && new Date(w).getTime() < now
+}
 
 export function useOpenInquiries() {
   return useQuery({

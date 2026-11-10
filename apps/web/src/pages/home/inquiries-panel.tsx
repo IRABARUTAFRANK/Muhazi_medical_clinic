@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
 import {
+  AlarmClock,
   CalendarCheck,
   CalendarPlus,
   Check,
@@ -19,6 +20,7 @@ import { ShownList } from '@/components/ui/list-tools'
 import { Select } from '@/components/ui/select'
 import { Flash } from '@/components/ui/flash'
 import {
+  requestTimePassed,
   useBookableDoctors,
   useHomeActions,
   useOpenInquiries,
@@ -26,6 +28,7 @@ import {
 } from '@/lib/api/home'
 import { useFindPatients } from '@/lib/api/visits'
 import { useDeskOps } from '@/lib/api/desk-ops'
+import { useNow } from '@/lib/hooks'
 import { useConfirm } from '@/lib/confirm'
 import { focusAttr, useFocusFirst } from '@/lib/notice-focus'
 import { FOCUS_PANEL } from '@/lib/notice-target'
@@ -57,16 +60,25 @@ export function InquiriesPanel({
   canAct,
   onRegister,
   onBookingClosed,
+  overdue = false,
+  embedded = false,
 }: {
   i?: number
   canAct: boolean
+  /** 0153: only the requests whose asked-for time has passed (else only those still in time). */
+  overdue?: boolean
+  /** 0153: the list alone, inside another panel ("Late and overdue"). */
+  embedded?: boolean
   /** Open the new-file form beside the panel (Bookings page); without it the form opens inline. */
   onRegister?: (r: RegisterRequest) => void
   /** The booking being made was cancelled, rejected, finished or replaced: close what belongs to it. */
   onBookingClosed?: () => void
 }) {
   const { t } = useTranslation()
-  const { data: waiting = [] } = useOpenInquiries()
+  const { data: all = [] } = useOpenInquiries()
+  // 0153: a request past its asked-for time is listed in "Late and overdue", not here
+  const now = useNow(60_000)
+  const waiting = all.filter((q) => requestTimePassed(q, now) === overdue)
   // a notice points to one request (?focus=inquiry:<id>): it comes first and is outlined
   const inquiries = useFocusFirst(waiting, 'inquiry')
   const actions = useHomeActions()
@@ -109,15 +121,8 @@ export function InquiriesPanel({
         ? t('landing.book.callChannel')
         : t('landing.book.whatsapp')
 
-  return (
-    <Panel
-      i={i}
-      id={FOCUS_PANEL.inquiry}
-      icon={MessageSquare}
-      tint="teal"
-      title={t('desk.receptionist.inquiries')}
-      right={String(inquiries.length)}
-    >
+  const body = (
+    <>
       {error && <p className={errorLine}>{error}</p>}
       {done && (
         <Flash key={done} onClose={() => setDone(null)}>
@@ -125,7 +130,7 @@ export function InquiriesPanel({
         </Flash>
       )}
       {inquiries.length === 0 ? (
-        <Empty>{t('desk.receptionist.noInquiries')}</Empty>
+        <Empty>{t(overdue ? 'ops.overdue.noRequests' : 'desk.receptionist.noInquiries')}</Empty>
       ) : (
         <ShownList items={inquiries} step={5}>
           {(shown) => (
@@ -258,7 +263,20 @@ export function InquiriesPanel({
           )}
         </ShownList>
       )}
-      <Hint>{t('ops.inquiries.hint')}</Hint>
+    </>
+  )
+  if (embedded) return body
+  return (
+    <Panel
+      i={i}
+      id={overdue ? undefined : FOCUS_PANEL.inquiry}
+      icon={overdue ? AlarmClock : MessageSquare}
+      tint={overdue ? 'coral' : 'teal'}
+      title={t(overdue ? 'ops.overdue.requests' : 'desk.receptionist.inquiries')}
+      right={String(inquiries.length)}
+    >
+      {body}
+      <Hint>{t(overdue ? 'ops.overdue.requestsHint' : 'ops.inquiries.hint')}</Hint>
     </Panel>
   )
 }

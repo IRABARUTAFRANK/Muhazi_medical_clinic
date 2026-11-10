@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
@@ -36,6 +37,8 @@ export interface DayAppointment {
   source?: string | null
   channel?: string | null
   late: boolean
+  /** 0153: the day (yyyy-mm-dd) of a booking listed among the overdue ones. */
+  day?: string
   doctorUserId?: string | null
   /** The doctor's reason when they declined the booking. */
   declineReason?: string | null
@@ -270,6 +273,49 @@ export function useAppointmentsDay(day: Date) {
       return ((data as DayAppointment[]) ?? []).map(withLeftUnseen)
     },
   })
+}
+
+/**
+ * 0153: booked appointments past their time (15 minutes) that nobody answered yet — any day,
+ * latest first. Listed in "Late and overdue" on the Bookings page and the front-desk home.
+ */
+export function useOverdueBookings() {
+  return useQuery({
+    queryKey: ['appointments', 'overdue'],
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<DayAppointment[]> => {
+      if (!supabase) return sampleAppts.filter((a) => a.late)
+      const { data, error } = await supabase.rpc('appointments_overdue')
+      if (error) throw apiError(error)
+      return ((data as DayAppointment[]) ?? []).map(withLeftUnseen)
+    },
+  })
+}
+
+/**
+ * 0153: reception is told once of each request or booking past its time. The database has no
+ * scheduler, so the Bookings page and the front-desk home ask it while open: on opening and
+ * every five minutes. A notice raised refreshes the notices and the lists.
+ */
+export function useOverdueNotices(enabled: boolean) {
+  const qc = useQueryClient()
+  useEffect(() => {
+    if (!enabled || !supabase) return
+    const sb = supabase
+    let stopped = false
+    const ask = () =>
+      void sb.rpc('overdue_booking_notices').then(({ data }) => {
+        if (stopped || !(Number(data) > 0)) return
+        void qc.invalidateQueries({ queryKey: ['notifications'] })
+        void qc.invalidateQueries({ queryKey: ['appointments'] })
+      })
+    ask()
+    const id = window.setInterval(ask, 5 * 60_000)
+    return () => {
+      stopped = true
+      window.clearInterval(id)
+    }
+  }, [enabled, qc])
 }
 
 export function useBedBoard() {

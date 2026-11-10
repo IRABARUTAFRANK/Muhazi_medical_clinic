@@ -281,6 +281,26 @@ export function useWording() {
           title: t('notify.deactivatedLong', { name: p.name ?? '', days: p.days ?? 30 }),
           body: t('notify.deactivatedLongBody'),
         }
+      case 'appt_overdue':
+        // 0153: a request or a booking past its time, for reception to answer
+        return {
+          title: t('notify.apptOverdue', { name: p.name ?? '' }),
+          body: [
+            p.doctor ?? null,
+            p.when
+              ? t('notify.apptWhen', {
+                  when: `${formatDate(new Date(p.when))} ${formatTime(new Date(p.when))}`,
+                })
+              : null,
+            t(
+              String(p.request) === 'true'
+                ? 'notify.apptOverdueRequest'
+                : 'notify.apptOverdueBooking',
+            ),
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        }
       case 'appt_declined':
         return {
           title: t('notify.apptDeclined', { name: p.name ?? '', doctor: p.doctor ?? '' }),

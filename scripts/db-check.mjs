@@ -24647,6 +24647,57 @@ await step(
     return `${n} treatments · ${priced} priced by a clinic-wide list · ${owned} with the clinic's own price · 0 differences`
   },
 )
+// 0153: a request past its asked-for time and a booking past its time are told to reception once
+await step(
+  '0153: a request and a booking past their time are told to reception once and listed apart',
+  async () => {
+    await asAdmin()
+    const req = (
+      await one(
+        `insert into appointment (status, source, contact_name, contact_phone, contact_channel, preferred_at, reason, reference)
+         values ('inquiry', 'online', 'Late Asker', '0788 000 444', 'whatsapp', now() - interval '1 day', 'Headache', 'MMC-T-0153')
+         returning id`,
+      )
+    ).id
+    const prac = (await one(`select id from practitioner where code = 'nf'`)).id
+    const booked = (
+      await one(
+        `insert into appointment (status, source, patient_id, practitioner_id, starts_at, ends_at, reason, approved_at)
+         values ('approved', 'reception', $1, $2, now() - interval '2 hours', now() - interval '90 minutes', 'Late visit', now() - interval '1 day')
+         returning id`,
+        [patientId, prac],
+      )
+    ).id
+    await as(staff.receptionist)
+    const n1 = (await one(`select overdue_booking_notices() as n`)).n
+    const n2 = (await one(`select overdue_booking_notices() as n`)).n
+    const notes = (await one(`select my_notifications(100) as j`)).j
+    const mine = (notes.items ?? []).filter((x) => x.kind === 'appt_overdue')
+    const toldReq = mine.find((x) => x.params?.appointment === req)
+    const toldBooked = mine.find((x) => x.params?.appointment === booked)
+    const overdue = (await one(`select appointments_overdue() as j`)).j
+    const open = (await one(`select inquiries_open() as j`)).j
+    const listed = overdue.some((x) => x.id === booked)
+    const stillOpen = open.some((x) => x.id === req)
+    // answered: no-show for the booking, rejected for the request — both leave the lists
+    await db.query(`select set_appointment_outcome($1, 'no_show')`, [booked])
+    await db.query(`select reject_inquiry($1, 'too late')`, [req])
+    const after = (await one(`select appointments_overdue() as j`)).j
+    const n3 = (await one(`select overdue_booking_notices() as n`)).n
+    await asAdmin()
+    if (n1 < 2 || n2 !== 0 || n3 !== 0) throw new Error(`told ${n1} then ${n2} then ${n3}`)
+    if (
+      !toldReq ||
+      String(toldReq.params.request) !== 'true' ||
+      !toldBooked ||
+      String(toldBooked.params.request) !== 'false'
+    )
+      throw new Error('reception not told of both, or not as request / booking')
+    if (!listed || !stillOpen) throw new Error('not listed for reception')
+    if (after.some((x) => x.id === booked)) throw new Error('no-show still listed as overdue')
+    return `told of ${n1} (once); the booking in appointments_overdue, the request still open; answered → gone`
+  },
+)
 // @@t141-end
 finish()
 

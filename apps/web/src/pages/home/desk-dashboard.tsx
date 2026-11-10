@@ -54,6 +54,8 @@ import { useCan, useSwitchedOff } from '@/lib/api/permissions'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { cn } from '@/lib/utils'
 import { CallsPanel } from './calls-panel'
+import { OverduePanel } from './overdue-panel'
+import { useOverdueNotices } from '@/lib/api/desk-ops'
 import { useDeskOrders } from '@/lib/api/lab'
 import { LabOrderRow } from '../lab/lab-parts'
 import { ErrorBox, ToAcceptSection } from './role-panels'
@@ -95,6 +97,8 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
   // head's and the manager's "Who did what"
   const link = useAnalyticsLink(periodSearch(period))
   const can = useCan(user)
+  // 0153: reception is told of the requests and bookings past their time while home is open
+  useOverdueNotices(can('appointment.approve'))
   // the desk's own work the manager has switched off: said once, at the top
   const switchedOff = useSwitchedOff(user)
   // the desks the person works at (their departments decide, 0085): each block of a desk shows
@@ -297,6 +301,13 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                           <ArrowRight size={14} aria-hidden="true" />
                         </StaffLink>
                       }
+                    />
+                    {/* 0153: shown only when a booking or a request is past its time */}
+                    <OverduePanel
+                      i={2}
+                      canAct={can('appointment.approve')}
+                      canArrive={can('visit.start')}
+                      hideWhenEmpty
                     />
                     <InquiriesPanel canAct={can('appointment.approve')} />
                   </>

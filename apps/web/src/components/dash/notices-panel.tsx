@@ -1,5 +1,6 @@
 import { Fragment, type CSSProperties } from 'react'
 import {
+  AlarmClock,
   ArrowRightLeft,
   Bell,
   FlaskConical,
@@ -46,6 +47,7 @@ const LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   appt_confirmed: { icon: CalendarCheck, tint: 'mint' },
   booked_arrived: { icon: CalendarCheck, tint: 'teal' },
   appt_declined: { icon: CalendarX, tint: 'coral' },
+  appt_overdue: { icon: AlarmClock, tint: 'coral' },
   message: { icon: Megaphone, tint: 'coral' },
   // 0088: past records (a request to answer, the answer, an emergency access)
   access_request: { icon: LockKeyhole, tint: 'amber' },

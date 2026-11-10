@@ -12,6 +12,8 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { AppointmentsPanel, InquiriesPanel } from '@/pages/home/desk-panels'
+import { OverduePanel } from '@/pages/home/overdue-panel'
+import { useOverdueNotices, type DayAppointment } from '@/lib/api/desk-ops'
 import { NewPatientForm } from '@/components/clinical/new-patient-form'
 import type { RegisterRequest } from '@/pages/home/inquiries-panel'
 import { NewBookingCard, type BookingPrefill } from '@/pages/home/inquiries-panel'
@@ -54,6 +56,18 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
   // booking, cancelling and the arrival follow Who may do what (the manager's switches)
   const can = useCan(user)
   const canAct = can('appointment.approve')
+  const rebook = (a: DayAppointment) =>
+    a.patientId &&
+    setBooking({
+      prefill: {
+        patientId: a.patientId,
+        patientLabel: `${a.fileNumber ?? ''} · ${a.name}`,
+        doctorUserId: a.doctorUserId,
+        reason: a.reason,
+      },
+    })
+  // 0153: reception is told of the requests and bookings past their time while this page is open
+  useOverdueNotices(canAct)
   const switchedOff = useSwitchedOff(user)
   const label =
     offset === 0
@@ -152,24 +166,26 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
                 />
               </Reveal>
             ) : (
-              <AppointmentsPanel
-                key={offset}
-                day={day}
-                canAct={canAct}
-                canArrive={can('visit.start')}
-                onSelect={setSelected}
-                onRebook={(a) =>
-                  a.patientId &&
-                  setBooking({
-                    prefill: {
-                      patientId: a.patientId,
-                      patientLabel: `${a.fileNumber ?? ''} · ${a.name}`,
-                      doctorUserId: a.doctorUserId,
-                      reason: a.reason,
-                    },
-                  })
-                }
-              />
+              <div className="flex min-w-0 flex-col gap-4">
+                <AppointmentsPanel
+                  key={offset}
+                  day={day}
+                  canAct={canAct}
+                  canArrive={can('visit.start')}
+                  onSelect={setSelected}
+                  onRebook={rebook}
+                />
+                {/* 0153: the bookings and requests past their time, answered here */}
+                <OverduePanel
+                  i={2}
+                  canAct={canAct}
+                  canArrive={can('visit.start')}
+                  onSelect={setSelected}
+                  onRebook={rebook}
+                  onRegister={setRegistering}
+                  onBookingClosed={() => setRegistering(null)}
+                />
+              </div>
             )}
             <div className="flex min-w-0 flex-col gap-4">
               {booked && (
