@@ -5003,8 +5003,8 @@
       "patient": "Patient (optional)",
       "noPatient": "No patient chosen: the name and file are left blank, to write.",
       "rows": "Lines to write on",
-      "rowCount": "{{count}} lines",
-      "print": "Print the blank prescription"
+      "print": "Print the blank prescription",
+      "rowsHint": "Type a number from 1 to {{max}}; beyond one page the lines continue on the next."
     }
   },
   "visitConfirm": {

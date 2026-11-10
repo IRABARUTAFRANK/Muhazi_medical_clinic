@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
-import { Select } from '@/components/ui/select'
 import { docStamp } from '@/lib/doc-style'
 import { buildPrescriptionHtml, type RxDoc } from '@/lib/prescription-doc'
 import { useLetterhead } from '@/lib/report-parts'
@@ -24,7 +23,8 @@ export interface BlankRxPatient {
   memberNo?: string | null
 }
 
-const ROWS = [4, 6, 8, 10, 12, 15]
+/** The most lines on one sheet (beyond a page the lines continue on the next). */
+const MAX_ROWS = 30
 
 /**
  * 0155: a prescription sheet to write by hand — the clinic's letterhead, the patient, numbered
@@ -48,7 +48,10 @@ export function BlankRxForm({
   const { t } = useTranslation()
   const letterhead = useLetterhead()
   const { data: creds } = useMyCredentials(user.id)
-  const [rows, setRows] = useState(8)
+  // the doctor types how many lines (1–30); an emptied field is typed again, not refused
+  const [rows, setRows] = useState('8')
+  const typed = Math.floor(Number(rows))
+  const lines = typed >= 1 ? Math.min(MAX_ROWS, typed) : 0
   const [search, setSearch] = useState('')
   const [chosen, setChosen] = useState<BlankRxPatient | null>(null)
   const { data: hits = [] } = useFindPatients(searchable ? search : '')
@@ -80,7 +83,7 @@ export function BlankRxForm({
       medicines: [],
       givenHere: [],
       outside: false,
-      blankRows: rows,
+      blankRows: lines,
       prescriber: {
         name: user.name,
         title: creds?.specialty?.trim() || roleLabel(user, t),
@@ -152,19 +155,18 @@ export function BlankRxForm({
         </div>
       )}
       <div className="flex flex-wrap items-end gap-3">
-        <Select
+        <Field
           label={t('rxDoc.blank.rows')}
-          value={String(rows)}
-          onChange={(e) => setRows(Number(e.target.value))}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={MAX_ROWS}
+          step={1}
+          value={rows}
+          onChange={(e) => setRows(e.target.value)}
           wrapperClassName="w-40"
-        >
-          {ROWS.map((n) => (
-            <option key={n} value={n}>
-              {t('rxDoc.blank.rowCount', { count: n })}
-            </option>
-          ))}
-        </Select>
-        <Button type="button" variant="primary" onClick={print}>
+        />
+        <Button type="button" variant="primary" onClick={print} disabled={!lines}>
           <Printer size={16} aria-hidden="true" />
           {t('rxDoc.blank.print')}
         </Button>

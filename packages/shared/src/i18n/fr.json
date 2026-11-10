@@ -5003,8 +5003,8 @@
       "patient": "Patient (facultatif)",
       "noPatient": "Aucun patient choisi : le nom et le dossier restent vides, à écrire.",
       "rows": "Lignes à remplir",
-      "rowCount": "{{count}} lignes",
-      "print": "Imprimer l’ordonnance vierge"
+      "print": "Imprimer l’ordonnance vierge",
+      "rowsHint": "Tapez un nombre de 1 à {{max}} ; au-delà d’une page, les lignes continuent sur la suivante."
     }
   },
   "visitConfirm": {

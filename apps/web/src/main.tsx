@@ -31,6 +31,16 @@ router.subscribe('onResolved', (e) => {
   if (e.pathChanged || from !== to) trace('route', { to })
 })
 
+// A tab left open across an update asks for files the new deploy no longer has (a page's
+// code, a language's words): it reloads itself once instead of failing or showing raw keys.
+window.addEventListener('vite:preloadError', (e) => {
+  e.preventDefault()
+  const key = 'mmc.reloaded-for-update'
+  if (sessionStorage.getItem(key) === window.location.href) return
+  sessionStorage.setItem(key, window.location.href)
+  window.location.reload()
+})
+
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Missing #root element')
 

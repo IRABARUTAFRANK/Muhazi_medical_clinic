@@ -5012,8 +5012,8 @@
       "patient": "Umurwayi (si itegeko)",
       "noPatient": "Nta murwayi wahiswemo: izina na dosiye bisigara ubusa, byandikwa n’ikaramu.",
       "rows": "Imirongo yo kwandikaho",
-      "rowCount": "Imirongo {{count}}",
-      "print": "Cyapa urupapuro rw’imiti"
+      "print": "Cyapa urupapuro rw’imiti",
+      "rowsHint": "Andika umubare kuva kuri 1 kugeza kuri {{max}}; irenze urupapuro rumwe, imirongo ikomereza ku rukurikira."
     }
   },
   "visitConfirm": {
