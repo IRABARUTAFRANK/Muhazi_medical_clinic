@@ -20,6 +20,7 @@ import type { Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { PeriodFilter } from '@/components/dash/period-filter'
 import { buttonVariants } from '@/components/ui/button'
+import { WideResult } from '@/components/clinical/wide-result'
 import { OpenFileLink } from '@/components/clinical/file-panel'
 import { NextPatientPanel } from '@/components/clinical/next-patient-panel'
 import { ListBar, Pager } from '@/components/ui/list-tools'
@@ -312,6 +313,24 @@ export function ResultsPage({ user }: { user: StaffUser }) {
                     </div>
                     {(o.findings || o.impression) && (
                       <span className="border-border bg-card border-l-green-dot block rounded-md border border-l-2 px-3 py-2 text-[13px]">
+                        <span className="float-right ml-2">
+                          <WideResult
+                            result={{
+                              test: o.test,
+                              patient: o.patient,
+                              station: t(`register.stations.${o.station}`, {
+                                defaultValue: o.station,
+                              }),
+                              findings: o.findings,
+                              impression: o.impression,
+                              verified: !!o.verified,
+                              by: o.resultBy,
+                              at: o.resultAt,
+                              orderedAt: o.orderedAt,
+                              reason: o.reason,
+                            }}
+                          />
+                        </span>
                         {o.findings && <span className="block">{o.findings}</span>}
                         {o.impression && (
                           <span className="block font-semibold">{o.impression}</span>

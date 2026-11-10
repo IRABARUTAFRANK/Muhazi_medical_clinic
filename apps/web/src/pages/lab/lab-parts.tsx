@@ -20,6 +20,7 @@ import { formatDate, formatTime } from '@mmc/shared'
 import { Pill } from '@/components/dash/kit'
 import { card, focusedForm, tagClass, type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { WideResult } from '@/components/clinical/wide-result'
 import { controlClass, labelClass } from '@/components/ui/field'
 import { StaffLink } from '@/components/staff/staff-link'
 import { useLabActions, type LabOrder, type TestStatus } from '@/lib/api/lab'
@@ -454,6 +455,19 @@ export function LabOrderRow({
         <span className="border-green/30 bg-green-bg/60 flex gap-2 rounded-md border px-3 py-2 text-[13px]">
           <CircleCheck size={14} aria-hidden="true" className="text-green mt-0.5 flex-none" />
           <span className="min-w-0 flex-1">
+            <span className="float-right ml-2">
+              <WideResult
+                result={{
+                  test: o.test,
+                  patient: o.patient,
+                  findings: o.findings,
+                  impression: o.impression,
+                  verified: !!o.verified,
+                  by: o.resultBy ?? null,
+                  at: o.resultAt ?? null,
+                }}
+              />
+            </span>
             {o.findings && <span className="block">{o.findings}</span>}
             {o.impression && <span className="block font-semibold">{o.impression}</span>}
             {o.resultBy && o.resultAt && (

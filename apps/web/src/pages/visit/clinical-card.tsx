@@ -27,6 +27,7 @@ import { formatDate, formatRwf, formatTime, type StaffUser, type Tone } from '@m
 import { Badge } from '@/components/ui/badge'
 import { Reveal } from '@/components/ui/reveal'
 import { Button } from '@/components/ui/button'
+import { WideResult } from '@/components/clinical/wide-result'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
@@ -2487,6 +2488,30 @@ export function ClinicalCard({
         />
         {o.result && (
           <span className="bg-green-bg/60 mt-1 block rounded-md px-2.5 py-1.5 text-[13px]">
+            {/* 0150: the result at reading size, in a panel */}
+            <span className="float-right ml-2">
+              <WideResult
+                result={{
+                  test: o.test,
+                  patient: patient?.name ?? null,
+                  station: o.station
+                    ? t(`register.stations.${o.station}`, { defaultValue: o.station })
+                    : null,
+                  region: o.result.detail?.region ?? null,
+                  findings: o.result.findings ?? null,
+                  impression: o.result.impression ?? null,
+                  verified: o.result.verified,
+                  corrected: !!o.result.corrected,
+                  correctionReason: o.result.correctionReason ?? null,
+                  by: o.result.by ?? null,
+                  at: o.result.at ?? null,
+                  doer: o.doer ?? null,
+                  orderedBy: null,
+                  orderedAt: o.at ?? null,
+                  reason: o.reason ?? null,
+                }}
+              />
+            </span>
             {o.result.detail?.region && (
               <span className="text-ink-2 block text-xs font-semibold">
                 {t('clinical.region')}: {o.result.detail.region}

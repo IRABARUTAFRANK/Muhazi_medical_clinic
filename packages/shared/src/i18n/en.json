@@ -10701,7 +10701,12 @@
     "meHint": "No nurse is told; you record it done here.",
     "sendToMe": "You do it yourself: no nurse is told. Record each time with Given / Done on the order below.",
     "keepYes": "Yes, I do it",
-    "keptForMe": "“{{what}}” is yours to do: record each time below."
+    "keptForMe": "“{{what}}” is yours to do: record each time below.",
+    "act": "Medical act",
+    "actPick": "Choose the act from the clinic’s treatments…",
+    "typedAct": "Written: {{name}} (not in the price list)",
+    "writeAct": "Write “{{name}}” — not in the price list, not billed",
+    "typedHint": "Not in the price list: nothing is billed when it is done. Ask the manager to add it under Prices › Treatments so it can be billed."
   },
   "sixSteps": {
     "cardTitle": "The visit, in six steps",
@@ -10848,5 +10853,10 @@
     "bookDescription": "Choose a service and a doctor at Muhazi Medical Clinic, Kiramuruzi, and ask for a time; the clinic confirms by phone or SMS.",
     "loginTitle": "Staff sign in — Muhazi Medical Clinic",
     "displayTitle": "Waiting room — Muhazi Medical Clinic"
+  },
+  "results": {
+    "openWide": "Open wide",
+    "wideAria": "Result of {{test}}, full view",
+    "orderedBy": "ordered by {{name}}"
   }
 }

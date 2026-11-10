@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Pill, Plus, Send, Syringe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { formatRwf } from '@mmc/shared'
 import { Field } from '@/components/ui/field'
 import { Reveal } from '@/components/ui/reveal'
 import { SearchSelect } from '@/components/ui/search-select'
@@ -24,6 +25,9 @@ const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other
 const FREQUENCIES = ['STAT', 'OD', 'BD', 'TDS', 'QID', 'Q8H', 'Q6H', 'NOCTE', 'PRN'] as const
 /** "All the nurses" in the For whom list. */
 const ALL = ''
+
+/** The chooser's row for an act that is not in the price list (written, not billed). */
+const TYPED_ACT = '__typed__'
 
 const emptyForm = (kind: NurseOrderKind) => ({
   kind,
@@ -232,25 +236,36 @@ export function NurseOrdersStep({
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div className="col-span-2">
-                  <Field
-                    label={t('nurseOrders.what')}
-                    value={f.text}
-                    onChange={(e) => set({ text: e.target.value })}
-                    placeholder={t('nurseOrders.whatPh')}
-                  />
-                </div>
-                <div className="col-span-2 min-w-0 lg:col-span-1">
+                {/* 0150: the act is one of the clinic's treatments (billed each time it is done);
+                    written only when it is not in the price list — then nothing is billed */}
+                <div className="col-span-2 min-w-0 lg:col-span-3">
                   <SearchSelect
-                    label={t('nurseOrders.billAs')}
-                    value={f.serviceId}
-                    onChange={(v) => set({ serviceId: v })}
-                    emptyLabel={t('nurseOrders.notBilledChoice')}
-                    options={acts.map((s) => ({
-                      value: s.id,
-                      label: treatmentName(s, i18n.language),
-                    }))}
+                    label={t('nurseOrders.act')}
+                    value={f.serviceId || (f.text ? TYPED_ACT : '')}
+                    onChange={(v) => {
+                      if (v === TYPED_ACT) set({ serviceId: '' })
+                      else set({ serviceId: v, text: '' })
+                    }}
+                    emptyLabel={t('nurseOrders.actPick')}
+                    options={[
+                      ...(f.text && !f.serviceId
+                        ? [{ value: TYPED_ACT, label: t('nurseOrders.typedAct', { name: f.text }) }]
+                        : []),
+                      ...acts.map((s) => ({
+                        value: s.id,
+                        label: treatmentName(s, i18n.language),
+                        hint: s.cashPrice != null ? formatRwf(s.cashPrice) : undefined,
+                        keywords: [s.code, s.nameEn, s.nameFr, s.nameKin].filter(Boolean).join(' '),
+                      })),
+                    ]}
+                    onWrite={(text) => set({ serviceId: '', text })}
+                    writeLabel={(text) => t('nurseOrders.writeAct', { name: text })}
                   />
+                  {!f.serviceId && f.text && (
+                    <span className="text-amber block pt-1 text-[12px] font-semibold">
+                      {t('nurseOrders.typedHint')}
+                    </span>
+                  )}
                 </div>
                 <Field
                   label={t('nurseOrders.quantity')}

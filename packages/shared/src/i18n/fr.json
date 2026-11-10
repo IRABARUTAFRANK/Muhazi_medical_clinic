@@ -10701,7 +10701,12 @@
     "meHint": "Aucun infirmier n’est prévenu ; vous l’enregistrez fait ici.",
     "sendToMe": "Vous le faites vous-même : aucun infirmier n’est prévenu. Enregistrez chaque fois avec Donné / Fait sur l’ordre ci-dessous.",
     "keepYes": "Oui, je le fais",
-    "keptForMe": "« {{what}} » est à faire par vous : enregistrez chaque fois ci-dessous."
+    "keptForMe": "« {{what}} » est à faire par vous : enregistrez chaque fois ci-dessous.",
+    "act": "Acte médical",
+    "actPick": "Choisir l’acte parmi les actes de la clinique…",
+    "typedAct": "Écrit : {{name}} (pas dans la liste des prix)",
+    "writeAct": "Écrire « {{name}} » — pas dans la liste des prix, non facturé",
+    "typedHint": "Pas dans la liste des prix : rien n’est facturé quand c’est fait. Demandez au gérant de l’ajouter sous Prix › Actes pour qu’il soit facturé."
   },
   "sixSteps": {
     "cardTitle": "La consultation en six étapes",
@@ -10848,5 +10853,10 @@
     "bookDescription": "Choisissez un service et un médecin à Muhazi Medical Clinic, Kiramuruzi, et demandez un horaire ; la clinique confirme par téléphone ou SMS.",
     "loginTitle": "Connexion du personnel — Muhazi Medical Clinic",
     "displayTitle": "Salle d’attente — Muhazi Medical Clinic"
+  },
+  "results": {
+    "openWide": "Ouvrir en grand",
+    "wideAria": "Résultat de {{test}}, vue complète",
+    "orderedBy": "demandé par {{name}}"
   }
 }

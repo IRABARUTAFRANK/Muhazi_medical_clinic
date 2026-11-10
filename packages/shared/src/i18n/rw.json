@@ -10710,7 +10710,12 @@
     "meHint": "Nta muforomo ubimenyeshwa; ni wowe ubyandika ko byakozwe hano.",
     "sendToMe": "Urabyikorera: nta muforomo ubimenyeshwa. Andika buri gihe ukoresheje Byatanzwe / Byakozwe kuri iri tegeko hepfo.",
     "keepYes": "Yego, ndabikora",
-    "keptForMe": "“{{what}}” ni wowe ubikora: andika buri gihe hepfo."
+    "keptForMe": "“{{what}}” ni wowe ubikora: andika buri gihe hepfo.",
+    "act": "Igikorwa cy’ubuvuzi",
+    "actPick": "Hitamo igikorwa mu buvuzi bw’ivuriro…",
+    "typedAct": "Cyanditswe: {{name}} (ntikiri ku rutonde rw’ibiciro)",
+    "writeAct": "Andika “{{name}}” — ntikiri ku rutonde rw’ibiciro, ntikishyuzwa",
+    "typedHint": "Ntikiri ku rutonde rw’ibiciro: nta cyishyuzwa iyo gikozwe. Saba umuyobozi kugishyira muri Ibiciro › Ubuvuzi kugira ngo cyishyuzwe."
   },
   "sixSteps": {
     "cardTitle": "Kwivuza mu ntambwe esheshatu",
@@ -10857,5 +10862,10 @@
     "bookDescription": "Hitamo serivisi na muganga kuri Muhazi Medical Clinic, Kiramuruzi, usabe igihe; ivuriro rirabyemeza kuri telefoni cyangwa SMS.",
     "loginTitle": "Kwinjira kw’abakozi — Muhazi Medical Clinic",
     "displayTitle": "Icyumba cyo gutegerezamo — Muhazi Medical Clinic"
+  },
+  "results": {
+    "openWide": "Fungura mu buryo bugari",
+    "wideAria": "Igisubizo cya {{test}}, mu buryo bwuzuye",
+    "orderedBy": "byasabwe na {{name}}"
   }
 }
