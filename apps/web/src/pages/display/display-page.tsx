@@ -36,6 +36,8 @@ import './display.css'
  */
 
 const LANG_EVERY_MS = 6_000
+/** The three languages of the clinic: a call is said once in each (0162). */
+const ALL_LANGS: Lang[] = ['rw', 'en', 'fr']
 /** One desk after the other, in the slideshow. */
 const SLIDE_EVERY_MS = 10_000
 const FLASH_MS = 6_000
@@ -154,13 +156,29 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
   }, [rotating])
   const lang = langs[li % langs.length] ?? 'en'
   const t = i18n.getFixedT(lang)
+  // the language on the screen at the moment of a call, for the voice (read inside effects)
+  const langNow = useRef(lang)
+  useEffect(() => {
+    langNow.current = lang
+  }, [lang])
+  /**
+   * 0162: the three languages a call is said in, the first the one on the screen right now,
+   * then the screen's other languages in their order, then the rest of the three.
+   */
+  const voiceOrder = (): Lang[] => {
+    const first = langNow.current
+    const rest = [...langsKey.split(','), ...ALL_LANGS].filter(
+      (l, i, a) => l !== first && a.indexOf(l) === i,
+    ) as Lang[]
+    return [first, ...rest].slice(0, 3)
+  }
   // 0159: the screen's languages are loaded (the page starts with the browser's own only),
   // else their words would fall back to English; the page renders again once they are in
   const langsKey = langs.join(',')
   const [, langsLoaded] = useState('')
   useEffect(() => {
     let on = true
-    void Promise.all(langsKey.split(',').map((l) => ensureLang(l as Lang))).then(() => {
+    void Promise.all(ALL_LANGS.map((l) => ensureLang(l))).then(() => {
       if (on) langsLoaded(langsKey)
     })
     return () => {
@@ -211,7 +229,6 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
   const freshKeys = new Set(news.fresh)
   const chimeOn = (data?.chime ?? false) && sound
   const voiceOn = (data?.voice ?? false) && sound && started
-  const voiceRepeat = data?.voiceRepeat ?? 3
   const dinged = useRef(0)
   useEffect(() => {
     if (!news.stamp) return
@@ -219,14 +236,14 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
       dinged.current = news.stamp
       if (chimeOn && audio.current) ding(audio.current)
       if (voiceOn && announcer.current) {
-        // 0159: "Habimana Eric, you are needed in Consultation by Dr Mukamana", in each language
-        // of the screen in turn, the whole round said voiceRepeat times, after the chime
-        const voiceLangs = langsKey.split(',') as Lang[]
+        // 0162: "Habimana Eric, you are needed in Consultation by Dr Mukamana", three times, each
+        // in a different language — first the one on the screen right now — after the chime
+        const voiceLangs = voiceOrder()
         let first = true
         for (const key of news.fresh) {
           const c = calls.find((x) => x.key === key)
           if (!c) continue
-          for (let round = 0; round < voiceRepeat; round++) {
+          {
             for (const vl of voiceLangs) {
               const tv = i18n.getFixedT(vl)
               const department = deskPhrase(
@@ -261,7 +278,7 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     return () => window.clearTimeout(id)
     // the calls are read at the moment they arrive only
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [news.stamp, chimeOn, voiceOn, langsKey, voiceRepeat, setNews])
+  }, [news.stamp, chimeOn, voiceOn, langsKey, setNews])
 
   // A result ready, new since the last read: said after the calls (lower priority), once.
   const results = data?.results ?? []
@@ -277,7 +294,7 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     for (const id of resultNews.fresh) {
       const r = results.find((x) => x.id === id)
       if (!r || !r.ticket) continue
-      for (const vl of langsKey.split(',') as Lang[]) {
+      for (const vl of voiceOrder()) {
         const tv = i18n.getFixedT(vl)
         announcer.current.say(
           {

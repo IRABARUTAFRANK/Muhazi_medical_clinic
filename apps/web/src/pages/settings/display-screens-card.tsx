@@ -11,7 +11,6 @@ import {
   useDisplayDevices,
   useDisplayScreenActions,
   useDisplayScreens,
-  VOICE_REPEATS,
   type DisplayScreen,
   type DisplayScreenInput,
 } from '@/lib/api/display'
@@ -255,23 +254,6 @@ export function DisplayScreensCard() {
                 />
                 {t('displayScreens.voice')}
               </label>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className={labelClass}>
-                  {t('displayScreens.voiceRepeat')}
-                  <select
-                    className={cn(controlClass, 'w-full font-normal')}
-                    value={draft.voiceRepeat}
-                    disabled={!draft.voice}
-                    onChange={(e) => setDraft({ ...draft, voiceRepeat: Number(e.target.value) })}
-                  >
-                    {VOICE_REPEATS.map((n) => (
-                      <option key={n} value={n}>
-                        {t('displayScreens.voiceTimes', { count: n })}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
               <span className="text-ink-3 text-[13px]">{t('displayScreens.voiceLangHint')}</span>
               <label className={checkRow}>
                 <input
@@ -344,9 +326,7 @@ export function DisplayScreensCard() {
                         : t('displayScreens.allDesks'),
                       t(s.showNames ? 'displayScreens.names' : 'displayScreens.ticketsOnly'),
                       t(s.chime ? 'displayScreens.withChime' : 'displayScreens.noChime'),
-                      s.voice
-                        ? t('displayScreens.voiceOn', { count: s.voiceRepeat })
-                        : t('displayScreens.voiceOff'),
+                      s.voice ? t('displayScreens.voiceOn') : t('displayScreens.voiceOff'),
                       t(s.ticker ? 'displayScreens.tickerOn' : 'displayScreens.tickerOff'),
                       s.languages.map((l) => l.toUpperCase()).join(' · '),
                       s.message ? `“${s.message}”` : null,
