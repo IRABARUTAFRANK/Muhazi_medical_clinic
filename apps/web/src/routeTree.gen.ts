@@ -42,6 +42,7 @@ import { Route as AppResultsRouteImport } from './routes/app/results'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppStaffRouteImport } from './routes/app/staff'
 import { Route as AppStockRouteImport } from './routes/app/stock'
+import { Route as AppTvSetupRouteImport } from './routes/app/tv-setup'
 import { Route as AppVisitRouteImport } from './routes/app/visit'
 import { Route as AppVisitsRouteImport } from './routes/app/visits'
 import { Route as AppVitalsRouteImport } from './routes/app/vitals'
@@ -212,6 +213,11 @@ const AppStockRoute = AppStockRouteImport.update({
   path: '/stock',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTvSetupRoute = AppTvSetupRouteImport.update({
+  id: '/tv-setup',
+  path: '/tv-setup',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVisitRoute = AppVisitRouteImport.update({
   id: '/visit',
   path: '/visit',
@@ -266,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/stock': typeof AppStockRoute
+  '/app/tv-setup': typeof AppTvSetupRoute
   '/app/visit': typeof AppVisitRoute
   '/app/visits': typeof AppVisitsRoute
   '/app/vitals': typeof AppVitalsRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/stock': typeof AppStockRoute
+  '/app/tv-setup': typeof AppTvSetupRoute
   '/app/visit': typeof AppVisitRoute
   '/app/visits': typeof AppVisitsRoute
   '/app/vitals': typeof AppVitalsRoute
@@ -344,6 +352,7 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRoute
   '/app/staff': typeof AppStaffRoute
   '/app/stock': typeof AppStockRoute
+  '/app/tv-setup': typeof AppTvSetupRoute
   '/app/visit': typeof AppVisitRoute
   '/app/visits': typeof AppVisitsRoute
   '/app/vitals': typeof AppVitalsRoute
@@ -385,6 +394,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/staff'
     | '/app/stock'
+    | '/app/tv-setup'
     | '/app/visit'
     | '/app/visits'
     | '/app/vitals'
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/staff'
     | '/app/stock'
+    | '/app/tv-setup'
     | '/app/visit'
     | '/app/visits'
     | '/app/vitals'
@@ -462,6 +473,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/staff'
     | '/app/stock'
+    | '/app/tv-setup'
     | '/app/visit'
     | '/app/visits'
     | '/app/vitals'
@@ -710,6 +722,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStockRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tv-setup': {
+      id: '/app/tv-setup'
+      path: '/tv-setup'
+      fullPath: '/app/tv-setup'
+      preLoaderRoute: typeof AppTvSetupRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/visit': {
       id: '/app/visit'
       path: '/visit'
@@ -769,6 +788,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppStaffRoute: typeof AppStaffRoute
   AppStockRoute: typeof AppStockRoute
+  AppTvSetupRoute: typeof AppTvSetupRoute
   AppVisitRoute: typeof AppVisitRoute
   AppVisitsRoute: typeof AppVisitsRoute
   AppVitalsRoute: typeof AppVitalsRoute
@@ -804,6 +824,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppStaffRoute: AppStaffRoute,
   AppStockRoute: AppStockRoute,
+  AppTvSetupRoute: AppTvSetupRoute,
   AppVisitRoute: AppVisitRoute,
   AppVisitsRoute: AppVisitsRoute,
   AppVitalsRoute: AppVitalsRoute,
