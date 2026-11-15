@@ -1,10 +1,23 @@
 import { createElement, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { AudioLines, GalleryHorizontal, LayoutGrid, Volume2, VolumeX, WifiOff } from 'lucide-react'
+import {
+  LogIn,
+  Tv,
+  AudioLines,
+  GalleryHorizontal,
+  LayoutGrid,
+  Volume2,
+  VolumeX,
+  WifiOff,
+} from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '@mmc/shared'
+import { setAfterSignIn } from '@/lib/after-sign-in'
 import i18n from '@/i18n'
 import { stationIconFor } from '@/components/dash/kit-style'
 import {
+  forgetDisplayKey,
+  TV_SETUP_PATH,
   useDisplayBoard,
   type BoardDesk,
   type BoardNow,
@@ -124,7 +137,17 @@ const orderDesks = (desks: readonly BoardDesk[]): BoardDesk[] =>
 
 export function DisplayPage({ screenKey }: { screenKey: string }) {
   const { t: tUi } = useTranslation()
+  const navigate = useNavigate()
   const uiLang = usePrefs((s) => s.lang)
+  // 0158: setting the TV up is a staff sign-in that comes back here; "Set up again" forgets the key
+  const toSetup = () => {
+    setAfterSignIn(TV_SETUP_PATH)
+    void navigate({ to: '/', hash: 'signin' })
+  }
+  const resetTv = () => {
+    forgetDisplayKey()
+    void navigate({ to: '/display', search: { key: '' } })
+  }
   const { data, error, isError, failureCount } = useDisplayBoard(screenKey)
   const now = useNow(1_000)
 
@@ -369,10 +392,31 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
         </div>
       </header>
 
-      {screenKey === '' ? (
-        <p className="qd-notice">{t('display.noKey')}</p>
-      ) : unknown ? (
-        <p className="qd-notice">{t('display.unknown')}</p>
+      {screenKey === '' || unknown ? (
+        <section className="qd-setup-card qd-setup-inline">
+          <div className="qd-setup-head">
+            <span className="qd-icon" aria-hidden="true">
+              <Tv />
+            </span>
+            <div className="min-w-0">
+              <h1 className="qd-setup-title">{t('tvSetup.title')}</h1>
+              <p className="qd-setup-sub">{t(unknown ? 'tvSetup.unknown' : 'tvSetup.intro')}</p>
+            </div>
+          </div>
+          <p className="qd-setup-lead">{t('tvSetup.how')}</p>
+          <button
+            type="button"
+            className="qd-start"
+            onClick={() => {
+              if (unknown) forgetDisplayKey()
+              toSetup()
+            }}
+            autoFocus
+          >
+            <LogIn size={22} aria-hidden="true" className="mr-2 inline" />
+            {t('tvSetup.signIn')}
+          </button>
+        </section>
       ) : !data ? (
         <p className="qd-notice" aria-busy="true">
           …
@@ -403,6 +447,9 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
             <p>{t('display.startLead')}</p>
             <button type="button" className="qd-start" onClick={start} autoFocus>
               {t('display.start')}
+            </button>
+            <button type="button" className="qd-setup-again" onClick={resetTv}>
+              {t('tvSetup.again')}
             </button>
           </div>
         </div>

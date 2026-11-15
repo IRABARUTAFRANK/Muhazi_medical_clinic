@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Logo } from '@/components/public/logo'
 import { PIN_RE } from '@/lib/api/staff'
-import { homeRouteFor } from '@/lib/roles'
+import { takeAfterSignIn } from '@/lib/after-sign-in'
 import { isLive } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import {
@@ -119,7 +119,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
       if (result.step === 'done') {
         // Another tab of this browser while the person is active: no new code.
         void navigate({
-          to: result.user.mustChangePin ? '/app/change-pin' : homeRouteFor(result.user),
+          to: result.user.mustChangePin ? '/app/change-pin' : takeAfterSignIn(result.user),
         })
         return
       }
@@ -180,7 +180,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
         return
       }
       void navigate({
-        to: result.user.mustChangePin ? '/app/change-pin' : homeRouteFor(result.user),
+        to: result.user.mustChangePin ? '/app/change-pin' : takeAfterSignIn(result.user),
       })
     } catch {
       setError(t('login.error'))

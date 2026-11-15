@@ -5075,7 +5075,8 @@
         "recordsApprove": "gusubiza ubusabe bwo kureba dosiye",
         "stockSellWalkin": "kugurisha abaguzi baje kugura gusa ibiri mu bubiko bwawe",
         "chargeOverride": "guhindura uko serivisi yishyurwa ku murwayi",
-        "visitLeaveOwing": "kureka umurwayi akagenda afite amafaranga asigaye"
+        "visitLeaveOwing": "kureka umurwayi akagenda afite amafaranga asigaye",
+        "displaySetup": "gutegura televiziyo y’icyumba cyo gutegerereza"
       }
     },
     "f": {
@@ -5126,6 +5127,10 @@
       "visit.leave_owing": {
         "name": "Kureka umurwayi akagenda afite amafaranga asigaye",
         "hint": "Gusoza kwivuza hasigaye amafaranga yo kwishyura, utanga impamvu: ayo mafaranga aguma ku murwayi nk’umwenda (“Asigaye kwishyurwa” kwa uwakira ubwishyu, “Afite umwenda…” kuri dosiye, aho bakira abarwayi igihe azagaruka). Umuyobozi, uwakira ubwishyu, aho bakira abarwayi n’abaganga mu ntangiriro; umunyamabanga ntabwo na rimwe."
+      },
+      "display.setup": {
+        "name": "Gutegura televiziyo y’icyumba cyo gutegerereza",
+        "hint": "Kwinjira kuri televiziyo no guhitamo ecran yerekana. Umuyobozi n’abakira abarwayi mbere na mbere."
       }
     },
     "desks": {
@@ -6484,10 +6489,10 @@
         "body": "Televiziyo ntizongera kwerekana ikintu; ongeraho mugaragaza nshya kugira ngo ubone link nshya.",
         "yes": "Yego, hagarika"
       },
-      "renew": {
-        "title": "Umurongo mushya wa “{{name}}”?",
-        "body": "Umurongo wa kera uhita uhagarara: fungura mushya kuri iyo TV. Umurongo ubwawo ntuhinduka n’umuyoboro — ni aderesi y’uru rubuga n’urufunguzo rw’icyuma.",
-        "yes": "Yego, umurongo mushya"
+      "disconnect": {
+        "title": "Hagarika “{{name}}”?",
+        "body": "Iyo televiziyo ntacyo izerekana, kugeza umuntu ongeye kuyinjiramo.",
+        "yes": "Yego, hagarika"
       }
     },
     "nextPatient": {
@@ -8535,7 +8540,9 @@
     "9bbd2911": "Banza ushyire uyu muntu muri iri shami.",
     "da828030": "Hasigaye amafaranga yo kwishyura: banza wakire ubwishyu, cyangwa ufite “Kureka umurwayi akagenda afite amafaranga asigaye” asoze kwivuza hasigaye umwenda.",
     "af56f7e3": "Urutonde rw’ubuvuzi gusa ni rwo rufite imirongo yo kongeraho nk’ubuvuzi.",
-    "c3b95821": "Urutonde rw’ivuriro ryose rwikorera ubuvuzi bwarwo: nta cyo kongeraho n’intoki."
+    "c3b95821": "Urutonde rw’ivuriro ryose rwikorera ubuvuzi bwarwo: nta cyo kongeraho n’intoki.",
+    "3385fd70": "Iyi televiziyo ntizwi cyangwa yari yamaze guhagarikwa.",
+    "b65a487b": "Ha televiziyo izina rigufi (inyuguti 60 ntarengwa)."
   },
   "panel": {
     "close": "Funga",
@@ -10242,7 +10249,7 @@
   },
   "displayScreens": {
     "title": "Mugaragaza zo mu cyumba cyo gutegerereza",
-    "lead": "Televiziyo iri aho abarwayi bategerereza yerekana uwahamagawe, aho ajya, ukurikira, n’abafite ibisubizo biteguye. Andika buri mugaragaza hano, hanyuma ufungure link yayo kuri televiziyo (link igaragara rimwe gusa).",
+    "lead": "Televiziyo ku ruhande rw’abategereje yerekana uhamagawe, aho ajya n’ukurikira, n’ibisubizo byiteguye. Tunganya buri ecran hano (aho bakorera, indimi, amajwi). Kuri televiziyo, fungura urupapuro /display rw’uru rubuga winjire: televiziyo ihita yerekana ecran wahisemo — nta link yo kwandika.",
     "add": "Ongeraho mugaragaza",
     "name": "Izina rya mugaragaza",
     "namePh": "Televiziyo y’aho bategerereza",
@@ -10255,11 +10262,6 @@
     "messagePh": "Mwibike itike yanyu.",
     "save": "Kora mugaragaza",
     "saveChanges": "Bika impinduka",
-    "linkTitle": "Link ya “{{name}}” — igaragara rimwe gusa",
-    "linkLead": "Fungura iyi aderesi muri navigateur ya TV (Chrome, ku mugaragaro wose) ukande Tangira. Ntiyongera kugaragara: iyo yabuze, kanda Umurongo mushya ku cyuma — umurongo wa kera urahagarara, mushya ugaragara rimwe.",
-    "openOnTv": "Fungura kuri televiziyo: iyi aderesi nk’uko iri (urufunguzo ruri muri yo).",
-    "copy": "Koporora link",
-    "copied": "Byakoporowe",
     "revoke": "Hagarika",
     "edit": "Hindura",
     "revoked": "Yahagaritswe",
@@ -10273,7 +10275,7 @@
     "saved": "Mugaragaza yabitswe; televiziyo ibikurikiza mu masegonda make.",
     "revokedDone": "Mugaragaza yahagaritswe: link yayo ntigikora.",
     "createdBy": "Yongewe na {{name}} ku wa {{date}}",
-    "hint": "Mugaragaza ntijya yerekana ikintu cy’ubuvuzi: itike gusa, amazina (iyo byatoranyijwe), icyumba cyo kujyamo na “ibisubizo biteguye”. Ibizamini bya virusi itera SIDA ntibigaragara na rimwe.",
+    "hint": "Ecran ntijya yerekana ikintu cy’ubuvuzi: itike gusa, amazina (niba yahiswemo), icyumba ajyamo na “ibisubizo byiteguye”. Ibizamini bya VIH ntibijya bigaragara. Televiziyo yatunganyijwe mbere, ifite link, ikomeza gukora.",
     "errors": {
       "screen_name": "Ha mugaragaza izina.",
       "screen_desk": "Aho bakorera ntihazwi.",
@@ -10298,8 +10300,13 @@
     "voiceOff": "Nta jwi rivuga",
     "tickerOn": "Umurongo unyerera",
     "tickerOff": "Nta murongo unyerera",
-    "newLink": "Umurongo mushya",
-    "newLinkHint": "Umurongo ntubikwa (urufunguzo rwawo rubikwa nk’ijambo ry’ibanga): umurongo mushya usimbura uwa kera, ugahagarara."
+    "created": "Ecran yakozwe. Kuri televiziyo, fungura /display winjire kugira ngo uyishyireho.",
+    "noTv": "Nta televiziyo irerekana iyi ecran: kuri televiziyo, fungura /display winjire.",
+    "tvBy": "yatunganyijwe na {{name}} ku wa {{date}}",
+    "tvSeen": "yabonetse bwa nyuma {{when}}",
+    "tvNeverSeen": "ntirabonwa",
+    "disconnect": "Hagarika",
+    "disconnected": "{{name}} yahagaritswe: ntacyo yerekana kugeza umuntu ayiteguye bundi bushya."
   },
   "nextPatient": {
     "title": "Umurwayi ukurikira",
@@ -10919,5 +10926,29 @@
     "hint": "Uku kwivuza kwarangiye. Gufungura kugira ngo usome dosiye n’ibisubizo, ucape raporo, cyangwa usabe kode ikwemerera kuyihindura. Umurwayi nagaruka, kwivuza gushya kwandikwa ukwako.",
     "open": "Fungura usome cyangwa uhindure",
     "close": "Funga dosiye"
+  },
+  "tvSetup": {
+    "title": "Tegura iyi televiziyo",
+    "intro": "Iyi televiziyo ntiratunganywa.",
+    "unknown": "Iyi televiziyo yahagaritswe, cyangwa ecran yayo yakuweho.",
+    "how": "Injira ukoresheje nimero yawe y’umukozi, izina ry’ukoresha na PIN, hanyuma kode yoherejwe kuri imeli yawe; hitamo ecran; birarangiye. Nta link yo kwandika.",
+    "signIn": "Injira utegure",
+    "signedInAs": "Winjiye nka {{name}} — televiziyo ntiguma yinjiye nyuma.",
+    "lead": "Hitamo ecran iyi televiziyo yerekana. Aho bakorera, indimi n’amajwi byayo bitunganyirizwa muri Igenamiterere › Ecran z’icyumba cyo gutegerereza.",
+    "tvName": "Izina ry’iyi televiziyo (si itegeko)",
+    "tvNamePh": "Icyumba cyo gutegerereza, urukuta rw’ibumoso",
+    "noScreens": "Ivuriro ntirirafite ecran. Iya mbere irakorwa ubu: aho bakorera hose, indimi eshatu. Uzayihindura nyuma muri Igenamiterere.",
+    "defaultScreen": "Icyumba cyo gutegerereza",
+    "defaultScreenSub": "Aho bakorera hose hari abarwayi · RW · EN · FR",
+    "useHere": "Koresha kuri iyi televiziyo",
+    "devices_one": "Televiziyo {{count}}",
+    "devices_other": "Televiziyo {{count}}",
+    "done": "Byarangiye: iyi televiziyo yerekana “{{name}}”.",
+    "cancel": "Hagarika usohoke",
+    "notAllowed": "Umwanya wawe ntiwemerewe gutegura televiziyo. Baza umuyobozi cyangwa abakira abarwayi.",
+    "again": "Ongera utegure iyi televiziyo",
+    "errors": {
+      "name": "Ha televiziyo izina rigufi (inyuguti 60 ntarengwa)."
+    }
   }
 }

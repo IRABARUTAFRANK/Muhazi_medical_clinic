@@ -5066,7 +5066,8 @@
         "recordsApprove": "answer record-access requests",
         "stockSellWalkin": "sell to walk-in buyers from your store",
         "chargeOverride": "change how a charge is covered for a patient",
-        "visitLeaveOwing": "let a patient go with money due"
+        "visitLeaveOwing": "let a patient go with money due",
+        "displaySetup": "set up a waiting-room TV"
       }
     },
     "f": {
@@ -5117,6 +5118,10 @@
       "visit.leave_owing": {
         "name": "Let a patient go with money due",
         "hint": "End a visit while money is still owed, giving the reason: the amount stays on the patient as a debt (the cashier’s “Still owed”, the file’s “Owes…”, reception at the next arrival). The manager, the cashier, reception and the doctors at first; never the administrator."
+      },
+      "display.setup": {
+        "name": "Set up a waiting-room TV",
+        "hint": "Sign in on the TV and choose the screen it shows. The manager and reception at first."
       }
     },
     "desks": {
@@ -6475,10 +6480,10 @@
         "body": "The TV shows nothing from then on; add a new screen for a new link.",
         "yes": "Yes, revoke"
       },
-      "renew": {
-        "title": "A new link for “{{name}}”?",
-        "body": "The old link stops working at once: open the new one on that TV. The link itself does not change with the network — it is this site’s address with the screen’s key.",
-        "yes": "Yes, new link"
+      "disconnect": {
+        "title": "Disconnect “{{name}}”?",
+        "body": "That TV shows nothing from then on, until someone signs in on it again.",
+        "yes": "Yes, disconnect"
       }
     },
     "nextPatient": {
@@ -8526,7 +8531,9 @@
     "9bbd2911": "Place the person in that department first.",
     "da828030": "Money is still due: take the payment first, or someone with “Let a patient go with money due” may close the visit with a debt.",
     "af56f7e3": "Only a list of treatments has lines to add as treatments.",
-    "c3b95821": "A clinic-wide list makes its treatments itself: nothing to add by hand."
+    "c3b95821": "A clinic-wide list makes its treatments itself: nothing to add by hand.",
+    "3385fd70": "This TV is not known or was already disconnected.",
+    "b65a487b": "Give the TV a shorter name (60 characters at most)."
   },
   "panel": {
     "close": "Close",
@@ -10233,7 +10240,7 @@
   },
   "displayScreens": {
     "title": "Waiting-room screens",
-    "lead": "A TV at the waiting side shows who is called, where to go and who is next, and whose results are ready. Register each screen here, then open its link on the TV (the link is shown once).",
+    "lead": "A TV at the waiting side shows who is called, where to go and who is next, and whose results are ready. Set each screen up here (its desks, languages, sound). On the TV, open this site’s /display page and sign in: the TV then shows the screen you choose — no link to type.",
     "add": "Add a screen",
     "name": "Screen name",
     "namePh": "Waiting room TV",
@@ -10246,11 +10253,6 @@
     "messagePh": "Please keep your ticket.",
     "save": "Create the screen",
     "saveChanges": "Save changes",
-    "linkTitle": "The link of “{{name}}” — shown once",
-    "linkLead": "Open this address in the TV’s browser (Chrome, full screen) and press Start. It is not shown again: if it is lost, press New link on the screen — the old link stops and the new one is shown once.",
-    "openOnTv": "Open on the TV: this address, exactly as it is (the key is in it).",
-    "copy": "Copy the link",
-    "copied": "Copied",
     "revoke": "Revoke",
     "edit": "Change",
     "revoked": "Revoked",
@@ -10264,7 +10266,7 @@
     "saved": "Screen saved; the TV follows within a few seconds.",
     "revokedDone": "Screen revoked: its link no longer works.",
     "createdBy": "Added by {{name}} on {{date}}",
-    "hint": "The screen never shows anything medical: only tickets, names (if chosen), the room to go to and “results ready”. HIV tests never appear.",
+    "hint": "The screen never shows anything medical: only tickets, names (if chosen), the room to go to and “results ready”. HIV tests never appear. A TV set up before, with a link, keeps working.",
     "errors": {
       "screen_name": "Give the screen a name.",
       "screen_desk": "Unknown desk.",
@@ -10289,8 +10291,13 @@
     "voiceOff": "No voice",
     "tickerOn": "Scrolling line",
     "tickerOff": "No scrolling line",
-    "newLink": "New link",
-    "newLinkHint": "The link is not kept (its key is stored like a password): a new link replaces the old, which stops working."
+    "created": "Screen created. On the TV, open /display and sign in to put it on.",
+    "noTv": "No TV shows this screen yet: on the TV, open /display and sign in.",
+    "tvBy": "set up by {{name}} on {{date}}",
+    "tvSeen": "last seen {{when}}",
+    "tvNeverSeen": "not seen yet",
+    "disconnect": "Disconnect",
+    "disconnected": "{{name}} disconnected: it shows nothing until someone sets it up again."
   },
   "nextPatient": {
     "title": "Next patient",
@@ -10910,5 +10917,29 @@
     "hint": "This visit is finished. Open it to read the record and the results, print the report, or ask for the code that lets you edit it. When the patient comes back, a new visit is recorded on its own.",
     "open": "Open for review or edit",
     "close": "Close the file"
+  },
+  "tvSetup": {
+    "title": "Set up this TV",
+    "intro": "This TV is not set up yet.",
+    "unknown": "This TV was disconnected, or its screen was revoked.",
+    "how": "Sign in with your staff ID, username and PIN, then the code sent to your e-mail; choose the screen; done. No link to type.",
+    "signIn": "Sign in to set up",
+    "signedInAs": "Signed in as {{name}} — the TV is not signed in afterwards.",
+    "lead": "Choose the screen this TV shows. Its desks, languages and sound are set in Settings › Waiting-room screens.",
+    "tvName": "Name of this TV (optional)",
+    "tvNamePh": "Waiting room, left wall",
+    "noScreens": "The clinic has no screen yet. The first one is made now: every desk, three languages. Change it later in Settings.",
+    "defaultScreen": "Waiting room",
+    "defaultScreenSub": "Every desk with patients · RW · EN · FR",
+    "useHere": "Use on this TV",
+    "devices_one": "{{count}} TV",
+    "devices_other": "{{count}} TVs",
+    "done": "Done: this TV shows “{{name}}”.",
+    "cancel": "Cancel and sign out",
+    "notAllowed": "Your role may not set a TV up. Ask the manager or reception.",
+    "again": "Set this TV up again",
+    "errors": {
+      "name": "Give the TV a shorter name (60 characters at most)."
+    }
   }
 }

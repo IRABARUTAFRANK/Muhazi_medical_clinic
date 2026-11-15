@@ -5066,7 +5066,8 @@
         "recordsApprove": "répondre aux demandes d’accès aux dossiers",
         "stockSellWalkin": "vendre aux clients de passage depuis votre stock",
         "chargeOverride": "changer la couverture d’une ligne pour un patient",
-        "visitLeaveOwing": "laisser partir un patient qui doit de l’argent"
+        "visitLeaveOwing": "laisser partir un patient qui doit de l’argent",
+        "displaySetup": "configurer un téléviseur de salle d’attente"
       }
     },
     "f": {
@@ -5117,6 +5118,10 @@
       "visit.leave_owing": {
         "name": "Laisser partir un patient qui doit de l’argent",
         "hint": "Clore une visite alors qu’il reste à payer, en donnant la raison : le montant reste sur le patient comme une dette (« Encore dû » du caissier, « Doit… » du dossier, la réception à la prochaine arrivée). Le gérant, le caissier, la réception et les médecins au départ ; jamais l’administrateur."
+      },
+      "display.setup": {
+        "name": "Configurer un téléviseur de salle d’attente",
+        "hint": "Se connecter sur le téléviseur et choisir l’écran qu’il affiche. Le gestionnaire et la réception au départ."
       }
     },
     "desks": {
@@ -6475,10 +6480,10 @@
         "body": "Le téléviseur n’affichera plus rien ; ajoutez un nouvel écran pour un nouveau lien.",
         "yes": "Oui, révoquer"
       },
-      "renew": {
-        "title": "Un nouveau lien pour « {{name}} » ?",
-        "body": "L’ancien lien cesse de fonctionner tout de suite : ouvrez le nouveau sur cette TV. Le lien lui-même ne change pas avec le réseau — c’est l’adresse de ce site avec la clé de l’écran.",
-        "yes": "Oui, nouveau lien"
+      "disconnect": {
+        "title": "Déconnecter « {{name}} » ?",
+        "body": "Ce téléviseur n’affichera plus rien, jusqu’à ce que quelqu’un s’y reconnecte.",
+        "yes": "Oui, déconnecter"
       }
     },
     "nextPatient": {
@@ -8526,7 +8531,9 @@
     "9bbd2911": "Placez d’abord la personne dans ce service.",
     "da828030": "Il reste à payer : encaissez d’abord, ou quelqu’un qui a « Laisser partir un patient qui doit de l’argent » peut clore la visite avec une dette.",
     "af56f7e3": "Seule une liste d’actes a des lignes à ajouter comme actes.",
-    "c3b95821": "Une liste pour toute la clinique crée ses actes elle-même : rien à ajouter à la main."
+    "c3b95821": "Une liste pour toute la clinique crée ses actes elle-même : rien à ajouter à la main.",
+    "3385fd70": "Ce téléviseur est inconnu ou déjà déconnecté.",
+    "b65a487b": "Donnez un nom plus court au téléviseur (60 caractères au plus)."
   },
   "panel": {
     "close": "Fermer",
@@ -10233,7 +10240,7 @@
   },
   "displayScreens": {
     "title": "Écrans de salle d’attente",
-    "lead": "Un téléviseur côté attente montre qui est appelé, où aller, qui est le suivant, et les résultats prêts. Enregistrez chaque écran ici, puis ouvrez son lien sur le téléviseur (le lien n’est montré qu’une fois).",
+    "lead": "Un téléviseur côté attente montre qui est appelé, où aller et qui est le suivant, et quels résultats sont prêts. Réglez chaque écran ici (postes, langues, son). Sur le téléviseur, ouvrez la page /display de ce site et connectez-vous : le téléviseur affiche alors l’écran choisi — aucun lien à taper.",
     "add": "Ajouter un écran",
     "name": "Nom de l’écran",
     "namePh": "Téléviseur de la salle d’attente",
@@ -10246,11 +10253,6 @@
     "messagePh": "Gardez votre ticket, s’il vous plaît.",
     "save": "Créer l’écran",
     "saveChanges": "Enregistrer les changements",
-    "linkTitle": "Le lien de « {{name}} » — affiché une seule fois",
-    "linkLead": "Ouvrez cette adresse dans le navigateur de la TV (Chrome, plein écran) et appuyez sur Démarrer. Elle n’est plus montrée ensuite : si elle est perdue, appuyez sur Nouveau lien sur l’écran — l’ancien lien s’arrête et le nouveau est montré une fois.",
-    "openOnTv": "À ouvrir sur le téléviseur : cette adresse, telle quelle (la clé en fait partie).",
-    "copy": "Copier le lien",
-    "copied": "Copié",
     "revoke": "Révoquer",
     "edit": "Modifier",
     "revoked": "Révoqué",
@@ -10264,7 +10266,7 @@
     "saved": "Écran enregistré ; le téléviseur suit dans quelques secondes.",
     "revokedDone": "Écran révoqué : son lien ne fonctionne plus.",
     "createdBy": "Ajouté par {{name}} le {{date}}",
-    "hint": "L’écran ne montre jamais rien de médical : seulement les tickets, les noms (si choisis), la salle où aller et « résultats prêts ». Les tests VIH n’apparaissent jamais.",
+    "hint": "L’écran ne montre jamais rien de médical : seulement les tickets, les noms (si choisis), la salle où aller et « résultats prêts ». Les tests VIH n’apparaissent jamais. Un téléviseur configuré avant, avec un lien, continue de fonctionner.",
     "errors": {
       "screen_name": "Donnez un nom à l’écran.",
       "screen_desk": "Guichet inconnu.",
@@ -10289,8 +10291,13 @@
     "voiceOff": "Sans voix",
     "tickerOn": "Ligne défilante",
     "tickerOff": "Sans ligne défilante",
-    "newLink": "Nouveau lien",
-    "newLinkHint": "Le lien n’est pas gardé (sa clé est rangée comme un mot de passe) : un nouveau lien remplace l’ancien, qui cesse de fonctionner."
+    "created": "Écran créé. Sur le téléviseur, ouvrez /display et connectez-vous pour l’afficher.",
+    "noTv": "Aucun téléviseur n’affiche encore cet écran : sur le téléviseur, ouvrez /display et connectez-vous.",
+    "tvBy": "configuré par {{name}} le {{date}}",
+    "tvSeen": "vu pour la dernière fois {{when}}",
+    "tvNeverSeen": "pas encore vu",
+    "disconnect": "Déconnecter",
+    "disconnected": "{{name}} déconnecté : il n’affiche plus rien jusqu’à une nouvelle configuration."
   },
   "nextPatient": {
     "title": "Patient suivant",
@@ -10910,5 +10917,29 @@
     "hint": "Cette visite est terminée. Ouvrez-la pour lire le dossier et les résultats, imprimer le rapport, ou demander le code qui permet de la modifier. Quand le patient revient, une nouvelle visite est enregistrée à part.",
     "open": "Ouvrir pour relire ou modifier",
     "close": "Fermer le dossier"
+  },
+  "tvSetup": {
+    "title": "Configurer ce téléviseur",
+    "intro": "Ce téléviseur n’est pas encore configuré.",
+    "unknown": "Ce téléviseur a été déconnecté, ou son écran a été révoqué.",
+    "how": "Connectez-vous avec votre identifiant, votre nom d’utilisateur et votre PIN, puis le code envoyé par e-mail ; choisissez l’écran ; c’est fait. Aucun lien à taper.",
+    "signIn": "Se connecter pour configurer",
+    "signedInAs": "Connecté en tant que {{name}} — le téléviseur ne reste pas connecté ensuite.",
+    "lead": "Choisissez l’écran que ce téléviseur affiche. Ses postes, langues et sons se règlent dans Paramètres › Écrans de salle d’attente.",
+    "tvName": "Nom de ce téléviseur (facultatif)",
+    "tvNamePh": "Salle d’attente, mur de gauche",
+    "noScreens": "La clinique n’a pas encore d’écran. Le premier est créé maintenant : tous les postes, trois langues. Modifiez-le plus tard dans Paramètres.",
+    "defaultScreen": "Salle d’attente",
+    "defaultScreenSub": "Tous les postes avec des patients · RW · EN · FR",
+    "useHere": "Utiliser sur ce téléviseur",
+    "devices_one": "{{count}} téléviseur",
+    "devices_other": "{{count}} téléviseurs",
+    "done": "Terminé : ce téléviseur affiche « {{name}} ».",
+    "cancel": "Annuler et se déconnecter",
+    "notAllowed": "Votre rôle ne peut pas configurer un téléviseur. Demandez au gestionnaire ou à la réception.",
+    "again": "Reconfigurer ce téléviseur",
+    "errors": {
+      "name": "Donnez un nom plus court au téléviseur (60 caractères au plus)."
+    }
   }
 }

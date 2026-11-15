@@ -356,7 +356,164 @@ export function useDisplayScreenActions() {
     },
     onSuccess: refresh,
   })
-  return { save, revoke, renew }
+  /** 0158: a TV disconnected (its key stops; the screen stays). */
+  const revokeDevice = useMutation({
+    mutationFn: async (id: string) => {
+      if (!supabase) {
+        const d = sampleDevices.find((x) => x.id === id)
+        if (d) d.revokedAt = new Date().toISOString()
+        return
+      }
+      const { error } = await supabase.rpc('revoke_display_device', { p_id: id })
+      if (error) throw apiError(error)
+    },
+    onSuccess: () => {
+      refresh()
+      void qc.invalidateQueries({ queryKey: ['display', 'devices'] })
+    },
+  })
+  return { save, revoke, renew, revokeDevice }
+}
+
+// ---------------------------------------------------------------- 0158: a TV set up by signing in
+/** The TV keeps its own key in its browser (given once by setup_display_device). */
+const TV_KEY = 'mmc.display.key'
+export const readDisplayKey = (): string => {
+  try {
+    const k = localStorage.getItem(TV_KEY) ?? ''
+    return /^[a-z0-9]{1,128}$/i.test(k) ? k : ''
+  } catch {
+    return ''
+  }
+}
+export const storeDisplayKey = (key: string) => {
+  try {
+    localStorage.setItem(TV_KEY, key)
+  } catch {
+    /* a browser without storage: the key lives for this page only */
+  }
+}
+export const forgetDisplayKey = () => {
+  try {
+    localStorage.removeItem(TV_KEY)
+  } catch {
+    /* nothing kept */
+  }
+}
+/** Where the sign-in comes back to, for a TV being set up (read once by the sign-in page). */
+export const AFTER_SIGN_IN = 'mmc.after-signin'
+export const TV_SETUP_PATH = '/app/tv-setup'
+
+export interface TvScreenChoice {
+  id: string
+  name: string
+  desks: Station[]
+  languages: Lang[]
+  devices: number
+}
+export interface DisplayDevice {
+  id: string
+  screenId: string
+  name: string
+  setUpBy: string | null
+  createdAt: string
+  lastSeenAt: string | null
+  revokedAt: string | null
+}
+const sampleDevices: DisplayDevice[] = [
+  {
+    id: 'dev-1',
+    screenId: 'scr-1',
+    name: 'TV 10/11 08:12',
+    setUpBy: 'Uwimana Josiane',
+    createdAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+    lastSeenAt: new Date(Date.now() - 120_000).toISOString(),
+    revokedAt: null,
+  },
+]
+
+/** The screens a signed-in person may put on this TV. */
+export function useTvScreens(enabled = true) {
+  return useQuery({
+    queryKey: ['display', 'tv-screens'],
+    enabled,
+    queryFn: async (): Promise<TvScreenChoice[]> => {
+      if (!supabase)
+        return sampleScreens
+          .filter((s) => s.active)
+          .map((s) => ({
+            id: s.id,
+            name: s.name,
+            desks: s.desks,
+            languages: s.languages,
+            devices: sampleDevices.filter((d) => d.screenId === s.id && !d.revokedAt).length,
+          }))
+      const { data, error } = await supabase.rpc('tv_setup_screens')
+      if (error) throw apiError(error)
+      return (data as TvScreenChoice[]) ?? []
+    },
+  })
+}
+
+/** This TV gets its own key for the chosen screen (null: the first screen, made if none). */
+export function useSetupTv() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (i: {
+      screenId: string | null
+      name: string | null
+    }): Promise<{
+      id: string
+      key: string
+      screenId: string
+      screenName: string
+      name: string
+    }> => {
+      if (!supabase) {
+        const s = sampleScreens.find((x) => x.active && (!i.screenId || x.id === i.screenId))
+        const name = i.name ?? `TV ${new Date().toLocaleDateString()}`
+        const id = `dev-${sampleDevices.length + 1}`
+        sampleDevices.unshift({
+          id,
+          screenId: s?.id ?? 'scr-1',
+          name,
+          setUpBy: 'Uwimana Josiane',
+          createdAt: new Date().toISOString(),
+          lastSeenAt: null,
+          revokedAt: null,
+        })
+        return {
+          id,
+          key: 'sample',
+          screenId: s?.id ?? 'scr-1',
+          screenName: s?.name ?? 'Waiting room',
+          name,
+        }
+      }
+      const { data, error } = await supabase.rpc('setup_display_device', {
+        p_screen: i.screenId,
+        p_name: i.name,
+      })
+      if (error) throw apiError(error)
+      return data as { id: string; key: string; screenId: string; screenName: string; name: string }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['display'] })
+    },
+  })
+}
+
+/** Settings: the TVs of every screen. */
+export function useDisplayDevices() {
+  return useQuery({
+    queryKey: ['display', 'devices'],
+    queryFn: async (): Promise<DisplayDevice[]> => {
+      if (!supabase) return sampleDevices.map((d) => ({ ...d }))
+      const { data, error } = await supabase.rpc('display_devices')
+      if (error) throw apiError(error)
+      return (data as DisplayDevice[]) ?? []
+    },
+  })
 }
 
 // ---------------------------------------------------------------- calling, and the next patient

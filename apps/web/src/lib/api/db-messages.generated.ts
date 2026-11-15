@@ -122,6 +122,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the clinic must keep at least one active manager$/, 'dbErrors.07387972', 0], // profile_role_rules, update_profile
   [/^the most to keep must be above the reorder level$/, 'dbErrors.b82c0f73', 0], // set_reorder_level
   [/^the new list cannot start before the current one$/, 'dbErrors.9c2126b1', 0], // import_reference_list
+  [/^this TV is not known or was already disconnected$/, 'dbErrors.3385fd70', 0], // revoke_display_device
   [/^unknown reason for finishing without a diagnosis$/, 'dbErrors.bb0431ec', 0], // set_no_diagnosis
   [/^a patient with this ID number already exists: (.+?)$/, 'dbErrors.138192ce', 1], // patient_identity
   [/^a typed price is not allowed for this treatment$/, 'dbErrors.5e3cc139', 0], // add_charge
@@ -192,7 +193,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the price of a night cannot be negative$/, 'dbErrors.4cee318d', 0], // save_bed, set_bed_count
   [/^this booking already has a patient file$/, 'dbErrors.6f27ce8c', 0], // appointment_arrived
   [/^this patient has already left this desk$/, 'dbErrors.9800fbfe', 0], // call_patient
-  [/^this screen is not known or was revoked$/, 'dbErrors.a3109bfa', 0], // renew_display_screen_key, revoke_display_screen, save_display_screen
+  [/^this screen is not known or was revoked$/, 'dbErrors.a3109bfa', 0], // renew_display_screen_key, revoke_display_screen, save_display_screen, …
   [/^too many wrong codes: ask for a new one$/, 'dbErrors.a67c9d35', 0], // verify_visit_edit
   [/^you already have a booking at that time$/, 'dbErrors.9e1f26ad', 0], // accept_appointment
   [/^a reason is required for a typed price$/, 'dbErrors.1d3f4f34', 0], // add_charge_internal
@@ -358,6 +359,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^count in boxes or in units$/, 'dbErrors.52e68280', 0], // receive_delivery
   [/^emergency access not found$/, 'dbErrors.cf92dadb', 0], // review_emergency_access
   [/^give the price list a name$/, 'dbErrors.b17cfad6', 0], // import_tariff, save_tariff_book
+  [/^give the TV a shorter name$/, 'dbErrors.b65a487b', 0], // setup_display_device
   [/^say the price of one piece$/, 'dbErrors.f5cca4c2', 0], // apply_item_packaging
   [/^say who publishes the list$/, 'dbErrors.0d57b400', 0], // import_tariff, save_tariff_book
   [/^the list has too many rows$/, 'dbErrors.0371e135', 0], // import_price_list, import_reference_list, import_tariff

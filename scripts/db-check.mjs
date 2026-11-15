@@ -24698,6 +24698,55 @@ await step(
     return `told of ${n1} (once); the booking in appointments_overdue, the request still open; answered → gone`
   },
 )
+// 0158: a TV set up by signing in: its own key, seen in Settings, disconnected
+await step(
+  '0158: a TV set up by signing in gets its own key; the board accepts it; Settings lists and disconnects it',
+  async () => {
+    // the 0114 re-run step above put the old display_board back: 0158 again first
+    await asAdmin()
+    await db.exec(await readFile(path.join(migrationsDir, '20270127090000_tv_setup.sql'), 'utf8'))
+    await as(staff.receptionist)
+    const choices = (await one(`select tv_setup_screens() as j`)).j
+    const made = (await one(`select setup_display_device($1, 'Left wall TV') as j`, [t114.screen]))
+      .j
+    if (!made.key || made.key.length !== 64 || made.screenId !== t114.screen)
+      throw new Error(JSON.stringify(made))
+    await as(null, 'anon')
+    const board = (await one(`select display_board($1) as j`, [made.key])).j
+    const oldLink = (await one(`select display_board($1) as j`, [t114.key])).j
+    await as(staff.manager)
+    const devices = (await one(`select display_devices() as j`)).j
+    const mine = devices.find((d) => d.id === made.id)
+    const noPerm = await codeAs(staff.cashier, `select setup_display_device($1, null)`, [
+      t114.screen,
+    ])
+    await as(staff.manager)
+    await db.query(`select revoke_display_device($1)`, [made.id])
+    const gone = await hintAs(null, `select display_board($1)`, [made.key])
+    const again = await hintAs(staff.manager, `select revoke_display_device($1)`, [made.id])
+    // the clinic's first TV when no screen exists: a default screen is made
+    await asAdmin()
+    await db.query(`update display_screen set active = false where active`)
+    await as(staff.receptionist)
+    const first = (await one(`select setup_display_device(null, null) as j`)).j
+    await asAdmin()
+    const def = await one(`select name, desks, languages from display_screen where id = $1`, [
+      first.screenId,
+    ])
+    await db.query(`update display_screen set active = true where id = $1`, [t114.screen])
+    if (!Array.isArray(choices) || !choices.some((c) => c.id === t114.screen))
+      throw new Error('receptionist does not see the screens')
+    if (!board || typeof board !== 'object' || !oldLink) throw new Error('board refused')
+    if (!mine || mine.name !== 'Left wall TV' || !mine.lastSeenAt)
+      throw new Error(JSON.stringify(mine))
+    if (noPerm !== '42501') throw new Error('cashier allowed: ' + noPerm)
+    if (gone !== '42501/screen_unknown' || again !== 'P0002/device_unknown')
+      throw new Error(JSON.stringify({ gone, again }))
+    if (def.name !== 'Waiting room' || def.desks.length !== 0 || def.languages.length !== 3)
+      throw new Error(JSON.stringify(def))
+    return `TV key accepted (seen ${mine.lastSeenAt.slice(11, 16)}); old link still works; cashier ${noPerm}; disconnected ${gone}; first TV made “${def.name}”`
+  },
+)
 // @@t141-end
 finish()
 

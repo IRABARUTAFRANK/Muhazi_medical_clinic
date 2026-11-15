@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { Check, CircleAlert, Copy, Link2, MonitorPlay, Plus, Tv, X } from 'lucide-react'
+import { Check, CircleAlert, MonitorSmartphone, Plus, Tv, Unplug } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { LANGS, formatDate, type Lang } from '@mmc/shared'
+import { LANGS, formatDate, formatTime, type Lang } from '@mmc/shared'
 import { Hint, IconChip } from '@/components/dash/kit'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field, controlClass, labelClass } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
 import {
-  displayLink,
+  useDisplayDevices,
   useDisplayScreenActions,
   useDisplayScreens,
   VOICE_LANGS,
@@ -56,11 +56,11 @@ const emptyDraft = (): DisplayScreenInput => ({
 export function DisplayScreensCard() {
   const { t } = useTranslation()
   const { data: screens = [], error: loadError } = useDisplayScreens()
-  const { save, revoke, renew } = useDisplayScreenActions()
+  const { save, revoke, revokeDevice } = useDisplayScreenActions()
+  // 0158: the TVs set up by signing in, per screen
+  const { data: devices = [] } = useDisplayDevices()
   const confirm = useConfirm()
   const [draft, setDraft] = useState<DisplayScreenInput | null>(null)
-  const [link, setLink] = useState<{ name: string; url: string } | null>(null)
-  const [copied, setCopied] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const describe = (e: unknown) =>
@@ -93,8 +93,7 @@ export function DisplayScreensCard() {
         desks: DESK_CHOICES.filter((d) => draft.desks.includes(d)),
       })
       setDraft(null)
-      if (r.key) setLink({ name: draft.name.trim(), url: displayLink(r.key) })
-      else setNotice(t('displayScreens.saved'))
+      setNotice(t(r.key ? 'displayScreens.created' : 'displayScreens.saved'))
     } catch (e) {
       setError(describe(e))
     }
@@ -118,34 +117,23 @@ export function DisplayScreensCard() {
       setError(describe(e))
     }
   }
-  // 0142: the link again — a fresh key, the old link stops; shown once like at creation
-  const doRenew = async (s: DisplayScreen) => {
+  const disconnect = async (d: { id: string; name: string }) => {
     setError(null)
     setNotice(null)
     if (
       !(await confirm({
-        title: t('confirm.display.renew.title', { name: s.name }),
-        body: t('confirm.display.renew.body'),
-        confirmLabel: t('confirm.display.renew.yes'),
+        title: t('confirm.display.disconnect.title', { name: d.name }),
+        body: t('confirm.display.disconnect.body'),
+        confirmLabel: t('confirm.display.disconnect.yes'),
+        tone: 'danger',
       }))
     )
       return
     try {
-      const r = await renew.mutateAsync(s.id)
-      setDraft(null)
-      setLink({ name: s.name, url: displayLink(r.key) })
+      await revokeDevice.mutateAsync(d.id)
+      setNotice(t('displayScreens.disconnected', { name: d.name }))
     } catch (e) {
       setError(describe(e))
-    }
-  }
-  const copy = async () => {
-    if (!link) return
-    try {
-      await navigator.clipboard.writeText(link.url)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2500)
-    } catch {
-      /* the link stays selectable in the box */
     }
   }
   const toggleIn = <T,>(list: T[], v: T) =>
@@ -161,14 +149,7 @@ export function DisplayScreensCard() {
           {t('displayScreens.title')}
         </span>
         {!draft && (
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => {
-              setLink(null)
-              setDraft(emptyDraft())
-            }}
-          >
+          <Button size="sm" variant="primary" onClick={() => setDraft(emptyDraft())}>
             <Plus size={16} aria-hidden="true" />
             {t('displayScreens.add')}
           </Button>
@@ -180,35 +161,6 @@ export function DisplayScreensCard() {
           <p role="alert" className="text-red m-0 text-[14px] font-medium">
             {loadError.message}
           </p>
-        )}
-
-        {/* the link, once */}
-        {link && (
-          <div className="border-green/40 bg-green-bg/50 flex flex-col gap-2 rounded-md border px-3 py-3">
-            <span className="text-green inline-flex items-center gap-2 text-[15px] font-bold">
-              <MonitorPlay size={18} aria-hidden="true" />
-              {t('displayScreens.linkTitle', { name: link.name })}
-            </span>
-            <p className="text-ink-2 m-0 text-[14px]">{t('displayScreens.linkLead')}</p>
-            <code className="bg-card border-border block rounded-md border px-3 py-2 text-[13px] break-all select-all">
-              {link.url}
-            </code>
-            <span className="text-ink-3 text-[13px]">{t('displayScreens.openOnTv')}</span>
-            <span className="flex flex-wrap gap-2">
-              <Button size="sm" variant="success" onClick={() => void copy()}>
-                {copied ? (
-                  <Check size={14} aria-hidden="true" />
-                ) : (
-                  <Copy size={14} aria-hidden="true" />
-                )}
-                {t(copied ? 'displayScreens.copied' : 'displayScreens.copy')}
-              </Button>
-              <Button size="sm" variant="tint-grey" onClick={() => setLink(null)}>
-                <X size={14} aria-hidden="true" />
-                {t('common.close')}
-              </Button>
-            </span>
-          </div>
         )}
 
         {/* add or change a screen */}
@@ -435,7 +387,6 @@ export function DisplayScreensCard() {
                       size="sm"
                       variant="tint-blue"
                       onClick={() => {
-                        setLink(null)
                         setError(null)
                         setDraft({
                           id: s.id,
@@ -456,22 +407,63 @@ export function DisplayScreensCard() {
                     </Button>
                     <Button
                       size="sm"
-                      variant="tint-grey"
-                      title={t('displayScreens.newLinkHint')}
-                      loading={renew.isPending && renew.variables === s.id}
-                      onClick={() => void doRenew(s)}
-                    >
-                      <Link2 size={14} aria-hidden="true" />
-                      {t('displayScreens.newLink')}
-                    </Button>
-                    <Button
-                      size="sm"
                       variant="tint-coral"
                       loading={revoke.isPending && revoke.variables === s.id}
                       onClick={() => void doRevoke(s)}
                     >
                       {t('displayScreens.revoke')}
                     </Button>
+                  </span>
+                )}
+                {/* 0158: the TVs using this screen */}
+                {s.active && (
+                  <span className="basis-full">
+                    {devices.filter((d) => d.screenId === s.id && !d.revokedAt).length === 0 ? (
+                      <span className="text-ink-3 inline-flex items-center gap-1.5 text-[13px]">
+                        <MonitorSmartphone size={14} aria-hidden="true" />
+                        {t('displayScreens.noTv')}
+                      </span>
+                    ) : (
+                      <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                        {devices
+                          .filter((d) => d.screenId === s.id && !d.revokedAt)
+                          .map((d) => (
+                            <li
+                              key={d.id}
+                              className="bg-surface flex flex-wrap items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px]"
+                            >
+                              <MonitorSmartphone
+                                size={14}
+                                aria-hidden="true"
+                                className="text-primary"
+                              />
+                              <span className="font-semibold">{d.name}</span>
+                              <span className="text-ink-3">
+                                {t('displayScreens.tvBy', {
+                                  name: d.setUpBy ?? '—',
+                                  date: formatDate(new Date(d.createdAt)),
+                                })}
+                                {' · '}
+                                {d.lastSeenAt
+                                  ? t('displayScreens.tvSeen', {
+                                      when: `${formatDate(new Date(d.lastSeenAt))} ${formatTime(new Date(d.lastSeenAt))}`,
+                                    })
+                                  : t('displayScreens.tvNeverSeen')}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="tint-coral"
+                                className="ml-auto"
+                                loading={revokeDevice.isPending && revokeDevice.variables === d.id}
+                                onClick={() => void disconnect(d)}
+                              >
+                                <Unplug size={14} aria-hidden="true" />
+                                {t('displayScreens.disconnect')}
+                              </Button>
+                            </li>
+                          ))}
+                      </ul>
+                    )}
                   </span>
                 )}
               </li>

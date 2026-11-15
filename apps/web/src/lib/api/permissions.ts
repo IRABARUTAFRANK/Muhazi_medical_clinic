@@ -27,6 +27,8 @@ export const MANAGED_FEATURES = [
   // changing how one line of an insured visit is charged for the patient (0139)
   'charge.override',
   'visit.leave_owing',
+  // setting a waiting-room TV up by signing in on it (0158)
+  'display.setup',
 ] as const
 export type Feature = (typeof MANAGED_FEATURES)[number]
 
@@ -85,6 +87,7 @@ const DEFAULTS: Record<Feature, string[]> = {
   // not covered, as a private patient, another price or coverage on one line: the cashier and the manager
   'charge.override': ['cashier', 'manager'],
   'visit.leave_owing': ['manager', 'cashier', 'receptionist', 'doctor'],
+  'display.setup': ['manager', 'receptionist'],
 }
 const defaultsFor = (role: string) => MANAGED_FEATURES.filter((f) => DEFAULTS[f].includes(role))
 
@@ -105,6 +108,7 @@ export const FEATURE_KEY: Record<Feature, string> = {
   'stock.sell_walkin': 'stockSellWalkin',
   'charge.override': 'chargeOverride',
   'visit.leave_owing': 'visitLeaveOwing',
+  'display.setup': 'displaySetup',
 }
 
 export interface PermissionException {
