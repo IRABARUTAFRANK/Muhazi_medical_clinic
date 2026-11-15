@@ -7,7 +7,7 @@ import { usePrefs } from './store/prefs'
  * keeps the three files at the same keys). Only the language in use is loaded (each file is
  * about half a megabyte): the page starts with one, the others come when someone switches.
  */
-type Lang = 'rw' | 'en' | 'fr'
+export type Lang = 'rw' | 'en' | 'fr'
 const LOADERS: Record<Lang, () => Promise<{ default: Record<string, unknown> }>> = {
   en: () => import('@mmc/shared/i18n/en.json'),
   fr: () => import('@mmc/shared/i18n/fr.json'),
@@ -17,7 +17,7 @@ const asLang = (l: string): Lang => (l === 'rw' || l === 'fr' ? l : 'en')
 
 const loading = new Map<Lang, Promise<void>>()
 /** The language's strings, loaded once. */
-function ensureLang(l: Lang): Promise<void> {
+export function ensureLang(l: Lang): Promise<void> {
   if (i18n.hasResourceBundle(l, 'translation')) return Promise.resolve()
   let p = loading.get(l)
   if (!p) {

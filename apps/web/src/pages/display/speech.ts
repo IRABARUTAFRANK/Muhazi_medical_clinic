@@ -1,13 +1,14 @@
 /**
  * The waiting-room screen's voice (migration 0118): the browser's speech synthesis (Web Speech
- * API) says a call after the chime, "Ticket A 0 1 4. Habimana Eric. Please come to Consultation
- * 2.", once to three times with a short pause, in English or French (browsers have no
- * Kinyarwanda voice). Announcements queue up, so two calls in a row are both said; a result
- * ready goes behind the calls. Where speechSynthesis is missing (an old TV browser) nothing is
- * said and nothing breaks.
+ * API) says a call after the chime — "Habimana Eric, you are needed in Consultation by Dr
+ * Mukamana" — in each language of the screen, one to three times, with a short pause (0159).
+ * Browsers have no Kinyarwanda voice: the Kinyarwanda sentence is read by a Swahili voice when
+ * there is one (close vowels), else a French one. Announcements queue up, so two calls in a row
+ * are both said; a result ready goes behind the calls. Where speechSynthesis is missing (an old
+ * TV browser) nothing is said and nothing breaks.
  */
 
-export type VoiceLang = 'en' | 'fr'
+export type VoiceLang = 'en' | 'fr' | 'rw'
 
 export interface Announcement {
   text: string
@@ -60,7 +61,12 @@ export function pickVoice(lang: VoiceLang): SpeechSynthesisVoice | null {
   } catch {
     return null
   }
-  const mine = voices.filter((v) => v.lang.toLowerCase().startsWith(lang))
+  // Kinyarwanda: a Kinyarwanda voice if the device has one, else Swahili, else French
+  const wanted = lang === 'rw' ? ['rw', 'sw', 'fr'] : [lang]
+  const mine =
+    wanted
+      .map((w) => voices.filter((v) => v.lang.toLowerCase().startsWith(w)))
+      .find((list) => list.length > 0) ?? []
   if (mine.length === 0) return null
   const preferred = /natural|neural|online|google|premium|enhanced/i
   return (
@@ -127,8 +133,8 @@ export function createAnnouncer(onBusy: (busy: boolean) => void): Announcer {
     }
     try {
       const u = new SpeechSynthesisUtterance(a.text)
-      u.lang = a.lang === 'fr' ? 'fr-FR' : 'en-GB'
       const voice = pickVoice(a.lang)
+      u.lang = voice?.lang ?? (a.lang === 'fr' ? 'fr-FR' : a.lang === 'rw' ? 'rw-RW' : 'en-GB')
       if (voice) u.voice = voice
       u.rate = 0.92
       u.pitch = 1

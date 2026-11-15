@@ -13,7 +13,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '@mmc/shared'
 import { setAfterSignIn } from '@/lib/after-sign-in'
-import i18n from '@/i18n'
+import i18n, { ensureLang } from '@/i18n'
 import { stationIconFor } from '@/components/dash/kit-style'
 import {
   forgetDisplayKey,
@@ -120,6 +120,9 @@ interface Call {
 
 const deskNameOf = (desk: BoardDesk, t: TFixed) =>
   t(`register.stations.${desk.station}`, { defaultValue: desk.station })
+/** A room label that only repeats the desk's name (in any language) says nothing more. */
+const roomSaysDesk = (room: string, station: string, name: string) =>
+  room === name || room === i18n.getFixedT('en')(`register.stations.${station}`)
 /** The room of a desk: where its patient was called (the desk's name when unknown). */
 const deskRoomOf = (desk: BoardDesk): string | null =>
   desk.now.find((n) => n.room)?.room ?? desk.next.find((n) => n.room)?.room ?? null
@@ -162,6 +165,19 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
   }, [rotating])
   const lang = langs[li % langs.length] ?? 'en'
   const t = i18n.getFixedT(lang)
+  // 0159: the screen's languages are loaded (the page starts with the browser's own only),
+  // else their words would fall back to English; the page renders again once they are in
+  const langsKey = langs.join(',')
+  const [, langsLoaded] = useState('')
+  useEffect(() => {
+    let on = true
+    void Promise.all(langsKey.split(',').map((l) => ensureLang(l as Lang))).then(() => {
+      if (on) langsLoaded(langsKey)
+    })
+    return () => {
+      on = false
+    }
+  }, [langsKey])
 
   // sound: the manager's switches for the screen (chime, voice), and this TV's own on/off
   // (remembered here), which covers both
@@ -206,8 +222,7 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
   const freshKeys = new Set(news.fresh)
   const chimeOn = (data?.chime ?? false) && sound
   const voiceOn = (data?.voice ?? false) && sound && started
-  const voiceLang = data?.voiceLang === 'fr' ? 'fr' : 'en'
-  const voiceRepeat = data?.voiceRepeat ?? 2
+  const voiceRepeat = data?.voiceRepeat ?? 3
   const dinged = useRef(0)
   useEffect(() => {
     if (!news.stamp) return
@@ -215,23 +230,39 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
       dinged.current = news.stamp
       if (chimeOn && audio.current) ding(audio.current)
       if (voiceOn && announcer.current) {
-        // "Ticket A 0 1 4. Habimana Eric. Please come to Consultation 2." after the chime
-        const tv = i18n.getFixedT(voiceLang)
+        // 0159: "Habimana Eric, you are needed in Consultation by Dr Mukamana", in each language
+        // of the screen in turn, the whole round said voiceRepeat times, after the chime
+        const voiceLangs = langsKey.split(',') as Lang[]
+        let first = true
         for (const key of news.fresh) {
           const c = calls.find((x) => x.key === key)
           if (!c) continue
-          const room =
-            c.n.room ?? tv(`register.stations.${c.desk.station}`, { defaultValue: c.desk.station })
-          const vars = { ticket: spokenTicket(c.n.ticket), name: c.n.name ?? '', room }
-          announcer.current.say(
-            {
-              text: tv(c.n.name ? 'display.voice.call' : 'display.voice.callNoName', vars),
-              lang: voiceLang,
-              repeat: voiceRepeat,
-              priority: 'call',
-            },
-            chimeOn ? CHIME_MS : 0,
-          )
+          for (let round = 0; round < voiceRepeat; round++) {
+            for (const vl of voiceLangs) {
+              const tv = i18n.getFixedT(vl)
+              const department = tv(`register.stations.${c.desk.station}`, {
+                defaultValue: c.desk.station,
+              })
+              const vars = {
+                ticket: spokenTicket(c.n.ticket),
+                name: c.n.name ?? '',
+                department,
+                staff: c.n.person ?? '',
+              }
+              const k = c.n.name
+                ? c.n.person
+                  ? 'display.voice.call'
+                  : 'display.voice.callNoStaff'
+                : c.n.person
+                  ? 'display.voice.callTicket'
+                  : 'display.voice.callTicketNoStaff'
+              announcer.current.say(
+                { text: tv(k, vars), lang: vl, repeat: 1, priority: 'call' },
+                first && chimeOn ? CHIME_MS : 0,
+              )
+              first = false
+            }
+          }
         }
       }
     }
@@ -240,7 +271,7 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     return () => window.clearTimeout(id)
     // the calls are read at the moment they arrive only
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [news.stamp, chimeOn, voiceOn, voiceLang, voiceRepeat, setNews])
+  }, [news.stamp, chimeOn, voiceOn, langsKey, voiceRepeat, setNews])
 
   // A result ready, new since the last read: said after the calls (lower priority), once.
   const results = data?.results ?? []
@@ -253,26 +284,28 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     if (!resultNews.stamp || spokenResults.current === resultNews.stamp) return
     spokenResults.current = resultNews.stamp
     if (!voiceOn || !announcer.current) return
-    const tv = i18n.getFixedT(voiceLang)
     for (const id of resultNews.fresh) {
       const r = results.find((x) => x.id === id)
       if (!r || !r.ticket) continue
-      announcer.current.say(
-        {
-          text: tv(r.name ? 'display.voice.results' : 'display.voice.resultsNoName', {
-            ticket: spokenTicket(r.ticket),
-            name: r.name ?? '',
-          }),
-          lang: voiceLang,
-          repeat: 1,
-          priority: 'result',
-        },
-        0,
-      )
+      for (const vl of langsKey.split(',') as Lang[]) {
+        const tv = i18n.getFixedT(vl)
+        announcer.current.say(
+          {
+            text: tv(r.name ? 'display.voice.results' : 'display.voice.resultsNoName', {
+              ticket: spokenTicket(r.ticket),
+              name: r.name ?? '',
+            }),
+            lang: vl,
+            repeat: 1,
+            priority: 'result',
+          },
+          0,
+        )
+      }
     }
     // the results are read at the moment they appear only
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resultNews.stamp, voiceOn, voiceLang])
+  }, [resultNews.stamp, voiceOn, langsKey])
 
   // nothing is left talking when the page goes
   useEffect(() => () => announcer.current?.stop(), [])
@@ -465,7 +498,7 @@ function Banner({ calls, fresh, t }: { calls: Call[]; fresh: Set<string>; t: TFi
     const desk = deskNameOf(c.desk, t)
     // "Consultation 2" says the desk already; "Room 3" needs it ("Dental — Room 3")
     const room = c.n.room
-    if (!room || room === desk) return desk
+    if (!room || roomSaysDesk(room, c.desk.station, desk)) return desk
     return room.toLowerCase().includes(desk.toLowerCase()) ? room : `${desk} — ${room}`
   }
   return (
@@ -575,7 +608,9 @@ function DeskGrid({ desks, t }: { desks: BoardDesk[]; t: TFixed }) {
                 </span>
                 <div className="min-w-0">
                   <h2 className="qd-card-name">{name}</h2>
-                  {room && room !== name && <div className="qd-card-room">{room}</div>}
+                  {room && !roomSaysDesk(room, d.station, name) && (
+                    <div className="qd-card-room">{room}</div>
+                  )}
                 </div>
               </div>
               <span className="qd-count">{t('display.waiting', { count: d.waiting })}</span>
@@ -619,12 +654,14 @@ function SlideView({ desks, index, t }: { desks: BoardDesk[]; index: number; t: 
             </span>
             <div className="min-w-0">
               <h2 className="qd-slide-name">{name}</h2>
-              {room && room !== name && <div className="qd-slide-room">{room}</div>}
+              {room && !roomSaysDesk(room, d.station, name) && (
+                <div className="qd-slide-room">{room}</div>
+              )}
             </div>
           </div>
           <div>
             <div className="qd-label">{t('display.nowServing')}</div>
-            <div className="qd-slide-ticket num">{seen?.ticket ?? '—'}</div>
+            {seen && <div className="qd-slide-ticket num">{seen.ticket}</div>}
             <div className="qd-slide-who">
               {seen ? (seen.name ?? '') : t('display.noOneCalled')}
               {seen?.person && (

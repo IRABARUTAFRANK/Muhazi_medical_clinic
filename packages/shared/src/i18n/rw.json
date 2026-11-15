@@ -10217,10 +10217,12 @@
     "noKey": "Iyi aderesi nta rufunguzo rwa mugaragaza ifite. Saba umuyobozi link ya mugaragaza.",
     "offline": "Interineti yabuze — ibigaragara ni ibya nyuma",
     "voice": {
-      "call": "Itike {{ticket}}. {{name}}. Nyamuneka jya kuri {{room}}.",
-      "callNoName": "Itike {{ticket}}. Nyamuneka jya kuri {{room}}.",
+      "call": "Umurwayi witwa {{name}}, urakenewe muri {{department}}, ukenewe na muganga {{staff}}.",
       "results": "Ibisubizo by’itike {{ticket}}, {{name}}, biteguye. Nyamuneka jya muri laboratwari.",
-      "resultsNoName": "Ibisubizo by’itike {{ticket}} biteguye. Nyamuneka jya muri laboratwari."
+      "resultsNoName": "Ibisubizo by’itike {{ticket}} biteguye. Nyamuneka jya muri laboratwari.",
+      "callNoStaff": "Umurwayi witwa {{name}}, urakenewe muri {{department}}.",
+      "callTicket": "Umurwayi ufite itike {{ticket}}, urakenewe muri {{department}}, ukenewe na muganga {{staff}}.",
+      "callTicketNoStaff": "Umurwayi ufite itike {{ticket}}, urakenewe muri {{department}}."
     },
     "speaking": "Iravuga…",
     "ticker": {
@@ -10285,18 +10287,13 @@
       "screen_voice_lang": "Ijwi rivuga Icyongereza cyangwa Igifaransa.",
       "screen_voice_repeat": "Guhamagara bivugwa inshuro 1 kugeza kuri 3."
     },
-    "voice": "Vuga uhamagara n’ijwi (ijwi rya navigateur)",
-    "voiceLang": "Ururimi rw’ijwi",
-    "voiceLangHint": "Navigateur nta jwi ry’Ikinyarwanda ifite; amazina asomwa uko yanditse.",
-    "voiceLangs": {
-      "en": "Icyongereza",
-      "fr": "Igifaransa"
-    },
-    "voiceRepeat": "Kuvuga",
+    "voice": "Vuga guhamagara mu ijwi (ijwi rya mushakisha), mu rurimi rwose rwa ecran",
+    "voiceLangHint": "Guhamagara kuvugwa mu rurimi rwose rwa ecran, rumwe nyuma y’urundi: “Umurwayi witwa {name}, urakenewe muri {department}, ukenewe na muganga {staff}”. Mushakisha nta jwi ry’Ikinyarwanda zifite: iyo nteruro isomwa n’ijwi ry’Igiswahili cyangwa Igifaransa iyo televiziyo irifite.",
+    "voiceRepeat": "Vuga buri guhamagara",
     "voiceTimes_one": "inshuro {{count}}",
     "voiceTimes_other": "inshuro {{count}}",
     "ticker": "Umurongo unyerera hasi (abakurikira, ibisubizo biteguye, ubutumwa)",
-    "voiceOn": "Ijwi {{lang}} ×{{count}}",
+    "voiceOn": "Ijwi ×{{count}}, buri rurimi",
     "voiceOff": "Nta jwi rivuga",
     "tickerOn": "Umurongo unyerera",
     "tickerOff": "Nta murongo unyerera",

@@ -40,7 +40,7 @@
     radial-gradient(ellipse at top left, oklch(0.93 0.05 170) 0%, transparent 55%),
     radial-gradient(ellipse at bottom right, oklch(0.94 0.04 200) 0%, transparent 50%);
   font-family: var(--qd-font-sans);
-  font-size: clamp(13px, 1.9vh, 22px);
+  font-size: clamp(14px, 2.1vh, 24px);
   line-height: 1.25;
   -webkit-font-smoothing: antialiased;
 }
@@ -93,7 +93,7 @@
 .qd-sub {
   margin: 0;
   color: var(--qd-muted-fg);
-  font-size: clamp(12px, 2vh, 22px);
+  font-size: clamp(14px, 2.3vh, 26px);
 }
 .qd-sub b {
   color: var(--qd-fg);
@@ -171,7 +171,7 @@
 }
 .qd-date {
   color: var(--qd-muted-fg);
-  font-size: clamp(11px, 1.8vh, 20px);
+  font-size: clamp(13px, 2.1vh, 24px);
 }
 
 /* ---------- "Now calling" bar ---------- */
@@ -213,7 +213,7 @@
 }
 .qd-banner-label,
 .qd-banner-to-label {
-  font-size: clamp(10px, 1.6vh, 18px);
+  font-size: clamp(13px, 2.2vh, 26px);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -231,16 +231,16 @@
 .qd-banner-to {
   text-align: right;
   flex: none;
-  max-width: 45%;
+  max-width: 50%;
 }
 .qd-banner-where {
   font-family: var(--qd-font-display);
-  font-size: clamp(18px, 4vh, 46px);
+  font-size: clamp(26px, 5.4vh, 64px);
   font-weight: 700;
   line-height: 1.1;
 }
 .qd-banner-with {
-  font-size: clamp(11px, 1.8vh, 20px);
+  font-size: clamp(14px, 2.4vh, 28px);
   opacity: 0.9;
 }
 .qd-banner-empty {
@@ -255,7 +255,7 @@
   overflow: hidden;
   gap: clamp(8px, 1.4vw, 24px);
   color: var(--qd-muted-fg);
-  font-size: clamp(11px, 1.8vh, 20px);
+  font-size: clamp(13px, 2.1vh, 24px);
   padding: 0 0.4em;
   margin-top: calc(var(--qd-gap) * -0.5);
 }
@@ -347,7 +347,7 @@
 }
 .qd-card-room {
   color: var(--qd-muted-fg);
-  font-size: clamp(10px, 1.6vh, 18px);
+  font-size: clamp(12px, 1.9vh, 22px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -358,7 +358,7 @@
   background: var(--qd-secondary);
   color: var(--qd-secondary-fg);
   padding: 0.3em 0.8em;
-  font-size: clamp(10px, 1.6vh, 18px);
+  font-size: clamp(12px, 1.9vh, 22px);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -368,7 +368,7 @@
   padding: clamp(6px, 1.2vh, 14px) clamp(10px, 1.4vw, 22px);
 }
 .qd-label {
-  font-size: clamp(9px, 1.5vh, 16px);
+  font-size: clamp(11px, 1.9vh, 20px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -398,7 +398,7 @@
 }
 .qd-serving-with {
   color: var(--qd-muted-fg);
-  font-size: clamp(10px, 1.6vh, 18px);
+  font-size: clamp(12px, 1.9vh, 22px);
 }
 .qd-list {
   flex: 1;
@@ -417,7 +417,7 @@
   gap: 0.6em;
   padding: clamp(4px, 1vh, 12px) 0;
   border-top: 1px solid var(--qd-border);
-  font-size: clamp(12px, 2.1vh, 24px);
+  font-size: clamp(14px, 2.4vh, 28px);
 }
 .qd-row:first-child {
   border-top: 0;
@@ -435,7 +435,7 @@
   text-align: center;
   border-radius: 0.4em;
   padding: 0.15em 0.5em;
-  font-size: clamp(9px, 1.5vh, 16px);
+  font-size: clamp(11px, 1.8vh, 18px);
   font-weight: 800;
   color: var(--qd-muted-fg);
 }
@@ -478,7 +478,7 @@
 .qd-empty {
   padding: clamp(4px, 1vh, 12px) 0;
   color: var(--qd-muted-fg);
-  font-size: clamp(11px, 1.8vh, 20px);
+  font-size: clamp(14px, 2.4vh, 28px);
   border-top: 1px solid var(--qd-border);
 }
 .qd-list .qd-empty:first-child,
@@ -544,7 +544,7 @@
   margin: 0.1em 0;
 }
 .qd-slide-who {
-  font-size: clamp(16px, 3vh, 36px);
+  font-size: clamp(20px, 3.6vh, 44px);
   font-weight: 500;
 }
 .qd-slide-right {
@@ -659,7 +659,7 @@
   background: var(--qd-card);
   padding: clamp(6px, 1.1vh, 14px) 0;
   color: var(--qd-muted-fg);
-  font-size: clamp(12px, 2.1vh, 24px);
+  font-size: clamp(14px, 2.4vh, 28px);
 }
 .qd-ticker-track {
   display: inline-flex;

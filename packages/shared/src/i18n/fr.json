@@ -10208,10 +10208,12 @@
     "noKey": "Cette adresse n’a pas de clé d’écran. Demandez le lien de l’écran au gestionnaire.",
     "offline": "Connexion perdue — dernière mise à jour affichée",
     "voice": {
-      "call": "Ticket {{ticket}}. {{name}}. Veuillez vous présenter à {{room}}.",
-      "callNoName": "Ticket {{ticket}}. Veuillez vous présenter à {{room}}.",
+      "call": "{{name}}, vous êtes attendu en {{department}} par {{staff}}.",
       "results": "Résultats prêts pour le ticket {{ticket}}, {{name}}. Veuillez vous rendre au laboratoire.",
-      "resultsNoName": "Résultats prêts pour le ticket {{ticket}}. Veuillez vous rendre au laboratoire."
+      "resultsNoName": "Résultats prêts pour le ticket {{ticket}}. Veuillez vous rendre au laboratoire.",
+      "callNoStaff": "{{name}}, vous êtes attendu en {{department}}.",
+      "callTicket": "Ticket {{ticket}}, vous êtes attendu en {{department}} par {{staff}}.",
+      "callTicketNoStaff": "Ticket {{ticket}}, vous êtes attendu en {{department}}."
     },
     "speaking": "Annonce en cours…",
     "ticker": {
@@ -10276,18 +10278,13 @@
       "screen_voice_lang": "La voix parle anglais ou français.",
       "screen_voice_repeat": "L’appel est répété 1 à 3 fois."
     },
-    "voice": "Annoncer l’appel à voix haute (voix du navigateur)",
-    "voiceLang": "Langue de la voix",
-    "voiceLangHint": "Les navigateurs n’ont pas de voix en kinyarwanda ; les noms sont lus tels qu’écrits.",
-    "voiceLangs": {
-      "en": "Anglais",
-      "fr": "Français"
-    },
-    "voiceRepeat": "Répéter",
+    "voice": "Dire l’appel à voix haute (voix du navigateur), dans chaque langue de l’écran",
+    "voiceLangHint": "L’appel est dit dans chaque langue de l’écran, l’une après l’autre : « {name}, vous êtes attendu en {department} par {staff} ». Les navigateurs n’ont pas de voix kinyarwanda : cette phrase est lue par une voix swahili ou française quand le téléviseur en a une.",
+    "voiceRepeat": "Dire chaque appel",
     "voiceTimes_one": "{{count}} fois",
     "voiceTimes_other": "{{count}} fois",
     "ticker": "Ligne défilante en bas (les suivants, résultats prêts, le message)",
-    "voiceOn": "Voix {{lang}} ×{{count}}",
+    "voiceOn": "Voix ×{{count}}, chaque langue",
     "voiceOff": "Sans voix",
     "tickerOn": "Ligne défilante",
     "tickerOff": "Sans ligne défilante",

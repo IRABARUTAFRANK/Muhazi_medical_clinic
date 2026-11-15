@@ -11,11 +11,9 @@ import {
   useDisplayDevices,
   useDisplayScreenActions,
   useDisplayScreens,
-  VOICE_LANGS,
   VOICE_REPEATS,
   type DisplayScreen,
   type DisplayScreenInput,
-  type VoiceLang,
 } from '@/lib/api/display'
 import { ApiError } from '@/lib/api/errors'
 import { STATIONS, type Station } from '@/lib/api/visits'
@@ -43,7 +41,7 @@ const emptyDraft = (): DisplayScreenInput => ({
   message: '',
   voice: true,
   voiceLang: 'en',
-  voiceRepeat: 2,
+  voiceRepeat: 3,
   ticker: true,
 })
 
@@ -259,21 +257,6 @@ export function DisplayScreensCard() {
               </label>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className={labelClass}>
-                  {t('displayScreens.voiceLang')}
-                  <select
-                    className={cn(controlClass, 'w-full font-normal')}
-                    value={draft.voiceLang}
-                    disabled={!draft.voice}
-                    onChange={(e) => setDraft({ ...draft, voiceLang: e.target.value as VoiceLang })}
-                  >
-                    {VOICE_LANGS.map((l) => (
-                      <option key={l} value={l}>
-                        {t(`displayScreens.voiceLangs.${l}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={labelClass}>
                   {t('displayScreens.voiceRepeat')}
                   <select
                     className={cn(controlClass, 'w-full font-normal')}
@@ -362,10 +345,7 @@ export function DisplayScreensCard() {
                       t(s.showNames ? 'displayScreens.names' : 'displayScreens.ticketsOnly'),
                       t(s.chime ? 'displayScreens.withChime' : 'displayScreens.noChime'),
                       s.voice
-                        ? t('displayScreens.voiceOn', {
-                            lang: t(`displayScreens.voiceLangs.${s.voiceLang}`),
-                            count: s.voiceRepeat,
-                          })
+                        ? t('displayScreens.voiceOn', { count: s.voiceRepeat })
                         : t('displayScreens.voiceOff'),
                       t(s.ticker ? 'displayScreens.tickerOn' : 'displayScreens.tickerOff'),
                       s.languages.map((l) => l.toUpperCase()).join(' · '),
@@ -398,7 +378,7 @@ export function DisplayScreensCard() {
                           message: s.message ?? '',
                           voice: s.voice ?? true,
                           voiceLang: s.voiceLang ?? 'en',
-                          voiceRepeat: s.voiceRepeat ?? 2,
+                          voiceRepeat: s.voiceRepeat ?? 3,
                           ticker: s.ticker ?? true,
                         })
                       }}
