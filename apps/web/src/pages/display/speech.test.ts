@@ -3,12 +3,11 @@ import { rwForVoice, rwSentence } from './speech'
 
 // 0163: Kinyarwanda through another voice — respelled so the vowels and consonants come out right
 describe('kinyarwanda for the voice', () => {
-  it('english voice: syllables with english vowels, c as ch, names too, tickets never', () => {
-    expect(rwForVoice('Umurwayi witwa', 'en')).toBe('oo-moo-rwah-yee wee-twah')
-    expect(rwForVoice('deparitoma yo gusuzuma', 'en')).toBe(
-      'deh-pah-ree-toh-mah yoh goo-soo-zoo-mah',
-    )
-    expect(rwForVoice('icyumba', 'en')).toBe('ee-chyoo-mbah')
+  it('english voice: whole words with english vowels, c as ch, hard g, names too, tickets never', () => {
+    expect(rwForVoice('Umurwayi witwa', 'en')).toBe('oomoorwahyee weetwah')
+    expect(rwForVoice('deparitoma yo gusuzuma', 'en')).toBe('dehpahreetohmah yoh goosoozoomah')
+    expect(rwForVoice('icyumba', 'en')).toBe('eechyoombah')
+    expect(rwForVoice('Mugiraneza', 'en')).toBe('mooghheerahnehzah'.replace('ghh', 'gh'))
     const s = rwSentence(
       'Umurwayi witwa §2§, urakenewe muri §3§, ukenewe na muganga §4§. Itike §1§.',
       [
@@ -19,9 +18,9 @@ describe('kinyarwanda for the voice', () => {
       ],
       'en',
     )
-    expect(s).toContain('hah-bee-mah-nah')
-    expect(s).toContain('deh-pah-ree-toh-mah yee-bee-pee-moh byee-bah-nzeh')
-    expect(s).toContain('Dr. moo-kah-mah-nah')
+    expect(s).toContain('hahbeemahnah')
+    expect(s).toContain('dehpahreetohmah yeebeepeemoh byeebahnzeh')
+    expect(s).toContain('Dr. mookahmahnah')
     expect(s).toContain('A 0 1 4')
   })
   it('french voice: ou for u, tch for c, gn for ny, every e said; names left alone', () => {

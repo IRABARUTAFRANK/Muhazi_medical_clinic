@@ -101,17 +101,19 @@ function rwWordForEnglish(word: string): string {
   const w = word.toLowerCase().replace(/[’']/g, '')
   if (!VOWEL.test(w)) return word
   const parts = w.match(/[^aeiou]*[aeiou]+|[^aeiou]+$/g) ?? [w]
+  // one word, never hyphens: hyphens make the voice stop at every syllable (0164)
   return parts
     .map((p) =>
       p
         .replace(/c(?!h)/g, 'ch')
+        .replace(/g(?=[ei])/g, 'gh')
         .replace(/a+/g, 'ah')
         .replace(/e+/g, 'eh')
         .replace(/i+/g, 'ee')
         .replace(/o+/g, 'oh')
         .replace(/u+/g, 'oo'),
     )
-    .join('-')
+    .join('')
 }
 /** For a French voice: "u" is "ou", "c" is "tch", "sh" is "ch", "ny" is "gn", every e is "é" (never silent). */
 const rwWordForFrench = (word: string): string =>
