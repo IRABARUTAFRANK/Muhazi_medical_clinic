@@ -127,12 +127,12 @@ const rwWordForSpanish = (word: string): string =>
   word
     .toLowerCase()
     .replace(/jy?/g, 'y')
-    .replace(/sh/g, '\u0001')
-    .replace(/c(?!h)/g, '\u0002')
+    .replace(/sh/g, '§')
+    .replace(/c(?!h)/g, '¤')
     .replace(/h/g, 'j')
     .replace(/ny/g, 'ñ')
     .replace(/z/g, 's')
-    .replace(/[\u0001\u0002]/g, 'ch')
+    .replace(/[§¤]/g, 'ch')
 
 /** A Kinyarwanda sentence respelled for the voice that will read it (none for rw / sw). */
 export function rwForVoice(text: string, family: RwVoiceFamily): string {
