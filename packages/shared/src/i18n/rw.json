@@ -554,7 +554,9 @@
       "week": "{{from}} – {{to}}",
       "month": "{{from}} – {{to}}",
       "custom": "Igihe uhisemo",
-      "all": "Kuva mu ntangiriro · kugeza ku wa {{to}}"
+      "all": "Kuva mu ntangiriro · kugeza ku wa {{to}}",
+      "year": "Umwaka wa {{year}} · kugeza ku wa {{to}}",
+      "wholeYear": "Umwaka wa {{year}}"
     },
     "viewAs": "Reba nka: {{role}}",
     "roleFilter": "Hitamo umwanya",
@@ -710,7 +712,8 @@
     "forgottenHint_one": "Umurwayi {{count}} aracyari ku murongo kuva umunsi ushize: funga kwivuza kwe",
     "forgottenHint_other": "Abarwayi {{count}} baracyari ku murongo kuva iminsi ishize: funga kwivuza kwabo",
     "revenueAriaDays_one": "Amafaranga yinjiye mu munsi {{count}}; umunsi wa nyuma {{latest}}",
-    "revenueAriaDays_other": "Amafaranga yinjiye mu minsi {{count}}; umunsi wa nyuma {{latest}}"
+    "revenueAriaDays_other": "Amafaranga yinjiye mu minsi {{count}}; umunsi wa nyuma {{latest}}",
+    "year": "Umwaka"
   },
   "staff": {
     "title": "Abakozi",

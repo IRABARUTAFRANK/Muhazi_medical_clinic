@@ -526,7 +526,9 @@
       "week": "{{from}} – {{to}}",
       "month": "{{from}} – {{to}}",
       "custom": "Custom range",
-      "all": "Since the start · up to {{to}}"
+      "all": "Since the start · up to {{to}}",
+      "year": "Year {{year}} · up to {{to}}",
+      "wholeYear": "Year {{year}}"
     },
     "viewAs": "View as: {{role}}",
     "roleFilter": "Role filter",
@@ -701,7 +703,8 @@
     "forgottenHint_one": "{{count}} patient still in a queue from an earlier day: please close the visit",
     "forgottenHint_other": "{{count}} patients still in a queue from earlier days: please close their visits",
     "revenueAriaDays_one": "Revenue over {{count}} day; latest day {{latest}}",
-    "revenueAriaDays_other": "Revenue over {{count}} days; latest day {{latest}}"
+    "revenueAriaDays_other": "Revenue over {{count}} days; latest day {{latest}}",
+    "year": "Year"
   },
   "placeholder": {
     "title": "{{screen}}",

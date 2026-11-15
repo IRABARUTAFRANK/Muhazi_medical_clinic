@@ -526,7 +526,9 @@
       "week": "{{from}} – {{to}}",
       "month": "{{from}} – {{to}}",
       "custom": "Période personnalisée",
-      "all": "Depuis le début · jusqu’au {{to}}"
+      "all": "Depuis le début · jusqu’au {{to}}",
+      "year": "Année {{year}} · jusqu’au {{to}}",
+      "wholeYear": "Année {{year}}"
     },
     "viewAs": "Voir comme : {{role}}",
     "roleFilter": "Filtre de rôle",
@@ -701,7 +703,8 @@
     "forgottenHint_one": "{{count}} patient encore dans une file d'un jour précédent : clôturez la visite",
     "forgottenHint_other": "{{count}} patients encore dans une file de jours précédents : clôturez leurs visites",
     "revenueAriaDays_one": "Recettes sur {{count}} jour ; dernier jour {{latest}}",
-    "revenueAriaDays_other": "Recettes sur {{count}} jours ; dernier jour {{latest}}"
+    "revenueAriaDays_other": "Recettes sur {{count}} jours ; dernier jour {{latest}}",
+    "year": "Année"
   },
   "placeholder": {
     "title": "{{screen}}",

@@ -4,27 +4,65 @@ import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import { useDataYears, type DashboardRange } from '@/lib/api/dashboard'
-import type { Period } from '@/lib/period'
+import { periodYear, type Period } from '@/lib/period'
 import { cn } from '@/lib/utils'
 
-/** The six choices, for a toolbar. */
+/**
+ * 0161: the year, always in sight beside the period: this year by default; another year of
+ * the clinic's data is chosen here (that whole year), without opening Custom. The years run
+ * from the first visit's to this one.
+ */
+export function PeriodYear({ period, className }: { period: Period; className?: string }) {
+  const { t } = useTranslation()
+  const years = useDataYears()
+  const thisYear = new Date().getFullYear()
+  const shown = periodYear(period)
+  const pick = (y: number) => {
+    if (y === thisYear) period.setRange('year')
+    else period.setCustom({ from: `${y}-01-01`, to: `${y}-12-31` })
+  }
+  const options = [...new Set([...years, thisYear, ...(shown ? [shown] : [])])].sort(
+    (a, b) => b - a,
+  )
+  return (
+    <Select
+      label={t('dashboard.year')}
+      value={shown ? String(shown) : ''}
+      onChange={(e) => e.target.value && pick(Number(e.target.value))}
+      wrapperClassName={cn('w-28', className)}
+      aria-label={t('dashboard.year')}
+    >
+      {!shown && <option value="">—</option>}
+      {options.map((y) => (
+        <option key={y} value={y}>
+          {y}
+        </option>
+      ))}
+    </Select>
+  )
+}
+
+/** The six choices, for a toolbar, with the year beside them (0161). */
 export function PeriodSeg({ period, className }: { period: Period; className?: string }) {
   const { t } = useTranslation()
   return (
-    <Seg<DashboardRange>
-      className={className}
-      label={t('dashboard.dateRange')}
-      value={period.range}
-      onChange={period.setRange}
-      options={[
-        { value: 'today', label: t('dashboard.ranges.today') },
-        { value: 'week', label: t('dashboard.ranges.week') },
-        { value: 'month', label: t('dashboard.ranges.month') },
-        { value: 'year', label: t('dashboard.ranges.year') },
-        { value: 'all', label: t('dashboard.ranges.all') },
-        { value: 'custom', label: t('dashboard.ranges.custom') },
-      ]}
-    />
+    <div className={cn('flex max-w-full flex-wrap items-end gap-2', className)}>
+      <Seg<DashboardRange>
+        className="max-w-full flex-wrap"
+        label={t('dashboard.dateRange')}
+        value={period.range}
+        onChange={period.setRange}
+        options={[
+          { value: 'today', label: t('dashboard.ranges.today') },
+          { value: 'week', label: t('dashboard.ranges.week') },
+          { value: 'month', label: t('dashboard.ranges.month') },
+          { value: 'year', label: t('dashboard.ranges.year') },
+          { value: 'all', label: t('dashboard.ranges.all') },
+          { value: 'custom', label: t('dashboard.ranges.custom') },
+        ]}
+      />
+      <PeriodYear period={period} />
+    </div>
   )
 }
 

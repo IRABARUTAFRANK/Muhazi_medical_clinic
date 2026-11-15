@@ -21,15 +21,22 @@ export interface Period {
   label: string
 }
 
-/** "21/10/2026", "Since the start · up to …" or "Mon 21/10 – Thu 24/10/2026". */
+/** "21/10/2026", "Since the start · up to …", "Year 2026 · up to 15/11/2026", "Year 2025" or
+ *  "21/10/2026 – 24/10/2026". */
 function usePeriodLabel() {
   const { t } = useTranslation()
-  return (range: DashboardRange, from: Date, to: Date) =>
-    range === 'today' || isoDate(from) === isoDate(to)
-      ? formatDate(to)
-      : range === 'all'
-        ? t('dashboard.rangeLabels.all', { to: formatDate(to) })
-        : t('dashboard.rangeLabels.week', { from: formatDate(from), to: formatDate(to) })
+  return (range: DashboardRange, from: Date, to: Date) => {
+    const f = isoDate(from)
+    const e = isoDate(to)
+    const year = f.slice(0, 4)
+    if (range === 'today' || f === e) return formatDate(to)
+    if (range === 'all') return t('dashboard.rangeLabels.all', { to: formatDate(to) })
+    if (range === 'year') return t('dashboard.rangeLabels.year', { year, to: formatDate(to) })
+    // 0161: a whole past year chosen by its number
+    if (f === `${year}-01-01` && e === `${year}-12-31`)
+      return t('dashboard.rangeLabels.wholeYear', { year })
+    return t('dashboard.rangeLabels.week', { from: formatDate(from), to: formatDate(to) })
+  }
 }
 
 /** The first of this month to today: what Custom shows before anything is chosen. */
@@ -121,6 +128,10 @@ export function useSearchPeriod(
     label: labelOf(range, from, to),
   }
 }
+
+/** The year a period covers (its last day's), or null for "since the start" (0161). */
+export const periodYear = (period: Pick<Period, 'range' | 'to'>): number | null =>
+  period.range === 'all' ? null : Number(period.to.slice(0, 4))
 
 /**
  * A link to another page with the same period ("Details", "Payments and day close"):
