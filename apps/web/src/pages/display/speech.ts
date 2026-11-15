@@ -25,7 +25,16 @@ export interface Announcement {
   audio?: string | Promise<string | null> | null
   /** The pause after this piece (the pieces of one call follow each other closely). */
   gapMs?: number
+  /** 0166: the speed (1 = the voice's own; the name is said at 0.7) and the loudness (0–1). */
+  rate?: number
+  volume?: number
 }
+
+/** The sentence around the name: a little softer, so the name stands out (0166). */
+export const SENTENCE_VOLUME = 0.85
+/** The name: slow and at full volume, so it is heard right (0166). */
+export const NAME_RATE = 0.7
+export const NAME_VOLUME = 1
 
 /** The pause between two sayings of the same sentence, and between two announcements. */
 const PAUSE_MS = 700
@@ -295,9 +304,9 @@ export function createAnnouncer(onBusy: (busy: boolean) => void): Announcer {
       const voice = pickVoice(a.lang)
       u.lang = voice?.lang ?? (a.lang === 'fr' ? 'fr-FR' : a.lang === 'rw' ? 'rw-RW' : 'en-GB')
       if (voice) u.voice = voice
-      u.rate = 0.92
+      u.rate = a.rate ?? 0.92
       u.pitch = 1
-      u.volume = 1
+      u.volume = a.volume ?? SENTENCE_VOLUME
       u.onend = after
       u.onerror = after
       // Chrome: a paused engine (after a tab switch) says nothing until resumed

@@ -24,6 +24,8 @@ import { CLIP_INTRO, CLIP_STAFF, clipKeyForDesk, deskPhrase, upperFirst } from '
 import {
   canSpeak,
   createAnnouncer,
+  NAME_RATE,
+  NAME_VOLUME,
   rwSentence,
   rwVoiceFamily,
   spokenTicket,
@@ -275,6 +277,24 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
                   ? 'display.voice.callTicket'
                   : 'display.voice.callTicketNoStaff'
               const delay = first && chimeOn ? CHIME_MS : 0
+              /**
+               * 0166: the sentence in three pieces around the name — the name alone, slower and
+               * at full volume, a short pause before and after — so it is heard right.
+               */
+              const NAME = '§N§'
+              const sayAround = (full: string, nameText: string, d: number) => {
+                const [before = '', after = ''] = full.split(NAME)
+                const pieces: (Partial<Announcement> & { text: string })[] = []
+                if (before.trim()) pieces.push({ text: before.trim(), gapMs: 180 })
+                pieces.push({ text: nameText, rate: NAME_RATE, volume: NAME_VOLUME, gapMs: 220 })
+                if (after.trim()) pieces.push({ text: after.trim() })
+                pieces.forEach((p, i) =>
+                  announcer.current!.say(
+                    { lang: vl, repeat: 1, priority: 'call', ...p },
+                    i ? 0 : d,
+                  ),
+                )
+              }
               if (vl === 'rw') {
                 // 0163: Kinyarwanda through the closest voice the TV has, respelled for it;
                 // 0165: or the staff's recordings (only the names by the voice), or the clinic's
@@ -288,9 +308,20 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
                   deptPart,
                   staffPart,
                 ]
+                // the name's token stays in the sentence: it is said as its own piece
                 const spoken = rwSentence(
                   tv(k, { ticket: '§1§', name: '§2§', department: '§3§', staff: '§4§' }),
                   parts,
+                  fam,
+                )
+                const spokenAround = rwSentence(
+                  tv(k, { ticket: NAME, name: NAME, department: '§3§', staff: '§4§' }),
+                  [deptPart, staffPart],
+                  fam,
+                )
+                const nameSpoken = rwSentence(
+                  '§2§',
+                  [{ token: '§2§', value: c.n.name || vars.ticket }],
                   fam,
                 )
                 const mode = data?.rwVoice ?? 'browser'
@@ -312,7 +343,9 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
                   )
                   piece({
                     text: rwSentence('§2§', [{ token: '§2§', value: who }], fam),
-                    gapMs: 160,
+                    rate: NAME_RATE,
+                    volume: NAME_VOLUME,
+                    gapMs: 220,
                   })
                   piece({
                     text: rwSentence('urakenewe muri §3§', [deptPart], fam),
@@ -328,11 +361,12 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
                     piece({ text: rwSentence('§4§', [staffPart], fam) })
                   }
                 } else {
-                  piece({ text: spoken }, delay)
+                  sayAround(spokenAround, nameSpoken, delay)
                 }
               } else {
-                announcer.current.say(
-                  { text: tv(k, vars), lang: vl, repeat: 1, priority: 'call' },
+                sayAround(
+                  tv(k, { ...vars, name: NAME, ticket: NAME }),
+                  c.n.name || vars.ticket,
                   delay,
                 )
               }
