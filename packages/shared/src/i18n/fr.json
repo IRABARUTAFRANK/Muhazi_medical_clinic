@@ -10235,10 +10235,7 @@
     "nowCalling": "Appel en cours",
     "proceedTo": "Veuillez vous rendre à",
     "nowServing": "En consultation",
-    "nextTag": "SUIVANT",
-    "views": "Affichage des postes",
-    "gridView": "Tous les postes à la fois",
-    "slidesView": "Un poste à la fois"
+    "nextTag": "SUIVANT"
   },
   "displayScreens": {
     "title": "Écrans de salle d’attente",

@@ -10235,10 +10235,7 @@
     "nowCalling": "Now calling",
     "proceedTo": "Please proceed to",
     "nowServing": "Now serving",
-    "nextTag": "NEXT",
-    "views": "How the desks are shown",
-    "gridView": "Every desk at once",
-    "slidesView": "One desk at a time"
+    "nextTag": "NEXT"
   },
   "displayScreens": {
     "title": "Waiting-room screens",

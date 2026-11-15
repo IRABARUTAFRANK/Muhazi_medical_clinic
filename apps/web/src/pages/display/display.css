@@ -133,32 +133,6 @@
 .qd-sound[aria-pressed='true'] {
   color: var(--qd-primary);
 }
-.qd-modes {
-  display: flex;
-  gap: 2px;
-  border-radius: 9999px;
-  border: 1px solid var(--qd-border);
-  background: var(--qd-card);
-  padding: 3px;
-}
-.qd-mode {
-  display: grid;
-  place-items: center;
-  width: clamp(26px, 4vh, 40px);
-  height: clamp(26px, 4vh, 40px);
-  border-radius: 9999px;
-  border: 0;
-  background: transparent;
-  color: var(--qd-muted-fg);
-  cursor: pointer;
-  transition:
-    background 0.2s,
-    color 0.2s;
-}
-.qd-mode.is-on {
-  background: var(--qd-primary);
-  color: var(--qd-primary-fg);
-}
 .qd-clock {
   text-align: right;
   line-height: 1.05;

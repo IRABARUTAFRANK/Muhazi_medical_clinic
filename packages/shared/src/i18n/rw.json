@@ -10242,12 +10242,9 @@
     "queue": "Umurongo w’abarwayi",
     "waitingWord": "bategereje",
     "nowCalling": "Uhamagawe ubu",
-    "proceedTo": "Nyamuneka jya kuri",
+    "proceedTo": "Nyamuneka jya muri",
     "nowServing": "Uri kwitabwaho ubu",
-    "nextTag": "UKURIKIRA",
-    "views": "Uko aho bakorera hagaragazwa",
-    "gridView": "Aho bakorera hose icyarimwe",
-    "slidesView": "Aho bakorera hamwe ku gihe"
+    "nextTag": "UKURIKIRA"
   },
   "displayScreens": {
     "title": "Mugaragaza zo mu cyumba cyo gutegerereza",

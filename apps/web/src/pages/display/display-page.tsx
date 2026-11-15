@@ -1,14 +1,5 @@
 import { createElement, useEffect, useRef, useState, type CSSProperties } from 'react'
-import {
-  LogIn,
-  Tv,
-  AudioLines,
-  GalleryHorizontal,
-  LayoutGrid,
-  Volume2,
-  VolumeX,
-  WifiOff,
-} from 'lucide-react'
+import { LogIn, Tv, AudioLines, Volume2, VolumeX, WifiOff } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '@mmc/shared'
@@ -36,17 +27,15 @@ import './display.css'
  * The waiting-room screen: a TV at the waiting side (migration 0114). 0157: the look of the
  * "Clinic Queue Display" design. On top the clinic, how many wait, the clock; then the latest
  * call as a glowing bar ("Now calling C-024 · Jean M. — please proceed to Consultation, Room
- * 1"); then the desks, in two turns that alternate every five minutes: every desk as a card in
- * a grid, then one desk at a time like a slideshow. The desk whose patient was called last
- * comes first, so a call always shows where everyone looks. Reads the board every 3 seconds;
+ * 1"); then the desks with someone called or waiting, ONE at a time like a slideshow (0160:
+ * the grid of every desk is gone). The desk whose patient was called last comes first, so a
+ * call always shows where everyone looks. Reads the board every 3 seconds;
  * a new call flashes, dings (Web Audio, unlocked by the Start button once) and is said aloud
  * (0118); a result ready is announced after the calls. A strip of results ready and the
  * scrolling line close the page. The languages rotate every 6 seconds. Nothing scrolls on a TV.
  */
 
 const LANG_EVERY_MS = 6_000
-/** The grid and the slideshow take turns. */
-const VIEW_EVERY_MS = 5 * 60_000
 /** One desk after the other, in the slideshow. */
 const SLIDE_EVERY_MS = 10_000
 const FLASH_MS = 6_000
@@ -240,9 +229,10 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
           for (let round = 0; round < voiceRepeat; round++) {
             for (const vl of voiceLangs) {
               const tv = i18n.getFixedT(vl)
-              const department = tv(`register.stations.${c.desk.station}`, {
-                defaultValue: c.desk.station,
-              })
+              const department = deskPhrase(
+                tv(`register.stations.${c.desk.station}`, { defaultValue: c.desk.station }),
+                vl,
+              )
               const vars = {
                 ticket: spokenTicket(c.n.ticket),
                 name: c.n.name ?? '',
@@ -310,31 +300,24 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
   // nothing is left talking when the page goes
   useEffect(() => () => announcer.current?.stop(), [])
 
-  // the desks, the last called first; the grid and the slideshow take turns every 5 minutes
-  const desks = orderDesks(data?.desks ?? [])
-  const busy = desks.some((d) => d.now.length > 0 || d.next.length > 0 || d.waiting > 0)
-  const [mode, setMode] = useState<'grid' | 'slides'>('grid')
+  // the desks with someone (called or waiting), the last called first, one at a time
+  const allDesks = orderDesks(data?.desks ?? [])
+  const desks = allDesks.filter((d) => d.now.length > 0 || d.next.length > 0 || d.waiting > 0)
+  const busy = desks.length > 0
   const [slide, setSlide] = useState(0)
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setMode((m) => (m === 'grid' ? 'slides' : 'grid'))
-      setSlide(0)
-    }, VIEW_EVERY_MS)
-    return () => window.clearInterval(id)
-  }, [])
   const slides = desks.length
   useEffect(() => {
-    if (mode !== 'slides' || slides < 2) return
+    if (slides < 2) return
     const id = window.setInterval(() => setSlide((i) => (i + 1) % slides), SLIDE_EVERY_MS)
     return () => window.clearInterval(id)
-  }, [mode, slides])
+  }, [slides])
   // a new call: its desk is first, and the slideshow starts from it (derived while rendering)
   const [seenStamp, setSeenStamp] = useState(0)
   if (news.stamp !== seenStamp) {
     setSeenStamp(news.stamp)
     setSlide(0)
   }
-  const totalWaiting = desks.reduce((n, d) => n + d.waiting, 0)
+  const totalWaiting = allDesks.reduce((n, d) => n + d.waiting, 0)
 
   const unknown = error instanceof ApiError && error.hint === 'screen_unknown'
   const offline = !unknown && isError && data != null
@@ -395,29 +378,6 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
               {t(sound ? 'display.soundOn' : 'display.soundOff')}
             </button>
           )}
-          {data && desks.length > 1 && (
-            <div className="qd-modes" role="group" aria-label={t('display.views')}>
-              {(['grid', 'slides'] as const).map((m) => {
-                const Icon = m === 'grid' ? LayoutGrid : GalleryHorizontal
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    className={cn('qd-mode', mode === m && 'is-on')}
-                    aria-pressed={mode === m}
-                    aria-label={t(m === 'grid' ? 'display.gridView' : 'display.slidesView')}
-                    title={t(m === 'grid' ? 'display.gridView' : 'display.slidesView')}
-                    onClick={() => {
-                      setMode(m)
-                      setSlide(0)
-                    }}
-                  >
-                    <Icon size={18} aria-hidden="true" />
-                  </button>
-                )
-              })}
-            </div>
-          )}
           <div className="qd-clock">
             <div className="qd-time">{time}</div>
             <div className="qd-date">{date}</div>
@@ -456,14 +416,12 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
         </p>
       ) : (
         <main className="qd-stage">
-          <Banner calls={calls} fresh={freshKeys} t={t} />
+          <Banner calls={calls} fresh={freshKeys} t={t} lang={lang} />
           {!busy ? (
             <section className="qd-calm">
               <h2>{t('display.noPatients')}</h2>
               <p>{t('display.noPatientsLead')}</p>
             </section>
-          ) : mode === 'grid' || desks.length < 2 ? (
-            <DeskGrid desks={desks} t={t} />
           ) : (
             <SlideView desks={desks} index={slide % slides} t={t} />
           )}
@@ -491,15 +449,43 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
   )
 }
 
-/** The latest call as a glowing bar, and the two or three before it in a thin line. */
-function Banner({ calls, fresh, t }: { calls: Call[]; fresh: Set<string>; t: TFixed }) {
-  const [latest, ...earlier] = calls
+/**
+ * The desk as the place to go, in the language's own grammar (0160): Kinyarwanda says
+ * "deparitoma y’ibipimo by’ibanze", "deparitoma yo gusuzuma", "deparitoma ya laboratwari".
+ */
+const deskPhrase = (name: string, lang: Lang): string => {
+  if (lang !== 'rw') return name
+  const n = name.trim()
+  const low = n.charAt(0).toLowerCase() + n.slice(1)
+  const link = /^[aeiou]/i.test(n) ? 'y’' : /^(ku|gu)/i.test(n) ? 'yo ' : 'ya '
+  return `deparitoma ${link}${low}`
+}
+const upperFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/**
+ * The latest call still waited for as a glowing bar, and the two or three before it in a thin
+ * line. A patient the clinician has taken leaves the bar (0160): the bar is for those who have
+ * to come.
+ */
+function Banner({
+  calls,
+  fresh,
+  t,
+  lang,
+}: {
+  calls: Call[]
+  fresh: Set<string>
+  t: TFixed
+  lang: Lang
+}) {
+  const [latest, ...earlier] = calls.filter((c) => !c.n.started)
   const where = (c: Call) => {
     const desk = deskNameOf(c.desk, t)
+    const place = upperFirst(deskPhrase(desk, lang))
     // "Consultation 2" says the desk already; "Room 3" needs it ("Dental — Room 3")
     const room = c.n.room
-    if (!room || roomSaysDesk(room, c.desk.station, desk)) return desk
-    return room.toLowerCase().includes(desk.toLowerCase()) ? room : `${desk} — ${room}`
+    if (!room || roomSaysDesk(room, c.desk.station, desk)) return place
+    return room.toLowerCase().includes(desk.toLowerCase()) ? room : `${place} — ${room}`
   }
   return (
     <>
@@ -514,9 +500,7 @@ function Banner({ calls, fresh, t }: { calls: Call[]; fresh: Set<string>; t: TFi
         {latest ? (
           <>
             <div className="qd-banner-main">
-              <p className="qd-banner-label">
-                {t(latest.n.started ? 'display.beingSeen' : 'display.nowCalling')}
-              </p>
+              <p className="qd-banner-label">{t('display.nowCalling')}</p>
               <p className="qd-banner-who">
                 {latest.n.ticket}
                 {latest.n.name ? ` · ${latest.n.name}` : ''}
@@ -581,59 +565,6 @@ function NextRows({ desk, rows, t }: { desk: BoardDesk; rows: number; t: TFixed 
       ))}
       {more > 0 && <li className="qd-more">{t('display.moreWaiting', { count: more })}</li>}
     </>
-  )
-}
-
-/** Every desk as a card: the one called last first, outlined in gold. */
-function DeskGrid({ desks, t }: { desks: BoardDesk[]; t: TFixed }) {
-  const n = desks.length
-  const cols = n <= 3 ? n : n <= 4 ? 2 : n <= 9 ? 3 : 4
-  const rows = n <= 3 ? 5 : n <= 6 ? 3 : n <= 9 ? 2 : 1
-  return (
-    <div className="qd-grid" style={{ '--qd-cols': cols } as CSSProperties}>
-      {desks.map((d, i) => {
-        const name = deskNameOf(d, t)
-        const room = deskRoomOf(d)
-        const seen = d.now.find((x) => x.started) ?? d.now[0]
-        return (
-          <article
-            key={d.station}
-            className={cn('qd-card', i === 0 && d.now.length > 0 && 'is-first')}
-            aria-label={name}
-          >
-            <div className="qd-card-head">
-              <div className="qd-card-id">
-                <span className="qd-icon" aria-hidden="true">
-                  {createElement(stationIconFor(d.station))}
-                </span>
-                <div className="min-w-0">
-                  <h2 className="qd-card-name">{name}</h2>
-                  {room && !roomSaysDesk(room, d.station, name) && (
-                    <div className="qd-card-room">{room}</div>
-                  )}
-                </div>
-              </div>
-              <span className="qd-count">{t('display.waiting', { count: d.waiting })}</span>
-            </div>
-            <div className="qd-serving">
-              <div className="qd-label">{t('display.nowServing')}</div>
-              <div className="qd-serving-row">
-                <span className="qd-serving-ticket num">{seen?.ticket ?? '—'}</span>
-                <span className="qd-serving-name">
-                  {seen ? (seen.name ?? '') : t('display.noOneCalled')}
-                </span>
-              </div>
-              {seen?.person && (
-                <div className="qd-serving-with">{t('display.with', { person: seen.person })}</div>
-              )}
-            </div>
-            <ol className="qd-list">
-              <NextRows desk={d} rows={rows} t={t} />
-            </ol>
-          </article>
-        )
-      })}
-    </div>
   )
 }
 
