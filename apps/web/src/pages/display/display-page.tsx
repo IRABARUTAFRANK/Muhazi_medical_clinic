@@ -18,7 +18,14 @@ import { ApiError } from '@/lib/api/errors'
 import { useNow } from '@/lib/hooks'
 import { usePrefs } from '@/store/prefs'
 import { cn } from '@/lib/utils'
-import { canSpeak, createAnnouncer, spokenTicket, type Announcer } from './speech'
+import {
+  canSpeak,
+  createAnnouncer,
+  rwSentence,
+  rwVoiceFamily,
+  spokenTicket,
+  type Announcer,
+} from './speech'
 import '@fontsource-variable/sora'
 import '@fontsource-variable/manrope'
 import './display.css'
@@ -263,8 +270,22 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
                 : c.n.person
                   ? 'display.voice.callTicket'
                   : 'display.voice.callTicketNoStaff'
+              // 0163: Kinyarwanda through the closest voice the TV has, respelled for it
+              const text =
+                vl === 'rw'
+                  ? rwSentence(
+                      tv(k, { ticket: '§1§', name: '§2§', department: '§3§', staff: '§4§' }),
+                      [
+                        { token: '§1§', value: vars.ticket },
+                        { token: '§2§', value: vars.name },
+                        { token: '§3§', value: vars.department, kinyarwanda: true },
+                        { token: '§4§', value: vars.staff },
+                      ],
+                      rwVoiceFamily(),
+                    )
+                  : tv(k, vars)
               announcer.current.say(
-                { text: tv(k, vars), lang: vl, repeat: 1, priority: 'call' },
+                { text, lang: vl, repeat: 1, priority: 'call' },
                 first && chimeOn ? CHIME_MS : 0,
               )
               first = false
@@ -296,18 +317,19 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
       if (!r || !r.ticket) continue
       for (const vl of voiceOrder()) {
         const tv = i18n.getFixedT(vl)
-        announcer.current.say(
-          {
-            text: tv(r.name ? 'display.voice.results' : 'display.voice.resultsNoName', {
-              ticket: spokenTicket(r.ticket),
-              name: r.name ?? '',
-            }),
-            lang: vl,
-            repeat: 1,
-            priority: 'result',
-          },
-          0,
-        )
+        const rk = r.name ? 'display.voice.results' : 'display.voice.resultsNoName'
+        const text =
+          vl === 'rw'
+            ? rwSentence(
+                tv(rk, { ticket: '§1§', name: '§2§' }),
+                [
+                  { token: '§1§', value: spokenTicket(r.ticket) },
+                  { token: '§2§', value: r.name ?? '' },
+                ],
+                rwVoiceFamily(),
+              )
+            : tv(rk, { ticket: spokenTicket(r.ticket), name: r.name ?? '' })
+        announcer.current.say({ text, lang: vl, repeat: 1, priority: 'result' }, 0)
       }
     }
     // the results are read at the moment they appear only

@@ -10279,7 +10279,7 @@
       "screen_voice_repeat": "L’appel est répété 1 à 3 fois."
     },
     "voice": "Dire l’appel à voix haute (voix du navigateur), trois fois : kinyarwanda, anglais et français",
-    "voiceLangHint": "Chaque appel est dit trois fois, chaque fois dans une langue différente : d’abord dans la langue affichée à l’écran à ce moment, puis les deux autres — « {name}, vous êtes attendu en {department} par {staff} ». Les navigateurs n’ont pas de voix kinyarwanda : cette phrase est lue par une voix swahili ou française quand le téléviseur en a une.",
+    "voiceLangHint": "Chaque appel est dit trois fois, chaque fois dans une langue différente : d’abord dans la langue affichée à l’écran à ce moment, puis les deux autres — « {name}, vous êtes attendu en {department} par {staff} ». Les navigateurs n’ont pas de voix kinyarwanda : la phrase en kinyarwanda est lue par la voix la plus proche du téléviseur (swahili sur Edge, sinon espagnole, française ou anglaise), réécrite pour elle afin que voyelles et consonnes sonnent juste.",
     "ticker": "Ligne défilante en bas (les suivants, résultats prêts, le message)",
     "voiceOn": "Voix, 3 langues",
     "voiceOff": "Sans voix",

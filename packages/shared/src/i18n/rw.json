@@ -10288,7 +10288,7 @@
       "screen_voice_repeat": "Guhamagara bivugwa inshuro 1 kugeza kuri 3."
     },
     "voice": "Vuga guhamagara mu ijwi (ijwi rya mushakisha), inshuro eshatu: Ikinyarwanda, Icyongereza n’Igifaransa",
-    "voiceLangHint": "Buri guhamagara kuvugwa inshuro eshatu, buri nshuro mu rurimi rutandukanye: mbere mu rurimi ecran igaragaza icyo gihe, hanyuma izindi ebyiri — “Umurwayi witwa {name}, urakenewe muri {department}, ukenewe na muganga {staff}”. Mushakisha nta jwi ry’Ikinyarwanda zifite: iyo nteruro isomwa n’ijwi ry’Igiswahili cyangwa Igifaransa iyo televiziyo irifite.",
+    "voiceLangHint": "Buri guhamagara kuvugwa inshuro eshatu, buri nshuro mu rurimi rutandukanye: mbere mu rurimi ecran igaragaza icyo gihe, hanyuma izindi ebyiri — “Umurwayi witwa {name}, urakenewe muri {department}, ukenewe na muganga {staff}”. Mushakisha nta jwi ry’Ikinyarwanda zifite: interuro y’Ikinyarwanda isomwa n’ijwi riri hafi televiziyo ifite (Igiswahili kuri Edge, bitabaye ibyo Icyesipanyolo, Igifaransa cyangwa Icyongereza), yanditswe bundi bushya kugira ngo inyajwi n’ingombajwi zumvikane neza.",
     "ticker": "Umurongo unyerera hasi (abakurikira, ibisubizo biteguye, ubutumwa)",
     "voiceOn": "Ijwi, indimi 3",
     "voiceOff": "Nta jwi rivuga",

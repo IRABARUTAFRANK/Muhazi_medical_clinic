@@ -61,8 +61,9 @@ export function pickVoice(lang: VoiceLang): SpeechSynthesisVoice | null {
   } catch {
     return null
   }
-  // Kinyarwanda: a Kinyarwanda voice if the device has one, else Swahili, else French
-  const wanted = lang === 'rw' ? ['rw', 'sw', 'fr'] : [lang]
+  // Kinyarwanda: a Kinyarwanda voice if the device has one, else the closest — Swahili (the
+  // same five vowels and most consonants), then Spanish (the vowels), then French, then any
+  const wanted = lang === 'rw' ? ['rw', 'sw', 'es', 'fr', 'it', 'en'] : [lang]
   const mine =
     wanted
       .map((w) => voices.filter((v) => v.lang.toLowerCase().startsWith(w)))
@@ -76,6 +77,102 @@ export function pickVoice(lang: VoiceLang): SpeechSynthesisVoice | null {
     mine[0] ??
     null
   )
+}
+
+// ---------------------------------------------------------------- Kinyarwanda through another voice (0163)
+
+/** The family of the voice that will read Kinyarwanda on this device. */
+export type RwVoiceFamily = 'rw' | 'sw' | 'es' | 'fr' | 'it' | 'en' | 'none'
+export function rwVoiceFamily(): RwVoiceFamily {
+  const v = pickVoice('rw')
+  if (!v) return canSpeak() ? 'en' : 'none'
+  const l = v.lang.toLowerCase()
+  for (const fam of ['rw', 'sw', 'es', 'fr', 'it', 'en'] as const) if (l.startsWith(fam)) return fam
+  return 'en'
+}
+
+const VOWEL = /[aeiou]/
+/**
+ * A Kinyarwanda word as an English voice reads it right: syllable by syllable, each vowel
+ * written the English way ("Umurwayi" → "oo-moo-rwah-yee", "Habimana" → "hah-bee-mah-nah",
+ * "deparitoma" → "deh-pah-ree-toh-mah"). "c" is always "ch" in Kinyarwanda.
+ */
+function rwWordForEnglish(word: string): string {
+  const w = word.toLowerCase().replace(/[’']/g, '')
+  if (!VOWEL.test(w)) return word
+  const parts = w.match(/[^aeiou]*[aeiou]+|[^aeiou]+$/g) ?? [w]
+  return parts
+    .map((p) =>
+      p
+        .replace(/c(?!h)/g, 'ch')
+        .replace(/a+/g, 'ah')
+        .replace(/e+/g, 'eh')
+        .replace(/i+/g, 'ee')
+        .replace(/o+/g, 'oh')
+        .replace(/u+/g, 'oo'),
+    )
+    .join('-')
+}
+/** For a French voice: "u" is "ou", "c" is "tch", "sh" is "ch", "ny" is "gn", every e is "é" (never silent). */
+const rwWordForFrench = (word: string): string =>
+  word
+    .toLowerCase()
+    .replace(/sh/g, 'ch')
+    .replace(/c(?!h)/g, 'tch')
+    .replace(/ny/g, 'gn')
+    .replace(/u/g, 'ou')
+    .replace(/e/g, 'é')
+/** For a Spanish (or Italian) voice: "c" is "ch", "j" is "y", "h" is "j", "ny" is "ñ", "z" is "s". */
+const rwWordForSpanish = (word: string): string =>
+  word
+    .toLowerCase()
+    .replace(/jy?/g, 'y')
+    .replace(/sh/g, '\u0001')
+    .replace(/c(?!h)/g, '\u0002')
+    .replace(/h/g, 'j')
+    .replace(/ny/g, 'ñ')
+    .replace(/z/g, 's')
+    .replace(/[\u0001\u0002]/g, 'ch')
+
+/** A Kinyarwanda sentence respelled for the voice that will read it (none for rw / sw). */
+export function rwForVoice(text: string, family: RwVoiceFamily): string {
+  const fn =
+    family === 'en'
+      ? rwWordForEnglish
+      : family === 'fr'
+        ? rwWordForFrench
+        : family === 'es' || family === 'it'
+          ? rwWordForSpanish
+          : null
+  if (!fn) return text
+  // words only: numbers, "A 0 1 4", punctuation and "Dr." stay as they are
+  return text.replace(/[A-Za-zÀ-ÿ’']{2,}/g, (w) => (/^[A-Z][a-z]*\.$/.test(w) ? w : fn(w)))
+}
+
+/** A piece of the sentence: Kinyarwanda words to respell, or a name / ticket left as it is. */
+export interface RwPart {
+  token: string
+  value: string
+  /** The value is Kinyarwanda too (a department's name): respelled like the sentence. */
+  kinyarwanda?: boolean
+}
+/**
+ * The Kinyarwanda sentence for the voice: the template (with tokens where the name, ticket,
+ * department and staff go) respelled for the voice, then the pieces put in. A person's name
+ * is respelled only for an English voice (Rwandan names read syllable by syllable); a ticket
+ * never.
+ */
+export function rwSentence(template: string, parts: RwPart[], family: RwVoiceFamily): string {
+  let s = rwForVoice(template, family)
+  for (const p of parts) {
+    const v = p.kinyarwanda
+      ? rwForVoice(p.value, family)
+      : family === 'en' && !/\d/.test(p.value)
+        ? rwForVoice(p.value, family)
+        : p.value
+    s = s.split(p.token).join(v)
+  }
+  return s
 }
 
 export interface Announcer {
