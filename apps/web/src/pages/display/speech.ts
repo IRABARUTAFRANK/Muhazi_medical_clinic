@@ -17,6 +17,14 @@ export interface Announcement {
   repeat: number
   /** Calls go before results. */
   priority: 'call' | 'result'
+  /**
+   * 0165: a recording or a made sentence to play instead of the voice (its address, or a
+   * promise of it: the voice server is asked while the queue moves on). Nothing or null: the
+   * text is said by the voice instead.
+   */
+  audio?: string | Promise<string | null> | null
+  /** The pause after this piece (the pieces of one call follow each other closely). */
+  gapMs?: number
 }
 
 /** The pause between two sayings of the same sentence, and between two announcements. */
@@ -206,16 +214,68 @@ export function createAnnouncer(onBusy: (busy: boolean) => void): Announcer {
   }
 
   const finish = () => {
+    const gap = current?.gapMs ?? PAUSE_MS
     current = null
     timer = null
     if (queue.length === 0) {
       setBusy(false)
       return
     }
-    timer = window.setTimeout(next, PAUSE_MS)
+    timer = window.setTimeout(next, gap)
+  }
+
+  /** 0165: a recording or a made sentence; when it cannot be played, the text is said. */
+  const playAudio = (url: string, then: () => void, orSay: () => void) => {
+    let done = false
+    const end = () => {
+      if (done || stopped) return
+      done = true
+      if (timer) window.clearTimeout(timer)
+      timer = null
+      then()
+    }
+    try {
+      const el = new Audio(url)
+      el.onended = end
+      el.onerror = () => {
+        if (!done) {
+          done = true
+          if (timer) window.clearTimeout(timer)
+          timer = null
+          orSay()
+        }
+      }
+      void el.play().catch(() => el.onerror && el.onerror(new Event('error')))
+      // the safety net when the browser never reports the end
+      timer = window.setTimeout(end, 20_000)
+    } catch {
+      orSay()
+    }
   }
 
   const sayOnce = (a: Announcement, left: number) => {
+    // 0165: audio first (a recording, or the voice server's sentence, awaited up to 8 s)
+    if (a.audio) {
+      const audio = a.audio
+      a.audio = null
+      const speak = () => sayOnce(a, left)
+      if (typeof audio === 'string') {
+        playAudio(audio, finish, speak)
+        return
+      }
+      let settled = false
+      const settle = (url: string | null) => {
+        if (settled || stopped) return
+        settled = true
+        if (timer) window.clearTimeout(timer)
+        timer = null
+        if (url) playAudio(url, finish, speak)
+        else speak()
+      }
+      timer = window.setTimeout(() => settle(null), 8_000)
+      audio.then(settle, () => settle(null))
+      return
+    }
     const s = synth()
     if (!s || typeof SpeechSynthesisUtterance === 'undefined') {
       finish()
@@ -267,7 +327,7 @@ export function createAnnouncer(onBusy: (busy: boolean) => void): Announcer {
 
   return {
     say: (a, delayMs = 0) => {
-      if (!canSpeak()) return
+      if (!canSpeak() && !a.audio) return
       stopped = false
       // calls go before the results that still wait
       if (a.priority === 'call') {

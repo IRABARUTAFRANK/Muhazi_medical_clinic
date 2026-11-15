@@ -1,0 +1,9 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+# Coqui TTS (maintained fork, Python 3.10-3.12) and a CPU-only PyTorch
+coqui-tts==0.25.3
+torch==2.5.1
+torchaudio==2.5.1
+numpy<2
+huggingface_hub==0.26.5

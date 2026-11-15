@@ -38,6 +38,8 @@ const FUNCTIONS = {
   'send-auth-email': ['--no-verify-jwt'],
   // checks the caller's session itself (admin.auth.getUser), so the gateway does not
   'visit-edit-code': ['--no-verify-jwt'],
+  // the TV asks for a Kinyarwanda sentence as audio (0165); it is not signed in
+  'rw-voice': ['--no-verify-jwt'],
 }
 const asked = process.argv.slice(2)
 const unknown = asked.filter((a) => !(a in FUNCTIONS))

@@ -37,6 +37,7 @@ import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 import { BedsCard } from './beds-card'
 import { DisplayScreensCard } from './display-screens-card'
+import { VoiceClipsCard } from './voice-clips-card'
 import { FlowCard } from './flow-card'
 import { InsuranceCard } from './insurance-card'
 import { PatientFieldsCard } from './patient-fields-card'
@@ -457,6 +458,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                 </Card>
                 {/* the TVs at the waiting side (0114) */}
                 <DisplayScreensCard />
+                <VoiceClipsCard />
               </>
             )}
 

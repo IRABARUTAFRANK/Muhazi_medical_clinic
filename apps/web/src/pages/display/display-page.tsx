@@ -7,7 +7,9 @@ import { setAfterSignIn } from '@/lib/after-sign-in'
 import i18n, { ensureLang } from '@/i18n'
 import { stationIconFor } from '@/components/dash/kit-style'
 import {
+  clipUrl,
   forgetDisplayKey,
+  requestRwVoice,
   TV_SETUP_PATH,
   useDisplayBoard,
   type BoardDesk,
@@ -18,12 +20,14 @@ import { ApiError } from '@/lib/api/errors'
 import { useNow } from '@/lib/hooks'
 import { usePrefs } from '@/store/prefs'
 import { cn } from '@/lib/utils'
+import { CLIP_INTRO, CLIP_STAFF, clipKeyForDesk, deskPhrase, upperFirst } from './kinyarwanda'
 import {
   canSpeak,
   createAnnouncer,
   rwSentence,
   rwVoiceFamily,
   spokenTicket,
+  type Announcement,
   type Announcer,
 } from './speech'
 import '@fontsource-variable/sora'
@@ -270,24 +274,68 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
                 : c.n.person
                   ? 'display.voice.callTicket'
                   : 'display.voice.callTicketNoStaff'
-              // 0163: Kinyarwanda through the closest voice the TV has, respelled for it
-              const text =
-                vl === 'rw'
-                  ? rwSentence(
-                      tv(k, { ticket: '§1§', name: '§2§', department: '§3§', staff: '§4§' }),
-                      [
-                        { token: '§1§', value: vars.ticket },
-                        { token: '§2§', value: vars.name },
-                        { token: '§3§', value: vars.department, kinyarwanda: true },
-                        { token: '§4§', value: vars.staff },
-                      ],
-                      rwVoiceFamily(),
-                    )
-                  : tv(k, vars)
-              announcer.current.say(
-                { text, lang: vl, repeat: 1, priority: 'call' },
-                first && chimeOn ? CHIME_MS : 0,
-              )
+              const delay = first && chimeOn ? CHIME_MS : 0
+              if (vl === 'rw') {
+                // 0163: Kinyarwanda through the closest voice the TV has, respelled for it;
+                // 0165: or the staff's recordings (only the names by the voice), or the clinic's
+                // voice server (the whole sentence as audio, the voice if it does not answer)
+                const fam = rwVoiceFamily()
+                const deptPart = { token: '§3§', value: vars.department, kinyarwanda: true }
+                const staffPart = { token: '§4§', value: vars.staff }
+                const parts = [
+                  { token: '§1§', value: vars.ticket },
+                  { token: '§2§', value: vars.name },
+                  deptPart,
+                  staffPart,
+                ]
+                const spoken = rwSentence(
+                  tv(k, { ticket: '§1§', name: '§2§', department: '§3§', staff: '§4§' }),
+                  parts,
+                  fam,
+                )
+                const mode = data?.rwVoice ?? 'browser'
+                const clips = data?.clips ?? {}
+                const clip = (key: string) => (clips[key] ? clipUrl(clips[key]) : null)
+                const piece = (a: Partial<Announcement> & { text: string }, d = 0) =>
+                  announcer.current!.say({ lang: 'rw', repeat: 1, priority: 'call', ...a }, d)
+                const who = c.n.name || vars.ticket
+                if (mode === 'server' && screenKey) {
+                  piece({ text: spoken, audio: requestRwVoice(screenKey, tv(k, vars)) }, delay)
+                } else if (
+                  mode === 'recorded' &&
+                  (clip(CLIP_INTRO) || clip(clipKeyForDesk(c.desk.station)) || clip(CLIP_STAFF))
+                ) {
+                  const intro = clip(CLIP_INTRO)
+                  piece(
+                    { text: rwSentence('Umurwayi witwa', [], fam), audio: intro, gapMs: 100 },
+                    delay,
+                  )
+                  piece({
+                    text: rwSentence('§2§', [{ token: '§2§', value: who }], fam),
+                    gapMs: 160,
+                  })
+                  piece({
+                    text: rwSentence('urakenewe muri §3§', [deptPart], fam),
+                    audio: clip(clipKeyForDesk(c.desk.station)),
+                    gapMs: 160,
+                  })
+                  if (c.n.person) {
+                    piece({
+                      text: rwSentence('ukenewe na muganga', [], fam),
+                      audio: clip(CLIP_STAFF),
+                      gapMs: 100,
+                    })
+                    piece({ text: rwSentence('§4§', [staffPart], fam) })
+                  }
+                } else {
+                  piece({ text: spoken }, delay)
+                }
+              } else {
+                announcer.current.say(
+                  { text: tv(k, vars), lang: vl, repeat: 1, priority: 'call' },
+                  delay,
+                )
+              }
               first = false
             }
           }
@@ -487,19 +535,6 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     </div>
   )
 }
-
-/**
- * The desk as the place to go, in the language's own grammar (0160): Kinyarwanda says
- * "deparitoma y’ibipimo by’ibanze", "deparitoma yo gusuzuma", "deparitoma ya laboratwari".
- */
-const deskPhrase = (name: string, lang: Lang): string => {
-  if (lang !== 'rw') return name
-  const n = name.trim()
-  const low = n.charAt(0).toLowerCase() + n.slice(1)
-  const link = /^[aeiou]/i.test(n) ? 'y’' : /^(ku|gu)/i.test(n) ? 'yo ' : 'ya '
-  return `deparitoma ${link}${low}`
-}
-const upperFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 /**
  * The latest call still waited for as a glowing bar, and the two or three before it in a thin

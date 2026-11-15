@@ -95,6 +95,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only the doctor of this calendar accepts the booking$/, 'dbErrors.afbe8a94', 0], // accept_appointment
   [/^phone must be a Rwandan mobile number \(07xx xxx xxx\)$/, 'dbErrors.c782029c', 0], // create_appointment_inquiry
   [/^room stores are supplied from an open pharmacy store$/, 'dbErrors.8a2d65da', 0], // send_to_room
+  [/^the Kinyarwanda voice is browser, recorded or server$/, 'dbErrors.a4d4a295', 0], // save_display_screen
   [/^a hand-over of another day is undone by the manager$/, 'dbErrors.2b5019a6', 0], // return_medicine
   [/^appointment not found or not waiting for the doctor$/, 'dbErrors.00523f7c', 0], // accept_appointment
   [/^the medicines of this sale were already handed over$/, 'dbErrors.4cff006a', 0], // void_payment
@@ -130,6 +131,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only the manager decides who holds a room store$/, 'dbErrors.c0aac831', 0], // assign_store_holder, set_store_holders, unassign_store_holder
   [/^that patient is at (.+?) \(not waiting for a doctor\)$/, 'dbErrors.37a8695a', 1], // answer_call
   [/^the pulse must be between 20 and 250 per minute$/, 'dbErrors.194d0d47', 0], // record_vitals_to
+  [/^the recording's path is not in the clips folder$/, 'dbErrors.e69735c5', 0], // save_voice_clip
   [/^this appointment is not waiting for the patient$/, 'dbErrors.1b56fa84', 0], // appointment_arrived
   [/^tick at least one service this person does in (.+?)$/, 'dbErrors.348637e5', 1], // set_staff_departments
   [/^a clinic-wide list makes its treatments itself$/, 'dbErrors.c3b95821', 0], // adopt_tariff_lines
@@ -422,6 +424,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^diagnosis not found$/, 'dbErrors.f8f298df', 0], // confirm_differential, remove_condition, remove_condition_none_found, …
   [/^invalid preferences$/, 'dbErrors.28af7fa1', 0], // save_my_prefs
   [/^treatment not found$/, 'dbErrors.198e4413', 0], // delete_service, set_service_category, set_service_department, …
+  [/^unknown recording (.+?)$/, 'dbErrors.6ab2b8ad', 1], // save_voice_clip
   [/^a bed needs a name$/, 'dbErrors.b23ff426', 0], // save_bed
   [/^already taken by (.+?)$/, 'dbErrors.f474865c', 1], // call_patient, take_patient
   [/^category not found$/, 'dbErrors.75188350', 0], // delete_category, save_category, set_service_category
@@ -435,6 +438,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^choose the doctor$/, 'dbErrors.138aa8a0', 0], // approve_inquiry, book_follow_up
   [/^insurer not found$/, 'dbErrors.b8d140db', 0], // delete_payer, import_price_list, import_tariff, …
   [/^invoice not found$/, 'dbErrors.441e654f', 0], // post_invoice_now
+  [/^no such recording$/, 'dbErrors.3a3b16b3', 0], // delete_voice_clip
   [/^patient not found$/, 'dbErrors.0b3172fb', 0], // appointment_arrived, patient_file, record_access_check, …
   [/^request not found$/, 'dbErrors.ef08028e', 0], // answer_record_access
   [/^the note is empty$/, 'dbErrors.0cd0d889', 0], // add_clinical_note, update_note

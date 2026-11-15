@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Field, controlClass, labelClass } from '@/components/ui/field'
 import { Flash } from '@/components/ui/flash'
 import {
+  RW_VOICES,
   useDisplayDevices,
   useDisplayScreenActions,
   useDisplayScreens,
@@ -29,6 +30,7 @@ const SCREEN_ERRORS = [
   'screen_unknown',
   'screen_voice_lang',
   'screen_voice_repeat',
+  'screen_rw_voice',
 ]
 
 const emptyDraft = (): DisplayScreenInput => ({
@@ -42,6 +44,7 @@ const emptyDraft = (): DisplayScreenInput => ({
   voiceLang: 'en',
   voiceRepeat: 3,
   ticker: true,
+  rwVoice: 'browser',
 })
 
 /**
@@ -243,6 +246,29 @@ export function DisplayScreensCard() {
                 onChange={(e) => setDraft({ ...draft, message: e.target.value })}
               />
             </label>
+            {/* 0165: how the Kinyarwanda call is said */}
+            <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
+              <legend className={cn(labelClass, 'mb-1')}>
+                {t('displayScreens.rwVoice.label')}
+              </legend>
+              {RW_VOICES.map((v) => (
+                <label key={v} className={cn(checkRow, 'items-start')}>
+                  <input
+                    type="radio"
+                    name="rwVoice"
+                    className="accent-primary mt-1"
+                    checked={(draft.rwVoice ?? 'browser') === v}
+                    onChange={() => setDraft({ ...draft, rwVoice: v })}
+                  />
+                  <span>
+                    <span className="font-semibold">{t(`displayScreens.rwVoice.${v}`)}</span>
+                    <span className="text-ink-3 block text-[13px]">
+                      {t(`displayScreens.rwVoice.${v}Hint`)}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
             {/* the voice (0118): the browser says the call after the chime; and the scrolling line */}
             <div className="border-border flex flex-col gap-2 border-t pt-3">
               <label className={checkRow}>
@@ -328,6 +354,7 @@ export function DisplayScreensCard() {
                       t(s.chime ? 'displayScreens.withChime' : 'displayScreens.noChime'),
                       s.voice ? t('displayScreens.voiceOn') : t('displayScreens.voiceOff'),
                       t(s.ticker ? 'displayScreens.tickerOn' : 'displayScreens.tickerOff'),
+                      t(`displayScreens.rwVoice.${s.rwVoice ?? 'browser'}`),
                       s.languages.map((l) => l.toUpperCase()).join(' · '),
                       s.message ? `“${s.message}”` : null,
                     ]
@@ -360,6 +387,7 @@ export function DisplayScreensCard() {
                           voiceLang: s.voiceLang ?? 'en',
                           voiceRepeat: s.voiceRepeat ?? 3,
                           ticker: s.ticker ?? true,
+                          rwVoice: s.rwVoice ?? 'browser',
                         })
                       }}
                     >

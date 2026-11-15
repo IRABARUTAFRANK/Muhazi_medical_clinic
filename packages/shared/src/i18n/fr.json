@@ -8536,7 +8536,11 @@
     "af56f7e3": "Seule une liste d’actes a des lignes à ajouter comme actes.",
     "c3b95821": "Une liste pour toute la clinique crée ses actes elle-même : rien à ajouter à la main.",
     "3385fd70": "Ce téléviseur est inconnu ou déjà déconnecté.",
-    "b65a487b": "Donnez un nom plus court au téléviseur (60 caractères au plus)."
+    "b65a487b": "Donnez un nom plus court au téléviseur (60 caractères au plus).",
+    "a4d4a295": "La voix kinyarwanda est celle du téléviseur, les enregistrements du personnel ou le serveur vocal.",
+    "e69735c5": "Le chemin de l’enregistrement n’est pas dans le dossier des extraits.",
+    "6ab2b8ad": "Enregistrement inconnu.",
+    "3a3b16b3": "Cet enregistrement n’existe pas."
   },
   "panel": {
     "close": "Fermer",
@@ -10276,7 +10280,8 @@
       "screen_message": "Le message est trop long (300 caractères au plus).",
       "screen_unknown": "Cet écran est inconnu ou a été révoqué.",
       "screen_voice_lang": "La voix parle anglais ou français.",
-      "screen_voice_repeat": "L’appel est répété 1 à 3 fois."
+      "screen_voice_repeat": "L’appel est répété 1 à 3 fois.",
+      "screen_rw_voice": "La voix kinyarwanda est celle du téléviseur, les enregistrements du personnel ou le serveur vocal."
     },
     "voice": "Dire l’appel à voix haute (voix du navigateur), trois fois : kinyarwanda, anglais et français",
     "voiceLangHint": "Chaque appel est dit trois fois, chaque fois dans une langue différente : d’abord dans la langue affichée à l’écran à ce moment, puis les deux autres — « {name}, vous êtes attendu en {department} par {staff} ». Les navigateurs n’ont pas de voix kinyarwanda : la phrase en kinyarwanda est lue par la voix la plus proche du téléviseur (swahili sur Edge, sinon espagnole, française ou anglaise), réécrite pour elle afin que voyelles et consonnes sonnent juste.",
@@ -10291,7 +10296,16 @@
     "tvSeen": "vu pour la dernière fois {{when}}",
     "tvNeverSeen": "pas encore vu",
     "disconnect": "Déconnecter",
-    "disconnected": "{{name}} déconnecté : il n’affiche plus rien jusqu’à une nouvelle configuration."
+    "disconnected": "{{name}} déconnecté : il n’affiche plus rien jusqu’à une nouvelle configuration.",
+    "rwVoice": {
+      "label": "Voix kinyarwanda",
+      "browser": "La voix du téléviseur",
+      "browserHint": "La voix la plus proche du téléviseur lit la phrase, réécrite pour elle. Rien à installer ; la prononciation est approximative.",
+      "recorded": "Enregistrements du personnel",
+      "recordedHint": "Un membre du personnel enregistre une fois les morceaux fixes (ci-dessous, « Enregistrements kinyarwanda ») ; le téléviseur les joue et seuls les noms sont dits par sa voix. Naturel, gratuit.",
+      "server": "Le serveur vocal de la clinique",
+      "serverHint": "Un petit service exécutant un modèle ouvert de synthèse vocale kinyarwanda dit toute la phrase, noms compris (voir services/kinya-voice dans le code ; le gestionnaire l’installe une fois). S’il ne répond pas en 8 secondes, la voix du téléviseur parle."
+    }
   },
   "nextPatient": {
     "title": "Patient suivant",
@@ -10935,5 +10949,29 @@
     "errors": {
       "name": "Donnez un nom plus court au téléviseur (60 caractères au plus)."
     }
+  },
+  "voiceClips": {
+    "title": "Enregistrements kinyarwanda",
+    "lead": "Pour les écrans réglés sur « Enregistrements du personnel » : enregistrez chaque morceau une fois, dans une pièce calme, clairement, au rythme du téléviseur. L’appel est « Umurwayi witwa {name}, urakenewe muri deparitoma yo gusuzuma, ukenewe na muganga {staff} » : vous enregistrez les morceaux autour des noms.",
+    "phrase": {
+      "intro": "Introduction",
+      "desk": "Poste : {{desk}}",
+      "staff": "Avant le nom du soignant"
+    },
+    "record": "Enregistrer",
+    "again": "Réenregistrer",
+    "stop": "Arrêter",
+    "recording": "Enregistrement… parlez maintenant (10 secondes au plus), puis Arrêter.",
+    "listen": "Écouter",
+    "keep": "Garder cet enregistrement",
+    "saved": "Enregistrement gardé : les téléviseurs l’utilisent en quelques secondes.",
+    "deleted": "Enregistrement retiré : la voix du téléviseur dit ce morceau jusqu’au prochain.",
+    "delete": "Retirer l’enregistrement",
+    "none": "Pas encore enregistré : la voix du téléviseur dit ce morceau.",
+    "recordedBy": "Enregistré par {{name}} le {{date}}",
+    "micDenied": "Le microphone n’a pas pu être utilisé ({{why}}). Autorisez le microphone pour ce site et réessayez.",
+    "playFailed": "L’enregistrement n’a pas pu être joué.",
+    "noRecorder": "Ce navigateur ne peut pas enregistrer. Utilisez Chrome ou Edge sur un ordinateur avec microphone.",
+    "hint": "Un poste ajouté plus tard a besoin de son enregistrement aussi ; d’ici là, la voix du téléviseur dit ce morceau. Les enregistrements sont joués sur chaque écran réglé sur « Enregistrements du personnel »."
   }
 }

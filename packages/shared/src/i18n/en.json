@@ -8536,7 +8536,11 @@
     "af56f7e3": "Only a list of treatments has lines to add as treatments.",
     "c3b95821": "A clinic-wide list makes its treatments itself: nothing to add by hand.",
     "3385fd70": "This TV is not known or was already disconnected.",
-    "b65a487b": "Give the TV a shorter name (60 characters at most)."
+    "b65a487b": "Give the TV a shorter name (60 characters at most).",
+    "a4d4a295": "The Kinyarwanda voice is the TV’s own, staff recordings or the voice server.",
+    "e69735c5": "The recording’s path is not in the clips folder.",
+    "6ab2b8ad": "Unknown recording.",
+    "3a3b16b3": "No such recording."
   },
   "panel": {
     "close": "Close",
@@ -10276,7 +10280,8 @@
       "screen_message": "The message is too long (300 characters at most).",
       "screen_unknown": "This screen is not known or was revoked.",
       "screen_voice_lang": "The voice speaks English or French.",
-      "screen_voice_repeat": "The call is said 1 to 3 times."
+      "screen_voice_repeat": "The call is said 1 to 3 times.",
+      "screen_rw_voice": "The Kinyarwanda voice is the TV’s own, staff recordings or the voice server."
     },
     "voice": "Say the call aloud (the browser’s voice), three times: Kinyarwanda, English and French",
     "voiceLangHint": "Each call is said three times, each time in a different language: first in the language the screen is showing at that moment, then the two others — “{name}, you are needed in {department} by {staff}”. Browsers have no Kinyarwanda voice: the Kinyarwanda sentence is read by the closest voice the TV has (Swahili on Edge, else Spanish, French or English), respelled for it so the vowels and consonants come out right.",
@@ -10291,7 +10296,16 @@
     "tvSeen": "last seen {{when}}",
     "tvNeverSeen": "not seen yet",
     "disconnect": "Disconnect",
-    "disconnected": "{{name}} disconnected: it shows nothing until someone sets it up again."
+    "disconnected": "{{name}} disconnected: it shows nothing until someone sets it up again.",
+    "rwVoice": {
+      "label": "Kinyarwanda voice",
+      "browser": "The TV’s own voice",
+      "browserHint": "The closest voice the TV has reads the sentence, respelled for it. Nothing to set up; the pronunciation is approximate.",
+      "recorded": "Staff recordings",
+      "recordedHint": "A staff member records the fixed pieces once (below, “Kinyarwanda recordings”); the TV plays them and only the names are said by the TV’s voice. Natural, free.",
+      "server": "The clinic’s voice server",
+      "serverHint": "A small service running an open Kinyarwanda text-to-speech model says the whole sentence, names included (see services/kinya-voice in the code; the manager sets it up once). If it does not answer in 8 seconds, the TV’s own voice speaks."
+    }
   },
   "nextPatient": {
     "title": "Next patient",
@@ -10935,5 +10949,29 @@
     "errors": {
       "name": "Give the TV a shorter name (60 characters at most)."
     }
+  },
+  "voiceClips": {
+    "title": "Kinyarwanda recordings",
+    "lead": "For screens set to “Staff recordings”: record each piece once in a quiet room, clearly, at the TV’s pace. The call is “Umurwayi witwa {name}, urakenewe muri deparitoma yo gusuzuma, ukenewe na muganga {staff}”: you record the pieces around the names.",
+    "phrase": {
+      "intro": "Intro",
+      "desk": "Desk: {{desk}}",
+      "staff": "Before the clinician’s name"
+    },
+    "record": "Record",
+    "again": "Record again",
+    "stop": "Stop",
+    "recording": "Recording… speak now (10 seconds at most), then Stop.",
+    "listen": "Listen",
+    "keep": "Keep this recording",
+    "saved": "Recording kept: the TVs use it within a few seconds.",
+    "deleted": "Recording removed: the TV’s own voice says that piece until a new one is kept.",
+    "delete": "Remove the recording",
+    "none": "Not recorded yet: the TV’s own voice says this piece.",
+    "recordedBy": "Recorded by {{name}} on {{date}}",
+    "micDenied": "The microphone could not be used ({{why}}). Allow the microphone for this site and try again.",
+    "playFailed": "The recording could not be played.",
+    "noRecorder": "This browser cannot record. Use Chrome or Edge on a computer with a microphone.",
+    "hint": "A desk you add later needs its recording too; until then the TV’s own voice says that piece. The recordings are played on every screen set to “Staff recordings”."
   }
 }

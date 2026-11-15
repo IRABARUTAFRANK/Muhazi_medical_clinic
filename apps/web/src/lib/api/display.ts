@@ -2,12 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ROLE_HOME, type Lang } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import type { Station } from '@/lib/api/visits'
-import { apiError } from './errors'
+import { apiError, isMissingFunction } from './errors'
 
 /** The languages the browser's voice can say (0118): no Kinyarwanda voice exists. */
 export type VoiceLang = 'en' | 'fr'
 export const VOICE_LANGS: readonly VoiceLang[] = ['en', 'fr']
 export const VOICE_REPEATS = [1, 2, 3] as const
+/** 0165: how a screen says its Kinyarwanda call. */
+export type RwVoice = 'browser' | 'recorded' | 'server'
+export const RW_VOICES: readonly RwVoice[] = ['browser', 'recorded', 'server']
 
 /**
  * The waiting-room screen (migration 0114). A TV at the waiting side opens /display?key=… and
@@ -68,6 +71,10 @@ export interface DisplayBoard {
   voiceRepeat: number
   /** 0118: the scrolling line at the bottom. */
   ticker: boolean
+  /** 0165: how the Kinyarwanda call is said (browser before the migration). */
+  rwVoice?: RwVoice
+  /** 0165: the staff's recordings, by key (intro, desk:<station>, staff): paths in the voice bucket. */
+  clips?: Record<string, string>
   /** Changes whenever the board does (a quick "something new?" check). */
   version: number
   /** The time at the clinic when the board was read. */
@@ -219,6 +226,7 @@ export interface DisplayScreen {
   voiceLang: VoiceLang
   voiceRepeat: number
   ticker: boolean
+  rwVoice?: RwVoice
   active: boolean
   createdAt: string
   createdBy: string | null
@@ -236,6 +244,7 @@ export interface DisplayScreenInput {
   voiceLang: VoiceLang
   voiceRepeat: number
   ticker: boolean
+  rwVoice: RwVoice
 }
 
 const SCREENS_KEY = ['display', 'screens'] as const
@@ -252,6 +261,7 @@ const sampleScreens: DisplayScreen[] = [
     voiceLang: 'en',
     voiceRepeat: 2,
     ticker: true,
+    rwVoice: 'browser',
     active: true,
     createdAt: new Date(Date.now() - 6 * 86_400_000).toISOString(),
     createdBy: 'Mugabo Théogène',
@@ -300,6 +310,7 @@ export function useDisplayScreenActions() {
           voiceLang: i.voiceLang,
           voiceRepeat: i.voiceRepeat,
           ticker: i.ticker,
+          rwVoice: i.rwVoice,
           active: true,
           createdAt: new Date().toISOString(),
           createdBy: 'Mugabo Théogène',
@@ -307,8 +318,7 @@ export function useDisplayScreenActions() {
         })
         return { id, key: 'sample'.padEnd(64, '0') }
       }
-      // all eleven arguments: the 0118 function (the seven-argument one of 0114 stays for older callers)
-      const { data, error } = await supabase.rpc('save_display_screen', {
+      const args = {
         p_id: i.id ?? null,
         p_name: i.name,
         p_desks: i.desks,
@@ -320,9 +330,12 @@ export function useDisplayScreenActions() {
         p_voice_lang: i.voiceLang,
         p_voice_repeat: i.voiceRepeat,
         p_ticker: i.ticker,
-      })
-      if (error) throw apiError(error)
-      return data as { id: string; key?: string }
+      }
+      // twelve arguments (0165: the Kinyarwanda voice); a database before 0165 has the eleven
+      let r = await supabase.rpc('save_display_screen', { ...args, p_rw_voice: i.rwVoice })
+      if (r.error && isMissingFunction(r.error)) r = await supabase.rpc('save_display_screen', args)
+      if (r.error) throw apiError(r.error)
+      return r.data as { id: string; key?: string }
     },
     onSuccess: refresh,
   })
@@ -373,6 +386,112 @@ export function useDisplayScreenActions() {
     },
   })
   return { save, revoke, renew, revokeDevice }
+}
+
+// ---------------------------------------------------------------- 0165: the Kinyarwanda voice
+const VOICE_BUCKET = 'voice'
+/** The public address of a recording or a made sentence in the voice bucket. */
+export const clipUrl = (p: string): string | null =>
+  supabase ? supabase.storage.from(VOICE_BUCKET).getPublicUrl(p).data.publicUrl : null
+
+/**
+ * A Kinyarwanda sentence made by the clinic's voice server (through the edge function
+ * rw-voice): its audio address, or null when the server is not set up, too slow (8 seconds)
+ * or failing — the TV then uses the browser's voice.
+ */
+export async function requestRwVoice(screenKey: string, text: string): Promise<string | null> {
+  if (!supabase || !screenKey) return null
+  const ctl = new AbortController()
+  const timer = window.setTimeout(() => ctl.abort(), 8_000)
+  try {
+    const { data, error } = await supabase.functions.invoke('rw-voice', {
+      body: { key: screenKey, text },
+      signal: ctl.signal,
+    })
+    if (error) return null
+    const url = (data as { url?: string } | null)?.url
+    return typeof url === 'string' && url ? url : null
+  } catch {
+    return null
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
+
+export interface VoiceClip {
+  key: string
+  path: string
+  durationMs: number | null
+  recordedAt: string
+  recordedBy: string | null
+}
+const CLIPS_KEY = ['display', 'clips'] as const
+const sampleClips: VoiceClip[] = []
+
+/** Settings: the staff's recordings. */
+export function useVoiceClips() {
+  return useQuery({
+    queryKey: CLIPS_KEY,
+    queryFn: async (): Promise<VoiceClip[]> => {
+      if (!supabase) return sampleClips.map((c) => ({ ...c }))
+      const { data, error } = await supabase.rpc('voice_clips')
+      if (error) throw apiError(error)
+      return (data as VoiceClip[]) ?? []
+    },
+  })
+}
+
+export function useVoiceClipActions() {
+  const qc = useQueryClient()
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: CLIPS_KEY })
+    void qc.invalidateQueries({ queryKey: ['display', 'board'] })
+  }
+  /** A recording kept: uploaded to clips/<key>-<time>.<ext>, then registered. */
+  const save = useMutation({
+    mutationFn: async (i: { key: string; blob: Blob; durationMs: number }) => {
+      const ext = /ogg/.test(i.blob.type) ? 'ogg' : /mp4/.test(i.blob.type) ? 'm4a' : 'webm'
+      const p = `clips/${i.key.replace(':', '-')}-${Date.now()}.${ext}`
+      if (!supabase) {
+        const at = new Date().toISOString()
+        const row = {
+          key: i.key,
+          path: p,
+          durationMs: i.durationMs,
+          recordedAt: at,
+          recordedBy: 'Mugabo Théogène',
+        }
+        const j = sampleClips.findIndex((c) => c.key === i.key)
+        if (j < 0) sampleClips.push(row)
+        else sampleClips[j] = row
+        return
+      }
+      const up = await supabase.storage
+        .from(VOICE_BUCKET)
+        .upload(p, i.blob, { contentType: i.blob.type || 'audio/webm', upsert: true })
+      if (up.error) throw new Error(up.error.message)
+      const { error } = await supabase.rpc('save_voice_clip', {
+        p_key: i.key,
+        p_path: p,
+        p_duration_ms: Math.round(i.durationMs),
+      })
+      if (error) throw apiError(error)
+    },
+    onSuccess: refresh,
+  })
+  const remove = useMutation({
+    mutationFn: async (key: string) => {
+      if (!supabase) {
+        const j = sampleClips.findIndex((c) => c.key === key)
+        if (j >= 0) sampleClips.splice(j, 1)
+        return
+      }
+      const { error } = await supabase.rpc('delete_voice_clip', { p_key: key })
+      if (error) throw apiError(error)
+    },
+    onSuccess: refresh,
+  })
+  return { save, remove }
 }
 
 // ---------------------------------------------------------------- 0158: a TV set up by signing in

@@ -24747,6 +24747,67 @@ await step(
     return `TV key accepted (seen ${mine.lastSeenAt.slice(11, 16)}); old link still works; cashier ${noPerm}; disconnected ${gone}; first TV made “${def.name}”`
   },
 )
+// 0165: the Kinyarwanda voice per screen, the staff's recordings, the key check for the voice server
+await step(
+  '0165: a screen chooses its Kinyarwanda voice; the manager keeps recordings; the board carries both; the edge function checks a key',
+  async () => {
+    // the 0114 re-run step above put older functions back: 0158 and 0165 again first
+    await asAdmin()
+    for (const m of ['20270127090000_tv_setup.sql', '20270128090000_rw_voice.sql'])
+      await db.exec(await readFile(path.join(migrationsDir, m), 'utf8'))
+    await as(staff.manager)
+    await db.query(`select save_voice_clip('intro', 'clips/intro-1.webm', 1200)`)
+    await db.query(
+      `select save_voice_clip('desk:consultation', 'clips/desk-consultation-1.webm', 2100)`,
+    )
+    const clips = (await one(`select voice_clips() as j`)).j
+    const badKey = await hintAs(
+      staff.manager,
+      `select save_voice_clip('desk:nowhere', 'clips/x.webm', 1)`,
+    )
+    const badPath = await hintAs(staff.manager, `select save_voice_clip('staff', 'tts/x.wav', 1)`)
+    const rec = await codeAs(
+      staff.receptionist,
+      `select save_voice_clip('staff', 'clips/s.webm', 1)`,
+    )
+    await as(staff.manager)
+    await db.query(
+      `select save_display_screen($1, 'Waiting room TV', '{consultation,laboratory}', true, true, '{rw,en}', 'Welcome', true, 'en', 3, true, 'recorded')`,
+      [t114.screen],
+    )
+    const badVoice = await hintAs(
+      staff.manager,
+      `select save_display_screen($1, 'Waiting room TV', '{consultation}', true, true, '{rw}', null, true, 'en', 3, true, 'robot')`,
+      [t114.screen],
+    )
+    await as(staff.manager)
+    const listed = (await one(`select display_screens() as j`)).j.find((x) => x.id === t114.screen)
+    await as(null, 'anon')
+    const board = (await one(`select display_board($1) as j`, [t114.key])).j
+    await asAdmin()
+    const okKey = (await one(`select display_key_ok($1) as ok`, [t114.key])).ok
+    const badK = (await one(`select display_key_ok('nope') as ok`)).ok
+    await as(staff.manager)
+    await db.query(`select delete_voice_clip('desk:consultation')`)
+    const gone = await hintAs(staff.manager, `select delete_voice_clip('desk:consultation')`)
+    await asAdmin()
+    if (
+      !Array.isArray(clips) ||
+      clips.length < 2 ||
+      !clips.some((c) => c.key === 'intro' && c.path === 'clips/intro-1.webm')
+    )
+      throw new Error('clips not listed: ' + JSON.stringify(clips))
+    if (badKey !== '22023/clip_key' || badPath !== '22023/clip_path' || rec !== '42501')
+      throw new Error(JSON.stringify({ badKey, badPath, rec }))
+    if (badVoice !== '22023/screen_rw_voice' || !listed || listed.rwVoice !== 'recorded')
+      throw new Error(JSON.stringify({ badVoice, listed: listed && listed.rwVoice }))
+    if (board.rwVoice !== 'recorded' || !board.clips || board.clips.intro !== 'clips/intro-1.webm')
+      throw new Error('board: ' + JSON.stringify({ rwVoice: board.rwVoice, clips: board.clips }))
+    if (okKey !== true || badK !== false || gone !== 'P0002/clip_unknown')
+      throw new Error(JSON.stringify({ okKey, badK, gone }))
+    return `recordings kept and listed (${clips.length}); refused: ${badKey}, ${badPath}, receptionist ${rec}; screen voice recorded, bad value ${badVoice}; board carries voice + clips; key check true/false`
+  },
+)
 // @@t141-end
 finish()
 

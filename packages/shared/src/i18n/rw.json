@@ -8545,7 +8545,11 @@
     "af56f7e3": "Urutonde rw’ubuvuzi gusa ni rwo rufite imirongo yo kongeraho nk’ubuvuzi.",
     "c3b95821": "Urutonde rw’ivuriro ryose rwikorera ubuvuzi bwarwo: nta cyo kongeraho n’intoki.",
     "3385fd70": "Iyi televiziyo ntizwi cyangwa yari yamaze guhagarikwa.",
-    "b65a487b": "Ha televiziyo izina rigufi (inyuguti 60 ntarengwa)."
+    "b65a487b": "Ha televiziyo izina rigufi (inyuguti 60 ntarengwa).",
+    "a4d4a295": "Ijwi ry’Ikinyarwanda ni irya televiziyo, amajwi y’abakozi cyangwa seriveri y’ijwi.",
+    "e69735c5": "Inzira y’ijwi ntiri mu bubiko bw’amajwi.",
+    "6ab2b8ad": "Ijwi ritazwi.",
+    "3a3b16b3": "Iryo jwi ntiribaho."
   },
   "panel": {
     "close": "Funga",
@@ -10285,7 +10289,8 @@
       "screen_message": "Ubutumwa ni burebure cyane (inyuguti 300 nyinshi).",
       "screen_unknown": "Iyi mugaragaza ntizwi cyangwa yahagaritswe.",
       "screen_voice_lang": "Ijwi rivuga Icyongereza cyangwa Igifaransa.",
-      "screen_voice_repeat": "Guhamagara bivugwa inshuro 1 kugeza kuri 3."
+      "screen_voice_repeat": "Guhamagara bivugwa inshuro 1 kugeza kuri 3.",
+      "screen_rw_voice": "Ijwi ry’Ikinyarwanda ni irya televiziyo, amajwi y’abakozi cyangwa seriveri y’ijwi."
     },
     "voice": "Vuga guhamagara mu ijwi (ijwi rya mushakisha), inshuro eshatu: Ikinyarwanda, Icyongereza n’Igifaransa",
     "voiceLangHint": "Buri guhamagara kuvugwa inshuro eshatu, buri nshuro mu rurimi rutandukanye: mbere mu rurimi ecran igaragaza icyo gihe, hanyuma izindi ebyiri — “Umurwayi witwa {name}, urakenewe muri {department}, ukenewe na muganga {staff}”. Mushakisha nta jwi ry’Ikinyarwanda zifite: interuro y’Ikinyarwanda isomwa n’ijwi riri hafi televiziyo ifite (Igiswahili kuri Edge, bitabaye ibyo Icyesipanyolo, Igifaransa cyangwa Icyongereza), yanditswe bundi bushya kugira ngo inyajwi n’ingombajwi zumvikane neza.",
@@ -10300,7 +10305,16 @@
     "tvSeen": "yabonetse bwa nyuma {{when}}",
     "tvNeverSeen": "ntirabonwa",
     "disconnect": "Hagarika",
-    "disconnected": "{{name}} yahagaritswe: ntacyo yerekana kugeza umuntu ayiteguye bundi bushya."
+    "disconnected": "{{name}} yahagaritswe: ntacyo yerekana kugeza umuntu ayiteguye bundi bushya.",
+    "rwVoice": {
+      "label": "Ijwi ry’Ikinyarwanda",
+      "browser": "Ijwi rya televiziyo ubwayo",
+      "browserHint": "Ijwi riri hafi televiziyo ifite risoma interuro, yanditswe bundi bushya kugira ngo irisome neza. Nta gutegura; imvugo ni iy’ingereka.",
+      "recorded": "Amajwi yafashwe n’abakozi",
+      "recordedHint": "Umukozi afata amajwi y’ibice bidahinduka rimwe (hasi, “Amajwi y’Ikinyarwanda yafashwe”); televiziyo iyacuranga, amazina gusa avugwa n’ijwi ryayo. Bisanzwe kandi ni ubuntu.",
+      "server": "Seriveri y’ijwi y’ivuriro",
+      "serverHint": "Serivisi nto ikoresha moderi ifunguye y’ijwi ry’Ikinyarwanda ivuga interuro yose, harimo n’amazina (reba services/kinya-voice muri kode; umuyobozi ayitegura rimwe). Nidasubiza mu masegonda 8, ijwi rya televiziyo rivuga."
+    }
   },
   "nextPatient": {
     "title": "Umurwayi ukurikira",
@@ -10944,5 +10958,29 @@
     "errors": {
       "name": "Ha televiziyo izina rigufi (inyuguti 60 ntarengwa)."
     }
+  },
+  "voiceClips": {
+    "title": "Amajwi y’Ikinyarwanda yafashwe",
+    "lead": "Ku ecran zashyizwe kuri “Amajwi yafashwe n’abakozi”: fata buri gice rimwe, mu cyumba gituje, neza, ku muvuduko wa televiziyo. Guhamagara ni “Umurwayi witwa {name}, urakenewe muri deparitoma yo gusuzuma, ukenewe na muganga {staff}”: ufata ibice bikikije amazina.",
+    "phrase": {
+      "intro": "Intangiriro",
+      "desk": "Aho bakorera: {{desk}}",
+      "staff": "Mbere y’izina rya muganga"
+    },
+    "record": "Fata ijwi",
+    "again": "Ongera ufate",
+    "stop": "Hagarika",
+    "recording": "Birimo gufatwa… vuga ubu (amasegonda 10 ntarengwa), hanyuma Hagarika.",
+    "listen": "Umva",
+    "keep": "Bika iri jwi",
+    "saved": "Ijwi ryabitswe: televiziyo zirikoresha mu masegonda make.",
+    "deleted": "Ijwi ryakuweho: ijwi rya televiziyo rivuga icyo gice kugeza irindi ribitswe.",
+    "delete": "Kuraho ijwi",
+    "none": "Ntiriraffatwa: ijwi rya televiziyo rivuga iki gice.",
+    "recordedBy": "Ryafashwe na {{name}} ku wa {{date}}",
+    "micDenied": "Mikoro ntiyashoboye gukoreshwa ({{why}}). Emerera uru rubuga gukoresha mikoro wongere ugerageze.",
+    "playFailed": "Ijwi ntiryashoboye gucurangwa.",
+    "noRecorder": "Iyi mushakisha ntishobora gufata amajwi. Koresha Chrome cyangwa Edge kuri mudasobwa ifite mikoro.",
+    "hint": "Aho bakorera hongewemo nyuma hakeneye ijwi ryaho na ho; kugeza icyo gihe ijwi rya televiziyo rivuga icyo gice. Amajwi acurangwa kuri buri ecran yashyizwe kuri “Amajwi yafashwe n’abakozi”."
   }
 }
