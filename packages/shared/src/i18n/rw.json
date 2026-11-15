@@ -10229,7 +10229,16 @@
     "moreWaiting_other": "n’abandi {{count}} bategereje",
     "noPatients": "Nta murwayi utegereje",
     "noPatientsLead": "Aho bakorera hose ni ubusa — nyamuneka jya aho bakirira abarwayi.",
-    "position": "Aho bakorera {{n}} muri {{total}}"
+    "position": "Aho bakorera {{n}} muri {{total}}",
+    "queue": "Umurongo w’abarwayi",
+    "waitingWord": "bategereje",
+    "nowCalling": "Uhamagawe ubu",
+    "proceedTo": "Nyamuneka jya kuri",
+    "nowServing": "Uri kwitabwaho ubu",
+    "nextTag": "UKURIKIRA",
+    "views": "Uko aho bakorera hagaragazwa",
+    "gridView": "Aho bakorera hose icyarimwe",
+    "slidesView": "Aho bakorera hamwe ku gihe"
   },
   "displayScreens": {
     "title": "Mugaragaza zo mu cyumba cyo gutegerereza",

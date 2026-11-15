@@ -10220,7 +10220,16 @@
     "moreWaiting_other": "and {{count}} more waiting",
     "noPatients": "No patient waiting",
     "noPatientsLead": "The desks are free — please go to reception.",
-    "position": "Desk {{n}} of {{total}}"
+    "position": "Desk {{n}} of {{total}}",
+    "queue": "Patient queue",
+    "waitingWord": "waiting",
+    "nowCalling": "Now calling",
+    "proceedTo": "Please proceed to",
+    "nowServing": "Now serving",
+    "nextTag": "NEXT",
+    "views": "How the desks are shown",
+    "gridView": "Every desk at once",
+    "slidesView": "One desk at a time"
   },
   "displayScreens": {
     "title": "Waiting-room screens",

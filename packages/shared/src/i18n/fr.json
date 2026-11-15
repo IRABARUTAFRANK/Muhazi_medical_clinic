@@ -10220,7 +10220,16 @@
     "moreWaiting_other": "et {{count}} autres en attente",
     "noPatients": "Aucun patient en attente",
     "noPatientsLead": "Les guichets sont libres — adressez-vous à l’accueil.",
-    "position": "Guichet {{n}} sur {{total}}"
+    "position": "Guichet {{n}} sur {{total}}",
+    "queue": "File des patients",
+    "waitingWord": "en attente",
+    "nowCalling": "Appel en cours",
+    "proceedTo": "Veuillez vous rendre à",
+    "nowServing": "En consultation",
+    "nextTag": "SUIVANT",
+    "views": "Affichage des postes",
+    "gridView": "Tous les postes à la fois",
+    "slidesView": "Un poste à la fois"
   },
   "displayScreens": {
     "title": "Écrans de salle d’attente",
