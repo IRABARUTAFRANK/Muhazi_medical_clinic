@@ -494,8 +494,9 @@ export function ClinicalCard({
     kind: 'cancel' | 'return' | 'undo'
   } | null>(null)
   const [reason, setReason] = useState('')
-  // 0173: bought outside (a prescription), or given here from the clinic's stock
-  const supplies: RxSupply[] = ['outside', 'room']
+  // 0178: a prescription is for an outside pharmacy only; what the clinic gives here is an order
+  // (a drug or a procedure, from the clinic's stock), so the supply is never asked here
+  const supplies: RxSupply[] = ['outside']
 
   const letterhead = useLetterhead()
   const reportLabels = useMedicalReportLabels()
@@ -1633,44 +1634,46 @@ export function ClinicalCard({
               />
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <div className="flex flex-wrap items-center gap-2" role="radiogroup">
-                <span className="text-ink-2 text-[13px] font-semibold">
-                  {t('clinical.supplyLabel')}
-                </span>
-                {supplies.map((k) => {
-                  // a medicine the clinic does not hold: only an outside pharmacy
-                  const off = k !== 'outside' && outsideOnly(line.item)
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      role="radio"
-                      aria-checked={line.supply === k}
-                      disabled={off}
-                      title={off ? t('clinical.stock.notSold') : undefined}
-                      onClick={() => {
-                        setLine(i, { supply: k, supplyChosen: true })
-                        if (refused?.key === line.key) setRefused(null)
-                      }}
-                      className={cn(
-                        'disabled:bg-hover disabled:text-ink-3 inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold disabled:cursor-not-allowed',
-                        line.supply === k
-                          ? k === 'outside'
-                            ? 'border-orange bg-orange text-card'
-                            : 'border-primary bg-primary text-on-primary'
-                          : 'border-border bg-card text-ink-2 hover:bg-hover',
-                      )}
-                    >
-                      {k === 'room' ? (
-                        <HandHeart size={14} aria-hidden="true" />
-                      ) : (
-                        <Store size={14} aria-hidden="true" />
-                      )}
-                      {t(`clinical.supply.${k}`)}
-                    </button>
-                  )
-                })}
-              </div>
+              {supplies.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2" role="radiogroup">
+                  <span className="text-ink-2 text-[13px] font-semibold">
+                    {t('clinical.supplyLabel')}
+                  </span>
+                  {supplies.map((k) => {
+                    // a medicine the clinic does not hold: only an outside pharmacy
+                    const off = k !== 'outside' && outsideOnly(line.item)
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        role="radio"
+                        aria-checked={line.supply === k}
+                        disabled={off}
+                        title={off ? t('clinical.stock.notSold') : undefined}
+                        onClick={() => {
+                          setLine(i, { supply: k, supplyChosen: true })
+                          if (refused?.key === line.key) setRefused(null)
+                        }}
+                        className={cn(
+                          'disabled:bg-hover disabled:text-ink-3 inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold disabled:cursor-not-allowed',
+                          line.supply === k
+                            ? k === 'outside'
+                              ? 'border-orange bg-orange text-card'
+                              : 'border-primary bg-primary text-on-primary'
+                            : 'border-border bg-card text-ink-2 hover:bg-hover',
+                        )}
+                      >
+                        {k === 'room' ? (
+                          <HandHeart size={14} aria-hidden="true" />
+                        ) : (
+                          <Store size={14} aria-hidden="true" />
+                        )}
+                        {t(`clinical.supply.${k}`)}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
               {rx.length > 1 && (
                 <Button
                   variant="ghost"
