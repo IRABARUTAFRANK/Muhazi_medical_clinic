@@ -557,11 +557,6 @@ export function buildReport(o: {
     totalsAt: o.totals,
     totalLabel: grouped ? t('reports.ui.grandTotal') : t('report.total'),
   }
-  const money = model.columns.some((c) => c.kind === 'money')
-  const noteLines = [
-    ...(money ? [t('report.notes.currency')] : []),
-    ...(def.notes ?? []).map((k) => t(k)),
-  ]
   const title = t(def.title)
   return {
     title,
@@ -577,7 +572,8 @@ export function buildReport(o: {
       value: f.value,
       unit: f.unit && f.unit !== 'RWF' ? t(f.unit) : f.unit,
     })),
-    notes: noteLines.length ? { title: t('report.notes.title'), lines: noteLines } : undefined,
+    // 0169: no "How the figures are counted" box on the reports any more (the owner's choice)
+    notes: undefined,
     doc: makeDocLabels(t),
     words: {
       reportNo: t('report.reportNo'),
