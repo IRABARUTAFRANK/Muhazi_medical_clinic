@@ -263,8 +263,38 @@ export interface StockMovement {
   /** The prescription line (hand-overs, room gives, returns). */
   requestId?: string | null
 }
+/** 0174: one sale or hand-out of the period, with who it was for and who did it. */
+export interface SaleLine {
+  at: string
+  /** 'visit': charged on a patient's bill (given at the visit); 'walkin': a walk-in sale. */
+  kind: 'visit' | 'walkin'
+  item: string
+  units: number
+  amount: number
+  /** The patient, or the walk-in buyer. */
+  who: string | null
+  /** Who sold or gave it. */
+  by: string
+  /** The bill or sale number. */
+  ref: string | null
+}
+/** 0174: what one person sold or gave in the period. */
+export interface SalesPerson {
+  id: string | null
+  name: string
+  lines: number
+  units: number
+  amount: number
+  given: number
+  sold: number
+}
+
 export interface StockSales {
   items: { item: string; units: number; revenue: number; cost: number; margin: number }[]
+  /** 0174: per person, the biggest amount first. */
+  byPerson: SalesPerson[]
+  /** 0174: every line, the latest first (at most 2,000). */
+  lines: SaleLine[]
   received: number
   consumed: number
   stockValue: number
@@ -1306,6 +1336,58 @@ export function useStockSales(from: string, to: string) {
           revenue: 73900,
           cost: 34360,
           margin: 39540,
+          byPerson: [
+            {
+              id: 'u-pharm',
+              name: 'Logan',
+              lines: 9,
+              units: 230,
+              amount: 52400,
+              given: 0,
+              sold: 52400,
+            },
+            {
+              id: 'u-doc',
+              name: 'Dr. Ndayisaba Félix',
+              lines: 4,
+              units: 69,
+              amount: 21500,
+              given: 21500,
+              sold: 0,
+            },
+          ],
+          lines: [
+            {
+              at: new Date(Date.now() - 3_600_000).toISOString(),
+              kind: 'walkin',
+              item: 'Paracetamol 500 mg',
+              units: 20,
+              amount: 1000,
+              who: 'Mukamana Alice',
+              by: 'Logan',
+              ref: 'S-261116-004',
+            },
+            {
+              at: new Date(Date.now() - 7_200_000).toISOString(),
+              kind: 'visit',
+              item: 'Amoxicillin 500 mg',
+              units: 21,
+              amount: 6300,
+              who: 'Habimana Eric',
+              by: 'Dr. Ndayisaba Félix',
+              ref: 'INV-2026-000131',
+            },
+            {
+              at: new Date(Date.now() - 10_800_000).toISOString(),
+              kind: 'walkin',
+              item: 'Artemether-lumefantrine 20/120 mg',
+              units: 24,
+              amount: 12000,
+              who: 'Uwase Josiane',
+              by: 'Logan',
+              ref: 'S-261116-003',
+            },
+          ],
         }
       const { data, error } = await supabase.rpc('stock_sales', { p_from: from, p_to: to })
       if (error) throw apiError(error)
@@ -1322,6 +1404,25 @@ export function useStockSales(from: string, to: string) {
       const cost = d.cost == null ? items.reduce((s, x) => s + x.cost, 0) : num(d.cost)
       return {
         items,
+        byPerson: (d.byPerson ?? []).map((x) => ({
+          id: x.id ?? null,
+          name: x.name,
+          lines: num(x.lines),
+          units: num(x.units),
+          amount: num(x.amount),
+          given: num(x.given),
+          sold: num(x.sold),
+        })),
+        lines: (d.lines ?? []).map((x) => ({
+          at: x.at,
+          kind: x.kind === 'walkin' ? 'walkin' : 'visit',
+          item: x.item,
+          units: num(x.units),
+          amount: num(x.amount),
+          who: x.who ?? null,
+          by: x.by,
+          ref: x.ref ?? null,
+        })),
         received: num(d.received),
         consumed: num(d.consumed),
         stockValue: num(d.stockValue),

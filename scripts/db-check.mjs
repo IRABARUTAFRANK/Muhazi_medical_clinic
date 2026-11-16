@@ -25178,6 +25178,40 @@ await step(
     return `room stores open 0, holding 0; stock total kept (${before}); waiting 0, open pharmacy queue 0; 'pharmacy' saved as outside; given here from the main pharmacy, 2 off the shelf, charged; 999,999 refused MS003; pharmacy_queue empty`
   },
 )
+// 0174: the sales report for the desk, with who sold or gave
+await step(
+  '0174: a doctor marked keeper reads the sales report (the desk is enough); it lists every line with who gave it and sums per person; a receptionist gets nothing',
+  async () => {
+    await asAdmin()
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270201090000_sales_by_person.sql'), 'utf8'),
+    )
+    const keeper = await newStaff('p174.keeper', 'Keeper 174', 'doctor')
+    await as(staff.manager)
+    await db.query(`select set_pharmacy_keeper($1, true)`, [keeper])
+    await as(keeper)
+    const rep = (await one(`select stock_sales(current_date, current_date) as j`)).j
+    await as(staff.receptionist)
+    const none = (await one(`select stock_sales(current_date, current_date) as j`)).j
+    await asAdmin()
+    const doctorName = (await one(`select full_name from profiles where id = $1`, [d1])).full_name
+    const given = (rep?.lines ?? []).filter(
+      (l) => l.kind === 'visit' && /Amoxicillin 97/.test(l.item) && l.by === doctorName,
+    )
+    const person = (rep?.byPerson ?? []).find((x) => x.name === doctorName)
+    if (!rep || rep.items.length === 0)
+      throw new Error('keeper sees nothing: ' + JSON.stringify(rep).slice(0, 200))
+    if (none !== null) throw new Error('receptionist sees: ' + JSON.stringify(none).slice(0, 200))
+    if (
+      given.length === 0 ||
+      !given.every((l) => l.who && Number(l.units) > 0 && Number(l.amount) >= 0)
+    )
+      throw new Error('lines: ' + JSON.stringify(rep.lines.slice(0, 3)))
+    if (!person || person.lines < given.length || Number(person.units) < 2)
+      throw new Error('byPerson: ' + JSON.stringify(rep.byPerson.slice(0, 3)))
+    return `keeper (doctor) reads the report: ${rep.lines.length} lines, ${rep.byPerson.length} people; ${doctorName} gave ${given.length} line(s) of Amoxicillin 97 (${person.units} units); receptionist: nothing`
+  },
+)
 // @@t141-end
 finish()
 

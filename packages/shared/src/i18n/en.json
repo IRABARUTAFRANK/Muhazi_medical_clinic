@@ -4664,7 +4664,18 @@
       "byItem": "Sales by medicine",
       "units": "Units",
       "none": "Nothing sold in this period.",
-      "flows": "In the period: received {{received}} at cost · used without sale {{consumed}}."
+      "flows": "In the period: received {{received}} at cost · used without sale {{consumed}}.",
+      "byPerson": "Who sold or gave",
+      "lines": "Every sale and hand-out",
+      "cols": {
+        "who": "Patient or buyer",
+        "lines": "Lines",
+        "amount": "Amount (RWF)"
+      },
+      "kind": {
+        "visit": "Given at a visit",
+        "walkin": "Walk-in sale"
+      }
     },
     "storesTitle": "Stores",
     "storesLead": "Where stock is kept: the main store, the pharmacy, the nursing room, a doctor’s office. Create one per department or office you send medicine to.",

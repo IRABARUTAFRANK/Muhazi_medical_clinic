@@ -4664,7 +4664,18 @@
       "byItem": "Ventes par médicament",
       "units": "Unités",
       "none": "Rien de vendu sur cette période.",
-      "flows": "Sur la période : reçu {{received}} au coût · utilisé sans vente {{consumed}}."
+      "flows": "Sur la période : reçu {{received}} au coût · utilisé sans vente {{consumed}}.",
+      "byPerson": "Qui a vendu ou donné",
+      "lines": "Chaque vente et remise",
+      "cols": {
+        "who": "Patient ou acheteur",
+        "lines": "Lignes",
+        "amount": "Montant (RWF)"
+      },
+      "kind": {
+        "visit": "Donné lors d’une visite",
+        "walkin": "Vente au comptoir"
+      }
     },
     "storesTitle": "Magasins",
     "storesLead": "Où le stock est gardé : magasin principal, pharmacie, salle de soins, bureau d’un médecin. Créez-en un par département ou bureau que vous approvisionnez.",

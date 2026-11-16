@@ -352,6 +352,95 @@ function Sales({ period }: { period: Period }) {
           })}
         </p>
       </Panel>
+      {/* 0174: who sold or gave, and every line of the period */}
+      <Panel i={3} icon={Coins} tint="navy" title={t('stock.sales.byPerson')}>
+        {!data || data.byPerson.length === 0 ? (
+          <Empty icon={Coins}>{t('stock.sales.none')}</Empty>
+        ) : (
+          <table className="w-full border-collapse text-[14px]">
+            <thead className="bg-surface">
+              <tr className="border-border border-b">
+                <th className={tableHead}>{t('report.cols.by')}</th>
+                <th className={cn(tableHead, 'text-right')}>{t('stock.sales.cols.lines')}</th>
+                <th className={cn(tableHead, 'text-right')}>{t('stock.sales.units')}</th>
+                <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
+                  {t('stock.sales.kind.visit')}
+                </th>
+                <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
+                  {t('stock.sales.kind.walkin')}
+                </th>
+                <th className={cn(tableHead, 'text-right')}>{t('stock.sales.cols.amount')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.byPerson.map((x) => (
+                <tr key={x.id ?? x.name} className={tableRow}>
+                  <td className={tableFirstCell}>{x.name}</td>
+                  <td className={cn(tableCell, 'text-right tabular-nums')}>{x.lines}</td>
+                  <td className={cn(tableCell, 'text-right tabular-nums')}>
+                    {formatNumber(x.units)}
+                  </td>
+                  <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
+                    {formatNumber(x.given)}
+                  </td>
+                  <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
+                    {formatNumber(x.sold)}
+                  </td>
+                  <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                    {formatNumber(x.amount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Panel>
+      <Panel i={4} icon={Coins} tint="teal" title={t('stock.sales.lines')}>
+        {!data || data.lines.length === 0 ? (
+          <Empty icon={Coins}>{t('stock.sales.none')}</Empty>
+        ) : (
+          <div className="max-h-[60vh] overflow-auto overscroll-contain">
+            <table className="w-full border-collapse text-[14px]">
+              <thead className="bg-surface sticky top-0 z-1">
+                <tr className="border-border border-b">
+                  <th className={tableHead}>{t('report.cols.dateTime')}</th>
+                  <th className={tableHead}>{t('stockPage.cols.item')}</th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.sales.units')}</th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.sales.cols.amount')}</th>
+                  <th className={cn(tableHead, 'hidden md:table-cell')}>
+                    {t('stock.sales.cols.who')}
+                  </th>
+                  <th className={tableHead}>{t('report.cols.by')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.lines.map((x, i) => (
+                  <tr key={`${x.at}-${i}`} className={tableRow}>
+                    <td className={cn(tableFirstCell, 'whitespace-nowrap tabular-nums')}>
+                      {formatDate(new Date(x.at))} {formatTime(new Date(x.at))}
+                    </td>
+                    <td className={tableCell}>
+                      {x.item}
+                      <span className="text-ink-3 block text-[12px]">
+                        {t(`stock.sales.kind.${x.kind}`)}
+                        {x.ref ? ` · ${x.ref}` : ''}
+                      </span>
+                    </td>
+                    <td className={cn(tableCell, 'text-right tabular-nums')}>
+                      {formatNumber(x.units)}
+                    </td>
+                    <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                      {formatNumber(x.amount)}
+                    </td>
+                    <td className={cn(tableCell, 'hidden md:table-cell')}>{x.who ?? '—'}</td>
+                    <td className={tableCell}>{x.by}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
       <StoreValues />
     </div>
   )

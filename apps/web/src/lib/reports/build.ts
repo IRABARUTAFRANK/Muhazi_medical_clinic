@@ -696,6 +696,60 @@ export function stockReport(
           },
         ],
       },
+      // 0174: who sold or gave, and every sale and hand-out of the period
+      ...(sales
+        ? [
+            {
+              name: t('report.sheets.sales'),
+              tables: [
+                {
+                  title: t('stock.sales.byPerson'),
+                  columns: [
+                    { label: t('report.cols.by'), pdfWidth: '34%' },
+                    { label: t('stock.sales.cols.lines'), kind: 'number' as const },
+                    { label: t('stock.sales.units'), kind: 'number' as const },
+                    { label: t('stock.sales.kind.visit'), kind: 'money' as const },
+                    { label: t('stock.sales.kind.walkin'), kind: 'money' as const },
+                    { label: t('stock.sales.cols.amount'), kind: 'money' as const },
+                  ],
+                  rows: sales.byPerson.map((x) => [
+                    x.name,
+                    x.lines,
+                    x.units,
+                    Math.round(x.given),
+                    Math.round(x.sold),
+                    Math.round(x.amount),
+                  ]),
+                  totals: [1, 2, 3, 4, 5],
+                },
+                {
+                  title: t('stock.sales.lines'),
+                  columns: [
+                    { label: t('report.cols.dateTime'), kind: 'datetime' as const },
+                    { label: t('stock.cols.item') },
+                    { label: t('report.cols.type'), nowrap: true },
+                    { label: t('stock.sales.units'), kind: 'number' as const },
+                    { label: t('stock.sales.cols.amount'), kind: 'money' as const },
+                    { label: t('stock.sales.cols.who') },
+                    { label: t('report.cols.by'), nowrap: true },
+                    { label: t('report.cols.reference'), under: true },
+                  ],
+                  rows: sales.lines.map((x) => [
+                    x.at,
+                    x.item,
+                    t(`stock.sales.kind.${x.kind}`),
+                    x.units,
+                    Math.round(x.amount),
+                    x.who,
+                    x.by,
+                    x.ref,
+                  ]),
+                  totals: [4],
+                },
+              ],
+            },
+          ]
+        : []),
       {
         name: t('report.sheets.movements'),
         tables: [

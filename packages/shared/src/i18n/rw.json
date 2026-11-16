@@ -4673,7 +4673,18 @@
       "byItem": "Ibyagurishijwe kuri buri muti",
       "units": "Ibice",
       "none": "Nta cyagurishijwe muri iki gihe.",
-      "flows": "Muri iki gihe: byakiriwe {{received}} ku giciro cyo kugura · byakoreshejwe bitagurishijwe {{consumed}}."
+      "flows": "Muri iki gihe: byakiriwe {{received}} ku giciro cyo kugura · byakoreshejwe bitagurishijwe {{consumed}}.",
+      "byPerson": "Uwagurishije cyangwa uwatanze",
+      "lines": "Buri kugurisha no gutanga",
+      "cols": {
+        "who": "Umurwayi cyangwa umuguzi",
+        "lines": "Imirongo",
+        "amount": "Amafaranga (RWF)"
+      },
+      "kind": {
+        "visit": "Byatanzwe mu kwivuza",
+        "walkin": "Kugurisha uwaje nta kwivuza"
+      }
     },
     "storesTitle": "Ububiko",
     "storesLead": "Aho imiti ibikwa: ububiko bukuru, farumasi, icyumba cy’abaforomo, ibiro bya muganga. Shyiraho bumwe kuri buri shami cyangwa biro wohererezamo imiti.",
