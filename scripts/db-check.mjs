@@ -24808,6 +24808,91 @@ await step(
     return `recordings kept and listed (${clips.length}); refused: ${badKey}, ${badPath}, receptionist ${rec}; screen voice recorded, bad value ${badVoice}; board carries voice + clips; key check true/false`
   },
 )
+// 0170: the one who keeps the pharmacy stock holds the Pharmacy desk, whatever the departments
+await step(
+  '0170: an employee marked "keeps the pharmacy stock" holds the Pharmacy desk; only the manager marks; off again',
+  async () => {
+    // re-run steps above may have put older definitions back: 0170 again first
+    await asAdmin()
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270129090000_pharmacy_keeper.sql'), 'utf8'),
+    )
+    const who = await newStaff('p170.keeper', 'Keeper 170', 'receptionist')
+    await as(staff.receptionist)
+    const before = (await one(`select desks_of($1) as d`, [who])).d
+    const notMgr = await codeAs(staff.receptionist, `select set_pharmacy_keeper($1, true)`, [who])
+    await as(staff.manager)
+    await db.query(`select set_pharmacy_keeper($1, true)`, [who])
+    const after = (await one(`select desks_of($1) as d`, [who])).d
+    const prof = (await one(`select staff_profile($1) as j`, [who])).j
+    await as(who)
+    const may = (await one(`select may_use_desk('pharmacy') as ok`)).ok
+    const placement = (await one(`select my_placement() as j`)).j
+    // 0171: the keeper hands a medicine over to an insured patient and sets how the insurer is charged
+    await asAdmin()
+    const v = await insuredVisit139('Keeper 171', t115.mmi, 'MMI-171-001')
+    await as(staff.doctor)
+    await db.query(`select take_patient($1)`, [v.queue])
+    await db.query(`select add_diagnosis($1, 'Tonsillitis', 'J03', 'primary')`, [v.enc])
+    const rx = (
+      await one(
+        `select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => 5, p_supply => 'pharmacy',
+                p_dose => '1 cap', p_frequency => 'TDS', p_duration_days => 2) as j`,
+        [v.enc, t97.amox],
+      )
+    ).j
+    await db.query(`select save_visit_section($1, 'complaint', 'Sore throat')`, [v.enc])
+    await db.query(`select finish_visit($1)`, [v.enc])
+    await as(who)
+    const given = (await one(`select dispense_prescription($1, null, 5) as j`, [rx.id])).j
+    const covered = (
+      await one(
+        `select change_charge_cover($1, 'not_covered', null, 'Not on the list today') as j`,
+        [given.lineId],
+      )
+    ).j
+    await asAdmin()
+    const line = await one(
+      `select office, coverage_pct, cover_mode from invoice_line where id = $1`,
+      [given.lineId],
+    )
+    const other = await codeAs(
+      staff.receptionist,
+      `select change_charge_cover($1, 'insurer', null, null)`,
+      [given.lineId],
+    )
+    await as(staff.manager)
+    await db.query(`select set_pharmacy_keeper($1, false)`, [who])
+    const off = (await one(`select desks_of($1) as d`, [who])).d
+    const dir = (await one(`select is_pharmacist from staff_directory where id = $1`, [who]))
+      .is_pharmacist
+    await asAdmin()
+    if ((before || []).includes('pharmacy'))
+      throw new Error('had the desk before: ' + JSON.stringify(before))
+    if (notMgr !== '42501') throw new Error('receptionist could mark: ' + notMgr)
+    if (
+      !(after || []).includes('pharmacy') ||
+      prof.isPharmacist !== true ||
+      may !== true ||
+      placement.isPharmacist !== true
+    )
+      throw new Error(
+        JSON.stringify({ after, prof: prof.isPharmacist, may, placement: placement.isPharmacist }),
+      )
+    if ((off || []).includes('pharmacy') || dir !== false)
+      throw new Error(JSON.stringify({ off, dir }))
+    if (
+      !/^[0-9a-f-]{36}$/.test(String(given.lineId)) ||
+      covered.coverage !== 0 ||
+      line.office !== 'pharmacy' ||
+      Number(line.coverage_pct) !== 0 ||
+      line.cover_mode !== 'not_covered' ||
+      other !== '42501'
+    )
+      throw new Error(JSON.stringify({ given, covered, line, other }))
+    return `no desk → marked: pharmacy desk, profile + placement say so, may_use_desk true → gave 5 caps to an MMI patient: lineId ${String(given.lineId).slice(0, 8)}…, set not covered (0%) at the desk; a receptionist refused ${other} → unmarked: gone; receptionist marking refused ${notMgr}`
+  },
+)
 // @@t141-end
 finish()
 

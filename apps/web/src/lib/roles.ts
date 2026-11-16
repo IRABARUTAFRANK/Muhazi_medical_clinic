@@ -61,7 +61,13 @@ export const specialtyLabel = (s: string | null | undefined, t: TFunction | TLik
  * they are: the Employees list, the profile, History, the pickers.
  */
 export function professionLabel(
-  p: { role: string; specialty?: string | null; isManager?: boolean | null },
+  p: {
+    role: string
+    specialty?: string | null
+    isManager?: boolean | null
+    /** 0170: keeps the pharmacy stock. */
+    isPharmacist?: boolean | null
+  },
   t: TFunction | TLike,
 ): string {
   const tt = t as TLike
@@ -73,6 +79,7 @@ export function professionLabel(
   // "Midwife · Midwife" says it once
   if (spec && spec.toLowerCase() !== base.toLowerCase()) parts.push(spec)
   if (p.isManager) parts.push(tt('roles.clinicManager'))
+  if (p.isPharmacist) parts.push(tt('roles.pharmacyKeeper'))
   return parts.join(' · ')
 }
 

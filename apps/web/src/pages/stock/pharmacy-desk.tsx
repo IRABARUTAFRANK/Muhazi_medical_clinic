@@ -33,6 +33,7 @@ import {
   type StockItem,
 } from '@/lib/api/stock'
 import { costOf, partOf, perUnit, usePharmacyActions, withoutDone } from '@/lib/api/pharmacy'
+import type { CoverMode } from '@/lib/api/billing'
 import { priceQuantity, saleModeOf, type Packaging } from '@/lib/pack-pricing'
 import { cn } from '@/lib/utils'
 import { Field, controlClass } from '@/components/ui/field'
@@ -138,7 +139,17 @@ function HandOverPanel({
   const { data: desk } = usePharmacyDesk(storeChoice)
   const { data: stock } = useStockOverview()
   const actions = useStockActions()
-  const { dispensePart } = usePharmacyActions()
+  const { dispensePart, coverLine } = usePharmacyActions()
+  // 0171: how the insurer is charged for a line, chosen here before it is given
+  const [covers, setCovers] = useState<
+    Record<string, { mode: CoverMode; price: string; reason: string }>
+  >({})
+  const coverOf = (q: PharmacyLine) =>
+    covers[q.requestId] ?? { mode: 'insurer' as CoverMode, price: '', reason: '' }
+  const setCover = (
+    q: PharmacyLine,
+    patch: Partial<{ mode: CoverMode; price: string; reason: string }>,
+  ) => setCovers((x) => ({ ...x, [q.requestId]: { ...coverOf(q), ...patch } }))
   const confirm = useConfirm()
   const addHanded = useHanded((s) => s.add)
   const updateHanded = useHanded((s) => s.update)
@@ -291,9 +302,20 @@ function HandOverPanel({
           locationId: storeChoice,
           confirm: confirmed,
         })
+      // 0171: a cover chosen at the desk: no question to the insurer, the line changed right after
+      const cv = coverOf(q)
+      const override = !!q.payer && q.priced && cv.mode !== 'insurer'
+      if (override && !cv.reason.trim()) {
+        setMsg({ ok: false, text: t('pharmacy.cover.reasonNeeded') })
+        return null
+      }
+      if (override && cv.mode === 'price' && !/^\d+$/.test(cv.price)) {
+        setMsg({ ok: false, text: t('pharmacy.cover.priceNeeded') })
+        return null
+      }
       let r: Awaited<ReturnType<typeof dispense>>
       try {
-        r = await dispense()
+        r = override ? await dispense(true) : await dispense()
       } catch (e) {
         // not on the insurer's list and the insurer wants to be asked (0115), or the insurer covers
         // it only with its approval (0134): confirm, then once more
@@ -330,6 +352,26 @@ function HandOverPanel({
         delete rest[q.requestId]
         return rest
       })
+      if (override && r.lineId) {
+        try {
+          await coverLine.mutateAsync({
+            lineId: r.lineId,
+            mode: cv.mode,
+            value: cv.mode === 'price' ? Number(cv.price) : null,
+            reason: cv.reason,
+          })
+        } catch (e) {
+          setMsg({
+            ok: false,
+            text: t('pharmacy.cover.failed', { why: e instanceof Error ? e.message : String(e) }),
+          })
+        }
+        setCovers((x) => {
+          const rest = { ...x }
+          delete rest[q.requestId]
+          return rest
+        })
+      }
       const batches = await fetchDispensedBatches(r.dispenseId, q.itemId, r.quantity)
       addHanded(
         { key: q.encounterId, kind: 'visit', patient: { name: q.patient, fileNumber: q.file } },
@@ -802,6 +844,57 @@ function HandOverPanel({
                                             ? 'pharmacy.notListed.ask'
                                             : 'pharmacy.notListed.cash',
                                         { payer: q.payer },
+                                      )}
+                                    </span>
+                                  )}
+                                  {/* 0171: how the insurer is charged for this medicine, chosen here */}
+                                  {q.payer && (
+                                    <span className="mt-1 flex flex-col items-end gap-1">
+                                      <select
+                                        className={cn(
+                                          controlClass,
+                                          'h-8 w-auto max-w-full text-[12px] font-medium',
+                                        )}
+                                        value={coverOf(q).mode}
+                                        aria-label={t('pharmacy.cover.title', { payer: q.payer })}
+                                        onChange={(e) =>
+                                          setCover(q, { mode: e.target.value as CoverMode })
+                                        }
+                                      >
+                                        {(
+                                          ['insurer', 'not_covered', 'private', 'price'] as const
+                                        ).map((m) => (
+                                          <option key={m} value={m}>
+                                            {t(`visit.cover.mode.${m}`, { payer: q.payer })}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      {coverOf(q).mode === 'price' && (
+                                        <input
+                                          className={cn(controlClass, 'h-8 w-[120px] text-[12px]')}
+                                          inputMode="numeric"
+                                          placeholder={t('visit.cover.price')}
+                                          value={coverOf(q).price}
+                                          onChange={(e) =>
+                                            setCover(q, {
+                                              price: e.target.value
+                                                .replace(/[^\d]/g, '')
+                                                .slice(0, 10),
+                                            })
+                                          }
+                                        />
+                                      )}
+                                      {coverOf(q).mode !== 'insurer' && (
+                                        <input
+                                          className={cn(
+                                            controlClass,
+                                            'h-8 w-[220px] max-w-full text-[12px]',
+                                          )}
+                                          placeholder={t('visit.cover.reasonPh')}
+                                          value={coverOf(q).reason}
+                                          maxLength={300}
+                                          onChange={(e) => setCover(q, { reason: e.target.value })}
+                                        />
                                       )}
                                     </span>
                                   )}

@@ -232,7 +232,7 @@ export function StaffProfilePage({
             </div>
 
             <div key={tab} className="flex flex-col gap-4">
-              {tab === 'overview' && <Overview p={p} />}
+              {tab === 'overview' && <Overview p={p} manager={manager} />}
               {tab === 'documents' && (
                 <Card className="anim-enter">
                   <CardBody>
@@ -254,6 +254,33 @@ export function StaffProfilePage({
 type T = (key: string, opts?: Record<string, unknown>) => string
 /** "Doctor · Dentist · Clinic manager" (0128). */
 const roleWords = (p: StaffProfile, t: T) => professionLabel(p, t)
+
+/** 0170: "Pharmacy stock: yes / no", with the manager's switch (set_pharmacy_keeper, audited). */
+function PharmacistRow({ p, manager }: { p: StaffProfile; manager: boolean }) {
+  const { t } = useTranslation()
+  const { setPharmacist } = useStaffProfileActions(p.id)
+  const on = !!p.isPharmacist
+  return (
+    <Info
+      label={t('staffProfile.f.pharmacist')}
+      value={
+        <span className="flex flex-wrap items-center gap-2">
+          {t(on ? 'staffProfile.pharmacist.on' : 'staffProfile.pharmacist.off')}
+          {manager && (
+            <Button
+              size="sm"
+              variant={on ? 'tint-coral' : 'tint-blue'}
+              loading={setPharmacist.isPending}
+              onClick={() => void setPharmacist.mutateAsync(!on)}
+            >
+              {t(on ? 'staffProfile.pharmacist.turnOff' : 'staffProfile.pharmacist.turnOn')}
+            </Button>
+          )}
+        </span>
+      }
+    />
+  )
+}
 
 function Info({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -284,7 +311,7 @@ function Expiry({ date }: { date: string | null }) {
   )
 }
 
-function Overview({ p }: { p: StaffProfile }) {
+function Overview({ p, manager }: { p: StaffProfile; manager: boolean }) {
   const { t } = useTranslation()
   const [editing, setEditing] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -317,6 +344,8 @@ function Overview({ p }: { p: StaffProfile }) {
           <Info label={t('staffProfile.f.profession')} value={roleWords(p, t)} />
           <Info label={t('staffProfile.f.staffId')} value={p.staffId} />
           <Info label={t('staffProfile.f.username')} value={p.username} />
+          {/* 0170: keeps the pharmacy stock (the Pharmacy desk follows); the manager switches it */}
+          <PharmacistRow p={p} manager={manager} />
           <Info
             label={t('staffProfile.f.departments')}
             value={

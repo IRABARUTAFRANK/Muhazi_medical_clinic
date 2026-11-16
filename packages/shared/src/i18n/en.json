@@ -133,7 +133,8 @@
     "pharmacist": "Pharmacist",
     "midwife": "Midwife",
     "administrator": "Administrator",
-    "clinicManager": "Clinic manager"
+    "clinicManager": "Clinic manager",
+    "pharmacyKeeper": "Keeps the pharmacy stock"
   },
   "sync": {
     "synced": "Synced",
@@ -837,7 +838,9 @@
       "managerDesks": "As the clinic manager they also see every desk, but take patients only at these.",
       "doctorHere": "Works as the doctor here",
       "doctorHereHint": "Appointed by the manager: in this department the person has every doctor power — the record in six steps, diagnoses, orders to the nurses, tests, medicines, acts, finishing the visit — and the doctor’s switches. Their profession stays the same; elsewhere nothing changes.",
-      "doctorHereIsDoctor": "A doctor already has every doctor power here; the tick marks them the doctor of this department."
+      "doctorHereIsDoctor": "A doctor already has every doctor power here; the tick marks them the doctor of this department.",
+      "isPharmacist": "Keeps the pharmacy stock (acts as the pharmacist)",
+      "isPharmacistHint": "Gives the Pharmacy desk whatever the departments: the prescriptions to hand over, walk-in sales, Add stock, the room stores and the stock reports, every action under this person’s name."
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -5548,6 +5551,12 @@
       "cash": "Not on {{payer}}’s list: the cash price, with the coverage",
       "notCovered": "Not on {{payer}}’s list: not covered, the patient pays it all",
       "ask": "Not on {{payer}}’s list: confirm with {{payer}} before handing over"
+    },
+    "cover": {
+      "title": "How {{payer}} is charged for this medicine",
+      "reasonNeeded": "Give the reason for charging this medicine otherwise than the insurer covers.",
+      "priceNeeded": "Type the price of the medicine for this patient.",
+      "failed": "The medicine was given, but its cover could not be changed ({{why}}): the cashier can change it on the bill."
     }
   },
   "queuePage": {
@@ -10550,7 +10559,8 @@
       "status": "Status",
       "created": "Account made",
       "updated": "Details last changed",
-      "profession": "Profession"
+      "profession": "Profession",
+      "pharmacist": "Pharmacy stock"
     },
     "contracts": {
       "permanent": "Permanent",
@@ -10612,7 +10622,13 @@
       "removed_other": "{{count}} notes removed (in the activity log)"
     },
     "recordsYes": "Sees them (a doctor)",
-    "recordsNo": "Does not see them (not a doctor)"
+    "recordsNo": "Does not see them (not a doctor)",
+    "pharmacist": {
+      "on": "Keeps it (the Pharmacy desk follows)",
+      "off": "No",
+      "turnOn": "Give the Pharmacy desk",
+      "turnOff": "Take the Pharmacy desk back"
+    }
   },
   "forDoctors": {
     "title": "Patient records are for doctors",

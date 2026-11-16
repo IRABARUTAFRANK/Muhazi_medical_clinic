@@ -142,7 +142,8 @@
     "pharmacist": "Umufarumasiye",
     "midwife": "Umubyaza",
     "administrator": "Ushinzwe ubutegetsi",
-    "clinicManager": "Umuyobozi w’ivuriro"
+    "clinicManager": "Umuyobozi w’ivuriro",
+    "pharmacyKeeper": "Ucunga ububiko bwa farumasi"
   },
   "sync": {
     "synced": "Byahujwe",
@@ -841,7 +842,9 @@
       "managerDesks": "Nk’umuyobozi w’ivuriro abona aho bakorera hose, ariko yakira abarwayi aha gusa.",
       "doctorHere": "Akora nka muganga hano",
       "doctorHereHint": "Ashyirwaho n’umuyobozi: muri iri shami uyu muntu afite ububasha bwose bwa muganga — dosiye mu ntambwe esheshatu, indwara zemejwe, amabwiriza ku baforomo, ibizamini, imiti, ibikorwa by’ubuvuzi, gusoza kwivuza — n’uburenganzira bwa muganga. Umwuga we ntuhinduka; ahandi nta kihinduka.",
-      "doctorHereIsDoctor": "Muganga asanzwe afite ububasha bwose hano; aka kamenyetso kamushyiraho nka muganga w’iri shami."
+      "doctorHereIsDoctor": "Muganga asanzwe afite ububasha bwose hano; aka kamenyetso kamushyiraho nka muganga w’iri shami.",
+      "isPharmacist": "Acunga ububiko bwa farumasi (akora nka farumasiye)",
+      "isPharmacistHint": "Bimuha aho bakorera ha Farumasi hatitawe ku mashami: imiti yo gutanga, kugurisha abaje nta kwivuza, Kongera ububiko, ububiko bw’ibyumba na raporo z’ububiko, buri gikorwa mu izina rye."
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -5557,6 +5560,12 @@
       "cash": "Ntiri ku rutonde rwa {{payer}}: igiciro cy’amafaranga, n’umugabane w’ubwishingizi",
       "notCovered": "Ntiri ku rutonde rwa {{payer}}: ntibyishyurwa n’ubwishingizi, umurwayi yishyura byose",
       "ask": "Ntiri ku rutonde rwa {{payer}}: banza ubimenye kwa {{payer}} mbere yo gutanga"
+    },
+    "cover": {
+      "title": "Uko {{payer}} yishyurwa uyu muti",
+      "reasonNeeded": "Tanga impamvu yo kwishyuza uyu muti bitandukanye n’uko ubwishingizi butwikira.",
+      "priceNeeded": "Andika igiciro cy’umuti kuri uyu murwayi.",
+      "failed": "Umuti watanzwe, ariko uburyo bwo kwishyuza ntibwashoboye guhinduka ({{why}}): uwakira ubwishyu ashobora kubuhindura ku nyemezabwishyu."
     }
   },
   "queuePage": {
@@ -10559,7 +10568,8 @@
       "status": "Uko ahagaze",
       "created": "Konti yakozwe",
       "updated": "Amakuru yahinduwe bwa nyuma",
-      "profession": "Umwuga"
+      "profession": "Umwuga",
+      "pharmacist": "Ububiko bwa farumasi"
     },
     "contracts": {
       "permanent": "Uhoraho",
@@ -10621,7 +10631,13 @@
       "removed_other": "Ibyanditswe {{count}} byakuweho (biri mu rutonde rw’ibikorwa)"
     },
     "recordsYes": "Arazibona (ni muganga)",
-    "recordsNo": "Ntazibona (si muganga)"
+    "recordsNo": "Ntazibona (si muganga)",
+    "pharmacist": {
+      "on": "Arabucunga (aho bakorera ha Farumasi harakurikira)",
+      "off": "Oya",
+      "turnOn": "Muhe aho bakorera ha Farumasi",
+      "turnOff": "Mukureho aho bakorera ha Farumasi"
+    }
   },
   "forDoctors": {
     "title": "Amakuru y’umurwayi areba muganga gusa",

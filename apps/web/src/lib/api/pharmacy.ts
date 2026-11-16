@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { apiError, isMissingFunction, sampleRefusal } from './errors'
+import type { CoverMode } from './billing'
 import { isLowStock, sampleStock, type PharmacyLine } from './stock'
 import { kigaliToday } from '@/lib/clock'
 import { supabase } from '@/lib/supabase'
@@ -121,6 +122,8 @@ export function costOf(
 export interface DispensePartResult {
   charged: boolean
   dispenseId: string | null
+  /** 0171: the bill line of what was given (null: free, or a database before 0171). */
+  lineId: string | null
   /** Units given now. */
   quantity: number
   /** Units still to give on the line after this hand-over (0: the line is done). */
@@ -162,6 +165,7 @@ export function usePharmacyActions() {
         return {
           charged: i.line.priced,
           dispenseId: `d-${Date.now()}`,
+          lineId: i.line.priced ? `line-${Date.now()}` : null,
           quantity: n,
           remaining: Math.max(0, remaining - n),
         }
@@ -180,6 +184,7 @@ export function usePharmacyActions() {
       const d = (data ?? {}) as {
         charged?: boolean
         dispenseId?: string
+        lineId?: string | null
         given?: number
         quantity?: number
         remaining?: number
@@ -187,9 +192,33 @@ export function usePharmacyActions() {
       return {
         charged: !!d.charged,
         dispenseId: d.dispenseId ?? null,
+        lineId: d.lineId ?? null,
         quantity: n,
         remaining: d.remaining == null ? Math.max(0, remaining - n) : num(d.remaining),
       }
+    },
+    onSuccess: refresh,
+  })
+
+  /**
+   * 0171: how the insurer is charged for the medicine just given (change_charge_cover, 0139):
+   * not covered, as a private patient, another price — chosen at the desk, with the reason.
+   */
+  const coverLine = useMutation({
+    mutationFn: async (i: {
+      lineId: string
+      mode: CoverMode
+      value?: number | null
+      reason: string
+    }) => {
+      if (!supabase) return
+      const { error } = await supabase.rpc('change_charge_cover', {
+        p_line: i.lineId,
+        p_mode: i.mode,
+        p_value: i.value ?? null,
+        p_reason: i.reason.trim() || null,
+      })
+      if (error) throw apiError(error)
     },
     onSuccess: refresh,
   })
@@ -206,7 +235,7 @@ export function usePharmacyActions() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['notifications'] }),
   })
 
-  return { dispensePart, messageManager }
+  return { dispensePart, coverLine, messageManager }
 }
 
 // ---------------------------------------------------------------- totals

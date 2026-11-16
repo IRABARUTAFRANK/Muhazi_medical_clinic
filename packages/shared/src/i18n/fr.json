@@ -133,7 +133,8 @@
     "pharmacist": "Pharmacien",
     "midwife": "Sage-femme",
     "administrator": "Administrateur·rice",
-    "clinicManager": "Gestionnaire de la clinique"
+    "clinicManager": "Gestionnaire de la clinique",
+    "pharmacyKeeper": "Tient le stock de la pharmacie"
   },
   "sync": {
     "synced": "Synchronisé",
@@ -837,7 +838,9 @@
       "managerDesks": "En tant que gestionnaire, cette personne voit aussi tous les postes, mais ne prend des patients qu’à ceux-ci.",
       "doctorHere": "Fait le médecin ici",
       "doctorHereHint": "Nommé par le gérant : dans ce service, la personne a tous les pouvoirs d’un médecin — le dossier en six étapes, les diagnostics, les ordres aux infirmiers, les examens, les médicaments, les actes, la clôture de la visite — et les droits du médecin. Sa profession ne change pas ; ailleurs rien ne change.",
-      "doctorHereIsDoctor": "Un médecin a déjà tous les pouvoirs ici ; la coche le désigne médecin de ce service."
+      "doctorHereIsDoctor": "Un médecin a déjà tous les pouvoirs ici ; la coche le désigne médecin de ce service.",
+      "isPharmacist": "Tient le stock de la pharmacie (fait office de pharmacien)",
+      "isPharmacistHint": "Donne le poste Pharmacie quels que soient les services : ordonnances à remettre, ventes au comptoir, Entrées de stock, dépôts des salles et rapports de stock, chaque action au nom de cette personne."
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -5548,6 +5551,12 @@
       "cash": "Pas sur la liste de {{payer}} : le prix comptant, avec la couverture",
       "notCovered": "Pas sur la liste de {{payer}} : non couvert, le patient paie tout",
       "ask": "Pas sur la liste de {{payer}} : confirmez avec {{payer}} avant de remettre"
+    },
+    "cover": {
+      "title": "Comment {{payer}} est facturé pour ce médicament",
+      "reasonNeeded": "Indiquez la raison de facturer ce médicament autrement que selon l’assureur.",
+      "priceNeeded": "Tapez le prix du médicament pour ce patient.",
+      "failed": "Le médicament a été remis, mais sa couverture n’a pas pu être changée ({{why}}) : le caissier peut la changer sur la facture."
     }
   },
   "queuePage": {
@@ -10550,7 +10559,8 @@
       "status": "Statut",
       "created": "Compte créé",
       "updated": "Informations modifiées le",
-      "profession": "Profession"
+      "profession": "Profession",
+      "pharmacist": "Stock de la pharmacie"
     },
     "contracts": {
       "permanent": "Permanent",
@@ -10612,7 +10622,13 @@
       "removed_other": "{{count}} notes retirées (dans le journal)"
     },
     "recordsYes": "Les voit (médecin)",
-    "recordsNo": "Ne les voit pas (pas médecin)"
+    "recordsNo": "Ne les voit pas (pas médecin)",
+    "pharmacist": {
+      "on": "Le tient (le poste Pharmacie suit)",
+      "off": "Non",
+      "turnOn": "Donner le poste Pharmacie",
+      "turnOff": "Reprendre le poste Pharmacie"
+    }
   },
   "forDoctors": {
     "title": "Les dossiers médicaux sont réservés aux médecins",

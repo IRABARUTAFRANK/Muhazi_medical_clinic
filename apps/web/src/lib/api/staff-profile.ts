@@ -91,6 +91,8 @@ export interface StaffProfile {
   doctorMarked?: boolean
   /** 0128: also the clinic manager. */
   isManager?: boolean
+  /** 0170: keeps the pharmacy stock (the Pharmacy desk follows). */
+  isPharmacist?: boolean
   /** Each department, the position, what the person does there (services, 0128) among what it
    *  gives. */
   departments: {
@@ -232,6 +234,7 @@ function sampleProfile(id: string): StaffProfile {
     isDoctor: doctor || !!mark?.on,
     doctorMarked: !!mark?.on,
     isManager: !!(e?.isManager ?? s?.isManager),
+    isPharmacist: samplePharmacist.get(id) ?? !!e?.isPharmacist,
     // 0128: the sample departments with what the person does there
     departments: e?.departments.length
       ? e.departments.map((m) => {
@@ -297,6 +300,8 @@ export function useStaffProfile(id: string | null) {
 }
 
 const blank = (v: string) => v.trim() || null
+/** Sample mode: the pharmacy keepers marked in this session. */
+const samplePharmacist = new Map<string, boolean>()
 
 export function useStaffProfileActions(id: string) {
   const qc = useQueryClient()
@@ -304,6 +309,20 @@ export function useStaffProfileActions(id: string) {
     void qc.invalidateQueries({ queryKey: [...KEY, id] })
     void qc.invalidateQueries({ queryKey: ['staff', 'employees'] })
   }
+  /** 0170: keeps the pharmacy stock, on or off (the profile's switch; the manager). */
+  const setPharmacist = useMutation({
+    mutationFn: async (on: boolean) => {
+      if (!supabase) {
+        samplePharmacist.set(id, on)
+        const e = sampleStaffData().employees.find((x) => x.id === id)
+        if (e) e.isPharmacist = on
+        return
+      }
+      const { error } = await supabase.rpc('set_pharmacy_keeper', { p_profile: id, p_on: on })
+      if (error) throw apiError(error)
+    },
+    onSuccess: refresh,
+  })
   const save = useMutation({
     mutationFn: async (i: StaffHrInput) => {
       if (!supabase) {
@@ -428,5 +447,5 @@ export function useStaffProfileActions(id: string) {
       void qc.invalidateQueries({ queryKey: ['session-profile'] })
     },
   })
-  return { save, addNote, removeNote, setDoctor }
+  return { save, addNote, removeNote, setDoctor, setPharmacist }
 }

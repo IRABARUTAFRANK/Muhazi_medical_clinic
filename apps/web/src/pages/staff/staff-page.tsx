@@ -110,7 +110,7 @@ const EMPLOYEE_FORM = 'employee-form'
 /** "Doctor · Dentist · Clinic manager": the profession, what the person is expert in, and the
  *  manager flag (0128). */
 const employeeRole = (
-  e: Pick<Employee, 'role' | 'specialty' | 'isManager'>,
+  e: Pick<Employee, 'role' | 'specialty' | 'isManager' | 'isPharmacist'>,
   t: Translate,
 ): string => professionLabel(e, t)
 
@@ -1376,6 +1376,8 @@ function EmployeeForm({
   )
   // "also the clinic manager"
   const [isManager, setIsManager] = useState(employee?.isManager ?? false)
+  // 0170: keeps the pharmacy stock (acts as the pharmacist)
+  const [isPharmacist, setIsPharmacist] = useState(employee?.isPharmacist ?? false)
   // Every department of the employee with the position held there and what they do there (0128,
   // "Does here"); the first is the main one.
   type Line = { departmentId: string; position: Position; services: string[]; doctorHere: boolean }
@@ -1514,6 +1516,7 @@ function EmployeeForm({
         email,
         role,
         isManager,
+        isPharmacist,
         departments: chosen.map((m) => {
           const d = departments.find((x) => x.id === m.departmentId)
           return {
@@ -1679,6 +1682,24 @@ function EmployeeForm({
           </p>
         </div>
       </div>
+      {/* 0170: keeps the pharmacy stock: the Pharmacy desk whatever the departments */}
+      <label
+        className={cn(
+          'border-border flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2.5',
+          isPharmacist && 'border-primary bg-primary-tint',
+        )}
+      >
+        <input
+          type="checkbox"
+          className="accent-primary mt-0.5 size-4.5 flex-none"
+          checked={isPharmacist}
+          onChange={(e) => setIsPharmacist(e.target.checked)}
+        />
+        <span>
+          <span className="block font-medium">{t('staff.form.isPharmacist')}</span>
+          <span className="text-ink-3 block text-[13px]">{t('staff.form.isPharmacistHint')}</span>
+        </span>
+      </label>
       {/* 0128: "also the clinic manager": oversight of the whole clinic, on top of the profession */}
       <label
         className={cn(

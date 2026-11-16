@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { STAFF } from '@mmc/shared'
 import i18n from '@/i18n'
 import { isLive, reportSessionRefused, supabase } from '@/lib/supabase'
-import { apiError } from './errors'
+import { apiError, isMissingFunction } from './errors'
 
 /** All roles the database knows (doc §1.4); the UI has designed homes for five of them. 0128: the
  *  role is the PROFESSION; 'manager' stays for accounts of a database before 0128 only (the clinic
@@ -67,6 +67,8 @@ export interface Employee {
   isDoctor?: boolean
   /** 0128: also the clinic manager (the role 'manager' of a database before 0128 counts too). */
   isManager: boolean
+  /** 0170: keeps the pharmacy stock (acts as the pharmacist): the Pharmacy desk follows. */
+  isPharmacist?: boolean
   /** The desks the person may use now (0085: the role's ceiling and their departments). Null
    *  before 0085 and in sample mode: compute them with desksFor (lib/api/desks). */
   desks?: string[] | null
@@ -128,6 +130,8 @@ export interface EmployeeInput {
   role: DbRole
   /** 0128: "also the clinic manager". */
   isManager?: boolean
+  /** 0170: keeps the pharmacy stock (left out: unchanged). */
+  isPharmacist?: boolean
   /** Every department with the position held there and what the person does there (0128); the
    *  first is the main one. */
   departments: {
@@ -331,6 +335,8 @@ interface DirectoryRow {
   is_doctor?: boolean | null
   /** 0128 (absent before). */
   is_manager?: boolean | null
+  /** 0170 (absent before). */
+  is_pharmacist?: boolean | null
   /** 0085 (absent before). */
   desks?: string[] | null
   kept_desks?: string[] | null
@@ -375,6 +381,7 @@ export function useEmployees() {
         isDoctor: r.is_doctor ?? false,
         // 0128: the flag; before it, the role 'manager'
         isManager: typeof r.is_manager === 'boolean' ? r.is_manager : r.role === 'manager',
+        isPharmacist: r.is_pharmacist === true,
         desks: r.desks ?? null,
         keptDesks: r.kept_desks ?? null,
         // Before migration 0051 only the main department exists.
@@ -444,6 +451,16 @@ async function callManageStaff<T>(body: Record<string, unknown>): Promise<T> {
   if (data && typeof data === 'object' && 'error' in data)
     throw new Error(String((data as { error: unknown }).error))
   return data as T
+}
+
+/**
+ * 0170: the manager marks (or unmarks) the one who keeps the pharmacy stock. A database before
+ * 0170 has no such function: the rest of the employee's record is saved all the same.
+ */
+async function setKeeper(profileId: string, on: boolean): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.rpc('set_pharmacy_keeper', { p_profile: profileId, p_on: on })
+  if (error && !isMissingFunction(error)) throw apiError(error)
 }
 
 /** E-mails the signed-in manager a one-time code that confirms the next change. */
@@ -536,6 +553,7 @@ export function useStaffActions() {
           fullName: input.fullName,
           role: input.role,
           isManager: !!input.isManager,
+          isPharmacist: !!input.isPharmacist,
           isDoctor: input.role === 'doctor',
           station: input.station ?? null,
           dashboard: input.isManager ? 'manager' : head ? 'head' : null,
@@ -555,7 +573,16 @@ export function useStaffActions() {
         })
         return { id, username: input.username, staff_id: staffId }
       }
-      return callManageStaff({ action: 'create', ...toBody(input), pin, confirm_code: confirmCode })
+      const made = await callManageStaff<{ id: string; username: string; staff_id: string | null }>(
+        {
+          action: 'create',
+          ...toBody(input),
+          pin,
+          confirm_code: confirmCode,
+        },
+      )
+      if (input.isPharmacist) await setKeeper(made.id, true)
+      return made
     },
     onSuccess: refresh,
   })
@@ -619,6 +646,7 @@ export function useStaffActions() {
                   ? 'head'
                   : null,
             }),
+            ...(input.isPharmacist !== undefined && { isPharmacist: input.isPharmacist }),
             isDoctor: input.role === 'doctor' || !!e.isDoctor,
             departmentId: members[0]?.departmentId ?? null,
             departmentName: members[0]?.departmentName ?? null,
@@ -643,6 +671,7 @@ export function useStaffActions() {
         ...toBody(input),
         confirm_code: confirmCode,
       })
+      if (input.isPharmacist !== undefined) await setKeeper(id, input.isPharmacist)
     },
     onSuccess: refresh,
   })

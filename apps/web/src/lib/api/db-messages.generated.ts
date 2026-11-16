@@ -428,7 +428,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a bed needs a name$/, 'dbErrors.b23ff426', 0], // save_bed
   [/^already taken by (.+?)$/, 'dbErrors.f474865c', 1], // call_patient, take_patient
   [/^category not found$/, 'dbErrors.75188350', 0], // delete_category, save_category, set_service_category
-  [/^employee not found$/, 'dbErrors.bc322bff', 0], // retire_staff, set_staff_doctor_here
+  [/^employee not found$/, 'dbErrors.bc322bff', 0], // retire_staff, set_pharmacy_keeper, set_staff_doctor_here
   [/^medicine not found$/, 'dbErrors.2ebcebc8', 0], // add_stock, apply_item_packaging, delete_item, …
   [/^unknown adjustment$/, 'dbErrors.7ef19bda', 0], // adjust_prices
   [/^unknown language (.+?)$/, 'dbErrors.07e0078a', 1], // save_display_screen
