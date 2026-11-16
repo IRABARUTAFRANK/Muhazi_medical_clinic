@@ -24,21 +24,29 @@ export function PeriodYear({ period, className }: { period: Period; className?: 
   const options = [...new Set([...years, thisYear, ...(shown ? [shown] : [])])].sort(
     (a, b) => b - a,
   )
+  // the same track as the choices beside it (0168): "Year" and the year, one row, one height
   return (
-    <Select
-      label={t('dashboard.year')}
-      value={shown ? String(shown) : ''}
-      onChange={(e) => e.target.value && pick(Number(e.target.value))}
-      wrapperClassName={cn('w-28', className)}
-      aria-label={t('dashboard.year')}
+    <label
+      className={cn(
+        'border-border bg-surface inline-flex min-h-9 items-center gap-1.5 rounded-md border p-0.5 pl-2.5',
+        className,
+      )}
     >
-      {!shown && <option value="">—</option>}
-      {options.map((y) => (
-        <option key={y} value={y}>
-          {y}
-        </option>
-      ))}
-    </Select>
+      <span className="text-ink-3 text-[13px] font-medium">{t('dashboard.year')}</span>
+      <select
+        className="border-border bg-card text-primary focus-visible:ring-primary/20 h-8 rounded border px-2 text-[13px] font-semibold focus-visible:ring-2 focus-visible:outline-none"
+        value={shown ? String(shown) : ''}
+        onChange={(e) => e.target.value && pick(Number(e.target.value))}
+        aria-label={t('dashboard.year')}
+      >
+        {!shown && <option value="">—</option>}
+        {options.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
@@ -46,7 +54,7 @@ export function PeriodYear({ period, className }: { period: Period; className?: 
 export function PeriodSeg({ period, className }: { period: Period; className?: string }) {
   const { t } = useTranslation()
   return (
-    <div className={cn('flex max-w-full flex-wrap items-end gap-2', className)}>
+    <div className={cn('flex max-w-full flex-wrap items-center gap-2', className)}>
       <Seg<DashboardRange>
         className="max-w-full flex-wrap"
         label={t('dashboard.dateRange')}
