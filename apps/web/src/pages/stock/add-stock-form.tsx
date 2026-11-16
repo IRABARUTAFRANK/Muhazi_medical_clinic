@@ -560,6 +560,21 @@ export function AddStockForm({
                       onChange={(v) => pick(l.key, v)}
                       emptyLabel={t('stockPage.add.pickItem')}
                       options={options}
+                      // 0175: not on any list: the name typed becomes a new item, created by hand
+                      onWrite={(text) =>
+                        set(l.key, {
+                          pick: 'new',
+                          newName: text,
+                          newStrength: '',
+                          newForm: '',
+                          pack: emptyPack(),
+                          packFrom: undefined,
+                          qtyIn: 'pieces',
+                          cost: l.costFrom ? '' : l.cost,
+                          costFrom: undefined,
+                        })
+                      }
+                      writeLabel={(text) => t('stockPage.add.writeNew', { name: text })}
                     />
                   )}
                   <Button

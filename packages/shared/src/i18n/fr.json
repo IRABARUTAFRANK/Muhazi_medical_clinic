@@ -8683,7 +8683,8 @@
       "perBoxKnown_one": "{{count}} par boîte",
       "perBoxKnown_other": "{{count}} par boîte",
       "clinicName": "Nom dans la clinique",
-      "clinicNameHint": "Rempli depuis la liste : changez le nom, le dosage, la forme ou l’unité si la clinique les écrit autrement. Le code et le prix de la liste restent liés."
+      "clinicNameHint": "Rempli depuis la liste : changez le nom, le dosage, la forme ou l’unité si la clinique les écrit autrement. Le code et le prix de la liste restent liés.",
+      "writeNew": "Créer « {{name}} » comme nouvel article à la main (il n’est sur aucune liste)"
     },
     "received": "Stock reçu",
     "salesByItem": "Ventes par article",

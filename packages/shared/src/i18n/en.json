@@ -8683,7 +8683,8 @@
       "perBoxKnown_one": "{{count}} per box",
       "perBoxKnown_other": "{{count}} per box",
       "clinicName": "Name in the clinic",
-      "clinicNameHint": "Filled from the list: change the name, strength, form or unit if the clinic writes them differently. The list’s code and price stay linked."
+      "clinicNameHint": "Filled from the list: change the name, strength, form or unit if the clinic writes them differently. The list’s code and price stay linked.",
+      "writeNew": "Create “{{name}}” as a new item by hand (it is on no list)"
     },
     "received": "Stock received",
     "salesByItem": "Sales by item",

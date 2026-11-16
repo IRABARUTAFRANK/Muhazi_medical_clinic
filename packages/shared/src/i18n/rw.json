@@ -8692,7 +8692,8 @@
       "perBoxKnown_one": "{{count}} mu gakarito",
       "perBoxKnown_other": "{{count}} mu gakarito",
       "clinicName": "Izina mu ivuriro",
-      "clinicNameHint": "Byuzujwe biturutse ku rutonde: hindura izina, ingano y’umuti, uko umeze cyangwa igipimo niba ivuriro ribyandika ukundi. Kode n’igiciro by’urutonde bigumana nawo."
+      "clinicNameHint": "Byuzujwe biturutse ku rutonde: hindura izina, ingano y’umuti, uko umeze cyangwa igipimo niba ivuriro ribyandika ukundi. Kode n’igiciro by’urutonde bigumana nawo.",
+      "writeNew": "Rema “{{name}}” nk’igicuruzwa gishya wandika wenyine (ntikiri ku rutonde na rumwe)"
     },
     "received": "Ibyinjiye mu bubiko",
     "salesByItem": "Ibyagurishijwe kuri buri kimwe",
