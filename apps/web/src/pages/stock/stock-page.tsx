@@ -284,6 +284,7 @@ function AdminStock({
           locations={locations}
           mainId={data?.mainPharmacyId ?? null}
           isManager={isManager}
+          canPrice={manage}
           preset={preset}
         />
       )}

@@ -8872,7 +8872,7 @@
   },
   "packaging": {
     "addLead": "One line per batch: the item (pick it, or create it as a medicine or a product), its package and how it is sold, the batch number, expiry date, quantity and cost. It goes into the main pharmacy today.",
-    "readOnlyStock": "You add the stock; the package and the prices stay as they are (only the manager or the pharmacist changes them).",
+    "readOnlyStock": "You add the stock; the package and the prices stay as they are (the manager, the pharmacist or the one who keeps the pharmacy stock changes them).",
     "fromList": "Filled from the list (its pack and price): change what differs at the clinic.",
     "fromItem": "As saved for this item: a change here updates the item.",
     "qtyPacks": "How many came in · {{pack}} of {{size}}",

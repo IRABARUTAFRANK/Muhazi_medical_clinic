@@ -8881,7 +8881,7 @@
   },
   "packaging": {
     "addLead": "Umurongo umwe kuri buri lot: igicuruzwa (gihitemo, cyangwa ugikore nk’umuti cyangwa igikoresho), uko gipfunyitse n’uko kigurishwa, nimero ya lot, itariki yo kurangira, ingano n’igiciro cyaguzwe. Kijya muri farumasi nkuru uyu munsi.",
-    "readOnlyStock": "Wongera ibiri mu bubiko; uko gipfunyitse n’ibiciro biguma uko biri (umuyobozi cyangwa umufarumasiye ni bo bonyine babihindura).",
+    "readOnlyStock": "Wongera ibiri mu bubiko; uko gipfunyitse n’ibiciro biguma uko biri (umuyobozi, umufarumasiye cyangwa ucunga ububiko bwa farumasi ni bo babihindura).",
     "fromList": "Byuzujwe biturutse ku rutonde (ipaki n’igiciro byarwo): hindura ibitandukanye ku ivuriro.",
     "fromItem": "Uko byabitswe kuri iki gicuruzwa: guhindura hano bihindura igicuruzwa.",
     "qtyPacks": "Ingahe zinjiye · {{pack}} ya {{size}}",

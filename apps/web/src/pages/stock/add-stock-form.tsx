@@ -152,12 +152,15 @@ export function AddStockForm({
   locations,
   mainId,
   isManager,
+  canPrice,
   preset,
 }: {
   items: StockItem[]
   locations: StockLocation[]
   mainId: string | null
   isManager: boolean
+  /** 0176: the person may set the package and the prices (Manage stock: the keeper too). */
+  canPrice?: boolean
   preset?: { item?: string; location?: string }
 }) {
   const { t } = useTranslation()
@@ -165,7 +168,8 @@ export function AddStockForm({
   const actions = useStockActions()
   const confirm = useConfirm()
   // the price right (item_price.write): the manager and the pharmacist
-  const mayPrice = useSession((s) => s.user?.role === 'manager' || s.user?.role === 'pharmacist')
+  const mayPrice =
+    useSession((s) => s.user?.role === 'manager' || s.user?.role === 'pharmacist') || !!canPrice
   const { data: reference = [] } = useMedicineReference(true)
   // 0172: the uploaded price lists' medicines the clinic does not hold yet
   const { data: listMeds = [] } = useListMedicines(true)

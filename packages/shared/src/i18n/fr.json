@@ -8872,7 +8872,7 @@
   },
   "packaging": {
     "addLead": "Une ligne par lot : l’article (choisissez-le, ou créez-le comme médicament ou produit), son conditionnement et sa façon d’être vendu, le numéro de lot, la date d’expiration, la quantité et le coût. Il entre aujourd’hui dans la pharmacie principale.",
-    "readOnlyStock": "Vous ajoutez le stock ; le conditionnement et les prix restent tels quels (seuls le gestionnaire ou le pharmacien les changent).",
+    "readOnlyStock": "Vous ajoutez le stock ; le conditionnement et les prix restent tels quels (le gestionnaire, le pharmacien ou la personne qui tient le stock de la pharmacie les changent).",
     "fromList": "Rempli depuis la liste (son conditionnement et son prix) : changez ce qui diffère à la clinique.",
     "fromItem": "Tel qu’enregistré pour cet article : un changement ici met l’article à jour.",
     "qtyPacks": "Combien sont arrivés · {{pack}} de {{size}}",

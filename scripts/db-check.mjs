@@ -25212,6 +25212,39 @@ await step(
     return `keeper (doctor) reads the report: ${rep.lines.length} lines, ${rep.byPerson.length} people; ${doctorName} gave ${given.length} line(s) of Amoxicillin 97 (${person.units} units); receptionist: nothing`
   },
 )
+// 0176: the keeper has the pharmacist's rights
+await step(
+  "0176: a doctor marked keeper has the pharmacist's rights (price right, Manage stock, stock.read); a plain doctor has none; an explicit no still wins",
+  async () => {
+    await asAdmin()
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270202090000_keeper_rights.sql'), 'utf8'),
+    )
+    const keeper = (await one(`select id from profiles where username = 'p174.keeper'`)).id
+    await as(keeper)
+    const k = await one(
+      `select has_perm('item_price.write') as price, has_perm('stock.write') as manage, has_perm('stock.read') as read,
+              stock_manager() as mgr, (select my_permissions() ? 'stock.write') as listed`,
+    )
+    await as(d1)
+    const d = await one(
+      `select has_perm('item_price.write') as price, has_perm('stock.write') as manage, stock_manager() as mgr`,
+    )
+    // an explicit "no" on the person wins over the role's right
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'stock.write', false)`, [keeper])
+    await as(keeper)
+    const off = await one(`select has_perm('stock.write') as manage, stock_manager() as mgr`)
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'stock.write', null)`, [keeper])
+    await asAdmin()
+    if (!k.price || !k.manage || !k.read || !k.mgr || !k.listed)
+      throw new Error('keeper: ' + JSON.stringify(k))
+    if (d.price || d.manage || d.mgr) throw new Error('doctor: ' + JSON.stringify(d))
+    if (off.manage || off.mgr) throw new Error('explicit no ignored: ' + JSON.stringify(off))
+    return `keeper: price right, Manage stock, stock.read, stock_manager, listed in my_permissions; plain doctor: none; an explicit no on the keeper switches Manage stock off`
+  },
+)
 // @@t141-end
 finish()
 
