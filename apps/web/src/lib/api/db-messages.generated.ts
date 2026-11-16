@@ -170,7 +170,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^insurers follow this list: stop them first$/, 'dbErrors.63be91b8', 0], // save_tariff_book
   [/^registration number: at most 40 characters$/, 'dbErrors.fc56c8a4', 0], // set_staff_doctor
   [/^the age is a number of years from 0 to 130$/, 'dbErrors.8f618beb', 0], // create_patient_file, update_patient
-  [/^this medicine is not on the reference list$/, 'dbErrors.fba3d5d4', 0], // add_stock, receive_delivery
+  [/^this medicine is not on the reference list$/, 'dbErrors.fba3d5d4', 0], // receive_delivery
   [/^a diagnosis is differential or definitive$/, 'dbErrors.108f4947', 0], // add_visit_diagnosis
   [/^a transaction reference is required for (.+?)$/, 'dbErrors.1c9774c1', 1], // record_payment, take_counter_payment
   [/^call reception, the nurses or a colleague$/, 'dbErrors.35c23da4', 0], // call_next
@@ -351,6 +351,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^say why the note is changed$/, 'dbErrors.61a5de54', 0], // update_note
   [/^say why the note is removed$/, 'dbErrors.b2e622fe', 0], // remove_staff_note
   [/^the department needs a name$/, 'dbErrors.6f7d57b7', 0], // upsert_department
+  [/^this medicine is on no list$/, 'dbErrors.aad443f8', 0], // add_stock
   [/^this request is not for you$/, 'dbErrors.bda29cb2', 0], // respond_help
   [/^too many reports, try later$/, 'dbErrors.b52ad786', 0], // report_client_event
   [/^unknown or inactive insurer$/, 'dbErrors.974ae80a', 0], // save_patient_insurance, set_visit_payer

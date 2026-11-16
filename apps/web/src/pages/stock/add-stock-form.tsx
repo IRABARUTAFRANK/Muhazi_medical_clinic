@@ -16,6 +16,10 @@ import {
   readableUnit,
   sortMedicineRefs,
   useMedicineReference,
+  useListMedicines,
+  listMedicineOption,
+  tidyListName,
+  type ListMedicine,
   useMedicines,
   type MedicineRef,
 } from '@/lib/api/catalogue'
@@ -163,6 +167,8 @@ export function AddStockForm({
   // the price right (item_price.write): the manager and the pharmacist
   const mayPrice = useSession((s) => s.user?.role === 'manager' || s.user?.role === 'pharmacist')
   const { data: reference = [] } = useMedicineReference(true)
+  // 0172: the uploaded price lists' medicines the clinic does not hold yet
+  const { data: listMeds = [] } = useListMedicines(true)
   const { data: medicines = [] } = useMedicines()
   // the clinic's medicines whose code left the current official list
   const { data: notOnList } = useNotOnList()
@@ -213,12 +219,19 @@ export function AddStockForm({
     const list = sortMedicineRefs(reference)
       .filter((r) => !clinicCodes.has(r.code))
       .map((r) => medicineRefOption(r, t, `ref:${r.code}`))
-    return [...own, ...list]
-  }, [items, medicines, reference, notOnList, t])
+    // 0172: then each uploaded list's medicines, grouped under the list's name
+    const uploaded = listMeds
+      .filter((l) => !clinicCodes.has(l.code))
+      .map((l) => listMedicineOption(l, t, `list:${l.code}`))
+    return [...own, ...list, ...uploaded]
+  }, [items, medicines, reference, listMeds, notOnList, t])
   const itemOf = (l: ALine) => items.find((i) => i.id === l.pick)
   const refOf = (l: ALine) =>
     l.pick.startsWith('ref:') ? reference.find((r) => r.code === l.pick.slice(4)) : undefined
-  const isNew = (l: ALine) => l.pick === 'new' || l.pick.startsWith('ref:')
+  const listOf = (l: ALine): ListMedicine | undefined =>
+    l.pick.startsWith('list:') ? listMeds.find((x) => x.code === l.pick.slice(5)) : undefined
+  const isNew = (l: ALine) =>
+    l.pick === 'new' || l.pick.startsWith('ref:') || l.pick.startsWith('list:')
   /** A known item the person may not re-price: its package and prices are shown, not edited. */
   const locked = (l: ALine) => !isNew(l) && !mayPrice
   const set = (key: number, patch: Partial<ALine>) => {
@@ -257,6 +270,7 @@ export function AddStockForm({
   const pick = (key: number, value: string) => {
     const it = items.find((i) => i.id === value)
     const r = value.startsWith('ref:') ? reference.find((x) => x.code === value.slice(4)) : null
+    const lm = value.startsWith('list:') ? listMeds.find((x) => x.code === value.slice(5)) : null
     let pack = emptyPack()
     let packFrom: Filled | undefined
     let cost = ''
@@ -279,6 +293,15 @@ export function AddStockForm({
         piecePrice: r.price != null ? String(Math.round(r.price)) : '',
       }
       packFrom = 'list'
+    } else if (lm) {
+      // 0172: a medicine of an uploaded list: its unit and its price as the price of one piece
+      pack = {
+        ...emptyPack(),
+        kind: 'pieces',
+        unit: readableUnit(lm.unit) || '',
+        piecePrice: lm.price != null ? String(Math.round(lm.price)) : '',
+      }
+      packFrom = 'list'
     }
     set(key, {
       pick: value,
@@ -291,6 +314,7 @@ export function AddStockForm({
       quantity: '',
       // a list medicine: its name and details fill fields the pharmacist may still change
       ...(r ? listNames(r) : {}),
+      ...(lm ? { newName: tidyListName(lm.name), newStrength: '', newForm: lm.detail ?? '' } : {}),
     })
     if (!it) return
     // the cost of the last batch received, when the database has one, replaces the average
@@ -340,8 +364,7 @@ export function AddStockForm({
         return t('stockDelivery.errors.line', { n: k + 1, text })
       }
       if (!l.pick) return bad(t('stockPage.add.errors.item'))
-      if ((l.pick === 'new' || l.pick.startsWith('ref:')) && l.newName.trim().length < 2)
-        return bad(t('stockPage.add.errors.newName'))
+      if (isNew(l) && l.newName.trim().length < 2) return bad(t('stockPage.add.errors.newName'))
       if (!locked(l)) {
         const p = packProblem(t, l.pack)
         if (p) return bad(p)
@@ -394,6 +417,7 @@ export function AddStockForm({
       const it = itemOf(l)
       const pk = packInput(l.pack)
       const size = sizeOf(l)
+      const lm = listOf(l)
       return {
         itemId: it?.id,
         newItem: r
@@ -409,15 +433,25 @@ export function AddStockForm({
               // the item keeps the list's code: its insurer price and prescribing rule follow the list
               code: r.code,
             }
-          : l.pick === 'new'
+          : lm
             ? {
-                name: l.newName.trim(),
+                // 0172: the item keeps the uploaded list's code: that list prices it
+                name: l.newName.trim() || tidyListName(lm.name),
                 strength: l.newStrength.trim() || null,
                 form: l.newForm.trim() || null,
-                unit: pk.unit,
-                kind: l.newKind,
+                unit: pk.unit || readableUnit(lm.unit) || null,
+                kind: 'medicine',
+                code: lm.code,
               }
-            : undefined,
+            : l.pick === 'new'
+              ? {
+                  name: l.newName.trim(),
+                  strength: l.newStrength.trim() || null,
+                  form: l.newForm.trim() || null,
+                  unit: pk.unit,
+                  kind: l.newKind,
+                }
+              : undefined,
         batchNo: l.batchNo.trim(),
         expiry: l.expiry,
         // always in pieces (packs × pieces per pack)
@@ -774,6 +808,14 @@ export function AddStockForm({
                     )}
                   </div>
                 </div>
+                {/* 0172: why the cost is asked when the prices are set above */}
+                <p className="text-ink-3 text-[12px]">
+                  {tx(
+                    t,
+                    'packaging.costHint',
+                    'What the clinic paid for this delivery: for the stock value and the profit. The selling prices are set above.',
+                  )}
+                </p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
                   {q > 0 && (
                     <span className="text-ink-2 font-medium tabular-nums">

@@ -33,17 +33,45 @@ const SEARCH_FROM = 12
 /** Rows a Page Up / Page Down moves. */
 const PAGE = 8
 
-const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+/**
+ * Text as compared (0172): accents and case ignored; brackets, quotes and commas are spaces; a
+ * full stop that is not a decimal point goes ("inj." finds "injection"); a number and its unit
+ * join ("25 mg" = "25mg").
+ */
+const fold = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[()[\]{},;:'"’“”]/g, ' ')
+    .replace(/(?<!\d)\.|\.(?!\d)/g, ' ')
+    .replace(/(\d)\s+(?=(?:mg|mcg|ml|g|l|iu|ui|%)\b)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
 const wordsOf = (q: string) => fold(q).trim().split(/\s+/).filter(Boolean)
 const haystack = (o: SearchOption) =>
   fold([o.label, o.sub, o.hint, o.keywords].filter(Boolean).join(' '))
-const matches = (options: readonly SearchOption[], words: string[]) =>
-  words.length
-    ? options.filter((o) => {
-        const h = haystack(o)
-        return words.every((w) => h.includes(w))
-      })
-    : options
+/**
+ * The options every typed word is found in. Loose (the list shown): when no option has every
+ * word, those with most of them, the best first — a brand in brackets or a strength written
+ * otherwise still finds the medicine.
+ */
+const matches = (options: readonly SearchOption[], words: string[], loose = false) => {
+  if (!words.length) return options
+  const full = options.filter((o) => {
+    const h = haystack(o)
+    return words.every((w) => h.includes(w))
+  })
+  if (full.length || !loose || words.length < 2) return full
+  return options
+    .map((o) => {
+      const h = haystack(o)
+      return { o, n: words.filter((w) => h.includes(w)).length }
+    })
+    .filter((x) => x.n >= Math.ceil(words.length / 2))
+    .sort((a, b) => b.n - a.n)
+    .map((x) => x.o)
+}
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /** The typed words in bold inside a text. */
@@ -126,7 +154,7 @@ export function SearchSelect({
 
   // what the popover lists (only worked out while it is open)
   const words = open ? wordsOf(query) : []
-  const hits = open ? matches(options, words) : []
+  const hits = open ? matches(options, words, true) : []
   const shown = hits.slice(0, limit)
   if (open && chosen && !shown.includes(chosen)) shown.unshift(chosen)
   const empty: SearchOption = { value: '', label: emptyLabel }

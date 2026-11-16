@@ -6,7 +6,7 @@ import {
   medicineNameParts,
   type MedicineNameParts,
 } from '@/lib/medicine-name'
-import { apiError } from './errors'
+import { apiError, isMissingFunction } from './errors'
 
 /**
  * The manager's catalogue: treatments (what the clinic treats, the cash price, the discount a
@@ -943,6 +943,104 @@ export interface MedicineRef {
   /** Therapeutic group ("J01 · ANTIBACTERIAL DRUGS"). */
   group: string | null
 }
+
+/** 0172: a medicine of an uploaded price list (RSSB's, an insurer's) the clinic does not hold yet. */
+export interface ListMedicine {
+  code: string
+  name: string
+  detail: string | null
+  unit: string | null
+  price: number | null
+  listName: string
+  bookId: string
+}
+
+const sampleListMedicines: ListMedicine[] = [
+  {
+    code: 'N05AA01003',
+    name: 'Chlorpromazine 25mg/ml 2ml Injection',
+    detail: 'CHLORPROMAZINE 25mg/ml 2ml Injection',
+    unit: 'AMPOULE',
+    price: 126,
+    listName: 'RSSB reimbursable medicines June 2026',
+    bookId: 'book-rssb',
+  },
+  {
+    code: 'J01CA04007',
+    name: 'Amoxicillin 125mg/5ml Syrup',
+    detail: 'AMOXICILLIN 125mg/5ml 100ml',
+    unit: 'BOTTLE',
+    price: 1850,
+    listName: 'RSSB reimbursable medicines June 2026',
+    bookId: 'book-rssb',
+  },
+]
+
+/**
+ * 0172: the lines of every uploaded list of medicines the clinic does not hold yet (and that the
+ * RHIA list does not already offer): they join the pickers of Add stock and of the prescription,
+ * so nothing uploaded stays apart. A database before 0172 offers none.
+ */
+export function useListMedicines(enabled = true) {
+  return useQuery({
+    queryKey: ['catalogue', 'list-medicines'],
+    staleTime: 600_000,
+    enabled,
+    queryFn: async (): Promise<ListMedicine[]> => {
+      if (!supabase) return sampleListMedicines
+      const { data, error } = await supabase.rpc('list_medicines')
+      if (error && isMissingFunction(error)) return []
+      if (error) throw apiError(error)
+      type Row = {
+        code: string
+        name: string
+        detail: string | null
+        unit: string | null
+        price: number | string | null
+        list_name: string
+        book_id: string
+      }
+      return ((data ?? []) as Row[]).map((r) => ({
+        code: r.code,
+        name: r.name,
+        detail: r.detail,
+        unit: r.unit,
+        price: r.price == null ? null : Number(r.price),
+        listName: r.list_name,
+        bookId: r.book_id,
+      }))
+    },
+  })
+}
+
+/** A picker option of a list line: its name, the list's wording and name under, the price. */
+export function listMedicineOption(
+  l: ListMedicine,
+  t: (k: string, o?: Record<string, unknown>) => string,
+  value: string = l.code,
+) {
+  return {
+    value,
+    label: tidyListName(l.name),
+    sub: [
+      l.detail && l.detail !== l.name ? l.detail : null,
+      t('prices.meds.list.tag', { list: l.listName }),
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    hint: l.price == null ? undefined : formatRwf(l.price),
+    group: l.listName,
+    keywords: [l.code, l.name, l.detail, l.unit].filter(Boolean).join(' '),
+  }
+}
+
+/** "CHLORPROMAZINE 25mg/ml 2ml Injection" read as a name: the shouted words in small letters. */
+export const tidyListName = (s: string) =>
+  s
+    .trim()
+    .split(/\s+/)
+    .map((w) => (/^[A-Z][A-Z-]{2,}$/.test(w) ? w.charAt(0) + w.slice(1).toLowerCase() : w))
+    .join(' ')
 
 export const sampleReference: MedicineRef[] = [
   [

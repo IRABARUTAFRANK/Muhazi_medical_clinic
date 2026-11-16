@@ -2096,7 +2096,8 @@
     "medGroups": {
       "clinic": "Imiti n’ibikoresho by’ivuriro",
       "rhia": "Urutonde rwa RHIA — ntibigurishwa hano",
-      "notCovered": "Ntibishyurwa na {{insurer}} — umurwayi arishyura"
+      "notCovered": "Ntibishyurwa na {{insurer}} — umurwayi arishyura",
+      "list": "{{list}} — ntigurishwa hano"
     },
     "otherTreatmentsGroup": "Ubundi buvuzi na serivisi",
     "plainChosenHint_one": "{{count}} muri ibi si ikizamini: kijya kuri fagitire, nta ho gikorerwa.",
@@ -2386,7 +2387,10 @@
       "packPrice": "Igiciro cy’agakarito (si itegeko)",
       "packPriceBad": "Igiciro cy’agakarito ni umubare wuzuye, 0 cyangwa hejuru.",
       "packPriceNeedsSize": "Igiciro cy’agakarito gisaba mbere ibice biri mu gakarito (2 cyangwa hejuru). Umuti ugurishwa wose nta giciro cy’agakarito ugira: igiciro cyawo ni cyo.",
-      "packHint2": "Ububiko bubarwa mu bice (igice cyavuzwe hejuru); ingano y’agakarito ivuga ibice bigize agakarito kamwe, bityo buri paji ikerekana byombi (« ibinini 500 · udukarito 25 twa 20 »). Umuti ugurishwa wose, nk’icupa rya sirupe, ni 1 n’igice « icupa ». Igiciro cy’agakarito ni igiciro cy’agakarito kuzuye iyo gitandukanye n’ibice × igiciro: udukarito twuzuye tugurishwa mu mafaranga tubarwa kuri icyo giciro, kandi fagitire ibivuga."
+      "packHint2": "Ububiko bubarwa mu bice (igice cyavuzwe hejuru); ingano y’agakarito ivuga ibice bigize agakarito kamwe, bityo buri paji ikerekana byombi (« ibinini 500 · udukarito 25 twa 20 »). Umuti ugurishwa wose, nk’icupa rya sirupe, ni 1 n’igice « icupa ». Igiciro cy’agakarito ni igiciro cy’agakarito kuzuye iyo gitandukanye n’ibice × igiciro: udukarito twuzuye tugurishwa mu mafaranga tubarwa kuri icyo giciro, kandi fagitire ibivuga.",
+      "list": {
+        "tag": "kuri {{list}}"
+      }
     },
     "tools": {
       "open": "Ibikorwa ku rutonde rw’ibiciro",
@@ -8558,7 +8562,8 @@
     "a4d4a295": "Ijwi ry’Ikinyarwanda ni irya televiziyo, amajwi y’abakozi cyangwa seriveri y’ijwi.",
     "e69735c5": "Inzira y’ijwi ntiri mu bubiko bw’amajwi.",
     "6ab2b8ad": "Ijwi ritazwi.",
-    "3a3b16b3": "Iryo jwi ntiribaho."
+    "3a3b16b3": "Iryo jwi ntiribaho.",
+    "aad443f8": "Uyu muti nturi ku rutonde na rumwe: uhitemo ku rutonde rwa RHIA cyangwa ku rutonde rwashyizwemo, cyangwa umuremo nk’igicuruzwa gishya."
   },
   "panel": {
     "close": "Funga",
@@ -8863,12 +8868,12 @@
   "packaging": {
     "addLead": "Umurongo umwe kuri buri lot: igicuruzwa (gihitemo, cyangwa ugikore nk’umuti cyangwa igikoresho), uko gipfunyitse n’uko kigurishwa, nimero ya lot, itariki yo kurangira, ingano n’igiciro cyaguzwe. Kijya muri farumasi nkuru uyu munsi.",
     "readOnlyStock": "Wongera ibiri mu bubiko; uko gipfunyitse n’ibiciro biguma uko biri (umuyobozi cyangwa umufarumasiye ni bo bonyine babihindura).",
-    "fromList": "Byujujwe bivuye ku rutonde rwemewe (uko upfunyitse n’igiciro cyawo): hindura ibitandukanye ku ivuriro.",
+    "fromList": "Byuzujwe biturutse ku rutonde (ipaki n’igiciro byarwo): hindura ibitandukanye ku ivuriro.",
     "fromItem": "Uko byabitswe kuri iki gicuruzwa: guhindura hano bihindura igicuruzwa.",
-    "qtyPacks": "Ingano · {{pack}} cya {{size}}",
-    "qtyPieces": "Ingano ({{piece}})",
-    "costPack": "Igiciro cyaguzwe {{pack}} kimwe (RWF)",
-    "costPiece": "Igiciro cyaguzwe {{piece}} kimwe (RWF)",
+    "qtyPacks": "Ingahe zinjiye · {{pack}} ya {{size}}",
+    "qtyPieces": "Ingahe zinjiye ({{piece}})",
+    "costPack": "Byaguzwe ku giciro cya {{pack}} kimwe (RWF)",
+    "costPiece": "Byaguzwe ku giciro cya {{piece}} kimwe (RWF)",
     "costPer": "Igiciro kuri",
     "perPieceShort": "kuri {{piece}}",
     "perPackShort": "kuri {{pack}}",
@@ -8959,7 +8964,8 @@
       "suppository": "suppositoire",
       "piece": "igice",
       "ml": "ml"
-    }
+    },
+    "costHint": "Icyo ivuriro ryishyuye iyi mitwaro: ku gaciro k’ububiko n’inyungu. Ibiciro byo kugurisha bishyirwa haruguru."
   },
   "patientFields": {
     "choose": "Hitamo…",

@@ -1445,7 +1445,10 @@
       "packPrice": "Pack price (optional)",
       "packPriceBad": "The pack price is a whole number, 0 or more.",
       "packPriceNeedsSize": "A pack price needs the units per box first (2 or more). A medicine sold whole has no pack price: its price is the price.",
-      "packHint2": "Stock is held in pieces (the unit above); the box size says how many pieces make one pack, so every screen can show both (\"500 tab · 25 packs of 20\"). A medicine sold whole, like a bottle of syrup, is 1 with the unit \"bottle\". The pack price is the price of one whole pack when it differs from pieces × price: whole packs sold for cash are charged at it, and the bill says so."
+      "packHint2": "Stock is held in pieces (the unit above); the box size says how many pieces make one pack, so every screen can show both (\"500 tab · 25 packs of 20\"). A medicine sold whole, like a bottle of syrup, is 1 with the unit \"bottle\". The pack price is the price of one whole pack when it differs from pieces × price: whole packs sold for cash are charged at it, and the bill says so.",
+      "list": {
+        "tag": "on {{list}}"
+      }
     },
     "tools": {
       "open": "Catalogue tools",
@@ -3185,7 +3188,8 @@
     "medGroups": {
       "clinic": "The clinic’s medicines and products",
       "rhia": "RHIA list — not sold here",
-      "notCovered": "Not covered by {{insurer}} — the patient pays"
+      "notCovered": "Not covered by {{insurer}} — the patient pays",
+      "list": "{{list}} — not sold here"
     },
     "otherTreatmentsGroup": "Other treatments and services",
     "plainChosenHint_one": "{{count}} of these is not a test: it goes on the bill, no desk.",
@@ -8549,7 +8553,8 @@
     "a4d4a295": "The Kinyarwanda voice is the TV’s own, staff recordings or the voice server.",
     "e69735c5": "The recording’s path is not in the clips folder.",
     "6ab2b8ad": "Unknown recording.",
-    "3a3b16b3": "No such recording."
+    "3a3b16b3": "No such recording.",
+    "aad443f8": "This medicine is on no list: pick it on the RHIA list or on an uploaded list, or create it as a new item."
   },
   "panel": {
     "close": "Close",
@@ -8854,12 +8859,12 @@
   "packaging": {
     "addLead": "One line per batch: the item (pick it, or create it as a medicine or a product), its package and how it is sold, the batch number, expiry date, quantity and cost. It goes into the main pharmacy today.",
     "readOnlyStock": "You add the stock; the package and the prices stay as they are (only the manager or the pharmacist changes them).",
-    "fromList": "Filled from the official list (its pack and tariff): change what differs at the clinic.",
+    "fromList": "Filled from the list (its pack and price): change what differs at the clinic.",
     "fromItem": "As saved for this item: a change here updates the item.",
-    "qtyPacks": "Quantity · {{pack}} of {{size}}",
-    "qtyPieces": "Quantity ({{piece}})",
-    "costPack": "Cost of one {{pack}} (RWF)",
-    "costPiece": "Cost of one {{piece}} (RWF)",
+    "qtyPacks": "How many came in · {{pack}} of {{size}}",
+    "qtyPieces": "How many came in ({{piece}})",
+    "costPack": "Bought at, one {{pack}} (RWF)",
+    "costPiece": "Bought at, one {{piece}} (RWF)",
     "costPer": "Cost per",
     "perPieceShort": "per {{piece}}",
     "perPackShort": "per {{pack}}",
@@ -8950,7 +8955,8 @@
       "suppository": "suppository",
       "piece": "piece",
       "ml": "ml"
-    }
+    },
+    "costHint": "What the clinic paid for this delivery: for the stock value and the profit. The selling prices are set above."
   },
   "patientFields": {
     "choose": "Choose…",

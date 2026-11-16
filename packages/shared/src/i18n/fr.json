@@ -1445,7 +1445,10 @@
       "packPrice": "Prix de la boîte (facultatif)",
       "packPriceBad": "Le prix de la boîte est un nombre entier, 0 ou plus.",
       "packPriceNeedsSize": "Le prix de la boîte demande d’abord les unités par boîte (2 ou plus). Un médicament vendu entier n’a pas de prix de boîte : son prix est le prix.",
-      "packHint2": "Le stock est tenu en unités (l’unité ci-dessus) ; la taille de boîte dit combien d’unités font une boîte, pour que chaque écran montre les deux (« 500 cp · 25 boîtes de 20 »). Un médicament vendu entier, comme un flacon de sirop, est à 1 avec l’unité « flacon ». Le prix de la boîte est le prix d’une boîte entière quand il diffère de unités × prix : les boîtes entières vendues au comptant sont facturées à ce prix, et la facture le dit."
+      "packHint2": "Le stock est tenu en unités (l’unité ci-dessus) ; la taille de boîte dit combien d’unités font une boîte, pour que chaque écran montre les deux (« 500 cp · 25 boîtes de 20 »). Un médicament vendu entier, comme un flacon de sirop, est à 1 avec l’unité « flacon ». Le prix de la boîte est le prix d’une boîte entière quand il diffère de unités × prix : les boîtes entières vendues au comptant sont facturées à ce prix, et la facture le dit.",
+      "list": {
+        "tag": "sur {{list}}"
+      }
     },
     "tools": {
       "open": "Outils du catalogue",
@@ -3185,7 +3188,8 @@
     "medGroups": {
       "clinic": "Médicaments et produits de la clinique",
       "rhia": "Liste RHIA — non vendus ici",
-      "notCovered": "Non couvert par {{insurer}} — le patient paie"
+      "notCovered": "Non couvert par {{insurer}} — le patient paie",
+      "list": "{{list}} — non vendu ici"
     },
     "otherTreatmentsGroup": "Autres actes et services",
     "plainChosenHint_one": "{{count}} de ceux-ci n’est pas un examen : il va sur la facture, sans poste.",
@@ -8549,7 +8553,8 @@
     "a4d4a295": "La voix kinyarwanda est celle du téléviseur, les enregistrements du personnel ou le serveur vocal.",
     "e69735c5": "Le chemin de l’enregistrement n’est pas dans le dossier des extraits.",
     "6ab2b8ad": "Enregistrement inconnu.",
-    "3a3b16b3": "Cet enregistrement n’existe pas."
+    "3a3b16b3": "Cet enregistrement n’existe pas.",
+    "aad443f8": "Ce médicament n’est sur aucune liste : choisissez-le sur la liste RHIA ou sur une liste téléversée, ou créez-le comme nouvel article."
   },
   "panel": {
     "close": "Fermer",
@@ -8854,12 +8859,12 @@
   "packaging": {
     "addLead": "Une ligne par lot : l’article (choisissez-le, ou créez-le comme médicament ou produit), son conditionnement et sa façon d’être vendu, le numéro de lot, la date d’expiration, la quantité et le coût. Il entre aujourd’hui dans la pharmacie principale.",
     "readOnlyStock": "Vous ajoutez le stock ; le conditionnement et les prix restent tels quels (seuls le gestionnaire ou le pharmacien les changent).",
-    "fromList": "Rempli depuis la liste officielle (son conditionnement et son tarif) : changez ce qui diffère à la clinique.",
+    "fromList": "Rempli depuis la liste (son conditionnement et son prix) : changez ce qui diffère à la clinique.",
     "fromItem": "Tel qu’enregistré pour cet article : un changement ici met l’article à jour.",
-    "qtyPacks": "Quantité · {{pack}} de {{size}}",
-    "qtyPieces": "Quantité ({{piece}})",
-    "costPack": "Coût d’un(e) {{pack}} (RWF)",
-    "costPiece": "Coût d’un(e) {{piece}} (RWF)",
+    "qtyPacks": "Combien sont arrivés · {{pack}} de {{size}}",
+    "qtyPieces": "Combien sont arrivés ({{piece}})",
+    "costPack": "Acheté à, un(e) {{pack}} (RWF)",
+    "costPiece": "Acheté à, un(e) {{piece}} (RWF)",
     "costPer": "Coût par",
     "perPieceShort": "par {{piece}}",
     "perPackShort": "par {{pack}}",
@@ -8950,7 +8955,8 @@
       "suppository": "suppositoire",
       "piece": "unité",
       "ml": "ml"
-    }
+    },
+    "costHint": "Ce que la clinique a payé pour cette livraison : pour la valeur du stock et le bénéfice. Les prix de vente sont fixés au-dessus."
   },
   "patientFields": {
     "choose": "Choisir…",

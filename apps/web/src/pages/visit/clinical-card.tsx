@@ -38,6 +38,9 @@ import {
   treatmentName,
   type Treatment,
   useMedicineReference,
+  useListMedicines,
+  listMedicineOption,
+  tidyListName,
   medicineRefOption,
   sortMedicineRefs,
   useTreatments,
@@ -157,8 +160,11 @@ const emptyLine = (): RxLine => ({
 /** The medicine picker's values: a clinic medicine is its id; one only on the official list is
  *  REF + its code; TYPED is a medicine written by hand (both only for an outside pharmacy). */
 const REF = 'ref:'
+/** 0172: a medicine of an uploaded price list the clinic does not hold: LIST + its code. */
+const LIST = 'list:'
 const TYPED = 'typed'
-const outsideOnly = (value: string) => value === TYPED || value.startsWith(REF)
+const outsideOnly = (value: string) =>
+  value === TYPED || value.startsWith(REF) || value.startsWith(LIST)
 /** How a prescription line shows: waiting at the pharmacy, given, not given, cancelled… */
 const STATE_TONE: Record<PrescriptionState, Tone> = {
   waiting: 'yellow',
@@ -358,6 +364,8 @@ export function ClinicalCard({
   // the clinic pharmacy's usable stock, and the official list for medicines bought outside
   const { data: rxStock = null } = useRxStock(mode === 'rx')
   const { data: refs = [] } = useMedicineReference(mode === 'rx')
+  // 0172: the uploaded price lists' medicines the clinic does not hold
+  const { data: listMeds = [] } = useListMedicines(mode === 'rx')
 
   // small forms
   const [note, setNote] = useState('')
@@ -377,6 +385,8 @@ export function ClinicalCard({
     setRx((lines) => lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const refOf = (value: string) =>
     value.startsWith(REF) ? refs.find((r) => r.code === value.slice(REF.length)) : undefined
+  const listOf = (value: string) =>
+    value.startsWith(LIST) ? listMeds.find((l) => l.code === value.slice(LIST.length)) : undefined
   /** Usable units at the clinic pharmacy (null: not a clinic medicine, or not known). */
   const stockOf = (value: string) =>
     rxStock && items.some((it) => it.id === value) ? (rxStock[value] ?? 0) : null
@@ -449,6 +459,14 @@ export function ClinicalCard({
       group: t('clinical.medGroups.rhia'),
       hint: t('clinical.stock.notSold'),
     })),
+    // 0172: the uploaded lists' medicines the clinic does not hold: for an outside pharmacy
+    ...listMeds
+      .filter((l) => !itemCodes.has(l.code))
+      .map((l) => ({
+        ...listMedicineOption(l, t, LIST + l.code),
+        group: t('clinical.medGroups.list', { list: l.listName }),
+        hint: t('clinical.stock.notSold'),
+      })),
   ]
   const [order, setOrder] = useState({
     services: [] as string[],
@@ -805,18 +823,21 @@ export function ClinicalCard({
     for (const line of lines) {
       const item = items.find((i) => i.id === line.item) ?? null
       const ref = refOf(line.item)
+      const lm = listOf(line.item)
       const name = item
         ? [item.name, item.strength].filter(Boolean).join(' ')
         : ref
           ? ref.presentation
             ? `${ref.generic} (${ref.presentation})`
             : ref.generic
-          : line.item === TYPED
-            ? line.typedName.trim()
-            : ''
+          : lm
+            ? tidyListName(lm.name)
+            : line.item === TYPED
+              ? line.typedName.trim()
+              : ''
       const q = Number(line.quantity)
       if (!name || !Number.isFinite(q) || q <= 0) return setLocalError(t('clinical.errors.rx'))
-      prepared.push({ item, name, code: ref?.code ?? null, line, q })
+      prepared.push({ item, name, code: ref?.code ?? lm?.code ?? null, line, q })
     }
     const ids = prepared.map((p) => p.item?.id ?? p.code ?? p.name.toLowerCase())
     const twice = [

@@ -24893,6 +24893,147 @@ await step(
     return `no desk → marked: pharmacy desk, profile + placement say so, may_use_desk true → gave 5 caps to an MMI patient: lineId ${String(given.lineId).slice(0, 8)}…, set not covered (0%) at the desk; a receptionist refused ${other} → unmarked: gone; receptionist marking refused ${notMgr}`
   },
 )
+// 0172: every uploaded list joins the clinic's treatments and medicines
+await step(
+  "0172: an insurer's list of treatments adds its lines to the clinic's (live, cash price = the list's); an uploaded medicines list offers its lines to stock and to prescribe",
+  async () => {
+    await asAdmin()
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270130090000_lists_as_one.sql'), 'utf8'),
+    )
+    await as(staff.manager)
+    const cols = JSON.stringify([{ key: 'tariff', label: 'Tariff' }])
+    const tr = (
+      await one(
+        `select import_tariff(null, $1::jsonb, 'MMI treatments 172', current_date, $2::jsonb, $3::jsonb, null, null, null, false) as j`,
+        [
+          JSON.stringify({
+            name: 'MMI treatments 172',
+            publisher: 'MMI',
+            kind: 'treatments',
+            scope: 'insurer',
+            payerId: t115.mmi,
+          }),
+          cols,
+          JSON.stringify([
+            {
+              row: 1,
+              code: 'T172-A',
+              name: 'Insurer-only treatment 172',
+              prices: { tariff: 7000 },
+            },
+          ]),
+        ],
+      )
+    ).j
+    const md = (
+      await one(
+        `select import_tariff(null, $1::jsonb, 'MMI medicines 172', current_date, $2::jsonb, $3::jsonb, null, null, null, false) as j`,
+        [
+          JSON.stringify({
+            name: 'MMI medicines 172',
+            publisher: 'MMI',
+            kind: 'medicines',
+            scope: 'insurer',
+            payerId: t115.mmi,
+          }),
+          cols,
+          JSON.stringify([
+            {
+              row: 1,
+              code: 'M172-X',
+              name: 'Listomycin 172',
+              detail: '100mg tablet',
+              unit: 'TABLET',
+              prices: { tariff: 300 },
+            },
+            {
+              row: 2,
+              code: 'M172-Y',
+              name: 'Listomycin syrup 172',
+              detail: '125mg/5ml',
+              unit: 'BOTTLE',
+              prices: { tariff: 2500 },
+            },
+          ]),
+        ],
+      )
+    ).j
+    await asAdmin()
+    const svc = await one(
+      `select s.id, s.active, c.list_price, (select pf.price from price_for(s.id, null, null) pf) as cash
+       from service s join catalogue_services c on c.id = s.id
+       where s.tariff_code = 'T172-A' and s.deleted_at is null`,
+    )
+    await as(staff.pharmacist)
+    const offered = (
+      await db.query(
+        `select code, name, detail, price, list_name from list_medicines() where code like 'M172-%' order by code`,
+      )
+    ).rows
+    const got = (
+      await one(`select add_stock($1::jsonb, null, 'from the list 172') as j`, [
+        JSON.stringify([
+          {
+            new_item: {
+              name: 'Listomycin 172',
+              code: 'M172-X',
+              kind: 'medicine',
+              unit: 'tab',
+              strength: '100 mg',
+            },
+            batch_no: 'L172',
+            expiry: t97.day.d,
+            quantity: 10,
+            unit_cost: 100,
+            sell_price: 300,
+          },
+        ]),
+      ])
+    ).j
+    const item = await one(
+      `select code, name_generic, name_brand from item where code = 'M172-X' and deleted_at is null`,
+    )
+    const left = (
+      await db.query(`select code from list_medicines() where code like 'M172-%' order by code`)
+    ).rows.map((r) => r.code)
+    const v = await visitAt('List 172')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [v.queue])
+    await db.query(`select add_diagnosis($1, 'Tonsillitis', 'J03', 'primary')`, [v.enc])
+    const rx = (
+      await one(
+        `select prescribe(p_encounter_id => $1, p_item_id => null, p_quantity => 1, p_supply => 'outside',
+                p_dose => '5 ml', p_frequency => 'BD', p_duration_days => 5, p_reference_code => 'M172-Y') as j`,
+        [v.enc],
+      )
+    ).j
+    const noList = await codeAs(
+      d1,
+      `select prescribe(p_encounter_id => $1, p_item_id => null, p_quantity => 1, p_supply => 'outside', p_reference_code => 'M172-NONE')`,
+      [v.enc],
+    )
+    await asAdmin()
+    const named = (await one(`select medicine_name from medication_request where id = $1`, [rx.id]))
+      .medicine_name
+    if (!tr.bookId || !md.bookId) throw new Error('import: ' + JSON.stringify({ tr, md }))
+    if (!svc || svc.active !== true || Number(svc.list_price) !== 7000 || Number(svc.cash) !== 7000)
+      throw new Error('service: ' + JSON.stringify(svc))
+    if (
+      offered.length !== 2 ||
+      offered[0].code !== 'M172-X' ||
+      Number(offered[0].price) !== 300 ||
+      offered[0].list_name !== 'MMI medicines 172'
+    )
+      throw new Error('offered: ' + JSON.stringify(offered))
+    if (!got || !item || item.name_brand !== '100mg tablet')
+      throw new Error('stocked: ' + JSON.stringify({ got, item }))
+    if (left.join(',') !== 'M172-Y') throw new Error('left: ' + left.join(','))
+    if (!/^Listomycin syrup 172 125mg\/5ml$/.test(named || '') || noList !== 'P0002')
+      throw new Error(JSON.stringify({ named, noList }))
+    return `insurer treatment T172-A made, live, cash 7,000 from the list; list_medicines offered X and Y; X stocked (brand "100mg tablet") and left the offer; Y prescribed outside as "${named}"; unknown code ${noList}`
+  },
+)
 // @@t141-end
 finish()
 
